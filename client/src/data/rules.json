@@ -1,0 +1,45 @@
+{
+  "meta": {
+    "status": "example",
+    "version": "0.0.0-example",
+    "note": "Données de démonstration : ce ne sont PAS les règles de Maverick. À remplacer après import des sources (voir docs/character-generator.md)."
+  },
+  "attributes": [
+    { "id": "a", "label": "Caractéristique A" },
+    { "id": "b", "label": "Caractéristique B" },
+    { "id": "c", "label": "Caractéristique C" },
+    { "id": "d", "label": "Caractéristique D" }
+  ],
+  "creation": { "base": 1, "pool": 8, "max": 5 },
+  "limits": { "classes": 1, "magies": 1 },
+  "races": [
+    {
+      "id": "exemple-race",
+      "name": "Race d'exemple",
+      "wiki": "races/exemple-race",
+      "modifiers": { "a": 1 },
+      "traits": ["Trait racial d'exemple"]
+    }
+  ],
+  "classes": [
+    {
+      "id": "exemple-classe",
+      "name": "Classe d'exemple",
+      "wiki": "classes/exemple-classe",
+      "modifiers": { "b": 1 },
+      "allowedRaces": ["exemple-race"],
+      "traits": ["Capacité de classe d'exemple"]
+    }
+  ],
+  "magies": [
+    {
+      "id": "exemple-magie",
+      "name": "Magie d'exemple",
+      "wiki": "magies/exemple-magie",
+      "allowedClasses": ["exemple-classe"]
+    }
+  ],
+  "derived": [
+    { "id": "exemple", "label": "Valeur dérivée d'exemple", "base": 10, "add": { "a": 2, "b": 1 } }
+  ]
+}

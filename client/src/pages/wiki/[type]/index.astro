@@ -1,0 +1,20 @@
+---
+import Base from '../../../layouts/Base.astro';
+import EntryList from '../../../components/EntryList.astro';
+import { TYPES, TYPE_KEYS } from '../../../lib/types.mjs';
+import { entriesOfType, loadWiki } from '../../../lib/wiki';
+
+export function getStaticPaths() {
+  return TYPE_KEYS.map((type) => ({ params: { type } }));
+}
+
+const { type } = Astro.params as { type: keyof typeof TYPES };
+const { entries } = await loadWiki();
+const list = entriesOfType(entries, type);
+---
+
+<Base title={TYPES[type].label}>
+  <h1>{TYPES[type].label}</h1>
+  <p class="muted">{TYPES[type].blurb}</p>
+  {list.length ? <EntryList entries={list} showType={false} /> : <p>Aucune page pour l’instant dans cette catégorie.</p>}
+</Base>

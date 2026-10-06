@@ -1,0 +1,67 @@
+# Sources de Maverick JDR
+
+Les règles et le lore vivent hors du dépôt : un serveur Discord et des Google Docs/Sheets.
+Le manifeste machine-lisible est [`sources/sources.json`](../sources/sources.json) ; ce document explique comment s'en servir.
+
+## Discord — « L'univers de Maverick »
+
+- Serveur : ID `374464159254839298`, invitation <https://discord.gg/GMGBnjzfMk>
+- Les salons du groupe contiennent, pour la plupart, des liens vers les Google Docs ci-dessous.
+
+| Salon | Catégorie du wiki (`client/src/content/wiki/…`) |
+| --- | --- |
+| `codex-maverick` | — (salon d'entrée) |
+| `lien-pour-races` | `races` |
+| `lien-pour-guide` | `guide` |
+| `lien-pour-magies` | `magies` |
+| `lien-pour-classes` | `classes` |
+| `lien-pour-bestiaire` | `bestiaire` |
+| `lien-pour-ressources-craft` | `ressources` |
+| `lien-pour-métier` | `metiers` |
+| `lore-bestiaire-codex` | `lore` |
+| `cartes` | `cartes` |
+
+### Récupérer le contenu Discord
+
+Une session Claude Code cloud n'a **pas** accès à Discord (hôtes bloqués par la politique réseau de l'environnement)
+et aucun connecteur Discord n'était disponible dans le registre au moment de la mise en place. Options :
+
+1. **Export local** avec [DiscordChatExporter](https://github.com/Tyrrrz/DiscordChatExporter) : exporter chaque salon
+   en JSON dans `sources/discord/<salon>.json`, puis committer. Aucune clé à partager avec un outil tiers.
+2. **Bot dédié** : créer un bot (portail développeur Discord), l'inviter en lecture seule sur le serveur
+   (permissions *View Channel* + *Read Message History*, intent *Message Content*) et lui faire exporter les salons.
+
+> Ne pas utiliser le jeton d'un compte personnel (« self-bot ») : c'est contraire aux conditions d'utilisation de Discord
+> et ce jeton donne accès à tout le compte.
+
+## Google Docs / Sheets
+
+12 documents distincts (le doc `1vn5Tq11…` avait été cité deux fois), listés dans `sources/sources.json`
+avec `"type": null` — **à classer** après lecture (renseigner `type` et `title`).
+
+Export automatique, à lancer **depuis une machine qui a accès à Google** (documents partagés en
+« Toute personne disposant du lien ») :
+
+```bash
+node tools/import-gdocs.mjs --dry-run      # liste les URLs d'export
+node tools/import-gdocs.mjs                # télécharge dans sources/raw/ (.md pour les docs, .csv pour les sheets)
+node tools/import-gdocs.mjs --only <id>    # un seul document
+```
+
+- Un Sheet à plusieurs onglets : ajouter chaque `gid` d'onglet dans `gids` (visible dans l'URL `…?gid=123`).
+- Document privé : l'export échoue avec « document privé ou introuvable ». Passer le partage en lecture par lien,
+  ou connecter les connecteurs *Google Drive / Docs / Sheets* dans claude.ai.
+- Depuis une session cloud, autoriser `docs.google.com` dans *Network access* de l'environnement (c'est l'hôte refusé
+  par le proxy lors du premier essai). Les exports Google pouvant rediriger vers un autre domaine
+  (`*.googleusercontent.com`), l'ajouter si le téléchargement échoue encore ; ce point n'a pas pu être vérifié.
+
+Les fichiers de `sources/raw/` et `sources/discord/` sont du matériau brut, **pas** du contenu publié :
+le wiki ne lit que `client/src/content/wiki/`. Ne les committez que si le dépôt reste privé.
+
+## De la source au wiki
+
+1. Importer/exporter les sources (ci-dessus).
+2. Lire chaque document, renseigner `type` dans `sources/sources.json`.
+3. Rédiger les pages du wiki ([guide de contenu](content-guide.md)) en citant la source dans `sources:`.
+4. Remplir [`rules.json`](character-generator.md) à partir des tableaux de règles (races, classes, magies…).
+5. Supprimer les pages `status: example`.

@@ -1,0 +1,35 @@
+---
+import Base from '../layouts/Base.astro';
+import { TYPES } from '../lib/types.mjs';
+import { entriesOfType, loadWiki, url } from '../lib/wiki';
+
+const { entries, unresolved } = await loadWiki();
+---
+
+<Base title="Accueil">
+  <h1>Maverick Center</h1>
+  <p class="prose">
+    Le codex de Maverick JDR : toutes les règles et le lore au même endroit, avec des pages reliées entre elles par mots-clés,
+    et un générateur de fiche de personnage.
+  </p>
+
+  <p><a class="card" href={url('generateur/')}><strong>Générateur de fiche de personnage →</strong><small>Race, classe, magie, caractéristiques : créez et imprimez votre fiche.</small></a></p>
+
+  <h2>Parcourir le wiki</h2>
+  <ul class="grid">
+    {
+      Object.entries(TYPES).map(([key, type]) => (
+        <li>
+          <a class="card" href={url(`wiki/${key}/`)}>
+            <strong>{type.label}</strong>
+            <small>{type.blurb} ({entriesOfType(entries, key).length})</small>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+  <p class="muted">
+    {entries.length} pages · {unresolved.length} lien(s) à créer.
+    <a href={url('wiki/')}>Index alphabétique</a> · <a href={url('tags/')}>Mots-clés</a>
+  </p>
+</Base>

@@ -1,0 +1,70 @@
+---
+import Base from '../layouts/Base.astro';
+import { url } from '../lib/wiki';
+---
+
+<Base title="Recherche">
+  <h1>Recherche</h1>
+  <form id="search-form" action={url('recherche/')} data-index-url={url('search-index.json')} role="search">
+    <input id="q" type="search" name="q" placeholder="Nom, mot-clé, texte…" size="32" autofocus />
+    <button type="submit">Chercher</button>
+  </form>
+  <p id="status" class="muted" aria-live="polite"></p>
+  <ul id="results" class="entry-list"></ul>
+</Base>
+
+<script>
+  import { searchIndex } from '../lib/search.mjs';
+
+  interface Doc {
+    title: string;
+    type: string;
+    href: string;
+    summary: string;
+    aliases: string[];
+    tags: string[];
+    text: string;
+  }
+
+  const form = document.querySelector<HTMLFormElement>('#search-form')!;
+  const input = document.querySelector<HTMLInputElement>('#q')!;
+  const status = document.querySelector<HTMLElement>('#status')!;
+  const list = document.querySelector<HTMLElement>('#results')!;
+
+  let index: Doc[] | undefined;
+
+  async function run() {
+    const query = input.value.trim();
+    list.replaceChildren();
+    if (!query) {
+      status.textContent = '';
+      return;
+    }
+    try {
+      index ??= (await (await fetch(form.dataset.indexUrl!)).json()) as Doc[];
+    } catch {
+      status.textContent = 'Impossible de charger l’index de recherche.';
+      return;
+    }
+    const hits = searchIndex(index, query) as Doc[];
+    status.textContent = `${hits.length} résultat(s)`;
+    for (const hit of hits) {
+      const li = document.createElement('li');
+      const a = Object.assign(document.createElement('a'), { href: hit.href, textContent: hit.title });
+      const badge = Object.assign(document.createElement('span'), { className: 'badge', textContent: hit.type });
+      li.append(a, ' ', badge);
+      if (hit.summary) {
+        li.append(Object.assign(document.createElement('div'), { className: 'muted', textContent: hit.summary }));
+      }
+      list.append(li);
+    }
+  }
+
+  input.value = new URLSearchParams(location.search).get('q') ?? '';
+  input.addEventListener('input', run);
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    run();
+  });
+  run();
+</script>
