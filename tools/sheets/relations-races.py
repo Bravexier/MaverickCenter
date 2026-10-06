@@ -25,16 +25,21 @@ Disposition de l'onglet (cellules fusionnées 4 colonnes x 4 lignes ; coordonné
   droite) et la légende occupe les quatre coins. Dans cet onglet N = 69 peuples (et non 70 : la 70e ligne et la 70e colonne
   sont ce cadre), donc 69 x 69 = 4761 relations ; 5050 cellules au total, toutes reconnues, 5050 fusions attendues.
 
-Sens (légende de l'onglet) : la VERTICALE (étiquettes de gauche, une ligne par peuple) = « Comment le peuple voit les
-autres » ; l'HORIZONTALE (étiquettes du haut, une colonne par peuple) = « Comment le peuple est vu par les autres ».
-La cellule (ligne A, colonne B) dit donc comment A voit B (= comment B est vu par A). La matrice n'est PAS supposée
+Sens (NON tranché) : la légende de l'onglet dit « Verticale = Comment le peuple voit les autres » et « Horizontale =
+Comment le peuple est vu par les autres ». Elle se lit de deux façons cohérentes : l'axe d'étiquettes (verticale =
+étiquettes de gauche, d'où cellule (ligne A, colonne B) = comment A voit B) ou le sens de lecture (verticale = descendre
+une colonne, d'où cellule (ligne A, colonne B) = comment B voit A). La source ne tranche pas (le texte d'histoire de
+l'onglet « Mort-vivant », « rejetés de la plupart des sociétés », irait plutôt dans le second sens, sans le prouver) : ce
+script ne choisit donc aucune lecture. Les sections sont intitulées « Nom du peuple : ligne de l'onglet » (la ligne dont
+l'étiquette de gauche est ce peuple), la légende est citée telle quelle et la page dit que le sens n'est pas tranché ; si le
+propriétaire confirme un sens, il suffit de changer les titres et les phrases de lecture ici. La matrice n'est PAS supposée
 symétrique (elle ne l'est pas : voir le rapport) ; la relation d'un peuple à lui-même (diagonale) doit être « Même peuple ».
 
 Page produite (status draft ; tags « relations », « peuples », « race » ; sources : libellé ET URL du classeur) :
-  frontmatter ; paragraphes de lecture (nombre de peuples, sens des sections, asymétrie) ; « Légende » (les deux lignes
-  telles qu'écrites) ; « Echelle de relation » (les huit niveaux dans l'ordre de l'onglet) ; « Les peuples de l'onglet »
-  (rapprochement avec les pages `races/*.md`, voir plus bas) ; puis, pour chaque peuple dans l'ordre de l'onglet, une
-  section « Nom du peuple : comment ce peuple voit les autres » : une ligne `- **niveau** : peuples` par niveau, dans
+  frontmatter ; paragraphes de lecture (nombre de peuples, contenu des sections, sens non tranché, asymétrie, noms tels
+  qu'écrits) ; « Légende » (les deux lignes telles qu'écrites) ; « Echelle de relation » (les huit niveaux dans l'ordre
+  de l'onglet) ; « Les peuples de l'onglet » (rapprochement avec les pages `races/*.md`, voir plus bas) ; puis, pour chaque peuple dans l'ordre de l'onglet, une
+  section « Nom du peuple : ligne de l'onglet » : une ligne `- **niveau** : peuples` par niveau, dans
   l'ordre de l'échelle (du plus favorable au plus défavorable), les peuples dans l'ordre de l'onglet ; un niveau sans
   peuple n'est pas écrit. Les 69 x 69 relations y figurent, chacune une fois (la section d'un peuple le range lui-même
   sous « Même peuple »). Aucun lien [[…]] : le maillage automatique (`npm run autolink`) les ajoutera ; le vérificateur
@@ -92,11 +97,13 @@ LEGEND = (19, 1)              # A19
 LABEL_ROW, LABEL_COL0 = 19, 5  # E19, I19 ... : étiquettes du haut
 LABEL_COL, MATRIX_ROW0 = 1, 23  # A23, A27 ... : étiquettes de gauche
 SELF_LEVEL = "Même peuple"    # relation d'un peuple à lui-même (diagonale)
-SECTION_SUFFIX = " : comment ce peuple voit les autres"
+SECTION_SUFFIX = " : ligne de l'onglet"   # neutre : la source ne dit pas dans quel sens se lit une case (voir « Sens »)
 GROUPS_HEADING = "Les peuples de l'onglet"
 LEGEND_HEADING = "Légende"
 UNMATCHED_PREFIX = "Peuples sans page de race rapprochée sans ambiguïté : "
 ABSENT_PREFIX = "Races du wiki sans peuple dans l'onglet : "
+# Noms d'exemple cités tels qu'écrits dans la page (seuls ceux qui existent dans l'onglet sont cités)
+AS_WRITTEN_EXAMPLES = ("Elfe Argenté Supprémaciste", "Jackalope Feu", "Marcass Ubain")
 MIN_REPLAY_PEOPLE = 4         # en dessous, les cas d'erreur rejoués n'ont pas de sens
 
 
@@ -287,10 +294,10 @@ def read_tab(raw):
             r, c = MATRIX_ROW0 + STEP * i, LABEL_COL0 + STEP * j
             v = take(r, c)
             if v is None:
-                raise Stop("%s : case vide en %s (%s voit %s)" % (TAB, ref(r, c), people[i], people[j]))
+                raise Stop("%s : case vide en %s (ligne %s, colonne %s)" % (TAB, ref(r, c), people[i], people[j]))
             level = norm_ws(v)
             if level not in scale:
-                raise Stop("%s : valeur hors échelle en %s (%s voit %s) : %r" % (TAB, ref(r, c), people[i], people[j], level))
+                raise Stop("%s : valeur hors échelle en %s (ligne %s, colonne %s) : %r" % (TAB, ref(r, c), people[i], people[j], level))
             row.append(level)
         if row[i] != SELF_LEVEL:
             raise Stop("%s : la diagonale de %s vaut %r, attendu « %s »" % (TAB, people[i], row[i], SELF_LEVEL))
@@ -677,6 +684,11 @@ def replay_page_cases(text, tab):
         ("légende modifiée", text.replace(tab["legend"][0], tab["legend"][0] + " !", 1)),
         ("source retirée", text.replace(SOURCES[1], "https://example.invalid/", 1)),
         ("symétrie supposée : la relation B -> A recopiée depuis A -> B", mirrored_relation(lines, tab)),
+        ("sens tranché : un titre « comment ce peuple voit les autres »",
+         with_line(heads[0], lines[heads[0]][:-len(SECTION_SUFFIX)] + " : comment ce peuple voit les autres")),
+        ("sens tranché : la phrase « sens de lecture non tranché » retirée", "\n".join(l for l in lines if not l.startswith("Sens de lecture non tranché"))),
+        ("nom de peuple « corrigé » (Supprémaciste -> Suprémaciste)",
+         text.replace("Supprémaciste", "Suprémaciste") if "Supprémaciste" in text else None),
     ]
     cases = [c for c in cases if c[1] is not None]
     for label, mutated in cases:
@@ -816,19 +828,31 @@ def render_page(tab, races):
          "sources: " + yaml_list(SOURCES),
          "status: " + STATUS,
          "---", ""]
-    L += [esc("Relations entre les %d peuples de l'onglet « %s » du classeur « %s » : chaque peuple y est noté face à "
-              "chacun des %d peuples, lui-même compris, sur l'échelle ci-dessous." % (n, TAB, BOOK_TITLE, n)), ""]
-    L += [esc("Chaque section « Nom du peuple%s » reprend une ligne de la matrice (axe vertical de l'onglet) : les autres peuples "
-              "y sont rangés par niveau de relation, dans l'ordre de l'échelle, puis dans l'ordre de l'onglet ; un niveau "
-              "sans peuple n'est pas écrit. La relation d'un peuple avec lui-même est « %s »." % (SECTION_SUFFIX, SELF_LEVEL)), ""]
+    L += [esc("Relations entre les %d peuples de l'onglet « %s » du classeur « %s » : l'onglet croise les %d peuples en lignes "
+              "et en colonnes (%d x %d = %d cases, la diagonale comprise) ; chaque case porte un niveau de l'échelle "
+              "ci-dessous." % (n, TAB, BOOK_TITLE, n, n, n, n * n)), ""]
+    L += [esc("Chaque section « Nom du peuple%s » reprend une ligne de la matrice, celle dont l'étiquette (à gauche) est ce "
+              "peuple : les peuples des colonnes (étiquettes du haut) y sont rangés par niveau, dans l'ordre de l'échelle, "
+              "puis dans l'ordre de l'onglet ; un niveau sans peuple n'est pas écrit. La case d'un peuple avec lui-même est "
+              "« %s »." % (SECTION_SUFFIX, SELF_LEVEL)), ""]
+    L += [esc("Sens de lecture non tranché : la légende de l'onglet (citée plus bas) peut désigner l'axe d'étiquettes ou le "
+              "sens de lecture d'une colonne, et la source ne dit pas laquelle des deux est voulue. Cette page ne dit donc pas "
+              "qui voit qui : elle range les cases par ligne de l'onglet, sans interpréter le sens. Ce point reste à "
+              "faire confirmer."), ""]
     if asym:
-        L += [esc("La matrice n'est pas symétrique : pour %d des %d paires de peuples, les deux sens de la relation "
-                  "diffèrent. Pour savoir comment un peuple est vu par les autres (axe horizontal de l'onglet), chercher "
-                  "son nom dans la section de chacun des autres peuples." % (asym, pairs)), ""]
+        L += [esc("La matrice n'est pas symétrique : pour %d des %d paires de peuples, les deux cases (ligne A et colonne B, "
+                  "ligne B et colonne A) diffèrent. Pour lire une colonne de l'onglet (les cases que les lignes des autres "
+                  "peuples portent pour un peuple), chercher son nom dans la section de chacun des autres peuples." % (asym, pairs)), ""]
     else:
-        L += [esc("La matrice est symétrique : les deux sens de chacune des %d paires de peuples sont identiques." % pairs), ""]
+        L += [esc("La matrice est symétrique : les deux cases de chacune des %d paires de peuples sont identiques." % pairs), ""]
+    shown = ["« %s »" % p for p in AS_WRITTEN_EXAMPLES if p in people]
+    including = (", y compris " + (", ".join(shown[:-1]) + " et " + shown[-1] if len(shown) > 1 else shown[0])) if shown else ""
+    L += [esc("Les noms des peuples sont ceux des étiquettes de l'onglet, recopiés tels qu'écrits%s : rien n'y est corrigé. "
+              "Seuls les retours à la ligne et les espaces multiples d'une étiquette sont ramenés à une espace." % including), ""]
 
-    L += ["## " + LEGEND_HEADING, ""] + ["- " + esc(line) for line in tab["legend"]] + [""]
+    L += ["## " + LEGEND_HEADING, "",
+          esc("Légende de l'onglet telle qu'écrite (cellule %s, répétée dans les trois autres coins du cadre) :" % ref(*LEGEND)), ""]
+    L += ["- " + esc(line) for line in tab["legend"]] + [""]
     L += ["## " + esc(tab["title"]), "",
           esc("Les %d niveaux de l'onglet, dans l'ordre où il les écrit (de gauche à droite) :" % len(scale)), ""]
     L += ["- " + esc(level) for level in scale] + [""]

@@ -57,7 +57,7 @@ de la classe). Champs du frontmatter, déclarés dans `content.config.ts` et lus
 | `classe` | id de la page de la classe (`classes/barde`) |
 | `nature` | `classe` (reçue sans choix), `specialite` (cartouche de spécialité, niveau 10) ou `choix` (capacité d'une spécialité ou d'un palier) |
 | `specialite` | bannière de la spécialité (absente pour `classe` et pour l'Archimage, qui n'a pas de spécialité) |
-| `niveau`, `rang`, `ligne` | niveau de classe ; position de gauche à droite ; ligne de la cellule dans l'onglet |
+| `niveau`, `rang`, `ligne` | niveau de classe ; position de gauche à droite dans son groupe de choix (les capacités de la même ligne sous la même bannière : Nouvel accord, à droite de la ligne 29 du Barde, est de rang 1) ; ligne de la cellule dans l'onglet (commune aux deux bannières) |
 | `choix_exclusif_avec` | ids des autres capacités de la **même ligne** : une seule au choix (symétrique) |
 
 **Règle des choix** (confirmée par le propriétaire du projet, lisible dans la mise en page des onglets) : deux capacités côte à côte sur
