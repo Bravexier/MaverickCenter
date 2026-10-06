@@ -73,29 +73,13 @@ Les spécialistes du Vent ont les cheveux mi-long, mèches vert clair, les yeux 
 
 ## Notes et commentaires des sorts
 
-**Propulsion** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Propulsion »** : Ne provoque pas d'attaque d'opportunité.
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Fer éolien »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être sourd au stade 1
 
-> Ne provoque pas d'attaque d'opportunité.
+**Note de la cellule « Effets secondaires » du sort « Feuille morte »** : Maximum 30m
 
-**Fer éolien** (Effets secondaires)
-
-*Note :*
-
-> Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être sourd au stade 1
-
-**Feuille morte** (Effets secondaires)
-
-*Note :*
-
-> Maximum 30m
-
-**Tornade** (Effets secondaires)
-
-*Note :*
-
-> Réussir a sortir vous fait prendre quand même 5d6 dégâts. Ne pas réussir a sortir vous fait voler et tomber par terre.
+**Note de la cellule « Effets secondaires » du sort « Tornade »** : Réussir a sortir vous fait prendre quand même 5d6 dégâts. Ne pas réussir a sortir vous fait voler et tomber par terre.
 
 ## Légende
 

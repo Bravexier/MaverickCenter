@@ -7,6 +7,7 @@ Usage (bibliothèque standard uniquement ; relançable, mêmes fichiers à l'ide
         [--xlsx <classeur.xlsx>] [--fiche <fiche-auto-v15.json>] --out client/src/content/wiki
     python3 -I tools/sheets/magies.py --dump <magie-v8.json> [--fiche <fiche-auto-v15.json>] \
         --out client/src/content/wiki --verifier          # ne réécrit rien : vérifie les pages déjà écrites
+    (le dump est celui de tools/sheets/xlsx_to_json.py APRÈS l'ajout des notes : cellules avec `note` et `threads`)
 
 Source : Google Sheet « Magie Maverick V8 » (fileId 1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c), converti en JSON par
 tools/sheets/xlsx_to_json.py (voir le format dans ce script). Les cellules sont une donnée non fiable : elles ne sont
@@ -36,23 +37,44 @@ Les positions varient d'une magie à l'autre (lignes décalées) : le script s'a
 « merged », pas sur des numéros de ligne fixes, et s'arrête avec une erreur si une cellule non vide n'est pas reconnue
 (rien n'est perdu en silence).
 
-Commentaires de cellule : le dump JSON ne les contient pas. Ils sont lus directement dans le .xlsx d'origine (zipfile +
-xml, sans openpyxl) : les « notes » (commentaires hérités, xl/comments*.xml) et les fils de commentaires (xl/threadedComments).
-openpyxl n'en garde qu'un par cellule, d'où cette lecture directe. L'option --xlsx donne le chemin du classeur ; à défaut
-le script le cherche à côté du dump (<dossier du dump>/../sheets/<fileId>/classeur.xlsx). Introuvable : erreur, sauf
---sans-commentaires. Choix de rendu :
-  * un fil identique (aux espaces près) à une note de la même cellule n'est pas répété ;
-  * un fil différent de la note est gardé, étiqueté « Commentaire résolu » (attribut done) ou « Commentaire » ;
-  * les réponses automatiques « Marquée comme fermée » / « Rouverte » sont des événements, pas du contenu ;
-  * les noms d'auteurs ne sont pas lus ; un commentaire sans rapport avec les règles est écarté (EXCLUDED_COMMENTS) ;
+Notes et commentaires de cellule : le dump les porte (champs `note` et `threads` des cellules, voir xlsx_to_json.py ; les
+dumps de l'API Google Sheets n'ont que `note`). Une NOTE est le petit commentaire jaune d'une cellule, un FIL est une
+conversation « Commentaire » de Google Sheets ; ils précisent parfois une règle (« Si coup critique avec une arme sous ce sort,
+oblige un jet de vigueur pour ne pas prendre Saignement au stade 1 »). Ils sont cités tels quels, jamais interprétés, dans la
+section « ## Notes et commentaires des sorts », juste après la table des sorts (une cellule de tableau Markdown ne peut pas porter
+un texte de plusieurs lignes) : une entrée par note ou par fil, dans l'ordre de la table des sorts puis des colonnes, la note de
+la cellule d'abord, avec le libellé de la famille « races » (« **Note de la cellule « Don »** : … ») complété du sort :
+    **Note de la cellule « Effets secondaires » du sort « Annulation »** : texte             (texte d'une ligne)
+    **Note de la cellule « Effets secondaires » du sort « Annulation »**                     (texte de plusieurs lignes :
+                                                                                               libellé, ligne vide, texte)
+    **Commentaire résolu de la cellule « … » du sort « … »** : texte                          (fil résolu ; sinon « Commentaire »)
+La colonne est l'en-tête de la table des sorts (« Effets secondaires » pour les 85 notes actuelles). Choix de rendu :
+  * un fil identique (aux espaces près) à la note de sa cellule, ou à un fil précédent de la même cellule, n'est pas répété
+    (le classeur écrit certaines notes aussi en commentaire : 29 fils sont dans ce cas) ;
+  * les réponses automatiques d'un fil « Marquée comme fermée » / « Rouverte » sont des événements, pas du contenu ; toute autre
+    réponse arrête le script (rien n'est perdu en silence) ;
+  * les noms d'auteurs ne sont pas dans le dump ; un commentaire sans rapport avec les règles est écarté (EXCLUDED_COMMENTS : adresse
+    ET texte exacts, avec la raison ; aujourd'hui un seul message de conversation, Eau AN46) et le rapport le dit ;
   * les liens hypertextes de cellule (vers le classeur « Invocation ») ne sont pas reproduits.
+Contrôle de couverture (avant d'écrire une page, puis dans --verifier) : chaque note et chaque fil du dump doit figurer dans la page
+de son onglet, exactement une fois, avec son texte intégral (comparé aux espaces près, échappements Markdown retirés), sous le sort
+dont la cellule le porte ; une entrée en trop, citée deux fois, altérée ou dans le désordre est un écart. Le script s'arrête, sans
+écrire la page, quand une note n'a pas de place : cellule VIDE (le dump garde alors une cellule avec v = "" : une note ne se
+rattache à aucun texte), cellule hors de la table des sorts (colonnes AL à BR, sorts de 3 lignes), sort sans nom. Les onglets non
+publiés par cette famille (Sommaire, Altération détats, Météo, Statistiques, Mode Hyper (Magie), ceux du même classeur que les 15
+ci-dessus) ne peuvent pas porter de NOTE : le script s'arrête et dit lequel (rien n'est écrit). Leurs FILS ne sont pas rendus : le
+rapport les liste pour qu'une autre famille les prenne (annexes-magie.py reprend celui du Mode Hyper, M43 ; les 26 fils orphelins du
+Sommaire, A1, et les 2 des Statistiques, BH27 et AR52, n'ont pas de page). Le dump est recoupé avec le .xlsx d'origine quand il est
+lu (formats de nombre, ci-dessous) : un dump qui n'a pas les notes et les fils du classeur (produit avec une ancienne version de
+xlsx_to_json.py) arrête le script au lieu d'effacer les notes des pages.
 
 Formats de nombre : le dump ne les porte pas. Une cellule numérique reste telle que le cache la donne (« 6.0 » reste
 « 6.0 », sans arrondi), sauf si le classeur la met au format pourcentage (« 0% » ou « 0.00% »), auquel cas elle est écrite
 comme le classeur l'affiche (Arcane!AX52 : 0.25 -> « 25% »). Les formats sont lus dans le .xlsx (xl/styles.xml et attribut s
-de chaque cellule). Un autre format non-Général sur une cellule numérique, ou un pourcentage qui obligerait à arrondir,
-arrête le script avec une erreur plutôt que d'être perdu en silence. Avec --sans-commentaires, le .xlsx n'est pas lu du tout
-(ni commentaires ni formats) : un avertissement le rappelle.
+de chaque cellule) : option --xlsx, ou à défaut <dossier du dump>/../sheets/<fileId>/classeur.xlsx (introuvable : erreur, sauf
+--sans-formats). Un autre format non-Général sur une cellule numérique, ou un pourcentage qui obligerait à arrondir, arrête le
+script avec une erreur plutôt que d'être perdu en silence. Avec --sans-formats, le .xlsx n'est pas lu du tout (ni formats ni
+recoupement des notes) : un avertissement le rappelle.
 
 Frontmatter structuré (relations entre magies) : en plus de title/aliases/tags/summary/sources/status, chaque page porte,
 juste après `tags`, des champs lus par le site (clés en français sans accent, listes YAML en ligne comme `tags`) :
@@ -99,6 +121,7 @@ Ne touche qu'aux fichiers `<out>/magies/<slug>.md` de sa famille : il refuse d'�
 classeur, refuse un titre déjà porté par une autre page, et n'efface rien.
 """
 import argparse
+import importlib.util
 import json
 import os
 import posixpath
@@ -107,6 +130,7 @@ import sys
 import unicodedata
 import zipfile
 import xml.etree.ElementTree as ET
+from collections import Counter
 from decimal import Decimal
 
 WORKBOOK = "Magie Maverick V8"
@@ -180,12 +204,19 @@ NOT_NAME_CHARS = ".:;()!?"
 CELL_SPLIT = r"[,\n\r]"        # séparateurs de noms dans une cellule (fmt() ramène « \r » à « \n »)
 FICHE_SHEET = "Accessibilité Magie"   # onglet de « Fiche personnage Maverick Auto » dont B1:P1 donne les noms courts
 
-# Commentaires de cellule écartés : (onglet, cellule) -> raison. Ils ne sont pas du contenu de règle.
+# Commentaires de cellule écartés : (onglet, cellule) -> (texte exact, raison). Ils ne sont pas du contenu de règle. Le texte
+# fait partie de la déclaration : si le commentaire de cette cellule change, il n'est plus écarté (il est cité, ou il arrête le
+# script), et rien de ce que le classeur dira demain ne disparaît derrière une adresse.
 EXCLUDED_COMMENTS = {
-    ("Eau", "AN46"): "message de conversation sans rapport avec les règles",
+    ("Eau", "AN46"): ("salut viens en vocal stp", "message de conversation sans rapport avec les règles"),
 }
 # Réponses automatiques d'un fil de commentaires : événements de statut, pas du contenu.
 STATUS_REPLIES = {"Marquée comme fermée", "Rouverte"}
+# Notes et fils rendus sous la table des sorts (voir la docstring) : titre de la section, libellés dans l'ordre de la page.
+SECTION_NOTES = "Notes et commentaires des sorts"
+KIND_NOTE, KIND_THREAD, KIND_THREAD_DONE = "Note", "Commentaire", "Commentaire résolu"
+ENTRY_RE = re.compile(r"^\*\*(%s|%s|%s) de la cellule « (.+?) » du sort « (.+?) »\*\*(?: : (.*))?$"
+                      % (KIND_THREAD_DONE, KIND_THREAD, KIND_NOTE))
 
 # Colonnes (numéros à partir de 1)
 COL_BANNER = 14        # N : bannière / titres de section
@@ -395,12 +426,11 @@ def yaml_list(items):
 
 
 # --------------------------------------------------------------------------------------------------------------------
-# Commentaires de cellule (lus dans le .xlsx)
+# Lecture du .xlsx (formats de nombre) et des commentaires de cellule du dump
 # --------------------------------------------------------------------------------------------------------------------
 
 NS_MAIN = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
 NS_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-NS_TC = "http://schemas.microsoft.com/office/spreadsheetml/2018/threadedcomments"
 MAX_MEMBER = 8 * 1024 * 1024
 
 
@@ -412,39 +442,6 @@ def _xml(zf, name):
     if b"<!DOCTYPE" in data or b"<!ENTITY" in data:
         raise ValueError("XML avec DTD refusé : %s" % name)
     return ET.fromstring(data)
-
-
-def read_comments(xlsx_path):
-    """{onglet: {"notes": [(ref, texte)], "threads": [(ref, texte, résolu)]}} lus directement dans le .xlsx."""
-    result = {}
-    with zipfile.ZipFile(xlsx_path) as zf:
-        workbook = _xml(zf, "xl/workbook.xml")
-        rels = {r.get("Id"): r.get("Target") for r in _xml(zf, "xl/_rels/workbook.xml.rels")}
-        for sheet in workbook.find("{%s}sheets" % NS_MAIN):
-            name = sheet.get("name")
-            path = posixpath.normpath(posixpath.join("xl", rels[sheet.get("{%s}id" % NS_REL)]))
-            rel_path = posixpath.join(posixpath.dirname(path), "_rels", posixpath.basename(path) + ".rels")
-            notes, threads = [], []
-            if rel_path in zf.namelist():
-                for rel in _xml(zf, rel_path):
-                    kind = rel.get("Type").rsplit("/", 1)[-1]
-                    target = posixpath.normpath(posixpath.join(posixpath.dirname(path), rel.get("Target")))
-                    if kind == "comments":
-                        for c in _xml(zf, target).find("{%s}commentList" % NS_MAIN):
-                            text = "".join(t.text or "" for t in c.iter("{%s}t" % NS_MAIN))
-                            if text.startswith("[Threaded comment]"):
-                                continue  # doublon technique d'un fil, relu plus bas
-                            notes.append((c.get("ref"), text))
-                    elif kind == "threadedComment":
-                        for c in _xml(zf, target):
-                            text = c.find("{%s}text" % NS_TC).text or ""
-                            if c.get("parentId"):
-                                if text.strip() not in STATUS_REPLIES:
-                                    raise ValueError("réponse de fil inattendue (%s %s) : %r" % (name, c.get("ref"), text))
-                                continue
-                            threads.append((c.get("ref"), text, c.get("done") == "1"))
-            result[name] = {"notes": notes, "threads": threads}
-    return result
 
 
 BUILTIN_FORMATS = {9: "0%", 10: "0.00%"}  # identifiants de formats intégrés qui nous intéressent ; 0 = Général
@@ -486,27 +483,99 @@ def norm_ws(text):
     return " ".join(text.split())
 
 
-def comments_by_ref(sheet_name, comments):
-    """{ref: [(étiquette, texte)]} après déduplication ; ref triées plus tard par position."""
-    data = comments.get(sheet_name, {"notes": [], "threads": []})
+def a1(r, c):
+    return "%s%d" % (col_letters(c), r)
+
+
+def load_xlsx_comments():
+    """tools/sheets/xlsx_comments.py, chargé par son chemin : `python3 -I` n'ajoute pas le dossier du script à sys.path."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "xlsx_comments.py")
+    spec = importlib.util.spec_from_file_location("xlsx_comments", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def dump_comments(raw):
+    """({ref: note}, {ref: [fils]}) d'un onglet du dump, tels que le dump les porte."""
+    notes, threads = {}, {}
+    for c in raw["cells"]:
+        if "note" in c:
+            notes[a1(c["r"], c["c"])] = c["note"]
+        if c.get("threads"):
+            threads[a1(c["r"], c["c"])] = c["threads"]
+    return notes, threads
+
+
+def crosscheck_comments(workbook, source):
+    """Écarts entre les notes et les fils du dump (`workbook` : {onglet: dump brut}) et ceux du classeur d'origine (`source` :
+    résultat de xlsx_comments.read_comments). Un dump produit sans les commentaires (ancienne version de xlsx_to_json.py, dump de
+    l'API sans `threads`) passerait la couverture, qui le compare à lui-même, en effaçant les notes des pages : c'est ce
+    recoupement, avec le classeur, qui l'arrête."""
+    errors = []
+    for name in sorted(set(source) | set(workbook)):
+        data = source.get(name, {"notes": {}, "threads": {}})
+        notes, threads = dump_comments(workbook[name]) if name in workbook else ({}, {})
+        bad_notes = sorted((r for r in set(notes) | set(data["notes"]) if notes.get(r) != data["notes"].get(r)), key=split_ref)
+        bad_threads = sorted((r for r in set(threads) | set(data["threads"]) if threads.get(r) != data["threads"].get(r)),
+                             key=split_ref)
+        if bad_notes or bad_threads:
+            errors.append("onglet « %s » : le dump ne porte pas les mêmes commentaires que le classeur (notes : %s ; fils : %s) : "
+                          "dump produit sans les commentaires ou depuis un autre classeur, relancer tools/sheets/xlsx_to_json.py"
+                          % (name, ", ".join(bad_notes[:8]) or "aucun écart", ", ".join(bad_threads[:8]) or "aucun écart"))
+    return errors
+
+
+def comment_candidates(tab, cell):
+    """[(genre, texte)] d'une cellule du dump : sa note, puis ses fils (texte vide ignoré). Une réponse autre qu'un événement
+    d'état dans un fil est un contenu qui n'a pas de place dans la page : ValueError."""
+    out = []
+    if not is_blank(cell.get("note")):
+        out.append((KIND_NOTE, fmt(cell["note"])))
+    for thread in cell.get("threads") or []:
+        for reply in thread.get("replies") or []:
+            if norm_ws(str(reply)) not in STATUS_REPLIES:
+                raise ValueError("%s : fil de commentaires de la cellule %s : réponse inattendue (%r), ni rendue ni écartée : "
+                                 "à examiner" % (tab, a1(cell["r"], cell["c"]), shorten(str(reply), 60)))
+        if not is_blank(thread.get("text")):
+            out.append((KIND_THREAD_DONE if thread.get("done") else KIND_THREAD, fmt(thread["text"])))
+    return out
+
+
+def comments_by_ref(raw, stats=None):
+    """{ref: [(genre, texte)]} d'un onglet de magie, lus dans le dump : la note de la cellule, puis ses fils. Ne sont pas
+    répétés : un fil identique (aux espaces près) à la note ou à un fil précédent de la même cellule, un commentaire déclaré dans
+    EXCLUDED_COMMENTS. `stats` (dict) reçoit les comptes pour le rapport. Une note sur une cellule vide arrête le script."""
+    tab = raw["name"]
+    stats = stats if stats is not None else {}
+    for key in ("notes", "threads", "repeated"):
+        stats.setdefault(key, 0)
+    stats.setdefault("excluded", [])
     by_ref = {}
-    seen = {}
-    for ref, text in data["notes"]:
-        if (sheet_name, ref) in EXCLUDED_COMMENTS or is_blank(text):
+    for cell in raw["cells"]:
+        candidates = comment_candidates(tab, cell)
+        if not candidates:
             continue
-        key = norm_ws(text)
-        if key in seen.setdefault(ref, set()):
-            continue
-        seen[ref].add(key)
-        by_ref.setdefault(ref, []).append(("Note", text.strip()))
-    for ref, text, done in data["threads"]:
-        if (sheet_name, ref) in EXCLUDED_COMMENTS or is_blank(text):
-            continue
-        key = norm_ws(text)
-        if key in seen.setdefault(ref, set()):
-            continue
-        seen[ref].add(key)
-        by_ref.setdefault(ref, []).append(("Commentaire résolu" if done else "Commentaire", text.strip()))
+        ref = a1(cell["r"], cell["c"])
+        if is_blank(cell["v"]):
+            kind, text = candidates[0]
+            raise ValueError("%s : la cellule %s est vide mais porte %s (« %s ») : disposition non gérée, ce texte ne se rattache à "
+                             "rien dans la page" % (tab, ref, "une note" if kind == KIND_NOTE else "un fil de commentaires",
+                                                    shorten(text, 40)))
+        seen, items = set(), []
+        for kind, text in candidates:
+            stats["notes" if kind == KIND_NOTE else "threads"] += 1
+            declared = EXCLUDED_COMMENTS.get((tab, ref))
+            if declared and norm_ws(declared[0]) == norm_ws(text):
+                stats["excluded"].append((tab, ref, text, declared[1]))
+                continue
+            if norm_ws(text) in seen:
+                stats["repeated"] += 1
+                continue
+            seen.add(norm_ws(text))
+            items.append((kind, text))
+        if items:
+            by_ref[ref] = items
     return by_ref
 
 
@@ -770,15 +839,29 @@ def field_of_column(c):
     return name
 
 
-def spell_notes(page, by_ref):
-    """[(nom du sort, colonne, [(étiquette, texte)])] dans l'ordre des sorts puis des colonnes."""
+def labeled(label, value):
+    """« **Libellé** : texte » si le texte tient sur une ligne, sinon le libellé puis le texte (liste ou paragraphes), comme
+    labeled() de races.py."""
+    blocks = md_blocks(value)
+    if len(blocks) == 1 and blocks[0][0] == "p" and len(blocks[0][1]) == 1:
+        return ["**%s** : %s" % (esc_inline(label), esc_inline(blocks[0][1][0]))]
+    return ["**%s**" % esc_inline(label), ""] + md_text(value)
+
+
+def spell_notes(page, by_ref, where):
+    """[(ligne du sort, colonne, nom du sort, en-tête de la colonne, [(genre, texte)])] dans l'ordre des sorts puis des colonnes."""
     out = []
-    for ref in sorted(by_ref, key=lambda x: split_ref(x)):
+    for ref in sorted(by_ref, key=split_ref):
         r, c = split_ref(ref)
         spell = next((s for s in page["spells"] if s["row"] <= r < s["row"] + SPELL_HEIGHT), None)
         if spell is None or c < COL_SPELL_FIRST:
-            raise ValueError("commentaire %s hors de la table des sorts" % ref)
-        out.append((spell["row"], c, norm_ws(spell["values"][1]), field_of_column(c), by_ref[ref]))
+            raise ValueError("%s : le commentaire de la cellule %s est hors de la table des sorts (colonnes AL à BR, sorts de %d "
+                             "lignes) : aucune place prévue dans la page" % (where, ref, SPELL_HEIGHT))
+        name = norm_ws(spell["values"][1])
+        if not name:
+            raise ValueError("%s : le sort de la cellule %s n'a pas de nom : le commentaire ne peut pas lui être rattaché"
+                             % (where, ref))
+        out.append((spell["row"], c, name, field_of_column(c), by_ref[ref]))
     out.sort(key=lambda t: (t[0], t[1]))
     return out
 
@@ -858,13 +941,12 @@ def render(cfg, page, by_ref, relations=()):
         for s in page["spells"]:
             L.append("| " + " | ".join(cell_md(v) for v in s["values"]) + " |")
         L.append("")
-        notes = spell_notes(page, by_ref)
+        notes = spell_notes(page, by_ref, cfg["onglet"])
         if notes:
-            L += ["## Notes et commentaires des sorts", ""]
+            L += ["## " + SECTION_NOTES, ""]
             for _row, _col, name, field, items in notes:
-                L += ["**%s** (%s)" % (esc_inline(name), esc_inline(field)), ""]
-                for label, text in items:
-                    L += ["*%s :*" % label, ""] + md_quote(text) + [""]
+                for kind, text in items:
+                    L += labeled("%s de la cellule « %s » du sort « %s »" % (kind, field, name), text) + [""]
 
     if page["foot"]:
         L += ["## Textes des sorts de niveau 5", ""]
@@ -960,6 +1042,120 @@ def raw_expected(raw, headers):
             raise ValueError("%s : doublon dans la ligne « %s » : %r" % (raw["name"], label, tokens))
         expected[key] = names
     return expected
+
+
+def unescape_md(text):
+    """Texte d'une entrée de page -> texte du classeur : échappements Markdown retirés, liens automatiques <url> rendus."""
+    return re.sub(r"\\([\\`*_\[\]<~&>#+\-.)])|<(https?://[^>\s]+)>", lambda m: m.group(1) or m.group(2), text)
+
+
+def page_entries(text):
+    """Entrées de la section des notes d'une page écrite : ([(genre, colonne, sort, texte)], [problèmes]). Le texte est ramené à
+    une ligne, sans échappements Markdown (comparaison aux espaces près)."""
+    heading = "## " + SECTION_NOTES
+    lines = text.split("\n")
+    if heading not in lines:
+        return [], []
+    problems = ["section « %s » en double" % SECTION_NOTES] if lines.count(heading) > 1 else []
+    entries = []
+    for line in lines[lines.index(heading) + 1:]:
+        if line.startswith("## "):
+            break
+        m = ENTRY_RE.match(line)
+        if m:
+            entries.append([m.group(1), unescape_md(m.group(2)), unescape_md(m.group(3)), m.group(4) or ""])
+        elif entries:
+            entries[-1][3] += "\n" + line
+        elif line.strip():
+            problems.append("texte hors d'une entrée dans la section des notes : %r" % shorten(line, 60))
+    return [(g, c, n, norm_ws(unescape_md(t))) for g, c, n, t in entries], problems
+
+
+def expected_comments(raw):
+    """Entrées attendues pour un onglet de magie, recalculées depuis les cellules brutes du dump (sans l'analyseur de pages) :
+    ([(genre, colonne, sort, texte, cellule)] dans l'ordre de la table, comptes). ValueError : un commentaire sans place."""
+    tab = raw["name"]
+    pos = {(c["r"], c["c"]): c for c in raw["cells"]}
+    tops = sorted(r for (r, c), x in pos.items() if c == COL_SPELL_FIRST and isinstance(x["v"], (int, float))
+                  and not isinstance(x["v"], bool) and SPELL_ROW_FIRST <= r <= SPELL_ROW_LAST)
+    found, counts = [], dict(notes=0, threads=0, repeated=0, excluded=0)
+    for cell in sorted(raw["cells"], key=lambda x: (x["r"], x["c"])):
+        texts = comment_candidates(tab, cell)
+        if not texts:
+            continue
+        r, c, ref = cell["r"], cell["c"], a1(cell["r"], cell["c"])
+        if is_blank(cell["v"]):
+            raise ValueError("%s : la cellule %s est vide mais porte un commentaire : disposition non gérée, il ne se rattache à "
+                             "rien dans la page" % (tab, ref))
+        top = max((t for t in tops if t <= r), default=None)
+        if top is None or r >= top + SPELL_HEIGHT or c < COL_SPELL_FIRST:
+            raise ValueError("%s : le commentaire de la cellule %s est hors de la table des sorts : aucune place prévue dans la "
+                             "page" % (tab, ref))
+        name = norm_ws(fmt(pos[(top, FIELDS[1][0])]["v"])) if (top, FIELDS[1][0]) in pos else ""
+        if not name:
+            raise ValueError("%s : le sort de la cellule %s n'a pas de nom" % (tab, ref))
+        column = [label for start, label in FIELDS if start <= c][-1]
+        seen = set()
+        for kind, text in texts:
+            counts["notes" if kind == KIND_NOTE else "threads"] += 1
+            declared = EXCLUDED_COMMENTS.get((tab, ref))
+            if declared and norm_ws(text) == norm_ws(declared[0]):
+                counts["excluded"] += 1
+            elif norm_ws(text) in seen:
+                counts["repeated"] += 1
+            else:
+                seen.add(norm_ws(text))
+                found.append((kind, column, name, norm_ws(text), ref))
+    found.sort(key=lambda t: (max(x for x in tops if x <= split_ref(t[4])[0]), split_ref(t[4])[1], split_ref(t[4])[0]))
+    return found, counts
+
+
+def check_comments(raw, cfg, text):
+    """Contrôle de couverture d'un onglet : chaque note et chaque fil du dump figure dans la page `text`, exactement une fois,
+    avec son texte intégral, sous le bon sort, dans l'ordre de la table. Renvoie la liste des écarts."""
+    where = cfg["onglet"]
+    try:
+        want, _counts = expected_comments(raw)
+    except ValueError as err:
+        return [str(err)]
+    got, problems = page_entries(text)
+    errors = ["%s : %s" % (where, p) for p in problems]
+    keys = [w[:4] for w in want]
+    n_want, n_got = Counter(keys), Counter(got)
+    origin = {w[:4]: w[4] for w in want}
+    for key in dict.fromkeys(keys):
+        genre, column, name, body = key
+        who = "%s de la cellule %s (sort « %s », colonne « %s ») : « %s »" % (genre, origin[key], name, column, shorten(body, 100))
+        if n_got[key] < n_want[key]:
+            errors.append("%s : entrée absente de la page ou altérée : %s" % (where, who))
+        elif n_got[key] > n_want[key]:
+            errors.append("%s : entrée écrite %d fois dans la page, %d attendue(s) : %s" % (where, n_got[key], n_want[key], who))
+    for key in dict.fromkeys(got):
+        if key not in n_want:
+            genre, column, name, body = key
+            errors.append("%s : entrée de la page qui ne correspond à aucune note ni à aucun fil du dump (%s, sort « %s », colonne « %s ») "
+                          ": « %s »" % (where, genre.lower(), name, column, shorten(body, 100)))
+    if not errors and keys != got:
+        errors.append("%s : notes et fils dans le désordre (attendu : l'ordre de la table des sorts, puis des colonnes)" % where)
+    return errors
+
+
+def unpublished_comments(workbook):
+    """(erreurs, fils) pour les onglets du classeur que cette famille ne publie pas : une NOTE y est refusée (elle serait perdue en
+    silence), les fils sont listés [(onglet, cellule, nombre)] pour une autre famille."""
+    published = {cfg["onglet"] for cfg in MAGIES}
+    errors, threads = [], []
+    for name, raw in workbook.items():
+        if name in published:
+            continue
+        cells = sorted(raw["cells"], key=lambda x: (x["r"], x["c"]))
+        notes = [(a1(c["r"], c["c"]), fmt(c["note"])) for c in cells if not is_blank(c.get("note"))]
+        if notes:
+            errors.append("« %s » : onglet non publié par cette famille (magies) mais qui porte %d note(s) de cellule (%s) : une "
+                          "note n'est jamais perdue en silence, à confier à l'extracteur de cet onglet" % (
+                              name, len(notes), " ; ".join("%s : « %s »" % (ref, shorten(t, 40)) for ref, t in notes[:5])))
+        threads.extend((name, a1(c["r"], c["c"]), len(c["threads"])) for c in cells if c.get("threads"))
+    return errors, threads
 
 
 def autotest():
@@ -1065,6 +1261,118 @@ def autotest():
     must(blank == ["resiste_a"], "cellule vide signalée")
     must("- **Résistance magique** :\n" in render(cfg, page, {}, fields), "rendu d'une cellule vide")
 
+    autotest_comments(must)
+
+
+def autotest_comments(must):
+    """Cas limites des notes et fils de cellule : lecture du dump, déduplication, exclusion, recoupement avec le classeur, aller-retour
+    du Markdown (ce que le rendu écrit est ce que le contrôle de couverture relit), cas d'erreur."""
+    cfg = MAGIES[1]  # Sang
+
+    def tab(name, cells):
+        return {"name": name, "merged": ["A4:AJ4", "AL4:AM6", "AL7:AM9"], "cells": [
+            dict(r=1, c=COL_BANNER, v=cfg["titre"]), dict(r=4, c=1, v="Une description."),
+            dict(r=4, c=38, v=1), dict(r=4, c=40, v="Éclair"), dict(r=4, c=62, v="Un effet."),
+            dict(r=7, c=38, v=2), dict(r=7, c=40, v="Bouclier"), dict(r=7, c=62, v="Un autre effet.")] + cells}
+
+    def with_comments(note=None, threads=None, name="Sang", where=(4, 62)):
+        item = dict(r=where[0], c=where[1], v="x")
+        if note is not None:
+            item["note"] = note
+        if threads is not None:
+            item["threads"] = threads
+        raw = tab(name, [])
+        raw["cells"] = [dict(x, **{k: v for k, v in item.items() if k in ("note", "threads")})
+                        if (x["r"], x["c"]) == (item["r"], item["c"]) else x for x in raw["cells"]]
+        return raw
+
+    def refused(fn, *args):
+        try:
+            fn(*args)
+        except ValueError:
+            return True
+        return False
+
+    def rendered(raw):
+        page = parse_sheet(Sheet(raw), cfg)
+        return render(cfg, page, comments_by_ref(raw), [])
+
+    # aller-retour : le texte relu dans la page est le texte du classeur, aux espaces près, quels que soient les caractères
+    tricky = ["Simple.", "*a* _b_ [c] <d> ~e~ \\ & &amp; fin", "> pas une citation", "# pas un titre", "- une\n- liste", "1. pas\n2) une liste",
+              "voir http://exemple.org/x?a=1&b=2 ici", "a | b", "ligne\n\nautre   paragraphe", "  espaces autour  ",
+              "Exemple : \n\nUn caillou\nUne dague", "`code` et **gras**", "[[Lien]] de wiki", "10% lors de neutre\n20% lors de canicule."]
+    for text in tricky:
+        raw = with_comments(note=text, threads=[{"text": text + " (fil)", "done": True}])
+        page_text = rendered(raw)
+        must(check_comments(raw, cfg, page_text) == [], "couverture : aller-retour du texte %r : %r" % (text, check_comments(raw, cfg, page_text)))
+    # un texte retouché, une entrée en double, une entrée retirée, deux entrées échangées sont des écarts
+    raw = with_comments(note="Première.", threads=[{"text": "Seconde."}])
+    good = rendered(raw)
+    must(check_comments(raw, cfg, good) == [], "couverture : page conforme")
+    must(check_comments(raw, cfg, good.replace("Première.", "Première, retouchée.")), "couverture : texte retouché non vu")
+    entry = "**Note de la cellule « Effets secondaires » du sort « Éclair »** : Première.\n\n"
+    must(entry in good, "couverture : entrée de la note")
+    must(check_comments(raw, cfg, good.replace(entry, entry + entry)), "couverture : entrée en double non vue")
+    must(check_comments(raw, cfg, good.replace(entry, "")), "couverture : entrée absente non vue")
+    first = entry.strip()
+    second = "**Commentaire de la cellule « Effets secondaires » du sort « Éclair »** : Seconde."
+    must(first + "\n\n" + second in good and check_comments(raw, cfg, good.replace(first + "\n\n" + second, second + "\n\n" + first)),
+         "couverture : ordre non vu")
+    must(check_comments(raw, cfg, good.replace("## " + SECTION_NOTES, "## Autre titre")), "couverture : section renommée non vue")
+
+    # déduplication et réponses d'état
+    raw = with_comments(note="Règle  précisée.", threads=[{"text": "Règle précisée.", "replies": ["Marquée comme fermée", "Rouverte"]},
+                                                          {"text": "Autre."}, {"text": " Autre. "}])
+    stats = {}
+    must(comments_by_ref(raw, stats)["BJ4"] == [(KIND_NOTE, "Règle  précisée."), (KIND_THREAD, "Autre.")]
+         and stats["repeated"] == 2, "un fil identique à la note ou à un fil précédent n'est pas répété")
+    must(refused(comments_by_ref, with_comments(threads=[{"text": "?", "replies": ["Voici la règle."]}])), "réponse inattendue -> erreur")
+
+    # exclusion : adresse ET texte exacts (Eau AN46)
+    eau = tab("Eau", [])
+    eau["merged"].append("AL46:AM48")
+    eau["cells"] += [dict(r=46, c=38, v=3), dict(r=46, c=40, v="Eau Parfaite", threads=[
+        {"text": EXCLUDED_COMMENTS[("Eau", "AN46")][0], "done": True}, {"text": EXCLUDED_COMMENTS[("Eau", "AN46")][0] + " !"}])]
+    stats = {}
+    must(comments_by_ref(eau, stats)["AN46"] == [(KIND_THREAD, EXCLUDED_COMMENTS[("Eau", "AN46")][0] + " !")]
+         and len(stats["excluded"]) == 1, "l'exclusion tient au texte exact : le commentaire modifié est cité")
+    moved = dict(eau, name="Feu")
+    must(len(comments_by_ref(moved)["AN46"]) == 2, "l'exclusion tient à l'onglet")
+
+    # cas d'erreur : cellule vide, hors de la table, sans sort, onglet non publié
+    empty = tab("Sang", [dict(r=5, c=62, v="", note="Texte")])
+    must(refused(comments_by_ref, empty) and expected_comments_refused(empty), "note sur une cellule vide -> erreur (générateur et contrôle)")
+    outside = with_comments(note="Texte", where=(4, 1))
+    page = parse_sheet(Sheet(outside), cfg)
+    must(refused(render, cfg, page, comments_by_ref(outside)) and expected_comments_refused(outside),
+         "note hors de la table des sorts -> erreur (générateur et contrôle)")
+    errors, threads = unpublished_comments({"Sang": with_comments(note="Texte"),
+                                            "Sommaire": {"name": "Sommaire", "cells": [dict(r=31, c=1, v="Règle", note="N")]}})
+    must(len(errors) == 1 and "Sommaire" in errors[0] and "A31" in errors[0] and not threads, "note d'un onglet non publié -> erreur")
+    errors, threads = unpublished_comments({"Statistiques": {"name": "Statistiques", "cells": [
+        dict(r=27, c=60, v=1, threads=[{"text": "t"}, {"text": "u"}])]}})
+    must(errors == [] and threads == [("Statistiques", "BH27", 2)], "fils d'un onglet non publié : listés, pas refusés")
+
+    # recoupement du dump avec le classeur d'origine
+    wb = {"Sang": {"name": "Sang", "cells": [dict(r=4, c=62, v="x", note="N", threads=[{"text": "T", "done": True}])]}}
+    src = {"Sang": {"notes": {"BJ4": "N"}, "threads": {"BJ4": [{"text": "T", "done": True}]}}, "Vide": {"notes": {}, "threads": {}}}
+    must(crosscheck_comments(wb, src) == [], "recoupement : dump conforme au classeur")
+    stale = {"Sang": {"name": "Sang", "cells": [dict(r=4, c=62, v="x")]}}  # dump produit sans les commentaires
+    must(len(crosscheck_comments(stale, src)) == 1 and "BJ4" in crosscheck_comments(stale, src)[0], "recoupement : dump sans notes")
+    changed = {"Sang": {"name": "Sang", "cells": [dict(r=4, c=62, v="x", note="N modifiée", threads=[{"text": "T", "done": True}])]}}
+    must(len(crosscheck_comments(changed, src)) == 1, "recoupement : note modifiée")
+    must(len(crosscheck_comments({}, src)) == 1, "recoupement : onglet commenté absent du dump")
+    must(len(crosscheck_comments(wb, dict(src, Sang={"notes": {"BJ4": "N"}, "threads": {}}))) == 1, "recoupement : fil en trop dans le dump")
+
+
+def expected_comments_refused(raw):
+    """Vrai si le contrôle de couverture (expected_comments, indépendant du générateur) refuse aussi cet onglet."""
+    try:
+        expected_comments(raw)
+    except ValueError:
+        return True
+    return False
+
 
 def read_front(path):
     """Frontmatter d'une page -> {clé: texte brut après « clé: »} ; None si absent."""
@@ -1083,11 +1391,13 @@ def read_front(path):
     return front
 
 
-def check_pages(sheets, headers, out_root):
-    """Compare les pages écrites aux valeurs recalculées depuis les dumps ; renvoie la liste des écarts."""
+def check_pages(sheets, headers, out_root, workbook=None):
+    """Compare les pages écrites aux valeurs recalculées depuis les dumps (frontmatter, notes et fils de cellule) ; renvoie la
+    liste des écarts. `workbook` : les onglets du classeur des magies (par défaut, tous ceux des dumps)."""
     errors = []
     if SHORT_NAMES != headers:
         errors.append("noms courts du script %r différents des en-têtes de « %s » %r" % (SHORT_NAMES, FICHE_SHEET, headers))
+    errors.extend(unpublished_comments(sheets if workbook is None else workbook)[0])
     for cfg in MAGIES:
         slug = cfg["slug"]
         raw = sheets.get(cfg["onglet"])
@@ -1119,6 +1429,15 @@ def check_pages(sheets, headers, out_root):
             errors.append("%s : attendu %r, trouvé %r" % (slug, want, got))
         if hits[0] != cfg["nom_court"]:
             errors.append("%s : nom court du script %r différent de celui de la bannière %r" % (slug, cfg["nom_court"], hits[0]))
+    for cfg in MAGIES:  # notes et fils de cellule : couverture complète du dump par la page
+        raw = sheets.get(cfg["onglet"])
+        try:
+            with open(os.path.join(out_root, CATEGORY, cfg["slug"] + ".md"), encoding="utf-8") as fh:
+                text = fh.read()
+        except OSError:
+            continue  # page absente ou illisible : déjà signalée plus haut
+        if raw is not None:
+            errors.extend("%s : %s" % (cfg["slug"], e) for e in check_comments(raw, cfg, text))
     return errors
 
 
@@ -1162,8 +1481,9 @@ def is_ours(path, cfg):
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Génère les pages « magies » du wiki depuis le dump de « %s »." % WORKBOOK)
     ap.add_argument("--dump", action="append", required=True, help="dump JSON de xlsx_to_json.py (répétable)")
-    ap.add_argument("--xlsx", help="classeur d'origine (commentaires de cellule)")
-    ap.add_argument("--sans-commentaires", action="store_true", help="ne pas lire les commentaires de cellule")
+    ap.add_argument("--xlsx", help="classeur d'origine (formats de nombre ; recoupement des notes et fils du dump)")
+    ap.add_argument("--sans-formats", action="store_true",
+                    help="ne pas lire le .xlsx : ni formats de nombre (pourcentages) ni recoupement des notes du dump")
     ap.add_argument("--out", required=True, help="racine du wiki (client/src/content/wiki)")
     ap.add_argument("--fiche", help="dump JSON de la fiche « Maverick Auto » (en-têtes de « %s » ; à défaut "
                                     "fiche-auto-v15.json à côté du dump)" % FICHE_SHEET)
@@ -1173,29 +1493,38 @@ def main(argv=None):
     autotest()
 
     sheets = {}
+    workbook = {}  # les onglets du classeur « Magie V8 » : ceux des dumps qui portent au moins un onglet de magie
     dump_dirs = []
     for path in args.dump:
         with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
         dump_dirs.append(os.path.dirname(os.path.abspath(path)))
+        names = {raw["name"] for raw in data["sheets"]}
         for raw in data["sheets"]:
             sheets.setdefault(raw["name"], raw)
+            if any(cfg["onglet"] in names for cfg in MAGIES):
+                workbook.setdefault(raw["name"], raw)
 
     fiche = find_fiche(args.fiche, dump_dirs)
     if args.verifier:
         if not fiche:
             sys.exit("--verifier demande le dump de la fiche (option --fiche, ou fiche-auto-v15.json à côté du dump)")
-        errors = check_pages(sheets, fiche_headers(fiche), args.out)
+        errors = check_pages(sheets, fiche_headers(fiche), args.out, workbook)
         for e in errors:
             print("ÉCART : " + e, file=sys.stderr)
         print("vérification : %s" % ("%d écart(s)" % len(errors) if errors else "OK (%d pages)" % len(MAGIES)))
         return 1 if errors else 0
 
-    comments = {}
+    unpublished_errors, loose_threads = unpublished_comments(workbook)
+    if unpublished_errors:  # rien n'est écrit : une note sans page ne se perd pas en silence
+        for e in unpublished_errors:
+            print("ERREUR : " + e, file=sys.stderr)
+        return 1
+
     formats = {}
-    if args.sans_commentaires:
-        print("AVERTISSEMENT : --sans-commentaires : le .xlsx n'est pas lu, donc ni les commentaires de cellule ni les "
-              "formats de nombre (pourcentages) ne sont appliqués.", file=sys.stderr)
+    if args.sans_formats:
+        print("AVERTISSEMENT : --sans-formats : le .xlsx n'est pas lu, donc les formats de nombre (pourcentages) ne sont pas "
+              "appliqués et les notes et fils du dump ne sont pas recoupés avec le classeur.", file=sys.stderr)
     else:
         xlsx = args.xlsx
         if not xlsx:
@@ -1205,10 +1534,18 @@ def main(argv=None):
                     xlsx = cand
                     break
         if not xlsx or not os.path.isfile(xlsx):
-            sys.exit("classeur .xlsx introuvable (option --xlsx) : les commentaires de cellule en dépendent "
-                     "(ou passer --sans-commentaires)")
-        comments = read_comments(xlsx)
+            sys.exit("classeur .xlsx introuvable (option --xlsx) : les formats de nombre en dépendent "
+                     "(ou passer --sans-formats)")
         formats = read_number_formats(xlsx)
+        try:
+            source = load_xlsx_comments().read_comments(xlsx)
+        except (ValueError, KeyError, zipfile.BadZipFile, ET.ParseError) as err:
+            sys.exit("%s : lecture des commentaires impossible : %s" % (xlsx, err))
+        mismatches = crosscheck_comments(workbook, source)
+        if mismatches:
+            for e in mismatches:
+                print("ERREUR : " + e, file=sys.stderr)
+            return 1
 
     out_dir = os.path.join(args.out, CATEGORY)
     os.makedirs(out_dir, exist_ok=True)
@@ -1230,6 +1567,7 @@ def main(argv=None):
     problems = []
     report = []
     empty_cells = []
+    stats = {}
     for cfg in MAGIES:
         raw = sheets.get(cfg["onglet"])
         if raw is None:
@@ -1239,11 +1577,15 @@ def main(argv=None):
             sh = Sheet(raw, formats.get(cfg["onglet"]))
             page = parse_sheet(sh, cfg)
             check_all_consumed(sh)
-            by_ref = comments_by_ref(cfg["onglet"], comments)
+            by_ref = comments_by_ref(raw, stats)
             fields, omitted, blank = relation_fields(cfg, page)
             body = render(cfg, page, by_ref, fields)
         except ValueError as err:
             problems.append(str(err))
+            continue
+        gaps = check_comments(raw, cfg, body)  # couverture : rien n'est écrit si une note ou un fil manque à la page
+        if gaps:
+            problems.extend("%s : %s" % (cfg["slug"], g) for g in gaps)
             continue
         if fold(cfg["titre"]) in other_titles:
             problems.append("titre déjà utilisé par %s : %r" % (other_titles[fold(cfg["titre"])], cfg["titre"]))
@@ -1269,10 +1611,24 @@ def main(argv=None):
         for slug, key in empty_cells:
             print("  %s : %s = [] (cellule vide dans la source)" % (slug, key))
 
+    if stats:
+        written_threads = stats["threads"] - stats["repeated"] - len(stats["excluded"])
+        print("RAPPORT notes et fils de cellule des onglets de magie : %d note(s) et %d fil(s) lus dans le dump ; %d note(s) et %d "
+              "fil(s) écrits ; %d fil(s) identique(s) à la note de leur cellule (ou à un fil précédent), non répété(s) ; "
+              "%d fil(s) écarté(s)" % (stats["notes"], stats["threads"], stats["notes"], written_threads, stats["repeated"],
+                                         len(stats["excluded"])))
+        for tab, ref, text, reason in stats["excluded"]:
+            print("  écarté : %s %s « %s » (%s)" % (tab, ref, shorten(text, 60), reason))
+    if loose_threads:
+        print("RAPPORT fils de commentaires d'onglets non publiés par cette famille, à confier à une autre (leurs notes, s'il y en "
+              "avait, arrêteraient le script) : %d fil(s) :" % sum(n for _tab, _ref, n in loose_threads))
+        for tab, ref, n in loose_threads:
+            print("  %s %s : %d fil(s)" % (tab, ref, n))
+
     for p in problems:
         print("ERREUR : " + p, file=sys.stderr)
     if fiche and not problems:
-        errors = check_pages(sheets, fiche_headers(fiche), args.out)
+        errors = check_pages(sheets, fiche_headers(fiche), args.out, workbook)
         for e in errors:
             print("ÉCART : " + e, file=sys.stderr)
         print("vérification : %s" % ("%d écart(s)" % len(errors) if errors else "OK (%d pages)" % len(MAGIES)))

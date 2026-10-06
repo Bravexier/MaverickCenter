@@ -73,77 +73,47 @@ Les utilisateurs de l'ombre ont des cheveux généralement plus courts et des m�
 
 ## Notes et commentaires des sorts
 
-**Marionnette de l'ombre** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Marionnette de l'ombre »** : Sort interdit aux familiers et aux invocations.
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Lame d’ombre »** : La lame fait partie de l'attaque qu'elle accompagne, l'adversaire n'a pas a faire une autre défense pour juste la lame. Les lames partent une par une
 
-> Sort interdit aux familiers et aux invocations.
+**Note de la cellule « Effets secondaires » du sort « Fer Obscur »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas prendre Peur au stade 1
 
-**Lame d’ombre** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Amplification sombre »** : EC = Echec critique
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Ombre Menacante »**
 
-> La lame fait partie de l'attaque qu'elle accompagne, l'adversaire n'a pas a faire une autre défense pour juste la lame. Les lames partent une par une
+L'ombre reste 3 tours.
 
-**Fer Obscur** (Effets secondaires)
+Le jet de fermeté se relance tout les début de tour.
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Défaite annoncée »** : Les sorts Défaite annoncée et Explosion glorifique s'annule mutuellement.
 
-> Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas prendre Peur au stade 1
+**Note de la cellule « Effets secondaires » du sort « Pire ami »** : Pire ami possède les caractéristiques et compétences de la cible et possède 1/4 de sa santé  totale.
 
-**Amplification sombre** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Chaîne de l'entrave »**
 
-*Note :*
+La victime ne peut rien faire si ce n'est tenter un jet d'athlétisme/concentration/magie/équilibre pour sortir du sort, sauf que ses chances sont amoindri au début :  
+1e tentative : Réussite divisée par 2  
+2e tentative : Réussite divisée par 1.5  
+3e tentative : Réussite divisée par 1.25  
+4e tentative : Score normale
 
-> EC = Echec critique
+un échec met fin au tour, une réussite libère la victime qui peut jouer normalement.
 
-**Ombre Menacante** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Frappe Négative »**
 
-*Note :*
+Donne un effet négatif selon la santé restante parmi les suivants (les effets sont cumulatif) :
 
-> L'ombre reste 3 tours.
->
-> Le jet de fermeté se relance tout les début de tour.
+Santé à 100% = Oblige un jet de fermeté à la cible, si elle rate, elle prend peur 1.
 
-**Défaite annoncée** (Effets secondaires)
+Santé à 80% = Réduit d'un cran la résistance à l'ombre de la cible pour 1 tour.
 
-*Note :*
+Santé à 60% = Inflige Couardise
 
-> Les sorts Défaite annoncée et Explosion glorifique s'annule mutuellement.
+Santé à 40% = Ignore 50% des AM
 
-**Pire ami** (Effets secondaires)
-
-*Note :*
-
-> Pire ami possède les caractéristiques et compétences de la cible et possède 1/4 de sa santé  totale.
-
-**Chaîne de l'entrave** (Effets secondaires)
-
-*Note :*
-
-> La victime ne peut rien faire si ce n'est tenter un jet d'athlétisme/concentration/magie/équilibre pour sortir du sort, sauf que ses chances sont amoindri au début :  
-> 1e tentative : Réussite divisée par 2  
-> 2e tentative : Réussite divisée par 1.5  
-> 3e tentative : Réussite divisée par 1.25  
-> 4e tentative : Score normale
->
-> un échec met fin au tour, une réussite libère la victime qui peut jouer normalement.
-
-**Frappe Négative** (Effets secondaires)
-
-*Note :*
-
-> Donne un effet négatif selon la santé restante parmi les suivants (les effets sont cumulatif) :
->
-> Santé à 100% = Oblige un jet de fermeté à la cible, si elle rate, elle prend peur 1.
->
-> Santé à 80% = Réduit d'un cran la résistance à l'ombre de la cible pour 1 tour.
->
-> Santé à 60% = Inflige Couardise
->
-> Santé à 40% = Ignore 50% des AM
->
-> Santé à 20% = Le sort inflige + 40 dégâts
+Santé à 20% = Le sort inflige + 40 dégâts
 
 ## Légende
 

@@ -82,46 +82,24 @@ Exemple : J'ai posé sur 3 personnes différentes un sort qui coute 3. Donc en 1
 
 ## Notes et commentaires des sorts
 
-**Charge d'énergie** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Charge d'énergie »** : 30 chakra maximum en 1 fois
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Rune Arcane »** : Ne se cumule avec "Rune Arcane multiple"
 
-> 30 chakra maximum en 1 fois
+**Note de la cellule « Effets secondaires » du sort « Forge-Magie »**
 
-**Rune Arcane** (Effets secondaires)
+Exemple :
 
-*Note :*
+Un caillou c'est taille 1  
+Une dague c'est taille 2
 
-> Ne se cumule avec "Rune Arcane multiple"
+Les bombes ne font pas les dégâts de zone.
 
-**Forge-Magie** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Laser de chakra »** : Peut prendre un tour de concentration pour donner un bonus de +10 dégâts.
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Pillage défensif »** : Le regain ne peut être effectif que si c'est la barrière ennemi qui est touchée.
 
-> Exemple :
->
-> Un caillou c'est taille 1  
-> Une dague c'est taille 2
->
-> Les bombes ne font pas les dégâts de zone.
-
-**Laser de chakra** (Effets secondaires)
-
-*Note :*
-
-> Peut prendre un tour de concentration pour donner un bonus de +10 dégâts.
-
-**Pillage défensif** (Effets secondaires)
-
-*Note :*
-
-> Le regain ne peut être effectif que si c'est la barrière ennemi qui est touchée.
-
-**Rune Arcane multiple** (Effets secondaires)
-
-*Note :*
-
-> Ne se cumule avec "Rune Arcane"
+**Note de la cellule « Effets secondaires » du sort « Rune Arcane multiple »** : Ne se cumule avec "Rune Arcane"
 
 ## Légende
 

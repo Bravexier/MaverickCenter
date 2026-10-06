@@ -75,112 +75,80 @@ Les utilisateurs du vide ont une pilosité blanche et possèdent une inversion a
 
 ## Notes et commentaires des sorts
 
-**Télékinésie** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Télékinésie »**
 
-*Note :*
+La taille de l'objet n'est pas infini, il faut un certain niveau de magie pour certains objets  
+Magie 1 = taille 1 (1 kg maxi)  
+Magie 2 = taille 2 (2 kg maxi)  
+Magie 3 = taille 3 (3 kg maxi)  
+Magie 4 = taille 4 (4 kg maxi)  
+Magie 5 = taille 5 (5 kg maxi)
 
-> La taille de l'objet n'est pas infini, il faut un certain niveau de magie pour certains objets  
-> Magie 1 = taille 1 (1 kg maxi)  
-> Magie 2 = taille 2 (2 kg maxi)  
-> Magie 3 = taille 3 (3 kg maxi)  
-> Magie 4 = taille 4 (4 kg maxi)  
-> Magie 5 = taille 5 (5 kg maxi)
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Télékinésie »**
 
-*Commentaire résolu :*
+La taille de l'objet n'est pas infini, il faut un certain niveau de magie pour certains objets  
+Magie 1 = TP  
+Magie 2 = P  
+Magie 3 = N  
+Magie 4 = G  
+Magie 5 = TG
 
-> La taille de l'objet n'est pas infini, il faut un certain niveau de magie pour certains objets  
-> Magie 1 = TP  
-> Magie 2 = P  
-> Magie 3 = N  
-> Magie 4 = G  
-> Magie 5 = TG
+**Note de la cellule « Effets secondaires » du sort « Fer Vide »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas prendre Rage au stade 1
 
-**Fer Vide** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Poing du vide »** : La cible est attirée d'une case seulement si elle rate totalement son jet de défense ou si elle est dans l'incapacité de se défendre.
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Dissipation »**
 
-> Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas prendre Rage au stade 1
+- Ne marche pas sur les effets magie niveau 4 ou plus
+- Inutile contre les infirmités, la fatigue physique, les croix.
+- Soigne d'un cran les altérations d'états.
 
-**Poing du vide** (Effets secondaires)
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Dissipation »** : Les buff niveau 5 ne peuvent pas être annulé par ce sort.
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Sablier du Vide »** : Les ennemis peuvent se défendre contre le coup du sablier.
 
-> La cible est attirée d'une case seulement si elle rate totalement son jet de défense ou si elle est dans l'incapacité de se défendre.
+**Note de la cellule « Effets secondaires » du sort « Aspect vide »** : L'équipement le devient aussi, les sorts et les attaques ne touche pas, SEULES les armes spectrales fonctionne dans cet état.
 
-**Dissipation** (Effets secondaires)
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Aspect vide »** : L'équipement le devient aussi donc les attaques et sorts ne fonctionne pas, SEULES les armes spectrales fonctionne dans cet état.
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Touché du Vide »**
 
-> - Ne marche pas sur les effets magie niveau 4 ou plus
-> - Inutile contre les infirmités, la fatigue physique, les croix.
-> - Soigne d'un cran les altérations d'états.
+Si c'est la barrière, la barrière est vampirisé.  
+Si c'est les points de vies, c'est les points de vies qui sont vampirisés
 
-*Commentaire résolu :*
+**Note de la cellule « Effets secondaires » du sort « Aléa négatif »**
 
-> Les buff niveau 5 ne peuvent pas être annulé par ce sort.
+3NM = les altérations d'états sont 1 cran au dessus et les croix dure 1 tour de plus.
 
-**Sablier du Vide** (Effets secondaires)
+RIEN N'EST ESQUIVABLE
 
-*Note :*
+1 : Inflige \*saignement 1  
+2 : Met une croix en Force pour 1 tour  
+3 : Inflige \*poison 1  
+4 : Oblige un jet de vigueur ou fermeté (le meilleur), si raté : Perd le tour  
+5 : Inflige \*brûlure 1  
+6 : Met une croix en Perception pour 1 tour  
+7 : Inflige le sort de l'ombre "Malédiction" pour 1 tour  
+8 : Inflige \*surdité 1  
+9 : Inflige \*paralysie 1  
+10 : Met une croix en Volonté pour 1 tour  
+11 : Inflige \*surcharge magique 1  
+12 : Inflige \*peur 1  
+13 : Inflige \*aveuglement 1  
+14 : Met une croix en Intelligence pour 1 tour  
+15 : Inflige \*enragé 1  
+16 : Inflige gel 1  
+17 : Inflige confusion 1  
+18 : Met une croix en Agilité pour 1 tour  
+19 : Retire tout les effets positifs de la cible  
+20 : Inflige couardise
 
-> Les ennemis peuvent se défendre contre le coup du sablier.
+**Note de la cellule « Effets secondaires » du sort « Métronome »**
 
-**Aspect vide** (Effets secondaires)
+Ne peut pas être relancer.  
+Le mage noir et blanc peuvent le faire mais ça dépendra de la nature du premier sort.
 
-*Note :*
-
-> L'équipement le devient aussi, les sorts et les attaques ne touche pas, SEULES les armes spectrales fonctionne dans cet état.
-
-*Commentaire résolu :*
-
-> L'équipement le devient aussi donc les attaques et sorts ne fonctionne pas, SEULES les armes spectrales fonctionne dans cet état.
-
-**Touché du Vide** (Effets secondaires)
-
-*Note :*
-
-> Si c'est la barrière, la barrière est vampirisé.  
-> Si c'est les points de vies, c'est les points de vies qui sont vampirisés
-
-**Aléa négatif** (Effets secondaires)
-
-*Note :*
-
-> 3NM = les altérations d'états sont 1 cran au dessus et les croix dure 1 tour de plus.
->
-> RIEN N'EST ESQUIVABLE
->
-> 1 : Inflige \*saignement 1  
-> 2 : Met une croix en Force pour 1 tour  
-> 3 : Inflige \*poison 1  
-> 4 : Oblige un jet de vigueur ou fermeté (le meilleur), si raté : Perd le tour  
-> 5 : Inflige \*brûlure 1  
-> 6 : Met une croix en Perception pour 1 tour  
-> 7 : Inflige le sort de l'ombre "Malédiction" pour 1 tour  
-> 8 : Inflige \*surdité 1  
-> 9 : Inflige \*paralysie 1  
-> 10 : Met une croix en Volonté pour 1 tour  
-> 11 : Inflige \*surcharge magique 1  
-> 12 : Inflige \*peur 1  
-> 13 : Inflige \*aveuglement 1  
-> 14 : Met une croix en Intelligence pour 1 tour  
-> 15 : Inflige \*enragé 1  
-> 16 : Inflige gel 1  
-> 17 : Inflige confusion 1  
-> 18 : Met une croix en Agilité pour 1 tour  
-> 19 : Retire tout les effets positifs de la cible  
-> 20 : Inflige couardise
-
-**Métronome** (Effets secondaires)
-
-*Note :*
-
-> Ne peut pas être relancer.  
-> Le mage noir et blanc peuvent le faire mais ça dépendra de la nature du premier sort.
-
-*Commentaire résolu :*
-
-> Ne peut pas être relancer.
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Métronome »** : Ne peut pas être relancer.
 
 ## Textes des sorts de niveau 5
 
