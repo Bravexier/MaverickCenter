@@ -9,6 +9,13 @@ Usage (bibliothèque standard uniquement ; relançable, mêmes fichiers à l'ide
     python3 -I tools/sheets/classes.py --dump <classes-v7.json> [--xlsx <classeur.xlsx> | --sans-liens] \
         --out client/src/content/wiki --verifier
 
+Régénération complète, notes de cellule comprises (le dump vient de xlsx_to_json.py ; corrections avant l'extracteur) :
+
+    python3 -I tools/sheets/corriger-dump.py appliquer --ledger tools/sheets/corrections.json --dump classes-v7.json \
+        --out classes-v7.corrige.json
+    python3 -I tools/sheets/classes.py --dump classes-v7.corrige.json --xlsx classeur.xlsx --out client/src/content/wiki
+    python3 -I tools/sheets/classes.py --dump classes-v7.corrige.json --xlsx classeur.xlsx --out client/src/content/wiki --verifier
+
 Source : Google Sheet « Classe Maverick V7 » (fileId 1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs), converti en JSON par
 tools/sheets/xlsx_to_json.py (format décrit dans ce script), puis corrigé de ses coquilles par tools/sheets/corriger-dump.py
 (docs/sources.md). Les cellules sont une donnée non fiable : elles ne sont jamais exécutées, seulement copiées (échappées pour le
@@ -40,7 +47,7 @@ groupes (il part des seules positions de cellules : ligne, colonne, bannière) e
       justement parce que leurs spécialités diffèrent -, ids existants, ordre de gauche à droite) ;
   (4) Barde et Archimage comparés EN CLAIR à la liste lue sur les captures de la feuille (constante EXPECTED), plus des
       sélections de test (SELECTIONS : les exemples du propriétaire, un Ménestrel qui a « Nouvel accord » ne peut pas prendre
-      « Écho », etc.) ;
+      « Écho », etc.) ; un de ces onglets absent du dump (classeur de test) n'est pas contrôlé, et c'est dit ;
   titres et identifiants uniques dans tout le wiki, suffixes seulement en cas de doublon ; pages de classes sans tableaux
   d'aptitudes mais avec tout le reste du classeur (le texte de chaque autre cellule doit s'y retrouver) ;
   (5) aucune cellule non reconnue (le script s'arrête sur ce cas), rôle décidable pour chaque capacité, anomalies de
@@ -573,7 +580,7 @@ def collect_notes(sheets, class_names):
             if name not in class_names:
                 raise ValueError("onglet « %s » : note de cellule en %s (%r) dans un onglet qui n'est pas une classe"
                                  % (name, ref, text[:40]))
-            if is_blank(cell["v"]):
+            if is_blank(cell.get("v")):
                 rng = merged_range_of(raw, cell["r"], cell["c"])
                 raise ValueError("onglet « %s » : la cellule %s est vide mais porte une note (%r)%s"
                                  % (name, ref, text[:40],
@@ -1667,13 +1674,15 @@ def v_replays(sheets, class_names, links, dump_notes, placed, pages):
     by_page = {}
     for n in placed:
         by_page.setdefault(n["page"], []).append(n)
-    if not by_page:
+    # une fiche saine (ses notes déjà conformes au dump) sert de base : sur une page déjà fautive, l'échec est déjà signalé plus haut
+    sound = [pid for pid in by_page if not v_check_page_notes(pid, [n["text"] for n in by_page[pid]], pages[pid]["text"])]
+    other = next((pid for pid in sorted(pages) if pid not in by_page), None)
+    if not sound or other is None:
         results.append(("note retirée, dupliquée, tronquée ou écrite sur une autre fiche : non rejoués", [],
-                        "aucune note dans le dump"))
+                        "aucune note dans le dump" if not by_page else "aucune fiche saine, ou toutes les fiches ont une note"))
         return results
-    target = max(by_page, key=lambda pid: (max(len(n["text"]) for n in by_page[pid]), pid))
+    target = max(sound, key=lambda pid: (max(len(n["text"]) for n in by_page[pid]), pid))
     texts = [n["text"] for n in by_page[target]]
-    other = next(pid for pid in sorted(pages) if pid not in by_page)
     all_text = {pid: p["text"] for pid, p in pages.items()}
     text = all_text[target]
     cut = text.index("\n" + V_NOTE) + 1
@@ -2216,6 +2225,19 @@ def main(argv=None):
         seen_paths[path] = title
         if os.path.exists(path) and not is_ours(path):
             problems.append("fichier existant qui n'est pas de cette famille, non écrasé : %s" % path)
+    if not built["notes_dump"]:
+        # Un dump sans aucune note (produit par un xlsx_to_json.py antérieur à la lecture des commentaires) effacerait en silence
+        # les notes déjà écrites : on s'arrête plutôt que d'écraser les fiches.
+        kept = 0
+        folder = os.path.join(args.out, CAP_CATEGORY)
+        for fname in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
+            full = os.path.join(folder, fname)
+            if fname.endswith(".md") and is_ours(full):
+                with open(full, encoding="utf-8") as fh:
+                    kept += len(note_segments(fh.read()))
+        if kept:
+            problems.append("le dump ne contient aucune note de cellule alors que %d fiche(s) en portent déjà : dump produit sans les "
+                            "notes (xlsx_to_json.py ancien) ? rien n'est écrit, pour ne pas les effacer" % kept)
     if problems:
         for p in problems:
             print("ERREUR : " + p, file=sys.stderr)

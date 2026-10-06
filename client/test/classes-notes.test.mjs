@@ -258,7 +258,7 @@ const sommaire = () => ({
   state: 'visible',
   merged: [],
   cells: [
-    ['A1', 'Classe Physique Corps à Corps'], ['E1', 'Classe Magique'], ['A2', 'Guerrier'], ['E2', 'Barde'],
+    ['A1', 'Classe Physique Corps à Corps'], ['E1', 'Classe Magique'], ['A2', 'Guerrier'], ['E2', 'Troubadour'],
     ['A17', 'Il vous suffit de cliquer sur le nom de la classe.'],
     ['A19', 'OBJETS DES INVENTAIRES DE DEPART'], ['A21', 'Fiole rouge : Une fiole.\n\nTorche : Une torche.'],
   ].map(([ref, v]) => ({ ...adresse(ref), v })),
@@ -268,7 +268,7 @@ const classeur = () => ({
   sheets: [
     sommaire(),
     ongletClasse('Guerrier', { capsP: [['Lvl 1', 'Défensif', 'Effet de Défensif', 'Passif'], ['Lvl 5', 'Aisance', 'Effet de Aisance', 'Passif'], ['Lvl 20', 'Égide', 'Effet de Égide', 'Réaction']] }),
-    ongletClasse('Barde', { capsP: [['Lvl 1', 'Prestation', 'Effet de Prestation', 'Passif'], ['Lvl 5', 'Son perturbant', 'Effet de Son perturbant', 'Actif'], ['Lvl 20', 'Chant double', 'Effet de Chant double', 'Passif']], specialites: true }),
+    ongletClasse('Troubadour', { capsP: [['Lvl 1', 'Prestation', 'Effet de Prestation', 'Passif'], ['Lvl 5', 'Son perturbant', 'Effet de Son perturbant', 'Actif'], ['Lvl 20', 'Chant double', 'Effet de Chant double', 'Passif']], specialites: true }),
     { name: 'Combo stat', state: 'visible', merged: [], cells: [{ r: 2, c: 2, v: 'Guerrier' }, { r: 2, c: 3, v: 12 }] },
   ],
 });
@@ -296,11 +296,11 @@ const NOTES_SYNTH = [
   ['Guerrier', 'P5', N.simple],
   ['Guerrier', 'P12', N.deux],
   ['Guerrier', 'P50', N.final],
-  ['Barde', 'D23', N.cartouche],
-  ['Barde', 'A30', N.liste],
-  ['Barde', 'H30', N.simple],
-  ['Barde', 'X30', N.identique],
-  ['Barde', 'AE30', N.identique],
+  ['Troubadour', 'D23', N.cartouche],
+  ['Troubadour', 'A30', N.liste],
+  ['Troubadour', 'H30', N.simple],
+  ['Troubadour', 'X30', N.identique],
+  ['Troubadour', 'AE30', N.identique],
 ];
 const avecNotes = (dump = classeur(), notes = NOTES_SYNTH) => {
   for (const [onglet, ref, texte] of notes) poser(dump, onglet, ref, texte);
@@ -321,14 +321,14 @@ const ATTENDUES = [
   ['guerrier-defensif', 'Effet de Défensif', RENDU.simple],
   ['guerrier-aisance', 'Effet de Aisance', RENDU.deux],
   ['guerrier-egide', 'Effet de Égide', RENDU.final],
-  ['barde-danseur', 'Effet de Danseur', RENDU.cartouche],
-  ['barde-perroquet', 'Effet de Perroquet', RENDU.liste],
-  ['barde-contournement', 'Effet de Contournement', RENDU.simple],
-  ['barde-nouvel-accord', 'Effet de Nouvel accord', RENDU.identique],
-  ['barde-echo', 'Effet de Écho', RENDU.identique],
+  ['troubadour-danseur', 'Effet de Danseur', RENDU.cartouche],
+  ['troubadour-perroquet', 'Effet de Perroquet', RENDU.liste],
+  ['troubadour-contournement', 'Effet de Contournement', RENDU.simple],
+  ['troubadour-nouvel-accord', 'Effet de Nouvel accord', RENDU.identique],
+  ['troubadour-echo', 'Effet de Écho', RENDU.identique],
 ];
 const TOTAL = NOTES_SYNTH.length;
-const SANS_NOTE = ['barde-menestrel', 'barde-prestation', 'barde-son-perturbant', 'barde-chant-double'];
+const SANS_NOTE = ['troubadour-menestrel', 'troubadour-prestation', 'troubadour-son-perturbant', 'troubadour-chant-double'];
 
 function preparer(dump = avecNotes()) {
   const dir = mkdtempSync(join(tmpdir(), 'classes-notes-'));
@@ -431,6 +431,17 @@ test('options : le classeur .xlsx ne sert plus qu’aux hyperliens ; --sans-comm
   assert.equal(fichiers(ctx).length, 0, 'rien n’est écrit sans classeur ni --sans-liens');
 });
 
+test('notes : un dump sans aucune note (ancien xlsx_to_json.py) n’efface pas les notes déjà écrites : le script s’arrête', { skip: sansPython }, () => {
+  const ctx = preparer();
+  assert.equal(lancer(ctx).status, 0);
+  const avant = toutesLesPages(ctx);
+  writeFileSync(ctx.dump, JSON.stringify(classeur()));
+  const r = lancer(ctx);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /le dump ne contient aucune note de cellule alors que 8 fiche\(s\) en portent déjà/);
+  assert.deepEqual(toutesLesPages(ctx), avant, 'aucune page ne doit être modifiée');
+});
+
 test('notes : une note blanche (espaces seulement) n’est pas une note, même sur une cellule vide', { skip: sansPython }, () => {
   const dump = classeur();
   poser(dump, 'Guerrier', 'P5', '  \n ');
@@ -505,17 +516,17 @@ sheets, order, _ = mod.load_dumps([sys.argv[2]])
 names = [n for n in order if n != mod.SUMMARY_SHEET and n not in mod.IGNORED_SHEETS]
 built = mod.build(sheets, names, {})
 assert not built["problems"], built["problems"]
-pages = {c + "/" + s: body for c, s, t, body, n in built["jobs"] if c == mod.CAP_CATEGORY}
+pages = {c + "/" + s: body for c, s, t, body, n in built["jobs"]}
 placed = built["notes"]
-total = built["notes_dump"]
+dump = built["notes_dump"]
 cible = "capacites/" + sys.argv[3]
 block = "\\n".join(mod.md_text("Note de cellule : " + next(n["text"] for n in placed if n["page"] == cible)))
 
 def avec(modif):
     return dict(pages, **{cible: modif(pages[cible])})
 
-def essai(nom, pages_, placed_, total_=total):
-    problems = mod.check_note_coverage(placed_, pages_, total_)
+def essai(nom, pages_, placed_, dump_=dump):
+    problems = mod.check_note_coverage(dump_, placed_, pages_)
     print(nom + " => " + (" ; ".join(problems) if problems else "aucune erreur"))
 
 essai("intact", pages, placed)
@@ -524,8 +535,8 @@ essai("dupliquee", avec(lambda x: x.replace(block + "\\n", block + "\\n\\n" + bl
 essai("tronquee", avec(lambda x: x.replace(block, block[:30], 1)), placed)
 essai("ajoutee", avec(lambda x: x + "\\nNote de cellule : Une note inventée.\\n"), placed)
 essai("non-placee", pages, [n for n in placed if n["page"] != cible])
-essai("autre-page", dict(pages, **{"capacites/barde-echo": pages["capacites/barde-echo"] + "\\n" + block + "\\n"}), placed)
-essai("dump-plus-grand", pages, placed, total + 1)
+essai("autre-page", dict(pages, **{"capacites/troubadour-echo": pages["capacites/troubadour-echo"] + "\\n" + block + "\\n"}), placed)
+essai("dump-plus-grand", pages, placed, dict(dump, Guerrier=dict(dump["Guerrier"], P7="Une note de plus")))
 `;
 
 test('couverture : une note du dump retirée, dupliquée, tronquée, ajoutée, non placée ou écrite sur une autre fiche arrête le script (check_note_coverage)', { skip: sansPython }, () => {
@@ -542,7 +553,7 @@ test('couverture : une note du dump retirée, dupliquée, tronquée, ajoutée, n
   assert.match(lignes.ajoutee, /page « capacites\/guerrier-defensif » : note de cellule inattendue/);
   assert.match(lignes['non-placee'], /note de la cellule Guerrier P5 : aucune fiche ne la reçoit/);
   assert.match(lignes['non-placee'], /8 note\(s\) dans le dump, 7 placée\(s\)/);
-  assert.match(lignes['autre-page'], /page « capacites\/barde-echo » : note de cellule inattendue/);
+  assert.match(lignes['autre-page'], /page « capacites\/troubadour-echo » : note de cellule inattendue/);
   assert.match(lignes['dump-plus-grand'], /9 note\(s\) dans le dump, 8 placée\(s\)/);
 });
 
@@ -616,7 +627,7 @@ for (const [nomDuCas, variante] of Object.entries(VARIANTES)) {
 test('--verifier : une note de la même page recopiée sur une page sans note est signalée', { skip: sansPython }, () => {
   const ctx = preparer();
   assert.equal(lancer(ctx).status, 0);
-  modifierPage(ctx, 'barde-menestrel', (t) => `${t.trimEnd()}\n\n${RENDU.simple}\n`);
+  modifierPage(ctx, 'troubadour-menestrel', (t) => `${t.trimEnd()}\n\n${RENDU.simple}\n`);
   const r = lancer(ctx, ['--verifier']);
   assert.notEqual(r.status, 0);
   assert.match(r.stdout, /ÉCHEC/);
