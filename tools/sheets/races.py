@@ -352,6 +352,11 @@ ACCESS_CLAUSES = {
     "une seule magie autorise": ("magies", "une"),
 }
 ACCESS_WORDS_RE = r"toutes les (?:classes|magies)|seules? magies?"
+ACCESS_GAP_KINDS = ("Classes accessibles", "Magies accessibles")
+# Précision du propriétaire du projet : ces phrases de l'onglet sont des erreurs de copier-coller ; la matrice de la fiche est retenue.
+ACCESS_COPY_NOTE = ("Accès aux classes et aux magies : selon le propriétaire du projet, les phrases « Accès à toutes les classes », "
+                    "« Accès à toutes les magies » et « Une seule magie autorisé » de l'onglet sont des erreurs de copier-coller (la plupart "
+                    "des races pures ont bien toutes les magies, mais il peut y avoir des ratés) : la matrice de la fiche est retenue.")
 NOTE_LABEL = "Note de la cellule « %s »"       # libellé d'une note de cellule rendue dans la page
 
 # CORRESPONDANCE DES ETHNIES : race (nom de l'index) -> {ethnie de l'onglet -> sous-race de la fiche (colonne B de
@@ -1630,7 +1635,14 @@ def render_gaps(tab, gaps):
                     "propriétaire du projet). La fiche V15.2.2 dit autre chose, ou ce que l'onglet ne dit pas, sur les points "
                     "suivants ; ses valeurs sont citées telles qu'elles y sont écrites." % (tab, INDEX_TITLE)), ""]
     L += table_rows(["Élément", "Onglet « %s » (retenu)" % tab, "Fiche V15.2.2 (citée telle quelle)"], gaps) + [""]
+    if has_access_gap(gaps):
+        L += [esc_inline(ACCESS_COPY_NOTE), ""]
     return L
+
+
+def has_access_gap(gaps):
+    """Un des écarts oppose une phrase d'accès de l'onglet (« Accès à toutes les classes »…) à la matrice de la fiche."""
+    return any(g[0].startswith(ACCESS_GAP_KINDS) for g in gaps)
 
 
 def render_page(ctx):
@@ -2067,6 +2079,10 @@ def gaps_problems(label, text, tab, gaps):
     if got != want:
         return ["%s : section « %s » différente des écarts recalculés (%d ligne(s) lue(s), %d attendue(s))" % (
             label, SEC_GAPS, len(got), len(want))]
+    note = any(l.startswith("Accès aux classes et aux magies") for l in parts[SEC_GAPS])
+    if note != has_access_gap(gaps):
+        return ["%s : la note sur les erreurs de copier-coller de l'onglet est %s alors qu'il y a %s écart d'accès" % (
+            label, "présente" if note else "absente", "un" if has_access_gap(gaps) else "aucun")]
     return []
 
 

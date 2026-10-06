@@ -129,3 +129,13 @@ test('les sections de la fiche restent affichées telles quelles et signalent le
     assert.match(section(r.body, 'Magies accessibles').trim(), /^Section issue de la fiche de personnage V15\.2\.2 \(onglet « Accessibilité Magie »\)/, r.slug);
   }
 });
+
+test('accès « à toutes les classes / magies » : erreurs de copier-coller de l’onglet (précision du propriétaire), la matrice de la fiche est retenue', () => {
+  const ecarts = (slug) => section(race(slug).body, 'Écarts avec la fiche de personnage V15.2.2');
+  const avecAcces = ['drakos', 'drassahthac', 'elfe-forestier', 'elfe-noir', 'hujin', 'humain', 'lamia', 'majin', 'mort-vivant', 'nain'];
+  for (const slug of avecAcces) {
+    assert.match(ecarts(slug), /^Accès aux classes et aux magies : selon le propriétaire du projet, les phrases « Accès à toutes les classes », « Accès à toutes les magies » et « Une seule magie autorisé » de l'onglet sont des erreurs de copier-coller/m, slug);
+    assert.match(ecarts(slug), /la plupart des races pures ont bien toutes les magies, mais il peut y avoir des ratés/, slug);
+  }
+  for (const r of races.filter((x) => !avecAcces.includes(x.slug))) assert.doesNotMatch(r.body, /erreurs de copier-coller/, `${r.slug} : pas d'écart d'accès, pas de note`);
+});
