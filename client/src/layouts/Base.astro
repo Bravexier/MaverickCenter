@@ -12,6 +12,7 @@ const nav = [
   { href: url(), label: 'Accueil', match: (p: string) => p === url() },
   { href: url('wiki/'), label: 'Wiki', match: (p: string) => p.startsWith(url('wiki/')) },
   { href: url('tags/'), label: 'Mots-clés', match: (p: string) => p.startsWith(url('tags/')) },
+  { href: url('donnees/'), label: 'Données', match: (p: string) => p.startsWith(url('donnees/')) },
   { href: url('generateur/'), label: 'Générateur de fiche', match: (p: string) => p.startsWith(url('generateur/')) },
 ];
 ---

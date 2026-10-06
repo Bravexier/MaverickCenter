@@ -7,6 +7,7 @@ on:
     branches: [main]
     paths:
       - 'client/**'
+      - 'data/**'   # le site lit la base (explorateur /donnees/) : un changement de data/rows republie
       - '.github/workflows/publish-site.yml'
   workflow_dispatch:
 
