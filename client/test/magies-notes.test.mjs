@@ -3,10 +3,18 @@
 // sous la table des sorts, avec le libellé « **Note de la cellule « <colonne> » du sort « <sort> »** : <texte> ».
 // Les fils de commentaires (conversations « Commentaire » de Google Sheets) suivent le même modèle, après la note de leur cellule.
 //
-// Deux familles de tests :
-//   - le contenu RÉEL des 15 pages (nombre de notes, textes exacts, ordre) ;
+// Trois familles de tests :
+//   - le contenu RÉEL des 15 pages : les 85 notes et les 31 fils, LIGNE PAR LIGNE, contre la copie de contrôle
+//     `fixtures/magies-commentaires.json` (tirée du classeur par `magies.py --exporter-commentaires`), puis le rendu de ces pages par le
+//     processeur Markdown du site (une page qui fusionnerait deux lignes à l'affichage est refusée) ;
 //   - l'extracteur lui-même, sur des classeurs SYNTHÉTIQUES (les vrais dumps ne font pas partie du dépôt) : couverture des notes,
-//     --verifier, et les cas d'erreur (note sur une cellule vide, dans un onglet non publié, non placée, dupliquée, absente).
+//     --verifier (y compris retours à la ligne), et les cas d'erreur (note sur une cellule vide, dans un onglet non publié, non
+//     placée, dupliquée, absente) ;
+//   - facultatif : `--verifier` et la copie de contrôle contre le vrai dump (MAGIES_DUMP).
+//
+// Contrat de citation (voir la docstring de tools/sheets/magies.py) : chaque ligne du commentaire est une ligne de la page, dans le
+// même ordre, lignes vides comprises ; seuls les espaces et tabulations de début et de fin de ligne ne sont pas portés (Markdown ne
+// les distingue pas). Les caractères Markdown sont échappés, une URL devient un lien automatique <url> : le texte affiché est le même.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
@@ -14,10 +22,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { createMarkdownProcessor, unified } from '@astrojs/markdown-remark';
 
 const dossierPages = fileURLToPath(new URL('../src/content/wiki/magies', import.meta.url));
+const racineWiki = fileURLToPath(new URL('../src/content/wiki', import.meta.url));
+const fichierReference = fileURLToPath(new URL('./fixtures/magies-commentaires.json', import.meta.url));
 const script = fileURLToPath(new URL('../../tools/sheets/magies.py', import.meta.url));
 const SECTION = 'Notes et commentaires des sorts';
+const REGENERER = 'python3 -I tools/sheets/magies.py --dump <magie-v8.json> --exporter-commentaires client/test/fixtures/magies-commentaires.json';
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 // Lecture d'une page : les entrées de la section des notes
@@ -26,20 +38,94 @@ const SECTION = 'Notes et commentaires des sorts';
 const page = (slug) => readFileSync(join(dossierPages, `${slug}.md`), 'utf8');
 const section = (texte) => texte.split(new RegExp(`^## ${SECTION}\\s*$`, 'm'))[1]?.split(/^## /m)[0] ?? null;
 const ETIQUETTE = /^\*\*(Note|Commentaire résolu|Commentaire) de la cellule « (.+?) » du sort « (.+?) »\*\*(?: : (.*))?$/;
-const sansEchappement = (s) => s.replace(/\\([\\`*_[\]<~&>#+\-.)])/g, '$1').replace(/<(https?:\/\/[^>\s]+)>/g, '$1');
+const sansEchappement = (s) => s.replace(/\\([\\`*_[\]<~&>#+\-.)=])/g, '$1').replace(/<(https?:\/\/[^>\s]+)>/g, '$1');
 const norme = (s) => s.replace(/\s+/g, ' ').trim();
+const bord = (s) => s.replace(/^[ \t]+|[ \t]+$/g, ''); // espaces et tabulations de début et de fin de ligne (rien d'autre : NBSP conservé)
+const estPuce = (ligne) => /^- \S/.test(ligne);
 
-/** [{ genre, colonne, sort, texte }] : le texte est ramené à une ligne, sans échappements Markdown. */
+/**
+ * [{ genre, colonne, sort, lignes, texte, sautsNonForces }] : `lignes` = les lignes du commentaire telles que la page les cite (échappements
+ * Markdown retirés, blancs de bord retirés, lignes vides conservées) ; `texte` = ces lignes ramenées à une seule, aux espaces près ;
+ * `sautsNonForces` = nombre de lignes que Markdown fusionnerait avec la suivante (pas de saut forcé : deux espaces en fin de ligne).
+ */
 function entrees(texte) {
   const corps = section(texte);
   if (corps === null) return [];
-  const sortie = [];
+  const brutes = [];
   for (const ligne of corps.split('\n')) {
     const m = ETIQUETTE.exec(ligne);
-    if (m) sortie.push({ genre: m[1], colonne: m[2], sort: m[3], brut: m[4] ?? '' });
-    else if (sortie.length) sortie.at(-1).brut += `\n${ligne}`;
+    if (m) brutes.push({ genre: m[1], colonne: m[2], sort: m[3], corps: m[4] === undefined ? [] : [m[4]] });
+    else if (brutes.length) brutes.at(-1).corps.push(ligne);
   }
-  return sortie.map(({ brut, ...e }) => ({ ...e, texte: norme(sansEchappement(brut)) }));
+  return brutes.map(({ corps, ...e }) => {
+    const sautsNonForces = corps.filter((l, i) => l.trim() !== '' && corps[i + 1]?.trim() && !estPuce(corps[i + 1]) && !/ {2}$/.test(l)).length;
+    const lignes = corps.map((l) => bord(sansEchappement(l)));
+    while (lignes.length && lignes[0] === '') lignes.shift();
+    while (lignes.length && lignes.at(-1) === '') lignes.pop();
+    return { ...e, lignes, texte: norme(lignes.join(' ')), sautsNonForces };
+  });
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Rendu réel : ce que le site affiche (processeur Markdown du projet, sans apostrophes typographiques)
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+const processeur = await createMarkdownProcessor({ processor: unified(), smartypants: false });
+const ENTITES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+const decode = (s) => s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) => (e[0] === '#' ? String.fromCodePoint(e[1].toLowerCase() === 'x' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10)) : (ENTITES[e] ?? m)));
+// <br> = saut de ligne forcé ; un retour à la ligne nu dans le HTML est une espace à l'affichage (saut « mou » : les lignes fusionnent)
+const enTexte = (html) => decode(html.replace(/<br\s*\/?>\n?/g, '\u0000').replace(/<\/?(?:a|strong|em|code|del)\b[^>]*>/g, '').replace(/\n/g, ' ').replace(/\u0000/g, '\n'));
+
+/** Markdown de la section des notes -> [{ genre, colonne, sort, blocs: [{ type: 'p' | 'li', texte }] }] d'après le HTML rendu. */
+async function entreesRendues(markdown) {
+  const { code } = await processeur.render(markdown);
+  const sortie = [];
+  for (const [, paragraphe, liste] of code.matchAll(/<p>([\s\S]*?)<\/p>|<ul>([\s\S]*?)<\/ul>/g)) {
+    if (liste !== undefined) {
+      sortie.at(-1).blocs.push(...[...liste.matchAll(/<li>([\s\S]*?)<\/li>/g)].map(([, li]) => ({ type: 'li', texte: enTexte(li.replace(/<\/?p>/g, '')).trim() })));
+      continue;
+    }
+    const m = /^<strong>(Note|Commentaire résolu|Commentaire) de la cellule « (.+?) » du sort « (.+?) »<\/strong>(?: : ([\s\S]*))?$/.exec(paragraphe);
+    if (m) sortie.push({ genre: m[1], colonne: decode(m[2]), sort: decode(m[3]), blocs: m[4] === undefined ? [] : [{ type: 'p', texte: enTexte(m[4]) }] });
+    else sortie.at(-1).blocs.push({ type: 'p', texte: enTexte(paragraphe) });
+  }
+  return sortie;
+}
+
+/** Lignes d'un commentaire -> les blocs que Markdown doit en tirer : paragraphes (lignes successives) et puces (avec leurs lignes de suite). */
+function blocsDeLignes(lignes) {
+  const blocs = [];
+  let courant = null;
+  for (const ligne of lignes) {
+    if (ligne === '') courant = null;
+    else if (estPuce(ligne)) blocs.push((courant = { type: 'li', lignes: [ligne.slice(2)] }));
+    else if (courant) courant.lignes.push(ligne);
+    else blocs.push((courant = { type: 'p', lignes: [ligne] }));
+  }
+  return blocs.map((b) => ({ type: b.type, texte: b.lignes.join('\n') }));
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Copie de contrôle des commentaires du classeur (tests/fixtures/magies-commentaires.json) et comparaison avec une page
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+/** [{ page, onglet, genre, cellule, colonne, sort, lignes }] dans l'ordre des pages (celui de SLUGS) puis de la table des sorts. */
+const reference = () => JSON.parse(readFileSync(fichierReference, 'utf8')).entrees;
+
+/** Écarts entre les entrées d'une page et la copie de contrôle : lignes, genre, colonne, sort, ordre, sauts forcés. */
+function ecartsPage(slug, texte) {
+  const attendu = reference().filter((e) => e.page === slug);
+  const lues = entrees(texte);
+  const problemes = [];
+  for (let i = 0; i < Math.max(attendu.length, lues.length); i++) {
+    const a = attendu[i];
+    const l = lues[i];
+    const meme = a && l && a.genre === l.genre && a.colonne === l.colonne && a.sort === l.sort && JSON.stringify(a.lignes) === JSON.stringify(l.lignes);
+    if (!meme || l.sautsNonForces) {
+      problemes.push(`${slug} entrée ${i + 1}${a ? ` (${a.cellule}, « ${a.sort} »)` : ''} : attendu ${JSON.stringify(a?.lignes)} (${a?.genre}, ${a?.colonne}), lu ${JSON.stringify(l?.lignes)} (${l?.genre}, ${l?.colonne})${l?.sautsNonForces ? ' sans saut de ligne forcé' : ''}`);
+    }
+  }
+  return problemes;
 }
 
 const SLUGS = {
@@ -142,6 +228,82 @@ test('les fils de commentaires : un fil identique à la note de sa cellule n\'es
 test('le message de conversation sans rapport avec les règles (Eau, AN46) est écarté, et déclaré comme tel dans l\'extracteur', () => {
   assert.doesNotMatch(page('magie-de-leau'), /salut viens en vocal/);
   assert.match(readFileSync(script, 'utf8'), /salut viens en vocal stp/);
+});
+
+// --- les 85 notes et les 31 fils, ligne par ligne, contre la copie de contrôle (`npm test` seul les protège tous) ----------------------
+
+test('copie de contrôle : 85 notes et 31 fils, répartis comme les pages, chaque entrée avec son texte intégral', () => {
+  const lignes = reference();
+  assert.equal(lignes.filter((e) => e.genre === 'Note').length, 85);
+  assert.equal(lignes.filter((e) => e.genre !== 'Note').length, 31);
+  assert.ok(lignes.every((e) => e.colonne && e.sort && e.cellule && e.lignes.length > 0 && e.lignes.every((l) => typeof l === 'string')));
+  assert.ok(lignes.every((e) => e.lignes[0] !== '' && e.lignes.at(-1) !== ''), 'ni ligne vide en tête ni en queue');
+  for (const [slug, attendu] of Object.entries(SLUGS)) {
+    assert.equal(lignes.filter((e) => e.page === slug && e.genre === 'Note').length, attendu, slug);
+  }
+});
+
+test('les 15 pages citent les 85 notes et les 31 fils du classeur LIGNE PAR LIGNE, dans l\'ordre, sous le bon sort et dans la bonne colonne', () => {
+  const ecarts = Object.keys(SLUGS).flatMap((slug) => ecartsPage(slug, page(slug)));
+  assert.deepEqual(ecarts, [], `écarts avec la copie de contrôle (si le classeur a changé, la regénérer : ${REGENERER})`);
+});
+
+test('toute altération d\'une page réelle est vue par le contrôle : texte, lignes fusionnées, saut forcé retiré, colonne, ordre, entrée en trop', () => {
+  const sang = page('magie-du-sang');
+  const feu = page('magie-du-feu');
+  const entree = (texte, sort, genre) => texte.split('\n\n').find((b) => b.startsWith(`**${genre} de la cellule « Effets secondaires » du sort « ${sort} »**`));
+  const fer = [entree(feu, 'Fer brûlant', 'Note'), entree(feu, 'Fer brûlant', 'Commentaire résolu')];
+  assert.ok(fer[0] && fer[1], 'Fer brûlant porte une note et un fil');
+  const mutations = [
+    ['mot changé dans une note (Sang, Proportion démesurée)', 'magie-du-sang', sang.replace('monter à 6 de force', 'monter à 5 de force')],
+    ['mot ajouté à une note (Sang, Morsure aspirante)', 'magie-du-sang', sang.replace("Ne marche pas si c'est la barrière qui encaisse le coup", "Ne marche pas si c'est la barrière qui encaisse le coup, normalement")],
+    ['colonne changée (Feu, Rai solaire)', 'magie-du-feu', feu.replace('« Effets secondaires » du sort « Rai solaire »', '« Portée » du sort « Rai solaire »')],
+    ['note et fil permutés (Feu, Fer brûlant)', 'magie-du-feu', feu.replace(`${fer[0]}\n\n${fer[1]}`, `${fer[1]}\n\n${fer[0]}`)],
+    ['deux lignes fusionnées (Glace, Lien de gel BJ67)', 'magie-de-la-glace', page('magie-de-la-glace').replace("interrompu.  \nDans le cas", 'interrompu. Dans le cas')],
+    ['saut de ligne forcé retiré (Glace BJ67) : Markdown fusionnerait les deux lignes', 'magie-de-la-glace', page('magie-de-la-glace').replace("interrompu.  \nDans le cas", "interrompu.\nDans le cas")],
+    ['puces fusionnées en un paragraphe (Sang, Annulation)', 'magie-du-sang', sang.replace("- Inutile contre les infirmités, la fatigue physique, les croix.\n- Ne marche pas sur les effets magie niveau 3 ou plus\n- Soigne d'un cran les altérations d'états.", "- Inutile contre les infirmités, la fatigue physique, les croix. - Ne marche pas sur les effets magie niveau 3 ou plus - Soigne d'un cran les altérations d'états.")],
+    ['ligne vide retirée entre deux paragraphes (Arcane, Forge-Magie)', 'magie-de-larcane', page('magie-de-larcane').replace('**Note de la cellule « Effets secondaires » du sort « Forge-Magie »**\n\nExemple :\n\nUn caillou', '**Note de la cellule « Effets secondaires » du sort « Forge-Magie »**\n\nExemple :\nUn caillou')],
+    ['entrée supprimée (Sang, Attirance)', 'magie-du-sang', sang.replace(/\*\*Note de la cellule « Effets secondaires » du sort « Attirance »\*\* : [^\n]*\n\n/, '')],
+    ['entrée citée deux fois (Sang, Coagulation)', 'magie-du-sang', sang.replace(/(\*\*Note de la cellule « Effets secondaires » du sort « Coagulation »\*\* : [^\n]*\n\n)/, '$1$1')],
+  ];
+  assert.ok(ecartsPage('magie-du-sang', sang).length === 0 && ecartsPage('magie-du-feu', feu).length === 0, 'les pages d\'origine sont conformes');
+  for (const [nom, slug, mutee] of mutations) {
+    assert.notEqual(mutee, page(slug), `${nom} : la mutation s'applique`);
+    assert.ok(ecartsPage(slug, mutee).length > 0, `${nom} : non vu par le contrôle`);
+  }
+});
+
+test('citation fidèle des blancs : espace insécable de fin de ligne, lignes vides multiples, liste collée au texte qui la précède (Terre BJ13, Lumière BJ43)', () => {
+  const terre = page('magie-de-la-terre');
+  assert.ok(terre.includes('Pour voir les golems possible \n\n\nChaque niveau de puissance de la créature invoqué double'), 'NBSP et deux lignes vides conservés');
+  const lumiere = page('magie-de-la-lumiere');
+  assert.equal(lumiere.split("Liste des amplifications :\n- Permet d'encaisser le prochain sort").length - 1, 1, 'pas de ligne vide ajoutée avant la liste de la note');
+  assert.equal(lumiere.split("Liste des amplifications :\n- Permet d'encaisser le prochain sorts").length - 1, 1, '… ni avant celle du fil');
+  const necro = page('magie-de-la-necromancie');
+  assert.ok(necro.includes('possible <https://maverick-jdr.fandom.com/fr/wiki/Mort-Vivant_(Invocation)>'), 'URL : lien automatique, adresse intacte');
+});
+
+test('rendu réel : le processeur Markdown du site affiche chaque note et chaque fil avec les mêmes lignes, puces et paragraphes que le classeur', async () => {
+  let vues = 0;
+  for (const slug of Object.keys(SLUGS)) {
+    const attendu = reference().filter((e) => e.page === slug);
+    if (!attendu.length) continue;
+    const rendues = await entreesRendues(section(page(slug)));
+    assert.equal(rendues.length, attendu.length, `${slug} : nombre d'entrées rendues`);
+    attendu.forEach((a, i) => {
+      assert.deepEqual(rendues[i], { genre: a.genre, colonne: a.colonne, sort: a.sort, blocs: blocsDeLignes(a.lignes) }, `${slug} ${a.cellule} « ${a.sort} » : rendu`);
+      vues++;
+    });
+  }
+  assert.equal(vues, 116);
+});
+
+test('rendu réel : la même vérification refuse une page dont Markdown fusionnerait deux lignes (saut forcé retiré)', async () => {
+  const glace = page('magie-de-la-glace').replace("interrompu.  \nDans le cas", "interrompu.\nDans le cas");
+  const a = reference().find((e) => e.page === 'magie-de-la-glace' && e.cellule === 'BJ67');
+  const rendues = await entreesRendues(section(glace));
+  const rendue = rendues.find((e) => e.sort === a.sort && e.genre === 'Note');
+  assert.notDeepEqual(rendue.blocs, blocsDeLignes(a.lignes));
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------

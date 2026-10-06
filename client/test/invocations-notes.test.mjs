@@ -9,7 +9,7 @@
 // des autres classeurs (Magie V8, Classes V7).
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -80,6 +80,52 @@ test('invocations.py --verifier : les pages du dépôt sont celles que le vrai d
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /66 page\(s\) identiques à ce que le dump produit ; 1 note\(s\) de cellule/);
   assert.match(r.stdout, /Appel aux golems G127 -> « Golem de rouage », « Dégâts »/);
+});
+
+// Les deux défauts relevés à la relecture, rejoués sur le vrai dump et une COPIE des vraies pages (le dépôt n'est jamais touché) :
+// un dump produit avant la lecture des notes (même classeur, sans le champ `note`) ne doit pas effacer la note de G127, et une ligne
+// de la page sans rapport avec la note, altérée, est vue par --verifier.
+test('invocations.py sur le vrai dump et une copie des vraies pages : dump sans notes refusé (G127 conservée), ligne altérée vue par --verifier (INVOCATION_DUMP)', {
+  skip: sansPython || (!dumpReel && 'INVOCATION_DUMP non défini (dump hors dépôt)'),
+}, () => {
+  const dir = mkdtempSync(join(tmpdir(), 'invocations-reel-'));
+  const out = join(dir, 'wiki');
+  cpSync(bestiaire, join(out, 'bestiaire'), { recursive: true });
+  const pages = join(out, 'bestiaire');
+  const instantane = () => Object.fromEntries(readdirSync(pages).map((f) => [f, readFileSync(join(pages, f), 'utf8')]));
+  const avant = instantane();
+  // dump périmé = le vrai dump sans le champ `note` ; fabriqué en Python : un aller-retour par JSON de Node écrirait 10.0 « 10 » et
+  // changerait les pages (le script reproduit les nombres tels que le dump les donne).
+  const retire = `import json, sys
+d = json.load(open(sys.argv[1], encoding="utf-8"))
+for s in d["sheets"]:
+    for c in s["cells"]:
+        c.pop("note", None)
+json.dump(d, open(sys.argv[2], "w", encoding="utf-8"), ensure_ascii=False)`;
+  const fabrique = spawnSync('python3', ['-I', '-c', retire, dumpReel, join(dir, 'perime.json')], { encoding: 'utf8' });
+  assert.equal(fabrique.status, 0, fabrique.stderr);
+
+  const refus = spawnSync('python3', ['-I', script, '--dump', join(dir, 'perime.json'), '--out', out], { encoding: 'utf8' });
+  assert.notEqual(refus.status, 0, 'un dump sans notes ne doit pas effacer la note de G127');
+  assert.match(refus.stderr, /bestiaire\/golem-de-rouage\.md : la page « Golem de rouage » porte 1 note\(s\) de cellule, la sortie du dump en porte 0/);
+  assert.deepEqual(instantane(), avant, 'aucune page ne doit être touchée');
+  assert.equal(nbNotes(avant['golem-de-rouage.md']), 1);
+  const diagnostic = spawnSync('python3', ['-I', script, '--dump', join(dir, 'perime.json'), '--out', out, '--verifier'], { encoding: 'utf8' });
+  assert.notEqual(diagnostic.status, 0);
+  assert.match(diagnostic.stderr, /dump produit sans les notes/);
+
+  // la même copie avec le bon dump : rien à écrire, le garde ne dit rien
+  const bon = spawnSync('python3', ['-I', script, '--dump', dumpReel, '--out', out], { encoding: 'utf8' });
+  assert.equal(bon.status, 0, bon.stderr);
+  assert.match(bon.stdout, /66 pages \(0 écrites, 66 inchangées\)/);
+  assert.deepEqual(instantane(), avant);
+
+  // une ligne sans rapport avec la note : « 4 case nage » -> « 5 case nage »
+  const chemin = join(pages, 'golem-de-rouage.md');
+  writeFileSync(chemin, avant['golem-de-rouage.md'].replace('4 case nage', '5 case nage'));
+  const altere = spawnSync('python3', ['-I', script, '--dump', dumpReel, '--out', out, '--verifier'], { encoding: 'utf8' });
+  assert.notEqual(altere.status, 0);
+  assert.match(altere.stderr, /golem-de-rouage : la page écrite n'est pas celle que le dump produit/);
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -261,6 +307,13 @@ function lancer(ctx, args = []) {
   return spawnSync('python3', ['-I', script, '--dump', ctx.dump, '--out', ctx.out, ...args], { encoding: 'utf8' });
 }
 const fichiers = (ctx) => (existsSync(ctx.pages) ? readdirSync(ctx.pages).filter((f) => f.endsWith('.md')) : []);
+/** Contenu de toutes les pages écrites : {fichier: texte}. */
+const etat = (ctx) => Object.fromEntries(fichiers(ctx).map((f) => [f, readFileSync(join(ctx.pages, f), 'utf8')]));
+/** Même classeur, sans le champ `note` de aucune cellule : un dump produit par un convertisseur antérieur à la lecture des notes. */
+const sansNotes = (dump) => {
+  for (const feuille of dump.sheets) for (const cellule of feuille.cells) delete cellule.note;
+  return dump;
+};
 function modifierPage(ctx, slug, fn) {
   const chemin = join(ctx.pages, `${slug}.md`);
   const avant = readFileSync(chemin, 'utf8');
@@ -529,13 +582,15 @@ for (const [nomDuCas, variante] of Object.entries(VARIANTES)) {
   });
 }
 
-test('--verifier : une note perdue par le dump (dump sans note alors que les pages en ont) est signalée', { skip: sansPython }, () => {
+test('--verifier : une note perdue par le dump (dump sans note alors que les pages en ont) est signalée, avec la cause probable', { skip: sansPython }, () => {
   const ctx = preparer();
   assert.equal(lancer(ctx).status, 0);
   writeFileSync(ctx.dump, JSON.stringify(classeur()));
   const r = lancer(ctx, ['--verifier']);
   assert.notEqual(r.status, 0, 'les pages portent 13 notes que le dump n’a plus');
   assert.match(r.stderr, /écart/);
+  assert.match(r.stderr, /porte 7 note\(s\) de cellule, la sortie du dump en porte 0/, 'le diagnostic « dump périmé » doit nommer la page et les nombres');
+  assert.match(r.stderr, /dump produit sans les notes/);
 });
 
 test('--verifier : sur le dump, une note placée sans place prévue est refusée avec le même message qu’à la génération', { skip: sansPython }, () => {
@@ -546,3 +601,170 @@ test('--verifier : sur le dump, une note placée sans place prévue est refusée
   assert.notEqual(r.status, 0);
   assert.match(r.stderr, /sans place prévue/);
 });
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Dump périmé : un dump sans les notes ne doit pas effacer en silence les notes déjà écrites dans les pages
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+const PAGES_AVEC_NOTES = { [slugDe('G', 3, 'g')]: 7, [slugDe('G', 3, 'd')]: 2, [slugDe('A', 14, 'd')]: 1, [slugDe('M', 2, 'g')]: 2, [slugDe('G', 5, 'g')]: 1 };
+
+test('dump périmé : un dump sans aucune note (ancien convertisseur) ne retire pas les notes des pages existantes : refus, rien n’est écrit', { skip: sansPython }, () => {
+  const ctx = preparer();
+  assert.equal(lancer(ctx).status, 0);
+  const avant = etat(ctx);
+  writeFileSync(ctx.dump, JSON.stringify(sansNotes(avecNotes())));
+  const r = lancer(ctx);
+  assert.notEqual(r.status, 0, 'le script doit refuser : 13 notes écrites dans les pages disparaîtraient');
+  assert.match(r.stderr, /dump produit sans les notes/);
+  assert.match(r.stderr, /--accepter-notes-retirees/, 'le message dit comment accepter une suppression voulue');
+  for (const [slug, n] of Object.entries(PAGES_AVEC_NOTES)) {
+    assert.ok(r.stderr.includes(`bestiaire/${slug}.md : la page`), `${slug} doit être nommée\n${r.stderr}`);
+    assert.match(r.stderr, new RegExp(`${slug}\\.md : la page « [^»]+ » porte ${n} note\\(s\\) de cellule, la sortie du dump en porte 0`));
+  }
+  assert.deepEqual(etat(ctx), avant, 'aucune page ne doit être touchée');
+  assert.equal(Object.values(etat(ctx)).reduce((somme, t) => somme + nbNotes(t), 0), TOTAL);
+});
+
+test('dump périmé : une seule note de moins dans le dump (7 -> 6 sur une page) est refusée de même, sans rien écrire', { skip: sansPython }, () => {
+  const ctx = preparer();
+  assert.equal(lancer(ctx).status, 0);
+  const avant = etat(ctx);
+  const sansSante = avecNotes(classeur(), NOTES.filter(([code, r, c]) => !(code === 'G' && r === 67 && c === 7)));
+  writeFileSync(ctx.dump, JSON.stringify(sansSante));
+  const r = lancer(ctx);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, new RegExp(`${SLUG}\\.md : la page « [^»]+ » porte 7 note\\(s\\) de cellule, la sortie du dump en porte 6`));
+  assert.doesNotMatch(r.stderr, new RegExp(`${slugDe('G', 3, 'd')}\\.md : la page`), 'les pages qui gardent toutes leurs notes ne sont pas citées');
+  assert.deepEqual(etat(ctx), avant);
+});
+
+test('dump périmé : --accepter-notes-retirees autorise la suppression voulue (note retirée du classeur), le signale et --verifier repasse au vert', { skip: sansPython }, () => {
+  const ctx = preparer();
+  assert.equal(lancer(ctx).status, 0);
+  const sansSante = avecNotes(classeur(), NOTES.filter(([code, r, c]) => !(code === 'G' && r === 67 && c === 7)));
+  writeFileSync(ctx.dump, JSON.stringify(sansSante));
+  const r = lancer(ctx, ['--accepter-notes-retirees']);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stderr, /AVERTISSEMENT : .*1 note\(s\) de cellule retirée\(s\) des pages/);
+  assert.equal(nbNotes(lire(ctx.pages, SLUG)), 6);
+  assert.ok(!lire(ctx.pages, SLUG).includes(note('Santé', N.sante)));
+  assert.equal(lancer(ctx, ['--verifier']).status, 0);
+  // l'option ne change rien quand il n'y a rien à retirer : pas d'avertissement
+  const encore = lancer(ctx, ['--accepter-notes-retirees']);
+  assert.equal(encore.status, 0, encore.stderr);
+  assert.doesNotMatch(encore.stderr, /retirée\(s\) des pages/);
+});
+
+test('dump périmé : pas de fausse alerte quand une note change de texte ou qu’une note est ajoutée (le nombre de notes ne baisse pas)', { skip: sansPython }, () => {
+  const ctx = preparer();
+  assert.equal(lancer(ctx).status, 0);
+  const modifie = avecNotes();
+  poser(modifie, 'G', 73, 7, "L'ombre reste 4 tours.");                       // texte changé
+  poser(modifie, 'G', 77, 4, 'Une note de plus, sur le libellé de Capacité(s).'); // note ajoutée
+  writeFileSync(ctx.dump, JSON.stringify(modifie));
+  const r = lancer(ctx);
+  assert.equal(r.status, 0, r.stderr);
+  assert.doesNotMatch(r.stderr, /dump produit sans les notes/);
+  assert.equal(nbNotes(lire(ctx.pages, SLUG)), 8);
+  assert.ok(lire(ctx.pages, SLUG).includes(note('Vitesse', "L'ombre reste 4 tours.")));
+  assert.equal(lancer(ctx, ['--verifier']).status, 0);
+});
+
+test('dump périmé : une page à l’ancien libellé « Note de cellule » migre vers le nouveau libellé sans refus (le nombre de notes ne baisse pas)', { skip: sansPython }, () => {
+  const ctx = preparer();
+  assert.equal(lancer(ctx).status, 0);
+  const rouage = slugDe('G', 5, 'g');
+  modifierPage(ctx, rouage, (t) => t.replace(`**Note de la cellule « Dégâts »** : ${NOTE_ROUAGE}`, `**Note de cellule** : ${NOTE_ROUAGE}`));
+  assert.equal(nbNotes(lire(ctx.pages, rouage)), 0, 'la page est dans l’ancien format');
+  const r = lancer(ctx);
+  assert.equal(r.status, 0, r.stderr);
+  assert.doesNotMatch(r.stderr, /dump produit sans les notes/);
+  assert.equal(nbNotes(lire(ctx.pages, rouage)), 1);
+  assert.ok(!lire(ctx.pages, rouage).includes('**Note de cellule**'));
+  assert.equal(lancer(ctx, ['--verifier']).status, 0);
+});
+
+test('dump périmé : sans option, la page à l’ancien libellé « Note de cellule » n’est pas effacée par un dump sans notes', { skip: sansPython }, () => {
+  const ctx = preparer();
+  assert.equal(lancer(ctx).status, 0);
+  const rouage = slugDe('G', 5, 'g');
+  modifierPage(ctx, rouage, (t) => t.replace(`**Note de la cellule « Dégâts »** : ${NOTE_ROUAGE}`, `**Note de cellule** : ${NOTE_ROUAGE}`));
+  const avant = etat(ctx);
+  writeFileSync(ctx.dump, JSON.stringify(sansNotes(avecNotes())));
+  const r = lancer(ctx);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, new RegExp(`${rouage}\\.md : la page « [^»]+ » porte 1 note\\(s\\) de cellule, la sortie du dump en porte 0`));
+  assert.deepEqual(etat(ctx), avant);
+});
+
+test('dump périmé : sur un dossier sans pages (premier import), un dump sans note passe mais avertit que le champ `note` manque partout', { skip: sansPython }, () => {
+  const sans = preparer(classeur());
+  const r = lancer(sans);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stderr, /AVERTISSEMENT : aucune cellule du dump ne porte de champ `note`/);
+  // un dump qui porte des notes n'avertit pas ; un dump dont les cellules ont un champ `note` (même blanc) n'avertit pas non plus
+  const avec = lancer(preparer());
+  assert.equal(avec.status, 0, avec.stderr);
+  assert.doesNotMatch(avec.stderr, /champ `note`/);
+  const blanc = lancer(preparer(poser(classeur(), 'G', 69, 7, '  ')));
+  assert.equal(blanc.status, 0, blanc.stderr);
+  assert.doesNotMatch(blanc.stderr, /champ `note`/);
+});
+
+const GARDE = `
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("invocations", sys.argv[1])
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+raw = mod.read_dumps([sys.argv[2]])
+out = sys.argv[3]
+if sys.argv[4] == "neutralisee":
+    mod.lost_notes = lambda pages, out_root: []
+count, failures = mod.replay_errors(raw, out)
+print("cas=%d" % count)
+for f in failures:
+    print("ECART " + f)
+`;
+
+test('--verifier rejoue le cas « dump périmé » : si la garde est neutralisée, le rejeu le signale (replay_errors)', { skip: sansPython }, () => {
+  const ctx = preparer();
+  assert.equal(lancer(ctx).status, 0);
+  const sain = spawnSync('python3', ['-I', '-c', GARDE, script, ctx.dump, ctx.out, 'normale'], { encoding: 'utf8' });
+  assert.equal(sain.status, 0, sain.stderr);
+  assert.doesNotMatch(sain.stdout, /ECART/, sain.stdout);
+  const casSains = Number(sain.stdout.match(/cas=(\d+)/)[1]);
+  const casse = spawnSync('python3', ['-I', '-c', GARDE, script, ctx.dump, ctx.out, 'neutralisee'], { encoding: 'utf8' });
+  assert.equal(casse.status, 0, casse.stderr);
+  assert.match(casse.stdout, /ECART rejeu « dump périmé »/, casse.stdout);
+  assert.equal(Number(casse.stdout.match(/cas=(\d+)/)[1]), casSains);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Le reste de la page : la suite sans dump ne regarde que les notes ; c'est --verifier (avec le dump) qui garde chaque autre ligne
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Les pages réelles sont écrites par le script et le dump n'est pas dans le dépôt (docs/sources.md : les JSON et .xlsx se régénèrent) ;
+// une empreinte des pages dans le dépôt interdirait les retouches voulues (statut `verified`) et le maillage `npm run autolink`.
+// Ces tests épinglent donc l'outil qui fait ce contrôle quand le dump est là : --verifier voit toute ligne qui change, disparaît ou s'ajoute.
+
+const AUTRES_LIGNES = {
+  'valeur de Vitesse changée': [SLUG, (t) => t.replace(LIGNES.vitesse, '**Vitesse** : 5 cases sol / 0 case nage')],
+  'ligne Défense supprimée': [SLUG, (t) => t.replace(`${LIGNES.defense}\n\n`, '')],
+  'ligne ajoutée en fin de page': [SLUG, (t) => `${t}\nUne ligne ajoutée à la main.\n`],
+  'description altérée': [SLUG, (t) => t.replace('Deuxième phrase.', 'Deuxième phrases.')],
+  'tableau des statistiques altéré': [SLUG, (t) => t.replace('| 20/NPM | 0.0 | 0.0 |', '| 21/NPM | 0.0 | 0.0 |')],
+  'en-tête (summary) altéré': [SLUG, (t) => t.replace(/^summary: .*$/m, 'summary: "Autre résumé."')],
+  'page d’une autre créature (sans note) altérée': [slugDe('A', 3, 'g'), (t) => t.replace(LIGNES.fpvsia, '**FPVSIA** : 9/9/9/9/9/9')],
+  'page d’introduction altérée': ['appel-aux-golems', (t) => t.replace('Texte général', 'Texte généra1')],
+};
+for (const [nomDuCas, [slug, variante]] of Object.entries(AUTRES_LIGNES)) {
+  test(`--verifier : ligne sans rapport avec les notes (${nomDuCas}) signalée, fichier inchangé`, { skip: sansPython }, () => {
+    const ctx = preparer();
+    assert.equal(lancer(ctx).status, 0);
+    modifierPage(ctx, slug, variante);
+    const modifiee = readFileSync(join(ctx.pages, `${slug}.md`), 'utf8');
+    const r = lancer(ctx, ['--verifier']);
+    assert.notEqual(r.status, 0, `--verifier doit signaler : ${nomDuCas}`);
+    assert.match(r.stderr, new RegExp(`${slug} : la page écrite n'est pas celle que le dump produit`));
+    assert.equal(readFileSync(join(ctx.pages, `${slug}.md`), 'utf8'), modifiee, '--verifier ne doit rien écrire');
+  });
+}

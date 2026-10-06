@@ -8,6 +8,7 @@ Usage (bibliothèque standard uniquement ; relançable, mêmes fichiers à l'ide
         --out /home/user/MaverickCenter/client/src/content/wiki
     python3 -I tools/sheets/invocations.py --dump <invocation.json> \
         --out /home/user/MaverickCenter/client/src/content/wiki --verifier      # n'écrit rien
+    ... --accepter-notes-retirees    # seulement si une note a été retirée du classeur (voir « garde contre un dump périmé »)
 
 Le dump JSON est produit par tools/sheets/xlsx_to_json.py (il doit porter les notes de cellule : champ `note`). Les cellules
 sont une donnée non fiable : elles ne sont jamais exécutées, seulement copiées (échappées pour le Markdown). Aucune valeur
@@ -71,12 +72,25 @@ CONTRÔLE DE COUVERTURE (à chaque lancement, avant d'écrire) : chaque note du 
 de fois qu'il y a de notes identiques sous le même intitulé (une note identique sur deux cellules est écrite deux fois), et
 le nombre de notes écrites dans toutes les pages est celui du dump.
 
+GARDE CONTRE UN DUMP PÉRIMÉ (à chaque lancement, avant d'écrire) : le script ne peut pas distinguer un dump « sans note » d'un dump
+produit avant la lecture des notes (ancien xlsx_to_json.py, dump de l'API sans le champ `note`) : le second réécrirait les pages
+sans leurs notes, sans la moindre erreur. Il compare donc ce qu'il va écrire à ce que les pages déjà écrites portent (lignes
+« **Note de la cellule … » et, pour une page d'avant l'import par le dump, l'ancien libellé « **Note de cellule** ») : une page qui
+perdrait des notes ARRÊTE le script (rien n'est écrit ; le message nomme les pages et les nombres). Une note qui change de texte ou
+une note ajoutée ne déclenche rien (le nombre ne baisse pas). Si la note a vraiment été retirée du classeur : --accepter-notes-retirees
+(écrit quand même et signale sur la sortie d'erreur les pages concernées). Sans page déjà écrite (premier import) il n'y a rien à
+comparer : un dump dont AUCUNE cellule ne porte de champ `note` est alors signalé par un avertissement (le classeur « Invocation »
+en porte une).
+
 Option --verifier : n'écrit rien. Relit le dump, recalcule les notes attendues directement dans le JSON brut (adresse de
 la cellule -> créature, intitulé, section, cellule juste au-dessus : géométrie du gabarit écrite à part du code qui génère
 les pages), les compare aux pages écrites (page, section, place sous la cellule, texte intégral, nombre d'occurrences, aucune
-note de plus, ancien libellé « Note de cellule » absent), vérifie que les pages écrites sont celles que le dump produit, puis
-rejoue des cas d'erreur sur des copies en mémoire (note sur une cellule vide, dans un onglet non publié, sans place prévue,
-fil de commentaires ; note retirée, dupliquée, tronquée, altérée, déplacée dans une page) : chacun doit être signalé.
+note de plus, ancien libellé « Note de cellule » absent), vérifie que les pages écrites sont celles que le dump produit (c'est
+lui, avec le dump, qui garde TOUT le reste des pages : une ligne changée, supprimée ou ajoutée est un écart ; la suite de tests
+du dépôt, sans dump hors dépôt, ne regarde que les notes), signale en clair un dump périmé (la garde ci-dessus), puis rejoue des
+cas d'erreur sur des copies en mémoire (note sur une cellule vide, dans un onglet non publié, sans place prévue, fil de
+commentaires ; dump sans aucun champ `note` ; note retirée, dupliquée, tronquée, altérée, déplacée dans une page) : chacun doit
+être signalé.
 
 Choix de métadonnées (tout vient des cellules) :
   * tags : « invocation » et le mot qui suit dans le bandeau de l'onglet (« golem », « non-mort », « marionette »), plus
@@ -802,6 +816,46 @@ def conflicts(pages, out_root):
     return problems
 
 
+def note_count(text):
+    """Nombre de notes de cellule écrites dans une page : lignes « **Note de la cellule « … »** » et, pour une page écrite avant
+    l'import des notes par le dump, l'ancien libellé « **Note de cellule** » (il compte aussi : sa note doit survivre à la migration)."""
+    body = body_of(text)
+    return body.count(NOTE_MARKER) + body.count(LEGACY_NOTE_MARKER)
+
+
+def written_notes(pages, out_root):
+    """{slug: (titre, nombre de notes)} des pages de cette famille DÉJÀ écrites (et destinées à être réécrites par `pages`)."""
+    out_dir = os.path.join(out_root, CATEGORY)
+    found = {}
+    for title, _aliases, slug, _text, _tab in pages:
+        path = os.path.join(out_dir, slug + ".md")
+        if is_ours(path):
+            with open(path, encoding="utf-8") as fh:
+                found[slug] = (title, note_count(fh.read()))
+    return found
+
+
+def lost_notes(pages, out_root):
+    """GARDE contre un dump périmé : le script ne peut pas savoir si un dump sans note est « sans note » ou « produit avant la lecture
+    des notes » (ancien xlsx_to_json.py, dump de l'API sans le champ `note`) ; il compare donc ce qu'il s'apprête à écrire à ce que
+    les pages portent déjà. -> [(slug, titre, notes écrites aujourd'hui, notes que le dump produit)] pour les pages qui en perdraient."""
+    before = written_notes(pages, out_root)
+    lost = []
+    for title, _aliases, slug, text, _tab in pages:
+        if slug in before and before[slug][1] > note_count(text):
+            lost.append((slug, title, before[slug][1], note_count(text)))
+    return lost
+
+
+def lost_report(lost, advice):
+    """Lignes d'explication d'une perte de notes : un en-tête (avec `advice`) puis une ligne par page."""
+    total = sum(old - new for _slug, _title, old, new in lost)
+    return (["%d note(s) de cellule écrite(s) dans %d page(s) disparaîtraient : dump produit sans les notes (ancienne version de "
+             "xlsx_to_json.py, dump de l'API sans le champ `note`) ? %s" % (total, len(lost), advice)] +
+            ["%s/%s.md : la page « %s » porte %d note(s) de cellule, la sortie du dump en porte %d" % (CATEGORY, slug, title, old, new)
+             for slug, title, old, new in lost])
+
+
 # --------------------------------------------------------------------------------------------------------------------
 # --verifier : contrôle indépendant, n'écrit rien
 # --------------------------------------------------------------------------------------------------------------------
@@ -942,7 +996,7 @@ def full_card(raw_sheets):
     return None
 
 
-def replay_errors(raw_sheets):
+def replay_errors(raw_sheets, out_root):
     """Rejoue des cas d'erreur sur des copies en mémoire du dump (le vrai dump et les vraies pages ne sont pas touchés).
     -> (nombre de cas rejoués, écarts)."""
     failures, count = [], 0
@@ -978,6 +1032,25 @@ def replay_errors(raw_sheets):
                         ("bandeau de l'onglet", 1, TABS[0]["banner_col"]), ("marge d'un bloc", 1 + MARGIN_ROW, COL_MARGIN)):
         expect_stop("note non placée : %s" % label, copy_with(lambda d, r=r, c=c: cell_of(d, first, r, c).update(note=CONTROL_NOTE)),
                     "sans place prévue")
+
+    # Dump périmé : les mêmes onglets sans aucun champ `note`. Si les pages écrites portent des notes, la garde doit les voir disparaître
+    # (sans quoi le script réécrirait les pages sans la note, sans erreur) ; sans note écrite il n'y a rien à rejouer.
+    stale = copy.deepcopy(raw_sheets)
+    for raw in stale.values():
+        for cell in raw["cells"]:
+            cell.pop("note", None)
+    try:
+        stale_pages = build(stale)[0]
+    except ValueError as err:
+        count += 1
+        failures.append("rejeu « dump périmé » : le dump sans notes est refusé par le script : %s" % str(err)[:200])
+    else:
+        carried = sum(n for _title, n in written_notes(stale_pages, out_root).values())
+        if carried:
+            count += 1
+            seen = sum(old - new for _slug, _title, old, new in lost_notes(stale_pages, out_root))
+            if seen != carried:
+                failures.append("rejeu « dump périmé » : %d note(s) écrite(s) dans les pages, la garde n'en voit disparaître que %d" % (carried, seen))
 
     # Notes posées sur chaque sorte de cellule d'une carte complète : acceptées, retrouvées une fois, et signalées si la page les perd.
     count += 1
@@ -1029,7 +1102,8 @@ def verify(raw_sheets, out_root):
     except ValueError as err:
         sys.exit("--verifier : ERREUR : %s" % err)
     out_dir = os.path.join(out_root, CATEGORY)
-    problems, texts, same = [], {}, 0
+    lost = lost_notes(pages, out_root)    # en tête de la liste : la cause probable avant les pages qui en découlent
+    problems, texts, same = (lost_report(lost, "Relancer la conversion du classeur, puis ce script.") if lost else []), {}, 0
     for title, _aliases, slug, text, _tab in pages:
         path = os.path.join(out_dir, slug + ".md")
         if not os.path.exists(path):
@@ -1043,13 +1117,13 @@ def verify(raw_sheets, out_root):
             same += 1
     expected, bad = expected_notes(raw_sheets)
     problems += bad + note_problems(expected, texts) + conflicts(pages, out_root)
-    count, failures = replay_errors(raw_sheets)
+    count, failures = replay_errors(raw_sheets, out_root)
     problems += failures
     if problems:
         sys.exit("--verifier : %d écart(s)\n  " % len(problems) + "\n  ".join(problems[:30]))
     print("--verifier : %d page(s) identiques à ce que le dump produit ; %d note(s) de cellule, chacune retrouvée exactement autant de fois "
           "qu'attendu avec son texte intégral, juste sous sa cellule, aucune de plus ; %d cas d'erreur rejoués (cellule vide, onglet non "
-          "publié, note non textuelle, fil de commentaires, note sans place ; note retirée / dupliquée / tronquée / altérée / déplacée)"
+          "publié, note non textuelle, fil de commentaires, note sans place, dump sans notes ; note retirée / dupliquée / tronquée / altérée / déplacée)"
           % (same, len(expected), count))
     for n in expected:
         print("  %s %s -> « %s », « %s »" % (n["tab"], n["ref"], n["page"], n["label"]))
@@ -1066,6 +1140,9 @@ def main(argv=None):
     ap.add_argument("--out", required=True, help="racine du wiki (client/src/content/wiki)")
     ap.add_argument("--verifier", action="store_true",
                     help="n'écrit rien : recalcule les notes depuis le dump, les compare aux pages écrites et rejoue des cas d'erreur")
+    ap.add_argument("--accepter-notes-retirees", action="store_true",
+                    help="écrit même si des pages perdent des notes de cellule (note retirée du classeur) ; sans cette option le script "
+                         "refuse, car un dump produit avant la lecture des notes les effacerait en silence")
     args = ap.parse_args(argv)
 
     raw_sheets = read_dumps(args.dump)
@@ -1085,10 +1162,22 @@ def main(argv=None):
     # Contrôles avant toute écriture : doublons, fichiers existants, titres et alias des autres familles.
     out_dir = os.path.join(args.out, CATEGORY)
     problems = conflicts(pages, args.out)
+    lost = lost_notes(pages, args.out)
+    if lost and not args.accepter_notes_retirees:
+        problems += lost_report(lost, "Rien n'est écrit, pour ne pas effacer les notes ; si elles ont bien été retirées du classeur, "
+                                      "relancer avec --accepter-notes-retirees.")
     if problems:
         for p in problems:
             print("ERREUR : " + p, file=sys.stderr)
         return 1
+    if lost:
+        print("AVERTISSEMENT : %d note(s) de cellule retirée(s) des pages (--accepter-notes-retirees) : %s"
+              % (sum(old - new for _slug, _title, old, new in lost),
+                 ", ".join("%s/%s.md (%d -> %d)" % (CATEGORY, slug, old, new) for slug, _title, old, new in lost)), file=sys.stderr)
+    if not any("note" in c for cfg in TABS for c in raw_sheets[cfg["name"]]["cells"]):
+        print("AVERTISSEMENT : aucune cellule du dump ne porte de champ `note` : dump produit sans les notes de cellule (ancienne version "
+              "de xlsx_to_json.py, dump de l'API sans le champ `note`) ? Si le classeur porte des notes, elles ne seront pas dans les "
+              "pages : relancer la conversion du classeur.", file=sys.stderr)
 
     os.makedirs(out_dir, exist_ok=True)
     written = unchanged = 0
