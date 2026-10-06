@@ -1,0 +1,12 @@
+-- data/rows/famille.sql : export déterministe, une instruction par ligne, triée par (id). NE PAS ÉDITER À LA MAIN.
+INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('annexes', 'Annexes des magies : états, météo, modes', 'tools/sheets/annexes-magie.py', 'Magie Maverick V8 (Altération détats, Météo, Statistiques, Mode Hyper (Magie)) ; Mode hyper et co', 3);
+INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('bestiaire', 'Bestiaire : invocations et créatures', 'tools/sheets/invocations.py', 'Invocation', 7);
+INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('classes', 'Classes, spécialités, capacités', 'tools/sheets/classes.py', 'Classe Maverick V7', 5);
+INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('craft', 'Divers du craft : familiers, maison, machines, maladies', 'tools/sheets/divers-craft.py', 'Ressources et Craft', 9);
+INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('docs', 'Pages transcrites des Google Docs', NULL, 'Google Docs : Règle du jeu / Guide pour MJ, Créer sa fiche, Alchimie, MÉTIER', 1);
+INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('docs_typees', 'Lignes typées extraites du Markdown des pages docs (Alchimie, MÉTIER)', 'tools/db/docs_typees.py (à écrire)', 'page.corps_md des pages docs (Google Docs « Alchimie », « MÉTIER ») : elles ne viennent d''aucun dump JSON', 10);
+INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('equipement', 'Équipement et ressources', 'tools/sheets/equipement.py', 'Ressources et Craft ; Fiche auto V15.2.2 (BDD, Armes)', 8);
+INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('exemple', 'Pages d''exemple (fixtures de démonstration, status: example)', NULL, 'aucune : saisies pour la démonstration', 11);
+INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('fiche', 'Règles de la fiche de personnage', 'tools/sheets/regles-fiche.py (à écrire)', 'Fiche personnage Maverick Auto V15.2.2 + pages du Doc de la fiche', 2);
+INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('magies', 'Magies et sorts', 'tools/sheets/magies.py', 'Magie Maverick V8 ; Fiche auto V15.2.2 (onglet Magie)', 4);
+INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('races', 'Races, ethnies, accessibilités', 'tools/sheets/races.py', 'Les races ; Fiche auto V15.2.2 (Race, Bonus Race, Accessibilité de Classe / Magie)', 6);

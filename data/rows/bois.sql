@@ -1,0 +1,15 @@
+-- data/rows/bois.sql : export déterministe, une instruction par ligne, triée par (ressource_id). NE PAS ÉDITER À LA MAIN.
+INSERT INTO bois (ressource_id, magie_id, origine, source_ref) VALUES ('ressources/baton-magique#bois:bambou', 'magies/magie-du-vent', 'equipement', 'Ressources et Craft › Bâton magique › AC24:BS25');
+INSERT INTO bois (ressource_id, magie_id, origine, source_ref) VALUES ('ressources/baton-magique#bois:bouleau-impur', 'magies/magie-de-la-corruption', 'equipement', 'Ressources et Craft › Bâton magique › AC8:BS9');
+INSERT INTO bois (ressource_id, magie_id, origine, source_ref) VALUES ('ressources/baton-magique#bois:bouleau-pur', 'magies/magie-de-larcane', 'equipement', 'Ressources et Craft › Bâton magique › AC6:BS7');
+INSERT INTO bois (ressource_id, magie_id, origine, source_ref) VALUES ('ressources/baton-magique#bois:chene', 'magies/magie-de-lespace-temps', 'equipement', 'Ressources et Craft › Bâton magique › AC10:BS11');
+INSERT INTO bois (ressource_id, magie_id, origine, source_ref) VALUES ('ressources/baton-magique#bois:frene', 'magies/magie-de-la-foudre', 'equipement', 'Ressources et Craft › Bâton magique › AC26:BS27');
+INSERT INTO bois (ressource_id, magie_id, origine, source_ref) VALUES ('ressources/baton-magique#bois:fungus-fantome', 'magies/magie-du-vide', 'equipement', 'Ressources et Craft › Bâton magique › AC12:BS13');
+INSERT INTO bois (ressource_id, magie_id, origine, source_ref) VALUES ('ressources/baton-magique#bois:khejri', 'magies/magie-du-feu', 'equipement', 'Ressources et Craft › Bâton magique › AC16:BS17');
+INSERT INTO bois (ressource_id, magie_id, origine, source_ref) VALUES ('ressources/baton-magique#bois:mancelinier', 'magies/magie-de-la-necromancie', 'equipement', 'Ressources et Craft › Bâton magique › AC14:BS15');
+INSERT INTO bois (ressource_id, magie_id, origine, source_ref) VALUES ('ressources/baton-magique#bois:orme', 'magies/magie-de-la-terre', 'equipement', 'Ressources et Craft › Bâton magique › AC22:BS23');
+INSERT INTO bois (ressource_id, magie_id, origine, source_ref) VALUES ('ressources/baton-magique#bois:padouk', 'magies/magie-du-sang', 'equipement', 'Ressources et Craft › Bâton magique › AC4:BS5');
+INSERT INTO bois (ressource_id, magie_id, origine, source_ref) VALUES ('ressources/baton-magique#bois:paletuvier', 'magies/magie-de-leau', 'equipement', 'Ressources et Craft › Bâton magique › AC18:BS19');
+INSERT INTO bois (ressource_id, magie_id, origine, source_ref) VALUES ('ressources/baton-magique#bois:palmier', 'magies/magie-de-la-lumiere', 'equipement', 'Ressources et Craft › Bâton magique › AC30:BS31');
+INSERT INTO bois (ressource_id, magie_id, origine, source_ref) VALUES ('ressources/baton-magique#bois:sapin', 'magies/magie-de-la-glace', 'equipement', 'Ressources et Craft › Bâton magique › AC20:BS21');
+INSERT INTO bois (ressource_id, magie_id, origine, source_ref) VALUES ('ressources/baton-magique#bois:saule', 'magies/magie-de-lombre', 'equipement', 'Ressources et Craft › Bâton magique › AC28:BS29');

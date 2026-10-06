@@ -1,0 +1,4 @@
+-- data/rows/magie_ethnie_secondaire.sql : export déterministe, une instruction par ligne, triée par (magie_id, rang). NE PAS ÉDITER À LA MAIN.
+INSERT INTO magie_ethnie_secondaire (magie_id, rang, ethnie_id, ethnie_brut, origine, source_ref) VALUES ('magies/magie-de-la-corruption', 1, 'races/elfe-noir#ethnie:elfe-noir-charbon', 'Elfe Noir Charbon', 'magies', 'Fiche auto V15.2.2 › Magie › U5');
+INSERT INTO magie_ethnie_secondaire (magie_id, rang, ethnie_id, ethnie_brut, origine, source_ref) VALUES ('magies/magie-de-la-corruption', 2, 'races/elfe-noir#ethnie:elfe-noir-sale', 'Elfe Noir Salé', 'magies', 'Fiche auto V15.2.2 › Magie › U5');
+INSERT INTO magie_ethnie_secondaire (magie_id, rang, ethnie_id, ethnie_brut, origine, source_ref) VALUES ('magies/magie-de-la-corruption', 3, 'races/felfe#ethnie:felfe-noir', 'Felfe Noir', 'magies', 'Fiche auto V15.2.2 › Magie › U5');

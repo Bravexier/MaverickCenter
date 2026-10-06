@@ -1,0 +1,4 @@
+-- data/rows/niveau_deblocage.sql : export déterministe, une instruction par ligne, triée par (niveau, rang). NE PAS ÉDITER À LA MAIN.
+INSERT INTO niveau_deblocage (niveau, rang, code, texte, origine, source_ref) VALUES (2, 5, 'mode_hyper', 'Mode Hyper débloqué !', 'fiche', 'Google Doc « Créer sa fiche de personnage » › Expérience/Niveau global › Niveau 2');
+INSERT INTO niveau_deblocage (niveau, rang, code, texte, origine, source_ref) VALUES (10, 8, 'mode_hyper_100', 'Mode Hyper 100% débloqué !', 'fiche', 'Google Doc « Créer sa fiche de personnage » › Expérience/Niveau global › Niveau 10');
+INSERT INTO niveau_deblocage (niveau, rang, code, texte, origine, source_ref) VALUES (10, 9, 'meditation_repos', 'Méditation redonne 6d6 + 12 chakra/Repos redonne 6d4 + 12 santé et chakra', 'fiche', 'Google Doc « Créer sa fiche de personnage » › Expérience/Niveau global › Niveau 10');

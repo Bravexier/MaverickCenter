@@ -1,0 +1,9 @@
+-- data/rows/armure_emplacement.sql : export déterministe, une instruction par ligne, triée par (id). NE PAS ÉDITER À LA MAIN.
+INSERT INTO armure_emplacement (id, nom, cout_brut, cout_rf, ordre, origine, source_ref) VALUES ('armure-complete', 'Armure Complète', '1 000 RF / 10 RO', 1000, 1, 'equipement', 'Ressources et Craft › Armures › AA28:AE28');
+INSERT INTO armure_emplacement (id, nom, cout_brut, cout_rf, ordre, origine, source_ref) VALUES ('bouclier', 'Bouclier', '250 RF / Classe', NULL, 8, 'equipement', 'Ressources et Craft › Armures › AA42:AE42');
+INSERT INTO armure_emplacement (id, nom, cout_brut, cout_rf, ordre, origine, source_ref) VALUES ('bras-droit', 'Bras Droit', '150 RF / 1,5 RO', 150, 5, 'equipement', 'Ressources et Craft › Armures › AA36:AE36');
+INSERT INTO armure_emplacement (id, nom, cout_brut, cout_rf, ordre, origine, source_ref) VALUES ('bras-gauche', 'Bras Gauche', '150 RF / 1,5 RO', 150, 4, 'equipement', 'Ressources et Craft › Armures › AA34:AE34');
+INSERT INTO armure_emplacement (id, nom, cout_brut, cout_rf, ordre, origine, source_ref) VALUES ('casque', 'Casque', '100 RF / 1 R0', 100, 2, 'equipement', 'Ressources et Craft › Armures › AA30:AE30');
+INSERT INTO armure_emplacement (id, nom, cout_brut, cout_rf, ordre, origine, source_ref) VALUES ('jambe-droit', 'Jambe Droit', '150 RF / 1,5 RO', 150, 7, 'equipement', 'Ressources et Craft › Armures › AA40:AE40');
+INSERT INTO armure_emplacement (id, nom, cout_brut, cout_rf, ordre, origine, source_ref) VALUES ('jambe-gauche', 'Jambe Gauche', '150 RF / 1,5 RO', 150, 6, 'equipement', 'Ressources et Craft › Armures › AA38:AE38');
+INSERT INTO armure_emplacement (id, nom, cout_brut, cout_rf, ordre, origine, source_ref) VALUES ('torse', 'Torse', '300 RF / 3 RO', 300, 3, 'equipement', 'Ressources et Craft › Armures › AA32:AE32');

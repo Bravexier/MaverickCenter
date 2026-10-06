@@ -1,0 +1,7 @@
+-- data/rows/metier_recette_famille.sql : export déterministe, une instruction par ligne, triée par (metier_id, famille). NE PAS ÉDITER À LA MAIN.
+INSERT INTO metier_recette_famille (metier_id, famille, mot_source, origine, source_ref) VALUES ('metiers/alchimiste', 'fiole', 'fioles', 'docs_typees', 'Google Doc « MÉTIER » › Alchimiste › Artisanat possible');
+INSERT INTO metier_recette_famille (metier_id, famille, mot_source, origine, source_ref) VALUES ('metiers/alchimiste', 'philtre', 'philtres', 'docs_typees', 'Google Doc « MÉTIER » › Alchimiste › Artisanat possible');
+INSERT INTO metier_recette_famille (metier_id, famille, mot_source, origine, source_ref) VALUES ('metiers/alchimiste', 'primitive', 'alchimie primitive', 'docs_typees', 'Google Doc « MÉTIER » › Alchimiste › Artisanat possible');
+INSERT INTO metier_recette_famille (metier_id, famille, mot_source, origine, source_ref) VALUES ('metiers/apothicaire', 'huile', 'huiles', 'docs_typees', 'Google Doc « MÉTIER » › Apothicaire › Artisanat possible');
+INSERT INTO metier_recette_famille (metier_id, famille, mot_source, origine, source_ref) VALUES ('metiers/apothicaire', 'primitive', 'alchimie primitive', 'docs_typees', 'Google Doc « MÉTIER » › Apothicaire › Artisanat possible');
+INSERT INTO metier_recette_famille (metier_id, famille, mot_source, origine, source_ref) VALUES ('metiers/apothicaire', 'remede', 'remèdes', 'docs_typees', 'Google Doc « MÉTIER » › Apothicaire › Artisanat possible');

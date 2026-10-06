@@ -1,0 +1,6 @@
+-- data/rows/accessoire_monture.sql : export déterministe, une instruction par ligne, triée par (niveau). NE PAS ÉDITER À LA MAIN.
+INSERT INTO accessoire_monture (niveau, materiau_id, prix_brut, prix_ro, effet_brut, origine, source_ref) VALUES (1, 'ressources/armures#materiau:fer', '5 Ro', 5, 'Petit effet', 'equipement', 'Ressources et Craft › Accessoires › BS2:CH3');
+INSERT INTO accessoire_monture (niveau, materiau_id, prix_brut, prix_ro, effet_brut, origine, source_ref) VALUES (2, 'ressources/armures#materiau:argent', '17 Ro', 17, 'Effet moyen', 'equipement', 'Ressources et Craft › Accessoires › BS4:CH5');
+INSERT INTO accessoire_monture (niveau, materiau_id, prix_brut, prix_ro, effet_brut, origine, source_ref) VALUES (3, 'ressources/armures#materiau:bronze', '40 Ro', 40, 'Effet puissant', 'equipement', 'Ressources et Craft › Accessoires › BS6:CH7');
+INSERT INTO accessoire_monture (niveau, materiau_id, prix_brut, prix_ro, effet_brut, origine, source_ref) VALUES (4, 'ressources/armures#materiau:or', '50 Ro', 50, 'Effet très puissant', 'equipement', 'Ressources et Craft › Accessoires › BS8:CH9');
+INSERT INTO accessoire_monture (niveau, materiau_id, prix_brut, prix_ro, effet_brut, origine, source_ref) VALUES (5, 'ressources/armures#materiau:mythril', '100 Ro', 100, 'Effet suprème', 'equipement', 'Ressources et Craft › Accessoires › BS10:CH11');

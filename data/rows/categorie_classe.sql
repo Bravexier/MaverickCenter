@@ -1,0 +1,7 @@
+-- data/rows/categorie_classe.sql : export déterministe, une instruction par ligne, triée par (id). NE PAS ÉDITER À LA MAIN.
+INSERT INTO categorie_classe (id, libelle, ordre, note, am_base, origine, source_ref) VALUES ('classe-hybride', 'Classe Hybride', 4, NULL, NULL, 'classes', 'Classe Maverick V7 › Sommaire › G1:H1');
+INSERT INTO categorie_classe (id, libelle, ordre, note, am_base, origine, source_ref) VALUES ('classe-hybride-animal', 'Classe Hybride Animal', 5, NULL, NULL, 'classes', 'Classe Maverick V7 › Sommaire › I1:J1');
+INSERT INTO categorie_classe (id, libelle, ordre, note, am_base, origine, source_ref) VALUES ('classe-magique', 'Classe Magique', 3, 'Octroie 4 AM de base par classe magique', 4, 'classes', 'Classe Maverick V7 › Sommaire › E1:F1, E10:F11');
+INSERT INTO categorie_classe (id, libelle, ordre, note, am_base, origine, source_ref) VALUES ('classe-physique-corps-a-corps', 'Classe Physique Corps à Corps', 1, NULL, NULL, 'classes', 'Classe Maverick V7 › Sommaire › A1:B1');
+INSERT INTO categorie_classe (id, libelle, ordre, note, am_base, origine, source_ref) VALUES ('classe-physique-distance', 'Classe Physique Distance', 2, NULL, NULL, 'classes', 'Classe Maverick V7 › Sommaire › C1:D1');
+INSERT INTO categorie_classe (id, libelle, ordre, note, am_base, origine, source_ref) VALUES ('classe-speciale', 'Classe spéciale', 6, NULL, NULL, 'classes', 'Classe Maverick V7 › Sommaire › K1:L1');
