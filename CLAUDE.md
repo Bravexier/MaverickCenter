@@ -11,6 +11,11 @@ manifeste `sources/sources.json`). Ne pas déduire une règle, une statistique o
 la citer depuis une source (`sources:` dans le frontmatter) ou la laisser absente. Les pages et données
 `status: example` / `meta.status: "example"` sont des **fixtures de démonstration**, pas du lore.
 
+## Décisions du propriétaire
+
+`docs/decisions-regles.md` : les choix tranchés quand les sources se contredisent (27 races, mono-classe, budgets exacts, Calme, Mode Hyper +15/+7, Archimage magique…).
+Les suivre ; ne jamais en déduire d'autres.
+
 ## Vision à long terme
 
 Le NAS est temporaire (migration à prévoir). Le site doit devenir une source rapide et navigable des règles et du lore, puis permettre de modifier sorts, dons,

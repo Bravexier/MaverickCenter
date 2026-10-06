@@ -58,6 +58,13 @@ node tools/import-gdocs.mjs --only <id>    # un seul document
 Les fichiers de `sources/raw/` et `sources/discord/` sont du matériau brut, **pas** du contenu publié :
 le wiki ne lit que `client/src/content/wiki/`. Ne les committez que si le dépôt reste privé.
 
+### Ancien wiki Fandom
+
+`https://maverick-jdr.fandom.com/fr/wiki/Progression` : l'ancien wiki du jeu. Le propriétaire du projet indique que son **tableau de progression est encore à jour** et qu'il
+fait foi pour les budgets de points (décision R3 de `docs/decisions-regles.md`). Il n'est pas encore importé : depuis une session cloud l'hôte
+`maverick-jdr.fandom.com` est bloqué par la politique réseau de l'environnement (à ajouter aux domaines autorisés, comme pour Discord et Google). Le contenu importé irait dans
+`sources/raw/` et ses règles dans `rules.json` avec cette URL en source ; tant qu'il n'est pas lu, les budgets suivent le guide et la fiche, signalés « à confirmer ».
+
 ### Google Sheets (classeurs de règles)
 
 Les classeurs (magies, classes, ressources & craft, invocations, mode hyper, « Fiche auto », index des races) ne se
