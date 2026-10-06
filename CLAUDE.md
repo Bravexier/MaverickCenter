@@ -44,7 +44,7 @@ stables, SQL portable, modifications historisées, règles en données, moteur p
 | `deploy/` | Paquet d'hébergement NAS (nginx + Docker, mot de passe), `build.sh` qui le génère, `update-nas.sh` (mise à jour auto depuis la branche `site`) |
 | `.github/workflows/publish-site.yml` | Après chaque fusion dans `main` : tests, build `HIDE_EXAMPLES=1`, publication sur la branche `site` (refuse si le dépôt n'est pas privé) |
 | `tools/build-artifact.mjs` | Version « portable » (liens relatifs, CSS/JS inline) publiée comme page privée claude.ai |
-| `data/schema.sql` | **Structure de la base SQLite** (135 tables STRICT, FTS5, 28 vues) : seule source de la structure. `npm run db:init` crée une base vide dans `var/` (ignoré par git), `npm run db:doc` régénère `docs/sql/structure.md` (vérifié par `client/test/db-schema.test.mjs`). Pas encore remplie ni lue par le site : voir `docs/sql/conception.md` pour la suite. |
+| `data/schema.sql`, `data/rows/` | **Base SQLite** : structure (135 tables STRICT, FTS5, 28 vues) et lignes versionnées (991 pages + 7 domaines). Depuis `client/` : `npm run db:build` (→ `var/maverick.db`, ignoré par git), `db:check`, `db:pages-check` / `db:sync-pages` (pages des `.md` → `data/rows`), `db:init` (base vide), `db:doc` (régénère `docs/sql/structure.md`). Le site ne la lit pas encore ; les lignes typées ne se réimportent pas encore depuis les classeurs. Voir `docs/sql/remplissage.md`. |
 | `api/` | Services CRUD de personnages (Node sans dépendance + .NET). Non utilisés par le site pour l'instant. |
 | `docs/` | `sources.md`, `content-guide.md`, `character-generator.md` |
 

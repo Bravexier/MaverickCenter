@@ -1,0 +1,4 @@
+-- data/rows/creature_ressource.sql : export déterministe, une instruction par ligne, triée par (creature_id, ressource). NE PAS ÉDITER À LA MAIN.
+INSERT INTO creature_ressource (creature_id, ressource, libelle, brut, forme, valeur, origine, source_ref) VALUES ('bestiaire/poupee-corrompu', 'corruption', 'Corruption', '10/NPM', 'par_npm', 10, 'bestiaire', 'Invocation › Appel aux golems › Y97:AA97; AB97:AC97');
+INSERT INTO creature_ressource (creature_id, ressource, libelle, brut, forme, valeur, origine, source_ref) VALUES ('bestiaire/poupee-necrotique', 'ame', 'Âme', '10', 'fixe', 10, 'bestiaire', 'Invocation › Appel aux golems › Y184:AA184; AB184:AC184');
+INSERT INTO creature_ressource (creature_id, ressource, libelle, brut, forme, valeur, origine, source_ref) VALUES ('bestiaire/poupee-sanglante', 'sang', 'Sang', '10', 'fixe', 10, 'bestiaire', 'Invocation › Appel aux golems › Y39:AA39; AB39:AC39');

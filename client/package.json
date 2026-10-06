@@ -13,7 +13,11 @@
     "test": "node --test \"test/*.test.mjs\"",
     "autolink": "node scripts/autolink.mjs",
     "db:init": "node --no-warnings scripts/db-init.mjs",
-    "db:doc": "node --no-warnings scripts/db-doc.mjs"
+    "db:doc": "node --no-warnings scripts/db-doc.mjs",
+    "db:build": "node --no-warnings scripts/db-build.mjs && node --no-warnings scripts/db-derive.mjs",
+    "db:check": "node --no-warnings scripts/db-check.mjs",
+    "db:sync-pages": "python3 -I ../tools/db/pages_md.py sync",
+    "db:pages-check": "python3 -I ../tools/db/pages_md.py check"
   },
   "dependencies": {
     "@astrojs/markdown-remark": "^7.3.1",

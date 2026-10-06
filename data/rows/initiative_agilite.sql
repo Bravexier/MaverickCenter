@@ -1,0 +1,6 @@
+-- data/rows/initiative_agilite.sql : export déterministe, une instruction par ligne, triée par (agilite). NE PAS ÉDITER À LA MAIN.
+INSERT INTO initiative_agilite (agilite, bonus, note, bonus_brut, origine, source_ref) VALUES (1, -2, NULL, '-2 initiative', 'fiche', 'Google Doc « Créer sa fiche de personnage » › Attributs › table d''initiative');
+INSERT INTO initiative_agilite (agilite, bonus, note, bonus_brut, origine, source_ref) VALUES (2, 0, NULL, '+0 initiative', 'fiche', 'Google Doc « Créer sa fiche de personnage » › Attributs › table d''initiative');
+INSERT INTO initiative_agilite (agilite, bonus, note, bonus_brut, origine, source_ref) VALUES (3, 2, NULL, '+2 initiative', 'fiche', 'Google Doc « Créer sa fiche de personnage » › Attributs › table d''initiative');
+INSERT INTO initiative_agilite (agilite, bonus, note, bonus_brut, origine, source_ref) VALUES (4, 4, NULL, '+4 initiative', 'fiche', 'Google Doc « Créer sa fiche de personnage » › Attributs › table d''initiative');
+INSERT INTO initiative_agilite (agilite, bonus, note, bonus_brut, origine, source_ref) VALUES (5, 6, 'Atteignable uniquement avec la magie du Vent ou de la Foudre/Vent', '+6 initiative', 'fiche', 'Google Doc « Créer sa fiche de personnage » › Attributs › table d''initiative');
