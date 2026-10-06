@@ -118,7 +118,7 @@ print(json.dumps({"objets": objets, "colonnes": cols}))
   }
 });
 
-test('docs/sql/structure.md est celui que le schéma produit (npm run db:doc)', () => {
+test('docs/sql/structure.md et docs/sql/apercu.md sont ceux que le schéma produit (npm run db:doc)', () => {
   const r = node('db-doc.mjs', ['--check']);
   assert.equal(r.status, 0, r.stderr);
 });

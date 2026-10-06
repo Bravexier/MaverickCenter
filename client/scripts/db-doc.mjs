@@ -1,6 +1,7 @@
-// Génère docs/sql/structure.md : la structure de la base (tables, colonnes, clés, vues) lue dans data/schema.sql.
-//   npm run db:doc                 réécrit le document
-//   npm run db:doc -- --check      n'écrit rien ; code de sortie 1 si le document n'est plus celui que le schéma produit (CI)
+// Génère docs/sql/structure.md (structure complète : tables, colonnes, clés, vues) et docs/sql/apercu.md (aperçu compact : une ligne par table, relations
+// par section) depuis data/schema.sql.
+//   npm run db:doc                 réécrit les deux documents
+//   npm run db:doc -- --check      n'écrit rien ; code de sortie 1 si un document n'est plus celui que le schéma produit (CI)
 // Les descriptions sont les commentaires du schéma (bloc `--` juste avant le CREATE, commentaire de fin de ligne de chaque colonne) ; les types, clés
 // primaires, clés étrangères et unicités viennent de SQLite lui-même (PRAGMA) : le document ne peut pas contredire le schéma. Aucune dépendance.
 import { DatabaseSync } from 'node:sqlite';
@@ -13,6 +14,7 @@ const args = process.argv.slice(2);
 const verifier = args.includes('--check');
 const schemaChemin = resolve(racine, 'data', 'schema.sql');
 const sortieChemin = resolve(racine, 'docs', 'sql', 'structure.md');
+const apercuChemin = resolve(racine, 'docs', 'sql', 'apercu.md');
 const texte = readFileSync(schemaChemin, 'utf8');
 
 // --- 1. Lecture des commentaires du schéma --------------------------------------------------------------------------------------------------------
@@ -125,14 +127,68 @@ for (const s of sections) {
 }
 const document = sortie.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
 
+// --- 4. Aperçu compact -----------------------------------------------------------------------------------------------------------------------------
+const premiereFrase = (t) => {
+  const m = /^(.{20,220}?[.!?])(\s|$)/.exec(t);
+  return (m ? m[1] : t.slice(0, 200)).trim();
+};
+function colonnesCompactes(objet) {
+  const infos = db.prepare(`PRAGMA table_info("${objet.nom}")`).all();
+  const fk = new Map(db.prepare(`PRAGMA foreign_key_list("${objet.nom}")`).all().map((f) => [f.from, f.table]));
+  const noms = new Set(infos.map((c) => c.name));
+  const provenance = noms.has('origine') && noms.has('source_ref');
+  const morceaux = infos
+    .filter((c) => !(provenance && (c.name === 'origine' || c.name === 'source_ref')))
+    .map((c) => `${c.pk ? `**${c.name}**` : c.name}${fk.has(c.name) ? `→${fk.get(c.name)}` : ''}${!c.notnull && !c.pk ? '?' : ''}`);
+  if (provenance) morceaux.push('+provenance');
+  return morceaux.join(', ');
+}
+const numeroDe = (titre) => titre.split('.')[0];
+const parTable = new Map(sections.flatMap((sec) => sec.objets.map((o) => [o.nom, sec])));
+const apercuLignes = [
+  '# Aperçu du schéma de la base',
+  '',
+  `> **Document généré** depuis [\`data/schema.sql\`](../../data/schema.sql) par \`npm run db:doc\` : ne pas l'éditer. Version compacte de [\`structure.md\`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : ${nbTables} tables, ${nbFts} tables de recherche, ${nbVues} vues.`,
+  '> Ce qui reste à trancher sur le **contenu** (pas sur la forme) est dans [`a-valider.md`](a-valider.md).',
+  '',
+  '**Lecture des colonnes** : **gras** = clé primaire ; `→table` = clé étrangère vers cette table ; `?` = peut être absente (`NULL`, jamais une valeur inventée) ; `+provenance` = `origine` (famille d\'import) et `source_ref` (classeur › onglet › plage). Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n\'a pas pu être déduite sans ambiguïté.',
+  '',
+];
+for (const sec of sections) {
+  if (!sec.objets.length) continue;
+  apercuLignes.push(`## ${sec.titre}`, '');
+  const internes = new Set();
+  const externes = new Set();
+  for (const o of sec.objets) {
+    if (o.genre !== 'table') continue;
+    for (const f of db.prepare(`PRAGMA foreign_key_list("${o.nom}")`).all()) {
+      if (f.table === 'famille') continue;
+      const cible = parTable.get(f.table);
+      if (cible === sec) internes.add(`${o.nom}→${f.table}`);
+      else if (cible) externes.add(`${o.nom}→${f.table} (§${numeroDe(cible.titre)})`);
+    }
+  }
+  if (internes.size) apercuLignes.push(`**Relations dans cette section** : ${[...internes].sort().map((x) => `\`${x}\``).join(', ')}`, '');
+  if (externes.size) apercuLignes.push(`**Vers d'autres sections** : ${[...externes].sort().map((x) => `\`${x}\``).join(', ')}`, '');
+  apercuLignes.push('| Table | Rôle | Colonnes |', '| --- | --- | --- |');
+  for (const o of sec.objets) {
+    const etiquette = o.genre === 'vue' ? ' *(vue)*' : o.genre === 'table' ? '' : ' *(recherche)*';
+    const role = [o.derivee ? '*dérivée.* ' : '', premiereFrase(o.description || '')].join('');
+    apercuLignes.push(`| \`${o.nom}\`${etiquette} | ${echappe(role)} | ${o.genre === 'vue' ? '' : echappe(colonnesCompactes(o))} |`);
+  }
+  apercuLignes.push('');
+}
+const apercu = apercuLignes.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
+
+const documents = [[sortieChemin, document, 'docs/sql/structure.md'], [apercuChemin, apercu, 'docs/sql/apercu.md']];
 if (verifier) {
-  const actuel = existsSync(sortieChemin) ? readFileSync(sortieChemin, 'utf8') : '';
-  if (actuel !== document) {
-    console.error("docs/sql/structure.md n'est plus celui que data/schema.sql produit : lancer `npm run db:doc` dans client/ puis commiter.");
+  const perimes = documents.filter(([chemin, contenu]) => (existsSync(chemin) ? readFileSync(chemin, 'utf8') : '') !== contenu).map(([, , nom]) => nom);
+  if (perimes.length) {
+    console.error(`${perimes.join(', ')} ne sont plus ceux que data/schema.sql produit : lancer \`npm run db:doc\` dans client/ puis commiter.`);
     process.exit(1);
   }
-  console.log('docs/sql/structure.md est à jour.');
+  console.log('docs/sql/structure.md et docs/sql/apercu.md sont à jour.');
 } else {
-  writeFileSync(sortieChemin, document);
-  console.log(`docs/sql/structure.md : ${nbTables} tables, ${nbFts} tables FTS5, ${nbVues} vues (${document.length} caractères).`);
+  for (const [chemin, contenu] of documents) writeFileSync(chemin, contenu);
+  console.log(`docs/sql : ${nbTables} tables, ${nbFts} tables FTS5, ${nbVues} vues (structure.md ${document.length} caractères, apercu.md ${apercu.length} caractères).`);
 }
