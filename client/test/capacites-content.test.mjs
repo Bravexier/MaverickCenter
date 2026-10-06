@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { asymmetricChoices, capacitesOfClass, checkSelection, unresolvedCapacites } from '../src/lib/capacites.mjs';
+import { asymmetricChoices, capacitesOfClass, checkSelection, nomCapacite, nomsSeRepondent, unresolvedCapacites } from '../src/lib/capacites.mjs';
 import { splitFrontmatter } from '../src/lib/wikilinks.mjs';
 
 const dir = fileURLToPath(new URL('../src/content/wiki', import.meta.url));
@@ -111,4 +111,24 @@ test('exemple du propriétaire (Archimage) : Élémentaliste ou Occultiste, et u
 
 test('les pages de classes ne portent plus de tableau d’aptitudes : les capacités sont sur leurs fiches', () => {
   for (const c of classes) assert.ok(!/^\| Lvl \d+/m.test(c.body), `${c.id} : tableau d'aptitudes résiduel`);
+});
+
+test('noms coupés sur deux cases : 33 paires dont les deux noms se répondent (« Tenir ... » / « ... ou charger ? »), voulu par le classeur pour accentuer le choix', () => {
+  const byId = new Map(capacites.map((c) => [c.id, c]));
+  const paires = new Map();
+  for (const c of capacites) for (const id of c.data.choix_exclusif_avec ?? []) paires.set([c.id, id].sort().join('|'), [c, byId.get(id)]);
+  const coupe = (nom) => /(\.{2,}|…|\s\.|^\.\s)/.test(nom.replace(/\s+$/, ' '));
+  let repondent = 0;
+  const autres = [];
+  for (const [a, b] of paires.values()) {
+    if (nomsSeRepondent(a, b)) {
+      repondent += 1;
+      assert.equal(a.data.nature, 'choix', `${a.id} : une paire de noms qui se répondent est un choix`);
+      assert.equal(a.data.niveau, b.data.niveau, `${a.id} / ${b.id} : même niveau`);
+    } else if (coupe(nomCapacite(a)) || coupe(nomCapacite(b))) autres.push([a.id, b.id].sort().join(' / '));
+  }
+  assert.equal(repondent, 33);
+  // Seule exception : au niveau 20 du Flagelleur, « 50 Nuances ... » (Sadique) et « ... Encore plus ! » (Masochiste) se répondent d'une
+  // spécialité à l'autre ; chacun est groupé avec une autre capacité de sa ligne, et les deux spécialités s'excluent déjà.
+  assert.deepEqual(autres, ['capacites/flagelleur-50-nuances / capacites/flagelleur-prescription', 'capacites/flagelleur-encore-plus / capacites/flagelleur-resilience']);
 });

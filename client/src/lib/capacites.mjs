@@ -15,6 +15,24 @@
 // L'exclusivité est lue dans les deux sens (si A cite B, B est une alternative de A).
 
 const isCapacite = (e) => e.id.startsWith('capacites/');
+
+/** Nom de la capacité tel qu'écrit dans l'onglet : sans le « (Classe) » ni le « , niveau N » ajoutés au titre pour distinguer les homonymes. */
+export function nomCapacite(ability) {
+  return ability.data.title.replace(/,\s*niveau \d+$/, '').replace(/ \([^()]*\)$/, '');
+}
+
+// Un nom « coupé » finit (ou commence) par une ellipse : « Tenir ... », « ... ou charger ? », « Vive Dieu … », « Chant . », « . de coquelicot ».
+const finitOuvert = (nom) => /(?:\.{2,}|…|\s\.)\s*$/.test(nom);
+const commenceOuvert = (nom) => /^\s*(?:\.{2,}|…|\.\s)/.test(nom);
+
+/**
+ * Deux capacités d'une même ligne dont les noms sont coupés et se complètent (« Tenir ... » / « ... ou charger ? ») : le classeur
+ * les écrit ainsi pour accentuer le choix entre les deux (confirmé par le propriétaire du projet). Ce sont bien deux capacités.
+ */
+export function nomsSeRepondent(a, b) {
+  const [x, y] = [nomCapacite(a), nomCapacite(b)];
+  return (finitOuvert(x) && commenceOuvert(y)) || (finitOuvert(y) && commenceOuvert(x));
+}
 const declared = (e) => (Array.isArray(e.data.choix_exclusif_avec) ? e.data.choix_exclusif_avec : []);
 const byPlace = (a, b) =>
   (a.data.niveau ?? 0) - (b.data.niveau ?? 0) || (a.data.ligne ?? 0) - (b.data.ligne ?? 0) || (a.data.rang ?? 0) - (b.data.rang ?? 0);

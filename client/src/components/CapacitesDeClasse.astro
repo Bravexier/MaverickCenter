@@ -1,5 +1,5 @@
 ---
-import { capacitesOfClass } from '../lib/capacites.mjs';
+import { capacitesOfClass, nomCapacite, nomsSeRepondent } from '../lib/capacites.mjs';
 import { bonusAM } from '../lib/classe-bonus.mjs';
 import { entryHref, type WikiEntry } from '../lib/wiki';
 
@@ -12,7 +12,9 @@ const { automatiques, specialites, groupes } = capacitesOfClass(entries, entry);
 const am = bonusAM(entries, entry);
 const total = automatiques.length + specialites.reduce((n, s) => n + (s.cartouche ? 1 : 0) + s.groupes.reduce((m, g) => m + g.options.length, 0), 0) + groupes.reduce((n, g) => n + g.options.length, 0);
 const detail = (e: WikiEntry) => [`Niveau ${e.data.niveau}`, e.data.type_capacite].filter(Boolean).join(' · ');
-const nom = (e: WikiEntry) => e.data.title.replace(/ \([^()]*\)$/, '');
+const nom = nomCapacite;
+// Deux noms coupés qui se répondent (« Tenir ... » / « ... ou charger ? ») : pas de « ou » de plus entre eux.
+const separateur = (a: WikiEntry, b: WikiEntry) => (nomsSeRepondent(a, b) ? '/' : 'ou');
 ---
 
 {
@@ -42,7 +44,7 @@ const nom = (e: WikiEntry) => e.data.title.replace(/ \([^()]*\)$/, '');
               <ul class="cap-options">
                 {g.options.map((e, i) => (
                   <>
-                    {i > 0 && <li class="cap-or" aria-hidden="true">ou</li>}
+                    {i > 0 && <li class="cap-or" aria-hidden="true">{separateur(g.options[i - 1], e)}</li>}
                     <li><a href={entryHref(e)}>{nom(e)}</a><div class="muted">{e.data.type_capacite}</div></li>
                   </>
                 ))}
@@ -65,7 +67,7 @@ const nom = (e: WikiEntry) => e.data.title.replace(/ \([^()]*\)$/, '');
               <ul class="cap-options">
                 {g.options.map((e, i) => (
                   <>
-                    {i > 0 && <li class="cap-or" aria-hidden="true">ou</li>}
+                    {i > 0 && <li class="cap-or" aria-hidden="true">{separateur(g.options[i - 1], e)}</li>}
                     <li><a href={entryHref(e)}>{nom(e)}</a><div class="muted">{e.data.type_capacite}</div></li>
                   </>
                 ))}
