@@ -46,14 +46,6 @@ ou
 
 Armure de Cuir complet, Bouclier rond en bois
 
-## Aptitudes de la classe
-
-| Niveau | Aptitude | Type | Effet |
-| --- | --- | --- | --- |
-| Lvl 1 | Oh hisse | Passif | Permet d'infliger 3+x dégâts avec une arme de jet.<br>x = +2 dégâts/6 niveau du lanceur. |
-| Lvl 5 | Double cible | Actif (3 fois/Combat) | Permet de viser 2 cibles différentes quand on tire 2 armes de jet en même temps. |
-| Lvl 20 | Encore plus ! | Actif (1 fois/combat) | Permet d'aditionner les dés de maîtrise de l'arme de jet avec les dés de maîtrise de l'arme version cac |
-
 ## Sous-classes
 
 ### FANTASSIN
@@ -64,16 +56,6 @@ Le Fantassin est un guerrier polyvalent combinant armes de jet et combat rapproc
 
 Grâce à sa force et sa maîtrise, il peut projeter ses armes plus loin et briser les défenses ennemies, ignorant les protections légères et certaines parades. Son agilité lui permet d’attaquer en mouvement, surprenant ses adversaires avec des charges rapides et des frappes puissantes qui déstabilisent l’ennemi.
 
-| Niveau | Aptitude | Type | Effet |
-| --- | --- | --- | --- |
-| Lvl 10 | Fantassin | Passif | +2 point de maîtrise Arme de jet, +1 point de maîtrise Arme contact au choix, +8% Arme Lourdes, Peut porter une armure intermédiaire. |
-| Lvl 10 | Bras puissant | Passif | +2 portée avec les armes de jet |
-| Lvl 10 | Jambes puissantes | Actif | Permet de sacrifier 30% de réussite pour sprinter et attaquer dans la foulée, +1d dégâts. |
-| Lvl 15 | Passe bouclier | Passif | Les armes de jet ignorent les AP apporté par les boucliers dans le cas d'une parade partielle. |
-| Lvl 15 | A deux mains | Action (2 fois/combat) | Permet de faire reculé son adversaire de 4 cases. |
-| Lvl 20 | Perceur | Passif | Le Pilum, le Javelot et la Francisque ignorent les armures légères (sauf mythril). |
-| Lvl 20 | Cogneur | Passif | Le Bolas, la Fronde et la Pierre obligent un jet de stabilité pour ne pas être étourdi un tour. |
-
 ### JONGLEUR
 
 #### Description Jongleur
@@ -81,13 +63,3 @@ Grâce à sa force et sa maîtrise, il peut projeter ses armes plus loin et bris
 Le Jongleur est un maître de l’agilité et du lancer, combinant spectacle et efficacité martiale. Spécialiste des armes légères, il enchaîne ses attaques avec fluidité et précision, frappant ses cibles avec une rapidité déconcertante.
 
 Grâce à son talent, il peut toucher des adversaires cachés, jongler entre différents types de projectiles et exploiter des failles défensives. Certains jongleurs intègrent même la magie élémentaire à leurs lancers, rendant leurs attaques encore plus imprévisibles. Son style unique fait de lui un combattant insaisissable et redouté.
-
-| Niveau | Aptitude | Type | Effet |
-| --- | --- | --- | --- |
-| Lvl 10 | Jongleur | Passif | +2 point de maîtrise Arme de jet, +1 point de maîtrise Arme contact au choix, +10% Arme Légère, Peut faire un spectacle et gagner 1d20 Ro (dans la mesure du possible). |
-| Lvl 10 | Il pleut... | Actif (2 fois/Combat) | Permet de toucher une cible qui se trouve derrière un obstacle. (dans la mesure du possible) |
-| Lvl 10 | ... Des Lames ! | Action (3 fois/Combat) | Peut lancer des objets tranchant ou perçant très près d'une cible pour l'effrayer. |
-| Lvl 15 | Jongleur Magique | Passif | Permet d'utiliser les sorts de Fer Élémentaire sur toutes les armes de jet du même type en votre possession. |
-| Lvl 15 | Dans la manche | Passif | Permet de changer de types d'armes de jet une fois dans son tour sans conditions. |
-| Lvl 20 | Maniement | Action (3 fois/Combat) | Peut lancer 3 armes de jets légères jusqu'à 3 cibles différentes pendant son attaque. (3 jets de dés sont nécessaires) |
-| Lvl 20 | Acharnement | Passif | Chaque coup porté au même endroit donne un malus de 10% aux jets de défense à la cible. |

@@ -52,43 +52,15 @@ Arme choisi en acier (x10 si arme de jet/bombe)
 
 Armure de cuir/bois
 
-## Aptitudes de la classe
-
-| Niveau | Aptitude | Type | Effet |
-| --- | --- | --- | --- |
-| Lvl 1 | Mimétisme | Variable | Permet d'avoir un don parmi une liste possible de don lié à sa magie innée. (Ne peut pas être changé une fois choisi)<br><br>Note de cellule : Le sort prend en compte la posture le moment où il a été chargé pour le calcul des dégâts de ce dernier.<br><br>La posture focus transforme ce don en IC. |
-| Lvl 5 | Vision d'acier | Passif | Avantages sur les jets pour analyser les monstres. |
-| Lvl 20 | Ultime raison | Variable | Permet d'avoir un nouveau don lié à sa magie innée. (Ne peut pas être changé une fois choisi) |
-
 ## Sous-classes
 
 ### MAGE SAPHIR
 
 #### Description Mage saphir
 
-| Niveau | Aptitude | Type | Effet |
-| --- | --- | --- | --- |
-| Lvl 10 | Mage saphir | Passif | +7% de la compétence de l'arme choisie, +7% Concentration, +2 point de maîtrise avec l'arme déterminé avant. |
-| Lvl 10 | Mime | Variable | Permet d'avoir un nouveau don lié à sa magie innée. (Ne peut pas être changé une fois choisi) |
-| Lvl 10 | Anti-monstre | Passif | Inflige un bonus de 6 dégâts contre toutes les créatures non humanoïdes |
-| Lvl 15 | Principale | Variable | Permet d'avoir un nouveau don lié à sa magie innée. (Ne peut pas être changé une fois choisi) |
-| Lvl 15 | Secondaire | Variable | Permet d'avoir un nouveau don lié à sa magie acquise. (Ne peut pas être changé une fois choisi) |
-| Lvl 20 | Attention ! | Passif | Si un monstre utilise une capacité offensif sur vous ou les alliés, chacun d'entre vous possède un bonus de +5% au jet pour l'eviter. |
-| Lvl 20 | Contesté ! | Réaction (3 fois/combat) | Si vous possèdez un don qui est identique à celui d'un monstre, vous pouvez annuler ses effets. |
-
 ### DRESSEUR BLEU
 
 #### Description Dresseur bleu
-
-| Niveau | Aptitude | Type | Effet |
-| --- | --- | --- | --- |
-| Lvl 10 | Dresseur bleu | Passif | +5% Concentration, +10% Dressage, +2D aux dégâts des armes du familier. |
-| Lvl 10 | Animal Totem | Passif | Le familier possède un bonus de 10% à tous ses jets. |
-| Lvl 10 | Animagie | Actif (2 fois/jour) | Vous pouvez utiliser le chakra de votre familier pour vos propres sorts ou l'inverse. |
-| Lvl 15 | Protecteur | Réaction (2 fois/jour) | Un jet de perception raté peut être relancé par votre Familier. |
-| Lvl 15 | Coordination | Passif | Votre familier fait toujours des dégâts sournois quand vous combattez le même ennemi. |
-| Lvl 20 | Ultime sacrifice | Réaction (1 fois/combat) | Si la prochaine attaque subit va vous mettre dans le coma, votre familier va prendre le coup a votre place. |
-| Lvl 20 | Âme double | Passif | Votre magie ne blesse pas votre familier. Les sorts de soutien appliqués sur votre familier sont également appliqué sur vous et vice-versa. |
 
 ## Tableau sans titre en bas de l'onglet
 

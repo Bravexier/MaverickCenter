@@ -47,40 +47,12 @@ Arme en fer selon la maîtrise
 
 Armure de Cuir complet
 
-## Aptitudes de la classe
-
-| Niveau | Aptitude | Type | Effet |
-| --- | --- | --- | --- |
-| Lvl 1 | Sournois | Passif | Bonus de 2d4 dégâts sournois\* avec une arme de cac ou distance (selon la maîtrise d'arme). +2d4 dégâts tout les 5 niveaux de classe tueur. |
-| Lvl 5 | Oh ?!? | Actif (1 fois/combat) | Détourne l'attention de la cible vers une autre direction. |
-| Lvl 20 | Vicieux | Passif | L'attaque sournoise ignore totalement l'AP ou AM. |
-
 ## Sous-classes
 
 ### FLÉTRISSEUR
 
 #### Description Flétrisseur
 
-| Niveau | Aptitude | Type | Effet |
-| --- | --- | --- | --- |
-| Lvl 10 | Flétrisseur | Passif | +5% de la compétence de l'arme choisie, +5% Vigueur, +5% Fermeté +1 point de maîtrise à répartir. |
-| Lvl 10 | Résilience | Passif | Avantage aux jets pour lutter contre les altérations d’état auxquelles le personnage est vulnérable. |
-| Lvl 10 | Pandémie | Passif | Les huiles appliquées sur l'arme dure deux coups de plus. |
-| Lvl 15 | Insistance | Passif | L'ennemi à un désavantage pour résister à une altération d'état dont il est vulnérable. |
-| Lvl 15 | Psychotique | Réaction (1 fois/combat) | Réussir à infliger une altération d'état à sa cible provoque une frénésie qui permet d'attaquer une seconde fois. |
-| Lvl 20 | Anti corps ... | Passif | Permet d'obtenir une immunité à l'altération d'état lié à la magie innée. |
-| Lvl 20 | ... innarêtable | Action (2 fois/combat) | Permet d'infliger une altération d'état à une cible immunisée. |
-
 ### SICAIRE
 
 #### Description Sicaire
-
-| Niveau | Aptitude | Type | Effet |
-| --- | --- | --- | --- |
-| Lvl 10 | Sicaire | Passif | +10% de la compétence de l'arme choisie, +5% Ruse, +1 point de maîtrise à répartir. |
-| Lvl 10 | Sionruos | Passif | Étend les dégâts sournois à l’autre type d’arme (cac ou distance) |
-| Lvl 10 | Sortnois | Passif | Les sorts peuvent avoir les dégâts sournois. |
-| Lvl 15 | Sournoplus | Passif | Les dégâts sournois augmente de 1d si la victime souffre d'une altération d'état. |
-| Lvl 15 | Sourmalus | Passif | Les dégâts sournois infligent un malus de 5% pour la prochaine action de l'adversaire. |
-| Lvl 20 | Sournoisable | Passif | Les dégâts sournois ne sont pas divisés par 2 par une parade/esquive partielle. |
-| Lvl 20 | Sournéfice | Passif | Sur un coup critique, une attaque sournoise inflige l'altération d'état magie innée 1 automatiquement.<br><br>Note de cellule : Si bien sur la cible n'est pas immunisé. Les golems sont immunisé aux altérations d'états qui ne sont pas leur faiblesse |

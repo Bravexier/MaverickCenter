@@ -50,7 +50,7 @@ test('contrat du frontmatter : niveau entier, nature connue, titre « Nom (Class
   }
 });
 
-test('exclusivités : symétriques, et un groupe partage classe, niveau et spécialité', () => {
+test('exclusivités : symétriques ; un groupe partage classe, niveau, ligne et nature, et la spécialité sauf pour les deux cartouches', () => {
   assert.deepEqual(asymmetricChoices(all), []);
   const byId = new Map(capacites.map((c) => [c.id, c]));
   for (const c of capacites) {
@@ -58,7 +58,14 @@ test('exclusivités : symétriques, et un groupe partage classe, niveau et spéc
       const o = byId.get(otherId);
       assert.equal(o.data.classe, c.data.classe, `${c.id} / ${otherId} : classe`);
       assert.equal(o.data.niveau, c.data.niveau, `${c.id} / ${otherId} : niveau`);
-      assert.equal(o.data.specialite, c.data.specialite, `${c.id} / ${otherId} : spécialité`);
+      assert.equal(o.data.ligne, c.data.ligne, `${c.id} / ${otherId} : ligne`);
+      assert.equal(o.data.nature, c.data.nature, `${c.id} / ${otherId} : un cartouche n'est exclusif qu'avec un cartouche, un choix qu'avec un choix`);
+      if (c.data.nature === 'specialite') {
+        // Les deux cartouches d'une même ligne s'excluent précisément parce qu'ils sont de spécialités différentes.
+        assert.notEqual(o.data.specialite, c.data.specialite, `${c.id} / ${otherId} : deux cartouches de la même spécialité`);
+      } else {
+        assert.equal(o.data.specialite, c.data.specialite, `${c.id} / ${otherId} : spécialité`);
+      }
       assert.notEqual(o.id, c.id);
     }
     assert.equal(c.data.nature === 'classe', !(c.data.choix_exclusif_avec ?? []).length, `${c.id} : une capacité de classe est sans choix, les autres ont au moins une alternative`);
