@@ -2,6 +2,9 @@
 title: "Magie de la Lumière"
 aliases: []
 tags: ["magie", "lumière"]
+nom_court: "Lumière"
+resiste_a: ["Lumière"]
+vulnerable_a: ["Ombre"]
 summary: "La magie de la lumière est une magie spécialisée dans le soin et la protection."
 sources: ["Google Sheet « Magie Maverick V8 », onglet « Lumière »", "https://docs.google.com/spreadsheets/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit"]
 status: draft

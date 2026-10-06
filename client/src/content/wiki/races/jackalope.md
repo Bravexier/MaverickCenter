@@ -3,6 +3,7 @@ title: "Jackalope"
 aliases: []
 tags: ["race"]
 summary: "Les semi-lapins, une race de grandes jambes qui sait sauter"
+magies_innees: ["Vide", "Terre", "Foudre"]
 sources: ["Google Sheet « Les races », onglet « première feuille »", "https://docs.google.com/spreadsheets/d/1KXO4Np9SnaOYopV1cUKsO-MPjNxgyJ39BEyDAai1Kg4/edit", "Google Sheet « Fiche personnage Maverick Auto V15.2.2 », onglets « Race », « Bonus Race », « Accessibilité de Classe », « Accessibilité Magie »", "https://docs.google.com/spreadsheets/d/1SvzNbdDVQyLE9cyp9U5USHBsxHpwxhtaWrFTu9CpLY4/edit"]
 status: draft
 ---

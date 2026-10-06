@@ -2,10 +2,14 @@
 import { render } from 'astro:content';
 import Base from '../../../layouts/Base.astro';
 import EntryList from '../../../components/EntryList.astro';
+import MagiesDeRace from '../../../components/MagiesDeRace.astro';
+import RacesDeMagie from '../../../components/RacesDeMagie.astro';
+import RelationsMagie from '../../../components/RelationsMagie.astro';
 import { TYPES } from '../../../lib/types.mjs';
 import { normalize } from '../../../lib/text.mjs';
 import { classCategory } from '../../../lib/class-groups.mjs';
-import { loadWiki, slugOf, typeOf, url, type WikiEntry } from '../../../lib/wiki';
+import { raceKind, raceOfClass } from '../../../lib/race-kinds.mjs';
+import { entryHref, loadWiki, slugOf, typeOf, url, type WikiEntry } from '../../../lib/wiki';
 
 export async function getStaticPaths() {
   const { entries } = await loadWiki();
@@ -13,11 +17,13 @@ export async function getStaticPaths() {
 }
 
 const { entry } = Astro.props as { entry: WikiEntry };
-const { outgoing, incoming } = await loadWiki();
+const { entries, outgoing, incoming } = await loadWiki();
 const { Content } = await render(entry);
 
 const type = TYPES[typeOf(entry)];
 const category = typeOf(entry) === 'classes' ? classCategory(entry) : null;
+const kind = typeOf(entry) === 'races' ? raceKind(entries, entry) : null;
+const raceOfThisClass = typeOf(entry) === 'classes' ? raceOfClass(entries, entry) : null;
 const mentions = outgoing.get(entry.id) ?? [];
 const mentionedBy = incoming.get(entry.id) ?? [];
 const statusNote = {
@@ -42,9 +48,25 @@ const statusNote = {
       </>
     )
   }</p>
-  <h1>{entry.data.title} <span class="badge">{type.singular}</span></h1>
+  <h1>
+    {entry.data.title}{' '}
+    {
+      kind ? (
+        <span class={`badge badge--${kind}`}>{kind === 'hybride' ? 'Race hybride' : 'Race pure'}</span>
+      ) : (
+        <span class="badge">{type.singular}</span>
+      )
+    }
+  </h1>
   {entry.data.aliases.length > 0 && <p class="muted">Aussi appelé : {entry.data.aliases.join(', ')}</p>}
   {statusNote && <p class="banner" role="note">{statusNote}</p>}
+
+  {raceOfThisClass && (
+    <p>Classe raciale de la race <a href={entryHref(raceOfThisClass)}>{raceOfThisClass.data.title}</a>.</p>
+  )}
+  {typeOf(entry) === 'races' && <MagiesDeRace entry={entry} entries={entries} />}
+  {typeOf(entry) === 'magies' && <RacesDeMagie entry={entry} entries={entries} />}
+  {typeOf(entry) === 'magies' && <RelationsMagie entry={entry} entries={entries} />}
 
   <div class="prose"><Content /></div>
 

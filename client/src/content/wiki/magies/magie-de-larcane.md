@@ -2,6 +2,10 @@
 title: "Magie de l'Arcane"
 aliases: []
 tags: ["magie", "arcane"]
+nom_court: "Arcane"
+resiste_a: ["Corruption"]
+vulnerable_a: []
+incompatible_avec: ["Sang", "Espace/Temps", "Corruption"]
 summary: "La magie de l’Arcane est l’essence pure et brute de la magie, une magie primordiale non liée aux éléments."
 sources: ["Google Sheet « Magie Maverick V8 », onglet « Arcane »", "https://docs.google.com/spreadsheets/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit"]
 status: draft

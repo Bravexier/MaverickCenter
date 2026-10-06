@@ -19,6 +19,12 @@ const wiki = defineCollection({
     sources: z.array(z.string()).default([]),
     // example = contenu de démonstration à supprimer ; draft = importé mais non relu ; verified = relu par le MJ
     status: z.enum(['example', 'draft', 'verified']).default('draft'),
+    // Champs structurés posés par l'import (voir lib/magie-relations.mjs). Absent = « la source ne donne pas de liste ».
+    magies_innees: z.array(z.string()).optional(), // races : magies innées possibles (noms courts, ordre du classeur)
+    nom_court: z.string().optional(), // magies : nom dans les listes (« Espace/Temps »)
+    resiste_a: z.array(z.string()).optional(), // magies : « Résistance magique »
+    vulnerable_a: z.array(z.string()).optional(), // magies : « Vulnérabilité magique »
+    incompatible_avec: z.array(z.string()).optional(), // magies : « Magie non compatible »
   }),
 });
 

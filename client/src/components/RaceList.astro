@@ -1,0 +1,36 @@
+---
+import { magiesOfRace } from '../lib/magie-relations.mjs';
+import { racialClassOf } from '../lib/race-kinds.mjs';
+import { entryHref, type WikiEntry } from '../lib/wiki';
+
+interface Props {
+  races: WikiEntry[];
+  entries: WikiEntry[];
+}
+const { races, entries } = Astro.props;
+const rows = races.map((race) => ({ race, magies: magiesOfRace(entries, race), racial: racialClassOf(entries, race) }));
+---
+
+<ul class="race-list">
+  {
+    rows.map(({ race, magies, racial }) => (
+      <li>
+        <a href={entryHref(race)}>{race.data.title}</a>
+        {race.data.summary && <div class="muted">{race.data.summary}</div>}
+        {racial && <div class="muted">Classe raciale : <a href={entryHref(racial)}>{racial.data.title}</a></div>}
+        {magies && (
+          <>
+            <div class="muted">
+              Magies innées : {magies.toutes ? `toutes (${magies.magies.length})` : `${magies.magies.length} sur ${magies.total}`}
+            </div>
+            {!magies.toutes && (
+              <ul class="chips">
+                {magies.magies.map((m) => <li><a class="chip" href={entryHref(m)} title={m.data.title}>{m.data.nom_court}</a></li>)}
+              </ul>
+            )}
+          </>
+        )}
+      </li>
+    ))
+  }
+</ul>

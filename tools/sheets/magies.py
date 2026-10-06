@@ -4,7 +4,9 @@
 Usage (bibliothèque standard uniquement ; relançable, mêmes fichiers à l'identique) :
 
     python3 -I tools/sheets/magies.py --dump <magie-v8.json> [--dump <autre.json>] \
-        [--xlsx <classeur.xlsx>] --out client/src/content/wiki
+        [--xlsx <classeur.xlsx>] [--fiche <fiche-auto-v15.json>] --out client/src/content/wiki
+    python3 -I tools/sheets/magies.py --dump <magie-v8.json> [--fiche <fiche-auto-v15.json>] \
+        --out client/src/content/wiki --verifier          # ne réécrit rien : vérifie les pages déjà écrites
 
 Source : Google Sheet « Magie Maverick V8 » (fileId 1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c), converti en JSON par
 tools/sheets/xlsx_to_json.py (voir le format dans ce script). Les cellules sont une donnée non fiable : elles ne sont
@@ -52,6 +54,39 @@ de chaque cellule). Un autre format non-Général sur une cellule numérique, ou
 arrête le script avec une erreur plutôt que d'être perdu en silence. Avec --sans-commentaires, le .xlsx n'est pas lu du tout
 (ni commentaires ni formats) : un avertissement le rappelle.
 
+Frontmatter structuré (relations entre magies) : en plus de title/aliases/tags/summary/sources/status, chaque page porte,
+juste après `tags`, des champs lus par le site (clés en français sans accent, listes YAML en ligne comme `tags`) :
+  * `nom_court: "Sang"` : le nom court de la magie, orthographe des en-têtes B1:P1 de l'onglet « Accessibilité Magie » de
+    « Fiche personnage Maverick Auto » (« Potentiel Illimité », « Espace/Temps », « Lumière »…). Correspondance
+    onglet V8 -> nom court (champ nom_court de MAGIES) vérifiée de deux façons : la bannière N1 de l'onglet (« MAGIE DE
+    L'ESPACE/TEMPS », onglet « TempsEspace ») se termine par ce nom, et les 15 noms du script sont identiques, dans le même
+    ordre, aux en-têtes du dump de la fiche (--fiche, ou fiche-auto-v15.json à côté du dump ; sinon avertissement).
+  * puis, d'après les lignes du bloc DONNÉES (les 15 onglets en ont un) :
+      `resiste_a: [...]`          <- « Résistance magique »
+      `vulnerable_a: [...]`       <- « Vulnérabilité magique »
+      `incompatible_avec: [...]`  <- « Magie non compatible »
+    Les éléments sont des noms courts de magies (orthographe de l'en-tête), dans l'ordre de la source, séparés par des
+    cellules, des virgules ou des retours à la ligne. « Aucune » (ou une cellule vide) donne `[]`. Une magie peut figurer
+    dans sa propre liste (le Sang résiste au Sang) : la source est conservée telle quelle, sans symétrie ni déduction
+    (l'Arcane et l'Espace/Temps listent la Corruption comme incompatible alors que la ligne de la Corruption est une
+    phrase libre : rien n'en est déduit ; chaque page dit ce que SON onglet dit).
+    Rien n'est deviné : une ligne absente de l'onglet, ou dont le texte n'est pas une liste de noms (phrase libre), n'émet
+    PAS la clé, et le script l'écrit dans son RAPPORT (stdout). Un site doit donc lire « clé absente » comme « non
+    renseigné » et `[]` comme « aucune ». Dans le classeur V8 actuel : 9 onglets n'ont pas de ligne « Magie non compatible »
+    (Potentiel illimité, Feu, Eau, Glace, Terre, Vent, Foudre, Lumière, Ombre) et celle de la Corruption est une phrase
+    libre (mono-magie, exception des Elfes noirs et des Felfes noirs) : `incompatible_avec` est omis sur ces 10 pages.
+    Un nom qui ne correspond à aucune des 15 magies (comparaison sans casse ni accents ; « Espace-Temps » est refusé),
+    « Aucune » mêlé à d'autres noms, un doublon ou deux lignes du même libellé arrêtent la page avec une erreur claire
+    (le fichier n'est pas écrit, code de sortie 1). Distinction liste de noms / phrase libre : un élément de plus de
+    40 caractères ou 3 mots, ou contenant « . : ; ( ) ! ? », fait de toute la ligne une phrase libre.
+    Les listes d'altérations d'état (« Résistance altération d'état », « Vulnérabilité altération d'état ») ne sont pas
+    des champs : elles restent dans le corps de la page, qui n'a pas changé.
+Vérification indépendante : à la fin de chaque exécution (et seule avec --verifier), check_pages() recalcule les valeurs
+attendues directement depuis les cellules brutes du dump (sans réutiliser l'analyseur de pages) et les compare au
+frontmatter des pages écrites ; tout écart (ÉCART : ...) donne le code de sortie 1. Un petit autotest des cas limites du
+contrat (autotest()) tourne à chaque lancement. Rapport (stdout) : une ligne « écrit » par page, la liste des clés omises
+avec leur raison, puis « vérification : OK (15 pages) ».
+
 Ne touche qu'aux fichiers `<out>/magies/<slug>.md` de sa famille : il refuse d'écraser un fichier qui n'est pas issu de ce
 classeur, refuse un titre déjà porté par une autre page, et n'efface rien.
 """
@@ -71,30 +106,66 @@ FILE_ID = "1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c"
 URL = "https://docs.google.com/spreadsheets/d/%s/edit" % FILE_ID
 CATEGORY = "magies"
 
-# onglet (nom exact dans le dump), nom affiché de l'onglet, titre de la page, slug, alias, tags
+# onglet (nom exact dans le dump), nom affiché de l'onglet, titre de la page, slug, nom court, alias, tags
+# nom court = en-tête de la colonne de la magie dans l'onglet « Accessibilité Magie » (B1:P1 du classeur « Fiche personnage
+# Maverick Auto », dans cet ordre) ; recoupé avec le dump de ce classeur (--fiche) et avec la bannière N1 de chaque onglet.
 MAGIES = [
     dict(onglet="Potentiel illimité (magie diffi", affiche="Potentiel illimité (magie diffi…",
-         titre="Potentiel illimité", slug="potentiel-illimite",
+         titre="Potentiel illimité", slug="potentiel-illimite", nom_court="Potentiel Illimité",
          aliases=["Absolu Incomplet", "Magie Universelle"], tags=["magie", "potentiel illimité"]),
-    dict(onglet="Sang", titre="Magie du Sang", slug="magie-du-sang", aliases=[], tags=["magie", "sang"]),
-    dict(onglet="Arcane", titre="Magie de l'Arcane", slug="magie-de-larcane", aliases=[], tags=["magie", "arcane"]),
-    dict(onglet="Corruption", titre="Magie de la Corruption", slug="magie-de-la-corruption", aliases=[],
-         tags=["magie", "corruption"]),
-    dict(onglet="TempsEspace", titre="Magie de l'Espace/Temps", slug="magie-de-lespace-temps",
+    dict(onglet="Sang", titre="Magie du Sang", slug="magie-du-sang", nom_court="Sang",
+         aliases=[], tags=["magie", "sang"]),
+    dict(onglet="Arcane", titre="Magie de l'Arcane", slug="magie-de-larcane", nom_court="Arcane",
+         aliases=[], tags=["magie", "arcane"]),
+    dict(onglet="Corruption", titre="Magie de la Corruption", slug="magie-de-la-corruption", nom_court="Corruption",
+         aliases=[], tags=["magie", "corruption"]),
+    dict(onglet="TempsEspace", titre="Magie de l'Espace/Temps", slug="magie-de-lespace-temps", nom_court="Espace/Temps",
          aliases=["Espace/Temps", "Espace-Temps", "Temps/Espace"], tags=["magie", "espace-temps"]),
-    dict(onglet="Vide", titre="Magie du Vide", slug="magie-du-vide", aliases=[], tags=["magie", "vide"]),
-    dict(onglet="Nécromancie", titre="Magie de la Nécromancie", slug="magie-de-la-necromancie",
+    dict(onglet="Vide", titre="Magie du Vide", slug="magie-du-vide", nom_court="Vide",
+         aliases=[], tags=["magie", "vide"]),
+    dict(onglet="Nécromancie", titre="Magie de la Nécromancie", slug="magie-de-la-necromancie", nom_court="Nécromancie",
          aliases=["Nécromancie"], tags=["magie", "nécromancie"]),
-    dict(onglet="Feu", titre="Magie du Feu", slug="magie-du-feu", aliases=[], tags=["magie", "feu"]),
-    dict(onglet="Eau", titre="Magie de l'Eau", slug="magie-de-leau", aliases=[], tags=["magie", "eau"]),
-    dict(onglet="Glace", titre="Magie de la Glace", slug="magie-de-la-glace", aliases=[], tags=["magie", "glace"]),
-    dict(onglet="Terre", titre="Magie de la Terre", slug="magie-de-la-terre", aliases=[], tags=["magie", "terre"]),
-    dict(onglet="Vent", titre="Magie du Vent", slug="magie-du-vent", aliases=[], tags=["magie", "vent"]),
-    dict(onglet="Foudre", titre="Magie de la Foudre", slug="magie-de-la-foudre", aliases=[], tags=["magie", "foudre"]),
-    dict(onglet="Lumière", titre="Magie de la Lumière", slug="magie-de-la-lumiere", aliases=[],
-         tags=["magie", "lumière"]),
-    dict(onglet="Ombre", titre="Magie de l'Ombre", slug="magie-de-lombre", aliases=[], tags=["magie", "ombre"]),
+    dict(onglet="Feu", titre="Magie du Feu", slug="magie-du-feu", nom_court="Feu",
+         aliases=[], tags=["magie", "feu"]),
+    dict(onglet="Eau", titre="Magie de l'Eau", slug="magie-de-leau", nom_court="Eau",
+         aliases=[], tags=["magie", "eau"]),
+    dict(onglet="Glace", titre="Magie de la Glace", slug="magie-de-la-glace", nom_court="Glace",
+         aliases=[], tags=["magie", "glace"]),
+    dict(onglet="Terre", titre="Magie de la Terre", slug="magie-de-la-terre", nom_court="Terre",
+         aliases=[], tags=["magie", "terre"]),
+    dict(onglet="Vent", titre="Magie du Vent", slug="magie-du-vent", nom_court="Vent",
+         aliases=[], tags=["magie", "vent"]),
+    dict(onglet="Foudre", titre="Magie de la Foudre", slug="magie-de-la-foudre", nom_court="Foudre",
+         aliases=[], tags=["magie", "foudre"]),
+    dict(onglet="Lumière", titre="Magie de la Lumière", slug="magie-de-la-lumiere", nom_court="Lumière",
+         aliases=[], tags=["magie", "lumière"]),
+    dict(onglet="Ombre", titre="Magie de l'Ombre", slug="magie-de-lombre", nom_court="Ombre",
+         aliases=[], tags=["magie", "ombre"]),
 ]
+
+SHORT_NAMES = [cfg["nom_court"] for cfg in MAGIES]
+
+
+def fold(text):
+    """Comparaison sans accents ni casse (cohérence des titres, noms de magies)."""
+    text = unicodedata.normalize("NFD", text)
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    return re.sub(r"\s+", " ", text.casefold()).strip()
+
+
+SHORT_BY_FOLD = {fold(n): n for n in SHORT_NAMES}
+assert len(SHORT_BY_FOLD) == len(SHORT_NAMES), "noms courts de magies en double"
+
+# Relations entre magies émises dans le frontmatter : (clé, libellé de la ligne du bloc DONNÉES)
+RELATIONS = (
+    ("resiste_a", "Résistance magique"),
+    ("vulnerable_a", "Vulnérabilité magique"),
+    ("incompatible_avec", "Magie non compatible"),
+)
+NONE_WORD = "aucune"           # « Aucune » = liste vide
+NAME_MAX_LEN, NAME_MAX_WORDS = 40, 3   # au-delà, ou avec « . : ; ( ) ! ? », un élément n'est plus un nom : phrase libre
+NOT_NAME_CHARS = ".:;()!?"
+FICHE_SHEET = "Accessibilité Magie"   # onglet de « Fiche personnage Maverick Auto » dont B1:P1 donne les noms courts
 
 # Commentaires de cellule écartés : (onglet, cellule) -> raison. Ils ne sont pas du contenu de règle.
 EXCLUDED_COMMENTS = {
@@ -165,13 +236,6 @@ def fmt(value):
 
 def is_blank(value):
     return value is None or (isinstance(value, str) and not value.strip())
-
-
-def fold(text):
-    """Comparaison sans accents ni casse (contrôle de cohérence des titres)."""
-    text = unicodedata.normalize("NFD", text)
-    text = "".join(ch for ch in text if not unicodedata.combining(ch))
-    return re.sub(r"\s+", " ", text.casefold()).strip()
 
 
 def percent_text(value, code, where):
@@ -456,6 +520,8 @@ def parse_sheet(sh, cfg):
                 page["banner_extra"].append(fmt(sh.take(r, c)))
     if banner is None or fold(banner) != fold(cfg["titre"]):
         raise ValueError("%s : bannière N1 %r incohérente avec le titre %r" % (sh.name, banner, cfg["titre"]))
+    if not fold(banner).endswith(fold(cfg["nom_court"])):
+        raise ValueError("%s : bannière N1 %r incohérente avec le nom court %r" % (sh.name, banner, cfg["nom_court"]))
     # bannière droite : MAGIE / nom / NIVEAU 1 à 5 (décoration)
     for (r, c), v in sorted(cells.items()):
         if r == 1 and c >= COL_SPELL_FIRST:
@@ -599,6 +665,76 @@ def check_all_consumed(sh):
 
 
 # --------------------------------------------------------------------------------------------------------------------
+# Relations entre magies (frontmatter structuré)
+# --------------------------------------------------------------------------------------------------------------------
+
+def looks_like_name(item):
+    """Un élément de liste est un nom (court, sans ponctuation de phrase) ; sinon la ligne est une phrase libre."""
+    return (len(item) <= NAME_MAX_LEN and len(item.split()) <= NAME_MAX_WORDS
+            and not any(ch in item for ch in NOT_NAME_CHARS))
+
+
+def parse_relation(values, where):
+    """Valeurs d'une ligne « Résistance magique » / « Vulnérabilité magique » / « Magie non compatible » (textes de
+    cellules, une ou plusieurs, éventuellement séparés par des virgules ou des retours à la ligne).
+
+    Renvoie la liste des noms courts de magies, dans l'ordre de la source ([] pour « Aucune » ou une cellule vide), ou
+    None quand le texte n'est pas une liste de noms (phrase libre : rien n'est deviné, la clé sera omise). Un nom qui ne
+    correspond à aucune des 15 magies (sans casse ni accents), « Aucune » mêlé à d'autres éléments ou un doublon lèvent
+    une ValueError."""
+    items = [part.strip() for v in values for part in re.split(r"[,\n]", fmt(v)) if part.strip()]
+    if not items:
+        return []
+    if not all(looks_like_name(i) for i in items):
+        return None
+    if any(fold(i) == NONE_WORD for i in items):
+        if len(items) == 1:
+            return []
+        raise ValueError("%s : « Aucune » mêlé à d'autres éléments : %r" % (where, items))
+    names = []
+    for item in items:
+        name = SHORT_BY_FOLD.get(fold(item))
+        if name is None:
+            raise ValueError("%s : %r ne correspond à aucune des %d magies (%s)"
+                             % (where, item, len(SHORT_NAMES), ", ".join(SHORT_NAMES)))
+        if name in names:
+            raise ValueError("%s : %s figure deux fois" % (where, name))
+        names.append(name)
+    return names
+
+
+def shorten(text, limit=90):
+    text = " ".join(text.split())
+    return text if len(text) <= limit else text[:limit - 1] + "…"
+
+
+def relation_fields(cfg, page):
+    """Champs de frontmatter issus du bloc DONNÉES : ([(clé, noms courts)], [(clé, raison de l'omission)]).
+    Une ligne absente de l'onglet ou rédigée en phrase libre n'est pas émise (la source ne donne pas de liste)."""
+    where = cfg["onglet"]
+    wanted = [label for _key, label in RELATIONS]
+    rows = {}
+    for label, vals in page["data"]:
+        if label in wanted:
+            if label in rows:
+                raise ValueError("%s : plusieurs lignes « %s »" % (where, label))
+            rows[label] = vals
+    fields, omitted = [], []
+    for key, label in RELATIONS:
+        if not page["data"]:
+            omitted.append((key, "l'onglet n'a pas de bloc DONNÉES"))
+        elif label not in rows:
+            omitted.append((key, "ligne « %s » absente du bloc DONNÉES" % label))
+        else:
+            names = parse_relation(rows[label], "%s : %s" % (where, label))
+            if names is None:
+                omitted.append((key, "texte libre dans la source : « %s »" % shorten(" ".join(rows[label]))))
+            else:
+                fields.append((key, names))
+    return fields, omitted
+
+
+# --------------------------------------------------------------------------------------------------------------------
 # Rendu Markdown
 # --------------------------------------------------------------------------------------------------------------------
 
@@ -629,13 +765,17 @@ def spell_notes(page, by_ref):
     return out
 
 
-def render(cfg, page, by_ref):
+def render(cfg, page, by_ref, relations=()):
+    """relations : [(clé, noms courts)] émises dans le frontmatter après le nom court (voir relation_fields)."""
     L = []
     summary_source = page["intro"]
     L.append("---")
     L.append("title: " + yaml_str(cfg["titre"]))
     L.append("aliases: " + yaml_list(cfg["aliases"]))
     L.append("tags: " + yaml_list(cfg["tags"]))
+    L.append("nom_court: " + yaml_str(cfg["nom_court"]))
+    for key, names in relations:
+        L.append("%s: %s" % (key, yaml_list(names)))
     if summary_source:
         L.append("summary: " + yaml_str(first_sentence(summary_source)))
     L.append("sources: " + yaml_list([
@@ -730,6 +870,169 @@ def render(cfg, page, by_ref):
 
 
 # --------------------------------------------------------------------------------------------------------------------
+# Vérification indépendante (option --verifier, et fin de chaque exécution)
+# --------------------------------------------------------------------------------------------------------------------
+# Tout ce bloc recalcule les valeurs attendues DIRECTEMENT depuis les dumps JSON (cellules brutes), sans passer par
+# Sheet / parse_sheet / parse_relation, puis les compare au frontmatter des pages écrites.
+
+def fiche_headers(path):
+    """Noms courts lus dans le dump de la fiche : en-têtes B1:P1 de « Accessibilité Magie » (15 colonnes contiguës)."""
+    with open(path, encoding="utf-8") as fh:
+        data = json.load(fh)
+    sheet = next((s for s in data["sheets"] if s["name"] == FICHE_SHEET), None)
+    if sheet is None:
+        raise ValueError("%s : onglet « %s » absent" % (path, FICHE_SHEET))
+    row1 = {c["c"]: c["v"] for c in sheet["cells"] if c["r"] == 1 and not is_blank(c["v"])}
+    cols = sorted(c for c in row1 if c >= 2)
+    if cols != list(range(2, 2 + len(cols))) or len(cols) != len(MAGIES):
+        raise ValueError("%s : en-têtes B1:P1 inattendus (colonnes %s, attendu 15 colonnes contiguës à partir de B)"
+                         % (FICHE_SHEET, [col_letters(c) for c in cols]))
+    headers = [fmt(row1[c]) for c in cols]
+    if len(set(fold(h) for h in headers)) != len(headers):
+        raise ValueError("%s : en-têtes en double : %r" % (FICHE_SHEET, headers))
+    return headers
+
+
+def find_fiche(explicit, dump_dirs):
+    if explicit:
+        if not os.path.isfile(explicit):
+            sys.exit("dump de la fiche introuvable : %s" % explicit)
+        return explicit
+    for d in dump_dirs:
+        cand = os.path.join(d, "fiche-auto-v15.json")
+        if os.path.isfile(cand):
+            return cand
+    return None
+
+
+def raw_expected(raw, headers):
+    """Valeurs attendues recalculées depuis les cellules brutes d'un onglet : {clé: liste de noms courts}.
+    Une clé absente = la source ne donne pas de liste (ligne absente ou texte libre) : rien à émettre."""
+    cells = {(c["r"], c["c"]): c["v"] for c in raw["cells"] if not is_blank(c["v"])}
+    by_fold = {fold(h): h for h in headers}
+    expected = {}
+    for key, label in RELATIONS:
+        rows = sorted(r for (r, c), v in cells.items() if c == 1 and isinstance(v, str) and v.strip() == label)
+        if not rows:
+            continue
+        if len(rows) > 1:
+            raise ValueError("%s : plusieurs lignes « %s »" % (raw["name"], label))
+        values = []
+        for (r, c), v in sorted(cells.items(), key=lambda kv: kv[0][1]):
+            if r == rows[0] and 1 < c <= 36:
+                if not isinstance(v, str):
+                    raise ValueError("%s : valeur non textuelle à droite de « %s » : %r" % (raw["name"], label, v))
+                values.append(v.strip())
+        tokens = [t.strip() for v in values for t in re.split(r"[,\n]", v) if t.strip()]
+        if any(len(t) > 40 or any(ch in t for ch in ".:;()") for t in tokens):
+            continue  # phrase libre
+        if [fold(t) for t in tokens] == ["aucune"] or not tokens:
+            expected[key] = []
+            continue
+        for t in tokens:
+            if fold(t) not in by_fold:
+                raise ValueError("%s : %r (ligne « %s ») ne correspond à aucune magie" % (raw["name"], t, label))
+        expected[key] = [by_fold[fold(t)] for t in tokens]
+    return expected
+
+
+def autotest():
+    """Cas limites du contrat des relations (exécuté à chaque lancement ; lève AssertionError en cas d'écart)."""
+    def must(cond, msg):
+        if not cond:
+            raise AssertionError("autotest : " + msg)
+
+    def refused(values):
+        try:
+            parse_relation(values, "t")
+        except ValueError:
+            return True
+        return False
+
+    must(parse_relation(["Aucune"], "t") == [], "« Aucune » -> []")
+    must(parse_relation([], "t") == [] and parse_relation(["  "], "t") == [], "cellule vide -> []")
+    must(parse_relation(["Sang", "eau", "ESPACE/TEMPS"], "t") == ["Sang", "Eau", "Espace/Temps"],
+         "une cellule par nom, casse ignorée, orthographe de l'en-tête")
+    must(parse_relation(["Necromancie, potentiel illimite\nLumiere"], "t") == ["Nécromancie", "Potentiel Illimité", "Lumière"],
+         "virgules, retours à la ligne, accents ignorés")
+    must(parse_relation(["Toutes les magies ne peuvent pas se combiner, c'est mono magie (sauf Sang)."], "t") is None,
+         "phrase libre -> None (clé omise)")
+    must(refused(["Lave"]) and refused(["Sang", "Lave"]), "nom inconnu -> erreur")
+    must(refused(["Espace-Temps"]), "orthographe hors en-tête -> erreur (rien n'est deviné)")
+    must(refused(["Aucune", "Sang"]), "« Aucune » mêlé à un nom -> erreur")
+    must(refused(["Sang", "sang"]), "doublon -> erreur")
+
+    page = {"data": [("Santé offert", ["0.0"]), ("Résistance magique", ["Sang"]), ("Vulnérabilité magique", ["Aucune"])]}
+    fields, omitted = relation_fields({"onglet": "t"}, page)
+    must(fields == [("resiste_a", ["Sang"]), ("vulnerable_a", [])], "relation_fields : champs")
+    must([k for k, _r in omitted] == ["incompatible_avec"], "relation_fields : ligne absente -> omise")
+    page = {"data": [("Résistance magique", ["Sang"]), ("Magie non compatible", ["Tout est dit en phrase libre."])]}
+    fields, omitted = relation_fields({"onglet": "t"}, page)
+    must([k for k, _r in omitted] == ["vulnerable_a", "incompatible_avec"], "relation_fields : ligne libre -> omise")
+    try:
+        relation_fields({"onglet": "t"}, {"data": [("Résistance magique", ["Sang"]), ("Résistance magique", ["Eau"])]})
+        must(False, "relation_fields : ligne en double non refusée")
+    except ValueError:
+        pass
+
+
+def read_front(path):
+    """Frontmatter d'une page -> {clé: texte brut après « clé: »} ; None si absent."""
+    with open(path, encoding="utf-8") as fh:
+        lines = fh.read().split("\n")
+    if not lines or lines[0] != "---" or "---" not in lines[1:]:
+        return None
+    front = {}
+    for line in lines[1:lines.index("---", 1)]:
+        m = re.match(r"([A-Za-z_]+): (.*)$", line)
+        if not m:
+            raise ValueError("%s : ligne de frontmatter inattendue : %r" % (path, line))
+        if m.group(1) in front:
+            raise ValueError("%s : clé de frontmatter en double : %s" % (path, m.group(1)))
+        front[m.group(1)] = m.group(2)
+    return front
+
+
+def check_pages(sheets, headers, out_root):
+    """Compare les pages écrites aux valeurs recalculées depuis les dumps ; renvoie la liste des écarts."""
+    errors = []
+    if SHORT_NAMES != headers:
+        errors.append("noms courts du script %r différents des en-têtes de « %s » %r" % (SHORT_NAMES, FICHE_SHEET, headers))
+    for cfg in MAGIES:
+        slug = cfg["slug"]
+        raw = sheets.get(cfg["onglet"])
+        path = os.path.join(out_root, CATEGORY, slug + ".md")
+        if raw is None:
+            errors.append("%s : onglet %r absent du dump" % (slug, cfg["onglet"]))
+            continue
+        try:
+            # correspondance onglet -> nom court : la bannière N1 de l'onglet se termine par un (seul) en-tête
+            banner = next((fmt(c["v"]) for c in raw["cells"] if c["r"] == 1 and c["c"] == COL_BANNER), "")
+            hits = [h for h in headers if fold(banner).endswith(fold(h))]
+            if len(hits) != 1:
+                errors.append("%s : bannière %r : en-têtes trouvés %r, attendu un seul" % (slug, banner, hits))
+                continue
+            expected = raw_expected(raw, headers)
+            front = read_front(path)
+        except (ValueError, OSError) as err:
+            errors.append("%s : %s" % (slug, err))
+            continue
+        if front is None:
+            errors.append("%s : frontmatter absent" % slug)
+            continue
+        want = {"nom_court": json.dumps(hits[0], ensure_ascii=False)}
+        for key, _label in RELATIONS:
+            if key in expected:
+                want[key] = "[" + ", ".join(json.dumps(n, ensure_ascii=False) for n in expected[key]) + "]"
+        got = {k: v for k, v in front.items() if k == "nom_court" or k in dict(RELATIONS)}
+        if got != want:
+            errors.append("%s : attendu %r, trouvé %r" % (slug, want, got))
+        if hits[0] != cfg["nom_court"]:
+            errors.append("%s : nom court du script %r différent de celui de la bannière %r" % (slug, cfg["nom_court"], hits[0]))
+    return errors
+
+
+# --------------------------------------------------------------------------------------------------------------------
 # Écriture sûre
 # --------------------------------------------------------------------------------------------------------------------
 
@@ -772,7 +1075,12 @@ def main(argv=None):
     ap.add_argument("--xlsx", help="classeur d'origine (commentaires de cellule)")
     ap.add_argument("--sans-commentaires", action="store_true", help="ne pas lire les commentaires de cellule")
     ap.add_argument("--out", required=True, help="racine du wiki (client/src/content/wiki)")
+    ap.add_argument("--fiche", help="dump JSON de la fiche « Maverick Auto » (en-têtes de « %s » ; à défaut "
+                                    "fiche-auto-v15.json à côté du dump)" % FICHE_SHEET)
+    ap.add_argument("--verifier", action="store_true",
+                    help="n'écrit rien : recalcule les valeurs attendues depuis les dumps et les compare aux pages")
     args = ap.parse_args(argv)
+    autotest()
 
     sheets = {}
     dump_dirs = []
@@ -782,6 +1090,16 @@ def main(argv=None):
         dump_dirs.append(os.path.dirname(os.path.abspath(path)))
         for raw in data["sheets"]:
             sheets.setdefault(raw["name"], raw)
+
+    fiche = find_fiche(args.fiche, dump_dirs)
+    if args.verifier:
+        if not fiche:
+            sys.exit("--verifier demande le dump de la fiche (option --fiche, ou fiche-auto-v15.json à côté du dump)")
+        errors = check_pages(sheets, fiche_headers(fiche), args.out)
+        for e in errors:
+            print("ÉCART : " + e, file=sys.stderr)
+        print("vérification : %s" % ("%d écart(s)" % len(errors) if errors else "OK (%d pages)" % len(MAGIES)))
+        return 1 if errors else 0
 
     comments = {}
     formats = {}
@@ -820,6 +1138,7 @@ def main(argv=None):
 
     written = []
     problems = []
+    report = []
     for cfg in MAGIES:
         raw = sheets.get(cfg["onglet"])
         if raw is None:
@@ -830,7 +1149,8 @@ def main(argv=None):
             page = parse_sheet(sh, cfg)
             check_all_consumed(sh)
             by_ref = comments_by_ref(cfg["onglet"], comments)
-            body = render(cfg, page, by_ref)
+            fields, omitted = relation_fields(cfg, page)
+            body = render(cfg, page, by_ref, fields)
         except ValueError as err:
             problems.append(str(err))
             continue
@@ -844,10 +1164,25 @@ def main(argv=None):
         with open(target, "w", encoding="utf-8", newline="\n") as fh:
             fh.write(body)
         written.append(target)
+        report.extend((cfg["slug"], key, reason) for key, reason in omitted)
         print("écrit %s (%d sorts, %d cellules avec commentaires)" % (target, len(page["spells"]), len(by_ref)))
+
+    print("RAPPORT relations entre magies : %d clé(s) omise(s) faute de liste dans la source%s"
+          % (len(report), " :" if report else ""))
+    for slug, key, reason in report:
+        print("  %s : %s omis (%s)" % (slug, key, reason))
 
     for p in problems:
         print("ERREUR : " + p, file=sys.stderr)
+    if fiche and not problems:
+        errors = check_pages(sheets, fiche_headers(fiche), args.out)
+        for e in errors:
+            print("ÉCART : " + e, file=sys.stderr)
+        print("vérification : %s" % ("%d écart(s)" % len(errors) if errors else "OK (%d pages)" % len(MAGIES)))
+        problems.extend(errors)
+    elif not fiche:
+        print("AVERTISSEMENT : dump de la fiche introuvable (option --fiche) : noms courts non recoupés avec les "
+              "en-têtes de « %s » et pages non vérifiées." % FICHE_SHEET, file=sys.stderr)
     return 1 if problems else 0
 
 

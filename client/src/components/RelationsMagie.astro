@@ -1,0 +1,59 @@
+---
+import { relationsOfMagie } from '../lib/magie-relations.mjs';
+import { entryHref, type WikiEntry } from '../lib/wiki';
+
+interface Props {
+  entry: WikiEntry;
+  entries: WikiEntry[];
+}
+const { entry, entries } = Astro.props;
+const rel = relationsOfMagie(entries, entry);
+const sections = [
+  { key: 'fort', title: 'Fort contre', hint: 'Résistance magique : dégâts de ces magies réduits', list: rel.fortContre },
+  { key: 'faible', title: 'Faible contre', hint: 'Vulnérabilité magique : dégâts de ces magies augmentés', list: rel.faibleContre },
+  { key: 'incompatible', title: 'Incompatible avec', hint: 'Magie non compatible : ne se combine pas avec', list: rel.incompatible },
+];
+const known = sections.some((s) => s.list !== null);
+---
+
+{
+  known && (
+    <section class="relations" id="relations-magies" aria-labelledby="relations-magies-titre">
+      <h2 id="relations-magies-titre">Relations avec les autres magies</h2>
+      {sections.map(
+        (s) =>
+          s.list !== null && (
+            <>
+              <h3 title={s.hint}>{s.title}</h3>
+              {s.list.length === 0 ? (
+                <p class="muted">Aucune.</p>
+              ) : (
+                <ul class="chips">
+                  {s.list.map((r: any) =>
+                    r.self ? (
+                      <li><span class={`chip chip--${s.key} chip--soi`} title="Cette magie, elle-même">elle-même</span></li>
+                    ) : (
+                      <li>
+                        <a
+                          class={`chip chip--${s.key}`}
+                          href={entryHref(r.entry)}
+                          title={r.source === 'deduite' ? `Citée par la page de ${r.entry.data.title}` : r.entry.data.title}
+                        >
+                          {r.entry.data.nom_court}
+                          {r.source === 'deduite' && <span aria-hidden="true"> *</span>}
+                        </a>
+                      </li>
+                    ),
+                  )}
+                </ul>
+              )}
+            </>
+          ),
+      )}
+      {rel.incompatible?.some((r: any) => r.source === 'deduite') && (
+        <p class="legend">* Incompatibilité indiquée sur la page de l’autre magie, pas sur celle-ci.</p>
+      )}
+      {rel.manquants.length > 0 && <p class="legend">Noms non reconnus : {rel.manquants.join(', ')}.</p>}
+    </section>
+  )
+}

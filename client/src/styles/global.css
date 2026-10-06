@@ -10,6 +10,7 @@
   --warn-bg: #fff3cd;
   --warn-text: #5c4400;
   --danger: #a12020;
+  --good: #2f6f47;
   --radius: 8px;
   --max: 64rem;
 }
@@ -27,6 +28,7 @@
     --warn-bg: #3b3012;
     --warn-text: #f0d98a;
     --danger: #ef8a8a;
+    --good: #7fcf9b;
   }
 }
 
@@ -42,6 +44,7 @@
   --warn-bg: #3b3012;
   --warn-text: #f0d98a;
   --danger: #ef8a8a;
+  --good: #7fcf9b;
 }
 
 * { box-sizing: border-box; }
@@ -125,3 +128,36 @@ fieldset { border: 1px solid var(--border); border-radius: var(--radius); }
 #search-form { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 
 .class-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
+
+/* Liens races ↔ magies et relations entre magies */
+.relations { margin: 1.25rem 0; padding: 0.9rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.relations h2 { margin: 0 0 0.3rem; font-size: 1.15rem; }
+.relations h3 { margin: 0.9rem 0 0.2rem; font-size: 0.95rem; color: var(--muted); font-weight: normal; }
+.relations details { margin-top: 0.7rem; }
+.relations summary { cursor: pointer; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0; margin: 0.35rem 0; list-style: none; }
+.chip { display: inline-block; padding: 0.1rem 0.7rem; border-radius: 999px; border: 1px solid var(--border); background: var(--bg); color: var(--text); text-decoration: none; font-size: 0.9rem; }
+a.chip { color: var(--accent); }
+a.chip:hover { background: var(--accent-soft); }
+.chip--fort { border-color: var(--good); }
+.chip--faible { border-color: var(--danger); }
+.chip--incompatible { border-style: dashed; border-color: var(--muted); }
+.chip--soi { font-style: italic; color: var(--muted); }
+.badge--pure { background: var(--bg); border: 1px solid var(--border); color: var(--muted); }
+.badge--hybride { background: var(--accent); color: var(--surface); }
+.race-list { list-style: none; padding: 0; }
+.race-list li { padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
+.matrix-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); margin: 1rem 0; }
+.matrix { border-collapse: collapse; font-size: 0.85rem; min-width: 100%; }
+.matrix th, .matrix td { padding: 0.3rem 0.45rem; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap; }
+.matrix thead th { position: sticky; top: 0; background: var(--surface); }
+.matrix tbody th { text-align: left; position: sticky; left: 0; background: var(--surface); font-weight: normal; }
+.matrix tr.group-row th { background: var(--accent-soft); color: var(--accent); text-align: left; position: static; }
+.matrix .yes { color: var(--good); font-weight: bold; }
+.matrix .no { color: var(--border); }
+.matrix .fort { color: var(--good); }
+.matrix .faible { color: var(--danger); }
+.matrix .incompatible { color: var(--muted); }
+.legend { color: var(--muted); font-size: 0.9rem; }
+main a { overflow-wrap: anywhere; } /* les URLs de la section « Sources » ne doivent pas élargir la page */
+.badge + .badge { margin-left: 0.3rem; }

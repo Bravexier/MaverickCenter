@@ -2,6 +2,9 @@
 title: "Magie de la Corruption"
 aliases: []
 tags: ["magie", "corruption"]
+nom_court: "Corruption"
+resiste_a: ["Arcane"]
+vulnerable_a: []
 summary: "La magie de la Corruption est l'antithèse de l’Arcane, une énergie négative qui ne connaît ni faiblesse ni résistance."
 sources: ["Google Sheet « Magie Maverick V8 », onglet « Corruption »", "https://docs.google.com/spreadsheets/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit"]
 status: draft

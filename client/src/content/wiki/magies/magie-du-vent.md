@@ -2,6 +2,9 @@
 title: "Magie du Vent"
 aliases: []
 tags: ["magie", "vent"]
+nom_court: "Vent"
+resiste_a: ["Vent", "Feu", "Glace"]
+vulnerable_a: ["Foudre", "Terre"]
 summary: "La magie du vent est une magie spécialisée dans le placement et les dégâts."
 sources: ["Google Sheet « Magie Maverick V8 », onglet « Vent »", "https://docs.google.com/spreadsheets/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit"]
 status: draft

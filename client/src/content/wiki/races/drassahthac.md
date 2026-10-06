@@ -3,6 +3,7 @@ title: "Drassah'thac"
 aliases: []
 tags: ["race"]
 summary: "Les semi-félins, 5 variétés pour un choix difficile"
+magies_innees: ["Sang", "Arcane", "Corruption", "Espace/Temps", "Vide", "Nécromancie", "Feu", "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre"]
 sources: ["Google Sheet « Les races », onglet « première feuille »", "https://docs.google.com/spreadsheets/d/1KXO4Np9SnaOYopV1cUKsO-MPjNxgyJ39BEyDAai1Kg4/edit", "Google Sheet « Fiche personnage Maverick Auto V15.2.2 », onglets « Race », « Bonus Race », « Accessibilité de Classe », « Accessibilité Magie »", "https://docs.google.com/spreadsheets/d/1SvzNbdDVQyLE9cyp9U5USHBsxHpwxhtaWrFTu9CpLY4/edit"]
 status: draft
 ---

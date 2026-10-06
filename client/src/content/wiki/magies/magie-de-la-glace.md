@@ -2,6 +2,9 @@
 title: "Magie de la Glace"
 aliases: []
 tags: ["magie", "glace"]
+nom_court: "Glace"
+resiste_a: ["Glace", "Nécromancie", "Sang"]
+vulnerable_a: ["Feu", "Vent"]
 summary: "La magie de la glace est l'une des formes les plus étonnantes de magie dans Maverick."
 sources: ["Google Sheet « Magie Maverick V8 », onglet « Glace »", "https://docs.google.com/spreadsheets/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit"]
 status: draft

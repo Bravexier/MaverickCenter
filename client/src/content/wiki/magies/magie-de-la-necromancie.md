@@ -2,6 +2,10 @@
 title: "Magie de la Nécromancie"
 aliases: ["Nécromancie"]
 tags: ["magie", "nécromancie"]
+nom_court: "Nécromancie"
+resiste_a: ["Nécromancie", "Sang", "Foudre"]
+vulnerable_a: ["Glace", "Eau"]
+incompatible_avec: ["Sang"]
 summary: "La magie de la nécromancie est une magie spécialisée dans l'invocation et l'entrave."
 sources: ["Google Sheet « Magie Maverick V8 », onglet « Nécromancie »", "https://docs.google.com/spreadsheets/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit"]
 status: draft

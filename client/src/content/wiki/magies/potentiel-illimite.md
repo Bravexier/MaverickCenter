@@ -2,6 +2,9 @@
 title: "Potentiel illimité"
 aliases: ["Absolu Incomplet", "Magie Universelle"]
 tags: ["magie", "potentiel illimité"]
+nom_court: "Potentiel Illimité"
+resiste_a: []
+vulnerable_a: []
 summary: "Le Potentiel Illimité, aussi appelé Absolu Incomplet ou Magie Universelle, est l’essence brute de la création et de la destruction."
 sources: ["Google Sheet « Magie Maverick V8 », onglet « Potentiel illimité (magie diffi… »", "https://docs.google.com/spreadsheets/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit"]
 status: draft

@@ -2,6 +2,9 @@
 title: "Magie de la Terre"
 aliases: []
 tags: ["magie", "terre"]
+nom_court: "Terre"
+resiste_a: ["Terre", "Vent", "Foudre"]
+vulnerable_a: ["Feu", "Sang"]
 summary: "La magie de la terre est une magie spécialisée dans la défense et le soutien."
 sources: ["Google Sheet « Magie Maverick V8 », onglet « Terre »", "https://docs.google.com/spreadsheets/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit"]
 status: draft
