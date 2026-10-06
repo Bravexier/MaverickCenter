@@ -161,3 +161,10 @@ a.chip:hover { background: var(--accent-soft); }
 .legend { color: var(--muted); font-size: 0.9rem; }
 main a { overflow-wrap: anywhere; } /* les URLs de la section « Sources » ne doivent pas élargir la page */
 .badge + .badge { margin-left: 0.3rem; }
+
+/* Capacités de classe : choix exclusifs */
+.cap-list { padding-left: 1.2rem; }
+.cap-group { margin: 0.5rem 0; padding: 0.5rem 0.8rem; border: 1px dashed var(--border); border-radius: var(--radius); }
+.cap-options { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; padding: 0; margin: 0.3rem 0 0; list-style: none; }
+.cap-or { color: var(--muted); font-style: italic; }
+.cap-facts { padding-left: 1.2rem; }

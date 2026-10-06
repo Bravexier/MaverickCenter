@@ -47,14 +47,6 @@ Arc Fer et arme en fer selon la maîtrise d'arme
 
 Armure de Peau, Bocle cuir
 
-## Aptitudes de la classe
-
-| Niveau | Aptitude | Type | Effet |
-| --- | --- | --- | --- |
-| Lvl 1 | Plumage | Passif | Réduit les dégâts de Terre, Eau, Ombre de 6. |
-| Lvl 5 | Vol agile | Passif | +10% Esquive en l'air. |
-| Lvl 20 | Transport | Passif | Peut transporter un autre personnage qui ne dépasse le double de son poids. |
-
 ## Sous-classes
 
 ### HIRONDELLE
@@ -65,16 +57,6 @@ L'Hirondelle est un combattant aérien d'une rapidité fulgurante, frappant avan
 
 Grâce à son agilité, il esquive avec aisance et peut se déplacer encore plus vite. Insensible à la paralysie ou capable de renforcer son plumage en une armure solide, il plonge à grande vitesse pour fondre sur ses adversaires dans un piqué dévastateur, tranchant ses cibles avec la précision d'une lame aiguisée.
 
-| Niveau | Aptitude | Type | Effet |
-| --- | --- | --- | --- |
-| Lvl 10 | Hirondelle | Passif | +7% Arc, +7% Arme Légère, 2 points de maîtrise à répartir. |
-| Lvl 10 | Plume de fer | Actif (10 munitions/Combat) | Peut utiliser ses propres ailes comme un arc léger ou lourd et ses plumes comme munitions. +2 dégâts. |
-| Lvl 10 | Mur du son | Passif | +1 à la Vitesse |
-| Lvl 15 | Isolant | Passif | Immunité à la paralysie. |
-| Lvl 15 | Acier | Action | Renforce temporairement les plumes pour former un bouclier de classe 4. (équivalent Acier) |
-| Lvl 20 | Piqué | Action (2 fois/combat) | Prend une cible, prend de la hauteur et fonce le tour suivant. Multiplie les dégâts totaux par 2. |
-| Lvl 20 | Double griffe | Passif | Permet de faire deux attaques avec les serres. |
-
 ### COLOMBE
 
 #### Description Colombe
@@ -82,13 +64,3 @@ Grâce à son agilité, il esquive avec aisance et peut se déplacer encore plus
 La Colombe est un rokh qui incarne la rapidité, la magie et la clairvoyance céleste. Maître du Vent, de la Foudre ou de la Lumière, elle réduit le coût de ses sorts et se déplace avec une aisance inégalée dans les airs.
 
 Sa connexion aux tempêtes peut lui permet de canaliser la foudre pour se téléporter instantanément sur le champ de bataille. Grâce à sa vision perçante, elle peut détecte les points faibles ennemis. Insaisissable et baignée de lumière, elle domine le ciel comme un éclair lumineux.
-
-| Niveau | Aptitude | Type | Effet |
-| --- | --- | --- | --- |
-| Lvl 10 | Colombe | Passif | +7% Magie, +7% Esquive, 2 points de maîtrise à réparti, considérer comme classe magique |
-| Lvl 10 | Parafoudre | Passif | Augmente les chance de se prendre la foudre naturelle, dégâts divisés par 5. |
-| Lvl 10 | Diurne | Passif | Les coûts pour les sortilèges de Vent, Foudre et Lumière sont réduits de 4. |
-| Lvl 15 | Serre Innée | Passif | Les serres tapent dans l'élément inné et infligent +5 dégâts. |
-| Lvl 15 | Détection | Action (2 fois/combat) | Permet de détecter un point faible de l'adversaire. |
-| Lvl 20 | Condor | Actif (3 fois/combat) | Permet d'utiliser la Foudre (Naturelle ou Magique) pour se téléporter sur le terrain. |
-| Lvl 20 | Ciel Père | Passif | Les dégâts de Foudre, Vent et Lumière augmente de +10. |

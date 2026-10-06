@@ -47,14 +47,6 @@ Arme en acier selon la maîtrise
 
 Armure de Cuir complet
 
-## Aptitudes de la classe
-
-| Niveau | Aptitude | Type | Effet |
-| --- | --- | --- | --- |
-| Lvl 1 | Rusé | Passif | +6% en acquis à la compétence Ruse et Sabotage. |
-| Lvl 5 | Frappe discrète | Passif | L'attaque discrète inflige +1d de dégâts supplémentaire. |
-| Lvl 20 | Vol ultime | Action (1 fois/semaine) | Permet de voler automatiquement un objet de son choix. |
-
 ## Sous-classes
 
 ### CAMBRIOLEUR
@@ -65,16 +57,6 @@ Le Cambrioleur est un maître de l’infiltration et du vol, se faufilant partou
 
 Son talent pour l’attaque discrète lui permet d’infliger des coups encore plus dévastateurs, ciblant les points faibles de ses adversaires avec une précision redoutable. Pensez bien à vous protéger autant que vos portes et autres coffres.
 
-| Niveau | Aptitude | Type | Effet |
-| --- | --- | --- | --- |
-| Lvl 10 | Cambrioleur | Passif | +7% Ruse, +7% Équilibre, 2 points de maîtrise à répartir |
-| Lvl 10 | Je passe | Passif | Peut passer à travers les cases occupées par les ennemis sans subir d'attaque d'opportunité |
-| Lvl 10 | Je casse | Passif | Permet aux deux dés supplémentaires de l'attaque discrète d'être au maximum des dégâts. |
-| Lvl 15 | Faussaire | Passif | +15% à la falsification de documents. (Création et modification)<br><br>Note de cellule : La falsification de document est un jet d'artisanat qui demande Social + Intelligence |
-| Lvl 15 | Tu m'a pas vu | Réaction (2 fois/Combat) | Impose deux jets à celui qui souhaite le repérer alors qu'il est discret. Il garde le plus mauvais résultat. |
-| Lvl 20 | Clé squelette | Action (3 fois/partie) | Objet étrange qui peut ouvrir presque toutes les serrures. |
-| Lvl 20 | Clé fantôme | Passif | L'attaque discrète ignore la moitié des PA de la cible (totalement en coup critique) |
-
 ### SABOTEUR
 
 #### Description Saboteur
@@ -82,13 +64,3 @@ Son talent pour l’attaque discrète lui permet d’infliger des coups encore p
 Le Saboteur est un maître des pièges et des explosifs, transformant le champ de bataille en un terrain mortel pour ses ennemis. Grâce à sa maîtrise du sabotage, il pose discrètement de redoutables pièges capables de renverser un combat en un instant.
 
 Adaptable, il peut improviser avec les ressources à sa disposition. Mêmes ses bombes peuvent être mise à contribution, forçant l’ennemi à jouer la vigilance. Attention où vous marchez ! Un saboteur est peut être déjà passé sans que vous le sachiez.
-
-| Niveau | Aptitude | Type | Effet |
-| --- | --- | --- | --- |
-| Lvl 10 | Saboteur | Passif | +10% Sabotage, +5% Reflexe, 2 points de maîtrise à répartir |
-| Lvl 10 | Plus ... | Passif | Peut poser 2 pièges en IC. |
-| Lvl 10 | ... Puissant ! | Passif | Peut poser un piège en IC et il fait 1d de dégâts supplémentaire. |
-| Lvl 15 | McGyver | Passif | Permet de remplacer les ingrédients des 2 premiers pièges par des ingrédients a peu près équivalent. |
-| Lvl 15 | Bomberman | Passif | Les bombes peuvent être posé comme des pièges |
-| Lvl 20 | Grande ... | Passif | Le piège à une zone qui correspond à un cercle de 2. |
-| Lvl 20 | ... Zone ! | Passif | Le piège peut se déclancher dans une croix de 1. |

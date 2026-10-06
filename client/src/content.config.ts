@@ -25,6 +25,15 @@ const wiki = defineCollection({
     resiste_a: z.array(z.string()).optional(), // magies : « Résistance magique »
     vulnerable_a: z.array(z.string()).optional(), // magies : « Vulnérabilité magique »
     incompatible_avec: z.array(z.string()).optional(), // magies : « Magie non compatible »
+    // Capacités de classe (une page par capacité) : voir lib/capacites.mjs
+    classe: z.string().optional(), // id de la page de la classe (« classes/barde »)
+    specialite: z.string().optional(), // bannière de spécialité (« MÉNESTREL »), absente pour une capacité de classe
+    niveau: z.number().int().optional(), // niveau de classe (« Lvl 10 » = 10)
+    nature: z.enum(['classe', 'specialite', 'choix']).optional(),
+    rang: z.number().int().optional(), // position de gauche à droite dans sa ligne
+    ligne: z.number().int().optional(), // ligne de la cellule « Lvl N » dans l'onglet (ordre de haut en bas)
+    type_capacite: z.string().optional(), // type tel qu'écrit (« Actif (1 fois/Combat) »)
+    choix_exclusif_avec: z.array(z.string()).optional(), // ids des capacités de la même ligne : une seule au choix
   }),
 });
 

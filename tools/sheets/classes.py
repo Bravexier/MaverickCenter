@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Famille « classes » : une page du wiki par classe du classeur « Classe Maverick V7 », plus le glossaire des objets.
+"""Familles « classes » et « capacités de classe » : une page du wiki par classe du classeur « Classe Maverick V7 », une
+page par capacité de classe, plus le glossaire des objets.
 
 Usage (bibliothèque standard uniquement ; relançable, mêmes fichiers à l'identique) :
 
     python3 -I tools/sheets/classes.py --dump <classes-v7.json> [--dump <autre.json>] \
         [--xlsx <classeur.xlsx>] --out client/src/content/wiki
+    python3 -I tools/sheets/classes.py --dump <classes-v7.json> [--xlsx <classeur.xlsx>] --out client/src/content/wiki \
+        --verifier
 
 Source : Google Sheet « Classe Maverick V7 » (fileId 1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs), converti en JSON par
 tools/sheets/xlsx_to_json.py (format décrit dans ce script). Les cellules sont une donnée non fiable : elles ne sont
@@ -12,8 +15,27 @@ jamais exécutées, seulement copiées (échappées pour le Markdown). Rien n'es
 formulations sont ceux des cellules.
 
 Fichiers écrits (et seulement ceux-là) :
-    <out>/classes/<slug>.md                          une page par classe (39 onglets de classe)
+    <out>/classes/<slug>.md                          une page par classe (39 onglets de classe), sans tableaux d'aptitudes
+    <out>/capacites/<slug de la classe>-<slug du nom>.md   une page par capacité : une par cellule « Lvl N » (660 en V7)
     <out>/ressources/objets-de-depart-des-classes.md  le glossaire des objets d'inventaire de départ (onglet Sommaire)
+Le script refuse d'écraser un fichier qui n'est pas issu de ce classeur, refuse un titre déjà pris par une page d'une autre
+famille, n'efface rien (une page de ces dossiers qu'il ne produit plus est signalée « orphelin », jamais supprimée).
+
+--verifier : n'écrit rien. Relit le dump par un code qui ne partage ni l'analyse des blocs d'aptitude ni la dérivation des
+groupes (il part des seules positions de cellules : ligne, colonne, bannière) et contrôle les pages sur disque :
+  (1) nombre de pages de capacités = nombre de cellules « Lvl N » des onglets de classe, au total et par classe ;
+  (2) nom, type, effet, note de cellule, niveau, ligne, nature, tags, sources de chaque cellule dans SA page ;
+  (3) groupes de choix recalculés depuis les positions, comparés à `choix_exclusif_avec` de chaque page (symétrie, même
+      classe, même niveau, même spécialité - sauf entre les deux cartouches de spécialité d'une même ligne, qui s'excluent
+      justement parce que leurs spécialités diffèrent -, ids existants, ordre de gauche à droite) ;
+  (4) Barde et Archimage comparés EN CLAIR à la liste lue sur les captures de la feuille (constante EXPECTED), plus des
+      sélections de test (SELECTIONS : les exemples du propriétaire, un Ménestrel qui a « Nouvel accord » ne peut pas prendre
+      « Écho », etc.) ;
+  titres et identifiants uniques dans tout le wiki, suffixes seulement en cas de doublon ; pages de classes sans tableaux
+  d'aptitudes mais avec tout le reste du classeur (le texte de chaque autre cellule doit s'y retrouver) ;
+  (5) aucune cellule non reconnue (le script s'arrête sur ce cas), rôle décidable pour chaque capacité, anomalies de
+      disposition et observations de noms coupés identiques à celles du script ;
+  (6) pages sur disque identiques à celles que le script écrirait (une seconde exécution ne change rien).
 
 Onglets lus
   * « Sommaire » : un tableau de liens à six colonnes, chacune titrée par une catégorie (« Classe Physique Corps à Corps »,
@@ -33,25 +55,102 @@ le script s'appuie sur les libellés, les plages fusionnées et les colonnes, pa
     « Maîtrise Arme » et « Maîtrise Armures » (libellé fusionné, texte dans le bloc juste dessous) ;
   * « Inventaire de départ » (G2), « Arme de départ » (G6), « Armure de départ » (G10), même disposition ;
   * « CHOSE A SAVOIR » (colonne Z, ligne 1 ou 2) : texte libre, présent dans certaines classes seulement ;
-  * colonne P : aptitudes de classe (Lvl 1, Lvl 5, Lvl 20) ;
-  * ligne 17 : deux bannières de sous-classe en majuscules (A17 et X17) ; sous chacune, l'aptitude « Lvl 10 » qui porte
-    le nom de la sous-classe, puis deux colonnes d'aptitudes (Lvl 10, 15, 20 chacune) ;
+  * colonne P : capacités de la classe (Lvl 1, Lvl 5, Lvl 20) ;
+  * ligne 17 : deux bannières de spécialité en majuscules (A17 et X17) ; sous chacune, le cartouche « Lvl 10 » qui porte
+    le nom de la spécialité, puis des lignes de capacités côte à côte (Lvl 10, 15, 20) ;
   * colonnes AL/AM et suivantes : textes de description (titre sur une ligne, texte dans le bloc dessous) : le premier est
     celui de la classe, les suivants ceux des sous-classes dans l'ordre des bannières ;
-  * une « aptitude » est toujours : cellule « Lvl N » (fusionnée sur 2 colonnes), nom 2 colonnes plus loin, bloc d'effet
+  * une « capacité » est toujours : cellule « Lvl N » (fusionnée sur 2 colonnes), nom 2 colonnes plus loin, bloc d'effet
     juste dessous, puis une cellule de type (Passif, Actif, Réaction, Variable…) sous le bloc d'effet.
-Variantes : Archimage n'a pas de bannières de sous-classe : ses aptitudes forment deux cartouches « Lvl 10 » (J18 et U18),
-puis trois colonnes d'aptitudes (Lvl 10, 15, 20 de haut en bas, colonnes G, O et W). La page les garde séparées : une
-section « Cartouches », puis une section par colonne (de gauche à droite), avec une note qui décrit cette disposition (le
-classeur ne dit pas à quelle colonne se rattache un cartouche : rien n'est déduit) ; Mage Bleu ajoute, sous ses aptitudes, un tableau sans titre de 14 lignes (libellé en A,
-texte en G) ; Archer et Arbalètrier ont leurs descriptions une colonne plus à gauche (AL) ; Grenadier n'en a aucune ; Tueur,
-Mage Bleu, Archer (Grand Archer), Anansi et Goleois ont des titres de description sans texte (le titre est alors publié seul). Le script s'arrête avec une erreur si une cellule non vide n'est pas reconnue : rien n'est perdu
-en silence.
+Variantes : Archimage n'a pas de bannières : deux capacités « Lvl 10 » côte à côte (J18 et U18), puis trois colonnes
+(Lvl 10, 15, 20 de haut en bas, colonnes G, O et W) et, en colonne P, ses capacités de classe ; Mage Bleu ajoute, sous ses
+capacités, un tableau sans titre de 14 lignes (libellé en A, texte en G) ; Archer et Arbalètrier ont leurs descriptions une
+colonne plus à gauche (AL) ; Grenadier n'en a aucune ; Tueur, Mage Bleu, Archer (Grand Archer), Anansi et Goleois ont des
+titres de description sans texte (le titre est alors publié seul). Le script s'arrête avec une erreur si une cellule non
+vide n'est pas reconnue : rien n'est perdu en silence.
+
+Pages de classes : description, « Chose à savoir », don de départ, maîtrises, inventaire, arme et armure de départ, titre et
+description de chaque sous-classe (bannière), tableau annexe de Mage Bleu. Les capacités n'y figurent plus (ni tableau
+« Aptitudes de la classe », ni tableaux de sous-classe, ni « Cartouches » et colonnes de l'Archimage, ni note de
+disposition) : elles sont sur leurs fiches, et le site les affiche à partir de celles-ci.
+
+RÈGLE DE LECTURE DE LA MISE EN PAGE (confirmée par le propriétaire et par les captures de la feuille ; elle seule décide du
+rôle de chaque capacité, voir derive_capacities) :
+  * colonne P : capacités de la CLASSE, reçues sans choix (nature « classe ») ;
+  * sous chaque bannière de spécialité (ligne 17) : le cartouche seul sur sa ligne qui porte le nom de la spécialité
+    (« Danseur », « Ménestrel ») = la spécialité elle-même (nature « specialite ») ; les cartouches de spécialité d'une même
+    ligne sont exclusifs entre eux ; puis des lignes de capacités côte à côte (Lvl 10, 15, 20) : TOUTES les capacités
+    d'une même ligne d'une même bannière s'excluent mutuellement, une seule au choix (nature « choix ») ;
+  * choisir une spécialité exclut toutes les capacités de l'autre : c'est la clé `specialite` (valeurs différentes dans une
+    même classe) qui le porte, pas `choix_exclusif_avec`, qui ne relie que des capacités d'une même ligne ;
+  * Archimage (pas de bannières) : une ligne de 2 ou 3 capacités = un groupe de choix (Élémentaliste/Occultiste ; Création
+    vivante/Tempus Figus/Obédience ; Moissonneur/Rituel Interdit/Pacte Noire ; Choix/Caméléon/Adaptation) ; une capacité
+    seule sur sa ligne est reçue sans choix (nature « classe »).
+  Exemple, Barde de spécialité Ménestrel : peut avoir Ménestrel, Nouvel accord, Balade guerrière, Exaltation et Chant double ;
+  pas Danseur ni ses capacités, ni Écho s'il a Nouvel accord, ni Amplification s'il a Balade guerrière, ni Touérk ! s'il a
+  Exaltation. Le script ne décide jamais d'un rôle par supposition : une première ligne de bannière qui ne porte pas
+  exactement un cartouche, ou une ligne à une seule capacité sous une bannière, arrête le script (ValueError).
+
+Pages de capacités (capacites/<slug>.md) : frontmatter (listes YAML en ligne), puis l'effet tel qu'écrit.
+    title      « <Nom> (<Classe>) » : nom de la capacité tel qu'écrit (aux espaces de bord près), nom de l'onglet (sans le
+               suffixe « (classe) ») ; si sa clé de wiki (text.mjs#normalize) est déjà prise par une autre capacité ou par
+               une page de classe, « , niveau N » est ajouté
+    aliases    []
+    tags       ["capacité de classe", "<classe en minuscules>", "<spécialité en minuscules si elle existe>"]
+    summary    l'effet entier s'il tient sur une ligne de 120 caractères au plus, sinon sa première phrase ; si la première
+               ligne n'est qu'une étiquette entre parenthèses (« (Rage) », « (Posture Focus) », « (Contre Neutre) »...) et que
+               l'effet est sur la ligne suivante, l'étiquette suivie de la première phrase de cette ligne (extrait littéral,
+               rien d'ajouté) ; clé omise si l'effet est vide
+    classe     id de la page de la classe (« classes/barde »)
+    specialite bannière de spécialité telle qu'écrite, aux espaces de bord près (« MÉNESTREL » ; la bannière de l'Orios est
+               écrite « VA-T-EN GUERRE » avec une espace finale dans la cellule : elle est retirée, comme pour tout texte de cellule
+               et pour l'étiquette qui en est tirée) ; clé omise pour une capacité de classe et pour l'Archimage
+    niveau     entier (« Lvl 10 » -> 10)
+    nature     classe (colonne P, ou seule sur sa ligne chez l'Archimage) | specialite (le cartouche qui porte le nom de la
+               spécialité) | choix (membre d'une ligne d'au moins 2 capacités)
+    rang       position de gauche à droite dans son groupe de choix, c'est-à-dire parmi les capacités de la même ligne SOUS LA
+               MÊME BANNIÈRE (1 = la plus à gauche : Nouvel accord, à droite de la ligne 29 du Barde, a le rang 1 et Écho le rang 2,
+               pas 3 et 4 ; Perroquet et Nouvel accord ont chacun le rang 1) ; cartouches de spécialité : de gauche à droite sur leur
+               ligne ; nature classe : ordre de haut en bas puis de gauche à droite. `ligne` est le numéro de la ligne de l'onglet,
+               commun aux deux bannières : (ligne, rang, specialite) identifie une capacité
+    ligne      numéro de la ligne de la cellule « Lvl N » dans l'onglet (ordonne les groupes de haut en bas comme la feuille)
+    type_capacite  cellule de type telle qu'écrite ; clé omise si le classeur n'en donne pas
+    choix_exclusif_avec  ids (capacites/<slug>) des AUTRES capacités du même groupe, de gauche à droite ; symétrique ; clé
+               omise si la capacité n'est dans aucun groupe. Les cartouches de spécialité d'une même ligne forment un
+               groupe de 2 (constante CARTOUCHES_EXCLUSIFS_DANS_CHOIX ; False les laisse sans groupe)
+    sources    libellé « Google Sheet « Classe Maverick V7 », onglet « <Classe> » » et URL du classeur ; status : draft
+  Corps : l'effet (retours à la ligne et listes « - » conservés, mêmes règles d'échappement Markdown que le reste du script),
+  puis la note de cellule éventuelle (« Note de cellule : … ») et rien d'autre : l'exclusivité et les liens sont affichés par le
+  site à partir du frontmatter.
+  Slug : <slug de la classe>-<slug du nom> ; si deux capacités le partagent (ou si le nom ne contient ni lettre ni chiffre),
+  -<niveau> est ajouté, puis -<rang> si cela ne suffit pas ; les collisions résolues sont listées à chaque exécution.
+
+Anomalies de disposition : listées à chaque exécution (« anomalie de disposition : nature | onglet | cellules »), jamais
+résolues par une supposition. Natures détectées : bannière sans capacité ; groupe de taille inattendue (2 sous une bannière,
+2 ou 3 chez l'Archimage) ; niveaux différents dans un groupe ; bannières sur des lignes différentes ; cartouches de
+spécialité sur des lignes différentes ; nom de cartouche différent de la bannière ; nom de cartouche qui ne diffère de la
+bannière que par l'accent (la casse est toujours ignorée : les bannières sont en capitales). Observé dans la version V7 du
+classeur : Mercenaire!AA22 (bannière « CHASSEUR DE PRIMES », cartouche « Chasseur prime ») ; Parleur!AA22 (« ÉLOQUENT » /
+« Eloquent ») et Arbalètrier!D22 (« GRAND ARBALETRIER » / « Grand arbalètrier ») ne diffèrent que par l'accent ; aucune autre.
+Chaque page garde le nom de son cartouche dans son titre et la bannière telle qu'écrite (espaces de bord exceptés) dans
+`specialite`. Collisions de noms V7 : Goleois « Chant . », « Chant .. », « Chant ... » (même slug, même clé de titre :
+-10/-15/-20 et « , niveau N ») et Grenadier « ... ² » (nom sans lettre ni chiffre : slug grenadier-20 ; sa clé de titre est
+celle de la classe Grenadier : « , niveau 20 »).
+
+Observations sur les noms coupés (« observation : nature | onglet | cellules », puis un bilan par nature) : un nom qui se
+termine par une suite (deux points ou plus, « … », un point isolé) suivi, sur la même ligne de l'onglet, d'une cellule dont le
+nom en commence une (« Tenir ... » / « ... ou charger ? ») est une paire. Chaque moitié a son propre effet et son propre type :
+le script en fait deux capacités, exclusives comme toute capacité d'une même ligne, et ne décide pas à la place du propriétaire
+si ces deux moitiés n'en font qu'une. V7 : 33 paires dans un même groupe de choix (Arbalètrier 4, Flagelleur 1, Frappeur 1,
+Goleois 6, Grenadier 4, Lanceur 1, Lancier 2, Maclier 3, Mage Rouge 1, Mage Vert 3, Moine 4, Tueur 1, Voleur 2) ; 1 paire à
+cheval sur deux bannières (Flagelleur!H43 « 50 Nuances ... » dans SADIQUE et X43 « ... Encore plus ! » dans MASOCHISTE : non
+exclusives par la ligne, mais déjà exclusives par le choix de spécialité) ; 3 capacités de classe dont le nom finit par « … »
+sans cellule voisine qui le reprenne (Martiale!P11 « Mon arme … », Moine!P4 « Reste en vie … » et Moine!P11 « Fidélité … »).
 
 Commentaires et hyperliens de cellule : le dump JSON ne les contient pas. Ils sont lus directement dans le .xlsx d'origine (zipfile + xml,
 sans openpyxl). L'option --xlsx donne le chemin du classeur ; à défaut le script le cherche à côté du dump
 (<dossier du dump>/../sheets/<fileId>/classeur.xlsx). Introuvable : erreur, sauf --sans-commentaires. Chaque commentaire
-est rattaché à l'aptitude dont il commente le bloc d'effet et rendu dans la colonne « Effet » sous la forme
+est rattaché à la capacité dont il commente le bloc d'effet et rendu dans son corps sous la forme
 « Note de cellule : … ». Les hyperliens externes de cellule (Mage Bleu!Z3, « CHOSE A SAVOIR », vers le classeur des
 familiers) sont lus dans le même fichier (relations de l'onglet) et rendus sous le texte de leur cellule :
 « Lien hypertexte attaché à la cellule Z3 dans le classeur d'origine : <url> » (même formule que ressources/familiers) ; un
@@ -59,12 +158,9 @@ hyperlien externe qui ne tombe sur aucun bloc connu arrête le script. Les 39 hy
 classe, vers son onglet) sont de la navigation propre au classeur : non publiés ; un hyperlien interne hors du Sommaire
 arrête le script.
 
-Titres : le titre d'une page est le nom de l'onglet. Exception : les 13 classes de la catégorie « Classe Hybride Animal »
-portent le nom d'une race jouable (Orios, Fenrir…) ; leur titre prend le suffixe « (classe) » pour rester unique dans le
-wiki (leur slug reste le nom seul, dans classes/). Le script refuse un titre déjà porté par une page d'une autre famille.
-
-Ne touche qu'aux fichiers de sa famille : il refuse d'écraser un fichier qui n'est pas issu de ce classeur, refuse un
-titre déjà pris par une autre page, et n'efface rien.
+Titres : le titre d'une page de classe est le nom de l'onglet. Exception : les 13 classes de la catégorie « Classe Hybride
+Animal » portent le nom d'une race jouable (Orios, Fenrir…) ; leur titre prend le suffixe « (classe) » pour rester unique dans
+le wiki (leur slug reste le nom seul, dans classes/). Le script refuse un titre déjà porté par une page d'une autre famille.
 """
 import argparse
 import json
@@ -80,6 +176,18 @@ WORKBOOK = "Classe Maverick V7"
 FILE_ID = "1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs"
 URL = "https://docs.google.com/spreadsheets/d/%s/edit" % FILE_ID
 CATEGORY = "classes"
+CAP_CATEGORY = "capacites"
+CAP_TAG = "capacité de classe"
+# Les cartouches de spécialité d'une même ligne (« Danseur » / « Ménestrel ») s'excluent : True les relie par
+# choix_exclusif_avec (comme les autres capacités d'une même ligne) ; False ne laisse que la clé `specialite` les distinguer.
+CARTOUCHES_EXCLUSIFS_DANS_CHOIX = True
+# Natures d'anomalie et d'observation (libellés partagés avec le vérificateur, qui recalcule les listes par son propre code)
+ANOM_CARTOUCHE_NOM = "nom de cartouche différent de la bannière"
+ANOM_CARTOUCHE_ACCENT = "nom de cartouche écrit autrement que la bannière (accent seulement)"
+OBS_PAIRE_MEME_GROUPE = "nom coupé sur deux cellules d'un même groupe de choix (exclusives)"
+OBS_PAIRE_GROUPES = "nom coupé sur deux cellules de groupes de choix différents (non exclusives par la ligne)"
+OBS_FIN_SEULE = "nom qui se termine par une suite sans cellule voisine qui la reprend"
+OBS_DEBUT_SEUL = "nom qui commence par une suite sans cellule voisine qui la précède"
 GLOSSARY_CATEGORY = "ressources"
 GLOSSARY_SLUG = "objets-de-depart-des-classes"
 GLOSSARY_TITLE = "Objets des inventaires de départ"
@@ -174,6 +282,11 @@ def fold(text):
     text = unicodedata.normalize("NFD", str(text))
     text = "".join(ch for ch in text if not unicodedata.combining(ch))
     return re.sub(r"\s+", " ", text.casefold()).strip()
+
+
+def spelling(text):
+    """Graphie sans la casse mais avec les accents, espaces normalisés (« Ménestrel » = « MÉNESTREL », ≠ « Menestrel »)."""
+    return re.sub(r"\s+", " ", str(text).casefold()).strip()
 
 
 def wiki_key(text):
@@ -651,67 +764,6 @@ def link_note(ref, url):
     return "*Lien hypertexte attaché à la cellule %s dans le classeur d'origine :* <%s>" % (ref, url)
 
 
-def ability_rows(abilities):
-    rows = []
-    for a in abilities:
-        effect = cell_md(a["desc"]) if a["desc"] else ""
-        for note in a["notes"]:
-            effect += ("<br><br>" if effect else "") + "Note de cellule : " + cell_md(note)
-        for ref, url in a["links"]:
-            effect += ("<br><br>" if effect else "") + link_note(ref, url)
-        rows.append([cell_md(a["level"]), cell_md(a["name"]), cell_md(a["type"]), effect])
-    return table(["Niveau", "Aptitude", "Type", "Effet"], rows)
-
-
-NUMBER_WORDS = {1: "un", 2: "deux", 3: "trois", 4: "quatre", 5: "cinq", 6: "six"}
-ORDINALS = {1: "Première", 2: "Deuxième", 3: "Troisième", 4: "Quatrième", 5: "Cinquième", 6: "Sixième"}
-
-
-def free_abilities(abilities):
-    """Aptitudes d'un onglet sans bannières de sous-classe (Archimage), regroupées selon leur disposition dans l'onglet.
-
-    Une colonne qui ne porte qu'une aptitude, posée au-dessus de toutes les colonnes de plusieurs aptitudes, est un
-    cartouche ; les autres colonnes sont rendues chacune dans leur section, de gauche à droite. Le rattachement d'un
-    cartouche à une colonne n'est pas écrit dans le classeur : il n'est pas déduit.
-    """
-    by_col = {}
-    for a in sorted(abilities, key=lambda a: (a["row"], a["col"])):
-        by_col.setdefault(a["col"], []).append(a)
-    top = min([group[0]["row"] for group in by_col.values() if len(group) > 1], default=None)
-    cartouches, columns = [], []
-    for col in sorted(by_col):
-        group = by_col[col]
-        if top is not None and len(group) == 1 and group[0]["row"] < top:
-            cartouches.append(group[0])
-        else:
-            columns.append((col, group))
-    cartouches.sort(key=lambda a: (a["row"], a["col"]))
-
-    def count(n, singular):
-        return "%s %s" % (NUMBER_WORDS.get(n, str(n)), singular if n == 1 else singular + "s")
-
-    def enum(items):
-        return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " et " + items[-1]
-
-    parts = []
-    if cartouches:
-        levels = sorted({a["level"] for a in cartouches})
-        parts.append("%s %s (%s %s)" % (count(len(cartouches), "cartouche"), " / ".join("« %s »" % v for v in levels),
-                                         "cellule" if len(cartouches) == 1 else "cellules",
-                                         enum([ref_of(a["row"], a["col"]) for a in cartouches])))
-    if columns:
-        parts.append("%s d'aptitudes lues de haut en bas (%s %s, de gauche à droite)"
-                     % (count(len(columns), "colonne"), "colonne" if len(columns) == 1 else "colonnes",
-                        enum([col_letters(col) for col, _ in columns])))
-    L = ["*Disposition dans le classeur d'origine : cet onglet n'a pas de bannières de sous-classe ; ses aptitudes forment "
-         + ", puis ".join(parts) + ".*", ""]
-    if cartouches:
-        L += ["### Cartouches", ""] + ability_rows(cartouches) + [""]
-    for i, (col, group) in enumerate(columns, 1):
-        L += ["### %s colonne (%s)" % (ORDINALS.get(i, "%de" % i), col_letters(col)), ""] + ability_rows(group) + [""]
-    return L
-
-
 def text_section(L, level, heading, text, links=()):
     L += ["#" * level + " " + esc_inline(heading), ""]
     if text:
@@ -755,18 +807,14 @@ def render_class(cfg, page):
         head, content = page["blocks"][label]
         text_section(L, 3, head, content)
 
-    if page["class_abilities"]:
-        L += ["## Aptitudes de la classe", ""] + ability_rows(page["class_abilities"]) + [""]
+    # Les capacités (colonne P, spécialités, groupes de choix) ne sont plus décrites ici : une fiche par capacité
+    # dans capacites/ (voir derive_capacities). La page garde le titre et la description de chaque sous-classe.
     if page["banners"]:
         L += ["## Sous-classes", ""]
         for b in page["banners"]:
             L += ["### " + esc_inline(b["name"]), ""]
             if b["desc"]:
                 text_section(L, 4, *b["desc"])
-            if b["abilities"]:
-                L += ability_rows(b["abilities"]) + [""]
-    elif page["other_abilities"]:
-        L += ["## Autres aptitudes", ""] + free_abilities(page["other_abilities"])
     if page["tail"]:
         L += ["## Tableau sans titre en bas de l'onglet", ""]
         L += table(["Libellé", "Texte"], [[cell_md(a), cell_md(b)] for a, b in page["tail"]]) + [""]
@@ -782,6 +830,258 @@ def render_glossary(title_cell, items):
                tags=["objets", "inventaire de départ"], sheet=SUMMARY_SHEET)
     L = front_matter(cfg, None)
     L += table(["Objet", "Description"], [[cell_md(n), cell_md(d)] for n, d in items])
+    return "\n".join(L) + "\n"
+
+
+# --------------------------------------------------------------------------------------------------------------------
+# Capacités : rôle, groupes de choix, une page par capacité
+# --------------------------------------------------------------------------------------------------------------------
+
+LVL_NUM_RE = re.compile(r"Lvl\s+(\d+)")
+SUMMARY_SHORT = 120   # un effet d'une seule ligne d'au plus 120 caractères sert de résumé en entier
+
+
+def level_number(sheet, ability):
+    m = LVL_NUM_RE.fullmatch(ability["level"])
+    if not m:
+        raise ValueError("%s : niveau %r de la cellule %s non reconnu (attendu « Lvl N »)"
+                         % (sheet, ability["level"], ref_of(ability["row"], ability["col"])))
+    return int(m.group(1))
+
+
+def cells_of(group):
+    return ", ".join(ref_of(c["row"], c["col"]) for c in sorted(group, key=lambda c: (c["row"], c["col"])))
+
+
+def derive_capacities(sheet, page):
+    """Capacités d'un onglet de classe avec leur rôle, lu sur leurs POSITIONS -> (liste de capacités, anomalies).
+
+    Chaque capacité est un dict : sheet, ab (l'aptitude lue), name, niveau, row (ligne de la cellule « Lvl N »), col,
+    spec (bannière de spécialité ou None), nature (classe | specialite | choix), rang, peers (les AUTRES capacités du
+    même groupe de choix, de gauche à droite ; vide hors groupe). Règle de lecture (confirmée par le propriétaire) :
+      * colonne P : capacités de la classe, sans choix (nature « classe », rang = ordre de haut en bas) ;
+      * sous chaque bannière de la ligne 17 : la première ligne ne porte qu'un cartouche, le nom de la spécialité
+        (nature « specialite ») ; les cartouches de spécialité d'une même ligne s'excluent entre eux ; chaque ligne
+        suivante porte des capacités côte à côte (Lvl 10, 15, 20) dont une seule est au choix (nature « choix ») ;
+      * sans bannière (Archimage) : une ligne de 2 capacités ou plus est un groupe de choix, une capacité seule sur sa
+        ligne est reçue sans choix (nature « classe »).
+    Les anomalies sont des tuples (nature de l'anomalie, onglet, détail), listées dans le rapport sans être résolues ;
+    quand le rôle d'une capacité ne peut pas être décidé (ligne à une seule capacité sous une bannière...), la
+    fonction lève ValueError plutôt que de supposer.
+    """
+    caps, anomalies = [], []
+
+    def new(ab, spec, nature):
+        cap = dict(sheet=sheet, ab=ab, name=ab["name"], niveau=level_number(sheet, ab), row=ab["row"], col=ab["col"],
+                   spec=spec, nature=nature, rang=None, peers=[])
+        caps.append(cap)
+        return cap
+
+    def link(group, peers=True):
+        group.sort(key=lambda c: c["col"])
+        for i, cap in enumerate(group, 1):
+            cap["rang"] = i
+            cap["peers"] = [other for other in group if other is not cap] if peers and len(group) > 1 else []
+
+    def check_group(group, expected_sizes, where=""):
+        if len(group) not in expected_sizes:
+            anomalies.append(("groupe de taille inattendue", sheet, where + cells_of(group)))
+        if len({c["niveau"] for c in group}) != 1:
+            anomalies.append(("niveaux différents dans un groupe", sheet, cells_of(group)))
+
+    class_caps = [new(ab, None, "classe") for ab in page["class_abilities"]]
+    if page["banners"]:
+        row_sets, cartouches = {}, []
+        for b in page["banners"]:
+            by_row = {}
+            for ab in b["abilities"]:
+                by_row.setdefault(ab["row"], []).append(ab)
+            if not by_row:
+                anomalies.append(("bannière sans capacité", sheet, b["name"]))
+                continue
+            rows = sorted(by_row)
+            row_sets[b["name"]] = rows
+            first = by_row[rows[0]]
+            if len(first) != 1:
+                raise ValueError("%s : première ligne de la bannière %r : %d capacités au lieu d'une (%s)"
+                                 % (sheet, b["name"], len(first), cells_of([dict(row=a["row"], col=a["col"]) for a in first])))
+            cartouches.append(new(first[0], b["name"], "specialite"))
+            for r in rows[1:]:
+                if len(by_row[r]) == 1:
+                    ab = by_row[r][0]
+                    raise ValueError("%s : ligne à une seule capacité sous la bannière %r (%s)"
+                                     % (sheet, b["name"], ref_of(ab["row"], ab["col"])))
+                group = [new(ab, b["name"], "choix") for ab in by_row[r]]
+                link(group)
+                check_group(group, (2,), "bannière %s : " % b["name"])
+        if len({tuple(rows) for rows in row_sets.values()}) > 1:
+            anomalies.append(("bannières sur des lignes différentes", sheet,
+                              " ; ".join("%s : %s" % (b["name"], ", ".join(str(r) for r in row_sets[b["name"]]))
+                                         for b in page["banners"] if b["name"] in row_sets)))
+        cart_rows = {}
+        for cap in cartouches:
+            cart_rows.setdefault(cap["row"], []).append(cap)
+        if len(cart_rows) > 1:
+            anomalies.append(("cartouches de spécialité sur des lignes différentes", sheet, cells_of(cartouches)))
+        for group in cart_rows.values():
+            link(group, peers=CARTOUCHES_EXCLUSIFS_DANS_CHOIX)
+        for cap in cartouches:
+            if spelling(cap["name"]) != spelling(cap["spec"]):
+                kind = ANOM_CARTOUCHE_ACCENT if fold(cap["name"]) == fold(cap["spec"]) else ANOM_CARTOUCHE_NOM
+                anomalies.append((kind, sheet, "%s : bannière « %s », cartouche « %s »"
+                                  % (ref_of(cap["row"], cap["col"]), cap["spec"], cap["name"])))
+    else:
+        by_row = {}
+        for ab in page["other_abilities"]:
+            by_row.setdefault(ab["row"], []).append(ab)
+        for r in sorted(by_row):
+            if len(by_row[r]) == 1:
+                class_caps.append(new(by_row[r][0], None, "classe"))
+                continue
+            group = [new(ab, None, "choix") for ab in by_row[r]]
+            link(group)
+            check_group(group, (2, 3))
+    class_caps.sort(key=lambda c: (c["row"], c["col"]))
+    for i, cap in enumerate(class_caps, 1):
+        cap["rang"] = i
+    caps.sort(key=lambda c: (c["row"], c["col"]))
+    return caps, anomalies
+
+
+CONT_END_RE = re.compile(r"(\.{2,}|…|(?<=\s)\.)$")      # « Tenir ... », « Charge lente… », « Chant . »
+CONT_START_RE = re.compile(r"(\.{2,}|…|\.(?=\s))")         # « ... ou charger ? », « … Toi ! », « . de coquelicot »
+
+
+def name_observations(caps):
+    """Noms coupés sur plusieurs cellules (« Tenir ... » / « ... ou charger ? ») -> [(nature, onglet, détail)].
+
+    Repérés par leurs seuls marqueurs de suite (deux points ou plus, « … », ou un point isolé, en fin ou en début de nom) : une
+    cellule dont le nom se termine par un marqueur et la cellule voisine de droite sur la même ligne de l'onglet dont le nom en
+    commence un forment une paire. Chaque moitié a son propre effet et son propre type : le script en fait deux capacités, sans
+    jamais décider à la place du propriétaire si elles n'en font qu'une. Les observations sont listées, jamais résolues.
+    """
+    out = []
+    lines = {}
+    for cap in caps:
+        lines.setdefault((cap["sheet"], cap["row"]), []).append(cap)
+    for (sheet, _), line in sorted(lines.items()):
+        line.sort(key=lambda c: c["col"])
+        for i, cap in enumerate(line):
+            here = "%s « %s »" % (ref_of(cap["row"], cap["col"]), cap["name"])
+            after = line[i + 1] if i + 1 < len(line) else None
+            before = line[i - 1] if i > 0 else None
+            if CONT_END_RE.search(cap["name"]):
+                if after is not None and CONT_START_RE.match(after["name"]):
+                    kind = OBS_PAIRE_MEME_GROUPE if any(after is p for p in cap["peers"]) else OBS_PAIRE_GROUPES
+                    out.append((kind, sheet, "%s + %s « %s »" % (here, ref_of(after["row"], after["col"]), after["name"])))
+                else:
+                    out.append((OBS_FIN_SEULE, sheet, here))
+            if CONT_START_RE.match(cap["name"]) and not (before is not None and CONT_END_RE.search(before["name"])):
+                out.append((OBS_DEBUT_SEUL, sheet, here))
+    return out
+
+
+def name_capacities(caps, taken_title_keys):
+    """Attribue slug, id et titre (uniques) aux capacités ; -> liste de textes décrivant les collisions résolues.
+
+    Slug : <slug de la classe>-<slug du nom> ; si deux capacités le partagent (ou si le nom ne contient ni lettre ni
+    chiffre), on ajoute -<niveau>, puis -<rang> si cela ne suffit pas. Titre : « <Nom> (<Classe>) » ; si sa clé de wiki
+    (text.mjs#normalize) est déjà prise (par une autre capacité ou par une page de classe), on ajoute « , niveau N ».
+    Une collision qui subsiste lève ValueError.
+    """
+    collisions = []
+    for cap in caps:
+        name_slug = slugify(cap["name"])
+        cap["slug_base"] = cap["class_slug"] + ("-" + name_slug if name_slug else "")
+        cap["slug_empty"] = not name_slug
+
+    def count(values):
+        n = {}
+        for v in values:
+            n[v] = n.get(v, 0) + 1
+        return n
+    n1 = count(c["slug_base"] for c in caps)
+    for cap in caps:
+        cap["slug"] = cap["slug_base"]
+        if n1[cap["slug_base"]] > 1 or cap["slug_empty"]:
+            cap["slug"] += "-%d" % cap["niveau"]
+    n2 = count(c["slug"] for c in caps)
+    for cap in caps:
+        if n2[cap["slug"]] > 1:
+            cap["slug"] += "-%d" % cap["rang"]
+    n3 = count(c["slug"] for c in caps)
+    dup = sorted(s for s, n in n3.items() if n > 1)
+    if dup:
+        raise ValueError("slugs de capacités en double après -niveau et -rang : %s" % ", ".join(dup))
+    for cap in caps:
+        cap["id"] = CAP_CATEGORY + "/" + cap["slug"]
+        if cap["slug"] != cap["slug_base"]:
+            why = "nom sans lettre ni chiffre" if cap["slug_empty"] else "collision de slug"
+            collisions.append("slug (%s) : %s « %s » (Lvl %d, cellule %s, rang %d) -> %s"
+                              % (why, cap["sheet"], cap["name"], cap["niveau"], ref_of(cap["row"], cap["col"]), cap["rang"],
+                                 cap["id"]))
+
+    for cap in caps:
+        cap["title"] = "%s (%s)" % (cap["name"], cap["sheet"])
+    keys = count([wiki_key(c["title"]) for c in caps] + list(taken_title_keys))
+    for cap in caps:
+        if keys[wiki_key(cap["title"])] > 1:
+            before = cap["title"]
+            cap["title"] += ", niveau %d" % cap["niveau"]
+            collisions.append("titre (clé de wiki déjà prise) : %r -> %r" % (before, cap["title"]))
+    keys = count([wiki_key(c["title"]) for c in caps] + list(taken_title_keys))
+    dup = sorted(c["title"] for c in caps if keys[wiki_key(c["title"])] > 1)
+    if dup:
+        raise ValueError("titres de capacités en double après « , niveau N » : %s" % ", ".join(dup))
+    return collisions
+
+
+LABEL_LINE_RE = re.compile(r"\([^()]+\)")
+
+
+def capacity_summary(effect):
+    """Effet entier s'il tient sur une ligne courte, sinon sa première phrase (jamais de texte ajouté).
+
+    Quand la première ligne n'est qu'une étiquette entre parenthèses (« (Rage) », « (Posture Focus) ») et que l'effet est sur la
+    ligne suivante, le résumé est l'étiquette suivie de la première phrase de cette ligne : un extrait littéral, mais qui informe.
+    """
+    text = fmt(effect) if effect else ""
+    if not text:
+        return None
+    if "\n" not in text and len(text) <= SUMMARY_SHORT:
+        return text
+    lines = [line.strip() for line in text.split("\n") if line.strip()]
+    if len(lines) > 1 and LABEL_LINE_RE.fullmatch(lines[0]) and not re.match(r"-\s+\S", lines[1]):
+        return lines[0] + " " + first_sentence(lines[1])
+    return first_sentence(text)
+
+
+def render_capacity(cap):
+    ab = cap["ab"]
+    tags = [CAP_TAG, cap["sheet"].lower()] + ([cap["spec"].lower()] if cap["spec"] else [])
+    L = ["---", "title: " + yaml_str(cap["title"]), "aliases: []", "tags: " + yaml_list(tags)]
+    summary = capacity_summary(ab["desc"])
+    if summary:
+        L.append("summary: " + yaml_str(summary))
+    L.append("classe: " + yaml_str(CATEGORY + "/" + cap["class_slug"]))
+    if cap["spec"]:
+        L.append("specialite: " + yaml_str(cap["spec"]))
+    L += ["niveau: %d" % cap["niveau"], "nature: " + yaml_str(cap["nature"]), "rang: %d" % cap["rang"],
+          "ligne: %d" % cap["row"]]
+    if ab["type"]:
+        L.append("type_capacite: " + yaml_str(ab["type"]))
+    if cap["peers"]:
+        L.append("choix_exclusif_avec: " + yaml_list([p["id"] for p in cap["peers"]]))
+    L += ["sources: " + yaml_list(["Google Sheet « %s », onglet « %s »" % (WORKBOOK, cap["sheet"]), URL]),
+          "status: draft", "---", ""]
+    body = md_text(ab["desc"]) if ab["desc"] else []
+    for note in ab["notes"]:
+        body += ([""] if body else []) + md_text("Note de cellule : " + note)
+    for ref, url in ab["links"]:
+        body += ([""] if body else []) + [link_note(ref, url)]
+    L += body
+    while L and L[-1] == "":
+        L.pop()
     return "\n".join(L) + "\n"
 
 
@@ -821,17 +1121,624 @@ def is_ours(path):
     return URL in head and "« %s »" % WORKBOOK in head
 
 
-def main(argv=None):
-    ap = argparse.ArgumentParser(description="Génère les pages « classes » du wiki depuis le dump de « %s »." % WORKBOOK)
-    ap.add_argument("--dump", action="append", required=True, help="dump JSON de xlsx_to_json.py (répétable)")
-    ap.add_argument("--xlsx", help="classeur d'origine (commentaires et hyperliens de cellule)")
-    ap.add_argument("--sans-commentaires", action="store_true",
-                    help="ne pas lire les commentaires ni les hyperliens de cellule (.xlsx)")
-    ap.add_argument("--out", required=True, help="racine du wiki (client/src/content/wiki)")
-    args = ap.parse_args(argv)
+# --------------------------------------------------------------------------------------------------------------------
+# Vérificateur (--verifier) : n'écrit rien
+# --------------------------------------------------------------------------------------------------------------------
+# Écrit AVANT le code qui produit les pages de capacités. Il ne réutilise NI l'analyse des blocs d'aptitude du script
+# (parse_ability), NI la dérivation des groupes de choix (derive_capacities) : il relit les positions de cellules du dump
+# (ligne, colonne, bannière), recalcule seul rôle, rang et exclusivités, puis compare aux pages écrites sur disque.
 
+V_COL_CLASSE = 16         # colonne P
+V_ROW_BANNIERES = 17
+V_COL_TEXTES = 38         # AL : à partir d'ici, textes de description (pas de capacités)
+V_LVL = re.compile(r"Lvl (\d+)")
+V_REF = re.compile(r"([A-Z]+)(\d+)")
+
+# Cas de test lus EN CLAIR sur les captures de la feuille (images/4.png : onglet Barde ; images/5.png : bas de l'onglet
+# Archimage, donc sans ses capacités de colonne P de niveaux 1 et 5, lues dans le dump). Pour chaque classe : capacités
+# sans choix (niveau, nom), cartouches de spécialité exclusifs entre eux (bannière, niveau, nom), puis les lignes de
+# capacités côte à côte, de haut en bas : (niveau, [noms de gauche à droite]) ; une seule au choix par ligne.
+EXPECTED = {
+    "Barde": dict(
+        classe=[(1, "Prestation"), (5, "Son perturbant"), (20, "Chant double")],
+        specialites=[("DANSEUR", 10, "Danseur"), ("MÉNESTREL", 10, "Ménestrel")],
+        lignes={
+            "DANSEUR": [(10, ["Perroquet", "Contournement"]), (15, ["Shrapnel", "Marche lunaire"]),
+                        (20, ["A bas les Badauds", "Bain de foules"])],
+            "MÉNESTREL": [(10, ["Nouvel accord", "Écho"]), (15, ["Balade guerrière", "Amplification"]),
+                          (20, ["Exaltation", "Touérk !"])],
+        }),
+    "Archimage": dict(
+        classe=[(1, "Magie-stral"), (5, "Grimoire"), (20, "Semi complet")],
+        specialites=[],
+        lignes={None: [(10, ["Élémentaliste", "Occultiste"]), (10, ["Création vivante", "Tempus Figus", "Obédience"]),
+                       (15, ["Moissonneur", "Rituel Interdit", "Pacte Noire"]), (20, ["Choix", "Caméléon", "Adaptation"])]}),
+}
+
+# Sélections de test (exemples du propriétaire) : (classe, capacités prises, {capacité refusée: capacité qui la bloque}).
+# Une capacité refusée doit être en conflit avec celle qui la bloque ; les capacités prises ne doivent pas l'être entre elles.
+SELECTIONS = [
+    ("Barde", ["Ménestrel", "Nouvel accord", "Balade guerrière", "Exaltation", "Chant double"],
+     {"Danseur": "Ménestrel", "Écho": "Nouvel accord", "Amplification": "Balade guerrière", "Touérk !": "Exaltation",
+      "Perroquet": "Ménestrel", "Shrapnel": "Ménestrel", "Bain de foules": "Ménestrel"}),
+    ("Barde", ["Danseur", "Perroquet", "Shrapnel", "Bain de foules", "Prestation", "Son perturbant"],
+     {"Ménestrel": "Danseur", "Contournement": "Perroquet", "Marche lunaire": "Shrapnel", "A bas les Badauds": "Bain de foules",
+      "Nouvel accord": "Danseur"}),
+    ("Archimage", ["Élémentaliste", "Création vivante", "Moissonneur", "Choix", "Semi complet", "Magie-stral", "Grimoire"],
+     {"Occultiste": "Élémentaliste", "Tempus Figus": "Création vivante", "Obédience": "Création vivante",
+      "Rituel Interdit": "Moissonneur", "Pacte Noire": "Moissonneur", "Caméléon": "Choix", "Adaptation": "Choix"}),
+]
+
+
+def v_cn(letters):
+    n = 0
+    for ch in letters:
+        n = n * 26 + (ord(ch) - 64)
+    return n
+
+
+def v_read_sheet(raw):
+    """Onglet brut -> ({(ligne, colonne): texte} des cellules textuelles non vides, {coin haut gauche: coin bas droit})."""
+    cells = {}
+    for c in raw["cells"]:
+        v = c["v"]
+        if isinstance(v, str) and v.strip():
+            cells[(c["r"], c["c"])] = v.replace("\r\n", "\n").replace("\r", "\n").strip()
+    merges = {}
+    for rng in raw.get("merged", []):
+        m = re.fullmatch(r"([A-Z]+)(\d+):([A-Z]+)(\d+)", rng)
+        merges[(int(m.group(2)), v_cn(m.group(1)))] = (int(m.group(4)), v_cn(m.group(3)))
+    return cells, merges
+
+
+def v_sheet_abilities(name, raw, notes):
+    """Capacités d'un onglet de classe lues par leurs seules positions -> (liste de dicts, anomalies, erreurs).
+
+    Les anomalies sont des tuples (nature de l'anomalie, onglet, détail) ; les erreurs sont les cas où le rôle d'une
+    capacité ne peut pas être décidé (aucune supposition n'est faite).
+    """
+    cells, merges = v_read_sheet(raw)
+    lvl_set = {k for k, v in cells.items() if v.startswith("Lvl")}
+    banners = sorted((c, v) for (r, c), v in cells.items() if r == V_ROW_BANNIERES and c < V_COL_TEXTES)
+    abilities, anomalies, errors = [], [], []
+    for (r, c) in sorted(lvl_set):
+        m = V_LVL.fullmatch(cells[(r, c)])
+        if not m:
+            errors.append("%s!%s : niveau %r non reconnu" % (name, ref_of(r, c), cells[(r, c)]))
+            continue
+        right = sorted(cc for (rr, cc) in cells if rr == r and cc > c)
+        nm = cells.get((r, right[0])) if right and (r, right[0]) not in lvl_set else None
+        eff = cells.get((r + 1, c))
+        r2, c2 = merges.get((r + 1, c), (r + 1, c))
+        typ, typ_row = None, None
+        for rr in range(r2 + 1, r2 + 4):
+            if (rr, c) in lvl_set:
+                break
+            if (rr, c) in cells:
+                typ, typ_row = cells[(rr, c)], rr
+                break
+        found = []
+        for ref in sorted(notes, key=lambda x: (int(V_REF.fullmatch(x).group(2)), v_cn(V_REF.fullmatch(x).group(1)))):
+            nr, nc = int(V_REF.fullmatch(ref).group(2)), v_cn(V_REF.fullmatch(ref).group(1))
+            if r + 1 <= nr <= r2 and c <= nc <= c2:
+                found.append(notes[ref])
+        used = {(r, c), (r + 1, c)} | ({(r, right[0])} if right else set()) | ({(typ_row, c)} if typ is not None else set())
+        abilities.append(dict(row=r, col=c, niveau=int(m.group(1)), nom=nm, effet=eff, type=typ, notes=found,
+                              spec=None, nature=None, peers=[], rang=None, used=used))
+
+    for a in abilities:
+        if banners and a["col"] != V_COL_CLASSE:
+            starts = [i for i, (bc, _) in enumerate(banners) if bc <= a["col"]]
+            if not starts:
+                errors.append("%s!%s : capacité à gauche de toute bannière" % (name, ref_of(a["row"], a["col"])))
+            else:
+                a["spec"] = banners[starts[-1]][1]
+    lines = {}
+    for a in abilities:
+        if a["col"] != V_COL_CLASSE:
+            lines.setdefault((a["spec"], a["row"]), []).append(a)
+
+    def refs(group):
+        return ", ".join(ref_of(a["row"], a["col"]) for a in sorted(group, key=lambda a: (a["row"], a["col"])))
+
+    def link(group):
+        for a in group:
+            a["peers"] = [b for b in sorted(group, key=lambda b: b["col"]) if b is not a]
+
+    for a in abilities:
+        if a["col"] == V_COL_CLASSE:
+            a["nature"] = "classe"
+    if banners:
+        spec_rows = {}
+        for (spec, r) in lines:
+            spec_rows.setdefault(spec, set()).add(r)
+        for _, spec in banners:
+            if spec not in spec_rows:
+                anomalies.append(("bannière sans capacité", name, spec))
+                continue
+            rows = sorted(spec_rows[spec])
+            if len(lines[(spec, rows[0])]) != 1:
+                errors.append("%s : première ligne de la bannière %r : %d capacités au lieu d'une (%s)"
+                              % (name, spec, len(lines[(spec, rows[0])]), refs(lines[(spec, rows[0])])))
+            else:
+                lines[(spec, rows[0])][0]["nature"] = "specialite"
+            for r in rows[1:]:
+                grp = lines[(spec, r)]
+                if len(grp) == 1:
+                    errors.append("%s : ligne à une seule capacité sous la bannière %r (%s)" % (name, spec, refs(grp)))
+                    continue
+                for a in grp:
+                    a["nature"] = "choix"
+                link(grp)
+                if len(grp) != 2:
+                    anomalies.append(("groupe de taille inattendue", name, "bannière %s : %s" % (spec, refs(grp))))
+                if len({a["niveau"] for a in grp}) != 1:
+                    anomalies.append(("niveaux différents dans un groupe", name, refs(grp)))
+        if len({frozenset(spec_rows[s]) for s in spec_rows}) > 1:
+            anomalies.append(("bannières sur des lignes différentes", name,
+                              " ; ".join("%s : %s" % (s, ", ".join(str(r) for r in sorted(spec_rows[s]))) for _, s in banners
+                                         if s in spec_rows)))
+        carts = [a for a in abilities if a["nature"] == "specialite"]
+        cart_rows = {}
+        for a in carts:
+            cart_rows.setdefault(a["row"], []).append(a)
+        for grp in cart_rows.values():
+            if CARTOUCHES_EXCLUSIFS_DANS_CHOIX and len(grp) > 1:
+                link(grp)
+        if len(cart_rows) > 1:
+            anomalies.append(("cartouches de spécialité sur des lignes différentes", name, refs(carts)))
+        for a in carts:
+            bname, nom = a["spec"], a["nom"]
+            if nom is None or " ".join(nom.casefold().split()) != " ".join(bname.casefold().split()):
+                kind = ANOM_CARTOUCHE_ACCENT if nom is not None and fold(nom) == fold(bname) else ANOM_CARTOUCHE_NOM
+                anomalies.append((kind, name, "%s : bannière « %s », cartouche « %s »" % (ref_of(a["row"], a["col"]), bname, nom)))
+    else:
+        for (_, r), grp in sorted(lines.items(), key=lambda kv: kv[0][1]):
+            if len(grp) == 1:
+                grp[0]["nature"] = "classe"
+                continue
+            for a in grp:
+                a["nature"] = "choix"
+            link(grp)
+            if len(grp) not in (2, 3):
+                anomalies.append(("groupe de taille inattendue", name, refs(grp)))
+            if len({a["niveau"] for a in grp}) != 1:
+                anomalies.append(("niveaux différents dans un groupe", name, refs(grp)))
+    ordered = sorted((a for a in abilities if a["nature"] == "classe"), key=lambda a: (a["row"], a["col"]))
+    for i, a in enumerate(ordered, 1):
+        a["rang"] = i
+    for a in abilities:
+        if a["nature"] == "choix":
+            a["rang"] = 1 + sum(1 for b in a["peers"] if b["col"] < a["col"])
+        elif a["nature"] == "specialite":
+            a["rang"] = 1 + sum(1 for b in abilities if b["nature"] == "specialite" and b["row"] == a["row"]
+                                and b["col"] < a["col"])
+    return abilities, anomalies, errors
+
+
+def v_cut_names(name, abilities):
+    """Noms coupés sur deux cellules d'une même ligne de l'onglet, recalculés par des tests de chaînes (sans les regex du script)
+    -> [(nature, onglet, détail)], même forme que name_observations."""
+    def ends(n):
+        return n.endswith("..") or n.endswith("…") or (n.endswith(".") and len(n) > 1 and n[-2].isspace())
+
+    def starts(n):
+        return n.startswith("..") or n.startswith("…") or (n.startswith(".") and len(n) > 1 and n[1].isspace())
+    rows = {}
+    for a in abilities:
+        rows.setdefault(a["row"], []).append(a)
+    out = []
+    for r in sorted(rows):
+        line = sorted(rows[r], key=lambda a: a["col"])
+        for i, a in enumerate(line):
+            nom = a["nom"] or ""
+            here = "%s « %s »" % (ref_of(a["row"], a["col"]), nom)
+            right = line[i + 1] if i + 1 < len(line) else None
+            left = line[i - 1] if i else None
+            if ends(nom):
+                if right is not None and starts(right["nom"] or ""):
+                    same = any(right is p for p in a["peers"])
+                    out.append((OBS_PAIRE_MEME_GROUPE if same else OBS_PAIRE_GROUPES, name,
+                                "%s + %s « %s »" % (here, ref_of(right["row"], right["col"]), right["nom"])))
+                else:
+                    out.append((OBS_FIN_SEULE, name, here))
+            if starts(nom) and not (left is not None and ends(left["nom"] or "")):
+                out.append((OBS_DEBUT_SEUL, name, here))
+    return out
+
+
+def v_parse_page(path):
+    """Page écrite par ce script -> (frontmatter {clé: valeur}, corps). Le frontmatter est écrit ligne à ligne, en JSON."""
+    with open(path, encoding="utf-8") as fh:
+        lines = fh.read().split("\n")
+    if lines[0] != "---":
+        raise ValueError("pas de frontmatter")
+    end = lines.index("---", 1)
+    front = {}
+    for line in lines[1:end]:
+        key, _, value = line.partition(": ")
+        front[key] = value if key == "status" else json.loads(value)   # status est un mot nu, le reste du JSON
+    return front, "\n".join(lines[end + 1:])
+
+
+def v_unescape(line):
+    return re.sub(r"\\([\\`*_\[\]<~>#+\-.)&])", r"\1", line)
+
+
+def v_lines(text):
+    """Texte -> lignes non vides, sans espaces de bord, sans échappements Markdown, listes « - x » normalisées."""
+    out = []
+    for line in text.split("\n"):
+        line = v_unescape(line.strip())
+        if line:
+            out.append(re.sub(r"^-\s+", "- ", line))
+    return out
+
+
+def v_flat(text):
+    return re.sub(r"\s+", " ", text.replace("<br>", " ").replace("\\|", "|")).strip()
+
+
+def v_conflict(a, b):
+    """Deux capacités sont-elles exclusives ? Lu sur le frontmatter seul (c'est ce que fera le site)."""
+    fa, fb = a["front"], b["front"]
+    if a["id"] in fb.get("choix_exclusif_avec", []) or b["id"] in fa.get("choix_exclusif_avec", []):
+        return True
+    return (fa["classe"] == fb["classe"] and bool(fa.get("specialite")) and bool(fb.get("specialite"))
+            and fa["specialite"] != fb["specialite"])
+
+
+def v_described(pages, class_id, class_name):
+    """Structure d'une classe lue sur le frontmatter des pages seul : même forme que EXPECTED."""
+    mine = [p for p in pages.values() if p["front"].get("classe") == class_id]
+
+    def name_of(p):
+        return re.sub(r" \(%s\)(, niveau \d+)?$" % re.escape(class_name), "", p["front"]["title"])
+
+    def rank(p):
+        return p["front"]["rang"]
+    d = dict(classe=[], specialites=[], lignes={})
+    for p in sorted(mine, key=rank):
+        f = p["front"]
+        if f.get("nature") == "classe":
+            d["classe"].append((f["niveau"], name_of(p)))
+    for p in sorted([p for p in mine if p["front"].get("nature") == "specialite"], key=rank):
+        d["specialites"].append((p["front"]["specialite"], p["front"]["niveau"], name_of(p)))
+    seen = set()
+    for p in sorted([p for p in mine if p["front"].get("nature") == "choix"], key=lambda p: (p["front"]["ligne"], rank(p))):
+        if p["id"] in seen:
+            continue
+        group = [p] + [pages[i] for i in p["front"].get("choix_exclusif_avec", []) if i in pages]
+        seen.update(g["id"] for g in group)
+        group.sort(key=rank)
+        d["lignes"].setdefault(p["front"].get("specialite"), []).append((p["front"]["niveau"], [name_of(g) for g in group]))
+    return d
+
+
+def verify(args):
+    sheets, order, dump_dirs = load_dumps(args.dump)
+    class_names = [n for n in order if n != SUMMARY_SHEET and n not in IGNORED_SHEETS]
+    comments, links = load_comments(args, dump_dirs)
+    out = args.out
+    results = []     # (libellé, [échecs], info)
+
+    def check(label, failures, info=""):
+        results.append((label, failures, info))
+
+    # pages de capacités sur disque
+    pages, failures = {}, []
+    folder = os.path.join(out, CAP_CATEGORY)
+    for fname in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
+        full = os.path.join(folder, fname)
+        if fname.endswith(".md") and is_ours(full):
+            try:
+                front, body = v_parse_page(full)
+            except (ValueError, OSError) as err:
+                failures.append("%s : page illisible (%s)" % (fname, err))
+                continue
+            pages[CAP_CATEGORY + "/" + fname[:-3]] = dict(id=CAP_CATEGORY + "/" + fname[:-3], front=front, body=body)
+    check("pages de capacités lisibles", failures, "%d pages dans %s" % (len(pages), folder))
+
+    # capacités attendues, recalculées depuis le dump
+    expected, anomalies, errors, observations = {}, [], [], []
+    for name in class_names:
+        ab, an, er = v_sheet_abilities(name, sheets[name], comments.get(name, {}))
+        expected[name] = ab
+        anomalies += an
+        errors += er
+        observations += v_cut_names(name, ab)
+    total = sum(len(v) for v in expected.values())
+
+    # (1) nombre de pages = nombre de cellules « Lvl N », au total et par classe
+    failures = []
+    by_class = {}
+    for p in pages.values():
+        by_class[p["front"].get("classe")] = by_class.get(p["front"].get("classe"), 0) + 1
+    for name in class_names:
+        n_pages = by_class.get("classes/" + slugify(name), 0)
+        if n_pages != len(expected[name]):
+            failures.append("%s : %d pages pour %d cellules « Lvl N »" % (name, n_pages, len(expected[name])))
+    if len(pages) != total:
+        failures.append("total : %d pages pour %d cellules « Lvl N »" % (len(pages), total))
+    check("(1) une page par cellule « Lvl N » (total et par classe)", failures, "%d cellules, %d classes" % (total, len(class_names)))
+
+    # appariement page <-> capacité attendue : (classe, bannière, ligne, rang)
+    index, failures = {}, []
+    for p in pages.values():
+        f = p["front"]
+        key = (f.get("classe"), f.get("specialite"), f.get("ligne"), f.get("rang"))
+        if key in index:
+            failures.append("deux pages pour %r : %s et %s" % (key, index[key]["id"], p["id"]))
+        index[key] = p
+    matched = set()
+    for name in class_names:
+        for a in expected[name]:
+            a["page"] = index.get(("classes/" + slugify(name), a["spec"], a["row"], a["rang"]))
+            if a["page"] is None:
+                failures.append("%s!%s : aucune page (bannière %r, ligne %d, rang %s)"
+                                % (name, ref_of(a["row"], a["col"]), a["spec"], a["row"], a["rang"]))
+            else:
+                matched.add(a["page"]["id"])
+    for pid in sorted(set(pages) - matched):
+        failures.append("%s : page qui ne correspond à aucune cellule « Lvl N »" % pid)
+    check("appariement page <-> cellule (classe, bannière, ligne, rang)", failures)
+
+    # (2) nom, type, effet, niveau, nature... de chaque capacité dans SA page
+    failures = []
+    titles_by_key = {}
+    for name in class_names:
+        for a in expected[name]:
+            p = a["page"]
+            if p is None:
+                continue
+            f, where = p["front"], "%s!%s" % (name, ref_of(a["row"], a["col"]))
+            if a["nom"] is None or not f.get("title", "").startswith("%s (%s)" % (a["nom"], name)):
+                failures.append("%s : titre %r pour le nom %r" % (where, f.get("title"), a["nom"]))
+            if f.get("type_capacite") != a["type"]:
+                failures.append("%s : type %r au lieu de %r" % (where, f.get("type_capacite"), a["type"]))
+            if f.get("niveau") != a["niveau"] or f.get("ligne") != a["row"] or f.get("nature") != a["nature"]:
+                failures.append("%s : niveau/ligne/nature %r/%r/%r au lieu de %r/%r/%r"
+                                % (where, f.get("niveau"), f.get("ligne"), f.get("nature"), a["niveau"], a["row"], a["nature"]))
+            wanted_tags = [CAP_TAG, name.lower()] + ([a["spec"].lower()] if a["spec"] else [])
+            if f.get("tags") != wanted_tags:
+                failures.append("%s : tags %r au lieu de %r" % (where, f.get("tags"), wanted_tags))
+            if f.get("classe") != "classes/" + slugify(name) or f.get("aliases") != [] or f.get("status") != "draft":
+                failures.append("%s : classe/aliases/status incorrects" % where)
+            if a["nature"] == "classe" and "specialite" in f:
+                failures.append("%s : une capacité de classe ne porte pas de spécialité" % where)
+            if a["spec"] != f.get("specialite"):
+                failures.append("%s : spécialité %r au lieu de %r" % (where, f.get("specialite"), a["spec"]))
+            if not any(s.startswith("Google Sheet « %s », onglet « %s »" % (WORKBOOK, name)) for s in f.get("sources", [])) \
+                    or URL not in f.get("sources", []):
+                failures.append("%s : sources incorrectes %r" % (where, f.get("sources")))
+            wanted = v_lines(a["effet"] or "")
+            for note in a["notes"]:
+                wanted += v_lines("Note de cellule : " + note)
+            if v_lines(p["body"]) != wanted:
+                failures.append("%s : effet/note différents du dump :\n      page : %r\n      dump : %r"
+                                % (where, v_lines(p["body"])[:6], wanted[:6]))
+            summary = f.get("summary")
+            if (a["effet"] or "").strip():
+                if not summary or v_flat(summary) not in v_flat(a["effet"]):
+                    failures.append("%s : résumé %r absent de l'effet" % (where, summary))
+                elif re.fullmatch(r"\([^()]*\)", summary.strip()) and len([l for l in a["effet"].split("\n") if l.strip()]) > 1:
+                    failures.append("%s : résumé réduit à l'étiquette %r alors que l'effet continue" % (where, summary))
+            elif summary:
+                failures.append("%s : résumé pour un effet vide" % where)
+            titles_by_key.setdefault(wiki_key(f.get("title", "")), []).append(p["id"])
+    check("(2) nom, type, effet, note, niveau, nature de chaque cellule dans SA page", failures)
+
+    # (3) groupes de choix recalculés depuis les positions, comparés à choix_exclusif_avec
+    failures = []
+    for name in class_names:
+        for a in expected[name]:
+            p = a["page"]
+            if p is None:
+                continue
+            where = "%s!%s" % (name, ref_of(a["row"], a["col"]))
+            want = [q["page"]["id"] for q in a["peers"] if q["page"] is not None]
+            got = p["front"].get("choix_exclusif_avec")
+            if (got or []) != want:
+                failures.append("%s : choix_exclusif_avec %r au lieu de %r" % (where, got, want))
+            if "choix_exclusif_avec" in p["front"] and not want:
+                failures.append("%s : clé choix_exclusif_avec présente pour une capacité sans groupe" % where)
+    for p in pages.values():
+        f = p["front"]
+        for other in f.get("choix_exclusif_avec", []):
+            q = pages.get(other)
+            if q is None:
+                failures.append("%s : cite %s qui n'existe pas" % (p["id"], other))
+                continue
+            g = q["front"]
+            if p["id"] not in g.get("choix_exclusif_avec", []):
+                failures.append("%s cite %s, qui ne le cite pas (asymétrie)" % (p["id"], other))
+            if other == p["id"]:
+                failures.append("%s se cite lui-même" % p["id"])
+            if g.get("classe") != f.get("classe"):
+                failures.append("%s et %s : classes différentes" % (p["id"], other))
+            if g.get("niveau") != f.get("niveau"):
+                failures.append("%s et %s : niveaux différents" % (p["id"], other))
+            if g.get("specialite") != f.get("specialite") and not (f.get("nature") == g.get("nature") == "specialite"):
+                failures.append("%s et %s : spécialités différentes" % (p["id"], other))
+    check("(3) groupes de choix (positions du dump) = choix_exclusif_avec ; symétrie, même niveau, même spécialité (sauf cartouches)",
+          failures, "%d capacités dans un groupe" % sum(1 for p in pages.values() if p["front"].get("choix_exclusif_avec")))
+
+    # (4) Barde et Archimage en clair, puis sélections de test
+    failures, shown = [], []
+    for name, wanted in EXPECTED.items():
+        got = v_described(pages, "classes/" + slugify(name), name)
+        shown.append((name, got))
+        if got != wanted:
+            failures.append("%s : groupes produits différents de la capture\n      produit : %r\n      attendu : %r"
+                            % (name, got, wanted))
+    for name, taken, refused in SELECTIONS:
+        mine = {}
+        for p in pages.values():
+            if p["front"].get("classe") == "classes/" + slugify(name):
+                mine[re.sub(r" \(%s\)(, niveau \d+)?$" % re.escape(name), "", p["front"]["title"])] = p
+        missing = [n for n in list(taken) + list(refused) if n not in mine]
+        if missing:
+            failures.append("%s : capacités introuvables %r" % (name, missing))
+            continue
+        for i, x in enumerate(taken):
+            for y in taken[i + 1:]:
+                if v_conflict(mine[x], mine[y]):
+                    failures.append("%s : %r et %r sont pris ensemble mais jugés exclusifs" % (name, x, y))
+        for x, blocker in refused.items():
+            if blocker not in taken or not v_conflict(mine[x], mine[blocker]):
+                failures.append("%s : %r devrait être refusé à cause de %r" % (name, x, blocker))
+    check("(4) Barde et Archimage = captures ; sélections de test des exemples du propriétaire", failures)
+
+    # titres et slugs : uniques dans TOUT le wiki ; « , niveau N » / -niveau / -rang seulement en cas de doublon
+    failures = []
+    wiki_titles = {}
+    for sub in sorted(os.listdir(out)):
+        sub_path = os.path.join(out, sub)
+        for fname in sorted(os.listdir(sub_path)) if os.path.isdir(sub_path) else []:
+            if fname.endswith(".md"):
+                t = read_title(os.path.join(sub_path, fname))
+                if t:
+                    wiki_titles.setdefault(wiki_key(t), []).append("%s/%s" % (sub, fname))
+    class_keys = [wiki_key(read_title(os.path.join(out, CATEGORY, f)) or "") for f in sorted(os.listdir(os.path.join(out, CATEGORY)))
+                  if f.endswith(".md")] if os.path.isdir(os.path.join(out, CATEGORY)) else []
+    flat = [(name, a) for name in class_names for a in expected[name]]
+    base_title = {id(a): "%s (%s)" % (a["nom"], name) for name, a in flat}
+    title_count = {}
+    for key in [wiki_key(t) for t in base_title.values()] + class_keys:
+        title_count[key] = title_count.get(key, 0) + 1
+    base_slug, slug_count = {}, {}
+    for name, a in flat:
+        ns = slugify(a["nom"] or "")
+        base_slug[id(a)] = slugify(name) + ("-" + ns if ns else "")
+        slug_count[base_slug[id(a)]] = slug_count.get(base_slug[id(a)], 0) + 1
+    slug1 = {}
+    for name, a in flat:
+        slug1[id(a)] = base_slug[id(a)] + ("-%d" % a["niveau"] if slug_count[base_slug[id(a)]] > 1 or not slugify(a["nom"] or "")
+                                           else "")
+    slug1_count = {}
+    for v in slug1.values():
+        slug1_count[v] = slug1_count.get(v, 0) + 1
+    for name, a in flat:
+        p = a["page"]
+        if p is None:
+            continue
+        where = "%s!%s" % (name, ref_of(a["row"], a["col"]))
+        base = base_title[id(a)]
+        want = base + (", niveau %d" % a["niveau"] if title_count[wiki_key(base)] > 1 else "")
+        if p["front"].get("title") != want:
+            failures.append("%s : titre %r au lieu de %r" % (where, p["front"].get("title"), want))
+        if len(wiki_titles.get(wiki_key(p["front"].get("title", "")), [])) != 1:
+            failures.append("%s : titre %r partagé dans le wiki : %s"
+                            % (where, p["front"].get("title"), wiki_titles.get(wiki_key(p["front"].get("title", "")))))
+        slug = slug1[id(a)] + ("-%d" % a["rang"] if slug1_count[slug1[id(a)]] > 1 else "")
+        if p["id"] != CAP_CATEGORY + "/" + slug:
+            failures.append("%s : identifiant %s au lieu de capacites/%s" % (where, p["id"], slug))
+    renamed = sum(1 for _, a in flat if a["page"] is not None and a["page"]["front"].get("title") != base_title[id(a)])
+    check("titres (clé de wiki) et identifiants uniques ; suffixes seulement en cas de doublon", failures,
+          "%d titres avec « , niveau N »" % renamed)
+
+    # pages de classes : tableaux d'aptitudes retirés, tout le reste conservé
+    failures = []
+    for name in class_names:
+        path = os.path.join(out, CATEGORY, slugify(name) + ".md")
+        if not os.path.isfile(path):
+            failures.append("%s : page de classe absente (%s)" % (name, path))
+            continue
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+        for forbidden in ("## Aptitudes de la classe", "## Autres aptitudes", "### Cartouches", "colonne (", "| Niveau | Aptitude",
+                          "Disposition dans le classeur d'origine", "| Lvl "):
+            if forbidden in text:
+                failures.append("%s : la page de classe contient encore %r" % (name, forbidden))
+        page_lines = [v_unescape(l.strip()) for l in text.split("\n")]
+        flat_text = fold(v_flat(" ".join(page_lines)))
+        cells, _ = v_read_sheet(sheets[name])
+        used = set().union(*[a["used"] for a in expected[name]]) if expected[name] else set()
+        for pos in sorted(cells):
+            if pos in used:
+                continue
+            first = v_flat(v_unescape(cells[pos].split("\n")[0]))
+            if fold(first) not in flat_text:
+                failures.append("%s!%s : texte du classeur perdu dans la page de classe : %r" % (name, ref_of(*pos), first[:70]))
+        banner_names = sorted(v for (r, c), v in cells.items() if r == V_ROW_BANNIERES and c < V_COL_TEXTES)
+        headings = {l for l in page_lines if l.startswith("### ")}
+        if banner_names and "## Sous-classes" not in page_lines:
+            failures.append("%s : section « Sous-classes » absente" % name)
+        for b in banner_names:
+            if "### " + b not in headings:
+                failures.append("%s : titre de sous-classe « %s » absent" % (name, b))
+    check("pages de classes sans tableaux d'aptitudes, tout le reste du classeur conservé", failures)
+
+    # (5) aucune cellule non reconnue ; mêmes anomalies que le script ; (6) rien à changer sur disque
+    failures = list(errors)
+    built = None
+    try:
+        built = build(sheets, class_names, comments, links)
+        failures += ["script : " + p for p in built["problems"]]
+    except ValueError as err:
+        failures.append("script : %s" % err)
+    if built is not None:
+        if sorted(built["anomalies"]) != sorted(anomalies):
+            failures.append("anomalies différentes entre le script et le recalcul indépendant :\n      script : %r\n      recalcul : %r"
+                            % (sorted(built["anomalies"]), sorted(anomalies)))
+    check("(5) aucune cellule non reconnue (parse_class), rôle décidable partout, mêmes anomalies que le recalcul", failures)
+    results.append(("anomalies de disposition recalculées (non bloquantes)", [], "\n".join(
+        "      - %s | %s | %s" % a for a in anomalies) or "      (aucune)"))
+    failures = []
+    if built is not None and sorted(built["observations"]) != sorted(observations):
+        failures.append("observations différentes entre le script et le recalcul indépendant :\n      script : %r\n      recalcul : %r"
+                        % (sorted(built["observations"]), sorted(observations)))
+    by_kind = {}
+    for kind, _, _ in observations:
+        by_kind[kind] = by_kind.get(kind, 0) + 1
+    check("(5 bis) noms coupés sur plusieurs cellules : mêmes observations que le recalcul indépendant (listées, non résolues)",
+          failures, "; ".join("%d x %s" % (n, k) for k, n in sorted(by_kind.items())) or "aucune")
+
+    failures = []
+    if built is not None and not built["problems"]:
+        wanted_paths = set()
+        for category, slug, title, body, n in built["jobs"]:
+            path = os.path.join(out, category, slug + ".md")
+            wanted_paths.add(path)
+            try:
+                with open(path, encoding="utf-8") as fh:
+                    on_disk = fh.read()
+            except OSError:
+                failures.append("%s : absent" % path)
+                continue
+            if on_disk != body:
+                failures.append("%s : différent de ce que le script écrirait (une relance changerait ce fichier)" % path)
+        for category in (CATEGORY, CAP_CATEGORY):
+            folder = os.path.join(out, category)
+            for fname in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
+                full = os.path.join(folder, fname)
+                if fname.endswith(".md") and is_ours(full) and full not in wanted_paths:
+                    failures.append("%s : page orpheline (plus produite par le script)" % full)
+    else:
+        failures.append("génération en mémoire impossible")
+    check("(6) pages sur disque = pages que le script écrirait (une seconde exécution ne change rien)", failures,
+          "%d pages comparées" % (len(built["jobs"]) if built is not None else 0))
+
+    ok = True
+    for label, failures, info in results:
+        ok = ok and not failures
+        print("%s %s%s" % ("OK    " if not failures else "ÉCHEC ", label, " : " + info if info and "\n" not in info else ""))
+        if info and "\n" in info:
+            print(info)
+        for line in failures[:12]:
+            print("      " + line)
+        if len(failures) > 12:
+            print("      … %d autres" % (len(failures) - 12))
+    for name, got in shown:
+        print("%s produit : classe %r ; spécialités %r ; lignes %r" % (name, got["classe"], got["specialites"], got["lignes"]))
+    print("VÉRIFICATION %s" % ("RÉUSSIE" if ok else "ÉCHOUÉE"))
+    return 0 if ok else 1
+
+
+def load_dumps(paths):
+    """-> (sheets {nom: onglet brut}, ordre des onglets, dossiers des dumps)."""
     sheets, order, dump_dirs = {}, [], []
-    for path in args.dump:
+    for path in paths:
         with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
         dump_dirs.append(os.path.dirname(os.path.abspath(path)))
@@ -841,41 +1748,45 @@ def main(argv=None):
                 order.append(raw["name"])
     if SUMMARY_SHEET not in sheets:
         sys.exit("onglet %r absent du dump" % SUMMARY_SHEET)
-    class_names = [n for n in order if n != SUMMARY_SHEET and n not in IGNORED_SHEETS]
+    return sheets, order, dump_dirs
 
-    comments, links = {}, {}
-    if not args.sans_commentaires:
-        xlsx = args.xlsx
-        if not xlsx:
-            for d in dump_dirs:
-                cand = os.path.join(d, os.pardir, "sheets", FILE_ID, "classeur.xlsx")
-                if os.path.isfile(cand):
-                    xlsx = cand
-                    break
-        if not xlsx or not os.path.isfile(xlsx):
-            sys.exit("classeur .xlsx introuvable (option --xlsx) : les commentaires et hyperliens de cellule en dépendent "
-                     "(ou passer --sans-commentaires)")
-        try:
-            comments = read_comments(xlsx)
-            links = read_links(xlsx)
-        except ValueError as err:
-            sys.exit("ERREUR : %s" % err)
 
-    problems = []
+def load_comments(args, dump_dirs):
+    """-> (commentaires {onglet: {ref: texte}}, hyperliens {onglet: {ref: url}}) lus dans le .xlsx d'origine."""
+    if args.sans_commentaires:
+        return {}, {}
+    xlsx = args.xlsx
+    if not xlsx:
+        for d in dump_dirs:
+            cand = os.path.join(d, os.pardir, "sheets", FILE_ID, "classeur.xlsx")
+            if os.path.isfile(cand):
+                xlsx = cand
+                break
+    if not xlsx or not os.path.isfile(xlsx):
+        sys.exit("classeur .xlsx introuvable (option --xlsx) : les commentaires et hyperliens de cellule en dépendent "
+                 "(ou passer --sans-commentaires)")
     try:
-        summary = parse_summary(Sheet(sheets[SUMMARY_SHEET]), set(class_names))
+        return read_comments(xlsx), read_links(xlsx)
     except ValueError as err:
         sys.exit("ERREUR : %s" % err)
+
+
+def build(sheets, class_names, comments, links):
+    """Calcule toutes les pages à produire, sans rien écrire (ValueError sur une cellule non reconnue, une disposition
+    indécidable ou un nom impossible à rendre unique).
+
+    -> dict(summary, jobs=[(catégorie, slug, titre, corps, n)], caps=[capacités], anomalies=[tuples],
+            observations=[tuples], collisions=[textes], problems=[textes])
+    """
+    problems = []
+    summary = parse_summary(Sheet(sheets[SUMMARY_SHEET]), set(class_names))
     in_summary = [n for n, _ in summary["classes"]]
     if sorted(in_summary) != sorted(class_names):
-        sys.exit("ERREUR : onglets de classe et classes du Sommaire différents : %s"
-                 % sorted(set(class_names) ^ set(in_summary)))
+        raise ValueError("onglets de classe et classes du Sommaire différents : %s"
+                         % sorted(set(class_names) ^ set(in_summary)))
     category_of = dict(summary["classes"])
-    for ref, text in summary["usage"]:
-        print("non publié : %s!%s « %s » (consigne d'usage des liens internes du classeur)" % (SUMMARY_SHEET, ref, text))
 
-    # pages à produire
-    jobs = []
+    jobs, caps, anomalies = [], [], []
     for name in class_names:
         category = category_of[name]
         title = name + (TITLE_SUFFIX if category in SUFFIXED_CATEGORIES else "")
@@ -889,13 +1800,56 @@ def main(argv=None):
             attach_notes(sh, page, comments.get(name, {}))
             attach_links(sh, page, links.get(name, {}))
             body = render_class(cfg, page)
+            found, found_anomalies = derive_capacities(name, page)
         except ValueError as err:
             problems.append(str(err))
             continue
-        jobs.append((CATEGORY, cfg["slug"], title, body, len(page["class_abilities"]) + len(page["other_abilities"])
-                     + sum(len(b["abilities"]) for b in page["banners"])))
+        for cap in found:
+            cap["class_slug"] = cfg["slug"]
+        caps += found
+        anomalies += found_anomalies
+        jobs.append((CATEGORY, cfg["slug"], title, body, len(found)))
     jobs.append((GLOSSARY_CATEGORY, GLOSSARY_SLUG, GLOSSARY_TITLE,
                  render_glossary(summary["glossary_title"], summary["glossary"]), len(summary["glossary"])))
+    collisions = []
+    try:
+        collisions = name_capacities(caps, [wiki_key(job[2]) for job in jobs])
+    except ValueError as err:
+        problems.append(str(err))
+    if not problems:
+        for cap in caps:
+            jobs.append((CAP_CATEGORY, cap["slug"], cap["title"], render_capacity(cap), 1))
+    return dict(summary=summary, jobs=jobs, caps=caps, anomalies=anomalies, observations=name_observations(caps),
+                collisions=collisions, problems=problems)
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="Génère les pages « classes » et « capacités » du wiki depuis le dump de « %s »."
+                                 % WORKBOOK)
+    ap.add_argument("--dump", action="append", required=True, help="dump JSON de xlsx_to_json.py (répétable)")
+    ap.add_argument("--xlsx", help="classeur d'origine (commentaires et hyperliens de cellule)")
+    ap.add_argument("--sans-commentaires", action="store_true",
+                    help="ne pas lire les commentaires ni les hyperliens de cellule (.xlsx)")
+    ap.add_argument("--out", required=True, help="racine du wiki (client/src/content/wiki)")
+    ap.add_argument("--verifier", action="store_true",
+                    help="n'écrit rien : contrôle les pages déjà écrites contre le dump (relecture indépendante)")
+    args = ap.parse_args(argv)
+
+    if args.verifier:
+        return verify(args)
+
+    sheets, order, dump_dirs = load_dumps(args.dump)
+    class_names = [n for n in order if n != SUMMARY_SHEET and n not in IGNORED_SHEETS]
+    comments, links = load_comments(args, dump_dirs)
+
+    try:
+        built = build(sheets, class_names, comments, links)
+    except ValueError as err:
+        sys.exit("ERREUR : %s" % err)
+    problems = list(built["problems"])
+    jobs = built["jobs"]
+    for ref, text in built["summary"]["usage"]:
+        print("non publié : %s!%s « %s » (consigne d'usage des liens internes du classeur)" % (SUMMARY_SHEET, ref, text))
 
     # titres et fichiers des autres familles
     other_titles = {}
@@ -928,6 +1882,7 @@ def main(argv=None):
             print("ERREUR : " + p, file=sys.stderr)
         return 1
 
+    counts = {}   # catégorie -> [écrites, inchangées]
     for category, slug, title, body, n in jobs:
         out_dir = os.path.join(args.out, category)
         os.makedirs(out_dir, exist_ok=True)
@@ -939,8 +1894,33 @@ def main(argv=None):
         if old != body:
             with open(path, "w", encoding="utf-8", newline="\n") as fh:
                 fh.write(body)
-        print("%s %s (%d %s)" % ("inchangé" if old == body else "écrit", path, n,
-                                  "objets" if category == GLOSSARY_CATEGORY else "aptitudes"))
+        counts.setdefault(category, [0, 0])[0 if old != body else 1] += 1
+        if category != CAP_CATEGORY:   # les capacités (une page chacune) sont comptées par catégorie, pas listées
+            print("%s %s (%d %s)" % ("inchangé" if old == body else "écrit", path, n,
+                                      "objets" if category == GLOSSARY_CATEGORY else "capacités"))
+    written = {os.path.join(args.out, c, s + ".md") for c, s, _, _, _ in jobs}
+    for category in (CATEGORY, CAP_CATEGORY):
+        folder = os.path.join(args.out, category)
+        for fname in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
+            full = os.path.join(folder, fname)
+            if fname.endswith(".md") and full not in written and is_ours(full):
+                print("orphelin (non effacé) : %s" % full)
+    for category in (CATEGORY, CAP_CATEGORY, GLOSSARY_CATEGORY):
+        w, u = counts.get(category, [0, 0])
+        print("bilan %s : %d pages (%d écrites, %d inchangées)" % (category, w + u, w, u))
+    for kind, sheet, detail in built["anomalies"]:
+        print("anomalie de disposition : %s | %s | %s" % (kind, sheet, detail))
+    if not built["anomalies"]:
+        print("anomalie de disposition : aucune")
+    for kind, sheet, detail in built["observations"]:
+        print("observation : %s | %s | %s" % (kind, sheet, detail))
+    counts_obs = {}
+    for kind, _, _ in built["observations"]:
+        counts_obs[kind] = counts_obs.get(kind, 0) + 1
+    for kind in sorted(counts_obs):
+        print("observations (bilan) : %d x %s" % (counts_obs[kind], kind))
+    for text in built["collisions"]:
+        print("collision : " + text)
     return 0
 
 
