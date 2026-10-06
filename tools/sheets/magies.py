@@ -66,8 +66,10 @@ juste après `tags`, des champs lus par le site (clés en français sans accent,
       `vulnerable_a: [...]`       <- « Vulnérabilité magique »
       `incompatible_avec: [...]`  <- « Magie non compatible »
     Les éléments sont des noms courts de magies (orthographe de l'en-tête), dans l'ordre de la source, séparés par des
-    cellules, des virgules ou des retours à la ligne. « Aucune » (ou une cellule vide) donne `[]`. Une magie peut figurer
-    dans sa propre liste (le Sang résiste au Sang) : la source est conservée telle quelle, sans symétrie ni déduction
+    cellules, des virgules ou des retours à la ligne. « Aucune » donne `[]`, et une cellule vide à droite du libellé d'une
+    de ces trois lignes aussi (lecture « vide = aucune » : elle est signalée dans le rapport, voir plus bas ; pour tout
+    autre libellé du bloc DONNÉES, une cellule vide arrête la page avec une erreur, rien n'est deviné). Une magie peut
+    figurer dans sa propre liste (le Sang résiste au Sang) : la source est conservée telle quelle, sans symétrie ni déduction
     (l'Arcane et l'Espace/Temps listent la Corruption comme incompatible alors que la ligne de la Corruption est une
     phrase libre : rien n'en est déduit ; chaque page dit ce que SON onglet dit).
     Rien n'est deviné : une ligne absente de l'onglet, ou dont le texte n'est pas une liste de noms (phrase libre), n'émet
@@ -78,14 +80,20 @@ juste après `tags`, des champs lus par le site (clés en français sans accent,
     Un nom qui ne correspond à aucune des 15 magies (comparaison sans casse ni accents ; « Espace-Temps » est refusé),
     « Aucune » mêlé à d'autres noms, un doublon ou deux lignes du même libellé arrêtent la page avec une erreur claire
     (le fichier n'est pas écrit, code de sortie 1). Distinction liste de noms / phrase libre : un élément de plus de
-    40 caractères ou 3 mots, ou contenant « . : ; ( ) ! ? », fait de toute la ligne une phrase libre.
+    40 caractères, de plus de 3 mots (« Toutes les autres magies » est une phrase libre, « Toutes les magies » un nom
+    inconnu donc une erreur), ou contenant « . : ; ( ) ! ? », fait de toute la ligne une phrase libre. Ce critère
+    (constantes NAME_MAX_LEN, NAME_MAX_WORDS, NOT_NAME_CHARS) est lu au même endroit par le générateur et par la
+    vérification indépendante.
     Les listes d'altérations d'état (« Résistance altération d'état », « Vulnérabilité altération d'état ») ne sont pas
     des champs : elles restent dans le corps de la page, qui n'a pas changé.
 Vérification indépendante : à la fin de chaque exécution (et seule avec --verifier), check_pages() recalcule les valeurs
 attendues directement depuis les cellules brutes du dump (sans réutiliser l'analyseur de pages) et les compare au
-frontmatter des pages écrites ; tout écart (ÉCART : ...) donne le code de sortie 1. Un petit autotest des cas limites du
-contrat (autotest()) tourne à chaque lancement. Rapport (stdout) : une ligne « écrit » par page, la liste des clés omises
-avec leur raison, puis « vérification : OK (15 pages) ».
+frontmatter des pages écrites ; tout écart (ÉCART : ...) donne le code de sortie 1. Un autotest des cas limites du
+contrat (autotest()) tourne à chaque lancement : il vérifie aussi, sur un onglet synthétique, que le générateur et la
+vérification indépendante rendent le même verdict (liste, clé omise ou erreur) pour une cellule vide, « Aucune », une
+phrase libre courte, un nom inconnu, un doublon, etc. Rapport (stdout) : une ligne « écrit » par page, la liste des clés
+omises avec leur raison, (seulement s'il y en a) la liste des clés lues comme `[]` faute de valeur, puis
+« vérification : OK (15 pages) ». Le classeur V8 actuel n'a aucune cellule vide de ce genre.
 
 Ne touche qu'aux fichiers `<out>/magies/<slug>.md` de sa famille : il refuse d'écraser un fichier qui n'est pas issu de ce
 classeur, refuse un titre déjà porté par une autre page, et n'efface rien.
@@ -162,9 +170,14 @@ RELATIONS = (
     ("vulnerable_a", "Vulnérabilité magique"),
     ("incompatible_avec", "Magie non compatible"),
 )
+RELATION_LABELS = frozenset(label for _key, label in RELATIONS)
 NONE_WORD = "aucune"           # « Aucune » = liste vide
-NAME_MAX_LEN, NAME_MAX_WORDS = 40, 3   # au-delà, ou avec « . : ; ( ) ! ? », un élément n'est plus un nom : phrase libre
+# Critère « phrase libre » (un seul endroit : le générateur et la vérification indépendante le lisent ici) : un élément
+# de plus de NAME_MAX_LEN caractères, de plus de NAME_MAX_WORDS mots, ou contenant un caractère de NOT_NAME_CHARS n'est
+# plus un nom de magie ; il suffit d'un tel élément pour que toute la ligne soit une phrase libre (clé omise).
+NAME_MAX_LEN, NAME_MAX_WORDS = 40, 3
 NOT_NAME_CHARS = ".:;()!?"
+CELL_SPLIT = r"[,\n\r]"        # séparateurs de noms dans une cellule (fmt() ramène « \r » à « \n »)
 FICHE_SHEET = "Accessibilité Magie"   # onglet de « Fiche personnage Maverick Auto » dont B1:P1 donne les noms courts
 
 # Commentaires de cellule écartés : (onglet, cellule) -> raison. Ils ne sont pas du contenu de règle.
@@ -648,7 +661,9 @@ def parse_sheet(sh, cfg):
                 else:
                     pairs[-1][1].append(fmt(sh.take(r, c)))
             for lab, vals in pairs:
-                if not vals:
+                # Une cellule vide à droite d'une ligne de relation (résistance, vulnérabilité, incompatibilité) se lit
+                # comme une liste vide (contrat) ; pour tout autre libellé, rien n'est deviné : erreur.
+                if not vals and lab not in RELATION_LABELS:
                     raise ValueError("%s : libellé sans valeur « %s »" % (sh.name, lab))
                 page["data"].append((lab, vals))
             continue
@@ -682,7 +697,7 @@ def parse_relation(values, where):
     None quand le texte n'est pas une liste de noms (phrase libre : rien n'est deviné, la clé sera omise). Un nom qui ne
     correspond à aucune des 15 magies (sans casse ni accents), « Aucune » mêlé à d'autres éléments ou un doublon lèvent
     une ValueError."""
-    items = [part.strip() for v in values for part in re.split(r"[,\n]", fmt(v)) if part.strip()]
+    items = [part.strip() for v in values for part in re.split(CELL_SPLIT, fmt(v)) if part.strip()]
     if not items:
         return []
     if not all(looks_like_name(i) for i in items):
@@ -709,17 +724,18 @@ def shorten(text, limit=90):
 
 
 def relation_fields(cfg, page):
-    """Champs de frontmatter issus du bloc DONNÉES : ([(clé, noms courts)], [(clé, raison de l'omission)]).
-    Une ligne absente de l'onglet ou rédigée en phrase libre n'est pas émise (la source ne donne pas de liste)."""
+    """Champs de frontmatter issus du bloc DONNÉES : ([(clé, noms courts)], [(clé, raison de l'omission)], [clé]).
+    Une ligne absente de l'onglet ou rédigée en phrase libre n'est pas émise (la source ne donne pas de liste). Le dernier
+    élément liste les clés dont la cellule est vide dans la source : elles sont émises comme `[]` (contrat) et signalées
+    dans le rapport, car c'est une lecture (« vide » = « aucune »), pas un mot de la source comme « Aucune »."""
     where = cfg["onglet"]
-    wanted = [label for _key, label in RELATIONS]
     rows = {}
     for label, vals in page["data"]:
-        if label in wanted:
+        if label in RELATION_LABELS:
             if label in rows:
                 raise ValueError("%s : plusieurs lignes « %s »" % (where, label))
             rows[label] = vals
-    fields, omitted = [], []
+    fields, omitted, blank = [], [], []
     for key, label in RELATIONS:
         if not page["data"]:
             omitted.append((key, "l'onglet n'a pas de bloc DONNÉES"))
@@ -731,7 +747,9 @@ def relation_fields(cfg, page):
                 omitted.append((key, "texte libre dans la source : « %s »" % shorten(" ".join(rows[label]))))
             else:
                 fields.append((key, names))
-    return fields, omitted
+                if not any(not is_blank(v) for v in rows[label]):
+                    blank.append(key)
+    return fields, omitted, blank
 
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -803,6 +821,9 @@ def render(cfg, page, by_ref, relations=()):
             value = ", ".join(vals)
             lines = md_text(value)
             head = "- **%s** : " % esc_inline(label)
+            if not lines:  # cellule vide dans la source (ligne de relation seulement, voir parse_sheet)
+                L.append(head.rstrip())
+                continue
             L.append(head + lines[0])
             for extra in lines[1:]:
                 L.append(("  " + extra) if extra else "")
@@ -923,16 +944,21 @@ def raw_expected(raw, headers):
                 if not isinstance(v, str):
                     raise ValueError("%s : valeur non textuelle à droite de « %s » : %r" % (raw["name"], label, v))
                 values.append(v.strip())
-        tokens = [t.strip() for v in values for t in re.split(r"[,\n]", v) if t.strip()]
-        if any(len(t) > 40 or any(ch in t for ch in ".:;()") for t in tokens):
-            continue  # phrase libre
-        if [fold(t) for t in tokens] == ["aucune"] or not tokens:
+        tokens = [t.strip() for v in values for t in re.split(CELL_SPLIT, v) if t.strip()]
+        # phrase libre : le même critère que le générateur (constantes NAME_MAX_LEN, NAME_MAX_WORDS, NOT_NAME_CHARS)
+        if any(len(t) > NAME_MAX_LEN or len(t.split()) > NAME_MAX_WORDS or any(ch in t for ch in NOT_NAME_CHARS)
+               for t in tokens):
+            continue
+        if [fold(t) for t in tokens] == [NONE_WORD] or not tokens:  # « Aucune » ou cellule vide
             expected[key] = []
             continue
         for t in tokens:
             if fold(t) not in by_fold:
                 raise ValueError("%s : %r (ligne « %s ») ne correspond à aucune magie" % (raw["name"], t, label))
-        expected[key] = [by_fold[fold(t)] for t in tokens]
+        names = [by_fold[fold(t)] for t in tokens]
+        if len(set(names)) != len(names):
+            raise ValueError("%s : doublon dans la ligne « %s » : %r" % (raw["name"], label, tokens))
+        expected[key] = names
     return expected
 
 
@@ -963,17 +989,81 @@ def autotest():
     must(refused(["Sang", "sang"]), "doublon -> erreur")
 
     page = {"data": [("Santé offert", ["0.0"]), ("Résistance magique", ["Sang"]), ("Vulnérabilité magique", ["Aucune"])]}
-    fields, omitted = relation_fields({"onglet": "t"}, page)
+    fields, omitted, blank = relation_fields({"onglet": "t"}, page)
     must(fields == [("resiste_a", ["Sang"]), ("vulnerable_a", [])], "relation_fields : champs")
     must([k for k, _r in omitted] == ["incompatible_avec"], "relation_fields : ligne absente -> omise")
+    must(blank == [], "relation_fields : « Aucune » n'est pas une cellule vide")
     page = {"data": [("Résistance magique", ["Sang"]), ("Magie non compatible", ["Tout est dit en phrase libre."])]}
-    fields, omitted = relation_fields({"onglet": "t"}, page)
+    fields, omitted, _blank = relation_fields({"onglet": "t"}, page)
     must([k for k, _r in omitted] == ["vulnerable_a", "incompatible_avec"], "relation_fields : ligne libre -> omise")
+    page = {"data": [("Résistance magique", ["Sang"]), ("Vulnérabilité magique", [])]}
+    fields, omitted, blank = relation_fields({"onglet": "t"}, page)
+    must(fields == [("resiste_a", ["Sang"]), ("vulnerable_a", [])] and blank == ["vulnerable_a"],
+         "relation_fields : cellule vide -> [] et signalée")
     try:
         relation_fields({"onglet": "t"}, {"data": [("Résistance magique", ["Sang"]), ("Résistance magique", ["Eau"])]})
         must(False, "relation_fields : ligne en double non refusée")
     except ValueError:
         pass
+
+    # De bout en bout, sur un onglet synthétique minimal : le générateur (parse_sheet -> relation_fields) et la
+    # vérification indépendante (raw_expected, qui ne lit que les cellules brutes) doivent rendre le même verdict,
+    # y compris pour une cellule vide et pour une phrase libre courte sans ponctuation.
+    cfg = MAGIES[1]  # Sang
+    COLS = (8, 13, 18, 23)  # H, M, R, W : colonnes des valeurs d'une ligne du bloc DONNÉES
+
+    def synthetic(values, label="Résistance magique", with_health_value=True):
+        cells = [dict(r=1, c=COL_BANNER, v=cfg["titre"]), dict(r=5, c=COL_BANNER, v="DONNÉES"),
+                 dict(r=6, c=1, v="Santé offert")]
+        if with_health_value:
+            cells.append(dict(r=6, c=8, v="0.0"))
+        cells.append(dict(r=7, c=1, v=label))
+        cells += [dict(r=7, c=COLS[i], v=v) for i, v in enumerate(values)]
+        return {"name": "t", "cells": cells, "merged": []}
+
+    def generated(raw):
+        try:
+            page = parse_sheet(Sheet(raw), cfg)
+            fields, _omitted, _blank = relation_fields(cfg, page)
+        except ValueError:
+            return "erreur"
+        return dict(fields).get("resiste_a", "omis")
+
+    def checked(raw):
+        try:
+            return raw_expected(raw, SHORT_NAMES).get("resiste_a", "omis")
+        except ValueError:
+            return "erreur"
+
+    cases = [
+        ([], []),                                                    # cellule vide à droite du libellé
+        (["Aucune"], []),
+        (["Sang", "Eau"], ["Sang", "Eau"]),
+        (["Sang, eau\nTerre"], ["Sang", "Eau", "Terre"]),
+        (["Sang\rEau"], ["Sang", "Eau"]),                            # « \r » seul sépare aussi
+        (["Toutes les autres magies"], "omis"),                      # 4 mots, sans ponctuation : phrase libre
+        (["Sang", "Toutes les autres magies"], "omis"),              # un élément libre suffit
+        (["Sang (sauf Eau)"], "omis"),
+        (["Tout !"], "omis"),
+        (["Sang Eau" + "x" * 33], "omis"),                           # 41 caractères
+        (["Toutes les magies"], "erreur"),                           # 3 mots : un nom inconnu, pas une phrase libre
+        (["Lave"], "erreur"),
+        (["Espace-Temps"], "erreur"),
+        (["Sang", "sang"], "erreur"),
+        (["Aucune", "Sang"], "erreur"),
+    ]
+    for values, want in cases:
+        raw = synthetic(values)
+        got_gen, got_chk = generated(raw), checked(raw)
+        must(got_gen == want, "générateur %r : %r au lieu de %r" % (values, got_gen, want))
+        must(got_chk == want, "vérification %r : %r au lieu de %r" % (values, got_chk, want))
+    # une cellule vide n'est tolérée que pour une ligne de relation : ailleurs, rien n'est deviné
+    must(generated(synthetic(["Sang"], with_health_value=False)) == "erreur", "libellé « Santé offert » sans valeur -> erreur")
+    # le rendu d'une cellule vide ne plante pas et garde le libellé
+    page = parse_sheet(Sheet(synthetic([])), cfg)
+    fields, _omitted, blank = relation_fields(cfg, page)
+    must(blank == ["resiste_a"], "cellule vide signalée")
+    must("- **Résistance magique** :\n" in render(cfg, page, {}, fields), "rendu d'une cellule vide")
 
 
 def read_front(path):
@@ -1139,6 +1229,7 @@ def main(argv=None):
     written = []
     problems = []
     report = []
+    empty_cells = []
     for cfg in MAGIES:
         raw = sheets.get(cfg["onglet"])
         if raw is None:
@@ -1149,7 +1240,7 @@ def main(argv=None):
             page = parse_sheet(sh, cfg)
             check_all_consumed(sh)
             by_ref = comments_by_ref(cfg["onglet"], comments)
-            fields, omitted = relation_fields(cfg, page)
+            fields, omitted, blank = relation_fields(cfg, page)
             body = render(cfg, page, by_ref, fields)
         except ValueError as err:
             problems.append(str(err))
@@ -1165,12 +1256,18 @@ def main(argv=None):
             fh.write(body)
         written.append(target)
         report.extend((cfg["slug"], key, reason) for key, reason in omitted)
+        empty_cells.extend((cfg["slug"], key) for key in blank)
         print("écrit %s (%d sorts, %d cellules avec commentaires)" % (target, len(page["spells"]), len(by_ref)))
 
     print("RAPPORT relations entre magies : %d clé(s) omise(s) faute de liste dans la source%s"
           % (len(report), " :" if report else ""))
     for slug, key, reason in report:
         print("  %s : %s omis (%s)" % (slug, key, reason))
+    if empty_cells:  # absent du rapport quand aucune cellule n'est vide (cas du classeur actuel)
+        print("RAPPORT relations lues comme [] faute de valeur : %d clé(s) (cellule vide à droite du libellé) :"
+              % len(empty_cells))
+        for slug, key in empty_cells:
+            print("  %s : %s = [] (cellule vide dans la source)" % (slug, key))
 
     for p in problems:
         print("ERREUR : " + p, file=sys.stderr)
