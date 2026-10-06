@@ -1,0 +1,30 @@
+---
+title: Huile hémophile
+aliases: ["Huile Hémophilie"]
+tags: ["alchimie", "huile", "saignement"]
+summary: "L’Huile Hémophilie est une préparation alchimique conçue pour être appliquée sur une arme afin d’infliger l’altération d’état saignement."
+sources: ["Google Doc « Alchimie »", "https://docs.google.com/document/d/1n5KJ8rmk1Yj8QY__v31XnpDwQw6gSyjx1tve9bTZM2k/edit"]
+status: draft
+---
+
+*L’Huile Hémophilie est une préparation alchimique conçue pour être appliquée sur une arme afin d’infliger l’altération d’état saignement. Issue d’ingrédients liés au sang, elle permet de transmettre cet effet à chaque coup porté, provoquant une perte de santé continue chez la cible. Plus l’huile est puissante, plus le nombre d’utilisations avant dissipation est élevé.*
+
+| Recette |  |  |  |  |
+| :-: | :-: | :-: | :-: | :-: |
+| Solvant | Essence | Amplificateur | Catalyseur | Stabilisateur |
+| Huile | Régénération Santé | Sang | Sang | Régénération Santé |
+
+| Petite huile hémophile |  |  |
+| :-: | :-: | :-: |
+| Prix | Niveau | Effet |
+| 7 Ro | Apprenti | 1 utilisation<br>Oblige un jet de vigueur, si raté : Inflige saignement 1 |
+
+| Grande huile hémophile |  |  |
+| :-: | :-: | :-: |
+| Prix | Niveau | Effet |
+| 15 Ro | Avancé | 2 utilisations<br>Oblige un jet de vigueur, si raté : Inflige saignement 1 |
+
+| Super huile hémophile |  |  |
+| :-: | :-: | :-: |
+| Prix | Niveau | Effet |
+| 40 Ro | Expert | 3 utilisations<br>Oblige un jet de vigueur, si raté : Inflige saignement 1 |

@@ -1,6 +1,6 @@
 # Maverick Center — contexte pour Claude
 
-Dépôt de projets autour de **Maverick JDR** (jeu de rôle high fantasy du MJ Bravexier) :
+Dépôt de projets autour de **Maverick JDR** (jeu de rôle high fantasy) :
 un **wiki** de pages interconnectées par mots-clés et un **générateur de fiche de personnage**.
 Interface et contenu en **français** ; identifiants de code, noms de fonctions et commits en anglais ou français, comme le code voisin.
 
