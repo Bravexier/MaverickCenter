@@ -22,8 +22,8 @@ const sources = {
       {am.portee === 'classe'
         ? ' : bonus d’armure magique de base de la classe.'
         : am.cartouche
-          ? <> avec la 2<sup>e</sup> spécialité, <a href={entryHref(am.cartouche)}>{am.specialite}</a> (le pendant lanceur de sort de la classe).</>
-          : ' avec la 2e spécialité (le pendant lanceur de sort de la classe).'}
+          ? <> avec la spécialité <a href={entryHref(am.cartouche)}>{am.specialite}</a>.</>
+          : ' avec une de ses spécialités.'}
       <span class="muted"> {sources[am.source as keyof typeof sources]}</span>
     </p>
   )

@@ -15,8 +15,9 @@ const fold = (text) => String(text).normalize('NFD').replace(/\p{Diacritic}/gu, 
 
 export const AM_BONUS = 4;
 
-// « considérer comme classe magique », « Concidérer comme une classe magique » (faute de frappe du classeur)…
-const CONSIDERE_MAGIQUE = /con[sc]iderer comme (?:une )?classe magique/; // appliquée au texte sans accents (fold)
+// « considérer comme classe magique », « Concidérer comme une classe magique » (faute de frappe du classeur) ou « la classe est concidérée comme
+// magique » (Flagelleur) : le mot « classe » est exigé, pour ne pas confondre avec « les armes sont considérées comme magiques ».
+const CONSIDERE_MAGIQUE = /con[sc]ider(?:er|ee)s? comme (?:une )?classe magique|classe (?:est )?con[sc]ider(?:er|ee)s? comme magique/; // appliquée au texte sans accents (fold)
 
 /**
  * @returns {{ valeur: number, portee: 'classe' | 'specialite', specialite: string | null, cartouche: object | null, source: 'sommaire' | 'specialite' | 'fiche' } | null}
