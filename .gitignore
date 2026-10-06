@@ -1,0 +1,26 @@
+# Node / Astro
+node_modules/
+client/dist/
+client/.astro/
+
+# Tests du service Node (base JSON temporaire)
+api/character-service/test/tmp/
+
+# .NET
+bin/
+obj/
+
+# Divers
+.DS_Store
+*.log
+
+# Paquet de déploiement généré
+deploy/site/
+deploy/*.zip
+deploy/*.tar.gz
+deploy/.htpasswd
+deploy/.github-token
+deploy/.installed-sha
+deploy/update.log
+deploy/.update.lock/
+deploy/update-nas.env

@@ -1,0 +1,34 @@
+{
+  "$comment": "Manifeste des sources de Maverick JDR. 'type' = dossier de client/src/content/wiki/ (null = à classer après lecture du contenu). Les URLs sont celles fournies par le MJ ; le doublon 1vn5Tq11… (cité deux fois) n'apparaît qu'une fois.",
+  "discord": {
+    "guildId": "374464159254839298",
+    "invite": "https://discord.gg/GMGBnjzfMk",
+    "category": "L'univers de Maverick",
+    "channels": [
+      { "name": "codex-maverick", "type": null, "note": "Salon d'entrée du codex (catégorie)" },
+      { "name": "lien-pour-races", "type": "races" },
+      { "name": "lien-pour-guide", "type": "guide" },
+      { "name": "lien-pour-magies", "type": "magies" },
+      { "name": "lien-pour-classes", "type": "classes" },
+      { "name": "lien-pour-bestiaire", "type": "bestiaire" },
+      { "name": "lien-pour-ressources-craft", "type": "ressources" },
+      { "name": "lien-pour-métier", "type": "metiers" },
+      { "name": "lore-bestiaire-codex", "type": "lore" },
+      { "name": "cartes", "type": "cartes" }
+    ]
+  },
+  "google": [
+    { "id": "1CwDqDKurMOdqig3ozX4NQETbBW9sggsxEqM1WfbOG5M", "kind": "doc", "type": null, "title": null, "url": "https://docs.google.com/document/d/1CwDqDKurMOdqig3ozX4NQETbBW9sggsxEqM1WfbOG5M/edit?tab=t.0#heading=h.2h6bnqhu7awm" },
+    { "id": "1KXO4Np9SnaOYopV1cUKsO-MPjNxgyJ39BEyDAai1Kg4", "kind": "sheet", "type": null, "title": null, "gids": ["1883785537"], "url": "https://docs.google.com/spreadsheets/d/1KXO4Np9SnaOYopV1cUKsO-MPjNxgyJ39BEyDAai1Kg4/edit?gid=1883785537#gid=1883785537" },
+    { "id": "12Sp_j_KbtzRbooe7WGsaP2Dce8F4TbLvpS0Eu8TwSMI", "kind": "doc", "type": null, "title": null, "url": "https://docs.google.com/document/d/12Sp_j_KbtzRbooe7WGsaP2Dce8F4TbLvpS0Eu8TwSMI/edit?tab=t.0" },
+    { "id": "1Xph3vnjwmZpBG3UHDyBBqZQdVUnMLVxEllK3vXUw598", "kind": "doc", "type": null, "title": null, "url": "https://docs.google.com/document/d/1Xph3vnjwmZpBG3UHDyBBqZQdVUnMLVxEllK3vXUw598/edit?tab=t.0" },
+    { "id": "1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c", "kind": "sheet", "type": null, "title": null, "gids": ["91381518"], "url": "https://docs.google.com/spreadsheets/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit?gid=91381518#gid=91381518" },
+    { "id": "1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs", "kind": "sheet", "type": null, "title": null, "gids": ["74362786"], "url": "https://docs.google.com/spreadsheets/d/1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs/edit?gid=74362786#gid=74362786" },
+    { "id": "1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8", "kind": "doc", "type": null, "title": null, "url": "https://docs.google.com/document/d/1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8/edit?usp=sharing" },
+    { "id": "12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA", "kind": "sheet", "type": null, "title": null, "url": "https://docs.google.com/spreadsheets/d/12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA/edit" },
+    { "id": "1Px7F_VtSOEkyUxrk2da1UiBJ6ji3n5i95LfNl63biE4", "kind": "sheet", "type": null, "title": null, "gids": ["864516453"], "url": "https://docs.google.com/spreadsheets/d/1Px7F_VtSOEkyUxrk2da1UiBJ6ji3n5i95LfNl63biE4/edit?gid=864516453#gid=864516453" },
+    { "id": "1lwALh1VKrIpgmEqX2MdYirKkPzGjSJXXDHtp2uYXO7w", "kind": "sheet", "type": null, "title": null, "url": "https://docs.google.com/spreadsheets/d/1lwALh1VKrIpgmEqX2MdYirKkPzGjSJXXDHtp2uYXO7w/edit" },
+    { "id": "1n5KJ8rmk1Yj8QY__v31XnpDwQw6gSyjx1tve9bTZM2k", "kind": "doc", "type": null, "title": null, "url": "https://docs.google.com/document/d/1n5KJ8rmk1Yj8QY__v31XnpDwQw6gSyjx1tve9bTZM2k/edit?tab=t.0" },
+    { "id": "1ilcolQXx_MRTMKt6N2n243N8GU9HSajihMT_JNRDI14", "kind": "doc", "type": null, "title": null, "url": "https://docs.google.com/document/d/1ilcolQXx_MRTMKt6N2n243N8GU9HSajihMT_JNRDI14/edit?tab=t.0" }
+  ]
+}

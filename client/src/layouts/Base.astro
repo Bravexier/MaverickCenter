@@ -1,0 +1,46 @@
+---
+import '../styles/global.css';
+import { url } from '../lib/wiki';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+const { title, description = 'Wiki et outils pour le JDR Maverick' } = Astro.props;
+
+const nav = [
+  { href: url(), label: 'Accueil', match: (p: string) => p === url() },
+  { href: url('wiki/'), label: 'Wiki', match: (p: string) => p.startsWith(url('wiki/')) },
+  { href: url('tags/'), label: 'Mots-clés', match: (p: string) => p.startsWith(url('tags/')) },
+  { href: url('generateur/'), label: 'Générateur de fiche', match: (p: string) => p.startsWith(url('generateur/')) },
+];
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href={url('favicon.svg')} />
+    <title>{title === 'Accueil' ? 'Maverick Center' : `${title} — Maverick Center`}</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="brand" href={url()}>Maverick Center</a>
+        <nav class="site-nav" aria-label="Navigation principale">
+          {nav.map((item) => <a href={item.href} aria-current={item.match(Astro.url.pathname) ? 'page' : undefined}>{item.label}</a>)}
+        </nav>
+        <form class="search-form" action={url('recherche/')} role="search">
+          <input type="search" name="q" placeholder="Rechercher…" aria-label="Rechercher dans le wiki" />
+          <button type="submit">OK</button>
+        </form>
+      </div>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer class="site-footer">Projet de fan pour Maverick JDR — contenu issu du Discord et des Google Docs du MJ.</footer>
+  </body>
+</html>

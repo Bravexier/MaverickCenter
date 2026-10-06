@@ -1,42 +1,58 @@
 # Maverick Center
 
-This repository contains a basic micro‑service oriented project for a High Fantasy RPG site.
+Outils autour de **Maverick JDR** : un wiki dont les pages sont reliées par mots-clés, et un générateur de fiche de personnage.
+Le contenu du jeu vient d'un serveur Discord et de Google Docs (voir [docs/sources.md](docs/sources.md)).
+
+> ⚠️ Le contenu actuel du wiki et de `rules.json` est de la **démonstration** (`status: example`), pas les règles de Maverick.
+> Il sera remplacé par l'import des sources.
+
+## Démarrage
+
+Prérequis : Node.js ≥ 22.12.
+
+```bash
+cd client
+npm install
+npm run dev      # http://localhost:4321
+npm test         # tests unitaires
+npm run build    # site statique dans client/dist/
+```
+
+## Ce que contient le site
+
+- **Wiki** (`/wiki/`) : une catégorie par salon Discord (races, classes, magies, bestiaire, ressources & craft, métiers, guide, lore, cartes).
+  Les pages se relient avec `[[Titre]]` ; chaque page affiche ses rétroliens, ses mots-clés (`/tags/`) et est trouvable par la recherche (`/recherche/`).
+- **Générateur de fiche** (`/generateur/`) : race, classes, magies, répartition de points, valeurs dérivées ; sauvegarde automatique
+  dans le navigateur, export/import JSON, impression/PDF. Les règles sont des **données** (`client/src/data/rules.json`).
+
+## Héberger le site (NAS, Docker)
+
+`./deploy/build.sh` construit la version à montrer (sans les pages d'exemple) et produit `deploy/maverick-center-nas.zip` :
+site statique + `docker-compose.yml` + configuration nginx protégée par mot de passe. Voir [deploy/README.md](deploy/README.md).
+Après chaque PR fusionnée, GitHub republie le site sur la branche `site` et le NAS la récupère automatiquement (`deploy/update-nas.sh`).
+
+Pour une page privée claude.ai (une simple adresse à ouvrir) : `node tools/build-artifact.mjs --out <dossier>` produit la version portable
+(liens relatifs, sans fichier JS/CSS externe) et les listes de fichiers à publier.
+
+## Documentation
+
+- [Sources (Discord, Google Docs) et import](docs/sources.md)
+- [Écrire des pages du wiki](docs/content-guide.md)
+- [Schéma des règles du générateur](docs/character-generator.md)
+- [CLAUDE.md](CLAUDE.md) — contexte pour les sessions Claude Code
 
 ## Structure
 
-- `api/character-service` – Node.js API exposing CRUD and search operations for characters. Uses a small JSON file as a database.
-- `api/dotnet-character-service` – same API implemented with ASP.NET Core.
-- `client` – placeholder for a future front‑end.
-
-## Requirements
-
-- Node.js runtime for the original service under `api/character-service` (no external modules).
-- .NET 6 SDK or later for `api/dotnet-character-service`.
-
-## Running the character service
-
-```bash
-cd api/character-service
-npm start
+```
+client/   site Astro (wiki + générateur)
+sources/  manifeste des sources et contenu brut importé
+tools/    scripts d'import
+docs/     documentation
+api/      services de personnages d'origine (voir ci-dessous)
 ```
 
-The service will start on port 3000 by default.
+### Services `api/` (existant)
 
-### Running tests
-
-```bash
-cd api/character-service
-npm test
-```
-
-This runs a small suite of unit tests using only Node's built-in modules.
-
-## Running the .NET character service
-
-```bash
-cd api/dotnet-character-service
-dotnet run
-```
-
-The service listens on port 5000 by default.
-
+Deux implémentations équivalentes d'une API CRUD de personnages, avec un fichier JSON comme base : `api/character-service`
+(Node.js sans dépendance, `npm start` / `npm test`, port 3000) et `api/dotnet-character-service` (ASP.NET Core, `dotnet run`, port 5000).
+Le site ne les utilise pas pour l'instant : les fiches sont stockées dans le navigateur.

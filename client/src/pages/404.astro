@@ -1,0 +1,9 @@
+---
+import Base from '../layouts/Base.astro';
+import { url } from '../lib/wiki';
+---
+
+<Base title="Page introuvable">
+  <h1>Page introuvable</h1>
+  <p>Cette page n’existe pas (ou plus). Essayez la <a href={url('recherche/')}>recherche</a> ou l’<a href={url('wiki/')}>index du wiki</a>.</p>
+</Base>

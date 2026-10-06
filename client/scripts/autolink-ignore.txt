@@ -1,0 +1,2 @@
+# Locutions courantes qui sont aussi le titre d'une page : on ne les lie pas automatiquement.
+en résumé
