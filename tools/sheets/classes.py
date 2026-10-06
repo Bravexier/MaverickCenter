@@ -80,6 +80,8 @@ WORKBOOK = "Classe Maverick V7"
 FILE_ID = "1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs"
 URL = "https://docs.google.com/spreadsheets/d/%s/edit" % FILE_ID
 CATEGORY = "classes"
+CAP_CATEGORY = "capacites"
+CAP_TAG = "capacité de classe"
 GLOSSARY_CATEGORY = "ressources"
 GLOSSARY_SLUG = "objets-de-depart-des-classes"
 GLOSSARY_TITLE = "Objets des inventaires de départ"
@@ -821,17 +823,462 @@ def is_ours(path):
     return URL in head and "« %s »" % WORKBOOK in head
 
 
-def main(argv=None):
-    ap = argparse.ArgumentParser(description="Génère les pages « classes » du wiki depuis le dump de « %s »." % WORKBOOK)
-    ap.add_argument("--dump", action="append", required=True, help="dump JSON de xlsx_to_json.py (répétable)")
-    ap.add_argument("--xlsx", help="classeur d'origine (commentaires et hyperliens de cellule)")
-    ap.add_argument("--sans-commentaires", action="store_true",
-                    help="ne pas lire les commentaires ni les hyperliens de cellule (.xlsx)")
-    ap.add_argument("--out", required=True, help="racine du wiki (client/src/content/wiki)")
-    args = ap.parse_args(argv)
+# --------------------------------------------------------------------------------------------------------------------
+# Vérificateur (--verifier) : n'écrit rien
+# --------------------------------------------------------------------------------------------------------------------
+# Écrit AVANT le code qui produit les pages de capacités. Il ne réutilise NI l'analyse des blocs d'aptitude du script
+# (parse_ability), NI la dérivation des groupes de choix (derive_capacities) : il relit les positions de cellules du dump
+# (ligne, colonne, bannière), recalcule seul rôle, rang et exclusivités, puis compare aux pages écrites sur disque.
 
+V_COL_CLASSE = 16         # colonne P
+V_ROW_BANNIERES = 17
+V_COL_TEXTES = 38         # AL : à partir d'ici, textes de description (pas de capacités)
+V_LVL = re.compile(r"Lvl (\d+)")
+V_REF = re.compile(r"([A-Z]+)(\d+)")
+
+# Cas de test lus EN CLAIR sur les captures de la feuille (images/4.png : onglet Barde ; images/5.png : bas de l'onglet
+# Archimage, donc sans ses capacités de colonne P de niveaux 1 et 5, lues dans le dump). Pour chaque classe : capacités
+# sans choix (niveau, nom), cartouches de spécialité exclusifs entre eux (bannière, niveau, nom), puis les lignes de
+# capacités côte à côte, de haut en bas : (niveau, [noms de gauche à droite]) ; une seule au choix par ligne.
+EXPECTED = {
+    "Barde": dict(
+        classe=[(1, "Prestation"), (5, "Son perturbant"), (20, "Chant double")],
+        specialites=[("DANSEUR", 10, "Danseur"), ("MÉNESTREL", 10, "Ménestrel")],
+        lignes={
+            "DANSEUR": [(10, ["Perroquet", "Contournement"]), (15, ["Shrapnel", "Marche lunaire"]),
+                        (20, ["A bas les Badauds", "Bain de foules"])],
+            "MÉNESTREL": [(10, ["Nouvel accord", "Écho"]), (15, ["Balade guerrière", "Amplification"]),
+                          (20, ["Exaltation", "Touérk !"])],
+        }),
+    "Archimage": dict(
+        classe=[(1, "Magie-stral"), (5, "Grimoire"), (20, "Semi complet")],
+        specialites=[],
+        lignes={None: [(10, ["Élémentaliste", "Occultiste"]), (10, ["Création vivante", "Tempus Figus", "Obédience"]),
+                       (15, ["Moissonneur", "Rituel Interdit", "Pacte Noire"]), (20, ["Choix", "Caméléon", "Adaptation"])]}),
+}
+
+# Sélections de test (exemples du propriétaire) : (classe, capacités prises, {capacité refusée: capacité qui la bloque}).
+# Une capacité refusée doit être en conflit avec celle qui la bloque ; les capacités prises ne doivent pas l'être entre elles.
+SELECTIONS = [
+    ("Barde", ["Ménestrel", "Nouvel accord", "Balade guerrière", "Exaltation", "Chant double"],
+     {"Danseur": "Ménestrel", "Écho": "Nouvel accord", "Amplification": "Balade guerrière", "Touérk !": "Exaltation",
+      "Perroquet": "Ménestrel", "Shrapnel": "Ménestrel", "Bain de foules": "Ménestrel"}),
+    ("Barde", ["Danseur", "Perroquet", "Shrapnel", "Bain de foules", "Prestation", "Son perturbant"],
+     {"Ménestrel": "Danseur", "Contournement": "Perroquet", "Marche lunaire": "Shrapnel", "A bas les Badauds": "Bain de foules",
+      "Nouvel accord": "Danseur"}),
+    ("Archimage", ["Élémentaliste", "Création vivante", "Moissonneur", "Choix", "Semi complet", "Magie-stral", "Grimoire"],
+     {"Occultiste": "Élémentaliste", "Tempus Figus": "Création vivante", "Obédience": "Création vivante",
+      "Rituel Interdit": "Moissonneur", "Pacte Noire": "Moissonneur", "Caméléon": "Choix", "Adaptation": "Choix"}),
+]
+
+
+def v_cn(letters):
+    n = 0
+    for ch in letters:
+        n = n * 26 + (ord(ch) - 64)
+    return n
+
+
+def v_read_sheet(raw):
+    """Onglet brut -> ({(ligne, colonne): texte} des cellules textuelles non vides, {coin haut gauche: coin bas droit})."""
+    cells = {}
+    for c in raw["cells"]:
+        v = c["v"]
+        if isinstance(v, str) and v.strip():
+            cells[(c["r"], c["c"])] = v.replace("\r\n", "\n").replace("\r", "\n").strip()
+    merges = {}
+    for rng in raw.get("merged", []):
+        m = re.fullmatch(r"([A-Z]+)(\d+):([A-Z]+)(\d+)", rng)
+        merges[(int(m.group(2)), v_cn(m.group(1)))] = (int(m.group(4)), v_cn(m.group(3)))
+    return cells, merges
+
+
+def v_sheet_abilities(name, raw, notes):
+    """Capacités d'un onglet de classe lues par leurs seules positions -> (liste de dicts, anomalies, erreurs).
+
+    Les anomalies sont des tuples (nature de l'anomalie, onglet, détail) ; les erreurs sont les cas où le rôle d'une
+    capacité ne peut pas être décidé (aucune supposition n'est faite).
+    """
+    cells, merges = v_read_sheet(raw)
+    lvl_set = {k for k, v in cells.items() if v.startswith("Lvl")}
+    banners = sorted((c, v) for (r, c), v in cells.items() if r == V_ROW_BANNIERES and c < V_COL_TEXTES)
+    abilities, anomalies, errors = [], [], []
+    for (r, c) in sorted(lvl_set):
+        m = V_LVL.fullmatch(cells[(r, c)])
+        if not m:
+            errors.append("%s!%s : niveau %r non reconnu" % (name, ref_of(r, c), cells[(r, c)]))
+            continue
+        right = sorted(cc for (rr, cc) in cells if rr == r and cc > c)
+        nm = cells.get((r, right[0])) if right and (r, right[0]) not in lvl_set else None
+        eff = cells.get((r + 1, c))
+        r2, c2 = merges.get((r + 1, c), (r + 1, c))
+        typ = None
+        for rr in range(r2 + 1, r2 + 4):
+            if (rr, c) in lvl_set:
+                break
+            if (rr, c) in cells:
+                typ = cells[(rr, c)]
+                break
+        found = []
+        for ref in sorted(notes, key=lambda x: (int(V_REF.fullmatch(x).group(2)), v_cn(V_REF.fullmatch(x).group(1)))):
+            nr, nc = int(V_REF.fullmatch(ref).group(2)), v_cn(V_REF.fullmatch(ref).group(1))
+            if r + 1 <= nr <= r2 and c <= nc <= c2:
+                found.append(notes[ref])
+        abilities.append(dict(row=r, col=c, niveau=int(m.group(1)), nom=nm, effet=eff, type=typ, notes=found,
+                              spec=None, nature=None, peers=[], rang=None))
+
+    for a in abilities:
+        if banners and a["col"] != V_COL_CLASSE:
+            starts = [i for i, (bc, _) in enumerate(banners) if bc <= a["col"]]
+            if not starts:
+                errors.append("%s!%s : capacité à gauche de toute bannière" % (name, ref_of(a["row"], a["col"])))
+            else:
+                a["spec"] = banners[starts[-1]][1]
+    lines = {}
+    for a in abilities:
+        if a["col"] != V_COL_CLASSE:
+            lines.setdefault((a["spec"], a["row"]), []).append(a)
+
+    def refs(group):
+        return ", ".join(ref_of(a["row"], a["col"]) for a in sorted(group, key=lambda a: (a["row"], a["col"])))
+
+    def link(group):
+        for a in group:
+            a["peers"] = [b for b in sorted(group, key=lambda b: b["col"]) if b is not a]
+
+    for a in abilities:
+        if a["col"] == V_COL_CLASSE:
+            a["nature"] = "classe"
+    if banners:
+        spec_rows = {}
+        for (spec, r) in lines:
+            spec_rows.setdefault(spec, set()).add(r)
+        for _, spec in banners:
+            if spec not in spec_rows:
+                anomalies.append(("bannière sans capacité", name, spec))
+                continue
+            rows = sorted(spec_rows[spec])
+            if len(lines[(spec, rows[0])]) != 1:
+                errors.append("%s : première ligne de la bannière %r : %d capacités au lieu d'une (%s)"
+                              % (name, spec, len(lines[(spec, rows[0])]), refs(lines[(spec, rows[0])])))
+            else:
+                lines[(spec, rows[0])][0]["nature"] = "specialite"
+            for r in rows[1:]:
+                grp = lines[(spec, r)]
+                if len(grp) == 1:
+                    errors.append("%s : ligne à une seule capacité sous la bannière %r (%s)" % (name, spec, refs(grp)))
+                    continue
+                for a in grp:
+                    a["nature"] = "choix"
+                link(grp)
+                if len(grp) != 2:
+                    anomalies.append(("groupe de taille inattendue", name, "bannière %s : %s" % (spec, refs(grp))))
+                if len({a["niveau"] for a in grp}) != 1:
+                    anomalies.append(("niveaux différents dans un groupe", name, refs(grp)))
+        if len({frozenset(spec_rows[s]) for s in spec_rows}) > 1:
+            anomalies.append(("bannières sur des lignes différentes", name,
+                              " ; ".join("%s : %s" % (s, ", ".join(str(r) for r in sorted(spec_rows[s]))) for _, s in banners
+                                         if s in spec_rows)))
+        carts = [a for a in abilities if a["nature"] == "specialite"]
+        cart_rows = {}
+        for a in carts:
+            cart_rows.setdefault(a["row"], []).append(a)
+        for grp in cart_rows.values():
+            if len(grp) > 1:
+                link(grp)
+        if len(cart_rows) > 1 or (carts and all(len(g) == 1 for g in cart_rows.values())):
+            anomalies.append(("cartouches de spécialité sur des lignes différentes", name, refs(carts)))
+        for a in carts:
+            bname = a["spec"]
+            if a["nom"] is None or fold(a["nom"]) != fold(bname):
+                anomalies.append(("nom de cartouche différent de la bannière", name,
+                                  "%s : bannière « %s », cartouche « %s »" % (ref_of(a["row"], a["col"]), bname, a["nom"])))
+    else:
+        for (_, r), grp in sorted(lines.items(), key=lambda kv: kv[0][1]):
+            if len(grp) == 1:
+                grp[0]["nature"] = "classe"
+                continue
+            for a in grp:
+                a["nature"] = "choix"
+            link(grp)
+            if len(grp) not in (2, 3):
+                anomalies.append(("groupe de taille inattendue", name, refs(grp)))
+            if len({a["niveau"] for a in grp}) != 1:
+                anomalies.append(("niveaux différents dans un groupe", name, refs(grp)))
+    ordered = sorted((a for a in abilities if a["nature"] == "classe"), key=lambda a: (a["row"], a["col"]))
+    for i, a in enumerate(ordered, 1):
+        a["rang"] = i
+    for a in abilities:
+        if a["nature"] in ("choix", "specialite"):
+            a["rang"] = 1 + sum(1 for b in a["peers"] if b["col"] < a["col"])
+    return abilities, anomalies, errors
+
+
+def v_parse_page(path):
+    """Page écrite par ce script -> (frontmatter {clé: valeur JSON}, corps). Le frontmatter est écrit en JSON ligne à ligne."""
+    with open(path, encoding="utf-8") as fh:
+        lines = fh.read().split("\n")
+    if lines[0] != "---":
+        raise ValueError("pas de frontmatter")
+    end = lines.index("---", 1)
+    front = {}
+    for line in lines[1:end]:
+        key, _, value = line.partition(": ")
+        front[key] = json.loads(value)
+    return front, "\n".join(lines[end + 1:])
+
+
+def v_unescape(line):
+    return re.sub(r"\\([\\`*_\[\]<~>#+\-.)&])", r"\1", line)
+
+
+def v_lines(text):
+    """Texte -> lignes non vides, sans espaces de bord, sans échappements Markdown, listes « - x » normalisées."""
+    out = []
+    for line in text.split("\n"):
+        line = v_unescape(line.strip())
+        if line:
+            out.append(re.sub(r"^-\s+", "- ", line))
+    return out
+
+
+def v_flat(text):
+    return re.sub(r"\s+", " ", text.replace("<br>", " ").replace("\\|", "|")).strip()
+
+
+def v_conflict(a, b):
+    """Deux capacités sont-elles exclusives ? Lu sur le frontmatter seul (c'est ce que fera le site)."""
+    fa, fb = a["front"], b["front"]
+    if a["id"] in fb.get("choix_exclusif_avec", []) or b["id"] in fa.get("choix_exclusif_avec", []):
+        return True
+    return (fa["classe"] == fb["classe"] and bool(fa.get("specialite")) and bool(fb.get("specialite"))
+            and fa["specialite"] != fb["specialite"])
+
+
+def v_described(pages, class_id, class_name):
+    """Structure d'une classe lue sur le frontmatter des pages seul : même forme que EXPECTED."""
+    mine = [p for p in pages.values() if p["front"].get("classe") == class_id]
+
+    def name_of(p):
+        return re.sub(r" \(%s\)(, niveau \d+)?$" % re.escape(class_name), "", p["front"]["title"])
+
+    def rank(p):
+        return p["front"]["rang"]
+    d = dict(classe=[], specialites=[], lignes={})
+    for p in sorted(mine, key=rank):
+        f = p["front"]
+        if f.get("nature") == "classe":
+            d["classe"].append((f["niveau"], name_of(p)))
+    for p in sorted([p for p in mine if p["front"].get("nature") == "specialite"], key=rank):
+        d["specialites"].append((p["front"]["specialite"], p["front"]["niveau"], name_of(p)))
+    seen = set()
+    for p in sorted([p for p in mine if p["front"].get("nature") == "choix"], key=lambda p: (p["front"]["ligne"], rank(p))):
+        if p["id"] in seen:
+            continue
+        group = [p] + [pages[i] for i in p["front"].get("choix_exclusif_avec", []) if i in pages]
+        seen.update(g["id"] for g in group)
+        group.sort(key=rank)
+        d["lignes"].setdefault(p["front"].get("specialite"), []).append((p["front"]["niveau"], [name_of(g) for g in group]))
+    return d
+
+
+def verify(args):
+    sheets, order, dump_dirs = load_dumps(args.dump)
+    class_names = [n for n in order if n != SUMMARY_SHEET and n not in IGNORED_SHEETS]
+    comments, _ = load_comments(args, dump_dirs)
+    out = args.out
+    results = []     # (libellé, [échecs], info)
+
+    def check(label, failures, info=""):
+        results.append((label, failures, info))
+
+    # pages de capacités sur disque
+    pages, failures = {}, []
+    folder = os.path.join(out, CAP_CATEGORY)
+    for fname in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
+        full = os.path.join(folder, fname)
+        if fname.endswith(".md") and is_ours(full):
+            try:
+                front, body = v_parse_page(full)
+            except (ValueError, OSError) as err:
+                failures.append("%s : page illisible (%s)" % (fname, err))
+                continue
+            pages[CAP_CATEGORY + "/" + fname[:-3]] = dict(id=CAP_CATEGORY + "/" + fname[:-3], front=front, body=body)
+    check("pages de capacités lisibles", failures, "%d pages dans %s" % (len(pages), folder))
+
+    # capacités attendues, recalculées depuis le dump
+    expected, anomalies, errors = {}, [], []
+    for name in class_names:
+        ab, an, er = v_sheet_abilities(name, sheets[name], comments.get(name, {}))
+        expected[name] = ab
+        anomalies += an
+        errors += er
+    total = sum(len(v) for v in expected.values())
+
+    # (1) nombre de pages = nombre de cellules « Lvl N », au total et par classe
+    failures = []
+    by_class = {}
+    for p in pages.values():
+        by_class[p["front"].get("classe")] = by_class.get(p["front"].get("classe"), 0) + 1
+    for name in class_names:
+        n_pages = by_class.get("classes/" + slugify(name), 0)
+        if n_pages != len(expected[name]):
+            failures.append("%s : %d pages pour %d cellules « Lvl N »" % (name, n_pages, len(expected[name])))
+    if len(pages) != total:
+        failures.append("total : %d pages pour %d cellules « Lvl N »" % (len(pages), total))
+    check("(1) une page par cellule « Lvl N » (total et par classe)", failures, "%d cellules, %d classes" % (total, len(class_names)))
+
+    # appariement page <-> capacité attendue : (classe, bannière, ligne, rang)
+    index, failures = {}, []
+    for p in pages.values():
+        f = p["front"]
+        key = (f.get("classe"), f.get("specialite"), f.get("ligne"), f.get("rang"))
+        if key in index:
+            failures.append("deux pages pour %r : %s et %s" % (key, index[key]["id"], p["id"]))
+        index[key] = p
+    matched = set()
+    for name in class_names:
+        for a in expected[name]:
+            a["page"] = index.get(("classes/" + slugify(name), a["spec"], a["row"], a["rang"]))
+            if a["page"] is None:
+                failures.append("%s!%s : aucune page (bannière %r, ligne %d, rang %s)"
+                                % (name, ref_of(a["row"], a["col"]), a["spec"], a["row"], a["rang"]))
+            else:
+                matched.add(a["page"]["id"])
+    for pid in sorted(set(pages) - matched):
+        failures.append("%s : page qui ne correspond à aucune cellule « Lvl N »" % pid)
+    check("appariement page <-> cellule (classe, bannière, ligne, rang)", failures)
+
+    # (2) nom, type, effet, niveau, nature... de chaque capacité dans SA page
+    failures = []
+    titles_by_key = {}
+    for name in class_names:
+        for a in expected[name]:
+            p = a["page"]
+            if p is None:
+                continue
+            f, where = p["front"], "%s!%s" % (name, ref_of(a["row"], a["col"]))
+            if a["nom"] is None or not f.get("title", "").startswith("%s (%s)" % (a["nom"], name)):
+                failures.append("%s : titre %r pour le nom %r" % (where, f.get("title"), a["nom"]))
+            if f.get("type_capacite") != a["type"]:
+                failures.append("%s : type %r au lieu de %r" % (where, f.get("type_capacite"), a["type"]))
+            if f.get("niveau") != a["niveau"] or f.get("ligne") != a["row"] or f.get("nature") != a["nature"]:
+                failures.append("%s : niveau/ligne/nature %r/%r/%r au lieu de %r/%r/%r"
+                                % (where, f.get("niveau"), f.get("ligne"), f.get("nature"), a["niveau"], a["row"], a["nature"]))
+            wanted_tags = [CAP_TAG, name.lower()] + ([a["spec"].lower()] if a["spec"] else [])
+            if f.get("tags") != wanted_tags:
+                failures.append("%s : tags %r au lieu de %r" % (where, f.get("tags"), wanted_tags))
+            if f.get("classe") != "classes/" + slugify(name) or f.get("aliases") != [] or f.get("status") != "draft":
+                failures.append("%s : classe/aliases/status incorrects" % where)
+            if a["nature"] == "classe" and "specialite" in f:
+                failures.append("%s : une capacité de classe ne porte pas de spécialité" % where)
+            if a["spec"] != f.get("specialite"):
+                failures.append("%s : spécialité %r au lieu de %r" % (where, f.get("specialite"), a["spec"]))
+            if not any(s.startswith("Google Sheet « %s », onglet « %s »" % (WORKBOOK, name)) for s in f.get("sources", [])) \
+                    or URL not in f.get("sources", []):
+                failures.append("%s : sources incorrectes %r" % (where, f.get("sources")))
+            wanted = v_lines(a["effet"] or "")
+            for note in a["notes"]:
+                wanted += v_lines("Note de cellule : " + note)
+            if v_lines(p["body"]) != wanted:
+                failures.append("%s : effet/note différents du dump :\n      page : %r\n      dump : %r"
+                                % (where, v_lines(p["body"])[:6], wanted[:6]))
+            summary = f.get("summary")
+            if (a["effet"] or "").strip():
+                if not summary or v_flat(summary) not in v_flat(a["effet"]):
+                    failures.append("%s : résumé %r absent de l'effet" % (where, summary))
+            elif summary:
+                failures.append("%s : résumé pour un effet vide" % where)
+            titles_by_key.setdefault(wiki_key(f.get("title", "")), []).append(p["id"])
+    check("(2) nom, type, effet, note, niveau, nature de chaque cellule dans SA page", failures)
+
+    # (3) groupes de choix recalculés depuis les positions, comparés à choix_exclusif_avec
+    failures = []
+    for name in class_names:
+        for a in expected[name]:
+            p = a["page"]
+            if p is None:
+                continue
+            where = "%s!%s" % (name, ref_of(a["row"], a["col"]))
+            want = [q["page"]["id"] for q in a["peers"] if q["page"] is not None]
+            got = p["front"].get("choix_exclusif_avec")
+            if (got or []) != want:
+                failures.append("%s : choix_exclusif_avec %r au lieu de %r" % (where, got, want))
+            if "choix_exclusif_avec" in p["front"] and not want:
+                failures.append("%s : clé choix_exclusif_avec présente pour une capacité sans groupe" % where)
+    for p in pages.values():
+        f = p["front"]
+        for other in f.get("choix_exclusif_avec", []):
+            q = pages.get(other)
+            if q is None:
+                failures.append("%s : cite %s qui n'existe pas" % (p["id"], other))
+                continue
+            g = q["front"]
+            if p["id"] not in g.get("choix_exclusif_avec", []):
+                failures.append("%s cite %s, qui ne le cite pas (asymétrie)" % (p["id"], other))
+            if other == p["id"]:
+                failures.append("%s se cite lui-même" % p["id"])
+            if g.get("classe") != f.get("classe"):
+                failures.append("%s et %s : classes différentes" % (p["id"], other))
+            if g.get("niveau") != f.get("niveau"):
+                failures.append("%s et %s : niveaux différents" % (p["id"], other))
+            if g.get("specialite") != f.get("specialite") and not (f.get("nature") == g.get("nature") == "specialite"):
+                failures.append("%s et %s : spécialités différentes" % (p["id"], other))
+    check("(3) groupes de choix (positions du dump) = choix_exclusif_avec ; symétrie, même niveau, même spécialité",
+          failures, "%d capacités dans un groupe" % sum(1 for p in pages.values() if p["front"].get("choix_exclusif_avec")))
+
+    # (4) Barde et Archimage en clair, puis sélections de test
+    failures, shown = [], []
+    for name, wanted in EXPECTED.items():
+        got = v_described(pages, "classes/" + slugify(name), name)
+        shown.append((name, got))
+        if got != wanted:
+            failures.append("%s : groupes produits différents de la capture\n      produit : %r\n      attendu : %r"
+                            % (name, got, wanted))
+    for name, taken, refused in SELECTIONS:
+        mine = {}
+        for p in pages.values():
+            if p["front"].get("classe") == "classes/" + slugify(name):
+                mine[re.sub(r" \(%s\)(, niveau \d+)?$" % re.escape(name), "", p["front"]["title"])] = p
+        missing = [n for n in list(taken) + list(refused) if n not in mine]
+        if missing:
+            failures.append("%s : capacités introuvables %r" % (name, missing))
+            continue
+        for i, x in enumerate(taken):
+            for y in taken[i + 1:]:
+                if v_conflict(mine[x], mine[y]):
+                    failures.append("%s : %r et %r sont pris ensemble mais jugés exclusifs" % (name, x, y))
+        for x, blocker in refused.items():
+            if blocker not in taken or not v_conflict(mine[x], mine[blocker]):
+                failures.append("%s : %r devrait être refusé à cause de %r" % (name, x, blocker))
+    check("(4) Barde et Archimage = captures ; sélections de test des exemples du propriétaire", failures)
+
+    # (5) aucune cellule non reconnue (parse_class s'arrête sur ce cas) et anomalies de disposition
+    failures = list(errors)
+    check("(5) rôle décidable pour chaque capacité (pas de cellule hors modèle)", failures)
+    results.append(("anomalies de disposition recalculées (non bloquantes)", [], "\n".join(
+        "      - %s | %s | %s" % a for a in anomalies) or "      (aucune)"))
+
+    ok = True
+    for label, failures, info in results:
+        ok = ok and not failures
+        print("%s %s%s" % ("OK    " if not failures else "ÉCHEC ", label, " : " + info if info and "\n" not in info else ""))
+        if info and "\n" in info:
+            print(info)
+        for line in failures[:12]:
+            print("      " + line)
+        if len(failures) > 12:
+            print("      … %d autres" % (len(failures) - 12))
+    for name, got in shown:
+        print("%s produit : classe %r ; spécialités %r ; lignes %r" % (name, got["classe"], got["specialites"], got["lignes"]))
+    print("VÉRIFICATION %s" % ("RÉUSSIE" if ok else "ÉCHOUÉE"))
+    return 0 if ok else 1
+
+
+def load_dumps(paths):
+    """-> (sheets {nom: onglet brut}, ordre des onglets, dossiers des dumps)."""
     sheets, order, dump_dirs = {}, [], []
-    for path in args.dump:
+    for path in paths:
         with open(path, encoding="utf-8") as fh:
             data = json.load(fh)
         dump_dirs.append(os.path.dirname(os.path.abspath(path)))
@@ -841,25 +1288,47 @@ def main(argv=None):
                 order.append(raw["name"])
     if SUMMARY_SHEET not in sheets:
         sys.exit("onglet %r absent du dump" % SUMMARY_SHEET)
-    class_names = [n for n in order if n != SUMMARY_SHEET and n not in IGNORED_SHEETS]
+    return sheets, order, dump_dirs
 
-    comments, links = {}, {}
-    if not args.sans_commentaires:
-        xlsx = args.xlsx
-        if not xlsx:
-            for d in dump_dirs:
-                cand = os.path.join(d, os.pardir, "sheets", FILE_ID, "classeur.xlsx")
-                if os.path.isfile(cand):
-                    xlsx = cand
-                    break
-        if not xlsx or not os.path.isfile(xlsx):
-            sys.exit("classeur .xlsx introuvable (option --xlsx) : les commentaires et hyperliens de cellule en dépendent "
-                     "(ou passer --sans-commentaires)")
-        try:
-            comments = read_comments(xlsx)
-            links = read_links(xlsx)
-        except ValueError as err:
-            sys.exit("ERREUR : %s" % err)
+
+def load_comments(args, dump_dirs):
+    """-> (commentaires {onglet: {ref: texte}}, hyperliens {onglet: {ref: url}}) lus dans le .xlsx d'origine."""
+    if args.sans_commentaires:
+        return {}, {}
+    xlsx = args.xlsx
+    if not xlsx:
+        for d in dump_dirs:
+            cand = os.path.join(d, os.pardir, "sheets", FILE_ID, "classeur.xlsx")
+            if os.path.isfile(cand):
+                xlsx = cand
+                break
+    if not xlsx or not os.path.isfile(xlsx):
+        sys.exit("classeur .xlsx introuvable (option --xlsx) : les commentaires et hyperliens de cellule en dépendent "
+                 "(ou passer --sans-commentaires)")
+    try:
+        return read_comments(xlsx), read_links(xlsx)
+    except ValueError as err:
+        sys.exit("ERREUR : %s" % err)
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="Génère les pages « classes » et « capacités » du wiki depuis le dump de « %s »."
+                                 % WORKBOOK)
+    ap.add_argument("--dump", action="append", required=True, help="dump JSON de xlsx_to_json.py (répétable)")
+    ap.add_argument("--xlsx", help="classeur d'origine (commentaires et hyperliens de cellule)")
+    ap.add_argument("--sans-commentaires", action="store_true",
+                    help="ne pas lire les commentaires ni les hyperliens de cellule (.xlsx)")
+    ap.add_argument("--out", required=True, help="racine du wiki (client/src/content/wiki)")
+    ap.add_argument("--verifier", action="store_true",
+                    help="n'écrit rien : contrôle les pages déjà écrites contre le dump (relecture indépendante)")
+    args = ap.parse_args(argv)
+
+    if args.verifier:
+        return verify(args)
+
+    sheets, order, dump_dirs = load_dumps(args.dump)
+    class_names = [n for n in order if n != SUMMARY_SHEET and n not in IGNORED_SHEETS]
+    comments, links = load_comments(args, dump_dirs)
 
     problems = []
     try:

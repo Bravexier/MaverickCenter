@@ -3,32 +3,64 @@
 
 Usage (bibliothèque standard uniquement ; relançable, mêmes fichiers à l'identique) :
 
-    python3 -I tools/sheets/races.py --dump <races-index.json> --dump <fiche-auto-v15.json> \
+    python3 -I tools/sheets/races.py --dump <races-index.json> --dump <fiche-auto-v15.json> --dump <les-races.json> \
         --out /home/user/MaverickCenter/client/src/content/wiki
 
-Option `--verifier` : n'écrit rien. Recalcule `magies_innees` directement depuis le dump brut (sans passer par le code
-de lecture du script), applique les exceptions de RACE_DETAIL_OVERRIDES (voir plus bas), compare aux pages déjà écrites,
-puis rejoue des cas d'erreur sur des copies modifiées de la matrice, de la constante d'exceptions et des pages. Il exige :
-(a) l'exception du Nain existe et diffère de la matrice (sinon elle est redondante) ; (b) ses noms sont tous des en-têtes
-de la matrice (MAGIC_HEADERS), sans doublon, dans l'ordre des colonnes ; (c) `magies_innees` de la page du Nain, la liste
-et le nombre de sa section « Magies accessibles » sont l'exception, avec l'entrée de source, la « Présentation », les
-citations « Avantage(s) / Inconvénient(s) » et le paragraphe d'écart ; (d) toutes les autres races restent conformes à
-la matrice. Code de sortie non nul au moindre écart. Sans cette option, la même comparaison aux pages est faite après
-l'écriture (un écart arrête le script).
+Les trois dumps sont obligatoires ; chacun est reconnu à son contenu (l'ordre des `--dump` n'a pas d'importance) :
+l'index des races (une seule feuille), la fiche personnage (onglets « Race », « Bonus Race », « Accessibilité de
+Classe », « Accessibilité Magie ») et le classeur « Les races » lu onglet par onglet (un onglet par race, plus les onglets
+« Statistique », « Relation entre les races », « Modèle » et, selon l'export, « Sommaire »). Les dumps JSON sont produits
+par tools/sheets/xlsx_to_json.py ou sheets_api_to_json.py (format : voir ces scripts). Les cellules sont une donnée non
+fiable : elles ne sont jamais exécutées, seulement copiées (échappées pour le Markdown). Aucune valeur n'est calculée,
+corrigée ni complétée, à une exception près, explicite et signalée (RACE_DETAIL_OVERRIDES, voir plus bas).
 
-Les dumps JSON sont produits par tools/sheets/xlsx_to_json.py (format : voir ce script). Chaque dump est reconnu à son
-contenu (l'ordre des `--dump` n'a pas d'importance). Les cellules sont une donnée non fiable : elles ne sont jamais
-exécutées, seulement copiées (échappées pour le Markdown). Aucune valeur n'est calculée, corrigée ni complétée, à une
-exception près, explicite et signalée (RACE_DETAIL_OVERRIDES, voir plus bas).
+POLITIQUE DE PRIORITÉ (décision du propriétaire du projet) : l'onglet de la race du classeur « Les races » PRIME sur la
+« Fiche personnage Maverick Auto V15.2.2 » quand les deux divergent (la fiche est en retard : par exemple le Nain y a 15
+magies innées alors que son onglet en limite le nombre à 5, ou le Drakos y a Santé 10 / Chakra 13 alors que son onglet dit
+13 / 10). Chaque page affiche les valeurs de l'onglet ; la section « Écarts avec la fiche de personnage V15.2.2 » liste,
+sous forme de tableau (onglet à gauche, fiche à droite), ce que la fiche dit de différent, la valeur de la fiche étant
+citée telle qu'écrite : rien n'est tranché en silence, dans un sens comme dans l'autre. La section est absente quand il
+n'y a aucun écart. Écarts recherchés, automatiquement : les quatre valeurs de départ (Santé, Chakra, Barrière bonus,
+Vitesse sol puis nage, comparées numériquement), le don de base, la capacité Mode Hyper (texte seulement : la fiche n'en
+donne pas le nom), les magies innées (liste citée par la ligne « Inconvénient(s) » de l'onglet contre la matrice
+« Accessibilité Magie »), et, pour chaque ethnie rapprochée (voir plus bas), son nom, le nom de son don et le texte de son
+don. Les colonnes qui n'existent que dans la fiche (AP, AM, Divers, Restrictions, sous-races avec leurs bonus chiffrés et
+résistances, matrices de classes et de magies) restent affichées telles quelles, étiquetées « (fiche) » quand elles
+côtoient des valeurs de l'onglet. Le texte libre « accès à toutes les magies / classes » des onglets n'est pas comparé aux
+matrices (ce n'est pas une liste).
 
 Sources (classeurs Google, propriété d'un tiers) :
 
-  1. Google Sheet « Les races » (1KXO4Np9SnaOYopV1cUKsO-MPjNxgyJ39BEyDAai1Kg4), PREMIÈRE FEUILLE SEULEMENT (le classeur
-     entier dépasse la limite d'export de Google ; le nom de l'onglet est inconnu, c'est un export CSV).
-     Une ligne par race : A = nom de la race, B = phrase de présentation. 27 lignes, sans en-tête. L'ordre de cette
-     feuille donne l'ordre de traitement. Le lore détaillé des races (les autres onglets de ce classeur) n'est PAS
-     dans les données : aucune page ne le contient, sauf l'onglet « Nain », recopié d'après une capture d'écran
-     (voir l'exception documentée plus bas).
+  1. Google Sheet « Les races » (1KXO4Np9SnaOYopV1cUKsO-MPjNxgyJ39BEyDAai1Kg4), deux lectures :
+       * la PREMIÈRE FEUILLE (index) : une ligne par race, A = nom de la race, B = phrase de présentation. 27 lignes, sans
+         en-tête. L'ordre de cette feuille donne l'ordre de traitement ; la phrase est le `summary` de la page ;
+       * un ONGLET PAR RACE (27 onglets, lus onglet par onglet : le classeur entier, 34 Mo, dépasse la limite d'export).
+         L'onglet « Namazus » est la race Namazu (RACE_TAB_NAMES). Gabarit d'un onglet (disposition lue par libellés, les
+         numéros de ligne varient d'une race à l'autre : le Farfadet et le Goleois ont une ligne de moins) :
+           N1 titre en majuscules (décoratif : « ROKHS » pour Rokh) ; AK1 « HISTOIRE » et son texte en AK3 ; la description
+           générale en A4 ; « DONNÉES » puis la ligne des quatre valeurs de départ (Santé de départ, Chakra de départ,
+           Barrière bonus, Vitesse Sol/Nage : deux valeurs, sol puis nage) ; « Avantage(s) » (A, texte en H) ;
+           « Inconvénient(s) » ; « Don B (Base) » ; « Don R (Race) » puis le bloc des dons raciaux ; « Capacité Mode Hyper »
+           (nom de la capacité en A, texte en H, deux lignes plus bas) ; à droite (colonne AK) « DESCRIPTION » (AK28) et son
+           texte (AK30), un seul bloc par race : physique et culture, pas une description par ethnie.
+         Le bloc des dons raciaux a quatre formes, reconnues strictement et rendues dans « Ethnies et dons raciaux » :
+           - tableau d'ethnies (la plupart des races) : en-tête « Type » (+ « Nom ») ou « Condition d'origine » ou « Magie
+             innée », puis « Don » ; une ligne par ethnie : A = type / condition / magie, H = nom du don (facultatif),
+             O = texte du don ;
+           - don unique (Elfe doré, Majin, Hujin, Lamia) : nom en A, texte en H, pas de tableau ;
+           - don unique puis tableau en deux panneaux (Mort-vivant : « Trompe-mort », puis lieu de résurrection / raison de
+             la mort -> don, deux panneaux côte à côte, lus panneau gauche puis panneau droit) ;
+           - nom du don sur la ligne « Don R (Race) » puis tableau en deux panneaux (Drakos : « Écaille draconique », magie
+             innée -> AP/AM, bonus de compétence, +1 cran de résistance).
+         Une disposition inconnue (cellule hors gabarit, libellé en double, panneaux différents, valeur de départ non
+         numérique...) arrête le script avec la cellule en cause : rien n'est perdu en silence.
+       Onglets NON PUBLIÉS (DETAIL_NOT_PUBLISHED, structure vérifiée à chaque exécution : si elle change, le script s'arrête
+       au lieu de laisser une justification devenue fausse) : « Statistique » = compteurs d'usage des races (« Races (nombre
+       de fois prise) » : un nombre par race, des statistiques de table de jeu, ni règle ni lore) ; « Modèle » = gabarit
+       vide des onglets (quatorze libellés, aucune donnée : il sert à contrôler les libellés ignorables) ; « Relation entre
+       les races » = matrice des relations entre races, hors du périmètre « détail des races » (pas de page par race) ;
+       « Sommaire » (si le dump le contient) = l'index, déjà lu. Les ILLUSTRATIONS des onglets (images) ne sont pas dans les
+       dumps : elles ne sont pas importées.
 
   2. Google Sheet « Fiche personnage Maverick Auto V15.2.2 » (1SvzNbdDVQyLE9cyp9U5USHBsxHpwxhtaWrFTu9CpLY4), onglets
      MASQUÉS :
@@ -46,18 +78,63 @@ Sources (classeurs Google, propriété d'un tiers) :
        * « Accessibilité de Classe » : matrice 27 races (lignes 2 à 28) x 39 classes (colonnes B à AN), valeurs 0/1.
        * « Accessibilité Magie » : matrice 27 races x 15 magies (colonnes B à P), valeurs 0/1.
 
-EXCEPTION DOCUMENTÉE (RACE_DETAIL_OVERRIDES) : le Nain. Décision du propriétaire du projet, source : capture d'écran de
-l'onglet « Nain » du Google Sheet « Les races » (classeur de détail des races, trop lourd pour être exporté : on n'en a
-que la capture, recopiée dans la constante). Cet onglet limite la magie innée du Nain à « Magie du Feu, Terre, Foudre,
-Arcane, Potentiel illimité en inné uniquement », alors que la matrice « Accessibilité Magie » de la fiche (V15.2.2) donne
-15 sur 15 : la liste du Nain est donc « Potentiel Illimité, Arcane, Feu, Terre, Foudre » (ordre des colonnes), et sa page
-ajoute l'entrée de source de la capture, une section « Présentation » (juste après le résumé), une section
-« Avantage(s) et inconvénient(s) » (citations exactes) et, dans « Magies accessibles », un paragraphe qui écrit l'écart
-entre les deux sources. L'exception ne vaut que pour la race nommée ; la fiche reste citée comme source de la page.
-Le rapport du script la signale : « Nain : matrice = 15 magies, onglet Nain de Les races = 5 : exception appliquée ».
-Si la matrice rejoint un jour l'onglet, l'exception devient redondante et le script s'arrête (il faut la retirer).
+CORRESPONDANCE DES ETHNIES (ETHNIE_FICHE) : l'onglet de la race et « Bonus Race » ne nomment pas les ethnies pareil
+(« Londolor Ouest » de l'onglet = « Nain Ouest » de la fiche ; « Sang en innée » = « Orios de Sang » ; les couleurs des
+Drakos n'existent que dans la fiche). Une table EXPLICITE donne, pour chaque race, l'ethnie de l'onglet (première ligne de
+sa cellule : « Farfadet Médian » pour « Farfadet Médian / (Forêts tempérées, centraux) ») et la sous-race de la fiche
+(colonne B de « Bonus Race ») qui lui correspond ; `None` = ethnie de l'onglet sans équivalent dans la fiche (le don
+« Trompe-mort » du Mort-vivant, qui vaut pour toute la race). Le script la VÉRIFIE avant d'écrire : mêmes ethnies que
+l'onglet (ni manquante ni en trop), cibles existantes et distinctes, aucune sous-race de la fiche laissée sans
+correspondance (sinon la déclarer dans ETHNIES_FICHE_SEULES), et au moins un INDICE par paire (même nom une fois retiré
+« en innée » et l'astérisque de note, même nom de don, même texte de don, mêmes lignes de bonus, ou même cause de mort).
+Chaque ethnie rapprochée affiche la sous-race de la fiche qui lui correspond, et la section « Sous-races et origines »
+(fiche, avec bonus chiffrés et résistances) reste sous les yeux, comme auparavant.
+
+CONTRÔLE DE COUVERTURE : chaque cellule non vide des 27 onglets de race doit se retrouver dans la page de sa race (texte
+normalisé : espaces, casse, guillemets, échappements Markdown ; une cellule courte doit être une unité entière : cellule
+de tableau, titre, élément de liste, valeur d'un « **Libellé** : valeur ») dans la section prévue pour elle, ou être
+déclarée ignorée avec sa raison : titre décoratif répétant le nom de la race (N1), étiquettes de gabarit qui ne sont pas
+rendues telles quelles (« DONNÉES », « Don B (Base) », « Don R (Race) », vérifiées contre l'onglet « Modèle »), caractères
+isolés hors gabarit déclarés un par un (STRAY_CELLS : « ( » en A1 du Drakos, « u » en BU1 du Minotaure). Le script
+s'arrête avant d'écrire si une cellule n'est pas appariée, et imprime le rapport : couverture par race, cellules
+ignorées avec leur raison, cellules non appariées. Les sections simples (Présentation, Histoire, Description, Avantage(s) et
+inconvénient(s), Don de base, Capacité Mode Hyper, tableau des valeurs de départ) sont de plus comparées en entier
+(pas un simple « contient »), pour qu'une valeur de départ ne soit pas validée par la colonne voisine.
+
+VÉRIFICATION CROISÉE DES MAGIES : la ligne « Inconvénient(s) » de chaque onglet est lue pour les magies citées « en
+innée » (« Magie Terre, Eau et Sang en innée », « Magie du Feu, Terre, Foudre, Arcane, Potentiel illimité en inné
+uniquement ») ; les noms sont rapprochés des 15 en-têtes de la matrice (« Temps/Espace » = « Espace/Temps », MAGIC_ALIASES),
+et la liste citée doit être exactement `magies_innees` de la page (même ensemble). Un écart arrête le script (et
+--verifier) : il faudrait une exception explicite, jamais un repli silencieux. Le rapport signale aussi, pour information,
+le connecteur de l'onglet (« et » ou « ou » : l'onglet ne dit pas la même chose pour l'Orios que pour le Kitsune ; ce
+script ne l'interprète pas) et les races dont la ligne parle de magie sans la lister (Drakos, Lamia).
+
+EXCEPTION DOCUMENTÉE (RACE_DETAIL_OVERRIDES) : le Nain. Décision du propriétaire du projet : l'onglet de la race prime.
+L'onglet « Nain », lu directement, limite la magie innée du Nain à « Magie du Feu, Terre, Foudre, Arcane, Potentiel
+illimité en inné uniquement », alors que la matrice « Accessibilité Magie » de la fiche (V15.2.2) donne 15 sur 15 : la
+liste du Nain est donc « Potentiel Illimité, Arcane, Feu, Terre, Foudre » (ordre des colonnes) et la page écrit l'écart
+dans « Magies accessibles » (paragraphe d'écart) comme dans « Écarts avec la fiche de personnage V15.2.2 ». Ses sections
+Présentation, Avantage(s) et inconvénient(s) viennent du chemin générique, comme celles des autres races, et sa source
+est l'onglet (plus aucune capture d'écran). L'exception ne vaut que pour la race nommée ; la fiche reste citée comme source
+de la page. Le rapport la signale : « Nain : matrice = 15 magies, onglet Nain de Les races = 5 : exception appliquée ». Si
+la matrice rejoint un jour l'onglet, l'exception devient redondante et le script s'arrête (il faut la retirer).
+
+Option `--verifier` : n'écrit rien. Recalcule `magies_innees` directement depuis le dump brut (sans passer par le code
+de lecture du script), applique les exceptions de RACE_DETAIL_OVERRIDES, compare aux pages déjà écrites, relit les onglets,
+refait le contrôle de couverture, la vérification croisée des magies, la vérification de la table des ethnies, recalcule
+à part les écarts de valeurs de départ, compare chaque page à sa régénération, puis rejoue des cas d'erreur sur des copies
+modifiées de la matrice, de la constante d'exceptions, des onglets (dispositions inconnues), de la table des ethnies, des
+lignes « Inconvénient(s) » et des pages. Il exige : (a) l'exception du Nain existe et diffère de la matrice (sinon elle est
+redondante) ; (b) ses noms sont tous des en-têtes de la matrice (MAGIC_HEADERS), sans doublon, dans l'ordre des colonnes ;
+(c) `magies_innees` de la page du Nain, la liste et le nombre de sa section « Magies accessibles » sont l'exception, avec
+le paragraphe d'écart ; (d) toutes les autres races restent conformes à la matrice. Code de sortie non nul au moindre
+écart. Sans cette option, les mêmes contrôles sont faits avant l'écriture (sur les textes en mémoire) et après (sur les
+fichiers) : un écart arrête le script.
 
 Frontmatter (contrat avec le site, qui lit ces champs structurés ; le corps Markdown ne dépend pas d'eux) :
+    `summary` = la phrase de l'index ;
+    `sources` = les deux entrées de la première feuille, l'entrée « Google Sheet « Les races », onglet « <nom de
+    l'onglet> » », puis celles de la fiche ;
     `magies_innees: ["Sang", "Eau", "Terre"]` = les en-têtes de l'onglet « Accessibilité Magie » (B1:P1 : « Potentiel
     Illimité », « Sang », « Arcane », « Corruption », « Espace/Temps », « Vide », « Nécromancie », « Feu », « Eau »,
     « Glace », « Terre », « Vent », « Foudre », « Lumière », « Ombre ») dont la valeur vaut 1 sur la ligne de la race,
@@ -66,26 +143,31 @@ Frontmatter (contrat avec le site, qui lit ces champs structurés ; le corps Mar
     ou une race de l'index absente de la matrice arrête le script (pas de repli).
     Pour une race à exception (le Nain), c'est la liste de l'exception qui remplace celle de la matrice, dans le
     frontmatter comme dans le corps.
-    Rapport (sortie standard) : nombre de pages, une ligne par exception appliquée (écart avec la matrice), puis la
-    répartition des races par nombre de magies innées (exceptions comprises).
 
 Page produite pour chaque race (les sections vides sont omises) :
-    présentation (phrase de l'index, aussi `summary`) ; [exception : « Présentation »] ; « Caractéristiques de départ »
-    (tableau Race, en-têtes tels qu'écrits, puis « Divers ») ; [exception : « Avantage(s) et inconvénient(s) »] ;
-    « Restrictions » ; « Don base » ; « Capacité Hyper » ; « Sous-races et origines » (une sous-section par ligne de
-    « Bonus Race », avec Nom, Descriptif et un tableau des colonnes non vides) ; « Classes accessibles » et
-    « Magies accessibles » (nombre, puis noms dont la valeur est 1 ; [exception : paragraphe d'écart]).
+    phrase de l'index (aussi `summary`) ; « Présentation » (A4) ; « Histoire » (AK3) ; « Description » (AK30) ;
+    « Caractéristiques de départ » (valeurs de l'onglet, puis AP et AM de la fiche, étiquetés « (fiche) », puis « Divers
+    (fiche) ») ; « Avantage(s) et inconvénient(s) » (onglet) ; « Restrictions » (fiche) ; « Don de base » (onglet) ;
+    « Ethnies et dons raciaux » (onglet ; une sous-section par ethnie avec la sous-race de la fiche qui lui correspond, ou le
+    don unique, ou les tableaux) ; « Capacité Mode Hyper » (onglet) ; « Sous-races et origines » (fiche : une sous-section
+    par ligne de « Bonus Race », avec Nom, Descriptif et un tableau des colonnes non vides) ; « Classes accessibles » et
+    « Magies accessibles » (nombre, puis noms dont la valeur est 1 ; [exception : paragraphe d'écart]) ; « Écarts avec la
+    fiche de personnage V15.2.2 » (voir plus haut).
+    Rapport (sortie standard) : nombre de pages, une ligne par exception appliquée, répartition des races par nombre de
+    magies innées, onglets non publiés, couverture par race et cellules ignorées ou non appariées, vérification croisée
+    des magies, écarts avec la fiche par race.
 
-Rapprochement des noms : l'index, « Race » et les deux matrices écrivent les 27 noms de façon identique ; seul « Bonus
+Rapprochement des noms de races : l'index, « Race » et les deux matrices écrivent les 27 noms de façon identique ; seul « Bonus
 Race » diffère (casse « Elfe Forestier », espace final « Satyre », coquille « Felfle »). La clé de comparaison est celle
-du wiki (minuscules, sans accents ni apostrophes) ; la seule correspondance forcée est RACE_NAME_FIXES
-(« Felfle » -> « Felfe », confirmée par les noms de sous-races de la colonne B : « Felfe Forestier », etc.). Si la
-colonne « Race » de « Bonus Race » s'écrit autrement que le nom de la race, une ligne le signale dans la page.
+du wiki (minuscules, sans accents ni apostrophes) ; les seules correspondances forcées sont RACE_NAME_FIXES
+(« Felfle » -> « Felfe », confirmée par les noms de sous-races de la colonne B : « Felfe Forestier », etc.) et
+RACE_TAB_NAMES (onglet « Namazus » -> race « Namazu »). Si la colonne « Race » de « Bonus Race » s'écrit autrement que le
+nom de la race, une ligne le signale dans la page.
 
 Le script s'arrête avec une erreur si une cellule non vide d'un onglet du périmètre n'est pas reconnue (rien n'est perdu
-en silence), si un nom de race n'a pas de correspondance, si une valeur de matrice n'est ni 0 ni 1, si un titre est déjà
-porté par une page d'une autre famille, si un fichier existant n'est pas issu de ce classeur, ou si `races/` contient une
-page issue de ce classeur dont la race n'est plus dans l'index.
+en silence), si un nom de race n'a pas de correspondance (race sans onglet, onglet inconnu), si une valeur de matrice n'est
+ni 0 ni 1, si un titre est déjà porté par une page d'une autre famille, si un fichier existant n'est pas issu de ce
+classeur, ou si `races/` contient une page issue de ce classeur dont la race n'est plus dans l'index.
 
 Il ne touche qu'aux fichiers `<out>/races/<slug>.md` de sa famille : il n'efface rien, ne réécrit pas un fichier dont le
 contenu ne change pas. Aucun lien [[…]] n'est écrit (une cellule qui en contiendrait serait neutralisée et signalée sur
@@ -117,41 +199,28 @@ MAGIC_FIELD = "magies_innees"
 MAGIC_HEADERS = ("Potentiel Illimité", "Sang", "Arcane", "Corruption", "Espace/Temps", "Vide", "Nécromancie", "Feu",
                  "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre")
 
-# EXCEPTIONS DE DÉTAIL : décision du propriétaire du projet, source : capture de l'onglet Nain de « Les races ».
-# Le classeur « Les races » (détail des races) est trop lourd pour être exporté : seule la première feuille l'est. Pour le
-# Nain, le propriétaire du projet a fourni une CAPTURE D'ÉCRAN de l'onglet « Nain » ; ses textes sont recopiés ci-dessous
-# mot pour mot (orthographe de la source, « ralenties » compris). Cet onglet limite la magie innée du Nain à cinq magies
-# (Inconvénient(s)), alors que la matrice « Accessibilité Magie » de la fiche V15.2.2 donne 15 sur 15 (ligne Nain tout à 1) :
-# la fiche est en retard sur ce point. L'exception REMPLACE la matrice POUR CETTE RACE SEULEMENT ; elle n'est jamais
-# silencieuse : la page écrit l'écart (section « Magies accessibles »), le rapport du script le signale, et --verifier
-# l'exige (existence, différence avec la matrice, ordre des colonnes, page conforme). Si la fiche est un jour corrigée,
-# l'exception devient redondante : le script et --verifier s'arrêtent, il faut alors la retirer en connaissance de cause.
-# Clé = nom de la race tel qu'écrit dans l'index. Champs (OVERRIDE_FIELDS, tous obligatoires, texte sur une ligne) :
-#   magies_innees : liste qui remplace la matrice (noms de MAGIC_HEADERS, dans l'ordre des colonnes) ;
-#   presentation  : paragraphes de présentation de l'onglet (section « Présentation ») ;
-#   avantage, inconvenient : cellules « Avantage(s) » et « Inconvénient(s) » de l'onglet, citations exactes ;
-#   source        : entrée ajoutée à `sources:` de la page.
-# Les chiffres de la zone « Données » de la capture (Santé 16, Chakra 4, Barrière 0, Vitesse 3 et 3) sont ceux de l'onglet
-# « Race » de la fiche : rien à y remplacer.
+# EXCEPTIONS DE DÉTAIL : décision du propriétaire du projet (l'onglet de la race prime sur la fiche).
+# L'onglet « Nain » du classeur « Les races » (lu directement) limite la magie innée du Nain à cinq magies (ligne
+# « Inconvénient(s) » : « Magie du Feu, Terre, Foudre, Arcane, Potentiel illimité en inné uniquement. »), alors que la
+# matrice « Accessibilité Magie » de la fiche V15.2.2 donne 15 sur 15 (ligne Nain tout à 1) : la fiche est en retard sur ce
+# point. L'exception REMPLACE la matrice POUR CETTE RACE SEULEMENT ; elle n'est jamais silencieuse : la page écrit l'écart
+# (« Magies accessibles » et « Écarts avec la fiche de personnage V15.2.2 »), le rapport du script le signale, et
+# --verifier l'exige (existence, différence avec la matrice, ordre des colonnes, page conforme, liste identique à celle
+# que cite l'onglet). Si la fiche est un jour corrigée, l'exception devient redondante : le script et --verifier
+# s'arrêtent, il faut alors la retirer en connaissance de cause. Une autre race dont l'onglet citerait une liste différente
+# de la matrice arrête aussi le script : il faudrait une exception explicite pour elle, jamais un repli silencieux.
+# Clé = nom de la race tel qu'écrit dans l'index. Champ unique (OVERRIDE_FIELDS) :
+#   magies_innees : liste qui remplace la matrice (noms de MAGIC_HEADERS, dans l'ordre des colonnes).
+# Les sections Présentation, Avantage(s) et inconvénient(s) du Nain viennent de son onglet, par le chemin générique.
 RACE_DETAIL_OVERRIDES = {
     "Nain": {
         "magies_innees": ["Potentiel Illimité", "Arcane", "Feu", "Terre", "Foudre"],
-        "presentation": [
-            "Une race humanoïde dont la particularité est d'être petit en taille par rapport aux Humains ou Elfes Forestiers.",
-            "Ce sont d'excellents combattants au corps-à-corps, le tout avec un capital de santé plus élevé que la moyenne "
-            "en dépit d'un capital de chakra bien plus faible et d'une limitation des magies qui leur sont possible d'avoir "
-            "de manière innée.",
-            "Cette race fait partie des 3 premières à être arrivées dans le monde avec les Humains et les Elfes Dorées.",
-        ],
-        "avantage": "Les armures lourdes ne les ralenties pas, accès à toutes les classes.",
-        "inconvenient": "Magie du Feu, Terre, Foudre, Arcane, Potentiel illimité en inné uniquement.",
-        "source": "Google Sheet « %s », onglet « Nain » (capture d'écran fournie par le propriétaire du projet)" % INDEX_TITLE,
     },
 }
 # Races dont l'exception DOIT exister (--verifier échoue sinon : on ne revient pas à la matrice en silence).
 OVERRIDES_REQUIS = ("Nain",)
 # Champs obligatoires d'une exception.
-OVERRIDE_FIELDS = ("magies_innees", "presentation", "avantage", "inconvenient", "source")
+OVERRIDE_FIELDS = ("magies_innees",)
 
 
 def source_url(file_id):
@@ -167,6 +236,222 @@ SOURCES = [
 
 # Correspondances de noms forcées, clé de comparaison (voir normalize) de « Bonus Race » -> clé de l'index.
 RACE_NAME_FIXES = {"felfle": "felfe"}
+
+# --------------------------------------------------------------------------------------------------------------------
+# Constantes du détail des races (classeur « Les races », un onglet par race)
+# --------------------------------------------------------------------------------------------------------------------
+
+# Onglet de race -> race : seule différence de nom, clé de comparaison (voir normalize) de l'onglet -> clé de la race.
+# L'onglet « Namazus » est la race Namazu (l'index, la fiche et le wiki écrivent « Namazu »).
+RACE_TAB_NAMES = {"namazus": "namazu"}
+
+# Onglets du classeur « Les races » qui ne sont PAS des races et ne sont pas publiés, avec la raison. Leur structure est
+# vérifiée à chaque exécution (check_unpublished) : si elle change, le script s'arrête.
+TAB_MODELE, TAB_STATS, TAB_RELATIONS, TAB_SOMMAIRE = "Modèle", "Statistique", "Relation entre les races", "Sommaire"
+DETAIL_NOT_PUBLISHED = {
+    TAB_STATS: "compteurs d'usage des races (« Races (nombre de fois prise) » : un nombre par race), statistiques de table "
+               "de jeu : ni règle ni lore",
+    TAB_MODELE: "gabarit vide des onglets de race (quatorze libellés, aucune donnée) : il sert à contrôler les libellés "
+                "ignorables",
+    TAB_RELATIONS: "matrice des relations entre races, hors du périmètre « détail des races » (pas de page par race)",
+    TAB_SOMMAIRE: "index des races, déjà lu depuis la première feuille",
+}
+# Libellés du gabarit (onglet « Modèle ») : exactement ceux-là, sinon le gabarit a changé et le script s'arrête.
+TEMPLATE_LABELS = frozenset({
+    "HISTOIRE", "DONNÉES", "Santé de départ", "Chakra de départ", "Barrière bonus", "Avantage(s)", "Inconvénient(s)",
+    "Don B (Base)", "Don R (Race)", "Type", "Nom", "Don", "DESCRIPTION", "Capacité Mode Hyper"})
+# Libellés du gabarit que la page ne reprend pas tels quels : ignorés, avec leur raison (vérifiés contre TEMPLATE_LABELS).
+IGNORABLE_LABELS = {
+    "DONNÉES": "intitulé de zone du gabarit : les quatre valeurs qu'il regroupe forment « Caractéristiques de départ »",
+    "Don B (Base)": "étiquette du gabarit : la section s'intitule « Don de base »",
+    "Don R (Race)": "étiquette du gabarit : la section s'intitule « Ethnies et dons raciaux »",
+}
+# Caractères isolés hors gabarit, déclarés un à un : (onglet, cellule) -> (valeur exacte, raison). Une cellule dont la valeur
+# diffère n'est PAS ignorée : elle arrête le script comme toute cellule inconnue.
+STRAY_CELLS = {
+    ("Drakos", "A1"): ("(", "caractère isolé hors gabarit (parenthèse ouvrante seule), sans texte ni nombre"),
+    ("Minotaure", "BU1"): ("u", "caractère isolé hors gabarit (« u » seul, loin à droite du gabarit), sans texte ni nombre"),
+}
+
+# Gabarit d'un onglet de race : colonnes (A = 1). Panneau gauche = colonnes A..AJ ; panneau droit (HISTOIRE, DESCRIPTION) = AK.
+DETAIL_LEFT_MAX = 36
+COL_A, COL_H, COL_O, COL_AK, COL_TITLE = 1, 8, 15, 37, 14
+PANEL_RIGHT_START, PANEL_OFFSET = 19, 18       # tableaux en deux panneaux : le panneau droit est décalé de 18 colonnes
+STAT_LABELS = ("Santé de départ", "Chakra de départ", "Barrière bonus", "Vitesse Sol/Nage")
+STAT_VALUE_COUNTS = (1, 1, 1, 2)               # « Vitesse Sol/Nage » porte deux valeurs : sol puis nage
+STAT_FICHE_COLS = ((2,), (3,), (4,), (5, 6))   # colonnes de l'onglet « Race » de la fiche : Santé, Chakra, Barrière, terre + nage
+ETHNIE_HEADERS = ("Type", "Condition d'origine", "Magie innée")   # intitulés possibles de la première colonne du tableau
+LABEL_ADV, LABEL_INC, LABEL_DON_B, LABEL_DON_R, LABEL_HYPER = (
+    "Avantage(s)", "Inconvénient(s)", "Don B (Base)", "Don R (Race)", "Capacité Mode Hyper")
+
+# Sections ajoutées par le détail (titres des pages).
+SEC_PRES, SEC_HIST, SEC_DESC = "Présentation", "Histoire", "Description"
+SEC_STATS, SEC_ADV, SEC_DON = "Caractéristiques de départ", "Avantage(s) et inconvénient(s)", "Don de base"
+SEC_ETH, SEC_HYPER, SEC_GAPS = "Ethnies et dons raciaux", "Capacité Mode Hyper", "Écarts avec la fiche de personnage V15.2.2"
+SEC_SOUS = "Sous-races et origines"
+
+# Noms de magies écrits dans les onglets autrement que dans les en-têtes de la matrice : clé de comparaison -> nom d'en-tête.
+MAGIC_ALIASES = {"temps-espace": "Espace/Temps"}
+
+# CORRESPONDANCE DES ETHNIES : race (nom de l'index) -> {ethnie de l'onglet -> sous-race de la fiche (colonne B de
+# « Bonus Race »)}. L'ethnie de l'onglet s'écrit comme la première ligne de sa cellule (« Farfadet Médian » pour
+# « Farfadet Médian / (Forêts tempérées, centraux) » ; pour les tableaux en panneaux : la première ligne de la première
+# colonne). None = sans équivalent dans la fiche. Vérifiée avant toute écriture (voir ethnie_problems).
+ETHNIE_FICHE = {
+    "Humain": {
+        "Humain Central": "Humain Central",
+        "Humain Désertique": "Humain Désertique",
+        "Humain Tropical": "Humain Tropical",
+        "Humain Toundra": "Humain Toundra",
+    },
+    "Elfe forestier": {
+        "Forêt ou les villes des territoires Elfe forestier": "Elfe Forestier Forêt",
+        "Urbain (tout le reste)": "Elfe Forestier Urbain",
+    },
+    "Elfe noir": {
+        "Elfe Charbon": "Elfe Noir Charbon",
+        "Elfe Salé": "Elfe Noir Salé",
+    },
+    "Elfe argenté": {
+        "Territoire Elfes Argentés": "Elfe Argenté Supprémaciste",
+        "Barrage Argenté": "Elfe Argenté Barrage argenté",
+        "Ailleurs": "Elfe Argenté Autre",
+    },
+    "Elfe doré": {
+        "Sang doré": "Elfe Doré",
+    },
+    "Farfadet": {
+        "Farfadet Médian": "Farfadet Médian",
+        "Farfadet Maritime": "Farfadet Maritime",
+        "Farfadet Amazone": "Farfadet Amazone",
+        "Farfadet Alpin": "Farfadet Alpin",
+    },
+    "Felfe": {
+        "Felfe Forestier": "Felfe Forestier",
+        "Felfe Noir": "Felfe Noir",
+        "Felfe Argenté": "Felfe Argenté",
+    },
+    "Nain": {
+        "Londolor Est": "Nain Est",
+        "Londolor Ouest": "Nain Ouest",
+        "Londolor Centre (Ligne de partage)": "Nain Ligne de partage",
+    },
+    "Majin": {
+        "Renfermement": "Majin",
+    },
+    "Hujin": {
+        "Élasticité": "Hujin",
+    },
+    "Drakos": {
+        "Potentiel illimité": "Drakos Orange",
+        "Sang": "Drakos Bordeau",
+        "Arcane": "Drakos Gris",
+        "Corruption": "Drakos Noir",
+        "Tempe/Espace": "Drakos Rose",
+        "Vide": "Drakos Blanc",
+        "Nécromancie": "Drakos Vert Foncé",
+        "Feu": "Drakos Rouge",
+        "Eau": "Drakos Bleu",
+        "Glace": "Drakos Cyan",
+        "*Vent": "Drakos Vert",
+        "Foudre": "Drakos Jaune",
+        "*Terre": "Drakos Brun",
+        "Lumière": "Drakos Beige",
+        "Ombre": "Drakos Mauve",
+    },
+    "Mort-vivant": {
+        "Trompe-mort": None,
+        "- Mort par saignement": "Mort-Vivant sang",
+        "- Mort par brisement d'os": "Mort-Vivant Nécrotique",
+        "- Mort par veillissement accéléré": "Mort-Vivant Espace/Temps",
+        "- Mort proche d'une faille temporelle": "Mort-Vivant Vide",
+        "- Mort brûlé": "Mort-Vivant Feu",
+        "- Mort de froid": "Mort-Vivant Glace",
+        "- Mort noyé": "Mort-Vivant Eau",
+        "- Mort électrocuté": "Mort-Vivant Foudre",
+        "- Mort en altitude": "Mort-Vivant Vent",
+        "- Mort enterré vivant": "Mort-Vivant Terre",
+        "- Mort au soleil": "Mort-Vivant Lumière",
+        "- Mort à la lune": "Mort-Vivant Ombre",
+    },
+    "Orios": {
+        "Sang en innée": "Orios de Sang",
+        "Terre en innée": "Orios de Terre",
+        "Eau en innée": "Orios d'Eau",
+    },
+    "Drassah'thac": {
+        "Drassah'thac Est": "Drassah'thac Est",
+        "Drassah'thac Ouest": "Drassah'thac Ouest",
+        "Drassah'thac Nord": "Drassah'thac Nord",
+        "Drassah'thac Sud": "Drassah'thac Sud",
+        "Drassah'thac Centre": "Drassah'thac Centre",
+    },
+    "Fenrir": {
+        "Glace en innée": "Fenrir de Glace",
+        "Foudre en innée": "Fenrir de Foudre",
+        "Ombre en innée": "Fenrir d'Ombre",
+    },
+    "Kitsune": {
+        "Feu en innée": "Kitsune Feu",
+        "Vent en innée": "Kitsune Vent",
+        "Lumière en innée": "Kitsune Lumière",
+    },
+    "Olwman": {
+        "Espace/Temps en innée": "Olwman Espace/Temps",
+        "Vent en innée": "Olwman Vent",
+        "Ombre en innée": "Olwman Ombre",
+    },
+    "Rokh": {
+        "Vent en innée": "Rokh Vent",
+        "Foudre en innée": "Rokh Foudre",
+        "Lumière en innée": "Rokh Lumière",
+    },
+    "Namazu": {
+        "Sang en innée": "Namazu Sang",
+        "Ombre en innée": "Namazu Ombre",
+        "Eau en innée": "Namazu Eau",
+    },
+    "Minotaure": {
+        "Sang en innée": "Minotaure Sang",
+        "Ombre en innée": "Minotaure d'Ombre",
+        "Terre en innée": "Minotaure de Terre",
+    },
+    "Satyre": {
+        "Terre en innée": "Satyre Terre",
+        "Foudre en innée": "Satyre Foudre",
+        "Feu en innée": "Satyre Feu",
+    },
+    "Médusain": {
+        "Eau en innée": "Médusain Eau",
+        "Foudre en innée": "Médusain Foudre",
+        "Lumière en innée": "Médusain Lumière",
+    },
+    "Lamia": {
+        "Écaille solide": "Lamia",
+    },
+    "Jackalope": {
+        "Terre en innée": "Jackalope Terre",
+        "Foudre en innée": "Jackalope Foudre",
+        "Vide en innée": "Jackalope Vide",
+    },
+    "Marcass": {
+        "Terre en innée": "Marcass Terre",
+        "Feu en innée": "Marcass Feu",
+        "Nécromancie en innée": "Marcass Nécromancie",
+    },
+    "Anansi": {
+        "Arcane en innée": "Anansi d'Arcane",
+        "Nécromancie en innée": "Anansi de Nécromancie",
+        "Ombre en innée": "Anansi d'Ombre",
+    },
+    "Goleois": {
+        "Glace en innée": "Goleois de Glace",
+        "Lumière en innée": "Goleois de Lumière",
+        "Sang en innée": "Goleois de Sang",
+    },
+}
+# Sous-races de la fiche qui n'ont pas d'équivalent dans l'onglet : race -> [noms (colonne B)]. Aucune aujourd'hui.
+ETHNIES_FICHE_SEULES = {}
 
 # Colonnes de l'onglet « Race » (numéros à partir de 1).
 COL_NAME = 1
