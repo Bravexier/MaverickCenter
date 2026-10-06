@@ -58,6 +58,30 @@ node tools/import-gdocs.mjs --only <id>    # un seul document
 Les fichiers de `sources/raw/` et `sources/discord/` sont du matériau brut, **pas** du contenu publié :
 le wiki ne lit que `client/src/content/wiki/`. Ne les committez que si le dépôt reste privé.
 
+### Google Sheets (classeurs de règles)
+
+Les classeurs (magies, classes, ressources & craft, invocations, mode hyper, « Fiche auto », index des races) ne se
+convertissent pas proprement en Markdown directement : cellules fusionnées, onglets cachés, formules, listes déroulantes.
+Le chemin utilisé est en deux temps, rejouable :
+
+1. **Classeur → JSON uniforme** : `python3 -I tools/sheets/xlsx_to_json.py <classeur.xlsx|.csv> <sortie.json>`
+   (dépendance : `openpyxl` pour les `.xlsx`). Le JSON garde les valeurs en cache, les formules, les plages fusionnées
+   et les validations de données ; seules les cellules non vides sont conservées. Le classeur est traité comme une
+   donnée non fiable : rien n'y est jamais exécuté.
+2. **JSON → pages Markdown** : un extracteur déterministe par famille de pages, `tools/sheets/<famille>.py`
+   (bibliothèque standard uniquement), qui écrit `client/src/content/wiki/<catégorie>/<slug>.md` avec
+   `status: draft` et une entrée `sources:` qui désigne l'onglet d'origine.
+
+Obtenir le `.xlsx` : *Fichier > Télécharger > Microsoft Excel* depuis le classeur, ou, depuis une session Claude avec le
+connecteur Google Drive, `download_file_content` avec le type d'export xlsx (le connecteur Google Sheets, lui, était
+refusé faute d'autorisation suffisante). Google plafonne l'export à 10 Mo : le classeur « Les races » (≈ 34 Mo) ne
+s'exporte pas tel quel ; il faudrait l'alléger (images, onglets) ou exporter les onglets un par un.
+
+Les JSON intermédiaires et les `.xlsx` ne font pas partie du dépôt : ils se régénèrent à partir des classeurs.
+Les extracteurs sont relançables, mais **ils écrasent les pages qu'ils génèrent** : retoucher une page à la main
+puis relancer l'extracteur perd la retouche. Passer le statut en `verified` une fois la page relue, et ne plus
+relancer l'extracteur sur ces pages.
+
 ## De la source au wiki
 
 1. Importer/exporter les sources (ci-dessus).

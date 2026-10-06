@@ -24,3 +24,7 @@ deploy/.installed-sha
 deploy/update.log
 deploy/.update.lock/
 deploy/update-nas.env
+
+# Python
+__pycache__/
+*.pyc
