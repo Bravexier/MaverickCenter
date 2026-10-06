@@ -42,7 +42,7 @@ Les nécromanciens sont généralement plus mince que la moyenne, voir maigre po
 - ENTRAVE
 - RENFORCEMENT
 
-## Tableau « Amélioration cadavérique »
+## TABLEAU "AMELIORATION CADAVERIQUE"
 
 | Amélioration | Effet |
 | --- | --- |

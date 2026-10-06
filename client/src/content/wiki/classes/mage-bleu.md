@@ -23,6 +23,8 @@ Cette classe utilise "Concentration" pour lancer ses sortilèges au lieu de "Mag
 Un potentiel illimité ne peut pas avoir cette classe.  
 Cette classe commence avec un gros familier.
 
+*Lien hypertexte attaché à la cellule Z3 dans le classeur d'origine :* <https://docs.google.com/spreadsheets/u/0/d/1Im-_xrGVzNHvnmG7MQsCMvEUZiGIacxrorOXrosRV6Q/edit>
+
 ## Don de départ
 
 | Santé | Chakra | Barrière |
