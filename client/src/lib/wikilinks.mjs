@@ -68,7 +68,8 @@ export function resolve(index, target) {
   const wanted = target.trim();
   if (wanted.includes('/')) {
     const entry = index.byId.get(wanted.toLowerCase());
-    return entry ? { entry } : null;
+    if (entry) return { entry };
+    // sinon : un titre qui contient une barre oblique (« Résistance/Faiblesse Magie »), cherché comme un titre
   }
   const hits = index.keys.get(normalize(wanted));
   if (!hits) return null;

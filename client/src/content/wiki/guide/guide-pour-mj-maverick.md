@@ -15,18 +15,18 @@ Le MJ peut déployer la carte mais il peut ne pas la déployer si jamais il juge
 
 ## Sommaire
 
-- *Formule des dégâts*
+- *[[Formule des dégâts]]*
 - *Les Actions et mouvement*
-- *IC ou Action rapide*
-- *Attaque et défense*
-- *La vitesse*
+- *[[Les Actions et mouvements|IC ou Action rapide]]*
+- *[[Attaque et Défense|Attaque et défense]]*
+- *[[La Vitesse et la Portée|La vitesse]]*
 - *La portée*
-- *Postures*
-- *Résistance/Faiblesses magique*
-- *Altérations d’états*
+- *[[Postures]]*
+- *[[Résistance/Faiblesse Magie|Résistance/Faiblesses magique]]*
+- *[[Altérations d'états et Mode Hyper|Altérations d’états]]*
 - *Mode Hyper*
-- *Les situations avancées*
+- *[[Les situations avancées]]*
 - *En résumé*
-- *Maître du jeu, Conseils*
-- *Donjon pas bon*
-- *Alignement*
+- *[[Un maître du Jeu|Maître du jeu, Conseils]]*
+- *[[Donjon Pas bon|Donjon pas bon]]*
+- *[[Alignement]]*

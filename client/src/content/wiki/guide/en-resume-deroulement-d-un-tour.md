@@ -17,7 +17,7 @@ Il y a beaucoup de choses à prendre en compte pendant les combats dans Maverick
 
   Le Maître du Jeu déclare le début du tour. Chaque joueur lance un D20 pour déterminer son initiative. Le Maître du Jeu fait de même pour les PNJ et les ennemis. L’ordre du tour est établi du score le plus élevé au plus bas. À chaque début de tour, les initiatives sont relancées.
 
-- ***Effets secondaires/Altérations d’états***
+- ***Effets secondaires/[[Altérations d'états et Mode Hyper|Altérations d’états]]***
 
   Avant de faire quoi que ce soit, un personnage subit les effets qui s’appliquent en début de tour (ex. : poison, brûlure, ...).
 

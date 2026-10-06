@@ -21,6 +21,6 @@ C'est ici qu'on trouve là on peut noter les différentes armes équipées, 2 ma
 
 - **Nom** : Pour le nom de l’arme.
 - **Dégâts** : C’est l’endroit où on indique les dégâts qu’inflige les dégâts de l’arme, le nombre de dé + ainsi que tous les modificateurs de dégâts.
-- **Po (Portée)** : C’est là où on note la portée atteignable par l’arme, la plupart des armes ont une portée de 1.
+- **Po (Portée)** : C’est là où on note [[La Vitesse et la Portée|la portée]] atteignable par l’arme, la plupart des armes ont une portée de 1.
 - **Effet(s) en plus** : C’est ici qu’on indique quand l’arme possède une particularité. Comme par exemple des dégâts supplémentaires selon la créature.
 - **Solidité** : C’est le nombre de mauvais coups que peut encaisser l’arme avant de se briser.

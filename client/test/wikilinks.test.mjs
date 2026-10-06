@@ -110,3 +110,10 @@ test('remarkWikilinks ne signale pas les liens manquants des pages status: examp
     console.warn = originalWarn;
   }
 });
+
+test('resolve : un titre contenant « / » reste résolu ; un id qualifié inconnu ne l\'est pas', () => {
+  const idx = buildIndex([{ id: 'guide/resistance-faiblesse-magie', type: 'guide', slug: 'resistance-faiblesse-magie', title: 'Résistance/Faiblesse Magie', aliases: [] }]);
+  assert.equal(resolve(idx, 'Résistance/Faiblesse Magie').entry.id, 'guide/resistance-faiblesse-magie');
+  assert.equal(resolve(idx, 'guide/resistance-faiblesse-magie').entry.id, 'guide/resistance-faiblesse-magie');
+  assert.equal(resolve(idx, 'guide/inconnu'), null);
+});

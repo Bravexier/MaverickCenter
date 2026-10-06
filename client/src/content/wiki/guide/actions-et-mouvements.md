@@ -7,13 +7,13 @@ sources: ["Google Doc « Règle du jeu/Guide pour MJ - Maverick »", "https://do
 status: draft
 ---
 
-En combat, le joueur peut faire un déplacement d'un nombre de case qui dépend de la vitesse de son personnage (race et armure vont influencer l'attribut en question) et faire son action.
+En combat, le joueur peut faire un déplacement d'un nombre de case qui dépend de [[La Vitesse et la Portée|la vitesse]] de son personnage (race et armure vont influencer l'attribut en question) et faire son action.
 
 Remarquez que l'inverse est également possible mais aussi de faire un déplacement léger suivi de l'action, pour terminer le tour en utilisant le reste de ses points de mouvement. Une case parcourue compte pour 1, la première diagonale aussi alors que les diagonales suivantes valent 2.
 
 Concernant cette première diagonale : Quand on dit la “première”, on parle pas de la première case de déplacement par défaut mais bien de la première fois où on fait une diagonale lors du tour. Celà peut être refait à chaque nouveau tour.
 
-Il existe un 3ème cas, si l'action est un échec critique au jet de dés, le MJ a le droit d'empêcher la fin du déplacement en lui décrivant une situation qui explique la raison de l'impossibilité de la finalité de l'action.
+Il existe un 3ème cas, si l'action est un échec critique au [[Jet de dés|jet de dés]], le MJ a le droit d'empêcher la fin du déplacement en lui décrivant une situation qui explique la raison de l'impossibilité de la finalité de l'action.
 
 Le déplacement s'illustre par le mouvement du token du joueur sur la Battlemap. (Un dé du joueur par exemple) Le nombre de cases qui lui est possible de parcourir en 1 tour, le nombre de cases de déplacement est liée à la fois à la race du personnage mais aussi à l'armure portée.
 

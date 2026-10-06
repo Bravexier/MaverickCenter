@@ -13,7 +13,7 @@ Les bonus que peuvent apporter un métier peuvent varier selon le métier en que
 
 - Offrir un avantage sur le jet de compétence si le métier peut s’appliquer. Évitons les bonus de compétences utiles aux combats. Bien qu’il ait des indications sur les classes, ce sont que des idées, l’mj ou les joueurs pourraient avoir d’autres idées.
 
-  *Exemple : Les joueurs entrent dans une caverne, un des joueurs va faire un jet d’orientation pour se repérer dans la grotte avec un avantage car il possède le métier de Mineur.*
+  *Exemple : Les joueurs entrent dans une caverne, un des joueurs va faire un jet d’orientation pour se repérer dans la grotte avec un avantage car il possède le métier de [[Mineur]].*
 
 - Dans le cas de l’artisanat, fabriquer un objet quoi. Il faudra évidemment le bon métier pour pouvoir fabriquer l’objet. Pour la fabrication, il sera nécessaire de combiner deux caractéristiques ensemble pour connaître les chances de réussite.
 

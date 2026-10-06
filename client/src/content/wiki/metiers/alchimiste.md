@@ -11,7 +11,7 @@ status: draft
 
 **Bonus :** +3% Connaissance
 
-**Artisanat possible :** Peut fabriquer les fioles, philtres, l’alchimie primitive \[INTELLIGENCE + PERCEPTION\]
+**Artisanat possible :** Peut fabriquer les fioles, philtres, l’[[Alchimie primitive|alchimie primitive]] \[INTELLIGENCE + PERCEPTION\]
 
 **Équipement supplémentaire possible :** Kit d’alchimiste de base
 

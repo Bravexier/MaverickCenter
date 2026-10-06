@@ -52,7 +52,7 @@ ect …
 
 Ce qui est possible dans l'attaque d'opportunité est :
 
-- Une attaque classique avec une arme (déjà dégainer et en respectant la portée de l'arme)
+- Une attaque classique avec une arme (déjà dégainer et en respectant [[La Vitesse et la Portée|la portée]] de l'arme)
 - Un sort d'attaque
 
 En clair, les attaques d'opportunités sont des occasions rares mais qui peuvent faire pencher la balance lors d'un affrontement, si bien entendu l'attaque d'opportunité est réussie.

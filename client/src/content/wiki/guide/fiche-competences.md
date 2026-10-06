@@ -9,7 +9,7 @@ status: draft
 
 Il s'agit du tableau des compétences de votre personnage.
 
-Les compétences sont des bonus aux caractéristiques qui viennent s'ajouter au score de jet de dés quand la situation lui permet d'agir. Ces compétences ont un rapport direct avec le personnage et comment il agit selon les situations.
+Les compétences sont des bonus aux caractéristiques qui viennent s'ajouter au score de [[Jet de dés|jet de dés]] quand la situation lui permet d'agir. Ces compétences ont un rapport direct avec le personnage et comment il agit selon les situations.
 
 À la création d'un personnage, il y a 100 points à répartir dans les compétences et 20 points à chaque niveau supplémentaire, sauf les niveaux 5, 10, 15 et 20 où ce sera 40 points à répartir. 20 points peuvent être attribués à la compétence au choix parmi les 30 disponibles (au maximum) et vont dans la case Nat ou Naturel. Ce maximum augmente à 30 au niveau 5 global et maximum 40 au niveau 10 global.
 
@@ -75,4 +75,4 @@ Voici les compétences qui existent avec leurs caractéristiques associées :
 
 *Vie en nature (Intelligence) :* Comprendre la nature, ses bienfaits.
 
-*Vigueur (Volonté) :* Mieux résister aux altérations d'états physiques comme le poison, les maladies ou les brûlures
+*Vigueur (Volonté) :* Mieux résister aux [[Altérations d'états et Mode Hyper|altérations d'états]] physiques comme le poison, les maladies ou les brûlures

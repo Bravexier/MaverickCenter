@@ -69,4 +69,4 @@ Cette posture étrange permet d'être en parfaite fusion avec sa magie, dans cet
 
 ## Mode Hyper
 
-Voici le tableau où on rassemble les informations sur le mode hyper du personnage, allez [ici](https://docs.google.com/spreadsheets/u/0/d/1lwALh1VKrIpgmEqX2MdYirKkPzGjSJXXDHtp2uYXO7w/edit) pour en savoir davantage.
+Voici le tableau où on rassemble les informations sur le [[Altérations d'états et Mode Hyper|mode hyper]] du personnage, allez [ici](https://docs.google.com/spreadsheets/u/0/d/1lwALh1VKrIpgmEqX2MdYirKkPzGjSJXXDHtp2uYXO7w/edit) pour en savoir davantage.

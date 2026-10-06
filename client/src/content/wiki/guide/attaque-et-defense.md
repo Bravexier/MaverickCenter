@@ -31,7 +31,7 @@ Lors d'une réussite critique, une contre-attaque est possible (dans la mesure d
 
 Lors d'un échec critique, les AP et AM ne sont pas pris en compte dans les dégâts et l'agresseur inflige un bonus de +8 dégâts ou une autre idée du MJ.
 
-Lors d’une attaque de zone, l’Esquive à un malus de 5% par case parcouru pour échapper à l’attaque, le maximum de cases correspond à la vitesse du personnage (Un personnage à 4 de vitesse ne pourra pas esquiver une zone qui s’étend à 5 cases ou plus). La parade n’est pas concernée.
+Lors d’une attaque de zone, l’Esquive à un malus de 5% par case parcouru pour échapper à l’attaque, le maximum de cases correspond à [[La Vitesse et la Portée|la vitesse]] du personnage (Un personnage à 4 de vitesse ne pourra pas esquiver une zone qui s’étend à 5 cases ou plus). La parade n’est pas concernée.
 
 Encore par rapport aux attaques de zone, une personne ne peut pas protéger quelqu’un à côté d’elle si les deux sont dans l’attaque de zone, malgré la posture de défense.
 

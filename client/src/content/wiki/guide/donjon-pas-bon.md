@@ -27,7 +27,7 @@ Parmi les nombreux lieux qui sont remplis de danger, les donjons sont certaineme
 
   Cela peut être une maison, une tour, un château, un temple, une forteresse, une mine, etc…
 
-  Les pièges peuvent être très nombreux.
+  [[Les pièges]] peuvent être très nombreux.
 
 - Les ruines
 

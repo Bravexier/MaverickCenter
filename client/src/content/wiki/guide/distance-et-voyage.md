@@ -11,7 +11,7 @@ Dans Maverick, il est possible de faire de long voyage et il est important de ca
 
 Les cartes mis à jour possèdent leur échelle accessible et voici plusieurs tableaux qui peuvent donner une indication sur comment calculer les distances :
 
-En moyenne les aventuriers à pied avec leur équipement se déplacent à 4 km/h et font des voyages de 8h, libre à vous de modifier les valeurs et de rester cohérent (genre si ils font 10h de voyage, ils n'auront moins ou pas de dé de repos). La vitesse avec une diligence peut monter à 10 km/h et avec des cheveux personnels 20 km/h en moyenne.
+En moyenne les aventuriers à pied avec leur équipement se déplacent à 4 km/h et font des voyages de 8h, libre à vous de modifier les valeurs et de rester cohérent (genre si ils font 10h de voyage, ils n'auront moins ou pas de dé de repos). [[La Vitesse et la Portée|La vitesse]] avec une diligence peut monter à 10 km/h et avec des cheveux personnels 20 km/h en moyenne.
 
 **Distance = 4 km/h × 8h × (modificateur de terrain) × (modificateur météo)**
 

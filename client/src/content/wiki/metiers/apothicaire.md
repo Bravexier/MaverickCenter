@@ -11,7 +11,7 @@ status: draft
 
 **Bonus :** +3% Vigueur
 
-**Artisanat possible :** Peut fabriquer les remèdes, huiles, l’alchimie primitive \[VOLONTÉ + PERCEPTION\]
+**Artisanat possible :** Peut fabriquer les remèdes, huiles, l’[[Alchimie primitive|alchimie primitive]] \[VOLONTÉ + PERCEPTION\]
 
 **Équipement supplémentaire possible :** Kit d’alchimie de base
 

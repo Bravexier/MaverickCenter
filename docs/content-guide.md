@@ -46,3 +46,17 @@ Les `[[…]]` placés dans du code (`` `…` `` ou bloc ```) ne sont pas interpr
 - Toujours renseigner `sources:` pour pouvoir retrouver l'origine d'une règle.
 - Ne rien inventer : un point de règle absent des sources reste absent (ou marqué « à confirmer »).
 - Après l'ajout d'un **nouveau fichier**, relancer `npm run dev` (l'index des liens est lu au démarrage).
+
+## Maillage automatique
+
+Après un import, `npm run autolink` (depuis `client/`) propose des liens `[[…]]` vers les pages dont le titre ou un alias apparaît
+dans le texte des autres pages. **Sans option, il n'écrit rien** : il affiche les statistiques et les 40 premiers liens ;
+`npm run autolink -- --write` les applique, `-- --verbose` liste tout. Règles (précision d'abord) :
+
+- un seul lien par page cible dans une page, jamais vers la page elle-même ni vers un terme de son propre nom ;
+- rien dans le frontmatter, les titres, les tableaux, le code, les liens et URLs existants ;
+- un titre porté par plusieurs pages est ignoré ; un titre d'un seul mot n'est lié que s'il commence par une majuscule ;
+- les locutions courantes qui sont aussi un titre (par exemple « en résumé ») se déclarent dans `client/scripts/autolink-ignore.txt`.
+
+L'outil ne modifie que du balisage de lien (vérifié : en retirant les `[[…]]`, on retrouve exactement le texte d'origine) et
+peut être relancé sans risque après chaque import. Relire le résultat avec `git diff` avant de commiter.

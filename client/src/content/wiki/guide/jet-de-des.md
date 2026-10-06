@@ -66,6 +66,6 @@ Rien n'empêche un mj de faire comme le souhaite mais bien entendu il ne s'agit 
 
 ## Le cas de la compétence « survie »
 
-Comme expliqué dans les compétences et les altérations d'états (voir combat), le coma est une source de stress car la vie d'un personnage repose sur un jet de survie réussi, trop d'échec ou un échec critique peut être fatal.
+Comme expliqué dans les compétences et les [[Altérations d'états et Mode Hyper|altérations d'états]] (voir combat), le coma est une source de stress car la vie d'un personnage repose sur un jet de survie réussi, trop d'échec ou un échec critique peut être fatal.
 
 Le mj peut laisser les joueurs faire leur jet de survie ou alors il peut faire lui-même les jet de survie et avoir la capacité de tricher pour leur bien, un échec critique n'est jamais loin.

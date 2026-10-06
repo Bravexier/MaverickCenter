@@ -16,7 +16,7 @@ Le sommet de la fiche contient le carré "Personnage" il s'agit, ni plus ni moin
 - **Nom** : Le nom complet de votre personnage.
 - **Race** : La race de votre personnage parmi les 23 disponibles. Il faut également préciser l'ethnie de votre [race](https://docs.google.com/spreadsheets/u/0/d/1KXO4Np9SnaOYopV1cUKsO-MPjNxgyJ39BEyDAai1Kg4/edit) (si il y en a)
 - **Origine** : Le lieu de naissance du personnage.
-- **Alignement** : C'est ici qu'on note L'alignement ainsi que le score d'alignement (gauche = score Loyal/Chaos, droite = score Bon/Mauvais). Vous pouvez retrouver plus d'informations [ici](https://docs.google.com/document/u/0/d/1Xph3vnjwmZpBG3UHDyBBqZQdVUnMLVxEllK3vXUw598/edit).
+- **[[Alignement]]** : C'est ici qu'on note L'alignement ainsi que le score d'alignement (gauche = score Loyal/Chaos, droite = score Bon/Mauvais). Vous pouvez retrouver plus d'informations [ici](https://docs.google.com/document/u/0/d/1Xph3vnjwmZpBG3UHDyBBqZQdVUnMLVxEllK3vXUw598/edit).
 - **Surnom** : Le surnom de votre personnage, souvent utilisé pour les noms de scène.
 - **Magie innée** : C’est ici qu’on indique la magie innée du personnage, tout le monde en possède une. Certaines races possèdent des interdits au niveau des magies, donc prudence.
 - **Magie acquise** : C’est ici qu’on note la seconde magie que possède le personnage, avoir une magie acquise n’est pas obligatoire contrairement à la magie innée. Attention, certaines magies ne peuvent pas se mélanger entre elles, aller [ici](https://docs.google.com/spreadsheets/u/0/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit) pour plus d’info.

@@ -7,7 +7,7 @@ sources: ["Google Doc « Alchimie »", "https://docs.google.com/document/d/1n5KJ
 status: draft
 ---
 
-*Les Fioles Roses sont des potions rares liées à la stimulation des réflexes et de la rapidité du corps. Selon leur puissance, elles peuvent améliorer l’initiative, augmenter la vitesse de déplacement ou même permettre au buveur d’agir 2 fois par tour. Très recherchées, elles sont souvent utilisées au moment critique d’un affrontement pour prendre l’avantage sur l’adversaire.*
+*Les Fioles Roses sont des potions rares liées à la stimulation des réflexes et de la rapidité du corps. Selon leur puissance, elles peuvent améliorer l’initiative, augmenter [[La Vitesse et la Portée|la vitesse]] de déplacement ou même permettre au buveur d’agir 2 fois par tour. Très recherchées, elles sont souvent utilisées au moment critique d’un affrontement pour prendre l’avantage sur l’adversaire.*
 
 *La Fiole Rose se reconnaît à sa couleur rose vive et à son odeur douce rappelant le litchi. Lorsqu’elle est consommée, une sensation d’énergie nerveuse traverse immédiatement le corps : les sens s’aiguisent, les mouvements deviennent plus rapides et le temps semble presque ralentir autour du buveur, lui permettant d’agir avec une efficacité et une vitesse accrues pendant un court moment.*
 
