@@ -141,9 +141,13 @@ def read_comments(xlsx_path):
         workbook = _xml(zf, "xl/workbook.xml")
         rels = {r.get("Id"): r.get("Target") for r in _xml(zf, "xl/_rels/workbook.xml.rels")}
         names = set(zf.namelist())
-        for sheet in workbook.find("{%s}sheets" % NS_MAIN):
+        sheets = workbook.find("{%s}sheets" % NS_MAIN)
+        for sheet in (sheets if sheets is not None else []):
             name = sheet.get("name")
-            path = _resolve("xl", rels[sheet.get("{%s}id" % NS_REL)])
+            rid = sheet.get("{%s}id" % NS_REL)
+            if rid not in rels:
+                raise ValueError("onglet %r : relation %s introuvable dans xl/_rels/workbook.xml.rels" % (name, rid))
+            path = _resolve("xl", rels[rid])
             folder = posixpath.dirname(path)
             rel_path = posixpath.join(folder, "_rels", posixpath.basename(path) + ".rels")
             comment_parts, thread_parts = [], []
@@ -163,11 +167,13 @@ def read_comments(xlsx_path):
             notes = {}
             for part in comment_parts:
                 root = _xml(zf, part)
-                authors = [(a.text or "") for a in root.find("{%s}authors" % NS_MAIN)]
-                for comment in root.find("{%s}commentList" % NS_MAIN):
+                authors_el, list_el = root.find("{%s}authors" % NS_MAIN), root.find("{%s}commentList" % NS_MAIN)
+                authors = [(a.text or "") for a in (authors_el if authors_el is not None else [])]
+                for comment in (list_el if list_el is not None else []):
                     ref = comment.get("ref")
                     split_ref(ref)
-                    author = authors[int(comment.get("authorId"))]
+                    index = int(comment.get("authorId", "0"))
+                    author = authors[index] if index < len(authors) else ""
                     if author.startswith(SHADOW_AUTHOR) and author[len(SHADOW_AUTHOR):] in thread_ids:
                         continue  # ombre technique d'un fil, lu dans xl/threadedComments
                     text = _note_text(comment)
