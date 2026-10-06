@@ -18,7 +18,8 @@ export const byTitle = (a: WikiEntry, b: WikiEntry) => a.data.title.localeCompar
 let cache: ReturnType<typeof compute> | undefined;
 
 async function compute() {
-  const entries = (await getCollection('wiki')).sort(byTitle);
+  const hideExamples = process.env.HIDE_EXAMPLES === '1';
+  const entries = (await getCollection('wiki', ({ data }) => !(hideExamples && data.status === 'example'))).sort(byTitle);
   const byId = new Map(entries.map((e) => [e.id, e]));
   const index = buildIndex(
     entries.map((e) => ({ id: e.id, type: typeOf(e), slug: slugOf(e), title: e.data.title, aliases: e.data.aliases })),

@@ -5,7 +5,7 @@ import { url } from '../lib/wiki';
 
 <Base title="Recherche">
   <h1>Recherche</h1>
-  <form id="search-form" action={url('recherche/')} data-index-url={url('search-index.json')} role="search">
+  <form id="search-form" action={url('recherche/')} data-index-url={url('search-index.json')} data-base={url()} data-suffix="" role="search">
     <input id="q" type="search" name="q" placeholder="Nom, mot-clé, texte…" size="32" autofocus />
     <button type="submit">Chercher</button>
   </form>
@@ -19,7 +19,7 @@ import { url } from '../lib/wiki';
   interface Doc {
     title: string;
     type: string;
-    href: string;
+    path: string;
     summary: string;
     aliases: string[];
     tags: string[];
@@ -30,6 +30,10 @@ import { url } from '../lib/wiki';
   const input = document.querySelector<HTMLInputElement>('#q')!;
   const status = document.querySelector<HTMLElement>('#status')!;
   const list = document.querySelector<HTMLElement>('#results')!;
+
+  // data-base : préfixe des pages du site (absolu, ou relatif dans la version portable) ; data-suffix : « index.html » si requis.
+  const base = form.dataset.base!.replace(/\/?$/, '/');
+  const suffix = form.dataset.suffix ?? '';
 
   let index: Doc[] | undefined;
 
@@ -50,7 +54,7 @@ import { url } from '../lib/wiki';
     status.textContent = `${hits.length} résultat(s)`;
     for (const hit of hits) {
       const li = document.createElement('li');
-      const a = Object.assign(document.createElement('a'), { href: hit.href, textContent: hit.title });
+      const a = Object.assign(document.createElement('a'), { href: `${base}${hit.path}${suffix}`, textContent: hit.title });
       const badge = Object.assign(document.createElement('span'), { className: 'badge', textContent: hit.type });
       li.append(a, ' ', badge);
       if (hit.summary) {

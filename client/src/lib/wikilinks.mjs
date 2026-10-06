@@ -17,8 +17,11 @@ export function splitFrontmatter(raw) {
   return { data: parseYaml(match[1]) ?? {}, body: match[2] };
 }
 
-/** Lit src/content/wiki/<type>/*.md et renvoie les métadonnées de chaque page. */
-export function scanContent(contentDir) {
+/**
+ * Lit src/content/wiki/<type>/*.md et renvoie les métadonnées de chaque page.
+ * `includeExamples: false` écarte les pages `status: example` (version à montrer, voir HIDE_EXAMPLES).
+ */
+export function scanContent(contentDir, { includeExamples = true } = {}) {
   const entries = [];
   for (const type of TYPE_KEYS) {
     let files = [];
@@ -30,6 +33,7 @@ export function scanContent(contentDir) {
     for (const file of files) {
       const slug = basename(file, '.md');
       const { data } = splitFrontmatter(readFileSync(join(contentDir, type, file), 'utf8'));
+      if (!includeExamples && data.status === 'example') continue;
       entries.push({
         id: `${type}/${slug}`,
         type,
@@ -106,7 +110,10 @@ export function remarkWikilinks({ index, base = '/' }) {
         });
       } else {
         const why = found?.ambiguous ? 'ambigu' : 'introuvable';
-        console.warn(`[wikilinks] [[${target}]] ${why} dans ${file?.path ?? '?'}`);
+        // Les pages de démonstration peuvent pointer vers des pages masquées (HIDE_EXAMPLES) : pas d'alerte.
+        if (file?.data?.astro?.frontmatter?.status !== 'example') {
+          console.warn(`[wikilinks] [[${target}]] ${why} dans ${file?.path ?? '?'}`);
+        }
         nodes.push({
           type: 'emphasis',
           children: [{ type: 'text', value: label }],

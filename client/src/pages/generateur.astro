@@ -1,7 +1,19 @@
 ---
 import Base from '../layouts/Base.astro';
-import rules from '../data/rules.json';
-import { url } from '../lib/wiki';
+import rulesData from '../data/rules.json';
+import { loadWiki, url } from '../lib/wiki';
+
+// Un lien `wiki` dont la page n'existe pas dans ce build (ex. pages d'exemple masquées) est retiré.
+const { entries } = await loadWiki();
+const known = new Set(entries.map((e) => e.id));
+const keepKnownLinks = <T extends { wiki?: string }>(list: T[]) =>
+  list.map((item) => (item.wiki && !known.has(item.wiki) ? { ...item, wiki: undefined } : item));
+const rules = {
+  ...rulesData,
+  races: keepKnownLinks(rulesData.races),
+  classes: keepKnownLinks(rulesData.classes),
+  magies: keepKnownLinks(rulesData.magies),
+};
 
 const isExample = rules.meta.status === 'example';
 ---
@@ -12,7 +24,7 @@ const isExample = rules.meta.status === 'example';
 
   <script id="rules-data" type="application/json" set:html={JSON.stringify(rules)} />
 
-  <div class="generator" data-base={url()}>
+  <div class="generator" data-base={url()} data-suffix="">
     <form class="generator__form no-print" id="character-form" autocomplete="off">
       <p class="generator__actions">
         <button type="button" id="btn-new">Nouveau</button>
@@ -92,6 +104,7 @@ const isExample = rules.meta.status === 'example';
   const rules = JSON.parse(document.querySelector('#rules-data')!.textContent!);
   const root = document.querySelector<HTMLElement>('.generator')!;
   const base = root.dataset.base!.replace(/\/$/, '');
+  const suffix = root.dataset.suffix ?? '';
   const $ = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 
   const nameInput = $<HTMLInputElement>('#c-name');
@@ -134,7 +147,7 @@ const isExample = rules.meta.status === 'example';
     const item = choice(kind, id);
     if (!item?.wiki) return el('span', item?.name);
     const a = el('a', item.name);
-    a.href = `${base}/wiki/${item.wiki}/`;
+    a.href = `${base}/wiki/${item.wiki}/${suffix}`;
     return a;
   }
 

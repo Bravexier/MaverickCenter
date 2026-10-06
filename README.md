@@ -25,6 +25,15 @@ npm run build    # site statique dans client/dist/
 - **Générateur de fiche** (`/generateur/`) : race, classes, magies, répartition de points, valeurs dérivées ; sauvegarde automatique
   dans le navigateur, export/import JSON, impression/PDF. Les règles sont des **données** (`client/src/data/rules.json`).
 
+## Héberger le site (NAS, Docker)
+
+`./deploy/build.sh` construit la version à montrer (sans les pages d'exemple) et produit `deploy/maverick-center-nas.zip` :
+site statique + `docker-compose.yml` + configuration nginx protégée par mot de passe. Voir [deploy/README.md](deploy/README.md).
+Après chaque PR fusionnée, GitHub republie le site sur la branche `site` et le NAS la récupère automatiquement (`deploy/update-nas.sh`).
+
+Pour une page privée claude.ai (une simple adresse à ouvrir) : `node tools/build-artifact.mjs --out <dossier>` produit la version portable
+(liens relatifs, sans fichier JS/CSS externe) et les listes de fichiers à publier.
+
 ## Documentation
 
 - [Sources (Discord, Google Docs) et import](docs/sources.md)

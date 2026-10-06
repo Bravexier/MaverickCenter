@@ -1,5 +1,5 @@
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --bg: #f6f1e7;
   --surface: #fffdf8;
   --text: #2a2118;
@@ -15,7 +15,8 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --bg: #17130f;
     --surface: #211b15;
     --text: #efe6d8;
@@ -27,6 +28,20 @@
     --warn-text: #f0d98a;
     --danger: #ef8a8a;
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #17130f;
+  --surface: #211b15;
+  --text: #efe6d8;
+  --muted: #a99a86;
+  --border: #3a3027;
+  --accent: #e0a35e;
+  --accent-soft: #33281c;
+  --warn-bg: #3b3012;
+  --warn-text: #f0d98a;
+  --danger: #ef8a8a;
 }
 
 * { box-sizing: border-box; }
@@ -75,7 +90,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .entry-list li { padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
 
 .prose { max-width: 46rem; }
-.prose table { border-collapse: collapse; }
+.prose table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; }
 .prose th, .prose td { border: 1px solid var(--border); padding: 0.3rem 0.6rem; }
 .wikilink { text-decoration-style: dotted; }
 .wikilink--missing { color: var(--danger); font-style: normal; text-decoration: underline wavy; cursor: help; }

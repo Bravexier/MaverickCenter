@@ -86,3 +86,27 @@ test('remarkWikilinks remplace les liens, marque les manquants, épargne les lie
     console.warn = originalWarn;
   }
 });
+
+test('scanContent peut écarter les pages status: example', async () => {
+  const { scanContent } = await import('../src/lib/wikilinks.mjs');
+  const dir = new URL('./fixtures/wiki', import.meta.url).pathname;
+  const ids = (entries) => entries.map((e) => e.id).sort();
+  assert.deepEqual(ids(scanContent(dir)), ['guide/sans-statut', 'races/demo', 'races/vrai']);
+  assert.deepEqual(ids(scanContent(dir, { includeExamples: false })), ['guide/sans-statut', 'races/vrai']);
+});
+
+test('remarkWikilinks ne signale pas les liens manquants des pages status: example', () => {
+  const warnings = [];
+  const originalWarn = console.warn;
+  console.warn = (msg) => warnings.push(msg);
+  try {
+    const make = () => ({ type: 'root', children: [{ type: 'paragraph', children: [{ type: 'text', value: '[[Fantôme]]' }] }] });
+    const run = remarkWikilinks({ index, base: '/' });
+    run(make(), { path: 'demo.md', data: { astro: { frontmatter: { status: 'example' } } } });
+    assert.equal(warnings.length, 0);
+    run(make(), { path: 'vrai.md', data: { astro: { frontmatter: { status: 'draft' } } } });
+    assert.equal(warnings.length, 1);
+  } finally {
+    console.warn = originalWarn;
+  }
+});

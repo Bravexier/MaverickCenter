@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { TYPES } from '../lib/types.mjs';
-import { entryHref, loadWiki, typeOf } from '../lib/wiki';
+import { loadWiki, typeOf } from '../lib/wiki';
 
 /** Texte brut approximatif d'une page, pour la recherche plein texte côté navigateur. */
 function plainText(body: string) {
@@ -17,7 +17,7 @@ export const GET: APIRoute = async () => {
   const index = entries.map((entry) => ({
     title: entry.data.title,
     type: TYPES[typeOf(entry)].singular,
-    href: entryHref(entry),
+    path: `wiki/${entry.id}/`, // relatif à la racine du site ; la page ajoute le préfixe (data-base) et le suffixe (data-suffix)
     summary: entry.data.summary ?? '',
     aliases: entry.data.aliases,
     tags: entry.data.tags,

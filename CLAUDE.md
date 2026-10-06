@@ -30,6 +30,9 @@ la citer depuis une source (`sources:` dans le frontmatter) ou la laisser absent
 | `client/src/data/rules.json` | Règles de création de personnage |
 | `client/test/` | Tests `node:test` (`npm test`) |
 | `tools/import-gdocs.mjs` | Export des Google Docs/Sheets listés dans `sources/sources.json` |
+| `deploy/` | Paquet d'hébergement NAS (nginx + Docker, mot de passe), `build.sh` qui le génère, `update-nas.sh` (mise à jour auto depuis la branche `site`) |
+| `.github/workflows/publish-site.yml` | Après chaque fusion dans `main` : tests, build `HIDE_EXAMPLES=1`, publication sur la branche `site` (refuse si le dépôt n'est pas privé) |
+| `tools/build-artifact.mjs` | Version « portable » (liens relatifs, CSS/JS inline) publiée comme page privée claude.ai |
 | `api/` | Services CRUD de personnages (Node sans dépendance + .NET). Non utilisés par le site pour l'instant. |
 | `docs/` | `sources.md`, `content-guide.md`, `character-generator.md` |
 
@@ -40,6 +43,7 @@ npm install
 npm run dev        # http://localhost:4321 — relancer après l'ajout d'un NOUVEAU fichier de contenu
 npm run build      # build statique dans dist/ ; les [[liens]] cassés produisent un avertissement [wikilinks]
 npm test           # tests unitaires + intégrité de rules.json
+HIDE_EXAMPLES=1 npm run build   # version à montrer : sans les pages `status: example`
 ```
 
 Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://… npm run build`.
@@ -52,6 +56,11 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   Les deux doivent rester d'accord sur l'id d'une page (`<type>/<slug>`, d'où `generateId` dans `content.config.ts`).
 - `src/lib/*.mjs` doit rester sans dépendance navigateur/Astro (`text.mjs`, `search.mjs`, `character.mjs` sont importés
   côté navigateur ; `wikilinks.mjs` utilise `node:fs` et ne doit pas l'être).
+- `HIDE_EXAMPLES=1` filtre les pages d'exemple à deux endroits qui doivent rester d'accord : `scanContent` (index des liens,
+  dans `astro.config.mjs`) et `loadWiki` (`src/lib/wiki.ts`).
+- La publication claude.ai (`node tools/build-artifact.mjs --out <dossier>`) impose : liens relatifs avec `index.html` explicite,
+  accueil écrit en fragment (sans `<html>`/`<head>`/`<body>`), aucun script/CSS externe, pas d'impression ni de téléchargement
+  (boutons masqués), et au plus 255 fichiers par publication (le script écrit `batch-N.json`). Détail dans le commentaire du script.
 - Le générateur ne gère ni compétences, ni équipement, ni dés (voir `docs/character-generator.md`).
 
 ## Conventions de travail
