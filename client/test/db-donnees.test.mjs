@@ -5,7 +5,7 @@
 // Ces tests construisent la base dans un dossier temporaire et ne touchent ni data/rows ni var/.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -147,4 +147,34 @@ test('db:sync-pages : une page modifiée est détectée puis remise à jour sans
   assert.equal(ajout.status, 1);
   assert.match(ajout.stdout, /importeur de leur famille/);
   assert.ok(existsSync(join(copieWiki, 'magies', 'magie-fantome.md')));
+});
+
+test('db:sync-pages : une page « docs » ajoutée à la main entre dans la base, et son retrait remet data/rows exactement comme avant ; un sort ou une capacité ne se crée pas ainsi', { skip: sansPython }, () => {
+  const copieWiki = join(dir, 'wiki-ajout');
+  const copieRows = join(dir, 'rows-ajout');
+  cpSync(wiki, copieWiki, { recursive: true });
+  cpSync(rows, copieRows, { recursive: true });
+  const args = ['--rows', copieRows, '--wiki', copieWiki];
+  const nouvelle = join(copieWiki, 'guide', 'page-ajoutee-a-la-main.md');
+  writeFileSync(nouvelle, '---\ntitle: "Page ajoutée à la main"\naliases: ["Alias de test"]\ntags: ["test"]\nsummary: "Un résumé."\nsources: ["Google Doc « Test »"]\nstatus: draft\n---\n\nCorps de la page.\n');
+
+  const ajout = pages('sync', ...args);
+  assert.equal(ajout.status, 0, ajout.stdout + ajout.stderr);
+  assert.match(ajout.stdout, /1 page\(s\) mise\(s\) à jour/);
+  assert.equal(pages('check', ...args).status, 0);
+  assert.match(readFileSync(join(copieRows, 'page.sql'), 'utf8'), /guide\/page-ajoutee-a-la-main/);
+  assert.match(readFileSync(join(copieRows, 'alias.sql'), 'utf8'), /Alias de test/);
+
+  rmSync(nouvelle);
+  const retrait = pages('sync', ...args);
+  assert.equal(retrait.status, 0, retrait.stdout + retrait.stderr);
+  const touches = readdirSync(rows).filter((f) => readFileSync(join(rows, f), 'utf8') !== readFileSync(join(copieRows, f), 'utf8'));
+  assert.deepEqual(touches, [], 'ajout puis retrait : data/rows est revenu à l’identique (alias, mot-clé et source de la page retirés avec elle)');
+
+  // une page de la famille « classes » (importeur typé) ne se crée pas à la main
+  const capacite = readdirSync(join(copieWiki, 'capacites'))[0];
+  cpSync(join(copieWiki, 'capacites', capacite), join(copieWiki, 'capacites', 'capacite-fantome.md'));
+  const refus = pages('sync', ...args);
+  assert.equal(refus.status, 1);
+  assert.match(refus.stdout, /importeur de leur famille/);
 });

@@ -4,9 +4,10 @@ Lit client/src/content/wiki/<type>/<slug>.md avec le sous-ensemble STRICT de YAM
 déduit la famille d'import d'une page de sa PROVENANCE déclarée (`sources:`, jamais du contenu).
 
     python3 -I tools/db/pages_md.py check [--rows data/rows] [--wiki <dossier>]   les pages de data/rows sont-elles celles des .md ?  (code 1 sinon)
-    python3 -I tools/db/pages_md.py sync  [--rows data/rows] [--wiki <dossier>]   remet à jour data/rows depuis les .md (contenu des pages existantes)
+    python3 -I tools/db/pages_md.py sync  [--rows data/rows] [--wiki <dossier>]   remet à jour data/rows depuis les .md
 
-Une page ajoutée ou retirée n'est PAS gérée ici : elle passe par l'importeur de sa famille (les lignes typées qui s'y rattachent en dépendent).
+Les .md de client/src/content/wiki/ sont un PRODUIT du build (fabriqués depuis data/rows par `npm run db:export-pages`, ignorés par git). Pour changer une page à la main :
+modifier son .md puis `db:sync-pages`. Une page ajoutée ou retirée n'est gérée ici que pour les familles `docs` et `exemple` ; sinon c'est l'importeur de la famille.
 """
 import json
 import os
@@ -189,33 +190,49 @@ def pages_differentes(rows, wiki):
     return diff, sorted(set(md) - set(base)), sorted(set(base) - set(md))
 
 
+# Familles dont les pages n'ont pas d'importeur typé : leur texte est la source, on peut les ajouter et les retirer à la main (puis `npm run db:sync-pages`).
+FAMILLES_SANS_IMPORTEUR = {'docs', 'exemple'}
+
+
 def rafraichir_pages(rows, wiki=None):
     """Remet à jour dans `data/rows` le CONTENU des pages (titre, résumé, corps, statut, champs structurés, alias, mots-clés, sources) qui ont changé dans les .md,
     pour TOUTES les familles. Les lignes typées qui se rattachent à une page (`page_entite`, capacités, sorts…) ne sont pas touchées : l'identifiant d'une page ne
-    change jamais ici. Refuse ce qui demande l'importeur d'une famille : une page ajoutée ou retirée, ou une page dont la provenance (famille) a changé.
-    -> ids des pages mises à jour (liste vide : rien à faire, aucun fichier réécrit)."""
+    change jamais ici. Une page peut être AJOUTÉE ou RETIRÉE seulement si elle est de la famille `docs` ou `exemple` (pas d'importeur typé : leur texte est la source) ;
+    pour toute autre famille, c'est l'importeur de la famille qui crée ou retire ses pages. Refuse aussi une page dont la provenance (famille) a changé.
+    -> ids des pages mises à jour, ajoutées ou retirées (liste vide : rien à faire, aucun fichier réécrit)."""
     db = T.reconstruire(':memory:', rows)
     md = {p['id']: p for p in lire_pages_md(wiki)}
     base = dict(db.execute('SELECT id, origine FROM page'))
-    seulement_md, seulement_base = sorted(set(md) - set(base)), sorted(set(base) - set(md))
-    if seulement_md or seulement_base:
-        raise RuntimeError(f"pages ajoutées ({seulement_md[:10]}) ou retirées ({seulement_base[:10]}) : elles passent par l'importeur de leur famille, pas par pages_md.py sync")
+    ajoutees, retirees = sorted(set(md) - set(base)), sorted(set(base) - set(md))
+    interdites = [pid for pid in ajoutees if md[pid]['origine'] not in FAMILLES_SANS_IMPORTEUR] + [pid for pid in retirees if base[pid] not in FAMILLES_SANS_IMPORTEUR]
+    if interdites:
+        raise RuntimeError(f"pages ajoutées ou retirées hors des familles {sorted(FAMILLES_SANS_IMPORTEUR)} ({interdites[:10]}) : elles passent par l'importeur de leur famille, pas par pages_md.py sync")
     changees, _, _ = pages_differentes(rows, wiki or WIKI)
     for pid in changees:
         if md[pid]['origine'] != base[pid]:
             raise RuntimeError(f"{pid} : sa provenance (sources:) la rattache à la famille {md[pid]['origine']!r}, la base dit {base[pid]!r} : importeur de famille requis")
-    if not changees:
+    if not changees and not ajoutees and not retirees:
         return []
     db.execute('BEGIN')
     db.execute('PRAGMA defer_foreign_keys = ON')
-    for pid in changees:
+    for pid in retirees:
+        for table in ('alias', 'page_tag', 'page_source', 'page_entite'):
+            db.execute(f'DELETE FROM {table} WHERE page_id = ?', (pid,))
+        db.execute('DELETE FROM page WHERE id = ?', (pid,))
+    for pid in ajoutees:
+        p = md[pid]
+        donnees = json.dumps(p['donnees'], ensure_ascii=False) if p.get('donnees') else None
+        db.execute('INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, source_ref, origine) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+                   (pid, p['type'], p['slug'], p['titre'], T.normalize(p['titre']), p.get('resume'), donnees, p['corps_md'], p['statut'], p.get('source_ref'), p['origine']))
+    for pid in changees + ajoutees:
         p = md[pid]
         if not p['corps_md'].endswith('\n'):
             db.execute('ROLLBACK')
             raise ValueError(f"{pid} : le corps doit finir par un retour à la ligne")
-        donnees = json.dumps(p['donnees'], ensure_ascii=False) if p.get('donnees') else None
-        db.execute('UPDATE page SET titre = ?, titre_cle = ?, resume = ?, donnees = ?, corps_md = ?, statut = ?, source_ref = ? WHERE id = ?',
-                   (p['titre'], T.normalize(p['titre']), p.get('resume'), donnees, p['corps_md'], p['statut'], p.get('source_ref'), pid))
+        if pid in changees:
+            donnees = json.dumps(p['donnees'], ensure_ascii=False) if p.get('donnees') else None
+            db.execute('UPDATE page SET titre = ?, titre_cle = ?, resume = ?, donnees = ?, corps_md = ?, statut = ?, source_ref = ? WHERE id = ?',
+                       (p['titre'], T.normalize(p['titre']), p.get('resume'), donnees, p['corps_md'], p['statut'], p.get('source_ref'), pid))
         for table in ('alias', 'page_tag', 'page_source'):
             db.execute(f'DELETE FROM {table} WHERE page_id = ?', (pid,))
         for i, texte in enumerate(p.get('aliases', [])):
@@ -237,7 +254,7 @@ def rafraichir_pages(rows, wiki=None):
         raise RuntimeError(f'références rompues après la mise à jour des pages : {violations[:10]}')
     db.execute('COMMIT')
     T.exporter(db, rows)
-    return changees
+    return changees + ajoutees + retirees
 
 
 def main(argv):
@@ -261,7 +278,7 @@ def main(argv):
     except (RuntimeError, ValueError) as e:
         print(f'refusé : {e}')
         return 1
-    print(f'{len(changees)} page(s) mise(s) à jour dans data/rows' if changees else 'data/rows était déjà à jour')
+    print(f'{len(changees)} page(s) mise(s) à jour (modifiées, ajoutées ou retirées) dans data/rows' if changees else 'data/rows était déjà à jour')
     return 0
 
 

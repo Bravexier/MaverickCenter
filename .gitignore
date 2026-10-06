@@ -31,3 +31,6 @@ __pycache__/
 
 # Base de données reconstruite (jamais commitée : voir docs/sql/)
 var/
+
+# Pages du wiki : FABRIQUÉES depuis data/rows par client/scripts/db-export-pages.mjs (avant dev, build et test) ; la source est la base, pas ces fichiers
+client/src/content/wiki/

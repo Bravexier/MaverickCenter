@@ -4,18 +4,27 @@ import { url } from '../../lib/wiki';
 import { lister, ouvrirBase } from '../../lib/donnees.mjs';
 
 const sections = lister(ouvrirBase());
+const portable = process.env.INLINE_CSS === '1'; // version portable (page claude.ai) : pas de fichier binaire
 const nbTables = sections.reduce((n, s) => n + s.objets.filter((o) => o.genre === 'table').length, 0);
 const nbVues = sections.reduce((n, s) => n + s.objets.filter((o) => o.genre === 'vue').length, 0);
 const nbLignes = sections.reduce((n, s) => n + s.objets.filter((o) => o.genre === 'table').reduce((m, o) => m + o.nbLignes, 0), 0);
 ---
 
-<Base title="Données" description="Toutes les données structurées du JDR Maverick, table par table">
-  <h1>Données</h1>
+<Base title="DB" description="La base de données du JDR Maverick, table par table">
+  <h1>DB : la base de données</h1>
   <p>
     Les données structurées du jeu, telles qu’elles sont rangées dans la base : {nbTables} tables ({nbLignes.toLocaleString('fr-FR')} lignes) et {nbVues} vues.
     Chaque ligne garde le texte de sa source ; une valeur absente est marquée <span class="donnees-nul">∅</span> et n’est jamais remplacée par une valeur inventée.
     Les identifiants et les clés étrangères sont des liens : un sort renvoie à sa magie, une capacité à sa page du wiki. Le texte intégral des pages est dans le <a href={url('wiki/')}>wiki</a>.
   </p>
+  {
+    !portable && (
+      <p class="donnees-telechargement">
+        <strong>Déboguer avec un outil externe :</strong> <a href={url('donnees/maverick.db')} download>télécharger la base SQLite</a> (lecture seule, reconstruite à chaque publication à partir de <code>data/rows</code>).
+        À ouvrir avec <em>DB Browser for SQLite</em> ou <code>sqlite3 maverick.db</code> ; la structure de chaque table est décrite ci-dessous.
+      </p>
+    )
+  }
   <p class="donnees-filtre"><label>Filtrer les tables <input type="search" id="filtre-tables" placeholder="arme, sort, race…" autocomplete="off" /></label></p>
   {
     sections.map((s) => (

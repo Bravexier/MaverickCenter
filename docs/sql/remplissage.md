@@ -20,12 +20,13 @@ entre sources, trace des corrections orthographiques : voir [`structure.md`](str
 
 | Donnée | Mise à jour | Garde |
 | --- | --- | --- |
-| Contenu des **pages** (titre, résumé, corps, mots-clés, sources) | `npm run db:sync-pages` depuis les `.md` | `client/test/db-donnees.test.mjs` échoue si `data/rows` n'est plus celui des `.md` |
+| Contenu des **pages** (titre, résumé, corps, mots-clés, sources) | `npm run db:sync-pages` depuis les `.md` fabriqués (modifiés à la main ou réécrits par un extracteur) | `client/test/db-donnees.test.mjs` échoue si `data/rows` n'est plus celui des `.md` |
 | **Lignes typées** (sorts, capacités, races, créatures, armes…) | ⚠️ lignes validées en séance, produites par des chargeurs de **prototype** qui lisaient les classeurs ; ils ne sont pas dans le dépôt | aucune : si un classeur change, ces lignes ne bougent pas tant que l'importeur de la famille n'est pas porté |
-| **Ajout ou retrait d'une page** | importeur de sa famille (lots 4 à 10 de [`conception.md`](conception.md) §11) | `db:sync-pages` refuse et le dit |
+| **Ajout ou retrait d'une page** `docs` ou `exemple` | à la main : créer ou supprimer le `.md` puis `db:sync-pages` | idem |
+| **Ajout ou retrait d'une autre page** (magie, classe, race…) | importeur de sa famille (lots 4 à 10 de [`conception.md`](conception.md) §11) | `db:sync-pages` refuse et le dit |
 
 Autrement dit : ajouter ou modifier du texte de page est couvert ; **réimporter un classeur modifié dans les tables typées demande de porter l'importeur
-correspondant** (travail par famille, le plus gros chantier restant). Le site lit la base **pour l'explorateur de données** (ci-dessous) ; ses pages du wiki viennent toujours des `.md`.
+correspondant** (travail par famille, le plus gros chantier restant). Le site tire de la base **toutes ses pages** (fichiers `.md` fabriqués au build, voir ci-dessous) et l'onglet **DB** (explorateur de données).
 
 ## Pourquoi `data/rows` est commité
 
@@ -45,3 +46,17 @@ qui a sa page dans le wiki porte un lien ↗. La table `page` n'affiche que la l
 - **Logique testée** (`client/test/donnees.test.mjs`) : ancres uniques et sans collision pour chaque ligne de chaque table, chaque lien de clé étrangère mène à une ligne qui existe,
   un sort renvoie à sa magie, une capacité à sa page. Les gabarits Astro (`src/pages/donnees/`) ne contiennent que des boucles.
 - **Poids** : environ 15 Mo de HTML (la plus grosse page, `relation_peuple`, fait 2,8 Mo avant compression).
+
+## Les pages du wiki viennent de la base
+
+Les fichiers `client/src/content/wiki/<type>/<slug>.md` **ne sont plus dans git** (ignorés) : `npm run db:export-pages` les fabrique depuis `data/rows` (environ 3 s), automatiquement avant
+`npm run dev`, `npm run build` et `npm test` (scripts `pre…`) et au début de `tools/build-artifact.mjs`. Le site, les liens `[[…]]` et les extracteurs `tools/sheets/*.py` les lisent donc comme avant.
+Le format écrit est le sous-ensemble YAML des importeurs (`src/lib/pages-db.mjs`) ; les pages de magies sont écrites octet pour octet comme leur importeur les écrit. Au moment de la bascule, le
+site construit avec ces fichiers fabriqués était identique (`diff -r`, 1 527 pages) à celui construit avec les anciens `.md` committés.
+
+Un `.md` fabriqué qu'on modifie est écrasé au prochain `db:export-pages` tant que `db:sync-pages` n'a pas recopié la modification dans `data/rows`.
+
+## L'onglet DB
+
+`/donnees/` (onglet **DB** du site) : toutes les tables et vues, ligne par ligne. `/donnees/maverick.db` : la base SQLite elle-même, en téléchargement, pour la déboguer avec un outil externe
+(DB Browser for SQLite, `sqlite3`). La version portable (page claude.ai) n'embarque pas ce fichier.

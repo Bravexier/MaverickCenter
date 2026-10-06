@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { ancre, lister, ouvrirBase, preparerTable, trouverRacine } from '../src/lib/donnees.mjs';
+import { DatabaseSync } from 'node:sqlite';
+import { ancre, cheminBase, lister, ouvrirBase, preparerTable, trouverRacine } from '../src/lib/donnees.mjs';
 import { lireSchema } from '../src/lib/schema-doc.mjs';
 
 const racine = trouverRacine();
@@ -109,4 +110,14 @@ test('preparerTable : les colonnes portent leur type, leur clé et le commentair
   assert.equal(composite.colonnes.filter((c) => c.cle).length, 2);
   assert.ok(composite.lignes.every((l) => l.ancre.includes('.')), 'ancre à deux valeurs');
   assert.throws(() => preparerTable(db, 'table_inconnue'), /inconnu/);
+});
+
+test('cheminBase : le fichier publié sur /donnees/maverick.db est une base SQLite complète, intègre, avec ses tables dérivées', () => {
+  const fichier = cheminBase({ sansExemples: false });
+  const copie = new DatabaseSync(fichier, { readOnly: true });
+  assert.deepEqual(copie.prepare('PRAGMA integrity_check').all().map((l) => l.integrity_check), ['ok']);
+  assert.equal(copie.prepare('SELECT count(*) AS n FROM page').get().n, db.prepare('SELECT count(*) AS n FROM page').get().n);
+  assert.ok(copie.prepare('SELECT count(*) AS n FROM page_fts').get().n > 0, 'plein texte présent');
+  assert.equal(copie.prepare('PRAGMA user_version').get().user_version, 1);
+  copie.close();
 });
