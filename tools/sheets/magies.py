@@ -13,7 +13,12 @@ jamais exécutées, seulement copiées (échappées pour le Markdown).
 Périmètre : 15 onglets, une page par onglet dans `<out>/magies/<slug>.md`
     Potentiel illimité (magie diffi…), Sang, Arcane, Corruption, TempsEspace, Vide, Nécromancie, Feu, Eau, Glace, Terre,
     Vent, Foudre, Lumière, Ombre.
-L'onglet « Sommaire » et les onglets Altération détats, Météo, Statistiques, Mode Hyper (Magie) sont hors périmètre.
+L'onglet « Sommaire » et les onglets Altération détats, Météo, Statistiques, Mode Hyper (Magie) sont hors périmètre
+(les quatre derniers relèvent de annexes-magie.py). Le « Sommaire » est un index de liens, mais il porte aussi, en A31, la
+« Règle spéciale pour sort niveau 5 » (tour de charge, jet de concentration, etc.), qui vaut pour toutes les magies, et
+26 fils de commentaires orphelins ancrés en A1 (commentaires de cellules supprimées, dont certains textes de règles absents
+des pages) : cette famille ne les publie pas (elle n'écrit que `magies/<slug>.md` pour les 15 onglets ci-dessous) ; ils
+sont à confier à une famille qui porte le Sommaire, sinon ils restent absents du wiki.
 
 Structure d'un onglet de magie (gabarit commun, blocs en cellules fusionnées lues par leur cellule en haut à gauche) :
   * à gauche, colonnes A à AJ : description (A4), « Description physique », « Explication » (Arcane, Corruption et
@@ -40,6 +45,13 @@ le script le cherche à côté du dump (<dossier du dump>/../sheets/<fileId>/cla
   * les noms d'auteurs ne sont pas lus ; un commentaire sans rapport avec les règles est écarté (EXCLUDED_COMMENTS) ;
   * les liens hypertextes de cellule (vers le classeur « Invocation ») ne sont pas reproduits.
 
+Formats de nombre : le dump ne les porte pas. Une cellule numérique reste telle que le cache la donne (« 6.0 » reste
+« 6.0 », sans arrondi), sauf si le classeur la met au format pourcentage (« 0% » ou « 0.00% »), auquel cas elle est écrite
+comme le classeur l'affiche (Arcane!AX52 : 0.25 -> « 25% »). Les formats sont lus dans le .xlsx (xl/styles.xml et attribut s
+de chaque cellule). Un autre format non-Général sur une cellule numérique, ou un pourcentage qui obligerait à arrondir,
+arrête le script avec une erreur plutôt que d'être perdu en silence. Avec --sans-commentaires, le .xlsx n'est pas lu du tout
+(ni commentaires ni formats) : un avertissement le rappelle.
+
 Ne touche qu'aux fichiers `<out>/magies/<slug>.md` de sa famille : il refuse d'écraser un fichier qui n'est pas issu de ce
 classeur, refuse un titre déjà porté par une autre page, et n'efface rien.
 """
@@ -52,6 +64,7 @@ import sys
 import unicodedata
 import zipfile
 import xml.etree.ElementTree as ET
+from decimal import Decimal
 
 WORKBOOK = "Magie Maverick V8"
 FILE_ID = "1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c"
@@ -161,13 +174,32 @@ def fold(text):
     return re.sub(r"\s+", " ", text.casefold()).strip()
 
 
+def percent_text(value, code, where):
+    """Nombre au format pourcentage du classeur -> texte affiché (0.25 avec « 0% » -> « 25% »), sans jamais arrondir."""
+    m = re.fullmatch(r"0(?:\.(0+))?%", code)
+    if not m:
+        raise ValueError("%s : format de nombre %r non pris en charge (valeur %r)" % (where, code, value))
+    exact = Decimal(repr(value)) * 100
+    shown = exact.quantize(Decimal(1).scaleb(-len(m.group(1) or "")))
+    if shown != exact:
+        raise ValueError("%s : le format %r obligerait à arrondir %r" % (where, code, value))
+    return format(shown, "f") + "%"
+
+
 class Sheet:
-    def __init__(self, raw):
+    def __init__(self, raw, formats=None):
+        """formats : {(ligne, colonne): code de format} des cellules numériques non-Général de cet onglet."""
         self.name = raw["name"]
         self.cells = {}
+        formats = formats or {}
         for c in raw["cells"]:
-            if not is_blank(c["v"]):
-                self.cells[(c["r"], c["c"])] = c["v"]
+            v = c["v"]
+            if is_blank(v):
+                continue
+            code = formats.get((c["r"], c["c"]))
+            if code is not None and isinstance(v, (int, float)) and not isinstance(v, bool):
+                v = percent_text(v, code, "%s!%s%d" % (self.name, col_letters(c["c"]), c["r"]))
+            self.cells[(c["r"], c["c"])] = v
         self.merges = {}
         for rng in raw.get("merged", []):
             r1, c1, r2, c2 = parse_range(rng)
@@ -335,6 +367,41 @@ def read_comments(xlsx_path):
                                 continue
                             threads.append((c.get("ref"), text, c.get("done") == "1"))
             result[name] = {"notes": notes, "threads": threads}
+    return result
+
+
+BUILTIN_FORMATS = {9: "0%", 10: "0.00%"}  # identifiants de formats intégrés qui nous intéressent ; 0 = Général
+
+
+def read_number_formats(xlsx_path):
+    """{onglet: {(ligne, colonne): code}} : cellules numériques dont le format n'est pas « Général »."""
+    result = {}
+    with zipfile.ZipFile(xlsx_path) as zf:
+        styles = _xml(zf, "xl/styles.xml")
+        custom = {}
+        numfmts = styles.find("{%s}numFmts" % NS_MAIN)
+        if numfmts is not None:
+            custom = {int(n.get("numFmtId")): n.get("formatCode") for n in numfmts}
+        xf_codes = []  # un code (ou None pour Général) par style de cellule, dans l'ordre de cellXfs
+        for xf in styles.find("{%s}cellXfs" % NS_MAIN):
+            fid = int(xf.get("numFmtId", "0"))
+            if fid == 0:
+                xf_codes.append(None)
+            else:
+                code = custom.get(fid) or BUILTIN_FORMATS.get(fid) or "format intégré n°%d" % fid
+                xf_codes.append(None if code == "General" else code)
+        workbook = _xml(zf, "xl/workbook.xml")
+        rels = {r.get("Id"): r.get("Target") for r in _xml(zf, "xl/_rels/workbook.xml.rels")}
+        for sheet in workbook.find("{%s}sheets" % NS_MAIN):
+            path = posixpath.normpath(posixpath.join("xl", rels[sheet.get("{%s}id" % NS_REL)]))
+            found = {}
+            for c in _xml(zf, path).iter("{%s}c" % NS_MAIN):
+                if c.get("t") not in (None, "n") or c.find("{%s}v" % NS_MAIN) is None:
+                    continue  # texte, booléen, erreur ou cellule sans valeur : le format n'y change rien
+                code = xf_codes[int(c.get("s", "0"))]
+                if code is not None:
+                    found[split_ref(c.get("r"))] = code
+            result[sheet.get("name")] = found
     return result
 
 
@@ -619,7 +686,8 @@ def render(cfg, page, by_ref):
         L += ["## Rôles", ""] + ["- " + esc_inline(r) for r in page["roles"]] + [""]
 
     if page["amel_title"]:
-        L += ["## Tableau « Amélioration cadavérique »", "", "| Amélioration | Effet |", "| --- | --- |"]
+        # titre de section = texte de la cellule D63, tel quel (majuscules, sans accents, guillemets droits)
+        L += ["## " + esc_inline(page["amel_title"]), "", "| Amélioration | Effet |", "| --- | --- |"]
         for name, effect in page["amel_left"] + page["amel_right"]:
             L.append("| %s | %s |" % (cell_md(name), cell_md(effect)))
         L.append("")
@@ -716,7 +784,11 @@ def main(argv=None):
             sheets.setdefault(raw["name"], raw)
 
     comments = {}
-    if not args.sans_commentaires:
+    formats = {}
+    if args.sans_commentaires:
+        print("AVERTISSEMENT : --sans-commentaires : le .xlsx n'est pas lu, donc ni les commentaires de cellule ni les "
+              "formats de nombre (pourcentages) ne sont appliqués.", file=sys.stderr)
+    else:
         xlsx = args.xlsx
         if not xlsx:
             for d in dump_dirs:
@@ -728,6 +800,7 @@ def main(argv=None):
             sys.exit("classeur .xlsx introuvable (option --xlsx) : les commentaires de cellule en dépendent "
                      "(ou passer --sans-commentaires)")
         comments = read_comments(xlsx)
+        formats = read_number_formats(xlsx)
 
     out_dir = os.path.join(args.out, CATEGORY)
     os.makedirs(out_dir, exist_ok=True)
@@ -752,8 +825,8 @@ def main(argv=None):
         if raw is None:
             problems.append("onglet absent du dump : %r" % cfg["onglet"])
             continue
-        sh = Sheet(raw)
         try:
+            sh = Sheet(raw, formats.get(cfg["onglet"]))
             page = parse_sheet(sh, cfg)
             check_all_consumed(sh)
             by_ref = comments_by_ref(cfg["onglet"], comments)

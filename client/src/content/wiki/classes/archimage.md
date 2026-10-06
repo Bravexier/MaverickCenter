@@ -54,16 +54,35 @@ Vêtement de voyage
 
 ## Autres aptitudes
 
+*Disposition dans le classeur d'origine : cet onglet n'a pas de bannières de sous-classe ; ses aptitudes forment deux cartouches « Lvl 10 » (cellules J18 et U18), puis trois colonnes d'aptitudes lues de haut en bas (colonnes G, O et W, de gauche à droite).*
+
+### Cartouches
+
 | Niveau | Aptitude | Type | Effet |
 | --- | --- | --- | --- |
 | Lvl 10 | Élémentaliste | Passif | +7% Magie, +7% survie, +7% vie en nature, +1 point de maîtrise d'arme de contact |
 | Lvl 10 | Occultiste | Passif | +7% Magie, +7% connaissance, +7% intimidation, +1 point de maîtrise d'arme à distance |
+
+### Première colonne (G)
+
+| Niveau | Aptitude | Type | Effet |
+| --- | --- | --- | --- |
 | Lvl 10 | Création vivante | Passif | Double le nombre d'utilisation des créations d'arme magique et augmente leur dégat de X. (X = lniveau d'Archimage/5) |
-| Lvl 10 | Tempus Figus | Passif | Augmente la portée des sorts de +2 |
-| Lvl 10 | Obédience | Passif | -10% aux jets des cibles pour résister aux effets des altérations d'état |
 | Lvl 15 | Moissonneur | Passif | (Barre d'âme débloquer) Permet de récolter des âmes jusqu'à +10 âmes |
-| Lvl 15 | Rituel Interdit | Actif | (Barre de sang débloquer) Par un rituel, permet de sacrifier 1pv par sang, jusqu'à un maximum de +10 sang |
-| Lvl 15 | Pacte Noire | Passif | Permet d'utiliser la corruption accumulée pour lancer des sorts de corruption. |
 | Lvl 20 | Choix | Passif | Choisissez 2 magies auquelles vous allez être résistant. |
+
+### Deuxième colonne (O)
+
+| Niveau | Aptitude | Type | Effet |
+| --- | --- | --- | --- |
+| Lvl 10 | Tempus Figus | Passif | Augmente la portée des sorts de +2 |
+| Lvl 15 | Rituel Interdit | Actif | (Barre de sang débloquer) Par un rituel, permet de sacrifier 1pv par sang, jusqu'à un maximum de +10 sang |
 | Lvl 20 | Caméléon | Passif | L'élément du dernier sort utilisé va devenir votre élément (le temps du prochain sort) |
+
+### Troisième colonne (W)
+
+| Niveau | Aptitude | Type | Effet |
+| --- | --- | --- | --- |
+| Lvl 10 | Obédience | Passif | -10% aux jets des cibles pour résister aux effets des altérations d'état |
+| Lvl 15 | Pacte Noire | Passif | Permet d'utiliser la corruption accumulée pour lancer des sorts de corruption. |
 | Lvl 20 | Adaptation | Passif | L'élément du dernier sort encaissé va devenir votre élément (le temps du prochain sort) |

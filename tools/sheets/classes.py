@@ -19,9 +19,10 @@ Onglets lus
   * « Sommaire » : un tableau de liens à six colonnes, chacune titrée par une catégorie (« Classe Physique Corps à Corps »,
     « Classe Physique Distance », « Classe Magique », « Classe Hybride », « Classe Hybride Animal », « Classe spéciale »)
     sous laquelle les classes sont listées ; une note sous « Classe Magique » (« Octroie 4 AM de base par classe
-    magique ») ; une phrase d'usage du tableau (« Il vous suffit de cliquer… », propre aux liens internes du classeur,
-    non publiée) ; et, sous l'intitulé « OBJETS DES INVENTAIRES DE DEPART », une seule grande cellule fusionnée qui contient
-    le glossaire (un objet par paragraphe, « nom : description »).
+    magique ») ; une phrase d'usage du tableau (A17, « Il vous suffit de cliquer… ») : décision de ne pas la publier, c'est
+    une consigne d'usage des liens cliquables internes du classeur (sans règle ni lore) ; le script l'affiche à chaque
+    exécution comme « non publié » ; et, sous l'intitulé « OBJETS DES INVENTAIRES DE DEPART », une seule grande cellule
+    fusionnée qui contient le glossaire (un objet par paragraphe, « nom : description »).
   * un onglet par classe (nom de l'onglet = nom dans le Sommaire).
   * « Combo stat » (statistiques d'usage des classes) n'est PAS publié.
 
@@ -39,17 +40,24 @@ le script s'appuie sur les libellés, les plages fusionnées et les colonnes, pa
     celui de la classe, les suivants ceux des sous-classes dans l'ordre des bannières ;
   * une « aptitude » est toujours : cellule « Lvl N » (fusionnée sur 2 colonnes), nom 2 colonnes plus loin, bloc d'effet
     juste dessous, puis une cellule de type (Passif, Actif, Réaction, Variable…) sous le bloc d'effet.
-Variantes : Archimage n'a pas de bannières de sous-classe (ses aptitudes de niveau 10 à 20 sont posées en trois colonnes
-sous deux cartouches « Lvl 10 ») ; Mage Bleu ajoute, sous ses aptitudes, un tableau sans titre de 14 lignes (libellé en A,
+Variantes : Archimage n'a pas de bannières de sous-classe : ses aptitudes forment deux cartouches « Lvl 10 » (J18 et U18),
+puis trois colonnes d'aptitudes (Lvl 10, 15, 20 de haut en bas, colonnes G, O et W). La page les garde séparées : une
+section « Cartouches », puis une section par colonne (de gauche à droite), avec une note qui décrit cette disposition (le
+classeur ne dit pas à quelle colonne se rattache un cartouche : rien n'est déduit) ; Mage Bleu ajoute, sous ses aptitudes, un tableau sans titre de 14 lignes (libellé en A,
 texte en G) ; Archer et Arbalètrier ont leurs descriptions une colonne plus à gauche (AL) ; Grenadier n'en a aucune ; Tueur,
 Mage Bleu, Archer (Grand Archer), Anansi et Goleois ont des titres de description sans texte (le titre est alors publié seul). Le script s'arrête avec une erreur si une cellule non vide n'est pas reconnue : rien n'est perdu
 en silence.
 
-Commentaires de cellule : le dump JSON ne les contient pas. Ils sont lus directement dans le .xlsx d'origine (zipfile + xml,
+Commentaires et hyperliens de cellule : le dump JSON ne les contient pas. Ils sont lus directement dans le .xlsx d'origine (zipfile + xml,
 sans openpyxl). L'option --xlsx donne le chemin du classeur ; à défaut le script le cherche à côté du dump
 (<dossier du dump>/../sheets/<fileId>/classeur.xlsx). Introuvable : erreur, sauf --sans-commentaires. Chaque commentaire
 est rattaché à l'aptitude dont il commente le bloc d'effet et rendu dans la colonne « Effet » sous la forme
-« Note de cellule : … ». Les liens hypertextes de cellule ne sont pas reproduits.
+« Note de cellule : … ». Les hyperliens externes de cellule (Mage Bleu!Z3, « CHOSE A SAVOIR », vers le classeur des
+familiers) sont lus dans le même fichier (relations de l'onglet) et rendus sous le texte de leur cellule :
+« Lien hypertexte attaché à la cellule Z3 dans le classeur d'origine : <url> » (même formule que ressources/familiers) ; un
+hyperlien externe qui ne tombe sur aucun bloc connu arrête le script. Les 39 hyperliens internes du Sommaire (un par
+classe, vers son onglet) sont de la navigation propre au classeur : non publiés ; un hyperlien interne hors du Sommaire
+arrête le script.
 
 Titres : le titre d'une page est le nom de l'onglet. Exception : les 13 classes de la catégorie « Classe Hybride Animal »
 portent le nom d'une race jouable (Orios, Fenrir…) ; leur titre prend le suffixe « (classe) » pour rester unique dans le
@@ -365,6 +373,45 @@ def read_comments(xlsx_path):
     return result
 
 
+def read_links(xlsx_path):
+    """{onglet: {ref: url}} : hyperliens externes de cellule lus dans le .xlsx.
+
+    Les hyperliens internes (attribut `location`, sans cible externe) du Sommaire sont ignorés (navigation du classeur) ;
+    un hyperlien interne ailleurs, ou un hyperlien externe sur le Sommaire, lève une erreur : rien n'est perdu en silence.
+    """
+    result = {}
+    with zipfile.ZipFile(xlsx_path) as zf:
+        workbook = _xml(zf, "xl/workbook.xml")
+        rels = {r.get("Id"): r.get("Target") for r in _xml(zf, "xl/_rels/workbook.xml.rels")}
+        for sheet in workbook.find("{%s}sheets" % NS_MAIN):
+            name = sheet.get("name")
+            path = posixpath.normpath(posixpath.join("xl", rels[sheet.get("{%s}id" % NS_REL)]))
+            rel_path = posixpath.join(posixpath.dirname(path), "_rels", posixpath.basename(path) + ".rels")
+            targets = {}
+            if rel_path in zf.namelist():
+                for rel in _xml(zf, rel_path):
+                    if rel.get("Type").rsplit("/", 1)[-1] == "hyperlink":
+                        if rel.get("TargetMode") != "External":
+                            raise ValueError("onglet %r : relation d'hyperlien non externe : %r" % (name, rel.get("Target")))
+                        targets[rel.get("Id")] = rel.get("Target")
+            links = {}
+            for hl in _xml(zf, path).iter("{%s}hyperlink" % NS_MAIN):
+                rid = hl.get("{%s}id" % NS_REL)
+                ref = hl.get("ref").split(":")[0]
+                if rid is None:
+                    if name != SUMMARY_SHEET:
+                        raise ValueError("onglet %r : hyperlien interne en %s non géré par ce script" % (name, ref))
+                    continue
+                if name == SUMMARY_SHEET:
+                    raise ValueError("onglet %r : hyperlien externe en %s non géré par ce script" % (name, ref))
+                url = targets[rid]
+                if re.search(r"[\s<>]", url):
+                    raise ValueError("onglet %r : URL d'hyperlien inattendue en %s : %r" % (name, ref, url))
+                links[ref] = url
+            result[name] = links
+    return result
+
+
 # --------------------------------------------------------------------------------------------------------------------
 # Onglet « Sommaire »
 # --------------------------------------------------------------------------------------------------------------------
@@ -421,7 +468,7 @@ def parse_summary(sh, class_sheet_names):
     left = [ref_of(*pos) for pos in cells if pos not in sh.consumed]
     if left:
         raise ValueError("Sommaire : cellules non reconnues : %s" % ", ".join(left))
-    return dict(classes=classes, notes=notes, usage=[fmt(cells[p]) for p in usage],
+    return dict(classes=classes, notes=notes, usage=[(ref_of(*p), fmt(cells[p])) for p in sorted(usage)],
                 glossary_title=glossary_title, glossary=glossary)
 
 
@@ -445,7 +492,7 @@ def parse_ability(sh, r, c):
         typ = sh.take(tr, c)
     return dict(row=r, col=c, level=level, name=fmt(name) if name is not None else "",
                 type=fmt(typ) if typ is not None else "", desc=fmt(desc) if desc is not None else "",
-                desc_pos=(dr, dc), notes=[])
+                desc_pos=(dr, dc), notes=[], links=[])
 
 
 def parse_class(sh, name):
@@ -487,12 +534,15 @@ def parse_class(sh, name):
     # « CHOSE A SAVOIR » (facultatif)
     know = sh.find(KNOW_HEADER, max_row=ROW_TOP_MAX)
     page["know"] = None
+    page["know_pos"] = None
+    page["know_links"] = []   # [(ref, url)] hyperliens de la cellule du texte
     if len(know) > 1:
         raise ValueError("%s : plusieurs intitulés %r" % (sh.name, KNOW_HEADER))
     if know:
         r, c = know[0]
         head = fmt(sh.take(r, c))
-        content = sh.take(*below(sh, r, c))
+        page["know_pos"] = below(sh, r, c)
+        content = sh.take(*page["know_pos"])
         page["know"] = (head, fmt(content) if content is not None else None)
 
     # bannières de sous-classe (ligne 17)
@@ -571,6 +621,22 @@ def attach_notes(sh, page, notes):
         by_pos[pos]["notes"].append(notes[ref])
 
 
+def attach_links(sh, page, links):
+    """Rattache les hyperliens externes de cellule au bloc de texte (CHOSE A SAVOIR) ou d'effet d'aptitude qui les porte."""
+    abilities = list(page["class_abilities"]) + list(page["other_abilities"])
+    for b in page["banners"]:
+        abilities += b["abilities"]
+    by_pos = {a["desc_pos"]: a for a in abilities}
+    for ref in sorted(links, key=split_ref):
+        pos = sh.top_left(*split_ref(ref))
+        if page["know_pos"] is not None and pos == page["know_pos"]:
+            page["know_links"].append((ref, links[ref]))
+        elif pos in by_pos:
+            by_pos[pos]["links"].append((ref, links[ref]))
+        else:
+            raise ValueError("%s : hyperlien en %s hors d'un bloc de texte reconnu : %r" % (sh.name, ref, links[ref]))
+
+
 # --------------------------------------------------------------------------------------------------------------------
 # Rendu
 # --------------------------------------------------------------------------------------------------------------------
@@ -581,20 +647,77 @@ def first_sentence(text):
     return m.group(1) if m else para
 
 
+def link_note(ref, url):
+    return "*Lien hypertexte attaché à la cellule %s dans le classeur d'origine :* <%s>" % (ref, url)
+
+
 def ability_rows(abilities):
     rows = []
     for a in abilities:
         effect = cell_md(a["desc"]) if a["desc"] else ""
         for note in a["notes"]:
             effect += ("<br><br>" if effect else "") + "Note de cellule : " + cell_md(note)
+        for ref, url in a["links"]:
+            effect += ("<br><br>" if effect else "") + link_note(ref, url)
         rows.append([cell_md(a["level"]), cell_md(a["name"]), cell_md(a["type"]), effect])
     return table(["Niveau", "Aptitude", "Type", "Effet"], rows)
 
 
-def text_section(L, level, heading, text):
+NUMBER_WORDS = {1: "un", 2: "deux", 3: "trois", 4: "quatre", 5: "cinq", 6: "six"}
+ORDINALS = {1: "Première", 2: "Deuxième", 3: "Troisième", 4: "Quatrième", 5: "Cinquième", 6: "Sixième"}
+
+
+def free_abilities(abilities):
+    """Aptitudes d'un onglet sans bannières de sous-classe (Archimage), regroupées selon leur disposition dans l'onglet.
+
+    Une colonne qui ne porte qu'une aptitude, posée au-dessus de toutes les colonnes de plusieurs aptitudes, est un
+    cartouche ; les autres colonnes sont rendues chacune dans leur section, de gauche à droite. Le rattachement d'un
+    cartouche à une colonne n'est pas écrit dans le classeur : il n'est pas déduit.
+    """
+    by_col = {}
+    for a in sorted(abilities, key=lambda a: (a["row"], a["col"])):
+        by_col.setdefault(a["col"], []).append(a)
+    top = min([group[0]["row"] for group in by_col.values() if len(group) > 1], default=None)
+    cartouches, columns = [], []
+    for col in sorted(by_col):
+        group = by_col[col]
+        if top is not None and len(group) == 1 and group[0]["row"] < top:
+            cartouches.append(group[0])
+        else:
+            columns.append((col, group))
+    cartouches.sort(key=lambda a: (a["row"], a["col"]))
+
+    def count(n, singular):
+        return "%s %s" % (NUMBER_WORDS.get(n, str(n)), singular if n == 1 else singular + "s")
+
+    def enum(items):
+        return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " et " + items[-1]
+
+    parts = []
+    if cartouches:
+        levels = sorted({a["level"] for a in cartouches})
+        parts.append("%s %s (%s %s)" % (count(len(cartouches), "cartouche"), " / ".join("« %s »" % v for v in levels),
+                                         "cellule" if len(cartouches) == 1 else "cellules",
+                                         enum([ref_of(a["row"], a["col"]) for a in cartouches])))
+    if columns:
+        parts.append("%s d'aptitudes lues de haut en bas (%s %s, de gauche à droite)"
+                     % (count(len(columns), "colonne"), "colonne" if len(columns) == 1 else "colonnes",
+                        enum([col_letters(col) for col, _ in columns])))
+    L = ["*Disposition dans le classeur d'origine : cet onglet n'a pas de bannières de sous-classe ; ses aptitudes forment "
+         + ", puis ".join(parts) + ".*", ""]
+    if cartouches:
+        L += ["### Cartouches", ""] + ability_rows(cartouches) + [""]
+    for i, (col, group) in enumerate(columns, 1):
+        L += ["### %s colonne (%s)" % (ORDINALS.get(i, "%de" % i), col_letters(col)), ""] + ability_rows(group) + [""]
+    return L
+
+
+def text_section(L, level, heading, text, links=()):
     L += ["#" * level + " " + esc_inline(heading), ""]
     if text:
         L += md_text(text) + [""]
+    for ref, url in links:
+        L += [link_note(ref, url), ""]
 
 
 def front_matter(cfg, summary):
@@ -619,7 +742,7 @@ def render_class(cfg, page):
     if page["class_desc"]:
         text_section(L, 2, *page["class_desc"])
     if page["know"]:
-        text_section(L, 2, *page["know"])
+        text_section(L, 2, *page["know"], links=page["know_links"])
 
     L += ["## " + esc_inline(page["gift_header"]), ""]
     L += table([esc_inline(s[0]) for s in page["stats"]], [[s[1] for s in page["stats"]]]) + [""]
@@ -643,7 +766,7 @@ def render_class(cfg, page):
             if b["abilities"]:
                 L += ability_rows(b["abilities"]) + [""]
     elif page["other_abilities"]:
-        L += ["## Autres aptitudes", ""] + ability_rows(page["other_abilities"]) + [""]
+        L += ["## Autres aptitudes", ""] + free_abilities(page["other_abilities"])
     if page["tail"]:
         L += ["## Tableau sans titre en bas de l'onglet", ""]
         L += table(["Libellé", "Texte"], [[cell_md(a), cell_md(b)] for a, b in page["tail"]]) + [""]
@@ -701,8 +824,9 @@ def is_ours(path):
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Génère les pages « classes » du wiki depuis le dump de « %s »." % WORKBOOK)
     ap.add_argument("--dump", action="append", required=True, help="dump JSON de xlsx_to_json.py (répétable)")
-    ap.add_argument("--xlsx", help="classeur d'origine (commentaires de cellule)")
-    ap.add_argument("--sans-commentaires", action="store_true", help="ne pas lire les commentaires de cellule")
+    ap.add_argument("--xlsx", help="classeur d'origine (commentaires et hyperliens de cellule)")
+    ap.add_argument("--sans-commentaires", action="store_true",
+                    help="ne pas lire les commentaires ni les hyperliens de cellule (.xlsx)")
     ap.add_argument("--out", required=True, help="racine du wiki (client/src/content/wiki)")
     args = ap.parse_args(argv)
 
@@ -719,7 +843,7 @@ def main(argv=None):
         sys.exit("onglet %r absent du dump" % SUMMARY_SHEET)
     class_names = [n for n in order if n != SUMMARY_SHEET and n not in IGNORED_SHEETS]
 
-    comments = {}
+    comments, links = {}, {}
     if not args.sans_commentaires:
         xlsx = args.xlsx
         if not xlsx:
@@ -729,9 +853,13 @@ def main(argv=None):
                     xlsx = cand
                     break
         if not xlsx or not os.path.isfile(xlsx):
-            sys.exit("classeur .xlsx introuvable (option --xlsx) : les commentaires de cellule en dépendent "
+            sys.exit("classeur .xlsx introuvable (option --xlsx) : les commentaires et hyperliens de cellule en dépendent "
                      "(ou passer --sans-commentaires)")
-        comments = read_comments(xlsx)
+        try:
+            comments = read_comments(xlsx)
+            links = read_links(xlsx)
+        except ValueError as err:
+            sys.exit("ERREUR : %s" % err)
 
     problems = []
     try:
@@ -743,6 +871,8 @@ def main(argv=None):
         sys.exit("ERREUR : onglets de classe et classes du Sommaire différents : %s"
                  % sorted(set(class_names) ^ set(in_summary)))
     category_of = dict(summary["classes"])
+    for ref, text in summary["usage"]:
+        print("non publié : %s!%s « %s » (consigne d'usage des liens internes du classeur)" % (SUMMARY_SHEET, ref, text))
 
     # pages à produire
     jobs = []
@@ -757,6 +887,7 @@ def main(argv=None):
             if fold(page["banner"]) != fold(name) or wiki_key(page["banner"]) != wiki_key(name):
                 cfg["aliases"] = [page["banner"]]
             attach_notes(sh, page, comments.get(name, {}))
+            attach_links(sh, page, links.get(name, {}))
             body = render_class(cfg, page)
         except ValueError as err:
             problems.append(str(err))

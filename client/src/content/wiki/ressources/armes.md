@@ -35,6 +35,22 @@ Arme de jet
 
 - Permettre de lancer 2 armes de jets en échange du déplacement et action (ou utiliser 2 fois la fronde).
 
+## Armes sur fond bleu dans la source
+
+Note de mise en page : la règle ci-dessus (« Les armes en bleu sont les armes possible en arme de départ ») repose sur la couleur de fond du nom des armes dans la source. La couleur n'est pas reprise dans les tableaux ci-dessous ; les armes dont le nom est sur fond bleu dans la source sont, par bandeau :
+
+- Sous « ÉPÉES - D10 » : Épée Longue, Sabre, Épée courte, Épée courbée
+- Sous « DAGUES - D6 » : Dague (une main), Poignard
+- Sous « MASSE/MARTEAU - D10 » : Masse (une main), Matraque, Gourdin, Chope
+- Sous « HACHE - D10 » : Hache (une main), Hachette
+- Sous « LANCE/ARME D'HAST - D10 » : Lance, Lance fine
+- Sous « PUGILAT - D6/D8/D10 (D6 1-2 Force, D8 3-4 Force, D10 5 Force) » : Gants, Grèves
+- Sous « BATON DE COMBAT - D8 » : Bâton, Perche
+- Sous « ARME DE JET - D6 \[Un matériau permet d'en faire 10 sauf pour la fronde qui elle est unique\] » : Javelot, Dague de lancer
+- Sous « ARC - D8 » : Arc, Arc court
+- Sous « ARBALETE - D12 » : Arbalète (une ou deux mains)
+- Sous « BOMBES - D6 (Disponible en l'an 150) \[Un matériau permet d'en faire 10\] » : Bombe frappante, Bombe perçante, Bombe taillante
+
 ## MATERIAUX
 
 | Matière | Prix matériaux | Effets |
@@ -270,7 +286,7 @@ Arme de jet
 | Nom | Coût en plus/moins (unité) | Catégorie | Effet | Description |
 | --- | --- | --- | --- | --- |
 | Bombe frappante | 1 Ro | Bombe<br>Arme Lourde/Légère | 1 - 4 portée, dégâts de frappe, cercle de 2 en zone de dégâts. |  |
-| Bombe perçante | 1 Ro | Bombe<br>Arme Lourde/Légère | 1 - 4 portée, dégâts d'estoc, cercle de 2 en zone de dégâts. |  |
+| Bombe perçante | 1 Ro | Bombe<br>Arme Lourde/Légère | 1 - 4 portée, dégâts d'estoc, cercle de 2 en zone de dégâts.<br><br>Note de cellule : Il faut perdre un bras pour avoir cette arme, ce qui fait que vous perdez une main. Ce n'est pas considérer comme un Canon d'artifice. |  |
 | Bombe taillante | 1 Ro | Bombe<br>Arme Lourde/Légère | 1 - 4 portée, dégâts de taille, cercle de 2 en zone de dégâts. |  |
 | Super bombe frappante | 5 Ro | Bombe<br>Arme Lourde/Légère | 1 - 4 portée, dégâts de frappe, cercle de 2 en zone de dégâts, +4 dégâts, ignore 2AP. |  |
 | Super bombe perçante | 5 Ro | Bombe<br>Arme Lourde/Légère | 1 - 4 portée, dégâts d'estoc, cercle de 2 en zone de dégâts, +4 dégâts, ignore 2AP. |  |
@@ -297,7 +313,3 @@ Arme de jet
 | Griffe de boue |  | Pugilat<br>Arme Lourde/Légère |  |  |
 | Griffe de carcalanche |  | Pugilat<br>Arme Lourde/Légère |  |  |
 | Arc du rayon |  | Arc<br>Arc |  |  |
-
-## Commentaires de cellule
-
-Cellule QA6 (cellule de la plage fusionnée QA5:QL6) : Il faut perdre un bras pour avoir cette arme, ce qui fait que vous perdez une main. Ce n'est pas considérer comme un Canon d'artifice.

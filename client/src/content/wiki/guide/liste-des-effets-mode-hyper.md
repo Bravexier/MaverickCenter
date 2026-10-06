@@ -61,10 +61,10 @@ Le Mode Hyper 100% n'est disponible qu'au niveau 10 de personnage.
 | --- | --- | --- |
 | Général | Immunité à la magie innée | Très résistant aux deux magies |
 | Général | Dégâts de la magie +15 | Dégâts de la magie +7 |
-| Général | Dégâts physique +15 |  |
-| Général | Soin magique +15 |  |
-| Général | Consommation de chakra = 0 |  |
-| Potentiel illimité | Dégâts physique neutre, Résistance à la magie |  |
+| Général | Dégâts physique +15 | Dégâts physique +15 |
+| Général | Soin magique +15 | Soin magique +15 |
+| Général | Consommation de chakra = 0 | Consommation de chakra = 0 |
+| Potentiel illimité | Dégâts physique neutre, Résistance à la magie | Dégâts physique neutre, Résistance à la magie |
 | Sang | Permet de récupérer 10 sang par tour au lieu de 1. | Divise par 2 le coût en sang pour les sorts. |
 | Arcane | Les sorts amplifications deviennent des IC le temps du mode hyper (sauf les sorts niveau de puissance 5). | Chaque tour, une amplification est un IC (seulement le premier IC). (sauf les sorts niveau de puissance 5). |
 | Corruption | Le chakra active directements les effets secondaires | Divise par 2 le cout en corruption des sorts. |
@@ -111,3 +111,5 @@ Le Mode Hyper 100% n'est disponible qu'au niveau 10 de personnage.
 | Marcass | Les AP et AM naturels s’ajoutent à toute réduction de dégâts, quel que soit le type d’attaque. |
 | Anansi | Les attaques vont obtenir une effet secondaire selon la magie innée : Arcane = Vampirise 1d6 barrière a la cible \| Nécromancie= Inflige Poison 1 automatiquement \| Ombre = Réduit de 5 l'initiative de la cible toucher pour le prochaine tour |
 | Goleois | Augmente les dégâts de tous les alliés de 5, le temps du mode hyper. |
+
+*Le classeur « Magie Maverick V8 » contient, dans un onglet masqué, une autre liste des effets du mode hyper (page « Mode Hyper (Magie) ») ; les deux listes ne donnent pas toujours les mêmes valeurs.*

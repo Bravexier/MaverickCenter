@@ -31,17 +31,35 @@ Sources (classeurs Google, propriété d'un tiers) et pages produites :
         (texte général, puis deux cases « Mono magie » et « Bi magie »).
         Un commentaire de cellule (M43, effet de « Vide + Nécromancie ») est ajouté en fin de page ; comme le
         dump JSON ne porte pas les commentaires, il est recopié depuis le .xlsx dans la constante CELL_COMMENTS.
-    - onglet « Statistiques »       -> NON PUBLIÉ (voir le rapport : compteurs et tableau de calcul, pas une
-        règle de jeu rédigée) ; le script ne le lit pas.
+    - onglet « Statistiques »       -> guide/statistiques-resistance-faiblesse.md (PUBLIÉ EN PARTIE)
+        L'onglet contient deux sortes de données.
+        (1) Le tableau « Résistance Faiblesse » (en-tête en F40), à partir de la ligne 41, colonnes B à AM :
+        73 blocs de 6 lignes (4 lignes de données, 2 lignes vides), un par combinaison de deux magies (B : magie,
+        G : « + », H : magie). Dans chaque bloc, la colonne N porte D.Résistance / Résistance / Faiblesse /
+        D.Faiblesse, la colonne S un « = », puis, en T, Y, AD, AI, de un à quatre noms de magie (ou « AUCUNE »).
+        Ces valeurs sont écrites telles quelles dans le classeur (aucune formule en dehors des « + » et « = ») :
+        elles sont reprises mot pour mot, sans être recalculées ni comparées à la matrice publiée dans
+        guide/resistance-faiblesse-magie.md. « D. » n'est pas développé : la source ne le fait pas.
+        (2) Tout le reste de l'onglet (lignes 1 à 40, et les colonnes AR et suivantes) : compteurs, c'est-à-dire
+        nombre de fois que chaque magie ou chaque combinaison a été prise, classement, et répartition « TR R E TE »
+        (« Résultat combien de fois la magie est très résisté, résisté, efficace, très efficace », AR38). Ce ne sont
+        pas des règles de jeu mais des décomptes : NON PUBLIÉS. Les deux commentaires de cellule de l'onglet
+        (BH27 « augmentation a 39 ducoup :3 » et AR52 « c'est 22 pour les 2 », tous deux résolus) portent sur ces
+        compteurs et ne sont donc pas repris non plus.
 
   « Mode hyper et co » (1lwALh1VKrIpgmEqX2MdYirKkPzGjSJXXDHtp2uYXO7w)
     - onglet « Mode Hyper » -> guide/liste-des-effets-mode-hyper.md
         Trois textes explicatifs en colonne AA (lignes 1, 14, 30), puis un tableau « Magie/Type | Mono magie |
         Bi magie » (ligne 2, entrées de 3 lignes fusionnées) et, à partir de la ligne « Race | Effet », un
-        tableau des effets par race.
+        tableau des effets par race. Quatre effets généraux (« Général » : Dégâts physique +15, Soin magique +15,
+        Consommation de chakra = 0 ; « Potentiel illimité » : Dégâts physique neutre, Résistance à la magie) sont
+        dans une cellule fusionnée sur les deux colonnes « Mono magie » ET « Bi magie » (F:Y) : le texte vaut pour
+        les deux cas ; il est donc écrit dans les deux colonnes du tableau (la page ne laisse pas croire qu'il n'y
+        a pas d'effet en bi magie).
     - onglet « Mode Super » -> guide/liste-des-effets-mode-super.md
         Un texte explicatif en colonne AI (ligne 1), puis un tableau « Objet | Effets mode super |
-        Description/apparence » (entrées de 4 lignes fusionnées).
+        Description/apparence » (entrées de 4 lignes fusionnées). Le nom du premier objet (A3) est une cellule
+        numérique au format Général dont la valeur en cache est 400.0 : elle est reprise telle quelle.
 
 Conventions de rendu : valeurs en cache, mot pour mot (un nombre garde sa forme, « 400.0 » reste « 400.0 ») ;
 espaces de début et de fin de ligne retirés ; retour à la ligne d'une cellule de tableau -> « <br> » ; « | »
@@ -55,6 +73,10 @@ import re
 import sys
 
 CATEGORY = "guide"
+
+# Titres des pages qui se renvoient l'une à l'autre (deux classeurs, deux listes d'effets du mode hyper).
+TITLE_HYPER_MAGIE = "Mode Hyper (Magie)"
+TITLE_HYPER_LISTE = "Liste des effets mode hyper"
 
 # Identification des classeurs à partir d'un onglet qui leur est propre.
 WORKBOOKS = [
@@ -71,6 +93,8 @@ WORKBOOKS = [
         "file_id": "1lwALh1VKrIpgmEqX2MdYirKkPzGjSJXXDHtp2uYXO7w",
     },
 ]
+
+WORKBOOK_TITLES = {wb["key"]: wb["title"] for wb in WORKBOOKS}
 
 
 # Commentaires de cellule du classeur d'origine : le dump JSON ne les contient pas (seuls les .xlsx les portent),
@@ -128,6 +152,12 @@ class Sheet:
             if self.cells[(r, c)] == value:
                 return (r, c)
         return None
+
+
+def spans_column(sh, r, c, target):
+    """Vrai si la cellule (r, c), en haut à gauche d'une plage fusionnée, s'étend jusqu'à la colonne `target`."""
+    span = sh.merged_from.get((r, c))
+    return span is not None and span[0] <= r <= span[2] and span[1] <= target <= span[3]
 
 
 def load_workbook(path):
@@ -374,8 +404,14 @@ def page_meteo(sh, wb):
 
 
 def page_hyper_magie(sh, wb):
-    title = "Mode Hyper (Magie)"
+    title = TITLE_HYPER_MAGIE
     body = ["*Onglet masqué du classeur d'origine.*" if sh.state == "hidden" else None]
+    # Renvoi vers l'autre liste des effets du mode hyper (autre classeur) : les valeurs diffèrent, la source
+    # n'indique pas laquelle prévaut, la page ne tranche donc pas.
+    body.append(
+        "*Le classeur « %s » contient une autre liste des effets du mode hyper (page « %s ») ; "
+        "les deux listes ne donnent pas toujours les mêmes valeurs.*" % (WORKBOOK_TITLES["mode-hyper"], TITLE_HYPER_LISTE)
+    )
     # Encadré « Avantages de base » (à droite) : texte général, puis cases « Mono magie » / « Bi magie ».
     base = sh.find("Avantages de base")
     mono = sh.find("Mono magie")
@@ -432,13 +468,60 @@ def page_hyper_magie(sh, wb):
     }
 
 
+def page_statistiques(sh, wb):
+    """Tableau « Résistance Faiblesse » de l'onglet « Statistiques » (les compteurs ne sont pas repris)."""
+    title = "Statistiques : Résistance Faiblesse"
+    head = sh.find("Résistance Faiblesse")
+    if head is None:
+        raise SystemExit("tableau « Résistance Faiblesse » introuvable dans « %s »" % sh.name)
+    c_a, c_plus, c_b = col_to_num("B"), col_to_num("G"), col_to_num("H")
+    c_level, c_eq, c_last = col_to_num("N"), col_to_num("S"), col_to_num("AM")
+    starts = sorted(r for (r, c) in sh.cells if c == c_a and r > head[0])
+    if not starts:
+        raise SystemExit("aucune combinaison dans le tableau « Résistance Faiblesse » de « %s »" % sh.name)
+    last_row = max(r for (r, c) in sh.cells if c <= c_last)
+    levels = None
+    rows = []
+    for i, r in enumerate(starts):
+        end = (starts[i + 1] - 1) if i + 1 < len(starts) else last_row
+        names = []
+        cells_by_level = []
+        for rr in range(r, end + 1):
+            lab = sh.get(rr, c_level)
+            if lab is None:
+                continue
+            names.append(one_line(lab))
+            vals = [sh.get(rr, c) for c in range(c_eq + 1, c_last + 1) if sh.get(rr, c) is not None]
+            cells_by_level.append(", ".join(esc(one_line(v)) for v in vals))
+        if levels is None:
+            levels = names
+        elif names != levels:
+            raise SystemExit("niveaux inattendus à la ligne %d de « %s » : %r" % (r, sh.name, names))
+        plus = sh.get(r, c_plus)
+        label = "%s %s %s" % (esc(one_line(sh.get(r, c_a))), esc(one_line(plus)) if plus is not None else "", esc(one_line(sh.get(r, c_b))))
+        rows.append([" ".join(label.split())] + cells_by_level)
+    body = [
+        "*Seul le tableau « Résistance Faiblesse » de l'onglet est repris ici ; les compteurs qu'il contient "
+        "par ailleurs ne le sont pas.*",
+        table(["Magies"] + [esc(n) for n in levels], rows),
+    ]
+    return {
+        "slug": "statistiques-resistance-faiblesse",
+        "title": title,
+        "tags": ["résistance", "faiblesse"],
+        "summary": None,
+        "tab": sh.name,
+        "body": "\n\n".join(body),
+    }
+
+
 def first_sentence(value, start):
     m = re.search(re.escape(start) + r"[^.]*\.", fmt(value))
     return " ".join(m.group(0).split()) if m else None
 
 
 def page_mode_hyper(sh, wb):
-    title = "Liste des effets mode hyper"
+    title = TITLE_HYPER_LISTE
     if not same_letters(sh.get(1, 1) or "", title):
         raise SystemExit("titre de l'onglet « %s » inattendu" % sh.name)
     c_txt = col_to_num("AA")
@@ -454,7 +537,12 @@ def page_mode_hyper(sh, wb):
     rows = []
     for r in range(head[0] + 1, race[0]):
         if sh.get(r, c_label) is not None:
-            rows.append([cell(sh.get(r, c_label)), cell(sh.get(r, c_mono)), cell(sh.get(r, c_bi))])
+            mono, bi = sh.get(r, c_mono), sh.get(r, c_bi)
+            # Cellule fusionnée sur « Mono magie » ET « Bi magie » : l'effet vaut pour les deux, on l'écrit dans
+            # les deux colonnes (sinon la colonne « Bi magie » vide se lirait « pas d'effet en bi magie »).
+            if bi is None and mono is not None and spans_column(sh, r, c_mono, c_bi):
+                bi = mono
+            rows.append([cell(sh.get(r, c_label)), cell(mono), cell(bi)])
     body.append("## Effets selon la magie ou le type")
     body.append(table([esc(sh.get(head[0], c_label)), esc(h_mono), esc(h_bi)], rows))
     h_eff = sh.get(race[0], col_to_num("F"))
@@ -464,6 +552,11 @@ def page_mode_hyper(sh, wb):
             rows.append([cell(sh.get(r, race[1])), cell(sh.get(r, col_to_num("F")))])
     body.append("## Effets selon la race")
     body.append(table([esc(sh.get(race[0], race[1])), esc(h_eff)], rows))
+    body.append(
+        "*Le classeur « %s » contient, dans un onglet masqué, une autre liste des effets du mode hyper "
+        "(page « %s ») ; les deux listes ne donnent pas toujours les mêmes valeurs.*"
+        % (WORKBOOK_TITLES["magie-v8"], TITLE_HYPER_MAGIE)
+    )
     return {
         "slug": "liste-des-effets-mode-hyper",
         "title": title,
@@ -509,6 +602,7 @@ BUILDERS = {
         ("Altération détats", page_alterations),
         ("Météo", page_meteo),
         ("Mode Hyper (Magie)", page_hyper_magie),
+        ("Statistiques", page_statistiques),
     ],
     "mode-hyper": [
         ("Mode Hyper", page_mode_hyper),

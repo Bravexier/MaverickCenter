@@ -68,7 +68,7 @@ Exemple : J'ai posé sur 3 personnes différentes un sort qui coute 3. Donc en 1
 | 3.0 | Rune Arcane multiple | Amplification<br>(IC x 1/NM) | 10xN/tour | Tous les alliés | 1.0 | +1 cran de résistance | Augmente la résistance d'une magie au choix. On ne peut pas cumuler la même résistance sur la même cible. |
 | 3.0 | Champ Gardien | Attaque/Soin | 12.0 | Soi même | Cercle de 2 | Donne 2d6 + 3 Barrière et 12 dégâts | Invoque un cercle qui va rendre de la barrière aux alliés et infliger des dégâts aux ennemis (3 NM = les dégâts ignore les AM). |
 | 4.0 | Peau de Chakra | Amplification<br>(IC x 1/NM) | 13xN/tour | 3.0 | 1.0 | -20% dégâts magique | Réduit les dégâts magiques subis. |
-| 4.0 | Pluie de Chakra | Amplification | 0.25 | 3 (+1/NM) | Carré 4x4 | / | Fait pleuvoir une pluie blanche brillante aux dessus des alliés, leur redonnant ainsi 25% de leur chakra. |
+| 4.0 | Pluie de Chakra | Amplification | 25% | 3 (+1/NM) | Carré 4x4 | / | Fait pleuvoir une pluie blanche brillante aux dessus des alliés, leur redonnant ainsi 25% de leur chakra. |
 | 4.0 | Grenade de Chakra | Attaque | 23.0 | 6 (+1/NM) | Cercle de 2 | 8d6 + 30 dégâts | Inflige des dégâts en Zone. |
 | 4.0 | Miroir Magique | Amplification (IC pour 3 NM) | 20.0 | Soi même | 1.0 | / | Permet de renvoyer le sortilège de l'agresseur, 3 utilisations. (3 NM = Ne prend plus l'effet en question). |
 | 4.0 | Foudre argenté | Attaque/Entrave | 21.0 | 6.0 | 1.0 | 4d10 dégâts (+10/NM) | Inflige de lourd dégâts.<br>Si jet de fermeté raté = Perd une résistance aléatoire pendant 1 tour. |

@@ -11,7 +11,10 @@ tools/sheets/xlsx_to_json.py (format décrit dans ce script). Les cellules sont 
 exécutées, seulement copiées (échappées pour le Markdown). Rien n'est inventé : valeurs, noms, formules de règles, coquilles
 et formulations sont ceux des cellules (« 100.0 » reste « 100.0 », les valeurs viennent du cache, jamais d'un recalcul).
 Le script ne lit que le dump ; le dump ne contenant pas les commentaires de cellule, ceux des onglets du périmètre sont
-recopiés dans la constante CELL_COMMENTS (lus dans le .xlsx d'origine) et rendus « Note de cellule : … ».
+recopiés dans la constante CELL_COMMENTS (lus dans le .xlsx d'origine) et rendus « Note de cellule : … ». Il ne contient pas
+non plus les couleurs de fond ; la seule qui porte une information écrite par la source (« Les armes en bleu sont les armes
+possible en arme de départ », onglet « Armes ») est recopiée dans la constante BLUE_NAME_CELLS (références des cellules de nom
+d'arme à fond bleu, lues dans le .xlsx) ; les autres couleurs (catégories, grille des armures) ne sont pas reprises.
 
 Fichiers écrits (et seulement ceux-là), un par onglet, catégorie « ressources » :
     <out>/ressources/equipement-inventaire.md   onglet « Équipement inventaire »
@@ -31,10 +34,12 @@ un libellé attendu manque ou si une cellule non vide n'a été reprise nulle pa
     ; PRODUITS NON MONAITAIRE (+ fréquents) en trois colonnes de listes (VEGETAUX, ANIMAUX, AUTRES : nom puis prix) ;
     MATOS AVENTURES, MATOS FABRICATION, MATOS PROJECTILE : trois tableaux Nom / Prix / Description (en-têtes ligne 3). Le
     commentaire de cellule de A1 (trois notes, dont deux sans rapport apparent avec la monnaie) est recopié sous MONNAIE.
-  « Armes » : A1 = règles générales ; MATERIAUX (O/S/W : matière, prix, effets) ; AMELIORATION (+1 à +10, coût, effet, TOTAL) ;
-    « COMMENT DÉTERMINER LE PRIX DE VOTRE ARME ? » (formule en une ligne) ; puis douze bandeaux d'armes (ÉPÉES, DAGUES, …,
-    ARME DE MONSTRES) à partir de la colonne AE, chacun avec ses en-têtes de ligne 2 (Nom, Coût…, Catégorie, Effet,
-    Description) et une arme par couple de lignes fusionnées. Un commentaire de cellule (QA6) est recopié en fin de page.
+  « Armes » : A1 = règles générales ; liste des 26 armes dont le nom est sur fond bleu (« Armes sur fond bleu dans la
+    source », par bandeau, d'après BLUE_NAME_CELLS) ; MATERIAUX (O/S/W : matière, prix, effets) ; AMELIORATION (+1 à +10, coût,
+    effet, TOTAL) ; « COMMENT DÉTERMINER LE PRIX DE VOTRE ARME ? » (formule en une ligne) ; puis douze bandeaux d'armes (ÉPÉES,
+    DAGUES, …, ARME DE MONSTRES) à partir de la colonne AE, chacun avec ses en-têtes de ligne 2 (Nom, Coût…, Catégorie, Effet,
+    Description) et une arme par couple de lignes fusionnées. Le commentaire de cellule QA6 (plage fusionnée QA5:QL6 = effet de
+    « Bombe perçante ») est rattaché à la cellule « Effet » de cette arme.
   « Armures » : A1 = règles ; MATERIAUX (21 matières : prix, description, fabrication) ; FABRICATION (pièces d'armure et
     coût) ; AMELIORATION (+1 à +5) ; puis la grille matière × matière (escalier : la ligne k contient les combinaisons de la
     matière k avec les matières k à 21, une cellule de 7 lignes « nom / Prix / Type / Stats / Solidité / Résistance /
@@ -71,7 +76,8 @@ armures), « Colonne », « Dégâts », « Élément », « Capacité » (la ce
 ligne à ligne : nom / +8 Dégâts / Élément / capacité), « Colonne » (vêtement et armures élémentaires). Titres ajoutés pour des
 blocs sans bandeau : « Fiches des matières de la grille », « Armures par combinaison de matières », « Armures particulières »,
 « Fiches des matières pour boucliers », « Classes de boucliers », « Boucliers par classe et par matière », « Bonus passifs »,
-« Armes élémentaires », « Vêtement et armures élémentaires », « Commentaires de cellule ». Les seules phrases ajoutées sont
+« Armes élémentaires », « Vêtement et armures élémentaires », « Armes sur fond bleu dans la source », « Commentaires de
+cellule ». Les seules phrases ajoutées sont
 des remarques de mise en page ou d'écart (« Note de mise en page : … », « Écart dans la source : … », « Libellé répété à droite
 du tableau : … ») ; elles ne contiennent aucune règle.
 
@@ -135,6 +141,25 @@ CELL_COMMENTS = {
     },
 }
 
+# Cellules de nom d'arme (onglet « Armes ») dont le fond est bleu dans le .xlsx d'origine (remplissage FFC9DAF8 ou FFCFE2F3) :
+# le dump ne contient pas les couleurs, la règle de A1 (« Les armes en bleu sont les armes possible en arme de départ »)
+# n'est applicable que si ces cellules sont recopiées. Seules les références sont ici ; les noms sont lus dans le dump.
+BLUE_NAME_CELLS = {
+    "Armes": (
+        "AE3", "AE5", "AE19", "AE21",
+        "BS3", "BS15",
+        "DG3", "DG21", "DG23", "DG27",
+        "EU3", "EU25",
+        "GI3", "GI21",
+        "HW3", "HW5",
+        "JK3", "JK17",
+        "KY5", "KY11",
+        "MM3", "MM11",
+        "OA3",
+        "PO3", "PO5", "PO7",
+    ),
+}
+
 
 # --------------------------------------------------------------------------------------------------------------------
 # Utilitaires de cellules
@@ -158,6 +183,11 @@ def C(letters):
 
 def ref_of(r, c):
     return "%s%d" % (col_letters(c), r)
+
+
+def split_ref(ref):
+    """« AE3 » -> (3, 31) : (ligne, colonne)."""
+    return int(re.sub(r"\D", "", ref)), C(re.sub(r"\d", "", ref))
 
 
 def parse_range(rng):
@@ -250,6 +280,17 @@ class Sheet:
 
     def pop_notes(self, r, c):
         return self.notes.pop(ref_of(r, c), [])
+
+    def pop_merged_notes(self, r, c):
+        """Commentaires de la cellule (r, c) et de toute cellule de sa plage fusionnée : un commentaire posé sur une cellule
+        fusionnée qui n'est pas celle en haut à gauche (ex. QA6 dans QA5:QL6) appartient à la plage, donc à sa valeur."""
+        r2, c2 = self.merges.get((r, c), (r, c))
+        out = []
+        for ref in sorted(self.notes, key=lambda x: (split_ref(x)[0], split_ref(x)[1])):
+            rr, cc = split_ref(ref)
+            if r <= rr <= r2 and c <= cc <= c2:
+                out += self.notes.pop(ref)
+        return out
 
     def leftovers(self):
         return sorted(set(self.cells) - self.consumed, key=lambda k: (k[1], k[0]))
@@ -445,8 +486,11 @@ class Page:
         return "\n".join(lines + body) + "\n"
 
 
-def read_table(sh, header_row, cols, first, last, required=0):
-    """En-têtes (ligne `header_row`, ou liste donnée) et lignes de données ; une ligne doit avoir sa cellule `required`."""
+def read_table(sh, header_row, cols, first, last, required=0, note_cols=()):
+    """En-têtes (ligne `header_row`, ou liste donnée) et lignes de données ; une ligne doit avoir sa cellule `required`.
+
+    `note_cols` : colonnes dont la cellule reçoit, s'il y en a, les commentaires de cellule de sa plage fusionnée
+    (rendus « Note de cellule : … » dans la cellule du tableau)."""
     if isinstance(header_row, (list, tuple)):
         headers = list(header_row)
     else:
@@ -458,6 +502,11 @@ def read_table(sh, header_row, cols, first, last, required=0):
             continue
         if vals[required] is None:
             raise ValueError("%s : ligne %d sans %s : %r" % (sh.name, r, ref_of(r, cols[required]), vals))
+        for i, c in enumerate(cols):
+            if c in note_cols:
+                notes = sh.pop_merged_notes(r, c)
+                if notes:
+                    vals[i] = with_notes(vals[i], notes)
         rows.append(vals)
     return headers, rows
 
@@ -574,6 +623,31 @@ def build_armes(sh):
     set_summary(page, rules)
     page.text(rules)
 
+    banners = sh.cols(1, C("AE"), 600)
+    if len(banners) != 12:
+        raise ValueError("Armes : 12 bandeaux d'armes attendus, %d trouvés" % len(banners))
+
+    # armes dont le nom est sur fond bleu dans la source (la couleur n'est pas dans le dump : constante BLUE_NAME_CELLS)
+    blue = {}
+    for ref in BLUE_NAME_CELLS["Armes"]:
+        r, c = split_ref(ref)
+        name = sh.get(r, c)
+        lo = max((b for b in banners if b <= c), default=None)  # bandeau (et colonne des noms) de la cellule
+        if name is None or lo != c:
+            raise ValueError("Armes : nom d'arme à fond bleu introuvable en %s : %r" % (ref, name))
+        blue.setdefault(lo, []).append((r, name))
+    if blue:
+        page.heading(2, "Armes sur fond bleu dans la source")  # (titre ajouté)
+        page.line("Note de mise en page : la règle ci-dessus (« Les armes en bleu sont les armes possible en arme de départ ») "
+                  "repose sur la couleur de fond du nom des armes dans la source. La couleur n'est pas reprise dans les tableaux "
+                  "ci-dessous ; les armes dont le nom est sur fond bleu dans la source sont, par bandeau :")
+        items = []
+        for lo in sorted(blue):
+            names = [" ".join(l.strip() for l in fmt(n).split("\n") if l.strip()) for _, n in sorted(blue[lo])]
+            items.append("Sous « %s » : %s" % (" ".join(l.strip() for l in fmt(sh.get(1, lo)).split("\n") if l.strip()),
+                                               ", ".join(names)))
+        page.bullets(items)
+
     page.heading(2, sh.expect(1, C("O"), "MATERIAUX"))
     headers, rows = read_table(sh, 2, [C("O"), C("S"), C("W")], 3, 31)
     page.table(headers, rows)
@@ -597,10 +671,7 @@ def build_armes(sh):
     formula = [sh.txt(63, c) for c in (C("A"), C("E"), C("G"), C("K"), C("M"), C("Q"), C("S"))]
     page.line(" ".join(formula))
 
-    # bandeaux d'armes
-    banners = sh.cols(1, C("AE"), 600)
-    if len(banners) != 12:
-        raise ValueError("Armes : 12 bandeaux d'armes attendus, %d trouvés" % len(banners))
+    # bandeaux d'armes (`banners` : colonnes des bandeaux, lues plus haut)
     bounds = banners + [10 ** 6]
     for i, lo in enumerate(banners):
         hi = bounds[i + 1] - 1
@@ -608,7 +679,9 @@ def build_armes(sh):
         cols = sh.cols(2, lo, hi)
         if len(cols) != 5:
             raise ValueError("Armes : 5 en-têtes attendus sous %s, %d trouvés" % (ref_of(1, lo), len(cols)))
-        headers, rows = read_table(sh, 2, cols, 3, sh.max_row)
+        # le commentaire d'une cellule de la plage fusionnée d'un effet (QA6 dans QA5:QL6) est rattaché à cet effet
+        effet_cols = [c for c in cols if fold(sh.get(2, c)) == "effet"]
+        headers, rows = read_table(sh, 2, cols, 3, sh.max_row, note_cols=effet_cols)
         # une cellule hors des colonnes d'en-tête dans la zone du bandeau serait signalée par finish()
         page.table(headers, rows)
     return finish(page)

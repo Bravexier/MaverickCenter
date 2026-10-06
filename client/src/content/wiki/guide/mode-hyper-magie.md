@@ -8,6 +8,8 @@ status: draft
 
 *Onglet masqué du classeur d'origine.*
 
+*Le classeur « Mode hyper et co » contient une autre liste des effets du mode hyper (page « Liste des effets mode hyper ») ; les deux listes ne donnent pas toujours les mêmes valeurs.*
+
 ## Avantages de base
 
 +10 Dégâts Physique, +10 Soins, La consommation de Chakra passe à 0
