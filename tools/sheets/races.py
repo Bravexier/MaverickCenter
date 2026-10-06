@@ -27,8 +27,29 @@ donne pas le nom), les magies innées (liste citée par la ligne « Inconvénien
 don (une sous-race de la fiche déclarée sans ethnie dans l'onglet, ETHNIES_FICHE_SEULES, aucune aujourd'hui, y serait aussi
 listée). Les colonnes qui n'existent que dans la fiche (AP, AM, Divers, Restrictions, sous-races avec leurs bonus chiffrés et
 résistances, matrices de classes et de magies) restent affichées telles quelles, étiquetées « (fiche) » quand elles
-côtoient des valeurs de l'onglet. Le texte libre « accès à toutes les magies / classes » des onglets n'est pas comparé aux
-matrices (ce n'est pas une liste).
+côtoient des valeurs de l'onglet. Les matrices de classes et de magies viennent de la fiche, et les deux sections qui les
+affichent le disent en introduction (« Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »),
+pas de l'onglet de la race »).
+
+ÉCARTS DE TEXTE LIBRE (extra_gap_rows) : le texte des lignes « Avantage(s) » et « Inconvénient(s) » de l'onglet est aussi
+confronté à la fiche, sans rien interpréter, chaque écart citant les deux côtés tels qu'écrits :
+  * RESTRICTIONS de caractéristiques : une phrase de l'onglet qui cite une caractéristique, un nombre et « maximum »,
+    « minimum » ou « obligatoirement » (« La Force à un maximum de 3 ») est comparée aux colonnes « < ou > » / « Restrictions
+    <caractéristique> » de l'onglet « Race » de la fiche, dans les deux sens (une restriction écrite d'un seul côté est aussi
+    un écart). Les caractéristiques étant des entiers, « < 4 » vaut « maximum 3 », « > 2 » vaut « minimum 3 » et « = 4 » vaut
+    « obligatoirement 4 » : les 16 autres restrictions chiffrées des onglets s'y conforment, seule celle du Majin (« La
+    Volonté a un maximum de 3 » contre « Restrictions Volonté > 2.0 », un minimum) est un écart. Une phrase illisible arrête le
+    script.
+  * ACCÈS aux classes et aux magies : « Accès à toutes les classes », « Accès à toutes les magies » et « Une seule magie
+    autorisé » (seules formulations reconnues, une autre arrête le script) sont confrontées au NOMBRE de 1 de la matrice de la
+    fiche (« Accessibilité de Classe » : 26 sur 39 ; « Accessibilité Magie » : 14 sur 15 pour le Majin, 13 pour la Lamia). La
+    ligne d'écart donne le texte de l'onglet, l'effectif de la matrice et les colonnes à 0 ; elle ne dit pas pourquoi (aucune
+    interprétation) et la matrice n'est pas modifiée.
+  * « DIVERS » de la fiche : chaque phrase (séparée par « , », « ; » ou « . ») qui ne figure pas telle quelle dans le texte de
+    l'onglet (casse, espaces et apostrophes mis à part) fait une ligne d'écart : la fiche dit alors quelque chose que
+    l'onglet ne dit pas (« Taux de PV élevé » de la Lamia et du Marcass, « Mal de l'air » du Namazu, « les fioles toxiques
+    soignent » du Mort-vivant ; une faute de frappe de la fiche, « particularité » pour « particularités » chez le Drakos,
+    est aussi un écart : la comparaison est stricte).
 
 Sources (classeurs Google, propriété d'un tiers) :
 
@@ -38,7 +59,9 @@ Sources (classeurs Google, propriété d'un tiers) :
        * un ONGLET PAR RACE (27 onglets, lus onglet par onglet : le classeur entier, 34 Mo, dépasse la limite d'export).
          L'onglet « Namazus » est la race Namazu (RACE_TAB_NAMES). Gabarit d'un onglet (disposition lue par libellés, les
          numéros de ligne varient d'une race à l'autre : le Farfadet et le Goleois ont une ligne de moins) :
-           N1 titre en majuscules (décoratif : « ROKHS » pour Rokh) ; AK1 « HISTOIRE » et son texte en AK3 ; la description
+           N1 titre en majuscules (décoratif : il ne peut être ignoré que s'il répète le nom de l'onglet ou de la race à la casse
+           et aux accents près, « MEDUSAIN », ou s'il en est le pluriel écrit tel quel dans une autre cellule de l'onglet,
+           « ROKHS » pour Rokh : voir title_reason) ; AK1 « HISTOIRE » et son texte en AK3 ; la description
            générale en A4 ; « DONNÉES » puis la ligne des quatre valeurs de départ (Santé de départ, Chakra de départ,
            Barrière bonus, Vitesse Sol/Nage : deux valeurs, sol puis nage) ; « Avantage(s) » (A, texte en H) ;
            « Inconvénient(s) » ; « Don B (Base) » ; « Don R (Race) » puis le bloc des dons raciaux ; « Capacité Mode Hyper »
@@ -55,6 +78,10 @@ Sources (classeurs Google, propriété d'un tiers) :
              innée -> AP/AM, bonus de compétence, +1 cran de résistance).
          Une disposition inconnue (cellule hors gabarit, libellé en double, panneaux différents, valeur de départ non
          numérique...) arrête le script avec la cellule en cause : rien n'est perdu en silence.
+         NOTES DE CELLULE (clé `note` des cellules du dump, voir sheets_api_to_json.py) : elles précisent des règles (les trois
+         dons du Médusain, O30, O34 et O38 : « Jet de vigueur pour esquiver l'altération d'état »). Celles des cellules du tableau
+         des ethnies (colonnes A, H, O) sont rendues telles quelles sous la cellule, « **Note de la cellule « Don »** : … » ;
+         une note ailleurs, sur une cellule vide ou dans un onglet non publié arrête le script.
        Onglets NON PUBLIÉS (DETAIL_NOT_PUBLISHED, structure vérifiée à chaque exécution : si elle change, le script s'arrête
        au lieu de laisser une justification devenue fausse) : « Statistique » = compteurs d'usage des races (« Races (nombre
        de fois prise) » : un nombre par race, des statistiques de table de jeu, ni règle ni lore) ; « Modèle » = gabarit
@@ -96,10 +123,12 @@ seulement quand aucun nom de l'onglet (ethnie, don) ne se retrouve dans les colo
 « Tempe/Espace » des Drakos, que la fiche écrit « Espace/Temps ») ; « Londolor Ouest » = « Nain Ouest » n'en est pas un,
 c'est le nom de la colonne C de la fiche.
 
-CONTRÔLE DE COUVERTURE : chaque cellule non vide des 27 onglets de race doit se retrouver dans la page de sa race (texte
-normalisé : espaces, casse, guillemets, échappements Markdown ; une cellule courte doit être une unité entière : cellule
-de tableau, titre, élément de liste, valeur d'un « **Libellé** : valeur ») dans la section prévue pour elle, ou être
-déclarée ignorée avec sa raison : titre décoratif répétant le nom de la race (N1), étiquettes de gabarit qui ne sont pas
+CONTRÔLE DE COUVERTURE : chaque cellule non vide des 27 onglets de race, et chaque note de cellule (comptée comme une cellule
+de plus, et autant de fois qu'elle est écrite : trois notes identiques doivent figurer trois fois), doit se retrouver dans la
+page de sa race (texte normalisé : espaces, casse, guillemets, échappements Markdown ; une cellule courte doit être une unité
+entière : cellule de tableau, titre, élément de liste, valeur d'un « **Libellé** : valeur ») dans la section prévue pour elle,
+ou être déclarée ignorée avec sa raison : titre décoratif répétant le nom de la race ou son pluriel (N1, deux raisons
+distinctes dans le rapport : title_reason), étiquettes de gabarit qui ne sont pas
 rendues telles quelles (« DONNÉES », « Don B (Base) », « Don R (Race) », vérifiées contre l'onglet « Modèle »), caractères
 isolés hors gabarit déclarés un par un (STRAY_CELLS : « ( » en A1 du Drakos, « u » en BU1 du Minotaure). Le script
 s'arrête avant d'écrire si une cellule n'est pas appariée, et imprime le rapport : couverture par race, cellules
@@ -128,7 +157,9 @@ la matrice rejoint un jour l'onglet, l'exception devient redondante et le script
 Option `--verifier` : n'écrit rien. Recalcule `magies_innees` directement depuis le dump brut (sans passer par le code
 de lecture du script), applique les exceptions de RACE_DETAIL_OVERRIDES, compare aux pages déjà écrites, relit les onglets,
 refait le contrôle de couverture, la vérification croisée des magies, la vérification de la table des ethnies, recalcule
-à part les écarts de valeurs de départ, compare chaque page à sa régénération, puis rejoue des cas d'erreur sur des copies
+à part les écarts de valeurs de départ et les écarts de texte libre (restrictions, accès aux classes et aux magies, « Divers » :
+expected_extra_gaps, depuis les dumps bruts), compare chaque page à sa régénération, puis rejoue des cas d'erreur (dont les
+notes de cellule et le titre N1) sur des copies
 modifiées de la matrice, de la constante d'exceptions, des onglets (dispositions inconnues), de la table des ethnies, des
 lignes « Inconvénient(s) » et des pages. Il exige : (a) l'exception du Nain existe et diffère de la matrice (sinon elle est
 redondante) ; (b) ses noms sont tous des en-têtes de la matrice (MAGIC_HEADERS), sans doublon, dans l'ordre des colonnes ;
@@ -157,7 +188,8 @@ Page produite pour chaque race (les sections vides sont omises) :
     « Ethnies et dons raciaux » (onglet ; une sous-section par ethnie avec la sous-race de la fiche qui lui correspond, ou le
     don unique, ou les tableaux) ; « Capacité Mode Hyper » (onglet) ; « Sous-races et origines » (fiche : une sous-section
     par ligne de « Bonus Race », avec Nom, Descriptif et un tableau des colonnes non vides) ; « Classes accessibles » et
-    « Magies accessibles » (nombre, puis noms dont la valeur est 1 ; [exception : paragraphe d'écart]) ; « Écarts avec la
+    « Magies accessibles » (provenance : la matrice de la fiche ; nombre, puis noms dont la valeur est 1 ; [exception :
+    paragraphe d'écart]) ; « Écarts avec la
     fiche de personnage V15.2.2 » (voir plus haut).
     Rapport (sortie standard) : nombre de pages, une ligne par exception appliquée, répartition des races par nombre de
     magies innées, onglets non publiés, couverture par race et cellules ignorées ou non appariées, vérification croisée
@@ -305,6 +337,22 @@ SEC_SOUS = "Sous-races et origines"
 
 # Noms de magies écrits dans les onglets autrement que dans les en-têtes de la matrice : clé de comparaison -> nom d'en-tête.
 MAGIC_ALIASES = {"temps-espace": "Espace/Temps"}
+
+# Écarts « de texte libre » entre les lignes Avantage(s) / Inconvénient(s) de l'onglet et la fiche (voir compute_gaps) :
+# caractéristiques citées par les restrictions (colonnes « Restrictions … » de l'onglet « Race » de la fiche) ; mots qui
+# marquent une restriction dans l'onglet ; phrases d'accès aux classes et aux magies, reconnues À L'IDENTIQUE (clé de
+# comparaison de plain() : sans accents ni casse) -> (sujet, sorte). Toute autre phrase qui parle de « toutes les classes »,
+# « toutes les magies » ou d'« une seule magie » arrête le script : il ne devine pas une formulation inconnue.
+CARAC_NAMES = ("Force", "Volonté", "Intelligence", "Perception", "Social", "Agilité")
+RESTRICTION_PREFIX = "Restrictions "
+RESTRICTION_WORDS = ("maximum", "minimum", "obligatoirement")
+ACCESS_CLAUSES = {
+    "acces a toutes les classes": ("classes", "toutes"),
+    "acces a toutes les magies": ("magies", "toutes"),
+    "une seule magie autorise": ("magies", "une"),
+}
+ACCESS_WORDS_RE = r"toutes les (?:classes|magies)|seules? magies?"
+NOTE_LABEL = "Note de la cellule « %s »"       # libellé d'une note de cellule rendue dans la page
 
 # CORRESPONDANCE DES ETHNIES : race (nom de l'index) -> {ethnie de l'onglet -> sous-race de la fiche (colonne B de
 # « Bonus Race »)}. L'ethnie de l'onglet s'écrit comme la première ligne de sa cellule (« Farfadet Médian » pour
@@ -853,6 +901,25 @@ def name_key(text):
     return normalize(line)
 
 
+TITLE_REASON_NAME = "titre décoratif répétant le nom de la race (casse et accents ignorés)"
+TITLE_REASON_PLURAL = ("titre décoratif : pluriel du nom de la race, forme qui figure aussi dans une autre cellule de l'onglet, "
+                       "conservée telle quelle")
+
+
+def title_reason(tab, race, value, other_texts):
+    """Raison pour laquelle le titre N1 d'un onglet est ignoré (il n'apporte rien que la page ne dise déjà), ou None s'il ne
+    peut pas l'être. Deux cas, et seulement ceux-là : le titre est le nom de l'onglet ou de la race, à la casse et aux accents
+    près (« MEDUSAIN » pour « Médusain ») ; ou c'en est le pluriel (« ROKHS »), et ce pluriel est écrit tel quel dans une autre
+    cellule de l'onglet (`other_texts`), donc conservé sur la page. Toute autre variante arrête le script."""
+    key = normalize(value)
+    names = (normalize(tab), normalize(race))
+    if key in names:
+        return TITLE_REASON_NAME
+    if key in tuple(n + "s" for n in names) and any("-%s-" % key in "-%s-" % normalize(text) for text in other_texts):
+        return TITLE_REASON_PLURAL
+    return None
+
+
 class TabReader:
     """Cellules non vides d'un onglet de race. Chaque cellule doit être « prise » avec la section de page qui la reçoit
     (None = ignorée : titre, caractère isolé déclaré, étiquette de zone) ; une cellule non prise arrête le script."""
@@ -860,13 +927,26 @@ class TabReader:
     def __init__(self, raw, tab):
         self.tab = tab
         self.cells = {}
+        self.notes = {}                 # notes de cellule (« note » du dump) : (ligne, colonne) -> texte
         for c in raw["cells"]:
+            if not is_blank(c.get("note")):
+                if is_blank(c["v"]):
+                    raise ValueError("%s : la cellule %s est vide mais porte une note (%r) : disposition non gérée" % (
+                        tab, a1(c["r"], c["c"]), fmt(c["note"])[:40]))
+                self.notes[(c["r"], c["c"])] = fmt(c["note"])
             if not is_blank(c["v"]):
                 self.cells[(c["r"], c["c"])] = fmt(c["v"])
         self.roles = {}
+        self.noted = set()              # notes déjà prises
 
     def fail(self, message):
         raise ValueError("%s : %s" % (self.tab, message))
+
+    def take_note(self, r, c):
+        """Note de la cellule (None s'il n'y en a pas), marquée comme prise : la page de la race la rend telle quelle."""
+        if (r, c) in self.notes:
+            self.noted.add((r, c))
+        return self.notes.get((r, c))
 
     def get(self, r, c):
         return self.cells.get((r, c))
@@ -898,9 +978,9 @@ def read_detail_tab(raw, tab, race_name):
     title = t.get(1, COL_TITLE)
     if title is None:
         t.fail("titre en %s absent" % a1(1, COL_TITLE))
-    titles = {normalize(n) + suffix for n in (tab, race_name) for suffix in ("", "s")}
-    if normalize(title) not in titles:
-        t.fail("%s = %r : ne répète pas le nom de la race (%s)" % (a1(1, COL_TITLE), title, race_name))
+    if title_reason(tab, race_name, title, [v for cell, v in t.cells.items() if cell != (1, COL_TITLE)]) is None:
+        t.fail("%s = %r : ne répète pas le nom de la race (%s), ni son pluriel écrit ailleurs dans l'onglet" % (
+            a1(1, COL_TITLE), title, race_name))
     t.take(1, COL_TITLE, None)
     for (stray_tab, ref), (value, _) in STRAY_CELLS.items():
         if stray_tab == tab and t.get(*a1_parse(ref)) == value:
@@ -1001,7 +1081,8 @@ def read_detail_tab(raw, tab, race_name):
                     r, t.describe([(r, c) for c in line])))
             out.append({"a": t.take(r, COL_A, SEC_ETH),
                         "h": t.take(r, COL_H, SEC_ETH) if COL_H in line else None,
-                        "o": t.take(r, COL_O, SEC_ETH)})
+                        "o": t.take(r, COL_O, SEC_ETH),
+                        "notes": {c: t.take_note(r, c) for c in (COL_A, COL_H, COL_O) if (r, c) in t.notes}})
         if not out:
             t.fail("tableau des ethnies sans ligne")
         return {"headers": heads, "rows": out}
@@ -1065,6 +1146,10 @@ def read_detail_tab(raw, tab, race_name):
     left = t.untaken()
     if left:
         t.fail("cellules non reconnues : %s" % t.describe(left, 10))
+    unread = sorted(set(t.notes) - t.noted)
+    if unread:
+        t.fail("notes de cellule non prises en charge (seules celles du tableau des ethnies, colonnes A, H et O, le sont) : %s" % (
+            ", ".join("%s = %r" % (a1(r, c), t.notes[(r, c)][:40]) for r, c in unread[:8])))
     return {"tab": tab, "race": race_name, "histoire": histoire, "presentation": presentation, "description": description,
             "stats": stats, "avantage": avantage, "inconvenient": inconvenient, "don_base": don_base, "gift": gift,
             "hyper": hyper, "roles": dict(t.roles)}
@@ -1098,7 +1183,11 @@ def check_unpublished(detail_raw, races):
     for tab, reason in DETAIL_NOT_PUBLISHED.items():
         if tab not in detail_raw:
             continue
-        cells = TabReader(detail_raw[tab], tab).cells
+        reader = TabReader(detail_raw[tab], tab)
+        cells = reader.cells
+        if reader.notes:
+            raise ValueError("%s : onglet non publié avec des notes de cellule (%s) : la justification de la non-publication "
+                             "n'est plus vraie" % (tab, ", ".join(a1(r, c) for r, c in sorted(reader.notes)[:8])))
         if tab == TAB_MODELE:
             if set(cells.values()) != TEMPLATE_LABELS or len(cells) != len(TEMPLATE_LABELS):
                 raise ValueError("%s : le gabarit a changé (attendu : exactement les %d libellés de TEMPLATE_LABELS, "
@@ -1297,10 +1386,133 @@ def magic_cross_check(details, final_ok):
     return notes, problems
 
 
-def compute_gaps(detail, race_headers, race_row, pairs, only, matrix_ok, final_ok, magic_total):
+def plain_key(text):
+    """Clé de comparaison d'une phrase : sans accents, casse ignorée, apostrophes typographiques unifiées."""
+    s = unicodedata.normalize("NFD", fmt(text))
+    return "".join(ch for ch in s if not unicodedata.combining(ch)).casefold().replace("’", "'")
+
+
+def clauses(text):
+    """Phrases d'une cellule, telles qu'écrites : séparées par « , », « ; » ou « . », sans cette ponctuation finale."""
+    return [norm_ws(m) for m in re.findall(r"[^,.;]+", fmt(text)) if m.strip()]
+
+
+def carac_of_header(header):
+    """Caractéristique d'un en-tête « Restrictions <caractéristique> » de l'onglet « Race » de la fiche (None sinon)."""
+    if not header.startswith(RESTRICTION_PREFIX):
+        return None
+    key = normalize(header[len(RESTRICTION_PREFIX):])
+    return next((n for n in CARAC_NAMES if normalize(n) == key), None)
+
+
+def onglet_restrictions(cells):
+    """Restrictions de caractéristiques écrites dans les cellules `cells` [(libellé, texte)] de l'onglet : une phrase qui cite
+    UNE caractéristique, un nombre et « maximum », « minimum » ou « obligatoirement » (« La Force à un maximum de 3 »,
+    « l'Agilité est obligatoirement à 2 minimum », « La Volonté est obligatoirement à 4 »). [(caractéristique, sorte, nombre,
+    libellé de la cellule, phrase)], sorte = « max », « min » ou « = » (« minimum » l'emporte sur « obligatoirement »).
+    ValueError si une phrase de ce genre est illisible : on ne devine pas."""
+    out = []
+    for label, text in cells:
+        for clause in clauses(text):
+            words = re.findall(r"[a-z]+", plain_key(clause))
+            caracs = {n for n in CARAC_NAMES for w in words if w == normalize(n)}
+            kinds = [w for w in words if w in RESTRICTION_WORDS]
+            if not caracs or not kinds:
+                continue
+            numbers = re.findall(r"\d+", clause)
+            if len(caracs) != 1 or len(numbers) != 1 or ("maximum" in kinds and "minimum" in kinds):
+                raise ValueError("restriction de caractéristique illisible dans « %s » : « %s »" % (label, clause))
+            kind = "max" if "maximum" in kinds else "min" if "minimum" in kinds else "="
+            out.append((next(iter(caracs)), kind, int(numbers[0]), label, clause))
+    return out
+
+
+def fiche_restrictions(race_headers, race_row):
+    """Restrictions de la fiche pour une race : ({caractéristique: (sorte, nombre, opérateur, valeur)}, {caractéristique: en-tête
+    de la colonne}). Les caractéristiques sont des entiers : « < n » vaut « maximum n-1 », « > n » vaut « minimum n+1 », « = n »
+    vaut « obligatoirement n » (convention vérifiée : les 16 autres restrictions chiffrées des onglets s'y conforment)."""
+    found, heads = {}, {}
+    for op_col, val_col in RACE_RESTRICTIONS:
+        name = carac_of_header(race_headers[val_col])
+        if name is None:
+            raise ValueError("colonne « %s » de l'onglet « %s » : caractéristique inconnue" % (race_headers[val_col], TAB_RACE))
+        heads[name] = race_headers[val_col]
+        op, val = race_row[op_col], race_row[val_col]
+        if is_blank(op) and is_blank(val):
+            continue
+        n = number(val)
+        if n is None or n != int(n) or fmt(op) not in ("<", ">", "="):
+            raise ValueError("restriction illisible (colonne « %s ») : opérateur %r, valeur %r" % (race_headers[val_col], op, val))
+        sort, count = {"<": ("max", int(n) - 1), ">": ("min", int(n) + 1), "=": ("=", int(n))}[fmt(op)]
+        found[name] = (sort, count, fmt(op), fmt(val))
+    return found, heads
+
+
+def onglet_access(cells):
+    """Phrases de l'onglet sur l'accès aux classes et aux magies : [(sujet, sorte, libellé de la cellule, phrase)], sujet =
+    « classes » ou « magies », sorte = « toutes » ou « une ». ValueError pour une formulation inconnue."""
+    out = []
+    for label, text in cells:
+        for clause in clauses(text):
+            key = plain_key(clause)
+            if key in ACCESS_CLAUSES:
+                out.append(ACCESS_CLAUSES[key] + (label, clause))
+            elif re.search(ACCESS_WORDS_RE, key):
+                raise ValueError("accès aux classes ou aux magies : formulation inconnue dans « %s » : « %s »" % (label, clause))
+    return out
+
+
+def tab_text(raw):
+    """Tout le texte d'un onglet de race (cellules et notes), pour chercher une phrase de la fiche dans l'onglet."""
+    return "\n".join(fmt(x[k]) for x in raw["cells"] for k in ("v", "note") if not is_blank(x.get(k)))
+
+
+def extra_gap_rows(detail, race_headers, race_row, class_names, class_ok, magic_names, matrix_ok, onglet_text):
+    """Écarts de texte libre entre l'onglet et la fiche : [(élément, texte de l'onglet, texte de la fiche)].
+      * restrictions de caractéristiques : ce que dit l'onglet (Avantage(s), Inconvénient(s)) contre les colonnes « Restrictions »
+        de la fiche, dans les deux sens (une restriction écrite d'un seul côté est aussi un écart) ;
+      * « Accès à toutes les classes », « Accès à toutes les magies », « Une seule magie autorisé » contre le nombre de 1 de la
+        matrice de la fiche (« Accessibilité de Classe », « Accessibilité Magie ») ; le texte de l'onglet n'est pas une liste, la
+        matrice reste affichée telle quelle et rien n'est interprété ;
+      * « Divers » de la fiche : chaque phrase (séparée par « , », « ; » ou « . ») qui ne figure pas telle quelle dans l'onglet
+        (casse, espaces et apostrophes mis à part) ; la fiche dit alors quelque chose que l'onglet ne dit pas."""
+    cells = [(LABEL_ADV, detail["avantage"]), (LABEL_INC, detail["inconvenient"])]
+    rows = []
+    stated = onglet_restrictions(cells)
+    fiche, heads = fiche_restrictions(race_headers, race_row)
+    for name in CARAC_NAMES:
+        mine = [s for s in stated if s[0] == name]
+        theirs = fiche.get(name)
+        if theirs is None and not mine:
+            continue
+        if theirs is not None and mine and all((s[1], s[2]) == theirs[:2] for s in mine):
+            continue
+        rows.append(("Restriction : %s\n(fiche : colonnes « %s » et « %s » de « %s »)" % (name, OPERATOR_HEADER, heads[name], TAB_RACE),
+                     "\n".join("%s : %s" % (s[3], s[4]) for s in mine) or "(absente de l'onglet)",
+                     "%s %s" % theirs[2:] if theirs else "(vide)"))
+    for subject, sort, label, clause in onglet_access(cells):
+        names, ok, title, tab = ((class_names, class_ok, "Classes accessibles", TAB_CLASS) if subject == "classes"
+                                 else (magic_names, matrix_ok, "Magies accessibles", TAB_MAGIE))
+        if len(ok) == (len(names) if sort == "toutes" else 1):
+            continue
+        rows.append(("%s\n(fiche : matrice « %s »)" % (title, tab), "%s : %s" % (label, clause),
+                     "%d sur %d (à 0 dans la matrice : %s)" % (len(ok), len(names), ", ".join(n for n in names if n not in ok))))
+    if not is_blank(race_row[COL_DIVERS]):
+        whole = fold_text(onglet_text)
+        absent = [c for c in clauses(race_row[COL_DIVERS]) if fold_text(c) not in whole]
+        if absent:
+            rows.append(("Divers\n(fiche : colonne « %s »)" % race_headers[COL_DIVERS],
+                         "Ne figure pas telle quelle dans l'onglet : %s" % " ; ".join("« %s »" % c for c in absent),
+                         fmt(race_row[COL_DIVERS])))
+    return rows
+
+
+def compute_gaps(detail, race_headers, race_row, pairs, only, matrix_ok, final_ok, magic_names, class_names, class_ok,
+                 onglet_text):
     """Écarts entre l'onglet (retenu) et la fiche : [(élément, texte de l'onglet, texte de la fiche)], la fiche citée telle
     quelle. Voir « POLITIQUE DE PRIORITÉ » dans la docstring."""
     gaps = []
+    magic_total = len(magic_names)
 
     def fiche(value):
         return "(vide)" if is_blank(value) else fmt(value)
@@ -1327,6 +1539,7 @@ def compute_gaps(detail, race_headers, race_row, pairs, only, matrix_ok, final_o
         gaps.append(("Magies innées\n(fiche : matrice « %s »)" % TAB_MAGIE,
                      "%s (%d sur %d)" % (", ".join(final_ok), len(final_ok), magic_total),
                      "%s (%d sur %d)" % (", ".join(matrix_ok), len(matrix_ok), magic_total)))
+    gaps += extra_gap_rows(detail, race_headers, race_row, class_names, class_ok, magic_names, matrix_ok, onglet_text)
     for entry, frow in pairs:
         if frow is None:
             continue
@@ -1378,10 +1591,17 @@ def render_ethnies(detail, pairs):
         L += [esc_inline("Rubriques de l'onglet « %s » : %s." % (detail["tab"], ", ".join("« %s »" % h for h in heads))), "",
               "Nombre : %d." % len(gift["ethnies"]["rows"]), ""]
         for row in gift["ethnies"]["rows"]:
+            notes = row["notes"]
             L += ["### " + esc_inline(norm_ws(row["a"])), ""]
+            if COL_A in notes:
+                L += labeled(NOTE_LABEL % a_head, notes[COL_A]) + [""]
             if row["h"]:
                 L += labeled(h_head, row["h"]) + [""]
+                if COL_H in notes:
+                    L += labeled(NOTE_LABEL % h_head, notes[COL_H]) + [""]
             L += labeled(o_head, row["o"]) + [""]
+            if COL_O in notes:
+                L += labeled(NOTE_LABEL % o_head, notes[COL_O]) + [""]
             L += fiche_ref(fiche_of[first_line(row["a"])], True)
     if gift["single"]:
         name, text = gift["single"]
@@ -1407,8 +1627,8 @@ def render_gaps(tab, gaps):
         return []
     L = ["## " + SEC_GAPS, "",
          esc_inline("Cette page suit l'onglet « %s » du Google Sheet « %s », qui prime sur la fiche de personnage (décision du "
-                    "propriétaire du projet). La fiche V15.2.2 dit autre chose sur les points suivants ; ses valeurs sont citées "
-                    "telles qu'elles y sont écrites." % (tab, INDEX_TITLE)), ""]
+                    "propriétaire du projet). La fiche V15.2.2 dit autre chose, ou ce que l'onglet ne dit pas, sur les points "
+                    "suivants ; ses valeurs sont citées telles qu'elles y sont écrites." % (tab, INDEX_TITLE)), ""]
     L += table_rows(["Élément", "Onglet « %s » (retenu)" % tab, "Fiche V15.2.2 (citée telle quelle)"], gaps) + [""]
     return L
 
@@ -1497,9 +1717,15 @@ def render_page(ctx):
                 L += table([bonus_headers[c] for c in num], [row[c] for c in num]) + [""]
 
     # Accessibilité
-    for title, names, ok in (("Classes accessibles", ctx["class_names"], ctx["class_ok"]),
-                             ("Magies accessibles", ctx["magic_names"], magic_ok)):
-        L += ["## " + title, "", "Nombre : %d sur %d." % (len(ok), len(names)), ""]
+    for title, names, ok, matrix_tab in (("Classes accessibles", ctx["class_names"], ctx["class_ok"], TAB_CLASS),
+                                         ("Magies accessibles", ctx["magic_names"], magic_ok, TAB_MAGIE)):
+        L += ["## " + title, ""]
+        if override and title == "Magies accessibles":
+            L += [esc_inline("Section issue de la fiche de personnage V15.2.2 (onglet « %s »), sauf la liste de cette race, qui suit "
+                             "l'onglet « %s » du Google Sheet « %s » (écart expliqué plus bas)." % (matrix_tab, ctx["tab"], INDEX_TITLE)), ""]
+        else:
+            L += [esc_inline("Section issue de la fiche de personnage V15.2.2 (onglet « %s »), pas de l'onglet de la race." % matrix_tab), ""]
+        L += ["Nombre : %d sur %d." % (len(ok), len(names)), ""]
         if ok:
             L += [", ".join(esc_inline(n) for n in ok), ""]
         if override and title == "Magies accessibles":
@@ -1622,9 +1848,19 @@ def page_magic(text):
     section = page_sections(text)[1].get("Magies accessibles")
     if section is None:
         return front, None, None
+    count, listed, _ = magic_paragraphs(section)
+    return front, listed, count
+
+
+def magic_paragraphs(section):
+    """Paragraphes de « Magies accessibles » : (ligne « Nombre : N sur M. » ou None, liste des noms, paragraphes qui suivent la
+    liste : l'écart d'une race à exception). Ce qui précède la ligne « Nombre » est l'introduction de provenance."""
     paras = paragraphs(section)
-    listed = [n.strip() for n in paras[1].split(",")] if len(paras) > 1 else []
-    return front, listed, (paras[0] if paras else None)
+    i = next((k for k, p in enumerate(paras) if p.startswith("Nombre :")), None)
+    if i is None:
+        return None, [], []
+    listed = [n.strip() for n in paras[i + 1].split(",")] if len(paras) > i + 1 else []
+    return paras[i], listed, paras[i + 2:]
 
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -1684,17 +1920,44 @@ def coverage_check(tab, race, raw, roles, page_text):
     order, parts = page_sections(page_text)
     plain = {t: fold_text(unesc_md(t + "\n" + "\n".join(lines))) for t, lines in parts.items()}
     units = {t: section_units(t, lines) for t, lines in parts.items()}
-    titles = {normalize(n) + s for n in (tab, race) for s in ("", "s")}
+    texts = [fmt(x["v"]) for x in raw["cells"] if not is_blank(x["v"]) and (x["r"], x["c"]) != (1, COL_TITLE)]
+    seen = {}
+
+    def present(section, key):
+        """Le texte `key` figure dans la section (une cellule courte : comme unité entière)."""
+        if section not in parts:
+            return False
+        return (key in units[section]) if len(key) < SHORT_CELL else (key in plain[section])
+
+    def note_present(section, key):
+        """Comme `present`, mais une note écrite à l'identique sur plusieurs cellules (les trois dons du Médusain) doit figurer
+        dans la section autant de fois qu'il y a de notes : une page qui n'en garde qu'une est signalée. Une note courte est
+        comptée comme une phrase entière de la section."""
+        if not present(section, key):
+            return False
+        seen[(section, key)] = seen.get((section, key), 0) + 1
+        return len(key) < SHORT_CELL or plain[section].count(key) >= seen[(section, key)]
+
     total = matched = 0
     ignored, missing = [], []
     for cell in raw["cells"]:
+        # Note de la cellule : elle compte comme une cellule de plus, et doit figurer dans la section qui reçoit sa cellule.
+        if not is_blank(cell.get("note")):
+            total += 1
+            section = roles.get((cell["r"], cell["c"]))
+            if note_present(section, fold_text(cell["note"])):
+                matched += 1
+            else:
+                missing.append((a1(cell["r"], cell["c"]) + " (note)", fmt(cell["note"]),
+                                "absente de la section « %s »" % section if section else "sans section de page"))
         if is_blank(cell["v"]):
             continue
         total += 1
         r, c, value = cell["r"], cell["c"], fmt(cell["v"])
         ref = a1(r, c)
-        if (r, c) == (1, COL_TITLE) and normalize(value) in titles:
-            ignored.append((ref, value, "titre décoratif répétant le nom de la race"))
+        reason = title_reason(tab, race, value, texts) if (r, c) == (1, COL_TITLE) else None
+        if reason:
+            ignored.append((ref, value, reason))
             continue
         stray = STRAY_CELLS.get((tab, ref))
         if stray and stray[0] == value:
@@ -1702,7 +1965,7 @@ def coverage_check(tab, race, raw, roles, page_text):
             continue
         section = roles.get((r, c))
         key = fold_text(value)
-        if section in parts and ((key in units[section]) if len(key) < SHORT_CELL else (key in plain[section])):
+        if present(section, key):
             matched += 1
         elif value in IGNORABLE_LABELS and c in (COL_A, COL_TITLE):
             ignored.append((ref, value, IGNORABLE_LABELS[value]))
@@ -1816,6 +2079,7 @@ def detail_problems(label, text, detail, tab, extra_heads, gaps, raw):
         problems.append("%s : entrée de source absente : %s" % (label, tab_source(tab)))
     problems += exact_problems(label, text, detail, extra_heads)
     problems += gaps_problems(label, text, tab, gaps)
+    problems += access_intro_problems(label, text)
     total, matched, ignored, missing = coverage_check(tab, detail["race"], raw, detail["roles"], text)
     for ref, value, why in missing[:10]:
         problems.append("%s : cellule %s de l'onglet « %s » non appariée (%r) : %s" % (label, ref, tab, value[:50], why))
@@ -1878,7 +2142,7 @@ def page_problems(label, text, wanted, matrix_ones, override, inconvenient=None)
         problems.append("%s : « Magies accessibles » : ligne %r, attendu %r" % (label, count, expected_count))
     if override is None:
         return problems
-    gap = " ".join(paragraphs(page_sections(text)[1].get("Magies accessibles", []))[2:])
+    gap = " ".join(magic_paragraphs(page_sections(text)[1].get("Magies accessibles", []))[2])
     if not gap:
         problems.append("%s : « Magies accessibles » : paragraphe d'écart absent" % label)
     else:
@@ -1945,6 +2209,109 @@ def stat_gap_problems(label, key, text, expected):
     return []
 
 
+def expected_extra_gaps(paths):
+    """{clé de race: [(élément sur une ligne, texte de l'onglet, texte de la fiche)]} des écarts de texte libre (restrictions de
+    caractéristiques, accès aux classes et aux magies, « Divers »), recalculés SANS TabReader, Sheet, read_matrix ni
+    extra_gap_rows : directement dans les dumps bruts (cellules « Avantage(s) » / « Inconvénient(s) » et tout le texte de
+    l'onglet ; ligne de la race dans « Race », « Accessibilité de Classe » et « Accessibilité Magie », colonnes repérées par
+    leur en-tête). Seuls l'analyse des phrases de l'onglet (onglet_restrictions, onglet_access) et les utilitaires de texte
+    sont partagés avec le script."""
+    detail, grids = None, {}
+    for path in paths:
+        with open(path, encoding="utf-8") as fh:
+            sheets = json.load(fh)["sheets"]
+        if TAB_MODELE in [sh["name"] for sh in sheets]:
+            detail = {sh["name"]: sh for sh in sheets}
+        for sh in sheets:
+            if sh["name"] in (TAB_RACE, TAB_CLASS, TAB_MAGIE):
+                grids[sh["name"]] = {(c["r"], c["c"]): c["v"] for c in sh["cells"] if not is_blank(c["v"])}
+    if detail is None or len(grids) != 3:
+        raise ValueError("verifier : il faut le dump du classeur « %s » et celui de la fiche personnage" % INDEX_TITLE)
+
+    def row_of(grid, key):
+        return next(r for (r, c), v in grid.items() if c == 1 and r > 1 and normalize(v) == key)
+
+    def zero_and_ones(grid, r):
+        heads = {c: fmt(v) for (rr, c), v in grid.items() if rr == 1 and c > 1}
+        ones = [heads[c] for c in sorted(heads) if float(grid[(r, c)]) == 1.0]
+        return len(heads), ones, [heads[c] for c in sorted(heads) if float(grid[(r, c)]) == 0.0]
+
+    out = {}
+    race_grid = grids[TAB_RACE]
+    for tab, sheet in detail.items():
+        if tab in DETAIL_NOT_PUBLISHED:
+            continue
+        key = RACE_TAB_NAMES.get(normalize(tab), normalize(tab))
+        grid = {(c["r"], c["c"]): c["v"] for c in sheet["cells"] if not is_blank(c["v"])}
+        cells = []
+        for label in (LABEL_ADV, LABEL_INC):
+            row = next(r for (r, c), v in grid.items() if c == COL_A and v == label)
+            cells.append((label, fmt(grid[(row, COL_H)])))
+        rows = []
+        # restrictions de caractéristiques
+        r = row_of(race_grid, key)
+        stated = onglet_restrictions(cells)
+        for name in CARAC_NAMES:
+            col = next(c for (rr, c), v in race_grid.items() if rr == 1 and normalize(v) == normalize(RESTRICTION_PREFIX + name))
+            op, val = race_grid.get((r, col - 1)), race_grid.get((r, col))
+            mine = [x for x in stated if x[0] == name]
+            if op is None and val is None:
+                theirs = None
+            else:
+                theirs = ({"<": "max", ">": "min", "=": "="}[fmt(op)], int(float(val)) + {"<": -1, ">": 1, "=": 0}[fmt(op)])
+            if theirs is None and not mine:
+                continue
+            if theirs is not None and mine and all((x[1], x[2]) == theirs for x in mine):
+                continue
+            rows.append(("Restriction : %s" % name, "\n".join("%s : %s" % (x[3], x[4]) for x in mine) or "(absente de l'onglet)",
+                         "%s %s" % (fmt(op), fmt(val)) if theirs else "(vide)"))
+        # accès aux classes et aux magies
+        for subject, sort, label, clause in onglet_access(cells):
+            grid_m, title = (grids[TAB_CLASS], "Classes accessibles") if subject == "classes" else (grids[TAB_MAGIE], "Magies accessibles")
+            total, ones, zeros = zero_and_ones(grid_m, row_of(grid_m, key))
+            if len(ones) == (total if sort == "toutes" else 1):
+                continue
+            rows.append((title, "%s : %s" % (label, clause),
+                         "%d sur %d (à 0 dans la matrice : %s)" % (len(ones), total, ", ".join(zeros))))
+        # « Divers » de la fiche
+        col = next(c for (rr, c), v in race_grid.items() if rr == 1 and v == "Divers")
+        divers = race_grid.get((r, col))
+        if divers is not None:
+            whole = fold_text(tab_text(sheet))
+            absent = [c for c in clauses(divers) if fold_text(c) not in whole]
+            if absent:
+                rows.append(("Divers", "Ne figure pas telle quelle dans l'onglet : %s" % " ; ".join("« %s »" % c for c in absent),
+                             fmt(divers)))
+        out[key] = rows
+    return out
+
+
+EXTRA_GAP_KINDS = ("Restriction : ", "Classes accessibles", "Magies accessibles", "Divers")
+
+
+def extra_gap_problems(label, key, text, expected):
+    """Les lignes d'écart de texte libre de la page = celles recalculées à part dans les dumps bruts (expected_extra_gaps)."""
+    def fold(rows):
+        return [tuple(fold_text(x) for x in row) for row in rows]
+    got = fold(row for row in page_gap_rows(text) if row[0].startswith(EXTRA_GAP_KINDS))
+    want = fold(expected.get(key, []))
+    if got != want:
+        return ["%s : écarts de texte libre de la page %r, recalculés dans les dumps %r" % (label, got, want)]
+    return []
+
+
+def access_intro_problems(label, text):
+    """« Classes accessibles » et « Magies accessibles » commencent par leur provenance : la matrice de la fiche, pas l'onglet."""
+    parts = page_sections(text)[1]
+    problems = []
+    for title, tab in (("Classes accessibles", TAB_CLASS), ("Magies accessibles", TAB_MAGIE)):
+        paras = paragraphs(parts.get(title, []))
+        want = "Section issue de la fiche de personnage V15.2.2 (onglet « %s »)" % tab
+        if not paras or not paras[0].startswith(want):
+            problems.append("%s : « %s » ne commence pas par sa provenance (« %s… »)" % (label, title, want))
+    return problems
+
+
 def raw_inconvenient(raw):
     """Texte de la cellule « Inconvénient(s) » d'un onglet, lu directement dans le dump brut (sans TabReader)."""
     grid = {(c["r"], c["c"]): c["v"] for c in raw["cells"] if not is_blank(c["v"])}
@@ -1979,6 +2346,7 @@ def check_pages(paths, wiki_root, world):
     problems = []
     matrix = expected_magic(paths)
     stat_expected = expected_stat_gaps(paths)
+    extra_expected = expected_extra_gaps(paths)
     by_key = {normalize(n): o for n, o in RACE_DETAIL_OVERRIDES.items()}
     out_dir = os.path.join(wiki_root, CATEGORY)
     for name, slug, rendered, ctx in world["pages"]:
@@ -1996,6 +2364,7 @@ def check_pages(paths, wiki_root, world):
         problems += cited_magic_problems(path, text, ctx["raw"])
         problems += detail_problems(path, text, ctx["detail"], ctx["tab"], ctx["extra_heads"], ctx["gaps"], ctx["raw"])
         problems += stat_gap_problems(path, key, text, stat_expected)
+        problems += extra_gap_problems(path, key, text, extra_expected)
         if text != rendered:
             problems.append("%s : page différente de sa régénération depuis les dumps" % path)
     slugs = {slug for _, slug, _, _ in world["pages"]}
@@ -2052,7 +2421,8 @@ def build_world(paths):
     for name, summary in races:
         key = normalize(name)
         detail, (pairs, only) = details[key], matched[key]
-        gaps = compute_gaps(detail, race_headers, race_data[key], pairs, only, magic_ok[key], final_ok[key], len(magic_names))
+        gaps = compute_gaps(detail, race_headers, race_data[key], pairs, only, magic_ok[key], final_ok[key], magic_names,
+                            class_names, class_ok[key], tab_text(detail_raw[tabs[key]]))
         extra_heads = ["%s (fiche)" % race_headers[c] for c in RACE_STAT_COLS_AFTER if not is_blank(race_data[key][c])]
         ctx = {"name": name, "summary": summary, "tab": tabs[key], "detail": detail, "pairs": pairs, "gaps": gaps,
                "race_headers": race_headers, "race_row": race_data[key], "bonus_headers": bonus_headers,
@@ -2169,6 +2539,7 @@ def page_replays(paths, wiki_root, world):
 def detail_replays(wiki_root, world):
     """Rejoue detail_problems / stat_gap_problems sur des copies modifiées des pages : chaque cas doit signaler un écart."""
     stat_expected = expected_stat_gaps(world["paths"])
+    extra_expected = expected_extra_gaps(world["paths"])
     ctxs = {key: ctx for _, key, _, ctx in world["pages"]}
     failures = []
 
@@ -2184,6 +2555,7 @@ def detail_replays(wiki_root, world):
             return
         found = detail_problems(slug, mutated, ctx["detail"], ctx["tab"], ctx["extra_heads"], ctx["gaps"], ctx["raw"])
         found += stat_gap_problems(slug, slug, mutated, stat_expected)
+        found += extra_gap_problems(slug, slug, mutated, extra_expected)
         if not found:
             failures.append("page %s : %s : aucun écart signalé" % (slug, label))
 
@@ -2215,6 +2587,21 @@ def detail_replays(wiki_root, world):
         lambda t: re.sub(r"(## Histoire\n\n[^\n]+)\n\n", r"\1  \n", t, count=1))
     run("liste de la description aplatie", "humain", lambda t: mutate_page(t, "- Les humains centraux", "Les humains centraux"))
     run("paragraphe de l'histoire tronqué", "nain", lambda t: re.sub(r"(?s)(## Histoire\n\n)(.*?)(\n\n## )", r"\1\3", t, count=1))
+    run("note de cellule retirée de la page", "medusain",
+        lambda t: re.sub(r"^\*\*Note de la cellule « Don »\*\* : .*\n\n", "", t, count=1, flags=re.M))
+    run("note de cellule altérée", "medusain", alter("Jet de vigueur pour esquiver"))
+    run("écart « Restriction » supprimé (Majin : maximum 3 contre > 2.0)", "majin",
+        lambda t: re.sub(r"^\| Restriction : Volonté<br>.*\n", "", t, count=1, flags=re.M))
+    run("valeur de la fiche altérée dans l'écart « Restriction »", "majin",
+        lambda t: re.sub(r"(^\| Restriction : Volonté<br>.*\| )\\> 2\.0 \|$", r"\g<1>\\> 3.0 |", t, count=1, flags=re.M))
+    run("écart « Classes accessibles » supprimé", "humain",
+        lambda t: re.sub(r"^\| Classes accessibles<br>.*\n", "", t, count=1, flags=re.M))
+    run("écart « Magies accessibles » supprimé", "lamia",
+        lambda t: re.sub(r"^\| Magies accessibles<br>.*\n", "", t, count=1, flags=re.M))
+    run("effectif de la fiche altéré dans l'écart « Magies accessibles »", "majin", lambda t: mutate_page(t, "| 14 sur 15 (", "| 15 sur 15 ("))
+    run("écart « Divers » supprimé", "namazu", lambda t: re.sub(r"^\| Divers<br>.*\n", "", t, count=1, flags=re.M))
+    run("introduction de « Classes accessibles » supprimée", "humain",
+        lambda t: re.sub(r"^Section issue de la fiche de personnage V15\.2\.2 \(onglet « Accessibilité de Classe »\).*\n\n", "", t, count=1, flags=re.M))
     return failures
 
 
@@ -2226,6 +2613,30 @@ def mutated_raw(raw, edits):
         if value is not None:
             cells.append({"r": r, "c": c, "v": value})
     return dict(raw, cells=cells)
+
+
+def with_note(raw, r, c, note):
+    """Copie du dump brut d'un onglet dont la cellule (r, c) porte la note `note`."""
+    return dict(raw, cells=[dict(x, note=note) if (x["r"], x["c"]) == (r, c) else dict(x) for x in raw["cells"]])
+
+
+def title_replays():
+    """Rejoue title_reason : le titre N1 n'est ignoré que s'il répète le nom (casse et accents ignorés) ou en est le pluriel
+    écrit ailleurs dans l'onglet."""
+    failures = []
+    cases = (
+        ("pluriel écrit ailleurs", ("Rokh", "Rokh", "ROKHS", ["Les Rokhs sont des oiseaux."]), TITLE_REASON_PLURAL),
+        ("pluriel jamais écrit ailleurs", ("Rokh", "Rokh", "ROKHS", ["Les Rokh sont des oiseaux."]), None),
+        ("nom sans accent", ("Médusain", "Médusain", "MEDUSAIN", []), TITLE_REASON_NAME),
+        ("nom de l'onglet (pluriel)", ("Namazus", "Namazu", "NAMAZUS", []), TITLE_REASON_NAME),
+        ("nom de la race", ("Rokh", "Rokh", "ROKH", []), TITLE_REASON_NAME),
+        ("autre nom", ("Rokh", "Rokh", "ROKHAR", ["Les Rokhar"]), None),
+        ("nom partiel", ("Elfe Noir", "Elfe noir", "ELFE", ["Les elfes"]), None),
+    )
+    for label, args, want in cases:
+        if title_reason(*args) != want:
+            failures.append("titre N1 : %s : %r au lieu de %r" % (label, title_reason(*args), want))
+    return failures
 
 
 def layout_replays(world):
@@ -2266,6 +2677,29 @@ def layout_replays(world):
     run("don unique et nom de don sur la ligne du libellé", "Mort-vivant", "Mort-vivant", [(26, COL_H, "x")])
     run("bloc « Don R (Race) » vide", "Elfe Doré", "Elfe doré", [(28, COL_A, None), (28, COL_H, None)])
     run("cellule en trop après la capacité", "Elfe Doré", "Elfe doré", [(40, COL_A, "x")])
+
+    def run_raw(label, tab, race, mutated):
+        try:
+            read_detail_tab(mutated, tab, race)
+        except ValueError:
+            return
+        failures.append("onglet %s : %s : aucune erreur levée" % (tab, label))
+
+    run_raw("note sur une cellule hors du tableau des ethnies", "Humain", "Humain", with_note(raw["Humain"], 4, 1, "Une note"))
+    run_raw("note sur une cellule vide", "Humain", "Humain", dict(
+        raw["Humain"], cells=raw["Humain"]["cells"] + [{"r": 50, "c": 3, "v": "", "note": "Une note"}]))
+    run_raw("note sur le texte d'« Avantage(s) »", "Humain", "Humain", with_note(raw["Humain"], cell("Humain", LABEL_ADV, COL_A)[0], COL_H, "Une note"))
+    first = min((x for x in raw["Humain"]["cells"] if x["c"] == COL_O and x["r"] > hr), key=lambda x: x["r"])
+    noted = read_detail_tab(with_note(raw["Humain"], first["r"], COL_O, "Une note"), "Humain", "Humain")
+    if noted["gift"]["ethnies"]["rows"][0]["notes"] != {COL_O: "Une note"}:
+        failures.append("onglet Humain : une note sur le texte d'un don n'est pas lue (%r)" % noted["gift"]["ethnies"]["rows"][0]["notes"])
+    if TAB_STATS in raw:
+        first_stat = raw[TAB_STATS]["cells"][0]
+        try:
+            check_unpublished(dict(raw, **{TAB_STATS: with_note(raw[TAB_STATS], first_stat["r"], first_stat["c"], "Une note")}), world["races"])
+            failures.append("onglets non publiés : une note de cellule dans « %s » : aucune erreur levée" % TAB_STATS)
+        except ValueError:
+            pass
     for label, edits, tab in (
             ("gabarit « Modèle » modifié", [(60, 1, "Nouveau libellé")], TAB_MODELE),
             ("onglet « Statistique » avec un texte", [(40, 3, "Une règle de jeu")], TAB_STATS)):
@@ -2436,7 +2870,7 @@ def error_cases(paths, wiki_root, overrides_ok, pages_ok, world=None):
     if overrides_ok:
         failures += override_replays(expected_magic(paths))
     if world is not None:
-        failures += layout_replays(world) + ethnie_replays(world) + magic_replays(world)
+        failures += layout_replays(world) + title_replays() + ethnie_replays(world) + magic_replays(world)
         if pages_ok:
             failures += page_replays(paths, wiki_root, world) + detail_replays(wiki_root, world) + coverage_replays(world, wiki_root)
     return failures
@@ -2518,6 +2952,10 @@ def print_detail_report(world):
         where = "; ".join("%s %s %r" % cell for cell in cells) if len(cells) <= 3 else "%d onglets (%s…)" % (
             len(cells), "; ".join("%s %s" % (t, r) for t, r, _ in cells[:2]))
         print("  %d x %s : %s" % (len(cells), why, where))
+    noted = [(world["tabs"][normalize(name)], a1(c["r"], c["c"]), fmt(c["note"])) for name, _ in races
+             for c in world["detail_raw"][world["tabs"][normalize(name)]]["cells"] if not is_blank(c.get("note"))]
+    print("Notes de cellule (rendues telles quelles dans « %s », comptées dans la couverture) : %s" % (
+        SEC_ETH, "aucune" if not noted else "%d (%s)" % (len(noted), " ; ".join("%s %s : %s" % n for n in noted))))
     print("Cellules non appariées : %s" % ("aucune" if not unmatched else ""))
     for tab, ref, value, why in unmatched:
         print("  %s %s %r : %s" % (tab, ref, value[:60], why))

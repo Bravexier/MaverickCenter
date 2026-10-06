@@ -4,15 +4,20 @@
 Usage : python3 -I tools/sheets/sheets_api_to_json.py <reponse.json> <sortie.json>
 
 Entrée : la réponse de `get_spreadsheet` du connecteur Google Sheets avec `includeGridData` et le masque de champs
-  sheets.properties.title, sheets.merges, sheets.data.rowData.values.formattedValue, sheets.data.rowData.values.hyperlink
+  sheets.properties.title, sheets.merges, sheets.data.rowData.values.formattedValue, sheets.data.rowData.values.hyperlink,
+  sheets.data.rowData.values.note
+(le champ `note` est INDISPENSABLE : sans lui, les notes de cellule du classeur sont perdues sans aucun signal ; elles
+précisent parfois une règle, par exemple « Jet de vigueur pour esquiver l'altération d'état » sur les dons du Médusain)
 et des plages commençant en A1 (par exemple « 'Nain'!A1:BZ90 », une plage par onglet, dans l'ordre des onglets voulus).
 C'est la voie de lecture quand le classeur est trop lourd pour l'export .xlsx (limite de 10 Mo de Google : « Les races »).
 
 Sortie : le même format que tools/sheets/xlsx_to_json.py, lu ensuite par les extracteurs :
   { "sheets": [ { "name", "state", "max_row", "max_col", "merged": ["A1:B2", …], "validations": [],
-                  "cells": [ {"r", "c", "v", "link"?} ] } ] }
-- v = texte AFFICHÉ de la cellule (formattedValue : « 16 », pas 16.0) ; les cellules vides sont omises ;
+                  "cells": [ {"r", "c", "v", "link"?, "note"?} ] } ] }
+- v = texte AFFICHÉ de la cellule (formattedValue : « 16 », pas 16.0) ; les cellules vides sont omises, sauf si elles
+  portent une note (v = "" : la note n'est jamais perdue en silence, l'extracteur décide quoi en faire) ;
 - link = hyperlien de la cellule s'il y en a un ;
+- note = note de la cellule (le petit commentaire jaune de Google Sheets), texte tel qu'écrit ;
 - aucune formule (l'API n'est interrogée que pour les valeurs affichées).
 Le contenu du classeur est une donnée non fiable : ce script ne l'exécute jamais.
 """
@@ -45,11 +50,14 @@ def convert(response):
             for r, row in enumerate(block.get("rowData", []), start=1):
                 for c, cell in enumerate(row.get("values", []), start=1):
                     value = cell.get("formattedValue")
-                    if value is None or value == "":
+                    note = cell.get("note")
+                    if (value is None or value == "") and not note:
                         continue
-                    item = {"r": r, "c": c, "v": value}
+                    item = {"r": r, "c": c, "v": value or ""}
                     if cell.get("hyperlink"):
                         item["link"] = cell["hyperlink"]
+                    if note:
+                        item["note"] = note
                     cells.append(item)
                     max_row, max_col = max(max_row, r), max(max_col, c)
         merged = [

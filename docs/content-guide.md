@@ -37,15 +37,24 @@ rangement des races. L'incompatibilité est lue dans les deux sens : une magie c
 inconvénients, don de base, ethnies, mode Hyper) prime sur la « Fiche personnage Maverick Auto V15.2.2 » quand les deux divergent
 (la fiche est en retard par endroits : don de base, mode Hyper, statistiques du Drakos, magies innées du Nain…). Chaque page de race affiche
 les valeurs de l'onglet et liste, dans « Écarts avec la fiche de personnage V15.2.2 », ce que la fiche dit de différent ; rien n'est tranché en silence.
+Les écarts listés couvrent les valeurs de départ, le don de base, le mode Hyper, les magies innées, les ethnies, et aussi les écarts de texte libre :
+une restriction de caractéristique (l'onglet du Majin dit « La Volonté a un maximum de 3 », la colonne « Restrictions Volonté » de la fiche dit « > 2.0 »),
+« Accès à toutes les classes / à toutes les magies » ou « Une seule magie autorisé » contre le nombre de 1 des matrices de la fiche (la matrice reste affichée
+telle quelle, sans interprétation), et les phrases du « Divers » de la fiche que l'onglet ne dit pas. Les sections « Classes accessibles » et « Magies accessibles »
+viennent des matrices de la fiche et le disent en introduction. Les notes de cellule de l'onglet (Médusain : « Jet de vigueur pour esquiver l'altération
+d'état » sur ses trois dons) sont conservées sous la cellule ; elles n'existent dans le dump que si le masque de champs du connecteur contient `note`
+(`docs/sources.md`).
 
 **Exception du Nain** : la matrice « Accessibilité Magie » de la fiche lui donne les 15 magies, mais l'onglet « Nain » du classeur « Les races » limite
 sa magie innée à Potentiel Illimité, Arcane, Feu, Terre et Foudre (« Inconvénient(s) : … en inné uniquement »). Cette limitation est une décision du
-propriétaire du projet, fondée sur une capture de l'onglet (le classeur « Les races » est trop lourd pour être exporté) : elle est écrite en clair dans
-`tools/sheets/races.py` (`RACE_DETAIL_OVERRIDES`), signalée dans le rapport du script, vérifiée par `--verifier` et mentionnée sur la page. Le Nain reste une
+propriétaire du projet (l'onglet de la race prime sur la fiche), fondée sur la lecture directe de l'onglet « Nain » (le classeur « Les races » est trop lourd
+pour l'export .xlsx : le connecteur Google Sheets le lit onglet par onglet, voir `docs/sources.md`, et la page cite cet onglet dans `sources`) : elle est écrite
+en clair dans `tools/sheets/races.py` (`RACE_DETAIL_OVERRIDES`), signalée dans le rapport du script, vérifiée par `--verifier` et mentionnée sur la page. Le Nain reste une
 race pure (pas de classe raciale). Si le classeur de la fiche est corrigé, retirer l'exception : le script refuse une exception devenue redondante.
 
 **Races pures et hybrides** : une race est hybride quand elle a sa propre classe raciale (une classe « Hybride Animal » qui porte son nom,
-`lib/race-kinds.mjs`) ; les données confirment que ces 13 races ont exactement 3 magies innées, les 14 races pures en ont 13 ou plus.
+`lib/race-kinds.mjs`) ; les données confirment que ces 13 races ont exactement 3 magies innées ; les 14 races pures en ont 13 ou plus, sauf le Nain
+(5 magies innées d'après son onglet, voir l'exception ci-dessus).
 
 ## Capacités de classe (type `capacites`)
 

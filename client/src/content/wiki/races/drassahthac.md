@@ -208,11 +208,15 @@ Nombre : 5.
 
 ## Classes accessibles
 
+Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l'onglet de la race.
+
 Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalètrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
 
 ## Magies accessibles
+
+Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité Magie »), pas de l'onglet de la race.
 
 Nombre : 14 sur 15.
 
@@ -220,9 +224,11 @@ Sang, Arcane, Corruption, Espace/Temps, Vide, Nécromancie, Feu, Eau, Glace, Ter
 
 ## Écarts avec la fiche de personnage V15.2.2
 
-Cette page suit l'onglet « Drassah'thac » du Google Sheet « Les races », qui prime sur la fiche de personnage (décision du propriétaire du projet). La fiche V15.2.2 dit autre chose sur les points suivants ; ses valeurs sont citées telles qu'elles y sont écrites.
+Cette page suit l'onglet « Drassah'thac » du Google Sheet « Les races », qui prime sur la fiche de personnage (décision du propriétaire du projet). La fiche V15.2.2 dit autre chose, ou ce que l'onglet ne dit pas, sur les points suivants ; ses valeurs sont citées telles qu'elles y sont écrites.
 
 | Élément | Onglet « Drassah'thac » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
 | Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
+| Magies accessibles<br>(fiche : matrice « Accessibilité Magie ») | Avantage(s) : Accès à toutes les magies | 14 sur 15 (à 0 dans la matrice : Potentiel Illimité) |
+| Classes accessibles<br>(fiche : matrice « Accessibilité de Classe ») | Avantage(s) : accès à toutes les classes | 26 sur 39 (à 0 dans la matrice : Orios, Fenrir, Kitsune, Olwman, Rokh, Namazu, Minotaure, Satyre, Médusain, Jackalope, Marcass, Anansi, Goleois) |
 | Don de l'ethnie « Drassah'thac Ouest »<br>(fiche : sous-race « Drassah'thac Ouest », colonne « Descriptif ») | \- +2 santé.<br>\- Les contrôles mentaux ont deux fois moins d'effets, durent deux fois moins longtemps.<br>\- +3 AP. | \- +2 santé.<br>\- Les contrôles mentaux ont deux fois moins d'effets, durent deux fois moins longtemps.<br>\- +3 AP |

@@ -92,11 +92,15 @@ Nombre : 1.
 
 ## Classes accessibles
 
+Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l'onglet de la race.
+
 Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalètrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
 
 ## Magies accessibles
+
+Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité Magie »), pas de l'onglet de la race.
 
 Nombre : 13 sur 15.
 
@@ -104,9 +108,11 @@ Sang, Arcane, Espace/Temps, Vide, Nécromancie, Feu, Eau, Glace, Terre, Vent, Fo
 
 ## Écarts avec la fiche de personnage V15.2.2
 
-Cette page suit l'onglet « Lamia » du Google Sheet « Les races », qui prime sur la fiche de personnage (décision du propriétaire du projet). La fiche V15.2.2 dit autre chose sur les points suivants ; ses valeurs sont citées telles qu'elles y sont écrites.
+Cette page suit l'onglet « Lamia » du Google Sheet « Les races », qui prime sur la fiche de personnage (décision du propriétaire du projet). La fiche V15.2.2 dit autre chose, ou ce que l'onglet ne dit pas, sur les points suivants ; ses valeurs sont citées telles qu'elles y sont écrites.
 
 | Élément | Onglet « Lamia » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
 | Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
 | Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Jet de Venin<br>(Action) Permet de cracher un venin à 3PO qui est capable d'empoisonné 2 et de paralysé 2 pendant 3 tours, oblige 2 jet de vigueur pour résister au deux effets. | Permet de cracher un venin à 3PO qui est capable d'empoisonné 2 et de paralysé 2 pendant 3 tours, oblige 2 jet de vigueur pour résister au deux effets. |
+| Magies accessibles<br>(fiche : matrice « Accessibilité Magie ») | Inconvénient(s) : Une seule magie autorisé | 13 sur 15 (à 0 dans la matrice : Potentiel Illimité, Corruption) |
+| Divers<br>(fiche : colonne « Divers ») | Ne figure pas telle quelle dans l'onglet : « Taux de PV élevé » | Taux de PV élevé, Vision Thermique, Peut porter une armure légère même si la classe l'interdit, Sang Froid, Une seule magie autorisé. |

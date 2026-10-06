@@ -312,11 +312,15 @@ Nombre : 15.
 
 ## Classes accessibles
 
+Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l'onglet de la race.
+
 Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalètrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
 
 ## Magies accessibles
+
+Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité Magie »), pas de l'onglet de la race.
 
 Nombre : 15 sur 15.
 
@@ -324,7 +328,7 @@ Potentiel Illimité, Sang, Arcane, Corruption, Espace/Temps, Vide, Nécromancie,
 
 ## Écarts avec la fiche de personnage V15.2.2
 
-Cette page suit l'onglet « Drakos » du Google Sheet « Les races », qui prime sur la fiche de personnage (décision du propriétaire du projet). La fiche V15.2.2 dit autre chose sur les points suivants ; ses valeurs sont citées telles qu'elles y sont écrites.
+Cette page suit l'onglet « Drakos » du Google Sheet « Les races », qui prime sur la fiche de personnage (décision du propriétaire du projet). La fiche V15.2.2 dit autre chose, ou ce que l'onglet ne dit pas, sur les points suivants ; ses valeurs sont citées telles qu'elles y sont écrites.
 
 | Élément | Onglet « Drakos » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
@@ -332,5 +336,7 @@ Cette page suit l'onglet « Drakos » du Google Sheet « Les races », qui prime
 | Chakra de départ<br>(fiche : colonne « Chakra départ ») | 10 | 13.0 |
 | Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
 | Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Souffle de l'aîné<br>(Action) Permet une attaque de souffle de l'élément de la magie innée, inflige 3d6/NPM dégâts et possède une portée de 4. Elle ne bénéficie pas des boost de dégats donner par le mode hyper ou autre (mais est influencée par les postures). Demande un jet qui est choisi entre toutes les compétences d'attaques disponible. | Les écailles absorbe les dégâts subits du même élément que la magie inné et les convertis en Barrière. |
+| Classes accessibles<br>(fiche : matrice « Accessibilité de Classe ») | Avantage(s) : Accès à toutes les classes | 26 sur 39 (à 0 dans la matrice : Orios, Fenrir, Kitsune, Olwman, Rokh, Namazu, Minotaure, Satyre, Médusain, Jackalope, Marcass, Anansi, Goleois) |
+| Divers<br>(fiche : colonne « Divers ») | Ne figure pas telle quelle dans l'onglet : « la magie innée va déterminer la couleur des écailles draconiques et des particularité du don racial » | Peut planer avec ses ailes, la magie innée va déterminer la couleur des écailles draconiques et des particularité du don racial. |
 | Don de l'ethnie « Potentiel illimité »<br>(fiche : sous-race « Drakos Orange », colonne « Descriptif ») | 1AP/1AM<br>5% parmi les autres<br>Au choix parmi les autres | \- 1AP/1AM<br>\- 5% parmi les autres<br>\- +1 résistance à l'altération choisie parmi toutes |
 | Nom de l'ethnie « Tempe/Espace »<br>(fiche : colonnes B et C de « Bonus Race ») | Tempe/Espace | Drakos Rose<br>Nom : Espace/Temps |

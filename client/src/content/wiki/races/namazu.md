@@ -144,11 +144,15 @@ Nombre : 3.
 
 ## Classes accessibles
 
+Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l'onglet de la race.
+
 Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalètrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Namazu
 
 ## Magies accessibles
+
+Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité Magie »), pas de l'onglet de la race.
 
 Nombre : 3 sur 15.
 
@@ -156,9 +160,10 @@ Sang, Eau, Ombre
 
 ## Écarts avec la fiche de personnage V15.2.2
 
-Cette page suit l'onglet « Namazus » du Google Sheet « Les races », qui prime sur la fiche de personnage (décision du propriétaire du projet). La fiche V15.2.2 dit autre chose sur les points suivants ; ses valeurs sont citées telles qu'elles y sont écrites.
+Cette page suit l'onglet « Namazus » du Google Sheet « Les races », qui prime sur la fiche de personnage (décision du propriétaire du projet). La fiche V15.2.2 dit autre chose, ou ce que l'onglet ne dit pas, sur les points suivants ; ses valeurs sont citées telles qu'elles y sont écrites.
 
 | Élément | Onglet « Namazus » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
 | Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
 | Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Saignement de la mer<br>La prochaine attaque avec une arme inflige "saignement 1" pendant tout le mode hyper. L'ennemi doit faire un jet de vigueur tous les début de tour pour ne pas encaisser les dégâts. | Double les AP donné par l'armure naturelle (+6 AP au lieu de +3). |
+| Divers<br>(fiche : colonne « Divers ») | Ne figure pas telle quelle dans l'onglet : « Mal de l'air » | Mal de l'air |

@@ -76,11 +76,18 @@ Obtenir les données d'un classeur, par ordre de préférence :
 
 1. **Connecteur Google Sheets** (session Claude, autorisation « Sheets » complète) : `get_spreadsheet` avec `includeGridData`,
    une plage `'<onglet>'!A1:ZZ<n>` par onglet voulu et le masque de champs `sheets.properties.title`, `sheets.merges`,
-   `sheets.data.rowData.values.formattedValue`, `sheets.data.rowData.values.hyperlink` ; la réponse (souvent sauvegardée dans un
-   fichier par l'outil) est convertie par `python3 -I tools/sheets/sheets_api_to_json.py <réponse.json> <sortie.json>`. Seules les
-   valeurs affichées sont lues (pas de formules) ; c'est la voie des classeurs trop lourds pour l'export (« Les races », ≈ 34 Mo).
+   `sheets.data.rowData.values.formattedValue`, `sheets.data.rowData.values.hyperlink` et **`sheets.data.rowData.values.note`** ; la
+   réponse (souvent sauvegardée dans un fichier par l'outil) est convertie par
+   `python3 -I tools/sheets/sheets_api_to_json.py <réponse.json> <sortie.json>`. Seules les valeurs affichées sont lues (pas de
+   formules) ; c'est la voie des classeurs trop lourds pour l'export (« Les races », ≈ 34 Mo). Ne pas omettre `note` : les notes de
+   cellule (le petit commentaire jaune d'une cellule) précisent parfois une règle (« Jet de vigueur pour esquiver l'altération
+   d'état » sur les dons du Médusain) et, sans ce champ, elles disparaissent du dump sans aucun signal ; le contrôle de couverture
+   des extracteurs compare les pages au dump et ne peut pas les retrouver. Elles sont écrites dans le dump (`note`) et rendues
+   par l'extracteur qui sait où les placer (`tools/sheets/races.py` : tableau des ethnies) ou refusées s'il ne le sait pas.
 2. **Export `.xlsx`** : *Fichier > Télécharger > Microsoft Excel*, ou `download_file_content` du connecteur Google Drive avec le type
    d'export xlsx ; Google plafonne l'export à 10 Mo. Conserve les formules, les listes déroulantes et les commentaires.
+   **Limite connue** : `xlsx_to_json.py` ne lit pas les commentaires et notes de cellule (openpyxl : `cell.comment`) ; plusieurs
+   classeurs en portent (classes, magies, équipement, invocations) et leurs extracteurs ne les importent donc pas encore.
 
 Les JSON intermédiaires et les `.xlsx` ne font pas partie du dépôt : ils se régénèrent à partir des classeurs.
 Les extracteurs sont relançables, mais **ils écrasent les pages qu'ils génèrent** : retoucher une page à la main

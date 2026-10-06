@@ -78,12 +78,54 @@ test('les écarts avec la fiche sont listés, la valeur de la fiche citée telle
   assert.match(nain[1], /\(5 sur 15\)$/);
   assert.match(nain[2], /\(15 sur 15\)$/);
   assert.ok(rows('humain').some((c) => c[0].startsWith('Don de base')), 'le don de base de la fiche (2d6 chakra) diffère de l’onglet (3d6 + 6)');
-  assert.equal(rows('humain').length, 1, 'Humain : seul le don de base diffère');
+  assert.deepEqual(rows('humain').map((c) => c[0].split('<br>')[0]), ['Don de base', 'Classes accessibles'],
+    'Humain : le don de base diffère, et l’onglet dit « toutes les classes » contre 26 sur 39 dans la fiche');
+});
+
+test('les écarts de texte libre sont listés : restrictions de caractéristiques, accès aux classes et aux magies, « Divers » de la fiche', () => {
+  const rows = (slug) => tableRows(section(race(slug).body, 'Écarts avec la fiche de personnage V15.2.2')).slice(2);
+  const of = (slug, debut) => rows(slug).find((c) => c[0].startsWith(debut));
+  // Majin : l’onglet dit « maximum de 3 », la fiche « Restrictions Volonté > 2.0 » (donc un minimum) : jamais tranché en silence
+  const volonte = of('majin', 'Restriction : Volonté');
+  assert.match(volonte[1], /^Inconvénient\(s\) : La Volonté a un maximum de 3$/);
+  assert.equal(volonte[2], '\\> 2.0');
+  // les autres restrictions chiffrées de la fiche concordent avec le texte des onglets : aucune autre ligne « Restriction »
+  const restrictions = races.filter((r) => rows(r.slug).some((c) => c[0].startsWith('Restriction')));
+  assert.deepEqual(restrictions.map((r) => r.slug), ['majin']);
+  // « Accès à toutes les classes » (9 onglets) contre 26 sur 39 ; « toutes les magies » (3) et « Une seule magie autorisé » contre la matrice
+  const classes = races.filter((r) => of(r.slug, 'Classes accessibles')).map((r) => r.slug);
+  assert.deepEqual(classes, ['drakos', 'drassahthac', 'elfe-forestier', 'elfe-noir', 'hujin', 'humain', 'majin', 'mort-vivant', 'nain']);
+  for (const slug of classes) assert.match(of(slug, 'Classes accessibles')[2], /^26 sur 39 \(à 0 dans la matrice : /, slug);
+  const magies = races.filter((r) => of(r.slug, 'Magies accessibles')).map((r) => r.slug);
+  assert.deepEqual(magies, ['drassahthac', 'lamia', 'majin', 'mort-vivant']);
+  assert.match(of('majin', 'Magies accessibles')[1], /^Avantage\(s\) : accès à toutes les magies$/);
+  assert.match(of('majin', 'Magies accessibles')[2], /^14 sur 15 \(à 0 dans la matrice : Potentiel Illimité\)$/);
+  assert.match(of('lamia', 'Magies accessibles')[1], /^Inconvénient\(s\) : Une seule magie autorisé$/);
+  assert.match(of('lamia', 'Magies accessibles')[2], /^13 sur 15 /);
+  // « Divers » de la fiche : les phrases qui ne sont pas dans l’onglet
+  assert.deepEqual(races.filter((r) => of(r.slug, 'Divers')).map((r) => r.slug), ['drakos', 'lamia', 'marcass', 'mort-vivant', 'namazu']);
+  assert.match(of('lamia', 'Divers')[1], /« Taux de PV élevé »$/);
+  assert.match(of('marcass', 'Divers')[1], /« Taux de PV élevé »$/);
+  assert.match(of('namazu', 'Divers')[1], /« Mal de l'air »$/);
+  assert.match(of('mort-vivant', 'Divers')[1], /« les fioles toxiques soignent »$/);
+});
+
+test('les notes de cellule de l’onglet sont conservées (Médusain : « Jet de vigueur pour esquiver l’altération d’état » sur les trois dons)', () => {
+  const eth = section(race('medusain').body, 'Ethnies et dons raciaux');
+  const notes = eth.match(/^\*\*Note de la cellule « Don »\*\* : Jet de vigueur pour esquiver l'altération d'état$/gm) ?? [];
+  assert.equal(notes.length, 3);
+  for (const ethnie of ['Eau', 'Foudre', 'Lumière']) {
+    assert.match(eth, new RegExp(`### ${ethnie} en innée[\\s\\S]*?\\*\\*Note de la cellule « Don »\\*\\*[\\s\\S]*?\\*\\*Fiche de personnage`), ethnie);
+  }
+  for (const r of races.filter((x) => x.slug !== 'medusain')) assert.doesNotMatch(r.body, /Note de la cellule/, r.slug);
 });
 
 test('les sections de la fiche restent affichées telles quelles et signalent leur provenance', () => {
   for (const r of races) {
     assert.match(section(r.body, 'Sous-races et origines'), /^Section issue de la fiche de personnage V15\.2\.2/m, r.slug);
     assert.match(section(r.body, 'Caractéristiques de départ'), /AP \(fiche\)/, r.slug);
+    // les matrices viennent de la fiche, pas de l’onglet de la race (« Accès à toutes les classes » y est un texte, pas une liste)
+    assert.match(section(r.body, 'Classes accessibles').trim(), /^Section issue de la fiche de personnage V15\.2\.2 \(onglet « Accessibilité de Classe »\)/, r.slug);
+    assert.match(section(r.body, 'Magies accessibles').trim(), /^Section issue de la fiche de personnage V15\.2\.2 \(onglet « Accessibilité Magie »\)/, r.slug);
   }
 });

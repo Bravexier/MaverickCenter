@@ -81,6 +81,8 @@ Nombre : 3.
 - Si une attaque de CAC est encaissée, une tentacule touche l'agresseur et lui inflige Poison 1 pendant 1 tour si il ne porte pas d'armure là où la tentacule touche.
 - 1 cran de résistance en plus à la magie innée et son altération d'état.
 
+**Note de la cellule « Don »** : Jet de vigueur pour esquiver l'altération d'état
+
 **Fiche de personnage V15.2.2** : sous-race « Médusain Eau » (voir « Sous-races et origines »).
 
 ### Foudre en innée
@@ -90,6 +92,8 @@ Nombre : 3.
 - Si une attaque de CAC est encaissée, une tentacule touche l'agresseur et lui inflige Paralysie 1 pendant 1 tour si il ne porte pas d'armure là où la tentacule touche.
 - 1 cran de résistance en plus à la magie innée et son altération d'état.
 
+**Note de la cellule « Don »** : Jet de vigueur pour esquiver l'altération d'état
+
 **Fiche de personnage V15.2.2** : sous-race « Médusain Foudre » (voir « Sous-races et origines »).
 
 ### Lumière en innée
@@ -98,6 +102,8 @@ Nombre : 3.
 
 - Si une attaque de CAC est encaissée, une tentacule touche l'agresseur et lui inflige Brûlure 1 pendant 1 tour si il ne porte pas d'armure là où la tentacule touche.
 - 1 cran de résistance en plus à la magie innée et son altération d'état.
+
+**Note de la cellule « Don »** : Jet de vigueur pour esquiver l'altération d'état
 
 **Fiche de personnage V15.2.2** : sous-race « Médusain Lumière » (voir « Sous-races et origines »).
 
@@ -152,11 +158,15 @@ Nombre : 3.
 
 ## Classes accessibles
 
+Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l'onglet de la race.
+
 Nombre : 24 sur 39.
 
 Lancier, Martiale, Moine, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalètrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Médusain
 
 ## Magies accessibles
+
+Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité Magie »), pas de l'onglet de la race.
 
 Nombre : 3 sur 15.
 
@@ -164,7 +174,7 @@ Eau, Foudre, Lumière
 
 ## Écarts avec la fiche de personnage V15.2.2
 
-Cette page suit l'onglet « Médusain » du Google Sheet « Les races », qui prime sur la fiche de personnage (décision du propriétaire du projet). La fiche V15.2.2 dit autre chose sur les points suivants ; ses valeurs sont citées telles qu'elles y sont écrites.
+Cette page suit l'onglet « Médusain » du Google Sheet « Les races », qui prime sur la fiche de personnage (décision du propriétaire du projet). La fiche V15.2.2 dit autre chose, ou ce que l'onglet ne dit pas, sur les points suivants ; ses valeurs sont citées telles qu'elles y sont écrites.
 
 | Élément | Onglet « Médusain » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |

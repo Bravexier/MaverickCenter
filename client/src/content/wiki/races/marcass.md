@@ -158,11 +158,15 @@ Nombre : 3.
 
 ## Classes accessibles
 
+Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l'onglet de la race.
+
 Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalètrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Marcass
 
 ## Magies accessibles
+
+Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité Magie »), pas de l'onglet de la race.
 
 Nombre : 3 sur 15.
 
@@ -170,9 +174,10 @@ Nécromancie, Feu, Terre
 
 ## Écarts avec la fiche de personnage V15.2.2
 
-Cette page suit l'onglet « Marcass » du Google Sheet « Les races », qui prime sur la fiche de personnage (décision du propriétaire du projet). La fiche V15.2.2 dit autre chose sur les points suivants ; ses valeurs sont citées telles qu'elles y sont écrites.
+Cette page suit l'onglet « Marcass » du Google Sheet « Les races », qui prime sur la fiche de personnage (décision du propriétaire du projet). La fiche V15.2.2 dit autre chose, ou ce que l'onglet ne dit pas, sur les points suivants ; ses valeurs sont citées telles qu'elles y sont écrites.
 
 | Élément | Onglet « Marcass » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
 | Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
 | Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Corps isolant<br>Les AP et AM naturels s’ajoutent à toute réduction de dégâts, quel que soit le type d’attaque. | Les AP et AM réduit les dégâts infligés par les altérations d'états. |
+| Divers<br>(fiche : colonne « Divers ») | Ne figure pas telle quelle dans l'onglet : « Taux de PV élevé » | Taux de PV élevé, Barrière bonus,Taux de Chakra bas. |

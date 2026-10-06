@@ -303,11 +303,15 @@ Colonne « Race » de l'onglet « Bonus Race » : Mort-Vivant.
 
 ## Classes accessibles
 
+Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l'onglet de la race.
+
 Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalètrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
 
 ## Magies accessibles
+
+Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité Magie »), pas de l'onglet de la race.
 
 Nombre : 14 sur 15.
 
@@ -315,9 +319,12 @@ Sang, Arcane, Corruption, Espace/Temps, Vide, Nécromancie, Feu, Eau, Glace, Ter
 
 ## Écarts avec la fiche de personnage V15.2.2
 
-Cette page suit l'onglet « Mort-vivant » du Google Sheet « Les races », qui prime sur la fiche de personnage (décision du propriétaire du projet). La fiche V15.2.2 dit autre chose sur les points suivants ; ses valeurs sont citées telles qu'elles y sont écrites.
+Cette page suit l'onglet « Mort-vivant » du Google Sheet « Les races », qui prime sur la fiche de personnage (décision du propriétaire du projet). La fiche V15.2.2 dit autre chose, ou ce que l'onglet ne dit pas, sur les points suivants ; ses valeurs sont citées telles qu'elles y sont écrites.
 
 | Élément | Onglet « Mort-vivant » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
 | Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
 | Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Super santé<br>Régénère 20% de santé au début de son tour. | Régénère 20 Santé par tour. |
+| Classes accessibles<br>(fiche : matrice « Accessibilité de Classe ») | Avantage(s) : Accès à toutes les classes | 26 sur 39 (à 0 dans la matrice : Orios, Fenrir, Kitsune, Olwman, Rokh, Namazu, Minotaure, Satyre, Médusain, Jackalope, Marcass, Anansi, Goleois) |
+| Magies accessibles<br>(fiche : matrice « Accessibilité Magie ») | Avantage(s) : accès à toutes les magies | 14 sur 15 (à 0 dans la matrice : Potentiel Illimité) |
+| Divers<br>(fiche : colonne « Divers ») | Ne figure pas telle quelle dans l'onglet : « les fioles toxiques soignent » | Un sommeil complet régénère complètement la santé en plus de la barrière. La Volonté est obligatoirement à 4, le Social est obligatoirement à 1, les Soins de la Lumière infligent des dégâts, doit énormément manger (3 fois plus qu'un vivant) , les fioles rouges, mauves et oranges infligent des dégâts, les fioles toxiques soignent. |

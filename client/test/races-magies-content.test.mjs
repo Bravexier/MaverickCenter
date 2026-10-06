@@ -100,9 +100,12 @@ test('la liste structurée d’une race concorde avec la section « Magies acces
     const section = r.body.split(/^## Magies accessibles\s*$/m)[1];
     assert.ok(section, `${r.id} : section absente`);
     const lines = section.split('\n').map((l) => l.trim()).filter(Boolean);
-    const count = lines[0].match(/^Nombre : (\d+) sur (\d+)\.$/);
-    assert.ok(count, `${r.id} : ligne « Nombre » absente`);
-    const listed = lines[1].split(',').map((n) => n.trim());
+    // la section commence par sa provenance (matrice de la fiche), puis « Nombre : N sur M. », puis la liste
+    const at = lines.findIndex((l) => l.startsWith('Nombre :'));
+    assert.ok(at >= 0, `${r.id} : ligne « Nombre » absente`);
+    const count = lines[at].match(/^Nombre : (\d+) sur (\d+)\.$/);
+    assert.ok(count, `${r.id} : ligne « Nombre » illisible`);
+    const listed = lines[at + 1].split(',').map((n) => n.trim());
     assert.equal(Number(count[1]), r.data.magies_innees.length, r.id);
     assert.equal(Number(count[2]), 15, r.id);
     assert.deepEqual(listed.map(normalize), r.data.magies_innees.map(normalize), `${r.id} : liste et ordre`);
