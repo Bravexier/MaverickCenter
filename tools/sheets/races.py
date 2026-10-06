@@ -7,13 +7,19 @@ Usage (bibliothèque standard uniquement ; relançable, mêmes fichiers à l'ide
         --out /home/user/MaverickCenter/client/src/content/wiki
 
 Option `--verifier` : n'écrit rien. Recalcule `magies_innees` directement depuis le dump brut (sans passer par le code
-de lecture du script), compare aux pages déjà écrites, puis rejoue des cas d'erreur sur des copies modifiées de la
-matrice. Code de sortie non nul au moindre écart. Sans cette option, la même comparaison aux pages est faite après
+de lecture du script), applique les exceptions de RACE_DETAIL_OVERRIDES (voir plus bas), compare aux pages déjà écrites,
+puis rejoue des cas d'erreur sur des copies modifiées de la matrice, de la constante d'exceptions et des pages. Il exige :
+(a) l'exception du Nain existe et diffère de la matrice (sinon elle est redondante) ; (b) ses noms sont tous des en-têtes
+de la matrice (MAGIC_HEADERS), sans doublon, dans l'ordre des colonnes ; (c) `magies_innees` de la page du Nain, la liste
+et le nombre de sa section « Magies accessibles » sont l'exception, avec l'entrée de source, la « Présentation », les
+citations « Avantage(s) / Inconvénient(s) » et le paragraphe d'écart ; (d) toutes les autres races restent conformes à
+la matrice. Code de sortie non nul au moindre écart. Sans cette option, la même comparaison aux pages est faite après
 l'écriture (un écart arrête le script).
 
 Les dumps JSON sont produits par tools/sheets/xlsx_to_json.py (format : voir ce script). Chaque dump est reconnu à son
 contenu (l'ordre des `--dump` n'a pas d'importance). Les cellules sont une donnée non fiable : elles ne sont jamais
-exécutées, seulement copiées (échappées pour le Markdown). Aucune valeur n'est calculée, corrigée ni complétée.
+exécutées, seulement copiées (échappées pour le Markdown). Aucune valeur n'est calculée, corrigée ni complétée, à une
+exception près, explicite et signalée (RACE_DETAIL_OVERRIDES, voir plus bas).
 
 Sources (classeurs Google, propriété d'un tiers) :
 
@@ -21,7 +27,8 @@ Sources (classeurs Google, propriété d'un tiers) :
      entier dépasse la limite d'export de Google ; le nom de l'onglet est inconnu, c'est un export CSV).
      Une ligne par race : A = nom de la race, B = phrase de présentation. 27 lignes, sans en-tête. L'ordre de cette
      feuille donne l'ordre de traitement. Le lore détaillé des races (les autres onglets de ce classeur) n'est PAS
-     dans les données : aucune page ne le contient.
+     dans les données : aucune page ne le contient, sauf l'onglet « Nain », recopié d'après une capture d'écran
+     (voir l'exception documentée plus bas).
 
   2. Google Sheet « Fiche personnage Maverick Auto V15.2.2 » (1SvzNbdDVQyLE9cyp9U5USHBsxHpwxhtaWrFTu9CpLY4), onglets
      MASQUÉS :
@@ -39,6 +46,17 @@ Sources (classeurs Google, propriété d'un tiers) :
        * « Accessibilité de Classe » : matrice 27 races (lignes 2 à 28) x 39 classes (colonnes B à AN), valeurs 0/1.
        * « Accessibilité Magie » : matrice 27 races x 15 magies (colonnes B à P), valeurs 0/1.
 
+EXCEPTION DOCUMENTÉE (RACE_DETAIL_OVERRIDES) : le Nain. Décision du propriétaire du projet, source : capture d'écran de
+l'onglet « Nain » du Google Sheet « Les races » (classeur de détail des races, trop lourd pour être exporté : on n'en a
+que la capture, recopiée dans la constante). Cet onglet limite la magie innée du Nain à « Magie du Feu, Terre, Foudre,
+Arcane, Potentiel illimité en inné uniquement », alors que la matrice « Accessibilité Magie » de la fiche (V15.2.2) donne
+15 sur 15 : la liste du Nain est donc « Potentiel Illimité, Arcane, Feu, Terre, Foudre » (ordre des colonnes), et sa page
+ajoute l'entrée de source de la capture, une section « Présentation » (juste après le résumé), une section
+« Avantage(s) et inconvénient(s) » (citations exactes) et, dans « Magies accessibles », un paragraphe qui écrit l'écart
+entre les deux sources. L'exception ne vaut que pour la race nommée ; la fiche reste citée comme source de la page.
+Le rapport du script la signale : « Nain : matrice = 15 magies, onglet Nain de Les races = 5 : exception appliquée ».
+Si la matrice rejoint un jour l'onglet, l'exception devient redondante et le script s'arrête (il faut la retirer).
+
 Frontmatter (contrat avec le site, qui lit ces champs structurés ; le corps Markdown ne dépend pas d'eux) :
     `magies_innees: ["Sang", "Eau", "Terre"]` = les en-têtes de l'onglet « Accessibilité Magie » (B1:P1 : « Potentiel
     Illimité », « Sang », « Arcane », « Corruption », « Espace/Temps », « Vide », « Nécromancie », « Feu », « Eau »,
@@ -46,13 +64,17 @@ Frontmatter (contrat avec le site, qui lit ces champs structurés ; le corps Mar
     dans l'ordre des colonnes, écrits comme l'en-tête (ce sont les noms courts des pages de magies). C'est la même
     liste que celle de « Magies accessibles » dans le corps. Une valeur ni 0 ni 1, une race de la matrice sans page,
     ou une race de l'index absente de la matrice arrête le script (pas de repli).
-    Rapport (sortie standard) : nombre de pages, puis la répartition des races par nombre de magies innées.
+    Pour une race à exception (le Nain), c'est la liste de l'exception qui remplace celle de la matrice, dans le
+    frontmatter comme dans le corps.
+    Rapport (sortie standard) : nombre de pages, une ligne par exception appliquée (écart avec la matrice), puis la
+    répartition des races par nombre de magies innées (exceptions comprises).
 
 Page produite pour chaque race (les sections vides sont omises) :
-    présentation (phrase de l'index, aussi `summary`) ; « Caractéristiques de départ » (tableau Race, en-têtes tels
-    qu'écrits, puis « Divers ») ; « Restrictions » ; « Don base » ; « Capacité Hyper » ; « Sous-races et origines »
-    (une sous-section par ligne de « Bonus Race », avec Nom, Descriptif et un tableau des colonnes non vides) ;
-    « Classes accessibles » et « Magies accessibles » (nombre, puis noms dont la valeur est 1).
+    présentation (phrase de l'index, aussi `summary`) ; [exception : « Présentation »] ; « Caractéristiques de départ »
+    (tableau Race, en-têtes tels qu'écrits, puis « Divers ») ; [exception : « Avantage(s) et inconvénient(s) »] ;
+    « Restrictions » ; « Don base » ; « Capacité Hyper » ; « Sous-races et origines » (une sous-section par ligne de
+    « Bonus Race », avec Nom, Descriptif et un tableau des colonnes non vides) ; « Classes accessibles » et
+    « Magies accessibles » (nombre, puis noms dont la valeur est 1 ; [exception : paragraphe d'écart]).
 
 Rapprochement des noms : l'index, « Race » et les deux matrices écrivent les 27 noms de façon identique ; seul « Bonus
 Race » diffère (casse « Elfe Forestier », espace final « Satyre », coquille « Felfle »). La clé de comparaison est celle
@@ -70,6 +92,7 @@ contenu ne change pas. Aucun lien [[…]] n'est écrit (une cellule qui en conti
 la sortie d'erreur).
 """
 import argparse
+import copy
 import json
 import os
 import re
@@ -93,6 +116,42 @@ MAGIC_FIELD = "magies_innees"
 # Noms courts des 15 magies, tels qu'écrits dans B1:P1 de TAB_MAGIE (contrat avec les pages de magies ; --verifier).
 MAGIC_HEADERS = ("Potentiel Illimité", "Sang", "Arcane", "Corruption", "Espace/Temps", "Vide", "Nécromancie", "Feu",
                  "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre")
+
+# EXCEPTIONS DE DÉTAIL : décision du propriétaire du projet, source : capture de l'onglet Nain de « Les races ».
+# Le classeur « Les races » (détail des races) est trop lourd pour être exporté : seule la première feuille l'est. Pour le
+# Nain, le propriétaire du projet a fourni une CAPTURE D'ÉCRAN de l'onglet « Nain » ; ses textes sont recopiés ci-dessous
+# mot pour mot (orthographe de la source, « ralenties » compris). Cet onglet limite la magie innée du Nain à cinq magies
+# (Inconvénient(s)), alors que la matrice « Accessibilité Magie » de la fiche V15.2.2 donne 15 sur 15 (ligne Nain tout à 1) :
+# la fiche est en retard sur ce point. L'exception REMPLACE la matrice POUR CETTE RACE SEULEMENT ; elle n'est jamais
+# silencieuse : la page écrit l'écart (section « Magies accessibles »), le rapport du script le signale, et --verifier
+# l'exige (existence, différence avec la matrice, ordre des colonnes, page conforme). Si la fiche est un jour corrigée,
+# l'exception devient redondante : le script et --verifier s'arrêtent, il faut alors la retirer en connaissance de cause.
+# Clé = nom de la race tel qu'écrit dans l'index. Champs (OVERRIDE_FIELDS, tous obligatoires, texte sur une ligne) :
+#   magies_innees : liste qui remplace la matrice (noms de MAGIC_HEADERS, dans l'ordre des colonnes) ;
+#   presentation  : paragraphes de présentation de l'onglet (section « Présentation ») ;
+#   avantage, inconvenient : cellules « Avantage(s) » et « Inconvénient(s) » de l'onglet, citations exactes ;
+#   source        : entrée ajoutée à `sources:` de la page.
+# Les chiffres de la zone « Données » de la capture (Santé 16, Chakra 4, Barrière 0, Vitesse 3 et 3) sont ceux de l'onglet
+# « Race » de la fiche : rien à y remplacer.
+RACE_DETAIL_OVERRIDES = {
+    "Nain": {
+        "magies_innees": ["Potentiel Illimité", "Arcane", "Feu", "Terre", "Foudre"],
+        "presentation": [
+            "Une race humanoïde dont la particularité est d'être petit en taille par rapport aux Humains ou Elfes Forestiers.",
+            "Ce sont d'excellents combattants au corps-à-corps, le tout avec un capital de santé plus élevé que la moyenne "
+            "en dépit d'un capital de chakra bien plus faible et d'une limitation des magies qui leur sont possible d'avoir "
+            "de manière innée.",
+            "Cette race fait partie des 3 premières à être arrivées dans le monde avec les Humains et les Elfes Dorées.",
+        ],
+        "avantage": "Les armures lourdes ne les ralenties pas, accès à toutes les classes.",
+        "inconvenient": "Magie du Feu, Terre, Foudre, Arcane, Potentiel illimité en inné uniquement.",
+        "source": "Google Sheet « %s », onglet « Nain » (capture d'écran fournie par le propriétaire du projet)" % INDEX_TITLE,
+    },
+}
+# Races dont l'exception DOIT exister (--verifier échoue sinon : on ne revient pas à la matrice en silence).
+OVERRIDES_REQUIS = ("Nain",)
+# Champs obligatoires d'une exception.
+OVERRIDE_FIELDS = ("magies_innees", "presentation", "avantage", "inconvenient", "source")
 
 
 def source_url(file_id):
@@ -429,7 +488,12 @@ def read_matrix(sheet, races):
 # --------------------------------------------------------------------------------------------------------------------
 
 def render_page(name, summary, race_headers, race_row, bonus_headers, bonus_rows, bonus_spelled,
-                class_names, class_ok, magic_names, magic_ok):
+                class_names, class_ok, magic_names, magic_ok, override=None, matrix_ok=None):
+    """Page d'une race. `magic_ok` = magies innées retenues (celles de l'exception `override` si la race en a une dans
+    RACE_DETAIL_OVERRIDES, sinon celles de la matrice) ; `matrix_ok` = liste de la matrice, citée dans l'écart."""
+    sources = list(SOURCES)
+    if override:
+        sources.insert(2, override["source"])        # juste après les deux entrées du classeur « Les races »
     L = ["---",
          "title: " + yaml_str(name),
          "aliases: []",
@@ -437,10 +501,16 @@ def render_page(name, summary, race_headers, race_row, bonus_headers, bonus_rows
     if summary:
         L.append("summary: " + yaml_str(summary))
     L.append(MAGIC_FIELD + ": " + yaml_list(magic_ok))
-    L += ["sources: " + yaml_list(SOURCES), "status: " + STATUS, "---", ""]
+    L += ["sources: " + yaml_list(sources), "status: " + STATUS, "---", ""]
 
     if summary:
         L += md_text(summary) + [""]
+
+    # Présentation de l'onglet de détail de la race (exception), juste après la phrase de résumé
+    if override:
+        L += ["## Présentation", ""]
+        for paragraph in override["presentation"]:
+            L += [esc_inline(paragraph), ""]
 
     # Caractéristiques de départ (le titre n'est écrit que si la section n'est pas vide)
     cols = [c for c in RACE_STAT_COLS + RACE_STAT_COLS_AFTER if not is_blank(race_row[c])]
@@ -451,6 +521,12 @@ def render_page(name, summary, race_headers, race_row, bonus_headers, bonus_rows
         section += labeled(race_headers[COL_DIVERS], race_row[COL_DIVERS]) + [""]
     if section:
         L += ["## Caractéristiques de départ", ""] + section
+
+    # Avantage(s) et inconvénient(s) de l'onglet de détail (exception), citations exactes
+    if override:
+        L += ["## Avantage(s) et inconvénient(s)", ""]
+        L += labeled("Avantage(s)", override["avantage"]) + [""]
+        L += labeled("Inconvénient(s)", override["inconvenient"]) + [""]
 
     # Restrictions
     restr = []
@@ -491,6 +567,13 @@ def render_page(name, summary, race_headers, race_row, bonus_headers, bonus_rows
         L += ["## " + title, "", "Nombre : %d sur %d." % (len(ok), len(names)), ""]
         if ok:
             L += [", ".join(esc_inline(n) for n in ok), ""]
+        if override and title == "Magies accessibles":
+            L += [esc_inline(
+                "Écart entre les sources : la matrice « %s » du Google Sheet « %s » donne %d sur %d pour cette race, mais "
+                "l'onglet « %s » du Google Sheet « %s » limite la magie innée à ces %d magies (Inconvénient(s) : « %s »). "
+                "La liste ci-dessus suit l'onglet (décision du propriétaire du projet, d'après une capture de l'onglet)."
+                % (TAB_MAGIE, FICHE_TITLE, len(matrix_ok), len(names), name, INDEX_TITLE, len(ok), override["inconvenient"])),
+                ""]
 
     while L and L[-1] == "":
         L.pop()
@@ -549,55 +632,260 @@ def expected_magic(paths):
     return expected
 
 
-def page_magic(text):
-    """(liste du frontmatter `magies_innees`, liste de « Magies accessibles » dans le corps) ; None si absente."""
+def front_list(text, field):
+    """Liste JSON d'un champ de frontmatter écrit sur une seule ligne ; None si le champ est absent, en double ou illisible."""
     m = re.match(r"---\n(.*?)\n---\n", text, re.S)
     if not m:
-        return None, None
-    front = None
-    lines = [l for l in m.group(1).split("\n") if l.startswith(MAGIC_FIELD + ":")]
-    if len(lines) == 1:
-        try:
-            front = json.loads(lines[0][len(MAGIC_FIELD) + 1:].strip())
-        except ValueError:
-            front = None
-    listed = None
-    body = text[m.end():].split("\n## Magies accessibles\n\n", 1)
-    if len(body) == 2:
-        rest = body[1].split("\n")
-        listed = [n.strip() for n in rest[2].split(",")] if len(rest) > 2 and rest[2] and not rest[2].startswith("#") else []
-    return front, listed
+        return None
+    lines = [l for l in m.group(1).split("\n") if l.startswith(field + ":")]
+    if len(lines) != 1:
+        return None
+    try:
+        return json.loads(lines[0][len(field) + 1:].strip())
+    except ValueError:
+        return None
 
 
-def check_pages(paths, wiki_root):
-    """Compare chaque page `races/<slug>.md` aux valeurs recalculées ; liste des écarts (vide si tout concorde)."""
+def set_front_list(text, field, items):
+    """Copie du texte dont la ligne `field:` du frontmatter porte `items` (sert à rejouer des cas d'erreur)."""
+    line = "%s: %s" % (field, json.dumps(items, ensure_ascii=False))
+    return re.sub(r"^%s:.*$" % re.escape(field), lambda _: line, text, count=1, flags=re.M)
+
+
+def page_sections(text):
+    """(titres « ## » dans l'ordre, {titre: lignes de la section}) ; le frontmatter est ignoré."""
+    m = re.match(r"---\n(.*?)\n---\n", text, re.S)
+    order, parts, current = [], {}, None
+    for line in (text[m.end():] if m else text).split("\n"):
+        if line.startswith("## "):
+            current = line[3:].strip()
+            order.append(current)
+            parts[current] = []
+        elif current is not None:
+            parts[current].append(line)
+    return order, parts
+
+
+def paragraphs(lines):
+    """Lignes -> paragraphes (séparés par des lignes vides), échappements Markdown (« \\x ») retirés."""
+    out, cur = [], []
+    for line in list(lines) + [""]:
+        if line.strip():
+            cur.append(line.strip())
+        elif cur:
+            out.append(re.sub(r"\\(.)", r"\1", " ".join(cur)))
+            cur = []
+    return out
+
+
+def page_magic(text):
+    """(liste du frontmatter `magies_innees`, liste de « Magies accessibles » dans le corps, ligne « Nombre : N sur M. ») ;
+    None pour ce qui est absent."""
+    front = front_list(text, MAGIC_FIELD)
+    section = page_sections(text)[1].get("Magies accessibles")
+    if section is None:
+        return front, None, None
+    paras = paragraphs(section)
+    listed = [n.strip() for n in paras[1].split(",")] if len(paras) > 1 else []
+    return front, listed, (paras[0] if paras else None)
+
+
+def override_problems(overrides, matrix):
+    """Écarts de RACE_DETAIL_OVERRIDES avec son contrat (liste vide si tout va bien). `matrix` = sortie de expected_magic.
+    Exige : (a) l'exception de chaque race de OVERRIDES_REQUIS existe, et chaque exception DIFFÈRE de la matrice (sinon
+    elle est redondante) ; (b) ses noms sont tous dans MAGIC_HEADERS, sans doublon, dans l'ordre des colonnes ; la race
+    existe dans la matrice, tous les champs sont là, les textes tiennent sur une ligne."""
     problems = []
-    expected = expected_magic(paths)
+    keys = {normalize(n) for n in overrides}
+    for required in OVERRIDES_REQUIS:
+        if normalize(required) not in keys:
+            problems.append("exception de %s absente de RACE_DETAIL_OVERRIDES (décision du propriétaire du projet)" % required)
+    for name, ov in overrides.items():
+        label = "exception %s" % name
+        key = normalize(name)
+        if key not in matrix:
+            problems.append("%s : race absente de %s" % (label, TAB_MAGIE))
+            continue
+        absent = [f for f in OVERRIDE_FIELDS if f not in ov]
+        if absent:
+            problems.append("%s : champ(s) manquant(s) : %s" % (label, ", ".join(absent)))
+            continue
+        names = ov["magies_innees"]
+        if not isinstance(names, list) or not names or not all(isinstance(n, str) for n in names):
+            problems.append("%s : magies_innees doit être une liste non vide de noms" % label)
+        else:
+            unknown = [n for n in names if n not in MAGIC_HEADERS]
+            if unknown:
+                problems.append("%s : nom(s) absent(s) des en-têtes de %s : %r" % (label, TAB_MAGIE, unknown))
+            elif names != [h for h in MAGIC_HEADERS if h in names]:
+                problems.append("%s : noms en double ou hors de l'ordre des colonnes de %s : %r, attendu %r" % (
+                    label, TAB_MAGIE, names, [h for h in MAGIC_HEADERS if h in names]))
+            if names == matrix[key][1]:
+                problems.append("%s redondante : identique à la matrice %s (%d magies)" % (label, TAB_MAGIE, len(names)))
+        pres = ov["presentation"]
+        if not isinstance(pres, list) or not pres:
+            problems.append("%s : presentation doit être une liste non vide de paragraphes" % label)
+            pres = []
+        for field, text in [("presentation[%d]" % i, p) for i, p in enumerate(pres)] + [
+                (f, ov[f]) for f in ("avantage", "inconvenient", "source")]:
+            if not isinstance(text, str) or not text or text != text.strip() or "\n" in text:
+                problems.append("%s : %s doit être un texte non vide, sur une ligne, sans espace en bordure" % (label, field))
+    return problems
+
+
+def page_problems(label, text, wanted, matrix_ones, override):
+    """Écarts d'une page (texte complet) avec `wanted` = magies innées attendues (celles de l'exception si la race en a une,
+    sinon celles de la matrice `matrix_ones`). (c) pour une race à exception : `magies_innees`, liste et nombre de « Magies
+    accessibles » = l'exception, entrée de source, sections « Présentation » (première, juste après le résumé) et
+    « Avantage(s) et inconvénient(s) » en citations exactes, paragraphe d'écart citant l'Inconvénient et le compte de la
+    matrice. (d) toute autre race : listes et nombre = matrice."""
+    problems = []
+    front, listed, count = page_magic(text)
+    if front is None:
+        problems.append("%s : champ %s absent ou illisible (une seule ligne JSON attendue)" % (label, MAGIC_FIELD))
+    elif front != wanted:
+        problems.append("%s : %s = %r, attendu %r" % (label, MAGIC_FIELD, front, wanted))
+    if listed != wanted:
+        problems.append("%s : « Magies accessibles » du corps = %r, attendu %r" % (label, listed, wanted))
+    expected_count = "Nombre : %d sur %d." % (len(wanted), len(MAGIC_HEADERS))
+    if count != expected_count:
+        problems.append("%s : « Magies accessibles » : ligne %r, attendu %r" % (label, count, expected_count))
+    if override is None:
+        return problems
+    sources = front_list(text, "sources")
+    if not isinstance(sources, list) or override["source"] not in sources:
+        problems.append("%s : entrée de source absente : %s" % (label, override["source"]))
+    order, parts = page_sections(text)
+    if order[:1] != ["Présentation"]:
+        problems.append("%s : la section « Présentation » doit être la première, juste après la phrase de résumé" % label)
+    elif paragraphs(parts["Présentation"]) != override["presentation"]:
+        problems.append("%s : « Présentation » différente des paragraphes de l'exception" % label)
+    title = "Avantage(s) et inconvénient(s)"
+    cited = ["**Avantage(s)** : " + override["avantage"], "**Inconvénient(s)** : " + override["inconvenient"]]
+    if title not in order:
+        problems.append("%s : section « %s » absente" % (label, title))
+    elif paragraphs(parts[title]) != cited:
+        problems.append("%s : « %s » différente des citations de l'exception" % (label, title))
+    gap = " ".join(paragraphs(parts.get("Magies accessibles", []))[2:])
+    if not gap:
+        problems.append("%s : « Magies accessibles » : paragraphe d'écart absent" % label)
+    else:
+        if override["inconvenient"] not in gap:
+            problems.append("%s : le paragraphe d'écart ne cite pas l'Inconvénient" % label)
+        if "%d sur %d" % (len(matrix_ones), len(MAGIC_HEADERS)) not in gap:
+            problems.append("%s : le paragraphe d'écart ne donne pas le compte de la matrice (%d sur %d)" % (
+                label, len(matrix_ones), len(MAGIC_HEADERS)))
+    return problems
+
+
+def check_pages(paths, wiki_root, overrides=None):
+    """Compare chaque page `races/<slug>.md` aux valeurs recalculées ; liste des écarts (vide si tout concorde).
+    `overrides` (par défaut RACE_DETAIL_OVERRIDES, déjà validé par override_problems) remplace la matrice pour ses races."""
+    problems = []
+    by_key = {normalize(n): o for n, o in (RACE_DETAIL_OVERRIDES if overrides is None else overrides).items()}
+    matrix = expected_magic(paths)
     out_dir = os.path.join(wiki_root, CATEGORY)
-    for key, (name, ones) in sorted(expected.items()):
+    for key, (name, ones) in sorted(matrix.items()):
         path = os.path.join(out_dir, key + ".md")
         if not os.path.exists(path):
             problems.append("%s : page absente" % path)
             continue
         with open(path, encoding="utf-8") as fh:
-            front, listed = page_magic(fh.read())
-        if front is None:
-            problems.append("%s : champ %s absent ou illisible (une seule ligne JSON attendue)" % (path, MAGIC_FIELD))
-        elif front != ones:
-            problems.append("%s : %s = %r, attendu %r" % (path, MAGIC_FIELD, front, ones))
-        if listed != ones:
-            problems.append("%s : « Magies accessibles » du corps = %r, attendu %r" % (path, listed, ones))
+            text = fh.read()
+        override = by_key.get(key)
+        problems += page_problems(path, text, override["magies_innees"] if override else ones, ones, override)
     if os.path.isdir(out_dir):
         for fname in sorted(os.listdir(out_dir)):
-            if fname.endswith(".md") and fname[:-3] not in expected:
+            if fname.endswith(".md") and fname[:-3] not in matrix:
                 with open(os.path.join(out_dir, fname), encoding="utf-8") as fh:
                     if source_url(FICHE_ID) in fh.read():
                         problems.append("%s : page issue de ce classeur sans race dans %s" % (fname, TAB_MAGIE))
     return problems
 
 
-def error_cases(paths):
-    """Rejoue read_matrix sur des copies modifiées de la matrice : chaque cas doit lever ValueError. Liste des échecs."""
+def override_replays(matrix):
+    """Rejoue override_problems sur des copies modifiées de RACE_DETAIL_OVERRIDES : chaque cas doit signaler un écart."""
+    base = copy.deepcopy(RACE_DETAIL_OVERRIDES)
+    name = next(n for n in base if normalize(n) == normalize(OVERRIDES_REQUIS[0]))
+    names, ones = base[name]["magies_innees"], matrix[normalize(name)][1]
+
+    def variant(**changes):
+        out = copy.deepcopy(base)
+        out[name].update(changes)
+        return out
+
+    without_field = copy.deepcopy(base)
+    del without_field[name]["inconvenient"]
+    cases = [
+        ("exception redondante (identique à la matrice)", variant(magies_innees=list(ones))),
+        ("exception absente", {k: v for k, v in base.items() if k != name}),
+        ("nom absent de MAGIC_HEADERS", variant(magies_innees=names[:-1] + ["Poison"])),
+        ("noms hors de l'ordre des colonnes", variant(magies_innees=list(reversed(names)))),
+        ("nom en double", variant(magies_innees=names + names[-1:])),
+        ("liste vide", variant(magies_innees=[])),
+        ("race absente de la matrice", dict(base, Gnome=base[name])),
+        ("champ manquant", without_field),
+        ("texte sur plusieurs lignes", variant(avantage=base[name]["avantage"] + "\nautre")),
+    ]
+    failures = []
+    for label, overrides in cases:
+        if not override_problems(overrides, matrix):
+            failures.append("exception : %s : aucun écart signalé" % label)
+    # contrôle de sens : une exception valide et différente de la matrice est acceptée
+    if override_problems(variant(magies_innees=list(ones[:-1])), matrix):
+        failures.append("exception : une liste valide, différente de la matrice, est refusée à tort")
+    return failures
+
+
+def page_replays(paths, wiki_root):
+    """Rejoue page_problems sur des copies modifiées des pages : chaque cas doit signaler un écart (et changer le texte)."""
+    matrix = expected_magic(paths)
+    by_key = {normalize(n): o for n, o in RACE_DETAIL_OVERRIDES.items()}
+
+    def read(key):
+        with open(os.path.join(wiki_root, CATEGORY, key + ".md"), encoding="utf-8") as fh:
+            return fh.read()
+
+    failures = []
+
+    def run(label, original, mutated, key, wanted, override):
+        if mutated == original:
+            failures.append("page %s : %s : le cas ne modifie pas la page" % (key, label))
+        elif not page_problems(key, mutated, wanted, matrix[key][1], override):
+            failures.append("page %s : %s : aucun écart signalé" % (key, label))
+
+    for key, ov in sorted(by_key.items()):
+        text, wanted, ones = read(key), ov["magies_innees"], matrix[key][1]
+        total = len(MAGIC_HEADERS)
+        accessibles = text.partition("\n## Magies accessibles\n")
+        cases = [
+            ("frontmatter = matrice", set_front_list(text, MAGIC_FIELD, ones)),
+            ("liste du corps = matrice", text.replace("\n" + ", ".join(wanted) + "\n", "\n" + ", ".join(ones) + "\n")),
+            ("nombre du corps = matrice", text.replace("Nombre : %d sur %d." % (len(wanted), total),
+                                                       "Nombre : %d sur %d." % (len(ones), total))),
+            ("entrée de source absente", set_front_list(text, "sources", [
+                s for s in front_list(text, "sources") or [] if s != ov["source"]])),
+            ("section « Présentation » supprimée", re.sub(r"^## Présentation\n.*?(?=^## )", "", text, count=1,
+                                                         flags=re.S | re.M)),
+            ("présentation altérée", text.replace(ov["presentation"][-1], ov["presentation"][-1][:-1], 1)),
+            ("avantage altéré", text.replace(ov["avantage"], ov["avantage"][:-1], 1)),
+            ("inconvénient altéré", text.replace(ov["inconvenient"], ov["inconvenient"][:-1], 1)),
+            ("écart sans citation de l'Inconvénient", "".join(accessibles[:2]) + accessibles[2].replace(ov["inconvenient"], "")),
+        ]
+        for label, mutated in cases:
+            run(label, text, mutated, key, wanted, ov)
+        # (d) une autre race ne doit pas porter la liste de l'exception
+        other = next(k for k, (_, o) in sorted(matrix.items()) if k not in by_key and o != wanted)
+        other_text = read(other)
+        run("race sans exception portant la liste de l'exception", other_text,
+            set_front_list(other_text, MAGIC_FIELD, wanted), other, matrix[other][1], None)
+    return failures
+
+
+def error_cases(paths, wiki_root, overrides_ok, pages_ok):
+    """Rejoue read_matrix sur des copies modifiées de la matrice : chaque cas doit lever ValueError. Liste des échecs.
+    Rejoue aussi les exceptions (override_replays, si RACE_DETAIL_OVERRIDES est valide) et les pages (page_replays, si
+    elles sont conformes : sinon l'écart est déjà signalé)."""
     magic, index = _raw_dumps(paths)
     races = [(norm_ws(c["v"]), None) for c in sorted(index["cells"], key=lambda c: c["r"]) if c["c"] == 1]
     base = [dict(c) for c in magic["cells"]]
@@ -633,14 +921,23 @@ def error_cases(paths):
     _, ok = read_matrix(sheet(cells), races)
     if ok[normalize("Orios")] != ["Sang", "Arcane", "Eau", "Terre"]:
         failures.append("ordre des colonnes : %r" % (ok[normalize("Orios")],))
+    if overrides_ok:
+        failures += override_replays(expected_magic(paths))
+    if pages_ok:
+        failures += page_replays(paths, wiki_root)
     return failures
 
 
 def run_verifier(paths, wiki_root):
-    problems = check_pages(paths, wiki_root) + error_cases(paths)
+    matrix = expected_magic(paths)
+    problems = override_problems(RACE_DETAIL_OVERRIDES, matrix)
+    overrides_ok = not problems
+    pages = check_pages(paths, wiki_root) if overrides_ok else []
+    problems += pages + error_cases(paths, wiki_root, overrides_ok, overrides_ok and not pages)
     if problems:
         raise SystemExit("--verifier : %d écart(s)\n  " % len(problems) + "\n  ".join(problems[:30]))
-    print("--verifier : %d pages conformes au dump (%s), cas d'erreur rejoués" % (len(expected_magic(paths)), MAGIC_FIELD))
+    print("--verifier : %d pages conformes au dump (%s), dont %d exception(s) de détail (%s), cas d'erreur rejoués" % (
+        len(matrix), MAGIC_FIELD, len(RACE_DETAIL_OVERRIDES), ", ".join(RACE_DETAIL_OVERRIDES)))
 
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -666,7 +963,8 @@ def main(argv=None):
     ap.add_argument("--dump", action="append", required=True, help="dump JSON (index des races, fiche personnage)")
     ap.add_argument("--out", required=True, help="dossier racine du wiki (client/src/content/wiki)")
     ap.add_argument("--verifier", action="store_true",
-                    help="n'écrit rien : recalcule %s depuis les dumps et compare aux pages existantes" % MAGIC_FIELD)
+                    help="n'écrit rien : recalcule %s depuis les dumps (matrice + exceptions de RACE_DETAIL_OVERRIDES) "
+                         "et compare aux pages existantes" % MAGIC_FIELD)
     args = ap.parse_args(argv)
     if args.verifier:
         run_verifier(args.dump, args.out)
@@ -684,12 +982,19 @@ def main(argv=None):
         if expected[normalize(name)][1] != magic_ok[normalize(name)]:
             raise SystemExit("Arrêt, rien n'a été écrit : %s de %s : %r d'un côté, %r de l'autre" % (
                 MAGIC_FIELD, name, magic_ok[normalize(name)], expected[normalize(name)][1]))
+    # Exceptions de détail : validées contre la matrice recalculée avant toute écriture, puis appliquées à leur race seule.
+    problems = override_problems(RACE_DETAIL_OVERRIDES, expected)
+    if problems:
+        raise SystemExit("Arrêt, rien n'a été écrit : RACE_DETAIL_OVERRIDES :\n  " + "\n  ".join(problems))
+    overrides = {normalize(n): o for n, o in RACE_DETAIL_OVERRIDES.items()}
+    final_ok = {k: (overrides[k]["magies_innees"] if k in overrides else v) for k, v in magic_ok.items()}
 
     pages = []
     for name, summary in races:
         key = normalize(name)
         text = render_page(name, summary, race_headers, race_data[key], bonus_headers, bonus_rows[key],
-                           bonus_spelled[key], class_names, class_ok[key], magic_names, magic_ok[key])
+                           bonus_spelled[key], class_names, class_ok[key], magic_names, final_ok[key],
+                           override=overrides.get(key), matrix_ok=magic_ok[key])
         if "[[" in text:
             print("AVERTISSEMENT : « [[ » dans une cellule de %s (échappé, pas un lien)" % name, file=sys.stderr)
         pages.append((name, normalize(name), text))
@@ -736,9 +1041,13 @@ def main(argv=None):
             fh.write(text)
         written += 1
     print("%d pages (%d écrites, %d inchangées) dans %s" % (len(pages), written, unchanged, out_dir))
+    for name, key, _ in pages:
+        if key in overrides:
+            print("%s : matrice = %d magies, onglet %s de %s = %d : exception appliquée" % (
+                name, len(magic_ok[key]), name, INDEX_TITLE, len(final_ok[key])))
     spread = {}
     for _, key, _ in pages:
-        spread.setdefault(len(magic_ok[key]), []).append(key)
+        spread.setdefault(len(final_ok[key]), []).append(key)
     print("%s : %s sur %d magies" % (MAGIC_FIELD, ", ".join(
         "%d race(s) à %d" % (len(keys), n) for n, keys in sorted(spread.items(), reverse=True)), len(magic_names)))
     problems = check_pages(args.dump, args.out)
