@@ -12,6 +12,12 @@ n'est encore réalisé au-delà de la première étape.
    propriétaire du contenu ; avant cela, aucune édition n'est faite dans le site (les corrections passent par `tools/sheets/corrections.json`).
 3. **Simulation de combats** (à long terme) : jouer des combats pour juger l'équilibrage des sorts, des classes et des races.
 
+## Orthographe : relecture complète à la conversion en SQL
+
+La relecture générale des coquilles et fautes des classeurs (décision R10 de `docs/decisions-regles.md`) est **reportée au moment où tout est converti en base SQL**
+(décision du propriétaire). D'ici là, seul le registre `tools/sheets/corrections.json` s'applique (une correction : « Chasseur de primes ») ; on n'ajoute pas de
+correction en masse. À la conversion, la relecture se fera sur les données importées, avec l'historique des modifications de la base.
+
 ## Ce que cela impose dès maintenant
 
 - **Le NAS est temporaire.** Rien de spécifique au NAS en dehors de `deploy/` : le site et l'API doivent tourner dans un conteneur, configurés par variables
