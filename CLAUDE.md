@@ -27,14 +27,14 @@ stables, SQL portable, modifications historisées, règles en données, moteur p
 - Depuis une session cloud, Discord et `docs.google.com` sont **bloqués** par la politique réseau
   (l'utilisateur peut les autoriser dans les paramètres de l'environnement) et aucun connecteur Discord n'existe.
 - Ne jamais utiliser un jeton Discord personnel. Voir `docs/sources.md` pour les alternatives (export local, bot).
-- Le contenu brut importé va dans `sources/raw/` (Docs/Sheets) et `sources/discord/` ; le wiki ne lit que `client/src/content/wiki/`.
+- Le contenu brut importé va dans `sources/raw/` (Docs/Sheets) et `sources/discord/` ; le wiki lit des pages fabriquées dans `client/src/content/wiki/` (voir plus bas : elles viennent de la base).
 
 ## Structure
 
 | Chemin | Rôle |
 | --- | --- |
 | `client/` | Site Astro 7 statique (wiki + générateur). Le code actif du projet. |
-| `client/src/content/wiki/<type>/*.md` | Pages du wiki (types dans `src/lib/types.mjs`) |
+| `client/src/content/wiki/<type>/*.md` | Pages du wiki (types dans `src/lib/types.mjs`) : **fabriquées depuis `data/rows` par `npm run db:export-pages`** (lancé avant `dev`, `build` et `test`), **ignorées par git**. La source est la base ; pour changer une page : modifier le `.md` fabriqué puis `npm run db:sync-pages` et commiter `data/rows` |
 | `client/src/lib/wikilinks.mjs` | Index des pages, résolution des `[[liens]]`, plugin remark |
 | `client/src/lib/wiki.ts` | Chargement des pages + graphe (liens sortants, rétroliens, tags) |
 | `client/src/lib/character.mjs` | Moteur de fiche (fonctions pures, piloté par `src/data/rules.json`) |
@@ -44,7 +44,7 @@ stables, SQL portable, modifications historisées, règles en données, moteur p
 | `deploy/` | Paquet d'hébergement NAS (nginx + Docker, mot de passe), `build.sh` qui le génère, `update-nas.sh` (mise à jour auto depuis la branche `site`) |
 | `.github/workflows/publish-site.yml` | Après chaque fusion dans `main` : tests, build `HIDE_EXAMPLES=1`, publication sur la branche `site` (refuse si le dépôt n'est pas privé) |
 | `tools/build-artifact.mjs` | Version « portable » (liens relatifs, CSS/JS inline) publiée comme page privée claude.ai |
-| `data/schema.sql`, `data/rows/` | **Base SQLite** : structure (135 tables STRICT, FTS5, 28 vues) et lignes versionnées (991 pages + 7 domaines). Depuis `client/` : `npm run db:build` (→ `var/maverick.db`, ignoré par git), `db:check`, `db:pages-check` / `db:sync-pages` (pages des `.md` → `data/rows`), `db:init` (base vide), `db:doc` (régénère `docs/sql/structure.md`). Le site la lit au build pour l'explorateur `/donnees/` (`src/lib/donnees.mjs`, `src/pages/donnees/` ; le wiki, lui, vient des `.md`) ; les lignes typées ne se réimportent pas encore depuis les classeurs. Voir `docs/sql/remplissage.md`. |
+| `data/schema.sql`, `data/rows/` | **Base SQLite** : structure (135 tables STRICT, FTS5, 28 vues) et lignes versionnées (991 pages + 7 domaines). Depuis `client/` : `npm run db:build` (→ `var/maverick.db`, ignoré par git), `db:check`, `db:pages-check` / `db:sync-pages` (pages des `.md` → `data/rows`), `db:init` (base vide), `db:doc` (régénère `docs/sql/structure.md`). Le site en tire ses pages (fichiers `.md` fabriqués au build) et l'onglet **DB** (`/donnees/` : toutes les tables, et la base en téléchargement `/donnees/maverick.db`) ; les lignes typées ne se réimportent pas encore depuis les classeurs. Voir `docs/sql/remplissage.md`. |
 | `api/` | Services CRUD de personnages (Node sans dépendance + .NET). Non utilisés par le site pour l'instant. |
 | `docs/` | `sources.md`, `content-guide.md`, `character-generator.md` |
 

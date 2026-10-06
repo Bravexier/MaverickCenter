@@ -47,6 +47,13 @@ export function ouvrirBase({ sansExemples = process.env.HIDE_EXAMPLES === '1' } 
   return db;
 }
 
+/** Chemin du fichier SQLite construit (celui que lit l'explorateur) : publié tel quel sur /donnees/maverick.db pour le déboguer avec un outil externe. */
+export function cheminBase(options) {
+  ouvrirBase(options);
+  const cle = (options?.sansExemples ?? process.env.HIDE_EXAMPLES === '1') ? 'sans-exemples' : 'complete';
+  return join(caches.bases.get(cle).dossier, 'maverick.db');
+}
+
 /** Ancre HTML d'une ligne : déterministe, sans collision (tout caractère hors [A-Za-z0-9-] est échappé par son code entre « _ », « _ » compris), identique côté lien et côté ligne. */
 export function ancre(valeursCle) {
   return 'r-' + valeursCle.map((v) => String(v).replace(/[^A-Za-z0-9-]/g, (c) => `_${c.codePointAt(0).toString(16)}_`)).join('.');

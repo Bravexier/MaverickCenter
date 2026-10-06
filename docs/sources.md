@@ -79,7 +79,8 @@ Le chemin utilisé est en deux temps, rejouable :
    donnée non fiable : rien n'y est jamais exécuté.
 2. **JSON → pages Markdown** : un extracteur déterministe par famille de pages, `tools/sheets/<famille>.py`
    (bibliothèque standard uniquement), qui écrit `client/src/content/wiki/<catégorie>/<slug>.md` avec
-   `status: draft` et une entrée `sources:` qui désigne l'onglet d'origine.
+   `status: draft` et une entrée `sources:` qui désigne l'onglet d'origine. Ces `.md` sont un dossier de travail (fabriqué depuis la base
+   par `npm run db:export-pages`, ignoré par git) : après l'extracteur, `npm run db:sync-pages` recopie les pages modifiées dans `data/rows`, qui est ce qu'on commite.
 
 Obtenir les données d'un classeur, par ordre de préférence :
 

@@ -175,6 +175,7 @@ main a { overflow-wrap: anywhere; } /* les URLs de la section « Sources » ne d
 .donnees-nul::before, td.nul::before { content: '∅'; color: var(--muted); }
 .donnees-filtre { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: baseline; }
 .donnees-filtre input { padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font: inherit; min-width: 16rem; }
+.donnees-telechargement { padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
 .donnees-aide { color: var(--muted); font-size: 0.85rem; }
 .donnees-section[hidden], .donnees-tables li[hidden] { display: none; }
 .donnees-tables { list-style: none; padding: 0; margin: 0 0 1.5rem; }

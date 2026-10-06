@@ -29,6 +29,13 @@ const files = join(out, 'files');
 rmSync(out, { recursive: true, force: true });
 mkdirSync(files, { recursive: true });
 
+// 0. Les pages du wiki sont fabriquées depuis la base (data/rows) : fichiers .md ignorés par git (client/scripts/db-export-pages.mjs)
+const pagesMd = spawnSync(process.execPath, ['--no-warnings', join(root, 'client/scripts/db-export-pages.mjs')], { cwd: join(root, 'client'), encoding: 'utf8' });
+if (pagesMd.status !== 0) {
+  console.error(pagesMd.stderr || pagesMd.stdout);
+  process.exit(1);
+}
+
 // 1. Build Astro avec une base « marqueur » (remplacée ensuite par un préfixe relatif propre à chaque page)
 const build = spawnSync(process.execPath, [join(root, 'client/node_modules/astro/bin/astro.mjs'), 'build'], {
   cwd: join(root, 'client'),
@@ -86,6 +93,7 @@ function toFragment(html) {
 for (const file of walk(raw)) {
   const rel = relative(raw, file).split('\\').join('/');
   if (rel.startsWith('_astro/')) continue; // inliné
+  if (rel.endsWith('.db')) continue; // la base SQLite (téléchargement de /donnees/) n'a pas sa place dans la version portable
   if (!rel.endsWith('.html')) {
     mkdirSync(dirname(join(files, rel)), { recursive: true });
     writeFileSync(join(files, rel), readFileSync(file));
