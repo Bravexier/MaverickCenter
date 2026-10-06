@@ -542,6 +542,214 @@ test('--verifier : une note vide, hors table ou dans un onglet non publié est r
   }
 });
 
+// --- retours à la ligne : le contrôle de couverture est STRICT (une ligne fusionnée avec la suivante n'est plus « aux espaces près ») ------
+
+/** Une note de cinq lignes de forme variée : paragraphe à deux lignes, ligne vide, puces suivies d'une ligne de suite. */
+const NOTE_LIGNES = 'Premier paragraphe,\nsuite du premier.\n\n- une puce\n- une autre  \nsa suite\n\nDernier paragraphe.';
+
+function pageAvecNoteLignes() {
+  const dump = classeur();
+  cellule(dump, 'Sang', BJ4).note = NOTE_LIGNES;
+  const r = lancer({ dump });
+  assert.equal(r.status, 0, r.stderr);
+  const f = join(r.out, 'magies', 'magie-du-sang.md');
+  return { dump, r, f, original: readFileSync(f, 'utf8') };
+}
+
+test('synthétique : chaque ligne de la note est une ligne de la page (saut forcé, puces, lignes vides), sans ligne vide ajoutée', () => {
+  const { original } = pageAvecNoteLignes();
+  assert.ok(original.includes([
+    '**Note de la cellule « Effets secondaires » du sort « Éclair »**',
+    '',
+    'Premier paragraphe,  ',
+    'suite du premier.',
+    '',
+    '- une puce',
+    '- une autre  ',
+    'sa suite',
+    '',
+    'Dernier paragraphe.',
+    '',
+  ].join('\n')), original);
+});
+
+test('synthétique : blancs de la note conservés — espace insécable de fin de ligne, lignes vides multiples, liste collée au texte, blancs de bord retirés', () => {
+  const dump = classeur();
+  cellule(dump, 'Sang', BJ4).note = '  Exemple : \n\nUn caillou \nUne dague\n\n\nFin \nListe :\n- a\n- b\t\n';
+  cellule(dump, 'Sang', BJ7).threads = [{ text: 'Voir http://exemple.org/x_(y) ici\n--- \n===', done: true }];
+  const r = lancer({ dump });
+  assert.equal(r.status, 0, r.stderr);
+  const sang = r.page('magie-du-sang');
+  assert.ok(sang.includes([
+    '**Note de la cellule « Effets secondaires » du sort « Éclair »**',
+    '',
+    'Exemple :',
+    '',
+    'Un caillou   ',
+    'Une dague',
+    '',
+    '',
+    'Fin   ',
+    'Liste :',
+    '- a',
+    '- b',
+    '',
+    '**Commentaire résolu de la cellule « Effets secondaires » du sort « Bouclier »**',
+    '',
+    'Voir <http://exemple.org/x_(y)> ici  ',
+    '\\---  ',
+    '\\===',
+    '',
+  ].join('\n')), sang);
+  assert.equal(verifie(r, dump).status, 0);
+  const lignes = entrees(sang).map((e) => e.lignes);
+  assert.deepEqual(lignes[0], ['Exemple :', '', 'Un caillou ', 'Une dague', '', '', 'Fin ', 'Liste :', '- a', '- b']);
+});
+
+test('synthétique : le rendu du site redonne les lignes, puces et paragraphes de la note (saut forcé, puce collée au texte, filets échappés)', async () => {
+  const dump = classeur();
+  cellule(dump, 'Sang', BJ4).note = NOTE_LIGNES;
+  cellule(dump, 'Sang', BJ7).note = 'Liste :\n- a\n- b\n---\n===\n# pas un titre\n> pas une citation\n1. pas une liste\n* pas une puce';
+  const r = lancer({ dump });
+  assert.equal(r.status, 0, r.stderr);
+  const rendues = await entreesRendues(section(r.page('magie-du-sang')));
+  assert.deepEqual(rendues.map((e) => e.blocs), [
+    blocsDeLignes(NOTE_LIGNES.split('\n').map(bord)),
+    blocsDeLignes('Liste :\n- a\n- b\n---\n===\n# pas un titre\n> pas une citation\n1. pas une liste\n* pas une puce'.split('\n')),
+  ]);
+});
+
+test('--verifier : deux lignes fusionnées en une, un paragraphe de puces, une ligne vide retirée ou ajoutée sont des écarts (code 1)', () => {
+  const { dump, r, f, original } = pageAvecNoteLignes();
+  const mutations = [
+    ['lignes fusionnées', 'Premier paragraphe,  \nsuite du premier.', 'Premier paragraphe, suite du premier.', /altérée/],
+    ['puces fusionnées en un paragraphe', '- une puce\n- une autre  \nsa suite', '- une puce - une autre sa suite', /altérée/],
+    ['ligne vide retirée entre les paragraphes', 'suite du premier.\n\n- une puce', 'suite du premier.\n- une puce', /altérée/],
+    ['ligne vide ajoutée dans la liste', '- une puce\n- une autre', '- une puce\n\n- une autre', /altérée/],
+    ['ligne vide en double', 'sa suite\n\nDernier', 'sa suite\n\n\nDernier', /altérée/],
+    ['ligne en trop', 'Dernier paragraphe.', 'Dernier paragraphe.\nUne ligne de plus.', /altérée/],
+    ['ligne retirée', 'Premier paragraphe,  \nsuite du premier.', 'suite du premier.', /altérée/],
+  ];
+  for (const [nom, avant, apres, motif] of mutations) {
+    assert.ok(original.includes(avant), nom);
+    writeFileSync(f, original.replace(avant, apres));
+    const v = verifie(r, dump);
+    assert.equal(v.status, 1, `${nom} : non vu par --verifier`);
+    assert.match(v.stderr, motif, nom);
+  }
+  writeFileSync(f, original);
+  assert.equal(verifie(r, dump).status, 0, 'la page d\'origine est de nouveau conforme');
+});
+
+test('--verifier : un saut de ligne forcé retiré, une puce échappée, une ligne qui deviendrait un titre ou un filet sont des écarts (Markdown fusionnerait ou transformerait)', () => {
+  const { dump, r, f, original } = pageAvecNoteLignes();
+  const mutations = [
+    ['saut de ligne forcé retiré (deux lignes de paragraphe)', 'Premier paragraphe,  \nsuite', 'Premier paragraphe,\nsuite', /saut de ligne forcé/],
+    ['saut de ligne forcé retiré (suite de puce)', '- une autre  \nsa suite', '- une autre\nsa suite', /saut de ligne forcé/],
+    ['puce échappée : ce ne serait plus une liste', '- une puce\n- une autre', '\\- une puce\n- une autre', /puce/],
+    ['puce ajoutée devant un paragraphe', 'Dernier paragraphe.', '- Dernier paragraphe.', /puce|altérée/],
+    ['ligne devenue un titre', 'Dernier paragraphe.', '# Dernier paragraphe.', /Markdown|altérée/],
+  ];
+  for (const [nom, avant, apres, motif] of mutations) {
+    assert.ok(original.includes(avant), nom);
+    writeFileSync(f, original.replace(avant, apres));
+    const v = verifie(r, dump);
+    assert.equal(v.status, 1, `${nom} : non vu par --verifier`);
+    assert.match(v.stderr, motif, nom);
+  }
+  writeFileSync(f, original);
+  assert.equal(verifie(r, dump).status, 0, 'la page d\'origine est de nouveau conforme');
+});
+
+test('--verifier : un titre ou un filet laissé sans échappement dans le texte d\'une note est refusé même si le texte relu est identique', () => {
+  const dump = classeur();
+  cellule(dump, 'Sang', BJ4).note = '# pas un titre\n--- \n1. pas une liste';
+  const r = lancer({ dump });
+  assert.equal(r.status, 0, r.stderr);
+  const f = join(r.out, 'magies', 'magie-du-sang.md');
+  const original = readFileSync(f, 'utf8');
+  for (const [nom, avant, apres] of [['titre', '\\# pas un titre', '# pas un titre'], ['filet', '\\---', '---'], ['liste', '1\\. pas une liste', '1. pas une liste']]) {
+    assert.ok(original.includes(avant), nom);
+    writeFileSync(f, original.replace(avant, apres));
+    const v = verifie(r, dump);
+    assert.equal(v.status, 1, `${nom} : non vu par --verifier`);
+    assert.match(v.stderr, /Markdown/, nom);
+  }
+});
+
+test('synthétique : un fil qui ne diffère de la note que par ses retours à la ligne n\'est pas un doublon (cité), un fil aux espaces répétés près l\'est', () => {
+  const dump = classeur();
+  const c = cellule(dump, 'Sang', BJ4);
+  c.note = 'Une règle,\nsur deux lignes.';
+  c.threads = [{ text: 'Une règle, sur deux lignes.', done: true }, { text: 'Une   règle,\nsur  deux lignes.', done: true }, { text: '  Une règle,  \n sur deux lignes.\n\n' }];
+  const r = lancer({ dump });
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual(entrees(r.page('magie-du-sang')).map((e) => [e.genre, e.lignes]), [
+    ['Note', ['Une règle,', 'sur deux lignes.']],
+    ['Commentaire résolu', ['Une règle, sur deux lignes.']],
+  ]);
+  assert.match(r.stdout, /2 fil\(s\) identique\(s\)/);
+  assert.equal(verifie(r, dump).status, 0);
+});
+
+// --- copie de contrôle exportée par l'extracteur ---------------------------------------------------------------------------------------
+
+test('--exporter-commentaires : la copie de contrôle est tirée du dump (lignes, colonne, sort, cellule), sans écrire de page', () => {
+  const dump = classeur();
+  cellule(dump, 'Sang', BJ4).note = NOTE_LIGNES;
+  cellule(dump, 'Sang', BJ4).threads = [{ text: 'Un fil.', done: true }, { text: NOTE_LIGNES }];
+  cellule(dump, 'Feu', BJ7).threads = [{ text: 'Autre fil \n\n\nsuite' }];
+  const dir = mkdtempSync(join(tmpdir(), 'magies-export-'));
+  writeFileSync(join(dir, 'magie-v8.json'), JSON.stringify(dump));
+  const sortie = join(dir, 'reference.json');
+  const r = spawnSync('python3', ['-I', script, '--dump', join(dir, 'magie-v8.json'), '--sans-formats', '--exporter-commentaires', sortie], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.ok(existsSync(sortie));
+  assert.ok(!existsSync(join(dir, 'magies')), 'aucune page écrite');
+  const { entrees: copie } = JSON.parse(readFileSync(sortie, 'utf8'));
+  assert.deepEqual(copie, [
+    { page: 'magie-du-sang', onglet: 'Sang', genre: 'Note', cellule: 'BJ4', colonne: 'Effets secondaires', sort: 'Éclair', lignes: NOTE_LIGNES.split('\n').map(bord) },
+    { page: 'magie-du-sang', onglet: 'Sang', genre: 'Commentaire résolu', cellule: 'BJ4', colonne: 'Effets secondaires', sort: 'Éclair', lignes: ['Un fil.'] },
+    { page: 'magie-du-feu', onglet: 'Feu', genre: 'Commentaire', cellule: 'BJ7', colonne: 'Effets secondaires', sort: 'Bouclier', lignes: ['Autre fil ', '', '', 'suite'] },
+  ]);
+  // la même copie, relue deux fois, est identique (idempotence)
+  const r2 = spawnSync('python3', ['-I', script, '--dump', join(dir, 'magie-v8.json'), '--sans-formats', '--exporter-commentaires', sortie], { encoding: 'utf8' });
+  assert.equal(r2.status, 0, r2.stderr);
+  assert.deepEqual(JSON.parse(readFileSync(sortie, 'utf8')).entrees, copie);
+});
+
+test('--exporter-commentaires : une note sans place (cellule vide) est refusée, rien n\'est écrit', () => {
+  const dump = classeur();
+  ajoute(dump, 'Sang', { r: 5, c: 62, v: '', note: 'Sans texte à côté' });
+  const dir = mkdtempSync(join(tmpdir(), 'magies-export-'));
+  writeFileSync(join(dir, 'magie-v8.json'), JSON.stringify(dump));
+  const sortie = join(dir, 'reference.json');
+  const r = spawnSync('python3', ['-I', script, '--dump', join(dir, 'magie-v8.json'), '--sans-formats', '--exporter-commentaires', sortie], { encoding: 'utf8' });
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /BJ5/);
+  assert.ok(!existsSync(sortie));
+});
+
+// --- facultatif : le vrai dump (hors dépôt) ---------------------------------------------------------------------------------------------
+//   MAGIES_DUMP=<magie-v8.json avec notes> [MAGIES_FICHE=<fiche-auto-v15.json>] [MAGIES_XLSX=<classeur.xlsx>] node --test test/magies-notes.test.mjs
+const dumpReel = process.env.MAGIES_DUMP;
+const sansDump = !dumpReel && 'MAGIES_DUMP non défini (dump hors dépôt)';
+
+test('magies.py --verifier : les pages du dépôt sont celles que le vrai dump produit, les 85 notes et 31 fils retrouvés ligne par ligne (MAGIES_DUMP)', { skip: sansDump }, () => {
+  const fiche = process.env.MAGIES_FICHE ? ['--fiche', process.env.MAGIES_FICHE] : [];
+  const r = spawnSync('python3', ['-I', script, '--dump', dumpReel, ...fiche, '--out', racineWiki, '--verifier'], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /vérification : OK \(15 pages\)/);
+});
+
+test('magies.py --exporter-commentaires sur le vrai dump : la copie de contrôle du dépôt est à jour (MAGIES_DUMP)', { skip: sansDump }, () => {
+  const dir = mkdtempSync(join(tmpdir(), 'magies-reel-'));
+  const sortie = join(dir, 'reference.json');
+  const r = spawnSync('python3', ['-I', script, '--dump', dumpReel, ...(process.env.MAGIES_XLSX ? ['--xlsx', process.env.MAGIES_XLSX] : []), '--exporter-commentaires', sortie], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.equal(readFileSync(sortie, 'utf8'), readFileSync(fichierReference, 'utf8'), `copie de contrôle périmée : ${REGENERER}`);
+});
+
 test('les pages écrites sont identiques à la seconde exécution (idempotence)', () => {
   const dump = avecNotes();
   cellule(dump, 'Sang', BJ4).threads = [{ text: 'Un fil.', done: true }];

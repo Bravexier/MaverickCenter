@@ -768,3 +768,168 @@ for (const [nomDuCas, [slug, variante]] of Object.entries(AUTRES_LIGNES)) {
     assert.equal(readFileSync(join(ctx.pages, `${slug}.md`), 'utf8'), modifiee, '--verifier ne doit rien écrire');
   });
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Pages réelles SANS dump : la forme des 66 pages et leur cohérence entre elles
+// ---------------------------------------------------------------------------------------------------------------------------------
+// `npm test` et la CI n'ont pas le dump (il se régénère depuis le classeur, il n'est pas dans le dépôt) : la VALEUR d'une ligne de page
+// (une Vitesse, un chiffre du tableau, un mot de la description) ne se compare qu'à lui, par --verifier (tests INVOCATION_DUMP plus
+// haut) ; sans dump, rien ne peut la contrôler. Une empreinte des pages dans le dépôt n'est pas la réponse : elle interdirait les
+// retouches voulues (statut `verified`, docs/sources.md) et `npm run autolink`. Ce qui se contrôle sans dump, pour toute page encore au
+// statut `draft` (donc telle que le script l'a écrite) : sa FORME (ordre et présence des lignes étiquetées, des sections, du tableau,
+// en-tête) et la COHÉRENCE entre pages (chaque créature listée par l'introduction de son onglet, une seule fois, avec la bonne marge et
+// la bonne « autre créature du bloc », réciproque). Une ligne supprimée, dupliquée, déplacée, renommée ou une page qui manque est donc
+// vue par `npm test` et la CI ; seule une valeur changée en gardant la forme exige le dump.
+
+const ETIQUETTES = {
+  Invocation: 'I', 'Magie(s)': 'M', 'Libellé du bloc': 'B', 'Autre créature du bloc': 'A',
+  Dégâts: 'G', Défense: 'F', Vitesse: 'V', FPVSIA: 'P', "En-tête de l'onglet": 'H',
+};
+const SECTIONS = { Description: 'd', Statistiques: 'S', 'Capacité(s)': 'C', 'Texte général': 'g', Créatures: 'c' };
+// Forme d'une page, une lettre par bloc (les paragraphes de texte qui se suivent comptent pour un : 't'), notes de cellule exclues
+// (leur place est vérifiée par les tests de notes). I : « Invocation », M / B : marge, A : autre créature, d : Description,
+// S : Statistiques, T : tableau, G F V P : Dégâts, Défense, Vitesse, FPVSIA, C : Capacité(s), E : section d'effet,
+// H : en-tête d'onglet, g : Texte général, c : Créatures.
+const FORMES = {
+  duo: /^IMAdtSTGt?Ft?Vt?Pt?Ct$/,
+  solo: /^IBdtSTGt?Ft?Vt?Pt?CtEt$/,
+  introduction: /^Hgtct(ET)?$/,
+};
+const CLES_ENTETE = ['title', 'aliases', 'tags', 'summary', 'sources', 'status'];
+
+const sansLiens = (s) => s.replace(/\[\[[^\]|]*\|([^\]]*)\]\]/g, '$1').replace(/\[\[([^\]]*)\]\]/g, '$1');
+const sansEchappement = (s) => s.replace(/\\(.)/g, '$1');
+
+function decouper(texte) {
+  const i = texte.indexOf('\n---\n', 4);
+  return { entete: texte.slice(4, i), corps: texte.slice(i + 5).replace(/^\n+/, '') };
+}
+const statutDe = (texte) => decouper(texte).entete.match(/^status: (.*)$/m)?.[1];
+const titreDe = (texte) => JSON.parse(decouper(texte).entete.match(/^title: (.*)$/m)[1]);
+
+function formeDe(corps) {
+  let forme = '';
+  for (const p of sansLiens(corps).trim().split(/\n\n+/)) {
+    const tete = p.split('\n')[0];
+    let lettre = 't';
+    if (p.startsWith('| ')) lettre = 'T';
+    else if (tete.startsWith('## ')) lettre = SECTIONS[tete.slice(3)] ?? 'E';
+    else {
+      const m = tete.match(/^\*\*([^*]+)\*\*/);
+      if (m && m[1].startsWith('Note de la cellule')) continue;
+      if (m) lettre = ETIQUETTES[m[1]] ?? 'x';
+    }
+    if (lettre === 't' && forme.endsWith('t')) continue;
+    forme += lettre;
+  }
+  return forme;
+}
+
+const ligneEtiquetee = (corps, etiquette) => sansLiens(corps).match(new RegExp(`^\\*\\*${etiquette.replace(/[()]/g, '\\$&')}\\*\\* : (.*)$`, 'm'))?.[1];
+
+/** Écarts de forme et de cohérence d'un ensemble de pages {slug, texte} de la famille : liste de textes (vide si tout va bien). */
+function problemesStructure(pages) {
+  const problemes = [];
+  const fiches = pages.map((p) => {
+    const { entete, corps } = decouper(p.texte);
+    const nette = sansLiens(corps);
+    return { slug: p.slug, entete, corps, titre: titreDe(p.texte), brouillon: statutDe(p.texte) === 'draft', introduction: nette.startsWith("**En-tête de l'onglet**") };
+  });
+  const parTitre = new Map();
+  for (const f of fiches) parTitre.set(f.titre, [...(parTitre.get(f.titre) ?? []), f]);
+  for (const [titre, memes] of parTitre) if (memes.length > 1) problemes.push(`titre « ${titre} » porté par ${memes.length} pages (${memes.map((f) => f.slug).join(', ')})`);
+
+  // 1. forme de chaque page encore au statut `draft`
+  for (const f of fiches.filter((x) => x.brouillon)) {
+    const forme = formeDe(f.corps);
+    const genre = f.introduction ? 'introduction' : forme.startsWith('IB') ? 'solo' : 'duo';
+    if (!FORMES[genre].test(forme)) problemes.push(`${f.slug} : forme « ${forme} » inattendue pour une page « ${genre} »`);
+    const cles = [...f.entete.matchAll(/^([a-z]+): /gm)].map((m) => m[1]);
+    if (cles.join() !== CLES_ENTETE.filter((c) => c !== 'summary' || cles.includes('summary')).join()) problemes.push(`${f.slug} : clés d'en-tête ${cles.join(', ')}`);
+    const onglet = f.introduction ? f.titre : ligneEtiquetee(f.corps, 'Invocation')?.match(/^(.*) \(onglet du classeur « Invocation »\)$/)?.[1];
+    const sources = f.entete.match(/^sources: (.*)$/m)?.[1] ?? '';
+    if (!onglet || !sources.includes(CLASSEUR) || !sources.includes(`onglet « ${onglet} »`)) problemes.push(`${f.slug} : sources ${sources || '(absentes)'} ne désignent pas le classeur et l'onglet « ${onglet} »`);
+    if (!f.introduction) {
+      const tableau = sansLiens(f.corps).split(/\n\n+/).find((p) => p.startsWith('| '));
+      const lignes = (tableau ?? '').split('\n');
+      const cellules = lignes.map((l) => l.split(/(?<!\\)\|/).length - 2);
+      if (lignes.length !== 3 || new Set(cellules).size !== 1) problemes.push(`${f.slug} : tableau des statistiques de ${lignes.length} ligne(s), cellules ${cellules.join('/')}`);
+    }
+  }
+
+  // 2. cohérence : chaque introduction liste les créatures de son onglet, chaque créature est listée une seule fois
+  const listees = new Map();
+  for (const intro of fiches.filter((x) => x.introduction)) {
+    const liste = sansLiens(intro.corps).split(/\n## /).find((b) => b.startsWith('Créatures\n'));
+    for (const ligne of (liste ?? '').split('\n').filter((l) => l.startsWith('- '))) {
+      const [, marge, noms] = ligne.match(/^- (.*) : (.*)$/) ?? [];
+      const creatures = (noms ?? '').split(', ').map(sansEchappement);
+      if (!noms || creatures.length > 2) { problemes.push(`introduction « ${intro.titre} » : ligne de bloc illisible « ${ligne} »`); continue; }
+      creatures.forEach((nom, i) => {
+        const trouvees = parTitre.get(nom) ?? [];
+        if (!trouvees.length) { problemes.push(`introduction « ${intro.titre} » : la créature « ${nom} » n'a pas de page`); return; }
+        for (const page of trouvees) {
+          listees.set(page.slug, [...(listees.get(page.slug) ?? []), intro.titre]);
+          if (!page.brouillon) continue;
+          const onglet = ligneEtiquetee(page.corps, 'Invocation')?.replace(/ \(onglet du classeur « Invocation »\)$/, '');
+          if (onglet !== intro.titre) problemes.push(`${page.slug} : « ${nom} » est listée par l'introduction « ${intro.titre} » mais la page dit « ${onglet} »`);
+          const sienne = ligneEtiquetee(page.corps, 'Magie(s)') ?? ligneEtiquetee(page.corps, 'Libellé du bloc');
+          if (sienne !== marge) problemes.push(`${page.slug} : marge « ${sienne} » de la page, « ${marge} » dans l'introduction « ${intro.titre} »`);
+          const autre = ligneEtiquetee(page.corps, 'Autre créature du bloc');
+          const attendue = creatures.length === 2 ? creatures[1 - i] : undefined;
+          if (autre === undefined ? attendue !== undefined : sansEchappement(autre) !== attendue) problemes.push(`${page.slug} : « autre créature du bloc » ${autre === undefined ? 'absente' : `« ${sansEchappement(autre)} »`}, l'introduction « ${intro.titre} » liste ${attendue ?? 'aucune autre créature'} avec « ${nom} »`);
+        }
+      });
+    }
+  }
+  for (const f of fiches.filter((x) => !x.introduction)) {
+    const intros = listees.get(f.slug) ?? [];
+    if (intros.length !== 1) problemes.push(`page « ${f.titre} » (${f.slug}, onglet « ${ligneEtiquetee(f.corps, 'Invocation')?.replace(/ \(onglet du classeur « Invocation »\)$/, '')} ») listée ${intros.length} fois par les introductions${intros.length ? ` (${intros.join(', ')})` : ' (aucune)'}, une seule attendue`);
+  }
+  return problemes;
+}
+
+test('pages réelles, sans dump : les 66 pages ont la forme que le script écrit et sont cohérentes entre elles', () => {
+  assert.deepEqual(problemesStructure(famille), []);
+});
+
+const tel = (slug, fn) => famille.map((p) => (p.slug === slug ? { ...p, texte: fn(p.texte) } : p));
+const DEFENSE_ROUAGE = '**Défense** : 2/NPM Armure Physique | 2 Armure Magique';
+const VITESSE_ROUAGE = '**Vitesse** : 4 cases sol / 4 case nage';
+const ALTERATIONS = {
+  'ligne Défense supprimée': [() => tel('golem-de-rouage', (t) => t.replace(`${DEFENSE_ROUAGE}\n\n`, '')), /golem-de-rouage/],
+  'lignes Défense et Vitesse échangées': [() => tel('golem-de-rouage', (t) => t.replace(`${DEFENSE_ROUAGE}\n\n${VITESSE_ROUAGE}`, `${VITESSE_ROUAGE}\n\n${DEFENSE_ROUAGE}`)), /golem-de-rouage/],
+  'ligne FPVSIA dupliquée': [() => tel('golem-de-rouage', (t) => t.replace(/^\*\*FPVSIA\*\* : .*$/m, (l) => `${l}\n\n${l}`)), /golem-de-rouage/],
+  'libellé « Vitesse » renommé': [() => tel('golem-de-rouage', (t) => t.replace('**Vitesse** :', '**Vitesses** :')), /golem-de-rouage/],
+  'section « Description » renommée': [() => tel('golem-de-rouage', (t) => t.replace('## Description', '## Résumé')), /golem-de-rouage/],
+  'section « Capacité(s) » supprimée': [() => tel('golem-de-rouage', (t) => t.slice(0, t.indexOf('## Capacité(s)')).trimEnd() + '\n'), /golem-de-rouage/],
+  'tableau des statistiques privé d’une cellule': [() => tel('golem-de-rouage', (t) => t.replace('| 20/NPM | 0.0 | 0.0 |', '| 20/NPM | 0.0 |')), /golem-de-rouage/],
+  'tableau des statistiques privé de sa ligne': [() => tel('golem-de-rouage', (t) => t.replace('\n| 20/NPM | 0.0 | 0.0 |', '')), /golem-de-rouage/],
+  'en-tête privé de « sources »': [() => tel('golem-de-rouage', (t) => t.replace(/^sources: .*\n/m, '')), /golem-de-rouage/],
+  'en-tête qui n’annonce plus le classeur': [() => tel('golem-de-rouage', (t) => t.replace(CLASSEUR, 'https://exemple.invalid/')), /golem-de-rouage/],
+  'onglet de la page changé': [() => tel('golem-de-rouage', (t) => t.replace('**Invocation** : Appel aux golems', '**Invocation** : Animation des morts')), /golem-de-rouage/],
+  'marge changée': [() => tel('golem-de-rouage', (t) => t.replace('**Magie(s)** : Terre + Espace/Temps', '**Magie(s)** : Terre')), /golem-de-rouage/],
+  '« autre créature du bloc » qui n’est pas réciproque': [() => tel('golem-de-rouage', (t) => t.replace('Poupée temporelle', 'Poupée sanglante')), /golem-de-rouage/],
+  'créature retirée de la liste de son introduction': [() => tel('appel-aux-golems', (t) => t.replace(', Poupée temporelle', '')), /Poupée temporelle/],
+  'ligne de l’introduction effacée': [() => tel('appel-aux-golems', (t) => t.replace(/^- Terre \+ Espace\/Temps : .*\n/m, '')), /Golem de rouage/],
+  'page de créature manquante': [() => famille.filter((p) => p.slug !== 'poupee-temporelle'), /Poupée temporelle/],
+  'page de créature en double': [() => [...famille, { slug: 'poupee-temporelle-bis', texte: lire(bestiaire, 'poupee-temporelle') }], /Poupée temporelle/],
+  'page d’introduction retirée': [() => famille.filter((p) => p.slug !== 'animation-des-morts'), /Animation des morts/],
+  'page d’une créature qu’aucune introduction ne liste': [() => [...famille, { slug: 'intruse', texte: lire(bestiaire, 'golem-de-rouage').replace('title: "Golem de rouage"', 'title: "Intruse"') }], /Intruse/],
+};
+for (const [nomDuCas, [alterer, attendu]] of Object.entries(ALTERATIONS)) {
+  test(`pages réelles, sans dump : ${nomDuCas} est vue`, () => {
+    const ecarts = problemesStructure(alterer());
+    assert.ok(ecarts.length > 0, 'aucun écart signalé');
+    assert.match(ecarts.join('\n'), attendu);
+  });
+}
+
+test('pages réelles, sans dump : liens `[[…]]` posés par `npm run autolink` et page retouchée (statut verified) ne sont pas des écarts', () => {
+  const lie = (t) => t.replace('Terre + Espace/Temps', '[[Terre]] + [[Espace/Temps|Espace/Temps]]').replace('Poupée temporelle', '[[Poupée temporelle]]');
+  assert.deepEqual(problemesStructure(tel('golem-de-rouage', lie)), []);
+  assert.deepEqual(problemesStructure(tel('appel-aux-golems', (t) => t.replace('Golem de rouage', '[[Golem de rouage|Golem de rouage]]'))), []);
+  // une page passée à `verified` est une page relue et retouchée à la main : sa forme n'est plus imposée
+  const retouchee = tel('golem-de-rouage', (t) => t.replace('status: draft', 'status: verified').replace(`${DEFENSE_ROUAGE}\n\n`, ''));
+  assert.deepEqual(problemesStructure(retouchee), []);
+});
