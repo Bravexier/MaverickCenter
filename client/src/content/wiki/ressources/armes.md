@@ -286,7 +286,7 @@ Note de mise en page : la règle ci-dessus (« Les armes en bleu sont les armes 
 | Nom | Coût en plus/moins (unité) | Catégorie | Effet | Description |
 | --- | --- | --- | --- | --- |
 | Bombe frappante | 1 Ro | Bombe<br>Arme Lourde/Légère | 1 - 4 portée, dégâts de frappe, cercle de 2 en zone de dégâts. |  |
-| Bombe perçante | 1 Ro | Bombe<br>Arme Lourde/Légère | 1 - 4 portée, dégâts d'estoc, cercle de 2 en zone de dégâts.<br><br>Note de cellule : Il faut perdre un bras pour avoir cette arme, ce qui fait que vous perdez une main. Ce n'est pas considérer comme un Canon d'artifice. |  |
+| Bombe perçante | 1 Ro | Bombe<br>Arme Lourde/Légère | 1 - 4 portée, dégâts d'estoc, cercle de 2 en zone de dégâts. |  |
 | Bombe taillante | 1 Ro | Bombe<br>Arme Lourde/Légère | 1 - 4 portée, dégâts de taille, cercle de 2 en zone de dégâts. |  |
 | Super bombe frappante | 5 Ro | Bombe<br>Arme Lourde/Légère | 1 - 4 portée, dégâts de frappe, cercle de 2 en zone de dégâts, +4 dégâts, ignore 2AP. |  |
 | Super bombe perçante | 5 Ro | Bombe<br>Arme Lourde/Légère | 1 - 4 portée, dégâts d'estoc, cercle de 2 en zone de dégâts, +4 dégâts, ignore 2AP. |  |
@@ -294,6 +294,8 @@ Note de mise en page : la règle ci-dessus (« Les armes en bleu sont les armes 
 | Méga bombe frappante | 10 Ro | Bombe<br>Arme Lourde/Légère | 1 - 4 portée, dégâts de frappe, cercle de 2 en zone de dégâts, +8 dégâts, Ignore 4AP. |  |
 | Méga bombe perçante | 10 Ro | Bombe<br>Arme Lourde/Légère | 1 - 4 portée, dégâts d'estoc, cercle de 2 en zone de dégâts, +8 dégâts, Ignore 4AP. |  |
 | Méga bombe taillante | 10 Ro | Bombe<br>Arme Lourde/Légère | 1 - 4 portée, dégâts de taille, cercle de 2 en zone de dégâts, +8 dégâts, Ignore 4AP. |  |
+
+**Commentaire résolu de la cellule « Effet (Bombe perçante) »** : Il faut perdre un bras pour avoir cette arme, ce qui fait que vous perdez une main. Ce n'est pas considérer comme un Canon d'artifice.
 
 ## ARME DE MONSTRES - Se référer à la catégorie d'arme
 

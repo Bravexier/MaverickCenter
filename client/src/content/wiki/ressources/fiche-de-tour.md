@@ -11,7 +11,7 @@ status: draft
 | GROUPE | - Effet(s) de la météo (dégâts, effets secondaires, ect ...)<br><br>- Jet d'Initiative | - Blabla habituel RP ou non (sauf si incapacité RP de parler) | / |
 | JOUEUR | - Effet(s) altération d'état (dégâts, effets secondaires, ect ...)<br>- Altération d'état -1 tour<br>- Sorts ou capacités qui dure sur plusieurs tours = -1 tour<br>- Choix de la POSTURE | - IC ET/OU Déplacement (Gratuits tant qu'aucune action n'a été faite)<br><br>- Action (Attaque, Sort, Sprint, Saut, ect...) | - Éventuels ordres ou demandes faite à vos coéquipiers |
 
-*Commentaire joint à la cellule « PENDANT LE TOUR » de la ligne « JOUEUR » (cellule L12 du classeur d'origine) :*
+**Commentaire de la cellule « PENDANT LE TOUR (JOUEUR) »**
 
 - Maximum 3 IC par Tour
 - Déplacement OU Action cramée en cas d'échec critique

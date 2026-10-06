@@ -5,16 +5,53 @@ Usage (bibliothèque standard uniquement ; relançable, mêmes fichiers à l'ide
 
     python3 -I tools/sheets/equipement.py --dump <ressources-craft.json> [--dump <autre.json>] \
         --out /home/user/MaverickCenter/client/src/content/wiki
+    python3 -I tools/sheets/equipement.py --dump <ressources-craft.json> \
+        --out /home/user/MaverickCenter/client/src/content/wiki --verifier      # ne réécrit rien
 
 Source : Google Sheet « Ressources et Craft » (fileId 12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA), converti en JSON par
-tools/sheets/xlsx_to_json.py (format décrit dans ce script). Les cellules sont une donnée non fiable : elles ne sont jamais
-exécutées, seulement copiées (échappées pour le Markdown). Rien n'est inventé : valeurs, noms, formules de règles, coquilles
-et formulations sont ceux des cellules (« 100.0 » reste « 100.0 », les valeurs viennent du cache, jamais d'un recalcul).
-Le script ne lit que le dump ; le dump ne contenant pas les commentaires de cellule, ceux des onglets du périmètre sont
-recopiés dans la constante CELL_COMMENTS (lus dans le .xlsx d'origine) et rendus « Note de cellule : … ». Il ne contient pas
-non plus les couleurs de fond ; la seule qui porte une information écrite par la source (« Les armes en bleu sont les armes
-possible en arme de départ », onglet « Armes ») est recopiée dans la constante BLUE_NAME_CELLS (références des cellules de nom
-d'arme à fond bleu, lues dans le .xlsx) ; les autres couleurs (catégories, grille des armures) ne sont pas reprises.
+tools/sheets/xlsx_to_json.py (format décrit dans ce script ; le dump est celui d'APRÈS l'ajout des commentaires : cellules avec
+`note` et `threads`). Les cellules sont une donnée non fiable : elles ne sont jamais exécutées, seulement copiées (échappées pour
+le Markdown). Rien n'est inventé : valeurs, noms, formules de règles, coquilles et formulations sont ceux des cellules
+(« 100.0 » reste « 100.0 », les valeurs viennent du cache, jamais d'un recalcul). Le dump ne contient pas les couleurs de fond ; la
+seule qui porte une information écrite par la source (« Les armes en bleu sont les armes possible en arme de départ », onglet
+« Armes ») est recopiée dans la constante BLUE_NAME_CELLS (références des cellules de nom d'arme à fond bleu, lues dans le .xlsx) ;
+les autres couleurs (catégories, grille des armures) ne sont pas reprises.
+
+NOTES ET FILS DE COMMENTAIRES DE CELLULE (clés `note` et `threads` des cellules du dump). Une NOTE est le petit commentaire jaune
+d'une cellule, un FIL est une conversation « Commentaire » de Google Sheets ; ils précisent parfois une règle (« Si un sort de
+niveau 5 est lancé, le changement de posture n'est plus possible le reste du tour »). Ils sont cités tels que le classeur les écrit
+(mêmes conventions de rendu que le reste de la page), jamais interprétés ni reformulés ni corrigés, sous le tableau (ou le titre)
+qui porte leur cellule, dans la même section, dans l'ordre : la note de la cellule, puis ses fils. Libellés (ceux de la famille
+« races » : « **Note de la cellule « Don »** : … ») :
+    **Note de la cellule « <intitulé de la cellule> »** : texte                  (texte d'une ligne)
+    **Note de la cellule « <intitulé de la cellule> »**                          (texte de plusieurs lignes : libellé, ligne
+                                                                                  vide, puis paragraphes et listes)
+    **Commentaire de la cellule « … »** / **Commentaire résolu de la cellule « … »**    (fil ouvert / résolu)
+L'intitulé est celui de la colonne du tableau suivi, entre parenthèses, de la ligne (« Effet (Bombe perçante) », « Effet (Jet 12.0) » :
+nom, ou jet, de la première colonne de la ligne) ; pour une carte à quatre lignes des « Pièces élémentaires » (nom / +8 Dégâts /
+Élément / capacité) c'est le nom de la carte (« Épée de Terre ») ; pour un titre, le texte du titre (« MONNAIE »). Les réponses
+automatiques d'un fil (« Marquée comme fermée » / « Rouverte ») sont des événements, pas du contenu ; toute autre réponse arrête le
+script. Une note ou un fil blanc (espaces seuls) est ignoré. Un commentaire posé sur une cellule fusionnée autre que celle en haut à
+gauche (« Armes » QA6 dans QA5:QL6) est rattaché à la cellule principale, qui porte la valeur (la cellule « Effet » de la
+« Bombe perçante »). Cellules qui peuvent porter un commentaire, par page : le titre MONNAIE (A1) de « Équipement inventaire » ;
+toute cellule d'un tableau lu en colonnes avec en-têtes (matériel d'« Équipement inventaire », « MATERIAUX » et armes d'« Armes »,
+« MATERIAUX » et « FABRICATION » d'« Armures », « FABRICATION » et « MATERIAUX » de « Bouclier ») ; la cellule « Effet » des cinq
+tableaux à colonne d'effets de l'ÉTAPE 3 d'« Accessoires » (attributs, attaque, défense, jet de dés, autre) ; la carte des « Pièces
+élémentaires ». Le script S'ARRÊTE, sans rien écrire, avec un
+message qui nomme l'onglet et la cellule, si un commentaire :
+  * est sur une cellule vide (le dump garde alors v = "" : un commentaire ne se rattache à aucun texte), cellule fusionnée non
+    principale dont la principale est vide comprise ;
+  * est dans un onglet que ni ce script ni divers-craft.py (les six autres onglets du classeur) ne publient ;
+  * est sur une cellule que la page reprend sans lui prévoir de place (« sans place prévue ») ;
+  * n'est pas retrouvé dans sa page, ou y figure plus d'une fois, tronqué, altéré, ou placé hors de la section de sa cellule
+    (contrôle de couverture et de placement, refait sur le TEXTE des pages avant toute écriture) ; la page ne porte aucun
+    commentaire de plus que le dump.
+Option --verifier : n'écrit rien. Relit le dump, recalcule les commentaires attendus directement dans le JSON brut (sans le code de
+rendu), compare chaque page écrite à ce que le dump produit, cherche chaque commentaire dans la page de son onglet (une occurrence,
+texte intégral, après sa cellule, dans sa section, aucun de plus) et rejoue des cas d'erreur sur des copies en mémoire du dump
+(commentaire sur une cellule vide, sur une cellule fusionnée non principale dont la principale est vide, dans un onglet non publié,
+sans place prévue, réponse de fil inattendue ; commentaire retiré, dupliqué, tronqué, altéré ou déplacé dans une page). Code de
+sortie 1 et un « ÉCART : … » par problème s'il y en a.
 
 Fichiers écrits (et seulement ceux-là), un par onglet, catégorie « ressources » :
     <out>/ressources/equipement-inventaire.md   onglet « Équipement inventaire »
@@ -25,7 +62,8 @@ Fichiers écrits (et seulement ceux-là), un par onglet, catégorie « ressource
     <out>/ressources/livre-parchemin.md         onglet « LivreParchemin »
     <out>/ressources/accessoires.md             onglet « Accessoires »
     <out>/ressources/pieces-elementaires.md     onglet « Pièces élémentaires »
-Les autres onglets du classeur (Familiers, Maison, Machine de GuerreSiège, Maladie V2, Maladie, Fiche de tour) ne sont pas lus.
+Les autres onglets du classeur (Familiers, Maison, Machine de GuerreSiège, Maladie V2, Maladie, Fiche de tour) relèvent de
+divers-craft.py : ce script ne les lit pas (leurs commentaires sont comptés et signalés).
 
 Structure des onglets (les blocs sont repérés par leurs libellés et leurs colonnes ; le script s'arrête avec une erreur si
 un libellé attendu manque ou si une cellule non vide n'a été reprise nulle part : rien n'est perdu en silence) :
@@ -33,13 +71,13 @@ un libellé attendu manque ou si une cellule non vide n'a été reprise nulle pa
   « Équipement inventaire » : bandeaux en ligne 1. MONNAIE (nom en A, abréviation en D ; sous-bloc CONVERTISSEUR : équivalences)
     ; PRODUITS NON MONAITAIRE (+ fréquents) en trois colonnes de listes (VEGETAUX, ANIMAUX, AUTRES : nom puis prix) ;
     MATOS AVENTURES, MATOS FABRICATION, MATOS PROJECTILE : trois tableaux Nom / Prix / Description (en-têtes ligne 3). Le
-    commentaire de cellule de A1 (trois notes, dont deux sans rapport apparent avec la monnaie) est recopié sous MONNAIE.
+    commentaire de cellule de A1 (trois fils, dont deux sans rapport apparent avec la monnaie) est cité sous MONNAIE.
   « Armes » : A1 = règles générales ; liste des 26 armes dont le nom est sur fond bleu (« Armes sur fond bleu dans la
     source », par bandeau, d'après BLUE_NAME_CELLS) ; MATERIAUX (O/S/W : matière, prix, effets) ; AMELIORATION (+1 à +10, coût,
     effet, TOTAL) ; « COMMENT DÉTERMINER LE PRIX DE VOTRE ARME ? » (formule en une ligne) ; puis douze bandeaux d'armes (ÉPÉES,
     DAGUES, …, ARME DE MONSTRES) à partir de la colonne AE, chacun avec ses en-têtes de ligne 2 (Nom, Coût…, Catégorie, Effet,
     Description) et une arme par couple de lignes fusionnées. Le commentaire de cellule QA6 (plage fusionnée QA5:QL6 = effet de
-    « Bombe perçante ») est rattaché à la cellule « Effet » de cette arme.
+    « Bombe perçante ») est cité sous le tableau, avec l'intitulé « Effet (Bombe perçante) ».
   « Armures » : A1 = règles ; MATERIAUX (21 matières : prix, description, fabrication) ; FABRICATION (pièces d'armure et
     coût) ; AMELIORATION (+1 à +5) ; puis la grille matière × matière (escalier : la ligne k contient les combinaisons de la
     matière k avec les matières k à 21, une cellule de 7 lignes « nom / Prix / Type / Stats / Solidité / Résistance /
@@ -55,12 +93,12 @@ un libellé attendu manque ou si une cellule non vide n'a été reprise nulle pa
   « Accessoires » : A1 = règles ; CRÉATION D'ACCESSOIRE (ÉTAPE 1 : 1d4 emplacement ; ÉTAPE 2 : 1d100 propriété ; ÉTAPE 3 : sept
     tableaux « SI … » : caractéristique, compétence, attributs, attaque, défense, jet de dés, autre ; dans les cinq derniers
     une colonne de jets d1d20 et d'effets est mise en face, ligne à ligne, d'une colonne niveau / gemmes / prix) ;
-    Gemme précieuse (14 magies, trois prix par quart de gemme) ; Monture (5 niveaux). Trois commentaires de cellule (BK66,
-    CI66, ED80) sont rattachés à l'effet qu'ils commentent.
+    Gemme précieuse (14 magies, trois prix par quart de gemme) ; Monture (5 niveaux). Trois notes de cellule (BK66, CI66, ED80)
+    sont citées sous le tableau de l'effet qu'elles commentent.
   « Pièces élémentaires » : A3 = règles ; onze types d'arme × 14 éléments (cellule = nom / +8 Dégâts / Élément / capacité,
     quatre lignes) ; AMELIORATION (armes +1 à +10, armures +5 ; les « TOTAL » sont repris tels quels, celui des armures n'a pas
     de valeur dans la source) ; quatre blocs d'équipement (VETEMENT, ARMURE LÉGERE, INTERMEDIAIRE, LOURDE) × 14 éléments
-    (nom, AP, AM, effets). Trois commentaires de cellule (CW8, X29, CI64) sont rattachés à la capacité commentée.
+    (nom, AP, AM, effets). Trois notes de cellule (CW8, X29, CI64) sont citées sous le tableau de la carte commentée.
 
 Conventions de rendu : valeurs en cache, mot pour mot ; espaces de début et de fin de ligne retirés ; retour à la ligne d'une
 cellule de tableau -> « <br> » ; « | » -> « \\| » ; « * », « _ », « [ », « ] », « ` » échappés ; un lien nu devient « <lien> » ;
@@ -76,8 +114,7 @@ armures), « Colonne », « Dégâts », « Élément », « Capacité » (la ce
 ligne à ligne : nom / +8 Dégâts / Élément / capacité), « Colonne » (vêtement et armures élémentaires). Titres ajoutés pour des
 blocs sans bandeau : « Fiches des matières de la grille », « Armures par combinaison de matières », « Armures particulières »,
 « Fiches des matières pour boucliers », « Classes de boucliers », « Boucliers par classe et par matière », « Bonus passifs »,
-« Armes élémentaires », « Vêtement et armures élémentaires », « Armes sur fond bleu dans la source », « Commentaires de
-cellule ». Les seules phrases ajoutées sont
+« Armes élémentaires », « Vêtement et armures élémentaires », « Armes sur fond bleu dans la source ». Les seules phrases ajoutées sont
 des remarques de mise en page ou d'écart (« Note de mise en page : … », « Écart dans la source : … », « Libellé répété à droite
 du tableau : … ») ; elles ne contiennent aucune règle.
 
@@ -96,50 +133,18 @@ FILE_ID = "12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA"
 URL = "https://docs.google.com/spreadsheets/d/%s/edit" % FILE_ID
 CATEGORY = "ressources"
 
-# Commentaires de cellule : le dump ne les contient pas ; recopiés (mot pour mot) depuis le .xlsx d'origine
-# (commentaires hérités + fils de commentaires). {onglet: {cellule: [textes]}}.
-CELL_COMMENTS = {
-    "Équipement inventaire": {
-        "A1": [
-            "L'insensibilité est un état où AUCUN sortilèges (positif ou négatif) ne peux toucher le lanceur. "
-            "Prendre un coup physique annule cet état.",
-            "Un téléphone quoi",
-            "1 fois par combat",
-        ],
-    },
-    "Armes": {
-        "QA6": [
-            "Il faut perdre un bras pour avoir cette arme, ce qui fait que vous perdez une main. "
-            "Ce n'est pas considérer comme un Canon d'artifice.",
-        ],
-    },
-    "Accessoires": {
-        "BK66": [
-            "Il existe une situation où le changement de posture n'est pas possible, c'est dans le cas où le personnage "
-            "décide de passer en focus pour utiliser un sort niveau 5 pour après espérer un changement de posture. "
-            "Si un sort de niveau 5 est lancé, le changement de posture n'est plus possible le reste du tour.",
-        ],
-        "CI66": [
-            "L'insensibilité est un état où AUCUN sortilèges (positif ou négatif) ne peux toucher le lanceur. "
-            "Prendre un coup physique annule cet état.",
-        ],
-        "ED80": [
-            "Agib est l'ambassadeur de la richesse et Murge son gardien. "
-            "Ce sont des marchands qui ont beaucoup de marchandises.",
-        ],
-    },
-    "Pièces élémentaires": {
-        "CI64": [
-            "*\nSi le carreau touche à 2 - 4 portée = Surdité 1\n\nSi le carreau touche à 5 - 7 portée = Surdité 2\n\n"
-            "Si le carreau touche à 8 - 10 portée = Surdité 3",
-        ],
-        "X29": ["Bras = Perd son arme ou bouclier\nJambe = Ne peux plus bouger"],
-        "CW8": [
-            "Métal : Plus solide, elle ne peut pas perdre de cran de solidité\n\nPierre : Ignore 5 AP\n\n"
-            "Plante : Ignore 50% des AP des boucliers",
-        ],
-    },
+# Commentaires de cellule du dump (clés `note` et `threads`) : genres, libellés rendus dans la page, réponses automatiques d'un fil.
+KIND_NOTE, KIND_THREAD, KIND_THREAD_DONE = "note", "thread", "thread_done"
+LABELS = {
+    KIND_NOTE: "Note de la cellule « %s »",
+    KIND_THREAD: "Commentaire de la cellule « %s »",
+    KIND_THREAD_DONE: "Commentaire résolu de la cellule « %s »",
 }
+STATUS_REPLIES = ("Marquée comme fermée", "Rouverte")   # événements d'état écrits par Google, pas du contenu
+
+# Onglets de « Ressources et Craft » publiés par tools/sheets/divers-craft.py : leurs commentaires ne sont pas rendus ici (comptés).
+SIBLING_TABS = ("Familiers", "Maison", "Machine de GuerreSiège", "Maladie V2", "Maladie", "Fiche de tour")
+SIBLING_SCRIPT = "divers-craft.py"
 
 # Cellules de nom d'arme (onglet « Armes ») dont le fond est bleu dans le .xlsx d'origine (remplissage FFC9DAF8 ou FFCFE2F3) :
 # le dump ne contient pas les couleurs, la règle de A1 (« Les armes en bleu sont les armes possible en arme de départ »)
@@ -227,14 +232,45 @@ def wiki_key(text):
     return re.sub(r"[^a-z0-9]+", "-", text).strip("-")
 
 
+def shorten(text, limit=40):
+    flat = " ".join(str(text).split())
+    return flat if len(flat) <= limit else flat[: limit - 1] + "…"
+
+
+def comment_items(tab, cell):
+    """[(genre, texte)] des commentaires d'une cellule du dump : sa note, puis ses fils dans l'ordre du dump (texte blanc ignoré).
+    Une réponse de fil autre qu'un événement d'état est un contenu qui n'a pas de place dans la page : ValueError."""
+    out = []
+    ref = ref_of(cell["r"], cell["c"])
+    note = cell.get("note")
+    if note is not None:
+        if not isinstance(note, str):
+            raise ValueError("%s!%s : la note n'est pas un texte : %r" % (tab, ref, note))
+        if note.strip():
+            out.append((KIND_NOTE, note))
+    for thread in cell.get("threads") or []:
+        for reply in thread.get("replies") or []:
+            if " ".join(str(reply).split()) not in STATUS_REPLIES:
+                raise ValueError("%s!%s : fil de commentaires : réponse inattendue (%r), ni rendue ni écartée : à examiner" % (
+                    tab, ref, shorten(reply, 60)))
+        text = thread.get("text")
+        if isinstance(text, str) and text.strip():
+            out.append((KIND_THREAD_DONE if thread.get("done") else KIND_THREAD, text))
+    return out
+
+
 class Sheet:
     def __init__(self, raw):
         self.name = raw["name"]
         self.max_row = raw["max_row"]
         self.cells = {}   # (ligne, colonne) -> valeur, cellules non vides
         self.decor = {}   # cellules ne contenant que des espaces : ignorées
+        pending = []      # [(cellule, [(genre, texte)])] commentaires du dump, avant rattachement
         for c in raw["cells"]:
             key = (c["r"], c["c"])
+            items = comment_items(self.name, c)
+            if items:
+                pending.append((key, items))
             if is_blank(c["v"]):
                 if c["v"] is not None:
                     self.decor[key] = c["v"]
@@ -248,7 +284,30 @@ class Sheet:
             r1, c1, r2, c2 = parse_range(rng)
             self.merges[(r1, c1)] = (r2, c2)
         self.consumed = set()
-        self.notes = {ref: list(texts) for ref, texts in CELL_COMMENTS.get(self.name, {}).items()}
+        # Commentaires par cellule qui porte une valeur. Un commentaire sur une cellule vide n'a aucune place dans la page, sauf
+        # sur une cellule fusionnée autre que celle en haut à gauche (QA6 dans QA5:QL6) : il appartient à la plage, donc à la
+        # cellule principale, qui porte la valeur.
+        self.comments = {}
+        for key, items in sorted(pending):
+            target = key
+            if key not in self.cells:
+                corner = self.primary_of(key)
+                if corner is None or corner not in self.cells:
+                    hint = " (cellule fusionnée non principale de %s, dont la cellule principale est vide)" % ref_of(*corner) if corner else ""
+                    raise ValueError("%s!%s : la cellule est vide%s mais porte %s (« %s ») : un commentaire ne se rattache à aucun "
+                                     "texte de la page" % (self.name, ref_of(*key), hint,
+                                                           "une note" if items[0][0] == KIND_NOTE else "un fil de commentaires",
+                                                           shorten(items[0][1])))
+                target = corner
+            self.comments.setdefault(target, []).extend(items)
+
+    def primary_of(self, key):
+        """Cellule en haut à gauche de la plage fusionnée qui contient `key` sans en être le coin (None sinon)."""
+        r, c = key
+        for (r1, c1), (r2, c2) in self.merges.items():
+            if r1 <= r <= r2 and c1 <= c <= c2 and (r1, c1) != key:
+                return (r1, c1)
+        return None
 
     def get(self, r, c):
         """Lit une cellule (None si vide) sans la marquer comme reprise."""
@@ -278,19 +337,9 @@ class Sheet:
     def cols(self, row, c1, c2):
         return [c for c in range(c1, c2 + 1) if (row, c) in self.cells]
 
-    def pop_notes(self, r, c):
-        return self.notes.pop(ref_of(r, c), [])
-
-    def pop_merged_notes(self, r, c):
-        """Commentaires de la cellule (r, c) et de toute cellule de sa plage fusionnée : un commentaire posé sur une cellule
-        fusionnée qui n'est pas celle en haut à gauche (ex. QA6 dans QA5:QL6) appartient à la plage, donc à sa valeur."""
-        r2, c2 = self.merges.get((r, c), (r, c))
-        out = []
-        for ref in sorted(self.notes, key=lambda x: (split_ref(x)[0], split_ref(x)[1])):
-            rr, cc = split_ref(ref)
-            if r <= rr <= r2 and c <= cc <= c2:
-                out += self.notes.pop(ref)
-        return out
+    def pop_comments(self, r, c):
+        """Commentaires [(genre, texte)] de la cellule (r, c), retirés de la liste des commentaires à placer."""
+        return self.comments.pop((r, c), [])
 
     def leftovers(self):
         return sorted(set(self.cells) - self.consumed, key=lambda k: (k[1], k[0]))
@@ -409,12 +458,23 @@ def md_table(headers, rows):
     return out
 
 
-def with_notes(value, notes):
-    """Valeur de cellule suivie de ses commentaires (« Note de cellule : … »)."""
-    text = cell_md(value)
-    for note in notes:
-        text += ("<br><br>" if text else "") + "Note de cellule : " + cell_md(note)
-    return MD(text)
+def comment_block(kind, label, text):
+    """Lignes Markdown d'un commentaire de cellule : « **Note de la cellule « intitulé »** : texte » si le texte tient sur une ligne,
+    sinon le libellé seul, une ligne vide, puis le texte en paragraphes et en listes. Le texte n'est ni interprété ni reformulé."""
+    head = LABELS[kind] % esc_text(" ".join(str(label).split()))
+    blocks = md_blocks(text)
+    if len(blocks) == 1 and blocks[0][0] == "p" and len(blocks[0][1]) == 1:
+        return ["**%s** : %s" % (head, esc_line(blocks[0][1][0]))]
+    return ["**%s**" % head, ""] + md_text(text)
+
+
+def comment_lines(entries):
+    """[(intitulé, [(genre, texte)])] -> lignes Markdown : un bloc par commentaire, chacun suivi d'une ligne vide."""
+    out = []
+    for label, items in entries:
+        for kind, text in items:
+            out += comment_block(kind, label, text) + [""]
+    return out
 
 
 def yaml_str(s):
@@ -445,15 +505,15 @@ class Page:
         self.summary = None
         self.body = []
 
-    def heading(self, level, value, notes=()):
-        """Titre dont le texte est la première ligne de la cellule ; les lignes suivantes forment un paragraphe."""
+    def heading(self, level, value, comments=()):
+        """Titre dont le texte est la première ligne de la cellule ; les lignes suivantes forment un paragraphe. `comments` :
+        commentaires [(genre, texte)] de la cellule, cités sous le titre (intitulé = la première ligne)."""
         lines = [l.strip() for l in fmt(value).split("\n")]
         self.body += ["#" * level + " " + esc_line(lines[0]), ""]
         rest = "\n".join(lines[1:]).strip()
         if rest:
             self.body += md_text(rest) + [""]
-        for note in notes:
-            self.body += ["Note de cellule : " + inline_md(note), ""]
+        self.body += comment_lines([(lines[0], comments)])
 
     def text(self, value):
         self.body += md_text(value) + [""]
@@ -468,8 +528,9 @@ class Page:
     def bullets(self, items):
         self.body += ["- " + esc_line(i) if not isinstance(i, MD) else "- " + str(i) for i in items] + [""]
 
-    def table(self, headers, rows):
-        self.body += md_table(headers, rows) + [""]
+    def table(self, headers, rows, notes=()):
+        """Tableau, puis les commentaires de ses cellules `notes` [(intitulé, [(genre, texte)])] : sous le tableau, dans la section."""
+        self.body += md_table(headers, rows) + [""] + comment_lines(notes)
 
     def render(self):
         lines = ["---",
@@ -486,16 +547,21 @@ class Page:
         return "\n".join(lines + body) + "\n"
 
 
-def read_table(sh, header_row, cols, first, last, required=0, note_cols=()):
-    """En-têtes (ligne `header_row`, ou liste donnée) et lignes de données ; une ligne doit avoir sa cellule `required`.
+def first_line(value):
+    """Première ligne non vide d'une valeur de cellule, espaces normalisés (intitulé de ligne d'un commentaire)."""
+    lines = [" ".join(l.split()) for l in fmt(value).split("\n")]
+    return next((l for l in lines if l), "")
 
-    `note_cols` : colonnes dont la cellule reçoit, s'il y en a, les commentaires de cellule de sa plage fusionnée
-    (rendus « Note de cellule : … » dans la cellule du tableau)."""
+
+def read_table(sh, header_row, cols, first, last, required=0):
+    """En-têtes (ligne `header_row`, ou liste donnée), lignes de données et commentaires des cellules lues ; une ligne doit avoir sa
+    cellule `required`. -> (en-têtes, lignes, notes) ; `notes` = [(intitulé, [(genre, texte)])], intitulé « colonne (ligne) » (en-tête
+    de la colonne, puis première ligne de la cellule `required` de la ligne), à passer à Page.table."""
     if isinstance(header_row, (list, tuple)):
         headers = list(header_row)
     else:
         headers = [sh.txt(header_row, c) for c in cols]
-    rows = []
+    rows, notes = [], []
     for r in range(first, last + 1):
         vals = [sh.take(r, c) for c in cols]
         if all(v is None for v in vals):
@@ -503,12 +569,11 @@ def read_table(sh, header_row, cols, first, last, required=0, note_cols=()):
         if vals[required] is None:
             raise ValueError("%s : ligne %d sans %s : %r" % (sh.name, r, ref_of(r, cols[required]), vals))
         for i, c in enumerate(cols):
-            if c in note_cols:
-                notes = sh.pop_merged_notes(r, c)
-                if notes:
-                    vals[i] = with_notes(vals[i], notes)
+            items = sh.pop_comments(r, c)
+            if items:
+                notes.append(("%s (%s)" % (first_line(headers[i]) or col_letters(c), first_line(vals[required])), items))
         rows.append(vals)
-    return headers, rows
+    return headers, rows, notes
 
 
 def pairs(sh, col_a, col_b, first, last):
@@ -548,26 +613,13 @@ def set_summary(page, text):
     page.summary = s
 
 
-def comments_section(page):
-    """Commentaires de cellule restants (cellule non reprise ailleurs) : en fin de page."""
-    sh = page.sh
-    if not sh.notes:
-        return
-    page.heading(2, "Commentaires de cellule")
-    for ref in sorted(sh.notes, key=lambda x: (int(re.sub(r"\D", "", x)), C(re.sub(r"\d", "", x)))):
-        r, c = int(re.sub(r"\D", "", ref)), C(re.sub(r"\d", "", ref))
-        where = ""
-        for (r1, c1), (r2, c2) in sh.merges.items():
-            if r1 <= r <= r2 and c1 <= c <= c2 and (r, c) != (r1, c1):
-                where = " (cellule de la plage fusionnée %s:%s)" % (ref_of(r1, c1), ref_of(r2, c2))
-        for note in sh.notes[ref]:
-            page.text("Cellule %s%s : %s" % (ref, where, fmt(note)))
-    sh.notes.clear()
-
-
 def finish(page):
     sh = page.sh
-    comments_section(page)
+    if sh.comments:  # une cellule commentée que la page reprend (ou ne reprend pas) sans lui avoir prévu de place
+        items = [("%s (« %s »)" % (ref_of(*pos), shorten(entries[0][1]))) for pos, entries in sorted(sh.comments.items())]
+        raise ValueError("%s : %d cellule(s) portent un commentaire sans place prévue dans la page : %s ; la page ne cite que les "
+                         "commentaires du titre MONNAIE, des tableaux à en-têtes, des effets d'accessoires et des pièces "
+                         "élémentaires (voir la docstring)" % (sh.name, len(sh.comments), " ; ".join(items[:8])))
     left = sh.leftovers()
     if left:
         raise ValueError("%s : %d cellule(s) non reprise(s), par exemple %s" % (
@@ -595,8 +647,7 @@ def products_section(page, sh, banner_row, banner_col, level):
 def build_inventaire(sh):
     page = Page(sh, "equipement-inventaire", "Équipement inventaire", ["équipement", "inventaire", "monnaie"])
     # MONNAIE
-    notes = sh.pop_notes(1, 1)
-    page.heading(2, sh.expect(1, 1, "MONNAIE"), notes)
+    page.heading(2, sh.expect(1, 1, "MONNAIE"), sh.pop_comments(1, 1))
     page.bullets(pair_lines(pairs(sh, C("A"), C("D"), 3, 8)))
     page.heading(3, sh.expect(10, 1, "CONVERTISSEUR"))
     page.bullets(pair_lines(pairs(sh, C("A"), C("D"), 12, 20)))
@@ -608,8 +659,8 @@ def build_inventaire(sh):
                          ("MATOS FABRICATION", ("AU", "AX", "BA")),
                          ("MATOS PROJECTILE", ("BN", "BQ", "BT"))):
         page.heading(2, sh.expect(1, C(cols[0]), banner))
-        headers, rows = read_table(sh, 3, [C(c) for c in cols], 4, sh.max_row)
-        page.table(headers, rows)
+        headers, rows, notes = read_table(sh, 3, [C(c) for c in cols], 4, sh.max_row)
+        page.table(headers, rows, notes)
     return finish(page)
 
 
@@ -649,8 +700,8 @@ def build_armes(sh):
         page.bullets(items)
 
     page.heading(2, sh.expect(1, C("O"), "MATERIAUX"))
-    headers, rows = read_table(sh, 2, [C("O"), C("S"), C("W")], 3, 31)
-    page.table(headers, rows)
+    headers, rows, notes = read_table(sh, 2, [C("O"), C("S"), C("W")], 3, 31)
+    page.table(headers, rows, notes)
 
     page.heading(2, sh.take(32, C("O")))  # « AMELIORATION » (précédé d'une espace dans la source)
     page.heading(3, sh.expect(33, C("P"), "Armes"))
@@ -679,11 +730,11 @@ def build_armes(sh):
         cols = sh.cols(2, lo, hi)
         if len(cols) != 5:
             raise ValueError("Armes : 5 en-têtes attendus sous %s, %d trouvés" % (ref_of(1, lo), len(cols)))
-        # le commentaire d'une cellule de la plage fusionnée d'un effet (QA6 dans QA5:QL6) est rattaché à cet effet
-        effet_cols = [c for c in cols if fold(sh.get(2, c)) == "effet"]
-        headers, rows = read_table(sh, 2, cols, 3, sh.max_row, note_cols=effet_cols)
+        # le commentaire d'une cellule de la plage fusionnée d'un effet (QA6 dans QA5:QL6) est déjà rattaché à la cellule principale
+        # (Sheet) : il est cité sous le tableau avec l'intitulé « Effet (<arme>) »
+        headers, rows, notes = read_table(sh, 2, cols, 3, sh.max_row)
         # une cellule hors des colonnes d'en-tête dans la zone du bandeau serait signalée par finish()
-        page.table(headers, rows)
+        page.table(headers, rows, notes)
     return finish(page)
 
 
@@ -703,12 +754,12 @@ def build_armures(sh):
     page.text(rules)
 
     page.heading(2, sh.expect(26, 1, "MATERIAUX"))
-    headers, rows = read_table(sh, 27, [C("A"), C("E"), C("I"), C("Q")], 28, 69)
-    page.table(headers, rows)
+    headers, rows, notes = read_table(sh, 27, [C("A"), C("E"), C("I"), C("Q")], 28, 69)
+    page.table(headers, rows, notes)
 
     page.heading(2, sh.expect(26, C("AA"), "FABRICATION"))
-    headers, rows = read_table(sh, 27, [C("AA"), C("AE")], 28, 43)
-    page.table(headers, rows)
+    headers, rows, notes = read_table(sh, 27, [C("AA"), C("AE")], 28, 43)
+    page.table(headers, rows, notes)
 
     page.heading(2, sh.expect(71, 1, "AMELIORATION"))
     page.heading(3, sh.take(72, C("B")))
@@ -787,16 +838,16 @@ def build_bouclier(sh):
     page.text(rules)
 
     page.heading(2, sh.expect(1, C("B"), "FABRICATION"))
-    headers, rows = read_table(sh, 2, [C("B"), C("F")], 3, 8)
-    page.table(headers, rows)
+    headers, rows, notes = read_table(sh, 2, [C("B"), C("F")], 3, 8)
+    page.table(headers, rows, notes)
     a_refaire = sh.take(10, C("B"))
     if a_refaire is not None:
         page.text(a_refaire)
     page.bullets(pair_lines(pairs(sh, C("B"), C("E"), 35, 41)))
 
     page.heading(2, sh.expect(1, C("K"), "MATERIAUX"))
-    headers, rows = read_table(sh, 2, [C("K"), C("O"), C("S"), C("AA")], 3, 44)
-    page.table(headers, rows)
+    headers, rows, notes = read_table(sh, 2, [C("K"), C("O"), C("S"), C("AA")], 3, 44)
+    page.table(headers, rows, notes)
 
     page.heading(2, sh.expect(1, C("BI"), "AMELIORATION"))
     page.heading(3, sh.expect(2, C("BJ"), "Bouclier"))
@@ -956,15 +1007,17 @@ def build_accessoires(sh):
     # attributs, attaque, défense, jet de dés, autre
     for head, c_roll, c_eff, c_lvl, c_gem, c_price in EFFECT_GROUPS:
         page.heading(4, sh.take(39, C(head)))
-        rows = []
+        rows, notes = [], []
         for r in range(44, 83, 2):
             roll = sh.take(r, C(c_roll))
             if roll is None:
                 raise ValueError("Accessoires : jet manquant en %s" % ref_of(r, C(c_roll)))
             eff = sh.take(r, C(c_eff))
-            rows.append([roll, with_notes(eff, sh.pop_notes(r, C(c_eff))), sh.take(r, C(c_lvl)), sh.take(r, C(c_gem)),
-                         sh.take(r, C(c_price))])
-        page.table(["Jet", "Effet", "Niveau", "Gemmes", "Prix"], rows)  # (libellés ajoutés)
+            items = sh.pop_comments(r, C(c_eff))  # commentaire de l'effet, cité sous le tableau : « Effet (Jet 12.0) »
+            if items:
+                notes.append(("Effet (Jet %s)" % fmt(roll), items))
+            rows.append([roll, eff, sh.take(r, C(c_lvl)), sh.take(r, C(c_gem)), sh.take(r, C(c_price))])
+        page.table(["Jet", "Effet", "Niveau", "Gemmes", "Prix"], rows, notes)  # (libellés ajoutés)
 
     # gemmes précieuses
     page.heading(2, sh.expect(1, C("AT"), "Gemme précieuse"))
@@ -1006,7 +1059,7 @@ def build_pieces(sh):
         first = fmt(label).split("\n")[0].strip()
         if fold(fmt(right)) != fold(first):
             page.line("Libellé répété à droite du tableau : %s" % fmt(right))
-        rows = []
+        rows, notes = [], []
         for c, elem in zip(elem_cols, elems):
             value = sh.take(r, c)
             if value is None:
@@ -1014,8 +1067,11 @@ def build_pieces(sh):
             lines = [l.strip() for l in fmt(value).split("\n")]
             if len(lines) != 4 or not re.fullmatch(r"\+8 Dégâts", lines[1]) or not lines[2].startswith("Élément"):
                 raise ValueError("Pièces élémentaires : cellule %s de forme inattendue : %r" % (ref_of(r, c), value))
-            rows.append([elem, lines[0], lines[1], lines[2], with_notes(lines[3], sh.pop_notes(r, c))])
-        page.table(["Colonne", "Nom", "Dégâts", "Élément", "Capacité"], rows)  # (« Colonne », « Dégâts » : libellés ajoutés)
+            items = sh.pop_comments(r, c)  # commentaire de la carte entière (nom / dégâts / élément / capacité), cité sous le tableau
+            if items:
+                notes.append((lines[0], items))
+            rows.append([elem, lines[0], lines[1], lines[2], lines[3]])
+        page.table(["Colonne", "Nom", "Dégâts", "Élément", "Capacité"], rows, notes)  # (« Colonne », « Dégâts » : libellés ajoutés)
 
     # améliorations (colonnes A à F, lignes 57 à 94)
     page.heading(2, sh.expect(57, 1, "AMELIORATION"))
@@ -1076,6 +1132,415 @@ BUILDERS = (
 )
 
 
+# --------------------------------------------------------------------------------------------------------------------
+# Commentaires de cellule : refus, contrôle de couverture et de placement
+# --------------------------------------------------------------------------------------------------------------------
+
+# onglet -> page produite. Table écrite à part, à dessein : les contrôles cherchent un commentaire dans la page de son onglet sans
+# s'appuyer sur les constructeurs ci-dessus.
+PAGE_OF_TAB = {
+    "Équipement inventaire": "equipement-inventaire",
+    "Armes": "armes",
+    "Armures": "armures",
+    "Bouclier": "bouclier",
+    "Bâton magique": "baton-magique",
+    "LivreParchemin": "livre-parchemin",
+    "Accessoires": "accessoires",
+    "Pièces élémentaires": "pieces-elementaires",
+}
+LABEL_RE = re.compile(r"\*\*(Note|Commentaire résolu|Commentaire) de la cellule « .*? »\*\*(?: : (.*))?\s*$", re.S)
+MARKER_RE = re.compile(r"(?:Note|Commentaire résolu|Commentaire) de la cellule « ")
+KIND_OF_LABEL = {"Note": KIND_NOTE, "Commentaire": KIND_THREAD, "Commentaire résolu": KIND_THREAD_DONE}
+KIND_NAME = {KIND_NOTE: "la note", KIND_THREAD: "le fil de commentaires", KIND_THREAD_DONE: "le fil de commentaires (résolu)"}
+
+
+def canon_note(text):
+    return " ".join(str(text).split())
+
+
+def canon_page(text):
+    """Texte d'une page tel qu'on le lit : sauts de ligne forcés, <br> et échappements Markdown retirés, espaces ramenés à un seul."""
+    t = text.replace("<br>", " ")
+    t = re.sub(r"\\(.)", r"\1", t, flags=re.S)
+    return " ".join(t.replace("&lt;", "<").split())
+
+
+def raw_comments(data, tabs):
+    """[(onglet, adresse, genre, texte)] : notes et fils non blancs des onglets `tabs`, lus dans le JSON brut du dump, sans le code de
+    lecture ni de rendu de ce script (l'adresse est celle du dump : QA6 pour une cellule fusionnée non principale)."""
+    out = []
+    for sheet in data["sheets"]:
+        if sheet["name"] not in tabs:
+            continue
+        for cell in sheet["cells"]:
+            ref = ref_of(cell["r"], cell["c"])
+            note = cell.get("note")
+            if isinstance(note, str) and note.strip():
+                out.append((sheet["name"], ref, KIND_NOTE, note))
+            for thread in cell.get("threads") or []:
+                text = thread.get("text")
+                if isinstance(text, str) and text.strip():
+                    out.append((sheet["name"], ref, KIND_THREAD_DONE if thread.get("done") else KIND_THREAD, text))
+    return out
+
+
+def refuse_unpublished(data):
+    """Un commentaire dans un onglet que ni ce script ni divers-craft.py ne publient n'aurait aucune place dans le wiki : ValueError.
+    -> [(onglet, notes, fils)] des onglets de divers-craft.py qui portent des commentaires (rendus par lui, comptés ici)."""
+    elsewhere = []
+    for sheet in data["sheets"]:
+        name = sheet["name"]
+        found = raw_comments(data, [name])
+        if name in PAGE_OF_TAB or not found:
+            continue
+        if name in SIBLING_TABS:
+            elsewhere.append((name, sum(1 for f in found if f[2] == KIND_NOTE), sum(1 for f in found if f[2] != KIND_NOTE)))
+            continue
+        cells = ", ".join("%s (« %s »)" % (ref, shorten(text)) for _t, ref, _g, text in found[:5])
+        raise ValueError("onglet « %s » : %d commentaire(s) de cellule (%s) dans un onglet que equipement.py ne publie pas (onglets "
+                         "publiés : %s ; %s publie : %s) : ils n'auraient aucune place dans le wiki, rien n'est écrit" % (
+                             name, len(found), cells, ", ".join("« %s »" % t for t in PAGE_OF_TAB), SIBLING_SCRIPT,
+                             ", ".join("« %s »" % t for t in SIBLING_TABS)))
+    return elsewhere
+
+
+def page_blocks(text):
+    """Blocs (séparés par une ligne vide) du corps d'une page, sans l'en-tête YAML."""
+    body = text.split("\n---\n", 1)[1] if "\n---\n" in text else text
+    return [b.strip() for b in re.split(r"\n\s*\n", body) if b.strip()]
+
+
+def page_entries(blocks):
+    """[(index du bloc, genre, [textes canoniques possibles])] : un élément par bloc qui ouvre un commentaire (« **Note de la cellule
+    « … »** … »). Un commentaire sur une ligne n'a qu'un texte ; un commentaire qui ouvre par son libellé seul est suivi de ses
+    paragraphes et listes (blocs consécutifs, jusqu'à un titre, un tableau ou un champ en gras) : chaque début de suite de blocs est
+    un texte possible. Le texte est comparé en entier (égalité) : un commentaire qui n'est que le début d'un autre n'est pas confondu."""
+    entries = []
+    for i, block in enumerate(blocks):
+        m = LABEL_RE.match(block)
+        if not m:
+            continue
+        if m.group(2) is not None:
+            candidates = [canon_page(m.group(2))]
+        else:
+            candidates, taken = [], []
+            for later in blocks[i + 1:i + 41]:
+                if later.startswith(("#", "|", "**")):
+                    break
+                taken.append(later)
+                candidates.append(canon_page("\n\n".join(taken)))
+        entries.append((i, KIND_OF_LABEL[m.group(1)], candidates))
+    return entries
+
+
+def assign(expected, entries):
+    """Associe chaque commentaire attendu [(adresse, genre, texte)] à une entrée de page non encore utilisée, de même genre et de
+    même texte intégral. -> ([(attendu, index de bloc ou None)], [entrées non utilisées])."""
+    used, matched = set(), []
+    for ref, genre, text in expected:
+        key = canon_note(text)
+        found = next((k for k, (_i, g, candidates) in enumerate(entries) if k not in used and g == genre and key in candidates), None)
+        if found is None:
+            matched.append(((ref, genre, text), None))
+        else:
+            used.add(found)
+            matched.append(((ref, genre, text), entries[found][0]))
+    return matched, [e for k, e in enumerate(entries) if k not in used]
+
+
+def note_problems(data, texts):
+    """Contrôle de couverture : {page: texte} -> liste d'écarts. Chaque note et chaque fil du dump doit figurer dans la page de son
+    onglet exactement une fois (autant de fois qu'il y a de commentaires de même texte), avec son texte intégral et son libellé, et la
+    page ne porte aucun commentaire de plus. Une page absente de `texts` n'est pas examinée (l'appelant la signale)."""
+    problems = []
+    expected = raw_comments(data, PAGE_OF_TAB)
+    for tab, slug in PAGE_OF_TAB.items():
+        if slug not in texts:
+            continue
+        mine = [(ref, genre, text) for (t, ref, genre, text) in expected if t == tab]
+        blocks = page_blocks(texts[slug])
+        matched, unused = assign(mine, page_entries(blocks))
+        for (ref, genre, text), index in matched:
+            if index is None:
+                problems.append("%s : %s de la cellule %s (« %s ») devrait figurer exactement une fois dans la page avec son texte "
+                                "intégral et son libellé : introuvable" % (slug, KIND_NAME[genre], ref, shorten(canon_note(text), 50)))
+        for index, _genre, candidates in unused:
+            problems.append("%s : la page porte un commentaire de plus que le dump (ou un doublon) : « %s »" % (
+                slug, shorten(candidates[0] if candidates else blocks[index], 50)))
+        markers = len(MARKER_RE.findall(canon_page("\n\n".join(blocks))))
+        if markers != len(mine):
+            problems.append("%s : la page porte %d libellé(s) de commentaire, le dump en compte %d" % (slug, markers, len(mine)))
+    return problems
+
+
+def anchor_text(sheet, ref):
+    """Texte repère de la cellule `ref` du dump brut : sa ligne la plus longue (celle d'une cellule fusionnée non principale : la
+    ligne de la cellule principale), que la page reprend mot pour mot ; None si la cellule est vide."""
+    r, c = split_ref(ref)
+    values = {(x["r"], x["c"]): x.get("v") for x in sheet["cells"]}
+    value = values.get((r, c))
+    if is_blank(value):
+        for rng in sheet.get("merged", []):
+            r1, c1, r2, c2 = parse_range(rng)
+            if r1 <= r <= r2 and c1 <= c <= c2:
+                value = values.get((r1, c1))
+    if is_blank(value):
+        return None
+    return max((canon_note(line) for line in fmt(value).split("\n")), key=len)
+
+
+def place_problems(data, texts):
+    """Contrôle de placement : chaque commentaire retrouvé doit venir APRÈS le texte de sa cellule, dans la même section (aucun
+    titre entre les deux). {page: texte} -> liste d'écarts ; les commentaires introuvables sont signalés par note_problems."""
+    problems = []
+    sheets = {s["name"]: s for s in data["sheets"]}
+    expected = raw_comments(data, PAGE_OF_TAB)
+    for tab, slug in PAGE_OF_TAB.items():
+        if slug not in texts or tab not in sheets:
+            continue
+        mine = [(ref, genre, text) for (t, ref, genre, text) in expected if t == tab]
+        blocks = page_blocks(texts[slug])
+        canon = [canon_page(b) for b in blocks]
+        matched, _unused = assign(mine, page_entries(blocks))
+        for (ref, genre, text), index in matched:
+            anchor = None if index is None else anchor_text(sheets[tab], ref)
+            if anchor is None:
+                continue
+            at = next((k for k in range(index - 1, -1, -1) if anchor in canon[k]), None)
+            if at is None:
+                problems.append("%s : la cellule %s (« %s ») ne figure pas dans la page avant %s qui la commente" % (
+                    slug, ref, shorten(anchor, 40), KIND_NAME[genre]))
+            elif any(blocks[k].startswith("#") for k in range(at + 1, index)):
+                problems.append("%s : %s de la cellule %s est dans une autre section que sa cellule (« %s »)" % (
+                    slug, KIND_NAME[genre], ref, shorten(anchor, 40)))
+    return problems
+
+
+def read_dump(path):
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def pick_dump(paths):
+    """(dump, {onglet: dump brut de l'onglet}) du premier dump qui contient tous les onglets de la famille."""
+    for path in paths:
+        data = read_dump(path)
+        names = {s["name"] for s in data["sheets"]}
+        if all(name in names for name, _ in BUILDERS):
+            return data, {raw["name"]: raw for raw in data["sheets"]}
+    return None, {}
+
+
+def build_pages(raws):
+    """Construit les pages -> (pages, problèmes) ; un onglet en erreur n'empêche pas de signaler les autres."""
+    pages, problems = [], []
+    for name, builder in BUILDERS:
+        try:
+            pages.append(builder(Sheet(raws[name])))
+        except (ValueError, AssertionError) as err:
+            problems.append(str(err) if str(err).startswith(name) else "%s : %s" % (name, err))
+    return pages, problems
+
+
+# --------------------------------------------------------------------------------------------------------------------
+# --verifier : contrôle indépendant, n'écrit rien
+# --------------------------------------------------------------------------------------------------------------------
+
+CONTROL_NOTE = "Note de contrôle du vérificateur : texte de rejeu."
+CONTROL_THREAD = "Fil de contrôle du vérificateur : texte de rejeu."
+FAR = (2000, 2000)   # cellule que la page d'aucun onglet ne reprend
+
+# onglet -> (cellule dont la page cite les commentaires, cellule que la page reprend SANS place prévue pour un commentaire).
+# None : aucune cellule de cet onglet ne reçoit de commentaire.
+REPLAY_CELLS = {
+    "Équipement inventaire": ("A1", "A10"),
+    "Armes": ("O3", "A1"),
+    "Armures": ("A28", "A1"),
+    "Bouclier": ("B3", "AK1"),
+    "Bâton magique": (None, "A1"),
+    "LivreParchemin": (None, "G1"),
+    "Accessoires": ("AM44", "A1"),
+    "Pièces élémentaires": ("X8", "A3"),
+}
+
+
+def tab_of(data, name):
+    return next((s for s in data["sheets"] if s["name"] == name), None)
+
+
+def with_cell(data, tab, cell, merged=None):
+    """Copie du dump avec `cell` ajoutée à l'onglet `tab` (créé s'il n'existe pas) ; le dump d'origine n'est pas touché."""
+    copied = json.loads(json.dumps(data))
+    sheet = tab_of(copied, tab)
+    if sheet is None:
+        sheet = {"name": tab, "state": "visible", "max_row": 1, "max_col": 1, "merged": [], "cells": []}
+        copied["sheets"].append(sheet)
+    sheet["cells"].append(cell)
+    if merged:
+        sheet.setdefault("merged", []).append(merged)
+    return copied
+
+
+def with_comment_on(data, tab, ref, **fields):
+    """Copie du dump avec les champs `fields` (note, threads) ajoutés à la cellule `ref` de l'onglet `tab` (None si elle est vide)."""
+    copied = json.loads(json.dumps(data))
+    pos = split_ref(ref)
+    for cell in tab_of(copied, tab)["cells"]:
+        if (cell["r"], cell["c"]) == pos and not is_blank(cell["v"]):
+            cell.update(fields)
+            return copied
+    return None
+
+
+def tab_error(data, tab):
+    """Message d'arrêt de la construction de la page de `tab` sur `data` (None si elle va au bout)."""
+    builder = dict(BUILDERS)[tab]
+    try:
+        builder(Sheet(tab_of(data, tab)))
+    except (ValueError, AssertionError) as err:
+        return str(err)
+    return None
+
+
+def replay_errors(data):
+    """Rejoue des cas d'erreur sur des copies en mémoire du dump (le vrai dump et les vraies pages ne sont pas touchés).
+    -> (nombre de cas rejoués, écarts)."""
+    failures, count = [], 0
+
+    def expect_stop(label, message, needles):
+        nonlocal count
+        count += 1
+        if message is None:
+            failures.append("rejeu « %s » : le script ne s'arrête pas" % label)
+            return
+        for needle in needles:
+            if needle not in message:
+                failures.append("rejeu « %s » : message d'arrêt sans « %s » : %s" % (label, needle, message[:200]))
+
+    for tab, _builder in BUILDERS:
+        if tab_of(data, tab) is None:
+            failures.append("rejeu « %s » : onglet absent du dump" % tab)
+            continue
+        placed, unplaced = REPLAY_CELLS[tab]
+        expect_stop("note sur une cellule vide (%s)" % tab,
+                    tab_error(with_cell(data, tab, {"r": FAR[0] + 1, "c": FAR[1], "v": "", "note": CONTROL_NOTE}), tab),
+                    (ref_of(FAR[0] + 1, FAR[1]), "vide", "une note"))
+        expect_stop("fil sur une cellule vide (%s)" % tab,
+                    tab_error(with_cell(data, tab, {"r": FAR[0] + 1, "c": FAR[1], "v": "", "threads": [{"text": CONTROL_THREAD}]}), tab),
+                    (ref_of(FAR[0] + 1, FAR[1]), "vide", "un fil"))
+        merged = "%s:%s" % (ref_of(*FAR), ref_of(FAR[0] + 1, FAR[1]))
+        expect_stop("note sur une cellule fusionnée non principale dont la principale est vide (%s)" % tab,
+                    tab_error(with_cell(data, tab, {"r": FAR[0] + 1, "c": FAR[1], "v": "", "note": CONTROL_NOTE}, merged), tab),
+                    ("vide", "fusionnée non principale"))
+        noted = with_comment_on(data, tab, unplaced, note=CONTROL_NOTE)
+        if noted is None:
+            failures.append("rejeu « %s » : cellule %s introuvable ou vide dans le dump" % (tab, unplaced))
+        else:
+            expect_stop("note sans place prévue (%s %s)" % (tab, unplaced), tab_error(noted, tab), ("sans place prévue", unplaced))
+        replied = with_comment_on(data, tab, unplaced, threads=[{"text": CONTROL_THREAD, "replies": ["Une vraie réponse"]}])
+        if replied is not None:
+            expect_stop("réponse de fil inattendue (%s)" % tab, tab_error(replied, tab), ("réponse inattendue", unplaced))
+        if placed is None:
+            continue
+        # commentaires posés sur une cellule que la page cite : acceptés, retrouvés une fois, et signalés si la page les perd
+        count += 1
+        noted = with_comment_on(data, tab, placed, note=CONTROL_NOTE, threads=[{"text": CONTROL_THREAD, "done": True, "replies": list(STATUS_REPLIES)}])
+        if noted is None:
+            failures.append("rejeu « %s » : cellule %s introuvable ou vide dans le dump" % (tab, placed))
+            continue
+        builder = dict(BUILDERS)[tab]
+        try:
+            page = builder(Sheet(tab_of(noted, tab)))
+        except (ValueError, AssertionError) as err:
+            failures.append("rejeu « %s » : un commentaire de contrôle sur %s est refusé : %s" % (tab, placed, str(err)[:200]))
+            continue
+        slug, text = page.slug, page.render()
+        for problem in note_problems(noted, {slug: text}) + place_problems(noted, {slug: text}):
+            failures.append("rejeu « %s » : page conforme jugée non conforme : %s" % (tab, problem))
+        lines = text.split("\n")
+        at_note = [i for i, ln in enumerate(lines) if CONTROL_NOTE in ln]
+        at_thread = [i for i, ln in enumerate(lines) if CONTROL_THREAD in ln]
+        if len(at_note) != 1 or len(at_thread) != 1:
+            failures.append("rejeu « %s » : le commentaire de contrôle figure %d + %d fois dans la page (1 + 1 attendus)" % (
+                tab, len(at_note), len(at_thread)))
+            continue
+        i, j = at_note[0], at_thread[0]
+        variants = {
+            "note retirée": "\n".join(lines[:i] + lines[i + 1:]),
+            "note dupliquée": "\n".join(lines[: i + 1] + ["", lines[i]] + lines[i + 1:]),
+            "note tronquée": text.replace(CONTROL_NOTE, CONTROL_NOTE[:25]),
+            "note altérée": text.replace(CONTROL_NOTE, CONTROL_NOTE.replace("texte de rejeu.", "texte de rejeux.")),
+            "note déplacée dans une autre section": "\n".join(lines[:i] + ["## Section de rejeu", ""] + lines[i:]),
+            "fil retiré": "\n".join(lines[:j] + lines[j + 1:]),
+            "fil dupliqué": "\n".join(lines[: j + 1] + ["", lines[j]] + lines[j + 1:]),
+            "fil rendu non résolu": text.replace("**Commentaire résolu de la cellule", "**Commentaire de la cellule"),
+        }
+        for label, variant in variants.items():
+            count += 1
+            if not (note_problems(noted, {slug: variant}) + place_problems(noted, {slug: variant})):
+                failures.append("rejeu « %s » : %s : aucun écart signalé" % (tab, label))
+    # onglets non publiés
+    count += 1
+    try:
+        refuse_unpublished(with_cell(data, "Onglet de contrôle", {"r": 1, "c": 1, "v": "x", "note": CONTROL_NOTE}))
+        failures.append("rejeu « note dans un onglet inconnu » : le script ne s'arrête pas")
+    except ValueError as err:
+        if "ne publie pas" not in str(err):
+            failures.append("rejeu « note dans un onglet inconnu » : message d'arrêt inattendu : %s" % str(err)[:200])
+    count += 1
+    try:
+        refuse_unpublished(with_cell(data, "Onglet de contrôle", {"r": 1, "c": 1, "v": "x", "threads": [{"text": CONTROL_THREAD}]}))
+        failures.append("rejeu « fil dans un onglet inconnu » : le script ne s'arrête pas")
+    except ValueError as err:
+        if "ne publie pas" not in str(err):
+            failures.append("rejeu « fil dans un onglet inconnu » : message d'arrêt inattendu : %s" % str(err)[:200])
+    count += 1
+    counted = refuse_unpublished(with_cell(data, SIBLING_TABS[0], {"r": FAR[0], "c": FAR[1], "v": "x", "note": CONTROL_NOTE}))
+    if not any(name == SIBLING_TABS[0] and notes >= 1 for name, notes, _threads in counted):
+        failures.append("rejeu « note dans un onglet de %s » : elle devrait être comptée, pas refusée" % SIBLING_SCRIPT)
+    return count, failures
+
+
+def verify(dumps, out_dir):
+    """--verifier : n'écrit rien. -> (code de sortie, lignes affichées)."""
+    data, raws = pick_dump(dumps)
+    if data is None:
+        return 1, ["ÉCART : aucun dump ne contient les onglets de la famille (%s)" % ", ".join(n for n, _ in BUILDERS)]
+    problems = []
+    try:
+        elsewhere = refuse_unpublished(data)
+    except ValueError as err:
+        return 1, ["ÉCART : %s" % err]
+    pages, built_problems = build_pages(raws)
+    problems += built_problems
+    texts, pages_ok = {}, 0
+    for page in pages:
+        path = os.path.join(out_dir, CATEGORY, page.slug + ".md")
+        if not os.path.exists(path):
+            problems.append("%s : page absente (%s)" % (page.slug, path))
+            continue
+        with open(path, encoding="utf-8") as fh:
+            texts[page.slug] = fh.read()
+        if texts[page.slug] != page.render():
+            problems.append("%s : la page écrite n'est pas celle que le dump produit (relancer le script)" % page.slug)
+        else:
+            pages_ok += 1
+    problems += note_problems(data, texts) + place_problems(data, texts)
+    count, failures = replay_errors(data)
+    problems += failures
+    if problems:
+        return 1, ["ÉCART : %s" % p for p in problems[:40]]
+    mine = raw_comments(data, PAGE_OF_TAB)
+    lines = ["--verifier : %d page(s) identiques à ce que le dump produit ; %d note(s) et %d fil(s) de commentaires du périmètre, "
+             "chacun retrouvé exactement une fois avec son texte intégral, après sa cellule et dans sa section, aucun de plus ; "
+             "%d cas d'erreur rejoués (cellule vide, cellule fusionnée sans principale, onglet non publié, sans place prévue, "
+             "réponse de fil inattendue, commentaire retiré / dupliqué / tronqué / altéré / déplacé)" % (
+                 pages_ok, sum(1 for m in mine if m[2] == KIND_NOTE), sum(1 for m in mine if m[2] != KIND_NOTE), count)]
+    for name, notes, threads in elsewhere:
+        lines.append("onglet « %s » : %d note(s) et %d fil(s) rendus par %s" % (name, notes, threads, SIBLING_SCRIPT))
+    return 0, lines
+
+
 def read_title(path):
     try:
         with open(path, encoding="utf-8") as fh:
@@ -1113,29 +1578,38 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Génère les pages « équipement » du wiki depuis le dump de « %s »." % WORKBOOK)
     ap.add_argument("--dump", action="append", required=True, help="dump JSON de xlsx_to_json.py (répétable)")
     ap.add_argument("--out", required=True, help="racine du wiki (client/src/content/wiki)")
+    ap.add_argument("--verifier", action="store_true",
+                    help="n'écrit rien : recalcule les commentaires de cellule depuis le dump, les compare aux pages écrites "
+                         "et rejoue des cas d'erreur")
     args = ap.parse_args(argv)
 
-    sheets = {}
-    for path in args.dump:
-        with open(path, encoding="utf-8") as fh:
-            data = json.load(fh)
-        names = {s["name"] for s in data["sheets"]}
-        if all(name in names for name, _ in BUILDERS):
-            for raw in data["sheets"]:
-                sheets.setdefault(raw["name"], raw)
-    missing = [name for name, _ in BUILDERS if name not in sheets]
-    if missing:
-        sys.exit("onglets absents des dumps : %s" % ", ".join(missing))
+    if args.verifier:
+        code, lines = verify(args.dump, args.out)
+        for line in lines:
+            print(line, file=sys.stderr if code else sys.stdout)
+        return code
 
-    pages, problems = [], []
-    for name, builder in BUILDERS:
-        try:
-            pages.append(builder(Sheet(sheets[name])))
-        except (ValueError, AssertionError) as err:
-            problems.append("%s : %s" % (name, err))
+    data, sheets = pick_dump(args.dump)
+    if data is None:
+        sys.exit("onglets absents des dumps : %s" % ", ".join(name for name, _ in BUILDERS))
+    try:
+        elsewhere = refuse_unpublished(data)
+    except ValueError as err:
+        print("ERREUR : %s" % err, file=sys.stderr)
+        return 1
+
+    pages, problems = build_pages(sheets)
     if problems:
         for p in problems:
             print("ERREUR : " + p, file=sys.stderr)
+        return 1
+    # contrôle de couverture et de placement des commentaires, sur le texte des pages, avant toute écriture
+    texts = {page.slug: page.render() for page in pages}
+    problems = note_problems(data, texts) + place_problems(data, texts)
+    if problems:
+        print("ERREUR : contrôle de couverture des commentaires de cellule, rien n'est écrit :", file=sys.stderr)
+        for p in problems[:30]:
+            print("  " + p, file=sys.stderr)
         return 1
 
     # titres et fichiers des autres familles
@@ -1182,6 +1656,11 @@ def main(argv=None):
             with open(path, "w", encoding="utf-8", newline="\n") as fh:
                 fh.write(body)
         print("%s %s (%d cellules reprises)" % ("inchangé" if old == body else "écrit", path, len(page.sh.consumed)))
+    mine = raw_comments(data, PAGE_OF_TAB)
+    print("commentaires de cellule : %d note(s) et %d fil(s) cités, chacun une fois (couverture et placement contrôlés)" % (
+        sum(1 for m in mine if m[2] == KIND_NOTE), sum(1 for m in mine if m[2] != KIND_NOTE)))
+    for name, notes, threads in elsewhere:
+        print("onglet « %s » : %d note(s) et %d fil(s) de commentaires, rendus par %s" % (name, notes, threads, SIBLING_SCRIPT))
     return 0
 
 

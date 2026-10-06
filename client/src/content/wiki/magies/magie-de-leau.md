@@ -73,33 +73,21 @@ Les spécialistes de l'eau ont les mèches bleutées, très long et mouillés en
 
 ## Notes et commentaires des sorts
 
-**Fer Humide** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Fer Humide »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être confus au stade 1
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Courant salvateur »**
 
-> Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être confus au stade 1
+Ne déclenche pas d'attaques d'opportunités
 
-**Courant salvateur** (Effets secondaires)
+Soigne les alliés de 2d6 si un point d'eau est à 4 cases.
 
-*Note :*
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Dissolution »** : totalement insensible aux dégâts physiques et magiques qui ne sont pas une vulnérabilité. Permet de bénéficié d'une invisibilité quand vous êtes dans l'eau.
 
-> Ne déclenche pas d'attaques d'opportunités
->
-> Soigne les alliés de 2d6 si un point d'eau est à 4 cases.
+**Note de la cellule « Effets secondaires » du sort « Larmes d'Océane »**
 
-**Dissolution** (Effets secondaires)
-
-*Commentaire résolu :*
-
-> totalement insensible aux dégâts physiques et magiques qui ne sont pas une vulnérabilité. Permet de bénéficié d'une invisibilité quand vous êtes dans l'eau.
-
-**Larmes d'Océane** (Effets secondaires)
-
-*Note :*
-
-> Cette météo ne peux pas être retirer par les autres météos ou bien les effets de classes.  
-> Le Don "Climatospetique" ne peux pas contrer cet effet.  
-> Cet effet dure maximum 5 tours.
+Cette météo ne peux pas être retirer par les autres météos ou bien les effets de classes.  
+Le Don "Climatospetique" ne peux pas contrer cet effet.  
+Cet effet dure maximum 5 tours.
 
 ## Textes des sorts de niveau 5
 

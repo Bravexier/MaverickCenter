@@ -128,7 +128,7 @@ Puis lancer 1d20 pour déterminer le bonus d'acquis
 | 9.0 | Permet d'avoir son mode hyper en même temps qu'un autre | Niveau 5 | Onix + Rubis | 254 Ro |
 | 10.0 | MALÉDICTION |  |  |  |
 | 11.0 | Augmente le dé de dégâts des sorts | Niveau 5 | Perle + Onix | 244 Ro |
-| 12.0 | Permet de changer la posture de combat quand on le souhaite durant le tour au lieu de la déterminer au début du tour.<br><br>Note de cellule : Il existe une situation où le changement de posture n'est pas possible, c'est dans le cas où le personnage décide de passer en focus pour utiliser un sort niveau 5 pour après espérer un changement de posture. Si un sort de niveau 5 est lancé, le changement de posture n'est plus possible le reste du tour. | Niveau 5 | Malachite + Ambre | 199 Ro |
+| 12.0 | Permet de changer la posture de combat quand on le souhaite durant le tour au lieu de la déterminer au début du tour. | Niveau 5 | Malachite + Ambre | 199 Ro |
 | 13.0 | Permet de faire des super sauts (5m maxi) | Niveau 4 | Emeraude + Emeraude | 84 Ro |
 | 14.0 | Permet d'avoir un emplacement de sort en plus | Niveau 3 | Onix + Onix | 144 Ro |
 | 15.0 | +5 dégâts avec une catégorie d'arme (ne peut changer une fois décidé) | Niveau 3 | Grenat + Gypse | 82 Ro |
@@ -137,6 +137,8 @@ Puis lancer 1d20 pour déterminer le bonus d'acquis
 | 18.0 | Permet d'avoir une deuxième diagonale gratuite au déplacement | Niveau 2 | Diament rose + Emeraude | 42 Ro |
 | 19.0 | Dégâts magie +2 | Niveau 1 | Perle + Perle | 19 Ro |
 | 20.0 | Dégâts magie +5 | Niveau 3 | Turquoise + Turquoise | 84 Ro |
+
+**Note de la cellule « Effet (Jet 12.0) »** : Il existe une situation où le changement de posture n'est pas possible, c'est dans le cas où le personnage décide de passer en focus pour utiliser un sort niveau 5 pour après espérer un changement de posture. Si un sort de niveau 5 est lancé, le changement de posture n'est plus possible le reste du tour.
 
 #### SI DÉFENSE
 
@@ -155,7 +157,7 @@ Puis lancer 1d20 pour déterminer le bonus d'acquis
 | 9.0 | Résistance Surcharge Magique | Niveau 3 | Perle + Perle | 74 Ro |
 | 10.0 | MALÉDICTION |  |  |  |
 | 11.0 | Résistance Surcharge Magique | Niveau 3 | Onix + Onix | 144 Ro |
-| 12.0 | (Action) Rend le lanceur Insensible pendant 3 tours.<br><br>Note de cellule : L'insensibilité est un état où AUCUN sortilèges (positif ou négatif) ne peux toucher le lanceur. Prendre un coup physique annule cet état. | Niveau 5 | Gypse + Onyx | 249 Ro |
+| 12.0 | (Action) Rend le lanceur Insensible pendant 3 tours. | Niveau 5 | Gypse + Onyx | 249 Ro |
 | 13.0 | Augmente le malus de visée de 5% pour toutes les parties du corps (sauf torse) | Niveau 3 | Diamant rose + Rubis | 102 Ro |
 | 14.0 | Les AP de base augmente de 5 | Niveau 4 | Ambre + Malachite | 97 Ro |
 | 15.0 | Résistance Glace et Gelé | Niveau 3 | Turquoise + Turquoise | 84 Ro |
@@ -164,6 +166,8 @@ Puis lancer 1d20 pour déterminer le bonus d'acquis
 | 18.0 | Résistance Foudre et Paralysie | Niveau 3 | Topaze + Topaze | 74 Ro |
 | 19.0 | Résistance Lumière et Aveuglement | Niveau 3 | Opale + Opale | 104 Ro |
 | 20.0 | Résistance Ombre et Peur | Niveau 3 | Améthyste + Améthyste | 104 Ro |
+
+**Note de la cellule « Effet (Jet 12.0) »** : L'insensibilité est un état où AUCUN sortilèges (positif ou négatif) ne peux toucher le lanceur. Prendre un coup physique annule cet état.
 
 #### SI JET DE DÉS
 
@@ -216,8 +220,10 @@ Puis lancer 1d20 pour déterminer le bonus d'acquis
 | 16.0 | Rend Invisible pendant un tour (1 fois par combat) | Niveau 5 | Gypse + Améthyste | 209 Ro |
 | 17.0 | Permet de renvoyer totalement un sort de niveau 1 à 4 (choix possible) (1 fois par combat) | Niveau 5 | Turquoise + Perle | 184 Ro |
 | 18.0 | Lie une arme à son fourreau (une seule arme) | Niveau 4 | Topaze + Gypse | 87 Ro |
-| 19.0 | Permet d'appeler Agib (sol/ciel) ou Murge (mer), l'objet se brise après<br><br>Note de cellule : Agib est l'ambassadeur de la richesse et Murge son gardien. Ce sont des marchands qui ont beaucoup de marchandises. | Niveau ? | ? | ? |
+| 19.0 | Permet d'appeler Agib (sol/ciel) ou Murge (mer), l'objet se brise après | Niveau ? | ? | ? |
 | 20.0 | Empêche les attaques sournoise et discrète | Niveau 4 | Opale + Améthyste | 114 Ro |
+
+**Note de la cellule « Effet (Jet 19.0) »** : Agib est l'ambassadeur de la richesse et Murge son gardien. Ce sont des marchands qui ont beaucoup de marchandises.
 
 ## Gemme précieuse
 

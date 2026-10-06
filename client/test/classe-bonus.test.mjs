@@ -46,6 +46,20 @@ test('les variantes d’écriture de la phrase comptent (« Concidérer comme un
   }
 });
 
+test('« la classe est concidérée comme magique » (Flagelleur : faute de frappe et participe passé) compte aussi', () => {
+  const masochiste = cartouche('flagelleur', 'masochiste', 'MASOCHISTE', 2, "La résistance magique permet de réduire les dégâts des altérations d'états, +2 points de maîtrise à répartir, la classe est concidérée comme magique.");
+  const sadique = cartouche('flagelleur', 'sadique', 'SADIQUE', 1, '+7% Arme légères OU lourdes, 7% intimidation, +2 points de maîtrise à répartir');
+  const r = bonusAM([flagelleur, sadique, masochiste], flagelleur);
+  assert.equal(r?.specialite, 'MASOCHISTE');
+  assert.equal(r?.source, 'specialite');
+  for (const texte of ['la classe est considérée comme magique', 'considérée comme classe magique', 'Concidérer comme une classe magique']) {
+    assert.equal(bonusAM([flagelleur, cartouche('flagelleur', 'masochiste', 'MASOCHISTE', 2, texte)], flagelleur)?.specialite, 'MASOCHISTE', texte);
+  }
+  for (const texte of ['La magie est considérée comme dangereuse', 'Les armes sont considérées comme magiques', 'Ses attaques sont considérées comme magique pendant 2 tours']) {
+    assert.equal(bonusAM([flagelleur, cartouche('flagelleur', 'masochiste', 'MASOCHISTE', 2, texte)], flagelleur), null, `une phrase voisine ne suffit pas : ${texte}`);
+  }
+});
+
 test('classe raciale dont aucune capacité ne dit « classe magique » : aucun bonus, rien n’est deviné', () => {
   assert.equal(bonusAM([orios, vaTEnGuerre], orios), null);
   assert.equal(bonusAM([orios], orios), null);

@@ -73,21 +73,11 @@ Les utilisateurs du feu ont certaines mèches rouges vif, les yeux rouges lors d
 
 ## Notes et commentaires des sorts
 
-**Fer brûlant** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Fer brûlant »** : Si coup critique avec une arme sous ce sort, inflige brûlure au stade 1
 
-*Note :*
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Fer brûlant »** : Si 5 ou moins avec une arme sous ce sort, inflige brûlure au stade 1
 
-> Si coup critique avec une arme sous ce sort, inflige brûlure au stade 1
-
-*Commentaire résolu :*
-
-> Si 5 ou moins avec une arme sous ce sort, inflige brûlure au stade 1
-
-**Rai solaire** (Effets secondaires)
-
-*Note :*
-
-> Peut prendre un tour de concentration pour donner un bonus de +10 dégâts.
+**Note de la cellule « Effets secondaires » du sort « Rai solaire »** : Peut prendre un tour de concentration pour donner un bonus de +10 dégâts.
 
 ## Textes des sorts de niveau 5
 

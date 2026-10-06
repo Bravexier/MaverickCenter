@@ -72,38 +72,22 @@ Les utilisateurs de la glace ont les mèches bleu cyan, des cheveux assez courts
 
 ## Notes et commentaires des sorts
 
-**Fer froid** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Fer froid »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être gelé au stade 1
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Lien de gel »**
 
-> Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être gelé au stade 1
+3NM = Inflige 4 dégâts perce AM lors du lien de gel.
 
-**Lien de gel** (Effets secondaires)
+Le lien gel touche la cible et lui bloque les mains pendant 1 tour, le tour suivant le lien de gel se propage vers autant d'adversaires disponible. La cible est ainsi libérer mais peut se reprendre le lien de gel si jamais il est à côté d'un autre qui a le lien de gel et ainsi de suite...
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Gel profond »** : l'allié sera aussi dispensé de jet de survie pendant cet état.
 
-> 3NM = Inflige 4 dégâts perce AM lors du lien de gel.
->
-> Le lien gel touche la cible et lui bloque les mains pendant 1 tour, le tour suivant le lien de gel se propage vers autant d'adversaires disponible. La cible est ainsi libérer mais peut se reprendre le lien de gel si jamais il est à côté d'un autre qui a le lien de gel et ainsi de suite...
+**Note de la cellule « Effets secondaires » du sort « Mur de glace »** : Invoque un mur.
 
-**Gel profond** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Exécution froide »**
 
-*Note :*
-
-> l'allié sera aussi dispensé de jet de survie pendant cet état.
-
-**Mur de glace** (Effets secondaires)
-
-*Note :*
-
-> Invoque un mur.
-
-**Exécution froide** (Effets secondaires)
-
-*Note :*
-
-> La victime ne peux rien faire dans cet état, il faut a tout prix que le lanceur rate un jet de concentration ou bien qu'il soit interrompu.  
-> Dans le cas d'un boss qui se fait enfermer, il peut lutter contre avec des jets d'athlétisme, concentration, vigueur, ect... le mj à le choix. Le lanceur devra faire un meilleur jet que la cible pour ne pas qu'il sorte du cerceuil.
+La victime ne peux rien faire dans cet état, il faut a tout prix que le lanceur rate un jet de concentration ou bien qu'il soit interrompu.  
+Dans le cas d'un boss qui se fait enfermer, il peut lutter contre avec des jets d'athlétisme, concentration, vigueur, ect... le mj à le choix. Le lanceur devra faire un meilleur jet que la cible pour ne pas qu'il sorte du cerceuil.
 
 ## Textes des sorts de niveau 5
 

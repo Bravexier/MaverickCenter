@@ -73,39 +73,17 @@ Les utilisateurs de la foudre ont les mèches jaunes, les yeux jaunes lors de l'
 
 ## Notes et commentaires des sorts
 
-**Fer Foudroyant** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Fer Foudroyant »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être paralysé au stade 1
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Colonne tesla »** : Para-tonnerre : Attire les sorts de la foudre ou bien la foudre naturelle sur la cible (objet ou créature)
 
-> Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être paralysé au stade 1
+**Commentaire résolu de la cellule « Type » du sort « Chargeur »** : Peut etre lancer 3 fois dans le meme tour.
 
-**Colonne tesla** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Dysfonctionnement »** : C'est un équivalent de "Confusion 3" pour les créature mécaniques.
 
-*Note :*
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Dysfonctionnement »** : C'est un équivalent de "Confus" pour les créature mécaniques.
 
-> Para-tonnerre : Attire les sorts de la foudre ou bien la foudre naturelle sur la cible (objet ou créature)
-
-**Chargeur** (Type)
-
-*Commentaire résolu :*
-
-> Peut etre lancer 3 fois dans le meme tour.
-
-**Dysfonctionnement** (Effets secondaires)
-
-*Note :*
-
-> C'est un équivalent de "Confusion 3" pour les créature mécaniques.
-
-*Commentaire résolu :*
-
-> C'est un équivalent de "Confus" pour les créature mécaniques.
-
-**Manteau de Volt** (Effets secondaires)
-
-*Note :*
-
-> Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être paralysé au stade 1
+**Note de la cellule « Effets secondaires » du sort « Manteau de Volt »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être paralysé au stade 1
 
 ## Textes des sorts de niveau 5
 

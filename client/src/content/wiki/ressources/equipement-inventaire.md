@@ -8,11 +8,11 @@ status: draft
 
 ## MONNAIE
 
-Note de cellule : L'insensibilité est un état où AUCUN sortilèges (positif ou négatif) ne peux toucher le lanceur. Prendre un coup physique annule cet état.
+**Commentaire résolu de la cellule « MONNAIE »** : L'insensibilité est un état où AUCUN sortilèges (positif ou négatif) ne peux toucher le lanceur. Prendre un coup physique annule cet état.
 
-Note de cellule : Un téléphone quoi
+**Commentaire de la cellule « MONNAIE »** : Un téléphone quoi
 
-Note de cellule : 1 fois par combat
+**Commentaire de la cellule « MONNAIE »** : 1 fois par combat
 
 - Ricken de fer : RF
 - Ricken d'or : RO

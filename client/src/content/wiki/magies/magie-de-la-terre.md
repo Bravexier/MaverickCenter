@@ -73,104 +73,53 @@ Les utilisateurs de la Terre sont des personnes qui ont des tailles et une muscu
 
 ## Notes et commentaires des sorts
 
-**Peau de pierre** (Effets secondaires)
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Peau de pierre »** : Peut se cumuler avec Armure de Roche.
 
-*Commentaire résolu :*
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Appel aux Golems »**
 
-> Peut se cumuler avec Armure de Roche.
+Pour voir les golems possible 
 
-**Appel aux Golems** (Effets secondaires)
 
-*Commentaire résolu :*
+Chaque niveau de puissance de la créature invoqué double de le coût précédent pour l'invoquer.
 
-> Pour voir les golems possible
->
-> Chaque niveau de puissance de la créature invoqué double de le coût précédent pour l'invoquer.
+**Note de la cellule « Effets secondaires » du sort « Racine soignante »** : L'environnement doit être majoritairement de Montagne, Forêt, Plaine, Caverne.
 
-**Racine soignante** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Fer Raffiné »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être pétrifié au stade 1
 
-*Note :*
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Arbre fertilisant »** : La cible doit être vivante.
 
-> L'environnement doit être majoritairement de Montagne, Forêt, Plaine, Caverne.
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Infection »** : Les dégâts de l'infection ne sont pas élémentaire
 
-**Fer Raffiné** (Effets secondaires)
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Cuirasse de roche »** : Peut se cumuler avec Peau de Pierre.
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Barrière rocheuse »**
 
-> Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être pétrifié au stade 1
+Si jamais un coup physique ou magique est encaissé par la protection, elle doit faire plus que la tolérance de cette dernière pour la brisé.
 
-**Arbre fertilisant** (Effets secondaires)
+Si elle fait moins, le coup est annulé et la protection se recharge pour le prochain coup
 
-*Commentaire résolu :*
+Si elle fait plus, la protection est brisé et l'intégralité du coup est encaisser.
 
-> La cible doit être vivante.
+Les AP ne sont pas compté quand les dégâts sont fait à la protection.
 
-**Infection** (Effets secondaires)
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Barrière rocheuse »**
 
-*Commentaire résolu :*
+Corps de pierre : Double les PA, diminue la vitesse de 1 et les adversaires ont +15% de chance avec un jet de défense.  
+Compatible avec Armure de roche et peau de pierre mais ils doivent avoir été lancés avant.
 
-> Les dégâts de l'infection ne sont pas élémentaire
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Alourdissement »** : équivalent à pétrifié 3 mais la victime ne peut pas prendre de dégâts sous le magma.
 
-**Cuirasse de roche** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Sable changeant »** : Le Terrain sable divise par 2 le déplacement, empêche le sprint et fait perdre un tour si jamais on saute.
 
-*Commentaire résolu :*
+**Note de la cellule « Effets secondaires » du sort « Frappe racine »** : Demande un sol, un mur, un plafond ou tout autre surface où la racine peut sortir, sous l'eau ça marche mais pas dans le ciel.
 
-> Peut se cumuler avec Peau de Pierre.
+**Note de la cellule « Effets secondaires » du sort « Terre Maudite »** : La Nécrose ne disparait que quand le lanceur est hors combat ou mort.
 
-**Barrière rocheuse** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Corps de Maverium »** : Corps de Maverium : Tout les dégâts reçu sont réduit à 0 et les effets négatifs sur les protections ne fonctionne pas.
 
-*Note :*
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Corps de Maverium »** : Corps de Marverium permet d'ignorer tout les dégâts possible quelle que soit leur puissance. Comme corps de pierre, tout les organes interne sont solidifié et ne fonctionne pas temporairement (comme un golem, pas besoin)
 
-> Si jamais un coup physique ou magique est encaissé par la protection, elle doit faire plus que la tolérance de cette dernière pour la brisé.
->
-> Si elle fait moins, le coup est annulé et la protection se recharge pour le prochain coup
->
-> Si elle fait plus, la protection est brisé et l'intégralité du coup est encaisser.
->
-> Les AP ne sont pas compté quand les dégâts sont fait à la protection.
-
-*Commentaire résolu :*
-
-> Corps de pierre : Double les PA, diminue la vitesse de 1 et les adversaires ont +15% de chance avec un jet de défense.  
-> Compatible avec Armure de roche et peau de pierre mais ils doivent avoir été lancés avant.
-
-**Alourdissement** (Effets secondaires)
-
-*Commentaire résolu :*
-
-> équivalent à pétrifié 3 mais la victime ne peut pas prendre de dégâts sous le magma.
-
-**Sable changeant** (Effets secondaires)
-
-*Note :*
-
-> Le Terrain sable divise par 2 le déplacement, empêche le sprint et fait perdre un tour si jamais on saute.
-
-**Frappe racine** (Effets secondaires)
-
-*Note :*
-
-> Demande un sol, un mur, un plafond ou tout autre surface où la racine peut sortir, sous l'eau ça marche mais pas dans le ciel.
-
-**Terre Maudite** (Effets secondaires)
-
-*Note :*
-
-> La Nécrose ne disparait que quand le lanceur est hors combat ou mort.
-
-**Corps de Maverium** (Effets secondaires)
-
-*Note :*
-
-> Corps de Maverium : Tout les dégâts reçu sont réduit à 0 et les effets négatifs sur les protections ne fonctionne pas.
-
-*Commentaire résolu :*
-
-> Corps de Marverium permet d'ignorer tout les dégâts possible quelle que soit leur puissance. Comme corps de pierre, tout les organes interne sont solidifié et ne fonctionne pas temporairement (comme un golem, pas besoin)
-
-*Commentaire résolu :*
-
-> Corps de Maverium : Invincible temporairement, diminue la vitesse de 1 et les adversaires ont +15% de chance avec un jet de défense.
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Corps de Maverium »** : Corps de Maverium : Invincible temporairement, diminue la vitesse de 1 et les adversaires ont +15% de chance avec un jet de défense.
 
 ## Textes des sorts de niveau 5
 

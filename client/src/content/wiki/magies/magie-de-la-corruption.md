@@ -80,55 +80,35 @@ Attention, si le chakra permet d'obtenir de la corruption, l'inverse ne se fait 
 
 ## Notes et commentaires des sorts
 
-**Verrouillage Simple** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Verrouillage Simple »**
 
-*Note :*
+Si la cible est dans la posture indiquée à ce moment là, il doit changer de posture de suite.
 
-> Si la cible est dans la posture indiquée à ce moment là, il doit changer de posture de suite.
->
-> Les verrouillages ne se cumule pas.
+Les verrouillages ne se cumule pas.
 
-**Verrouille Visible** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Verrouille Visible »**
 
-*Note :*
+Si la cible est dans la posture indiquée à ce moment là, il doit changer de posture de suite.
 
-> Si la cible est dans la posture indiquée à ce moment là, il doit changer de posture de suite.
->
-> Les verrouillages ne se cumule pas.
+Les verrouillages ne se cumule pas.
 
-**Pétrole** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Pétrole »** : Bien entendu on est pas bloqué à vie, il est possible d'en sortir avec un jet d'athlétisme/équilibre, si il est raté, il faut attendre le prochain tour pour réssayer. C'est juste le mouvement qui est bloqué, pas l'action évidemment.
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Mine noire »** : Elle peut se voir mais seulement avec un jet d'observation/distinction réussi en posture vigilance et seulement a portée de vue (Score de perception)
 
-> Bien entendu on est pas bloqué à vie, il est possible d'en sortir avec un jet d'athlétisme/équilibre, si il est raté, il faut attendre le prochain tour pour réssayer. C'est juste le mouvement qui est bloqué, pas l'action évidemment.
+**Note de la cellule « Effets secondaires » du sort « Laser noir »** : Peut prendre un tour de concentration pour donner un bonus de +10 dégâts.
 
-**Mine noire** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Verrouillage Magique »**
 
-*Note :*
+Si la cible est dans la posture indiquée à ce moment là, il doit changer de posture de suite.
 
-> Elle peut se voir mais seulement avec un jet d'observation/distinction réussi en posture vigilance et seulement a portée de vue (Score de perception)
+Les verrouillages ne se cumule pas.
 
-**Laser noir** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Verrouillage Physique »**
 
-*Note :*
+Si la cible est dans la posture indiquée à ce moment là, il doit changer de posture de suite.
 
-> Peut prendre un tour de concentration pour donner un bonus de +10 dégâts.
-
-**Verrouillage Magique** (Effets secondaires)
-
-*Note :*
-
-> Si la cible est dans la posture indiquée à ce moment là, il doit changer de posture de suite.
->
-> Les verrouillages ne se cumule pas.
-
-**Verrouillage Physique** (Effets secondaires)
-
-*Note :*
-
-> Si la cible est dans la posture indiquée à ce moment là, il doit changer de posture de suite.
->
-> Les verrouillages ne se cumule pas.
+Les verrouillages ne se cumule pas.
 
 ## Légende
 

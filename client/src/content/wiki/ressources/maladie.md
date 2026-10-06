@@ -218,9 +218,7 @@ status: draft
 
 **Effets** : Paralysie des membres et spasmes pouvant causer des fractures. Dure 1 semaine. 80% de chance d'en mourir
 
-*Commentaire joint au champ « Effets » (cellule H39 du classeur d'origine) :*
-
-Se traduit par une croix en Force et Agilité et Social.
+**Commentaire de la cellule « Effets »** : Se traduit par une croix en Force et Agilité et Social.
 
 **Nature** : Inféction bactérienne
 

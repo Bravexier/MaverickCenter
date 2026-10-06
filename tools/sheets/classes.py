@@ -5,14 +5,23 @@ page par capacité de classe, plus le glossaire des objets.
 Usage (bibliothèque standard uniquement ; relançable, mêmes fichiers à l'identique) :
 
     python3 -I tools/sheets/classes.py --dump <classes-v7.json> [--dump <autre.json>] \
-        [--xlsx <classeur.xlsx>] --out client/src/content/wiki
-    python3 -I tools/sheets/classes.py --dump <classes-v7.json> [--xlsx <classeur.xlsx>] --out client/src/content/wiki \
-        --verifier
+        [--xlsx <classeur.xlsx> | --sans-liens] --out client/src/content/wiki
+    python3 -I tools/sheets/classes.py --dump <classes-v7.json> [--xlsx <classeur.xlsx> | --sans-liens] \
+        --out client/src/content/wiki --verifier
+
+Régénération complète, notes de cellule comprises (le dump vient de xlsx_to_json.py ; corrections avant l'extracteur) :
+
+    python3 -I tools/sheets/corriger-dump.py appliquer --ledger tools/sheets/corrections.json --dump classes-v7.json \
+        --out classes-v7.corrige.json
+    python3 -I tools/sheets/classes.py --dump classes-v7.corrige.json --xlsx classeur.xlsx --out client/src/content/wiki
+    python3 -I tools/sheets/classes.py --dump classes-v7.corrige.json --xlsx classeur.xlsx --out client/src/content/wiki --verifier
 
 Source : Google Sheet « Classe Maverick V7 » (fileId 1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs), converti en JSON par
-tools/sheets/xlsx_to_json.py (format décrit dans ce script). Les cellules sont une donnée non fiable : elles ne sont
-jamais exécutées, seulement copiées (échappées pour le Markdown). Rien n'est inventé : valeurs, noms, coquilles et
-formulations sont ceux des cellules.
+tools/sheets/xlsx_to_json.py (format décrit dans ce script), puis corrigé de ses coquilles par tools/sheets/corriger-dump.py
+(docs/sources.md). Les cellules sont une donnée non fiable : elles ne sont jamais exécutées, seulement copiées (échappées pour le
+Markdown). Rien n'est inventé : valeurs, noms, coquilles et formulations sont ceux des cellules.
+Le dump porte les valeurs ET les notes de cellule (champ `note`) ; le classeur .xlsx d'origine sert aux hyperliens de cellule, que
+le dump ne contient pas, et à recouper les notes du dump (voir « Notes de cellule » et « Hyperliens de cellule »).
 
 Fichiers écrits (et seulement ceux-là) :
     <out>/classes/<slug>.md                          une page par classe (39 onglets de classe), sans tableaux d'aptitudes
@@ -25,12 +34,23 @@ famille, n'efface rien (une page de ces dossiers qu'il ne produit plus est signa
 groupes (il part des seules positions de cellules : ligne, colonne, bannière) et contrôle les pages sur disque :
   (1) nombre de pages de capacités = nombre de cellules « Lvl N » des onglets de classe, au total et par classe ;
   (2) nom, type, effet, note de cellule, niveau, ligne, nature, tags, sources de chaque cellule dans SA page ;
+  (2 bis) notes de cellule : relues dans le dump par un code propre au vérificateur (champ `note` de chaque cellule), placées sur
+      le bloc d'effet qu'elles commentent par la seule géométrie des cellules fusionnées, puis comparées aux pages : chaque note est
+      écrite exactement une fois, dans la page prévue, avec son texte intégral, et nulle part ailleurs (ni autre fiche, ni page de
+      classe, ni glossaire) ; le total (dans le dump / rattachées à un bloc d'effet / écrites) doit être le même ; puis
+      REJEU DES CAS D'ERREUR sur des copies en mémoire du dump et des pages (rien n'est écrit, les vrais fichiers ne sont pas
+      touchés) : note sur une cellule vide, dans un onglet non publié (« Combo stat »), dans le Sommaire, non placée (hors d'un
+      bloc d'effet), fil de commentaires, note qui n'est pas un texte, et, sur les pages, note retirée, dupliquée, tronquée ou
+      écrite sur une autre fiche : chacun doit être refusé, par le script ET par le recalcul indépendant, avec un message ;
+  (2 ter) avec le classeur .xlsx (pas avec --sans-liens) : les notes et les fils du dump sont, onglet par onglet, ceux du classeur
+      (mêmes adresses : une note perdue par le dump n'est pas vue par (2 bis), qui compare les pages au dump) ; deux cas sont
+      rejoués en mémoire (une note du classeur perdue par le dump, un fil du classeur que le dump n'a pas) ;
   (3) groupes de choix recalculés depuis les positions, comparés à `choix_exclusif_avec` de chaque page (symétrie, même
       classe, même niveau, même spécialité - sauf entre les deux cartouches de spécialité d'une même ligne, qui s'excluent
       justement parce que leurs spécialités diffèrent -, ids existants, ordre de gauche à droite) ;
   (4) Barde et Archimage comparés EN CLAIR à la liste lue sur les captures de la feuille (constante EXPECTED), plus des
       sélections de test (SELECTIONS : les exemples du propriétaire, un Ménestrel qui a « Nouvel accord » ne peut pas prendre
-      « Écho », etc.) ;
+      « Écho », etc.) ; un de ces onglets absent du dump (classeur de test) n'est pas contrôlé, et c'est dit ;
   titres et identifiants uniques dans tout le wiki, suffixes seulement en cas de doublon ; pages de classes sans tableaux
   d'aptitudes mais avec tout le reste du classeur (le texte de chaque autre cellule doit s'y retrouver) ;
   (5) aucune cellule non reconnue (le script s'arrête sur ce cas), rôle décidable pour chaque capacité, anomalies de
@@ -120,8 +140,8 @@ Pages de capacités (capacites/<slug>.md) : frontmatter (listes YAML en ligne), 
                groupe de 2 (constante CARTOUCHES_EXCLUSIFS_DANS_CHOIX ; False les laisse sans groupe)
     sources    libellé « Google Sheet « Classe Maverick V7 », onglet « <Classe> » » et URL du classeur ; status : draft
   Corps : l'effet (retours à la ligne et listes « - » conservés, mêmes règles d'échappement Markdown que le reste du script),
-  puis la note de cellule éventuelle (« Note de cellule : … ») et rien d'autre : l'exclusivité et les liens sont affichés par le
-  site à partir du frontmatter.
+  puis la note de cellule éventuelle (« Note de cellule : <texte> », voir « Notes de cellule ») et rien d'autre : l'exclusivité et
+  les liens sont affichés par le site à partir du frontmatter.
   Slug : <slug de la classe>-<slug du nom> ; si deux capacités le partagent (ou si le nom ne contient ni lettre ni chiffre),
   -<niveau> est ajouté, puis -<rang> si cela ne suffit pas ; les collisions résolues sont listées à chaque exécution.
 
@@ -147,22 +167,45 @@ cheval sur deux bannières (Flagelleur!H43 « 50 Nuances ... » dans SADIQUE et 
 exclusives par la ligne, mais déjà exclusives par le choix de spécialité) ; 3 capacités de classe dont le nom finit par « … »
 sans cellule voisine qui le reprenne (Martiale!P11 « Mon arme … », Moine!P4 « Reste en vie … » et Moine!P11 « Fidélité … »).
 
-Commentaires et hyperliens de cellule : le dump JSON ne les contient pas. Ils sont lus directement dans le .xlsx d'origine (zipfile + xml,
-sans openpyxl). L'option --xlsx donne le chemin du classeur ; à défaut le script le cherche à côté du dump
-(<dossier du dump>/../sheets/<fileId>/classeur.xlsx). Introuvable : erreur, sauf --sans-commentaires. Chaque commentaire
-est rattaché à la capacité dont il commente le bloc d'effet et rendu dans son corps sous la forme
-« Note de cellule : … ». Les hyperliens externes de cellule (Mage Bleu!Z3, « CHOSE A SAVOIR », vers le classeur des
-familiers) sont lus dans le même fichier (relations de l'onglet) et rendus sous le texte de leur cellule :
+Notes de cellule : une note est le petit commentaire jaune d'une cellule (champ `note` de la cellule du dump, même sens que dans
+tools/sheets/sheets_api_to_json.py ; une cellule vide qui porte une note y est gardée avec v = ""). Elle précise parfois une règle :
+elle est citée telle quelle (aux espaces et retours à la ligne de bord près), jamais interprétée, jamais corrigée. Place prévue : à la
+suite de l'effet de la capacité dont elle commente le bloc d'effet, sous la forme « Note de cellule : <texte> » (retours à la
+ligne et listes « - » conservés), la note étant sur la cellule en haut à gauche du bloc d'effet (c'est le cas des 43 notes de la
+version V7 : une par fiche, Cuirassé!P5, Martiale!D23, Mage!X30…). Rendu des 660 fiches inchangé par rapport à la lecture
+directe du .xlsx qui était faite avant. Le script s'ARRÊTE, sans rien écrire, sur : une note sur une cellule vide (y compris une cellule
+d'une plage fusionnée autre que celle en haut à gauche) ; une note dans un onglet qu'il ne publie pas (« Combo stat ») ou qui n'a pas
+de place pour elle (« Sommaire ») ; une note hors d'un bloc d'effet de capacité (nom, niveau, type, bannière, don de départ… :
+« sans place prévue ») ; une note qui n'est pas un texte ; un fil de commentaires (champ `threads`). Une note blanche n'est pas une note.
+Contrôle de couverture (check_note_coverage, à chaque génération) : chaque note du dump figure exactement une fois, avec son texte
+intégral, dans la fiche prévue, et dans aucune autre page ; les totaux (dans le dump, placées, écrites) sont affichés
+(« notes de cellule : 43 dans le dump, 43 placées, 43 écrites ») et doivent être égaux.
+Recoupement avec le classeur .xlsx (crosscheck_notes, avant toute écriture ; --verifier : contrôle (2 ter)) : le contrôle de
+couverture compare les pages au dump, il ne peut donc pas voir une note que le DUMP a perdue (ancien xlsx_to_json.py, dump copié
+d'un autre classeur) : la fiche serait réécrite sans elle. Quand le classeur est donné (--xlsx, ou trouvé à côté du dump), ses notes
+et ses fils de commentaires sont lus par le lecteur de xlsx_to_json.py (tools/sheets/xlsx_comments.py) et comparés au dump, onglet
+par onglet (publié ou non), adresse par adresse (notes non blanches ; fils) : le moindre écart arrête le script, qui n'écrit rien
+(« notes du classeur absentes du dump : A37 »). Les textes ne sont comparés (aux espaces près) qu'à titre d'avertissement : le
+registre des corrections (champ « note ») peut en retoucher un ; c'est la note du dump qui est citée. Avec --sans-liens, aucun
+classeur n'est lu : les notes ne sont pas recoupées (avertissement sur la sortie d'erreur).
+
+Hyperliens de cellule : le dump ne les contient pas ; ils sont lus directement dans le .xlsx d'origine (zipfile + xml, sans openpyxl),
+qui ne sert par ailleurs qu'au recoupement des notes (ci-dessus). L'option --xlsx donne le chemin du classeur ; à défaut le script le
+cherche à côté du dump (<dossier du dump>/../sheets/<fileId>/classeur.xlsx). Introuvable ou illisible : erreur, sauf --sans-liens
+(exclusive de --xlsx ; elle écarte les hyperliens ET le recoupement : la page de Mage Bleu perd alors la ligne « Lien hypertexte… »,
+à n'utiliser que sur un classeur de test). Les hyperliens externes de cellule
+(Mage Bleu!Z3, « CHOSE A SAVOIR », vers le classeur des familiers) sont rendus sous le texte de leur cellule :
 « Lien hypertexte attaché à la cellule Z3 dans le classeur d'origine : <url> » (même formule que ressources/familiers) ; un
 hyperlien externe qui ne tombe sur aucun bloc connu arrête le script. Les 39 hyperliens internes du Sommaire (un par
 classe, vers son onglet) sont de la navigation propre au classeur : non publiés ; un hyperlien interne hors du Sommaire
-arrête le script.
+arrête le script. (Si xlsx_to_json.py recopie un jour les hyperliens dans le dump, --xlsx deviendra inutile.)
 
 Titres : le titre d'une page de classe est le nom de l'onglet. Exception : les 13 classes de la catégorie « Classe Hybride
 Animal » portent le nom d'une race jouable (Orios, Fenrir…) ; leur titre prend le suffixe « (classe) » pour rester unique dans
 le wiki (leur slug reste le nom seul, dans classes/). Le script refuse un titre déjà porté par une page d'une autre famille.
 """
 import argparse
+import importlib.util
 import json
 import os
 import posixpath
@@ -171,6 +214,7 @@ import sys
 import unicodedata
 import zipfile
 import xml.etree.ElementTree as ET
+from collections import Counter
 
 WORKBOOK = "Classe Maverick V7"
 FILE_ID = "1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs"
@@ -442,7 +486,7 @@ def table(headers, rows):
 
 
 # --------------------------------------------------------------------------------------------------------------------
-# Commentaires de cellule (lus dans le .xlsx)
+# Hyperliens de cellule (lus dans le .xlsx : le dump ne les contient pas ; les notes, elles, viennent du dump)
 # --------------------------------------------------------------------------------------------------------------------
 
 NS_MAIN = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
@@ -458,32 +502,6 @@ def _xml(zf, name):
     if b"<!DOCTYPE" in data or b"<!ENTITY" in data:
         raise ValueError("XML avec DTD refusé : %s" % name)
     return ET.fromstring(data)
-
-
-def read_comments(xlsx_path):
-    """{onglet: {ref: texte}} : notes (commentaires hérités) lues directement dans le .xlsx."""
-    result = {}
-    with zipfile.ZipFile(xlsx_path) as zf:
-        workbook = _xml(zf, "xl/workbook.xml")
-        rels = {r.get("Id"): r.get("Target") for r in _xml(zf, "xl/_rels/workbook.xml.rels")}
-        for sheet in workbook.find("{%s}sheets" % NS_MAIN):
-            name = sheet.get("name")
-            path = posixpath.normpath(posixpath.join("xl", rels[sheet.get("{%s}id" % NS_REL)]))
-            rel_path = posixpath.join(posixpath.dirname(path), "_rels", posixpath.basename(path) + ".rels")
-            notes = {}
-            if rel_path in zf.namelist():
-                for rel in _xml(zf, rel_path):
-                    kind = rel.get("Type").rsplit("/", 1)[-1]
-                    target = posixpath.normpath(posixpath.join(posixpath.dirname(path), rel.get("Target")))
-                    if kind == "comments":
-                        for c in _xml(zf, target).find("{%s}commentList" % NS_MAIN):
-                            text = "".join(t.text or "" for t in c.iter("{%s}t" % NS_MAIN))
-                            if not is_blank(text):
-                                notes[c.get("ref")] = text.replace("\r\n", "\n").replace("\r", "\n").strip()
-                    elif kind == "threadedComment":
-                        raise ValueError("fil de commentaires dans l'onglet %r : non géré par ce script" % name)
-            result[name] = notes
-    return result
 
 
 def read_links(xlsx_path):
@@ -523,6 +541,132 @@ def read_links(xlsx_path):
                 links[ref] = url
             result[name] = links
     return result
+
+
+def load_xlsx_comments():
+    """tools/sheets/xlsx_comments.py (le lecteur de xlsx_to_json.py), chargé par son chemin : `python3 -I` n'ajoute pas le dossier du
+    script à sys.path."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "xlsx_comments.py")
+    spec = importlib.util.spec_from_file_location("xlsx_comments", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def same_words(text):
+    """Texte comparable : espaces, tabulations et retours à la ligne ramenés à une espace (un classeur de Google et son dump ne les
+    portent pas toujours à l'identique)."""
+    return " ".join(str(text).split())
+
+
+def read_xlsx_comments(xlsx_path):
+    """-> (commentaires du classeur {onglet: {"notes": {ref: texte}, "threads": {ref: [fil]}}}, None) ou (None, message d'erreur) :
+    même lecteur que xlsx_to_json.py (xlsx_comments.read_comments), qui ne fait confiance à rien dans le classeur."""
+    try:
+        return load_xlsx_comments().read_comments(xlsx_path), None
+    except (ValueError, KeyError, OSError, zipfile.BadZipFile, ET.ParseError) as err:
+        return None, "classeur %s : lecture des commentaires impossible : %s" % (xlsx_path, err)
+
+
+def crosscheck_notes(sheets, source):
+    """Recoupe les notes et les fils de commentaires du dump (`sheets`) avec ceux du classeur .xlsx d'origine (`source` : résultat de
+    read_xlsx_comments). -> (erreurs, avertissements, nombre de notes du classeur).
+
+    Pourquoi : les notes sont lues dans le dump ; le contrôle de couverture compare les pages au dump, il ne voit donc pas une note
+    que le dump a perdue (ancien xlsx_to_json.py, dump copié d'un autre classeur) : la fiche serait réécrite sans elle. Avec le
+    classeur sous la main, on compare, pour CHAQUE onglet (publié ou non), les adresses des notes (non blanches) et des fils des
+    deux côtés : tout écart est une erreur. Les textes ne sont comparés qu'à titre d'avertissement (aux espaces près) : le
+    registre des corrections (champ « note ») peut en retoucher un, ce qui n'est pas une perte."""
+    errors, warnings, total = [], [], 0
+    for name in sorted(set(source) | set(sheets)):
+        data = source.get(name, {"notes": {}, "threads": {}})
+        want_notes = {ref: text for ref, text in data["notes"].items() if not is_blank(text)}
+        want_threads = {ref for ref, items in data["threads"].items() if items}
+        total += len(want_notes)
+        got_notes, got_threads = {}, set()
+        for cell in sheets[name]["cells"] if name in sheets else []:
+            ref = ref_of(cell["r"], cell["c"])
+            if cell.get("note") is not None and not is_blank(cell["note"]):
+                got_notes[ref] = cell["note"]
+            if cell.get("threads"):
+                got_threads.add(ref)
+        gaps = [
+            ("notes du classeur absentes du dump", set(want_notes) - set(got_notes)),
+            ("notes du dump absentes du classeur", set(got_notes) - set(want_notes)),
+            ("fils de commentaires du classeur absents du dump", want_threads - got_threads),
+            ("fils de commentaires du dump absents du classeur", got_threads - want_threads),
+        ]
+        gaps = ["%s : %s" % (label, ", ".join(sorted(refs, key=split_ref))) for label, refs in gaps if refs]
+        if gaps:
+            errors.append("onglet « %s » : le dump ne porte pas les mêmes commentaires que le classeur .xlsx (%s) : dump produit sans "
+                          "toutes les notes (ancien xlsx_to_json.py) ou depuis un autre classeur ? relancer tools/sheets/xlsx_to_json.py "
+                          "sur ce classeur ; rien n'est écrit" % (name, " ; ".join(gaps)))
+        changed = [ref for ref in want_notes if ref in got_notes and same_words(want_notes[ref]) != same_words(got_notes[ref])]
+        if changed:
+            warnings.append("onglet « %s » : le texte de la note diffère de celui du classeur en %s (retouche du registre de "
+                            "corrections ? la note du dump est celle qui est citée)"
+                            % (name, ", ".join(sorted(changed, key=split_ref))))
+    return errors, warnings, total
+
+
+# --------------------------------------------------------------------------------------------------------------------
+# Notes de cellule (champ `note` du dump)
+# --------------------------------------------------------------------------------------------------------------------
+
+NOTE_LABEL = "Note de cellule : "          # début de chaque note dans le corps d'une fiche de capacité
+LINK_LINE_START = "*Lien hypertexte attaché à la cellule "
+COVERAGE_PREFIX = "contrôle de couverture des notes de cellule : "
+
+
+def merged_range_of(raw, r, c):
+    """Plage fusionnée de l'onglet brut qui contient la cellule (r, c), en notation A1, ou None."""
+    for rng in raw.get("merged", []):
+        r1, c1, r2, c2 = parse_range(rng)
+        if r1 <= r <= r2 and c1 <= c <= c2:
+            return rng
+    return None
+
+
+def collect_notes(sheets, class_names):
+    """Notes de cellule du dump -> {onglet de classe: {adresse: texte}} (texte nettoyé par fmt : espaces de bord retirés).
+
+    Une note est le champ `note` d'une cellule ; une note blanche n'en est pas une. ValueError (le script s'arrête, rien n'est
+    écrit) sur ce qui n'a pas de place : un fil de commentaires (champ `threads`), une note qui n'est pas un texte, une note
+    dans un onglet non publié (IGNORED_SHEETS) ou sans place prévue (Sommaire), une note sur une cellule vide (y compris une
+    cellule d'une plage fusionnée autre que celle en haut à gauche : la note se pose sur cette dernière).
+    """
+    notes = {}
+    for name, raw in sheets.items():
+        for cell in raw["cells"]:
+            ref = ref_of(cell["r"], cell["c"])
+            if cell.get("threads"):
+                raise ValueError("onglet « %s » : fil de commentaires en %s : non géré par ce script (aucune place prévue)"
+                                 % (name, ref))
+            note = cell.get("note")
+            if note is None:
+                continue
+            if not isinstance(note, str):
+                raise ValueError("onglet « %s » : la note de la cellule %s n'est pas un texte : %r" % (name, ref, note))
+            if is_blank(note):
+                continue
+            text = fmt(note)
+            if name in IGNORED_SHEETS:
+                raise ValueError("onglet « %s » : note de cellule en %s (%r) dans un onglet que ce script ne publie pas"
+                                 % (name, ref, text[:40]))
+            if name == SUMMARY_SHEET:
+                raise ValueError("onglet « %s » : note de cellule en %s (%r) : aucune place prévue pour une note dans le Sommaire"
+                                 % (name, ref, text[:40]))
+            if name not in class_names:
+                raise ValueError("onglet « %s » : note de cellule en %s (%r) dans un onglet qui n'est pas une classe"
+                                 % (name, ref, text[:40]))
+            if is_blank(cell.get("v")):
+                rng = merged_range_of(raw, cell["r"], cell["c"])
+                raise ValueError("onglet « %s » : la cellule %s est vide mais porte une note (%r)%s"
+                                 % (name, ref, text[:40],
+                                    " : elle fait partie de la plage fusionnée %s, dont la note se pose sur la cellule en haut à "
+                                    "gauche" % rng if rng else ""))
+            notes.setdefault(name, {})[ref] = text
+    return notes
 
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -721,17 +865,19 @@ def parse_class(sh, name):
 
 
 def attach_notes(sh, page, notes):
-    """Rattache les commentaires de cellule au bloc d'effet des aptitudes."""
+    """Rattache chaque note de cellule ({adresse: texte}) au bloc d'effet de la capacité qu'elle commente : la note est sur la
+    cellule en haut à gauche de ce bloc. Une note ailleurs (nom, niveau, type, bannière, don de départ…) n'a pas de place prévue :
+    ValueError, rien n'est supposé. Chaque aptitude garde ses notes sous la forme [(adresse, texte)]."""
     abilities = list(page["class_abilities"]) + list(page["other_abilities"])
     for b in page["banners"]:
         abilities += b["abilities"]
     by_pos = {a["desc_pos"]: a for a in abilities}
     for ref in sorted(notes, key=split_ref):
-        r, c = split_ref(ref)
-        pos = sh.top_left(r, c)
+        pos = split_ref(ref)
         if pos not in by_pos:
-            raise ValueError("%s : commentaire en %s hors d'un bloc d'effet d'aptitude : %r" % (sh.name, ref, notes[ref]))
-        by_pos[pos]["notes"].append(notes[ref])
+            raise ValueError("%s : note de cellule en %s sans place prévue (hors d'un bloc d'effet d'aptitude) : %r"
+                             % (sh.name, ref, notes[ref]))
+        by_pos[pos]["notes"].append((ref, notes[ref]))
 
 
 def attach_links(sh, page, links):
@@ -1075,14 +1221,68 @@ def render_capacity(cap):
     L += ["sources: " + yaml_list(["Google Sheet « %s », onglet « %s »" % (WORKBOOK, cap["sheet"]), URL]),
           "status: draft", "---", ""]
     body = md_text(ab["desc"]) if ab["desc"] else []
-    for note in ab["notes"]:
-        body += ([""] if body else []) + md_text("Note de cellule : " + note)
+    for _, note in ab["notes"]:
+        body += ([""] if body else []) + md_text(NOTE_LABEL + note)
     for ref, url in ab["links"]:
         body += ([""] if body else []) + [link_note(ref, url)]
     L += body
     while L and L[-1] == "":
         L.pop()
     return "\n".join(L) + "\n"
+
+
+def note_block(text):
+    """Une note de cellule telle que render_capacity l'écrit (lignes Markdown jointes)."""
+    return "\n".join(md_text(NOTE_LABEL + text))
+
+
+def note_segments(page):
+    """Notes écrites dans une page : le texte de chaque note, du libellé « Note de cellule : » jusqu'à la note suivante (ou la fin
+    de la page), sans les lignes d'hyperlien qui suivraient la dernière."""
+    parts = re.split(r"(?m)^(?=%s)" % re.escape(NOTE_LABEL), page)
+    return [re.split(r"\n\n(?=%s)" % re.escape(LINK_LINE_START), part.strip("\n"))[0] for part in parts[1:]]
+
+
+def check_note_coverage(dump_notes, placed, pages):
+    """Contrôle de couverture des notes de cellule -> liste d'écarts (vide si tout va bien).
+
+    dump_notes : {onglet: {adresse: texte}} (collect_notes) ; placed : [dict(tab, ref, text, page)] notes rattachées à une
+    capacité (page = identifiant « capacites/<slug> » de sa fiche) ; pages : {identifiant: texte intégral de la page} de TOUTES les
+    pages écrites. Chaque note du dump doit être placée sur une fiche et figurer exactement une fois dans CETTE page, avec son texte
+    intégral ; aucune autre note ne doit être écrite, nulle part (autre fiche, page de classe, glossaire).
+    """
+    problems = {}
+
+    def add(text):
+        problems[COVERAGE_PREFIX + text] = True
+
+    n_dump = sum(len(v) for v in dump_notes.values())
+    placed_refs = {(n["tab"], n["ref"]) for n in placed}
+    for tab in sorted(dump_notes):
+        for ref in sorted(dump_notes[tab], key=split_ref):
+            if (tab, ref) not in placed_refs:
+                add("note de la cellule %s %s : aucune fiche ne la reçoit" % (tab, ref))
+    expected = {}
+    for n in placed:
+        expected.setdefault(n["page"], []).append(n)
+    written = 0
+    for pid in sorted(set(pages) | set(expected)):
+        got = Counter(note_segments(pages.get(pid, "")))
+        want = Counter(note_block(n["text"]) for n in expected.get(pid, []))
+        written += sum(got.values())
+        for n in expected.get(pid, []):
+            block = note_block(n["text"])
+            if got[block] != want[block]:
+                add("page « %s » : note de la cellule %s %s attendue %d fois, trouvée %d fois"
+                    % (pid, n["tab"], n["ref"], want[block], got[block]))
+        for block in (got - want):
+            if block not in want:
+                add("page « %s » : note de cellule inattendue (« %s »)" % (pid, block[len(NOTE_LABEL):][:50]))
+    if n_dump != len(placed):
+        add("%d note(s) dans le dump, %d placée(s) dans les pages" % (n_dump, len(placed)))
+    if n_dump != written:
+        add("%d note(s) dans le dump, %d écrite(s) dans les pages" % (n_dump, written))
+    return list(problems)
 
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -1193,6 +1393,8 @@ def v_read_sheet(raw):
 
 def v_sheet_abilities(name, raw, notes):
     """Capacités d'un onglet de classe lues par leurs seules positions -> (liste de dicts, anomalies, erreurs).
+    `notes` : {adresse: texte} des notes de cellule de l'onglet (v_dump_notes) ; chaque capacité garde celles dont la cellule tombe
+    dans son bloc d'effet (texte dans `notes`, adresse dans `note_refs`).
 
     Les anomalies sont des tuples (nature de l'anomalie, onglet, détail) ; les erreurs sont les cas où le rôle d'une
     capacité ne peut pas être décidé (aucune supposition n'est faite).
@@ -1217,13 +1419,14 @@ def v_sheet_abilities(name, raw, notes):
             if (rr, c) in cells:
                 typ, typ_row = cells[(rr, c)], rr
                 break
-        found = []
+        found, found_refs = [], []
         for ref in sorted(notes, key=lambda x: (int(V_REF.fullmatch(x).group(2)), v_cn(V_REF.fullmatch(x).group(1)))):
             nr, nc = int(V_REF.fullmatch(ref).group(2)), v_cn(V_REF.fullmatch(ref).group(1))
             if r + 1 <= nr <= r2 and c <= nc <= c2:
                 found.append(notes[ref])
+                found_refs.append(ref)
         used = {(r, c), (r + 1, c)} | ({(r, right[0])} if right else set()) | ({(typ_row, c)} if typ is not None else set())
-        abilities.append(dict(row=r, col=c, niveau=int(m.group(1)), nom=nm, effet=eff, type=typ, notes=found,
+        abilities.append(dict(row=r, col=c, niveau=int(m.group(1)), nom=nm, effet=eff, type=typ, notes=found, note_refs=found_refs,
                               spec=None, nature=None, peers=[], rang=None, used=used))
 
     for a in abilities:
@@ -1348,9 +1551,11 @@ def v_cut_names(name, abilities):
 
 
 def v_parse_page(path):
-    """Page écrite par ce script -> (frontmatter {clé: valeur}, corps). Le frontmatter est écrit ligne à ligne, en JSON."""
+    """Page écrite par ce script -> (frontmatter {clé: valeur}, corps, texte intégral). Le frontmatter est écrit ligne à ligne,
+    en JSON."""
     with open(path, encoding="utf-8") as fh:
-        lines = fh.read().split("\n")
+        text = fh.read()
+    lines = text.split("\n")
     if lines[0] != "---":
         raise ValueError("pas de frontmatter")
     end = lines.index("---", 1)
@@ -1358,7 +1563,7 @@ def v_parse_page(path):
     for line in lines[1:end]:
         key, _, value = line.partition(": ")
         front[key] = value if key == "status" else json.loads(value)   # status est un mot nu, le reste du JSON
-    return front, "\n".join(lines[end + 1:])
+    return front, "\n".join(lines[end + 1:]), text
 
 
 def v_unescape(line):
@@ -1415,10 +1620,199 @@ def v_described(pages, class_id, class_name):
     return d
 
 
+V_NOTE = "Note de cellule : "
+V_LINK = "*Lien hypertexte attaché"
+V_CLASSES_DIR = "classes"
+V_GLOSSARY = os.path.join("ressources", "objets-de-depart-des-classes.md")
+
+
+def v_dump_notes(sheets, class_names):
+    """Notes de cellule du dump, relues par un code propre au vérificateur (il ne passe pas par collect_notes)
+    -> ({onglet: {adresse: texte}}, erreurs : liste de textes). Mêmes refus que le script, formulés autrement : fil de
+    commentaires, note qui n'est pas un texte, note dans un onglet qui n'est pas une classe (non publié, Sommaire), note sur
+    une cellule vide. Une note blanche n'est pas une note."""
+    notes, errors = {}, []
+    for name, raw in sheets.items():
+        for c in raw["cells"]:
+            where = "%s!%s" % (name, ref_of(c["r"], c["c"]))
+            if c.get("threads"):
+                errors.append("%s : fil de commentaires, aucune place prévue" % where)
+            note = c.get("note")
+            if note is None:
+                continue
+            if not isinstance(note, str):
+                errors.append("%s : note qui n'est pas un texte (%r)" % (where, note))
+            elif not note.strip():
+                continue
+            elif name not in class_names:
+                errors.append("%s : note dans un onglet non publié ou sans place pour une note" % where)
+            elif c.get("v") is None or (isinstance(c["v"], str) and not c["v"].strip()):
+                errors.append("%s : cellule vide qui porte une note" % where)
+            else:
+                notes.setdefault(name, {})[ref_of(c["r"], c["c"])] = note.replace("\r\n", "\n").replace("\r", "\n").strip()
+    return notes, errors
+
+
+def v_note_segments(text):
+    """Notes écrites dans un texte de page, lues sur ses lignes déséchappées (v_lines) : une liste de tuples de lignes, un par
+    note (du libellé jusqu'à la note suivante), sans les lignes d'hyperlien."""
+    segments, current = [], None
+    for line in v_lines(text):
+        if line.startswith(V_NOTE):
+            current = [line]
+            segments.append(current)
+        elif line.startswith(V_LINK):
+            current = None
+        elif current is not None:
+            current.append(line)
+    return [tuple(seg) for seg in segments]
+
+
+def v_check_page_notes(label, texts, text):
+    """Notes d'une page : `texts` = textes attendus (dump), `text` = texte intégral de la page -> échecs. Chaque note attendue
+    doit y figurer exactement autant de fois qu'elle est attendue, avec son texte intégral, et aucune autre ne doit y être."""
+    want = Counter(tuple(v_lines(V_NOTE + t)) for t in texts)
+    got = Counter(v_note_segments(text))
+    out = []
+    for seg in sorted(want):
+        if got[seg] != want[seg]:
+            out.append("%s : note « %s » attendue %d fois, trouvée %d fois" % (label, seg[0][len(V_NOTE):][:50], want[seg], got[seg]))
+    for seg in sorted(got - want):
+        if seg not in want:
+            out.append("%s : note inattendue « %s »" % (label, seg[0][len(V_NOTE):][:50]))
+    return out
+
+
+def v_independent_refusals(mut, tab, class_names):
+    """Ce que le recalcul indépendant refuse dans un dump modifié (onglet `tab`) : erreurs de lecture des notes, notes qu'aucun
+    bloc d'effet de l'onglet ne contient (la géométrie des cellules fusionnées décide)."""
+    notes, errors = v_dump_notes(mut, class_names)
+    errors = list(errors)
+    if tab in class_names:
+        abilities, _, _ = v_sheet_abilities(tab, mut[tab], notes.get(tab, {}))
+        placed = {ref for a in abilities for ref in a["note_refs"]}
+        errors += ["%s!%s : note sans bloc d'effet de capacité (non placée)" % (tab, ref) for ref in notes.get(tab, {}) if ref not in placed]
+    return errors
+
+
+def v_mutate(sheets, tab, change):
+    """Copie du dump où `change(cells)` modifie une copie des cellules de l'onglet `tab` ; les autres onglets sont partagés,
+    jamais modifiés (le vrai dump n'est jamais touché)."""
+    raw = sheets[tab]
+    cells = [dict(c) for c in raw["cells"]]
+    change(cells)
+    return dict(sheets, **{tab: dict(raw, cells=cells)})
+
+
+def v_replays(sheets, class_names, links, dump_notes, placed, pages, comments=None):
+    """Rejoue des cas d'erreur sur des copies en mémoire du dump et des pages : chacun doit être refusé, avec un message, par
+    le script ET par le recalcul indépendant. -> [(libellé, échecs, info)]. `placed` : notes rattachées (recalcul indépendant,
+    [dict(tab, ref, text, page)]) ; `pages` : {identifiant: dict(text, ...)} des fiches de capacités écrites sur disque ;
+    `comments` : commentaires du classeur .xlsx (None sans classeur : le recoupement n'est alors pas rejoué)."""
+    results = []
+
+    def run(label, tab, mut, script_re, indep_re):
+        try:
+            built = build(mut, class_names, links)
+            script = "; ".join(built["problems"])
+        except ValueError as err:
+            script = str(err)
+        indep = "; ".join(v_independent_refusals(mut, tab, class_names))
+        failures = []
+        if not script:
+            failures.append("le script n'a rien refusé")
+        elif not re.search(script_re, script):
+            failures.append("message du script inattendu : %s" % script[:120])
+        if not indep:
+            failures.append("le recalcul indépendant n'a rien refusé")
+        elif not re.search(indep_re, indep):
+            failures.append("message du recalcul inattendu : %s" % indep[:120])
+        results.append((label, failures, script[:110]))
+
+    base = class_names[0]
+    free_row = max(c["r"] for c in sheets[base]["cells"]) + 1
+    level_cell = next(c for c in sheets[base]["cells"] if isinstance(c.get("v"), str) and V_LVL.match(c["v"]))
+    run("note sur une cellule vide", base, v_mutate(sheets, base, lambda cells: cells.append(
+        dict(r=free_row, c=3, v="", note="Une note"))), r"est vide mais porte une note", r"cellule vide qui porte une note")
+    ignored = sorted(IGNORED_SHEETS)[0]
+    if ignored in sheets:
+        mut = v_mutate(sheets, ignored, lambda cells: cells[0].update(note="Une note"))
+    else:
+        mut = dict(sheets, **{ignored: dict(name=ignored, state="visible", merged=[], cells=[dict(r=1, c=1, v="x", note="Une note")])})
+    run("note dans un onglet non publié", ignored, mut, r"ne publie pas", r"onglet non publié")
+    run("note dans le Sommaire", SUMMARY_SHEET, v_mutate(sheets, SUMMARY_SHEET, lambda cells: cells[0].update(note="Une note")),
+        r"aucune place prévue", r"onglet non publié ou sans place")
+    run("note non placée (hors d'un bloc d'effet de capacité)", base, v_mutate(
+        sheets, base, lambda cells: next(c for c in cells if (c["r"], c["c"]) == (level_cell["r"], level_cell["c"])).update(
+            note="Une note")), r"sans place prévue", r"non placée")
+    run("fil de commentaires", base, v_mutate(sheets, base, lambda cells: cells[0].update(threads=[dict(text="Une conversation")])),
+        r"fil de commentaires", r"fil de commentaires")
+    run("note qui n'est pas un texte", base, v_mutate(sheets, base, lambda cells: cells[0].update(note=5)),
+        r"pas un texte", r"pas un texte")
+
+    # recoupement avec le classeur .xlsx : le dump perd une note, ou le classeur porte un fil que le dump n'a pas
+    if comments is not None and any(dump_notes.get(name) for name in class_names):
+        tab = next(name for name in class_names if dump_notes.get(name))
+        ref = next(iter(dump_notes[tab]))
+        row, col = split_ref(ref)
+        lost = v_mutate(sheets, tab, lambda cells: next(c for c in cells if (c["r"], c["c"]) == (row, col)).pop("note"))
+        script = "; ".join(crosscheck_notes(lost, comments)[0])
+        in_xlsx = sum(1 for name in class_names for text in comments.get(name, {"notes": {}})["notes"].values() if not is_blank(text))
+        in_dump = sum(len(notes) for notes in v_dump_notes(lost, class_names)[0].values())
+        failures = []
+        if not re.search(r"notes du classeur absentes du dump : %s" % re.escape(ref), script):
+            failures.append("le recoupement n'a pas refusé la note perdue : %s" % (script[:120] or "rien refusé"))
+        if in_dump == in_xlsx:
+            failures.append("le recalcul indépendant ne voit pas l'écart (%d notes des deux côtés)" % in_dump)
+        results.append(("note du classeur perdue par le dump (classeur .xlsx fourni)", failures, script[:110]))
+        threaded = dict(comments, **{tab: dict(comments.get(tab, {"notes": {}}), threads={ref: [{"text": "Une conversation"}]})})
+        script = "; ".join(crosscheck_notes(sheets, threaded)[0])
+        results.append(("fil de commentaires du classeur perdu par le dump (classeur .xlsx fourni)",
+                        [] if re.search(r"fils de commentaires du classeur absents du dump : %s" % re.escape(ref), script)
+                        else ["le recoupement n'a pas refusé le fil perdu : %s" % (script[:120] or "rien refusé")], script[:110]))
+
+    # cas sur les pages : il faut au moins une note dans le dump
+    by_page = {}
+    for n in placed:
+        by_page.setdefault(n["page"], []).append(n)
+    # une fiche saine (ses notes déjà conformes au dump) sert de base : sur une page déjà fautive, l'échec est déjà signalé plus haut
+    sound = [pid for pid in by_page if not v_check_page_notes(pid, [n["text"] for n in by_page[pid]], pages[pid]["text"])]
+    other = next((pid for pid in sorted(pages) if pid not in by_page), None)
+    if not sound or other is None:
+        results.append(("note retirée, dupliquée, tronquée ou écrite sur une autre fiche : non rejoués", [],
+                        "aucune note dans le dump" if not by_page else "aucune fiche saine, ou toutes les fiches ont une note"))
+        return results
+    target = max(sound, key=lambda pid: (max(len(n["text"]) for n in by_page[pid]), pid))
+    texts = [n["text"] for n in by_page[target]]
+    all_text = {pid: p["text"] for pid, p in pages.items()}
+    text = all_text[target]
+    cut = text.index("\n" + V_NOTE) + 1
+    note_part = text[cut:]
+
+    def page_case(label, pid, mutated, wanted_texts):
+        indep = v_check_page_notes(pid, wanted_texts, mutated)
+        script = check_note_coverage(dump_notes, placed, dict(all_text, **{pid: mutated}))
+        failures = []
+        if not script:
+            failures.append("le script n'a rien refusé")
+        if not indep:
+            failures.append("le recalcul indépendant n'a rien refusé")
+        results.append((label, failures, (script[0] if script else "")[len(COVERAGE_PREFIX):][:110]))
+
+    page_case("note retirée d'une page", target, text[:cut], texts)
+    page_case("note dupliquée dans une page", target, text.rstrip("\n") + "\n\n" + note_part, texts)
+    page_case("note tronquée dans une page", target, text.rstrip("\n")[:-8] + "\n", texts)
+    page_case("note écrite sur une autre fiche", other, all_text[other].rstrip("\n") + "\n\n" + note_part, [])
+    return results
+
+
 def verify(args):
     sheets, order, dump_dirs = load_dumps(args.dump)
     class_names = [n for n in order if n != SUMMARY_SHEET and n not in IGNORED_SHEETS]
-    comments, links = load_comments(args, dump_dirs)
+    xlsx = locate_xlsx(args, dump_dirs)
+    links = load_links(xlsx)
+    comments, comments_failure = read_xlsx_comments(xlsx) if xlsx is not None else (None, None)
+    dump_notes, note_errors = v_dump_notes(sheets, class_names)
     out = args.out
     results = []     # (libellé, [échecs], info)
 
@@ -1432,17 +1826,17 @@ def verify(args):
         full = os.path.join(folder, fname)
         if fname.endswith(".md") and is_ours(full):
             try:
-                front, body = v_parse_page(full)
+                front, body, text = v_parse_page(full)
             except (ValueError, OSError) as err:
                 failures.append("%s : page illisible (%s)" % (fname, err))
                 continue
-            pages[CAP_CATEGORY + "/" + fname[:-3]] = dict(id=CAP_CATEGORY + "/" + fname[:-3], front=front, body=body)
+            pages[CAP_CATEGORY + "/" + fname[:-3]] = dict(id=CAP_CATEGORY + "/" + fname[:-3], front=front, body=body, text=text)
     check("pages de capacités lisibles", failures, "%d pages dans %s" % (len(pages), folder))
 
     # capacités attendues, recalculées depuis le dump
     expected, anomalies, errors, observations = {}, [], [], []
     for name in class_names:
-        ab, an, er = v_sheet_abilities(name, sheets[name], comments.get(name, {}))
+        ab, an, er = v_sheet_abilities(name, sheets[name], dump_notes.get(name, {}))
         expected[name] = ab
         anomalies += an
         errors += er
@@ -1528,6 +1922,57 @@ def verify(args):
             titles_by_key.setdefault(wiki_key(f.get("title", "")), []).append(p["id"])
     check("(2) nom, type, effet, note, niveau, nature de chaque cellule dans SA page", failures)
 
+    # (2 bis) notes de cellule : relues dans le dump, placées par la géométrie, comparées aux pages ; puis cas d'erreur rejoués
+    failures = list(note_errors)
+    n_dump = sum(len(v) for v in dump_notes.values())
+    placed, attached, written = [], 0, 0
+    for name in class_names:
+        refs_found = set()
+        for a in expected[name]:
+            attached += len(a["notes"])
+            refs_found.update(a["note_refs"])
+            if a["page"] is None:
+                continue
+            placed += [dict(tab=name, ref=ref, text=text, page=a["page"]["id"]) for ref, text in zip(a["note_refs"], a["notes"])]
+            failures += v_check_page_notes("%s!%s (%s)" % (name, ref_of(a["row"], a["col"]), a["page"]["id"]), a["notes"],
+                                           a["page"]["text"])
+        failures += ["%s!%s : note sans bloc d'effet de capacité (non placée)" % (name, ref)
+                     for ref in dump_notes.get(name, {}) if ref not in refs_found]
+    for p in pages.values():
+        written += len(v_note_segments(p["text"]))
+    other_pages = [os.path.join(out, V_CLASSES_DIR, f) for f in sorted(os.listdir(os.path.join(out, V_CLASSES_DIR)))
+                   if f.endswith(".md")] if os.path.isdir(os.path.join(out, V_CLASSES_DIR)) else []
+    other_pages.append(os.path.join(out, V_GLOSSARY))
+    for path in other_pages:
+        if os.path.isfile(path) and is_ours(path):
+            with open(path, encoding="utf-8") as fh:
+                extra = v_note_segments(fh.read())
+            written += len(extra)
+            if extra:
+                failures.append("%s : page qui n'est pas une fiche de capacité mais porte %d note(s) de cellule" % (path, len(extra)))
+    if not (n_dump == attached == written):
+        failures.append("%d notes dans le dump, %d rattachées à un bloc d'effet par la géométrie, %d écrites dans les pages"
+                        % (n_dump, attached, written))
+    check("(2 bis) notes de cellule (champ `note` du dump) : chacune écrite une fois, dans la page prévue, texte intégral", failures,
+          "%d notes de cellule dans le dump, %d rattachées à un bloc d'effet, %d écrites" % (n_dump, attached, written))
+    # (2 ter) le dump porte-t-il toutes les notes du classeur d'origine ? (2 bis compare les pages au dump : il ne voit pas une perte du dump)
+    if xlsx is None:
+        check("(2 ter) notes et fils du dump = ceux du classeur .xlsx d'origine (aucune note perdue par le dump)", [],
+              "non contrôlé : --sans-liens (aucun classeur .xlsx lu)")
+    elif comments_failure is not None:
+        check("(2 ter) notes et fils du dump = ceux du classeur .xlsx d'origine (aucune note perdue par le dump)", [comments_failure])
+    else:
+        gaps, changed, n_xlsx = crosscheck_notes(sheets, comments)
+        check("(2 ter) notes et fils du dump = ceux du classeur .xlsx d'origine (aucune note perdue par le dump)", gaps,
+              "%d notes dans le classeur, mêmes adresses dans le dump" % n_xlsx
+              + ("" if not changed else " ; AVERTISSEMENT : " + " ; ".join(changed)))
+    replays = v_replays(sheets, class_names, links, dump_notes, placed, pages, comments)
+    for label, failures_, info in replays:
+        check("cas d'erreur rejoué : " + label, failures_, info)
+    refused = sum(1 for _, f, _ in replays if not f)
+    check("cas d'erreur rejoués : %d/%d refusés avec un message" % (refused, len(replays)),
+          [] if refused == len(replays) else ["%d cas non refusés" % (len(replays) - refused)])
+
     # (3) groupes de choix recalculés depuis les positions, comparés à choix_exclusif_avec
     failures = []
     for name in class_names:
@@ -1564,14 +2009,19 @@ def verify(args):
           failures, "%d capacités dans un groupe" % sum(1 for p in pages.values() if p["front"].get("choix_exclusif_avec")))
 
     # (4) Barde et Archimage en clair, puis sélections de test
-    failures, shown = [], []
+    failures, shown, absent = [], [], []
     for name, wanted in EXPECTED.items():
+        if name not in class_names:      # dump partiel (classeur de test) : la capture ne s'applique qu'aux onglets présents
+            absent.append(name)
+            continue
         got = v_described(pages, "classes/" + slugify(name), name)
         shown.append((name, got))
         if got != wanted:
             failures.append("%s : groupes produits différents de la capture\n      produit : %r\n      attendu : %r"
                             % (name, got, wanted))
     for name, taken, refused in SELECTIONS:
+        if name not in class_names:
+            continue
         mine = {}
         for p in pages.values():
             if p["front"].get("classe") == "classes/" + slugify(name):
@@ -1587,7 +2037,8 @@ def verify(args):
         for x, blocker in refused.items():
             if blocker not in taken or not v_conflict(mine[x], mine[blocker]):
                 failures.append("%s : %r devrait être refusé à cause de %r" % (name, x, blocker))
-    check("(4) Barde et Archimage = captures ; sélections de test des exemples du propriétaire", failures)
+    check("(4) Barde et Archimage = captures ; sélections de test des exemples du propriétaire", failures,
+          "onglet(s) absent(s) du dump, non contrôlé(s) : %s" % ", ".join(absent) if absent else "")
 
     # titres et slugs : uniques dans TOUT le wiki ; « , niveau N » / -niveau / -rang seulement en cas de doublon
     failures = []
@@ -1673,11 +2124,16 @@ def verify(args):
     failures = list(errors)
     built = None
     try:
-        built = build(sheets, class_names, comments, links)
+        built = build(sheets, class_names, links)
         failures += ["script : " + p for p in built["problems"]]
     except ValueError as err:
         failures.append("script : %s" % err)
     if built is not None:
+        if sorted((n["tab"], n["ref"], n["text"], n["page"]) for n in built["notes"]) != \
+                sorted((n["tab"], n["ref"], n["text"], n["page"]) for n in placed):
+            failures.append("notes rattachées différentes entre le script et le recalcul indépendant :\n      script : %r\n      recalcul : %r"
+                            % (sorted((n["tab"], n["ref"], n["page"]) for n in built["notes"]),
+                               sorted((n["tab"], n["ref"], n["page"]) for n in placed)))
         if sorted(built["anomalies"]) != sorted(anomalies):
             failures.append("anomalies différentes entre le script et le recalcul indépendant :\n      script : %r\n      recalcul : %r"
                             % (sorted(built["anomalies"]), sorted(anomalies)))
@@ -1751,10 +2207,11 @@ def load_dumps(paths):
     return sheets, order, dump_dirs
 
 
-def load_comments(args, dump_dirs):
-    """-> (commentaires {onglet: {ref: texte}}, hyperliens {onglet: {ref: url}}) lus dans le .xlsx d'origine."""
-    if args.sans_commentaires:
-        return {}, {}
+def locate_xlsx(args, dump_dirs):
+    """-> chemin du classeur .xlsx d'origine (option --xlsx, sinon à côté du dump), ou None avec --sans-liens. Arrêt s'il est
+    introuvable : ses hyperliens (le dump ne les contient pas) et le recoupement des notes en dépendent."""
+    if args.sans_liens:
+        return None
     xlsx = args.xlsx
     if not xlsx:
         for d in dump_dirs:
@@ -1763,21 +2220,31 @@ def load_comments(args, dump_dirs):
                 xlsx = cand
                 break
     if not xlsx or not os.path.isfile(xlsx):
-        sys.exit("classeur .xlsx introuvable (option --xlsx) : les commentaires et hyperliens de cellule en dépendent "
-                 "(ou passer --sans-commentaires)")
+        sys.exit("classeur .xlsx introuvable (option --xlsx) : les hyperliens de cellule en dépendent (le dump ne les contient pas) "
+                 "(ou passer --sans-liens)")
+    return xlsx
+
+
+def load_links(xlsx):
+    """-> hyperliens externes de cellule {onglet: {ref: url}}, lus dans le .xlsx d'origine (None : --sans-liens, aucun lien) : le
+    dump ne les contient pas. Les notes, elles, viennent du dump (le classeur ne sert qu'à les recouper, voir crosscheck_notes)."""
+    if xlsx is None:
+        return {}
     try:
-        return read_comments(xlsx), read_links(xlsx)
-    except ValueError as err:
-        sys.exit("ERREUR : %s" % err)
+        return read_links(xlsx)
+    except (ValueError, KeyError, OSError, zipfile.BadZipFile, ET.ParseError) as err:
+        sys.exit("ERREUR : classeur %s : %s" % (xlsx, err))
 
 
-def build(sheets, class_names, comments, links):
-    """Calcule toutes les pages à produire, sans rien écrire (ValueError sur une cellule non reconnue, une disposition
-    indécidable ou un nom impossible à rendre unique).
+def build(sheets, class_names, links):
+    """Calcule toutes les pages à produire, sans rien écrire (ValueError sur une cellule non reconnue, une note sans place, une
+    disposition indécidable ou un nom impossible à rendre unique).
 
     -> dict(summary, jobs=[(catégorie, slug, titre, corps, n)], caps=[capacités], anomalies=[tuples],
-            observations=[tuples], collisions=[textes], problems=[textes])
+            observations=[tuples], collisions=[textes], problems=[textes],
+            notes_dump={onglet: {adresse: texte}}, notes=[dict(tab, ref, text, page)] les notes rattachées à une fiche)
     """
+    dump_notes = collect_notes(sheets, class_names)
     problems = []
     summary = parse_summary(Sheet(sheets[SUMMARY_SHEET]), set(class_names))
     in_summary = [n for n, _ in summary["classes"]]
@@ -1797,7 +2264,7 @@ def build(sheets, class_names, comments, links):
             page = parse_class(sh, name)
             if fold(page["banner"]) != fold(name) or wiki_key(page["banner"]) != wiki_key(name):
                 cfg["aliases"] = [page["banner"]]
-            attach_notes(sh, page, comments.get(name, {}))
+            attach_notes(sh, page, dump_notes.get(name, {}))
             attach_links(sh, page, links.get(name, {}))
             body = render_class(cfg, page)
             found, found_anomalies = derive_capacities(name, page)
@@ -1816,20 +2283,26 @@ def build(sheets, class_names, comments, links):
         collisions = name_capacities(caps, [wiki_key(job[2]) for job in jobs])
     except ValueError as err:
         problems.append(str(err))
+    notes = []
     if not problems:
         for cap in caps:
             jobs.append((CAP_CATEGORY, cap["slug"], cap["title"], render_capacity(cap), 1))
+        notes = [dict(tab=cap["sheet"], ref=ref, text=text, page=cap["id"]) for cap in caps for ref, text in cap["ab"]["notes"]]
+        problems += check_note_coverage(dump_notes, notes, {"%s/%s" % (job[0], job[1]): job[3] for job in jobs})
     return dict(summary=summary, jobs=jobs, caps=caps, anomalies=anomalies, observations=name_observations(caps),
-                collisions=collisions, problems=problems)
+                collisions=collisions, problems=problems, notes_dump=dump_notes, notes=notes)
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Génère les pages « classes » et « capacités » du wiki depuis le dump de « %s »."
                                  % WORKBOOK)
     ap.add_argument("--dump", action="append", required=True, help="dump JSON de xlsx_to_json.py (répétable)")
-    ap.add_argument("--xlsx", help="classeur d'origine (commentaires et hyperliens de cellule)")
-    ap.add_argument("--sans-commentaires", action="store_true",
-                    help="ne pas lire les commentaires ni les hyperliens de cellule (.xlsx)")
+    group = ap.add_mutually_exclusive_group()
+    group.add_argument("--xlsx", help="classeur d'origine : sert aux hyperliens de cellule et à recouper les notes du dump "
+                                       "(les notes écrites dans les pages viennent du dump)")
+    group.add_argument("--sans-liens", action="store_true",
+                        help="ne pas lire le classeur : ni hyperliens ni recoupement des notes, aucun .xlsx n'est alors nécessaire "
+                             "(classeur de test)")
     ap.add_argument("--out", required=True, help="racine du wiki (client/src/content/wiki)")
     ap.add_argument("--verifier", action="store_true",
                     help="n'écrit rien : contrôle les pages déjà écrites contre le dump (relecture indépendante)")
@@ -1840,10 +2313,24 @@ def main(argv=None):
 
     sheets, order, dump_dirs = load_dumps(args.dump)
     class_names = [n for n in order if n != SUMMARY_SHEET and n not in IGNORED_SHEETS]
-    comments, links = load_comments(args, dump_dirs)
+    xlsx = locate_xlsx(args, dump_dirs)
+    links = load_links(xlsx)
+    if xlsx is None:
+        print("AVERTISSEMENT : --sans-liens : le classeur .xlsx n'est pas lu, les hyperliens sont écartés et les notes du dump ne sont "
+              "pas recoupées avec celles du classeur", file=sys.stderr)
+    else:   # une note perdue par le dump ne doit pas passer en silence : rien n'est écrit en cas d'écart
+        comments, failure = read_xlsx_comments(xlsx)
+        gaps, changed, n_xlsx = crosscheck_notes(sheets, comments) if failure is None else ([failure], [], 0)
+        for text in changed:
+            print("AVERTISSEMENT : " + text, file=sys.stderr)
+        if gaps:
+            for text in gaps:
+                print("ERREUR : " + text, file=sys.stderr)
+            return 1
+        print("recoupement des notes avec le classeur : %d notes de cellule, mêmes adresses que dans le dump" % n_xlsx)
 
     try:
-        built = build(sheets, class_names, comments, links)
+        built = build(sheets, class_names, links)
     except ValueError as err:
         sys.exit("ERREUR : %s" % err)
     problems = list(built["problems"])
@@ -1877,6 +2364,19 @@ def main(argv=None):
         seen_paths[path] = title
         if os.path.exists(path) and not is_ours(path):
             problems.append("fichier existant qui n'est pas de cette famille, non écrasé : %s" % path)
+    if not built["notes_dump"]:
+        # Un dump sans aucune note (produit par un xlsx_to_json.py antérieur à la lecture des commentaires) effacerait en silence
+        # les notes déjà écrites : on s'arrête plutôt que d'écraser les fiches.
+        kept = 0
+        folder = os.path.join(args.out, CAP_CATEGORY)
+        for fname in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
+            full = os.path.join(folder, fname)
+            if fname.endswith(".md") and is_ours(full):
+                with open(full, encoding="utf-8") as fh:
+                    kept += len(note_segments(fh.read()))
+        if kept:
+            problems.append("le dump ne contient aucune note de cellule alors que %d fiche(s) en portent déjà : dump produit sans les "
+                            "notes (xlsx_to_json.py ancien) ? rien n'est écrit, pour ne pas les effacer" % kept)
     if problems:
         for p in problems:
             print("ERREUR : " + p, file=sys.stderr)
@@ -1908,6 +2408,9 @@ def main(argv=None):
     for category in (CATEGORY, CAP_CATEGORY, GLOSSARY_CATEGORY):
         w, u = counts.get(category, [0, 0])
         print("bilan %s : %d pages (%d écrites, %d inchangées)" % (category, w + u, w, u))
+    print("notes de cellule : %d dans le dump, %d placées, %d écrites" % (
+        sum(len(v) for v in built["notes_dump"].values()), len(built["notes"]),
+        sum(len(note_segments(job[3])) for job in jobs)))
     for kind, sheet, detail in built["anomalies"]:
         print("anomalie de disposition : %s | %s | %s" % (kind, sheet, detail))
     if not built["anomalies"]:

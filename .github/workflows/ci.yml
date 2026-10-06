@@ -21,6 +21,10 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      # Ce que fait publish-site.yml après la fusion : une PR verte ne doit pas casser la publication.
+      - run: HIDE_EXAMPLES=1 npm run build
+      # Version portable (liens relatifs, CSS/JS inline) : elle échoue si le script d'une page importe un autre module.
+      - run: node ../tools/build-artifact.mjs --out "$RUNNER_TEMP/artifact"
 
   character-service:
     runs-on: ubuntu-latest

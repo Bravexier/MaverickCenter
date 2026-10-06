@@ -76,74 +76,36 @@ La magie du Sang marque beaucoup sur la taille et la musculature qui est plus é
 
 ## Notes et commentaires des sorts
 
-**Annulation** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Annulation »**
 
-*Note :*
+- Inutile contre les infirmités, la fatigue physique, les croix.
+- Ne marche pas sur les effets magie niveau 3 ou plus
+- Soigne d'un cran les altérations d'états.
 
-> - Inutile contre les infirmités, la fatigue physique, les croix.
-> - Ne marche pas sur les effets magie niveau 3 ou plus
-> - Soigne d'un cran les altérations d'états.
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Annulation »**
 
-*Commentaire résolu :*
+Inutile contre les infirmités, la fatigue, les croix, les altérations d'états.  
+Ne marche pas sur les effets magie niveau 3 ou plus
 
-> Inutile contre les infirmités, la fatigue, les croix, les altérations d'états.  
-> Ne marche pas sur les effets magie niveau 3 ou plus
+**Note de la cellule « Effets secondaires » du sort « Attirance »** : Si la cible possède le don "grande créature" ou est logiquement trop grosse ou lourde : C'est le lanceur qui est attiré.
 
-**Attirance** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Fer Sanglant »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas prendre Saignement au stade 1
 
-*Note :*
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Sang Garde »** : NB: Jet de défense désigne les jets d'Esquive ET de Parade
 
-> Si la cible possède le don "grande créature" ou est logiquement trop grosse ou lourde : C'est le lanceur qui est attiré.
+**Note de la cellule « Effets secondaires » du sort « Saignée forcée »** : Saignement particulier = Saignement de stade 1 qui ne se soigne pas et qui se cumule pas avec le Saignement classique. N'augmente pas en intensité mais redémarre le nombre si répéter.
 
-**Fer Sanglant** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Morsure aspirante »** : Ne marche pas si c'est la barrière qui encaisse le coup
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Coagulation »** : Le mur est fixée au sol.
 
-> Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas prendre Saignement au stade 1
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Coagulation »** : La cible doit saigner. La carapace est fixée au sol.
 
-**Sang Garde** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Renfermement »** : Vu que c'est une régénération, la santé récupéré par tour se détermine au premier jet.
 
-*Commentaire résolu :*
+**Note de la cellule « Effets secondaires » du sort « Proportion démesurée »** : Le bonus en force casse les limites de la carac (oui oui, on peut monter à 6 de force temporairement)
 
-> NB: Jet de défense désigne les jets d'Esquive ET de Parade
-
-**Saignée forcée** (Effets secondaires)
-
-*Note :*
-
-> Saignement particulier = Saignement de stade 1 qui ne se soigne pas et qui se cumule pas avec le Saignement classique. N'augmente pas en intensité mais redémarre le nombre si répéter.
-
-**Morsure aspirante** (Effets secondaires)
-
-*Note :*
-
-> Ne marche pas si c'est la barrière qui encaisse le coup
-
-**Coagulation** (Effets secondaires)
-
-*Note :*
-
-> Le mur est fixée au sol.
-
-*Commentaire résolu :*
-
-> La cible doit saigner. La carapace est fixée au sol.
-
-**Renfermement** (Effets secondaires)
-
-*Note :*
-
-> Vu que c'est une régénération, la santé récupéré par tour se détermine au premier jet.
-
-**Proportion démesurée** (Effets secondaires)
-
-*Note :*
-
-> Le bonus en force casse les limites de la carac (oui oui, on peut monter à 6 de force temporairement)
-
-*Commentaire résolu :*
-
-> Le bonus en force casse les limites de la carac (oui oui, on peut monterà 7 de force temporairement)
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Proportion démesurée »** : Le bonus en force casse les limites de la carac (oui oui, on peut monterà 7 de force temporairement)
 
 ## Textes des sorts de niveau 5
 

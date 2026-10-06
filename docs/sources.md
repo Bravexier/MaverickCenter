@@ -58,6 +58,15 @@ node tools/import-gdocs.mjs --only <id>    # un seul document
 Les fichiers de `sources/raw/` et `sources/discord/` sont du matériau brut, **pas** du contenu publié :
 le wiki ne lit que `client/src/content/wiki/`. Ne les committez que si le dépôt reste privé.
 
+### Ancien wiki Fandom
+
+`https://maverick-jdr.fandom.com/fr/wiki/Wiki_Maverick` : l'ancien wiki du jeu. **Il n'est pas à jour** (le jeu a évolué depuis) : source de dernier rang, jamais prioritaire sur les
+classeurs, le guide ou une décision du propriétaire ; ce qu'il dit de différent se liste en écart, rien n'est tranché en silence ; ce qu'il est seul à dire se cite avec son URL et le
+statut `draft`. Exception : `https://maverick-jdr.fandom.com/fr/wiki/Progression`, dont le propriétaire du projet indique que le **tableau de progression est encore à jour** et qu'il
+fait foi pour les budgets de points (décision R3 de `docs/decisions-regles.md`). Il n'est pas encore importé : depuis une session cloud l'hôte
+`maverick-jdr.fandom.com` est bloqué par la politique réseau de l'environnement (à ajouter aux domaines autorisés, comme pour Discord et Google). Le contenu importé irait dans
+`sources/raw/` et ses règles dans `rules.json` avec cette URL en source ; tant qu'il n'est pas lu, les budgets suivent le guide et la fiche, signalés « à confirmer ».
+
 ### Google Sheets (classeurs de règles)
 
 Les classeurs (magies, classes, ressources & craft, invocations, mode hyper, « Fiche auto », index des races) ne se
@@ -86,8 +95,15 @@ Obtenir les données d'un classeur, par ordre de préférence :
    par l'extracteur qui sait où les placer (`tools/sheets/races.py` : tableau des ethnies) ou refusées s'il ne le sait pas.
 2. **Export `.xlsx`** : *Fichier > Télécharger > Microsoft Excel*, ou `download_file_content` du connecteur Google Drive avec le type
    d'export xlsx ; Google plafonne l'export à 10 Mo. Conserve les formules, les listes déroulantes et les commentaires.
-   **Limite connue** : `xlsx_to_json.py` ne lit pas les commentaires et notes de cellule (openpyxl : `cell.comment`) ; plusieurs
-   classeurs en portent (classes, magies, équipement, invocations) et leurs extracteurs ne les importent donc pas encore.
+   `xlsx_to_json.py` lit aussi les commentaires de cellule, directement dans le XML du classeur (`tools/sheets/xlsx_comments.py`, bibliothèque
+   standard) : les **notes** vont dans le champ `note` de la cellule (texte verbatim), les **fils de commentaires** de Google (menu
+   « Commentaire », distincts de la note) dans le champ `threads` (`[{text, done?, replies?}]`, sans auteurs ni dates). openpyxl ne garde
+   qu'un commentaire par cellule et perd ceux des cellules fusionnées : il n'est pas utilisé pour cela. Les extracteurs `classes.py`, `magies.py`,
+   `annexes-magie.py`, `equipement.py`, `divers-craft.py` et `invocations.py` rendent notes et fils sur les pages (sous un titre « Note de la cellule … » ou
+   « Commentaire résolu de la cellule … » ; une capacité de classe porte sa note en ligne, « Note de cellule : … ») et leur `--verifier` recompte chaque note depuis le dump : une note absente, dupliquée, tronquée ou
+   déplacée fait échouer la vérification. Un dump produit sans les notes (ancien convertisseur) est refusé par `invocations.py` au lieu d'effacer
+   les notes déjà écrites (`--accepter-notes-retirees` pour une suppression voulue). Le fil de 26 commentaires ancré en `Sommaire!A1` du classeur
+   de magie n'est rattaché à aucune page (listé par `annexes-magie.py`). `corriger-dump.py` corrige le champ `note`, pas encore `threads`.
 
 **Coquilles et fautes d'orthographe** : les classeurs en contiennent (« Chasseur prime » pour « Chasseur de primes ») et le propriétaire du
 projet demande de les corriger. Une correction n'est jamais faite dans une page générée (la prochaine importation l'écraserait) mais dans le

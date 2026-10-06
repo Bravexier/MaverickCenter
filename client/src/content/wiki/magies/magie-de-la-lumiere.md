@@ -73,59 +73,39 @@ Les utilisateurs de la Lumière ont des cheveux avec les mèches beige, les yeux
 
 ## Notes et commentaires des sorts
 
-**Champ de Force** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Champ de Force »**
 
-*Note :*
+Le champ de force reste tant qu'aucun coup n'a été pris. Il disparait après l'attaque ennemi. Il va réduire les dégâts AVANT l'armure.
 
-> Le champ de force reste tant qu'aucun coup n'a été pris. Il disparait après l'attaque ennemi. Il va réduire les dégâts AVANT l'armure.
->
-> La surcharge peut être amplifié avec 20 chakra maximum
+La surcharge peut être amplifié avec 20 chakra maximum
 
-**Fer Lumineux** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Fer Lumineux »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être aveugler au stade 1
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Énergie Solaire »**
 
-> Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être aveugler au stade 1
+10% lors de neutre  
+20% lors de grand soleil.  
+25% lors de canicule.
 
-**Énergie Solaire** (Effets secondaires)
+**Commentaire résolu de la cellule « D/S/B » du sort « Flash »** : Ce sort repose sur une existence des yeux, les créatures aveugles ne sont pas affecté par ce sort.
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Croisade lumineuse »**
 
-> 10% lors de neutre  
-> 20% lors de grand soleil.  
-> 25% lors de canicule.
+Liste des amplifications :
+- Permet d'encaisser le prochain sort d'ombre (sauf niveau 5)
+- Immunise à la peur pendant 3 tours.
+- Immunise aux effets négatifs pour le tour.
+- Immunise contre les altérations d'état niveau 1 pour 2 tours
 
-**Flash** (D/S/B)
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Croisade lumineuse »**
 
-*Commentaire résolu :*
+Liste des amplifications :
+- Permet d'encaisser le prochain sorts d'ombre (sauf niveau 5)
+- Immunise à la peur pendant 3 tours.
+- Immunise aux effets négatifs pour le tour.
+- Immunise contre les altérations d'état niveau 1 pour 2 tours
 
-> Ce sort repose sur une existence des yeux, les créatures aveugles ne sont pas affecté par ce sort.
-
-**Croisade lumineuse** (Effets secondaires)
-
-*Note :*
-
-> Liste des amplifications :
->
-> - Permet d'encaisser le prochain sort d'ombre (sauf niveau 5)
-> - Immunise à la peur pendant 3 tours.
-> - Immunise aux effets négatifs pour le tour.
-> - Immunise contre les altérations d'état niveau 1 pour 2 tours
-
-*Commentaire résolu :*
-
-> Liste des amplifications :
->
-> - Permet d'encaisser le prochain sorts d'ombre (sauf niveau 5)
-> - Immunise à la peur pendant 3 tours.
-> - Immunise aux effets négatifs pour le tour.
-> - Immunise contre les altérations d'état niveau 1 pour 2 tours
-
-**Louange d'Aurora** (Effets secondaires)
-
-*Commentaire résolu :*
-
-> Le sort peut être utiliser sur un allié qui n'est pas dans le coma.
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Louange d'Aurora »** : Le sort peut être utiliser sur un allié qui n'est pas dans le coma.
 
 ## Légende
 

@@ -94,71 +94,49 @@ Les nécromanciens sont généralement plus mince que la moyenne, voir maigre po
 
 ## Notes et commentaires des sorts
 
-**Animation de mort** (Coût)
+**Commentaire résolu de la cellule « Coût » du sort « Animation de mort »**
 
-*Commentaire résolu :*
+Niveau 1 : 3 CK + 1 âme  
+NIveau 2 : 6 CK + 2 âmes  
+NIveau 3 : 12 CK + 3 âmes  
+NIveau 4 : 24 CK + 4 âmes  
+Niveau 5 : 48 CK + 5 âmes
 
-> Niveau 1 : 3 CK + 1 âme  
-> NIveau 2 : 6 CK + 2 âmes  
-> NIveau 3 : 12 CK + 3 âmes  
-> NIveau 4 : 24 CK + 4 âmes  
-> Niveau 5 : 48 CK + 5 âmes
+**Note de la cellule « Effets secondaires » du sort « Animation de mort »**
 
-**Animation de mort** (Effets secondaires)
+Chaque niveau de puissance de la créature invoqué double de le coût précédent pour l'invoquer.
 
-*Note :*
+Les familiers et invocations ne peuvent pas utiliser ce sort.
 
-> Chaque niveau de puissance de la créature invoqué double de le coût précédent pour l'invoquer.
->
-> Les familiers et invocations ne peuvent pas utiliser ce sort.
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Animation de mort »**
 
-*Commentaire résolu :*
+Pour voir les morts vivants possible <https://maverick-jdr.fandom.com/fr/wiki/Mort-Vivant_(Invocation)>
 
-> Pour voir les morts vivants possible <https://maverick-jdr.fandom.com/fr/wiki/Mort-Vivant_(Invocation)>
->
-> Chaque niveau de puissance de la créature invoqué double de le coût précédent pour l'invoquer.
+Chaque niveau de puissance de la créature invoqué double de le coût précédent pour l'invoquer.
 
-**Détection de vie** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Détection de vie »**
 
-*Note :*
+Ce sort permet de changer de vision et de voir la vie grouiller autour de soi, la vie se montre sous forme de petite brume, il est possible de détecter de l'humanoïde au simple brin d'herbe.
 
-> Ce sort permet de changer de vision et de voir la vie grouiller autour de soi, la vie se montre sous forme de petite brume, il est possible de détecter de l'humanoïde au simple brin d'herbe.
->
-> Attention un simple mur empêche de voir à travers ce dernier.
+Attention un simple mur empêche de voir à travers ce dernier.
 
-**Fer Toxique** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Fer Toxique »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être empoisonné au stade 1
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Prison d'os »** : La prison d'os est Invulnérable à l'estoc, Résistant à la taille mais vulnérable à la frappe.
 
-> Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être empoisonné au stade 1
+**Note de la cellule « Effets secondaires » du sort « Forge de ses morts »**
 
-**Prison d'os** (Effets secondaires)
+Cette arme est considérée comme Spectrale.  
+Arme Spectrale = Peut toucher l'immatériel et ignore les AP.
 
-*Note :*
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Forge de ses morts »**
 
-> La prison d'os est Invulnérable à l'estoc, Résistant à la taille mais vulnérable à la frappe.
+Cette arme est considérée comme Spectrale.  
+Arme Spectrale = Peut toucher l'immatériel et ignore les PA.
 
-**Forge de ses morts** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Résurrection Noir »** : Est considérée comme morte tant que la cible n'a pas bu 1 super fiole de soin par jour sur 1 mois. Ou alors qu'une résurrection est appliquer sur lui.
 
-*Note :*
-
-> Cette arme est considérée comme Spectrale.  
-> Arme Spectrale = Peut toucher l'immatériel et ignore les AP.
-
-*Commentaire résolu :*
-
-> Cette arme est considérée comme Spectrale.  
-> Arme Spectrale = Peut toucher l'immatériel et ignore les PA.
-
-**Résurrection Noir** (Effets secondaires)
-
-*Note :*
-
-> Est considérée comme morte tant que la cible n'a pas bu 1 super fiole de soin par jour sur 1 mois. Ou alors qu'une résurrection est appliquer sur lui.
-
-*Commentaire résolu :*
-
-> Est considérer comme mort tant que la cible n'a pas bu 1 fiole par jour sur 5 jours. Ou alors qu'une résurrection est appliquer sur lui.
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Résurrection Noir »** : Est considérer comme mort tant que la cible n'a pas bu 1 fiole par jour sur 5 jours. Ou alors qu'une résurrection est appliquer sur lui.
 
 ## Légende
 

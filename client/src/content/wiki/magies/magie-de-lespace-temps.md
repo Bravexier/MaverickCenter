@@ -75,98 +75,56 @@ Les utilisateurs de l'Espace/Temps possèdent d'étrange bandages de momies coul
 
 ## Notes et commentaires des sorts
 
-**Téléportation** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Téléportation »**
 
-*Note :*
+Ne provoque pas d'attaque d'opportunité.
 
-> Ne provoque pas d'attaque d'opportunité.
->
-> Ce sort permet également de contrer les ennemis qui voudraient se téléporter, pour que ça marche : il est nécessaire d’avoir le sort, de sacrifier une parade/esquive, de réussir un meilleur jet et que l’ennemi soit dans la portée du sort.
->
-> Si la case d'arrivée est occupée par une autre créature, le lanceur échange immédiatement sa position avec celle-ci (si elle est de la même taille approximativement que lui)
+Ce sort permet également de contrer les ennemis qui voudraient se téléporter, pour que ça marche : il est nécessaire d’avoir le sort, de sacrifier une parade/esquive, de réussir un meilleur jet et que l’ennemi soit dans la portée du sort.
 
-**Portail** (Effets secondaires)
+Si la case d'arrivée est occupée par une autre créature, le lanceur échange immédiatement sa position avec celle-ci (si elle est de la même taille approximativement que lui)
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Portail »** : Maximum 4 portails reliés entre eux à la fois, pour retirer un portail, pas de jet est nécessaire mais il faut consommer la moitié du chakra.
 
-> Maximum 4 portails reliés entre eux à la fois, pour retirer un portail, pas de jet est nécessaire mais il faut consommer la moitié du chakra.
+**Note de la cellule « Effets secondaires » du sort « Fer Temporel »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être fatigué au stade 1
 
-**Fer Temporel** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Inversion »**
 
-*Note :*
+Ne provoque pas d'attaque d'opportunité.
 
-> Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être fatigué au stade 1
+Il n’est pas possible d’échanger sa place avec une cible trop grosse.
 
-**Inversion** (Effets secondaires)
+Peut être contrer par "Téléportation"
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Frappe Temporelle »**
 
-> Ne provoque pas d'attaque d'opportunité.
->
-> Il n’est pas possible d’échanger sa place avec une cible trop grosse.
->
-> Peut être contrer par "Téléportation"
+Possible de le faire sur un allié, l'allié ne prendra pas les dégâts.
 
-**Frappe Temporelle** (Effets secondaires)
+Si la case d'arrivée est occupée par une autre créature, le lanceur échange immédiatement sa position avec celle-ci (si elle est de la même taille approximativement que lui)
 
-*Note :*
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Frappe Temporelle »** : Possible de le faire sur un allié, l'allié ne prendra pas les dégâts.
 
-> Possible de le faire sur un allié, l'allié ne prendra pas les dégâts.
->
-> Si la case d'arrivée est occupée par une autre créature, le lanceur échange immédiatement sa position avec celle-ci (si elle est de la même taille approximativement que lui)
+**Note de la cellule « Effets secondaires » du sort « État antérieur »** : Pour les armures, il faut faire le sort sur CHAQUE morceau.
 
-*Commentaire résolu :*
+**Note de la cellule « Effets secondaires » du sort « Horloge aspirante »**
 
-> Possible de le faire sur un allié, l'allié ne prendra pas les dégâts.
+Si c'est la barrière, la barrière est vampirisé.  
+Si c'est les points de vies, c'est les points de vies qui sont vampirisés
 
-**État antérieur** (Effets secondaires)
+**Note de la cellule « Effets secondaires » du sort « Célérité »** : Un boss qui a naturellement 2 tour, n'aura qu'un seul tour avec deux actions.
 
-*Note :*
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Célérité »** : Permet d'avoir 2 tours en 1, ça implique d'avoir 2 initiatives donc de jeter 2 fois un dé d'initiative.
 
-> Pour les armures, il faut faire le sort sur CHAQUE morceau.
+**Note de la cellule « Effets secondaires » du sort « Grenade Distordue »** : si le lanceur est dans la zone d'action de la grenade, il peut décidé de ne pas être téléporter.
 
-**Horloge aspirante** (Effets secondaires)
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Téléport parfait »** : Sert uniquement hors combat !
 
-*Note :*
+**Note de la cellule « Effets secondaires » du sort « Image diffuse »**
 
-> Si c'est la barrière, la barrière est vampirisé.  
-> Si c'est les points de vies, c'est les points de vies qui sont vampirisés
+Ces clones imite le lanceur dans ces actions mais sans pour autant faire des dégâts ou des effets sur les autres.  
+Si jamais une attaque risque d'arriver sur le lanceur, cette attaque à 50% de chance d'atterrir  sur un des clones.  
+Si un clone prend un coup, il disparait.
 
-**Célérité** (Effets secondaires)
-
-*Note :*
-
-> Un boss qui a naturellement 2 tour, n'aura qu'un seul tour avec deux actions.
-
-*Commentaire résolu :*
-
-> Permet d'avoir 2 tours en 1, ça implique d'avoir 2 initiatives donc de jeter 2 fois un dé d'initiative.
-
-**Grenade Distordue** (Effets secondaires)
-
-*Note :*
-
-> si le lanceur est dans la zone d'action de la grenade, il peut décidé de ne pas être téléporter.
-
-**Téléport parfait** (Effets secondaires)
-
-*Commentaire résolu :*
-
-> Sert uniquement hors combat !
-
-**Image diffuse** (Effets secondaires)
-
-*Note :*
-
-> Ces clones imite le lanceur dans ces actions mais sans pour autant faire des dégâts ou des effets sur les autres.  
-> Si jamais une attaque risque d'arriver sur le lanceur, cette attaque à 50% de chance d'atterrir  sur un des clones.  
-> Si un clone prend un coup, il disparait.
-
-**Distorsion** (Effets secondaires)
-
-*Note :*
-
-> Perdre le tour ne signifie pas perdre sa posture.
+**Note de la cellule « Effets secondaires » du sort « Distorsion »** : Perdre le tour ne signifie pas perdre sa posture.
 
 ## Légende
 
