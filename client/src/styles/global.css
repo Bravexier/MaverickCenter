@@ -123,3 +123,5 @@ fieldset { border: 1px solid var(--border); border-radius: var(--radius); }
 }
 
 #search-form { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+.class-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
