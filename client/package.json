@@ -11,7 +11,9 @@
     "build": "astro build",
     "preview": "astro preview",
     "test": "node --test \"test/*.test.mjs\"",
-    "autolink": "node scripts/autolink.mjs"
+    "autolink": "node scripts/autolink.mjs",
+    "db:init": "node --no-warnings scripts/db-init.mjs",
+    "db:doc": "node --no-warnings scripts/db-doc.mjs"
   },
   "dependencies": {
     "@astrojs/markdown-remark": "^7.3.1",

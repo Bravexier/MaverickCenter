@@ -44,6 +44,7 @@ stables, SQL portable, modifications historisées, règles en données, moteur p
 | `deploy/` | Paquet d'hébergement NAS (nginx + Docker, mot de passe), `build.sh` qui le génère, `update-nas.sh` (mise à jour auto depuis la branche `site`) |
 | `.github/workflows/publish-site.yml` | Après chaque fusion dans `main` : tests, build `HIDE_EXAMPLES=1`, publication sur la branche `site` (refuse si le dépôt n'est pas privé) |
 | `tools/build-artifact.mjs` | Version « portable » (liens relatifs, CSS/JS inline) publiée comme page privée claude.ai |
+| `data/schema.sql` | **Structure de la base SQLite** (135 tables STRICT, FTS5, 28 vues) : seule source de la structure. `npm run db:init` crée une base vide dans `var/` (ignoré par git), `npm run db:doc` régénère `docs/sql/structure.md` (vérifié par `client/test/db-schema.test.mjs`). Pas encore remplie ni lue par le site : voir `docs/sql/conception.md` pour la suite. |
 | `api/` | Services CRUD de personnages (Node sans dépendance + .NET). Non utilisés par le site pour l'instant. |
 | `docs/` | `sources.md`, `content-guide.md`, `character-generator.md` |
 
