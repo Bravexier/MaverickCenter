@@ -20,13 +20,15 @@ dans la section de la page qui reçoit sa cellule, juste après l'élément qui 
 tableau), sous la forme « **Note de la cellule « <intitulé de la cellule> »** : <texte> » (une note sur plusieurs lignes : le
 libellé seul, puis le texte en paragraphes et en listes), comme tools/sheets/races.py. L'intitulé est celui de la colonne (« Type »,
 « Stade 2 », « Description »…), suivi entre parenthèses de la ligne du tableau (« Effet (Sang + Eau) ») ; un texte libre sans
-intitulé prend son adresse (« AA1 »). Cellules qui peuvent porter une note, par page :
+intitulé prend son adresse (« AA1 ») ; une cellule de nom du tableau « Résistance Faiblesse », fondue avec ses voisines dans une
+cellule de la page, ajoute sa valeur (« Résistance (Sang + Eau) : Terre »). Cellules qui peuvent porter une note, par page :
   * Altération détats : Nom (juste sous l'intertitre), Magie Liée, Type, Stade 1 à 3 (ou la cellule fusionnée des stades), libellé
     et effet de chaque paire Résistances/Vulnérabilités ;
   * Météo : nom, Description, Effet(s) ;
   * Mode Hyper (Magie) : texte général et cases Mono magie / Bi magie de « Avantages de base », nom et effet de chaque ligne des
     deux tableaux ;
-  * Statistiques : les magies de chaque combinaison et les cellules de noms du tableau « Résistance Faiblesse » ;
+  * Statistiques : les trois cellules de magies de chaque combinaison et les cellules de noms (colonnes T à AM) du tableau
+    « Résistance Faiblesse » ; les compteurs (le reste de l'onglet) ne sont pas publiés ;
   * Mode Hyper et Mode Super (classeur « Mode hyper et co ») : les textes explicatifs et les cellules des tableaux.
 Le script S'ARRÊTE, sans rien écrire, avec un message qui nomme l'onglet et la cellule, si une note :
   * est sur une cellule vide (le dump garde alors v = "" ; la note d'une cellule fusionnée autre que celle en haut à gauche est dans
@@ -276,10 +278,6 @@ def make_sheets(data):
     return {s["name"]: Sheet(s) for s in data["sheets"]}
 
 
-def load_workbook(path):
-    return make_sheets(read_dump(path))
-
-
 def identify(sheets):
     for wb in WORKBOOKS:
         if wb["marker"] in sheets:
@@ -387,7 +385,7 @@ def blocks(value, headings=False):
         else:
             if items:
                 flush()
-            para.append(esc(start_guard(ln)))
+            para.append(start_guard(esc(ln)))  # protéger APRÈS l'échappement : sinon la barre de protection serait elle-même doublée
     flush()
     return "\n\n".join(out)
 
@@ -643,7 +641,11 @@ def page_statistiques(sh, wb):
             names.append(one_line(lab))
             vals = [sh.get(rr, c) for c in range(c_eq + 1, c_last + 1) if sh.get(rr, c) is not None]
             cells_by_level.append(", ".join(esc(one_line(v)) for v in vals))
-            note_targets += [((rr, c), "%s (%s)" % (one_line(lab), combo)) for c in range(c_eq + 1, c_last + 1)]
+            note_targets += [
+                ((rr, c), "%s (%s) : %s" % (one_line(lab), combo, one_line(sh.get(rr, c))))
+                for c in range(c_eq + 1, c_last + 1)
+                if sh.get(rr, c) is not None
+            ]
         if levels is None:
             levels = names
         elif names != levels:
@@ -911,6 +913,25 @@ def expected_notes(data, wb):
     ]
 
 
+def page_notes(text):
+    """Notes lues dans une page : une liste par bloc qui ouvre une note (« **Note de la cellule « … »** … »), des textes canoniques
+    que cette note peut avoir. Une note sur une ligne (« … » : texte) n'a qu'un texte ; une note qui ouvre par son libellé seul est
+    suivie de ses paragraphes et listes (blocs séparés par une ligne vide) : chaque début de suite de blocs est un texte possible. Le
+    texte d'une note est comparé en entier (égalité) : une note qui n'est que le début d'une autre n'est pas confondue avec elle."""
+    body = text.split("\n---\n", 1)[1] if "\n---\n" in text else text
+    blocks_ = [b.strip() for b in re.split(r"\n\s*\n", body) if b.strip()]
+    opened = []
+    for i, block in enumerate(blocks_):
+        m = re.match(r"\*\*Note de la cellule « .*? »\*\*(?: : (.*))?\s*$", block, re.S)
+        if not m:
+            continue
+        if m.group(1) is not None:
+            opened.append([canon_page(m.group(1))])
+        else:
+            opened.append([canon_page("\n\n".join(blocks_[i + 1:j + 1])) for j in range(i + 1, min(len(blocks_), i + 41))])
+    return opened
+
+
 def note_problems(data, wb, texts):
     """Contrôle de couverture : {page: texte} -> liste d'écarts. Chaque note du dump doit figurer dans la page de son onglet
     exactement une fois (autant de fois qu'il y a de notes de même texte), avec son texte intégral, et la page ne porte aucune
@@ -922,18 +943,20 @@ def note_problems(data, wb, texts):
         if slug not in texts:
             continue
         mine = [(ref, canon_note(text)) for (t, ref, text) in notes if t == tab]
-        page = canon_page(texts[slug])
+        opened = page_notes(texts[slug])
         for key, wanted in Counter(k for _ref, k in mine).items():
-            found = len(re.findall(r"»\*\*(?: :)? " + re.escape(key), page))
+            found = sum(1 for candidates in opened if key in candidates)
             if found != wanted:
                 refs = ", ".join(ref for ref, k in mine if k == key)
                 problems.append(
                     "%s : la note de %s (« %s ») devrait figurer %d fois dans la page avec son texte intégral, elle y figure %d fois"
                     % (slug, refs, shorten(key, 50), wanted, found)
                 )
-        markers = page.count(NOTE_MARKER)
-        if markers != len(mine):
-            problems.append("%s : la page porte %d note(s) de cellule, le dump en compte %d" % (slug, markers, len(mine)))
+        markers = canon_page(texts[slug].split("\n---\n", 1)[-1]).count(NOTE_MARKER)
+        if len(opened) != len(mine) or markers != len(mine):
+            problems.append(
+                "%s : la page porte %d note(s) de cellule, le dump en compte %d" % (slug, max(len(opened), markers), len(mine))
+            )
     return problems
 
 
@@ -1224,15 +1247,13 @@ def main(argv=None):
         if problems:
             raise SystemExit("contrôle de couverture des notes de cellule, rien n'est écrit :\n  " + "\n  ".join(problems[:30]))
         built.append((wb, pages, len(expected_notes(data, wb)), elsewhere, threads_report(sheets, wb)))
-    written = 0
     notes_total = 0
     for wb, pages, count, _elsewhere, _threads in built:
         notes_total += count
         for page in pages:
             path, changed = write_page(args.out, wb, page)
-            written += changed
             print(("écrit   " if changed else "inchangé") + " " + path)
-    print("notes de cellule : %d dans les dumps (onglets publiés), %d rendues dans les pages" % (notes_total, notes_total))
+    print("notes de cellule : %d dans les dumps (onglets publiés), %d rendues dans les pages (contrôle de couverture passé)" % (notes_total, notes_total))
     for _wb, _pages, _count, elsewhere, _threads in built:
         if elsewhere:
             print("notes d'onglets de magie (rendues par magies.py, pas ici) : " + ", ".join("%s %d" % e for e in elsewhere))

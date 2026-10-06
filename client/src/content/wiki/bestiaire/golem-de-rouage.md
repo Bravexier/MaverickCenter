@@ -28,7 +28,7 @@ Le golem de Rouage est un gardien mécanique énigmatique, dont le corps est con
 Arbalécho - (1d4/NPM)x1d4 dégâts d'estoc (portée 2-11)  
 Poing - 1d10/NPM dégâts de frappe
 
-**Note de cellule** : L'arbalécho est une arme étrange dont les bonus de dégâts ne rentre pas dans la multiplication et la posture offensif met au max seulement le deuxième dé.
+**Note de la cellule « Dégâts »** : L'arbalécho est une arme étrange dont les bonus de dégâts ne rentre pas dans la multiplication et la posture offensif met au max seulement le deuxième dé.
 
 **Défense** : 2/NPM Armure Physique | 2 Armure Magique
 

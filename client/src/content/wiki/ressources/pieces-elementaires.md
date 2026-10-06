@@ -71,9 +71,17 @@ EVIDEMMENT, il est nécessaire de posséder la magie pour utiliser les armes ou 
 | GLACE | Épée de Glace | +8 Dégâts | Élément Glace | Lame froide (passif) : 15% de chance d'infliger 1 croix à l'agilité OU à la force (aléatoire) de la cible. |
 | VENT | Épée de Vent | +8 Dégâts | Élément Vent | Tranch'Air (action) : Permet de lancer une grande lame d'air de 3 cases de large/long jusuqu'a 4 cases de distance. Perd 1d de dégâts par cases parcourues. |
 | FOUDRE | Épée de Foudre | +8 Dégâts | Élément Foudre | Tranch'éclair (passif) : Chaque attaque réussi sera enchaîné d'un éclair qui infligera 1d de dégâts supplémentaire (doublé lors de la météo orage) |
-| TERRE | Épée de Terre | +8 Dégâts | Élément Terre | Mélallomorphique (passif) : La composition de la lame s’adapte en fonction de l’environnement : devenant plus dure près du métal, plus tranchante sur la pierre, et plus souple autour des plantes.<br><br>Note de cellule : Métal : Plus solide, elle ne peut pas perdre de cran de solidité<br><br>Pierre : Ignore 5 AP<br><br>Plante : Ignore 50% des AP des boucliers |
+| TERRE | Épée de Terre | +8 Dégâts | Élément Terre | Mélallomorphique (passif) : La composition de la lame s’adapte en fonction de l’environnement : devenant plus dure près du métal, plus tranchante sur la pierre, et plus souple autour des plantes. |
 | LUMIERE | Épée de Lumière | +8 Dégâts | Élément Lumière | Louons la Soleil (action) : Prend la pose et loue Aurora afin au lanceur et aux alliés à côté d'avoir un bonus de +4 dégâts pendant 3 tours. |
 | OMBRE | Épée d'Ombre | +8 Dégâts | Élément Ombre | Cicatrices sombres (passif) : Les plaies laissées par l’épée continuent de suinter de l'ombre, empêchant la cible de récupérer de la santé avec des sorts pendant 2 tours. |
+
+**Note de la cellule « Épée de Terre »**
+
+Métal : Plus solide, elle ne peut pas perdre de cran de solidité
+
+Pierre : Ignore 5 AP
+
+Plante : Ignore 50% des AP des boucliers
 
 ### DAGUE
 
@@ -117,7 +125,7 @@ EVIDEMMENT, il est nécessaire de posséder la magie pour utiliser les armes ou 
 
 | Colonne | Nom | Dégâts | Élément | Capacité |
 | --- | --- | --- | --- | --- |
-| SANG | Hache de Sang | +8 Dégâts | Élément Sang | Folie sanguinaire (passif) : Si deux coups réussi sont enchaîné sur un bras ou une jambe = Bloque l'utilisation de ce dernier pendant 1 tour.<br><br>Note de cellule : Bras = Perd son arme ou bouclier<br>Jambe = Ne peux plus bouger |
+| SANG | Hache de Sang | +8 Dégâts | Élément Sang | Folie sanguinaire (passif) : Si deux coups réussi sont enchaîné sur un bras ou une jambe = Bloque l'utilisation de ce dernier pendant 1 tour. |
 | ARCANE | Hache d'Arcane | +8 Dégâts | Élément Arcane | Copieur (passif) : Chaque coup réussi à 20% de chance d'appliquer le sort "rune arcane" au lanceur. (La rune correspond à la magie innée de la cible ou de son élément) |
 | CORRUPTION | Hache de Corruption | +8 Dégâts | Élément Corruption | Dévoreur (Passif) : Cette arme possède 20% de chance d'absorber un effet positif du à un sort à la cible, lui redonnant 1d10 barrière. |
 | ESPACE/TEMPS | Hache d'Espace/Temps | +8 Dégâts | Élément Espace/Temps | Craquage défensif (Passif) : Une attaque avec cette arme fait consommer 2 parade/esquive à l'adversaire en 1 seule défense. |
@@ -131,6 +139,11 @@ EVIDEMMENT, il est nécessaire de posséder la magie pour utiliser les armes ou 
 | TERRE | Hache de Terre | +8 Dégâts | Élément Terre | Poids de la terre (passif) : Impose un malus 20% à la parade de la cible. |
 | LUMIERE | Hache de Lumière | +8 Dégâts | Élément Lumière | Bourreau (passif) : Si l'ennemi possède un de ses alignements contraire au vôtre, +5 dégâts et +2% à la RC contre lui. |
 | OMBRE | Hache d'Ombre | +8 Dégâts | Élément Ombre | Marque de l'ombre (passif) : Chaque coup possède 30% de chance de poser une marque qui va baisser d'un cran la résistance à l'Ombre de la cible pendant 2 tours. |
+
+**Note de la cellule « Hache de Sang »**
+
+Bras = Perd son arme ou bouclier  
+Jambe = Ne peux plus bouger
 
 ### ARME D'HAST
 
@@ -229,11 +242,20 @@ EVIDEMMENT, il est nécessaire de posséder la magie pour utiliser les armes ou 
 | FEU | Arbalète de Feu | +8 Dégâts | Élément Feu | Passe-Flamme (passif) : 15% de chance de passer à travers la cible et de toucher derrière lui. |
 | EAU | Arbalète d'Eau | +8 Dégâts | Élément Eau | Recharge fluide (actif) : L’arbalète peut absorber l’humidité ambiante pour créer des carreaux d’eau, évitant au porteur de manquer de munitions. |
 | GLACE | Arbalète de Glace | +8 Dégâts | Élément Glace | Entrave frigorifière (passif) : Quand le carreau touche la cible, elle impose un malus de 10% à son prochain jet de défense. |
-| VENT | Arbalète de Vent | +8 Dégâts | Élément Vent | Carreau vibrato (passif) : Le carreau oblige un jet de vigueur pour ne pas prendre surdité x\*<br><br>Note de cellule : \*<br>Si le carreau touche à 2 - 4 portée = Surdité 1<br><br>Si le carreau touche à 5 - 7 portée = Surdité 2<br><br>Si le carreau touche à 8 - 10 portée = Surdité 3 |
+| VENT | Arbalète de Vent | +8 Dégâts | Élément Vent | Carreau vibrato (passif) : Le carreau oblige un jet de vigueur pour ne pas prendre surdité x\* |
 | FOUDRE | Arbalète de Foudre | +8 Dégâts | Élément Foudre | Carreau Vif (Passif) : Au bout de 3 tirs, le prochain tir sera innesquivable et imparable. |
 | TERRE | Arbalète de Terre | +8 Dégâts | Élément Terre | Solidification (passif) : Chaque coup réussi oblige un jet de vigueur à la cible, si elle rate, elle prend "pétrification 1" |
 | LUMIERE | Arbalète de Lumière | +8 Dégâts | Élément Lumière | Phare (passif) : Immnunisé aux météos qui impose des malus avec les armes à distances, Grand Soleil et Canicule diminue le malus de visée des partie du corps de 5%. |
 | OMBRE | Arbalète d'Ombre | +8 Dégâts | Élément Ombre | Pichenette pointu (passif) : Les carreaux de cette arme réduise de 5 l'initiative de la cible pour son prochain tour. |
+
+**Note de la cellule « Arbalète de Vent »**
+
+\*  
+Si le carreau touche à 2 - 4 portée = Surdité 1
+
+Si le carreau touche à 5 - 7 portée = Surdité 2
+
+Si le carreau touche à 8 - 10 portée = Surdité 3
 
 ### ARME DE JET
 

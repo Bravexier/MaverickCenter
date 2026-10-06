@@ -188,7 +188,7 @@ const ATTENDUES = [
   ['mode-hyper-magie', '## Effets par combinaison de deux magies', `**Note de la cellule « Effet (Sang + Eau) »** : ${N.combi}`],
   ['mode-hyper-magie', '## Avantages de base', `**Note de la cellule « Avantages de base »** : ${N.avantages}`],
   ['mode-hyper-magie', '## Avantages de base', `**Note de la cellule « Mono magie »** : ${N.mono}`],
-  ['statistiques-resistance-faiblesse', null, `**Note de la cellule « Résistance (Sang + Eau) »** : ${N.stat}`],
+  ['statistiques-resistance-faiblesse', null, `**Note de la cellule « Résistance (Sang + Eau) : Terre »** : ${N.stat}`],
   ['liste-des-effets-mode-hyper', null, `**Note de la cellule « AA1 »** : ${N.texteHyper}`],
   ['liste-des-effets-mode-hyper', '## Effets selon la magie ou le type', `**Note de la cellule « Mono magie (Sang) »** : ${N.monoHyper}`],
   ['liste-des-effets-mode-hyper', '## Effets selon la race', `**Note de la cellule « Effet (Humain) »** : ${N.raceHyper}`],
@@ -270,8 +270,15 @@ test('notes : relancé, le script n’écrit plus rien (idempotent) ; une note i
   meteo.cells.find((c) => c.r === 9 && c.c === 8).note = N.meteo; // même texte que la note de B9
   const double = preparer({ v8 });
   assert.equal(lancer(double).status, 0);
-  assert.equal(lire(join(double.out, 'guide'), 'meteo').split(`« Description »** : ${N.meteo}`).length - 1, 0);
-  assert.equal(lire(join(double.out, 'guide'), 'meteo').split(N.meteo).length - 1, 2);
+  const meteoPage = lire(join(double.out, 'guide'), 'meteo');
+  assert.equal(meteoPage.split(`« Description »** : ${N.meteo}`).length - 1, 1);
+  assert.equal(meteoPage.split(`« Météo »** : ${N.meteo}`).length - 1, 1);
+  assert.equal(meteoPage.split(N.meteo).length - 1, 2);
+  assert.equal(lancer(double, ['--verifier']).status, 0);
+  modifierPage(double, 'meteo', (t) => t.replace(`« Météo »** : ${N.meteo}\n\n`, ''));
+  const perdu = lancer(double, ['--verifier']);
+  assert.notEqual(perdu.status, 0, 'une des deux notes identiques retirée : --verifier doit échouer (autant d’occurrences que de notes)');
+  assert.match(perdu.stderr, /meteo.*2 fois.*1 fois/s);
 });
 
 test('notes : une note blanche (espaces seulement) n’est pas une note ; une note d’un onglet de magie relève de magies.py', { skip: sansPython }, () => {
@@ -282,6 +289,44 @@ test('notes : une note blanche (espaces seulement) n’est pas une note ; une no
   const r = lancer(ctx);
   assert.equal(r.status, 0, r.stderr);
   for (const page of PAGES) assert.equal(nbNotes(lire(join(ctx.out, 'guide'), page)), 0, page);
+});
+
+test('notes : un début de ligne qui serait du Markdown (« 1. », « # », « > », « + ») est protégé par UNE barre oblique, le texte reste intégral', { skip: sansPython }, () => {
+  const texte = 'Règles :\n1. Premier point\n# Pas un titre\n> Pas une citation\n+ Pas une liste\n\nFin avec *étoile*, _tiret_ et a | b.';
+  const v8 = magieV8({ notes: false });
+  v8.sheets.find((s) => s.name === 'Météo').cells.find((c) => c.r === 2 && c.c === 8).note = texte;
+  const ctx = preparer({ v8, hyper: modeHyper({ notes: false }) });
+  const r = lancer(ctx);
+  assert.equal(r.status, 0, r.stderr);
+  const page = lire(join(ctx.out, 'guide'), 'meteo');
+  assert.ok(
+    page.includes(
+      '**Note de la cellule « Description »**\n\nRègles :<br>\n\\1. Premier point<br>\n\\# Pas un titre<br>\n\\> Pas une citation<br>\n\\+ Pas une liste\n\nFin avec \\*étoile\\*, \\_tiret\\_ et a \\| b.',
+    ),
+    page,
+  );
+  assert.equal(lancer(ctx, ['--verifier']).status, 0);
+});
+
+test('notes : une note qui n’est que le début d’une autre (même page) n’est pas confondue avec elle', { skip: sansPython }, () => {
+  const v8 = magieV8({ notes: false });
+  const meteo = v8.sheets.find((s) => s.name === 'Météo');
+  meteo.cells.find((c) => c.r === 2 && c.c === 2).note = 'Ne se cumule pas.';
+  meteo.cells.find((c) => c.r === 2 && c.c === 8).note = 'Ne se cumule pas. Sauf avec le soleil.';
+  const ctx = preparer({ v8, hyper: modeHyper({ notes: false }) });
+  assert.equal(lancer(ctx).status, 0);
+  assert.equal(lancer(ctx, ['--verifier']).status, 0);
+  modifierPage(ctx, 'meteo', (t) => t.replace('« Description »** : Ne se cumule pas. Sauf avec le soleil.', '« Description »** : Ne se cumule pas.'));
+  assert.notEqual(lancer(ctx, ['--verifier']).status, 0, 'la seconde note tronquée au texte de la première doit être signalée');
+});
+
+test('notes : la note du nom d’une altération, écrite juste sous l’intertitre, est retrouvée par --verifier (et signalée si elle disparaît)', { skip: sansPython }, () => {
+  const v8 = magieV8({ notes: false });
+  v8.sheets.find((s) => s.name === 'Altération détats').cells.find((c) => c.r === 3 && c.c === 1).note = 'Note sur le nom, juste sous le premier intertitre';
+  const ctx = preparer({ v8, hyper: modeHyper({ notes: false }) });
+  assert.equal(lancer(ctx).status, 0);
+  modifierPage(ctx, 'liste-des-alterations-d-etat', (t) => t.replace(/\n\*\*Note de la cellule « Nom »\*\* : .*\n/, '\n'));
+  assert.notEqual(lancer(ctx, ['--verifier']).status, 0);
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -358,7 +403,9 @@ test('--verifier : au vert sur les pages générées, n’écrit rien, annonce l
   const r = verifier(ctx);
   assert.equal(r.status, 0, r.stderr + r.stdout);
   assert.match(r.stdout, new RegExp(`${TOTAL} note\\(s\\)`));
-  assert.match(r.stdout, /cas d'erreur rejoués/);
+  // 6 onglets publiés x 7 rejeux (cellule vide, sans place, note de contrôle acceptée, 4 altérations de page) + onglet inconnu dans
+  // chacun des 2 dumps + onglet Sommaire du classeur V8 : un rejeu qui disparaît change ce nombre.
+  assert.match(r.stdout, /45 cas d'erreur rejoués/);
   assert.deepEqual(PAGES.map((p) => lire(join(ctx.out, 'guide'), p)), avant, '--verifier ne doit rien écrire');
 });
 
@@ -369,6 +416,7 @@ test('--verifier : une note retirée, dupliquée, tronquée ou altérée dans un
     dupliquée: (t) => t.replace(bloc, `${bloc}\n\n${bloc}`),
     tronquée: (t) => t.replace(N.type, N.type.slice(0, 30)),
     altérée: (t) => t.replace('bonus de +10', 'bonus de +11'),
+    'en trop': (t) => `${t.trimEnd()}\n\n**Note de la cellule « Type »** : Une note qui n'est pas dans le dump\n`,
   };
   for (const [nom, fn] of Object.entries(cas)) {
     const ctx = preparer();
@@ -377,7 +425,27 @@ test('--verifier : une note retirée, dupliquée, tronquée ou altérée dans un
     const r = verifier(ctx);
     assert.notEqual(r.status, 0, `note ${nom} : --verifier aurait dû échouer`);
     assert.match(r.stderr, /liste-des-alterations-d-etat/, `note ${nom} : ${r.stderr}`);
+    if (nom === 'en trop') assert.match(r.stderr, /la page porte 5 note\(s\) de cellule, le dump en compte 4/);
+    if (nom === 'dupliquée') assert.match(r.stderr, /devrait figurer 1 fois.*elle y figure 2 fois/s);
   }
+});
+
+test('--verifier : une page dont autre chose qu’une note a changé (une cellule de tableau) est signalée, notes intactes', { skip: sansPython }, () => {
+  const ctx = preparer();
+  assert.equal(lancer(ctx).status, 0);
+  modifierPage(ctx, 'liste-des-alterations-d-etat', (t) => t.replace('Perd 1 PV | Perd 2 PV', 'Perd 9 PV | Perd 2 PV'));
+  const r = verifier(ctx);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /liste-des-alterations-d-etat : la page écrite n'est pas celle que le dump produit/);
+  assert.doesNotMatch(r.stderr, /devrait figurer/, 'les notes de la page sont intactes');
+});
+
+test('--verifier : une page absente est signalée', { skip: sansPython }, () => {
+  const ctx = preparer();
+  assert.equal(lancer(ctx).status, 0);
+  const r = spawnSync('python3', ['-I', script, ...ctx.dumps.flatMap((d) => ['--dump', d]), '--out', join(ctx.dir, 'ailleurs'), '--verifier'], { encoding: 'utf8' });
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /meteo : page absente/);
 });
 
 test('--verifier : une page qui n’est plus celle que le dump produit (une note de plus dans le dump) est signalée', { skip: sansPython }, () => {

@@ -275,6 +275,19 @@ test('synthétique : le message de conversation de l\'Eau (AN46) est écarté, e
   assert.equal(verifie(r, dump).status, 0);
 });
 
+test('synthétique : l\'exclusion tient à l\'adresse ET au texte : un message modifié, ou le même ailleurs, est cité', () => {
+  const dump = classeur();
+  const eau = dump.sheets.find((s) => s.name === 'Eau');
+  eau.merged.push('AL46:AM48');
+  eau.cells.push({ r: 46, c: 38, v: 3 }, { r: 46, c: 40, v: 'Eau Parfaite', threads: [{ text: 'salut viens en vocal stp, vite' }] });
+  cellule(dump, 'Sang', BJ4).threads = [{ text: 'salut viens en vocal stp' }];
+  const r = lancer({ dump });
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual(entrees(r.page('magie-de-leau')).map((e) => e.texte), ['salut viens en vocal stp, vite']);
+  assert.deepEqual(entrees(r.page('magie-du-sang')).map((e) => e.texte), ['salut viens en vocal stp']);
+  assert.doesNotMatch(r.stdout, /écarté : /);
+});
+
 test('synthétique : une note sur une cellule VIDE arrête le script avec un message clair, et la page n\'est pas écrite', () => {
   const dump = classeur();
   ajoute(dump, 'Sang', { r: 5, c: 62, v: '', note: 'Une note sans texte à côté' });

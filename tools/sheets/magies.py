@@ -113,9 +113,14 @@ attendues directement depuis les cellules brutes du dump (sans réutiliser l'ana
 frontmatter des pages écrites ; tout écart (ÉCART : ...) donne le code de sortie 1. Un autotest des cas limites du
 contrat (autotest()) tourne à chaque lancement : il vérifie aussi, sur un onglet synthétique, que le générateur et la
 vérification indépendante rendent le même verdict (liste, clé omise ou erreur) pour une cellule vide, « Aucune », une
-phrase libre courte, un nom inconnu, un doublon, etc. Rapport (stdout) : une ligne « écrit » par page, la liste des clés
-omises avec leur raison, (seulement s'il y en a) la liste des clés lues comme `[]` faute de valeur, puis
-« vérification : OK (15 pages) ». Le classeur V8 actuel n'a aucune cellule vide de ce genre.
+phrase libre courte, un nom inconnu, un doublon, etc. Il rejoue de même les cas d'erreur des notes (autotest_comments :
+déduplication, exclusion, note sur une cellule vide, hors de la table, onglet non publié, recoupement avec le classeur, aller-retour
+du Markdown de chaque texte). Rapport (stdout) : une ligne « écrit » par page, la liste des clés omises avec leur raison,
+(seulement s'il y en a) la liste des clés lues comme `[]` faute de valeur, le décompte des notes et des fils (lus, écrits, non
+répétés, écartés avec leur raison), les fils des onglets que cette famille ne publie pas, puis « vérification : OK (15 pages) ».
+Le classeur V8 actuel n'a aucune cellule vide de ce genre. Avec --verifier : un « ÉCART : … » par problème (frontmatter, note ou fil
+absent, altéré, cité deux fois, en trop ou dans le désordre ; note d'un onglet non publié, sur une cellule vide ou hors de la table),
+code de sortie 1, rien n'est écrit.
 
 Ne touche qu'aux fichiers `<out>/magies/<slug>.md` de sa famille : il refuse d'écraser un fichier qui n'est pas issu de ce
 classeur, refuse un titre déjà porté par une autre page, et n'efface rien.
