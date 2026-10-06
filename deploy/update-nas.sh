@@ -117,7 +117,9 @@ PAGES=$(find "$STAGE" -name index.html | wc -l | tr -d ' ')
 
 mkdir -p "$SITE_DIR"
 if [ "$USE_RSYNC" != "0" ] && command -v rsync >/dev/null 2>&1; then
-  rsync -a --delete "$STAGE/" "$SITE_DIR/" || die "synchronisation (rsync) impossible"
+  # --checksum : comparaison par contenu. Par défaut rsync saute un fichier de même taille et même date, ce qui ignorerait
+  # une page modifiée dont la longueur n'a pas changé (les dates de l'archive GitHub sont celles du commit).
+  rsync -a --delete --checksum "$STAGE/" "$SITE_DIR/" || die "synchronisation (rsync) impossible"
 else
   # Copie de secours : on conserve le dossier lui-même (nginx le monte tel quel) et on remplace son contenu
   rm -rf "$SITE_DIR"/*
