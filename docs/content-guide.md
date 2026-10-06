@@ -33,6 +33,11 @@ Le site en tire : le bloc « Magies innées disponibles » d'une race, « Dispon
 rangement des races. L'incompatibilité est lue dans les deux sens : une magie citée par la page d'une autre est marquée « déduite » (*).
 `test/races-magies-content.test.mjs` vérifie ces champs sur le contenu réel (noms existants, concordance avec le texte de la page, effectifs).
 
+**Priorité entre les sources d'une race** : l'onglet de la race dans le classeur « Les races » (histoire, présentation, avantages et
+inconvénients, don de base, ethnies, mode Hyper) prime sur la « Fiche personnage Maverick Auto V15.2.2 » quand les deux divergent
+(la fiche est en retard par endroits : don de base, mode Hyper, statistiques du Drakos, magies innées du Nain…). Chaque page de race affiche
+les valeurs de l'onglet et liste, dans « Écarts avec la fiche de personnage V15.2.2 », ce que la fiche dit de différent ; rien n'est tranché en silence.
+
 **Exception du Nain** : la matrice « Accessibilité Magie » de la fiche lui donne les 15 magies, mais l'onglet « Nain » du classeur « Les races » limite
 sa magie innée à Potentiel Illimité, Arcane, Feu, Terre et Foudre (« Inconvénient(s) : … en inné uniquement »). Cette limitation est une décision du
 propriétaire du projet, fondée sur une capture de l'onglet (le classeur « Les races » est trop lourd pour être exporté) : elle est écrite en clair dans
@@ -41,6 +46,31 @@ race pure (pas de classe raciale). Si le classeur de la fiche est corrigé, reti
 
 **Races pures et hybrides** : une race est hybride quand elle a sa propre classe raciale (une classe « Hybride Animal » qui porte son nom,
 `lib/race-kinds.mjs`) ; les données confirment que ces 13 races ont exactement 3 magies innées, les 14 races pures en ont 13 ou plus.
+
+## Capacités de classe (type `capacites`)
+
+Chaque capacité d'un onglet de « Classe Maverick V7 » a sa fiche `capacites/<classe>-<nom>.md` (le tableau d'aptitudes n'est plus dans la page
+de la classe). Champs du frontmatter, déclarés dans `content.config.ts` et lus par `client/src/lib/capacites.mjs` :
+
+| Champ | Contenu |
+| --- | --- |
+| `classe` | id de la page de la classe (`classes/barde`) |
+| `nature` | `classe` (reçue sans choix), `specialite` (cartouche de spécialité, niveau 10) ou `choix` (capacité d'une spécialité ou d'un palier) |
+| `specialite` | bannière de la spécialité (absente pour `classe` et pour l'Archimage, qui n'a pas de spécialité) |
+| `niveau`, `rang`, `ligne` | niveau de classe ; position de gauche à droite ; ligne de la cellule dans l'onglet |
+| `choix_exclusif_avec` | ids des autres capacités de la **même ligne** : une seule au choix (symétrique) |
+
+**Règle des choix** (confirmée par le propriétaire du projet, lisible dans la mise en page des onglets) : deux capacités côte à côte sur
+une même ligne s'excluent ; les deux cartouches de spécialité sont sur une même ligne, donc choisir une spécialité exclut l'autre et
+toutes ses capacités ; une capacité seule sur sa ligne est reçue sans choix. Exemple du Barde Ménestrel : Nouvel accord exclut Écho, Balade
+guerrière exclut Amplification, Exaltation exclut Touérk. L'Archimage n'a pas de spécialité mais des groupes de 2 ou 3 capacités au même
+niveau (Élémentaliste / Occultiste ; Création vivante / Tempus Figus / Obédience…). `checkSelection` contrôle un ensemble de capacités ;
+`test/capacites-content.test.mjs` rejoue ces exemples sur les vraies pages.
+
+**Bonus d'armure magique (+4 AM)** (`lib/classe-bonus.mjs`) : toute classe magique l'a (Sommaire : « Octroie 4 AM de base par classe
+magique »). Pour une classe raciale, c'est sa 2ᵉ spécialité, le pendant lanceur de sort : la capacité de spécialisation de niveau 10 y dit
+« considérer comme classe magique ». Le site lit cette phrase dans la fiche de la capacité, il ne devine pas la spécialité. L'Archimage est
+compté parmi les classes magiques par la fiche V15.2.2 (BDD!H40, I40, BB2), alors que le Sommaire le classe « spéciale » : la page le signale.
 
 ## Liens entre pages
 

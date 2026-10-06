@@ -1,0 +1,30 @@
+---
+import { bonusAM } from '../lib/classe-bonus.mjs';
+import { entryHref, type WikiEntry } from '../lib/wiki';
+
+interface Props {
+  entry: WikiEntry;
+  entries: WikiEntry[];
+}
+const { entry, entries } = Astro.props;
+const am = bonusAM(entries, entry);
+const sources = {
+  sommaire: 'Sommaire du classeur des classes : « Octroie 4 AM de base par classe magique ».',
+  specialite: 'La capacité de spécialisation de niveau 10 de cette spécialité dit « considérer comme classe magique » : elle reçoit le bonus des classes magiques (Sommaire : « Octroie 4 AM de base par classe magique »).',
+  fiche: 'La fiche de personnage V15.2.2 (BDD!H40) range l’Archimage parmi les classes magiques pour ce bonus.',
+};
+---
+
+{
+  am && (
+    <p class="banner" role="note">
+      <strong>+{am.valeur} AM</strong>
+      {am.portee === 'classe'
+        ? ' : bonus d’armure magique de base de la classe.'
+        : am.cartouche
+          ? <> avec la 2<sup>e</sup> spécialité, <a href={entryHref(am.cartouche)}>{am.specialite}</a> (le pendant lanceur de sort de la classe).</>
+          : ' avec la 2e spécialité (le pendant lanceur de sort de la classe).'}
+      <span class="muted"> {sources[am.source as keyof typeof sources]}</span>
+    </p>
+  )
+}

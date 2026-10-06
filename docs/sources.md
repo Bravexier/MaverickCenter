@@ -72,10 +72,15 @@ Le chemin utilisé est en deux temps, rejouable :
    (bibliothèque standard uniquement), qui écrit `client/src/content/wiki/<catégorie>/<slug>.md` avec
    `status: draft` et une entrée `sources:` qui désigne l'onglet d'origine.
 
-Obtenir le `.xlsx` : *Fichier > Télécharger > Microsoft Excel* depuis le classeur, ou, depuis une session Claude avec le
-connecteur Google Drive, `download_file_content` avec le type d'export xlsx (le connecteur Google Sheets, lui, était
-refusé faute d'autorisation suffisante). Google plafonne l'export à 10 Mo : le classeur « Les races » (≈ 34 Mo) ne
-s'exporte pas tel quel ; il faudrait l'alléger (images, onglets) ou exporter les onglets un par un.
+Obtenir les données d'un classeur, par ordre de préférence :
+
+1. **Connecteur Google Sheets** (session Claude, autorisation « Sheets » complète) : `get_spreadsheet` avec `includeGridData`,
+   une plage `'<onglet>'!A1:ZZ<n>` par onglet voulu et le masque de champs `sheets.properties.title`, `sheets.merges`,
+   `sheets.data.rowData.values.formattedValue`, `sheets.data.rowData.values.hyperlink` ; la réponse (souvent sauvegardée dans un
+   fichier par l'outil) est convertie par `python3 -I tools/sheets/sheets_api_to_json.py <réponse.json> <sortie.json>`. Seules les
+   valeurs affichées sont lues (pas de formules) ; c'est la voie des classeurs trop lourds pour l'export (« Les races », ≈ 34 Mo).
+2. **Export `.xlsx`** : *Fichier > Télécharger > Microsoft Excel*, ou `download_file_content` du connecteur Google Drive avec le type
+   d'export xlsx ; Google plafonne l'export à 10 Mo. Conserve les formules, les listes déroulantes et les commentaires.
 
 Les JSON intermédiaires et les `.xlsx` ne font pas partie du dépôt : ils se régénèrent à partir des classeurs.
 Les extracteurs sont relançables, mais **ils écrasent les pages qu'ils génèrent** : retoucher une page à la main
