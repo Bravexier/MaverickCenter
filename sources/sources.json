@@ -148,6 +148,12 @@
   ],
   "fandom": [
     {
+      "url": "https://maverick-jdr.fandom.com/fr/wiki/Wiki_Maverick",
+      "type": null,
+      "title": "Wiki Maverick (ancien wiki Fandom, page d'accueil)",
+      "note": "Ancien wiki, PAS à jour (propriétaire du projet), sauf le tableau de progression. Source de dernier rang : il ne l'emporte jamais sur les classeurs, le guide ou une décision du propriétaire ; ses écarts se listent. Pas encore importé : hôte bloqué par la politique réseau de l'environnement."
+    },
+    {
       "url": "https://maverick-jdr.fandom.com/fr/wiki/Progression",
       "type": "guide",
       "title": "Progression (ancien wiki Fandom)",

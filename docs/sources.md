@@ -60,7 +60,9 @@ le wiki ne lit que `client/src/content/wiki/`. Ne les committez que si le dépô
 
 ### Ancien wiki Fandom
 
-`https://maverick-jdr.fandom.com/fr/wiki/Progression` : l'ancien wiki du jeu. Le propriétaire du projet indique que son **tableau de progression est encore à jour** et qu'il
+`https://maverick-jdr.fandom.com/fr/wiki/Wiki_Maverick` : l'ancien wiki du jeu. **Il n'est pas à jour** (le jeu a évolué depuis) : source de dernier rang, jamais prioritaire sur les
+classeurs, le guide ou une décision du propriétaire ; ce qu'il dit de différent se liste en écart, rien n'est tranché en silence ; ce qu'il est seul à dire se cite avec son URL et le
+statut `draft`. Exception : `https://maverick-jdr.fandom.com/fr/wiki/Progression`, dont le propriétaire du projet indique que le **tableau de progression est encore à jour** et qu'il
 fait foi pour les budgets de points (décision R3 de `docs/decisions-regles.md`). Il n'est pas encore importé : depuis une session cloud l'hôte
 `maverick-jdr.fandom.com` est bloqué par la politique réseau de l'environnement (à ajouter aux domaines autorisés, comme pour Discord et Google). Le contenu importé irait dans
 `sources/raw/` et ses règles dans `rules.json` avec cette URL en source ; tant qu'il n'est pas lu, les budgets suivent le guide et la fiche, signalés « à confirmer ».
