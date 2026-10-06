@@ -168,3 +168,26 @@ main a { overflow-wrap: anywhere; } /* les URLs de la section « Sources » ne d
 .cap-options { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; padding: 0; margin: 0.3rem 0 0; list-style: none; }
 .cap-or { color: var(--muted); font-style: italic; }
 .cap-facts { padding-left: 1.2rem; }
+
+/* Explorateur de données (/donnees/) */
+.donnees-fil { color: var(--muted); margin-bottom: 0; }
+.donnees-role { color: var(--muted); }
+.donnees-nul::before, td.nul::before { content: '∅'; color: var(--muted); }
+.donnees-filtre { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: baseline; }
+.donnees-filtre input { padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font: inherit; min-width: 16rem; }
+.donnees-aide { color: var(--muted); font-size: 0.85rem; }
+.donnees-section[hidden], .donnees-tables li[hidden] { display: none; }
+.donnees-tables { list-style: none; padding: 0; margin: 0 0 1.5rem; }
+.donnees-tables li { padding: 0.3rem 0; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: baseline; }
+.donnees-compte { color: var(--muted); font-size: 0.85rem; }
+.donnees-tables .donnees-role { flex-basis: 100%; font-size: 0.9rem; }
+.donnees-colonnes table { border-collapse: collapse; font-size: 0.85rem; }
+.donnees-colonnes th, .donnees-colonnes td { text-align: left; padding: 0.2rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+.donnees-wrap { overflow: auto; max-height: 75vh; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.donnees { border-collapse: collapse; font-size: 0.82rem; line-height: 1.35; }
+.donnees th { position: sticky; top: 0; background: var(--accent-soft); text-align: left; padding: 0.35rem 0.5rem; cursor: pointer; white-space: nowrap; z-index: 1; }
+.donnees th[data-sens="asc"]::after { content: ' ▲'; }
+.donnees th[data-sens="desc"]::after { content: ' ▼'; }
+.donnees td { padding: 0.25rem 0.5rem; border-top: 1px solid var(--border); vertical-align: top; max-width: 26rem; overflow-wrap: anywhere; white-space: pre-wrap; }
+.donnees tr:target { background: var(--warn-bg); }
+.donnees tr[hidden] { display: none; }

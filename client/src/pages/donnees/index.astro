@@ -1,0 +1,52 @@
+---
+import Base from '../../layouts/Base.astro';
+import { url } from '../../lib/wiki';
+import { lister, ouvrirBase } from '../../lib/donnees.mjs';
+
+const sections = lister(ouvrirBase());
+const nbTables = sections.reduce((n, s) => n + s.objets.filter((o) => o.genre === 'table').length, 0);
+const nbVues = sections.reduce((n, s) => n + s.objets.filter((o) => o.genre === 'vue').length, 0);
+const nbLignes = sections.reduce((n, s) => n + s.objets.filter((o) => o.genre === 'table').reduce((m, o) => m + o.nbLignes, 0), 0);
+---
+
+<Base title="Données" description="Toutes les données structurées du JDR Maverick, table par table">
+  <h1>Données</h1>
+  <p>
+    Les données structurées du jeu, telles qu’elles sont rangées dans la base : {nbTables} tables ({nbLignes.toLocaleString('fr-FR')} lignes) et {nbVues} vues.
+    Chaque ligne garde le texte de sa source ; une valeur absente est marquée <span class="donnees-nul">∅</span> et n’est jamais remplacée par une valeur inventée.
+    Les identifiants et les clés étrangères sont des liens : un sort renvoie à sa magie, une capacité à sa page du wiki. Le texte intégral des pages est dans le <a href={url('wiki/')}>wiki</a>.
+  </p>
+  <p class="donnees-filtre"><label>Filtrer les tables <input type="search" id="filtre-tables" placeholder="arme, sort, race…" autocomplete="off" /></label></p>
+  {
+    sections.map((s) => (
+      <section class="donnees-section">
+        <h2>{s.titre}</h2>
+        <ul class="donnees-tables">
+          {s.objets.map((o) => (
+            <li data-nom={o.nom}>
+              <a href={url(`donnees/${o.nom}/`)}><code>{o.nom}</code></a>
+              <span class="donnees-compte">{o.nbLignes.toLocaleString('fr-FR')} ligne{o.nbLignes > 1 ? 's' : ''}</span>
+              {o.genre === 'vue' && <span class="badge">vue</span>}
+              {o.derivee && <span class="badge">dérivée</span>}
+              <span class="donnees-role">{o.description}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))
+  }
+  <script is:inline>
+    (() => {
+      const champ = document.getElementById('filtre-tables');
+      if (!champ) return;
+      const plier = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+      const lignes = [...document.querySelectorAll('.donnees-tables li')];
+      const textes = lignes.map((li) => plier(li.textContent));
+      champ.addEventListener('input', () => {
+        const q = plier(champ.value.trim());
+        lignes.forEach((li, i) => { li.hidden = !!q && !textes[i].includes(q); });
+        document.querySelectorAll('.donnees-section').forEach((s) => { s.hidden = ![...s.querySelectorAll('li')].some((li) => !li.hidden); });
+      });
+    })();
+  </script>
+</Base>
