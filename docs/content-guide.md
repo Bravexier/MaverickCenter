@@ -24,7 +24,7 @@ L'import des classeurs pose, en plus des champs ci-dessus, des listes **structur
 
 | Page | Champ | Contenu |
 | --- | --- | --- |
-| race | `magies_innees: ["Sang", "Eau"]` | magies innées possibles, noms courts, ordre du classeur (onglet « Accessibilité Magie ») |
+| race | `magies_innees: ["Sang", "Eau"]` | magies innées possibles, noms courts, ordre du classeur (onglet « Accessibilité Magie »), sauf exception (voir plus bas) |
 | magie | `nom_court: "Espace/Temps"` | nom de la magie dans ces listes (comparé sans casse ni accents) |
 | magie | `resiste_a`, `vulnerable_a`, `incompatible_avec` | « Résistance magique », « Vulnérabilité magique », « Magie non compatible » du bloc « Données » (une phrase libre n'est jamais transformée en liste : la clé est omise) |
 
@@ -32,6 +32,12 @@ Le site en tire : le bloc « Magies innées disponibles » d'une race, « Dispon
 (fort contre = résistance, faible contre = vulnérabilité, incompatible) d'une magie, la page `/wiki/races-et-magies/` (deux tableaux) et le
 rangement des races. L'incompatibilité est lue dans les deux sens : une magie citée par la page d'une autre est marquée « déduite » (*).
 `test/races-magies-content.test.mjs` vérifie ces champs sur le contenu réel (noms existants, concordance avec le texte de la page, effectifs).
+
+**Exception du Nain** : la matrice « Accessibilité Magie » de la fiche lui donne les 15 magies, mais l'onglet « Nain » du classeur « Les races » limite
+sa magie innée à Potentiel Illimité, Arcane, Feu, Terre et Foudre (« Inconvénient(s) : … en inné uniquement »). Cette limitation est une décision du
+propriétaire du projet, fondée sur une capture de l'onglet (le classeur « Les races » est trop lourd pour être exporté) : elle est écrite en clair dans
+`tools/sheets/races.py` (`RACE_DETAIL_OVERRIDES`), signalée dans le rapport du script, vérifiée par `--verifier` et mentionnée sur la page. Le Nain reste une
+race pure (pas de classe raciale). Si le classeur de la fiche est corrigé, retirer l'exception : le script refuse une exception devenue redondante.
 
 **Races pures et hybrides** : une race est hybride quand elle a sa propre classe raciale (une classe « Hybride Animal » qui porte son nom,
 `lib/race-kinds.mjs`) ; les données confirment que ces 13 races ont exactement 3 magies innées, les 14 races pures en ont 13 ou plus.

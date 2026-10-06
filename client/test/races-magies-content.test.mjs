@@ -3,7 +3,8 @@
 //   - nommer des magies qui existent,
 //   - concorder avec le texte de la même page (section « Magies accessibles », bloc « Données »),
 //   - respecter les effectifs connus (27 races ; races hybrides = 13 races à 3 magies et à classe raciale).
-// Les listes attendues viennent de l'onglet « Accessibilité Magie » du classeur (voir sources: des pages).
+// Les listes attendues viennent de l'onglet « Accessibilité Magie » du classeur (voir sources: des pages), sauf le Nain :
+// l'onglet « Nain » de « Les races » limite sa magie innée à 5 magies (décision du propriétaire du projet, capture de l'onglet).
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
@@ -44,7 +45,9 @@ const HYBRIDES = {
   anansi: ['Arcane', 'Nécromancie', 'Ombre'],
   goleois: ['Sang', 'Glace', 'Lumière'],
 };
-const TOUTES = ['humain', 'elfe-forestier', 'elfe-noir', 'elfe-argente', 'elfe-dore', 'farfadet', 'felfe', 'nain', 'hujin', 'drakos'];
+const TOUTES = ['humain', 'elfe-forestier', 'elfe-noir', 'elfe-argente', 'elfe-dore', 'farfadet', 'felfe', 'hujin', 'drakos'];
+// Exception : le Nain (race pure) n'a que ces magies innées, dans l'ordre des colonnes du classeur.
+const NAIN = ['Potentiel Illimité', 'Arcane', 'Feu', 'Terre', 'Foudre'];
 const SANS_PI = ['majin', 'mort-vivant', 'drassahthac'];
 
 test('les 15 magies ont un nom court unique, dans l’orthographe des en-têtes du classeur', () => {
@@ -58,7 +61,7 @@ test('les 27 races portent la liste de leurs magies innées, et tous les noms d�
   assert.deepEqual(unresolvedNames(all), []);
 });
 
-test('10 races ont les 15 magies, 3 races les 14 magies sans Potentiel Illimité, la Lamia 13 (sans Potentiel Illimité ni Corruption)', () => {
+test('9 races ont les 15 magies, 3 races les 14 magies sans Potentiel Illimité, la Lamia 13 (sans Potentiel Illimité ni Corruption)', () => {
   for (const slug of TOUTES) assert.deepEqual([...names(slug)].sort(), [...NOMS].sort(), slug);
   for (const slug of SANS_PI) assert.deepEqual([...names(slug)].sort(), NOMS.filter((n) => n !== 'Potentiel Illimité').sort(), slug);
   assert.deepEqual([...names('lamia')].sort(), NOMS.filter((n) => n !== 'Potentiel Illimité' && n !== 'Corruption').sort());
@@ -68,7 +71,16 @@ test('les 13 races restreintes ont exactement les 3 magies de l’onglet « Acce
   for (const [slug, expected] of Object.entries(HYBRIDES)) assert.deepEqual(names(slug), expected, slug);
 });
 
-test('races hybrides = les 13 races qui ont leur classe raciale ; elles ont exactement 3 magies innées, les races pures au moins 13', () => {
+test('le Nain est limité à 5 magies innées (Potentiel Illimité, Arcane, Feu, Terre, Foudre), écart signalé sur sa page', () => {
+  assert.deepEqual(names('nain'), NAIN);
+  const body = race('nain').body;
+  assert.match(body, /Nombre : 5 sur 15\./);
+  assert.match(body, /Inconvénient/);
+  assert.match(race('nain').data.sources.join(' '), /onglet « Nain »/);
+  assert.equal(raceKind(all, race('nain')), 'pure', 'le Nain n’a pas de classe raciale : race pure malgré sa limitation');
+});
+
+test('races hybrides = les 13 races qui ont leur classe raciale, avec exactement 3 magies innées ; les races pures en ont plus de 3 (13 ou plus, sauf le Nain : 5)', () => {
   const hybrides = races.filter((r) => raceKind(all, r) === 'hybride').map((r) => r.id.split('/')[1]).sort();
   assert.deepEqual(hybrides, Object.keys(HYBRIDES).sort());
   for (const r of races) {
@@ -76,7 +88,8 @@ test('races hybrides = les 13 races qui ont leur classe raciale ; elles ont exac
     if (raceKind(all, r) === 'hybride') {
       assert.equal(n, 3, `${r.id} : une race hybride a 3 magies innées`);
       assert.ok(racialClassOf(all, r), r.id);
-    } else assert.ok(n >= 13, `${r.id} : une race pure a ${n} magies`);
+    } else if (r.id === 'races/nain') assert.equal(n, 5);
+    else assert.ok(n >= 13, `${r.id} : une race pure a ${n} magies`);
   }
   const groups = groupRaces(all);
   assert.deepEqual(groups.map((g) => [g.key, g.entries.length]), [['pures', 14], ['hybrides', 13]]);
