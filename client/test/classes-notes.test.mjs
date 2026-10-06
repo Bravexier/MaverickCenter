@@ -7,11 +7,14 @@
 // cellule en haut à gauche d'un bloc d'effet de capacité d'un onglet de classe : 43 fiches portent donc chacune une note.
 //
 // Trois familles de tests :
-//   - le contenu RÉEL des fiches du dépôt : les 43 notes (page, ligne, texte exact pour les plus significatives), leur nombre total ;
+//   - le contenu RÉEL des fiches du dépôt : les 43 notes, chacune avec sa page, sa ligne, son rang, sa spécialité et son texte exact
+//     (le texte du classeur ET le rendu Markdown, en dur : c'est ce qui, en CI, voit un mot changé, deux notes échangées entre deux
+//     capacités, un échappement perdu ou une phrase ajoutée), leur nombre total ;
 //   - `classes.py --verifier` sur le vrai dump (facultatif : CLASSES_DUMP, le dump n'est pas dans le dépôt) ;
-//   - le code de l'extracteur, sur un classeur SYNTHÉTIQUE de même gabarit : les notes sont lues dans le CHAMP `note` DU DUMP (aucun
-//     classeur .xlsx), placées, comptées ; refus (cellule vide, onglet non publié, note sans place, fil de commentaires) ; contrôle de
-//     couverture ; --verifier et ses cas d'erreur rejoués.
+//   - le code de l'extracteur, sur un classeur SYNTHÉTIQUE de même gabarit : les notes sont lues dans le CHAMP `note` DU DUMP, placées,
+//     comptées ; refus (cellule vide, onglet non publié, note sans place, fil de commentaires) ; contrôle de couverture ; --verifier et
+//     ses cas d'erreur rejoués ; recoupement des notes du dump avec un classeur .xlsx synthétique (--xlsx : une note perdue par le dump
+//     arrête le script).
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -56,103 +59,151 @@ const page = (slug) => {
   return trouvee.texte;
 };
 
-// Les 43 notes du classeur : [onglet, cellule (haut gauche du bloc d'effet), fiche de la capacité]. La ligne de la cellule « Lvl N » (champ
-// `ligne`) est celle du dessus : un bloc d'effet commence sur la ligne qui suit sa cellule « Lvl N ».
+// Les 43 notes du classeur, une par fiche : [onglet, cellule (haut gauche du bloc d'effet), fiche de la capacité, rang, spécialité (undefined
+// pour une capacité de classe), texte de la note tel que le classeur l'écrit (champ `note` du dump, en dur), rendu Markdown exact dans la fiche].
+// Texte et rendu sont en dur pour CHACUNE des 43 : ce test ne dépend ni du dump ni du .xlsx (hors dépôt), c'est donc lui qui, en CI, voit
+// un mot changé dans une note, deux notes échangées entre deux capacités, un échappement Markdown perdu ou une phrase ajoutée.
+// La ligne de la cellule « Lvl N » (champ `ligne`) est celle du dessus : un bloc d'effet commence sur la ligne qui suit sa cellule « Lvl N ».
 const NOTES = [
-  ['Cuirassé', 'P5', 'cuirasse-defensif'],
-  ['Martiale', 'D23', 'martiale-heros'],
-  ['Voleur', 'A37', 'voleur-faussaire'],
-  ['Tueur', 'AE44', 'tueur-sournefice'],
-  ['Pugiliste', 'P50', 'pugiliste-coup-de-paume'],
-  ['Parleur', 'P50', 'parleur-negociateur'],
-  ['Bimane', 'P12', 'bimane-frappe-fatiguante'],
-  ['Bimane', 'A44', 'bimane-poigne-du-titan'],
-  ['Bimane', 'H44', 'bimane-bien-sen-servir'],
-  ['Archer', 'X37', 'archer-tir-soudain'],
-  ['Arbalètrier', 'X37', 'arbaletrier-charger'],
-  ['Arbalètrier', 'H44', 'arbaletrier-agressivement'],
-  ['Arbalètrier', 'P50', 'arbaletrier-carreau-dacier'],
-  ['Mage', 'X30', 'mage-soin-etrange'],
-  ['Mage', 'A44', 'mage-toujours-plus'],
-  ['Mage', 'X44', 'mage-deux-fois-plus'],
-  ['Mage', 'AE44', 'mage-soin-similaire'],
-  ['Mage Rouge', 'P5', 'mage-rouge-preparation'],
-  ['Mage Rouge', 'P50', 'mage-rouge-double-coup'],
-  ['Mage Vert', 'P5', 'mage-vert-chargement'],
-  ['Mage Vert', 'H30', 'mage-vert-brutale'],
-  ['Mage Vert', 'P50', 'mage-vert-double-coup'],
-  ['Mage Bleu', 'P5', 'mage-bleu-mimetisme'],
-  ['Maclier', 'X30', 'maclier-frisbee'],
-  ['Maclier', 'X44', 'maclier-miroir'],
-  ['Maclier', 'AE44', 'maclier-parfait'],
-  ['Ocultomancien', 'P5', 'ocultomancien-econome'],
-  ['Ocultomancien', 'A30', 'ocultomancien-pilonnage'],
-  ['Ocultomancien', 'AE37', 'ocultomancien-climatosceptique'],
-  ['Flagelleur', 'X30', 'flagelleur-puni-moi'],
-  ['Flagelleur', 'AE30', 'flagelleur-plus-fort'],
-  ['Orios', 'H30', 'orios-gigantisme'],
-  ['Minotaure', 'H30', 'minotaure-gigantisme'],
-  ['Marcass', 'H30', 'marcass-catapulte'],
-  ['Marcass', 'AE30', 'marcass-ca-va-plus-vite'],
-  ['Marcass', 'X37', 'marcass-totemiste'],
-  ['Marcass', 'AE37', 'marcass-cest-plus-dur'],
-  ['Marcass', 'H44', 'marcass-lance-totem'],
-  ['Marcass', 'AE44', 'marcass-cest-meilleur'],
-  ['Anansi', 'P5', 'anansi-coup-dpatte'],
-  ['Anansi', 'P12', 'anansi-piege-toile'],
-  ['Anansi', 'AE37', 'anansi-pt-fragile'],
-  ['Anansi', 'A44', 'anansi-magie-patte'],
-];
-
-// Notes choisies pour leur forme : [onglet, cellule, fiche, rang, spécialité, texte de la note dans le classeur, rendu Markdown exact].
-const CHOISIES = [
-  ['Cuirassé', 'P5', 'cuirasse-defensif', 1, undefined, "Ne marche pas si l'ennemi contre-attaque.",
+  ["Cuirassé", "P5", "cuirasse-defensif", 1, undefined,
+    "Ne marche pas si l'ennemi contre-attaque.",
     "Note de cellule : Ne marche pas si l'ennemi contre-attaque."],
-  ['Martiale', 'D23', 'martiale-heros', 1, '"HÉROS"',
+  ["Martiale", "D23", "martiale-heros", 1, "\"HÉROS\"",
     "Il existe une situation où le changement de posture n'est pas possible, c'est dans le cas où le personnage décide de passer en focus pour utiliser un sort niveau 5 pour après espérer un changement de posture. Si un sort de niveau 5 est lancé, le changement de posture n'est plus possible le reste du tour.",
     "Note de cellule : Il existe une situation où le changement de posture n'est pas possible, c'est dans le cas où le personnage décide de passer en focus pour utiliser un sort niveau 5 pour après espérer un changement de posture. Si un sort de niveau 5 est lancé, le changement de posture n'est plus possible le reste du tour."],
+  ["Voleur", "A37", "voleur-faussaire", 1, "\"CAMBRIOLEUR\"",
+    "La falsification de document est un jet d'artisanat qui demande Social + Intelligence",
+    "Note de cellule : La falsification de document est un jet d'artisanat qui demande Social + Intelligence"],
+  ["Tueur", "AE44", "tueur-sournefice", 2, "\"SICAIRE\"",
+    "Si bien sur la cible n'est pas immunisé. Les golems sont immunisé aux altérations d'états qui ne sont pas leur faiblesse",
+    "Note de cellule : Si bien sur la cible n'est pas immunisé. Les golems sont immunisé aux altérations d'états qui ne sont pas leur faiblesse"],
+  ["Pugiliste", "P50", "pugiliste-coup-de-paume", 3, undefined,
+    "Demande de réussir un jet d'attaque, l'ennemi peut parer ou esquiver.",
+    "Note de cellule : Demande de réussir un jet d'attaque, l'ennemi peut parer ou esquiver."],
+  ["Parleur", "P50", "parleur-negociateur", 3, undefined,
+    "Marche seulement si bien sur le combat est théoriquement arrêtable. Il est pas impossible que l'ennemi soit impossible à raisonner, dans ce cas soyez prudent et demander si le combat est arrêtable.",
+    "Note de cellule : Marche seulement si bien sur le combat est théoriquement arrêtable. Il est pas impossible que l'ennemi soit impossible à raisonner, dans ce cas soyez prudent et demander si le combat est arrêtable."],
   // deux paragraphes
-  ['Bimane', 'P12', 'bimane-frappe-fatiguante', 2, undefined,
+  ["Bimane", "P12", "bimane-frappe-fatiguante", 2, undefined,
     "L'état de fatigue ne se cumule pas si le coup est répété sur la même cible.\n\nSi jamais la cible souffre déjà de fatigue 1 pour une autre raison, là c'est fatigue 2 (de même dans le cas de fatigue 2 à fatigue 3)",
     "Note de cellule : L'état de fatigue ne se cumule pas si le coup est répété sur la même cible.\n\nSi jamais la cible souffre déjà de fatigue 1 pour une autre raison, là c'est fatigue 2 (de même dans le cas de fatigue 2 à fatigue 3)"],
+  ["Bimane", "A44", "bimane-poigne-du-titan", 1, "\"RAVAGEUR\"",
+    "Vous ne pouvez pas avoir deux armes à deux mains dans chaque mains.",
+    "Note de cellule : Vous ne pouvez pas avoir deux armes à deux mains dans chaque mains."],
+  ["Bimane", "H44", "bimane-bien-sen-servir", 2, "\"RAVAGEUR\"",
+    "Attention, ce coup à 30% de chance d'abîmé les armes",
+    "Note de cellule : Attention, ce coup à 30% de chance d'abîmé les armes"],
+  ["Archer", "X37", "archer-tir-soudain", 1, "\"GRAND ARCHER\"",
+    "Les attaques d'opportunité s'enclanche quand l'ennemi sort de la zone d'influence.",
+    "Note de cellule : Les attaques d'opportunité s'enclanche quand l'ennemi sort de la zone d'influence."],
+  ["Arbalètrier", "X37", "arbaletrier-charger", 1, "\"BALISTE\"",
+    "Ne marche le premier tour de jeu",
+    "Note de cellule : Ne marche le premier tour de jeu"],
   // saut de ligne final dans le classeur : retiré
-  ['Arbalètrier', 'H44', 'arbaletrier-agressivement', 2, '"GRAND ARBALETRIER"', "L'arbalète doit être recharger.\n",
+  ["Arbalètrier", "H44", "arbaletrier-agressivement", 2, "\"GRAND ARBALETRIER\"",
+    "L'arbalète doit être recharger.\n",
     "Note de cellule : L'arbalète doit être recharger."],
+  ["Arbalètrier", "P50", "arbaletrier-carreau-dacier", 3, undefined,
+    "L'obstacle doit être assez fin, les mj seront libre de décidé.",
+    "Note de cellule : L'obstacle doit être assez fin, les mj seront libre de décidé."],
   // liste, étoile à protéger
-  ['Mage', 'X30', 'mage-soin-etrange', 1, '"MAGE BLANC"',
+  ["Mage", "X30", "mage-soin-etrange", 1, "\"MAGE BLANC\"",
     "Il est capable de soigner aussi les morts vivants.\n*Sort d'attaque basique lvl 1 :\n- Boule de sang\n- Boule de chakra\n- Boule sombre\n- Coup du sablier\n- Bulle de vide\n- Tir d'âme\n- Boule de feu\n- Bulle d'eau\n- Éclat glacé\n- Lance pierre\n- Lame d'air\n- Éclair\n- Frappe lumineuse\n- Sphère obscure",
     "Note de cellule : Il est capable de soigner aussi les morts vivants.  \n\\*Sort d'attaque basique lvl 1 :\n\n- Boule de sang\n- Boule de chakra\n- Boule sombre\n- Coup du sablier\n- Bulle de vide\n- Tir d'âme\n- Boule de feu\n- Bulle d'eau\n- Éclat glacé\n- Lance pierre\n- Lame d'air\n- Éclair\n- Frappe lumineuse\n- Sphère obscure"],
   // tabulations en fin de ligne dans le classeur : retirées ; trois lignes
-  ['Mage', 'A44', 'mage-toujours-plus', 1, '"MAGE NOIR"',
+  ["Mage", "A44", "mage-toujours-plus", 1, "\"MAGE NOIR\"",
     "Bien entendu qu'on parle des sorts qui sont non IC. Le deuxième sort crame un IC sur les 3 disponible dans le tour donc prudence à en avoir un avant d'utiliser cette capacité.\nPeut lancer deux sorts de soin ou/et d'amplification en 1 seul tour. Il est necessaire de réussir un jet de concentration entre les deux sorts.\t\t\t\t\t\nLes deux sorts doivent être différents.",
     "Note de cellule : Bien entendu qu'on parle des sorts qui sont non IC. Le deuxième sort crame un IC sur les 3 disponible dans le tour donc prudence à en avoir un avant d'utiliser cette capacité.  \nPeut lancer deux sorts de soin ou/et d'amplification en 1 seul tour. Il est necessaire de réussir un jet de concentration entre les deux sorts.  \nLes deux sorts doivent être différents."],
-  // même texte (en partie) sur la capacité voisine, note propre à sa cellule
-  ['Mage', 'X44', 'mage-deux-fois-plus', 1, '"MAGE BLANC"',
+  // même texte (en partie) que sur la capacité voisine, note propre à sa cellule
+  ["Mage", "X44", "mage-deux-fois-plus", 1, "\"MAGE BLANC\"",
     "Bien entendu qu'on parle des sorts qui sont non IC. Le deuxième sort crame un IC sur les 3 disponible dans le tour donc prudence à en avoir un avant d'utiliser cette capacité.\nLes deux sorts doivent être différents.",
     "Note de cellule : Bien entendu qu'on parle des sorts qui sont non IC. Le deuxième sort crame un IC sur les 3 disponible dans le tour donc prudence à en avoir un avant d'utiliser cette capacité.  \nLes deux sorts doivent être différents."],
-  // mêmes textes dans deux classes différentes : une fois chacune
-  ['Orios', 'H30', 'orios-gigantisme', 2, '"VA-T-EN GUERRE"',
-    "Bien entendu il est nécessaire d'avoir minimum 4 de force pour les porter : \n- Épée temple\n- Claymore (qui devient une arme de force)\n- Broyeur\n- Hache de Bataille\n- Bardiche\n- Tronc\n- Arc de guerre géant (là c'est juste une permision d'utiliser l'arme)\n- Baliste portable (même chose que pour l'arc de guerre géant)",
-    "Note de cellule : Bien entendu il est nécessaire d'avoir minimum 4 de force pour les porter :\n\n- Épée temple\n- Claymore (qui devient une arme de force)\n- Broyeur\n- Hache de Bataille\n- Bardiche\n- Tronc\n- Arc de guerre géant (là c'est juste une permision d'utiliser l'arme)\n- Baliste portable (même chose que pour l'arc de guerre géant)"],
-  ['Minotaure', 'H30', 'minotaure-gigantisme', 2, '"GLADIATEUR"',
-    "Bien entendu il est nécessaire d'avoir minimum 4 de force pour les porter : \n- Épée temple\n- Claymore (qui devient une arme de force)\n- Broyeur\n- Hache de Bataille\n- Bardiche\n- Tronc\n- Arc de guerre géant (là c'est juste une permision d'utiliser l'arme)\n- Baliste portable (même chose que pour l'arc de guerre géant)",
-    "Note de cellule : Bien entendu il est nécessaire d'avoir minimum 4 de force pour les porter :\n\n- Épée temple\n- Claymore (qui devient une arme de force)\n- Broyeur\n- Hache de Bataille\n- Bardiche\n- Tronc\n- Arc de guerre géant (là c'est juste une permision d'utiliser l'arme)\n- Baliste portable (même chose que pour l'arc de guerre géant)"],
-  // même texte sur deux cellules d'une même ligne : une note par page
-  ['Flagelleur', 'X30', 'flagelleur-puni-moi', 1, '"MASOCHISTE"',
-    'Dans le cas du potentiel illimité, lancer un D14 pour déterminé une résistance magique aléatoire',
-    'Note de cellule : Dans le cas du potentiel illimité, lancer un D14 pour déterminé une résistance magique aléatoire'],
-  ['Flagelleur', 'AE30', 'flagelleur-plus-fort', 2, '"MASOCHISTE"',
-    'Dans le cas du potentiel illimité, lancer un D14 pour déterminé une résistance magique aléatoire',
-    'Note de cellule : Dans le cas du potentiel illimité, lancer un D14 pour déterminé une résistance magique aléatoire'],
-  // trois paragraphes
-  ['Marcass', 'X37', 'marcass-totemiste', 1, '"DÉVOT"',
-    'Terre : Réduit les dégâts encaissés de 4.\n\nFeu : Augmente les dégâts infligés de 4. \n\nNécromancie : Économise 1 chakra à chaque sorts lancés.',
-    'Note de cellule : Terre : Réduit les dégâts encaissés de 4.\n\nFeu : Augmente les dégâts infligés de 4.\n\nNécromancie : Économise 1 chakra à chaque sorts lancés.'],
+  ["Mage", "AE44", "mage-soin-similaire", 2, "\"MAGE BLANC\"",
+    "Si jamais le lanceur est un mort vivant et qu'il soigne via la magie de la lumière, il récupère quand même la santé qu'il soigne.",
+    "Note de cellule : Si jamais le lanceur est un mort vivant et qu'il soigne via la magie de la lumière, il récupère quand même la santé qu'il soigne."],
+  ["Mage Rouge", "P5", "mage-rouge-preparation", 1, undefined,
+    "Le sort prend en compte la posture le moment où il a été chargé pour le calcul des dégâts de ce dernier.\n\nLa posture focus transforme ce don en IC.\n\nLe sort en question ne se met pas sur l'arme mais bien dans la main.",
+    "Note de cellule : Le sort prend en compte la posture le moment où il a été chargé pour le calcul des dégâts de ce dernier.\n\nLa posture focus transforme ce don en IC.\n\nLe sort en question ne se met pas sur l'arme mais bien dans la main."],
+  ["Mage Rouge", "P50", "mage-rouge-double-coup", 3, undefined,
+    "Dans le cas d'un critique, ce sera que pour le premier coup, les prochain c'est fixé à 40 de réussite.\nConsomme le chakra à chaque sort.\n\nPensez bien a noter la réussite du sort pour ne pas le perdre.",
+    "Note de cellule : Dans le cas d'un critique, ce sera que pour le premier coup, les prochain c'est fixé à 40 de réussite.  \nConsomme le chakra à chaque sort.\n\nPensez bien a noter la réussite du sort pour ne pas le perdre."],
+  ["Mage Vert", "P5", "mage-vert-chargement", 1, undefined,
+    "Permet de charger un sort d'attaque lvl1 ou lvl2 le premier tour et de l'utiliser en même temps que l'attaque de distance le tour suivant.\n\nIl est nécessaire que le sort possède la portée pour toucher la cible, si le projectile va plus loin, le sort ne marche pas.\n\nLa posture focus transforme ce don en IC.",
+    "Note de cellule : Permet de charger un sort d'attaque lvl1 ou lvl2 le premier tour et de l'utiliser en même temps que l'attaque de distance le tour suivant.\n\nIl est nécessaire que le sort possède la portée pour toucher la cible, si le projectile va plus loin, le sort ne marche pas.\n\nLa posture focus transforme ce don en IC."],
   // guillemets droits
-  ['Mage Vert', 'H30', 'mage-vert-brutale', 2, '"MAGE EMERAUDE"', 'Les sorts "fer"', 'Note de cellule : Les sorts "fer"'],
-  ['Anansi', 'A44', 'anansi-magie-patte', 1, '"MARIONNETTISTE"',
-    'Arcane = Le coup de patte peut prendre en compte l\'AM plutôt que l\'AP\n\nNécromancie = Oblige le jet de vigueur à la cible pour ne pas prendre "poison 1"\n\nOmbre = Impose un malus de 10% au prochain jet de la victime',
-    'Note de cellule : Arcane = Le coup de patte peut prendre en compte l\'AM plutôt que l\'AP\n\nNécromancie = Oblige le jet de vigueur à la cible pour ne pas prendre "poison 1"\n\nOmbre = Impose un malus de 10% au prochain jet de la victime'],
+  ["Mage Vert", "H30", "mage-vert-brutale", 2, "\"MAGE EMERAUDE\"",
+    "Les sorts \"fer\"",
+    "Note de cellule : Les sorts \"fer\""],
+  ["Mage Vert", "P50", "mage-vert-double-coup", 3, undefined,
+    "Dans le cas d'un critique, ce sera que pour le premier coup, les prochain c'est fixé à 40 de réussite.\nConsomme le chakra à chaque sort.\n\nPensez bien a noter la réussite du sort pour ne pas le perdre.",
+    "Note de cellule : Dans le cas d'un critique, ce sera que pour le premier coup, les prochain c'est fixé à 40 de réussite.  \nConsomme le chakra à chaque sort.\n\nPensez bien a noter la réussite du sort pour ne pas le perdre."],
+  ["Mage Bleu", "P5", "mage-bleu-mimetisme", 1, undefined,
+    "Le sort prend en compte la posture le moment où il a été chargé pour le calcul des dégâts de ce dernier.\n\nLa posture focus transforme ce don en IC.",
+    "Note de cellule : Le sort prend en compte la posture le moment où il a été chargé pour le calcul des dégâts de ce dernier.\n\nLa posture focus transforme ce don en IC."],
+  ["Maclier", "X30", "maclier-frisbee", 1, "\"GRAND MACLIER\"",
+    "Si un adversaire fait une parade parfaite. Le bouclier s'arrête dans sa course.",
+    "Note de cellule : Si un adversaire fait une parade parfaite. Le bouclier s'arrête dans sa course."],
+  ["Maclier", "X44", "maclier-miroir", 1, "\"GRAND MACLIER\"",
+    "Un jet de parade doit être réussi",
+    "Note de cellule : Un jet de parade doit être réussi"],
+  ["Maclier", "AE44", "maclier-parfait", 2, "\"GRAND MACLIER\"",
+    "Un jet de parade parfait doit être réussi",
+    "Note de cellule : Un jet de parade parfait doit être réussi"],
+  ["Ocultomancien", "P5", "ocultomancien-econome", 1, undefined,
+    "un sort de puissance 1 coûte 1 Chakra de moins, un sort de puissance 4 coûte 4 Chakra de moins, etc",
+    "Note de cellule : un sort de puissance 1 coûte 1 Chakra de moins, un sort de puissance 4 coûte 4 Chakra de moins, etc"],
+  ["Ocultomancien", "A30", "ocultomancien-pilonnage", 1, "\"SPÉCIALISTE\"",
+    "Ne brise pas l'immunité de la posture symbiose et du mode hyper",
+    "Note de cellule : Ne brise pas l'immunité de la posture symbiose et du mode hyper"],
+  ["Ocultomancien", "AE37", "ocultomancien-climatosceptique", 2, "\"MÉTÉOROLOGUE\"",
+    "Sauf la zone vide",
+    "Note de cellule : Sauf la zone vide"],
+  // même texte sur deux cellules d'une même ligne : une note par page
+  ["Flagelleur", "X30", "flagelleur-puni-moi", 1, "\"MASOCHISTE\"",
+    "Dans le cas du potentiel illimité, lancer un D14 pour déterminé une résistance magique aléatoire",
+    "Note de cellule : Dans le cas du potentiel illimité, lancer un D14 pour déterminé une résistance magique aléatoire"],
+  ["Flagelleur", "AE30", "flagelleur-plus-fort", 2, "\"MASOCHISTE\"",
+    "Dans le cas du potentiel illimité, lancer un D14 pour déterminé une résistance magique aléatoire",
+    "Note de cellule : Dans le cas du potentiel illimité, lancer un D14 pour déterminé une résistance magique aléatoire"],
+  // mêmes textes dans deux classes différentes : une fois chacune
+  ["Orios", "H30", "orios-gigantisme", 2, "\"VA-T-EN GUERRE\"",
+    "Bien entendu il est nécessaire d'avoir minimum 4 de force pour les porter : \n- Épée temple\n- Claymore (qui devient une arme de force)\n- Broyeur\n- Hache de Bataille\n- Bardiche\n- Tronc\n- Arc de guerre géant (là c'est juste une permision d'utiliser l'arme)\n- Baliste portable (même chose que pour l'arc de guerre géant)",
+    "Note de cellule : Bien entendu il est nécessaire d'avoir minimum 4 de force pour les porter :\n\n- Épée temple\n- Claymore (qui devient une arme de force)\n- Broyeur\n- Hache de Bataille\n- Bardiche\n- Tronc\n- Arc de guerre géant (là c'est juste une permision d'utiliser l'arme)\n- Baliste portable (même chose que pour l'arc de guerre géant)"],
+  ["Minotaure", "H30", "minotaure-gigantisme", 2, "\"GLADIATEUR\"",
+    "Bien entendu il est nécessaire d'avoir minimum 4 de force pour les porter : \n- Épée temple\n- Claymore (qui devient une arme de force)\n- Broyeur\n- Hache de Bataille\n- Bardiche\n- Tronc\n- Arc de guerre géant (là c'est juste une permision d'utiliser l'arme)\n- Baliste portable (même chose que pour l'arc de guerre géant)",
+    "Note de cellule : Bien entendu il est nécessaire d'avoir minimum 4 de force pour les porter :\n\n- Épée temple\n- Claymore (qui devient une arme de force)\n- Broyeur\n- Hache de Bataille\n- Bardiche\n- Tronc\n- Arc de guerre géant (là c'est juste une permision d'utiliser l'arme)\n- Baliste portable (même chose que pour l'arc de guerre géant)"],
+  ["Marcass", "H30", "marcass-catapulte", 2, "\"CANAILLE\"",
+    "Doit y avoir de la place derrière et en haut pour le faire ! Sinon sprotch...\n\nL'ami doit être assez léger.",
+    "Note de cellule : Doit y avoir de la place derrière et en haut pour le faire ! Sinon sprotch...\n\nL'ami doit être assez léger."],
+  ["Marcass", "AE30", "marcass-ca-va-plus-vite", 2, "\"DÉVOT\"",
+    "Rouge",
+    "Note de cellule : Rouge"],
+  // trois paragraphes
+  ["Marcass", "X37", "marcass-totemiste", 1, "\"DÉVOT\"",
+    "Terre : Réduit les dégâts encaissés de 4.\n\nFeu : Augmente les dégâts infligés de 4. \n\nNécromancie : Économise 1 chakra à chaque sorts lancés.",
+    "Note de cellule : Terre : Réduit les dégâts encaissés de 4.\n\nFeu : Augmente les dégâts infligés de 4.\n\nNécromancie : Économise 1 chakra à chaque sorts lancés."],
+  ["Marcass", "AE37", "marcass-cest-plus-dur", 2, "\"DÉVOT\"",
+    "Brun",
+    "Note de cellule : Brun"],
+  ["Marcass", "H44", "marcass-lance-totem", 2, "\"CANAILLE\"",
+    "Si une cible réussi un jet de défense parfait, l'attaque est stoppée",
+    "Note de cellule : Si une cible réussi un jet de défense parfait, l'attaque est stoppée"],
+  ["Marcass", "AE44", "marcass-cest-meilleur", 2, "\"DÉVOT\"",
+    "Vert foncé",
+    "Note de cellule : Vert foncé"],
+  ["Anansi", "P5", "anansi-coup-dpatte", 1, undefined,
+    "Le coup de pattes n'est compter qu'une fois. Le bimane ne peut faire en sorte que la patte tape deux fois dans le même tour.",
+    "Note de cellule : Le coup de pattes n'est compter qu'une fois. Le bimane ne peut faire en sorte que la patte tape deux fois dans le même tour."],
+  ["Anansi", "P12", "anansi-piege-toile", 2, undefined,
+    "La cible peut réussir un jet d'athlétisme/réfléxe pour s'oter de la toile.",
+    "Note de cellule : La cible peut réussir un jet d'athlétisme/réfléxe pour s'oter de la toile."],
+  // étoile à protéger en tête de note
+  ["Anansi", "AE37", "anansi-pt-fragile", 2, "\"CEMIES\"",
+    "*Dans le cas de l'Arcane, ce sera aléatoire parmi les autres magies qui existe.",
+    "Note de cellule : \\*Dans le cas de l'Arcane, ce sera aléatoire parmi les autres magies qui existe."],
+  ["Anansi", "A44", "anansi-magie-patte", 1, "\"MARIONNETTISTE\"",
+    "Arcane = Le coup de patte peut prendre en compte l'AM plutôt que l'AP\n\nNécromancie = Oblige le jet de vigueur à la cible pour ne pas prendre \"poison 1\"\n\nOmbre = Impose un malus de 10% au prochain jet de la victime",
+    "Note de cellule : Arcane = Le coup de patte peut prendre en compte l'AM plutôt que l'AP\n\nNécromancie = Oblige le jet de vigueur à la cible pour ne pas prendre \"poison 1\"\n\nOmbre = Impose un malus de 10% au prochain jet de la victime"],
 ];
 
 test('pages réelles : 660 fiches de capacités du classeur, 43 notes rendues au total, une par fiche, aucune ailleurs', () => {
@@ -178,7 +229,7 @@ test('pages réelles : chaque note est sur la fiche de la capacité dont elle co
   }
 });
 
-for (const [onglet, cellule, slug, rang, specialite, source, rendu] of CHOISIES) {
+for (const [onglet, cellule, slug, rang, specialite, source, rendu] of NOTES) {
   test(`pages réelles : ${onglet} ${cellule} -> « ${slug} », texte de la note intégral`, () => {
     const p = page(slug);
     assert.equal(Number(champ(p, 'rang')), rang);
@@ -201,6 +252,7 @@ test('pages réelles : deux notes au texte identique dans deux classes (Orios, M
 
 // Facultatif (le vrai dump n'est pas dans le dépôt) :
 //   CLASSES_DUMP=<classes-v7.corrige.json> [CLASSES_XLSX=<classeur.xlsx>] node --test test/classes-notes.test.mjs
+// Avec CLASSES_XLSX, les 43 notes du dump sont aussi recoupées avec celles du classeur (adresse par adresse).
 const dumpReel = process.env.CLASSES_DUMP;
 test('classes.py --verifier : les pages du dépôt sont celles que le vrai dump produit, les 43 notes retrouvées (CLASSES_DUMP)', {
   skip: sansPython || (!dumpReel && 'CLASSES_DUMP non défini (dump hors dépôt)'),
@@ -209,6 +261,7 @@ test('classes.py --verifier : les pages du dépôt sont celles que le vrai dump 
   const r = spawnSync('python3', ['-I', script, '--dump', dumpReel, ...options, '--out', wiki, '--verifier'], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /43 notes de cellule dans le dump, 43 rattachées à un bloc d'effet, 43 écrites/);
+  if (process.env.CLASSES_XLSX) assert.match(r.stdout, /OK +\(2 ter\) .*43 notes dans le classeur, mêmes adresses dans le dump/);
   assert.match(r.stdout, /VÉRIFICATION RÉUSSIE/);
 });
 
@@ -662,4 +715,256 @@ test('--verifier : sur le dump, une note sur une cellule vide ou dans un onglet 
   const nonPublie = lancer(ctx, ['--verifier']);
   assert.notEqual(nonPublie.status, 0);
   assert.match(nonPublie.stdout, /Combo stat.*ne publie pas/s);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Recoupement des notes du dump avec le classeur .xlsx (--xlsx) : une note perdue par le dump ne passe pas en silence
+// ---------------------------------------------------------------------------------------------------------------------------------
+// Les notes viennent du dump ; le .xlsx, lui, n'est lu que pour les hyperliens. Mais quand il est fourni, il porte les mêmes notes : un
+// dump qui en a perdu une seule (ancien xlsx_to_json.py, dump copié d'un autre classeur) réécrirait la fiche sans elle et le contrôle de
+// couverture, qui compare les pages au dump, passerait. Le recoupement compare donc, onglet par onglet, les adresses des notes et des
+// fils de commentaires du dump à celles du .xlsx (lecture de tools/sheets/xlsx_comments.py, comme xlsx_to_json.py), et arrête le script
+// sans rien écrire en cas d'écart. Les textes ne sont comparés qu'à titre d'avertissement : le registre des corrections peut en retoucher.
+
+const LIEN = 'https://example.org/familiers';
+const fixtureXlsx = fileURLToPath(new URL('./fixtures/make-xlsx-notes.py', import.meta.url));
+const refA1 = (r, c) => {
+  let lettres = '';
+  for (let k = c; k > 0; k = Math.floor((k - 1) / 26)) lettres = String.fromCharCode(65 + ((k - 1) % 26)) + lettres;
+  return `${lettres}${r}`;
+};
+
+// Fabrique un .xlsx minimal (zipfile, comme client/test/fixtures/make-xlsx-notes.py dont il reprend les briques) : un onglet par onglet
+// de la spécification, ses notes (comments*.xml), ses fils (threadedComments) et ses hyperliens externes.
+const FABRIQUE_XLSX = `
+import importlib.util, json, sys, zipfile
+from xml.sax.saxutils import escape
+spec_ = importlib.util.spec_from_file_location("fx", sys.argv[1])
+fx = importlib.util.module_from_spec(spec_)
+spec_.loader.exec_module(fx)
+spec = json.load(open(sys.argv[2], encoding="utf-8"))
+HEAD = fx.HEAD
+parts, sheets, wb_rels = {}, [], []
+for i, sh in enumerate(spec["onglets"], 1):
+    sheets.append('<sheet name="%s" sheetId="%d" r:id="rId%d"/>' % (escape(sh["name"], {'"': "&quot;"}), i, i))
+    wb_rels.append(fx.rel("rId%d" % i, "worksheet", "worksheets/sheet%d.xml" % i))
+    rel_items, extra = [], ""
+    if sh.get("links"):
+        hyperlinks = ""
+        for j, (ref, url) in enumerate(sh["links"].items(), 1):
+            hyperlinks += '<hyperlink ref="%s" r:id="rIdL%d"/>' % (ref, j)
+            rel_items.append('<Relationship Id="rIdL%d" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" '
+                             'Target="%s" TargetMode="External"/>' % (j, escape(url)))
+        extra += "<hyperlinks>%s</hyperlinks>" % hyperlinks
+    notes, threads = sh.get("notes", {}), sh.get("threads", {})
+    if notes or threads:
+        items = [("{00000000-0000-0000-0000-%012d}" % k, ref, text, 0, None) for k, (ref, text) in enumerate(threads.items(), 1)]
+        authors = [""] + ["tc=" + t[0] for t in items]
+        listed = [(ref, 0, fx.plain(text)) for ref, text in notes.items()]
+        listed += [(t[1], k, fx.plain(fx.SHADOW % t[2])) for k, t in enumerate(items, 1)]
+        parts["xl/comments%d.xml" % i] = fx.comments_xml(authors, listed)
+        rel_items.append(fx.rel("rIdC", "comments", "../comments%d.xml" % i))
+        if items:
+            parts["xl/threadedComments/threadedComment%d.xml" % i] = fx.threads_xml(items)
+            rel_items.append(fx.rel("rIdT", "threadedComment", "../threadedComments/threadedComment%d.xml" % i,
+                                    "http://schemas.microsoft.com/office/2017/10/relationships"))
+    if rel_items:
+        parts["xl/worksheets/_rels/sheet%d.xml.rels" % i] = fx.rels(*rel_items)
+    parts["xl/worksheets/sheet%d.xml" % i] = HEAD + '<worksheet xmlns="%s" xmlns:r="%s"><sheetData/>%s</worksheet>' % (fx.NS_MAIN, fx.NS_R, extra)
+parts["xl/workbook.xml"] = HEAD + '<workbook xmlns="%s" xmlns:r="%s"><sheets>%s</sheets></workbook>' % (fx.NS_MAIN, fx.NS_R, "".join(sheets))
+parts["xl/_rels/workbook.xml.rels"] = fx.rels(*wb_rels)
+parts["_rels/.rels"] = fx.rels(fx.rel("rId1", "officeDocument", "xl/workbook.xml"))
+parts["[Content_Types].xml"] = (HEAD + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+    '<Default Extension="xml" ContentType="application/xml"/></Types>')
+with zipfile.ZipFile(sys.argv[3], "w", zipfile.ZIP_DEFLATED) as zf:
+    for name, data in parts.items():
+        zf.writestr(name, data)
+`;
+
+/** Contenu du classeur .xlsx qui correspond à \`dump\` : mêmes onglets, mêmes notes, et (sauf \`avecLien\` faux) un hyperlien externe en
+ * Troubadour!P5. */
+const specXlsx = (dump, avecLien = true) => ({
+  onglets: dump.sheets.map((s) => ({
+    name: s.name,
+    notes: Object.fromEntries(s.cells.filter((c) => typeof c.note === 'string' && c.note.trim()).map((c) => [refA1(c.r, c.c), c.note])),
+    threads: {},
+    links: avecLien && s.name === 'Troubadour' ? { P5: LIEN } : {},
+  })),
+});
+const onglet = (spec, nom) => spec.onglets.find((o) => o.name === nom);
+
+function ecrireXlsx(ctx, spec) {
+  const chemin = join(ctx.dir, 'classeur.xlsx');
+  const specification = join(ctx.dir, 'xlsx-spec.json');
+  writeFileSync(specification, JSON.stringify(spec));
+  const r = spawnSync('python3', ['-I', '-c', FABRIQUE_XLSX, fixtureXlsx, specification, chemin], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  return chemin;
+}
+function lancerAvecClasseur(ctx, xlsx, args = []) {
+  return spawnSync('python3', ['-I', script, '--dump', ctx.dump, '--xlsx', xlsx, '--out', ctx.out, ...args], { encoding: 'utf8' });
+}
+/** Un dump auquel il manque la note de Guerrier!P12 (« deux paragraphes ») : le classeur, lui, la porte encore. */
+const sansNoteP12 = () => {
+  const dump = avecNotes();
+  delete dump.sheets.find((s) => s.name === 'Guerrier').cells.find((c) => c.r === 12 && c.c === 16).note;
+  return dump;
+};
+
+test('recoupement : un classeur .xlsx qui porte les mêmes notes que le dump passe, l’hyperlien est rendu, le reste des pages est inchangé', { skip: sansPython }, () => {
+  const ctx = preparer();
+  const xlsx = ecrireXlsx(ctx, specXlsx(avecNotes()));
+  const r = lancerAvecClasseur(ctx, xlsx);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, new RegExp(`recoupement des notes avec le classeur : ${TOTAL} notes de cellule, mêmes adresses que dans le dump`));
+  assert.doesNotMatch(r.stderr, /AVERTISSEMENT|ERREUR/);
+  const reference = preparer();
+  assert.equal(lancer(reference).status, 0);
+  const pages = toutesLesPages(ctx);
+  const sansLiens = toutesLesPages(reference);
+  assert.deepEqual(Object.keys(pages), Object.keys(sansLiens));
+  const lien = `*Lien hypertexte attaché à la cellule P5 dans le classeur d'origine :* <${LIEN}>`;
+  for (const [chemin, texte] of Object.entries(pages)) {
+    if (chemin === 'capacites/troubadour-prestation.md') {
+      assert.equal(texte, `${sansLiens[chemin].trimEnd()}\n\n${lien}\n`);
+    } else {
+      assert.equal(texte, sansLiens[chemin], chemin);
+    }
+  }
+});
+
+test('recoupement : un dump qui a perdu UNE note que le classeur porte arrête le script, aucune page n’est réécrite', { skip: sansPython }, () => {
+  const ctx = preparer();
+  const xlsx = ecrireXlsx(ctx, specXlsx(avecNotes()));
+  assert.equal(lancerAvecClasseur(ctx, xlsx).status, 0);
+  const avant = toutesLesPages(ctx);
+  assert.equal(nbNotes(avant['capacites/guerrier-aisance.md']), 1);
+  writeFileSync(ctx.dump, JSON.stringify(sansNoteP12()));
+  const r = lancerAvecClasseur(ctx, xlsx);
+  assert.notEqual(r.status, 0, 'le script devait s’arrêter : le dump a perdu une note');
+  assert.match(r.stderr, /onglet « Guerrier » : .*classeur.*P12/s);
+  assert.match(r.stderr, /xlsx_to_json\.py/);
+  assert.deepEqual(toutesLesPages(ctx), avant, 'la fiche ne doit pas être réécrite sans sa note');
+  assert.equal(nbNotes(lire(ctx, 'guerrier-aisance')), 1);
+});
+
+test('recoupement : sur un dossier vide, un dump qui a perdu une note n’écrit aucune page', { skip: sansPython }, () => {
+  const ctx = preparer(sansNoteP12());
+  const r = lancerAvecClasseur(ctx, ecrireXlsx(ctx, specXlsx(avecNotes())));
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /Guerrier.*P12/s);
+  assert.equal(fichiers(ctx).length, 0);
+  assert.equal(existsSync(join(ctx.out, 'classes')), false);
+});
+
+test('recoupement : le dump a une note que le classeur n’a pas (dump d’un autre classeur) : arrêt', { skip: sansPython }, () => {
+  const ctx = preparer();
+  const spec = specXlsx(avecNotes());
+  delete onglet(spec, 'Troubadour').notes.A30;
+  const r = lancerAvecClasseur(ctx, ecrireXlsx(ctx, spec));
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /onglet « Troubadour » : .*dump.*absentes? du classeur.*A30/s);
+  assert.equal(fichiers(ctx).length, 0);
+});
+
+test('recoupement : une note du classeur dans un onglet non publié que le dump a perdue est détectée aussi (Combo stat)', { skip: sansPython }, () => {
+  const ctx = preparer();
+  const spec = specXlsx(avecNotes());
+  onglet(spec, 'Combo stat').notes.B2 = 'Une note que le dump a perdue';
+  const r = lancerAvecClasseur(ctx, ecrireXlsx(ctx, spec));
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /onglet « Combo stat » : .*B2/s);
+  assert.equal(fichiers(ctx).length, 0);
+});
+
+test('recoupement : un fil de commentaires du classeur que le dump a perdu est détecté (le script n’en publie aucun)', { skip: sansPython }, () => {
+  const ctx = preparer();
+  const spec = specXlsx(avecNotes());
+  onglet(spec, 'Guerrier').threads.P5 = 'Une conversation';
+  const r = lancerAvecClasseur(ctx, ecrireXlsx(ctx, spec));
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /onglet « Guerrier » : .*fils?.*P5/s);
+  assert.equal(fichiers(ctx).length, 0);
+});
+
+test('recoupement : un fil de commentaires que le dump porte et que le classeur n’a pas est signalé par le recoupement lui-même', { skip: sansPython }, () => {
+  const ctx = preparer(poser(avecNotes(), 'Guerrier', 'P5', [{ text: 'Une conversation' }], 'threads'));
+  const r = lancerAvecClasseur(ctx, ecrireXlsx(ctx, specXlsx(avecNotes())));
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /onglet « Guerrier » : .*fils de commentaires du dump absents du classeur : P5/s);
+  assert.equal(fichiers(ctx).length, 0);
+});
+
+test('recoupement : une note blanche (espaces seulement) d’un seul côté n’est pas un écart : ce n’est pas une note', { skip: sansPython }, () => {
+  const dump = avecNotes();
+  dump.sheets.find((s) => s.name === 'Guerrier').cells.push({ r: 60, c: 3, v: '', note: ' ' });
+  const ctx = preparer(dump);
+  const spec = specXlsx(avecNotes());
+  onglet(spec, 'Troubadour').notes.C61 = '  \n ';
+  const r = lancerAvecClasseur(ctx, ecrireXlsx(ctx, spec));
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, new RegExp(`recoupement des notes avec le classeur : ${TOTAL} notes de cellule`));
+});
+
+test('recoupement : seul le texte d’une note diffère du classeur : avertissement, la note du dump est citée (registre de corrections)', { skip: sansPython }, () => {
+  const ctx = preparer();
+  const spec = specXlsx(avecNotes());
+  onglet(spec, 'Guerrier').notes.P5 = "Ne marche pas si l'ennemi contre attaque.";
+  const r = lancerAvecClasseur(ctx, ecrireXlsx(ctx, spec));
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stderr, /AVERTISSEMENT : .*Guerrier.*P5/s);
+  assert.equal(corps(lire(ctx, 'guerrier-defensif')), `Effet de Défensif\n\n${RENDU.simple}\n`);
+});
+
+test('recoupement : des espaces, tabulations ou retours à la ligne en plus ou en moins ne sont pas un écart de texte', { skip: sansPython }, () => {
+  const ctx = preparer();
+  const spec = specXlsx(avecNotes());
+  onglet(spec, 'Guerrier').notes.P12 = `${N.deux.replace('\n\n', '\r\n\r\n')}  \t`;
+  onglet(spec, 'Troubadour').notes.A30 = `\n${N.liste}`;
+  const r = lancerAvecClasseur(ctx, ecrireXlsx(ctx, spec));
+  assert.equal(r.status, 0, r.stderr);
+  assert.doesNotMatch(r.stderr, /AVERTISSEMENT/);
+});
+
+test('recoupement : --verifier compare lui aussi le dump au classeur, n’écrit rien', { skip: sansPython }, () => {
+  const ctx = preparer();
+  const xlsx = ecrireXlsx(ctx, specXlsx(avecNotes(), false));
+  assert.equal(lancerAvecClasseur(ctx, xlsx).status, 0);
+  const bon = lancerAvecClasseur(ctx, xlsx, ['--verifier']);
+  assert.equal(bon.status, 0, bon.stdout + bon.stderr);
+  assert.match(bon.stdout, new RegExp(`OK +\\(2 ter\\) notes et fils du dump = ceux du classeur .*${TOTAL} notes`));
+  // les cas d'erreur rejoués comprennent la note perdue par le dump et le fil perdu (refusés par le recoupement)
+  assert.match(bon.stdout, /OK +cas d'erreur rejoué : note du classeur perdue par le dump/);
+  assert.match(bon.stdout, /OK +cas d'erreur rejoué : fil de commentaires du classeur perdu par le dump/);
+  writeFileSync(ctx.dump, JSON.stringify(sansNoteP12()));
+  const avant = toutesLesPages(ctx);
+  const mauvais = lancerAvecClasseur(ctx, xlsx, ['--verifier']);
+  assert.notEqual(mauvais.status, 0, '--verifier doit signaler la note perdue par le dump');
+  assert.match(mauvais.stdout, /ÉCHEC +\(2 ter\)/);
+  assert.match(mauvais.stdout, /Guerrier.*P12/s);
+  assert.match(mauvais.stdout, /VÉRIFICATION ÉCHOUÉE/);
+  assert.deepEqual(toutesLesPages(ctx), avant, '--verifier ne doit rien écrire');
+});
+
+test('recoupement : --sans-liens écarte le classeur (avertissement : notes non recoupées) et ne se cumule pas avec --xlsx', { skip: sansPython }, () => {
+  const ctx = preparer();
+  const sans = lancer(ctx);
+  assert.equal(sans.status, 0, sans.stderr);
+  assert.match(sans.stderr, /AVERTISSEMENT : --sans-liens .*recoupées/s);
+  const xlsx = ecrireXlsx(ctx, specXlsx(avecNotes()));
+  const les2 = lancerAvecClasseur(ctx, xlsx, ['--sans-liens']);
+  assert.notEqual(les2.status, 0);
+  assert.match(les2.stderr, /not allowed with argument/);
+});
+
+test('recoupement : un fichier qui n’est pas un classeur .xlsx est refusé avec un message, sans trace d’appel', { skip: sansPython }, () => {
+  const ctx = preparer();
+  const faux = join(ctx.dir, 'faux.xlsx');
+  writeFileSync(faux, 'ceci n’est pas un zip');
+  const r = lancerAvecClasseur(ctx, faux);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /ERREUR : .*faux\.xlsx/);
+  assert.doesNotMatch(r.stderr, /Traceback/);
+  assert.equal(fichiers(ctx).length, 0);
 });

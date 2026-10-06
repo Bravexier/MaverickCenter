@@ -7,6 +7,8 @@ Usage (bibliothèque standard uniquement ; relançable, mêmes fichiers à l'ide
         [--xlsx <classeur.xlsx>] [--fiche <fiche-auto-v15.json>] --out client/src/content/wiki
     python3 -I tools/sheets/magies.py --dump <magie-v8.json> [--fiche <fiche-auto-v15.json>] \
         --out client/src/content/wiki --verifier          # ne réécrit rien : vérifie les pages déjà écrites
+    python3 -I tools/sheets/magies.py --dump <magie-v8.json> [--xlsx <classeur.xlsx>] \
+        --exporter-commentaires client/test/fixtures/magies-commentaires.json   # copie de contrôle des tests du site
     (le dump est celui de tools/sheets/xlsx_to_json.py APRÈS l'ajout des notes : cellules avec `note` et `threads`)
 
 Source : Google Sheet « Magie Maverick V8 » (fileId 1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c), converti en JSON par
@@ -45,28 +47,55 @@ section « ## Notes et commentaires des sorts », juste après la table des sort
 un texte de plusieurs lignes) : une entrée par note ou par fil, dans l'ordre de la table des sorts puis des colonnes, la note de
 la cellule d'abord, avec le libellé de la famille « races » (« **Note de la cellule « Don »** : … ») complété du sort :
     **Note de la cellule « Effets secondaires » du sort « Annulation »** : texte             (texte d'une ligne)
-    **Note de la cellule « Effets secondaires » du sort « Annulation »**                     (texte de plusieurs lignes :
-                                                                                               libellé, ligne vide, texte)
+    **Note de la cellule « Effets secondaires » du sort « Annulation »**                     (texte de plusieurs lignes, ou
+                                                                                               d'une puce : libellé, ligne
+                                                                                               vide, lignes)
     **Commentaire résolu de la cellule « … » du sort « … »** : texte                          (fil résolu ; sinon « Commentaire »)
-La colonne est l'en-tête de la table des sorts (« Effets secondaires » pour les 85 notes actuelles). Choix de rendu :
-  * un fil identique (aux espaces près) à la note de sa cellule, ou à un fil précédent de la même cellule, n'est pas répété
-    (le classeur écrit certaines notes aussi en commentaire : 29 fils sont dans ce cas) ;
+La colonne est l'en-tête de la table des sorts (« Effets secondaires » pour les 85 notes actuelles).
+Contrat de citation (c'est la LETTRE du texte, retours à la ligne compris, pas seulement les mots ; comment_lines, entry_lines) :
+  * chaque ligne du commentaire est une ligne de la page, dans le même ordre, lignes vides comprises (plusieurs lignes vides de suite
+    restent plusieurs lignes vides) ; aucune ligne vide n'est ajoutée (une liste collée au texte qui la précède le reste) ;
+  * espace insécable, ponctuation et espaces répétées à l'intérieur d'une ligne sont conservés tels quels ;
+  * une ligne « - texte » est une puce de la page ; une ligne suivie d'une ligne de texte porte deux espaces de fin, le saut de ligne
+    forcé de Markdown (sans eux Markdown fusionnerait les deux lignes à l'affichage) ;
+  * ne sont PAS portés, parce que Markdown ne peut pas les porter : les espaces et tabulations de début et de fin de ligne (trois
+    espaces ou plus au début feraient un bloc de code, deux à la fin sont le saut forcé), les lignes vides en tête et en queue du
+    commentaire. Le rapport liste les commentaires concernés (aujourd'hui 4 notes : Arcane BJ16, Nécromancie BJ16, Glace BJ43 et
+    BJ67, une espace en début ou en fin de ligne) ;
+  * ne changent que la forme Markdown : les caractères spéciaux sont échappés par une barre oblique inverse (« \\* », « \\| »), une
+    URL nue devient un lien automatique « <url> » (même texte affiché), et une ligne qui commencerait un titre, une citation, une
+    liste ordonnée, un filet ou le soulignement d'un titre (« --- », « === ») est échappée.
+Choix de rendu :
+  * un fil identique à la note de sa cellule, ou à un fil précédent de la même cellule, n'est pas répété : « identique » = mêmes
+    lignes, lignes vides comprises, aux espaces répétés près à l'intérieur d'une ligne (same_words) ; deux textes qui ne diffèrent
+    que par un retour à la ligne sont deux commentaires. Le classeur écrit certaines notes aussi en commentaire : 29 fils sont dans
+    ce cas, tous strictement identiques à leur note ;
   * les réponses automatiques d'un fil « Marquée comme fermée » / « Rouverte » sont des événements, pas du contenu ; toute autre
     réponse arrête le script (rien n'est perdu en silence) ;
   * les noms d'auteurs ne sont pas dans le dump ; un commentaire sans rapport avec les règles est écarté (EXCLUDED_COMMENTS : adresse
-    ET texte exacts, avec la raison ; aujourd'hui un seul message de conversation, Eau AN46) et le rapport le dit ;
+    ET texte exacts, avec la raison ; aujourd'hui un seul message de conversation, Eau AN46, à confirmer par le propriétaire) et le
+    rapport le dit ;
   * les liens hypertextes de cellule (vers le classeur « Invocation ») ne sont pas reproduits.
 Contrôle de couverture (avant d'écrire une page, puis dans --verifier) : chaque note et chaque fil du dump doit figurer dans la page
-de son onglet, exactement une fois, avec son texte intégral (comparé aux espaces près, échappements Markdown retirés), sous le sort
-dont la cellule le porte ; une entrée en trop, citée deux fois, altérée ou dans le désordre est un écart. Le script s'arrête, sans
-écrire la page, quand une note n'a pas de place : cellule VIDE (le dump garde alors une cellule avec v = "" : une note ne se
-rattache à aucun texte), cellule hors de la table des sorts (colonnes AL à BR, sorts de 3 lignes), sort sans nom. Les onglets non
-publiés par cette famille (Sommaire, Altération détats, Météo, Statistiques, Mode Hyper (Magie), ceux du même classeur que les 15
-ci-dessus) ne peuvent pas porter de NOTE : le script s'arrête et dit lequel (rien n'est écrit). Leurs FILS ne sont pas rendus : le
-rapport les liste pour qu'une autre famille les prenne (annexes-magie.py reprend celui du Mode Hyper, M43 ; les 26 fils orphelins du
-Sommaire, A1, et les 2 des Statistiques, BH27 et AR52, n'ont pas de page). Le dump est recoupé avec le .xlsx d'origine quand il est
-lu (formats de nombre, ci-dessous) : un dump qui n'a pas les notes et les fils du classeur (produit avec une ancienne version de
-xlsx_to_json.py) arrête le script au lieu d'effacer les notes des pages.
+de son onglet, exactement une fois, avec TOUTES SES LIGNES (échappements Markdown retirés, blancs de bord de ligne ignorés ; deux
+lignes fusionnées, une ligne vide en moins ou en plus, une ligne retirée ou ajoutée sont des écarts), sous le sort dont la cellule le
+porte ; une entrée en trop, citée deux fois, altérée ou dans le désordre est un écart. La page doit aussi dire à Markdown de garder
+ces lignes (structure_problems, lue dans les lignes de la page sans rien interpréter) : saut de ligne forcé manquant, puce échappée
+ou écrite après le libellé, ligne non échappée qui deviendrait un titre, une citation, une liste, un filet ou un tableau, blancs de
+début ou de fin de ligne inattendus. Le script s'arrête, sans écrire la page, quand une note n'a pas de place : cellule VIDE (le
+dump garde alors une cellule avec v = "" : une note ne se rattache à aucun texte), cellule hors de la table des sorts (colonnes AL à
+BR, sorts de 3 lignes), sort sans nom. Les onglets non publiés par cette famille (Sommaire, Altération détats, Météo, Statistiques,
+Mode Hyper (Magie), ceux du même classeur que les 15 ci-dessus) ne peuvent pas porter de NOTE : le script s'arrête et dit lequel
+(rien n'est écrit). Leurs FILS ne sont pas rendus : le rapport les liste pour qu'une autre famille les prenne (annexes-magie.py
+reprend celui du Mode Hyper, M43 ; les 26 fils orphelins du Sommaire, A1, et les 2 des Statistiques, BH27 et AR52, n'ont pas de
+page). Le dump est recoupé avec le .xlsx d'origine quand il est lu (formats de nombre, ci-dessous) : un dump qui n'a pas les notes
+et les fils du classeur (produit avec une ancienne version de xlsx_to_json.py) arrête le script au lieu d'effacer les notes des pages.
+Copie de contrôle (--exporter-commentaires) : tirée des cellules brutes du dump par expected_comments (jamais des pages), après le même
+recoupement avec le .xlsx, elle donne pour chaque note et chaque fil cité (116 aujourd'hui : 85 notes, 31 fils) la page, l'onglet, le
+genre, la cellule, la colonne, le sort et les lignes du commentaire. Elle est committée (client/test/fixtures/magies-commentaires.json)
+pour que `npm test` seul, sans le dump (hors dépôt), compare chacune des 116 entrées ligne par ligne aux pages et, avec le processeur
+Markdown du site, au rendu. Elle se régénère avec la commande de l'en-tête ; avec MAGIES_DUMP défini, un test relance --verifier et
+l'export sur le vrai dump pour détecter une copie périmée.
 
 Formats de nombre : le dump ne les porte pas. Une cellule numérique reste telle que le cache la donne (« 6.0 » reste
 « 6.0 », sans arrondi), sauf si le classeur la met au format pourcentage (« 0% » ou « 0.00% »), auquel cas elle est écrite
@@ -115,12 +144,15 @@ contrat (autotest()) tourne à chaque lancement : il vérifie aussi, sur un ongl
 vérification indépendante rendent le même verdict (liste, clé omise ou erreur) pour une cellule vide, « Aucune », une
 phrase libre courte, un nom inconnu, un doublon, etc. Il rejoue de même les cas d'erreur des notes (autotest_comments :
 déduplication, exclusion, note sur une cellule vide, hors de la table, onglet non publié, recoupement avec le classeur, aller-retour
-du Markdown de chaque texte). Rapport (stdout) : une ligne « écrit » par page, la liste des clés omises avec leur raison,
-(seulement s'il y en a) la liste des clés lues comme `[]` faute de valeur, le décompte des notes et des fils (lus, écrits, non
-répétés, écartés avec leur raison), les fils des onglets que cette famille ne publie pas, puis « vérification : OK (15 pages) ».
+du Markdown de chaque texte, y compris lignes fusionnées, puces, filets et titres involontaires). Rapport (stdout) : une ligne
+« écrit » par page, la liste des clés omises avec leur raison, (seulement s'il y en a) la liste des clés lues comme `[]` faute de
+valeur, le décompte des notes et des fils (lus, écrits, non répétés, écartés avec leur raison), (seulement s'il y en a) les
+commentaires dont des blancs de début ou de fin de ligne ne sont pas portés, les fils des onglets que cette famille ne publie pas,
+puis « vérification : OK (15 pages) ».
 Le classeur V8 actuel n'a aucune cellule vide de ce genre. Avec --verifier : un « ÉCART : … » par problème (frontmatter, note ou fil
-absent, altéré, cité deux fois, en trop ou dans le désordre ; note d'un onglet non publié, sur une cellule vide ou hors de la table),
-code de sortie 1, rien n'est écrit.
+absent, altéré — y compris deux lignes fusionnées —, cité deux fois, en trop ou dans le désordre ; saut de ligne forcé manquant, puce
+échappée, ligne qui deviendrait un titre ; note d'un onglet non publié, sur une cellule vide ou hors de la table), code de sortie 1,
+rien n'est écrit.
 
 Ne touche qu'aux fichiers `<out>/magies/<slug>.md` de sa famille : il refuse d'écraser un fichier qui n'est pas issu de ce
 classeur, refuse un titre déjà porté par une autre page, et n'efface rien.
@@ -222,6 +254,12 @@ SECTION_NOTES = "Notes et commentaires des sorts"
 KIND_NOTE, KIND_THREAD, KIND_THREAD_DONE = "Note", "Commentaire", "Commentaire résolu"
 ENTRY_RE = re.compile(r"^\*\*(%s|%s|%s) de la cellule « (.+?) » du sort « (.+?) »\*\*(?: : (.*))?$"
                       % (KIND_THREAD_DONE, KIND_THREAD, KIND_NOTE))
+BULLET_RE = re.compile(r"- \S")   # « - texte » : la seule forme de liste du classeur (une ligne, un tiret, une espace, du texte)
+HARD_BREAK = "  "                # fin de ligne qui force le saut de ligne en Markdown (sinon la ligne suivante fusionne avec elle)
+# Début de ligne que Markdown lirait comme une structure (titre, citation, liste, filet, soulignement de titre, bloc de code) :
+# cherché par la VÉRIFICATION dans les lignes des pages (sa propre définition, indépendante de l'échappement du générateur).
+BLOCK_START_RE = re.compile(r"(?:#{1,6}(?:\s|$)|>|[-+*](?:\s|$)|\d+[.)](?:\s|$)|(?:-{2,}|=+)\s*$|(?:\*\s*){3,}$|(?:_\s*){3,}$"
+                            r"|`{3}|~{3})")
 
 # Colonnes (numéros à partir de 1)
 COL_BANNER = 14        # N : bannière / titres de section
@@ -342,21 +380,23 @@ class Sheet:
 URL_RE = re.compile(r"https?://[^\s<>]+")
 
 
-def _esc_plain(s):
+def _esc_plain(s, pipe=False):
     s = s.replace("\\", "\\\\")
     s = re.sub(r"([`*_\[\]<~])", r"\\\1", s)
     s = re.sub(r"&(?=#?\w+;)", r"\\&", s)
+    if pipe:  # texte hors tableau : « | » peut y former un tableau (en-tête, puis ligne « --- | --- ») ; dans un tableau, cell_md s'en charge
+        s = s.replace("|", "\\|")
     return s
 
 
-def esc_inline(s):
+def esc_inline(s, pipe=False):
     """Échappe un texte d'une ligne ; les URL nues deviennent des liens automatiques <url>."""
     out, pos = [], 0
     for m in URL_RE.finditer(s):
-        out.append(_esc_plain(s[pos:m.start()]))
+        out.append(_esc_plain(s[pos:m.start()], pipe))
         out.append("<%s>" % m.group(0))
         pos = m.end()
-    out.append(_esc_plain(s[pos:]))
+    out.append(_esc_plain(s[pos:], pipe))
     line = "".join(out)
     # début de ligne : ne doit pas devenir une citation, un titre ou une liste
     line = re.sub(r"^(\s*)>", r"\1\\>", line)
@@ -420,6 +460,72 @@ def md_text(text, prefix=""):
 
 def md_quote(text):
     return md_text(text, "> ")
+
+
+# Contrat de citation d'un commentaire (note ou fil) : la page porte les LIGNES du commentaire, pas seulement ses mots.
+#   * chaque ligne du commentaire est une ligne de la page, dans le même ordre, lignes vides comprises (plusieurs lignes vides de
+#     suite restent plusieurs lignes vides) ; aucune ligne vide n'est ajoutée (une liste collée au texte qui la précède le reste) ;
+#   * ne sont pas portés : les espaces et tabulations de début et de fin de ligne (Markdown ne les distingue pas, et deux espaces en
+#     fin de ligne y sont un saut forcé), les lignes vides en tête et en queue du commentaire ;
+#   * tout le reste est conservé tel quel : ponctuation, espaces insécables, espaces répétées à l'intérieur d'une ligne ;
+#   * ce qui ne change que la forme Markdown : les caractères spéciaux sont échappés par une barre oblique inverse (« \* »), une URL
+#     nue devient un lien automatique « <url> », une ligne qui commencerait un titre, une citation, une liste ou un filet est échappée,
+#     et une ligne suivie d'une ligne de texte porte deux espaces de fin (saut forcé : sans eux Markdown fusionnerait les deux lignes) ;
+#   * une ligne « - texte » est une puce de la page (c'est ainsi que le classeur écrit ses listes).
+
+def comment_lines(text):
+    """Lignes d'un commentaire telles que la page doit les citer (contrat ci-dessus) : tuple de lignes, sans blancs de bord de ligne,
+    sans ligne vide en tête ni en queue."""
+    lines = [l.strip(" \t") for l in str(text).replace("\r\n", "\n").replace("\r", "\n").split("\n")]
+    while lines and not lines[0]:
+        lines.pop(0)
+    while lines and not lines[-1]:
+        lines.pop()
+    return tuple(lines)
+
+
+def is_bullet(line):
+    return BULLET_RE.match(line) is not None
+
+
+def lost_edges(text):
+    """[« début de la ligne N » | « fin de la ligne N »] : les lignes (numérotées dans le texte du classeur) dont des espaces ou
+    tabulations de début ou de fin ne sont pas portés par la page. Deux espaces en fin de ligne avant une ligne de texte sont le saut
+    forcé que la page écrit : ils sont portés. Les lignes vides ne comptent pas."""
+    raw = str(text).replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    stripped = [l.strip(" \t") for l in raw]
+    found = []
+    for i, (line, body) in enumerate(zip(raw, stripped)):
+        if not body:
+            continue
+        trail = line[len(line.rstrip(" \t")):]
+        following = stripped[i + 1] if i + 1 < len(raw) else ""
+        if line != line.lstrip(" \t"):
+            found.append("début de la ligne %d" % (i + 1))
+        if trail and not (trail == HARD_BREAK and following and not is_bullet(following)):
+            found.append("fin de la ligne %d" % (i + 1))
+    return found
+
+
+def esc_comment_line(line):
+    """Une ligne de commentaire -> une ligne de page : esc_inline, et les lignes de « - » ou de « = » seuls (filet, soulignement de
+    titre : Markdown ferait d'une ligne de texte un titre) sont échappées."""
+    return re.sub(r"^(-{2,}|=+)(?=\s*$)", lambda m: "\\" + m.group(1), esc_inline(line, pipe=True))
+
+
+def entry_lines(label, lines):
+    """Entrée d'une note ou d'un fil : le libellé en gras, puis les lignes du commentaire (une ligne de page par ligne). Une seule ligne
+    qui n'est pas une puce tient sur la ligne du libellé ; sinon : libellé, ligne vide, lignes (comme labeled() de races.py)."""
+    head = "**%s**" % esc_inline(label)
+    if len(lines) == 1 and not is_bullet(lines[0]):
+        return ["%s : %s" % (head, esc_comment_line(lines[0]))]
+    out = [head, ""]
+    for i, line in enumerate(lines):
+        following = lines[i + 1] if i + 1 < len(lines) else ""
+        text = "- " + esc_comment_line(line[2:]) if is_bullet(line) else esc_comment_line(line)
+        # la ligne suivante est du texte (ni vide, ni une puce, qui interrompt le paragraphe) : saut de ligne forcé
+        out.append(text + (HARD_BREAK if line and following and not is_bullet(following) else ""))
+    return out
 
 
 def yaml_str(s):
@@ -532,30 +638,45 @@ def crosscheck_comments(workbook, source):
 
 
 def comment_candidates(tab, cell):
-    """[(genre, texte)] d'une cellule du dump : sa note, puis ses fils (texte vide ignoré). Une réponse autre qu'un événement
-    d'état dans un fil est un contenu qui n'a pas de place dans la page : ValueError."""
+    """[(genre, lignes, blancs)] d'une cellule du dump : sa note, puis ses fils (texte vide ignoré) ; `lignes` : comment_lines() du
+    texte, `blancs` : lost_edges() du texte. Une réponse autre qu'un événement d'état dans un fil est un contenu qui n'a pas de place
+    dans la page : ValueError."""
     out = []
     if not is_blank(cell.get("note")):
-        out.append((KIND_NOTE, fmt(cell["note"])))
+        out.append((KIND_NOTE, comment_lines(cell["note"]), lost_edges(cell["note"])))
     for thread in cell.get("threads") or []:
         for reply in thread.get("replies") or []:
             if norm_ws(str(reply)) not in STATUS_REPLIES:
                 raise ValueError("%s : fil de commentaires de la cellule %s : réponse inattendue (%r), ni rendue ni écartée : "
                                  "à examiner" % (tab, a1(cell["r"], cell["c"]), shorten(str(reply), 60)))
         if not is_blank(thread.get("text")):
-            out.append((KIND_THREAD_DONE if thread.get("done") else KIND_THREAD, fmt(thread["text"])))
+            out.append((KIND_THREAD_DONE if thread.get("done") else KIND_THREAD, comment_lines(thread["text"]),
+                        lost_edges(thread["text"])))
     return out
 
 
+def same_words(lines):
+    """Clé de déduplication : les mêmes lignes, dans le même ordre, lignes vides comprises, aux espaces répétés près à l'intérieur
+    d'une ligne. Deux textes qui ne diffèrent que par un retour à la ligne ne sont PAS le même commentaire."""
+    return tuple(norm_ws(line) for line in lines)
+
+
+def is_excluded(tab, ref, lines):
+    """Vrai si le commentaire est celui que EXCLUDED_COMMENTS écarte pour cette adresse (adresse ET texte)."""
+    declared = EXCLUDED_COMMENTS.get((tab, ref))
+    return bool(declared) and same_words(lines) == same_words(comment_lines(declared[0]))
+
+
 def comments_by_ref(raw, stats=None):
-    """{ref: [(genre, texte)]} d'un onglet de magie, lus dans le dump : la note de la cellule, puis ses fils. Ne sont pas
-    répétés : un fil identique (aux espaces près) à la note ou à un fil précédent de la même cellule, un commentaire déclaré dans
-    EXCLUDED_COMMENTS. `stats` (dict) reçoit les comptes pour le rapport. Une note sur une cellule vide arrête le script."""
+    """{ref: [(genre, lignes)]} d'un onglet de magie, lus dans le dump : la note de la cellule, puis ses fils. Ne sont pas
+    répétés : un fil identique (mêmes lignes, voir same_words) à la note ou à un fil précédent de la même cellule, un commentaire
+    déclaré dans EXCLUDED_COMMENTS. `stats` (dict) reçoit les comptes pour le rapport. Une note sur une cellule vide arrête le script."""
     tab = raw["name"]
     stats = stats if stats is not None else {}
     for key in ("notes", "threads", "repeated"):
         stats.setdefault(key, 0)
     stats.setdefault("excluded", [])
+    stats.setdefault("edges", [])
     by_ref = {}
     for cell in raw["cells"]:
         candidates = comment_candidates(tab, cell)
@@ -563,22 +684,22 @@ def comments_by_ref(raw, stats=None):
             continue
         ref = a1(cell["r"], cell["c"])
         if is_blank(cell["v"]):
-            kind, text = candidates[0]
+            kind, lines, _lost = candidates[0]
             raise ValueError("%s : la cellule %s est vide mais porte %s (« %s ») : disposition non gérée, ce texte ne se rattache à "
                              "rien dans la page" % (tab, ref, "une note" if kind == KIND_NOTE else "un fil de commentaires",
-                                                    shorten(text, 40)))
+                                                    shorten(" ".join(lines), 40)))
         seen, items = set(), []
-        for kind, text in candidates:
+        for kind, lines, lost in candidates:
             stats["notes" if kind == KIND_NOTE else "threads"] += 1
-            declared = EXCLUDED_COMMENTS.get((tab, ref))
-            if declared and norm_ws(declared[0]) == norm_ws(text):
-                stats["excluded"].append((tab, ref, text, declared[1]))
+            if is_excluded(tab, ref, lines):
+                stats["excluded"].append((tab, ref, "\n".join(lines), EXCLUDED_COMMENTS[(tab, ref)][1]))
                 continue
-            if norm_ws(text) in seen:
+            if same_words(lines) in seen:
                 stats["repeated"] += 1
                 continue
-            seen.add(norm_ws(text))
-            items.append((kind, text))
+            seen.add(same_words(lines))
+            items.append((kind, lines))
+            stats["edges"].extend((tab, ref, kind, where) for where in lost)
         if items:
             by_ref[ref] = items
     return by_ref
@@ -844,17 +965,8 @@ def field_of_column(c):
     return name
 
 
-def labeled(label, value):
-    """« **Libellé** : texte » si le texte tient sur une ligne, sinon le libellé puis le texte (liste ou paragraphes), comme
-    labeled() de races.py."""
-    blocks = md_blocks(value)
-    if len(blocks) == 1 and blocks[0][0] == "p" and len(blocks[0][1]) == 1:
-        return ["**%s** : %s" % (esc_inline(label), esc_inline(blocks[0][1][0]))]
-    return ["**%s**" % esc_inline(label), ""] + md_text(value)
-
-
 def spell_notes(page, by_ref, where):
-    """[(ligne du sort, colonne, nom du sort, en-tête de la colonne, [(genre, texte)])] dans l'ordre des sorts puis des colonnes."""
+    """[(ligne du sort, colonne, nom du sort, en-tête de la colonne, [(genre, lignes)])] dans l'ordre des sorts puis des colonnes."""
     out = []
     for ref in sorted(by_ref, key=split_ref):
         r, c = split_ref(ref)
@@ -950,8 +1062,8 @@ def render(cfg, page, by_ref, relations=()):
         if notes:
             L += ["## " + SECTION_NOTES, ""]
             for _row, _col, name, field, items in notes:
-                for kind, text in items:
-                    L += labeled("%s de la cellule « %s » du sort « %s »" % (kind, field, name), text) + [""]
+                for kind, lines in items:
+                    L += entry_lines("%s de la cellule « %s » du sort « %s »" % (kind, field, name), lines) + [""]
 
     if page["foot"]:
         L += ["## Textes des sorts de niveau 5", ""]
@@ -1050,13 +1162,14 @@ def raw_expected(raw, headers):
 
 
 def unescape_md(text):
-    """Texte d'une entrée de page -> texte du classeur : échappements Markdown retirés, liens automatiques <url> rendus."""
-    return re.sub(r"\\([\\`*_\[\]<~&>#+\-.)])|<(https?://[^>\s]+)>", lambda m: m.group(1) or m.group(2), text)
+    """Texte d'une ligne de page -> texte du classeur : échappements Markdown retirés, liens automatiques <url> rendus."""
+    return re.sub(r"\\([\\`*_\[\]<~&>#+\-.)=|])|<(https?://[^>\s]+)>", lambda m: m.group(1) or m.group(2), text)
 
 
 def page_entries(text):
-    """Entrées de la section des notes d'une page écrite : ([(genre, colonne, sort, texte)], [problèmes]). Le texte est ramené à
-    une ligne, sans échappements Markdown (comparaison aux espaces près)."""
+    """Entrées de la section des notes d'une page écrite : ([{genre, column, sort, inline, raw}], [problèmes]). `raw` : les lignes de
+    la page de l'entrée TELLES QU'ÉCRITES (blancs de fin compris), sans le libellé, sans la ligne vide qui le suit quand le texte est
+    sous le libellé, sans lignes vides de queue (le séparateur des entrées)."""
     heading = "## " + SECTION_NOTES
     lines = text.split("\n")
     if heading not in lines:
@@ -1068,17 +1181,68 @@ def page_entries(text):
             break
         m = ENTRY_RE.match(line)
         if m:
-            entries.append([m.group(1), unescape_md(m.group(2)), unescape_md(m.group(3)), m.group(4) or ""])
+            entries.append(dict(genre=m.group(1), column=unescape_md(m.group(2)), sort=unescape_md(m.group(3)),
+                                inline=m.group(4) is not None, raw=[] if m.group(4) is None else [m.group(4)]))
         elif entries:
-            entries[-1][3] += "\n" + line
+            entries[-1]["raw"].append(line)
         elif line.strip():
             problems.append("texte hors d'une entrée dans la section des notes : %r" % shorten(line, 60))
-    return [(g, c, n, norm_ws(unescape_md(t))) for g, c, n, t in entries], problems
+    for e in entries:
+        while e["raw"] and not e["raw"][-1].strip(" \t"):
+            e["raw"].pop()
+        if not e["inline"]:
+            if e["raw"] and e["raw"][0] == "":
+                e["raw"].pop(0)
+            else:
+                problems.append("%s de la cellule « %s » du sort « %s » : le libellé doit être suivi d'une ligne vide puis du texte"
+                                % (e["genre"], e["column"], e["sort"]))
+    return entries, problems
+
+
+def entry_lines_read(entry):
+    """Les lignes du commentaire que la page cite (échappements et blancs de bord de ligne retirés, lignes vides conservées)."""
+    return tuple(unescape_md(line.strip(" \t")) for line in entry["raw"])
+
+
+def structure_problems(entry):
+    """Ce que Markdown ferait des lignes d'une entrée de page, sans rien interpréter du texte (la comparaison des mots ne le voit pas) :
+    deux lignes qui fusionneraient faute de saut forcé, une puce échappée ou ajoutée, une ligne qui deviendrait un titre, une citation,
+    une liste ou un filet, des blancs de bord de ligne inattendus. Renvoie une liste de messages."""
+    raw = entry["raw"]
+    problems = []
+    for i, line in enumerate(raw):
+        body = line.rstrip(" \t")
+        trail = line[len(body):]
+        following = raw[i + 1] if i + 1 < len(raw) else ""
+        needs_break = bool(body) and bool(following.strip(" \t")) and not BULLET_RE.match(following)
+        bullet = BULLET_RE.match(body) is not None
+        where = "ligne %d « %s »" % (i + 1, shorten(body, 40))
+        if body != body.lstrip(" \t"):
+            problems.append("%s : blancs de début de ligne (Markdown en ferait un bloc de code ou les ignorerait)" % where)
+        if needs_break and trail != HARD_BREAK:
+            problems.append("%s : saut de ligne forcé manquant (deux espaces en fin de ligne) : Markdown la fusionnerait avec la "
+                            "ligne suivante" % where if not trail else "%s : blancs de fin de ligne inattendus" % where)
+        elif not needs_break and trail:
+            problems.append("%s : blancs de fin de ligne inattendus" % where)
+        if entry["inline"] and i == 0 and bullet:
+            problems.append("%s : puce écrite après le libellé : ce ne serait pas un élément de liste" % where)
+        if bullet:
+            content = body[2:]
+        elif body.startswith("\\") and BULLET_RE.match(unescape_md(body)):
+            problems.append("%s : puce du classeur (« - … ») écrite avec un tiret échappé : ce ne serait pas un élément de liste" % where)
+            content = body
+        else:
+            content = body
+        if BLOCK_START_RE.match(content):
+            problems.append("%s : ligne non échappée que Markdown lirait comme un titre, une citation, une liste ou un filet" % where)
+        if "|" in re.sub(r"\\.", "", re.sub(r"<https?://[^>\s]+>", "", content)):
+            problems.append("%s : barre verticale non échappée (Markdown en ferait un tableau)" % where)
+    return problems
 
 
 def expected_comments(raw):
     """Entrées attendues pour un onglet de magie, recalculées depuis les cellules brutes du dump (sans l'analyseur de pages) :
-    ([(genre, colonne, sort, texte, cellule)] dans l'ordre de la table, comptes). ValueError : un commentaire sans place."""
+    ([(genre, colonne, sort, lignes, cellule)] dans l'ordre de la table, comptes). ValueError : un commentaire sans place."""
     tab = raw["name"]
     pos = {(c["r"], c["c"]): c for c in raw["cells"]}
     tops = sorted(r for (r, c), x in pos.items() if c == COL_SPELL_FIRST and isinstance(x["v"], (int, float))
@@ -1101,45 +1265,52 @@ def expected_comments(raw):
             raise ValueError("%s : le sort de la cellule %s n'a pas de nom" % (tab, ref))
         column = [label for start, label in FIELDS if start <= c][-1]
         seen = set()
-        for kind, text in texts:
+        for kind, lines, _lost in texts:
             counts["notes" if kind == KIND_NOTE else "threads"] += 1
-            declared = EXCLUDED_COMMENTS.get((tab, ref))
-            if declared and norm_ws(text) == norm_ws(declared[0]):
+            if is_excluded(tab, ref, lines):
                 counts["excluded"] += 1
-            elif norm_ws(text) in seen:
+            elif same_words(lines) in seen:
                 counts["repeated"] += 1
             else:
-                seen.add(norm_ws(text))
-                found.append((kind, column, name, norm_ws(text), ref))
+                seen.add(same_words(lines))
+                found.append((kind, column, name, lines, ref))
     found.sort(key=lambda t: (max(x for x in tops if x <= split_ref(t[4])[0]), split_ref(t[4])[1], split_ref(t[4])[0]))
     return found, counts
 
 
 def check_comments(raw, cfg, text):
-    """Contrôle de couverture d'un onglet : chaque note et chaque fil du dump figure dans la page `text`, exactement une fois,
-    avec son texte intégral, sous le bon sort, dans l'ordre de la table. Renvoie la liste des écarts."""
+    """Contrôle de couverture d'un onglet : chaque note et chaque fil du dump figure dans la page `text`, exactement une fois, avec
+    toutes ses LIGNES (contrat de citation : lignes vides comprises, échappements Markdown retirés), sous le bon sort, dans l'ordre
+    de la table ; et la page dit à Markdown de garder ces lignes (saut forcé, puces, pas de titre ni de filet involontaire).
+    Renvoie la liste des écarts."""
     where = cfg["onglet"]
     try:
         want, _counts = expected_comments(raw)
     except ValueError as err:
         return [str(err)]
-    got, problems = page_entries(text)
+    entries, problems = page_entries(text)
     errors = ["%s : %s" % (where, p) for p in problems]
+    got = []
+    for e in entries:
+        got.append((e["genre"], e["column"], e["sort"], entry_lines_read(e)))
+        errors.extend("%s : %s de la cellule « %s » du sort « %s » : %s" % (where, e["genre"], e["column"], e["sort"], p)
+                      for p in structure_problems(e))
     keys = [w[:4] for w in want]
     n_want, n_got = Counter(keys), Counter(got)
     origin = {w[:4]: w[4] for w in want}
     for key in dict.fromkeys(keys):
-        genre, column, name, body = key
-        who = "%s de la cellule %s (sort « %s », colonne « %s ») : « %s »" % (genre, origin[key], name, column, shorten(body, 100))
+        genre, column, name, lines = key
+        who = "%s de la cellule %s (sort « %s », colonne « %s ») : « %s »" % (genre, origin[key], name, column,
+                                                                              shorten(" ⏎ ".join(lines), 100))
         if n_got[key] < n_want[key]:
             errors.append("%s : entrée absente de la page ou altérée : %s" % (where, who))
         elif n_got[key] > n_want[key]:
             errors.append("%s : entrée écrite %d fois dans la page, %d attendue(s) : %s" % (where, n_got[key], n_want[key], who))
     for key in dict.fromkeys(got):
         if key not in n_want:
-            genre, column, name, body = key
+            genre, column, name, lines = key
             errors.append("%s : entrée de la page qui ne correspond à aucune note ni à aucun fil du dump (%s, sort « %s », colonne « %s ») "
-                          ": « %s »" % (where, genre.lower(), name, column, shorten(body, 100)))
+                          ": « %s »" % (where, genre.lower(), name, column, shorten(" ⏎ ".join(lines), 100)))
     if not errors and keys != got:
         errors.append("%s : notes et fils dans le désordre (attendu : l'ordre de la table des sorts, puis des colonnes)" % where)
     return errors
@@ -1305,7 +1476,11 @@ def autotest_comments(must):
     # aller-retour : le texte relu dans la page est le texte du classeur, aux espaces près, quels que soient les caractères
     tricky = ["Simple.", "*a* _b_ [c] <d> ~e~ \\ & &amp; fin", "> pas une citation", "# pas un titre", "- une\n- liste", "1. pas\n2) une liste",
               "voir http://exemple.org/x?a=1&b=2 ici", "a | b", "ligne\n\nautre   paragraphe", "  espaces autour  ",
-              "Exemple : \n\nUn caillou\nUne dague", "`code` et **gras**", "[[Lien]] de wiki", "10% lors de neutre\n20% lors de canicule."]
+              "Exemple : \n\nUn caillou\nUne dague", "`code` et **gras**", "[[Lien]] de wiki", "10% lors de neutre\n20% lors de canicule.",
+              # lignes : saut forcé, puces, lignes vides multiples, espace insécable, liste collée au texte, filets, fin de ligne en « \ »
+              "a\nb\n\n\n\nc", "a\u00a0\nb\u00a0", "Liste :\n- a\n- b  \nsuite\n\nfin", "- a\n  - b\n-c\n-  d", "texte\n---\n===\n--- x\n- - -",
+              "# t\n> c\n1. l\n* p\n+ q\n- r\n```\n~~~", "fin \\\nsuite", "<https://x.org> et <b>", "|a|b|\n|---|---|",
+              "http://x.org/a_(b).\nhttp://y.org", " \n\nbord\n\n \t"]
     for text in tricky:
         raw = with_comments(note=text, threads=[{"text": text + " (fil)", "done": True}])
         page_text = rendered(raw)
@@ -1325,12 +1500,38 @@ def autotest_comments(must):
          "couverture : ordre non vu")
     must(check_comments(raw, cfg, good.replace("## " + SECTION_NOTES, "## Autre titre")), "couverture : section renommée non vue")
 
+    # retours à la ligne : le contrôle est strict (deux lignes fusionnées, une ligne vide en moins ou en plus, un saut forcé retiré, une
+    # puce échappée ou une ligne qui deviendrait un titre sont des écarts, alors que les mots sont les mêmes)
+    raw = with_comments(note="Un,\nDeux.\n\n- puce\n- autre\nsuite\n\n\nFin.")
+    good = rendered(raw)
+    must(check_comments(raw, cfg, good) == [], "couverture : page à lignes conforme")
+    for what, before, after in (
+            ("lignes fusionnées", "Un,  \nDeux.", "Un, Deux."), ("ligne vide retirée", "Deux.\n\n- puce", "Deux.\n- puce"),
+            ("ligne vide ajoutée", "- puce\n- autre", "- puce\n\n- autre"), ("ligne vide en moins", "suite\n\n\nFin.", "suite\n\nFin."),
+            ("puces fusionnées", "- puce\n- autre  \nsuite", "- puce - autre suite"), ("saut forcé retiré", "Un,  \nDeux.", "Un,\nDeux."),
+            ("suite de puce sans saut forcé", "- autre  \nsuite", "- autre\nsuite"), ("puce échappée", "- puce\n- autre", "\\- puce\n- autre"),
+            ("titre involontaire", "Fin.", "# Fin."), ("blancs de fin inattendus", "Fin.", "Fin.  "),
+            ("blancs de début", "Fin.", " Fin.")):
+        must(before in good and check_comments(raw, cfg, good.replace(before, after)), "couverture : %s non vu" % what)
+    escaped = rendered(with_comments(note="# t\n---\n1. l"))
+    for what, before, after in (("titre non échappé", "\\# t", "# t"), ("filet non échappé", "\\---", "---"), ("liste non échappée", "1\\. l", "1. l")):
+        must(before in escaped and any("Markdown" in e for e in check_comments(with_comments(note="# t\n---\n1. l"), cfg,
+                                                                              escaped.replace(before, after))), "couverture : %s non vu" % what)
+    must(entry_lines("L", ("a", "b")) == ["**L**", "", "a  ", "b"] and entry_lines("L", ("- a", "b")) == ["**L**", "", "- a  ", "b"]
+         and entry_lines("L", ("- a",)) == ["**L**", "", "- a"] and entry_lines("L", ("a",)) == ["**L** : a"]
+         and entry_lines("L", ("a", "- b", "", "", "c")) == ["**L**", "", "a", "- b", "", "", "c"], "citation : forme des lignes")
+    must(comment_lines(" \n\r\n  a \t\r\n\n b\u00a0\n\n ") == ("a", "", "b\u00a0"), "citation : lignes d'un commentaire")
+
     # déduplication et réponses d'état
     raw = with_comments(note="Règle  précisée.", threads=[{"text": "Règle précisée.", "replies": ["Marquée comme fermée", "Rouverte"]},
                                                           {"text": "Autre."}, {"text": " Autre. "}])
     stats = {}
-    must(comments_by_ref(raw, stats)["BJ4"] == [(KIND_NOTE, "Règle  précisée."), (KIND_THREAD, "Autre.")]
+    must(comments_by_ref(raw, stats)["BJ4"] == [(KIND_NOTE, ("Règle  précisée.",)), (KIND_THREAD, ("Autre.",))]
          and stats["repeated"] == 2, "un fil identique à la note ou à un fil précédent n'est pas répété")
+    raw = with_comments(note="Une règle,\nsur deux lignes.", threads=[{"text": "Une règle, sur deux lignes."}, {"text": " Une  règle,  \n sur deux lignes.\n\n"}])
+    stats = {}
+    must(comments_by_ref(raw, stats)["BJ4"] == [(KIND_NOTE, ("Une règle,", "sur deux lignes.")), (KIND_THREAD, ("Une règle, sur deux lignes.",))]
+         and stats["repeated"] == 1, "un fil qui ne diffère de la note que par un retour à la ligne n'est pas un doublon")
     must(refused(comments_by_ref, with_comments(threads=[{"text": "?", "replies": ["Voici la règle."]}])), "réponse inattendue -> erreur")
 
     # exclusion : adresse ET texte exacts (Eau AN46)
@@ -1339,7 +1540,7 @@ def autotest_comments(must):
     eau["cells"] += [dict(r=46, c=38, v=3), dict(r=46, c=40, v="Eau Parfaite", threads=[
         {"text": EXCLUDED_COMMENTS[("Eau", "AN46")][0], "done": True}, {"text": EXCLUDED_COMMENTS[("Eau", "AN46")][0] + " !"}])]
     stats = {}
-    must(comments_by_ref(eau, stats)["AN46"] == [(KIND_THREAD, EXCLUDED_COMMENTS[("Eau", "AN46")][0] + " !")]
+    must(comments_by_ref(eau, stats)["AN46"] == [(KIND_THREAD, (EXCLUDED_COMMENTS[("Eau", "AN46")][0] + " !",))]
          and len(stats["excluded"]) == 1, "l'exclusion tient au texte exact : le commentaire modifié est cité")
     moved = dict(eau, name="Feu")
     must(len(comments_by_ref(moved)["AN46"]) == 2, "l'exclusion tient à l'onglet")
@@ -1377,6 +1578,34 @@ def expected_comments_refused(raw):
     except ValueError:
         return True
     return False
+
+
+def export_comments(sheets, path):
+    """Écrit la copie de contrôle des commentaires (une entrée par note ou par fil rendu, avec toutes ses lignes) pour les tests du site
+    (client/test/fixtures/magies-commentaires.json) : elle est tirée des cellules brutes du dump par expected_comments, jamais des pages.
+    ValueError : un commentaire sans place. Renvoie le nombre d'entrées."""
+    entries = []
+    for cfg in MAGIES:
+        raw = sheets.get(cfg["onglet"])
+        if raw is None:
+            raise ValueError("onglet absent du dump : %r" % cfg["onglet"])
+        want, _counts = expected_comments(raw)
+        entries.extend(dict(page=cfg["slug"], onglet=cfg["onglet"], genre=kind, cellule=ref, colonne=column, sort=name, lignes=list(lines))
+                       for kind, column, name, lines, ref in want)
+    head = dict(classeur=WORKBOOK, fichier=FILE_ID,
+                regenerer="python3 -I tools/sheets/magies.py --dump <magie-v8.json avec notes> --exporter-commentaires "
+                          "client/test/fixtures/magies-commentaires.json",
+                contrat="une entrée par note ou par fil cité dans les pages ; `lignes` = les lignes du commentaire, sans blancs de bord de "
+                        "ligne ni lignes vides en tête et en queue, lignes vides intermédiaires conservées (voir magies.py)")
+    invisible = re.compile("[\u00a0\u2000-\u200f\u2028\u2029\u202f\u205f\u3000\ufeff]")
+    lines = ["{" + ", ".join("%s: %s" % (json.dumps(k), json.dumps(v, ensure_ascii=False)) for k, v in head.items()) + ',', ' "entrees": [']
+    lines.extend("  " + json.dumps(e, ensure_ascii=False) + ("," if i + 1 < len(entries) else "") for i, e in enumerate(entries))
+    lines.extend([" ]", "}"])
+    body = invisible.sub(lambda m: "\\u%04x" % ord(m.group()), "\n".join(lines)) + "\n"
+    assert json.loads(body)["entrees"] == entries  # le fichier écrit est du JSON valide, et le relire redonne les entrées
+    with open(path, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(body)
+    return len(entries)
 
 
 def read_front(path):
@@ -1489,12 +1718,19 @@ def main(argv=None):
     ap.add_argument("--xlsx", help="classeur d'origine (formats de nombre ; recoupement des notes et fils du dump)")
     ap.add_argument("--sans-formats", action="store_true",
                     help="ne pas lire le .xlsx : ni formats de nombre (pourcentages) ni recoupement des notes du dump")
-    ap.add_argument("--out", required=True, help="racine du wiki (client/src/content/wiki)")
+    ap.add_argument("--out", help="racine du wiki (client/src/content/wiki) ; absent avec --exporter-commentaires")
     ap.add_argument("--fiche", help="dump JSON de la fiche « Maverick Auto » (en-têtes de « %s » ; à défaut "
                                     "fiche-auto-v15.json à côté du dump)" % FICHE_SHEET)
     ap.add_argument("--verifier", action="store_true",
                     help="n'écrit rien : recalcule les valeurs attendues depuis les dumps et les compare aux pages")
+    ap.add_argument("--exporter-commentaires", metavar="FICHIER",
+                    help="n'écrit aucune page : écrit la copie de contrôle des notes et fils (lignes de chaque commentaire, tirées du dump) "
+                         "lue par client/test/magies-notes.test.mjs ; recoupe le dump avec le .xlsx comme une exécution normale")
     args = ap.parse_args(argv)
+    if bool(args.out) == bool(args.exporter_commentaires):
+        ap.error("une seule des options --out (écrire ou --verifier les pages) et --exporter-commentaires (copie de contrôle) est attendue")
+    if args.exporter_commentaires and args.verifier:
+        ap.error("--verifier ne s'utilise pas avec --exporter-commentaires")
     autotest()
 
     sheets = {}
@@ -1539,9 +1775,10 @@ def main(argv=None):
                     xlsx = cand
                     break
         if not xlsx or not os.path.isfile(xlsx):
-            sys.exit("classeur .xlsx introuvable (option --xlsx) : les formats de nombre en dépendent "
+            sys.exit("classeur .xlsx introuvable (option --xlsx) : les formats de nombre et le recoupement des notes en dépendent "
                      "(ou passer --sans-formats)")
-        formats = read_number_formats(xlsx)
+        if not args.exporter_commentaires:
+            formats = read_number_formats(xlsx)
         try:
             source = load_xlsx_comments().read_comments(xlsx)
         except (ValueError, KeyError, zipfile.BadZipFile, ET.ParseError) as err:
@@ -1551,6 +1788,15 @@ def main(argv=None):
             for e in mismatches:
                 print("ERREUR : " + e, file=sys.stderr)
             return 1
+
+    if args.exporter_commentaires:  # copie de contrôle des tests du site : aucune page n'est écrite
+        try:
+            count = export_comments(sheets, args.exporter_commentaires)
+        except ValueError as err:
+            print("ERREUR : " + str(err), file=sys.stderr)
+            return 1
+        print("copie de contrôle écrite : %s (%d entrées)" % (args.exporter_commentaires, count))
+        return 0
 
     out_dir = os.path.join(args.out, CATEGORY)
     os.makedirs(out_dir, exist_ok=True)
@@ -1624,6 +1870,12 @@ def main(argv=None):
                                          len(stats["excluded"])))
         for tab, ref, text, reason in stats["excluded"]:
             print("  écarté : %s %s « %s » (%s)" % (tab, ref, shorten(text, 60), reason))
+    if stats and stats["edges"]:  # absent du rapport quand aucune ligne n'a de blancs de bord (voir lost_edges)
+        cells = list(dict.fromkeys((tab, ref, kind) for tab, ref, kind, _where in stats["edges"]))
+        print("RAPPORT blancs de début ou de fin de ligne non portés par les pages (Markdown ne les distingue pas ; les mots et les lignes "
+              "sont inchangés) : %d commentaire(s) :" % len(cells))
+        for tab, ref, kind in cells:
+            print("  %s %s (%s) : %s" % (tab, ref, kind, ", ".join(w for t, r, k, w in stats["edges"] if (t, r, k) == (tab, ref, kind))))
     if loose_threads:
         print("RAPPORT fils de commentaires d'onglets non publiés par cette famille, à confier à une autre (leurs notes, s'il y en "
               "avait, arrêteraient le script) : %d fil(s) :" % sum(n for _tab, _ref, n in loose_threads))

@@ -77,7 +77,8 @@ Les utilisateurs de la Terre sont des personnes qui ont des tailles et une muscu
 
 **Commentaire résolu de la cellule « Effets secondaires » du sort « Appel aux Golems »**
 
-Pour voir les golems possible
+Pour voir les golems possible 
+
 
 Chaque niveau de puissance de la créature invoqué double de le coût précédent pour l'invoquer.
 

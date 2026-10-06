@@ -92,7 +92,6 @@ La surcharge peut être amplifié avec 20 chakra maximum
 **Note de la cellule « Effets secondaires » du sort « Croisade lumineuse »**
 
 Liste des amplifications :
-
 - Permet d'encaisser le prochain sort d'ombre (sauf niveau 5)
 - Immunise à la peur pendant 3 tours.
 - Immunise aux effets négatifs pour le tour.
@@ -101,7 +100,6 @@ Liste des amplifications :
 **Commentaire résolu de la cellule « Effets secondaires » du sort « Croisade lumineuse »**
 
 Liste des amplifications :
-
 - Permet d'encaisser le prochain sorts d'ombre (sauf niveau 5)
 - Immunise à la peur pendant 3 tours.
 - Immunise aux effets négatifs pour le tour.

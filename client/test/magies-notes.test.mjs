@@ -38,7 +38,7 @@ const REGENERER = 'python3 -I tools/sheets/magies.py --dump <magie-v8.json> --ex
 const page = (slug) => readFileSync(join(dossierPages, `${slug}.md`), 'utf8');
 const section = (texte) => texte.split(new RegExp(`^## ${SECTION}\\s*$`, 'm'))[1]?.split(/^## /m)[0] ?? null;
 const ETIQUETTE = /^\*\*(Note|Commentaire résolu|Commentaire) de la cellule « (.+?) » du sort « (.+?) »\*\*(?: : (.*))?$/;
-const sansEchappement = (s) => s.replace(/\\([\\`*_[\]<~&>#+\-.)=])/g, '$1').replace(/<(https?:\/\/[^>\s]+)>/g, '$1');
+const sansEchappement = (s) => s.replace(/\\([\\`*_[\]<~&>#+\-.)=|])/g, '$1').replace(/<(https?:\/\/[^>\s]+)>/g, '$1');
 const norme = (s) => s.replace(/\s+/g, ' ').trim();
 const bord = (s) => s.replace(/^[ \t]+|[ \t]+$/g, ''); // espaces et tabulations de début et de fin de ligne (rien d'autre : NBSP conservé)
 const estPuce = (ligne) => /^- \S/.test(ligne);
@@ -275,10 +275,10 @@ test('toute altération d\'une page réelle est vue par le contrôle : texte, li
 
 test('citation fidèle des blancs : espace insécable de fin de ligne, lignes vides multiples, liste collée au texte qui la précède (Terre BJ13, Lumière BJ43)', () => {
   const terre = page('magie-de-la-terre');
-  assert.ok(terre.includes('Pour voir les golems possible \n\n\nChaque niveau de puissance de la créature invoqué double'), 'NBSP et deux lignes vides conservés');
+  assert.ok(terre.includes('Pour voir les golems possible\u00a0\n\n\nChaque niveau de puissance de la créature invoqué double'), 'NBSP et deux lignes vides conservés');
   const lumiere = page('magie-de-la-lumiere');
-  assert.equal(lumiere.split("Liste des amplifications :\n- Permet d'encaisser le prochain sort").length - 1, 1, 'pas de ligne vide ajoutée avant la liste de la note');
-  assert.equal(lumiere.split("Liste des amplifications :\n- Permet d'encaisser le prochain sorts").length - 1, 1, '… ni avant celle du fil');
+  assert.equal(lumiere.split("Liste des amplifications :\n- Permet d'encaisser le prochain sort d'ombre").length - 1, 1, 'pas de ligne vide ajoutée avant la liste de la note');
+  assert.equal(lumiere.split("Liste des amplifications :\n- Permet d'encaisser le prochain sorts d'ombre").length - 1, 1, '… ni avant celle du fil');
   const necro = page('magie-de-la-necromancie');
   assert.ok(necro.includes('possible <https://maverick-jdr.fandom.com/fr/wiki/Mort-Vivant_(Invocation)>'), 'URL : lien automatique, adresse intacte');
 });
@@ -619,6 +619,29 @@ test('synthétique : le rendu du site redonne les lignes, puces et paragraphes d
   ]);
 });
 
+/** Des lignes que Markdown lirait autrement si l'extracteur ne les échappait pas : tableau, filet, titre, citation, liste, code, entités, lien. */
+const LIGNES_PIEGEUSES = [
+  'Simple.', '|a|b|\n|---|---|', 'a | b\n--- | ---\nc | d', 'texte\n---', 'texte\n===', 'texte\n---\nsuite', '1. l\n2) m', '* p\n+ q', '***\n___\n- - -',
+  '```\ncode\n```', '~~~\nx\n~~~', '# t\n## u\n> c\n>> d', '<b>gras</b> &amp; &lt; &copy; &#35;', 'fin \\\nsuite \\',
+  'http://x.org/a_(b).\nhttp://y.org/a|b', '<https://x.org> et [lien](http://z) et ![img](a)', 'Liste :\n- a\n- b\n\nTexte\n- c', '- a\nb\nc\n- d',
+  '-  a\n-b\n- - c', '[ref]: http://x.org\n[ref]', 'a\n\n\n\nb', '*a* _b_ __c__ **d** ~~e~~ `f`', 'ligne avec insécable \nsuite',
+  '    pas de code\n\tpas de code', 'a\\*b\\_c\\\\d', '- a\n\n- b\n\n  c', '=== \n---', ':::\nx', '$$x$$ $y$', '@mention #hash', 'a\n \nb',
+];
+
+test('rendu réel : 31 textes piégeux (un fil chacun) sont affichés avec leurs lignes, puces et paragraphes, jamais en titre, tableau, filet ni code', async () => {
+  const dump = classeur();
+  cellule(dump, 'Sang', BJ4).threads = LIGNES_PIEGEUSES.map((text) => ({ text }));
+  const r = lancer({ dump });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(verifie(r, dump).status, 0);
+  const rendues = await entreesRendues(section(r.page('magie-du-sang')));
+  assert.equal(rendues.length, LIGNES_PIEGEUSES.length);
+  LIGNES_PIEGEUSES.forEach((texte, i) => {
+    const lignes = texte.split('\n').map(bord);
+    assert.deepEqual(rendues[i].blocs, blocsDeLignes(lignes), `texte ${JSON.stringify(texte)}`);
+  });
+});
+
 test('--verifier : deux lignes fusionnées en une, un paragraphe de puces, une ligne vide retirée ou ajoutée sont des écarts (code 1)', () => {
   const { dump, r, f, original } = pageAvecNoteLignes();
   const mutations = [
@@ -629,6 +652,8 @@ test('--verifier : deux lignes fusionnées en une, un paragraphe de puces, une l
     ['ligne vide en double', 'sa suite\n\nDernier', 'sa suite\n\n\nDernier', /altérée/],
     ['ligne en trop', 'Dernier paragraphe.', 'Dernier paragraphe.\nUne ligne de plus.', /altérée/],
     ['ligne retirée', 'Premier paragraphe,  \nsuite du premier.', 'suite du premier.', /altérée/],
+    ['ligne vide retirée entre le libellé et le texte', '« Éclair »**\n\nPremier', '« Éclair »**\nPremier', /libellé doit être suivi d'une ligne vide/],
+    ['ligne vide ajoutée entre le libellé et le texte', '« Éclair »**\n\nPremier', '« Éclair »**\n\n\nPremier', /altérée/],
   ];
   for (const [nom, avant, apres, motif] of mutations) {
     assert.ok(original.includes(avant), nom);
@@ -690,6 +715,23 @@ test('synthétique : un fil qui ne diffère de la note que par ses retours à la
   ]);
   assert.match(r.stdout, /2 fil\(s\) identique\(s\)/);
   assert.equal(verifie(r, dump).status, 0);
+});
+
+test('synthétique : les blancs de début ou de fin de ligne que la page ne porte pas sont signalés dans le rapport (mots et lignes inchangés)', () => {
+  const dump = classeur();
+  cellule(dump, 'Sang', BJ4).note = 'Exemple : \nsuite  \nfin';
+  cellule(dump, 'Sang', BJ7).note = ' commence par une espace.';
+  cellule(dump, 'Feu', BJ4).note = 'Rien à signaler,  \nsaut déjà forcé.';
+  const r = lancer({ dump });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /RAPPORT blancs de début ou de fin de ligne non portés/);
+  assert.match(r.stdout, /Sang BJ4 \(Note\) : fin de la ligne 1/);
+  assert.match(r.stdout, /Sang BJ7 \(Note\) : début de la ligne 1/);
+  assert.doesNotMatch(r.stdout, /Sang BJ4 \(Note\) : [^\n]*ligne 2/, 'deux espaces avant une ligne de texte : le saut forcé de la page les porte');
+  assert.doesNotMatch(r.stdout, /Feu BJ4/);
+  assert.deepEqual(entrees(r.page('magie-du-sang')).map((e) => e.lignes), [['Exemple :', 'suite', 'fin'], ['commence par une espace.']]);
+  const propre = lancer({ dump: avecNotes() });
+  assert.doesNotMatch(propre.stdout, /blancs de début ou de fin/);
 });
 
 // --- copie de contrôle exportée par l'extracteur ---------------------------------------------------------------------------------------

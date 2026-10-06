@@ -20,8 +20,8 @@ Source : Google Sheet « Classe Maverick V7 » (fileId 1K9IX0z_w-4IJt9oiq1D9AE4N
 tools/sheets/xlsx_to_json.py (format décrit dans ce script), puis corrigé de ses coquilles par tools/sheets/corriger-dump.py
 (docs/sources.md). Les cellules sont une donnée non fiable : elles ne sont jamais exécutées, seulement copiées (échappées pour le
 Markdown). Rien n'est inventé : valeurs, noms, coquilles et formulations sont ceux des cellules.
-Le dump porte les valeurs ET les notes de cellule (champ `note`) ; le classeur .xlsx d'origine ne sert plus qu'aux hyperliens de
-cellule, que le dump ne contient pas (voir « Notes de cellule » et « Hyperliens de cellule »).
+Le dump porte les valeurs ET les notes de cellule (champ `note`) ; le classeur .xlsx d'origine sert aux hyperliens de cellule, que
+le dump ne contient pas, et à recouper les notes du dump (voir « Notes de cellule » et « Hyperliens de cellule »).
 
 Fichiers écrits (et seulement ceux-là) :
     <out>/classes/<slug>.md                          une page par classe (39 onglets de classe), sans tableaux d'aptitudes
@@ -42,6 +42,9 @@ groupes (il part des seules positions de cellules : ligne, colonne, bannière) e
       touchés) : note sur une cellule vide, dans un onglet non publié (« Combo stat »), dans le Sommaire, non placée (hors d'un
       bloc d'effet), fil de commentaires, note qui n'est pas un texte, et, sur les pages, note retirée, dupliquée, tronquée ou
       écrite sur une autre fiche : chacun doit être refusé, par le script ET par le recalcul indépendant, avec un message ;
+  (2 ter) avec le classeur .xlsx (pas avec --sans-liens) : les notes et les fils du dump sont, onglet par onglet, ceux du classeur
+      (mêmes adresses : une note perdue par le dump n'est pas vue par (2 bis), qui compare les pages au dump) ; deux cas sont
+      rejoués en mémoire (une note du classeur perdue par le dump, un fil du classeur que le dump n'a pas) ;
   (3) groupes de choix recalculés depuis les positions, comparés à `choix_exclusif_avec` de chaque page (symétrie, même
       classe, même niveau, même spécialité - sauf entre les deux cartouches de spécialité d'une même ligne, qui s'excluent
       justement parce que leurs spécialités diffèrent -, ids existants, ordre de gauche à droite) ;
@@ -177,11 +180,20 @@ de place pour elle (« Sommaire ») ; une note hors d'un bloc d'effet de capacit
 Contrôle de couverture (check_note_coverage, à chaque génération) : chaque note du dump figure exactement une fois, avec son texte
 intégral, dans la fiche prévue, et dans aucune autre page ; les totaux (dans le dump, placées, écrites) sont affichés
 (« notes de cellule : 43 dans le dump, 43 placées, 43 écrites ») et doivent être égaux.
+Recoupement avec le classeur .xlsx (crosscheck_notes, avant toute écriture ; --verifier : contrôle (2 ter)) : le contrôle de
+couverture compare les pages au dump, il ne peut donc pas voir une note que le DUMP a perdue (ancien xlsx_to_json.py, dump copié
+d'un autre classeur) : la fiche serait réécrite sans elle. Quand le classeur est donné (--xlsx, ou trouvé à côté du dump), ses notes
+et ses fils de commentaires sont lus par le lecteur de xlsx_to_json.py (tools/sheets/xlsx_comments.py) et comparés au dump, onglet
+par onglet (publié ou non), adresse par adresse (notes non blanches ; fils) : le moindre écart arrête le script, qui n'écrit rien
+(« notes du classeur absentes du dump : A37 »). Les textes ne sont comparés (aux espaces près) qu'à titre d'avertissement : le
+registre des corrections (champ « note ») peut en retoucher un ; c'est la note du dump qui est citée. Avec --sans-liens, aucun
+classeur n'est lu : les notes ne sont pas recoupées (avertissement sur la sortie d'erreur).
 
 Hyperliens de cellule : le dump ne les contient pas ; ils sont lus directement dans le .xlsx d'origine (zipfile + xml, sans openpyxl),
-qui n'est plus lu pour rien d'autre. L'option --xlsx donne le chemin du classeur ; à défaut le script le cherche à côté du dump
-(<dossier du dump>/../sheets/<fileId>/classeur.xlsx). Introuvable : erreur, sauf --sans-liens (qui écarte les hyperliens : la page de
-Mage Bleu perd alors la ligne « Lien hypertexte… », à n'utiliser que sur un classeur de test). Les hyperliens externes de cellule
+qui ne sert par ailleurs qu'au recoupement des notes (ci-dessus). L'option --xlsx donne le chemin du classeur ; à défaut le script le
+cherche à côté du dump (<dossier du dump>/../sheets/<fileId>/classeur.xlsx). Introuvable ou illisible : erreur, sauf --sans-liens
+(exclusive de --xlsx ; elle écarte les hyperliens ET le recoupement : la page de Mage Bleu perd alors la ligne « Lien hypertexte… »,
+à n'utiliser que sur un classeur de test). Les hyperliens externes de cellule
 (Mage Bleu!Z3, « CHOSE A SAVOIR », vers le classeur des familiers) sont rendus sous le texte de leur cellule :
 « Lien hypertexte attaché à la cellule Z3 dans le classeur d'origine : <url> » (même formule que ressources/familiers) ; un
 hyperlien externe qui ne tombe sur aucun bloc connu arrête le script. Les 39 hyperliens internes du Sommaire (un par
@@ -193,6 +205,7 @@ Animal » portent le nom d'une race jouable (Orios, Fenrir…) ; leur titre pren
 le wiki (leur slug reste le nom seul, dans classes/). Le script refuse un titre déjà porté par une page d'une autre famille.
 """
 import argparse
+import importlib.util
 import json
 import os
 import posixpath
@@ -528,6 +541,72 @@ def read_links(xlsx_path):
                 links[ref] = url
             result[name] = links
     return result
+
+
+def load_xlsx_comments():
+    """tools/sheets/xlsx_comments.py (le lecteur de xlsx_to_json.py), chargé par son chemin : `python3 -I` n'ajoute pas le dossier du
+    script à sys.path."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "xlsx_comments.py")
+    spec = importlib.util.spec_from_file_location("xlsx_comments", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def same_words(text):
+    """Texte comparable : espaces, tabulations et retours à la ligne ramenés à une espace (un classeur de Google et son dump ne les
+    portent pas toujours à l'identique)."""
+    return " ".join(str(text).split())
+
+
+def read_xlsx_comments(xlsx_path):
+    """-> (commentaires du classeur {onglet: {"notes": {ref: texte}, "threads": {ref: [fil]}}}, None) ou (None, message d'erreur) :
+    même lecteur que xlsx_to_json.py (xlsx_comments.read_comments), qui ne fait confiance à rien dans le classeur."""
+    try:
+        return load_xlsx_comments().read_comments(xlsx_path), None
+    except (ValueError, KeyError, OSError, zipfile.BadZipFile, ET.ParseError) as err:
+        return None, "classeur %s : lecture des commentaires impossible : %s" % (xlsx_path, err)
+
+
+def crosscheck_notes(sheets, source):
+    """Recoupe les notes et les fils de commentaires du dump (`sheets`) avec ceux du classeur .xlsx d'origine (`source` : résultat de
+    read_xlsx_comments). -> (erreurs, avertissements, nombre de notes du classeur).
+
+    Pourquoi : les notes sont lues dans le dump ; le contrôle de couverture compare les pages au dump, il ne voit donc pas une note
+    que le dump a perdue (ancien xlsx_to_json.py, dump copié d'un autre classeur) : la fiche serait réécrite sans elle. Avec le
+    classeur sous la main, on compare, pour CHAQUE onglet (publié ou non), les adresses des notes (non blanches) et des fils des
+    deux côtés : tout écart est une erreur. Les textes ne sont comparés qu'à titre d'avertissement (aux espaces près) : le
+    registre des corrections (champ « note ») peut en retoucher un, ce qui n'est pas une perte."""
+    errors, warnings, total = [], [], 0
+    for name in sorted(set(source) | set(sheets)):
+        data = source.get(name, {"notes": {}, "threads": {}})
+        want_notes = {ref: text for ref, text in data["notes"].items() if not is_blank(text)}
+        want_threads = {ref for ref, items in data["threads"].items() if items}
+        total += len(want_notes)
+        got_notes, got_threads = {}, set()
+        for cell in sheets[name]["cells"] if name in sheets else []:
+            ref = ref_of(cell["r"], cell["c"])
+            if cell.get("note") is not None and not is_blank(cell["note"]):
+                got_notes[ref] = cell["note"]
+            if cell.get("threads"):
+                got_threads.add(ref)
+        gaps = [
+            ("notes du classeur absentes du dump", set(want_notes) - set(got_notes)),
+            ("notes du dump absentes du classeur", set(got_notes) - set(want_notes)),
+            ("fils de commentaires du classeur absents du dump", want_threads - got_threads),
+            ("fils de commentaires du dump absents du classeur", got_threads - want_threads),
+        ]
+        gaps = ["%s : %s" % (label, ", ".join(sorted(refs, key=split_ref))) for label, refs in gaps if refs]
+        if gaps:
+            errors.append("onglet « %s » : le dump ne porte pas les mêmes commentaires que le classeur .xlsx (%s) : dump produit sans "
+                          "toutes les notes (ancien xlsx_to_json.py) ou depuis un autre classeur ? relancer tools/sheets/xlsx_to_json.py "
+                          "sur ce classeur ; rien n'est écrit" % (name, " ; ".join(gaps)))
+        changed = [ref for ref in want_notes if ref in got_notes and same_words(want_notes[ref]) != same_words(got_notes[ref])]
+        if changed:
+            warnings.append("onglet « %s » : le texte de la note diffère de celui du classeur en %s (retouche du registre de "
+                            "corrections ? la note du dump est celle qui est citée)"
+                            % (name, ", ".join(sorted(changed, key=split_ref))))
+    return errors, warnings, total
 
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -1625,10 +1704,11 @@ def v_mutate(sheets, tab, change):
     return dict(sheets, **{tab: dict(raw, cells=cells)})
 
 
-def v_replays(sheets, class_names, links, dump_notes, placed, pages):
+def v_replays(sheets, class_names, links, dump_notes, placed, pages, comments=None):
     """Rejoue des cas d'erreur sur des copies en mémoire du dump et des pages : chacun doit être refusé, avec un message, par
     le script ET par le recalcul indépendant. -> [(libellé, échecs, info)]. `placed` : notes rattachées (recalcul indépendant,
-    [dict(tab, ref, text, page)]) ; `pages` : {identifiant: dict(text, ...)} des fiches de capacités écrites sur disque."""
+    [dict(tab, ref, text, page)]) ; `pages` : {identifiant: dict(text, ...)} des fiches de capacités écrites sur disque ;
+    `comments` : commentaires du classeur .xlsx (None sans classeur : le recoupement n'est alors pas rejoué)."""
     results = []
 
     def run(label, tab, mut, script_re, indep_re):
@@ -1670,6 +1750,27 @@ def v_replays(sheets, class_names, links, dump_notes, placed, pages):
     run("note qui n'est pas un texte", base, v_mutate(sheets, base, lambda cells: cells[0].update(note=5)),
         r"pas un texte", r"pas un texte")
 
+    # recoupement avec le classeur .xlsx : le dump perd une note, ou le classeur porte un fil que le dump n'a pas
+    if comments is not None and any(dump_notes.get(name) for name in class_names):
+        tab = next(name for name in class_names if dump_notes.get(name))
+        ref = next(iter(dump_notes[tab]))
+        row, col = split_ref(ref)
+        lost = v_mutate(sheets, tab, lambda cells: next(c for c in cells if (c["r"], c["c"]) == (row, col)).pop("note"))
+        script = "; ".join(crosscheck_notes(lost, comments)[0])
+        in_xlsx = sum(1 for name in class_names for text in comments.get(name, {"notes": {}})["notes"].values() if not is_blank(text))
+        in_dump = sum(len(notes) for notes in v_dump_notes(lost, class_names)[0].values())
+        failures = []
+        if not re.search(r"notes du classeur absentes du dump : %s" % re.escape(ref), script):
+            failures.append("le recoupement n'a pas refusé la note perdue : %s" % (script[:120] or "rien refusé"))
+        if in_dump == in_xlsx:
+            failures.append("le recalcul indépendant ne voit pas l'écart (%d notes des deux côtés)" % in_dump)
+        results.append(("note du classeur perdue par le dump (classeur .xlsx fourni)", failures, script[:110]))
+        threaded = dict(comments, **{tab: dict(comments.get(tab, {"notes": {}}), threads={ref: [{"text": "Une conversation"}]})})
+        script = "; ".join(crosscheck_notes(sheets, threaded)[0])
+        results.append(("fil de commentaires du classeur perdu par le dump (classeur .xlsx fourni)",
+                        [] if re.search(r"fils de commentaires du classeur absents du dump : %s" % re.escape(ref), script)
+                        else ["le recoupement n'a pas refusé le fil perdu : %s" % (script[:120] or "rien refusé")], script[:110]))
+
     # cas sur les pages : il faut au moins une note dans le dump
     by_page = {}
     for n in placed:
@@ -1708,7 +1809,9 @@ def v_replays(sheets, class_names, links, dump_notes, placed, pages):
 def verify(args):
     sheets, order, dump_dirs = load_dumps(args.dump)
     class_names = [n for n in order if n != SUMMARY_SHEET and n not in IGNORED_SHEETS]
-    links = load_links(args, dump_dirs)
+    xlsx = locate_xlsx(args, dump_dirs)
+    links = load_links(xlsx)
+    comments, comments_failure = read_xlsx_comments(xlsx) if xlsx is not None else (None, None)
     dump_notes, note_errors = v_dump_notes(sheets, class_names)
     out = args.out
     results = []     # (libellé, [échecs], info)
@@ -1852,7 +1955,18 @@ def verify(args):
                         % (n_dump, attached, written))
     check("(2 bis) notes de cellule (champ `note` du dump) : chacune écrite une fois, dans la page prévue, texte intégral", failures,
           "%d notes de cellule dans le dump, %d rattachées à un bloc d'effet, %d écrites" % (n_dump, attached, written))
-    replays = v_replays(sheets, class_names, links, dump_notes, placed, pages)
+    # (2 ter) le dump porte-t-il toutes les notes du classeur d'origine ? (2 bis compare les pages au dump : il ne voit pas une perte du dump)
+    if xlsx is None:
+        check("(2 ter) notes et fils du dump = ceux du classeur .xlsx d'origine (aucune note perdue par le dump)", [],
+              "non contrôlé : --sans-liens (aucun classeur .xlsx lu)")
+    elif comments_failure is not None:
+        check("(2 ter) notes et fils du dump = ceux du classeur .xlsx d'origine (aucune note perdue par le dump)", [comments_failure])
+    else:
+        gaps, changed, n_xlsx = crosscheck_notes(sheets, comments)
+        check("(2 ter) notes et fils du dump = ceux du classeur .xlsx d'origine (aucune note perdue par le dump)", gaps,
+              "%d notes dans le classeur, mêmes adresses dans le dump" % n_xlsx
+              + ("" if not changed else " ; AVERTISSEMENT : " + " ; ".join(changed)))
+    replays = v_replays(sheets, class_names, links, dump_notes, placed, pages, comments)
     for label, failures_, info in replays:
         check("cas d'erreur rejoué : " + label, failures_, info)
     refused = sum(1 for _, f, _ in replays if not f)
@@ -2093,11 +2207,11 @@ def load_dumps(paths):
     return sheets, order, dump_dirs
 
 
-def load_links(args, dump_dirs):
-    """-> hyperliens externes de cellule {onglet: {ref: url}}, lus dans le .xlsx d'origine : le dump ne les contient pas (c'est
-    tout ce que ce classeur apporte ; les notes viennent du dump)."""
+def locate_xlsx(args, dump_dirs):
+    """-> chemin du classeur .xlsx d'origine (option --xlsx, sinon à côté du dump), ou None avec --sans-liens. Arrêt s'il est
+    introuvable : ses hyperliens (le dump ne les contient pas) et le recoupement des notes en dépendent."""
     if args.sans_liens:
-        return {}
+        return None
     xlsx = args.xlsx
     if not xlsx:
         for d in dump_dirs:
@@ -2108,10 +2222,18 @@ def load_links(args, dump_dirs):
     if not xlsx or not os.path.isfile(xlsx):
         sys.exit("classeur .xlsx introuvable (option --xlsx) : les hyperliens de cellule en dépendent (le dump ne les contient pas) "
                  "(ou passer --sans-liens)")
+    return xlsx
+
+
+def load_links(xlsx):
+    """-> hyperliens externes de cellule {onglet: {ref: url}}, lus dans le .xlsx d'origine (None : --sans-liens, aucun lien) : le
+    dump ne les contient pas. Les notes, elles, viennent du dump (le classeur ne sert qu'à les recouper, voir crosscheck_notes)."""
+    if xlsx is None:
+        return {}
     try:
         return read_links(xlsx)
-    except ValueError as err:
-        sys.exit("ERREUR : %s" % err)
+    except (ValueError, KeyError, OSError, zipfile.BadZipFile, ET.ParseError) as err:
+        sys.exit("ERREUR : classeur %s : %s" % (xlsx, err))
 
 
 def build(sheets, class_names, links):
@@ -2175,9 +2297,12 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Génère les pages « classes » et « capacités » du wiki depuis le dump de « %s »."
                                  % WORKBOOK)
     ap.add_argument("--dump", action="append", required=True, help="dump JSON de xlsx_to_json.py (répétable)")
-    ap.add_argument("--xlsx", help="classeur d'origine : ne sert qu'aux hyperliens de cellule (les notes viennent du dump)")
-    ap.add_argument("--sans-liens", action="store_true",
-                    help="ne pas lire les hyperliens de cellule : aucun .xlsx n'est alors nécessaire (classeur de test)")
+    group = ap.add_mutually_exclusive_group()
+    group.add_argument("--xlsx", help="classeur d'origine : sert aux hyperliens de cellule et à recouper les notes du dump "
+                                       "(les notes écrites dans les pages viennent du dump)")
+    group.add_argument("--sans-liens", action="store_true",
+                        help="ne pas lire le classeur : ni hyperliens ni recoupement des notes, aucun .xlsx n'est alors nécessaire "
+                             "(classeur de test)")
     ap.add_argument("--out", required=True, help="racine du wiki (client/src/content/wiki)")
     ap.add_argument("--verifier", action="store_true",
                     help="n'écrit rien : contrôle les pages déjà écrites contre le dump (relecture indépendante)")
@@ -2188,7 +2313,21 @@ def main(argv=None):
 
     sheets, order, dump_dirs = load_dumps(args.dump)
     class_names = [n for n in order if n != SUMMARY_SHEET and n not in IGNORED_SHEETS]
-    links = load_links(args, dump_dirs)
+    xlsx = locate_xlsx(args, dump_dirs)
+    links = load_links(xlsx)
+    if xlsx is None:
+        print("AVERTISSEMENT : --sans-liens : le classeur .xlsx n'est pas lu, les hyperliens sont écartés et les notes du dump ne sont "
+              "pas recoupées avec celles du classeur", file=sys.stderr)
+    else:   # une note perdue par le dump ne doit pas passer en silence : rien n'est écrit en cas d'écart
+        comments, failure = read_xlsx_comments(xlsx)
+        gaps, changed, n_xlsx = crosscheck_notes(sheets, comments) if failure is None else ([failure], [], 0)
+        for text in changed:
+            print("AVERTISSEMENT : " + text, file=sys.stderr)
+        if gaps:
+            for text in gaps:
+                print("ERREUR : " + text, file=sys.stderr)
+            return 1
+        print("recoupement des notes avec le classeur : %d notes de cellule, mêmes adresses que dans le dump" % n_xlsx)
 
     try:
         built = build(sheets, class_names, links)
