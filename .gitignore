@@ -28,3 +28,6 @@ deploy/update-nas.env
 # Python
 __pycache__/
 *.pyc
+
+# Base de données reconstruite (jamais commitée : voir docs/sql/)
+var/
