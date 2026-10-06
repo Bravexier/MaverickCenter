@@ -1,9 +1,11 @@
 ---
 import Base from '../../../layouts/Base.astro';
 import EntryList from '../../../components/EntryList.astro';
+import RaceList from '../../../components/RaceList.astro';
 import { TYPES, TYPE_KEYS } from '../../../lib/types.mjs';
 import { groupClasses } from '../../../lib/class-groups.mjs';
-import { entriesOfType, loadWiki } from '../../../lib/wiki';
+import { groupRaces } from '../../../lib/race-kinds.mjs';
+import { entriesOfType, loadWiki, url } from '../../../lib/wiki';
 
 export function getStaticPaths() {
   return TYPE_KEYS.map((type) => ({ params: { type } }));
@@ -14,6 +16,8 @@ const { entries } = await loadWiki();
 const list = entriesOfType(entries, type);
 // Les classes sont présentées par catégorie (voir lib/class-groups.mjs) ; les autres types en liste alphabétique.
 const classGroups = type === 'classes' ? groupClasses(list) : [];
+// Les races sont présentées pures puis hybrides (voir lib/race-kinds.mjs), avec leurs magies innées.
+const raceGroups = type === 'races' ? groupRaces(entries) : [];
 ---
 
 <Base title={TYPES[type].label}>
@@ -34,6 +38,21 @@ const classGroups = type === 'classes' ? groupClasses(list) : [];
                 <EntryList entries={section.entries} showType={false} />
               </section>
             ))}
+          </section>
+        ))}
+      </>
+    ) : raceGroups.length > 0 ? (
+      <>
+        <p>
+          <a href={url('wiki/races-et-magies/')}>Tableau des races et de leurs magies innées</a>
+        </p>
+        <nav class="class-nav" aria-label="Types de races">
+          {raceGroups.map((group) => <a class="badge" href={`#${group.key}`}>{group.label} ({group.entries.length})</a>)}
+        </nav>
+        {raceGroups.map((group) => (
+          <section id={group.key}>
+            <h2>{group.label}</h2>
+            <RaceList races={group.entries} entries={entries} />
           </section>
         ))}
       </>

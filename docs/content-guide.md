@@ -17,6 +17,25 @@ status: draft                   # example | draft | verified
 Texte en Markdown. Un [[Mage]] ou une [[Magie du feu|magie ardente]] sont des liens vers d'autres pages.
 ```
 
+## Champs structurés (races et magies)
+
+L'import des classeurs pose, en plus des champs ci-dessus, des listes **structurées** que le site exploite pour relier les pages
+(`client/src/lib/magie-relations.mjs`) ; un champ absent veut dire « la source ne donne pas de liste », une liste vide « Aucune » :
+
+| Page | Champ | Contenu |
+| --- | --- | --- |
+| race | `magies_innees: ["Sang", "Eau"]` | magies innées possibles, noms courts, ordre du classeur (onglet « Accessibilité Magie ») |
+| magie | `nom_court: "Espace/Temps"` | nom de la magie dans ces listes (comparé sans casse ni accents) |
+| magie | `resiste_a`, `vulnerable_a`, `incompatible_avec` | « Résistance magique », « Vulnérabilité magique », « Magie non compatible » du bloc « Données » (une phrase libre n'est jamais transformée en liste : la clé est omise) |
+
+Le site en tire : le bloc « Magies innées disponibles » d'une race, « Disponibilité par race » et « Relations avec les autres magies »
+(fort contre = résistance, faible contre = vulnérabilité, incompatible) d'une magie, la page `/wiki/races-et-magies/` (deux tableaux) et le
+rangement des races. L'incompatibilité est lue dans les deux sens : une magie citée par la page d'une autre est marquée « déduite » (*).
+`test/races-magies-content.test.mjs` vérifie ces champs sur le contenu réel (noms existants, concordance avec le texte de la page, effectifs).
+
+**Races pures et hybrides** : une race est hybride quand elle a sa propre classe raciale (une classe « Hybride Animal » qui porte son nom,
+`lib/race-kinds.mjs`) ; les données confirment que ces 13 races ont exactement 3 magies innées, les 14 races pures en ont 13 ou plus.
+
 ## Liens entre pages
 
 | Écriture | Effet |

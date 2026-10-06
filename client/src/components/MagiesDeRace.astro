@@ -1,0 +1,45 @@
+---
+import { magieIndex, magiesOfRace } from '../lib/magie-relations.mjs';
+import { raceKind, racialClassOf } from '../lib/race-kinds.mjs';
+import { entryHref, url, type WikiEntry } from '../lib/wiki';
+
+interface Props {
+  entry: WikiEntry;
+  entries: WikiEntry[];
+}
+const { entry, entries } = Astro.props;
+const result = magiesOfRace(entries, entry);
+const racial = racialClassOf(entries, entry);
+const kind = raceKind(entries, entry);
+const unavailable = result
+  ? [...magieIndex(entries).values()].filter((m) => !result.magies.includes(m)).sort((a, b) => a.data.nom_court!.localeCompare(b.data.nom_court!, 'fr'))
+  : [];
+---
+
+{
+  result && (
+    <section class="relations" id="magies-innees" aria-labelledby="magies-innees-titre">
+      <h2 id="magies-innees-titre">Magies innées disponibles</h2>
+      <p class="muted">
+        {result.toutes ? `Toutes les magies : ${result.magies.length} sur ${result.total}.` : `${result.magies.length} sur ${result.total}.`}
+        {kind === 'hybride' && racial && (
+          <>
+            {' '}Race hybride : <a href={entryHref(racial)}>{racial.data.title}</a> est sa classe raciale.
+          </>
+        )}
+      </p>
+      <ul class="chips">
+        {result.magies.map((m) => <li><a class="chip" href={entryHref(m)} title={m.data.title}>{m.data.nom_court}</a></li>)}
+      </ul>
+      {unavailable.length > 0 && (
+        <details>
+          <summary>Magies innées non disponibles ({unavailable.length})</summary>
+          <ul class="chips">
+            {unavailable.map((m) => <li><a class="chip" href={entryHref(m)} title={m.data.title}>{m.data.nom_court}</a></li>)}
+          </ul>
+        </details>
+      )}
+      <p class="legend"><a href={url('wiki/races-et-magies/')}>Voir le tableau de toutes les races et de leurs magies</a></p>
+    </section>
+  )
+}

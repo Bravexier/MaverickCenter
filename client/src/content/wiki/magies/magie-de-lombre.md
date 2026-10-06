@@ -2,6 +2,9 @@
 title: "Magie de l'Ombre"
 aliases: []
 tags: ["magie", "ombre"]
+nom_court: "Ombre"
+resiste_a: ["Ombre"]
+vulnerable_a: ["Lumière"]
 summary: "La magie de l'ombre est une magie spécialisée dans l'entrave."
 sources: ["Google Sheet « Magie Maverick V8 », onglet « Ombre »", "https://docs.google.com/spreadsheets/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit"]
 status: draft

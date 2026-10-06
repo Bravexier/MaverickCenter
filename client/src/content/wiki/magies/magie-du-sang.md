@@ -2,6 +2,10 @@
 title: "Magie du Sang"
 aliases: []
 tags: ["magie", "sang"]
+nom_court: "Sang"
+resiste_a: ["Sang", "Eau", "Terre"]
+vulnerable_a: ["Glace", "Nécromancie"]
+incompatible_avec: ["Arcane", "Espace/Temps", "Corruption", "Nécromancie"]
 summary: "La magie du sang est une magie spécialisée dans les dégâts."
 sources: ["Google Sheet « Magie Maverick V8 », onglet « Sang »", "https://docs.google.com/spreadsheets/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit"]
 status: draft

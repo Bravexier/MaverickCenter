@@ -2,6 +2,9 @@
 title: "Magie de l'Eau"
 aliases: []
 tags: ["magie", "eau"]
+nom_court: "Eau"
+resiste_a: ["Eau", "Feu", "Nécromancie"]
+vulnerable_a: ["Foudre", "Sang"]
 summary: "La magie de l'eau est une magie polyvalente spécialisée dans le soin, les dégâts et l'entrave."
 sources: ["Google Sheet « Magie Maverick V8 », onglet « Eau »", "https://docs.google.com/spreadsheets/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit"]
 status: draft

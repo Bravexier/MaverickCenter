@@ -2,6 +2,9 @@
 title: "Magie du Feu"
 aliases: []
 tags: ["magie", "feu"]
+nom_court: "Feu"
+resiste_a: ["Feu", "Glace", "Terre"]
+vulnerable_a: ["Eau", "Vent"]
 summary: "La magie du feu est une magie offensive spécialisée dans les dégâts, l'entrave et le renforcement."
 sources: ["Google Sheet « Magie Maverick V8 », onglet « Feu »", "https://docs.google.com/spreadsheets/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit"]
 status: draft

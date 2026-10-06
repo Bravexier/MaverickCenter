@@ -2,6 +2,10 @@
 title: "Magie du Vide"
 aliases: []
 tags: ["magie", "vide"]
+nom_court: "Vide"
+resiste_a: ["Vide"]
+vulnerable_a: ["Espace/Temps"]
+incompatible_avec: ["Espace/Temps"]
 summary: "La magie du Vide est l’antithèse de l’Espace-Temps."
 sources: ["Google Sheet « Magie Maverick V8 », onglet « Vide »", "https://docs.google.com/spreadsheets/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit"]
 status: draft

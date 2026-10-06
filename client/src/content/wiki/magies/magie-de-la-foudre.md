@@ -2,6 +2,9 @@
 title: "Magie de la Foudre"
 aliases: []
 tags: ["magie", "foudre"]
+nom_court: "Foudre"
+resiste_a: ["Foudre", "Eau", "Vent"]
+vulnerable_a: ["Terre", "Nécromancie"]
 summary: "La magie de la foudre est une magie spécialisée dans les dégâts et l'amplification."
 sources: ["Google Sheet « Magie Maverick V8 », onglet « Foudre »", "https://docs.google.com/spreadsheets/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit"]
 status: draft

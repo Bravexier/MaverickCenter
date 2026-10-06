@@ -6,6 +6,11 @@ Usage (bibliothèque standard uniquement ; relançable, mêmes fichiers à l'ide
     python3 -I tools/sheets/races.py --dump <races-index.json> --dump <fiche-auto-v15.json> \
         --out /home/user/MaverickCenter/client/src/content/wiki
 
+Option `--verifier` : n'écrit rien. Recalcule `magies_innees` directement depuis le dump brut (sans passer par le code
+de lecture du script), compare aux pages déjà écrites, puis rejoue des cas d'erreur sur des copies modifiées de la
+matrice. Code de sortie non nul au moindre écart. Sans cette option, la même comparaison aux pages est faite après
+l'écriture (un écart arrête le script).
+
 Les dumps JSON sont produits par tools/sheets/xlsx_to_json.py (format : voir ce script). Chaque dump est reconnu à son
 contenu (l'ordre des `--dump` n'a pas d'importance). Les cellules sont une donnée non fiable : elles ne sont jamais
 exécutées, seulement copiées (échappées pour le Markdown). Aucune valeur n'est calculée, corrigée ni complétée.
@@ -34,6 +39,15 @@ Sources (classeurs Google, propriété d'un tiers) :
        * « Accessibilité de Classe » : matrice 27 races (lignes 2 à 28) x 39 classes (colonnes B à AN), valeurs 0/1.
        * « Accessibilité Magie » : matrice 27 races x 15 magies (colonnes B à P), valeurs 0/1.
 
+Frontmatter (contrat avec le site, qui lit ces champs structurés ; le corps Markdown ne dépend pas d'eux) :
+    `magies_innees: ["Sang", "Eau", "Terre"]` = les en-têtes de l'onglet « Accessibilité Magie » (B1:P1 : « Potentiel
+    Illimité », « Sang », « Arcane », « Corruption », « Espace/Temps », « Vide », « Nécromancie », « Feu », « Eau »,
+    « Glace », « Terre », « Vent », « Foudre », « Lumière », « Ombre ») dont la valeur vaut 1 sur la ligne de la race,
+    dans l'ordre des colonnes, écrits comme l'en-tête (ce sont les noms courts des pages de magies). C'est la même
+    liste que celle de « Magies accessibles » dans le corps. Une valeur ni 0 ni 1, une race de la matrice sans page,
+    ou une race de l'index absente de la matrice arrête le script (pas de repli).
+    Rapport (sortie standard) : nombre de pages, puis la répartition des races par nombre de magies innées.
+
 Page produite pour chaque race (les sections vides sont omises) :
     présentation (phrase de l'index, aussi `summary`) ; « Caractéristiques de départ » (tableau Race, en-têtes tels
     qu'écrits, puis « Divers ») ; « Restrictions » ; « Don base » ; « Capacité Hyper » ; « Sous-races et origines »
@@ -48,7 +62,8 @@ colonne « Race » de « Bonus Race » s'écrit autrement que le nom de la race,
 
 Le script s'arrête avec une erreur si une cellule non vide d'un onglet du périmètre n'est pas reconnue (rien n'est perdu
 en silence), si un nom de race n'a pas de correspondance, si une valeur de matrice n'est ni 0 ni 1, si un titre est déjà
-porté par une page d'une autre famille, ou si un fichier existant n'est pas issu de ce classeur.
+porté par une page d'une autre famille, si un fichier existant n'est pas issu de ce classeur, ou si `races/` contient une
+page issue de ce classeur dont la race n'est plus dans l'index.
 
 Il ne touche qu'aux fichiers `<out>/races/<slug>.md` de sa famille : il n'efface rien, ne réécrit pas un fichier dont le
 contenu ne change pas. Aucun lien [[…]] n'est écrit (une cellule qui en contiendrait serait neutralisée et signalée sur
@@ -72,6 +87,12 @@ FICHE_TITLE = "Fiche personnage Maverick Auto V15.2.2"
 FICHE_ID = "1SvzNbdDVQyLE9cyp9U5USHBsxHpwxhtaWrFTu9CpLY4"
 TAB_RACE, TAB_BONUS, TAB_CLASS, TAB_MAGIE = "Race", "Bonus Race", "Accessibilité de Classe", "Accessibilité Magie"
 FICHE_TABS = (TAB_RACE, TAB_BONUS, TAB_CLASS, TAB_MAGIE)
+
+# Champ de frontmatter lu par le site : magies innées de la race (en-têtes de TAB_MAGIE dont la valeur vaut 1).
+MAGIC_FIELD = "magies_innees"
+# Noms courts des 15 magies, tels qu'écrits dans B1:P1 de TAB_MAGIE (contrat avec les pages de magies ; --verifier).
+MAGIC_HEADERS = ("Potentiel Illimité", "Sang", "Arcane", "Corruption", "Espace/Temps", "Vide", "Nécromancie", "Feu",
+                 "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre")
 
 
 def source_url(file_id):
@@ -415,6 +436,7 @@ def render_page(name, summary, race_headers, race_row, bonus_headers, bonus_rows
          "tags: " + yaml_list(TAGS)]
     if summary:
         L.append("summary: " + yaml_str(summary))
+    L.append(MAGIC_FIELD + ": " + yaml_list(magic_ok))
     L += ["sources: " + yaml_list(SOURCES), "status: " + STATUS, "---", ""]
 
     if summary:
@@ -476,6 +498,152 @@ def render_page(name, summary, race_headers, race_row, bonus_headers, bonus_rows
 
 
 # --------------------------------------------------------------------------------------------------------------------
+# Vérification indépendante de `magies_innees` (option --verifier, et après chaque écriture)
+# --------------------------------------------------------------------------------------------------------------------
+
+def _raw_dumps(paths):
+    """(feuille brute « Accessibilité Magie », feuille brute de l'index) lues directement dans les dumps JSON."""
+    magic = index = None
+    for path in paths:
+        with open(path, encoding="utf-8") as fh:
+            sheets = json.load(fh)["sheets"]
+        for sh in sheets:
+            if sh["name"] == TAB_MAGIE:
+                magic = sh
+        if len(sheets) == 1:
+            index = sheets[0]
+    if magic is None or index is None:
+        raise ValueError("verifier : il faut le dump de l'index des races et celui de la fiche personnage")
+    return magic, index
+
+
+def expected_magic(paths):
+    """{clé de race: (nom, [magies innées])} recalculé à la main depuis le dump brut, sans Sheet ni read_matrix."""
+    magic, index = _raw_dumps(paths)
+    grid = {(c["r"], c["c"]): c["v"] for c in magic["cells"] if not is_blank(c["v"])}
+    heads = tuple(grid.get((1, c)) for c in range(2, 2 + len(MAGIC_HEADERS)))
+    if heads != MAGIC_HEADERS:
+        raise ValueError("verifier : en-têtes de %s inattendus : %r" % (TAB_MAGIE, heads))
+    last_col = 1 + len(MAGIC_HEADERS)
+    stray = sorted(k for k in grid if k[1] > last_col or k[1] < 1 or k[0] < 1)
+    if stray:
+        raise ValueError("verifier : cellules hors B:P dans %s : %r" % (TAB_MAGIE, stray[:5]))
+    expected = {}
+    for r in sorted({r for r, _ in grid if r > 1}):
+        name = grid[(r, 1)]
+        ones = []
+        for c, head in zip(range(2, last_col + 1), MAGIC_HEADERS):
+            v = grid.get((r, c))
+            if isinstance(v, bool) or not isinstance(v, (int, float)) or v not in (0, 1):
+                raise ValueError("verifier : %s L%dC%d = %r (0 ou 1 attendu)" % (TAB_MAGIE, r, c, v))
+            if v == 1:
+                ones.append(head)
+        key = normalize(name)
+        if key in expected:
+            raise ValueError("verifier : race %r en double dans %s" % (name, TAB_MAGIE))
+        expected[key] = (name, ones)
+    names_index = {normalize(c["v"]) for c in index["cells"] if c["c"] == 1 and not is_blank(c["v"])}
+    if names_index != set(expected):
+        raise ValueError("verifier : races de l'index et de %s différentes : %s" % (
+            TAB_MAGIE, sorted(names_index ^ set(expected))))
+    return expected
+
+
+def page_magic(text):
+    """(liste du frontmatter `magies_innees`, liste de « Magies accessibles » dans le corps) ; None si absente."""
+    m = re.match(r"---\n(.*?)\n---\n", text, re.S)
+    if not m:
+        return None, None
+    front = None
+    lines = [l for l in m.group(1).split("\n") if l.startswith(MAGIC_FIELD + ":")]
+    if len(lines) == 1:
+        try:
+            front = json.loads(lines[0][len(MAGIC_FIELD) + 1:].strip())
+        except ValueError:
+            front = None
+    listed = None
+    body = text[m.end():].split("\n## Magies accessibles\n\n", 1)
+    if len(body) == 2:
+        rest = body[1].split("\n")
+        listed = [n.strip() for n in rest[2].split(",")] if len(rest) > 2 and rest[2] and not rest[2].startswith("#") else []
+    return front, listed
+
+
+def check_pages(paths, wiki_root):
+    """Compare chaque page `races/<slug>.md` aux valeurs recalculées ; liste des écarts (vide si tout concorde)."""
+    problems = []
+    expected = expected_magic(paths)
+    out_dir = os.path.join(wiki_root, CATEGORY)
+    for key, (name, ones) in sorted(expected.items()):
+        path = os.path.join(out_dir, key + ".md")
+        if not os.path.exists(path):
+            problems.append("%s : page absente" % path)
+            continue
+        with open(path, encoding="utf-8") as fh:
+            front, listed = page_magic(fh.read())
+        if front is None:
+            problems.append("%s : champ %s absent ou illisible (une seule ligne JSON attendue)" % (path, MAGIC_FIELD))
+        elif front != ones:
+            problems.append("%s : %s = %r, attendu %r" % (path, MAGIC_FIELD, front, ones))
+        if listed != ones:
+            problems.append("%s : « Magies accessibles » du corps = %r, attendu %r" % (path, listed, ones))
+    if os.path.isdir(out_dir):
+        for fname in sorted(os.listdir(out_dir)):
+            if fname.endswith(".md") and fname[:-3] not in expected:
+                with open(os.path.join(out_dir, fname), encoding="utf-8") as fh:
+                    if source_url(FICHE_ID) in fh.read():
+                        problems.append("%s : page issue de ce classeur sans race dans %s" % (fname, TAB_MAGIE))
+    return problems
+
+
+def error_cases(paths):
+    """Rejoue read_matrix sur des copies modifiées de la matrice : chaque cas doit lever ValueError. Liste des échecs."""
+    magic, index = _raw_dumps(paths)
+    races = [(norm_ws(c["v"]), None) for c in sorted(index["cells"], key=lambda c: c["r"]) if c["c"] == 1]
+    base = [dict(c) for c in magic["cells"]]
+
+    def sheet(cells):
+        return Sheet({"name": TAB_MAGIE, "cells": cells})
+
+    def find(cells, r, c):
+        return next(x for x in cells if x["r"] == r and x["c"] == c)
+
+    cases = []
+    for label, value in (("valeur 2", 2.0), ("valeur négative", -1.0), ("valeur 0,5", 0.5), ("texte", "oui"), ("vide", None)):
+        cells = [dict(c) for c in base]
+        find(cells, 14, 3)["v"] = value
+        cases.append((label, cells))
+    cells = [dict(c) for c in base if c["r"] != 14]
+    cases.append(("race de l'index absente de la matrice", cells))
+    cells = [dict(c) for c in base] + [{"r": 29, "c": 1, "v": "Race inconnue"}] + [
+        {"r": 29, "c": c, "v": 0.0} for c in range(2, 17)]
+    cases.append(("race de la matrice absente de l'index", cells))
+    cells = [dict(c) for c in base] + [{"r": 5, "c": 17, "v": 1.0}]
+    cases.append(("cellule hors de la matrice", cells))
+    failures = []
+    for label, cells in cases:
+        try:
+            read_matrix(sheet(cells), races)
+        except ValueError:
+            continue
+        failures.append("%s : aucune erreur levée" % label)
+    # contrôle de sens : une valeur 0 -> 1 doit apparaître dans la liste, à sa place dans l'ordre des colonnes
+    cells = [dict(c) for c in base]
+    find(cells, 14, 3 + 1)["v"] = 1.0                       # Orios (ligne 14) : Arcane (colonne D) passe à 1
+    _, ok = read_matrix(sheet(cells), races)
+    if ok[normalize("Orios")] != ["Sang", "Arcane", "Eau", "Terre"]:
+        failures.append("ordre des colonnes : %r" % (ok[normalize("Orios")],))
+    return failures
+
+
+def run_verifier(paths, wiki_root):
+    problems = check_pages(paths, wiki_root) + error_cases(paths)
+    if problems:
+        raise SystemExit("--verifier : %d écart(s)\n  " % len(problems) + "\n  ".join(problems[:30]))
+    print("--verifier : %d pages conformes au dump (%s), cas d'erreur rejoués" % (len(expected_magic(paths)), MAGIC_FIELD))
+
+
+# --------------------------------------------------------------------------------------------------------------------
 # Écriture
 # --------------------------------------------------------------------------------------------------------------------
 
@@ -497,7 +665,12 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Génère les pages « races » du wiki depuis les dumps JSON des classeurs.")
     ap.add_argument("--dump", action="append", required=True, help="dump JSON (index des races, fiche personnage)")
     ap.add_argument("--out", required=True, help="dossier racine du wiki (client/src/content/wiki)")
+    ap.add_argument("--verifier", action="store_true",
+                    help="n'écrit rien : recalcule %s depuis les dumps et compare aux pages existantes" % MAGIC_FIELD)
     args = ap.parse_args(argv)
+    if args.verifier:
+        run_verifier(args.dump, args.out)
+        return
 
     index_sheet, fiche = load_dumps(args.dump)
     races = read_index(index_sheet)
@@ -505,6 +678,12 @@ def main(argv=None):
     bonus_headers, bonus_rows, bonus_spelled = read_bonus_tab(fiche[TAB_BONUS], races)
     class_names, class_ok = read_matrix(fiche[TAB_CLASS], races)
     magic_names, magic_ok = read_matrix(fiche[TAB_MAGIE], races)
+    # Contrôle avant toute écriture : le second calcul (voir « Vérification indépendante ») doit donner les mêmes listes.
+    expected = expected_magic(args.dump)
+    for name, _ in races:
+        if expected[normalize(name)][1] != magic_ok[normalize(name)]:
+            raise SystemExit("Arrêt, rien n'a été écrit : %s de %s : %r d'un côté, %r de l'autre" % (
+                MAGIC_FIELD, name, magic_ok[normalize(name)], expected[normalize(name)][1]))
 
     pages = []
     for name, summary in races:
@@ -535,6 +714,9 @@ def main(argv=None):
                 if source_url(FICHE_ID) not in existing:
                     problems.append("%s existe et n'est pas issu de ce classeur" % path)
                 continue
+            if os.path.dirname(path) == os.path.abspath(out_dir) and source_url(FICHE_ID) in existing:
+                problems.append("%s est issu de ce classeur mais sa race n'est plus dans l'index" % path)
+                continue
             title = frontmatter_title(existing)
             if title is not None and normalize(title) in mine:
                 problems.append("titre %r déjà porté par %s" % (title, path))
@@ -554,6 +736,14 @@ def main(argv=None):
             fh.write(text)
         written += 1
     print("%d pages (%d écrites, %d inchangées) dans %s" % (len(pages), written, unchanged, out_dir))
+    spread = {}
+    for _, key, _ in pages:
+        spread.setdefault(len(magic_ok[key]), []).append(key)
+    print("%s : %s sur %d magies" % (MAGIC_FIELD, ", ".join(
+        "%d race(s) à %d" % (len(keys), n) for n, keys in sorted(spread.items(), reverse=True)), len(magic_names)))
+    problems = check_pages(args.dump, args.out)
+    if problems:
+        raise SystemExit("Vérification après écriture : %d écart(s)\n  " % len(problems) + "\n  ".join(problems[:30]))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,44 @@
+---
+import { racesOfMagie } from '../lib/magie-relations.mjs';
+import { raceKind } from '../lib/race-kinds.mjs';
+import { entryHref, url, type WikiEntry } from '../lib/wiki';
+
+interface Props {
+  entry: WikiEntry;
+  entries: WikiEntry[];
+}
+const { entry, entries } = Astro.props;
+const { avec, sans } = racesOfMagie(entries, entry);
+const pures = avec.filter((r) => raceKind(entries, r) === 'pure');
+const hybrides = avec.filter((r) => raceKind(entries, r) === 'hybride');
+const total = avec.length + sans.length;
+---
+
+{
+  total > 0 && (
+    <section class="relations" id="races-disponibles" aria-labelledby="races-disponibles-titre">
+      <h2 id="races-disponibles-titre">Disponibilité par race</h2>
+      <p class="muted">Magie innée possible pour {avec.length} race{avec.length > 1 ? 's' : ''} sur {total}.</p>
+      {pures.length > 0 && (
+        <>
+          <h3>Races pures ({pures.length})</h3>
+          <ul class="chips">{pures.map((r) => <li><a class="chip" href={entryHref(r)}>{r.data.title}</a></li>)}</ul>
+        </>
+      )}
+      {hybrides.length > 0 && (
+        <>
+          <h3>Races hybrides ({hybrides.length})</h3>
+          <ul class="chips">{hybrides.map((r) => <li><a class="chip" href={entryHref(r)}>{r.data.title}</a></li>)}</ul>
+        </>
+      )}
+      {avec.length === 0 && <p>Aucune race ne peut l’avoir en magie innée.</p>}
+      {sans.length > 0 && (
+        <details>
+          <summary>Races qui ne peuvent pas l’avoir en magie innée ({sans.length})</summary>
+          <ul class="chips">{sans.map((r) => <li><a class="chip" href={entryHref(r)}>{r.data.title}</a></li>)}</ul>
+        </details>
+      )}
+      <p class="legend"><a href={url('wiki/races-et-magies/')}>Voir le tableau de toutes les races et de leurs magies</a></p>
+    </section>
+  )
+}

@@ -66,6 +66,10 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
 - La page `/wiki/classes/` range les classes par catégorie (Physiques > Mêlée/Distance, Magiques, Raciales, Autres) d'après les tags
   posés par l'import (catégorie du Sommaire du classeur) : `client/src/lib/class-groups.mjs`, testé. « Raciales » = « Classe Hybride Animal » ;
   le Parleur (classé mêlée dans le classeur) est volontairement sous « Autres » (`CLASS_OVERRIDES`, décision du propriétaire).
+- Races ↔ magies : les pages portent des listes structurées (`magies_innees`, `nom_court`, `resiste_a`, `vulnerable_a`, `incompatible_avec`)
+  posées par `tools/sheets/races.py` et `magies.py` ; le site en tire les liens, les tableaux de `/wiki/races-et-magies/` et la distinction
+  races pures / hybrides (`lib/magie-relations.mjs`, `lib/race-kinds.mjs`). Voir `docs/content-guide.md`. Les champs sont déclarés dans `content.config.ts`
+  (un champ non déclaré est supprimé par Astro).
 - `npm run autolink` (aperçu) / `-- --write` : maillage automatique des pages, voir `docs/content-guide.md`.
 - Le générateur ne gère ni compétences, ni équipement, ni dés (voir `docs/character-generator.md`).
 

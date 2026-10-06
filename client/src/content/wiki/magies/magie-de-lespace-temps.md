@@ -2,6 +2,10 @@
 title: "Magie de l'Espace/Temps"
 aliases: ["Espace/Temps", "Espace-Temps", "Temps/Espace"]
 tags: ["magie", "espace-temps"]
+nom_court: "Espace/Temps"
+resiste_a: ["Espace/Temps"]
+vulnerable_a: ["Vide"]
+incompatible_avec: ["Sang", "Arcane", "Corruption", "Vide"]
 summary: "La magie de l’Espace-Temps est une magie primordiale qui dicte les lois du mouvement et de la distance."
 sources: ["Google Sheet « Magie Maverick V8 », onglet « TempsEspace »", "https://docs.google.com/spreadsheets/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit"]
 status: draft
