@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { alternativesOf, asymmetricChoices, capacitesOfClass, checkSelection, groupByClass, unresolvedCapacites } from '../src/lib/capacites.mjs';
+import { alternativesOf, asymmetricChoices, capacitesOfClass, checkSelection, groupByClass, nomCapacite, nomsSeRepondent, unresolvedCapacites } from '../src/lib/capacites.mjs';
 
 // Fabrique une page de capacité selon le contrat du frontmatter (voir content.config.ts).
 const cap = (classe, slug, nom, extra) => ({
@@ -171,4 +171,28 @@ test('groupByClass : une capacité dont la classe est inconnue n’est pas perdu
   const groups = groupByClass([...BARDE, orpheline]);
   assert.equal(groups.at(-1).classe, null);
   assert.deepEqual(groups.at(-1).entries.map((e) => e.id), [orpheline.id]);
+});
+
+// --- Noms coupés sur deux cases : deux noms qui se répondent (confirmé par le propriétaire du projet) ---
+const nommee = (nom) => ({ id: `capacites/x-${nom}`, data: { title: nom } });
+
+test('nomCapacite : le nom tel qu’écrit dans l’onglet, sans « (Classe) » ni « , niveau N » ajoutés pour distinguer les homonymes', () => {
+  assert.equal(nomCapacite(nommee('Nouvel accord (Barde)')), 'Nouvel accord');
+  assert.equal(nomCapacite(nommee('Chant ... (Goleois), niveau 20')), 'Chant ...');
+  assert.equal(nomCapacite(nommee('Mage Rouge (Mage Rouge)')), 'Mage Rouge');
+  assert.equal(nomCapacite(nommee('Touérk !')), 'Touérk !', 'un titre sans suffixe reste intact');
+  assert.equal(nomCapacite(nommee('Fer (acier) (Forgeron)')), 'Fer (acier)', 'seule la dernière parenthèse est retirée');
+});
+
+test('nomsSeRepondent : le premier nom finit par une ellipse, le second en commence une (dans un sens ou dans l’autre)', () => {
+  const r = (a, b) => nomsSeRepondent(nommee(a), nommee(b));
+  assert.equal(r('Tenir ... (Lancier)', '... ou charger ? (Lancier)'), true);
+  assert.equal(r('Vive Dieu … (Moine)', '… Menteur ! (Moine)'), true);
+  assert.equal(r('... ou charger ? (Lancier)', 'Tenir ... (Lancier)'), true, 'l’ordre des arguments ne compte pas');
+  assert.equal(r('Chant . (Goleois), niveau 10', '. de coquelicot (Goleois)'), true, 'ellipse d’un seul point (Goleois)');
+  assert.equal(r('Chant .. (Goleois), niveau 15', '.. de tournesol (Goleois)'), true);
+  assert.equal(r('Nouvel accord (Barde)', 'Écho (Barde)'), false, 'des noms entiers ne se répondent pas');
+  assert.equal(r('Tenir ... (Lancier)', 'Écho (Lancier)'), false, 'une moitié seule ne répond à rien');
+  assert.equal(r('... bec (Goleois)', '... jaune (Goleois)'), false, 'deux débuts de nom ne se répondent pas');
+  assert.equal(r('Fin. (A)', '. de x (B)'), false, 'un point final collé au mot n’est pas une ellipse');
 });

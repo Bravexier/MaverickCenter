@@ -1,5 +1,5 @@
 ---
-title: "Chasseur prime (Mercenaire)"
+title: "Chasseur de primes (Mercenaire)"
 aliases: []
 tags: ["capacité de classe", "mercenaire", "chasseur de primes"]
 summary: "+5% pour toutes les compétences Perception, +5 points de maîtrise d'arme à répartir."

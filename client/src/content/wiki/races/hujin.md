@@ -101,3 +101,5 @@ Cette page suit l'onglet « Hujin » du Google Sheet « Les races », qui prime 
 | Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
 | Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Gomme à mâcher<br>Diminue d'un cran les dés des attaques physiques ou magiques subit | Divise les dégâts physiques et magiques reçu par 2. |
 | Classes accessibles<br>(fiche : matrice « Accessibilité de Classe ») | Avantage(s) : Accès à toutes les classes | 26 sur 39 (à 0 dans la matrice : Orios, Fenrir, Kitsune, Olwman, Rokh, Namazu, Minotaure, Satyre, Médusain, Jackalope, Marcass, Anansi, Goleois) |
+
+Accès aux classes et aux magies : selon le propriétaire du projet, les phrases « Accès à toutes les classes », « Accès à toutes les magies » et « Une seule magie autorisé » de l'onglet sont des erreurs de copier-coller (la plupart des races pures ont bien toutes les magies, mais il peut y avoir des ratés) : la matrice de la fiche est retenue.

@@ -340,3 +340,5 @@ Cette page suit l'onglet « Drakos » du Google Sheet « Les races », qui prime
 | Divers<br>(fiche : colonne « Divers ») | Ne figure pas telle quelle dans l'onglet : « la magie innée va déterminer la couleur des écailles draconiques et des particularité du don racial » | Peut planer avec ses ailes, la magie innée va déterminer la couleur des écailles draconiques et des particularité du don racial. |
 | Don de l'ethnie « Potentiel illimité »<br>(fiche : sous-race « Drakos Orange », colonne « Descriptif ») | 1AP/1AM<br>5% parmi les autres<br>Au choix parmi les autres | \- 1AP/1AM<br>\- 5% parmi les autres<br>\- +1 résistance à l'altération choisie parmi toutes |
 | Nom de l'ethnie « Tempe/Espace »<br>(fiche : colonnes B et C de « Bonus Race ») | Tempe/Espace | Drakos Rose<br>Nom : Espace/Temps |
+
+Accès aux classes et aux magies : selon le propriétaire du projet, les phrases « Accès à toutes les classes », « Accès à toutes les magies » et « Une seule magie autorisé » de l'onglet sont des erreurs de copier-coller (la plupart des races pures ont bien toutes les magies, mais il peut y avoir des ratés) : la matrice de la fiche est retenue.

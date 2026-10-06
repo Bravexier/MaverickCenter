@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "dumps": {
+    "classes-v7": {
+      "classeur": "Classe Maverick V7",
+      "corrections": [
+        {
+          "onglet": "Mercenaire",
+          "cellule": "AC22",
+          "avant": "Chasseur prime",
+          "apres": "Chasseur de primes",
+          "nature": "grammaire",
+          "note": "Cartouche de spécialité : la bannière du même onglet (AA17) dit « CHASSEUR DE PRIMES » ; le propriétaire du projet confirme la coquille."
+        }
+      ]
+    }
+  }
+}

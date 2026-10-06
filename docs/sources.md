@@ -89,6 +89,16 @@ Obtenir les données d'un classeur, par ordre de préférence :
    **Limite connue** : `xlsx_to_json.py` ne lit pas les commentaires et notes de cellule (openpyxl : `cell.comment`) ; plusieurs
    classeurs en portent (classes, magies, équipement, invocations) et leurs extracteurs ne les importent donc pas encore.
 
+**Coquilles et fautes d'orthographe** : les classeurs en contiennent (« Chasseur prime » pour « Chasseur de primes ») et le propriétaire du
+projet demande de les corriger. Une correction n'est jamais faite dans une page générée (la prochaine importation l'écraserait) mais dans le
+registre versionné `tools/sheets/corrections.json` : une ligne par correction, adressée à une cellule (onglet, adresse A1, texte avant / après,
+nature, raison). Entre l'étape 1 et l'étape 2, on applique le registre au dump :
+`python3 -I tools/sheets/corriger-dump.py appliquer --ledger tools/sheets/corrections.json --dump <classes-v7.json> --out <classes-v7.corrige.json>`
+(la section du registre est le nom du dump sans `.json`), puis on passe le dump corrigé aux extracteurs et à leurs `--verifier`. L'outil refuse
+une correction périmée (la source a changé), redondante (la source est déjà corrigée : retirer la ligne), qui change un chiffre, un dé, un
+signe ou plus qu'un mot : cela ne serait plus une faute mais une règle, donc une question pour le propriétaire.
+`corriger-dump.py verifier-registre` contrôle le registre seul (testé par `client/test/corrections.test.mjs`).
+
 Les JSON intermédiaires et les `.xlsx` ne font pas partie du dépôt : ils se régénèrent à partir des classeurs.
 Les extracteurs sont relançables, mais **ils écrasent les pages qu'ils génèrent** : retoucher une page à la main
 puis relancer l'extracteur perd la retouche. Passer le statut en `verified` une fois la page relue, et ne plus
