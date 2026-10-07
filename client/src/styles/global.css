@@ -64,9 +64,31 @@ main { padding-block: 1.5rem 3rem; }
 .site-header { background: var(--surface); border-bottom: 1px solid var(--border); }
 .site-header__inner { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1.5rem; padding-block: 0.75rem; }
 .brand { font-weight: bold; font-size: 1.15rem; text-decoration: none; }
-.site-nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; }
-.site-nav a { text-decoration: none; color: var(--text); }
-.site-nav a[aria-current='page'] { color: var(--accent); font-weight: bold; }
+/* Menu à deux niveaux : un bouton par rubrique, son sous-menu s'ouvre dessous (clic, ou survol sur écran à souris). */
+.site-nav ul { list-style: none; margin: 0; padding: 0; }
+.site-nav__groups { display: flex; flex-wrap: wrap; gap: 0.25rem 0.5rem; }
+.nav-group { position: relative; }
+.nav-group__toggle { background: none; border: 0; border-radius: var(--radius); padding: 0.3rem 0.6rem; cursor: pointer; }
+.nav-group__toggle::after { content: ' ▾'; font-size: 0.75em; color: var(--muted); }
+.nav-group__toggle[aria-current='true'] { color: var(--accent); font-weight: bold; }
+.nav-group__toggle:hover, .nav-group__toggle[aria-expanded='true'] { background: var(--border); }
+.nav-group__menu {
+  display: none; position: absolute; z-index: 10; left: 0; top: 100%; min-width: 15rem;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 0.35rem 0; box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+}
+.nav-group__toggle[aria-expanded='true'] + .nav-group__menu { display: block; }
+@media (hover: hover) { .nav-group:hover > .nav-group__menu, .nav-group:focus-within > .nav-group__menu { display: block; } }
+.nav-group__menu a, .nav-soon { display: block; padding: 0.3rem 0.9rem; text-decoration: none; color: var(--text); }
+.nav-group__menu a:hover { background: var(--border); }
+.nav-soon { color: var(--muted); font-style: italic; }
+.nav-group__links { display: flex; flex-wrap: wrap; padding: 0 0.9rem 0.3rem 1.5rem !important; gap: 0 0.75rem; }
+.nav-group__links a { display: inline; padding: 0; font-size: 0.85rem; color: var(--accent); }
+.nav-group__links a:hover { background: none; text-decoration: underline; }
+@media (max-width: 40rem) {
+  .nav-group { position: static; }
+  .nav-group__menu { left: 1rem; right: 1rem; }
+}
 .site-footer { color: var(--muted); font-size: 0.85rem; padding-block: 1.5rem; }
 
 .search-form { margin-left: auto; display: flex; gap: 0.4rem; }
