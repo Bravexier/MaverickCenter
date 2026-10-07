@@ -36,7 +36,8 @@ Le statut « décidé » veut dire que tu as tranché (`decisions-regles.md`) **
 | Classes | Archimage et +4 AM des classes magiques (y compris la 2ᵉ spécialité des classes raciales) | **décidé** (R6, R7) ; la base a `am_base` par catégorie et pas de booléen « magique » : à refléter |
 | Races | 27 races ou 23 | **décidé : 27** (R1) ; la base en a 27 |
 | Races | « Accès à toutes les classes / magies » contre la matrice de la fiche | **décidé : copier-coller, matrice retenue** (R8) |
-| Races | Fautes de saisie de la fiche (« Felfle », « Satyre » avec espace) | **décidé : à corriger** (R10), relecture reportée à la conversion en SQL |
+| Races | Fautes de saisie de la fiche (« Felfle », « Satyre » avec espace) | **décidé : à corriger** (R10) ; relecture des magies et sorts faite (migration 0003), races et autres domaines à venir |
+| Magies | Orthographe : 205 points laissés tels quels (mot manquant ou en trop, accord douteux, terme du jeu possible, nom de sort dont la correction changerait l'identifiant) | **à valider** : liste dans [`orthographe-a-valider.md`](orthographe-a-valider.md) |
 | Races | Capacité hyper : deux versions (fiche, guide) divergent pour 8 races ; bonus d'ethnie issu de formules (faux positif probable : Elfe forestier Forêt +3 AP) | ouvert |
 | Bestiaire | Sigles FPVSIA, « NPM », « EP » non définis ; 6 créatures aux résistances contradictoires ; « Golem d'Argile » sans créature ; 6 sorts cités sur 105 introuvables (3 variantes évidentes comme « Veilliessement ») | ouvert |
 | Équipement | 9 prix de matière incohérents ; deux listes de kits d'alchimie ; tests de fabrication en conflit (Forgeron, Enchanteur) ; unité des prix d'armure et de bouclier | ouvert |

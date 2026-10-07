@@ -155,12 +155,12 @@ test('chaque note est citée avec son texte intégral, sous le sort dont la cell
     ['magie-du-sang', 'BJ16', 'Attirance', 'Si la cible possède le don "grande créature" ou est logiquement trop grosse ou lourde : C\'est le lanceur qui est attiré.'],
     ['magie-de-larcane', 'BJ16', 'Forge-Magie', "Exemple : \n\nUn caillou c'est taille 1\nUne dague c'est taille 2\n\nLes bombes ne font pas les dégâts de zone."],
     ['magie-de-lespace-temps', 'BJ7', 'Téléportation', "Ne provoque pas d'attaque d'opportunité.\n\nCe sort permet également de contrer les ennemis qui voudraient se téléporter, pour que ça marche : il est nécessaire d’avoir le sort, de sacrifier une parade/esquive, de réussir un meilleur jet et que l’ennemi soit dans la portée du sort.\n\nSi la case d'arrivée est occupée par une autre créature, le lanceur échange immédiatement sa position avec celle-ci (si elle est de la même taille approximativement que lui)"],
-    ['magie-de-la-glace', 'BJ28', 'Lien de gel', "3NM = Inflige 4 dégâts perce AM lors du lien de gel.\n\nLe lien gel touche la cible et lui bloque les mains pendant 1 tour, le tour suivant le lien de gel se propage vers autant d'adversaires disponible. La cible est ainsi libérer mais peut se reprendre le lien de gel si jamais il est à côté d'un autre qui a le lien de gel et ainsi de suite..."],
-    ['magie-de-la-glace', 'BJ43', 'Gel profond', " l'allié sera aussi dispensé de jet de survie pendant cet état."],
+    ['magie-de-la-glace', 'BJ28', 'Lien de gel', "3NM = Inflige 4 dégâts perce AM lors du lien de gel.\n\nLe lien gel touche la cible et lui bloque les mains pendant 1 tour, le tour suivant le lien de gel se propage vers autant d'adversaires disponibles. La cible est ainsi libérée mais peut se reprendre le lien de gel si jamais il est à côté d'un autre qui a le lien de gel et ainsi de suite..."],
+    ['magie-de-la-glace', 'BJ43', 'Gel profond', " L'allié sera aussi dispensé de jet de survie pendant cet état."],
     ['magie-de-la-lumiere', 'BJ25', 'Énergie Solaire', '10% lors de neutre\n20% lors de grand soleil.\n25% lors de canicule.'],
-    ['magie-de-la-foudre', 'BJ43', 'Dysfonctionnement', 'C\'est un équivalent de "Confusion 3" pour les créature mécaniques.'],
-    ['magie-de-la-terre', 'BJ70', 'Corps de Maverium', 'Corps de Maverium : Tout les dégâts reçu sont réduit à 0 et les effets négatifs sur les protections ne fonctionne pas.'],
-    ['magie-de-lombre', 'BJ40', 'Amplification sombre', 'EC = Echec critique'],
+    ['magie-de-la-foudre', 'BJ43', 'Dysfonctionnement', 'C\'est un équivalent de "Confusion 3" pour les créatures mécaniques.'],
+    ['magie-de-la-terre', 'BJ70', 'Corps de Maverium', 'Corps de Maverium : Tous les dégâts reçus sont réduits à 0 et les effets négatifs sur les protections ne fonctionnent pas.'],
+    ['magie-de-lombre', 'BJ40', 'Amplification sombre', 'EC = Échec critique'],
   ];
   assert.ok(reelles.length >= 5);
   for (const [slug, cellule, sort, texte] of reelles) {
@@ -218,7 +218,7 @@ test('les fils de commentaires : un fil identique à la note de sa cellule n\'es
   assert.ok(total.every((e) => e.genre === 'Commentaire résolu'));
   const vide = entrees(page('magie-du-vide')).filter((e) => e.sort === 'Dissipation');
   assert.deepEqual(vide.map((e) => e.genre), ['Note', 'Commentaire résolu']);
-  assert.equal(vide[1].texte, 'Les buff niveau 5 ne peuvent pas être annulé par ce sort.');
+  assert.equal(vide[1].texte, 'Les buff niveau 5 ne peuvent pas être annulés par ce sort.');
   // la note de Fer Sanglant a un fil identique : une seule entrée
   assert.deepEqual(entrees(page('magie-du-sang')).filter((e) => e.sort === 'Fer Sanglant').map((e) => e.genre), ['Note']);
   // Corps de Maverium : trois fils, le troisième est identique à la note
@@ -275,12 +275,12 @@ test('toute altération d\'une page réelle est vue par le contrôle : texte, li
 
 test('citation fidèle des blancs : espace insécable de fin de ligne, lignes vides multiples, liste collée au texte qui la précède (Terre BJ13, Lumière BJ43)', () => {
   const terre = page('magie-de-la-terre');
-  assert.ok(terre.includes('Pour voir les golems possible\u00a0\n\n\nChaque niveau de puissance de la créature invoqué double'), 'NBSP et deux lignes vides conservés');
+  assert.ok(terre.includes('Pour voir les golems possibles\u00a0\n\n\nChaque niveau de puissance de la créature invoquée double'), 'NBSP et deux lignes vides conservés');
   const lumiere = page('magie-de-la-lumiere');
-  assert.equal(lumiere.split("Liste des amplifications :\n- Permet d'encaisser le prochain sort d'ombre").length - 1, 1, 'pas de ligne vide ajoutée avant la liste de la note');
-  assert.equal(lumiere.split("Liste des amplifications :\n- Permet d'encaisser le prochain sorts d'ombre").length - 1, 1, '… ni avant celle du fil');
+  // la note et le fil de la cellule portent la même liste (« prochain sort », corrigé dans les deux depuis la migration 0003)
+  assert.equal(lumiere.split("Liste des amplifications :\n- Permet d'encaisser le prochain sort d'ombre").length - 1, 2, 'pas de ligne vide ajoutée avant la liste, ni dans la note ni dans le fil');
   const necro = page('magie-de-la-necromancie');
-  assert.ok(necro.includes('possible <https://maverick-jdr.fandom.com/fr/wiki/Mort-Vivant_(Invocation)>'), 'URL : lien automatique, adresse intacte');
+  assert.ok(necro.includes('possibles <https://maverick-jdr.fandom.com/fr/wiki/Mort-Vivant_(Invocation)>'), 'URL : lien automatique, adresse intacte');
 });
 
 test('rendu réel : le processeur Markdown du site affiche chaque note et chaque fil avec les mêmes lignes, puces et paragraphes que le classeur', async () => {

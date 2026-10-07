@@ -1,6 +1,6 @@
 -- data/rows/sort_type.sql : export déterministe, une instruction par ligne, triée par (sort_id, rang). NE PAS ÉDITER À LA MAIN.
 INSERT INTO sort_type (sort_id, rang, type, libelle, origine, source_ref) VALUES ('magies/magie-de-la-corruption#sort:aiguisage-magique', 1, 'amplification', 'Amplification', 'magies', 'Magie Maverick V8 › Corruption › AL19:BR21');
-INSERT INTO sort_type (sort_id, rang, type, libelle, origine, source_ref) VALUES ('magies/magie-de-la-corruption#sort:aura-de-frayeur', 1, 'entrave', 'Entave', 'magies', 'Magie Maverick V8 › Corruption › AL46:BR48');
+INSERT INTO sort_type (sort_id, rang, type, libelle, origine, source_ref) VALUES ('magies/magie-de-la-corruption#sort:aura-de-frayeur', 1, 'entrave', 'Entrave', 'magies', 'Magie Maverick V8 › Corruption › AL46:BR48');
 INSERT INTO sort_type (sort_id, rang, type, libelle, origine, source_ref) VALUES ('magies/magie-de-la-corruption#sort:boule-sombre', 1, 'attaque', 'Attaque', 'magies', 'Magie Maverick V8 › Corruption › AL4:BR6');
 INSERT INTO sort_type (sort_id, rang, type, libelle, origine, source_ref) VALUES ('magies/magie-de-la-corruption#sort:eau-noire', 1, 'entrave', 'Entrave', 'magies', 'Magie Maverick V8 › Corruption › AL70:BR72');
 INSERT INTO sort_type (sort_id, rang, type, libelle, origine, source_ref) VALUES ('magies/magie-de-la-corruption#sort:fer-corrompu', 1, 'amplification', 'Amplification', 'magies', 'Magie Maverick V8 › Corruption › AL22:BR24');
@@ -10,7 +10,7 @@ INSERT INTO sort_type (sort_id, rang, type, libelle, origine, source_ref) VALUES
 INSERT INTO sort_type (sort_id, rang, type, libelle, origine, source_ref) VALUES ('magies/magie-de-la-corruption#sort:laser-noir', 1, 'attaque', 'Attaque', 'magies', 'Magie Maverick V8 › Corruption › AL37:BR39');
 INSERT INTO sort_type (sort_id, rang, type, libelle, origine, source_ref) VALUES ('magies/magie-de-la-corruption#sort:mine-noire', 1, 'attaque', 'Attaque', 'magies', 'Magie Maverick V8 › Corruption › AL34:BR36');
 INSERT INTO sort_type (sort_id, rang, type, libelle, origine, source_ref) VALUES ('magies/magie-de-la-corruption#sort:mine-noire', 2, 'construction', 'Construction', 'magies', 'Magie Maverick V8 › Corruption › AL34:BR36');
-INSERT INTO sort_type (sort_id, rang, type, libelle, origine, source_ref) VALUES ('magies/magie-de-la-corruption#sort:petrole', 1, 'entrave', 'Entave', 'magies', 'Magie Maverick V8 › Corruption › AL28:BR30');
+INSERT INTO sort_type (sort_id, rang, type, libelle, origine, source_ref) VALUES ('magies/magie-de-la-corruption#sort:petrole', 1, 'entrave', 'Entrave', 'magies', 'Magie Maverick V8 › Corruption › AL28:BR30');
 INSERT INTO sort_type (sort_id, rang, type, libelle, origine, source_ref) VALUES ('magies/magie-de-la-corruption#sort:plaie-suintante', 1, 'entrave', 'Entrave', 'magies', 'Magie Maverick V8 › Corruption › AL43:BR45');
 INSERT INTO sort_type (sort_id, rang, type, libelle, origine, source_ref) VALUES ('magies/magie-de-la-corruption#sort:pluie-huileuse', 1, 'meteo', 'Météo', 'magies', 'Magie Maverick V8 › Corruption › AL61:BR63');
 INSERT INTO sort_type (sort_id, rang, type, libelle, origine, source_ref) VALUES ('magies/magie-de-la-corruption#sort:pour-moi', 1, 'attaque', 'Attaque', 'magies', 'Magie Maverick V8 › Corruption › AL49:BR51');

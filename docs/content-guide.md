@@ -123,7 +123,11 @@ ses règles diffèrent de celles des autres classes (pas de spécialité, des gr
 Les classeurs sources contiennent des coquilles ; elles se corrigent (demande du propriétaire du projet), **jamais dans la page** mais dans le
 registre `tools/sheets/corrections.json`, appliqué aux dumps avant les extracteurs (voir `docs/sources.md`). Seules sont admises les fautes de
 frappe, d'orthographe, d'accent, d'accord, de ponctuation, de casse et d'espace : tout ce qui changerait un chiffre, un dé, un signe ou le sens
-d'une règle est refusé par l'outil et se demande au propriétaire. Les noms propres et les jeux de mots du classeur sont gardés (les noms
+d'une règle est refusé par l'outil et se demande au propriétaire.
+
+Exception : les sorts et les 15 magies sont corrigés **dans la base** (migration `data/migrations/0003-orthographe-magies`, registre `.json` à côté) : leurs tables typées et leurs pages ont déjà le texte corrigé,
+et `client/test/orthographe-magies.test.mjs` vérifie que rien d'autre qu'une graphie n'a changé. Un nouvel import d'un classeur de magies réintroduirait les fautes : refaire la correction par une migration.
+Les points qui demandent une décision (mot manquant, accord douteux, nom de sort dont l'identifiant changerait) sont dans `docs/sql/orthographe-a-valider.md`. Les noms propres et les jeux de mots du classeur sont gardés (les noms
 coupés sur deux cases, « Tenir ... » / « ... ou charger ? », sont voulus : ils se répondent pour souligner le choix).
 
 ## Liens entre pages

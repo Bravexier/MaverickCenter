@@ -14,6 +14,7 @@ const racine = fileURLToPath(new URL('../../', import.meta.url));
 const client = fileURLToPath(new URL('../', import.meta.url));
 const schemaChemin = join(racine, 'data', 'schema.sql');
 const schema = readFileSync(schemaChemin, 'utf8');
+const versionSchema = Number(/PRAGMA user_version = (\d+)/.exec(schema)[1]);
 const node = (script, args = []) => spawnSync(process.execPath, ['--no-warnings', join(client, 'scripts', script), ...args], { encoding: 'utf8' });
 
 function baseVierge() {
@@ -29,7 +30,7 @@ const vues = liste.filter((t) => t.type === 'view');
 const colonnes = (nom) => db.prepare(`PRAGMA table_info("${nom}")`).all();
 
 test('le schéma s’exécute sur une base vierge, avec sa version, ses tables et ses vues', () => {
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 2, 'version du schéma (data/rows/VERSION portera la même)');
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version, versionSchema, 'version du schéma (data/rows/VERSION porte la même)');
   assert.ok(tables.length >= 135, `au moins 135 tables (trouvé ${tables.length})`);
   assert.ok(vues.length >= 28, `au moins 28 vues (trouvé ${vues.length})`);
   for (const attendu of ['page', 'magie', 'sort', 'classe', 'capacite', 'race', 'creature', 'arme', 'note_cellule', 'ecart_source', 'correction', 'famille']) {
@@ -128,10 +129,10 @@ test('npm run db:init crée une base vide, refuse d’écraser sans --force, et 
   const fichier = join(dir, 'maverick.db');
   const cree = node('db-init.mjs', ['--out', fichier]);
   assert.equal(cree.status, 0, cree.stderr);
-  assert.match(cree.stdout, /schéma version 2, \d+ tables/);
+  assert.match(cree.stdout, new RegExp(`schéma version ${versionSchema}, \\d+ tables`));
   const base = new DatabaseSync(fichier, { readOnly: true });
   assert.equal(base.prepare('SELECT count(*) AS n FROM page').get().n, 0, 'base vide');
-  assert.equal(base.prepare('PRAGMA user_version').get().user_version, 2);
+  assert.equal(base.prepare('PRAGMA user_version').get().user_version, versionSchema);
   base.close();
 
   const refus = node('db-init.mjs', ['--out', fichier]);

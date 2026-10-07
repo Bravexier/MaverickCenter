@@ -15,6 +15,8 @@ import { fileURLToPath } from 'node:url';
 const racine = fileURLToPath(new URL('../../', import.meta.url));
 const client = fileURLToPath(new URL('../', import.meta.url));
 const rows = join(racine, 'data', 'rows');
+// numéro de version du schéma, lu dans data/schema.sql (un changement de version ne doit pas obliger à retoucher ce test)
+const versionSchema = Number(/PRAGMA user_version = (\d+)/.exec(readFileSync(join(racine, 'data', 'schema.sql'), 'utf8'))[1]);
 const wiki = join(client, 'src', 'content', 'wiki');
 const node = (script, args = []) => spawnSync(process.execPath, ['--no-warnings', join(client, 'scripts', script), ...args], { encoding: 'utf8' });
 const pages = (...args) => spawnSync('python3', ['-I', join(racine, 'tools', 'db', 'pages_md.py'), ...args], { encoding: 'utf8' });
@@ -31,7 +33,7 @@ const derive = build.status === 0 ? node('db-derive.mjs', [base]) : build;
 test('db:build construit la base depuis data/rows (schéma, lignes, clés étrangères) puis db:derive calcule liens et plein texte', () => {
   assert.equal(build.status, 0, build.stderr);
   const bilan = JSON.parse(build.stdout);
-  assert.equal(bilan.version, 2);
+  assert.equal(bilan.version, versionSchema);
   assert.ok(bilan.tables >= 133, `tables chargées : ${bilan.tables}`);
   assert.deepEqual(bilan.clesToleres, [], 'aucune clé étrangère tolérée : la base est complète');
   assert.equal(derive.status, 0, derive.stderr);
@@ -84,11 +86,11 @@ test('db:check détecte un défaut injecté (une entité typée qui n’a plus s
 test('db:build refuse un jeu de lignes incomplet ou d’une autre version', () => {
   const copie = join(dir, 'rows-casse');
   cpSync(rows, copie, { recursive: true });
-  writeFileSync(join(copie, 'VERSION'), 'schema_version=3\n');
+  writeFileSync(join(copie, 'VERSION'), `schema_version=${versionSchema + 1}\n`);
   const autreVersion = node('db-build.mjs', ['--out', join(dir, 'x.db'), '--rows', copie]);
   assert.equal(autreVersion.status, 1);
   assert.match(autreVersion.stderr, /version/);
-  writeFileSync(join(copie, 'VERSION'), 'schema_version=2\n');
+  writeFileSync(join(copie, 'VERSION'), `schema_version=${versionSchema}\n`);
   writeFileSync(join(copie, 'zzz.sql'), '-- en trop\n');
   const enTrop = node('db-build.mjs', ['--out', join(dir, 'y.db'), '--rows', copie]);
   assert.equal(enTrop.status, 1);

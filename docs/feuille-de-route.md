@@ -14,9 +14,11 @@ n'est encore réalisé au-delà de la première étape.
 
 ## Orthographe : relecture complète à la conversion en SQL
 
-La relecture générale des coquilles et fautes des classeurs (décision R10 de `docs/decisions-regles.md`) est **reportée au moment où tout est converti en base SQL**
-(décision du propriétaire). D'ici là, seul le registre `tools/sheets/corrections.json` s'applique (une correction : « Chasseur de primes ») ; on n'ajoute pas de
-correction en masse. À la conversion, la relecture se fera sur les données importées, avec l'historique des modifications de la base.
+La relecture générale des coquilles et fautes des classeurs (décision R10 de `docs/decisions-regles.md`) se fait **dans la base**, domaine par domaine, par des migrations de données
+(`data/migrations/`) : chacune garde son registre (table, id, colonne, avant, après, nature, raison). Faite : les sorts, les 15 magies et leurs tables dérivées
+(`0003-orthographe-magies`, 500 corrections ; les points qui demandent une décision du propriétaire sont dans `docs/sql/orthographe-a-valider.md`). À faire : classes, capacités, races, équipement.
+Tant que les classeurs sont la source, **un réimport depuis un classeur réintroduirait ces fautes** : les lignes typées ne se réimportent pas encore (voir `docs/sql/remplissage.md`) ;
+au moment de la bascule, la base est la référence. Le registre `tools/sheets/corrections.json` reste en vigueur pour les autres domaines.
 
 ## Ce que cela impose dès maintenant
 

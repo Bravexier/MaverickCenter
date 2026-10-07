@@ -1,0 +1,4505 @@
+{
+ "migration": "0003-orthographe-magies",
+ "corrections": [
+  {
+   "table": "magie",
+   "id": "magies/potentiel-illimite",
+   "col": "banniere",
+   "avant": "DIFFICILE A JOUER",
+   "apres": "DIFFICILE À JOUER",
+   "nature": "accent",
+   "raison": "Majuscule accentuée : « À » (préposition) en capitales."
+  },
+  {
+   "table": "magie",
+   "id": "magies/potentiel-illimite",
+   "col": "description",
+   "avant": "de l'égalé",
+   "apres": "de l'égaler",
+   "nature": "grammaire",
+   "raison": "Infinitif attendu après « impossible de »."
+  },
+  {
+   "table": "magie",
+   "id": "magies/potentiel-illimite",
+   "col": "description_physique",
+   "avant": "deviennent dorées",
+   "apres": "deviennent dorés",
+   "nature": "grammaire",
+   "raison": "Accord avec « tatouages » (masculin pluriel)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/potentiel-illimite",
+   "col": "description_physique",
+   "avant": "moins charnue",
+   "apres": "moins charnus",
+   "nature": "grammaire",
+   "raison": "Accord avec « physiques » (masculin pluriel)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/potentiel-illimite",
+   "col": "explication",
+   "avant": "intérêt reposé sur",
+   "apres": "intérêt repose sur",
+   "nature": "grammaire",
+   "raison": "Verbe conjugué attendu (sujet « le principal intérêt »), pas le participe."
+  },
+  {
+   "table": "magie",
+   "id": "magies/potentiel-illimite",
+   "col": "explication",
+   "avant": "toute les magies existante",
+   "apres": "toutes les magies existantes",
+   "nature": "grammaire",
+   "raison": "Accord avec « magies » (féminin pluriel) : « toutes » et « existantes »."
+  },
+  {
+   "table": "magie",
+   "id": "magies/potentiel-illimite",
+   "col": "explication",
+   "avant": "à peu de race",
+   "apres": "à peu de races",
+   "nature": "grammaire",
+   "raison": "Pluriel après « peu de » (la liste qui suit en compte plusieurs)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/potentiel-illimite",
+   "col": "explication",
+   "avant": "ne peux mettre",
+   "apres": "ne peut mettre",
+   "nature": "grammaire",
+   "raison": "Le sujet implicite est le porteur de la magie (3e personne du singulier), pas « je/tu »."
+  },
+  {
+   "table": "magie",
+   "id": "magies/potentiel-illimite",
+   "col": "explication",
+   "avant": "niveau globale",
+   "apres": "niveau global",
+   "nature": "grammaire",
+   "raison": "Accord avec « niveau » (masculin)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/potentiel-illimite",
+   "col": "explication",
+   "avant": "bouclier lourds",
+   "apres": "boucliers lourds",
+   "nature": "grammaire",
+   "raison": "Pluriel : « des armures lourdes ou boucliers lourds » (adjectif déjà au pluriel)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/potentiel-illimite",
+   "col": "caracteristique_brut",
+   "avant": "ALEATOIRE",
+   "apres": "ALÉATOIRE",
+   "nature": "accent",
+   "raison": "Accent sur la majuscule (convention commune)."
+  },
+  {
+   "table": "mode_hyper_effet",
+   "id": "onglet_magie:magies/potentiel-illimite:forme_complete",
+   "col": "effet",
+   "avant": "dégâts physique",
+   "apres": "dégâts physiques",
+   "nature": "grammaire",
+   "raison": "Accord avec « dégâts » (pluriel)."
+  },
+  {
+   "table": "regle_magie",
+   "id": "magies#regle:regle-speciale-pour-sort-niveau-5",
+   "col": "texte",
+   "avant": "si il a",
+   "apres": "s'il a",
+   "nature": "orthographe",
+   "raison": "Élision obligatoire de « si » devant « il »."
+  },
+  {
+   "table": "invocation",
+   "id": "bestiaire/animation-des-morts",
+   "col": "texte_general",
+   "avant": "Seule excepetion",
+   "apres": "Seule exception",
+   "nature": "frappe",
+   "raison": "Lettres en trop : « exception »."
+  },
+  {
+   "table": "invocation",
+   "id": "bestiaire/animation-des-morts",
+   "col": "texte_general",
+   "avant": "aide extérieur et",
+   "apres": "aide extérieure et",
+   "nature": "grammaire",
+   "raison": "Accord avec « aide » (féminin)."
+  },
+  {
+   "table": "invocation",
+   "id": "bestiaire/appel-aux-golems",
+   "col": "texte_general",
+   "avant": "Seule excepetion",
+   "apres": "Seule exception",
+   "nature": "frappe",
+   "raison": "Lettres en trop : « exception »."
+  },
+  {
+   "table": "invocation",
+   "id": "bestiaire/appel-aux-golems",
+   "col": "texte_general",
+   "avant": "aide extérieur et",
+   "apres": "aide extérieure et",
+   "nature": "grammaire",
+   "raison": "Accord avec « aide » (féminin)."
+  },
+  {
+   "table": "invocation",
+   "id": "bestiaire/animation-des-morts",
+   "col": "texte_general",
+   "avant": "qui varie selon",
+   "apres": "qui varient selon",
+   "nature": "grammaire",
+   "raison": "Le sujet « des statistiques et des données » est au pluriel."
+  },
+  {
+   "table": "invocation",
+   "id": "bestiaire/animation-des-morts",
+   "col": "texte_general",
+   "avant": "plus chère en coût",
+   "apres": "plus chères en coût",
+   "nature": "grammaire",
+   "raison": "Accord avec « invocations » (féminin pluriel)."
+  },
+  {
+   "table": "invocation",
+   "id": "bestiaire/animation-des-morts",
+   "col": "texte_general",
+   "avant": "d'une seul magie",
+   "apres": "d'une seule magie",
+   "nature": "grammaire",
+   "raison": "Accord avec « magie » (féminin)."
+  },
+  {
+   "table": "invocation",
+   "id": "bestiaire/appel-aux-golems",
+   "col": "texte_general",
+   "avant": "qui varie selon",
+   "apres": "qui varient selon",
+   "nature": "grammaire",
+   "raison": "Le sujet « des statistiques et des données » est au pluriel."
+  },
+  {
+   "table": "invocation",
+   "id": "bestiaire/appel-aux-golems",
+   "col": "texte_general",
+   "avant": "plus chère en coût",
+   "apres": "plus chères en coût",
+   "nature": "grammaire",
+   "raison": "Accord avec « invocations » (féminin pluriel)."
+  },
+  {
+   "table": "invocation",
+   "id": "bestiaire/appel-aux-golems",
+   "col": "texte_general",
+   "avant": "d'une seul magie",
+   "apres": "d'une seule magie",
+   "nature": "grammaire",
+   "raison": "Accord avec « magie » (féminin)."
+  },
+  {
+   "table": "invocation",
+   "id": "bestiaire/marionette-de-lombre",
+   "col": "texte_general",
+   "avant": "qui varie selon",
+   "apres": "qui varient selon",
+   "nature": "grammaire",
+   "raison": "Le sujet « des statistiques et des données » est au pluriel."
+  },
+  {
+   "table": "invocation",
+   "id": "bestiaire/marionette-de-lombre",
+   "col": "texte_general",
+   "avant": "plus chère en coût",
+   "apres": "plus chères en coût",
+   "nature": "grammaire",
+   "raison": "Accord avec « invocations » (féminin pluriel)."
+  },
+  {
+   "table": "invocation",
+   "id": "bestiaire/marionette-de-lombre",
+   "col": "texte_general",
+   "avant": "d'une seul magie",
+   "apres": "d'une seule magie",
+   "nature": "grammaire",
+   "raison": "Accord avec « magie » (féminin)."
+  },
+  {
+   "table": "invocation",
+   "id": "bestiaire/animation-des-morts",
+   "col": "texte_general",
+   "avant": "est résistance au Feu",
+   "apres": "est résistant au Feu",
+   "nature": "orthographe",
+   "raison": "Adjectif attendu, parallèle à « est vulnérable » ; sujet « Celui » (masculin)."
+  },
+  {
+   "table": "invocation",
+   "id": "bestiaire/appel-aux-golems",
+   "col": "texte_general",
+   "avant": "golems invocable,",
+   "apres": "golems invocables,",
+   "nature": "grammaire",
+   "raison": "Accord avec « golems » (pluriel)."
+  },
+  {
+   "table": "invocation",
+   "id": "bestiaire/appel-aux-golems",
+   "col": "texte_general",
+   "avant": "est résistante au Feu",
+   "apres": "est résistant au Feu",
+   "nature": "grammaire",
+   "raison": "Accord avec « Celui » (masculin), parallèle à « est vulnérable »."
+  },
+  {
+   "table": "creature_effet",
+   "id": "bestiaire/executeur-lunaire#1",
+   "col": "texte",
+   "avant": "sorts de l'ombre vole 2d6",
+   "apres": "sorts de l'ombre volent 2d6",
+   "nature": "grammaire",
+   "raison": "Sujet « Tous les sorts » (pluriel)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-du-sang",
+   "col": "description_physique",
+   "avant": "et augmente au fur",
+   "apres": "et augmentent au fur",
+   "nature": "grammaire",
+   "raison": "Sujet « les veines » (pluriel)."
+  },
+  {
+   "table": "magie_role",
+   "id": "magies/magie-du-sang#role:1",
+   "col": "role_brut",
+   "avant": "DÉGATS",
+   "apres": "DÉGÂTS",
+   "nature": "accent",
+   "raison": "Accent circonflexe : « dégâts » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:marquage",
+   "col": "dsb_brut",
+   "avant": "dégâts reçu (",
+   "apres": "dégâts reçus (",
+   "nature": "grammaire",
+   "raison": "Accord avec « dégâts » (pluriel)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:attirance",
+   "col": "effets",
+   "avant": "ne fonctionne que en ligne",
+   "apres": "ne fonctionne qu'en ligne",
+   "nature": "orthographe",
+   "raison": "Élision obligatoire de « que » devant « en »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:sang-durci",
+   "col": "effets",
+   "avant": "+6AP.  Dure",
+   "apres": "+6AP. Dure",
+   "nature": "espace",
+   "raison": "Double espace après le point."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:sang-durci",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union dans « Soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:sang-garde",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union dans « Soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:sang-magie",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union dans « Soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:sang-gain",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union dans « Soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:deflagration-sanguine",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union dans « Soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:sang-perfection",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union dans « Soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:sacrifice",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union dans « Soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:saignee-forcee",
+   "col": "remarque",
+   "avant": "si répéter.",
+   "apres": "si répété.",
+   "nature": "grammaire",
+   "raison": "Participe passé attendu (« si [il est] répété »), pas l'infinitif."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:morsure-aspirante",
+   "col": "effets",
+   "avant": "les convertis en PV",
+   "apres": "les convertit en PV",
+   "nature": "grammaire",
+   "raison": "Verbe conjugué à la 3e personne (sujet « Aspire … et les convertit »)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:morsure-aspirante",
+   "col": "effets",
+   "avant": "les créature vivante",
+   "apres": "les créatures vivantes",
+   "nature": "grammaire",
+   "raison": "Pluriel après « les » ; accord de « vivantes »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:coagulation",
+   "col": "remarque",
+   "avant": "Le mur est fixée",
+   "apres": "Le mur est fixé",
+   "nature": "grammaire",
+   "raison": "Accord avec « mur » (masculin)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:renfermement",
+   "col": "effets",
+   "avant": "régénaration",
+   "apres": "régénération",
+   "nature": "frappe",
+   "raison": "Lettre erronée : « régénération »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:renfermement",
+   "col": "remarque",
+   "avant": "santé récupéré par",
+   "apres": "santé récupérée par",
+   "nature": "grammaire",
+   "raison": "Accord avec « santé » (féminin)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:damocles",
+   "col": "effets",
+   "avant": "réfléxe",
+   "apres": "réflexe",
+   "nature": "accent",
+   "raison": "Pas d'accent sur le « x » : « réflexe »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:damocles",
+   "col": "effets",
+   "avant": "La cilbe",
+   "apres": "La cible",
+   "nature": "frappe",
+   "raison": "Lettres permutées : « cible »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:proportion-demesuree",
+   "col": "effets",
+   "avant": "dégâts physique,",
+   "apres": "dégâts physiques,",
+   "nature": "grammaire",
+   "raison": "Accord avec « dégâts » (pluriel)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:proportion-demesuree",
+   "col": "texte_niveau5",
+   "avant": "l'excès ...",
+   "apres": "l'excès...",
+   "nature": "espace",
+   "raison": "Pas d'espace avant les points de suspension (cf. « douleur... » dans Sang Perfection)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:sacrifice",
+   "col": "effets",
+   "avant": "4 Cibles alliées",
+   "apres": "4 cibles alliées",
+   "nature": "casse",
+   "raison": "Pas de majuscule à un nom commun en milieu de phrase (« cible » est en minuscule ailleurs)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/potentiel-illimite",
+   "col": "explication",
+   "avant": "Mono magie uniquement",
+   "apres": "Mono-magie uniquement",
+   "nature": "ponctuation",
+   "raison": "Trait d’union, comme « Mono-Magie » / « Bi-magie » dans la colonne variante des modes hyper."
+  },
+  {
+   "table": "magie",
+   "id": "magies/potentiel-illimite",
+   "col": "explication",
+   "avant": "dégâts physique,",
+   "apres": "dégâts physiques,",
+   "nature": "grammaire",
+   "raison": "Accord de « physique » avec « dégâts » (masculin pluriel)."
+  },
+  {
+   "table": "regle_magie",
+   "id": "magies#regle:regle-speciale-pour-sort-niveau-5",
+   "col": "texte",
+   "avant": "si puissant qu'il demande",
+   "apres": "si puissants qu'ils demandent",
+   "nature": "grammaire",
+   "raison": "Accord avec le sujet « Les sorts » (pluriel)."
+  },
+  {
+   "table": "regle_magie",
+   "id": "magies#regle:regle-speciale-pour-sort-niveau-5",
+   "col": "texte",
+   "avant": "pour être lancé.",
+   "apres": "pour être lancés.",
+   "nature": "grammaire",
+   "raison": "Participe accordé avec « Les sorts » (masculin pluriel)."
+  },
+  {
+   "table": "invocation",
+   "id": "bestiaire/appel-aux-golems",
+   "col": "texte_general",
+   "avant": "\"Appel aux golems\"\n",
+   "apres": "\"Appel aux golems\".\n",
+   "nature": "ponctuation",
+   "raison": "Point final manquant à la fin de la phrase."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-du-sang",
+   "col": "description_physique",
+   "avant": "musculature qui est plus élevé que",
+   "apres": "musculature qui est plus élevée que",
+   "nature": "grammaire",
+   "raison": "Accord avec « la musculature » (féminin)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-du-sang",
+   "col": "description_physique",
+   "avant": "cheveux est couleurs bordeaux",
+   "apres": "cheveux sont couleur bordeaux",
+   "nature": "grammaire",
+   "raison": "Sujet « les mèches » (pluriel) ; « couleur » est invariable devant le nom de couleur."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:damocles",
+   "col": "zone_brut",
+   "avant": "ligne de 3",
+   "apres": "Ligne de 3",
+   "nature": "casse",
+   "raison": "Même casse que « Cercle de … » et que la forme majoritaire « Ligne de … » dans la colonne zone."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-larcane",
+   "col": "description_physique",
+   "avant": "aux niveau des cheveux",
+   "apres": "au niveau des cheveux",
+   "nature": "grammaire",
+   "raison": "« niveau » est singulier : « au niveau de »"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-larcane",
+   "col": "explication",
+   "avant": "tant qu'ils sont actif",
+   "apres": "tant qu'il est actif",
+   "nature": "grammaire",
+   "raison": "Le sujet est « Chaque sort » (singulier) : « il est actif » comme « va consommer »."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-larcane",
+   "col": "explication",
+   "avant": "(normal jusque là)",
+   "apres": "(normal jusque-là)",
+   "nature": "ponctuation",
+   "raison": "« jusque-là » prend un trait d’union"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-larcane",
+   "col": "explication",
+   "avant": "la concentration est perdu",
+   "apres": "la concentration est perdue",
+   "nature": "grammaire",
+   "raison": "participe accordé avec « concentration » (féminin)"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-larcane",
+   "col": "explication",
+   "avant": "tout les sorts",
+   "apres": "tous les sorts",
+   "nature": "grammaire",
+   "raison": "« tous » devant un pluriel masculin"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-larcane",
+   "col": "explication",
+   "avant": "qui était actif",
+   "apres": "qui étaient actifs",
+   "nature": "grammaire",
+   "raison": "accord avec « les sorts » (pluriel)"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-larcane",
+   "col": "explication",
+   "avant": "s'arrête immédiatement",
+   "apres": "s'arrêtent immédiatement",
+   "nature": "grammaire",
+   "raison": "le sujet est « tous les sorts » (pluriel)"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-larcane",
+   "col": "explication",
+   "avant": "va couté un",
+   "apres": "va coûter un",
+   "nature": "orthographe",
+   "raison": "infinitif après « va » et accent circonflexe"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-larcane",
+   "col": "explication",
+   "avant": "nombre d'application qu'il",
+   "apres": "nombre d'applications qu'il",
+   "nature": "grammaire",
+   "raison": "« nombre de » + pluriel"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-larcane",
+   "col": "explication",
+   "avant": "un sort qui coute 3",
+   "apres": "un sort qui coûte 3",
+   "nature": "accent",
+   "raison": "accent circonflexe, comme « coût » dans le même texte"
+  },
+  {
+   "table": "magie_role",
+   "id": "magies/magie-de-larcane#role:2",
+   "col": "role_brut",
+   "avant": "DÉGATS",
+   "apres": "DÉGÂTS",
+   "nature": "accent",
+   "raison": "« dégâts » prend un accent circonflexe"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-larcane#sort:charge-denergie",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "trait d’union (convention commune)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-larcane#sort:charge-denergie",
+   "col": "dsb_brut",
+   "avant": "+X dégâts magique",
+   "apres": "+X dégâts magiques",
+   "nature": "grammaire",
+   "raison": "accord avec « dégâts » (pluriel)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-larcane#sort:claquement",
+   "col": "effets",
+   "avant": "jet de Fermeté raté",
+   "apres": "jet de fermeté raté",
+   "nature": "casse",
+   "raison": "forme majoritaire dans la colonne (« jet de fermeté »)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-larcane#sort:forge-magie",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "trait d’union (convention commune)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-larcane#sort:inhalation-magique",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "trait d’union (convention commune)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-larcane#sort:souffle-magique",
+   "col": "effets",
+   "avant": "Si il y a",
+   "apres": "S'il y a",
+   "nature": "orthographe",
+   "raison": "élision obligatoire « si il » -> « s'il »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-larcane#sort:vision-magique",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "trait d’union (convention commune)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-larcane#sort:mur-de-chakra",
+   "col": "effets",
+   "avant": "si il prend",
+   "apres": "s'il prend",
+   "nature": "orthographe",
+   "raison": "élision obligatoire « si il » -> « s'il »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-larcane#sort:pillage-defensif",
+   "col": "remarque",
+   "avant": "barrière ennemi qui",
+   "apres": "barrière ennemie qui",
+   "nature": "grammaire",
+   "raison": "adjectif accordé avec « barrière » (féminin)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-larcane#sort:champ-gardien",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "trait d’union (convention commune)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-larcane#sort:champ-gardien",
+   "col": "effets",
+   "avant": "les dégâts ignore les AM",
+   "apres": "les dégâts ignorent les AM",
+   "nature": "grammaire",
+   "raison": "le sujet « les dégâts » est pluriel"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-larcane#sort:peau-de-chakra",
+   "col": "dsb_brut",
+   "avant": "-20% dégâts magique",
+   "apres": "-20% dégâts magiques",
+   "nature": "grammaire",
+   "raison": "accord avec « dégâts » (pluriel)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-larcane#sort:pluie-de-chakra",
+   "col": "effets",
+   "avant": "aux dessus des alliés",
+   "apres": "au-dessus des alliés",
+   "nature": "orthographe",
+   "raison": "locution « au-dessus de »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-larcane#sort:miroir-magique",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "trait d’union (convention commune)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-larcane#sort:foudre-argente",
+   "col": "effets",
+   "avant": "de lourd dégâts",
+   "apres": "de lourds dégâts",
+   "nature": "grammaire",
+   "raison": "adjectif accordé avec « dégâts » (pluriel)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-larcane#sort:voile-chakratique",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "trait d’union (convention commune)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-larcane#sort:planete-chakratique",
+   "col": "portee_brut",
+   "avant": "illimité",
+   "apres": "Illimité",
+   "nature": "casse",
+   "raison": "convention : « Illimité » avec majuscule dans la colonne portée"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-corruption",
+   "col": "description_physique",
+   "avant": "aux niveau des cheveux",
+   "apres": "au niveau des cheveux",
+   "nature": "grammaire",
+   "raison": "« niveau » est singulier : « au niveau de »"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-corruption",
+   "col": "description_physique",
+   "avant": "couleur noires",
+   "apres": "couleur noire",
+   "nature": "grammaire",
+   "raison": "l'adjectif s'accorde avec « couleur » (féminin singulier), comme « couleur argentée » pour l'Arcane"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-corruption",
+   "col": "description_physique",
+   "avant": "couleur antrasite",
+   "apres": "couleur anthracite",
+   "nature": "orthographe",
+   "raison": "« anthracite » s'écrit avec « th »"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-corruption",
+   "col": "description_physique",
+   "avant": "deviennent noir aussi",
+   "apres": "deviennent noirs aussi",
+   "nature": "grammaire",
+   "raison": "attribut accordé avec « tatouages » (pluriel)"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-corruption",
+   "col": "explication",
+   "avant": "vases communiquant.",
+   "apres": "vases communicants.",
+   "nature": "orthographe",
+   "raison": "adjectif « communicants » accordé avec « vases »"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-corruption",
+   "col": "explication",
+   "avant": "Chaque sorts demande",
+   "apres": "Chaque sort demande",
+   "nature": "grammaire",
+   "raison": "« chaque » est suivi d’un singulier"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-corruption",
+   "col": "explication",
+   "avant": "se transfert dans",
+   "apres": "se transfère dans",
+   "nature": "orthographe",
+   "raison": "verbe « transférer » : il se transfère"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-corruption",
+   "col": "explication",
+   "avant": "double du cout en",
+   "apres": "double du coût en",
+   "nature": "accent",
+   "raison": "accent circonflexe, comme « coût » dans le même texte"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-corruption",
+   "col": "explication",
+   "avant": "si le sort coute 4",
+   "apres": "si le sort coûte 4",
+   "nature": "accent",
+   "raison": "accent circonflexe, comme « coûte » dans le même texte"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-corruption",
+   "col": "explication",
+   "avant": "totalement immunisé à",
+   "apres": "totalement immunisés à",
+   "nature": "grammaire",
+   "raison": "accord avec « ceux » (pluriel)"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-corruption",
+   "col": "explication",
+   "avant": "du trop plein de",
+   "apres": "du trop-plein de",
+   "nature": "ponctuation",
+   "raison": "« trop-plein » prend un trait d’union"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-corruption",
+   "col": "explication",
+   "avant": "magie mal vu.",
+   "apres": "magie mal vue.",
+   "nature": "grammaire",
+   "raison": "participe accordé avec « magie » (féminin)"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-corruption",
+   "col": "explication",
+   "avant": "n'enpiète",
+   "apres": "n'empiète",
+   "nature": "orthographe",
+   "raison": "« m » devant « p »"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-corruption",
+   "col": "incompatibilite_note",
+   "avant": "c'est mono magie uniquement",
+   "apres": "c'est mono-magie uniquement",
+   "nature": "ponctuation",
+   "raison": "trait d’union, comme « Mono-Magie » ailleurs"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-corruption",
+   "col": "incompatibilite_note",
+   "avant": "les Felfe noirs",
+   "apres": "les Felfes noirs",
+   "nature": "grammaire",
+   "raison": "pluriel après « les » (cf. « Felfes Noirs » dans la description)"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-corruption",
+   "col": "incompatibilite_note",
+   "avant": "avec uen autre",
+   "apres": "avec une autre",
+   "nature": "frappe",
+   "raison": "lettres permutées"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-corruption",
+   "col": "incompatibilite_note",
+   "avant": "s'applique pour",
+   "apres": "s'appliquent pour",
+   "nature": "grammaire",
+   "raison": "le sujet « les limitations » est pluriel"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-corruption",
+   "col": "incompatibilite_note",
+   "avant": "primordialles",
+   "apres": "primordiales",
+   "nature": "orthographe",
+   "raison": "un seul « l » après « -ia- »"
+  },
+  {
+   "table": "magie_role",
+   "id": "magies/magie-de-la-corruption#role:2",
+   "col": "role_brut",
+   "avant": "DÉGATS",
+   "apres": "DÉGÂTS",
+   "nature": "accent",
+   "raison": "« dégâts » prend un accent circonflexe"
+  },
+  {
+   "table": "mode_hyper_effet",
+   "id": "onglet_magie:magies/magie-de-la-corruption:bi",
+   "col": "effet",
+   "avant": "le cout en corruption",
+   "apres": "le coût en corruption",
+   "nature": "accent",
+   "raison": "« coût » prend un accent circonflexe"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:verrouillage-simple",
+   "col": "remarque",
+   "avant": "moment là",
+   "apres": "moment-là",
+   "nature": "ponctuation",
+   "raison": "« moment-là » prend un trait d’union"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:verrouillage-simple",
+   "col": "remarque",
+   "avant": "ne se cumule pas",
+   "apres": "ne se cumulent pas",
+   "nature": "grammaire",
+   "raison": "le sujet « les verrouillages » est pluriel"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:verrouille-visible",
+   "col": "remarque",
+   "avant": "moment là",
+   "apres": "moment-là",
+   "nature": "ponctuation",
+   "raison": "« moment-là » prend un trait d’union"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:verrouille-visible",
+   "col": "remarque",
+   "avant": "ne se cumule pas",
+   "apres": "ne se cumulent pas",
+   "nature": "grammaire",
+   "raison": "le sujet « les verrouillages » est pluriel"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:verrouillage-magique",
+   "col": "remarque",
+   "avant": "moment là",
+   "apres": "moment-là",
+   "nature": "ponctuation",
+   "raison": "« moment-là » prend un trait d’union"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:verrouillage-magique",
+   "col": "remarque",
+   "avant": "ne se cumule pas",
+   "apres": "ne se cumulent pas",
+   "nature": "grammaire",
+   "raison": "le sujet « les verrouillages » est pluriel"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:verrouillage-physique",
+   "col": "remarque",
+   "avant": "moment là",
+   "apres": "moment-là",
+   "nature": "ponctuation",
+   "raison": "« moment-là » prend un trait d’union"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:verrouillage-physique",
+   "col": "remarque",
+   "avant": "ne se cumule pas",
+   "apres": "ne se cumulent pas",
+   "nature": "grammaire",
+   "raison": "le sujet « les verrouillages » est pluriel"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:fer-corrompu",
+   "col": "effets",
+   "avant": "mauvaise. inflige",
+   "apres": "mauvaise. Inflige",
+   "nature": "casse",
+   "raison": "majuscule après un point"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:fer-corrompu",
+   "col": "effets",
+   "avant": "5 point de",
+   "apres": "5 points de",
+   "nature": "grammaire",
+   "raison": "pluriel après un nombre > 1"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:petrole",
+   "col": "type_brut",
+   "avant": "Entave",
+   "apres": "Entrave",
+   "nature": "orthographe",
+   "raison": "convention : « Entrave »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:petrole",
+   "col": "effets",
+   "avant": "qui ralenti ceux",
+   "apres": "qui ralentit ceux",
+   "nature": "grammaire",
+   "raison": "verbe « ralentir » à la 3e personne : il ralentit"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:petrole",
+   "col": "remarque",
+   "avant": "si il est raté",
+   "apres": "s'il est raté",
+   "nature": "orthographe",
+   "raison": "élision obligatoire « si il » -> « s'il »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:petrole",
+   "col": "remarque",
+   "avant": "réssayer",
+   "apres": "réessayer",
+   "nature": "orthographe",
+   "raison": "verbe « réessayer »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:mine-noire",
+   "col": "type_brut",
+   "avant": "Attaque /Construction",
+   "apres": "Attaque/Construction",
+   "nature": "espace",
+   "raison": "pas d'espace avant la barre oblique (cf. « Attaque/Entrave »)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:mine-noire",
+   "col": "effets",
+   "avant": "zone.  Ne se voit",
+   "apres": "zone. Ne se voit",
+   "nature": "espace",
+   "raison": "espace double"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:mine-noire",
+   "col": "remarque",
+   "avant": "seulement a portée",
+   "apres": "seulement à portée",
+   "nature": "accent",
+   "raison": "préposition « à », pas le verbe « a »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:fouet-tenebreux",
+   "col": "nom",
+   "avant": "Fouet ténèbreux",
+   "apres": "Fouet ténébreux",
+   "nature": "accent",
+   "raison": "« ténébreux » prend « é » (l'identifiant ne change pas)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:aura-de-frayeur",
+   "col": "type_brut",
+   "avant": "Entave (IC",
+   "apres": "Entrave (IC",
+   "nature": "orthographe",
+   "raison": "convention : « Entrave »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:aura-de-frayeur",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "trait d’union (convention commune)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:aura-de-frayeur",
+   "col": "effets",
+   "avant": "Ceux qui rate",
+   "apres": "Ceux qui ratent",
+   "nature": "grammaire",
+   "raison": "le sujet « ceux qui » est pluriel"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:aura-de-frayeur",
+   "col": "effets",
+   "avant": "le jet fuit.",
+   "apres": "le jet fuient.",
+   "nature": "grammaire",
+   "raison": "le sujet « ceux » est pluriel"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:grenade-collante",
+   "col": "effets",
+   "avant": "d'énorme dégâts",
+   "apres": "d'énormes dégâts",
+   "nature": "grammaire",
+   "raison": "adjectif accordé avec « dégâts » (pluriel)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:grenade-collante",
+   "col": "effets",
+   "avant": "innesquivable",
+   "apres": "inesquivable",
+   "nature": "orthographe",
+   "raison": "un seul « n » (cf. « Inesquivable » dans Mine noire)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:pluie-huileuse",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "trait d’union (convention commune)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-larcane#sort:planete-chakratique",
+   "col": "effets",
+   "avant": "= 1 Dégâts",
+   "apres": "= 1 dégâts",
+   "nature": "grammaire",
+   "raison": "après « 1 », singulier ; pas de majuscule en milieu de phrase. | vérificateur : « Dégâts » avec majuscule en milieu de phrase alors que la forme majoritaire de la cellule est « dégâts » ; on ne touche pas au nombre du nom (étiquette d'unité, comme n=80)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-corruption#sort:fer-corrompu",
+   "col": "effets",
+   "avant": "Imprégne l'arme",
+   "apres": "Imprègne l'arme",
+   "nature": "accent",
+   "raison": "verbe « imprégner » : « il imprègne »."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-lespace-temps",
+   "col": "description",
+   "avant": "sont capable de manipuler",
+   "apres": "sont capables de manipuler",
+   "nature": "grammaire",
+   "raison": "accord en nombre avec « Les plus puissants pratiquants »"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-lespace-temps",
+   "col": "description",
+   "avant": "Ne les sous-estimés jamais",
+   "apres": "Ne les sous-estimez jamais",
+   "nature": "grammaire",
+   "raison": "impératif à la 2e personne du pluriel, pas un participe passé"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-lespace-temps",
+   "col": "description_physique",
+   "avant": "d'étrange bandages",
+   "apres": "d'étranges bandages",
+   "nature": "grammaire",
+   "raison": "accord en nombre avec « bandages »"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-lespace-temps",
+   "col": "description_physique",
+   "avant": "couleur roses",
+   "apres": "couleur rose",
+   "nature": "grammaire",
+   "raison": "« couleur » + adjectif de couleur reste invariable"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-lespace-temps",
+   "col": "description_physique",
+   "avant": "pied et jambes",
+   "apres": "pieds et jambes",
+   "nature": "grammaire",
+   "raison": "énumération au pluriel (mains, bras, pieds et jambes)"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-lespace-temps",
+   "col": "description_physique",
+   "avant": "semble être impossible à enlever",
+   "apres": "semblent être impossibles à enlever",
+   "nature": "grammaire",
+   "raison": "le sujet est « bandages » (pluriel)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:substitution",
+   "col": "portee_brut",
+   "avant": "6 (+1/ NM)",
+   "apres": "6 (+1/NM)",
+   "nature": "espace",
+   "raison": "espace insécable parasite, forme des autres portées (« +1/NM ») | vérificateur : Faute réelle : espace insécable parasite après la barre oblique (les autres portées s'écrivent « +1/NM »). L'avant est précisé avec le caractère U+00A0 réellement présent dans le texte. Remplace le doublon n°71."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:substitution",
+   "col": "effets",
+   "avant": "taille a peu près égale",
+   "apres": "taille à peu près égale",
+   "nature": "accent",
+   "raison": "locution « à peu près »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:fer-temporel",
+   "col": "effets",
+   "avant": "rose et noir,",
+   "apres": "rose et noire,",
+   "nature": "grammaire",
+   "raison": "accord en genre avec « l'arme »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:ralentissement",
+   "col": "effets",
+   "avant": "raté =  -2",
+   "apres": "raté = -2",
+   "nature": "espace",
+   "raison": "espace double"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:inversion",
+   "col": "effets",
+   "avant": "avec celui de la cible",
+   "apres": "avec celle de la cible",
+   "nature": "grammaire",
+   "raison": "« celle » reprend « place » (féminin)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:inversion",
+   "col": "remarque",
+   "avant": "Peut être contrer par",
+   "apres": "Peut être contré par",
+   "nature": "grammaire",
+   "raison": "participe passé après « être »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:frappe-temporelle",
+   "col": "effets",
+   "avant": "symtriquement",
+   "apres": "symétriquement",
+   "nature": "frappe",
+   "raison": "lettre manquante (symétriquement)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:portail-piege",
+   "col": "effets",
+   "avant": "d'invoqué un",
+   "apres": "d'invoquer un",
+   "nature": "grammaire",
+   "raison": "infinitif après « permet de »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:portail-piege",
+   "col": "effets",
+   "avant": "portail piéger qui",
+   "apres": "portail piégé qui",
+   "nature": "grammaire",
+   "raison": "participe passé adjectif de « portail »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:horloge-aspirante",
+   "col": "effets",
+   "avant": "dégâts infligé.",
+   "apres": "dégâts infligés.",
+   "nature": "grammaire",
+   "raison": "accord en nombre avec « dégâts »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:horloge-aspirante",
+   "col": "effets",
+   "avant": "les créature vivante.",
+   "apres": "les créatures vivantes.",
+   "nature": "grammaire",
+   "raison": "pluriel après « les »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:horloge-aspirante",
+   "col": "remarque",
+   "avant": "barrière est vampirisé.",
+   "apres": "barrière est vampirisée.",
+   "nature": "grammaire",
+   "raison": "accord en genre avec « la barrière »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:horloge-aspirante",
+   "col": "remarque",
+   "avant": "les points de vies, c'est",
+   "apres": "les points de vie, c'est",
+   "nature": "orthographe",
+   "raison": "on écrit « points de vie » (forme dominante dans les données)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:horloge-aspirante",
+   "col": "remarque",
+   "avant": "les points de vies qui sont",
+   "apres": "les points de vie qui sont",
+   "nature": "orthographe",
+   "raison": "on écrit « points de vie » (forme dominante dans les données)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:celerite",
+   "col": "remarque",
+   "avant": "naturellement 2 tour,",
+   "apres": "naturellement 2 tours,",
+   "nature": "grammaire",
+   "raison": "pluriel après un nombre supérieur à 1"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:grenade-distordue",
+   "col": "effets",
+   "avant": "symtriquement",
+   "apres": "symétriquement",
+   "nature": "frappe",
+   "raison": "lettre manquante (symétriquement)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:grenade-distordue",
+   "col": "remarque",
+   "avant": "si le lanceur est",
+   "apres": "Si le lanceur est",
+   "nature": "casse",
+   "raison": "majuscule en début de phrase"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:grenade-distordue",
+   "col": "remarque",
+   "avant": "peut décidé de",
+   "apres": "peut décider de",
+   "nature": "grammaire",
+   "raison": "infinitif après « peut »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:grenade-distordue",
+   "col": "remarque",
+   "avant": "être téléporter.",
+   "apres": "être téléporté.",
+   "nature": "grammaire",
+   "raison": "participe passé après « être »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:teleport-parfait",
+   "col": "effets",
+   "avant": "sur de grande distance",
+   "apres": "sur de grandes distances",
+   "nature": "grammaire",
+   "raison": "locution « sur de grandes distances » (pluriel)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:teleport-parfait",
+   "col": "effets",
+   "avant": "doivent touché le",
+   "apres": "doivent toucher le",
+   "nature": "grammaire",
+   "raison": "infinitif après « doivent »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:teleport-parfait",
+   "col": "effets",
+   "avant": "pour être téléporter.",
+   "apres": "pour être téléportés.",
+   "nature": "grammaire",
+   "raison": "participe passé après « être », accord avec « Les autres »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:image-diffuse",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "trait d'union (convention commune)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:image-diffuse",
+   "col": "effets",
+   "avant": "passif du lanceur",
+   "apres": "passifs du lanceur",
+   "nature": "grammaire",
+   "raison": "accord en nombre avec « clones »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:image-diffuse",
+   "col": "remarque",
+   "avant": "Ces clones imite",
+   "apres": "Ces clones imitent",
+   "nature": "grammaire",
+   "raison": "le sujet « Ces clones » est pluriel"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:image-diffuse",
+   "col": "remarque",
+   "avant": "dans ces actions",
+   "apres": "dans ses actions",
+   "nature": "orthographe",
+   "raison": "possessif : les actions du lanceur (ses)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:image-diffuse",
+   "col": "remarque",
+   "avant": "cette attaque à 50% de chance",
+   "apres": "cette attaque a 50% de chance",
+   "nature": "orthographe",
+   "raison": "verbe avoir (a) et non la préposition"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:image-diffuse",
+   "col": "remarque",
+   "avant": "d'atterrir  sur",
+   "apres": "d'atterrir sur",
+   "nature": "espace",
+   "raison": "espace double"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lespace-temps#sort:premonition",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "trait d'union (convention commune)"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-du-vide",
+   "col": "description_physique",
+   "avant": "aux niveau des yeux",
+   "apres": "au niveau des yeux",
+   "nature": "grammaire",
+   "raison": "locution « au niveau de »"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-du-vide",
+   "col": "description_physique",
+   "avant": "de l'oeil devient",
+   "apres": "de l'œil devient",
+   "nature": "orthographe",
+   "raison": "ligature « œ » dans « œil »"
+  },
+  {
+   "table": "magie_role",
+   "id": "magies/magie-du-vide#role:2",
+   "col": "role_brut",
+   "avant": "DÉGATS",
+   "apres": "DÉGÂTS",
+   "nature": "accent",
+   "raison": "accent circonflexe manquant (convention « dégâts »)"
+  },
+  {
+   "table": "mode_hyper_effet",
+   "id": "onglet_magie:magies/magie-du-vide:bi",
+   "col": "effet",
+   "avant": "bon)à la",
+   "apres": "bon) à la",
+   "nature": "espace",
+   "raison": "espace manquante après la parenthèse fermante"
+  },
+  {
+   "table": "mode_hyper_effet",
+   "id": "onglet_magie:magies/magie-du-vide:bi",
+   "col": "effet",
+   "avant": "attaque tenter contre",
+   "apres": "attaque tentée contre",
+   "nature": "grammaire",
+   "raison": "participe passé accordé avec « attaque »"
+  },
+  {
+   "table": "mode_hyper_effet",
+   "id": "onglet_magie:magies/magie-du-vide:mono",
+   "col": "effet",
+   "avant": "qui tente des",
+   "apres": "qui tentent des",
+   "nature": "grammaire",
+   "raison": "le sujet « qui » reprend « ennemis » (pluriel)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:telekinesie",
+   "col": "remarque",
+   "avant": "infini, il faut un certain niveau de magie pour certains objets\nMagie 1 = taille",
+   "apres": "infinie, il faut un certain niveau de magie pour certains objets\nMagie 1 = taille",
+   "nature": "grammaire",
+   "raison": "accord en genre avec « La taille »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:telekinesie",
+   "col": "remarque",
+   "avant": "infini, il faut un certain niveau de magie pour certains objets\nMagie 1 = TP",
+   "apres": "infinie, il faut un certain niveau de magie pour certains objets\nMagie 1 = TP",
+   "nature": "grammaire",
+   "raison": "accord en genre avec « La taille »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:silence",
+   "col": "effets",
+   "avant": "déjà subit le sort",
+   "apres": "déjà subi le sort",
+   "nature": "grammaire",
+   "raison": "participe passé du verbe subir (subi)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:pression",
+   "col": "effets",
+   "avant": "s’affaisse et",
+   "apres": "s’affaissent et",
+   "nature": "grammaire",
+   "raison": "le sujet est « Les cibles »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:pression",
+   "col": "effets",
+   "avant": "sont incapable de",
+   "apres": "sont incapables de",
+   "nature": "grammaire",
+   "raison": "accord en nombre avec « Les cibles »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:dissipation",
+   "col": "remarque",
+   "avant": "annulé par ce sort",
+   "apres": "annulés par ce sort",
+   "nature": "grammaire",
+   "raison": "accord en nombre avec « Les buff »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:lame-du-vide",
+   "col": "effets",
+   "avant": "dégâts fixe à",
+   "apres": "dégâts fixes à",
+   "nature": "grammaire",
+   "raison": "accord en nombre avec « dégâts »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:lame-du-vide",
+   "col": "effets",
+   "avant": "ennemis visible.",
+   "apres": "ennemis visibles.",
+   "nature": "grammaire",
+   "raison": "accord en nombre avec « ennemis »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:aspect-vide",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "trait d'union (convention commune)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:aspect-vide",
+   "col": "remarque",
+   "avant": "attaques ne touche pas, SEULES les armes spectrales fonctionne dans",
+   "apres": "attaques ne touchent pas, SEULES les armes spectrales fonctionnent dans",
+   "nature": "grammaire",
+   "raison": "le sujet « les sorts et les attaques » et « les armes » est pluriel"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:aspect-vide",
+   "col": "remarque",
+   "avant": "et sorts ne fonctionne pas, SEULES les armes spectrales fonctionne dans",
+   "apres": "et sorts ne fonctionnent pas, SEULES les armes spectrales fonctionnent dans",
+   "nature": "grammaire",
+   "raison": "le sujet « les attaques et sorts » et « les armes » est pluriel"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:touche-du-vide",
+   "col": "effets",
+   "avant": "les créature vivante.",
+   "apres": "les créatures vivantes.",
+   "nature": "grammaire",
+   "raison": "pluriel après « les »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:touche-du-vide",
+   "col": "remarque",
+   "avant": "barrière est vampirisé.",
+   "apres": "barrière est vampirisée.",
+   "nature": "grammaire",
+   "raison": "accord en genre avec « la barrière »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:touche-du-vide",
+   "col": "remarque",
+   "avant": "les points de vies, c'est",
+   "apres": "les points de vie, c'est",
+   "nature": "orthographe",
+   "raison": "on écrit « points de vie » (forme dominante dans les données)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:touche-du-vide",
+   "col": "remarque",
+   "avant": "les points de vies qui sont",
+   "apres": "les points de vie qui sont",
+   "nature": "orthographe",
+   "raison": "on écrit « points de vie » (forme dominante dans les données)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:alea-negatif",
+   "col": "remarque",
+   "avant": "au dessus",
+   "apres": "au-dessus",
+   "nature": "ponctuation",
+   "raison": "trait d'union dans « au-dessus »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:alea-negatif",
+   "col": "remarque",
+   "avant": "croix dure 1",
+   "apres": "croix durent 1",
+   "nature": "grammaire",
+   "raison": "le sujet « les croix » est pluriel"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:alea-negatif",
+   "col": "remarque",
+   "avant": "Retire tout les effets",
+   "apres": "Retire tous les effets",
+   "nature": "grammaire",
+   "raison": "« tous les » devant un pluriel masculin"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:esprit-solide",
+   "col": "effets",
+   "avant": "à tout agression",
+   "apres": "à toute agression",
+   "nature": "grammaire",
+   "raison": "accord en genre avec « agression »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:saccage-temporel",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "trait d'union (convention commune)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:mot-du-vide",
+   "col": "effets",
+   "avant": "partiellement immatériel.",
+   "apres": "partiellement immatérielle.",
+   "nature": "grammaire",
+   "raison": "accord en genre avec « La cible »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:metronome",
+   "col": "effets",
+   "avant": "NM sont utile pour",
+   "apres": "NM sont utiles pour",
+   "nature": "grammaire",
+   "raison": "accord en nombre avec « Les NM »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:metronome",
+   "col": "texte_niveau5",
+   "avant": "METRONOME !",
+   "apres": "MÉTRONOME !",
+   "nature": "accent",
+   "raison": "accent sur la majuscule (nom du sort « Métronome »)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:metronome",
+   "col": "remarque",
+   "avant": "Ne peut pas être relancer.\nLe mage",
+   "apres": "Ne peut pas être relancé.\nLe mage",
+   "nature": "grammaire",
+   "raison": "participe passé après « être »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:metronome",
+   "col": "remarque",
+   "avant": "sort.\n\nNe peut pas être relancer.",
+   "apres": "sort.\n\nNe peut pas être relancé.",
+   "nature": "grammaire",
+   "raison": "participe passé après « être »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:marteau-du-vide",
+   "col": "effets",
+   "avant": "de terrible dégâts",
+   "apres": "de terribles dégâts",
+   "nature": "grammaire",
+   "raison": "accord en nombre avec « dégâts »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:sablier-du-vide",
+   "col": "effets",
+   "avant": "et le retransmet",
+   "apres": "et la retransmet",
+   "nature": "grammaire",
+   "raison": "Le pronom reprend « la santé » (féminin)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vide#sort:metronome",
+   "col": "texte_niveau5",
+   "avant": "puisse le sort surgisse",
+   "apres": "puisse le sort surgir",
+   "nature": "grammaire",
+   "raison": "Après « puisse » : infinitif, comme dans les autres incantations (« puisse l’univers se vider », « puisse le Vide se déchaîner »)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-necromancie",
+   "col": "description",
+   "avant": "de bon dégâts",
+   "apres": "de bons dégâts",
+   "nature": "grammaire",
+   "raison": "adjectif accordé avec « dégâts » (pluriel)"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-necromancie",
+   "col": "description_physique",
+   "avant": "plus mince que",
+   "apres": "plus minces que",
+   "nature": "grammaire",
+   "raison": "accord avec « Les nécromanciens »"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-necromancie",
+   "col": "description_physique",
+   "avant": "par endroit (",
+   "apres": "par endroits (",
+   "nature": "orthographe",
+   "raison": "locution « par endroits »"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-necromancie",
+   "col": "description_physique",
+   "avant": "phalanges, etc)",
+   "apres": "phalanges, etc.)",
+   "nature": "ponctuation",
+   "raison": "abréviation « etc. » : point manquant"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-necromancie",
+   "col": "barre4_texte",
+   "avant": "10 Âme et",
+   "apres": "10 Âmes et",
+   "nature": "grammaire",
+   "raison": "pluriel après un nombre supérieur à 1"
+  },
+  {
+   "table": "mode_hyper_effet",
+   "id": "onglet_magie:magies/magie-de-la-necromancie:mono",
+   "col": "effet",
+   "avant": "déjà en ic)",
+   "apres": "déjà en IC)",
+   "nature": "casse",
+   "raison": "sigle IC écrit en majuscules dans la même phrase"
+  },
+  {
+   "table": "amelioration_cadaverique",
+   "id": "magies/magie-de-la-necromancie#amelioration:os-froid",
+   "col": "effet",
+   "avant": "Dégâts magique divisé par 2",
+   "apres": "Dégâts magiques divisés par 2",
+   "nature": "grammaire",
+   "raison": "accord avec « Dégâts » (pluriel)"
+  },
+  {
+   "table": "amelioration_cadaverique",
+   "id": "magies/magie-de-la-necromancie#amelioration:reanime",
+   "col": "effet",
+   "avant": "VItesse",
+   "apres": "Vitesse",
+   "nature": "frappe",
+   "raison": "majuscule parasite au milieu du mot"
+  },
+  {
+   "table": "amelioration_cadaverique",
+   "id": "magies/magie-de-la-necromancie#amelioration:s-de-pierre",
+   "col": "effet",
+   "avant": "Dégâts physique divisé par 2",
+   "apres": "Dégâts physiques divisés par 2",
+   "nature": "grammaire",
+   "raison": "accord avec « Dégâts » (pluriel)"
+  },
+  {
+   "table": "amelioration_cadaverique",
+   "id": "magies/magie-de-la-necromancie#amelioration:s-rayonnant",
+   "col": "effet",
+   "avant": "Peut sacrifié",
+   "apres": "Peut sacrifier",
+   "nature": "grammaire",
+   "raison": "infinitif après « Peut »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:animation-de-mort",
+   "col": "effets",
+   "avant": "des non-mort (",
+   "apres": "des non-morts (",
+   "nature": "grammaire",
+   "raison": "pluriel après « des »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:animation-de-mort",
+   "col": "remarque",
+   "avant": "NIveau 2",
+   "apres": "Niveau 2",
+   "nature": "frappe",
+   "raison": "majuscule parasite (I)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:animation-de-mort",
+   "col": "remarque",
+   "avant": "NIveau 3",
+   "apres": "Niveau 3",
+   "nature": "frappe",
+   "raison": "majuscule parasite (I)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:animation-de-mort",
+   "col": "remarque",
+   "avant": "NIveau 4",
+   "apres": "Niveau 4",
+   "nature": "frappe",
+   "raison": "majuscule parasite (I)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:animation-de-mort",
+   "col": "remarque",
+   "avant": "morts vivants",
+   "apres": "morts-vivants",
+   "nature": "orthographe",
+   "raison": "trait d'union (mort-vivant, cf. l'URL du wiki)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:animation-de-mort",
+   "col": "remarque",
+   "avant": "possible https",
+   "apres": "possibles https",
+   "nature": "grammaire",
+   "raison": "accord avec « morts-vivants »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:mur-dos",
+   "col": "effets",
+   "avant": "qui possède 10 PV",
+   "apres": "qui possèdent 10 PV",
+   "nature": "grammaire",
+   "raison": "« qui » reprend « murs » (pluriel)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:corruption-dame",
+   "col": "effets",
+   "avant": "jet de Vigueur raté",
+   "apres": "jet de vigueur raté",
+   "nature": "casse",
+   "raison": "forme majoritaire « jet de vigueur » dans la colonne"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:detection-de-vie",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "orthographe",
+   "raison": "convention : trait d'union"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:detection-de-vie",
+   "col": "effets",
+   "avant": "formes de vies",
+   "apres": "formes de vie",
+   "nature": "orthographe",
+   "raison": "locution « formes de vie » (vie invariable)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:detection-de-vie",
+   "col": "effets",
+   "avant": "ses dernier étant",
+   "apres": "ces derniers étant",
+   "nature": "grammaire",
+   "raison": "« ces derniers » (démonstratif, pluriel : animaux et végétaux)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:detection-de-vie",
+   "col": "effets",
+   "avant": "plus sombre)",
+   "apres": "plus sombres)",
+   "nature": "grammaire",
+   "raison": "accord avec « ces derniers »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:forces-des-ames",
+   "col": "cout_brut",
+   "avant": "1 âmes",
+   "apres": "1 âme",
+   "nature": "grammaire",
+   "raison": "singulier après le nombre 1"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:forces-des-ames",
+   "col": "dsb_brut",
+   "avant": "1 âmes",
+   "apres": "1 âme",
+   "nature": "grammaire",
+   "raison": "singulier après le nombre 1"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:pieu-dos",
+   "col": "cout_brut",
+   "avant": "2 âme",
+   "apres": "2 âmes",
+   "nature": "grammaire",
+   "raison": "pluriel après un nombre supérieur à 1"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:armure-dos",
+   "col": "effets",
+   "avant": "aux attaque de taille",
+   "apres": "aux attaques de taille",
+   "nature": "grammaire",
+   "raison": "pluriel après « aux »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:detection-de-la-mort",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "orthographe",
+   "raison": "convention : trait d'union"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:festin-des-ames",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "orthographe",
+   "raison": "convention : trait d'union"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:festin-des-ames",
+   "col": "effets",
+   "avant": "âmes affamés",
+   "apres": "âmes affamées",
+   "nature": "grammaire",
+   "raison": "accord avec « âmes » (féminin pluriel)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:poison-de-masse",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "orthographe",
+   "raison": "convention : trait d'union"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:forge-de-ses-morts",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "orthographe",
+   "raison": "convention : trait d'union"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:calin-putrefie",
+   "col": "cout_brut",
+   "avant": "3 âme",
+   "apres": "3 âmes",
+   "nature": "grammaire",
+   "raison": "pluriel après un nombre supérieur à 1"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:vague-de-cadavre",
+   "col": "zone_brut",
+   "avant": "5 case",
+   "apres": "5 cases",
+   "nature": "grammaire",
+   "raison": "pluriel après un nombre supérieur à 1"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:cimetiere-ouvert",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "orthographe",
+   "raison": "convention : trait d'union"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:resurrection-noir",
+   "col": "remarque",
+   "avant": "mois. Ou alors qu'une résurrection est appliquer",
+   "apres": "mois. Ou alors qu'une résurrection est appliquée",
+   "nature": "grammaire",
+   "raison": "participe passé accordé avec « résurrection » (passif) ; première occurrence"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:resurrection-noir",
+   "col": "remarque",
+   "avant": "Est considérer comme mort",
+   "apres": "Est considéré comme mort",
+   "nature": "grammaire",
+   "raison": "participe passé après « est »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:resurrection-noir",
+   "col": "remarque",
+   "avant": "jours. Ou alors qu'une résurrection est appliquer",
+   "apres": "jours. Ou alors qu'une résurrection est appliquée",
+   "nature": "grammaire",
+   "raison": "participe passé accordé avec « résurrection » (passif) ; seconde occurrence"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-du-feu",
+   "col": "description_physique",
+   "avant": "sont un peu calcinés",
+   "apres": "sont un peu calcinées",
+   "nature": "grammaire",
+   "raison": "accord avec « mains » (féminin pluriel)"
+  },
+  {
+   "table": "magie_role",
+   "id": "magies/magie-du-feu#role:1",
+   "col": "role_brut",
+   "avant": "DÉGATS",
+   "apres": "DÉGÂTS",
+   "nature": "accent",
+   "raison": "« dégâts » prend un accent circonflexe (convention)"
+  },
+  {
+   "table": "mode_hyper_effet",
+   "id": "onglet_magie:magies/magie-du-feu:bi",
+   "col": "effet",
+   "avant": "une contre attaque",
+   "apres": "une contre-attaque",
+   "nature": "orthographe",
+   "raison": "trait d'union (contre-attaque)"
+  },
+  {
+   "table": "mode_hyper_effet",
+   "id": "onglet_magie:magies/magie-du-feu:mono",
+   "col": "effet",
+   "avant": "une contre attaque",
+   "apres": "une contre-attaque",
+   "nature": "orthographe",
+   "raison": "trait d'union (contre-attaque)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:aura-chaude",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "orthographe",
+   "raison": "convention : trait d'union"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:aura-chaude",
+   "col": "effets",
+   "avant": "si ils ratent",
+   "apres": "s'ils ratent",
+   "nature": "orthographe",
+   "raison": "élision obligatoire « s'ils »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:detection-du-feu",
+   "col": "effets",
+   "avant": "d'être vivant",
+   "apres": "d'êtres vivants",
+   "nature": "orthographe",
+   "raison": "nom « êtres » (pluriel, avec accent) ; accord de « vivants »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:braise-magique",
+   "col": "zone_brut",
+   "avant": "Tout les ennemis visible",
+   "apres": "Tous les ennemis visibles",
+   "nature": "grammaire",
+   "raison": "« tous les » + accord de « visibles » avec « ennemis »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:braise-magique",
+   "col": "effets",
+   "avant": "de touché",
+   "apres": "de toucher",
+   "nature": "grammaire",
+   "raison": "infinitif après « de »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:braise-magique",
+   "col": "effets",
+   "avant": "tout les ennemi avec",
+   "apres": "tous les ennemis avec",
+   "nature": "grammaire",
+   "raison": "« tous les » + pluriel de « ennemis »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:braise-magique",
+   "col": "effets",
+   "avant": "inflige Brulure 1",
+   "apres": "inflige brûlure 1",
+   "nature": "accent",
+   "raison": "« brûlure » prend un accent circonflexe (écrit ainsi partout ailleurs) | vérificateur : Accent manquant; casse alignée sur la forme majoritaire « brûlure » (minuscule) de la colonne."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:etincelle",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "orthographe",
+   "raison": "convention : trait d'union"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:etincelle",
+   "col": "effets",
+   "avant": "de contre coup",
+   "apres": "de contrecoup",
+   "nature": "orthographe",
+   "raison": "trait d'union (contre-coup) | forme unique « contrecoup » dans tous les sorts"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:fournaise",
+   "col": "effets",
+   "avant": "Ne peut être faire que",
+   "apres": "Ne peut être fait que",
+   "nature": "grammaire",
+   "raison": "participe passé après « être »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:mur-de-flammes",
+   "col": "effets",
+   "avant": "qui ne possède pas",
+   "apres": "qui ne possèdent pas",
+   "nature": "grammaire",
+   "raison": "accord avec « Ceux » (pluriel)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:mur-de-flammes",
+   "col": "effets",
+   "avant": "pour tenté de traverser",
+   "apres": "pour tenter de traverser",
+   "nature": "grammaire",
+   "raison": "infinitif après « pour »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:diffusion",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "orthographe",
+   "raison": "convention : trait d'union"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:diffusion",
+   "col": "effets",
+   "avant": "dégâts fixe a tout ceux",
+   "apres": "dégâts fixes à tous ceux",
+   "nature": "grammaire",
+   "raison": "« fixes » accordé avec « dégâts » ; préposition « à » ; « tous ceux »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:diffusion",
+   "col": "effets",
+   "avant": "qui souffre",
+   "apres": "qui souffrent",
+   "nature": "grammaire",
+   "raison": "accord du verbe avec « ceux » (pluriel) | vérificateur : Accord avec « ceux »; avant raccourci pour ne pas chevaucher la 60 (« d'une brulure »)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:diffusion",
+   "col": "effets",
+   "avant": "d'une brulure",
+   "apres": "d'une brûlure",
+   "nature": "accent",
+   "raison": "« brûlure » prend un accent circonflexe"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:marcheur-exalte",
+   "col": "effets",
+   "avant": "de la lave.. Les",
+   "apres": "de la lave. Les",
+   "nature": "ponctuation",
+   "raison": "point final doublé"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:marcheur-exalte",
+   "col": "effets",
+   "avant": "Les jambes possède",
+   "apres": "Les jambes possèdent",
+   "nature": "grammaire",
+   "raison": "accord avec « jambes » (pluriel)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:marcheur-exalte",
+   "col": "effets",
+   "avant": "armure a cet endroit",
+   "apres": "armure à cet endroit",
+   "nature": "accent",
+   "raison": "préposition « à » (et non le verbe « a »)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:bouclier-de-feu",
+   "col": "effets",
+   "avant": "dégâts a toute attaque",
+   "apres": "dégâts à toute attaque",
+   "nature": "accent",
+   "raison": "préposition « à » (et non le verbe « a »)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:bouffee-infernale",
+   "col": "effets",
+   "avant": "d'infliger Brulure 1",
+   "apres": "d'infliger brûlure 1",
+   "nature": "accent",
+   "raison": "« brûlure » prend un accent circonflexe (écrit ainsi partout ailleurs) | vérificateur : Accent manquant; casse alignée sur la forme majoritaire « brûlure » (minuscule) de la colonne."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:combustion-forte",
+   "col": "effets",
+   "avant": "aux immunisé",
+   "apres": "aux immunisés",
+   "nature": "grammaire",
+   "raison": "pluriel après « aux »"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:combustion-forte",
+   "col": "effets",
+   "avant": "ne peux l'être",
+   "apres": "ne peut l'être",
+   "nature": "grammaire",
+   "raison": "sujet « ce qui » : 3e personne"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:meteore-cramoisi",
+   "col": "effets",
+   "avant": "de terrible dégâts",
+   "apres": "de terribles dégâts",
+   "nature": "grammaire",
+   "raison": "adjectif accordé avec « dégâts » (pluriel)"
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:bucher-purifiant",
+   "col": "effets",
+   "avant": "de terrible dégâts",
+   "apres": "de terribles dégâts",
+   "nature": "grammaire",
+   "raison": "adjectif accordé avec « dégâts » (pluriel)"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-necromancie",
+   "col": "description_physique",
+   "avant": "voir maigre pour",
+   "apres": "voire maigres pour",
+   "nature": "orthographe",
+   "raison": "l'adverbe est « voire » (et même), pas l'infinitif « voir » ; « maigre » s'accorde avec « nécromanciens »."
+  },
+  {
+   "table": "mode_hyper_effet",
+   "id": "onglet_magie:magies/magie-de-la-necromancie:bi",
+   "col": "effet",
+   "avant": "au lieu d'un seul.",
+   "apres": "au lieu d'une seule.",
+   "nature": "grammaire",
+   "raison": "accord en genre avec « invocations » (féminin)."
+  },
+  {
+   "table": "mode_hyper_effet",
+   "id": "onglet_magie:magies/magie-de-la-necromancie:mono",
+   "col": "effet",
+   "avant": "au lieu d'un seul.",
+   "apres": "au lieu d'une seule.",
+   "nature": "grammaire",
+   "raison": "accord en genre avec « invocations » (féminin)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:animation-de-mort",
+   "col": "remarque",
+   "avant": "5 âmes\n\nChaque niveau de puissance de la créature invoqué double",
+   "apres": "5 âmes\n\nChaque niveau de puissance de la créature invoquée double",
+   "nature": "grammaire",
+   "raison": "le participe s'accorde avec « créature » (féminin). Première occurrence de la phrase (après la liste des niveaux). Voir a_valider pour « de le coût »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-necromancie#sort:animation-de-mort",
+   "col": "remarque",
+   "avant": "(Invocation)\n\nChaque niveau de puissance de la créature invoqué double",
+   "apres": "(Invocation)\n\nChaque niveau de puissance de la créature invoquée double",
+   "nature": "grammaire",
+   "raison": "le participe s'accorde avec « créature » (féminin). Seconde occurrence de la phrase (après le lien)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:bouclier-de-feu",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "trait d'union (convention commune : « Soi-même »)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:zenith",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "trait d'union (convention commune : « Soi-même »)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-feu#sort:pluie-chaude",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "trait d'union (convention commune : « Soi-même »)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-leau",
+   "col": "description_physique",
+   "avant": "plus estétique",
+   "apres": "plus esthétique",
+   "nature": "orthographe",
+   "raison": "« esthétique » s'écrit avec un h."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-leau",
+   "col": "description_physique",
+   "avant": "ce dernier transpirent",
+   "apres": "ce dernier transpire",
+   "nature": "grammaire",
+   "raison": "Le sujet « ce dernier » (le corps) est au singulier."
+  },
+  {
+   "table": "magie_role",
+   "id": "magies/magie-de-leau#role:2",
+   "col": "role_brut",
+   "avant": "DÉGATS",
+   "apres": "DÉGÂTS",
+   "nature": "accent",
+   "raison": "« dégâts » prend un accent circonflexe, y compris en capitales."
+  },
+  {
+   "table": "mode_hyper_effet",
+   "id": "onglet_magie:magies/magie-de-leau:bi",
+   "col": "effet",
+   "avant": "considérer comme",
+   "apres": "considéré comme",
+   "nature": "grammaire",
+   "raison": "Après « est », participe passé et non infinitif."
+  },
+  {
+   "table": "mode_hyper_effet",
+   "id": "onglet_magie:magies/magie-de-leau:bi",
+   "col": "effet",
+   "avant": "attaque subis",
+   "apres": "attaque subie",
+   "nature": "grammaire",
+   "raison": "Participe passé accordé avec « attaque » (féminin singulier)."
+  },
+  {
+   "table": "mode_hyper_effet",
+   "id": "onglet_magie:magies/magie-de-leau:mono",
+   "col": "effet",
+   "avant": "considérer comme",
+   "apres": "considéré comme",
+   "nature": "grammaire",
+   "raison": "Après « est », participe passé et non infinitif."
+  },
+  {
+   "table": "mode_hyper_effet",
+   "id": "onglet_magie:magies/magie-de-leau:mono",
+   "col": "effet",
+   "avant": "attaque subis",
+   "apres": "attaque subie",
+   "nature": "grammaire",
+   "raison": "Participe passé accordé avec « attaque » (féminin singulier)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:mucus-protecteur",
+   "col": "effets",
+   "avant": "dégâts magique.",
+   "apres": "dégâts magiques.",
+   "nature": "grammaire",
+   "raison": "Accord au pluriel avec « dégâts »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:fer-humide",
+   "col": "dsb_brut",
+   "avant": ",+8 dégâts",
+   "apres": "+8 dégâts",
+   "nature": "ponctuation",
+   "raison": "Virgule parasite en début de cellule (le sort jumeau Fer froid porte « +8 dégâts »)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:barriere-deau",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union dans « soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:ruisseau-conciliant",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union dans « soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:trombe-deau",
+   "col": "effets",
+   "avant": "urne rempli",
+   "apres": "urne remplie",
+   "nature": "grammaire",
+   "raison": "Participe passé accordé avec « urne » (féminin)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:lame-sous-pression",
+   "col": "effets",
+   "avant": "lame fait d'eau",
+   "apres": "lame faite d'eau",
+   "nature": "grammaire",
+   "raison": "Participe passé accordé avec « lame » (féminin)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:courant-salvateur",
+   "col": "effets",
+   "avant": "cilbes dessus",
+   "apres": "cibles dessus",
+   "nature": "frappe",
+   "raison": "Lettres permutées : « cibles »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:courant-salvateur",
+   "col": "effets",
+   "avant": "direction décidé par",
+   "apres": "direction décidée par",
+   "nature": "grammaire",
+   "raison": "Participe passé accordé avec « direction » (féminin)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:eau-parfaite",
+   "col": "effets",
+   "avant": "les altération",
+   "apres": "les altérations",
+   "nature": "grammaire",
+   "raison": "Pluriel après « toutes les »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:eau-parfaite",
+   "col": "effets",
+   "avant": "lié à des éléments",
+   "apres": "liées à des éléments",
+   "nature": "grammaire",
+   "raison": "Accord avec « altérations » (féminin pluriel)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:dissolution",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union dans « soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:dissolution",
+   "col": "effets",
+   "avant": "Si il est fait",
+   "apres": "S'il est fait",
+   "nature": "orthographe",
+   "raison": "Élision obligatoire de « si » devant « il »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:dissolution",
+   "col": "effets",
+   "avant": "eau. dure 3 tours",
+   "apres": "eau. Dure 3 tours",
+   "nature": "casse",
+   "raison": "Majuscule en début de phrase, après un point."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:dissolution",
+   "col": "remarque",
+   "avant": "totalement insensible aux",
+   "apres": "Totalement insensible aux",
+   "nature": "casse",
+   "raison": "Majuscule en début de texte."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:dissolution",
+   "col": "remarque",
+   "avant": "bénéficié d'une",
+   "apres": "bénéficier d'une",
+   "nature": "grammaire",
+   "raison": "Infinitif après « de » (participe passé employé à tort)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:crachin",
+   "col": "effets",
+   "avant": "dilluvienne",
+   "apres": "diluvienne",
+   "nature": "orthographe",
+   "raison": "« diluvienne » s'écrit avec un seul l après le u."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:cascade-apaisante",
+   "col": "effets",
+   "avant": "santé récupéré par",
+   "apres": "santé récupérée par",
+   "nature": "grammaire",
+   "raison": "Participe passé accordé avec « santé » (féminin)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:laser-hydraulique",
+   "col": "effets",
+   "avant": "reflèxe",
+   "apres": "réflexe",
+   "nature": "accent",
+   "raison": "« réflexe » : accent aigu sur le premier e."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:larmes-doceane",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union dans « soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:larmes-doceane",
+   "col": "effets",
+   "avant": "Empêche  les",
+   "apres": "Empêche les",
+   "nature": "espace",
+   "raison": "Espace double."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:larmes-doceane",
+   "col": "effets",
+   "avant": "Sort Feu",
+   "apres": "Sorts Feu",
+   "nature": "grammaire",
+   "raison": "Pluriel après l'article « les »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:larmes-doceane",
+   "col": "effets",
+   "avant": "d'être utilisé le",
+   "apres": "d'être utilisés le",
+   "nature": "grammaire",
+   "raison": "Accord avec « Sorts » (masculin pluriel)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:larmes-doceane",
+   "col": "remarque",
+   "avant": "peux pas être",
+   "apres": "peut pas être",
+   "nature": "grammaire",
+   "raison": "Le sujet « Cette météo » est à la 3e personne du singulier."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:larmes-doceane",
+   "col": "remarque",
+   "avant": "retirer par les",
+   "apres": "retirée par les",
+   "nature": "grammaire",
+   "raison": "Participe passé accordé avec « météo » (féminin) après « être »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:larmes-doceane",
+   "col": "remarque",
+   "avant": "peux pas contrer",
+   "apres": "peut pas contrer",
+   "nature": "grammaire",
+   "raison": "Le sujet « Le Don » est à la 3e personne du singulier."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:pitie-doceane",
+   "col": "effets",
+   "avant": "de ranimé un",
+   "apres": "de ranimer un",
+   "nature": "grammaire",
+   "raison": "Infinitif après « Permet de »."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-glace",
+   "col": "description_physique",
+   "avant": "membres où les zones",
+   "apres": "membres ou les zones",
+   "nature": "grammaire",
+   "raison": "« ou » (alternative) et non « où » (lieu)."
+  },
+  {
+   "table": "magie_role",
+   "id": "magies/magie-de-la-glace#role:3",
+   "col": "role_brut",
+   "avant": "DÉGATS",
+   "apres": "DÉGÂTS",
+   "nature": "accent",
+   "raison": "« dégâts » prend un accent circonflexe, y compris en capitales."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:sculpteur-glace",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union dans « soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:fer-froid",
+   "col": "effets",
+   "avant": "3 tour.",
+   "apres": "3 tours.",
+   "nature": "grammaire",
+   "raison": "Pluriel après un nombre supérieur à 1."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:cerveau-gele",
+   "col": "effets",
+   "avant": "a tout test",
+   "apres": "à tout test",
+   "nature": "accent",
+   "raison": "Préposition « à » (et non le verbe avoir)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:lien-de-gel",
+   "col": "effets",
+   "avant": "cases autours",
+   "apres": "cases autour",
+   "nature": "orthographe",
+   "raison": "« autour » est invariable."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:lien-de-gel",
+   "col": "remarque",
+   "avant": "adversaires disponible.",
+   "apres": "adversaires disponibles.",
+   "nature": "grammaire",
+   "raison": "Accord au pluriel avec « adversaires »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:lien-de-gel",
+   "col": "remarque",
+   "avant": "ainsi libérer mais",
+   "apres": "ainsi libérée mais",
+   "nature": "grammaire",
+   "raison": "Participe passé accordé avec « cible » (féminin) après « est »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:cuirasse-arctique",
+   "col": "effets",
+   "avant": "Peau Verglacé",
+   "apres": "Peau Verglacée",
+   "nature": "orthographe",
+   "raison": "Renvoie au sort « Peau verglacée » (accord au féminin, e manquant)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:avalanche",
+   "col": "effets",
+   "avant": "Inflige de dégâts",
+   "apres": "Inflige des dégâts",
+   "nature": "grammaire",
+   "raison": "Article « des » devant « dégâts » (lettre manquante)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:stalactite",
+   "col": "effets",
+   "avant": "Envoi un gros",
+   "apres": "Envoie un gros",
+   "nature": "grammaire",
+   "raison": "Verbe conjugué à la 3e personne du singulier (comme « Envoie une lance » ailleurs)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:gel-profond",
+   "col": "remarque",
+   "avant": "l'allié sera",
+   "apres": "L'allié sera",
+   "nature": "casse",
+   "raison": "Majuscule en début de texte."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:cape-hivernale",
+   "col": "dsb_brut",
+   "avant": "dégâts magique",
+   "apres": "dégâts magiques",
+   "nature": "grammaire",
+   "raison": "Accord au pluriel avec « dégâts »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:frappe-de-celsius",
+   "col": "texte_niveau5",
+   "avant": "froid brise tout",
+   "apres": "froid briser tout",
+   "nature": "frappe",
+   "raison": "Après « puisse », infinitif (r final manquant)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:execution-froide",
+   "col": "texte_niveau5",
+   "avant": "Celsius l’emporte sans",
+   "apres": "Celsius l’emporter sans",
+   "nature": "frappe",
+   "raison": "Après « puisse », infinitif (r final manquant)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:execution-froide",
+   "col": "remarque",
+   "avant": "victime ne peux rien",
+   "apres": "victime ne peut rien",
+   "nature": "grammaire",
+   "raison": "Le sujet « La victime » est à la 3e personne du singulier."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:execution-froide",
+   "col": "remarque",
+   "avant": "faut a tout prix",
+   "apres": "faut à tout prix",
+   "nature": "accent",
+   "raison": "Locution « à tout prix » (préposition)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:execution-froide",
+   "col": "remarque",
+   "avant": "interrompu. \nDans",
+   "apres": "interrompu.\nDans",
+   "nature": "espace",
+   "raison": "Espace superflue en fin de ligne, avant le retour à la ligne."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:execution-froide",
+   "col": "remarque",
+   "avant": "ect...",
+   "apres": "etc...",
+   "nature": "frappe",
+   "raison": "Lettres permutées : « etc. »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:execution-froide",
+   "col": "remarque",
+   "avant": "à le choix",
+   "apres": "a le choix",
+   "nature": "grammaire",
+   "raison": "Verbe « avoir » (« le MJ a le choix »), pas la préposition."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:execution-froide",
+   "col": "remarque",
+   "avant": "du cerceuil",
+   "apres": "du cercueil",
+   "nature": "frappe",
+   "raison": "Lettres permutées : « cercueil » (bien écrit dans le texte de niveau 5)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:rayon-polaire",
+   "col": "texte_niveau5",
+   "avant": "Sa volonté condense",
+   "apres": "Sa volonté condenser",
+   "nature": "frappe",
+   "raison": "Après « Puisse », infinitif (r final manquant)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:rayon-polaire",
+   "col": "texte_niveau5",
+   "avant": "polaire emprisonne tout",
+   "apres": "polaire emprisonner tout",
+   "nature": "frappe",
+   "raison": "Après « Puisse », infinitif (r final manquant)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-leau",
+   "col": "description_physique",
+   "avant": "très long et mouillés",
+   "apres": "très longues et mouillées",
+   "nature": "grammaire",
+   "raison": "Adjectifs en apposition accordés avec « mèches » (féminin pluriel)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-leau",
+   "col": "description_physique",
+   "avant": "bleus azur",
+   "apres": "bleu azur",
+   "nature": "grammaire",
+   "raison": "Adjectif de couleur composé (nuance) invariable, comme « bleu cyan » dans la magie de la glace."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-leau#sort:crachin",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union dans « soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:danse-de-celsius",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union dans « soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-glace#sort:pergelisol",
+   "col": "dsb_brut",
+   "avant": "+2 cran de",
+   "apres": "+2 crans de",
+   "nature": "grammaire",
+   "raison": "Pluriel après un nombre supérieur à 1."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-terre",
+   "col": "description",
+   "avant": "devant eux..",
+   "apres": "devant eux.",
+   "nature": "ponctuation",
+   "raison": "Point final doublé en fin de texte."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-terre",
+   "col": "description_physique",
+   "avant": "de léger renforts",
+   "apres": "de légers renforts",
+   "nature": "grammaire",
+   "raison": "Accord de l'adjectif avec « renforts » (pluriel)."
+  },
+  {
+   "table": "magie_role",
+   "id": "magies/magie-de-la-terre#role:2",
+   "col": "role_brut",
+   "avant": "DÉGATS",
+   "apres": "DÉGÂTS",
+   "nature": "accent",
+   "raison": "« dégâts » prend un accent circonflexe sur le a (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:tremblement",
+   "col": "effets",
+   "avant": "Réflèxe",
+   "apres": "Réflexe",
+   "nature": "accent",
+   "raison": "« Réflexe » s'écrit avec é (cf. « stabilité/Réflexe » dans la magie du vent)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:appel-aux-golems",
+   "col": "effets",
+   "avant": "et aux invocation.",
+   "apres": "et aux invocations.",
+   "nature": "grammaire",
+   "raison": "Pluriel après « aux » (familiers et invocations)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:appel-aux-golems",
+   "col": "remarque",
+   "avant": "golems possible",
+   "apres": "golems possibles",
+   "nature": "grammaire",
+   "raison": "Accord avec « golems » (pluriel)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:appel-aux-golems",
+   "col": "remarque",
+   "avant": "créature invoqué double",
+   "apres": "créature invoquée double",
+   "nature": "grammaire",
+   "raison": "Participe passé accordé avec « créature » (féminin)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:racine-soignante",
+   "col": "effets",
+   "avant": "environnement liée à",
+   "apres": "environnement lié à",
+   "nature": "grammaire",
+   "raison": "« environnement » est masculin : « lié »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:arbre-fertilisant",
+   "col": "effets",
+   "avant": "alliés a 3 cases",
+   "apres": "alliés à 3 cases",
+   "nature": "grammaire",
+   "raison": "Préposition « à » (et non le verbe avoir)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:infection",
+   "col": "effets",
+   "avant": "pas élémentaire.",
+   "apres": "pas élémentaires.",
+   "nature": "grammaire",
+   "raison": "Accord avec « dégâts » (pluriel)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:infection",
+   "col": "remarque",
+   "avant": "pas élémentaire",
+   "apres": "pas élémentaires",
+   "nature": "grammaire",
+   "raison": "Accord avec « dégâts » (pluriel)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:barriere-rocheuse",
+   "col": "effets",
+   "avant": "par dessus la",
+   "apres": "par-dessus la",
+   "nature": "ponctuation",
+   "raison": "« par-dessus » prend un trait d'union."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:barriere-rocheuse",
+   "col": "effets",
+   "avant": "coups inférieur à",
+   "apres": "coups inférieurs à",
+   "nature": "grammaire",
+   "raison": "Accord avec « coups » (pluriel)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:barriere-rocheuse",
+   "col": "remarque",
+   "avant": "pour la brisé",
+   "apres": "pour la briser",
+   "nature": "grammaire",
+   "raison": "Infinitif après « pour »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:barriere-rocheuse",
+   "col": "remarque",
+   "avant": "protection est brisé et",
+   "apres": "protection est brisée et",
+   "nature": "grammaire",
+   "raison": "Participe accordé avec « la protection » (féminin)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:barriere-rocheuse",
+   "col": "remarque",
+   "avant": "coup est encaisser.",
+   "apres": "coup est encaissée.",
+   "nature": "grammaire",
+   "raison": "Participe passé (et non infinitif), accordé avec le sujet « l'intégralité » (féminin)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:barriere-rocheuse",
+   "col": "remarque",
+   "avant": "AP ne sont pas compté",
+   "apres": "AP ne sont pas comptées",
+   "nature": "grammaire",
+   "raison": "Sujet pluriel « Les AP » (armure physique, féminin) : participe accordé."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:barriere-rocheuse",
+   "col": "remarque",
+   "avant": "dégâts sont fait à",
+   "apres": "dégâts sont faits à",
+   "nature": "grammaire",
+   "raison": "Accord avec « dégâts » (masculin pluriel)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:alourdissement",
+   "col": "effets",
+   "avant": "plus loude",
+   "apres": "plus lourde",
+   "nature": "frappe",
+   "raison": "Lettre manquante : « lourde » (accord avec « l'arme »)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:alourdissement",
+   "col": "remarque",
+   "avant": "équivalent à",
+   "apres": "Équivalent à",
+   "nature": "casse",
+   "raison": "Majuscule en début de phrase."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:frappe-racine",
+   "col": "remarque",
+   "avant": "tout autre surface",
+   "apres": "toute autre surface",
+   "nature": "grammaire",
+   "raison": "Accord avec « surface » (féminin)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:enracinement",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union (convention commune « Soi-même »)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:enracinement",
+   "col": "effets",
+   "avant": "prenne 5 dégâts",
+   "apres": "prennent 5 dégâts",
+   "nature": "grammaire",
+   "raison": "Le sujet est « Les ennemis » (pluriel)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:enracinement",
+   "col": "effets",
+   "avant": "la zone.  Le sort",
+   "apres": "la zone. Le sort",
+   "nature": "espace",
+   "raison": "Espace double après le point."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:grenade-petrifiante",
+   "col": "effets",
+   "avant": "Terre.  (3NM",
+   "apres": "Terre. (3NM",
+   "nature": "espace",
+   "raison": "Espace double après le point."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:redemption-de-dimitri",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union (convention commune « Soi-même »)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:floraison-salvatrice",
+   "col": "effets",
+   "avant": "santé récupéré par",
+   "apres": "santé récupérée par",
+   "nature": "grammaire",
+   "raison": "Participe accordé avec « la santé » (féminin)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:morsure-terrestre",
+   "col": "effets",
+   "avant": "de terrible dégâts",
+   "apres": "de terribles dégâts",
+   "nature": "grammaire",
+   "raison": "Accord avec « dégâts » (pluriel)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:corps-de-maverium",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union (convention commune « Soi-même »)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:corps-de-maverium",
+   "col": "texte_niveau5",
+   "avant": "nul magie",
+   "apres": "nulle magie",
+   "nature": "grammaire",
+   "raison": "« magie » est féminin : « nulle »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:corps-de-maverium",
+   "col": "remarque",
+   "avant": "protections ne fonctionne pas",
+   "apres": "protections ne fonctionnent pas",
+   "nature": "grammaire",
+   "raison": "Le sujet est « les effets négatifs » (pluriel)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:corps-de-maverium",
+   "col": "remarque",
+   "avant": "Marverium",
+   "apres": "Maverium",
+   "nature": "frappe",
+   "raison": "Lettre en trop : le sort s'appelle « Corps de Maverium »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:corps-de-maverium",
+   "col": "remarque",
+   "avant": "ne fonctionne pas temporairement",
+   "apres": "ne fonctionnent pas temporairement",
+   "nature": "grammaire",
+   "raison": "Le sujet est « les organes internes » (pluriel)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-du-vent",
+   "col": "description_physique",
+   "avant": "cheveux mi-long,",
+   "apres": "cheveux mi-longs,",
+   "nature": "grammaire",
+   "raison": "Accord avec « cheveux » (pluriel)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-du-vent",
+   "col": "description_physique",
+   "avant": "l'oeil",
+   "apres": "l'œil",
+   "nature": "orthographe",
+   "raison": "Ligature œ obligatoire dans « œil »."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-du-vent",
+   "col": "description_physique",
+   "avant": "nue est",
+   "apres": "nu est",
+   "nature": "grammaire",
+   "raison": "« à l'œil nu » : « œil » est masculin."
+  },
+  {
+   "table": "magie_role",
+   "id": "magies/magie-du-vent#role:2",
+   "col": "role_brut",
+   "avant": "DÉGATS",
+   "apres": "DÉGÂTS",
+   "nature": "accent",
+   "raison": "« dégâts » prend un accent circonflexe sur le a (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:vents-murmures",
+   "col": "effets",
+   "avant": "Envoi un",
+   "apres": "Envoie un",
+   "nature": "grammaire",
+   "raison": "Verbe « envoyer » conjugué à la 3e personne du présent."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:force-agile",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union (convention commune « Soi-même »)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:cri-faible",
+   "col": "dsb_brut",
+   "avant": "dégâts sonore",
+   "apres": "dégâts sonores",
+   "nature": "grammaire",
+   "raison": "Accord avec « dégâts » (pluriel)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:cri-faible",
+   "col": "effets",
+   "avant": "Inflge surdité",
+   "apres": "Inflige surdité",
+   "nature": "frappe",
+   "raison": "Lettre manquante dans « Inflige »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:eternuement",
+   "col": "effets",
+   "avant": "Éternu fort",
+   "apres": "Éternue fort",
+   "nature": "orthographe",
+   "raison": "Verbe « éternuer » à la 3e personne du présent (même tournure que « Frappe le sol »)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:eternuement",
+   "col": "effets",
+   "avant": "faire reculé d'une",
+   "apres": "faire reculer d'une",
+   "nature": "grammaire",
+   "raison": "Infinitif après « faire »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:recul-force",
+   "col": "effets",
+   "avant": "Fait reculé la",
+   "apres": "Fait reculer la",
+   "nature": "grammaire",
+   "raison": "Infinitif après « faire »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:tornade",
+   "col": "remarque",
+   "avant": "Réussir a sortir",
+   "apres": "Réussir à sortir",
+   "nature": "grammaire",
+   "raison": "Préposition « à » (et non le verbe avoir)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:tornade",
+   "col": "remarque",
+   "avant": "pas réussir a sortir",
+   "apres": "pas réussir à sortir",
+   "nature": "grammaire",
+   "raison": "Préposition « à » (et non le verbe avoir)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:grenade-explosive",
+   "col": "effets",
+   "avant": "NM) supplémentaire en",
+   "apres": "NM) supplémentaires en",
+   "nature": "grammaire",
+   "raison": "Accord avec « dégâts » (pluriel)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:vibration",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union (convention commune « Soi-même »)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:vibration",
+   "col": "dsb_brut",
+   "avant": "dégâts sonore",
+   "apres": "dégâts sonores",
+   "nature": "grammaire",
+   "raison": "Accord avec « dégâts » (pluriel)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:vibration",
+   "col": "effets",
+   "avant": "Inflge surdité 2",
+   "apres": "Inflige surdité 2",
+   "nature": "frappe",
+   "raison": "Lettre manquante dans « Inflige »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:tempete",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union (convention commune « Soi-même »)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:danse-de-lair",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union (convention commune « Soi-même »)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:explosif",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union (convention commune « Soi-même »)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:megaphone",
+   "col": "dsb_brut",
+   "avant": "dégâts sonore",
+   "apres": "dégâts sonores",
+   "nature": "grammaire",
+   "raison": "Accord avec « dégâts » (pluriel)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:tremblement",
+   "col": "type_brut",
+   "avant": "(imparable)",
+   "apres": "(Imparable)",
+   "nature": "casse",
+   "raison": "Forme majoritaire dans la colonne : « (Imparable) » avec majuscule (16 contre 3)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:corps-de-maverium",
+   "col": "remarque",
+   "avant": "Tout les dégâts reçu sont réduit",
+   "apres": "Tous les dégâts reçus sont réduits",
+   "nature": "grammaire",
+   "raison": "« Tous les » devant un pluriel masculin ; participes accordés avec « dégâts »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:corps-de-maverium",
+   "col": "remarque",
+   "avant": "tout les dégâts possible",
+   "apres": "tous les dégâts possibles",
+   "nature": "grammaire",
+   "raison": "« Tous les » devant un pluriel masculin ; adjectif accordé avec « dégâts »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:corps-de-maverium",
+   "col": "remarque",
+   "avant": "tout les organes interne sont solidifié",
+   "apres": "tous les organes internes sont solidifiés",
+   "nature": "grammaire",
+   "raison": "« Tous les » devant un pluriel masculin ; accords avec « organes »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:propulsion",
+   "col": "effets",
+   "avant": "1 dégâts",
+   "apres": "1 dégât",
+   "nature": "grammaire",
+   "raison": "Singulier après le nombre 1."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:tornade",
+   "col": "type_brut",
+   "avant": "(inesquivable/ imparable)",
+   "apres": "(Inesquivable/ Imparable)",
+   "nature": "casse",
+   "raison": "Forme majoritaire dans la colonne : « Inesquivable » et « Imparable » avec majuscule."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:vibration",
+   "col": "type_brut",
+   "avant": "(imparable)",
+   "apres": "(Imparable)",
+   "nature": "casse",
+   "raison": "Forme majoritaire dans la colonne : « (Imparable) » avec majuscule."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:danse-de-lair",
+   "col": "effets",
+   "avant": "vaporeuse donc",
+   "apres": "vaporeuses donc",
+   "nature": "grammaire",
+   "raison": "Accord avec « Les jambes » (féminin pluriel)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:danse-de-lair",
+   "col": "effets",
+   "avant": "insensible aux attaques",
+   "apres": "insensibles aux attaques",
+   "nature": "grammaire",
+   "raison": "Accord avec « Les jambes » (pluriel)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-foudre",
+   "col": "description_physique",
+   "avant": "électricité parcours",
+   "apres": "électricité parcourt",
+   "nature": "grammaire",
+   "raison": "Verbe parcourir à la 3e personne du singulier : le sujet est « l’électricité »."
+  },
+  {
+   "table": "magie_role",
+   "id": "magies/magie-de-la-foudre#role:1",
+   "col": "role_brut",
+   "avant": "DÉGATS",
+   "apres": "DÉGÂTS",
+   "nature": "accent",
+   "raison": "« dégâts » prend un accent circonflexe (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-foudre#sort:contact-de-volt",
+   "col": "effets",
+   "avant": "par cible touché",
+   "apres": "par cible touchée",
+   "nature": "grammaire",
+   "raison": "Accord au féminin avec « cible »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-foudre#sort:chargeur",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union : « Soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-foudre#sort:chargeur",
+   "col": "remarque",
+   "avant": "Peut etre",
+   "apres": "Peut être",
+   "nature": "accent",
+   "raison": "Accent circonflexe manquant sur « être »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-foudre#sort:chargeur",
+   "col": "remarque",
+   "avant": "lancer 3",
+   "apres": "lancé 3",
+   "nature": "grammaire",
+   "raison": "Participe passé après « peut être » (le sort est lancé), pas l'infinitif."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-foudre#sort:chargeur",
+   "col": "remarque",
+   "avant": "le meme tour",
+   "apres": "le même tour",
+   "nature": "accent",
+   "raison": "Accent circonflexe manquant sur « même »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-foudre#sort:boules-de-foudre",
+   "col": "effets",
+   "avant": "le plus proches",
+   "apres": "le plus proche",
+   "nature": "grammaire",
+   "raison": "Superlatif accordé avec « l'ennemi » (singulier)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-foudre#sort:plaque-miroir",
+   "col": "effets",
+   "avant": "3 plaque miroir",
+   "apres": "3 plaques miroir",
+   "nature": "grammaire",
+   "raison": "Pluriel après un nombre supérieur à 1 (on ne touche pas à « miroir », voir a_valider)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-foudre#sort:plaque-miroir",
+   "col": "effets",
+   "avant": "vont absorbé 3",
+   "apres": "vont absorber 3",
+   "nature": "grammaire",
+   "raison": "Infinitif après « vont »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-foudre#sort:plaque-miroir",
+   "col": "effets",
+   "avant": "le vise",
+   "apres": "le visent",
+   "nature": "grammaire",
+   "raison": "Le sujet de « visent » est « sorts » (pluriel) ; le pronom « le » n'est pas touché."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-foudre#sort:dysfonctionnement",
+   "col": "effets",
+   "avant": "dites mécanique",
+   "apres": "dite mécanique",
+   "nature": "grammaire",
+   "raison": "Accord au singulier avec « créature »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-foudre#sort:dysfonctionnement",
+   "col": "remarque",
+   "avant": "Confusion 3\" pour les créature",
+   "apres": "Confusion 3\" pour les créatures",
+   "nature": "grammaire",
+   "raison": "Pluriel après « les » (accord avec « mécaniques »)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-foudre#sort:dysfonctionnement",
+   "col": "remarque",
+   "avant": "Confus\" pour les créature",
+   "apres": "Confus\" pour les créatures",
+   "nature": "grammaire",
+   "raison": "Pluriel après « les » (accord avec « mécaniques »)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-foudre#sort:eclair-en-chaine",
+   "col": "effets",
+   "avant": "ses dégâts se divise",
+   "apres": "ses dégâts se divisent",
+   "nature": "grammaire",
+   "raison": "Le sujet « ses dégâts » est au pluriel."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-foudre#sort:colere-de-volt",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union : « Soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-foudre#sort:cercle-electrique",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union : « Soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-foudre#sort:cercle-electrique",
+   "col": "effets",
+   "avant": "va électrisé",
+   "apres": "va électriser",
+   "nature": "grammaire",
+   "raison": "Infinitif après « va »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-foudre#sort:manteau-de-volt",
+   "col": "effets",
+   "avant": "devient immunisé à",
+   "apres": "devient immunisée à",
+   "nature": "grammaire",
+   "raison": "Accord au féminin avec « la cible »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-foudre#sort:manteau-de-volt",
+   "col": "effets",
+   "avant": "attaques.  Dure",
+   "apres": "attaques. Dure",
+   "nature": "espace",
+   "raison": "Entre le point et « Dure » il y a une espace insécable suivie d'une espace normale (U+00A0 puis U+0020) : n'en garder qu'une. | vérificateur : Espace insécable suivie d'une espace normale : n'en garder qu'une (espace normale). Avant précisé avec l'insécable. Doublon #83 rejeté."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-lumiere",
+   "col": "description_physique",
+   "avant": "les bracelet de",
+   "apres": "les bracelets de",
+   "nature": "grammaire",
+   "raison": "Pluriel après « les »."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-lumiere",
+   "col": "description_physique",
+   "avant": "un paire",
+   "apres": "une paire",
+   "nature": "grammaire",
+   "raison": "« paire » est féminin."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-lumiere",
+   "col": "description_physique",
+   "avant": "aile de lumière",
+   "apres": "ailes de lumière",
+   "nature": "grammaire",
+   "raison": "Une paire d'ailes (pluriel)."
+  },
+  {
+   "table": "magie_role",
+   "id": "magies/magie-de-la-lumiere#role:3",
+   "col": "role_brut",
+   "avant": "DÉGATS",
+   "apres": "DÉGÂTS",
+   "nature": "accent",
+   "raison": "« dégâts » prend un accent circonflexe (convention commune)."
+  },
+  {
+   "table": "mode_hyper_effet",
+   "id": "onglet_magie:magies/magie-de-la-lumiere:bi",
+   "col": "effet",
+   "avant": "protction",
+   "apres": "protection",
+   "nature": "frappe",
+   "raison": "Lettre manquante dans « protection »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:champ-de-force",
+   "col": "remarque",
+   "avant": "attaque ennemi.",
+   "apres": "attaque ennemie.",
+   "nature": "grammaire",
+   "raison": "« ennemi » est ici adjectif et s'accorde au féminin avec « attaque »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:champ-de-force",
+   "col": "remarque",
+   "avant": "être amplifié",
+   "apres": "être amplifiée",
+   "nature": "grammaire",
+   "raison": "Accord au féminin avec « La surcharge »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:fer-lumineux",
+   "col": "effets",
+   "avant": "pendant 3 tour.",
+   "apres": "pendant 3 tours.",
+   "nature": "grammaire",
+   "raison": "Pluriel après un nombre supérieur à 1."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:fer-lumineux",
+   "col": "remarque",
+   "avant": "être aveugler au",
+   "apres": "être aveuglé au",
+   "nature": "grammaire",
+   "raison": "Participe passé après « être » (cf. « être paralysé » dans le sort voisin Fer Foudroyant)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:energie-solaire",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union : « Soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:flash",
+   "col": "remarque",
+   "avant": "pas affecté par",
+   "apres": "pas affectées par",
+   "nature": "grammaire",
+   "raison": "Accord avec « les créatures » (féminin pluriel)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:croisade-lumineuse",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union : « Soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:croisade-lumineuse",
+   "col": "effets",
+   "avant": "liste défini",
+   "apres": "liste définie",
+   "nature": "grammaire",
+   "raison": "Accord au féminin avec « liste »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:croisade-lumineuse",
+   "col": "effets",
+   "avant": "2 boost si",
+   "apres": "2 boosts si",
+   "nature": "grammaire",
+   "raison": "Pluriel après un nombre supérieur à 1."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:croisade-lumineuse",
+   "col": "remarque",
+   "avant": "prochain sorts",
+   "apres": "prochain sort",
+   "nature": "grammaire",
+   "raison": "« prochain » est singulier ; la première liste écrit « prochain sort d'ombre »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:operation",
+   "col": "effets",
+   "avant": "infirmités.(3 NM",
+   "apres": "infirmités. (3 NM",
+   "nature": "espace",
+   "raison": "Espace manquante après le point."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:explosion-glorifique",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union : « Soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:explosion-glorifique",
+   "col": "dsb_brut",
+   "avant": "5% a",
+   "apres": "5% à",
+   "nature": "accent",
+   "raison": "Préposition « à » (et non le verbe « a »)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:explosion-glorifique",
+   "col": "dsb_brut",
+   "avant": "tout les jets",
+   "apres": "tous les jets",
+   "nature": "grammaire",
+   "raison": "« tous les » devant un pluriel masculin."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:explosion-glorifique",
+   "col": "effets",
+   "avant": "annule mutuellement",
+   "apres": "annulent mutuellement",
+   "nature": "grammaire",
+   "raison": "Le sujet « Les sorts Défaite annoncée et Explosion glorifique » est pluriel."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:regeneration",
+   "col": "effets",
+   "avant": "récupéré par tour",
+   "apres": "récupérée par tour",
+   "nature": "grammaire",
+   "raison": "Accord au féminin avec « la santé »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:grenade-flash",
+   "col": "effets",
+   "avant": "être aveugler au",
+   "apres": "être aveuglé au",
+   "nature": "grammaire",
+   "raison": "Participe passé après « ne pas être » (comme « être paralysé » ailleurs)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:cercle-de-soin",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union : « Soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:lance-sacree",
+   "col": "effets",
+   "avant": "terrible dégâts",
+   "apres": "terribles dégâts",
+   "nature": "grammaire",
+   "raison": "Accord au pluriel avec « dégâts »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:louange-daurora",
+   "col": "effets",
+   "avant": "de ranimé un",
+   "apres": "de ranimer un",
+   "nature": "grammaire",
+   "raison": "Infinitif après « Permet de »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:louange-daurora",
+   "col": "remarque",
+   "avant": "être utiliser sur",
+   "apres": "être utilisé sur",
+   "nature": "grammaire",
+   "raison": "Participe passé après « peut être » (comme dans la colonne effets)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-lombre",
+   "col": "description_physique",
+   "avant": "bracelet faites",
+   "apres": "bracelets faits",
+   "nature": "grammaire",
+   "raison": "Pluriel après « des » et accord au masculin pluriel avec « bracelets »."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-lombre",
+   "col": "description_physique",
+   "avant": "des corne physiques",
+   "apres": "des cornes physiques",
+   "nature": "grammaire",
+   "raison": "Pluriel après « des » (accord avec « physiques »)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-lombre",
+   "col": "description_physique",
+   "avant": "les entoures",
+   "apres": "les entoure",
+   "nature": "grammaire",
+   "raison": "Le sujet de « entoure » est « une aura » (3e personne du singulier)."
+  },
+  {
+   "table": "magie_role",
+   "id": "magies/magie-de-lombre#role:2",
+   "col": "role_brut",
+   "avant": "DÉGATS",
+   "apres": "DÉGÂTS",
+   "nature": "accent",
+   "raison": "« dégâts » prend un accent circonflexe (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:brume-mental",
+   "col": "effets",
+   "avant": "jet de Fermeté",
+   "apres": "jet de fermeté",
+   "nature": "casse",
+   "raison": "Forme majoritaire dans la colonne : « jet de fermeté » en minuscule."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:cri-ebranleur",
+   "col": "dsb_brut",
+   "avant": "dégâts sonore",
+   "apres": "dégâts sonores",
+   "nature": "grammaire",
+   "raison": "Accord au pluriel avec « dégâts »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:cri-ebranleur",
+   "col": "effets",
+   "avant": "au dégâts",
+   "apres": "aux dégâts",
+   "nature": "grammaire",
+   "raison": "« dégâts » est pluriel : « aux »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:cri-ebranleur",
+   "col": "effets",
+   "avant": "sonore qui",
+   "apres": "sonores qui",
+   "nature": "grammaire",
+   "raison": "Accord au pluriel avec « dégâts »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:lame-dombre",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union : « Soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:lame-dombre",
+   "col": "effets",
+   "avant": "lanceur réussi",
+   "apres": "lanceur réussie",
+   "nature": "grammaire",
+   "raison": "« réussi » qualifie « une attaque » (féminin)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:lame-dombre",
+   "col": "remarque",
+   "avant": "pas a faire",
+   "apres": "pas à faire",
+   "nature": "accent",
+   "raison": "Préposition « à » (« n'a pas à faire ») et non le verbe « a »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:brouillard-obscur",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union : « Soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:amplification-sombre",
+   "col": "remarque",
+   "avant": "Echec critique",
+   "apres": "Échec critique",
+   "nature": "accent",
+   "raison": "Accent sur la majuscule : « Échec »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:ombre-menacante",
+   "col": "nom",
+   "avant": "Ombre Menacante",
+   "apres": "Ombre Menaçante",
+   "nature": "accent",
+   "raison": "Cédille manquante ; l'identifiant (sans accents ni cédilles) reste « ombre-menacante »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:ombre-menacante",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union : « Soi-même » (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:ombre-menacante",
+   "col": "remarque",
+   "avant": "tout les début de tour",
+   "apres": "tous les débuts de tour",
+   "nature": "grammaire",
+   "raison": "« tous les » devant un pluriel masculin, et « débuts » s'accorde."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:rayon-negatif",
+   "col": "dsb_brut",
+   "avant": "dégâts  (+4/NM)",
+   "apres": "dégâts (+4/NM)",
+   "nature": "espace",
+   "raison": "Double espace."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:rayon-negatif",
+   "col": "effets",
+   "avant": "«Couardise»",
+   "apres": "« Couardise »",
+   "nature": "espace",
+   "raison": "Espaces insécables (U+00A0) manquantes à l'intérieur des guillemets, comme dans « Peur 2 » juste en dessous et dans « para-tonnerre » (Colonne tesla). Les deux espaces de l'après sont des U+00A0. | vérificateur : Espaces insécables manquantes dans les guillemets, comme dans « Peur 2 » et « para-tonnerre ». Après précisé avec U+00A0 de part et d'autre."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:grenade-fumigene",
+   "col": "effets",
+   "avant": "tout les jets",
+   "apres": "tous les jets",
+   "nature": "grammaire",
+   "raison": "« tous les » devant un pluriel masculin."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:defaite-annoncee",
+   "col": "remarque",
+   "avant": "annule mutuellement",
+   "apres": "annulent mutuellement",
+   "nature": "grammaire",
+   "raison": "Le sujet « Les sorts Défaite annoncée et Explosion glorifique » est pluriel."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:pire-ami",
+   "col": "effets",
+   "avant": "que elle",
+   "apres": "qu'elle",
+   "nature": "orthographe",
+   "raison": "Élision obligatoire devant « elle » : « qu'elle »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:pire-ami",
+   "col": "remarque",
+   "avant": "santé  totale",
+   "apres": "santé totale",
+   "nature": "espace",
+   "raison": "Double espace."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:chaine-de-lentrave",
+   "col": "remarque",
+   "avant": "amoindri au",
+   "apres": "amoindries au",
+   "nature": "grammaire",
+   "raison": "Accord avec « ses chances » (féminin pluriel)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:chaine-de-lentrave",
+   "col": "remarque",
+   "avant": "Score normale",
+   "apres": "Score normal",
+   "nature": "grammaire",
+   "raison": "« score » est masculin."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:chaine-de-lentrave",
+   "col": "remarque",
+   "avant": "un échec met",
+   "apres": "Un échec met",
+   "nature": "casse",
+   "raison": "Majuscule en début de phrase (nouveau paragraphe)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:frappe-negative",
+   "col": "remarque",
+   "avant": "sont cumulatif",
+   "apres": "sont cumulatifs",
+   "nature": "grammaire",
+   "raison": "Accord au pluriel avec « les effets »."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-foudre",
+   "col": "description_physique",
+   "avant": "très conducteurs se trouvent",
+   "apres": "très conductrices se trouvent",
+   "nature": "grammaire",
+   "raison": "Accord avec « plaques » (féminin pluriel)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-foudre",
+   "col": "description_physique",
+   "avant": "(Bras, jambes",
+   "apres": "(bras, jambes",
+   "nature": "casse",
+   "raison": "Pas de majuscule en début d'énumération entre parenthèses (jambes, organes vitaux sont en minuscules)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-foudre#sort:orage-violet",
+   "col": "effets",
+   "avant": "se répercute dans",
+   "apres": "se répercutent dans",
+   "nature": "grammaire",
+   "raison": "Le sujet « 15% des dégâts » est pluriel."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-lumiere",
+   "col": "description_physique",
+   "avant": "mèches beige,",
+   "apres": "mèches beiges,",
+   "nature": "grammaire",
+   "raison": "« beige » est un adjectif variable : accord avec « mèches » (pluriel)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-lumiere",
+   "col": "description_physique",
+   "avant": "yeux beige lors",
+   "apres": "yeux beiges lors",
+   "nature": "grammaire",
+   "raison": "« beige » est un adjectif variable : accord avec « yeux » (pluriel)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-la-lumiere",
+   "col": "description_physique",
+   "avant": "d'aurora et",
+   "apres": "d'Aurora et",
+   "nature": "casse",
+   "raison": "Nom propre (Aurora, comme dans « Rayon d'Aurora » et « Louange d'Aurora »)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:champ-de-force",
+   "col": "remarque",
+   "avant": "disparait",
+   "apres": "disparaît",
+   "nature": "accent",
+   "raison": "Accent circonflexe, comme dans le reste du texte (orthographe traditionnelle : dégâts, maîtrise…)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:recouvrer",
+   "col": "effets",
+   "avant": "d'états",
+   "apres": "d'état",
+   "nature": "orthographe",
+   "raison": "Expression « altérations d'état » (invariable), comme dans la description et ailleurs."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-lumiere#sort:croisade-lumineuse",
+   "col": "effets",
+   "avant": "3 niveau de",
+   "apres": "3 niveaux de",
+   "nature": "grammaire",
+   "raison": "Pluriel après un nombre supérieur à 1."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:javelot-sombre",
+   "col": "dsb_brut",
+   "avant": "7d6 +15",
+   "apres": "7d6 + 15",
+   "nature": "espace",
+   "raison": "Espace manquante après « + », comme dans les autres cellules de la colonne (« 7d6 + 15 dégâts »). Aucun chiffre ni signe modifié."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:grenade-fumigene",
+   "col": "effets",
+   "avant": "Ombre. \nSi",
+   "apres": "Ombre.\nSi",
+   "nature": "espace",
+   "raison": "Espace superflue en fin de ligne, avant le retour à la ligne."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:defaite-annoncee",
+   "col": "portee_brut",
+   "avant": "Soi même",
+   "apres": "Soi-même",
+   "nature": "ponctuation",
+   "raison": "Trait d'union (convention commune)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:chaine-de-lentrave",
+   "col": "remarque",
+   "avant": "1e tentative",
+   "apres": "1re tentative",
+   "nature": "orthographe",
+   "raison": "Abréviation correcte de « première » : 1re (les suivantes 2e, 3e, 4e sont correctes)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/potentiel-illimite",
+   "col": "description_physique",
+   "avant": "la plus part des gens",
+   "apres": "la plupart des gens",
+   "nature": "orthographe",
+   "raison": "« plupart » s'écrit en un seul mot."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:proportion-demesuree",
+   "col": "remarque",
+   "avant": "monterà 7",
+   "apres": "monter à 7",
+   "nature": "espace",
+   "raison": "Mots collés : « monter à »."
+  },
+  {
+   "table": "mode_hyper_effet",
+   "id": "onglet_magie:magies/magie-de-lespace-temps:mono",
+   "col": "effet",
+   "avant": "Lors qu'il subit",
+   "apres": "Lorsqu'il subit",
+   "nature": "orthographe",
+   "raison": "« lorsque » s'écrit en un seul mot"
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-du-vent",
+   "col": "description_physique",
+   "avant": "visibleà",
+   "apres": "visible à",
+   "nature": "espace",
+   "raison": "Espace manquante entre « visible » et « à »."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:damocles",
+   "col": "effets",
+   "avant": "4d6 de contre coup",
+   "apres": "4d6 de contrecoup",
+   "nature": "orthographe",
+   "raison": "« contrecoup » s'écrit en un seul mot."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:damocles",
+   "col": "effets",
+   "avant": "pas de contre coup",
+   "apres": "pas de contrecoup",
+   "nature": "orthographe",
+   "raison": "« contrecoup » s'écrit en un seul mot."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-sang#sort:sang-garde",
+   "col": "remarque",
+   "avant": "NB: Jet",
+   "apres": "NB : Jet",
+   "nature": "espace",
+   "raison": "Espace avant les deux-points, comme ailleurs dans les textes (« exception : », « 5 : »)."
+  },
+  {
+   "table": "magie",
+   "id": "magies/magie-de-larcane",
+   "col": "explication",
+   "avant": "et vont consommer",
+   "apres": "et va consommer",
+   "nature": "grammaire",
+   "raison": "Le sujet est « Chaque sort » (singulier), comme « possède » juste avant."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-du-vent#sort:vibration",
+   "col": "effets",
+   "avant": "stabilité/Réflexe raté",
+   "apres": "stabilité/réflexe raté",
+   "nature": "casse",
+   "raison": "Casse incohérente dans la même expression : « stabilité » est en minuscule, « Réflexe » devrait l'être aussi (comme « jet de réflexe/stabilité » du sort Désarmer)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-la-terre#sort:terre-maudite",
+   "col": "remarque",
+   "avant": "ne disparait que",
+   "apres": "ne disparaît que",
+   "nature": "accent",
+   "raison": "Accent circonflexe de « disparaître » (i devant t), écrit « disparaît » partout ailleurs dans le corpus."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:rayon-negatif",
+   "col": "effets",
+   "avant": "Peur 2 »",
+   "apres": "Peur 2 »",
+   "nature": "espace",
+   "raison": "Espace insécable avant « » », comme dans l'autre état de la même cellule (« Couardise »)."
+  },
+  {
+   "table": "sort",
+   "id": "magies/magie-de-lombre#sort:pire-ami",
+   "col": "effets",
+   "avant": "Peut être décimer par",
+   "apres": "Peut être décimée par",
+   "nature": "grammaire",
+   "raison": "Après « être », on met un participe passé et non l'infinitif ; il s'accorde avec « l'ombre » (sujet de la phrase)."
+  }
+ ]
+}
