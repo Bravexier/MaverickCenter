@@ -1,10 +1,25 @@
 ---
+import { morceauxAvecEtats } from '../lib/sort-format.mjs';
+import type { Magies } from '../lib/magies';
+import EtatPastille from './EtatPastille.astro';
+
 // Valeur d'une cellule de sort : le texte en gras, les précisions entre parenthèses (« (+1/NM) », « (3NM = …) ») en petit et estompé,
-// parenthèses conservées (le texte copié est celui de la source).
+// parenthèses conservées (le texte copié est celui de la source). Quand `etats` est donné (altérations d'état repérées dans la cellule),
+// chacune devient une pastille avec infobulle dans le texte (voir Texte.astro).
 interface Props {
   segments: { texte: string; modif: boolean }[];
+  etats?: { etatId: string; stade: number | null; forme: string; extrait: string }[];
+  magies?: Magies;
 }
-const { segments } = Astro.props;
+const { segments, etats, magies } = Astro.props;
+const decoupe = (texte: string) =>
+  (etats && magies ? morceauxAvecEtats(texte, etats) : [{ texte }]) as { texte: string; etat?: { etatId: string; stade: number | null } }[];
+const pieces = segments.map((s) => ({ ...s, morceaux: decoupe(s.texte) }));
 ---
 
-{segments.map((s, i) => <>{i > 0 && ' '}{s.modif ? <small class="mod">({s.texte})</small> : <span class="val">{s.texte}</span>}</>)}
+{
+  pieces.map((s, i) => {
+    const contenu = s.morceaux.map((p) => (p.etat && magies ? <EtatPastille etat={magies.etats.get(p.etat.etatId)!} texte={p.texte} stade={p.etat.stade} /> : p.texte));
+    return <>{i > 0 && ' '}{s.modif ? <small class="mod">({contenu})</small> : <span class="val">{contenu}</span>}</>;
+  })
+}

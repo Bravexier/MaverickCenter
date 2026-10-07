@@ -4,6 +4,7 @@ import magieCss from '../styles/magie.css?raw';
 import { racesOfMagie } from '../lib/magie-relations.mjs';
 import { pageHref, type Magies, type MagieDb } from '../lib/magies';
 import type { WikiEntry } from '../lib/wiki';
+import Bulles from './Bulles.astro';
 import MagieAffinites from './MagieAffinites.astro';
 import MagieSorts from './MagieSorts.astro';
 import RacesDeMagie from './RacesDeMagie.astro';
@@ -136,6 +137,8 @@ const nav = [
   }
 
   {magie.sorts.length > 0 && <MagieSorts magie={magie} magies={magies} />}
+
+  <Bulles />
 
   {aDesRaces && <RacesDeMagie entry={entry} entries={entries} />}
 </div>

@@ -18,7 +18,10 @@ import {
   coutDeSort,
   elementsDeTexte,
   lignes,
+  infobulleDEtat,
+  lignesDeStat,
   marquesDeMode,
+  morceauxAvecEtats,
   morceauxAvecLiens,
   nombre,
   segments,
@@ -27,6 +30,7 @@ import {
   TEINTE_PAR_DEFAUT,
   valeurDeSort,
 } from '../src/lib/sort-format.mjs';
+import { sansBonus } from '../src/lib/sort-maitrise.mjs';
 import { normalize } from '../src/lib/text.mjs';
 
 const textes = (segs) => segs.map((s) => (s.modif ? `(${s.texte})` : s.texte)).join(' ');
@@ -130,6 +134,62 @@ test('morceauxAvecLiens : l’adresse nue devient un lien, sans ponctuation fina
   assert.deepEqual(liens('deux http://a.fr, et http://b.fr!'), ['http://a.fr', 'http://b.fr']);
   assert.deepEqual(morceauxAvecLiens('aucun lien'), [{ texte: 'aucun lien' }]);
   assert.equal(morceauxAvecLiens('a https://x.fr/b.').map((m) => m.texte ?? m.lien).join(''), 'a https://x.fr/b.', 'aucun caractère perdu');
+});
+
+test('morceauxAvecEtats : l’altération d’état devient une pastille placée dans le texte, sur le mot de la source, une seule fois', () => {
+  const lignesEtat = () => [
+    { etatId: 'brulure', forme: 'brûlure', extrait: 'Inflige brûlure 1.' },
+    { etatId: 'gel', forme: 'Gel', extrait: 'Rend « Gel »' },
+  ];
+  const restantes = lignesEtat();
+  const morceaux = morceauxAvecEtats('Une attaque. Inflige brûlure 1. Rend « Gel » aussi', restantes);
+  assert.deepEqual(morceaux.map((x) => x.texte), ['Une attaque. Inflige ', 'brûlure', ' 1. Rend « ', 'Gel', ' » aussi']);
+  assert.deepEqual(morceaux.filter((x) => x.etat).map((x) => x.etat.etatId), ['brulure', 'gel']);
+  assert.equal(morceaux.map((x) => x.texte).join(''), 'Une attaque. Inflige brûlure 1. Rend « Gel » aussi', 'le texte n’est jamais réécrit');
+  assert.equal(restantes.length, 0, 'les altérations placées sont retirées de la liste');
+  // un texte sans l'extrait laisse la liste intacte (l'altération sera placée dans le texte suivant)
+  const autres = lignesEtat();
+  assert.deepEqual(morceauxAvecEtats('Rien à voir', autres), [{ texte: 'Rien à voir' }]);
+  assert.equal(autres.length, 2);
+  // guillemets et espaces insécables varient entre le texte et l'extrait : la pastille est quand même posée, au mot près
+  const insecable = [{ etatId: 'enrage', forme: 'Enragé', extrait: 'Rend la cible « Enragé »' }];
+  assert.deepEqual(morceauxAvecEtats('Rend la cible\u00a0«\u202fEnragé\u202f»', insecable).map((x) => x.texte), ['Rend la cible\u00a0«\u202f', 'Enragé', '\u202f»']);
+  // la forme de la source peut porter des blancs (espaces insécables autour de « Couardise ») : ils restent dans le texte, hors de la pastille
+  const blancs = [{ etatId: 'couardise', forme: '\u00a0Couardise\u00a0', extrait: 'État «\u00a0Couardise\u00a0»' }];
+  assert.deepEqual(morceauxAvecEtats('État «\u00a0Couardise\u00a0»', blancs).map((x) => x.texte), ['État «\u00a0', 'Couardise', '\u00a0»']);
+  // le MOT : « gel » n'est pas cherché dans « dégelé »
+  const mot = [{ etatId: 'gel', forme: 'gel', extrait: 'dégelé puis gel 1' }];
+  assert.deepEqual(morceauxAvecEtats('dégelé puis gel 1', mot).map((x) => x.texte), ['dégelé puis ', 'gel', ' 1']);
+  // deux lignes d'état sur le même mot : deux pastilles, jamais deux fois la même, sans chevauchement, texte intact
+  const deux = [{ etatId: 'brulure', forme: 'brûlure', extrait: 'brûlure 1 puis brûlure 2' }, { etatId: 'brulure', forme: 'brûlure', extrait: 'brûlure 1 puis brûlure 2' }];
+  const morceauxDeux = morceauxAvecEtats('brûlure 1 puis brûlure 2', deux);
+  assert.deepEqual(morceauxDeux.map((x) => x.texte), ['brûlure', ' 1 puis ', 'brûlure', ' 2']);
+  assert.deepEqual(morceauxDeux.map((x) => Boolean(x.etat)), [true, false, true, false]);
+  assert.equal(deux.length, 0);
+  // une seule ligne d'état dont le mot revient deux fois dans son extrait : une seule pastille (la première), et la ligne est retirée une fois
+  const double = [{ etatId: 'gel', forme: 'gel', extrait: 'gel puis gel' }, { etatId: 'peur', forme: 'peur', extrait: 'autre' }];
+  assert.deepEqual(morceauxAvecEtats('gel puis gel', double).map((x) => [x.texte, Boolean(x.etat)]), [['gel', true], [' puis gel', false]]);
+  assert.deepEqual(double.map((x) => x.etatId), ['peur'], 'seule la ligne placée est retirée de la liste');
+  // un extrait qui revient mot pour mot mais pas la forme dans la zone : rien n'est placé, la ligne reste à placer
+  const absente = [{ etatId: 'poison', forme: 'poison', extrait: 'Inflige stade 1' }];
+  assert.deepEqual(morceauxAvecEtats('Inflige stade 1', absente), [{ texte: 'Inflige stade 1' }]);
+  assert.equal(absente.length, 1);
+});
+
+test('lignesDeStat : une ligne par élément (« | » et « / » entouré d’espaces), « /NPM » collé reste entier', () => {
+  assert.deepEqual(lignesDeStat('10 Armure Physique | 10 Armure Magique'), ['10 Armure Physique', '10 Armure Magique']);
+  assert.deepEqual(lignesDeStat('4 cases sol / 8 cases nage'), ['4 cases sol', '8 cases nage']);
+  assert.deepEqual(lignesDeStat('1 Armure Physique et Magique/NPM'), ['1 Armure Physique et Magique/NPM']);
+  assert.deepEqual(lignesDeStat('20/NPM'), ['20/NPM']);
+});
+
+test('infobulleDEtat : type, magie liée et effet de chaque stade ; le stade cité dans le texte est mis en avant', () => {
+  const etat = { nom: 'Brûlure', typeBrut: 'Physique', magiesLiees: [{ nom: 'Feu' }], stades: [{ stade: 1, effet: 'a' }, { stade: 2, effet: 'b' }] };
+  const info = infobulleDEtat(etat, 2);
+  assert.deepEqual(info.sous, ['Physique', 'Magie liée : Feu']);
+  assert.deepEqual(info.stades.map((x) => [x.libelle, x.actif]), [['Stade 1', false], ['Stade 2', true]]);
+  assert.equal(infobulleDEtat({ ...etat, magiesLiees: [] }, null).sous.length, 1, 'sans magie liée : pas de ligne « Magie liée »');
+  assert.deepEqual(infobulleDEtat({ ...etat, stades: [{ stade: null, effet: 'x' }] }).stades.map((x) => x.libelle), ['Tous les stades']);
 });
 
 test('ancreDeTitre : même identifiant que celui qu’Astro pose sur un titre (minuscules, accents conservés)', () => {
@@ -300,19 +360,67 @@ test('ressources offertes, rôles et 4ème barre', () => {
   assert.equal(m.magies.get('magies/magie-du-feu').caracteristique.brut, 'SOCIAL');
 });
 
-test('créatures qui lancent un sort : exactement les lignes résolues de v_creature_sort', () => {
-  const attendu = db.prepare('SELECT count(*) AS n FROM v_creature_sort WHERE sort_id IS NOT NULL').get().n;
-  assert.equal([...m.sorts.values()].reduce((n, s) => n + s.lanceePar.length, 0), attendu);
-  assert.deepEqual(m.sorts.get('magies/magie-de-la-corruption#sort:boule-sombre').lanceePar.map((c) => [c.id, c.capacite]), [['bestiaire/poupee-corrompu', 'Lanceur de sorts']]);
-  const pages = new Set(db.prepare('SELECT id FROM page').all().map((r) => r.id));
-  for (const s of m.sorts.values()) for (const c of s.lanceePar) assert.ok(pages.has(c.id), `${s.id} : page ${c.id}`);
-});
-
-test('légende des sorts et règle du NPM 5 : lues dans la base', () => {
-  assert.deepEqual(m.legende.map((l) => l.code).sort(), ['C', 'IC', 'L', 'N', 'NM']);
-  assert.equal(m.legende.find((l) => l.code === 'IC').libelle, 'Instant Cast');
+test('règle spéciale du NPM 5 : lue dans la base, pour l’infobulle du titre du tableau ; la liste des lanceurs, la légende et la source n’y sont plus', () => {
   const regle = m.regles.find((r) => r.niveau_sort === 5);
   assert.ok(regle && regle.texte.startsWith(`${regle.titre} : `), 'le titre est le début du texte (le gabarit le retire du corps)');
+  assert.equal(m.regles.filter((r) => r.niveau_sort).length, 1, 'une seule règle par niveau : une infobulle');
+  for (const s of m.sorts.values()) {
+    assert.ok(!('lanceePar' in s) && !('sourceRef' in s), `${s.id} : ni lanceurs ni source`);
+  }
+  assert.ok(!('legende' in m));
+});
+
+test('altérations d’état : de quoi remplir l’infobulle (type, magie liée, effet par stade) pour les 20 états', () => {
+  for (const e of m.etats.values()) {
+    assert.ok(['Physique', 'Mental'].includes(e.typeBrut), `${e.nom} : type`);
+    assert.ok(e.stades.length >= 1, `${e.nom} : au moins un effet de stade`);
+    for (const st of e.stades) assert.ok(st.effet.length > 0);
+  }
+  const brulure = m.etats.get('guide/liste-des-alterations-d-etat#etat:brulure');
+  assert.deepEqual(brulure.magiesLiees.map((x) => x.nom), ['Feu']);
+  assert.deepEqual(brulure.stades.map((x) => x.stade), [1, 2, 3]);
+  assert.equal(m.etats.get('guide/liste-des-alterations-d-etat#etat:surcharge-magique').magiesLiees.length, 2, 'Surcharge magique : deux magies liées');
+});
+
+test('altérations d’état dans le texte : sur le chemin réel du gabarit (blocs des effets et de la remarque, segments du D/S/B), toutes les altérations repérées trouvent leur place', () => {
+  let placees = 0;
+  for (const s of m.sorts.values()) {
+    const brut = db.prepare('SELECT dsb_brut, effets, remarque FROM sort WHERE id = ?').get(s.id);
+    // panneau « Effets » : les blocs de texte des effets, puis ceux de la remarque, avec la même liste consommée
+    const effets = s.etats.filter((e) => e.champ === 'effets');
+    const textesEffets = [...s.effets, ...s.remarque].flatMap((b) => ('items' in b ? b.items : [b.texte]));
+    for (const t of textesEffets) placees += morceauxAvecEtats(t, effets).filter((x) => x.etat).length;
+    assert.equal(effets.length, 0, `${s.id} : altération(s) non placée(s) dans les effets : ${effets.map((r) => r.forme)}`);
+    // cellule D/S/B : les segments de chaque ligne, comme le tableau
+    const dsb = s.etats.filter((e) => e.champ === 'dsb');
+    const valeur = valeurDeSort(sansBonus(brut.dsb_brut, s.bonus, 'dsb'), { liste: true });
+    for (const ligne of valeur.lignes) for (const seg of ligne) placees += morceauxAvecEtats(seg.texte, dsb).filter((x) => x.etat).length;
+    assert.equal(dsb.length, 0, `${s.id} : altération(s) non placée(s) dans le D/S/B`);
+    assert.ok(s.etats.every((e) => ['effets', 'dsb'].includes(e.champ)), `${s.id} : champ d'une altération`);
+    // la mise en pastilles ne réécrit jamais le texte
+    for (const t of textesEffets) assert.equal(morceauxAvecEtats(t, s.etats.filter((e) => e.champ === 'effets')).map((x) => x.texte).join(''), t);
+  }
+  assert.equal(placees, db.prepare('SELECT count(*) AS n FROM sort_etat').get().n);
+});
+
+test('créatures invoquées : fiche minimale (stats et capacités) pour chacune, lue dans la base', () => {
+  let n = 0;
+  for (const s of m.sorts.values()) for (const i of s.invoque) for (const c of i.creatures) {
+    n += 1;
+    assert.ok(c.stats.length >= 3, `${c.id} : stats`);
+    assert.ok(c.stats.every((st) => st.brut && ['Santé', 'Chakra', 'Barrière', 'Défense', 'Vitesse'].includes(st.libelle)));
+    assert.equal(c.caracteristiques.length, 6, `${c.id} : six caractéristiques`);
+    assert.deepEqual(c.caracteristiques.map((k) => k.nom), ['Force', 'Perception', 'Volonté', 'Social', 'Intelligence', 'Agilité'], `${c.id} : ordre de la carte`);
+    assert.equal(c.capacites.length, db.prepare('SELECT count(*) AS n FROM creature_capacite WHERE creature_id = ?').get(c.id).n, `${c.id} : capacités`);
+    assert.deepEqual(c.attaques, db.prepare('SELECT brut FROM creature_attaque WHERE creature_id = ? ORDER BY rang').all(c.id).map((a) => a.brut), `${c.id} : dégâts (les attaques de la carte, telles qu'écrites)`);
+    assert.ok(c.attaques.length >= 1, `${c.id} : au moins une attaque`);
+  }
+  assert.equal(n, db.prepare('SELECT count(*) AS n FROM creature').get().n, 'toutes les créatures sont invoquées par un des trois sorts');
+  const boue = [...m.sorts.values()].flatMap((s) => s.invoque).flatMap((i) => i.creatures).find((c) => c.id === 'bestiaire/golem-de-boue');
+  assert.deepEqual(boue.capacites.map((k) => [k.nom, k.npmMin]), [['Gluant', null], ['Frappe confuse', 3], ['Camouflage', 5]]);
+  // le qualificatif d'une capacité (« [Non enflammé] ») change son sens : il est dans la fiche
+  const petrole = [...m.sorts.values()].flatMap((s) => s.invoque).flatMap((i) => i.creatures).find((c) => c.id === 'bestiaire/golem-de-petrole');
+  assert.ok(petrole.capacites.some((k) => k.etiquette === 'Non enflammé'), 'étiquette « Non enflammé » du Golem de pétrole');
 });
 
 test('une seule source pour les relations entre magies : la matrice de /wiki/races-et-magies/ lit la base comme les pages de magie', () => {

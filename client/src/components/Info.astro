@@ -1,0 +1,17 @@
+---
+import { idBulle } from '../lib/magies';
+
+// Pastille « i » avec une infobulle : une règle qui vaut pour tout un tableau (« Règle spéciale pour sort niveau 5 ») sans prendre de place à l'écran.
+// Un vrai bouton (clavier, lecteur d'écran) ; l'infobulle s'affiche au survol, au focus ou au toucher (components/Bulles.astro).
+interface Props {
+  titre: string;
+  texte: string;
+}
+const { titre, texte } = Astro.props;
+const id = idBulle('info');
+---
+
+<span class="bulle-zone"
+  ><button type="button" class="info" data-bulle={id} aria-describedby={id} aria-label={titre} title={`${titre} : ${texte}`}>i</button
+  ><span class="bulle bulle--large" role="tooltip" id={id} hidden><strong class="bulle__titre">{titre}</strong><span class="bulle__texte">{texte}</span></span
+></span>

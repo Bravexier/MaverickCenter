@@ -83,6 +83,9 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   (note de cellule) est `sort.remarque`, la table `note_cellule` n'est qu'une trace et ne doit pas être lue. Le panneau d'un sort s'ouvre sous sa ligne (script de `MagieSorts.astro`, sans JavaScript tout est affiché).
   Leur CSS est dans `styles/magie.css`, inséré par `MagiePage.astro` (`?raw`) : ne pas le mettre dans `global.css` ni l'importer (Astro l'attacherait à toutes les pages de la route `[type]/[slug]`).
   La matrice de `/wiki/races-et-magies/` lit les mêmes relations dans la base (`entriesAvecRelationsDeLaBase`).
+  Dans le panneau d'un sort, remarque et texte du sort sont dans le même cadre « Effets » que les effets secondaires ; les altérations d'état sont des pastilles **dans le texte** (`morceauxAvecEtats`, d'après `sort_etat`) avec infobulle (`Bulles.astro` : une bulle ne contient que des `<span>`, sinon le `<p>` qui la porte se ferme) ;
+  les créatures invoquées ont une fiche minimale au clic, sous leur bloc. Pas de légende, pas de source citée (ni par sort, ni en pied de page), pas de liste des lanceurs sur ces pages.
+  `test/magies-html.test.mjs` contrôle le site construit (ids, `aria-*`, bulles, éléments retirés) : il se saute sans `dist/` et la CI le lance après le build.
 - Races ↔ magies : les pages portent des listes structurées (`magies_innees`, `nom_court`, `resiste_a`, `vulnerable_a`, `incompatible_avec`)
   posées par `tools/sheets/races.py` et `magies.py` ; le site en tire les liens, les tableaux de `/wiki/races-et-magies/` et la distinction
   races pures / hybrides (`lib/magie-relations.mjs`, `lib/race-kinds.mjs`). Voir `docs/content-guide.md`. Les champs sont déclarés dans `content.config.ts`

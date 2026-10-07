@@ -133,6 +133,72 @@ export function morceauxAvecLiens(texte) {
   return out;
 }
 
+const echapperRegExp = (texte) => texte.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// Écritures qui varient entre le texte d'un sort et l'extrait de sa table sort_etat : guillemets français ou anglais, espaces insécables.
+// Un caractère pour un caractère : les positions restent celles du texte d'origine.
+const pourComparer = (texte) => String(texte).replace(/[«»“”]/g, '"').replace(/[\u00a0\u202f]/g, ' ');
+
+/**
+ * Découpe un texte en morceaux { texte } ou { texte, etat } : l'altération d'état repérée dans ce texte (table sort_etat, un index dérivé du texte)
+ * devient une pastille PLACÉE DANS LE TEXTE, sur le mot même que la source écrit (« brûlure » dans « Inflige brûlure 1 »), au lieu d'être signalée à part.
+ * `restantes` : les lignes { forme, extrait } d'états pas encore placées ; celles qui trouvent leur place dans ce texte en sont retirées (le même état
+ * n'est jamais placé deux fois, et on peut appeler la fonction texte après texte).
+ */
+export function morceauxAvecEtats(texte, restantes) {
+  const T = String(texte);
+  const N = pourComparer(T);
+  const places = [];
+  for (const r of [...restantes]) {
+    const debut = N.indexOf(pourComparer(r.extrait));
+    if (debut < 0) continue;
+    const zone = N.slice(debut, debut + r.extrait.length);
+    // le mot lui-même, entre deux non-lettres : « gel » n'est pas cherché dans « dégelé », et les blancs de la forme (espaces insécables
+    // laissés par la source autour de « Couardise ») restent dans le texte, hors de la pastille
+    const forme = pourComparer(r.forme).trim();
+    if (!forme) continue;
+    const re = new RegExp(`(?<![\\p{L}])${echapperRegExp(forme)}(?![\\p{L}])`, 'giu');
+    for (let m = re.exec(zone); m; m = re.exec(zone)) {
+      const a = debut + m.index;
+      const b = a + m[0].length;
+      if (places.some(([x, y]) => a < y && b > x)) continue;
+      places.push([a, b, r]);
+      restantes.splice(restantes.indexOf(r), 1);
+      break;
+    }
+  }
+  places.sort((x, y) => x[0] - y[0]);
+  const out = [];
+  let dernier = 0;
+  for (const [a, b, r] of places) {
+    if (a > dernier) out.push({ texte: T.slice(dernier, a) });
+    out.push({ texte: T.slice(a, b), etat: r });
+    dernier = b;
+  }
+  if (dernier < T.length || out.length === 0) out.push({ texte: T.slice(dernier) });
+  return out;
+}
+
+/**
+ * Valeur d'une ligne de la carte d'une créature, une ligne par élément : « 10 Armure Physique | 10 Armure Magique » et
+ * « 4 cases sol / 8 cases nage » donnent deux lignes ; « 5/NPM » et « Magique/NPM » (barre collée) ne sont pas coupés.
+ */
+export const lignesDeStat = (brut) => String(brut).split(/\s*\|\s*|\s+\/\s+/).map((x) => x.trim()).filter(Boolean);
+
+/**
+ * Contenu de l'infobulle d'une altération d'état : son type, sa ou ses magies liées, l'effet de chaque stade (le stade cité dans le texte est mis en avant).
+ * @param {{ nom: string, typeBrut: string, magiesLiees: { nom: string }[], stades: { stade: number | null, effet: string }[] }} etat
+ * @param {number | null} [stade] stade écrit dans le texte du sort (« brûlure 2 » → 2)
+ */
+export function infobulleDEtat(etat, stade = null) {
+  const sous = [etat.typeBrut];
+  if (etat.magiesLiees.length) sous.push(`Magie liée : ${etat.magiesLiees.map((m) => m.nom).join(' / ')}`);
+  return {
+    titre: etat.nom,
+    sous,
+    stades: etat.stades.map((s) => ({ libelle: s.stade ? `Stade ${s.stade}` : 'Tous les stades', effet: s.effet, actif: s.stade !== null && s.stade === stade })),
+  };
+}
+
 /** Sorts regroupés par niveau de puissance magique (NPM), du plus faible au plus fort : [{ niveau, sorts }]. */
 export function sortsParNpm(sorts) {
   const niveaux = [...new Set(sorts.map((s) => s.niveau))].sort((a, b) => a - b);
@@ -170,10 +236,3 @@ const TEINTES = {
 };
 export const TEINTE_PAR_DEFAUT = 24;
 export const teinteDeMagie = (nom) => TEINTES[normalize(nom ?? '')] ?? TEINTE_PAR_DEFAUT;
-
-/** Mot de l'état qui lie un sort à une altération (table sort_etat.relation) : « inflige », « prend » (jet raté), « soigne ». */
-export const RELATIONS_ETAT = {
-  inflige: 'Inflige',
-  prend: 'Jet pour ne pas subir',
-  soigne: 'Soigne',
-};

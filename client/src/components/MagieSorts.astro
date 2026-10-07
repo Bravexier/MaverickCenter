@@ -2,12 +2,15 @@
 import { coutDeSort, marquesDeMode, sortsParNpm, valeurDeSort } from '../lib/sort-format.mjs';
 import { lignesDeBonus, sansBonus } from '../lib/sort-maitrise.mjs';
 import { sortAncre, type Magies, type MagieDb } from '../lib/magies';
+import Info from './Info.astro';
 import Segments from './Segments.astro';
 import SortDetail from './SortDetail.astro';
+import TexteEnLigne from './TexteEnLigne.astro';
 
 // Sorts d'une magie : un tableau par niveau de puissance magique (NPM), une ligne par sort (Nom, Type, Coût, Portée, Zone, D/S/B, Maîtrise).
 // Les colonnes montrent la valeur de base ; les bonus de niveau de maîtrise (NM) que les cellules écrivaient entre parenthèses sont listés dans « Maîtrise ».
-// Sélectionner une ligne ouvre juste en dessous ses détails (SortDetail.astro) : effets secondaires, remarque, règles propres.
+// La règle spéciale d'un niveau (« sort niveau 5 ») est dans l'infobulle « i » du titre de son tableau.
+// Sélectionner une ligne ouvre juste en dessous ses détails (SortDetail.astro) : effets (avec la remarque du classeur et le texte du sort), règles propres.
 interface Props {
   magie: MagieDb;
   magies: Magies;
@@ -17,9 +20,7 @@ const { magie, magies } = Astro.props;
 const colonnes = ['Nom', 'Type', 'Coût', 'Portée', 'Zone', 'D/S/B', 'Maîtrise'];
 const groupes = sortsParNpm(magie.sorts);
 const regle = (niveau: number) => magies.regles.filter((r) => r.niveau_sort === niveau);
-const legende = magies.legende;
-const code = (c: string) => legende.find((l) => l.code === c);
-const obtention = legende.filter((l) => l.groupe === 'obtention_nm');
+const texteDeRegle = (r: { titre: string; texte: string }) => (r.texte.startsWith(`${r.titre} : `) ? r.texte.slice(r.titre.length + 3) : r.texte);
 ---
 
 <section class="magie-section" id="sorts" aria-labelledby="sorts-titre">
@@ -32,12 +33,13 @@ const obtention = legende.filter((l) => l.groupe === 'obtention_nm');
   {
     groupes.map((groupe) => (
       <section class="npm" id={`npm-${groupe.niveau}`} aria-labelledby={`npm-${groupe.niveau}-titre`}>
-        <h3 class="npm__titre" id={`npm-${groupe.niveau}-titre`}>
+        <h3 class="npm__titre">
           <span class="npm__badge">NPM {groupe.niveau}</span>
-          <span class="npm__nom">Niveau de Puissance Magique {groupe.niveau}</span>
+          <span class="npm__nom" id={`npm-${groupe.niveau}-titre`}>Niveau de Puissance Magique {groupe.niveau}</span>
           <span class="npm__pips" role="img" aria-label={`Niveau ${groupe.niveau} sur 5`}>
             {[1, 2, 3, 4, 5].map((n) => <i class={n <= groupe.niveau ? 'on' : ''} />)}
           </span>
+          {regle(groupe.niveau).map((r) => <Info titre={r.titre} texte={texteDeRegle(r)} />)}
         </h3>
         <div class="sorts-wrap">
           <table class="sorts">
@@ -52,7 +54,10 @@ const obtention = legende.filter((l) => l.groupe === 'obtention_nm');
                 ['D/S/B', valeurDeSort(sansBonus(s.dsbBrut, s.bonus, 'dsb'), { liste: true }), 'dsb'],
               ] as const;
               const marques = marquesDeMode(s.modes);
-              const maitrise = lignesDeBonus(s.bonus);
+              // altérations d'état écrites dans la cellule D/S/B (une seule dans les données) : pastille dans le texte, comme pour les effets
+              const etatsDsb = s.etats.filter((e) => e.champ === 'dsb');
+              const maitrise = lignesDeBonus(s.bonus, { affiche: true });
+              const etatsEffets = s.etats.filter((e) => e.champ === 'effets');
               return (
                 <tbody class="sort" id={sortAncre(s)}>
                   <tr class="sort__main">
@@ -60,11 +65,9 @@ const obtention = legende.filter((l) => l.groupe === 'obtention_nm');
                       <button type="button" class="sort__choisir" aria-expanded="false" aria-controls={`detail-${s.slug}`}>
                         {s.nom}
                       </button>
-                      {(s.invoque.length > 0 || s.remarque.length > 0 || s.incantation) && (
+                      {s.invoque.length > 0 && (
                         <span class="sort__reperes">
-                          {s.invoque.length > 0 && <span class="repere" title="Ce sort a ses propres règles : invocation">Invocation</span>}
-                          {s.remarque.length > 0 && <span class="repere" title="Remarque du classeur">Remarque</span>}
-                          {s.incantation && <span class="repere" title="Texte du sort">Texte</span>}
+                          <span class="repere" title="Ce sort a ses propres règles : invocation">Invocation</span>
                         </span>
                       )}
                     </th>
@@ -87,7 +90,7 @@ const obtention = legende.filter((l) => l.groupe === 'obtention_nm');
                     </td>
                     {valeurs.map(([label, v, cle]) => (
                       <td data-label={label} class={`sort__${cle}`}>
-                        {v.vide ? <span class="vide" aria-label="aucun">—</span> : v.lignes.map((l) => <div><Segments segments={l} /></div>)}
+                        {v.vide ? <span class="vide" aria-label="aucun">—</span> : v.lignes.map((l) => <div><Segments segments={l} etats={cle === 'dsb' ? etatsDsb : undefined} {magies} /></div>)}
                       </td>
                     ))}
                     <td data-label="Maîtrise" class="sort__maitrise">
@@ -98,7 +101,7 @@ const obtention = legende.filter((l) => l.groupe === 'obtention_nm');
                           <ul class="nm">
                             {maitrise.map((l) => (
                               <li class={`nm__ligne nm__ligne--${l.nature}`}>
-                                <span class="nm__champ">{l.libelle}</span> <span class="nm__texte">{l.texte}</span>
+                                <span class="nm__champ">{l.libelle}</span> <span class="nm__texte">{l.champ === 'effets' || l.champ === 'remarque' ? <TexteEnLigne texte={l.texte} etats={[...etatsEffets]} {magies} /> : l.texte}</span>
                               </li>
                             ))}
                           </ul>
@@ -116,35 +119,21 @@ const obtention = legende.filter((l) => l.groupe === 'obtention_nm');
             })}
           </table>
         </div>
-        {regle(groupe.niveau).map((r) => (
-          <aside class="magie-regle">
-            <h4>{r.titre}</h4>
-            <p class="texte">{r.texte.startsWith(`${r.titre} : `) ? r.texte.slice(r.titre.length + 3) : r.texte}</p>
-          </aside>
-        ))}
       </section>
     ))
   }
 
-  <aside class="magie-legende" id="legende">
-    <h3>Légende</h3>
-    <dl>
-      <div><dt>NPM</dt><dd>Niveau de puissance magique</dd></div>
-      {code('NM') && <div><dt>NM</dt><dd>{code('NM')!.libelle}</dd></div>}
-      {code('IC') && <div><dt>IC</dt><dd>{code('IC')!.libelle}{code('IC')!.description ? ` : ${code('IC')!.description!.replace(/\s*\n\s*/g, ' ')}` : ''}</dd></div>}
-    </dl>
-    {
-      obtention.length > 0 && (
-        <>
-          <h4>Obtention des niveaux de maîtrise</h4>
-          <dl>{[...obtention].sort((a, b) => 'NLC'.indexOf(a.code) - 'NLC'.indexOf(b.code)).map((l) => <div><dt>{l.code}</dt><dd>{l.libelle}</dd></div>)}</dl>
-        </>
-      )
-    }
-  </aside>
 </section>
 
-<noscript><style>.sorts .sort__detail[hidden] { display: table-row !important; }</style></noscript>
+<noscript>
+  <style>
+    .sorts .sort__detail[hidden] { display: table-row !important; }
+    .creature__fiche[hidden], .creature__rangee[hidden] { display: block !important; }
+    .creature__bouton { pointer-events: none; }
+    .bulle--large[hidden] { display: block !important; position: static; flex: 1 0 100%; max-width: none; box-shadow: none; }
+    .info { display: none; }
+  </style>
+</noscript>
 
 <script>
   // Sélection d'un sort : sa ligne se met en évidence et ses détails s'ouvrent juste en dessous (un seul sort à la fois).
@@ -206,6 +195,28 @@ const obtention = legende.filter((l) => l.groupe === 'obtention_nm');
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') toutFermer();
   });
+
+  // Créatures d'une invocation : un clic sur le nom ouvre sa fiche minimale (stats, dégâts, capacités) juste sous son bloc, un autre clic la referme ;
+  // une seule fiche à la fois par invocation. Le lien « Bestiaire » à côté du nom mène à la page de la créature.
+  const boutonsCreature = [...document.querySelectorAll<HTMLButtonElement>('.creature__bouton')];
+  for (const bouton of boutonsCreature) {
+    bouton.setAttribute('aria-expanded', 'false'); // sans JavaScript le bouton ne promet rien : toutes les fiches sont affichées
+    bouton.addEventListener('click', () => {
+      const fiche = document.getElementById(bouton.getAttribute('aria-controls') ?? '');
+      if (!fiche) return;
+      const aOuvrir = fiche.hidden;
+      const section = bouton.closest('.sort-detail__regles');
+      for (const autre of section?.querySelectorAll<HTMLElement>('.creature__fiche') ?? []) autre.hidden = true;
+      for (const rangee of section?.querySelectorAll<HTMLElement>('.creature__rangee') ?? []) rangee.hidden = true;
+      for (const b of section?.querySelectorAll<HTMLElement>('.creature__bouton') ?? []) b.setAttribute('aria-expanded', 'false');
+      if (aOuvrir) {
+        fiche.hidden = false;
+        if (fiche.parentElement) fiche.parentElement.hidden = false;
+        bouton.setAttribute('aria-expanded', 'true');
+        fiche.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      }
+    });
+  }
 
   /** Adresse `#sort-…` : ouvre ce sort ; toute autre adresse (retour arrière, lien d'ancre) ferme le sort ouvert. */
   function depuisLien() {

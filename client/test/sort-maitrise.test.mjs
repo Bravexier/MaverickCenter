@@ -54,6 +54,13 @@ test('lignesDeBonus et texteDeBonus : une ligne « <Colonne> : <passage> » par 
   assert.equal(texteDeBonus([]), null);
 });
 
+test('lignesDeBonus à l’écran : la note de cellule (champ remarque) est lue sous « Effets » ; la colonne de la base garde « Remarque »', () => {
+  const bonus = [palier('remarque', '3NM = x'), palier('effets', '3NM = y')];
+  assert.deepEqual(lignesDeBonus(bonus, { affiche: true }).map((l) => l.libelle), ['Effets', 'Effets']);
+  assert.deepEqual(lignesDeBonus(bonus).map((l) => l.libelle), ['Remarque', 'Effets']);
+  assert.equal(texteDeBonus(bonus), 'Remarque : 3NM = x\nEffets : 3NM = y', 'le texte de sort.bonus_maitrise ne change pas');
+});
+
 test('colonnes : chaque colonne où un bonus peut être écrit a son libellé, dans l’ordre de lecture du tableau', () => {
   assert.deepEqual(ORDRE_CHAMPS_NM, ['type', 'cout', 'portee', 'zone', 'dsb', 'effets', 'remarque']);
   assert.deepEqual(Object.keys(LIBELLES_CHAMP_NM), ORDRE_CHAMPS_NM);
