@@ -71,8 +71,9 @@ function convert(html, rel) {
   html = html.replace(/<script type="module" src="([^"]+)"><\/script>/g, (_, src) => `<script type="module">${inlineScript(src)}</script>`);
   html = html.replaceAll(MARK, prefix);
   // Lien de répertoire -> index.html (la racine du site reste « ./ » ou « ../ » : c'est la page principale)
-  html = html.replace(/\b(href|action)="(\.{1,2}\/[^"#?]*\/)"/g, (m, attr, target) =>
-    target === prefix ? m : `${attr}="${target}index.html"`);
+  // (un lien de répertoire avec ancre ou paramètres, « …/liste-des-alterations-d-etat/#brûlure », suit la même règle : l'ancre est gardée)
+  html = html.replace(/\b(href|action)="(\.{1,2}\/[^"#?]*\/)([#?][^"]*)?"/g, (m, attr, target, reste = '') =>
+    target === prefix ? m : `${attr}="${target}index.html${reste}"`);
   html = html.replace('data-suffix=""', 'data-suffix="index.html"');
   // Imprimer / Exporter : sans effet dans un cadre sandbox
   html = html.replace(/<button type="button" id="(btn-print|btn-export)"/g, '<button type="button" id="$1" hidden');
@@ -116,7 +117,7 @@ pages.push(['index.html', readFileSync(join(out, 'main.html'), 'utf8')]);
 for (const [rel, html] of pages) {
   if (html.includes('__BASE__')) problems.push(`${rel} : marqueur restant`);
   const dir = posix.dirname(rel);
-  for (const m of html.matchAll(/\b(?:href|src|action|data-index-url)="(\.{1,2}\/[^"#?]*)"/g)) {
+  for (const m of html.matchAll(/\b(?:href|src|action|data-index-url)="(\.{1,2}\/[^"#?]*)(?:[#?][^"]*)?"/g)) {
     links += 1;
     const target = posix.normalize(posix.join(dir, m[1]));
     if (target === '.' || target === './' || target === '') continue; // racine = page principale

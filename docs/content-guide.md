@@ -33,9 +33,9 @@ L'import des classeurs pose, en plus des champs ci-dessus, des listes **structur
 | magie | `nom_court: "Espace/Temps"` | nom de la magie dans ces listes (comparé sans casse ni accents) |
 | magie | `resiste_a`, `vulnerable_a`, `incompatible_avec` | « Résistance magique », « Vulnérabilité magique », « Magie non compatible » du bloc « Données » (une phrase libre n'est jamais transformée en liste : la clé est omise) |
 
-Le site en tire : le bloc « Magies innées disponibles » d'une race, « Disponibilité par race » et « Relations avec les autres magies »
-(fort contre = résistance, faible contre = vulnérabilité, incompatible) d'une magie, la page `/wiki/races-et-magies/` (deux tableaux) et le
-rangement des races. L'incompatibilité est lue dans les deux sens : une magie citée par la page d'une autre est marquée « déduite » (*).
+Le site en tire : le bloc « Magies innées disponibles » d'une race, « Disponibilité par race » d'une magie, la page `/wiki/races-et-magies/`
+(deux tableaux) et le rangement des races. (Les résistances, vulnérabilités et incompatibilités affichées sur une page de magie viennent de la base,
+voir « Pages de magie » plus bas.)
 `test/races-magies-content.test.mjs` vérifie ces champs sur le contenu réel (noms existants, concordance avec le texte de la page, effectifs).
 
 **Priorité entre les sources d'une race** : l'onglet de la race dans le classeur « Les races » (histoire, présentation, avantages et
@@ -61,6 +61,36 @@ race pure (pas de classe raciale). Si le classeur de la fiche est corrigé, reti
 **Races pures et hybrides** : une race est hybride quand elle a sa propre classe raciale (une classe « Hybride Animal » qui porte son nom,
 `lib/race-kinds.mjs`) ; les données confirment que ces 13 races ont exactement 3 magies innées ; les 14 races pures en ont 13 ou plus, sauf le Nain
 (5 magies innées d'après son onglet, voir l'exception ci-dessus).
+
+
+## Pages de magie : un gabarit commun, alimenté par la base
+
+Les 15 pages de `/wiki/magies/<magie>/` ne sont **pas** rendues depuis leur Markdown : `components/MagiePage.astro` (avec `MagieSorts`, `SortDetail`, `MagieAffinites`) affiche les lignes
+des tables typées de la base, lues par `client/src/lib/magies-db.mjs` : `magie`, `magie_role`, `magie_resistance`, `etat`, `v_magie_incompatible`, `magie_ethnie_secondaire`, `mode_hyper_effet`,
+`sort`, `sort_type`, `sort_etat`, `invocation`, `invocation_bloc`, `creature`, `v_creature_sort`, `creature_effet`, `amelioration_cadaverique`, `legende_sort`, `regle_magie`.
+Le corps Markdown de la page (fabriqué depuis `data/rows`) ne sert plus qu'à la recherche plein texte et aux `[[liens]]`. Restent lus dans le front matter : le titre, les alias, le statut, et la
+section « Disponibilité par race » (`magies_innees` des pages de race, avec l'exception du Nain, voir plus haut). Une page de magie sans ligne dans `magie` (la magie d'exemple) garde le rendu Markdown.
+
+**Pour changer une magie ou un sort, on change la base, pas le `.md` fabriqué** (une modification du `.md` n'a plus d'effet sur ces pages). Aucun importeur ne réécrit encore ces lignes depuis les classeurs :
+le changement passe par une migration `data/migrations/NNNN-<nom>.sql` appliquée par `npm run db:migrate` (voir `docs/sql/remplissage.md`). Les notes de cellule d'un sort sont dans sa colonne `remarque`
+(la table `note_cellule` n'est qu'une trace : rien ne la lit). La matrice de `/wiki/races-et-magies/` lit aussi les résistances, vulnérabilités et incompatibilités dans la base
+(`entriesAvecRelationsDeLaBase`) : les pages de magie et la matrice n'ont qu'une source.
+
+Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, testé dans `test/magies-page.test.mjs`) :
+
+- **Bannière** : nom, rôles, santé et chakra offerts, caractéristique bonus, 4ᵉ barre ; la teinte de chaque magie (`TEINTES`) est un repère visuel sans valeur de règle.
+- **Aucune virgule dans les données** : une liste devient des pastilles (une par élément), les bonus du D/S/B (« +8 dégâts, +2AM ») sont un élément par ligne, « 4.0 » s'affiche « 4 », les précisions entre
+  parenthèses (`(+1/NM)`) passent en petit (parenthèses gardées), le coût « 10 + 4 Sang » est séparé en coût et supplément, les types et les marques (IC, imparable, inesquivable) sont des pastilles.
+  Le texte des cellules n'est jamais réécrit.
+- **Un tableau par niveau de puissance magique (NPM)** : Nom, Type, Coût, Portée, Zone, D/S/B, une ligne par sort. Un clic sur la ligne (ou `#sort-<slug>` dans l'adresse) ouvre juste en
+  dessous un panneau : effets secondaires, **remarque** (la note de cellule du classeur, `sort.remarque`), texte du sort de niveau 5 (`sort.texte_niveau5`), altérations d'état repérées dans le texte
+  (`sort_etat`, un index dérivé du texte, non exhaustif), créatures qui lancent le sort, et, quand le sort a **ses propres règles**, un bloc dédié : pour les invocations (Animation de mort, Appel aux Golems,
+  Marionnette de l'ombre) le texte de l'onglet de l'invocation, les créatures invoquées (liens vers le bestiaire) et, pour Animation de mort, le tableau « AMELIORATION CADAVERIQUE ». Sans JavaScript, tous les panneaux sont affichés.
+- **Chaque élément renvoie à sa page** : magie → page de la magie, altération d'état → sa section de `/wiki/guide/liste-des-alterations-d-etat/` (l'ancre est celle du titre `## <nom>`, vérifiée par
+  le test), créature ou invocation → page du bestiaire, race → page de la race.
+- `Résistances` et `Vulnérabilités` = `magie_resistance` (cibles « magie » et « état », écriture de la source sur la pastille), `Magie non compatible` = `v_magie_incompatible` (relation symétrique)
+  plus la phrase libre `magie.incompatibilite_note` (Corruption).
+- Le CSS de ces pages est dans `client/src/styles/magie.css`, injecté par `MagiePage.astro` seulement : le mettre dans `global.css` alourdirait les 1 500 autres pages (et chacune des pages de la version portable).
 
 ## Capacités de classe (type `capacites`)
 

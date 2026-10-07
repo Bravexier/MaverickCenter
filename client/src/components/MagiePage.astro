@@ -1,0 +1,141 @@
+---
+import { nombre, sortsParNpm, teinteDeMagie } from '../lib/sort-format.mjs';
+import magieCss from '../styles/magie.css?raw';
+import { racesOfMagie } from '../lib/magie-relations.mjs';
+import { pageHref, type Magies, type MagieDb } from '../lib/magies';
+import type { WikiEntry } from '../lib/wiki';
+import MagieAffinites from './MagieAffinites.astro';
+import MagieSorts from './MagieSorts.astro';
+import RacesDeMagie from './RacesDeMagie.astro';
+import Texte from './Texte.astro';
+
+// Gabarit commun des pages de magie : bannière (nom, rôles, ressources offertes), présentation, résistances, Mode Hyper, sorts par niveau de
+// puissance magique, races. Il affiche les lignes de la base (tables magie, sort… ; lib/magies-db.mjs) : pour changer une magie ou un sort,
+// on change la base. Seuls le titre, les alias et le statut (pages du wiki) et la section « Disponibilité par race » (`magies_innees` des pages de
+// race, avec l'exception du Nain : lib/magie-relations.mjs) viennent encore du front matter.
+interface Props {
+  entry: WikiEntry;
+  entries: WikiEntry[];
+  magie: MagieDb;
+  magies: Magies;
+  statusNote?: string;
+}
+const { entry, entries, magie, magies, statusNote } = Astro.props;
+const teinte = teinteDeMagie(magie.nom);
+
+const ressources = [
+  { label: 'Santé offerte', valeur: String(magie.sante ?? '') },
+  { label: 'Chakra offert', valeur: String(magie.chakra ?? '') },
+  { label: 'Caractéristique bonus', valeur: magie.caracteristique ? magie.caracteristique.brut : '' },
+]
+  .filter((r) => r.valeur !== '')
+  .map((r) => ({ ...r, valeur: nombre(r.valeur), nul: r.valeur === '0', texte: !/^-?\d+$/.test(r.valeur) }));
+const groupes = sortsParNpm(magie.sorts);
+const { avec, sans } = racesOfMagie(entries, entry);
+const aDesRaces = avec.length + sans.length > 0;
+const pageModeHyper = entries.find((e) => e.id === 'guide/liste-des-effets-mode-hyper');
+
+const aPresentation = magie.description.length > 0 || magie.descriptionPhysique.length > 0 || Boolean(magie.banniere);
+const nav = [
+  { href: '#presentation', label: 'Présentation', show: aPresentation },
+  { href: '#affinites', label: 'Résistances', show: true },
+  { href: '#mode-hyper', label: 'Mode Hyper', show: magie.modeHyper.length > 0 },
+  { href: '#sorts', label: 'Sorts', show: groupes.length > 0 },
+  { href: '#races-disponibles', label: 'Races', show: aDesRaces },
+].filter((n) => n.show);
+---
+
+<style is:inline set:html={magieCss}></style>
+<div class="magie" style={`--teinte: ${teinte}`}>
+  <header class="magie-hero">
+    <p class="magie-hero__surtitre">Magie</p>
+    <h1>{entry.data.title}</h1>
+    {entry.data.aliases.length > 0 && <p class="magie-hero__aliases">Aussi appelée {entry.data.aliases.join(' · ')}</p>}
+    {
+      magie.roles.length > 0 && (
+        <ul class="magie-hero__roles" aria-label="Rôles">
+          {magie.roles.map((r) => <li>{r.brut}</li>)}
+        </ul>
+      )
+    }
+    {
+      ressources.length > 0 && (
+        <dl class="magie-stats">
+          {ressources.map((r) => (
+            <div class={`magie-stat${r.nul ? ' magie-stat--nul' : ''}${r.texte ? ' magie-stat--texte' : ''}`}>
+              <dt>{r.label}</dt>
+              <dd>{r.valeur}</dd>
+            </div>
+          ))}
+        </dl>
+      )
+    }
+    {magie.barre4 && <p class="magie-hero__barre"><strong>4ème barre</strong> {magie.barre4.texte}</p>}
+  </header>
+
+  {statusNote && <p class="banner" role="note">{statusNote}</p>}
+
+  {
+    nav.length > 1 && (
+      <nav class="magie-nav no-print" aria-label="Sections de la page">
+        {nav.map((n) => <a href={n.href}>{n.label}</a>)}
+        {groupes.length > 0 && (
+          <span class="magie-nav__npm" role="group" aria-label="Niveaux de puissance magique">
+            {groupes.map((g) => <a href={`#npm-${g.niveau}`} title={`Niveau de Puissance Magique ${g.niveau}`}>NPM {g.niveau}</a>)}
+          </span>
+        )}
+      </nav>
+    )
+  }
+
+  {
+    aPresentation && (
+      <section class="magie-section magie-presentation" id="presentation" aria-label="Présentation">
+        <div class="magie-prose magie-presentation__texte">
+          {magie.banniere && <p class="banner" role="note"><strong>{magie.banniere}</strong></p>}
+          <Texte blocs={magie.description} />
+        </div>
+        {
+          magie.descriptionPhysique.length > 0 && (
+            <aside class="magie-card magie-card--physique">
+              <h2>Description physique</h2>
+              <div class="magie-prose"><Texte blocs={magie.descriptionPhysique} /></div>
+            </aside>
+          )
+        }
+      </section>
+    )
+  }
+
+  {
+    magie.explication.length > 0 && (
+      <section class="magie-section magie-card" id="explication" aria-labelledby="explication-titre">
+        <h2 id="explication-titre">Explication</h2>
+        <div class="magie-prose"><Texte blocs={magie.explication} /></div>
+      </section>
+    )
+  }
+
+  <MagieAffinites magie={magie} magies={magies} />
+
+  {
+    magie.modeHyper.length > 0 && (
+      <section class="magie-section" id="mode-hyper" aria-labelledby="mode-hyper-titre">
+        <h2 id="mode-hyper-titre">Capacité Mode Hyper</h2>
+        {pageModeHyper && <p class="muted"><a href={pageHref(pageModeHyper.id)}>Liste des effets mode hyper</a></p>}
+        <div class="hyper">
+          {magie.modeHyper.map((v) => (
+            <article class="hyper__carte">
+              <h3>{v.libelle}</h3>
+              <Texte blocs={v.blocs} />
+            </article>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  {magie.sorts.length > 0 && <MagieSorts magie={magie} magies={magies} />}
+
+  {aDesRaces && <RacesDeMagie entry={entry} entries={entries} />}
+</div>

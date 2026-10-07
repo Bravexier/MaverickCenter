@@ -1,0 +1,10 @@
+---
+// Valeur d'une cellule de sort : le texte en gras, les précisions entre parenthèses (« (+1/NM) », « (3NM = …) ») en petit et estompé,
+// parenthèses conservées (le texte copié est celui de la source).
+interface Props {
+  segments: { texte: string; modif: boolean }[];
+}
+const { segments } = Astro.props;
+---
+
+{segments.map((s, i) => <>{i > 0 && ' '}{s.modif ? <small class="mod">({s.texte})</small> : <span class="val">{s.texte}</span>}</>)}

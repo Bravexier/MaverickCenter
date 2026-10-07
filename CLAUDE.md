@@ -37,6 +37,7 @@ stables, SQL portable, modifications historisées, règles en données, moteur p
 | `client/src/content/wiki/<type>/*.md` | Pages du wiki (types dans `src/lib/types.mjs`) : **fabriquées depuis `data/rows` par `npm run db:export-pages`** (lancé avant `dev`, `build` et `test`), **ignorées par git**. La source est la base ; pour changer une page : modifier le `.md` fabriqué puis `npm run db:sync-pages` et commiter `data/rows` |
 | `client/src/lib/wikilinks.mjs` | Index des pages, résolution des `[[liens]]`, plugin remark |
 | `client/src/lib/wiki.ts` | Chargement des pages + graphe (liens sortants, rétroliens, tags) |
+| `client/src/lib/magies-db.mjs`, `sort-format.mjs`, `components/MagiePage.astro`, `styles/magie.css` | Pages de magie : gabarit commun alimenté par les **tables typées** de la base (magie, sort, invocation…), **pas** par le Markdown ; un tableau par NPM, détails d'un sort sous sa ligne (voir `docs/content-guide.md`, « Pages de magie ») |
 | `client/src/lib/character.mjs` | Moteur de fiche (fonctions pures, piloté par `src/data/rules.json`) |
 | `client/src/data/rules.json` | Règles de création de personnage |
 | `client/test/` | Tests `node:test` (`npm test`) |
@@ -78,6 +79,10 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
 - La page `/wiki/classes/` range les classes par catégorie (Physiques > Mêlée/Distance, Magiques, Raciales, Autres) d'après les tags
   posés par l'import (catégorie du Sommaire du classeur) : `client/src/lib/class-groups.mjs`, testé. « Raciales » = « Classe Hybride Animal » ;
   le Parleur (classé mêlée dans le classeur) est volontairement sous « Autres » (`CLASS_OVERRIDES`, décision du propriétaire).
+- Pages de magie : rendues depuis la base (`lib/magies-db.mjs`, `lib/magies.ts`), jamais depuis leur `.md` (qui ne sert qu'à la recherche et aux `[[liens]]`) ; la remarque d'un sort
+  (note de cellule) est `sort.remarque`, la table `note_cellule` n'est qu'une trace et ne doit pas être lue. Le panneau d'un sort s'ouvre sous sa ligne (script de `MagieSorts.astro`, sans JavaScript tout est affiché).
+  Leur CSS est dans `styles/magie.css`, inséré par `MagiePage.astro` (`?raw`) : ne pas le mettre dans `global.css` ni l'importer (Astro l'attacherait à toutes les pages de la route `[type]/[slug]`).
+  La matrice de `/wiki/races-et-magies/` lit les mêmes relations dans la base (`entriesAvecRelationsDeLaBase`).
 - Races ↔ magies : les pages portent des listes structurées (`magies_innees`, `nom_court`, `resiste_a`, `vulnerable_a`, `incompatible_avec`)
   posées par `tools/sheets/races.py` et `magies.py` ; le site en tire les liens, les tableaux de `/wiki/races-et-magies/` et la distinction
   races pures / hybrides (`lib/magie-relations.mjs`, `lib/race-kinds.mjs`). Voir `docs/content-guide.md`. Les champs sont déclarés dans `content.config.ts`

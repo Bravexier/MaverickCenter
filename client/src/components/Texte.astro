@@ -1,0 +1,24 @@
+---
+import { morceauxAvecLiens } from '../lib/sort-format.mjs';
+
+// Texte d'une cellule ou d'un bloc de la base (lib/sort-format.mjs#blocsDeTexte) : intertitres, paragraphes et listes à puces, sans Markdown.
+// Une adresse web écrite dans le texte devient un lien (lib/sort-format.mjs#morceauxAvecLiens).
+interface Props {
+  blocs: ({ liste: false; titre?: false; texte: string } | { liste: true; items: string[] } | { titre: true; texte: string })[];
+}
+const { blocs } = Astro.props;
+
+const rendre = morceauxAvecLiens;
+---
+
+{
+  blocs.map((b) =>
+    'items' in b ? (
+      <ul>{b.items.map((i) => <li>{rendre(i).map((p) => (p.lien ? <a href={p.lien} rel="noopener noreferrer">{p.lien}</a> : p.texte))}</li>)}</ul>
+    ) : 'titre' in b && b.titre ? (
+      <h6 class="texte-titre">{b.texte}</h6>
+    ) : (
+      <p class="texte">{rendre(b.texte).map((p) => (p.lien ? <a href={p.lien} rel="noopener noreferrer">{p.lien}</a> : p.texte))}</p>
+    ),
+  )
+}

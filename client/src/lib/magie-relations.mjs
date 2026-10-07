@@ -93,6 +93,28 @@ export function relationsOfMagie(entries, magie) {
   return { fortContre, faibleContre, incompatible, manquants };
 }
 
+/**
+ * Pages de magie dont `resiste_a`, `vulnerable_a` et `incompatible_avec` sont celles de la base (lib/magies-db.mjs : tables magie_resistance et
+ * v_magie_incompatible) : les pages de magie et la matrice de /wiki/races-et-magies/ n'ont ainsi qu'une source. Les autres pages sont rendues telles quelles.
+ * `magies` = le résultat de chargerMagies().
+ */
+export function entriesAvecRelationsDeLaBase(entries, magies) {
+  const nom = (id) => magies.magies.get(id).nom;
+  return entries.map((entry) => {
+    const m = magies.magies.get(entry.id);
+    if (!m) return entry;
+    return {
+      ...entry,
+      data: {
+        ...entry.data,
+        resiste_a: m.resistances.resistance.magies.map((r) => nom(r.id)),
+        vulnerable_a: m.resistances.vulnerabilite.magies.map((r) => nom(r.id)),
+        incompatible_avec: m.incompatibles.map(nom),
+      },
+    };
+  });
+}
+
 /** Tableau race × magie : lignes = races avec données (par titre), colonnes = magies (par nom court), cellule vraie si la race peut l'avoir. */
 export function accessMatrix(entries) {
   const magies = [...magieIndex(entries).values()].sort(byNom);
