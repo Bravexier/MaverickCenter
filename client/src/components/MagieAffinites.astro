@@ -1,9 +1,10 @@
 ---
-import { etatHref, pageHref, type Magies, type MagieDb } from '../lib/magies';
+import { pageHref, type Magies, type MagieDb } from '../lib/magies';
+import EtatPastille from './EtatPastille.astro';
 
 // Résistances, vulnérabilités et incompatibilités d'une magie, lues dans les tables magie_resistance et v_magie_incompatible.
-// Chaque élément est un lien : une magie vers sa page, une altération d'état vers sa section de la « Liste des altérations d'état »,
-// une race vers sa page.
+// Chaque élément est un lien : une magie vers sa page, une altération d'état vers sa section de la « Liste des altérations d'état »
+// (avec son infobulle : type, magie liée, effet par stade), une race vers sa page.
 interface Props {
   magie: MagieDb;
   magies: Magies;
@@ -11,11 +12,8 @@ interface Props {
 const { magie, magies } = Astro.props;
 
 // Texte du lien = écriture de la source (« Gelé ») ; le nom de l'entité visée (« Gel ») est dans l'infobulle quand il diffère.
-const lienMagie = ({ id, brut }: { id: string; brut: string }) => ({ href: pageHref(id), texte: brut, soi: id === magie.id, titre: magies.magies.get(id)!.nom });
-const lienEtat = ({ id, brut }: { id: string; brut: string }) => {
-  const e = magies.etats.get(id)!;
-  return { href: etatHref(e), texte: brut, soi: false, titre: e.nom };
-};
+const lienMagie = ({ id, brut }: { id: string; brut: string }) => ({ href: pageHref(id), texte: brut, soi: id === magie.id, titre: magies.magies.get(id)!.nom, etat: null });
+const lienEtat = ({ id, brut }: { id: string; brut: string }) => ({ href: '', texte: brut, soi: false, titre: '', etat: magies.etats.get(id)! });
 const cartes = (['resistance', 'vulnerabilite'] as const).map((sens) => ({
   cle: sens === 'resistance' ? 'fort' : 'faible',
   titre: sens === 'resistance' ? 'Résistances' : 'Vulnérabilités',
@@ -47,7 +45,9 @@ const ethnies = magie.ethniesSecondaires.map((e) => ({ href: pageHref(e.pageId),
               ) : (
                 <ul class="chips">
                   {g.liens.map((l) =>
-                    l.soi ? (
+                    l.etat ? (
+                      <li><EtatPastille etat={l.etat} texte={l.texte} classe={`chip--${c.cle}`} /></li>
+                    ) : l.soi ? (
                       <li><span class={`chip chip--${c.cle} chip--soi`} title="Cette magie, elle-même">{l.texte}</span></li>
                     ) : (
                       <li><a class={`chip chip--${c.cle}`} href={l.href} title={l.titre}>{l.texte}</a></li>

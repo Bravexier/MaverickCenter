@@ -1,24 +1,43 @@
 ---
-import { morceauxAvecLiens } from '../lib/sort-format.mjs';
+import { morceauxAvecEtats, morceauxAvecLiens } from '../lib/sort-format.mjs';
+import type { Magies } from '../lib/magies';
+import EtatPastille from './EtatPastille.astro';
 
 // Texte d'une cellule ou d'un bloc de la base (lib/sort-format.mjs#blocsDeTexte) : intertitres, paragraphes et listes à puces, sans Markdown.
-// Une adresse web écrite dans le texte devient un lien (lib/sort-format.mjs#morceauxAvecLiens).
+// Une adresse web écrite dans le texte devient un lien (lib/sort-format.mjs#morceauxAvecLiens). Quand `etats` est donné (les altérations d'état
+// repérées dans le texte d'un sort, table sort_etat), chacune devient une pastille avec infobulle PLACÉE DANS LE TEXTE, sur son mot ; la liste est
+// consommée (une altération n'est placée qu'une fois, même si le texte est coupé en plusieurs appels).
 interface Props {
   blocs: ({ liste: false; titre?: false; texte: string } | { liste: true; items: string[] } | { titre: true; texte: string })[];
+  etats?: { etatId: string; stade: number | null; forme: string; extrait: string }[];
+  magies?: Magies;
 }
-const { blocs } = Astro.props;
+const { blocs, etats, magies } = Astro.props;
 
-const rendre = morceauxAvecLiens;
+const rendre = (texte: string) =>
+  (etats && magies ? morceauxAvecEtats(texte, etats) : [{ texte }]).flatMap((m: { texte: string; etat?: unknown }) =>
+    m.etat ? [m] : morceauxAvecLiens(m.texte),
+  ) as { texte?: string; lien?: string; etat?: { etatId: string; stade: number | null } }[];
 ---
 
 {
-  blocs.map((b) =>
-    'items' in b ? (
-      <ul>{b.items.map((i) => <li>{rendre(i).map((p) => (p.lien ? <a href={p.lien} rel="noopener noreferrer">{p.lien}</a> : p.texte))}</li>)}</ul>
+  blocs.map((b) => {
+    const morceaux = (texte: string) =>
+      rendre(texte).map((p) =>
+        p.etat && magies ? (
+          <EtatPastille etat={magies.etats.get(p.etat.etatId)!} texte={p.texte!} stade={p.etat.stade} />
+        ) : p.lien ? (
+          <a href={p.lien} rel="noopener noreferrer">{p.lien}</a>
+        ) : (
+          p.texte
+        ),
+      );
+    return 'items' in b ? (
+      <ul>{b.items.map((i) => <li>{morceaux(i)}</li>)}</ul>
     ) : 'titre' in b && b.titre ? (
       <h6 class="texte-titre">{b.texte}</h6>
     ) : (
-      <p class="texte">{rendre(b.texte).map((p) => (p.lien ? <a href={p.lien} rel="noopener noreferrer">{p.lien}</a> : p.texte))}</p>
-    ),
-  )
+      <p class="texte">{morceaux(b.texte)}</p>
+    );
+  })
 }

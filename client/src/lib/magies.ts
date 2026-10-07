@@ -17,3 +17,6 @@ export const pageHref = (pageId: string) => url(`wiki/${pageId}/`);
 export const etatHref = (etat: { pageId: string; nom: string }) => `${pageHref(etat.pageId)}#${ancreDeTitre(etat.nom)}`;
 /** Identifiant HTML du détail d'un sort (lien profond : `…/magie-du-feu/#sort-boule-de-feu`). */
 export const sortAncre = (sort: { slug: string }) => `sort-${sort.slug}`;
+/** Identifiant HTML unique (par exécution du build) d'une infobulle : le déclencheur le cite par `aria-describedby`. */
+let compteurBulles = 0;
+export const idBulle = (prefixe: string) => `${prefixe}-${++compteurBulles}`;

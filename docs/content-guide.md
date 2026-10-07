@@ -67,7 +67,7 @@ race pure (pas de classe raciale). Si le classeur de la fiche est corrigé, reti
 
 Les 15 pages de `/wiki/magies/<magie>/` ne sont **pas** rendues depuis leur Markdown : `components/MagiePage.astro` (avec `MagieSorts`, `SortDetail`, `MagieAffinites`) affiche les lignes
 des tables typées de la base, lues par `client/src/lib/magies-db.mjs` : `magie`, `magie_role`, `magie_resistance`, `etat`, `v_magie_incompatible`, `magie_ethnie_secondaire`, `mode_hyper_effet`,
-`sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `invocation`, `invocation_bloc`, `creature`, `v_creature_sort`, `creature_effet`, `amelioration_cadaverique`, `legende_sort`, `regle_magie`.
+`sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `etat`, `etat_magie`, `etat_stade`, `invocation`, `invocation_bloc`, `creature`, `creature_caracteristique`, `creature_bonus_npm`, `creature_capacite`, `creature_effet`, `amelioration_cadaverique`, `regle_magie`.
 Le corps Markdown de la page (fabriqué depuis `data/rows`) ne sert plus qu'à la recherche plein texte et aux `[[liens]]`. Restent lus dans le front matter : le titre, les alias, le statut, et la
 section « Disponibilité par race » (`magies_innees` des pages de race, avec l'exception du Nain, voir plus haut). Une page de magie sans ligne dans `magie` (la magie d'exemple) garde le rendu Markdown.
 
@@ -83,10 +83,17 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   parenthèses (`(+1/NM)`) passent en petit (parenthèses gardées), le coût « 10 + 4 Sang » est séparé en coût et supplément, les types et les marques (IC, imparable, inesquivable) sont des pastilles.
   Le texte des cellules n'est jamais réécrit.
 - **Un tableau par niveau de puissance magique (NPM)** : Nom, Type, Coût, Portée, Zone, D/S/B, Maîtrise, une ligne par sort. Les colonnes Coût, Portée, Zone et D/S/B montrent la **valeur de base** (« 55 », pas « 55 (-5/NM) ») ;
-  la colonne **Maîtrise** liste les bonus de niveau de maîtrise (NM) de `sort_bonus_maitrise` (voir « Niveaux de maîtrise » ci-dessous) ; la colonne Type ne montre que les types (`sort_type`) et le **mode** de base (`sort_mode` : IC, imparable, inesquivable). Un clic sur la ligne (ou `#sort-<slug>` dans l'adresse) ouvre juste en
-  dessous un panneau : effets secondaires, **remarque** (la note de cellule du classeur, `sort.remarque`), texte du sort de niveau 5 (`sort.texte_niveau5`), altérations d'état repérées dans le texte
-  (`sort_etat`, un index dérivé du texte, non exhaustif), créatures qui lancent le sort, et, quand le sort a **ses propres règles**, un bloc dédié : pour les invocations (Animation de mort, Appel aux Golems,
-  Marionnette de l'ombre) le texte de l'onglet de l'invocation, les créatures invoquées (liens vers le bestiaire) et, pour Animation de mort, le tableau « AMELIORATION CADAVERIQUE ». Sans JavaScript, tous les panneaux sont affichés.
+  la colonne **Maîtrise** liste les bonus de niveau de maîtrise (NM) de `sort_bonus_maitrise` (voir « Niveaux de maîtrise » ci-dessous) ; la colonne Type ne montre que les types (`sort_type`) et le **mode** de base (`sort_mode` : IC, imparable, inesquivable).
+  La **règle spéciale d'un niveau** (`regle_magie`, « Règle spéciale pour sort niveau 5 ») est dans l'infobulle de la pastille « i » du titre du tableau concerné, pas sous le tableau. Pas de légende sur la page.
+- **Un clic sur la ligne** (ou `#sort-<slug>` dans l'adresse) **ouvre juste en dessous un panneau** : un seul cadre « **Effets** » qui contient le texte des effets secondaires (`sort.effets`), puis, à la ligne, la remarque du classeur (`sort.remarque`,
+  la note de cellule) et le texte du sort de niveau 5 (`sort.texte_niveau5`) sans intitulé propre. Les **altérations d'état** repérées dans le texte (`sort_etat`, un index dérivé du texte, non exhaustif) sont des **pastilles placées dans le texte**,
+  sur le mot de la source, pas une liste à part ; chacune renvoie à sa section de `/wiki/guide/liste-des-alterations-d-etat/` et a une **infobulle** (type, magie liée, effet de chaque stade ; le stade cité est mis en avant : `etat`, `etat_magie`, `etat_stade`).
+  Les mêmes infobulles servent aux altérations d'état des résistances et vulnérabilités de la magie. Pas de source citée, pas de liste des créatures qui lancent le sort.
+  Quand le sort a **ses propres règles**, un bloc dédié : pour une invocation (Animation de mort, Appel aux Golems, Marionnette de l'ombre) les règles de l'onglet de l'invocation (**repliées** par défaut), pour Animation de mort le tableau
+  « AMELIORATION CADAVERIQUE » (replié aussi) et la liste des créatures invoquées par bloc : **un clic sur le nom d'une créature ouvre sa fiche minimale sous la liste** (stats : santé, chakra, barrière, défense, vitesse, les six caractéristiques ; capacités),
+  un bouton « Bestiaire » à côté du nom mène à sa page. Sans JavaScript, tous les panneaux et fiches sont affichés.
+- **Infobulles** (`components/Bulles.astro`, `Info.astro`, `EtatPastille.astro`) : au survol, au focus clavier ou au toucher, en position fixe près du déclencheur (le tableau défile et couperait une bulle absolue), Échap la ferme ; sans JavaScript l'attribut `title`
+  du déclencheur donne le même contenu en texte simple. La bulle n'est faite que d'éléments « en ligne » : une pastille est posée dans un paragraphe, où un bloc fermerait le `<p>`.
 - **Chaque élément renvoie à sa page** : magie → page de la magie, altération d'état → sa section de `/wiki/guide/liste-des-alterations-d-etat/` (l'ancre est celle du titre `## <nom>`, vérifiée par
   le test), créature ou invocation → page du bestiaire, race → page de la race.
 - `Résistances` et `Vulnérabilités` = `magie_resistance` (cibles « magie » et « état », écriture de la source sur la pastille), `Magie non compatible` = `v_magie_incompatible` (relation symétrique)
