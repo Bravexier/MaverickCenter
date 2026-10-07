@@ -97,17 +97,17 @@ test('fautes connues disparues des textes des magies et des sorts (rien n’est 
   }
 });
 
-test('tables dérivées du sort : extraits d’état, progressions par NM et types sont toujours des morceaux du texte du sort, hors les deux écarts déjà présents avant la migration', () => {
+test('tables dérivées du sort : extraits d’état, bonus de maîtrise et types sont toujours des morceaux du texte du sort, hors les deux écarts déjà présents avant la migration', () => {
   const connus = new Set(['etat.extrait|magies/magie-du-vide#sort:bisou-du-vide', 'etat.extrait|magies/magie-de-lombre#sort:rayon-negatif']);
-  const col = { type: 'type_brut', cout: 'cout_brut', portee: 'portee_brut', zone: 'zone_brut', dsb: 'dsb_brut', effets: 'effets' };
+  const col = { type: 'type_brut', cout: 'cout_brut', portee: 'portee_brut', zone: 'zone_brut', dsb: 'dsb_brut', effets: 'effets', remarque: 'remarque' };
   const ecarts = [];
-  const sort = 's.type_brut, s.cout_brut, s.portee_brut, s.zone_brut, s.dsb_brut, s.effets';
+  const sort = 's.type_brut, s.cout_brut, s.portee_brut, s.zone_brut, s.dsb_brut, s.effets, s.remarque';
   for (const r of db.prepare(`SELECT e.sort_id, e.champ, e.extrait, e.forme_trouvee, ${sort} FROM sort_etat e JOIN sort s ON s.id = e.sort_id`).all()) {
     if (!(r[col[r.champ]] ?? '').includes(r.extrait)) ecarts.push(`etat.extrait|${r.sort_id}`);
     else if (!r.extrait.toLowerCase().includes(r.forme_trouvee.toLowerCase())) ecarts.push(`etat.forme|${r.sort_id}`);
   }
-  for (const r of db.prepare(`SELECT p.sort_id, p.champ, p.texte_brut, ${sort} FROM sort_progression_nm p JOIN sort s ON s.id = p.sort_id`).all()) {
-    if (!(r[col[r.champ]] ?? '').includes(r.texte_brut)) ecarts.push(`prog.texte|${r.sort_id}`);
+  for (const r of db.prepare(`SELECT p.sort_id, p.champ, p.texte_brut, p.contexte, ${sort} FROM sort_bonus_maitrise p JOIN sort s ON s.id = p.sort_id`).all()) {
+    if (!(r[col[r.champ]] ?? '').includes(r.texte_brut) || !(r[col[r.champ]] ?? '').includes(r.contexte)) ecarts.push(`bonus.texte|${r.sort_id}`);
   }
   for (const r of db.prepare('SELECT t.sort_id, t.libelle, s.type_brut FROM sort_type t JOIN sort s ON s.id = t.sort_id').all()) {
     if (!r.type_brut.includes(r.libelle)) ecarts.push(`type.libelle|${r.sort_id}`);

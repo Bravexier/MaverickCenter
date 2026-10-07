@@ -1,10 +1,12 @@
 ---
-import { coutDeSort, marquesDeType, sortsParNpm, valeurDeSort } from '../lib/sort-format.mjs';
+import { coutDeSort, marquesDeMode, sortsParNpm, valeurDeSort } from '../lib/sort-format.mjs';
+import { lignesDeBonus, sansBonus } from '../lib/sort-maitrise.mjs';
 import { sortAncre, type Magies, type MagieDb } from '../lib/magies';
 import Segments from './Segments.astro';
 import SortDetail from './SortDetail.astro';
 
-// Sorts d'une magie : un tableau par niveau de puissance magique (NPM), une ligne par sort (Nom, Type, Coût, Portée, Zone, D/S/B).
+// Sorts d'une magie : un tableau par niveau de puissance magique (NPM), une ligne par sort (Nom, Type, Coût, Portée, Zone, D/S/B, Maîtrise).
+// Les colonnes montrent la valeur de base ; les bonus de niveau de maîtrise (NM) que les cellules écrivaient entre parenthèses sont listés dans « Maîtrise ».
 // Sélectionner une ligne ouvre juste en dessous ses détails (SortDetail.astro) : effets secondaires, remarque, règles propres.
 interface Props {
   magie: MagieDb;
@@ -12,7 +14,7 @@ interface Props {
 }
 const { magie, magies } = Astro.props;
 
-const colonnes = ['Nom', 'Type', 'Coût', 'Portée', 'Zone', 'D/S/B'];
+const colonnes = ['Nom', 'Type', 'Coût', 'Portée', 'Zone', 'D/S/B', 'Maîtrise'];
 const groupes = sortsParNpm(magie.sorts);
 const regle = (niveau: number) => magies.regles.filter((r) => r.niveau_sort === niveau);
 const legende = magies.legende;
@@ -43,13 +45,14 @@ const obtention = legende.filter((l) => l.groupe === 'obtention_nm');
               <tr>{colonnes.map((c) => <th scope="col">{c}</th>)}</tr>
             </thead>
             {groupe.sorts.map((s) => {
-              const cout = coutDeSort(s.coutBrut);
+              const cout = coutDeSort(sansBonus(s.coutBrut, s.bonus, 'cout'));
               const valeurs = [
-                ['Portée', valeurDeSort(s.porteeBrut), 'portee'],
-                ['Zone', valeurDeSort(s.zoneBrut), 'zone'],
-                ['D/S/B', valeurDeSort(s.dsbBrut, { liste: true }), 'dsb'],
+                ['Portée', valeurDeSort(sansBonus(s.porteeBrut, s.bonus, 'portee')), 'portee'],
+                ['Zone', valeurDeSort(sansBonus(s.zoneBrut, s.bonus, 'zone')), 'zone'],
+                ['D/S/B', valeurDeSort(sansBonus(s.dsbBrut, s.bonus, 'dsb'), { liste: true }), 'dsb'],
               ] as const;
-              const marques = marquesDeType(s.typeBrut);
+              const marques = marquesDeMode(s.modes);
+              const maitrise = lignesDeBonus(s.bonus);
               return (
                 <tbody class="sort" id={sortAncre(s)}>
                   <tr class="sort__main">
@@ -87,6 +90,21 @@ const obtention = legende.filter((l) => l.groupe === 'obtention_nm');
                         {v.vide ? <span class="vide" aria-label="aucun">—</span> : v.lignes.map((l) => <div><Segments segments={l} /></div>)}
                       </td>
                     ))}
+                    <td data-label="Maîtrise" class="sort__maitrise">
+                      {
+                        maitrise.length === 0 ? (
+                          <span class="vide" aria-label="aucun">—</span>
+                        ) : (
+                          <ul class="nm">
+                            {maitrise.map((l) => (
+                              <li class={`nm__ligne nm__ligne--${l.nature}`}>
+                                <span class="nm__champ">{l.libelle}</span> <span class="nm__texte">{l.texte}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )
+                      }
+                    </td>
                   </tr>
                   <tr class="sort__detail" id={`detail-${s.slug}`} hidden>
                     <td colspan={colonnes.length}>

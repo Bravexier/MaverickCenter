@@ -3,6 +3,7 @@
 // le gabarit des pages de magie (components/MagiePage.astro) n'interprète aucun Markdown, il affiche ces lignes.
 // Node seulement (la base est ouverte par lib/donnees.mjs au build). Une requête par table, puis assemblage en mémoire.
 import { blocsDeTexte, elementsDeTexte } from './sort-format.mjs';
+import { ORDRE_CHAMPS_NM } from './sort-maitrise.mjs';
 
 const apres = (id, separateur) => id.slice(id.indexOf(separateur) + separateur.length);
 const regrouper = (rows, cle) => {
@@ -16,6 +17,8 @@ const regrouper = (rows, cle) => {
 };
 
 const ORDRE_VARIANTES = ['mono', 'mono_et_bi', 'bi', 'forme_complete'];
+// ordre de lecture des colonnes d'un sort (la même que celle du tableau) pour ranger les bonus de maîtrise
+const ORDRE_CHAMPS_SQL = `CASE champ ${ORDRE_CHAMPS_NM.map((c, i) => `WHEN '${c}' THEN ${i}`).join(' ')} END`;
 
 /**
  * @returns {{ magies: Map<string, object>, sorts: Map<string, object>, etats: Map<string, object>, legende: object[], regles: object[] }}
@@ -96,6 +99,15 @@ export function chargerMagies(db) {
 
   // Sorts et ce qui s'y rattache
   const types = regrouper(all('SELECT sort_id, rang, type, libelle FROM sort_type ORDER BY sort_id, rang'), 'sort_id');
+  // Mode (IC, imparable…, valeur de base) et bonus de niveau de maîtrise (NM) : tables sort_mode et sort_bonus_maitrise
+  const modes = regrouper(all('SELECT sort_id, rang, mode, libelle, fois FROM sort_mode ORDER BY sort_id, rang'), 'sort_id');
+  const bonus = regrouper(
+    all(
+      `SELECT sort_id, champ, rang, nature, texte_brut, contexte, increment_brut, increment_entier, pas_nm, seuil_nm FROM sort_bonus_maitrise
+       ORDER BY sort_id, ${ORDRE_CHAMPS_SQL}, rang`,
+    ),
+    'sort_id',
+  );
   const etatsDuSort = regrouper(
     all('SELECT sort_id, etat_id, relation, rang, stade, extrait FROM sort_etat ORDER BY sort_id, rang, etat_id'),
     'sort_id',
@@ -139,6 +151,21 @@ export function chargerMagies(db) {
       ordre: s.ordre,
       types: (types.get(s.id) ?? []).map((t) => ({ type: t.type, libelle: t.libelle })),
       typeBrut: s.type_brut,
+      // le mode (ce que le type écrit entre parenthèses) est séparé du type : valeur de base ici, condition de NM dans `bonus`
+      modeBrut: s.mode_brut,
+      modes: (modes.get(s.id) ?? []).map((m) => ({ mode: m.mode, libelle: m.libelle, fois: m.fois })),
+      // bonus de niveau de maîtrise, dans l'ordre de lecture (type, coût, portée, zone, D/S/B, effets, remarque)
+      bonus: (bonus.get(s.id) ?? []).map((b) => ({
+        champ: b.champ,
+        rang: b.rang,
+        nature: b.nature,
+        texteBrut: b.texte_brut,
+        contexte: b.contexte,
+        incrementBrut: b.increment_brut,
+        incrementEntier: b.increment_entier,
+        pasNm: b.pas_nm,
+        seuilNm: b.seuil_nm,
+      })),
       coutBrut: s.cout_brut,
       porteeBrut: s.portee_brut,
       zoneBrut: s.zone_brut,

@@ -31,8 +31,8 @@ const colonnes = (nom) => db.prepare(`PRAGMA table_info("${nom}")`).all();
 
 test('le schéma s’exécute sur une base vierge, avec sa version, ses tables et ses vues', () => {
   assert.equal(db.prepare('PRAGMA user_version').get().user_version, versionSchema, 'version du schéma (data/rows/VERSION porte la même)');
-  assert.ok(tables.length >= 135, `au moins 135 tables (trouvé ${tables.length})`);
-  assert.ok(vues.length >= 28, `au moins 28 vues (trouvé ${vues.length})`);
+  assert.ok(tables.length >= 136, `au moins 136 tables (trouvé ${tables.length})`);
+  assert.ok(vues.length >= 29, `au moins 29 vues (trouvé ${vues.length})`);
   for (const attendu of ['page', 'magie', 'sort', 'classe', 'capacite', 'race', 'creature', 'arme', 'note_cellule', 'ecart_source', 'correction', 'famille']) {
     assert.ok(tables.some((t) => t.name === attendu), `table « ${attendu} » attendue`);
   }

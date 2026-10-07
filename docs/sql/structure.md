@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 3 : 135 tables, 2 tables de recherche plein texte (FTS5) et 28 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 4 : 136 tables, 2 tables de recherche plein texte (FTS5) et 29 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -10,7 +10,7 @@
 - [0. FAMILLES D'IMPORT](#0-familles-dimport) : `famille`
 - [1. PAGES, LIENS, MOTS-CLÉS, SOURCES (couche générique)](#1-pages-liens-mots-clés-sources-couche-générique) : `type_page`, `page`, `alias`, `page_tag`, `source`, `page_source`, `page_entite`
 - [2. RÈGLES DE LA FICHE : caractéristiques, compétences, niveaux, constantes, postures (famille « fiche »)](#2-règles-de-la-fiche--caractéristiques-compétences-niveaux-constantes-postures-famille--fiche) : `caracteristique`, `competence`, `niveau_global`, `niveau_deblocage`, `seuil_niveau`, `regle_constante`, `entrainement_palier`, `initiative_agilite`, `type_don`, `posture`, `posture_effet`
-- [3. MAGIES ET SORTS (famille « magies »)](#3-magies-et-sorts-famille--magies) : `magie`, `magie_role`, `magie_resistance`, `magie_incompatibilite`, `magie_ethnie_secondaire`, `magie_dieu`, `amelioration_cadaverique`, `sort`, `sort_type`, `sort_progression_nm`, `sort_etat`, `commentaire_orphelin`, `legende_sort`, `regle_magie`
+- [3. MAGIES ET SORTS (famille « magies »)](#3-magies-et-sorts-famille--magies) : `magie`, `magie_role`, `magie_resistance`, `magie_incompatibilite`, `magie_ethnie_secondaire`, `magie_dieu`, `amelioration_cadaverique`, `sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `commentaire_orphelin`, `legende_sort`, `regle_magie`
 - [4. ANNEXES DES MAGIES : états, résistances, météo, modes hyper et super (famille « annexes »)](#4-annexes-des-magies--états-résistances-météo-modes-hyper-et-super-famille--annexes) : `resistance_palier`, `resistance_magie`, `resistance_duo`, `resistance_combinaison`, `etat`, `etat_magie`, `etat_stade`, `etat_palier`, `meteo`, `meteo_effet`, `mode_texte`, `mode_hyper_depassement`, `mode_super_objet`, `mode_hyper_effet`
 - [5. DIEUX](#5-dieux) : `dieu`
 - [6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)](#6-classes-spécialités-capacités-famille--classes) : `categorie_classe`, `classe`, `specialite`, `capacite`, `objet_depart`, `classe_objet_depart`, `classe_maitrise_armure`, `classe_maitrise_arme`, `classe_annexe`
@@ -19,7 +19,7 @@
 - [9. ÉQUIPEMENT, RESSOURCES, CRAFT, MÉTIERS (familles « equipement », « craft », « docs_typees »)](#9-équipement-ressources-craft-métiers-familles--equipement---craft---docstypees) : `monnaie`, `constante_equipement`, `niveau_alchimie`, `affinite`, `arme_famille`, `arme_type`, `ressource`, `materiau_arme`, `materiau_armure`, `materiau_bouclier`, `gemme`, `bois`, `ingredient_alchimie`, `potion`, `potion_etat`, `kit_alchimie`, `fiole_verre`, `recette`, `recette_produit`, `recette_ingredient`, `baton_magique`, `metier`, `metier_bonus`, `metier_recette_famille`, `arme`, `arme_degats`, `arme_prerequis`, `arme_elementaire`, `armure_emplacement`, `armure`, `armure_degats`, `armure_elementaire`, `armure_elementaire_effet`, `bouclier_classe`, `bouclier_poids`, `bouclier`, `amelioration_equipement`, `amelioration_total`, `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet`, `accessoire_effet_gemme`, `accessoire_monture`, `familier`, `familier_effet`, `batiment`, `machine_guerre`, `maladie`, `maladie_methode`
 - [10. TRANSVERSAL : notes de cellule et écarts entre sources](#10-transversal--notes-de-cellule-et-écarts-entre-sources) : `note_cellule`, `ecart_source`, `correction`
 - [11. TABLES DÉRIVÉES (jamais exportées dans data/rows/, recalculées par `npm run db:build`)](#11-tables-dérivées-jamais-exportées-dans-datarows-recalculées-par-npm-run-dbbuild) : `lien`, `lien_candidat`, `page_fts`, `entite_fts`
-- [12. VUES (toujours à jour : rien à recalculer)](#12-vues-toujours-à-jour--rien-à-recalculer) : `cle_page`, `lien_page`, `lien_a_creer`, `tag`, `v_magie_incompatible`, `v_race_carac_borne`, `v_race_classe_accessible`, `v_race_magie_accessible`, `v_creature_magie`, `v_creature_resistance`, `v_creature_sort`, `v_creature_cout_invocation`, `v_creature_meme_bloc`, `v_arme`, `v_ingredient_possible`, `v_ressource_recette`, `v_metier_recette`, `v_potion`, `v_arme_composee`, `v_armure_piece`, `v_niveau`, `v_competence`, `v_resistance_magie_lectures`, `v_resistance_ecart`, `v_mode_hyper_lectures`, `v_classe_capacite`, `v_capacite_exclusive`, `v_capacite_partagee`
+- [12. VUES (toujours à jour : rien à recalculer)](#12-vues-toujours-à-jour--rien-à-recalculer) : `cle_page`, `lien_page`, `lien_a_creer`, `tag`, `v_magie_incompatible`, `v_sort_bonus_au_nm`, `v_race_carac_borne`, `v_race_classe_accessible`, `v_race_magie_accessible`, `v_creature_magie`, `v_creature_resistance`, `v_creature_sort`, `v_creature_cout_invocation`, `v_creature_meme_bloc`, `v_arme`, `v_ingredient_possible`, `v_ressource_recette`, `v_metier_recette`, `v_potion`, `v_arme_composee`, `v_armure_piece`, `v_niveau`, `v_competence`, `v_resistance_magie_lectures`, `v_resistance_ecart`, `v_mode_hyper_lectures`, `v_classe_capacite`, `v_capacite_exclusive`, `v_capacite_partagee`
 
 ## 0. FAMILLES D'IMPORT
 
@@ -431,6 +431,8 @@ SORT : une ligne par sort de la table des sorts (14 magies x 23 sorts = 322 ; Po
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  | « Magie Maverick V8 › Sang › AL4:BR6 » |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
+| `mode_brut` | TEXT | non |  | le MODE du sort : ce qui est entre parenthèses dans la colonne « Type » (« IC pour 3 NM », « Imparable », « IC » puis « IC x 2 si 3NM » à la ligne) ; NULL quand le type n'a pas de parenthèses. Le TYPE (attaque, entrave…) est dans sort_type, le mode dans sort_mode (valeur de base) et sort_bonus_maitrise (condition de NM) |
+| `bonus_maitrise` | TEXT | non |  | les bonus de NM du sort, une ligne par bonus, « <Colonne> : <passage de la cellule> » (« Coût : -5/NM », « Effets : Dure 2 tours (+1/NM) »), dans l'ordre de lecture ; NULL quand le sort n'écrit aucun NM. Recopie lisible de sort_bonus_maitrise (db:check et les tests contrôlent l'accord) |
 
 ### `sort_type`
 
@@ -445,17 +447,32 @@ Types d'un sort : « Attaque/ Entrave (Imparable) » = deux types. Les parenthè
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 
-### `sort_progression_nm`
+### `sort_mode`
 
-Améliorations par niveau de maîtrise (NM) écrites dans les cellules, deux formes reconnues (index dérivé du texte par l'importeur, NON exhaustif : le texte complet reste dans sort.*_brut / sort.effets) : nature 'par_nm' : « (+1d6/NM) », « (-5/NM) », « (+1d/3NM) »… increment_brut = partie avant « / » (« +1d6 »), pas_nm = 1 (« /NM ») ou N (« /3NM »), increment_entier = l'entier signé quand l'incrément en est un (-5, +2). nature 'palier' : « 3NM = Sur un coup critique… » : seuil_nm = N ; texte_brut = la proposition qui suit. champ = colonne de la source où le motif a été trouvé.
+Mode d'un sort : ce que la colonne « Type » écrit entre parenthèses (« Amplification (IC) », « Attaque\n(Imparable) »), séparé du TYPE (sort_type : attaque, entrave…). Valeur de BASE seulement : « IC », « Imparable », « Inesquivable », « IC x 2 », « IC x 3 ». Un mode qui dépend d'un niveau de maîtrise (« IC pour 3 NM », « IC x 2 si 3NM », « IC x 1/NM ») est un bonus de maîtrise : voir sort_bonus_maitrise (champ 'type'). `libelle` garde l'écriture d'origine ; `fois` = N de « IC x N » (NULL sinon). Rien n'est déduit : « IC x 2 » n'est pas expliqué par la source, sa valeur est seulement typée.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `sort_id` | TEXT | oui | PK 1, → sort.id |  |
-| `champ` | TEXT | oui | PK 2 |  |
-| `rang` | INTEGER | oui | PK 3 | ordre d'apparition dans le champ |
+| `rang` | INTEGER | oui | PK 2 |  |
+| `mode` | TEXT | oui |  |  |
+| `libelle` | TEXT | oui |  |  |
+| `fois` | INTEGER | non |  |  |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
+### `sort_bonus_maitrise`
+
+Bonus de niveau de maîtrise (NM) d'un sort : chaque renforcement que les cellules du classeur écrivent, quelle que soit la colonne. Un sort cumule 3 NM au plus ; il est renforcé à chaque NM ou quand il atteint un palier (en général 3 NM) : devenir IC, coût en chakra qui baisse, portée, zone, dégâts / soins / barrière, effet secondaire en plus. Trois natures : 'par_nm' : « (+1d6/NM) », « (-5/NM) », « (+1d/3NM) », « 1%/NM », « IC x 1/NM » : increment_brut = ce qui précède la barre (« +1d6 », « -5 »), pas_nm = 1 (« /NM ») ou 3 (« /3NM »), increment_entier = l'entier signé quand l'incrément en est un (-5, +2 ; « –1 » avec tiret demi-cadratin = -1) ; 'palier' : « 3NM = Sur un coup critique… », « IC pour 3 NM », « … à 3NM », « … au niveau 3 de maîtrise » : seuil_nm = N, l'effet vaut à partir de N NM ; 'texte' : une mention de NM qui n'est ni l'un ni l'autre (« Les NM sont utiles pour le sort aléatoire ») : rien de typé. Rien n'est calculé : `texte_brut` est l'expression recopiée de la cellule, `contexte` le passage de la cellule qui dit ce qu'elle modifie (« Dure 2 tours (+1/NM) » ; identique à texte_brut quand la colonne le dit déjà : « -5/NM » dans un coût). Les valeurs typées ne sont posées que quand l'écriture est sans ambiguïté. Les sorts sans NM écrit n'ont aucune ligne. v_sort_bonus_au_nm donne ce qui s'applique à un niveau de maîtrise donné (0 à 3). Remplace sort_progression_nm (migration 0004) : même contenu, désormais exhaustif (champs type et remarque, natures complétées).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `sort_id` | TEXT | oui | PK 1, → sort.id |  |
+| `champ` | TEXT | oui | PK 2 | colonne de la source où l'expression est écrite |
+| `rang` | INTEGER | oui | PK 3 | ordre d'apparition dans la cellule |
 | `nature` | TEXT | oui |  |  |
-| `texte_brut` | TEXT | oui |  | extrait exact de la cellule |
+| `texte_brut` | TEXT | oui |  | l'expression de NM, exacte : « +1d6/NM », « 3NM = Croix 1x1 », « IC pour 3 NM » |
+| `contexte` | TEXT | oui |  | le passage de la cellule qui la contient et dit ce qu'elle modifie |
 | `increment_brut` | TEXT | non |  |  |
 | `increment_entier` | INTEGER | non |  |  |
 | `pas_nm` | INTEGER | non |  |  |
@@ -2352,6 +2369,25 @@ Relation d'incompatibilité symétrique : (a, b) est présent dans les deux sens
 | --- | --- | --- | --- | --- |
 | `a` | TEXT | non |  |  |
 | `b` | TEXT | non |  |  |
+
+### `v_sort_bonus_au_nm`
+
+*vue*
+
+Les bonus de maîtrise d'un sort À UN NIVEAU DE MAÎTRISE DONNÉ (nm = 0, 1, 2, 3) : une ligne par (bonus, nm). `applications` = combien de fois le bonus s'applique : par_nm : nm / pas_nm (arrondi vers le bas : « (+1/NM) » vaut 0, 1, 2, 3 fois ; « (+1d/3NM) » vaut 0 puis 1 à 3 NM), à multiplier par increment_brut ; palier : 1 si nm atteint seuil_nm, sinon 0 ; texte : NULL (rien de typé). C'est la lecture littérale de l'écriture « /NM », « /3NM », « 3NM = » : rien d'autre n'est calculé. « Quel est ce sort à N NM ? » : SELECT * FROM v_sort_bonus_au_nm WHERE sort_id = ? AND nm = ? AND applications <> 0.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `sort_id` | TEXT | non |  |  |
+| `nm` | — | non |  |  |
+| `champ` | TEXT | non |  |  |
+| `rang` | INTEGER | non |  |  |
+| `nature` | TEXT | non |  |  |
+| `texte_brut` | TEXT | non |  |  |
+| `contexte` | TEXT | non |  |  |
+| `increment_brut` | TEXT | non |  |  |
+| `increment_entier` | INTEGER | non |  |  |
+| `applications` | — | non |  |  |
 
 ### `v_race_carac_borne`
 
