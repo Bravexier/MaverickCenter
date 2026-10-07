@@ -18,34 +18,41 @@ const sortie = resolve(option('--out') ?? join(client, 'src', 'content', 'wiki')
 
 const dossier = mkdtempSync(join(tmpdir(), 'maverick-pages-'));
 const fichier = join(dossier, 'maverick.db');
-try {
-  const r = spawnSync(process.execPath, ['--no-warnings', join(client, 'scripts', 'db-build.mjs'), '--out', fichier], { encoding: 'utf8', cwd: racine });
-  if (r.status !== 0) { console.error(`db-build a échoué : ${r.stderr || r.stdout}`); process.exit(1); }
-  const db = ouvrirEnLectureSeule(fichier);
-  const types = db.prepare('SELECT id FROM type_page ORDER BY ordre').all().map((t) => t.id);
-  const pages = lirePages(db);
-  db.close();
 
-  if (verifier) {
-    const attendus = new Map(pages.map((p) => [`${p.type}/${p.slug}.md`, emettrePage(p)]));
-    const ecarts = [];
-    const presents = new Set();
-    for (const type of existsSync(verifier) ? readdirSync(verifier) : []) {
-      for (const nom of readdirSync(join(verifier, type)).filter((f) => f.endsWith('.md'))) {
-        const cle = `${type}/${nom}`;
-        presents.add(cle);
-        if (!attendus.has(cle)) ecarts.push(`en trop : ${cle}`);
-        else if (readFileSync(join(verifier, cle), 'utf8') !== attendus.get(cle)) ecarts.push(`différent : ${cle}`);
+/** Fabrique ou vérifie les pages ; renvoie le code de sortie. Le dossier temporaire est supprimé dans tous les cas (d'où aucun `process.exit` ici). */
+function executer() {
+  try {
+    const r = spawnSync(process.execPath, ['--no-warnings', join(client, 'scripts', 'db-build.mjs'), '--out', fichier], { encoding: 'utf8', cwd: racine });
+    if (r.status !== 0) { console.error(`db-build a échoué : ${r.stderr || r.stdout}`); return 1; }
+    const db = ouvrirEnLectureSeule(fichier);
+    const types = db.prepare('SELECT id FROM type_page ORDER BY ordre').all().map((t) => t.id);
+    const pages = lirePages(db);
+    db.close();
+
+    if (verifier) {
+      const attendus = new Map(pages.map((p) => [`${p.type}/${p.slug}.md`, emettrePage(p)]));
+      const ecarts = [];
+      const presents = new Set();
+      for (const type of existsSync(verifier) ? readdirSync(verifier) : []) {
+        for (const nom of readdirSync(join(verifier, type)).filter((f) => f.endsWith('.md'))) {
+          const cle = `${type}/${nom}`;
+          presents.add(cle);
+          if (!attendus.has(cle)) ecarts.push(`en trop : ${cle}`);
+          else if (readFileSync(join(verifier, cle), 'utf8') !== attendus.get(cle)) ecarts.push(`différent : ${cle}`);
+        }
       }
+      for (const cle of attendus.keys()) if (!presents.has(cle)) ecarts.push(`manquant : ${cle}`);
+      console.log(JSON.stringify({ pages: pages.length, ecarts: ecarts.length, exemples: ecarts.slice(0, 20) }));
+      return ecarts.length ? 1 : 0;
     }
-    for (const cle of attendus.keys()) if (!presents.has(cle)) ecarts.push(`manquant : ${cle}`);
-    console.log(JSON.stringify({ pages: pages.length, ecarts: ecarts.length, exemples: ecarts.slice(0, 20) }));
-    process.exit(ecarts.length ? 1 : 0);
-  }
 
-  for (const type of types) { rmSync(join(sortie, type), { recursive: true, force: true }); mkdirSync(join(sortie, type), { recursive: true }); }
-  for (const p of pages) writeFileSync(join(sortie, p.type, `${p.slug}.md`), emettrePage(p));
-  console.log(`${pages.length} pages écrites dans ${sortie}`);
-} finally {
-  rmSync(dossier, { recursive: true, force: true });
+    for (const type of types) { rmSync(join(sortie, type), { recursive: true, force: true }); mkdirSync(join(sortie, type), { recursive: true }); }
+    for (const p of pages) writeFileSync(join(sortie, p.type, `${p.slug}.md`), emettrePage(p));
+    console.log(`${pages.length} pages écrites dans ${sortie}`);
+    return 0;
+  } finally {
+    rmSync(dossier, { recursive: true, force: true });
+  }
 }
+
+process.exit(executer());
