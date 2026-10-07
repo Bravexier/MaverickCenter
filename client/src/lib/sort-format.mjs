@@ -213,26 +213,31 @@ export const ancreDeTitre = (titre) =>
     .replace(/[^\p{L}\p{N}\s_-]/gu, '')
     .replace(/\s/g, '-');
 
-/**
- * Teinte (0-360) de la magie pour sa bannière : repère visuel, sans valeur de règle. Clé = nom court normalisé (table magie).
- * Une magie inconnue prend la teinte neutre de l'accent du site.
- */
-const TEINTES = {
-  feu: 14,
-  eau: 208,
-  glace: 190,
-  terre: 32,
-  vent: 160,
-  foudre: 262,
-  lumiere: 44,
-  ombre: 272,
-  sang: 350,
-  vide: 232,
-  arcane: 288,
-  corruption: 318,
-  necromancie: 124,
-  'espace-temps': 176,
-  'potentiel-illimite': 38,
+/** Couleurs de magie, pour les pastilles et les titres de magie. */
+const COULEURS = {
+  feu: '#ff0000',
+  eau: '#0000ff',
+  glace: '#00ffff',
+  terre: '#996600',
+  vent: '#00ff66',
+  foudre: '#ffff00',
+  lumiere: '#fff2cc',
+  ombre: '#cc66ff',
+  sang: '#cc0000',
+  vide: '#ffffff',
+  arcane: '#b7b7b7',
+  corruption: '#000000',
+  necromancie: '#274e13',
+  'espace-temps': '#ff66cc',
+  'potentiel-illimite': '#ff9900',
 };
-export const TEINTE_PAR_DEFAUT = 24;
-export const teinteDeMagie = (nom) => TEINTES[normalize(nom ?? '')] ?? TEINTE_PAR_DEFAUT;
+
+export const COULEUR_PAR_DEFAUT = '#ad5e29';
+export const couleurDeMagie = (nom) => COULEURS[normalize(nom ?? '')] ?? COULEUR_PAR_DEFAUT;
+
+export function texteSurCouleurDeMagie(nom) {
+  const composantes = couleurDeMagie(nom).slice(1).match(/.{2}/g).map((canal) => parseInt(canal, 16) / 255);
+  const canauxLineaires = composantes.map((canal) => (canal <= 0.04045 ? canal / 12.92 : ((canal + 0.055) / 1.055) ** 2.4));
+  const luminance = canauxLineaires[0] * 0.2126 + canauxLineaires[1] * 0.7152 + canauxLineaires[2] * 0.0722;
+  return luminance > 0.179 ? '#171210' : '#ffffff';
+}

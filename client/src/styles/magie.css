@@ -3,21 +3,21 @@
 
 /* ===================================================================================================================
    Pages de magie (components/MagiePage.astro, MagieSorts.astro, SortDetail.astro, MagieAffinites.astro)
-   --teinte (0-360) est posée par la page : elle colore la bannière et les repères de la magie.
+    --couleur-magie est posée par la page : elle colore la bannière et les repères de la magie.
    =================================================================================================================== */
 .magie {
-  --h: var(--teinte, 24);
-  --mag: hsl(var(--h) 62% 42%);
-  --mag-soft: color-mix(in srgb, hsl(var(--h) 70% 50%) 9%, var(--surface));
-  --mag-line: color-mix(in srgb, hsl(var(--h) 60% 45%) 35%, var(--border));
+  --mag: var(--couleur-magie, #ad5e29);
+  --mag-readable: color-mix(in srgb, var(--mag) 40%, #000);
+  --mag-soft: color-mix(in srgb, var(--mag) 9%, var(--surface));
+  --mag-line: color-mix(in srgb, var(--mag) 35%, var(--border));
   --gl: 34%; /* clarté du texte des pastilles de type */
-  --hero-1: hsl(var(--h) 55% 24%);
-  --hero-2: hsl(calc(var(--h) + 14) 58% 34%);
+  --hero-1: color-mix(in srgb, var(--mag) 35%, #111);
+  --hero-2: color-mix(in srgb, var(--mag) 45%, #111);
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .magie { --mag: hsl(var(--h) 65% 62%); --gl: 74%; --hero-1: hsl(var(--h) 45% 17%); --hero-2: hsl(calc(var(--h) + 14) 48% 26%); }
+  :root:not([data-theme="light"]) .magie { --mag-readable: color-mix(in srgb, var(--mag) 55%, #fff); --gl: 74%; }
 }
-:root[data-theme="dark"] .magie { --mag: hsl(var(--h) 65% 62%); --gl: 74%; --hero-1: hsl(var(--h) 45% 17%); --hero-2: hsl(calc(var(--h) + 14) 48% 26%); }
+:root[data-theme="dark"] .magie { --mag-readable: color-mix(in srgb, var(--mag) 55%, #fff); --gl: 74%; }
 
 .js-only { display: none; }
 html.js .js-only { display: inline; }
@@ -43,7 +43,7 @@ html.js .js-only { display: inline; }
 /* Navigation dans la page */
 .magie-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.5rem; margin: 0.8rem 0 0; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
 .magie-nav a { text-decoration: none; font-size: 0.9rem; padding: 0.15rem 0.7rem; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
-.magie-nav a:hover { border-color: var(--mag); color: var(--mag); }
+.magie-nav a:hover { border-color: var(--mag); color: var(--mag-readable); }
 .magie-nav__npm { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; margin-left: 0.4rem; padding-left: 0.6rem; border-left: 1px solid var(--border); }
 .magie-nav__npm a { font-size: 0.8rem; padding-inline: 0.5rem; }
 
@@ -72,15 +72,13 @@ html.js .js-only { display: inline; }
 /* Mode Hyper */
 .hyper { display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); }
 .hyper__carte { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--mag); border-radius: 12px; padding: 0.7rem 1rem 0.9rem; }
-.hyper__carte h3 { margin: 0 0 0.2rem; font-size: 1rem; color: var(--mag); }
+.hyper__carte h3 { margin: 0 0 0.2rem; font-size: 1rem; color: var(--mag-readable); }
 
 /* Tableaux de sorts */
 .npm { margin: 1.4rem 0 2rem; scroll-margin-top: 1rem; }
 .sort { scroll-margin-top: 1rem; }
 .npm__titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.8rem; margin: 0 0 0.6rem; font-size: 1.1rem; }
-.npm__badge { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.06em; padding: 0.1rem 0.7rem; border-radius: 999px; background: var(--mag); color: #fff; }
-:root[data-theme="dark"] .npm__badge { color: #161210; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .npm__badge { color: #161210; } }
+.npm__badge { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.06em; padding: 0.1rem 0.7rem; border-radius: 999px; background: var(--mag); color: var(--couleur-texte-magie, #fff); }
 .npm__pips { display: inline-flex; gap: 0.2rem; margin-left: auto; }
 .npm__pips i { width: 0.6rem; height: 0.6rem; border-radius: 50%; border: 1px solid var(--mag-line); background: transparent; }
 .npm__pips i.on { background: var(--mag); border-color: var(--mag); }
@@ -94,10 +92,10 @@ html.js .js-only { display: inline; }
 .sort.is-selected > .sort__main { background: var(--mag-soft); box-shadow: inset 4px 0 0 var(--mag); }
 .sort__nom { text-align: left; min-width: 10rem; }
 .sort__choisir { all: unset; cursor: pointer; font-weight: 700; color: var(--text); line-height: 1.35; }
-.sort__choisir::before { content: '▸'; display: inline-block; margin-right: 0.35rem; color: var(--mag); transition: transform 0.15s; }
+.sort__choisir::before { content: '▸'; display: inline-block; margin-right: 0.35rem; color: var(--mag-readable); transition: transform 0.15s; }
 .sort__choisir[aria-expanded="true"]::before { transform: rotate(90deg); }
 .sort__choisir:hover { text-decoration: underline dotted; }
-.sort__choisir:focus-visible { outline: 2px solid var(--mag); outline-offset: 2px; border-radius: 4px; }
+.sort__choisir:focus-visible { outline: 2px solid var(--mag-readable); outline-offset: 2px; border-radius: 4px; }
 .sort__reperes { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.25rem; }
 .repere { font-size: 0.66rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 0 0.45rem; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
 .sort__cout, .sort__portee, .sort__zone { white-space: nowrap; }
@@ -113,8 +111,8 @@ html.js .js-only { display: inline; }
 .genre { --gh: 30; --gs: 60%; display: inline-block; margin: 0 0.25rem 0.2rem 0; padding: 0.04rem 0.6rem; font-size: 0.78rem; border-radius: 999px; border: 1px solid color-mix(in srgb, hsl(var(--gh) var(--gs) 50%) 40%, var(--border)); background: color-mix(in srgb, hsl(var(--gh) var(--gs) 50%) 15%, var(--surface)); color: color-mix(in srgb, hsl(var(--gh) var(--gs) var(--gl)) 85%, var(--text)); }
 .genre[data-genre="attaque"] { --gh: 5; }
 .genre[data-genre="entrave"] { --gh: 275; }
-.genre[data-genre="soin"] { --gh: 140; }
-.genre[data-genre="amplification"] { --gh: 215; }
+.genre[data-genre="soin"] { --gh: 55; }
+.genre[data-genre="amplification"] { --gh: 120; }
 .genre[data-genre="protection"] { --gh: 185; }
 .genre[data-genre="placement"] { --gh: 42; }
 .genre[data-genre="invocation"] { --gh: 320; }
@@ -136,7 +134,7 @@ html.js .sort-detail__fermer { display: inline-block; }
 .sort-detail__bloc, .sort-detail__regles { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.9rem 0.7rem; }
 .sort-detail__bloc .texte:first-of-type, .sort-detail__regles > .texte:first-of-type { margin-top: 0.15rem; }
 .sort-detail__regles { border-left: 4px solid var(--mag); }
-.sort-detail__regles > h5 { color: var(--mag); font-size: 0.8rem; }
+.sort-detail__regles > h5 { color: var(--mag-readable); font-size: 0.8rem; }
 .sort-detail ul { margin: 0.3rem 0; padding-left: 1.2rem; }
 .sort-detail__bloc > .texte, .sort-detail__bloc > .incantation { margin-top: 0.35rem; margin-bottom: 0; }
 .incantation { margin: 0.2rem 0 0; padding: 0.3rem 1rem; border-left: 3px solid var(--mag-line); font-style: italic; }

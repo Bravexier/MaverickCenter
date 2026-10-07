@@ -26,8 +26,9 @@ import {
   nombre,
   segments,
   sortsParNpm,
-  teinteDeMagie,
-  TEINTE_PAR_DEFAUT,
+  couleurDeMagie,
+  COULEUR_PAR_DEFAUT,
+  texteSurCouleurDeMagie,
   valeurDeSort,
 } from '../src/lib/sort-format.mjs';
 import { sansBonus } from '../src/lib/sort-maitrise.mjs';
@@ -199,13 +200,23 @@ test('ancreDeTitre : même identifiant que celui qu’Astro pose sur un titre (m
   assert.equal(ancreDeTitre("Folle de Guerre"), 'folle-de-guerre');
 });
 
-test('sortsParNpm range les sorts par niveau croissant sans perdre l’ordre de lecture ; teinteDeMagie connaît les 15 magies', () => {
+test('sortsParNpm range les sorts par niveau croissant sans perdre l’ordre de lecture ; couleurDeMagie connaît les 15 magies', () => {
   const sorts = [{ niveau: 3, n: 'c' }, { niveau: 1, n: 'a' }, { niveau: 1, n: 'b' }, { niveau: 5, n: 'e' }];
   assert.deepEqual(sortsParNpm(sorts).map((g) => [g.niveau, g.sorts.map((s) => s.n)]), [[1, ['a', 'b']], [3, ['c']], [5, ['e']]]);
   assert.deepEqual(sortsParNpm([]), []);
-  assert.equal(teinteDeMagie('Inconnue'), TEINTE_PAR_DEFAUT);
-  assert.equal(teinteDeMagie(undefined), TEINTE_PAR_DEFAUT);
-  assert.equal(teinteDeMagie('Espace/Temps'), teinteDeMagie('espace-temps'));
+  assert.equal(couleurDeMagie('Inconnue'), COULEUR_PAR_DEFAUT);
+  assert.equal(couleurDeMagie(undefined), COULEUR_PAR_DEFAUT);
+  assert.equal(couleurDeMagie('Espace/Temps'), couleurDeMagie('espace-temps'));
+  const couleursAttendues = {
+    feu: '#ff0000', eau: '#0000ff', glace: '#00ffff', terre: '#996600', vent: '#00ff66',
+    foudre: '#ffff00', lumiere: '#fff2cc', ombre: '#cc66ff', sang: '#cc0000', vide: '#ffffff',
+    arcane: '#b7b7b7', corruption: '#000000', necromancie: '#274e13', 'espace-temps': '#ff66cc',
+    'potentiel-illimite': '#ff9900',
+  };
+  for (const [nom, couleur] of Object.entries(couleursAttendues)) assert.equal(couleurDeMagie(nom), couleur);
+  assert.equal(couleurDeMagie('Lumière'), couleursAttendues.lumiere);
+  assert.equal(texteSurCouleurDeMagie('Feu'), '#171210');
+  assert.equal(texteSurCouleurDeMagie('Eau'), '#ffffff');
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 ---
-import { nombre, sortsParNpm, teinteDeMagie } from '../lib/sort-format.mjs';
+import { couleurDeMagie, nombre, sortsParNpm, texteSurCouleurDeMagie } from '../lib/sort-format.mjs';
 import magieCss from '../styles/magie.css?raw';
 import { racesOfMagie } from '../lib/magie-relations.mjs';
 import { pageHref, type Magies, type MagieDb } from '../lib/magies';
@@ -22,7 +22,8 @@ interface Props {
   statusNote?: string;
 }
 const { entry, entries, magie, magies, statusNote } = Astro.props;
-const teinte = teinteDeMagie(magie.nom);
+const couleur = couleurDeMagie(magie.nom);
+const couleurTexte = texteSurCouleurDeMagie(magie.nom);
 
 const ressources = [
   { label: 'Santé offerte', valeur: String(magie.sante ?? '') },
@@ -47,7 +48,7 @@ const nav = [
 ---
 
 <style is:inline set:html={magieCss}></style>
-<div class="magie" style={`--teinte: ${teinte}`}>
+<div class="magie" style={`--couleur-magie: ${couleur}; --couleur-texte-magie: ${couleurTexte}`}>
   <header class="magie-hero">
     <p class="magie-hero__surtitre">Magie</p>
     <h1>{entry.data.title}</h1>
