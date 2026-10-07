@@ -18,7 +18,7 @@ import {
   coutDeSort,
   elementsDeTexte,
   lignes,
-  marquesDeType,
+  marquesDeMode,
   morceauxAvecLiens,
   nombre,
   segments,
@@ -88,16 +88,14 @@ test('coutDeSort : un supplément (« + 4 Sang ») est séparé du coût princip
   assert.equal(coutDeSort('/').vide, true);
 });
 
-test('marquesDeType : IC, imparable, inesquivable ; une barre sépare deux marques après une lettre seulement', () => {
-  assert.deepEqual(marquesDeType('Attaque/ Entrave\n(Imparable)'), [{ texte: 'Imparable', genre: 'imparable' }]);
+test('marquesDeMode : IC, imparable, inesquivable lus dans la table des modes, libellé d’origine avec une majuscule', () => {
+  assert.deepEqual(marquesDeMode([{ mode: 'imparable', libelle: 'Imparable' }]), [{ texte: 'Imparable', genre: 'imparable' }]);
   assert.deepEqual(
-    marquesDeType('Attaque (inesquivable/ imparable)').map((m) => [m.texte, m.genre]),
+    marquesDeMode([{ mode: 'inesquivable', libelle: 'inesquivable' }, { mode: 'imparable', libelle: 'imparable' }]).map((m) => [m.texte, m.genre]),
     [['Inesquivable', 'inesquivable'], ['Imparable', 'imparable']],
   );
-  assert.deepEqual(marquesDeType('Amplification\n(IC x 1/NM)'), [{ texte: 'IC x 1/NM', genre: 'ic' }], '« 1/NM » n’est pas coupé');
-  assert.deepEqual(marquesDeType('Placement (IC) (IC x 2 si 3NM)').map((m) => m.texte), ['IC', 'IC x 2 si 3NM']);
-  assert.deepEqual(marquesDeType('Entrave (IC pour 3 NM)'), [{ texte: 'IC pour 3 NM', genre: 'ic' }]);
-  assert.deepEqual(marquesDeType('Soin'), []);
+  assert.deepEqual(marquesDeMode([{ mode: 'ic', libelle: 'IC x 2', fois: 2 }]), [{ texte: 'IC x 2', genre: 'ic' }]);
+  assert.deepEqual(marquesDeMode([]), []);
 });
 
 test('elementsDeTexte : un élément par ligne et par virgule, hors guillemets et parenthèses', () => {

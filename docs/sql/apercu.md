@@ -1,6 +1,6 @@
 # Aperçu du schéma de la base
 
-> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 135 tables, 2 tables de recherche, 28 vues.
+> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 136 tables, 2 tables de recherche, 29 vues.
 > Ce qui reste à trancher sur le **contenu** (pas sur la forme) est dans [`a-valider.md`](a-valider.md).
 
 **Lecture des colonnes** : **gras** = clé primaire ; `→table` = clé étrangère vers cette table ; `?` = peut être absente (`NULL`, jamais une valeur inventée) ; `+provenance` = `origine` (famille d'import) et `source_ref` (classeur › onglet › plage). Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté.
@@ -47,7 +47,7 @@
 
 ## 3. MAGIES ET SORTS (famille « magies »)
 
-**Relations dans cette section** : `amelioration_cadaverique→magie`, `magie_dieu→magie`, `magie_ethnie_secondaire→magie`, `magie_incompatibilite→magie`, `magie_resistance→magie`, `magie_role→magie`, `sort_etat→sort`, `sort_progression_nm→sort`, `sort_type→sort`, `sort→magie`
+**Relations dans cette section** : `amelioration_cadaverique→magie`, `magie_dieu→magie`, `magie_ethnie_secondaire→magie`, `magie_incompatibilite→magie`, `magie_resistance→magie`, `magie_role→magie`, `sort_bonus_maitrise→sort`, `sort_etat→sort`, `sort_mode→sort`, `sort_type→sort`, `sort→magie`
 
 **Vers d'autres sections** : `magie_dieu→dieu (§5)`, `magie_ethnie_secondaire→ethnie (§7)`, `magie_resistance→etat (§4)`, `magie→caracteristique (§2)`, `magie→page (§1)`, `sort_etat→etat (§4)`
 
@@ -60,9 +60,10 @@
 | `magie_ethnie_secondaire` | Ethnies pour lesquelles une magie secondaire reste possible malgré les incompatibilités (fiche `Magie!U5`, colonne « Magie secondaire si Race » : « Elfe Noir Charbon, Elfe Noir Salé, Felfe Noir » pour Corruption). | **magie_id**→magie, **rang**, ethnie_id→ethnie, ethnie_brut, +provenance |
 | `magie_dieu` |  | **magie_id**→magie, **dieu_id**→dieu, rang, +provenance |
 | `amelioration_cadaverique` | Tableau « AMELIORATION CADAVERIQUE » de la Nécromancie (13 lignes : nom, effet). | **id**, magie_id→magie, rang, nom, effet, remarque?, +provenance |
-| `sort` | SORT : une ligne par sort de la table des sorts (14 magies x 23 sorts = 322 ; Potentiel Illimité n'a pas de table propre : il pioche dans les 14 autres, règle de la fiche, hors de ce domaine) | **id**, magie_id→magie, nom, nom_cle, niveau, ordre, type_brut, ic_direct, ic_nm_min?, imparable, inesquivable, cout_brut, cout_chakra?, cout_ressource?, cout_ressource_valeur?, portee_brut, portee_nature, portee_valeur?, zone_brut, zone_forme, zone_taille?, dsb_brut?, effets?, texte_niveau5?, remarque?, +provenance |
+| `sort` | SORT : une ligne par sort de la table des sorts (14 magies x 23 sorts = 322 ; Potentiel Illimité n'a pas de table propre : il pioche dans les 14 autres, règle de la fiche, hors de ce domaine) | **id**, magie_id→magie, nom, nom_cle, niveau, ordre, type_brut, ic_direct, ic_nm_min?, imparable, inesquivable, cout_brut, cout_chakra?, cout_ressource?, cout_ressource_valeur?, portee_brut, portee_nature, portee_valeur?, zone_brut, zone_forme, zone_taille?, dsb_brut?, effets?, texte_niveau5?, remarque?, mode_brut?, bonus_maitrise?, +provenance |
 | `sort_type` | Types d'un sort : « Attaque/ Entrave (Imparable) » = deux types. | **sort_id**→sort, **rang**, type, libelle, +provenance |
-| `sort_progression_nm` | Améliorations par niveau de maîtrise (NM) écrites dans les cellules, deux formes reconnues (index dérivé du texte par l'importeur, NON exhaustif : le texte complet reste dans sort.*_brut / sort.effets | **sort_id**→sort, **champ**, **rang**, nature, texte_brut, increment_brut?, increment_entier?, pas_nm?, seuil_nm?, +provenance |
+| `sort_mode` | Mode d'un sort : ce que la colonne « Type » écrit entre parenthèses (« Amplification (IC) », « Attaque\n(Imparable) »), séparé du TYPE (sort_type : attaque, entrave…). | **sort_id**→sort, **rang**, mode, libelle, fois?, +provenance |
+| `sort_bonus_maitrise` | Bonus de niveau de maîtrise (NM) d'un sort : chaque renforcement que les cellules du classeur écrivent, quelle que soit la colonne. | **sort_id**→sort, **champ**, **rang**, nature, texte_brut, contexte, increment_brut?, increment_entier?, pas_nm?, seuil_nm?, +provenance |
 | `sort_etat` | Sort <-> altération d'état. | **sort_id**→sort, **etat_id**→etat, **relation**, **rang**, stade?, champ, forme_trouvee, extrait, +provenance |
 | `commentaire_orphelin` | Fils de commentaires du Sommaire ancrés en A1 : commentaires de cellules supprimées, sans sort identifiable (certains portent des textes de règle). | **id**, empreinte, occurrence, onglet, cellule, resolu, texte, +provenance |
 | `legende_sort` | Légende commune des 14 tables de sorts (identique dans chaque onglet) : « IC = Instant Cast » et les trois modes d'obtention d'un niveau de maîtrise (N, L, C). | **code**, groupe, libelle, description?, +provenance |
@@ -247,6 +248,7 @@
 | `lien_a_creer` *(vue)* | « Pages à créer » : [[liens]] sans page (introuvables) ou ambigus. |  |
 | `tag` *(vue)* | Dictionnaire des mots-clés, déduit de page_tag. |  |
 | `v_magie_incompatible` *(vue)* | Relation d'incompatibilité symétrique : (a, b) est présent dans les deux sens dès que l'un des deux cite l'autre. |  |
+| `v_sort_bonus_au_nm` *(vue)* | Les bonus de maîtrise d'un sort À UN NIVEAU DE MAÎTRISE DONNÉ (nm = 0, 1, 2, 3) : une ligne par (bonus, nm). |  |
 | `v_race_carac_borne` *(vue)* | Bornes de saisie d'une caractéristique selon la race, telles que la fiche les calcule (BDD!K2:K24) : '>' est strict (« > 2 » = au moins 3), '<' est strict (« < 4 » = au plus 3), '=' fixe la valeur ; l |  |
 | `v_race_classe_accessible` *(vue)* | Vues « seulement les 1 » : évitent l'erreur classique d'oublier `accessible = 1` (les lignes à 0 existent aussi). |  |
 | `v_race_magie_accessible` *(vue)* |  |  |

@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 3;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 4;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -527,6 +527,12 @@ CREATE TABLE sort (
     CHECK (origine = 'magies'),
   source_ref            TEXT    NOT NULL CHECK (length(source_ref) > 0), -- « Magie Maverick V8 › Sang › AL4:BR6 »
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  -- Colonnes ajoutées par la migration 0004 (une colonne ajoutée va en dernier) : le mode séparé du type, et les bonus de niveau de maîtrise (NM)
+  mode_brut             TEXT,                           -- le MODE du sort : ce qui est entre parenthèses dans la colonne « Type » (« IC pour 3 NM », « Imparable », « IC » puis « IC x 2 si 3NM » à la ligne) ;
+                                                        -- NULL quand le type n'a pas de parenthèses. Le TYPE (attaque, entrave…) est dans sort_type, le mode dans sort_mode (valeur de base)
+                                                        -- et sort_bonus_maitrise (condition de NM)
+  bonus_maitrise        TEXT,                           -- les bonus de NM du sort, une ligne par bonus, « <Colonne> : <passage de la cellule> » (« Coût : -5/NM », « Effets : Dure 2 tours (+1/NM) »),
+                                                        -- dans l'ordre de lecture ; NULL quand le sort n'écrit aucun NM. Recopie lisible de sort_bonus_maitrise (db:check et les tests contrôlent l'accord)
   UNIQUE (magie_id, ordre),
   UNIQUE (magie_id, nom),
   CHECK (id = magie_id || '#sort:' || nom_cle),
@@ -575,31 +581,59 @@ CREATE TABLE sort_type (
 
 CREATE INDEX sort_type_type ON sort_type (type);
 
--- Améliorations par niveau de maîtrise (NM) écrites dans les cellules, deux formes reconnues (index dérivé du texte par
--- l'importeur, NON exhaustif : le texte complet reste dans sort.*_brut / sort.effets) :
---   nature 'par_nm' : « (+1d6/NM) », « (-5/NM) », « (+1d/3NM) »… increment_brut = partie avant « / » (« +1d6 »),
---                     pas_nm = 1 (« /NM ») ou N (« /3NM »), increment_entier = l'entier signé quand l'incrément en est un (-5, +2).
---   nature 'palier' : « 3NM = Sur un coup critique… » : seuil_nm = N ; texte_brut = la proposition qui suit.
--- champ = colonne de la source où le motif a été trouvé.
-CREATE TABLE sort_progression_nm (
+-- Mode d'un sort : ce que la colonne « Type » écrit entre parenthèses (« Amplification (IC) », « Attaque\n(Imparable) »), séparé du TYPE (sort_type : attaque, entrave…).
+-- Valeur de BASE seulement : « IC », « Imparable », « Inesquivable », « IC x 2 », « IC x 3 ». Un mode qui dépend d'un niveau de maîtrise (« IC pour 3 NM », « IC x 2 si 3NM »,
+-- « IC x 1/NM ») est un bonus de maîtrise : voir sort_bonus_maitrise (champ 'type'). `libelle` garde l'écriture d'origine ; `fois` = N de « IC x N » (NULL sinon).
+-- Rien n'est déduit : « IC x 2 » n'est pas expliqué par la source, sa valeur est seulement typée.
+CREATE TABLE sort_mode (
+  sort_id    TEXT    NOT NULL REFERENCES sort(id),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),
+  mode       TEXT    NOT NULL CHECK (mode IN ('ic', 'imparable', 'inesquivable')),
+  libelle    TEXT    NOT NULL CHECK (length(libelle) > 0),
+  fois       INTEGER CHECK (fois >= 2),
+  origine    TEXT    NOT NULL REFERENCES famille(id)
+    CHECK (origine = 'magies'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (sort_id, rang),
+  UNIQUE (sort_id, mode),
+  CHECK (fois IS NULL OR mode = 'ic')
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX sort_mode_mode ON sort_mode (mode);
+
+-- Bonus de niveau de maîtrise (NM) d'un sort : chaque renforcement que les cellules du classeur écrivent, quelle que soit la colonne. Un sort cumule 3 NM au plus ; il est renforcé
+-- à chaque NM ou quand il atteint un palier (en général 3 NM) : devenir IC, coût en chakra qui baisse, portée, zone, dégâts / soins / barrière, effet secondaire en plus.
+-- Trois natures :
+--   'par_nm'  : « (+1d6/NM) », « (-5/NM) », « (+1d/3NM) », « 1%/NM », « IC x 1/NM » : increment_brut = ce qui précède la barre (« +1d6 », « -5 »), pas_nm = 1 (« /NM ») ou 3 (« /3NM »),
+--             increment_entier = l'entier signé quand l'incrément en est un (-5, +2 ; « –1 » avec tiret demi-cadratin = -1) ;
+--   'palier'  : « 3NM = Sur un coup critique… », « IC pour 3 NM », « … à 3NM », « … au niveau 3 de maîtrise » : seuil_nm = N, l'effet vaut à partir de N NM ;
+--   'texte'   : une mention de NM qui n'est ni l'un ni l'autre (« Les NM sont utiles pour le sort aléatoire ») : rien de typé.
+-- Rien n'est calculé : `texte_brut` est l'expression recopiée de la cellule, `contexte` le passage de la cellule qui dit ce qu'elle modifie (« Dure 2 tours (+1/NM) » ;
+-- identique à texte_brut quand la colonne le dit déjà : « -5/NM » dans un coût). Les valeurs typées ne sont posées que quand l'écriture est sans ambiguïté.
+-- Les sorts sans NM écrit n'ont aucune ligne. v_sort_bonus_au_nm donne ce qui s'applique à un niveau de maîtrise donné (0 à 3).
+-- Remplace sort_progression_nm (migration 0004) : même contenu, désormais exhaustif (champs type et remarque, natures complétées).
+CREATE TABLE sort_bonus_maitrise (
   sort_id          TEXT    NOT NULL REFERENCES sort(id),
-  champ            TEXT    NOT NULL CHECK (champ IN ('cout', 'portee', 'zone', 'dsb', 'effets')),
-  rang             INTEGER NOT NULL CHECK (rang >= 1),     -- ordre d'apparition dans le champ
-  nature           TEXT    NOT NULL CHECK (nature IN ('par_nm', 'palier')),
-  texte_brut       TEXT    NOT NULL,                       -- extrait exact de la cellule
+  champ            TEXT    NOT NULL CHECK (champ IN ('type', 'cout', 'portee', 'zone', 'dsb', 'effets', 'remarque')),   -- colonne de la source où l'expression est écrite
+  rang             INTEGER NOT NULL CHECK (rang >= 1),     -- ordre d'apparition dans la cellule
+  nature           TEXT    NOT NULL CHECK (nature IN ('par_nm', 'palier', 'texte')),
+  texte_brut       TEXT    NOT NULL CHECK (length(texte_brut) > 0),    -- l'expression de NM, exacte : « +1d6/NM », « 3NM = Croix 1x1 », « IC pour 3 NM »
+  contexte         TEXT    NOT NULL CHECK (length(contexte) > 0),      -- le passage de la cellule qui la contient et dit ce qu'elle modifie
   increment_brut   TEXT,
   increment_entier INTEGER,
-  pas_nm           INTEGER CHECK (pas_nm >= 1),
+  pas_nm           INTEGER CHECK (pas_nm IN (1, 3)),
   seuil_nm         INTEGER CHECK (seuil_nm BETWEEN 1 AND 3),
   origine          TEXT    NOT NULL REFERENCES famille(id)
     CHECK (origine = 'magies'),
   source_ref       TEXT    NOT NULL CHECK (length(source_ref) > 0),
   PRIMARY KEY (sort_id, champ, rang),
+  CHECK (instr(contexte, texte_brut) > 0),
   CHECK ((nature = 'par_nm'  AND increment_brut IS NOT NULL AND pas_nm IS NOT NULL AND seuil_nm IS NULL)
-      OR (nature = 'palier'  AND seuil_nm IS NOT NULL AND increment_brut IS NULL AND increment_entier IS NULL AND pas_nm IS NULL))
+      OR (nature = 'palier'  AND seuil_nm IS NOT NULL AND increment_brut IS NULL AND increment_entier IS NULL AND pas_nm IS NULL)
+      OR (nature = 'texte'   AND seuil_nm IS NULL AND increment_brut IS NULL AND increment_entier IS NULL AND pas_nm IS NULL))
 ) STRICT, WITHOUT ROWID;
 
-CREATE INDEX sort_progression_nm_champ ON sort_progression_nm (champ, nature);
+CREATE INDEX sort_bonus_maitrise_champ ON sort_bonus_maitrise (champ, nature);
 
 -- Sort <-> altération d'état. INDEX DÉRIVÉ DU TEXTE (la source n'a pas de colonne « états ») : l'importeur ne retient que les
 -- tournures explicites, et `relation` redit la tournure, pas une règle :
@@ -2823,6 +2857,19 @@ CREATE VIEW v_magie_incompatible AS
   SELECT magie_id AS a, autre_magie_id AS b FROM magie_incompatibilite
   UNION
   SELECT autre_magie_id AS a, magie_id AS b FROM magie_incompatibilite;
+
+-- Les bonus de maîtrise d'un sort À UN NIVEAU DE MAÎTRISE DONNÉ (nm = 0, 1, 2, 3) : une ligne par (bonus, nm). `applications` = combien de fois le bonus s'applique :
+--   par_nm : nm / pas_nm (arrondi vers le bas : « (+1/NM) » vaut 0, 1, 2, 3 fois ; « (+1d/3NM) » vaut 0 puis 1 à 3 NM), à multiplier par increment_brut ;
+--   palier : 1 si nm atteint seuil_nm, sinon 0 ; texte : NULL (rien de typé). C'est la lecture littérale de l'écriture « /NM », « /3NM », « 3NM = » : rien d'autre n'est calculé.
+-- « Quel est ce sort à N NM ? » : SELECT * FROM v_sort_bonus_au_nm WHERE sort_id = ? AND nm = ? AND applications <> 0.
+CREATE VIEW v_sort_bonus_au_nm AS
+  SELECT b.sort_id, n.nm, b.champ, b.rang, b.nature, b.texte_brut, b.contexte, b.increment_brut, b.increment_entier,
+         CASE b.nature
+           WHEN 'par_nm' THEN n.nm / b.pas_nm
+           WHEN 'palier' THEN CASE WHEN n.nm >= b.seuil_nm THEN 1 ELSE 0 END
+         END AS applications
+  FROM sort_bonus_maitrise b
+  CROSS JOIN (SELECT 0 AS nm UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3) n;
 
 -- Bornes de saisie d'une caractéristique selon la race, telles que la fiche les calcule (BDD!K2:K24) :
 --   '>' est strict (« > 2 » = au moins 3), '<' est strict (« < 4 » = au plus 3), '=' fixe la valeur ;

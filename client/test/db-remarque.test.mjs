@@ -22,12 +22,18 @@ const entites = db
   .sort();
 const tablesAvecNotes = db.prepare("SELECT DISTINCT entite_table AS t FROM note_cellule WHERE entite_table <> 'page' ORDER BY 1").all().map((r) => r.t);
 
-test('toute table d’entités a une colonne `remarque` TEXT facultative, en dernier ; aucune autre table n’en a (la table page non plus)', () => {
+// Colonnes ajoutées APRÈS `remarque` par des migrations ultérieures (une colonne ajoutée va en dernier : l'export d'une base migrée = celui d'une base neuve) :
+// table -> colonnes dans l'ordre. Migration 0004 : le mode du sort et ses bonus de niveau de maîtrise.
+const APRES_REMARQUE = { sort: ['mode_brut', 'bonus_maitrise'] };
+
+test('toute table d’entités a une colonne `remarque` TEXT facultative, en dernier (sauf colonnes ajoutées ensuite par migration) ; aucune autre table n’en a (la table page non plus)', () => {
   assert.ok(entites.length >= 60, `tables d'entités : ${entites.length}`);
   for (const t of entites) {
     const cols = colonnes(t);
-    const derniere = cols[cols.length - 1];
-    assert.equal(derniere.name, 'remarque', `${t} : remarque en dernier (une colonne ajoutée va en dernier : l'export d'une base migrée = celui d'une base neuve)`);
+    const apres = APRES_REMARQUE[t] ?? [];
+    assert.deepEqual(cols.slice(cols.length - apres.length).map((c) => c.name), apres, `${t} : colonnes ajoutées après remarque`);
+    const derniere = cols[cols.length - 1 - apres.length];
+    assert.equal(derniere.name, 'remarque', `${t} : remarque en dernier (hors colonnes ajoutées ensuite : ${apres.join(', ') || 'aucune'})`);
     assert.equal(derniere.type, 'TEXT', t);
     assert.equal(derniere.notnull, 0, `${t} : facultative`);
   }

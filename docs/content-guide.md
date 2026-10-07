@@ -67,7 +67,7 @@ race pure (pas de classe raciale). Si le classeur de la fiche est corrigé, reti
 
 Les 15 pages de `/wiki/magies/<magie>/` ne sont **pas** rendues depuis leur Markdown : `components/MagiePage.astro` (avec `MagieSorts`, `SortDetail`, `MagieAffinites`) affiche les lignes
 des tables typées de la base, lues par `client/src/lib/magies-db.mjs` : `magie`, `magie_role`, `magie_resistance`, `etat`, `v_magie_incompatible`, `magie_ethnie_secondaire`, `mode_hyper_effet`,
-`sort`, `sort_type`, `sort_etat`, `invocation`, `invocation_bloc`, `creature`, `v_creature_sort`, `creature_effet`, `amelioration_cadaverique`, `legende_sort`, `regle_magie`.
+`sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `invocation`, `invocation_bloc`, `creature`, `v_creature_sort`, `creature_effet`, `amelioration_cadaverique`, `legende_sort`, `regle_magie`.
 Le corps Markdown de la page (fabriqué depuis `data/rows`) ne sert plus qu'à la recherche plein texte et aux `[[liens]]`. Restent lus dans le front matter : le titre, les alias, le statut, et la
 section « Disponibilité par race » (`magies_innees` des pages de race, avec l'exception du Nain, voir plus haut). Une page de magie sans ligne dans `magie` (la magie d'exemple) garde le rendu Markdown.
 
@@ -82,7 +82,8 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
 - **Aucune virgule dans les données** : une liste devient des pastilles (une par élément), les bonus du D/S/B (« +8 dégâts, +2AM ») sont un élément par ligne, « 4.0 » s'affiche « 4 », les précisions entre
   parenthèses (`(+1/NM)`) passent en petit (parenthèses gardées), le coût « 10 + 4 Sang » est séparé en coût et supplément, les types et les marques (IC, imparable, inesquivable) sont des pastilles.
   Le texte des cellules n'est jamais réécrit.
-- **Un tableau par niveau de puissance magique (NPM)** : Nom, Type, Coût, Portée, Zone, D/S/B, une ligne par sort. Un clic sur la ligne (ou `#sort-<slug>` dans l'adresse) ouvre juste en
+- **Un tableau par niveau de puissance magique (NPM)** : Nom, Type, Coût, Portée, Zone, D/S/B, Maîtrise, une ligne par sort. Les colonnes Coût, Portée, Zone et D/S/B montrent la **valeur de base** (« 55 », pas « 55 (-5/NM) ») ;
+  la colonne **Maîtrise** liste les bonus de niveau de maîtrise (NM) de `sort_bonus_maitrise` (voir « Niveaux de maîtrise » ci-dessous) ; la colonne Type ne montre que les types (`sort_type`) et le **mode** de base (`sort_mode` : IC, imparable, inesquivable). Un clic sur la ligne (ou `#sort-<slug>` dans l'adresse) ouvre juste en
   dessous un panneau : effets secondaires, **remarque** (la note de cellule du classeur, `sort.remarque`), texte du sort de niveau 5 (`sort.texte_niveau5`), altérations d'état repérées dans le texte
   (`sort_etat`, un index dérivé du texte, non exhaustif), créatures qui lancent le sort, et, quand le sort a **ses propres règles**, un bloc dédié : pour les invocations (Animation de mort, Appel aux Golems,
   Marionnette de l'ombre) le texte de l'onglet de l'invocation, les créatures invoquées (liens vers le bestiaire) et, pour Animation de mort, le tableau « AMELIORATION CADAVERIQUE ». Sans JavaScript, tous les panneaux sont affichés.
@@ -91,6 +92,23 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
 - `Résistances` et `Vulnérabilités` = `magie_resistance` (cibles « magie » et « état », écriture de la source sur la pastille), `Magie non compatible` = `v_magie_incompatible` (relation symétrique)
   plus la phrase libre `magie.incompatibilite_note` (Corruption).
 - Le CSS de ces pages est dans `client/src/styles/magie.css`, injecté par `MagiePage.astro` seulement : le mettre dans `global.css` alourdirait les 1 500 autres pages (et chacune des pages de la version portable).
+
+## Niveaux de maîtrise (NM) des sorts
+
+Chaque sort existe sur plusieurs niveaux de maîtrise (0 à 3 NM, jamais plus de 3). Un NM s'obtient par niveau du personnage (à partir du niveau 2, redistribuable parmi les sorts choisis), par la lecture d'un livre de
+sort (fixe, propre au sort) ou par un cadeau du MJ (fixe ou flexible) ; ces trois sources s'ajoutent (légende `N`, `L`, `C` de `legende_sort`). Un sort est renforcé à chaque NM, ou quand il atteint 3 NM : devenir IC, coût
+en chakra qui baisse, portée, zone, dégâts / soins / barrière, effet secondaire en plus. Les cellules du classeur l'écrivent dans des notations variées (`(+1d6/NM)`, `(-5/NM)`, `3NM = …`, `IC pour 3 NM`, `à 3NM`, `au niveau 3 de maîtrise`).
+
+- **`sort_bonus_maitrise`** : une ligne par expression de NM, **exhaustive** (elle remplace l'index `sort_progression_nm` qui ne retenait que deux formes dans cinq colonnes). `champ` = la colonne où l'expression est écrite
+  (type, coût, portée, zone, D/S/B, effets, remarque) ; `texte_brut` = l'expression recopiée exactement ; `contexte` = le passage de la cellule qui dit ce qu'elle modifie (« Dure 2 tours (+1/NM) ») ; `nature` : `par_nm`
+  (un incrément à chaque NM ou chaque tranche de 3 NM : `increment_brut`, `pas_nm`), `palier` (à partir d'un NM : `seuil_nm`), `texte` (une mention de NM sans valeur typable). **Rien n'est calculé ni déduit** : une valeur n'est typée que si
+  son écriture est sans ambiguïté. Un sort qui n'écrit aucun NM n'a aucune ligne.
+- **`sort.bonus_maitrise`** : la colonne « Bonus Maîtrise » de la table des sorts, la recopie lisible de ces lignes (une ligne « Coût : -5/NM » par bonus), accord contrôlé par `test/maitrise-sorts.test.mjs`.
+- **`v_sort_bonus_au_nm`** et `lib/sort-maitrise.mjs` (`applications`, `bonusAuNm`) : ce qui s'applique à un niveau de maîtrise donné (0 à 3), pour que la fiche de personnage détermine un sort d'après ses NM : `par_nm` = NM / `pas_nm`
+  fois, `palier` = 1 à partir de `seuil_nm`. La vue SQL et la fonction JavaScript disent la même chose (test d'accord sur les 322 sorts).
+- **Mode et type séparés** : `sort_type` = le type (attaque, entrave, soin…), `sort_mode` = le mode de base (IC, imparable, inesquivable, `IC x 2`) et `sort.mode_brut` = le texte entre parenthèses de la colonne Type ; un mode qui dépend d'un NM
+  (`IC pour 3 NM`, `IC x 2 si 3NM`, `IC x 1/NM`) est un bonus de maîtrise (`champ = 'type'`). `type_brut` reste la cellule telle qu'écrite.
+- Les corrections de ces données passent par une migration (`data/migrations/0004-bonus-maitrise.sql`, registre `.json` ligne par ligne) ; le registre est la trace de ce qui a été extrait de quelle cellule.
 
 ## Capacités de classe (type `capacites`)
 

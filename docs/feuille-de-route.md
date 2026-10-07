@@ -26,7 +26,7 @@ au moment de la bascule, la base est la référence. Le registre `tools/sheets/c
   d'environnement ; la mise à jour automatique (`update-nas.sh`) est un habillage, pas l'architecture. L'hébergement final reste à choisir.
 - **La base SQLite est le pivot.** Identifiants stables et jamais réutilisés (une page renommée garde son identifiant), SQL portable (une bascule vers PostgreSQL
   doit rester possible si plusieurs personnes éditent en même temps), modifications historisées (qui, quand, avant/après, état « brouillon / validé »).
-- **Les règles sont des données, pas seulement du texte.** Le texte d'une capacité reste cité tel quel (règle d'or), mais une simulation exige des effets
+- **Les règles sont des données, pas seulement du texte.** (Premier pas : les bonus de niveau de maîtrise des sorts, `sort_bonus_maitrise`, typés quand l'écriture est sans ambiguïté, lisibles par `lib/sort-maitrise.mjs`.) Le texte d'une capacité reste cité tel quel (règle d'or), mais une simulation exige des effets
   structurés (dégâts, durée, cible, jet, état infligé, résistance). On les code progressivement, capacité par capacité, à côté du texte, sans jamais en déduire
   une règle : un effet non codé est absent de la simulation, pas deviné.
 - **Le moteur de règles reste pur et sans dépendance** (`client/src/lib/*.mjs`) : le même code sert au site, à l'API, au générateur de fiche et au simulateur.

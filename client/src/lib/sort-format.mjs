@@ -102,25 +102,11 @@ export function coutDeSort(brut) {
 }
 
 /**
- * Marques d'un type de sort : les parenthèses de « Attaque/ Entrave (Imparable) » (IC, imparable, inesquivable…).
- * Une barre sépare deux marques quand elle suit une lettre (« Imparable/ Inesquivable »), pas dans « IC x 1/NM ».
- * Les types eux-mêmes viennent de la table sort_type.
+ * Marques du MODE d'un sort (IC, imparable, inesquivable), lues dans la table sort_mode : le mode est séparé du type, et un mode qui dépend
+ * d'un niveau de maîtrise (« IC pour 3 NM ») n'est pas ici mais dans les bonus de maîtrise.
+ * @param {{ mode: string, libelle: string }[]} modes
  */
-export function marquesDeType(brut) {
-  const texte = lignes(brut).join(' ');
-  return [...texte.matchAll(/\(([^()]*)\)/g)]
-    .map((m) => m[1])
-    .flatMap((g) => g.split(/(?<=\p{L})\s*\/\s*(?=\p{L})/u))
-    .map((m) => m.trim())
-    .filter(Boolean)
-    .map((m) => {
-      const cle = normalize(m);
-      return {
-        texte: premiereMajuscule(m),
-        genre: /^IC\b/i.test(m) ? 'ic' : cle.includes('imparable') ? 'imparable' : cle.includes('inesquivable') ? 'inesquivable' : 'autre',
-      };
-    });
-}
+export const marquesDeMode = (modes) => modes.map((m) => ({ texte: premiereMajuscule(m.libelle), genre: m.mode }));
 
 /** Éléments d'un texte d'effets : un par ligne et un par virgule (jamais de liste séparée par des virgules à l'affichage). */
 export const elementsDeTexte = (texte) => lignes(texte).flatMap(couperVirgules);
