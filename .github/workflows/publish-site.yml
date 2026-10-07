@@ -9,6 +9,10 @@ on:
       - 'client/**'
       - 'data/**'   # le site lit la base (explorateur /donnees/) : un changement de data/rows republie
       - '.github/workflows/publish-site.yml'
+  workflow_run:
+    workflows: [Incrémenter la version]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -20,6 +24,7 @@ concurrency:
 
 jobs:
   publish:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Garde-fou — le contenu appartient à un tiers
@@ -32,6 +37,8 @@ jobs:
           fi
 
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - uses: actions/setup-node@v4
         with:

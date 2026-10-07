@@ -10,6 +10,8 @@ import { fileURLToPath } from 'node:url';
 const dossier = fileURLToPath(new URL('../dist/wiki/magies/', import.meta.url));
 const present = existsSync(dossier);
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
+const indexMagies = present ? readFileSync(join(dossier, 'index.html'), 'utf8') : '';
+const version = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 // pages rendues par le gabarit (la magie d'exemple, sans ligne dans la base, garde le rendu Markdown)
 const pages = present
   ? readdirSync(dossier, { withFileTypes: true })
@@ -35,6 +37,18 @@ const ids = (html) => [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
 test('15 pages de magie construites, 14 avec une table de sorts', options, () => {
   assert.equal(pages.length, 15);
   assert.equal(avecSorts.length, 14);
+});
+
+test('index des magies : 15 noms courts, descriptions en tooltip, version au footer', options, () => {
+  assert.equal([...indexMagies.matchAll(/class="magies-orbite__noeud"/g)].length, 15);
+  const nomsVisibles = [...indexMagies.matchAll(/<span class="magies-orbite__nom"[^>]*>([^<]+)<\/span>/g)].map((m) => m[1]);
+  assert.deepEqual(nomsVisibles, ['Potentiel Illimité', 'Arcane', 'Corruption', 'Espace-Temps', 'Vide', 'Nécromancie', 'Sang', 'Lumière', 'Ombre', 'Feu', 'Eau', 'Glace', 'Terre', 'Vent', 'Foudre']);
+  assert.ok(!indexMagies.includes('magies-orbite__description'));
+  assert.equal([...indexMagies.matchAll(/class="magies-orbite__noeud"[^>]*data-tooltip="[^"]+"/g)].length, 15);
+  assert.equal([...indexMagies.matchAll(/class="magies-orbite__noeud"[^>]*aria-description="[^"]+"/g)].length, 15);
+  assert.equal([...indexMagies.matchAll(/class="magies-orbite__lien /g)].length, 4);
+  assert.ok(indexMagies.includes(`<span class="site-footer__version">v${version}</span>`));
+  assert.ok(!indexMagies.includes('Écoles, sorts et règles de magie.'));
 });
 
 test('chaque identifiant est unique dans une page ; aria-controls, aria-describedby et data-bulle désignent un élément qui existe', options, () => {
