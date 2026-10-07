@@ -1,12 +1,14 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { accessMatrix, relationMatrix } from '../../lib/magie-relations.mjs';
+import { accessMatrix, entriesAvecRelationsDeLaBase, relationMatrix } from '../../lib/magie-relations.mjs';
+import { loadMagies } from '../../lib/magies';
 import { groupRaces } from '../../lib/race-kinds.mjs';
 import { entryHref, loadWiki, url } from '../../lib/wiki';
 
 const { entries } = await loadWiki();
 const access = accessMatrix(entries);
-const relations = relationMatrix(entries);
+// Résistances, vulnérabilités et incompatibilités : celles de la base, comme sur les pages de magie.
+const relations = relationMatrix(entriesAvecRelationsDeLaBase(entries, loadMagies()));
 // Lignes du premier tableau : races pures puis hybrides (même rangement que la liste des races).
 const rowOf = new Map(access.races.map((race, i) => [race.id, i]));
 const groups = groupRaces(entries)

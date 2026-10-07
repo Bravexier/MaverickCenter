@@ -1,0 +1,154 @@
+---
+import { RELATIONS_ETAT } from '../lib/sort-format.mjs';
+import { etatHref, pageHref, sortAncre, type Magies, type SortDb } from '../lib/magies';
+import Texte from './Texte.astro';
+
+// Détails d'un sort, affichés juste sous sa ligne quand on la sélectionne : ses effets secondaires, la remarque du classeur (note de
+// cellule), le texte du sort de niveau 5 et, quand le sort a ses propres règles, un bloc dédié (invocations : règles, créatures, tableau
+// des améliorations cadavériques). Chaque élément renvoie à sa page.
+interface Props {
+  sort: SortDb;
+  magies: Magies;
+}
+const { sort, magies } = Astro.props;
+
+const etats = sort.etats.map((e) => ({ ...e, etat: magies.etats.get(e.etatId)! }));
+const memeNom = sort.memeNom.map((id) => magies.sorts.get(id)!).map((o) => ({ sort: o, magie: magies.magies.get(o.magieId)! }));
+---
+
+<div class="sort-detail" role="region" aria-labelledby={`detail-${sort.slug}-titre`}>
+  <header class="sort-detail__tete">
+    <h4 id={`detail-${sort.slug}-titre`}>{sort.nom}</h4>
+    <button type="button" class="sort-detail__fermer" aria-label={`Fermer les détails de ${sort.nom}`}>Fermer</button>
+  </header>
+
+  {
+    sort.effets.length > 0 && (
+      <section class="sort-detail__bloc">
+        <h5>Effets secondaires</h5>
+        <Texte blocs={sort.effets} />
+      </section>
+    )
+  }
+
+  {
+    sort.remarque.length > 0 && (
+      <section class="sort-detail__bloc sort-detail__bloc--remarque">
+        <h5>Remarque</h5>
+        <Texte blocs={sort.remarque} />
+      </section>
+    )
+  }
+
+  {
+    sort.incantation && (
+      <section class="sort-detail__bloc">
+        <h5>Texte du sort</h5>
+        <blockquote class="incantation"><Texte blocs={sort.incantation} /></blockquote>
+      </section>
+    )
+  }
+
+  {
+    sort.invoque.map((i) => (
+      <section class="sort-detail__regles">
+        <h5>Règles propres : invocation</h5>
+        <p>
+          Ce sort invoque des créatures. Voir la page <a href={pageHref(i.id)}>{i.nom}</a>.
+        </p>
+        {i.texte.length > 0 && (
+          <details class="regles-texte" open>
+            <summary>Règles de l’invocation</summary>
+            <Texte blocs={i.texte} />
+          </details>
+        )}
+        {i.remarque.length > 0 && <Texte blocs={i.remarque} />}
+        {i.tableau && i.tableau.lignes.length > 0 && (
+          <div class="sorts-wrap">
+            <table class="annexe">
+              <caption>{i.tableau.titre}</caption>
+              <thead><tr><th scope="col">Amélioration</th><th scope="col">Effet</th></tr></thead>
+              <tbody>
+                {i.tableau.lignes.map((a) => (
+                  <tr>
+                    <th scope="row">{a.nom}</th>
+                    <td>{a.effets.length > 1 ? <ul>{a.effets.map((e: string) => <li>{e}</li>)}</ul> : a.effets[0]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <h6 class="texte-titre">Créatures invoquées ({i.creatures.length})</h6>
+        <ul class="invoque">
+          {[...new Set(i.creatures.map((c) => c.bloc))].map((bloc) => (
+            <li>
+              <span class="invoque__bloc">{bloc}</span>
+              <span class="chips">
+                {i.creatures.filter((c) => c.bloc === bloc).map((c) => <a class="chip" href={pageHref(c.id)}>{c.nom}</a>)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))
+  }
+
+  {
+    sort.effetsDeCarte.map((e) => (
+      <section class="sort-detail__regles">
+        <h5>Règles propres : {e.libelle}</h5>
+        <p>Carte de <a href={pageHref(e.id)}>{e.nom}</a></p>
+        <Texte blocs={e.blocs} />
+      </section>
+    ))
+  }
+
+  <div class="sort-detail__grille">
+    {
+      etats.length > 0 && (
+        <section class="sort-detail__bloc">
+          <h5>Altérations d’état repérées dans le texte</h5>
+          <ul class="etats">
+            {etats.map((e) => (
+              <li>
+                <span class="etats__relation">{RELATIONS_ETAT[e.relation] ?? e.relation}</span>
+                <a class="chip chip--faible" href={etatHref(e.etat)}>{e.etat.nom}{e.stade ? ` ${e.stade}` : ''}</a>
+                <q class="etats__extrait">{e.extrait}</q>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {
+      sort.lanceePar.length > 0 && (
+        <section class="sort-detail__bloc">
+          <h5>Créatures qui lancent ce sort</h5>
+          <ul class="lanceurs">
+            {sort.lanceePar.map((c) => (
+              <li>
+                <a class="chip" href={pageHref(c.id)}>{c.nom}</a>
+                <span class="muted">{c.capacite}{c.npmMin ? ` (NPM ${c.npmMin} minimum)` : ''}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {
+      memeNom.length > 0 && (
+        <section class="sort-detail__bloc">
+          <h5>Même nom dans une autre magie</h5>
+          <ul class="chips">
+            {memeNom.map((o) => <li><a class="chip" href={`${pageHref(o.magie.id)}#${sortAncre(o.sort)}`}>{o.magie.nom}</a></li>)}
+          </ul>
+        </section>
+      )
+    }
+  </div>
+
+  <p class="sort-detail__source">Source : {sort.sourceRef}</p>
+</div>
