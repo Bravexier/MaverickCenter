@@ -11,7 +11,7 @@ INSERT INTO entite_fts (entite_table, entite_id, nom, contexte, texte)
   SELECT 'magie', m.id, m.nom, 'magie', trim(COALESCE(m.description, '') || ' ' || COALESCE(m.description_physique, '') || ' ' || COALESCE(m.explication, ''))
     FROM magie m
   UNION ALL
-  SELECT 'sort', s.id, s.nom, m.nom, trim(s.type_brut || ' ' || COALESCE(s.effets, '') || ' ' || COALESCE(s.dsb_brut, ''))
+  SELECT 'sort', s.id, s.nom, m.nom, trim(s.type_brut || ' ' || COALESCE(s.effets, '') || ' ' || COALESCE(s.dsb_brut, '') || ' ' || COALESCE(s.remarque, ''))
     FROM sort s JOIN magie m ON m.id = s.magie_id
   UNION ALL
   SELECT 'amelioration_cadaverique', a.id, a.nom, 'amélioration cadavérique', a.effet FROM amelioration_cadaverique a
@@ -26,8 +26,7 @@ INSERT INTO entite_fts (entite_table, entite_id, nom, contexte, texte)
     FROM specialite sp JOIN classe c ON c.id = sp.classe_id
   UNION ALL
   SELECT 'capacite', k.id, k.nom, c.nom || COALESCE(' ' || sp.nom, ''),
-         trim(COALESCE(k.type_brut, '') || ' ' || COALESCE(k.effet, '') || ' ' ||
-              COALESCE((SELECT group_concat(n.texte, ' ') FROM note_cellule n WHERE n.entite_table = 'capacite' AND n.entite_id = k.id), ''))
+         trim(COALESCE(k.type_brut, '') || ' ' || COALESCE(k.effet, '') || ' ' || COALESCE(k.remarque, ''))
     FROM capacite k JOIN classe c ON c.id = k.classe_id LEFT JOIN specialite sp ON sp.id = k.specialite_id
   UNION ALL
   SELECT 'objet_depart', o.id, o.nom, 'objet de départ', o.description FROM objet_depart o
@@ -46,11 +45,12 @@ INSERT INTO entite_fts (entite_table, entite_id, nom, contexte, texte)
          COALESCE((SELECT group_concat(m.nom, ' ') FROM v_creature_magie vm JOIN magie m ON m.id = vm.magie_id WHERE vm.creature_id = c.id), ''),
          trim(COALESCE(c.description, '') || ' ' ||
               COALESCE((SELECT group_concat(a.brut, char(10)) FROM creature_attaque a WHERE a.creature_id = c.id), '') || ' ' ||
-              COALESCE((SELECT group_concat(k.nom || '. ' || k.texte, char(10)) FROM creature_capacite k WHERE k.creature_id = c.id), ''))
+              COALESCE((SELECT group_concat(k.nom || '. ' || k.texte, char(10)) FROM creature_capacite k WHERE k.creature_id = c.id), '') || ' ' ||
+              COALESCE(c.remarque, ''))
     FROM creature c
   -- équipement, ressources, craft
   UNION ALL
-  SELECT 'arme', a.id, a.nom, t.nom, trim(COALESCE(a.effet, '') || ' ' || COALESCE(a.description, '') || ' ' || COALESCE(a.competence_brut, ''))
+  SELECT 'arme', a.id, a.nom, t.nom, trim(COALESCE(a.effet, '') || ' ' || COALESCE(a.description, '') || ' ' || COALESCE(a.competence_brut, '') || ' ' || COALESCE(a.remarque, ''))
     FROM arme a JOIN arme_type t ON t.id = a.type_id
   UNION ALL
   SELECT 'armure', id, nom, type, trim(stats_brut || ' ' || COALESCE(effet, '') || ' ' || COALESCE(resistance_brut, '') || ' ' || COALESCE(faiblesse_brut, '')) FROM armure
@@ -58,18 +58,18 @@ INSERT INTO entite_fts (entite_table, entite_id, nom, contexte, texte)
   SELECT 'ressource', r.id, r.nom, r.genre, trim(COALESCE(r.description, '') || ' ' || COALESCE(p.effet, ''))
     FROM ressource r LEFT JOIN potion p ON p.ressource_id = r.id
   UNION ALL
-  SELECT 'accessoire_effet', e.id, COALESCE(e.libelle, ''), p.nom, trim(COALESCE(e.gemmes_brut, ''))
+  SELECT 'accessoire_effet', e.id, COALESCE(e.libelle, ''), p.nom, trim(COALESCE(e.gemmes_brut, '') || ' ' || COALESCE(e.remarque, ''))
     FROM accessoire_effet e JOIN accessoire_propriete p ON p.id = e.propriete_id
   UNION ALL
   SELECT 'familier', id, nom, categorie, trim(COALESCE(effet_brut, '') || ' ' || description) FROM familier
   UNION ALL
   SELECT 'machine_guerre', id, nom, categorie, description || ' ' || effet FROM machine_guerre
   UNION ALL
-  SELECT 'maladie', id, nom, 'maladie', trim(COALESCE(effets, '') || ' ' || COALESCE(nature, '') || ' ' || COALESCE(soin_methode_brut, '')) FROM maladie
+  SELECT 'maladie', id, nom, 'maladie', trim(COALESCE(effets, '') || ' ' || COALESCE(nature, '') || ' ' || COALESCE(soin_methode_brut, '') || ' ' || COALESCE(remarque, '')) FROM maladie
   UNION ALL
   SELECT 'metier', id, nom, 'métier', description || ' ' || bonus_brut || ' ' || artisanat_brut || ' ' || equipement_brut || ' ' || COALESCE(avantage_brut, '') FROM metier
   UNION ALL
-  SELECT 'arme_elementaire', id, nom, 'arme élémentaire', capacite_brut FROM arme_elementaire
+  SELECT 'arme_elementaire', id, nom, 'arme élémentaire', trim(COALESCE(capacite_brut, '') || ' ' || COALESCE(remarque, '')) FROM arme_elementaire
   UNION ALL
   SELECT 'armure_elementaire', id, nom, 'armure élémentaire', effets_brut FROM armure_elementaire
   UNION ALL

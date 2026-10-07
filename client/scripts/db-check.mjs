@@ -125,6 +125,21 @@ for (const c of corrections.filter((x) => x.champ === 'v')) {
   else if (!avecApres) problemes.push(`correction ${c.dump}!${c.onglet}!${c.cellule} : « ${c.apres} » ne figure dans aucune ligne qui couvre la cellule`);
 }
 
+// Remarques : une note de cellule d'une entité dont la table a une colonne `remarque` figure dans cette remarque (texte sans espaces de bordure). Tant que les importeurs écrivent
+// les deux, la remarque ne peut pas perdre une note ; la table `note_cellule` garde la cellule d'origine et la nature (note, commentaire résolu).
+{
+  let verifiees = 0;
+  for (const n of db.prepare('SELECT entite_table, entite_id, cellule, texte FROM note_cellule').all()) {
+    if (!noms.has(n.entite_table) || !colonnes(n.entite_table).some((c) => c.name === 'remarque')) continue;
+    const cle = colonnes(n.entite_table).filter((c) => c.pk);
+    if (cle.length !== 1) continue;
+    const ligne = db.prepare(`SELECT remarque FROM "${n.entite_table}" WHERE "${cle[0].name}" = ?`).get(n.entite_id);
+    verifiees += 1;
+    if (!ligne || typeof ligne.remarque !== 'string' || !ligne.remarque.includes(n.texte.trim())) problemes.push(`remarque : la note ${n.entite_table}:${n.entite_id} (${n.cellule ?? 'cellule inconnue'}) ne figure pas dans la remarque de sa ligne`);
+  }
+  bilan.notes_dans_remarque = verifiees;
+}
+
 // Types de page : la table type_page est le miroir de client/src/lib/types.mjs (le site garde ce fichier : libellés, salons Discord, ordre des rubriques).
 const iTypes = process.argv.indexOf('--types');
 {

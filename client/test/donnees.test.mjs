@@ -118,6 +118,6 @@ test('cheminBase : le fichier publié sur /donnees/maverick.db est une base SQLi
   assert.deepEqual(copie.prepare('PRAGMA integrity_check').all().map((l) => l.integrity_check), ['ok']);
   assert.equal(copie.prepare('SELECT count(*) AS n FROM page').get().n, db.prepare('SELECT count(*) AS n FROM page').get().n);
   assert.ok(copie.prepare('SELECT count(*) AS n FROM page_fts').get().n > 0, 'plein texte présent');
-  assert.equal(copie.prepare('PRAGMA user_version').get().user_version, 1);
+  assert.equal(copie.prepare('PRAGMA user_version').get().user_version, 2);
   copie.close();
 });

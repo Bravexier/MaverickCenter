@@ -56,6 +56,20 @@ site construit avec ces fichiers fabriqués était identique (`diff -r`, 1 527 p
 
 Un `.md` fabriqué qu'on modifie est écrasé au prochain `db:export-pages` tant que `db:sync-pages` n'a pas recopié la modification dans `data/rows`.
 
+## Changer le schéma : `npm run db:migrate`
+
+Un changement de structure se fait par une **migration** `data/migrations/NNNN-<nom>.sql` (additive : nouvelle table, `ADD COLUMN` facultatif ; cassante : avec le SQL explicite) : modifier `data/schema.sql`
+(nouvelle colonne **en dernier**, `PRAGMA user_version` + 1), écrire la migration, puis **avant de commiter** `npm run db:migrate -- ../data/migrations/NNNN-<nom>.sql` (dans `client/`). Il transforme les lignes
+déjà commitées, sans accéder aux classeurs : reconstruit la base de la version précédente (schéma du dernier commit), exécute la migration, vérifie que le schéma obtenu est exactement `data/schema.sql`,
+et réécrit `data/rows` avec la nouvelle version. Voir `docs/sql/conception.md` §10.1. Migration en place : `0002-remarque.sql`.
+
+## La colonne `remarque`
+
+Chaque table d'entités (les 60 tables que visent `page_entite`, `note_cellule` et `ecart_source`, hors `page`) a une colonne `remarque` : texte libre, **vide par défaut**. Les notes de cellule des classeurs y sont
+recopiées dans la ligne qu'elles commentent (sorts, capacités, armes, armes élémentaires, effets d'accessoire, créatures, maladies) ; plusieurs notes sur une ligne sont réunies, séparées par une ligne vide. La table
+`note_cellule` garde chaque note avec sa cellule d'origine et sa nature (note ou commentaire résolu). `npm run db:check` vérifie qu'aucune note n'est absente de la remarque de sa ligne. La remarque est dans le plein
+texte des entités et dans l'explorateur de l'onglet DB.
+
 ## L'onglet DB
 
 `/donnees/` (onglet **DB** du site) : toutes les tables et vues, ligne par ligne. `/donnees/maverick.db` : la base SQLite elle-même, en téléchargement, pour la déboguer avec un outil externe

@@ -1,6 +1,6 @@
 -- data/rows/bouclier_classe.sql : export déterministe, une instruction par ligne, triée par (id). NE PAS ÉDITER À LA MAIN.
-INSERT INTO bouclier_classe (id, nom, classe, prix, prix_brut, categorie_brut, origine, source_ref) VALUES ('bocle', 'Bocle', 1, 2.5, '2,5', 'Classe 1', 'equipement', 'Ressources et Craft › Bouclier › A53');
-INSERT INTO bouclier_classe (id, nom, classe, prix, prix_brut, categorie_brut, origine, source_ref) VALUES ('bouclier-rond', 'Bouclier Rond', 3, 7.5, '7,5', 'Classe 3', 'equipement', 'Ressources et Craft › Bouclier › A67');
-INSERT INTO bouclier_classe (id, nom, classe, prix, prix_brut, categorie_brut, origine, source_ref) VALUES ('ecu', 'Écu', 4, 10.0, '10', 'Classe 4', 'equipement', 'Ressources et Craft › Bouclier › A74');
-INSERT INTO bouclier_classe (id, nom, classe, prix, prix_brut, categorie_brut, origine, source_ref) VALUES ('pavoi', 'Pavoi', 5, 12.5, '12,5', 'Classe 5', 'equipement', 'Ressources et Craft › Bouclier › A81');
-INSERT INTO bouclier_classe (id, nom, classe, prix, prix_brut, categorie_brut, origine, source_ref) VALUES ('targe', 'Targe', 2, 5.0, '5', 'Classe 2', 'equipement', 'Ressources et Craft › Bouclier › A60');
+INSERT INTO bouclier_classe (id, nom, classe, prix, prix_brut, categorie_brut, origine, source_ref, remarque) VALUES ('bocle', 'Bocle', 1, 2.5, '2,5', 'Classe 1', 'equipement', 'Ressources et Craft › Bouclier › A53', NULL);
+INSERT INTO bouclier_classe (id, nom, classe, prix, prix_brut, categorie_brut, origine, source_ref, remarque) VALUES ('bouclier-rond', 'Bouclier Rond', 3, 7.5, '7,5', 'Classe 3', 'equipement', 'Ressources et Craft › Bouclier › A67', NULL);
+INSERT INTO bouclier_classe (id, nom, classe, prix, prix_brut, categorie_brut, origine, source_ref, remarque) VALUES ('ecu', 'Écu', 4, 10.0, '10', 'Classe 4', 'equipement', 'Ressources et Craft › Bouclier › A74', NULL);
+INSERT INTO bouclier_classe (id, nom, classe, prix, prix_brut, categorie_brut, origine, source_ref, remarque) VALUES ('pavoi', 'Pavoi', 5, 12.5, '12,5', 'Classe 5', 'equipement', 'Ressources et Craft › Bouclier › A81', NULL);
+INSERT INTO bouclier_classe (id, nom, classe, prix, prix_brut, categorie_brut, origine, source_ref, remarque) VALUES ('targe', 'Targe', 2, 5.0, '5', 'Classe 2', 'equipement', 'Ressources et Craft › Bouclier › A60', NULL);

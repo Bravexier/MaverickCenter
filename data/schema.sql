@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 1;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 2;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -181,7 +181,8 @@ CREATE TABLE caracteristique (
   lettre     TEXT    NOT NULL UNIQUE CHECK (lettre GLOB '[A-Z]'),   -- suffixe des compétences : « Arc (F) » : F V I P S A
   ordre      INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),    -- ordre de la fiche : Force, Volonté, Intelligence, Perception, Social, Agilité
   origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'fiche'),
-  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 -- Les 30 compétences : 5 par caractéristique (Personnage!B22:B36 et O22:O36). « Nat. » et « Acquis » sont saisis par le joueur :
@@ -197,7 +198,8 @@ CREATE TABLE competence (
                                                             -- NULL quand le guide ne décrit pas cette compétence (Calme : le guide écrit « Prouesse »,
                                                             -- voir ecart_source)
   origine            TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'fiche'),
-  source_ref         TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref         TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 CREATE INDEX competence_caracteristique ON competence (caracteristique_id, ordre);
@@ -252,6 +254,7 @@ CREATE TABLE seuil_niveau (
   formule    TEXT    NOT NULL,                               -- cellule et formule d'origine
   origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'fiche'),
   source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   PRIMARY KEY (regle, niveau_min)
 ) STRICT, WITHOUT ROWID;
 
@@ -268,6 +271,7 @@ CREATE TABLE regle_constante (
   page_id    TEXT    REFERENCES page(id),                    -- page qui présente la phrase (nature 'texte') ; NULL pour une formule
   origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('fiche', 'annexes')),
   source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   CHECK ((nature = 'texte') = (page_id IS NOT NULL))
 ) STRICT;
 
@@ -305,7 +309,8 @@ CREATE TABLE type_don (
   definition TEXT    NOT NULL,                               -- phrase du guide après les deux-points
   ordre      INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),
   origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'fiche'),
-  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 -- ▸ POSTURES DE COMBAT
@@ -318,7 +323,8 @@ CREATE TABLE posture (
   libelle_fiche TEXT  NOT NULL UNIQUE,                       -- libellé du tableau de la fiche : « OFFENSIF », « DEFENSIF »
   description TEXT    NOT NULL,                              -- paragraphe de présentation de la page « Postures » (avant « Ses effets sont : »)
   origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'fiche'),
-  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 CREATE TABLE posture_effet (
@@ -362,6 +368,7 @@ CREATE TABLE magie (
   origine               TEXT    NOT NULL REFERENCES famille(id)
     CHECK (origine = 'magies'),
   source_ref            TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   CHECK ((barre4_ressource IS NULL) = (barre4_texte IS NULL))
 ) STRICT;
 
@@ -471,6 +478,7 @@ CREATE TABLE amelioration_cadaverique (
   origine    TEXT    NOT NULL REFERENCES famille(id)
     CHECK (origine = 'magies'),
   source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (magie_id, rang),
   UNIQUE (magie_id, nom)
 ) STRICT;
@@ -517,7 +525,8 @@ CREATE TABLE sort (
                                                         -- NULL quand l'onglet n'en porte pas (ou quand le titre est sans texte)
   origine               TEXT    NOT NULL REFERENCES famille(id)
     CHECK (origine = 'magies'),
-  source_ref            TEXT    NOT NULL CHECK (length(source_ref) > 0),               -- « Magie Maverick V8 › Sang › AL4:BR6 »
+  source_ref            TEXT    NOT NULL CHECK (length(source_ref) > 0), -- « Magie Maverick V8 › Sang › AL4:BR6 »
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (magie_id, ordre),
   UNIQUE (magie_id, nom),
   CHECK (id = magie_id || '#sort:' || nom_cle),
@@ -692,6 +701,7 @@ CREATE TABLE resistance_magie (
   valeur           INTEGER NOT NULL CHECK (valeur IN (-1, 0, 1)),
   origine          TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'fiche'),
   source_ref       TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   PRIMARY KEY (magie_id, attaque_magie_id)
 ) STRICT, WITHOUT ROWID;
 
@@ -706,6 +716,7 @@ CREATE TABLE resistance_duo (
   ordre      INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),     -- rang du couple dans le tableau (1 = Sang + Vide)
   origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'annexes'),
   source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   PRIMARY KEY (magie_a_id, magie_b_id),
   CHECK (magie_a_id <> magie_b_id)
 ) STRICT, WITHOUT ROWID;
@@ -746,7 +757,8 @@ CREATE TABLE etat (
   type_brut       TEXT    NOT NULL,                          -- « Physique », « Mental »
   magie_liee_brut TEXT,                                      -- cellule « Magie Liée » sur une ligne : « Temps/ Espace », « Arcane/ Corruption » ; NULL pour « / »
   origine         TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'annexes'),
-  source_ref      TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref      TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 CREATE INDEX etat_type ON etat (type);
@@ -801,7 +813,8 @@ CREATE TABLE meteo (
   ordre       INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),
   description TEXT    NOT NULL,
   origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'annexes'),
-  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 -- Effets d'une météo : une ligne « - … » de la cellule « Effet(s) » = une ligne. Pour la forme « Élément X = +N dégâts, +M Soin » (ou « Magie X = … »)
@@ -842,6 +855,7 @@ CREATE TABLE mode_texte (
   page_id    TEXT    NOT NULL REFERENCES page(id),
   origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'annexes'),
   source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (mode, rang),
   CHECK (substr(id, 1, length(page_id) + 7) = page_id || '#texte:')
 ) STRICT;
@@ -868,7 +882,8 @@ CREATE TABLE mode_super_objet (
   effets_brut  TEXT    NOT NULL,                             -- cellule « Effets mode super » entière
   description  TEXT,                                         -- colonne « Description/apparence »
   origine      TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'annexes'),
-  source_ref   TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref   TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 -- Effets du mode hyper. Plusieurs lectures du même sujet coexistent et ne disent pas toujours la même chose ; elles sont TOUTES conservées, une
@@ -899,6 +914,7 @@ CREATE TABLE mode_hyper_effet (
   commentaire   TEXT,                                        -- commentaire de cellule du .xlsx (absent du dump JSON)
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('annexes', 'magies', 'races')),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   CHECK ((portee = 'general' AND magie_id IS NULL AND magie2_id IS NULL AND race_id IS NULL)
       OR (portee = 'magie'   AND magie_id IS NOT NULL AND magie2_id IS NULL AND race_id IS NULL)
       OR (portee = 'duo'     AND magie_id IS NOT NULL AND magie2_id IS NOT NULL AND race_id IS NULL)
@@ -929,7 +945,8 @@ CREATE TABLE dieu (
   ordre_choix      INTEGER UNIQUE CHECK (ordre_choix >= 1),   -- rang dans la liste S5 ; NULL = absent de cette liste (Eirnn, Onir)
   dans_liste_magie INTEGER NOT NULL CHECK (dans_liste_magie IN (0, 1)),   -- 1 = figure dans Magie!X2:X29 (« Notix & Capse » compte pour deux)
   origine          TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'fiche'),
-  source_ref       TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref       TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 -- ====================================================================================================================
@@ -980,7 +997,8 @@ CREATE TABLE classe (
   description_titre  TEXT,                       -- titre du texte de présentation de la classe (AM1) : « Description Guerrier »
   description       TEXT,                        -- texte de présentation (AM2). NULL : Anansi, Goleois (titre sans texte), Grenadier (pas de zone de description)
   origine            TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'classes'),
-  source_ref         TEXT    NOT NULL CHECK (length(source_ref) > 0),           -- onglet + zones lues (départ, à savoir, description) + cellule du Sommaire
+  source_ref         TEXT    NOT NULL CHECK (length(source_ref) > 0), -- onglet + zones lues (départ, à savoir, description) + cellule du Sommaire
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   CHECK (id = 'classes/' || nom_cle)
 ) STRICT;
 
@@ -1000,6 +1018,7 @@ CREATE TABLE specialite (
   description       TEXT,                                 -- NULL : titre sans texte (Tueur, Archer/Grand Archer, Mage Bleu, Anansi, Goleois) ou pas de zone
   origine           TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'classes'),
   source_ref        TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (classe_id, rang),
   UNIQUE (classe_id, nom_cle),
   UNIQUE (id, classe_id),                                 -- cible de la clé étrangère composite de capacite
@@ -1035,7 +1054,8 @@ CREATE TABLE capacite (
   limite_periode TEXT,                                               -- période de cette limite, minuscules (« combat », « 24h », « jour », « tour »…) ; NULL avec limite_nombre
   effet          TEXT,                                               -- bloc d'effet, texte libre (retours à la ligne et listes « - » conservés)
   origine        TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'classes'),
-  source_ref     TEXT    NOT NULL CHECK (length(source_ref) > 0),                                   -- plage de l'aptitude dans l'onglet : « Classe Maverick V7 › Guerrier › P4:U9 »
+  source_ref     TEXT    NOT NULL CHECK (length(source_ref) > 0), -- plage de l'aptitude dans l'onglet : « Classe Maverick V7 › Guerrier › P4:U9 »
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   FOREIGN KEY (specialite_id, classe_id) REFERENCES specialite (id, classe_id),   -- la spécialité est bien celle de la classe (inactif si NULL)
   CHECK (nature <> 'classe' OR specialite_id IS NULL),
   CHECK (nature <> 'specialite' OR specialite_id IS NOT NULL),
@@ -1062,6 +1082,7 @@ CREATE TABLE objet_depart (
   ordre       INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),   -- rang dans la cellule du glossaire
   origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'classes'),
   source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   CHECK (instr(id, '#objet:') > 0)
 ) STRICT;
 
@@ -1188,7 +1209,8 @@ CREATE TABLE race (
   don_base_effets TEXT,                       -- 3e partie : 'Permet de récupérer 2d6 chakra (jet de calme en stress).' (texte, non analysé)
   origine         TEXT    NOT NULL REFERENCES famille(id)
     CHECK (origine = 'races'),
-  source_ref      TEXT    NOT NULL CHECK (length(source_ref) > 0),           -- « Fiche auto V15.2.2 › Race › A3:W3 ; Les races › première feuille › A2:B2 »
+  source_ref      TEXT    NOT NULL CHECK (length(source_ref) > 0), -- « Fiche auto V15.2.2 › Race › A3:W3 ; Les races › première feuille › A2:B2 »
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   CHECK ((don_base_nom IS NULL) = (don_base_type IS NULL) AND (don_base_nom IS NULL) = (don_base_effets IS NULL)),
   CHECK (don_base_nom IS NULL OR don_base_brut IS NOT NULL)
 ) STRICT;
@@ -1252,7 +1274,8 @@ CREATE TABLE ethnie (
   bonus_vitesse  INTEGER,
   origine     TEXT    NOT NULL REFERENCES famille(id)
     CHECK (origine = 'races'),
-  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),       -- « Fiche auto V15.2.2 › Bonus Race › A6:N6 »
+  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0), -- « Fiche auto V15.2.2 › Bonus Race › A6:N6 »
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (race_id, slug),
   CHECK (id = race_id || '#ethnie:' || slug)
 ) STRICT;
@@ -1348,7 +1371,8 @@ CREATE TABLE echelle_relation (
   libelle    TEXT    NOT NULL UNIQUE,                        -- « Même peuple », « Alliée »… tel qu'écrit
   ordre      INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),     -- ordre de l'onglet, de gauche à droite : du plus favorable au plus défavorable
   origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'races'),
-  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 -- Un peuple = une étiquette de l'onglet (« Elfe Forestier Forêt », « Humain Central »…) : recopiée telle qu'écrite (coquilles comprises : « Supprémaciste »).
@@ -1359,7 +1383,8 @@ CREATE TABLE peuple (
   ordre      INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),                       -- rang de l'étiquette dans l'onglet (1 à 69)
   race_id    TEXT    REFERENCES race(id),                                      -- rapprochement INFORMATIF : l'unique race dont le titre commence le nom ; NULL sinon
   origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'races'),
-  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 CREATE INDEX peuple_race ON peuple (race_id) WHERE race_id IS NOT NULL;
 
@@ -1401,6 +1426,7 @@ CREATE TABLE invocation (
                                             -- tableau figure dans les deux classeurs (identité vérifiée à l'import) ; une seule copie, pas de doublon ici.
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'bestiaire'),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   CHECK (id = 'bestiaire/' || nom_cle)      -- l'id de page est '<type>/<slug>' et le slug est normalize(titre)
 ) STRICT;
 
@@ -1418,6 +1444,7 @@ CREATE TABLE invocation_capacite_commune (
   texte         TEXT    NOT NULL,                     -- le reste de l'élément
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'bestiaire'),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (invocation_id, rang),
   UNIQUE (invocation_id, nom_cle),
   CHECK (id = invocation_id || '#commune:' || nom_cle)
@@ -1464,6 +1491,7 @@ CREATE TABLE invocation_bloc (
                                                       -- dans le classeur : conservé tel quel, sans traduction.
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'bestiaire'),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (invocation_id, rang),
   UNIQUE (invocation_id, cle),
   UNIQUE (id, invocation_id),                          -- clé visée par creature (bloc et invocation cohérents)
@@ -1529,7 +1557,8 @@ CREATE TABLE creature (
   -- parenthèses dans creature_bonus_npm.
   fpvsia_brut   TEXT,
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'bestiaire'),
-  source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),           -- « Invocation › Appel aux golems › D1:R28 » (la carte entière)
+  source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0), -- « Invocation › Appel aux golems › D1:R28 » (la carte entière)
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (bloc_id, rang),
   FOREIGN KEY (bloc_id, invocation_id) REFERENCES invocation_bloc (id, invocation_id),
   CHECK (id = 'bestiaire/' || nom_cle),     -- l'id de page est '<type>/<slug>' et le slug est normalize(titre)
@@ -1621,7 +1650,8 @@ CREATE TABLE creature_attaque (
   portee_max  INTEGER CHECK (portee_max >= 0),
   cout_chakra INTEGER CHECK (cout_chakra >= 0),       -- « (5 chakra) »
   origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'bestiaire'),
-  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),                       -- plage de la cellule « Dégâts » (G11:R12)
+  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0), -- plage de la cellule « Dégâts » (G11:R12)
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (creature_id, rang),
   UNIQUE (creature_id, nom_cle, occurrence),
   CHECK (id = creature_id || '#attaque:' || nom_cle || CASE WHEN occurrence > 1 THEN '~' || occurrence ELSE '' END),
@@ -1667,7 +1697,8 @@ CREATE TABLE creature_capacite (
                                                       -- liste numérotée « 1. … 8. … » du texte (Golem de chair, « Forme changeante ») :
                                                       -- {"elements":[{"rang":1,"texte":"Muscles difformes : +2 Force, …"},…]} ; NULL = aucune
   origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'bestiaire'),
-  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),                       -- plage de la cellule « Capacité(s) » (G19:R28)
+  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0), -- plage de la cellule « Capacité(s) » (G19:R28)
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (creature_id, rang),
   CHECK (length(nom_cle) > 0),
   CHECK (id = creature_id || '#capacite:' || nom_cle || COALESCE(':npm' || npm_min, ''))
@@ -1754,7 +1785,8 @@ CREATE TABLE monnaie (
   valeur_rf           INTEGER NOT NULL CHECK (valeur_rf >= 1),   -- valeur en RF : 1 / 100 / 100 000. Le RF est l'unité du CONVERTISSEUR (valeur 1 par définition)
   convertisseur_brut  TEXT,                           -- ligne du CONVERTISSEUR telle qu'écrite (« 1 RO : 100 RF ») ; NULL pour le RF (aucune ligne)
   origine             TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
-  source_ref          TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref          TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 -- Constantes chiffrées que la source écrit dans ses textes de règles et dont le modèle a besoin (« Toutes les armes ont de base 2 cran de
@@ -1768,7 +1800,8 @@ CREATE TABLE constante_equipement (
   texte       TEXT    NOT NULL,                       -- la phrase de la source, telle qu'écrite
   page_id     TEXT    NOT NULL REFERENCES page(id),
   origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
-  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 -- Niveaux de difficulté des recettes d'alchimie : Novice < Apprenti < Avancé < Expert < Maître (colonne « Niveau » des potions et
@@ -1778,7 +1811,8 @@ CREATE TABLE niveau_alchimie (
   nom         TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),                -- « Novice », « Apprenti », « Avancé », « Expert », « Maître »
   rang        INTEGER NOT NULL UNIQUE CHECK (rang >= 1),   -- 1 = Novice
   origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
-  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 -- Affinités alchimiques (colonne « Affinité » des listes d'ingrédients et cellules des tables « Recette »). Une affinité composée
@@ -1789,7 +1823,8 @@ CREATE TABLE affinite (
   libelle         TEXT    NOT NULL,                   -- première écriture rencontrée (ordre des listes d'ingrédients) : « Santé + Chakra »
   nb_composantes  INTEGER NOT NULL CHECK (nb_composantes >= 1),
   origine         TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
-  source_ref      TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref      TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 -- Familles d'armes = bandeaux de l'onglet « Armes » (12 : ÉPÉES - D10, DAGUES - D6, … ARME DE MONSTRES). Une arme est listée sous UN
@@ -1803,7 +1838,8 @@ CREATE TABLE arme_famille (
   cout_libelle  TEXT    NOT NULL,                     -- en-tête de la colonne de coût du bandeau : « Coût » (Épées) ou « Coût en plus/moins » ; « … (unité) » : coût d'une pièce de munition ou de bombe
   ordre         INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),   -- rang du bandeau de gauche à droite
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
-  source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 -- Types d'armes = table BDD!AD2:AF14 de la fiche automatique (13 types) : dé de dégâts et portée par défaut. C'est le « type » que la
@@ -1820,6 +1856,7 @@ CREATE TABLE arme_type (
   portee_brut   TEXT    NOT NULL,                     -- « 1-2 »
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   CHECK ((de IS NULL) = (de_faces IS NULL)),
   CHECK ((de IS NULL) = (de_regle IS NOT NULL))
 ) STRICT;
@@ -1844,6 +1881,7 @@ CREATE TABLE ressource (
   ordre        INTEGER CHECK (ordre IS NULL OR ordre >= 1),       -- rang dans sa liste (de haut en bas)
   origine      TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref   TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   CHECK (prix_rf IS NULL OR prix_brut IS NOT NULL)
 ) STRICT;
 
@@ -1866,7 +1904,8 @@ CREATE TABLE materiau_arme (
   effet_secondaire  TEXT,                             -- lignes de l'effet autres que le bonus et le cran (« 1d4 de corruption a chaque coup qui touche ») ; NULL si aucune
   ordre             INTEGER NOT NULL CHECK (ordre >= 1),
   origine           TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
-  source_ref        TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref        TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 CREATE INDEX materiau_arme_bonus ON materiau_arme (bonus_degats);
@@ -1883,7 +1922,8 @@ CREATE TABLE materiau_armure (
   solidite      INTEGER NOT NULL CHECK (solidite >= 0),
   ordre         INTEGER NOT NULL CHECK (ordre >= 1),
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
-  source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 CREATE INDEX materiau_armure_type ON materiau_armure (type);
@@ -1989,7 +2029,8 @@ CREATE TABLE fiole_verre (
   nb_ingredients_ou_plus INTEGER NOT NULL CHECK (nb_ingredients_ou_plus IN (0, 1)),   -- 1 si « ou plus »
   ordre                 INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),
   origine               TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
-  source_ref            TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref            TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 -- Une recette = une façon d'obtenir un ou plusieurs produits.
@@ -2011,6 +2052,7 @@ CREATE TABLE recette (
   test_carac_2_id TEXT  REFERENCES caracteristique(id),
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   CHECK ((genre = 'alchimie') = (famille IS NOT NULL)),
   CHECK ((test_carac_1_id IS NULL) = (test_carac_2_id IS NULL)),
   CHECK (test_carac_1_id IS NULL OR test_brut IS NOT NULL)
@@ -2071,6 +2113,7 @@ CREATE TABLE baton_magique (
   recette_id    TEXT    NOT NULL UNIQUE REFERENCES recette(id),
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (magie_id, niveau)
 ) STRICT;
 
@@ -2092,6 +2135,7 @@ CREATE TABLE metier (
   avantage_brut      TEXT,                            -- « Avantage possible » ; NULL si vide (Artisan)
   origine            TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref         TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   CHECK ((test_carac_1_id IS NULL) = (test_carac_2_id IS NULL)),
   CHECK (test_carac_1_id IS NULL OR test_brut IS NOT NULL),
   CHECK ((peut_fabriquer = 0) = (artisanat_texte IS NULL))
@@ -2169,6 +2213,7 @@ CREATE TABLE arme (
   ordre            INTEGER NOT NULL CHECK (ordre >= 1),   -- rang dans le bandeau
   origine          TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref       TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (famille_id, nom_cle),
   CHECK ((de IS NULL) = (de_source IS NULL)),
   CHECK ((de IS NULL) = (de_faces IS NULL)),
@@ -2230,6 +2275,7 @@ CREATE TABLE arme_elementaire (
   ordre            INTEGER NOT NULL CHECK (ordre >= 1),
   origine          TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref       TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (type_id, magie_id)
 ) STRICT;
 
@@ -2245,7 +2291,8 @@ CREATE TABLE armure_emplacement (
   cout_rf     INTEGER CHECK (cout_rf IS NULL OR cout_rf >= 0),   -- NULL pour « 250 RF / Classe » (dépend de la classe)
   ordre       INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),
   origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
-  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 -- Armures : 231 combinaisons de deux matières (grille matière x matière de l'onglet Armures) + 11 armures particulières
@@ -2271,6 +2318,7 @@ CREATE TABLE armure (
   ordre            INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),
   origine          TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref       TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   CHECK ((sorte = 'combinaison') = (materiau_ligne_id IS NOT NULL)),
   CHECK ((sorte = 'combinaison') = (materiau_colonne_id IS NOT NULL))
 ) STRICT;
@@ -2311,6 +2359,7 @@ CREATE TABLE armure_elementaire (
   ordre         INTEGER NOT NULL CHECK (ordre >= 1),
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (categorie, magie_id)
 ) STRICT;
 
@@ -2334,7 +2383,8 @@ CREATE TABLE bouclier_classe (
   prix_brut     TEXT    NOT NULL,
   categorie_brut TEXT   NOT NULL,
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
-  source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 -- Poids de boucliers (onglet Bouclier, liste « Léger / Moyen / Lourd / Très lourd » sous la mention « A refaire » : « il est necessaire d'avoir le score de Force ou plus »).
@@ -2345,7 +2395,8 @@ CREATE TABLE bouclier_poids (
   force_brut    TEXT    NOT NULL,                     -- « 1 de Force minimum »
   ordre         INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
-  source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 -- Boucliers préfabriqués (100 : 5 classes x 20 matériaux). La source ne relie pas les poids aux classes : aucun lien n'est déduit.
@@ -2361,6 +2412,7 @@ CREATE TABLE bouclier (
   am            INTEGER,
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (classe_id, materiau_id)
 ) STRICT;
 
@@ -2389,6 +2441,7 @@ CREATE TABLE amelioration_equipement (
   page_id                TEXT    NOT NULL REFERENCES page(id),
   origine                TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref             TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (cible, niveau),
   CHECK ((cout_gemmes IS NULL) = (cout_gemmes_qualite IS NULL))
 ) STRICT;
@@ -2407,7 +2460,8 @@ CREATE TABLE accessoire_emplacement (
   nom         TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),                -- « Tête », « Collier », « Anneau », « Bracelet »
   jet         INTEGER NOT NULL UNIQUE CHECK (jet BETWEEN 1 AND 4),   -- résultat du 1d4
   origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
-  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 -- Étape 2 (1d100) : propriété de l'accessoire. 8 plages : 1-5 Caractéristique, 6-20 Compétence, 21-35 Attributs, 36-50 Attaque,
@@ -2419,7 +2473,8 @@ CREATE TABLE accessoire_propriete (
   jet_max     INTEGER NOT NULL CHECK (jet_max BETWEEN jet_min AND 100),
   ordre       INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),
   origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
-  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0)
+  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 -- Étape 3 : effets possibles, par propriété (« SI CARACTERISTIQUE / COMPETENCE / ATTRIBUTS / ATTAQUE / DÉFENSE / JET DE DÉS / AUTRE »).
@@ -2444,6 +2499,7 @@ CREATE TABLE accessoire_effet (
   ordre                INTEGER NOT NULL CHECK (ordre >= 1),
   origine              TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref           TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   CHECK ((bonus_valeur IS NULL) = (bonus_cible IS NULL)),
   CHECK ((bonus_min IS NULL) = (bonus_max IS NULL)),
   -- identifiant : l'entier final est une valeur ÉCRITE dans la source, pas un rang (insérer une ligne ne le décale pas) : résultat du dé (colonne « Jet »),
@@ -2500,6 +2556,7 @@ CREATE TABLE familier (
   ordre        INTEGER NOT NULL CHECK (ordre >= 1),
   origine      TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref   TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (categorie, nom_cle)
 ) STRICT;
 
@@ -2531,6 +2588,7 @@ CREATE TABLE batiment (
   ordre            INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),
   origine          TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref       TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   CHECK ((prix_min_ro IS NULL) = (prix_max_ro IS NULL)),
   CHECK (prix_max_ro IS NULL OR prix_max_ro >= prix_min_ro)
 ) STRICT;
@@ -2547,6 +2605,7 @@ CREATE TABLE machine_guerre (
   ordre          INTEGER NOT NULL CHECK (ordre >= 1),
   origine        TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref     TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (categorie, nom)
 ) STRICT;
 
@@ -2574,6 +2633,7 @@ CREATE TABLE maladie (
   ordre               INTEGER NOT NULL CHECK (ordre >= 1),
   origine             TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref          TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (version, nom_cle),
   CHECK ((incubation_h_min IS NULL) = (incubation_h_max IS NULL))
 ) STRICT;
