@@ -98,6 +98,7 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
 
 ## Conventions de travail
 
+- **Fusion** : une fois la PR créée et la CI verte, la fusionner dans `main` sans attendre le propriétaire (consigne permanente, valable pour tout le projet).
 - Toute logique de règle ou de lien nouvelle → test dans `client/test/`.
 - `rules.test.mjs` doit rester vert quand de vraies données remplacent l'exemple.
 - Ne pas modifier `api/` sans demande : c'est l'existant d'avant le site.
