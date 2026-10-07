@@ -81,3 +81,18 @@ test('db-export-pages : fabrique un fichier par page, --verifier dit ce qui diff
   assert.ok(exemples.some((e) => e.startsWith('manquant : races/')));
   rmSync(dir, { recursive: true, force: true });
 });
+
+test('db-export-pages : la base temporaire est supprimée quelle que soit la sortie (écriture, --verifier propre, --verifier avec écarts)', () => {
+  const restes = () => readdirSync(tmpdir()).filter((f) => f.startsWith('maverick-pages-'));
+  const avant = new Set(restes());
+  const dir = mkdtempSync(join(tmpdir(), 'pages-db-'));
+  try {
+    const sortie = join(dir, 'wiki');
+    assert.equal(exporter(['--out', sortie]).status, 0);
+    assert.equal(exporter(['--verifier', sortie]).status, 0, 'verifier : aucun écart');
+    assert.equal(exporter(['--verifier', join(dir, 'absent')]).status, 1, 'verifier : tout manque');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  assert.deepEqual(restes().filter((f) => !avant.has(f)), [], 'aucun dossier maverick-pages-* laissé dans tmpdir()');
+});
