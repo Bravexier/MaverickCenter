@@ -1,7 +1,7 @@
 ---
 import '../styles/global.css';
 import { url } from '../lib/wiki';
-import { NAV, groupIsCurrent } from '../lib/nav.mjs';
+import { NAV, activeGroup, groupIsCurrent } from '../lib/nav.mjs';
 
 interface Props {
   title: string;
@@ -10,7 +10,8 @@ interface Props {
 const { title, description = 'Wiki et outils pour le JDR Maverick' } = Astro.props;
 
 const base = import.meta.env.BASE_URL;
-const current = (group: (typeof NAV)[number]) => groupIsCurrent(group, Astro.url.pathname, base);
+const active = activeGroup(Astro.url.pathname, base);
+const here = Astro.url.pathname.replace(/\/?$/, '/');
 ---
 
 <!doctype html>
@@ -26,41 +27,40 @@ const current = (group: (typeof NAV)[number]) => groupIsCurrent(group, Astro.url
     <header class="site-header">
       <div class="site-header__inner">
         <a class="brand" href={url()}>Maverick Center</a>
-        <nav class="site-nav" aria-label="Navigation principale">
-          <ul class="site-nav__groups">
-            {
-              NAV.map((group) => (
-                <li class="nav-group">
-                  <button type="button" class="nav-group__toggle" aria-expanded="false" aria-controls={`menu-${group.key}`} aria-current={current(group) ? 'true' : undefined}>
-                    {group.label}
-                  </button>
-                  <ul class="nav-group__menu" id={`menu-${group.key}`}>
-                    {group.items.length === 0 && <li class="nav-soon">À compléter</li>}
-                    {group.items.map((item) => (
-                      <li>
-                        {item.path ? (
-                          <a href={url(item.path)}>{item.label}</a>
-                        ) : (
-                          <span class="nav-soon">{item.label} <small>(bientôt)</small></span>
-                        )}
-                        {item.links && (
-                          <ul class="nav-group__links">
-                            {item.links.map((l) => <li><a href={url(l.path)}>{l.label}</a></li>)}
-                          </ul>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              ))
-            }
-          </ul>
-        </nav>
         <form class="search-form" action={url('recherche/')} role="search">
           <input type="search" name="q" placeholder="Rechercher…" aria-label="Rechercher dans le wiki" />
           <button type="submit">OK</button>
         </form>
       </div>
+      <nav class="site-nav" aria-label="Navigation principale">
+        <ul class="site-nav__groups">
+          {
+            NAV.map((group) => (
+              <li>
+                <button type="button" class="nav-group__toggle" data-group={group.key} aria-pressed={group.key === active.key ? 'true' : 'false'} aria-current={groupIsCurrent(group, Astro.url.pathname, base) ? 'true' : undefined}>
+                  {group.label}
+                </button>
+              </li>
+            ))
+          }
+        </ul>
+        {
+          NAV.map((group) => (
+            <ul class="site-nav__items" data-group={group.key} hidden={group.key !== active.key}>
+              {group.items.length === 0 && <li class="nav-soon">À compléter</li>}
+              {group.items.map((item) => (
+                <li>
+                  {item.path ? (
+                    <a href={url(item.path)} aria-current={here === url(item.path) ? 'page' : undefined}>{item.label}</a>
+                  ) : (
+                    <span class="nav-soon">{item.label} <small>(bientôt)</small></span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ))
+        }
+      </nav>
     </header>
     <main>
       <slot />
@@ -69,19 +69,12 @@ const current = (group: (typeof NAV)[number]) => groupIsCurrent(group, Astro.url
       <script is:inline>
       (function () {
         var toggles = document.querySelectorAll('.nav-group__toggle');
-        function closeAll(except) {
-          toggles.forEach(function (t) { if (t !== except) t.setAttribute('aria-expanded', 'false'); });
-        }
+        var rows = document.querySelectorAll('.site-nav__items');
         toggles.forEach(function (t) {
           t.addEventListener('click', function () {
-            var open = t.getAttribute('aria-expanded') === 'true';
-            closeAll(t);
-            t.setAttribute('aria-expanded', open ? 'false' : 'true');
+            toggles.forEach(function (o) { o.setAttribute('aria-pressed', o === t ? 'true' : 'false'); });
+            rows.forEach(function (r) { r.hidden = r.getAttribute('data-group') !== t.getAttribute('data-group'); });
           });
-        });
-        document.addEventListener('click', function (e) { if (!e.target.closest('.nav-group')) closeAll(); });
-        document.addEventListener('keydown', function (e) {
-          if (e.key === 'Escape') { var open = document.querySelector('.nav-group__toggle[aria-expanded="true"]'); closeAll(); if (open) open.focus(); }
         });
       })();
     </script>

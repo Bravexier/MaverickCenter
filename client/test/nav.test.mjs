@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { test } from 'node:test';
-import { NAV, groupIsCurrent, navPaths } from '../src/lib/nav.mjs';
+import { NAV, activeGroup, groupIsCurrent, navPaths } from '../src/lib/nav.mjs';
 import { TYPE_KEYS } from '../src/lib/types.mjs';
 
 const content = new URL('../src/content/wiki/', import.meta.url);
@@ -26,4 +26,10 @@ test('la rubrique courante est repérée, avec ou sans préfixe de déploiement'
   assert.equal(groupIsCurrent(regles, '/MaverickCenter/generateur/', '/MaverickCenter/'), true);
   assert.equal(groupIsCurrent(objets, '/wiki/ressources/armures/'), true);
   assert.equal(groupIsCurrent(objets, '/wiki/races/'), false);
+});
+
+test('la 2e ligne suit la rubrique de la page, ou la première par défaut', () => {
+  assert.equal(activeGroup('/wiki/ressources/alchimie/').key, 'objets');
+  assert.equal(activeGroup('/').key, 'regles');
+  assert.equal(activeGroup('/recherche/').key, 'regles');
 });
