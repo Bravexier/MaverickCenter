@@ -1,0 +1,17 @@
+---
+import { morceauxAvecEtats } from '../lib/sort-format.mjs';
+import type { Magies } from '../lib/magies';
+import EtatPastille from './EtatPastille.astro';
+
+// Un texte court, en ligne (un passage de cellule), où chaque altération d'état repérée devient une pastille avec infobulle : le même rendu que
+// dans le panneau des effets (Texte.astro), sans paragraphe autour. `etats` est CONSOMMÉ : passer une copie quand le même jeu sert ailleurs.
+interface Props {
+  texte: string;
+  etats: { etatId: string; stade: number | null; forme: string; extrait: string }[];
+  magies: Magies;
+}
+const { texte, etats, magies } = Astro.props;
+const morceaux = morceauxAvecEtats(texte, etats) as { texte: string; etat?: { etatId: string; stade: number | null } }[];
+---
+
+{morceaux.map((p) => (p.etat ? <EtatPastille etat={magies.etats.get(p.etat.etatId)!} texte={p.texte} stade={p.etat.stade} /> : p.texte))}

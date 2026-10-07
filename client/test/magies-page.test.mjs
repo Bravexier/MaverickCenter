@@ -30,6 +30,7 @@ import {
   TEINTE_PAR_DEFAUT,
   valeurDeSort,
 } from '../src/lib/sort-format.mjs';
+import { sansBonus } from '../src/lib/sort-maitrise.mjs';
 import { normalize } from '../src/lib/text.mjs';
 
 const textes = (segs) => segs.map((s) => (s.modif ? `(${s.texte})` : s.texte)).join(' ');
@@ -150,12 +151,29 @@ test('morceauxAvecEtats : l’altération d’état devient une pastille placée
   const autres = lignesEtat();
   assert.deepEqual(morceauxAvecEtats('Rien à voir', autres), [{ texte: 'Rien à voir' }]);
   assert.equal(autres.length, 2);
-  // guillemets et espaces insécables varient entre le texte et l'extrait : la pastille est quand même posée
+  // guillemets et espaces insécables varient entre le texte et l'extrait : la pastille est quand même posée, au mot près
   const insecable = [{ etatId: 'enrage', forme: 'Enragé', extrait: 'Rend la cible « Enragé »' }];
   assert.deepEqual(morceauxAvecEtats('Rend la cible\u00a0«\u202fEnragé\u202f»', insecable).map((x) => x.texte), ['Rend la cible\u00a0«\u202f', 'Enragé', '\u202f»']);
-  // deux fois le même mot dans une phrase : une pastille par ligne d'état, sans chevauchement
+  // la forme de la source peut porter des blancs (espaces insécables autour de « Couardise ») : ils restent dans le texte, hors de la pastille
+  const blancs = [{ etatId: 'couardise', forme: '\u00a0Couardise\u00a0', extrait: 'État «\u00a0Couardise\u00a0»' }];
+  assert.deepEqual(morceauxAvecEtats('État «\u00a0Couardise\u00a0»', blancs).map((x) => x.texte), ['État «\u00a0', 'Couardise', '\u00a0»']);
+  // le MOT : « gel » n'est pas cherché dans « dégelé »
+  const mot = [{ etatId: 'gel', forme: 'gel', extrait: 'dégelé puis gel 1' }];
+  assert.deepEqual(morceauxAvecEtats('dégelé puis gel 1', mot).map((x) => x.texte), ['dégelé puis ', 'gel', ' 1']);
+  // deux lignes d'état sur le même mot : deux pastilles, jamais deux fois la même, sans chevauchement, texte intact
   const deux = [{ etatId: 'brulure', forme: 'brûlure', extrait: 'brûlure 1 puis brûlure 2' }, { etatId: 'brulure', forme: 'brûlure', extrait: 'brûlure 1 puis brûlure 2' }];
-  assert.equal(morceauxAvecEtats('brûlure 1 puis brûlure 2', deux).filter((x) => x.etat).length, 2);
+  const morceauxDeux = morceauxAvecEtats('brûlure 1 puis brûlure 2', deux);
+  assert.deepEqual(morceauxDeux.map((x) => x.texte), ['brûlure', ' 1 puis ', 'brûlure', ' 2']);
+  assert.deepEqual(morceauxDeux.map((x) => Boolean(x.etat)), [true, false, true, false]);
+  assert.equal(deux.length, 0);
+  // une seule ligne d'état dont le mot revient deux fois dans son extrait : une seule pastille (la première), et la ligne est retirée une fois
+  const double = [{ etatId: 'gel', forme: 'gel', extrait: 'gel puis gel' }, { etatId: 'peur', forme: 'peur', extrait: 'autre' }];
+  assert.deepEqual(morceauxAvecEtats('gel puis gel', double).map((x) => [x.texte, Boolean(x.etat)]), [['gel', true], [' puis gel', false]]);
+  assert.deepEqual(double.map((x) => x.etatId), ['peur'], 'seule la ligne placée est retirée de la liste');
+  // un extrait qui revient mot pour mot mais pas la forme dans la zone : rien n'est placé, la ligne reste à placer
+  const absente = [{ etatId: 'poison', forme: 'poison', extrait: 'Inflige stade 1' }];
+  assert.deepEqual(morceauxAvecEtats('Inflige stade 1', absente), [{ texte: 'Inflige stade 1' }]);
+  assert.equal(absente.length, 1);
 });
 
 test('lignesDeStat : une ligne par élément (« | » et « / » entouré d’espaces), « /NPM » collé reste entier', () => {
@@ -364,19 +382,23 @@ test('altérations d’état : de quoi remplir l’infobulle (type, magie liée,
   assert.equal(m.etats.get('guide/liste-des-alterations-d-etat#etat:surcharge-magique').magiesLiees.length, 2, 'Surcharge magique : deux magies liées');
 });
 
-test('altérations d’état dans le texte : toutes les altérations repérées trouvent leur place dans la cellule de leur sort (aucun doublon à part)', () => {
-  const COLONNE = { dsb: 'dsb_brut', effets: 'effets' };
+test('altérations d’état dans le texte : sur le chemin réel du gabarit (blocs des effets et de la remarque, segments du D/S/B), toutes les altérations repérées trouvent leur place', () => {
   let placees = 0;
   for (const s of m.sorts.values()) {
-    const brut = db.prepare('SELECT dsb_brut, effets FROM sort WHERE id = ?').get(s.id);
-    for (const champ of ['effets', 'dsb']) {
-      const restantes = s.etats.filter((e) => e.champ === champ);
-      const morceaux = morceauxAvecEtats(brut[COLONNE[champ]] ?? '', restantes);
-      assert.equal(restantes.length, 0, `${s.id} : altération(s) non placée(s) dans ${champ} : ${restantes.map((r) => r.forme)}`);
-      assert.equal(morceaux.map((x) => x.texte).join(''), brut[COLONNE[champ]] ?? '', `${s.id} : le texte n’est pas réécrit`);
-      placees += morceaux.filter((x) => x.etat).length;
-    }
+    const brut = db.prepare('SELECT dsb_brut, effets, remarque FROM sort WHERE id = ?').get(s.id);
+    // panneau « Effets » : les blocs de texte des effets, puis ceux de la remarque, avec la même liste consommée
+    const effets = s.etats.filter((e) => e.champ === 'effets');
+    const textesEffets = [...s.effets, ...s.remarque].flatMap((b) => ('items' in b ? b.items : [b.texte]));
+    for (const t of textesEffets) placees += morceauxAvecEtats(t, effets).filter((x) => x.etat).length;
+    assert.equal(effets.length, 0, `${s.id} : altération(s) non placée(s) dans les effets : ${effets.map((r) => r.forme)}`);
+    // cellule D/S/B : les segments de chaque ligne, comme le tableau
+    const dsb = s.etats.filter((e) => e.champ === 'dsb');
+    const valeur = valeurDeSort(sansBonus(brut.dsb_brut, s.bonus, 'dsb'), { liste: true });
+    for (const ligne of valeur.lignes) for (const seg of ligne) placees += morceauxAvecEtats(seg.texte, dsb).filter((x) => x.etat).length;
+    assert.equal(dsb.length, 0, `${s.id} : altération(s) non placée(s) dans le D/S/B`);
     assert.ok(s.etats.every((e) => ['effets', 'dsb'].includes(e.champ)), `${s.id} : champ d'une altération`);
+    // la mise en pastilles ne réécrit jamais le texte
+    for (const t of textesEffets) assert.equal(morceauxAvecEtats(t, s.etats.filter((e) => e.champ === 'effets')).map((x) => x.texte).join(''), t);
   }
   assert.equal(placees, db.prepare('SELECT count(*) AS n FROM sort_etat').get().n);
 });
@@ -390,10 +412,15 @@ test('créatures invoquées : fiche minimale (stats et capacités) pour chacune,
     assert.equal(c.caracteristiques.length, 6, `${c.id} : six caractéristiques`);
     assert.deepEqual(c.caracteristiques.map((k) => k.nom), ['Force', 'Perception', 'Volonté', 'Social', 'Intelligence', 'Agilité'], `${c.id} : ordre de la carte`);
     assert.equal(c.capacites.length, db.prepare('SELECT count(*) AS n FROM creature_capacite WHERE creature_id = ?').get(c.id).n, `${c.id} : capacités`);
+    assert.deepEqual(c.attaques, db.prepare('SELECT brut FROM creature_attaque WHERE creature_id = ? ORDER BY rang').all(c.id).map((a) => a.brut), `${c.id} : dégâts (les attaques de la carte, telles qu'écrites)`);
+    assert.ok(c.attaques.length >= 1, `${c.id} : au moins une attaque`);
   }
   assert.equal(n, db.prepare('SELECT count(*) AS n FROM creature').get().n, 'toutes les créatures sont invoquées par un des trois sorts');
   const boue = [...m.sorts.values()].flatMap((s) => s.invoque).flatMap((i) => i.creatures).find((c) => c.id === 'bestiaire/golem-de-boue');
   assert.deepEqual(boue.capacites.map((k) => [k.nom, k.npmMin]), [['Gluant', null], ['Frappe confuse', 3], ['Camouflage', 5]]);
+  // le qualificatif d'une capacité (« [Non enflammé] ») change son sens : il est dans la fiche
+  const petrole = [...m.sorts.values()].flatMap((s) => s.invoque).flatMap((i) => i.creatures).find((c) => c.id === 'bestiaire/golem-de-petrole');
+  assert.ok(petrole.capacites.some((k) => k.etiquette === 'Non enflammé'), 'étiquette « Non enflammé » du Golem de pétrole');
 });
 
 test('une seule source pour les relations entre magies : la matrice de /wiki/races-et-magies/ lit la base comme les pages de magie', () => {

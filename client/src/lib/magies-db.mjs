@@ -125,7 +125,7 @@ export function chargerMagies(db) {
     'sort_id',
   );
   const etatsDuSort = regrouper(
-    all('SELECT sort_id, etat_id, relation, rang, stade, champ, forme_trouvee, extrait FROM sort_etat ORDER BY sort_id, rang, etat_id'),
+    all('SELECT sort_id, etat_id, rang, stade, champ, forme_trouvee, extrait FROM sort_etat ORDER BY sort_id, rang, etat_id'),
     'sort_id',
   );
   const invocations = regrouper(
@@ -148,6 +148,7 @@ export function chargerMagies(db) {
     ),
     'creature_id',
   );
+  const attaquesDeCreature = regrouper(all('SELECT creature_id, brut FROM creature_attaque ORDER BY creature_id, rang'), 'creature_id');
   const bonusDeCreature = regrouper(all('SELECT creature_id, texte_brut FROM creature_bonus_npm ORDER BY creature_id, rang'), 'creature_id');
   const capacitesDeCreature = regrouper(
     all('SELECT creature_id, npm_min, etiquette, nom, texte FROM creature_capacite ORDER BY creature_id, rang'),
@@ -197,7 +198,7 @@ export function chargerMagies(db) {
       incantation: s.texte_niveau5 ? blocsDeTexte(s.texte_niveau5) : null,
       remarque: blocsDeTexte(s.remarque),
       // altérations d'état repérées dans le texte du sort : la pastille se place dans le texte, sur `forme` (lib/sort-format.mjs#morceauxAvecEtats)
-      etats: (etatsDuSort.get(s.id) ?? []).map((e) => ({ etatId: e.etat_id, relation: e.relation, stade: e.stade, champ: e.champ, forme: e.forme_trouvee, extrait: e.extrait })),
+      etats: (etatsDuSort.get(s.id) ?? []).map((e) => ({ etatId: e.etat_id, stade: e.stade, champ: e.champ, forme: e.forme_trouvee, extrait: e.extrait })),
       // Règles propres du sort quand il invoque des créatures : texte de l'onglet de l'invocation, créatures par bloc, et le tableau
       // des améliorations cadavériques (Animation de mort) puisque la source le porte avec cette invocation.
       invoque: (invocations.get(s.id) ?? []).map((i) => ({
@@ -222,6 +223,8 @@ export function chargerMagies(db) {
             .map(([libelle, brut]) => ({ libelle, brut })),
           caracteristiques: (caracteristiquesDeCreature.get(c.id) ?? []).map((k) => ({ nom: k.nom, valeur: k.valeur })),
           bonus: (bonusDeCreature.get(c.id) ?? []).map((b) => b.texte_brut),
+          // ligne « Dégâts » de la carte : une ligne de texte par attaque, telle qu'écrite
+          attaques: (attaquesDeCreature.get(c.id) ?? []).map((a) => a.brut),
           capacites: (capacitesDeCreature.get(c.id) ?? []).map((k) => ({ nom: k.nom, npmMin: k.npm_min, etiquette: k.etiquette, blocs: blocsDeTexte(k.texte) })),
         })),
       })),

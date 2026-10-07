@@ -67,7 +67,7 @@ race pure (pas de classe raciale). Si le classeur de la fiche est corrigé, reti
 
 Les 15 pages de `/wiki/magies/<magie>/` ne sont **pas** rendues depuis leur Markdown : `components/MagiePage.astro` (avec `MagieSorts`, `SortDetail`, `MagieAffinites`) affiche les lignes
 des tables typées de la base, lues par `client/src/lib/magies-db.mjs` : `magie`, `magie_role`, `magie_resistance`, `etat`, `v_magie_incompatible`, `magie_ethnie_secondaire`, `mode_hyper_effet`,
-`sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `etat`, `etat_magie`, `etat_stade`, `invocation`, `invocation_bloc`, `creature`, `creature_caracteristique`, `creature_bonus_npm`, `creature_capacite`, `creature_effet`, `amelioration_cadaverique`, `regle_magie`.
+`sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `etat`, `etat_magie`, `etat_stade`, `invocation`, `invocation_bloc`, `creature`, `caracteristique`, `creature_caracteristique`, `creature_bonus_npm`, `creature_attaque`, `creature_capacite`, `creature_effet`, `amelioration_cadaverique`, `regle_magie`.
 Le corps Markdown de la page (fabriqué depuis `data/rows`) ne sert plus qu'à la recherche plein texte et aux `[[liens]]`. Restent lus dans le front matter : le titre, les alias, le statut, et la
 section « Disponibilité par race » (`magies_innees` des pages de race, avec l'exception du Nain, voir plus haut). Une page de magie sans ligne dans `magie` (la magie d'exemple) garde le rendu Markdown.
 
@@ -89,11 +89,14 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   la note de cellule) et le texte du sort de niveau 5 (`sort.texte_niveau5`) sans intitulé propre. Les **altérations d'état** repérées dans le texte (`sort_etat`, un index dérivé du texte, non exhaustif) sont des **pastilles placées dans le texte**,
   sur le mot de la source, pas une liste à part ; chacune renvoie à sa section de `/wiki/guide/liste-des-alterations-d-etat/` et a une **infobulle** (type, magie liée, effet de chaque stade ; le stade cité est mis en avant : `etat`, `etat_magie`, `etat_stade`).
   Les mêmes infobulles servent aux altérations d'état des résistances et vulnérabilités de la magie. Pas de source citée, pas de liste des créatures qui lancent le sort.
-  Quand le sort a **ses propres règles**, un bloc dédié : pour une invocation (Animation de mort, Appel aux Golems, Marionnette de l'ombre) les règles de l'onglet de l'invocation (**repliées** par défaut), pour Animation de mort le tableau
-  « AMELIORATION CADAVERIQUE » (replié aussi) et la liste des créatures invoquées par bloc : **un clic sur le nom d'une créature ouvre sa fiche minimale sous la liste** (stats : santé, chakra, barrière, défense, vitesse, les six caractéristiques ; capacités),
-  un bouton « Bestiaire » à côté du nom mène à sa page. Sans JavaScript, tous les panneaux et fiches sont affichés.
-- **Infobulles** (`components/Bulles.astro`, `Info.astro`, `EtatPastille.astro`) : au survol, au focus clavier ou au toucher, en position fixe près du déclencheur (le tableau défile et couperait une bulle absolue), Échap la ferme ; sans JavaScript l'attribut `title`
-  du déclencheur donne le même contenu en texte simple. La bulle n'est faite que d'éléments « en ligne » : une pastille est posée dans un paragraphe, où un bloc fermerait le `<p>`.
+  Quand le sort a **ses propres règles**, un bloc dédié : pour une invocation (Animation de mort, Appel aux Golems, Marionnette de l'ombre) les règles de l'onglet de l'invocation (**repliées** par défaut, dans un `<details>`), pour Animation de mort le tableau
+  « AMELIORATION CADAVERIQUE » (replié aussi) et la liste des créatures invoquées par bloc : **un clic sur le nom d'une créature ouvre sa fiche minimale juste sous son bloc** (stats : santé, chakra, barrière, défense, vitesse ; dégâts : ses attaques,
+  telles qu'écrites ; les six caractéristiques ; capacités avec leur NPM minimum et leur qualificatif « [Non enflammé] »), un bouton « Bestiaire » à côté du nom mène à sa page. Sans JavaScript, les panneaux des sorts, les fiches et la règle du NPM 5 sont affichés ;
+  les règles d'invocation et l'annexe restent dans leur `<details>` replié.
+- **Infobulles** (`components/Bulles.astro`, `Info.astro`, `EtatPastille.astro`) : au survol (la bulle reste ouverte quand le pointeur passe dessus), au focus clavier (Échap ferme la bulle seule, pas le panneau du sort) ou au toucher (un premier appui ouvre la bulle,
+  un second suit le lien d'une pastille d'état), en position fixe près du déclencheur, bornée à l'écran (le tableau défile et couperait une bulle absolue) ; sans JavaScript l'attribut `title` du déclencheur donne le même contenu en texte simple. La bulle n'est faite que
+  d'éléments « en ligne » (`<span>`) : une pastille est posée dans un paragraphe, où un bloc fermerait le `<p>` et ferait fuir le contenu de la bulle (`test/magies-html.test.mjs` le vérifie sur le site construit, ainsi que le câblage `aria-*`).
+- **Sources** : ni « Source : … » dans le panneau d'un sort, ni section « Sources » en pied de page des pages de magie (`sources:` reste dans le front matter pour la traçabilité).
 - **Chaque élément renvoie à sa page** : magie → page de la magie, altération d'état → sa section de `/wiki/guide/liste-des-alterations-d-etat/` (l'ancre est celle du titre `## <nom>`, vérifiée par
   le test), créature ou invocation → page du bestiaire, race → page de la race.
 - `Résistances` et `Vulnérabilités` = `magie_resistance` (cibles « magie » et « état », écriture de la source sur la pastille), `Magie non compatible` = `v_magie_incompatible` (relation symétrique)
@@ -103,7 +106,7 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
 ## Niveaux de maîtrise (NM) des sorts
 
 Chaque sort existe sur plusieurs niveaux de maîtrise (0 à 3 NM, jamais plus de 3). Un NM s'obtient par niveau du personnage (à partir du niveau 2, redistribuable parmi les sorts choisis), par la lecture d'un livre de
-sort (fixe, propre au sort) ou par un cadeau du MJ (fixe ou flexible) ; ces trois sources s'ajoutent (légende `N`, `L`, `C` de `legende_sort`). Un sort est renforcé à chaque NM, ou quand il atteint 3 NM : devenir IC, coût
+sort (fixe, propre au sort) ou par un cadeau du MJ (fixe ou flexible) ; ces trois sources s'ajoutent (codes `N`, `L`, `C` de la table `legende_sort`, qui n'est plus affichée sur les pages). Un sort est renforcé à chaque NM, ou quand il atteint 3 NM : devenir IC, coût
 en chakra qui baisse, portée, zone, dégâts / soins / barrière, effet secondaire en plus. Les cellules du classeur l'écrivent dans des notations variées (`(+1d6/NM)`, `(-5/NM)`, `3NM = …`, `IC pour 3 NM`, `à 3NM`, `au niveau 3 de maîtrise`).
 
 - **`sort_bonus_maitrise`** : une ligne par expression de NM, **exhaustive** (elle remplace l'index `sort_progression_nm` qui ne retenait que deux formes dans cinq colonnes). `champ` = la colonne où l'expression est écrite

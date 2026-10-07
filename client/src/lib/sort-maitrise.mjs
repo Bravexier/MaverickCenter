@@ -49,9 +49,17 @@ export function sansBonus(brut, bonus, champ) {
   return texte === brut ? brut : texte.replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+$/gm, '').replace(/^[ \t]+/gm, '').trim();
 }
 
-/** Lignes du bonus de maîtrise d'un sort pour l'affichage : { champ, libelle, texte } dans l'ordre de lecture (le passage de la cellule qui dit ce que l'expression modifie). */
-export function lignesDeBonus(bonus) {
-  return bonus.map((b) => ({ champ: b.champ, libelle: LIBELLES_CHAMP_NM[b.champ], nature: b.nature, texte: b.contexte }));
+// À l'écran, la note de cellule d'un sort (champ « remarque ») est lue sous « Effets » avec le texte des effets : son bonus de maîtrise porte la même étiquette.
+// La colonne `sort.bonus_maitrise` de la base garde l'étiquette de la colonne d'origine (« Remarque »).
+const LIBELLES_AFFICHES_NM = { ...LIBELLES_CHAMP_NM, remarque: 'Effets' };
+
+/**
+ * Lignes du bonus de maîtrise d'un sort : { champ, libelle, texte } dans l'ordre de lecture (le passage de la cellule qui dit ce que l'expression modifie).
+ * @param {{ affiche?: boolean }} [options] affiche : étiquettes de l'écran (la note de cellule est « Effets ») ; sinon celles de la colonne de la base
+ */
+export function lignesDeBonus(bonus, { affiche = false } = {}) {
+  const libelles = affiche ? LIBELLES_AFFICHES_NM : LIBELLES_CHAMP_NM;
+  return bonus.map((b) => ({ champ: b.champ, libelle: libelles[b.champ], nature: b.nature, texte: b.contexte }));
 }
 
 /**

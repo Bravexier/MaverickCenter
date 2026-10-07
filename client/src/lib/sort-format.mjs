@@ -152,7 +152,11 @@ export function morceauxAvecEtats(texte, restantes) {
     const debut = N.indexOf(pourComparer(r.extrait));
     if (debut < 0) continue;
     const zone = N.slice(debut, debut + r.extrait.length);
-    const re = new RegExp(echapperRegExp(pourComparer(r.forme)), 'giu');
+    // le mot lui-même, entre deux non-lettres : « gel » n'est pas cherché dans « dégelé », et les blancs de la forme (espaces insécables
+    // laissés par la source autour de « Couardise ») restent dans le texte, hors de la pastille
+    const forme = pourComparer(r.forme).trim();
+    if (!forme) continue;
+    const re = new RegExp(`(?<![\\p{L}])${echapperRegExp(forme)}(?![\\p{L}])`, 'giu');
     for (let m = re.exec(zone); m; m = re.exec(zone)) {
       const a = debut + m.index;
       const b = a + m[0].length;
@@ -232,10 +236,3 @@ const TEINTES = {
 };
 export const TEINTE_PAR_DEFAUT = 24;
 export const teinteDeMagie = (nom) => TEINTES[normalize(nom ?? '')] ?? TEINTE_PAR_DEFAUT;
-
-/** Mot de l'état qui lie un sort à une altération (table sort_etat.relation) : « inflige », « prend » (jet raté), « soigne ». */
-export const RELATIONS_ETAT = {
-  inflige: 'Inflige',
-  prend: 'Jet pour ne pas subir',
-  soigne: 'Soigne',
-};
