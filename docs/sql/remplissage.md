@@ -61,7 +61,7 @@ Un `.md` fabriqué qu'on modifie est écrasé au prochain `db:export-pages` tant
 Un changement de structure se fait par une **migration** `data/migrations/NNNN-<nom>.sql` (additive : nouvelle table, `ADD COLUMN` facultatif ; cassante : avec le SQL explicite) : modifier `data/schema.sql`
 (nouvelle colonne **en dernier**, `PRAGMA user_version` + 1), écrire la migration, puis **avant de commiter** `npm run db:migrate -- ../data/migrations/NNNN-<nom>.sql` (dans `client/`). Il transforme les lignes
 déjà commitées, sans accéder aux classeurs : reconstruit la base de la version précédente (schéma du dernier commit), exécute la migration, vérifie que le schéma obtenu est exactement `data/schema.sql`,
-et réécrit `data/rows` avec la nouvelle version. Voir `docs/sql/conception.md` §10.1. Migration en place : `0002-remarque.sql`.
+et réécrit `data/rows` avec la nouvelle version. Voir `docs/sql/conception.md` §10.1. Migrations en place : `0002-remarque.sql` (nouvelle colonne), `0003-orthographe-magies.sql` (migration de **données** : seules les lignes changent, avec un registre `.json` des corrections ; la version du schéma monte quand même d'un cran).
 
 ## La colonne `remarque`
 

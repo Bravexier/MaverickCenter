@@ -43,7 +43,7 @@ test('la note de « Laser noir » est directement dans la ligne du sort', () => 
 
 test('plusieurs notes sur une ligne : réunies dans l’ordre, séparées par une ligne vide ; sans note, la remarque est vide (NULL)', () => {
   const r = db.prepare("SELECT remarque FROM sort WHERE id = 'magies/magie-de-la-corruption#sort:verrouillage-magique'").get();
-  assert.equal(r.remarque, 'Si la cible est dans la posture indiquée à ce moment là, il doit changer de posture de suite.\n\nLes verrouillages ne se cumule pas.');
+  assert.equal(r.remarque, 'Si la cible est dans la posture indiquée à ce moment-là, il doit changer de posture de suite.\n\nLes verrouillages ne se cumulent pas.');
   assert.equal(db.prepare('SELECT count(*) AS n FROM competence WHERE remarque IS NOT NULL').get().n, 0, 'aucune note sur les compétences : aucune remarque inventée');
   const sansNote = db.prepare("SELECT count(*) AS n FROM sort s WHERE remarque IS NULL AND NOT EXISTS (SELECT 1 FROM note_cellule n WHERE n.entite_table = 'sort' AND n.entite_id = s.id)").get().n;
   assert.equal(sansNote, db.prepare('SELECT count(*) AS n FROM sort WHERE remarque IS NULL').get().n);
@@ -86,7 +86,7 @@ test('db:migrate : refuse un schéma précédent dont la version ne précède pa
   const r = spawnSync('python3', ['-I', join(racine, 'tools', 'db', 'migrer.py'), join(dir, 'm.sql'), '--rows', rows, '--schema-ancien', join(racine, 'data', 'schema.sql')], { encoding: 'utf8' });
   assert.equal(r.status, 1);
   assert.match(r.stdout, /les versions se suivent une à une/);
-  assert.equal(readFileSync(join(rows, 'VERSION'), 'utf8'), 'schema_version=2\n', 'rien n’est écrit');
+  assert.equal(readFileSync(join(rows, 'VERSION'), 'utf8'), readFileSync(join(racine, 'data', 'rows', 'VERSION'), 'utf8'), 'rien n’est écrit');
 });
 
 test('la migration 0002 est additive : colonnes facultatives ajoutées et remplies, rien n’est supprimé ni réécrit', () => {

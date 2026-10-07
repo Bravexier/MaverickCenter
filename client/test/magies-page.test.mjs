@@ -166,7 +166,7 @@ test('15 magies : 14 ont 23 sorts (5 par NPM de 1 à 4, 3 au NPM 5), Potentiel I
     assert.deepEqual(sortsParNpm(magie.sorts).map((g) => [g.niveau, g.sorts.length]), [[1, 5], [2, 5], [3, 5], [4, 5], [5, 3]], magie.id);
   }
   assert.equal(m.magies.get('magies/potentiel-illimite').sorts.length, 0);
-  assert.equal(m.magies.get('magies/potentiel-illimite').banniere, 'MAGIE DIFFICILE A JOUER !!');
+  assert.equal(m.magies.get('magies/potentiel-illimite').banniere, 'MAGIE DIFFICILE À JOUER !!');
 });
 
 test('identifiants de sort : « <magie>#sort:<slug> », slug unique dans la magie, deux magies peuvent avoir un sort du même nom', () => {
@@ -270,7 +270,7 @@ test('incompatibilités symétriques ; la phrase libre de la Corruption est gard
     assert.ok(!magie.incompatibles.includes(magie.id));
   }
   const corruption = m.magies.get('magies/magie-de-la-corruption');
-  assert.match(corruption.incompatibiliteNote, /mono magie uniquement/);
+  assert.match(corruption.incompatibiliteNote, /mono-magie uniquement/);
   assert.deepEqual(corruption.ethniesSecondaires.map((e) => e.nom), ['Elfe Noir Charbon', 'Elfe Noir Salé', 'Felfe Noir']);
 });
 
@@ -297,8 +297,8 @@ test('ressources offertes, rôles et 4ème barre', () => {
   assert.equal(sang.chakra, 0);
   assert.equal(sang.barre4.ressource, 'sang');
   assert.equal(m.magies.get('magies/magie-du-feu').barre4, null);
-  assert.deepEqual(m.magies.get('magies/magie-du-feu').roles.map((r) => r.brut), ['DÉGATS', 'ENTRAVE', 'RENFORCEMENT']);
-  assert.equal(m.magies.get('magies/potentiel-illimite').caracteristique.brut, 'AU CHOIX ou ALEATOIRE');
+  assert.deepEqual(m.magies.get('magies/magie-du-feu').roles.map((r) => r.brut), ['DÉGÂTS', 'ENTRAVE', 'RENFORCEMENT']);
+  assert.equal(m.magies.get('magies/potentiel-illimite').caracteristique.brut, 'AU CHOIX ou ALÉATOIRE');
   assert.equal(m.magies.get('magies/magie-du-feu').caracteristique.brut, 'SOCIAL');
 });
 

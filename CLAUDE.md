@@ -91,6 +91,8 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   (`choix_exclusif_avec`, symétrique), une spécialité exclut l'autre ; l'Archimage n'a pas de spécialité mais des groupes par palier
   (`lib/capacites.mjs`, `lib/classe-bonus.mjs`, `test/capacites-content.test.mjs`). Le +4 AM d'une classe raciale se lit dans le texte de la capacité
   de niveau 10 de sa 2ᵉ spécialité (« considérer comme classe magique »). Voir `docs/content-guide.md`.
+- Orthographe des sorts et des magies : corrigée **dans la base** par la migration de données `0003-orthographe-magies` (500 corrections, registre `.json` ; test `client/test/orthographe-magies.test.mjs`).
+  Un nom de sort fautif n'est pas corrigé à la main : son identifiant (`<magie>#sort:<nom_cle>`) changerait. Les points en attente du propriétaire sont dans `docs/sql/orthographe-a-valider.md`.
 - `npm run autolink` (aperçu) / `-- --write` : maillage automatique des pages, voir `docs/content-guide.md`.
 - Le générateur ne gère ni compétences, ni équipement, ni dés (voir `docs/character-generator.md`).
 
