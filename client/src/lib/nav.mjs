@@ -1,7 +1,8 @@
-// Arborescence du menu principal (deux niveaux). Module pur, sans dépendance Astro/navigateur.
+// Arborescence du menu principal (deux lignes). Module pur, sans dépendance Astro/navigateur.
+// Ligne 1 = les rubriques (`NAV`), ligne 2 = les `items` de la rubrique sélectionnée.
 // `path` : chemin relatif du site (sans préfixe de déploiement). Sans `path`, l'entrée est affichée
 // grisée « bientôt » : la page n'existe pas encore (on n'invente pas de contenu).
-// `links` : pages liées, affichées sous l'entrée (ex. les pages incluses dans « Armes et armures »).
+// « Armes et armures » du plan est éclaté en ses pages (armes, armures, boucliers, bâtons, pièces élémentaires).
 export const NAV = [
   {
     key: 'regles',
@@ -19,26 +20,14 @@ export const NAV = [
     key: 'objets',
     label: 'Objets et artisanat',
     items: [
-      {
-        label: 'Armes et armures',
-        path: 'wiki/ressources/armes/',
-        links: [
-          { label: 'Armes', path: 'wiki/ressources/armes/' },
-          { label: 'Armures', path: 'wiki/ressources/armures/' },
-          { label: 'Boucliers', path: 'wiki/ressources/bouclier/' },
-          { label: 'Bâtons magiques', path: 'wiki/ressources/baton-magique/' },
-          { label: 'Pièces élémentaires', path: 'wiki/ressources/pieces-elementaires/' },
-        ],
-      },
+      { label: 'Armes', path: 'wiki/ressources/armes/' },
+      { label: 'Armures', path: 'wiki/ressources/armures/' },
+      { label: 'Boucliers', path: 'wiki/ressources/bouclier/' },
+      { label: 'Bâtons magiques', path: 'wiki/ressources/baton-magique/' },
+      { label: 'Pièces élémentaires', path: 'wiki/ressources/pieces-elementaires/' },
       { label: 'Alchimie', path: 'wiki/ressources/alchimie/' },
-      {
-        label: 'Livres, parchemins et accessoires magiques',
-        path: 'wiki/ressources/livre-parchemin/',
-        links: [
-          { label: 'Livres et parchemins', path: 'wiki/ressources/livre-parchemin/' },
-          { label: 'Accessoires', path: 'wiki/ressources/accessoires/' },
-        ],
-      },
+      { label: 'Livres et parchemins', path: 'wiki/ressources/livre-parchemin/' },
+      { label: 'Accessoires', path: 'wiki/ressources/accessoires/' },
     ],
   },
   {
@@ -64,14 +53,19 @@ export const NAV = [
   },
 ];
 
-/** Tous les chemins référencés par le menu (entrées et pages liées). */
+/** Tous les chemins référencés par le menu. */
 export function navPaths(nav = NAV) {
-  return nav.flatMap((g) => g.items.flatMap((i) => [i.path, ...(i.links ?? []).map((l) => l.path)])).filter(Boolean);
+  return nav.flatMap((g) => g.items.map((i) => i.path)).filter(Boolean);
 }
 
 /** Vrai si `pathname` (avec préfixe de déploiement `base`) est dans la section d'un groupe. */
 export function groupIsCurrent(group, pathname, base = '/') {
   const prefix = base.replace(/\/$/, '') + '/';
   const rel = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : pathname.replace(/^\//, '');
-  return group.items.some((i) => [i.path, ...(i.links ?? []).map((l) => l.path)].some((p) => p && (rel === p || (p !== 'wiki/' && rel.startsWith(p)))));
+  return group.items.some((i) => i.path && (rel === i.path || (i.path !== 'wiki/' && rel.startsWith(i.path))));
+}
+
+/** Rubrique à ouvrir pour cette page : celle de la page, sinon la première (accueil, recherche…). */
+export function activeGroup(pathname, base = '/', nav = NAV) {
+  return nav.find((g) => groupIsCurrent(g, pathname, base)) ?? nav[0];
 }
