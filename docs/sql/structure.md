@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 1 : 135 tables, 2 tables de recherche plein texte (FTS5) et 28 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 2 : 135 tables, 2 tables de recherche plein texte (FTS5) et 28 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -137,6 +137,7 @@ Les six caractéristiques (Personnage!B18:R19). Valeurs de base, bornes et bonus
 | `ordre` | INTEGER | oui | unique | ordre de la fiche : Force, Volonté, Intelligence, Perception, Social, Agilité |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `competence`
 
@@ -152,6 +153,7 @@ Les 30 compétences : 5 par caractéristique (Personnage!B22:B36 et O22:O36). «
 | `description` | TEXT | non |  | phrase du guide « Compétences » (italiques retirés, [[liens]] conservés) ; NULL quand le guide ne décrit pas cette compétence (Calme : le guide écrit « Prouesse », voir ecart_source) |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `niveau_global`
 
@@ -201,6 +203,7 @@ Valeurs par palier de niveau global lues dans les formules de la fiche (BDD!K28,
 | `formule` | TEXT | oui |  | cellule et formule d'origine |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `regle_constante`
 
@@ -216,6 +219,7 @@ Constantes chiffrées de règle. Une ligne = une phrase d'un texte de règle (na
 | `page_id` | TEXT | non | → page.id | page qui présente la phrase (nature 'texte') ; NULL pour une formule |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `entrainement_palier`
 
@@ -257,6 +261,7 @@ Les quatre types de don (guide « Capacités/Don »). Le domaine classes écrit 
 | `ordre` | INTEGER | oui | unique |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `posture`
 
@@ -271,6 +276,7 @@ Les quatre types de don (guide « Capacités/Don »). Le domaine classes écrit 
 | `description` | TEXT | oui |  | paragraphe de présentation de la page « Postures » (avant « Ses effets sont : ») |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `posture_effet`
 
@@ -312,6 +318,7 @@ MAGIE : une ligne par onglet de magie (15 : Potentiel Illimité + 14 magies)
 | `incompatibilite_note` | TEXT | non |  | bloc « Magie non compatible » quand ce n'est PAS une liste de noms de magies (Corruption : phrase) |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `magie_role`
 
@@ -389,6 +396,7 @@ Tableau « AMELIORATION CADAVERIQUE » de la Nécromancie (13 lignes : nom, effe
 | `effet` | TEXT | oui |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `sort`
 
@@ -422,6 +430,7 @@ SORT : une ligne par sort de la table des sorts (14 magies x 23 sorts = 322 ; Po
 | `texte_niveau5` | TEXT | non |  | texte du pied d'onglet (« Textes des sorts de niveau 5 ») titré du nom de ce sort ; NULL quand l'onglet n'en porte pas (ou quand le titre est sans texte) |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  | « Magie Maverick V8 › Sang › AL4:BR6 » |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `sort_type`
 
@@ -542,6 +551,7 @@ Matrice de résistance de la FICHE (Magie!F2:S16) : 15 magies du personnage (lig
 | `valeur` | INTEGER | oui |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `resistance_duo`
 
@@ -554,6 +564,7 @@ Tableau « Résistance Faiblesse » de l'onglet Statistiques du classeur V8 : le
 | `ordre` | INTEGER | oui | unique | rang du couple dans le tableau (1 = Sang + Vide) |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `resistance_combinaison`
 
@@ -585,6 +596,7 @@ Les magies de chaque palier pour un couple. « AUCUNE » n'a pas de ligne. « D.
 | `magie_liee_brut` | TEXT | non |  | cellule « Magie Liée » sur une ligne : « Temps/ Espace », « Arcane/ Corruption » ; NULL pour « / » |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `etat_magie`
 
@@ -636,6 +648,7 @@ Effet d'une altération selon la résistance ou la vulnérabilité de la cible (
 | `description` | TEXT | oui |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `meteo_effet`
 
@@ -670,6 +683,7 @@ Textes d'explication du classeur « Mode hyper et co » (Mode Hyper!AA1, AA14, A
 | `page_id` | TEXT | oui | → page.id |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `mode_hyper_depassement`
 
@@ -698,6 +712,7 @@ Mode super : objets légendaires ou enchantés (Mode Super!A3:T59). Cellule « E
 | `description` | TEXT | non |  | colonne « Description/apparence » |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `mode_hyper_effet`
 
@@ -719,6 +734,7 @@ Effets du mode hyper. Plusieurs lectures du même sujet coexistent et ne disent 
 | `commentaire` | TEXT | non |  | commentaire de cellule du .xlsx (absent du dump JSON) |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ## 5. DIEUX
 
@@ -734,6 +750,7 @@ Noms de la liste déroulante « Dieu choisi » (Personnage!S5, 26 valeurs) et de
 | `dans_liste_magie` | INTEGER | oui |  | 1 = figure dans Magie!X2:X29 (« Notix & Capse » compte pour deux) |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ## 6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)
 
@@ -777,6 +794,7 @@ CLASSE : une ligne par onglet de classe (39)
 | `description` | TEXT | non |  | texte de présentation (AM2). NULL : Anansi, Goleois (titre sans texte), Grenadier (pas de zone de description) |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  | onglet + zones lues (départ, à savoir, description) + cellule du Sommaire |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `specialite`
 
@@ -793,6 +811,7 @@ SPÉCIALITÉ : deux par classe, choisies au niveau de classe 10 Onglet normal : 
 | `description` | TEXT | non |  | NULL : titre sans texte (Tueur, Archer/Grand Archer, Mage Bleu, Anansi, Goleois) ou pas de zone |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `capacite`
 
@@ -816,6 +835,7 @@ CAPACITÉ (aptitude) : une ligne par page `capacites/<slug>` (660). Une aptitude
 | `effet` | TEXT | non |  | bloc d'effet, texte libre (retours à la ligne et listes « - » conservés) |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  | plage de l'aptitude dans l'onglet : « Classe Maverick V7 › Guerrier › P4:U9 » |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `objet_depart`
 
@@ -830,6 +850,7 @@ OBJETS DE DÉPART Glossaire « OBJETS DES INVENTAIRES DE DEPART » (Sommaire!A21
 | `ordre` | INTEGER | oui | unique | rang dans la cellule du glossaire |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `classe_objet_depart`
 
@@ -920,6 +941,7 @@ RACE : une ligne par race (27 dans les cinq onglets du classeur ; le guide dit �
 | `don_base_effets` | TEXT | non |  | 3e partie : 'Permet de récupérer 2d6 chakra (jet de calme en stress).' (texte, non analysé) |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  | « Fiche auto V15.2.2 › Race › A3:W3 ; Les races › première feuille › A2:B2 » |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `race_restriction_carac`
 
@@ -957,6 +979,7 @@ ETHNIE : une ligne par ligne de l'onglet « Bonus Race » (96) : sous-race, orig
 | `bonus_vitesse` | INTEGER | non |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  | « Fiche auto V15.2.2 › Bonus Race › A6:N6 » |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `ethnie_resistance`
 
@@ -1013,6 +1036,7 @@ RACE_MAGIE : matrice « Accessibilité Magie » : 27 races x 15 magies = 405 lig
 | `ordre` | INTEGER | oui | unique | ordre de l'onglet, de gauche à droite : du plus favorable au plus défavorable |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `peuple`
 
@@ -1027,6 +1051,7 @@ Un peuple = une étiquette de l'onglet (« Elfe Forestier Forêt », « Humain C
 | `race_id` | TEXT | non | → race.id | rapprochement INFORMATIF : l'unique race dont le titre commence le nom ; NULL sinon |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `relation_peuple`
 
@@ -1057,6 +1082,7 @@ INVOCATION : une ligne par onglet du classeur (3) Une « invocation » est un TY
 | `tableau_titre` | TEXT | non |  | titre du tableau posé à droite des cartes (AP40 de « Animation des morts » : « TABLEAU "AMELIORATION CADAVERIQUE" »), NULL = aucun. Le CONTENU de ce tableau (13 lignes) est la table amelioration_cadaverique du domaine magies : le même tableau figure dans les deux classeurs (identité vérifiée à l'import) ; une seule copie, pas de doublon ici. |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `invocation_capacite_commune`
 
@@ -1072,6 +1098,7 @@ Capacités communes d'une invocation : la liste « ▸ Toutes ces créatures ont
 | `texte` | TEXT | oui |  | le reste de l'élément |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `invocation_resistance`
 
@@ -1106,6 +1133,7 @@ BLOC : une ligne de marge du classeur (A13:C16, A42:C45…) = une combinaison de
 | `ep` | INTEGER | non |  | N de « EPN » (onglet Marionette seulement). Le sigle EP n'est défini nulle part dans le classeur : conservé tel quel, sans traduction. |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `invocation_bloc_magie`
 
@@ -1154,6 +1182,7 @@ CREATURE : une ligne par carte (63 = 30 golems/poupées + 28 non-morts + 5 mario
 | `fpvsia_brut` | TEXT | non |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  | « Invocation › Appel aux golems › D1:R28 » (la carte entière) |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `creature_ressource`
 
@@ -1224,6 +1253,7 @@ ATTAQUES : ligne « Dégâts » de la carte, une ligne de texte par attaque « P
 | `cout_chakra` | INTEGER | non |  | « (5 chakra) » |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  | plage de la cellule « Dégâts » (G11:R12) |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `creature_attaque_type`
 
@@ -1256,6 +1286,7 @@ CAPACITÉS : cellule « Capacité(s) », un paragraphe (séparé par une ligne v
 | `donnees` | TEXT | non |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  | plage de la cellule « Capacité(s) » (G19:R28) |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `creature_capacite_sort`
 
@@ -1319,6 +1350,7 @@ Monnaies de l'onglet « Équipement inventaire » (MONNAIE A3:D7 et CONVERTISSEU
 | `convertisseur_brut` | TEXT | non |  | ligne du CONVERTISSEUR telle qu'écrite (« 1 RO : 100 RF ») ; NULL pour le RF (aucune ligne) |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `constante_equipement`
 
@@ -1333,6 +1365,7 @@ Constantes chiffrées que la source écrit dans ses textes de règles et dont le
 | `page_id` | TEXT | oui | → page.id |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `niveau_alchimie`
 
@@ -1345,6 +1378,7 @@ Niveaux de difficulté des recettes d'alchimie : Novice < Apprenti < Avancé < E
 | `rang` | INTEGER | oui | unique | 1 = Novice |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `affinite`
 
@@ -1357,6 +1391,7 @@ Affinités alchimiques (colonne « Affinité » des listes d'ingrédients et cel
 | `nb_composantes` | INTEGER | oui |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `arme_famille`
 
@@ -1373,6 +1408,7 @@ Familles d'armes = bandeaux de l'onglet « Armes » (12 : ÉPÉES - D10, DAGUES 
 | `ordre` | INTEGER | oui | unique | rang du bandeau de gauche à droite |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `arme_type`
 
@@ -1390,6 +1426,7 @@ Types d'armes = table BDD!AD2:AF14 de la fiche automatique (13 types) : dé de d
 | `portee_brut` | TEXT | oui |  | « 1-2 » |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `ressource`
 
@@ -1409,6 +1446,7 @@ Types d'armes = table BDD!AD2:AF14 de la fiche automatique (13 types) : dé de d
 | `ordre` | INTEGER | non |  | rang dans sa liste (de haut en bas) |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `materiau_arme`
 
@@ -1426,6 +1464,7 @@ Matériau d'arme : onglet Armes › MATERIAUX (14 matières ; effet = « Dégât
 | `ordre` | INTEGER | oui |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `materiau_armure`
 
@@ -1444,6 +1483,7 @@ Matériau d'armure : « Fiches des matières de la grille » (en-têtes de colon
 | `ordre` | INTEGER | oui |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `materiau_bouclier`
 
@@ -1567,6 +1607,7 @@ Types de fioles de verre du Doc (table « Type de fiole en verre | Niveau | Nomb
 | `ordre` | INTEGER | oui | unique |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `recette`
 
@@ -1587,6 +1628,7 @@ Une recette = une façon d'obtenir un ou plusieurs produits. genre 'materiau' : 
 | `test_carac_2_id` | TEXT | non | → caracteristique.id |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `recette_produit`
 
@@ -1633,6 +1675,7 @@ Bâtons magiques (onglet Bâton magique › « Bonus passifs » : 14 magies x 3 
 | `recette_id` | TEXT | oui | → recette.id, unique |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `metier`
 
@@ -1655,6 +1698,7 @@ Métiers (Google Doc « MÉTIER » : une page par métier, 72). `bonus_brut`, `a
 | `avantage_brut` | TEXT | non |  | « Avantage possible » ; NULL si vide (Artisan) |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `metier_bonus`
 
@@ -1720,6 +1764,7 @@ Une ligne par arme listée (161 : 147 + 14 armes de monstres). Les colonnes typ�
 | `ordre` | INTEGER | oui |  | rang dans le bandeau |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `arme_degats`
 
@@ -1766,6 +1811,7 @@ Armes élémentaires (onglet Pièces élémentaires : 11 types d'armes x 14 él�
 | `ordre` | INTEGER | oui |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `armure_emplacement`
 
@@ -1780,6 +1826,7 @@ Emplacements d'armure = onglet Armures › FABRICATION (« Armure | Coût ») : 
 | `ordre` | INTEGER | oui | unique |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `armure`
 
@@ -1807,6 +1854,7 @@ Armures : 231 combinaisons de deux matières (grille matière x matière de l'on
 | `ordre` | INTEGER | oui | unique |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `armure_degats`
 
@@ -1839,6 +1887,7 @@ Armures élémentaires (onglet Pièces élémentaires : 4 catégories x 14 élé
 | `ordre` | INTEGER | oui |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `armure_elementaire_effet`
 
@@ -1864,6 +1913,7 @@ Classes de boucliers (onglet Bouclier › « Classes de boucliers » : Bocle, Ta
 | `categorie_brut` | TEXT | oui |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `bouclier_poids`
 
@@ -1878,6 +1928,7 @@ Poids de boucliers (onglet Bouclier, liste « Léger / Moyen / Lourd / Très lou
 | `ordre` | INTEGER | oui | unique |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `bouclier`
 
@@ -1896,6 +1947,7 @@ Boucliers préfabriqués (100 : 5 classes x 20 matériaux). La source ne relie p
 | `am` | INTEGER | non |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `amelioration_equipement`
 
@@ -1920,6 +1972,7 @@ Améliorations (+1 à +10) : armes (Armes), armures (Armures), boucliers (Boucli
 | `page_id` | TEXT | oui | → page.id |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `amelioration_total`
 
@@ -1943,6 +1996,7 @@ Ligne « TOTAL » de chaque tableau d'améliorations, telle qu'écrite (« 5 mat
 | `jet` | INTEGER | oui | unique | résultat du 1d4 |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `accessoire_propriete`
 
@@ -1957,6 +2011,7 @@ Ligne « TOTAL » de chaque tableau d'améliorations, telle qu'écrite (« 5 mat
 | `ordre` | INTEGER | oui | unique |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `accessoire_effet`
 
@@ -1982,6 +2037,7 @@ Ligne « TOTAL » de chaque tableau d'améliorations, telle qu'écrite (« 5 mat
 | `ordre` | INTEGER | oui |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `accessoire_effet_gemme`
 
@@ -2026,6 +2082,7 @@ Familiers (onglet Familiers : petits familiers, gros familiers, montures).
 | `ordre` | INTEGER | oui |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `familier_effet`
 
@@ -2058,6 +2115,7 @@ Bâtiments standard (onglet Maison › BATIMENT STANDARD). Les matériaux de con
 | `ordre` | INTEGER | oui | unique |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `machine_guerre`
 
@@ -2075,6 +2133,7 @@ Machines de guerre et de siège (onglet « Machine de GuerreSiège » : ATTAQUE 
 | `ordre` | INTEGER | oui |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `maladie`
 
@@ -2102,6 +2161,7 @@ Maladies : onglet « Maladie » (une ligne par maladie) et gabarit « Maladie V2
 | `ordre` | INTEGER | oui |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `maladie_methode`
 

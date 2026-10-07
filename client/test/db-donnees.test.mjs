@@ -31,7 +31,7 @@ const derive = build.status === 0 ? node('db-derive.mjs', [base]) : build;
 test('db:build construit la base depuis data/rows (schéma, lignes, clés étrangères) puis db:derive calcule liens et plein texte', () => {
   assert.equal(build.status, 0, build.stderr);
   const bilan = JSON.parse(build.stdout);
-  assert.equal(bilan.version, 1);
+  assert.equal(bilan.version, 2);
   assert.ok(bilan.tables >= 133, `tables chargées : ${bilan.tables}`);
   assert.deepEqual(bilan.clesToleres, [], 'aucune clé étrangère tolérée : la base est complète');
   assert.equal(derive.status, 0, derive.stderr);
@@ -84,11 +84,11 @@ test('db:check détecte un défaut injecté (une entité typée qui n’a plus s
 test('db:build refuse un jeu de lignes incomplet ou d’une autre version', () => {
   const copie = join(dir, 'rows-casse');
   cpSync(rows, copie, { recursive: true });
-  writeFileSync(join(copie, 'VERSION'), 'schema_version=2\n');
+  writeFileSync(join(copie, 'VERSION'), 'schema_version=3\n');
   const autreVersion = node('db-build.mjs', ['--out', join(dir, 'x.db'), '--rows', copie]);
   assert.equal(autreVersion.status, 1);
   assert.match(autreVersion.stderr, /version/);
-  writeFileSync(join(copie, 'VERSION'), 'schema_version=1\n');
+  writeFileSync(join(copie, 'VERSION'), 'schema_version=2\n');
   writeFileSync(join(copie, 'zzz.sql'), '-- en trop\n');
   const enTrop = node('db-build.mjs', ['--out', join(dir, 'y.db'), '--rows', copie]);
   assert.equal(enTrop.status, 1);
