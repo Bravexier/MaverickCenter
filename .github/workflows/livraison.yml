@@ -30,10 +30,8 @@ jobs:
     name: Version
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
-    # Une fusion à la fois : chaque incrément part de la version laissée par le précédent.
-    concurrency:
-      group: livraison-version
-      cancel-in-progress: false
+    # Pas de groupe de concurrence ici : GitHub n'y garde qu'un passage en attente et annulerait les autres (fusions perdues).
+    # Des passages simultanés se départagent dans le bot : la poussée atomique de l'un fait échouer l'autre, qui relit et recommence.
     outputs:
       installateurs: ${{ steps.bot.outputs.installateurs }}
       site: ${{ steps.bot.outputs.site }}
@@ -84,7 +82,8 @@ jobs:
   site:
     name: Site (avant la 1.0)
     needs: version
-    if: needs.version.outputs.site != ''
+    # always() : publier ce que le bot a préparé même s'il signale ensuite un problème (sorties vides sinon : rien ne part).
+    if: always() && needs.version.outputs.site != ''
     runs-on: ubuntu-latest
     # Une publication à la fois, la plus récente en dernier (une publication en attente est remplacée par une plus récente).
     concurrency:
@@ -128,7 +127,8 @@ jobs:
   installateur:
     name: Installateur ${{ matrix.livraison.mode }} ${{ matrix.livraison.tag }}
     needs: version
-    if: needs.version.outputs.installateurs != '' && needs.version.outputs.installateurs != '[]'
+    # always() : un hotfix dont la refusion dans dev échoue garde son installateur de production (le bot l'a déjà étiqueté).
+    if: always() && needs.version.outputs.installateurs != '' && needs.version.outputs.installateurs != '[]'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -175,7 +175,11 @@ jobs:
         run: |
           nom=$(basename "$FICHIER")
           if [ "$MODE" = prod ]; then
-            titre="Serveur normal $TAG"; dossier=/srv/maverick-center; options="--latest"
+            # « latest » (ce que suit mise-a-jour.sh) seulement si ce commit est encore le sommet de master : une construction plus
+            # lente ne doit pas faire revenir la production sur une version plus ancienne qu'une autre déjà publiée.
+            sommet=$(git ls-remote origin refs/heads/master | cut -f1)
+            if [ "$sommet" = "$SHA" ]; then latest=true; else latest=false; fi
+            titre="Serveur normal $TAG"; dossier=/srv/maverick-center; options="--latest=$latest"
             usage="Installe ou met à jour le site de production. La base vivante de l'instance (dossier db/) n'est jamais touchée."
           else
             titre="Serveur de test $TAG"; dossier=/srv/maverick-center-test; options="--prerelease --latest=false"

@@ -3,7 +3,7 @@
 // celle de la production à l'instant de l'installation. Nécessite sh, tar et gzip ; sinon les tests sont ignorés.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -43,7 +43,8 @@ test('fabrication : un seul fichier, paramètres remplis, archive contrôlée pa
   assert.match(i.fichier, /maverick-center-v0\.2\.0-install\.sh$/);
   assert.equal(i.PAGES, '8');
   const texte = readFileSync(i.fichier, 'latin1');
-  assert.ok(!texte.includes('@@'), 'aucun paramètre non rempli');
+  const script = texte.slice(0, texte.indexOf('\n__ARCHIVE__\n')); // l'archive compressée peut contenir n'importe quels octets
+  assert.ok(!script.includes('@@'), 'aucun paramètre non rempli');
   assert.match(texte, /^TAG='v0\.2\.0'$/m);
   const v = lancer(i.fichier, ['--verifier']);
   assert.equal(v.code, 0, v.out);
@@ -225,4 +226,63 @@ test('test : base de production en cours d\'écriture (WAL non reporté) copiée
   const copie = new DatabaseSync(join(parent, 'maverick-center-test', 'db', 'maverick.db'));
   assert.equal(copie.prepare('SELECT count(*) AS n FROM t').get().n, 3);
   copie.close();
+});
+
+test('test : liens symboliques dans la base du serveur normal refusés ; db/ lui-même peut être un lien ; droits des fichiers conservés', { skip }, () => {
+  const parent = dossier('liens');
+  const prod = join(parent, 'maverick-center');
+  const iTest = installateur({ mode: 'test', label: 't' }).fichier;
+  assert.equal(lancer(installateur({ label: 'p' }).fichier, ['--dossier', prod]).code, 0);
+
+  // Un lien vers un fichier du serveur normal : le test y écrirait. Refus, rien d'installé.
+  writeFileSync(join(prod, 'db', 'vraie.db'), 'x');
+  symlinkSync(join(prod, 'db', 'vraie.db'), join(prod, 'db', 'lien.db'));
+  let r = lancer(iTest, ['--dossier', join(parent, 'maverick-center-test')]);
+  assert.equal(r.code, 1);
+  assert.match(r.out, /liens symboliques : copie refusée/);
+  assert.ok(!existsSync(join(parent, 'maverick-center-test', 'site')));
+  rmSync(join(prod, 'db', 'lien.db'));
+  rmSync(join(prod, 'db', 'vraie.db'));
+
+  // db/ du serveur normal rangé ailleurs, derrière un lien : copié quand même, base SQLite comprise, droits conservés.
+  const ailleurs = join(parent, 'disque', 'db');
+  mkdirSync(ailleurs, { recursive: true });
+  const base = new DatabaseSync(join(ailleurs, 'maverick.db'));
+  base.exec("CREATE TABLE t (x INTEGER); INSERT INTO t VALUES (42);");
+  base.close();
+  chmodSync(join(ailleurs, 'maverick.db'), 0o640);
+  rmSync(join(prod, 'db'), { recursive: true });
+  symlinkSync(ailleurs, join(prod, 'db'));
+  r = lancer(iTest, ['--dossier', join(parent, 'maverick-center-test')]);
+  assert.equal(r.code, 0, r.out);
+  const copie = new DatabaseSync(join(parent, 'maverick-center-test', 'db', 'maverick.db'));
+  assert.equal(copie.prepare('SELECT x FROM t').get().x, 42);
+  copie.close();
+  assert.equal(statSync(join(parent, 'maverick-center-test', 'db', 'maverick.db')).mode & 0o777, 0o640);
+});
+
+test('racine du système refusée, y compris « // » sous bash', { skip }, () => {
+  const i = installateur().fichier;
+  for (const shell of ['sh', 'bash']) {
+    const r = spawnSync(shell, [i, '--dossier', '//'], { cwd: racine, encoding: 'utf8', env: { PATH: process.env.PATH } });
+    assert.equal(r.status, 1, `${shell} : ${r.stdout}${r.stderr}`);
+    assert.match(r.stdout + r.stderr, /racine du système/);
+  }
+});
+
+test('configuration : une version livrée non modifiée sur place est remplacée ; mise-a-jour.sh est remplacé par renommage', { skip }, () => {
+  const prod = dossier('configuration');
+  const i = installateur().fichier;
+  assert.equal(lancer(i, ['--dossier', prod]).code, 0);
+  assert.equal(lire(prod, '.livre', 'nginx.conf'), lire(prod, 'nginx.conf'));
+  // Simule une livraison précédente dont nginx.conf était différent, jamais touché sur place.
+  writeFileSync(join(prod, 'nginx.conf'), 'ancienne version livrée\n');
+  writeFileSync(join(prod, '.livre', 'nginx.conf'), 'ancienne version livrée\n');
+  const inode = statSync(join(prod, 'mise-a-jour.sh')).ino;
+  const r = lancer(i, ['--dossier', prod]);
+  assert.equal(r.code, 0, r.out);
+  assert.match(lire(prod, 'nginx.conf'), /server/, 'la nouvelle version est posée');
+  assert.ok(!existsSync(join(prod, 'nginx.conf.nouveau')));
+  assert.match(r.out, /nginx\.conf mis à jour par cette livraison : relancez « docker compose up -d »/);
+  assert.notEqual(statSync(join(prod, 'mise-a-jour.sh')).ino, inode, 'nouveau fichier : un mise-a-jour.sh en cours garde l\'ancien');
 });

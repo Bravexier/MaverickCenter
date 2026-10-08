@@ -2,7 +2,7 @@
 // dépôts Git temporaires (un dépôt « distant » nu + des clones), sans GitHub : feature → dev, livraison dev → master (mineure, majeure),
 // hotfix → master avec refusion dans dev, conflits, contrôles des créations de branches et des PR.
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -180,7 +180,7 @@ function fusionner(d, source, cible) {
 }
 function bot(d, ...args) {
   const r = spawnSync('node', [CLI, ...args], { cwd: d.bot, env: ENV, encoding: 'utf8' });
-  return { code: r.status, out: r.stdout + r.stderr, json: r.status === 0 && r.stdout.startsWith('{') ? JSON.parse(r.stdout) : null };
+  return { code: r.status, out: r.stdout + r.stderr, json: r.stdout.startsWith('{') ? JSON.parse(r.stdout) : null };
 }
 /** Une feature de plus, fusionnée dans dev, et le passage du bot. */
 function feature(d, nom) {
@@ -340,16 +340,69 @@ describe('le bot sur un vrai dépôt Git', () => {
     const devAvant = git(distantDe(d), 'rev-parse', 'origin/dev');
     const tagsAvant = tags(d);
     const r = bot(d, 'appliquer', '--base', 'master', '--head', 'hotfix/x', '--pousser');
-    assert.equal(r.code, 1, r.out);
+    assert.equal(r.code, 10, r.out);
     assert.match(r.out, /conflit \(site\.txt\).*feature\/<nom>/);
     assert.equal(git(distantDe(d), 'rev-parse', 'origin/dev'), devAvant);
     assert.deepEqual(tags(d), tagsAvant);
   });
 
+  test('après la 1.0, un hotfix en conflit avec dev garde son installateur de production ; relancé, il ne le refait pas', () => {
+    const d = depot('1.0.0');
+    branche(d, 'feature/a', 'dev', 'site.txt', 'ligne 1 version dev\nligne 2\nligne 3\n');
+    fusionner(d, 'feature/a', 'dev');
+    bot(d, 'appliquer', '--base', 'dev', '--head', 'feature/a', '--pousser');
+    branche(d, 'hotfix/x', 'master', 'site.txt', 'ligne 1 version hotfix\nligne 2\nligne 3\n');
+    fusionner(d, 'hotfix/x', 'master');
+    const devAvant = git(distantDe(d), 'rev-parse', 'origin/dev');
+    const r = bot(d, 'appliquer', '--base', 'master', '--head', 'hotfix/x', '--pr', '41', '--pousser');
+    assert.equal(r.code, 10, r.out);
+    assert.match(r.json.erreur, /conflit \(site\.txt\).*Create a merge commit/);
+    assert.deepEqual(publie(r), [['prod', 'v1.0.0', '1.0.0']], 'règle 9 : le hotfix est livré même si la refusion attend');
+    assert.ok(tags(d).includes('v1.0.0'));
+    assert.equal(git(distantDe(d), 'rev-parse', 'origin/dev'), devAvant, 'dev n\'est pas touchée');
+
+    const r2 = bot(d, 'appliquer', '--base', 'master', '--head', 'hotfix/x', '--pr', '41', '--pousser');
+    assert.equal(r2.code, 10, r2.out);
+    assert.deepEqual(publie(r2), [], 'pas de second installateur pour le même commit');
+    assert.deepEqual(tags(d).filter((t) => t.startsWith('v1.0.0') && !t.includes('test')), ['v1.0.0']);
+  });
+
+  test('une relance (Re-run) d\'un passage déjà fait ne refait pas l\'incrément', () => {
+    const d = depot();
+    fusionner(d, 'dev', 'master');
+    assert.equal(bot(d, 'appliquer', '--base', 'master', '--head', 'dev', '--pr', '7', '--pousser').code, 0);
+    assert.equal(versionDistante(d, 'master'), '0.2.0');
+    const r = bot(d, 'appliquer', '--base', 'master', '--head', 'dev', '--pr', '7', '--pousser');
+    assert.equal(r.code, 10, r.out);
+    assert.match(r.out, /PR #7 a déjà été traitée/);
+    assert.equal(versionDistante(d, 'master'), '0.2.0');
+    assert.equal(versionDistante(d, 'dev'), '0.2.0');
+  });
+
+  test('deux fusions traitées en même temps : aucune n\'est perdue (la poussée atomique départage, le perdant recommence)', async () => {
+    const d = depot();
+    for (const n of ['feature/a', 'feature/b']) {
+      branche(d, n, 'dev');
+      fusionner(d, n, 'dev');
+    }
+    const clones = [cloner(d.dossier, d.distant, 'bot-a'), cloner(d.dossier, d.distant, 'bot-b')];
+    const lancer = (cwd, head, pr) => new Promise((ok) => {
+      const p = spawn('node', [CLI, 'appliquer', '--base', 'dev', '--head', head, '--pr', pr, '--pousser'], { cwd, env: ENV });
+      let out = '';
+      p.stdout.on('data', (b) => { out += b; });
+      p.stderr.on('data', (b) => { out += b; });
+      p.on('close', (code) => ok({ code, out }));
+    });
+    const [a, b] = await Promise.all([lancer(clones[0], 'feature/a', '1'), lancer(clones[1], 'feature/b', '2')]);
+    assert.equal(a.code, 0, a.out);
+    assert.equal(b.code, 0, b.out);
+    assert.equal(versionDistante(d, 'dev'), '0.1.27', 'deux fusions, deux incréments');
+  });
+
   test('fusion hors des règles : refusée, aucune version', () => {
     const d = depot();
     const r = bot(d, 'appliquer', '--base', 'master', '--head', 'claude/x', '--pousser');
-    assert.equal(r.code, 1);
+    assert.equal(r.code, 10);
     assert.match(r.out, /hors des règles/);
   });
 
@@ -359,7 +412,7 @@ describe('le bot sur un vrai dépôt Git', () => {
     assert.equal(r.code, 0, r.out);
     assert.deepEqual(publie(r), [['site', null, '0.1.25']]);
     const m = bot(d, 'regenerer', '--branche', 'master', '--pousser');
-    assert.equal(m.code, 1);
+    assert.equal(m.code, 10);
     assert.match(m.out, /avant la 1\.0, master n'a pas de serveur/);
     assert.deepEqual(tags(d), []);
   });
@@ -399,10 +452,10 @@ describe('le bot sur un vrai dépôt Git', () => {
     assert.equal(verifier('hotfix/ok', shaMaster).code, 0);
     assert.equal(verifier('master', shaMaster).code, 0);
     const nom = verifier('dev/session', shaDev);
-    assert.equal(nom.code, 1);
+    assert.equal(nom.code, 10);
     assert.match(nom.out, /nom de branche interdit/);
     const hotfixDepuisDev = verifier('hotfix/mauvais', shaDev);
-    assert.equal(hotfixDepuisDev.code, 1);
+    assert.equal(hotfixDepuisDev.code, 10);
     assert.match(hotfixDepuisDev.out, /doit partir de master.*de dev absent/);
 
     // Une feature avec ses propres commits (créée puis poussée avec un commit) reste conforme.
@@ -415,7 +468,7 @@ describe('le bot sur un vrai dépôt Git', () => {
     git(d.dev, 'push', '--quiet', 'origin', 'feature/depuis-hotfix');
     git(d.bot, 'fetch', '--quiet', 'origin');
     const r = verifier('feature/depuis-hotfix', shaHotfix);
-    assert.equal(r.code, 1);
+    assert.equal(r.code, 10);
     assert.match(r.out, /doit partir de dev.*hotfix\/en-cours/);
   });
 
@@ -427,8 +480,8 @@ describe('le bot sur un vrai dépôt Git', () => {
     };
     const f = branche(d, 'feature/ok', 'dev');
     assert.equal(pr('dev', 'feature/ok', f).code, 0);
-    assert.equal(pr('master', 'feature/ok', f).code, 1, 'une feature ne va pas dans master');
-    assert.equal(pr('dev', 'feature/ok', f, '--depot-source', 'autre/copie', '--depot', 'o/r').code, 1);
+    assert.equal(pr('master', 'feature/ok', f).code, 10, 'une feature ne va pas dans master');
+    assert.equal(pr('dev', 'feature/ok', f, '--depot-source', 'autre/copie', '--depot', 'o/r').code, 10);
     assert.equal(pr('dev', 'feature/ok', f, '--depot-source', 'O/R', '--depot', 'o/r').code, 0);
 
     git(d.dev, 'checkout', '--quiet', 'feature/ok');
@@ -436,14 +489,14 @@ describe('le bot sur un vrai dépôt Git', () => {
     git(d.dev, 'commit', '--quiet', '-am', 'version à la main');
     git(d.dev, 'push', '--quiet', 'origin', 'feature/ok');
     const v = pr('dev', 'feature/ok', git(d.dev, 'rev-parse', 'HEAD'));
-    assert.equal(v.code, 1);
+    assert.equal(v.code, 10);
     assert.match(v.out, /tenue par le bot/);
 
     // Hotfix fusionnée dans master mais pas encore dans dev : la livraison attend la synchronisation.
     branche(d, 'hotfix/x', 'master');
     fusionner(d, 'hotfix/x', 'master');
     const l = pr('master', 'dev', git(distantDe(d), 'rev-parse', 'origin/dev'));
-    assert.equal(l.code, 1);
+    assert.equal(l.code, 10);
     assert.match(l.out, /refusionnez d'abord master dans dev/);
 
     // Refusion à la main (ce que fait une feature quand celle du bot est en conflit) : une feature qui contient master est permise,
@@ -459,7 +512,7 @@ describe('le bot sur un vrai dépôt Git', () => {
     git(d.dev, 'merge', '--quiet', '--no-ff', '-m', 'Fusionner dev', 'origin/feature/ok');
     git(d.dev, 'push', '--quiet', 'origin', 'hotfix/avec-dev');
     const h = pr('master', 'hotfix/avec-dev', git(d.dev, 'rev-parse', 'HEAD'));
-    assert.equal(h.code, 1);
+    assert.equal(h.code, 10);
     assert.match(h.out, /doit partir de master/);
 
     bot(d, 'appliquer', '--base', 'master', '--head', 'hotfix/x', '--pousser');

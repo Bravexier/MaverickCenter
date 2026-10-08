@@ -14,9 +14,15 @@
 # Planification toutes les 5 minutes, une par instance, par exemple : */5 * * * * sh /srv/maverick-center/mise-a-jour.sh
 # Réglages facultatifs : fichier mise-a-jour.env à côté du script. MODE (prod ou test ; défaut : celui de VERSION), REPO, GITHUB_API,
 #   BASE_DIR (dossier de l'instance ; défaut : celui du script), TOKEN_FILE, LOG_FILE, DOSSIER_PROD (test : serveur normal dont il
-#   copie la base ; défaut : le dossier voisin « maverick-center »).
+#   copie la base ; défaut : le dossier voisin « maverick-center »), SANS_BASE_PROD=1 (test sans serveur normal : base vide).
+# Suspendre les mises à jour (retour à une version précédente, intervention) : créer un fichier GELER dans le dossier de l'instance
+#   (ou GELER=1 dans mise-a-jour.env) ; le supprimer pour reprendre.
 set -eu
 umask 022
+
+# Tout le script est dans une fonction appelée à la dernière ligne : le shell lit le fichier en entier avant d'exécuter quoi que ce
+# soit, même si l'installateur qu'il lance remplace ce fichier entre-temps.
+principal() {
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 # shellcheck disable=SC1091
@@ -56,6 +62,10 @@ case "$MODE" in
   "") die "mode inconnu : $BASE_DIR/VERSION absent (ce dossier n'a pas été posé par un installateur) ; MODE=prod ou MODE=test pour forcer" ;;
   *) die "MODE doit valoir prod ou test (reçu « $MODE »)" ;;
 esac
+if [ -e "$BASE_DIR/GELER" ] || [ "${GELER:-0}" = 1 ]; then
+  log "Mises à jour suspendues (GELER) : rien à faire."
+  exit 0
+fi
 
 [ -r "$TOKEN_FILE" ] || die "jeton GitHub introuvable ou illisible : $TOKEN_FILE"
 TOKEN=$(tr -d ' \r\n\t' < "$TOKEN_FILE")
@@ -127,8 +137,12 @@ sh "$TMP/installateur.sh" --verifier >/dev/null 2>&1 || die "installateur $TAG r
 
 set -- --dossier "$BASE_DIR"
 if [ "$MODE" = test ] && [ -n "$DOSSIER_PROD" ]; then set -- "$@" --dossier-prod "$DOSSIER_PROD"; fi
+if [ "$MODE" = test ] && [ "${SANS_BASE_PROD:-0}" = 1 ]; then set -- "$@" --sans-base-prod; fi
 if sh "$TMP/installateur.sh" "$@" >> "$LOG_FILE" 2>&1; then
   log "Installé : $TAG."
 else
   die "l'installateur $TAG a échoué (détail ci-dessus dans $LOG_FILE)"
 fi
+}
+
+principal "$@"

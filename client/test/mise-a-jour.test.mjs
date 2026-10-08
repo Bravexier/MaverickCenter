@@ -262,3 +262,23 @@ test('verrou : exemplaire déjà en cours = on sort sans rien faire ; verrou pé
   assert.ok(n.has('site/index.html'));
   assert.ok(!n.has('.mise-a-jour.lock'), 'le verrou est retiré en fin de script');
 });
+
+test('GELER suspend les mises à jour (retour à une version précédente) ; SANS_BASE_PROD pour un test sans serveur normal', { skip }, async () => {
+  publier(livraison('v1.3.0-test', { label: 'test seul' }));
+  const t = nas('test-seul', { mode: 'test', env: { SANS_BASE_PROD: '1' } });
+  const res = await t.run();
+  assert.equal(res.code, 0, res.out);
+  assert.equal(t.tag(), 'v1.3.0-test');
+
+  writeFileSync(join(t.base, 'GELER'), '');
+  publier(livraison('v1.3.1-test', { label: 'suivant' }));
+  const avant = state.telechargements;
+  const gel = await t.run();
+  assert.equal(gel.code, 0, gel.out);
+  assert.match(gel.out, /suspendues/);
+  assert.equal(state.telechargements, avant);
+  assert.equal(t.tag(), 'v1.3.0-test');
+  rmSync(join(t.base, 'GELER'));
+  assert.equal((await t.run()).code, 0);
+  assert.equal(t.tag(), 'v1.3.1-test');
+});

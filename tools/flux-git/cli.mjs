@@ -21,7 +21,8 @@ import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  DEV, FAMILLES, MASTER, demandeMajeure, etiquette, livrableDe, planifier, poserVersionJson, typeDeFusion, verifierCreation, verifierPR,
+  DEV, FAMILLES, MASTER, demandeMajeure, etiquette, livrableDe, modeDeEtiquette, planifier, poserVersionJson, typeDeFusion, verifierCreation,
+  verifierPR,
 } from './regles.mjs';
 
 /** Les fichiers qui portent la version (le pied de page du site lit client/package.json). */
@@ -29,6 +30,8 @@ export const FICHIERS_VERSION = ['client/package.json', 'client/package-lock.jso
 const PACKAGE = FICHIERS_VERSION[0];
 
 class Refus extends Error {}
+/** Code de sortie d'une règle enfreinte : distinct de 1 (code d'un plantage de Node) ; la garde ne supprime une branche que sur ce code. */
+export const CODE_REFUS = 10;
 
 function git(args, { ok = [0], entree } = {}) {
   const r = spawnSync('git', args, { encoding: 'utf8', input: entree, maxBuffer: 64 * 1024 * 1024 });
@@ -158,7 +161,7 @@ function synchroniser(source, message) {
     if (restants.length || enConflit.length === 0) {
       git(['merge', '--abort'], { ok: [0, 128] });
       throw new Refus(`la refusion de master dans dev est en conflit (${restants.join(', ') || 'conflit non identifié'}) : `
-        + 'créez une feature/<nom> depuis dev, fusionnez-y master, résolvez, puis ouvrez la PR vers dev');
+        + 'créez une feature/<nom> depuis dev, fusionnez-y master, résolvez, puis ouvrez la PR vers dev (fusion par « Create a merge commit »)');
     }
     for (const [f, texte] of resolus) { writeFileSync(f, texte); git(['add', f]); }
   }
@@ -174,18 +177,71 @@ function pousser(distant, refs) {
   git(['push', '--quiet', '--atomic', distant, ...refs]);
 }
 
-/** Après une fusion de PR : versions, refusion, étiquettes. Réessaie si quelqu'un a poussé entre-temps (la poussée est atomique). */
-function appliquer({ base, head, pr, textes, distant, envoyer, tentatives = 5 }) {
+/** Pause entre deux essais (synchrone : le bot est un script court). */
+function attendre(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/** Commit du bot qui porte déjà cette PR (une relance du workflow ne doit pas incrémenter une seconde fois), ou undefined. */
+function dejaTraitee(pr, distant) {
+  const sujets = sortie(['log', '--format=%s', '-n', '2000', `${distant}/${MASTER}`, `${distant}/${DEV}`]).split('\n');
+  return sujets.find((s) => s.endsWith(`(PR #${pr})`) && (s.startsWith('chore: version v') || s.startsWith('Synchroniser master dans dev')));
+}
+
+const indiceJeton = (message) => (/workflow/i.test(message)
+  ? ' (le jeton du bot n\'a pas la permission « Workflows » : voir BOT_TOKEN dans docs/flux-git.md ; sinon, refusion à la main par une feature/<nom>)'
+  : '');
+
+/**
+ * Après une fusion de PR : versions, refusion, étiquettes. Pas de file d'attente côté GitHub (elle annulerait des fusions) : des passages
+ * simultanés se départagent ici, la poussée atomique de l'un fait échouer celle de l'autre, qui relit les branches et recommence.
+ * Hotfix : l'installateur de production (master n'a pas bougé) est posé d'abord ; si la refusion dans dev échoue ensuite, il reste livré
+ * et le résultat porte `erreur` (le workflow publie ce qui est prêt, puis échoue en le signalant).
+ */
+function appliquer({ base, head, pr, textes, distant, envoyer, tentatives = 10 }) {
   const type = typeDeFusion({ base, head });
   if (!type) throw new Refus(`fusion hors des règles (${head} → ${base}) : aucune version ni publication. Seules feature/<nom> → dev, dev → master et hotfix/<nom> → master sont gérées.`);
   const majeure = type === 'livraison' && demandeMajeure(...textes);
   const ref = pr ? ` (PR #${pr})` : '';
+  let prodDuHotfix; // undefined : pas encore traité ; null : rien à livrer (avant la 1.0) ; sinon la livraison de production déjà étiquetée
   for (let essai = 1; essai <= tentatives; essai += 1) {
+    const reessayer = (e) => {
+      if (essai === tentatives) throw e;
+      console.error(`Poussée refusée (essai ${essai}/${tentatives}), nouvel essai : ${e.message}`);
+      attendre(1000 + Math.floor(Math.random() * 4000));
+    };
     git(['fetch', '--quiet', '--tags', '--force', distant, `+refs/heads/${MASTER}:refs/remotes/${distant}/${MASTER}`, `+refs/heads/${DEV}:refs/remotes/${distant}/${DEV}`]);
+    if (pr) {
+      const fait = dejaTraitee(pr, distant);
+      if (fait) throw new Refus(`la PR #${pr} a déjà été traitée par le bot (« ${fait} ») : rien n'est refait. Pour republier une branche : Actions → Version et livraison → Run workflow.`);
+    }
     const avant = { master: sortie(['rev-parse', `${distant}/${MASTER}`]), dev: sortie(['rev-parse', `${distant}/${DEV}`]) };
     const plan = planifier({ type, versionMaster: versionSur(avant.master), versionDev: versionSur(avant.dev), majeure });
     const apres = { ...avant };
     const journal = [];
+    const existantes = etiquettesExistantes();
+
+    if (type === 'hotfix' && prodDuHotfix === undefined) {
+      const version = versionSur(avant.master);
+      const dejaEtiquete = sortie(['tag', '--points-at', avant.master]).split('\n').find((t) => t && modeDeEtiquette(t) === 'prod');
+      if (dejaEtiquete) {
+        prodDuHotfix = null; // relance après une refusion en échec : l'installateur de ce commit existe déjà
+        journal.push(`production : ${dejaEtiquete} existe déjà pour ce commit`);
+      } else if (livrableDe(MASTER, version) === 'prod') {
+        const tag = etiquette({ mode: 'prod', version, existantes, motif: 'hotfix' });
+        try {
+          if (envoyer) pousser(distant, [`${avant.master}:refs/tags/${tag}`]);
+        } catch (e) {
+          reessayer(e);
+          continue;
+        }
+        existantes.push(tag);
+        prodDuHotfix = { mode: 'prod', branche: MASTER, sha: avant.master, version, tag, type };
+      } else {
+        prodDuHotfix = null;
+      }
+    }
+    const partiel = (message) => ({ type, majeure, journal, livraisons: prodDuHotfix ? [prodDuHotfix] : [], poussee: Boolean(envoyer), erreur: message });
 
     if (plan.master) {
       git(['checkout', '--quiet', '-B', MASTER, avant.master]);
@@ -196,8 +252,13 @@ function appliquer({ base, head, pr, textes, distant, envoyer, tentatives = 5 })
 
     git(['checkout', '--quiet', '-B', DEV, avant.dev]);
     if (plan.dev.synchroniser) {
-      const comment = synchroniser(apres.master, `Synchroniser master dans dev après ${type === 'hotfix' ? `le hotfix ${head}` : 'la livraison'}${ref}`);
-      journal.push(`dev : master refusionnée (${comment})`);
+      try {
+        const comment = synchroniser(apres.master, `Synchroniser master dans dev après ${type === 'hotfix' ? `le hotfix ${head}` : 'la livraison'}${ref}`);
+        journal.push(`dev : master refusionnée (${comment})`);
+      } catch (e) {
+        if (e instanceof Refus && type === 'hotfix') return partiel(e.message);
+        throw e;
+      }
     }
     if (versionSur('HEAD') !== plan.dev.version) {
       const ancienne = versionSur('HEAD');
@@ -207,27 +268,27 @@ function appliquer({ base, head, pr, textes, distant, envoyer, tentatives = 5 })
     }
     apres.dev = sortie(['rev-parse', 'HEAD']);
 
-    const existantes = etiquettesExistantes();
-    const livraisons = plan.livrer.map((mode) => {
+    const livraisons = plan.livrer.filter((mode) => !(type === 'hotfix' && mode === 'prod')).map((mode) => {
       const branche = mode === 'prod' ? MASTER : DEV;
       const version = versionSur(apres[branche]);
       if (mode === 'site') return { mode, branche, sha: apres[branche], version, tag: null, type };
-      const tag = etiquette({ mode, version, existantes, motif: mode === 'prod' && type === 'hotfix' ? 'hotfix' : 'rebuild' });
+      const tag = etiquette({ mode, version, existantes, motif: 'rebuild' });
       existantes.push(tag);
       return { mode, branche, sha: apres[branche], version, tag, type };
     });
+    if (prodDuHotfix) livraisons.unshift(prodDuHotfix);
 
     const refs = [];
     if (apres.master !== avant.master) refs.push(`${apres.master}:refs/heads/${MASTER}`);
     if (apres.dev !== avant.dev) refs.push(`${apres.dev}:refs/heads/${DEV}`);
-    for (const l of livraisons) if (l.tag) refs.push(`${l.sha}:refs/tags/${l.tag}`);
+    for (const l of livraisons) if (l.tag && l !== prodDuHotfix) refs.push(`${l.sha}:refs/tags/${l.tag}`);
     if (!envoyer) return { type, majeure, journal, livraisons, poussee: false };
     try {
       pousser(distant, refs);
       return { type, majeure, journal, livraisons, poussee: true };
     } catch (e) {
-      if (essai === tentatives) throw e;
-      console.error(`Poussée refusée (essai ${essai}/${tentatives}), nouvel essai : ${e.message}`);
+      if (essai === tentatives && type === 'hotfix') return partiel(`refusion de master dans dev impossible à pousser : ${e.message}${indiceJeton(e.message)}`);
+      reessayer(new Error(`${e.message}${indiceJeton(e.message)}`));
     }
   }
   throw new Error('inaccessible');
@@ -287,11 +348,17 @@ try {
     if (process.env.GITHUB_STEP_SUMMARY) {
       const lignes = [`### ${r.type}${r.majeure ? ' (majeure)' : ''}`, '', ...r.journal.map((j) => `- ${j}`),
         ...installateurs.map((l) => `- installateur ${l.mode} : \`${l.tag}\` (${l.branche} ${l.sha.slice(0, 7)})`),
-        ...(site ? [`- site (avant la 1.0) : branche \`site\` reconstruite depuis dev ${site.sha.slice(0, 7)} (v${site.version})`] : [])];
+        ...(site ? [`- site (avant la 1.0) : branche \`site\` reconstruite depuis dev ${site.sha.slice(0, 7)} (v${site.version})`] : []),
+        ...(r.erreur ? [`- **à faire** : ${r.erreur}`] : [])];
       appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lignes.join('\n')}\n`);
+    }
+    // Ce qui était prêt est publié (sorties écrites) ; l'échec signale ce qui reste à faire.
+    if (r.erreur) {
+      console.error(annoter(r.erreur));
+      process.exit(CODE_REFUS);
     }
   }
 } catch (e) {
   console.error(annoter(e.message));
-  process.exit(e instanceof Refus ? 1 : 3);
+  process.exit(e instanceof Refus ? CODE_REFUS : 3);
 }

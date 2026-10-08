@@ -38,8 +38,8 @@ jobs:
           code=$?
           set -e
           [ "$code" -eq 0 ] && exit 0
-          # Code 1 : règle enfreinte. Tout autre code est une panne du contrôle : on ne supprime rien.
-          [ "$code" -eq 1 ] || exit "$code"
+          # Code 10 : règle enfreinte (tools/flux-git/cli.mjs, CODE_REFUS). Tout autre code est une panne du contrôle : on ne supprime rien.
+          [ "$code" -eq 10 ] || exit "$code"
           git push origin --delete "refs/heads/$BRANCHE"
           {
             echo "### Branche « $BRANCHE » supprimée"

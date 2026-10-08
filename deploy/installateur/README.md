@@ -40,9 +40,14 @@ installé), `installation.log`. Un installateur de test refuse un dossier de pro
    ```
 
 Ordre conseillé la première fois : le serveur normal, puis le serveur de test (qui copie sa base). Les mises à jour suivantes n'ont besoin que de
-l'étape 2 : nginx relit les fichiers, aucun redémarrage. Revenir à une version précédente : relancer son installateur. Si `docker-compose.yml` ou
-`nginx.conf` ont été modifiés sur place, ils sont conservés et la version livrée est écrite à côté (`.nouveau`). Port ou nom du conteneur : à changer
-dans `.env`, puis `docker compose up -d`.
+l'étape 2 : nginx relit les fichiers, aucun redémarrage. Port ou nom du conteneur : à changer dans `.env`, puis `docker compose up -d`.
+
+`docker-compose.yml` et `nginx.conf` : une livraison qui les change les remplace si vous ne les avez pas modifiés (l'installateur garde la version
+livrée précédente dans `.livre/` pour le savoir) et vous demande `docker compose up -d` ; si vous les avez modifiés sur place, ils sont conservés et
+la nouvelle version est écrite à côté (`.nouveau`), à reporter à la main.
+
+**Revenir à une version précédente** : créez d'abord un fichier `GELER` dans le dossier de l'instance (sinon la mise à jour automatique réinstalle la
+dernière livraison dans les 5 minutes), puis relancez l'installateur de la version voulue. Supprimez `GELER` une fois une livraison corrigée publiée.
 
 ## Mise à jour automatique
 
@@ -60,7 +65,8 @@ l'exécute s'il n'est pas déjà installé. Connexions sortantes uniquement : au
    (et `…/maverick-center-test/mise-a-jour.sh`).
 
 Serveur de test dont le serveur normal n'est pas le dossier voisin `maverick-center` : créez `mise-a-jour.env` à côté du script avec
-`DOSSIER_PROD=/chemin/du/serveur-normal`. Chaque installation automatique du test reprend une copie fraîche de la base du serveur normal.
+`DOSSIER_PROD=/chemin/du/serveur-normal` (ou `SANS_BASE_PROD=1` pour un serveur de test sans serveur normal, base vide). Un fichier `GELER` dans le
+dossier de l'instance suspend ses mises à jour. Chaque installation automatique du test reprend une copie fraîche de la base du serveur normal.
 Un jeton expiré, un problème réseau ou un installateur abîmé n'abîment rien : l'instance reste telle quelle et `mise-a-jour.log` indique l'erreur.
 
 ## Fabriquer un installateur à la main

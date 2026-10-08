@@ -19,7 +19,9 @@ ou d'une `hotfix/<nom>` ; une PR vers `dev` que d'une `feature/<nom>`.
 
 - **À la création** (`garde-branches.yml`, job `creation-de-branche`) : une branche poussée sur GitHub dont le nom n'est pas permis, ou qui ne part pas
   de la bonne branche, est **supprimée aussitôt**. Le travail n'est pas perdu : il reste dans le dépôt local qui l'a poussée (le résumé du job donne le commit).
-  Cette garde n'agit que si `master` et `dev` existent toutes les deux (avant, le flux n'est pas en place).
+  Cette garde n'agit que si `master` et `dev` existent toutes les deux (avant, le flux n'est pas en place). Limite : c'est un workflow, lu dans le
+  commit de la branche créée ; une branche créée depuis un commit antérieur à ce flux n'est pas contrôlée (les règles GitHub, elles, n'ont pas
+  cette limite).
 - **À chaque PR** (job `regles-de-branches`) : source permise pour la cible, bon point de départ, version de `client/package.json` non modifiée à la main
   (elle est tenue par le bot), et, pour une livraison, `master` déjà refusionnée dans `dev`.
 - **Par GitHub lui-même** (règles importables, `.github/rulesets/`) : création limitée à `feature/**` et `hotfix/**`, `master` et `dev` non supprimables,
@@ -47,9 +49,17 @@ Exemple : `master` et `dev` en `0.1.25` ; deux features → `dev` `0.1.27` ; liv
 un hotfix → `master` reste `0.2.0`, `dev` reçoit le correctif et passe en `0.2.2` ; livraison `[V: X+1]` → les deux en `1.0.0`.
 
 Après une livraison, `dev` rejoint `master` (avance rapide, ou fusion si `dev` a bougé entre-temps). Après un hotfix, `master` est refusionnée dans `dev`.
-Si cette refusion est en conflit (le hotfix et `dev` ont modifié les mêmes lignes), le bot ne pousse rien et le signale ; la refusion se fait alors par une
-`feature/<nom>` créée depuis `dev`, dans laquelle on fusionne `master` et résout les conflits, puis une PR vers `dev`. Seuls les conflits sur la ligne de
-version se résolvent seuls.
+Si cette refusion est en conflit (le hotfix et `dev` ont modifié les mêmes lignes), le bot ne touche pas `dev` et le signale (son passage finit en
+rouge, l'installateur de production du hotfix est quand même publié à partir de la 1.0) ; la refusion se fait alors par une `feature/<nom>` créée
+depuis `dev`, dans laquelle on fusionne `master` et résout les conflits, puis une PR vers `dev`. Seuls les conflits sur la ligne de version se
+résolvent seuls. Même chose si le hotfix modifie `.github/workflows/` et que le bot n'a pas de `BOT_TOKEN` avec la permission *Workflows*.
+
+**Toutes les PR vers `dev` et `master` se fusionnent par « Create a merge commit »** (ni *squash* ni *rebase*) : le bot et les contrôles s'appuient sur
+l'historique des fusions (une refusion faite par *squash* laisserait `master` hors de `dev`, et la livraison suivante serait refusée).
+
+Plusieurs fusions rapprochées sont traitées chacune à leur tour par le bot (il relit les branches et recommence si une autre fusion est passée
+entre-temps). Relancer un passage déjà fait (*Re-run*) ne refait rien : le bot reconnaît la PR à ses commits « (PR #n) » et s'arrête ; pour republier
+une branche, *Actions → Version et livraison → Run workflow*.
 
 ## Ce qui est publié : le site unique, puis deux serveurs à la 1.0
 
@@ -96,16 +106,20 @@ Détails : [`deploy/installateur/README.md`](../deploy/installateur/README.md). 
 
 ```bash
 # Une évolution
-git fetch origin && git switch -c feature/carte-du-monde origin/dev
+git fetch --prune origin && git switch -c feature/carte-du-monde origin/dev
 # … commits …
 git push -u origin feature/carte-du-monde        # puis PR feature/carte-du-monde → dev
 
 # Une correction urgente de la production
-git fetch origin && git switch -c hotfix/lien-casse origin/master
+git fetch --prune origin && git switch -c hotfix/lien-casse origin/master
 git push -u origin hotfix/lien-casse             # puis PR hotfix/lien-casse → master
 
-# Une livraison : PR dev → master (ajouter [V: X+1] au titre pour une version majeure), fusion par « Create a merge commit »
+# Une livraison : PR dev → master (ajouter [V: X+1] au titre pour une version majeure)
+# Toutes les fusions : « Create a merge commit »
 ```
+
+`--prune` : les anciennes branches `dev/…` ont été supprimées pour créer `dev` ; un clone qui garde leurs références (`origin/dev/…`) ne peut pas
+recevoir `origin/dev` tant qu'il ne les a pas oubliées (`git fetch --prune origin`, une fois suffit ; ou `git config fetch.prune true`).
 
 Mettre une `feature` à jour : y fusionner `origin/dev`. Mettre une `hotfix` à jour : y fusionner `origin/master`, jamais `dev` ni une `feature` (refusé).
 
@@ -115,11 +129,16 @@ Déjà fait : `master` et `dev` existent, en `0.1.25`.
 
 1. **Branche par défaut → `dev`** (*Settings → General → Default branch*) : les clones et les nouvelles sessions partent de `dev`.
    Puis supprimer les branches qui n'ont plus de rôle : `main` (identique à `master`), `develop` et `feature/branch-strategy-master-develop`
-   (première tentative, remplacée par ce flux). Garder `site` : le NAS la suit jusqu'à la 1.0.
-2. **Jeton du bot** : le bot pousse directement les incréments de version sur `master` et `dev`. Dès que ces branches sont protégées (étape 3), le jeton
-   par défaut des workflows ne le peut plus. Créer un jeton *fine-grained* (*Settings → Developer settings → Fine-grained tokens*), limité à ce dépôt,
-   permission *Contents : Read and write*, et l'enregistrer comme secret **`BOT_TOKEN`** (*Settings → Secrets and variables → Actions*).
-   Les poussées du bot se font alors au nom du propriétaire du jeton, qui doit être administrateur du dépôt (exemption des règles de l'étape 3).
+   (première tentative, remplacée par ce flux), et les branches de travail déjà fusionnées (`claude/…`, `feature/version-and-magic-constellation`) :
+   la garde ne s'applique qu'aux branches créées après elle. Garder `site` : le NAS la suit jusqu'à la 1.0. Dans chaque clone existant :
+   `git fetch --prune origin` une fois.
+2. **Jeton du bot** (seulement quand les règles de l'étape 3 sont réellement appliquées) : le bot pousse directement les incréments de version sur
+   `master` et `dev` ; une fois ces branches protégées, le jeton par défaut des workflows ne le peut plus. Créer un jeton *fine-grained*
+   (*Settings → Developer settings → Fine-grained tokens*), limité à ce dépôt, permissions *Contents : Read and write* **et** *Workflows : Read and
+   write* (sans elle, une refusion qui touche `.github/workflows/` est refusée), et l'enregistrer comme secret **`BOT_TOKEN`** (*Settings → Secrets and
+   variables → Actions*). Les poussées du bot se font alors au nom du propriétaire du jeton, qui doit être administrateur du dépôt (exemption des
+   règles). **Le jeton expire** : noter sa date et le renouveler avant (un jeton expiré arrête versions et publications, le NAS cesse d'être mis à
+   jour) ; supprimer le secret fait revenir au jeton par défaut.
 3. **Règles GitHub** : *Settings → Rules → Rulesets → New ruleset → Import a ruleset*, une fois pour chaque fichier de `.github/rulesets/` :
    `master.json`, `dev.json` (PR obligatoire, checks verts, ni suppression ni réécriture ; exemption : administrateurs, pour le bot) et
    `noms-de-branches.json` (création limitée à `feature/**` et `hotfix/**`, plus `site` pour le bot, sans exemption).

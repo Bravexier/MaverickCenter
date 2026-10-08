@@ -87,7 +87,7 @@ esac
 [ -n "$DOSSIER" ] || DOSSIER="$(pwd)/$DEFAUT"
 mkdir -p "$DOSSIER" || die "impossible de créer $DOSSIER"
 DOSSIER=$(cd "$DOSSIER" && pwd -P)
-[ "$DOSSIER" != / ] || die "refus d'installer à la racine du système : précisez --dossier <dossier de l'instance>"
+case "$DOSSIER" in /|//) die "refus d'installer à la racine du système : précisez --dossier <dossier de l'instance>" ;; esac
 JOURNAL="$DOSSIER/installation.log"
 
 # Mode d'une instance : celui de son fichier VERSION. Un dossier qui a déjà un site sans VERSION (installé autrement) compte comme une
@@ -131,7 +131,8 @@ trap 'exit 1' INT TERM HUP
 
 log "Installation $MODE dans $DOSSIER (version $VERSION, commit $(echo "$COMMIT" | cut -c1-7))."
 mkdir "$TRAVAIL"
-archive | gzip -dc | tar -xf - -C "$TRAVAIL" || die "extraction de l'archive impossible"
+# -o : ne pas reprendre le propriétaire enregistré dans l'archive (celui de la machine qui l'a fabriquée), même en root.
+archive | gzip -dc | tar -xof - -C "$TRAVAIL" || die "extraction de l'archive impossible"
 [ -f "$TRAVAIL/site/index.html" ] || die "archive refusée : pas de site/index.html (rien n'a été modifié)"
 PAGES=$(find "$TRAVAIL/site" -name index.html | wc -l | tr -d ' ')
 [ "$PAGES" -eq "$PAGES_ATTENDUES" ] || die "archive refusée : $PAGES pages au lieu de $PAGES_ATTENDUES (rien n'a été modifié)"
@@ -151,19 +152,27 @@ else
     ORIGINE="$SOURCE (absent)"
   else
     ORIGINE=$SOURCE
+    # « $SOURCE/ » (barre finale) : si db/ est lui-même un lien, find et tar descendent quand même dedans.
+    # Un lien À L'INTÉRIEUR serait recopié tel quel : la base de test pointerait vers celle du serveur normal et y écrirait. Refus.
+    if find "$SOURCE/" -type l | grep -q .; then
+      die "$SOURCE contient des liens symboliques : copie refusée (le serveur de test écrirait dans les fichiers du serveur normal)"
+    fi
     SQLITE=0
     if command -v sqlite3 >/dev/null 2>&1; then SQLITE=1
-    elif find "$SOURCE" -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) | grep -q .; then
+    elif find "$SOURCE/" -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) | grep -q .; then
       log "Avertissement : sqlite3 absent, les bases SQLite sont copiées fichier par fichier (sûr seulement si la production n'écrit pas en ce moment)."
     fi
-    # Copie de l'arborescence, puis, avec sqlite3, chaque base remplacée par une sauvegarde cohérente (.backup) prise à cet instant.
-    (cd "$SOURCE" && tar -cf - .) | (cd "$COPIE" && tar -xf -) || die "copie de $SOURCE impossible"
+    # Copie de l'arborescence (propriétaires et droits conservés quand on est root, comme tar le fait par défaut), puis, avec sqlite3,
+    # le contenu de chaque base remplacé par une sauvegarde cohérente (.backup) prise à cet instant, réécrite en place pour garder
+    # son propriétaire et ses droits.
+    (cd "$SOURCE/" && tar -cf - .) | (cd "$COPIE" && tar -xf -) || die "copie de $SOURCE impossible"
     if [ "$SQLITE" -eq 1 ]; then
-      find "$SOURCE" -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) | while IFS= read -r base; do
+      find "$SOURCE/" -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) | while IFS= read -r base; do
         relatif=${base#"$SOURCE"/}
+        relatif=${relatif#/}
         cible="$COPIE/$relatif"
-        rm -f "$cible" "$cible-wal" "$cible-shm" "$cible-journal"
-        (cd "$(dirname "$cible")" && sqlite3 "$base" ".backup copie-en-cours.tmp" && mv copie-en-cours.tmp "$(basename "$cible")") ||
+        rm -f "$cible-wal" "$cible-shm" "$cible-journal"
+        (cd "$(dirname "$cible")" && sqlite3 "$base" ".backup copie-en-cours.tmp" && cat copie-en-cours.tmp > "$(basename "$cible")" && rm -f copie-en-cours.tmp) ||
           die "sauvegarde SQLite de $base impossible"
       done
     fi
@@ -192,18 +201,29 @@ else
 fi
 
 # ---------------------------------------------------------------- configuration
+# .livre/ garde la dernière version livrée de chaque fichier : un fichier identique à elle n'a pas été touché sur place et prend la
+# nouvelle version ; un fichier modifié sur place est conservé et la nouvelle version est posée à côté (.nouveau).
+mkdir -p "$DOSSIER/.livre"
 for f in docker-compose.yml nginx.conf; do
-  if [ ! -f "$DOSSIER/$f" ]; then
+  if [ ! -f "$DOSSIER/$f" ] || cmp -s "$DOSSIER/$f" "$DOSSIER/.livre/$f"; then
+    if [ -f "$DOSSIER/$f" ] && ! cmp -s "$TRAVAIL/$f" "$DOSSIER/$f"; then
+      log "$f mis à jour par cette livraison : relancez « docker compose up -d » dans $DOSSIER pour l'appliquer."
+    fi
     cp "$TRAVAIL/$f" "$DOSSIER/$f"
-  elif ! cmp -s "$TRAVAIL/$f" "$DOSSIER/$f"; then
-    cp "$TRAVAIL/$f" "$DOSSIER/$f.nouveau"
-    log "$f a été modifié sur place : il est conservé, la version livrée est dans $f.nouveau (à comparer)."
-  else
     rm -f "$DOSSIER/$f.nouveau"
+  elif cmp -s "$TRAVAIL/$f" "$DOSSIER/$f"; then
+    rm -f "$DOSSIER/$f.nouveau"
+  else
+    cp "$TRAVAIL/$f" "$DOSSIER/$f.nouveau"
+    log "$f a été modifié sur place : il est conservé, la version livrée est dans $f.nouveau (à comparer, puis « docker compose up -d »)."
   fi
+  cp "$TRAVAIL/$f" "$DOSSIER/.livre/$f"
 done
-cp "$TRAVAIL/README.md" "$DOSSIER/README.md"
-cp "$TRAVAIL/mise-a-jour.sh" "$DOSSIER/mise-a-jour.sh"
+# Remplacement par renommage : mise-a-jour.sh peut être en train de s'exécuter (c'est lui qui lance l'installateur) ; le shell qui le lit
+# garde l'ancien fichier au lieu de lire la suite dans le nouveau.
+for f in README.md mise-a-jour.sh; do
+  cp "$TRAVAIL/$f" "$DOSSIER/.$f.$$" && mv -f "$DOSSIER/.$f.$$" "$DOSSIER/$f" || die "impossible de poser $f"
+done
 if [ ! -f "$DOSSIER/.env" ]; then
   if [ "$MODE" = prod ]; then CONTENEUR=$NOM_PROD; PORT=8080; else CONTENEUR=$NOM_PROD-test; PORT=8081; fi
   {
