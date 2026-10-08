@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { bonusAM } from '../src/lib/classe-bonus.mjs';
+import { isMagicalClass, isMagicalSpecialization } from '../src/lib/classe-magique.mjs';
 import { asymmetricChoices, capacitesOfClass, checkSelection, nomCapacite, nomsSeRepondent, unresolvedCapacites } from '../src/lib/capacites.mjs';
 import { splitFrontmatter } from '../src/lib/wikilinks.mjs';
 
@@ -134,14 +134,16 @@ test('noms coupés sur deux cases : 33 paires dont les deux noms se répondent (
   assert.deepEqual(autres, ['capacites/flagelleur-50-nuances / capacites/flagelleur-prescription', 'capacites/flagelleur-encore-plus / capacites/flagelleur-resilience']);
 });
 
-test('+4 AM : classes magiques (Sommaire), 14 classes dont la 2ᵉ spécialité « considère la classe comme magique » (13 raciales + Flagelleur), Archimage (fiche)', () => {
-  const par = { sommaire: [], specialite: [], fiche: [], aucun: [] };
-  for (const c of classes) par[bonusAM(all, c)?.source ?? 'aucun'].push(c.id);
-  assert.equal(par.specialite.length, 14);
-  assert.ok(par.specialite.includes('classes/flagelleur'), 'le Flagelleur écrit « concidérée » : faute de frappe comprise');
-  for (const c of classes.filter((x) => (x.data.tags ?? []).includes('hybride animal'))) assert.ok(par.specialite.includes(c.id), `${c.id} : classe raciale`);
-  assert.deepEqual(par.fiche, ['classes/archimage']);
-  assert.ok(par.sommaire.every((id) => (classe(id.replace('classes/', '')).data.tags ?? []).includes('magique')));
-  assert.equal(bonusAM(all, classe('flagelleur')).specialite, 'MASOCHISTE');
-  assert.equal(bonusAM(all, classe('orios')).specialite, 'CHAMAN');
+test('type magique : catégories, spécialités reconnues et Archimage', () => {
+  const magiques = classes.filter((c) => isMagicalClass(all, c));
+  assert.equal(magiques.length, 23);
+  assert.ok(magiques.some((c) => c.id === 'classes/flagelleur'), 'le Flagelleur écrit « concidérée » : faute de frappe comprise');
+  assert.ok(magiques.some((c) => c.id === 'classes/archimage'));
+  assert.ok(classes.filter((c) => (c.data.tags ?? []).includes('magique')).every((c) => magiques.includes(c)));
+  for (const c of classes.filter((x) => (x.data.tags ?? []).includes('hybride animal'))) assert.ok(magiques.includes(c), `${c.id} : classe raciale`);
+  const specialiteFlagelleur = capacites.find((e) => e.id === 'capacites/flagelleur-masochiste');
+  const specialiteOrios = capacites.find((e) => e.id === 'capacites/orios-chaman');
+  assert.equal(isMagicalSpecialization(specialiteFlagelleur), true);
+  assert.equal(isMagicalSpecialization(specialiteOrios), true);
+  assert.equal(isMagicalClass(all, classe('orios'), capacites.find((e) => e.id === 'capacites/orios-va-t-en-guerre')), false);
 });

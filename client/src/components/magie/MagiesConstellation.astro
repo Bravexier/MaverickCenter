@@ -1,0 +1,101 @@
+---
+import { couleurDeMagie } from '../../lib/sort-format.mjs';
+import { normalize } from '../../lib/text.mjs';
+import { entryHref, type WikiEntry } from '../../lib/wiki';
+import type { MagieDb } from '../../lib/magies';
+import orbiteCss from '../../styles/magie/orbit.css?raw';
+
+interface Props {
+  magies: { entry: WikiEntry; magie: MagieDb }[];
+}
+
+const { magies } = Astro.props;
+const disposition = [
+  { cle: 'Potentiel Illimité', nom: 'Potentiel Illimité', region: 'potentiel', x: 500, y: 65, mx: 500, my: 55 },
+  { cle: 'Arcane', nom: 'Arcane', region: 'primordiale', x: 415, y: 270, mx: 270, my: 245 },
+  { cle: 'Corruption', nom: 'Corruption', region: 'primordiale', x: 305, y: 190, mx: 270, my: 145 },
+  { cle: 'Espace/Temps', nom: 'Espace-Temps', region: 'primordiale', x: 585, y: 270, mx: 730, my: 245 },
+  { cle: 'Vide', nom: 'Vide', region: 'primordiale', x: 695, y: 190, mx: 730, my: 145 },
+  { cle: 'Nécromancie', nom: 'Nécromancie', region: 'primordiale', x: 305, y: 470, mx: 270, my: 345 },
+  { cle: 'Sang', nom: 'Sang', region: 'primordiale', x: 415, y: 390, mx: 270, my: 445 },
+  { cle: 'Lumière', nom: 'Lumière', region: 'lumiere-ombre', x: 585, y: 390, mx: 730, my: 345 },
+  { cle: 'Ombre', nom: 'Ombre', region: 'lumiere-ombre', x: 695, y: 470, mx: 730, my: 445 },
+  { cle: 'Feu', nom: 'Feu', region: 'elementaire', x: 425, y: 610, mx: 280, my: 565 },
+  { cle: 'Eau', nom: 'Eau', region: 'elementaire', x: 575, y: 610, mx: 720, my: 565 },
+  { cle: 'Glace', nom: 'Glace', region: 'elementaire', x: 660, y: 710, mx: 750, my: 690 },
+  { cle: 'Terre', nom: 'Terre', region: 'elementaire', x: 575, y: 810, mx: 720, my: 815 },
+  { cle: 'Vent', nom: 'Vent', region: 'elementaire', x: 425, y: 810, mx: 280, my: 815 },
+  { cle: 'Foudre', nom: 'Foudre', region: 'elementaire', x: 340, y: 710, mx: 250, my: 690 },
+];
+
+const index = new Map(magies.map((item) => [normalize(item.magie.nom), item]));
+const phraseCourte = (magie: MagieDb) => {
+  const texte = magie.description
+    .flatMap((bloc: any) => (bloc.liste ? bloc.items : [bloc.texte]))
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const phrase = texte.match(/^.*?[.!?](?=\s|$)/u)?.[0] ?? texte;
+  return phrase.length <= 190 ? phrase : `${phrase.slice(0, 187).replace(/\s+\S*$/u, '')}…`;
+};
+
+const noeuds = disposition.flatMap((place, ordre) => {
+  const item = index.get(normalize(place.cle));
+  const alignementTooltip = place.mx < 400 ? 'gauche' : place.mx > 600 ? 'droite' : 'centre';
+  return item ? [{ ...place, ...item, ordre, alignementTooltip, description: phraseCourte(item.magie), couleur: couleurDeMagie(item.magie.nom) }] : [];
+});
+const parNom = new Map(noeuds.map((noeud) => [normalize(noeud.cle), noeud]));
+const liens: { a: any; b: any; type: string }[] = [];
+const ajouterLien = (a: any, b: any, type: string) => {
+  if (a && b) liens.push({ a, b, type });
+};
+const incompatible = (a: any, b: any) => a.magie.incompatibles.includes(b.magie.id) || b.magie.incompatibles.includes(a.magie.id);
+const vulnérableÀ = (a: any, b: any) => a.magie.resistances.vulnerabilite.magies.some((r: any) => r.id === b.magie.id);
+
+for (const [gauche, droite] of [['Arcane', 'Corruption'], ['Espace/Temps', 'Vide'], ['Nécromancie', 'Sang']]) {
+  const a = parNom.get(normalize(gauche));
+  const b = parNom.get(normalize(droite));
+  if (a && b && incompatible(a, b)) ajouterLien(a, b, 'incompatible');
+}
+
+const lumiere = parNom.get(normalize('Lumière'));
+const ombre = parNom.get(normalize('Ombre'));
+if (lumiere && ombre && (vulnérableÀ(lumiere, ombre) || vulnérableÀ(ombre, lumiere))) ajouterLien(lumiere, ombre, 'opposition');
+---
+
+<div class="magies-orbite" role="group" aria-label="Carte des magies">
+  <svg class="magies-orbite__liens" viewBox="0 0 1000 920" preserveAspectRatio="none" aria-hidden="true">
+    {
+      liens.map(({ a, b, type }) => (
+        <g class={`magies-orbite__lien magies-orbite__lien--${type}`}>
+          <line class="magies-orbite__lien--grand" x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
+          <line class="magies-orbite__lien--petit" x1={a.mx} y1={a.my} x2={b.mx} y2={b.my} />
+        </g>
+      ))
+    }
+  </svg>
+  <ul class="magies-orbite__liste">
+    {
+      noeuds.map((noeud) => (
+        <li
+          class={`magies-orbite__position magies-orbite__position--${noeud.region} magies-orbite__position--tooltip-${noeud.alignementTooltip}`}
+          style={`--x: ${noeud.x / 10}%; --y: ${noeud.y / 9.2}%; --mx: ${noeud.mx / 10}%; --my: ${noeud.my / 9.2}%; --couleur-magie: ${noeud.couleur}; --ordre: ${noeud.ordre}`}
+        >
+          <a
+            class="magies-orbite__noeud"
+            href={entryHref(noeud.entry)}
+            data-tooltip={noeud.description}
+            aria-label={noeud.nom}
+            aria-description={noeud.description}
+          >
+            <span class="magies-orbite__pastille" aria-hidden="true" />
+            <span class="magies-orbite__nom">{noeud.nom}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</div>
+
+<style is:inline set:html={orbiteCss}></style>
