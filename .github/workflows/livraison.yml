@@ -88,23 +88,17 @@ jobs:
     if: needs.version.result == 'success' && needs.version.outputs.a_supprimer != '' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - name: Supprimer feature/<nom> ou hotfix/<nom> sur GitHub
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Supprimer feature/<nom> ou hotfix/<nom> (seulement si elle n'a pas bougé depuis la fusion)
         env:
-          GH_TOKEN: ${{ github.token }}
           BRANCHE: ${{ needs.version.outputs.a_supprimer }}
-        run: |
-          case "$BRANCHE" in
-            feature/?*|hotfix/?*) ;;
-            *) echo "::error::refus de supprimer « $BRANCHE » : seules feature/<nom> et hotfix/<nom> le sont"; exit 1 ;;
-          esac
-          if sortie=$(gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${BRANCHE}" 2>&1); then
-            echo "Branche « $BRANCHE » supprimée (elle est fusionnée)."
-          else
-            case "$sortie" in
-              *"Reference does not exist"*) echo "Branche « $BRANCHE » déjà supprimée." ;;
-              *) echo "::error::suppression de « $BRANCHE » impossible : $sortie"; exit 1 ;;
-            esac
-          fi
+          FUSIONNEE: ${{ github.event.pull_request.head.sha }}
+        run: node tools/flux-git/cli.mjs supprimer-fusionnee --branche "$BRANCHE" --sha "$FUSIONNEE" --pousser
 
   site:
     name: Site (avant la 1.0)

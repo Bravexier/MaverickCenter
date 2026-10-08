@@ -3,7 +3,7 @@
 // hotfix → master avec refusion dans dev, conflits, contrôles des créations de branches et des PR.
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, describe, test } from 'node:test';
@@ -494,6 +494,59 @@ describe('le bot sur un vrai dépôt Git', () => {
     const propre = bot(d, 'balayer', '--pousser');
     assert.equal(propre.code, 0, propre.out);
     assert.match(propre.out, /Toutes les branches sont conformes/);
+  });
+
+  test('balayage : noms complets (« x/HEAD » n\'est pas « x »), une suppression refusée n\'empêche pas les autres', () => {
+    const d = depot();
+    const branchesDistantes = () => git(distantDe(d), 'ls-remote', '--heads', 'origin').split('\n').map((l) => l.split('refs/heads/')[1]).sort();
+    for (const b of ['vieux/HEAD', 'bloquee', 'autre-vieille']) git(d.dev, 'push', '--quiet', 'origin', `origin/master:refs/heads/${b}`);
+    // Le serveur refuse de supprimer « bloquee » (comme une protection ou une panne réseau).
+    writeFileSync(join(d.distant, 'hooks', 'pre-receive'), '#!/bin/sh\nwhile read ancien nouveau ref; do\n  if [ "$ref" = refs/heads/bloquee ]; then echo "suppression interdite" >&2; exit 1; fi\ndone\n');
+    chmodSync(join(d.distant, 'hooks', 'pre-receive'), 0o755);
+    const r = bot(d, 'balayer', '--pousser');
+    assert.equal(r.code, 10, r.out);
+    assert.match(r.out, /^- vieux\/HEAD : supprimée/m);
+    assert.match(r.out, /^- autre-vieille : supprimée/m);
+    assert.match(r.out, /^- bloquee : signalée \(suppression refusée/m);
+    assert.deepEqual(branchesDistantes(), ['bloquee', 'dev', 'master']);
+  });
+
+  test('suppression après la fusion : seulement si la branche pointe encore sur le commit fusionné', () => {
+    const d = depot();
+    const existe = (b) => git(distantDe(d), 'ls-remote', '--heads', 'origin').split('\n').some((l) => l.endsWith(`refs/heads/${b}`));
+    const sha = branche(d, 'feature/finie', 'dev');
+    let r = bot(d, 'supprimer-fusionnee', '--branche', 'feature/finie', '--sha', sha, '--pousser');
+    assert.equal(r.code, 0, r.out);
+    assert.match(r.out, /supprimée/);
+    assert.ok(!existe('feature/finie'));
+    r = bot(d, 'supprimer-fusionnee', '--branche', 'feature/finie', '--sha', sha, '--pousser');
+    assert.match(r.out, /déjà supprimée/);
+
+    // Un commit poussé après la fusion : la branche est gardée.
+    const fusionne = branche(d, 'feature/suite', 'dev');
+    ecrire(d.dev, 'suite.txt', 'travail après la fusion');
+    git(d.dev, 'add', '-A');
+    git(d.dev, 'commit', '--quiet', '-m', 'suite');
+    git(d.dev, 'push', '--quiet', 'origin', 'feature/suite');
+    r = bot(d, 'supprimer-fusionnee', '--branche', 'feature/suite', '--sha', fusionne, '--pousser');
+    assert.equal(r.code, 0, r.out);
+    assert.match(r.out, /a reçu des commits après la fusion .* gardée/);
+    assert.ok(existe('feature/suite'));
+
+    // « # » dans le nom : c'est bien cette branche qui est supprimée, pas « feature/a ».
+    const shaA = branche(d, 'feature/a', 'dev');
+    const shaDiese = branche(d, 'feature/a#b', 'dev', 'diese.txt');
+    assert.notEqual(shaA, shaDiese);
+    r = bot(d, 'supprimer-fusionnee', '--branche', 'feature/a#b', '--sha', shaDiese, '--pousser');
+    assert.equal(r.code, 0, r.out);
+    assert.ok(!existe('feature/a#b'));
+    assert.ok(existe('feature/a'), 'l\'autre branche est intacte');
+
+    for (const b of ['dev', 'master', 'site', 'develop']) {
+      const refus = bot(d, 'supprimer-fusionnee', '--branche', b, '--sha', sha, '--pousser');
+      assert.equal(refus.code, 10, `${b} : ${refus.out}`);
+    }
+    assert.ok(existe('dev') && existe('master'));
   });
 
   test('balayage : rien tant que le flux n\'est pas en place', () => {
