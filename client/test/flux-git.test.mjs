@@ -308,6 +308,15 @@ describe('le bot sur un vrai dépôt Git', () => {
     assert.equal(versionDistante(d, 'master'), '0.1.25');
   });
 
+  test('mise en place : tant que master et dev n\'existent pas toutes les deux, la garde ne vérifie rien', () => {
+    const d = depot();
+    git(d.dev, 'push', '--quiet', 'origin', '--delete', 'dev');
+    git(d.bot, 'fetch', '--quiet', '--prune', 'origin');
+    const r = bot(d, 'verifier-creation', '--branche', 'dev/session', '--sha', git(d.dev, 'rev-parse', 'HEAD'));
+    assert.equal(r.code, 0, r.out);
+    assert.match(r.out, /pas encore en place \(dev absente\)/);
+  });
+
   test('règles 2 et 3 à la création : nom et point de départ', () => {
     const d = depot();
     fusionner(d, 'dev', 'master');

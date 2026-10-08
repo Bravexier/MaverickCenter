@@ -68,6 +68,9 @@ function verifierOrigine(famille, sha, distant) {
 }
 
 function verifierCreationCmd({ branche, sha, distant }) {
+  // Tant que master et dev n'existent pas toutes les deux, le flux n'est pas en place : rien n'est vérifié ni supprimé (mise en place du dépôt).
+  const absentes = [MASTER, DEV].filter((b) => !existe(`${distant}/${b}`));
+  if (absentes.length) return `${branche} : flux Git pas encore en place (${absentes.join(' et ')} absente${absentes.length > 1 ? 's' : ''}), aucune vérification.`;
   const r = verifierCreation(branche);
   if (!r.ok) throw new Refus(r.raison);
   if (r.famille === 'principale') return `${branche} : branche principale.`;
