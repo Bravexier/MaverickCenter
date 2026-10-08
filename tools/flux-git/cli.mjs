@@ -7,18 +7,21 @@
 //   node tools/flux-git/cli.mjs verifier-pr --base <cible> --head <source> --sha <commit> [--depot-source <o/r> --depot <o/r>]
 //       une PR : source permise pour la cible, bon point de départ, version non modifiée à la main (code 1 sinon)
 //   node tools/flux-git/cli.mjs appliquer --base <cible> --head <source> [--pr <n>] [--texte-fichier <f>]... [--pousser]
-//       après une fusion : incréments de version, refusion de master dans dev, étiquettes des installateurs à générer
+//       après une fusion : incréments de version, refusion de master dans dev, puis ce qu'il faut publier (regles.mjs, livrableDe) :
+//       avant la 1.0 le site (branche « site », depuis dev), à partir de la 1.0 les installateurs (étiquettes posées ici)
 //   node tools/flux-git/cli.mjs regenerer --branche master|dev [--pousser]
-//       nouvelle étiquette pour régénérer l'installateur d'une branche sans changer sa version
+//       republier une branche sans changer sa version (nouvelle étiquette d'installateur, ou le site avant la 1.0)
 //
 // Options communes : --distant <nom> (défaut origin). Sans --pousser, rien ne quitte le dépôt local (essai à blanc).
-// Résultat de appliquer/regenerer : JSON sur la sortie standard, et `livraisons=<json>` dans $GITHUB_OUTPUT s'il existe.
+// Résultat de appliquer/regenerer : JSON sur la sortie standard, et dans $GITHUB_OUTPUT s'il existe :
+//   installateurs=<json>   les installateurs à fabriquer ([] avant la 1.0)
+//   site=<commit>          le commit de dev à publier sur la branche « site » (vide à partir de la 1.0)
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  DEV, FAMILLES, MASTER, demandeMajeure, etiquette, planifier, poserVersionJson, typeDeFusion, verifierCreation, verifierPR,
+  DEV, FAMILLES, MASTER, demandeMajeure, etiquette, livrableDe, planifier, poserVersionJson, typeDeFusion, verifierCreation, verifierPR,
 } from './regles.mjs';
 
 /** Les fichiers qui portent la version (le pied de page du site lit client/package.json). */
@@ -73,7 +76,7 @@ function verifierCreationCmd({ branche, sha, distant }) {
   if (absentes.length) return `${branche} : flux Git pas encore en place (${absentes.join(' et ')} absente${absentes.length > 1 ? 's' : ''}), aucune vérification.`;
   const r = verifierCreation(branche);
   if (!r.ok) throw new Refus(r.raison);
-  if (r.famille === 'principale') return `${branche} : branche principale.`;
+  if (r.famille === 'principale' || r.famille === 'publication') return `${branche} : branche ${r.famille}.`;
   const probleme = verifierOrigine(r.famille, sha, distant);
   if (probleme) throw new Refus(`${branche} : ${probleme}`);
   return `${branche} : créée depuis ${r.depuis}, conforme.`;
@@ -174,7 +177,7 @@ function pousser(distant, refs) {
 /** Après une fusion de PR : versions, refusion, étiquettes. Réessaie si quelqu'un a poussé entre-temps (la poussée est atomique). */
 function appliquer({ base, head, pr, textes, distant, envoyer, tentatives = 5 }) {
   const type = typeDeFusion({ base, head });
-  if (!type) throw new Refus(`fusion hors des règles (${head} → ${base}) : aucune version ni installateur. Seules feature/<nom> → dev, dev → master et hotfix/<nom> → master sont gérées.`);
+  if (!type) throw new Refus(`fusion hors des règles (${head} → ${base}) : aucune version ni publication. Seules feature/<nom> → dev, dev → master et hotfix/<nom> → master sont gérées.`);
   const majeure = type === 'livraison' && demandeMajeure(...textes);
   const ref = pr ? ` (PR #${pr})` : '';
   for (let essai = 1; essai <= tentatives; essai += 1) {
@@ -208,6 +211,7 @@ function appliquer({ base, head, pr, textes, distant, envoyer, tentatives = 5 })
     const livraisons = plan.livrer.map((mode) => {
       const branche = mode === 'prod' ? MASTER : DEV;
       const version = versionSur(apres[branche]);
+      if (mode === 'site') return { mode, branche, sha: apres[branche], version, tag: null, type };
       const tag = etiquette({ mode, version, existantes, motif: mode === 'prod' && type === 'hotfix' ? 'hotfix' : 'rebuild' });
       existantes.push(tag);
       return { mode, branche, sha: apres[branche], version, tag, type };
@@ -216,7 +220,7 @@ function appliquer({ base, head, pr, textes, distant, envoyer, tentatives = 5 })
     const refs = [];
     if (apres.master !== avant.master) refs.push(`${apres.master}:refs/heads/${MASTER}`);
     if (apres.dev !== avant.dev) refs.push(`${apres.dev}:refs/heads/${DEV}`);
-    for (const l of livraisons) refs.push(`${l.sha}:refs/tags/${l.tag}`);
+    for (const l of livraisons) if (l.tag) refs.push(`${l.sha}:refs/tags/${l.tag}`);
     if (!envoyer) return { type, majeure, journal, livraisons, poussee: false };
     try {
       pousser(distant, refs);
@@ -233,11 +237,12 @@ function regenerer({ branche, distant, envoyer }) {
   if (branche !== MASTER && branche !== DEV) throw new Refus(`branche à régénérer : master ou dev (reçu « ${branche} »)`);
   git(['fetch', '--quiet', '--tags', '--force', distant, `+refs/heads/${branche}:refs/remotes/${distant}/${branche}`]);
   const sha = sortie(['rev-parse', `${distant}/${branche}`]);
-  const mode = branche === MASTER ? 'prod' : 'test';
   const version = versionSur(sha);
-  const tag = etiquette({ mode, version, existantes: etiquettesExistantes(), motif: 'rebuild' });
-  if (envoyer) pousser(distant, [`${sha}:refs/tags/${tag}`]);
-  return { type: 'regeneration', journal: [], livraisons: [{ mode, branche, sha, version, tag, type: 'regeneration' }], poussee: envoyer };
+  const mode = livrableDe(branche, version);
+  if (!mode) throw new Refus(`master est en v${version} : avant la 1.0, master n'a pas de serveur, rien à publier (le site suit dev)`);
+  const tag = mode === 'site' ? null : etiquette({ mode, version, existantes: etiquettesExistantes(), motif: 'rebuild' });
+  if (envoyer && tag) pousser(distant, [`${sha}:refs/tags/${tag}`]);
+  return { type: 'regeneration', journal: [], livraisons: [{ mode, branche, sha, version, tag, type: 'regeneration' }], poussee: Boolean(envoyer) };
 }
 
 function options(argv) {
@@ -276,10 +281,13 @@ try {
     console.log(r);
   } else {
     console.log(JSON.stringify(r, null, 2));
-    if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `livraisons=${JSON.stringify(r.livraisons)}\n`);
+    const installateurs = r.livraisons.filter((l) => l.mode !== 'site');
+    const site = r.livraisons.find((l) => l.mode === 'site');
+    if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `installateurs=${JSON.stringify(installateurs)}\nsite=${site ? site.sha : ''}\n`);
     if (process.env.GITHUB_STEP_SUMMARY) {
       const lignes = [`### ${r.type}${r.majeure ? ' (majeure)' : ''}`, '', ...r.journal.map((j) => `- ${j}`),
-        ...r.livraisons.map((l) => `- installateur ${l.mode} : \`${l.tag}\` (${l.branche} ${l.sha.slice(0, 7)})`)];
+        ...installateurs.map((l) => `- installateur ${l.mode} : \`${l.tag}\` (${l.branche} ${l.sha.slice(0, 7)})`),
+        ...(site ? [`- site (avant la 1.0) : branche \`site\` reconstruite depuis dev ${site.sha.slice(0, 7)} (v${site.version})`] : [])];
       appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lignes.join('\n')}\n`);
     }
   }

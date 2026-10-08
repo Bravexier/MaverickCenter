@@ -45,8 +45,9 @@ Toute la communauté est sur Discord : la connexion se fait par « Se connecter 
   CSRF pour les modifications) ; le serveur web protège aussi les pages statiques en lui demandant si la session est valide (`auth_request` avec nginx). L'adresse de
   retour de la connexion dépend de l'adresse publique du site (HTTPS) : elle se configure par variable d'environnement et se change dans le portail développeur Discord
   quand l'hébergement migre.
-- **Quand** : avec la phase d'édition, pas avant ; le mot de passe partagé d'aujourd'hui reste d'ici là. La table des utilisateurs et les colonnes « modifié par » de
-  l'historique se prévoient dès la conception de la base.
+- **Quand** : avec la **version 1.0** (décision du propriétaire), qui ouvre aussi le serveur normal (usage réel) et le serveur de test, ce dernier
+  recevant à chaque installation une copie de la base du serveur normal (voir `flux-git.md`). Le mot de passe partagé d'aujourd'hui reste d'ici là.
+  La table des utilisateurs et les colonnes « modifié par » de l'historique se prévoient dès la conception de la base.
 - **À faire par le propriétaire le moment venu** : créer l'application dans le portail développeur Discord et fournir son identifiant et son secret comme secrets de
   l'environnement (jamais dans le dépôt). Aucun jeton personnel Discord n'est utilisé.
 

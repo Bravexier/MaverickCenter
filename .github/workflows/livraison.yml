@@ -1,12 +1,15 @@
 name: Version et livraison
 
 # Règles 4 à 9 du flux Git (docs/flux-git.md), après chaque PR fusionnée dans dev ou master :
-#   feature/<nom> → dev     dev : X.Y.Z+1 (master inchangée)                                   → installateur de TEST
-#   dev → master            master et dev : X.Y+1.0, ou X+1.0.0 si la PR porte [V: X+1]         → installateurs de PRODUCTION et de TEST
-#   hotfix/<nom> → master   master inchangée ; master refusionnée dans dev ; dev : X.Y.Z+1      → installateurs de PRODUCTION et de TEST
-# Chaque installateur est un script autonome (site compris) publié comme « release » GitHub, privée comme le dépôt :
-#   production : vX.Y.Z (puis vX.Y.Z-hotfix.N) ; test : vX.Y.Z-test. Le serveur l'exécute (deploy/README.md) ou deploy/update-nas.sh le fait seul.
-# Lancement manuel (Actions → Version et livraison → Run workflow) : régénère l'installateur de dev ou de master sans changer sa version.
+#   feature/<nom> → dev     dev : X.Y.Z+1 (master inchangée)
+#   dev → master            master et dev : X.Y+1.0, ou X+1.0.0 si la PR porte [V: X+1]
+#   hotfix/<nom> → master   master inchangée ; master refusionnée dans dev ; dev : X.Y.Z+1
+# Puis la publication, selon la version (la 1.0 est le signal du propriétaire : elle apporte la connexion Discord) :
+#   avant la 1.0       job « Site » : le site unique, reconstruit depuis dev et publié sur la branche « site » (le NAS la suit,
+#                      deploy/update-nas.sh) — le fonctionnement d'avant le flux, inchangé ;
+#   à partir de 1.0    job « Installateur » : un script autonome par fusion, publié en « release » privée — production
+#                      (vX.Y.Z, puis vX.Y.Z-hotfix.N) depuis master, test (vX.Y.Z-test) depuis dev.
+# Lancement manuel (Actions → Version et livraison → Run workflow) : republie dev ou master sans changer sa version.
 on:
   pull_request:
     types: [closed]
@@ -14,7 +17,7 @@ on:
   workflow_dispatch:
     inputs:
       branche:
-        description: Branche dont régénérer l'installateur (dev = test, master = production)
+        description: Branche à republier (dev = site avant la 1.0 / test ensuite ; master = production, à partir de la 1.0)
         type: choice
         options: [dev, master]
         default: dev
@@ -32,7 +35,8 @@ jobs:
       group: livraison-version
       cancel-in-progress: false
     outputs:
-      livraisons: ${{ steps.bot.outputs.livraisons }}
+      installateurs: ${{ steps.bot.outputs.installateurs }}
+      site: ${{ steps.bot.outputs.site }}
     steps:
       - name: Garde-fou — le contenu appartient à un tiers
         env:
@@ -55,7 +59,7 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      - name: Incrémenter les versions, refusionner master dans dev, poser les étiquettes
+      - name: Incrémenter les versions, refusionner master dans dev, choisir la publication
         id: bot
         env:
           EVENEMENT: ${{ github.event_name }}
@@ -77,15 +81,59 @@ jobs:
               --texte-fichier "$RUNNER_TEMP/titre.txt" --texte-fichier "$RUNNER_TEMP/corps.txt" --pousser
           fi
 
+  site:
+    name: Site (avant la 1.0)
+    needs: version
+    if: needs.version.outputs.site != ''
+    runs-on: ubuntu-latest
+    # Une publication à la fois, la plus récente en dernier (une publication en attente est remplacée par une plus récente).
+    concurrency:
+      group: publication-site
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.site }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Installer et tester
+        working-directory: client
+        run: |
+          npm ci
+          npm test
+
+      - name: Construire (sans les pages d'exemple)
+        working-directory: client
+        run: HIDE_EXAMPLES=1 npm run build
+
+      - name: Publier sur la branche « site » (une seule révision, réécrite à chaque fois)
+        working-directory: client/dist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ needs.version.outputs.site }}
+        run: |
+          git init -q -b site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Site construit depuis dev ${SHA}"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push -f origin site:site
+
   installateur:
     name: Installateur ${{ matrix.livraison.mode }} ${{ matrix.livraison.tag }}
     needs: version
-    if: needs.version.outputs.livraisons != '' && needs.version.outputs.livraisons != '[]'
+    if: needs.version.outputs.installateurs != '' && needs.version.outputs.installateurs != '[]'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        livraison: ${{ fromJSON(needs.version.outputs.livraisons) }}
+        livraison: ${{ fromJSON(needs.version.outputs.installateurs) }}
     env:
       MODE: ${{ matrix.livraison.mode }}
       TAG: ${{ matrix.livraison.tag }}

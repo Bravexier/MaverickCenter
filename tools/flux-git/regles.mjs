@@ -11,6 +11,10 @@
 //   feature → dev     dev : X.Y.Z+1                    master inchangée
 //   dev → master      dev et master : X.Y+1.0          ou X+1.0.0 si la PR porte [V: X+1]
 //   hotfix → master   master inchangée ; master est refusionnée dans dev, puis dev : X.Y.Z+1
+//
+// Ce qui est livré dépend de la version (la 1.0 est le signal du propriétaire ; elle apporte la connexion Discord) :
+//   avant la 1.0      un seul site, reconstruit depuis dev après chaque fusion (branche « site », fonctionnement d'avant le flux)
+//   à partir de 1.0   un installateur de production (master) et un installateur de test (dev) après chaque fusion
 
 export const MASTER = 'master';
 export const DEV = 'dev';
@@ -25,9 +29,13 @@ export const FAMILLES = {
   hotfix: { prefixe: 'hotfix/', depuis: MASTER, opposees: [DEV, 'feature/'], admises: [] },
 };
 
-/** `feature`, `hotfix`, `principale` (master, dev) ou null pour tout autre nom. */
+/** Branche de publication du site avant la 1.0, écrite par le bot seul. */
+export const SITE = 'site';
+
+/** `feature`, `hotfix`, `principale` (master, dev), `publication` (site) ou null pour tout autre nom. */
 export function familleDe(branche) {
   if (branche === MASTER || branche === DEV) return 'principale';
+  if (branche === SITE) return 'publication';
   for (const [nom, f] of Object.entries(FAMILLES)) {
     if (branche.startsWith(f.prefixe) && branche.length > f.prefixe.length && !branche.endsWith('/')) return nom;
   }
@@ -39,7 +47,7 @@ const REGLE_NOMS = 'seules feature/<nom> (créée depuis dev) et hotfix/<nom> (c
 /** Une branche qu'on vient de créer : son nom est-il permis, et de quelle branche doit-elle partir ? */
 export function verifierCreation(branche) {
   const famille = familleDe(branche);
-  if (famille === 'principale') return { ok: true, famille, depuis: null };
+  if (famille === 'principale' || famille === 'publication') return { ok: true, famille, depuis: null };
   if (!famille) return { ok: false, famille, raison: `nom de branche interdit « ${branche} » : ${REGLE_NOMS}` };
   return { ok: true, famille, depuis: FAMILLES[famille].depuis };
 }
@@ -99,26 +107,45 @@ export function incrementer(version, niveau) {
   throw new Error(`niveau d'incrément inconnu « ${niveau} »`);
 }
 
+/** Avant la 1.0 : version majeure 0. */
+export function avantLaUn(version) {
+  return lireVersion(version)[0] === 0;
+}
+
+/**
+ * Ce que produit une branche arrivée à cette version : avant la 1.0, dev → `site` (le site unique) et master → rien ;
+ * à partir de la 1.0, master → `prod` (installateur du serveur normal) et dev → `test` (installateur du serveur de test).
+ */
+export function livrableDe(branche, version) {
+  if (branche !== MASTER && branche !== DEV) throw new Error(`branche livrable : master ou dev (reçu « ${branche} »)`);
+  if (avantLaUn(version)) return branche === DEV ? 'site' : null;
+  return branche === DEV ? 'test' : 'prod';
+}
+
 /**
  * Ce que le bot fait après une fusion. `versionMaster` et `versionDev` : les versions lues sur les branches APRÈS la fusion
  * (pour une livraison, master porte alors la version de dev qu'elle vient de recevoir).
  * Résultat :
  *   master : { version } si master change de version, sinon null
  *   dev    : { version, synchroniser } ; `synchroniser` = refusionner master dans dev avant de poser la version
- *   livrer : les installateurs à générer (`prod` depuis master, `test` depuis dev)
+ *   livrer : ce qui est publié ensuite (voir livrableDe) : `prod` depuis master, puis `test` ou `site` depuis dev
  */
 export function planifier({ type, versionMaster, versionDev, majeure = false }) {
+  const livrer = (master, dev) => [master && livrableDe(MASTER, master), livrableDe(DEV, dev)].filter(Boolean);
   if (type === 'feature') {
-    return { master: null, dev: { version: incrementer(versionDev, 'patch'), synchroniser: false }, livrer: ['test'] };
+    const dev = incrementer(versionDev, 'patch');
+    return { master: null, dev: { version: dev, synchroniser: false }, livrer: livrer(null, dev) };
   }
   if (type === 'hotfix') {
-    return { master: null, dev: { version: incrementer(versionDev, 'patch'), synchroniser: true }, livrer: ['prod', 'test'] };
+    // Le hotfix change le contenu de master (pas sa version) : un nouvel installateur de production à partir de la 1.0.
+    const dev = incrementer(versionDev, 'patch');
+    return { master: null, dev: { version: dev, synchroniser: true }, livrer: livrer(versionMaster, dev) };
   }
   if (type === 'livraison') {
     // Base : la version livrée (celle de dev, reçue par master). Le maximum des deux évite tout retour en arrière si une branche a été modifiée à la main.
     const base = comparerVersions(versionMaster, versionDev) >= 0 ? versionMaster : versionDev;
     const version = incrementer(base, majeure ? 'majeure' : 'mineure');
-    return { master: { version }, dev: { version, synchroniser: true }, livrer: ['prod', 'test'] };
+    return { master: { version }, dev: { version, synchroniser: true }, livrer: livrer(version, version) };
   }
   throw new Error(`type de fusion inconnu « ${type} »`);
 }

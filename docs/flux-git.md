@@ -51,29 +51,45 @@ Si cette refusion est en conflit (le hotfix et `dev` ont modifié les mêmes lig
 `feature/<nom>` créée depuis `dev`, dans laquelle on fusionne `master` et résout les conflits, puis une PR vers `dev`. Seuls les conflits sur la ligne de
 version se résolvent seuls.
 
-## Les livraisons : un script d'installation par fusion
+## Ce qui est publié : le site unique, puis deux serveurs à la 1.0
 
-Après chaque fusion, le job `Installateur` construit le site (sans les pages d'exemple) et publie un **installateur** : un script `.sh` autonome qui contient
-le site et l'installe sur le serveur, sans téléchargement ni jeton. Il est publié comme *release* GitHub du dépôt (privée comme lui) :
+**La 1.0 est le signal du propriétaire.** Elle apporte la connexion par Discord (identification et utilisateurs, voir
+[`feuille-de-route.md`](feuille-de-route.md)) : c'est à partir d'elle qu'il y a un usage réel, donc un serveur normal et un serveur de test.
+Le bot choisit seul d'après la version (`tools/flux-git/regles.mjs`, `livrableDe`) ; on passe en 1.0 par une livraison `dev` → `master`
+portant `[V: X+1]`, à la demande du propriétaire.
+
+### Avant la 1.0 (versions 0.x) : le fonctionnement actuel, un seul site
+
+Pas de serveur normal ni de serveur de test. Après chaque fusion qui change `dev` (une feature, la refusion après une livraison ou un hotfix),
+le job `Site` reconstruit le site depuis `dev` (sans les pages d'exemple) et le publie sur la branche **`site`** ; le NAS la suit comme aujourd'hui
+(`deploy/update-nas.sh`, toutes les 5 minutes). Les versions suivent les règles ci-dessus ; une livraison `dev` → `master` ne fait que les versions
+(et `dev`, qui la reçoit, republie le site). Rien n'est à changer sur le NAS.
+
+### À partir de la 1.0 : serveur normal et serveur de test, un script d'installation par fusion
+
+Après chaque fusion, le job `Installateur` construit le site et publie un **installateur** : un script `.sh` autonome qui contient le site et l'installe
+sur le serveur, sans téléchargement ni jeton. Il est publié comme *release* GitHub du dépôt (privée comme lui). La branche `site` n'est plus mise à jour.
 
 | Fusion dans | Installateur | Étiquette (release) |
 | --- | --- | --- |
 | `dev` (feature, ou refusion après livraison ou hotfix) | **test** | `vX.Y.Z-test` (pré-version) |
-| `master` (livraison) | **production** | `vX.Y.Z` |
-| `master` (hotfix : même version) | **production** | `vX.Y.Z-hotfix.N` |
+| `master` (livraison) | **normal** (production) | `vX.Y.Z` |
+| `master` (hotfix : même version) | **normal** (production) | `vX.Y.Z-hotfix.N` |
 
-- **Mode test** : serveur d'essai (`maverick-center-test`, port 8081, bandeau « Serveur de test » sur chaque page, `[TEST]` dans le titre de l'onglet).
-  À chaque installation, **sa base est remplacée par une copie de celle de la production prise à cet instant** (dossier `db/` de l'instance de production ;
-  avec `sqlite3`, chaque base SQLite est copiée par `.backup`, donc cohérente même si la production écrit). Rien de ce qui est fait en test ne revient en production.
-- **Mode production** : le site réellement utilisé (`maverick-center`, port 8080). Une installation remplace le site, **jamais la base vivante** (`db/`).
+- **Serveur de test** (`maverick-center-test`, port 8081, bandeau « Serveur de test » sur chaque page, `[TEST]` dans le titre de l'onglet).
+  À chaque installation, **sa base est remplacée par une copie de celle du serveur normal prise à cet instant** (dossier `db/` de l'instance de
+  production ; avec `sqlite3`, chaque base SQLite est copiée par `.backup`, donc cohérente même si la production écrit). Rien de ce qui est fait en
+  test ne revient en production.
+- **Serveur normal** : le site réellement utilisé (`maverick-center`, port 8080). Une installation remplace le site, **jamais la base vivante** (`db/`).
 
-La copie est faite par l'installateur, sur le serveur, au moment où il s'exécute : GitHub n'a pas accès à la base de production, et elle ne doit pas quitter
-le serveur. **Aujourd'hui, la production n'a pas encore de base vivante** : la base du site (`/donnees/`) est reconstruite depuis `data/rows` à chaque version.
-Le dossier `db/` de la production est donc vide, et la copie de test aussi, jusqu'à ce qu'un service (édition, fiches de personnages, voir
-`feuille-de-route.md`) y écrive ; le mécanisme est en place et testé pour ce moment-là.
+La copie est faite par l'installateur, sur le serveur, au moment où il s'exécute : GitHub n'a pas accès à la base de production, et elle ne doit pas
+quitter le serveur. La base vivante (`db/`) se remplira avec les utilisateurs de la 1.0 ; jusque-là, la base du site (`/donnees/`) est reconstruite
+depuis `data/rows` à chaque version.
 
-Installer, mettre à jour, automatiser : [`deploy/README.md`](../deploy/README.md). Régénérer l'installateur d'une branche sans changer sa version :
-*Actions → Version et livraison → Run workflow* (étiquette `…-rebuild.N`).
+**Le jour de la 1.0** : lancer l'installateur `v1.0.0` (production) dans le dossier actuel du NAS — il reconnaît l'installation d'avant et en fait le
+serveur normal ; son `update-nas.sh` suit désormais les livraisons de production, sans autre réglage — puis installer le serveur de test à côté.
+Détails : [`deploy/README.md`](../deploy/README.md). Republier une branche sans changer sa version : *Actions → Version et livraison → Run workflow*
+(le site avant la 1.0, une étiquette `…-rebuild.N` ensuite).
 
 ## Au quotidien
 
@@ -98,19 +114,18 @@ Déjà fait : `master` et `dev` existent, en `0.1.25`.
 
 1. **Branche par défaut → `dev`** (*Settings → General → Default branch*) : les clones et les nouvelles sessions partent de `dev`.
    Puis supprimer les branches qui n'ont plus de rôle : `main` (identique à `master`), `develop` et `feature/branch-strategy-master-develop`
-   (première tentative, remplacée par ce flux), et `site` une fois le NAS passé aux installateurs (étape 4).
+   (première tentative, remplacée par ce flux). Garder `site` : le NAS la suit jusqu'à la 1.0.
 2. **Jeton du bot** : le bot pousse directement les incréments de version sur `master` et `dev`. Dès que ces branches sont protégées (étape 3), le jeton
    par défaut des workflows ne le peut plus. Créer un jeton *fine-grained* (*Settings → Developer settings → Fine-grained tokens*), limité à ce dépôt,
    permission *Contents : Read and write*, et l'enregistrer comme secret **`BOT_TOKEN`** (*Settings → Secrets and variables → Actions*).
    Les poussées du bot se font alors au nom du propriétaire du jeton, qui doit être administrateur du dépôt (exemption des règles de l'étape 3).
 3. **Règles GitHub** : *Settings → Rules → Rulesets → New ruleset → Import a ruleset*, une fois pour chaque fichier de `.github/rulesets/` :
    `master.json`, `dev.json` (PR obligatoire, checks verts, ni suppression ni réécriture ; exemption : administrateurs, pour le bot) et
-   `noms-de-branches.json` (création limitée à `feature/**` et `hotfix/**`, sans exemption).
+   `noms-de-branches.json` (création limitée à `feature/**` et `hotfix/**`, plus `site` pour le bot, sans exemption).
    Attention : sur un dépôt **privé**, GitHub n'applique ces règles qu'avec un abonnement payant (GitHub Pro pour un compte personnel). Sans lui,
-   les gardes des workflows restent actives (suppression des branches non conformes, check rouge sur une PR non conforme, aucune version ni
-   installateur pour une fusion hors règles) mais n'empêchent ni une fusion ni une poussée directe.
-4. **Serveur** : remplacer l'ancienne mise à jour (branche `site`) par les installateurs, voir [`deploy/README.md`](../deploy/README.md),
-   « Passer de l'ancienne mise à jour ».
+   les gardes des workflows restent actives (suppression des branches non conformes, check rouge sur une PR non conforme, ni version ni
+   publication pour une fusion hors règles) mais n'empêchent ni une fusion ni une poussée directe.
+4. **Serveur** : rien avant la 1.0 (le NAS suit toujours la branche `site`). À la 1.0, voir « Le jour de la 1.0 » ci-dessus.
 
 ## Sessions Claude Code
 

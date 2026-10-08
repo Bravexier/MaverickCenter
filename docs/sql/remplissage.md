@@ -42,7 +42,7 @@ qui a sa page dans le wiki porte un lien ↗. La table `page` n'affiche que la l
 
 - **Au build, sans étape préalable** : `src/lib/donnees.mjs` construit la base dans un dossier temporaire avec `db-build.mjs` et `db-derive.mjs` (les mêmes scripts que `npm run db:build`,
   environ 3 s), puis la lit avec `node:sqlite`. `HIDE_EXAMPLES=1` retire les pages d'exemple. Le build doit donc se lancer dans un dépôt complet (`data/` présent) : c'est le cas de la CI,
-  de `livraison.yml` (installateurs, après chaque fusion dans `dev` ou `master`) et de `deploy/build.sh`.
+  de `livraison.yml` (après chaque fusion : le site avant la 1.0, les installateurs ensuite) et de `deploy/build.sh`.
 - **Logique testée** (`client/test/donnees.test.mjs`) : ancres uniques et sans collision pour chaque ligne de chaque table, chaque lien de clé étrangère mène à une ligne qui existe,
   un sort renvoie à sa magie, une capacité à sa page. Les gabarits Astro (`src/pages/donnees/`) ne contiennent que des boucles.
 - **Poids** : environ 15 Mo de HTML (la plus grosse page, `relation_peuple`, fait 2,8 Mo avant compression).
