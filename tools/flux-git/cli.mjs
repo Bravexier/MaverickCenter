@@ -13,6 +13,9 @@
 //       toutes les branches du dépôt, depuis la branche par défaut (une branche créée depuis un vieux commit échappe à la garde de
 //       création, lue dans ce commit) : nom interdit et déjà fusionnée → supprimée ; nom interdit avec du travail non fusionné, ou
 //       feature/hotfix au mauvais point de départ → signalée (code 10), jamais supprimée
+//   node tools/flux-git/cli.mjs supprimer-fusionnee --branche feature/<nom>|hotfix/<nom> --sha <commit fusionné> [--pousser]
+//       après la fusion : supprime la branche sur GitHub seulement si elle pointe encore sur le commit fusionné (bail atomique) ;
+//       si elle a reçu des commits depuis, elle est gardée (avertissement)
 //   node tools/flux-git/cli.mjs regenerer --branche master|dev [--pousser]
 //       republier une branche sans changer sa version (nouvelle étiquette d'installateur, ou le site avant la 1.0)
 //
@@ -42,7 +45,7 @@ function git(args, { ok = [0], entree } = {}) {
   const r = spawnSync('git', args, { encoding: 'utf8', input: entree, maxBuffer: 64 * 1024 * 1024 });
   if (r.error) throw r.error;
   if (!ok.includes(r.status)) throw new Error(`git ${args.join(' ')} : ${(r.stderr || r.stdout).trim()}`);
-  return { sortie: r.stdout.trim(), code: r.status };
+  return { sortie: r.stdout.trim(), code: r.status, erreur: (r.stderr || '').trim() };
 }
 const sortie = (args) => git(args).sortie;
 const existe = (ref) => git(['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], { ok: [0, 1] }).code === 0;
@@ -100,26 +103,47 @@ function balayer({ distant, envoyer }) {
   git(['fetch', '--quiet', '--prune', distant]);
   const absent = fluxAbsent(distant);
   if (absent) return { type: 'balayage', resultats: [], message: `${absent} : aucun balayage.` };
-  const refs = sortie(['for-each-ref', '--format=%(refname:short)', `refs/remotes/${distant}/`]).split('\n')
-    .filter((r) => r && r !== distant && r !== `${distant}/HEAD`);
+  // Noms complets (refs/remotes/<distant>/…) : « %(refname:short) » raccourcit « x/HEAD » en « x », et un nom court peut désigner une étiquette.
+  const prefixe = `refs/remotes/${distant}/`;
+  const refs = sortie(['for-each-ref', '--format=%(refname)%09%(objectname)%09%(symref)', prefixe]).split('\n').filter(Boolean)
+    .map((l) => l.split('\t')).filter(([, , symref]) => !symref)
+    .map(([ref, sha]) => ({ ref, sha, branche: ref.slice(prefixe.length) }));
   const resultats = [];
-  for (const ref of refs) {
-    const branche = ref.slice(distant.length + 1);
+  for (const { ref, sha, branche } of refs) {
     const famille = familleDe(branche);
     if (famille === 'principale' || famille === 'publication') continue;
     if (!famille) {
-      const fusionnee = estAncetre(ref, `${distant}/${DEV}`) || estAncetre(ref, `${distant}/${MASTER}`);
+      const fusionnee = estAncetre(ref, `${prefixe}${DEV}`) || estAncetre(ref, `${prefixe}${MASTER}`);
       resultats.push(fusionnee
-        ? { branche, action: 'supprimee', raison: 'nom interdit, et tout son contenu est déjà dans dev ou master' }
-        : { branche, action: 'signalee', raison: 'nom interdit, mais elle contient du travail absent de dev et de master : le reprendre dans une feature/<nom> (ou la supprimer à la main)' });
+        ? { branche, sha, action: 'supprimee', raison: 'nom interdit, et tout son contenu est déjà dans dev ou master' }
+        : { branche, sha, action: 'signalee', raison: 'nom interdit, mais elle contient du travail absent de dev et de master : le reprendre dans une feature/<nom> (ou la supprimer à la main)' });
       continue;
     }
-    const probleme = verifierOrigine(famille, sortie(['rev-parse', ref]), distant);
-    if (probleme) resultats.push({ branche, action: 'signalee', raison: probleme });
+    const probleme = verifierOrigine(famille, sha, distant);
+    if (probleme) resultats.push({ branche, sha, action: 'signalee', raison: probleme });
   }
-  const aSupprimer = resultats.filter((r) => r.action === 'supprimee').map((r) => `:refs/heads/${r.branche}`);
-  if (envoyer && aSupprimer.length) git(['push', '--quiet', distant, ...aSupprimer]);
+  // Une suppression par branche, avec bail : refusée si la branche a bougé depuis la lecture ; un refus n'empêche pas les autres.
+  for (const r of resultats.filter((x) => x.action === 'supprimee')) {
+    if (!envoyer) continue;
+    const p = git(['push', '--quiet', `--force-with-lease=refs/heads/${r.branche}:${r.sha}`, distant, `:refs/heads/${r.branche}`], { ok: [0, 1, 128] });
+    if (p.code !== 0) Object.assign(r, { action: 'signalee', raison: `suppression refusée (${(p.erreur || p.sortie).split('\n').pop()}) : elle a peut-être bougé entre-temps` });
+  }
   return { type: 'balayage', resultats, poussee: Boolean(envoyer) };
+}
+
+/** Après une fusion : la branche fusionnée est supprimée seulement si elle pointe encore sur le commit fusionné. */
+function supprimerFusionnee({ branche, sha, distant, envoyer }) {
+  const famille = familleDe(branche);
+  if (famille !== 'feature' && famille !== 'hotfix') throw new Refus(`refus de supprimer « ${branche} » : seules feature/<nom> et hotfix/<nom> le sont`);
+  if (!/^[0-9a-f]{40}$/.test(sha)) throw new Refus(`commit fusionné invalide « ${sha} »`);
+  // Comparaison exacte du nom (ls-remote filtre par fin de nom) ; aucun nom n'est mis dans une adresse.
+  const actuel = sortie(['ls-remote', '--heads', distant]).split('\n').map((l) => l.split('\t')).find(([, ref]) => ref === `refs/heads/${branche}`)?.[0];
+  if (!actuel) return `${branche} : déjà supprimée.`;
+  if (actuel !== sha) return avertir(`${branche} a reçu des commits après la fusion (${actuel.slice(0, 7)} au lieu de ${sha.slice(0, 7)}) : elle est gardée, à supprimer à la main une fois son travail repris.`);
+  if (!envoyer) return `${branche} : à supprimer (essai à blanc).`;
+  const p = git(['push', '--quiet', `--force-with-lease=refs/heads/${branche}:${sha}`, distant, `:refs/heads/${branche}`], { ok: [0, 1, 128] });
+  if (p.code !== 0) return avertir(`${branche} : suppression refusée (${(p.erreur || p.sortie).split('\n').pop()}), elle a sans doute bougé : gardée.`);
+  return `${branche} : supprimée (elle est fusionnée).`;
 }
 
 function verifierPRCmd({ base, head, sha, distant, depotSource, depot }) {
@@ -371,10 +395,12 @@ function principal(argv) {
   if (commande === 'appliquer') { exiger(o, 'base', 'head'); return appliquer(o); }
   if (commande === 'regenerer') { exiger(o, 'branche'); return regenerer(o); }
   if (commande === 'balayer') return balayer(o);
-  throw new Refus('commande attendue : verifier-creation, verifier-pr, appliquer, regenerer ou balayer');
+  if (commande === 'supprimer-fusionnee') { exiger(o, 'branche', 'sha'); return supprimerFusionnee(o); }
+  throw new Refus('commande attendue : verifier-creation, verifier-pr, appliquer, regenerer, balayer ou supprimer-fusionnee');
 }
 
 const annoter = (texte) => (process.env.GITHUB_ACTIONS ? `::error::${texte}` : `ERREUR : ${texte}`);
+function avertir(texte) { return process.env.GITHUB_ACTIONS ? `::warning::${texte}` : `AVERTISSEMENT : ${texte}`; }
 try {
   const r = principal(process.argv.slice(2));
   if (typeof r === 'string') {
