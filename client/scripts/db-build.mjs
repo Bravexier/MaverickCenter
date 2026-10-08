@@ -33,7 +33,7 @@ const base = tables.map((t) => t.name).filter((n) => !fts.includes(n) && !ombre(
 test.close();
 const version = Number(texte.match(/^PRAGMA user_version\s*=\s*(\d+)/m)[1]);
 if (!existsSync(join(rows, 'VERSION'))) { console.error(`${rows}/VERSION absent : jeu de lignes incomplet`); process.exit(1); }
-const v = readFileSync(join(rows, 'VERSION'), 'utf8').match(/^schema_version=(\d+)\n$/);
+const v = readFileSync(join(rows, 'VERSION'), 'utf8').match(/^schema_version=(\d+)\r?\n$/);
 if (!v || Number(v[1]) !== version) { console.error(`${rows}/VERSION : version ${v?.[1]} != schéma ${version} (migration de schéma à écrire : docs/sql/conception.md §10.1)`); process.exit(1); }
 const fichiers = new Set(readdirSync(rows).filter((f) => f.endsWith('.sql')).map((f) => f.slice(0, -4)));
 const manquants = base.filter((t) => !fichiers.has(t));

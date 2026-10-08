@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import packageInfo from '../../package.json';
 import { url } from '../lib/wiki';
 import { NAV, activeGroup, groupIsCurrent } from '../lib/nav.mjs';
 
@@ -65,7 +66,10 @@ const here = Astro.url.pathname.replace(/\/?$/, '/');
     <main>
       <slot />
     </main>
-    <footer class="site-footer">Projet de fan pour Maverick JDR — contenu issu du Discord et des Google Docs du MJ.</footer>
+    <footer class="site-footer">
+      <span>Projet de fan pour Maverick JDR — contenu issu du Discord et des Google Docs du MJ.</span>
+      <span class="site-footer__version">v{packageInfo.version}</span>
+    </footer>
       <script is:inline>
       (function () {
         var toggles = document.querySelectorAll('.nav-group__toggle');

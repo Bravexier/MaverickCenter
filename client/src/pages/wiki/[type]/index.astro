@@ -2,10 +2,12 @@
 import Base from '../../../layouts/Base.astro';
 import EntryList from '../../../components/EntryList.astro';
 import RaceList from '../../../components/RaceList.astro';
+import MagiesConstellation from '../../../components/MagiesConstellation.astro';
 import { TYPES, TYPE_KEYS } from '../../../lib/types.mjs';
 import { groupClasses } from '../../../lib/class-groups.mjs';
 import { groupRaces } from '../../../lib/race-kinds.mjs';
 import { groupByClass } from '../../../lib/capacites.mjs';
+import { loadMagies } from '../../../lib/magies';
 import { entryHref } from '../../../lib/wiki';
 import { entriesOfType, loadWiki, url } from '../../../lib/wiki';
 
@@ -16,6 +18,14 @@ export function getStaticPaths() {
 const { type } = Astro.params as { type: keyof typeof TYPES };
 const { entries } = await loadWiki();
 const list = entriesOfType(entries, type);
+const dbMagies = type === 'magies' ? loadMagies() : null;
+const entriesById = new Map(list.map((entry) => [entry.id, entry]));
+const magiesIndex = dbMagies
+  ? [...dbMagies.magies.values()].flatMap((magie) => {
+      const entry = entriesById.get(magie.id);
+      return entry ? [{ entry, magie }] : [];
+    })
+  : [];
 // Les classes sont présentées par catégorie (voir lib/class-groups.mjs) ; les autres types en liste alphabétique.
 const classGroups = type === 'classes' ? groupClasses(list) : [];
 // Les races sont présentées pures puis hybrides (voir lib/race-kinds.mjs), avec leurs magies innées.
@@ -27,9 +37,11 @@ const capaciteDetail = (e: any) => [`Niveau ${e.data.niveau}`, e.data.specialite
 
 <Base title={TYPES[type].label}>
   <h1>{TYPES[type].label}</h1>
-  <p class="muted">{TYPES[type].blurb}</p>
+  {type !== 'magies' && <p class="muted">{TYPES[type].blurb}</p>}
   {
-    classGroups.length > 0 ? (
+    type === 'magies' ? (
+      <MagiesConstellation magies={magiesIndex} />
+    ) : classGroups.length > 0 ? (
       <>
         <nav class="class-nav" aria-label="Catégories de classes">
           {classGroups.map((group) => <a class="badge" href={`#${group.key}`}>{group.label}</a>)}
