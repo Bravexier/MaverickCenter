@@ -42,8 +42,8 @@ stables, SQL portable, modifications historisées, règles en données, moteur p
 | `client/src/data/rules.json` | Règles de création de personnage |
 | `client/test/` | Tests `node:test` (`npm test`) |
 | `tools/import-gdocs.mjs` | Export des Google Docs/Sheets listés dans `sources/sources.json` |
-| `deploy/` | Paquet d'hébergement NAS (nginx + Docker, mot de passe), `build.sh` qui le génère, `update-nas.sh` (mise à jour auto depuis la branche `site`) |
-| `.github/workflows/publish-site.yml` | Après chaque fusion dans `main` : tests, build `HIDE_EXAMPLES=1`, publication sur la branche `site` (refuse si le dépôt n'est pas privé) |
+| `deploy/` | Hébergement (nginx + Docker, mot de passe) : `installateur.sh` (modèle) et `fabriquer-installateur.mjs` → un installateur `.sh` autonome par livraison, mode **prod** ou **test** (le test copie le `db/` de la production à l'installation) ; `update-nas.sh` exécute le dernier de son mode ; `build.sh [test]` en fabrique un à la main |
+| `tools/flux-git/`, `.github/workflows/` | Flux Git (`docs/flux-git.md`) : `regles.mjs` (pur, testé), `cli.mjs` (le bot) ; `garde-branches.yml` (création et PR), `livraison.yml` (versions + installateurs publiés en *releases*, refuse si le dépôt n'est pas privé), `ci.yml` ; règles GitHub importables dans `.github/rulesets/` |
 | `tools/build-artifact.mjs` | Version « portable » (liens relatifs, CSS/JS inline) publiée comme page privée claude.ai |
 | `data/schema.sql`, `data/rows/` | **Base SQLite** : structure (136 tables STRICT, FTS5, 29 vues) et lignes versionnées (991 pages + 7 domaines). Depuis `client/` : `npm run db:build` (→ `var/maverick.db`, ignoré par git), `db:check`, `db:pages-check` / `db:sync-pages` (pages des `.md` → `data/rows`), `db:init` (base vide), `db:doc` (régénère `docs/sql/structure.md` et `apercu.md`), `db:migrate` (changement de schéma : `data/migrations/`). Chaque table d'entités a une colonne `remarque` (texte libre, vide par défaut) qui reprend les notes de cellule des classeurs. Le site en tire ses pages (fichiers `.md` fabriqués au build) et l'onglet **DB** (`/donnees/` : toutes les tables, et la base en téléchargement `/donnees/maverick.db`) ; les lignes typées ne se réimportent pas encore depuis les classeurs. Voir `docs/sql/remplissage.md`. |
 | `api/` | Services CRUD de personnages (Node sans dépendance + .NET). Non utilisés par le site pour l'instant. |
@@ -104,7 +104,11 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
 
 ## Conventions de travail
 
-- **Fusion** : une fois la PR créée et la CI verte, la fusionner dans `main` sans attendre le propriétaire (consigne permanente, valable pour tout le projet).
+- **Branches** (`docs/flux-git.md`, décision du propriétaire) : `master` = production, `dev` = intégration. Ne créer que `feature/<nom>` depuis `origin/dev`
+  (PR vers `dev`) ou `hotfix/<nom>` depuis `origin/master` (PR vers `master`) ; toute autre branche poussée (`claude/…`, `dev/…`, `main`…) est supprimée par la garde,
+  et `dev/…` ne peut pas exister à côté de `dev`. Ne jamais modifier la version de `client/package.json` : le bot la tient après chaque fusion.
+- **Fusion** : une fois la PR `feature/<nom>` → `dev` créée et la CI verte, la fusionner sans attendre le propriétaire (consigne permanente). Une livraison
+  `dev` → `master` ou un hotfix → `master` met la production à jour : seulement à la demande du propriétaire, par « Create a merge commit ».
 - Toute logique de règle ou de lien nouvelle → test dans `client/test/`.
 - `rules.test.mjs` doit rester vert quand de vraies données remplacent l'exemple.
 - Ne pas modifier `api/` sans demande : c'est l'existant d'avant le site.

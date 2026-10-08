@@ -14,14 +14,19 @@ obj/
 .DS_Store
 *.log
 
-# Paquet de déploiement généré
+# Installateurs fabriqués (deploy/build.sh) et restes d'un essai d'installation dans deploy/
+deploy/sortie/
 deploy/site/
+deploy/db/
 deploy/*.zip
 deploy/*.tar.gz
 deploy/.htpasswd
+deploy/.env
+deploy/VERSION
 deploy/.github-token
 deploy/.installed-sha
 deploy/update.log
+deploy/installation.log
 deploy/.update.lock/
 deploy/update-nas.env
 

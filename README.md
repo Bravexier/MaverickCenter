@@ -25,11 +25,16 @@ npm run build    # site statique dans client/dist/
 - **Générateur de fiche** (`/generateur/`) : race, classes, magies, répartition de points, valeurs dérivées ; sauvegarde automatique
   dans le navigateur, export/import JSON, impression/PDF. Les règles sont des **données** (`client/src/data/rules.json`).
 
+## Branches, versions et livraisons
+
+`master` est la production, `dev` l'intégration ; on ne crée que des `feature/<nom>` (depuis `dev`) et des `hotfix/<nom>` (depuis `master`).
+Après chaque fusion, un bot tient la version (`X.Y.Z`) et publie un script d'installation : serveur de **test** pour une fusion dans `dev`
+(il copie la base de la production à l'installation), **production** pour une fusion dans `master`. Voir [docs/flux-git.md](docs/flux-git.md).
+
 ## Héberger le site (NAS, Docker)
 
-`./deploy/build.sh` construit la version à montrer (sans les pages d'exemple) et produit `deploy/maverick-center-nas.zip` :
-site statique + `docker-compose.yml` + configuration nginx protégée par mot de passe. Voir [deploy/README.md](deploy/README.md).
-Après chaque PR fusionnée, GitHub republie le site sur la branche `site` et le NAS la récupère automatiquement (`deploy/update-nas.sh`).
+Chaque installateur contient le site et l'installe dans le dossier d'une instance (nginx dans Docker, protégé par mot de passe) ;
+`deploy/update-nas.sh` peut exécuter seul le dernier. `./deploy/build.sh [test]` en fabrique un à la main. Voir [deploy/README.md](deploy/README.md).
 
 Pour une page privée claude.ai (une simple adresse à ouvrir) : `node tools/build-artifact.mjs --out <dossier>` produit la version portable
 (liens relatifs, sans fichier JS/CSS externe) et les listes de fichiers à publier.
@@ -37,6 +42,7 @@ Pour une page privée claude.ai (une simple adresse à ouvrir) : `node tools/bui
 ## Documentation
 
 - [Sources (Discord, Google Docs) et import](docs/sources.md)
+- [Flux Git : branches, versions, livraisons](docs/flux-git.md)
 - [Écrire des pages du wiki](docs/content-guide.md)
 - [Schéma des règles du générateur](docs/character-generator.md)
 - [CLAUDE.md](CLAUDE.md) — contexte pour les sessions Claude Code
