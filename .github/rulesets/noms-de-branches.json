@@ -1,0 +1,23 @@
+{
+  "name": "Noms de branches : feature/* et hotfix/* seulement",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": [
+        "~ALL"
+      ],
+      "exclude": [
+        "refs/heads/feature/**/*",
+        "refs/heads/hotfix/**/*",
+        "refs/heads/site"
+      ]
+    }
+  },
+  "rules": [
+    {
+      "type": "creation"
+    }
+  ],
+  "bypass_actors": []
+}
