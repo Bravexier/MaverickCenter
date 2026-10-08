@@ -470,6 +470,42 @@ describe('le bot sur un vrai dépôt Git', () => {
     assert.match(r.out, /pas encore en place \(dev absente\)/);
   });
 
+  test('balayage : nom interdit et fusionnée → supprimée ; travail non fusionné ou mauvais départ → signalée, gardée', () => {
+    const d = depot();
+    const branchesDistantes = () => git(distantDe(d), 'ls-remote', '--heads', 'origin').split('\n').map((l) => l.split('refs/heads/')[1]).sort();
+    feature(d, 'feature/a'); // dev a maintenant des commits absents de master
+    git(d.dev, 'push', '--quiet', 'origin', 'origin/master:refs/heads/develop'); // ancienne branche, tout son contenu est dans master
+    branche(d, 'claude/session', 'dev'); // nom interdit, avec du travail
+    branche(d, 'feature/ok', 'dev');
+    branche(d, 'hotfix/depuis-dev', 'dev'); // contient dev
+    git(d.dev, 'checkout', '--quiet', '--orphan', 'publication');
+    git(d.dev, 'commit', '--quiet', '--allow-empty', '-m', 'site construit');
+    git(d.dev, 'push', '--quiet', 'origin', 'publication:site');
+
+    const r = bot(d, 'balayer', '--pousser');
+    assert.equal(r.code, 10, r.out);
+    assert.match(r.out, /develop : supprimée/);
+    assert.match(r.out, /claude\/session : signalée \(nom interdit, mais elle contient du travail/);
+    assert.match(r.out, /hotfix\/depuis-dev : signalée \(hotfix\/<nom> doit partir de master/);
+    assert.doesNotMatch(r.out, /^- (feature\/a|feature\/ok|site|master|dev) :/m, 'les branches conformes ne sont pas citées');
+    assert.deepEqual(branchesDistantes(), ['claude/session', 'dev', 'feature/a', 'feature/ok', 'hotfix/depuis-dev', 'master', 'site'].sort());
+
+    git(d.dev, 'push', '--quiet', 'origin', '--delete', 'claude/session', 'hotfix/depuis-dev');
+    const propre = bot(d, 'balayer', '--pousser');
+    assert.equal(propre.code, 0, propre.out);
+    assert.match(propre.out, /Toutes les branches sont conformes/);
+  });
+
+  test('balayage : rien tant que le flux n\'est pas en place', () => {
+    const d = depot();
+    git(d.dev, 'push', '--quiet', 'origin', '--delete', 'dev');
+    git(d.dev, 'push', '--quiet', 'origin', 'origin/master:refs/heads/develop');
+    const r = bot(d, 'balayer', '--pousser');
+    assert.equal(r.code, 0, r.out);
+    assert.match(r.out, /pas encore en place \(dev absente\)/);
+    assert.match(git(distantDe(d), 'ls-remote', '--heads', 'origin'), /refs\/heads\/develop/);
+  });
+
   test('règles 2 et 3 à la création : nom et point de départ', () => {
     const d = depot();
     fusionner(d, 'dev', 'master');
