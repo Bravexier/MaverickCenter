@@ -2,15 +2,15 @@
 import { render } from 'astro:content';
 import Base from '../../../layouts/Base.astro';
 import EntryList from '../../../components/EntryList.astro';
-import MagiesDeRace from '../../../components/MagiesDeRace.astro';
-import RacesDeMagie from '../../../components/RacesDeMagie.astro';
-import MagiePage from '../../../components/MagiePage.astro';
-import CapacitesDeClasse from '../../../components/CapacitesDeClasse.astro';
-import ChoixDeCapacite from '../../../components/ChoixDeCapacite.astro';
-import BonusAM from '../../../components/BonusAM.astro';
+import MagiesDeRace from '../../../components/magie/MagiesDeRace.astro';
+import RacesDeMagie from '../../../components/magie/RacesDeMagie.astro';
+import MagiePage from '../../../components/magie/MagiePage.astro';
+import CapacitesDeClasse from '../../../components/classes/CapacitesDeClasse.astro';
+import ChoixDeCapacite from '../../../components/classes/ChoixDeCapacite.astro';
 import { TYPES } from '../../../lib/types.mjs';
 import { normalize } from '../../../lib/text.mjs';
 import { classCategory } from '../../../lib/class-groups.mjs';
+import { isMagicalClass } from '../../../lib/classe-magique.mjs';
 import { loadMagies } from '../../../lib/magies';
 import { raceKind, raceOfClass } from '../../../lib/race-kinds.mjs';
 import { entryHref, loadWiki, slugOf, typeOf, url, type WikiEntry } from '../../../lib/wiki';
@@ -25,10 +25,11 @@ const { entries, outgoing, incoming } = await loadWiki();
 
 const type = TYPES[typeOf(entry)];
 const category = typeOf(entry) === 'classes' ? classCategory(entry) : null;
+const isMagic = typeOf(entry) === 'classes' && isMagicalClass(entries, entry);
 const kind = typeOf(entry) === 'races' ? raceKind(entries, entry) : null;
 const raceOfThisClass = typeOf(entry) === 'classes' ? raceOfClass(entries, entry) : null;
 const classOfAbility = typeOf(entry) === 'capacites' ? entries.find((e) => e.id === entry.data.classe) : null;
-// Pages de magie : gabarit commun (components/MagiePage.astro) alimenté par les tables de la base ; une page sans ligne dans `magie`
+// Pages de magie : gabarit commun (components/magie/MagiePage.astro) alimenté par les tables de la base ; une page sans ligne dans `magie`
 // (la magie d'exemple) garde le rendu Markdown.
 const magies = typeOf(entry) === 'magies' ? loadMagies() : null;
 const magie = magies?.magies.get(entry.id) ?? null;
@@ -80,13 +81,13 @@ const statusNote = {
             )
           }
         </h1>
+        {isMagic && <p class="banner" role="note"><strong>Classe magique</strong> : +4 AM de base selon sa catégorie ou la spécialité choisie.</p>}
         {entry.data.aliases.length > 0 && <p class="muted">Aussi appelé : {entry.data.aliases.join(', ')}</p>}
         {statusNote && <p class="banner" role="note">{statusNote}</p>}
 
         {raceOfThisClass && (
           <p>Classe raciale de la race <a href={entryHref(raceOfThisClass)}>{raceOfThisClass.data.title}</a>.</p>
         )}
-        {typeOf(entry) === 'classes' && <BonusAM entry={entry} entries={entries} />}
         {typeOf(entry) === 'capacites' && <ChoixDeCapacite entry={entry} entries={entries} />}
         {typeOf(entry) === 'races' && <MagiesDeRace entry={entry} entries={entries} />}
         {typeOf(entry) === 'magies' && <RacesDeMagie entry={entry} entries={entries} />}

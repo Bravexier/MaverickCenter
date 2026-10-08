@@ -1,0 +1,20 @@
+/* Chargé uniquement depuis MagiePage.astro pour ne pas alourdir les autres pages du wiki. */
+.magie {
+  --mag: var(--couleur-magie, #ad5e29);
+  --mag-readable: color-mix(in srgb, var(--mag) 40%, #000);
+  --mag-soft: color-mix(in srgb, var(--mag) 9%, var(--surface));
+  --mag-line: color-mix(in srgb, var(--mag) 35%, var(--border));
+  --gl: 34%;
+  --hero-1: color-mix(in srgb, var(--mag) 35%, #111);
+  --hero-2: color-mix(in srgb, var(--mag) 45%, #111);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .magie { --mag-readable: color-mix(in srgb, var(--mag) 55%, #fff); --gl: 74%; }
+}
+:root[data-theme="dark"] .magie { --mag-readable: color-mix(in srgb, var(--mag) 55%, #fff); --gl: 74%; }
+
+.js-only { display: none; }
+html.js .js-only { display: inline; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.texte { white-space: pre-line; margin: 0.4rem 0; }
+.texte-titre { margin: 0.9rem 0 0.2rem; font-size: 0.85rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }

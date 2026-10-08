@@ -1,0 +1,21 @@
+/* Panneau détaillé d'un sort et annexes */
+.sorts .sort__detail > td { padding: 0; background: var(--mag-soft); border-top: 1px dashed var(--mag-line); box-shadow: inset 4px 0 0 var(--mag); }
+.sort-detail { padding: 0.9rem 1.2rem 1rem 1.4rem; display: grid; gap: 0.8rem; font-size: 0.95rem; }
+.sort-detail__tete { display: flex; align-items: center; gap: 0.8rem; }
+.sort-detail__tete h4 { margin: 0; font-size: 1.05rem; }
+.sort-detail__fermer { display: none; margin-left: auto; font-size: 0.8rem; padding: 0.15rem 0.7rem; }
+html.js .sort-detail__fermer { display: inline-block; }
+.sort-detail h5 { margin: 0 0 0.25rem; font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.sort-detail__bloc, .sort-detail__regles { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.9rem 0.7rem; }
+.sort-detail__bloc .texte:first-of-type, .sort-detail__regles > .texte:first-of-type { margin-top: 0.15rem; }
+.sort-detail__regles { border-left: 4px solid var(--mag); }
+.sort-detail__regles > h5 { color: var(--mag-readable); font-size: 0.8rem; }
+.sort-detail ul { margin: 0.3rem 0; padding-left: 1.2rem; }
+.sort-detail__bloc > .texte, .sort-detail__bloc > .incantation { margin-top: 0.35rem; margin-bottom: 0; }
+.incantation { margin: 0.2rem 0 0; padding: 0.3rem 1rem; border-left: 3px solid var(--mag-line); font-style: italic; }
+.incantation .texte { margin: 0; }
+.annexe { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+.annexe caption { text-align: left; padding: 0.4rem 0.6rem; font-size: 0.72rem; letter-spacing: 0.08em; color: var(--muted); }
+.annexe th, .annexe td { text-align: left; vertical-align: top; padding: 0.35rem 0.7rem; border-top: 1px solid var(--border); }
+.annexe thead th { background: var(--mag-soft); font-size: 0.72rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.annexe ul { margin: 0; padding-left: 1.1rem; }

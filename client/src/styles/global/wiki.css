@@ -1,0 +1,11 @@
+.entry-list { list-style: none; padding: 0; }
+.entry-list li { padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
+
+.prose { max-width: 46rem; }
+.prose table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; }
+.prose th, .prose td { border: 1px solid var(--border); padding: 0.3rem 0.6rem; }
+.wikilink { text-decoration-style: dotted; }
+.wikilink--missing { color: var(--danger); font-style: normal; text-decoration: underline wavy; cursor: help; }
+.linked-pages { display: grid; gap: 1rem 2rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+.class-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
+main a { overflow-wrap: anywhere; } /* les URLs de la section « Sources » ne doivent pas élargir la page */

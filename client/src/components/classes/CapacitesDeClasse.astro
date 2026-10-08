@@ -1,7 +1,7 @@
 ---
-import { capacitesOfClass, nomCapacite, nomsSeRepondent } from '../lib/capacites.mjs';
-import { bonusAM } from '../lib/classe-bonus.mjs';
-import { entryHref, type WikiEntry } from '../lib/wiki';
+import { capacitesOfClass, nomCapacite, nomsSeRepondent } from '../../lib/capacites.mjs';
+import { isMagicalSpecialization } from '../../lib/classe-magique.mjs';
+import { entryHref, type WikiEntry } from '../../lib/wiki';
 
 interface Props {
   entry: WikiEntry;
@@ -9,7 +9,6 @@ interface Props {
 }
 const { entry, entries } = Astro.props;
 const { automatiques, specialites, groupes } = capacitesOfClass(entries, entry);
-const am = bonusAM(entries, entry);
 const total = automatiques.length + specialites.reduce((n, s) => n + (s.cartouche ? 1 : 0) + s.groupes.reduce((m, g) => m + g.options.length, 0), 0) + groupes.reduce((n, g) => n + g.options.length, 0);
 const detail = (e: WikiEntry) => [`Niveau ${e.data.niveau}`, e.data.type_capacite].filter(Boolean).join(' · ');
 const nom = nomCapacite;
@@ -58,7 +57,7 @@ const separateur = (a: WikiEntry, b: WikiEntry) => (nomsSeRepondent(a, b) ? '/' 
         <>
           <h3>
             Spécialité {s.nom}
-            {am?.portee === 'specialite' && am.specialite === s.nom && <span class="badge badge--hybride" title="Bonus d'armure magique de cette spécialité">+{am.valeur} AM</span>}
+            {isMagicalSpecialization(s.cartouche) && <span class="badge" title="Cette spécialité est considérée comme une classe magique">Classe magique · +4 AM</span>}
           </h3>
           {s.cartouche && <p>La spécialité : <a href={entryHref(s.cartouche)}>{nom(s.cartouche)}</a> <span class="muted">{detail(s.cartouche)}</span></p>}
           {s.groupes.map((g) => (

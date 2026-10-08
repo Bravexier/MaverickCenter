@@ -1,14 +1,23 @@
 ---
-import { couleurDeMagie, nombre, sortsParNpm, texteSurCouleurDeMagie } from '../lib/sort-format.mjs';
-import magieCss from '../styles/magie.css?raw';
-import { racesOfMagie } from '../lib/magie-relations.mjs';
-import { pageHref, type Magies, type MagieDb } from '../lib/magies';
-import type { WikiEntry } from '../lib/wiki';
+import { couleurDeMagie, nombre, sortsParNpm, texteSurCouleurDeMagie } from '../../lib/sort-format.mjs';
+import magieBaseCss from '../../styles/magie/base.css?raw';
+import magiePageCss from '../../styles/magie/page.css?raw';
+import magieSortsCss from '../../styles/magie/sorts.css?raw';
+import magieDetailCss from '../../styles/magie/sort-detail.css?raw';
+import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
+import magieCreaturesCss from '../../styles/magie/creatures.css?raw';
+import magieResponsiveCss from '../../styles/magie/responsive.css?raw';
+import magiePrintCss from '../../styles/magie/print.css?raw';
+import { racesOfMagie } from '../../lib/magie-relations.mjs';
+import { pageHref, type Magies, type MagieDb } from '../../lib/magies';
+import type { WikiEntry } from '../../lib/wiki';
 import Bulles from './Bulles.astro';
 import MagieAffinites from './MagieAffinites.astro';
 import MagieSorts from './MagieSorts.astro';
 import RacesDeMagie from './RacesDeMagie.astro';
 import Texte from './Texte.astro';
+
+const magieCss = [magieBaseCss, magiePageCss, magieSortsCss, magieDetailCss, magieTooltipsCss, magieCreaturesCss, magieResponsiveCss, magiePrintCss].join('\n');
 
 // Gabarit commun des pages de magie : bannière (nom, rôles, ressources offertes), présentation, résistances, Mode Hyper, sorts par niveau de
 // puissance magique, races. Il affiche les lignes de la base (tables magie, sort… ; lib/magies-db.mjs) : pour changer une magie ou un sort,
