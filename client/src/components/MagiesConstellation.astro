@@ -19,12 +19,12 @@ const disposition = [
   { cle: 'Sang', nom: 'Sang', region: 'primordiale', x: 415, y: 390, mx: 270, my: 445 },
   { cle: 'Lumière', nom: 'Lumière', region: 'lumiere-ombre', x: 585, y: 390, mx: 730, my: 345 },
   { cle: 'Ombre', nom: 'Ombre', region: 'lumiere-ombre', x: 695, y: 470, mx: 730, my: 445 },
-  { cle: 'Feu', nom: 'Feu', region: 'elementaire', x: 425, y: 585, mx: 500, my: 565 },
-  { cle: 'Eau', nom: 'Eau', region: 'elementaire', x: 575, y: 585, mx: 250, my: 670 },
-  { cle: 'Glace', nom: 'Glace', region: 'elementaire', x: 745, y: 725, mx: 750, my: 670 },
-  { cle: 'Terre', nom: 'Terre', region: 'elementaire', x: 575, y: 855, mx: 250, my: 770 },
-  { cle: 'Vent', nom: 'Vent', region: 'elementaire', x: 425, y: 855, mx: 750, my: 770 },
-  { cle: 'Foudre', nom: 'Foudre', region: 'elementaire', x: 255, y: 725, mx: 500, my: 870 },
+  { cle: 'Feu', nom: 'Feu', region: 'elementaire', x: 430, y: 610, mx: 300, my: 565 },
+  { cle: 'Eau', nom: 'Eau', region: 'elementaire', x: 570, y: 610, mx: 700, my: 565 },
+  { cle: 'Glace', nom: 'Glace', region: 'elementaire', x: 660, y: 710, mx: 750, my: 690 },
+  { cle: 'Terre', nom: 'Terre', region: 'elementaire', x: 570, y: 810, mx: 700, my: 815 },
+  { cle: 'Vent', nom: 'Vent', region: 'elementaire', x: 430, y: 810, mx: 300, my: 815 },
+  { cle: 'Foudre', nom: 'Foudre', region: 'elementaire', x: 340, y: 710, mx: 250, my: 690 },
 ];
 
 const index = new Map(magies.map((item) => [normalize(item.magie.nom), item]));
@@ -135,6 +135,7 @@ if (lumiere && ombre && (vulnérableÀ(lumiere, ombre) || vulnérableÀ(ombre, l
   }
 
   .magies-orbite__position--potentiel { width: min(12rem, 32vw); }
+  .magies-orbite__position--elementaire { width: min(8rem, 16vw); }
 
   .magies-orbite__position:hover,
   .magies-orbite__position:focus-within { z-index: 1000; }
@@ -222,6 +223,7 @@ if (lumiere && ombre && (vulnérableÀ(lumiere, ombre) || vulnérableÀ(ombre, l
     .magies-orbite__lien--petit { display: initial; }
     .magies-orbite__position { left: var(--mx); top: var(--my); width: min(9rem, calc(50vw - 1.2rem)); }
     .magies-orbite__position--potentiel { width: min(12rem, calc(80vw - 1.5rem)); }
+    .magies-orbite__position--elementaire { width: min(8rem, 32vw); }
     .magies-orbite__position--tooltip-gauche .magies-orbite__noeud::after { left: 0; transform: translateY(0.25rem); }
     .magies-orbite__position--tooltip-droite .magies-orbite__noeud::after { right: 0; left: auto; transform: translateY(0.25rem); }
     .magies-orbite__noeud:hover::after,
