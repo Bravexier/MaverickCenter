@@ -3,6 +3,7 @@ import '../styles/global.css';
 import packageInfo from '../../package.json';
 import { url } from '../lib/wiki';
 import { NAV, activeGroup, groupIsCurrent } from '../lib/nav.mjs';
+import { modeDuSite } from '../lib/mode-site.mjs';
 
 interface Props {
   title: string;
@@ -13,6 +14,7 @@ const { title, description = 'Wiki et outils pour le JDR Maverick' } = Astro.pro
 const base = import.meta.env.BASE_URL;
 const active = activeGroup(Astro.url.pathname, base);
 const here = Astro.url.pathname.replace(/\/?$/, '/');
+const site = modeDuSite(process.env, packageInfo.version);
 ---
 
 <!doctype html>
@@ -22,9 +24,10 @@ const here = Astro.url.pathname.replace(/\/?$/, '/');
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
     <link rel="icon" type="image/svg+xml" href={url('favicon.svg')} />
-    <title>{title === 'Accueil' ? 'Maverick Center' : `${title} — Maverick Center`}</title>
+    <title>{site.test ? '[TEST] ' : ''}{title === 'Accueil' ? 'Maverick Center' : `${title} — Maverick Center`}</title>
   </head>
   <body>
+    {site.test && <p class="bandeau-test" role="note"><strong>Serveur de test</strong> — {site.etiquette}, version en cours de développement : ce n’est pas le site de production.</p>}
     <header class="site-header">
       <div class="site-header__inner">
         <a class="brand" href={url()}>Maverick Center</a>
@@ -68,7 +71,7 @@ const here = Astro.url.pathname.replace(/\/?$/, '/');
     </main>
     <footer class="site-footer">
       <span>Projet de fan pour Maverick JDR — contenu issu du Discord et des Google Docs du MJ.</span>
-      <span class="site-footer__version">v{packageInfo.version}</span>
+      <span class="site-footer__version">{site.etiquette}</span>
     </footer>
       <script is:inline>
       (function () {

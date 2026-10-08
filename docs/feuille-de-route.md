@@ -23,7 +23,8 @@ au moment de la bascule, la base est la référence. Le registre `tools/sheets/c
 ## Ce que cela impose dès maintenant
 
 - **Le NAS est temporaire.** Rien de spécifique au NAS en dehors de `deploy/` : le site et l'API doivent tourner dans un conteneur, configurés par variables
-  d'environnement ; la mise à jour automatique (`update-nas.sh`) est un habillage, pas l'architecture. L'hébergement final reste à choisir.
+  d'environnement ; la mise à jour automatique (`update-nas.sh`) est un habillage, pas l'architecture. L'hébergement final reste à choisir ; la solution y sera
+  installée pour la 1.0 (décision du propriétaire), par les installateurs autonomes de `deploy/installateur/` (serveur normal et serveur de test, voir `flux-git.md`).
 - **La base SQLite est le pivot.** Identifiants stables et jamais réutilisés (une page renommée garde son identifiant), SQL portable (une bascule vers PostgreSQL
   doit rester possible si plusieurs personnes éditent en même temps), modifications historisées (qui, quand, avant/après, état « brouillon / validé »).
 - **Les règles sont des données, pas seulement du texte.** (Premier pas : les bonus de niveau de maîtrise des sorts, `sort_bonus_maitrise`, typés quand l'écriture est sans ambiguïté, lisibles par `lib/sort-maitrise.mjs`.) Le texte d'une capacité reste cité tel quel (règle d'or), mais une simulation exige des effets
@@ -45,8 +46,9 @@ Toute la communauté est sur Discord : la connexion se fait par « Se connecter 
   CSRF pour les modifications) ; le serveur web protège aussi les pages statiques en lui demandant si la session est valide (`auth_request` avec nginx). L'adresse de
   retour de la connexion dépend de l'adresse publique du site (HTTPS) : elle se configure par variable d'environnement et se change dans le portail développeur Discord
   quand l'hébergement migre.
-- **Quand** : avec la phase d'édition, pas avant ; le mot de passe partagé d'aujourd'hui reste d'ici là. La table des utilisateurs et les colonnes « modifié par » de
-  l'historique se prévoient dès la conception de la base.
+- **Quand** : avec la **version 1.0** (décision du propriétaire), qui ouvre aussi le serveur normal (usage réel) et le serveur de test, ce dernier
+  recevant à chaque installation une copie de la base du serveur normal (voir `flux-git.md`). Le mot de passe partagé d'aujourd'hui reste d'ici là.
+  La table des utilisateurs et les colonnes « modifié par » de l'historique se prévoient dès la conception de la base.
 - **À faire par le propriétaire le moment venu** : créer l'application dans le portail développeur Discord et fournir son identifiant et son secret comme secrets de
   l'environnement (jamais dans le dépôt). Aucun jeton personnel Discord n'est utilisé.
 

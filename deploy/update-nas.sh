@@ -1,6 +1,6 @@
 #!/bin/sh
 # Met à jour le site Maverick Center sur le NAS depuis la branche « site » du dépôt GitHub privé.
-# Cette branche est reconstruite par .github/workflows/publish-site.yml après chaque fusion dans main.
+# Cette branche est reconstruite depuis dev par .github/workflows/livraison.yml (job « Site ») après chaque fusion, jusqu'à la 1.0.
 #
 # Le NAS ne fait que des connexions SORTANTES : aucun port à ouvrir.
 # Prérequis : sh, curl, tar (rsync est utilisé s'il est présent). Pas de Node, pas de Docker requis pour ce script.

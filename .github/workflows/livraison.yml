@@ -1,0 +1,229 @@
+name: Version et livraison
+
+# Règles 4 à 9 du flux Git (docs/flux-git.md), après chaque PR fusionnée dans dev ou master :
+#   feature/<nom> → dev     dev : X.Y.Z+1 (master inchangée)
+#   dev → master            master et dev : X.Y+1.0, ou X+1.0.0 si la PR porte [V: X+1]
+#   hotfix/<nom> → master   master inchangée ; master refusionnée dans dev ; dev : X.Y.Z+1
+# Puis la publication, selon la version (la 1.0 est le signal du propriétaire : elle apporte la connexion Discord) :
+#   avant la 1.0       job « Site » : le site unique, reconstruit depuis dev et publié sur la branche « site » (le NAS la suit avec
+#                      sa propre installation, deploy/update-nas.sh) — le fonctionnement d'avant le flux, inchangé ;
+#   à partir de 1.0    job « Installateur » : la solution est hébergée ; un script autonome par fusion (deploy/installateur/), publié en
+#                      « release » privée — serveur normal (vX.Y.Z, puis vX.Y.Z-hotfix.N) depuis master, test (vX.Y.Z-test) depuis dev.
+# Enfin (job « Supprimer la branche fusionnée »), la feature/<nom> ou la hotfix/<nom> fusionnée est supprimée sur GitHub, jamais dev.
+# Lancement manuel (Actions → Version et livraison → Run workflow) : republie dev ou master sans changer sa version.
+on:
+  pull_request:
+    types: [closed]
+    branches: [master, dev]
+  workflow_dispatch:
+    inputs:
+      branche:
+        description: Branche à republier (dev = site avant la 1.0 / test ensuite ; master = production, à partir de la 1.0)
+        type: choice
+        options: [dev, master]
+        default: dev
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    name: Version
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    # Pas de groupe de concurrence ici : GitHub n'y garde qu'un passage en attente et annulerait les autres (fusions perdues).
+    # Des passages simultanés se départagent dans le bot : la poussée atomique de l'un fait échouer l'autre, qui relit et recommence.
+    outputs:
+      installateurs: ${{ steps.bot.outputs.installateurs }}
+      site: ${{ steps.bot.outputs.site }}
+      a_supprimer: ${{ steps.bot.outputs.a_supprimer }}
+    steps:
+      - name: Garde-fou — le contenu appartient à un tiers
+        env:
+          IS_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          if [ "$IS_PRIVATE" != "true" ]; then
+            echo "::error::Le dépôt n'est pas privé : livraison refusée (le contenu appartient à un tiers)."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref || github.ref }}
+          fetch-depth: 0
+          # BOT_TOKEN (secret facultatif) : nécessaire dès que master et dev sont protégées contre les poussées directes
+          # (voir docs/flux-git.md, « Mise en place »). Sinon, le jeton du workflow.
+          token: ${{ secrets.BOT_TOKEN || github.token }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Incrémenter les versions, refusionner master dans dev, choisir la publication
+        id: bot
+        env:
+          EVENEMENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.ref }}
+          HEAD: ${{ github.event.pull_request.head.ref }}
+          PR: ${{ github.event.pull_request.number }}
+          TITRE: ${{ github.event.pull_request.title }}
+          CORPS: ${{ github.event.pull_request.body }}
+          BRANCHE: ${{ inputs.branche }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ "$EVENEMENT" = workflow_dispatch ]; then
+            node tools/flux-git/cli.mjs regenerer --branche "$BRANCHE" --pousser
+          else
+            printf '%s' "$TITRE" > "$RUNNER_TEMP/titre.txt"
+            printf '%s' "$CORPS" > "$RUNNER_TEMP/corps.txt"
+            node tools/flux-git/cli.mjs appliquer --base "$BASE" --head "$HEAD" --pr "$PR" \
+              --texte-fichier "$RUNNER_TEMP/titre.txt" --texte-fichier "$RUNNER_TEMP/corps.txt" --pousser
+          fi
+
+  nettoyage:
+    name: Supprimer la branche fusionnée
+    needs: version
+    # Seulement quand le bot a tout fait (une hotfix dont la refusion a échoué reste, pour la reprendre), et pour une branche de ce dépôt.
+    if: needs.version.result == 'success' && needs.version.outputs.a_supprimer != '' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Supprimer feature/<nom> ou hotfix/<nom> sur GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCHE: ${{ needs.version.outputs.a_supprimer }}
+        run: |
+          case "$BRANCHE" in
+            feature/?*|hotfix/?*) ;;
+            *) echo "::error::refus de supprimer « $BRANCHE » : seules feature/<nom> et hotfix/<nom> le sont"; exit 1 ;;
+          esac
+          if sortie=$(gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${BRANCHE}" 2>&1); then
+            echo "Branche « $BRANCHE » supprimée (elle est fusionnée)."
+          else
+            case "$sortie" in
+              *"Reference does not exist"*) echo "Branche « $BRANCHE » déjà supprimée." ;;
+              *) echo "::error::suppression de « $BRANCHE » impossible : $sortie"; exit 1 ;;
+            esac
+          fi
+
+  site:
+    name: Site (avant la 1.0)
+    needs: version
+    # always() : publier ce que le bot a préparé même s'il signale ensuite un problème (sorties vides sinon : rien ne part).
+    if: always() && needs.version.outputs.site != ''
+    runs-on: ubuntu-latest
+    # Une publication à la fois, la plus récente en dernier (une publication en attente est remplacée par une plus récente).
+    concurrency:
+      group: publication-site
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.site }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Installer et tester
+        working-directory: client
+        run: |
+          npm ci
+          npm test
+
+      - name: Construire (sans les pages d'exemple)
+        working-directory: client
+        run: HIDE_EXAMPLES=1 npm run build
+
+      - name: Publier sur la branche « site » (une seule révision, réécrite à chaque fois)
+        working-directory: client/dist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ needs.version.outputs.site }}
+        run: |
+          git init -q -b site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Site construit depuis dev ${SHA}"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push -f origin site:site
+
+  installateur:
+    name: Installateur ${{ matrix.livraison.mode }} ${{ matrix.livraison.tag }}
+    needs: version
+    # always() : un hotfix dont la refusion dans dev échoue garde son installateur de production (le bot l'a déjà étiqueté).
+    if: always() && needs.version.outputs.installateurs != '' && needs.version.outputs.installateurs != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        livraison: ${{ fromJSON(needs.version.outputs.installateurs) }}
+    env:
+      MODE: ${{ matrix.livraison.mode }}
+      TAG: ${{ matrix.livraison.tag }}
+      VERSION: ${{ matrix.livraison.version }}
+      SHA: ${{ matrix.livraison.sha }}
+      TYPE: ${{ matrix.livraison.type }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.livraison.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Installer et tester
+        working-directory: client
+        run: |
+          npm ci
+          npm test
+
+      - name: Construire le site (sans les pages d'exemple ; bandeau TEST en mode test)
+        working-directory: client
+        run: HIDE_EXAMPLES=1 SITE_MODE="$MODE" SITE_TAG="$TAG" npm run build
+
+      - name: Fabriquer l'installateur
+        id: fabrication
+        run: |
+          fichier=$(node deploy/installateur/fabriquer.mjs --mode "$MODE" --site client/dist --tag "$TAG" --version "$VERSION" --sha "$SHA" --sortie "$RUNNER_TEMP/installateurs")
+          sh "$fichier" --verifier
+          echo "fichier=$fichier" >> "$GITHUB_OUTPUT"
+
+      - name: Publier la livraison (release GitHub)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FICHIER: ${{ steps.fabrication.outputs.fichier }}
+        run: |
+          nom=$(basename "$FICHIER")
+          if [ "$MODE" = prod ]; then
+            # « latest » (ce que suit mise-a-jour.sh) seulement si ce commit est encore le sommet de master : une construction plus
+            # lente ne doit pas faire revenir la production sur une version plus ancienne qu'une autre déjà publiée.
+            sommet=$(git ls-remote origin refs/heads/master | cut -f1)
+            if [ "$sommet" = "$SHA" ]; then latest=true; else latest=false; fi
+            titre="Serveur normal $TAG"; dossier=/srv/maverick-center; options="--latest=$latest"
+            usage="Installe ou met à jour le site de production. La base vivante de l'instance (dossier db/) n'est jamais touchée."
+          else
+            titre="Serveur de test $TAG"; dossier=/srv/maverick-center-test; options="--prerelease --latest=false"
+            usage="Installe ou met à jour le serveur de test et remplace sa base (db/) par une copie, à cet instant, de celle de la production."
+          fi
+          {
+            echo "Installateur **${MODE}** de Maverick Center : \`${TAG}\` (version ${VERSION}, commit ${SHA:0:7}, ${TYPE})."
+            echo
+            echo "$usage"
+            echo
+            echo "Sur le serveur, après avoir copié \`${nom}\` :"
+            echo
+            echo '```sh'
+            echo "sh ${nom} --dossier ${dossier}"
+            echo '```'
+            echo
+            echo "Détails, options et mise à jour automatique : deploy/installateur/README.md. Règles des versions : docs/flux-git.md."
+          } > "$RUNNER_TEMP/notes.md"
+          # shellcheck disable=SC2086
+          gh release create "$TAG" "$FICHIER" --verify-tag --title "$titre" --notes-file "$RUNNER_TEMP/notes.md" $options

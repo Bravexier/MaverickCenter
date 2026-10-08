@@ -24,6 +24,8 @@ deploy/.installed-sha
 deploy/update.log
 deploy/.update.lock/
 deploy/update-nas.env
+# Installateurs fabriqués à la main (deploy/installateur/fabriquer.sh)
+deploy/installateur/sortie/
 
 # Python
 __pycache__/

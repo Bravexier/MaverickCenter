@@ -1,0 +1,93 @@
+name: Garde des branches
+
+# Règles 2 et 3 du flux Git (docs/flux-git.md) :
+#   - seules feature/<nom> (créée depuis dev) et hotfix/<nom> (créée depuis master) peuvent être créées : toute autre branche
+#     poussée sur GitHub est SUPPRIMÉE aussitôt (le travail reste dans le dépôt local de son auteur) ;
+#   - master n'accepte en PR que dev et hotfix/<nom>, dev que feature/<nom> ; le check « regles-de-branches » le contrôle
+#     (à rendre obligatoire, voir .github/rulesets/).
+#   - toutes les 6 heures (et à la demande : Actions → Garde des branches → Run workflow), un balayage depuis la branche par défaut
+#     rattrape ce que la garde de création ne voit pas (elle est lue dans le commit de la branche créée : une branche créée depuis un
+#     commit antérieur au flux y échappe) : nom interdit et déjà fusionnée → supprimée ; travail non fusionné ou mauvais point de
+#     départ → signalé en rouge, jamais supprimé.
+# La logique est dans tools/flux-git/ (testée par client/test/flux-git.test.mjs).
+on:
+  create:
+  pull_request:
+    types: [opened, reopened, synchronize, edited]
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  creation:
+    name: creation-de-branche
+    if: github.event_name == 'create' && github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # supprimer une branche non conforme
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Vérifier le nom et le point de départ (la branche est supprimée sinon)
+        env:
+          BRANCHE: ${{ github.event.ref }}
+          SHA: ${{ github.sha }}
+        run: |
+          set +e
+          node tools/flux-git/cli.mjs verifier-creation --branche "$BRANCHE" --sha "$SHA"
+          code=$?
+          set -e
+          [ "$code" -eq 0 ] && exit 0
+          # Code 10 : règle enfreinte (tools/flux-git/cli.mjs, CODE_REFUS). Tout autre code est une panne du contrôle : on ne supprime rien.
+          [ "$code" -eq 10 ] || exit "$code"
+          git push origin --delete "refs/heads/$BRANCHE"
+          {
+            echo "### Branche « $BRANCHE » supprimée"
+            echo
+            echo "Seules \`feature/<nom>\` (créée depuis \`dev\`) et \`hotfix/<nom>\` (créée depuis \`master\`) sont permises : voir docs/flux-git.md."
+            echo "Le travail n'est pas perdu : il reste dans le dépôt local qui l'a poussé (commit ${SHA})."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
+  pull-request:
+    name: regles-de-branches
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Vérifier la source, la cible, le point de départ et la version
+        env:
+          BASE: ${{ github.base_ref }}
+          HEAD: ${{ github.head_ref }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+          DEPOT_SOURCE: ${{ github.event.pull_request.head.repo.full_name }}
+          DEPOT: ${{ github.repository }}
+        run: node tools/flux-git/cli.mjs verifier-pr --base "$BASE" --head "$HEAD" --sha "$SHA" --depot-source "$DEPOT_SOURCE" --depot "$DEPOT"
+
+  balayage:
+    name: balayage-des-branches
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # supprimer une branche au nom interdit déjà fusionnée
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Contrôler toutes les branches du dépôt
+        run: node tools/flux-git/cli.mjs balayer --pousser

@@ -4,6 +4,9 @@ Le site est **100 % statique** : un dossier de fichiers HTML à servir avec n'im
 Ce dossier contient tout pour le faire tourner avec nginx dans Docker (Synology *Container Manager*,
 QNAP *Container Station*, Unraid, TrueNAS, ou tout hôte Docker).
 
+> Ce paquet est l'installation du NAS, jusqu'à la 1.0. À partir de la 1.0, la solution sera hébergée et installée par les
+> installateurs autonomes de [`installateur/`](installateur/README.md) (serveur normal et serveur de test).
+
 > Le contenu des pages appartient au propriétaire du jeu. La configuration fournie protège donc l'accès par mot de passe
 > et interdit l'indexation par les moteurs de recherche. Ne la désactivez pas sans son accord.
 
@@ -38,14 +41,13 @@ Si le site doit répondre sur une adresse du type `https://nas.exemple/maverick/
 ## Mise à jour automatique après chaque PR fusionnée
 
 ```
-PR fusionnée dans main ──▶ GitHub Actions : tests + construction ──▶ branche « site » (privée)
+PR fusionnée dans dev ──▶ GitHub Actions : tests + construction ──▶ branche « site » (privée)
                                                                          ▲
                               NAS : update-nas.sh (toutes les 5 min) ────┘  connexions sortantes uniquement
 ```
 
-Aucun port à ouvrir : c'est le NAS qui interroge GitHub. Le workflow (`.github/workflows/publish-site.yml`) refuse de publier
-si le dépôt n'est plus privé. Il ne tourne qu'une fois présent sur `main` : tant que la première PR n'est pas fusionnée,
-la branche « site » n'existe pas et le script le signale (« pas encore créée »).
+Aucun port à ouvrir : c'est le NAS qui interroge GitHub. Le workflow (`.github/workflows/livraison.yml`, job « Site », jusqu'à la 1.0 :
+voir `docs/flux-git.md`) refuse de publier si le dépôt n'est plus privé.
 
 ### Mise en place (une seule fois)
 
