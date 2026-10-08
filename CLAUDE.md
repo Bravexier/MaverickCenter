@@ -107,7 +107,8 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
 - **Branches** (`docs/flux-git.md`, décision du propriétaire) : `master` = production, `dev` = intégration. Ne créer que `feature/<nom>` depuis `origin/dev`
   (PR vers `dev`) ou `hotfix/<nom>` depuis `origin/master` (PR vers `master`), après `git fetch --prune origin` ; toute autre branche poussée (`claude/…`, `dev/…`,
   `main`…) est supprimée par la garde, et `dev/…` ne peut pas exister à côté de `dev`. Ne jamais modifier la version de `client/package.json` : le bot la tient
-  après chaque fusion. Fusionner toujours par « Create a merge commit » (ni squash ni rebase).
+  après chaque fusion. Fusionner toujours par « Create a merge commit » (ni squash ni rebase). Après la fusion, le bot supprime la branche `feature/…` ou
+  `hotfix/…` : une suite de travail repart d'une nouvelle branche.
 - **Fusion** : une fois la PR `feature/<nom>` → `dev` créée et la CI verte, la fusionner sans attendre le propriétaire (consigne permanente). Une livraison
   `dev` → `master` ou un hotfix → `master` : seulement à la demande du propriétaire, par « Create a merge commit ». Ne jamais mettre `[V: X+1]` de soi-même :
   le passage en 1.0 est le signal du propriétaire (connexion Discord, serveurs normal et de test).

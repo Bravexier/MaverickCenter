@@ -77,6 +77,15 @@ export function typeDeFusion({ base, head }) {
   return null;
 }
 
+/**
+ * Branche de travail à supprimer une fois sa fusion traitée par le bot : la feature ou la hotfix elle-même, jamais dev (source d'une
+ * livraison) ni une branche hors des règles.
+ */
+export function brancheASupprimer({ base, head }) {
+  const type = typeDeFusion({ base, head });
+  return type === 'feature' || type === 'hotfix' ? head : null;
+}
+
 /** Le marqueur qui demande une version majeure sur une livraison : « [V: X+1] » (espaces et casse libres). */
 export const MARQUEUR_MAJEURE = /\[\s*V\s*:\s*X\s*\+\s*1\s*\]/i;
 

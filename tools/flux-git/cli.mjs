@@ -16,13 +16,14 @@
 // Résultat de appliquer/regenerer : JSON sur la sortie standard, et dans $GITHUB_OUTPUT s'il existe :
 //   installateurs=<json>   les installateurs à fabriquer ([] avant la 1.0)
 //   site=<commit>          le commit de dev à publier sur la branche « site » (vide à partir de la 1.0)
+//   a_supprimer=<branche>  la feature ou la hotfix fusionnée, à supprimer sur GitHub une fois tout fait (vide sinon)
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  DEV, FAMILLES, MASTER, demandeMajeure, etiquette, livrableDe, modeDeEtiquette, planifier, poserVersionJson, typeDeFusion, verifierCreation,
-  verifierPR,
+  DEV, FAMILLES, MASTER, brancheASupprimer, demandeMajeure, etiquette, livrableDe, modeDeEtiquette, planifier, poserVersionJson, typeDeFusion,
+  verifierCreation, verifierPR,
 } from './regles.mjs';
 
 /** Les fichiers qui portent la version (le pied de page du site lit client/package.json). */
@@ -282,10 +283,11 @@ function appliquer({ base, head, pr, textes, distant, envoyer, tentatives = 10 }
     if (apres.master !== avant.master) refs.push(`${apres.master}:refs/heads/${MASTER}`);
     if (apres.dev !== avant.dev) refs.push(`${apres.dev}:refs/heads/${DEV}`);
     for (const l of livraisons) if (l.tag && l !== prodDuHotfix) refs.push(`${l.sha}:refs/tags/${l.tag}`);
-    if (!envoyer) return { type, majeure, journal, livraisons, poussee: false };
+    const aSupprimer = brancheASupprimer({ base, head });
+    if (!envoyer) return { type, majeure, journal, livraisons, poussee: false, aSupprimer };
     try {
       pousser(distant, refs);
-      return { type, majeure, journal, livraisons, poussee: true };
+      return { type, majeure, journal, livraisons, poussee: true, aSupprimer };
     } catch (e) {
       if (essai === tentatives && type === 'hotfix') return partiel(`refusion de master dans dev impossible à pousser : ${e.message}${indiceJeton(e.message)}`);
       reessayer(new Error(`${e.message}${indiceJeton(e.message)}`));
@@ -344,7 +346,11 @@ try {
     console.log(JSON.stringify(r, null, 2));
     const installateurs = r.livraisons.filter((l) => l.mode !== 'site');
     const site = r.livraisons.find((l) => l.mode === 'site');
-    if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `installateurs=${JSON.stringify(installateurs)}\nsite=${site ? site.sha : ''}\n`);
+    // a_supprimer n'est écrit que si tout est fait : une hotfix dont la refusion a échoué reste, pour la reprendre.
+    const aSupprimer = r.erreur ? '' : (r.aSupprimer ?? '');
+    if (process.env.GITHUB_OUTPUT) {
+      appendFileSync(process.env.GITHUB_OUTPUT, `installateurs=${JSON.stringify(installateurs)}\nsite=${site ? site.sha : ''}\na_supprimer=${aSupprimer}\n`);
+    }
     if (process.env.GITHUB_STEP_SUMMARY) {
       const lignes = [`### ${r.type}${r.majeure ? ' (majeure)' : ''}`, '', ...r.journal.map((j) => `- ${j}`),
         ...installateurs.map((l) => `- installateur ${l.mode} : \`${l.tag}\` (${l.branche} ${l.sha.slice(0, 7)})`),

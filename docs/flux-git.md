@@ -123,6 +123,12 @@ recevoir `origin/dev` tant qu'il ne les a pas oubliées (`git fetch --prune orig
 
 Mettre une `feature` à jour : y fusionner `origin/dev`. Mettre une `hotfix` à jour : y fusionner `origin/master`, jamais `dev` ni une `feature` (refusé).
 
+**Après la fusion, le bot supprime la branche sur GitHub** (`feature/<nom>` ou `hotfix/<nom>`, jamais `dev`), une fois son passage terminé sans erreur ;
+une hotfix dont la refusion a échoué reste, pour la reprendre. Une suite de travail repart d'une nouvelle branche. En local : `git fetch --prune origin`
+oublie la branche distante, `git branch -d feature/<nom>` supprime la copie locale (Git refuse si elle contient du travail non fusionné).
+L'option GitHub « Automatically delete head branches » n'est pas nécessaire (elle supprimerait aussi `dev` après une livraison si `dev` n'était ni
+protégée ni la branche par défaut).
+
 ## Mise en place (une seule fois, par le propriétaire)
 
 Déjà fait : `master` et `dev` existent, en `0.1.25`.

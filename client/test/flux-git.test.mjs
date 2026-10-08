@@ -9,7 +9,7 @@ import { dirname, join } from 'node:path';
 import { after, describe, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
-  avantLaUn, comparerVersions, demandeMajeure, etiquette, familleDe, incrementer, livrableDe, modeDeEtiquette, planifier, poserVersionJson,
+  avantLaUn, brancheASupprimer, comparerVersions, demandeMajeure, etiquette, familleDe, incrementer, livrableDe, modeDeEtiquette, planifier, poserVersionJson,
   typeDeFusion, verifierCreation, verifierPR,
 } from '../../tools/flux-git/regles.mjs';
 import { modeDuSite } from '../src/lib/mode-site.mjs';
@@ -44,6 +44,15 @@ describe('règles pures', () => {
     assert.equal(verifierPR({ base: 'master', head: 'dev', memeDepot: false }).ok, false, 'une copie du dépôt ne livre pas');
     assert.deepEqual(verifierPR({ base: 'feature/x', head: 'feature/y' }), { ok: true, type: null }, 'les autres cibles sont libres');
     assert.equal(typeDeFusion({ base: 'main', head: 'feature/x' }), null);
+  });
+
+  test('branche supprimée après la fusion : la feature ou la hotfix, jamais dev ni une branche hors des règles', () => {
+    assert.equal(brancheASupprimer({ base: 'dev', head: 'feature/carte' }), 'feature/carte');
+    assert.equal(brancheASupprimer({ base: 'master', head: 'hotfix/lien' }), 'hotfix/lien');
+    assert.equal(brancheASupprimer({ base: 'master', head: 'dev' }), null, 'la source d\'une livraison reste');
+    assert.equal(brancheASupprimer({ base: 'master', head: 'feature/x' }), null);
+    assert.equal(brancheASupprimer({ base: 'main', head: 'feature/x' }), null);
+    assert.equal(brancheASupprimer({ base: 'dev', head: 'claude/x' }), null);
   });
 
   test('versions : incréments et marqueur [V: X+1]', () => {
@@ -182,6 +191,14 @@ function bot(d, ...args) {
   const r = spawnSync('node', [CLI, ...args], { cwd: d.bot, env: ENV, encoding: 'utf8' });
   return { code: r.status, out: r.stdout + r.stderr, json: r.stdout.startsWith('{') ? JSON.parse(r.stdout) : null };
 }
+/** Comme bot(), avec les sorties GitHub Actions ($GITHUB_OUTPUT) lues en retour. */
+function botSorties(d, ...args) {
+  const fichier = join(d.dossier, `sorties-${(compteur += 1)}`);
+  writeFileSync(fichier, '');
+  const r = spawnSync('node', [CLI, ...args], { cwd: d.bot, env: { ...ENV, GITHUB_OUTPUT: fichier }, encoding: 'utf8' });
+  const sorties = Object.fromEntries(readFileSync(fichier, 'utf8').trim().split('\n').filter(Boolean).map((l) => l.split(/=(.*)/s).slice(0, 2)));
+  return { code: r.status, out: r.stdout + r.stderr, sorties, json: r.stdout.startsWith('{') ? JSON.parse(r.stdout) : null };
+}
 /** Une feature de plus, fusionnée dans dev, et le passage du bot. */
 function feature(d, nom) {
   branche(d, nom, 'dev');
@@ -214,6 +231,20 @@ describe('le bot sur un vrai dépôt Git', () => {
     assert.equal(r.json.livraisons[0].sha, git(distantDe(d), 'rev-parse', 'origin/dev'));
     assert.deepEqual(tags(d), [], 'avant la 1.0 : aucune étiquette, aucun installateur');
     assert.match(git(distantDe(d), 'log', '-1', '--format=%s', 'origin/dev'), /^chore: version v0\.1\.26 \(feature feature\/carte\) \(PR #12\)$/);
+    assert.equal(r.json.aSupprimer, 'feature/carte');
+  });
+
+  test('sorties pour le workflow : site, installateurs, branche à supprimer (pas dev après une livraison)', () => {
+    const d = depot();
+    branche(d, 'feature/a', 'dev');
+    fusionner(d, 'feature/a', 'dev');
+    const f = botSorties(d, 'appliquer', '--base', 'dev', '--head', 'feature/a', '--pousser');
+    assert.equal(f.code, 0, f.out);
+    assert.deepEqual(f.sorties, { installateurs: '[]', site: git(distantDe(d), 'rev-parse', 'origin/dev'), a_supprimer: 'feature/a' });
+    fusionner(d, 'dev', 'master');
+    const l = botSorties(d, 'appliquer', '--base', 'master', '--head', 'dev', '--pousser');
+    assert.equal(l.code, 0, l.out);
+    assert.equal(l.sorties.a_supprimer, '');
   });
 
   test('règle 7, à partir de la 1.0 : installateur de test', () => {
@@ -354,8 +385,10 @@ describe('le bot sur un vrai dépôt Git', () => {
     branche(d, 'hotfix/x', 'master', 'site.txt', 'ligne 1 version hotfix\nligne 2\nligne 3\n');
     fusionner(d, 'hotfix/x', 'master');
     const devAvant = git(distantDe(d), 'rev-parse', 'origin/dev');
-    const r = bot(d, 'appliquer', '--base', 'master', '--head', 'hotfix/x', '--pr', '41', '--pousser');
+    const r = botSorties(d, 'appliquer', '--base', 'master', '--head', 'hotfix/x', '--pr', '41', '--pousser');
     assert.equal(r.code, 10, r.out);
+    assert.equal(r.sorties.a_supprimer, '', 'la hotfix reste tant que sa refusion n\'est pas faite');
+    assert.match(r.sorties.installateurs, /"tag":"v1\.0\.0"/);
     assert.match(r.json.erreur, /conflit \(site\.txt\).*Create a merge commit/);
     assert.deepEqual(publie(r), [['prod', 'v1.0.0', '1.0.0']], 'règle 9 : le hotfix est livré même si la refusion attend');
     assert.ok(tags(d).includes('v1.0.0'));
