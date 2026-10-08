@@ -1,7 +1,8 @@
-// deploy/update-nas.sh À PARTIR DE LA 1.0 (instances posées par un installateur ; avant la 1.0 : update-nas.test.mjs, branche « site »).
+// deploy/installateur/mise-a-jour.sh, la mise à jour automatique des instances posées par un installateur (à partir de la 1.0 ; le NAS d'avant
+// a la sienne, testée par update-nas.test.mjs).
 // Contre un faux GitHub (API des livraisons, aucun accès réseau réel, aucun NAS) : il choisit la dernière livraison de son mode
 // (production : « latest » ; test : la plus récente étiquette « -test »), télécharge son installateur (fabriqué pour de vrai par
-// deploy/fabriquer-installateur.mjs) et l'exécute. Nécessite sh, curl, tar et gzip ; sinon ignoré.
+// deploy/installateur/fabriquer.mjs) et l'exécute. Nécessite sh, curl, tar et gzip ; sinon ignoré.
 import assert from 'node:assert/strict';
 import { execFile, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -10,14 +11,14 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { fabriquer } from '../../deploy/fabriquer-installateur.mjs';
+import { fabriquer } from '../../deploy/installateur/fabriquer.mjs';
 
-const SCRIPT = process.env.UPDATE_NAS_SCRIPT ?? fileURLToPath(new URL('../../deploy/update-nas.sh', import.meta.url));
+const SCRIPT = fileURLToPath(new URL('../../deploy/installateur/mise-a-jour.sh', import.meta.url));
 const have = (cmd) => spawnSync(cmd, ['--version'], { stdio: 'ignore' }).status === 0;
 const skip = !(have('curl') && have('tar') && have('gzip')) && 'sh, curl, tar ou gzip indisponible';
 
 const TOKEN = 'github_pat_TESTTOKEN123';
-const root = mkdtempSync(join(tmpdir(), 'update-nas-test-'));
+const root = mkdtempSync(join(tmpdir(), 'mise-a-jour-test-'));
 /** Les livraisons publiées, de la plus récente à la plus ancienne : { tag, installateur (octets) ou null }. */
 const state = { livraisons: [], token: TOKEN, telechargements: 0, auth: [] };
 let server;
@@ -110,7 +111,7 @@ function nas(name, { token = TOKEN, mode = 'prod', env: envInstance = {} } = {})
         (error, stdout, stderr) => ok({ code: error ? error.code : 0, out: stdout + stderr }));
     });
   const read = (p) => readFileSync(join(base, p), 'utf8');
-  return { base, run, read, has: (p) => existsSync(join(base, p)), log: () => read('update.log'), tag: () => read('VERSION').match(/^tag=(.*)$/m)[1] };
+  return { base, run, read, has: (p) => existsSync(join(base, p)), log: () => read('mise-a-jour.log'), tag: () => read('VERSION').match(/^tag=(.*)$/m)[1] };
 }
 
 test('production : installation initiale, puis « à jour » sans retélécharger, puis --force', { skip }, async () => {
@@ -134,24 +135,27 @@ test('production : installation initiale, puis « à jour » sans retélécharge
   assert.equal(state.telechargements, avant + 1);
 });
 
-test('à la 1.0 : une installation d\'avant (branche « site ») passe seule aux livraisons une fois l\'installateur passé', { skip }, async () => {
-  publier(livraison('v1.0.0', { label: 'un' }), livraison('v1.0.0-test'));
-  const n = nas('passage-1-0', { mode: '' }); // pas de MODE : celui de l'instance
-  mkdirSync(join(n.base, 'site'));
-  writeFileSync(join(n.base, 'site', 'index.html'), 'ancien site (branche « site »)');
-  writeFileSync(join(n.base, '.installed-sha'), `${'a'.repeat(40)}\n`);
-  // Ce que fait le propriétaire à la 1.0 : lancer l'installateur de production dans le dossier existant.
-  const installateur = join(root, 'v1.sh');
-  writeFileSync(installateur, state.livraisons[0].octets);
-  const r = spawnSync('sh', [installateur, '--dossier', n.base], { encoding: 'utf8' });
-  assert.equal(r.status, 0, r.stdout + r.stderr);
-  assert.equal(n.tag(), 'v1.0.0');
+test('le mode est celui de l\'instance (VERSION) ; sans VERSION, refus avant tout appel réseau', { skip }, async () => {
+  publier(livraison('v1.0.0', { label: 'un' }), livraison('v1.0.0-test', { label: 'test' }));
+  const prod = join(root, 'serveur-normal');
+  writeFileSync(join(root, 'prod.sh'), state.livraisons[0].octets);
+  assert.equal(spawnSync('sh', [join(root, 'prod.sh'), '--dossier', prod]).status, 0);
+  const n = nas('mode-de-l-instance', { mode: '', env: { DOSSIER_PROD: prod } }); // pas de MODE : celui de l'instance
+  state.auth.length = 0;
+  const sans = await n.run();
+  assert.equal(sans.code, 1);
+  assert.match(sans.out, /VERSION absent/);
+  assert.equal(state.auth.length, 0);
 
-  publier(livraison('v1.0.0-hotfix.1', { label: 'hotfix' }), livraison('v1.0.0'));
+  // Instance posée par l'installateur de test : le script suit les livraisons de test, sans réglage.
+  writeFileSync(join(root, 'test.sh'), state.livraisons[1].octets);
+  const r = spawnSync('sh', [join(root, 'test.sh'), '--dossier', n.base, '--dossier-prod', prod], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  publier(livraison('v1.0.1-test', { label: 'test suivant' }), livraison('v1.0.0'));
   const res = await n.run();
   assert.equal(res.code, 0, res.out);
-  assert.equal(n.tag(), 'v1.0.0-hotfix.1', 'sans réglage, le mode « prod » est lu dans VERSION');
-  assert.equal(n.read('site/index.html'), '<h1>accueil hotfix</h1>');
+  assert.equal(n.tag(), 'v1.0.1-test');
+  assert.equal(n.read('site/index.html'), '<h1>accueil test suivant</h1>');
 });
 
 test('production : un hotfix (même version, nouvelle étiquette) est installé ; les pages retirées disparaissent', { skip }, async () => {
@@ -234,7 +238,7 @@ test('jeton absent ou mal formé, réglages invalides : refus avant tout appel r
   assert.match(res.out, /ne contient pas un jeton GitHub valide/);
   res = await nas('mode', { mode: 'preprod' }).run();
   assert.equal(res.code, 1);
-  assert.match(res.out, /MODE doit valoir site, prod ou test/);
+  assert.match(res.out, /MODE doit valoir prod ou test/);
   res = await nas('relatif').run([], { BASE_DIR: 'instance' });
   assert.equal(res.code, 1);
   assert.match(res.out, /chemin absolu/);
@@ -244,17 +248,17 @@ test('jeton absent ou mal formé, réglages invalides : refus avant tout appel r
 test('verrou : exemplaire déjà en cours = on sort sans rien faire ; verrou périmé = nettoyé', { skip }, async () => {
   publier(livraison('v1.2.0'));
   const n = nas('verrou');
-  mkdirSync(join(n.base, '.update.lock'));
-  writeFileSync(join(n.base, '.update.lock', 'pid'), String(process.pid)); // processus vivant
+  mkdirSync(join(n.base, '.mise-a-jour.lock'));
+  writeFileSync(join(n.base, '.mise-a-jour.lock', 'pid'), String(process.pid)); // processus vivant
   let res = await n.run();
   assert.equal(res.code, 0);
   assert.match(res.out, /déjà en cours/);
   assert.ok(!n.has('site/index.html'));
 
-  writeFileSync(join(n.base, '.update.lock', 'pid'), '999999'); // processus mort
+  writeFileSync(join(n.base, '.mise-a-jour.lock', 'pid'), '999999'); // processus mort
   res = await n.run();
   assert.equal(res.code, 0, res.out);
   assert.match(res.out, /Verrou périmé/);
   assert.ok(n.has('site/index.html'));
-  assert.ok(!n.has('.update.lock'), 'le verrou est retiré en fin de script');
+  assert.ok(!n.has('.mise-a-jour.lock'), 'le verrou est retiré en fin de script');
 });

@@ -5,10 +5,10 @@ name: Version et livraison
 #   dev → master            master et dev : X.Y+1.0, ou X+1.0.0 si la PR porte [V: X+1]
 #   hotfix/<nom> → master   master inchangée ; master refusionnée dans dev ; dev : X.Y.Z+1
 # Puis la publication, selon la version (la 1.0 est le signal du propriétaire : elle apporte la connexion Discord) :
-#   avant la 1.0       job « Site » : le site unique, reconstruit depuis dev et publié sur la branche « site » (le NAS la suit,
-#                      deploy/update-nas.sh) — le fonctionnement d'avant le flux, inchangé ;
-#   à partir de 1.0    job « Installateur » : un script autonome par fusion, publié en « release » privée — production
-#                      (vX.Y.Z, puis vX.Y.Z-hotfix.N) depuis master, test (vX.Y.Z-test) depuis dev.
+#   avant la 1.0       job « Site » : le site unique, reconstruit depuis dev et publié sur la branche « site » (le NAS la suit avec
+#                      sa propre installation, deploy/update-nas.sh) — le fonctionnement d'avant le flux, inchangé ;
+#   à partir de 1.0    job « Installateur » : la solution est hébergée ; un script autonome par fusion (deploy/installateur/), publié en
+#                      « release » privée — serveur normal (vX.Y.Z, puis vX.Y.Z-hotfix.N) depuis master, test (vX.Y.Z-test) depuis dev.
 # Lancement manuel (Actions → Version et livraison → Run workflow) : republie dev ou master sans changer sa version.
 on:
   pull_request:
@@ -164,7 +164,7 @@ jobs:
       - name: Fabriquer l'installateur
         id: fabrication
         run: |
-          fichier=$(node deploy/fabriquer-installateur.mjs --mode "$MODE" --site client/dist --tag "$TAG" --version "$VERSION" --sha "$SHA" --sortie "$RUNNER_TEMP/installateurs")
+          fichier=$(node deploy/installateur/fabriquer.mjs --mode "$MODE" --site client/dist --tag "$TAG" --version "$VERSION" --sha "$SHA" --sortie "$RUNNER_TEMP/installateurs")
           sh "$fichier" --verifier
           echo "fichier=$fichier" >> "$GITHUB_OUTPUT"
 
@@ -175,10 +175,10 @@ jobs:
         run: |
           nom=$(basename "$FICHIER")
           if [ "$MODE" = prod ]; then
-            titre="Production $TAG"; dossier=/volume1/docker/maverick-center; options="--latest"
+            titre="Serveur normal $TAG"; dossier=/srv/maverick-center; options="--latest"
             usage="Installe ou met à jour le site de production. La base vivante de l'instance (dossier db/) n'est jamais touchée."
           else
-            titre="Test $TAG"; dossier=/volume1/docker/maverick-center-test; options="--prerelease --latest=false"
+            titre="Serveur de test $TAG"; dossier=/srv/maverick-center-test; options="--prerelease --latest=false"
             usage="Installe ou met à jour le serveur de test et remplace sa base (db/) par une copie, à cet instant, de celle de la production."
           fi
           {
@@ -192,7 +192,7 @@ jobs:
             echo "sh ${nom} --dossier ${dossier}"
             echo '```'
             echo
-            echo "Détails, options et mise à jour automatique : deploy/README.md. Règles des versions : docs/flux-git.md."
+            echo "Détails, options et mise à jour automatique : deploy/installateur/README.md. Règles des versions : docs/flux-git.md."
           } > "$RUNNER_TEMP/notes.md"
           # shellcheck disable=SC2086
           gh release create "$TAG" "$FICHIER" --verify-tag --title "$titre" --notes-file "$RUNNER_TEMP/notes.md" $options

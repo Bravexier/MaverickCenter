@@ -1,14 +1,12 @@
-# Lancement : docker compose up -d   puis   http://IP-DU-NAS:8080 (production) ou :8081 (test)
+# Lancement : docker compose up -d   puis   http://IP-DU-NAS:8080
 # Prérequis : créer .htpasswd (voir README.md), sinon nginx refuse de démarrer.
-# Port et nom du conteneur : fichier .env de l'instance (posé par l'installateur : 8080 / maverick-center en production,
-# 8081 / maverick-center-test en test). Changez-les dans .env plutôt qu'ici.
 services:
   maverick-center:
     image: nginx:1.27-alpine
-    container_name: ${MAVERICK_CONTENEUR:-maverick-center}
+    container_name: maverick-center
     restart: unless-stopped
     ports:
-      - "${MAVERICK_PORT:-8080}:80"
+      - "8080:80"          # changer 8080 si le port est déjà pris sur le NAS
     volumes:
       - ./site:/usr/share/nginx/html:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro

@@ -14,21 +14,18 @@ obj/
 .DS_Store
 *.log
 
-# Installateurs fabriqués (deploy/build.sh) et restes d'un essai d'installation dans deploy/
-deploy/sortie/
+# Paquet de déploiement généré
 deploy/site/
-deploy/db/
 deploy/*.zip
 deploy/*.tar.gz
 deploy/.htpasswd
-deploy/.env
-deploy/VERSION
 deploy/.github-token
 deploy/.installed-sha
 deploy/update.log
-deploy/installation.log
 deploy/.update.lock/
 deploy/update-nas.env
+# Installateurs fabriqués à la main (deploy/installateur/fabriquer.sh)
+deploy/installateur/sortie/
 
 # Python
 __pycache__/

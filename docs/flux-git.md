@@ -61,14 +61,15 @@ portant `[V: X+1]`, à la demande du propriétaire.
 ### Avant la 1.0 (versions 0.x) : le fonctionnement actuel, un seul site
 
 Pas de serveur normal ni de serveur de test. Après chaque fusion qui change `dev` (une feature, la refusion après une livraison ou un hotfix),
-le job `Site` reconstruit le site depuis `dev` (sans les pages d'exemple) et le publie sur la branche **`site`** ; le NAS la suit comme aujourd'hui
-(`deploy/update-nas.sh`, toutes les 5 minutes). Les versions suivent les règles ci-dessus ; une livraison `dev` → `master` ne fait que les versions
-(et `dev`, qui la reçoit, republie le site). Rien n'est à changer sur le NAS.
+le job `Site` reconstruit le site depuis `dev` (sans les pages d'exemple) et le publie sur la branche **`site`** ; le NAS la suit avec sa propre
+installation, comme aujourd'hui (`deploy/`, `update-nas.sh` toutes les 5 minutes). Les versions suivent les règles ci-dessus ; une livraison
+`dev` → `master` ne fait que les versions (et `dev`, qui la reçoit, republie le site). Rien n'est à changer sur le NAS.
 
 ### À partir de la 1.0 : serveur normal et serveur de test, un script d'installation par fusion
 
-Après chaque fusion, le job `Installateur` construit le site et publie un **installateur** : un script `.sh` autonome qui contient le site et l'installe
-sur le serveur, sans téléchargement ni jeton. Il est publié comme *release* GitHub du dépôt (privée comme lui). La branche `site` n'est plus mise à jour.
+La solution est alors hébergée (le NAS est temporaire, l'hébergement reste à choisir : `feuille-de-route.md`). Après chaque fusion, le job
+`Installateur` construit le site et publie un **installateur** (`deploy/installateur/`) : un script `.sh` autonome qui contient le site et l'installe
+sur l'hôte, sans téléchargement ni jeton. Il est publié comme *release* GitHub du dépôt (privée comme lui). La branche `site` n'est plus mise à jour.
 
 | Fusion dans | Installateur | Étiquette (release) |
 | --- | --- | --- |
@@ -86,10 +87,10 @@ La copie est faite par l'installateur, sur le serveur, au moment où il s'exécu
 quitter le serveur. La base vivante (`db/`) se remplira avec les utilisateurs de la 1.0 ; jusque-là, la base du site (`/donnees/`) est reconstruite
 depuis `data/rows` à chaque version.
 
-**Le jour de la 1.0** : lancer l'installateur `v1.0.0` (production) dans le dossier actuel du NAS — il reconnaît l'installation d'avant et en fait le
-serveur normal ; son `update-nas.sh` suit désormais les livraisons de production, sans autre réglage — puis installer le serveur de test à côté.
-Détails : [`deploy/README.md`](../deploy/README.md). Republier une branche sans changer sa version : *Actions → Version et livraison → Run workflow*
-(le site avant la 1.0, une étiquette `…-rebuild.N` ensuite).
+**Le jour de la 1.0** : sur l'hôte choisi, lancer l'installateur `v1.0.0` (serveur normal), puis `v1.0.0-test` (serveur de test, qui copie sa base) ;
+la mise à jour automatique de chaque instance est `mise-a-jour.sh`. Le NAS n'est pas touché (sa branche `site` cesse simplement d'avancer).
+Détails : [`deploy/installateur/README.md`](../deploy/installateur/README.md). Republier une branche sans changer sa version :
+*Actions → Version et livraison → Run workflow* (le site avant la 1.0, une étiquette `…-rebuild.N` ensuite).
 
 ## Au quotidien
 
@@ -125,7 +126,7 @@ Déjà fait : `master` et `dev` existent, en `0.1.25`.
    Attention : sur un dépôt **privé**, GitHub n'applique ces règles qu'avec un abonnement payant (GitHub Pro pour un compte personnel). Sans lui,
    les gardes des workflows restent actives (suppression des branches non conformes, check rouge sur une PR non conforme, ni version ni
    publication pour une fusion hors règles) mais n'empêchent ni une fusion ni une poussée directe.
-4. **Serveur** : rien avant la 1.0 (le NAS suit toujours la branche `site`). À la 1.0, voir « Le jour de la 1.0 » ci-dessus.
+4. **Serveur** : rien sur le NAS (il suit toujours la branche `site`, avec sa propre installation). À la 1.0, voir « Le jour de la 1.0 » ci-dessus.
 
 ## Sessions Claude Code
 

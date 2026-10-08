@@ -1,6 +1,7 @@
 #!/bin/sh
 # Installateur du site Maverick Center, étiquette @@TAG@@ (version @@VERSION@@, commit @@SHA@@), mode @@MODE@@.
-# FABRIQUÉ par deploy/fabriquer-installateur.mjs à partir de deploy/installateur.sh : ne pas l'éditer, il est régénéré à chaque livraison.
+# FABRIQUÉ par deploy/installateur/fabriquer.mjs à partir de deploy/installateur/installateur.sh : ne pas l'éditer, il est régénéré à chaque livraison.
+# Hébergement à partir de la 1.0 (serveur normal et serveur de test, voir docs/flux-git.md) ; le NAS d'avant la 1.0 a sa propre installation (deploy/).
 # Le site (déjà construit) est dans ce fichier même, sous la ligne __ARCHIVE__ : rien n'est téléchargé, aucun jeton n'est nécessaire.
 #
 # Usage : sh <ce-fichier> [--dossier <dossier>] [--dossier-prod <dossier>] [--sans-base-prod] [--verifier]
@@ -89,7 +90,8 @@ DOSSIER=$(cd "$DOSSIER" && pwd -P)
 [ "$DOSSIER" != / ] || die "refus d'installer à la racine du système : précisez --dossier <dossier de l'instance>"
 JOURNAL="$DOSSIER/installation.log"
 
-# Mode d'une instance : celui de son fichier VERSION ; une ancienne installation (site/ sans VERSION) était une production.
+# Mode d'une instance : celui de son fichier VERSION. Un dossier qui a déjà un site sans VERSION (installé autrement) compte comme une
+# production : un installateur de test refuse de l'écraser.
 mode_de() {
   if [ -f "$1/VERSION" ]; then sed -n 's/^mode=//p' "$1/VERSION" | head -n 1
   elif [ -d "$1/site" ]; then echo prod
@@ -201,7 +203,7 @@ for f in docker-compose.yml nginx.conf; do
   fi
 done
 cp "$TRAVAIL/README.md" "$DOSSIER/README.md"
-cp "$TRAVAIL/update-nas.sh" "$DOSSIER/update-nas.sh"
+cp "$TRAVAIL/mise-a-jour.sh" "$DOSSIER/mise-a-jour.sh"
 if [ ! -f "$DOSSIER/.env" ]; then
   if [ "$MODE" = prod ]; then CONTENEUR=$NOM_PROD; PORT=8080; else CONTENEUR=$NOM_PROD-test; PORT=8081; fi
   {

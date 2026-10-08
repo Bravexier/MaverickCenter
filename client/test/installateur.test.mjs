@@ -1,4 +1,4 @@
-// Installateurs autonomes (deploy/fabriquer-installateur.mjs + deploy/installateur.sh) : fabriqués à partir d'un faux site, puis
+// Installateurs autonomes de la 1.0 (deploy/installateur/fabriquer.mjs + installateur.sh) : fabriqués à partir d'un faux site, puis
 // exécutés avec sh dans des dossiers temporaires. Production : site remplacé, base et réglages conservés. Test : base = copie de
 // celle de la production à l'instant de l'installation. Nécessite sh, tar et gzip ; sinon les tests sont ignorés.
 import assert from 'node:assert/strict';
@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
-import { fabriquer } from '../../deploy/fabriquer-installateur.mjs';
+import { fabriquer } from '../../deploy/installateur/fabriquer.mjs';
 
 const have = (cmd, arg = '--version') => spawnSync(cmd, [arg], { stdio: 'ignore' }).status === 0;
 const skip = !(have('tar') && have('gzip')) && 'tar ou gzip indisponible';
@@ -65,7 +65,7 @@ test('paramètres refusés : étiquette de test en production et inversement, ve
   const base = { site: s, version: '0.2.0', sha: 'b'.repeat(40), sortie: join(racine, 'sortie') };
   assert.throws(() => fabriquer({ ...base, mode: 'prod', tag: 'v0.2.0-test' }), /étiquette de production/);
   assert.throws(() => fabriquer({ ...base, mode: 'test', tag: 'v0.2.0-test', sha: '$(id)' }), /--sha invalide/);
-  const cli = (args) => spawnSync('node', [new URL('../../deploy/fabriquer-installateur.mjs', import.meta.url).pathname, ...args], { encoding: 'utf8' });
+  const cli = (args) => spawnSync('node', [new URL('../../deploy/installateur/fabriquer.mjs', import.meta.url).pathname, ...args], { encoding: 'utf8' });
   const ok = ['--mode', 'test', '--site', s, '--tag', 'v0.2.0-test', '--version', '0.2.0', '--sha', 'local', '--sortie', join(racine, 'sortie')];
   assert.equal(cli(ok).status, 0);
   assert.match(cli(['--mode', 'prod', ...ok.slice(2)]).stderr, /étiquette de production/);
@@ -84,7 +84,7 @@ for (const rsync of ['auto', '0']) {
     assert.match(lire(prod, '.env'), /MAVERICK_PORT=8080/);
     assert.match(lire(prod, '.env'), /MAVERICK_CONTENEUR=maverick-center$/m);
     assert.ok(existsSync(join(prod, 'db')), 'dossier de la base vivante créé');
-    assert.ok(existsSync(join(prod, 'docker-compose.yml')) && existsSync(join(prod, 'nginx.conf')) && existsSync(join(prod, 'update-nas.sh')));
+    assert.ok(existsSync(join(prod, 'docker-compose.yml')) && existsSync(join(prod, 'nginx.conf')) && existsSync(join(prod, 'mise-a-jour.sh')) && !existsSync(join(prod, 'update-nas.sh')));
     assert.match(r1.out, /Première installation/);
 
     // Ce que l'administrateur et l'usage réel ont posé : jamais touché par une mise à jour.
@@ -182,7 +182,7 @@ test('refus : mauvais mode d\'instance, production introuvable ou confondue avec
   assert.match(r.out, /instance « prod »/);
   assert.equal(champs(prod).mode, 'prod');
 
-  // Une ancienne installation (site/ sans fichier VERSION, mise en place par l'ancien update-nas.sh) est une production.
+  // Un dossier qui a déjà un site sans fichier VERSION (installé autrement, par exemple le paquet du NAS) compte comme une production.
   const ancienne = join(parent, 'ancienne');
   mkdirSync(join(ancienne, 'site'), { recursive: true });
   writeFileSync(join(ancienne, 'site', 'index.html'), 'ancien');
@@ -192,7 +192,7 @@ test('refus : mauvais mode d\'instance, production introuvable ou confondue avec
   r = lancer(iTest, ['--dossier', join(parent, 'autre-test'), '--dossier-prod', ancienne]);
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /pas de base vivante/);
-  assert.equal(lancer(iProd, ['--dossier', ancienne]).code, 0, 'mise à niveau de l\'ancienne installation');
+  assert.equal(lancer(iProd, ['--dossier', ancienne]).code, 0, 'un installateur de production peut la reprendre');
 });
 
 test('verrou : une installation en cours bloque la suivante ; un verrou périmé est nettoyé', { skip }, () => {

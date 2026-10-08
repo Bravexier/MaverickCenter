@@ -36,7 +36,8 @@ serveur normal à l'installation), **serveur normal** pour `master`. Voir [docs/
 
 `./deploy/build.sh` construit le site à montrer et produit `deploy/maverick-center-nas.zip` : site statique + `docker-compose.yml` + configuration
 nginx protégée par mot de passe. Après chaque fusion dans `dev`, GitHub republie le site sur la branche `site` et le NAS la récupère
-automatiquement (`deploy/update-nas.sh`). À partir de la 1.0 : installateurs (`./deploy/build.sh prod|test` à la main). Voir [deploy/README.md](deploy/README.md).
+automatiquement (`deploy/update-nas.sh`). Voir [deploy/README.md](deploy/README.md). À partir de la 1.0, la solution est hébergée et installée par des
+installateurs autonomes : [deploy/installateur/README.md](deploy/installateur/README.md).
 
 Pour une page privée claude.ai (une simple adresse à ouvrir) : `node tools/build-artifact.mjs --out <dossier>` produit la version portable
 (liens relatifs, sans fichier JS/CSS externe) et les listes de fichiers à publier.

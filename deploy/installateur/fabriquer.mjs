@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// Fabrique l'installateur autonome d'une version du site : deploy/installateur.sh (paramètres remplis) suivi de l'archive
+// Fabrique l'installateur autonome d'une version du site (à partir de la 1.0) : installateur.sh (paramètres remplis) suivi de l'archive
 // tar.gz du site construit et des fichiers d'hébergement. Un seul fichier à copier sur le serveur, aucun téléchargement à l'installation.
 //
-// Usage : node deploy/fabriquer-installateur.mjs --mode prod|test --site <dossier dist> --tag <étiquette> --version <X.Y.Z>
+// Usage : node deploy/installateur/fabriquer.mjs --mode prod|test --site <dossier dist> --tag <étiquette> --version <X.Y.Z>
 //                                                 --sha <commit> --sortie <dossier>
 // Résultat : <sortie>/maverick-center-<étiquette>-install.sh (chemin écrit sur la sortie standard).
-// Appelé par .github/workflows/livraison.yml après chaque fusion dans dev (mode test) ou master (mode prod), et par deploy/build.sh.
+// Appelé par .github/workflows/livraison.yml après chaque fusion dans dev (mode test) ou master (mode prod), et par fabriquer.sh (à la main).
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -13,9 +13,14 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const DEPLOY = dirname(fileURLToPath(import.meta.url));
-/** Fichiers d'hébergement livrés avec le site (l'installateur les pose dans le dossier de l'instance). */
-export const FICHIERS_LIVRES = ['docker-compose.yml', 'nginx.conf', 'README.md', 'update-nas.sh'];
+const ICI = dirname(fileURLToPath(import.meta.url));
+/** Fichiers d'hébergement livrés avec le site (l'installateur les pose dans le dossier de l'instance) : nom → source. La configuration nginx est celle du NAS. */
+export const FICHIERS_LIVRES = {
+  'docker-compose.yml': join(ICI, 'docker-compose.yml'),
+  'nginx.conf': join(ICI, '..', 'nginx.conf'),
+  'README.md': join(ICI, 'README.md'),
+  'mise-a-jour.sh': join(ICI, 'mise-a-jour.sh'),
+};
 
 const FORMATS = {
   mode: /^(prod|test)$/,
@@ -61,7 +66,7 @@ export function fabriquer(options) {
   try {
     const contenu = join(travail, 'contenu');
     cpSync(resolve(site), join(contenu, 'site'), { recursive: true });
-    for (const f of FICHIERS_LIVRES) copyFileSync(join(DEPLOY, f), join(contenu, f));
+    for (const [nom, source] of Object.entries(FICHIERS_LIVRES)) copyFileSync(source, join(contenu, nom));
     const archive = join(travail, 'archive.tar.gz');
     const tar = spawnSync('tar', ['-czf', archive, '-C', contenu, '.'], { encoding: 'utf8' });
     if (tar.status !== 0) throw new Error(`tar : ${tar.stderr}`);
@@ -71,10 +76,10 @@ export function fabriquer(options) {
       ARCHIVE_SHA256: createHash('sha256').update(octets).digest('hex'),
       PAGES: String(compterPages(join(contenu, 'site'))),
     };
-    const modele = readFileSync(join(DEPLOY, 'installateur.sh'), 'utf8');
-    if (!modele.endsWith('\n__ARCHIVE__\n')) throw new Error('deploy/installateur.sh doit se terminer par la ligne __ARCHIVE__');
+    const modele = readFileSync(join(ICI, 'installateur.sh'), 'utf8');
+    if (!modele.endsWith('\n__ARCHIVE__\n')) throw new Error('deploy/installateur/installateur.sh doit se terminer par la ligne __ARCHIVE__');
     const script = modele.replace(/@@([A-Z0-9_]+)@@/g, (tout, cle) => {
-      if (!(cle in valeurs)) throw new Error(`paramètre inconnu ${tout} dans deploy/installateur.sh`);
+      if (!(cle in valeurs)) throw new Error(`paramètre inconnu ${tout} dans deploy/installateur/installateur.sh`);
       return valeurs[cle];
     });
     mkdirSync(sortie, { recursive: true });
