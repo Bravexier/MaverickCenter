@@ -20,8 +20,11 @@ ou d'une `hotfix/<nom>` ; une PR vers `dev` que d'une `feature/<nom>`.
 - **À la création** (`garde-branches.yml`, job `creation-de-branche`) : une branche poussée sur GitHub dont le nom n'est pas permis, ou qui ne part pas
   de la bonne branche, est **supprimée aussitôt**. Le travail n'est pas perdu : il reste dans le dépôt local qui l'a poussée (le résumé du job donne le commit).
   Cette garde n'agit que si `master` et `dev` existent toutes les deux (avant, le flux n'est pas en place). Limite : c'est un workflow, lu dans le
-  commit de la branche créée ; une branche créée depuis un commit antérieur à ce flux n'est pas contrôlée (les règles GitHub, elles, n'ont pas
-  cette limite).
+  commit de la branche créée ; une branche créée depuis un commit antérieur à ce flux n'est pas contrôlée à sa création.
+- **Toutes les 6 heures** (job `balayage-des-branches`, lancé depuis la branche par défaut, donc sans cette limite ; aussi à la demande :
+  *Actions → Garde des branches → Run workflow*) : toutes les branches du dépôt sont contrôlées. Nom interdit et contenu déjà dans `dev` ou `master`
+  → supprimée. Nom interdit avec du travail non fusionné, ou `feature`/`hotfix` au mauvais point de départ → signalée (passage en rouge, avec la
+  liste), jamais supprimée : on ne détruit pas de travail.
 - **À chaque PR** (job `regles-de-branches`) : source permise pour la cible, bon point de départ, version de `client/package.json` non modifiée à la main
   (elle est tenue par le bot), et, pour une livraison, `master` déjà refusionnée dans `dev`.
 - **Par GitHub lui-même** (règles importables, `.github/rulesets/`) : création limitée à `feature/**` et `hotfix/**`, `master` et `dev` non supprimables,
@@ -123,15 +126,18 @@ recevoir `origin/dev` tant qu'il ne les a pas oubliées (`git fetch --prune orig
 
 Mettre une `feature` à jour : y fusionner `origin/dev`. Mettre une `hotfix` à jour : y fusionner `origin/master`, jamais `dev` ni une `feature` (refusé).
 
+**Après la fusion, le bot supprime la branche sur GitHub** (`feature/<nom>` ou `hotfix/<nom>`, jamais `dev`), une fois son passage terminé sans erreur ;
+une hotfix dont la refusion a échoué reste, pour la reprendre. Une suite de travail repart d'une nouvelle branche. En local : `git fetch --prune origin`
+oublie la branche distante, `git branch -d feature/<nom>` supprime la copie locale (Git refuse si elle contient du travail non fusionné).
+L'option GitHub « Automatically delete head branches » n'est pas nécessaire (elle supprimerait aussi `dev` après une livraison si `dev` n'était ni
+protégée ni la branche par défaut).
+
 ## Mise en place (une seule fois, par le propriétaire)
 
-Déjà fait : `master` et `dev` existent, en `0.1.25`.
+Déjà fait : `master` et `dev` existent (en `0.1.25`), `dev` est la branche par défaut, `main` et les anciennes branches de travail sont
+supprimées. `develop` (ancienne tentative, entièrement fusionnée) sera supprimée par le premier balayage. Garder `site` : le NAS la suit jusqu'à la 1.0.
 
-1. **Branche par défaut → `dev`** (*Settings → General → Default branch*) : les clones et les nouvelles sessions partent de `dev`.
-   Puis supprimer les branches qui n'ont plus de rôle : `main` (identique à `master`), `develop` et `feature/branch-strategy-master-develop`
-   (première tentative, remplacée par ce flux), et les branches de travail déjà fusionnées (`claude/…`, `feature/version-and-magic-constellation`) :
-   la garde ne s'applique qu'aux branches créées après elle. Garder `site` : le NAS la suit jusqu'à la 1.0. Dans chaque clone existant :
-   `git fetch --prune origin` une fois.
+1. **Dans chaque clone existant** : `git fetch --prune origin` une fois (voir « Au quotidien »).
 2. **Jeton du bot** (seulement quand les règles de l'étape 3 sont réellement appliquées) : le bot pousse directement les incréments de version sur
    `master` et `dev` ; une fois ces branches protégées, le jeton par défaut des workflows ne le peut plus. Créer un jeton *fine-grained*
    (*Settings → Developer settings → Fine-grained tokens*), limité à ce dépôt, permissions *Contents : Read and write* **et** *Workflows : Read and
@@ -140,12 +146,18 @@ Déjà fait : `master` et `dev` existent, en `0.1.25`.
    règles). **Le jeton expire** : noter sa date et le renouveler avant (un jeton expiré arrête versions et publications, le NAS cesse d'être mis à
    jour) ; supprimer le secret fait revenir au jeton par défaut.
 3. **Règles GitHub** : *Settings → Rules → Rulesets → New ruleset → Import a ruleset*, une fois pour chaque fichier de `.github/rulesets/` :
-   `master.json`, `dev.json` (PR obligatoire, checks verts, ni suppression ni réécriture ; exemption : administrateurs, pour le bot) et
-   `noms-de-branches.json` (création limitée à `feature/**` et `hotfix/**`, plus `site` pour le bot, sans exemption).
-   Attention : sur un dépôt **privé**, GitHub n'applique ces règles qu'avec un abonnement payant (GitHub Pro pour un compte personnel). Sans lui,
-   les gardes des workflows restent actives (suppression des branches non conformes, check rouge sur une PR non conforme, ni version ni
-   publication pour une fusion hors règles) mais n'empêchent ni une fusion ni une poussée directe.
+   `master.json`, `dev.json` (PR obligatoire, checks verts, ni suppression ni réécriture, fusion par commit de fusion ; exemption :
+   administrateurs, pour le bot) et `noms-de-branches.json` (création limitée à `feature/**` et `hotfix/**`, plus `site` pour le bot, sans exemption).
+   **Vérifier qu'elles s'appliquent vraiment** : dans *Settings → Rules → Rulesets*, chaque règle doit être *Active* et sans bandeau ; dans l'onglet
+   *Branches*, `master` et `dev` doivent porter la mention *Protected* ; et une poussée directe sur `dev` doit être refusée.
+   Sur un dépôt **privé**, GitHub n'applique ces règles qu'avec un abonnement payant (GitHub Pro pour un compte personnel) : sans lui, l'import
+   réussit mais un bandeau indique qu'elles ne seront pas appliquées (« won't be enforced… »), et les branches restent non protégées. Les
+   workflows restent alors la seule protection : suppression des branches non conformes (à la création et au balayage), check rouge sur une PR
+   non conforme, ni version ni publication pour une fusion hors règles ; ils n'empêchent ni une fusion ni une poussée directe. Dans ce cas, **ne
+   pas créer `BOT_TOKEN`** : le jeton par défaut des workflows suffit tant que les branches ne sont pas protégées.
 4. **Serveur** : rien sur le NAS (il suit toujours la branche `site`, avec sa propre installation). À la 1.0, voir « Le jour de la 1.0 » ci-dessus.
+5. **Vérifier les bots** : après la première fusion d'une `feature/<nom>` dans `dev`, *Actions → Version et livraison* doit montrer les jobs
+   `Version` (commit « chore: version v0.1.26 … » sur `dev`), `Site (avant la 1.0)` (branche `site` republiée) et `Supprimer la branche fusionnée`.
 
 ## Sessions Claude Code
 

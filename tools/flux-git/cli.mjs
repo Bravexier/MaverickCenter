@@ -9,6 +9,10 @@
 //   node tools/flux-git/cli.mjs appliquer --base <cible> --head <source> [--pr <n>] [--texte-fichier <f>]... [--pousser]
 //       après une fusion : incréments de version, refusion de master dans dev, puis ce qu'il faut publier (regles.mjs, livrableDe) :
 //       avant la 1.0 le site (branche « site », depuis dev), à partir de la 1.0 les installateurs (étiquettes posées ici)
+//   node tools/flux-git/cli.mjs balayer [--pousser]
+//       toutes les branches du dépôt, depuis la branche par défaut (une branche créée depuis un vieux commit échappe à la garde de
+//       création, lue dans ce commit) : nom interdit et déjà fusionnée → supprimée ; nom interdit avec du travail non fusionné, ou
+//       feature/hotfix au mauvais point de départ → signalée (code 10), jamais supprimée
 //   node tools/flux-git/cli.mjs regenerer --branche master|dev [--pousser]
 //       republier une branche sans changer sa version (nouvelle étiquette d'installateur, ou le site avant la 1.0)
 //
@@ -16,13 +20,14 @@
 // Résultat de appliquer/regenerer : JSON sur la sortie standard, et dans $GITHUB_OUTPUT s'il existe :
 //   installateurs=<json>   les installateurs à fabriquer ([] avant la 1.0)
 //   site=<commit>          le commit de dev à publier sur la branche « site » (vide à partir de la 1.0)
+//   a_supprimer=<branche>  la feature ou la hotfix fusionnée, à supprimer sur GitHub une fois tout fait (vide sinon)
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  DEV, FAMILLES, MASTER, demandeMajeure, etiquette, livrableDe, modeDeEtiquette, planifier, poserVersionJson, typeDeFusion, verifierCreation,
-  verifierPR,
+  DEV, FAMILLES, MASTER, brancheASupprimer, familleDe, demandeMajeure, etiquette, livrableDe, modeDeEtiquette, planifier, poserVersionJson, typeDeFusion,
+  verifierCreation, verifierPR,
 } from './regles.mjs';
 
 /** Les fichiers qui portent la version (le pied de page du site lit client/package.json). */
@@ -75,14 +80,46 @@ function verifierOrigine(famille, sha, distant) {
 
 function verifierCreationCmd({ branche, sha, distant }) {
   // Tant que master et dev n'existent pas toutes les deux, le flux n'est pas en place : rien n'est vérifié ni supprimé (mise en place du dépôt).
-  const absentes = [MASTER, DEV].filter((b) => !existe(`${distant}/${b}`));
-  if (absentes.length) return `${branche} : flux Git pas encore en place (${absentes.join(' et ')} absente${absentes.length > 1 ? 's' : ''}), aucune vérification.`;
+  const absent = fluxAbsent(distant);
+  if (absent) return `${branche} : ${absent}, aucune vérification.`;
   const r = verifierCreation(branche);
   if (!r.ok) throw new Refus(r.raison);
   if (r.famille === 'principale' || r.famille === 'publication') return `${branche} : branche ${r.famille}.`;
   const probleme = verifierOrigine(r.famille, sha, distant);
   if (probleme) throw new Refus(`${branche} : ${probleme}`);
   return `${branche} : créée depuis ${r.depuis}, conforme.`;
+}
+
+/** Le flux est en place quand master et dev existent toutes les deux ; avant, ni la garde ni le balayage n'agissent. */
+function fluxAbsent(distant) {
+  const absentes = [MASTER, DEV].filter((b) => !existe(`${distant}/${b}`));
+  return absentes.length ? `flux Git pas encore en place (${absentes.join(' et ')} absente${absentes.length > 1 ? 's' : ''})` : null;
+}
+
+function balayer({ distant, envoyer }) {
+  git(['fetch', '--quiet', '--prune', distant]);
+  const absent = fluxAbsent(distant);
+  if (absent) return { type: 'balayage', resultats: [], message: `${absent} : aucun balayage.` };
+  const refs = sortie(['for-each-ref', '--format=%(refname:short)', `refs/remotes/${distant}/`]).split('\n')
+    .filter((r) => r && r !== distant && r !== `${distant}/HEAD`);
+  const resultats = [];
+  for (const ref of refs) {
+    const branche = ref.slice(distant.length + 1);
+    const famille = familleDe(branche);
+    if (famille === 'principale' || famille === 'publication') continue;
+    if (!famille) {
+      const fusionnee = estAncetre(ref, `${distant}/${DEV}`) || estAncetre(ref, `${distant}/${MASTER}`);
+      resultats.push(fusionnee
+        ? { branche, action: 'supprimee', raison: 'nom interdit, et tout son contenu est déjà dans dev ou master' }
+        : { branche, action: 'signalee', raison: 'nom interdit, mais elle contient du travail absent de dev et de master : le reprendre dans une feature/<nom> (ou la supprimer à la main)' });
+      continue;
+    }
+    const probleme = verifierOrigine(famille, sortie(['rev-parse', ref]), distant);
+    if (probleme) resultats.push({ branche, action: 'signalee', raison: probleme });
+  }
+  const aSupprimer = resultats.filter((r) => r.action === 'supprimee').map((r) => `:refs/heads/${r.branche}`);
+  if (envoyer && aSupprimer.length) git(['push', '--quiet', distant, ...aSupprimer]);
+  return { type: 'balayage', resultats, poussee: Boolean(envoyer) };
 }
 
 function verifierPRCmd({ base, head, sha, distant, depotSource, depot }) {
@@ -282,10 +319,11 @@ function appliquer({ base, head, pr, textes, distant, envoyer, tentatives = 10 }
     if (apres.master !== avant.master) refs.push(`${apres.master}:refs/heads/${MASTER}`);
     if (apres.dev !== avant.dev) refs.push(`${apres.dev}:refs/heads/${DEV}`);
     for (const l of livraisons) if (l.tag && l !== prodDuHotfix) refs.push(`${l.sha}:refs/tags/${l.tag}`);
-    if (!envoyer) return { type, majeure, journal, livraisons, poussee: false };
+    const aSupprimer = brancheASupprimer({ base, head });
+    if (!envoyer) return { type, majeure, journal, livraisons, poussee: false, aSupprimer };
     try {
       pousser(distant, refs);
-      return { type, majeure, journal, livraisons, poussee: true };
+      return { type, majeure, journal, livraisons, poussee: true, aSupprimer };
     } catch (e) {
       if (essai === tentatives && type === 'hotfix') return partiel(`refusion de master dans dev impossible à pousser : ${e.message}${indiceJeton(e.message)}`);
       reessayer(new Error(`${e.message}${indiceJeton(e.message)}`));
@@ -332,7 +370,8 @@ function principal(argv) {
   if (commande === 'verifier-pr') { exiger(o, 'base', 'head', 'sha'); return verifierPRCmd(o); }
   if (commande === 'appliquer') { exiger(o, 'base', 'head'); return appliquer(o); }
   if (commande === 'regenerer') { exiger(o, 'branche'); return regenerer(o); }
-  throw new Refus('commande attendue : verifier-creation, verifier-pr, appliquer ou regenerer');
+  if (commande === 'balayer') return balayer(o);
+  throw new Refus('commande attendue : verifier-creation, verifier-pr, appliquer, regenerer ou balayer');
 }
 
 const annoter = (texte) => (process.env.GITHUB_ACTIONS ? `::error::${texte}` : `ERREUR : ${texte}`);
@@ -340,11 +379,26 @@ try {
   const r = principal(process.argv.slice(2));
   if (typeof r === 'string') {
     console.log(r);
+  } else if (r.type === 'balayage') {
+    const lignes = r.message ? [r.message] : r.resultats.length
+      ? r.resultats.map((x) => `- ${x.branche} : ${x.action === 'supprimee' ? (r.poussee ? 'supprimée' : 'à supprimer') : 'signalée'} (${x.raison})`)
+      : ['Toutes les branches sont conformes.'];
+    console.log(lignes.join('\n'));
+    if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Balayage des branches\n\n${lignes.join('\n')}\n`);
+    const signalees = r.resultats.filter((x) => x.action === 'signalee');
+    if (signalees.length) {
+      console.error(annoter(`${signalees.length} branche(s) hors des règles à reprendre : ${signalees.map((x) => x.branche).join(', ')}`));
+      process.exit(CODE_REFUS);
+    }
   } else {
     console.log(JSON.stringify(r, null, 2));
     const installateurs = r.livraisons.filter((l) => l.mode !== 'site');
     const site = r.livraisons.find((l) => l.mode === 'site');
-    if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `installateurs=${JSON.stringify(installateurs)}\nsite=${site ? site.sha : ''}\n`);
+    // a_supprimer n'est écrit que si tout est fait : une hotfix dont la refusion a échoué reste, pour la reprendre.
+    const aSupprimer = r.erreur ? '' : (r.aSupprimer ?? '');
+    if (process.env.GITHUB_OUTPUT) {
+      appendFileSync(process.env.GITHUB_OUTPUT, `installateurs=${JSON.stringify(installateurs)}\nsite=${site ? site.sha : ''}\na_supprimer=${aSupprimer}\n`);
+    }
     if (process.env.GITHUB_STEP_SUMMARY) {
       const lignes = [`### ${r.type}${r.majeure ? ' (majeure)' : ''}`, '', ...r.journal.map((j) => `- ${j}`),
         ...installateurs.map((l) => `- installateur ${l.mode} : \`${l.tag}\` (${l.branche} ${l.sha.slice(0, 7)})`),

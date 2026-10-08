@@ -9,6 +9,7 @@ name: Version et livraison
 #                      sa propre installation, deploy/update-nas.sh) — le fonctionnement d'avant le flux, inchangé ;
 #   à partir de 1.0    job « Installateur » : la solution est hébergée ; un script autonome par fusion (deploy/installateur/), publié en
 #                      « release » privée — serveur normal (vX.Y.Z, puis vX.Y.Z-hotfix.N) depuis master, test (vX.Y.Z-test) depuis dev.
+# Enfin (job « Supprimer la branche fusionnée »), la feature/<nom> ou la hotfix/<nom> fusionnée est supprimée sur GitHub, jamais dev.
 # Lancement manuel (Actions → Version et livraison → Run workflow) : republie dev ou master sans changer sa version.
 on:
   pull_request:
@@ -35,6 +36,7 @@ jobs:
     outputs:
       installateurs: ${{ steps.bot.outputs.installateurs }}
       site: ${{ steps.bot.outputs.site }}
+      a_supprimer: ${{ steps.bot.outputs.a_supprimer }}
     steps:
       - name: Garde-fou — le contenu appartient à un tiers
         env:
@@ -77,6 +79,31 @@ jobs:
             printf '%s' "$CORPS" > "$RUNNER_TEMP/corps.txt"
             node tools/flux-git/cli.mjs appliquer --base "$BASE" --head "$HEAD" --pr "$PR" \
               --texte-fichier "$RUNNER_TEMP/titre.txt" --texte-fichier "$RUNNER_TEMP/corps.txt" --pousser
+          fi
+
+  nettoyage:
+    name: Supprimer la branche fusionnée
+    needs: version
+    # Seulement quand le bot a tout fait (une hotfix dont la refusion a échoué reste, pour la reprendre), et pour une branche de ce dépôt.
+    if: needs.version.result == 'success' && needs.version.outputs.a_supprimer != '' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Supprimer feature/<nom> ou hotfix/<nom> sur GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCHE: ${{ needs.version.outputs.a_supprimer }}
+        run: |
+          case "$BRANCHE" in
+            feature/?*|hotfix/?*) ;;
+            *) echo "::error::refus de supprimer « $BRANCHE » : seules feature/<nom> et hotfix/<nom> le sont"; exit 1 ;;
+          esac
+          if sortie=$(gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${BRANCHE}" 2>&1); then
+            echo "Branche « $BRANCHE » supprimée (elle est fusionnée)."
+          else
+            case "$sortie" in
+              *"Reference does not exist"*) echo "Branche « $BRANCHE » déjà supprimée." ;;
+              *) echo "::error::suppression de « $BRANCHE » impossible : $sortie"; exit 1 ;;
+            esac
           fi
 
   site:
