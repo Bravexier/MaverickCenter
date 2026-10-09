@@ -44,7 +44,7 @@ const famille = readdirSync(bestiaire)
   .filter((p) => p.texte.slice(0, 4000).includes(CLASSEUR));
 
 const NOTE_ROUAGE =
-  "L'arbalécho est une arme étrange dont les bonus de dégâts ne rentre pas dans la multiplication et la posture offensif met au max seulement le deuxième dé.";
+  "L'arbalécho est une arme étrange dont les bonus de dégâts ne rentrent pas dans la multiplication et la posture offensive met au max seulement le deuxième dé.";
 const DEGATS_ROUAGE = "**Dégâts**\n\nArbalécho - (1d4/NPM)x1d4 dégâts d'estoc (portée 2-11)  \nPoing - 1d10/NPM dégâts de frappe";
 
 test('pages réelles : 66 pages de la famille, une seule note rendue (celle de G127, page du Golem de rouage)', () => {
@@ -562,7 +562,7 @@ const VARIANTES = {
   'note retirée': (t) => t.replace(`${note('Dégâts', N.degats)}\n\n`, ''),
   'note dupliquée': (t) => t.replace(`${note('Dégâts', N.degats)}\n\n`, `${note('Dégâts', N.degats)}\n\n${note('Dégâts', N.degats)}\n\n`),
   'note tronquée': (t) => t.replace(N.degats, N.degats.slice(0, 40)),
-  'note altérée': (t) => t.replace('ne rentre pas', 'ne rentrent pas'),
+  'note altérée': (t) => t.replace('ne rentrent pas', 'ne rentre pas'),
   'note déplacée sous une autre cellule': (t) =>
     t.replace(`${note('Dégâts', N.degats)}\n\n${LIGNES.defense}`, `${LIGNES.defense}\n\n${note('Dégâts', N.degats)}`),
   'note d’une autre cellule recopiée sous le même intitulé': (t) => t.replace(note('Vitesse', N.vitesse), note('Vitesse', N.degats)),
@@ -895,7 +895,7 @@ test('pages réelles, sans dump : les 66 pages ont la forme que le script écrit
 
 const tel = (slug, fn) => famille.map((p) => (p.slug === slug ? { ...p, texte: fn(p.texte) } : p));
 const DEFENSE_ROUAGE = '**Défense** : 2/NPM Armure Physique | 2 Armure Magique';
-const VITESSE_ROUAGE = '**Vitesse** : 4 cases sol / 4 case nage';
+const VITESSE_ROUAGE = '**Vitesse** : 4 cases sol / 4 cases nage';
 const ALTERATIONS = {
   'ligne Défense supprimée': [() => tel('golem-de-rouage', (t) => t.replace(`${DEFENSE_ROUAGE}\n\n`, '')), /golem-de-rouage/],
   'lignes Défense et Vitesse échangées': [() => tel('golem-de-rouage', (t) => t.replace(`${DEFENSE_ROUAGE}\n\n${VITESSE_ROUAGE}`, `${VITESSE_ROUAGE}\n\n${DEFENSE_ROUAGE}`)), /golem-de-rouage/],

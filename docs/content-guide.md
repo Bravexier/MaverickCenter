@@ -155,9 +155,11 @@ registre `tools/sheets/corrections.json`, appliqué aux dumps avant les extracte
 frappe, d'orthographe, d'accent, d'accord, de ponctuation, de casse et d'espace : tout ce qui changerait un chiffre, un dé, un signe ou le sens
 d'une règle est refusé par l'outil et se demande au propriétaire.
 
-Exception : les sorts et les 15 magies sont corrigés **dans la base** (migration `data/migrations/0003-orthographe-magies`, registre `.json` à côté) : leurs tables typées et leurs pages ont déjà le texte corrigé,
-et `client/test/orthographe-magies.test.mjs` vérifie que rien d'autre qu'une graphie n'a changé. Un nouvel import d'un classeur de magies réintroduirait les fautes : refaire la correction par une migration.
-Les points qui demandent une décision (mot manquant, accord douteux, nom de sort dont l'identifiant changerait) sont dans `docs/sql/orthographe-a-valider.md`. Les noms propres et les jeux de mots du classeur sont gardés (les noms
+Depuis la conversion en base, la correction se fait **dans la base** : les sorts et les 15 magies (migration `data/migrations/0003-orthographe-magies`), puis toute la base
+(migration `0005-orthographe-base` : pages, classes, capacités, races, bestiaire, équipement, guides, lore et tables typées), chacune avec son registre `.json` ;
+`client/test/orthographe-magies.test.mjs` et `orthographe-base.test.mjs` vérifient que rien d'autre qu'une graphie n'a changé. Un nouvel import d'un classeur réintroduirait les fautes :
+refaire la correction par une migration. Les citations « telles quelles » de la fiche (tableaux des écarts des races) gardent leurs fautes. Les points qui demandent une décision
+(mot manquant, accord douteux, nom dont la clé changerait) sont dans `docs/sql/orthographe-a-valider.md`. Les noms propres et les jeux de mots du classeur sont gardés (les noms
 coupés sur deux cases, « Tenir ... » / « ... ou charger ? », sont voulus : ils se répondent pour souligner le choix).
 
 ## Liens entre pages

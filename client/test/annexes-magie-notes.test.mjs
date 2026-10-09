@@ -49,7 +49,7 @@ test('pages réelles : le fil de commentaire M43 de « Mode Hyper (Magie) » (r�
   assert.match(page, /^## Commentaire de cellule$/m);
   assert.ok(
     page.includes(
-      '- **Vide + Nécromancie** (cellule M43) : Sous cette forme, Il est impossible de faire des dégâts physiques et seuls les armes spectrales sont utilisables ainsi que les sorts.',
+      '- **Vide + Nécromancie** (cellule M43) : Sous cette forme, il est impossible de faire des dégâts physiques et seules les armes spectrales sont utilisables ainsi que les sorts.',
     ),
   );
   assert.ok(page.includes('*Commentaire joint à la cellule dans le classeur d\'origine, marqué comme résolu.*'));

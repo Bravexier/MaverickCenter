@@ -70,15 +70,15 @@ function commentaires(texte) {
 
 const T = {
   BK66: "Il existe une situation où le changement de posture n'est pas possible, c'est dans le cas où le personnage décide de passer en focus pour utiliser un sort niveau 5 pour après espérer un changement de posture. Si un sort de niveau 5 est lancé, le changement de posture n'est plus possible le reste du tour.",
-  CI66: "L'insensibilité est un état où AUCUN sortilèges (positif ou négatif) ne peux toucher le lanceur. Prendre un coup physique annule cet état.",
+  CI66: "L'insensibilité est un état où AUCUN sortilège (positif ou négatif) ne peut toucher le lanceur. Prendre un coup physique annule cet état.",
   ED80: "Agib est l'ambassadeur de la richesse et Murge son gardien. Ce sont des marchands qui ont beaucoup de marchandises.",
   CW8: 'Métal : Plus solide, elle ne peut pas perdre de cran de solidité Pierre : Ignore 5 AP Plante : Ignore 50% des AP des boucliers',
-  X29: 'Bras = Perd son arme ou bouclier Jambe = Ne peux plus bouger',
+  X29: 'Bras = Perd son arme ou bouclier Jambe = Ne peut plus bouger',
   CI64: '* Si le carreau touche à 2 - 4 portée = Surdité 1 Si le carreau touche à 5 - 7 portée = Surdité 2 Si le carreau touche à 8 - 10 portée = Surdité 3',
-  A1_1: "L'insensibilité est un état où AUCUN sortilèges (positif ou négatif) ne peux toucher le lanceur. Prendre un coup physique annule cet état.",
+  A1_1: "L'insensibilité est un état où AUCUN sortilège (positif ou négatif) ne peut toucher le lanceur. Prendre un coup physique annule cet état.",
   A1_2: 'Un téléphone quoi',
   A1_3: '1 fois par combat',
-  QA6: "Il faut perdre un bras pour avoir cette arme, ce qui fait que vous perdez une main. Ce n'est pas considérer comme un Canon d'artifice.",
+  QA6: "Il faut perdre un bras pour avoir cette arme, ce qui fait que vous perdez une main. Ce n'est pas considéré comme un Canon d'artifice.",
   H39: 'Se traduit par une croix en Force et Agilité et Social.',
   L12: "- Maximum 3 IC par Tour - Déplacement OU Action cramée en cas d'échec critique - Vous pouvez vous déplacer (Ou pas) autant de fois pendant votre tour tant que vous avez encore des points de déplacements (Stat : VITESSE)",
 };
@@ -90,7 +90,7 @@ const ATTENDUS = [
   ['accessoires', 'Note', 'Effet (Jet 19.0)', 'SI AUTRE', T.ED80, 'ED80'],
   ['pieces-elementaires', 'Note', 'Épée de Terre', 'ÉPÉE', T.CW8, 'CW8'],
   ['pieces-elementaires', 'Note', 'Hache de Sang', 'HACHE', T.X29, 'X29'],
-  ['pieces-elementaires', 'Note', 'Arbalète de Vent', 'ARBALETE', T.CI64, 'CI64'],
+  ['pieces-elementaires', 'Note', 'Arbalète de Vent', 'ARBALÈTE', T.CI64, 'CI64'],
   ['equipement-inventaire', 'Commentaire résolu', 'MONNAIE', 'MONNAIE', T.A1_1, 'A1'],
   ['equipement-inventaire', 'Commentaire', 'MONNAIE', 'MONNAIE', T.A1_2, 'A1'],
   ['equipement-inventaire', 'Commentaire', 'MONNAIE', 'MONNAIE', T.A1_3, 'A1'],

@@ -94,8 +94,12 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   (`choix_exclusif_avec`, symétrique), une spécialité exclut l'autre ; l'Archimage n'a pas de spécialité mais des groupes par palier
   (`lib/capacites.mjs`, `lib/classe-bonus.mjs`, `test/capacites-content.test.mjs`). Le +4 AM d'une classe raciale se lit dans le texte de la capacité
   de niveau 10 de sa 2ᵉ spécialité (« considérer comme classe magique »). Voir `docs/content-guide.md`.
-- Orthographe des sorts et des magies : corrigée **dans la base** par la migration de données `0003-orthographe-magies` (500 corrections, registre `.json` ; test `client/test/orthographe-magies.test.mjs`).
-  Un nom de sort fautif n'est pas corrigé à la main : son identifiant (`<magie>#sort:<nom_cle>`) changerait. Les points en attente du propriétaire sont dans `docs/sql/orthographe-a-valider.md`.
+- Orthographe : corrigée **dans la base** par des migrations de données, sorts et magies (`0003-orthographe-magies`, 500 corrections) puis **toute la base** (`0005-orthographe-base` :
+  pages, classes, capacités, races, bestiaire, équipement, guides, lore et tables typées ; 2 247 corrections relues deux fois, 56 noms à clé inchangée). Chaque migration a son registre `.json`
+  et son test (`client/test/orthographe-magies.test.mjs`, `orthographe-base.test.mjs`). Une phrase corrigée l'est partout où elle est écrite (page, résumé, tables typées, extraits, notes de cellule),
+  jamais dans les citations « telles quelles » de la fiche V15.2.2 (tableaux des écarts des races), ni dans `source`, `ecart_source`, `alias`, `page_tag`, `commentaire_orphelin` (empreinte de son texte), ni dans une adresse ou un lien.
+  Un nom fautif dont la correction changerait la clé (donc l'identifiant ou un lien) n'est pas corrigé à la main. Les points en attente du propriétaire sont dans `docs/sql/orthographe-a-valider.md`.
+  Les tests qui citent un texte de la base (notes de cellule « texte intégral ») suivent ces corrections ; leurs entrées synthétiques (qui imitent le classeur) gardent le texte d'origine.
 - Niveaux de maîtrise (NM) des sorts : `sort_bonus_maitrise` (une ligne par expression de NM écrite dans une cellule, exhaustive, typée seulement quand l'écriture est sans ambiguïté) et la colonne `sort.bonus_maitrise` (« Bonus Maîtrise »), `sort_mode` + `sort.mode_brut`
   (le mode IC / imparable / inesquivable, séparé du type), vue `v_sort_bonus_au_nm` et `lib/sort-maitrise.mjs` (lecture « à N NM », même résultat en SQL et en JavaScript). Les tableaux de magie n'ont pas de colonne Maîtrise : l'expression de NM d'une cellule
   (« (-5/NM) ») est une pastille `.nm` à sa place, à côté de la valeur (`marquerBonus`), celle du type suit les types et le mode ; `sansBonus` donne la valeur de base. Voir `docs/content-guide.md`, « Niveaux de maîtrise ». Ne rien calculer ni déduire d'une expression de NM.
