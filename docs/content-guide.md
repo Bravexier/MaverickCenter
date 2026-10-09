@@ -131,6 +131,16 @@ typées lues par `client/src/lib/races-db.mjs`, jamais le Markdown. **Aucun tabl
 
 **Pour changer une race, on change la base** (une migration `data/migrations/NNNN-<nom>.sql`, voir `docs/sql/remplissage.md`) : modifier le `.md` fabriqué n'a plus d'effet sur la page.
 
+## Liste des classes (`/wiki/classes/`)
+
+Un tableau de **cinq colonnes côte à côte** (demande du propriétaire), une par catégorie, dans cet ordre : **Physiques Mêlée**, **Physiques Distance**, **Magiques**, **Raciales**, **Spéciales**
+(`lib/class-groups.mjs`, testé ; `components/classes/ClassesTableau.astro`, CSS `styles/classe/liste.css`). La catégorie vient du tag posé par l'import (intitulé du Sommaire du classeur) :
+« Classe Physique Corps à Corps », « Classe Physique Distance », « Classe Magique », « Classe Hybride Animal » (raciales), « Classe Hybride » et « Classe spéciale » (spéciales : Flagelleur, Archimage).
+Le Parleur, « corps à corps » dans le Sommaire, est sous « Spéciales » (décision du propriétaire, `CLASS_OVERRIDES`) ; une classe sans catégorie reconnue va dans « Non classées », sous « Spéciales ».
+Chaque colonne prend la couleur de sa catégorie (celle des pages de classe) ; le nom d'une classe est écrit **sans « (classe) »** (`classLabel` : « Kitsune (classe) » → « Kitsune ») ;
+le résumé de la page (`summary`) est dans une **infobulle** (`components/magie/Bulles.astro` : survol, focus clavier, premier appui au toucher puis le second suit le lien ; `title` sans JavaScript).
+Sur un écran étroit, les colonnes passent à la ligne. Le fil d'Ariane d'une classe mène à sa colonne (`/wiki/classes/#raciales`…).
+
 ## Pages de classe : un gabarit commun, alimenté par la base
 
 Les 39 pages de `/wiki/classes/<classe>/` sont rendues comme les pages de magie et de race : `components/classes/ClassePage.astro` (avec `ClasseDons`, `ChoixDeDons`, `DonCarte`) affiche
@@ -140,8 +150,8 @@ pas de source citée ; le Markdown de la page ne sert plus qu'à la recherche et
 
 - **Bandeau** : catégorie du Sommaire, santé, chakra et barrière de départ, « Classe magique +4 AM » (la classe elle-même, ou seulement « avec la spécialité … » quand c'est le don
   de cette spécialité qui le dit : classes raciales, Flagelleur ; `lib/classe-magique.mjs`), « Classe raciale » avec le lien vers la race.
-- **Couleur** (demande du propriétaire), sur toute la page comme celle d'une magie, d'après la rubrique de `/wiki/classes/` (`lib/class-groups.mjs#classColor`, testé) : rouge pour les
-  physiques de mêlée, vert pour les physiques à distance, bleu pour les magiques, violet pour les raciales (hybrides), jaune pour les autres (Parleur compris). Repère visuel sans valeur de règle.
+- **Couleur** (demande du propriétaire), sur toute la page comme celle d'une magie, d'après la catégorie de `/wiki/classes/` (`lib/class-groups.mjs#classColor`, testé) : rouge pour les
+  physiques de mêlée, vert pour les physiques à distance, bleu pour les magiques, violet pour les raciales (hybrides), jaune pour les spéciales (Parleur compris). Repère visuel sans valeur de règle.
 - **Sections** : présentation et « Chose à savoir », descriptions des spécialités, « Au départ » (maîtrises, arme, armure, inventaire : chaque objet du glossaire a son infobulle, « A OU B »
   est un emplacement à deux options), **Dons**, tableau sans titre de l'onglet (Mage Bleu : une carte par magie).
 - **Dons** (les « capacités » des onglets ; demande du propriétaire : c'est leur nom) : disposés **comme l'onglet** (`lib/classe-dons.mjs#plateauDeDons`, testé dans

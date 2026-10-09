@@ -78,9 +78,11 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   (boutons masqués), et au plus 255 fichiers par publication (le script écrit `batch-N.json`). Détail dans le commentaire du script.
 - Astro met le rendu Markdown en cache dans `client/node_modules/.astro/` (clé = contenu du fichier). Si vous modifiez le plugin
   des `[[liens]]` sans toucher aux pages, supprimez ce dossier avant de reconstruire, sinon l'ancien rendu est réutilisé (la CI repart de zéro).
-- La page `/wiki/classes/` range les classes par catégorie (Physiques > Mêlée/Distance, Magiques, Raciales, Autres) d'après les tags
-  posés par l'import (catégorie du Sommaire du classeur) : `client/src/lib/class-groups.mjs`, testé. « Raciales » = « Classe Hybride Animal » ;
-  le Parleur (classé mêlée dans le classeur) est volontairement sous « Autres » (`CLASS_OVERRIDES`, décision du propriétaire).
+- La page `/wiki/classes/` est un tableau de 5 colonnes côte à côte, une par catégorie (Physiques Mêlée, Physiques Distance, Magiques, Raciales, Spéciales), d'après les tags
+  posés par l'import (catégorie du Sommaire du classeur) : `client/src/lib/class-groups.mjs`, testé ; `components/classes/ClassesTableau.astro`, CSS `styles/classe/liste.css` (`?raw`).
+  « Raciales » = « Classe Hybride Animal » ; « Spéciales » = « Classe Hybride » + « Classe spéciale » ; le Parleur (classé mêlée dans le classeur) est volontairement sous « Spéciales »
+  (`CLASS_OVERRIDES`, décision du propriétaire). Chaque colonne a la couleur de sa catégorie, les noms sont sans « (classe) » (`classLabel`), le résumé est en infobulle (`Bulles.astro`).
+  `test/classes-html.test.mjs` contrôle le tableau construit.
 - Pages de magie : rendues depuis la base (`lib/magies-db.mjs`, `lib/magies.ts`), jamais depuis leur `.md` (qui ne sert qu'à la recherche et aux `[[liens]]`) ; la remarque d'un sort
   (note de cellule) est `sort.remarque`, la table `note_cellule` n'est qu'une trace et ne doit pas être lue. Le panneau d'un sort s'ouvre sous sa ligne (script de `MagieSorts.astro`, sans JavaScript tout est affiché).
   Leur CSS est dans `styles/magie.css`, inséré par `MagiePage.astro` (`?raw`) : ne pas le mettre dans `global.css` ni l'importer (Astro l'attacherait à toutes les pages de la route `[type]/[slug]`).
@@ -100,8 +102,8 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
 - Pages de classe : rendues depuis la base (`lib/classes-db.mjs`, `components/classes/ClassePage.astro`), jamais depuis leur `.md`. Les « capacités » s'affichent **Dons** (demande du propriétaire ; type `capacites`,
   table `capacite` et ids inchangés, libellé dans `type_page` par la migration `0008-dons-de-classe`, que `db:check` compare à `types.mjs`). Les dons suivent la disposition de l'onglet (`lib/classe-dons.mjs#plateauDeDons`),
   les choix sont ceux de `v_capacite_exclusive`, encadrés avec « ou », options côte à côte ; les spécialités sont des **onglets** (premier à gauche, second à droite ; script de `ClasseDons.astro`,
-  un lien `#don-…` ouvre le bon onglet, sans JavaScript tout est affiché). Couleur de la page d'après la rubrique de `/wiki/classes/` (`classColor` : rouge mêlée, vert distance, bleu magiques,
-  violet raciales, jaune autres). CSS dans `styles/classe/`, inséré par `ClassePage.astro` (`?raw`). `test/classes-html.test.mjs` contrôle le site construit (CI après le build).
+  un lien `#don-…` ouvre le bon onglet, sans JavaScript tout est affiché). Couleur de la page d'après la catégorie de `/wiki/classes/` (`classColor` : rouge mêlée, vert distance, bleu magiques,
+  violet raciales, jaune spéciales). CSS dans `styles/classe/`, inséré par `ClassePage.astro` (`?raw`). `test/classes-html.test.mjs` contrôle le site construit (CI après le build).
 - Dons de classe (« capacités ») : une page `capacites/<classe>-<nom>` par don ; les dons d'une même ligne de l'onglet sont un choix exclusif
   (`choix_exclusif_avec`, symétrique), une spécialité exclut l'autre ; l'Archimage n'a pas de spécialité mais des groupes par palier
   (`lib/capacites.mjs`, `lib/classe-bonus.mjs`, `test/capacites-content.test.mjs`). Le +4 AM d'une classe raciale se lit dans le texte de la capacité

@@ -70,13 +70,7 @@ const statusNote = entry.data.status === 'example' ? 'Contenu d’exemple : à r
     category && (
       <>
         {' › '}
-        <a href={url(`wiki/classes/#${category.groupKey}`)}>{category.group}</a>
-        {category.section && (
-          <>
-            {' › '}
-            <a href={url(`wiki/classes/#${category.sectionKey}`)}>{category.section}</a>
-          </>
-        )}
+        <a href={url(`wiki/classes/#${category.key}`)}>{category.label}</a>
       </>
     )
   }</p>

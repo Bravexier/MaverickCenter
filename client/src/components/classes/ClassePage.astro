@@ -26,7 +26,7 @@ interface Props {
 }
 const { entry, classe, magique, statusNote } = Astro.props;
 
-// couleur de la rubrique de /wiki/classes/ (rouge, vert, bleu, violet, jaune), sur toute la page comme celle d'une magie
+// couleur de la catégorie de /wiki/classes/ (rouge, vert, bleu, violet, jaune), sur toute la page comme celle d'une magie
 const couleur = classColor(entry);
 const specialitesDecrites = classe.specialites.filter((s) => s.description.length > 0);
 const colonnes = classe.plateau.flatMap((e) => (e.forme === 'specialites' ? e.specialites : []));
