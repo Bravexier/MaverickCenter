@@ -88,6 +88,8 @@ une magie affiche ses relations, et seulement les siennes, dans sa couleur, d'ap
 de la magie contre laquelle l'autre est efficace (sa « Vulnérabilité magique » cite l'autre), un **bouclier** au bout de celle qui résiste à l'autre (sa « Résistance magique » la cite),
 une boucle à bouclier pour une magie qui résiste à elle-même. Les deux sens d'une paire sont sur le même trait : dans la base, quand A est efficace contre B, A résiste aussi à B
 (épée chez B, bouclier chez A) ; Vide–Espace-Temps et Lumière–Ombre ont deux épées, Arcane–Corruption deux boucliers (testé sur la base). Au repos, aucun trait.
+Une **bascule** à côté de la légende (demande du propriétaire) choisit ce que montre le survol : « Afficher les relations » (par défaut) ou « Afficher les détails »
+(l'infobulle de description), jamais les deux, sinon l'infobulle se pose sur les traits ; des radios et des règles `:has()`, sans JavaScript (le choix revient à « relations » au rechargement).
 Disposition du grand écran (1000 × 440) : le Potentiel Illimité, sans relation, au centre (demande du propriétaire) ; les huit magies liées en anneau autour, symétriques gauche–droite
 (Vent↔Nécromancie, Feu↔Eau, Terre↔Sang, Glace↔Foudre : la symétrie des relations le permet) ; Corruption–Arcane et Espace-Temps–Vide aux coins du haut, Lumière–Ombre en bas.
 Elle est choisie pour qu'**aucun trait ni aucune boucle ne passe sous une autre pastille** et que deux pointes d'une même magie ne se touchent pas : Feu et Eau sont plus bas que Terre

@@ -156,6 +156,24 @@ test('carte des magies : une relation par paire liée dans la base, au survol se
   }
 });
 
+// Bascule « au survol » (demande du propriétaire : l'infobulle se posait sur les traits) : « Afficher les relations » (par défaut) ou « Afficher les
+// détails », jamais les deux ; des radios et des règles :has(), sans JavaScript ; sous 60rem, l'infobulle reste (il n'y a pas de relations).
+test('carte des magies : bascule relations / détails au survol, relations par défaut', options, () => {
+  const radios = [...indexMagies.matchAll(/<input type="radio" name="magies-survol" value="(\w+)"( checked)?/g)].map(([, valeur, coche]) => [valeur, Boolean(coche)]);
+  assert.deepEqual(radios, [['relations', true], ['details', false]]);
+  assert.match(indexMagies, /Afficher les relations<\/label>/);
+  assert.match(indexMagies, /Afficher les détails<\/label>/);
+  // relations cochées : l'infobulle est cachée, sur grand écran seulement
+  const grandEcran = indexMagies.slice(indexMagies.indexOf('@media not all and (max-width: 60rem)'));
+  assert.match(grandEcran, /^@media not all and \(max-width: 60rem\) \{\s*\.magies-carte:has\(\.magies-mode input\[value="relations"\]:checked\) \.magies-orbite__noeud::after \{ display: none; \}/);
+  // détails cochés : les relations et leur légende sont cachées
+  assert.match(indexMagies, /\.magies-carte:has\(\.magies-mode input\[value="details"\]:checked\) :is\(\.magies-orbite__relations, \.magies-legende__relation\) \{ display: none; \}/);
+  // la carte, la bascule et la légende sont dans le même conteneur (sinon :has() ne les relie pas)
+  const debut = indexMagies.indexOf('<div class="magies-carte">');
+  assert.ok(debut >= 0 && debut < indexMagies.indexOf('class="magies-orbite"') && indexMagies.indexOf('class="magies-orbite"') < indexMagies.indexOf('name="magies-survol"'));
+  assert.equal([...indexMagies.matchAll(/class="magies-legende__item magies-legende__relation"/g)].length, 2);
+});
+
 test('chaque identifiant est unique dans une page ; aria-controls, aria-describedby et data-bulle désignent un élément qui existe', options, () => {
   for (const { slug, html } of pages) {
     const tous = ids(html);
