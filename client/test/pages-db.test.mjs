@@ -41,8 +41,8 @@ test('emettrePage : champs structurés (chaîne, liste, entier) ; ceux des pages
   assert.deepEqual(magie.slice(4, 8), ['nom_court: "Sang"', 'resiste_a: ["Feu", "Terre"]', 'niveau: 20', 'summary: "Un « résumé »."']);
 });
 
-test('aller-retour sans perte pour les 1004 pages : l’analyse YAML du site redonne exactement les champs de la base', () => {
-  assert.equal(pages.length, 1004);
+test('aller-retour sans perte pour les 1015 pages : l’analyse YAML du site redonne exactement les champs de la base', () => {
+  assert.equal(pages.length, 1015);
   for (const p of pages) {
     const { data, corps } = lire(emettrePage(p));
     assert.equal(data.title, p.titre, p.id);
@@ -62,9 +62,9 @@ test('db-export-pages : fabrique un fichier par page, --verifier dit ce qui diff
   const sortie = join(dir, 'wiki');
   const ecrit = exporter(['--out', sortie]);
   assert.equal(ecrit.status, 0, ecrit.stderr);
-  assert.match(ecrit.stdout, /1004 pages écrites/);
+  assert.match(ecrit.stdout, /1015 pages écrites/);
   const fichiers = readdirSync(sortie).flatMap((t) => readdirSync(join(sortie, t)).map((f) => `${t}/${f}`));
-  assert.equal(fichiers.length, 1004);
+  assert.equal(fichiers.length, 1015);
   assert.ok(existsSync(join(sortie, 'cartes')), 'chaque type de page a son dossier, même sans page');
 
   const ok = exporter(['--verifier', sortie]);

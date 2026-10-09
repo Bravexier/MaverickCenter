@@ -116,10 +116,17 @@ test('le guide du site : chapitres numérotés sans trou, chacun avec un résum�
     ['guide/creer-son-personnage', 'guide/choisir-sa-race', 'guide/choisir-ses-magies', 'guide/choisir-sa-classe', 'guide/caracteristiques-et-competences', 'guide/premiers-sorts', 'guide/finaliser-son-personnage'],
     'la création dans l’ordre où l’on remplit la fiche ; les attributs, qui se calculent, à la fin',
   );
+  assert.deepEqual(
+    partiesDuGuide(chapitres).map((g) => [g.partie.id, g.chapitres.length]),
+    [['decouvrir', 4], ['creer', 7], ['jouer', 7], ['progresser', 3], ['plus-loin', 3]],
+    'le plan validé par le propriétaire : 24 pages en cinq parties',
+  );
+  const jouer = chapitres.filter((c) => c.partie.id === 'jouer').map((c) => c.id);
+  assert.ok(jouer.indexOf('guide/l-equipement') < jouer.indexOf('guide/les-degats'), 'l’armure (AP/AM) avant la formule des dégâts');
   for (const c of chapitres) assert.ok(c.resume, `${c.id} : résumé absent`);
   const blocs = pagesDuGuide.filter(estUnChapitre).flatMap((p) => morceauxDuChapitre(p.body).filter((m) => m.bloc).map((m) => m.bloc));
   assert.equal(new Set(blocs).size, blocs.length, 'un bloc est appelé une seule fois dans tout le guide');
-  assert.ok(blocs.every((b) => BLOCS.includes(b)));
+  assert.deepEqual([...blocs].sort(), [...BLOCS].sort(), 'chaque bloc déclaré est utilisé, une fois');
   assert.equal(chapitres.at(-1).id, 'guide/les-documents-des-regles', 'le dernier chapitre mène aux pages de référence');
   assert.ok(blocs.includes('documents'));
   assert.equal(pagesDuGuide.find((p) => p.id === PREMIER_CHAPITRE).body.includes('<!-- guide:sommaire -->'), true, 'sommaire en page 1');

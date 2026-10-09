@@ -5879,6 +5879,48 @@ Dans le même tour, il est possible de faire 3 IC (jamais deux fois le même).
 
 **Attention ! Les IC doivent toujours être réalisés avant l''action !**
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/aide-memoire', 'guide', 'aide-memoire', 'Aide-mémoire', 'aide-memoire', 'Les règles à garder sous la main pendant une partie : le jet de D100, le tour de combat, la défense, les dégâts et les formules de la fiche.', '{"chapitre": 22, "partie": "plus-loin"}', '## Réussir une action
+
+- On lance un **D100** : il faut faire **son score ou moins**.
+- **Score** = 10 × la caractéristique + les points naturels + les points acquis.
+- **1 à 5** : réussite critique. **96 à 100** : échec critique.
+
+## Le tour de combat
+
+1. Initiative : 1D20 + le bonus d’Agilité, relancée à chaque tour.
+2. Les effets de début de tour (poison, brûlure…).
+3. La posture.
+4. Le déplacement (on peut en garder pour après l’action).
+5. Jusqu’à 3 actions rapides (IC), jamais deux fois la même, toujours avant l’action.
+6. L’action : attaque, sort, objet, sprint ou quatrième IC.
+7. La fin du déplacement, puis le tour suivant.
+
+## Se défendre
+
+- Jet réussi **et** égal ou meilleur que l’attaquant : coup bloqué.
+- Jet réussi mais moins bon : **dégâts ÷ 2** (le bouclier compte).
+- Jet raté : dégâts normaux.
+
+## Les dégâts
+
+> [ ( dégâts × 2 si critique − armure ) ÷ 2 si défense partielle ÷ 2 si un don divise ] × 2 si faiblesse, ÷ 2 si résistance — arrondi à l’inférieur.
+
+## La magie
+
+- Sort réussi : son coût ; raté : la moitié ; échec critique : le double.
+- Emplacements de sorts = conditions remplies (magie innée, magie acquise, classe magique, seconde classe magique) × puissance magique.
+
+## Les attributs à la création
+
+- Santé = race + classe(s) + magies.
+- Chakra = race + classe(s) + magies.
+- Barrière = chakra ÷ 2 (arrondi à l’inférieur) + bonus de race et de classe.
+- Chaque classe magique : +4 AM.
+
+## Le coma
+
+À 0 de santé ou moins : jets de survie. Un réussi stabilise ; trois ratés, la mort.
+', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/alignement', 'guide', 'alignement', 'Alignement', 'alignement', 'Dans Maverick, l''alignement n''est pas fixe.', NULL, 'Dans Maverick, l''alignement n''est pas fixe. Il évolue au cours de l''aventure selon les actions, les décisions et les paroles du personnage. C’est une sorte de suivi de la philosophie et de la moralité du personnage, ce score n’impose pas comment jouer le personnage mais comment il évolue.
 
 Chaque personnage possède quatre scores :
@@ -6013,6 +6055,48 @@ Encore par rapport aux attaques de zone, une personne ne peut pas protéger quel
 
   **Exemple :** pour un scorpion, la « tête » correspondait à sa **queue**, et donc le malus/effet s’y appliquaient.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/attaquer-et-se-defendre', 'guide', 'attaquer-et-se-defendre', 'Attaquer et se défendre', 'attaquer-et-se-defendre', 'Le jet d’attaque, la parade et l’esquive, la défense partielle qui divise les dégâts par deux, et les coups portés à la tête ou aux membres.', '{"chapitre": 13, "partie": "jouer"}', '## Attaquer
+
+Une attaque est un jet de D100 : il faut faire son score ou moins dans la compétence de l’arme (*Arme légère*, *Arme lourde*, *Arc*, *Arbalète*…) ou, pour un sort, dans la compétence qui sert à le lancer.
+
+- **Réussite critique (1 à 5)** : les dégâts sont doublés, et la cible ne peut bloquer le coup que par une réussite critique meilleure.
+- **Échec critique (96 à 100)** : la cible peut riposter par une attaque d’opportunité, ou désarmer l’attaquant, ou autre chose selon le MJ.
+
+La **portée** d’une arme est le nombre de cases que parcourt le projectile ; pour la portée, chaque diagonale compte pour 2 cases.
+
+## Se défendre
+
+Attaqué, le personnage peut tenter une **parade** (avec une arme ou un bouclier, compétence *Parade*) ou une **esquive** (compétence *Esquive*), si sa posture le permet. C’est aussi un jet de D100 :
+
+| Résultat de la défense | Effet |
+| --- | --- |
+| Jet réussi **et** résultat égal ou meilleur que celui de l’attaquant | Le coup est entièrement bloqué. |
+| Jet réussi, mais moins bon que celui de l’attaquant | **Défense partielle** : les dégâts sont divisés par 2. Avec un bouclier, son armure (AP ou AM) compte à ce moment. |
+| Jet raté | Dégâts normaux. |
+
+- **Réussite critique en défense** : une contre-attaque est possible, ou autre chose selon le MJ.
+- **Échec critique en défense** : l’armure ne compte pas, et l’attaquant ajoute +8 aux dégâts (ou autre chose selon le MJ).
+- Contre une **attaque de zone**, l’esquive perd 5 % par case à parcourir pour sortir de la zone, sans pouvoir dépasser sa vitesse ; la parade n’est pas concernée. On ne peut pas protéger un voisin pris dans la même zone.
+
+Combien de fois peut-on parer ou esquiver par tour ? Cela dépend de la posture : aucune en posture offensive, deux en neutre, sans limite en défensive… (voir [les postures](/guide/les-postures/)).
+
+## Viser une partie du corps
+
+Par défaut, on frappe le corps. Viser ailleurs est plus difficile, mais a un effet :
+
+| Zone touchée | Malus pour toucher | Effet |
+| --- | --- | --- |
+| Tête | −25 % | le coup inflige +10 dégâts |
+| Corps | 0 % | aucun |
+| Bras droit | −18 % | −15 % au prochain test d’attaque avec une arme |
+| Bras gauche | −18 % | −5 % au prochain test (quel qu’il soit) |
+| Jambe droite | −12 % | −1 de vitesse au prochain tour |
+| Jambe gauche | −12 % | −4 d’initiative au prochain tour |
+
+Pour un personnage gaucher, les effets des côtés droit et gauche sont inversés. Ce tableau vaut pour les humanoïdes : pour un monstre, le MJ adapte les zones à sa forme.
+
+Prises en tenaille, attaques d’opportunité, attaques discrètes, embuscades… : ces cas plus rares sont dans [[Les situations avancées]].
+', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/bienvenue', 'guide', 'bienvenue', 'Bienvenue dans Maverick', 'bienvenue-dans-maverick', 'MaverickJDR en quelques mots : un univers médiéval-fantasy où la magie est omniprésente, un jeu complet mais accessible, joué sur le Discord officiel.', '{"chapitre": 1, "partie": "decouvrir"}', '## MaverickJDR ?
 
 C’est un univers médiéval-fantasy où la magie est omniprésente. On y retrouve des figures familières comme les [[races/humain|humains]], les elfes ou les [[races/nain|nains]]… mais aussi des peuples plus exotiques tels que les [[races/orios|Orios]], les [[races/drassahthac|Drassah’thac]] ou encore les [[races/drakos|Drakos]].
@@ -6029,6 +6113,24 @@ Ce guide est fait pour ceux qui découvrent Maverick, et même le jeu de rôle. 
 
 <!-- guide:sommaire -->
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/blessures-et-etats', 'guide', 'blessures-et-etats', 'Blessures et états', 'blessures-et-etats', 'Le coma et les jets de survie, les altérations d’état (poison, brûlure…), et comment récupérer santé et chakra.', '{"chapitre": 18, "partie": "jouer"}', '## Le coma et les jets de survie
+
+Quand sa santé tombe à 0 ou moins, le personnage est **dans le coma**. Il doit faire des **jets de survie** (compétence *Survie*) : un seul jet réussi suffit à le stabiliser ; trois jets ratés, et il meurt. Un échec critique peut être fatal. Certains MJ font eux-mêmes ces jets, pour garder la main sur le destin des personnages.
+
+## Les altérations d’état
+
+Poison, brûlure, peur, fatigue… Une **altération d’état** change la condition du personnage et lui inflige des malus : mieux vaut s’en débarrasser vite. Beaucoup agissent au **début du tour**, avant que le personnage n’agisse. Certaines compétences aident à y résister : *Vigueur* contre les maux du corps (poison, maladie, brûlure), *Fermeté* contre les attaques de l’esprit.
+
+Presque chaque magie est liée à une altération d’état, et beaucoup de sorts en provoquent. La liste complète, avec les effets de chaque stade, est dans [[Liste des altérations d''état]].
+
+## Récupérer
+
+- Le **don de base** de la race, *Méditation* ou *Repos*, se prend comme action, plusieurs fois par jour : la méditation rend du chakra, le repos de la santé et du chakra. Au niveau 10, ils deviennent plus efficaces (6d6 + 12 de chakra pour la méditation, 6d4 + 12 de santé et de chakra pour le repos).
+- Les **potions** et remèdes de l’[alchimie](/ressources/alchimie/) soignent, rendent du chakra ou guérissent une altération.
+- Certains **sorts** soignent ou protègent, notamment ceux de la lumière et de l’eau.
+
+Attention : la **corruption** empêche de remonter son chakra au maximum, et le **Mode Hyper** interdit de récupérer du chakra tant qu’il dure.
+', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/campagne-ou-scenario-one-shot', 'guide', 'campagne-ou-scenario-one-shot', '« Campagne » ou « Scénario one shot » ?', 'campagne-ou-scenario-one-shot', 'Bien que ces termes puissent se ressembler ils sont bien différents, selon ce que vous souhaitez faire il y a deux façons principales de jouer au jdr.', NULL, 'Bien que ces termes puissent se ressembler ils sont bien différents, selon ce que vous souhaitez faire il y a deux façons principales de jouer au jdr :
 
 ## Scénario One Shot
@@ -6916,6 +7018,51 @@ Comme expliqué dans les compétences et les [[Altérations d''états et Mode Hy
 
 Le mj peut laisser les joueurs faire leur jet de survie ou alors il peut faire lui-même les jets de survie et avoir la capacité de tricher pour leur bien, un échec critique n''est jamais loin.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/l-equipement', 'guide', 'l-equipement', 'L’équipement', 'lequipement', 'Les armes et leurs dés, l’armure (AP, AM et les six parties du corps), le bouclier, les accessoires, la ceinture et le sac à dos.', '{"chapitre": 14, "partie": "jouer"}', '## Les armes
+
+Un personnage a au plus **deux armes** en main ; les autres vont dans l’inventaire. Pour chacune, la fiche note :
+
+- ses **dégâts** : un nombre de dés qui dépend de la maîtrise (sans maîtrise 1 dé, avec 1 point de maîtrise 2 dés…), plus les bonus ;
+- sa **portée** (le plus souvent 1 case) ;
+- ses **effets en plus**, comme des dégâts supplémentaires contre certaines créatures ;
+- sa **solidité** : le nombre de mauvais coups qu’elle encaisse avant de se briser.
+
+Chaque catégorie d’arme a son dé de dégâts : dagues d6, épées d10, masses d10, haches d10, armes d’hast d10, pugilat d6 à d10, bâton de combat d8, armes de jet d6, bombes d6, arcs d8, arbalètes d12. Le détail est dans les [armes](/ressources/armes/).
+
+## L’armure
+
+L’armure retire des points aux dégâts reçus (voir [les dégâts](/guide/les-degats/)) :
+
+- l’**armure physique (AP)** protège des armes ;
+- l’**armure magique (AM)** protège des sorts.
+
+Le personnage a une **AP et une AM de base** (de sa race, de ses classes magiques ou d’un objet), auxquelles s’ajoute l’armure portée, pièce par pièce, sur **six parties du corps** : la tête (T), le corps (C), le bras gauche (BG), le bras droit (BD), la jambe gauche (JG) et la jambe droite (JD). L’armure a aussi une **durabilité**.
+
+Ses **bonus et malus** disent comment elle encaisse les trois types de dégâts physiques : l’estoc, la taille et la frappe. Une armure qui résiste aux dégâts de frappe, par exemple, compte deux fois ses AP contre un coup de masse. Une armure de catégorie **lourde** retire 1 point de vitesse et empêche de nager ; chaque classe dit quelles armures elle sait porter. Le détail est dans les [armures](/ressources/armures/).
+
+## Le bouclier
+
+Le bouclier ajoute ses AP et son AM à celles de l’armure, mais seulement lors d’une **défense partielle** (voir [Attaquer et se défendre](/guide/attaquer-et-se-defendre/)). Les boucliers sont rangés par classe, de 1 à 5 : chaque classe de personnage dit jusqu’où elle sait les porter. Voir les [boucliers](/ressources/bouclier/).
+
+## Les accessoires
+
+Six emplacements pour des accessoires aux effets variés (voir les [accessoires](/ressources/accessoires/)).
+
+## La ceinture
+
+Tout le monde a une ceinture, avec **trois emplacements d’objets rapides**. Un objet à la ceinture s’utilise en action rapide (IC), ou en deux pour allumer quelque chose ou soigner, au lieu de prendre toute l’action : une fiole de soin ou de poison, un briquet, une torche, une corde, un kit… Les armes n’y vont pas, elles ont leurs emplacements ; les carquois, sacs de bombes ou de pierres doivent, eux, être à la ceinture pour servir.
+
+## L’inventaire et le sac à dos
+
+Le nombre d’emplacements de l’inventaire dépend de la Force du personnage. Il commence avec un sac à dos normal, soit deux colonnes d’inventaire ; de plus grands sacs en ajoutent :
+
+| Sac à dos | Emplacements | Force demandée |
+| --- | --- | --- |
+| Grand sac | +4 | 2 |
+| Super sac | +8 | 3 |
+| Méga sac | +12 | 4 |
+| Ultra sac | tout l’inventaire | 5 |
+', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/l-univers', 'guide', 'l-univers', 'L’univers', 'lunivers', 'Un monde médiéval-fantasy de 27 races où tout être vivant naît imprégné de l’une des 15 magies, héritée de l’un de ses parents.', '{"chapitre": 3, "partie": "decouvrir"}', '## Un monde de magie
 
 Maverick est un monde médiéval-fantasy où vivent [27 races](/races/), des plus familières aux plus exotiques. Chacune a son histoire, ses avantages, ses dons et sa façon de voir les autres peuples.
@@ -6932,7 +7079,35 @@ Les magies ne s’entendent pas toutes entre elles : certaines sont efficaces co
 
 L’histoire du monde, sa mythologie, ses lieux et ses factions seront rassemblés dans le [Codex](/lore/). **Il est encore en cours d’écriture** : pour l’instant, on y trouve les [[Relations entre les races|relations entre les peuples]].
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/la-montee-de-niveau', 'guide', 'la-montee-de-niveau', 'La montée de niveau', 'la-montee-de-niveau', 'L’expérience nécessaire pour chaque niveau global, de 1 à 20, et ce que chaque niveau apporte.', '{"chapitre": 12, "partie": "progresser"}', 'Au fil des aventures, le personnage gagne de l’**expérience** (XP). Son **niveau global**, de 1 à 20, dépend de l’expérience accumulée : il fixe le niveau de ses classes et sa puissance magique.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/la-magie-en-jeu', 'guide', 'la-magie-en-jeu', 'La magie en jeu', 'la-magie-en-jeu', 'Lancer un sort, ce qu’il coûte en chakra (même raté), les sorts de niveau 5 qui se chargent, et les niveaux de maîtrise (NM) qui renforcent un sort.', '{"chapitre": 17, "partie": "jouer"}', '## Lancer un sort
+
+Lancer un sort, c’est un jet de D100 dans la compétence *Magie* (certaines classes en utilisent une autre : le mage rouge lance ses sorts avec *Concentration*). Le sort coûte le chakra indiqué sur sa page :
+
+- **réussi** : le coût normal ;
+- **raté** : la moitié du coût, arrondie à l’inférieur ;
+- **échec critique** : le double du coût, et d’autres ennuis au choix du MJ.
+
+Sans chakra, pas de sort. Certains sorts sont des **IC** (*Instant Cast*) : ils ne prennent pas l’action du tour. Les sorts de la nécromancie et de la magie du sang puisent en plus dans la 4ᵉ barre, l’âme ou le sang.
+
+## Les sorts de niveau 5
+
+Les sorts les plus puissants demandent un **tour de charge** : on les charge avec l’action d’un tour et on les lance avec celle du tour suivant, sur un seul jet de magie. Si un ennemi touche le lanceur entre-temps, un jet de *Concentration* est nécessaire pour ne pas perdre la charge. La posture **Focus** retire ce tour de charge.
+
+## Les niveaux de maîtrise (NM)
+
+Un sort se renforce avec ses **niveaux de maîtrise** : à chaque NM (ou à partir d’un certain nombre), son coût baisse, ses dégâts ou sa durée augmentent, il devient IC… La page de chaque sort indique ce que lui apporte chaque NM, par exemple « −5/NM » à côté de son coût.
+
+Un NM s’obtient de trois façons :
+
+- **par niveau** : un NM pour un sort à chaque niveau du personnage, à partir du niveau 2 ;
+- **par lecture** d’un livre de sort ;
+- **en cadeau du MJ**.
+
+## Résistances et faiblesses
+
+Les dégâts d’un sort comptent double contre une cible vulnérable à sa magie, et moitié moins contre une cible qui y résiste (voir [Les dégâts](/guide/les-degats/)). La posture **Vigilance** permet de repérer une résistance ou une vulnérabilité d’un ennemi.
+', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/la-montee-de-niveau', 'guide', 'la-montee-de-niveau', 'La montée de niveau', 'la-montee-de-niveau', 'L’expérience nécessaire pour chaque niveau global, de 1 à 20, et ce que chaque niveau apporte.', '{"chapitre": 19, "partie": "progresser"}', 'Au fil des aventures, le personnage gagne de l’**expérience** (XP). Son **niveau global**, de 1 à 20, dépend de l’expérience accumulée : il fixe le niveau de ses classes et sa puissance magique.
 
 ## Le tableau de progression
 
@@ -6998,7 +7173,110 @@ Les dés s’écrivent avec un **D** (ou un **d**) suivi du nombre de faces :
 
 Selon les tables, chacun lance ses propres dés ou le MJ les lance tous. Les jets des joueurs restent toujours visibles de tous ; le MJ, lui, peut lancer les siens en secret.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-documents-des-regles', 'guide', 'les-documents-des-regles', 'Les documents des règles', 'les-documents-des-regles', 'Où trouver chaque règle : les documents d’origine du MJ, les rubriques du site qui les reprennent et les pages détaillées du guide.', '{"chapitre": 13, "partie": "plus-loin"}', 'Les règles de Maverick viennent de plusieurs documents du MJ, des Google Docs et des Google Sheets partagés sur le Discord. Ce site les rassemble ; voici où trouver chaque partie.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/le-mode-hyper', 'guide', 'le-mode-hyper', 'Le Mode Hyper et le Mode Super', 'le-mode-hyper-et-le-mode-super', 'L’état de surpuissance qui s’ouvre au niveau 2 : ce qu’il donne, ce qu’il coûte, ses limites, le Mode Hyper 100 % et le Mode Super.', '{"chapitre": 20, "partie": "progresser"}', '## Qu’est-ce que c’est ?
+
+Le **Mode Hyper** est un état de surpuissance, qui s’ouvre au **niveau 2** du personnage : sa magie l’envahit, son aura déferle et son corps change. L’activer ne demande aucun jet : c’est une action rapide (IC).
+
+## Ce qu’il donne
+
+Avec une seule magie, le personnage est immunisé à sa magie innée ; avec deux, il devient très résistant aux deux. Dans les deux cas :
+
+| | Une magie | Deux magies |
+| --- | --- | --- |
+| Dégâts physiques | +15 | +15 |
+| Dégâts de la magie | +15 | +7 |
+| Soins magiques | +15 | +15 |
+| Consommation de chakra | 0 | 0 |
+
+S’y ajoutent un effet propre à chaque magie et un autre propre à chaque race : voir [[Liste des effets mode hyper]].
+
+## Ce qu’il coûte, et ses limites
+
+- Le Mode Hyper brûle **10 % du chakra maximum par tour**, et le chakra ne peut pas être récupéré tant qu’il dure (ni fiole, ni méditation, ni repos).
+- Il dure au plus **le niveau global divisé par 2** en tours.
+- Il ne s’utilise **qu’une fois par semaine** (dans le jeu), et une seule créature peut l’activer par combat, sauf exception (lieu saturé de chakra, objet magique, accord du MJ).
+- On peut le prolonger au-delà de ces limites, mais le corps le paie une fois le mode relâché : résistances brisées, vulnérabilités accentuées, croix sur les caractéristiques, coma… et, à cinq tours de trop, une chance sur deux de mourir.
+
+## Le Mode Hyper 100 %
+
+Au **niveau 10**, le personnage peut renfermer son aura pour atteindre sa pleine puissance pendant **3 tours** : le chakra ne s’évapore plus, toutes les postures sont actives et sans inconvénients, chaque sort peut être surchargé (un dé de dégâts en plus) et toutes les attaques font +10 dégâts de plus. Ensuite, il revient au Mode Hyper normal en dépensant **75 % de son chakra maximum** ; s’il ne les a pas, le manque est pris sur sa santé.
+
+## Le Mode Super
+
+C’est un équivalent moins puissant du Mode Hyper : une symbiose, non pas avec soi-même, mais avec un **objet légendaire ou enchanté**. Il faut atteindre une parfaite harmonie avec l’objet, et le MJ en est seul juge. Il donne +10 aux dégâts physiques, plus un effet passif et un effet actif propres à l’objet. Il dure au plus le niveau global divisé par 2 en tours, revient au bout d’une semaine, et ne peut pas être prolongé ; il peut s’activer même si quelqu’un d’autre est déjà en Mode Hyper ou Super. Voir [[Liste des effets mode super]].
+', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/le-tour-de-jeu', 'guide', 'le-tour-de-jeu', 'Le tour de jeu', 'le-tour-de-jeu', 'Comment se déroule un combat : l’initiative, puis, pour chacun à son tour, la posture, le déplacement, les actions rapides (IC) et l’action.', '{"chapitre": 12, "partie": "jouer"}', 'Hors combat, on joue en conversation libre. Quand un combat commence, le jeu se découpe en **tours** : chacun agit à son tour, dans un ordre précis. Le MJ peut alors sortir une **carte de combat** (*battlemap*), quadrillée, pour placer les personnages et mesurer les distances.
+
+## Le déroulement d’un tour
+
+1. **Initiative.** Au début de chaque tour, chaque joueur lance 1D20 et ajoute le bonus d’initiative de son personnage ; le MJ fait de même pour les PNJ et les ennemis. On joue du plus haut score au plus bas. Les initiatives se relancent à chaque tour.
+2. **Effets de début de tour.** Avant d’agir, le personnage subit ce qui le frappe en début de tour : poison, brûlure…
+3. **Posture.** Il déclare sa posture de combat (offensive, défensive…), qui décide en grande partie de ce qu’il pourra faire (voir [les postures](/guide/les-postures/)).
+4. **Déplacement.** Il parcourt jusqu’à autant de cases que sa vitesse. Il n’est pas obligé de tout utiliser : il peut garder une partie de son déplacement pour après son action.
+5. **Actions rapides (IC).** Il peut faire jusqu’à trois actions rapides, jamais deux fois la même, **toujours avant son action**.
+6. **Action.** Son action principale : attaquer, lancer un sort, utiliser un objet, sprinter, ou faire une quatrième action rapide.
+7. **Fin du déplacement**, s’il en reste, puis **fin du tour** : on passe au suivant.
+
+En dehors de son tour, un personnage peut encore **réagir** : se défendre contre une attaque (selon sa posture), ou utiliser un don de type *réaction*. Le MJ juge de ce qui est possible.
+
+## Se déplacer
+
+- Une case parcourue compte pour 1. La première diagonale du tour compte aussi pour 1, les suivantes pour 2.
+- **Sprinter** double la distance parcourue, mais le sprint est une action : impossible d’attaquer ensuite.
+- Certaines actions se font à la place du déplacement : recharger une arme, changer d’arme ou dégainer, entrer ou sortir d’une zone, se relever…
+- Grimper demande un jet d’Athlétisme ou d’Équilibre : réussi, il ne coûte que le déplacement ; raté, il coûte aussi l’action, ou fait tomber (au MJ d’en décider).
+
+## Les actions rapides (IC)
+
+Certains sorts et certaines actions portent la mention **IC** (*Instant Cast*) ou « action rapide » : ils ne prennent pas l’action du tour. Boire une potion rangée à la ceinture en est une, par exemple ; la même potion sortie du sac prend toute l’action.
+
+## En résumé
+
+Un tour peut ressembler à l’un de ces enchaînements :
+
+- déplacement → action → fin du tour ;
+- un peu de déplacement → action → le reste du déplacement → fin du tour ;
+- action → déplacement → fin du tour ;
+- sprint → fin du tour ;
+- un peu de déplacement → échec critique → fin du tour (le MJ peut alors empêcher la fin du déplacement).
+
+Le détail est dans [[Les Actions et mouvements]] et [[En résumé|le résumé du tour]] du guide pour MJ.
+', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-degats', 'guide', 'les-degats', 'Les dégâts', 'les-degats', 'La formule des dégâts, étape par étape, avec les trois exemples du guide pour MJ.', '{"chapitre": 15, "partie": "jouer"}', 'Quand une attaque touche, les dégâts se calculent toujours dans le même ordre :
+
+> **Dégâts finaux = [ ( dégâts de l’attaque × 2 si réussite critique − armure de la cible ) ÷ 2 si défense partielle ÷ 2 si un don divise les dégâts ] × résistance ou faiblesse**
+
+1. **La posture** peut changer les dés : en offensive, les dégâts sont au maximum ; en focus, les dés de sort montent d’un cran (le d6 devient d8…).
+2. **On lance les dégâts** de l’arme ou du sort.
+3. **Réussite critique** : on multiplie par 2.
+4. **On retire l’armure** de la cible : AP contre une arme, AM contre un sort.
+5. **Défense partielle** : on divise par 2.
+6. **Don qui divise les dégâts** : on divise par 2.
+7. **Résistance ou faiblesse** : × 2 si la cible est vulnérable, ÷ 2 si elle résiste.
+8. **On arrondit à l’inférieur.**
+
+## Trois exemples
+
+**Un coup de masse, sans critique.** L’ennemi frappe à la masse (2d10+2) et touche ; les deux combattants sont en posture neutre ; je rate ma défense. Mon armure a 5 AP et résiste aux dégâts de frappe.
+
+- Les dés donnent 20 dégâts ; pas de critique.
+- Mon armure résiste à la frappe : ses AP comptent double, 10. Reste 20 − 10 = **10 dégâts**.
+
+**Un coup de lance critique.** L’ennemi, en posture offensive, frappe à la lance (2d10+3) et fait un critique. Je suis en posture défensive (+2 AP) et je fais moi aussi un critique, moins bon que le sien : défense partielle. Mon armure a 7 AP.
+
+- Posture offensive : dégâts au maximum, 23. Critique : × 2, 46.
+- Armure : 7 + 2 = 9 AP. Reste 46 − 9 = 37.
+- Défense partielle : 37 ÷ 2 = 18,5, arrondi à **18 dégâts**.
+
+**Un sort de feu.** Je lance un sort de feu (2d6+2) en posture focus et je réussis ; la cible, en posture neutre, rate sa défense. Elle a 2 AM et elle est vulnérable au feu.
+
+- Posture focus : les d6 deviennent des d8. Les dés donnent 12.
+- Armure : 12 − 2 = 10.
+- Faiblesse au feu : 10 × 2 = **20 dégâts**.
+
+Le guide pour MJ détaille la formule et ses exemples : [[Formule des dégâts]].
+', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-documents-des-regles', 'guide', 'les-documents-des-regles', 'Les documents des règles', 'les-documents-des-regles', 'Où trouver chaque règle : les documents d’origine du MJ, les rubriques du site qui les reprennent et les pages détaillées du guide.', '{"chapitre": 24, "partie": "plus-loin"}', 'Les règles de Maverick viennent de plusieurs documents du MJ, des Google Docs et des Google Sheets partagés sur le Discord. Ce site les rassemble ; voici où trouver chaque partie.
 
 ## Les documents d’origine
 
@@ -7282,6 +7560,65 @@ Ces obstacles ne peuvent pas être enfoncés, cet obstacle répond magiquement �
 
 Les portes magiques peuvent être crochetées ou détruites.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-postures', 'guide', 'les-postures', 'Les postures', 'les-postures', 'Les six postures de combat, à choisir au début de chaque tour : leurs avantages, leurs inconvénients, et quand les prendre.', '{"chapitre": 16, "partie": "jouer"}', 'Au début de son tour, avant tout le reste, chaque personnage déclare sa **posture**. Elle donne des avantages et des inconvénients jusqu’à son prochain tour : c’est le choix tactique le plus important du combat. Le MJ peut annoncer celle des ennemis de façon détournée, pour que les joueurs la devinent.
+
+## Le tableau des postures
+
+Le tableau de la fiche de personnage (survolez le nom d’une posture pour sa description) :
+
+<!-- guide:postures -->
+
+## Laquelle choisir ?
+
+- **Offensif** : pour frapper fort. Dégâts au maximum et critiques plus fréquents, mais on touche moins bien et on ne peut ni parer ni esquiver.
+- **Défensif** : pour tenir et protéger. Plus d’armure, des défenses sans limite (chaque défense au-delà de la deuxième perd 10 %), on peut défendre un allié voisin ou forcer un ennemi à nous attaquer ; mais nos dégâts sont divisés par 2.
+- **Neutre** : l’entre-deux. Dégâts normaux, deux défenses par tour.
+- **Focus** : pour la magie. +10 % de réussite, de meilleurs dés de sorts, plus de tour de charge pour les sorts de niveau 5 ; mais aucune défense.
+- **Vigilance** : pour observer. Meilleure initiative et perception, on anticipe l’adversaire et on repère ses résistances ; une seule défense par tour.
+- **Symbiose** : pour ne faire qu’un avec sa magie. Plus de dégâts magiques et d’armure magique, immunité à sa magie ; mais ni arme ni objet (sauf ceux faits de magie), une seule magie active et une seule défense par tour.
+
+Le détail de chaque effet est dans [[Postures]].
+', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/lexique', 'guide', 'lexique', 'Lexique', 'lexique', 'Les mots et abréviations du jeu, de « Acquis » à « XP ».', '{"chapitre": 23, "partie": "plus-loin"}', '- **Acquis** : les points d’une compétence gagnés par l’entraînement, la race, la classe, les dons ou l’équipement.
+- **AM** (armure magique) : ce qui retire des points aux dégâts des sorts.
+- **AP** (armure physique) : ce qui retire des points aux dégâts des armes.
+- **Âme / Sang** : la « 4ᵉ barre » des utilisateurs de la nécromancie et de la magie du sang, que dépensent certains de leurs sorts.
+- **Attributs** : santé, chakra, barrière, corruption, vitesse, initiative…
+- **Barrière** : une seconde peau magique, sorte de santé magique ; elle vaut la moitié du chakra.
+- **Battlemap** : la carte quadrillée sur laquelle se joue un combat.
+- **Caractéristiques** : Force, Volonté, Intelligence, Perception, Social et Agilité.
+- **Chakra** : les points de magie ; sans chakra, pas de sort.
+- **Classe magique** : une classe qui donne +4 AM et un emplacement de sort.
+- **Compétence** : un savoir-faire (Diplomatie, Esquive, Magie…), lié à une caractéristique.
+- **Corruption** : un poison du chakra, qui en prend la place.
+- **D100, D20, d6…** : un dé à 100, 20, 6… faces. « 2d6+2 » : deux dés à six faces, plus 2.
+- **Défense partielle** : une parade ou une esquive réussie, mais moins bonne que l’attaque ; les dégâts sont divisés par 2.
+- **Dieu inné** : la divinité de la magie innée du personnage.
+- **Don** : une capacité particulière, de type passif, actif, action ou réaction.
+- **Échec critique** : un résultat de 96 à 100 au D100.
+- **Emplacement de sort** : la place d’un sort connu sur la fiche.
+- **Ethnie** : une variante d’une race (Felfe forestier, Orios de Sang…).
+- **IC** (*Instant Cast*), ou action rapide : une action qui ne prend pas l’action du tour ; trois au plus par tour.
+- **Initiative** : ce qui fixe l’ordre de jeu en combat (1D20 + un bonus d’Agilité).
+- **Magie acquise** : une seconde magie, facultative.
+- **Magie innée** : la magie de naissance, héritée de l’un des parents.
+- **Maîtrise d’arme** : le savoir-faire avec une catégorie d’arme ; chaque point ajoute un dé de dégâts.
+- **MJ** : le maître du jeu.
+- **Mode Hyper** : un état de surpuissance, ouvert au niveau 2.
+- **Naturel** (Nat.) : les points de compétence que l’on répartit soi-même.
+- **NM** (niveau de maîtrise) : ce qui renforce un sort.
+- **NPM** (niveau de puissance magique) : le palier d’un sort, de 1 à 5.
+- **Parade** / **Esquive** : bloquer un coup / l’éviter.
+- **PJ** : un personnage joueur. **PNJ** : un personnage non joueur, joué par le MJ.
+- **Posture** : l’attitude de combat choisie au début de chaque tour.
+- **Puissance magique** : le niveau de magie du personnage, de 1 à 5 ; elle ouvre les paliers de sorts.
+- **Race pure** / **race hybride** : les deux familles de races ; une race hybride a sa classe raciale.
+- **Réussite critique** : un résultat de 1 à 5 au D100.
+- **Spécialité** : l’embranchement d’une classe, choisi à son niveau 10.
+- **Tour de charge** : le tour passé à préparer un sort de niveau 5.
+- **Vitesse** : le nombre de cases parcourues en un tour.
+- **XP** : les points d’expérience, qui font monter le niveau global.
+', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/liste-des-alterations-d-etat', 'guide', 'liste-des-alterations-d-etat', 'Liste des altérations d''état', 'liste-des-alterations-detat', NULL, NULL, '## Aveuglement
 
 - **Magie Liée** : Lumière
@@ -8209,6 +8546,30 @@ La situation peut rendre une action plus facile ou plus difficile : le score gag
 
 Pour aller plus loin, la page [[Jet de dés]] détaille les critiques du point de vue du MJ.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/s-entrainer-et-exercer-un-metier', 'guide', 's-entrainer-et-exercer-un-metier', 'S’entraîner et exercer un métier', 'sentrainer-et-exercer-un-metier', 'Gagner des points d’acquis en s’entraînant, et ce qu’apporte un métier : des bonus, des objets, et l’artisanat.', '{"chapitre": 21, "partie": "progresser"}', 'Les niveaux ne sont pas la seule façon de progresser : un personnage peut aussi s’entraîner, et exercer un métier.
+
+## S’entraîner
+
+Un entraînement se donne auprès d’un entraîneur, dans une ville ou un village, contre une coquette somme d’or ; un PNJ important peut aussi en offrir un, si le MJ le décide. On lance un D100, et le résultat donne des points d’**acquis** dans la compétence travaillée :
+
+<!-- guide:entrainement -->
+
+L’entraînement a ses limites : il ne peut améliorer que **15 compétences** au plus, et de **10 %** au plus chacune. Les bonus se notent dans la case **Entraînement** des dons.
+
+Un personnage qui enchaîne les échecs dans une compétence peut aussi se voir offrir un jet d’entraînement par le MJ : c’est dans l’échec qu’on apprend.
+
+## Exercer un métier
+
+Un métier se choisit à la création du personnage ou plus tard, au fil de l’aventure ; il se note dans la case **Métier** des dons. Selon le métier, il peut apporter :
+
+- un **avantage** sur un jet de compétence, quand le métier s’applique (un mineur s’oriente mieux dans une grotte) ;
+- des **points d’acquis** : 6 % en tout, pas plus de 3 % dans une même compétence (jusqu’à 9 % si le métier ne donne rien d’autre) ;
+- des **objets** en plus dans l’inventaire, voire une arme ;
+- parfois un bonus d’**attribut** (un coursier gagne +1 en initiative) ;
+- l’**artisanat** : seul le bon métier permet de fabriquer un objet (une épée pour le forgeron, une potion pour l’alchimiste). La réussite dépend de deux caractéristiques réunies.
+
+Les bonus d’un métier évitent autant que possible le combat. Tous les métiers sont dans le [tableau des métiers](/metiers/), et leurs règles dans [[Règles des métiers]].
+', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/situations-avancees', 'guide', 'situations-avancees', 'Les situations avancées', 'les-situations-avancees', 'Les situations avancées : la prise en tenaille, le déplacement ou la sortie de la zone d''influence, les attaques discrètes, les attaques d''opportunité, l’embuscade, les boss et leurs postures, rater ses sortilèges, Mordhau ou Demi-épée.', NULL, '## La prise en tenaille
 
 Si l''ennemi est encerclé par des joueurs ou PNJ alliés au corps à corps à des cases opposées (Avant-arrière ou gauche-droite dans le cas de 2 joueurs qui pratiquent la tenaille), cela a pour effets :
