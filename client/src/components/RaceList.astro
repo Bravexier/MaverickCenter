@@ -3,32 +3,36 @@ import { magiesOfRace } from '../lib/magie-relations.mjs';
 import { racialClassOf } from '../lib/race-kinds.mjs';
 import { entryHref, type WikiEntry } from '../lib/wiki';
 
+// Une colonne de /wiki/races/ : nom et accroche de chaque race ; avec `avecMagies` (races hybrides), sa classe raciale et ses magies innées.
+// Ni les magies innées des races pures, ni les magies qu'une race ne peut pas avoir (demande du propriétaire) : la page de la race et
+// /wiki/races-et-magies/ les donnent.
 interface Props {
   races: WikiEntry[];
   entries: WikiEntry[];
+  avecMagies?: boolean;
 }
-const { races, entries } = Astro.props;
-const rows = races.map((race) => ({ race, magies: magiesOfRace(entries, race), racial: racialClassOf(entries, race) }));
+const { races, entries, avecMagies = false } = Astro.props;
+const rows = races.map((race) => ({
+  race,
+  magies: avecMagies ? (magiesOfRace(entries, race)?.magies ?? []) : [],
+  racial: avecMagies ? racialClassOf(entries, race) : null,
+}));
 ---
 
 <ul class="race-list">
   {
     rows.map(({ race, magies, racial }) => (
       <li>
-        <a href={entryHref(race)}>{race.data.title}</a>
+        <a class="race-list__nom" href={entryHref(race)}>{race.data.title}</a>
         {race.data.summary && <div class="muted">{race.data.summary}</div>}
         {racial && <div class="muted">Classe raciale : <a href={entryHref(racial)}>{racial.data.title}</a></div>}
-        {magies && (
-          <>
-            <div class="muted">
-              Magies innées : {magies.toutes ? `toutes (${magies.magies.length})` : `${magies.magies.length} sur ${magies.total}`}
-            </div>
-            {!magies.toutes && (
-              <ul class="chips">
-                {magies.magies.map((m) => <li><a class="chip" href={entryHref(m)} title={m.data.title}>{m.data.nom_court}</a></li>)}
-              </ul>
-            )}
-          </>
+        {magies.length > 0 && (
+          <div class="race-list__magies">
+            <span class="muted">Magies innées :</span>
+            <ul class="chips">
+              {magies.map((m) => <li><a class="chip" href={entryHref(m)} title={m.data.title}>{m.data.nom_court}</a></li>)}
+            </ul>
+          </div>
         )}
       </li>
     ))

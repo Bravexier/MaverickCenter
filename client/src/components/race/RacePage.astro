@@ -25,7 +25,7 @@ interface Props {
   statusNote?: string;
 }
 const { entry, entries, race, races, statusNote } = Astro.props;
-const hybride = race.classeRaciale !== null;
+const hybride = race.hybride;
 const pageDe = (id: string) => entries.find((e) => e.id === id);
 const pageClasseRaciale = race.classeRaciale ? pageDe(race.classeRaciale.id) : undefined;
 const pageModeHyper = pageDe('guide/liste-des-effets-mode-hyper');

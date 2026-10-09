@@ -77,4 +77,39 @@ test('race hybride : bandeau « Race hybride » et lien vers sa classe raciale',
   assert.match(page('orios'), /race-hero__surtitre">Race hybride</);
   assert.match(page('orios'), /Classe raciale<\/strong>\s*<a href="[^"]*\/wiki\/classes\/orios\/"/);
   assert.match(page('humain'), /race-hero__surtitre">Race pure</);
+  // décision R14 : le Drassah'thac est hybride sans avoir de classe raciale ; la Lamia est pure
+  assert.match(page('drassahthac'), /race-hero__surtitre">Race hybride</);
+  assert.ok(!page('drassahthac').includes('class="race-hero__classe"'), 'drassahthac : pas de classe raciale');
+  assert.match(page('drassahthac'), /href="[^"]*\/wiki\/races\/#hybrides">Races hybrides</);
+  assert.match(page('lamia'), /race-hero__surtitre">Race pure</);
+});
+
+// La liste /wiki/races/ : deux colonnes côte à côte, races pures puis hybrides, dans l'ordre du propriétaire ; les magies innées des seules races hybrides.
+const liste = present && existsSync(join(dossier, 'index.html')) ? main(readFileSync(join(dossier, 'index.html'), 'utf8')) : '';
+const colonne = (id) => {
+  const debut = liste.indexOf(`id="${id}"`);
+  return debut < 0 ? '' : liste.slice(debut, liste.indexOf('</section>', debut));
+};
+// sans la race d'exemple, présente quand le site est construit sans HIDE_EXAMPLES=1 (c'est le cas de la CI)
+const nomsDe = (html) =>
+  [...html.matchAll(/class="race-list__nom" href="[^"]*\/wiki\/races\/([^/"]+)\/">([^<]+)</g)]
+    .filter((m) => m[1] !== 'exemple-race')
+    .map((m) => m[2].replace(/&#39;/g, "'"));
+
+test('liste des races : deux colonnes, pures puis hybrides, dans l’ordre du propriétaire', options, () => {
+  assert.match(liste, /class="race-columns"/);
+  assert.ok(liste.indexOf('id="pures"') < liste.indexOf('id="hybrides"'));
+  assert.deepEqual(nomsDe(colonne('pures')), [
+    'Humain', 'Nain', 'Elfe forestier', 'Elfe doré', 'Elfe argenté', 'Elfe noir', 'Farfadet', 'Felfe', 'Majin', 'Hujin', 'Drakos', 'Lamia', 'Mort-vivant',
+  ]);
+  assert.deepEqual(nomsDe(colonne('hybrides')), [
+    "Drassah'thac", 'Orios', 'Fenrir', 'Kitsune', 'Olwman', 'Rokh', 'Namazu', 'Minotaure', 'Satyre', 'Médusain', 'Jackalope', 'Marcass', 'Anansi', 'Goleois',
+  ]);
+});
+
+test('liste des races : magies innées des races hybrides seulement, jamais les magies qu’une race ne peut pas avoir', options, () => {
+  assert.ok(!colonne('pures').includes('Magies innées'), 'races pures : pas de magies innées');
+  assert.ok(!colonne('pures').includes('class="chip'), 'races pures : aucune pastille');
+  assert.equal((colonne('hybrides').match(/Magies innées :/g) ?? []).length, 14);
+  assert.ok(!/sur \d+|toutes \(|non disponible|ne peut pas/i.test(liste), 'ni total, ni magies inaccessibles');
 });

@@ -4,6 +4,7 @@
 // ses écarts ne sont pas affichés. Seules les matrices de la fiche servent encore : classes accessibles (R8) et magies innées quand l'onglet ne les limite
 // pas lui-même (R8, R11 : race_magie_onglet prime).
 // Node seulement (la base est ouverte par lib/donnees.mjs au build). Une requête par table, puis assemblage en mémoire.
+import { HYBRIDES_SANS_CLASSE_RACIALE } from './race-kinds.mjs';
 import { blocsDeTexte } from './sort-format.mjs';
 
 const apres = (id, separateur) => id.slice(id.indexOf(separateur) + separateur.length);
@@ -113,6 +114,8 @@ export function chargerRaces(db) {
         sans: (classes.get(r.id) ?? []).filter((c) => c.accessible === 0).map((c) => ({ id: c.id, nom: c.nom, categorie: c.categorie_id })),
       },
       classeRaciale: classesRaciales.get(slug) ?? null,
+      // race hybride : elle a sa classe raciale, ou c'est une exception du propriétaire (Drassah'thac, décision R14) ; même règle que lib/race-kinds.mjs
+      hybride: classesRaciales.has(slug) || HYBRIDES_SANS_CLASSE_RACIALE.has(r.id),
     });
   }
 

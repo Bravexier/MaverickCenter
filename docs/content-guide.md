@@ -61,8 +61,15 @@ en clair dans `tools/sheets/races.py` (`RACE_DETAIL_OVERRIDES`), signalée dans 
 race pure (pas de classe raciale). Si le classeur de la fiche est corrigé, retirer l'exception : le script refuse une exception devenue redondante.
 
 **Races pures et hybrides** : une race est hybride quand elle a sa propre classe raciale (une classe « Hybride Animal » qui porte son nom,
-`lib/race-kinds.mjs`) ; les données confirment que ces 13 races ont exactement 3 magies innées ; les 14 races pures en ont 13 ou plus, sauf le Nain
-(5 magies innées d'après son onglet, voir l'exception ci-dessus).
+`lib/race-kinds.mjs`) ; les données confirment que ces 13 races ont exactement 3 magies innées. S'y ajoute le Drassah'thac, race hybride sans classe raciale
+et aux 14 magies innées (décision R14, `HYBRIDES_SANS_CLASSE_RACIALE`). Les 13 races pures en ont 13 ou plus, sauf le Nain (5 magies innées d'après son onglet,
+voir l'exception ci-dessus).
+
+**Liste des races** (`/wiki/races/`, `components/RaceList.astro`) : deux colonnes côte à côte, races pures à gauche et hybrides à droite, l'une sous l'autre sur un
+écran étroit. L'ordre est celui du propriétaire (`ORDRE_DES_RACES` dans `lib/race-kinds.mjs`, différent de l'ordre de l'onglet « Race » de la fiche) ; une race
+absente de cette liste vient après les autres, par titre. Seules les races hybrides montrent leur classe raciale et leurs magies innées ; ni les magies innées des
+races pures ni les magies qu'une race ne peut pas avoir n'y sont listées (demande du propriétaire) : la page de la race et `/wiki/races-et-magies/` les donnent.
+Le tableau de `/wiki/races-et-magies/` range ses lignes de la même façon.
 
 
 ## Pages de magie : un gabarit commun, alimenté par la base

@@ -78,11 +78,14 @@ test('magies innées des pages de race (base) = `magies_innees` du front matter 
   assert.equal(race('humain').magiesInnees.avec.length, 15);
 });
 
-test('race pure ou hybride (classe raciale dans la base) = lib/race-kinds.mjs sur les pages', () => {
+test('race pure ou hybride (classe raciale dans la base, ou décision R14) = lib/race-kinds.mjs sur les pages', () => {
   for (const e of entries.filter((x) => x.id.startsWith('races/'))) {
-    assert.equal(races.get(e.id).classeRaciale ? 'hybride' : 'pure', raceKind(entries, e), e.id);
+    assert.equal(races.get(e.id).hybride ? 'hybride' : 'pure', raceKind(entries, e), e.id);
   }
   assert.equal(race('orios').classeRaciale.id, 'classes/orios');
+  assert.equal(race('drassahthac').hybride, true);
+  assert.equal(race('drassahthac').classeRaciale, null);
+  assert.equal(race('lamia').hybride, false);
 });
 
 test('textes sans Markdown : ni échappement, ni tableau, ni lien [[…]] dans les textes de l’onglet', () => {

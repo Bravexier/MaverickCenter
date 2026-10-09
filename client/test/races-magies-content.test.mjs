@@ -2,7 +2,7 @@
 // (magies_innees, nom_court, resiste_a, vulnerable_a, incompatible_avec) doivent
 //   - nommer des magies qui existent,
 //   - concorder avec le texte de la même page (section « Magies accessibles », bloc « Données »),
-//   - respecter les effectifs connus (27 races ; races hybrides = 13 races à 3 magies et à classe raciale).
+//   - respecter les effectifs connus (27 races ; races hybrides = 13 races à 3 magies et à classe raciale, et le Drassah'thac : décision R14).
 // Les listes attendues viennent de l'onglet « Accessibilité Magie » du classeur (voir sources: des pages), sauf le Nain :
 // l'onglet « Nain » de « Les races » limite sa magie innée à 5 magies (décision du propriétaire du projet, capture de l'onglet).
 import assert from 'node:assert/strict';
@@ -80,19 +80,32 @@ test('le Nain est limité à 5 magies innées (Potentiel Illimité, Arcane, Feu,
   assert.equal(raceKind(all, race('nain')), 'pure', 'le Nain n’a pas de classe raciale : race pure malgré sa limitation');
 });
 
-test('races hybrides = les 13 races qui ont leur classe raciale, avec exactement 3 magies innées ; les races pures en ont plus de 3 (13 ou plus, sauf le Nain : 5)', () => {
+test('races hybrides = les 13 races qui ont leur classe raciale, avec exactement 3 magies innées, et le Drassah’thac (R14 : sans classe raciale, 14 magies) ; les races pures en ont 13 ou plus, sauf le Nain : 5', () => {
   const hybrides = races.filter((r) => raceKind(all, r) === 'hybride').map((r) => r.id.split('/')[1]).sort();
-  assert.deepEqual(hybrides, Object.keys(HYBRIDES).sort());
+  assert.deepEqual(hybrides, [...Object.keys(HYBRIDES), 'drassahthac'].sort());
   for (const r of races) {
     const n = r.data.magies_innees.length;
-    if (raceKind(all, r) === 'hybride') {
+    if (r.id === 'races/drassahthac') {
+      assert.equal(raceKind(all, r), 'hybride');
+      assert.equal(racialClassOf(all, r), null, 'le Drassah’thac n’a pas de classe raciale');
+      assert.equal(n, 14);
+    } else if (raceKind(all, r) === 'hybride') {
       assert.equal(n, 3, `${r.id} : une race hybride a 3 magies innées`);
       assert.ok(racialClassOf(all, r), r.id);
     } else if (r.id === 'races/nain') assert.equal(n, 5);
     else assert.ok(n >= 13, `${r.id} : une race pure a ${n} magies`);
   }
+});
+
+test('liste des races : 13 races pures et 14 races hybrides, dans l’ordre du propriétaire', () => {
   const groups = groupRaces(all);
-  assert.deepEqual(groups.map((g) => [g.key, g.entries.length]), [['pures', 14], ['hybrides', 13]]);
+  assert.deepEqual(groups.map((g) => [g.key, g.entries.map((r) => r.data.title)]), [
+    ['pures', ['Humain', 'Nain', 'Elfe forestier', 'Elfe doré', 'Elfe argenté', 'Elfe noir', 'Farfadet', 'Felfe', 'Majin', 'Hujin', 'Drakos', 'Lamia', 'Mort-vivant']],
+    [
+      'hybrides',
+      ["Drassah'thac", 'Orios', 'Fenrir', 'Kitsune', 'Olwman', 'Rokh', 'Namazu', 'Minotaure', 'Satyre', 'Médusain', 'Jackalope', 'Marcass', 'Anansi', 'Goleois'],
+    ],
+  ]);
 });
 
 test('la liste structurée d’une race concorde avec la section « Magies accessibles » de sa propre page', () => {
