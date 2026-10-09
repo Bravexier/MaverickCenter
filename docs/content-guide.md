@@ -82,6 +82,12 @@ ses relations). Les magies y sont dans l'ordre du classeur (`magie.ordre`, `ordr
 
 ## Pages de magie : un gabarit commun, alimenté par la base
 
+**La carte de `/magies/`** (`components/magie/MagiesConstellation.astro`, CSS `styles/magie/orbit.css`) : une pastille par magie, le nom seul, la première phrase de la description
+en infobulle. Elle est dense, comme les pastilles de `/classes/` et `/races/` (demande du propriétaire : la page était « trop aérée ») : sur grand écran, une carte large et basse où
+les quatre paires (Corruption–Arcane, Vide–Espace-Temps, Nécromancie–Sang, Ombre–Lumière, reliées par un pointillé quand la base les dit incompatibles ou opposées) entourent
+l'hexagone élémentaire, le Potentiel Illimité au milieu de la rangée du haut ; sous 60rem, deux colonnes. Cette disposition est de la mise en page, pas un classement de règle.
+`test/magies-html.test.mjs` vérifie qu'aucune pastille n'en touche une autre et que les infobulles restent dans la carte, du téléphone (320 px) au grand écran.
+
 Les 15 pages de `/magies/<magie>/` ne sont **pas** rendues depuis leur Markdown : `components/MagiePage.astro` (avec `MagieSorts`, `TableauNpm`, `LigneDeSort`, `SortDetail`, `MagieAffinites`) affiche les lignes
 des tables typées de la base, lues par `client/src/lib/magies-db.mjs` : `magie`, `magie_role`, `magie_resistance`, `etat`, `v_magie_incompatible`, `magie_ethnie_secondaire`, `mode_hyper_effet`,
 `sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `etat`, `etat_magie`, `etat_stade`, `invocation`, `invocation_bloc`, `creature`, `caracteristique`, `creature_caracteristique`, `creature_bonus_npm`, `creature_attaque`, `creature_capacite`, `creature_effet`, `amelioration_cadaverique`, `regle_magie`.
