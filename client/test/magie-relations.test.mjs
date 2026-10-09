@@ -38,11 +38,21 @@ test('une race sans données (champ absent) n’a ni magies ni exclusion : null'
   assert.equal(magiesOfRace(entries, entries.at(-1)), null);
 });
 
-test('racesOfMagie sépare les races qui peuvent l’avoir en magie innée et celles qui ne le peuvent pas, triées par titre', () => {
-  const entries = [...MAGIES, race('orios', 'Orios', ['Eau', 'Feu']), race('elfe', 'Élfe', ['Glace']), race('anansi', 'Anansi', ['Feu', 'Glace']), race('exemple', 'Exemple')];
+test('racesOfMagie sépare les races qui peuvent l’avoir en magie innée et celles qui ne le peuvent pas, dans l’ordre de la liste /races/', () => {
+  const entries = [
+    ...MAGIES,
+    race('orios', 'Orios', ['Eau', 'Feu']),
+    race('elfe-noir', 'Elfe Noir', ['Glace']),
+    race('anansi', 'Anansi', ['Feu', 'Glace']),
+    race('humain', 'Humain', ['Feu']),
+    race('zzz', 'Absente de la liste', ['Feu']),
+    race('aaa', 'Aussi absente', ['Feu']),
+    race('exemple', 'Exemple'),
+  ];
   const result = racesOfMagie(entries, feu);
-  assert.deepEqual(ids(result.avec), ['races/anansi', 'races/orios']);
-  assert.deepEqual(ids(result.sans), ['races/elfe']);
+  // ORDRE_DES_RACES (lib/race-kinds.mjs) : Humain… puis Orios… puis Anansi ; pures et hybrides mêlées dans une seule liste ; une race absente de l'ordre vient après, par titre
+  assert.deepEqual(ids(result.avec), ['races/humain', 'races/orios', 'races/anansi', 'races/zzz', 'races/aaa']);
+  assert.deepEqual(ids(result.sans), ['races/elfe-noir']);
   assert.ok(!ids([...result.avec, ...result.sans]).includes('races/exemple'), 'une race sans données n’est dans aucune des deux listes');
 });
 

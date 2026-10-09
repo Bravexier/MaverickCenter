@@ -13,7 +13,7 @@ la citer depuis une source (`sources:` dans le frontmatter) ou la laisser absent
 
 ## Décisions du propriétaire
 
-`docs/decisions-regles.md` : les choix tranchés quand les sources se contredisent (27 races, mono-classe, budgets exacts, Calme, Mode Hyper +15/+7, Archimage magique, sens des relations entre peuples, onglet de race source, Drassah'thac hybride…).
+`docs/decisions-regles.md` : les choix tranchés quand les sources se contredisent (27 races, mono-classe, budgets exacts, Calme, Mode Hyper +15/+7, Archimage magique, sens des relations entre peuples, onglet de race source, Drassah'thac hybride, Corruption et Potentiel Illimité mono-magie…).
 Les suivre ; ne jamais en déduire d'autres.
 
 ## Vision à long terme
@@ -99,6 +99,9 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   Le tableau des relations sous la carte de `/magies/` (`TableauRelationsMagies.astro`) lit les mêmes relations dans la base (`entriesAvecRelationsDeLaBase`).
   Dans le panneau d'un sort, remarque et texte du sort sont dans le même cadre « Effets » que les effets secondaires ; les altérations d'état sont des pastilles **dans le texte** (`morceauxAvecEtats`, d'après `sort_etat`) avec infobulle (`Bulles.astro` : une bulle ne contient que des `<span>`, sinon le `<p>` qui la porte se ferme) ;
   les créatures invoquées ont une fiche minimale au clic, sous leur bloc. Pas de légende, pas de source citée (ni par sort, ni en pied de page), pas de liste des lanceurs sur ces pages.
+  Demandes du propriétaire : encart de l'**altération d'état liée** (`etat_magie`) entre la présentation et les résistances (`MagieEtats.astro`) ; « Magie non compatible » sans le Potentiel Illimité,
+  et « Mono-magie uniquement » pour une magie `magie.mono_magie` (Potentiel Illimité, Corruption excepté Elfe Noir Charbon et Felfe Noir : décision R15, migration `0010-mono-magie`, `lib/magie-non-compatible.mjs`) ;
+  un (+) à côté de « Capacité Mode Hyper » au lieu du lien en texte ; « Disponibilité par race » = une seule liste, dans l'ordre de `/races/`, sans les races qui n'ont pas la magie.
   Un seul gabarit de tableau de sorts, `components/magie/TableauNpm.astro` (une magie, un NPM ; ligne `LigneDeSort.astro`, script `SortsInteractifs.astro`). La page du **Potentiel Illimité** (pas de sorts à lui)
   montre à la place 14 onglets, un par autre magie, avec ses tableaux du NPM 1 au NPM 4 (demande du propriétaire ; NPM 3 d'après son Explication, NPM 4 avec le don « Semi-complet » de l'Archimage niveau 20 ; `SortsDuPotentiel.astro`, `lib/potentiel-illimite.mjs`) ; ids préfixés du nom court
   de la magie (`#sort-feu-boule-de-feu`). Onglets : `components/Onglets.astro`, partagé avec les spécialités des classes (un composant et non un module importé : la version portable refuse un script qui en importe un autre).

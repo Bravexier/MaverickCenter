@@ -14,6 +14,7 @@ import { pageHref, type Magies, type MagieDb } from '../../lib/magies';
 import type { WikiEntry } from '../../lib/wiki';
 import Bulles from './Bulles.astro';
 import MagieAffinites from './MagieAffinites.astro';
+import MagieEtats from './MagieEtats.astro';
 import MagieSorts from './MagieSorts.astro';
 import RacesDeMagie from './RacesDeMagie.astro';
 import SortsDuPotentiel from './SortsDuPotentiel.astro';
@@ -21,7 +22,7 @@ import Texte from './Texte.astro';
 
 const magieCss = [magieBaseCss, magiePageCss, magieSortsCss, magieDetailCss, magieTooltipsCss, magieCreaturesCss, magieResponsiveCss, magiePrintCss].join('\n');
 
-// Gabarit commun des pages de magie : bannière (nom, rôles, ressources offertes), présentation, résistances, Mode Hyper, sorts par niveau de
+// Gabarit commun des pages de magie : bannière (nom, rôles, ressources offertes), présentation, altération d'état liée, résistances, Mode Hyper, sorts par niveau de
 // puissance magique (le Potentiel Illimité, qui n'en a pas à lui, montre à leur place ceux des autres magies, en onglets : SortsDuPotentiel.astro),
 // races. Il affiche les lignes de la base (tables magie, sort… ; lib/magies-db.mjs) : pour changer une magie ou un sort, on change la base. Seuls le titre, les alias et le statut (pages du wiki) et la section « Disponibilité par race » (`magies_innees` des pages de
 // race, avec l'exception du Nain : lib/magie-relations.mjs) viennent encore du front matter.
@@ -52,6 +53,7 @@ const pageModeHyper = entries.find((e) => e.id === 'guide/liste-des-effets-mode-
 const aPresentation = magie.description.length > 0 || magie.descriptionPhysique.length > 0 || Boolean(magie.banniere);
 const nav = [
   { href: '#presentation', label: 'Présentation', show: aPresentation },
+  { href: '#alteration', label: 'Altération d’état', show: magie.etats.length > 0 },
   { href: '#affinites', label: 'Résistances', show: true },
   { href: '#mode-hyper', label: 'Mode Hyper', show: magie.modeHyper.length > 0 },
   { href: '#sorts', label: 'Sorts', show: groupes.length > 0 || autresMagies.length > 0 },
@@ -130,13 +132,19 @@ const nav = [
     )
   }
 
+  <MagieEtats magie={magie} magies={magies} />
+
   <MagieAffinites magie={magie} magies={magies} />
 
   {
     magie.modeHyper.length > 0 && (
       <section class="magie-section" id="mode-hyper" aria-labelledby="mode-hyper-titre">
-        <h2 id="mode-hyper-titre">Capacité Mode Hyper</h2>
-        {pageModeHyper && <p class="muted"><a href={pageHref(pageModeHyper.id)}>Liste des effets mode hyper</a></p>}
+        <h2 id="mode-hyper-titre">
+          Capacité Mode Hyper
+          {pageModeHyper && (
+            <a class="lien-plus no-print" href={pageHref(pageModeHyper.id)} title="Liste des effets mode hyper" aria-label="Liste des effets mode hyper"><span aria-hidden="true">+</span></a>
+          )}
+        </h2>
         <div class="hyper">
           {magie.modeHyper.map((v) => (
             <article class="hyper__carte">

@@ -53,7 +53,7 @@
 
 | Table | Rôle | Colonnes |
 | --- | --- | --- |
-| `magie` | MAGIE : une ligne par onglet de magie (15 : Potentiel Illimité + 14 magies) | **id**→page, nom, nom_cle, onglet, ordre, banniere?, description?, description_physique?, explication?, sante_offerte?, chakra_offert?, caracteristique_id→caracteristique?, caracteristique_brut?, barre4_ressource?, barre4_texte?, barre4_max?, barre4_regen?, incompatibilite_note?, remarque?, +provenance |
+| `magie` | MAGIE : une ligne par onglet de magie (15 : Potentiel Illimité + 14 magies) | **id**→page, nom, nom_cle, onglet, ordre, banniere?, description?, description_physique?, explication?, sante_offerte?, chakra_offert?, caracteristique_id→caracteristique?, caracteristique_brut?, barre4_ressource?, barre4_texte?, barre4_max?, barre4_regen?, incompatibilite_note?, remarque?, mono_magie, +provenance |
 | `magie_role` | Rôles de la magie (bloc « ROLES » : trois cellules, de gauche à droite). | **magie_id**→magie, **rang**, role, role_brut, +provenance |
 | `magie_resistance` | Résistances et vulnérabilités de la magie (4 blocs de l'onglet : « Résistance magique », « Vulnérabilité magique », « Résistance altération d'état », « Vulnérabilité altération d'état » ; « Aucune » = aucune ligne). | **magie_id**→magie, **sens**, **cible_type**, **rang**, cible_magie_id→magie?, cible_etat_id→etat?, cible_brut, +provenance |
 | `magie_incompatibilite` | Magies qu'on ne peut pas combiner. | **magie_id**→magie, **autre_magie_id**→magie, +provenance |

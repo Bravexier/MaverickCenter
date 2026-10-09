@@ -6,6 +6,7 @@
 //                    resiste_a / vulnerable_a / incompatible_avec: [noms courts]   (bloc « Données » de la page de la magie)
 // Un champ absent veut dire « la source ne donne pas de liste » (null) ; une liste vide, « Aucune » dans la source.
 // Les noms sont comparés sans casse ni accents.
+import { dansLOrdreDesRaces } from './race-kinds.mjs';
 import { normalize } from './text.mjs';
 
 const isMagie = (e) => e.id.startsWith('magies/') && typeof e.data.nom_court === 'string' && e.data.nom_court.trim() !== '';
@@ -44,7 +45,10 @@ export function magiesOfRace(entries, race) {
   return { magies: found, missing, total: index.size, toutes: index.size > 0 && found.length === index.size };
 }
 
-/** Races qui peuvent / ne peuvent pas avoir la magie en magie innée ; une race sans donnée n'est dans aucune des deux listes. */
+/**
+ * Races qui peuvent / ne peuvent pas avoir la magie en magie innée, chaque liste dans l'ordre de la liste /races/ (ORDRE_DES_RACES de lib/race-kinds.mjs) ;
+ * une race sans donnée n'est dans aucune des deux listes.
+ */
 export function racesOfMagie(entries, magie) {
   const key = normalize(magie.data.nom_court ?? '');
   const avec = [];
@@ -54,7 +58,7 @@ export function racesOfMagie(entries, magie) {
     if (!Array.isArray(names)) continue;
     (names.some((n) => normalize(n) === key) ? avec : sans).push(race);
   }
-  return { avec: avec.sort(byTitle), sans: sans.sort(byTitle) };
+  return { avec: dansLOrdreDesRaces(avec), sans: dansLOrdreDesRaces(sans) };
 }
 
 /**

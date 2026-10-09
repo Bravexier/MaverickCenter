@@ -1,7 +1,6 @@
 ---
 import potentielCss from '../../styles/magie/potentiel.css?raw';
 import { couleurDeMagie, texteSurCouleurDeMagie } from '../../lib/sort-format.mjs';
-import { NPM_MAX_DU_POTENTIEL } from '../../lib/potentiel-illimite.mjs';
 import { pageHref, type Magies, type MagieDb, type SortDb } from '../../lib/magies';
 import type { WikiEntry } from '../../lib/wiki';
 import Onglets from '../Onglets.astro';
@@ -28,11 +27,6 @@ const couleurs = (m: MagieDb) => `--couleur-magie: ${couleurDeMagie(m.nom)}; --c
 
 <section class="magie-section" id="sorts" aria-labelledby="sorts-titre">
   <h2 id="sorts-titre">Sorts des autres magies <span class="count">{total}</span></h2>
-  <p class="muted sorts-aide">
-    Les tableaux de chaque magie, du NPM 1 au NPM {NPM_MAX_DU_POTENTIEL}.{' '}
-    <span class="js-only">Choisissez une magie, puis cliquez sur un sort pour ouvrir ses détails juste en dessous.</span>
-  </p>
-
   <div class="autres-magies" data-onglets="Magies">
     <div class="autres-magies__onglets">
       {

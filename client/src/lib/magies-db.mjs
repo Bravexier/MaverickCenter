@@ -98,6 +98,8 @@ export function chargerMagies(db) {
       caracteristique: m.caracteristique_brut ? { nom: m.caracteristique_nom ?? m.caracteristique_brut, brut: m.caracteristique_brut } : null,
       barre4: m.barre4_texte ? { ressource: m.barre4_ressource, texte: m.barre4_texte } : null,
       incompatibiliteNote: m.incompatibilite_note,
+      // « Mono-magie uniquement » (décision R15) : ne se combine avec aucune autre magie, sauf pour les ethnies de ethniesSecondaires
+      monoMagie: m.mono_magie === 1,
       roles: (roles.get(m.id) ?? []).map((r) => ({ role: r.role, brut: r.role_brut })),
       // « Aucune » dans la source = aucune ligne
       // chaque élément : { id de la magie ou de l'état visé, brut = écriture de la source (« Gelé », « Pétrification ») }
@@ -111,6 +113,8 @@ export function chargerMagies(db) {
         .sort((a, b) => ORDRE_VARIANTES.indexOf(a.variante) - ORDRE_VARIANTES.indexOf(b.variante)),
       ameliorations: (ameliorations.get(m.id) ?? []).map((a) => ({ nom: a.nom, effets: elementsDeTexte(a.effet) })),
       ethniesSecondaires: (ethnies.get(m.id) ?? []).map((e) => ({ nom: e.ethnie_brut, pageId: e.ethnie_id.slice(0, e.ethnie_id.indexOf('#')) })),
+      // altérations d'état liées à la magie (colonne « Magie Liée » de la Liste des altérations d'état : table etat_magie), dans l'ordre de l'onglet
+      etats: [...etats.values()].filter((e) => e.magiesLiees.some((l) => l.id === m.id)).map((e) => e.id),
       sorts: [],
     });
   }
