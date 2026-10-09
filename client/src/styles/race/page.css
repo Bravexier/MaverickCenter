@@ -61,8 +61,6 @@
 .race-magie::before { content: ''; display: inline-block; width: 0.6rem; height: 0.6rem; margin-right: 0.4rem; border-radius: 50%; background: var(--couleur-magie, var(--muted)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 25%, transparent); }
 .race-card details { margin-top: 0.7rem; }
 .race-card summary { cursor: pointer; color: var(--muted); }
-.race-classes__groupe h3 { margin: 0.7rem 0 0.15rem; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: normal; }
-.race-classes__groupe:first-child h3:first-child { margin-top: 0; }
 
 @media (max-width: 52rem) { .race-presentation { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 44rem) {

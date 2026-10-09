@@ -49,11 +49,14 @@ test('retirés : tableaux Markdown, écarts avec la fiche V15.2.2, sous-races de
   }
 });
 
-test('sections de l’onglet : présentation, histoire, avantages, dons, Mode Hyper, magies, classes ; valeurs de départ en tuiles', options, () => {
+test('sections de l’onglet : présentation, histoire, avantages, dons, Mode Hyper, magies ; valeurs de départ en tuiles ; pas de liste des classes accessibles', options, () => {
   for (const { slug, html } of pages) {
-    for (const id of ['presentation', 'histoire', 'avantages', 'dons', 'mode-hyper', 'magies-innees', 'classes', 'relations']) {
+    for (const id of ['presentation', 'histoire', 'avantages', 'dons', 'mode-hyper', 'magies-innees', 'relations']) {
       assert.ok(ids(html).includes(id), `${slug} : #${id}`);
     }
+    // demande du propriétaire : aucune liste de classes ; seule la classe raciale d'une race hybride, dans le bandeau
+    assert.ok(!ids(html).includes('classes'), `${slug} : section des classes`);
+    assert.ok(!main(html).includes('Classes accessibles') && !main(html).includes('Classes non accessibles'), `${slug} : liste des classes`);
     assert.equal((html.match(/class="race-stat[ "]/g) ?? []).length, 5, `${slug} : 5 valeurs de départ`);
   }
   assert.match(page('drakos'), /<dt>Santé de départ<\/dt>\s*<dd>13<\/dd>/);
