@@ -108,7 +108,9 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   (PR vers `dev`) ou `hotfix/<nom>` depuis `origin/master` (PR vers `master`), après `git fetch --prune origin` ; toute autre branche poussée (`claude/…`, `dev/…`,
   `main`…) est supprimée par la garde, et `dev/…` ne peut pas exister à côté de `dev`. Ne jamais modifier la version de `client/package.json` : le bot la tient
   après chaque fusion. Fusionner toujours par « Create a merge commit » (ni squash ni rebase). Après la fusion, le bot supprime la branche `feature/…` ou
-  `hotfix/…` : une suite de travail repart d'une nouvelle branche.
+  `hotfix/…` : une suite de travail repart d'une nouvelle branche. **Nom de branche** (demande du propriétaire) : `<nom>` dit l'évolution ou le correctif demandé,
+  en minuscules et tirets (`feature/npm5-info-apres-titre`, `hotfix/lien-casse-bestiaire`), jamais le nom aléatoire que propose l'environnement
+  (`feature/awesome-pascal-…`) : renommer la branche avant le premier push.
 - **Fusion** : une fois la PR `feature/<nom>` → `dev` créée et la CI verte, la fusionner sans attendre le propriétaire (consigne permanente). Une livraison
   `dev` → `master` ou un hotfix → `master` : seulement à la demande du propriétaire, par « Create a merge commit ». Ne jamais mettre `[V: X+1]` de soi-même :
   le passage en 1.0 est le signal du propriétaire (connexion Discord, serveurs normal et de test).
