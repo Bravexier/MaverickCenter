@@ -1,39 +1,20 @@
 ---
-import { magiesOfRace } from '../lib/magie-relations.mjs';
-import { racialClassOf } from '../lib/race-kinds.mjs';
 import { entryHref, type WikiEntry } from '../lib/wiki';
 
-// Une colonne de /wiki/races/ : nom et accroche de chaque race ; avec `avecMagies` (races hybrides), sa classe raciale et ses magies innées.
-// Ni les magies innées des races pures, ni les magies qu'une race ne peut pas avoir (demande du propriétaire) : la page de la race et
-// le tableau en bas de /wiki/races/ (components/magie/TableauMagiesInnees.astro) les donnent.
+// Une colonne de /wiki/races/ : le nom et l'accroche de chaque race, rien d'autre (demande du propriétaire). Les magies innées sont dans le tableau
+// en bas de la page (components/magie/TableauMagiesInnees.astro), la classe raciale d'une race hybride sur la page de la race.
 interface Props {
   races: WikiEntry[];
-  entries: WikiEntry[];
-  avecMagies?: boolean;
 }
-const { races, entries, avecMagies = false } = Astro.props;
-const rows = races.map((race) => ({
-  race,
-  magies: avecMagies ? (magiesOfRace(entries, race)?.magies ?? []) : [],
-  racial: avecMagies ? racialClassOf(entries, race) : null,
-}));
+const { races } = Astro.props;
 ---
 
 <ul class="race-list">
   {
-    rows.map(({ race, magies, racial }) => (
+    races.map((race) => (
       <li>
         <a class="race-list__nom" href={entryHref(race)}>{race.data.title}</a>
         {race.data.summary && <div class="muted">{race.data.summary}</div>}
-        {racial && <div class="muted">Classe raciale : <a href={entryHref(racial)}>{racial.data.title}</a></div>}
-        {magies.length > 0 && (
-          <div class="race-list__magies">
-            <span class="muted">Magies innées :</span>
-            <ul class="chips">
-              {magies.map((m) => <li><a class="chip" href={entryHref(m)} title={m.data.title}>{m.data.nom_court}</a></li>)}
-            </ul>
-          </div>
-        )}
       </li>
     ))
   }
