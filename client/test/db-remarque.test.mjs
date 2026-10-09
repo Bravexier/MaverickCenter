@@ -24,7 +24,7 @@ const tablesAvecNotes = db.prepare("SELECT DISTINCT entite_table AS t FROM note_
 
 // Colonnes ajoutées APRÈS `remarque` par des migrations ultérieures (une colonne ajoutée va en dernier : l'export d'une base migrée = celui d'une base neuve) :
 // table -> colonnes dans l'ordre. Migration 0004 : le mode du sort et ses bonus de niveau de maîtrise ; 0007 : le nom d'une capacité Mode Hyper.
-const APRES_REMARQUE = { sort: ['mode_brut', 'bonus_maitrise'], mode_hyper_effet: ['nom'] };
+const APRES_REMARQUE = { sort: ['mode_brut', 'bonus_maitrise'], mode_hyper_effet: ['nom'], magie: ['mono_magie'] };
 // Tables d'entités créées APRÈS 0002 par une migration qui leur donne directement leur `remarque` (0007 : les dons raciaux de l'onglet de la race).
 const CREEES_APRES_0002 = ['race_don'];
 

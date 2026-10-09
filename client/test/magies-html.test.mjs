@@ -6,6 +6,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
 
 const dossier = fileURLToPath(new URL('../dist/magies/', import.meta.url));
 const present = existsSync(dossier);
@@ -246,4 +247,71 @@ test('Potentiel Illimité : chaque onglet reprend, du NPM 1 au NPM 4, les tablea
   assert.equal(total, 280);
   assert.ok(!potentiel.includes('class="info"'), 'pas de règle du NPM 5 sur cette page');
   assert.match(potentiel, /<tbody class="sort" id="sort-feu-boule-de-feu">/, 'lien profond vers un sort : #sort-<magie>-<sort>');
+});
+
+// Petits correctifs du propriétaire sur les pages de magie : races, « Magie non compatible », Mode Hyper, altération d'état liée.
+const page = (slug) => pages.find((p) => p.slug === slug)?.html ?? '';
+const texteDe = (html) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+const carteNonCompatible = (html) => contenu(html, html.indexOf('<article class="affinite affinite--incompatible">'), 'article');
+
+test('disponibilité par race : une seule liste, dans l’ordre de /races/, sans races pures / hybrides, sans les races qui ne l’ont pas, sans lien vers le tableau', options, () => {
+  for (const { slug, html } of pages) {
+    const section = contenu(html, html.indexOf('<section class="relations" id="races-disponibles"'), 'section');
+    for (const interdit of ['Races pures', 'Races hybrides', 'ne peuvent pas l’avoir', '<details', 'Voir le tableau de toutes les races', '#magies-innees']) {
+      assert.ok(!section.includes(interdit), `${slug} : « ${interdit} »`);
+    }
+    assert.equal([...section.matchAll(/<ul class="chips">/g)].length, 1, `${slug} : une seule liste`);
+    const races = [...section.matchAll(/<a class="chip" href="[^"]*\/races\/([^/"]+)\/">/g)].map((m) => `races/${m[1]}`);
+    assert.ok(races.length > 0, slug);
+    assert.deepEqual(races, ORDRE_DES_RACES.filter((r) => races.includes(r)), `${slug} : ordre de /races/`);
+  }
+  // le Feu : races pures et hybrides mêlées, dans l'ordre de la liste
+  const feu = page('magie-du-feu');
+  assert.match(texteDe(contenu(feu, feu.indexOf('<section class="relations" id="races-disponibles"'), 'section')), /Lamia Mort-vivant Drassah&#39;thac Kitsune Satyre Marcass$/);
+});
+
+test('« Magie non compatible » : le Potentiel Illimité n’est cité nulle part ; « Mono-magie uniquement » pour lui et pour la Corruption (excepté Elfe Noir Charbon et Felfe Noir)', options, () => {
+  for (const { slug, html } of pages) assert.ok(!carteNonCompatible(html).includes('/magies/potentiel-illimite/'), `${slug} : le Potentiel Illimité est cité`);
+  assert.equal(texteDe(carteNonCompatible(potentiel)), 'Magie non compatible Mono-magie uniquement');
+  assert.equal(texteDe(carteNonCompatible(page('magie-de-la-corruption'))), 'Magie non compatible Mono-magie uniquement Excepté pour Elfe Noir Charbon Felfe Noir');
+  assert.equal(texteDe(carteNonCompatible(page('magie-du-feu'))), 'Magie non compatible Aucune', 'le Feu ne citait que le Potentiel Illimité');
+  assert.equal(texteDe(carteNonCompatible(page('magie-du-sang'))), 'Magie non compatible Arcane Corruption Espace/Temps Nécromancie');
+  for (const { slug, html } of pages) assert.ok(!html.includes('Elfe Noir Salé'), `${slug} : l’Elfe Noir Salé est une erreur de la fiche`);
+  assert.equal(pages.filter((p) => p.html.includes('Mono-magie uniquement</p>')).length, 2);
+});
+
+test('Mode Hyper : plus de texte « Liste des effets mode hyper », un (+) à côté du titre mène à la liste', options, () => {
+  for (const { slug, html } of pages) {
+    const titre = html.match(/<h2 id="mode-hyper-titre">[\s\S]*?<\/h2>/)?.[0] ?? '';
+    assert.match(titre, /Capacité Mode Hyper\s*<a class="lien-plus no-print" href="[^"]*\/guide\/liste-des-effets-mode-hyper\/" title="Liste des effets mode hyper" aria-label="Liste des effets mode hyper"><span aria-hidden="true">\+<\/span><\/a>/, slug);
+    assert.ok(!html.includes('>Liste des effets mode hyper</a>'), `${slug} : le texte du lien est revenu`);
+  }
+});
+
+test('Potentiel Illimité : plus de texte d’aide au-dessus des onglets', options, () => {
+  assert.ok(!potentiel.includes('Choisissez une magie'));
+  assert.ok(!potentiel.includes('Les tableaux de chaque magie, du NPM 1 au NPM'));
+});
+
+test('altération d’état liée : un encart après la présentation (et l’explication), avant les résistances ; aucun pour le Potentiel Illimité', options, () => {
+  for (const { slug, html } of pages) {
+    const debut = html.indexOf('<section class="magie-section" id="alteration"');
+    if (slug === 'potentiel-illimite') {
+      assert.equal(debut, -1);
+      assert.ok(!html.includes('href="#alteration"'));
+      continue;
+    }
+    assert.ok(debut > 0, `${slug} : encart absent`);
+    assert.ok(debut > html.indexOf('id="presentation"') && debut > html.indexOf('id="explication"'), `${slug} : après la présentation`);
+    assert.ok(debut < html.indexOf('id="affinites"'), `${slug} : avant les résistances`);
+    const encart = contenu(html, debut, 'section');
+    assert.equal([...encart.matchAll(/<article class="etat-lie">/g)].length, 1, slug);
+    assert.match(encart, /<a href="[^"]*\/guide\/liste-des-alterations-d-etat\/#[^"]+">[^<]+<\/a> <span class="etat-lie__type">(Physique|Mental)<\/span>/, `${slug} : lien vers sa section, type`);
+    assert.deepEqual([...encart.matchAll(/<span class="etat-lie__stade-nom">([^<]+)<\/span>/g)].map((m) => m[1]), ['Stade 1', 'Stade 2', 'Stade 3'], slug);
+    assert.ok(html.indexOf('href="#alteration"') < html.indexOf('href="#affinites"'), `${slug} : entrée de navigation`);
+  }
+  const feu = contenu(page('magie-du-feu'), page('magie-du-feu').indexOf('<section class="magie-section" id="alteration"'), 'section');
+  assert.match(texteDe(feu), /^Altération d’état Brûlure Physique Stade 1 Inflige 10% de la santé Max pendant 3 Tours\./);
+  const arcane = contenu(page('magie-de-larcane'), page('magie-de-larcane').indexOf('<section class="magie-section" id="alteration"'), 'section');
+  assert.match(texteDe(arcane), /^Altération d’état Surcharge Magique Mental Aussi liée à Corruption Stade 1/, 'altération partagée : l’autre magie est nommée');
 });

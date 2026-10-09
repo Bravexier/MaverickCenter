@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 9 : 142 tables, 2 tables de recherche plein texte (FTS5) et 30 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 10 : 142 tables, 2 tables de recherche plein texte (FTS5) et 30 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -315,10 +315,11 @@ MAGIE : une ligne par onglet de magie (15 : Potentiel Illimité + 14 magies)
 | `barre4_texte` | TEXT | non |  | cellule « 4ème barre » telle qu'écrite |
 | `barre4_max` | INTEGER | non |  | « maximum de 10 Sang » : extrait du texte ci-dessus (NULL si la forme ne correspond pas) |
 | `barre4_regen` | INTEGER | non |  | « la régénère de 1 par tour » : idem |
-| `incompatibilite_note` | TEXT | non |  | bloc « Magie non compatible » quand ce n'est PAS une liste de noms de magies (Corruption : phrase) |
+| `incompatibilite_note` | TEXT | non |  | bloc « Magie non compatible » quand ce n'est PAS une liste de noms de magies (Corruption : phrase de la source, gardée comme trace : la page affiche « Mono-magie uniquement », voir mono_magie) |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
+| `mono_magie` | INTEGER | oui |  | 1 = « Mono-magie uniquement » : ne se combine avec aucune autre magie, sauf pour les ethnies de magie_ethnie_secondaire (décision R15 du propriétaire : Potentiel Illimité et Corruption ; migration 0010) |
 
 ### `magie_role`
 
@@ -362,7 +363,7 @@ Magies qu'on ne peut pas combiner. Une ligne = « magie_id cite autre_magie_id �
 
 ### `magie_ethnie_secondaire`
 
-Ethnies pour lesquelles une magie secondaire reste possible malgré les incompatibilités (fiche `Magie!U5`, colonne « Magie secondaire si Race » : « Elfe Noir Charbon, Elfe Noir Salé, Felfe Noir » pour Corruption). `ethnie_brut` est le nom écrit ; `ethnie_id` l'ethnie rapprochée (les trois noms de la source se résolvent exactement : « Felfe Noir » = races/felfe#ethnie:felfe-noir).
+Ethnies pour lesquelles une magie secondaire reste possible malgré les incompatibilités (fiche `Magie!U5`, colonne « Magie secondaire si Race » : « Elfe Noir Charbon, Elfe Noir Salé, Felfe Noir » pour Corruption). `ethnie_brut` est le nom écrit ; `ethnie_id` l'ethnie rapprochée (les noms de la source se résolvent exactement : « Felfe Noir » = races/felfe#ethnie:felfe-noir). L'Elfe Noir Salé de la cellule est une erreur (décision R15 du propriétaire, comme le dit la phrase de l'onglet : « Seuls les Elfes noirs (Charbon) et les Felfes noirs ») : sa ligne est retirée par la migration 0010.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

@@ -1,10 +1,12 @@
 ---
+import { blocNonCompatible, MONO_MAGIE } from '../../lib/magie-non-compatible.mjs';
 import { pageHref, type Magies, type MagieDb } from '../../lib/magies';
 import EtatPastille from './EtatPastille.astro';
 
 // Résistances, vulnérabilités et incompatibilités d'une magie, lues dans les tables magie_resistance et v_magie_incompatible.
 // Chaque élément est un lien : une magie vers sa page, une altération d'état vers sa section de la « Liste des altérations d'état »
 // (avec son infobulle : type, magie liée, effet par stade), une race vers sa page.
+// « Magie non compatible » : lib/magie-non-compatible.mjs (« Mono-magie uniquement » pour une magie mono-magie, jamais le Potentiel Illimité dans une liste).
 interface Props {
   magie: MagieDb;
   magies: Magies;
@@ -26,8 +28,9 @@ const cartes = (['resistance', 'vulnerabilite'] as const).map((sens) => ({
     { titre: 'Altérations d’état', liens: magie.resistances[sens].etats.map(lienEtat) },
   ],
 }));
-const incompatibles = magie.incompatibles.map((id) => lienMagie({ id, brut: magies.magies.get(id)!.nom }));
-const ethnies = magie.ethniesSecondaires.map((e) => ({ href: pageHref(e.pageId), texte: e.nom, soi: false, titre: e.nom }));
+const bloc = blocNonCompatible(magie);
+const incompatibles = bloc.magies.map((id) => lienMagie({ id, brut: magies.magies.get(id)!.nom }));
+const ethnies = bloc.ethnies.map((e) => ({ href: pageHref(e.pageId), texte: e.nom, soi: false, titre: e.nom }));
 ---
 
 <section class="magie-section" id="affinites" aria-labelledby="affinites-titre">
@@ -62,7 +65,8 @@ const ethnies = magie.ethniesSecondaires.map((e) => ({ href: pageHref(e.pageId),
     }
     <article class="affinite affinite--incompatible">
       <h3 title="Magie non compatible : ne se combine pas avec">Magie non compatible</h3>
-      {incompatibles.length === 0 && !magie.incompatibiliteNote && <p class="muted">Aucune</p>}
+      {bloc.mono && <p class="affinite__mono">{MONO_MAGIE}</p>}
+      {!bloc.mono && incompatibles.length === 0 && !bloc.note && <p class="muted">Aucune</p>}
       {
         incompatibles.length > 0 && (
           <ul class="chips">
@@ -70,11 +74,11 @@ const ethnies = magie.ethniesSecondaires.map((e) => ({ href: pageHref(e.pageId),
           </ul>
         )
       }
-      {magie.incompatibiliteNote && <p class="texte">{magie.incompatibiliteNote}</p>}
+      {bloc.note && <p class="texte">{bloc.note}</p>}
       {
         ethnies.length > 0 && (
           <>
-            <h4>Magie secondaire possible si la race est</h4>
+            <h4>{bloc.mono ? 'Excepté pour' : 'Magie secondaire possible si la race est'}</h4>
             <ul class="chips">
               {ethnies.map((l) => <li><a class="chip" href={l.href}>{l.texte}</a></li>)}
             </ul>

@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 9;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 10;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -364,11 +364,14 @@ CREATE TABLE magie (
   barre4_texte          TEXT,                       -- cellule « 4ème barre » telle qu'écrite
   barre4_max            INTEGER,                    -- « maximum de 10 Sang » : extrait du texte ci-dessus (NULL si la forme ne correspond pas)
   barre4_regen          INTEGER,                    -- « la régénère de 1 par tour » : idem
-  incompatibilite_note  TEXT,                       -- bloc « Magie non compatible » quand ce n'est PAS une liste de noms de magies (Corruption : phrase)
+  incompatibilite_note  TEXT,                       -- bloc « Magie non compatible » quand ce n'est PAS une liste de noms de magies (Corruption : phrase de la source,
+                                                    -- gardée comme trace : la page affiche « Mono-magie uniquement », voir mono_magie)
   origine               TEXT    NOT NULL REFERENCES famille(id)
     CHECK (origine = 'magies'),
   source_ref            TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  mono_magie            INTEGER NOT NULL CHECK (mono_magie IN (0, 1)),   -- 1 = « Mono-magie uniquement » : ne se combine avec aucune autre magie, sauf pour les
+                                                    -- ethnies de magie_ethnie_secondaire (décision R15 du propriétaire : Potentiel Illimité et Corruption ; migration 0010)
   CHECK ((barre4_ressource IS NULL) = (barre4_texte IS NULL))
 ) STRICT;
 
@@ -441,7 +444,9 @@ CREATE INDEX magie_incompatibilite_autre ON magie_incompatibilite (autre_magie_i
 
 -- Ethnies pour lesquelles une magie secondaire reste possible malgré les incompatibilités (fiche `Magie!U5`, colonne
 -- « Magie secondaire si Race » : « Elfe Noir Charbon, Elfe Noir Salé, Felfe Noir » pour Corruption). `ethnie_brut` est le nom écrit ;
--- `ethnie_id` l'ethnie rapprochée (les trois noms de la source se résolvent exactement : « Felfe Noir » = races/felfe#ethnie:felfe-noir).
+-- `ethnie_id` l'ethnie rapprochée (les noms de la source se résolvent exactement : « Felfe Noir » = races/felfe#ethnie:felfe-noir).
+-- L'Elfe Noir Salé de la cellule est une erreur (décision R15 du propriétaire, comme le dit la phrase de l'onglet : « Seuls les Elfes noirs (Charbon)
+-- et les Felfes noirs ») : sa ligne est retirée par la migration 0010.
 CREATE TABLE magie_ethnie_secondaire (
   magie_id   TEXT    NOT NULL REFERENCES magie(id),
   rang       INTEGER NOT NULL CHECK (rang >= 1),

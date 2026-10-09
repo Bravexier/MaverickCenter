@@ -57,6 +57,9 @@ const rang = (race) => {
 };
 const byOrdre = (a, b) => rang(a) - rang(b) || a.data.title.localeCompare(b.data.title, 'fr');
 
+/** Races dans l'ordre de la liste /races/ (ORDRE_DES_RACES, pures puis hybrides) ; une race absente de la liste vient après, par titre. */
+export const dansLOrdreDesRaces = (races) => [...races].sort(byOrdre);
+
 /**
  * Range les races en groupes (pures puis hybrides, chacun avec sa couleur), chacun dans l'ordre de ORDRE_DES_RACES ; un groupe vide est omis.
  * `entries` contient les pages de races ET de classes (les classes servent à reconnaître les hybrides).

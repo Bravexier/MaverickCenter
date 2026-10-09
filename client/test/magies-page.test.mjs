@@ -333,14 +333,32 @@ test('résistances et vulnérabilités : listes de la base, dans l’ordre de la
   }
 });
 
-test('incompatibilités symétriques ; la phrase libre de la Corruption est gardée telle quelle', () => {
+test('incompatibilités symétriques ; la phrase libre de la Corruption est gardée telle quelle (trace) ; mono-magie et ethnies d’exception (décision R15)', () => {
   for (const magie of m.magies.values()) {
     for (const autre of magie.incompatibles) assert.ok(m.magies.get(autre).incompatibles.includes(magie.id), `${magie.id} <-> ${autre}`);
     assert.ok(!magie.incompatibles.includes(magie.id));
   }
   const corruption = m.magies.get('magies/magie-de-la-corruption');
   assert.match(corruption.incompatibiliteNote, /mono-magie uniquement/);
-  assert.deepEqual(corruption.ethniesSecondaires.map((e) => e.nom), ['Elfe Noir Charbon', 'Elfe Noir Salé', 'Felfe Noir']);
+  // « excepté pour Elfe Noir Charbon et Felfe Noir (l'ajout de l'elfe noir salé est une erreur) » : migration 0010
+  assert.deepEqual(corruption.ethniesSecondaires.map((e) => e.nom), ['Elfe Noir Charbon', 'Felfe Noir']);
+  assert.deepEqual(corruption.ethniesSecondaires.map((e) => e.pageId), ['races/elfe-noir', 'races/felfe']);
+  assert.deepEqual([...m.magies.values()].filter((x) => x.monoMagie).map((x) => x.id), ['magies/potentiel-illimite', 'magies/magie-de-la-corruption']);
+  // la relation reste dans la base : le Potentiel Illimité est incompatible avec les 14 autres magies (seul l'affichage la tait, lib/magie-non-compatible.mjs)
+  assert.equal(m.magies.get('magies/potentiel-illimite').incompatibles.length, 14);
+});
+
+test('altération d’état liée à chaque magie (etat_magie) : une pour les 14 magies, Surcharge Magique partagée par l’Arcane et la Corruption, aucune pour le Potentiel Illimité', () => {
+  const nomDe = (magie) => magie.etats.map((id) => m.etats.get(id).nom);
+  assert.deepEqual(nomDe(m.magies.get('magies/potentiel-illimite')), []);
+  assert.deepEqual(nomDe(m.magies.get('magies/magie-du-feu')), ['Brûlure']);
+  assert.deepEqual(nomDe(m.magies.get('magies/magie-de-larcane')), ['Surcharge Magique']);
+  assert.deepEqual(nomDe(m.magies.get('magies/magie-de-la-corruption')), ['Surcharge Magique']);
+  for (const magie of m.magies.values()) {
+    if (magie.id === 'magies/potentiel-illimite') continue;
+    assert.equal(magie.etats.length, 1, magie.id);
+    assert.ok(m.etats.get(magie.etats[0]).magiesLiees.some((l) => l.id === magie.id), magie.id);
+  }
 });
 
 test('altérations d’état : chaque état a sa section sur la page « Liste des altérations d’état » (l’ancre du lien existe)', () => {
