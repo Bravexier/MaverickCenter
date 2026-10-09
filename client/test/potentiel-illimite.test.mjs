@@ -7,7 +7,8 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerMagies } from '../src/lib/magies-db.mjs';
 import { magiesDuPotentiel, NPM_MAX_DU_POTENTIEL, POTENTIEL_ILLIMITE } from '../src/lib/potentiel-illimite.mjs';
 
-const magies = chargerMagies(ouvrirBase({ sansExemples: false })).magies;
+const db = ouvrirBase({ sansExemples: false });
+const magies = chargerMagies(db).magies;
 const ORDRE_DU_CLASSEUR = ['Sang', 'Arcane', 'Corruption', 'Espace/Temps', 'Vide', 'Nécromancie', 'Feu', 'Eau', 'Glace', 'Terre', 'Vent', 'Foudre', 'Lumière', 'Ombre'];
 
 test('les 14 autres magies, dans l’ordre du classeur, sans le Potentiel Illimité ; chacune avec ses sorts du NPM 1 au NPM 4 (5 par NPM)', () => {
@@ -41,4 +42,13 @@ test('cas limites : ordre du classeur (et non d’insertion), Potentiel Illimit�
   assert.deepEqual(autres.map((a) => a.magie.id), ['magies/a', 'magies/b']);
   assert.deepEqual(autres[1].groupes.map((g) => g.niveau), [1, 2, 4]);
   assert.deepEqual(autres.map((a) => a.total), [2, 3]);
+});
+
+test('NPM 4 : borne de l’Explication du Potentiel Illimité (NPM 3), relevée par le don de niveau 20 de l’Archimage, sa classe unique', () => {
+  const explication = db.prepare(`SELECT explication FROM magie WHERE id = ?`).get(POTENTIEL_ILLIMITE).explication;
+  assert.match(explication, /niveau 3 de puissance magique maximum/);
+  assert.match(explication, /Classe unique = Archimage/);
+  const don = db.prepare(`SELECT classe_id, niveau, effet FROM capacite WHERE id = 'capacites/archimage-semi-complet'`).get();
+  assert.deepEqual({ ...don }, { classe_id: 'classes/archimage', niveau: 20, effet: 'Permet d\'utiliser les sorts de lvl 4 de puissance.' });
+  assert.equal(NPM_MAX_DU_POTENTIEL, 4);
 });
