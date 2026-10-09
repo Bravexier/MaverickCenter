@@ -14,8 +14,14 @@ a.chip:hover { background: var(--accent-soft); }
 .chip--soi { font-style: italic; color: var(--muted); }
 .badge--pure { background: var(--bg); border: 1px solid var(--border); color: var(--muted); }
 .badge--hybride { background: var(--accent); color: var(--surface); }
-.race-list { list-style: none; padding: 0; }
-.race-list li { padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
+/* /wiki/races/ : races pures et races hybrides côte à côte, l'une sous l'autre sur un écran étroit */
+.race-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 0 2rem; align-items: start; }
+.race-column h2 { margin-bottom: 0; }
+.race-list { list-style: none; padding: 0; margin: 0.5rem 0 1rem; }
+.race-list > li { padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
+.race-list__nom { font-weight: 600; }
+.race-list__magies { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; margin-top: 0.3rem; }
+.race-list__magies .chips { margin: 0; }
 .matrix-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); margin: 1rem 0; }
 .matrix { border-collapse: collapse; font-size: 0.85rem; min-width: 100%; }
 .matrix th, .matrix td { padding: 0.3rem 0.45rem; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap; }

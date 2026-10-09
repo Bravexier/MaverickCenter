@@ -28,7 +28,8 @@ const magiesIndex = dbMagies
   : [];
 // Les classes sont présentées par catégorie (voir lib/class-groups.mjs) ; les autres types en liste alphabétique.
 const classGroups = type === 'classes' ? groupClasses(list) : [];
-// Les races sont présentées pures puis hybrides (voir lib/race-kinds.mjs), avec leurs magies innées.
+// Les races sont présentées en deux colonnes, pures à gauche et hybrides à droite, dans l'ordre du propriétaire (lib/race-kinds.mjs) ;
+// seules les races hybrides montrent leurs magies innées.
 const raceGroups = type === 'races' ? groupRaces(entries) : [];
 // Les dons de classe (pages `capacites/…`) sont rangés par classe (une fiche par don : plus de 600).
 const capaciteGroups = type === 'capacites' ? groupByClass(entries) : [];
@@ -81,15 +82,14 @@ const capaciteDetail = (e: any) => [`Niveau ${e.data.niveau}`, e.data.specialite
         <p>
           <a href={url('wiki/races-et-magies/')}>Tableau des races et de leurs magies innées</a>
         </p>
-        <nav class="class-nav" aria-label="Types de races">
-          {raceGroups.map((group) => <a class="badge" href={`#${group.key}`}>{group.label} ({group.entries.length})</a>)}
-        </nav>
-        {raceGroups.map((group) => (
-          <section id={group.key}>
-            <h2>{group.label}</h2>
-            <RaceList races={group.entries} entries={entries} />
-          </section>
-        ))}
+        <div class="race-columns">
+          {raceGroups.map((group) => (
+            <section id={group.key} class="race-column">
+              <h2>{group.label} <span class="muted">({group.entries.length})</span></h2>
+              <RaceList races={group.entries} entries={entries} avecMagies={group.key === 'hybrides'} />
+            </section>
+          ))}
+        </div>
       </>
     ) : list.length ? (
       <EntryList entries={list} showType={false} />

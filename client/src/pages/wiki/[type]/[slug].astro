@@ -63,7 +63,7 @@ const statusNote = entry.data.status === 'example' ? 'Contenu d’exemple : à r
     race && (
       <>
         {' › '}
-        <a href={url(`wiki/races/#${race.classeRaciale ? 'hybrides' : 'pures'}`)}>{race.classeRaciale ? 'Races hybrides' : 'Races pures'}</a>
+        <a href={url(`wiki/races/#${race.hybride ? 'hybrides' : 'pures'}`)}>{race.hybride ? 'Races hybrides' : 'Races pures'}</a>
       </>
     )
   }{
