@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 8;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 9;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -1008,8 +1008,8 @@ CREATE TABLE categorie_classe (
 -- CLASSE : une ligne par onglet de classe (39)
 CREATE TABLE classe (
   id                 TEXT    NOT NULL PRIMARY KEY REFERENCES page(id),   -- = id de la page (entité typée qui a SA page)
-  nom                TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),    -- nom de l'onglet = nom dans le Sommaire (« Cuirassé », « Orios »). Le titre de la page
-                                                 -- des 13 classes « Hybride Animal » ajoute « (classe) » (page.titre) : ce suffixe n'est pas ici.
+  nom                TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),    -- nom de l'onglet = nom dans le Sommaire (« Cuirassé », « Orios ») = titre de la page.
+                                                 -- Les 13 classes « Hybride Animal » portent le nom de leur race, sans suffixe (migration 0009).
   nom_cle            TEXT    NOT NULL UNIQUE CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),    -- normalize(nom) : 'cuirasse', 'mage-bleu' ; sert aux jointures par nom avec les autres domaines
   categorie_id       TEXT    NOT NULL REFERENCES categorie_classe(id),   -- colonne du Sommaire où la classe est listée
   ordre              INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),         -- rang dans le Sommaire : catégories de gauche à droite, puis de haut en bas

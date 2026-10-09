@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { CLASS_COLORS, CLASS_GROUPS, classCategory, classColor, classLabel, groupClasses } from '../src/lib/class-groups.mjs';
+import { CLASS_COLORS, CLASS_GROUPS, classCategory, classColor, groupClasses } from '../src/lib/class-groups.mjs';
 
 const page = (title, ...tags) => ({ id: `classes/${title.toLowerCase()}`, data: { title, tags: ['classe', ...tags] } });
 const titles = (section) => section.entries.map((e) => e.data.title);
@@ -11,12 +11,12 @@ const sample = [
   page('Parleur', 'càc'),
   page('Guerrier', 'càc'),
   page('Archer', 'distance'),
-  page('Kitsune (classe)', 'hybride animal'),
+  page('Kitsune', 'hybride animal'),
   page('Archimage', 'spéciale'),
   page('Flagelleur', 'hybride'),
   page('Bimane', 'càc'),
   page('Arbalétrier', 'distance'),
-  page('Anansi (classe)', 'hybride animal'),
+  page('Anansi', 'hybride animal'),
 ];
 
 test('cinq catégories, dans l’ordre : physiques mêlée, physiques distance, magiques, raciales, spéciales', () => {
@@ -31,7 +31,7 @@ test('chaque catégorie est triée par nom, en ignorant la casse et les accents'
   const [melee, distance, , raciales] = groupClasses(sample);
   assert.deepEqual(titles(melee.sections[0]), ['Bimane', 'Guerrier']);
   assert.deepEqual(titles(distance.sections[0]), ['Arbalétrier', 'Archer']);
-  assert.deepEqual(titles(raciales.sections[0]), ['Anansi (classe)', 'Kitsune (classe)']);
+  assert.deepEqual(titles(raciales.sections[0]), ['Anansi', 'Kitsune']);
 });
 
 test('« Spéciales » réunit l’Archimage (spéciale), le Flagelleur (hybride) et le Parleur, sorti de la mêlée à la demande du propriétaire', () => {
@@ -65,7 +65,7 @@ test('les tags sont comparés sans tenir compte de la casse ni des accents', () 
 
 test('« hybride » (Flagelleur) et « hybride animal » (classes raciales) ne se confondent pas', () => {
   assert.equal(classCategory(page('Flagelleur', 'hybride')).key, 'speciales');
-  assert.equal(classCategory(page('Fenrir (classe)', 'hybride animal')).key, 'raciales');
+  assert.equal(classCategory(page('Fenrir', 'hybride animal')).key, 'raciales');
 });
 
 test('une classe qui porte deux tags de catégorie n’apparaît qu’une fois, dans la première catégorie affichée', () => {
@@ -81,23 +81,16 @@ test('le tri ne modifie pas la liste d’origine', () => {
   assert.deepEqual(input, copy);
 });
 
-test('classLabel retire « (classe) » du titre (le nom de la race seul), sans toucher aux autres titres', () => {
-  assert.equal(classLabel(page('Kitsune (classe)')), 'Kitsune');
-  assert.equal(classLabel(page('Médusain (Classe)')), 'Médusain');
-  assert.equal(classLabel(page('Mage Bleu')), 'Mage Bleu');
-  assert.equal(classLabel(page('Classe d’exemple')), 'Classe d’exemple');
-});
-
-test('le tri suit le nom affiché, sans « (classe) »', () => {
-  const [raciales] = groupClasses([page('Mage (classe)', 'hybride animal'), page('Mage Bleu', 'hybride animal')]);
-  assert.deepEqual(titles(raciales.sections[0]).map((t) => classLabel({ data: { title: t } })), ['Mage', 'Mage Bleu']);
+test('le tri suit le titre, une classe raciale portant le nom de sa race', () => {
+  const [raciales] = groupClasses([page('Mage Bleu', 'hybride animal'), page('Mage', 'hybride animal')]);
+  assert.deepEqual(titles(raciales.sections[0]), ['Mage', 'Mage Bleu']);
 });
 
 test('classCategory donne la catégorie d’une classe, ou rien pour une autre page', () => {
   assert.deepEqual(classCategory(page('Guerrier', 'càc')), { key: 'melee', label: 'Physiques Mêlée' });
   assert.deepEqual(classCategory(page('Archer', 'distance')), { key: 'distance', label: 'Physiques Distance' });
   assert.deepEqual(classCategory(page('Mage', 'magique')), { key: 'magiques', label: 'Magiques' });
-  assert.deepEqual(classCategory(page('Kitsune (classe)', 'hybride animal')), { key: 'raciales', label: 'Raciales' });
+  assert.deepEqual(classCategory(page('Kitsune', 'hybride animal')), { key: 'raciales', label: 'Raciales' });
   assert.deepEqual(classCategory(page('Archimage', 'spéciale')), { key: 'speciales', label: 'Spéciales' });
   assert.equal(classCategory(page('Mystère', 'autre')), null);
 });
@@ -112,7 +105,7 @@ test('couleur d’une classe d’après sa catégorie : rouge (mêlée), vert (d
   assert.equal(couleur('Guerrier'), CLASS_COLORS.melee);
   assert.equal(couleur('Archer'), CLASS_COLORS.distance);
   assert.equal(couleur('Mage'), CLASS_COLORS.magiques);
-  assert.equal(couleur('Kitsune (classe)'), CLASS_COLORS.raciales);
+  assert.equal(couleur('Kitsune'), CLASS_COLORS.raciales);
   assert.equal(couleur('Archimage'), CLASS_COLORS.speciales);
   assert.equal(couleur('Flagelleur'), CLASS_COLORS.speciales);
   assert.equal(couleur('Parleur'), CLASS_COLORS.speciales, 'exception du propriétaire : le Parleur est rangé sous « Spéciales »');

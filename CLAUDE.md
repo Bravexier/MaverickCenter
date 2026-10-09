@@ -81,7 +81,8 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
 - La page `/wiki/classes/` est un tableau de 5 colonnes côte à côte, une par catégorie (Physiques Mêlée, Physiques Distance, Magiques, Raciales, Spéciales), d'après les tags
   posés par l'import (catégorie du Sommaire du classeur) : `client/src/lib/class-groups.mjs`, testé ; `components/classes/ClassesTableau.astro`, CSS `styles/classe/liste.css` (`?raw`).
   « Raciales » = « Classe Hybride Animal » ; « Spéciales » = « Classe Hybride » + « Classe spéciale » ; le Parleur (classé mêlée dans le classeur) est volontairement sous « Spéciales »
-  (`CLASS_OVERRIDES`, décision du propriétaire). Chaque colonne a la couleur de sa catégorie, les noms sont sans « (classe) » (`classLabel`), le résumé est en infobulle (`Bulles.astro`).
+  (`CLASS_OVERRIDES`, décision du propriétaire). Chaque colonne a la couleur de sa catégorie, le résumé est en infobulle (`Bulles.astro`). **« (classe) » est supprimé de partout, base comprise** (demande du propriétaire, migration `0009-classes-sans-suffixe`) :
+  une classe raciale porte le nom de sa race (titre « Orios », page `classes/orios`) ; `tools/sheets/classes.py` n'ajoute plus de suffixe ; `[[classes/orios]]` / `[[races/orios]]` lèvent l'ambiguïté d'un lien.
   `test/classes-html.test.mjs` contrôle le tableau construit.
 - Pages de magie : rendues depuis la base (`lib/magies-db.mjs`, `lib/magies.ts`), jamais depuis leur `.md` (qui ne sert qu'à la recherche et aux `[[liens]]`) ; la remarque d'un sort
   (note de cellule) est `sort.remarque`, la table `note_cellule` n'est qu'une trace et ne doit pas être lue. Le panneau d'un sort s'ouvre sous sa ligne (script de `MagieSorts.astro`, sans JavaScript tout est affiché).

@@ -112,8 +112,7 @@ rôle de chaque capacité, voir derive_capacities) :
   exactement un cartouche, ou une ligne à une seule capacité sous une bannière, arrête le script (ValueError).
 
 Pages de capacités (capacites/<slug>.md) : frontmatter (listes YAML en ligne), puis l'effet tel qu'écrit.
-    title      « <Nom> (<Classe>) » : nom de la capacité tel qu'écrit (aux espaces de bord près), nom de l'onglet (sans le
-               suffixe « (classe) ») ; si sa clé de wiki (text.mjs#normalize) est déjà prise par une autre capacité ou par
+    title      « <Nom> (<Classe>) » : nom de la capacité tel qu'écrit (aux espaces de bord près), nom de l'onglet ; si sa clé de wiki (text.mjs#normalize) est déjà prise par une autre capacité ou par
                une page de classe, « , niveau N » est ajouté
     aliases    []
     tags       ["capacité de classe", "<classe en minuscules>", "<spécialité en minuscules si elle existe>"]
@@ -200,9 +199,10 @@ hyperlien externe qui ne tombe sur aucun bloc connu arrête le script. Les 39 hy
 classe, vers son onglet) sont de la navigation propre au classeur : non publiés ; un hyperlien interne hors du Sommaire
 arrête le script. (Si xlsx_to_json.py recopie un jour les hyperliens dans le dump, --xlsx deviendra inutile.)
 
-Titres : le titre d'une page de classe est le nom de l'onglet. Exception : les 13 classes de la catégorie « Classe Hybride
-Animal » portent le nom d'une race jouable (Orios, Fenrir…) ; leur titre prend le suffixe « (classe) » pour rester unique dans
-le wiki (leur slug reste le nom seul, dans classes/). Le script refuse un titre déjà porté par une page d'une autre famille.
+Titres : le titre d'une page de classe est le nom de l'onglet, sans suffixe (demande du propriétaire : « Il faut que le (classe)
+soit supprimé de partout », migration 0009). Les 13 classes de la catégorie « Classe Hybride Animal » portent le nom d'une race
+jouable (Orios, Fenrir…) : leur titre est le même que celui de la page de la race, ce qui est permis pour elles seules (le chemin,
+classes/orios ou races/orios, les distingue). Le script refuse tout autre titre déjà porté par une page d'une autre famille.
 """
 import argparse
 import importlib.util
@@ -248,9 +248,8 @@ CATEGORY_TAGS = {
     "Classe Hybride Animal": "hybride animal",
     "Classe spéciale": "spéciale",
 }
-# Catégories dont les classes portent le nom d'une race : le titre prend le suffixe « (classe) ».
-SUFFIXED_CATEGORIES = {"Classe Hybride Animal"}
-TITLE_SUFFIX = " (classe)"
+# Catégories dont les classes portent le nom d'une race : leur titre peut être celui de la page de la race (aucun suffixe).
+SHARED_WITH_RACE_CATEGORIES = {"Classe Hybride Animal"}
 
 # Colonnes (numéros à partir de 1)
 COL_BANNER = 14          # N : bannière avec le nom de la classe
@@ -2256,7 +2255,7 @@ def build(sheets, class_names, links):
     jobs, caps, anomalies = [], [], []
     for name in class_names:
         category = category_of[name]
-        title = name + (TITLE_SUFFIX if category in SUFFIXED_CATEGORIES else "")
+        title = name
         cfg = dict(sheet=name, title=title, slug=slugify(name), aliases=[], category=category,
                    category_notes=summary["notes"].get(category, []), tags=["classe", CATEGORY_TAGS[category]])
         sh = Sheet(sheets[name])
@@ -2350,10 +2349,13 @@ def main(argv=None):
                 t = read_title(full)
                 if t:
                     other_titles[wiki_key(t)] = full
+    # une classe raciale porte le nom de sa race : son titre peut être celui de la page de la race (et de nulle autre page)
+    shared = {wiki_key(n) for n, c in built["summary"]["classes"] if c in SHARED_WITH_RACE_CATEGORIES}
     seen_titles, seen_paths = {}, {}
     for category, slug, title, body, n in jobs:
         key = wiki_key(title)
-        if key in other_titles:
+        race_page = key in other_titles and os.path.basename(os.path.dirname(other_titles[key])) == "races"
+        if key in other_titles and not (category == CATEGORY and key in shared and race_page):
             problems.append("titre déjà utilisé par %s : %r" % (other_titles[key], title))
         if key in seen_titles:
             problems.append("titre en double dans la famille : %r" % title)

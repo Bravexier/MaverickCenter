@@ -12,7 +12,7 @@ const cartouche = (classeSlug, slug, specialite, rang, body = '') => ({
 const barde = classe('barde', 'Barde', 'magique');
 const guerrier = classe('guerrier', 'Guerrier', 'càc');
 const archer = classe('archer', 'Archer', 'distance');
-const orios = classe('orios', 'Orios (classe)', 'hybride animal');
+const orios = classe('orios', 'Orios', 'hybride animal');
 const archimage = classe('archimage', 'Archimage', 'spéciale');
 const flagelleur = classe('flagelleur', 'Flagelleur', 'hybride');
 // Textes des cartouches de niveau 10 de l'onglet « Orios » (cellules X23 et AA23).

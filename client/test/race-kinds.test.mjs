@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { groupRaces, HYBRIDES_SANS_CLASSE_RACIALE, ORDRE_DES_RACES, raceKind, racialClassOf, raceOfClass } from '../src/lib/race-kinds.mjs';
 
 const race = (title, slug = title.toLowerCase()) => ({ id: `races/${slug}`, data: { title, tags: ['race'] } });
-const cls = (title, ...tags) => ({ id: `classes/${title.toLowerCase().replace(/ \(classe\)/, '')}`, data: { title, tags: ['classe', ...tags] } });
+const cls = (title, ...tags) => ({ id: `classes/${title.toLowerCase()}`, data: { title, tags: ['classe', ...tags] } });
 const ids = (list) => list.map((e) => e.id);
 
 const orios = race('Orios');
@@ -12,15 +12,15 @@ const humain = race('Humain');
 const lamia = race('Lamia');
 const drassahthac = race("Drassah'thac", 'drassahthac');
 const CLASSES = [
-  cls('Orios (classe)', 'hybride animal'),
-  cls('Médusain (classe)', 'hybride animal'),
+  cls('Orios', 'hybride animal'),
+  cls('Médusain', 'hybride animal'),
   cls('Guerrier', 'càc'),
   cls('Lamia', 'spéciale'), // une classe qui porte le nom d'une race mais n'est pas une classe raciale
   cls('Humain', 'magique'),
 ];
 const ALL = [orios, medusain, humain, lamia, drassahthac, ...CLASSES];
 
-test('une race est hybride quand une classe « hybride animal » porte son nom, avec ou sans le suffixe « (classe) », accents ignorés', () => {
+test('une race est hybride quand une classe « hybride animal » porte son nom (le titre de la page de la classe), accents ignorés', () => {
   assert.equal(raceKind(ALL, orios), 'hybride');
   assert.equal(raceKind(ALL, medusain), 'hybride');
   assert.equal(raceKind(ALL, humain), 'pure');

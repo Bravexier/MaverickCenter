@@ -31,13 +31,7 @@ export const CLASS_OVERRIDES = { 'classes/parleur': 'speciales' };
 const LAST = CLASS_GROUPS.at(-1);
 const UNCLASSIFIED = { key: 'non-classees', label: 'Non classées' };
 
-/**
- * Nom d'une classe dans une liste de classes : le titre sans « (classe) », qui ne sert qu'à distinguer une classe raciale
- * de sa race (« Kitsune (classe) » → « Kitsune »).
- */
-export const classLabel = (entry) => entry.data.title.replace(/\s*\(classe\)\s*$/i, '');
-
-const byLabel = (a, b) => classLabel(a).localeCompare(classLabel(b), 'fr');
+const byLabel = (a, b) => a.data.title.localeCompare(b.data.title, 'fr');
 
 // Catégorie d'une page : l'exception éventuelle, sinon la première catégorie (dans l'ordre d'affichage) dont un tag figure sur la page.
 function findGroup(entry) {

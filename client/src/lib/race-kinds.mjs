@@ -1,15 +1,14 @@
 // Races « pures » et races « hybrides ». Fonctions pures.
 //
 // Une race hybride est une race qui a accès à sa propre classe raciale (une classe « Hybride Animal » du classeur des
-// classes, qui porte le nom de la race : « Orios (classe) » pour la race Orios) ; les autres races sont pures. La
+// classes, qui porte le nom de la race : la classe « Orios », classes/orios, pour la race Orios) ; les autres races sont pures. La
 // distinction ne se déduit pas du texte des pages : elle suit l'existence de la page de la classe raciale, sauf pour les
 // races de HYBRIDES_SANS_CLASSE_RACIALE (décision R14 du propriétaire). Le fait que les races hybrides à classe raciale
 // n'aient que 3 magies innées est vérifié par un test sur le contenu réel (test/races-magies-content.test.mjs).
 import { normalize } from './text.mjs';
 
-const CLASS_SUFFIX = / \(classe\)$/i;
 const isRacialClass = (entry) => entry.id.startsWith('classes/') && (entry.data.tags ?? []).some((t) => normalize(t) === 'hybride-animal');
-const baseName = (title) => normalize(title.replace(CLASS_SUFFIX, ''));
+const baseName = (title) => normalize(title);
 
 /**
  * Races hybrides qui n'ont pas de classe raciale. Décision R14 du propriétaire : « Le drassah'thac est considéré comme
