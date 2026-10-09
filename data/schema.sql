@@ -3302,11 +3302,12 @@ CREATE INDEX recette_test_carac_2_fk ON recette (test_carac_2_id) WHERE test_car
 CREATE INDEX recette_test_carac_1_fk ON recette (test_carac_1_id) WHERE test_carac_1_id IS NOT NULL;
 
 -- ====================================================================================================================
--- 13. PERSONNAGES : les vraies fiches des joueurs (saisie, jamais importée ; migration 0011)
+-- 13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)
 -- Une fiche = les CHOIX du joueur, rangés comme sur la « Fiche personnage Maverick Auto V15.2.2 » (onglet Personnage, cellules citées) ; tout ce
 -- que la fiche CALCULE (niveau global, niveaux de classe, santé, chakra, barrière, initiative, totaux de compétences, résistances…) est recalculé
 -- depuis les règles de la base et n'est jamais stocké : une règle corrigée corrige toutes les fiches. Les vues v_personnage_niveau et
 -- v_personnage_controle en donnent la première part ; le reste viendra du moteur pur (client/src/lib/, docs/feuille-de-route.md).
+-- Qui voit quelle fiche (demande du propriétaire) : v_personnage_visible ; les groupes de jeu (one-shot ou campagne) : groupe, groupe_membre.
 -- Ces tables n'ont ni `origine` ni `source_ref` (rien n'est importé) ni `remarque` (réservée aux entités des classeurs) ; data/rows/ les garde VIDES :
 -- les fiches réelles vivent dans la base du serveur, pas dans git (docs/character-generator.md, « Fiches dans la base »).
 -- Instants : texte ISO 8601 en UTC ('2026-10-09T14:03:00Z'), portable tel quel vers PostgreSQL.
@@ -3314,18 +3315,35 @@ CREATE INDEX recette_test_carac_1_fk ON recette (test_carac_1_id) WHERE test_car
 
 -- Personne qui se connecte au site. Connexion par Discord à la 1.0 (docs/feuille-de-route.md, « Authentification ») : on ne garde que l'identifiant
 -- Discord (immuable) et le nom d'affichage, jamais de mot de passe ni de jeton. Un compte local de secours (administrateur) n'a pas d'identifiant Discord.
+-- Tout utilisateur connecté est lecteur ; les autres rôles sont dans utilisateur_role.
 CREATE TABLE utilisateur (
   id             TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0),   -- identifiant stable du site, jamais réutilisé
   discord_id     TEXT    UNIQUE CHECK (discord_id IS NULL OR (length(discord_id) > 0 AND discord_id NOT GLOB '*[^0-9]*')),   -- « snowflake » Discord ; NULL = compte local de secours
   nom_affichage  TEXT    NOT NULL CHECK (length(nom_affichage) > 0),
-  role           TEXT    NOT NULL CHECK (role IN ('lecteur', 'editeur', 'admin')),   -- correspondance rôle Discord -> rôle du site : configuration, pas donnée
   cree_le        TEXT    NOT NULL CHECK (cree_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z')
 ) STRICT;
 
+-- Rôles d'un utilisateur, cumulables (la correspondance rôle Discord -> rôle du site est une configuration, pas une donnée) :
+-- 'mj' = maître du jeu (le « groupe MJ » : cible de la visibilité 'mj' d'une fiche), 'editeur' = modifie les règles (phase 2), 'admin' = voit et gère tout.
+CREATE TABLE utilisateur_role (
+  utilisateur_id  TEXT    NOT NULL REFERENCES utilisateur(id) ON DELETE CASCADE,
+  role            TEXT    NOT NULL CHECK (role IN ('mj', 'editeur', 'admin')),
+  PRIMARY KEY (utilisateur_id, role)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX utilisateur_role_role ON utilisateur_role (role);   -- « tous les MJ », « tous les administrateurs »
+
 -- Une fiche de personnage : le haut de l'onglet Personnage (identité, magies, alignement, bourse, expérience) et les choix uniques.
+-- Deux natures (demande du propriétaire) : la fiche d'un JOUEUR, qu'il crée pour son personnage (visible de lui seul et des administrateurs, sauf ce
+-- qu'il ouvre : visibilité, partage, inscription dans un groupe), et le PRÉTIRÉ, qui n'appartient à personne et que tout le monde voit.
 CREATE TABLE personnage (
   id                    TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0),   -- identifiant stable, jamais réutilisé (un personnage renommé le garde)
-  proprietaire_id       TEXT    REFERENCES utilisateur(id),   -- joueur ; NULL = fiche sans compte (PNJ du MJ, import d'une fiche Google)
+  nature                TEXT    NOT NULL CHECK (nature IN ('joueur', 'pretire')),
+  proprietaire_id       TEXT    REFERENCES utilisateur(id),   -- joueur qui l'a créée ; NULL exactement pour un prétiré
+  visibilite            TEXT    NOT NULL CHECK (visibilite IN ('privee', 'mj', 'tous')),
+                                                    -- qui la voit EN PLUS du propriétaire, des administrateurs, des membres des groupes où elle est inscrite
+                                                    -- et des utilisateurs désignés (personnage_partage) : 'privee' personne d'autre, 'mj' tous les MJ,
+                                                    -- 'tous' tout utilisateur connecté (toujours le cas d'un prétiré) ; calcul : v_personnage_visible
   statut                TEXT    NOT NULL CHECK (statut IN ('brouillon', 'valide', 'archive')),   -- 'valide' : v_personnage_controle doit être vide pour elle
   nom                   TEXT    NOT NULL CHECK (length(nom) > 0),   -- « NOM » (F1)
   surnom                TEXT,                         -- « Surnom » (P1)
@@ -3360,11 +3378,22 @@ CREATE TABLE personnage (
   evenements            TEXT,                         -- « ÉVÉNEMENTS » (B71)
   cree_le               TEXT    NOT NULL CHECK (cree_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
   modifie_le            TEXT    NOT NULL CHECK (modifie_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z' AND modifie_le >= cree_le),
+  CHECK ((nature = 'pretire') = (proprietaire_id IS NULL)),   -- un prétiré n'est à personne ; la fiche d'un joueur a son propriétaire
+  CHECK (nature = 'joueur' OR visibilite = 'tous'),           -- « Les prétirés sont visibles par tous »
   CHECK (magie_acquise_id IS NULL OR magie_acquise_id <> magie_innee_id),
   CHECK (statut = 'brouillon' OR (race_id IS NOT NULL AND magie_innee_id IS NOT NULL))
 ) STRICT;
 
 CREATE INDEX personnage_proprietaire ON personnage (proprietaire_id) WHERE proprietaire_id IS NOT NULL;   -- « mes personnages »
+
+-- Utilisateurs à qui le propriétaire montre sa fiche en plus de sa visibilité (« un utilisateur spécifique », plusieurs possibles).
+CREATE TABLE personnage_partage (
+  personnage_id   TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  utilisateur_id  TEXT    NOT NULL REFERENCES utilisateur(id) ON DELETE CASCADE,
+  PRIMARY KEY (personnage_id, utilisateur_id)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX personnage_partage_utilisateur ON personnage_partage (utilisateur_id);   -- « les fiches qu'on m'a montrées »
 
 -- Classes du personnage : « CLASSE » 1 (A9) et 2 (A11), chacune avec sa spécialité (I9, I11 : choisie au niveau de classe 10). Les niveaux de classe
 -- se déduisent de l'XP et du mode (v_personnage_niveau), ils ne sont pas stockés.
@@ -3386,8 +3415,9 @@ CREATE TABLE personnage_caracteristique (
   personnage_id      TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
   caracteristique_id TEXT    NOT NULL REFERENCES caracteristique(id),
   base               INTEGER NOT NULL CHECK (base >= 1),
-  croix_1            INTEGER NOT NULL CHECK (croix_1 IN (0, 1)),   -- 1re case à cocher de la ligne (H18…) : regle_constante 'competence.croix_1_malus'
-  croix_2            INTEGER NOT NULL CHECK (croix_2 IN (0, 1)),   -- 2e case (I18…) : 'competence.croix_2_malus' ; sens à confirmer (docs/sql/a-valider.md)
+  croix              INTEGER NOT NULL CHECK (croix BETWEEN 0 AND 2),   -- croix sous la caractéristique (cases H18, I18…), décision R19 : handicap ou malus
+                                                    -- (blessure grave, trauma, maladie, mauvaise nuit) ; 1 = −20 % à tout test de la caractéristique,
+                                                    -- 2 = ses compétences ne sont plus utilisables (regle_constante 'competence.croix_1_malus', 'competence.croix_2_malus')
   PRIMARY KEY (personnage_id, caracteristique_id)
 ) STRICT, WITHOUT ROWID;
 
@@ -3506,6 +3536,31 @@ CREATE TABLE personnage_inventaire (
   PRIMARY KEY (personnage_id, rang)
 ) STRICT, WITHOUT ROWID;
 
+-- Groupe de jeu : la table d'un one-shot (« OS ») ou d'une campagne. Ses membres voient les fiches qui y sont inscrites.
+CREATE TABLE groupe (
+  id       TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0),
+  nom      TEXT    NOT NULL CHECK (length(nom) > 0),
+  nature   TEXT    NOT NULL CHECK (nature IN ('one_shot', 'campagne')),
+  cree_le  TEXT    NOT NULL CHECK (cree_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z')
+) STRICT;
+
+-- Membres d'un groupe et fiche inscrite (demande du propriétaire) : un joueur peut être dans plusieurs groupes et avoir plusieurs fiches, mais n'inscrit
+-- qu'UNE fiche par groupe : une ligne par (groupe, membre), et inscrire une autre fiche remplace `personnage_id` (la précédente est désinscrite).
+-- La fiche inscrite devient visible de tous les membres du groupe, et d'eux seuls : ses autres fiches restent cachées (v_personnage_visible).
+-- On inscrit sa propre fiche ou un prétiré (v_groupe_controle).
+CREATE TABLE groupe_membre (
+  groupe_id       TEXT    NOT NULL REFERENCES groupe(id) ON DELETE CASCADE,
+  utilisateur_id  TEXT    NOT NULL REFERENCES utilisateur(id) ON DELETE CASCADE,
+  role            TEXT    NOT NULL CHECK (role IN ('mj', 'joueur')),   -- MJ de la table ou joueur
+  personnage_id   TEXT    REFERENCES personnage(id) ON DELETE SET NULL,   -- fiche inscrite ; NULL = aucune (membre qui n'a pas encore inscrit de fiche, MJ)
+  rejoint_le      TEXT    NOT NULL CHECK (rejoint_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
+  PRIMARY KEY (groupe_id, utilisateur_id)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX groupe_membre_utilisateur ON groupe_membre (utilisateur_id);   -- « mes groupes »
+
+CREATE INDEX groupe_membre_personnage ON groupe_membre (personnage_id) WHERE personnage_id IS NOT NULL;   -- « où cette fiche est inscrite »
+
 -- Niveau global et niveaux de classe d'un personnage. Niveau global = plus haut niveau dont l'XP minimale est atteinte (Personnage!W8 :
 -- VLOOKUP(S11; BDD!G2:H21; 2; 1)). Niveaux de classe : décision R2 (« un "monoclasse" choisit automatiquement sa 2e classe au niveau 11 ») :
 -- mono-classe : classe 1 = min(20, 2 × niveau global), classe 2 = 2 × niveau global − classe 1 ; bi-classe : chacune = niveau global (G9, G11).
@@ -3516,9 +3571,39 @@ CREATE VIEW v_personnage_niveau AS
   FROM personnage p
   JOIN niveau_global n ON n.niveau = (SELECT MAX(g.niveau) FROM niveau_global g WHERE g.xp_min <= p.xp);
 
+-- Qui voit quelle fiche (demande du propriétaire) : une ligne par (fiche, utilisateur, motif) ; un utilisateur voit une fiche s'il a au moins une ligne.
+-- Motifs : 'proprietaire' ; 'admin' (toutes les fiches) ; 'tous' (visibilité 'tous', donc tout prétiré) ; 'mj' (visibilité 'mj' : utilisateurs de rôle
+-- 'mj') ; 'groupe' (membres du groupe `groupe_id` où la fiche est inscrite) ; 'partage' (utilisateur désigné par le propriétaire).
+CREATE VIEW v_personnage_visible AS
+  SELECT p.id AS personnage_id, p.proprietaire_id AS utilisateur_id, 'proprietaire' AS motif, NULL AS groupe_id
+  FROM personnage p WHERE p.proprietaire_id IS NOT NULL
+  UNION ALL
+  SELECT p.id, r.utilisateur_id, 'admin', NULL
+  FROM personnage p CROSS JOIN utilisateur_role r WHERE r.role = 'admin'
+  UNION ALL
+  SELECT p.id, u.id, 'tous', NULL
+  FROM personnage p CROSS JOIN utilisateur u WHERE p.visibilite = 'tous'
+  UNION ALL
+  SELECT p.id, r.utilisateur_id, 'mj', NULL
+  FROM personnage p CROSS JOIN utilisateur_role r WHERE p.visibilite = 'mj' AND r.role = 'mj'
+  UNION ALL
+  SELECT i.personnage_id, m.utilisateur_id, 'groupe', i.groupe_id
+  FROM groupe_membre i JOIN groupe_membre m ON m.groupe_id = i.groupe_id
+  WHERE i.personnage_id IS NOT NULL
+  UNION ALL
+  SELECT s.personnage_id, s.utilisateur_id, 'partage', NULL
+  FROM personnage_partage s;
+
+-- Contrôle des inscriptions dans les groupes : une ligne par anomalie (vide = conforme). Un membre inscrit sa propre fiche ou un prétiré.
+CREATE VIEW v_groupe_controle AS
+  SELECT m.groupe_id, m.utilisateur_id, 'fiche_d_un_autre' AS regle, m.personnage_id AS detail
+  FROM groupe_membre m JOIN personnage p ON p.id = m.personnage_id
+  WHERE p.nature = 'joueur' AND p.proprietaire_id <> m.utilisateur_id;
+
 -- Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi.
--- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, décisions R2, R3, R8, R11, R15) ; ce qui demande le moteur
--- (bonus de classe, d'équipement, nombre de sorts) n'est pas ici. Une fiche 'brouillon' peut avoir des lignes, une fiche 'valide' non (test).
+-- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20) ; ce qui
+-- demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Une fiche 'brouillon' peut
+-- avoir des lignes, une fiche 'valide' non (test).
 CREATE VIEW v_personnage_controle AS
   -- Race : classe accessible (matrice « Accessibilité de Classe », décision R8)
   SELECT pc.personnage_id, 'classe_inaccessible' AS regle, pc.classe_id AS detail
@@ -3540,7 +3625,8 @@ CREATE VIEW v_personnage_controle AS
   FROM personnage p
   JOIN v_magie_incompatible i ON i.a = p.magie_innee_id AND i.b = p.magie_acquise_id
   UNION ALL
-  -- Mono-magie (décision R15) : pas de magie acquise avec une magie mono-magie, sauf ethnie citée par magie_ethnie_secondaire
+  -- Mono-magie (décision R15) : pas de magie acquise avec une magie mono-magie, sauf ethnie citée par magie_ethnie_secondaire, que la magie
+  -- mono-magie soit l'innée ou l'acquise (décision R20 : l'Elfe Noir Charbon et le Felfe Noir peuvent acquérir la Corruption)
   SELECT p.id, 'mono_magie', m.id
   FROM personnage p
   JOIN magie m ON m.mono_magie = 1 AND m.id IN (p.magie_innee_id, p.magie_acquise_id)
@@ -3656,10 +3742,21 @@ CREATE VIEW v_personnage_controle AS
   JOIN personnage_capacite b ON b.personnage_id = a.personnage_id AND b.capacite_id = x.autre_id
   WHERE a.capacite_id < b.capacite_id
   UNION ALL
-  -- Sorts : d'une magie du personnage ; NM au plus niveau global − 1 (BDD!BB6) ; total des NM au plus les NM gagnés (niveau_global.niveaux_maitrise)
+  -- Sorts : d'une magie du personnage (le Potentiel Illimité « pioche ses sorts dans toutes les magies existantes », son Explication) ;
+  -- NPM au plus la puissance magique du niveau (niveau_global : niveau 16 pour la 5, décision R16), le palier dont la note dit « non disponible pour
+  -- les personnages avec une magie acquise » ne comptant pas pour eux ; NM au plus niveau global − 1 (BDD!BB6) ; total des NM au plus les NM gagnés
   SELECT ps.personnage_id, 'sort_hors_magie', ps.sort_id
   FROM personnage_sort ps JOIN sort s ON s.id = ps.sort_id JOIN personnage p ON p.id = ps.personnage_id
   WHERE s.magie_id <> COALESCE(p.magie_innee_id, '') AND s.magie_id <> COALESCE(p.magie_acquise_id, '')
+    AND COALESCE(p.magie_innee_id, '') <> 'magies/potentiel-illimite'
+  UNION ALL
+  SELECT ps.personnage_id, 'sort_puissance', ps.sort_id || ' : NPM ' || s.niveau
+  FROM personnage_sort ps
+  JOIN sort s ON s.id = ps.sort_id
+  JOIN personnage p ON p.id = ps.personnage_id
+  JOIN v_personnage_niveau n ON n.personnage_id = ps.personnage_id
+  WHERE s.niveau > (SELECT MAX(g.puissance_magique) FROM niveau_global g
+                    WHERE g.niveau <= n.niveau_global AND (p.magie_acquise_id IS NULL OR g.puissance_magique_note IS NULL))
   UNION ALL
   SELECT ps.personnage_id, 'sort_nm_max', ps.sort_id || ' = ' || ps.niveau_maitrise
   FROM personnage_sort ps JOIN v_personnage_niveau n ON n.personnage_id = ps.personnage_id

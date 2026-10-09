@@ -1,6 +1,7 @@
 // Fiches de personnages dans la base (section 13 de data/schema.sql, migration 0011-personnages) : les tables gardent les CHOIX du joueur, les
-// vues v_personnage_niveau (décision R2) et v_personnage_controle (règles de la base) en tirent niveaux et erreurs. Les tests écrivent dans une
-// COPIE de la base construite : data/rows garde ces tables vides.
+// vues v_personnage_niveau (décision R2) et v_personnage_controle (règles de la base) en tirent niveaux et erreurs ; fiches de joueur et prétirés,
+// groupes de jeu et visibilité (demande du propriétaire) : v_personnage_visible, v_groupe_controle. Les tests écrivent dans une COPIE de la base
+// construite : data/rows garde ces tables vides.
 import assert from 'node:assert/strict';
 import { copyFileSync, mkdtempSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
@@ -16,9 +17,9 @@ const db = new DatabaseSync(copie);
 db.exec('PRAGMA foreign_keys = ON');
 
 const TABLES = [
-  'utilisateur', 'personnage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence', 'personnage_progression',
-  'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure', 'personnage_bouclier_materiau',
-  'personnage_accessoire', 'personnage_inventaire',
+  'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
+  'personnage_progression', 'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure',
+  'personnage_bouclier_materiau', 'personnage_accessoire', 'personnage_inventaire', 'groupe', 'groupe_membre',
 ];
 const INSTANT = '2026-10-09T12:00:00Z';
 const controle = (id) => db.prepare('SELECT regle, detail FROM v_personnage_controle WHERE personnage_id = ? ORDER BY regle, detail').all(id).map((r) => ({ ...r }));
@@ -30,23 +31,36 @@ function inserer(table, ligne) {
   db.prepare(`INSERT INTO ${table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`).run(...Object.values(ligne));
 }
 
+// Lignes de la base construite, avant les fiches de ce test (data/rows les garde vides).
+const LIGNES_AU_DEPART = Object.fromEntries(TABLES.map((t) => [t, db.prepare(`SELECT count(*) AS n FROM ${t}`).get().n]));
+
+// Utilisateurs : quatre joueurs, une MJ (rôle 'mj') et un administrateur ; « eve » est un compte local de secours (sans Discord).
+const UTILISATEURS = { alice: [], bob: [], dan: [], eve: [], claire: ['mj'], root: ['admin'] };
+for (const [i, [id, roles]] of Object.entries(UTILISATEURS).entries()) {
+  inserer('utilisateur', { id, discord_id: id === 'eve' ? null : `10000000000000000${i}`, nom_affichage: id, cree_le: INSTANT });
+  for (const role of roles) inserer('utilisateur_role', { utilisateur_id: id, role });
+}
+const voit = (utilisateur, personnage) => db.prepare('SELECT motif FROM v_personnage_visible WHERE utilisateur_id = ? AND personnage_id = ? ORDER BY motif').all(utilisateur, personnage).map((r) => r.motif);
+const spectateurs = (personnage) => [...new Set(db.prepare('SELECT utilisateur_id FROM v_personnage_visible WHERE personnage_id = ?').all(personnage).map((r) => r.utilisateur_id))].sort();
+
 /** Personnage de niveau 1 conforme : Humain central, Guerrier, Feu inné ; 14 points de caractéristiques, 100 points de compétences (5 × 20). */
 function personnageValide(id, surcharge = {}) {
   inserer('personnage', {
-    id, statut: 'valide', nom: `Fiche ${id}`, race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central',
+    id, nature: 'joueur', proprietaire_id: 'alice', visibilite: 'privee',
+    statut: 'valide', nom: `Fiche ${id}`, race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central',
     magie_innee_id: 'magies/magie-du-feu', mode_classe: 'mono', xp: 0,
     alignement_loyal: 0, alignement_chaotique: 0, alignement_bon: 0, alignement_mauvais: 0,
     bourse_pp: 0, bourse_ro: 12, bourse_rf: 0, ambidextrie: 0, cree_le: INSTANT, modifie_le: INSTANT, ...surcharge,
   });
   inserer('personnage_classe', { personnage_id: id, rang: 1, classe_id: 'classes/guerrier' });
   const bases = { force: 4, volonte: 2, intelligence: 2, perception: 2, social: 2, agilite: 2 };
-  for (const [c, base] of Object.entries(bases)) inserer('personnage_caracteristique', { personnage_id: id, caracteristique_id: c, base, croix_1: 0, croix_2: 0 });
+  for (const [c, base] of Object.entries(bases)) inserer('personnage_caracteristique', { personnage_id: id, caracteristique_id: c, base, croix: 0 });
   for (const c of ['arc', 'arme-lourde', 'athletisme', 'parade', 'stabilite']) inserer('personnage_competence', { personnage_id: id, competence_id: c, naturel: 20, acquis: 0 });
 }
 
-test('les 14 tables des fiches existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
+test('les 18 tables des fiches et des groupes existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
   for (const t of TABLES) {
-    assert.equal(db.prepare(`SELECT count(*) AS n FROM ${t}`).get().n, 0, t);
+    assert.equal(LIGNES_AU_DEPART[t], 0, t);
     const lignes = readFileSync(join(racine, 'data', 'rows', `${t}.sql`), 'utf8').trim().split('\n');
     assert.equal(lignes.length, 1, `${t} : en-tête seul`);
     assert.ok(db.prepare('SELECT 1 FROM pragma_table_info(?) WHERE name = ?').get(t, 'remarque') === undefined, `${t} : pas de colonne remarque (réservée aux entités des classeurs)`);
@@ -67,7 +81,8 @@ test('niveau global et niveaux de classe (décision R2) : mono-classe 2 niveaux 
   for (const [i, c] of cas.entries()) {
     const id = `niveau-${i}`;
     inserer('personnage', {
-      id, statut: 'brouillon', nom: id, mode_classe: c.mode, xp: c.xp, alignement_loyal: 0, alignement_chaotique: 0, alignement_bon: 0, alignement_mauvais: 0,
+      id, nature: 'joueur', proprietaire_id: 'alice', visibilite: 'privee',
+      statut: 'brouillon', nom: id, mode_classe: c.mode, xp: c.xp, alignement_loyal: 0, alignement_chaotique: 0, alignement_bon: 0, alignement_mauvais: 0,
       bourse_pp: 0, bourse_ro: 0, bourse_rf: 0, ambidextrie: 0, cree_le: INSTANT, modifie_le: INSTANT,
     });
     assert.deepEqual(niveau(id), c.attendu, `${c.xp} XP, ${c.mode}`);
@@ -179,7 +194,7 @@ test('sorts : de la magie du personnage, NM au plus niveau global − 1 et au pl
   inserer('personnage_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:boule-de-feu', rang: 1, niveau_maitrise: 2 });
   assert.deepEqual(controle('sorts'), []);
   inserer('personnage_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:cauterisation', rang: 2, niveau_maitrise: 3 });
-  const glace = db.prepare("SELECT id FROM sort WHERE magie_id = 'magies/magie-de-la-glace' LIMIT 1").get().id;
+  const glace = db.prepare("SELECT id FROM sort WHERE magie_id = 'magies/magie-de-la-glace' AND niveau = 1 LIMIT 1").get().id;
   inserer('personnage_sort', { personnage_id: 'sorts', sort_id: glace, rang: 3, niveau_maitrise: 0 });
   assert.deepEqual(regles('sorts'), ['sort_hors_magie', 'sort_nm_max', 'sorts_nm_total']);
 });
@@ -218,7 +233,135 @@ test('contraintes : magie acquise ≠ magie innée, fiche validée avec race et 
   assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, 0);
 });
 
-test('une fiche validée ne doit avoir aucune ligne de contrôle : toutes les fiches valides de ce test sont repérées par la vue', () => {
+test('la vue repère les fiches « valide » fautives de ce fichier, jamais la fiche conforme', () => {
   const fautives = db.prepare("SELECT DISTINCT c.personnage_id FROM v_personnage_controle c JOIN personnage p ON p.id = c.personnage_id WHERE p.statut = 'valide'").all().map((r) => r.personnage_id);
   assert.ok(fautives.length > 0 && !fautives.includes('conforme'));
+});
+
+test('sorts : le Potentiel Illimité pioche dans toutes les magies ; NPM au plus la puissance magique du niveau, la 5 au niveau 16 sans magie acquise (décision R16)', () => {
+  const brouillon = (id, xp, surcharge = {}) => inserer('personnage', {
+    id, nature: 'joueur', proprietaire_id: 'alice', visibilite: 'privee', statut: 'brouillon', nom: id, race_id: 'races/humain',
+    ethnie_id: 'races/humain#ethnie:humain-central', magie_innee_id: 'magies/magie-du-feu', mode_classe: 'mono', xp,
+    alignement_loyal: 0, alignement_chaotique: 0, alignement_bon: 0, alignement_mauvais: 0, bourse_pp: 0, bourse_ro: 0, bourse_rf: 0, ambidextrie: 0,
+    cree_le: INSTANT, modifie_le: INSTANT, ...surcharge,
+  });
+  const npm5 = db.prepare("SELECT id FROM sort WHERE magie_id = 'magies/magie-du-feu' AND niveau = 5 ORDER BY id LIMIT 1").get().id;
+  const npm = (n) => db.prepare("SELECT id FROM sort WHERE magie_id = 'magies/magie-de-la-glace' AND niveau = ? ORDER BY id LIMIT 1").get(n).id;
+  const cas = [
+    { id: 'npm-16', xp: 95450, sort: npm5, attendu: false },                                                   // niveau 16, mono-magie
+    { id: 'npm-15', xp: 69850, sort: npm5, attendu: true },                                                    // niveau 15 : puissance 4
+    { id: 'npm-16-bi', xp: 95450, sort: npm5, attendu: true, surcharge: { magie_acquise_id: 'magies/magie-de-leau' } },   // « non disponible avec une magie acquise »
+    { id: 'npm-4', xp: 950, sort: npm(2), attendu: false, surcharge: { magie_innee_id: 'magies/magie-de-la-glace' } },
+    { id: 'npm-3', xp: 550, sort: npm(2), attendu: true, surcharge: { magie_innee_id: 'magies/magie-de-la-glace' } },
+  ];
+  for (const c of cas) {
+    brouillon(c.id, c.xp, c.surcharge);
+    inserer('personnage_sort', { personnage_id: c.id, sort_id: c.sort, rang: 1, niveau_maitrise: 0 });
+    assert.equal(regles(c.id).includes('sort_puissance'), c.attendu, c.id);
+  }
+  brouillon('potentiel', 0, { magie_innee_id: 'magies/potentiel-illimite', caracteristique_magie_id: 'force' });
+  inserer('personnage_sort', { personnage_id: 'potentiel', sort_id: 'magies/magie-du-feu#sort:boule-de-feu', rang: 1, niveau_maitrise: 0 });
+  assert.ok(!regles('potentiel').includes('sort_hors_magie'), 'le Potentiel Illimité pioche ses sorts dans toutes les magies');
+});
+
+test('décision R20 : l’Elfe Noir Charbon et le Felfe Noir peuvent acquérir la Corruption (pas les autres), les incompatibilités restent', () => {
+  personnageValide('r20-felfe-noir', { race_id: 'races/felfe', ethnie_id: 'races/felfe#ethnie:felfe-noir', magie_acquise_id: 'magies/magie-de-la-corruption' });
+  assert.ok(!regles('r20-felfe-noir').some((r) => r === 'mono_magie' || r === 'magies_incompatibles'), regles('r20-felfe-noir').join());
+  personnageValide('r20-charbon', {
+    race_id: 'races/elfe-noir', ethnie_id: 'races/elfe-noir#ethnie:elfe-noir-charbon', magie_acquise_id: 'magies/magie-de-la-corruption',
+  });
+  assert.ok(!regles('r20-charbon').includes('mono_magie'), regles('r20-charbon').join());
+  personnageValide('r20-felfe-argente', { race_id: 'races/felfe', ethnie_id: 'races/felfe#ethnie:felfe-argente', magie_acquise_id: 'magies/magie-de-la-corruption' });
+  assert.ok(regles('r20-felfe-argente').includes('mono_magie'), 'une autre ethnie ne combine pas la Corruption');
+  personnageValide('r20-arcane', {
+    race_id: 'races/elfe-noir', ethnie_id: 'races/elfe-noir#ethnie:elfe-noir-charbon',
+    magie_innee_id: 'magies/magie-de-larcane', magie_acquise_id: 'magies/magie-de-la-corruption',
+  });
+  assert.ok(regles('r20-arcane').includes('magies_incompatibles'), 'Arcane et Corruption restent incompatibles');
+});
+
+test('décision R19 : jusqu’à deux croix par caractéristique, la règle du guide et les malus de la fiche', () => {
+  personnageValide('croix');
+  db.prepare("UPDATE personnage_caracteristique SET croix = 2 WHERE personnage_id = 'croix' AND caracteristique_id = 'force'").run();
+  assert.deepEqual(controle('croix'), [], 'une croix est un état, pas une erreur de fiche');
+  assert.throws(() => db.prepare("UPDATE personnage_caracteristique SET croix = 3 WHERE personnage_id = 'croix' AND caracteristique_id = 'force'").run(), /CHECK/);
+  const malus = Object.fromEntries(db.prepare("SELECT id, valeur FROM regle_constante WHERE id LIKE 'competence.croix_%'").all().map((r) => [r.id, r.valeur]));
+  assert.deepEqual(malus, { 'competence.croix_1_malus': -20, 'competence.croix_2_malus': -1000 });
+  const page = db.prepare("SELECT corps_md FROM page WHERE id = 'guide/fiche-caracteristiques'").get().corps_md;
+  assert.match(page, /1 croix, malus de 20% pour tout test en rapport avec cette caractéristique\./);
+  assert.match(page, /2 croix, impossibilité d'utiliser les compétences liées à cette caractéristique\./);
+});
+
+test('fiche de joueur ou prétiré : le prétiré n’est à personne et tout le monde le voit ; la fiche d’un joueur a son propriétaire', () => {
+  const fiche = (id, surcharge) => inserer('personnage', {
+    id, statut: 'brouillon', nom: id, mode_classe: 'mono', xp: 0, alignement_loyal: 0, alignement_chaotique: 0, alignement_bon: 0, alignement_mauvais: 0,
+    bourse_pp: 0, bourse_ro: 0, bourse_rf: 0, ambidextrie: 0, cree_le: INSTANT, modifie_le: INSTANT, ...surcharge,
+  });
+  fiche('pretire-1', { nature: 'pretire', proprietaire_id: null, visibilite: 'tous' });
+  assert.deepEqual(spectateurs('pretire-1'), Object.keys(UTILISATEURS).sort(), 'visible par tous');
+  assert.throws(() => fiche('ko-pretire-1', { nature: 'pretire', proprietaire_id: 'alice', visibilite: 'tous' }), /CHECK/, 'un prétiré n’est à personne');
+  assert.throws(() => fiche('ko-pretire-2', { nature: 'pretire', proprietaire_id: null, visibilite: 'privee' }), /CHECK/, 'un prétiré est visible par tous');
+  assert.throws(() => fiche('ko-joueur', { nature: 'joueur', proprietaire_id: null, visibilite: 'privee' }), /CHECK/, 'une fiche de joueur a son propriétaire');
+  assert.throws(() => fiche('ko-visibilite', { nature: 'joueur', proprietaire_id: 'alice', visibilite: 'groupe' }), /CHECK/);
+});
+
+test('visibilité d’une fiche de joueur : lui seul et les administrateurs, puis tous les MJ, des utilisateurs désignés, tout le monde', () => {
+  personnageValide('vis');
+  assert.deepEqual(spectateurs('vis'), ['alice', 'root']);
+  assert.deepEqual(voit('alice', 'vis'), ['proprietaire']);
+  assert.deepEqual(voit('root', 'vis'), ['admin']);
+  db.prepare("UPDATE personnage SET visibilite = 'mj' WHERE id = 'vis'").run();
+  assert.deepEqual(spectateurs('vis'), ['alice', 'claire', 'root']);
+  assert.deepEqual(voit('claire', 'vis'), ['mj']);
+  inserer('personnage_partage', { personnage_id: 'vis', utilisateur_id: 'bob' });
+  inserer('personnage_partage', { personnage_id: 'vis', utilisateur_id: 'eve' });
+  assert.deepEqual(spectateurs('vis'), ['alice', 'bob', 'claire', 'eve', 'root']);
+  assert.deepEqual(voit('bob', 'vis'), ['partage']);
+  assert.throws(() => inserer('personnage_partage', { personnage_id: 'vis', utilisateur_id: 'bob' }), /UNIQUE|PRIMARY/);
+  db.prepare("UPDATE personnage SET visibilite = 'tous' WHERE id = 'vis'").run();
+  assert.deepEqual(spectateurs('vis'), Object.keys(UTILISATEURS).sort());
+  assert.deepEqual(voit('dan', 'vis'), ['tous']);
+});
+
+test('groupes de jeu : une fiche inscrite par membre et par groupe, visible des seuls membres de ce groupe ; en inscrire une autre désinscrit la première', () => {
+  personnageValide('alice-a');
+  personnageValide('alice-b');
+  personnageValide('bob-a', { proprietaire_id: 'bob' });
+  inserer('groupe', { id: 'campagne', nom: 'La campagne', nature: 'campagne', cree_le: INSTANT });
+  inserer('groupe', { id: 'os', nom: 'Un one-shot', nature: 'one_shot', cree_le: INSTANT });
+  assert.throws(() => inserer('groupe', { id: 'ko', nom: 'ko', nature: 'tournoi', cree_le: INSTANT }), /CHECK/);
+  for (const [utilisateur_id, role, personnage_id] of [['claire', 'mj', null], ['alice', 'joueur', 'alice-a'], ['bob', 'joueur', null]]) {
+    inserer('groupe_membre', { groupe_id: 'campagne', utilisateur_id, role, personnage_id, rejoint_le: INSTANT });
+  }
+  assert.deepEqual(spectateurs('alice-a'), ['alice', 'bob', 'claire', 'root'], 'inscrite : visible des membres du groupe');
+  assert.deepEqual(voit('bob', 'alice-a'), ['groupe']);
+  assert.equal(db.prepare("SELECT groupe_id FROM v_personnage_visible WHERE personnage_id = 'alice-a' AND utilisateur_id = 'bob'").get().groupe_id, 'campagne');
+  assert.deepEqual(spectateurs('alice-b'), ['alice', 'root'], 'ses autres fiches restent cachées');
+  assert.throws(() => inserer('groupe_membre', { groupe_id: 'campagne', utilisateur_id: 'alice', role: 'joueur', personnage_id: 'alice-b', rejoint_le: INSTANT }), /UNIQUE|PRIMARY/, 'une seule fiche par groupe');
+
+  db.prepare("UPDATE groupe_membre SET personnage_id = 'alice-b' WHERE groupe_id = 'campagne' AND utilisateur_id = 'alice'").run();
+  assert.deepEqual(spectateurs('alice-a'), ['alice', 'root'], 'la fiche remplacée est désinscrite');
+  assert.deepEqual(spectateurs('alice-b'), ['alice', 'bob', 'claire', 'root']);
+
+  // Un autre groupe : la fiche qu'on y inscrit n'est visible que de ses membres
+  inserer('groupe_membre', { groupe_id: 'os', utilisateur_id: 'dan', role: 'mj', personnage_id: null, rejoint_le: INSTANT });
+  inserer('groupe_membre', { groupe_id: 'os', utilisateur_id: 'alice', role: 'joueur', personnage_id: 'alice-a', rejoint_le: INSTANT });
+  assert.deepEqual(spectateurs('alice-a'), ['alice', 'dan', 'root']);
+  assert.deepEqual(spectateurs('alice-b'), ['alice', 'bob', 'claire', 'root'], 'dan ne voit pas la fiche de la campagne');
+
+  // On inscrit sa propre fiche ou un prétiré
+  assert.deepEqual(db.prepare('SELECT * FROM v_groupe_controle').all(), []);
+  db.prepare("UPDATE groupe_membre SET personnage_id = 'alice-a' WHERE groupe_id = 'campagne' AND utilisateur_id = 'bob'").run();
+  assert.deepEqual(db.prepare('SELECT groupe_id, utilisateur_id, regle, detail FROM v_groupe_controle').all().map((r) => ({ ...r })),
+    [{ groupe_id: 'campagne', utilisateur_id: 'bob', regle: 'fiche_d_un_autre', detail: 'alice-a' }]);
+  db.prepare("UPDATE groupe_membre SET personnage_id = 'pretire-1' WHERE groupe_id = 'campagne' AND utilisateur_id = 'bob'").run();
+  assert.deepEqual(db.prepare('SELECT * FROM v_groupe_controle').all(), []);
+
+  // Une fiche supprimée est désinscrite ; un groupe supprimé emporte ses membres
+  db.prepare("DELETE FROM personnage WHERE id = 'alice-b'").run();
+  assert.equal(db.prepare("SELECT personnage_id FROM groupe_membre WHERE groupe_id = 'campagne' AND utilisateur_id = 'alice'").get().personnage_id, null);
+  db.prepare("DELETE FROM groupe WHERE id = 'os'").run();
+  assert.equal(db.prepare("SELECT count(*) AS n FROM groupe_membre WHERE groupe_id = 'os'").get().n, 0);
+  assert.deepEqual(spectateurs('alice-a'), ['alice', 'root']);
+  assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, 0);
 });

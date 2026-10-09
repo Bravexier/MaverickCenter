@@ -13,7 +13,7 @@ la citer depuis une source (`sources:` dans le frontmatter) ou la laisser absent
 
 ## Décisions du propriétaire
 
-`docs/decisions-regles.md` : les choix tranchés quand les sources se contredisent (27 races, mono-classe, budgets exacts, Calme, Mode Hyper +15/+7, Archimage magique, sens des relations entre peuples, onglet de race source, Drassah'thac hybride, Corruption et Potentiel Illimité mono-magie, puissance magique 5 au niveau 16, 2 santé pour 1 chakra manquant…).
+`docs/decisions-regles.md` : les choix tranchés quand les sources se contredisent (27 races, mono-classe, budgets exacts, Calme, Mode Hyper +15/+7, Archimage magique, sens des relations entre peuples, onglet de race source, Drassah'thac hybride, Corruption et Potentiel Illimité mono-magie, puissance magique 5 au niveau 16, 2 santé pour 1 chakra manquant, croix des caractéristiques, Corruption acquise des Elfes noirs Charbon et Felfes noirs…).
 Les suivre ; ne jamais en déduire d'autres.
 
 ## Vision à long terme
@@ -49,7 +49,7 @@ stables, SQL portable, modifications historisées, règles en données, moteur p
 | `deploy/` | Paquet d'hébergement NAS (nginx + Docker, mot de passe) **jusqu'à la 1.0**, inchangé : `build.sh` qui le génère, `update-nas.sh` (mise à jour auto depuis la branche `site`, reconstruite depuis `dev`). `deploy/installateur/` : l'hébergement **à partir de la 1.0** — `installateur.sh` (modèle) et `fabriquer.mjs` → un installateur `.sh` autonome par livraison, mode **prod** (serveur normal) ou **test** (copie le `db/` du serveur normal à l'installation) ; `mise-a-jour.sh` exécute le dernier du mode de l'instance ; `fabriquer.sh prod\|test` à la main |
 | `tools/flux-git/`, `.github/workflows/` | Flux Git (`docs/flux-git.md`) : `regles.mjs` (pur, testé), `cli.mjs` (le bot) ; `garde-branches.yml` (création, PR, et balayage de toutes les branches toutes les 6 h), `livraison.yml` (versions, puis le site sur la branche `site` avant la 1.0 ou les installateurs en *releases* ensuite ; refuse si le dépôt n'est pas privé), `ci.yml` ; règles GitHub importables dans `.github/rulesets/` |
 | `tools/build-artifact.mjs` | Version « portable » (liens relatifs, CSS/JS inline) publiée comme page privée claude.ai |
-| `data/schema.sql`, `data/rows/` | **Base SQLite** : structure (156 tables STRICT, FTS5, 32 vues) et lignes versionnées (1015 pages + 7 domaines ; les 14 tables des fiches de personnages, section 13, restent vides). Depuis `client/` : `npm run db:build` (→ `var/maverick.db`, ignoré par git), `db:check`, `db:pages-check` / `db:sync-pages` (pages des `.md` → `data/rows`), `db:init` (base vide), `db:doc` (régénère `docs/sql/structure.md` et `apercu.md`), `db:migrate` (changement de schéma : `data/migrations/`). Chaque table d'entités a une colonne `remarque` (texte libre, vide par défaut) qui reprend les notes de cellule des classeurs. Le site en tire ses pages (fichiers `.md` fabriqués au build) et l'onglet **DB** (`/donnees/` : toutes les tables, et la base en téléchargement `/donnees/maverick.db`) ; les lignes typées ne se réimportent pas encore depuis les classeurs. Voir `docs/sql/remplissage.md`. |
+| `data/schema.sql`, `data/rows/` | **Base SQLite** : structure (160 tables STRICT, FTS5, 34 vues) et lignes versionnées (1015 pages + 7 domaines ; les 18 tables des fiches de personnages et des groupes de jeu, section 13, restent vides). Depuis `client/` : `npm run db:build` (→ `var/maverick.db`, ignoré par git), `db:check`, `db:pages-check` / `db:sync-pages` (pages des `.md` → `data/rows`), `db:init` (base vide), `db:doc` (régénère `docs/sql/structure.md` et `apercu.md`), `db:migrate` (changement de schéma : `data/migrations/`). Chaque table d'entités a une colonne `remarque` (texte libre, vide par défaut) qui reprend les notes de cellule des classeurs. Le site en tire ses pages (fichiers `.md` fabriqués au build) et l'onglet **DB** (`/donnees/` : toutes les tables, et la base en téléchargement `/donnees/maverick.db`) ; les lignes typées ne se réimportent pas encore depuis les classeurs. Voir `docs/sql/remplissage.md`. |
 | `api/` | Services CRUD de personnages (Node sans dépendance + .NET). Non utilisés par le site pour l'instant. |
 | `docs/` | `sources.md`, `content-guide.md`, `character-generator.md` |
 
@@ -154,9 +154,12 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   `db:export-pages` efface alors le `.md` : vérifier la sortie de `db:sync-pages` avant d'exporter. `test/guide.test.mjs` épingle le plan.
 - `npm run autolink` (aperçu) / `-- --write` : maillage automatique des pages, voir `docs/content-guide.md`.
 - Le générateur ne gère ni compétences, ni équipement, ni dés (voir `docs/character-generator.md`).
-- **Fiches de personnages** (section 13 de `data/schema.sql`, migration `0011-personnages`) : les tables gardent les **choix** du joueur (race, ethnie, magies, classes, caractéristiques de base, points de compétences,
+- **Fiches de personnages** (section 13 de `data/schema.sql`, migration `0011-personnages`) : les tables gardent les **choix** du joueur (race, ethnie, magies, classes, caractéristiques de base et croix (R19), points de compétences,
   gains de niveau, dons à choix, sorts et NM, équipement), cellule de la fiche auto V15.2.2 citée en commentaire ; **rien de ce que la fiche calcule n'est stocké** (niveaux, santé, totaux…).
   `v_personnage_niveau` (R2) et `v_personnage_controle` (une ligne par règle enfreinte, vide pour une fiche `valide`) ; `test/personnages-db.test.mjs` écrit dans une copie de la base.
+  Demande du propriétaire : fiche de **joueur** (visible de lui seul et des administrateurs, ouvrable à des utilisateurs désignés, à tous les MJ ou à tous) ou **prétiré** (à personne, visible par tous) ;
+  **groupes** de jeu (one-shot, campagne) : une fiche inscrite par membre et par groupe, visible des membres de ce groupe ; rôles cumulables `mj`, `editeur`, `admin` (`utilisateur_role`).
+  Qui voit quoi : `v_personnage_visible` ; inscriptions : `v_groupe_controle` (voir `docs/character-generator.md`, « Fiches dans la base »).
   Les tables restent **vides dans `data/rows`** (les fiches réelles vivront dans la base du serveur, jamais dans git ni dans `/donnees/maverick.db`). Les bugs de la fiche relevés (non reproduits) sont dans `docs/sql/a-valider.md` §3.
 
 ## Conventions de travail

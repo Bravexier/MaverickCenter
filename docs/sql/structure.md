@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 11 : 156 tables, 2 tables de recherche plein texte (FTS5) et 32 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 11 : 160 tables, 2 tables de recherche plein texte (FTS5) et 34 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -20,7 +20,7 @@
 - [10. TRANSVERSAL : notes de cellule et écarts entre sources](#10-transversal--notes-de-cellule-et-écarts-entre-sources) : `note_cellule`, `ecart_source`, `correction`
 - [11. TABLES DÉRIVÉES (jamais exportées dans data/rows/, recalculées par `npm run db:build`)](#11-tables-dérivées-jamais-exportées-dans-datarows-recalculées-par-npm-run-dbbuild) : `lien`, `lien_candidat`, `page_fts`, `entite_fts`
 - [12. VUES (toujours à jour : rien à recalculer)](#12-vues-toujours-à-jour--rien-à-recalculer) : `cle_page`, `lien_page`, `lien_a_creer`, `tag`, `v_magie_incompatible`, `v_sort_bonus_au_nm`, `v_race_carac_borne`, `v_race_classe_accessible`, `v_race_magie_accessible`, `v_regard_peuple`, `v_creature_magie`, `v_creature_resistance`, `v_creature_sort`, `v_creature_cout_invocation`, `v_creature_meme_bloc`, `v_arme`, `v_ingredient_possible`, `v_ressource_recette`, `v_metier_recette`, `v_potion`, `v_arme_composee`, `v_armure_piece`, `v_niveau`, `v_competence`, `v_resistance_magie_lectures`, `v_resistance_ecart`, `v_mode_hyper_lectures`, `v_classe_capacite`, `v_capacite_exclusive`, `v_capacite_partagee`
-- [13. PERSONNAGES : les vraies fiches des joueurs (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-des-joueurs-saisie-jamais-importée--migration-0011) : `utilisateur`, `personnage`, `personnage_classe`, `personnage_caracteristique`, `personnage_competence`, `personnage_progression`, `personnage_capacite`, `personnage_sort`, `personnage_maitrise_arme`, `personnage_arme`, `personnage_armure`, `personnage_bouclier_materiau`, `personnage_accessoire`, `personnage_inventaire`, `v_personnage_niveau`, `v_personnage_controle`
+- [13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-joueurs-et-prétirés-les-groupes-de-jeu-et-la-visibilité-saisie-jamais-importée--migration-0011) : `utilisateur`, `utilisateur_role`, `personnage`, `personnage_partage`, `personnage_classe`, `personnage_caracteristique`, `personnage_competence`, `personnage_progression`, `personnage_capacite`, `personnage_sort`, `personnage_maitrise_arme`, `personnage_arme`, `personnage_armure`, `personnage_bouclier_materiau`, `personnage_accessoire`, `personnage_inventaire`, `groupe`, `groupe_membre`, `v_personnage_niveau`, `v_personnage_visible`, `v_groupe_controle`, `v_personnage_controle`
 
 ## 0. FAMILLES D'IMPORT
 
@@ -2870,28 +2870,38 @@ Capacités écrites à l'identique (nom, type, effet, note de cellule) à plusie
 | `nb_emplacements` | — | non |  |  |
 | `premiere_id` | — | non |  |  |
 
-## 13. PERSONNAGES : les vraies fiches des joueurs (saisie, jamais importée ; migration 0011)
+## 13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)
 
 ### `utilisateur`
 
-Personne qui se connecte au site. Connexion par Discord à la 1.0 (docs/feuille-de-route.md, « Authentification ») : on ne garde que l'identifiant Discord (immuable) et le nom d'affichage, jamais de mot de passe ni de jeton. Un compte local de secours (administrateur) n'a pas d'identifiant Discord.
+Personne qui se connecte au site. Connexion par Discord à la 1.0 (docs/feuille-de-route.md, « Authentification ») : on ne garde que l'identifiant Discord (immuable) et le nom d'affichage, jamais de mot de passe ni de jeton. Un compte local de secours (administrateur) n'a pas d'identifiant Discord. Tout utilisateur connecté est lecteur ; les autres rôles sont dans utilisateur_role.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `id` | TEXT | oui | PK | identifiant stable du site, jamais réutilisé |
 | `discord_id` | TEXT | non | unique | « snowflake » Discord ; NULL = compte local de secours |
 | `nom_affichage` | TEXT | oui |  |  |
-| `role` | TEXT | oui |  | correspondance rôle Discord -> rôle du site : configuration, pas donnée |
 | `cree_le` | TEXT | oui |  |  |
+
+### `utilisateur_role`
+
+Rôles d'un utilisateur, cumulables (la correspondance rôle Discord -> rôle du site est une configuration, pas une donnée) : 'mj' = maître du jeu (le « groupe MJ » : cible de la visibilité 'mj' d'une fiche), 'editeur' = modifie les règles (phase 2), 'admin' = voit et gère tout.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `utilisateur_id` | TEXT | oui | PK 1, → utilisateur.id |  |
+| `role` | TEXT | oui | PK 2 |  |
 
 ### `personnage`
 
-Une fiche de personnage : le haut de l'onglet Personnage (identité, magies, alignement, bourse, expérience) et les choix uniques.
+Une fiche de personnage : le haut de l'onglet Personnage (identité, magies, alignement, bourse, expérience) et les choix uniques. Deux natures (demande du propriétaire) : la fiche d'un JOUEUR, qu'il crée pour son personnage (visible de lui seul et des administrateurs, sauf ce qu'il ouvre : visibilité, partage, inscription dans un groupe), et le PRÉTIRÉ, qui n'appartient à personne et que tout le monde voit.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `id` | TEXT | oui | PK | identifiant stable, jamais réutilisé (un personnage renommé le garde) |
-| `proprietaire_id` | TEXT | non | → utilisateur.id | joueur ; NULL = fiche sans compte (PNJ du MJ, import d'une fiche Google) |
+| `nature` | TEXT | oui |  |  |
+| `proprietaire_id` | TEXT | non | → utilisateur.id | joueur qui l'a créée ; NULL exactement pour un prétiré |
+| `visibilite` | TEXT | oui |  |  |
 | `statut` | TEXT | oui |  | 'valide' : v_personnage_controle doit être vide pour elle |
 | `nom` | TEXT | oui |  | « NOM » (F1) |
 | `surnom` | TEXT | non |  | « Surnom » (P1) |
@@ -2924,6 +2934,15 @@ Une fiche de personnage : le haut de l'onglet Personnage (identité, magies, ali
 | `cree_le` | TEXT | oui |  |  |
 | `modifie_le` | TEXT | oui |  |  |
 
+### `personnage_partage`
+
+Utilisateurs à qui le propriétaire montre sa fiche en plus de sa visibilité (« un utilisateur spécifique », plusieurs possibles).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
+| `utilisateur_id` | TEXT | oui | PK 2, → utilisateur.id |  |
+
 ### `personnage_classe`
 
 Classes du personnage : « CLASSE » 1 (A9) et 2 (A11), chacune avec sa spécialité (I9, I11 : choisie au niveau de classe 10). Les niveaux de classe se déduisent de l'XP et du mode (v_personnage_niveau), ils ne sont pas stockés.
@@ -2944,8 +2963,7 @@ Valeur de base de chaque caractéristique (E18, M18, U18, E19, M19, U19), choisi
 | `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
 | `caracteristique_id` | TEXT | oui | PK 2, → caracteristique.id |  |
 | `base` | INTEGER | oui |  |  |
-| `croix_1` | INTEGER | oui |  | 1re case à cocher de la ligne (H18…) : regle_constante 'competence.croix_1_malus' |
-| `croix_2` | INTEGER | oui |  | 2e case (I18…) : 'competence.croix_2_malus' ; sens à confirmer (docs/sql/a-valider.md) |
+| `croix` | INTEGER | oui |  | croix sous la caractéristique (cases H18, I18…), décision R19 : handicap ou malus (blessure grave, trauma, maladie, mauvaise nuit) ; 1 = −20 % à tout test de la caractéristique, 2 = ses compétences ne sont plus utilisables (regle_constante 'competence.croix_1_malus', 'competence.croix_2_malus') |
 
 ### `personnage_competence`
 
@@ -3066,6 +3084,29 @@ Matériaux du bouclier (AF26, AJ26, AN26 et leurs quantités AH27, AL27, AP27) :
 | `quantite` | INTEGER | oui |  |  |
 | `ressource_id` | TEXT | non | → ressource.id |  |
 
+### `groupe`
+
+Groupe de jeu : la table d'un one-shot (« OS ») ou d'une campagne. Ses membres voient les fiches qui y sont inscrites.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | TEXT | oui | PK |  |
+| `nom` | TEXT | oui |  |  |
+| `nature` | TEXT | oui |  |  |
+| `cree_le` | TEXT | oui |  |  |
+
+### `groupe_membre`
+
+Membres d'un groupe et fiche inscrite (demande du propriétaire) : un joueur peut être dans plusieurs groupes et avoir plusieurs fiches, mais n'inscrit qu'UNE fiche par groupe : une ligne par (groupe, membre), et inscrire une autre fiche remplace `personnage_id` (la précédente est désinscrite). La fiche inscrite devient visible de tous les membres du groupe, et d'eux seuls : ses autres fiches restent cachées (v_personnage_visible). On inscrit sa propre fiche ou un prétiré (v_groupe_controle).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `groupe_id` | TEXT | oui | PK 1, → groupe.id |  |
+| `utilisateur_id` | TEXT | oui | PK 2, → utilisateur.id |  |
+| `role` | TEXT | oui |  | MJ de la table ou joueur |
+| `personnage_id` | TEXT | non | → personnage.id | fiche inscrite ; NULL = aucune (membre qui n'a pas encore inscrit de fiche, MJ) |
+| `rejoint_le` | TEXT | oui |  |  |
+
 ### `v_personnage_niveau`
 
 *vue*
@@ -3079,11 +3120,37 @@ Niveau global et niveaux de classe d'un personnage. Niveau global = plus haut ni
 | `niveau_classe_1` | — | non |  |  |
 | `niveau_classe_2` | — | non |  |  |
 
+### `v_personnage_visible`
+
+*vue*
+
+Qui voit quelle fiche (demande du propriétaire) : une ligne par (fiche, utilisateur, motif) ; un utilisateur voit une fiche s'il a au moins une ligne. Motifs : 'proprietaire' ; 'admin' (toutes les fiches) ; 'tous' (visibilité 'tous', donc tout prétiré) ; 'mj' (visibilité 'mj' : utilisateurs de rôle 'mj') ; 'groupe' (membres du groupe `groupe_id` où la fiche est inscrite) ; 'partage' (utilisateur désigné par le propriétaire).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | non |  |  |
+| `utilisateur_id` | TEXT | non |  |  |
+| `motif` | — | non |  |  |
+| `groupe_id` | TEXT | non |  |  |
+
+### `v_groupe_controle`
+
+*vue*
+
+Contrôle des inscriptions dans les groupes : une ligne par anomalie (vide = conforme). Un membre inscrit sa propre fiche ou un prétiré.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `groupe_id` | TEXT | non |  |  |
+| `utilisateur_id` | TEXT | non |  |  |
+| `regle` | — | non |  |  |
+| `detail` | TEXT | non |  |  |
+
 ### `v_personnage_controle`
 
 *vue*
 
-Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, décisions R2, R3, R8, R11, R15) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts) n'est pas ici. Une fiche 'brouillon' peut avoir des lignes, une fiche 'valide' non (test).
+Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Une fiche 'brouillon' peut avoir des lignes, une fiche 'valide' non (test).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

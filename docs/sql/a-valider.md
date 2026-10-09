@@ -1,7 +1,7 @@
 # Ce qu'il reste à valider sur la base de données
 
 Deux listes : les **choix de forme** du schéma (ce que tu peux relire dans [`apercu.md`](apercu.md)) et les **questions de contenu** que les sources ne tranchent pas.
-Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R13) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
+Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R20) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
 
 ## 1. Choix de forme du schéma
 
@@ -58,13 +58,14 @@ La base des fiches (section 13, `docs/character-generator.md`, « Fiches dans la
 | B2 | Personnage!I63:L67 | Les dons de la **classe 2** s'ouvrent selon `$G$9`, le niveau de la classe 1 (une 2ᵉ classe d'un mono-classe, niveau 2 au niveau global 11, recevrait d'emblée ses dons de niveau 10 à 20) | Le niveau de la classe 2 (`v_personnage_niveau.niveau_classe_2`) |
 | B3 | Personnage!L65 | Compare `$C$65` à la cellule `C65` de l'onglet de classe au lieu de `C64` (l'effet du 2ᵉ don de niveau 15 de la classe 2 ne s'affiche jamais) | La capacité choisie, lue dans `capacite` |
 | B4 | BDD!H40, I40, BB2 | Liste des classes magiques écrite en dur (9 classes) ; la classe 2 n'a pas le bonus d'AM de sa spécialité ; les 2ᵉ spécialités des classes raciales et du Flagelleur (décision R7) sont oubliées | `categorie_classe.am_base` et `lib/classe-bonus.mjs` (R6, R7) |
-| B5 | BDD!AK6 contre BDD!BB2 | Puissance magique 5 à partir du niveau **17** (`W8>16`) pour les paliers de sorts, mais du niveau **16** (`W8>=16`) pour le nombre de sorts ; le guide dit 16 | `v_niveau` garde les deux (`puissance_magique_max_feuille`, `puissance_magique_max_guide`) : **à trancher** (16 probable) |
+| B5 | BDD!AK6 contre BDD!BB2 | Puissance magique 5 à partir du niveau **17** (`W8>16`) pour les paliers de sorts, mais du niveau **16** (`W8>=16`) pour le nombre de sorts | **Décidé : niveau 16** (R16) ; `v_personnage_controle` lit `niveau_global`, `seuil_niveau` garde la formule de la fiche comme trace |
 
-Questions ouvertes :
+Questions :
 
 | # | Question | Ce que fait la base en attendant |
 | --- | --- | --- |
-| Q1 | Que signifient les deux cases à cocher de chaque caractéristique (H18, I18…) ? La fiche retire 20 (1ʳᵉ case) ou 1 000 (2ᵉ) aux compétences de la caractéristique (`competence.croix_1_malus`, `competence.croix_2_malus`) | Les deux cases sont gardées (`personnage_caracteristique.croix_1`, `croix_2`), sans autre effet |
-| Q2 | Corruption en **magie acquise** : la fiche (BDD!F2) la retire toujours de la liste des magies acquises, même pour l'Elfe Noir Charbon et le Felfe Noir ; la décision R15 dit seulement « mono-magie, excepté pour… » | `v_personnage_controle` applique R15 seul : la Corruption acquise n'est pas refusée pour ces deux ethnies |
-| Q3 | Où vivent les fiches réelles et faut-il reprendre les fiches Google existantes ? | Tables vides dans `data/rows` ; base du serveur à la 1.0 (édition, connexion Discord) |
+| Q1 | Que signifient les deux cases à cocher de chaque caractéristique (H18, I18…) ? | **Décidé : les croix** (R19) : 1 croix = −20 % à tout test de la caractéristique, 2 = plus utilisable ; colonne `personnage_caracteristique.croix` (0 à 2) |
+| Q2 | Corruption en **magie acquise** pour l'Elfe Noir Charbon et le Felfe Noir, que la fiche (BDD!F2) refuse toujours | **Décidé : permise** (R20, modification récente pas encore sur la fiche) |
+| Q3 | Les personnages déjà en jeu, que les joueurs ont remplis dans leur copie de la fiche auto (Google Sheets) : faut-il les reprendre dans la base ? Le Drive accessible ne montre que les modèles (V15.0.5, V15.2.2, V1.1, « Proposition Fiche de personnage Maverick ») | Rien n'est importé ; une reprise lirait les cellules citées en commentaire des tables |
+| Q4 | Un joueur qui prend un **prétiré** dans un groupe joue-t-il la fiche partagée (son état en jeu, santé ou XP, est alors commun à toutes les tables qui l'utilisent) ou une **copie** qui devient sa fiche ? | Les deux sont possibles : `groupe_membre.personnage_id` accepte un prétiré, et une copie serait une fiche `joueur` ordinaire |
 

@@ -1,0 +1,1 @@
+-- data/rows/personnage_partage.sql : export déterministe, une instruction par ligne, triée par (personnage_id, utilisateur_id). NE PAS ÉDITER À LA MAIN.

@@ -6590,6 +6590,11 @@ Le Potentiel Illimité détermine aléatoirement le bonus.
 Le point donné par la magie permet d’atteindre 5 dans la caractéristique associée et un minimum de 2 dans la caractéristique associée. Il se note derrière en cochant la petite case bleu clair.
 
 ***!!! Seule la magie INNÉE va donner un bonus de 1 à une caractéristique !!!***
+
+Il existe des situations ou bien des altérations d''état qui sont capables de mettre des malus sur les caractéristiques, comme les maladies ou bien une mauvaise nuit, il se manifeste sur la fiche sous l''apparence de croix sous la caractéristique :
+
+- 1 croix, malus de 20% pour tout test en rapport avec cette caractéristique.
+- 2 croix, impossibilité d''utiliser les compétences liées à cette caractéristique.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-classe', 'guide', 'fiche-classe', 'Fiche de personnage : Classe', 'fiche-de-personnage-classe', 'La Classe d''un personnage représente sa façon de se battre sur le champ de bataille, chaque classe possède son lot d''avantages qui lui permet d''être utile dans des situations bien précises ou bien de manière générale.', NULL, 'C''est là où sont notées les différentes classes de votre personnage, plus d''infos sur les classes en elles-mêmes [ici](https://docs.google.com/spreadsheets/u/0/d/1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs/edit).
 
