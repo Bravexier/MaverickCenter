@@ -36,11 +36,8 @@ const magie = magies?.magies.get(entry.id) ?? null;
 const Content = magie ? null : (await render(entry)).Content; // le gabarit des magies ne rend pas le Markdown
 const mentions = outgoing.get(entry.id) ?? [];
 const mentionedBy = incoming.get(entry.id) ?? [];
-const statusNote = {
-  example: 'Contenu d’exemple : à remplacer par le contenu réel du codex.',
-  draft: 'Brouillon importé : pas encore relu par le MJ.',
-  verified: '',
-}[entry.data.status];
+// Seules les pages d'exemple ont un bandeau : plus de bandeau « brouillon » sur les pages `draft` (demande du propriétaire).
+const statusNote = entry.data.status === 'example' ? 'Contenu d’exemple : à remplacer par le contenu réel du codex.' : '';
 ---
 
 <Base title={entry.data.title} description={entry.data.summary}>
