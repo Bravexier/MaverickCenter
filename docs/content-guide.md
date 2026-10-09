@@ -71,7 +71,7 @@ absente de cette liste vient après les autres, par titre. Chaque race n'y a que
 raciale ; le tableau du bas de page donne les magies innées, la page de la race sa classe raciale.
 
 **Tableaux des magies** (demande du propriétaire, qui remplacent l'ancienne page `/wiki/races-et-magies/`, supprimée) : en bas de `/wiki/races/`, les magies innées
-de chaque race (`components/magie/TableauMagiesInnees.astro`, lignes rangées comme les deux listes) ; sous la carte de `/wiki/magies/`, les relations entre
+de chaque race (`components/magie/TableauMagiesInnees.astro`, lignes rangées comme les deux listes, sans ligne de séparation entre pures et hybrides) ; sous la carte de `/wiki/magies/`, les relations entre
 magies (`TableauRelationsMagies.astro`), sans ligne ni colonne pour le Potentiel Illimité (demande du propriétaire : il « ne sert pas vraiment » ici ; sa page garde
 ses relations). Les magies y sont dans l'ordre du classeur (`magie.ordre`, `ordreDesMagies` de `lib/magies.ts`) et dans leur couleur
 (`couleurDeMagie`) : colonnes teintées et une pastille de la couleur par magie innée, lignes teintées pour les relations. En-têtes verticaux et largeur fixe

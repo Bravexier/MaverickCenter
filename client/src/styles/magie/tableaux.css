@@ -35,8 +35,7 @@
 .tableau-magies__vertical { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; line-height: 1; }
 
 .tableau-magies tbody .tableau-magies__nom { text-align: left; padding-inline: 0.5rem; font-weight: normal; overflow-wrap: anywhere; }
-.tableau-magies .tableau-magies__groupe th { text-align: left; padding: 0.35rem 0.5rem; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-.tableau-magies--innees tbody tr:not(.tableau-magies__groupe):hover { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.tableau-magies--innees tbody tr:hover { background: color-mix(in srgb, var(--accent) 9%, transparent); }
 
 .tableau-magies__point {
   display: inline-block;
@@ -73,8 +72,7 @@
   .tableau-magies__col-nom { width: 5.4rem; }
   .tableau-magies__col-total { width: 1.7rem; }
   .tableau-magies tbody .tableau-magies__nom,
-  .tableau-magies thead .tableau-magies__coin,
-  .tableau-magies .tableau-magies__groupe th { padding-inline: 0.3rem; }
+  .tableau-magies thead .tableau-magies__coin { padding-inline: 0.3rem; }
   .tableau-magies__point { width: 0.55rem; height: 0.55rem; }
   .tableau-magies__entete a::after { width: 0.55rem; height: 0.55rem; }
   .tableau-magies__ligne .tableau-magies__nom .tableau-magies__point { margin-right: 0.25rem; }
