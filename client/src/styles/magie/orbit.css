@@ -43,6 +43,19 @@
 .magies-legende line { stroke: var(--muted); stroke-width: 1.6; }
 .magies-legende path { fill: var(--muted); }
 .magies-legende .magies-legende__arete { fill: none; stroke: var(--bg); stroke-width: 1.4; stroke-linecap: round; }
+
+/* Bascule « au survol » (radios, sans JavaScript) : « Afficher les relations » (par défaut) cache l'infobulle de description, « Afficher les détails »
+   cache les relations et leur légende ; sinon l'infobulle se pose sur les traits. Sous 60rem, il n'y a pas de relations : l'infobulle reste. */
+.magies-mode { display: inline-flex; padding: 2px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
+.magies-mode__choix { position: relative; padding: 0.2rem 0.8rem; border-radius: 999px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.magies-mode__choix input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.magies-mode__choix:hover { color: var(--text); }
+.magies-mode__choix:has(input:checked) { background: var(--accent-soft); box-shadow: inset 0 -2px 0 var(--accent); color: var(--text); font-weight: 600; }
+.magies-mode__choix:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media not all and (max-width: 60rem) {
+  .magies-carte:has(.magies-mode input[value="relations"]:checked) .magies-orbite__noeud::after { display: none; }
+}
+.magies-carte:has(.magies-mode input[value="details"]:checked) :is(.magies-orbite__relations, .magies-legende__relation) { display: none; }
 .magies-orbite__liste { margin: 0; padding: 0; list-style: none; }
 .magies-orbite__lien line { vector-effect: non-scaling-stroke; stroke-width: 1.5; }
 .magies-orbite__lien--incompatible line { stroke: var(--muted); stroke-dasharray: 3 6; opacity: 0.55; }

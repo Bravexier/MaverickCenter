@@ -109,6 +109,7 @@ const surbrillance = noeuds
   .join('\n');
 ---
 
+<div class="magies-carte">
 <div class="magies-orbite" role="group" aria-label="Carte des magies">
   <svg class="magies-orbite__liens" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
     {
@@ -171,18 +172,25 @@ const surbrillance = noeuds
   </ul>
 </div>
 
-<p class="magies-legende">
-  <span class="magies-legende__item">Survolez une magie pour voir ses relations :</span>
-  <span class="magies-legende__item">
+<div class="magies-legende">
+  <!-- Bascule « au survol » (demande du propriétaire) : les relations (par défaut) ou les détails (l'infobulle de description), jamais les deux,
+       sinon l'infobulle cache les traits. Des boutons radio et des règles :has() de styles/magie/orbit.css : sans JavaScript. -->
+  <span class="magies-legende__item">Au survol d'une magie :</span>
+  <span class="magies-mode" role="radiogroup" aria-label="Au survol d'une magie">
+    <label class="magies-mode__choix"><input type="radio" name="magies-survol" value="relations" checked /> Afficher les relations</label>
+    <label class="magies-mode__choix"><input type="radio" name="magies-survol" value="details" /> Afficher les détails</label>
+  </span>
+  <span class="magies-legende__item magies-legende__relation">
     A
     <svg viewBox="-34 -12 36 24" aria-hidden="true"><line x1="-34" y1="0" x2="-26" y2="0" /><path d={POINTES.epee.dessin} /></svg>
     B : A est efficace contre B
   </span>
-  <span class="magies-legende__item">
+  <span class="magies-legende__item magies-legende__relation">
     A
     <svg viewBox="-34 -12 36 24" aria-hidden="true"><line x1="-34" y1="0" x2="-20" y2="0" /><g transform="translate(-11 0)"><path d={POINTES.bouclier.dessin} /><path class="magies-legende__arete" d={POINTES.bouclier.arete} /></g></svg>
     B : B résiste à A (boucle : résiste à elle-même)
   </span>
-</p>
+</div>
+</div>
 
 <style is:inline set:html={orbiteCss + '\n' + surbrillance}></style>
