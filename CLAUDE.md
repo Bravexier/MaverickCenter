@@ -78,7 +78,8 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   à `/pages/` ; le dossier `src/content/wiki/`, la collection `wiki` et `lib/wiki.ts` gardent leur nom. Une ancienne adresse `/wiki/…` est renvoyée vers la nouvelle par la page 404
   (`legacyWikiRedirect`, `lib/nav.mjs`, testé). `test/site-html.test.mjs` contrôle le site construit (CI après le build).
 - **En-tête** (`layouts/Base.astro`, `styles/global/site-shell.css`) : le logo officiel (`public/logo.webp`, redimensionné) remplace le titre et mène à l'accueil ; rubriques et recherche
-  sur la même bande, à droite du logo, entrées de la rubrique dessous (sous-grille ; sous 60rem, le menu passe sous le logo). Les icônes `favicon.png` (32 px) et `apple-touch-icon.png`
+  sur la même bande, à droite du logo, entrées de la rubrique dessous (sous-grille ; sous 60rem, le menu passe sous le logo). La hauteur de la bande est celle du menu, pas du logo
+  (demande du propriétaire) : l'image est en absolu dans le lien, qui garde sa largeur, et la pointe de l'épée dépasse sous la bordure (`test/site-html.test.mjs`). Les icônes `favicon.png` (32 px) et `apple-touch-icon.png`
   sont tirées du même logo.
 - La publication claude.ai (`node tools/build-artifact.mjs --out <dossier>`) impose : liens relatifs avec `index.html` explicite,
   accueil écrit en fragment (sans `<html>`/`<head>`/`<body>`), aucun script/CSS externe, pas d'impression ni de téléchargement
