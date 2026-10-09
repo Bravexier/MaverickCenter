@@ -65,10 +65,12 @@ race pure (pas de classe raciale). Si le classeur de la fiche est corrigé, reti
 et aux 14 magies innées (décision R14, `HYBRIDES_SANS_CLASSE_RACIALE`). Les 13 races pures en ont 13 ou plus, sauf le Nain (5 magies innées d'après son onglet,
 voir l'exception ci-dessus).
 
-**Liste des races** (`/races/`, `components/RaceList.astro`) : deux colonnes côte à côte, races pures à gauche et hybrides à droite, l'une sous l'autre sur un
-écran étroit. L'ordre est celui du propriétaire (`ORDRE_DES_RACES` dans `lib/race-kinds.mjs`, différent de l'ordre de l'onglet « Race » de la fiche) ; une race
-absente de cette liste vient après les autres, par titre. Chaque race n'y a que son nom et son accroche (demande du propriétaire) : ni magies innées ni classe
-raciale ; le tableau du bas de page donne les magies innées, la page de la race sa classe raciale.
+**Liste des races** (`/races/`, `components/race/RacesPastilles.astro`, CSS `styles/race/liste.css` en `?raw`) : une **pastille par race**, sur le modèle de la
+carte des magies et de la page des classes (demande du propriétaire), en deux groupes côte à côte, races pures à gauche et hybrides à droite, l'un sous l'autre
+sur un écran étroit. Chaque groupe a sa couleur, celle du bandeau des pages de race (`RACE_COLORS` dans `lib/race-kinds.mjs`, source unique : `RacePage.astro`
+la pose aussi) ; repère visuel sans valeur de règle. L'ordre est celui du propriétaire (`ORDRE_DES_RACES`, différent de l'ordre de l'onglet « Race » de la fiche) ;
+une race absente de cette liste vient après les autres, par titre. Une pastille ne porte que le nom de la race ; son accroche est en infobulle (`Bulles.astro`,
+`title` sans JavaScript) ; ni magies innées ni classe raciale : le tableau du bas de page donne les magies innées, la page de la race sa classe raciale.
 
 **Tableaux des magies** (demande du propriétaire, qui remplacent l'ancienne page `/wiki/races-et-magies/`, supprimée) : en bas de `/races/`, les magies innées
 de chaque race (`components/magie/TableauMagiesInnees.astro`, lignes rangées comme les deux listes, sans ligne de séparation entre pures et hybrides) ; sous la carte de `/magies/`, les relations entre

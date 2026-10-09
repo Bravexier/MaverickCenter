@@ -1,7 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import EntryList from '../../components/EntryList.astro';
-import RaceList from '../../components/RaceList.astro';
+import RacesPastilles from '../../components/race/RacesPastilles.astro';
 import ClassesPastilles from '../../components/classes/ClassesPastilles.astro';
 import MagiesConstellation from '../../components/magie/MagiesConstellation.astro';
 import TableauMagiesInnees from '../../components/magie/TableauMagiesInnees.astro';
@@ -35,8 +35,8 @@ const magiesIndex = dbMagies
   : [];
 // Les classes sont présentées en pastilles (sur le modèle de la carte des magies), une colonne par catégorie (voir lib/class-groups.mjs) ; les autres types en liste alphabétique.
 const classGroups = type === 'classes' ? groupClasses(list) : [];
-// Les races sont présentées en deux colonnes, pures à gauche et hybrides à droite, dans l'ordre du propriétaire (lib/race-kinds.mjs) ;
-// nom et accroche seulement. Le tableau des magies innées de toutes les races est en bas de la page.
+// Les races sont présentées en pastilles (sur le modèle de la carte des magies et des classes), pures à gauche et hybrides à droite, dans l'ordre du
+// propriétaire (lib/race-kinds.mjs), l'accroche en infobulle. Le tableau des magies innées de toutes les races est en bas de la page.
 const raceGroups = type === 'races' ? groupRaces(entries) : [];
 // Les dons de classe (pages `capacites/…`) sont rangés par classe (une fiche par don : plus de 600).
 const capaciteGroups = type === 'capacites' ? groupByClass(entries) : [];
@@ -85,14 +85,7 @@ const capaciteDetail = (e: any) => [`Niveau ${e.data.niveau}`, e.data.specialite
       </>
     ) : raceGroups.length > 0 ? (
       <>
-        <div class="race-columns">
-          {raceGroups.map((group) => (
-            <section id={group.key} class="race-column">
-              <h2>{group.label} <span class="muted">({group.entries.length})</span></h2>
-              <RaceList races={group.entries} />
-            </section>
-          ))}
-        </div>
+        <RacesPastilles groups={raceGroups} />
         <section id="magies-innees" aria-labelledby="magies-innees-titre">
           <h2 id="magies-innees-titre">Magies innées par race</h2>
           <p class="legend">Une pastille de la couleur de la magie : la race peut l’avoir en magie innée.</p>

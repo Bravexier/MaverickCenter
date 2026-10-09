@@ -5,6 +5,7 @@ import raceRelationsCss from '../../styles/race/relations.css?raw';
 import { pageHref } from '../../lib/magies';
 import type { RaceDb, Races } from '../../lib/races';
 import { relationsDeRace } from '../../lib/race-relations.mjs';
+import { RACE_COLORS } from '../../lib/race-kinds.mjs';
 import { couleurDeMagie } from '../../lib/sort-format.mjs';
 import { entryHref, url, type WikiEntry } from '../../lib/wiki';
 import Texte from '../magie/Texte.astro';
@@ -48,7 +49,7 @@ const nav = [
 ---
 
 <style is:inline set:html={raceCss}></style>
-<div class={`race race--${hybride ? 'hybride' : 'pure'}`}>
+<div class={`race race--${hybride ? 'hybride' : 'pure'}`} style={`--couleur-race: ${RACE_COLORS[hybride ? 'hybride' : 'pure']}`}>
   <header class="race-hero">
     <p class="race-hero__surtitre">{hybride ? 'Race hybride' : 'Race pure'}</p>
     <h1>{entry.data.title}</h1>

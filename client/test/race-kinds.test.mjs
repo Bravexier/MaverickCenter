@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { groupRaces, HYBRIDES_SANS_CLASSE_RACIALE, ORDRE_DES_RACES, raceKind, racialClassOf, raceOfClass } from '../src/lib/race-kinds.mjs';
+import { groupRaces, HYBRIDES_SANS_CLASSE_RACIALE, ORDRE_DES_RACES, RACE_COLORS, raceKind, racialClassOf, raceOfClass } from '../src/lib/race-kinds.mjs';
 
 const race = (title, slug = title.toLowerCase()) => ({ id: `races/${slug}`, data: { title, tags: ['race'] } });
 const cls = (title, ...tags) => ({ id: `classes/${title.toLowerCase()}`, data: { title, tags: ['classe', ...tags] } });
@@ -57,6 +57,12 @@ test('groupRaces : races pures puis races hybrides, chacune dans l’ordre du pr
 test('groupRaces : une race absente de l’ordre du propriétaire vient après les autres, par titre sans tenir compte des accents', () => {
   const groups = groupRaces([race('Zébu'), race('Écureuil', 'ecureuil'), lamia, humain, ...CLASSES]);
   assert.deepEqual(ids(groups[0].entries), ['races/humain', 'races/lamia', 'races/ecureuil', 'races/zébu']);
+});
+
+test('groupRaces : chaque groupe porte sa couleur (celle du bandeau des pages de race)', () => {
+  const groups = groupRaces([humain, orios, ...CLASSES]);
+  assert.deepEqual(groups.map((g) => [g.key, g.couleur]), [['pures', RACE_COLORS.pure], ['hybrides', RACE_COLORS.hybride]]);
+  assert.notEqual(RACE_COLORS.pure, RACE_COLORS.hybride);
 });
 
 test('ORDRE_DES_RACES : 27 races, chacune une seule fois', () => {

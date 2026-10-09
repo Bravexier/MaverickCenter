@@ -1,0 +1,64 @@
+---
+import listeCss from '../../styles/race/liste.css?raw';
+import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
+import type { groupRaces } from '../../lib/race-kinds.mjs';
+import { idBulle } from '../../lib/magies';
+import { entryHref } from '../../lib/wiki';
+import Bulles from '../magie/Bulles.astro';
+
+// /races/ : races pures et races hybrides côte à côte (lib/race-kinds.mjs#groupRaces, ordre du propriétaire), chaque groupe dans sa couleur (celle du
+// bandeau des pages de race, RACE_COLORS), et une PASTILLE par race sur le modèle de la carte des magies et de la page des classes
+// (components/classes/ClassesPastilles.astro) : pilule bordée et teintée de la couleur, point de couleur, nom en gras. L'accroche de la race est dans une
+// infobulle (components/magie/Bulles.astro ; sans JavaScript, l'attribut `title` du lien en tient lieu). Sur un écran étroit, les groupes passent l'un sous l'autre.
+interface Props {
+  groups: ReturnType<typeof groupRaces>;
+}
+const { groups } = Astro.props;
+const css = [listeCss, magieTooltipsCss].join('\n');
+---
+
+<style is:inline set:html={css}></style>
+<div class="races-pastilles">
+  {
+    groups.map((group) => (
+      <section class="races-groupe" id={group.key} style={`--couleur-race: ${group.couleur}`}>
+        <h2 class="races-groupe__titre">
+          <span class="races-groupe__point" aria-hidden="true" />
+          <span class="races-groupe__nom">{group.label}</span>
+          <span class="races-groupe__compte">{group.entries.length}</span>
+        </h2>
+        <ul class="races-groupe__liste">
+          {group.entries.map((entry) => {
+            const accroche = entry.data.summary;
+            const id = accroche ? idBulle('race') : null;
+            const pastille = (
+              <>
+                <span class="race-pastille__point" aria-hidden="true" />
+                <span class="race-pastille__nom">{entry.data.title}</span>
+              </>
+            );
+            return (
+              <li>
+                {id ? (
+                  <span class="bulle-zone">
+                    <a class="race-pastille" href={entryHref(entry)} data-bulle={id} aria-describedby={id} title={accroche}>
+                      {pastille}
+                    </a>
+                    <span class="bulle" role="tooltip" id={id} hidden>
+                      {accroche}
+                    </span>
+                  </span>
+                ) : (
+                  <a class="race-pastille" href={entryHref(entry)}>
+                    {pastille}
+                  </a>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    ))
+  }
+</div>
+<Bulles />
