@@ -1,7 +1,7 @@
 # Ce qu'il reste à valider sur la base de données
 
 Deux listes : les **choix de forme** du schéma (ce que tu peux relire dans [`apercu.md`](apercu.md)) et les **questions de contenu** que les sources ne tranchent pas.
-Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R11) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
+Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R13) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
 
 ## 1. Choix de forme du schéma
 
@@ -40,7 +40,9 @@ Le statut « décidé » veut dire que tu as tranché (`decisions-regles.md`) **
 | Races | Fautes de saisie de la fiche (« Felfle », « Satyre » avec espace) | **décidé : à corriger** (R10) ; relecture faite dans toute la base (migrations 0003 et 0005) ; les citations de la fiche dans les tableaux d'écarts restent telles quelles |
 | Magies | Orthographe : 205 points laissés tels quels (mot manquant ou en trop, accord douteux, terme du jeu possible, nom de sort dont la correction changerait l'identifiant) | **à valider** : liste dans [`orthographe-a-valider.md`](orthographe-a-valider.md) |
 | Toute la base | Orthographe : 390 phrases et 178 noms laissés tels quels par la passe complète (même raisons ; noms dont la clé changerait) | **à valider** : liste dans [`orthographe-a-valider.md`](orthographe-a-valider.md) |
-| Races | Capacité hyper : deux versions (fiche, guide) divergent pour 8 races ; bonus d'ethnie issu de formules (faux positif probable : Elfe forestier Forêt +3 AP) | ouvert |
+| Races | Sens de lecture de la matrice « Relation entre les races » | **décidé : la case (ligne A, colonne B) dit comment A voit B** (R12) ; vue `v_regard_peuple` |
+| Races | Fiche V15.2.2 contre l'onglet de la race (valeurs de départ, don de base, mode Hyper, dons d'ethnie) | **décidé : l'onglet est la source, écarts non affichés** (R13) ; tables de l'onglet (migration 0006), la fiche reste dans `race`, `ethnie`… |
+| Races | Capacité hyper : deux versions (fiche, guide) divergent pour 8 races ; bonus d'ethnie issu de formules (faux positif probable : Elfe forestier Forêt +3 AP) | la page suit l'onglet (R13 : version `onglet_race`) ; bonus d'ethnie de la fiche : ouvert |
 | Bestiaire | Sigles FPVSIA, « NPM », « EP » non définis ; 6 créatures aux résistances contradictoires ; « Golem d'Argile » sans créature ; 6 sorts cités sur 105 introuvables (3 variantes évidentes comme « Veilliessement ») | ouvert |
 | Équipement | 9 prix de matière incohérents ; deux listes de kits d'alchimie ; tests de fabrication en conflit (Forgeron, Enchanteur) ; unité des prix d'armure et de bouclier | ouvert |
 

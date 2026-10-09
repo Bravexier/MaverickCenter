@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 5;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 6;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -927,7 +927,7 @@ CREATE TABLE mode_super_objet (
 --   version 'onglet_magie'   : classeur V8, bloc « Capacité Mode Hyper » de chaque onglet de magie (15 magies : mono, bi ou forme complète) ;
 --   version 'fiche'          : fiche auto V15.2.2 : Magie!V2:W16 (15 magies mono / bi), Personnage!BI32 (« Effets de base »), Race!W (races) ;
 --   version 'onglet_race'    : classeur « Les races », bloc « Capacité Mode Hyper » de l'onglet de chaque race (décision du propriétaire : PRIME
---                              sur 'fiche' pour les races ; écrit par l'importeur races au lot 4).
+--                              sur 'fiche' pour les races ; migration 0006, `nom` = nom de la capacité, `libelle` = nom de l'onglet).
 --   portee 'general' : effet commun (libelle = « Général » ou le titre de l'encadré) ; 'magie' : une magie ; 'duo' : un couple de magies
 --   (version 'magie_masque') ; 'race' : une race (variante NULL : la source n'en distingue pas).
 --   variante 'mono' / 'bi' : colonnes « Mono magie » / « Bi magie » ; 'mono_et_bi' : cellule fusionnée sur les deux ; 'forme_complete' : Potentiel
@@ -949,6 +949,8 @@ CREATE TABLE mode_hyper_effet (
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('annexes', 'magies', 'races')),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  -- Colonne ajoutée par la migration 0006 (une colonne ajoutée va en dernier)
+  nom           TEXT,                                        -- nom de la capacité quand la source en écrit un (version 'onglet_race' : « Sang du condamné ») ; NULL sinon
   CHECK ((portee = 'general' AND magie_id IS NULL AND magie2_id IS NULL AND race_id IS NULL)
       OR (portee = 'magie'   AND magie_id IS NOT NULL AND magie2_id IS NULL AND race_id IS NULL)
       OR (portee = 'duo'     AND magie_id IS NOT NULL AND magie2_id IS NOT NULL AND race_id IS NULL)
@@ -1395,11 +1397,120 @@ CREATE TABLE race_magie (
 
 CREATE INDEX race_magie_magie ON race_magie (magie_id, accessible);       -- « races qui peuvent avoir la magie M comme magie innée »
 
+-- ▸ CONTENU DE L'ONGLET DE LA RACE : classeur « Les races », un onglet par race (migration 0006). Décision R13 du propriétaire : l'onglet est la SOURCE ; la fiche
+-- V15.2.2 (tables race, ethnie, race_restriction_carac…) en est un dérivé fait à la main, pas toujours à jour, dont les écarts ne sont plus affichés. Les pages
+-- de race du site sont rendues depuis ces tables (lib/races-db.mjs). Textes tels qu'écrits : paragraphes séparés par une ligne vide, retours à la ligne et
+-- puces « - » conservés ; un nombre n'est typé que s'il est écrit en chiffres. Lignes tirées des pages races/<slug> par tools/db/races_onglet.py (preuve :
+-- chaque section se réécrit à l'identique avec le code de tools/sheets/races.py, l'importeur qui a lu les onglets).
+-- RACE_ONGLET : une ligne par race.
+CREATE TABLE race_onglet (
+  race_id              TEXT    NOT NULL PRIMARY KEY REFERENCES race(id),
+  onglet               TEXT    NOT NULL UNIQUE CHECK (length(onglet) > 0),            -- nom de l'onglet : « Elfe Noir », « Namazus »
+  description_generale TEXT    NOT NULL CHECK (length(description_generale) > 0),     -- description générale (A4)
+  histoire             TEXT    NOT NULL CHECK (length(histoire) > 0),                 -- « HISTOIRE » (AK3)
+  description          TEXT    CHECK (description IS NULL OR length(description) > 0),   -- « DESCRIPTION » (AK30) : physique et culture, un bloc pour toute la race
+  -- « DONNÉES » : valeurs de départ de l'onglet (elles priment sur race.sante, race.chakra_depart… de la fiche)
+  sante_depart         INTEGER NOT NULL,                       -- « Santé de départ »
+  chakra_depart        INTEGER NOT NULL,                       -- « Chakra de départ »
+  barriere_bonus       INTEGER NOT NULL,                       -- « Barrière bonus »
+  vitesse_sol          INTEGER NOT NULL,                       -- « Vitesse Sol/Nage » : première valeur
+  vitesse_nage         INTEGER NOT NULL,                       -- « Vitesse Sol/Nage » : seconde valeur
+  avantages            TEXT    NOT NULL CHECK (length(avantages) > 0),       -- « Avantage(s) »
+  inconvenients        TEXT    NOT NULL CHECK (length(inconvenients) > 0),   -- « Inconvénient(s) »
+  don_base             TEXT    NOT NULL CHECK (length(don_base) > 0),        -- « Don B (Base) »
+  -- En-têtes du tableau des ethnies du bloc « Don R (Race) » (NULL : pas de tableau d'ethnies, la race a un don unique ou un tableau en panneaux)
+  dons_rubrique        TEXT    CHECK (dons_rubrique IN ('Type', 'Condition d''origine', 'Magie innée')),   -- 1re colonne : ce qui distingue l'ethnie
+  dons_rubrique_nom    TEXT    CHECK (dons_rubrique_nom IS NULL OR length(dons_rubrique_nom) > 0),          -- colonne du nom du don (« Nom ») ; NULL si absente
+  dons_rubrique_don    TEXT    CHECK (dons_rubrique_don IS NULL OR length(dons_rubrique_don) > 0),          -- colonne du don (« Don »)
+  dons_tableau_titre   TEXT    CHECK (dons_tableau_titre IS NULL OR length(dons_tableau_titre) > 0),        -- nom écrit sur le tableau en panneaux (Drakos : « Écaille draconique »)
+  origine              TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'races'),
+  source_ref           TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  CHECK ((dons_rubrique IS NULL) = (dons_rubrique_don IS NULL)),
+  CHECK (dons_rubrique_nom IS NULL OR dons_rubrique IS NOT NULL)
+) STRICT, WITHOUT ROWID;
+
+-- RACE_DON : dons raciaux de l'onglet, dans son ordre. forme 'ethnie' = une ligne du tableau des ethnies (étiquette = 1re colonne : « Elfe Charbon »,
+-- « Londolor Est », « Eau en innée ») ; 'unique' = le don de toute la race, sans tableau (Elfe doré, Majin, Hujin, Lamia, et « Trompe-mort » du Mort-vivant).
+-- Les ethnies de l'onglet ne portent pas le nom des sous-races de la fiche : `ethnie_id` est la correspondance explicite de l'importeur (ETHNIE_FICHE).
+CREATE TABLE race_don (
+  id          TEXT    NOT NULL PRIMARY KEY,                    -- '<race_id>#don:<slug>'
+  race_id     TEXT    NOT NULL REFERENCES race_onglet(race_id),
+  slug        TEXT    NOT NULL CHECK (length(slug) > 0 AND slug NOT GLOB '*[^a-z0-9-]*' AND slug NOT GLOB '*--*' AND slug NOT GLOB '-*' AND slug NOT GLOB '*-'),   -- normalize(etiquette) ou, pour un don unique, normalize(nom)
+  rang        INTEGER NOT NULL CHECK (rang >= 1),              -- ordre de l'onglet
+  forme       TEXT    NOT NULL CHECK (forme IN ('ethnie', 'unique')),
+  etiquette   TEXT    CHECK (etiquette IS NULL OR length(etiquette) > 0),   -- 1re colonne du tableau des ethnies (retours à la ligne réduits à une espace) ; NULL pour un don unique
+  nom         TEXT    CHECK (nom IS NULL OR length(nom) > 0),               -- nom du don (« Sang corrompu ») ; NULL quand l'onglet n'en écrit pas
+  texte       TEXT    NOT NULL CHECK (length(texte) > 0),                   -- le don, tel qu'écrit
+  ethnie_id   TEXT    REFERENCES ethnie(id),                                -- sous-race de la fiche qui lui correspond ; NULL = aucune (Trompe-mort)
+  origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'races'),
+  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  UNIQUE (race_id, slug),
+  UNIQUE (race_id, rang),
+  CHECK (id = race_id || '#don:' || slug),
+  CHECK ((forme = 'ethnie') = (etiquette IS NOT NULL)),
+  CHECK (forme = 'ethnie' OR nom IS NOT NULL)
+) STRICT;
+
+CREATE INDEX race_don_ethnie ON race_don (ethnie_id) WHERE ethnie_id IS NOT NULL;
+
+-- RACE_DON_TABLEAU_* : le tableau en panneaux du bloc « Don R (Race) » (Drakos : magie innée -> AP/AM, bonus de compétence, cran de résistance ;
+-- Mort-vivant : lieu de résurrection / raison de la mort -> don), cellule par cellule. Une race en a au plus un ; son titre est race_onglet.dons_tableau_titre.
+CREATE TABLE race_don_tableau_colonne (
+  race_id    TEXT    NOT NULL REFERENCES race_onglet(race_id),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),
+  libelle    TEXT    NOT NULL CHECK (length(libelle) > 0),        -- en-tête tel qu'écrit (« Lieu de résurrection\nRaison de la mort »)
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'races'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (race_id, rang)
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE race_don_tableau_ligne (
+  race_id    TEXT    NOT NULL REFERENCES race_onglet(race_id),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),
+  ethnie_id  TEXT    REFERENCES ethnie(id),                      -- sous-race de la fiche qui correspond à la ligne (« Drakos Rouge » pour Feu)
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'races'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (race_id, rang)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX race_don_tableau_ligne_ethnie ON race_don_tableau_ligne (ethnie_id) WHERE ethnie_id IS NOT NULL;
+
+CREATE TABLE race_don_tableau_cellule (
+  race_id    TEXT    NOT NULL,
+  ligne      INTEGER NOT NULL,
+  colonne    INTEGER NOT NULL,
+  valeur     TEXT    NOT NULL CHECK (length(valeur) > 0),         -- texte de la cellule tel qu'écrit (puces « - » et retours à la ligne conservés)
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'races'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (race_id, ligne, colonne),
+  FOREIGN KEY (race_id, ligne) REFERENCES race_don_tableau_ligne (race_id, rang),
+  FOREIGN KEY (race_id, colonne) REFERENCES race_don_tableau_colonne (race_id, rang)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX race_don_tableau_cellule_colonne_fk ON race_don_tableau_cellule (race_id, colonne);
+
+-- RACE_MAGIE_ONGLET : magies innées que l'onglet de la race limite explicitement (ligne « Inconvénient(s) » : « Magie du Feu, Terre, Foudre, Arcane,
+-- Potentiel illimité en inné uniquement »), dans l'ordre où il les cite. Quand une race en a, cette liste PRIME sur la matrice race_magie (décision R11 :
+-- le Nain) ; sinon la matrice fait foi (décision R8). Les 13 races hybrides citent les trois mêmes magies que la matrice.
+CREATE TABLE race_magie_onglet (
+  race_id    TEXT    NOT NULL REFERENCES race_onglet(race_id),
+  magie_id   TEXT    NOT NULL REFERENCES magie(id),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),
+  nom_brut   TEXT    NOT NULL CHECK (length(nom_brut) > 0),       -- nom de la magie dans la liste de l'importeur (« Potentiel Illimité »)
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'races'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (race_id, magie_id),
+  UNIQUE (race_id, rang)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX race_magie_onglet_magie ON race_magie_onglet (magie_id);
+
 -- ▸ RELATIONS ENTRE PEUPLES : classeur « Les races », onglet « Relation entre les races » (page lore/relations-entre-les-races).
 -- Matrice carrée de 69 peuples en lignes et en colonnes ; chaque case porte un niveau de l'échelle (de « Même peuple » à « Ennemie »). La matrice n'est
--- PAS symétrique. SENS NON TRANCHÉ : la légende de l'onglet (« Verticale = Comment le peuple voit les autres », « Horizontale = Comment le peuple est
--- vu par les autres ») se lit de deux façons ; les colonnes portent donc les noms de l'axe (ligne = étiquette de gauche, colonne = étiquette du
--- haut) et non « qui voit qui » : aucune lecture n'est choisie à la place du propriétaire (design.md §12).
+-- PAS symétrique. SENS (décision R12 du propriétaire) : la case (ligne A, colonne B) dit comment A voit B ; la légende de l'onglet (« Verticale = Comment le
+-- peuple voit les autres », « Horizontale = Comment le peuple est vu par les autres ») vise les étiquettes. Les colonnes gardent les noms de l'axe
+-- (ligne = étiquette de gauche, colonne = étiquette du haut) ; la vue v_regard_peuple les nomme « qui voit qui ».
 CREATE TABLE echelle_relation (
   id         TEXT    NOT NULL PRIMARY KEY,                   -- normalize(libelle) : 'meme-peuple', 'alliee', 'appreciee', 'acceptee', 'neutre', 'evitee', 'haine', 'ennemie'
   libelle    TEXT    NOT NULL UNIQUE,                        -- « Même peuple », « Alliée »… tel qu'écrit
@@ -1423,8 +1534,8 @@ CREATE TABLE peuple (
 CREATE INDEX peuple_race ON peuple (race_id) WHERE race_id IS NOT NULL;
 
 CREATE TABLE relation_peuple (
-  ligne_peuple_id   TEXT    NOT NULL REFERENCES peuple(id),                    -- étiquette de GAUCHE de la case
-  colonne_peuple_id TEXT    NOT NULL REFERENCES peuple(id),                    -- étiquette du HAUT de la case
+  ligne_peuple_id   TEXT    NOT NULL REFERENCES peuple(id),                    -- étiquette de GAUCHE de la case : le peuple qui voit (R12)
+  colonne_peuple_id TEXT    NOT NULL REFERENCES peuple(id),                    -- étiquette du HAUT de la case : le peuple vu (R12)
   echelle_id        TEXT    NOT NULL REFERENCES echelle_relation(id),
   origine           TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'races'),
   source_ref        TEXT    NOT NULL CHECK (length(source_ref) > 0),                                          -- « Les races › Relation entre les races › E23:H26 »
@@ -2891,6 +3002,13 @@ CREATE VIEW v_race_classe_accessible AS
 
 CREATE VIEW v_race_magie_accessible AS
   SELECT race_id, magie_id, ordre FROM race_magie WHERE accessible = 1;
+
+-- Regard d'un peuple sur un autre (décision R12 : la case (ligne A, colonne B) de « Relation entre les races » dit comment A voit B).
+-- « Comment les Elfes Noirs Charbon voient-ils les autres ? » : WHERE peuple_id = ? ; « Comment sont-ils vus ? » : WHERE vu_peuple_id = ?.
+-- echelle_ordre : 1 = Même peuple, 2 = Alliée … 8 = Ennemie (du plus favorable au plus défavorable).
+CREATE VIEW v_regard_peuple AS
+  SELECT r.ligne_peuple_id AS peuple_id, r.colonne_peuple_id AS vu_peuple_id, r.echelle_id, e.ordre AS echelle_ordre
+  FROM relation_peuple r JOIN echelle_relation e ON e.id = r.echelle_id;
 
 -- Magies d'une créature : celles de la marge de son bloc (« Terre + Feu » -> Terre et Feu) ET celle du sort qui invoque son
 -- invocation (Terre pour tous les golems, Nécromancie pour les non-morts, Ombre pour les marionettes, dont la marge « EPN »

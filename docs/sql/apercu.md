@@ -1,6 +1,6 @@
 # Aperçu du schéma de la base
 
-> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 136 tables, 2 tables de recherche, 29 vues.
+> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 142 tables, 2 tables de recherche, 30 vues.
 > Ce qui reste à trancher sur le **contenu** (pas sur la forme) est dans [`a-valider.md`](a-valider.md).
 
 **Lecture des colonnes** : **gras** = clé primaire ; `→table` = clé étrangère vers cette table ; `?` = peut être absente (`NULL`, jamais une valeur inventée) ; `+provenance` = `origine` (famille d'import) et `source_ref` (classeur › onglet › plage). Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté.
@@ -90,7 +90,7 @@
 | `mode_texte` | Textes d'explication du classeur « Mode hyper et co » (Mode Hyper!AA1, AA14, AA30 ; Mode Super!AI1) : cellule entière, telle quelle. | **id**, mode, rang, intitule, texte, page_id→page, remarque?, +provenance |
 | `mode_hyper_depassement` | « Au delà des limites » (Mode Hyper!AA14) : conséquences d'un mode hyper maintenu N tours de plus, une fois relâché. | **tours**, tours_brut, effet, +provenance |
 | `mode_super_objet` | Mode super : objets légendaires ou enchantés (Mode Super!A3:T59). | **id**, nom, ordre, effet_passif?, effet_actif?, effets_brut, description?, remarque?, +provenance |
-| `mode_hyper_effet` | Effets du mode hyper. | **id**, version, portee, rang, libelle, magie_id→magie?, magie2_id→magie?, race_id→race?, variante?, variante_brut?, effet, commentaire?, remarque?, +provenance |
+| `mode_hyper_effet` | Effets du mode hyper. | **id**, version, portee, rang, libelle, magie_id→magie?, magie2_id→magie?, race_id→race?, variante?, variante_brut?, effet, commentaire?, remarque?, nom?, +provenance |
 
 ## 5. DIEUX
 
@@ -118,9 +118,9 @@
 
 ## 7. RACES, ETHNIES, ACCESSIBILITÉS (famille « races »)
 
-**Relations dans cette section** : `ethnie_resistance→ethnie`, `ethnie→race`, `peuple→race`, `race_classe→race`, `race_magie→race`, `race_restriction_carac→race`, `relation_peuple→echelle_relation`, `relation_peuple→peuple`
+**Relations dans cette section** : `ethnie_resistance→ethnie`, `ethnie→race`, `peuple→race`, `race_classe→race`, `race_don_tableau_cellule→race_don_tableau_colonne`, `race_don_tableau_cellule→race_don_tableau_ligne`, `race_don_tableau_colonne→race_onglet`, `race_don_tableau_ligne→ethnie`, `race_don_tableau_ligne→race_onglet`, `race_don→ethnie`, `race_don→race_onglet`, `race_magie_onglet→race_onglet`, `race_magie→race`, `race_onglet→race`, `race_restriction_carac→race`, `relation_peuple→echelle_relation`, `relation_peuple→peuple`
 
-**Vers d'autres sections** : `ethnie_resistance→etat (§4)`, `ethnie_resistance→magie (§3)`, `ethnie→magie (§3)`, `race_classe→classe (§6)`, `race_magie→magie (§3)`, `race_restriction_carac→caracteristique (§2)`, `race→page (§1)`
+**Vers d'autres sections** : `ethnie_resistance→etat (§4)`, `ethnie_resistance→magie (§3)`, `ethnie→magie (§3)`, `race_classe→classe (§6)`, `race_magie_onglet→magie (§3)`, `race_magie→magie (§3)`, `race_restriction_carac→caracteristique (§2)`, `race→page (§1)`
 
 | Table | Rôle | Colonnes |
 | --- | --- | --- |
@@ -130,6 +130,12 @@
 | `ethnie_resistance` | Résistances d'une ethnie (col. | **ethnie_id**→ethnie, **rang**, cible_type, cible_magie_id→magie?, cible_etat_id→etat?, cible_brut, valeur, +provenance |
 | `race_classe` | RACE_CLASSE : matrice « Accessibilité de Classe » : 27 races x 39 classes = 1 053 lignes (712 à 1, 341 à 0). | **race_id**→race, **classe_id**→classe, ordre, accessible, valeur_brut, +provenance |
 | `race_magie` | RACE_MAGIE : matrice « Accessibilité Magie » : 27 races x 15 magies = 405 lignes (244 à 1, 161 à 0). | **race_id**→race, **magie_id**→magie, ordre, accessible, valeur_brut, +provenance |
+| `race_onglet` | ▸ CONTENU DE L'ONGLET DE LA RACE : classeur « Les races », un onglet par race (migration 0006). | **race_id**→race, onglet, description_generale, histoire, description?, sante_depart, chakra_depart, barriere_bonus, vitesse_sol, vitesse_nage, avantages, inconvenients, don_base, dons_rubrique?, dons_rubrique_nom?, dons_rubrique_don?, dons_tableau_titre?, +provenance |
+| `race_don` | RACE_DON : dons raciaux de l'onglet, dans son ordre. | **id**, race_id→race_onglet, slug, rang, forme, etiquette?, nom?, texte, ethnie_id→ethnie?, remarque?, +provenance |
+| `race_don_tableau_colonne` | RACE_DON_TABLEAU_* : le tableau en panneaux du bloc « Don R (Race) » (Drakos : magie innée -> AP/AM, bonus de compétence, cran de résistance ; Mort-vivant : lieu de résurrection / raison de la mort -> | **race_id**→race_onglet, **rang**, libelle, +provenance |
+| `race_don_tableau_ligne` |  | **race_id**→race_onglet, **rang**, ethnie_id→ethnie?, +provenance |
+| `race_don_tableau_cellule` |  | **race_id**→race_don_tableau_ligne, **ligne**→race_don_tableau_ligne, **colonne**→race_don_tableau_colonne, valeur, +provenance |
+| `race_magie_onglet` | RACE_MAGIE_ONGLET : magies innées que l'onglet de la race limite explicitement (ligne « Inconvénient(s) » : « Magie du Feu, Terre, Foudre, Arcane, Potentiel illimité en inné uniquement »), dans l'ordre où il les cite. | **race_id**→race_onglet, **magie_id**→magie, rang, nom_brut, +provenance |
 | `echelle_relation` | ▸ RELATIONS ENTRE PEUPLES : classeur « Les races », onglet « Relation entre les races » (page lore/relations-entre-les-races). | **id**, libelle, ordre, remarque?, +provenance |
 | `peuple` | Un peuple = une étiquette de l'onglet (« Elfe Forestier Forêt », « Humain Central »…) : recopiée telle qu'écrite (coquilles comprises : « Supprémaciste »). | **id**, nom, nom_cle, ordre, race_id→race?, remarque?, +provenance |
 | `relation_peuple` |  | **ligne_peuple_id**→peuple, **colonne_peuple_id**→peuple, echelle_id→echelle_relation, +provenance |
@@ -252,6 +258,7 @@
 | `v_race_carac_borne` *(vue)* | Bornes de saisie d'une caractéristique selon la race, telles que la fiche les calcule (BDD!K2:K24) : '>' est strict (« > 2 » = au moins 3), '<' est strict (« < 4 » = au plus 3), '=' fixe la valeur ; l |  |
 | `v_race_classe_accessible` *(vue)* | Vues « seulement les 1 » : évitent l'erreur classique d'oublier `accessible = 1` (les lignes à 0 existent aussi). |  |
 | `v_race_magie_accessible` *(vue)* |  |  |
+| `v_regard_peuple` *(vue)* | Regard d'un peuple sur un autre (décision R12 : la case (ligne A, colonne B) de « Relation entre les races » dit comment A voit B). |  |
 | `v_creature_magie` *(vue)* | Magies d'une créature : celles de la marge de son bloc (« Terre + Feu » -> Terre et Feu) ET celle du sort qui invoque son invocation (Terre pour tous les golems, Nécromancie pour les non-morts, Ombre |  |
 | `v_creature_resistance` *(vue)* | Résistances, vulnérabilités, immunités et sensibilités d'une créature, toutes provenances confondues (une ligne par fait) : provenance 'capacite' : écrit dans une capacité de la créature (creature_cap |  |
 | `v_creature_sort` *(vue)* | Sorts que peut lancer une créature (capacités « Lanceur de sorts » et « Sort supplémentaire »). |  |

@@ -8050,11 +8050,11 @@ La portée d''une arme détermine le nombre de cases que parcourt le projectile,
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('lore/relations-entre-les-races', 'lore', 'relations-entre-les-races', 'Relations entre les races', 'relations-entre-les-races', 'Relation de chaque peuple avec les autres (de Même peuple à Ennemie) : Verticale = Comment le peuple voit les autres ; Horizontale = Comment le peuple est vu par les autres.', NULL, 'Relations entre les 69 peuples de l''onglet « Relation entre les races » du classeur « Les races » : l''onglet croise les 69 peuples en lignes et en colonnes (69 x 69 = 4761 cases, la diagonale comprise) ; chaque case porte un niveau de l''échelle ci-dessous.
 
-Chaque section « Nom du peuple : ligne de l''onglet » reprend une ligne de la matrice, celle dont l''étiquette (à gauche) est ce peuple : les peuples des colonnes (étiquettes du haut) y sont rangés par niveau, dans l''ordre de l''échelle, puis dans l''ordre de l''onglet ; un niveau sans peuple n''est pas écrit. La case d''un peuple avec lui-même est « Même peuple ».
+Chaque section « Nom du peuple : comment ce peuple voit les autres » reprend une ligne de la matrice, celle dont l''étiquette (à gauche) est ce peuple : les peuples des colonnes (étiquettes du haut) y sont rangés par niveau, dans l''ordre de l''échelle, puis dans l''ordre de l''onglet ; un niveau sans peuple n''est pas écrit. La case d''un peuple avec lui-même est « Même peuple ».
 
-Sens de lecture non tranché : la légende de l''onglet (citée plus bas) peut désigner l''axe d''étiquettes ou le sens de lecture d''une colonne, et la source ne dit pas laquelle des deux est voulue. Cette page ne dit donc pas qui voit qui : elle range les cases par ligne de l''onglet, sans interpréter le sens. Ce point reste à faire confirmer.
+Sens de lecture (décision du propriétaire) : la case (ligne A, colonne B) dit comment le peuple A voit le peuple B ; la légende de l''onglet (citée plus bas) vise les étiquettes. La section d''un peuple dit donc comment il voit les autres.
 
-La matrice n''est pas symétrique : pour 1226 des 2346 paires de peuples, les deux cases (ligne A et colonne B, ligne B et colonne A) diffèrent. Pour lire une colonne de l''onglet (les cases que les lignes des autres peuples portent pour un peuple), chercher son nom dans la section de chacun des autres peuples.
+La matrice n''est pas symétrique : pour 1226 des 2346 paires de peuples, les deux cases (ligne A et colonne B, ligne B et colonne A) diffèrent. Pour savoir comment les autres voient un peuple (une colonne de l''onglet), chercher son nom dans la section de chacun des autres peuples ; la page de sa race donne les deux lectures, rangées par niveau.
 
 Les noms des peuples sont ceux des étiquettes de l''onglet, recopiés tels qu''écrits, y compris « Elfe Argenté Supprémaciste », « Jackalope Feu » et « Marcass Ubain » : rien n''y est corrigé. Seuls les retours à la ligne et les espaces multiples d''une étiquette sont ramenés à une espace.
 
@@ -8109,7 +8109,7 @@ Rapprochement avec les pages de races : un peuple est rangé sous la page de rac
 
 Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 
-## Humain Central : ligne de l''onglet
+## Humain Central : comment ce peuple voit les autres
 
 - **Même peuple** : Humain Central
 - **Alliée** : Nain Ouest, Nain Est, Lamia
@@ -8119,7 +8119,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Évitée** : Elfe Argenté Barrage argenté, Felfe Argenté, Médusain Eau, Médusain Foudre, Médusain Lumière
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Humain Désertique : ligne de l''onglet
+## Humain Désertique : comment ce peuple voit les autres
 
 - **Même peuple** : Humain Désertique
 - **Alliée** : Drassah''thac Sud, Kitsune Feu, Lamia
@@ -8130,7 +8130,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Orios Eau, Médusain Eau
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Humain Tropical : ligne de l''onglet
+## Humain Tropical : comment ce peuple voit les autres
 
 - **Même peuple** : Humain Tropical
 - **Alliée** : Elfe Forestier Forêt, Orios Terre, Drassah''thac Ouest, Kitsune Vent, Olwman Vent, Rokh Vent, Lamia
@@ -8140,7 +8140,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Évitée** : Humain Désertique, Humain Toundra, Elfe Argenté Barrage argenté, Felfe Argenté, Médusain Eau, Médusain Lumière
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Humain Toundra : ligne de l''onglet
+## Humain Toundra : comment ce peuple voit les autres
 
 - **Même peuple** : Humain Toundra
 - **Alliée** : Drassah''thac Nord, Fenrir Glace, Lamia
@@ -8151,7 +8151,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Orios Sang
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Elfe Forestier Forêt : ligne de l''onglet
+## Elfe Forestier Forêt : comment ce peuple voit les autres
 
 - **Même peuple** : Elfe Forestier Forêt
 - **Appréciée** : Felfe Forestier, Orios Eau, Orios Terre, Médusain Urbain
@@ -8161,7 +8161,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Elfe Argenté Autre
 - **Ennemie** : Elfe Noir Charbon, Elfe Argenté Supprémaciste, Elfe Argenté Barrage argenté, Elfe Doré
 
-## Elfe Forestier Urbain : ligne de l''onglet
+## Elfe Forestier Urbain : comment ce peuple voit les autres
 
 - **Même peuple** : Elfe Forestier Urbain
 - **Appréciée** : Humain Central, Felfe Forestier
@@ -8171,7 +8171,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Elfe Argenté Barrage argenté
 - **Ennemie** : Elfe Noir Charbon, Elfe Argenté Supprémaciste, Elfe Doré
 
-## Elfe Noir Charbon : ligne de l''onglet
+## Elfe Noir Charbon : comment ce peuple voit les autres
 
 - **Même peuple** : Elfe Noir Charbon
 - **Alliée** : Namazu Ombre
@@ -8182,7 +8182,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Elfe Forestier Urbain, Elfe Argenté Autre, Drakos, Kitsune Lumière, Rokh Lumière, Namazu Urbain, Médusain Foudre, Médusain Lumière, Médusain Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
 - **Ennemie** : Elfe Forestier Forêt, Elfe Noir Salé, Elfe Argenté Supprémaciste, Elfe Argenté Barrage argenté, Elfe Doré, Nain Ouest, Nain Est, Nain Ligne de partage, Minotaure, Médusain Eau
 
-## Elfe Noir Salé : ligne de l''onglet
+## Elfe Noir Salé : comment ce peuple voit les autres
 
 - **Même peuple** : Elfe Noir Salé
 - **Appréciée** : Felfe Noir, Namazu Ombre
@@ -8192,7 +8192,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Elfe Forestier Forêt, Elfe Noir Charbon, Nain Ouest, Nain Est, Nain Ligne de partage, Kitsune Lumière, Rokh Lumière, Minotaure, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Argenté Barrage argenté, Elfe Doré
 
-## Elfe Argenté Supprémaciste : ligne de l''onglet
+## Elfe Argenté Supprémaciste : comment ce peuple voit les autres
 
 - **Même peuple** : Elfe Argenté Supprémaciste
 - **Neutre** : Mort-vivant, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Urbain, Médusain Eau, Médusain Foudre, Médusain Lumière
@@ -8200,7 +8200,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Felfe Forestier, Felfe Noir, Orios Sang
 - **Ennemie** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Elfe Doré, Minotaure, Lamia
 
-## Elfe Argenté Barrage argenté : ligne de l''onglet
+## Elfe Argenté Barrage argenté : comment ce peuple voit les autres
 
 - **Même peuple** : Elfe Argenté Barrage argenté
 - **Appréciée** : Elfe Argenté Autre
@@ -8210,7 +8210,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Felfe Forestier, Felfe Noir, Orios Sang
 - **Ennemie** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Supprémaciste, Elfe Doré, Minotaure
 
-## Elfe Argenté Autre : ligne de l''onglet
+## Elfe Argenté Autre : comment ce peuple voit les autres
 
 - **Même peuple** : Elfe Argenté Autre
 - **Alliée** : Elfe Argenté Barrage argenté
@@ -8220,7 +8220,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Charbon, Elfe Noir Salé, Orios Sang
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Minotaure
 
-## Elfe Doré : ligne de l''onglet
+## Elfe Doré : comment ce peuple voit les autres
 
 - **Même peuple** : Elfe Doré
 - **Neutre** : Majin, Hujin, Mort-vivant
@@ -8228,7 +8228,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Humain Central, Nain Ouest, Nain Est, Nain Ligne de partage, Drakos, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Minotaure, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
 - **Ennemie** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Supprémaciste, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Felfe Forestier, Felfe Noir, Felfe Argenté
 
-## Nain Ouest : ligne de l''onglet
+## Nain Ouest : comment ce peuple voit les autres
 
 - **Même peuple** : Nain Ouest
 - **Alliée** : Minotaure
@@ -8239,7 +8239,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Elfe Noir Salé
 - **Ennemie** : Elfe Noir Charbon, Elfe Argenté Supprémaciste, Elfe Doré, Nain Est
 
-## Nain Est : ligne de l''onglet
+## Nain Est : comment ce peuple voit les autres
 
 - **Même peuple** : Nain Est
 - **Alliée** : Minotaure
@@ -8250,7 +8250,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Elfe Noir Salé
 - **Ennemie** : Elfe Noir Charbon, Elfe Argenté Supprémaciste, Elfe Doré, Nain Ouest
 
-## Nain Ligne de partage : ligne de l''onglet
+## Nain Ligne de partage : comment ce peuple voit les autres
 
 - **Même peuple** : Nain Ligne de partage
 - **Alliée** : Minotaure
@@ -8261,7 +8261,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Elfe Noir Salé
 - **Ennemie** : Elfe Noir Charbon, Elfe Argenté Supprémaciste, Elfe Doré
 
-## Majin : ligne de l''onglet
+## Majin : comment ce peuple voit les autres
 
 - **Même peuple** : Majin
 - **Alliée** : Hujin
@@ -8272,7 +8272,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Elfe Noir Charbon, Elfe Noir Salé
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Hujin : ligne de l''onglet
+## Hujin : comment ce peuple voit les autres
 
 - **Même peuple** : Hujin
 - **Alliée** : Majin
@@ -8282,7 +8282,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Évitée** : Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Nain Ligne de partage
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Mort-vivant : ligne de l''onglet
+## Mort-vivant : comment ce peuple voit les autres
 
 - **Même peuple** : Mort-vivant
 - **Alliée** : Marcass Nécromancie
@@ -8290,7 +8290,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Évitée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Drakos, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Minotaure, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Drakos : ligne de l''onglet
+## Drakos : comment ce peuple voit les autres
 
 - **Même peuple** : Drakos
 - **Appréciée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Majin, Hujin, Orios Urbain, Minotaure, Satyre Urbain
@@ -8299,7 +8299,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Évitée** : Felfe Forestier, Felfe Noir, Felfe Argenté
 - **Ennemie** : Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Supprémaciste, Elfe Doré
 
-## Felfe Forestier : ligne de l''onglet
+## Felfe Forestier : comment ce peuple voit les autres
 
 - **Même peuple** : Felfe Forestier
 - **Appréciée** : Elfe Forestier Forêt, Elfe Forestier Urbain, Majin, Hujin, Satyre Urbain
@@ -8309,7 +8309,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Orios Eau, Orios Terre, Orios Sang, Orios Urbain
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Felfe Noir : ligne de l''onglet
+## Felfe Noir : comment ce peuple voit les autres
 
 - **Même peuple** : Felfe Noir
 - **Appréciée** : Elfe Noir Charbon, Elfe Noir Salé, Majin, Hujin, Satyre Urbain
@@ -8319,7 +8319,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Orios Eau, Orios Terre, Orios Sang, Orios Urbain
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Felfe Argenté : ligne de l''onglet
+## Felfe Argenté : comment ce peuple voit les autres
 
 - **Même peuple** : Felfe Argenté
 - **Alliée** : Elfe Argenté Barrage argenté, Elfe Argenté Autre
@@ -8330,7 +8330,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Elfe Noir Charbon, Elfe Noir Salé, Orios Eau, Orios Terre, Orios Sang, Orios Urbain
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Orios Eau : ligne de l''onglet
+## Orios Eau : comment ce peuple voit les autres
 
 - **Même peuple** : Orios Eau
 - **Alliée** : Minotaure, Médusain Eau
@@ -8341,7 +8341,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Sang, Fenrir Foudre, Namazu Urbain
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Fenrir Ombre, Kitsune Feu, Kitsune Vent, Olwman Vent, Olwman Ombre, Namazu Sang
 
-## Orios Terre : ligne de l''onglet
+## Orios Terre : comment ce peuple voit les autres
 
 - **Même peuple** : Orios Terre
 - **Alliée** : Minotaure, Satyre Terre
@@ -8352,7 +8352,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Sang, Fenrir Ombre, Rokh Vent, Rokh Foudre, Rokh Lumière, Namazu Urbain, Médusain Foudre, Jackalope Feu
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Fenrir Glace, Fenrir Foudre, Kitsune Feu, Kitsune Vent, Olwman Vent, Olwman Ombre, Namazu Sang
 
-## Orios Sang : ligne de l''onglet
+## Orios Sang : comment ce peuple voit les autres
 
 - **Même peuple** : Orios Sang
 - **Alliée** : Minotaure
@@ -8363,7 +8363,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Terre, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Rokh Vent, Rokh Foudre, Rokh Lumière, Namazu Eau, Médusain Eau, Jackalope Terre
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Olwman Vent, Olwman Ombre, Namazu Sang
 
-## Orios Urbain : ligne de l''onglet
+## Orios Urbain : comment ce peuple voit les autres
 
 - **Même peuple** : Orios Urbain
 - **Alliée** : Minotaure
@@ -8374,7 +8374,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Felfe Forestier, Felfe Noir, Felfe Argenté, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Namazu Sang
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Drassah''thac Centre : ligne de l''onglet
+## Drassah''thac Centre : comment ce peuple voit les autres
 
 - **Même peuple** : Drassah''thac Centre
 - **Appréciée** : Satyre Urbain
@@ -8383,7 +8383,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Évitée** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Charbon, Felfe Forestier, Orios Terre, Orios Sang
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Drassah''thac Nord : ligne de l''onglet
+## Drassah''thac Nord : comment ce peuple voit les autres
 
 - **Même peuple** : Drassah''thac Nord
 - **Appréciée** : Satyre Urbain
@@ -8393,7 +8393,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Drassah''thac Sud
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Drassah''thac Sud : ligne de l''onglet
+## Drassah''thac Sud : comment ce peuple voit les autres
 
 - **Même peuple** : Drassah''thac Sud
 - **Appréciée** : Satyre Urbain
@@ -8403,7 +8403,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Drassah''thac Nord, Fenrir Glace, Fenrir Ombre
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Drassah''thac Est : ligne de l''onglet
+## Drassah''thac Est : comment ce peuple voit les autres
 
 - **Même peuple** : Drassah''thac Est
 - **Appréciée** : Drakos, Satyre Urbain
@@ -8413,7 +8413,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Drassah''thac Ouest
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Drassah''thac Ouest : ligne de l''onglet
+## Drassah''thac Ouest : comment ce peuple voit les autres
 
 - **Même peuple** : Drassah''thac Ouest
 - **Appréciée** : Drakos, Satyre Urbain
@@ -8423,7 +8423,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Drassah''thac Est
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Fenrir Glace : ligne de l''onglet
+## Fenrir Glace : comment ce peuple voit les autres
 
 - **Même peuple** : Fenrir Glace
 - **Appréciée** : Drassah''thac Nord
@@ -8433,7 +8433,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Orios Terre, Kitsune Urbain, Olwman Vent, Rokh Vent, Satyre Feu, Marcass Terre
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Orios Sang, Fenrir Ombre, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Namazu Sang, Jackalope Feu, Marcass Feu, Marcass Nécromancie
 
-## Fenrir Foudre : ligne de l''onglet
+## Fenrir Foudre : comment ce peuple voit les autres
 
 - **Même peuple** : Fenrir Foudre
 - **Appréciée** : Nain Ouest, Nain Est, Drassah''thac Est, Drassah''thac Ouest, Satyre Foudre, Médusain Foudre
@@ -8443,7 +8443,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Orios Sang, Kitsune Urbain, Olwman Vent, Rokh Vent, Satyre Terre, Marcass Feu, Marcass Nécromancie
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Orios Eau, Orios Terre, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Namazu Eau, Jackalope Terre, Marcass Terre
 
-## Fenrir Ombre : ligne de l''onglet
+## Fenrir Ombre : comment ce peuple voit les autres
 
 - **Même peuple** : Fenrir Ombre
 - **Alliée** : Namazu Ombre
@@ -8454,7 +8454,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Orios Eau, Orios Terre, Orios Sang, Kitsune Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Fenrir Glace, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Rokh Lumière, Médusain Lumière
 
-## Fenrir Urbain : ligne de l''onglet
+## Fenrir Urbain : comment ce peuple voit les autres
 
 - **Même peuple** : Fenrir Urbain
 - **Appréciée** : Satyre Urbain
@@ -8464,7 +8464,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Orios Eau, Orios Terre, Orios Sang, Kitsune Feu, Kitsune Vent, Kitsune Lumière
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Kitsune Feu : ligne de l''onglet
+## Kitsune Feu : comment ce peuple voit les autres
 
 - **Même peuple** : Kitsune Feu
 - **Appréciée** : Humain Désertique, Drassah''thac Sud, Jackalope Feu, Marcass Feu
@@ -8474,7 +8474,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Elfe Forestier Forêt, Drassah''thac Nord, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Olwman Vent, Rokh Vent, Namazu Eau, Satyre Terre, Médusain Eau, Médusain Foudre, Jackalope Terre, Marcass Terre
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Orios Eau, Fenrir Glace
 
-## Kitsune Vent : ligne de l''onglet
+## Kitsune Vent : comment ce peuple voit les autres
 
 - **Même peuple** : Kitsune Vent
 - **Appréciée** : Olwman Vent, Rokh Vent
@@ -8484,7 +8484,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Fenrir Glace, Fenrir Ombre, Fenrir Urbain, Rokh Foudre, Satyre Foudre, Satyre Terre, Médusain Foudre, Jackalope Feu, Jackalope Terre, Marcass Feu, Marcass Terre
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Orios Terre, Fenrir Foudre
 
-## Kitsune Lumière : ligne de l''onglet
+## Kitsune Lumière : comment ce peuple voit les autres
 
 - **Même peuple** : Kitsune Lumière
 - **Appréciée** : Rokh Lumière, Médusain Lumière
@@ -8494,7 +8494,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Fenrir Glace, Fenrir Foudre, Fenrir Urbain
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Fenrir Ombre, Olwman Ombre, Namazu Ombre
 
-## Kitsune Urbain : ligne de l''onglet
+## Kitsune Urbain : comment ce peuple voit les autres
 
 - **Même peuple** : Kitsune Urbain
 - **Appréciée** : Satyre Urbain
@@ -8504,7 +8504,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Olwman Vent : ligne de l''onglet
+## Olwman Vent : comment ce peuple voit les autres
 
 - **Même peuple** : Olwman Vent
 - **Appréciée** : Kitsune Vent, Rokh Vent
@@ -8514,7 +8514,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Nain Ouest, Nain Est, Nain Ligne de partage, Orios Sang, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Orios Terre, Fenrir Glace, Fenrir Foudre, Kitsune Feu, Rokh Foudre, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Médusain Foudre, Jackalope Feu, Jackalope Terre
 
-## Olwman Ombre : ligne de l''onglet
+## Olwman Ombre : comment ce peuple voit les autres
 
 - **Même peuple** : Olwman Ombre
 - **Appréciée** : Fenrir Ombre, Namazu Ombre
@@ -8524,7 +8524,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Orios Terre, Orios Sang, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Kitsune Lumière, Rokh Lumière, Médusain Lumière
 
-## Olwman Espace/Temps : ligne de l''onglet
+## Olwman Espace/Temps : comment ce peuple voit les autres
 
 - **Même peuple** : Olwman Espace/Temps
 - **Acceptée** : Elfe Forestier Urbain, Olwman Vent, Olwman Ombre, Olwman Urbain, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain
@@ -8533,7 +8533,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Orios Terre, Orios Sang, Jackalope Feu, Jackalope Terre, Jackalope Urbain
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Jackalope Vide
 
-## Olwman Urbain : ligne de l''onglet
+## Olwman Urbain : comment ce peuple voit les autres
 
 - **Même peuple** : Olwman Urbain
 - **Appréciée** : Satyre Urbain
@@ -8543,7 +8543,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Orios Terre, Orios Sang, Jackalope Feu, Jackalope Terre, Jackalope Vide
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Rokh Vent : ligne de l''onglet
+## Rokh Vent : comment ce peuple voit les autres
 
 - **Même peuple** : Rokh Vent
 - **Appréciée** : Kitsune Vent, Olwman Vent
@@ -8553,7 +8553,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Nain Ouest, Nain Est, Nain Ligne de partage, Orios Sang, Fenrir Glace, Fenrir Foudre, Kitsune Feu, Rokh Foudre, Jackalope Feu, Jackalope Terre, Jackalope Vide, Marcass Feu, Marcass Terre
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Orios Terre, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain
 
-## Rokh Foudre : ligne de l''onglet
+## Rokh Foudre : comment ce peuple voit les autres
 
 - **Même peuple** : Rokh Foudre
 - **Appréciée** : Fenrir Foudre, Satyre Foudre, Médusain Foudre
@@ -8563,7 +8563,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Orios Eau, Kitsune Vent, Rokh Vent, Namazu Eau, Médusain Eau, Jackalope Feu, Jackalope Terre, Jackalope Vide, Marcass Terre
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Orios Terre, Olwman Vent, Satyre Terre
 
-## Rokh Lumière : ligne de l''onglet
+## Rokh Lumière : comment ce peuple voit les autres
 
 - **Même peuple** : Rokh Lumière
 - **Appréciée** : Kitsune Lumière, Médusain Lumière
@@ -8573,7 +8573,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Namazu Ombre, Jackalope Feu, Jackalope Terre, Jackalope Vide
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Fenrir Ombre, Olwman Ombre
 
-## Rokh Urbain : ligne de l''onglet
+## Rokh Urbain : comment ce peuple voit les autres
 
 - **Même peuple** : Rokh Urbain
 - **Appréciée** : Satyre Urbain
@@ -8582,7 +8582,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ouest, Nain Est, Nain Ligne de partage, Médusain Eau, Médusain Foudre, Médusain Lumière
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Namazu Sang : ligne de l''onglet
+## Namazu Sang : comment ce peuple voit les autres
 
 - **Même peuple** : Namazu Sang
 - **Acceptée** : Drassah''thac Est, Drassah''thac Ouest, Minotaure, Satyre Feu, Satyre Foudre, Satyre Urbain, Jackalope Terre
@@ -8591,7 +8591,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Orios Urbain, Rokh Foudre, Médusain Foudre, Médusain Lumière, Médusain Urbain, Marcass Terre
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Orios Eau, Orios Terre, Orios Sang, Fenrir Glace, Fenrir Foudre, Namazu Eau, Satyre Terre, Médusain Eau, Marcass Nécromancie
 
-## Namazu Eau : ligne de l''onglet
+## Namazu Eau : comment ce peuple voit les autres
 
 - **Même peuple** : Namazu Eau
 - **Appréciée** : Nain Ouest, Nain Est, Nain Ligne de partage
@@ -8601,7 +8601,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Orios Urbain, Médusain Eau, Médusain Lumière, Médusain Urbain, Jackalope Feu, Marcass Feu
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Fenrir Foudre, Kitsune Feu, Namazu Sang, Satyre Feu, Médusain Foudre
 
-## Namazu Ombre : ligne de l''onglet
+## Namazu Ombre : comment ce peuple voit les autres
 
 - **Même peuple** : Namazu Ombre
 - **Appréciée** : Nain Ouest, Nain Est, Nain Ligne de partage, Fenrir Ombre, Olwman Ombre
@@ -8611,7 +8611,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Orios Terre, Rokh Lumière, Médusain Eau, Médusain Foudre, Médusain Urbain
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Kitsune Lumière, Médusain Lumière
 
-## Namazu Urbain : ligne de l''onglet
+## Namazu Urbain : comment ce peuple voit les autres
 
 - **Même peuple** : Namazu Urbain
 - **Appréciée** : Satyre Urbain
@@ -8621,7 +8621,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Orios Eau, Médusain Eau, Médusain Foudre, Médusain Lumière
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Minotaure : ligne de l''onglet
+## Minotaure : comment ce peuple voit les autres
 
 - **Même peuple** : Minotaure
 - **Alliée** : Nain Ouest, Nain Est, Nain Ligne de partage, Orios Eau, Orios Terre, Orios Sang, Orios Urbain
@@ -8631,7 +8631,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Évitée** : Elfe Noir Salé, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Olwman Vent, Olwman Espace/Temps, Rokh Vent, Rokh Foudre, Rokh Lumière, Namazu Eau, Médusain Eau, Médusain Foudre, Médusain Lumière, Jackalope Feu, Jackalope Vide, Marcass Feu, Marcass Nécromancie
 - **Ennemie** : Elfe Noir Charbon, Elfe Argenté Supprémaciste, Elfe Doré
 
-## Satyre Feu : ligne de l''onglet
+## Satyre Feu : comment ce peuple voit les autres
 
 - **Même peuple** : Satyre Feu
 - **Appréciée** : Humain Désertique, Kitsune Feu, Satyre Foudre, Satyre Urbain, Jackalope Feu, Marcass Feu
@@ -8641,7 +8641,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Orios Terre, Orios Sang, Olwman Vent, Rokh Vent, Namazu Eau, Satyre Terre, Médusain Eau, Jackalope Vide
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Fenrir Glace
 
-## Satyre Foudre : ligne de l''onglet
+## Satyre Foudre : comment ce peuple voit les autres
 
 - **Même peuple** : Satyre Foudre
 - **Appréciée** : Satyre Feu, Satyre Urbain
@@ -8651,7 +8651,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Orios Eau, Orios Terre, Kitsune Vent, Namazu Eau, Satyre Terre, Jackalope Vide, Marcass Terre
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Satyre Terre : ligne de l''onglet
+## Satyre Terre : comment ce peuple voit les autres
 
 - **Même peuple** : Satyre Terre
 - **Appréciée** : Satyre Urbain, Jackalope Terre, Marcass Terre
@@ -8661,7 +8661,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Olwman Vent, Rokh Vent, Rokh Foudre, Namazu Sang, Satyre Feu, Satyre Foudre, Médusain Foudre, Jackalope Vide
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Satyre Urbain : ligne de l''onglet
+## Satyre Urbain : comment ce peuple voit les autres
 
 - **Même peuple** : Satyre Urbain
 - **Appréciée** : Satyre Feu, Satyre Foudre, Satyre Terre, Jackalope Urbain
@@ -8671,7 +8671,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Jackalope Vide
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Médusain Eau : ligne de l''onglet
+## Médusain Eau : comment ce peuple voit les autres
 
 - **Même peuple** : Médusain Eau
 - **Alliée** : Orios Eau
@@ -8681,7 +8681,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Orios Sang, Fenrir Foudre, Kitsune Feu, Rokh Foudre, Namazu Sang, Satyre Feu, Satyre Foudre, Jackalope Feu, Marcass Feu, Marcass Nécromancie
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Médusain Foudre : ligne de l''onglet
+## Médusain Foudre : comment ce peuple voit les autres
 
 - **Même peuple** : Médusain Foudre
 - **Alliée** : Nain Ouest, Nain Est
@@ -8692,7 +8692,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Orios Eau, Orios Terre, Kitsune Vent, Olwman Vent, Rokh Vent, Namazu Eau, Satyre Terre, Jackalope Terre, Marcass Terre
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Médusain Lumière : ligne de l''onglet
+## Médusain Lumière : comment ce peuple voit les autres
 
 - **Même peuple** : Médusain Lumière
 - **Acceptée** : Humain Désertique, Drassah''thac Sud, Kitsune Lumière, Rokh Lumière, Médusain Eau, Médusain Foudre, Médusain Urbain
@@ -8701,7 +8701,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Fenrir Ombre, Olwman Ombre, Namazu Ombre
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Médusain Urbain : ligne de l''onglet
+## Médusain Urbain : comment ce peuple voit les autres
 
 - **Même peuple** : Médusain Urbain
 - **Acceptée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Médusain Eau, Médusain Foudre, Médusain Lumière
@@ -8709,7 +8709,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Drassah''thac Est, Drassah''thac Ouest
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Lamia : ligne de l''onglet
+## Lamia : comment ce peuple voit les autres
 
 - **Même peuple** : Lamia
 - **Alliée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra
@@ -8719,7 +8719,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Évitée** : Elfe Noir Charbon, Médusain Eau, Médusain Foudre, Médusain Lumière
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Jackalope Feu : ligne de l''onglet
+## Jackalope Feu : comment ce peuple voit les autres
 
 - **Même peuple** : Jackalope Feu
 - **Alliée** : Kitsune Feu, Satyre Feu
@@ -8730,7 +8730,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Fenrir Glace, Kitsune Vent, Olwman Vent, Rokh Vent, Namazu Eau, Médusain Eau, Jackalope Terre, Marcass Terre
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Jackalope Terre : ligne de l''onglet
+## Jackalope Terre : comment ce peuple voit les autres
 
 - **Même peuple** : Jackalope Terre
 - **Alliée** : Satyre Terre
@@ -8741,7 +8741,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Fenrir Foudre, Kitsune Feu, Kitsune Vent, Olwman Vent, Rokh Vent, Rokh Foudre, Namazu Sang, Médusain Foudre, Jackalope Feu, Marcass Feu
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Jackalope Vide : ligne de l''onglet
+## Jackalope Vide : comment ce peuple voit les autres
 
 - **Même peuple** : Jackalope Vide
 - **Neutre** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Nain Ouest, Nain Est, Majin, Hujin, Mort-vivant, Drakos, Orios Urbain, Drassah''thac Centre, Fenrir Urbain, Kitsune Urbain, Olwman Urbain, Rokh Urbain, Namazu Urbain, Minotaure, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Urbain, Marcass Ubain
@@ -8749,7 +8749,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Olwman Espace/Temps
 
-## Jackalope Urbain : ligne de l''onglet
+## Jackalope Urbain : comment ce peuple voit les autres
 
 - **Même peuple** : Jackalope Urbain
 - **Appréciée** : Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain
@@ -8758,7 +8758,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ligne de partage, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Marcass Feu : ligne de l''onglet
+## Marcass Feu : comment ce peuple voit les autres
 
 - **Même peuple** : Marcass Feu
 - **Alliée** : Kitsune Feu
@@ -8769,7 +8769,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Fenrir Glace, Kitsune Vent, Olwman Vent, Rokh Vent, Namazu Eau, Satyre Terre, Médusain Eau, Jackalope Terre
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Marcass Terre : ligne de l''onglet
+## Marcass Terre : comment ce peuple voit les autres
 
 - **Même peuple** : Marcass Terre
 - **Alliée** : Orios Terre
@@ -8780,7 +8780,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Fenrir Foudre, Kitsune Feu, Kitsune Vent, Olwman Vent, Rokh Vent, Rokh Foudre, Namazu Sang, Satyre Feu, Médusain Foudre, Jackalope Feu
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Marcass Nécromancie : ligne de l''onglet
+## Marcass Nécromancie : comment ce peuple voit les autres
 
 - **Même peuple** : Marcass Nécromancie
 - **Alliée** : Mort-vivant
@@ -8790,7 +8790,7 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Haine** : Namazu Eau
 - **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
 
-## Marcass Ubain : ligne de l''onglet
+## Marcass Ubain : comment ce peuple voit les autres
 
 - **Même peuple** : Marcass Ubain
 - **Acceptée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Nain Ouest, Nain Est, Drakos, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Minotaure, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie
