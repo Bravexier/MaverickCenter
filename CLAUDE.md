@@ -167,7 +167,8 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   après chaque fusion. Fusionner toujours par « Create a merge commit » (ni squash ni rebase). Après la fusion, le bot supprime la branche `feature/…` ou
   `hotfix/…` : une suite de travail repart d'une nouvelle branche. **Nom de branche** (demande du propriétaire) : `<nom>` dit l'évolution ou le correctif demandé,
   en minuscules et tirets (`feature/npm5-info-apres-titre`, `hotfix/lien-casse-bestiaire`), jamais le nom aléatoire que propose l'environnement
-  (`feature/awesome-pascal-…`) : renommer la branche avant le premier push.
+  (`feature/awesome-pascal-…`) : renommer la branche avant le premier push. **En cas de conflit avec la base, ne jamais fusionner la base dans la branche : rebase**
+  (`git rebase origin/dev`, puis `git push --force-with-lease` ; demande du propriétaire, voir `docs/flux-git.md`).
 - **Fusion** : une fois la PR `feature/<nom>` → `dev` créée et la CI verte, la fusionner sans attendre le propriétaire (consigne permanente). Une livraison
   `dev` → `master` ou un hotfix → `master` : seulement à la demande du propriétaire, par « Create a merge commit ». Ne jamais mettre `[V: X+1]` de soi-même :
   le passage en 1.0 est le signal du propriétaire (connexion Discord, serveurs normal et de test).
