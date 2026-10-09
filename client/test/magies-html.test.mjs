@@ -7,6 +7,9 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { chargerMagies } from '../src/lib/magies-db.mjs';
+import { liaisonsEntreMagies, segmentCoupe } from '../src/lib/magie-fleches.mjs';
 
 const dossier = fileURLToPath(new URL('../dist/magies/', import.meta.url));
 const present = existsSync(dossier);
@@ -55,7 +58,7 @@ test('index des magies : 15 noms courts, descriptions en tooltip, version au foo
 });
 
 test('carte des magies : chaque infobulle est bornée à la carte (sinon, même cachée, elle fait défiler la page horizontalement)', options, () => {
-  const positions = [...indexMagies.matchAll(/class="magies-orbite__position[^"]*" style="([^"]+)"/g)].map((m) => m[1]);
+  const positions = [...indexMagies.matchAll(/class="magies-orbite__position[^"]*" data-magie="[^"]*" style="([^"]+)"/g)].map((m) => m[1]);
   assert.equal(positions.length, 15);
   for (const style of positions) {
     for (const axe of ['x', 'mx']) {
@@ -77,7 +80,7 @@ test('carte des magies : compacte, et aucune pastille ne touche une autre', opti
   const hauteurEtroite = Number(indexMagies.match(/\.magies-orbite \{ height: ([\d.]+)rem; aspect-ratio: auto; \}/)?.[1]);
   assert.ok(ratio > 0 && ratio <= 450, `carte du grand écran plus large que haute (1000 / ${ratio})`);
   assert.ok(hauteurEtroite > 0 && hauteurEtroite <= 40, `carte étroite de ${hauteurEtroite}rem`);
-  const noeuds = [...indexMagies.matchAll(/class="magies-orbite__position magies-orbite__position--([\w-]+)" style="([^"]+)"[^]*?aria-label="([^"]+)"/g)].map(([, region, style, nom]) => {
+  const noeuds = [...indexMagies.matchAll(/class="magies-orbite__position magies-orbite__position--([\w-]+)" data-magie="[^"]*" style="([^"]+)"[^]*?aria-label="([^"]+)"/g)].map(([, region, style, nom]) => {
     const v = (axe) => Number(style.match(new RegExp(`--${axe}: ([\\d.]+)%`))[1]) / 100;
     return { region, nom, x: v('x'), y: v('y'), mx: v('mx'), my: v('my') };
   });
@@ -99,6 +102,57 @@ test('carte des magies : compacte, et aucune pastille ne touche une autre', opti
     const largeur = Math.min(vue, 64) - 2;
     const l = { potentiel: Math.min(12, 0.8 * largeur), elementaire: Math.min(8, 0.36 * largeur) };
     verifier(noeuds.map((n) => ({ ...n, largeur, cx: n.mx * largeur, cy: n.my * hauteurEtroite, l: l[n.region] ?? Math.min(9, 0.46 * largeur) })), `écran étroit de ${vue}rem`);
+  }
+});
+
+// Relations de la carte (lib/magie-fleches.mjs, demandes du propriétaire) : cachées, affichées au survol d'une magie (les siennes seulement), une épée
+// ou un bouclier au bout des traits ; la disposition du grand écran est telle qu'aucun trait ni aucune boucle ne passe sous une autre pastille, pour une
+// carte de 58 à 62rem de large (pastilles de 9rem, 8rem pour les éléments, 12rem pour le Potentiel Illimité, 2.9rem de haut). Sous 60rem : rien.
+test('carte des magies : une relation par paire liée dans la base, au survol seulement, et aucun trait sous une autre pastille', options, () => {
+  const { magies } = chargerMagies(ouvrirBase());
+  const { liaisons, boucles } = liaisonsEntreMagies([...magies.values()]);
+  const traits = [...indexMagies.matchAll(/<g class="magies-relation avec-([\w-]+) avec-([\w-]+)"[^>]*><line x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" y2="([-\d.]+)"/g)]
+    .map(([, a, b, ...xy]) => ({ a, b, p: xy.slice(0, 2).map(Number), q: xy.slice(2).map(Number) }));
+  const lacets = [...indexMagies.matchAll(/<g class="magies-relation magies-relation--boucle avec-([\w-]+)"[^>]*><path class="magies-relation__boucle" d="M ([^"]+)"/g)]
+    .map(([, k, d]) => {
+      const n = d.replace('C', '').trim().split(/\s+/).map(Number);
+      const xs = n.filter((_, i) => i % 2 === 0);
+      const ys = n.filter((_, i) => i % 2 === 1);
+      return { k, boite: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)] };
+    });
+  assert.equal(traits.length, liaisons.length);
+  assert.equal(lacets.length, boucles.length);
+  assert.equal([...indexMagies.matchAll(/class="magies-relation__epee"/g)].length, liaisons.reduce((n, l) => n + l.pointes[l.a].filter((f) => f === 'epee').length + l.pointes[l.b].filter((f) => f === 'epee').length, 0));
+  // cachées au repos, une règle de survol par magie de la carte ; rien sur écran étroit
+  assert.match(indexMagies, /\.magies-relation \{ --trait: [^}]*opacity: 0;/);
+  const cles = [...indexMagies.matchAll(/data-magie="([\w-]+)" style=/g)].map((m) => m[1]);
+  assert.equal(cles.length, 15);
+  for (const k of cles) assert.ok(indexMagies.includes(`.magies-orbite:has([data-magie="${k}"]:is(:hover, :focus-within)) .magies-relation.avec-${k} {`), k);
+  assert.match(indexMagies.slice(indexMagies.indexOf('@media (max-width: 60rem)')), /\.magies-orbite__relations, \.magies-legende \{ display: none; \}/);
+  // géométrie
+  const hauteur = Number(indexMagies.match(/class="magies-orbite__relations" viewBox="0 0 1000 (\d+)"/)?.[1]);
+  assert.equal(hauteur, Number(indexMagies.match(/\.magies-orbite \{[^}]*aspect-ratio: 1000 \/ (\d+);/)?.[1]), 'SVG aux proportions de la carte');
+  const centres = new Map([...indexMagies.matchAll(/class="magies-orbite__position magies-orbite__position--([\w-]+)" data-magie="([\w-]+)" style="([^"]+)"/g)].map(([, region, k, style]) => {
+    const v = (nom) => Number(style.match(new RegExp(`--${nom}: ([\\d.]+)%`))[1]) / 100;
+    return [k, { region, x: v('x') * 1000, y: v('y') * hauteur }];
+  }));
+  for (const largeurRem of [58, 62]) {
+    const unite = 1000 / largeurRem;
+    const boite = ({ region, x, y }, marge = 0) => {
+      const w = (region === 'potentiel' ? 12 : region === 'elementaire' ? 8 : 9) * unite;
+      const h = 2.9 * unite;
+      return [x - w / 2 - marge, y - h / 2 - marge, x + w / 2 + marge, y + h / 2 + marge];
+    };
+    for (const { a, b, p, q } of traits) {
+      for (const [k, c] of centres) if (k !== a && k !== b) assert.ok(!segmentCoupe(p, q, boite(c, 4)), `${largeurRem}rem : le trait ${a} – ${b} passe sous ${k}`);
+    }
+    for (const { k, boite: l } of lacets) {
+      for (const [autre, c] of centres) {
+        if (autre === k) continue;
+        const r = boite(c);
+        assert.ok(!(l[0] < r[2] && r[0] < l[2] && l[1] < r[3] && r[1] < l[3]), `${largeurRem}rem : la boucle de ${k} touche ${autre}`);
+      }
+    }
   }
 });
 
