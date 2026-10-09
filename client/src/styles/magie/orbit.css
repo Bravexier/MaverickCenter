@@ -1,10 +1,11 @@
-/* Carte des magies de /magies/ (components/magie/MagiesConstellation.astro). Grand écran : 1000 × 390 (HAUTEUR_GRANDE), les quatre paires de magies
-   autour de l'hexagone élémentaire, sur toute la largeur. Sous 60rem : la carte étroite, sur deux colonnes (HAUTEUR_ETROITE, 600 → 37.5rem).
-   La carte est un conteneur (100cqw = sa largeur) : chaque infobulle est ramenée entre ses bords, sinon, même cachée, elle élargit la page. */
+/* Carte des magies de /magies/ (components/magie/MagiesConstellation.astro). Grand écran : 1000 × 440 (HAUTEUR_GRANDE), disposée pour que les
+   relations d'une magie, affichées à son survol, ne passent sous aucune autre pastille. Sous 60rem : la carte étroite, sur deux colonnes
+   (HAUTEUR_ETROITE, 590 → 36.875rem), sans relations. La carte est un conteneur (100cqw = sa largeur) : chaque infobulle est ramenée entre ses bords,
+   sinon, même cachée, elle élargit la page. */
 .magies-orbite {
   position: relative;
   width: 100%;
-  aspect-ratio: 1000 / 390;
+  aspect-ratio: 1000 / 440;
   margin: 1.5rem auto 0;
   overflow: visible;
   isolation: isolate;
@@ -20,6 +21,28 @@
 }
 
 .magies-orbite__liens { z-index: -1; }
+
+/* Relations entre magies (grand écran, components/magie/MagiesConstellation.astro, lib/magie-fleches.mjs) : cachées ; survoler une magie (règles :has()
+   écrites par le composant) affiche les siennes, dans sa couleur (--c), assombrie (éclaircie en sombre) pour rester visible. Épée au bout de la magie
+   contre laquelle l'autre est efficace, bouclier au bout de celle qui résiste ; un liseré de la couleur du fond détache les pointes du trait. */
+.magies-orbite__relations { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; overflow: visible; }
+.magies-relation { --trait: color-mix(in srgb, var(--c, var(--muted)) var(--part, 62%), var(--text)); opacity: 0; transition: opacity 140ms ease; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .magies-relation { --trait: color-mix(in srgb, var(--c, var(--muted)) var(--part-sombre, 62%), var(--text)); }
+}
+:root[data-theme="dark"] .magies-relation { --trait: color-mix(in srgb, var(--c, var(--muted)) var(--part-sombre, 62%), var(--text)); }
+.magies-relation line,
+.magies-relation__boucle { fill: none; stroke: var(--trait); stroke-width: 1.8; stroke-linecap: round; }
+.magies-relation__epee path,
+.magies-relation__bouclier path { fill: var(--trait); stroke: var(--bg); stroke-width: 0.8; stroke-linejoin: round; paint-order: stroke; }
+.magies-relation__bouclier .magies-relation__arete { fill: none; stroke: var(--bg); stroke-width: 1.4; stroke-linecap: round; }
+
+.magies-legende { display: flex; flex-wrap: wrap; gap: 0.3rem 1.4rem; margin: 1.6rem 0 0; color: var(--muted); font-size: 0.85rem; }
+.magies-legende__item { display: inline-flex; align-items: center; gap: 0.35rem; }
+.magies-legende svg { width: 2.6rem; height: 1.3rem; flex: none; }
+.magies-legende line { stroke: var(--muted); stroke-width: 1.6; }
+.magies-legende path { fill: var(--muted); }
+.magies-legende .magies-legende__arete { fill: none; stroke: var(--bg); stroke-width: 1.4; stroke-linecap: round; }
 .magies-orbite__liste { margin: 0; padding: 0; list-style: none; }
 .magies-orbite__lien line { vector-effect: non-scaling-stroke; stroke-width: 1.5; }
 .magies-orbite__lien--incompatible line { stroke: var(--muted); stroke-dasharray: 3 6; opacity: 0.55; }
@@ -125,8 +148,8 @@
 /* Écran étroit (le menu passe aussi sous le logo à 60rem) : la carte sur deux colonnes, largeurs en cqw (largeur de la carte, sans les marges de la page),
    les infobulles centrées sur --mx-fraction. */
 @media (max-width: 60rem) {
-  .magies-orbite { height: 37.5rem; aspect-ratio: auto; }
-  .magies-orbite__lien--grand { display: none; }
+  .magies-orbite { height: 36.875rem; aspect-ratio: auto; }
+  .magies-orbite__relations, .magies-legende { display: none; }
   .magies-orbite__lien--petit { display: initial; }
   .magies-orbite__position { left: var(--mx); top: var(--my); width: min(9rem, 46cqw); }
   .magies-orbite__position--potentiel { width: min(12rem, 80cqw); }
@@ -136,5 +159,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .magies-orbite__noeud,
-  .magies-orbite__noeud::after { transition: none; }
+  .magies-orbite__noeud::after,
+  .magies-relation { transition: none; }
 }
