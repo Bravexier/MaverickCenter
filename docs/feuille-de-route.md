@@ -16,7 +16,8 @@ n'est encore réalisé au-delà de la première étape.
 
 La relecture générale des coquilles et fautes des classeurs (décision R10 de `docs/decisions-regles.md`) se fait **dans la base**, domaine par domaine, par des migrations de données
 (`data/migrations/`) : chacune garde son registre (table, id, colonne, avant, après, nature, raison). Faites : les sorts, les 15 magies et leurs tables dérivées
-(`0003-orthographe-magies`, 500 corrections), puis toute la base (`0005-orthographe-base` : 2 247 corrections relues deux fois et 56 noms à clé inchangée, dans toutes les pages et tables typées).
+(`0003-orthographe-magies`, 500 corrections), puis toute la base (`0005-orthographe-base` : 2 247 corrections relues deux fois et 56 noms à clé inchangée, dans toutes les pages et tables typées),
+puis les noms (`0006-orthographe-noms` : sens le plus probable, graphie majoritaire d'un nom propre ; les identifiants restent ceux d'origine, aucune table ne dérive plus l'id du nom).
 Les points qui demandent une décision du propriétaire sont dans `docs/sql/orthographe-a-valider.md`.
 Tant que les classeurs sont la source, **un réimport depuis un classeur réintroduirait ces fautes** : les lignes typées ne se réimportent pas encore (voir `docs/sql/remplissage.md`) ;
 au moment de la bascule, la base est la référence. Le registre `tools/sheets/corrections.json` reste en vigueur pour les autres domaines.

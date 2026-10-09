@@ -73,12 +73,16 @@ test('migration SQL : une ligne de commentaire par correction, et seule la versi
   assert.doesNotMatch(sql, /\b(BEGIN|COMMIT|PRAGMA)\b/i, 'le migrateur gère la transaction');
 });
 
-test('identifiants stables : chaque sort a toujours pour clé normalize(nom), les 322 sorts sont là et aucun nom n’a été changé sauf deux corrections déclarées', () => {
+test('identifiants stables : chaque sort a toujours pour clé normalize(nom), les 322 sorts sont là et aucun nom n’a été changé sauf deux corrections déclarées (puis les noms de 0006, qui gardent leur identifiant)', () => {
+  // 0006 (noms à trancher) a renommé des sorts sans changer leur identifiant : l'id garde la clé du nom d'origine
+  const clesAvant0006 = new Map(JSON.parse(readFileSync(join(dossier, '0006-orthographe-noms.json'), 'utf8')).cles
+    .filter((c) => c.table === 'sort' && c.col === 'nom_cle').map((c) => [c.cle.id, c.avant]));
+  assert.equal(clesAvant0006.size, 9);
   const sorts = db.prepare('SELECT id, magie_id, nom, nom_cle FROM sort').all();
   assert.equal(sorts.length, 322);
   for (const s of sorts) {
     assert.equal(normalize(s.nom), s.nom_cle, `${s.id} : le nom « ${s.nom} » ne donne plus la clé « ${s.nom_cle} »`);
-    assert.equal(s.id, `${s.magie_id}#sort:${s.nom_cle}`);
+    assert.equal(s.id, `${s.magie_id}#sort:${clesAvant0006.get(s.id) ?? s.nom_cle}`);
   }
   const noms = corrections.filter((c) => c.table === 'sort' && c.col === 'nom');
   assert.equal(noms.length, 2);

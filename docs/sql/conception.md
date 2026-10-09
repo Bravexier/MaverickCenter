@@ -356,6 +356,7 @@ Aujourd'hui les identifiants se dérivent des noms de la source (§2). Pour teni
 
 - **Maintenant** : `npm run db:ids` (`tools/db/ids.py`, prototype `ids.garde.py`, testé) compare les identifiants (clés `id` TEXT) de `data/rows` à ceux du commit précédent. Un identifiant **disparu** est une erreur, sauf déclaré dans `data/redirections.json` (`{"ancien": "nouveau"}`, le nouveau existant) ; un ancien identifiant encore présent (donc réutilisé) est une erreur.
   Testé sur un renommage simulé de cette capacité (le cas réel de la PR n° 9 aurait été refusé sans redirection). Exécuté en CI.
+- **Fait (migration 0006)** : les sept tables qui contraignaient l'id à « préfixe || nom_cle » (`sort`, `classe`, `invocation`, `invocation_capacite_commune`, `creature`, `creature_attaque`, `creature_capacite`) ne le font plus : un nom corrigé change `nom` et `nom_cle`, l'id garde la clé d'origine (aucune redirection nécessaire). Les pages gardent aussi leur id et leur slug quand leur titre change.
 - **À la bascule vers l'édition** (migration 2, additive) : table `redirection(ancien_id, id)` lue par l'API (`/pages/{ancien}` → 301) et le résolveur de liens ; les identifiants sont **gelés** (un renommage change le titre, jamais l'id) ; l'identifiant n'est plus dérivé du slug.
 
 ### 10.3 Historique des modifications (non construit)

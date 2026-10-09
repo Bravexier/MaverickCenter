@@ -87,7 +87,7 @@ Pour pouvoir invoquer un golem double-magie, il faut posséder une seconde magie
 - Terre Mono : Golem de pain, Poupée de glaise
 - Terre + Sang : Golem de chair, Poupée sanglante
 - Terre + Arcane : Golem d''arcane, Poupée arcanique
-- Terre + Corruption : Golem de pétrole, Poupée corrompu
+- Terre + Corruption : Golem de pétrole, Poupée corrompue
 - Terre + Espace/Temps : Golem de rouage, Poupée temporelle
 - Terre + Vide : Golem de cristal, Poupée vide
 - Terre + Nécromancie : Golem d''os, Poupée nécrotique
@@ -97,10 +97,10 @@ Pour pouvoir invoquer un golem double-magie, il faut posséder une seconde magie
 - Terre + Terre : Golem de verre, Poupée terrestre
 - Terre + Vent : Golem de sable, Poupée aérienne
 - Terre + Foudre : Golem de foudre, Poupée fulgurante
-- Terre + Lumière : Golem de lumière, Poupée sacré
+- Terre + Lumière : Golem de lumière, Poupée sacrée
 - Terre + Ombre : Golem d''ombre, Poupée maudite
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Appel aux golems »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/bete-de-lombre', 'bestiaire', 'bete-de-lombre', 'Bête de l''Ombre', 'bete-de-lombre', 'La Bête de l’Ombre est l’ultime métamorphose de l’invocation, une forme qui renonce définitivement à toute imitation humaine.', NULL, '**Invocation** : Marionette de lombre (onglet du classeur « Invocation »)
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/bete-de-lombre', 'bestiaire', 'bete-de-lombre', 'Bête de l''Ombre', 'bete-de-lombre', 'La Bête de l’Ombre est l’ultime métamorphose de l’invocation, une forme qui renonce définitivement à toute imitation humaine.', NULL, '**Invocation** : Marionnette de l''ombre (onglet du classeur « Invocation »)
 
 **Libellé du bloc** : EP5
 
@@ -126,7 +126,7 @@ La Bête de l’Ombre est l’ultime métamorphose de l’invocation, une forme 
 
 Bond. Cette créature est capable de faire un bond équivalent à sa vitesse x2 en échange de 3IC.
 
-Folle de guerre. Cette créature doit avancer vers l’ennemi, elle ne peut pas attendre et est immunisée contre toutes formes de peur.
+Folie de guerre. Cette créature doit avancer vers l’ennemi, elle ne peut pas attendre et est immunisée contre toutes formes de peur.
 
 Vraiment sournois. Quand l''adversaire n''est pas attentif au personnage, permet d''infliger un bonus de 4d4 dégâts en plus des dégâts de l''arme.
 
@@ -137,7 +137,7 @@ Vraiment sournois. Quand l''adversaire n''est pas attentif au personnage, permet
 - Récupère 10% de santé la nuit ou dans l''ombre
 - Les attaques ignorent 3AP ou 3AM
 - Confusion 1 sur le lanceur
-- Folle de guerre sur le lanceur
+- Folie de guerre sur le lanceur
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Marionette de lombre »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/carcalanche', 'bestiaire', 'carcalanche', 'Carcalanche', 'carcalanche', 'Le Carcalanche est un zombi figé par un froid si intense qu’il a momifié sa chair en la cristallisant.', NULL, '**Invocation** : Animation des morts (onglet du classeur « Invocation »)
 
@@ -238,7 +238,7 @@ Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de ma�
 
 (NPM 5) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Vibration.
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Animation des morts »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/double-sombre', 'bestiaire', 'double-sombre', 'Double sombre', 'double-sombre', 'Le Double sombre atteint un degré de mimétisme presque parfait.', NULL, '**Invocation** : Marionette de lombre (onglet du classeur « Invocation »)
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/double-sombre', 'bestiaire', 'double-sombre', 'Double sombre', 'double-sombre', 'Le Double sombre atteint un degré de mimétisme presque parfait.', NULL, '**Invocation** : Marionnette de l''ombre (onglet du classeur « Invocation »)
 
 **Libellé du bloc** : EP3
 
@@ -301,7 +301,7 @@ Attaque brûlante. L''attaque de cette créature est capable d''infliger une br�
 
 (NPM 5) Déflagration. Sacrifie la valeur de AP et AM pour les ajouter comme modificateur aux dégâts pendant 3 tours.
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Animation des morts »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/executeur-lunaire', 'bestiaire', 'executeur-lunaire', 'Exécuteur lunaire', 'executeur-lunaire', 'L’Exécuteur lunaire est l’évolution monstrueuse de l''ombre du lanceur À l’instant de son invocation, ses proportions semblent croître sous les yeux des témoins, comme si l’ombre refusait toute limite imposée par la forme mortelle.', NULL, '**Invocation** : Marionette de lombre (onglet du classeur « Invocation »)
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/executeur-lunaire', 'bestiaire', 'executeur-lunaire', 'Exécuteur lunaire', 'executeur-lunaire', 'L’Exécuteur lunaire est l’évolution monstrueuse de l''ombre du lanceur À l’instant de son invocation, ses proportions semblent croître sous les yeux des témoins, comme si l’ombre refusait toute limite imposée par la forme mortelle.', NULL, '**Invocation** : Marionnette de l''ombre (onglet du classeur « Invocation »)
 
 **Libellé du bloc** : EP4
 
@@ -471,7 +471,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## Description
 
-Ce golem ne paie pas de mine par son apparence distordue mais la comble par sa potentielle force physique. Qui dit muscle dit forcément puissance à ne pas sous-estimer. Il possède aussi la capacité de modifier complètement son corps pour s''adapter à son environnement ou bien simplement de manière purement aléatoire, ce qui rappelle fortement les sorts de "Sang" et le sort "Taille disproportionné" de la magie du Sang.
+Ce golem ne paie pas de mine par son apparence distordue mais la comble par sa potentielle force physique. Qui dit muscle dit forcément puissance à ne pas sous-estimer. Il possède aussi la capacité de modifier complètement son corps pour s''adapter à son environnement ou bien simplement de manière purement aléatoire, ce qui rappelle fortement les sorts de "Sang" et le sort "Taille disproportionnée" de la magie du Sang.
 
 ## Statistiques
 
@@ -562,7 +562,7 @@ Version évoluée des golems de mine, les golems de foudre sont des créatures t
 
 Plaque miroir. Possède une plaque miroir qui peut absorber un sort niveau 3 maximum, cette plaque réapparaît tous les 3 tours.
 
-(NPM 3) Anti Brumeux. Cette créature inflige un bonus de 10 dégâts contre les créatures liées à la Brume Noir et peut protéger ses alliés à 4 cases de lui des effets négatifs de cette dernière.
+(NPM 3) Anti Brumeux. Cette créature inflige un bonus de 10 dégâts contre les créatures liées à la Brume Noire et peut protéger ses alliés à 4 cases de lui des effets négatifs de cette dernière.
 
 (NPM 5) Distributeur de foudre. Chaque attaque de l’élément foudre va se distribuer à la cible la plus proche de la première (maximum 3 PO) et infliger la moitié des dégâts et ainsi de suite …
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Appel aux golems »');
@@ -602,7 +602,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 **Magie(s)** : Terre + Lumière
 
-**Autre créature du bloc** : Poupée sacré
+**Autre créature du bloc** : Poupée sacrée
 
 ## Description
 
@@ -700,7 +700,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 **Magie(s)** : Terre + Corruption
 
-**Autre créature du bloc** : Poupée corrompu
+**Autre créature du bloc** : Poupée corrompue
 
 ## Description
 
@@ -803,7 +803,7 @@ Squelettique. Rend cette créature immunisée aux attaques d’estoc.
 
 (NPM 3) Appelaréno. Invoque automatiquement la tempête de sable dès que le combat commence.
 
-(NPM 5) Forcaréno. Cette créature a un bonus de +1 à la vitesse et +4 aux dégâts tant qu’elle est sur le terrain sable ou que la météo “tempête sable” est activée.
+(NPM 5) Forcaréno. Cette créature a un bonus de +1 à la vitesse et +4 aux dégâts tant qu’elle est sur le terrain sable ou que la météo “tempête de sable” est activée.
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Appel aux golems »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/golem-de-verre', 'bestiaire', 'golem-de-verre', 'Golem de verre', 'golem-de-verre', 'Les Golems de Verre sont des créatures que l''on retrouve principalement dans les déserts et verreries.', NULL, '**Invocation** : Appel aux golems (onglet du classeur « Invocation »)
 
@@ -912,7 +912,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## Description
 
-La Goule est un humanoïde corrompu, soit pré ou post-mortem. Les Humanoïdes Dégradés incapables de se nourrir suffisamment se transforment en goule dans une ultime tentative de dévorer un être encore sain. On raconte aussi que des Mort-Vivant ayant succombé à la corruption deviennent directement des goules. Leur chair s''est asséchée et leur sang est absent, sauf pour les cadavres bien frais, à peine transformés.
+La Goule est un humanoïde corrompu, soit pré ou post-mortem. Les Humanoïdes Dégradés incapables de se nourrir suffisamment se transforment en goule dans une ultime tentative de dévorer un être encore sain. On raconte aussi que des Morts-Vivants ayant succombé à la corruption deviennent directement des goules. Leur chair s''est asséchée et leur sang est absent, sauf pour les cadavres bien frais, à peine transformés.
 
 ## Statistiques
 
@@ -932,7 +932,7 @@ La Goule est un humanoïde corrompu, soit pré ou post-mortem. Les Humanoïdes D
 
 Pétrolier. Chaque attaque qui touche inflige 5 corruption.
 
-(NPM 3) Radiation corrompu. Sur un carré de 3x3 autour la créature, inflige 1 point de corruption à chaque créature qui commence leur tour dans cette zone.
+(NPM 3) Radiation corrompue. Sur un carré de 3x3 autour la créature, inflige 1 point de corruption à chaque créature qui commence leur tour dans cette zone.
 
 (NPM 5) Pollution étendue. Inflige 3 corruption en plus à chaque attaque qui touche.
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Animation des morts »');
@@ -969,7 +969,7 @@ Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de ma�
 
 (NPM 5) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Recouvrer, Photon.
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Animation des morts »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/marionette-de-lombre', 'bestiaire', 'marionette-de-lombre', 'Marionette de lombre', 'marionette-de-lombre', 'Il n''est possible d’avoir qu’une seule invocation à la fois en combat et par personnage (sauf le mode hyper de la nécromancie qui permet d''en avoir un deuxième).', NULL, '**En-tête de l''onglet** : INVOCATION MARIONETTE
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/marionette-de-lombre', 'bestiaire', 'marionette-de-lombre', 'Marionnette de l''ombre', 'marionnette-de-lombre', 'Il n''est possible d’avoir qu’une seule invocation à la fois en combat et par personnage (sauf le mode hyper de la nécromancie qui permet d''en avoir un deuxième).', NULL, '**En-tête de l''onglet** : INVOCATION MARIONNETTE
 
 ## Texte général
 
@@ -984,7 +984,7 @@ Cette invocation demande de la barrière pour être invoquée, elle va piocher d
 ## Créatures
 
 - EP1 : Ombre rampante
-- EP2 : Sihouetteur obscur
+- EP2 : Silhouetteur obscur
 - EP3 : Double sombre
 - EP4 : Exécuteur lunaire
 - EP5 : Bête de l''Ombre
@@ -1019,7 +1019,7 @@ Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de ma�
 
 (NPM 3) Attaque maudite. L''attaque de cette créature a l''effet du sort de l''ombre "malédiction" et l''applique automatiquement.
 
-(NPM 5) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Frappe temporelle, Veilliessement
+(NPM 5) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Frappe temporelle, Vieillissement
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Animation des morts »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/noctebre', 'bestiaire', 'noctebre', 'Noctèbre', 'noctebre', 'Le Noctèbre est le squelette d’un ancien assassin ou espion, relevé par la volonté d’Umbro pour servir à nouveau dans les ténèbres.', NULL, '**Invocation** : Animation des morts (onglet du classeur « Invocation »)
 
@@ -1088,7 +1088,7 @@ Vomi. La créature vomit une espèce d’acide qui va s’infiltrer dans les arm
 
 (NPM 5) Croc vert. L’attaque de morsure de cette créature possède également la propriété de "Vomi" et l’inflige juste après l''attaque.
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Animation des morts »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/ombre-rampante', 'bestiaire', 'ombre-rampante', 'Ombre rampante', 'ombre-rampante', 'L’Ombre rampante est une émanation imparfaite, arrachée de l’ombre du porteur avant même qu’elle n’ait une véritable forme.', NULL, '**Invocation** : Marionette de lombre (onglet du classeur « Invocation »)
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/ombre-rampante', 'bestiaire', 'ombre-rampante', 'Ombre rampante', 'ombre-rampante', 'L’Ombre rampante est une émanation imparfaite, arrachée de l’ombre du porteur avant même qu’elle n’ait une véritable forme.', NULL, '**Invocation** : Marionnette de l''ombre (onglet du classeur « Invocation »)
 
 **Libellé du bloc** : EP1
 
@@ -1246,9 +1246,9 @@ Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de ma�
 
 (NPM 3) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Vague déferlante, Laser de chakra.
 
-(NPM 5) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Foudre argenté.
+(NPM 5) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Foudre argentée.
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Appel aux golems »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/poupee-corrompu', 'bestiaire', 'poupee-corrompu', 'Poupée corrompu', 'poupee-corrompu', 'La poupée corrompue est une incarnation de la souillure.', NULL, '**Invocation** : Appel aux golems (onglet du classeur « Invocation »)
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/poupee-corrompu', 'bestiaire', 'poupee-corrompu', 'Poupée corrompue', 'poupee-corrompue', 'La poupée corrompue est une incarnation de la souillure.', NULL, '**Invocation** : Appel aux golems (onglet du classeur « Invocation »)
 
 **Magie(s)** : Terre + Corruption
 
@@ -1306,7 +1306,7 @@ La Poupée de Glaise est une créature élémentaire rudimentaire, façonnée pa
 
 ## Capacité(s)
 
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrise maximum : Lance pierre, Peau de pierre, Racine soignante.
+Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrise maximum : Lance-pierre, Peau de pierre, Racine soignante.
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Appel aux golems »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/poupee-flamboyante', 'bestiaire', 'poupee-flamboyante', 'Poupée flamboyante', 'poupee-flamboyante', 'La poupée flamboyante possède un corps sombre et craquelé, comme une céramique brûlée.', NULL, '**Invocation** : Appel aux golems (onglet du classeur « Invocation »)
 
@@ -1434,7 +1434,7 @@ Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de ma�
 
 (NPM 3) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Pieu d''os, Poison de masse
 
-(NPM 5) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Répar Os
+(NPM 5) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Répar''Os
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Appel aux golems »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/poupee-oceanique', 'bestiaire', 'poupee-oceanique', 'Poupée océanique', 'poupee-oceanique', 'La poupée océanique est façonnée de corail rugueux et d’algues humides, formant une silhouette inquiétante, hérissée de pointes et de filaments verdâtres.', NULL, '**Invocation** : Appel aux golems (onglet du classeur « Invocation »)
 
@@ -1500,7 +1500,7 @@ Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de ma�
 
 (NPM 5) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Cape hivernale
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Appel aux golems »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/poupee-sacre', 'bestiaire', 'poupee-sacre', 'Poupée sacré', 'poupee-sacre', 'La poupée sacrée est façonnée en céramique lisse, prenant la forme d’une petite sentinelle élancée.', NULL, '**Invocation** : Appel aux golems (onglet du classeur « Invocation »)
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/poupee-sacre', 'bestiaire', 'poupee-sacre', 'Poupée sacrée', 'poupee-sacree', 'La poupée sacrée est façonnée en céramique lisse, prenant la forme d’une petite sentinelle élancée.', NULL, '**Invocation** : Appel aux golems (onglet du classeur « Invocation »)
 
 **Magie(s)** : Terre + Lumière
 
@@ -1624,7 +1624,7 @@ La poupée terrestre est un mini-hommage au dieu de la Terre. Son corps est faç
 
 ## Capacité(s)
 
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrise maximum : Lance pierre, Peau de pierre
+Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrise maximum : Lance-pierre, Peau de pierre
 
 (NPM 3) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Cuirasse de roche, Frappe racine
 
@@ -1690,11 +1690,11 @@ Le Réanimé a la particularité d''avoir été ramené à la vie par des techno
 
 Recollage. Les membres de cette créature se réassemblent automatiquement. Ne peut subir d''infirmité.
 
-(NPM 3) Para-tonnerre. Attire les sorts de la foudre ou bien la foudre naturelle sur soi. Prend 4 fois moins de dégâts de cette dernière.
+(NPM 3) Paratonnerre. Attire les sorts de la foudre ou bien la foudre naturelle sur soi. Prend 4 fois moins de dégâts de cette dernière.
 
 (NPM 5) Plaque miroir. Possède une plaque miroir qui peut absorber un sort de niveau 3 maximum, cette plaque réapparait tous les 3 tours.
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Animation des morts »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/sihouetteur-obscur', 'bestiaire', 'sihouetteur-obscur', 'Sihouetteur obscur', 'sihouetteur-obscur', 'Le Silhouetteur obscur est une incarnation plus aboutie de l’ombre invoquée, déjà suffisamment stable pour adopter une posture humanoïde, bien que profondément imparfaite.', NULL, '**Invocation** : Marionette de lombre (onglet du classeur « Invocation »)
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/sihouetteur-obscur', 'bestiaire', 'sihouetteur-obscur', 'Silhouetteur obscur', 'silhouetteur-obscur', 'Le Silhouetteur obscur est une incarnation plus aboutie de l’ombre invoquée, déjà suffisamment stable pour adopter une posture humanoïde, bien que profondément imparfaite.', NULL, '**Invocation** : Marionnette de l''ombre (onglet du classeur « Invocation »)
 
 **Libellé du bloc** : EP2
 
@@ -1787,7 +1787,7 @@ Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de ma�
 
 (NPM 3) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Vague déferlante, Laser de chakra.
 
-(NPM 5) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Foudre argenté.
+(NPM 5) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Foudre argentée.
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Animation des morts »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/squelette-archer', 'bestiaire', 'squelette-archer', 'Squelette archer', 'squelette-archer', 'Armés d''arcs rudimentaires, les Archers Squelettes s''attaquent inlassablement à tout ce qui vit.', NULL, '**Invocation** : Animation des morts (onglet du classeur « Invocation »)
 
@@ -1837,7 +1837,7 @@ Son corps entièrement rigide fait de lui un ennemi qui est lent mais qui est tr
 | --- | --- | --- |
 | 20/NPM | 0.0 | 0.0 |
 
-**Dégâts** : Épée osseuse lié - 1d12+2/NPM dégâts d''estoc/taille
+**Dégâts** : Épée osseuse liée - 1d12+2/NPM dégâts d''estoc/taille
 
 **Défense** : 5/NPM Armure Physique | 0 Armure Magique
 
@@ -1946,7 +1946,7 @@ Le Temposs est un mort ayant plus que la peau sur les os lui donnant une apparen
 
 ## Capacité(s)
 
-Arme distordu. L''arme à distance de cette créature possède une portée qui couvre l''entièreté du terrain, il doit toujours au moins voir sa cible pour l''attaquer.
+Arme distordue. L''arme à distance de cette créature possède une portée qui couvre l''entièreté du terrain, il doit toujours au moins voir sa cible pour l''attaquer.
 
 (NPM 3) Double cible. Cette créature peut toucher deux cibles à la fois avec son arme.
 
@@ -2112,7 +2112,7 @@ Super santé. Cette créature possède le double de santé.
 
 (NPM 3) Crache chakra. Tous les 10% de santé perdu, cette créature libère “Boule de chakra” sur tous les ennemis qui sont à 6 cases de portée sur le terrain, ce sort va infliger 4d6 dégâts magiques.
 
-(NPM 5) Tu ne passe pas. Permet de bloquer les adversaires dans sa zone d’influence complète. Permet également d’intercepter les attaques avec un jet de défense réussi.
+(NPM 5) Tu ne passes pas. Permet de bloquer les adversaires dans sa zone d’influence complète. Permet également d’intercepter les attaques avec un jet de défense réussi.
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Animation des morts »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/zombre', 'bestiaire', 'zombre', 'Zombre', 'zombre', 'Les Zombres sont plus malins que la plupart de leurs congénères.', NULL, '**Invocation** : Animation des morts (onglet du classeur « Invocation »)
 
@@ -2178,9 +2178,9 @@ Crache spore. Crache des spores dans une zone de 2 cases autour qui force un jet
 
 (NPM 5) Dégustation d’eau. Absorbe les dégâts de l’élément eau, ce qui lui donne +5 dégâts à la prochaine attaque en plus de le soigner à hauteur de 5d6.
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Animation des morts »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/anansi-anti-corps', 'capacites', 'anansi-anti-corps', 'Anti-corps (Anansi)', 'anti-corps-anansi', 'Immunisé aux poisons et à toutes les fioles "offensive"', '{"classe": "classes/anansi", "specialite": "CEMIES", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/anansi-tissiere"]}', 'Immunisé aux poisons et à toutes les fioles "offensive"
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/anansi-anti-corps', 'capacites', 'anansi-anti-corps', 'Anticorps (Anansi)', 'anticorps-anansi', 'Immunisé aux poisons et à toutes les fioles "offensive"', '{"classe": "classes/anansi", "specialite": "CEMIES", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/anansi-tissiere"]}', 'Immunisé aux poisons et à toutes les fioles "offensive"
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Anansi »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/anansi-attention-migale', 'capacites', 'anansi-attention-migale', 'Attention migale ! (Anansi)', 'attention-migale-anansi', 'Crée une fausse araignée et la jette sur la cible, cette dernière doit réussir un jet de Fermeté pour ne pas perdre son tour.', '{"classe": "classes/anansi", "specialite": "MARIONNETTISTE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Action (1 fois/Combat)", "choix_exclusif_avec": ["capacites/anansi-pt-bobo"]}', 'Crée une fausse araignée et la jette sur la cible, cette dernière doit réussir un jet de Fermeté pour ne pas perdre son tour.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/anansi-attention-migale', 'capacites', 'anansi-attention-migale', 'Attention mygale ! (Anansi)', 'attention-mygale-anansi', 'Crée une fausse araignée et la jette sur la cible, cette dernière doit réussir un jet de Fermeté pour ne pas perdre son tour.', '{"classe": "classes/anansi", "specialite": "MARIONNETTISTE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Action (1 fois/Combat)", "choix_exclusif_avec": ["capacites/anansi-pt-bobo"]}', 'Crée une fausse araignée et la jette sur la cible, cette dernière doit réussir un jet de Fermeté pour ne pas perdre son tour.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Anansi »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/anansi-cemies', 'capacites', 'anansi-cemies', 'Cemies (Anansi)', 'cemies-anansi', '+7% Magie, 7% Concentration, +2 points de maîtrise à répartir, considérer comme classe magique.', '{"classe": "classes/anansi", "specialite": "CEMIES", "niveau": 10, "nature": "specialite", "rang": 2, "ligne": 22, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/anansi-marionnettiste"]}', '+7% Magie, 7% Concentration, +2 points de maîtrise à répartir, considérer comme classe magique.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Anansi »');
@@ -2321,7 +2321,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Archimage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/archimage-occultiste', 'capacites', 'archimage-occultiste', 'Occultiste (Archimage)', 'occultiste-archimage', '+7% Magie, +7% connaissance, +7% intimidation, +1 point de maîtrise d''arme à distance', '{"classe": "classes/archimage", "niveau": 10, "nature": "choix", "rang": 2, "ligne": 18, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/archimage-elementaliste"]}', '+7% Magie, +7% connaissance, +7% intimidation, +1 point de maîtrise d''arme à distance
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Archimage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/archimage-pacte-noire', 'capacites', 'archimage-pacte-noire', 'Pacte Noire (Archimage)', 'pacte-noire-archimage', 'Permet d''utiliser la corruption accumulée pour lancer des sorts de corruption.', '{"classe": "classes/archimage", "niveau": 15, "nature": "choix", "rang": 3, "ligne": 33, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/archimage-moissonneur", "capacites/archimage-rituel-interdit"]}', 'Permet d''utiliser la corruption accumulée pour lancer des sorts de corruption.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/archimage-pacte-noire', 'capacites', 'archimage-pacte-noire', 'Pacte Noir (Archimage)', 'pacte-noir-archimage', 'Permet d''utiliser la corruption accumulée pour lancer des sorts de corruption.', '{"classe": "classes/archimage", "niveau": 15, "nature": "choix", "rang": 3, "ligne": 33, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/archimage-moissonneur", "capacites/archimage-rituel-interdit"]}', 'Permet d''utiliser la corruption accumulée pour lancer des sorts de corruption.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Archimage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/archimage-rituel-interdit', 'capacites', 'archimage-rituel-interdit', 'Rituel Interdit (Archimage)', 'rituel-interdit-archimage', '(Barre de sang débloquée) Par un rituel, permet de sacrifier 1pv par sang, jusqu''à un maximum de +10 sang', '{"classe": "classes/archimage", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 33, "type_capacite": "Actif", "choix_exclusif_avec": ["capacites/archimage-moissonneur", "capacites/archimage-pacte-noire"]}', '(Barre de sang débloquée) Par un rituel, permet de sacrifier 1pv par sang, jusqu''à un maximum de +10 sang
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Archimage »');
@@ -2333,9 +2333,9 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Barde »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/barde-amplification', 'capacites', 'barde-amplification', 'Amplification (Barde)', 'amplification-barde', 'Augmente les dégâts des altérations d''états de 25% pendant leur durée', '{"classe": "classes/barde", "specialite": "MÉNESTREL", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Actif (2 fois/Combat)", "choix_exclusif_avec": ["capacites/barde-balade-guerriere"]}', 'Augmente les dégâts des altérations d''états de 25% pendant leur durée
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Barde »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/barde-bain-de-foules', 'capacites', 'barde-bain-de-foules', 'Bain de foules (Barde)', 'bain-de-foules-barde', 'Inflige 6d8 de dégâts et applique "étourdi" pendant 3 tours (ne marche pas contre les boss)', '{"classe": "classes/barde", "specialite": "DANSEUR", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Action (2 fois/combat)", "choix_exclusif_avec": ["capacites/barde-a-bas-les-badauds"]}', 'Inflige 6d8 de dégâts et applique "étourdi" pendant 3 tours (ne marche pas contre les boss)
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/barde-bain-de-foules', 'capacites', 'barde-bain-de-foules', 'Bain de foule (Barde)', 'bain-de-foule-barde', 'Inflige 6d8 de dégâts et applique "étourdi" pendant 3 tours (ne marche pas contre les boss)', '{"classe": "classes/barde", "specialite": "DANSEUR", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Action (2 fois/combat)", "choix_exclusif_avec": ["capacites/barde-a-bas-les-badauds"]}', 'Inflige 6d8 de dégâts et applique "étourdi" pendant 3 tours (ne marche pas contre les boss)
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Barde »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/barde-balade-guerriere', 'capacites', 'barde-balade-guerriere', 'Balade guerrière (Barde)', 'balade-guerriere-barde', '+3 dégâts, +2 ini et 1d8 santé temporaire pour tous les alliés pendant 3 tours.', '{"classe": "classes/barde", "specialite": "MÉNESTREL", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Actif (2 fois/Combat)", "choix_exclusif_avec": ["capacites/barde-amplification"]}', '+3 dégâts, +2 ini et 1d8 santé temporaire pour tous les alliés pendant 3 tours.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/barde-balade-guerriere', 'capacites', 'barde-balade-guerriere', 'Ballade guerrière (Barde)', 'ballade-guerriere-barde', '+3 dégâts, +2 ini et 1d8 santé temporaire pour tous les alliés pendant 3 tours.', '{"classe": "classes/barde", "specialite": "MÉNESTREL", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Actif (2 fois/Combat)", "choix_exclusif_avec": ["capacites/barde-amplification"]}', '+3 dégâts, +2 ini et 1d8 santé temporaire pour tous les alliés pendant 3 tours.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Barde »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/barde-chant-double', 'capacites', 'barde-chant-double', 'Chant double (Barde)', 'chant-double-barde', 'Double les sorts utilisés pendant son tour. Mais double le cout en chakra.', '{"classe": "classes/barde", "niveau": 20, "nature": "classe", "rang": 3, "ligne": 49, "type_capacite": "Actif (1 fois/combat)"}', 'Double les sorts utilisés pendant son tour. Mais double le cout en chakra.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Barde »');
@@ -2388,7 +2388,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Bimane »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/bimane-fausse-patte', 'capacites', 'bimane-fausse-patte', 'Fausse Patte (Bimane)', 'fausse-patte-bimane', '+5% Arme légère, +5% Équilibre, +5% Survie, +2 points de maîtrise d''arme à répartir.', '{"classe": "classes/bimane", "specialite": "FAUSSE PATTE", "niveau": 10, "nature": "specialite", "rang": 2, "ligne": 22, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/bimane-ravageur"]}', '+5% Arme légère, +5% Équilibre, +5% Survie, +2 points de maîtrise d''arme à répartir. Réduit le malus d''ambidextrie de 5% avec les Armes Légères.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Bimane »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/bimane-frappe-fatiguante', 'capacites', 'bimane-frappe-fatiguante', 'Frappe fatiguante (Bimane)', 'frappe-fatiguante-bimane', 'Frappe qui inflige 50% dégâts finaux mais oblige un jet de vigueur à la cible. Si elle rate, elle prend "fatigue 1".', '{"classe": "classes/bimane", "niveau": 5, "nature": "classe", "rang": 2, "ligne": 11, "type_capacite": "Action"}', 'Frappe qui inflige 50% dégâts finaux mais oblige un jet de vigueur à la cible. Si elle rate, elle prend "fatigue 1".
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/bimane-frappe-fatiguante', 'capacites', 'bimane-frappe-fatiguante', 'Frappe fatigante (Bimane)', 'frappe-fatigante-bimane', 'Frappe qui inflige 50% dégâts finaux mais oblige un jet de vigueur à la cible. Si elle rate, elle prend "fatigue 1".', '{"classe": "classes/bimane", "niveau": 5, "nature": "classe", "rang": 2, "ligne": 11, "type_capacite": "Action"}', 'Frappe qui inflige 50% dégâts finaux mais oblige un jet de vigueur à la cible. Si elle rate, elle prend "fatigue 1".
 
 Note de cellule : L''état de fatigue ne se cumule pas si le coup est répété sur la même cible.
 
@@ -2441,7 +2441,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Clerc »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/clerc-saint-combattant', 'capacites', 'clerc-saint-combattant', 'Saint Combattant (Clerc)', 'saint-combattant-clerc', '+2 points de maîtrise d''arme, +7% Arme légères OU lourdes, +7% Médecine, 2% de réussite critique pour les soins.', '{"classe": "classes/clerc", "specialite": "SAINT COMBATTANT", "niveau": 10, "nature": "specialite", "rang": 1, "ligne": 22, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/clerc-zelote"]}', '+2 points de maîtrise d''arme, +7% Arme légères OU lourdes, +7% Médecine, 2% de réussite critique pour les soins.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Clerc »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/clerc-tend-lautre-joue', 'capacites', 'clerc-tend-lautre-joue', 'Tend l''autre joue (Clerc)', 'tend-lautre-joue-clerc', 'Permet d''attaquer deux fois en 1 tour mais de prendre deux fois plus de dégâts jusqu''au prochain tour.', '{"classe": "classes/clerc", "specialite": "SAINT COMBATTANT", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Actif", "choix_exclusif_avec": ["capacites/clerc-aura-saine"]}', 'Permet d''attaquer deux fois en 1 tour mais de prendre deux fois plus de dégâts jusqu''au prochain tour.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/clerc-tend-lautre-joue', 'capacites', 'clerc-tend-lautre-joue', 'Tends l''autre joue (Clerc)', 'tends-lautre-joue-clerc', 'Permet d''attaquer deux fois en 1 tour mais de prendre deux fois plus de dégâts jusqu''au prochain tour.', '{"classe": "classes/clerc", "specialite": "SAINT COMBATTANT", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Actif", "choix_exclusif_avec": ["capacites/clerc-aura-saine"]}', 'Permet d''attaquer deux fois en 1 tour mais de prendre deux fois plus de dégâts jusqu''au prochain tour.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Clerc »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/clerc-zelote', 'capacites', 'clerc-zelote', 'Zélote (Clerc)', 'zelote-clerc', '+2 points de maîtrise d''arme, +7% Magie, +7% Médecine, Maîtrise les armures lourdes.', '{"classe": "classes/clerc", "specialite": "ZÉLOTE", "niveau": 10, "nature": "specialite", "rang": 2, "ligne": 22, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/clerc-saint-combattant"]}', '+2 points de maîtrise d''arme, +7% Magie, +7% Médecine, Maîtrise les armures lourdes.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Clerc »');
@@ -2477,7 +2477,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Cuirassé »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/cuirasse-residuellement', 'capacites', 'cuirasse-residuellement', 'Résiduellement (Cuirassé)', 'residuellement-cuirasse', 'Être dans la zone de dégâts d''un sortilège divise les dégâts par 2 (sauf si vous êtes dans la zone centrale du sort)', '{"classe": "classes/cuirasse", "specialite": "PROTECTEUR", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/cuirasse-tu-passe-pas"]}', 'Être dans la zone de dégâts d''un sortilège divise les dégâts par 2 (sauf si vous êtes dans la zone centrale du sort)
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Cuirassé »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/cuirasse-tu-passe-pas', 'capacites', 'cuirasse-tu-passe-pas', 'Tu passe pas ! (Cuirassé)', 'tu-passe-pas-cuirasse', 'Un ennemi présent dans la zone d’influence ne peut pas s’en échapper par son déplacement.', '{"classe": "classes/cuirasse", "specialite": "PROTECTEUR", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/cuirasse-residuellement"]}', 'Un ennemi présent dans la zone d’influence ne peut pas s’en échapper par son déplacement.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/cuirasse-tu-passe-pas', 'capacites', 'cuirasse-tu-passe-pas', 'Tu passes pas ! (Cuirassé)', 'tu-passes-pas-cuirasse', 'Un ennemi présent dans la zone d’influence ne peut pas s’en échapper par son déplacement.', '{"classe": "classes/cuirasse", "specialite": "PROTECTEUR", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/cuirasse-residuellement"]}', 'Un ennemi présent dans la zone d’influence ne peut pas s’en échapper par son déplacement.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Cuirassé »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/cuirasse-vendetta', 'capacites', 'cuirasse-vendetta', 'Vendetta (Cuirassé)', 'vendetta-cuirasse', '+5 aux dégâts, +1 vitesse par allié au sol (max 3 accumulations). Les bonus partent quand les alliés reviennent.', '{"classe": "classes/cuirasse", "specialite": "VINDICATIF", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/cuirasse-dernier-souffle"]}', '+5 aux dégâts, +1 vitesse par allié au sol (max 3 accumulations). Les bonus partent quand les alliés reviennent.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Cuirassé »');
@@ -2495,7 +2495,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Fenrir »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/fenrir-gourou', 'capacites', 'fenrir-gourou', 'Gourou (Fenrir)', 'gourou-fenrir', '+7% Magie, 7% fermeté, +2 points de maîtrise à répartir, considérer comme classe magique', '{"classe": "classes/fenrir", "specialite": "GOUROU", "niveau": 10, "nature": "specialite", "rang": 2, "ligne": 22, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/fenrir-belliciste"]}', '+7% Magie, 7% fermeté, +2 points de maîtrise à répartir, considérer comme classe magique
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Fenrir »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/fenrir-griffe-sanglant', 'capacites', 'fenrir-griffe-sanglant', 'Griffe sanglant (Fenrir)', 'griffe-sanglant-fenrir', 'Les armes tranchantes possèdent 20% de chance d''infliger saignement.', '{"classe": "classes/fenrir", "specialite": "BELLICISTE", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/fenrir-cri-dalpha"]}', 'Les armes tranchantes possèdent 20% de chance d''infliger saignement.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/fenrir-griffe-sanglant', 'capacites', 'fenrir-griffe-sanglant', 'Griffe sanglante (Fenrir)', 'griffe-sanglante-fenrir', 'Les armes tranchantes possèdent 20% de chance d''infliger saignement.', '{"classe": "classes/fenrir", "specialite": "BELLICISTE", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/fenrir-cri-dalpha"]}', 'Les armes tranchantes possèdent 20% de chance d''infliger saignement.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Fenrir »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/fenrir-grognement', 'capacites', 'fenrir-grognement', 'Grognement (Fenrir)', 'grognement-fenrir', '+3 dégâts, +2 ini par allié présent dans un rayon de 3 cases autour. Dure 3 tours.', '{"classe": "classes/fenrir", "specialite": "BELLICISTE", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Actif (1 fois/combat)", "choix_exclusif_avec": ["capacites/fenrir-sucage"]}', '+3 dégâts, +2 ini par allié présent dans un rayon de 3 cases autour. Dure 3 tours.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Fenrir »');
@@ -2524,7 +2524,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Flagelleur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/flagelleur-cingle', 'capacites', 'flagelleur-cingle', 'Cinglé (Flagelleur)', 'cingle-flagelleur', 'Avoir une maladie augmente les dégâts de +10.', '{"classe": "classes/flagelleur", "specialite": "MASOCHISTE", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/flagelleur-sangsue"]}', 'Avoir une maladie augmente les dégâts de +10.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Flagelleur »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/flagelleur-dit-mon-nom', 'capacites', 'flagelleur-dit-mon-nom', 'Dit mon nom ! (Flagelleur)', 'dit-mon-nom-flagelleur', '+1 bonus aux dégâts de Souffrance.', '{"classe": "classes/flagelleur", "specialite": "SADIQUE", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/flagelleur-punition"]}', '+1 bonus aux dégâts de Souffrance.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/flagelleur-dit-mon-nom', 'capacites', 'flagelleur-dit-mon-nom', 'Dis mon nom ! (Flagelleur)', 'dis-mon-nom-flagelleur', '+1 bonus aux dégâts de Souffrance.', '{"classe": "classes/flagelleur", "specialite": "SADIQUE", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/flagelleur-punition"]}', '+1 bonus aux dégâts de Souffrance.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Flagelleur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/flagelleur-encore-plus', 'capacites', 'flagelleur-encore-plus', '... Encore plus ! (Flagelleur)', 'encore-plus-flagelleur', 'Permet d''infliger x dégâts par altération d''état présente sur le masochiste.', '{"classe": "classes/flagelleur", "specialite": "MASOCHISTE", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/flagelleur-resilience"]}', 'Permet d''infliger x dégâts par altération d''état présente sur le masochiste.  
 x = +5 dégâts/ altération d''état.
@@ -2541,7 +2541,7 @@ Note de cellule : Dans le cas du potentiel illimité, lancer un D14 pour déterm
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Flagelleur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/flagelleur-prescription', 'capacites', 'flagelleur-prescription', 'Prescription (Flagelleur)', 'prescription-flagelleur', 'Si l''ennemi est résistant à l''altération d''état qui doit être infligée, cette résistance est annulée.', '{"classe": "classes/flagelleur", "specialite": "SADIQUE", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/flagelleur-50-nuances"]}', 'Si l''ennemi est résistant à l''altération d''état qui doit être infligée, cette résistance est annulée.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Flagelleur »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/flagelleur-puni-moi', 'capacites', 'flagelleur-puni-moi', 'Puni-moi ... (Flagelleur)', 'puni-moi-flagelleur', 'Augmente d''un cran la résistance aux altérations d''état lié à la magie innée.', '{"classe": "classes/flagelleur", "specialite": "MASOCHISTE", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/flagelleur-plus-fort"]}', 'Augmente d''un cran la résistance aux altérations d''état lié à la magie innée.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/flagelleur-puni-moi', 'capacites', 'flagelleur-puni-moi', 'Punis-moi ... (Flagelleur)', 'punis-moi-flagelleur', 'Augmente d''un cran la résistance aux altérations d''état lié à la magie innée.', '{"classe": "classes/flagelleur", "specialite": "MASOCHISTE", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/flagelleur-plus-fort"]}', 'Augmente d''un cran la résistance aux altérations d''état lié à la magie innée.
 
 Note de cellule : Dans le cas du potentiel illimité, lancer un D14 pour déterminer une résistance magique aléatoire
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Flagelleur »');
@@ -2571,7 +2571,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Frappeur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/frappeur-asymbiotique', 'capacites', 'frappeur-asymbiotique', 'Asymbiotique (Frappeur)', 'asymbiotique-frappeur', '(Contre Symbiose) Inflige x dégâts supplémentaires et casse la posture* pour le tour.', '{"classe": "classes/frappeur", "specialite": "CASSEUR", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Action (2 fois/combat)", "choix_exclusif_avec": ["capacites/frappeur-pareur"]}', '(Contre Symbiose)  
 Inflige x dégâts supplémentaires et casse la posture\* pour le tour.  
-x = Niveau Frappeud
+x = Niveau Frappeur
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Frappeur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/frappeur-briseur', 'capacites', 'frappeur-briseur', 'Briseur (Frappeur)', 'briseur-frappeur', '2 points de maitrise à répartir, +10% Arme Lourde, +5% Vigueur, le perce armure passe à d6.', '{"classe": "classes/frappeur", "specialite": "BRISEUR", "niveau": 10, "nature": "specialite", "rang": 2, "ligne": 22, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/frappeur-casseur"]}', '2 points de maitrise à répartir, +10% Arme Lourde, +5% Vigueur, le perce armure passe à d6.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Frappeur »');
@@ -2583,7 +2583,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 Inflige x dégâts supplémentaires et casse la posture\* pour le tour.  
 x = Niveau Frappeur
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Frappeur »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/frappeur-distracteur', 'capacites', 'frappeur-distracteur', 'Distracteur (Frappeur)', 'distracteur-frappeur', '(Contre Vigilence) Inflige x dégâts supplémentaires et casse la posture* pour le tour.', '{"classe": "classes/frappeur", "specialite": "CASSEUR", "niveau": 10, "nature": "choix", "rang": 2, "ligne": 29, "type_capacite": "Action (2 fois/combat)", "choix_exclusif_avec": ["capacites/frappeur-deconcentre"]}', '(Contre Vigilence)  
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/frappeur-distracteur', 'capacites', 'frappeur-distracteur', 'Distracteur (Frappeur)', 'distracteur-frappeur', '(Contre Vigilance) Inflige x dégâts supplémentaires et casse la posture* pour le tour.', '{"classe": "classes/frappeur", "specialite": "CASSEUR", "niveau": 10, "nature": "choix", "rang": 2, "ligne": 29, "type_capacite": "Action (2 fois/combat)", "choix_exclusif_avec": ["capacites/frappeur-deconcentre"]}', '(Contre Vigilance)  
 Inflige x dégâts supplémentaires et casse la posture\* pour le tour.  
 x = Niveau Frappeur
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Frappeur »');
@@ -2603,7 +2603,7 @@ x = Niveau Frappeur
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Frappeur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/frappeur-sans-frontiere', 'capacites', 'frappeur-sans-frontiere', '... Sans-Frontière (Frappeur)', 'sans-frontiere-frappeur', 'Permet de repousser ou trainer un adversaire hors de la zone d''influence. Uniquement au corps à corps.', '{"classe": "classes/frappeur", "specialite": "BRISEUR", "niveau": 10, "nature": "choix", "rang": 2, "ligne": 29, "type_capacite": "Action (1 fois/combat)", "choix_exclusif_avec": ["capacites/frappeur-brutalite"]}', 'Permet de repousser ou trainer un adversaire hors de la zone d''influence. Uniquement au corps à corps.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Frappeur »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/goleois-balade-barbare', 'capacites', 'goleois-balade-barbare', 'Balade barbare (Goleois)', 'balade-barbare-goleois', '+3 dégâts et 1d8 santé temporaire pour tous les alliés pendant 3 tours.', '{"classe": "classes/goleois", "niveau": 5, "nature": "classe", "rang": 2, "ligne": 11, "type_capacite": "Actif (1 fois/Combat)"}', '+3 dégâts et 1d8 santé temporaire pour tous les alliés pendant 3 tours.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/goleois-balade-barbare', 'capacites', 'goleois-balade-barbare', 'Ballade barbare (Goleois)', 'ballade-barbare-goleois', '+3 dégâts et 1d8 santé temporaire pour tous les alliés pendant 3 tours.', '{"classe": "classes/goleois", "niveau": 5, "nature": "classe", "rang": 2, "ligne": 11, "type_capacite": "Actif (1 fois/Combat)"}', '+3 dégâts et 1d8 santé temporaire pour tous les alliés pendant 3 tours.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Goleois »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/goleois-bec', 'capacites', 'goleois-bec', '... bec (Goleois)', 'bec-goleois', '(Rage) Si plus de 5 coups ont été pris pendant le combat = +8 dégâts jusqu''à la fin du combat', '{"classe": "classes/goleois", "specialite": "IRRÉDUCTIBLE", "niveau": 10, "nature": "choix", "rang": 2, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/goleois-blanc"]}', '(Rage)  
 Si plus de 5 coups ont été pris pendant le combat = +8 dégâts jusqu''à la fin du combat
@@ -2650,7 +2650,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Grenadier »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/grenadier-aterisk', 'capacites', 'grenadier-aterisk', 'Atérisk ... (Grenadier)', 'aterisk-grenadier', 'Sacrifie 1 parade/esquive pour augmenter ses dégâts de 5.', '{"classe": "classes/grenadier", "specialite": "ARTILLEUR", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Actif", "choix_exclusif_avec": ["capacites/grenadier-zeperille"]}', 'Sacrifie 1 parade/esquive pour augmenter ses dégâts de 5.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Grenadier »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/grenadier-attend', 'capacites', 'grenadier-attend', 'Attend ... (Grenadier)', 'attend-grenadier', 'Permet à la bombe d''exploser dans un tour et augmenter ses dégâts de 2d.', '{"classe": "classes/grenadier", "specialite": "ARTILLEUR", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Action (1 fois/combat)", "choix_exclusif_avec": ["capacites/grenadier-jarrive"]}', 'Permet à la bombe d''exploser dans un tour et augmenter ses dégâts de 2d.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/grenadier-attend', 'capacites', 'grenadier-attend', 'Attends ... (Grenadier)', 'attends-grenadier', 'Permet à la bombe d''exploser dans un tour et augmenter ses dégâts de 2d.', '{"classe": "classes/grenadier", "specialite": "ARTILLEUR", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Action (1 fois/combat)", "choix_exclusif_avec": ["capacites/grenadier-jarrive"]}', 'Permet à la bombe d''exploser dans un tour et augmenter ses dégâts de 2d.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Grenadier »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/grenadier-bombardier', 'capacites', 'grenadier-bombardier', 'Bombardier (Grenadier)', 'bombardier-grenadier', '+7% Arme lourde OU arme légère, 7% Observation. +2 points de maîtrise Bombes, Augmente la zone d''effet de +1 des bombes.', '{"classe": "classes/grenadier", "specialite": "BOMBARDIER", "niveau": 10, "nature": "specialite", "rang": 2, "ligne": 22, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/grenadier-artilleur"]}', '+7% Arme lourde OU arme légère, 7% Observation. +2 points de maîtrise Bombes, Augmente la zone d''effet de +1 des bombes.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Grenadier »');
@@ -2688,7 +2688,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Guerrier »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/guerrier-contre-attaque', 'capacites', 'guerrier-contre-attaque', 'Contre-attaque (Guerrier)', 'contre-attaque-guerrier', 'Permet de contre-attaquer une attaque durant le combat', '{"classe": "classes/guerrier", "specialite": "ÉPÉISTE", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Réaction (1 fois/combat)", "choix_exclusif_avec": ["capacites/guerrier-tout-ou-rien"]}', 'Permet de contre-attaquer une attaque durant le combat
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Guerrier »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/guerrier-contre-coup', 'capacites', 'guerrier-contre-coup', 'Contre coup (Guerrier)', 'contre-coup-guerrier', 'Si l''ennemi rate son jet d''attaque, +10% pour le toucher à la prochaine attaque.', '{"classe": "classes/guerrier", "specialite": "MAÎTRE D''ARME", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/guerrier-coup-parfait"]}', 'Si l''ennemi rate son jet d''attaque, +10% pour le toucher à la prochaine attaque.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/guerrier-contre-coup', 'capacites', 'guerrier-contre-coup', 'Contrecoup (Guerrier)', 'contrecoup-guerrier', 'Si l''ennemi rate son jet d''attaque, +10% pour le toucher à la prochaine attaque.', '{"classe": "classes/guerrier", "specialite": "MAÎTRE D''ARME", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/guerrier-coup-parfait"]}', 'Si l''ennemi rate son jet d''attaque, +10% pour le toucher à la prochaine attaque.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Guerrier »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/guerrier-contre-riposte', 'capacites', 'guerrier-contre-riposte', 'Contre riposte (Guerrier)', 'contre-riposte-guerrier', 'Aucun ennemi n''est en mesure de riposter aux attaques.', '{"classe": "classes/guerrier", "specialite": "MAÎTRE D''ARME", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/guerrier-desarmement"]}', 'Aucun ennemi n''est en mesure de riposter aux attaques.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Guerrier »');
@@ -2778,7 +2778,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Kitsune »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/kitsune-tu-mvois-pas', 'capacites', 'kitsune-tu-mvois-pas', 'Tu m''vois pas ! (Kitsune)', 'tu-mvois-pas-kitsune', 'Permet d''ignorer les attaques d’opportunité.', '{"classe": "classes/kitsune", "specialite": "FRIPON", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/kitsune-vif-allure"]}', 'Permet d''ignorer les attaques d’opportunité.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Kitsune »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/kitsune-vif-allure', 'capacites', 'kitsune-vif-allure', 'Vif allure (Kitsune)', 'vif-allure-kitsune', 'Lors d''une agression, si le personnage réussit une esquive, il peut se déplacer à une distance qui correspond à sa vitesse divisée par 2.', '{"classe": "classes/kitsune", "specialite": "FRIPON", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Réaction", "choix_exclusif_avec": ["capacites/kitsune-tu-mvois-pas"]}', 'Lors d''une agression, si le personnage réussit une esquive, il peut se déplacer à une distance qui correspond à sa vitesse divisée par 2.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/kitsune-vif-allure', 'capacites', 'kitsune-vif-allure', 'Vive allure (Kitsune)', 'vive-allure-kitsune', 'Lors d''une agression, si le personnage réussit une esquive, il peut se déplacer à une distance qui correspond à sa vitesse divisée par 2.', '{"classe": "classes/kitsune", "specialite": "FRIPON", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Réaction", "choix_exclusif_avec": ["capacites/kitsune-tu-mvois-pas"]}', 'Lors d''une agression, si le personnage réussit une esquive, il peut se déplacer à une distance qui correspond à sa vitesse divisée par 2.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Kitsune »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/kitsune-vue-claire', 'capacites', 'kitsune-vue-claire', 'Vue claire (Kitsune)', 'vue-claire-kitsune', 'Totalement immunisé à l''aveuglement.', '{"classe": "classes/kitsune", "specialite": "DRUIDE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/kitsune-aura-de-lumiere"]}', 'Totalement immunisé à l''aveuglement.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Kitsune »');
@@ -2846,7 +2846,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Lancier »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/lancier-plus-nombreux', 'capacites', 'lancier-plus-nombreux', 'Plus nombreux ! (Lancier)', 'plus-nombreux-lancier', 'Permet de sacrifier 35% de réussite pour faire une attaque qui va toucher toutes les cibles autour (y compris en diagonale).', '{"classe": "classes/lancier", "specialite": "MAÎTRE D''HAST", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Actif", "choix_exclusif_avec": ["capacites/lancier-plus-loin"]}', 'Permet de sacrifier 35% de réussite pour faire une attaque qui va toucher toutes les cibles autour (y compris en diagonale).
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Lancier »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/lancier-riposte-infini', 'capacites', 'lancier-riposte-infini', 'Riposte infini (Lancier)', 'riposte-infini-lancier', 'Permet de riposter quelle que soit la posture choisie et ce de manière infinie pendant 1 tour.', '{"classe": "classes/lancier", "niveau": 20, "nature": "classe", "rang": 3, "ligne": 49, "type_capacite": "Actif (1 fois/combat)"}', 'Permet de riposter quelle que soit la posture choisie et ce de manière infinie pendant 1 tour.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/lancier-riposte-infini', 'capacites', 'lancier-riposte-infini', 'Riposte infinie (Lancier)', 'riposte-infinie-lancier', 'Permet de riposter quelle que soit la posture choisie et ce de manière infinie pendant 1 tour.', '{"classe": "classes/lancier", "niveau": 20, "nature": "classe", "rang": 3, "ligne": 49, "type_capacite": "Actif (1 fois/combat)"}', 'Permet de riposter quelle que soit la posture choisie et ce de manière infinie pendant 1 tour.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Lancier »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/lancier-super-esquive', 'capacites', 'lancier-super-esquive', 'Super esquive (Lancier)', 'super-esquive-lancier', 'Permet de se déplacer d''une case après une esquive réussie, si un allié est dans la case, l''allié  profite d''une attaque d''opportunité.', '{"classe": "classes/lancier", "specialite": "MYRMIDON", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Réaction", "choix_exclusif_avec": ["capacites/lancier-charge"]}', 'Permet de se déplacer d''une case après une esquive réussie, si un allié est dans la case, l''allié  profite d''une attaque d''opportunité.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Lancier »');
@@ -2886,7 +2886,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 Note de cellule : Un jet de parade parfait doit être réussi
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Maclier »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/maclier-prise-alternatif', 'capacites', 'maclier-prise-alternatif', 'Prise alternatif … (Maclier)', 'prise-alternatif-maclier', 'Quand un sort est encaissé, permet de choisir si ça va prendre en compte l''armure physique ou magique.', '{"classe": "classes/maclier", "specialite": "ARCHICLIER", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Réaction", "choix_exclusif_avec": ["capacites/maclier-ou-infini"]}', 'Quand un sort est encaissé, permet de choisir si ça va prendre en compte l''armure physique ou magique.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/maclier-prise-alternatif', 'capacites', 'maclier-prise-alternatif', 'Prise alternative … (Maclier)', 'prise-alternative-maclier', 'Quand un sort est encaissé, permet de choisir si ça va prendre en compte l''armure physique ou magique.', '{"classe": "classes/maclier", "specialite": "ARCHICLIER", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Réaction", "choix_exclusif_avec": ["capacites/maclier-ou-infini"]}', 'Quand un sort est encaissé, permet de choisir si ça va prendre en compte l''armure physique ou magique.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Maclier »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/maclier-prudence', 'capacites', 'maclier-prudence', 'Prudence (Maclier)', 'prudence-maclier', '(Posture Focus) Peut Esquiver/Parer une fois.', '{"classe": "classes/maclier", "specialite": "ARCHICLIER", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/maclier-le-centuple"]}', '(Posture Focus)  
 Peut Esquiver/Parer une fois.
@@ -3028,7 +3028,7 @@ Note de cellule : Il est capable de soigner aussi les morts vivants.
 - Boule de feu
 - Bulle d''eau
 - Éclat glacé
-- Lance pierre
+- Lance-pierre
 - Lame d''air
 - Éclair
 - Frappe lumineuse
@@ -3078,7 +3078,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Vert »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-vert-mage-jade', 'capacites', 'mage-vert-mage-jade', 'Mage jade (Mage Vert)', 'mage-jade-mage-vert', '+2 points de maîtrise avec l''arme déterminée avant, +10% de la compétence de l''arme de départ*, +5% Concentration, Les projectiles percent 3AP en posture symbiose.', '{"classe": "classes/mage-vert", "specialite": "MAGE JADE", "niveau": 10, "nature": "specialite", "rang": 2, "ligne": 22, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/mage-vert-mage-emeraude"]}', '+2 points de maîtrise avec l''arme déterminée avant, +10% de la compétence de l''arme de départ\*, +5% Concentration, Les projectiles percent 3AP en posture symbiose.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Vert »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-vert-meilleur-attaque', 'capacites', 'mage-vert-meilleur-attaque', 'Meilleur attaque ... (Mage Vert)', 'meilleur-attaque-mage-vert', '(Posture symbiose) Le boost de dégâts magiques de la posture est aussi appliqué à l''arme.', '{"classe": "classes/mage-vert", "specialite": "MAGE JADE", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/mage-vert-cest-la-defense"]}', '(Posture symbiose)  
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-vert-meilleur-attaque', 'capacites', 'mage-vert-meilleur-attaque', 'Meilleure attaque ... (Mage Vert)', 'meilleure-attaque-mage-vert', '(Posture symbiose) Le boost de dégâts magiques de la posture est aussi appliqué à l''arme.', '{"classe": "classes/mage-vert", "specialite": "MAGE JADE", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/mage-vert-cest-la-defense"]}', '(Posture symbiose)  
 Le boost de dégâts magiques de la posture est aussi appliqué à l''arme.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Vert »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mage-vert-missile', 'capacites', 'mage-vert-missile', 'Missile ... (Mage Vert)', 'missile-mage-vert', 'Perdre un premier tour à charger son tir permet de faire 25% de dégâts en plus, cependant la cible a +5% à son jet de défense', '{"classe": "classes/mage-vert", "specialite": "MAGE ÉMERAUDE", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Action", "choix_exclusif_avec": ["capacites/mage-vert-enchante"]}', 'Perdre un premier tour à charger son tir permet de faire 25% de dégâts en plus, cependant la cible a +5% à son jet de défense
@@ -3165,7 +3165,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/martiale-colere-neutre', 'capacites', 'martiale-colere-neutre', 'Colère Neutre (Martiale)', 'colere-neutre-martiale', '(Posture Neutre) Être dans cette posture permet d''infliger +8 dégâts.', '{"classe": "classes/martiale", "specialite": "HÉROS", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/martiale-rose-epineuse"]}', '(Posture Neutre)  
 Être dans cette posture permet d''infliger +8 dégâts.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Martiale »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/martiale-force-inne', 'capacites', 'martiale-force-inne', 'Force inné (Martiale)', 'force-inne-martiale', '(Rage) Convertit sa caractéristique de Force x 3 en dégâts.', '{"classe": "classes/martiale", "niveau": 20, "nature": "classe", "rang": 3, "ligne": 49, "type_capacite": "Passif"}', '(Rage)  
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/martiale-force-inne', 'capacites', 'martiale-force-inne', 'Force innée (Martiale)', 'force-innee-martiale', '(Rage) Convertit sa caractéristique de Force x 3 en dégâts.', '{"classe": "classes/martiale", "niveau": 20, "nature": "classe", "rang": 3, "ligne": 49, "type_capacite": "Passif"}', '(Rage)  
 Convertit sa caractéristique de Force x 3 en dégâts. (Ex : 3 de Force = +9 dégâts).
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Martiale »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/martiale-heros', 'capacites', 'martiale-heros', 'Héros (Martiale)', 'heros-martiale', '2 points de maîtrise à répartir, Peut porter les armures intermédiaires, Peut changer de posture tout le temps pendant son tour (demande un jet de calme à partir du deuxième changement)', '{"classe": "classes/martiale", "specialite": "HÉROS", "niveau": 10, "nature": "specialite", "rang": 1, "ligne": 22, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/martiale-berserker"]}', '2 points de maîtrise à répartir, Peut porter les armures intermédiaires, Peut changer de posture tout le temps pendant son tour (demande un jet de calme à partir du deuxième changement)
@@ -3182,13 +3182,13 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Martiale »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/martiale-rage', 'capacites', 'martiale-rage', 'Rage (Martiale)', 'rage-martiale', 'Active un pouvoir de rage qui augmente de +3 les dégâts et de +2 les dégâts subis pendant 3 tours + 1 tour tous les 5 niveaux de la classe', '{"classe": "classes/martiale", "niveau": 1, "nature": "classe", "rang": 1, "ligne": 4, "type_capacite": "Actif (X tour/combat)"}', 'Active un pouvoir de rage qui augmente de +3 les dégâts et de +2 les dégâts subis pendant 3 tours + 1 tour tous les 5 niveaux de la classe
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Martiale »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/martiale-rage-audacieux', 'capacites', 'martiale-rage-audacieux', 'Rage audacieux (Martiale)', 'rage-audacieux-martiale', '(Rage) Augmente tous les dégâts de +5.', '{"classe": "classes/martiale", "specialite": "BERSERKER", "niveau": 10, "nature": "choix", "rang": 2, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/martiale-rage-prudent"]}', '(Rage)  
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/martiale-rage-audacieux', 'capacites', 'martiale-rage-audacieux', 'Rage audacieuse (Martiale)', 'rage-audacieuse-martiale', '(Rage) Augmente tous les dégâts de +5.', '{"classe": "classes/martiale", "specialite": "BERSERKER", "niveau": 10, "nature": "choix", "rang": 2, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/martiale-rage-prudent"]}', '(Rage)  
 Augmente tous les dégâts de +5.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Martiale »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/martiale-rage-incoercible', 'capacites', 'martiale-rage-incoercible', 'Rage incoercible (Martiale)', 'rage-incoercible-martiale', '(Rage) Cible un adversaire et lui inflige un bonus de +10 dégâts, dure jusqu''à qu''il tombe au sol.', '{"classe": "classes/martiale", "specialite": "BERSERKER", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Actif (1 fois/combat)", "choix_exclusif_avec": ["capacites/martiale-rage-vitesse"]}', '(Rage)  
 Cible un adversaire et lui inflige un bonus de +10 dégâts, dure jusqu''à qu''il tombe au sol.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Martiale »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/martiale-rage-prudent', 'capacites', 'martiale-rage-prudent', 'Rage prudent (Martiale)', 'rage-prudent-martiale', '(Rage) Augmente les jets de défense de +10%.', '{"classe": "classes/martiale", "specialite": "BERSERKER", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/martiale-rage-audacieux"]}', '(Rage)  
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/martiale-rage-prudent', 'capacites', 'martiale-rage-prudent', 'Rage prudente (Martiale)', 'rage-prudente-martiale', '(Rage) Augmente les jets de défense de +10%.', '{"classe": "classes/martiale", "specialite": "BERSERKER", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/martiale-rage-audacieux"]}', '(Rage)  
 Augmente les jets de défense de +10%.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Martiale »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/martiale-rage-sans-peur', 'capacites', 'martiale-rage-sans-peur', 'Rage sans peur (Martiale)', 'rage-sans-peur-martiale', '(Rage) Insensible à toutes formes de peurs et de contrôle mental.', '{"classe": "classes/martiale", "specialite": "BERSERKER", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/martiale-animosite"]}', '(Rage)  
@@ -3253,7 +3253,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mercenaire »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mercenaire-equilibre', 'capacites', 'mercenaire-equilibre', 'Équilibre (Mercenaire)', 'equilibre-mercenaire', 'Le malus de l''ambidextrie est réduit de 10% pour les deux armes.', '{"classe": "classes/mercenaire", "specialite": "COMBATTANT LIBRE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/mercenaire-subtilisation"]}', 'Le malus de l''ambidextrie est réduit de 10% pour les deux armes.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mercenaire »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mercenaire-je-te-choisi', 'capacites', 'mercenaire-je-te-choisi', 'Je te choisi ! (Mercenaire)', 'je-te-choisi-mercenaire', 'Permet de choisir un type d''arme, et d''infliger +15 dégâts avec celle-ci.', '{"classe": "classes/mercenaire", "niveau": 20, "nature": "classe", "rang": 3, "ligne": 49, "type_capacite": "Passif (1 fois/personnage)"}', 'Permet de choisir un type d''arme, et d''infliger +15 dégâts avec celle-ci. Doit être choisi lors de l''obtention de la capacité.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mercenaire-je-te-choisi', 'capacites', 'mercenaire-je-te-choisi', 'Je te choisis ! (Mercenaire)', 'je-te-choisis-mercenaire', 'Permet de choisir un type d''arme, et d''infliger +15 dégâts avec celle-ci.', '{"classe": "classes/mercenaire", "niveau": 20, "nature": "classe", "rang": 3, "ligne": 49, "type_capacite": "Passif (1 fois/personnage)"}', 'Permet de choisir un type d''arme, et d''infliger +15 dégâts avec celle-ci. Doit être choisi lors de l''obtention de la capacité.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mercenaire »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/mercenaire-mimique', 'capacites', 'mercenaire-mimique', 'Mimique (Mercenaire)', 'mimique-mercenaire', 'Imite le jet de l''agresseur lors d''un combat. Si c''est une réussite critique, un jet chance est nécessaire.', '{"classe": "classes/mercenaire", "specialite": "COMBATTANT LIBRE", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Réaction (1 fois/combat)", "choix_exclusif_avec": ["capacites/mercenaire-pillage-malin"]}', 'Imite le jet de l''agresseur lors d''un combat. Si c''est une réussite critique, un jet chance est nécessaire.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mercenaire »');
@@ -3307,7 +3307,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Minotaure »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/minotaure-medium', 'capacites', 'minotaure-medium', 'Médium (Minotaure)', 'medium-minotaure', '+7% Magie, +7% Intimidation, +2 points de maîtrise à répartir, Maîtrise les armures intermédiaires considérer comme classe magique', '{"classe": "classes/minotaure", "specialite": "MÉDIUM", "niveau": 10, "nature": "specialite", "rang": 2, "ligne": 22, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/minotaure-gladiateur"]}', '+7% Magie, +7% Intimidation, +2 points de maîtrise à répartir, Maîtrise les armures intermédiaires considérer comme classe magique
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Minotaure »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/minotaure-parceque', 'capacites', 'minotaure-parceque', 'ParceQUE ! (Minotaure)', 'parceque-minotaure', 'Attrape un adversaire, le secoue très fort. Inflige « Confusion 1 » pendant 4 tours.', '{"classe": "classes/minotaure", "specialite": "GLADIATEUR", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Action (1 fois/combat)", "choix_exclusif_avec": ["capacites/minotaure-je-suis-dedale"]}', 'Attrape un adversaire, le secoue très fort. Inflige « Confusion 1 » pendant 4 tours.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/minotaure-parceque', 'capacites', 'minotaure-parceque', 'Parce QUE ! (Minotaure)', 'parce-que-minotaure', 'Attrape un adversaire, le secoue très fort. Inflige « Confusion 1 » pendant 4 tours.', '{"classe": "classes/minotaure", "specialite": "GLADIATEUR", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Action (1 fois/combat)", "choix_exclusif_avec": ["capacites/minotaure-je-suis-dedale"]}', 'Attrape un adversaire, le secoue très fort. Inflige « Confusion 1 » pendant 4 tours.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Minotaure »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/minotaure-sabot-dur', 'capacites', 'minotaure-sabot-dur', 'Sabot dur (Minotaure)', 'sabot-dur-minotaure', 'Immunité aux pièges au sol.', '{"classe": "classes/minotaure", "specialite": "MÉDIUM", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/minotaure-soif"]}', 'Immunité aux pièges au sol.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Minotaure »');
@@ -3343,7 +3343,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Moine »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/moine-pas-encore', 'capacites', 'moine-pas-encore', 'Pas encore … (Moine)', 'pas-encore-moine', 'Si coma = Maintenu à 1PV, État « Intuable », +10 dégâts, +4 AP et AM, Insensible à la douleur, Immunisé aux Peurs pendant 2 tours.', '{"classe": "classes/moine", "specialite": "TEMPLIER", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Réaction (1 fois/combat)", "choix_exclusif_avec": ["capacites/moine-toi"]}', 'Si coma = Maintenu à 1PV, État « Intuable », +10 dégâts, +4 AP et AM, Insensible à la douleur, Immunisé aux Peurs pendant 2 tours. Tombe dans le coma une fois terminé.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Moine »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/moine-prend-ca', 'capacites', 'moine-prend-ca', 'Prend ça … (Moine)', 'prend-ca-moine', 'Donne +5% à la réussite critique pour la prochaine attaque.', '{"classe": "classes/moine", "specialite": "MOINE GUERRIER", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Actif (3 fois/combat)", "choix_exclusif_avec": ["capacites/moine-dans-ta-face"]}', 'Donne +5% à la réussite critique pour la prochaine attaque.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/moine-prend-ca', 'capacites', 'moine-prend-ca', 'Prends ça … (Moine)', 'prends-ca-moine', 'Donne +5% à la réussite critique pour la prochaine attaque.', '{"classe": "classes/moine", "specialite": "MOINE GUERRIER", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Actif (3 fois/combat)", "choix_exclusif_avec": ["capacites/moine-dans-ta-face"]}', 'Donne +5% à la réussite critique pour la prochaine attaque.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Moine »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/moine-reste-en-vie', 'capacites', 'moine-reste-en-vie', 'Reste en vie … (Moine)', 'reste-en-vie-moine', 'Les attaques infligent +2 de dégâts et sont capables d''être non-létales.', '{"classe": "classes/moine", "niveau": 1, "nature": "classe", "rang": 1, "ligne": 4, "type_capacite": "Passif"}', 'Les attaques infligent +2 de dégâts et sont capables d''être non-létales.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Moine »');
@@ -3351,7 +3351,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Moine »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/moine-toi', 'capacites', 'moine-toi', '… Toi ! (Moine)', 'toi-moine', 'Si la cible est une personne qui a fauté contre sa religion ou sa doctrine, +15 dégâts contre lui, état « aura de peur » contre lui.', '{"classe": "classes/moine", "specialite": "TEMPLIER", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/moine-pas-encore"]}', 'Si la cible est une personne qui a fauté contre sa religion ou sa doctrine, +15 dégâts contre lui, état « aura de peur » contre lui.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Moine »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/moine-tu-vivra', 'capacites', 'moine-tu-vivra', 'Tu vivra … (Moine)', 'tu-vivra-moine', 'Permet de donner les premiers soins à un allié adjacent qui est dans le coma pour pouvoir le stabiliser.', '{"classe": "classes/moine", "specialite": "MOINE GUERRIER", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Action", "choix_exclusif_avec": ["capacites/moine-ou-pas"]}', 'Permet de donner les premiers soins à un allié adjacent qui est dans le coma pour pouvoir le stabiliser.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/moine-tu-vivra', 'capacites', 'moine-tu-vivra', 'Tu vivras … (Moine)', 'tu-vivras-moine', 'Permet de donner les premiers soins à un allié adjacent qui est dans le coma pour pouvoir le stabiliser.', '{"classe": "classes/moine", "specialite": "MOINE GUERRIER", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Action", "choix_exclusif_avec": ["capacites/moine-ou-pas"]}', 'Permet de donner les premiers soins à un allié adjacent qui est dans le coma pour pouvoir le stabiliser.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Moine »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/moine-vive-dieu', 'capacites', 'moine-vive-dieu', 'Vive Dieu … (Moine)', 'vive-dieu-moine', 'Être dans une situation où la divinité associée est en rapport, +5% à la réussite critique, +4 aux dégâts.', '{"classe": "classes/moine", "specialite": "TEMPLIER", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/moine-menteur"]}', 'Être dans une situation où la divinité associée est en rapport, +5% à la réussite critique, +4 aux dégâts.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Moine »');
@@ -3363,7 +3363,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Namazu »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/namazu-dent-dacier', 'capacites', 'namazu-dent-dacier', 'Dent d''acier (Namazu)', 'dent-dacier-namazu', 'La Morsure a 25% de chance de retirer 1 point de solidité au morceau d''armure touché.', '{"classe": "classes/namazu", "specialite": "BATAILLEUR", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/namazu-dent-infecte"]}', 'La Morsure a 25% de chance de retirer 1 point de solidité au morceau d''armure touché.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Namazu »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/namazu-dent-infecte', 'capacites', 'namazu-dent-infecte', 'Dent Infecté (Namazu)', 'dent-infecte-namazu', 'La Morsure oblige un jet de vigueur à l''adversaire, si raté = Empoisonnement stade 2', '{"classe": "classes/namazu", "specialite": "BATAILLEUR", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/namazu-dent-dacier"]}', 'La Morsure oblige un jet de vigueur à l''adversaire, si raté = Empoisonnement stade 2
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/namazu-dent-infecte', 'capacites', 'namazu-dent-infecte', 'Dent Infectée (Namazu)', 'dent-infectee-namazu', 'La Morsure oblige un jet de vigueur à l''adversaire, si raté = Empoisonnement stade 2', '{"classe": "classes/namazu", "specialite": "BATAILLEUR", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/namazu-dent-dacier"]}', 'La Morsure oblige un jet de vigueur à l''adversaire, si raté = Empoisonnement stade 2
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Namazu »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/namazu-devin', 'capacites', 'namazu-devin', 'Devin (Namazu)', 'devin-namazu', '+7% Magie, +7% Athlétisme, 2 points de maîtrise à répartir, Maîtrise les armures intermédiaires considérer comme classe magique', '{"classe": "classes/namazu", "specialite": "DEVIN", "niveau": 10, "nature": "specialite", "rang": 2, "ligne": 22, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/namazu-batailleur"]}', '+7% Magie, +7% Athlétisme, 2 points de maîtrise à répartir, Maîtrise les armures intermédiaires considérer comme classe magique
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Namazu »');
@@ -3550,7 +3550,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Parleur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/parleur-recrutement', 'capacites', 'parleur-recrutement', 'Recrutement (Parleur)', 'recrutement-parleur', 'Permet d''utiliser un jet de diplomatie pour convaincre un pnj de vous accompagner le temps d''un combat.', '{"classe": "classes/parleur", "specialite": "ÉLOQUENT", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Action", "choix_exclusif_avec": ["capacites/parleur-patibulaire"]}', 'Permet d''utiliser un jet de diplomatie pour convaincre un pnj de vous accompagner le temps d''un combat. Doit être du même alignement.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Parleur »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/pugiliste-a-deux-main', 'capacites', 'pugiliste-a-deux-main', 'A deux Main (Pugiliste)', 'a-deux-main-pugiliste', 'Gagne 5% arme lourde et +2 dégâts, et perd 5% parade et -2 AP.', '{"classe": "classes/pugiliste", "niveau": 5, "nature": "classe", "rang": 2, "ligne": 11, "type_capacite": "Actif (3 fois/combat)"}', 'Gagne 5% arme lourde et +2 dégâts, et perd 5% parade et -2 AP.  
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/pugiliste-a-deux-main', 'capacites', 'pugiliste-a-deux-main', 'À deux Mains (Pugiliste)', 'a-deux-mains-pugiliste', 'Gagne 5% arme lourde et +2 dégâts, et perd 5% parade et -2 AP.', '{"classe": "classes/pugiliste", "niveau": 5, "nature": "classe", "rang": 2, "ligne": 11, "type_capacite": "Actif (3 fois/combat)"}', 'Gagne 5% arme lourde et +2 dégâts, et perd 5% parade et -2 AP.  
 OU l''inverse, dure 1 tour.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Pugiliste »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/pugiliste-cogneur', 'capacites', 'pugiliste-cogneur', 'Cogneur (Pugiliste)', 'cogneur-pugiliste', '+5% Arme lourde, +5% Réflexe, +5% Vigueur, +2 maîtrise Pugilat, Si l''adversaire fait 30cm de moins en taille le coup impose un jet de stabilité à l''adversaire pour ne pas qu''il tombe.', '{"classe": "classes/pugiliste", "specialite": "COGNEUR", "niveau": 10, "nature": "specialite", "rang": 1, "ligne": 22, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/pugiliste-lutteur"]}', '+5% Arme lourde, +5% Réflexe, +5% Vigueur, +2 maîtrise Pugilat, Si l''adversaire fait 30cm de moins en taille le coup impose un jet de stabilité à l''adversaire pour ne pas qu''il tombe.
@@ -3582,7 +3582,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/pugiliste-sci-du-cac', 'capacites', 'pugiliste-sci-du-cac', 'Sci du CAC (Pugiliste)', 'sci-du-cac-pugiliste', 'Permet d''infliger 3+x dégâts avec les armes de pugilat.', '{"classe": "classes/pugiliste", "niveau": 1, "nature": "classe", "rang": 1, "ligne": 4, "type_capacite": "Passif"}', 'Permet d''infliger 3+x dégâts avec les armes de pugilat.  
 x = +2 dégâts/6 niveaux de pugiliste.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Pugiliste »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/pugiliste-suplexe', 'capacites', 'pugiliste-suplexe', 'Suplexe (Pugiliste)', 'suplexe-pugiliste', 'Inflige « Agrippé » pour annuler l''attaque de l''adversaire (doit être de la même taille).', '{"classe": "classes/pugiliste", "specialite": "LUTTEUR", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Action (3 fois/combat)", "choix_exclusif_avec": ["capacites/pugiliste-jaime-pas-ta-face"]}', 'Inflige « Agrippé » pour annuler l''attaque de l''adversaire (doit être de la même taille).
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/pugiliste-suplexe', 'capacites', 'pugiliste-suplexe', 'Suplex (Pugiliste)', 'suplex-pugiliste', 'Inflige « Agrippé » pour annuler l''attaque de l''adversaire (doit être de la même taille).', '{"classe": "classes/pugiliste", "specialite": "LUTTEUR", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Action (3 fois/combat)", "choix_exclusif_avec": ["capacites/pugiliste-jaime-pas-ta-face"]}', 'Inflige « Agrippé » pour annuler l''attaque de l''adversaire (doit être de la même taille).
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Pugiliste »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/pugiliste-vivre-et-mourir', 'capacites', 'pugiliste-vivre-et-mourir', 'Vivre et Mourir (Pugiliste)', 'vivre-et-mourir-pugiliste', 'Permet d''infliger +6 aux dégâts mais de prendre +2 de dégâts de la part des attaques.', '{"classe": "classes/pugiliste", "specialite": "LUTTEUR", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/pugiliste-vivre-et-vivre"]}', 'Permet d''infliger +6 aux dégâts mais de prendre +2 de dégâts de la part des attaques.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Pugiliste »');
@@ -3656,11 +3656,11 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Satyre »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/satyre-tu-es-ma-chose', 'capacites', 'satyre-tu-es-ma-chose', 'Tu es ma chose (Satyre)', 'tu-es-ma-chose-satyre', 'Peut mettre des liens à une créature « Enchevêtrée » ce qui lui inflige l''état « Sans défense » Doit être fait au CAC.', '{"classe": "classes/satyre", "specialite": "GALOPIN", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Action (1 fois/combat)", "choix_exclusif_avec": ["capacites/satyre-preservation"]}', 'Peut mettre des liens à une créature « Enchevêtrée » ce qui lui inflige l''état « Sans défense » Doit être fait au CAC.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Satyre »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/tueur-anti-corps', 'capacites', 'tueur-anti-corps', 'Anti corps ... (Tueur)', 'anti-corps-tueur', 'Permet d''obtenir une immunité à l''altération d''état lié à la magie innée.', '{"classe": "classes/tueur", "specialite": "FLÉTRISSEUR", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/tueur-innaretable"]}', 'Permet d''obtenir une immunité à l''altération d''état lié à la magie innée.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/tueur-anti-corps', 'capacites', 'tueur-anti-corps', 'Anticorps ... (Tueur)', 'anticorps-tueur', 'Permet d''obtenir une immunité à l''altération d''état lié à la magie innée.', '{"classe": "classes/tueur", "specialite": "FLÉTRISSEUR", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/tueur-innaretable"]}', 'Permet d''obtenir une immunité à l''altération d''état lié à la magie innée.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Tueur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/tueur-fletrisseur', 'capacites', 'tueur-fletrisseur', 'Flétrisseur (Tueur)', 'fletrisseur-tueur', '+5% de la compétence de l''arme choisie, +5% Vigueur, +5% Fermeté +1 point de maîtrise à répartir.', '{"classe": "classes/tueur", "specialite": "FLÉTRISSEUR", "niveau": 10, "nature": "specialite", "rang": 1, "ligne": 22, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/tueur-sicaire"]}', '+5% de la compétence de l''arme choisie, +5% Vigueur, +5% Fermeté +1 point de maîtrise à répartir.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Tueur »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/tueur-innaretable', 'capacites', 'tueur-innaretable', '... innarêtable (Tueur)', 'innaretable-tueur', 'Permet d''infliger une altération d''état à une cible immunisée.', '{"classe": "classes/tueur", "specialite": "FLÉTRISSEUR", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Action (2 fois/combat)", "choix_exclusif_avec": ["capacites/tueur-anti-corps"]}', 'Permet d''infliger une altération d''état à une cible immunisée.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/tueur-innaretable', 'capacites', 'tueur-innaretable', '... inarrêtable (Tueur)', 'inarretable-tueur', 'Permet d''infliger une altération d''état à une cible immunisée.', '{"classe": "classes/tueur", "specialite": "FLÉTRISSEUR", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Action (2 fois/combat)", "choix_exclusif_avec": ["capacites/tueur-anti-corps"]}', 'Permet d''infliger une altération d''état à une cible immunisée.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Tueur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/tueur-insistance', 'capacites', 'tueur-insistance', 'Insistance (Tueur)', 'insistance-tueur', 'L''ennemi a un désavantage pour résister à une altération d''état dont il est vulnérable.', '{"classe": "classes/tueur", "specialite": "FLÉTRISSEUR", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/tueur-psychotique"]}', 'L''ennemi a un désavantage pour résister à une altération d''état dont il est vulnérable.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Tueur »');
@@ -3712,7 +3712,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Voleur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/voleur-je-passe', 'capacites', 'voleur-je-passe', 'Je passe (Voleur)', 'je-passe-voleur', 'Peut passer à travers les cases occupées par les ennemis sans subir d''attaque d''opportunité', '{"classe": "classes/voleur", "specialite": "CAMBRIOLEUR", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/voleur-je-casse"]}', 'Peut passer à travers les cases occupées par les ennemis sans subir d''attaque d''opportunité
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Voleur »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/voleur-mcgyver', 'capacites', 'voleur-mcgyver', 'McGyver (Voleur)', 'mcgyver-voleur', 'Permet de remplacer les ingrédients des 2 premiers pièges par des ingrédients à peu près équivalents.', '{"classe": "classes/voleur", "specialite": "SABOTEUR", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/voleur-bomberman"]}', 'Permet de remplacer les ingrédients des 2 premiers pièges par des ingrédients à peu près équivalents.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/voleur-mcgyver', 'capacites', 'voleur-mcgyver', 'MacGyver (Voleur)', 'macgyver-voleur', 'Permet de remplacer les ingrédients des 2 premiers pièges par des ingrédients à peu près équivalents.', '{"classe": "classes/voleur", "specialite": "SABOTEUR", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/voleur-bomberman"]}', 'Permet de remplacer les ingrédients des 2 premiers pièges par des ingrédients à peu près équivalents.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Voleur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/voleur-plus', 'capacites', 'voleur-plus', 'Plus ... (Voleur)', 'plus-voleur', 'Peut poser 2 pièges en IC.', '{"classe": "classes/voleur", "specialite": "SABOTEUR", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/voleur-puissant"]}', 'Peut poser 2 pièges en IC.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Voleur »');
@@ -3722,7 +3722,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Voleur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/voleur-saboteur', 'capacites', 'voleur-saboteur', 'Saboteur (Voleur)', 'saboteur-voleur', '+10% Sabotage, +5% Réflexe, 2 points de maîtrise à répartir', '{"classe": "classes/voleur", "specialite": "SABOTEUR", "niveau": 10, "nature": "specialite", "rang": 2, "ligne": 22, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/voleur-cambrioleur"]}', '+10% Sabotage, +5% Réflexe, 2 points de maîtrise à répartir
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Voleur »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/voleur-tu-ma-pas-vu', 'capacites', 'voleur-tu-ma-pas-vu', 'Tu m''a pas vu (Voleur)', 'tu-ma-pas-vu-voleur', 'Impose deux jets à celui qui souhaite le repérer alors qu''il est discret. Il garde le plus mauvais résultat.', '{"classe": "classes/voleur", "specialite": "CAMBRIOLEUR", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Réaction (2 fois/Combat)", "choix_exclusif_avec": ["capacites/voleur-faussaire"]}', 'Impose deux jets à celui qui souhaite le repérer alors qu''il est discret. Il garde le plus mauvais résultat.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/voleur-tu-ma-pas-vu', 'capacites', 'voleur-tu-ma-pas-vu', 'Tu m''as pas vu (Voleur)', 'tu-mas-pas-vu-voleur', 'Impose deux jets à celui qui souhaite le repérer alors qu''il est discret. Il garde le plus mauvais résultat.', '{"classe": "classes/voleur", "specialite": "CAMBRIOLEUR", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Réaction (2 fois/Combat)", "choix_exclusif_avec": ["capacites/voleur-faussaire"]}', 'Impose deux jets à celui qui souhaite le repérer alors qu''il est discret. Il garde le plus mauvais résultat.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Voleur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/voleur-vol-ultime', 'capacites', 'voleur-vol-ultime', 'Vol ultime (Voleur)', 'vol-ultime-voleur', 'Permet de voler automatiquement un objet de son choix.', '{"classe": "classes/voleur", "niveau": 20, "nature": "classe", "rang": 3, "ligne": 49, "type_capacite": "Action (1 fois/semaine)"}', 'Permet de voler automatiquement un objet de son choix.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Voleur »');
@@ -3750,7 +3750,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## Inventaire de départ
 
-Poudre de guérison, brevage immonde, bloc dégoutant, KDR Arme OU carquois N, panacée mineur
+Poudre de guérison, breuvage immonde, bloc dégoutant, KDR Arme OU carquois N, panacée mineure
 
 ### Arme de départ
 
@@ -3980,7 +3980,7 @@ Son style repose sur une pression constante, infligeant des dégâts accrus et f
 
 ## Inventaire de départ
 
-P fiole rouge, KDR Arme, pierre à aiguisé, P huile (magie innée), corde (5m)
+P fiole rouge, KDR Arme, pierre à aiguiser, P huile (magie innée), corde (5m)
 
 ### Arme de départ
 
@@ -4036,7 +4036,7 @@ Armé de haches ou de masses consacrées, il équilibre force physique et puissa
 
 ## Inventaire de départ
 
-P fiole rouge, poudre de guérison, P fiole bordeaux, bâton magique lvl1, panacée mineur
+P fiole rouge, poudre de guérison, P fiole bordeaux, bâton magique lvl1, panacée mineure
 
 ### Arme de départ
 
@@ -4150,7 +4150,7 @@ Maître des lames et du pistage, il exploite son sens accru de la perception pou
 
 ## Inventaire de départ
 
-Poudre de guérison, brevage immonde, bloc dégoutant, KDR Arme OU carquois N, pierre à aiguisé
+Poudre de guérison, breuvage immonde, bloc dégoutant, KDR Arme OU carquois N, pierre à aiguiser
 
 ### Arme de départ
 
@@ -4272,7 +4272,7 @@ P fiole rouge, KDR Arme, briquet, lanterne, fiole d''huile
 
 ### Armure de départ
 
-Armure de Cuir complet
+Armure de Cuir complète
 
 ## Sous-classes
 
@@ -4320,7 +4320,7 @@ Un chant à la fois.
 
 ## Inventaire de départ
 
-Poudre de guérison, brevage immonde, bloc dégoutant, KDR Arme OU carquois N, corde (5m)
+Poudre de guérison, breuvage immonde, bloc dégoutant, KDR Arme OU carquois N, corde (5m)
 
 ### Arme de départ
 
@@ -4368,7 +4368,7 @@ Bombe en Fer (x10) et arme de contact en fer selon la maîtrise
 
 ### Armure de départ
 
-Armure de Cuir complet
+Armure de Cuir complète
 
 ## Sous-classes
 
@@ -4402,7 +4402,7 @@ Son entraînement lui confère une meilleure maîtrise de ses armes, augmentant 
 
 ## Inventaire de départ
 
-P fiole rouge, KDR Arme, torche, remède fatigue M,  pierre à aiguisé
+P fiole rouge, KDR Arme, torche, remède fatigue M,  pierre à aiguiser
 
 ### Arme de départ
 
@@ -4432,7 +4432,7 @@ Il est un stratège du champ de bataille, changeant d’équipement sans perdre 
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Guerrier »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/jackalope', 'classes', 'jackalope', 'Jackalope (classe)', 'jackalope-classe', 'Le Jackalope est un combattant vif et imprévisible, capable de bondir sur ses ennemis avant même qu’ils ne réalisent sa présence.', NULL, '**Catégorie** : Classe Hybride Animal
 
-## Description Jacklope
+## Description Jackalope
 
 Le Jackalope est un combattant vif et imprévisible, capable de bondir sur ses ennemis avant même qu’ils ne réalisent sa présence. Doté d’une initiative foudroyante, il domine le début des affrontements et garde toujours une longueur d’avance.
 
@@ -4456,7 +4456,7 @@ Mais derrière cette hyperactivité se cache un instinct de survie affûté : lo
 
 ## Inventaire de départ
 
-Poudre de guérison, brevage immonde, bloc dégoutant, KDR Arme OU carquois N, corde (10m)
+Poudre de guérison, breuvage immonde, bloc dégoutant, KDR Arme OU carquois N, corde (10m)
 
 ### Arme de départ
 
@@ -4510,7 +4510,7 @@ D’un simple geste, il invoque un renard spectral qui trouble l’attention, d�
 
 ## Inventaire de départ
 
-Poudre de guérison, brevage immonde, bloc dégoutant, super carquois , remède gel mineur
+Poudre de guérison, breuvage immonde, bloc dégoutant, super carquois , remède gel mineur
 
 ### Arme de départ
 
@@ -4568,14 +4568,14 @@ P fiole jaune, corde (10m), tête de grappin, torche, sac de pierre
 
 ### Arme de départ
 
-3\* Armes de Jet Lourde  
+3\* Armes de Jet Lourdes  
 ou  
-5\* Armes de Jet Léger  
+5\* Armes de Jet Légères  
 \*munitions (fer)
 
 ### Armure de départ
 
-Armure de Cuir complet, Bouclier rond en bois
+Armure de Cuir complète, Bouclier rond en bois
 
 ## Sous-classes
 
@@ -4676,7 +4676,7 @@ Capable de neutraliser certains sorts par la parade et d''influer ses sorts dans
 
 ## Inventaire de départ
 
-P fiole mauve, bâton magique lvl1, KDR Armure, lingot d''acier, panacée mineur
+P fiole mauve, bâton magique lvl1, KDR Armure, lingot d''acier, panacée mineure
 
 ### Arme de départ
 
@@ -4830,7 +4830,7 @@ Armure de cuir/bois
 | TERRE | (Passif) Racine. Tant qu''il est sur de la terre, cette créature récupère 3 santé au début de son tour.<br>(Passif) Grimpeur. Avantage sur le jet pour grimper un mur.<br>(Passif) Peau dure. +2 AP de base.<br>(Passif\] Sujet épineux. En posture de défense, cette créature inflige 4 dégâts lors d''une parade parfaite. |
 | VENT | (Passif) Charge sans peur. Permet d''avoir un bonus de +4 au jet d''initiative.<br>(Action) Crache spore. Crache des spores qui obligent toutes les créatures à 2 cases de lui de réussir un jet de vigueur, si elles ratent, elles sont "étourdies" pendant 1 tour.<br>(Passif) Chute douce. Dégâts de chute divisés par 2 (AVANT L''ARMURE).<br>(Passif) Courant rapide. Si cette créature termine son tour sans ennemi adjacent à lui = +2 INI pour le prochain tour. |
 | FOUDRE | (Passif) Paratonnerre. Attire les sorts de la foudre ou bien la foudre naturelle sur lui-même. (S''il est dans la portée du sort)<br>(Passif) Pied véloce. +1 vitesse au sol en cas de météo “orage” ou “champ magnétique”.<br>(Passif) Dynamo. Gagne +3 dégâts de foudre (cumulable 3 fois) pour la prochaine action lorsque la foudre magique ou naturelle le touche.<br>(Passif) Prédateur cinétique. Si cette créature a parcouru 4 cases ou plus en ligne droite pour atteindre sa cible = +5% à la réussite de sa prochaine attaque. |
-| LUMIERE | (Passif) Force solaire. Augmente tous les dégâts de +5 (+7 en grand soleil) mais prend 10% de la santé max en dégâts à chaque fin de tour.<br>(Réaction 1 fois/tour) Lumière de force. Permet d''annuler 5 dégâts d''une attaque encaissée.<br>(Passif) Soin non-mort. Cette créature est capable de soigner les non-morts et morts-vivants avec la magie de la lumière.<br>(Passif) Lanterne sur bâton. Cette créature dévoile les ennemis invisibles ou discrets dans un rayon de 2 cases autour de lui. |
+| LUMIÈRE | (Passif) Force solaire. Augmente tous les dégâts de +5 (+7 en grand soleil) mais prend 10% de la santé max en dégâts à chaque fin de tour.<br>(Réaction 1 fois/tour) Lumière de force. Permet d''annuler 5 dégâts d''une attaque encaissée.<br>(Passif) Soin non-mort. Cette créature est capable de soigner les non-morts et morts-vivants avec la magie de la lumière.<br>(Passif) Lanterne sur bâton. Cette créature dévoile les ennemis invisibles ou discrets dans un rayon de 2 cases autour de lui. |
 | OMBRE | (Actif 2 fois/combat) Attaque maudite. La prochaine attaque réussie appliquera l''effet "malédiction" sur l''ennemi pendant 1 tour.<br>(Passif) Vision nocturne partielle. Annule les malus dus à l''obscurité.<br>(Passif) Mantelet des ténèbres. Impose un malus de 10% aux jets de parade/esquive aux ennemis à 1 case.<br>(Passif) Obscurité avantageuse. Cette créature est avantagée dans le noir, il impose un malus de 5% à tous les jets hostiles envers lui et toutes ses attaques ont un bonus de 4. |
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Bleu »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/mage-rouge', 'classes', 'mage-rouge', 'Mage Rouge', 'mage-rouge', 'Le Mage Rouge fusionne l’art du combat rapproché avec la puissance magique, utilisant sa volonté indomptable pour lancer ses sorts au cœur de la mêlée.', NULL, '**Catégorie** : Classe Magique
@@ -4863,7 +4863,7 @@ Cette classe utilise "Concentration" pour lancer ses sortilèges au lieu de "Mag
 
 ## Inventaire de départ
 
-P fiole verte, bâton magique lvl1, KDR Arme, torche, pierre à aiguisé
+P fiole verte, bâton magique lvl1, KDR Arme, torche, pierre à aiguiser
 
 ### Arme de départ
 
@@ -4871,7 +4871,7 @@ Arme en acier selon la maîtrise
 
 ### Armure de départ
 
-Armure de Peau complet
+Armure de Peau complète
 
 ## Sous-classes
 
@@ -4975,7 +4975,7 @@ Doté d’une résilience hors du commun, il récupère de la vitalité en conso
 
 ## Inventaire de départ
 
-Poudre de guérison, brevage immonde, bloc dégoutant, KDR Arme OU carquois N, KDR Armure
+Poudre de guérison, breuvage immonde, bloc dégoutant, KDR Arme OU carquois N, KDR Armure
 
 ### Arme de départ
 
@@ -5040,7 +5040,7 @@ Arme en acier selon la maîtrise
 
 ### Armure de départ
 
-Armure de Cuir complet
+Armure de Cuir complète
 
 ## Sous-classes
 
@@ -5086,7 +5086,7 @@ Ses attaques ne se contentent pas d’infliger des dégâts : elles prolongent l
 
 ## Inventaire de départ
 
-Poudre de guérison, brevage immonde, bloc dégoutant, KDR Arme OU carquois N, canne à pêche
+Poudre de guérison, breuvage immonde, bloc dégoutant, KDR Arme OU carquois N, canne à pêche
 
 ### Arme de départ
 
@@ -5161,7 +5161,7 @@ Son instinct de survie et sa ruse lui permettent même de subtiliser des armes e
 
 ### CHASSEUR DE PRIMES
 
-#### Description Chasseur de Prime
+#### Description Chasseur de Primes
 
 Le Chasseur de Primes est un traqueur aguerri, expert en pistage et en négociation. Toujours en quête de la meilleure récompense, il sait maximiser ses profits en revendant au meilleur prix et en tirant parti de chaque contrat.
 
@@ -5193,7 +5193,7 @@ Mais sa véritable force réside dans sa charge. Une fois lancé, il fonce droit
 
 ## Inventaire de départ
 
-Poudre de guérison, brevage immonde, bloc dégoutant, KDR Arme OU carquois N, corde (5m)
+Poudre de guérison, breuvage immonde, bloc dégoutant, KDR Arme OU carquois N, corde (5m)
 
 ### Arme de départ
 
@@ -5201,7 +5201,7 @@ Arme Masse Fer et arme en fer selon la maîtrise d''arme
 
 ### Armure de départ
 
-Armure de cuir complet (pas de vache hein ?)
+Armure de cuir complète (pas de vache hein ?)
 
 ## Sous-classes
 
@@ -5246,7 +5246,7 @@ Légère
 
 ## Inventaire de départ
 
-P fiole rouge, P fiole jaune, KDR Arme, panacée mineur, corde (5m)
+P fiole rouge, P fiole jaune, KDR Arme, panacée mineure, corde (5m)
 
 ### Arme de départ
 
@@ -5254,7 +5254,7 @@ Arme en fer selon la maîtrise
 
 ### Armure de départ
 
-Armure de Cuir complet
+Armure de Cuir complète
 
 ## Sous-classes
 
@@ -5300,7 +5300,7 @@ Plus dangereux encore dans l’eau ou sous la pluie, il profite de son environne
 
 ## Inventaire de départ
 
-Poudre de guérison, brevage immonde, bloc dégoutant, KDR Arme OU Carquois N, canne à pêche
+Poudre de guérison, breuvage immonde, bloc dégoutant, KDR Arme OU Carquois N, canne à pêche
 
 ### Arme de départ
 
@@ -5328,13 +5328,13 @@ Le Devin est un mage namazu dont le pouvoir fluctue comme l’océan, alternant 
 
 Imperméable aux impuretés, il respire même dans les eaux les plus corrompues et réduit drastiquement le coût de ses sorts en manipulant l’humidité ambiante.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Namazu »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/ocultomancien', 'classes', 'ocultomancien', 'Ocultomancien', 'ocultomancien', 'Là où d’autres brûlent leur énergie sans compter, l’Occultomancien maîtrise l’art de la magie économe et raffinée.', NULL, '**Catégorie** : Classe Magique
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/ocultomancien', 'classes', 'ocultomancien', 'Ocultomancien', 'ocultomancien', 'Là où d’autres brûlent leur énergie sans compter, l’Ocultomancien maîtrise l’art de la magie économe et raffinée.', NULL, '**Catégorie** : Classe Magique
 
 **Note du Sommaire** : Octroie 4 AM de base par classe magique
 
 ## Description Ocultomancien
 
-Là où d’autres brûlent leur énergie sans compter, l’Occultomancien maîtrise l’art de la magie économe et raffinée. Chaque sort qu’il tisse est optimisé, pas d''énergie inutilement gaspillée.
+Là où d’autres brûlent leur énergie sans compter, l’Ocultomancien maîtrise l’art de la magie économe et raffinée. Chaque sort qu’il tisse est optimisé, pas d''énergie inutilement gaspillée.
 
 Il perçoit les connexions invisibles entre son environnement et sa magie, exploitant les moindres éléments du décor pour renforcer son efficacité. Véritable stratège mystique, il ne domine pas la magie par la puissance, mais par l’intelligence, rendant chaque sort plus fluide et plus efficace.
 
@@ -5380,7 +5380,7 @@ Son savoir lui permet d’exploiter les faiblesses ennemies et de s’adapter fa
 
 ### MÉTÉOROLOGUE
 
-#### Description Métérologue
+#### Description Météorologue
 
 Le Météorologue manipule le climat à son avantage, transformant la météo en un outil stratégique redoutable. Qu’il amplifie les effets du temps ou neutralise ses malus, il dicte à quelle sauce vont être mangés ses adversaires.
 
@@ -5416,7 +5416,7 @@ Si une armure intermédiaire ou lourde est portée, le vol est impossible.
 
 ## Inventaire de départ
 
-Poudre de guérison, brevage immonde, bloc dégoutant, super Carquois, parchemin gravé (sort magie innée)
+Poudre de guérison, breuvage immonde, bloc dégoutant, super Carquois, parchemin gravé (sort magie innée)
 
 ### Arme de départ
 
@@ -5470,7 +5470,7 @@ Sa présence imposante inspire la peur, réduisant la capacité de ses adversair
 
 ## Inventaire de départ
 
-Poudre de guérison, brevage immonde, bloc dégoutant, KDR Arme OU carquois N, corde (5m)
+Poudre de guérison, breuvage immonde, bloc dégoutant, KDR Arme OU carquois N, corde (5m)
 
 ### Arme de départ
 
@@ -5527,7 +5527,7 @@ Les compétences actives de cette classe ne fonctionnent que contre des créatur
 
 ## Inventaire de départ
 
-P fiole rouge, P fiole jaune, parchemin vierge (x3), plume à gravé, KDR Arme OU carquois N
+P fiole rouge, P fiole jaune, parchemin vierge (x3), plume à graver, KDR Arme OU carquois N
 
 ### Arme de départ
 
@@ -5535,7 +5535,7 @@ Arme en fer selon la maîtrise
 
 ### Armure de départ
 
-Armure de Cuir complet
+Armure de Cuir complète
 
 ## Sous-classes
 
@@ -5579,7 +5579,7 @@ Ses poings d’acier frappent avec une force brute, chaque attaque gagnant en pu
 
 ## Inventaire de départ
 
-P fiole rouge, poudre de guérison, panacée mineur, KDR Arme, bandage
+P fiole rouge, poudre de guérison, panacée mineure, KDR Arme, bandage
 
 ### Arme de départ
 
@@ -5637,7 +5637,7 @@ Si une armure intermédiaire ou lourde est portée, le vol est impossible.
 
 ## Inventaire de départ
 
-Poudre de guérison, brevage immonde, bloc dégoutant, super carquois, longue-vue
+Poudre de guérison, breuvage immonde, bloc dégoutant, super carquois, longue-vue
 
 ### Arme de départ
 
@@ -5691,7 +5691,7 @@ Sa laine peut ralentir ses ennemis et les prive de leur vivacité, les transform
 
 ## Inventaire de départ
 
-Poudre de guérison, brevage immonde, bloc dégoutant, KDR Arme OU carquois N, briquet
+Poudre de guérison, breuvage immonde, bloc dégoutant, KDR Arme OU carquois N, briquet
 
 ### Arme de départ
 
@@ -5757,7 +5757,7 @@ Arme en fer selon la maîtrise
 
 ### Armure de départ
 
-Armure de Cuir complet
+Armure de Cuir complète
 
 ## Sous-classes
 
@@ -5807,7 +5807,7 @@ Arme en acier selon la maîtrise
 
 ### Armure de départ
 
-Armure de Cuir complet
+Armure de Cuir complète
 
 ## Sous-classes
 
@@ -6108,7 +6108,7 @@ En moyenne les aventuriers à pied avec leur équipement se déplacent à 4 km/h
 | Tempête de neige | x0.4 |
 | Vent violent | x0.7 |
 | Brouillard | x0.85 |
-| Purée de poix | x0.6 |
+| Purée de pois | x0.6 |
 | Orage | x0.5 |
 
 Je mettrai des exemples plus tard, faites-moi y penser si je l’ai pas encore fait !
@@ -6241,7 +6241,7 @@ Elle possède également une Dur. (durabilité comme pour les armes)
 
 **Bonus/Malus** : Cela correspond à des particularités, effets secondaires de l’armure mais aussi de son comportement contre les dégâts physiques (Estoc, Taille, Frappe), allez dans le document [Ressources et Craft](https://docs.google.com/spreadsheets/u/0/d/12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA/edit), et dans Armures pour plus d''informations.
 
-Le Bouclier permet d’avoir des AP et AM en plus de votre armure mais pour qu’ils soient comptés, ça implique une “Parade partiel”. Il peut être de différentes compositions, allez [ici](https://docs.google.com/spreadsheets/u/0/d/12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA/edit) pour plus d''informations.
+Le Bouclier permet d’avoir des AP et AM en plus de votre armure mais pour qu’ils soient comptés, ça implique une “Parade partielle”. Il peut être de différentes compositions, allez [ici](https://docs.google.com/spreadsheets/u/0/d/12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA/edit) pour plus d''informations.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-attributs', 'guide', 'fiche-attributs', 'Fiche de personnage : Attributs', 'fiche-de-personnage-attributs', 'Santé : Il s''agit du nombre de points de vie que possède le personnage.', NULL, '**Santé** : Il s''agit du nombre de points de vie que possède le personnage, si ce score atteint 0 ou moins le personnage est considéré comme dans le coma et doit faire des jets de survie. Si jamais 3 jets de survie échouent, le personnage meurt. Un seul jet de survie réussi suffit à stabiliser le personnage. La santé est déterminée par plusieurs choses => La Race, la ou les Classes ainsi que de la Magie du Sang (si jamais vous avez cette magie)
 
@@ -6259,7 +6259,7 @@ Pour résumer : Vous avez par exemple 25 de chakra maximum, si jamais vous avez 
 
 ***PS : Ceux qui utilisent la magie de la corruption ne sont pas concernés par cette règle.***
 
-**Barrière** : Il s''agit d''une seconde peau magique qui permet de protéger la chair. La barrière est en quelque sorte de la santé magique, son taux est déterminé par le total de chakra : [Chakra total divisé par 2 = Barrière totale] (exemple : 20 Chakra = 10 Barrière). Il existe certaines classes/races qui offrent de la barrière. Par logique, plus vous avez de chakra, plus vous aurez de barrière. Ce qui fait que les mages ont des barrières colossales MAIS ... il existe des matériaux pour les armes qui sont capables de contrer cette peau magique comme le Mithril qui est capable de passer à travers la barrière, mais aussi le Maverium, qui lui, casse la barrière à son contact (donc un simple coup d''une arme de Maverium est capable de détruire instantanément la plus colossale des barrières)
+**Barrière** : Il s''agit d''une seconde peau magique qui permet de protéger la chair. La barrière est en quelque sorte de la santé magique, son taux est déterminé par le total de chakra : [Chakra total divisé par 2 = Barrière totale] (exemple : 20 Chakra = 10 Barrière). Il existe certaines classes/races qui offrent de la barrière. Par logique, plus vous avez de chakra, plus vous aurez de barrière. Ce qui fait que les mages ont des barrières colossales MAIS ... il existe des matériaux pour les armes qui sont capables de contrer cette peau magique comme le Mythril qui est capable de passer à travers la barrière, mais aussi le Maverium, qui lui, casse la barrière à son contact (donc un simple coup d''une arme de Maverium est capable de détruire instantanément la plus colossale des barrières)
 
 **Vitesse** : Il s''agit de l''attribut qui détermine le nombre de cases qu''un personnage peut parcourir le tour où il joue (plus détail [ici](https://maverick-jdr.fandom.com/fr/wiki/Combat))
 
@@ -6269,7 +6269,7 @@ Pour résumer : Vous avez par exemple 25 de chakra maximum, si jamais vous avez 
 | :-: | :-: | :-: | :-: | :-: |
 | -2 initiative | +0 initiative | +2 initiative | +4 initiative | +6 initiative |
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-capacites-dons', 'guide', 'fiche-capacites-dons', 'Fiche de personnage : Capacités/Don', 'fiche-de-personnage-capacites-don', 'Il s''agit du tableau où se trouvent toutes les capacités spéciales de votre personnage, il se divise en 4 catégories.', NULL, 'Il s''agit du tableau où se trouvent toutes les capacités spéciales de votre personnage, il se divise en 4 catégories :
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-capacites-dons', 'guide', 'fiche-capacites-dons', 'Fiche de personnage : Capacités/Dons', 'fiche-de-personnage-capacites-dons', 'Il s''agit du tableau où se trouvent toutes les capacités spéciales de votre personnage, il se divise en 4 catégories.', NULL, 'Il s''agit du tableau où se trouvent toutes les capacités spéciales de votre personnage, il se divise en 4 catégories :
 
 - **BASE** : Cet emplacement unique est ici pour y inscrire soit méditation ou soit repos. Le don est trouvable dans la race.
 - **RACE** : Cet emplacement unique est ici pour y inscrire le don racial de votre race, voir [ici](https://docs.google.com/spreadsheets/u/0/d/1KXO4Np9SnaOYopV1cUKsO-MPjNxgyJ39BEyDAai1Kg4/edit) pour avoir la liste des races.
@@ -6568,7 +6568,7 @@ Cette posture étrange permet d''être en parfaite fusion avec sa magie, dans ce
 
 Voici le tableau où on rassemble les informations sur le [[Altérations d''états et Mode Hyper|mode hyper]] du personnage, allez [ici](https://docs.google.com/spreadsheets/u/0/d/1lwALh1VKrIpgmEqX2MdYirKkPzGjSJXXDHtp2uYXO7w/edit) pour en savoir davantage.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-tableau-resistances-faiblesses', 'guide', 'fiche-tableau-resistances-faiblesses', 'Fiche de personnage : Tableau Résistance/Faiblesses', 'fiche-de-personnage-tableau-resistance-faiblesses', 'Ceci est le tableau où on va inscrire les résistances et faiblesses de votre personnage, tout est lié avec vos magies.', NULL, 'Ceci est le tableau où on va inscrire les résistances et faiblesses de votre personnage, tout est lié avec vos magies et tout est indiqué [ici](https://docs.google.com/spreadsheets/u/0/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit).
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-tableau-resistances-faiblesses', 'guide', 'fiche-tableau-resistances-faiblesses', 'Fiche de personnage : Tableau Résistances/Faiblesses', 'fiche-de-personnage-tableau-resistances-faiblesses', 'Ceci est le tableau où on va inscrire les résistances et faiblesses de votre personnage, tout est lié avec vos magies.', NULL, 'Ceci est le tableau où on va inscrire les résistances et faiblesses de votre personnage, tout est lié avec vos magies et tout est indiqué [ici](https://docs.google.com/spreadsheets/u/0/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit).
 
 Ce que vous devez savoir c’est que les résistances et faiblesses communiquent ensemble : Deux vulnérabilités à la même magie entraînent une grande vulnérabilité et deux résistances à la même magie entraînent une grande résistance, etc …
 
@@ -6626,13 +6626,13 @@ Le MJ peut déployer la carte mais il peut ne pas la déployer si jamais il juge
 ## Sommaire
 
 - *[[Formule des dégâts]]*
-- *Les Actions et mouvement*
+- *Les Actions et mouvements*
 - *[[Les Actions et mouvements|IC ou Action rapide]]*
 - *[[Attaque et Défense|Attaque et défense]]*
 - *[[La Vitesse et la Portée|La vitesse]]*
 - *La portée*
 - *[[Postures]]*
-- *[[Résistance/Faiblesse Magie|Résistance/Faiblesses magique]]*
+- *[[Résistance/Faiblesse Magie|Résistances/Faiblesses magique]]*
 - *[[Altérations d''états et Mode Hyper|Altérations d’états]]*
 - *Mode Hyper*
 - *[[Les situations avancées]]*
@@ -7185,7 +7185,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - **Résistances** : - 1 Tour
 - **Grande résistance** : Les malus sont divisés par 2.
 
-## Aggripé
+## Agrippé
 
 - **Magie Liée** : /
 - **Type** : Physique
@@ -7230,7 +7230,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | --- |
 | Impossible de faire le déplacement ET l''action dans le même tour. Les IC deviennent des actions. |
 
-## Folle de Guerre
+## Folie de Guerre
 
 - **Magie Liée** : /
 - **Type** : Mental
@@ -7379,8 +7379,8 @@ Le mode super donne des bonus non négligeables au combat, il donne un bonus de 
 | Champicer | Effet passif = Les 10 premiers dégâts de chaque tour sont annulés.<br>Effet actif = Permet de lancer une infection qui va pomper 1d4/NPM santé et chakra pendant 3 tours. (2 fois/combat) (non cumulable) | Le porteur va avoir des myriades de champignons sur tout le corps qui vont le protéger des premiers dégâts. |
 | Croc du volcan | Effet passif =<br>Effet actif = |  |
 | Excalibur/ Joyeuse | Effet passif = Réduit l''échec critique de 1%<br>Effet actif = Donne un boost de +5 à tous les dégâts des alliés pendant 2 tours. (2 fois/combat) | La peau du porteur va posséder les mêmes couleurs qu''Excalibur ou de Joyeuse, comme s''il était l''arme. |
-| Foudre étincellante | Effet passif = La cible qui se prend un coup de l''arme va voir son initiative réduite de 2 au prochain tour.<br>Effet actif = Permet de diffuser une électricité sur un cercle de 5 autour du lanceur qui infligera 1d8/NPM dégâts sur les ennemis et soignera de la même chose pour les alliées. (2 fois/combat) | Le porteur va être envahi d''une électricité blanche et brillante, comme si son armure était faite de cette même électricité. Le lanceur peut utiliser cette dernière pour attaquer ses ennemis et soigner ses alliés dans une attaque globale. |
-| Guérriseur | Effet passif =<br>Effet actif = |  |
+| Foudre étincelante | Effet passif = La cible qui se prend un coup de l''arme va voir son initiative réduite de 2 au prochain tour.<br>Effet actif = Permet de diffuser une électricité sur un cercle de 5 autour du lanceur qui infligera 1d8/NPM dégâts sur les ennemis et soignera de la même chose pour les alliées. (2 fois/combat) | Le porteur va être envahi d''une électricité blanche et brillante, comme si son armure était faite de cette même électricité. Le lanceur peut utiliser cette dernière pour attaquer ses ennemis et soigner ses alliés dans une attaque globale. |
+| Guérisseur | Effet passif =<br>Effet actif = |  |
 | Hache du Bourreau déchiré | Effet passif =<br>Effet actif = |  |
 | Lame-seuil | Effet passif =<br>Effet actif = |  |
 | Lame de fer | Effet passif =<br>Effet actif = |  |
@@ -7499,9 +7499,9 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - Élément Sang = -5 dégâts
 - Les attaques ont un malus de 10% au jet si la cible n''est pas au corps à corps (sauf les magies avantagées)
 
-## Purée de poix
+## Purée de pois
 
-**Description** : Une purée de poix impénétrable noie le monde dans une obscurité quasi totale, étouffant sons et lumières. Seuls ceux dotés d’un sens aiguisé peuvent naviguer sans errer à l’aveugle.
+**Description** : Une purée de pois impénétrable noie le monde dans une obscurité quasi totale, étouffant sons et lumières. Seuls ceux dotés d’un sens aiguisé peuvent naviguer sans errer à l’aveugle.
 
 **Effet(s)**
 
@@ -7699,11 +7699,11 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Vide + Terre | Détériore l''arme d''un ennemi à 1 cran de solidité. Si l''arme n''a qu''à cran l''arme est détruite |
 | Vide + Vent | Sur une zone de 5x5 crée un appel d''air qui attire tout le monde vers vous |
 | Vide + Foudre | À chaque attaque magique vous vous téléportez devant la cible |
-| Vide + Lumière | Un ennemi (sauf "Innerte") vous adule et se joint à votre équipe |
+| Vide + Lumière | Un ennemi (sauf "Inerte") vous adule et se joint à votre équipe |
 | Vide + Ombre | Les ennemis n''ont plus d''ombre et sont rejetés par le soleil. 10 dégâts par tour d''exposition au soleil (Doublé si Grand Soleil) |
 | Nécromancie + Feu | Permet d''invoquer un ou des embrasés (voir catégorie invocation dans bestiaire) |
 | Nécromancie + Eau | Permet d''invoquer un ou des noyés (voir catégorie invocation dans bestiaire) |
-| Nécromancie + Glace | Permet d''invoquer un ou des os froid (voir catégorie invocation dans bestiaire) |
+| Nécromancie + Glace | Permet d''invoquer un ou des os froids (voir catégorie invocation dans bestiaire) |
 | Nécromancie + Terre | Permet d''invoquer un ou des squelettes de pierre (voir catégorie invocation dans bestiaire) |
 | Nécromancie + Vent | Permet d''invoquer un ou des zompis (voir catégorie invocation dans bestiaire) |
 | Nécromancie + Foudre | Permet d''invoquer un ou des réanimés (voir catégorie invocation dans bestiaire) |
@@ -8056,7 +8056,7 @@ Sens de lecture non tranché : la légende de l''onglet (citée plus bas) peut d
 
 La matrice n''est pas symétrique : pour 1226 des 2346 paires de peuples, les deux cases (ligne A et colonne B, ligne B et colonne A) diffèrent. Pour lire une colonne de l''onglet (les cases que les lignes des autres peuples portent pour un peuple), chercher son nom dans la section de chacun des autres peuples.
 
-Les noms des peuples sont ceux des étiquettes de l''onglet, recopiés tels qu''écrits, y compris « Elfe Argenté Supprémaciste », « Jackalope Feu » et « Marcass Ubain » : rien n''y est corrigé. Seuls les retours à la ligne et les espaces multiples d''une étiquette sont ramenés à une espace.
+Les noms des peuples sont ceux des étiquettes de l''onglet, recopiés tels qu''écrits. Seuls les retours à la ligne et les espaces multiples d''une étiquette sont ramenés à une espace, et deux fautes d''orthographe y sont corrigées : « Elfe Argenté Suprémaciste » et « Marcass Urbain ».
 
 ## Légende
 
@@ -8085,7 +8085,7 @@ Rapprochement avec les pages de races : un peuple est rangé sous la page de rac
 - Humain : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra
 - Elfe forestier : Elfe Forestier Forêt, Elfe Forestier Urbain
 - Elfe noir : Elfe Noir Charbon, Elfe Noir Salé
-- Elfe argenté : Elfe Argenté Supprémaciste, Elfe Argenté Barrage argenté, Elfe Argenté Autre
+- Elfe argenté : Elfe Argenté Suprémaciste, Elfe Argenté Barrage argenté, Elfe Argenté Autre
 - Elfe doré : Elfe Doré
 - Nain : Nain Ouest, Nain Est, Nain Ligne de partage
 - Majin : Majin
@@ -8105,7 +8105,7 @@ Rapprochement avec les pages de races : un peuple est rangé sous la page de rac
 - Médusain : Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain
 - Lamia : Lamia
 - Jackalope : Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain
-- Marcass : Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
+- Marcass : Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Urbain
 
 Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 
@@ -8113,63 +8113,63 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 
 - **Même peuple** : Humain Central
 - **Alliée** : Nain Ouest, Nain Est, Lamia
-- **Appréciée** : Elfe Forestier Urbain, Elfe Noir Salé, Majin, Hujin, Drakos, Orios Urbain, Drassah''thac Centre, Drassah''thac Est, Fenrir Urbain, Kitsune Urbain, Rokh Urbain, Namazu Urbain, Marcass Ubain
+- **Appréciée** : Elfe Forestier Urbain, Elfe Noir Salé, Majin, Hujin, Drakos, Orios Urbain, Drassah''thac Centre, Drassah''thac Est, Fenrir Urbain, Kitsune Urbain, Rokh Urbain, Namazu Urbain, Marcass Urbain
 - **Acceptée** : Humain Désertique, Humain Tropical, Humain Toundra, Elfe Forestier Forêt, Nain Ligne de partage, Orios Eau, Orios Terre, Orios Sang, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Namazu Sang, Namazu Eau, Namazu Ombre, Minotaure, Satyre Urbain, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie
 - **Neutre** : Elfe Noir Charbon, Elfe Argenté Autre, Mort-vivant, Felfe Forestier, Felfe Noir, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Satyre Feu, Satyre Foudre, Satyre Terre, Médusain Urbain, Jackalope Feu, Jackalope Terre, Jackalope Vide
 - **Évitée** : Elfe Argenté Barrage argenté, Felfe Argenté, Médusain Eau, Médusain Foudre, Médusain Lumière
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Humain Désertique : ligne de l''onglet
 
 - **Même peuple** : Humain Désertique
 - **Alliée** : Drassah''thac Sud, Kitsune Feu, Lamia
 - **Appréciée** : Nain Est, Majin, Hujin, Drakos, Rokh Lumière, Satyre Feu, Satyre Urbain, Jackalope Feu, Marcass Feu
-- **Acceptée** : Humain Central, Nain Ouest, Orios Terre, Orios Urbain, Drassah''thac Centre, Fenrir Urbain, Kitsune Lumière, Kitsune Urbain, Rokh Urbain, Namazu Urbain, Minotaure, Satyre Terre, Marcass Ubain
+- **Acceptée** : Humain Central, Nain Ouest, Orios Terre, Orios Urbain, Drassah''thac Centre, Fenrir Urbain, Kitsune Lumière, Kitsune Urbain, Rokh Urbain, Namazu Urbain, Minotaure, Satyre Terre, Marcass Urbain
 - **Neutre** : Elfe Forestier Urbain, Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Autre, Nain Ligne de partage, Mort-vivant, Felfe Noir, Orios Sang, Drassah''thac Est, Drassah''thac Ouest, Fenrir Foudre, Fenrir Ombre, Kitsune Vent, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Namazu Sang, Namazu Eau, Namazu Ombre, Satyre Foudre, Médusain Lumière, Médusain Urbain, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Terre, Marcass Nécromancie
 - **Évitée** : Humain Tropical, Humain Toundra, Elfe Forestier Forêt, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Argenté, Drassah''thac Nord, Fenrir Glace, Médusain Foudre
 - **Haine** : Orios Eau, Médusain Eau
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Humain Tropical : ligne de l''onglet
 
 - **Même peuple** : Humain Tropical
 - **Alliée** : Elfe Forestier Forêt, Orios Terre, Drassah''thac Ouest, Kitsune Vent, Olwman Vent, Rokh Vent, Lamia
 - **Appréciée** : Elfe Forestier Urbain, Majin, Hujin, Drakos, Felfe Forestier, Orios Eau, Fenrir Foudre, Kitsune Feu, Rokh Foudre, Rokh Lumière, Satyre Terre, Satyre Urbain, Jackalope Terre, Marcass Terre
-- **Acceptée** : Humain Central, Orios Urbain, Drassah''thac Centre, Fenrir Urbain, Kitsune Urbain, Rokh Urbain, Namazu Urbain, Minotaure, Satyre Feu, Jackalope Feu, Marcass Feu, Marcass Nécromancie, Marcass Ubain
+- **Acceptée** : Humain Central, Orios Urbain, Drassah''thac Centre, Fenrir Urbain, Kitsune Urbain, Rokh Urbain, Namazu Urbain, Minotaure, Satyre Feu, Jackalope Feu, Marcass Feu, Marcass Nécromancie, Marcass Urbain
 - **Neutre** : Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Mort-vivant, Felfe Noir, Orios Sang, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Fenrir Glace, Fenrir Ombre, Kitsune Lumière, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Satyre Foudre, Médusain Foudre, Médusain Urbain, Jackalope Vide, Jackalope Urbain
 - **Évitée** : Humain Désertique, Humain Toundra, Elfe Argenté Barrage argenté, Felfe Argenté, Médusain Eau, Médusain Lumière
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Humain Toundra : ligne de l''onglet
 
 - **Même peuple** : Humain Toundra
 - **Alliée** : Drassah''thac Nord, Fenrir Glace, Lamia
 - **Appréciée** : Elfe Forestier Forêt, Elfe Forestier Urbain, Nain Ouest, Majin, Hujin, Drakos, Satyre Urbain
-- **Acceptée** : Humain Central, Nain Est, Felfe Forestier, Orios Eau, Orios Urbain, Drassah''thac Centre, Fenrir Urbain, Kitsune Urbain, Rokh Urbain, Namazu Urbain, Minotaure, Marcass Ubain
+- **Acceptée** : Humain Central, Nain Est, Felfe Forestier, Orios Eau, Orios Urbain, Drassah''thac Centre, Fenrir Urbain, Kitsune Urbain, Rokh Urbain, Namazu Urbain, Minotaure, Marcass Urbain
 - **Neutre** : Elfe Noir Salé, Elfe Argenté Autre, Nain Ligne de partage, Mort-vivant, Drassah''thac Est, Drassah''thac Ouest, Fenrir Foudre, Fenrir Ombre, Kitsune Vent, Kitsune Lumière, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Namazu Sang, Namazu Eau, Namazu Ombre, Satyre Foudre, Satyre Terre, Médusain Eau, Médusain Urbain, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Terre, Marcass Nécromancie
 - **Évitée** : Humain Désertique, Humain Tropical, Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Noir, Felfe Argenté, Orios Terre, Drassah''thac Sud, Kitsune Feu, Satyre Feu, Médusain Foudre, Médusain Lumière, Jackalope Feu, Marcass Feu
 - **Haine** : Orios Sang
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Elfe Forestier Forêt : ligne de l''onglet
 
 - **Même peuple** : Elfe Forestier Forêt
 - **Appréciée** : Felfe Forestier, Orios Eau, Orios Terre, Médusain Urbain
-- **Acceptée** : Humain Central, Humain Tropical, Nain Est, Drassah''thac Centre, Drassah''thac Ouest, Kitsune Vent, Kitsune Urbain, Olwman Vent, Namazu Eau, Satyre Urbain, Médusain Eau, Jackalope Terre, Jackalope Urbain, Marcass Terre, Marcass Ubain
+- **Acceptée** : Humain Central, Humain Tropical, Nain Est, Drassah''thac Centre, Drassah''thac Ouest, Kitsune Vent, Kitsune Urbain, Olwman Vent, Namazu Eau, Satyre Urbain, Médusain Eau, Jackalope Terre, Jackalope Urbain, Marcass Terre, Marcass Urbain
 - **Neutre** : Humain Désertique, Elfe Forestier Urbain, Nain Ligne de partage, Hujin, Mort-vivant, Drakos, Orios Urbain, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Lumière, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Ombre, Namazu Urbain, Satyre Feu, Satyre Foudre, Satyre Terre, Médusain Foudre, Médusain Lumière, Lamia, Jackalope Feu, Jackalope Vide, Marcass Feu, Marcass Nécromancie
 - **Évitée** : Humain Toundra, Elfe Noir Salé, Nain Ouest, Majin, Felfe Noir, Felfe Argenté, Orios Sang, Minotaure
 - **Haine** : Elfe Argenté Autre
-- **Ennemie** : Elfe Noir Charbon, Elfe Argenté Supprémaciste, Elfe Argenté Barrage argenté, Elfe Doré
+- **Ennemie** : Elfe Noir Charbon, Elfe Argenté Suprémaciste, Elfe Argenté Barrage argenté, Elfe Doré
 
 ## Elfe Forestier Urbain : ligne de l''onglet
 
 - **Même peuple** : Elfe Forestier Urbain
 - **Appréciée** : Humain Central, Felfe Forestier
-- **Acceptée** : Humain Tropical, Nain Est, Hujin, Orios Eau, Orios Terre, Orios Urbain, Drassah''thac Centre, Drassah''thac Ouest, Fenrir Urbain, Kitsune Urbain, Olwman Urbain, Rokh Urbain, Namazu Eau, Namazu Urbain, Satyre Urbain, Médusain Urbain, Jackalope Urbain, Marcass Ubain
+- **Acceptée** : Humain Tropical, Nain Est, Hujin, Orios Eau, Orios Terre, Orios Urbain, Drassah''thac Centre, Drassah''thac Ouest, Fenrir Urbain, Kitsune Urbain, Olwman Urbain, Rokh Urbain, Namazu Eau, Namazu Urbain, Satyre Urbain, Médusain Urbain, Jackalope Urbain, Marcass Urbain
 - **Neutre** : Humain Désertique, Humain Toundra, Nain Ligne de partage, Majin, Mort-vivant, Drakos, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Rokh Vent, Rokh Foudre, Rokh Lumière, Namazu Sang, Namazu Ombre, Minotaure, Satyre Feu, Satyre Foudre, Satyre Terre, Médusain Eau, Médusain Foudre, Médusain Lumière, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Marcass Feu, Marcass Terre, Marcass Nécromancie
 - **Évitée** : Elfe Forestier Forêt, Elfe Noir Salé, Elfe Argenté Autre, Nain Ouest, Felfe Noir, Felfe Argenté, Orios Sang
 - **Haine** : Elfe Argenté Barrage argenté
-- **Ennemie** : Elfe Noir Charbon, Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Noir Charbon, Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Elfe Noir Charbon : ligne de l''onglet
 
@@ -8179,8 +8179,8 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Acceptée** : Fenrir Ombre, Olwman Ombre, Namazu Sang, Namazu Eau
 - **Neutre** : Humain Central, Humain Désertique, Humain Tropical, Mort-vivant, Orios Terre, Orios Urbain, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Olwman Espace/Temps, Rokh Vent, Rokh Foudre
 - **Évitée** : Humain Toundra, Majin, Hujin, Felfe Forestier, Felfe Argenté, Orios Eau, Orios Sang, Drassah''thac Centre, Fenrir Glace, Fenrir Foudre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Urbain, Olwman Vent, Olwman Urbain, Rokh Urbain, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain
-- **Haine** : Elfe Forestier Urbain, Elfe Argenté Autre, Drakos, Kitsune Lumière, Rokh Lumière, Namazu Urbain, Médusain Foudre, Médusain Lumière, Médusain Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
-- **Ennemie** : Elfe Forestier Forêt, Elfe Noir Salé, Elfe Argenté Supprémaciste, Elfe Argenté Barrage argenté, Elfe Doré, Nain Ouest, Nain Est, Nain Ligne de partage, Minotaure, Médusain Eau
+- **Haine** : Elfe Forestier Urbain, Elfe Argenté Autre, Drakos, Kitsune Lumière, Rokh Lumière, Namazu Urbain, Médusain Foudre, Médusain Lumière, Médusain Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Urbain
+- **Ennemie** : Elfe Forestier Forêt, Elfe Noir Salé, Elfe Argenté Suprémaciste, Elfe Argenté Barrage argenté, Elfe Doré, Nain Ouest, Nain Est, Nain Ligne de partage, Minotaure, Médusain Eau
 
 ## Elfe Noir Salé : ligne de l''onglet
 
@@ -8189,14 +8189,14 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Acceptée** : Humain Central, Fenrir Ombre, Olwman Ombre, Namazu Sang, Namazu Eau
 - **Neutre** : Humain Désertique, Humain Tropical, Humain Toundra, Majin, Hujin, Mort-vivant, Orios Terre, Orios Urbain, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Urbain, Kitsune Urbain, Olwman Vent, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Urbain, Satyre Urbain, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain
 - **Évitée** : Elfe Forestier Urbain, Elfe Argenté Autre, Drakos, Felfe Forestier, Felfe Argenté, Orios Eau, Orios Sang, Drassah''thac Centre, Fenrir Glace, Fenrir Foudre, Kitsune Feu, Kitsune Vent, Namazu Urbain, Satyre Feu, Satyre Foudre, Satyre Terre
-- **Haine** : Elfe Forestier Forêt, Elfe Noir Charbon, Nain Ouest, Nain Est, Nain Ligne de partage, Kitsune Lumière, Rokh Lumière, Minotaure, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Argenté Barrage argenté, Elfe Doré
+- **Haine** : Elfe Forestier Forêt, Elfe Noir Charbon, Nain Ouest, Nain Est, Nain Ligne de partage, Kitsune Lumière, Rokh Lumière, Minotaure, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Urbain
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Argenté Barrage argenté, Elfe Doré
 
-## Elfe Argenté Supprémaciste : ligne de l''onglet
+## Elfe Argenté Suprémaciste : ligne de l''onglet
 
-- **Même peuple** : Elfe Argenté Supprémaciste
+- **Même peuple** : Elfe Argenté Suprémaciste
 - **Neutre** : Mort-vivant, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Urbain, Médusain Eau, Médusain Foudre, Médusain Lumière
-- **Évitée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Drakos, Felfe Argenté, Orios Eau, Orios Terre, Orios Urbain, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Rokh Lumière, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Médusain Urbain, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
+- **Évitée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Drakos, Felfe Argenté, Orios Eau, Orios Terre, Orios Urbain, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Rokh Lumière, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Médusain Urbain, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Urbain
 - **Haine** : Felfe Forestier, Felfe Noir, Orios Sang
 - **Ennemie** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Elfe Doré, Minotaure, Lamia
 
@@ -8206,49 +8206,49 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Appréciée** : Elfe Argenté Autre
 - **Acceptée** : Felfe Argenté
 - **Neutre** : Mort-vivant, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Urbain, Médusain Eau, Médusain Foudre, Médusain Lumière, Lamia
-- **Évitée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Drakos, Orios Eau, Orios Terre, Orios Urbain, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Rokh Lumière, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Médusain Urbain, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
+- **Évitée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Drakos, Orios Eau, Orios Terre, Orios Urbain, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Rokh Lumière, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Médusain Urbain, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Urbain
 - **Haine** : Felfe Forestier, Felfe Noir, Orios Sang
-- **Ennemie** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Supprémaciste, Elfe Doré, Minotaure
+- **Ennemie** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Suprémaciste, Elfe Doré, Minotaure
 
 ## Elfe Argenté Autre : ligne de l''onglet
 
 - **Même peuple** : Elfe Argenté Autre
 - **Alliée** : Elfe Argenté Barrage argenté
 - **Appréciée** : Felfe Argenté
-- **Neutre** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Mort-vivant, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Urbain, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Urbain, Satyre Urbain, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Lamia, Jackalope Urbain, Marcass Ubain
+- **Neutre** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Mort-vivant, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Urbain, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Urbain, Satyre Urbain, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Lamia, Jackalope Urbain, Marcass Urbain
 - **Évitée** : Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Drakos, Felfe Forestier, Felfe Noir, Orios Eau, Orios Terre, Orios Urbain, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Namazu Sang, Namazu Eau, Namazu Ombre, Satyre Feu, Satyre Foudre, Satyre Terre, Jackalope Feu, Jackalope Terre, Jackalope Vide, Marcass Feu, Marcass Terre, Marcass Nécromancie
 - **Haine** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Charbon, Elfe Noir Salé, Orios Sang
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Minotaure
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré, Minotaure
 
 ## Elfe Doré : ligne de l''onglet
 
 - **Même peuple** : Elfe Doré
 - **Neutre** : Majin, Hujin, Mort-vivant
 - **Évitée** : Humain Désertique, Humain Tropical, Humain Toundra
-- **Haine** : Humain Central, Nain Ouest, Nain Est, Nain Ligne de partage, Drakos, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Minotaure, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
-- **Ennemie** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Supprémaciste, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Felfe Forestier, Felfe Noir, Felfe Argenté
+- **Haine** : Humain Central, Nain Ouest, Nain Est, Nain Ligne de partage, Drakos, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Minotaure, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Urbain
+- **Ennemie** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Suprémaciste, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Felfe Forestier, Felfe Noir, Felfe Argenté
 
 ## Nain Ouest : ligne de l''onglet
 
 - **Même peuple** : Nain Ouest
 - **Alliée** : Minotaure
 - **Appréciée** : Humain Central, Humain Tropical, Humain Toundra, Drakos, Orios Terre, Orios Urbain, Namazu Eau, Namazu Ombre
-- **Acceptée** : Elfe Forestier Urbain, Orios Eau, Orios Sang, Drassah''thac Nord, Fenrir Urbain, Kitsune Urbain, Namazu Urbain, Satyre Urbain, Médusain Foudre, Médusain Urbain, Jackalope Terre, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Ubain
+- **Acceptée** : Elfe Forestier Urbain, Orios Eau, Orios Sang, Drassah''thac Nord, Fenrir Urbain, Kitsune Urbain, Namazu Urbain, Satyre Urbain, Médusain Foudre, Médusain Urbain, Jackalope Terre, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Urbain
 - **Neutre** : Humain Désertique, Elfe Forestier Forêt, Elfe Argenté Autre, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Felfe Forestier, Felfe Noir, Drassah''thac Centre, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Olwman Ombre, Olwman Urbain, Rokh Urbain, Namazu Sang, Satyre Feu, Satyre Foudre, Satyre Terre, Lamia, Jackalope Feu, Jackalope Vide, Marcass Nécromancie
 - **Évitée** : Elfe Argenté Barrage argenté, Felfe Argenté, Olwman Vent, Olwman Espace/Temps, Rokh Vent, Rokh Foudre, Rokh Lumière, Médusain Eau, Médusain Lumière
 - **Haine** : Elfe Noir Salé
-- **Ennemie** : Elfe Noir Charbon, Elfe Argenté Supprémaciste, Elfe Doré, Nain Est
+- **Ennemie** : Elfe Noir Charbon, Elfe Argenté Suprémaciste, Elfe Doré, Nain Est
 
 ## Nain Est : ligne de l''onglet
 
 - **Même peuple** : Nain Est
 - **Alliée** : Minotaure
 - **Appréciée** : Humain Central, Humain Désertique, Elfe Forestier Forêt, Drakos, Orios Terre, Orios Urbain, Namazu Eau, Namazu Ombre
-- **Acceptée** : Elfe Forestier Urbain, Orios Eau, Orios Sang, Drassah''thac Sud, Fenrir Urbain, Kitsune Urbain, Namazu Urbain, Satyre Urbain, Médusain Foudre, Médusain Urbain, Jackalope Terre, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Ubain
+- **Acceptée** : Elfe Forestier Urbain, Orios Eau, Orios Sang, Drassah''thac Sud, Fenrir Urbain, Kitsune Urbain, Namazu Urbain, Satyre Urbain, Médusain Foudre, Médusain Urbain, Jackalope Terre, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Urbain
 - **Neutre** : Humain Tropical, Humain Toundra, Elfe Argenté Autre, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Felfe Forestier, Felfe Noir, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Olwman Ombre, Olwman Urbain, Rokh Urbain, Namazu Sang, Satyre Feu, Satyre Foudre, Satyre Terre, Lamia, Jackalope Feu, Jackalope Vide, Marcass Nécromancie
 - **Évitée** : Elfe Argenté Barrage argenté, Felfe Argenté, Olwman Vent, Olwman Espace/Temps, Rokh Vent, Rokh Foudre, Rokh Lumière, Médusain Eau, Médusain Lumière
 - **Haine** : Elfe Noir Salé
-- **Ennemie** : Elfe Noir Charbon, Elfe Argenté Supprémaciste, Elfe Doré, Nain Ouest
+- **Ennemie** : Elfe Noir Charbon, Elfe Argenté Suprémaciste, Elfe Doré, Nain Ouest
 
 ## Nain Ligne de partage : ligne de l''onglet
 
@@ -8256,10 +8256,10 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Alliée** : Minotaure
 - **Appréciée** : Humain Central, Namazu Eau, Namazu Ombre
 - **Acceptée** : Elfe Forestier Urbain, Drakos, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Namazu Urbain, Médusain Foudre
-- **Neutre** : Humain Désertique, Humain Tropical, Humain Toundra, Elfe Forestier Forêt, Elfe Argenté Autre, Nain Ouest, Nain Est, Majin, Hujin, Mort-vivant, Felfe Forestier, Felfe Noir, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Ombre, Olwman Urbain, Rokh Urbain, Namazu Sang, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Médusain Urbain, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
+- **Neutre** : Humain Désertique, Humain Tropical, Humain Toundra, Elfe Forestier Forêt, Elfe Argenté Autre, Nain Ouest, Nain Est, Majin, Hujin, Mort-vivant, Felfe Forestier, Felfe Noir, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Ombre, Olwman Urbain, Rokh Urbain, Namazu Sang, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Médusain Urbain, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Urbain
 - **Évitée** : Elfe Argenté Barrage argenté, Felfe Argenté, Olwman Vent, Olwman Espace/Temps, Rokh Vent, Rokh Foudre, Rokh Lumière, Médusain Eau, Médusain Lumière
 - **Haine** : Elfe Noir Salé
-- **Ennemie** : Elfe Noir Charbon, Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Noir Charbon, Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Majin : ligne de l''onglet
 
@@ -8267,10 +8267,10 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Alliée** : Hujin
 - **Appréciée** : Satyre Urbain
 - **Acceptée** : Satyre Feu, Satyre Foudre, Satyre Terre
-- **Neutre** : Elfe Forestier Forêt, Elfe Forestier Urbain, Nain Ouest, Nain Est, Mort-vivant, Drakos, Orios Eau, Orios Urbain, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Urbain, Rokh Lumière, Rokh Urbain, Namazu Eau, Namazu Urbain, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Jackalope Urbain, Marcass Ubain
+- **Neutre** : Elfe Forestier Forêt, Elfe Forestier Urbain, Nain Ouest, Nain Est, Mort-vivant, Drakos, Orios Eau, Orios Urbain, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Urbain, Rokh Lumière, Rokh Urbain, Namazu Eau, Namazu Urbain, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Jackalope Urbain, Marcass Urbain
 - **Évitée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Nain Ligne de partage, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Terre, Orios Sang, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Rokh Vent, Rokh Foudre, Namazu Sang, Namazu Ombre, Minotaure, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Marcass Feu, Marcass Terre, Marcass Nécromancie
 - **Haine** : Elfe Noir Charbon, Elfe Noir Salé
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Hujin : ligne de l''onglet
 
@@ -8278,57 +8278,57 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Alliée** : Majin
 - **Appréciée** : Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain
 - **Acceptée** : Drakos, Felfe Forestier, Felfe Noir, Felfe Argenté
-- **Neutre** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Nain Ouest, Nain Est, Mort-vivant, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Minotaure, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
+- **Neutre** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Nain Ouest, Nain Est, Mort-vivant, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Minotaure, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Urbain
 - **Évitée** : Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Nain Ligne de partage
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Mort-vivant : ligne de l''onglet
 
 - **Même peuple** : Mort-vivant
 - **Alliée** : Marcass Nécromancie
-- **Neutre** : Marcass Feu, Marcass Terre, Marcass Ubain
+- **Neutre** : Marcass Feu, Marcass Terre, Marcass Urbain
 - **Évitée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Drakos, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Minotaure, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Drakos : ligne de l''onglet
 
 - **Même peuple** : Drakos
 - **Appréciée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Majin, Hujin, Orios Urbain, Minotaure, Satyre Urbain
-- **Acceptée** : Orios Eau, Orios Terre, Orios Sang, Fenrir Urbain, Kitsune Urbain, Olwman Urbain, Rokh Urbain, Namazu Urbain, Satyre Feu, Satyre Foudre, Satyre Terre, Médusain Urbain, Lamia, Jackalope Urbain, Marcass Ubain
+- **Acceptée** : Orios Eau, Orios Terre, Orios Sang, Fenrir Urbain, Kitsune Urbain, Olwman Urbain, Rokh Urbain, Namazu Urbain, Satyre Feu, Satyre Foudre, Satyre Terre, Médusain Urbain, Lamia, Jackalope Urbain, Marcass Urbain
 - **Neutre** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Mort-vivant, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Rokh Vent, Rokh Foudre, Rokh Lumière, Namazu Sang, Namazu Eau, Namazu Ombre, Médusain Eau, Médusain Foudre, Médusain Lumière, Jackalope Feu, Jackalope Terre, Jackalope Vide, Marcass Feu, Marcass Terre, Marcass Nécromancie
 - **Évitée** : Felfe Forestier, Felfe Noir, Felfe Argenté
-- **Ennemie** : Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Felfe Forestier : ligne de l''onglet
 
 - **Même peuple** : Felfe Forestier
 - **Appréciée** : Elfe Forestier Forêt, Elfe Forestier Urbain, Majin, Hujin, Satyre Urbain
-- **Acceptée** : Drakos, Felfe Noir, Felfe Argenté, Fenrir Urbain, Kitsune Urbain, Olwman Urbain, Rokh Urbain, Namazu Urbain, Satyre Feu, Satyre Foudre, Satyre Terre, Médusain Urbain, Jackalope Urbain, Marcass Ubain
+- **Acceptée** : Drakos, Felfe Noir, Felfe Argenté, Fenrir Urbain, Kitsune Urbain, Olwman Urbain, Rokh Urbain, Namazu Urbain, Satyre Feu, Satyre Foudre, Satyre Terre, Médusain Urbain, Jackalope Urbain, Marcass Urbain
 - **Neutre** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Elfe Noir Charbon, Elfe Noir Salé, Nain Ouest, Nain Est, Nain Ligne de partage, Mort-vivant, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Rokh Vent, Rokh Foudre, Rokh Lumière, Namazu Sang, Namazu Eau, Namazu Ombre, Médusain Eau, Médusain Foudre, Médusain Lumière, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Marcass Feu, Marcass Terre, Marcass Nécromancie
 - **Évitée** : Elfe Argenté Barrage argenté, Elfe Argenté Autre, Minotaure
 - **Haine** : Orios Eau, Orios Terre, Orios Sang, Orios Urbain
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Felfe Noir : ligne de l''onglet
 
 - **Même peuple** : Felfe Noir
 - **Appréciée** : Elfe Noir Charbon, Elfe Noir Salé, Majin, Hujin, Satyre Urbain
-- **Acceptée** : Drakos, Felfe Forestier, Felfe Argenté, Fenrir Ombre, Fenrir Urbain, Kitsune Urbain, Olwman Ombre, Olwman Urbain, Rokh Urbain, Namazu Ombre, Namazu Urbain, Satyre Feu, Satyre Foudre, Satyre Terre, Médusain Urbain, Jackalope Urbain, Marcass Ubain
+- **Acceptée** : Drakos, Felfe Forestier, Felfe Argenté, Fenrir Ombre, Fenrir Urbain, Kitsune Urbain, Olwman Ombre, Olwman Urbain, Rokh Urbain, Namazu Ombre, Namazu Urbain, Satyre Feu, Satyre Foudre, Satyre Terre, Médusain Urbain, Jackalope Urbain, Marcass Urbain
 - **Neutre** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Nain Ouest, Nain Est, Nain Ligne de partage, Mort-vivant, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Kitsune Feu, Kitsune Vent, Olwman Vent, Olwman Espace/Temps, Rokh Vent, Rokh Foudre, Namazu Sang, Namazu Eau, Médusain Eau, Médusain Foudre, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Marcass Feu, Marcass Terre, Marcass Nécromancie
 - **Évitée** : Elfe Argenté Barrage argenté, Elfe Argenté Autre, Kitsune Lumière, Rokh Lumière, Minotaure, Médusain Lumière
 - **Haine** : Orios Eau, Orios Terre, Orios Sang, Orios Urbain
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Felfe Argenté : ligne de l''onglet
 
 - **Même peuple** : Felfe Argenté
 - **Alliée** : Elfe Argenté Barrage argenté, Elfe Argenté Autre
 - **Appréciée** : Majin, Hujin, Satyre Urbain
-- **Acceptée** : Drakos, Felfe Forestier, Felfe Noir, Fenrir Urbain, Kitsune Urbain, Olwman Urbain, Rokh Urbain, Namazu Urbain, Satyre Feu, Satyre Foudre, Satyre Terre, Médusain Urbain, Jackalope Urbain, Marcass Ubain
+- **Acceptée** : Drakos, Felfe Forestier, Felfe Noir, Fenrir Urbain, Kitsune Urbain, Olwman Urbain, Rokh Urbain, Namazu Urbain, Satyre Feu, Satyre Foudre, Satyre Terre, Médusain Urbain, Jackalope Urbain, Marcass Urbain
 - **Neutre** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Nain Ouest, Nain Est, Nain Ligne de partage, Mort-vivant, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Rokh Vent, Rokh Foudre, Rokh Lumière, Namazu Sang, Namazu Eau, Namazu Ombre, Médusain Eau, Médusain Foudre, Médusain Lumière, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Marcass Feu, Marcass Terre, Marcass Nécromancie
 - **Évitée** : Elfe Forestier Forêt, Elfe Forestier Urbain, Minotaure
 - **Haine** : Elfe Noir Charbon, Elfe Noir Salé, Orios Eau, Orios Terre, Orios Sang, Orios Urbain
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Orios Eau : ligne de l''onglet
 
@@ -8336,21 +8336,21 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Alliée** : Minotaure, Médusain Eau
 - **Appréciée** : Nain Ouest, Nain Est, Drakos, Satyre Foudre, Satyre Terre, Satyre Urbain, Lamia
 - **Acceptée** : Humain Central, Humain Toundra, Nain Ligne de partage, Orios Terre, Drassah''thac Est, Drassah''thac Ouest, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Marcass Terre, Marcass Nécromancie
-- **Neutre** : Humain Tropical, Majin, Hujin, Mort-vivant, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Kitsune Lumière, Kitsune Urbain, Olwman Urbain, Namazu Eau, Jackalope Terre, Jackalope Urbain, Marcass Ubain
+- **Neutre** : Humain Tropical, Majin, Hujin, Mort-vivant, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Kitsune Lumière, Kitsune Urbain, Olwman Urbain, Namazu Eau, Jackalope Terre, Jackalope Urbain, Marcass Urbain
 - **Évitée** : Humain Désertique, Elfe Forestier Forêt, Elfe Forestier Urbain, Orios Urbain, Fenrir Glace, Fenrir Urbain, Olwman Espace/Temps, Namazu Ombre, Satyre Feu, Médusain Foudre, Médusain Lumière, Médusain Urbain, Jackalope Feu, Jackalope Vide, Marcass Feu
 - **Haine** : Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Sang, Fenrir Foudre, Namazu Urbain
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Fenrir Ombre, Kitsune Feu, Kitsune Vent, Olwman Vent, Olwman Ombre, Namazu Sang
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré, Fenrir Ombre, Kitsune Feu, Kitsune Vent, Olwman Vent, Olwman Ombre, Namazu Sang
 
 ## Orios Terre : ligne de l''onglet
 
 - **Même peuple** : Orios Terre
 - **Alliée** : Minotaure, Satyre Terre
 - **Appréciée** : Nain Ouest, Nain Est, Drakos, Satyre Feu, Satyre Urbain, Lamia, Jackalope Terre, Marcass Terre
-- **Acceptée** : Humain Central, Humain Tropical, Nain Ligne de partage, Orios Eau, Drassah''thac Est, Drassah''thac Ouest, Marcass Nécromancie, Marcass Ubain
+- **Acceptée** : Humain Central, Humain Tropical, Nain Ligne de partage, Orios Eau, Drassah''thac Est, Drassah''thac Ouest, Marcass Nécromancie, Marcass Urbain
 - **Neutre** : Humain Désertique, Humain Toundra, Majin, Hujin, Mort-vivant, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Jackalope Urbain, Marcass Feu
 - **Évitée** : Elfe Forestier Forêt, Elfe Forestier Urbain, Orios Urbain, Fenrir Urbain, Kitsune Lumière, Kitsune Urbain, Olwman Espace/Temps, Olwman Urbain, Rokh Urbain, Namazu Eau, Namazu Ombre, Satyre Foudre, Médusain Eau, Médusain Lumière, Médusain Urbain, Jackalope Vide
 - **Haine** : Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Sang, Fenrir Ombre, Rokh Vent, Rokh Foudre, Rokh Lumière, Namazu Urbain, Médusain Foudre, Jackalope Feu
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Fenrir Glace, Fenrir Foudre, Kitsune Feu, Kitsune Vent, Olwman Vent, Olwman Ombre, Namazu Sang
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré, Fenrir Glace, Fenrir Foudre, Kitsune Feu, Kitsune Vent, Olwman Vent, Olwman Ombre, Namazu Sang
 
 ## Orios Sang : ligne de l''onglet
 
@@ -8358,70 +8358,70 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Alliée** : Minotaure
 - **Appréciée** : Nain Ouest, Nain Est, Drakos, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Lamia
 - **Acceptée** : Humain Central, Nain Ligne de partage, Drassah''thac Est, Drassah''thac Ouest, Marcass Terre
-- **Neutre** : Humain Désertique, Humain Tropical, Majin, Hujin, Mort-vivant, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Jackalope Urbain, Marcass Feu, Marcass Nécromancie, Marcass Ubain
+- **Neutre** : Humain Désertique, Humain Tropical, Majin, Hujin, Mort-vivant, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Jackalope Urbain, Marcass Feu, Marcass Nécromancie, Marcass Urbain
 - **Évitée** : Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Orios Urbain, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Espace/Temps, Olwman Urbain, Rokh Urbain, Namazu Ombre, Namazu Urbain, Médusain Foudre, Médusain Lumière, Médusain Urbain, Jackalope Feu, Jackalope Vide
 - **Haine** : Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Terre, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Rokh Vent, Rokh Foudre, Rokh Lumière, Namazu Eau, Médusain Eau, Jackalope Terre
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Olwman Vent, Olwman Ombre, Namazu Sang
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré, Olwman Vent, Olwman Ombre, Namazu Sang
 
 ## Orios Urbain : ligne de l''onglet
 
 - **Même peuple** : Orios Urbain
 - **Alliée** : Minotaure
 - **Appréciée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Nain Ouest, Nain Est, Drakos, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Lamia
-- **Acceptée** : Nain Ligne de partage, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Marcass Ubain
+- **Acceptée** : Nain Ligne de partage, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Marcass Urbain
 - **Neutre** : Majin, Hujin, Mort-vivant, Fenrir Urbain, Kitsune Lumière, Kitsune Urbain, Olwman Urbain, Namazu Eau, Namazu Urbain, Médusain Urbain, Jackalope Feu, Jackalope Terre, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie
 - **Évitée** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Orios Eau, Orios Terre, Orios Sang, Kitsune Feu, Kitsune Vent, Namazu Ombre, Médusain Eau, Médusain Foudre, Médusain Lumière, Jackalope Vide
 - **Haine** : Felfe Forestier, Felfe Noir, Felfe Argenté, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Namazu Sang
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Drassah''thac Centre : ligne de l''onglet
 
 - **Même peuple** : Drassah''thac Centre
 - **Appréciée** : Satyre Urbain
-- **Acceptée** : Humain Central, Drakos, Orios Eau, Fenrir Urbain, Kitsune Urbain, Olwman Urbain, Rokh Urbain, Namazu Eau, Namazu Urbain, Satyre Feu, Satyre Foudre, Satyre Terre, Médusain Urbain, Jackalope Urbain, Marcass Ubain
+- **Acceptée** : Humain Central, Drakos, Orios Eau, Fenrir Urbain, Kitsune Urbain, Olwman Urbain, Rokh Urbain, Namazu Eau, Namazu Urbain, Satyre Feu, Satyre Foudre, Satyre Terre, Médusain Urbain, Jackalope Urbain, Marcass Urbain
 - **Neutre** : Humain Désertique, Humain Tropical, Humain Toundra, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Felfe Noir, Felfe Argenté, Orios Urbain, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Rokh Vent, Rokh Foudre, Rokh Lumière, Namazu Sang, Namazu Ombre, Minotaure, Médusain Eau, Médusain Foudre, Médusain Lumière, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Marcass Feu, Marcass Terre, Marcass Nécromancie
 - **Évitée** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Charbon, Felfe Forestier, Orios Terre, Orios Sang
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Drassah''thac Nord : ligne de l''onglet
 
 - **Même peuple** : Drassah''thac Nord
 - **Appréciée** : Satyre Urbain
 - **Acceptée** : Humain Toundra, Orios Eau, Fenrir Glace, Fenrir Ombre, Olwman Ombre, Namazu Eau, Namazu Ombre, Satyre Feu, Satyre Foudre, Satyre Terre, Médusain Eau
-- **Neutre** : Humain Central, Humain Tropical, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Drakos, Felfe Noir, Felfe Argenté, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Centre, Drassah''thac Est, Drassah''thac Ouest, Fenrir Foudre, Fenrir Urbain, Kitsune Vent, Kitsune Urbain, Olwman Vent, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Urbain, Namazu Urbain, Minotaure, Médusain Foudre, Médusain Urbain, Lamia, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Terre, Marcass Ubain
+- **Neutre** : Humain Central, Humain Tropical, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Drakos, Felfe Noir, Felfe Argenté, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Centre, Drassah''thac Est, Drassah''thac Ouest, Fenrir Foudre, Fenrir Urbain, Kitsune Vent, Kitsune Urbain, Olwman Vent, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Urbain, Namazu Urbain, Minotaure, Médusain Foudre, Médusain Urbain, Lamia, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Terre, Marcass Urbain
 - **Évitée** : Humain Désertique, Elfe Forestier Forêt, Elfe Noir Charbon, Felfe Forestier, Kitsune Feu, Kitsune Lumière, Rokh Lumière, Namazu Sang, Médusain Lumière, Jackalope Feu, Marcass Feu, Marcass Nécromancie
 - **Haine** : Drassah''thac Sud
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Drassah''thac Sud : ligne de l''onglet
 
 - **Même peuple** : Drassah''thac Sud
 - **Appréciée** : Satyre Urbain
 - **Acceptée** : Humain Désertique, Orios Eau, Kitsune Feu, Kitsune Lumière, Rokh Lumière, Satyre Feu, Satyre Foudre, Satyre Terre, Médusain Lumière, Jackalope Feu, Marcass Feu
-- **Neutre** : Humain Central, Humain Tropical, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Drakos, Felfe Noir, Felfe Argenté, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Centre, Drassah''thac Est, Drassah''thac Ouest, Fenrir Foudre, Fenrir Urbain, Kitsune Vent, Kitsune Urbain, Olwman Vent, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Urbain, Namazu Sang, Namazu Urbain, Minotaure, Médusain Foudre, Médusain Urbain, Lamia, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Terre, Marcass Nécromancie, Marcass Ubain
+- **Neutre** : Humain Central, Humain Tropical, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Drakos, Felfe Noir, Felfe Argenté, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Centre, Drassah''thac Est, Drassah''thac Ouest, Fenrir Foudre, Fenrir Urbain, Kitsune Vent, Kitsune Urbain, Olwman Vent, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Urbain, Namazu Sang, Namazu Urbain, Minotaure, Médusain Foudre, Médusain Urbain, Lamia, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Terre, Marcass Nécromancie, Marcass Urbain
 - **Évitée** : Humain Toundra, Elfe Forestier Forêt, Elfe Noir Charbon, Felfe Forestier, Olwman Ombre, Namazu Eau, Namazu Ombre, Médusain Eau
 - **Haine** : Drassah''thac Nord, Fenrir Glace, Fenrir Ombre
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Drassah''thac Est : ligne de l''onglet
 
 - **Même peuple** : Drassah''thac Est
 - **Appréciée** : Drakos, Satyre Urbain
 - **Acceptée** : Humain Central, Humain Tropical, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Fenrir Foudre, Kitsune Vent, Olwman Vent, Rokh Vent, Rokh Foudre, Satyre Feu, Satyre Foudre, Satyre Terre, Médusain Foudre, Lamia, Jackalope Terre, Marcass Terre
-- **Neutre** : Humain Désertique, Humain Toundra, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Felfe Noir, Felfe Argenté, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Fenrir Glace, Fenrir Urbain, Kitsune Feu, Kitsune Lumière, Kitsune Urbain, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Minotaure, Médusain Eau, Médusain Lumière, Médusain Urbain, Jackalope Feu, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Ubain
+- **Neutre** : Humain Désertique, Humain Toundra, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Felfe Noir, Felfe Argenté, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Fenrir Glace, Fenrir Urbain, Kitsune Feu, Kitsune Lumière, Kitsune Urbain, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Minotaure, Médusain Eau, Médusain Lumière, Médusain Urbain, Jackalope Feu, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Urbain
 - **Évitée** : Elfe Forestier Forêt, Elfe Noir Charbon, Felfe Forestier, Fenrir Ombre, Marcass Nécromancie
 - **Haine** : Drassah''thac Ouest
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Drassah''thac Ouest : ligne de l''onglet
 
 - **Même peuple** : Drassah''thac Ouest
 - **Appréciée** : Drakos, Satyre Urbain
 - **Acceptée** : Humain Tropical, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Kitsune Vent, Olwman Vent, Rokh Vent, Rokh Foudre, Satyre Feu, Satyre Foudre, Satyre Terre, Médusain Foudre, Lamia, Jackalope Terre, Marcass Terre
-- **Neutre** : Humain Central, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Felfe Noir, Felfe Argenté, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Fenrir Glace, Fenrir Foudre, Fenrir Urbain, Kitsune Feu, Kitsune Lumière, Kitsune Urbain, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Minotaure, Médusain Eau, Médusain Lumière, Médusain Urbain, Jackalope Feu, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Ubain
+- **Neutre** : Humain Central, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Felfe Noir, Felfe Argenté, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Fenrir Glace, Fenrir Foudre, Fenrir Urbain, Kitsune Feu, Kitsune Lumière, Kitsune Urbain, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Minotaure, Médusain Eau, Médusain Lumière, Médusain Urbain, Jackalope Feu, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Urbain
 - **Évitée** : Humain Désertique, Humain Toundra, Elfe Forestier Forêt, Elfe Noir Charbon, Felfe Forestier, Fenrir Ombre, Marcass Nécromancie
 - **Haine** : Drassah''thac Est
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Fenrir Glace : ligne de l''onglet
 
@@ -8429,9 +8429,9 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Appréciée** : Drassah''thac Nord
 - **Acceptée** : Humain Toundra, Satyre Foudre, Satyre Terre, Satyre Urbain
 - **Neutre** : Humain Central, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Drassah''thac Centre, Olwman Espace/Temps, Olwman Urbain, Namazu Eau, Namazu Urbain, Minotaure, Médusain Eau, Lamia, Jackalope Urbain
-- **Évitée** : Humain Désertique, Humain Tropical, Elfe Forestier Forêt, Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ouest, Nain Est, Nain Ligne de partage, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Urbain, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Foudre, Fenrir Urbain, Olwman Ombre, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Ombre, Médusain Foudre, Médusain Lumière, Médusain Urbain, Jackalope Terre, Jackalope Vide, Marcass Ubain
+- **Évitée** : Humain Désertique, Humain Tropical, Elfe Forestier Forêt, Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ouest, Nain Est, Nain Ligne de partage, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Urbain, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Foudre, Fenrir Urbain, Olwman Ombre, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Ombre, Médusain Foudre, Médusain Lumière, Médusain Urbain, Jackalope Terre, Jackalope Vide, Marcass Urbain
 - **Haine** : Orios Terre, Kitsune Urbain, Olwman Vent, Rokh Vent, Satyre Feu, Marcass Terre
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Orios Sang, Fenrir Ombre, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Namazu Sang, Jackalope Feu, Marcass Feu, Marcass Nécromancie
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré, Orios Sang, Fenrir Ombre, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Namazu Sang, Jackalope Feu, Marcass Feu, Marcass Nécromancie
 
 ## Fenrir Foudre : ligne de l''onglet
 
@@ -8439,9 +8439,9 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Appréciée** : Nain Ouest, Nain Est, Drassah''thac Est, Drassah''thac Ouest, Satyre Foudre, Médusain Foudre
 - **Acceptée** : Humain Tropical, Rokh Foudre, Satyre Feu, Satyre Urbain
 - **Neutre** : Humain Central, Humain Désertique, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Drakos, Drassah''thac Centre, Olwman Espace/Temps, Olwman Urbain, Namazu Urbain, Minotaure, Lamia, Jackalope Urbain
-- **Évitée** : Humain Toundra, Elfe Forestier Forêt, Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Urbain, Drassah''thac Nord, Drassah''thac Sud, Fenrir Glace, Fenrir Ombre, Fenrir Urbain, Olwman Ombre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Ombre, Médusain Eau, Médusain Lumière, Médusain Urbain, Jackalope Feu, Jackalope Vide, Marcass Ubain
+- **Évitée** : Humain Toundra, Elfe Forestier Forêt, Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Urbain, Drassah''thac Nord, Drassah''thac Sud, Fenrir Glace, Fenrir Ombre, Fenrir Urbain, Olwman Ombre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Ombre, Médusain Eau, Médusain Lumière, Médusain Urbain, Jackalope Feu, Jackalope Vide, Marcass Urbain
 - **Haine** : Orios Sang, Kitsune Urbain, Olwman Vent, Rokh Vent, Satyre Terre, Marcass Feu, Marcass Nécromancie
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Orios Eau, Orios Terre, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Namazu Eau, Jackalope Terre, Marcass Terre
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré, Orios Eau, Orios Terre, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Namazu Eau, Jackalope Terre, Marcass Terre
 
 ## Fenrir Ombre : ligne de l''onglet
 
@@ -8450,9 +8450,9 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Appréciée** : Drassah''thac Ouest
 - **Acceptée** : Humain Tropical, Humain Toundra, Olwman Ombre, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain
 - **Neutre** : Humain Central, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Drassah''thac Centre, Olwman Espace/Temps, Olwman Urbain, Namazu Urbain, Minotaure, Lamia, Jackalope Urbain
-- **Évitée** : Humain Désertique, Elfe Forestier Forêt, Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ouest, Nain Est, Nain Ligne de partage, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Urbain, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Fenrir Foudre, Fenrir Urbain, Olwman Vent, Rokh Vent, Rokh Foudre, Rokh Urbain, Namazu Sang, Namazu Eau, Médusain Eau, Médusain Foudre, Médusain Urbain, Jackalope Feu, Jackalope Terre, Jackalope Vide, Marcass Ubain
+- **Évitée** : Humain Désertique, Elfe Forestier Forêt, Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ouest, Nain Est, Nain Ligne de partage, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Urbain, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Fenrir Foudre, Fenrir Urbain, Olwman Vent, Rokh Vent, Rokh Foudre, Rokh Urbain, Namazu Sang, Namazu Eau, Médusain Eau, Médusain Foudre, Médusain Urbain, Jackalope Feu, Jackalope Terre, Jackalope Vide, Marcass Urbain
 - **Haine** : Orios Eau, Orios Terre, Orios Sang, Kitsune Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Fenrir Glace, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Rokh Lumière, Médusain Lumière
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré, Fenrir Glace, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Rokh Lumière, Médusain Lumière
 
 ## Fenrir Urbain : ligne de l''onglet
 
@@ -8460,49 +8460,49 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Appréciée** : Satyre Urbain
 - **Acceptée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Satyre Feu, Satyre Foudre, Satyre Terre
 - **Neutre** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Drakos, Felfe Forestier, Felfe Noir, Felfe Argenté, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Minotaure, Médusain Urbain, Lamia, Jackalope Urbain
-- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Orios Urbain, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Kitsune Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Médusain Eau, Médusain Foudre, Médusain Lumière, Jackalope Feu, Jackalope Terre, Jackalope Vide, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
+- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Orios Urbain, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Kitsune Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Médusain Eau, Médusain Foudre, Médusain Lumière, Jackalope Feu, Jackalope Terre, Jackalope Vide, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Urbain
 - **Haine** : Orios Eau, Orios Terre, Orios Sang, Kitsune Feu, Kitsune Vent, Kitsune Lumière
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Kitsune Feu : ligne de l''onglet
 
 - **Même peuple** : Kitsune Feu
 - **Appréciée** : Humain Désertique, Drassah''thac Sud, Jackalope Feu, Marcass Feu
 - **Acceptée** : Nain Ouest, Kitsune Lumière, Kitsune Urbain, Satyre Feu, Satyre Foudre, Satyre Urbain
-- **Neutre** : Humain Central, Humain Tropical, Elfe Noir Salé, Elfe Argenté Autre, Nain Est, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Drakos, Drassah''thac Centre, Drassah''thac Est, Drassah''thac Ouest, Kitsune Vent, Minotaure, Lamia, Jackalope Urbain, Marcass Ubain
+- **Neutre** : Humain Central, Humain Tropical, Elfe Noir Salé, Elfe Argenté Autre, Nain Est, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Drakos, Drassah''thac Centre, Drassah''thac Est, Drassah''thac Ouest, Kitsune Vent, Minotaure, Lamia, Jackalope Urbain, Marcass Urbain
 - **Évitée** : Humain Toundra, Elfe Forestier Urbain, Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Terre, Orios Sang, Orios Urbain, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Ombre, Namazu Urbain, Médusain Lumière, Médusain Urbain, Jackalope Vide, Marcass Nécromancie
 - **Haine** : Elfe Forestier Forêt, Drassah''thac Nord, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Olwman Vent, Rokh Vent, Namazu Eau, Satyre Terre, Médusain Eau, Médusain Foudre, Jackalope Terre, Marcass Terre
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Orios Eau, Fenrir Glace
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré, Orios Eau, Fenrir Glace
 
 ## Kitsune Vent : ligne de l''onglet
 
 - **Même peuple** : Kitsune Vent
 - **Appréciée** : Olwman Vent, Rokh Vent
 - **Acceptée** : Humain Tropical, Drassah''thac Est, Drassah''thac Ouest, Kitsune Lumière, Kitsune Urbain, Satyre Feu, Satyre Urbain
-- **Neutre** : Humain Central, Humain Désertique, Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Drakos, Orios Eau, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Kitsune Feu, Minotaure, Lamia, Jackalope Urbain, Marcass Ubain
+- **Neutre** : Humain Central, Humain Désertique, Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Drakos, Orios Eau, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Kitsune Feu, Minotaure, Lamia, Jackalope Urbain, Marcass Urbain
 - **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Sang, Orios Urbain, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Médusain Eau, Médusain Lumière, Médusain Urbain, Jackalope Vide, Marcass Nécromancie
 - **Haine** : Fenrir Glace, Fenrir Ombre, Fenrir Urbain, Rokh Foudre, Satyre Foudre, Satyre Terre, Médusain Foudre, Jackalope Feu, Jackalope Terre, Marcass Feu, Marcass Terre
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Orios Terre, Fenrir Foudre
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré, Orios Terre, Fenrir Foudre
 
 ## Kitsune Lumière : ligne de l''onglet
 
 - **Même peuple** : Kitsune Lumière
 - **Appréciée** : Rokh Lumière, Médusain Lumière
 - **Acceptée** : Humain Désertique, Drassah''thac Sud, Kitsune Feu, Kitsune Vent, Kitsune Urbain, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain
-- **Neutre** : Humain Central, Humain Tropical, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Drakos, Orios Eau, Drassah''thac Centre, Drassah''thac Est, Drassah''thac Ouest, Minotaure, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Ubain
+- **Neutre** : Humain Central, Humain Tropical, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Drakos, Orios Eau, Drassah''thac Centre, Drassah''thac Est, Drassah''thac Ouest, Minotaure, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Urbain
 - **Évitée** : Humain Toundra, Elfe Forestier Forêt, Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Nord, Olwman Vent, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Urbain, Médusain Eau, Médusain Foudre, Médusain Urbain, Jackalope Vide, Marcass Nécromancie
 - **Haine** : Fenrir Glace, Fenrir Foudre, Fenrir Urbain
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Fenrir Ombre, Olwman Ombre, Namazu Ombre
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré, Fenrir Ombre, Olwman Ombre, Namazu Ombre
 
 ## Kitsune Urbain : ligne de l''onglet
 
 - **Même peuple** : Kitsune Urbain
 - **Appréciée** : Satyre Urbain
 - **Acceptée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Drassah''thac Centre, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Satyre Feu, Satyre Foudre, Satyre Terre
-- **Neutre** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Drakos, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Minotaure, Médusain Urbain, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
+- **Neutre** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Drakos, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Minotaure, Médusain Urbain, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Urbain
 - **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Médusain Eau, Médusain Foudre, Médusain Lumière
 - **Haine** : Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Olwman Vent : ligne de l''onglet
 
@@ -8510,9 +8510,9 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Appréciée** : Kitsune Vent, Rokh Vent
 - **Acceptée** : Humain Tropical, Elfe Forestier Forêt, Elfe Forestier Urbain, Drassah''thac Est, Drassah''thac Ouest, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain
 - **Neutre** : Humain Central, Humain Désertique, Humain Toundra, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Fenrir Urbain, Kitsune Urbain, Rokh Lumière, Rokh Urbain, Minotaure, Lamia
-- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Urbain, Fenrir Ombre, Kitsune Lumière, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Médusain Eau, Médusain Lumière, Médusain Urbain, Marcass Nécromancie, Marcass Ubain
+- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Urbain, Fenrir Ombre, Kitsune Lumière, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Médusain Eau, Médusain Lumière, Médusain Urbain, Marcass Nécromancie, Marcass Urbain
 - **Haine** : Nain Ouest, Nain Est, Nain Ligne de partage, Orios Sang, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Orios Terre, Fenrir Glace, Fenrir Foudre, Kitsune Feu, Rokh Foudre, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Médusain Foudre, Jackalope Feu, Jackalope Terre
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré, Orios Terre, Fenrir Glace, Fenrir Foudre, Kitsune Feu, Rokh Foudre, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Médusain Foudre, Jackalope Feu, Jackalope Terre
 
 ## Olwman Ombre : ligne de l''onglet
 
@@ -8520,28 +8520,28 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Appréciée** : Fenrir Ombre, Namazu Ombre
 - **Acceptée** : Humain Toundra, Elfe Forestier Urbain, Drassah''thac Nord, Olwman Vent, Olwman Espace/Temps, Olwman Urbain, Minotaure, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain
 - **Neutre** : Humain Central, Humain Désertique, Humain Tropical, Elfe Forestier Forêt, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Drassah''thac Centre, Drassah''thac Est, Drassah''thac Ouest, Fenrir Urbain, Kitsune Urbain, Rokh Vent, Rokh Foudre, Rokh Urbain, Lamia
-- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ouest, Nain Est, Nain Ligne de partage, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Urbain, Drassah''thac Sud, Fenrir Glace, Fenrir Foudre, Kitsune Feu, Kitsune Vent, Namazu Sang, Namazu Eau, Namazu Urbain, Médusain Eau, Médusain Foudre, Médusain Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
+- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ouest, Nain Est, Nain Ligne de partage, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Urbain, Drassah''thac Sud, Fenrir Glace, Fenrir Foudre, Kitsune Feu, Kitsune Vent, Namazu Sang, Namazu Eau, Namazu Urbain, Médusain Eau, Médusain Foudre, Médusain Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Urbain
 - **Haine** : Orios Terre, Orios Sang, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Kitsune Lumière, Rokh Lumière, Médusain Lumière
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré, Kitsune Lumière, Rokh Lumière, Médusain Lumière
 
 ## Olwman Espace/Temps : ligne de l''onglet
 
 - **Même peuple** : Olwman Espace/Temps
 - **Acceptée** : Elfe Forestier Urbain, Olwman Vent, Olwman Ombre, Olwman Urbain, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain
 - **Neutre** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Elfe Forestier Forêt, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Minotaure, Lamia
-- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ouest, Nain Est, Nain Ligne de partage, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
+- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ouest, Nain Est, Nain Ligne de partage, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Urbain
 - **Haine** : Orios Terre, Orios Sang, Jackalope Feu, Jackalope Terre, Jackalope Urbain
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Jackalope Vide
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré, Jackalope Vide
 
 ## Olwman Urbain : ligne de l''onglet
 
 - **Même peuple** : Olwman Urbain
 - **Appréciée** : Satyre Urbain
 - **Acceptée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Elfe Forestier Urbain, Drassah''thac Centre, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Rokh Urbain, Satyre Feu, Satyre Foudre, Satyre Terre
-- **Neutre** : Elfe Forestier Forêt, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Felfe Forestier, Felfe Noir, Felfe Argenté, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Namazu Urbain, Minotaure, Médusain Urbain, Lamia, Marcass Ubain
+- **Neutre** : Elfe Forestier Forêt, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Felfe Forestier, Felfe Noir, Felfe Argenté, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Namazu Urbain, Minotaure, Médusain Urbain, Lamia, Marcass Urbain
 - **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ouest, Nain Est, Nain Ligne de partage, Orios Eau, Orios Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Médusain Eau, Médusain Foudre, Médusain Lumière, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie
 - **Haine** : Orios Terre, Orios Sang, Jackalope Feu, Jackalope Terre, Jackalope Vide
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Rokh Vent : ligne de l''onglet
 
@@ -8549,9 +8549,9 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Appréciée** : Kitsune Vent, Olwman Vent
 - **Acceptée** : Humain Tropical, Elfe Forestier Forêt, Elfe Forestier Urbain, Drassah''thac Est, Drassah''thac Ouest, Rokh Lumière, Rokh Urbain
 - **Neutre** : Humain Central, Humain Désertique, Humain Toundra, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Drassah''thac Centre, Drassah''thac Sud, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Minotaure, Lamia
-- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Urbain, Drassah''thac Nord, Fenrir Ombre, Fenrir Urbain, Kitsune Lumière, Kitsune Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Jackalope Urbain, Marcass Nécromancie, Marcass Ubain
+- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Urbain, Drassah''thac Nord, Fenrir Ombre, Fenrir Urbain, Kitsune Lumière, Kitsune Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Jackalope Urbain, Marcass Nécromancie, Marcass Urbain
 - **Haine** : Nain Ouest, Nain Est, Nain Ligne de partage, Orios Sang, Fenrir Glace, Fenrir Foudre, Kitsune Feu, Rokh Foudre, Jackalope Feu, Jackalope Terre, Jackalope Vide, Marcass Feu, Marcass Terre
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Orios Terre, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré, Orios Terre, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain
 
 ## Rokh Foudre : ligne de l''onglet
 
@@ -8559,9 +8559,9 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Appréciée** : Fenrir Foudre, Satyre Foudre, Médusain Foudre
 - **Acceptée** : Humain Désertique, Humain Tropical, Elfe Forestier Urbain, Nain Ouest, Nain Est, Drassah''thac Est, Drassah''thac Ouest, Rokh Lumière, Rokh Urbain, Satyre Feu, Satyre Urbain
 - **Neutre** : Humain Central, Humain Toundra, Elfe Forestier Forêt, Elfe Noir Salé, Elfe Argenté Autre, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Drakos, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Minotaure, Lamia
-- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Sang, Orios Urbain, Fenrir Glace, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Lumière, Kitsune Urbain, Namazu Sang, Namazu Ombre, Namazu Urbain, Médusain Lumière, Médusain Urbain, Jackalope Urbain, Marcass Feu, Marcass Nécromancie, Marcass Ubain
+- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Sang, Orios Urbain, Fenrir Glace, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Lumière, Kitsune Urbain, Namazu Sang, Namazu Ombre, Namazu Urbain, Médusain Lumière, Médusain Urbain, Jackalope Urbain, Marcass Feu, Marcass Nécromancie, Marcass Urbain
 - **Haine** : Orios Eau, Kitsune Vent, Rokh Vent, Namazu Eau, Médusain Eau, Jackalope Feu, Jackalope Terre, Jackalope Vide, Marcass Terre
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Orios Terre, Olwman Vent, Satyre Terre
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré, Orios Terre, Olwman Vent, Satyre Terre
 
 ## Rokh Lumière : ligne de l''onglet
 
@@ -8569,27 +8569,27 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Appréciée** : Kitsune Lumière, Médusain Lumière
 - **Acceptée** : Elfe Forestier Urbain, Drassah''thac Sud, Rokh Vent, Rokh Foudre, Rokh Urbain, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain
 - **Neutre** : Humain Central, Humain Désertique, Humain Tropical, Elfe Forestier Forêt, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Drassah''thac Centre, Drassah''thac Est, Drassah''thac Ouest, Olwman Vent, Olwman Espace/Temps, Olwman Urbain, Minotaure, Lamia
-- **Évitée** : Humain Toundra, Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ouest, Nain Est, Nain Ligne de partage, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Nord, Fenrir Glace, Fenrir Foudre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Urbain, Namazu Sang, Namazu Eau, Namazu Urbain, Médusain Eau, Médusain Foudre, Médusain Urbain, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
+- **Évitée** : Humain Toundra, Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ouest, Nain Est, Nain Ligne de partage, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Nord, Fenrir Glace, Fenrir Foudre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Urbain, Namazu Sang, Namazu Eau, Namazu Urbain, Médusain Eau, Médusain Foudre, Médusain Urbain, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Urbain
 - **Haine** : Namazu Ombre, Jackalope Feu, Jackalope Terre, Jackalope Vide
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Fenrir Ombre, Olwman Ombre
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré, Fenrir Ombre, Olwman Ombre
 
 ## Rokh Urbain : ligne de l''onglet
 
 - **Même peuple** : Rokh Urbain
 - **Appréciée** : Satyre Urbain
 - **Acceptée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Elfe Forestier Urbain, Drassah''thac Centre, Rokh Vent, Rokh Foudre, Rokh Lumière, Satyre Feu, Satyre Foudre, Satyre Terre
-- **Neutre** : Elfe Forestier Forêt, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Minotaure, Médusain Urbain, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
+- **Neutre** : Elfe Forestier Forêt, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Minotaure, Médusain Urbain, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Urbain
 - **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ouest, Nain Est, Nain Ligne de partage, Médusain Eau, Médusain Foudre, Médusain Lumière
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Namazu Sang : ligne de l''onglet
 
 - **Même peuple** : Namazu Sang
 - **Acceptée** : Drassah''thac Est, Drassah''thac Ouest, Minotaure, Satyre Feu, Satyre Foudre, Satyre Urbain, Jackalope Terre
 - **Neutre** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Drakos, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Olwman Espace/Temps, Namazu Ombre, Namazu Urbain, Lamia
-- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Urbain, Rokh Vent, Rokh Lumière, Rokh Urbain, Jackalope Feu, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Ubain
+- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Urbain, Rokh Vent, Rokh Lumière, Rokh Urbain, Jackalope Feu, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Urbain
 - **Haine** : Orios Urbain, Rokh Foudre, Médusain Foudre, Médusain Lumière, Médusain Urbain, Marcass Terre
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Orios Eau, Orios Terre, Orios Sang, Fenrir Glace, Fenrir Foudre, Namazu Eau, Satyre Terre, Médusain Eau, Marcass Nécromancie
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré, Orios Eau, Orios Terre, Orios Sang, Fenrir Glace, Fenrir Foudre, Namazu Eau, Satyre Terre, Médusain Eau, Marcass Nécromancie
 
 ## Namazu Eau : ligne de l''onglet
 
@@ -8597,9 +8597,9 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Appréciée** : Nain Ouest, Nain Est, Nain Ligne de partage
 - **Acceptée** : Humain Tropical, Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Drassah''thac Nord, Fenrir Glace, Satyre Foudre, Satyre Terre, Satyre Urbain
 - **Neutre** : Humain Central, Humain Désertique, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Orios Eau, Drassah''thac Centre, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Olwman Espace/Temps, Namazu Ombre, Namazu Urbain, Minotaure, Lamia
-- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Terre, Orios Sang, Fenrir Ombre, Fenrir Urbain, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Terre, Marcass Nécromancie, Marcass Ubain
+- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Terre, Orios Sang, Fenrir Ombre, Fenrir Urbain, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Terre, Marcass Nécromancie, Marcass Urbain
 - **Haine** : Orios Urbain, Médusain Eau, Médusain Lumière, Médusain Urbain, Jackalope Feu, Marcass Feu
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Fenrir Foudre, Kitsune Feu, Namazu Sang, Satyre Feu, Médusain Foudre
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré, Fenrir Foudre, Kitsune Feu, Namazu Sang, Satyre Feu, Médusain Foudre
 
 ## Namazu Ombre : ligne de l''onglet
 
@@ -8607,19 +8607,19 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Appréciée** : Nain Ouest, Nain Est, Nain Ligne de partage, Fenrir Ombre, Olwman Ombre
 - **Acceptée** : Drassah''thac Nord, Minotaure, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain
 - **Neutre** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Drassah''thac Centre, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Olwman Espace/Temps, Namazu Sang, Namazu Eau, Namazu Urbain, Lamia
-- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Sang, Orios Urbain, Fenrir Glace, Fenrir Foudre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Urbain, Olwman Vent, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Urbain, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
+- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Sang, Orios Urbain, Fenrir Glace, Fenrir Foudre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Urbain, Olwman Vent, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Urbain, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Urbain
 - **Haine** : Orios Terre, Rokh Lumière, Médusain Eau, Médusain Foudre, Médusain Urbain
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Kitsune Lumière, Médusain Lumière
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré, Kitsune Lumière, Médusain Lumière
 
 ## Namazu Urbain : ligne de l''onglet
 
 - **Même peuple** : Namazu Urbain
 - **Appréciée** : Satyre Urbain
 - **Acceptée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Nain Ouest, Nain Est, Nain Ligne de partage, Satyre Feu, Satyre Foudre, Satyre Terre
-- **Neutre** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Terre, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Minotaure, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Ubain
+- **Neutre** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Terre, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Minotaure, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Urbain
 - **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Orios Sang, Médusain Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie
 - **Haine** : Orios Eau, Médusain Eau, Médusain Foudre, Médusain Lumière
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Minotaure : ligne de l''onglet
 
@@ -8627,9 +8627,9 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Alliée** : Nain Ouest, Nain Est, Nain Ligne de partage, Orios Eau, Orios Terre, Orios Sang, Orios Urbain
 - **Appréciée** : Drakos, Satyre Terre, Satyre Urbain, Lamia
 - **Acceptée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Majin, Hujin, Drassah''thac Est, Drassah''thac Ouest, Olwman Ombre, Namazu Sang, Namazu Ombre, Satyre Feu, Satyre Foudre, Jackalope Terre, Marcass Terre
-- **Neutre** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Mort-vivant, Felfe Forestier, Felfe Noir, Felfe Argenté, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Fenrir Urbain, Kitsune Urbain, Olwman Urbain, Rokh Urbain, Namazu Urbain, Médusain Urbain, Jackalope Urbain, Marcass Ubain
+- **Neutre** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Mort-vivant, Felfe Forestier, Felfe Noir, Felfe Argenté, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Fenrir Urbain, Kitsune Urbain, Olwman Urbain, Rokh Urbain, Namazu Urbain, Médusain Urbain, Jackalope Urbain, Marcass Urbain
 - **Évitée** : Elfe Noir Salé, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Olwman Vent, Olwman Espace/Temps, Rokh Vent, Rokh Foudre, Rokh Lumière, Namazu Eau, Médusain Eau, Médusain Foudre, Médusain Lumière, Jackalope Feu, Jackalope Vide, Marcass Feu, Marcass Nécromancie
-- **Ennemie** : Elfe Noir Charbon, Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Noir Charbon, Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Satyre Feu : ligne de l''onglet
 
@@ -8637,9 +8637,9 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Appréciée** : Humain Désertique, Kitsune Feu, Satyre Foudre, Satyre Urbain, Jackalope Feu, Marcass Feu
 - **Acceptée** : Drassah''thac Sud, Jackalope Terre, Jackalope Urbain
 - **Neutre** : Humain Central, Humain Tropical, Mort-vivant, Kitsune Lumière, Kitsune Urbain, Olwman Espace/Temps, Rokh Urbain, Lamia
-- **Évitée** : Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Drakos, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Est, Drassah''thac Ouest, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Vent, Olwman Ombre, Olwman Urbain, Rokh Foudre, Rokh Lumière, Namazu Sang, Namazu Ombre, Namazu Urbain, Minotaure, Médusain Foudre, Médusain Lumière, Médusain Urbain, Marcass Terre, Marcass Nécromancie, Marcass Ubain
+- **Évitée** : Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Charbon, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Drakos, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Est, Drassah''thac Ouest, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Vent, Olwman Ombre, Olwman Urbain, Rokh Foudre, Rokh Lumière, Namazu Sang, Namazu Ombre, Namazu Urbain, Minotaure, Médusain Foudre, Médusain Lumière, Médusain Urbain, Marcass Terre, Marcass Nécromancie, Marcass Urbain
 - **Haine** : Orios Terre, Orios Sang, Olwman Vent, Rokh Vent, Namazu Eau, Satyre Terre, Médusain Eau, Jackalope Vide
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Fenrir Glace
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré, Fenrir Glace
 
 ## Satyre Foudre : ligne de l''onglet
 
@@ -8647,9 +8647,9 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Appréciée** : Satyre Feu, Satyre Urbain
 - **Acceptée** : Humain Tropical, Nain Ouest, Nain Est, Nain Ligne de partage, Drassah''thac Est, Drassah''thac Ouest, Fenrir Foudre, Rokh Foudre, Jackalope Feu, Jackalope Urbain
 - **Neutre** : Humain Central, Humain Désertique, Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Kitsune Feu, Kitsune Lumière, Kitsune Urbain, Olwman Espace/Temps, Rokh Urbain, Lamia, Jackalope Terre
-- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Sang, Orios Urbain, Fenrir Glace, Fenrir Ombre, Fenrir Urbain, Olwman Vent, Olwman Ombre, Olwman Urbain, Rokh Vent, Rokh Lumière, Namazu Sang, Namazu Ombre, Namazu Urbain, Minotaure, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Marcass Feu, Marcass Nécromancie, Marcass Ubain
+- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Sang, Orios Urbain, Fenrir Glace, Fenrir Ombre, Fenrir Urbain, Olwman Vent, Olwman Ombre, Olwman Urbain, Rokh Vent, Rokh Lumière, Namazu Sang, Namazu Ombre, Namazu Urbain, Minotaure, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Marcass Feu, Marcass Nécromancie, Marcass Urbain
 - **Haine** : Orios Eau, Orios Terre, Kitsune Vent, Namazu Eau, Satyre Terre, Jackalope Vide, Marcass Terre
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Satyre Terre : ligne de l''onglet
 
@@ -8657,19 +8657,19 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Appréciée** : Satyre Urbain, Jackalope Terre, Marcass Terre
 - **Acceptée** : Humain Tropical, Elfe Forestier Forêt, Elfe Forestier Urbain, Orios Terre, Orios Sang, Drassah''thac Est, Drassah''thac Ouest, Minotaure, Jackalope Feu, Jackalope Urbain
 - **Neutre** : Humain Central, Humain Désertique, Humain Toundra, Elfe Noir Salé, Elfe Argenté Autre, Nain Ouest, Nain Est, Majin, Hujin, Mort-vivant, Drakos, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Espace/Temps, Rokh Urbain, Lamia
-- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ligne de partage, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Olwman Ombre, Olwman Urbain, Rokh Lumière, Namazu Eau, Namazu Ombre, Namazu Urbain, Médusain Eau, Médusain Lumière, Médusain Urbain, Marcass Feu, Marcass Nécromancie, Marcass Ubain
+- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ligne de partage, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Olwman Ombre, Olwman Urbain, Rokh Lumière, Namazu Eau, Namazu Ombre, Namazu Urbain, Médusain Eau, Médusain Lumière, Médusain Urbain, Marcass Feu, Marcass Nécromancie, Marcass Urbain
 - **Haine** : Olwman Vent, Rokh Vent, Rokh Foudre, Namazu Sang, Satyre Feu, Satyre Foudre, Médusain Foudre, Jackalope Vide
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Satyre Urbain : ligne de l''onglet
 
 - **Même peuple** : Satyre Urbain
 - **Appréciée** : Satyre Feu, Satyre Foudre, Satyre Terre, Jackalope Urbain
 - **Acceptée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Elfe Forestier Urbain, Kitsune Urbain, Jackalope Feu, Jackalope Terre
-- **Neutre** : Elfe Forestier Forêt, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Minotaure, Médusain Urbain, Lamia, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
+- **Neutre** : Elfe Forestier Forêt, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Minotaure, Médusain Urbain, Lamia, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Urbain
 - **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ouest, Nain Est, Nain Ligne de partage, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Médusain Eau, Médusain Foudre, Médusain Lumière
 - **Haine** : Jackalope Vide
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Médusain Eau : ligne de l''onglet
 
@@ -8677,9 +8677,9 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Alliée** : Orios Eau
 - **Acceptée** : Humain Tropical, Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Drassah''thac Nord, Namazu Eau, Médusain Lumière, Médusain Urbain
 - **Neutre** : Humain Central, Humain Désertique, Elfe Noir Salé, Elfe Argenté Autre, Nain Ouest, Nain Est, Majin, Hujin, Mort-vivant, Drakos, Drassah''thac Centre, Drassah''thac Sud, Olwman Espace/Temps, Minotaure, Lamia
-- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ligne de partage, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Terre, Orios Urbain, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Ombre, Fenrir Urbain, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Urbain, Rokh Vent, Rokh Lumière, Rokh Urbain, Namazu Ombre, Namazu Urbain, Satyre Terre, Satyre Urbain, Médusain Foudre, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Terre, Marcass Ubain
+- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ligne de partage, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Terre, Orios Urbain, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Ombre, Fenrir Urbain, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Urbain, Rokh Vent, Rokh Lumière, Rokh Urbain, Namazu Ombre, Namazu Urbain, Satyre Terre, Satyre Urbain, Médusain Foudre, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Terre, Marcass Urbain
 - **Haine** : Orios Sang, Fenrir Foudre, Kitsune Feu, Rokh Foudre, Namazu Sang, Satyre Feu, Satyre Foudre, Jackalope Feu, Marcass Feu, Marcass Nécromancie
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Médusain Foudre : ligne de l''onglet
 
@@ -8688,26 +8688,26 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Appréciée** : Nain Ligne de partage
 - **Acceptée** : Humain Tropical, Drassah''thac Est, Drassah''thac Ouest, Fenrir Foudre, Rokh Foudre, Satyre Foudre, Médusain Lumière, Médusain Urbain
 - **Neutre** : Humain Central, Humain Désertique, Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Olwman Espace/Temps, Minotaure, Lamia
-- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Sang, Orios Urbain, Fenrir Glace, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Lumière, Kitsune Urbain, Olwman Ombre, Olwman Urbain, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Ombre, Namazu Urbain, Satyre Feu, Satyre Urbain, Médusain Eau, Jackalope Feu, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Nécromancie, Marcass Ubain
+- **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Sang, Orios Urbain, Fenrir Glace, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Lumière, Kitsune Urbain, Olwman Ombre, Olwman Urbain, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Ombre, Namazu Urbain, Satyre Feu, Satyre Urbain, Médusain Eau, Jackalope Feu, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Nécromancie, Marcass Urbain
 - **Haine** : Orios Eau, Orios Terre, Kitsune Vent, Olwman Vent, Rokh Vent, Namazu Eau, Satyre Terre, Jackalope Terre, Marcass Terre
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Médusain Lumière : ligne de l''onglet
 
 - **Même peuple** : Médusain Lumière
 - **Acceptée** : Humain Désertique, Drassah''thac Sud, Kitsune Lumière, Rokh Lumière, Médusain Eau, Médusain Foudre, Médusain Urbain
 - **Neutre** : Humain Central, Humain Tropical, Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Drassah''thac Centre, Olwman Espace/Temps, Lamia
-- **Évitée** : Humain Toundra, Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ouest, Nain Est, Nain Ligne de partage, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Nord, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Urbain, Olwman Vent, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Urbain, Minotaure, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
+- **Évitée** : Humain Toundra, Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ouest, Nain Est, Nain Ligne de partage, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Nord, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Urbain, Olwman Vent, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Urbain, Minotaure, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Urbain
 - **Haine** : Fenrir Ombre, Olwman Ombre, Namazu Ombre
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Médusain Urbain : ligne de l''onglet
 
 - **Même peuple** : Médusain Urbain
 - **Acceptée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Médusain Eau, Médusain Foudre, Médusain Lumière
-- **Neutre** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Drakos, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Minotaure, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
+- **Neutre** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Drakos, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Minotaure, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Urbain
 - **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Drassah''thac Est, Drassah''thac Ouest
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Lamia : ligne de l''onglet
 
@@ -8715,9 +8715,9 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Alliée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra
 - **Appréciée** : Drakos, Orios Eau, Orios Terre, Orios Sang, Orios Urbain
 - **Acceptée** : Majin, Hujin, Drassah''thac Est, Drassah''thac Ouest, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Jackalope Terre, Marcass Terre
-- **Neutre** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Mort-vivant, Felfe Forestier, Felfe Noir, Felfe Argenté, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Minotaure, Médusain Urbain, Jackalope Feu, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Nécromancie, Marcass Ubain
+- **Neutre** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Barrage argenté, Elfe Argenté Autre, Nain Ouest, Nain Est, Nain Ligne de partage, Mort-vivant, Felfe Forestier, Felfe Noir, Felfe Argenté, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Minotaure, Médusain Urbain, Jackalope Feu, Jackalope Vide, Jackalope Urbain, Marcass Feu, Marcass Nécromancie, Marcass Urbain
 - **Évitée** : Elfe Noir Charbon, Médusain Eau, Médusain Foudre, Médusain Lumière
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Jackalope Feu : ligne de l''onglet
 
@@ -8725,10 +8725,10 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Alliée** : Kitsune Feu, Satyre Feu
 - **Appréciée** : Humain Désertique, Nain Ouest, Orios Sang, Satyre Foudre, Satyre Urbain
 - **Acceptée** : Nain Est, Nain Ligne de partage, Drassah''thac Sud, Satyre Terre, Marcass Feu
-- **Neutre** : Humain Central, Humain Tropical, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Orios Terre, Orios Urbain, Drassah''thac Centre, Drassah''thac Est, Drassah''thac Ouest, Fenrir Urbain, Kitsune Lumière, Kitsune Urbain, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Ombre, Namazu Urbain, Minotaure, Médusain Foudre, Médusain Lumière, Lamia, Jackalope Vide, Jackalope Urbain, Marcass Ubain
+- **Neutre** : Humain Central, Humain Tropical, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Orios Terre, Orios Urbain, Drassah''thac Centre, Drassah''thac Est, Drassah''thac Ouest, Fenrir Urbain, Kitsune Lumière, Kitsune Urbain, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Ombre, Namazu Urbain, Minotaure, Médusain Foudre, Médusain Lumière, Lamia, Jackalope Vide, Jackalope Urbain, Marcass Urbain
 - **Évitée** : Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Drassah''thac Nord, Fenrir Foudre, Fenrir Ombre, Médusain Urbain, Marcass Nécromancie
 - **Haine** : Fenrir Glace, Kitsune Vent, Olwman Vent, Rokh Vent, Namazu Eau, Médusain Eau, Jackalope Terre, Marcass Terre
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Jackalope Terre : ligne de l''onglet
 
@@ -8736,67 +8736,67 @@ Races du wiki sans peuple dans l''onglet : Anansi, Farfadet, Goleois.
 - **Alliée** : Satyre Terre
 - **Appréciée** : Nain Ouest, Orios Terre, Orios Sang, Minotaure, Satyre Feu, Satyre Urbain
 - **Acceptée** : Humain Tropical, Elfe Forestier Forêt, Elfe Forestier Urbain, Nain Est, Nain Ligne de partage, Drassah''thac Est, Drassah''thac Ouest, Satyre Foudre, Lamia, Marcass Terre
-- **Neutre** : Humain Central, Humain Désertique, Humain Toundra, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Orios Eau, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Fenrir Urbain, Kitsune Lumière, Kitsune Urbain, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Lumière, Rokh Urbain, Namazu Eau, Namazu Ombre, Namazu Urbain, Jackalope Vide, Jackalope Urbain, Marcass Ubain
+- **Neutre** : Humain Central, Humain Désertique, Humain Toundra, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drakos, Orios Eau, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Fenrir Urbain, Kitsune Lumière, Kitsune Urbain, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Lumière, Rokh Urbain, Namazu Eau, Namazu Ombre, Namazu Urbain, Jackalope Vide, Jackalope Urbain, Marcass Urbain
 - **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Fenrir Glace, Fenrir Ombre, Médusain Eau, Médusain Lumière, Médusain Urbain, Marcass Nécromancie
 - **Haine** : Fenrir Foudre, Kitsune Feu, Kitsune Vent, Olwman Vent, Rokh Vent, Rokh Foudre, Namazu Sang, Médusain Foudre, Jackalope Feu, Marcass Feu
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Jackalope Vide : ligne de l''onglet
 
 - **Même peuple** : Jackalope Vide
-- **Neutre** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Nain Ouest, Nain Est, Majin, Hujin, Mort-vivant, Drakos, Orios Urbain, Drassah''thac Centre, Fenrir Urbain, Kitsune Urbain, Olwman Urbain, Rokh Urbain, Namazu Urbain, Minotaure, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Urbain, Marcass Ubain
+- **Neutre** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Nain Ouest, Nain Est, Majin, Hujin, Mort-vivant, Drakos, Orios Urbain, Drassah''thac Centre, Fenrir Urbain, Kitsune Urbain, Olwman Urbain, Rokh Urbain, Namazu Urbain, Minotaure, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Urbain, Marcass Urbain
 - **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ligne de partage, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Terre, Orios Sang, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Olwman Vent, Olwman Ombre, Rokh Vent, Rokh Foudre, Rokh Lumière, Namazu Sang, Namazu Eau, Namazu Ombre, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie
 - **Haine** : Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré, Olwman Espace/Temps
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré, Olwman Espace/Temps
 
 ## Jackalope Urbain : ligne de l''onglet
 
 - **Même peuple** : Jackalope Urbain
 - **Appréciée** : Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain
 - **Acceptée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Minotaure
-- **Neutre** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Nain Ouest, Nain Est, Majin, Hujin, Mort-vivant, Drakos, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Ubain
+- **Neutre** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Nain Ouest, Nain Est, Majin, Hujin, Mort-vivant, Drakos, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Marcass Feu, Marcass Terre, Marcass Nécromancie, Marcass Urbain
 - **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Nain Ligne de partage, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Marcass Feu : ligne de l''onglet
 
 - **Même peuple** : Marcass Feu
 - **Alliée** : Kitsune Feu
 - **Appréciée** : Humain Désertique, Nain Ouest
-- **Acceptée** : Nain Est, Nain Ligne de partage, Drakos, Orios Sang, Orios Urbain, Drassah''thac Sud, Minotaure, Satyre Feu, Satyre Foudre, Satyre Urbain, Jackalope Feu, Marcass Nécromancie, Marcass Ubain
+- **Acceptée** : Nain Est, Nain Ligne de partage, Drakos, Orios Sang, Orios Urbain, Drassah''thac Sud, Minotaure, Satyre Feu, Satyre Foudre, Satyre Urbain, Jackalope Feu, Marcass Nécromancie, Marcass Urbain
 - **Neutre** : Humain Central, Humain Tropical, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Orios Terre, Drassah''thac Centre, Drassah''thac Est, Drassah''thac Ouest, Fenrir Urbain, Kitsune Lumière, Kitsune Urbain, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Ombre, Namazu Urbain, Lamia, Jackalope Urbain, Marcass Terre
 - **Évitée** : Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Eau, Drassah''thac Nord, Fenrir Foudre, Fenrir Ombre, Médusain Foudre, Médusain Lumière, Médusain Urbain, Jackalope Vide
 - **Haine** : Fenrir Glace, Kitsune Vent, Olwman Vent, Rokh Vent, Namazu Eau, Satyre Terre, Médusain Eau, Jackalope Terre
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Marcass Terre : ligne de l''onglet
 
 - **Même peuple** : Marcass Terre
 - **Alliée** : Orios Terre
 - **Appréciée** : Nain Ouest, Drakos, Orios Sang, Satyre Terre
-- **Acceptée** : Humain Tropical, Elfe Forestier Forêt, Elfe Forestier Urbain, Nain Est, Nain Ligne de partage, Orios Eau, Orios Urbain, Drassah''thac Est, Drassah''thac Ouest, Minotaure, Satyre Foudre, Satyre Urbain, Lamia, Jackalope Terre, Marcass Nécromancie, Marcass Ubain
+- **Acceptée** : Humain Tropical, Elfe Forestier Forêt, Elfe Forestier Urbain, Nain Est, Nain Ligne de partage, Orios Eau, Orios Urbain, Drassah''thac Est, Drassah''thac Ouest, Minotaure, Satyre Foudre, Satyre Urbain, Lamia, Jackalope Terre, Marcass Nécromancie, Marcass Urbain
 - **Neutre** : Humain Central, Humain Désertique, Humain Toundra, Elfe Noir Salé, Elfe Argenté Autre, Majin, Hujin, Mort-vivant, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Fenrir Urbain, Kitsune Lumière, Kitsune Urbain, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Lumière, Rokh Urbain, Namazu Eau, Namazu Ombre, Namazu Urbain, Jackalope Urbain, Marcass Feu
 - **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Fenrir Glace, Fenrir Ombre, Médusain Eau, Médusain Lumière, Médusain Urbain, Jackalope Vide
 - **Haine** : Fenrir Foudre, Kitsune Feu, Kitsune Vent, Olwman Vent, Rokh Vent, Rokh Foudre, Namazu Sang, Satyre Feu, Médusain Foudre, Jackalope Feu
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
 ## Marcass Nécromancie : ligne de l''onglet
 
 - **Même peuple** : Marcass Nécromancie
 - **Alliée** : Mort-vivant
-- **Acceptée** : Elfe Noir Charbon, Nain Ouest, Nain Est, Orios Urbain, Marcass Feu, Marcass Terre, Marcass Ubain
+- **Acceptée** : Elfe Noir Charbon, Nain Ouest, Nain Est, Orios Urbain, Marcass Feu, Marcass Terre, Marcass Urbain
 - **Neutre** : Elfe Noir Salé, Elfe Argenté Autre, Nain Ligne de partage, Majin, Hujin, Drakos, Orios Eau, Orios Terre, Drassah''thac Centre, Fenrir Urbain, Kitsune Urbain, Olwman Urbain, Rokh Urbain, Namazu Urbain, Minotaure, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Lamia, Jackalope Urbain
 - **Évitée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Argenté Barrage argenté, Felfe Forestier, Felfe Noir, Felfe Argenté, Orios Sang, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Rokh Vent, Rokh Foudre, Rokh Lumière, Namazu Sang, Namazu Ombre, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Jackalope Feu, Jackalope Terre, Jackalope Vide
 - **Haine** : Namazu Eau
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 
-## Marcass Ubain : ligne de l''onglet
+## Marcass Urbain : ligne de l''onglet
 
-- **Même peuple** : Marcass Ubain
+- **Même peuple** : Marcass Urbain
 - **Acceptée** : Humain Central, Humain Désertique, Humain Tropical, Humain Toundra, Nain Ouest, Nain Est, Drakos, Orios Eau, Orios Terre, Orios Sang, Orios Urbain, Minotaure, Satyre Feu, Satyre Foudre, Satyre Terre, Satyre Urbain, Marcass Feu, Marcass Terre, Marcass Nécromancie
 - **Neutre** : Elfe Forestier Forêt, Elfe Forestier Urbain, Elfe Noir Salé, Elfe Argenté Autre, Nain Ligne de partage, Majin, Hujin, Mort-vivant, Felfe Forestier, Felfe Noir, Felfe Argenté, Drassah''thac Centre, Drassah''thac Nord, Drassah''thac Sud, Drassah''thac Est, Drassah''thac Ouest, Fenrir Glace, Fenrir Foudre, Fenrir Ombre, Fenrir Urbain, Kitsune Feu, Kitsune Vent, Kitsune Lumière, Kitsune Urbain, Olwman Vent, Olwman Ombre, Olwman Espace/Temps, Olwman Urbain, Rokh Vent, Rokh Foudre, Rokh Lumière, Rokh Urbain, Namazu Sang, Namazu Eau, Namazu Ombre, Namazu Urbain, Médusain Eau, Médusain Foudre, Médusain Lumière, Médusain Urbain, Lamia, Jackalope Feu, Jackalope Terre, Jackalope Vide, Jackalope Urbain
 - **Évitée** : Elfe Noir Charbon, Elfe Argenté Barrage argenté
-- **Ennemie** : Elfe Argenté Supprémaciste, Elfe Doré
+- **Ennemie** : Elfe Argenté Suprémaciste, Elfe Doré
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « Relation entre les races »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('magies/exemple-magie', 'magies', 'exemple-magie', 'Magie d''exemple', 'magie-dexemple', 'Page de démonstration pour une école de magie.', NULL, 'Contenu **fictif**. Une [[Créature d''exemple]] peut être sensible à cette magie.
 ', 'example', 'exemple', NULL);
@@ -8847,7 +8847,7 @@ Attention, si le chakra permet d''obtenir de la corruption, l''inverse ne se fai
 | 1.0 | Boule sombre | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Si CR : +1d de dégâts. |
 | 1.0 | Tir d''huile | Attaque | 4.0 | 9 (+2/NM) | 1.0 | 2d6 dégâts | Si CR : Inflige 3 corruption. |
 | 1.0 | Verrouillage Simple | Entrave | 4.0 | 6.0 | 1.0 | Bloque la posture Neutre | Dure 2 tours (+1/NM)<br>Si CR : Le changement de posture est aléatoire. |
-| 1.0 | Verrouille Visible | Entrave | 4.0 | 6.0 | 1.0 | Bloque la posture Vigilance | Dure 2 tours (+1/NM)<br>Si CR : Le changement de posture est aléatoire. |
+| 1.0 | Verrouillage Visible | Entrave | 4.0 | 6.0 | 1.0 | Bloque la posture Vigilance | Dure 2 tours (+1/NM)<br>Si CR : Le changement de posture est aléatoire. |
 | 1.0 | Retrait | Soin (IC) | 5.0 | 1.0 | 1.0 | 2d6 cr (+1d/NM) | Retire de la corruption d''une cible pour la mettre dans la réserve. |
 | 2.0 | Aiguisage magique | Amplification (IC pour 3 NM) | 6.0 | 1.0 | 1.0 | / | Permet d''augmenter la réussite critique de 2% au prochain sort.<br>Si CR : Bonus de +5 dégâts en plus. |
 | 2.0 | Fer corrompu | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Imprègne l''arme d''une énergie mauvaise. Inflige 5 points de corruption. |
@@ -8876,7 +8876,7 @@ Si la cible est dans la posture indiquée à ce moment-là, il doit changer de p
 
 Les verrouillages ne se cumulent pas.
 
-**Note de la cellule « Effets secondaires » du sort « Verrouille Visible »**
+**Note de la cellule « Effets secondaires » du sort « Verrouillage Visible »**
 
 Si la cible est dans la posture indiquée à ce moment-là, il doit changer de posture de suite.
 
@@ -8956,7 +8956,7 @@ Les utilisateurs de la foudre ont les mèches jaunes, les yeux jaunes lors de l'
 | 1.0 | Tazeur | Attaque/ Entrave | 5.0 | 1.0 | 1.0 | 2d4 dégâts (+2/NM) | Si jet de fermeté raté = Inflige "Couardise" |
 | 2.0 | Fer Foudroyant | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Charge l''arme en électricité, tape dans l''élément foudre pendant 3 tours. |
 | 2.0 | Réflexe Éclair | Amplification (IC pour 3 NM) | 8.0 | 1.0 | 1.0 | +5% Agilité | Augmente de 5% l''agilité pendant 2 tours. |
-| 2.0 | Colonne tesla | Amplification/ Entrave (IC pour 3 NM) | 7.0 | 4.0 | 1.0 | / | Donne la propriété « para-tonnerre » à une cible. |
+| 2.0 | Colonne Tesla | Amplification/ Entrave (IC pour 3 NM) | 7.0 | 4.0 | 1.0 | / | Donne la propriété « paratonnerre » à une cible. |
 | 2.0 | Chargeur | Amplification (IC x 3) | 9 (-1/NM) | Soi-même | 1.0 | +4 dégâts | +4 dégâts de foudre (cumulable 3 fois) pour la prochaine action. |
 | 2.0 | Souffle électrique | Attaque<br>(Imparable) | 8.0 | 3.0 | Cône | 5d6 dégâts (+3/NM) | Si jet de vigueur raté = Inflige paralysie 1. |
 | 3.0 | Boules de foudre | Attaque | 16.0 | 2.0 | 1.0 | 3d6 + 10 dégâts | 1 boule (+1/NM) vont apparaître et vont s''approcher de l''ennemi le plus proche de 2 cases par tour. |
@@ -8977,7 +8977,7 @@ Les utilisateurs de la foudre ont les mèches jaunes, les yeux jaunes lors de l'
 
 **Note de la cellule « Effets secondaires » du sort « Fer Foudroyant »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être paralysé au stade 1
 
-**Note de la cellule « Effets secondaires » du sort « Colonne tesla »** : Para-tonnerre : Attire les sorts de la foudre ou bien la foudre naturelle sur la cible (objet ou créature)
+**Note de la cellule « Effets secondaires » du sort « Colonne Tesla »** : Paratonnerre : Attire les sorts de la foudre ou bien la foudre naturelle sur la cible (objet ou créature)
 
 **Commentaire résolu de la cellule « Type » du sort « Chargeur »** : Peut être lancé 3 fois dans le même tour.
 
@@ -9312,13 +9312,13 @@ Les nécromanciens sont généralement plus minces que la moyenne, voire maigres
 | 3.0 | Forge de ses morts | Amplification (IC pour 3 NM) | 9 + 2 âmes | Soi-même | 1.0 | / | Utilise des âmes pour créer des armes simples, 1 seule utilisation (+1 par NM). |
 | 3.0 | Câlin putréfié | Attaque | 13 + 3 âmes | 3 (+1/NM) | 1.0 | 7d6 + 15 dégâts | Invoque un zombie qui va tomber sur l''adversaire. Si jet de vigueur raté = Inflige Empoisonné stade 1. |
 | 4.0 | Amélioration<br>Cadavérique | Amplification | 20 + 4 âmes | 0 (+1/NM) | 1.0 | Variable | Sacrifie l''invocation pour des amplifications pendant 3 tours (voir invocations) |
-| 4.0 | Vague de cadavre | Attaque | 20 + 4 âmes | 4 (+1/NM) | Ligne de 5 cases | 6d6 + 6 dégâts | Invoque une vague de cadavre qui va s’écraser sur l''ennemi. Si jet de vigueur raté = Inflige Empoisonné stade 1. |
+| 4.0 | Vague de cadavres | Attaque | 20 + 4 âmes | 4 (+1/NM) | Ligne de 5 cases | 6d6 + 6 dégâts | Invoque une vague de cadavres qui va s’écraser sur l''ennemi. Si jet de vigueur raté = Inflige Empoisonné stade 1. |
 | 4.0 | Grenade caustique | Attaque | 25 + 4 âmes | 6.0 | Cercle de 3 | 6d6 + 35 dégâts | Si jet de vigueur raté = Inflige Empoisonné stade 2 à toutes les cibles (3NM = Sauf alliés). |
-| 4.0 | Cimetière ouvert | Météo | 18 + 4 âmes | Soi-même | Terrain | / | Invoque la météo "Purée de poix" pendant 3 tours (+1/NM). |
-| 4.0 | Répar Os | Soin | 20 + 5 âmes | 1.0 | 1.0 | Soigne 6d6 (+7/NM) | Permet de soigner les os et chair. |
+| 4.0 | Cimetière ouvert | Météo | 18 + 4 âmes | Soi-même | Terrain | / | Invoque la météo "Purée de pois" pendant 3 tours (+1/NM). |
+| 4.0 | Répar''Os | Soin | 20 + 5 âmes | 1.0 | 1.0 | Soigne 6d6 (+7/NM) | Permet de soigner les os et chair. |
 | 5.0 | Déchirure | Attaque | 65 (-5/NM) | 5.0 | 1.0 | 10d6 + 50 dégâts (+10/NM) | Une terrible attaque qui inflige de gros dégâts, Si jet de vigueur raté = Inflige poison 2. |
 | 5.0 | Réanimation | Invocation | 45 (-2/NM) + 10 âmes | 1.0 | 1.0 | / | Permet de réanimer un corps mort et d’en garder le contrôle pendant 1h. |
-| 5.0 | Résurrection Noir | Soin | 35 (-2/NM) + 10 âmes | 5.0 | 1.0 | / | Revient sans PV, le chakra est utilisé comme énergie. |
+| 5.0 | Résurrection Noire | Soin | 35 (-2/NM) + 10 âmes | 5.0 | 1.0 | / | Revient sans PV, le chakra est utilisé comme énergie. |
 
 ## Notes et commentaires des sorts
 
@@ -9362,9 +9362,9 @@ Arme Spectrale = Peut toucher l''immatériel et ignore les AP.
 Cette arme est considérée comme Spectrale.  
 Arme Spectrale = Peut toucher l''immatériel et ignore les PA.
 
-**Note de la cellule « Effets secondaires » du sort « Résurrection Noir »** : Est considérée comme morte tant que la cible n''a pas bu 1 super fiole de soin par jour sur 1 mois. Ou alors qu''une résurrection est appliquée sur lui.
+**Note de la cellule « Effets secondaires » du sort « Résurrection Noire »** : Est considérée comme morte tant que la cible n''a pas bu 1 super fiole de soin par jour sur 1 mois. Ou alors qu''une résurrection est appliquée sur lui.
 
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Résurrection Noir »** : Est considéré comme mort tant que la cible n''a pas bu 1 fiole par jour sur 5 jours. Ou alors qu''une résurrection est appliquée sur lui.
+**Commentaire résolu de la cellule « Effets secondaires » du sort « Résurrection Noire »** : Est considéré comme mort tant que la cible n''a pas bu 1 fiole par jour sur 5 jours. Ou alors qu''une résurrection est appliquée sur lui.
 
 ## Légende
 
@@ -9415,7 +9415,7 @@ Les utilisateurs de la Terre sont des personnes qui ont des tailles et une muscu
 
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1.0 | Lance Pierre | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de Terre. 3NM = Sur un coup critique, force le jet de vigueur pour ne pas prendre pétrifié 1. |
+| 1.0 | Lance-pierre | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de Terre. 3NM = Sur un coup critique, force le jet de vigueur pour ne pas prendre pétrifié 1. |
 | 1.0 | Tremblement | Attaque (Imparable) | 4.0 | 2 (+1/NM) | Cône | 1d6 dégâts (+2/NM) | Frappe le sol, oblige un jet de Stabilité/Réflexe aux cibles pour ne pas tomber. |
 | 1.0 | Peau de pierre | Amplification (IC) | 4.0 | 1.0 | 1.0 | +2AP (+1AP/NM) | Augmente l''armure physique pendant 3 tours. Peut se cumuler avec Cuirasse de Roche. |
 | 1.0 | Appel aux Golems | Invocation (IC pour 3 NM) | 6 (xNP de créature) | 3.0 | 1.0 | / | Permet d''invoquer des golems (voir invocation). Sort interdit aux familiers et aux invocations. |
@@ -9433,7 +9433,7 @@ Les utilisateurs de la Terre sont des personnes qui ont des tailles et une muscu
 | 4.0 | Rouille | Attaque | 20.0 | 4 (+1/NM) | 1.0 | 8d6 dégâts d''acide | 50% de chance de retirer un cran solidité à un morceau d’armure ou une arme. |
 | 4.0 | Grenade Pétrifiante | Attaque | 23.0 | 7.0 | Cercle de 3 | 6d6 + 35 dégâts | Inflige des dégâts de zone de Terre. (3NM = Si jet de vigueur raté = Inflige pétrifié 1). |
 | 4.0 | Anti-Mythril | Amplification (IC pour 3 NM) | 23.0 | 2.0 | 1.0 | / | L''effet du Mythril est annulé pendant 3 tours. |
-| 4.0 | Rédemption de Dimitri | Météo | 20.0 | Soi-même | Terrain | / | Invoque la météo "tempête sable" ou "champ magnétique" pendant 3 tours (+1/NM). |
+| 4.0 | Rédemption de Dimitri | Météo | 20.0 | Soi-même | Terrain | / | Invoque la météo "tempête de sable" ou "champ magnétique" pendant 3 tours (+1/NM). |
 | 4.0 | Floraison salvatrice | Soin | 20.0 | 4.0 | 1.0 | 4d6 (+1d/NM) soin/tour | Pose une fleur sur la cible qui va la soigner pendant 3 tours. Vu que c''est une régénération, la santé récupérée par tour se détermine au premier jet. |
 | 5.0 | Terre Maudite | Attaque | 55 (-5/NM) | 7.0 | 1.0 | 10d6 + 60 dégâts | La cible qui rate son jet de vigueur encaisse une charge de Nécrose, au bout de 4 charges, la cible meurt. |
 | 5.0 | Morsure terrestre | Attaque (Inesquivable) | 55 (-5/NM) | 6.0 | 4x4 | 10d6 + 60 dégâts | Inflige de terribles dégâts perforants. |
@@ -9599,7 +9599,7 @@ Exemple : J''ai posé sur 3 personnes différentes un sort qui coûte 3. Donc en
 | 4.0 | Pluie de Chakra | Amplification | 25% | 3 (+1/NM) | Carré 4x4 | / | Fait pleuvoir une pluie blanche brillante au-dessus des alliés, leur redonnant ainsi 25% de leur chakra. |
 | 4.0 | Grenade de Chakra | Attaque | 23.0 | 6 (+1/NM) | Cercle de 2 | 8d6 + 30 dégâts | Inflige des dégâts en Zone. |
 | 4.0 | Miroir Magique | Amplification (IC pour 3 NM) | 20.0 | Soi-même | 1.0 | / | Permet de renvoyer le sortilège de l''agresseur, 3 utilisations. (3 NM = Ne prend plus l''effet en question). |
-| 4.0 | Foudre argenté | Attaque/Entrave | 21.0 | 6.0 | 1.0 | 4d10 dégâts (+10/NM) | Inflige de lourds dégâts.<br>Si jet de fermeté raté = Perd une résistance aléatoire pendant 1 tour. |
+| 4.0 | Foudre argentée | Attaque/Entrave | 21.0 | 6.0 | 1.0 | 4d10 dégâts (+10/NM) | Inflige de lourds dégâts.<br>Si jet de fermeté raté = Perd une résistance aléatoire pendant 1 tour. |
 | 5.0 | Drain d''énergie | Entrave | 50.0 | Vue | 1.0 | Vole 4d10 (+1d/3NM) chakra | Vole du chakra aux ennemis visibles. Le chakra récupéré est redistribué aux alliés |
 | 5.0 | Voile Chakratique | Amplification | 15% santé/tour | Soi-même | 1.0 | / | Permet au Chakra de prendre le rôle de la Santé. Le coût en santé passe à 10% si 3NM. |
 | 5.0 | Planète Chakratique | Attaque | 0.0 | Illimité | Carré 6x6 | X dégâts | Les dégâts correspondent aux CK donnés par le lanceur et alliés. 2CK (1CK/3NM) = 1 dégâts |
@@ -9683,7 +9683,7 @@ Les spécialistes de l''eau ont les mèches bleutées, très longues et mouillé
 | 1.0 | Eau soignante | Soin | 4.0 | 1.0 | 1.0 | 2d6 (+5/NM) de soin | Une eau qui soigne les blessures, si un point d''eau est à 4 cases les Dés passent à 8 au lieu de 6. |
 | 2.0 | Fer Humide | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | L''arme transpire de l''eau, tape dans l''élément Eau pendant 3 tours. |
 | 2.0 | Souffle Hydraulique | Attaque/ Entrave (Imparable) | 7.0 | 3.0 | Cône | 5d6 dégâts (+3/NM) | Si jet de fermeté raté = Inflige confus. |
-| 2.0 | Onde Confusion | Entrave (IC pour 3 NM) | 9.0 | 4.0 | 1.0 | => | Jet de fermeté raté = Inflige "Confusion 1"<br>Jet de fermeté réussi = Inflige 4 dégâts perce AM |
+| 2.0 | Onde de Confusion | Entrave (IC pour 3 NM) | 9.0 | 4.0 | 1.0 | => | Jet de fermeté raté = Inflige "Confusion 1"<br>Jet de fermeté réussi = Inflige 4 dégâts perce AM |
 | 2.0 | Barrière d''eau | Soin | 10.0 | Soi-même | 1.0 | / | Régénère 10% de la barrière (+5% par Niveau de Maîtrise), +10 barrière bonus si jamais fait à 4 cases de l''eau. |
 | 2.0 | Ruisseau conciliant | Soin | 10.0 | Soi-même | Croix de 1 | 3d6 (+6/NM) de soin | Des petits courants d''eau qui viennent soigner. La zone devient un cercle si un point d''eau est à 4 cases. |
 | 3.0 | Trombe d''eau | Attaque | 16 (-2/NM) | 5.0 | Carré de 3x3 | 7d6 + 15 dégâts | Une urne remplie d''eau se déverse sur la zone. Bonus de +15 dégâts si un point d''eau est à 2 cases. |
@@ -9715,7 +9715,7 @@ Soigne les alliés de 2d6 si un point d''eau est à 4 cases.
 **Note de la cellule « Effets secondaires » du sort « Larmes d''Océane »**
 
 Cette météo ne peut pas être retirée par les autres météos ou bien les effets de classes.  
-Le Don "Climatospetique" ne peut pas contrer cet effet.  
+Le Don "Climatosceptique" ne peut pas contrer cet effet.  
 Cet effet dure maximum 5 tours.
 
 ## Textes des sorts de niveau 5
@@ -9929,7 +9929,7 @@ Les utilisateurs de l''ombre ont des cheveux généralement plus courts et des m
 | 1.0 | Sphère Obscure | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque d''Ombre. 3NM = Sur un coup critique, force le jet de fermeté pour ne pas prendre peur 1. |
 | 1.0 | Perturbation | Attaque/ Entrave<br>(Imparable) | 3.0 | 6.0 | 1.0 | 2d4 dégâts | Si jet de fermeté raté = -10% (-10%/NM) à sa prochaine action |
 | 1.0 | Marionnette de l''ombre | Invocation (IC pour 3 NM) | 5 + 10% BA (xNPM de créature) | 3.0 | 1.0 | / | Permet d''animer sa propre ombre (voir invocation) |
-| 1.0 | Brume mental | Entrave (IC pour 3 NM) | 4.0 | 6.0 | 1.0 | / | Si jet de fermeté raté = Met une croix dans 1 une caractéristique au choix de l’adversaire pendant 1 tour. |
+| 1.0 | Brume mentale | Entrave (IC pour 3 NM) | 4.0 | 6.0 | 1.0 | / | Si jet de fermeté raté = Met une croix dans 1 une caractéristique au choix de l’adversaire pendant 1 tour. |
 | 1.0 | Pichenette | Entrave (IC) | 4.0 | 6.0 | 1.0 | / | Réduit de 5 l''initiative de l’adversaire pour le prochain tour. (+2/NM) |
 | 2.0 | Cri ébranleur | Attaque/ Entrave (Imparable) | 8.0 | 6.0 | Cône | 5d6 dégâts sonores (+3/NM) | Une attaque aux dégâts sonores qui inflige un malus de 10% au prochain test de la victime. |
 | 2.0 | Manteau noir | Amplification (IC pour 3 NM) | 7 (xNP de créature) | Soi-même | 1.0 | Variable | Permet de sacrifier l''invocation de l''ombre pour avoir des bonus pendant 3 tours (voir invocation) |
@@ -10298,7 +10298,7 @@ Les spécialistes du Vent ont les cheveux mi-longs, mèches vert clair, les yeux
 | 2.0 | Fer éolien | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | L''arme crache du vent, tape dans l''élément Vent pendant 3 tours. |
 | 2.0 | Feuille morte | Placement (IC) | 6.0 | 8 (+2/NM) | 1.0 | / | Permet de ralentir la chute d''une cible. |
 | 2.0 | Recul Forcé | Placement (IC) | 6.0 | 4.0 | 1.0 | / | Fait reculer la cible de 1 case (+1/NM) |
-| 3.0 | Estoc hurlante | Attaque/ Placement | 14.0 | 3 (+1/NM) | 1.0 | 7d6 + 15 dégâts | Le lanceur se déplace jusqu''à sa cible. |
+| 3.0 | Estoc hurlant | Attaque/ Placement | 14.0 | 3 (+1/NM) | 1.0 | 7d6 + 15 dégâts | Le lanceur se déplace jusqu''à sa cible. |
 | 3.0 | Bourrasque | Attaque | 14.0 | 4.0 | Ligne horizontale de 9 devant le lanceur | 5d6 (+5/NM) dégâts | Permet d''infliger un bonus de 2d6 dégâts en intérieur. |
 | 3.0 | Désarmer | Entrave | 14.0 | 3 (+1/NM) | 1.0 | / | Si jet de réflexe/stabilité raté = Désarme la cible |
 | 3.0 | Tornade | Attaque (Inesquivable/ Imparable) | 14.0 | 5 (+1/NM) | Cercle de 4 | 5d6 dégâts/tour | Invoque une tornade qui va bloquer les ennemis et leur mettre des dégâts pendant 3 tours. Jet d''athlétisme nécessaire pour sortir. |
@@ -10386,7 +10386,7 @@ Les utilisateurs du vide ont une pilosité blanche et possèdent une inversion a
 | 3.0 | Invisibilité | Amplification | 13.0 | 1 (+1/NM) | 1.0 | / | Rend la cible invisible pendant 3 tours. |
 | 3.0 | Lame du vide | Attaque | 13.0 | 20.0 | 4 cibles | 10 dégâts | Inflige des dégâts fixes à 4 ennemis visibles. (Ignore les AM et BA pour 3NM) |
 | 3.0 | Aspect vide | Amplification | 12.0 | Soi-même | 1.0 | / | Rend le lanceur intangible pour une attaque (+1/NM) |
-| 3.0 | Touché du Vide | Attaque/Soin | 14.0 | 1.0 | 1.0 | 7d6 dégâts (+6/NM) | Vampirise 25% des dégâts, marche que sur les créatures vivantes. |
+| 3.0 | Toucher du Vide | Attaque/Soin | 14.0 | 1.0 | 1.0 | 7d6 dégâts (+6/NM) | Vampirise 25% des dégâts, marche que sur les créatures vivantes. |
 | 4.0 | Aléa négatif | Entrave | 20.0 | Vue | 1.0 | / | Lance 1d20 : Inflige un effet aléatoire parmi une liste de 20 effets |
 | 4.0 | Grenade Implosive | Attaque | 27.0 | 3.0 | Croix infini | 8d6 + 15 dégâts | Inflige de gros dégâts de Vide en zone, attire de 1 case (+1/NM) les victimes. |
 | 4.0 | Esprit Solide | Amplification (IC) | 20.0 | Vue | 1.0 | / | Permet de résister à toute agression mentale. (3NM = Immunité au contrôle mental passif) |
@@ -10434,7 +10434,7 @@ Magie 5 = TG
 
 **Commentaire résolu de la cellule « Effets secondaires » du sort « Aspect vide »** : L''équipement le devient aussi donc les attaques et sorts ne fonctionnent pas, SEULES les armes spectrales fonctionnent dans cet état.
 
-**Note de la cellule « Effets secondaires » du sort « Touché du Vide »**
+**Note de la cellule « Effets secondaires » du sort « Toucher du Vide »**
 
 Si c''est la barrière, la barrière est vampirisée.  
 Si c''est les points de vie, c''est les points de vie qui sont vampirisés
@@ -11076,7 +11076,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'docs', 'Google Doc « MÉTIER »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('metiers/marin', 'metiers', 'marin', 'Marin', 'marin', 'Le marin navigue sur les fleuves, les lacs ou les mers, participant aux manœuvres, au transport et à la survie de l’équipage.', NULL, '**Description du métier :** Le marin navigue sur les fleuves, les lacs ou les mers, participant aux manœuvres, au transport et à la survie de l’équipage. Il connaît les vents, les courants et les dangers liés à la navigation. Sa vie est faite de voyages, de discipline et d’histoires partagées entre marins.
 
-**Bonus :** +3% Orientation, +3% Vie de nature
+**Bonus :** +3% Orientation, +3% Vie en nature
 
 **Artisanat possible :** Rien
 
@@ -11535,10 +11535,10 @@ Nombre : 15.
 | Magie innée | AP/AM | Bonus compétence | +1 cran de résistance | Sous-race de la fiche V15.2.2 |
 | --- | --- | --- | --- | --- |
 | Potentiel illimité | 1AP/1AM | 5% parmi les autres | Au choix parmi les autres | Drakos Orange |
-| Sang | 4AP/0AM | 5% Athlétisme | Saignement | Drakos Bordeau |
+| Sang | 4AP/0AM | 5% Athlétisme | Saignement | Drakos Bordeaux |
 | Arcane | 0AP/4AM | 5% Psychologie | Surcharge magique | Drakos Gris |
 | Corruption | 0AP/4AM | 5% Manipulation | Surcharge magique | Drakos Noir |
-| Tempe/Espace | 1AP/3AM | 5% Connaissance | Fatigue | Drakos Rose |
+| Temps/Espace | 1AP/3AM | 5% Connaissance | Fatigue | Drakos Rose |
 | Vide | 1AP/3AM | 5% Fermeté | Enragé | Drakos Blanc |
 | Nécromancie | 3AP/1AM | 5% Vigueur | Poison | Drakos Vert Foncé |
 | Feu | 4AP/0AM | 5% Intimidation | Brûlure | Drakos Rouge |
@@ -11588,7 +11588,7 @@ Nombre : 15.
 | --- | --- | --- | --- |
 | Brûlure | 1.0 | 4 | 0 |
 
-### Drakos Bordeau
+### Drakos Bordeaux
 
 **Nom** : Sang
 
@@ -11799,7 +11799,7 @@ Cette page suit l''onglet « Drakos » du Google Sheet « Les races », qui prim
 | Classes accessibles<br>(fiche : matrice « Accessibilité de Classe ») | Avantage(s) : Accès à toutes les classes | 26 sur 39 (à 0 dans la matrice : Orios, Fenrir, Kitsune, Olwman, Rokh, Namazu, Minotaure, Satyre, Médusain, Jackalope, Marcass, Anansi, Goleois) |
 | Divers<br>(fiche : colonne « Divers ») | Ne figure pas telle quelle dans l''onglet : « la magie innée va déterminer la couleur des écailles draconiques et des particularité du don racial » | Peut planer avec ses ailes, la magie innée va déterminer la couleur des écailles draconiques et des particularité du don racial. |
 | Don de l''ethnie « Potentiel illimité »<br>(fiche : sous-race « Drakos Orange », colonne « Descriptif ») | 1AP/1AM<br>5% parmi les autres<br>Au choix parmi les autres | \- 1AP/1AM<br>\- 5% parmi les autres<br>\- +1 résistance à l''altération choisie parmi toutes |
-| Nom de l''ethnie « Tempe/Espace »<br>(fiche : colonnes B et C de « Bonus Race ») | Tempe/Espace | Drakos Rose<br>Nom : Espace/Temps |
+| Nom de l''ethnie « Temps/Espace »<br>(fiche : colonnes B et C de « Bonus Race ») | Temps/Espace | Drakos Rose<br>Nom : Espace/Temps |
 
 Accès aux classes et aux magies : selon le propriétaire du projet, les phrases « Accès à toutes les classes », « Accès à toutes les magies » et « Une seule magie autorisé » de l''onglet sont des erreurs de copier-coller (la plupart des races pures ont bien toutes les magies, mais il peut y avoir des ratés) : la matrice de la fiche est retenue.
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
@@ -11807,27 +11807,27 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## Présentation
 
-Race hybride entre humain et félin, ils viennent de la Déesse de la Chance, Drassah. Il en existe 5 types, Goutière, Lynx, Tigre, Lion et Léopard.
+Race hybride entre humain et félin, ils viennent de la Déesse de la Chance, Drassah. Il en existe 5 types, Gouttière, Lynx, Tigre, Lion et Léopard.
 
-Ce sont des combattants étranges qui sont capables d''utiliser la Chance pour influencer leurs attaques. Ce sont des joueurs qui jouent tout le temps avec le hasard. Comment reconnaître un Drassah''Thac en bonne santé ? Il parie tout le temps.
+Ce sont des combattants étranges qui sont capables d''utiliser la Chance pour influencer leurs attaques. Ce sont des joueurs qui jouent tout le temps avec le hasard. Comment reconnaître un Drassah''thac en bonne santé ? Il parie tout le temps.
 
 Ce sont les premiers hybrides animaux à être apparus et ceux en l''an -450.
 
 ## Histoire
 
-Ce sont les premiers hybrides animaux à avoir existé, ils sont arrivés peu après les humains, elfes et nains. Les Drassah''Thac contrairement aux autres hybrides animaux qui vont suivre, ils ont accès à toutes les magies.
+Ce sont les premiers hybrides animaux à avoir existé, ils sont arrivés peu après les humains, elfes et nains. Les Drassah''thac contrairement aux autres hybrides animaux qui vont suivre, ils ont accès à toutes les magies.
 
-Les Drassah''Thac ont un conflit millénaire avec les Elfes Forestiers pour des raisons qui ont été oubliées au fur et à mesure du temps, se déclarant la guerre par principe, sinon avec les autres races, les relations sont au beau fixe.
+Les Drassah''thac ont un conflit millénaire avec les Elfes Forestiers pour des raisons qui ont été oubliées au fur et à mesure du temps, se déclarant la guerre par principe, sinon avec les autres races, les relations sont au beau fixe.
 
 ## Description
 
-Les Drassah''Thac sont très proches des humains anatomiquement parlant, à la taille adulte, ils mesurent en moyenne entre 1m60 et 1m90.
+Les Drassah''thac sont très proches des humains anatomiquement parlant, à la taille adulte, ils mesurent en moyenne entre 1m60 et 1m90.
 
-Le poids moyen d''un Drassah''Thac est de 60kg, il peut varier selon la forme de félin choisie.
+Le poids moyen d''un Drassah''thac est de 60kg, il peut varier selon la forme de félin choisie.
 
 Ils possèdent les oreilles de félin, la fourrure d''un félin qui varie de couleur selon l''habitat naturel, fourrure qui est présente sur le dos, les bras, les jambes, les cheveux sont généralement plus longs.
 
-Les Drassah''Thac possèdent 5 variantes de leur race :
+Les Drassah''thac possèdent 5 variantes de leur race :
 
 - Ceux de l''est (culture Asie) possèdent des attributs de tigre. Plus massifs avec un caractère assez bouillant pour la plupart.
 
@@ -12095,7 +12095,7 @@ Nombre : 3.
 - +2 aux dégâts magiques, qui augmente de +2 tous les 5 niveaux globaux.
 - +3 Barrière.
 
-**Fiche de personnage V15.2.2** : sous-race « Elfe Argenté Supprémaciste » (voir « Sous-races et origines »).
+**Fiche de personnage V15.2.2** : sous-race « Elfe Argenté Suprémaciste » (voir « Sous-races et origines »).
 
 ### Barrage Argenté
 
@@ -12127,7 +12127,7 @@ Nombre : 3.
 
 Colonne « Race » de l''onglet « Bonus Race » : Elfe Argenté.
 
-### Elfe Argenté Supprémaciste
+### Elfe Argenté Suprémaciste
 
 **Nom** : Territoire Elfes Argentés
 
@@ -12293,7 +12293,7 @@ L''une des races descendantes des Elfes Dorés, c''est une race qui est naturell
 
 Les elfes forestiers sont de bons combattants d''agilité et aussi de bons mages.
 
-Cette race est apparue pour la première fois en l''an -50, c''est une lente évolution des elfes dorée dans le milieu forestier.
+Cette race est apparue pour la première fois en l''an -50, c''est une lente évolution des elfes dorés dans le milieu forestier.
 
 ## Histoire
 
@@ -13343,7 +13343,7 @@ Race majoritaire dans le monde de Maverick, une légende dirait que ce sont les 
 
 Les humains ont un grand potentiel d''adaptation, ce qui leur permet de maîtriser toutes les magies et classes, ce sont également eux qui ont les plus gros changements physiques quand ils deviennent de plus en plus puissants.
 
-Cette race fait partie des 3 premières à être arrivées dans le monde avec les Nains et les Elfes Dorées.
+Cette race fait partie des 3 premières à être arrivées dans le monde avec les Nains et les Elfes Dorés.
 
 ## Histoire
 
@@ -13433,7 +13433,7 @@ Nombre : 4.
 **Don**
 
 - Survie, Vie en nature et Vigueur = 5% en acquis.
-- Les météos Neige, Tempête de neige, Brouillard, Purée de poix et les terrains liés à eux n''ont aucun effet négatif.
+- Les météos Neige, Tempête de neige, Brouillard, Purée de pois et les terrains liés à eux n''ont aucun effet négatif.
 
 **Fiche de personnage V15.2.2** : sous-race « Humain Toundra » (voir « Sous-races et origines »).
 
@@ -13481,7 +13481,7 @@ Nombre : 4.
 **Descriptif**
 
 - Survie, Vie en nature et Vigueur = 5% en acquis.
-- Les météos Neige, Tempête de neige, Brouillard, Purée de poix et les terrains liés à eux n''ont aucun effet négatif.
+- Les météos Neige, Tempête de neige, Brouillard, Purée de pois et les terrains liés à eux n''ont aucun effet négatif.
 
 ## Classes accessibles
 
@@ -13687,7 +13687,7 @@ Apparu avec tous les autres animaux hybrides dans les ans -400 à -350.
 
 ## Histoire
 
-Nous parlons d''une époque où les kistunes un culte d''humains ayant subi une malédiction d''origine encore inconnue, les transformant en une abomination d''humain/renard. Mais un jour, les dieux ont eu pitié des kitsunes et les ont permis de s''adapter et de récupérer leur apparence humaine. Le premier d''entre eux nommé "le Grand Druide" aurait vu 3 dieux dans une vision, Séraphin, Aurora et Eoline. Persuadés, que c''est un signe divin, les kitsunes vouent un culte envers ces 3 dieux qui sont considérés comme les créateurs des kitsunes tels qu''on les connaît aujourd''hui.
+Nous parlons d''une époque où les kitsunes un culte d''humains ayant subi une malédiction d''origine encore inconnue, les transformant en une abomination d''humain/renard. Mais un jour, les dieux ont eu pitié des kitsunes et les ont permis de s''adapter et de récupérer leur apparence humaine. Le premier d''entre eux nommé "le Grand Druide" aurait vu 3 dieux dans une vision, Séraphin, Aurora et Eoline. Persuadés, que c''est un signe divin, les kitsunes vouent un culte envers ces 3 dieux qui sont considérés comme les créateurs des kitsunes tels qu''on les connaît aujourd''hui.
 
 Comme pour les autres hybrides animales, il existe 2 types de kitsunes :
 
@@ -13695,7 +13695,7 @@ Comme pour les autres hybrides animales, il existe 2 types de kitsunes :
 
 - Les Tribaux : Les Kitsunes tribaux quant à eux ont les poils beaucoup moins lisses et ont un tempérament plus isolationniste, pour eux, ils sont le centre du monde et les autres créatures sont d''étranges êtres incompréhensibles aussi bien de la langue que du physique, les Kitsunes urbains eux sont perçus comme des Hérétiques et ennemis des 3 dieux.
 
-Les Kitsune tribaux élisent également leur chef selon les 3 représentants sacrés des Dieux que sont l''Archidiacre de la Lumière, Émissaire du Feu et Pontife du Vent. Une fois rassemblés lors du Rituel de la Lune, les 3 représentants de par leur droit divin vont désigner le nouveau chef. Ils sont sous la doctrine du mandat céleste.
+Les Kitsunes tribaux élisent également leur chef selon les 3 représentants sacrés des Dieux que sont l''Archidiacre de la Lumière, Émissaire du Feu et Pontife du Vent. Une fois rassemblés lors du Rituel de la Lune, les 3 représentants de par leur droit divin vont désigner le nouveau chef. Ils sont sous la doctrine du mandat céleste.
 
 ## Description
 
@@ -14099,7 +14099,7 @@ Ils sont un peu plus grands que les humains, ils ont un gros ventre gras dû à 
 
 Les Marcass ont une taille moyenne de 1m80.
 
-Ils ont une force physique plus que correcte sans pour autant égaler la force physique des Orios ou des Minotaure, ils restent plus forts que des humains ou des fenrirs.
+Ils ont une force physique plus que correcte sans pour autant égaler la force physique des Orios ou des Minotaures, ils restent plus forts que des humains ou des fenrirs.
 
 Les mâles possèdent peu de cheveux mais beaucoup de barbe.
 
@@ -14253,7 +14253,7 @@ Apparu avec tous les autres hybrides animaux dans les ans -400 à -350.
 
 Au tout début, les Médusains n’étaient autres que des humains nomades voyageant dans tout Maverick pour parler de leurs histoires et partager avec d’autres peuples leur foi envers leurs trois divinités : Océane la déesse de l’eau, Volt le dieu de la foudre et Aurora la déesse de la lumière. Hélas lors de l’un de leurs voyages, ils se mirent à dos Séraphe dieu de la guerre ; la raison de cette colère est aujourd’hui encore totalement inconnue de tous, sauf des chefs spirituels de chacune des quatre sociétés médusaines : Les urbains, les Médusains de la foudre, les Médusains de la lumière et les Médusains de l’eau.
 
-Face à cette colère, les nomades furent presque totalement éradiqués des terres de Maverick. Océane, face à cette violence et aux appels à l’aide de son peuple, décida d’intervenir : elle transforma les survivants en mi-homme mi-méduse et leur donna refuge dans ses océans, notamment dans une ville sous-marine se situant dans les Eaux froide.
+Face à cette colère, les nomades furent presque totalement éradiqués des terres de Maverick. Océane, face à cette violence et aux appels à l’aide de son peuple, décida d’intervenir : elle transforma les survivants en mi-homme mi-méduse et leur donna refuge dans ses océans, notamment dans une ville sous-marine se situant dans les Eaux froides.
 
 - Les urbains : Allant de la sagesse, au soin et à l’invention, on les retrouve souvent dans l''humanitaire, toujours prêts à aider et soutenir les plus démunis. Ils agissent toujours avec bonté et attention envers les autres peuples, très protecteurs avec leur semblable.
 
@@ -14907,7 +14907,7 @@ Une race humanoïde dont la particularité est d''être petite en taille par rap
 
 Ce sont d''excellents combattants au corps-à-corps, le tout avec un capital de santé plus élevé que la moyenne en dépit d''un capital de chakra bien plus faible et d''une limitation des magies qui leur sont possibles d''avoir de manière innée.
 
-Cette race fait partie des 3 premières à être arrivées dans le monde avec les Humains et les Elfes Dorées.
+Cette race fait partie des 3 premières à être arrivées dans le monde avec les Humains et les Elfes Dorés.
 
 ## Histoire
 
@@ -15221,7 +15221,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 Une race hybride entre humain et hibou, ce sont des créatures qui affectionnent les endroits perchés mais aussi les tours dans les montagnes, là où ils peuvent se consacrer au savoir et à la connaissance.
 
-C''est une race pour la plupart pacifique qui joue souvent le rôle de coursier de nuit, mais cette race avait déjà eu des soucis avec d''autres races hybrides, notamment les Namazu ainsi que les Rocks, guerre de territoire et de chasse.
+C''est une race pour la plupart pacifique qui joue souvent le rôle de coursier de nuit, mais cette race avait déjà eu des soucis avec d''autres races hybrides, notamment les Namazu ainsi que les Rokhs, guerre de territoire et de chasse.
 
 Apparu avec tous les autres hybrides animaux dans les ans -400 à -350.
 
@@ -15229,7 +15229,7 @@ Apparu avec tous les autres hybrides animaux dans les ans -400 à -350.
 
 Les Origines de cette race sont très mystérieuses, on parle d''Umbro mais aussi de Notix dans leurs origines étant donné qu''ils peuvent posséder cette magie de manière innée, mais aussi pour leur côté très raffiné et aussi leur soif de savoir.
 
-Tribus ou bien urbains, les owlmans possèdent tous une doctrine qu''ils s''efforcent de respecter à la lettre : "Respecte tes aînés peu importe leur race mais encore plus si cet aîné sait plus de choses que toi". En effet, les olwman sont naturellement attirés par la connaissance et le savoir et ont bâti leur culture autour de ça. Dans les tribus d''owlmans, le chef de la colonie est toujours un olwman très âgé qui sait beaucoup de choses, car chez les olwman, être âgé signifie être plus sage et intelligent, ce n''est pas un hasard d''ailleurs que la majorité des chefs de tribus sont des olwman qui sont innés de la magie de l''Espace/Temps, vu qu''ils peuvent vivre plus longtemps grâce à cette magie, donc ils sont portés en respect par les Olwmans. Au-delà de ça, ils ont des manières raffinées, des saveurs raffinées ils aiment bien la bonne nourriture, qui font un peu penser à comment se comporte le Dieu de l''Ombre Umbro.
+Tribus ou bien urbains, les olwmans possèdent tous une doctrine qu''ils s''efforcent de respecter à la lettre : "Respecte tes aînés peu importe leur race mais encore plus si cet aîné sait plus de choses que toi". En effet, les olwman sont naturellement attirés par la connaissance et le savoir et ont bâti leur culture autour de ça. Dans les tribus d''olwmans, le chef de la colonie est toujours un olwman très âgé qui sait beaucoup de choses, car chez les olwman, être âgé signifie être plus sage et intelligent, ce n''est pas un hasard d''ailleurs que la majorité des chefs de tribus sont des olwman qui sont innés de la magie de l''Espace/Temps, vu qu''ils peuvent vivre plus longtemps grâce à cette magie, donc ils sont portés en respect par les Olwmans. Au-delà de ça, ils ont des manières raffinées, des saveurs raffinées ils aiment bien la bonne nourriture, qui font un peu penser à comment se comporte le Dieu de l''Ombre Umbro.
 
 ## Description
 
@@ -15560,9 +15560,9 @@ Il existe deux types de Rokh dans le monde :
 
 - Les Rokhs Tribaux, ce sont des Rokhs qui s''organisent en tribu un peu partout dans le monde, c''est assez simple, mais les dirigeants sont un cercle de 5 individus dominé par un Chef, on reconnaît facilement les grades grâce à des tatouages en forme de trait sur le front, le dirigeant de la tribu en possède 5 et les différents membres du cercle en possèdent 4. Dans les tribus, chaque membre possède des traits sur le front, chacun a une symbolique : 1 trait = Naissance, 2 traits = Adulte, 3 traits = Parent et Marié(e), 4 traits = Membre du Cercle, 5 traits = Guide de la colonie. Les tribus ne se mélangent pas trop avec les autres tribus ou bien les urbains, mais les rencontres entre aventuriers et locaux sont assez fréquentes et permettent des échanges de savoir.
 
-- Les Rokhs Urbains, ce sont des rocks qui vivent tout simplement hors des tribus, ils gardent des bases de leur culture rock, mais c''est juste une base. Ils sont généralement les coursiers de la journée et gèrent les transports aériens, avec des ailes c''est plus simple.
+- Les Rokhs Urbains, ce sont des Rokhs qui vivent tout simplement hors des tribus, ils gardent des bases de leur culture rokh, mais c''est juste une base. Ils sont généralement les coursiers de la journée et gèrent les transports aériens, avec des ailes c''est plus simple.
 
-Ils ont beau être différents, pourtant les deux types de Rokhs ont gardé une tradition qu''ils partagent avec les Olwmans, c''est que la ponte des œufs doit se faire toujours sur le sommet de volcan endormi de l''Île Œuf qui selon des rumeurs le point d''origine des premiers Rocks et Olwmans.
+Ils ont beau être différents, pourtant les deux types de Rokhs ont gardé une tradition qu''ils partagent avec les Olwmans, c''est que la ponte des œufs doit se faire toujours sur le sommet de volcan endormi de l''Île Œuf qui selon des rumeurs le point d''origine des premiers Rokhs et Olwmans.
 
 Eh oui ! Les Rokhs pondent des œufs pour donner naissance, la première moitié du temps, le bébé est dans le ventre de sa mère et la seconde moitié, la mère va pondre l''œuf qui contient le futur enfant. Malgré la résistance de l''œuf, la prudence est de mise, car il suffit d''une cassure pour que l''enfant meure à cause de maladie ou d''infection.
 
@@ -15572,7 +15572,7 @@ C''est une race assez petite pour la plupart des individus, pas plus de 1m60 en 
 
 Il y a une petite différence entre les sexes au-delà des éléments communs aux humains : Les femelles sont plus grandes en taille que les mâles.
 
-Comme dit précédemment, les Rocks sont tous capables de voler car leurs ailes sont aussi leurs bras, leurs mains font grandement penser à des serres et ils possèdent des plumes presque partout sur leur corps (cheveux, bras, dos, un peu sur les jambes). Leurs pieds sont des serres très acérées qui peuvent utilisé comme des pieds pour marcher. Comme tous les hybrides animaux, ils ont la tête humaine.
+Comme dit précédemment, les Rokhs sont tous capables de voler car leurs ailes sont aussi leurs bras, leurs mains font grandement penser à des serres et ils possèdent des plumes presque partout sur leur corps (cheveux, bras, dos, un peu sur les jambes). Leurs pieds sont des serres très acérées qui peuvent utilisé comme des pieds pour marcher. Comme tous les hybrides animaux, ils ont la tête humaine.
 
 Le plumage des rokhs est clair (blanc, marron, etc...)
 
@@ -15921,10 +15921,10 @@ Ne peut dépasser les limites raciales
 | --- | --- | --- | --- |
 | 1<br>Force | Niveau 5 | Ambre + Grenat | 204 Ro |
 | 2<br>Perception | Niveau 5 | Opale + Améthyste | 234 Ro |
-| 3<br>Volonté | Niveau 5 | Gyspe + Malachite | 184 Ro |
+| 3<br>Volonté | Niveau 5 | Gypse + Malachite | 184 Ro |
 | 4<br>Social | Niveau 5 | Rubis + Saphir | 184 Ro |
-| 5<br>Intelligence | Niveau 5 | Turquoise ou + Perle ou + Diamant rose ou + Onix | À calculer |
-| 6<br>Agilité | Niveau 5 | Emmeraude + Topaze | 174 Ro |
+| 5<br>Intelligence | Niveau 5 | Turquoise ou + Perle ou + Diamant rose ou + Onyx | À calculer |
+| 6<br>Agilité | Niveau 5 | Émeraude + Topaze | 174 Ro |
 
 #### SI COMPÉTENCE
 
@@ -15935,10 +15935,10 @@ Puis lancer 1d20 pour déterminer le bonus d''acquis
 | --- | --- | --- | --- | --- | --- |
 | 1<br>Compétence F | Ambre + Grenat | 27 Ro | 39 Ro | 89 Ro | 99 Ro |
 | 2<br>Compétence P | Opale + Améthyste | 35 Ro | 47 Ro | 104 Ro | 114 Ro |
-| 3<br>Compétence V | Gyspe + Malachite | 21 Ro | 33 Ro | 80 Ro | 90 Ro |
+| 3<br>Compétence V | Gypse + Malachite | 21 Ro | 33 Ro | 80 Ro | 90 Ro |
 | 4<br>Compétence S | Rubis + Saphir | 22 Ro | 34 Ro | 79 Ro | 89 Ro |
-| 5<br>Compétence I | Turquoise ou + Perle ou + Diamant rose ou + Onix | À calculer | À calculer | À calculer | À calculer |
-| 6<br>Compétence A | Emmeraude + Topaze | 19 Ro | 31 Ro | 74 Ro | 84 Ro |
+| 5<br>Compétence I | Turquoise ou + Perle ou + Diamant rose ou + Onyx | À calculer | À calculer | À calculer | À calculer |
+| 6<br>Compétence A | Émeraude + Topaze | 19 Ro | 31 Ro | 74 Ro | 84 Ro |
 
 #### SI ATTRIBUTS
 
@@ -15953,7 +15953,7 @@ Puis lancer 1d20 pour déterminer le bonus d''acquis
 | 5.0 | +5 Santé | Niveau 1 | Grenat + Malachite | 23 Ro |
 | 6.0 | +2 Initiative | Niveau 2 | Émeraude + Topaze | 31 Ro |
 | 7.0 | +5 Initiative | Niveau 4 | Émeraude + Topaze | 84 Ro |
-| 8.0 | Augmente le maximum de sang ou d''âme de 2 | Niveau 4 | Onix + Grenat/Malachite | À calculer |
+| 8.0 | Augmente le maximum de sang ou d''âme de 2 | Niveau 4 | Onyx + Grenat/Malachite | À calculer |
 | 9.0 | +1 Vitesse | Niveau 5 | Diamant rose + Émeraude | 219 Ro |
 | 10.0 | MALÉDICTION |  |  |  |
 | 11.0 | +25 Barrière | Niveau 5 | Saphir + Opale | 204 Ro |
@@ -15961,11 +15961,11 @@ Puis lancer 1d20 pour déterminer le bonus d''acquis
 | 13.0 | +15 Barrière | Niveau 3 | Saphir + Opale | 89 Ro |
 | 14.0 | +10 Barrière | Niveau 2 | Saphir + Opale | 39 Ro |
 | 15.0 | +5 Barrière | Niveau 1 | Saphir + Opale | 27 Ro |
-| 16.0 | +5 Chakra | Niveau 1 | Perle + Onix | 37 Ro |
-| 17.0 | +10 Chakra | Niveau 2 | Perle + Onix | 49 Ro |
-| 18.0 | +15 Chakra | Niveau 3 | Perle + Onix | 109 Ro |
-| 19.0 | +20 Chakra | Niveau 4 | Perle + Onix | 119 Ro |
-| 20.0 | +25 Chakra | Niveau 5 | Perle + Onix | 244 Ro |
+| 16.0 | +5 Chakra | Niveau 1 | Perle + Onyx | 37 Ro |
+| 17.0 | +10 Chakra | Niveau 2 | Perle + Onyx | 49 Ro |
+| 18.0 | +15 Chakra | Niveau 3 | Perle + Onyx | 109 Ro |
+| 19.0 | +20 Chakra | Niveau 4 | Perle + Onyx | 119 Ro |
+| 20.0 | +25 Chakra | Niveau 5 | Perle + Onyx | 244 Ro |
 
 #### SI ATTAQUE
 
@@ -15975,22 +15975,22 @@ Puis lancer 1d20 pour déterminer le bonus d''acquis
 | --- | --- | --- | --- | --- |
 | 1.0 | Dégâts physiques +2 | Niveau 1 | Ambre + Ambre | 29 Ro |
 | 2.0 | Dégâts physiques +5 | Niveau 3 | Grenat + Grenat | 84 Ro |
-| 3.0 | Augmente la portée des armes à distance de +1 | Niveau 2 | Topaze + Diament rose | 42 Ro |
+| 3.0 | Augmente la portée des armes à distance de +1 | Niveau 2 | Topaze + Diamant rose | 42 Ro |
 | 4.0 |  |  |  |  |
-| 5.0 | Permet à un dé de dégâts d''être maximum | Niveau 4 | Grenat + Onix | 179 Ro |
+| 5.0 | Permet à un dé de dégâts d''être maximum | Niveau 4 | Grenat + Onyx | 179 Ro |
 | 6.0 | Permet d''augmenter la gravité des altérations d''états de 1 quand ils sont infligés | Niveau 3 | Malachite + Améthyste | 92 Ro |
 | 7.0 | Un point de maîtrise d''arme (ne peut changer une fois décidé) | Niveau 4 | Grenat + Ambre | 99 Ro |
 | 8.0 | +1 tour de Mode Hyper (100% exclu) | Niveau 4 | Perle + Turquoise | 89 Ro |
-| 9.0 | Permet d''avoir son mode hyper en même temps qu''un autre | Niveau 5 | Onix + Rubis | 254 Ro |
+| 9.0 | Permet d''avoir son mode hyper en même temps qu''un autre | Niveau 5 | Onyx + Rubis | 254 Ro |
 | 10.0 | MALÉDICTION |  |  |  |
-| 11.0 | Augmente le dé de dégâts des sorts | Niveau 5 | Perle + Onix | 244 Ro |
+| 11.0 | Augmente le dé de dégâts des sorts | Niveau 5 | Perle + Onyx | 244 Ro |
 | 12.0 | Permet de changer la posture de combat quand on le souhaite durant le tour au lieu de la déterminer au début du tour. | Niveau 5 | Malachite + Ambre | 199 Ro |
 | 13.0 | Permet de faire des super sauts (5m maxi) | Niveau 4 | Émeraude + Émeraude | 84 Ro |
-| 14.0 | Permet d''avoir un emplacement de sort en plus | Niveau 3 | Onix + Onix | 144 Ro |
+| 14.0 | Permet d''avoir un emplacement de sort en plus | Niveau 3 | Onyx + Onyx | 144 Ro |
 | 15.0 | +5 dégâts avec une catégorie d''arme (ne peut changer une fois décidé) | Niveau 3 | Grenat + Gypse | 82 Ro |
-| 16.0 | +1 tour pour les amplifications individuelles | Niveau 2 | Onix + Opale | 57 Ro |
-| 17.0 | Augmente la portée des sorts de +1 | Niveau 2 | Perle + Diament rose | 42 Ro |
-| 18.0 | Permet d''avoir une deuxième diagonale gratuite au déplacement | Niveau 2 | Diament rose + Émeraude | 42 Ro |
+| 16.0 | +1 tour pour les amplifications individuelles | Niveau 2 | Onyx + Opale | 57 Ro |
+| 17.0 | Augmente la portée des sorts de +1 | Niveau 2 | Perle + Diamant rose | 42 Ro |
+| 18.0 | Permet d''avoir une deuxième diagonale gratuite au déplacement | Niveau 2 | Diamant rose + Émeraude | 42 Ro |
 | 19.0 | Dégâts magie +2 | Niveau 1 | Perle + Perle | 19 Ro |
 | 20.0 | Dégâts magie +5 | Niveau 3 | Turquoise + Turquoise | 84 Ro |
 
@@ -16012,7 +16012,7 @@ Puis lancer 1d20 pour déterminer le bonus d''acquis
 | 8.0 | Annule les dégâts de chute (maxi 5m) | Niveau 5 | Émeraude + Gypse | 179 Ro |
 | 9.0 | Résistance Surcharge Magique | Niveau 3 | Perle + Perle | 74 Ro |
 | 10.0 | MALÉDICTION |  |  |  |
-| 11.0 | Résistance Surcharge Magique | Niveau 3 | Onix + Onix | 144 Ro |
+| 11.0 | Résistance Surcharge Magique | Niveau 3 | Onyx + Onyx | 144 Ro |
 | 12.0 | (Action) Rend le lanceur Insensible pendant 3 tours. | Niveau 5 | Gypse + Onyx | 249 Ro |
 | 13.0 | Augmente le malus de visée de 5% pour toutes les parties du corps (sauf torse) | Niveau 3 | Diamant rose + Rubis | 102 Ro |
 | 14.0 | Les AP de base augmentent de 5 | Niveau 4 | Ambre + Malachite | 97 Ro |
@@ -16033,7 +16033,7 @@ Puis lancer 1d20 pour déterminer le bonus d''acquis
 | --- | --- | --- | --- | --- |
 | 1.0 | Donne +1 parade/esquive sur une posture aléatoire | Niveau 3 | Ambre + Émeraude | 84 Ro |
 | 2.0 | Permet de relancer un jet, peu importe lequel, l''objet se brise après | Niveau 3 | Opale + Perle | 89 Ro |
-| 3.0 | Permet d''avoir un IC supplémentaire | Niveau 2 | Diament rose + Opale | 50 Ro |
+| 3.0 | Permet d''avoir un IC supplémentaire | Niveau 2 | Diamant rose + Opale | 50 Ro |
 | 4.0 | Les soins avec les kits redonnent +5 santé en plus | Niveau 1 | Saphir + Opale | 27 Ro |
 | 5.0 | Permet de relancer une fois un test de compétence (1d30) (ne peut être changé) (1 fois/jour) | Niveau 4 | Gypse + Gypse | 90 Ro |
 | 6.0 | Avantage pour retirer une altération d''état (une fois par combat) | Niveau 2 | Malachite + Malachite | 33 Ro |
@@ -16049,7 +16049,7 @@ Puis lancer 1d20 pour déterminer le bonus d''acquis
 | 16.0 | Permet de relancer un jet de butin (se recharge toutes les 24h) | Niveau 2 | Émeraude + Opale | 39 Ro |
 | 17.0 | Réduit le malus d''artisanat de 5% | Niveau 1 | Ambre + Rubis | 27 Ro |
 | 18.0 | +10 par soin reçu | Niveau 3 | Opale + Ambre | 99 Ro |
-| 19.0 |  | Niveau 2 | Perle + Onix | 49 Ro |
+| 19.0 |  | Niveau 2 | Perle + Onyx | 49 Ro |
 | 20.0 | Augmente le malus de visée adverse de 10% sur un membre à choisir (ne peut être changé) | Niveau 3 | Topaze + Perle | 74 Ro |
 
 #### SI AUTRE
@@ -16060,16 +16060,16 @@ Puis lancer 1d20 pour déterminer le bonus d''acquis
 | --- | --- | --- | --- | --- |
 | 1.0 | Permet d''annuler les malus du sol | Niveau 2 | Émeraude + Ambre | 36 Ro |
 | 2.0 | Permet de ne pas prendre l''effet du sort de l''ombre "Malédiction" | Niveau 3 | Opale + Améthyste | 104 Ro |
-| 3.0 | Inverse une malédiction, l''objet est brisé après | Niveau 2 | Améthyste + Onix | 57 Ro |
+| 3.0 | Inverse une malédiction, l''objet est brisé après | Niveau 2 | Améthyste + Onyx | 57 Ro |
 | 4.0 | (Action) Permet de détecter l''invisible pendant 1 heure (1 semaine de recharge) | Niveau 4 | Opale + Améthyste | 114 Ro |
 | 5.0 | Permet de s''auto-stabiliser et se remettre à un 1 santé (choix possible). L''objet est brisé. | Niveau 3 | Grenat + Saphir | 79 Ro |
 | 6.0 | Permet d''utiliser un sort qui n''est pas dans sa liste de sorts mais le coût est doublé | Niveau 2 | Perle + Gypse | 32 Ro |
 | 7.0 | Résiste à tous les effets négatifs à une météo aléatoire | Niveau 3 | Grenat + Gypse | 82 Ro |
-| 8.0 | Donne un NM pour un sort, on peut le bouger | Niveau 4 | Diament rose + Gypse | 110 Ro |
+| 8.0 | Donne un NM pour un sort, on peut le bouger | Niveau 4 | Diamant rose + Gypse | 110 Ro |
 | 9.0 | Permet de tenir 1 tour si santé à 0 ou en dessous | Niveau 4 | Grenat + Malachite | 92 Ro |
 | 10.0 | MALÉDICTION |  |  |  |
 | 11.0 | L''objet est divisible en deux, permet de communiquer à distance | Niveau 4 | Émeraude + Gypse | 87 Ro |
-| 12.0 | Permet de cacher l''aura magique d''une magie | Niveau 3 | Onix + Gypse | 112 Ro |
+| 12.0 | Permet de cacher l''aura magique d''une magie | Niveau 3 | Onyx + Gypse | 112 Ro |
 | 13.0 | (Action) Permet de respirer sous l''eau pendant 1 heure (1 semaine de recharge) | Niveau 3 | Saphir + Émeraude | 74 Ro |
 | 14.0 | Permet de cacher l''alignement (bloque le gameplay autour de l''alignement comme les armes, armures, familiers, classe, etc..) | Niveau ? | ? | ? |
 | 15.0 | Permet de faire un seul IC après une action | Niveau 2 | Diamant Rose + Améthyste | 50 Ro |
@@ -16087,7 +16087,7 @@ Puis lancer 1d20 pour déterminer le bonus d''acquis
 | --- | --- | --- | --- | --- | --- |
 | Sang | Grenat | Une pierre rouge marron comme le sang. | 10 Ro | 22 Ro | 47 Ro |
 | Arcane | Perle | Une belle pierre qui peut avoir de multiples formes. | 7 Ro | 17 Ro | 37 Ro |
-| Corruption | Onix | Une gemme avec un noir profond qui concentre le pouvoir de la corruption. | 25 Ro | 52 Ro | 107 Ro |
+| Corruption | Onyx | Une gemme avec un noir profond qui concentre le pouvoir de la corruption. | 25 Ro | 52 Ro | 107 Ro |
 | Espace/Temps | Diamant rose | Un diamant parfaitement taillé couleur rose, la gemme du temps et de l''espace. | 18 Ro | 40 Ro | 82 Ro |
 | Vide | Gypse | C''est un cristal parfaitement transparent sans aucune impureté. | 8 Ro | 20 Ro | 42 Ro |
 | Nécromancie | Malachite | Une très belle pierre verte qui semble se former dans les lieux où les âmes sont très nombreuses. | 8 Ro | 20 Ro | 42 Ro |
@@ -16148,7 +16148,7 @@ Donc en résumé : Une potion peut donc être :
 - 5 ingrédients → Solvant x 2 + Essence x 2 + Amplificateur x 2 + Catalyseur x 2 + Stabilisateur x 2 = Méga fiole
 - 6 ingrédients → Solvant x 2 + Essence x 2 + Amplificateur x 2 + Catalyseur x 2 + Stabilisateur x 2 + Amplificateur majeur x 2 = Ultime fiole
 ', 'draft', 'docs', 'Google Doc « Alchimie »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/alchimie-liste-ingredients', 'ressources', 'alchimie-liste-ingredients', 'Liste d’ingrédient', 'liste-dingredient', 'Nombreux sont les ingrédients qui doivent être rassemblés dans les différentes catégories.', NULL, 'Nombreux sont les ingrédients qui doivent être rassemblés dans les différentes catégories.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/alchimie-liste-ingredients', 'ressources', 'alchimie-liste-ingredients', 'Liste d’ingrédients', 'liste-dingredients', 'Nombreux sont les ingrédients qui doivent être rassemblés dans les différentes catégories.', NULL, 'Nombreux sont les ingrédients qui doivent être rassemblés dans les différentes catégories.
 
 ## Solvant
 
@@ -16170,7 +16170,7 @@ L’essence est l’ingrédient principal de la potion. Elle contient l’affini
 | Gelée rouge | Gelée | Santé |
 | Champignon rouge | Champignon | Santé |
 | Gelée bleue | Gelée | Chakra |
-| Champignon bleue | Champignon | Chakra |
+| Champignon bleu | Champignon | Chakra |
 | Gelée jaune | Gelée | Barrière |
 | Champignon jaune | Champignon | Barrière |
 | Gelée mauve | Gelée | Santé + Chakra |
@@ -16187,11 +16187,11 @@ L’essence est l’ingrédient principal de la potion. Elle contient l’affini
 | Champignon noir | Champignon | Corruption |
 | Gelée beige | Gelée | Coma |
 | Champignon beige | Champignon | Coma |
-| Gelée cyante | Gelée | Armure magique |
+| Gelée cyan | Gelée | Armure magique |
 | Champignon cyan | Champignon | Armure magique |
 | Gelée brune | Gelée | Armure physique |
 | Champignon brun | Champignon | Armure physique |
-| Gelée verte foncé | Gelée | 4ème barre |
+| Gelée vert foncé | Gelée | 4ème barre |
 | Champignon vert foncé | Champignon | 4ème barre |
 | Gelée rose | Gelée | Vitesse |
 | Champignon rose | Champignon | Vitesse |
@@ -16213,7 +16213,7 @@ L’amplificateur renforce l’essence présente dans la potion. Il intensifie l
 | Herbe bleue | Poudre | Chakra |
 | Prune d’eau | Fruit (majeur) | Chakra |
 | Poudre d’eau | Poudre | Eau |
-| Coeur abyssale | Minerai/Organe (majeur) | Eau |
+| Coeur abyssal | Minerai/Organe (majeur) | Eau |
 | Herbe jaune | Poudre | Barrière |
 | Citron de foudre | Fruit (majeur) | Barrière |
 | Poudre de foudre | Poudre | Foudre |
@@ -16245,7 +16245,7 @@ L’amplificateur renforce l’essence présente dans la potion. Il intensifie l
 | Gousse de lumière | Fruit (majeur) | Coma |
 | Poudre de lumière | Poudre | Lumière |
 | Coeur solaire | Minerai/Organe (majeur) | Lumière |
-| Herbe cyante | Plante | Armure magique |
+| Herbe cyan | Plante | Armure magique |
 | Menthe de glace | Fruit (majeur) | Armure magique |
 | Poudre de glace | Poudre | Glace |
 | Cristal de souffle boréal | Minéral (majeur) | Glace |
@@ -16254,7 +16254,7 @@ L’amplificateur renforce l’essence présente dans la potion. Il intensifie l
 | Cabosse de terre | Fruit (majeur) | Armure physique |
 | Poudre de terre | Poudre | Terre |
 | Coeur terrestre | Minerai/Organe (majeur) | Terre |
-| Herbe verte foncé | Plante | 4ème barre |
+| Herbe vert foncé | Plante | 4ème barre |
 | Poudre d’os | Poudre | 4ème barre |
 | Corossol de nécromancie | Fruit (majeur) | 4ème barre |
 | Poudre de nécromancie | Poudre | Nécromancie |
@@ -16264,7 +16264,7 @@ L’amplificateur renforce l’essence présente dans la potion. Il intensifie l
 | Herbe rose | Plante | Vitesse |
 | Litchi de l’espace/temps | Fruit (majeur) | Vitesse |
 | Poudre de l’espace/temps | Poudre | Espace/Temps |
-| Coeur spatio-temporelle | Minerai/Organe (majeur) | Espace/Temps |
+| Coeur spatio-temporel | Minerai/Organe (majeur) | Espace/Temps |
 | Herbe transparente | Plante | Anti |
 | Noix de coco du vide | Fruit (majeur) | Anti |
 | Poudre du vide | Poudre | Vide |
@@ -16546,7 +16546,7 @@ Note de mise en page : la règle ci-dessus (« Les armes en bleu sont les armes 
 | Nom | Coût en plus/moins | Catégorie | Effet | Description |
 | --- | --- | --- | --- | --- |
 | Hache<br>(une main) | 10 Ro | Hache<br>Arme Lourde | Dégâts taille | Une lame courte et épaisse fixée à un manche solide. La hache est une arme puissante capable de démolir bon nombre d''objets. Cette arme est aussi utilisée dans le métier de bucheron. |
-| Tomahawk | 15 Ro | Hache<br>Arme Lourde | Dégâts taille, ignore 2 AP, Origine Rock | Cette arme Rokh est une hache assez massive qui est capable d''ignorer en partie la solidité des armures. |
+| Tomahawk | 15 Ro | Hache<br>Arme Lourde | Dégâts taille, ignore 2 AP, Origine Rokh | Cette arme Rokh est une hache assez massive qui est capable d''ignorer en partie la solidité des armures. |
 | Hache de Bataille<br>(deux mains) | 30 Ro | Hache<br>Arme Lourde | Dégâts taille, 4 de Force minimum, +6 dégâts, Origine Orios | La hache de bataille est une arme possédant un côté tranchant et un côté avec une tête plate qui permet de frapper comme un marteau. Cette arme fut offerte par les orios aux minotaures. |
 | Grand couperet<br>(deux mains) | 30 Ro | Hache<br>Arme Lourde | Dégâts taille, le coup critique réduit de 1 la vitesse de l''adversaire pendant 1 tour, +3 dégâts | Il s''agit d''un énorme couperet qui se porte à deux mains. Cette arme est capable d''infliger des douleurs qui sont capables de ralentir l''adversaire. |
 | Hache d''armes à pointe<br>(deux mains) | 35 Ro | Hache<br>Arme Lourde | Dégâts taille/estoc, 3 de Force minimum, +3 dégâts, portée 2, 5% de chance de forcer le jet de vigueur pour esquiver le saignement | Cette quasi-lance est en réalité une hache longue capable d''infliger de terribles saignements à la cible. |
@@ -16576,7 +16576,7 @@ Note de mise en page : la règle ci-dessus (« Les armes en bleu sont les armes 
 | Lance géante<br>(deux mains) | 100 Ro | Arme d''Hast<br>Arme Lourde | Dégâts estoc, portée 1-2, 5 de Force obligatoire, le porteur doit faire 1m90 minimum, +10 dégâts, la portée est de 2-3 au lieu de 1-2, Origine Orios | Une lance longue disproportionnée créée par les orios. Cette arme à mi-chemin entre l''espadon et la pique demande une grande force mais aussi une taille minimum pour être utilisée correctement. |
 | Lance fine | 10 Ro | Arme d''Hast<br>Arme Légère | Dégâts estoc, portée 1-2, Origine Kitsune | C''est une version plus légère de la lance classique, originellement pensée comme une arme de défense pour les femelles, elle a su trouver son chemin parmi les combattants qui prônent la vitesse et l''agilité. |
 | Naginata | 17 Ro | Arme d''Hast<br>Arme Légère | Dégâts taille, portée 1-2, +2 dégâts, Origine Majin | La lance majin dont le fer de lance est tordu comme si on avait mis un petit katana au bout d''une hampe. Cette arme est légère et est souvent utilisée par des acrobates. |
-| Lance shotel | 30 Ro | Arme d''Hast<br>Arme Légère | Dégâts estoc/taille, portée 1-2, +4 dégâts, Origine Médusain | C''est une arme quasiment utilisée que par les médusain, c''est une sorte de serpe montée sur une hampe. |
+| Lance shotel | 30 Ro | Arme d''Hast<br>Arme Légère | Dégâts estoc/taille, portée 1-2, +4 dégâts, Origine Médusain | C''est une arme quasiment utilisée que par les médusains, c''est une sorte de serpe montée sur une hampe. |
 | Drapeau de conflit | 45 Ro | Arme d''Hast/Bâton<br>Arme Légère | Dégâts estoc, portée 1-2, 3 de Social minimum<br>Suivez-moi ! : sur un jet de social réussi et un bon discours = +1 vitesse aux alliés pendant 3 tours (action 1 fois/combat) | Le drapeau est une hampe légère surmontée d''un pavillon aux couleurs de son porteur. Visible de loin, il permet de rallier rapidement ses alliés et de guider leurs déplacements. |
 | Fourche | 7 Ro | Arme d''Hast<br>Arme Lourde/Légère | Dégâts estoc, portée 1-2, -1 cran de solidité | Un outil utilisé pour l''agriculture, elle peut servir d''arme improvisée mais se fait facilement casser. |
 | Harpon | 30 Ro | Arme d''Hast<br>Arme Lourde/Légère | Dégâts estoc, portée 1-2, +2 Po si lancé, +4 dégâts, peut être attaché à une corde, Origine Namazu | Le harpon est une arme grossière qui est utilisée pour la pêche, idéal pour la lancer. |
@@ -16597,7 +16597,7 @@ Note de mise en page : la règle ci-dessus (« Les armes en bleu sont les armes 
 | Super jambe | 50 Ro | Pugilat<br>Arme Lourde | Dégâts frappe, +3 dégâts, oblige un jet de stabilité/réflexe à l''adversaire pour ne pas être repoussé de 2 cases | Des énormes grèves qui permettent de faire des coups de pied si fort que cela peut faire reculer les adversaires. |
 | Poing de Puissance | 200 Ro | Pugilat<br>Arme Lourde | Dégâts frappe/estoc , 5 de Force obligatoire, +10 dégâts, Facture Naine | Une merveille de technologie naine, créer en l''an 781, ces gants amplifient la puissance du coup de poing. |
 | Tonfa | 12 Ro | Pugilat<br>Arme Légère | Dégâts frappe, +2 dégâts, Facture Majin | Il s''agit de petits bâtons de combat qui viennent assister le combat au corps à corps. |
-| Grèves cloutés | 15 Ro | Pugilat<br>Arme Légère | Dégâts estoc, +1 dégât, 5% de chance d''obliger le jet de vigueur à l''ennemi pour ne pas prendre saignement 1 | Des grèves auxquelles des pics sont placés, cette arme fait des ravages sur des peaux nues. |
+| Grèves cloutées | 15 Ro | Pugilat<br>Arme Légère | Dégâts estoc, +1 dégât, 5% de chance d''obliger le jet de vigueur à l''ennemi pour ne pas prendre saignement 1 | Des grèves auxquelles des pics sont placés, cette arme fait des ravages sur des peaux nues. |
 | Griffes | 24 Ro | Pugilat<br>Arme Légère | Dégâts taille, +4 dégâts, 5% de chance de forcer le jet de vigueur pour esquiver le saignement, Facture Fenrir | Une griffe qui rappelle celles des fenrirs mais en plus grandes, arme légère qui permet de faire de bons dégâts en plus de pouvoir faire saigner. |
 | Tibia de Véloce | 200 Ro | Pugilat<br>Arme Légère | Dégâts frappe, 5 d''Agilité obligatoire, +5 dégâts, Permet de frapper deux fois mais réduit de 1 cran le dé de dégâts | Des grèves un peu spéciales qui sont capables d''augmenter la vélocité des jambes, demande énormément de souplesse pour les maîtriser. |
 
@@ -16619,7 +16619,7 @@ Note de mise en page : la règle ci-dessus (« Les armes en bleu sont les armes 
 | Pelle | 8 Ro | Bâton de combat<br>Arme Lourde/Légère | Dégâts frappe, portée 1-2, -1 cran de solidité, 5% de chance d''infliger étourdi | Arme improvisée et peu robuste, la Pelle sert également de bâton de combat. Bien qu''elle soit fragile, elle offre une petite chance d''étourdir la cible avec un coup bien placé. |
 | Bannière de combat<br>(deux mains) | 45 Ro | Arme d''Hast/Bâton<br>Arme Lourde/Légère | Dégâts frappe, portée 1-2, +2 dégâts, 3 de Social minimum<br>Tenez bon ! : sur un jet de social réussi et un bon discours = +5% de réussite pour Esquive/Parade/Vigueur/Fermeté aux alliés pendant 3 tours (action 1 fois/combat) | La bannière est une longue hampe portant les couleurs de son porteur ou celles d''une organisation importante. Symbole de discipline et de cohésion, elle renforce l''équipe dans sa résilience. |
 | Crosse d''argent | 150 Ro | Bâton de combat<br>Arme Lourde/Légère | Dégâts frappe, portée 1-2, permet de sacrifier 10 Chakra pour augmenter la réussite de la prochaine attaque de 5%, +6 dégâts, Facture Temple de l''Arcane | Arme régulière du Temple de l''Arcane, cette crosse assez puissante permet d''exploiter son chakra pour augmenter les chances de réussite. |
-| Croc Obsidien | 150 Ro | Bâton de combat<br>Arme Lourde/Légère | Dégâts frappe, portée 1-2, permet de sacrifier 10 Corruption pour augmenter la réussite de la prochaine attaque de 5%, +6 dégâts, Facture Temple Noir | Arme régulière du Temple noir, ce bâton qui a la forme d''un croc permet de sacrifier de la corruption pour augmenter les chances de réussite. |
+| Croc d''Obsidienne | 150 Ro | Bâton de combat<br>Arme Lourde/Légère | Dégâts frappe, portée 1-2, permet de sacrifier 10 Corruption pour augmenter la réussite de la prochaine attaque de 5%, +6 dégâts, Facture Temple Noir | Arme régulière du Temple noir, ce bâton qui a la forme d''un croc permet de sacrifier de la corruption pour augmenter les chances de réussite. |
 
 ## ARME DE JET - D6 \[Un matériau permet d''en faire 10 sauf pour la fronde qui elle est unique\]
 
@@ -16693,7 +16693,7 @@ Note de mise en page : la règle ci-dessus (« Les armes en bleu sont les armes 
 | Lame de verre rouge |  | Épée<br>Arme Lourde/Légère |  | Amalgame de cendre, de charbon et de verre dont la teinte rouge réagit à la magie du Feu ; seule une créature entièrement liée à cet élément peut la manier. |
 | Hache mécanique<br>(deux mains) |  | Hache<br>Arme Lourde |  |  |
 | Pioche métallique<br>(deux mains) |  | Masse<br>Arme Lourde |  |  |
-| Étendard déchirée<br>(deux mains) |  | Arme d''Hast/Bâton<br>Arme Lourde |  |  |
+| Étendard déchiré<br>(deux mains) |  | Arme d''Hast/Bâton<br>Arme Lourde |  |  |
 | Lance d''os jaune |  | Arme d''Hast<br>Arme Légère |  | Arme formée d’un amalgame d’argent et d’os, sa couleur jaune provient de son ancien porteur et de son lien profond avec la magie de la Foudre ; seule une créature entièrement liée à cet élément peut la manier. |
 | Lance de sable |  | Arme d''Hast<br>Arme Légère |  |  |
 | Griffe de boue |  | Pugilat<br>Arme Lourde/Légère |  |  |
@@ -16743,7 +16743,7 @@ Pour les Armures spécifiques, leur bonus de compétences repose sur le fait que
 | Fonte | 4 000 RF / 40 RO | Matériau aussi dur que fragile, il se fabrique de la même façon que l''acier mais avec moins de chaleur. | 10 minerais de fer ou 1 lingot de fer + 5 charbons purifiés + Bas Fourneau |
 | Bronze | 8 500 RF / 85 RO | Combinaison du cuivre et de l''étain, le bronze est apprécié pour sa défense magique et physique correcte, mais surtout pour sa solidité qui égale le titane et le maverium. | 5 minerais de cuivre + 5 minerais d''étain + Bas Fourneau |
 | Laiton | 9 000 RF / 90 RO | Combinaison du cuivre et du zinc, le laiton est nommé l''or rose par certains, il est moins solide physiquement parlant que l''or mais il encaisse bien mieux la magie. | 10 minerais de cuivre OU 1 lingot de cuivre + 1 lingot de zinc + Bas Fourneau |
-| Or | 100 RO | Un minerai jaune qui est utilisé pour fabriquer la monnaie du monde, cette utilisation massive de l''or la rend rare pour les autres objets. | 10 minerais d''or + 10 Salpêtre + 10 Souffre + Bas Fourneau |
+| Or | 100 RO | Un minerai jaune qui est utilisé pour fabriquer la monnaie du monde, cette utilisation massive de l''or la rend rare pour les autres objets. | 10 minerais d''or + 10 Salpêtre + 10 Soufre + Bas Fourneau |
 | Titane | 200 RO | Le titane est un minerai gris clair aussi lourd que solide, il est assez rare et demande un fourneau de séraphin pour être travaillé. | 10 minerais de titane + Fourneau de Séraphin |
 | Maverium | 400 RO | Le minerai ultime de Maverick, c''est un minerai qui réagit parfaitement à la magie selon comment il est travaillé. Soit un conducteur parfait, soit un isolant parfait. | 10 minerais de Maverium + Fourneau de Séraphin |
 
@@ -16810,7 +16810,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Peau | Peau | Armure de Peau complet | 22 | Léger | +2AP | 1 | Frappe | Estoc |
+| Peau | Peau | Armure de Peau complète | 22 | Léger | +2AP | 1 | Frappe | Estoc |
 | Peau | Cuir | Armure Cuir/Peau | 28 | Léger | +3AP | 1 | x2 Frappe | x2 Estoc |
 | Peau | Bois | Armure Peau/Bois | 25 | Léger | +2AP +1AM | 1 | Taille | Estoc |
 | Peau | Cellulose | Armure Peau/Cellulose | 52 | Léger | +1AP +5AM | 1 | Frappe | Taille |
@@ -16836,7 +16836,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Cuir | Cuir | Armure de Cuir complet | 34 | Léger | +4AP | 1 | Frappe | Estoc |
+| Cuir | Cuir | Armure de Cuir complète | 34 | Léger | +4AP | 1 | Frappe | Estoc |
 | Cuir | Bois | Armure Cuir/Bois | 31 | Léger | +3AP +1AM | 1 | Taille | Estoc |
 | Cuir | Cellulose | Armure Cuir/Cellulose | 58 | Léger | +2AP +5AM | 1 | Frappe | Taille |
 | Cuir | Corail | Armure Cuir/Corail | 82 | Léger | +4AP +4AM | 1 |  | Taille |
@@ -16861,7 +16861,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Bois | Bois | Armure de Bois complet | 28 | Léger | +2AP +2AM | 1 | Taille | Frappe |
+| Bois | Bois | Armure de Bois complète | 28 | Léger | +2AP +2AM | 1 | Taille | Frappe |
 | Bois | Cellulose | Armure Bois/Cellulose | 55 | Léger | +1AP +6AM | 1 | Estoc | Frappe |
 | Bois | Corail | Armure Bois/Corail | 79 | Léger | +3AP +5AM | 1 | Estoc/Taille | x2 Frappe |
 | Bois | Chitine | Armure Bois/Chitine | 109 | Léger | +6AP +2AM | 2 | Estoc/Taille | x2 Frappe |
@@ -16885,12 +16885,12 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Cellulose | Cellulose | Armure de Cellulose complet | 82 | Léger | +10AM | 1 | Estoc | Taille |
+| Cellulose | Cellulose | Armure de Cellulose complète | 82 | Léger | +10AM | 1 | Estoc | Taille |
 | Cellulose | Corail | Armure Cellulose/Corail | 106 | Léger | +2AP +9AM | 1 | x2 Estoc | Frappe/Taille |
 | Cellulose | Chitine | Armure Cellulose/Chitine | 136 | Léger | +5AP +6AM | 2 | x2 Estoc | Frappe/Taille |
 | Cellulose | Mythril | Armure Cellulose/Mythril | 1 246 | Léger | +8AP +15AM | 2 | Estoc | Frappe |
 | Cellulose | Fer | Armure Cellulose/Fer | 106 | Intermédiaire | +4AP +5AM | 2 | Estoc | Frappe |
-| Cellulose | Acier | Armure Celloluse/Acier | 166 | Intermédiaire | +6AP +5AM | 2 | Estoc | Frappe |
+| Cellulose | Acier | Armure Cellulose/Acier | 166 | Intermédiaire | +6AP +5AM | 2 | Estoc | Frappe |
 | Cellulose | Fer Noir | Armure Cellulose/Fer Noir | 256 | Intermédiaire | +5AP +7AM | 2 | x2 Estoc | Taille/Frappe |
 | Cellulose | Corne/Os | Armure Cellulose/Corne | 226 | Intermédiaire | +8AP +5AM | 2 | Frappe | Taille |
 | Cellulose | Cuivre | Armure Cellulose/Cuivre | 286 | Intermédiaire | +2AP +11AM | 1 | x2 Estoc | Taille/Frappe |
@@ -16908,7 +16908,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Corail | Corail | Armure de Corail complet | 130 | Léger | +4AP +8AM | 2 | Estoc | Frappe |
+| Corail | Corail | Armure de Corail complète | 130 | Léger | +4AP +8AM | 2 | Estoc | Frappe |
 | Corail | Chitine | Armure Corail/Chitine | 160 | Léger | +7AP +5AM | 2 | x2 Estoc | x2 Frappe |
 | Corail | Mythril | Armure Corail/Mythril | 1 270 | Léger | +10AP +14AM | 3 | Estoc/Taille | x2 Frappe |
 | Corail | Fer | Armure Corail/Fer | 130 | Intermédiaire | +6AP +4AM | 2 | Estoc/Taille | x2 Frappe |
@@ -16930,7 +16930,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Chitine | Chitine | Armure de Chitine complet | 190 | Léger | +10AP +2AM | 3 | Estoc | Frappe |
+| Chitine | Chitine | Armure de Chitine complète | 190 | Léger | +10AP +2AM | 3 | Estoc | Frappe |
 | Chitine | Mythril | Armure Chitine/Mythril | 1 300 | Léger | +13AP +11AM | 3 | Estoc/Taille | x2 Frappe |
 | Chitine | Fer | Armure Chitine/Fer | 160 | Intermédiaire | +9AP +1AM | 3 | Estoc/Taille | x2 Frappe |
 | Chitine | Acier | Armure Chitine/Acier | 220 | Intermédiaire | +11AP +1AM | 3 | Estoc/Taille | x2 Frappe |
@@ -16951,7 +16951,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Mythril | Mythril | Armure Mythril complet | 2 400 | Léger | +16AP +20AM | 4 | Taille | Frappe |
+| Mythril | Mythril | Armure Mythril complète | 2 400 | Léger | +16AP +20AM | 4 | Taille | Frappe |
 | Mythril | Fer | Armure Mythril/Fer | 1 270 | Intermédiaire | +12AP +10AM | 3 | x2 Taille | x2 Frappe |
 | Mythril | Acier | Armure Mythril/Acier | 1 330 | Intermédiaire | +14AP+10AM | 3 | x2 Taille | x2 Frappe |
 | Mythril | Fer Noir | Armure Mythril/Fer Noir | 1 420 | Intermédiaire | +13AP +12AM | 3 | Estoc/Taille | x2 Frappe |
@@ -16971,7 +16971,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Fer | Fer | Armure Fer complet | 130 | Intermédiaire | +8AP | 3 | Taille | Frappe |
+| Fer | Fer | Armure Fer complète | 130 | Intermédiaire | +8AP | 3 | Taille | Frappe |
 | Fer | Acier | Armure Fer/Acier | 190 | Intermédiaire | +10AP | 3 | x2 Taille | x2 Frappe |
 | Fer | Fer Noir | Armure Fer/Fer Noir | 280 | Intermédiaire | +9AP +2AM | 3 | Estoc/Taille | x2 Frappe |
 | Fer | Corne/Os | Armure Fer/Corne | 250 | Intermédiaire | +12AP | 3 | Taille | Estoc |
@@ -16990,7 +16990,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Acier | Acier | Armure Acier complet | 240 | Intermédiaire | +12AP | 3 | Taille | Frappe |
+| Acier | Acier | Armure Acier complète | 240 | Intermédiaire | +12AP | 3 | Taille | Frappe |
 | Acier | Fer Noir | Armure Acier/Fer Noir | 340 | Intermédiaire | +11AP +2AM | 3 | Estoc/Taille | x2 Frappe |
 | Acier | Corne/Os | Armure Acier/Corne | 310 | Intermédiaire | +14AP | 3 | Taille | Estoc |
 | Acier | Cuivre | Armure Acier/Cuivre | 370 | Intermédiaire | +8AP +6AM | 2 | Estoc/Taille | x2 Frappe |
@@ -17008,7 +17008,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Fer Noir | Fer Noir | Armure Fer Noir complet | 420 | Intermédiaire | +10AP +4AM | 3 | Estoc | Frappe |
+| Fer Noir | Fer Noir | Armure Fer Noir complète | 420 | Intermédiaire | +10AP +4AM | 3 | Estoc | Frappe |
 | Fer Noir | Corne/Os | Armure Fer Noir/Corne | 400 | Intermédiaire | +13AP +2AM | 3 |  | Estoc |
 | Fer Noir | Cuivre | Armure Fer Noir/Cuivre | 460 | Intermédiaire | +7AP +8AM | 2 | x2 Estoc | x2 Frappe |
 | Fer Noir | Écailles | Armure Fer Noir/Écailles | 700 | Intermédiaire | +13AP +10AM | 3 |  | Estoc |
@@ -17025,7 +17025,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Corne/Os | Corne/Os | Armure Corne/Os complet | 370 | Intermédiaire | +16AP | 3 | Frappe | Estoc |
+| Corne/Os | Corne/Os | Armure Corne/Os complète | 370 | Intermédiaire | +16AP | 3 | Frappe | Estoc |
 | Corne/Os | Cuivre | Armure Corne/Cuivre | 430 | Intermédiaire | +10AP +6AM | 2 |  | Estoc |
 | Corne/Os | Écailles | Armure Corne/Écailles | 670 | Intermédiaire | +16AP +8AM | 3 | x2 Frappe | x2 Estoc |
 | Corne/Os | Vif Argent | Armure Corne/Vif Argent | 1 990 | Intermédiaire | +18AP +10AM | 3 | Taille | Estoc |
@@ -17041,7 +17041,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Cuivre | Cuivre | Armure Cuivre complet | 490 | Intermédiaire | +4AP +12AM | 2 | Estoc | Frappe |
+| Cuivre | Cuivre | Armure Cuivre complète | 490 | Intermédiaire | +4AP +12AM | 2 | Estoc | Frappe |
 | Cuivre | Écailles | Armure Cuivre/Écailles | 730 | Intermédiaire | +10AP +14AM | 3 |  | Estoc |
 | Cuivre | Vif Argent | Armure Cuivre/Vif Argent | 2 050 | Intermédiaire | +16AP +10AM | 3 | Estoc/Taille | x2 Frappe |
 | Cuivre | Argent | Armure Cuivre/Argent | 460 | Lourd | +12AP +6AM | 2 | Estoc/Taille | x2 Frappe |
@@ -17056,7 +17056,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Écailles | Écailles | Armure Écailles complet | 970 | Intermédiaire | +16AP +16AM | 4 | Frappe | Estoc |
+| Écailles | Écailles | Armure Écailles complète | 970 | Intermédiaire | +16AP +16AM | 4 | Frappe | Estoc |
 | Écailles | Vif Argent | Armure Écailles/Vif Argent | 2 290 | Intermédiaire | +18AP +18AM | 4 | Taille | Estoc |
 | Écailles | Argent | Armure Écailles/Argent | 700 | Lourd | +18AP +8AM | 3 | Taille | Estoc |
 | Écailles | Fonte | Armure Écailles/Fonte | 730 | Lourd | +23AP +8AM | 2 | Taille | Estoc |
@@ -17070,7 +17070,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Vif Argent | Vif Argent | Armure Vif Argent complet | 3 610 | Intermédiaire | +20AP +20AM | 4 | Taille | Frappe |
+| Vif Argent | Vif Argent | Armure Vif Argent complète | 3 610 | Intermédiaire | +20AP +20AM | 4 | Taille | Frappe |
 | Vif Argent | Argent | Armure Vif-Argent/Argent | 2 020 | Lourd | +20AP +10AM | 3 | x2 Taille | x2 Frappe |
 | Vif Argent | Fonte | Armure Vif-Argent/Fonte | 2 050 | Lourd | +25AP +10AM | 2 | x2 Taille | x2 Frappe |
 | Vif Argent | Bronze | Armure Vif-Argent/Bronze | 2 320 | Lourd | +16AP +16AM | 3 | Estoc/Taille | x2 Frappe |
@@ -17083,7 +17083,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Argent | Argent | Armure Argent complet | 430 | Lourd | +20AP | 3 | Taille | Frappe |
+| Argent | Argent | Armure Argent complète | 430 | Lourd | +20AP | 3 | Taille | Frappe |
 | Argent | Fonte | Armure Argent/Fonte | 460 | Lourd | +25AP | 2 | x2 Taille | x2 Frappe |
 | Argent | Bronze | Armure Argent/Bronze | 730 | Lourd | +16AP +6AM | 3 | Estoc/Taille | x2 Frappe |
 | Argent | Laiton | Armure Argent/Laiton | 760 | Lourd | +15AP +12AM | 3 | Taille | Estoc |
@@ -17095,7 +17095,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Fonte | Fonte | Armure Fonte complet | 490 | Lourd | +30AP | 1 | Taille | Frappe |
+| Fonte | Fonte | Armure Fonte complète | 490 | Lourd | +30AP | 1 | Taille | Frappe |
 | Fonte | Bronze | Armure Fonte/Bronze | 760 | Lourd | +21AP +6AM | 2 | Estoc/Taille | x2 Frappe |
 | Fonte | Laiton | Armure Fonte/Laiton | 790 | Lourd | +20AP +12AM | 2 | Taille | Estoc |
 | Fonte | Or | Armure Fonte/Or | 850 | Lourd | +27AP +5AM | 2 |  | Frappe |
@@ -17106,7 +17106,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Bronze | Bronze | Armure Bronze complet | 1 030 | Lourd | +12AP +12AM | 4 | Estoc | Frappe |
+| Bronze | Bronze | Armure Bronze complète | 1 030 | Lourd | +12AP +12AM | 4 | Estoc | Frappe |
 | Bronze | Laiton | Armure Bronze/Laiton | 1 060 | Lourd | +11AP +18AM | 3 |  | Frappe |
 | Bronze | Or | Armure Bronze/Or | 1 120 | Lourd | +18AP +11AM | 3 | Estoc | Taille |
 | Bronze | Titane | Armure Bronze/Titane | 1 720 | Lourd | +19AP +13AM | 4 | Taille | Frappe |
@@ -17116,7 +17116,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Laiton | Laiton | Armure Laiton complet | 1 090 | Lourd | +10AP +24AM | 3 | Frappe | Estoc |
+| Laiton | Laiton | Armure Laiton complète | 1 090 | Lourd | +10AP +24AM | 3 | Frappe | Estoc |
 | Laiton | Or | Armure Laiton/Or | 1 150 | Lourd | +17AP +17AM | 3 | x2 Frappe | Estoc/Taille |
 | Laiton | Titane | Armure Laiton/Titane | 1 750 | Lourd | +18AP +19AM | 3 | Taille/Frappe | x2 Estoc |
 | Laiton | Maverium | Armure Laiton/Maverium | 2 950 | Lourd | +25AP +32AM | 3 | Taille | Estoc |
@@ -17125,7 +17125,7 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Or | Or | Armure Or complet | 1 210 | Lourd | +24AP +10AM | 3 | Frappe | Taille |
+| Or | Or | Armure Or complète | 1 210 | Lourd | +24AP +10AM | 3 | Frappe | Taille |
 | Or | Titane | Armure Or/Titane | 1 810 | Lourd | +25AP +13AM | 3 | Frappe | Estoc |
 | Or | Maverium | Armure Or/Maverium | 3 010 | Lourd | +32AP +25AM | 3 |  | Frappe |
 
@@ -17133,14 +17133,14 @@ Note de mise en page : la source présente cette liste sous forme de grille (« 
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Titane | Titane | Armure Titane complet | 2 410 | Lourd | +26AP +14AM | 4 | Taille | Estoc |
+| Titane | Titane | Armure Titane complète | 2 410 | Lourd | +26AP +14AM | 4 | Taille | Estoc |
 | Titane | Maverium | Armure Titane/Maverium | 3 610 | Lourd | +33AP +27AM | 4 | x2 Taille | Estoc/Frappe |
 
 ### Ligne : Maverium
 
 | Ligne | Colonne | Nom | Prix | Type | Stats | Solidité | Résistance | Faiblesse |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Maverium | Maverium | Armure Maverium complet | 4 810 | Lourd | +40AP +40AM | 4 | Taille | Frappe |
+| Maverium | Maverium | Armure Maverium complète | 4 810 | Lourd | +40AP +40AM | 4 | Taille | Frappe |
 
 ## Armures particulières
 
@@ -17175,10 +17175,10 @@ Morceau du bon bois + La bonne gemme + Test de Volonté + Intelligence = Bâton 
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Sang | Grenat | Une pierre rouge marron comme le sang. | 4 000 RF / 40 RO | 90 RO | 190 RO | Padouk | Cet arbre unique au tronc rouge pousse pas loin des champs de batailles, là où le sang a envahi le sol. | 2 400 RF / 24 RO |
 | Arcane | Perle | Une belle pierre qui peut avoir de multiples formes. | 3 000 RF / 30 RO | 70 RO | 150 RO | Bouleau pur | Ce bel arbre au tronc blanc est un arbre qui attire le chakra à l''état pur, il y a souvent des brumes de chakra qui se forment autour d''eux. | 1 200 RF / 12 RO |
-| Corruption | Onix | Une gemme avec un noir profond qui concentre le pouvoir de la corruption. | 100 RO | 210 RO | 430 RO | Bouleau impur | La version corrompue du bouleau, ce bouleau respire la corruption et est capable de la transmettre à tout créatures assez folle pour s''approcher. | 6 000 RF / 60 RO |
+| Corruption | Onyx | Une gemme avec un noir profond qui concentre le pouvoir de la corruption. | 100 RO | 210 RO | 430 RO | Bouleau impur | La version corrompue du bouleau, ce bouleau respire la corruption et est capable de la transmettre à tout créatures assez folle pour s''approcher. | 6 000 RF / 60 RO |
 | Espace/Temps | Diamant rose | Un diamant parfaitement taillé couleur rose, la gemme du temps et de l''espace. | 7 500 RF / 75 RO | 160 RO | 330 RO | Chêne | C''est un magnifique arbre très noble qui est capable de vivre très longtemps s''il est dans d''excellentes conditions, il est à l''épreuve du temps et de l''espace. | 4 400 RF / 44 RO |
 | Vide | Gypse | C''est un cristal parfaitement transparent sans aucune impureté. | 3 500 RF / 35 RO | 80 RO | 170 RO | Fungus Fantôme | C''est un champignon qui parasite les autres arbres, ainsi imprégnant l''arbre d''une sorte d''anti-magie qui s''approche de la magie du vide. | 2 000 RF / 20 RO |
-| Nécromancie | Malachite | Une très belle pierre verte qui semble se former dans les lieux où les âmes sont très nombreuses. | 3 500 RF / 35 RO | 80 RO | 170 RO | Mancelinier | Cet arbre est très toxique, tellement toxique qu''il empoisonne même l''air autour de lui, seuls ceux de la nécromancie sont protégés de son air putride. | 2 000 RF / 20 RO |
+| Nécromancie | Malachite | Une très belle pierre verte qui semble se former dans les lieux où les âmes sont très nombreuses. | 3 500 RF / 35 RO | 80 RO | 170 RO | Mancenillier | Cet arbre est très toxique, tellement toxique qu''il empoisonne même l''air autour de lui, seuls ceux de la nécromancie sont protégés de son air putride. | 2 000 RF / 20 RO |
 | Feu | Rubis | D''un un rouge inégalable, le rubis est la pierre du feu, celle de l''émotion et de la passion. | 4 000 RF / 40 RO | 90 RO | 190 RO | Khejri | Cet arbre sec se retrouve dans les zones désertiques et arides de Maverick, il est très chaud et est capable de cracher du feu quand il se sent menacé. | 2 400 RF / 24 RO |
 | Eau | Saphir | Avec son bleu profond, le saphir est la pierre de l''eau, elle peut se trouver dans les profondeurs et dans les grottes sous la mer. | 3 000 RF / 30 RO | 70 RO | 150 RO | Palétuvier | Un arbre parfaitement adapté à l''environnement marécageux, ses racines sont visibles à la surface contrairement aux autres arbres. | 1 200 RF / 12 RO |
 | Glace | Turquoise | C''est une pierre qui semble assez simple mais qui pourtant concentre la puissance de la glace, elle est émet une petite brume froide quand elle se réchauffe. | 4 000 RF / 40 RO | 90 RO | 190 RO | Sapin | Le sapin est un très grand arbre qui est parfaitement adapté aux températures très basses, il fabrique des couches de glace quand son écorce est percée. | 2 400 RF / 24 RO |
@@ -17260,7 +17260,7 @@ Pour répondre c''est oui et non :
 | Fonte | 4 000 RF / 40 RO | Matériau aussi dur que fragile, il se fabrique de la même façon que l''acier mais avec moins de chaleur. | 10 minerais de fer ou 1 lingot de fer + 5 charbons purifiés + Bas Fourneau |
 | Bronze | 8 500 RF / 85 RO | Combinaison du cuivre et de l''étain, le bronze est apprécié pour sa défense magique et physique correcte, mais surtout pour sa solidité qui égale le titane et le maverium. | 5 minerais de cuivre + 5 minerais d''étain + Bas Fourneau |
 | Laiton | 9 000 RF / 90 RO | Combinaison du cuivre et du zinc, le laiton est nommé l''or rose par certains, il est moins solide physiquement parlant que l''or mais il encaisse bien mieux la magie. | 10 minerais de cuivre OU 1 lingot de cuivre + 1 lingot de zinc + Bas Fourneau |
-| Or | 100 RO | Un minerai jaune qui est utilisé pour fabriquer la monnaie du monde, cette utilisation massive de l''or la rend rare pour les autres objets. | 10 minerais d''or + 10 Salpêtre + 10 Souffre + Bas Fourneau |
+| Or | 100 RO | Un minerai jaune qui est utilisé pour fabriquer la monnaie du monde, cette utilisation massive de l''or la rend rare pour les autres objets. | 10 minerais d''or + 10 Salpêtre + 10 Soufre + Bas Fourneau |
 | Titane | 200 RO | Le titane est un minerai gris clair aussi lourd que solide, il est assez rare et demande un fourneau de séraphin pour être travaillé. | 10 minerais de titane + Fourneau de Séraphin |
 | Maverium | 400 RO | Le minerai ultime de Maverick, c''est un minerai qui réagit parfaitement à la magie selon comment il est travaillé. Soit un conducteur parfait, soit un isolant parfait. | 10 minerais de Maverium + Fourneau de Séraphin |
 
@@ -17311,7 +17311,7 @@ Pour répondre c''est oui et non :
 | Targe | 5 | Classe 2 |
 | Bouclier Rond | 7,5 | Classe 3 |
 | Écu | 10 | Classe 4 |
-| Pavoi | 12,5 | Classe 5 |
+| Pavois | 12,5 | Classe 5 |
 
 ## Boucliers par classe et par matière
 
@@ -17415,30 +17415,30 @@ Pour répondre c''est oui et non :
 | Titane | Écu Titane | 810 | +28AP +16AM |
 | Maverium | Écu Maverium | 1610 | +40AP +40AM |
 
-### Pavoi
+### Pavois
 
 | Matière | Nom | Prix | Défense |
 | --- | --- | --- | --- |
-| Cuir | Pavoi Cuir | 22,5 | +5AP |
-| Bois | Pavoi Bois | 20 | +5AP +5AM |
-| Cellulose | Pavoi Cellulose | 42,5 | +15AM |
-| Corail | Pavoi Corail | 62,5 | +5AP +10AM |
-| Chitine | Pavoi Chitine | 87,5 | +15AP |
-| Mythril | Pavoi Mythril | 1012,5 | +20AP +25AM |
-| Fer | Pavoi Fer | 62,5 | +10AP |
-| Acier | Pavoi Acier | 112,5 | +15AP |
-| Fer Noir | Pavoi Fer Noir | 197,5 | +10AP +5AM |
-| Corne/Os | Pavoi Corne | 172,5 | +20AP |
-| Cuivre | Pavoi Cuivre | 212,5 | +5AP +15AM |
-| Écailles | Pavoi Écailles | 424,5 | +20AP +20AM |
-| Vif-Argent | Pavoi Vif-Argent | 1512,5 | +25AP +25AM |
-| Argent | Pavoi Argent | 197,5 | +25AP |
-| Fonte | Pavoi Fonte | 212,5 | +35AP |
-| Bronze | Pavoi Bronze | 442,5 | +15AP +15AM |
-| Laiton | Pavoi Laiton | 462,5 | +15AP +30AM |
-| Or | Pavoi Or | 512,5 | +30AP +15AM |
-| Titane | Pavoi Titane | 1012,5 | +35AP +20AM |
-| Maverium | Pavoi Maverium | 2012,5 | +50AP +50AM |
+| Cuir | Pavois Cuir | 22,5 | +5AP |
+| Bois | Pavois Bois | 20 | +5AP +5AM |
+| Cellulose | Pavois Cellulose | 42,5 | +15AM |
+| Corail | Pavois Corail | 62,5 | +5AP +10AM |
+| Chitine | Pavois Chitine | 87,5 | +15AP |
+| Mythril | Pavois Mythril | 1012,5 | +20AP +25AM |
+| Fer | Pavois Fer | 62,5 | +10AP |
+| Acier | Pavois Acier | 112,5 | +15AP |
+| Fer Noir | Pavois Fer Noir | 197,5 | +10AP +5AM |
+| Corne/Os | Pavois Corne | 172,5 | +20AP |
+| Cuivre | Pavois Cuivre | 212,5 | +5AP +15AM |
+| Écailles | Pavois Écailles | 424,5 | +20AP +20AM |
+| Vif-Argent | Pavois Vif-Argent | 1512,5 | +25AP +25AM |
+| Argent | Pavois Argent | 197,5 | +25AP |
+| Fonte | Pavois Fonte | 212,5 | +35AP |
+| Bronze | Pavois Bronze | 442,5 | +15AP +15AM |
+| Laiton | Pavois Laiton | 462,5 | +15AP +30AM |
+| Or | Pavois Or | 512,5 | +30AP +15AM |
+| Titane | Pavois Titane | 1012,5 | +35AP +20AM |
+| Maverium | Pavois Maverium | 2012,5 | +50AP +50AM |
 ', 'draft', 'equipement', 'Google Sheet « Ressources et Craft », onglet « Bouclier »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/equipement-inventaire', 'ressources', 'equipement-inventaire', 'Équipement inventaire', 'equipement-inventaire', NULL, NULL, '## MONNAIE
 
@@ -17484,7 +17484,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Cochon (animal) | 750 RF |
 | 1kg de poisson | 200 RF |
 | 1kg de lait | 30 RF |
-| 1kg de oeuf, 20 oeufs | 20 RF |
+| 1kg d''oeufs, 20 oeufs | 20 RF |
 
 ### AUTRES
 
@@ -17542,7 +17542,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Nom | Prix | Description |
 | --- | --- | --- |
 | Fiole en verre (Petite) | 50 RF | <https://docs.google.com/document/d/1n5KJ8rmk1Yj8QY__v31XnpDwQw6gSyjx1tve9bTZM2k/edit?usp=sharing> |
-| Fiole en verre (Moyen) | 2 RO | <https://docs.google.com/document/d/1n5KJ8rmk1Yj8QY__v31XnpDwQw6gSyjx1tve9bTZM2k/edit?usp=sharing> |
+| Fiole en verre (Moyenne) | 2 RO | <https://docs.google.com/document/d/1n5KJ8rmk1Yj8QY__v31XnpDwQw6gSyjx1tve9bTZM2k/edit?usp=sharing> |
 | Fiole en verre (Super) | 8 RO | <https://docs.google.com/document/d/1n5KJ8rmk1Yj8QY__v31XnpDwQw6gSyjx1tve9bTZM2k/edit?usp=sharing> |
 | Fiole en verre (Méga) | 20 RO | <https://docs.google.com/document/d/1n5KJ8rmk1Yj8QY__v31XnpDwQw6gSyjx1tve9bTZM2k/edit?usp=sharing> |
 | Galet rond | 2 RO | Une petite pierre qui permet de raffiner du corail brut. |
@@ -17600,7 +17600,7 @@ Les petits familiers sont des créatures de taille correcte, parfois plus grosse
 | Flamilag | - La météo "canicule" dure 2 tours de plus | La version feu du cornilag, un lapin cornu avec une fourrure rouge, la fourrure plus épaisse au cou qui rappelle une flamme et une corne brûlante. Il a un sale caractère. |
 | Fulgilag | - +1 Vitesse pour le sprint au sol | La version foudre du cornilag, un lapin cornu avec une fourrure brun clair, la fourrure au cou couleur jaune et une corne rappelant un éclair. Il est vif et craintif. |
 | Gecko gris | - Les météos durent 1 tour de plus quand elles sont lancées.<br>- +1 dégât pour les bonus de dégâts de météo. | Le gecko gris est capable d''influencer la météo à l''avantage de celui de son maître. Il change de couleur selon la météo active. |
-| Hérisson brun | - +1AP de base | La version miniature du hérisson techtonique. Bien qu’assez timide, il se montre étonnamment robuste malgré sa taille. |
+| Hérisson brun | - +1AP de base | La version miniature du hérisson tectonique. Bien qu’assez timide, il se montre étonnamment robuste malgré sa taille. |
 | Hibou | - +5% Connaissance | Un oiseau nocturne au plumage épais et au regard profond. Discret et posé, il demeure attentif à ce qui l’entoure même dans l’obscurité la plus totale. |
 | Luciombre | - +1% critique à tous jets qui impliquent la Perception | Un insecte de la même famille que les lucioles, sauf qu''il est entouré d''un nuage sombre, seuls ses yeux et son abdomen percent ce voile de ténèbres et lui donnent une apparence effrayante. |
 | Métali | - Donne un minerai de sa nature tous les 3 jours. | Une petite créature gélatineuse faite de métal fondu dont l''origine peut varier. Curieux et affectueux, il aime suivre son propriétaire en rebondissant derrière lui ou sur lui. |
@@ -17878,7 +17878,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Prix | Niveau | Effet |
 | 250 Ro | Maître | Augmente l’AP de base de 4 (une fois par personnage) |
 ', 'draft', 'docs', 'Google Doc « Alchimie »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/fiole-cyante', 'ressources', 'fiole-cyante', 'Fiole cyante', 'fiole-cyante', 'Les Fioles Cyan sont des potions conçues pour renforcer temporairement l’armure magique naturelle de celui qui la boit.', NULL, '*Les Fioles Cyan sont des potions conçues pour renforcer temporairement l’armure magique naturelle de celui qui la boit. Elles sont particulièrement appréciées par les aventuriers et les combattants qui s’attendent à affronter des menaces qui usent et abusent de sortilèges.*
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/fiole-cyante', 'ressources', 'fiole-cyante', 'Fiole cyan', 'fiole-cyan', 'Les Fioles Cyan sont des potions conçues pour renforcer temporairement l’armure magique naturelle de celui qui la boit.', NULL, '*Les Fioles Cyan sont des potions conçues pour renforcer temporairement l’armure magique naturelle de celui qui la boit. Elles sont particulièrement appréciées par les aventuriers et les combattants qui s’attendent à affronter des menaces qui usent et abusent de sortilèges.*
 
 *La Fiole Cyan se reconnaît facilement à sa couleur cyan lumineuse et à son odeur vive de menthe fraîche. Lorsqu’elle est consommée, une sensation de fraîcheur parcourt le corps avant de se stabiliser autour de la peau. Les versions les plus puissantes de cette fiole possèdent toutefois un effet rare : elles peuvent augmenter de manière permanente l’armure magique de base de leur buveur. Cet effet exceptionnel ne se manifeste qu’une seule fois par individu, pour une raison encore inconnue des alchimistes.*
 
@@ -17887,27 +17887,27 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Solvant | Essence | Amplificateur | Catalyseur | Stabilisateur | Amplificateur majeur |
 | Fiole | Armure magique | Armure magique | Armure magique | Armure magique | Armure magique |
 
-| Petite fiole cyante |  |  |
+| Petite fiole cyan |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
 | 5 Ro | Novice | Augmente l’AM de base de 3 pendant 3 tours |
 
-| Fiole cyante moyenne |  |  |
+| Fiole cyan moyenne |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
 | 25 Ro | Apprenti | Augmente l’AM de base de 5 pendant 3 tours |
 
-| Super fiole cyante |  |  |
+| Super fiole cyan |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
 | 60 Ro | Avancé | Augmente l’AM de base de 7 pendant 3 tours |
 
-| Méga fiole cyante |  |  |
+| Méga fiole cyan |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
 | 130 Ro | Expert | Augmente l’AM de base de 10 pendant 3 tours |
 
-| Ultime fiole cyante |  |  |
+| Ultime fiole cyan |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
 | 250 Ro | Maître | Augmente l’AM de base de 4 (une fois par personnage) |
@@ -18180,7 +18180,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Prix | Niveau | Effet |
 | 250 Ro | Maître | Récupère 100% de chakra et barrière |
 ', 'draft', 'docs', 'Google Doc « Alchimie »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/fiole-verte-fonce', 'ressources', 'fiole-verte-fonce', 'Fiole verte foncé', 'fiole-verte-fonce', NULL, NULL, '| Recettes |  |  |  |  |  |
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/fiole-verte-fonce', 'ressources', 'fiole-verte-fonce', 'Fiole verte foncée', 'fiole-verte-foncee', NULL, NULL, '| Recettes |  |  |  |  |  |
 | :-: | :-: | :-: | :-: | :-: | :-: |
 | Solvant | Essence | Amplificateur | Catalyseur | Stabilisateur | Amplificateur majeur |
 | Fiole | 4ème barre | Régénération santé | 4ème barre | Régénération santé | 4ème barre |
@@ -18316,7 +18316,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Prix | Niveau | Effet |
 | 40 Ro | Expert | 3 utilisations<br>Oblige un jet de vigueur, si raté : Inflige gel 1 |
 ', 'draft', 'docs', 'Google Doc « Alchimie »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/huile-hemophile', 'ressources', 'huile-hemophile', 'Huile hémophile', 'huile-hemophile', 'L’Huile Hémophilie est une préparation alchimique conçue pour être appliquée sur une arme afin d’infliger l’altération d’état saignement.', NULL, '*L’Huile Hémophilie est une préparation alchimique conçue pour être appliquée sur une arme afin d’infliger l’altération d’état saignement. Issue d’ingrédients liés au sang, elle permet de transmettre cet effet à chaque coup porté, provoquant une perte de santé continue chez la cible. Plus l’huile est puissante, plus le nombre d’utilisations avant dissipation est élevé.*
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/huile-hemophile', 'ressources', 'huile-hemophile', 'Huile hémophile', 'huile-hemophile', 'L’Huile Hémophile est une préparation alchimique conçue pour être appliquée sur une arme afin d’infliger l’altération d’état saignement.', NULL, '*L’Huile Hémophile est une préparation alchimique conçue pour être appliquée sur une arme afin d’infliger l’altération d’état saignement. Issue d’ingrédients liés au sang, elle permet de transmettre cet effet à chaque coup porté, provoquant une perte de santé continue chez la cible. Plus l’huile est puissante, plus le nombre d’utilisations avant dissipation est élevé.*
 
 | Recette |  |  |  |  |
 | :-: | :-: | :-: | :-: | :-: |
@@ -18493,7 +18493,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Prix | Niveau | Effet |
 | 40 Ro | Expert | 3 utilisations<br>Oblige un jet de vigueur, si raté : Inflige poison 1 |
 ', 'draft', 'docs', 'Google Doc « Alchimie »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/livre-parchemin', 'ressources', 'livre-parchemin', 'LivreParchemin', 'livreparchemin', 'Les parchemins sont des papiers préparés à l''avance pour accueillir un sort.', NULL, '## PARCHEMIN
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/livre-parchemin', 'ressources', 'livre-parchemin', 'Livre/Parchemin', 'livre-parchemin', 'Les parchemins sont des papiers préparés à l''avance pour accueillir un sort.', NULL, '## PARCHEMIN
 
 Les parchemins sont des papiers préparés à l''avance pour accueillir un sort. Il est nécessaire d''avoir la bonne magie et la bonne puissance magique pour pouvoir utiliser le sort indiqué sur le parchemin ou même simplement le lire. Les parchemins possèdent différents niveaux de puissance :  
 NPM 1 : Parchemin vierge  
@@ -18515,7 +18515,7 @@ Parchemin vierge = Un parchemin utile pour écrire dessus, on peut également le
 
 Parchemin gravé = Un parchemin avec des gravures dessus, il est sans sort et il est prêt à accueillir un sort de son niveau. Pour les gravés, il est nécessaire d''avoir
 
-Pachemin niveau X = Un parchemin contenant un sort, pour le connaître il suffit de se fier à la couleur du parchemin et à ce qui est écrit dessus.
+Parchemin niveau X = Un parchemin contenant un sort, pour le connaître il suffit de se fier à la couleur du parchemin et à ce qui est écrit dessus.
 
 Utiliser un sort sur un parchemin consomme normalement le chakra et c''est qu''une seule utilisation.
 
@@ -18603,7 +18603,7 @@ Une fois un livre terminé, le texte à l''intérieur du livre aura disparu, per
 | Cochon (animal) | 750 RF |
 | 1kg de poisson | 200 RF |
 | 1kg de lait | 30 RF |
-| 1kg de oeuf, 20 oeufs | 20 RF |
+| 1kg d''oeufs, 20 oeufs | 20 RF |
 
 ### AUTRES
 
@@ -18616,7 +18616,7 @@ Une fois un livre terminé, le texte à l''intérieur du livre aura disparu, per
 | 1 outil | 25 RF |
 | 1kg de pain | 80 RF |
 ', 'draft', 'equipement', 'Google Sheet « Ressources et Craft », onglet « LivreParchemin »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/machine-de-guerresiege', 'ressources', 'machine-de-guerresiege', 'Machine de GuerreSiège', 'machine-de-guerresiege', NULL, NULL, '## ATTAQUE AU SOL
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('ressources/machine-de-guerresiege', 'ressources', 'machine-de-guerresiege', 'Machine de Guerre/Siège', 'machine-de-guerre-siege', NULL, NULL, '## ATTAQUE AU SOL
 
 | Nom | Description | Effet |
 | --- | --- | --- |
@@ -18791,7 +18791,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 **Temps de soin** : 1 mois
 
-## Altératis Brune
+## Altératis Brun
 
 **Effets** : -20% de chance de résister à Pétrifié.
 
@@ -18943,7 +18943,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Bandage | Un objet étanche qui permet de soigner un saignement quel que soit son niveau d''intensité |
 | Bloc dégoutant | Un bloc gélatineux issu de l''alchimie primitive, redonne 15 barrière mais donne une croix au social pendant 2 tours |
 | Bâton magique lvl1 | Un bâton magique de votre magie innée vierge, vous pouvez y graver un sort niveau dedans. Attention, une fois que c''est fait, ce n''est plus changeable. |
-| Brevage immonde | Un liquide opaque issu de l''alchimie primitive, redonne 15 chakra mais donne une croix à la volonté pendant 2 tours |
+| Breuvage immonde | Un liquide opaque issu de l''alchimie primitive, redonne 15 chakra mais donne une croix à la volonté pendant 2 tours |
 | Briquet | Un objet permettant de faire une petite flamme. |
 | Canne à pêche | Indispensable pour pêcher le poisson. |
 | Carquois N | Carquois normal, permet d''avoir 10 flèches ou carreaux en réserve, se met sur la ceinture. |
@@ -18965,13 +18965,13 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | P fiole orange | Petite fiole orange, un breuvage d''orange et gelée orange qui redonne 2d8+5 santé et barrière. Usage unique comme toutes les fioles. |
 | P fiole rouge | Petite fiole rouge, un breuvage de fraise et gelée rouge qui redonne 2d8+5 santé. Usage unique comme toutes les fioles. |
 | P fiole verte | Petite fiole verte, un breuvage de kiwi et gelée verte qui redonne 2d8+5 chakra et barrière. Usage unique comme toutes les fioles. |
-| Panacée mineur | Permet de soigner d''un cran n''importe quelle altération d''état. |
+| Panacée mineure | Permet de soigner d''un cran n''importe quelle altération d''état. |
 | Parchemin gravé (sort magie innée) | Un parchemin déjà gravé où il est possible d''y mettre un sort. Usage unique. |
 | Parchemin vierge | PAAAAAPIERRRRRRRRR !!!! |
-| Pierre à aiguisé | Une pierre qui permet d''aiguiser une arme, augmente de +1% la réussite critique pour le prochain combat. 5 usages possibles. |
-| Plume à gravé | Une plume particulière qui permet à un parchemin vierge d''accueillir un sort, la gravure correspondra à la magie de celui qui écrit. |
+| Pierre à aiguiser | Une pierre qui permet d''aiguiser une arme, augmente de +1% la réussite critique pour le prochain combat. 5 usages possibles. |
+| Plume à graver | Une plume particulière qui permet à un parchemin vierge d''accueillir un sort, la gravure correspondra à la magie de celui qui écrit. |
 | P huile (magie innée) | Petite huile au choix selon la magie innée. |
-| P huile hémophile | Petite huile hémophilie, une huile à mettre sur une arme qui permet au prochain coup d''avoir une chance d''infliger Saignement 1 à la cible. |
+| P huile hémophile | Petite huile hémophile, une huile à mettre sur une arme qui permet au prochain coup d''avoir une chance d''infliger Saignement 1 à la cible. |
 | P huile toxique | Petite huile toxique, une huile à mettre sur une arme qui permet au prochain coup d''avoir une chance d''infliger Poison 1 à la cible. |
 | Poudre de guérison | Une poudre épaisse issue de l''alchimie primitive, redonne 15 santé mais donne une croix à la perception pendant 2 tours |
 | Remède fatigue M | Remède fatigue mineur, permet de soigner d''un cran la fatigue. |
@@ -18990,17 +18990,17 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Solvant | Essence | Amplificateur | Catalyseur | Stabilisateur |
 | Remède | Universelle | Universelle | Universelle | Universelle |
 
-| Panacée mineur |  |  |
+| Panacée mineure |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
 | 40 Ro | Apprenti | Réduit d''un cran les altérations d’états |
 
-| Panacée majeur |  |  |
+| Panacée majeure |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
 | 80 Ro | Avancé | Réduit de deux crans les altérations d’états |
 
-| Panacée parfait |  |  |
+| Panacée parfaite |  |  |
 | :-: | :-: | :-: |
 | Prix | Niveau | Effet |
 | 120 Ro | Expert | Soigne totalement les altérations d’états |
@@ -19237,8 +19237,8 @@ Valeur
 | GLACE | Épée de Glace | +8 Dégâts | Élément Glace | Lame froide (passif) : 15% de chance d''infliger 1 croix à l''agilité OU à la force (aléatoire) de la cible. |
 | VENT | Épée de Vent | +8 Dégâts | Élément Vent | Tranch''Air (action) : Permet de lancer une grande lame d''air de 3 cases de large/long jusqu''à 4 cases de distance. Perd 1d de dégâts par case parcourue. |
 | FOUDRE | Épée de Foudre | +8 Dégâts | Élément Foudre | Tranch''éclair (passif) : Chaque attaque réussie sera enchaînée d''un éclair qui infligera 1d de dégâts supplémentaire (doublé lors de la météo orage) |
-| TERRE | Épée de Terre | +8 Dégâts | Élément Terre | Mélallomorphique (passif) : La composition de la lame s’adapte en fonction de l’environnement : devenant plus dure près du métal, plus tranchante sur la pierre, et plus souple autour des plantes. |
-| LUMIERE | Épée de Lumière | +8 Dégâts | Élément Lumière | Louons la Soleil (action) : Prend la pose et loue Aurora afin au lanceur et aux alliés à côté d''avoir un bonus de +4 dégâts pendant 3 tours. |
+| TERRE | Épée de Terre | +8 Dégâts | Élément Terre | Métallomorphique (passif) : La composition de la lame s’adapte en fonction de l’environnement : devenant plus dure près du métal, plus tranchante sur la pierre, et plus souple autour des plantes. |
+| LUMIÈRE | Épée de Lumière | +8 Dégâts | Élément Lumière | Louons la Soleil (action) : Prend la pose et loue Aurora afin au lanceur et aux alliés à côté d''avoir un bonus de +4 dégâts pendant 3 tours. |
 | OMBRE | Épée d''Ombre | +8 Dégâts | Élément Ombre | Cicatrices sombres (passif) : Les plaies laissées par l’épée continuent de suinter de l''ombre, empêchant la cible de récupérer de la santé avec des sorts pendant 2 tours. |
 
 **Note de la cellule « Épée de Terre »**
@@ -19254,7 +19254,7 @@ Plante : Ignore 50% des AP des boucliers
 | Colonne | Nom | Dégâts | Élément | Capacité |
 | --- | --- | --- | --- | --- |
 | SANG | Dague de Sang | +8 Dégâts | Élément Sang | Plaie ouverte (passif) : Impose un jet de vigueur à ceux qui sont vulnérables au sang, s''ils ratent, ils prennent saignement 1. |
-| ARCANE | Dague d''Arcane | +8 Dégâts | Élément Arcane | Neutralité forcé (passif) : Annule totalement une résistance (immunité non comprise) aléatoire sur la cible pendant 1 tour. |
+| ARCANE | Dague d''Arcane | +8 Dégâts | Élément Arcane | Neutralité forcée (passif) : Annule totalement une résistance (immunité non comprise) aléatoire sur la cible pendant 1 tour. |
 | CORRUPTION | Dague de Corruption | +8 Dégâts | Élément Corruption | Fermeture D (passif) : Un coup réussi verrouille la posture Défensif de la cible pour son prochain tour. |
 | ESPACE/TEMPS | Dague d''Espace/Temps | +8 Dégâts | Élément Espace/Temps | En retard (actif) : Les dégâts infligés par l''arme arriveront un tour plus tard. |
 | VIDE | Dague de Vide | +8 Dégâts | Élément Vide | Pic de pression (passif) : Sur un coup totalement réussi (n''est pas applicable dans les défenses partielles), inflige un bonus de 2d6 dégâts. |
@@ -19265,7 +19265,7 @@ Plante : Ignore 50% des AP des boucliers
 | VENT | Dague de Vent | +8 Dégâts | Élément Vent | Antifion (actif) : Permet de relancer un jet du sort "propulsion" raté. |
 | FOUDRE | Dague de Foudre | +8 Dégâts | Élément Foudre | Entaille rapide (passif) : Permet d''avoir 2 attaques d''opportunités par tour. |
 | TERRE | Dague de Terre | +8 Dégâts | Élément Terre | Kayou (action) : Plonge la dague dans le sol, transforme les dégâts de la dague en dégâts de frappe. |
-| LUMIERE | Dague de Lumière | +8 Dégâts | Élément Lumière | Rétorsion (passif) : Obtient l''effet de "bénédiction" contre la dernière cible qui a porté un coup au porteur de l''arme. S''arrête après un seul coup. |
+| LUMIÈRE | Dague de Lumière | +8 Dégâts | Élément Lumière | Rétorsion (passif) : Obtient l''effet de "bénédiction" contre la dernière cible qui a porté un coup au porteur de l''arme. S''arrête après un seul coup. |
 | OMBRE | Dague d''Ombre | +8 Dégâts | Élément Ombre | Fumigène (passif) : L''attaque a 50% de chance de libérer une légère fumée qui permet d''esquiver une attaque d''opportunité. |
 
 ### MASSE
@@ -19275,16 +19275,16 @@ Plante : Ignore 50% des AP des boucliers
 | SANG | Masse de Sang | +8 Dégâts | Élément Sang | Force brute (passif) : Réduit d''un cran la résistance aux dégâts de frappe d''une armure (ne descend pas en dessous de neutre) |
 | ARCANE | Masse d''Arcane | +8 Dégâts | Élément Arcane | Aspikra (action) : Frappe le sol et aspire le chakra des ennemis dans un cercle de 3 à hauteur de 2d6 par ennemi pour le distribuer équitablement aux alliés dans le cercle. |
 | CORRUPTION | Masse de Corruption | +8 Dégâts | Élément Corruption | Crit aspirant (passif) : Si un coup critique est prodigué = Régénère la barrière selon les dégâts infligés sur cette dernière. |
-| ESPACE/TEMPS | Masse d''Espace/Temps | +8 Dégâts | Élément Espace/Temps | Brise temps (passif) : Chaque coup possède 25% de chance de poser l''effet du sort de l''Espace/Yemps "Vieillissement". |
+| ESPACE/TEMPS | Masse d''Espace/Temps | +8 Dégâts | Élément Espace/Temps | Brise temps (passif) : Chaque coup possède 25% de chance de poser l''effet du sort de l''Espace/Temps "Vieillissement". |
 | VIDE | Masse de Vide | +8 Dégâts | Élément Vide | Abracaltération (passif) : 30% de chance d''infliger une altération d''état élémentaire aléatoire niveau 1. |
 | NÉCROMANCIE | Masse de Nécromancie | +8 Dégâts | Élément Nécromancie | Destruc''Os (action) : Frappe le sol et fait jaillir des pics d''os qui repoussent l''ennemi d''une case en arrière. |
 | FEU | Masse de Feu | +8 Dégâts | Élément Feu | Explosion (action) : Frappe le sol, déclenche une gerbe de flamme qui va infliger xd6 dégâts de feu à tous les ennemis à 1 case de la zone de l''impact. (X = maîtrise d''arme) |
 | EAU | Masse d''Eau | +8 Dégâts | Élément Eau | Fracas purificateur (action) : Frappe sur le sol pour créer un cercle large de 2 cases qui permet aux alliés de soigner d''un cran leur altération d''état ou un effet négatif. |
-| GLACE | Masse de Glace | +8 Dégâts | Élément Glace | Onde glacière (passif) : Chaque coup donne une charge, au bout de 3 charges, l''arme touche les 3 cases devant le lanceur. |
+| GLACE | Masse de Glace | +8 Dégâts | Élément Glace | Onde glaciaire (passif) : Chaque coup donne une charge, au bout de 3 charges, l''arme touche les 3 cases devant le lanceur. |
 | VENT | Masse de Vent | +8 Dégâts | Élément Vent | Impact bruyant (action) : Coûte 5% de chakra, frappe en cône de 4 cases de portée et blesse tous ceux sur le chemin, inflige 1d de dégâts supplémentaire. |
 | FOUDRE | Masse de Foudre | +8 Dégâts | Élément Foudre | Résiduclair (passif) : Si jamais l''attaque est ratée, inflige 4 dégâts de foudre résiduels qui ne sont pas esquivables/parables et qui percent AP et AM. |
 | TERRE | Masse de Terre | +8 Dégâts | Élément Terre | Destruction (passif) : 20% de chance de retirer un cran de solidité d''un morceau d''armure, bouclier ou arme. |
-| LUMIERE | Masse de Lumière | +8 Dégâts | Élément Lumière | Fracas soigneur (action) : Frappe sur le sol pour créer un cercle large de 2 cases qui permet aux alliés de récupérer 2d6+2 santé. |
+| LUMIÈRE | Masse de Lumière | +8 Dégâts | Élément Lumière | Fracas soigneur (action) : Frappe sur le sol pour créer un cercle large de 2 cases qui permet aux alliés de récupérer 2d6+2 santé. |
 | OMBRE | Masse d''Ombre | +8 Dégâts | Élément Ombre | Extinction (passif) : À chaque coup porté, inflige un malus de 5% à la cible et ennemis autour de cette première à leur prochain jet. |
 
 ### HACHE
@@ -19303,7 +19303,7 @@ Plante : Ignore 50% des AP des boucliers
 | VENT | Hache de Vent | +8 Dégâts | Élément Vent | Légèreté (passif) : Chaque attaque réussie donne 2 d''initiative pour le prochain tour. |
 | FOUDRE | Hache de Foudre | +8 Dégâts | Élément Foudre | Comme un éclair (passif) : Impose un malus 20% à l''esquive de la cible. |
 | TERRE | Hache de Terre | +8 Dégâts | Élément Terre | Poids de la terre (passif) : Impose un malus 20% à la parade de la cible. |
-| LUMIERE | Hache de Lumière | +8 Dégâts | Élément Lumière | Bourreau (passif) : Si l''ennemi possède un de ses alignements contraire au vôtre, +5 dégâts et +2% à la RC contre lui. |
+| LUMIÈRE | Hache de Lumière | +8 Dégâts | Élément Lumière | Bourreau (passif) : Si l''ennemi possède un de ses alignements contraire au vôtre, +5 dégâts et +2% à la RC contre lui. |
 | OMBRE | Hache d''Ombre | +8 Dégâts | Élément Ombre | Marque de l''ombre (passif) : Chaque coup possède 30% de chance de poser une marque qui va baisser d''un cran la résistance à l''Ombre de la cible pendant 2 tours. |
 
 **Note de la cellule « Hache de Sang »**
@@ -19325,18 +19325,18 @@ Jambe = Ne peut plus bouger
 | NÉCROMANCIE | Lance de Nécromancie | +8 Dégâts | Élément Nécromancie | Vision verte (actif) : Consomme 10 âmes, la prochaine attaque réussie obligera un jet de vigueur à la cible, si elle rate, inflige "poison 3" |
 | FEU | Lance de Feu | +8 Dégâts | Élément Feu | Écarlate (passif) : L''arme peut accueillir un sort de feu comme un bâton magique. Peut être renouveler mais demande de consommer un rubis de la bonne qualité |
 | EAU | Lance d''Eau | +8 Dégâts | Élément Eau | Barrière sublime (action) : Permet d''offrir une partie de sa barrière aux alliés à 2 cases maximum. |
-| GLACE | Lance de Glace | +8 Dégâts | Élément Glace | Concentration gelé (action) : Permet au bout de 3 attaques réussies de geler complètement un bras ou une jambe de la cible pendant 1 tour. |
-| VENT | Lance de Vent | +8 Dégâts | Élément Vent | Poussé d''air (action) : Divise les dégâts par deux de l''attaque, force l''adversaire un jet de stabilité/réflexe, s''il rate, il tombe par terre. |
+| GLACE | Lance de Glace | +8 Dégâts | Élément Glace | Concentration gelée (action) : Permet au bout de 3 attaques réussies de geler complètement un bras ou une jambe de la cible pendant 1 tour. |
+| VENT | Lance de Vent | +8 Dégâts | Élément Vent | Poussée d''air (action) : Divise les dégâts par deux de l''attaque, force l''adversaire un jet de stabilité/réflexe, s''il rate, il tombe par terre. |
 | FOUDRE | Lance de Foudre | +8 Dégâts | Élément Foudre | Haut voltage (passif) : Si une autre cible est alignée avec la première cible, cette dernière prend 50% des dégâts infligés à la première (esquive/parade possible) |
 | TERRE | Lance de Terre | +8 Dégâts | Élément Terre | Péninsule (action) : Plante la lance de le sol et permet à l''arme pendant 2 tours d''ignorer la moitié des AP adverses. |
-| LUMIERE | Lance de Lumière | +8 Dégâts | Élément Lumière | Croisade (passif) : Si votre équipe êtes moins nombreux que les ennemis : +5% à tous les jets de compétences. Si c''est l''inverse, le bonus s''applique que sur vous. |
+| LUMIÈRE | Lance de Lumière | +8 Dégâts | Élément Lumière | Croisade (passif) : Si votre équipe êtes moins nombreux que les ennemis : +5% à tous les jets de compétences. Si c''est l''inverse, le bonus s''applique que sur vous. |
 | OMBRE | Lance d''Ombre | +8 Dégâts | Élément Ombre | Attensiombre (passif) : Si un coup critique est prodigué = +4 dégâts, +1 portée pour l''arme pendant 3 tours. |
 
 ### PUGILAT
 
 | Colonne | Nom | Dégâts | Élément | Capacité |
 | --- | --- | --- | --- | --- |
-| SANG | Gants de Sang | +8 Dégâts | Élément Sang | Exanguination (passif) : Convertit 10% des dégâts en Santé (minimum 1). |
+| SANG | Gants de Sang | +8 Dégâts | Élément Sang | Exsanguination (passif) : Convertit 10% des dégâts en Santé (minimum 1). |
 | ARCANE | Grèves d''Arcane | +8 Dégâts | Élément Arcane | Brûlure magique (passif) : Tous les deux coups consécutifs, l''arme brûle 20 chakra de la cible. |
 | CORRUPTION | Grèves de Corruption | +8 Dégâts | Élément Corruption | Tacle noir (passif) : Le coup critique de cette arme casse la posture de l''adversaire. |
 | ESPACE/TEMPS | Grèves d''Espace/Temps | +8 Dégâts | Élément Espace/Temps | Téléchoc (passif) : Le coup critique de cette arme permet de téléporter gratuitement la cible n''importe où dans un rayon de 4 cases autour du porteur de l''arme. |
@@ -19345,10 +19345,10 @@ Jambe = Ne peut plus bouger
 | FEU | Gants de feu | +8 Dégâts | Élément Feu | Feu rouge (actif) : Permet d''imposer une marque pendant 1 tour qui baisse d''un cran la résistance au feu (aggrave la vulnérabilité également) |
 | EAU | Gants d''Eau | +8 Dégâts | Élément Eau | Fléau de la mer (actif) : L''eau se modèle selon la volonté du porteur, permet de choisir les types de dégâts physiques que fait l''arme (demande 3 IC pour changer en combat) |
 | GLACE | Grèves de Glace | +8 Dégâts | Élément Glace | Frappe du gel (actif) : Sacrifie 2d de dégâts pour permettre à la prochaine attaque d''obliger un jet de vigueur pour pas que l''ennemi prenne Gel 1. |
-| VENT | Gants de Vent | +8 Dégâts | Élément Vent | Charge éolien (Action) : En échange de 1d de dégâts, permet de faire une charge sur un ennemi tout en ignorant les attaques d''opportunité potentielles sur le chemin (distance = sprint) |
+| VENT | Gants de Vent | +8 Dégâts | Élément Vent | Charge éolienne (Action) : En échange de 1d de dégâts, permet de faire une charge sur un ennemi tout en ignorant les attaques d''opportunité potentielles sur le chemin (distance = sprint) |
 | FOUDRE | Gants de Foudre | +8 Dégâts | Élément Foudre | Éclair en chaîne (passif) : Inflige 2d6 dégâts de foudre à chaque ennemi au contact de la cible. |
 | TERRE | Gants de Terre | +8 Dégâts | Élément Terre | Marque terrestre (passif) : Chaque coup possède 30% de chance de poser une marque qui va baisser d''un cran la résistance à la Terre de la cible pendant 2 tours. |
-| LUMIERE | Gants de Lumière | +8 Dégâts | Élément Lumière | Flashbaffe (action) : En échange de 2d de dégâts, permet de forcer un jet de vigueur aux ennemis à 2 cases, s''ils ratent, infligent "aveuglement 2" |
+| LUMIÈRE | Gants de Lumière | +8 Dégâts | Élément Lumière | Flashbaffe (action) : En échange de 2d de dégâts, permet de forcer un jet de vigueur aux ennemis à 2 cases, s''ils ratent, infligent "aveuglement 2" |
 | OMBRE | Grèves d''Ombre | +8 Dégâts | Élément Ombre | Pasdombre (passif) : Quand un coup discret est porté, l''ennemi a un désavantage pour détecter le responsable. |
 
 ### BÂTON DE COMBAT
@@ -19369,7 +19369,7 @@ Jambe = Ne peut plus bouger
 | VENT | Bâton de Vent | +8 Dégâts | Élément Vent | Envole-toi ! (passif) : Le coup critique de cette arme repousse la cible de 4 cases |
 | FOUDRE | Bâton de Foudre | +8 Dégâts | Élément Foudre | Chargement (action) : Permet d''utiliser le sort chargeur sans consommer de chakra et ne prend pas de place dans la liste de sort du personnage. |
 | TERRE | Bâton de Terre | +8 Dégâts | Élément Terre | Racine solide (Passif) : Chaque coup réussi réduit de 1 la vitesse de la cible pour son prochain tour. |
-| LUMIERE | Bâton de Lumière | +8 Dégâts | Élément Lumière | Brise-aube (action) : Coûte 10% de chakra, frappe le sol avec le bâton, ce qui va créer une explosion de lumière qui infligent Xd6 dégâts aux ennemis et soignera Xd6 aux alliés (X = maîtrise d''arme) |
+| LUMIÈRE | Bâton de Lumière | +8 Dégâts | Élément Lumière | Brise-aube (action) : Coûte 10% de chakra, frappe le sol avec le bâton, ce qui va créer une explosion de lumière qui infligent Xd6 dégâts aux ennemis et soignera Xd6 aux alliés (X = maîtrise d''arme) |
 | OMBRE | Bâton d''Ombre | +8 Dégâts | Élément Ombre | Siphon mauve (passif) : Chaque coup qui touche une cible vampirise 2d6 chakra. |
 
 ### ARC
@@ -19383,14 +19383,14 @@ Jambe = Ne peut plus bouger
 | CORRUPTION | Arc de Corruption | +8 Dégâts | Élément Corruption | Envahisseur (action) : Au lieu de faire des dégâts, le tir peut faire Xd4 corruption (X = Maîtrise d''arc) |
 | ESPACE/TEMPS | Arc d''Espace/Temps | +8 Dégâts | Élément Espace/Temps | Recalcul (actif) : Permet de relancer un jet de tir raté (une seule fois par combat) |
 | VIDE | Arc de Vide | +8 Dégâts | Élément Vide | Retour (passif) : La flèche revient toujours dans le carquois du lanceur (sauf si la flèche est détruite) |
-| NÉCROMANCIE | Arc de Nécromancie | +8 Dégâts | Élément Nécromancie | Absentisme (passif) : Sur une attaque réussie, la cible prend un malus de 1d20 à sa prochaine initiative. |
+| NÉCROMANCIE | Arc de Nécromancie | +8 Dégâts | Élément Nécromancie | Absentéisme (passif) : Sur une attaque réussie, la cible prend un malus de 1d20 à sa prochaine initiative. |
 | FEU | Arc de Feu | +8 Dégâts | Élément Feu | Feu follet (passif) : Au bout de 2 attaques réussies, une petite flammèche va accompagner la 3ème attaque et permettre d''infliger 1d supplémentaire pour ce coup. |
 | EAU | Arc d''Eau | +8 Dégâts | Élément Eau | Mucus général (action) : Tire une flèche en l''air et applique un mucus protecteur à tous les alliés. Permet d''encaisser 4 dégâts sur le prochain sort. |
 | GLACE | Arc de Glace | +8 Dégâts | Élément Glace | Fracture polaire (action) : Une fois la flèche plantée dans une cible, elle explose 1 tour plus tard, infligeant des 2d8 dégâts supplémentaires et blessant les ennemis à 1 case. |
 | VENT | Arc de Vent | +8 Dégâts | Élément Vent | Super vitesse (passif) : La cible aura un malus de 10% à son esquive/parade lors de la l''attaque. |
-| FOUDRE | Arc de Foudre | +8 Dégâts | Élément Foudre | Parafoudre (passif) : Chaque tir réussi pose l''effet du sort "Colonne tesla" à la cible. |
+| FOUDRE | Arc de Foudre | +8 Dégâts | Élément Foudre | Parafoudre (passif) : Chaque tir réussi pose l''effet du sort "Colonne Tesla" à la cible. |
 | TERRE | Arc de Terre | +8 Dégâts | Élément Terre | En-racinage (passif) : Un tir réussi va transformer la flèche en de multitude de racine qui empêche la cible de bouger, jet d''athlétisme/équilibre pour en sortir au début du tour de la cible (crame un IC). |
-| LUMIERE | Arc de Lumière | +8 Dégâts | Élément Lumière | Bombardement clair (action) : Permet de tirer X flèches qui infligeront la moitié des d de dégâts. (X = Maîtrise d''arme) (2 fois par combat) |
+| LUMIÈRE | Arc de Lumière | +8 Dégâts | Élément Lumière | Bombardement clair (action) : Permet de tirer X flèches qui infligeront la moitié des d de dégâts. (X = Maîtrise d''arme) (2 fois par combat) |
 | OMBRE | Arc d''Ombre | +8 Dégâts | Élément Ombre | Traqueur de l''ombre (passif) : Un coup porté avec cette arme pose une marque sur la cible qui fait qu''elle est visible même dans l''obscurité, dure 3 tours. |
 
 ### ARBALÈTE
@@ -19399,7 +19399,7 @@ Jambe = Ne peut plus bouger
 
 | Colonne | Nom | Dégâts | Élément | Capacité |
 | --- | --- | --- | --- | --- |
-| SANG | Arbalète de Sang | +8 Dégâts | Élément Sang | Comdamnation (passif) : Le coup critique avec cette arme inflige automatiquement marquage à la cible pendant 1 tour (impossible de le contrer). |
+| SANG | Arbalète de Sang | +8 Dégâts | Élément Sang | Condamnation (passif) : Le coup critique avec cette arme inflige automatiquement marquage à la cible pendant 1 tour (impossible de le contrer). |
 | ARCANE | Arbalète d''Arcane | +8 Dégâts | Élément Arcane | Carreau déstabilisant (passif) : Chaque coup réussi va diminuer d''un cran une résistance magique à la cible (aléatoire) pendant 1 tour. |
 | CORRUPTION | Arbalète de Corruption | +8 Dégâts | Élément Corruption | Carreau noir (passif) : Chaque coup réussi inflige 6 corruption à la cible. |
 | ESPACE/TEMPS | Arbalète d''Espace/Temps | +8 Dégâts | Élément Espace/Temps | Télerreau (actif) : Si le carreau loupe sa cible, permet de se téléporter là où le carreau a atterri (2 fois/combat) |
@@ -19407,12 +19407,12 @@ Jambe = Ne peut plus bouger
 | NÉCROMANCIE | Arbalète de Nécromancie | +8 Dégâts | Élément Nécromancie | Craquement ciblé (passif) : Chaque partie du corps possède 10% de malus en plus mais leurs effets sont doublés quand le tir touche. |
 | FEU | Arbalète de Feu | +8 Dégâts | Élément Feu | Passe-Flamme (passif) : 15% de chance de passer à travers la cible et de toucher derrière lui. |
 | EAU | Arbalète d''Eau | +8 Dégâts | Élément Eau | Recharge fluide (actif) : L’arbalète peut absorber l’humidité ambiante pour créer des carreaux d’eau, évitant au porteur de manquer de munitions. |
-| GLACE | Arbalète de Glace | +8 Dégâts | Élément Glace | Entrave frigorifière (passif) : Quand le carreau touche la cible, elle impose un malus de 10% à son prochain jet de défense. |
+| GLACE | Arbalète de Glace | +8 Dégâts | Élément Glace | Entrave frigorifique (passif) : Quand le carreau touche la cible, elle impose un malus de 10% à son prochain jet de défense. |
 | VENT | Arbalète de Vent | +8 Dégâts | Élément Vent | Carreau vibrato (passif) : Le carreau oblige un jet de vigueur pour ne pas prendre surdité x\* |
 | FOUDRE | Arbalète de Foudre | +8 Dégâts | Élément Foudre | Carreau Vif (Passif) : Au bout de 3 tirs, le prochain tir sera inesquivable et imparable. |
 | TERRE | Arbalète de Terre | +8 Dégâts | Élément Terre | Solidification (passif) : Chaque coup réussi oblige un jet de vigueur à la cible, si elle rate, elle prend "pétrification 1" |
-| LUMIERE | Arbalète de Lumière | +8 Dégâts | Élément Lumière | Phare (passif) : Immunisé aux météos qui imposent des malus avec les armes à distance, Grand Soleil et Canicule diminuent le malus de visée des parties du corps de 5%. |
-| OMBRE | Arbalète d''Ombre | +8 Dégâts | Élément Ombre | Pichenette pointu (passif) : Les carreaux de cette arme réduisent de 5 l''initiative de la cible pour son prochain tour. |
+| LUMIÈRE | Arbalète de Lumière | +8 Dégâts | Élément Lumière | Phare (passif) : Immunisé aux météos qui imposent des malus avec les armes à distance, Grand Soleil et Canicule diminuent le malus de visée des parties du corps de 5%. |
+| OMBRE | Arbalète d''Ombre | +8 Dégâts | Élément Ombre | Pichenette pointue (passif) : Les carreaux de cette arme réduisent de 5 l''initiative de la cible pour son prochain tour. |
 
 **Note de la cellule « Arbalète de Vent »**
 
@@ -19429,14 +19429,14 @@ Si le carreau touche à 8 - 10 portée = Surdité 3
 
 | Colonne | Nom | Dégâts | Élément | Capacité |
 | --- | --- | --- | --- | --- |
-| SANG | Couteau de lancer de Sang | +8 Dégâts | Élément Sang | Comdamnation (passif) : Chaque coup consécutif asséné à la même cible augmente la réussite critique de +1. Repart à 0 lors d''un changement de cible. (Cumulable 5 fois maximum) |
+| SANG | Couteau de lancer de Sang | +8 Dégâts | Élément Sang | Condamnation (passif) : Chaque coup consécutif asséné à la même cible augmente la réussite critique de +1. Repart à 0 lors d''un changement de cible. (Cumulable 5 fois maximum) |
 | ARCANE | Pilum d''Arcane | +8 Dégâts | Élément Arcane | Regain chakratique (passif) : Si l''arme passe à une case d''un allié, elle lui redonne 10 chakra. |
 | CORRUPTION | Fléchette de Corruption | +8 Dégâts | Élément Corruption | Névrose (passif) : Si coup critique avec l''arme = Transforme 25% du chakra courant de la cible en corruption. |
 | ESPACE/TEMPS | Chakram d''Espace/Temps | +8 Dégâts | Élément Espace/Temps | Copie (passif) : Le coup critique de cette arme fera une deuxième attaque (considérer comme une réussite simple). |
 | VIDE | Caillou de Vide | +8 Dégâts | Élément Vide | Instabilité (passif) : L''arme revient toujours dans la main du lanceur mais sous une forme différente (doit être déterminé au hasard parmi les armes de jet, sauf la croix de combat) |
 | NÉCROMANCIE | Fléchette de Nécromancie | +8 Dégâts | Élément Nécromancie | Délice fantomatique (passif) : Chaque coup réussi avec l''arme donne 1 âme. |
 | FEU | Javelot de Feu | +8 Dégâts | Élément Feu | Combustion (passif) : Lorsque que l''arme touche sa cible, une explosion de 2 cases infligera 1d8 dégâts à tous ceux qui sont autour. |
-| EAU | Suriken d''Eau | +8 Dégâts | Élément Eau | Aquatire (actif) : Si l''ennemi échoue son esquive/parade, un deuxième shuriken apparait et la cible doit faire une autre esquive/parade pour ne pas prendre le deuxième. (2 fois/combat) |
+| EAU | Shuriken d''Eau | +8 Dégâts | Élément Eau | Aquatire (actif) : Si l''ennemi échoue son esquive/parade, un deuxième shuriken apparait et la cible doit faire une autre esquive/parade pour ne pas prendre le deuxième. (2 fois/combat) |
 | GLACE | Bolas de Glace | +8 Dégâts | Élément Glace | Bolas du gel (passif) : Applique l''effet du sort "lien du gel" lors d''une attaque réussie sur la cible. |
 | VENT | Shuriken de Vent | +8 Dégâts | Élément Vent | La RAFALE (passif) : L''arme attaque en cône. |
 | FOUDRE | Boomerang de Foudre | +8 Dégâts | Élément Foudre | Pôle position (passif) : L''arme revient systématiquement vers le lanceur et crée sur son passage un arc électrique qui infligera 2d4 dégâts de foudre à ceux qui sont dedans. |
@@ -19548,7 +19548,7 @@ Libellé répété à droite du tableau : BOMBES
 | ESPACE/TEMPS | Carapace des distorsions | 7.0 | 13.0 | - +1 cran de résistance à l''Espace/Temps<br>- +4 dégâts avec les sorts de l''Espace/Temps<br>- Permet de relancer une esquive/parade si ce jet est raté (1 fois par combat) |
 | VIDE | Carapace des interdits | 13.0 | 7.0 | - +1 cran de résistance au Vide<br>- +4 dégâts avec les sorts de Vide<br>- Applique l''effet du sort "dissipation" sur un assaillant, lui retirant un effet positif aléatoire. |
 | NÉCROMANCIE | Carapace des os | 8.0 | 12.0 | - +1 cran de résistance à la Nécromancie<br>- +4 dégâts avec les sorts de Nécromancie<br>- À chaque attaque au corps à corps subie, l’armure libère une poussière d’os, infligeant 4 dégâts perce armure à l’assaillant. |
-| FEU | Carapace des flamboiement | 10.0 | 10.0 | - +1 cran de résistance au Feu<br>- +4 dégâts avec les sorts de Feu<br>- Permet de marcher sur toutes les surfaces de feu sans prendre de dégâts et 2d8 dégâts de feu en réponse aux assaillants qui attaquent le corps. |
+| FEU | Carapace des flamboiements | 10.0 | 10.0 | - +1 cran de résistance au Feu<br>- +4 dégâts avec les sorts de Feu<br>- Permet de marcher sur toutes les surfaces de feu sans prendre de dégâts et 2d8 dégâts de feu en réponse aux assaillants qui attaquent le corps. |
 | EAU | Carapace des mers | 8.0 | 12.0 | - +1 cran de résistance à l''Eau<br>- +4 dégâts avec les sorts de l''Eau<br>- Permet de respirer sous l''eau pendant 1h, +2 cases de déplacement dans l''eau |
 | GLACE | Carapace des glaciers | 4.0 | 16.0 | - +1 cran de résistance à la Glace<br>- +4 dégâts avec les sorts de Glace<br>- Si la santé descend en dessous de 25% de santé max, l''armure réagit et redonne 25% de la barrière max (1 fois/combat) |
 | TERRE | Carapace des rochers | 16.0 | 4.0 | - +1 cran de résistance à la Terre<br>- +4 dégâts avec les sorts à la Terre<br>- Si la santé tombe en dessous de 50%, invoque la météo "Champ magnétique". Dure 3 tours. |

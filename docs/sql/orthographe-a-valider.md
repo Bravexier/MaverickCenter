@@ -1,6 +1,6 @@
 # Orthographe de la base : ce qui reste à valider
 
-Deux migrations de données ont corrigé l'orthographe de la base (décision R10 : « à corriger, jamais un chiffre ni le sens d'une règle ») :
+Trois migrations de données ont corrigé l'orthographe de la base (décision R10 : « à corriger, jamais un chiffre ni le sens d'une règle ») :
 
 - `0003-orthographe-magies` : les sorts, les 15 magies et leurs tables dérivées (500 corrections) ;
 - `0005-orthographe-base` : la passe complète sur **toute** la base : pages du wiki, classes et capacités, races, bestiaire, équipement et artisanat, métiers, guides et lore,
@@ -10,199 +10,51 @@ Deux migrations de données ont corrigé l'orthographe de la base (décision R10
   (tableaux des écarts des races), les sources, les alias, les étiquettes, les adresses et les liens ne sont pas touchés.
   Cette passe a aussi relu les 500 corrections de 0003 : aucune n'a rendu un texte fautif ; 44 relèvent du style (espaces doubles, casse de termes du jeu comme « Fermeté »,
   circonflexes rétablis sur « coût » ou « brûlure » alors que l'orthographe de 1990 les admet, ligature « œil ») et sont laissées telles quelles.
+- `0006-orthographe-noms` : les **noms** laissés en attente par 0003 et 0005, tranchés selon ta consigne : corriger en gardant le sens le plus probable
+  (un jeu de mots ou une référence perdus, tant pis : on y reviendra) ; pour un nom propre écrit de plusieurs façons, la graphie majoritaire l'emporte.
+  Chaque nom est corrigé partout où il est écrit (741 occurrences, 423 cellules) et sa clé recalculée (147) ; les **identifiants ne changent pas** : une page
+  renommée garde son adresse (`/wiki/bestiaire/sihouetteur-obscur/` affiche « Silhouetteur obscur »). Registre : `data/migrations/0006-orthographe-noms.json`.
 
-Ce qui suit n'a **pas** été touché, parce que le corriger demanderait d'ajouter, de retirer ou de remplacer un mot, de choisir entre deux lectures,
-de changer la clé d'un nom (donc un identifiant ou un lien), ou parce que la graphie est peut-être un terme du jeu. Ces points attendent ta décision (la règle d'or : on ne devine pas).
+Les **phrases** qui suivent n'ont **pas** été touchées, parce que les corriger demanderait d'ajouter, de retirer ou de remplacer un mot, de choisir entre deux lectures,
+ou parce que la graphie est peut-être un terme du jeu. Elles attendent ta décision (la règle d'or : on ne devine pas). Les noms sont tranchés (0006, ci-dessous).
 
 ## Passe complète de la base (migration 0005)
 
-**390 phrases** et **178 noms** attendent ta décision. Même convention : « oui » (la suggestion), « non » (on garde) ou la graphie voulue ; la correction se fait alors par une nouvelle migration de données.
+**390 phrases** attendent ta décision (les 178 noms sont tranchés par 0006, ci-dessous). Même convention : « oui » (la suggestion), « non » (on garde) ou la graphie voulue ; la correction se fait alors par une nouvelle migration de données.
 
-### Noms à trancher
+### Noms : tranchés par la migration 0006
 
-Un nom (titre de page, objet, classe, capacité, sort, créature, race…) sert d'identifiant et de cible de lien : il n'est corrigé que si sa clé normalisée ne change pas. Ceux-ci la changeraient (lettre ajoutée ou retirée, mot différent) ou sont incertains. Les noms corrigés par 0005 (clé inchangée : « Arbalètrier » → « Arbalétrier », « Ecailles » → « Écailles »…) sont dans le registre.
+Ta consigne : « corrige de façon à garder le sens le plus probable ; pour les noms propres, la majorité des occurrences l'emporte ». Les 178 noms de cette liste
+et les noms de sorts de 0003 sont corrigés comme proposé, partout où ils sont écrits (titres, noms typés, textes, notes de cellule, cibles des liens), sauf ce qui suit.
 
-- « 1kg de oeuf, 20 oeuf » → « 1kg d'œufs, 20 œufs » — ressources/equipement-inventaire — Ligature « œuf », élision obligatoire « d'œufs » et pluriel après « 20 ».
-- « A deux Main » → « À deux mains » — capacites/pugiliste-a-deux-main — Préposition « à » accentuée et pluriel après « deux ».
-- « Absentisme » → « Absentéisme » — ressources/pieces-elementaires — Le mot s'écrit « absentéisme » (si ce n'est pas un jeu de mots voulu).
-- « Aggripé » → « Agrippé » — guide/liste-des-alterations-d-etat — Orthographe : « agripper » s'écrit avec un seul g et deux p (nom d'état).
-- « Altératis Brune » → « Altératis Brun » — ressources/maladie — Les autres Altératis portent une couleur au masculin (Bleu, Vert) : « Brun » attendu si le nom est masculin.
-- « Anti-corps » → « Anticorps » — capacites/anansi-anti-corps — Le nom commun s'écrit en un mot : « anticorps ».
-- « Anti corps ... » → « Anticorps ... » — capacites/tueur-anti-corps — Le nom commun « anticorps » s'écrit en un mot.
-- « Arme distordu » → « Arme distordue » — bestiaire/temposs — Accord du participe avec « Arme » (féminin).
-- « Armes de Jet Léger » → « Armes de Jet Légères » — classes/lanceur — Catégorie d'arme ; l'adjectif s'accorde avec « Armes » (féminin pluriel).
-- « Armes de Jet Lourde » → « Armes de Jet Lourdes » — classes/lanceur — Catégorie d'arme ; au pluriel, l'adjectif s'accorde avec « Armes ».
-- « Armure Acier complet » → « Armure Acier complète » — ressources/armures — Accord avec « Armure » (féminin) : « complète ».
-- « Armure Celloluse/Acier » → « Armure Cellulose/Acier » — ressources/armures — Lettres inversées : « Cellulose », comme la matière en colonne.
-- « Armure Corne/Os complet » → « Armure Corne/Os complète » — ressources/armures — Accord avec « armure » (féminin) si « complet » qualifie l'armure ; même forme pour tous les « Armure … complet » (lignes 342, 357, 371, 384, 396, 407, 417, 426, 434, 441).
-- « Armure de Bois complet » → « Armure de Bois complète » — ressources/armures — Accord avec « Armure » (féminin) : « complète ».
-- « Armure de Cellulose complet » → « Armure de Cellulose complète » — ressources/armures — Accord avec « Armure » (féminin) : « complète ».
-- « Armure de Chitine complet » → « Armure de Chitine complète » — ressources/armures — Accord avec « Armure » (féminin) : « complète ».
-- « Armure de Corail complet » → « Armure de Corail complète » — ressources/armures — Accord avec « Armure » (féminin) : « complète ».
-- « Armure de Cuir complet » → « Armure de Cuir complète » — classes/grenadier, classes/lanceur, classes/martiale, ressources/armures — Nom d'armure ; l'adjectif devrait s'accorder avec « Armure » (féminin), cf. « Armure de Peau complète » chez le Maclier.
-- « Armure de Peau complet » → « Armure de Peau complète » — classes/mage-rouge, ressources/armures — Nom d'armure ; l'adjectif devrait s'accorder avec « Armure » (féminin), comme chez le Maclier.
-- « Armure Fer complet » → « Armure Fer complète » — ressources/armures — Accord avec « Armure » (féminin) : « complète ».
-- « Armure Fer Noir complet » → « Armure Fer Noir complète » — ressources/armures — Accord avec « Armure » (féminin) : « complète ».
-- « Armure Mythril complet » → « Armure Mythril complète » — ressources/armures — Accord avec « Armure » (féminin) : « complète ».
-- « Athéiste » → « Athée » — dieu.nom — « athéiste » est très rare ; la forme usuelle est « athée ».
-- « Attend ... » → « Attends ... » — capacites/grenadier-attend — Impératif de « attendre » à la 2e personne : « attends ».
-- « Attention migale ! » → « Attention mygale ! » — capacites/anansi-attention-migale — L'araignée s'écrit « mygale ».
-- « Bain de foules » → « Bain de foule » — capacites/barde-bain-de-foules — Expression figée « bain de foule » au singulier.
-- « Balade barbare » → « Ballade barbare » — capacites/goleois-balade-barbare — Chant : « ballade » (poème, chanson) ; « balade » est une promenade.
-- « Balade guerrière » → « Ballade guerrière » — capacites/barde-balade-guerriere — Chant du barde : « ballade » (poème, chanson) ; « balade » est une promenade.
-- « brevage immonde » → « breuvage immonde » — classes/anansi, classes/fenrir, classes/goleois, classes/jackalope (+9) — Objet de l'inventaire ; le nom commun s'écrit « breuvage ».
-- « Brevage immonde » → « Breuvage immonde » — ressources/objets-de-depart-des-classes — « breuvage » s'écrit -eu-.
-- « Brume mental » → « Brume mentale » — magies/magie-de-lombre — Accord : « brume » est féminin.
-- « Brume Noir » → « Brume Noire » — bestiaire/golem-de-foudre — Accord avec « Brume » (féminin).
-- « Capacités/Don » → « Capacités/Dons » — guide/fiche-capacites-dons — Pluriel parallèle à « Capacités » (et identifiant de page « fiche-capacites-dons »).
-- « Carapace des flamboiement » → « Carapace des flamboiements » — ressources/pieces-elementaires — Accord : pluriel après « des » (comme « Carapace des mers », « des orages »).
-- « Champignon bleue » → « Champignon bleu » — ressources/alchimie-liste-ingredients — Accord avec « champignon » (masculin).
-- « Charge éolien » → « Charge éolienne » — ressources/pieces-elementaires — Accord avec « charge » (féminin).
-- « Chasseur de Prime » → « Chasseur de Primes » — classes/mercenaire — Le titre de section (L46) et le texte (L50) écrivent « Chasseur de Primes ».
-- « Climatospetique » → « Climatosceptique » — magies/magie-de-leau — Orthographe probable : « climatosceptique » (climat + sceptique) ; nom d'un don, à confirmer.
-- « Coeur abyssale » → « Cœur abyssal » — ressources/alchimie-liste-ingredients — Ligature œ, et accord avec « cœur » (masculin) : « abyssal ».
-- « Coeur spatio-temporelle » → « Cœur spatio-temporel » — ressources/alchimie-liste-ingredients — Ligature œ, et accord avec « cœur » (masculin) : « spatio-temporel ».
-- « Comdamnation » → « Condamnation » — ressources/pieces-elementaires — Frappe : « condamnation ».
-- « Concentration gelé » → « Concentration gelée » — ressources/pieces-elementaires — Accord avec « concentration » (féminin).
-- « Contre coup » → « Contrecoup » — capacites/guerrier-contre-coup — Le nom s'écrit en un mot : « contrecoup ».
-- « Croc Obsidien » → « Croc d'obsidienne » — ressources/armes — « obsidien » n'existe pas comme adjectif ; « obsidienne » est un nom féminin (à garder si le nom est voulu).
-- « de oeuf, » → « d'oeuf, » — ressources/livre-parchemin — Écartée : la correction toucherait un nom (sa clé changerait). Élision obligatoire de « de » devant voyelle, et ligature de « œuf ».
-- « Dent Infecté » → « Dent Infectée » — capacites/namazu-dent-infecte — Accord avec « dent » (féminin).
-- « Diament rose » → « Diamant rose » — ressources/accessoires — « Diamant » ; aussi L127, L128, L171, L203.
-- « Dit mon nom ! » → « Dis mon nom ! » — capacites/flagelleur-dit-mon-nom — Impératif de « dire » à la 2e personne : « dis ».
-- « Drakos Bordeau » → « Drakos Bordeaux » — races/drakos — Couleur « bordeaux » (avec -x) ; nom de sous-race.
-- « Eaux froide » → « Eaux froides » — races/medusain — Lieu : accord de « froide » avec « Eaux » (féminin pluriel).
-- « Élément Nécomancie » → « Élément Nécromancie » — ressources/pieces-elementaires — Lettre manquante : « Nécromancie » (comme la colonne NÉCROMANCIE).
-- « Elfe Argenté Supprémaciste » → « Elfe Argenté Suprémaciste » — lore/relations-entre-les-races, races/elfe-argente — « suprémaciste » s'écrit avec un seul « p » (la page dit recopier l'étiquette telle qu'écrite).
-- « elfes dorée » → « elfes dorés » — races/elfe-forestier — Nom de race (Elfes Dorés) : accord au masculin pluriel avec « elfes ».
-- « Elfes Dorées » → « Elfes Dorés » — races/humain, races/nain — Accord avec « Elfes » (masculin pluriel).
-- « Emmeraude » → « Émeraude » — ressources/accessoires — Un seul m et accent sur la majuscule ; aussi L76.
-- « Entrave frigorifière » → « Entrave frigorifique » — ressources/pieces-elementaires — « frigorifière » n'existe pas ; « frigorifique » ou « frigorifiante » à choisir.
-- « Eoline » → « Éoline » — races/rokh — Nom de dieu : accent possible sur la majuscule (à confirmer, cf. « Éole »).
-- « Épée osseuse lié » → « Épée osseuse liée » — bestiaire/squelette-de-pierre — Accord du participe avec « Épée » (féminin).
-- « Espace/Yemps » → « Espace/Temps » — ressources/pieces-elementaires — Frappe dans le nom de la magie Espace/Temps.
-- « Estoc hurlante » → « Estoc hurlant » — magies/magie-du-vent — Accord : « estoc » est masculin.
-- « Étendard déchirée » → « Étendard déchiré » — ressources/armes — Accord avec « Étendard » (masculin).
-- « Exanguination » → « Exsanguination » — ressources/pieces-elementaires — Le mot s'écrit « exsanguination ».
-- « Explosion glorifique » — magies/magie-de-la-lumiere, magies/magie-de-lombre — « glorifique » n'existe pas en français (glorieuse ? glorifiante ?) ; peut être un mot voulu, à trancher par le propriétaire.
-- « Felfle » → « Felfe » — races/felfe — Coquille dans la valeur de la colonne « Race » de l'onglet « Bonus Race » (lettre « l » en trop), citée telle quelle.
-- « Fiole cyante » → « Fiole cyan » — ressources/fiole-cyante — « cyante » n'existe pas : « cyan » est invariable ; le texte de la page dit « Fioles Cyan » et « Fiole Cyan ».
-- « Fiole cyante moyenne » → « Fiole cyan moyenne » — ressources/fiole-cyante — « cyan » est un adjectif de couleur invariable ; « cyante » n'existe pas.
-- « Fiole en verre (Moyen) » → « Fiole en verre (Moyenne) » — ressources/equipement-inventaire — Accord avec « fiole » (féminin).
-- « Fiole verte foncé » → « Fiole verte foncée » — ressources/fiole-verte-fonce — Accord incohérent : les objets de la page s'écrivent « fiole verte foncée » (en règle stricte, la couleur composée « vert foncé » serait invariable).
-- « Folle de Guerre » → « Folie de Guerre » — guide/liste-des-alterations-d-etat — Nom d'état ; « Folle » est peut-être une coquille pour « Folie » (à confirmer, la forme voulue n'est pas certaine).
-- « Force inné » → « Force innée » — capacites/martiale-force-inne — Accord avec « force » (féminin).
-- « Foudre argenté » → « Foudre argentée » — bestiaire/poupee-arcanique, bestiaire/squamique, magies/magie-de-larcane — Accord de l'adjectif avec « Foudre » (féminin).
-- « Foudre étincellante » → « Foudre étincelante » — guide/liste-des-effets-mode-super — « Étincelant » s'écrit avec un seul l.
-- « Frappe fatiguante » → « Frappe fatigante » — capacites/bimane-frappe-fatiguante — L'adjectif s'écrit « fatigant(e) » (le participe est « fatiguant »).
-- « Frappeud » → « Frappeur » — capacites/frappeur-asymbiotique — Faute de frappe sur le nom de la classe (« Niveau Frappeur » sur les autres capacités).
-- « Gelée cyante » → « Gelée cyan » — ressources/alchimie-liste-ingredients — « cyan » est un adjectif de couleur invariable ; « cyante » n'existe pas.
-- « Gelée verte foncé » → « Gelée vert foncé » — ressources/alchimie-liste-ingredients — Adjectif de couleur composé (« vert foncé ») : invariable.
-- « Goutière » → « Gouttière » — races/drassahthac — Orthographe : « chat de gouttière » (deux t) ; nom d'une variété de Drassah'thac.
-- « Grèves cloutés » → « Grèves cloutées » — ressources/armes — Accord avec « Grèves » (féminin pluriel).
-- « Griffe sanglant » → « Griffe sanglante » — capacites/fenrir-griffe-sanglant — « griffe » est féminin : l'adjectif s'accorde.
-- « Guérriseur » → « Guérisseur » — guide/liste-des-effets-mode-super — Orthographe : « guérisseur » (un seul r après « gué », deux s).
-- « Gyspe » → « Gypse » — ressources/accessoires — Lettres inversées ; aussi L73 (écrit « Gypse » ailleurs dans la page).
-- « Herbe cyante » → « Herbe cyan » — ressources/alchimie-liste-ingredients — « cyan » est un adjectif de couleur invariable ; « cyante » n'existe pas.
-- « Herbe verte foncé » → « Herbe vert foncé » — ressources/alchimie-liste-ingredients — Adjectif de couleur composé (« vert foncé ») : invariable.
-- « hérisson techtonique » → « hérisson tectonique » — ressources/familiers — Orthographe : « tectonique » (sans « h »), nom de créature.
-- « Huile Hémophilie » → « Huile Hémophile » — ressources/huile-hemophile — Le titre et les objets de la page s'appellent « huile hémophile » (adjectif), pas « Hémophilie » (nom de la maladie).
-- « ... innarêtable » → « ... inarrêtable » — capacites/tueur-innaretable — « inarrêtable » : un seul n, deux r (de « arrêter »).
-- « Innerte » → « Inerte » — guide/mode-hyper-magie — Orthographe : « inerte » ne double pas le n (nom d'état ou de catégorie entre guillemets).
-- « Jacklope » → « Jackalope » — classes/jackalope — Lettre manquante : la classe s'appelle « Jackalope » (titre et texte de la page).
-- « Je te choisi » → « Je te choisis » — capacites/mercenaire-je-te-choisi — Présent de « choisir » à la 1re personne : « je choisis ».
-- « kistunes » → « kitsunes » — races/kitsune — Lettres inversées : le nom de la race est « kitsunes » partout ailleurs.
-- « Kitsune » → « Kitsunes » — races/kitsune — « Les Kitsune tribaux » : pluriel du nom de la race, écrit « Kitsunes » ailleurs sur la page.
-- « Lance pierre » → « Lance-pierre » — capacites/mage-soin-etrange — Nom composé « lance-pierre » (trait d'union) ; nom de sort à vérifier dans la base.
-- « Les Actions et mouvement » → « Les Actions et mouvements » — guide/guide-pour-mj-maverick — Entrée du sommaire : la page liée juste en dessous s'appelle « Les Actions et mouvements ».
-- « Liste d’ingrédient » → « Liste d’ingrédients » — ressources/alchimie-liste-ingredients — Pluriel : la page liste plusieurs ingrédients.
-- « LivreParchemin » → « Livre Parchemin » — ressources/livre-parchemin — Deux mots collés (« Livre » et « Parchemin », les deux sections de la page).
-- « LUMIERE » → « LUMIÈRE » — classes/mage-bleu, ressources/pieces-elementaires — Nom de magie en majuscules ; accent grave conservé en majuscule (cf. « NÉCROMANCIE »).
-- « Machine de GuerreSiège » → « Machine de Guerre/Siège » — ressources/machine-de-guerresiege — Deux mots collés (« Guerre » et « Siège »).
-- « Mancelinier » → « Mancenillier » — ressources/baton-magique — L'arbre toxique s'écrit « mancenillier ».
-- « Marcass Ubain » → « Marcass Urbain » — lore/relations-entre-les-races — Lettre « r » manquante, comme les autres peuples « … Urbain » (la page dit recopier l'étiquette telle qu'écrite).
-- « MARIONETTE » → « MARIONNETTE » — bestiaire/marionette-de-lombre — « marionnette » prend deux n.
-- « Marionette de lombre » → « Marionnette de l'ombre » — bestiaire/bete-de-lombre, bestiaire/double-sombre, bestiaire/executeur-lunaire, bestiaire/marionette-de-lombre (+2) — « marionnette » prend deux n ; apostrophe manquante dans « l'ombre ».
-- « Martiale » → « ? » — classes/goleois — Précédé de l'article masculin « le » (« chez le Martiale ») : vérifier le nom exact (« Martial » ?).
-- « McGyver » → « MacGyver » — capacites/voleur-mcgyver — Le personnage de série s'écrit « MacGyver ».
-- « médusain » → « médusains » — ressources/armes — « les médusain » : pluriel attendu du nom de peuple (cf. « Origine Médusain »).
-- « Méga fiole cyante » → « Méga fiole cyan » — ressources/fiole-cyante — « cyan » est un adjectif de couleur invariable ; « cyante » n'existe pas.
-- « Meilleur attaque ... » → « Meilleure attaque ... » — capacites/mage-vert-meilleur-attaque — Accord avec « attaque » (féminin) ; suite : « ... c'est la défense ».
-- « Mélallomorphique » → « Métallomorphique » — ressources/pieces-elementaires — Frappe probable : « métal » + « morphique » (la capacité dépend du métal, de la pierre, des plantes).
-- « Métérologue » → « Météorologue » — classes/ocultomancien — Lettre manquante : « météorologue », graphie du titre de section (L51) et du texte (L55).
-- « Minotaure » → « Minotaures » — races/marcass — « des Minotaure » : pluriel du nom de la race (comme « des Orios », « des fenrirs »).
-- « Mithril » → « Mythril » — guide/fiche-attributs — Graphie à harmoniser avec « Mythril », forme employée ailleurs dans la base d'après les consignes ; ne pas trancher sans le propriétaire.
-- « Mort-Vivant » → « Morts-Vivants » — bestiaire/goule — Pluriel après « des » : les deux éléments du nom composé s'accordent.
-- « Nécomancie » → « Nécromancie » — ressources/pieces-elementaires — Frappe : lettre manquante dans le nom de la magie (« Élément Nécomancie ») ; même faute aux lignes 86, 105, 124, 150, 169, 190, 211 et 232.
-- « Neutralité forcé » → « Neutralité forcée » — ressources/pieces-elementaires — Accord avec « neutralité » (féminin).
-- « Ocultomancien » → « Occultomancien » — capacites/ocultomancien-accalmie, classes/ocultomancien, races/anansi, races/drakos (+25) — Nom de classe (17 pages du lot) : « occulte » prend deux c ; graphie à trancher par le propriétaire.
-- « Onde glacière » → « Onde glaciaire » — ressources/pieces-elementaires — « glacière » est un nom (réfrigérateur) ; l'adjectif est « glaciaire ».
-- « Onix » → « Onyx » — ressources/accessoires, ressources/baton-magique — « Onyx » s'écrit avec un y (écrit ainsi L151) ; aussi L75, L91, L99-L103, L115, L119, L121, L124, L126, L150, L187, L198, L207, L225.
-- « os froid » → « os froids » — guide/mode-hyper-magie — Nom d'invocation (bestiaire) après « des » : accord au pluriel probable.
-- « owlmans » → « olwmans » — races/olwman — Deux occurrences (« les owlmans », « tribus d'owlmans ») ; la race s'écrit « Olwman » partout ailleurs.
-- « Pachemin niveau X » → « Parchemin niveau X » — ressources/livre-parchemin — Lettre manquante : « parchemin ».
-- « Pacte Noire » → « Pacte Noir » — capacites/archimage-pacte-noire — « pacte » est masculin : l'adjectif s'accorde au masculin.
-- « Panacée majeur » → « Panacée majeure » — ressources/panacee — Accord avec « Panacée » (féminin).
-- « panacée mineur » → « panacée mineure » — classes/anansi, classes/clerc, classes/maclier, classes/moine (+1) — Objet de l'inventaire ; accord de « mineure » avec « panacée » (féminin).
-- « Panacée mineur » → « Panacée mineure » — ressources/objets-de-depart-des-classes, ressources/panacee — Accord avec « Panacée » (féminin).
-- « Panacée parfait » → « Panacée parfaite » — ressources/panacee — Accord avec « Panacée » (féminin).
-- « Para-tonnerre » → « Paratonnerre » — bestiaire/reanime, magies/magie-de-la-foudre — Le nom commun s'écrit en un mot : « paratonnerre ».
-- « para-tonnerre » → « paratonnerre » — magies/magie-de-la-foudre — Le nom commun s'écrit soudé : « paratonnerre » (ici nom d'une propriété du jeu, entre guillemets).
-- « Parade partiel » → « Parade partielle » — guide/fiche-armure-defense-bouclier — Accord : « parade » est féminin ; terme de règle entre guillemets, traité comme un nom.
-- « ParceQUE » → « Parce que » — capacites/minotaure-parceque — Locution en deux mots ; majuscules au milieu du mot (peut-être voulues).
-- « Pavoi » → « Pavois » — ressources/bouclier — Le grand bouclier s'écrit « pavois » (invariable), comme à la ligne 17 ; même nom en titre (ligne 209) et dans les noms des lignes 213 à 232.
-- « Peau Verglacé » → « Peau Verglacée » — commentaire_orphelin.texte — Accord avec « Peau » (féminin).
-- « Petite fiole cyante » → « Petite fiole cyan » — ressources/fiole-cyante — « cyan » est un adjectif de couleur invariable ; « cyante » n'existe pas.
-- « Pichenette pointu » → « Pichenette pointue » — ressources/pieces-elementaires — Accord avec « pichenette » (féminin).
-- « pierre à aiguisé » → « pierre à aiguiser » — classes/bimane, classes/fenrir, classes/guerrier, classes/mage-rouge — Objet de l'inventaire ; infinitif après « à » : « pierre à aiguiser ».
-- « Pierre à aiguisé » → « Pierre à aiguiser » — ressources/objets-de-depart-des-classes — Infinitif après « à » (objet servant à aiguiser).
-- « plume à gravé » → « plume à graver » — classes/parleur — Infinitif après « à » (plume servant à graver).
-- « Plume à gravé » → « Plume à graver » — ressources/objets-de-depart-des-classes — Infinitif après « à » (objet servant à graver).
-- « Poupée corrompu » → « Poupée corrompue » — bestiaire/appel-aux-golems, bestiaire/golem-de-petrole, bestiaire/poupee-corrompu — Accord avec « Poupée » (féminin).
-- « Poupée sacré » → « Poupée sacrée » — bestiaire/appel-aux-golems, bestiaire/golem-de-lumiere, bestiaire/poupee-sacre — Accord avec « Poupée » (féminin).
-- « Poussé d'air » → « Poussée d'air » — ressources/pieces-elementaires — Le nom est « poussée » (féminin).
-- « Prend ça … » → « Prends ça … » — capacites/moine-prend-ca — Impératif de « prendre » à la 2e personne du singulier : « prends ».
-- « Prise alternatif … » → « Prise alternative … » — capacites/maclier-prise-alternatif — Accord avec « prise » (féminin).
-- « Puni-moi » → « Punis-moi » — capacites/flagelleur-puni-moi — Impératif de « punir » à la 2e personne : « punis ».
-- « Purée de poix » → « Purée de pois » — guide/meteo — Expression « purée de pois » (brouillard épais) ; « poix » est la résine.
-- « Radiation corrompu » → « Radiation corrompue » — bestiaire/goule — Accord de l'adjectif avec « Radiation » (féminin).
-- « Rage audacieux » → « Rage audacieuse » — capacites/martiale-rage-audacieux — Accord avec « rage » (féminin).
-- « Rage prudent » → « Rage prudente » — capacites/martiale-rage-prudent — Accord avec « rage » (féminin).
-- « Renfermement » → « Refermement » — bestiaire/fantome — La capacité fait regagner la santé en refermant ses blessures : « refermer » plutôt que « renfermer » (à confirmer).
-- « Renfermement mal foutu » → « Refermement mal foutu » — bestiaire/golem-de-chair — Même mot que la capacité « Renfermement » du Fantôme ; la forme régénère des PV (« refermer » ses blessures ?).
-- « Répar Os » — bestiaire/poupee-necrotique — « Répar » n'est pas un mot français (abréviation ou coquille de « Répare » ?) : nom de sort à vérifier, aucune correction devinée.
-- « Résistance/Faiblesses » → « Résistances/Faiblesses » — guide/fiche-tableau-resistances-faiblesses — Nombre incohérent entre les deux termes (le texte parle des « résistances et faiblesses »).
-- « Résurrection Noir » → « Résurrection Noire » — magies/magie-de-la-necromancie — Accord avec « Résurrection » (féminin) ; même nom lignes 124 et 126.
-- « Riposte infini » → « Riposte infinie » — capacites/lancier-riposte-infini — « riposte » est féminin : l'adjectif s'accorde.
-- « rock » → « rokh » — races/rokh — Nom de la race mal écrit (« culture rock »).
-- « Rock » → « Rokh » — ressources/armes — « Origine Rock » alors que la description dit « Cette arme Rokh » : incohérence à trancher.
-- « Rocks » → « Rokhs » — races/olwman, races/rokh — La race hybride est nommée « Rokh » ailleurs (matrice de la fiche) ; à confirmer.
-- « rocks » → « Rokhs » — races/rokh — Nom de la race mal écrit (« des rocks »).
-- « Sci du CAC » → « ? » — capacites/pugiliste-sci-du-cac — « Sci » n'est pas un mot français (« Scie » ? abréviation de « Science » ?) ; l'équivalent Orios s'appelle « Terreur du CAC ».
-- « Sihouetteur obscur » → « Silhouetteur obscur » — bestiaire/marionette-de-lombre, bestiaire/sihouetteur-obscur — Dérivé de « silhouette » : un l manque.
-- « Souffre » → « Soufre » — ressources/armures, ressources/bouclier — Le minéral s'écrit « soufre » (« souffre » est le verbe souffrir).
-- « Super fiole cyante » → « Super fiole cyan » — ressources/fiole-cyante — « cyan » est un adjectif de couleur invariable ; « cyante » n'existe pas.
-- « Suplexe » → « Suplex » — capacites/pugiliste-suplexe — La prise de catch s'écrit « suplex ».
-- « Suriken d'Eau » → « Shuriken d'Eau » — ressources/pieces-elementaires — Orthographe : « shuriken » (cf. « Shuriken de Vent »).
-- « Taille disproportionné » → « Taille disproportionnée » — bestiaire/golem-de-chair — Accord avec « Taille » (féminin) ; nom d'un sort de la magie du Sang.
-- « Tempe/Espace » → « Temps/Espace » — races/drakos — « Temps » (magie Espace/Temps, cf. ligne 207 « Espace/Temps »).
-- « tempête sable » → « tempête de sable » — bestiaire/golem-de-sable, magies/magie-de-la-terre — La ligne 31 de la même page écrit « la tempête de sable » ; nom de météo à vérifier.
-- « Tend l'autre joue » → « Tends l'autre joue » — capacites/clerc-tend-lautre-joue — Impératif de « tendre » à la 2e personne : « tends ».
-- « Touché du Vide » → « Toucher du Vide » — magies/magie-du-vide — Le nom désignant le contact est « le toucher » ; « touché » est le participe (choix possiblement voulu).
-- « Tu m'a pas vu » → « Tu m'as pas vu » — capacites/voleur-tu-ma-pas-vu — Verbe avoir à la 2e personne avec « tu » : « tu as ».
-- « Tu ne passe pas » → « Tu ne passes pas » — bestiaire/zombinox — 2e personne du singulier : « tu passes ».
-- « Tu passe pas » → « Tu passes pas » — capacites/cuirasse-tu-passe-pas — 2e personne du singulier : « tu passes ».
-- « Tu vivra … » → « Tu vivras … » — capacites/moine-tu-vivra — Futur de « vivre » à la 2e personne du singulier : « tu vivras ».
-- « Ultime fiole cyante » → « Ultime fiole cyan » — ressources/fiole-cyante — « cyan » est un adjectif de couleur invariable ; « cyante » n'existe pas.
-- « Vague de cadavre » → « Vague de cadavres » — magies/magie-de-la-necromancie — Une vague de plusieurs cadavres : complément au pluriel.
-- « Veilliessement » → « Vieillissement » — bestiaire/momie — Lettres inversées : « vieillissement » (de « vieillir »).
-- « Verrouille Visible » → « Verrouillage Visible » — magies/magie-de-la-corruption — Les trois autres sorts de la série s'appellent « Verrouillage … » ; « Verrouille » semble une coquille (à confirmer).
-- « Vie de nature » → « Vie en nature » — metiers/marin — La compétence s'appelle « Vie en nature » dans les autres métiers (herboriste, monstrologue, myciculteur).
-- « Vif allure » → « Vive allure » — capacites/kitsune-vif-allure — « allure » est féminin : « à vive allure ».
-- « Vigilence » → « Vigilance » — capacites/frappeur-distracteur — Le nom s'écrit « vigilance ».
+Formes retenues autres que la suggestion :
+
+- « 1kg de oeuf, 20 oeuf » → « 1kg d'oeufs, 20 oeufs » (la ligature n'est pas imposée, comme ailleurs) ; « A deux Main » → « À deux Mains » (casse d'origine) ; « ParceQUE » → « Parce QUE » (le cri est gardé).
+- « Croc Obsidien » → « Croc d'Obsidienne » ; « Entrave frigorifière » → « Entrave frigorifique » ; « LivreParchemin » → « Livre/Parchemin » (comme « Machine de Guerre/Siège »).
+- « Fiole verte foncé » → « Fiole verte foncée » (comme les objets de sa page) ; « Gelée verte foncé », « Herbe verte foncé » → « … vert foncé » (comme « Champignon vert foncé »).
+- « Coeur abyssale », « Coeur spatio-temporelle » : accord corrigé (« Coeur abyssal », « Coeur spatio-temporel »), ligature non imposée.
+- « Folle de Guerre » / « Folle de guerre » → « Folie de Guerre » / « Folie de guerre » (nom de l'état et partout où il est cité) ; « Touché du Vide » → « Toucher du Vide » ;
+  « Onde Confusion » → « Onde de Confusion » ; « Répar Os » → « Répar'Os » (comme « Destruc'Os », « Fractur'Os ») ; « Colonne tesla » → « Colonne Tesla ».
+- « Marionette de lombre » → « Marionnette de l'ombre » (nom du sort qui l'invoque) ; les sources citent toujours l'onglet du classeur sous son nom (« Marionette de lombre »).
+- Toutes les « Armure … complet » de l'équipement (22 noms) → « … complète », comme « Armure Complète » dans la même page.
+
+Graphie majoritaire d'un nom propre : « Ocultomancien » **gardé** (48 contre 3 : les 3 « Occultomancien » de la description de la classe sont alignés dessus) ;
+« Drassah'Thac » → « Drassah'thac » (402 contre 6) ; « owlmans » → « olwmans » ; « kistunes » → « kitsunes » ; « Rock(s) » → « Rokh(s) » (« culture rock » → « culture rokh ») ;
+« Mithril » → « Mythril » ; « Jacklope » → « Jackalope » ; « Climatospetique » → « Climatosceptique » (nom du don) ; « Sihouetteur » → « Silhouetteur » (égalité : le sens l'emporte).
+
+Gardés tels quels :
+
+- « Renfermement » (sort du Sang, don majin, capacités du bestiaire) : le mot existe et c'est le nom constant du jeu ; « Explosion glorifique » : « glorifique » existe (vieilli : « qui glorifie »).
+- « Sci du CAC » (Pugiliste) et « Tempus Figus » (Archimage) : aucun sens plus probable ne se dégage du texte de la capacité.
+- « Martiale » : c'est le nom de la classe ; l'article de « chez le Martiale » est une phrase, pas un nom.
+- « Eoline » : même clé que le dieu « Éoline » (seul l'accent de la majuscule diffère) ; « Séraphe » : un dieu distinct de « Séraphin » (deux entrées de la liste des dieux).
+- Écriture de la source gardée comme trace : « Felfle » (colonne « Race » de l'onglet « Bonus Race » de la fiche, `ethnie.race_brut`, et la phrase qui la cite),
+  les gemmes « Diament rose », « Emmeraude », « Gyspe », « Onix » telles que l'onglet Accessoires les écrit (`gemmes_brut`, `nom_source`, rapprochées dans `ecart_source`),
+  « Veilliessement » tel qu'écrit dans la liste de la momie (`sort_nom_brut`, non rapproché d'un sort) ; partout ailleurs ces noms sont corrigés.
+- « Peau Verglacé » : seulement dans un commentaire orphelin du classeur, identifié par l'empreinte de son texte (jamais réécrit).
+- « Enhor » / « Enohr » (la même région ?) : une occurrence chacun, pas de majorité : à trancher.
 
 ### Phrases à trancher, par page
-
 
 #### bestiaire/animation-des-morts
 
@@ -1137,9 +989,12 @@ Un nom (titre de page, objet, classe, capacité, sort, créature, race…) sert 
 ## Sorts et magies (migration 0003)
 
 Relecture de la migration `data/migrations/0003-orthographe-magies` (décision R10 : « à corriger, jamais un chiffre ni le sens d'une règle »). **500 corrections** ont été faites (registre complet : `data/migrations/0003-orthographe-magies.json`).
-Les **205 points ci-dessous** n'ont **pas** été touchés, parce que les corriger demanderait d'ajouter ou de retirer un mot, de choisir entre deux lectures, de changer l'identifiant d'un sort ou parce que la graphie est peut-être un terme du jeu. Ils attendent ta décision (la règle d'or : on ne devine pas).
+Les **188 points ci-dessous** n'ont **pas** été touchés, parce que les corriger demanderait d'ajouter ou de retirer un mot, de choisir entre deux lectures, de changer l'identifiant d'un sort ou parce que la graphie est peut-être un terme du jeu. Ils attendent ta décision (la règle d'or : on ne devine pas).
 
-Noms de sorts dont la correction **changerait l'identifiant** (donc les liens et la base) : Foudre argenté, Verrouille Visible, Touché du Vide, Résurrection Noir, Vague de cadavre, Onde Confusion, Lance Pierre, Estoc hurlante, Explosion glorifique, Brume mental, Colonne tesla ; identifiants de créature « sihouetteur » et d'invocation « marionette ». Les renommer demande une migration qui garde l'ancien identifiant en redirection.
+Les noms de sorts dont la correction aurait changé l'identifiant sont tranchés par 0006 (l'identifiant garde la clé d'origine) : Foudre argentée, Verrouillage Visible, Toucher du Vide,
+Résurrection Noire, Vague de cadavres, Onde de Confusion, Lance-pierre, Estoc hurlant, Brume mentale, Colonne Tesla ; « Explosion glorifique » est gardé ; la créature
+« Silhouetteur obscur » et l'invocation « Marionnette de l'ombre » sont corrigées aussi. Les points qui portaient sur ces noms (et sur « Folle de guerre », « Climatospetique »,
+« tempête sable ») sont retirés de la liste.
 
 Chaque entrée : endroit — passage — pourquoi on n'a pas corrigé — correction possible. Tu réponds « oui » (la suggestion), « non » (on garde) ou la graphie voulue ; la correction est alors une nouvelle migration de données.
 
@@ -1160,23 +1015,13 @@ Chaque entrée : endroit — passage — pourquoi on n'a pas corrigé — correc
 - **invocation** (`texte_general`) — « un allié peut très bien influer sa propre magie dans votre sort » — « influer » semble être une confusion avec « infuser » (employé dans la dernière phrase du même texte : « infuser sa magie »). Changement de mot, donc non appliqué. → « un allié peut très bien infuser sa propre magie dans votre sort »
 - **invocation** (`texte_general`) — « - Inerte. Boost la volonté à 10 » — « Boost » conjugué à la 3e personne devrait être « Booste » ; peut être un libellé de règle volontairement abrégé. → « Booste la volonté à 10 »
 
-### bestiaire/bete-de-lombre
-
-- **creature_effet 1** (`texte`) — « Folle de guerre » — Peut être un nom d'état (vocabulaire du jeu) ou une coquille pour « Folie de guerre » ; impossible de trancher sans la source. → Vérifier le nom de l'état dans le classeur ; « Folie de guerre » si c'est une coquille.
-- **creature_effet 1** (`texte`) — « - Folle de guerre sur le lanceur » — « Folle » est un adjectif féminin sans nom, devant « de guerre » : probablement « Folie de guerre » (nom d'état ?). Nom de jeu possible, je ne peux pas le vérifier. → « Folie de guerre sur le lanceur » après vérification dans la source.
-
 ### bestiaire/marionette-de-lombre
 
 - **invocation** (`texte_general`) — « ils sont créés magiquement » — Même accord douteux « ils sont créés » après « les invocations » (féminin). → « elles sont créées magiquement » ou laisser (même décision que pour animation-des-morts).
 - **invocation** (`texte_general`) — « en possède que 1 » — Négation incomplète (« ne » manquant) : corriger exige d'ajouter un mot. → « même si le lanceur n'en possède que 1 ».
-- **invocation** (`texte_general`) — « Cette invocation demande de la barrière » — Hors texte corrigeable : l'identifiant « marionette-de-lombre » s'écrit avec un seul « n » ; le nom du sort/de l'invocation est peut-être « Marionnette de l'ombre ». Changer l'orthographe d'un nom de sort change son identifiant. → Vérifier la graphie dans la source ; ne rien changer sans valider l'identifiant.
 - **invocation** (`texte_general`) — « les invocations n'ont pas de prérequis en termes d'environnement ou de matière, ils sont créés magiquement. » — Même phrase : « ils sont créés » renvoie à « les invocations » (féminin) ; lecture incertaine. → « elles sont créées magiquement » si le sujet est « les invocations ».
 - **invocation** (`texte_general`) — « (sauf le mode hyper de la nécromancie qui permet d'en avoir un deuxième) » — Même phrase : « un deuxième » vs « une deuxième » (accord avec « invocation »). → « une deuxième » si « en » = invocation.
 - **invocation** (`texte_general`) — « même si le lanceur en possède que 1 » — La négation « ne » manque (« n'en possède que 1 »). Ajouter un mot n'est pas permis. → « même si le lanceur n'en possède que 1 »
-
-### bestiaire/sihouetteur-obscur
-
-- **creature_effet 1** (`texte`) — « - +4 dégâts » — Hors texte corrigeable : l'identifiant « sihouetteur-obscur » contient probablement une coquille pour « silhouetteur-obscur » (le nom de la créature n'est pas dans ce fichier). → Vérifier le nom de la créature dans les tables bestiaire/creature et, si c'est une coquille, corriger le nom (l'identifiant est à traiter à part).
 
 ### légende des sorts
 
@@ -1207,14 +1052,12 @@ Chaque entrée : endroit — passage — pourquoi on n'a pas corrigé — correc
 - **sort « retrait »** (`dsb_brut`) — « 2d6 cr (+1d/NM) » — « cr » en minuscule alors que le sigle s'écrit « CR » partout ailleurs ; peut aussi être une unité écrite en minuscule comme « dégâts » dans « 2d6 dégâts ». → 2d6 CR (+1d/NM)
 - **sort « souffle-noir »** (`dsb_brut`) — « Retire du 2d10 de chakra à la cible » — « du » devant une expression de dés semble en trop (« Retire 2d10 de chakra »). Suppression d'un mot : non appliquée. → Retire 2d10 de chakra à la cible
 - **sort « verrouillage-simple »** (`remarque`) — « il doit changer de posture de suite » — « de suite » est employé pour « tout de suite » (ajout d'un mot). Même phrase dans verrouille-visible, verrouillage-magique et verrouillage-physique. De plus « la cible » (féminin) est repris par « il ». → « tout de suite » (dans les 4 sorts de verrouillage) ; « il » inchangé car générique.
-- **sort « verrouille-visible »** (`nom`) — « Verrouille Visible » — Les trois sorts jumeaux s'appellent « Verrouillage Simple / Magique / Physique » : « Verrouille » est probablement une coquille pour « Verrouillage ». Corriger le nom changerait l'identifiant (verrouille-visible -> verrouillage-visible). → Verrouillage Visible (à valider, car l'identifiant change)
 
 ### magies/magie-de-la-foudre
 
 - **magie** (`description_physique`) — « les yeux jaunes lors de l'utilisation d'un sort, de l’électricité parcourt en permanence leur corps » — Deux propositions juxtaposées par une simple virgule (virgule fautive) ; il manque une conjonction ou un point-virgule. Corriger exigerait d'ajouter un mot ou de changer la ponctuation sans certitude du sens voulu. → les yeux jaunes lors de l'utilisation d'un sort ; de l’électricité parcourt en permanence leur corps
 - **mode hyper (mono)** (`variante_brut`) — « Mono-Magie » — Casse incohérente entre les deux variantes (« Bi-magie » / « Mono-Magie »), identique dans les trois fichiers. Valeur « _brut » qui sert peut-être de clé de correspondance, et aucune forme n'est majoritaire dans la colonne. → « Mono-magie » (ou « Bi-Magie ») après vérification de l'usage de la valeur brute dans le code d'import.
 - **sort « boules-de-foudre »** (`effets`) — « 1 boule (+1/NM) vont apparaître et vont s'approcher » — Sujet « 1 boule » au singulier mais verbes au pluriel ; plausible si le nombre de boules augmente avec le NM, donc pas corrigé. → « 1 boule (+1/NM) va apparaître et va s'approcher » si la formule vise le cas de base, ou « boule(s) » ; à valider.
-- **sort « colonne-tesla »** (`nom`) — « Colonne tesla » — « Tesla » est un nom propre (Nikola Tesla) et devrait prendre une majuscule, mais les noms de sorts ont une casse très variable (« Boules de foudre », « Armure conductrice »). L'identifiant ne change pas. → « Colonne Tesla » (changement de casse uniquement).
 - **sort « colonne-tesla »** (`remarque`) — « Para-tonnerre : Attire les sorts de la foudre » — Même terme que dans les effets : « paratonnerre » en un mot (voir l'entrée précédente). → Paratonnerre : Attire les sorts de la foudre
 - **sort « foudre-rouge »** (`effets`) — « Inflige Paralysie 1 » — Casse incohérente des noms d'états : « Paralysie 1 » ici, mais « paralysie » en minuscule dans les autres sorts de la même magie (Éclair, Souffle électrique, Fulguration, Grenade paralysante). Peut être un nom d'état volontairement capitalisé (comme « Brûlure » dans la même cellule). → Inflige paralysie 1
 - **sort « plaque-miroir »** (`effets`) — « 3 sorts qui le vise » — Le verbe « vise » est corrigé en « visent » (sujet « qui » = sorts), mais le pronom « le » est ambigu : il peut désigner le lanceur/la cible (singulier) ou les plaques (« les »). → Garder « le visent » si c'est le lanceur, ou « les visent » si ce sont les plaques.
@@ -1239,7 +1082,6 @@ Chaque entrée : endroit — passage — pourquoi on n'a pas corrigé — correc
 - **mode hyper (bi)** (`effet`) — « IC (seulement le premier IC). (sauf les sorts niveau de puissance 5). » — Point suivi d'une parenthèse commençant par une minuscule : soit majuscule, soit suppression du point (à décider). Même motif dans la magie de l'ombre. → IC (seulement le premier IC). (Sauf les sorts niveau de puissance 5).
 - **mode hyper (mono)** (`variante_brut`) — « Mono-Magie » — Même incohérence de casse « Bi-magie » / « Mono-Magie » (valeur brute, sans forme majoritaire). → « Mono-magie » (ou « Bi-Magie »), à décider une fois pour toutes les magies.
 - **sort « champ-de-force »** (`remarque`) — « avec 20 chakra maximum » — Pluriel après un nombre (« 20 chakras ») ? « chakra » est du vocabulaire de jeu, parfois invariable comme ressource (« +2 dégâts/chakra »). → « 20 chakras maximum » si le pluriel est voulu ; sinon laisser.
-- **sort « explosion-glorifique »** (`nom`) — « Explosion glorifique » — « glorifique » n'est pas un adjectif courant du français (glorieuse, glorifiante ?). Peut être une invention volontaire. Le nom est cité dans l'effet d'Explosion glorifique et dans la remarque de Défaite annoncée ; le changer modifierait l'identifiant « explosion-glorifique ». → Ne pas toucher sans confirmation du propriétaire ; si faute : « Explosion glorieuse ».
 - **sort « flash »** (`type_brut`) — « Attaque/ Entrave » — Même espace asymétrique après la barre oblique, aussi dans Poussière d'étoile (« Attaque/ Entrave\n(Imparable) »). → « Attaque/Entrave » (sans espace), si l'import tolère les deux formes.
 
 ### magies/magie-de-la-necromancie
@@ -1265,8 +1107,6 @@ Chaque entrée : endroit — passage — pourquoi on n'a pas corrigé — correc
 - **sort « prison-dos »** (`remarque`) — « est Invulnérable à l'estoc, Résistant à la taille mais vulnérable à la frappe. » — Casse incohérente dans la même phrase : « Invulnérable » et « Résistant » avec majuscule, « vulnérable » en minuscule. Ce sont peut-être des noms d'états du jeu. → « invulnérable… résistant… vulnérable » tout en minuscules, sauf si ce sont des états à majuscule
 - **sort « prison-dos »** (`remarque`) — « Invulnérable à l'estoc, Résistant à la taille mais vulnérable à la frappe » — Casse incohérente dans la même phrase : « Invulnérable » et « Résistant » en capitale, « vulnérable » en minuscule. Ce sont probablement des noms d'états/propriétés, mais on ne peut pas trancher entre mettre la capitale ou l'enlever partout. → « Vulnérable » avec capitale (comme « Invulnérable » et « Résistant »), ou tout en minuscules.
 - **sort « repar-os »** (`effets`) — « Permet de soigner les os et chair. » — Il manque probablement l'article « la » devant « chair » ; ajouter un mot est interdit. → « Permet de soigner les os et la chair. »
-- **sort « resurrection-noir »** (`nom`) — « Résurrection Noir » — « Résurrection » est féminin, d'où « Noire » attendu. Corriger le nom changerait l'identifiant (resurrection-noir -> resurrection-noire). → « Résurrection Noire » (changement d'identifiant à valider)
-- **sort « vague-de-cadavre »** (`effets`) — « Invoque une vague de cadavre qui va s’écraser sur l'ennemi. » — « vague de cadavre » (singulier) est inhabituel ; « cadavres » serait attendu. Le nom du sort porte la même graphie (« Vague de cadavre »), et changer le nom modifierait l'identifiant (vague-de-cadavre). → Texte : « vague de cadavres ». Nom du sort : « Vague de cadavres » (changerait l'identifiant), à valider par le propriétaire
 
 ### magies/magie-de-la-terre
 
@@ -1281,10 +1121,8 @@ Chaque entrée : endroit — passage — pourquoi on n'a pas corrigé — correc
 - **sort « barriere-rocheuse »** (`remarque`) — « Corps de pierre : Double les PA, » — « PA » est une permutation probable du sigle « AP » (armure physique), utilisé partout ailleurs. C'est un sigle de jeu, donc non touché. → Double les AP,
 - **sort « explosion-rocheuse »** (`effets`) — « Une attaque de Terre de Zone. » — « Zone » en majuscule alors que « zone » est en minuscule ailleurs (« dégâts de zone de Terre », « dans la zone »). Terme de règle possible, donc incertain. → Une attaque de Terre de zone.
 - **sort « fer-raffine »** (`effets`) — « tape dans l'élément terre pendant 3 tours » — Même incohérence de casse : « Terre » est capitalisé dans « attaque de Terre » et « dégâts de zone de Terre », mais ici « terre ». → tape dans l'élément Terre pendant 3 tours
-- **sort « lance-pierre »** (`nom`) — « Lance Pierre » — Orthographe usuelle « lance-pierre » avec trait d'union. C'est un nom de sort : à valider (l'identifiant « lance-pierre » semble inchangé si les espaces deviennent des tirets). → Lance-pierre
 - **sort « peau-de-pierre »** (`remarque`) — « Peut se cumuler avec Armure de Roche. » — Le sort cité est « Cuirasse de roche » (voir effets du même sort). « Armure de Roche » (aussi dans la remarque de Barrière rocheuse) est un autre mot, pas une coquille, donc non corrigé. À vérifier avec la source. → Peut se cumuler avec Cuirasse de roche.
 - **sort « racine-soignante »** (`effets`) — « doit être dans environnement lié à la terre pour fonctionner » — Article manquant devant « environnement » (ajout d'un mot). Point final absent aussi. → doit être dans un environnement lié à la terre pour fonctionner.
-- **sort « redemption-de-dimitri »** (`effets`) — « "tempête sable" » — Il manque probablement « de » (« tempête de sable »). Il s'agit peut-être du nom exact d'une météo du jeu, donc à confirmer. → "tempête de sable"
 - **sort « rouille »** (`effets`) — « retirer un cran solidité à un morceau » — « de » manquant (« un cran de solidité ») : ajout d'un mot. → retirer un cran de solidité à un morceau
 - **sort « rouille »** (`effets`) — « retirer un cran solidité à un morceau d’armure ou une arme » — Mots manquants probables : « un cran de solidité » et « ou à une arme ». Peut aussi être un raccourci de jeu volontaire. → « un cran de solidité à un morceau d’armure ou à une arme »
 - **sort « rouille »** (`effets`) — « retirer un cran solidité à un morceau d’armure » — Préposition manquante entre « cran » et « solidité » (ajout d'un mot). → retirer un cran de solidité à un morceau d’armure
@@ -1297,7 +1135,6 @@ Chaque entrée : endroit — passage — pourquoi on n'a pas corrigé — correc
 - **mode hyper (mono)** (`variante_brut`) — « Mono-Magie » — Casse incohérente avec « Bi-magie » (même colonne, autre ligne). Valeur « brute » qui sert peut-être de clé : pas de forme majoritaire à retenir. → Choisir « Bi-magie » / « Mono-magie » ou « Bi-Magie » / « Mono-Magie » partout, après vérification que la valeur n'est pas utilisée comme clé (même cas dans le fichier de la Corruption).
 - **sort « champ-gardien »** (`dsb_brut`) — « Donne 2d6 + 3 Barrière et 12 dégâts » — « Barrière » avec majuscule alors que partout ailleurs le mot est en minuscule (« barrière »). Peut être une convention de style (« Donne X Chakra »). → Éventuellement « barrière » ; laissé tel quel faute de certitude.
 - **sort « charge-denergie »** (`cout_brut`) — « 2=1 dégâts » — Pluriel après « 1 » (« 1 dégât »). Cellule de coût : je ne la modifie pas sans validation. → 2=1 dégât
-- **sort « foudre-argente »** (`nom`) — « Foudre argenté » — « foudre » est féminin : l'adjectif devrait s'accorder (« argentée »). Corriger le nom changerait l'identifiant du sort (foudre-argente -> foudre-argentee). → Foudre argentée (à valider, car l'identifiant change)
 - **sort « grenade-de-chakra »** (`effets`) — « Inflige des dégâts en Zone. » — « Zone » avec majuscule en milieu de phrase ; ailleurs « dégâts de zone » est en minuscule. Peut être un terme de jeu, d'où la validation. → Inflige des dégâts en zone.
 - **sort « rune-arcane »** (`remarque`) — « Ne se cumule avec "Rune Arcane multiple" » — Négation incomplète : il manque « pas » (« Ne se cumule pas avec »). La correction exige d'ajouter un mot. → Ne se cumule pas avec "Rune Arcane multiple"
 - **sort « rune-arcane-multiple »** (`remarque`) — « Ne se cumule avec "Rune Arcane" » — Négation incomplète : il manque « pas » (« Ne se cumule pas avec »). La correction exige d'ajouter un mot. → Ne se cumule pas avec "Rune Arcane"
@@ -1313,8 +1150,6 @@ Chaque entrée : endroit — passage — pourquoi on n'a pas corrigé — correc
 - **sort « eau-soignante »** (`effets`) — « les Dés passent à 8 » — « Dés » avec une majuscule en milieu de phrase ; peut être un terme de jeu voulu, donc non corrigé (seule la virgule manquante est proposée). → les dés passent à 8
 - **sort « fouet-deau »** (`effets`) — « de gros dégâts au adversaire » — « au adversaire » est fautif, mais deux corrections sont plausibles (singulier ou pluriel) et le sens est incertain. → « à l'adversaire » ou « aux adversaires » (cf. « tranche les adversaires » dans Lame sous pression) : à trancher par le propriétaire.
 - **sort « fouet-deau »** (`effets`) — « inflige de gros dégâts au adversaire » — « au adversaire » est fautif : « au » ne se met pas devant une voyelle. Deux corrections plausibles (singulier ou pluriel), donc non appliquée. → « aux adversaires » (cohérent avec « tranche les adversaires » de Lame sous pression) ou « à l'adversaire »
-- **sort « larmes-doceane »** (`remarque`) — « Le Don "Climatospetique" ne peut pas contrer cet effet. » — Nom de don peut-être mal orthographié (« Climatospécifique » ? « Climatospétique » ?). Je ne connais pas l'intitulé officiel : à vérifier dans la page du don. → Comparer avec le nom exact du don dans les sources avant toute modification
-- **sort « onde-confusion »** (`nom`) — « Onde Confusion » — Nom de sort probablement incomplet (« Onde de Confusion »). L'ajout de « de » changerait l'identifiant (onde-confusion) et ajouterait un mot. → Onde de Confusion (à confirmer avec le classeur source)
 - **sort « ruisseau-conciliant »** (`effets`) — « Des petits courants d'eau » — Règle stricte : « de » devant un adjectif pluriel antéposé. L'usage courant admet « des petits », donc pas de correction automatique. → De petits courants d'eau (optionnel)
 - **sort « souffle-hydraulique »** (`type_brut`) — « Attaque/ Entrave (Imparable) » — Espace après la barre oblique et pas avant (« Attaque/ Entrave »), motif répété dans Crachat Acide, Grenade Incapacitante, Laser Hydraulique ; probablement hérité du classeur (saut de ligne), donc non modifié. → Attaque/Entrave (Imparable), à appliquer uniformément si le propriétaire le souhaite.
 - **sort « tir-de-flotte »** (`effets`) — « Une attaque d'eau qui se tire » — Casse incohérente : « Une attaque d'Eau » (Bulle d'eau, Laser Hydraulique) et « dégâts de zone d'Eau » (Grenade) portent une majuscule pour l'élément, ici minuscule. Peut aussi être volontaire (eau = substance). → Une attaque d'Eau qui se tire (si l'élément prend toujours une majuscule)
@@ -1341,7 +1176,6 @@ Chaque entrée : endroit — passage — pourquoi on n'a pas corrigé — correc
 - **mode hyper (mono)** (`variante_brut`) — « Mono-Magie » — Même incohérence de casse « Bi-magie » / « Mono-Magie » (valeur brute, sans forme majoritaire). → « Mono-magie » (ou « Bi-Magie »), à décider une fois pour toutes les magies.
 - **sort « brume-mental »** (`effets`) — « Met une croix dans 1 une caractéristique » — « 1 une » : chiffre et article accolés (doublon). Supprimer l'un des deux reviendrait à retirer un mot ou un chiffre, ce qui est interdit. → « Met une croix dans une caractéristique » (le « 1 » semble un résidu de saisie) ou « dans 1 caractéristique ».
 - **sort « brume-mental »** (`effets`) — « Met une croix dans 1 une caractéristique au choix de l’adversaire » — « 1 » et « une » se suivent (doublon). Supprimer l'un des deux mots n'est pas autorisé et le choix n'est pas certain. → Met une croix dans 1 caractéristique au choix de l’adversaire (ou « dans une caractéristique »)
-- **sort « brume-mental »** (`nom`) — « Brume mental » — « brume » est féminin : « mental » devrait s'accorder (« mentale »). Changerait l'identifiant du sort (brume-mental -> brume-mentale). → Brume mentale
 - **sort « chaine-de-lentrave »** (`remarque`) — « si ce n'est tenter un jet » — « si ce n'est tenter » : il manque « de » (« si ce n'est de tenter »). Ajout de mot interdit. → « si ce n'est de tenter un jet ».
 - **sort « lame-dombre »** (`effets`) — « Créer 1 (+1/NM) lame(s) » — Tous les autres effets commencent par un verbe conjugué à la 3e personne (Invoque, Donne, Inflige…) ; « Créer » est probablement « Crée », mais l'infinitif peut être voulu. → « Crée 1 (+1/NM) lame(s) ».
 - **sort « lame-dombre »** (`effets`) — « Créer 1 (+1/NM) lame(s) autour du lanceur » — Tous les effets de la colonne sont à la 3e personne du présent (Donne, Permet, Inflige, Invoque...) ; « Créer » est probablement « Crée », mais l'infinitif pourrait être volontaire. → Crée 1 (+1/NM) lame(s) autour du lanceur
@@ -1384,7 +1218,6 @@ Chaque entrée : endroit — passage — pourquoi on n'a pas corrigé — correc
 
 - **mode hyper (mono)** (`variante_brut`) — « Mono-Magie » — Casse différente de « Bi-magie » (voir la même remarque pour la magie de la Terre). Libellé identique sur les 14 magies. → Laisser, ou harmoniser sur toutes les magies.
 - **sort « allegement »** (`dsb_brut`) — « 6 Initiative et +2 Vitesse » — Le signe « + » semble manquant devant « 6 » (cohérent avec « +2 Vitesse »). C'est une valeur de jeu, donc non touchée. → +6 Initiative et +2 Vitesse (à confirmer par le propriétaire)
-- **sort « estoc-hurlante »** (`nom`) — « Estoc hurlante » — « Estoc » est masculin, donc l'adjectif devrait être « hurlant ». La correction changerait l'identifiant (estoc-hurlante vers estoc-hurlant), donc à valider. → Estoc hurlant
 - **sort « estoc-hurlante »** (`type_brut`) — « Attaque/ Placement » — Espace après la barre oblique, voir Éternuement. → Attaque/Placement ou uniformiser avec espace
 - **sort « eternuement »** (`type_brut`) — « Attaque/ Placement » — Espace après la barre oblique (même cas dans Estoc hurlante, Vibration, Tornade) ; la forme sans espace existe dans la magie de la Terre (« Soin/Entrave ») : à trancher globalement. → Attaque/Placement ou uniformiser avec espace
 - **sort « propulsion »** (`portee_brut`) — « 10 (+2 / NM) » — Espaces autour de la barre oblique, alors que toutes les autres portées s'écrivent « (+N/NM) ». Cela touche une valeur de portée, donc laissé pour validation. → 10 (+2/NM)
@@ -1404,7 +1237,6 @@ Chaque entrée : endroit — passage — pourquoi on n'a pas corrigé — correc
 - **sort « dissipation »** (`remarque`) — « Les buff niveau 5 » — « buff » sans s après « Les » : anglicisme du vocabulaire du jeu, pluriel possiblement invariable ou « buffs ». Non corrigé (vocabulaire de jeu). → Les buffs niveau 5
 - **sort « grenade-implosive »** (`zone_brut`) — « Croix infini » — « Croix » est féminin, donc « infinie » en bonne grammaire. La colonne zone est lue par le code et « infini » peut être un mot-clé voulu, d'où la prudence. → Croix infinie
 - **sort « marteau-du-vide »** (`texte_niveau5`) — « Que Sa volonté se condense en un bras de fer » — Majuscule à « Sa » en milieu de phrase : probablement une majuscule de déférence (incantation à une divinité), laissée telle quelle. → Ne rien changer sauf si c'est une coquille (« sa »).
-- **sort « touche-du-vide »** (`nom`) — « Touché du Vide » — « Touché » (participe passé) est probablement une faute pour le nom « Toucher » (le toucher du Vide) ou « Touche ». Les deux hésitations changeraient l'identifiant (touche-du-vide devient toucher-du-vide), donc c'est à valider. Une simple correction d'accent n'est pas possible ici. → Toucher du Vide (identifiant actuel touche-du-vide à conserver ou à migrer selon décision)
 - **sort « touche-du-vide »** (`type_brut`) — « Attaque/Soin » — Séparateur « / » sans espace, alors que les autres types composés du fichier l'ont avec espace (« Attaque/ Entrave », « Attaque/ Placement », « Entrave/ Soin »). Incohérence de forme, mais la forme avec espace semble venir du classeur. → Attaque/ Soin si l'on harmonise sur la forme majoritaire, sinon ne rien changer
 
 ### magies/potentiel-illimite

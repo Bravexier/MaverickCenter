@@ -64,7 +64,7 @@ INSERT INTO note_cellule (entite_table, entite_id, rang, champ, cellule, nature,
 - Boule de feu
 - Bulle d''eau
 - Éclat glacé
-- Lance pierre
+- Lance-pierre
 - Lame d''air
 - Éclair
 - Frappe lumineuse
@@ -142,7 +142,7 @@ INSERT INTO note_cellule (entite_table, entite_id, rang, champ, cellule, nature,
 
 Les verrouillages ne se cumulent pas.', 'magies', 'Magie Maverick V8 › Corruption › BJ13');
 INSERT INTO note_cellule (entite_table, entite_id, rang, champ, cellule, nature, repond_a, texte, origine, source_ref) VALUES ('sort', 'magies/magie-de-la-foudre#sort:chargeur', 1, 'type', 'AT28', 'commentaire_resolu', NULL, 'Peut être lancé 3 fois dans le même tour.', 'magies', 'Magie Maverick V8 › Foudre › AT28');
-INSERT INTO note_cellule (entite_table, entite_id, rang, champ, cellule, nature, repond_a, texte, origine, source_ref) VALUES ('sort', 'magies/magie-de-la-foudre#sort:colonne-tesla', 1, 'effets', 'BJ25', 'note', NULL, 'Para-tonnerre : Attire les sorts de la foudre ou bien la foudre naturelle sur la cible (objet ou créature)', 'magies', 'Magie Maverick V8 › Foudre › BJ25');
+INSERT INTO note_cellule (entite_table, entite_id, rang, champ, cellule, nature, repond_a, texte, origine, source_ref) VALUES ('sort', 'magies/magie-de-la-foudre#sort:colonne-tesla', 1, 'effets', 'BJ25', 'note', NULL, 'Paratonnerre : Attire les sorts de la foudre ou bien la foudre naturelle sur la cible (objet ou créature)', 'magies', 'Magie Maverick V8 › Foudre › BJ25');
 INSERT INTO note_cellule (entite_table, entite_id, rang, champ, cellule, nature, repond_a, texte, origine, source_ref) VALUES ('sort', 'magies/magie-de-la-foudre#sort:dysfonctionnement', 1, 'effets', 'BJ43', 'note', NULL, 'C''est un équivalent de "Confusion 3" pour les créatures mécaniques.', 'magies', 'Magie Maverick V8 › Foudre › BJ43');
 INSERT INTO note_cellule (entite_table, entite_id, rang, champ, cellule, nature, repond_a, texte, origine, source_ref) VALUES ('sort', 'magies/magie-de-la-foudre#sort:dysfonctionnement', 2, 'effets', 'BJ43', 'commentaire_resolu', NULL, 'C''est un équivalent de "Confus" pour les créatures mécaniques.', 'magies', 'Magie Maverick V8 › Foudre › BJ43');
 INSERT INTO note_cellule (entite_table, entite_id, rang, champ, cellule, nature, repond_a, texte, origine, source_ref) VALUES ('sort', 'magies/magie-de-la-foudre#sort:fer-foudroyant', 1, 'effets', 'BJ19', 'note', NULL, 'Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être paralysé au stade 1', 'magies', 'Magie Maverick V8 › Foudre › BJ19');
@@ -239,7 +239,7 @@ Soigne les alliés de 2d6 si un point d''eau est à 4 cases.', 'magies', 'Magie 
 INSERT INTO note_cellule (entite_table, entite_id, rang, champ, cellule, nature, repond_a, texte, origine, source_ref) VALUES ('sort', 'magies/magie-de-leau#sort:dissolution', 1, 'effets', 'BJ55', 'commentaire_resolu', NULL, 'Totalement insensible aux dégâts physiques et magiques qui ne sont pas une vulnérabilité. Permet de bénéficier d''une invisibilité quand vous êtes dans l''eau.', 'magies', 'Magie Maverick V8 › Eau › BJ55');
 INSERT INTO note_cellule (entite_table, entite_id, rang, champ, cellule, nature, repond_a, texte, origine, source_ref) VALUES ('sort', 'magies/magie-de-leau#sort:fer-humide', 1, 'effets', 'BJ19', 'note', NULL, 'Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être confus au stade 1', 'magies', 'Magie Maverick V8 › Eau › BJ19');
 INSERT INTO note_cellule (entite_table, entite_id, rang, champ, cellule, nature, repond_a, texte, origine, source_ref) VALUES ('sort', 'magies/magie-de-leau#sort:larmes-doceane', 1, 'effets', 'BJ67', 'note', NULL, 'Cette météo ne peut pas être retirée par les autres météos ou bien les effets de classes.
-Le Don "Climatospetique" ne peut pas contrer cet effet.
+Le Don "Climatosceptique" ne peut pas contrer cet effet.
 Cet effet dure maximum 5 tours.', 'magies', 'Magie Maverick V8 › Eau › BJ67');
 INSERT INTO note_cellule (entite_table, entite_id, rang, champ, cellule, nature, repond_a, texte, origine, source_ref) VALUES ('sort', 'magies/magie-de-lespace-temps#sort:celerite', 1, 'effets', 'BJ49', 'note', NULL, 'Un boss qui a naturellement 2 tours, n''aura qu''un seul tour avec deux actions.', 'magies', 'Magie Maverick V8 › TempsEspace › BJ49');
 INSERT INTO note_cellule (entite_table, entite_id, rang, champ, cellule, nature, repond_a, texte, origine, source_ref) VALUES ('sort', 'magies/magie-de-lespace-temps#sort:celerite', 2, 'effets', 'BJ49', 'commentaire_resolu', NULL, 'Permet d''avoir 2 tours en 1, ça implique d''avoir 2 initiatives donc de jeter 2 fois un dé d''initiative.', 'magies', 'Magie Maverick V8 › TempsEspace › BJ49');
