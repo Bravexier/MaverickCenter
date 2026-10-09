@@ -16,9 +16,9 @@ const { magies } = Astro.props;
 // relation, au centre ; les huit magies liées en anneau autour, symétriques gauche–droite (Vent ↔ Nécromancie, Feu ↔ Eau, Terre ↔ Sang, Glace ↔ Foudre :
 // les relations ont la même symétrie) ; Feu et Eau plus bas que Terre et Sang, sinon le trait Feu – Eau passerait sous eux ; Corruption – Arcane et
 // Espace-Temps – Vide aux coins du haut, Lumière – Ombre en bas. Écran étroit, sous 60rem (mx, my sur 1000 × HAUTEUR_ETROITE) : deux colonnes, sans
-// relations, les paires côte à côte (demande du propriétaire) reliées par leur trait. Les proportions sont reprises par styles/magie/orbit.css (aspect-ratio
-// du grand écran, hauteur de l'écran étroit) ; test/magies-html.test.mjs vérifie qu'aucune pastille n'en touche une autre et qu'aucun trait ne passe sous
-// une pastille.
+// relations, les paires côte à côte (demande du propriétaire) reliées par leur trait. Pas d'infobulle (demande du propriétaire) : le survol ne montre que
+// les relations. Les proportions sont reprises par styles/magie/orbit.css (aspect-ratio du grand écran, hauteur de l'écran étroit) ;
+// test/magies-html.test.mjs vérifie qu'aucune pastille n'en touche une autre et qu'aucun trait ne passe sous une pastille.
 const HAUTEUR_GRANDE = 440;
 const HAUTEUR_ETROITE = 590;
 const disposition = [
@@ -43,20 +43,10 @@ const millieme = (valeur: number, total: number) => Math.round((valeur / total) 
 const pourcent = (valeur: number, total: number) => millieme(valeur, total) / 10;
 
 const index = new Map(magies.map((item) => [normalize(item.magie.nom), item]));
-const phraseCourte = (magie: MagieDb) => {
-  const texte = magie.description
-    .flatMap((bloc: any) => (bloc.liste ? bloc.items : [bloc.texte]))
-    .filter(Boolean)
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  const phrase = texte.match(/^.*?[.!?](?=\s|$)/u)?.[0] ?? texte;
-  return phrase.length <= 190 ? phrase : `${phrase.slice(0, 187).replace(/\s+\S*$/u, '')}…`;
-};
 
 const noeuds = disposition.flatMap((place, ordre) => {
   const item = index.get(normalize(place.cle));
-  return item ? [{ ...place, ...item, ordre, description: phraseCourte(item.magie), couleur: couleurDeMagie(item.magie.nom) }] : [];
+  return item ? [{ ...place, ...item, ordre, couleur: couleurDeMagie(item.magie.nom) }] : [];
 });
 const parNom = new Map(noeuds.map((noeud) => [normalize(noeud.cle), noeud]));
 const liens: { a: any; b: any; type: string }[] = [];
@@ -83,11 +73,8 @@ if (lumiere && ombre && (vulnérableÀ(lumiere, ombre) || vulnérableÀ(ombre, l
 const TAILLES = { potentiel: 200, elementaire: 134 } as Record<string, number>;
 const cleCss = (noeud: any) => normalize(noeud.nom);
 const parId = new Map(noeuds.map((noeud) => [noeud.magie.id, noeud]));
-const relations = geometrieDesLiaisons(
-  liaisonsEntreMagies(noeuds.map((noeud) => noeud.magie)),
-  new Map(noeuds.map((noeud) => [noeud.magie.id, { x: noeud.x, y: noeud.y, w: TAILLES[noeud.region] ?? 150, h: 48 }])),
-  { hauteur: HAUTEUR_GRANDE },
-);
+const pastilles = new Map(noeuds.map((noeud) => [noeud.magie.id, { x: noeud.x, y: noeud.y, w: TAILLES[noeud.region] ?? 150, h: 48 }]));
+const relations = geometrieDesLiaisons(liaisonsEntreMagies(noeuds.map((noeud) => noeud.magie)), pastilles, { hauteur: HAUTEUR_GRANDE });
 const avec = (...ids: string[]) => ids.map((id) => `avec-${cleCss(parId.get(id))}`).join(' ');
 // Part de la couleur de la magie dans le trait (le reste : couleur du texte), selon sa luminance : une magie claire (Vide, Lumière, Foudre) est assombrie
 // davantage sur fond clair, une magie sombre (Corruption, Nécromancie) éclaircie davantage sur fond sombre.
@@ -104,12 +91,13 @@ const surbrillance = noeuds
     const l = luminance(noeud.couleur);
     const clair = l > 0.85 ? 35 : l > 0.6 ? 50 : 65;
     const sombre = l < 0.1 ? 40 : l < 0.25 ? 55 : 70;
-    return `.magies-orbite:has([data-magie="${k}"]:is(:hover, :focus-within)) .magies-relation.avec-${k} { --c: ${noeud.couleur}; --part: ${clair}%; --part-sombre: ${sombre}%; opacity: 1; }`;
+    // survol, ou focus au clavier seulement (:focus-visible) : un clic donne aussi le focus au lien, et le retour arrière le restaure ; avec :focus-within,
+    // les relations restaient affichées sans la souris (bogue signalé par le propriétaire)
+    return `.magies-orbite:has([data-magie="${k}"]:hover, [data-magie="${k}"] a:focus-visible) .magies-relation.avec-${k} { --c: ${noeud.couleur}; --part: ${clair}%; --part-sombre: ${sombre}%; opacity: 1; }`;
   })
   .join('\n');
 ---
 
-<div class="magies-carte">
 <div class="magies-orbite" role="group" aria-label="Carte des magies">
   <svg class="magies-orbite__liens" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
     {
@@ -154,14 +142,12 @@ const surbrillance = noeuds
         <li
           class={`magies-orbite__position magies-orbite__position--${noeud.region}`}
           data-magie={cleCss(noeud)}
-          style={`--x: ${noeud.x / 10}%; --x-fraction: ${noeud.x / 1000}; --y: ${pourcent(noeud.y, HAUTEUR_GRANDE)}%; --mx: ${noeud.mx / 10}%; --mx-fraction: ${noeud.mx / 1000}; --my: ${pourcent(noeud.my, HAUTEUR_ETROITE)}%; --couleur-magie: ${noeud.couleur}; --ordre: ${noeud.ordre}`}
+          style={`--x: ${noeud.x / 10}%; --y: ${pourcent(noeud.y, HAUTEUR_GRANDE)}%; --mx: ${noeud.mx / 10}%; --my: ${pourcent(noeud.my, HAUTEUR_ETROITE)}%; --couleur-magie: ${noeud.couleur}; --ordre: ${noeud.ordre}`}
         >
           <a
             class="magies-orbite__noeud"
             href={entryHref(noeud.entry)}
-            data-tooltip={noeud.description}
             aria-label={noeud.nom}
-            aria-description={noeud.description}
           >
             <span class="magies-orbite__pastille" aria-hidden="true" />
             <span class="magies-orbite__nom">{noeud.nom}</span>
@@ -172,25 +158,18 @@ const surbrillance = noeuds
   </ul>
 </div>
 
-<div class="magies-legende">
-  <!-- Bascule « au survol » (demande du propriétaire) : les relations (par défaut) ou les détails (l'infobulle de description), jamais les deux,
-       sinon l'infobulle cache les traits. Des boutons radio et des règles :has() de styles/magie/orbit.css : sans JavaScript. -->
-  <span class="magies-legende__item">Au survol d'une magie :</span>
-  <span class="magies-mode" role="radiogroup" aria-label="Au survol d'une magie">
-    <label class="magies-mode__choix"><input type="radio" name="magies-survol" value="relations" checked /> Afficher les relations</label>
-    <label class="magies-mode__choix"><input type="radio" name="magies-survol" value="details" /> Afficher les détails</label>
-  </span>
-  <span class="magies-legende__item magies-legende__relation">
+<p class="magies-legende">
+  <span class="magies-legende__item">Survolez une magie :</span>
+  <span class="magies-legende__item">
     A
     <svg viewBox="-34 -12 36 24" aria-hidden="true"><line x1="-34" y1="0" x2="-26" y2="0" /><path d={POINTES.epee.dessin} /></svg>
     B : A est efficace contre B
   </span>
-  <span class="magies-legende__item magies-legende__relation">
+  <span class="magies-legende__item">
     A
     <svg viewBox="-34 -12 36 24" aria-hidden="true"><line x1="-34" y1="0" x2="-20" y2="0" /><g transform="translate(-11 0)"><path d={POINTES.bouclier.dessin} /><path class="magies-legende__arete" d={POINTES.bouclier.arete} /></g></svg>
     B : B résiste à A (boucle : résiste à elle-même)
   </span>
-</div>
-</div>
+</p>
 
 <style is:inline set:html={orbiteCss + '\n' + surbrillance}></style>

@@ -45,31 +45,17 @@ test('15 pages de magie construites, 14 avec une table de sorts', options, () =>
   assert.equal(avecSorts.length, 14);
 });
 
-test('index des magies : 15 noms courts, descriptions en tooltip, version au footer', options, () => {
+test('index des magies : 15 noms courts, sans infobulle (demande du propriétaire), version au footer', options, () => {
   assert.equal([...indexMagies.matchAll(/class="magies-orbite__noeud"/g)].length, 15);
   const nomsVisibles = [...indexMagies.matchAll(/<span class="magies-orbite__nom"[^>]*>([^<]+)<\/span>/g)].map((m) => m[1]);
   assert.deepEqual(nomsVisibles, ['Potentiel Illimité', 'Arcane', 'Corruption', 'Espace-Temps', 'Vide', 'Nécromancie', 'Sang', 'Lumière', 'Ombre', 'Feu', 'Eau', 'Glace', 'Terre', 'Vent', 'Foudre']);
   assert.ok(!indexMagies.includes('magies-orbite__description'));
-  assert.equal([...indexMagies.matchAll(/class="magies-orbite__noeud"[^>]*data-tooltip="[^"]+"/g)].length, 15);
-  assert.equal([...indexMagies.matchAll(/class="magies-orbite__noeud"[^>]*aria-description="[^"]+"/g)].length, 15);
+  // plus d'infobulle sur la carte : le survol ne montre que les relations
+  assert.ok(!indexMagies.includes('data-tooltip'));
+  assert.ok(!/magies-orbite__noeud[^{]*::after/.test(indexMagies));
   assert.equal([...indexMagies.matchAll(/class="magies-orbite__lien /g)].length, 4);
   assert.ok(indexMagies.includes(`<span class="site-footer__version">v${version}</span>`));
   assert.ok(!indexMagies.includes('Écoles, sorts et règles de magie.'));
-});
-
-test('carte des magies : chaque infobulle est bornée à la carte (sinon, même cachée, elle fait défiler la page horizontalement)', options, () => {
-  const positions = [...indexMagies.matchAll(/class="magies-orbite__position[^"]*" data-magie="[^"]*" style="([^"]+)"/g)].map((m) => m[1]);
-  assert.equal(positions.length, 15);
-  for (const style of positions) {
-    for (const axe of ['x', 'mx']) {
-      const valeur = Number(style.match(new RegExp(`--${axe}: ([\\d.]+)%`))?.[1]);
-      assert.equal(Number(style.match(new RegExp(`--${axe}-fraction: ([\\d.]+)`))?.[1]), valeur / 100, style);
-    }
-  }
-  assert.match(indexMagies, /\.magies-orbite \{[^}]*container-type: inline-size;/, 'la carte est le conteneur des unités cqw, à toutes les largeurs');
-  assert.match(indexMagies, /\.magies-orbite__noeud::after \{[^}]*--centre-bulle: calc\(var\(--x-fraction\) \* 100cqw\);[^}]*clamp\([^}]*box-sizing: border-box;/, 'largeur bornée bordure comprise, position ramenée dans la carte');
-  const etroit = indexMagies.slice(indexMagies.indexOf('@media (max-width: 60rem)'));
-  assert.match(etroit, /\.magies-orbite__noeud::after \{ --centre-bulle: calc\(var\(--mx-fraction\) \* 100cqw\); \}/, 'sur écran étroit, la bulle suit la carte étroite');
 });
 
 // Carte des magies dense (demande du propriétaire : la page était « trop aérée ») : la carte du grand écran est large et basse, et aucune pastille n'en
@@ -127,7 +113,9 @@ test('carte des magies : une relation par paire liée dans la base, au survol se
   assert.match(indexMagies, /\.magies-relation \{ --trait: [^}]*opacity: 0;/);
   const cles = [...indexMagies.matchAll(/data-magie="([\w-]+)" style=/g)].map((m) => m[1]);
   assert.equal(cles.length, 15);
-  for (const k of cles) assert.ok(indexMagies.includes(`.magies-orbite:has([data-magie="${k}"]:is(:hover, :focus-within)) .magies-relation.avec-${k} {`), k);
+  // survol, ou focus au clavier seulement : avec :focus-within, un clic (qui donne le focus au lien) laissait les relations affichées au retour arrière
+  for (const k of cles) assert.ok(indexMagies.includes(`.magies-orbite:has([data-magie="${k}"]:hover, [data-magie="${k}"] a:focus-visible) .magies-relation.avec-${k} {`), k);
+  assert.ok(!indexMagies.includes(':focus-within)) .magies-relation'), 'plus de :focus-within pour les relations');
   assert.match(indexMagies.slice(indexMagies.indexOf('@media (max-width: 60rem)')), /\.magies-orbite__relations, \.magies-legende \{ display: none; \}/);
   // géométrie
   const hauteur = Number(indexMagies.match(/class="magies-orbite__relations" viewBox="0 0 1000 (\d+)"/)?.[1]);
@@ -156,22 +144,11 @@ test('carte des magies : une relation par paire liée dans la base, au survol se
   }
 });
 
-// Bascule « au survol » (demande du propriétaire : l'infobulle se posait sur les traits) : « Afficher les relations » (par défaut) ou « Afficher les
-// détails », jamais les deux ; des radios et des règles :has(), sans JavaScript ; sous 60rem, l'infobulle reste (il n'y a pas de relations).
-test('carte des magies : bascule relations / détails au survol, relations par défaut', options, () => {
-  const radios = [...indexMagies.matchAll(/<input type="radio" name="magies-survol" value="(\w+)"( checked)?/g)].map(([, valeur, coche]) => [valeur, Boolean(coche)]);
-  assert.deepEqual(radios, [['relations', true], ['details', false]]);
-  assert.match(indexMagies, /Afficher les relations<\/label>/);
-  assert.match(indexMagies, /Afficher les détails<\/label>/);
-  // relations cochées : l'infobulle est cachée, sur grand écran seulement
-  const grandEcran = indexMagies.slice(indexMagies.indexOf('@media not all and (max-width: 60rem)'));
-  assert.match(grandEcran, /^@media not all and \(max-width: 60rem\) \{\s*\.magies-carte:has\(\.magies-mode input\[value="relations"\]:checked\) \.magies-orbite__noeud::after \{ display: none; \}/);
-  // détails cochés : les relations et leur légende sont cachées
-  assert.match(indexMagies, /\.magies-carte:has\(\.magies-mode input\[value="details"\]:checked\) :is\(\.magies-orbite__relations, \.magies-legende__relation\) \{ display: none; \}/);
-  // la carte, la bascule et la légende sont dans le même conteneur (sinon :has() ne les relie pas)
-  const debut = indexMagies.indexOf('<div class="magies-carte">');
-  assert.ok(debut >= 0 && debut < indexMagies.indexOf('class="magies-orbite"') && indexMagies.indexOf('class="magies-orbite"') < indexMagies.indexOf('name="magies-survol"'));
-  assert.equal([...indexMagies.matchAll(/class="magies-legende__item magies-legende__relation"/g)].length, 2);
+// La légende de la carte tient sur une ligne (demande du propriétaire) ; plus de bascule relations / détails.
+test('carte des magies : légende sur une ligne, sans bascule', options, () => {
+  assert.ok(!indexMagies.includes('magies-mode'), 'plus de bascule');
+  assert.match(indexMagies, /\.magies-legende \{[^}]*flex-wrap: nowrap;[^}]*white-space: nowrap;/);
+  assert.equal([...indexMagies.matchAll(/class="magies-legende__item"/g)].length, 3);
 });
 
 test('chaque identifiant est unique dans une page ; aria-controls, aria-describedby et data-bulle désignent un élément qui existe', options, () => {
