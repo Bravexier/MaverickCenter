@@ -156,6 +156,18 @@ une classe raciale porte le nom de sa race (« Kitsune », page `classes/kitsune
 le résumé de la page (`summary`) est dans une **infobulle** (`components/magie/Bulles.astro` : survol, focus clavier, premier appui au toucher puis le second suit le lien ; `title` sans JavaScript).
 Sur un écran étroit, les colonnes passent à la ligne. Le fil d'Ariane d'une classe mène à sa colonne (`/wiki/classes/#raciales`…).
 
+## Métiers (`/wiki/metiers/`) : un tableau, pas de page par métier
+
+Un seul **long tableau** (demande du propriétaire), à l'image des tableaux de sorts : une ligne par métier de la table `metier`, par ordre alphabétique, en quatre colonnes
+**Nom**, **Bonus** (un rang de `metier_bonus` par ligne), **Artisanat** (le texte, puis les caractéristiques du crochet en pastille ; « — » pour « Rien ») et **Équipement supplémentaire**.
+Cliquer sur un métier ouvre sous sa ligne sa **description** (et son « Avantage possible », sauf s'il se réduit à « … ») ; sans JavaScript, tout est affiché
+(`lib/metiers.mjs#chargerMetiers`, `components/metier/MetiersTableau.astro`, CSS `styles/metier/tableau.css` inséré en `?raw`).
+
+**Les métiers n'ont plus de page à eux** : les pages `metiers/<slug>` restent dans la base et dans les `.md` fabriqués (recherche, mots-clés, `[[liens]]`), mais aucune route n'est construite
+et **tout lien vers un métier mène à sa ligne** (`[[Forgeron]]` → `/wiki/metiers/#metier-forgeron`, qui ouvre la description) : `lib/metiers.mjs#cheminDePage`, utilisé par `entryHref`, `pageHref`,
+le plugin des `[[liens]]`, l'index de recherche et l'onglet DB. Seule « Règles des métiers » (`PAGE_DES_REGLES`, sans ligne dans `metier`) garde sa page, citée au-dessus du tableau.
+`test/metiers.test.mjs` vérifie que les autres pages du type sont exactement les lignes de `metier` ; `test/metiers-html.test.mjs` contrôle le site construit (CI après le build).
+
 ## Pages de classe : un gabarit commun, alimenté par la base
 
 Les 39 pages de `/wiki/classes/<classe>/` sont rendues comme les pages de magie et de race : `components/classes/ClassePage.astro` (avec `ClasseDons`, `ChoixDeDons`, `DonCarte`) affiche

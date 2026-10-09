@@ -1,0 +1,155 @@
+---
+import tableauCss from '../../styles/metier/tableau.css?raw';
+import type { chargerMetiers } from '../../lib/metiers.mjs';
+
+// Tableau de /wiki/metiers/ (demande du propriétaire), à l'image des tableaux de sorts (components/magie/MagieSorts.astro) : une ligne par métier de la table
+// `metier` (Nom, Bonus, Artisanat, Équipement supplémentaire) ; sélectionner une ligne ouvre juste en dessous la description du métier (et son avantage possible).
+// Les métiers n'ont pas de page à eux : un lien vers un métier mène à sa ligne (`#metier-forgeron`, lib/metiers.mjs), que le script ouvre.
+// Sans JavaScript (et à l'impression), toutes les descriptions sont affichées.
+interface Props {
+  metiers: ReturnType<typeof chargerMetiers>;
+}
+const { metiers } = Astro.props;
+
+const colonnes = ['Nom', 'Bonus', 'Artisanat', 'Équipement supplémentaire'];
+---
+
+<style is:inline set:html={tableauCss}></style>
+<section class="metiers" aria-label="Liste des métiers">
+  <p class="muted metiers-aide">
+    {metiers.length} métiers, par ordre alphabétique.{' '}
+    <span class="js-only">Cliquez sur un métier pour lire sa description juste en dessous.</span>
+  </p>
+  <div class="metiers-wrap">
+    <table class="metiers-table">
+      <thead>
+        <tr>{colonnes.map((c) => <th scope="col">{c}</th>)}</tr>
+      </thead>
+      {
+        metiers.map((m) => (
+          <tbody class="metier" id={m.ancre}>
+            <tr class="metier__main">
+              <th scope="row" class="metier__nom">
+                <button type="button" class="metier__choisir" aria-expanded="false" aria-controls={`detail-${m.ancre}`}>
+                  {m.nom}
+                </button>
+              </th>
+              <td data-label="Bonus" class="metier__bonus">
+                {m.bonus.map((b) => <div>{b}</div>)}
+              </td>
+              <td data-label="Artisanat" class="metier__artisanat">
+                {m.artisanat ? (
+                  <>
+                    {m.artisanat.texte}
+                    {m.artisanat.test && <> <span class="metier__test" title="Caractéristiques à combiner pour fabriquer">{m.artisanat.test}</span></>}
+                  </>
+                ) : (
+                  <span class="vide" aria-label="aucun">—</span>
+                )}
+              </td>
+              <td data-label="Équipement supplémentaire" class="metier__equipement">
+                {m.equipement ?? <span class="vide" aria-label="aucun">—</span>}
+              </td>
+            </tr>
+            <tr class="metier__detail" id={`detail-${m.ancre}`} hidden>
+              <td colspan={colonnes.length}>
+                <div class="metier-detail" role="region" aria-labelledby={`detail-${m.ancre}-titre`}>
+                  <header class="metier-detail__tete">
+                    <h2 id={`detail-${m.ancre}-titre`}>{m.nom}</h2>
+                    <button type="button" class="metier-detail__fermer" aria-label={`Fermer la description de ${m.nom}`}>Fermer</button>
+                  </header>
+                  <p class="metier-detail__texte">{m.description}</p>
+                  {m.avantage && <p class="metier-detail__texte"><strong>Avantage possible :</strong> {m.avantage}</p>}
+                  {m.remarque && <p class="metier-detail__texte metier-detail__remarque">{m.remarque}</p>}
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        ))
+      }
+    </table>
+  </div>
+</section>
+
+<noscript>
+  <style>
+    .metiers-table .metier__detail[hidden] { display: table-row !important; }
+  </style>
+</noscript>
+
+<script>
+  // Sélection d'un métier : sa ligne se met en évidence et sa description s'ouvre juste en dessous (un seul métier à la fois), comme pour les sorts.
+  // Sans JavaScript, toutes les descriptions sont affichées (feuille de style de <noscript> ci-dessus).
+  document.documentElement.classList.add('js');
+
+  const lignes = [...document.querySelectorAll<HTMLElement>('tbody.metier')];
+  const bouton = (ligne: HTMLElement) => ligne.querySelector<HTMLButtonElement>('.metier__choisir')!;
+  const detail = (ligne: HTMLElement) => ligne.querySelector<HTMLElement>('.metier__detail');
+  const adresseSansMetier = () => location.pathname + location.search;
+
+  /** Ferme le métier ouvert ; si le focus était dans sa description, il revient sur le bouton de la ligne. */
+  function fermer() {
+    for (const ligne of lignes.filter((l) => l.classList.contains('is-selected'))) {
+      const d = detail(ligne);
+      const focusDedans = !!d && d.contains(document.activeElement);
+      ligne.classList.remove('is-selected');
+      bouton(ligne).setAttribute('aria-expanded', 'false');
+      if (d) d.hidden = true;
+      if (focusDedans) bouton(ligne).focus();
+    }
+  }
+
+  function ouvrir(ligne: HTMLElement, defiler: boolean) {
+    fermer();
+    ligne.classList.add('is-selected');
+    bouton(ligne).setAttribute('aria-expanded', 'true');
+    const d = detail(ligne);
+    if (d) {
+      d.hidden = false;
+      if (defiler) ligne.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    }
+    history.replaceState(null, '', `#${ligne.id}`);
+  }
+
+  /** Ferme tout et retire `#metier-…` de l'adresse (un rechargement ou un lien partagé ne rouvre pas le métier). */
+  function toutFermer() {
+    fermer();
+    if (location.hash.startsWith('#metier-')) history.replaceState(null, '', adresseSansMetier());
+  }
+
+  function basculer(ligne: HTMLElement) {
+    if (ligne.classList.contains('is-selected')) toutFermer();
+    else ouvrir(ligne, true);
+  }
+
+  for (const ligne of lignes) {
+    // Un clic sur la ligne ouvre ou ferme ; un lien, ou un texte en cours de sélection (copier un bonus), ne l'ouvre pas.
+    ligne.querySelector('.metier__main')?.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('a')) return;
+      if (!(e.target as HTMLElement).closest('button') && (getSelection()?.toString() ?? '') !== '') return;
+      basculer(ligne);
+    });
+    detail(ligne)?.querySelector('.metier-detail__fermer')?.addEventListener('click', () => {
+      toutFermer();
+      bouton(ligne).focus();
+    });
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') toutFermer();
+  });
+
+  /** Adresse `#metier-…` (lien `[[Forgeron]]`, recherche, mot-clé) : ouvre ce métier ; toute autre adresse ferme le métier ouvert. */
+  function depuisLien() {
+    let id = '';
+    try {
+      id = decodeURIComponent(location.hash.slice(1));
+    } catch {
+      return; // adresse mal formée : ignorée
+    }
+    const ligne = id.startsWith('metier-') ? lignes.find((l) => l.id === id) : undefined;
+    if (ligne) ouvrir(ligne, true);
+    else fermer();
+  }
+  window.addEventListener('hashchange', depuisLien);
+  depuisLien();
+</script>

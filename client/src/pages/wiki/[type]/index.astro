@@ -6,11 +6,14 @@ import ClassesTableau from '../../../components/classes/ClassesTableau.astro';
 import MagiesConstellation from '../../../components/magie/MagiesConstellation.astro';
 import TableauMagiesInnees from '../../../components/magie/TableauMagiesInnees.astro';
 import TableauRelationsMagies from '../../../components/magie/TableauRelationsMagies.astro';
+import MetiersTableau from '../../../components/metier/MetiersTableau.astro';
 import { TYPES, TYPE_KEYS } from '../../../lib/types.mjs';
 import { groupClasses } from '../../../lib/class-groups.mjs';
 import { groupRaces } from '../../../lib/race-kinds.mjs';
 import { groupByClass } from '../../../lib/capacites.mjs';
 import { loadMagies } from '../../../lib/magies';
+import { ouvrirBase } from '../../../lib/donnees.mjs';
+import { chargerMetiers, PAGE_DES_REGLES } from '../../../lib/metiers.mjs';
 import { entryHref } from '../../../lib/wiki';
 import { entriesOfType, loadWiki } from '../../../lib/wiki';
 
@@ -37,6 +40,9 @@ const classGroups = type === 'classes' ? groupClasses(list) : [];
 const raceGroups = type === 'races' ? groupRaces(entries) : [];
 // Les dons de classe (pages `capacites/…`) sont rangés par classe (une fiche par don : plus de 600).
 const capaciteGroups = type === 'capacites' ? groupByClass(entries) : [];
+// Les métiers : un long tableau (lib/metiers.mjs, components/metier/MetiersTableau.astro), sans page par métier ; la page des règles est citée au-dessus.
+const metiers = type === 'metiers' ? chargerMetiers(ouvrirBase()) : [];
+const pageDesRegles = type === 'metiers' ? list.find((e) => e.id === PAGE_DES_REGLES) : undefined;
 const capaciteDetail = (e: any) => [`Niveau ${e.data.niveau}`, e.data.specialite, e.data.type_capacite].filter(Boolean).join(' · ');
 ---
 
@@ -51,6 +57,11 @@ const capaciteDetail = (e: any) => [`Niveau ${e.data.niveau}`, e.data.specialite
           <h2 id="relations-titre">Relations entre magies</h2>
           <TableauRelationsMagies entries={entries} />
         </section>
+      </>
+    ) : metiers.length > 0 ? (
+      <>
+        {pageDesRegles && <p>Les règles générales sont sur la page <a href={entryHref(pageDesRegles)}>{pageDesRegles.data.title}</a>.</p>}
+        <MetiersTableau metiers={metiers} />
       </>
     ) : classGroups.length > 0 ? (
       <ClassesTableau groups={classGroups} />

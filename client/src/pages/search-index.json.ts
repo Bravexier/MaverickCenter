@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { TYPES } from '../lib/types.mjs';
 import { loadWiki, typeOf } from '../lib/wiki';
+import { adresseDePage } from '../lib/metiers.mjs';
 
 /** Texte brut approximatif d'une page, pour la recherche plein texte côté navigateur. */
 function plainText(body: string) {
@@ -14,14 +15,19 @@ function plainText(body: string) {
 
 export const GET: APIRoute = async () => {
   const { entries } = await loadWiki();
-  const index = entries.map((entry) => ({
-    title: entry.data.title,
-    type: TYPES[typeOf(entry)].singular,
-    path: `wiki/${entry.id}/`, // relatif à la racine du site ; la page ajoute le préfixe (data-base) et le suffixe (data-suffix)
-    summary: entry.data.summary ?? '',
-    aliases: entry.data.aliases,
-    tags: entry.data.tags,
-    text: plainText(entry.body ?? ''),
-  }));
+  const index = entries.map((entry) => {
+    // chemin relatif à la racine du site ; la page ajoute le préfixe (data-base), le suffixe (data-suffix) puis l'ancre (un métier : sa ligne du tableau)
+    const { chemin, ancre } = adresseDePage(entry.id);
+    return {
+      title: entry.data.title,
+      type: TYPES[typeOf(entry)].singular,
+      path: chemin,
+      ...(ancre && { ancre }),
+      summary: entry.data.summary ?? '',
+      aliases: entry.data.aliases,
+      tags: entry.data.tags,
+      text: plainText(entry.body ?? ''),
+    };
+  });
   return new Response(JSON.stringify(index), { headers: { 'Content-Type': 'application/json' } });
 };
