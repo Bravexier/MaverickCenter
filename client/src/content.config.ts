@@ -36,6 +36,7 @@ const wiki = defineCollection({
     choix_exclusif_avec: z.array(z.string()).optional(), // ids des capacités de la même ligne : une seule au choix
     // Guide du joueur : numéro de chapitre (1, 2, 3… : ordre de lecture, flèches et pagination ; voir lib/guide.mjs). Absent = page de référence.
     chapitre: z.number().int().positive().optional(),
+    partie: z.string().optional(), // partie du guide (lib/guide.mjs#PARTIES : decouvrir, creer, jouer…), qui donne sa couleur au chapitre
   }),
 });
 

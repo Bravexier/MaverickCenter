@@ -1,7 +1,7 @@
 ---
 import guideCss from '../../styles/guide/guide.css?raw';
 import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
-import { chapitresDuGuide, morceauxDuChapitre, voisins } from '../../lib/guide.mjs';
+import { chapitresDuGuide, morceauxDuChapitre, partiesDuGuide, voisins } from '../../lib/guide.mjs';
 import { rendreMarkdown } from '../../lib/guide-rendu';
 import { idBulle, pageHref } from '../../lib/magies';
 import type { WikiEntry } from '../../lib/wiki';
@@ -12,6 +12,7 @@ import GuideBloc from './GuideBloc.astro';
 // (Précédent à gauche, Suivant à droite ; grisée au premier et au dernier chapitre), qui suit la lecture ; en bas, les mêmes liens avec le titre du
 // chapitre voisin, puis la pagination : un numéro par chapitre, son titre en infobulle (components/magie/Bulles.astro ; sans JavaScript, `title`).
 // Les flèches du clavier (← →) tournent les pages. Le texte est le Markdown de la page, coupé à ses blocs tirés de la base (GuideBloc).
+// Chaque partie du guide a sa couleur (lib/guide.mjs#PARTIES) : celle du chapitre colore la page, les numéros de la pagination sont regroupés par partie.
 interface Props {
   entry: WikiEntry;
   entries: WikiEntry[];
@@ -23,12 +24,13 @@ const { chapitre, precedent, suivant } = voisins(chapitres, entry.id);
 const morceaux = await Promise.all(
   morceauxDuChapitre(entry.body ?? '').map(async (m) => ('bloc' in m ? m : { html: await rendreMarkdown(m.markdown, entry.id, entry.data.status) })),
 );
+const parties = partiesDuGuide(chapitres);
 const css = [guideCss, magieTooltipsCss].join('\n');
 const etiquette = (c: { numero: number; titre: string }) => `Chapitre ${c.numero} : ${c.titre}`;
 ---
 
 <style is:inline set:html={css}></style>
-<div class="guide" data-guide>
+<div class="guide" data-guide style={`--couleur-partie: ${chapitre.partie.couleur}`}>
   <div class="guide-cadre">
     {
       precedent ? (
@@ -45,7 +47,7 @@ const etiquette = (c: { numero: number; titre: string }) => `Chapitre ${c.numero
     }
 
     <article class="guide-page" aria-labelledby="guide-titre">
-      <p class="guide-numero">Guide du joueur · chapitre {chapitre.numero} sur {chapitres.length}</p>
+      <p class="guide-numero"><span class="guide-partie">{chapitre.partie.titre}</span> Guide du joueur · chapitre {chapitre.numero} sur {chapitres.length}</p>
       <h1 id="guide-titre">{chapitre.titre}</h1>
       {
         morceaux.map((m) =>
@@ -98,29 +100,36 @@ const etiquette = (c: { numero: number; titre: string }) => `Chapitre ${c.numero
     </div>
     <ol class="guide-pagination">
       {
-        chapitres.map((c) => {
-          const id = idBulle('guide-chapitre');
-          return (
-            <li>
-              <span class="bulle-zone">
-                <a
-                  class="guide-pagination__numero"
-                  href={pageHref(c.id)}
-                  aria-current={c.id === chapitre.id ? 'page' : undefined}
-                  aria-label={etiquette(c)}
-                  data-bulle={id}
-                  title={etiquette(c)}
-                >
-                  {c.numero}
-                </a>
-                <span class="bulle" role="tooltip" id={id} hidden>
-                  <span class="bulle__sous">Chapitre {c.numero}</span>
-                  <span class="bulle__titre">{c.titre}</span>
-                </span>
-              </span>
-            </li>
-          );
-        })
+        parties.map(({ partie, chapitres: deLaPartie }) => (
+          <li class="guide-pagination__partie" style={`--couleur-partie: ${partie.couleur}`}>
+            <span class="guide-pagination__titre">{partie.titre}</span>
+            <ol class="guide-pagination__numeros">
+              {deLaPartie.map((c) => {
+                const id = idBulle('guide-chapitre');
+                return (
+                  <li>
+                    <span class="bulle-zone">
+                      <a
+                        class="guide-pagination__numero"
+                        href={pageHref(c.id)}
+                        aria-current={c.id === chapitre.id ? 'page' : undefined}
+                        aria-label={etiquette(c)}
+                        data-bulle={id}
+                        title={etiquette(c)}
+                      >
+                        {c.numero}
+                      </a>
+                      <span class="bulle" role="tooltip" id={id} hidden>
+                        <span class="bulle__sous">{partie.titre} · chapitre {c.numero}</span>
+                        <span class="bulle__titre">{c.titre}</span>
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </li>
+        ))
       }
     </ol>
   </nav>

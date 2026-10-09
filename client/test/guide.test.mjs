@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
-import { avecPrefixe, BLOCS, chapitresDuGuide, pagesDeReference, estUnChapitre, morceauxDuChapitre, PREMIER_CHAPITRE, sansMarqueurs, voisins } from '../src/lib/guide.mjs';
+import { avecPrefixe, BLOCS, chapitresDuGuide, pagesDeReference, PARTIES, partiesDuGuide, estUnChapitre, morceauxDuChapitre, PREMIER_CHAPITRE, sansMarqueurs, voisins } from '../src/lib/guide.mjs';
 import {
   chargerCompetences,
   chargerEntrainement,
@@ -15,9 +15,10 @@ import {
   chargerTypesDeDon,
 } from '../src/lib/guide-db.mjs';
 import { adresseDePage, cheminDePage } from '../src/lib/metiers.mjs';
+import { chargerFilRouge, FIL_ROUGE } from '../src/lib/guide-fil-rouge.mjs';
 import { buildIndex, entryUrl, splitFrontmatter } from '../src/lib/wikilinks.mjs';
 
-const page = (id, chapitre, title = id) => ({ id, data: { title, chapitre, summary: `Résumé de ${title}` } });
+const page = (id, chapitre, title = id, partie = 'decouvrir') => ({ id, data: { title, chapitre, partie, summary: `Résumé de ${title}` } });
 
 test('les chapitres sont les pages guide numérotées, dans l’ordre ; les autres pages du guide n’en sont pas', () => {
   const entries = [page('guide/c', 3), page(PREMIER_CHAPITRE, 1), page('guide/postures'), page('guide/b', 2), page('races/elfe', 4)];
@@ -30,6 +31,15 @@ test('une numérotation avec un trou, un doublon ou un mauvais premier chapitre 
   assert.throws(() => chapitresDuGuide([page(PREMIER_CHAPITRE, 1), page('guide/c', 3)]), /chapitre 2 attendu/);
   assert.throws(() => chapitresDuGuide([page(PREMIER_CHAPITRE, 1), page('guide/b', 1)]), /chapitre 2 attendu/);
   assert.throws(() => chapitresDuGuide([page('guide/b', 1)]), /doit être guide\/bienvenue/);
+});
+
+test('chaque chapitre a une partie connue ; les parties se suivent dans l’ordre, chacune avec sa couleur', () => {
+  assert.deepEqual(PARTIES.map((p) => p.id), ['decouvrir', 'creer', 'jouer', 'progresser', 'plus-loin']);
+  assert.ok(PARTIES.every((p) => /^#[0-9a-f]{6}$/.test(p.couleur)));
+  const chapitres = chapitresDuGuide([page(PREMIER_CHAPITRE, 1), page('guide/b', 2, 'b', 'creer'), page('guide/c', 3, 'c', 'creer'), page('guide/d', 4, 'd', 'plus-loin')]);
+  assert.deepEqual(partiesDuGuide(chapitres).map((g) => [g.partie.id, g.chapitres.map((c) => c.numero)]), [['decouvrir', [1]], ['creer', [2, 3]], ['plus-loin', [4]]]);
+  assert.throws(() => chapitresDuGuide([page(PREMIER_CHAPITRE, 1), page('guide/b', 2, 'b', 'inconnue')]), /pas de partie connue/);
+  assert.throws(() => chapitresDuGuide([page(PREMIER_CHAPITRE, 1, 'a', 'creer'), page('guide/b', 2, 'b', 'decouvrir')]), /vient après un chapitre de la partie creer/);
 });
 
 test('précédent et suivant : rien avant le premier chapitre ni après le dernier (flèches grisées)', () => {
@@ -96,7 +106,16 @@ const pagesDuGuide = readdirSync(dossier)
 test('le guide du site : chapitres numérotés sans trou, chacun avec un résumé (infobulle de la pagination), blocs connus', () => {
   const chapitres = chapitresDuGuide(pagesDuGuide);
   assert.ok(chapitres.length >= 5, `${chapitres.length} chapitres`);
-  assert.deepEqual(chapitres.slice(0, 4).map((c) => c.id), [PREMIER_CHAPITRE, 'guide/l-univers', 'guide/creer-son-personnage', 'guide/la-montee-de-niveau']);
+  assert.deepEqual(
+    chapitres.filter((c) => c.partie.id === 'decouvrir').map((c) => c.id),
+    [PREMIER_CHAPITRE, 'guide/le-jeu-de-role', 'guide/l-univers', 'guide/reussir-une-action'],
+    'découvrir le jeu, puis la règle du D100, avant la création',
+  );
+  assert.deepEqual(
+    chapitres.filter((c) => c.partie.id === 'creer').map((c) => c.id),
+    ['guide/creer-son-personnage', 'guide/choisir-sa-race', 'guide/choisir-ses-magies', 'guide/choisir-sa-classe', 'guide/caracteristiques-et-competences', 'guide/premiers-sorts', 'guide/finaliser-son-personnage'],
+    'la création dans l’ordre où l’on remplit la fiche ; les attributs, qui se calculent, à la fin',
+  );
   for (const c of chapitres) assert.ok(c.resume, `${c.id} : résumé absent`);
   const blocs = pagesDuGuide.filter(estUnChapitre).flatMap((p) => morceauxDuChapitre(p.body).filter((m) => m.bloc).map((m) => m.bloc));
   assert.equal(new Set(blocs).size, blocs.length, 'un bloc est appelé une seule fois dans tout le guide');
@@ -134,4 +153,24 @@ test('les blocs de règles relisent la base dans l’ordre de la fiche', () => {
   assert.deepEqual(chargerInitiative(db).map((i) => i.bonus_brut), ['-2 initiative', '+0 initiative', '+2 initiative', '+4 initiative', '+6 initiative']);
   assert.deepEqual(chargerEntrainement(db).map((e) => e.rate), [false, false, false, false, false, true]);
   assert.deepEqual(chargerTypesDeDon(db).map((t) => t.nom), ['Passif', 'Actif', 'Action', 'Réaction']);
+});
+
+test('les personnages fil rouge : des choix permis par la base, et des attributs calculés comme la fiche automatique', () => {
+  const fil = chargerFilRouge(db);
+  assert.deepEqual(fil.map((p) => p.id), FIL_ROUGE.map((p) => p.id));
+  for (const p of FIL_ROUGE) {
+    const magieOk = !p.magie || db.prepare('SELECT 1 FROM v_race_magie_accessible WHERE race_id = ? AND magie_id = ?').get(p.race, p.magie);
+    assert.ok(magieOk, `${p.id} : magie innée non accessible à sa race`);
+    assert.ok(db.prepare('SELECT 1 FROM v_race_classe_accessible WHERE race_id = ? AND classe_id = ?').get(p.race, p.classe), `${p.id} : classe non accessible`);
+    assert.equal(db.prepare('SELECT race_id FROM ethnie WHERE id = ?').get(p.ethnie)?.race_id, p.race, `${p.id} : ethnie d’une autre race`);
+  }
+  const guerrier = fil.find((p) => p.id === 'guerrier');
+  // Orios (20 santé, 1 chakra) + Guerrier (9 santé, 0 chakra, 1 barrière) + Sang (10 santé, 0 chakra)
+  assert.deepEqual([guerrier.attributs.sante, guerrier.attributs.chakra, guerrier.attributs.barriere], [39, 1, 1]);
+  assert.deepEqual(guerrier.attributs.quatriemeBarre, { ressource: 'Sang', max: 10 });
+  const barde = fil.find((p) => p.id === 'barde');
+  // Kitsune (8, 12) + Barde (2, 6, barrière 2) + Vent (0, 5) : chakra 23, barrière 11 + 2
+  assert.deepEqual([barde.attributs.sante, barde.attributs.chakra, barde.attributs.barriere, barde.attributs.am], [10, 23, 13, 4]);
+  assert.equal(barde.emplacements, 2, 'magie innée + classe magique, puissance 1');
+  assert.equal(fil.find((p) => p.id === 'archer').emplacements, 1, 'archer : la magie innée seule');
 });

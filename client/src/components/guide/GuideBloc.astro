@@ -1,6 +1,7 @@
 ---
 import { ouvrirBase } from '../../lib/donnees.mjs';
-import { pagesDeReference } from '../../lib/guide.mjs';
+import { pagesDeReference, partiesDuGuide } from '../../lib/guide.mjs';
+import { chargerFilRouge } from '../../lib/guide-fil-rouge.mjs';
 import {
   chargerCompetences,
   chargerEntrainement,
@@ -20,7 +21,7 @@ interface Props {
   bloc: string;
   entry: WikiEntry;
   entries: WikiEntry[];
-  chapitres: { id: string; numero: number; titre: string; resume: string }[];
+  chapitres: { id: string; numero: number; titre: string; resume: string; partie: { id: string; titre: string; couleur: string } }[];
 }
 const { bloc, entry, entries, chapitres } = Astro.props;
 const db = ouvrirBase();
@@ -41,24 +42,150 @@ const competences =
       )
     : [];
 const references = bloc === 'documents' ? pagesDeReference(entries) : [];
+// Les personnages fil rouge (lib/guide-fil-rouge.mjs) : une carte par personnage, son contenu selon l'étape de la création.
+const filRouge = bloc.startsWith('fil-rouge') ? chargerFilRouge(db) : [];
+/** « 2 de la race + 6 de la classe = 8 » : le calcul d'un attribut, termes nuls omis (sauf le premier). */
+const calcul = (termes: [number | null | undefined, string][], total: number) =>
+  `${termes.filter(([v], i) => i === 0 || v).map(([v, d]) => `${v ?? 0} ${d}`).join(' + ')} = ${total}`;
 const nombre = (n: number) => n.toLocaleString('fr-FR');
 ---
 
 {
   bloc === 'sommaire' && (
-    <ol class="guide-sommaire">
-      {chapitres
-        .filter((c) => c.id !== entry.id)
-        .map((c) => (
-          <li>
-            <a class="guide-sommaire__lien" href={pageHref(c.id)}>
-              <span class="guide-sommaire__numero" aria-hidden="true">{c.numero}</span>
-              <span class="guide-sommaire__titre">{c.titre}</span>
-            </a>
-            <span class="guide-sommaire__resume">{c.resume}</span>
-          </li>
-        ))}
-    </ol>
+    <div class="guide-sommaire">
+      {partiesDuGuide(chapitres.filter((c) => c.id !== entry.id)).map(({ partie, chapitres: deLaPartie }) => (
+        <section class="guide-sommaire__partie" style={`--couleur-partie: ${partie.couleur}`} aria-label={partie.titre}>
+          <h3 class="guide-sommaire__titre-partie">{partie.titre}</h3>
+          <ol class="guide-sommaire__liste">
+            {deLaPartie.map((c) => (
+              <li>
+                <a class="guide-sommaire__lien" href={pageHref(c.id)}>
+                  <span class="guide-sommaire__numero" aria-hidden="true">{c.numero}</span>
+                  <span class="guide-sommaire__titre">{c.titre}</span>
+                </a>
+                <span class="guide-sommaire__resume">{c.resume}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+{
+  bloc.startsWith('fil-rouge') && (
+    <div class="guide-fil-rouge" role="group" aria-label="Les personnages fil rouge">
+      {filRouge.map((p) => (
+        <section class="guide-fil-rouge__perso" aria-label={p.titre}>
+          <h4 class="guide-fil-rouge__nom">{p.titre}</h4>
+          <dl>
+            {bloc === 'fil-rouge' && (
+              <>
+                <dt>Race</dt>
+                <dd><a href={pageHref(p.race.id)}>{p.race.nom}</a>{p.ethnie && p.ethnie.nom !== p.race.nom && <> ({p.ethnie.nom})</>}</dd>
+                <dt>Magie innée</dt>
+                <dd>{p.magie ? <a href={pageHref(p.magie.id)}>{p.magie.nom}</a> : <em>à préciser</em>}</dd>
+                <dt>Classe</dt>
+                <dd><a href={pageHref(p.classe.id)}>{p.classe.nom}</a></dd>
+              </>
+            )}
+            {bloc === 'fil-rouge-race' && (
+              <>
+                <dt>Race</dt>
+                <dd><a href={pageHref(p.race.id)}>{p.race.nom}</a>{p.ethnie && p.ethnie.nom !== p.race.nom && <> ({p.ethnie.nom})</>}</dd>
+                <dt>Santé de départ</dt>
+                <dd>{p.race.sante}</dd>
+                <dt>Chakra de départ</dt>
+                <dd>{p.race.chakra}</dd>
+                {p.race.barriere > 0 && (<><dt>Bonus de barrière</dt><dd>+{p.race.barriere}</dd></>)}
+                <dt>Vitesse</dt>
+                <dd>{p.race.vitesseSol} sur terre, {p.race.vitesseNage} à la nage</dd>
+                <dt>Don de base</dt>
+                <dd>{p.race.donDeBase}</dd>
+                {p.ethnie && p.ethnie.descriptif.length > 0 && (
+                  <>
+                    <dt>{p.ethnie.nom === p.race.nom ? 'Bonus de race' : 'Bonus d’ethnie'}</dt>
+                    <dd>{p.ethnie.descriptif.length > 1 ? <ul>{p.ethnie.descriptif.map((l) => <li>{l}</li>)}</ul> : p.ethnie.descriptif[0]}</dd>
+                  </>
+                )}
+              </>
+            )}
+            {bloc === 'fil-rouge-magie' && (
+              p.magie ? (
+                <>
+                  <dt>Magie innée</dt>
+                  <dd><a href={pageHref(p.magie.id)}>{p.magie.nom}</a></dd>
+                  <dt>Bonus de caractéristique</dt>
+                  <dd>+1 en {p.magie.caracteristique ?? 'au choix ou aléatoire'}</dd>
+                  <dt>Chakra offert</dt>
+                  <dd>{p.magie.chakra}</dd>
+                  {p.magie.sante > 0 && (<><dt>Santé offerte</dt><dd>{p.magie.sante}</dd></>)}
+                  <dt>Dieu inné</dt>
+                  <dd>{p.magie.dieux.join(' & ') || '—'}</dd>
+                  <dt>Résiste à</dt>
+                  <dd>{p.magie.resiste.join(', ') || '—'}</dd>
+                  <dt>Vulnérable à</dt>
+                  <dd>{p.magie.vulnerable.join(', ') || '—'}</dd>
+                  <dt>Magie acquise</dt>
+                  <dd>aucune</dd>
+                </>
+              ) : (
+                <>
+                  <dt>Magie innée</dt>
+                  <dd><em>à préciser</em></dd>
+                </>
+              )
+            )}
+            {bloc === 'fil-rouge-classe' && (
+              <>
+                <dt>Classe</dt>
+                <dd><a href={pageHref(p.classe.id)}>{p.classe.nom}</a> ({p.classe.categorie.toLowerCase()}), niveau 2</dd>
+                <dt>Santé, chakra, barrière</dt>
+                <dd>+{p.classe.sante}, +{p.classe.chakra}, +{p.classe.barriere}</dd>
+                <dt>Maîtrises d’armes</dt>
+                <dd>{p.classe.maitrisesArmes.join(' ; ')}</dd>
+                <dt>Armures</dt>
+                <dd>{p.classe.maitrisesArmures.join(' ; ')}</dd>
+                <dt>Équipement de départ</dt>
+                <dd>{[p.classe.arme, p.classe.armure].filter(Boolean).join(' ; ')}</dd>
+                <dt>Inventaire de départ</dt>
+                <dd>{p.classe.inventaire.join(', ')}</dd>
+              </>
+            )}
+            {bloc === 'fil-rouge-sorts' && (
+              <>
+                <dt>Magie innée</dt>
+                <dd>oui{p.magie && <> ({p.magie.nom})</>}</dd>
+                <dt>Magie acquise</dt>
+                <dd>non</dd>
+                <dt>Classe magique</dt>
+                <dd>{p.classe.magique ? `oui (${p.classe.nom})` : 'non'}</dd>
+                <dt>Emplacements de sorts</dt>
+                <dd>{p.conditions} condition{p.conditions > 1 ? 's' : ''} × puissance magique {p.puissanceMagique} = <strong>{p.emplacements}</strong></dd>
+              </>
+            )}
+            {bloc === 'fil-rouge-attributs' && (
+              <>
+                <dt>Santé</dt>
+                <dd>{calcul([[p.race.sante, 'de la race'], [p.classe.sante, 'de la classe'], [p.magie?.sante, 'de la magie'], [p.ethnie?.sante, 'de l’ethnie']], p.attributs.sante)}</dd>
+                <dt>Chakra</dt>
+                <dd>{calcul([[p.race.chakra, 'de la race'], [p.classe.chakra, 'de la classe'], [p.magie?.chakra, 'de la magie'], [p.ethnie?.chakra, 'de l’ethnie']], p.attributs.chakra)}{!p.magieConnue && <> <em>(sans sa magie)</em></>}</dd>
+                <dt>Barrière</dt>
+                <dd>{calcul([[Math.floor(p.attributs.chakra / 2), 'pour la moitié du chakra'], [p.race.barriere, 'de la race'], [p.classe.barriere, 'de la classe'], [p.ethnie?.barriere, 'de l’ethnie']], p.attributs.barriere)}</dd>
+                <dt>Corruption maximale</dt>
+                <dd>{p.attributs.chakra}</dd>
+                {p.attributs.quatriemeBarre && (<><dt>{p.attributs.quatriemeBarre.ressource} (4ᵉ barre)</dt><dd>{p.attributs.quatriemeBarre.max}</dd></>)}
+                <dt>Vitesse</dt>
+                <dd>{p.attributs.vitesseSol} sur terre, {p.attributs.vitesseNage} à la nage</dd>
+                <dt>Armure magique de base</dt>
+                <dd>{p.attributs.am > 0 ? `${p.attributs.am} AM (classe magique)` : '0'}</dd>
+              </>
+            )}
+          </dl>
+        </section>
+      ))}
+    </div>
   )
 }
 

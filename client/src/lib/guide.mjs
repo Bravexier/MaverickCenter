@@ -9,8 +9,24 @@
 /** Id de la page du premier chapitre : l'accueil de l'onglet Guide, servi à /guide/. */
 export const PREMIER_CHAPITRE = 'guide/bienvenue';
 
+/**
+ * Les parties du guide, dans l'ordre de lecture, chacune avec sa couleur (demande du propriétaire : un code couleur par partie). Un chapitre dit la sienne
+ * par `partie: <id>` ; les chapitres d'une même partie se suivent. Couleurs assez foncées pour un texte blanc dessus (pastilles, numéros).
+ */
+export const PARTIES = [
+  { id: 'decouvrir', titre: 'Découvrir', couleur: '#2a6f97' },
+  { id: 'creer', titre: 'Créer son personnage', couleur: '#2e7d4f' },
+  { id: 'jouer', titre: 'Jouer', couleur: '#b03030' },
+  { id: 'progresser', titre: 'Progresser', couleur: '#6a4a9c' },
+  { id: 'plus-loin', titre: 'Pour aller plus loin', couleur: '#5a6470' },
+];
+
 /** Blocs qu'un chapitre peut appeler par `<!-- guide:<bloc> -->` (le composant qui les rend : components/guide/GuideBloc.astro). */
-export const BLOCS = ['sommaire', 'magies', 'magie-bonus', 'initiative', 'competences', 'niveaux', 'types-de-don', 'entrainement', 'postures', 'documents'];
+export const BLOCS = [
+  'sommaire', 'magies', 'magie-bonus', 'initiative', 'competences', 'niveaux', 'types-de-don', 'entrainement', 'postures', 'documents',
+  // les personnages fil rouge (lib/guide-fil-rouge.mjs), étape par étape de la création
+  'fil-rouge', 'fil-rouge-race', 'fil-rouge-magie', 'fil-rouge-classe', 'fil-rouge-sorts', 'fil-rouge-attributs',
+];
 
 const MARQUEUR = /^<!--\s*guide:([a-z-]+)\s*-->[ \t]*$/gm;
 
@@ -18,20 +34,29 @@ const MARQUEUR = /^<!--\s*guide:([a-z-]+)\s*-->[ \t]*$/gm;
 export const estUnChapitre = (entry) => entry.id.startsWith('guide/') && Number.isInteger(entry.data?.chapitre);
 
 /**
- * Les chapitres du guide dans l'ordre de lecture : [{ id, numero, titre, resume }]. Les numéros sont 1, 2, 3… sans trou ni doublon et le premier est
- * PREMIER_CHAPITRE ; sinon une erreur (le build s'arrête plutôt que de montrer une pagination fausse).
+ * Les chapitres du guide dans l'ordre de lecture : [{ id, numero, titre, resume, partie }] (`partie` : un élément de PARTIES). Les numéros sont 1, 2, 3…
+ * sans trou ni doublon, le premier est PREMIER_CHAPITRE, chaque chapitre a une partie connue et les parties se suivent dans l'ordre de PARTIES ; sinon
+ * une erreur (le build s'arrête plutôt que de montrer une pagination fausse).
  */
 export function chapitresDuGuide(entries) {
   const chapitres = entries
     .filter(estUnChapitre)
-    .map((e) => ({ id: e.id, numero: e.data.chapitre, titre: e.data.title, resume: e.data.summary ?? '' }))
+    .map((e) => ({ id: e.id, numero: e.data.chapitre, titre: e.data.title, resume: e.data.summary ?? '', partie: PARTIES.find((p) => p.id === e.data.partie) }))
     .sort((a, b) => a.numero - b.numero);
   chapitres.forEach((c, i) => {
     if (c.numero !== i + 1) throw new Error(`guide : chapitre ${i + 1} attendu, ${c.id} porte le numéro ${c.numero}`);
+    if (!c.partie) throw new Error(`guide : ${c.id} n'a pas de partie connue (parties : ${PARTIES.map((p) => p.id).join(', ')})`);
+    if (i > 0 && PARTIES.indexOf(c.partie) < PARTIES.indexOf(chapitres[i - 1].partie)) {
+      throw new Error(`guide : ${c.id} (partie ${c.partie.id}) vient après un chapitre de la partie ${chapitres[i - 1].partie.id}`);
+    }
   });
   if (chapitres.length && chapitres[0].id !== PREMIER_CHAPITRE) throw new Error(`guide : le chapitre 1 doit être ${PREMIER_CHAPITRE}, pas ${chapitres[0].id}`);
   return chapitres;
 }
+
+/** Les chapitres rangés par partie, dans l'ordre : [{ partie, chapitres }] (une partie sans chapitre n'apparaît pas). */
+export const partiesDuGuide = (chapitres) =>
+  PARTIES.map((partie) => ({ partie, chapitres: chapitres.filter((c) => c.partie === partie) })).filter((g) => g.chapitres.length > 0);
 
 /** Le chapitre d'id donné et ses voisins : { chapitre, precedent, suivant } (null au bord : flèche grisée). */
 export function voisins(chapitres, id) {

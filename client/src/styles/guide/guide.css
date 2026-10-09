@@ -2,15 +2,34 @@
    Une page de livre (le texte sur une feuille) entre deux flèches qui suivent la lecture (Précédent à gauche, Suivant à droite, grisées aux bords),
    puis, en bas, les chapitres voisins et la pagination (un numéro par chapitre, titre en infobulle). Sur un écran étroit, les flèches de côté
    disparaissent : les liens du bas en tiennent lieu. Les blocs tirés de la base (GuideBloc.astro) ont leurs styles plus bas. */
-.guide {
-  --guide: var(--accent);
-  --guide-soft: var(--accent-soft);
-  --guide-line: color-mix(in srgb, var(--accent) 35%, var(--border));
+/* Couleur de la partie (lib/guide.mjs#PARTIES), posée par `--couleur-partie` sur la page et sur chaque groupe de la pagination et du sommaire :
+   --guide pour les aplats (texte blanc dessus), --guide-texte pour un texte coloré sur la feuille (éclairci en thème sombre). */
+.guide,
+.guide-pagination__partie,
+.guide-sommaire__partie {
+  --guide: var(--couleur-partie, var(--accent));
+  --guide-texte: var(--guide);
+  --guide-soft: color-mix(in srgb, var(--guide) 12%, var(--surface));
+  --guide-line: color-mix(in srgb, var(--guide) 40%, var(--border));
   /* infobulles (styles/magie/tooltips.css) : mêmes variables que les pages de magie */
   --mag: var(--guide);
   --mag-soft: var(--guide-soft);
   --mag-line: var(--guide-line);
-  margin-top: 0.5rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) :is(.guide, .guide-pagination__partie, .guide-sommaire__partie) { --guide-texte: color-mix(in srgb, var(--guide) 45%, #fff); }
+}
+:root[data-theme="dark"] :is(.guide, .guide-pagination__partie, .guide-sommaire__partie) { --guide-texte: color-mix(in srgb, var(--guide) 45%, #fff); }
+.guide { margin-top: 0.5rem; }
+.guide-partie {
+  display: inline-block;
+  margin-right: 0.5rem;
+  padding: 0.05rem 0.55rem;
+  border-radius: 999px;
+  background: var(--guide);
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .guide-invisible {
@@ -41,7 +60,7 @@
   border: 2px solid var(--guide-line);
   border-radius: 50%;
   background: var(--surface);
-  color: var(--guide);
+  color: var(--guide-texte);
   font-size: 2rem;
   line-height: 1;
   text-decoration: none;
@@ -50,7 +69,7 @@
 }
 .guide-fleche > span[aria-hidden] { margin-top: -0.2rem; }
 a.guide-fleche:hover,
-a.guide-fleche:focus-visible { background: var(--guide); border-color: var(--guide); color: var(--surface); }
+a.guide-fleche:focus-visible { background: var(--guide); border-color: var(--guide); color: #fff; }
 a.guide-fleche--precedent:hover { transform: translateX(-2px); }
 a.guide-fleche--suivant:hover { transform: translateX(2px); }
 a.guide-fleche:focus-visible { outline: 2px solid var(--guide); outline-offset: 3px; }
@@ -79,7 +98,7 @@ a.guide-fleche:focus-visible { outline: 2px solid var(--guide); outline-offset: 
   font-size: clamp(1.6rem, 4vw, 2.1rem);
 }
 .guide-texte { max-width: 46rem; }
-.guide-texte h2 { margin-top: 2.2rem; color: var(--guide); }
+.guide-texte h2 { margin-top: 2.2rem; color: var(--guide-texte); }
 .guide-texte h3 { margin-top: 1.6rem; }
 .guide-texte blockquote {
   margin: 1rem 0;
@@ -118,7 +137,7 @@ a.guide-fleche:focus-visible { outline: 2px solid var(--guide); outline-offset: 
 }
 .guide-voisin--suivant { text-align: right; }
 .guide-voisin__sens { color: var(--muted); font-size: 0.85rem; }
-.guide-voisin__titre { color: var(--guide); font-weight: 700; }
+.guide-voisin__titre { color: var(--guide-texte); font-weight: 700; }
 a.guide-voisin:hover, a.guide-voisin:focus-visible { border-color: var(--guide); box-shadow: inset 0 0 0 1px var(--guide); }
 .guide-voisin[aria-disabled='true'] { border-style: dashed; background: transparent; }
 .guide-voisin[aria-disabled='true'] .guide-voisin__sens { color: var(--border); }
@@ -127,11 +146,22 @@ a.guide-voisin:hover, a.guide-voisin:focus-visible { border-color: var(--guide);
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.4rem;
+  gap: 0.75rem 1.25rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
+/* un groupe par partie : son nom au-dessus de ses numéros, souligné de sa couleur */
+.guide-pagination__partie { display: grid; justify-items: center; gap: 0.3rem; }
+.guide-pagination__titre {
+  padding: 0 0.3rem 0.1rem;
+  border-bottom: 2px solid var(--guide);
+  color: var(--guide-texte);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.guide-pagination__numeros { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.35rem; margin: 0; padding: 0; list-style: none; }
 .guide-pagination .bulle-zone { display: block; }
 .guide-pagination__numero {
   display: grid;
@@ -142,14 +172,14 @@ a.guide-voisin:hover, a.guide-voisin:focus-visible { border-color: var(--guide);
   border: 1px solid var(--guide-line);
   border-radius: 999px;
   background: var(--surface);
-  color: var(--guide);
+  color: var(--guide-texte);
   font-weight: 700;
   text-decoration: none;
 }
 .guide-pagination__numero:hover,
 .guide-pagination__numero[data-ouverte] { background: var(--guide-soft); }
 .guide-pagination__numero:focus-visible { outline: 2px solid var(--guide); outline-offset: 2px; }
-.guide-pagination__numero[aria-current='page'] { border-color: var(--guide); background: var(--guide); color: var(--surface); }
+.guide-pagination__numero[aria-current='page'] { border-color: var(--guide); background: var(--guide); color: #fff; }
 
 @media (max-width: 52rem) {
   .guide-cadre { grid-template-columns: minmax(0, 1fr); }
@@ -170,7 +200,7 @@ a.guide-voisin:hover, a.guide-voisin:focus-visible { border-color: var(--guide);
 .guide-table tbody th { white-space: nowrap; }
 .guide-table--niveaux { width: 100%; }
 .guide-table--niveaux thead th { font-size: 0.82rem; line-height: 1.3; }
-.guide-table--niveaux tbody th { text-align: center; color: var(--guide); }
+.guide-table--niveaux tbody th { text-align: center; color: var(--guide-texte); }
 .guide-table--niveaux tbody tr:nth-child(5n) { border-bottom: 3px solid var(--guide-line); }
 .guide-table--compacte td, .guide-table--compacte th { text-align: center; }
 .guide-table td.guide-nombre { text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -179,25 +209,35 @@ a.guide-voisin:hover, a.guide-voisin:focus-visible { border-color: var(--guide);
 .guide-note { margin: 0.35rem 0 0; color: var(--muted); font-size: 0.85rem; }
 .guide-lettre { color: var(--muted); font-weight: 400; font-size: 0.9em; }
 
-/* Sommaire (chapitre 1) : une carte par chapitre. */
-.guide-sommaire {
+/* Sommaire (chapitre 1) : les parties l'une sous l'autre, chacune dans sa couleur, une carte par chapitre. */
+.guide-sommaire { margin: 1rem 0 0.5rem; }
+.guide-sommaire__partie + .guide-sommaire__partie { margin-top: 1.1rem; }
+.guide-sommaire__titre-partie {
+  margin: 0 0 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 2px solid var(--guide);
+  color: var(--guide-texte);
+  font-size: 1.05rem;
+}
+.guide-sommaire__liste {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
-  gap: 0.75rem;
-  margin: 1rem 0 0.5rem;
+  gap: 0.6rem;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
-.guide-sommaire li {
+.guide-sommaire__liste li {
   display: grid;
   gap: 0.3rem;
   align-content: start;
-  padding: 0.75rem 0.9rem;
+  padding: 0.7rem 0.9rem;
   border: 1px solid var(--border);
+  border-left: 4px solid var(--guide);
   border-radius: var(--radius);
   background: var(--bg);
 }
-.guide-sommaire__lien { display: flex; align-items: baseline; gap: 0.55rem; font-weight: 700; text-decoration: none; }
+.guide-sommaire__lien { display: flex; align-items: baseline; gap: 0.55rem; color: var(--guide-texte); font-weight: 700; text-decoration: none; }
 .guide-sommaire__lien:hover .guide-sommaire__titre { text-decoration: underline; }
 .guide-sommaire__numero {
   flex: none;
@@ -207,7 +247,7 @@ a.guide-voisin:hover, a.guide-voisin:focus-visible { border-color: var(--guide);
   height: 1.8rem;
   border-radius: 50%;
   background: var(--guide);
-  color: var(--surface);
+  color: #fff;
   font-size: 0.9rem;
 }
 .guide-sommaire__resume { color: var(--muted); font-size: 0.9rem; line-height: 1.45; }
@@ -255,7 +295,7 @@ a.guide-voisin:hover, a.guide-voisin:focus-visible { border-color: var(--guide);
 
 /* Types de don (chapitre 5). */
 .guide-definitions { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; margin: 1rem 0; }
-.guide-definitions dt { font-weight: 700; color: var(--guide); }
+.guide-definitions dt { font-weight: 700; color: var(--guide-texte); }
 .guide-definitions dd { margin: 0; }
 @media (max-width: 30rem) {
   .guide-definitions { grid-template-columns: 1fr; }
@@ -276,7 +316,7 @@ a.guide-voisin:hover, a.guide-voisin:focus-visible { border-color: var(--guide);
   padding: 0.45rem 0.6rem;
   border: 0;
   background: var(--guide);
-  color: var(--surface);
+  color: #fff;
   font: inherit;
   font-weight: 700;
   text-align: left;
@@ -296,3 +336,17 @@ a.guide-voisin:hover, a.guide-voisin:focus-visible { border-color: var(--guide);
 .guide-references__groupe { padding: 0.6rem 0.9rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
 .guide-references__groupe h3 { margin: 0 0 0.4rem; font-size: 1rem; }
 .guide-references__groupe ul { margin: 0; padding-left: 1.1rem; font-size: 0.92rem; }
+
+/* Les personnages fil rouge (partie « Créer son personnage ») : une carte par personnage, côte à côte. */
+.guide-fil-rouge {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: 0.6rem;
+  margin: 1rem 0 1.25rem;
+}
+.guide-fil-rouge__perso { padding: 0.6rem 0.8rem 0.7rem; border: 1px solid var(--guide-line); border-top: 4px solid var(--guide); border-radius: var(--radius); background: var(--guide-soft); }
+.guide-fil-rouge__nom { margin: 0 0 0.4rem; color: var(--guide-texte); font-size: 1rem; }
+.guide-fil-rouge dl { display: grid; gap: 0.1rem; margin: 0; font-size: 0.86rem; line-height: 1.4; }
+.guide-fil-rouge dt { margin-top: 0.3rem; color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
+.guide-fil-rouge dd { margin: 0; }
+.guide-fil-rouge dd ul { margin: 0; padding-left: 1rem; }

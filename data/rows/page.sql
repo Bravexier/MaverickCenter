@@ -6013,7 +6013,7 @@ Encore par rapport aux attaques de zone, une personne ne peut pas protéger quel
 
   **Exemple :** pour un scorpion, la « tête » correspondait à sa **queue**, et donc le malus/effet s’y appliquaient.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/bienvenue', 'guide', 'bienvenue', 'Bienvenue dans Maverick', 'bienvenue-dans-maverick', 'MaverickJDR en quelques mots : un univers médiéval-fantasy où la magie est omniprésente, un jeu complet mais accessible, joué sur le Discord officiel.', '{"chapitre": 1}', '## MaverickJDR ?
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/bienvenue', 'guide', 'bienvenue', 'Bienvenue dans Maverick', 'bienvenue-dans-maverick', 'MaverickJDR en quelques mots : un univers médiéval-fantasy où la magie est omniprésente, un jeu complet mais accessible, joué sur le Discord officiel.', '{"chapitre": 1, "partie": "decouvrir"}', '## MaverickJDR ?
 
 C’est un univers médiéval-fantasy où la magie est omniprésente. On y retrouve des figures familières comme les [[races/humain|humains]], les elfes ou les [[races/nain|nains]]… mais aussi des peuples plus exotiques tels que les [[races/orios|Orios]], les [[races/drassahthac|Drassah’thac]] ou encore les [[races/drakos|Drakos]].
 
@@ -6025,7 +6025,7 @@ L’activité JDR se fait principalement sur le Discord officiel : <https://disc
 
 ## Sommaire
 
-Ce guide se lit comme un livre, une page après l’autre : les flèches de part et d’autre du texte (ou les touches ← et → du clavier) tournent les pages, et les numéros en bas de page mènent directement à un chapitre.
+Ce guide est fait pour ceux qui découvrent Maverick, et même le jeu de rôle. Il se lit comme un livre, une page après l’autre : les flèches de part et d’autre du texte (ou les touches ← et → du clavier) tournent les pages, et les numéros en bas de page mènent directement à un chapitre. Chaque partie a sa couleur.
 
 <!-- guide:sommaire -->
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
@@ -6095,115 +6095,150 @@ Ce qui est conseillé est de déterminer une liste de personnages importants ave
 
 Après avoir une liste de pnj importante c''est bien, mais les joueurs aiment bien parler avec les passants ou ceux qui sont moins importants, d''où le conseil d''avoir une liste de nom généré à l''avance ce qui permet de sortir un prénom sans perdre trop de temps ou casser le rythme.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/creer-son-personnage', 'guide', 'creer-son-personnage', 'Créer son personnage', 'creer-son-personnage', 'La fiche de personnage, puis les choix dans l’ordre : attributs, race, magies, classe (ou deux), caractéristiques, compétences et maîtrises d’armes.', '{"chapitre": 3}', 'Créer un personnage, c’est remplir sa **fiche de personnage**. Ce chapitre la présente, puis suit l’ordre des choix : les attributs, la race, les magies, la classe, et enfin la répartition des caractéristiques, des compétences et des maîtrises d’armes.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/caracteristiques-et-competences', 'guide', 'caracteristiques-et-competences', 'Étape 4 : caractéristiques et compétences', 'etape-4-caracteristiques-et-competences', 'Répartir 14 points entre les six caractéristiques, 100 points entre les compétences, et noter ses maîtrises d’armes.', '{"chapitre": 9, "partie": "creer"}', '## Les caractéristiques
 
-## La fiche de personnage
+Il y a six caractéristiques : **Force**, **Volonté**, **Intelligence**, **Perception**, **Social** et **Agilité**. Chacune compte pour dix fois sa valeur dans le score de ses cinq compétences (voir [Réussir une action](/guide/reussir-une-action/)).
 
-La fiche rassemble tout ce qui décrit le personnage, bloc par bloc :
+- À la création, on répartit **exactement 14 points** entre les six.
+- Une caractéristique vaut au minimum 1 et, en général, au maximum 4.
+- Le +1 de la magie innée s’ajoute en plus (étape 2) : il permet d’atteindre 5.
+- Plus tard, un point de plus se gagne aux niveaux 5, 10 et 15.
 
-- **Personnage** : nom, race (et son ethnie, s’il y en a une), origine (lieu de naissance), alignement, surnom, magie innée, magie acquise, dieu inné, dieu choisi et bourse. À la création, un jet d’1D20 donne l’or de départ.
-- **Classe** et **Expérience / niveau global** : la ou les classes du personnage avec leur niveau, et l’expérience accumulée.
-- **Attributs** : santé, âme ou sang, chakra, corruption, barrière, vitesse et initiative.
-- **Caractéristiques** et **compétences** : les valeurs de tous les jets de dés.
-- **Capacités / dons** : le don de base, le don racial, le métier, les entraînements, les dons de classes et ceux des événements.
-- **Maîtrise d’arme** et **armes** : ce que le personnage sait manier et ce qu’il a en main.
-- **Armure / défense / bouclier**, **accessoires**, **ceinture** et **inventaire** : son équipement.
-- **Tableau magie**, **résistances / faiblesses**, **postures** et **Mode Hyper** : sa magie et ce qui sert en combat.
+Pensez à ce que votre personnage fera le plus : un guerrier frappe (Force), une barde charme son public (Social), un mage rouge se concentre sur ses sorts (Volonté)…
 
-Ce chapitre explique ce qu’il faut pour créer le personnage ; les chapitres suivants reviennent sur le reste. Chaque bloc a aussi sa page détaillée : voir [[Fiche de personnage : Personnage]] et les pages suivantes, listées au dernier chapitre.
+## Les compétences
 
-## Les attributs
-
-Les attributs sont les réserves et les valeurs de base du personnage. La plupart se calculent à partir de la race, de la ou des classes et des magies :
-
-- **Santé** : les points de vie. Elle vient de la race, de la ou des classes et de certaines magies (voir le tableau des magies plus bas). À 0 ou moins, le personnage est dans le coma et doit faire des jets de survie : un seul jet réussi le stabilise, trois échecs et il meurt.
-- **Chakra** : les points de magie ; sans chakra, pas de sortilège. Il vient de la race, de la ou des classes et des magies.
-- **Barrière** : une seconde peau magique qui protège la chair, une sorte de santé magique. Elle vaut la moitié du chakra total (20 de chakra donnent 10 de barrière), plus ce qu’offrent certaines races et classes. Certains matériaux la contrent : le mithril passe à travers, et le maverium la brise à son contact.
-- **Âme / Sang**, la « 4ᵉ barre » : seulement pour les utilisateurs de la nécromancie et de la magie du sang. C’est une réserve, fixée à 10, que dépensent certains sortilèges ; elle se recharge de 1 point par tour en combat.
-- **Corruption** : elle a le même taux que le chakra et prend sa place, comme un parasite : avec 25 de chakra maximum et 2 points de corruption, on ne dépasse pas 23/25. Si la corruption atteint son maximum, le personnage a deux semaines (dans le jeu) pour en retirer au moins un point, sinon il meurt et se transforme en abomination de corruption. Ceux qui utilisent la magie de la corruption ne sont pas concernés.
-- **Vitesse** : le nombre de cases que le personnage parcourt pendant son tour. Elle dépend de la race (vitesse sur terre et vitesse de nage) et de l’armure portée.
-- **Initiative** : ce qui décide quand le personnage joue en combat. C’est un jet d’1D20, plus un bonus qui dépend de l’Agilité :
-
-<!-- guide:initiative -->
-
-À partir du niveau 2, chaque niveau apporte aussi des points d’attributs à répartir (voir [la montée de niveau](/guide/la-montee-de-niveau/)).
-
-## Choisir sa race
-
-Le personnage appartient à l’une des [27 races](/races/), et à l’une de ses ethnies s’il y en a. La race fixe son point de départ :
-
-- sa **santé** et son **chakra de départ**, un éventuel **bonus de barrière**, et sa **vitesse** sur terre et à la nage ;
-- ses **avantages** et ses **inconvénients** ;
-- son **don de base**, *Méditation* ou *Repos*, et ses **dons raciaux** ;
-- les **magies innées** qui lui sont possibles : certaines races ont des interdits, prudence ;
-- pour une race hybride, sa **classe raciale**.
-
-La page de chaque race donne tout cela, avec son histoire et ses relations avec les autres peuples.
-
-## Choisir ses magies
-
-Tout personnage a une **magie innée**, héritée à la naissance : elle est obligatoire et la race limite les choix possibles. Il peut aussi avoir une **magie acquise**, une seconde magie : elle est facultative.
-
-> Seule la magie **innée** donne un bonus de caractéristique : +1 dans la caractéristique liée à cette magie.
-
-Ce point ne compte pas dans les 14 points de caractéristiques à répartir : il permet d’atteindre 5 dans cette caractéristique et y garantit un minimum de 2. Sur la fiche, il se note en cochant la petite case bleu clair. Les magies apportent aussi du chakra, et certaines de la santé :
-
-<!-- guide:magie-bonus -->
-
-Avant de choisir une magie acquise, quelques précautions :
-
-- certaines magies ne peuvent pas se mélanger : la page de chaque magie donne ses magies non compatibles. Le [[Potentiel Illimité]] et la [[Magie de la Corruption|Corruption]] sont **mono-magie** : ils ne se combinent avec aucune autre magie (la Corruption fait exception pour l’Elfe Noir Charbon et le Felfe Noir) ;
-- avec deux magies, les sortilèges de niveau 5 ne sont pas accessibles, même si leurs emplacements de sorts se débloquent quand même (voir [[Fiche de personnage : Tableau magie]]).
-
-### Résistances et faiblesses
-
-Les magies du personnage décident aussi de ses **résistances** et de ses **faiblesses** : chaque magie résiste à certaines magies et est vulnérable à d’autres (voir la page de chaque magie et les [relations entre magies](/magies/#relations)). Touché par une magie à laquelle il est vulnérable, un personnage prend deux fois plus de dégâts ; deux fois moins s’il y résiste. Résistances et faiblesses se combinent : deux vulnérabilités à la même magie font une grande vulnérabilité, deux résistances une grande résistance. Certains objets ou équipements modifient ces valeurs : tenez votre tableau à jour, il peut décider de la survie du personnage… ou pas.
-
-## Choisir sa classe
-
-La classe représente la façon de se battre du personnage : chacune a ses avantages, utiles dans des situations précises ou de manière générale. Elle lui donne :
-
-- de la **santé**, du **chakra** et de la **barrière** de départ ;
-- ses **maîtrises d’armes** de départ (une arme nommée, ou une arme au choix) et les **armures et boucliers** qu’il sait porter ;
-- son **équipement de départ** : une arme, une armure et un inventaire de départ de cinq objets ;
-- ses **dons**, gagnés au fil des niveaux de classe. Au niveau 10 de classe, on choisit une **spécialité**, un embranchement de la classe.
-
-Les **classes magiques** donnent chacune +4 en armure magique (AM) : avec deux classes magiques, c’est +8. Les [classes](/classes/) sont rangées en cinq catégories : physiques au corps à corps, physiques à distance, magiques, raciales et spéciales.
-
-### Une ou deux classes : le biclassage
-
-Chaque classe a son propre niveau, qui monte avec celui du personnage. À la création, deux possibilités :
-
-- **Une seule classe** : elle commence au niveau 2 et gagne 2 niveaux à chaque niveau du personnage. Elle s’arrête au niveau 20 : au niveau 11 du personnage, une seconde classe est prise automatiquement, et c’est elle qui reçoit ensuite les niveaux.
-- **Deux classes** : elles commencent chacune au niveau 1 et gagnent chacune 1 niveau à chaque niveau du personnage. L’inventaire de départ se compose alors de 5 objets choisis parmi les 10 des deux classes.
-
-Au niveau 20, tout personnage a donc deux classes au niveau 20 : seule la progression change.
-
-## Répartir les caractéristiques
-
-Les caractéristiques sont le cœur des jets de dés : les chances de réussir une action dépendent d’elles et de la situation. Il y en a six, chacune liée à cinq compétences : **Force**, **Volonté**, **Intelligence**, **Perception**, **Social** et **Agilité**.
-
-- À la création, on répartit **exactement 14 points**. Une caractéristique vaut au minimum 1 et, en général, au maximum 4.
-- Le point de la magie innée s’ajoute en plus (voir plus haut).
-- Un point de caractéristique supplémentaire est gagné aux niveaux 5, 10 et 15 : le total passe à 15, puis 16 et 17.
-
-Des situations ou des altérations d’état (une maladie, une mauvaise nuit…) peuvent mettre des croix sous une caractéristique : une croix donne un malus de 20 % à tout test lié à cette caractéristique ; deux croix empêchent d’utiliser ses compétences.
-
-## Répartir les compétences
-
-Les compétences sont des bonus qui s’ajoutent au score d’un jet de dés quand la situation s’y prête. Il y en a trente, cinq par caractéristique :
+Les compétences précisent ce que le personnage sait faire. Il y en a trente, cinq par caractéristique :
 
 <!-- guide:competences -->
 
-- À la création, on répartit **exactement 100 points** de compétences ; ensuite 20 points par niveau, et 40 aux niveaux 5, 10, 15 et 20.
-- Ces points vont dans la case **Nat** (naturel) des compétences choisies, au maximum 20 par compétence. Ce maximum passe à 30 au niveau 5 et à 40 au niveau 10.
-- Les bonus de race, de classe, de dons ou d’équipement vont dans la case **Acquis**, dans la limite de 5 par point de caractéristique de base (avec 5 en Force, l’acquis d’une compétence de Force est au plus 25).
+- À la création, on répartit **exactement 100 points** de compétences.
+- Ils vont dans la case **Nat.** (naturel), **au maximum 20** par compétence. Ce maximum passe à 30 au niveau 5 et à 40 au niveau 10.
+- La case **Acquis** reçoit les bonus de l’entraînement, de la race, de la classe, des dons et de l’équipement, dans la limite de 5 par point de caractéristique (avec 4 en Force, au plus 20 d’acquis dans une compétence de Force).
+
+Certaines classes changent la compétence qui sert à lancer les sorts : le mage rouge, par exemple, utilise *Concentration* (Volonté) au lieu de *Magie* (Intelligence). Lisez la page de votre classe avant de répartir vos points.
 
 ## Les maîtrises d’armes
 
-La maîtrise d’arme dit à quel point le personnage sait manier une catégorie d’arme : plus il la maîtrise, plus il fait de dégâts. Sans maîtrise, l’arme lance 1 dé de dégâts ; avec 1 point de maîtrise, 2 dés, et ainsi de suite. Chaque catégorie d’arme a son dé : toutes les dagues lancent le D6, par exemple (voir les [armes](/ressources/armes/)).
+La maîtrise d’une catégorie d’arme fait ses dégâts : sans maîtrise, l’arme lance 1 dé ; avec 1 point de maîtrise, 2 dés, et ainsi de suite. Chaque catégorie a son dé : les dagues lancent des d6, les épées des d10, les arcs des d8 (voir les [armes](/ressources/armes/)). Les maîtrises de départ sont celles de la classe (étape 3) : notez celles qui sont nommées, choisissez celles qui sont « au choix ».
 
-Les maîtrises de départ viennent de la classe : la page de chaque classe les donne, soit une arme nommée (« 1 maîtrise Épée »), soit une arme au choix (« 1 maîtrise dans une arme de contact au choix »).
+> **Sur votre fiche** : la valeur de chaque caractéristique ; les points naturels de vos compétences ; les acquis de race et de classe ; vos maîtrises d’armes.
+', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/choisir-sa-classe', 'guide', 'choisir-sa-classe', 'Étape 3 : choisir sa classe', 'etape-3-choisir-sa-classe', 'Ce que donne une classe (santé, maîtrises, équipement, dons), les classes magiques, et le choix entre une ou deux classes.', '{"chapitre": 8, "partie": "creer"}', 'La classe, c’est la façon de se battre du personnage. Chacune a ses avantages, utiles dans des situations précises ou de manière générale. Les [classes](/classes/) sont rangées en cinq catégories : physiques au corps à corps, physiques à distance, magiques, raciales et spéciales.
+
+## Ce que donne une classe
+
+- de la **santé**, du **chakra** et de la **barrière** de départ ;
+- ses **maîtrises d’armes** : les armes que le personnage sait manier dès le départ, nommées (« 1 maîtrise Épée ») ou au choix (« 1 maîtrise dans une arme de contact au choix ») ;
+- les **armures** et **boucliers** qu’il sait porter ;
+- son **équipement de départ** : une arme, une armure et un inventaire de cinq objets ;
+- ses **dons**, gagnés au fil des niveaux de classe. Au niveau 10 de classe, on choisit une **spécialité**, un embranchement de la classe.
+
+Les **classes magiques** donnent en plus chacune **+4 d’armure magique** (AM).
+
+## Une ou deux classes : le biclassage
+
+Chaque classe a son propre niveau, qui monte avec celui du personnage. À la création, deux possibilités :
+
+- **Une seule classe** : elle commence au niveau 2 et gagne 2 niveaux à chaque niveau du personnage. Elle s’arrête au niveau 20 : au niveau 11 du personnage, une seconde classe est prise automatiquement, et c’est elle qui reçoit les niveaux suivants.
+- **Deux classes** : elles commencent chacune au niveau 1 et gagnent chacune 1 niveau à chaque niveau du personnage. L’inventaire de départ se compose alors de 5 objets choisis parmi les 10 des deux classes.
+
+Au niveau 20, tout personnage a donc deux classes au niveau 20 : seule la progression change. Une seule classe progresse plus vite au début ; deux classes donnent plus de possibilités tout de suite.
+
+## Nos quatre personnages
+
+Tous les quatre commencent avec une seule classe, au niveau 2 :
+
+<!-- guide:fil-rouge-classe -->
+
+> **Sur votre fiche** : la ou les classes et leur niveau ; les maîtrises d’armes (étape 4) ; l’arme, l’armure et l’inventaire de départ (étape 6).
+', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/choisir-sa-race', 'guide', 'choisir-sa-race', 'Étape 1 : imaginer son personnage et choisir sa race', 'etape-1-imaginer-son-personnage-et-choisir-sa-race', 'Le nom, l’origine et le caractère du personnage, puis sa race : ce qu’elle apporte et ce qu’elle limite.', '{"chapitre": 6, "partie": "creer"}', '## Imaginer son personnage
+
+Avant les chiffres, une idée : qui est votre personnage ? D’où vient-il, que cherche-t-il, comment se comporte-t-il ? Quelques mots suffisent, le reste viendra en jouant. Sur la fiche, notez :
+
+- son **nom** complet, et un **surnom** s’il en a un ;
+- son **origine** : son lieu de naissance.
+
+## Choisir sa race
+
+Maverick compte [27 races](/races/) : des races **pures** et des races **hybrides**. Certaines se divisent en **ethnies** (les Felfes forestiers, les Orios de Sang…), à préciser sur la fiche. La race fixe le point de départ du personnage :
+
+- sa **santé** et son **chakra de départ**, parfois un **bonus de barrière** ;
+- sa **vitesse**, sur terre et à la nage ;
+- ses **avantages** et ses **inconvénients** ;
+- son **don de base**, *Méditation* ou *Repos*, qui lui permet de récupérer chakra ou santé plusieurs fois par jour ;
+- ses **dons raciaux**, et ceux de son ethnie ;
+- les **magies innées** possibles : toutes les races n’ont pas accès à toutes les magies ;
+- pour une race hybride, sa **classe raciale**.
+
+La page de chaque race donne tout cela, avec son histoire et la façon dont elle voit les autres peuples. Prenez le temps de lire celles qui vous attirent : la race compte autant pour le caractère du personnage que pour ses chiffres.
+
+## Nos quatre personnages
+
+<!-- guide:fil-rouge-race -->
+
+> **Sur votre fiche** : le nom, le surnom, l’origine, la race et son ethnie. Le don de base va dans la case **Base** des dons, le don racial dans la case **Race**. La santé et le chakra de la race serviront à l’étape 6.
+', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/choisir-ses-magies', 'guide', 'choisir-ses-magies', 'Étape 2 : choisir ses magies', 'etape-2-choisir-ses-magies', 'La magie innée, obligatoire et seule à donner un bonus de caractéristique ; la magie acquise, facultative ; les résistances et faiblesses qui en découlent.', '{"chapitre": 7, "partie": "creer"}', '## La magie innée
+
+Tout personnage naît avec une **magie innée**, héritée de l’un de ses parents : elle est obligatoire, et la race limite les choix possibles. Elle le relie à un **dieu inné**, la divinité de cette magie.
+
+> Seule la magie **innée** donne un bonus de caractéristique : **+1** dans la caractéristique liée à cette magie.
+
+Ce point s’ajoute aux autres sans compter dans ceux que vous répartirez à l’étape 4 : il permet d’atteindre 5 dans cette caractéristique et y garantit un minimum de 2. Les magies apportent aussi du chakra, et certaines de la santé :
+
+<!-- guide:magie-bonus -->
+
+## La magie acquise
+
+Un personnage peut aussi apprendre une **seconde magie**, dite *acquise*. Elle est facultative, et elle a un prix :
+
+- certaines magies ne peuvent pas se mélanger : la page de chaque magie donne ses magies non compatibles. Le [[Potentiel Illimité]] et la [[Magie de la Corruption|Corruption]] sont **mono-magie** : ils ne se combinent avec aucune autre (la Corruption fait exception pour l’Elfe Noir Charbon et le Felfe Noir) ;
+- avec deux magies, les sortilèges les plus puissants (niveau 5) ne sont pas accessibles.
+
+Pour un premier personnage, attention aussi au Potentiel Illimité : sa page le signale comme une magie difficile à jouer.
+
+## Résistances et faiblesses
+
+Chaque magie **résiste** à certaines magies et est **vulnérable** à d’autres (voir la page de chaque magie et les [relations entre magies](/magies/#relations)). Touché par une magie à laquelle il est vulnérable, un personnage prend deux fois plus de dégâts ; s’il y résiste, deux fois moins. Deux vulnérabilités à la même magie font une grande vulnérabilité, deux résistances une grande résistance. Certains objets modifient ces valeurs : tenez ce tableau à jour, il peut décider de la survie du personnage.
+
+## Nos quatre personnages
+
+<!-- guide:fil-rouge-magie -->
+
+> **Sur votre fiche** : la magie innée et, s’il y en a une, la magie acquise ; le dieu inné, et un dieu choisi si le personnage en prie un autre (facultatif) ; le +1 de la magie innée (case bleu clair sous la caractéristique) ; les résistances et faiblesses dans leur tableau.
+', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/creer-son-personnage', 'guide', 'creer-son-personnage', 'Créer son personnage', 'creer-son-personnage', 'Ce que contient la fiche de personnage, les six étapes pour la remplir, et les quatre personnages qui nous accompagnent tout du long.', '{"chapitre": 5, "partie": "creer"}', 'Créer un personnage, c’est remplir sa **fiche de personnage**. Pas d’inquiétude : on la remplit dans l’ordre, une étape à la fois, et chaque étape tient sur une page.
+
+## Ce que contient la fiche
+
+- **Personnage** : nom, surnom, race, origine, alignement, magies, dieux et bourse.
+- **Classe** et **expérience** : la ou les classes du personnage, son niveau et l’expérience accumulée.
+- **Attributs** : santé, chakra, barrière, vitesse, initiative…
+- **Caractéristiques** et **compétences** : les scores de tous les jets de dés.
+- **Dons** : ce que le personnage sait faire de particulier, grâce à sa race, sa classe, son métier ou ses entraînements.
+- **Armes, armure, accessoires, ceinture et inventaire** : son équipement.
+- **Magie**, **résistances et faiblesses**, **postures** et **Mode Hyper** : sa magie et ce qui sert en combat.
+
+## Les six étapes
+
+1. **Imaginer son personnage et choisir sa race.**
+2. **Choisir ses magies** : une magie innée, et peut-être une magie acquise.
+3. **Choisir sa classe**, ou ses deux classes.
+4. **Répartir les caractéristiques et les compétences.**
+5. **Choisir ses premiers sorts.**
+6. **Finaliser** : calculer les attributs, noter les dons, l’équipement et la bourse.
+
+Chaque étape se termine par un encadré **Sur votre fiche** : ce qu’il faut y noter avant de passer à la suite.
+
+## Quatre personnages pour nous accompagner
+
+Pour voir chaque étape appliquée, nous suivons la création de quatre personnages, prêts à partir à l’aventure ensemble :
+
+<!-- guide:fil-rouge -->
+
+Ils montrent quatre façons de jouer : se battre à distance, mêler les armes et la magie, encaisser les coups au corps à corps, soutenir le groupe par la musique et les sorts.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/distance-et-voyage', 'guide', 'distance-et-voyage', 'Distance et voyage', 'distance-et-voyage', 'Dans Maverick, il est possible de faire de longs voyages et il est important de calculer le temps de voyage pour les joueurs.', NULL, 'Dans Maverick, il est possible de faire de longs voyages et il est important de calculer le temps de voyage pour les joueurs.
 
@@ -6700,6 +6735,57 @@ Ce que vous devez savoir c’est que les résistances et faiblesses communiquent
 
 Certains objets ou équipements peuvent faire modifier ces valeurs, soyez toujours à jour car les résistances et faiblesses pourraient être l’élément qui fait que votre personnage va survivre … ou pas.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/finaliser-son-personnage', 'guide', 'finaliser-son-personnage', 'Étape 6 : finaliser son personnage', 'etape-6-finaliser-son-personnage', 'Calculer les attributs (santé, chakra, barrière, vitesse, initiative), noter les dons, l’équipement de départ, la bourse et l’alignement.', '{"chapitre": 11, "partie": "creer"}', 'Tous les choix sont faits : il reste à en tirer les chiffres et à remplir les dernières cases.
+
+## Les attributs
+
+Les attributs se calculent à partir de la race, de la classe et des magies choisies aux étapes 1 à 3 :
+
+- **Santé** (les points de vie) = santé de la race + santé de la ou des classes + santé offerte par les magies. À 0 ou moins, le personnage tombe dans le coma et doit réussir un jet de survie : un seul réussi le stabilise, trois ratés et il meurt.
+- **Chakra** (les points de magie : sans chakra, pas de sort) = chakra de la race + chakra de la ou des classes + chakra offert par les magies.
+- **Barrière**, une seconde peau magique = la moitié du chakra (arrondie à l’inférieur) + les bonus de barrière de la race et de la classe. Le mithril passe à travers, et le maverium la brise à son contact.
+- **Corruption** : son maximum est celui du chakra. Chaque point de corruption prend la place d’un point de chakra ; au maximum, le personnage a deux semaines (dans le jeu) pour en retirer un point, sinon il meurt et devient une abomination de corruption. Ceux qui utilisent la magie de la corruption ne sont pas concernés.
+- **Âme** ou **Sang** (la « 4ᵉ barre ») : seulement avec la nécromancie ou la magie du sang ; une réserve de 10 que dépensent certains sorts, qui se recharge de 1 par tour en combat.
+- **Vitesse** : celle de la race, sur terre et à la nage. Une armure lourde retire 1 point et rend la nage impossible.
+- **Armure de base** : chaque classe magique donne 4 d’armure magique (AM) ; certaines races donnent de l’armure physique (AP) ou magique.
+- **Initiative** : en combat, 1D20 plus un bonus qui dépend de l’Agilité :
+
+<!-- guide:initiative -->
+
+Certaines ethnies ajoutent un bonus de santé, de chakra, de barrière ou de vitesse. À partir du niveau 2, chaque niveau donne aussi 15 points d’attributs à répartir entre la santé et le chakra.
+
+## Les dons
+
+La fiche range les dons du personnage en plusieurs cases :
+
+- **Base** : *Méditation* ou *Repos*, donné par la race ;
+- **Race** : le don racial ;
+- **Métier** : un métier se choisit à la création ou plus tard dans l’aventure, et donne des bonus (voir les [métiers](/metiers/)) ;
+- **Entraînement** : les bonus gagnés en s’entraînant, au fil du jeu ;
+- **Classes** : les dons gagnés aux niveaux de classe ;
+- **Événements** : des dons, bons ou mauvais, qui peuvent arriver sans prévenir.
+
+Chaque don est de l’un de ces quatre types :
+
+<!-- guide:types-de-don -->
+
+## L’équipement et la bourse
+
+- L’**arme**, l’**armure** et l’**inventaire de départ** sont ceux de la classe (étape 3). Deux armes au plus sont en main, le reste va dans l’inventaire.
+- Le personnage commence avec un **sac à dos** normal : deux colonnes d’inventaire.
+- Tout le monde a une **ceinture** : trois emplacements d’objets rapides (une fiole, une torche, une corde…), utilisables plus vite en combat.
+- La **bourse** : lancez 1D20, le résultat est votre or de départ.
+
+## L’alignement
+
+L’alignement décrit la morale du personnage. Il n’est pas choisi une fois pour toutes : il évolue au fil de l’aventure, selon ses actes, ses décisions et ses paroles, et c’est le MJ qui en tient les comptes (voir [[Alignement]]).
+
+## Nos quatre personnages
+
+<!-- guide:fil-rouge-attributs -->
+
+> **Sur votre fiche** : les attributs ; les dons dans leurs cases ; l’arme, l’armure, l’inventaire et la ceinture ; l’or de départ. Votre personnage est prêt à jouer !
+', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/formule-des-degats', 'guide', 'formule-des-degats', 'Formule des dégâts', 'formule-des-degats', 'Il est important de bien prendre en compte cette formule lors du calcul des dégâts.', NULL, 'Il est important de bien prendre en compte cette formule lors du calcul des dégâts :
 
 Dégâts finaux = **`[[[Dégâts du lanceur x Réussite critique (donc par 2) - Armure physique/Armure magique de la cible] ÷ Parade/Esquive partiel (donc par 2)]] ÷ Don qui divise les dégâts] x Résistance ou Faiblesse magique/physique`**
@@ -6830,11 +6916,11 @@ Comme expliqué dans les compétences et les [[Altérations d''états et Mode Hy
 
 Le mj peut laisser les joueurs faire leur jet de survie ou alors il peut faire lui-même les jets de survie et avoir la capacité de tricher pour leur bien, un échec critique n''est jamais loin.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/l-univers', 'guide', 'l-univers', 'L’univers', 'lunivers', 'Un monde médiéval-fantasy de 27 races où tout être vivant naît imprégné de l’une des 15 magies, héritée de l’un de ses parents.', '{"chapitre": 2}', '## Un monde de magie
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/l-univers', 'guide', 'l-univers', 'L’univers', 'lunivers', 'Un monde médiéval-fantasy de 27 races où tout être vivant naît imprégné de l’une des 15 magies, héritée de l’un de ses parents.', '{"chapitre": 3, "partie": "decouvrir"}', '## Un monde de magie
 
 Maverick est un monde médiéval-fantasy où vivent [27 races](/races/), des plus familières aux plus exotiques. Chacune a son histoire, ses avantages, ses dons et sa façon de voir les autres peuples.
 
-La magie y est omniprésente, au point que **tout être vivant naît imprégné de l’une des 15 formes de magie**. Cette magie, dite *innée*, est directement héritée de l’un de ses parents, sauf si un dieu intervient. Elle marque jusqu’au corps : la magie innée donne un point de caractéristique en plus (voir le chapitre suivant).
+La magie y est omniprésente, au point que **tout être vivant naît imprégné de l’une des 15 formes de magie**. Cette magie, dite *innée*, est directement héritée de l’un de ses parents, sauf si un dieu intervient. Elle marque jusqu’au corps : la magie innée donne un point de caractéristique en plus (voir [le choix des magies](/guide/choisir-ses-magies/)).
 
 Chaque magie est reliée à une divinité, le *dieu inné* de ceux qui la portent (son nom est sous celui de la magie) :
 
@@ -6846,7 +6932,7 @@ Les magies ne s’entendent pas toutes entre elles : certaines sont efficaces co
 
 L’histoire du monde, sa mythologie, ses lieux et ses factions seront rassemblés dans le [Codex](/lore/). **Il est encore en cours d’écriture** : pour l’instant, on y trouve les [[Relations entre les races|relations entre les peuples]].
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/la-montee-de-niveau', 'guide', 'la-montee-de-niveau', 'La montée de niveau', 'la-montee-de-niveau', 'L’expérience nécessaire pour chaque niveau global, de 1 à 20, et ce que chaque niveau apporte.', '{"chapitre": 4}', 'Au fil des aventures, le personnage gagne de l’**expérience** (XP). Son **niveau global**, de 1 à 20, dépend de l’expérience accumulée : il fixe le niveau de ses classes et sa puissance magique.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/la-montee-de-niveau', 'guide', 'la-montee-de-niveau', 'La montée de niveau', 'la-montee-de-niveau', 'L’expérience nécessaire pour chaque niveau global, de 1 à 20, et ce que chaque niveau apporte.', '{"chapitre": 12, "partie": "progresser"}', 'Au fil des aventures, le personnage gagne de l’**expérience** (XP). Son **niveau global**, de 1 à 20, dépend de l’expérience accumulée : il fixe le niveau de ses classes et sa puissance magique.
 
 ## Le tableau de progression
 
@@ -6858,12 +6944,61 @@ Chaque ligne donne l’expérience nécessaire pour atteindre le niveau, et ce q
 
 - **Compétences** : 100 points à la création, puis 20 par niveau et 40 aux niveaux 5, 10, 15 et 20. Le maximum naturel d’une compétence passe de 20 à 30 au niveau 5, puis à 40 au niveau 10.
 - **Caractéristiques** : un point de plus à répartir aux niveaux 5, 10 et 15.
-- **Attributs** : 15 points à répartir à chaque niveau à partir du 2, et un dé d’attributs bonus aux niveaux 5, 10, 15 et 20.
-- **Classes** : 2 niveaux de classe par niveau global, sur une seule classe ou sur les deux (voir [le biclassage](/guide/creer-son-personnage/#une-ou-deux-classes--le-biclassage)).
+- **Attributs** : 15 points à répartir entre la santé et le chakra à chaque niveau à partir du 2, et un dé d’attributs bonus aux niveaux 5, 10, 15 et 20.
+- **Classes** : 2 niveaux de classe par niveau global, sur une seule classe ou sur les deux (voir [le biclassage](/guide/choisir-sa-classe/#une-ou-deux-classes--le-biclassage)).
 - **Magie** : un niveau de maîtrise pour un sort à chaque niveau à partir du 2, et la puissance magique qui augmente à certains niveaux (colonne « Et aussi »).
 - **Mode Hyper** : débloqué au niveau 2, à 100 % au niveau 10 (voir [[Liste des effets mode hyper]]).
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-documents-des-regles', 'guide', 'les-documents-des-regles', 'Les documents des règles', 'les-documents-des-regles', 'Où trouver chaque règle : les documents d’origine du MJ, les rubriques du site qui les reprennent et les pages détaillées du guide.', '{"chapitre": 5}', 'Les règles de Maverick viennent de plusieurs documents du MJ, des Google Docs et des Google Sheets partagés sur le Discord. Ce site les rassemble ; voici où trouver chaque partie.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/le-jeu-de-role', 'guide', 'le-jeu-de-role', 'Le jeu de rôle, comment ça marche ?', 'le-jeu-de-role-comment-ca-marche', 'Le maître du jeu, les joueurs et leurs personnages, la façon dont une partie avance, et comment lire les dés (1D20, 2d6+2…).', '{"chapitre": 2, "partie": "decouvrir"}', 'Un jeu de rôle (JDR), c’est une histoire que l’on raconte à plusieurs. Il n’y a ni plateau ni gagnant : on joue pour vivre une aventure ensemble.
+
+## Qui fait quoi ?
+
+- **Le maître du jeu (MJ)** raconte l’histoire. Il décrit le monde, incarne tous les personnages que les joueurs rencontrent (les PNJ, *personnages non joueurs*) et les monstres, et il arbitre : c’est lui qui décide de ce qui se passe quand les règles ne disent rien.
+- **Chaque joueur** incarne un seul personnage, son **PJ** (*personnage joueur*). Il décide de ce que son personnage dit et fait, comme un acteur qui improviserait son rôle.
+- **La fiche de personnage** rassemble tout ce que le personnage sait faire : ses chiffres, ses dons, son équipement. La partie « Créer son personnage » explique comment la remplir.
+
+## Comment avance une partie ?
+
+Que l’on joue autour d’une table ou sur le Discord, c’est la même chose : une conversation.
+
+1. Le MJ décrit la situation.
+2. Les joueurs posent des questions s’ils en ont.
+3. Chacun décrit comment son personnage réagit.
+4. Si le résultat est incertain, on lance les dés.
+5. Le MJ interprète l’action et le jet de dés, et décrit les conséquences.
+6. Et on continue.
+
+Au fil des aventures, les personnages gagnent de l’expérience et deviennent plus forts (voir la partie « Progresser »).
+
+## Un exemple
+
+> **MJ** : La nuit tombe quand vous arrivez aux portes de la ville. Un garde vous barre la route : « On n’entre plus à cette heure-ci. »
+>
+> **Joueuse de la barde** : Il a l’air de quoi, ce garde ?
+>
+> **MJ** : Fatigué. Il bâille et s’appuie sur sa lance.
+>
+> **Joueuse de la barde** : Ma barde lui sourit et lui propose de jouer un air pour égayer sa garde, s’il nous laisse passer.
+>
+> **MJ** : Il pourrait accepter… ou pas. Fais un jet de Diplomatie.
+>
+> **Joueuse de la barde** : J’ai 50 en Diplomatie… et je fais 34 au dé : réussi !
+>
+> **MJ** : Le garde sourit, écoute la moitié de ta chanson puis ouvre la petite porte. « Filez, et pas de bruit. »
+
+Le jet de dés sert seulement quand l’issue est incertaine : demander son chemin à un passant ne demande pas de jet, convaincre un garde de désobéir, si. La page « Réussir une action » explique ce jet.
+
+## Lire les dés
+
+Les dés s’écrivent avec un **D** (ou un **d**) suivi du nombre de faces :
+
+- **1D20** : un dé à 20 faces (un nombre de 1 à 20). Il sert par exemple à l’initiative en combat.
+- **D100** : un nombre de 1 à 100. C’est le dé de presque toutes les actions.
+- **2d6+2** : deux dés à 6 faces, que l’on additionne, plus 2. Les dégâts et les soins s’écrivent ainsi, avec des dés de 4 à 20 faces.
+
+Selon les tables, chacun lance ses propres dés ou le MJ les lance tous. Les jets des joueurs restent toujours visibles de tous ; le MJ, lui, peut lancer les siens en secret.
+', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-documents-des-regles', 'guide', 'les-documents-des-regles', 'Les documents des règles', 'les-documents-des-regles', 'Où trouver chaque règle : les documents d’origine du MJ, les rubriques du site qui les reprennent et les pages détaillées du guide.', '{"chapitre": 13, "partie": "plus-loin"}', 'Les règles de Maverick viennent de plusieurs documents du MJ, des Google Docs et des Google Sheets partagés sur le Discord. Ce site les rassemble ; voici où trouver chaque partie.
 
 ## Les documents d’origine
 
@@ -7988,6 +8123,33 @@ Cette posture étrange permet d''être en parfaite fusion avec sa magie, dans ce
 - **Impossible d''utiliser les objets et armes (sauf forgemagie) :** Vous êtes quasiment un élémentaire, les armes physiques et les objets ne sont pas dans votre optique (“Forgemagie”, “Forge de ses morts”, Bâton magique et les parchemins ne sont pas interdits)
 - **Une seule magie active :** Quand vous avez 2 magies, 1 de ces magies doit être désactivée temporairement, ainsi tous ses avantages et inconvénients sont annulés également.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/premiers-sorts', 'guide', 'premiers-sorts', 'Étape 5 : ses premiers sorts', 'etape-5-ses-premiers-sorts', 'Combien de sorts le personnage connaît (les emplacements de sorts) et où les choisir.', '{"chapitre": 10, "partie": "creer"}', 'Tout le monde a une magie innée, donc tout le monde a au moins un sort. Combien exactement ? Cela dépend de deux choses : des **conditions** que le personnage remplit et de sa **puissance magique**.
+
+## Les emplacements de sorts
+
+Il y a quatre conditions, et chacune donne un emplacement de sort :
+
+1. avoir une magie innée (toujours remplie) ;
+2. avoir une magie acquise ;
+3. avoir une classe magique ;
+4. avoir une seconde classe magique.
+
+Le nombre de conditions remplies est ensuite **multiplié par le niveau de puissance magique**. Au niveau 1 du personnage, la puissance magique vaut 1 ; elle augmente ensuite avec les niveaux (voir [la montée de niveau](/guide/la-montee-de-niveau/)).
+
+*Exemples : une magie innée et une magie acquise, sans classe magique, en puissance magique 1 : 2 emplacements. Une magie innée et deux classes magiques, en puissance magique 3 : 3 × 3 = 9 emplacements.*
+
+## Choisir ses sorts
+
+Les sorts se trouvent sur la page de chaque [magie](/magies/), rangés par **niveau de puissance magique** (NPM), de 1 à 5. La puissance magique du personnage ouvre ces paliers un à un : on choisit d’abord parmi les sorts du premier. Chaque sort indique son coût en chakra, sa portée, ses dégâts ou son effet.
+
+Avec deux magies, les sorts de niveau 5 restent fermés, même quand la puissance magique les permettrait ; leurs emplacements, eux, s’ouvrent quand même.
+
+## Nos quatre personnages
+
+<!-- guide:fil-rouge-sorts -->
+
+> **Sur votre fiche** : dans le tableau Magie, un sort par emplacement, avec ce que sa page indique.
+', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/resistance-faiblesse-magie', 'guide', 'resistance-faiblesse-magie', 'Résistance/Faiblesse Magie', 'resistance-faiblesse-magie', 'À la manière de beaucoup d''univers, il existe une relation entre les différentes magies, certaines sont efficaces sur certaines, d''autres sont moins efficaces et ainsi de suite.', NULL, 'À la manière de beaucoup d''univers, il existe une relation entre les différentes magies, certaines sont efficaces sur certaines, d''autres sont moins efficaces et ainsi de suite, voici la table :
 
 | Cible \ Attaque | Arcane | Sang | Espace Temps | Vide | Nécromancie | Glace | Feu | Foudre | Eau | Vent | Terre | Ombre | Lumière |
@@ -8015,6 +8177,37 @@ Chaque magie possède ses efficacités, ses résistances et ses vulnérabilités
 - Le duo Vide/Espace Temps fonctionne en dualité, ils sont efficaces mutuellement et résistent à eux-mêmes.
 
 Quand vous êtes touché par un élément dont vous êtes vulnérable, vous prenez 2 fois plus de dégâts. Et inversement quand vous êtes résistant, vous prenez 2 fois moins de dégâts.
+', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/reussir-une-action', 'guide', 'reussir-une-action', 'Réussir une action', 'reussir-une-action', 'La règle centrale du jeu : on lance un D100 et il faut faire son score ou moins. Le score, les réussites et échecs critiques, les bonus et malus.', '{"chapitre": 4, "partie": "decouvrir"}', 'Presque toutes les actions incertaines se jouent de la même façon : **on lance un D100, et il faut faire son score ou moins.**
+
+## Le score
+
+Quand le MJ demande un jet, il nomme une compétence : *Diplomatie* pour convaincre, *Athlétisme* pour escalader, *Observation* pour repérer un détail… Chaque compétence a un **score**, noté en pourcentage sur la fiche :
+
+> **score = 10 × la caractéristique liée + les points naturels + les points acquis**
+
+- La **caractéristique** (Force, Volonté, Intelligence, Perception, Social ou Agilité) vaut le plus souvent de 1 à 4 ; le point offert par la magie innée compte.
+- Les points **naturels** sont ceux que vous répartissez à la création et à chaque niveau.
+- Les points **acquis** viennent de l’entraînement, de la race, de la classe, des dons ou de l’équipement.
+
+*Exemple : la barde a 3 en Social et 20 points naturels en Diplomatie. Son score est de 3 × 10 + 20 = 50 %. Elle réussit si le D100 donne 50 ou moins.*
+
+## Les critiques
+
+- **De 1 à 5 : réussite critique.** L’action réussit de façon exceptionnelle. En attaque, les dégâts sont doublés ; pour un soin ou une protection, l’effet ou la durée est doublé ; hors combat, le MJ décide de la récompense.
+- **De 96 à 100 : échec critique.** L’action rate de façon spectaculaire : une arme qui s’abîme, un allié touché par erreur, un sort qui coûte deux fois plus de chakra… Le MJ décide des conséquences.
+
+Une réussite critique ne rend pas tout possible : le MJ reste seul juge de ce qui peut ou non réussir.
+
+## Bonus et malus
+
+La situation peut rendre une action plus facile ou plus difficile : le score gagne ou perd alors quelques points de pourcentage avant le jet. Par exemple :
+
+- une serrure de niveau 10 impose un malus de 30 % à celui qui tente de la crocheter ;
+- certaines postures de combat donnent +5 % à certains jets, ou −10 % pour toucher sa cible ;
+- une maladie ou une mauvaise nuit peut mettre une **croix** sous une caractéristique : −20 % à tous les tests qui lui sont liés ; avec deux croix, ses compétences ne sont plus utilisables.
+
+Pour aller plus loin, la page [[Jet de dés]] détaille les critiques du point de vue du MJ.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/situations-avancees', 'guide', 'situations-avancees', 'Les situations avancées', 'les-situations-avancees', 'Les situations avancées : la prise en tenaille, le déplacement ou la sortie de la zone d''influence, les attaques discrètes, les attaques d''opportunité, l’embuscade, les boss et leurs postures, rater ses sortilèges, Mordhau ou Demi-épée.', NULL, '## La prise en tenaille
 
