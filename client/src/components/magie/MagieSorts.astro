@@ -1,231 +1,27 @@
 ---
-import { coutDeSort, marquesDeMode, sortsParNpm, valeurDeSort } from '../../lib/sort-format.mjs';
-import { marquerBonus } from '../../lib/sort-maitrise.mjs';
-import { sortAncre, type Magies, type MagieDb } from '../../lib/magies';
-import Info from './Info.astro';
-import Segments from './Segments.astro';
-import SortDetail from './SortDetail.astro';
+import type { Magies, SortDb } from '../../lib/magies';
+import SortsInteractifs from './SortsInteractifs.astro';
+import TableauNpm from './TableauNpm.astro';
 
-// Sorts d'une magie : un tableau par niveau de puissance magique (NPM), une ligne par sort (Nom, Type, Coût, Portée, Zone, D/S/B).
-// Le bonus de niveau de maîtrise (NM) qu'une cellule écrit entre parenthèses (« 55 (-5/NM) ») est une pastille à côté de sa valeur, à sa place
-// (lib/sort-maitrise.mjs#marquerBonus) ; celui du type (« IC pour 3 NM ») suit les types et le mode. Ceux des effets restent dans leur texte, sous la ligne.
-// La règle spéciale d'un niveau (« sort niveau 5 ») est dans l'infobulle « i » du titre de son tableau, juste après le texte du titre : texte et « i »
-// forment un seul bloc (`npm__intitule`) qui passe à la ligne d'un tenant sur un téléphone étroit, sans que le « i » se retrouve seul sous le badge.
-// Sans JavaScript (et à l'impression), le bloc s'efface (`display: contents`) et la règle est écrite en entier sur sa propre ligne sous le titre.
-// Sélectionner une ligne ouvre juste en dessous ses détails (SortDetail.astro) : effets (avec la remarque du classeur et le texte du sort), règles propres.
+// Sorts d'une magie : un tableau par niveau de puissance magique (NPM), du plus faible au plus fort (TableauNpm.astro, le gabarit commun à toutes
+// les pages qui montrent des sorts). Sélectionner une ligne ouvre juste en dessous ses détails (SortDetail.astro) : effets (avec la remarque du
+// classeur et le texte du sort), règles propres.
 interface Props {
-  magie: MagieDb;
+  groupes: { niveau: number; sorts: SortDb[] }[];
   magies: Magies;
 }
-const { magie, magies } = Astro.props;
-
-const colonnes = ['Nom', 'Type', 'Coût', 'Portée', 'Zone', 'D/S/B'];
-const groupes = sortsParNpm(magie.sorts);
-const regle = (niveau: number) => magies.regles.filter((r) => r.niveau_sort === niveau);
-const texteDeRegle = (r: { titre: string; texte: string }) => (r.texte.startsWith(`${r.titre} : `) ? r.texte.slice(r.titre.length + 3) : r.texte);
+const { groupes, magies } = Astro.props;
+const total = groupes.reduce((n, g) => n + g.sorts.length, 0);
 ---
 
 <section class="magie-section" id="sorts" aria-labelledby="sorts-titre">
-  <h2 id="sorts-titre">Sorts <span class="count">{magie.sorts.length}</span></h2>
+  <h2 id="sorts-titre">Sorts <span class="count">{total}</span></h2>
   <p class="muted sorts-aide">
     Rangés par niveau de puissance magique (NPM).{' '}
     <span class="js-only">Cliquez sur un sort pour ouvrir ses détails juste en dessous.</span>
   </p>
 
-  {
-    groupes.map((groupe) => (
-      <section class="npm" id={`npm-${groupe.niveau}`} aria-labelledby={`npm-${groupe.niveau}-titre`}>
-        <h3 class="npm__titre">
-          <span class="npm__badge">NPM {groupe.niveau}</span>
-          <span class="npm__intitule">
-            <span class="npm__nom" id={`npm-${groupe.niveau}-titre`}>Niveau de Puissance Magique {groupe.niveau}</span>
-            {regle(groupe.niveau).map((r) => <Info titre={r.titre} texte={texteDeRegle(r)} />)}
-          </span>
-          <span class="npm__pips" role="img" aria-label={`Niveau ${groupe.niveau} sur 5`}>
-            {[1, 2, 3, 4, 5].map((n) => <i class={n <= groupe.niveau ? 'on' : ''} />)}
-          </span>
-        </h3>
-        <div class="sorts-wrap">
-          <table class="sorts">
-            <thead>
-              <tr>{colonnes.map((c) => <th scope="col">{c}</th>)}</tr>
-            </thead>
-            {groupe.sorts.map((s) => {
-              const cout = coutDeSort(s.coutBrut);
-              const partsDuCout = marquerBonus(cout.parts, s.bonus, 'cout');
-              const cellule = (brut: string | null, cle: string, liste = false) => {
-                const v = valeurDeSort(brut, { liste });
-                return { vide: v.vide, lignes: marquerBonus(v.lignes, s.bonus, cle) };
-              };
-              const valeurs = [
-                ['Portée', cellule(s.porteeBrut, 'portee'), 'portee'],
-                ['Zone', cellule(s.zoneBrut, 'zone'), 'zone'],
-                ['D/S/B', cellule(s.dsbBrut, 'dsb', true), 'dsb'],
-              ] as const;
-              const marques = marquesDeMode(s.modes);
-              const nmDuType = s.bonus.filter((b) => b.champ === 'type');
-              // altérations d'état écrites dans la cellule D/S/B (une seule dans les données) : pastille dans le texte, comme pour les effets
-              const etatsDsb = s.etats.filter((e) => e.champ === 'dsb');
-              return (
-                <tbody class="sort" id={sortAncre(s)}>
-                  <tr class="sort__main">
-                    <th scope="row" class="sort__nom">
-                      <button type="button" class="sort__choisir" aria-expanded="false" aria-controls={`detail-${s.slug}`}>
-                        {s.nom}
-                      </button>
-                      {s.invoque.length > 0 && (
-                        <span class="sort__reperes">
-                          <span class="repere" title="Ce sort a ses propres règles : invocation">Invocation</span>
-                        </span>
-                      )}
-                    </th>
-                    <td data-label="Type" class="sort__type">
-                      {s.types.map((t) => <><span class="genre" data-genre={t.type}>{t.libelle}</span>{' '}</>)}
-                      {marques.map((m) => <><span class={`marque marque--${m.genre}`}>{m.texte}</span>{' '}</>)}
-                      {nmDuType.map((b) => <><span class="nm">{b.texteBrut}</span>{' '}</>)}
-                    </td>
-                    <td data-label="Coût" class="sort__cout">
-                      {cout.vide ? (
-                        <span class="vide" aria-label="aucun">—</span>
-                      ) : (
-                        partsDuCout.map((part, i) =>
-                          i === 0 ? (
-                            <div><Segments segments={part} /></div>
-                          ) : (
-                            <div class="supplement">+ <Segments segments={part} /></div>
-                          ),
-                        )
-                      )}
-                    </td>
-                    {valeurs.map(([label, v, cle]) => (
-                      <td data-label={label} class={`sort__${cle}`}>
-                        {v.vide ? <span class="vide" aria-label="aucun">—</span> : v.lignes.map((l) => <div><Segments segments={l} etats={cle === 'dsb' ? etatsDsb : undefined} {magies} /></div>)}
-                      </td>
-                    ))}
-                  </tr>
-                  <tr class="sort__detail" id={`detail-${s.slug}`} hidden>
-                    <td colspan={colonnes.length}>
-                      <SortDetail sort={s} magies={magies} />
-                    </td>
-                  </tr>
-                </tbody>
-              );
-            })}
-          </table>
-        </div>
-      </section>
-    ))
-  }
-
+  {groupes.map((g) => <TableauNpm niveau={g.niveau} sorts={g.sorts} magies={magies} />)}
 </section>
 
-<noscript>
-  <style>
-    .sorts .sort__detail[hidden] { display: table-row !important; }
-    .creature__fiche[hidden], .creature__rangee[hidden] { display: block !important; }
-    .creature__bouton { pointer-events: none; }
-    .bulle--large[hidden] { display: block !important; position: static; width: auto; max-width: none; box-shadow: none; }
-    .npm__intitule { display: contents; }
-    .npm__intitule > .bulle-zone { order: 1; flex: 1 0 100%; }
-    .info { display: none; }
-  </style>
-</noscript>
-
-<script>
-  // Sélection d'un sort : sa ligne se met en évidence et ses détails s'ouvrent juste en dessous (un seul sort à la fois).
-  // Sans JavaScript, tous les détails sont affichés (feuille de style de <noscript> ci-dessus).
-  document.documentElement.classList.add('js');
-
-  const lignes = [...document.querySelectorAll<HTMLElement>('tbody.sort')];
-  const bouton = (ligne: HTMLElement) => ligne.querySelector<HTMLButtonElement>('.sort__choisir')!;
-  const detail = (ligne: HTMLElement) => ligne.querySelector<HTMLElement>('.sort__detail');
-  const adresseSansSort = () => location.pathname + location.search;
-
-  /** Ferme le sort ouvert ; si le focus était dans son panneau, il revient sur le bouton de la ligne. */
-  function fermer() {
-    for (const ligne of lignes.filter((l) => l.classList.contains('is-selected'))) {
-      const d = detail(ligne);
-      const focusDedans = !!d && d.contains(document.activeElement);
-      ligne.classList.remove('is-selected');
-      bouton(ligne).setAttribute('aria-expanded', 'false');
-      if (d) d.hidden = true;
-      if (focusDedans) bouton(ligne).focus();
-    }
-  }
-
-  function ouvrir(ligne: HTMLElement, defiler: boolean) {
-    fermer();
-    ligne.classList.add('is-selected');
-    bouton(ligne).setAttribute('aria-expanded', 'true');
-    const d = detail(ligne);
-    if (d) {
-      d.hidden = false;
-      if (defiler) ligne.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-    }
-    history.replaceState(null, '', `#${ligne.id}`);
-  }
-
-  /** Ferme tout et retire `#sort-…` de l'adresse (un rechargement ou un lien partagé ne rouvre pas le sort). */
-  function toutFermer() {
-    fermer();
-    if (location.hash.startsWith('#sort-')) history.replaceState(null, '', adresseSansSort());
-  }
-
-  function basculer(ligne: HTMLElement) {
-    if (ligne.classList.contains('is-selected')) toutFermer();
-    else ouvrir(ligne, true);
-  }
-
-  for (const ligne of lignes) {
-    // Un clic sur la ligne principale ouvre ou ferme ; un lien, ou un texte en cours de sélection (copier un coût), ne l'ouvre pas.
-    ligne.querySelector('.sort__main')?.addEventListener('click', (e) => {
-      if ((e.target as HTMLElement).closest('a')) return;
-      if (!(e.target as HTMLElement).closest('button') && (getSelection()?.toString() ?? '') !== '') return;
-      basculer(ligne);
-    });
-    detail(ligne)?.querySelector('.sort-detail__fermer')?.addEventListener('click', () => {
-      toutFermer();
-      bouton(ligne).focus();
-    });
-  }
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') toutFermer();
-  });
-
-  // Créatures d'une invocation : un clic sur le nom ouvre sa fiche minimale (stats, dégâts, capacités) juste sous son bloc, un autre clic la referme ;
-  // une seule fiche à la fois par invocation. Le lien « Bestiaire » à côté du nom mène à la page de la créature.
-  const boutonsCreature = [...document.querySelectorAll<HTMLButtonElement>('.creature__bouton')];
-  for (const bouton of boutonsCreature) {
-    bouton.setAttribute('aria-expanded', 'false'); // sans JavaScript le bouton ne promet rien : toutes les fiches sont affichées
-    bouton.addEventListener('click', () => {
-      const fiche = document.getElementById(bouton.getAttribute('aria-controls') ?? '');
-      if (!fiche) return;
-      const aOuvrir = fiche.hidden;
-      const section = bouton.closest('.sort-detail__regles');
-      for (const autre of section?.querySelectorAll<HTMLElement>('.creature__fiche') ?? []) autre.hidden = true;
-      for (const rangee of section?.querySelectorAll<HTMLElement>('.creature__rangee') ?? []) rangee.hidden = true;
-      for (const b of section?.querySelectorAll<HTMLElement>('.creature__bouton') ?? []) b.setAttribute('aria-expanded', 'false');
-      if (aOuvrir) {
-        fiche.hidden = false;
-        if (fiche.parentElement) fiche.parentElement.hidden = false;
-        bouton.setAttribute('aria-expanded', 'true');
-        fiche.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-      }
-    });
-  }
-
-  /** Adresse `#sort-…` : ouvre ce sort ; toute autre adresse (retour arrière, lien d'ancre) ferme le sort ouvert. */
-  function depuisLien() {
-    let id = '';
-    try {
-      id = decodeURIComponent(location.hash.slice(1));
-    } catch {
-      return; // adresse mal formée : ignorée
-    }
-    const ligne = id.startsWith('sort-') ? lignes.find((l) => l.id === id) : undefined;
-    if (ligne) ouvrir(ligne, true);
-    else fermer();
-  }
-  window.addEventListener('hashchange', depuisLien);
-  depuisLien();
-</script>
+<SortsInteractifs />

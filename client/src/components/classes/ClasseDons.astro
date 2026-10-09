@@ -1,5 +1,6 @@
 ---
 import type { ClasseDb } from '../../lib/classes';
+import Onglets from '../Onglets.astro';
 import ChoixDeDons from './ChoixDeDons.astro';
 import DonCarte from './DonCarte.astro';
 
@@ -8,17 +9,15 @@ import DonCarte from './DonCarte.astro';
 // de 2 ou 3 dons au choix. Chaque choix est encadré (ChoixDeDons.astro), ses options côte à côte.
 // Spécialités en ONGLETS (demande du propriétaire) : le premier dans le coin gauche, le second dans le coin droit, comme les bannières A17 et X17 ;
 // l'onglet ouvert montre son cartouche puis ses choix sur toute la largeur. Sans JavaScript (et à l'impression), les onglets sont des liens et les deux
-// spécialités sont affichées l'une sous l'autre, chacune avec son titre. Une adresse ou un lien vers un don d'une spécialité ouvre son onglet.
+// spécialités sont affichées l'une sous l'autre, chacune avec son titre. Une adresse ou un lien vers un don d'une spécialité ouvre son onglet
+// (script commun : components/Onglets.astro).
 interface Props {
   classe: ClasseDb;
 }
 const { classe } = Astro.props;
 ---
 
-<script is:inline>
-  // Avant l'affichage des spécialités : avec JavaScript, seul l'onglet ouvert est visible (pas de saut de mise en page au chargement).
-  document.documentElement.classList.add('js');
-</script>
+<Onglets />
 
 <section class="classe-section" id="dons" aria-labelledby="dons-titre">
   <h2 id="dons-titre">Dons <span class="count">{classe.dons.length}</span></h2>
@@ -98,79 +97,3 @@ const { classe } = Astro.props;
     }
   </ol>
 </section>
-
-<script>
-  // Onglets des spécialités (motif « tabs » de l'ARIA : flèches gauche et droite, Début, Fin). Les rôles sont posés ici : sans JavaScript, ce sont de simples liens.
-  const groupes: { panneaux: HTMLElement[]; activer: (i: number) => void }[] = [];
-
-  for (const groupe of document.querySelectorAll<HTMLElement>('[data-onglets]')) {
-    const onglets = [...groupe.querySelectorAll<HTMLAnchorElement>('.onglet')];
-    const panneaux = onglets.map((o) => document.getElementById(decodeURIComponent(o.hash.slice(1))));
-    if (onglets.length === 0 || panneaux.some((p) => !p)) continue;
-    const sures = panneaux as HTMLElement[];
-    groupe.querySelector('.onglets')?.setAttribute('role', 'tablist');
-    onglets.forEach((o, i) => {
-      o.setAttribute('role', 'tab');
-      o.setAttribute('aria-controls', sures[i].id);
-      sures[i].setAttribute('role', 'tabpanel');
-      sures[i].setAttribute('aria-labelledby', o.id);
-    });
-    const activer = (i: number) =>
-      onglets.forEach((o, k) => {
-        const actif = k === i;
-        o.classList.toggle('is-active', actif);
-        o.setAttribute('aria-selected', String(actif));
-        o.tabIndex = actif ? 0 : -1;
-        sures[k].classList.toggle('is-active', actif);
-      });
-    activer(Math.max(0, onglets.findIndex((o) => o.classList.contains('is-active'))));
-    onglets.forEach((o, i) => {
-      o.addEventListener('click', (e) => {
-        e.preventDefault();
-        activer(i);
-        history.replaceState(null, '', o.hash);
-      });
-      o.addEventListener('keydown', (e) => {
-        const n = onglets.length;
-        const cible = { ArrowRight: (i + 1) % n, ArrowLeft: (i - 1 + n) % n, Home: 0, End: n - 1 }[e.key];
-        if (cible === undefined) return;
-        e.preventDefault();
-        activer(cible);
-        onglets[cible].focus();
-        history.replaceState(null, '', onglets[cible].hash);
-      });
-    });
-    groupes.push({ panneaux: sures, activer });
-  }
-
-  /** Ouvre l'onglet qui contient l'élément `id` (une spécialité, un de ses dons) ; `defiler` : l'amène à l'écran (adresse au chargement, retour arrière). */
-  function ouvrirPour(id: string, defiler: boolean) {
-    const cible = id ? document.getElementById(id) : null;
-    if (!cible) return;
-    for (const g of groupes) {
-      const i = g.panneaux.findIndex((p) => p.contains(cible));
-      if (i < 0) continue;
-      g.activer(i);
-      if (defiler) cible.scrollIntoView({ block: 'start' });
-    }
-  }
-  const depuisAdresse = () => {
-    try {
-      ouvrirPour(decodeURIComponent(location.hash.slice(1)), true);
-    } catch {
-      // adresse mal formée : ignorée
-    }
-  };
-  // un lien de la page vers une spécialité ou un de ses dons (navigation, « Ses dons ») ouvre l'onglet avant que le navigateur n'y défile
-  document.addEventListener('click', (e) => {
-    const lien = e.target instanceof Element ? e.target.closest<HTMLAnchorElement>('a[href*="#"]') : null;
-    if (!lien || e.defaultPrevented || lien.pathname !== location.pathname) return;
-    try {
-      ouvrirPour(decodeURIComponent(lien.hash.slice(1)), false);
-    } catch {
-      // ancre mal formée : le navigateur s'en charge
-    }
-  });
-  window.addEventListener('hashchange', depuisAdresse);
-  depuisAdresse();
-</script>

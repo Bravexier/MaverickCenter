@@ -103,7 +103,7 @@
       }
     } else if (c.tagName === 'BUTTON') ouvrir(c);
   });
-  // Échap ferme la bulle seule : on intercepte avant le gestionnaire du panneau du sort (MagieSorts), qui n'est pas prévenu quand une bulle était ouverte.
+  // Échap ferme la bulle seule : on intercepte avant le gestionnaire du panneau du sort (SortsInteractifs), qui n'est pas prévenu quand une bulle était ouverte.
   document.addEventListener(
     'keydown',
     (e) => {

@@ -80,7 +80,7 @@ ses relations). Les magies y sont dans l'ordre du classeur (`magie.ordre`, `ordr
 
 ## Pages de magie : un gabarit commun, alimenté par la base
 
-Les 15 pages de `/wiki/magies/<magie>/` ne sont **pas** rendues depuis leur Markdown : `components/MagiePage.astro` (avec `MagieSorts`, `SortDetail`, `MagieAffinites`) affiche les lignes
+Les 15 pages de `/wiki/magies/<magie>/` ne sont **pas** rendues depuis leur Markdown : `components/MagiePage.astro` (avec `MagieSorts`, `TableauNpm`, `LigneDeSort`, `SortDetail`, `MagieAffinites`) affiche les lignes
 des tables typées de la base, lues par `client/src/lib/magies-db.mjs` : `magie`, `magie_role`, `magie_resistance`, `etat`, `v_magie_incompatible`, `magie_ethnie_secondaire`, `mode_hyper_effet`,
 `sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `etat`, `etat_magie`, `etat_stade`, `invocation`, `invocation_bloc`, `creature`, `caracteristique`, `creature_caracteristique`, `creature_bonus_npm`, `creature_attaque`, `creature_capacite`, `creature_effet`, `amelioration_cadaverique`, `regle_magie`.
 Le corps Markdown de la page (fabriqué depuis `data/rows`) ne sert plus qu'à la recherche plein texte et aux `[[liens]]`. Restent lus dans le front matter : le titre, les alias, le statut, et la
@@ -97,7 +97,8 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
 - **Aucune virgule dans les données** : une liste devient des pastilles (une par élément), les bonus du D/S/B (« +8 dégâts, +2AM ») sont un élément par ligne, « 4.0 » s'affiche « 4 », les précisions entre
   parenthèses (`(xNP de créature)`) passent en petit (parenthèses gardées), le coût « 10 + 4 Sang » est séparé en coût et supplément, les types et les marques (IC, imparable, inesquivable) sont des pastilles.
   Le texte des cellules n'est jamais réécrit.
-- **Un tableau par niveau de puissance magique (NPM)** : Nom, Type, Coût, Portée, Zone, D/S/B, une ligne par sort ; **pas de colonne Maîtrise**. Le bonus de niveau de maîtrise (NM, `sort_bonus_maitrise`, voir « Niveaux de maîtrise »
+- **Un tableau par niveau de puissance magique (NPM)** : Nom, Type, Coût, Portée, Zone, D/S/B, une ligne par sort ; **pas de colonne Maîtrise**. Un seul gabarit pour tous les tableaux de sorts du site,
+  `components/magie/TableauNpm.astro` (une magie, un NPM ; une ligne : `LigneDeSort.astro` ; le comportement au clic : `SortsInteractifs.astro`, une fois par page). Le bonus de niveau de maîtrise (NM, `sort_bonus_maitrise`, voir « Niveaux de maîtrise »
   ci-dessous) qu'une cellule de Coût, Portée, Zone ou D/S/B écrit entre parenthèses est une **pastille à sa place, à côté de la valeur** (« 55 » puis la pastille « -5/NM », « 5d6 [+3/NM] dégâts sonores » ;
   `marquerBonus` de `lib/sort-maitrise.mjs`). La colonne Type montre les types (`sort_type`), le **mode** de base (`sort_mode` : IC, imparable, inesquivable) puis, en pastille, le mode qui dépend d'un NM (« IC pour 3 NM »).
   Les bonus écrits dans les effets ou la remarque restent dans leur texte, dans le panneau du sort.
@@ -113,6 +114,13 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
 - **Infobulles** (`components/Bulles.astro`, `Info.astro`, `EtatPastille.astro`) : au survol (la bulle reste ouverte quand le pointeur passe dessus), au focus clavier (Échap ferme la bulle seule, pas le panneau du sort) ou au toucher (un premier appui ouvre la bulle,
   un second suit le lien d'une pastille d'état), en position fixe près du déclencheur, bornée à l'écran (le tableau défile et couperait une bulle absolue) ; sans JavaScript l'attribut `title` du déclencheur donne le même contenu en texte simple. La bulle n'est faite que
   d'éléments « en ligne » (`<span>`) : une pastille est posée dans un paragraphe, où un bloc fermerait le `<p>` et ferait fuir le contenu de la bulle (`test/magies-html.test.mjs` le vérifie sur le site construit, ainsi que le câblage `aria-*`).
+- **Potentiel Illimité** : il n'a pas de sorts à lui (« cette magie pioche ses sorts dans toutes les magies existantes », bloc « Explication » de son onglet). À la place de la
+  section des sorts, sa page montre **« Sorts des autres magies » : 14 onglets, un par autre magie**, dans l'ordre du classeur et dans sa couleur (`components/magie/SortsDuPotentiel.astro`,
+  `lib/potentiel-illimite.mjs`, CSS `styles/magie/potentiel.css` inséré en `?raw` sur cette page seulement). Chaque onglet reprend **les tableaux de cette magie du NPM 1 au NPM 4** (demande
+  du propriétaire, `NPM_MAX_DU_POTENTIEL`) avec le gabarit `TableauNpm` : mêmes lignes et mêmes panneaux que sur la page de la magie, dont le titre de l'onglet est le lien. Les identifiants y sont
+  préfixés du nom court de la magie (`magie.nom_cle`) : `#sort-feu-boule-de-feu`, `#npm-feu-1`, `#sorts-feu` (l'onglet), car deux magies peuvent avoir un sort du même nom ; une adresse vers un sort
+  ouvre son onglet puis le sort. Les onglets (script commun avec les spécialités des pages de classe : `components/Onglets.astro`) suivent le motif « tabs » de l'ARIA ; sans JavaScript et à
+  l'impression, les 14 magies se suivent, chacune sous son titre. `test/potentiel-illimite.test.mjs` et `test/magies-html.test.mjs` (site construit) le vérifient.
 - **Sources** : ni « Source : … » dans le panneau d'un sort, ni section « Sources » en pied de page des pages de magie (`sources:` reste dans le front matter pour la traçabilité).
 - **Chaque élément renvoie à sa page** : magie → page de la magie, altération d'état → sa section de `/wiki/guide/liste-des-alterations-d-etat/` (l'ancre est celle du titre `## <nom>`, vérifiée par
   le test), créature ou invocation → page du bestiaire, race → page de la race.
@@ -175,7 +183,7 @@ pas de source citée ; le Markdown de la page ne sert plus qu'à la recherche et
   `test/classes-dons.test.mjs`), de haut en bas : les dons reçus sans choix (colonne P : niveaux 1 et 5), les deux spécialités (une seule au choix : elle exclut l'autre et
   tous ses dons), et le don du niveau 20 en bas ; l'Archimage a des groupes de 2 ou 3 dons au choix. **Spécialités en onglets** (demande du propriétaire) : le premier dans le coin gauche,
   le second dans le coin droit (comme les bannières A17 et X17), une pastille « ou » entre eux ; l'onglet ouvert montre le cartouche de la spécialité puis ses trois choix sur toute la largeur.
-  Motif « tabs » de l'ARIA (flèches, Début, Fin) posé par le script de `ClasseDons.astro` ; une adresse ou un lien vers une spécialité ou un de ses dons (`#don-…`, la fiche du don) ouvre son onglet ;
+  Motif « tabs » de l'ARIA (flèches, Début, Fin) posé par le script commun `components/Onglets.astro` ; une adresse ou un lien vers une spécialité ou un de ses dons (`#don-…`, la fiche du don) ouvre son onglet ;
   sans JavaScript et à l'impression, les deux spécialités se suivent avec leur titre. **Chaque choix est encadré** (« Au choix · Niveau N : un seul des deux »), ses options **côte à côte**
   (l'une sous l'autre sur un téléphone) avec une pastille « ou » entre elles ; les choix sont ceux de la vue `v_capacite_exclusive` (la disposition de l'onglet fait foi), le test
   vérifie qu'ils coïncident. Une carte de don : niveau, nom (lien vers la fiche), type (nom du guide, sa définition en infobulle native) et sa précision telle qu'écrite (« 2 fois/Combat »),

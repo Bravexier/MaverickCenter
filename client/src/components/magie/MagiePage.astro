@@ -9,19 +9,21 @@ import magieCreaturesCss from '../../styles/magie/creatures.css?raw';
 import magieResponsiveCss from '../../styles/magie/responsive.css?raw';
 import magiePrintCss from '../../styles/magie/print.css?raw';
 import { racesOfMagie } from '../../lib/magie-relations.mjs';
+import { magiesDuPotentiel, POTENTIEL_ILLIMITE } from '../../lib/potentiel-illimite.mjs';
 import { pageHref, type Magies, type MagieDb } from '../../lib/magies';
 import type { WikiEntry } from '../../lib/wiki';
 import Bulles from './Bulles.astro';
 import MagieAffinites from './MagieAffinites.astro';
 import MagieSorts from './MagieSorts.astro';
 import RacesDeMagie from './RacesDeMagie.astro';
+import SortsDuPotentiel from './SortsDuPotentiel.astro';
 import Texte from './Texte.astro';
 
 const magieCss = [magieBaseCss, magiePageCss, magieSortsCss, magieDetailCss, magieTooltipsCss, magieCreaturesCss, magieResponsiveCss, magiePrintCss].join('\n');
 
 // Gabarit commun des pages de magie : bannière (nom, rôles, ressources offertes), présentation, résistances, Mode Hyper, sorts par niveau de
-// puissance magique, races. Il affiche les lignes de la base (tables magie, sort… ; lib/magies-db.mjs) : pour changer une magie ou un sort,
-// on change la base. Seuls le titre, les alias et le statut (pages du wiki) et la section « Disponibilité par race » (`magies_innees` des pages de
+// puissance magique (le Potentiel Illimité, qui n'en a pas à lui, montre à leur place ceux des autres magies, en onglets : SortsDuPotentiel.astro),
+// races. Il affiche les lignes de la base (tables magie, sort… ; lib/magies-db.mjs) : pour changer une magie ou un sort, on change la base. Seuls le titre, les alias et le statut (pages du wiki) et la section « Disponibilité par race » (`magies_innees` des pages de
 // race, avec l'exception du Nain : lib/magie-relations.mjs) viennent encore du front matter.
 interface Props {
   entry: WikiEntry;
@@ -42,6 +44,7 @@ const ressources = [
   .filter((r) => r.valeur !== '')
   .map((r) => ({ ...r, valeur: nombre(r.valeur), nul: r.valeur === '0', texte: !/^-?\d+$/.test(r.valeur) }));
 const groupes = sortsParNpm(magie.sorts);
+const autresMagies = magie.id === POTENTIEL_ILLIMITE ? magiesDuPotentiel(magies.magies) : [];
 const { avec, sans } = racesOfMagie(entries, entry);
 const aDesRaces = avec.length + sans.length > 0;
 const pageModeHyper = entries.find((e) => e.id === 'guide/liste-des-effets-mode-hyper');
@@ -51,7 +54,7 @@ const nav = [
   { href: '#presentation', label: 'Présentation', show: aPresentation },
   { href: '#affinites', label: 'Résistances', show: true },
   { href: '#mode-hyper', label: 'Mode Hyper', show: magie.modeHyper.length > 0 },
-  { href: '#sorts', label: 'Sorts', show: groupes.length > 0 },
+  { href: '#sorts', label: 'Sorts', show: groupes.length > 0 || autresMagies.length > 0 },
   { href: '#races-disponibles', label: 'Races', show: aDesRaces },
 ].filter((n) => n.show);
 ---
@@ -146,7 +149,8 @@ const nav = [
     )
   }
 
-  {magie.sorts.length > 0 && <MagieSorts magie={magie} magies={magies} />}
+  {groupes.length > 0 && <MagieSorts groupes={groupes} magies={magies} />}
+  {autresMagies.length > 0 && <SortsDuPotentiel autres={autresMagies} magies={magies} entries={entries} />}
 
   <Bulles />
 

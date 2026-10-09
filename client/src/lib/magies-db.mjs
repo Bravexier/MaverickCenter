@@ -86,6 +86,8 @@ export function chargerMagies(db) {
       id: m.id,
       slug: apres(m.id, '/'),
       nom: m.nom,
+      // nom court normalisé (« feu », « espace-temps ») : préfixe des identifiants HTML quand plusieurs magies partagent une page (Potentiel Illimité)
+      cle: m.nom_cle,
       ordre: m.ordre,
       banniere: m.banniere,
       description: blocsDeTexte(m.description),
