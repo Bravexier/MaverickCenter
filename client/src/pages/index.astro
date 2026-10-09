@@ -20,7 +20,7 @@ const { entries, unresolved } = await loadWiki();
     {
       Object.entries(TYPES).map(([key, type]) => (
         <li>
-          <a class="card" href={url(`wiki/${key}/`)}>
+          <a class="card" href={url(`${key}/`)}>
             <strong>{type.label}</strong>
             <small>{type.blurb} ({entriesOfType(entries, key).length})</small>
           </a>
@@ -30,6 +30,6 @@ const { entries, unresolved } = await loadWiki();
   </ul>
   <p class="muted">
     {entries.length} pages · {unresolved.length} lien(s) à créer.
-    <a href={url('wiki/')}>Index alphabétique</a> · <a href={url('tags/')}>Mots-clés</a>
+    <a href={url('pages/')}>Index alphabétique</a> · <a href={url('tags/')}>Mots-clés</a>
   </p>
 </Base>

@@ -1,21 +1,21 @@
 ---
-import Base from '../../../layouts/Base.astro';
-import EntryList from '../../../components/EntryList.astro';
-import RaceList from '../../../components/RaceList.astro';
-import ClassesPastilles from '../../../components/classes/ClassesPastilles.astro';
-import MagiesConstellation from '../../../components/magie/MagiesConstellation.astro';
-import TableauMagiesInnees from '../../../components/magie/TableauMagiesInnees.astro';
-import TableauRelationsMagies from '../../../components/magie/TableauRelationsMagies.astro';
-import MetiersTableau from '../../../components/metier/MetiersTableau.astro';
-import { TYPES, TYPE_KEYS } from '../../../lib/types.mjs';
-import { groupClasses } from '../../../lib/class-groups.mjs';
-import { groupRaces } from '../../../lib/race-kinds.mjs';
-import { groupByClass } from '../../../lib/capacites.mjs';
-import { loadMagies } from '../../../lib/magies';
-import { ouvrirBase } from '../../../lib/donnees.mjs';
-import { chargerMetiers, PAGE_DES_REGLES } from '../../../lib/metiers.mjs';
-import { entryHref } from '../../../lib/wiki';
-import { entriesOfType, loadWiki } from '../../../lib/wiki';
+import Base from '../../layouts/Base.astro';
+import EntryList from '../../components/EntryList.astro';
+import RaceList from '../../components/RaceList.astro';
+import ClassesPastilles from '../../components/classes/ClassesPastilles.astro';
+import MagiesConstellation from '../../components/magie/MagiesConstellation.astro';
+import TableauMagiesInnees from '../../components/magie/TableauMagiesInnees.astro';
+import TableauRelationsMagies from '../../components/magie/TableauRelationsMagies.astro';
+import MetiersTableau from '../../components/metier/MetiersTableau.astro';
+import { TYPES, TYPE_KEYS } from '../../lib/types.mjs';
+import { groupClasses } from '../../lib/class-groups.mjs';
+import { groupRaces } from '../../lib/race-kinds.mjs';
+import { groupByClass } from '../../lib/capacites.mjs';
+import { loadMagies } from '../../lib/magies';
+import { ouvrirBase } from '../../lib/donnees.mjs';
+import { chargerMetiers, PAGE_DES_REGLES } from '../../lib/metiers.mjs';
+import { entryHref } from '../../lib/wiki';
+import { entriesOfType, loadWiki } from '../../lib/wiki';
 
 export function getStaticPaths() {
   return TYPE_KEYS.map((type) => ({ params: { type } }));

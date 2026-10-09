@@ -1,4 +1,4 @@
-/* Chargé uniquement depuis components/magie/TableauMagiesInnees.astro (bas de /wiki/races/) et TableauRelationsMagies.astro (/wiki/magies/), en ?raw.
+/* Chargé uniquement depuis components/magie/TableauMagiesInnees.astro (bas de /races/) et TableauRelationsMagies.astro (/magies/), en ?raw.
    Les magies sont dans leur couleur (--couleur-magie, lib/sort-format.mjs#couleurDeMagie) : colonnes teintées et pastilles dans le tableau des races,
    lignes teintées dans celui des relations. Largeur fixe (table-layout: fixed) et en-têtes verticaux : 15 colonnes tiennent sans défilement horizontal,
    d'un écran de téléphone (390 px) à la largeur du site. */

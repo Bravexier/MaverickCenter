@@ -1,4 +1,4 @@
-// Pages de magie CONSTRUITES (client/dist/wiki/magies/*/index.html) : câblage des infobulles et des fiches de créatures, éléments retirés à la demande du propriétaire.
+// Pages de magie CONSTRUITES (client/dist/magies/*/index.html) : câblage des infobulles et des fiches de créatures, éléments retirés à la demande du propriétaire.
 // Ce test lit le site construit : il ne tourne qu'après `npm run build` (la CI l'exécute juste après) et se saute sinon.
 //   node --test test/magies-html.test.mjs
 import assert from 'node:assert/strict';
@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-const dossier = fileURLToPath(new URL('../dist/wiki/magies/', import.meta.url));
+const dossier = fileURLToPath(new URL('../dist/magies/', import.meta.url));
 const present = existsSync(dossier);
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
 const indexMagies = present ? readFileSync(join(dossier, 'index.html'), 'utf8') : '';
@@ -166,11 +166,11 @@ test('créatures invoquées : un bouton et un lien « Bestiaire » par créature
   }
 });
 
-// Tableau des relations entre magies, sous la carte de /wiki/magies/ (components/magie/TableauRelationsMagies.astro) : il remplace /wiki/races-et-magies/.
+// Tableau des relations entre magies, sous la carte de /magies/ (components/magie/TableauRelationsMagies.astro) : il remplace /wiki/races-et-magies/.
 // Le Potentiel Illimité n'y est pas (demande du propriétaire).
 const ORDRE_DU_CLASSEUR = ['Sang', 'Arcane', 'Corruption', 'Espace/Temps', 'Vide', 'Nécromancie', 'Feu', 'Eau', 'Glace', 'Terre', 'Vent', 'Foudre', 'Lumière', 'Ombre'];
 
-test('/wiki/magies/ : le tableau des relations suit la carte, lignes et colonnes dans l’ordre du classeur sans le Potentiel Illimité, chaque ligne dans la couleur de sa magie', options, () => {
+test('/magies/ : le tableau des relations suit la carte, lignes et colonnes dans l’ordre du classeur sans le Potentiel Illimité, chaque ligne dans la couleur de sa magie', options, () => {
   const debut = indexMagies.indexOf('<section id="relations"');
   assert.ok(debut > indexMagies.indexOf('class="magies-orbite"'), 'sous la carte des magies');
   const tableau = contenu(indexMagies, debut, 'section');
@@ -184,7 +184,7 @@ test('/wiki/magies/ : le tableau des relations suit la carte, lignes et colonnes
   assert.match(tableau, /<td title="Nécromancie fort contre Sang ; Nécromancie incompatible avec Sang">/, 'deux marques dans une case');
 });
 
-test('/wiki/races-et-magies/ n’existe plus et aucune page de magie n’y renvoie', options, () => {
-  assert.ok(!existsSync(fileURLToPath(new URL('../dist/wiki/races-et-magies/', import.meta.url))));
+test('/races-et-magies/ n’existe plus et aucune page de magie n’y renvoie', options, () => {
+  assert.ok(!existsSync(fileURLToPath(new URL('../dist/races-et-magies/', import.meta.url))));
   for (const { slug, html } of [{ slug: 'index', html: indexMagies }, ...pages]) assert.ok(!html.includes('races-et-magies'), slug);
 });

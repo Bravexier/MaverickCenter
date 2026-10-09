@@ -1,11 +1,11 @@
-// Présentation des classes par catégorie (page /wiki/classes/ et fil d'Ariane d'une classe). Fonctions pures.
+// Présentation des classes par catégorie (page /classes/ et fil d'Ariane d'une classe). Fonctions pures.
 //
 // La catégorie vient de l'import : le Sommaire du classeur « Classe Maverick V7 » range chaque classe sous un intitulé
 // (« Classe Physique Corps à Corps », « Classe Physique Distance », « Classe Magique », « Classe Hybride Animal »,
 // « Classe Hybride », « Classe spéciale »), et l'extracteur le pose en tag sur la page. On regroupe d'après ces tags :
 // aucune catégorie n'est déduite du contenu d'une classe.
 //
-// Les cinq catégories demandées par le propriétaire du projet, dans l'ordre des colonnes de /wiki/classes/ :
+// Les cinq catégories demandées par le propriétaire du projet, dans l'ordre des colonnes de /classes/ :
 //   Physiques Mêlée     = « Classe Physique Corps à Corps »
 //   Physiques Distance  = « Classe Physique Distance »
 //   Magiques            = « Classe Magique »
@@ -68,7 +68,7 @@ export function groupClasses(entries) {
 /**
  * Couleur d'une classe, d'après sa catégorie (demande du propriétaire) : rouge pour les physiques de mêlée, vert pour les physiques à distance,
  * bleu pour les magiques, violet pour les raciales (hybrides), jaune pour les spéciales (et les non classées). Repère visuel sans valeur de règle,
- * comme la couleur d'une magie ; elle suit la catégorie de /wiki/classes/, exception du Parleur comprise.
+ * comme la couleur d'une magie ; elle suit la catégorie de /classes/, exception du Parleur comprise.
  */
 export const CLASS_COLORS = { melee: '#c62828', distance: '#2e7d32', magiques: '#1e5bb8', raciales: '#7b3fa6', speciales: '#e3b104' };
 

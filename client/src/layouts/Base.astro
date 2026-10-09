@@ -23,48 +23,51 @@ const site = modeDuSite(process.env, packageInfo.version);
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
-    <link rel="icon" type="image/svg+xml" href={url('favicon.svg')} />
+    <link rel="icon" type="image/png" sizes="32x32" href={url('favicon.png')} />
+    <link rel="apple-touch-icon" href={url('apple-touch-icon.png')} />
     <title>{site.test ? '[TEST] ' : ''}{title === 'Accueil' ? 'Maverick Center' : `${title} — Maverick Center`}</title>
   </head>
   <body>
     {site.test && <p class="bandeau-test" role="note"><strong>Serveur de test</strong> — {site.etiquette}, version en cours de développement : ce n’est pas le site de production.</p>}
     <header class="site-header">
       <div class="site-header__inner">
-        <a class="brand" href={url()}>Maverick Center</a>
-        <form class="search-form" action={url('recherche/')} role="search">
-          <input type="search" name="q" placeholder="Rechercher…" aria-label="Rechercher dans le wiki" />
-          <button type="submit">OK</button>
-        </form>
-      </div>
-      <nav class="site-nav" aria-label="Navigation principale">
-        <ul class="site-nav__groups">
-          {
-            NAV.map((group) => (
-              <li>
-                <button type="button" class="nav-group__toggle" data-group={group.key} aria-pressed={group.key === active.key ? 'true' : 'false'} aria-current={groupIsCurrent(group, Astro.url.pathname, base) ? 'true' : undefined}>
-                  {group.label}
-                </button>
-              </li>
-            ))
-          }
-        </ul>
-        {
-          NAV.map((group) => (
-            <ul class="site-nav__items" data-group={group.key} hidden={group.key !== active.key}>
-              {group.items.length === 0 && <li class="nav-soon">À compléter</li>}
-              {group.items.map((item) => (
-                <li>
-                  {item.path ? (
-                    <a href={url(item.path)} aria-current={here === url(item.path) ? 'page' : undefined}>{item.label}</a>
-                  ) : (
-                    <span class="nav-soon">{item.label} <small>(bientôt)</small></span>
-                  )}
-                </li>
-              ))}
+        <a class="brand" href={url()}><img src={url('logo.webp')} alt="Maverick Center" width="319" height="320" /></a>
+        <div class="site-header__menu">
+          <form class="search-form" action={url('recherche/')} role="search">
+            <input type="search" name="q" placeholder="Rechercher…" aria-label="Rechercher dans le wiki" />
+            <button type="submit">OK</button>
+          </form>
+          <nav class="site-nav" aria-label="Navigation principale">
+            <ul class="site-nav__groups">
+              {
+                NAV.map((group) => (
+                  <li>
+                    <button type="button" class="nav-group__toggle" data-group={group.key} aria-pressed={group.key === active.key ? 'true' : 'false'} aria-current={groupIsCurrent(group, Astro.url.pathname, base) ? 'true' : undefined}>
+                      {group.label}
+                    </button>
+                  </li>
+                ))
+              }
             </ul>
-          ))
-        }
-      </nav>
+            {
+              NAV.map((group) => (
+                <ul class="site-nav__items" data-group={group.key} hidden={group.key !== active.key}>
+                  {group.items.length === 0 && <li class="nav-soon">À compléter</li>}
+                  {group.items.map((item) => (
+                    <li>
+                      {item.path ? (
+                        <a href={url(item.path)} aria-current={here === url(item.path) ? 'page' : undefined}>{item.label}</a>
+                      ) : (
+                        <span class="nav-soon">{item.label} <small>(bientôt)</small></span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ))
+            }
+          </nav>
+        </div>
+      </div>
     </header>
     <main>
       <slot />

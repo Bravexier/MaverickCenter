@@ -95,7 +95,7 @@ export function relationsOfMagie(entries, magie) {
 
 /**
  * Pages de magie dont `resiste_a`, `vulnerable_a` et `incompatible_avec` sont celles de la base (lib/magies-db.mjs : tables magie_resistance et
- * v_magie_incompatible) : les pages de magie et le tableau des relations de /wiki/magies/ n'ont ainsi qu'une source. Les autres pages sont rendues telles quelles.
+ * v_magie_incompatible) : les pages de magie et le tableau des relations de /magies/ n'ont ainsi qu'une source. Les autres pages sont rendues telles quelles.
  * `magies` = le résultat de chargerMagies().
  */
 export function entriesAvecRelationsDeLaBase(entries, magies) {

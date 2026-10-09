@@ -1,4 +1,4 @@
-/* Chargé uniquement depuis components/metier/MetiersTableau.astro (?raw) : le tableau de /wiki/metiers/, à l'image des tableaux de sorts
+/* Chargé uniquement depuis components/metier/MetiersTableau.astro (?raw) : le tableau de /metiers/, à l'image des tableaux de sorts
    (styles/magie/sorts.css, sort-detail.css), dans la couleur d'accent du site. Une ligne par métier ; sa description s'ouvre sous la ligne.
    Sur un téléphone, chaque ligne devient une carte (comme styles/magie/responsive.css). */
 .metiers {

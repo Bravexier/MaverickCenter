@@ -86,7 +86,7 @@ export function extractLinks(body) {
   }));
 }
 
-/** Adresse d'une page (un métier : sa ligne du tableau de /wiki/metiers/, voir metiers.mjs). */
+/** Adresse d'une page (un métier : sa ligne du tableau de /metiers/, voir metiers.mjs). */
 export function entryUrl(base, entry) {
   return `${base.replace(/\/$/, '')}/${cheminDePage(`${entry.type}/${entry.slug}`)}`;
 }
