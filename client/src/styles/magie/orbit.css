@@ -1,12 +1,15 @@
+/* Carte des magies de /magies/ (components/magie/MagiesConstellation.astro). Grand écran : 1000 × 440 (HAUTEUR_GRANDE), disposée pour que les
+   relations d'une magie, affichées à son survol, ne passent sous aucune autre pastille. Sous 60rem : la carte étroite, sur deux colonnes
+   (HAUTEUR_ETROITE, 590 → 36.875rem), sans relations. La carte est un conteneur (100cqw = sa largeur) : chaque infobulle est ramenée entre ses bords,
+   sinon, même cachée, elle élargit la page. */
 .magies-orbite {
   position: relative;
   width: 100%;
-  max-width: 68rem;
-  aspect-ratio: 1000 / 920;
-  min-height: 48rem;
+  aspect-ratio: 1000 / 440;
   margin: 1.5rem auto 0;
   overflow: visible;
   isolation: isolate;
+  container-type: inline-size;
 }
 
 .magies-orbite__liens,
@@ -18,6 +21,28 @@
 }
 
 .magies-orbite__liens { z-index: -1; }
+
+/* Relations entre magies (grand écran, components/magie/MagiesConstellation.astro, lib/magie-fleches.mjs) : cachées ; survoler une magie (règles :has()
+   écrites par le composant) affiche les siennes, dans sa couleur (--c), assombrie (éclaircie en sombre) pour rester visible. Épée au bout de la magie
+   contre laquelle l'autre est efficace, bouclier au bout de celle qui résiste ; un liseré de la couleur du fond détache les pointes du trait. */
+.magies-orbite__relations { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; overflow: visible; }
+.magies-relation { --trait: color-mix(in srgb, var(--c, var(--muted)) var(--part, 62%), var(--text)); opacity: 0; transition: opacity 140ms ease; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .magies-relation { --trait: color-mix(in srgb, var(--c, var(--muted)) var(--part-sombre, 62%), var(--text)); }
+}
+:root[data-theme="dark"] .magies-relation { --trait: color-mix(in srgb, var(--c, var(--muted)) var(--part-sombre, 62%), var(--text)); }
+.magies-relation line,
+.magies-relation__boucle { fill: none; stroke: var(--trait); stroke-width: 1.8; stroke-linecap: round; }
+.magies-relation__epee path,
+.magies-relation__bouclier path { fill: var(--trait); stroke: var(--bg); stroke-width: 0.8; stroke-linejoin: round; paint-order: stroke; }
+.magies-relation__bouclier .magies-relation__arete { fill: none; stroke: var(--bg); stroke-width: 1.4; stroke-linecap: round; }
+
+.magies-legende { display: flex; flex-wrap: wrap; gap: 0.3rem 1.4rem; margin: 1.6rem 0 0; color: var(--muted); font-size: 0.85rem; }
+.magies-legende__item { display: inline-flex; align-items: center; gap: 0.35rem; }
+.magies-legende svg { width: 2.6rem; height: 1.3rem; flex: none; }
+.magies-legende line { stroke: var(--muted); stroke-width: 1.6; }
+.magies-legende path { fill: var(--muted); }
+.magies-legende .magies-legende__arete { fill: none; stroke: var(--bg); stroke-width: 1.4; stroke-linecap: round; }
 .magies-orbite__liste { margin: 0; padding: 0; list-style: none; }
 .magies-orbite__lien line { vector-effect: non-scaling-stroke; stroke-width: 1.5; }
 .magies-orbite__lien--incompatible line { stroke: var(--muted); stroke-dasharray: 3 6; opacity: 0.55; }
@@ -71,12 +96,16 @@
 
 .magies-orbite__nom { overflow-wrap: anywhere; }
 
+/* Infobulle centrée sur son nœud (left: 50% = --x-fraction × 100cqw dans la carte), puis ramenée entre les bords de la carte, bordure comprise. */
 .magies-orbite__noeud::after {
+  --largeur-bulle: min(18rem, 100cqw);
+  --centre-bulle: calc(var(--x-fraction) * 100cqw);
   position: absolute;
   bottom: calc(100% + 0.6rem);
-  left: 50%;
+  left: calc(50% - var(--centre-bulle) + clamp(0px, var(--centre-bulle) - var(--largeur-bulle) / 2, 100cqw - var(--largeur-bulle)));
   z-index: 5;
-  width: min(18rem, calc(100vw - 2rem));
+  box-sizing: border-box;
+  width: var(--largeur-bulle);
   padding: 0.6rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -88,7 +117,7 @@
   font-weight: 400;
   line-height: 1.45;
   text-align: left;
-  transform: translate(-50%, 0.25rem);
+  transform: translateY(0.25rem);
   visibility: hidden;
   opacity: 0;
   pointer-events: none;
@@ -111,33 +140,25 @@
 
 .magies-orbite__noeud:hover::after,
 .magies-orbite__noeud:focus-visible::after {
-  transform: translate(-50%, 0);
+  transform: translateY(0);
   visibility: visible;
   opacity: 1;
 }
 
-/* Sur téléphone, une infobulle, même cachée, élargit la page si elle dépasse de la carte : la carte est un conteneur (100cqw = sa largeur)
-   et chaque infobulle, centrée sur son nœud (left: 50% = --mx-fraction × 100cqw), est ramenée entre les bords de la carte. */
-@media (max-width: 44rem) {
-  .magies-orbite { container-type: inline-size; height: 57.5rem; min-height: 0; aspect-ratio: auto; }
-  .magies-orbite__lien--grand { display: none; }
+/* Écran étroit (le menu passe aussi sous le logo à 60rem) : la carte sur deux colonnes, largeurs en cqw (largeur de la carte, sans les marges de la page),
+   les infobulles centrées sur --mx-fraction. */
+@media (max-width: 60rem) {
+  .magies-orbite { height: 36.875rem; aspect-ratio: auto; }
+  .magies-orbite__relations, .magies-legende { display: none; }
   .magies-orbite__lien--petit { display: initial; }
-  .magies-orbite__position { left: var(--mx); top: var(--my); width: min(9rem, calc(50vw - 1.2rem)); }
-  .magies-orbite__position--potentiel { width: min(12rem, calc(80vw - 1.5rem)); }
-  .magies-orbite__position--elementaire { width: min(8rem, 32vw); }
-  .magies-orbite__noeud::after {
-    --largeur-bulle: min(18rem, 100cqw);
-    --centre-bulle: calc(var(--mx-fraction) * 100cqw);
-    box-sizing: border-box;
-    left: calc(50% - var(--centre-bulle) + clamp(0px, var(--centre-bulle) - var(--largeur-bulle) / 2, 100cqw - var(--largeur-bulle)));
-    width: var(--largeur-bulle);
-    transform: translateY(0.25rem);
-  }
-  .magies-orbite__noeud:hover::after,
-  .magies-orbite__noeud:focus-visible::after { transform: translateY(0); }
+  .magies-orbite__position { left: var(--mx); top: var(--my); width: min(9rem, 46cqw); }
+  .magies-orbite__position--potentiel { width: min(12rem, 80cqw); }
+  .magies-orbite__position--elementaire { width: min(8rem, 36cqw); }
+  .magies-orbite__noeud::after { --centre-bulle: calc(var(--mx-fraction) * 100cqw); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .magies-orbite__noeud,
-  .magies-orbite__noeud::after { transition: none; }
+  .magies-orbite__noeud::after,
+  .magies-relation { transition: none; }
 }

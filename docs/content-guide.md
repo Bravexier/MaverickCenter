@@ -82,6 +82,20 @@ ses relations). Les magies y sont dans l'ordre du classeur (`magie.ordre`, `ordr
 
 ## Pages de magie : un gabarit commun, alimenté par la base
 
+**La carte de `/magies/`** (`components/magie/MagiesConstellation.astro`, CSS `styles/magie/orbit.css`) : une pastille par magie, le nom seul, la première phrase de la description
+en infobulle ; dense, comme les pastilles de `/classes/` et `/races/` (demande du propriétaire). **Relations au survol** (demandes du propriétaire), sur grand écran seulement : survoler
+une magie affiche ses relations, et seulement les siennes, dans sa couleur, d'après la base (`magie_resistance`, `lib/magie-fleches.mjs`) : un trait par magie liée, une **épée** au bout
+de la magie contre laquelle l'autre est efficace (sa « Vulnérabilité magique » cite l'autre), un **bouclier** au bout de celle qui résiste à l'autre (sa « Résistance magique » la cite),
+une boucle à bouclier pour une magie qui résiste à elle-même. Les deux sens d'une paire sont sur le même trait : dans la base, quand A est efficace contre B, A résiste aussi à B
+(épée chez B, bouclier chez A) ; Vide–Espace-Temps et Lumière–Ombre ont deux épées, Arcane–Corruption deux boucliers (testé sur la base). Au repos, aucun trait.
+Disposition du grand écran (1000 × 440) : le Potentiel Illimité, sans relation, au centre (demande du propriétaire) ; les huit magies liées en anneau autour, symétriques gauche–droite
+(Vent↔Nécromancie, Feu↔Eau, Terre↔Sang, Glace↔Foudre : la symétrie des relations le permet) ; Corruption–Arcane et Espace-Temps–Vide aux coins du haut, Lumière–Ombre en bas.
+Elle est choisie pour qu'**aucun trait ni aucune boucle ne passe sous une autre pastille** et que deux pointes d'une même magie ne se touchent pas : Feu et Eau sont plus bas que Terre
+et Sang parce que le trait Feu–Eau passerait sinon sous eux. Pour déplacer une pastille, vérifier ces conditions (`test/magies-html.test.mjs` les contrôle sur le site construit, de 58 à
+62rem de large). Sous 60rem : deux colonnes, les paires côte à côte reliées par leur pointillé (incompatibles ou opposées), sans relations. Cette disposition est de la mise en page,
+pas un classement de règle. `test/magies-html.test.mjs` vérifie aussi qu'aucune pastille n'en touche une autre et que les infobulles restent dans la carte, du téléphone (320 px) au grand écran ;
+`test/magie-fleches.test.mjs` teste les relations et leur géométrie.
+
 Les 15 pages de `/magies/<magie>/` ne sont **pas** rendues depuis leur Markdown : `components/MagiePage.astro` (avec `MagieSorts`, `TableauNpm`, `LigneDeSort`, `SortDetail`, `MagieAffinites`) affiche les lignes
 des tables typées de la base, lues par `client/src/lib/magies-db.mjs` : `magie`, `magie_role`, `magie_resistance`, `etat`, `v_magie_incompatible`, `magie_ethnie_secondaire`, `mode_hyper_effet`,
 `sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `etat`, `etat_magie`, `etat_stade`, `invocation`, `invocation_bloc`, `creature`, `caracteristique`, `creature_caracteristique`, `creature_bonus_npm`, `creature_attaque`, `creature_capacite`, `creature_effet`, `amelioration_cadaverique`, `regle_magie`.

@@ -98,6 +98,9 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   (note de cellule) est `sort.remarque`, la table `note_cellule` n'est qu'une trace et ne doit pas être lue. Le panneau d'un sort s'ouvre sous sa ligne (script de `SortsInteractifs.astro`, sans JavaScript tout est affiché).
   Leur CSS est dans `styles/magie.css`, inséré par `MagiePage.astro` (`?raw`) : ne pas le mettre dans `global.css` ni l'importer (Astro l'attacherait à toutes les pages de la route `[type]/[slug]`).
   Le tableau des relations sous la carte de `/magies/` (`TableauRelationsMagies.astro`) lit les mêmes relations dans la base (`entriesAvecRelationsDeLaBase`).
+  La carte elle-même (`MagiesConstellation.astro`) montre, **au survol d'une magie seulement** (grand écran), ses relations : un trait par magie liée, **épée** au bout de la magie vulnérable,
+  **bouclier** au bout de celle qui résiste, boucle pour « résiste à elle-même » (`lib/magie-fleches.mjs`, demandes du propriétaire) ; le **Potentiel Illimité au centre**, disposition symétrique
+  choisie pour qu'aucun trait ne passe sous une pastille (testé) : voir `docs/content-guide.md`, « La carte de `/magies/` ».
   Dans le panneau d'un sort, remarque et texte du sort sont dans le même cadre « Effets » que les effets secondaires ; les altérations d'état sont des pastilles **dans le texte** (`morceauxAvecEtats`, d'après `sort_etat`) avec infobulle (`Bulles.astro` : une bulle ne contient que des `<span>`, sinon le `<p>` qui la porte se ferme) ;
   les créatures invoquées ont une fiche minimale au clic, sous leur bloc. Pas de légende, pas de source citée (ni par sort, ni en pied de page), pas de liste des lanceurs sur ces pages.
   Demandes du propriétaire : encart de l'**altération d'état liée** (`etat_magie`) entre la présentation et les résistances (`MagieEtats.astro`) ; « Magie non compatible » sans le Potentiel Illimité,
