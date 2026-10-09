@@ -4,18 +4,26 @@ import ChoixDeDons from './ChoixDeDons.astro';
 import DonCarte from './DonCarte.astro';
 
 // Les dons d'une classe disposés comme l'onglet du classeur (lib/classe-dons.mjs#plateauDeDons), de haut en bas : les dons reçus sans choix
-// (colonne P), les deux spécialités côte à côte (une seule au choix : elle exclut l'autre et tous ses dons) avec, sous chaque bannière, son
-// cartouche puis ses choix d'une ligne ; pour l'Archimage, des groupes de 2 ou 3 dons au choix. Chaque choix est encadré (ChoixDeDons.astro).
+// (colonne P), les spécialités (une seule au choix : elle exclut l'autre et tous ses dons), puis le don du niveau 20 ; pour l'Archimage, des groupes
+// de 2 ou 3 dons au choix. Chaque choix est encadré (ChoixDeDons.astro), ses options côte à côte.
+// Spécialités en ONGLETS (demande du propriétaire) : le premier dans le coin gauche, le second dans le coin droit, comme les bannières A17 et X17 ;
+// l'onglet ouvert montre son cartouche puis ses choix sur toute la largeur. Sans JavaScript (et à l'impression), les onglets sont des liens et les deux
+// spécialités sont affichées l'une sous l'autre, chacune avec son titre. Une adresse ou un lien vers un don d'une spécialité ouvre son onglet.
 interface Props {
   classe: ClasseDb;
 }
 const { classe } = Astro.props;
 ---
 
+<script is:inline>
+  // Avant l'affichage des spécialités : avec JavaScript, seul l'onglet ouvert est visible (pas de saut de mise en page au chargement).
+  document.documentElement.classList.add('js');
+</script>
+
 <section class="classe-section" id="dons" aria-labelledby="dons-titre">
   <h2 id="dons-titre">Dons <span class="count">{classe.dons.length}</span></h2>
   <p class="muted dons-aide">
-    Disposés comme dans l’onglet de la classe, du niveau 1 au niveau 20. Des dons côte à côte sur une même ligne sont un <strong>choix</strong> : un seul peut
+    Disposés comme dans le classeur, du niveau 1 au niveau 20. Des dons côte à côte sur une même ligne sont un <strong>choix</strong> : un seul peut
     être pris.
   </p>
 
@@ -33,43 +41,56 @@ const { classe } = Astro.props;
           </li>
         ) : (
           <li class="etage etage--specialites">
-            <div class="specialites" role="group" aria-labelledby="specialites-regle">
+            <div class="specialites" data-onglets role="group" aria-labelledby="specialites-regle">
               <p class="specialites__tete" id="specialites-regle">
                 <span class="choix__badge">Au choix</span>
                 <span class="choix__regle">
                   Niveau {etage.niveau} : une seule spécialité{etage.specialites.length === 2 ? ' sur les deux' : ''}. Elle exclut l’autre et tous ses dons.
                 </span>
               </p>
-              <div class={`specialites__colonnes specialites__colonnes--${etage.specialites.length}`}>
+              <div class={`onglets onglets--${etage.specialites.length}`}>
                 {etage.specialites.map((col, i) => (
                   <>
                     {i > 0 && (
-                      <div class="specialites__ou" aria-hidden="true">
+                      <span class="onglets__ou" aria-hidden="true">
                         <span>ou</span>
-                      </div>
+                      </span>
                     )}
-                    <section class="specialite" id={col.specialite.ancre} aria-labelledby={`${col.specialite.ancre}-titre`}>
-                      <h3 class="specialite__banniere" id={`${col.specialite.ancre}-titre`}>
-                        <span class="specialite__surtitre">Spécialité</span>
-                        <span class="specialite__nom">{col.specialite.nom}</span>
-                        {col.cartouche?.classeMagique && classe.amMagique !== null && (
-                          <span class="specialite__magique" title="Le don de cette spécialité la fait considérer comme classe magique">
-                            Classe magique · +{classe.amMagique} AM
-                          </span>
-                        )}
-                      </h3>
-                      {col.cartouche && <DonCarte don={col.cartouche} cartouche />}
-                      {col.choix.map((g) =>
-                        g.options.length > 1 ? (
-                          <ChoixDeDons niveau={g.niveau} options={g.options} />
-                        ) : (
-                          <DonCarte don={g.options[0]} />
-                        ),
+                    <a class={`onglet${i === 0 ? ' is-active' : ''}`} id={`onglet-${col.specialite.slug}`} href={`#${col.specialite.ancre}`}>
+                      <span class="onglet__surtitre">Spécialité</span>
+                      <span class="onglet__nom">{col.specialite.nom}</span>
+                      {col.cartouche?.classeMagique && classe.amMagique !== null && (
+                        <span class="onglet__magique" title="Le don de cette spécialité la fait considérer comme classe magique">
+                          Classe magique · +{classe.amMagique} AM
+                        </span>
                       )}
-                    </section>
+                    </a>
                   </>
                 ))}
               </div>
+              {etage.specialites.map((col, i) => (
+                <section class={`specialite${i === 0 ? ' is-active' : ''}`} id={col.specialite.ancre} aria-labelledby={`${col.specialite.ancre}-titre`}>
+                  <h3 class="specialite__titre" id={`${col.specialite.ancre}-titre`}>
+                    <span class="specialite__surtitre">Spécialité</span>
+                    <span class="specialite__nom">{col.specialite.nom}</span>
+                    {col.cartouche?.classeMagique && classe.amMagique !== null && (
+                      <span class="specialite__magique">Classe magique · +{classe.amMagique} AM</span>
+                    )}
+                  </h3>
+                  {col.cartouche && (
+                    <div class="specialite__cartouche">
+                      <DonCarte don={col.cartouche} cartouche />
+                    </div>
+                  )}
+                  {col.choix.map((g) =>
+                    g.options.length > 1 ? (
+                      <ChoixDeDons niveau={g.niveau} options={g.options} />
+                    ) : (
+                      <DonCarte don={g.options[0]} />
+                    ),
+                  )}
+                </section>
+              ))}
             </div>
           </li>
         ),
@@ -77,3 +98,79 @@ const { classe } = Astro.props;
     }
   </ol>
 </section>
+
+<script>
+  // Onglets des spécialités (motif « tabs » de l'ARIA : flèches gauche et droite, Début, Fin). Les rôles sont posés ici : sans JavaScript, ce sont de simples liens.
+  const groupes: { panneaux: HTMLElement[]; activer: (i: number) => void }[] = [];
+
+  for (const groupe of document.querySelectorAll<HTMLElement>('[data-onglets]')) {
+    const onglets = [...groupe.querySelectorAll<HTMLAnchorElement>('.onglet')];
+    const panneaux = onglets.map((o) => document.getElementById(decodeURIComponent(o.hash.slice(1))));
+    if (onglets.length === 0 || panneaux.some((p) => !p)) continue;
+    const sures = panneaux as HTMLElement[];
+    groupe.querySelector('.onglets')?.setAttribute('role', 'tablist');
+    onglets.forEach((o, i) => {
+      o.setAttribute('role', 'tab');
+      o.setAttribute('aria-controls', sures[i].id);
+      sures[i].setAttribute('role', 'tabpanel');
+      sures[i].setAttribute('aria-labelledby', o.id);
+    });
+    const activer = (i: number) =>
+      onglets.forEach((o, k) => {
+        const actif = k === i;
+        o.classList.toggle('is-active', actif);
+        o.setAttribute('aria-selected', String(actif));
+        o.tabIndex = actif ? 0 : -1;
+        sures[k].classList.toggle('is-active', actif);
+      });
+    activer(Math.max(0, onglets.findIndex((o) => o.classList.contains('is-active'))));
+    onglets.forEach((o, i) => {
+      o.addEventListener('click', (e) => {
+        e.preventDefault();
+        activer(i);
+        history.replaceState(null, '', o.hash);
+      });
+      o.addEventListener('keydown', (e) => {
+        const n = onglets.length;
+        const cible = { ArrowRight: (i + 1) % n, ArrowLeft: (i - 1 + n) % n, Home: 0, End: n - 1 }[e.key];
+        if (cible === undefined) return;
+        e.preventDefault();
+        activer(cible);
+        onglets[cible].focus();
+        history.replaceState(null, '', onglets[cible].hash);
+      });
+    });
+    groupes.push({ panneaux: sures, activer });
+  }
+
+  /** Ouvre l'onglet qui contient l'élément `id` (une spécialité, un de ses dons) ; `defiler` : l'amène à l'écran (adresse au chargement, retour arrière). */
+  function ouvrirPour(id: string, defiler: boolean) {
+    const cible = id ? document.getElementById(id) : null;
+    if (!cible) return;
+    for (const g of groupes) {
+      const i = g.panneaux.findIndex((p) => p.contains(cible));
+      if (i < 0) continue;
+      g.activer(i);
+      if (defiler) cible.scrollIntoView({ block: 'start' });
+    }
+  }
+  const depuisAdresse = () => {
+    try {
+      ouvrirPour(decodeURIComponent(location.hash.slice(1)), true);
+    } catch {
+      // adresse mal formée : ignorée
+    }
+  };
+  // un lien de la page vers une spécialité ou un de ses dons (navigation, « Ses dons ») ouvre l'onglet avant que le navigateur n'y défile
+  document.addEventListener('click', (e) => {
+    const lien = e.target instanceof Element ? e.target.closest<HTMLAnchorElement>('a[href*="#"]') : null;
+    if (!lien || e.defaultPrevented || lien.pathname !== location.pathname) return;
+    try {
+      ouvrirPour(decodeURIComponent(lien.hash.slice(1)), false);
+    } catch {
+      // ancre mal formée : le navigateur s'en charge
+    }
+  });
+  window.addEventListener('hashchange', depuisAdresse);
+  depuisAdresse();
+</script>

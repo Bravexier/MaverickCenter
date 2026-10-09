@@ -145,9 +145,12 @@ pas de source citée ; le Markdown de la page ne sert plus qu'à la recherche et
 - **Sections** : présentation et « Chose à savoir », descriptions des spécialités, « Au départ » (maîtrises, arme, armure, inventaire : chaque objet du glossaire a son infobulle, « A OU B »
   est un emplacement à deux options), **Dons**, tableau sans titre de l'onglet (Mage Bleu : une carte par magie).
 - **Dons** (les « capacités » des onglets ; demande du propriétaire : c'est leur nom) : disposés **comme l'onglet** (`lib/classe-dons.mjs#plateauDeDons`, testé dans
-  `test/classes-dons.test.mjs`), de haut en bas : les dons reçus sans choix (colonne P : niveaux 1 et 5), les deux spécialités côte à côte (une seule au choix : elle exclut l'autre et
-  tous ses dons), sous chaque bannière son cartouche puis ses trois choix, et le don du niveau 20 en bas ; l'Archimage a des groupes de 2 ou 3 dons au choix. **Chaque choix est encadré**
-  (« Au choix · Niveau N : un seul des deux ») avec une pastille « ou » entre les options ; les choix sont ceux de la vue `v_capacite_exclusive` (la disposition de l'onglet fait foi), le test
+  `test/classes-dons.test.mjs`), de haut en bas : les dons reçus sans choix (colonne P : niveaux 1 et 5), les deux spécialités (une seule au choix : elle exclut l'autre et
+  tous ses dons), et le don du niveau 20 en bas ; l'Archimage a des groupes de 2 ou 3 dons au choix. **Spécialités en onglets** (demande du propriétaire) : le premier dans le coin gauche,
+  le second dans le coin droit (comme les bannières A17 et X17), une pastille « ou » entre eux ; l'onglet ouvert montre le cartouche de la spécialité puis ses trois choix sur toute la largeur.
+  Motif « tabs » de l'ARIA (flèches, Début, Fin) posé par le script de `ClasseDons.astro` ; une adresse ou un lien vers une spécialité ou un de ses dons (`#don-…`, la fiche du don) ouvre son onglet ;
+  sans JavaScript et à l'impression, les deux spécialités se suivent avec leur titre. **Chaque choix est encadré** (« Au choix · Niveau N : un seul des deux »), ses options **côte à côte**
+  (l'une sous l'autre sur un téléphone) avec une pastille « ou » entre elles ; les choix sont ceux de la vue `v_capacite_exclusive` (la disposition de l'onglet fait foi), le test
   vérifie qu'ils coïncident. Une carte de don : niveau, nom (lien vers la fiche), type (nom du guide, sa définition en infobulle native) et sa précision telle qu'écrite (« 2 fois/Combat »),
   effet, remarque du classeur. Ancre `#don-<slug>` : la fiche d'un don y renvoie.
 - Le CSS est dans `client/src/styles/classe/` (et `styles/magie/tooltips.css` pour les infobulles), injecté par `ClassePage.astro` (`?raw`) seulement. `test/classes-html.test.mjs` contrôle
