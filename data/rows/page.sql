@@ -5908,6 +5908,8 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ## La magie
 
 - Sort réussi : son coût ; raté : la moitié ; échec critique : le double.
+- Plus assez de chakra : 2 points de santé par point de chakra manquant.
+- Mode Hyper : les sorts ne coûtent plus de chakra, mais le mode en brûle 10 % du maximum par tour.
 - Emplacements de sorts = conditions remplies (magie innée, magie acquise, classe magique, seconde classe magique) × puissance magique.
 
 ## Les attributs à la création
@@ -6844,7 +6846,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 Les attributs se calculent à partir de la race, de la classe et des magies choisies aux étapes 1 à 3 :
 
 - **Santé** (les points de vie) = santé de la race + santé de la ou des classes + santé offerte par les magies. À 0 ou moins, le personnage tombe dans le coma et doit réussir un jet de survie : un seul réussi le stabilise, trois ratés et il meurt.
-- **Chakra** (les points de magie : sans chakra, pas de sort) = chakra de la race + chakra de la ou des classes + chakra offert par les magies.
+- **Chakra** (les points de magie, que dépensent les sorts) = chakra de la race + chakra de la ou des classes + chakra offert par les magies.
 - **Barrière**, une seconde peau magique = la moitié du chakra (arrondie à l’inférieur) + les bonus de barrière de la race et de la classe. Le mithril passe à travers, et le maverium la brise à son contact.
 - **Corruption** : son maximum est celui du chakra. Chaque point de corruption prend la place d’un point de chakra ; au maximum, le personnage a deux semaines (dans le jeu) pour en retirer un point, sinon il meurt et devient une abomination de corruption. Ceux qui utilisent la magie de la corruption ne sont pas concernés.
 - **Âme** ou **Sang** (la « 4ᵉ barre ») : seulement avec la nécromancie ou la magie du sang ; une réserve de 10 que dépensent certains sorts, qui se recharge de 1 par tour en combat.
@@ -6913,10 +6915,10 @@ Dégâts finaux = **`[[[Dégâts du lanceur x Réussite critique (donc par 2) - 
 2. L’arme de l’ennemi inflige 2d10+3, l''offensif fait que les dégâts sont à 23.
 3. Il a fait un coup critique, donc multiplication, on a un total de 46 dégâts.
 4. Je possède une armure physique 7 et ma posture augmente les AP de 2, je dispose de 9 AP au total. Donc 46 - 9 = 37 dégâts
-5. J''ai réussi ma défense partielle donc division par 2, on a un total de 16.5 dégâts
-6. On arrondit à l''inférieur donc 16 dégâts.
+5. J''ai réussi ma défense partielle donc division par 2, on a un total de 18.5 dégâts
+6. On arrondit à l''inférieur donc 18 dégâts.
 7. Je n’ai pas de don qui divise les dégâts par 2
-8. J''ai pris 16 points de dégâts !
+8. J''ai pris 18 points de dégâts !
 
 ## Exemple 3
 
@@ -7087,7 +7089,7 @@ Lancer un sort, c’est un jet de D100 dans la compétence *Magie* (certaines cl
 - **raté** : la moitié du coût, arrondie à l’inférieur ;
 - **échec critique** : le double du coût, et d’autres ennuis au choix du MJ.
 
-Sans chakra, pas de sort. Certains sorts sont des **IC** (*Instant Cast*) : ils ne prennent pas l’action du tour. Les sorts de la nécromancie et de la magie du sang puisent en plus dans la 4ᵉ barre, l’âme ou le sang.
+À court de chakra, le personnage peut quand même lancer son sort : il paie ce qui manque avec sa santé, **2 points de santé pour 1 point de chakra**. Certains sorts sont des **IC** (*Instant Cast*) : ils ne prennent pas l’action du tour. Les sorts de la nécromancie et de la magie du sang puisent en plus dans la 4ᵉ barre, l’âme ou le sang.
 
 ## Les sorts de niveau 5
 
@@ -7186,13 +7188,14 @@ Avec une seule magie, le personnage est immunisé à sa magie innée ; avec deux
 | Dégâts physiques | +15 | +15 |
 | Dégâts de la magie | +15 | +7 |
 | Soins magiques | +15 | +15 |
-| Consommation de chakra | 0 | 0 |
+| Coût des sorts en chakra | 0 | 0 |
 
 S’y ajoutent un effet propre à chaque magie et un autre propre à chaque race : voir [[Liste des effets mode hyper]].
 
 ## Ce qu’il coûte, et ses limites
 
-- Le Mode Hyper brûle **10 % du chakra maximum par tour**, et le chakra ne peut pas être récupéré tant qu’il dure (ni fiole, ni méditation, ni repos).
+- Les sorts ne coûtent plus de chakra, mais le Mode Hyper lui-même en brûle **10 % du maximum par tour**, et le chakra ne peut pas être récupéré tant qu’il dure (ni fiole, ni méditation, ni repos).
+- Sans assez de chakra, le personnage peut quand même en dépenser : il paie ce qui manque avec sa santé, **2 points de santé pour 1 point de chakra** (en Mode Hyper ou non).
 - Il dure au plus **le niveau global divisé par 2** en tours.
 - Il ne s’utilise **qu’une fois par semaine** (dans le jeu), et une seule créature peut l’activer par combat, sauf exception (lieu saturé de chakra, objet magique, accord du MJ).
 - On peut le prolonger au-delà de ces limites, mais le corps le paie une fois le mode relâché : résistances brisées, vulnérabilités accentuées, croix sur les caractéristiques, coma… et, à cinq tours de trop, une chance sur deux de mourir.
@@ -7587,7 +7590,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - **Barrière** : une seconde peau magique, sorte de santé magique ; elle vaut la moitié du chakra.
 - **Battlemap** : la carte quadrillée sur laquelle se joue un combat.
 - **Caractéristiques** : Force, Volonté, Intelligence, Perception, Social et Agilité.
-- **Chakra** : les points de magie ; sans chakra, pas de sort.
+- **Chakra** : les points de magie, que dépensent les sorts ; à court de chakra, on paie 2 points de santé par point manquant.
 - **Classe magique** : une classe qui donne +4 AM et un emplacement de sort.
 - **Compétence** : un savoir-faire (Diplomatie, Esquive, Magie…), lié à une caractéristique.
 - **Corruption** : un poison du chakra, qui en prend la place.

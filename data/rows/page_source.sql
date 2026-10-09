@@ -1537,6 +1537,7 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/aide-memoire'
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/aide-memoire', 3, 'google-doc:12Sp_j_KbtzRbooe7WGsaP2Dce8F4TbLvpS0Eu8TwSMI');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/aide-memoire', 4, 'ref:google-sheet-fiche-personnage-maverick-auto-v15-2-2-onglet-bdd');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/aide-memoire', 5, 'google-sheet:1SvzNbdDVQyLE9cyp9U5USHBsxHpwxhtaWrFTu9CpLY4');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/aide-memoire', 6, 'ref:decision-du-proprietaire-r18-docs-decisions-regles-md');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/alignement', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/alignement', 1, 'google-doc:1Xph3vnjwmZpBG3UHDyBBqZQdVUnMLVxEllK3vXUw598');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/alterations-d-etats-et-mode-hyper', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
@@ -1653,6 +1654,7 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-magie-en-j
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-magie-en-jeu', 3, 'google-doc:12Sp_j_KbtzRbooe7WGsaP2Dce8F4TbLvpS0Eu8TwSMI');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-magie-en-jeu', 4, 'ref:google-sheet-magie-maverick-v8');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-magie-en-jeu', 5, 'google-sheet:1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-magie-en-jeu', 6, 'ref:decision-du-proprietaire-r18-docs-decisions-regles-md');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-montee-de-niveau', 0, 'ref:google-doc-creer-sa-fiche-de-personnage');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-montee-de-niveau', 1, 'google-doc:12Sp_j_KbtzRbooe7WGsaP2Dce8F4TbLvpS0Eu8TwSMI');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-montee-de-niveau', 2, 'ref:google-sheet-fiche-personnage-maverick-auto-v15-2-2-onglet-bdd');
@@ -1666,7 +1668,7 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/le-mode-hyper
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/le-mode-hyper', 2, 'ref:google-sheet-mode-hyper-et-co-onglet-mode-hyper');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/le-mode-hyper', 3, 'google-sheet:1lwALh1VKrIpgmEqX2MdYirKkPzGjSJXXDHtp2uYXO7w');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/le-mode-hyper', 4, 'ref:google-sheet-mode-hyper-et-co-onglet-mode-super');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/le-mode-hyper', 5, 'ref:decision-du-proprietaire-r5-docs-decisions-regles-md');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/le-mode-hyper', 5, 'ref:decisions-du-proprietaire-r5-et-r18-docs-decisions-regles-md');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/le-tour-de-jeu', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/le-tour-de-jeu', 1, 'google-doc:1Xph3vnjwmZpBG3UHDyBBqZQdVUnMLVxEllK3vXUw598');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-degats', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
@@ -1692,6 +1694,7 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/lexique', 2, 
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/lexique', 3, 'google-doc:1Xph3vnjwmZpBG3UHDyBBqZQdVUnMLVxEllK3vXUw598');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/lexique', 4, 'ref:google-sheet-magie-maverick-v8');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/lexique', 5, 'google-sheet:1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/lexique', 6, 'ref:decision-du-proprietaire-r18-docs-decisions-regles-md');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/liste-des-alterations-d-etat', 0, 'ref:google-sheet-magie-maverick-v8-onglet-alteration-detats');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/liste-des-alterations-d-etat', 1, 'google-sheet:1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/liste-des-effets-mode-hyper', 0, 'ref:google-sheet-mode-hyper-et-co-onglet-mode-hyper');

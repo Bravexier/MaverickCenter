@@ -184,3 +184,13 @@ test('les personnages fil rouge : des choix permis par la base, et des attributs
   // Majin (8, 10) + Mage Rouge (0, 9, barrière 1) + Feu (0, 5) : chakra 24, barrière 12 + 1
   assert.deepEqual([mage.magie.nom, mage.attributs.sante, mage.attributs.chakra, mage.attributs.barriere, mage.emplacements], ['Feu', 8, 24, 13, 2]);
 });
+
+test('décisions R17 et R18 : l’exemple 2 des dégâts donne 18 ; à court de chakra, 2 santé pour 1 chakra', () => {
+  const corps = (id) => pagesDuGuide.find((p) => p.id === id).body;
+  assert.match(corps('guide/formule-des-degats'), /total de 18\.5 dégâts[\s\S]*donc 18 dégâts[\s\S]*J'ai pris 18 points de dégâts/);
+  assert.doesNotMatch(corps('guide/formule-des-degats'), /16\.5/);
+  assert.match(corps('guide/les-degats'), /37 ÷ 2 = 18,5, arrondi à \*\*18 dégâts\*\*/);
+  for (const id of ['guide/la-magie-en-jeu', 'guide/le-mode-hyper']) assert.match(corps(id), /2 points de santé pour 1 point de chakra/, id);
+  assert.match(corps('guide/le-mode-hyper'), /\| Coût des sorts en chakra \| 0 \| 0 \|/);
+  assert.match(corps('guide/le-mode-hyper'), /10 % du maximum par tour/);
+});
