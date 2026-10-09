@@ -302,10 +302,10 @@ a.guide-voisin:hover, a.guide-voisin:focus-visible { border-color: var(--guide);
   .guide-definitions dd { margin-bottom: 0.4rem; }
 }
 
-/* Postures (chapitre 10) : six colonnes côte à côte, comme le tableau de la fiche. */
+/* Postures (page « Les postures ») : les six colonnes du tableau de la fiche, trois par rangée sur un écran large. */
 .guide-postures {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
   gap: 0.6rem;
   margin: 1rem 0 1.25rem;
 }
