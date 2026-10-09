@@ -1629,7 +1629,7 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-montee-de-
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-montee-de-niveau', 1, 'google-doc:12Sp_j_KbtzRbooe7WGsaP2Dce8F4TbLvpS0Eu8TwSMI');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-montee-de-niveau', 2, 'ref:google-sheet-fiche-personnage-maverick-auto-v15-2-2-onglet-bdd');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-montee-de-niveau', 3, 'google-sheet:1SvzNbdDVQyLE9cyp9U5USHBsxHpwxhtaWrFTu9CpLY4');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-montee-de-niveau', 4, 'ref:decisions-du-proprietaire-r2-et-r3-docs-decisions-regles-md');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-montee-de-niveau', 4, 'ref:decisions-du-proprietaire-r2-r3-et-r16-docs-decisions-regles-md');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/le-jeu-de-role', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/le-jeu-de-role', 1, 'google-doc:1Xph3vnjwmZpBG3UHDyBBqZQdVUnMLVxEllK3vXUw598');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/le-jeu-de-role', 2, 'ref:deroulement-dune-partie-decrit-par-le-proprietaire-du-projet');

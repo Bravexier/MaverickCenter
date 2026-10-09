@@ -135,7 +135,7 @@ test('le tableau de la montée de niveau reprend les 20 niveaux du guide, gains 
   assert.equal(niveaux[0].attributs, null, 'pas de points d’attributs au niveau 1');
   assert.ok(niveaux[1].autres.includes('Mode Hyper débloqué !'));
   assert.deepEqual(niveaux[4].autres.slice(0, 2), ['+1 caractéristique à répartir', '+10 au maximum naturel']);
-  assert.ok(niveaux[15].autres.some((a) => a.startsWith('Puissance magique niveau 5 (non disponible')));
+  assert.ok(niveaux[15].autres.some((a) => a.startsWith('Puissance magique niveau 5 (non disponible')), 'puissance magique 5 au niveau 16 (décision R16)');
 });
 
 test('les blocs de règles relisent la base dans l’ordre de la fiche', () => {
@@ -173,4 +173,7 @@ test('les personnages fil rouge : des choix permis par la base, et des attributs
   assert.deepEqual([barde.attributs.sante, barde.attributs.chakra, barde.attributs.barriere, barde.attributs.am], [10, 23, 13, 4]);
   assert.equal(barde.emplacements, 2, 'magie innée + classe magique, puissance 1');
   assert.equal(fil.find((p) => p.id === 'archer').emplacements, 1, 'archer : la magie innée seule');
+  const mage = fil.find((p) => p.id === 'mage');
+  // Majin (8, 10) + Mage Rouge (0, 9, barrière 1) + Feu (0, 5) : chakra 24, barrière 12 + 1
+  assert.deepEqual([mage.magie.nom, mage.attributs.sante, mage.attributs.chakra, mage.attributs.barriere, mage.emplacements], ['Feu', 8, 24, 13, 2]);
 });

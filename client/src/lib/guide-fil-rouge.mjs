@@ -8,7 +8,7 @@
 
 export const FIL_ROUGE = [
   { id: 'archer', nom: null, appellation: 'L’archer felfe', race: 'races/felfe', ethnie: 'races/felfe#ethnie:felfe-forestier', magie: 'magies/magie-du-vide', classe: 'classes/archer' },
-  { id: 'mage', nom: null, appellation: 'Le mage rouge majin', race: 'races/majin', ethnie: 'races/majin#ethnie:majin', magie: null, classe: 'classes/mage-rouge' },
+  { id: 'mage', nom: null, appellation: 'Le mage rouge majin', race: 'races/majin', ethnie: 'races/majin#ethnie:majin', magie: 'magies/magie-du-feu', classe: 'classes/mage-rouge' },
   { id: 'guerrier', nom: null, appellation: 'Le guerrier orios', race: 'races/orios', ethnie: 'races/orios#ethnie:orios-de-sang', magie: 'magies/magie-du-sang', classe: 'classes/guerrier' },
   { id: 'barde', nom: null, appellation: 'La barde kitsune', race: 'races/kitsune', ethnie: 'races/kitsune#ethnie:kitsune-vent', magie: 'magies/magie-du-vent', classe: 'classes/barde' },
 ];

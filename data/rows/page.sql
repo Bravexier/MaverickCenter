@@ -6946,7 +6946,7 @@ Chaque ligne donne l’expérience nécessaire pour atteindre le niveau, et ce q
 - **Caractéristiques** : un point de plus à répartir aux niveaux 5, 10 et 15.
 - **Attributs** : 15 points à répartir entre la santé et le chakra à chaque niveau à partir du 2, et un dé d’attributs bonus aux niveaux 5, 10, 15 et 20.
 - **Classes** : 2 niveaux de classe par niveau global, sur une seule classe ou sur les deux (voir [le biclassage](/guide/choisir-sa-classe/#une-ou-deux-classes--le-biclassage)).
-- **Magie** : un niveau de maîtrise pour un sort à chaque niveau à partir du 2, et la puissance magique qui augmente à certains niveaux (colonne « Et aussi »).
+- **Magie** : un niveau de maîtrise pour un sort à chaque niveau à partir du 2 ; la puissance magique passe à 2, 3, 4 et 5 aux niveaux 4, 8, 12 et 16 (le niveau 5 n’est pas accessible avec une magie acquise).
 - **Mode Hyper** : débloqué au niveau 2, à 100 % au niveau 10 (voir [[Liste des effets mode hyper]]).
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/le-jeu-de-role', 'guide', 'le-jeu-de-role', 'Le jeu de rôle, comment ça marche ?', 'le-jeu-de-role-comment-ca-marche', 'Le maître du jeu, les joueurs et leurs personnages, la façon dont une partie avance, et comment lire les dés (1D20, 2d6+2…).', '{"chapitre": 2, "partie": "decouvrir"}', 'Un jeu de rôle (JDR), c’est une histoire que l’on raconte à plusieurs. Il n’y a ni plateau ni gagnant : on joue pour vivre une aventure ensemble.
