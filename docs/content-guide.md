@@ -180,7 +180,7 @@ Les `[[…]]` placés dans du code (`` `…` `` ou bloc ```) ne sont pas interpr
 ## Statuts
 
 - `example` : contenu de démonstration (bandeau jaune) — à supprimer.
-- `draft` : importé depuis une source, pas encore relu par le MJ (défaut).
+- `draft` : importé depuis une source, pas encore relu par le MJ (défaut). Sans bandeau sur le site (demande du propriétaire).
 - `verified` : relu et validé.
 
 ## Conventions
