@@ -51,6 +51,18 @@ test('index des magies : 15 noms courts, descriptions en tooltip, version au foo
   assert.ok(!indexMagies.includes('Écoles, sorts et règles de magie.'));
 });
 
+test('index des magies sur téléphone : chaque infobulle est bornée à la carte (sinon, même cachée, elle fait défiler la page horizontalement)', options, () => {
+  const positions = [...indexMagies.matchAll(/class="magies-orbite__position[^"]*" style="([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(positions.length, 15);
+  for (const style of positions) {
+    const mx = Number(style.match(/--mx: ([\d.]+)%/)?.[1]);
+    assert.equal(Number(style.match(/--mx-fraction: ([\d.]+)/)?.[1]), mx / 100, style);
+  }
+  const telephone = indexMagies.slice(indexMagies.indexOf('@media (max-width: 44rem)'));
+  assert.match(telephone, /\.magies-orbite \{ container-type: inline-size;/, 'la carte est le conteneur des unités cqw');
+  assert.match(telephone, /\.magies-orbite__noeud::after \{[^}]*box-sizing: border-box;[^}]*clamp\(/, 'largeur bornée bordure comprise, position ramenée dans la carte');
+});
+
 test('chaque identifiant est unique dans une page ; aria-controls, aria-describedby et data-bulle désignent un élément qui existe', options, () => {
   for (const { slug, html } of pages) {
     const tous = ids(html);
