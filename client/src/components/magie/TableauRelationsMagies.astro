@@ -8,11 +8,16 @@ import { entryHref, type WikiEntry } from '../../lib/wiki';
 // Tableau des relations entre magies, sous la carte de /wiki/magies/ : ligne = la magie décrite, teintée de sa couleur (lib/sort-format.mjs#couleurDeMagie),
 // colonne = l'autre magie, toutes deux dans l'ordre du classeur. Résistances, vulnérabilités et incompatibilités sont celles de la base, comme sur les pages
 // de magie (entriesAvecRelationsDeLaBase). En-têtes verticaux et largeur fixe : le tableau tient sans défilement horizontal (styles/magie/tableaux.css).
+// Le Potentiel Illimité n'y a ni ligne ni colonne (demande du propriétaire : « ne sert pas vraiment ») ; sa page de magie garde ses relations.
 interface Props {
   entries: WikiEntry[];
 }
 const { entries } = Astro.props;
-const relations = relationMatrix(entriesAvecRelationsDeLaBase(entries, loadMagies()), ordreDesMagies());
+const HORS_DU_TABLEAU = new Set(['magies/potentiel-illimite']);
+const relations = relationMatrix(
+  entriesAvecRelationsDeLaBase(entries, loadMagies()).filter((e) => !HORS_DU_TABLEAU.has(e.id)),
+  ordreDesMagies(),
+);
 const couleur = (m: WikiEntry) => `--couleur-magie: ${couleurDeMagie(m.data.nom_court)}`;
 const MARQUES = [
   { cle: 'fort', signe: '▲', texte: 'fort contre' },
@@ -28,7 +33,7 @@ const MARQUES = [
       <p class="legend">
         Ligne = la magie décrite, colonne = l’autre magie. <span class="tableau-magies__marque--fort">▲ fort contre</span> (résistance magique),{' '}
         <span class="tableau-magies__marque--faible">▼ faible contre</span> (vulnérabilité magique),{' '}
-        <span class="tableau-magies__marque--incompatible">✕ incompatible</span> (ne se combine pas). Une case « – » veut dire que la page de la magie ne donne pas de liste.
+        <span class="tableau-magies__marque--incompatible">✕ incompatible</span> (ne se combine pas).
       </p>
       <div class="tableau-magies">
         <table class="tableau-magies__table tableau-magies--relations">
