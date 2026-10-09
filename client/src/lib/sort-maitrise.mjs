@@ -49,17 +49,30 @@ export function sansBonus(brut, bonus, champ) {
   return texte === brut ? brut : texte.replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+$/gm, '').replace(/^[ \t]+/gm, '').trim();
 }
 
-// À l'écran, la note de cellule d'un sort (champ « remarque ») est lue sous « Effets » avec le texte des effets : son bonus de maîtrise porte la même étiquette.
-// La colonne `sort.bonus_maitrise` de la base garde l'étiquette de la colonne d'origine (« Remarque »).
-const LIBELLES_AFFICHES_NM = { ...LIBELLES_CHAMP_NM, remarque: 'Effets' };
-
 /**
- * Lignes du bonus de maîtrise d'un sort : { champ, libelle, texte } dans l'ordre de lecture (le passage de la cellule qui dit ce que l'expression modifie).
- * @param {{ affiche?: boolean }} [options] affiche : étiquettes de l'écran (la note de cellule est « Effets ») ; sinon celles de la colonne de la base
+ * Morceaux d'une cellule (lib/sort-format.mjs#segments, un tableau par ligne ou par partie du coût) où la précision entre parenthèses qui est
+ * l'expression exacte d'un bonus de maîtrise de cette colonne est marquée `nm: true` : l'écran la montre en pastille, à sa place à côté de la valeur
+ * (« 55 (-5/NM) » → « 55 » et la pastille « -5/NM »). Chaque bonus marque un seul morceau ; une expression qui n'est pas isolée dans ses
+ * parenthèses n'est pas marquée et reste du texte (même règle que sansBonus).
+ * @param {{ texte: string, modif: boolean }[][]} groupes
+ * @param {{ champ: string, texteBrut: string }[]} bonus bonus du sort
+ * @param {string} champ colonne de la cellule (« cout », « portee », « zone », « dsb »)
  */
-export function lignesDeBonus(bonus, { affiche = false } = {}) {
-  const libelles = affiche ? LIBELLES_AFFICHES_NM : LIBELLES_CHAMP_NM;
-  return bonus.map((b) => ({ champ: b.champ, libelle: libelles[b.champ], nature: b.nature, texte: b.contexte }));
+export function marquerBonus(groupes, bonus, champ) {
+  const restants = bonus.filter((b) => b.champ === champ).map((b) => b.texteBrut.trim());
+  return groupes.map((morceaux) =>
+    morceaux.map((m) => {
+      const i = m.modif ? restants.indexOf(m.texte) : -1;
+      if (i < 0) return m;
+      restants.splice(i, 1);
+      return { ...m, nm: true };
+    }),
+  );
+}
+
+/** Lignes du bonus de maîtrise d'un sort : { champ, libelle, nature, texte } dans l'ordre de lecture (le passage de la cellule qui dit ce que l'expression modifie). */
+export function lignesDeBonus(bonus) {
+  return bonus.map((b) => ({ champ: b.champ, libelle: LIBELLES_CHAMP_NM[b.champ], nature: b.nature, texte: b.contexte }));
 }
 
 /**

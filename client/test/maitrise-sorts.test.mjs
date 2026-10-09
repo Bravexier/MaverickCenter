@@ -9,7 +9,8 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { chargerMagies } from '../src/lib/magies-db.mjs';
-import { applications, ORDRE_CHAMPS_NM, sansBonus, texteDeBonus } from '../src/lib/sort-maitrise.mjs';
+import { coutDeSort, valeurDeSort } from '../src/lib/sort-format.mjs';
+import { applications, marquerBonus, ORDRE_CHAMPS_NM, sansBonus, texteDeBonus } from '../src/lib/sort-maitrise.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const magies = chargerMagies(db);
@@ -155,6 +156,27 @@ test('valeur de base : une fois l’expression de NM retirée, aucune cellule de
   const bdf = sort('boule-de-feu');
   assert.equal(sansBonus(bdf.dsbBrut, bdf.bonus, 'dsb'), '2d6 dégâts');
   assert.equal(sansBonus(bdf.porteeBrut, bdf.bonus, 'portee'), '6');
+});
+
+test('à l’écran : chaque bonus d’une cellule de coût, portée, zone ou D/S/B est une pastille dans sa cellule, et le reste de la cellule ne mentionne plus de NM', () => {
+  let pastilles = 0;
+  for (const s of magies.sorts.values()) {
+    for (const [champ, morceaux] of [
+      ['cout', coutDeSort(s.coutBrut).parts],
+      ['portee', valeurDeSort(s.porteeBrut).lignes],
+      ['zone', valeurDeSort(s.zoneBrut).lignes],
+      ['dsb', valeurDeSort(s.dsbBrut, { liste: true }).lignes],
+    ]) {
+      const marques = marquerBonus(morceaux, s.bonus, champ).flat();
+      const nm = marques.filter((m) => m.nm).map((m) => m.texte);
+      assert.deepEqual(nm.sort(), s.bonus.filter((b) => b.champ === champ).map((b) => b.texteBrut.trim()).sort(), `${s.slug} ${champ}`);
+      for (const m of marques.filter((x) => !x.nm)) assert.ok(!/NM|aîtrise/.test(m.texte), `${s.slug} ${champ} : « ${m.texte} »`);
+      pastilles += nm.length;
+    }
+  }
+  assert.equal(pastilles, 190);
+  const bdf = sort('boule-de-feu');
+  assert.deepEqual(marquerBonus(valeurDeSort(bdf.dsbBrut, { liste: true }).lignes, bdf.bonus, 'dsb'), [[{ texte: '2d6 dégâts', modif: false }, { texte: '+1d6/NM', modif: true, nm: true }]]);
 });
 
 test('migration 0004 : le registre JSON décrit exactement les lignes de la base (modes et bonus)', () => {

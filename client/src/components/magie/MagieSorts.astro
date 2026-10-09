@@ -1,14 +1,14 @@
 ---
 import { coutDeSort, marquesDeMode, sortsParNpm, valeurDeSort } from '../../lib/sort-format.mjs';
-import { lignesDeBonus, sansBonus } from '../../lib/sort-maitrise.mjs';
+import { marquerBonus } from '../../lib/sort-maitrise.mjs';
 import { sortAncre, type Magies, type MagieDb } from '../../lib/magies';
 import Info from './Info.astro';
 import Segments from './Segments.astro';
 import SortDetail from './SortDetail.astro';
-import TexteEnLigne from './TexteEnLigne.astro';
 
-// Sorts d'une magie : un tableau par niveau de puissance magique (NPM), une ligne par sort (Nom, Type, Coût, Portée, Zone, D/S/B, Maîtrise).
-// Les colonnes montrent la valeur de base ; les bonus de niveau de maîtrise (NM) que les cellules écrivaient entre parenthèses sont listés dans « Maîtrise ».
+// Sorts d'une magie : un tableau par niveau de puissance magique (NPM), une ligne par sort (Nom, Type, Coût, Portée, Zone, D/S/B).
+// Le bonus de niveau de maîtrise (NM) qu'une cellule écrit entre parenthèses (« 55 (-5/NM) ») est une pastille à côté de sa valeur, à sa place
+// (lib/sort-maitrise.mjs#marquerBonus) ; celui du type (« IC pour 3 NM ») suit les types et le mode. Ceux des effets restent dans leur texte, sous la ligne.
 // La règle spéciale d'un niveau (« sort niveau 5 ») est dans l'infobulle « i » du titre de son tableau.
 // Sélectionner une ligne ouvre juste en dessous ses détails (SortDetail.astro) : effets (avec la remarque du classeur et le texte du sort), règles propres.
 interface Props {
@@ -17,7 +17,7 @@ interface Props {
 }
 const { magie, magies } = Astro.props;
 
-const colonnes = ['Nom', 'Type', 'Coût', 'Portée', 'Zone', 'D/S/B', 'Maîtrise'];
+const colonnes = ['Nom', 'Type', 'Coût', 'Portée', 'Zone', 'D/S/B'];
 const groupes = sortsParNpm(magie.sorts);
 const regle = (niveau: number) => magies.regles.filter((r) => r.niveau_sort === niveau);
 const texteDeRegle = (r: { titre: string; texte: string }) => (r.texte.startsWith(`${r.titre} : `) ? r.texte.slice(r.titre.length + 3) : r.texte);
@@ -47,17 +47,21 @@ const texteDeRegle = (r: { titre: string; texte: string }) => (r.texte.startsWit
               <tr>{colonnes.map((c) => <th scope="col">{c}</th>)}</tr>
             </thead>
             {groupe.sorts.map((s) => {
-              const cout = coutDeSort(sansBonus(s.coutBrut, s.bonus, 'cout'));
+              const cout = coutDeSort(s.coutBrut);
+              const partsDuCout = marquerBonus(cout.parts, s.bonus, 'cout');
+              const cellule = (brut: string | null, cle: string, liste = false) => {
+                const v = valeurDeSort(brut, { liste });
+                return { vide: v.vide, lignes: marquerBonus(v.lignes, s.bonus, cle) };
+              };
               const valeurs = [
-                ['Portée', valeurDeSort(sansBonus(s.porteeBrut, s.bonus, 'portee')), 'portee'],
-                ['Zone', valeurDeSort(sansBonus(s.zoneBrut, s.bonus, 'zone')), 'zone'],
-                ['D/S/B', valeurDeSort(sansBonus(s.dsbBrut, s.bonus, 'dsb'), { liste: true }), 'dsb'],
+                ['Portée', cellule(s.porteeBrut, 'portee'), 'portee'],
+                ['Zone', cellule(s.zoneBrut, 'zone'), 'zone'],
+                ['D/S/B', cellule(s.dsbBrut, 'dsb', true), 'dsb'],
               ] as const;
               const marques = marquesDeMode(s.modes);
+              const nmDuType = s.bonus.filter((b) => b.champ === 'type');
               // altérations d'état écrites dans la cellule D/S/B (une seule dans les données) : pastille dans le texte, comme pour les effets
               const etatsDsb = s.etats.filter((e) => e.champ === 'dsb');
-              const maitrise = lignesDeBonus(s.bonus, { affiche: true });
-              const etatsEffets = s.etats.filter((e) => e.champ === 'effets');
               return (
                 <tbody class="sort" id={sortAncre(s)}>
                   <tr class="sort__main">
@@ -74,12 +78,13 @@ const texteDeRegle = (r: { titre: string; texte: string }) => (r.texte.startsWit
                     <td data-label="Type" class="sort__type">
                       {s.types.map((t) => <><span class="genre" data-genre={t.type}>{t.libelle}</span>{' '}</>)}
                       {marques.map((m) => <><span class={`marque marque--${m.genre}`}>{m.texte}</span>{' '}</>)}
+                      {nmDuType.map((b) => <><span class="nm">{b.texteBrut}</span>{' '}</>)}
                     </td>
                     <td data-label="Coût" class="sort__cout">
                       {cout.vide ? (
                         <span class="vide" aria-label="aucun">—</span>
                       ) : (
-                        cout.parts.map((part, i) =>
+                        partsDuCout.map((part, i) =>
                           i === 0 ? (
                             <div><Segments segments={part} /></div>
                           ) : (
@@ -93,21 +98,6 @@ const texteDeRegle = (r: { titre: string; texte: string }) => (r.texte.startsWit
                         {v.vide ? <span class="vide" aria-label="aucun">—</span> : v.lignes.map((l) => <div><Segments segments={l} etats={cle === 'dsb' ? etatsDsb : undefined} {magies} /></div>)}
                       </td>
                     ))}
-                    <td data-label="Maîtrise" class="sort__maitrise">
-                      {
-                        maitrise.length === 0 ? (
-                          <span class="vide" aria-label="aucun">—</span>
-                        ) : (
-                          <ul class="nm">
-                            {maitrise.map((l) => (
-                              <li class={`nm__ligne nm__ligne--${l.nature}`}>
-                                <span class="nm__champ">{l.libelle}</span> <span class="nm__texte">{l.champ === 'effets' || l.champ === 'remarque' ? <TexteEnLigne texte={l.texte} etats={[...etatsEffets]} {magies} /> : l.texte}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        )
-                      }
-                    </td>
                   </tr>
                   <tr class="sort__detail" id={`detail-${s.slug}`} hidden>
                     <td colspan={colonnes.length}>
