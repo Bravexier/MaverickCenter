@@ -40,8 +40,10 @@ voir « Pages de magie » plus bas.)
 
 **Priorité entre les sources d'une race** : l'onglet de la race dans le classeur « Les races » (histoire, présentation, avantages et
 inconvénients, don de base, ethnies, mode Hyper) prime sur la « Fiche personnage Maverick Auto V15.2.2 » quand les deux divergent
-(la fiche est en retard par endroits : don de base, mode Hyper, statistiques du Drakos, magies innées du Nain…). Chaque page de race affiche
-les valeurs de l'onglet et liste, dans « Écarts avec la fiche de personnage V15.2.2 », ce que la fiche dit de différent ; rien n'est tranché en silence.
+(la fiche est en retard par endroits : don de base, mode Hyper, statistiques du Drakos, magies innées du Nain…). **Décision R13** : l'onglet est la source,
+la fiche n'en est qu'un dérivé fait à la main ; la page de race (rendue depuis la base, voir « Pages de race » plus bas) n'affiche plus que l'onglet. Ce qui suit
+décrit le Markdown que l'importeur `tools/sheets/races.py` écrit encore (le corps de la page, qui ne sert plus qu'à la recherche et aux `[[liens]]`) : il liste,
+dans « Écarts avec la fiche de personnage V15.2.2 », ce que la fiche dit de différent.
 Les écarts listés couvrent les valeurs de départ, le don de base, le mode Hyper, les magies innées, les ethnies, et aussi les écarts de texte libre :
 une restriction de caractéristique (l'onglet du Majin dit « La Volonté a un maximum de 3 », la colonne « Restrictions Volonté » de la fiche dit « > 2.0 »),
 « Accès à toutes les classes / à toutes les magies » ou « Une seule magie autorisé » contre le nombre de 1 des matrices de la fiche (la matrice reste affichée
@@ -104,6 +106,30 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
 - `Résistances` et `Vulnérabilités` = `magie_resistance` (cibles « magie » et « état », écriture de la source sur la pastille), `Magie non compatible` = `v_magie_incompatible` (relation symétrique)
   plus la phrase libre `magie.incompatibilite_note` (Corruption).
 - Le CSS de ces pages est dans `client/src/styles/magie.css`, injecté par `MagiePage.astro` seulement : le mettre dans `global.css` alourdirait les 1 500 autres pages (et chacune des pages de la version portable).
+
+## Pages de race : un gabarit commun, alimenté par la base
+
+Les 27 pages de `/wiki/races/<race>/` sont rendues comme les pages de magie : `components/race/RacePage.astro` (avec `RaceRelations.astro`) affiche les lignes des tables
+typées lues par `client/src/lib/races-db.mjs`, jamais le Markdown. **Aucun tableau Markdown** : ce qui était un tableau dans la page (valeurs de départ, tableau du Drakos ou du Mort-vivant,
+écarts) est une table de la base, rendue en tuiles, en cartes ou en vrai tableau HTML.
+
+- **Contenu de l'onglet** (migration `0006-races-onglet`, décision R13) : `race_onglet` (description générale, histoire, description, valeurs de départ, avantages, inconvénients, don de base),
+  `race_don` (un don par ethnie du tableau de l'onglet, ou le don unique de la race ; la note de cellule d'un don est dans `remarque`), `race_don_tableau_colonne` / `_ligne` / `_cellule`
+  (le tableau en panneaux du Drakos et du Mort-vivant), `mode_hyper_effet` version `onglet_race` (avec le nom de la capacité, colonne `nom`). Les lignes ont été tirées des pages par
+  `tools/db/races_onglet.py`, qui réécrit chaque section avec le code de l'importeur et exige la page à l'identique (`--verifier` le refait ; `test/races-onglet.test.mjs` le lance).
+- **Matrices de la fiche** (décision R8) : classes accessibles (`race_classe`, rangées comme sur `/wiki/classes/`), magies innées (`race_magie`), sauf quand l'onglet limite lui-même la magie innée :
+  `race_magie_onglet` prime (« en inné uniquement » : le Nain, décision R11, et les 13 races hybrides, dont la liste est celle de la matrice). Le test vérifie que la liste affichée est celle de `magies_innees`
+  (pages de magie, `/wiki/races-et-magies/`).
+- **Race pure ou hybride** : la classe raciale est la classe « Hybride Animal » qui porte le nom de la race (même règle que `lib/race-kinds.mjs`, vérifiée par le test).
+- **Retirés** : la section « Écarts avec la fiche de personnage V15.2.2 », les « Sous-races et origines » et les valeurs de la fiche (AP, AM, « Divers », restrictions), la section « Sources ».
+- **Relations avec les autres peuples** (`peuple`, `relation_peuple`, vue `v_regard_peuple` ; `lib/race-relations.mjs`, testé dans `test/race-relations.test.mjs`) : **décision R12**, la case (ligne A, colonne B)
+  de l'onglet « Relation entre les races » dit comment A voit B. Deux lectures, chacune en listes par niveau, de « Alliée » à « Ennemie » : comment les peuples de la race voient les autres (ouverte),
+  comment les autres les voient (repliée). **On ne regroupe jamais deux peuples dont les relations diffèrent** (demande du propriétaire) : les peuples de la race au regard identique partagent un bloc,
+  sinon chacun a le sien (Elfe Noir Charbon et Elfe Noir Salé côte à côte) ; dans un niveau, une autre race n'est citée d'un seul nom que si tous ses peuples y sont, sinon chacun de ses peuples est cité
+  à son propre niveau (« Humain » suivi de « Central · Désertique »). Les relations entre peuples d'une même race sont dans une petite matrice. Une race sans peuple dans l'onglet (Anansi, Farfadet, Goleois) le dit.
+- Le CSS est dans `client/src/styles/race/`, injecté par `RacePage.astro` (`?raw`) seulement, comme celui des magies. `test/races-html.test.mjs` contrôle le site construit (la CI le lance après le build).
+
+**Pour changer une race, on change la base** (une migration `data/migrations/NNNN-<nom>.sql`, voir `docs/sql/remplissage.md`) : modifier le `.md` fabriqué n'a plus d'effet sur la page.
 
 ## Niveaux de maîtrise (NM) des sorts
 

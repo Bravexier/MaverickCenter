@@ -22,8 +22,8 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
-      # Contrôles du site construit (câblage des infobulles et des fiches des pages de magie) : se sautent tant que dist/ n'existe pas.
-      - run: node --test test/magies-html.test.mjs
+      # Contrôles du site construit (câblage des infobulles et des fiches des pages de magie, gabarit des pages de race) : se sautent tant que dist/ n'existe pas.
+      - run: node --test test/magies-html.test.mjs test/races-html.test.mjs
       # Ce que fait livraison.yml après la fusion (le site HIDE_EXAMPLES=1 avant la 1.0 ; ensuite, en plus, le bandeau de test et l'installateur) :
       # une PR verte ne doit pas casser la publication.
       - run: HIDE_EXAMPLES=1 SITE_MODE=test SITE_TAG=v0.0.0-test npm run build

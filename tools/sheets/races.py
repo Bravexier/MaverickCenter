@@ -14,6 +14,12 @@ par tools/sheets/xlsx_to_json.py ou sheets_api_to_json.py (format : voir ces scr
 fiable : elles ne sont jamais exécutées, seulement copiées (échappées pour le Markdown). Aucune valeur n'est calculée,
 corrigée ni complétée, à une exception près, explicite et signalée (RACE_DETAIL_OVERRIDES, voir plus bas).
 
+AFFICHAGE (migration 0006, décisions R12 et R13 de docs/decisions-regles.md) : le site ne rend plus le Markdown de ces pages. Les pages de race sont
+rendues depuis les tables de l'onglet (race_onglet, race_don, race_don_tableau_*, race_magie_onglet, mode_hyper_effet 'onglet_race'), tirées de ces
+pages par tools/db/races_onglet.py (preuve : chaque section se réécrit à l'identique avec les fonctions de ce script) ; les écarts avec la fiche
+n'y sont plus affichés (l'onglet est la source). Après une nouvelle importation, `python3 -I tools/db/races_onglet.py --verifier` signale que les
+tables ne sont plus celles des pages : il faut alors une migration qui les mette à jour.
+
 POLITIQUE DE PRIORITÉ (décision du propriétaire du projet) : l'onglet de la race du classeur « Les races » PRIME sur la
 « Fiche personnage Maverick Auto V15.2.2 » quand les deux divergent (la fiche est en retard : par exemple le Nain y a 15
 magies innées alors que son onglet en limite le nombre à 5, ou le Drakos y a Santé 10 / Chakra 13 alors que son onglet dit
