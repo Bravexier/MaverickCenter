@@ -1,0 +1,79 @@
+---
+import type { ClasseDb } from '../../lib/classes';
+import ChoixDeDons from './ChoixDeDons.astro';
+import DonCarte from './DonCarte.astro';
+
+// Les dons d'une classe disposés comme l'onglet du classeur (lib/classe-dons.mjs#plateauDeDons), de haut en bas : les dons reçus sans choix
+// (colonne P), les deux spécialités côte à côte (une seule au choix : elle exclut l'autre et tous ses dons) avec, sous chaque bannière, son
+// cartouche puis ses choix d'une ligne ; pour l'Archimage, des groupes de 2 ou 3 dons au choix. Chaque choix est encadré (ChoixDeDons.astro).
+interface Props {
+  classe: ClasseDb;
+}
+const { classe } = Astro.props;
+---
+
+<section class="classe-section" id="dons" aria-labelledby="dons-titre">
+  <h2 id="dons-titre">Dons <span class="count">{classe.dons.length}</span></h2>
+  <p class="muted dons-aide">
+    Disposés comme dans l’onglet de la classe, du niveau 1 au niveau 20. Des dons côte à côte sur une même ligne sont un <strong>choix</strong> : un seul peut
+    être pris.
+  </p>
+
+  <ol class="plateau">
+    {
+      classe.plateau.map((etage) =>
+        etage.forme === 'don' ? (
+          <li class="etage etage--don">
+            <p class="etage__repere">Don de classe · reçu sans choix</p>
+            <DonCarte don={etage.don} titre="h3" />
+          </li>
+        ) : etage.forme === 'choix' ? (
+          <li class="etage etage--choix">
+            <ChoixDeDons niveau={etage.niveau} options={etage.options} titre="h3" />
+          </li>
+        ) : (
+          <li class="etage etage--specialites">
+            <div class="specialites" role="group" aria-labelledby="specialites-regle">
+              <p class="specialites__tete" id="specialites-regle">
+                <span class="choix__badge">Au choix</span>
+                <span class="choix__regle">
+                  Niveau {etage.niveau} : une seule spécialité{etage.specialites.length === 2 ? ' sur les deux' : ''}. Elle exclut l’autre et tous ses dons.
+                </span>
+              </p>
+              <div class={`specialites__colonnes specialites__colonnes--${etage.specialites.length}`}>
+                {etage.specialites.map((col, i) => (
+                  <>
+                    {i > 0 && (
+                      <div class="specialites__ou" aria-hidden="true">
+                        <span>ou</span>
+                      </div>
+                    )}
+                    <section class="specialite" id={col.specialite.ancre} aria-labelledby={`${col.specialite.ancre}-titre`}>
+                      <h3 class="specialite__banniere" id={`${col.specialite.ancre}-titre`}>
+                        <span class="specialite__surtitre">Spécialité</span>
+                        <span class="specialite__nom">{col.specialite.nom}</span>
+                        {col.cartouche?.classeMagique && classe.amMagique !== null && (
+                          <span class="specialite__magique" title="Le don de cette spécialité la fait considérer comme classe magique">
+                            Classe magique · +{classe.amMagique} AM
+                          </span>
+                        )}
+                      </h3>
+                      {col.cartouche && <DonCarte don={col.cartouche} cartouche />}
+                      {col.choix.map((g) =>
+                        g.options.length > 1 ? (
+                          <ChoixDeDons niveau={g.niveau} options={g.options} />
+                        ) : (
+                          <DonCarte don={g.options[0]} />
+                        ),
+                      )}
+                    </section>
+                  </>
+                ))}
+              </div>
+            </div>
+          </li>
+        ),
+      )
+    }
+  </ol>
+</section>

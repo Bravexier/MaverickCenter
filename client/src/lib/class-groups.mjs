@@ -83,6 +83,17 @@ export function groupClasses(entries) {
   return groups;
 }
 
+/**
+ * Couleur d'une classe, d'après sa rubrique (demande du propriétaire) : rouge pour les physiques de mêlée, vert pour les physiques à distance,
+ * bleu pour les magiques, violet pour les raciales (hybrides), jaune pour les autres (et les non classées). Repère visuel sans valeur de règle,
+ * comme la couleur d'une magie ; elle suit la rubrique de /wiki/classes/, exception du Parleur comprise.
+ */
+export const CLASS_COLORS = { melee: '#c62828', distance: '#2e7d32', magiques: '#1e5bb8', 'hybride-animal': '#7b3fa6', autres: '#e3b104' };
+
+export function classColor(entry) {
+  return CLASS_COLORS[findSection(entry)?.section.key] ?? CLASS_COLORS.autres;
+}
+
 /** Groupe et rubrique d'une page de classe, ou null si aucune catégorie n'est reconnue. */
 export function classCategory(entry) {
   const hit = findSection(entry);

@@ -3,6 +3,8 @@ import { alternativesOf, capacitesOfClass, nomCapacite, nomsSeRepondent } from '
 import { isMagicalClass } from '../../lib/classe-magique.mjs';
 import { entryHref, type WikiEntry } from '../../lib/wiki';
 
+// Fiche d'un don de classe (page `capacites/<classe>-<nom>`) : sa place dans la classe et les dons qu'il exclut. La page de la classe montre tous
+// ses dons disposés comme l'onglet ; le lien « Voir sur la page de la classe » mène à ce don (#don-<slug>).
 interface Props {
   entry: WikiEntry;
   entries: WikiEntry[];
@@ -15,7 +17,8 @@ const cartouche = d.nature === 'choix' && d.specialite && classEntry ? capacites
 const estClasseMagique = classEntry && d.nature === 'specialite' && isMagicalClass(entries, classEntry, entry);
 const nom = nomCapacite;
 const repond = alternatives.filter((a) => nomsSeRepondent(entry, a));
-const natureLabel = { classe: 'Capacité de classe', specialite: 'Spécialité', choix: 'Au choix' }[d.nature as string];
+const natureLabel = { classe: 'Don de classe (reçu sans choix)', specialite: 'Spécialité', choix: 'Au choix' }[d.nature as string];
+const ancre = `don-${entry.id.slice(entry.id.indexOf('/') + 1)}`;
 ---
 
 <section class="relations" aria-label="Choix et prérequis">
@@ -27,20 +30,21 @@ const natureLabel = { classe: 'Capacité de classe', specialite: 'Spécialité',
     {natureLabel && <li><strong>Nature</strong> : {natureLabel}</li>}
     {estClasseMagique && <li><strong>Classe magique</strong> : +4 AM avec cette spécialité</li>}
   </ul>
+  {classEntry && <p><a href={`${entryHref(classEntry)}#${ancre}`}>Voir ce don parmi les dons de la classe</a></p>}
   {
     alternatives.length > 0 && (
       <>
         <h2>{d.nature === 'specialite' ? 'Spécialités exclusives' : 'Choix exclusif'}</h2>
         <p>
-          Cette capacité est un choix : <strong>une seule</strong> parmi {alternatives.length + 1}. On ne peut pas avoir à la fois celle-ci et :
+          Ce don est un choix : <strong>un seul</strong> parmi {alternatives.length + 1}. On ne peut pas avoir à la fois celui-ci et :
         </p>
         <ul class="chips">
           {alternatives.map((a) => <li><a class="chip chip--incompatible" href={entryHref(a)}>{nom(a)}</a></li>)}
         </ul>
-        {d.nature === 'specialite' && <p class="muted">Choisir cette spécialité exclut aussi toutes les capacités de l’autre.</p>}
+        {d.nature === 'specialite' && <p class="muted">Choisir cette spécialité exclut aussi tous les dons de l’autre.</p>}
         {repond.length > 0 && <p class="muted">Les deux noms se répondent (« {nom(entry)} » / « {nom(repond[0])} ») : le classeur les écrit ainsi pour souligner le choix entre les deux.</p>}
       </>
     )
   }
-  {cartouche && <p class="muted">Réservée à la spécialité <a href={entryHref(cartouche)}>{nom(cartouche)}</a> : elle exclut les capacités de l’autre spécialité.</p>}
+  {cartouche && <p class="muted">Réservé à la spécialité <a href={entryHref(cartouche)}>{nom(cartouche)}</a> : il exclut les dons de l’autre spécialité.</p>}
 </section>

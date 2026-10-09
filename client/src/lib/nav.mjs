@@ -46,7 +46,7 @@ export const NAV = [
     items: [
       { label: 'Index du wiki', path: 'wiki/' },
       { label: 'Bestiaire', path: 'wiki/bestiaire/' },
-      { label: 'Capacités de classe', path: 'wiki/capacites/' },
+      { label: 'Dons de classe', path: 'wiki/capacites/' },
       { label: 'Mots-clés', path: 'tags/' },
       { label: 'Base de données', path: 'donnees/' },
     ],

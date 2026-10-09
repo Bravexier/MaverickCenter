@@ -1,0 +1,40 @@
+---
+import type { DonDb } from '../../lib/classes';
+import { pageHref } from '../../lib/magies';
+import Texte from '../magie/Texte.astro';
+
+// Un don de classe (ligne de la table `capacite`) en carte : niveau, nom (lien vers sa fiche), type et sa précision telle qu'écrite (« 2 fois/Combat »),
+// effet, remarque du classeur (note de cellule). `id` = ancre du don sur la page de la classe (« #don-barde-perroquet »).
+interface Props {
+  don: DonDb;
+  titre?: 'h3' | 'h4';
+  cartouche?: boolean;
+}
+const { don, titre = 'h4', cartouche = false } = Astro.props;
+const Titre = titre;
+const bulleType = don.type?.definition ? `${don.type.libelle} : ${don.type.definition}` : undefined;
+---
+
+<article class={`don${cartouche ? ' don--cartouche' : ''}`} id={don.ancre} data-type={don.type?.id}>
+  <header class="don__tete">
+    <span class="don__niveau" title={`Niveau de classe ${don.niveau}`}>Niv. {don.niveau}</span>
+    <Titre class="don__nom"><a href={pageHref(don.id)}>{don.nom}</a></Titre>
+  </header>
+  {
+    (don.type || don.precision) && (
+      <p class="don__type">
+        {don.type && <span class="don-type" data-type={don.type.id} title={bulleType}>{don.type.libelle}</span>}
+        {don.precision && <span class="don__precision">{don.precision}</span>}
+      </p>
+    )
+  }
+  {don.effet.length > 0 && <div class="don__effet"><Texte blocs={don.effet} /></div>}
+  {
+    don.remarque.length > 0 && (
+      <div class="don__remarque">
+        <p class="don__remarque-titre">Remarque</p>
+        <Texte blocs={don.remarque} />
+      </div>
+    )
+  }
+</article>

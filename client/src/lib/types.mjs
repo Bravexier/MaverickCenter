@@ -3,7 +3,7 @@
 export const TYPES = {
   races: { label: 'Races', singular: 'Race', discord: 'lien-pour-races', blurb: 'Peuples et races de l’univers.' },
   classes: { label: 'Classes', singular: 'Classe', discord: 'lien-pour-classes', blurb: 'Classes et archétypes de personnage.' },
-  capacites: { label: 'Capacités de classe', singular: 'Capacité', discord: 'lien-pour-classes', blurb: 'Capacités et aptitudes des classes, avec leurs choix exclusifs.' },
+  capacites: { label: 'Dons de classe', singular: 'Don', discord: 'lien-pour-classes', blurb: 'Les dons des classes (les « capacités » des onglets), avec leurs choix exclusifs.' },
   magies: { label: 'Magies', singular: 'Magie', discord: 'lien-pour-magies', blurb: 'Écoles, sorts et règles de magie.' },
   bestiaire: { label: 'Bestiaire', singular: 'Créature', discord: 'lien-pour-bestiaire', blurb: 'Créatures et monstres.' },
   ressources: { label: 'Ressources & craft', singular: 'Ressource', discord: 'lien-pour-ressources-craft', blurb: 'Matériaux, recettes et artisanat.' },

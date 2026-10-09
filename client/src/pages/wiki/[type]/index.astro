@@ -30,7 +30,7 @@ const magiesIndex = dbMagies
 const classGroups = type === 'classes' ? groupClasses(list) : [];
 // Les races sont présentées pures puis hybrides (voir lib/race-kinds.mjs), avec leurs magies innées.
 const raceGroups = type === 'races' ? groupRaces(entries) : [];
-// Les capacités de classe sont rangées par classe (une fiche par capacité : plus de 600).
+// Les dons de classe (pages `capacites/…`) sont rangés par classe (une fiche par don : plus de 600).
 const capaciteGroups = type === 'capacites' ? groupByClass(entries) : [];
 const capaciteDetail = (e: any) => [`Niveau ${e.data.niveau}`, e.data.specialite, e.data.type_capacite].filter(Boolean).join(' · ');
 ---
@@ -61,7 +61,7 @@ const capaciteDetail = (e: any) => [`Niveau ${e.data.niveau}`, e.data.specialite
     ) : capaciteGroups.length > 0 ? (
       <>
         <p class="muted">
-          Une fiche par capacité de classe. Les capacités d'une même ligne dans la feuille sont un choix : une seule peut être prise.
+          Une fiche par don de classe. Les dons d'une même ligne dans l'onglet de la classe sont un choix : un seul peut être pris. La page de chaque classe les montre disposés comme l'onglet.
         </p>
         {capaciteGroups.map((group) => (
           <section>

@@ -1,0 +1,38 @@
+---
+import { nomsSeRepondent } from '../../lib/classe-dons.mjs';
+import type { DonDb } from '../../lib/classes';
+import DonCarte from './DonCarte.astro';
+
+// Dons côte à côte sur une même ligne de l'onglet : UN SEUL au choix (vue v_capacite_exclusive). Un cadre « Au choix » et une pastille « ou »
+// entre deux options ; deux noms coupés qui se répondent (« Tenir ... » / « ... ou charger ? ») sont séparés par « / » (pas de « ou » de plus).
+interface Props {
+  niveau: number;
+  options: DonDb[];
+  titre?: 'h3' | 'h4';
+}
+const { niveau, options, titre = 'h4' } = Astro.props;
+const id = `choix-${options[0].slug}`;
+const enLettres: Record<number, string> = { 2: 'deux', 3: 'trois', 4: 'quatre' };
+const combien = `un seul des ${enLettres[options.length] ?? options.length}`;
+---
+
+<div class={`choix choix--${options.length}`} role="group" aria-labelledby={id}>
+  <p class="choix__tete" id={id}>
+    <span class="choix__badge">Au choix</span>
+    <span class="choix__regle">Niveau {niveau} : {combien}</span>
+  </p>
+  <div class="choix__options">
+    {
+      options.map((d, i) => (
+        <>
+          {i > 0 && (
+            <span class="choix__ou" aria-hidden="true">
+              <span>{nomsSeRepondent(options[i - 1].nom, d.nom) ? '/' : 'ou'}</span>
+            </span>
+          )}
+          <DonCarte don={d} titre={titre} />
+        </>
+      ))
+    }
+  </div>
+</div>

@@ -1,6 +1,2 @@
-/* Capacités de classe : choix exclusifs */
-.cap-list { padding-left: 1.2rem; }
-.cap-group { margin: 0.5rem 0; padding: 0.5rem 0.8rem; border: 1px dashed var(--border); border-radius: var(--radius); }
-.cap-options { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; padding: 0; margin: 0.3rem 0 0; list-style: none; }
-.cap-or { color: var(--muted); font-style: italic; }
+/* Fiche d'un don de classe (components/classes/ChoixDeCapacite.astro) */
 .cap-facts { padding-left: 1.2rem; }
