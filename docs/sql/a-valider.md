@@ -47,3 +47,24 @@ Le statut « décidé » veut dire que tu as tranché (`decisions-regles.md`) **
 | Équipement | 9 prix de matière incohérents ; deux listes de kits d'alchimie ; tests de fabrication en conflit (Forgeron, Enchanteur) ; unité des prix d'armure et de bouclier | ouvert |
 
 Pour chaque question ouverte, la base garde les deux lectures (`ecart_source`) et laisse la valeur absente à `NULL` : rien n'est inventé en attendant ta réponse.
+
+## 3. Fiches de personnages : bugs de la fiche auto et questions
+
+La base des fiches (section 13, `docs/character-generator.md`, « Fiches dans la base ») suit la « Fiche personnage Maverick Auto V15.2.2 » **hormis ses bugs**. Bugs relevés dans ses formules, **non reproduits** :
+
+| # | Cellule(s) | Ce que fait la fiche | Ce que fera la base |
+| --- | --- | --- | --- |
+| B1 | BDD!M14:Q14 | Le plafonnement des bonus d'accessoire de Volonté, Intelligence, Perception, Social et Agilité lit `Personnage!$E$18` (la Force) au lieu de la caractéristique de sa colonne (copier-coller de L14) | Chaque caractéristique avec sa propre valeur |
+| B2 | Personnage!I63:L67 | Les dons de la **classe 2** s'ouvrent selon `$G$9`, le niveau de la classe 1 (une 2ᵉ classe d'un mono-classe, niveau 2 au niveau global 11, recevrait d'emblée ses dons de niveau 10 à 20) | Le niveau de la classe 2 (`v_personnage_niveau.niveau_classe_2`) |
+| B3 | Personnage!L65 | Compare `$C$65` à la cellule `C65` de l'onglet de classe au lieu de `C64` (l'effet du 2ᵉ don de niveau 15 de la classe 2 ne s'affiche jamais) | La capacité choisie, lue dans `capacite` |
+| B4 | BDD!H40, I40, BB2 | Liste des classes magiques écrite en dur (9 classes) ; la classe 2 n'a pas le bonus d'AM de sa spécialité ; les 2ᵉ spécialités des classes raciales et du Flagelleur (décision R7) sont oubliées | `categorie_classe.am_base` et `lib/classe-bonus.mjs` (R6, R7) |
+| B5 | BDD!AK6 contre BDD!BB2 | Puissance magique 5 à partir du niveau **17** (`W8>16`) pour les paliers de sorts, mais du niveau **16** (`W8>=16`) pour le nombre de sorts ; le guide dit 16 | `v_niveau` garde les deux (`puissance_magique_max_feuille`, `puissance_magique_max_guide`) : **à trancher** (16 probable) |
+
+Questions ouvertes :
+
+| # | Question | Ce que fait la base en attendant |
+| --- | --- | --- |
+| Q1 | Que signifient les deux cases à cocher de chaque caractéristique (H18, I18…) ? La fiche retire 20 (1ʳᵉ case) ou 1 000 (2ᵉ) aux compétences de la caractéristique (`competence.croix_1_malus`, `competence.croix_2_malus`) | Les deux cases sont gardées (`personnage_caracteristique.croix_1`, `croix_2`), sans autre effet |
+| Q2 | Corruption en **magie acquise** : la fiche (BDD!F2) la retire toujours de la liste des magies acquises, même pour l'Elfe Noir Charbon et le Felfe Noir ; la décision R15 dit seulement « mono-magie, excepté pour… » | `v_personnage_controle` applique R15 seul : la Corruption acquise n'est pas refusée pour ces deux ethnies |
+| Q3 | Où vivent les fiches réelles et faut-il reprendre les fiches Google existantes ? | Tables vides dans `data/rows` ; base du serveur à la 1.0 (édition, connexion Discord) |
+

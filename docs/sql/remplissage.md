@@ -68,7 +68,8 @@ et réécrit `data/rows` avec la nouvelle version. Voir `docs/sql/conception.md`
 tables `race_onglet`, `race_don`, `race_don_tableau_*`, `race_magie_onglet`, colonne `mode_hyper_effet.nom` et version `onglet_race`, vue `v_regard_peuple` ; écrite par `tools/db/races_onglet.py --ecrire`
 depuis les pages de race, `--verifier` contrôle que les tables sont toujours celles des pages), `0008-dons-de-classe.sql` (données : le type de page `capacites` s'affiche « Dons de classe »,
 singulier « Don », dans `type_page` ; ids, adresses et table `capacite` inchangés), `0009-classes-sans-suffixe.sql` (données : « (classe) » retiré du titre des 13 classes raciales, clés de titre recalculées), `0010-mono-magie.sql` (structure et données, décision R15 :
-colonne `magie.mono_magie`, 1 pour le Potentiel Illimité et la Corruption, table `magie` reconstruite ; l'Elfe Noir Salé retiré des ethnies de la Corruption).
+colonne `magie.mono_magie`, 1 pour le Potentiel Illimité et la Corruption, table `magie` reconstruite ; l'Elfe Noir Salé retiré des ethnies de la Corruption), `0011-personnages.sql` (structure et données : tables des fiches de personnages, section 13, vides dans `data/rows` ; vues `v_personnage_niveau` et
+`v_personnage_controle` ; trois constantes de la fiche dans `regle_constante` : voir `docs/character-generator.md`, « Fiches dans la base »).
 
 ## La colonne `remarque`
 
