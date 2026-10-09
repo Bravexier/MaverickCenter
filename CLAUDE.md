@@ -97,8 +97,8 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
 - Orthographe des sorts et des magies : corrigée **dans la base** par la migration de données `0003-orthographe-magies` (500 corrections, registre `.json` ; test `client/test/orthographe-magies.test.mjs`).
   Un nom de sort fautif n'est pas corrigé à la main : son identifiant (`<magie>#sort:<nom_cle>`) changerait. Les points en attente du propriétaire sont dans `docs/sql/orthographe-a-valider.md`.
 - Niveaux de maîtrise (NM) des sorts : `sort_bonus_maitrise` (une ligne par expression de NM écrite dans une cellule, exhaustive, typée seulement quand l'écriture est sans ambiguïté) et la colonne `sort.bonus_maitrise` (« Bonus Maîtrise »), `sort_mode` + `sort.mode_brut`
-  (le mode IC / imparable / inesquivable, séparé du type), vue `v_sort_bonus_au_nm` et `lib/sort-maitrise.mjs` (lecture « à N NM », même résultat en SQL et en JavaScript). Les tableaux de magie montrent la valeur de base dans Coût / Portée / Zone / D/S/B
-  (`sansBonus`) et les bonus dans la colonne Maîtrise. Voir `docs/content-guide.md`, « Niveaux de maîtrise ». Ne rien calculer ni déduire d'une expression de NM.
+  (le mode IC / imparable / inesquivable, séparé du type), vue `v_sort_bonus_au_nm` et `lib/sort-maitrise.mjs` (lecture « à N NM », même résultat en SQL et en JavaScript). Les tableaux de magie n'ont pas de colonne Maîtrise : l'expression de NM d'une cellule
+  (« (-5/NM) ») est une pastille `.nm` à sa place, à côté de la valeur (`marquerBonus`), celle du type suit les types et le mode ; `sansBonus` donne la valeur de base. Voir `docs/content-guide.md`, « Niveaux de maîtrise ». Ne rien calculer ni déduire d'une expression de NM.
 - `npm run autolink` (aperçu) / `-- --write` : maillage automatique des pages, voir `docs/content-guide.md`.
 - Le générateur ne gère ni compétences, ni équipement, ni dés (voir `docs/character-generator.md`).
 

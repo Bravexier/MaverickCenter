@@ -1,8 +1,9 @@
-// Niveaux de maîtrise (NM) : fonctions pures de lib/sort-maitrise.mjs (lecture « à N NM », valeur de base d'une cellule, texte de la colonne « Bonus Maîtrise »).
+// Niveaux de maîtrise (NM) : fonctions pures de lib/sort-maitrise.mjs (lecture « à N NM », valeur de base d'une cellule, pastille de NM à l'écran, texte de la colonne « Bonus Maîtrise »).
 // Les liens avec les vraies données (extraction des 322 sorts, accord avec la vue SQL) sont dans maitrise-sorts.test.mjs.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { applications, bonusAuNm, lignesDeBonus, LIBELLES_CHAMP_NM, NM_MAX, ORDRE_CHAMPS_NM, sansBonus, texteDeBonus } from '../src/lib/sort-maitrise.mjs';
+import { segments } from '../src/lib/sort-format.mjs';
+import { applications, bonusAuNm, lignesDeBonus, LIBELLES_CHAMP_NM, marquerBonus, NM_MAX, ORDRE_CHAMPS_NM, sansBonus, texteDeBonus } from '../src/lib/sort-maitrise.mjs';
 
 const parNm = (champ, texteBrut, pasNm = 1, extra = {}) => ({ champ, nature: 'par_nm', texteBrut, contexte: texteBrut, pasNm, seuilNm: null, ...extra });
 const palier = (champ, texteBrut, seuilNm = 3, extra = {}) => ({ champ, nature: 'palier', texteBrut, contexte: texteBrut, pasNm: null, seuilNm, ...extra });
@@ -54,11 +55,27 @@ test('lignesDeBonus et texteDeBonus : une ligne « <Colonne> : <passage> » par 
   assert.equal(texteDeBonus([]), null);
 });
 
-test('lignesDeBonus à l’écran : la note de cellule (champ remarque) est lue sous « Effets » ; la colonne de la base garde « Remarque »', () => {
+test('lignesDeBonus : la note de cellule (champ remarque) garde l’étiquette de sa colonne, « Remarque »', () => {
   const bonus = [palier('remarque', '3NM = x'), palier('effets', '3NM = y')];
-  assert.deepEqual(lignesDeBonus(bonus, { affiche: true }).map((l) => l.libelle), ['Effets', 'Effets']);
   assert.deepEqual(lignesDeBonus(bonus).map((l) => l.libelle), ['Remarque', 'Effets']);
-  assert.equal(texteDeBonus(bonus), 'Remarque : 3NM = x\nEffets : 3NM = y', 'le texte de sort.bonus_maitrise ne change pas');
+  assert.equal(texteDeBonus(bonus), 'Remarque : 3NM = x\nEffets : 3NM = y');
+});
+
+test('marquerBonus : l’expression d’un bonus de la colonne, entre parenthèses, devient une pastille à sa place ; le reste de la cellule ne change pas', () => {
+  const nm = (groupes) => groupes.map((g) => g.map((m) => (m.nm ? `[${m.texte}]` : m.modif ? `(${m.texte})` : m.texte)).join(' '));
+  assert.deepEqual(nm(marquerBonus([segments('55 (-5/NM)')], [parNm('cout', '-5/NM')], 'cout')), ['55 [-5/NM]']);
+  assert.deepEqual(nm(marquerBonus([segments('5d6 (+3/NM) dégâts sonores')], [parNm('dsb', '+3/NM')], 'dsb')), ['5d6 [+3/NM] dégâts sonores'], 'à sa place, pas en fin de cellule');
+  assert.deepEqual(nm(marquerBonus([segments('10 ( +2 / NM )')], [parNm('portee', '+2 / NM')], 'portee')), ['10 [+2 / NM]']);
+  assert.deepEqual(nm(marquerBonus([segments('7'), segments('1 âme (–1/NM)')], [parNm('cout', '–1/NM')], 'cout')), ['7', '1 âme [–1/NM]'], 'dans la partie du coût qui l’écrit');
+  // une autre précision, un bonus d'une autre colonne, une expression qui n'est pas isolée dans ses parenthèses : rien n'est marqué
+  assert.deepEqual(nm(marquerBonus([segments('7 (xNP de créature)')], [parNm('cout', '-1/NM')], 'cout')), ['7 (xNP de créature)']);
+  assert.deepEqual(nm(marquerBonus([segments('55 (-5/NM)')], [parNm('dsb', '-5/NM')], 'cout')), ['55 (-5/NM)']);
+  assert.deepEqual(nm(marquerBonus([segments('3 cases horizontales devant (ou verticales/3NM)')], [palier('zone', '/3NM')], 'zone')), ['3 cases horizontales devant (ou verticales/3NM)']);
+  // un bonus marque un seul morceau : deux écritures identiques ont deux lignes
+  const deux = [segments('2d6 (+1/NM)'), segments('+2 AP (+1/NM)')];
+  assert.deepEqual(nm(marquerBonus(deux, [parNm('dsb', '+1/NM')], 'dsb')), ['2d6 [+1/NM]', '+2 AP (+1/NM)']);
+  assert.deepEqual(nm(marquerBonus(deux, [parNm('dsb', '+1/NM'), parNm('dsb', '+1/NM')], 'dsb')), ['2d6 [+1/NM]', '+2 AP [+1/NM]']);
+  assert.deepEqual(marquerBonus([], [parNm('cout', '-5/NM')], 'cout'), []);
 });
 
 test('colonnes : chaque colonne où un bonus peut être écrit a son libellé, dans l’ordre de lecture du tableau', () => {

@@ -106,6 +106,23 @@ test('retirés à la demande du propriétaire : pastilles Remarque / Texte, lég
   }
 });
 
+test('niveaux de maîtrise : plus de colonne « Maîtrise » ; chaque bonus du type ou d’une cellule est une pastille à côté de sa valeur', options, () => {
+  let pastilles = 0;
+  for (const { slug, html } of avecSorts) {
+    assert.ok(!html.includes('<th scope="col">Maîtrise</th>') && !html.includes('sort__maitrise') && !html.includes('nm__champ'), `${slug} : colonne Maîtrise revenue`);
+    for (const m of html.matchAll(/<span class="nm"[^>]*>([^<]*)<\/span>/g)) {
+      assert.match(m[1], /NM/, `${slug} : pastille « ${m[1]} » sans NM`);
+      assert.doesNotMatch(m[1], /^\(|\)$/, `${slug} : pastille « ${m[1]} » avec ses parenthèses`);
+      pastilles += 1;
+    }
+  }
+  // 72 bonus de la colonne Type + 190 des cellules Coût, Portée, Zone, D/S/B (test/maitrise-sorts.test.mjs)
+  assert.equal(pastilles, 262);
+  const feu = pages.find((p) => p.slug === 'magie-du-feu').html;
+  const bdf = contenu(feu, feu.indexOf('<tbody class="sort" id="sort-boule-de-feu"'), 'tbody');
+  assert.match(bdf, /<span class="val">2d6 dégâts<\/span> <span class="nm">\+1d6\/NM<\/span>/);
+});
+
 test('panneau d’un sort : un seul cadre « Effets » par sort, les règles d’invocation et l’annexe sont repliées par défaut', options, () => {
   for (const { slug, html } of avecSorts) {
     assert.equal([...html.matchAll(/<h5>Effets<\/h5>/g)].length, 23, `${slug} : 23 cadres « Effets »`);
