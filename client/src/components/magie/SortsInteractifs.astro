@@ -1,0 +1,116 @@
+---
+// Comportement des tableaux de sorts (TableauNpm.astro), inclus une fois par page qui en montre (MagieSorts.astro, SortsDuPotentiel.astro) :
+// sélectionner une ligne ouvre juste en dessous les détails du sort ; un clic sur une créature invoquée ouvre sa fiche minimale.
+// Sans JavaScript (et à l'impression), tous les détails sont affichés (feuille de style de <noscript> ci-dessous).
+---
+
+<noscript>
+  <style>
+    .sorts .sort__detail[hidden] { display: table-row !important; }
+    .creature__fiche[hidden], .creature__rangee[hidden] { display: block !important; }
+    .creature__bouton { pointer-events: none; }
+    .bulle--large[hidden] { display: block !important; position: static; width: auto; max-width: none; box-shadow: none; }
+    .npm__intitule { display: contents; }
+    .npm__intitule > .bulle-zone { order: 1; flex: 1 0 100%; }
+    .info { display: none; }
+  </style>
+</noscript>
+
+<script>
+  // Sélection d'un sort : sa ligne se met en évidence et ses détails s'ouvrent juste en dessous (un seul sort à la fois).
+  // Sans JavaScript, tous les détails sont affichés (feuille de style de <noscript> ci-dessus).
+  document.documentElement.classList.add('js');
+
+  const lignes = [...document.querySelectorAll<HTMLElement>('tbody.sort')];
+  const bouton = (ligne: HTMLElement) => ligne.querySelector<HTMLButtonElement>('.sort__choisir')!;
+  const detail = (ligne: HTMLElement) => ligne.querySelector<HTMLElement>('.sort__detail');
+  const adresseSansSort = () => location.pathname + location.search;
+
+  /** Ferme le sort ouvert ; si le focus était dans son panneau, il revient sur le bouton de la ligne. */
+  function fermer() {
+    for (const ligne of lignes.filter((l) => l.classList.contains('is-selected'))) {
+      const d = detail(ligne);
+      const focusDedans = !!d && d.contains(document.activeElement);
+      ligne.classList.remove('is-selected');
+      bouton(ligne).setAttribute('aria-expanded', 'false');
+      if (d) d.hidden = true;
+      if (focusDedans) bouton(ligne).focus();
+    }
+  }
+
+  function ouvrir(ligne: HTMLElement, defiler: boolean) {
+    fermer();
+    ligne.classList.add('is-selected');
+    bouton(ligne).setAttribute('aria-expanded', 'true');
+    const d = detail(ligne);
+    if (d) {
+      d.hidden = false;
+      if (defiler) ligne.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    }
+    history.replaceState(null, '', `#${ligne.id}`);
+  }
+
+  /** Ferme tout et retire `#sort-…` de l'adresse (un rechargement ou un lien partagé ne rouvre pas le sort). */
+  function toutFermer() {
+    fermer();
+    if (location.hash.startsWith('#sort-')) history.replaceState(null, '', adresseSansSort());
+  }
+
+  function basculer(ligne: HTMLElement) {
+    if (ligne.classList.contains('is-selected')) toutFermer();
+    else ouvrir(ligne, true);
+  }
+
+  for (const ligne of lignes) {
+    // Un clic sur la ligne principale ouvre ou ferme ; un lien, ou un texte en cours de sélection (copier un coût), ne l'ouvre pas.
+    ligne.querySelector('.sort__main')?.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('a')) return;
+      if (!(e.target as HTMLElement).closest('button') && (getSelection()?.toString() ?? '') !== '') return;
+      basculer(ligne);
+    });
+    detail(ligne)?.querySelector('.sort-detail__fermer')?.addEventListener('click', () => {
+      toutFermer();
+      bouton(ligne).focus();
+    });
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') toutFermer();
+  });
+
+  // Créatures d'une invocation : un clic sur le nom ouvre sa fiche minimale (stats, dégâts, capacités) juste sous son bloc, un autre clic la referme ;
+  // une seule fiche à la fois par invocation. Le lien « Bestiaire » à côté du nom mène à la page de la créature.
+  const boutonsCreature = [...document.querySelectorAll<HTMLButtonElement>('.creature__bouton')];
+  for (const bouton of boutonsCreature) {
+    bouton.setAttribute('aria-expanded', 'false'); // sans JavaScript le bouton ne promet rien : toutes les fiches sont affichées
+    bouton.addEventListener('click', () => {
+      const fiche = document.getElementById(bouton.getAttribute('aria-controls') ?? '');
+      if (!fiche) return;
+      const aOuvrir = fiche.hidden;
+      const section = bouton.closest('.sort-detail__regles');
+      for (const autre of section?.querySelectorAll<HTMLElement>('.creature__fiche') ?? []) autre.hidden = true;
+      for (const rangee of section?.querySelectorAll<HTMLElement>('.creature__rangee') ?? []) rangee.hidden = true;
+      for (const b of section?.querySelectorAll<HTMLElement>('.creature__bouton') ?? []) b.setAttribute('aria-expanded', 'false');
+      if (aOuvrir) {
+        fiche.hidden = false;
+        if (fiche.parentElement) fiche.parentElement.hidden = false;
+        bouton.setAttribute('aria-expanded', 'true');
+        fiche.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      }
+    });
+  }
+
+  /** Adresse `#sort-…` : ouvre ce sort ; toute autre adresse (retour arrière, lien d'ancre) ferme le sort ouvert. */
+  function depuisLien() {
+    let id = '';
+    try {
+      id = decodeURIComponent(location.hash.slice(1));
+    } catch {
+      return; // adresse mal formée : ignorée
+    }
+    const ligne = id.startsWith('sort-') ? lignes.find((l) => l.id === id) : undefined;
+    if (ligne) ouvrir(ligne, true);
+    else fermer();
+  }
+  window.addEventListener('hashchange', depuisLien);
+  depuisLien();
+</script>

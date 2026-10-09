@@ -7,21 +7,25 @@ import Texte from './Texte.astro';
 // (note de cellule) et le texte du sort de niveau 5, à la ligne, dans le même cadre ; les altérations d'état y sont des pastilles avec infobulle, placées
 // dans le texte) et, quand le sort a **ses propres règles**, un bloc dédié : pour une invocation, ses règles (repliées), les créatures invoquées et,
 // au clic sur l'une d'elles, sa fiche minimale (stats, dégâts, capacités) juste sous son bloc ; le lien « Bestiaire » mène à sa page.
+// `prefixe` (« feu- ») rend uniques les identifiants HTML quand une page montre plusieurs magies (TableauNpm.astro).
 interface Props {
   sort: SortDb;
   magies: Magies;
+  prefixe?: string;
 }
-const { sort, magies } = Astro.props;
+const { sort, magies, prefixe = '' } = Astro.props;
 
 // Altérations d'état à placer dans le texte des effets ; chacune n'est placée qu'une fois (la liste est consommée par Texte.astro)
 const aPlacer = sort.etats.filter((e) => e.champ === 'effets');
 const memeNom = sort.memeNom.map((id) => magies.sorts.get(id)!).map((o) => ({ sort: o, magie: magies.magies.get(o.magieId)! }));
 const aDesEffets = sort.effets.length > 0 || sort.remarque.length > 0 || Boolean(sort.incantation);
+const titre = `detail-${prefixe}${sort.slug}-titre`;
+const fiche = (c: { id: string }) => `fiche-${prefixe}${c.id.split('/')[1]}`;
 ---
 
-<div class="sort-detail" role="region" aria-labelledby={`detail-${sort.slug}-titre`}>
+<div class="sort-detail" role="region" aria-labelledby={titre}>
   <header class="sort-detail__tete">
-    <h4 id={`detail-${sort.slug}-titre`}>{sort.nom}</h4>
+    <h4 id={titre}>{sort.nom}</h4>
     <button type="button" class="sort-detail__fermer" aria-label={`Fermer les détails de ${sort.nom}`}>Fermer</button>
   </header>
 
@@ -76,7 +80,7 @@ const aDesEffets = sort.effets.length > 0 || sort.remarque.length > 0 || Boolean
                   <span class="invoque__creatures">
                     {duBloc.map((c) => (
                       <span class="creature">
-                        <button type="button" class="chip creature__bouton" aria-controls={`fiche-${c.id.split('/')[1]}`}>{c.nom}</button>
+                        <button type="button" class="chip creature__bouton" aria-controls={fiche(c)}>{c.nom}</button>
                         <a class="chip creature__lien" href={pageHref(c.id)} aria-label={`Page de ${c.nom} dans le bestiaire`}>Bestiaire</a>
                       </span>
                     ))}
@@ -84,7 +88,7 @@ const aDesEffets = sort.effets.length > 0 || sort.remarque.length > 0 || Boolean
                 </li>
                 <li class="creature__rangee" hidden>
                   {duBloc.map((c) => (
-                    <article class="creature__fiche" id={`fiche-${c.id.split('/')[1]}`} hidden aria-label={`Fiche de ${c.nom}`}>
+                    <article class="creature__fiche" id={fiche(c)} hidden aria-label={`Fiche de ${c.nom}`}>
                       <h6>{c.nom}</h6>
                       <div class="creature__colonnes">
                         <section>

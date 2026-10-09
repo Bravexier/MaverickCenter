@@ -19,7 +19,9 @@ const pages = present
       .map((d) => ({ slug: d.name, html: readFileSync(join(dossier, d.name, 'index.html'), 'utf8') }))
       .filter((p) => p.html.includes('class="magie-hero"'))
   : [];
-const avecSorts = pages.filter((p) => p.html.includes('class="sorts"'));
+// pages qui ont leurs propres sorts ; le Potentiel Illimité n'en a pas, il montre ceux des autres magies (tests plus bas)
+const avecSorts = pages.filter((p) => p.html.includes('<h2 id="sorts-titre">Sorts <span'));
+const potentiel = pages.find((p) => p.slug === 'potentiel-illimite')?.html ?? '';
 
 /** Contenu (HTML) de l'élément ouvrant en `debut` (index du « < »), jusqu'à sa fermeture : comptage des balises du même nom. */
 function contenu(html, debut, nom) {
@@ -187,4 +189,61 @@ test('/magies/ : le tableau des relations suit la carte, lignes et colonnes dans
 test('/races-et-magies/ n’existe plus et aucune page de magie n’y renvoie', options, () => {
   assert.ok(!existsSync(fileURLToPath(new URL('../dist/races-et-magies/', import.meta.url))));
   for (const { slug, html } of [{ slug: 'index', html: indexMagies }, ...pages]) assert.ok(!html.includes('races-et-magies'), slug);
+});
+
+// Page du Potentiel Illimité (components/magie/SortsDuPotentiel.astro) : il pioche ses sorts dans les autres magies. Une magie par onglet, dans l'ordre
+// du classeur ; chaque onglet reprend les tableaux de cette magie du NPM 1 au NPM 4 (demande du propriétaire), avec le gabarit de sa page (TableauNpm.astro).
+const ongletsDuPotentiel = () =>
+  [...potentiel.matchAll(/<a class="onglet autre-magie__onglet( is-active)?" id="onglet-([^"]+)" href="#(sorts-[^"]+)" style="--couleur-magie: (#[0-9a-f]{6}); --couleur-texte-magie: (#[0-9a-f]{6})">\s*([^<]+?)\s*<\/a>/g)].map(
+    (m) => ({ actif: Boolean(m[1]), cle: m[2], panneau: m[3], couleur: m[4], nom: m[6] }),
+  );
+const panneauxDuPotentiel = () =>
+  [...potentiel.matchAll(/<section class="autre-magie magie-teinte( is-active)?" id="(sorts-[^"]+)"[^>]*style="--couleur-magie: (#[0-9a-f]{6});/g)].map((m) => ({
+    actif: Boolean(m[1]),
+    id: m[2],
+    couleur: m[3],
+    html: contenu(potentiel, potentiel.lastIndexOf('<section', m.index + 1), 'section'),
+  }));
+/** Lignes de sort d'un morceau de page : [{ id, html }] (le <tbody> entier : ligne et détails). */
+const lignesDeSort = (html) => [...html.matchAll(/<tbody class="sort" id="([^"]+)"/g)].map((m) => ({ id: m[1], html: contenu(html, m.index, 'tbody') }));
+
+test('Potentiel Illimité : 14 onglets, un par autre magie, dans l’ordre du classeur et dans sa couleur, le premier ouvert ; un panneau par onglet', options, () => {
+  const onglets = ongletsDuPotentiel();
+  assert.deepEqual(onglets.map((o) => o.nom), ORDRE_DU_CLASSEUR);
+  assert.deepEqual(onglets.map((o) => o.actif), ORDRE_DU_CLASSEUR.map((_, i) => i === 0), 'seul le premier onglet est ouvert');
+  assert.equal(onglets.find((o) => o.nom === 'Feu').couleur, '#ff0000');
+  const panneaux = panneauxDuPotentiel();
+  assert.deepEqual(panneaux.map((p) => p.id), onglets.map((o) => o.panneau), 'un panneau par onglet, dans le même ordre');
+  assert.deepEqual(panneaux.map((p) => p.couleur), onglets.map((o) => o.couleur), 'chaque panneau dans la couleur de sa magie');
+  assert.deepEqual(panneaux.map((p) => p.actif), onglets.map((o) => o.actif));
+  // dans la section « Sorts » de la page, que la navigation de la page désigne ; les rôles d'onglet sont posés par le script (sans JavaScript : des liens)
+  const sorts = contenu(potentiel, potentiel.indexOf('<section class="magie-section" id="sorts"'), 'section');
+  assert.match(sorts, /<h2 id="sorts-titre">Sorts des autres magies <span class="count">280<\/span><\/h2>/);
+  assert.ok(sorts.includes('<div class="autres-magies" data-onglets="Magies">'));
+  assert.match(potentiel, /<a href="#sorts">Sorts<\/a>/);
+  assert.doesNotMatch(potentiel, /role="tab(list|panel)?"/);
+});
+
+test('Potentiel Illimité : chaque onglet reprend, du NPM 1 au NPM 4, les tableaux de sa magie tels que sur sa page (mêmes lignes, mêmes détails)', options, () => {
+  let total = 0;
+  for (const panneau of panneauxDuPotentiel()) {
+    const cle = panneau.id.slice('sorts-'.length);
+    const slug = panneau.html.match(/<h3 class="autre-magie__titre" id="[^"]+"><a href="[^"]*\/magies\/([^/"]+)\/">/)?.[1];
+    const page = pages.find((p) => p.slug === slug)?.html;
+    assert.ok(page, `${cle} : le titre du panneau mène à la page de sa magie`);
+    const niveaux = [...panneau.html.matchAll(/<section class="npm" id="npm-([^"]+)"/g)].map((m) => m[1]);
+    assert.deepEqual(niveaux, [1, 2, 3, 4].map((n) => `${cle}-${n}`), `${cle} : NPM 1 à 4, pas de NPM 5`);
+    assert.match(panneau.html, /<h4 class="npm__titre">/, `${cle} : titres des tableaux sous le titre de la magie`);
+    // même gabarit : à l'identifiant près (préfixé du nom court de la magie) et au numéro des infobulles, chaque ligne est celle de la page de la magie
+    const surSaPage = lignesDeSort(page.slice(page.indexOf('id="npm-1"'), page.indexOf('id="npm-5"')));
+    const ici = lignesDeSort(panneau.html);
+    assert.equal(ici.length, 20, `${cle} : 5 sorts par NPM`);
+    const bulles = (html) => html.replace(/"etat-\d+"/g, '"etat-n"');
+    const sansPrefixe = (html) => html.replace(new RegExp(`(id|aria-controls|aria-labelledby)="(sort|detail|fiche)-${cle}-`, 'g'), '$1="$2-');
+    assert.deepEqual(ici.map((l) => bulles(sansPrefixe(l.html))), surSaPage.map((l) => bulles(l.html)), `${cle} : lignes reprises de sa page`);
+    total += ici.length;
+  }
+  assert.equal(total, 280);
+  assert.ok(!potentiel.includes('class="info"'), 'pas de règle du NPM 5 sur cette page');
+  assert.match(potentiel, /<tbody class="sort" id="sort-feu-boule-de-feu">/, 'lien profond vers un sort : #sort-<magie>-<sort>');
 });

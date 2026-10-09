@@ -1,0 +1,87 @@
+---
+import { coutDeSort, marquesDeMode, valeurDeSort } from '../../lib/sort-format.mjs';
+import { marquerBonus } from '../../lib/sort-maitrise.mjs';
+import type { Magies, SortDb } from '../../lib/magies';
+import Segments from './Segments.astro';
+import SortDetail from './SortDetail.astro';
+
+// Un sort dans son tableau (TableauNpm.astro) : sa ligne (Nom, Type, Coût, Portée, Zone, D/S/B) et, juste en dessous, ses détails (SortDetail.astro),
+// cachés jusqu'à ce qu'on sélectionne la ligne (SortsInteractifs.astro).
+// Le bonus de niveau de maîtrise (NM) qu'une cellule écrit entre parenthèses (« 55 (-5/NM) ») est une pastille à côté de sa valeur, à sa place
+// (lib/sort-maitrise.mjs#marquerBonus) ; celui du type (« IC pour 3 NM ») suit les types et le mode. Ceux des effets restent dans leur texte, sous la ligne.
+interface Props {
+  sort: SortDb;
+  magies: Magies;
+  /** identifiant HTML du sort (lib/magies.ts#sortAncre) */
+  ancre: string;
+  prefixe: string;
+  colonnes: number;
+}
+const { sort: s, magies, ancre, prefixe, colonnes } = Astro.props;
+
+const cout = coutDeSort(s.coutBrut);
+const partsDuCout = marquerBonus(cout.parts, s.bonus, 'cout');
+const cellule = (brut: string | null, cle: string, liste = false) => {
+  const v = valeurDeSort(brut, { liste });
+  return { vide: v.vide, lignes: marquerBonus(v.lignes, s.bonus, cle) };
+};
+const valeurs = [
+  ['Portée', cellule(s.porteeBrut, 'portee'), 'portee'],
+  ['Zone', cellule(s.zoneBrut, 'zone'), 'zone'],
+  ['D/S/B', cellule(s.dsbBrut, 'dsb', true), 'dsb'],
+] as const;
+const marques = marquesDeMode(s.modes);
+const nmDuType = s.bonus.filter((b) => b.champ === 'type');
+// altérations d'état écrites dans la cellule D/S/B (une seule dans les données) : pastille dans le texte, comme pour les effets
+const etatsDsb = s.etats.filter((e) => e.champ === 'dsb');
+const detail = `detail-${prefixe}${s.slug}`;
+---
+
+<tbody class="sort" id={ancre}>
+  <tr class="sort__main">
+    <th scope="row" class="sort__nom">
+      <button type="button" class="sort__choisir" aria-expanded="false" aria-controls={detail}>
+        {s.nom}
+      </button>
+      {
+        s.invoque.length > 0 && (
+          <span class="sort__reperes">
+            <span class="repere" title="Ce sort a ses propres règles : invocation">Invocation</span>
+          </span>
+        )
+      }
+    </th>
+    <td data-label="Type" class="sort__type">
+      {s.types.map((t) => <><span class="genre" data-genre={t.type}>{t.libelle}</span>{' '}</>)}
+      {marques.map((m) => <><span class={`marque marque--${m.genre}`}>{m.texte}</span>{' '}</>)}
+      {nmDuType.map((b) => <><span class="nm">{b.texteBrut}</span>{' '}</>)}
+    </td>
+    <td data-label="Coût" class="sort__cout">
+      {
+        cout.vide ? (
+          <span class="vide" aria-label="aucun">—</span>
+        ) : (
+          partsDuCout.map((part, i) =>
+            i === 0 ? (
+              <div><Segments segments={part} /></div>
+            ) : (
+              <div class="supplement">+ <Segments segments={part} /></div>
+            ),
+          )
+        )
+      }
+    </td>
+    {
+      valeurs.map(([label, v, cle]) => (
+        <td data-label={label} class={`sort__${cle}`}>
+          {v.vide ? <span class="vide" aria-label="aucun">—</span> : v.lignes.map((l) => <div><Segments segments={l} etats={cle === 'dsb' ? etatsDsb : undefined} {magies} /></div>)}
+        </td>
+      ))
+    }
+  </tr>
+  <tr class="sort__detail" id={detail} hidden>
+    <td colspan={colonnes}>
+      <SortDetail sort={s} magies={magies} prefixe={prefixe} />
+    </td>
+  </tr>
+</tbody>

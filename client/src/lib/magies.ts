@@ -18,8 +18,11 @@ export const ordreDesMagies = () => [...loadMagies().magies.values()].sort((a, b
 export const pageHref = (pageId: string) => url(cheminDePage(pageId));
 /** Lien vers la section d'une altération d'état sur la page « Liste des altérations d'état ». */
 export const etatHref = (etat: { pageId: string; nom: string }) => `${pageHref(etat.pageId)}#${ancreDeTitre(etat.nom)}`;
-/** Identifiant HTML du détail d'un sort (lien profond : `…/magie-du-feu/#sort-boule-de-feu`). */
-export const sortAncre = (sort: { slug: string }) => `sort-${sort.slug}`;
+/**
+ * Identifiant HTML d'un sort (lien profond : `…/magie-du-feu/#sort-boule-de-feu`). `prefixe` distingue les magies d'une page qui en montre
+ * plusieurs (`…/potentiel-illimite/#sort-feu-boule-de-feu`) : deux magies peuvent avoir un sort du même nom.
+ */
+export const sortAncre = (sort: { slug: string }, prefixe = '') => `sort-${prefixe}${sort.slug}`;
 /** Identifiant HTML unique (par exécution du build) d'une infobulle : le déclencheur le cite par `aria-describedby`. */
 let compteurBulles = 0;
 export const idBulle = (prefixe: string) => `${prefixe}-${++compteurBulles}`;
