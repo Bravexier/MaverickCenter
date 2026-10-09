@@ -60,6 +60,11 @@ résolvent seuls. Même chose si le hotfix modifie `.github/workflows/` et que l
 **Toutes les PR vers `dev` et `master` se fusionnent par « Create a merge commit »** (ni *squash* ni *rebase*) : le bot et les contrôles s'appuient sur
 l'historique des fusions (une refusion faite par *squash* laisserait `master` hors de `dev`, et la livraison suivante serait refusée).
 
+**Une `feature/<nom>` ou `hotfix/<nom>` en conflit avec sa base se rebase, on n'y fusionne jamais la base** (demande du propriétaire) :
+`git fetch --prune origin`, `git rebase origin/dev` (ou `origin/master`), résoudre, puis `git push --force-with-lease`. La PR n'est fusionnée qu'une fois
+sans conflit et la CI verte. Seule exception, la refusion de `master` dans `dev` décrite plus haut : elle doit rester une fusion (le bot vérifie que
+`master` est dans l'historique de `dev`).
+
 Plusieurs fusions rapprochées sont traitées chacune à leur tour par le bot (il relit les branches et recommence si une autre fusion est passée
 entre-temps). Relancer un passage déjà fait (*Re-run*) ne refait rien : le bot reconnaît la PR à ses commits « (PR #n) » et s'arrête ; pour republier
 une branche, *Actions → Version et livraison → Run workflow*.

@@ -1,0 +1,1 @@
+-- data/rows/personnage_bouclier_materiau.sql : export déterministe, une instruction par ligne, triée par (personnage_id, rang). NE PAS ÉDITER À LA MAIN.

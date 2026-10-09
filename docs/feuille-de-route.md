@@ -42,8 +42,8 @@ Toute la communauté est sur Discord : la connexion se fait par « Se connecter 
 
 - **Ce qu'on garde** : l'identifiant Discord de l'utilisateur (immuable) et son nom d'affichage ; aucun mot de passe, aucun jeton Discord conservé au-delà de la connexion
   (le jeton ne sert qu'à lire l'identité et, au besoin, les rôles sur le serveur). Les modifications de contenu s'attribuent à cet identifiant (historique).
-- **Rôles** : lecteur (membre du serveur), éditeur (par exemple le rôle MJ du serveur), administrateur ; la correspondance rôle Discord → rôle du site est une
-  configuration, pas du code. Quelqu'un qui quitte le serveur perd l'accès. Une connexion de secours locale reste prévue pour l'administrateur si Discord est indisponible.
+- **Rôles** : lecteur (membre du serveur), MJ (le « groupe MJ » à qui un joueur peut ouvrir ses fiches), éditeur, administrateur ; un utilisateur peut en cumuler
+  plusieurs (table `utilisateur_role`) ; la correspondance rôle Discord → rôle du site est une configuration, pas du code. Quelqu'un qui quitte le serveur perd l'accès. Une connexion de secours locale reste prévue pour l'administrateur si Discord est indisponible.
 - **Ce que cela suppose** : un petit service (le site statique seul ne peut pas faire d'OAuth) qui gère la connexion et les sessions (cookie signé, HttpOnly, protection
   CSRF pour les modifications) ; le serveur web protège aussi les pages statiques en lui demandant si la session est valide (`auth_request` avec nginx). L'adresse de
   retour de la connexion dépend de l'adresse publique du site (HTTPS) : elle se configure par variable d'environnement et se change dans le portail développeur Discord
@@ -53,6 +53,18 @@ Toute la communauté est sur Discord : la connexion se fait par « Se connecter 
   La table des utilisateurs et les colonnes « modifié par » de l'historique se prévoient dès la conception de la base.
 - **À faire par le propriétaire le moment venu** : créer l'application dans le portail développeur Discord et fournir son identifiant et son secret comme secrets de
   l'environnement (jamais dans le dépôt). Aucun jeton personnel Discord n'est utilisé.
+
+## Fiches de personnages : joueurs, prétirés, groupes et visibilité (demande du propriétaire)
+
+Les tables sont prêtes dans la base (section 13 de `data/schema.sql`, détail dans `character-generator.md`, « Fiches dans la base ») ; les pages de gestion viendront
+plus tard (elles supposent la connexion Discord).
+
+- **Deux sortes de fiches** : celles qu'un joueur crée pour son propre personnage, et les **prétirés**, qui ne sont à personne et que tout le monde voit.
+- Une fiche de joueur n'est **visible que de lui seul (et des administrateurs)**. Il peut l'ouvrir à **un ou plusieurs utilisateurs désignés**, à **tous les MJ**
+  ou à **tout le monde**.
+- **Groupes de jeu** (one-shot ou campagne) : quand un joueur rejoint un groupe et y inscrit son personnage, la fiche devient **automatiquement visible de tous
+  les membres du groupe** ; ses fiches inscrites dans d'autres groupes restent cachées par défaut. Un joueur peut avoir plusieurs fiches et être inscrit dans
+  plusieurs groupes, mais n'assigne **qu'une fiche par groupe** : en assigner une autre désinscrit automatiquement la précédente.
 
 ## Simulation : par où commencer (idée)
 
