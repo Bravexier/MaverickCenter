@@ -43,6 +43,9 @@ export function raceOfClass(entries, cls) {
 /** @returns {'hybride' | 'pure'} */
 export const raceKind = (entries, race) => (HYBRIDES_SANS_CLASSE_RACIALE.has(race.id) || racialClassOf(entries, race) ? 'hybride' : 'pure');
 
+/** Couleur des races pures et des races hybrides : celle de la liste /races/ et du bandeau des pages de race (repère visuel sans valeur de règle). */
+export const RACE_COLORS = { pure: '#2f6a6a', hybride: '#8a5a1c' };
+
 export const RACE_GROUPS = [
   { key: 'pures', kind: 'pure', label: 'Races pures' },
   { key: 'hybrides', kind: 'hybride', label: 'Races hybrides' },
@@ -55,12 +58,15 @@ const rang = (race) => {
 const byOrdre = (a, b) => rang(a) - rang(b) || a.data.title.localeCompare(b.data.title, 'fr');
 
 /**
- * Range les races en groupes (pures puis hybrides), chacun dans l'ordre de ORDRE_DES_RACES ; un groupe vide est omis.
+ * Range les races en groupes (pures puis hybrides, chacun avec sa couleur), chacun dans l'ordre de ORDRE_DES_RACES ; un groupe vide est omis.
  * `entries` contient les pages de races ET de classes (les classes servent à reconnaître les hybrides).
  */
 export function groupRaces(entries) {
   const races = entries.filter((e) => e.id.startsWith('races/'));
-  return RACE_GROUPS.map((g) => ({ key: g.key, label: g.label, entries: races.filter((r) => raceKind(entries, r) === g.kind).sort(byOrdre) })).filter(
-    (g) => g.entries.length > 0,
-  );
+  return RACE_GROUPS.map((g) => ({
+    key: g.key,
+    label: g.label,
+    couleur: RACE_COLORS[g.kind],
+    entries: races.filter((r) => raceKind(entries, r) === g.kind).sort(byOrdre),
+  })).filter((g) => g.entries.length > 0);
 }

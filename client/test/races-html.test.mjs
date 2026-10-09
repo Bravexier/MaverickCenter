@@ -87,20 +87,22 @@ test('race hybride : bandeau « Race hybride » et lien vers sa classe raciale',
   assert.match(page('lamia'), /race-hero__surtitre">Race pure</);
 });
 
-// La liste /races/ : deux colonnes côte à côte, races pures puis hybrides, dans l'ordre du propriétaire ; les magies innées des seules races hybrides.
+// La liste /races/ : races pures puis hybrides côte à côte, dans l'ordre du propriétaire, une pastille par race (components/race/RacesPastilles.astro),
+// sur le modèle des classes et de la carte des magies ; l'accroche en infobulle ; ni magies ni classe raciale.
 const liste = present && existsSync(join(dossier, 'index.html')) ? main(readFileSync(join(dossier, 'index.html'), 'utf8')) : '';
 const colonne = (id) => {
-  const debut = liste.indexOf(`id="${id}"`);
+  const debut = liste.indexOf(`<section class="races-groupe" id="${id}"`);
   return debut < 0 ? '' : liste.slice(debut, liste.indexOf('</section>', debut));
 };
 // sans la race d'exemple, présente quand le site est construit sans HIDE_EXAMPLES=1 (c'est le cas de la CI)
-const nomsDe = (html) =>
-  [...html.matchAll(/class="race-list__nom" href="[^"]*\/races\/([^/"]+)\/">([^<]+)</g)]
+const pastillesDe = (html) =>
+  [...html.matchAll(/<a class="race-pastille" href="[^"]*\/races\/([^/"]+)\/"([^>]*)>.*?<span class="race-pastille__nom">([^<]+)<\/span>/g)]
     .filter((m) => m[1] !== 'exemple-race')
-    .map((m) => m[2].replace(/&#39;/g, "'"));
+    .map((m) => ({ slug: m[1], attributs: m[2], nom: m[3].replace(/&#39;/g, "'") }));
+const nomsDe = (html) => pastillesDe(html).map((p) => p.nom);
 
-test('liste des races : deux colonnes, pures puis hybrides, dans l’ordre du propriétaire', options, () => {
-  assert.match(liste, /class="race-columns"/);
+test('liste des races : deux groupes de pastilles, pures puis hybrides, dans l’ordre du propriétaire', options, () => {
+  assert.match(liste, /class="races-pastilles"/);
   assert.ok(liste.indexOf('id="pures"') < liste.indexOf('id="hybrides"'));
   assert.deepEqual(nomsDe(colonne('pures')), [
     'Humain', 'Nain', 'Elfe forestier', 'Elfe doré', 'Elfe argenté', 'Elfe noir', 'Farfadet', 'Felfe', 'Majin', 'Hujin', 'Drakos', 'Lamia', 'Mort-vivant',
@@ -110,17 +112,28 @@ test('liste des races : deux colonnes, pures puis hybrides, dans l’ordre du pr
   ]);
 });
 
-test('liste des races : le nom et l’accroche seulement, ni magies ni classe raciale (le tableau du bas de page donne les magies)', options, () => {
+test('liste des races : chaque groupe dans la couleur du bandeau des pages de race, avec le nombre de ses races', options, () => {
+  assert.match(colonne('pures'), /^<section class="races-groupe" id="pures" style="--couleur-race: #2f6a6a">/);
+  assert.match(colonne('hybrides'), /^<section class="races-groupe" id="hybrides" style="--couleur-race: #8a5a1c">/);
+  assert.match(colonne('hybrides'), /<span class="races-groupe__nom">Races hybrides<\/span>\s*<span class="races-groupe__compte">14<\/span>/);
+  assert.match(page('orios'), /<div class="race race--hybride" style="--couleur-race: #8a5a1c">/);
+  assert.match(page('humain'), /<div class="race race--pure" style="--couleur-race: #2f6a6a">/);
+});
+
+test('liste des races : l’accroche de chaque race en infobulle ; ni magies ni classe raciale', options, () => {
   for (const id of ['pures', 'hybrides']) {
     const html = colonne(id);
-    assert.ok(html.length > 0, id);
+    for (const p of pastillesDe(html)) {
+      const bulle = p.attributs.match(/data-bulle="([^"]+)" aria-describedby="\1" title="([^"]+)"/);
+      assert.ok(bulle, `${p.slug} : infobulle`);
+      assert.match(html, new RegExp(`<span class="bulle" role="tooltip" id="${bulle[1]}" hidden>`), `${p.slug} : bulle cachée`);
+    }
     assert.ok(!html.includes('Magies innées'), `${id} : pas de magies innées`);
-    assert.ok(!html.includes('class="chip'), `${id} : aucune pastille`);
     assert.ok(!html.includes('Classe raciale'), `${id} : pas de classe raciale`);
-    assert.ok(!/href="[^"]*\/(magies|classes)\//.test(html), `${id} : aucun lien vers une magie ou une classe`);
     const liens = [...html.matchAll(/<a\b[^>]*href="([^"]+)"/g)].map((m) => m[1]);
-    assert.ok(liens.every((h) => /\/races\/[^/]+\/$/.test(h)), `${id} : seulement les liens vers les races`);
+    assert.ok(liens.length > 0 && liens.every((h) => /\/races\/[^/]+\/$/.test(h)), `${id} : seulement les liens vers les races`);
   }
+  assert.match(colonne('hybrides'), /title="Les semi-renards, une race à la beauté et au narcissisme sans égal"/);
 });
 
 // Le tableau des magies innées de toutes les races, en bas de /races/ (components/magie/TableauMagiesInnees.astro) : il remplace /races-et-magies/.
