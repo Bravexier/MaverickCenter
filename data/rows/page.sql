@@ -3728,7 +3728,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Voleur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/voleur-zone', 'capacites', 'voleur-zone', '... Zone ! (Voleur)', 'zone-voleur', 'Le piège peut se déclencher dans une croix de 1.', '{"classe": "classes/voleur", "specialite": "SABOTEUR", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/voleur-grande"]}', 'Le piège peut se déclencher dans une croix de 1.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Voleur »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/anansi', 'classes', 'anansi', 'Anansi (classe)', 'anansi-classe', NULL, NULL, '**Catégorie** : Classe Hybride Animal
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/anansi', 'classes', 'anansi', 'Anansi', 'anansi', NULL, NULL, '**Catégorie** : Classe Hybride Animal
 
 ## Description Anansi
 
@@ -4124,7 +4124,7 @@ Son endurance exceptionnelle lui permet d’absorber les chocs et de réduire le
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Cuirassé »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/exemple-classe', 'classes', 'exemple-classe', 'Classe d''exemple', 'classe-dexemple', 'Page de démonstration pour une classe.', NULL, 'Contenu **fictif**. Cette classe peut accéder à la [[Magie d''exemple]]. Elle est jouable par la [[Race d''exemple]].
 ', 'example', 'exemple', NULL);
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/fenrir', 'classes', 'fenrir', 'Fenrir (classe)', 'fenrir-classe', 'Le Fenrir est un combattant rusé, utilisant ses instincts surnaturels et sa robustesse pour traquer et éliminer ses ennemis.', NULL, '**Catégorie** : Classe Hybride Animal
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/fenrir', 'classes', 'fenrir', 'Fenrir', 'fenrir', 'Le Fenrir est un combattant rusé, utilisant ses instincts surnaturels et sa robustesse pour traquer et éliminer ses ennemis.', NULL, '**Catégorie** : Classe Hybride Animal
 
 ## Description Fenrir
 
@@ -4292,7 +4292,7 @@ Le Briseur est une force destructrice incarnée, spécialisé dans l’annihilat
 
 Chaque coup porté affaiblit progressivement les protections adverses, rendant le combat de plus en plus déséquilibré en sa faveur. La prudence est de mise contre lui, qui sait ce qu''il pourrait vous briser ?
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Frappeur »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/goleois', 'classes', 'goleois', 'Goleois (classe)', 'goleois-classe', NULL, NULL, '**Catégorie** : Classe Hybride Animal
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/goleois', 'classes', 'goleois', 'Goleois', 'goleois', NULL, NULL, '**Catégorie** : Classe Hybride Animal
 
 ## Description Goleois
 
@@ -4430,7 +4430,7 @@ Le Maître d''Arme est un guerrier polyvalent, rompu à l’art du combat avec b
 
 Il est un stratège du champ de bataille, changeant d’équipement sans perdre en fluidité et exploitant les faiblesses adverses. Sa maîtrise des armures lourdes lui confère une endurance exceptionnelle, lui permettant d''encaisser sans faillir. Face à lui, chaque erreur sera sanctionnée.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Guerrier »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/jackalope', 'classes', 'jackalope', 'Jackalope (classe)', 'jackalope-classe', 'Le Jackalope est un combattant vif et imprévisible, capable de bondir sur ses ennemis avant même qu’ils ne réalisent sa présence.', NULL, '**Catégorie** : Classe Hybride Animal
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/jackalope', 'classes', 'jackalope', 'Jackalope', 'jackalope', 'Le Jackalope est un combattant vif et imprévisible, capable de bondir sur ses ennemis avant même qu’ils ne réalisent sa présence.', NULL, '**Catégorie** : Classe Hybride Animal
 
 ## Description Jackalope
 
@@ -4484,7 +4484,7 @@ L’Adepte est un érudit du combat, puisant dans les flux de la Terre, du Foudr
 
 Doté d’une perception mentale affinée, il capte ceux qui usent et abusent de la communication par la pensée. Il peut également transformer des sorts en techniques non-létales, prouvant que la force réside autant dans la maîtrise que dans la puissance brute. Polyglotte du Vide, il brise les barrières de la compréhension, communiquant avec des entités que peu connaissent.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Jackalope »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/kitsune', 'classes', 'kitsune', 'Kitsune (classe)', 'kitsune-classe', 'Furtif et insaisissable, le Kitsune danse sur le fil entre illusion et réalité.', NULL, '**Catégorie** : Classe Hybride Animal
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/kitsune', 'classes', 'kitsune', 'Kitsune', 'kitsune', 'Furtif et insaisissable, le Kitsune danse sur le fil entre illusion et réalité.', NULL, '**Catégorie** : Classe Hybride Animal
 
 ## Description Kitsune
 
@@ -4949,7 +4949,7 @@ Le Mage Jade ne se contente pas d’enchanter ses projectiles, il fusionne compl
 
 Capable de canaliser son Chakra directement dans ses projectiles, il tire à la main avec la puissance d’une arme chargée et amplifie ses dégâts en fonction de l’état de son équipement. Plus il pousse la symbiose avec son arme, plus il devient indomptable, où chaque coup est une manifestation de sa volonté.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mage Vert »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/marcass', 'classes', 'marcass', 'Marcass (classe)', 'marcass-classe', 'Le Marcass est un combattant qui fonce sans hésitation vers ses adversaires, écrasant tout sur son passage avec sa Charge Porcine, qui augmente sa vitesse lorsqu’il s’élance en ligne droite.', NULL, '**Catégorie** : Classe Hybride Animal
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/marcass', 'classes', 'marcass', 'Marcass', 'marcass', 'Le Marcass est un combattant qui fonce sans hésitation vers ses adversaires, écrasant tout sur son passage avec sa Charge Porcine, qui augmente sa vitesse lorsqu’il s’élance en ligne droite.', NULL, '**Catégorie** : Classe Hybride Animal
 
 ## Description Marcass
 
@@ -5060,7 +5060,7 @@ Le Berserker est un combattant sauvage qui canalise sa rage en une force destruc
 
 Chaque assaut renforce son élan, augmentant ses dégâts, sa vitesse ou sa résistance en fonction de sa frénésie. Insensible à la peur et au contrôle mental ou encore avoir une attaque de morsure du à cette quasi-folie de guerre. Une fois déchaîné, il est à prendre au sérieux.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Martiale »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/medusain', 'classes', 'medusain', 'Médusain (classe)', 'medusain-classe', 'Le Médusain évolue tel un spectre aquatique, utilisant ses tentacules pour entraver ses adversaires.', NULL, '**Catégorie** : Classe Hybride Animal
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/medusain', 'classes', 'medusain', 'Médusain', 'medusain', 'Le Médusain évolue tel un spectre aquatique, utilisant ses tentacules pour entraver ses adversaires.', NULL, '**Catégorie** : Classe Hybride Animal
 
 ## Description Médusain
 
@@ -5167,7 +5167,7 @@ Le Chasseur de Primes est un traqueur aguerri, expert en pistage et en négociat
 
 Son sens aiguisé de l''observation lui permet de repérer caches et salles secrètes. Capable de choisir ses butins et d’évaluer précisément la valeur de ses proies, il ne laisse rien au hasard. L''argent n''a pas d''odeur comme on dit.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Mercenaire »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/minotaure', 'classes', 'minotaure', 'Minotaure (classe)', 'minotaure-classe', 'Similaire à l''Orios, le Minotaure est une force brute sur le champ de bataille, écrasant ses ennemis sous des frappes puissantes.', NULL, '**Catégorie** : Classe Hybride Animal
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/minotaure', 'classes', 'minotaure', 'Minotaure', 'minotaure', 'Similaire à l''Orios, le Minotaure est une force brute sur le champ de bataille, écrasant ses ennemis sous des frappes puissantes.', NULL, '**Catégorie** : Classe Hybride Animal
 
 ## Description Minotaure
 
@@ -5274,7 +5274,7 @@ Le Templier est un guerrier sacré, un rempart vivant dédié à l’ordre et à
 
 Son entraînement lui permet d’exploiter les faiblesses des êtres bons ou mauvais selon ses croyances, renforçant ses frappes contre ceux qui s’opposent à son idéal. Maîtrisant les armes et armures comme un Guerrier, il combine puissance martiale et force psychologique pour dominer ses adversaires.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Moine »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/namazu', 'classes', 'namazu', 'Namazu (classe)', 'namazu-classe', 'Le Namazu est un combattant amphibie, maniant le harpon et l’arbalète avec aisance.', NULL, '**Catégorie** : Classe Hybride Animal
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/namazu', 'classes', 'namazu', 'Namazu', 'namazu', 'Le Namazu est un combattant amphibie, maniant le harpon et l’arbalète avec aisance.', NULL, '**Catégorie** : Classe Hybride Animal
 
 ## Description Namazu
 
@@ -5386,7 +5386,7 @@ Le Météorologue manipule le climat à son avantage, transformant la météo en
 
 Capable d’influencer les conditions météorologiques, il façonne la météo pour renforcer sa ou ses magies. À son apogée, il invoque des créatures liées aux éléments ou dicte les caprices du ciel, dominant ses ennemis par la force de la nature elle-même.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Ocultomancien »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/olwman', 'classes', 'olwman', 'Olwman (classe)', 'olwman-classe', 'Le Olwman est un expert de la discrétion et de l’observation, évoluant sans un bruit dans l’obscurité.', NULL, '**Catégorie** : Classe Hybride Animal
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/olwman', 'classes', 'olwman', 'Olwman', 'olwman', 'Le Olwman est un expert de la discrétion et de l’observation, évoluant sans un bruit dans l’obscurité.', NULL, '**Catégorie** : Classe Hybride Animal
 
 ## Description Olwman
 
@@ -5444,7 +5444,7 @@ Le Pape est un olwman sage dont la perception dépasse celle des mortels. Sa vis
 
 Maître des éléments du Vent, de l’Ombre ou de l''Espace/Temps, il manipule le champ de bataille en influençant la vitesse et la position de ses adversaires. Lorsque le vent souffle, il se déplace avec une rapidité accrue, et ses sorts déstabilisent ceux qui osent s’opposer à lui. Véritable architecte du combat, il façonne l’issue des affrontements par sa connaissance.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Olwman »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/orios', 'classes', 'orios', 'Orios (classe)', 'orios-classe', 'L’Orios est un combattant bestial qui domine le corps-à-corps par sa puissance brute et sa présence terrifiante.', NULL, '**Catégorie** : Classe Hybride Animal
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/orios', 'classes', 'orios', 'Orios', 'orios', 'L’Orios est un combattant bestial qui domine le corps-à-corps par sa puissance brute et sa présence terrifiante.', NULL, '**Catégorie** : Classe Hybride Animal
 
 ## Description Orios
 
@@ -5607,7 +5607,7 @@ Le Lutteur est un guerrier du corps à corps, maîtrisant l’art des projection
 
 Son endurance exceptionnelle lui permet de combattre malgré la douleur, se nourrissant de la brutalité du combat. Ne le prenez pas à la légère, car lui ne le fera pas.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Pugiliste »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/rokh', 'classes', 'rokh', 'Rokh (classe)', 'rokh-classe', 'Le Rokh domine le champ de bataille depuis les hauteurs, combinant précision mortelle et agilité aérienne.', NULL, '**Catégorie** : Classe Hybride Animal
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/rokh', 'classes', 'rokh', 'Rokh', 'rokh', 'Le Rokh domine le champ de bataille depuis les hauteurs, combinant précision mortelle et agilité aérienne.', NULL, '**Catégorie** : Classe Hybride Animal
 
 ## Description Rokh
 
@@ -5665,7 +5665,7 @@ La Colombe est un rokh qui incarne la rapidité, la magie et la clairvoyance cé
 
 Sa connexion aux tempêtes peut lui permettre de canaliser la foudre pour se téléporter instantanément sur le champ de bataille. Grâce à sa vision perçante, elle peut détecter les points faibles ennemis. Insaisissable et baignée de lumière, elle domine le ciel comme un éclair lumineux.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Rokh »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/satyre', 'classes', 'satyre', 'Satyre (classe)', 'satyre-classe', 'Le Satyre est un combattant aussi imprévisible que charmeur, jouant avec l’esprit de ses adversaires autant qu’avec ses armes.', NULL, '**Catégorie** : Classe Hybride Animal
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/satyre', 'classes', 'satyre', 'Satyre', 'satyre', 'Le Satyre est un combattant aussi imprévisible que charmeur, jouant avec l’esprit de ses adversaires autant qu’avec ses armes.', NULL, '**Catégorie** : Classe Hybride Animal
 
 ## Description Satyre
 

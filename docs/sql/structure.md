@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 8 : 142 tables, 2 tables de recherche plein texte (FTS5) et 30 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 9 : 142 tables, 2 tables de recherche plein texte (FTS5) et 30 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -793,7 +793,7 @@ CLASSE : une ligne par onglet de classe (39)
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `id` | TEXT | oui | PK, → page.id | = id de la page (entité typée qui a SA page) |
-| `nom` | TEXT | oui | unique | nom de l'onglet = nom dans le Sommaire (« Cuirassé », « Orios »). Le titre de la page des 13 classes « Hybride Animal » ajoute « (classe) » (page.titre) : ce suffixe n'est pas ici. |
+| `nom` | TEXT | oui | unique | nom de l'onglet = nom dans le Sommaire (« Cuirassé », « Orios ») = titre de la page. Les 13 classes « Hybride Animal » portent le nom de leur race, sans suffixe (migration 0009). |
 | `nom_cle` | TEXT | oui | unique | normalize(nom) : 'cuirasse', 'mage-bleu' ; sert aux jointures par nom avec les autres domaines |
 | `categorie_id` | TEXT | oui | → categorie_classe.id | colonne du Sommaire où la classe est listée |
 | `ordre` | INTEGER | oui | unique | rang dans le Sommaire : catégories de gauche à droite, puis de haut en bas |

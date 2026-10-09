@@ -1,14 +1,14 @@
 ---
 import listeCss from '../../styles/classe/liste.css?raw';
 import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
-import { CLASS_COLORS, classLabel, type groupClasses } from '../../lib/class-groups.mjs';
+import { CLASS_COLORS, type groupClasses } from '../../lib/class-groups.mjs';
 import { idBulle } from '../../lib/magies';
 import { texteSurCouleur } from '../../lib/sort-format.mjs';
 import { entryHref } from '../../lib/wiki';
 import Bulles from '../magie/Bulles.astro';
 
 // Tableau de /wiki/classes/ : les cinq catégories (lib/class-groups.mjs) côte à côte, une colonne chacune, dans la couleur de la catégorie
-// (celle des pages de classe). Le nom d'une classe est écrit sans « (classe) » ; son résumé est dans une infobulle (components/magie/Bulles.astro ;
+// (celle des pages de classe). Le nom d'une classe est son titre (une classe raciale porte le nom de sa race) ; son résumé est dans une infobulle (components/magie/Bulles.astro ;
 // sans JavaScript, l'attribut `title` du lien en tient lieu). Sur un écran étroit, les colonnes passent à la ligne.
 interface Props {
   groups: ReturnType<typeof groupClasses>;
@@ -43,14 +43,14 @@ const compte = (group: Props['groups'][number]) => group.sections.reduce((n, s) 
                       {id ? (
                         <span class="bulle-zone">
                           <a href={entryHref(entry)} data-bulle={id} aria-describedby={id} title={resume}>
-                            {classLabel(entry)}
+                            {entry.data.title}
                           </a>
                           <span class="bulle" role="tooltip" id={id} hidden>
                             {resume}
                           </span>
                         </span>
                       ) : (
-                        <a href={entryHref(entry)}>{classLabel(entry)}</a>
+                        <a href={entryHref(entry)}>{entry.data.title}</a>
                       )}
                     </li>
                   );

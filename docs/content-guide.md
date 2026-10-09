@@ -150,7 +150,8 @@ Un tableau de **cinq colonnes côte à côte** (demande du propriétaire), une p
 (`lib/class-groups.mjs`, testé ; `components/classes/ClassesTableau.astro`, CSS `styles/classe/liste.css`). La catégorie vient du tag posé par l'import (intitulé du Sommaire du classeur) :
 « Classe Physique Corps à Corps », « Classe Physique Distance », « Classe Magique », « Classe Hybride Animal » (raciales), « Classe Hybride » et « Classe spéciale » (spéciales : Flagelleur, Archimage).
 Le Parleur, « corps à corps » dans le Sommaire, est sous « Spéciales » (décision du propriétaire, `CLASS_OVERRIDES`) ; une classe sans catégorie reconnue va dans « Non classées », sous « Spéciales ».
-Chaque colonne prend la couleur de sa catégorie (celle des pages de classe) ; le nom d'une classe est écrit **sans « (classe) »** (`classLabel` : « Kitsune (classe) » → « Kitsune ») ;
+Chaque colonne prend la couleur de sa catégorie (celle des pages de classe) ; le nom d'une classe est son titre : **« (classe) » est supprimé de partout, base comprise** (demande du propriétaire, migration `0009-classes-sans-suffixe`),
+une classe raciale porte le nom de sa race (« Kitsune », page `classes/kitsune`) ;
 le résumé de la page (`summary`) est dans une **infobulle** (`components/magie/Bulles.astro` : survol, focus clavier, premier appui au toucher puis le second suit le lien ; `title` sans JavaScript).
 Sur un écran étroit, les colonnes passent à la ligne. Le fil d'Ariane d'une classe mène à sa colonne (`/wiki/classes/#raciales`…).
 
