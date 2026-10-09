@@ -96,6 +96,9 @@ test('règle spéciale du NPM 5 : une seule pastille « i », dans le titre du t
     assert.ok(npm5.indexOf('class="info"') > 0 && npm5.indexOf('class="info"') < npm5.indexOf('class="sorts-wrap"'), `${slug} : la pastille est dans le titre du tableau 5`);
     // à gauche, après le texte du titre, avant les pastilles de niveau (demande du propriétaire)
     assert.ok(npm5.indexOf('class="npm__nom"') < npm5.indexOf('class="info"') && npm5.indexOf('class="info"') < npm5.indexOf('class="npm__pips"'), `${slug} : la pastille suit le texte du titre`);
+    // dans le même bloc que le texte : sur un téléphone étroit, le « i » passe à la ligne avec lui, jamais seul sous le badge
+    const intitule = contenu(npm5, npm5.indexOf('<span class="npm__intitule">'), 'span');
+    assert.ok(intitule.includes('class="npm__nom"') && intitule.includes('class="info"'), `${slug} : texte du titre et pastille dans le même bloc`);
     assert.ok(!html.includes('magie-regle'), `${slug} : plus d'encart de règle sous le tableau`);
   }
 });
