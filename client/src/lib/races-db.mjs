@@ -1,8 +1,8 @@
-// Races lues dans la base typée (tables race, race_onglet, race_don, race_don_tableau_*, race_magie_onglet, race_magie, race_classe, mode_hyper_effet,
+// Races lues dans la base typée (tables race, race_onglet, race_don, race_don_tableau_*, race_magie_onglet, race_magie, classe, mode_hyper_effet,
 // peuple, v_regard_peuple ; voir docs/sql/structure.md). Le gabarit des pages de race (components/race/RacePage.astro) n'interprète aucun Markdown : il
 // affiche ces lignes. Décision R13 du propriétaire : l'onglet de la race (classeur « Les races ») est la source ; la fiche V15.2.2 n'en est qu'un dérivé,
-// ses écarts ne sont pas affichés. Seules les matrices de la fiche servent encore : classes accessibles (R8) et magies innées quand l'onglet ne les limite
-// pas lui-même (R8, R11 : race_magie_onglet prime).
+// ses écarts ne sont pas affichés. Seule la matrice des magies innées de la fiche sert encore, quand l'onglet ne les limite pas lui-même (R8, R11 :
+// race_magie_onglet prime). Les classes accessibles (race_classe) ne sont pas affichées (demande du propriétaire) : seule la classe raciale l'est.
 // Node seulement (la base est ouverte par lib/donnees.mjs au build). Une requête par table, puis assemblage en mémoire.
 import { HYBRIDES_SANS_CLASSE_RACIALE } from './race-kinds.mjs';
 import { blocsDeTexte } from './sort-format.mjs';
@@ -32,13 +32,6 @@ export function chargerRaces(db) {
     'race_id',
   );
   const magiesMatrice = regrouper(all('SELECT race_id, magie_id FROM race_magie WHERE accessible = 1 ORDER BY race_id, ordre'), 'race_id');
-  const classes = regrouper(
-    all(
-      `SELECT rc.race_id, rc.accessible, c.id, c.nom, c.categorie_id FROM race_classe rc JOIN classe c ON c.id = rc.classe_id
-       ORDER BY rc.race_id, rc.ordre`,
-    ),
-    'race_id',
-  );
   // Classe raciale : la classe « Hybride Animal » qui porte le nom de la race (même règle que lib/race-kinds.mjs, ici sur les tables)
   const classesRaciales = new Map(
     all("SELECT id, nom, nom_cle FROM classe WHERE categorie_id = 'classe-hybride-animal'").map((c) => [c.nom_cle, { id: c.id, nom: c.nom }]),
@@ -108,10 +101,6 @@ export function chargerRaces(db) {
         source: magiesOnglet.has(r.id) ? 'onglet' : 'matrice',
         avec: magies.filter((m) => idsInnees.has(m.id)).map((m) => ({ id: m.id, nom: m.nom })),
         sans: magies.filter((m) => !idsInnees.has(m.id)).map((m) => ({ id: m.id, nom: m.nom })),
-      },
-      classes: {
-        avec: (classes.get(r.id) ?? []).filter((c) => c.accessible === 1).map((c) => ({ id: c.id, nom: c.nom, categorie: c.categorie_id })),
-        sans: (classes.get(r.id) ?? []).filter((c) => c.accessible === 0).map((c) => ({ id: c.id, nom: c.nom, categorie: c.categorie_id })),
       },
       classeRaciale: classesRaciales.get(slug) ?? null,
       // race hybride : elle a sa classe raciale, ou c'est une exception du propriétaire (Drassah'thac, décision R14) ; même règle que lib/race-kinds.mjs

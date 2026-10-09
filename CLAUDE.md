@@ -92,7 +92,7 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   `test/magies-html.test.mjs` contrôle le site construit (ids, `aria-*`, bulles, éléments retirés) : il se saute sans `dist/` et la CI le lance après le build.
 - Pages de race : rendues depuis la base (`lib/races-db.mjs`, `components/race/`), jamais depuis leur `.md` (recherche et `[[liens]]` seulement). L'onglet de la race est la source (décision R13) :
   tables `race_onglet`, `race_don`, `race_don_tableau_*`, `race_magie_onglet`, `mode_hyper_effet` version `onglet_race` (migration `0007-races-onglet`, tirée des pages par `tools/db/races_onglet.py`, dont `--verifier`
-  tourne dans `test/races-onglet.test.mjs`) ; ni écarts avec la fiche V15.2.2, ni sous-races ou valeurs de la fiche, ni sources. Classes et magies innées : matrices de la fiche (R8), sauf `race_magie_onglet` (R11).
+  tourne dans `test/races-onglet.test.mjs`) ; ni écarts avec la fiche V15.2.2, ni sous-races ou valeurs de la fiche, ni sources, ni liste des classes accessibles (seule la classe raciale d'une race hybride, dans le bandeau). Magies innées : matrice de la fiche (R8), sauf `race_magie_onglet` (R11).
   Relations : la case (ligne A, colonne B) de « Relation entre les races » dit comment A voit B (R12, vue `v_regard_peuple`) ; `lib/race-relations.mjs` ne regroupe jamais deux peuples dont les relations diffèrent
   (Elfe Noir Charbon / Salé). CSS dans `styles/race/`, inséré par `RacePage.astro` (`?raw`). `test/races-html.test.mjs` contrôle le site construit (CI après le build).
 - Races ↔ magies : les pages portent des listes structurées (`magies_innees`, `nom_court`, `resiste_a`, `vulnerable_a`, `incompatible_avec`)

@@ -2,7 +2,6 @@
 import raceBaseCss from '../../styles/race/base.css?raw';
 import racePageCss from '../../styles/race/page.css?raw';
 import raceRelationsCss from '../../styles/race/relations.css?raw';
-import { groupClasses } from '../../lib/class-groups.mjs';
 import { pageHref } from '../../lib/magies';
 import type { RaceDb, Races } from '../../lib/races';
 import { relationsDeRace } from '../../lib/race-relations.mjs';
@@ -14,9 +13,10 @@ import RaceRelations from './RaceRelations.astro';
 const raceCss = [raceBaseCss, racePageCss, raceRelationsCss].join('\n');
 
 // Gabarit commun des pages de race, sur le modèle des pages de magie : bandeau (nom, nature, valeurs de départ), présentation, histoire, avantages et
-// inconvénients, dons raciaux, capacité Mode Hyper, magies innées, classes accessibles, relations avec les autres peuples. Il affiche les lignes de la
+// inconvénients, dons raciaux, capacité Mode Hyper, magies innées, relations avec les autres peuples. Il affiche les lignes de la
 // base (lib/races-db.mjs) : pour changer une race, on change la base. Aucun tableau Markdown, pas d'écarts avec la fiche V15.2.2 (décision R13), pas de
-// source citée. Seuls le titre, les alias et le statut viennent de la page du wiki ; les classes sont rangées comme sur /wiki/classes/.
+// source citée. Seuls le titre, les alias et le statut viennent de la page du wiki. Pas de liste des classes accessibles (demande du propriétaire) :
+// seule la classe raciale d'une race hybride est citée, dans le bandeau.
 interface Props {
   entry: WikiEntry;
   entries: WikiEntry[];
@@ -33,9 +33,6 @@ const pageModeHyper = pageDe('guide/liste-des-effets-mode-hyper');
 const relations = relationsDeRace(races.relations, race.id);
 const aPresentation = race.descriptionGenerale.length > 0 || race.description.length > 0 || race.histoire.length > 0;
 const aDons = race.dons.length > 0 || race.tableau !== null;
-const classesAvec = groupClasses(race.classes.avec.map((c) => pageDe(c.id)).filter((e): e is WikiEntry => Boolean(e)));
-const classesSans = race.classes.sans.map((c) => ({ ...c, page: pageDe(c.id) }));
-const aClasses = race.classes.avec.length + race.classes.sans.length > 0;
 const totalMagies = race.magiesInnees.avec.length + race.magiesInnees.sans.length;
 
 const titreDon = (d: RaceDb['dons'][number]) => (d.forme === 'ethnie' ? d.etiquette! : d.nom!);
@@ -46,7 +43,6 @@ const nav = [
   { href: '#dons', label: 'Dons raciaux', show: aDons },
   { href: '#mode-hyper', label: 'Mode Hyper', show: race.hyper !== null },
   { href: '#magies-innees', label: 'Magies', show: totalMagies > 0 },
-  { href: '#classes', label: 'Classes', show: aClasses },
   { href: '#relations', label: 'Relations', show: relations.peuples.length > 0 },
 ].filter((n) => n.show);
 ---
@@ -229,38 +225,6 @@ const nav = [
           </details>
         )}
         <p class="legend"><a href={url('wiki/races-et-magies/')}>Voir le tableau de toutes les races et de leurs magies</a></p>
-      </section>
-    )
-  }
-
-  {
-    aClasses && (
-      <section class="race-section race-card" id="classes" aria-labelledby="classes-titre">
-        <h2 id="classes-titre">
-          Classes accessibles <span class="count">{race.classes.avec.length} sur {race.classes.avec.length + race.classes.sans.length}</span>
-        </h2>
-        <div class="race-classes">
-          {classesAvec.map((g) => (
-            <div class="race-classes__groupe">
-              {g.sections.map((s) => (
-                <>
-                  <h3>{g.label}{s.label && <> › {s.label}</>}</h3>
-                  <ul class="chips">
-                    {s.entries.map((c) => <li><a class="chip" href={entryHref(c)}>{c.data.title}</a></li>)}
-                  </ul>
-                </>
-              ))}
-            </div>
-          ))}
-        </div>
-        {classesSans.length > 0 && (
-          <details>
-            <summary>Classes non accessibles ({classesSans.length})</summary>
-            <ul class="chips">
-              {classesSans.map((c) => <li>{c.page ? <a class="chip" href={entryHref(c.page)}>{c.page.data.title}</a> : <span class="chip">{c.nom}</span>}</li>)}
-            </ul>
-          </details>
-        )}
       </section>
     )
   }
