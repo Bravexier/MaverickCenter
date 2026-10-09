@@ -5,7 +5,7 @@ import { entryHref, type WikiEntry } from '../lib/wiki';
 
 // Une colonne de /wiki/races/ : nom et accroche de chaque race ; avec `avecMagies` (races hybrides), sa classe raciale et ses magies innées.
 // Ni les magies innées des races pures, ni les magies qu'une race ne peut pas avoir (demande du propriétaire) : la page de la race et
-// /wiki/races-et-magies/ les donnent.
+// le tableau en bas de /wiki/races/ (components/magie/TableauMagiesInnees.astro) les donnent.
 interface Props {
   races: WikiEntry[];
   entries: WikiEntry[];

@@ -10,6 +10,8 @@ export type SortDb = Magies['sorts'] extends Map<string, infer S> ? S : never;
 
 let cache: Magies | undefined;
 export const loadMagies = () => (cache ??= chargerMagies(ouvrirBase()));
+/** Ids des pages de magie dans l'ordre du classeur (magie.ordre : 1 = Potentiel Illimité), pour les tableaux des races et des relations. */
+export const ordreDesMagies = () => [...loadMagies().magies.values()].sort((a, b) => a.ordre - b.ordre).map((m) => m.id);
 
 /** Lien vers une page du wiki d'après son id (« bestiaire/golem-de-boue »). */
 export const pageHref = (pageId: string) => url(`wiki/${pageId}/`);

@@ -1,0 +1,79 @@
+---
+import tableauxCss from '../../styles/magie/tableaux.css?raw';
+import { entriesAvecRelationsDeLaBase, relationMatrix } from '../../lib/magie-relations.mjs';
+import { loadMagies, ordreDesMagies } from '../../lib/magies';
+import { couleurDeMagie } from '../../lib/sort-format.mjs';
+import { entryHref, type WikiEntry } from '../../lib/wiki';
+
+// Tableau des relations entre magies, sous la carte de /wiki/magies/ : ligne = la magie décrite, teintée de sa couleur (lib/sort-format.mjs#couleurDeMagie),
+// colonne = l'autre magie, toutes deux dans l'ordre du classeur. Résistances, vulnérabilités et incompatibilités sont celles de la base, comme sur les pages
+// de magie (entriesAvecRelationsDeLaBase). En-têtes verticaux et largeur fixe : le tableau tient sans défilement horizontal (styles/magie/tableaux.css).
+interface Props {
+  entries: WikiEntry[];
+}
+const { entries } = Astro.props;
+const relations = relationMatrix(entriesAvecRelationsDeLaBase(entries, loadMagies()), ordreDesMagies());
+const couleur = (m: WikiEntry) => `--couleur-magie: ${couleurDeMagie(m.data.nom_court)}`;
+const MARQUES = [
+  { cle: 'fort', signe: '▲', texte: 'fort contre' },
+  { cle: 'faible', signe: '▼', texte: 'faible contre' },
+  { cle: 'incompatible', signe: '✕', texte: 'incompatible avec' },
+] as const;
+---
+
+<style is:inline set:html={tableauxCss}></style>
+{
+  relations.magies.length > 0 && (
+    <>
+      <p class="legend">
+        Ligne = la magie décrite, colonne = l’autre magie. <span class="tableau-magies__marque--fort">▲ fort contre</span> (résistance magique),{' '}
+        <span class="tableau-magies__marque--faible">▼ faible contre</span> (vulnérabilité magique),{' '}
+        <span class="tableau-magies__marque--incompatible">✕ incompatible</span> (ne se combine pas). Une case « – » veut dire que la page de la magie ne donne pas de liste.
+      </p>
+      <div class="tableau-magies">
+        <table class="tableau-magies__table tableau-magies--relations">
+          <colgroup>
+            <col class="tableau-magies__col-nom" />
+            {relations.magies.map(() => <col class="tableau-magies__col-relation" />)}
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col" class="tableau-magies__coin">Magie</th>
+              {relations.magies.map((m) => (
+                <th scope="col" class="tableau-magies__entete" style={couleur(m)}>
+                  <a href={entryHref(m)} title={m.data.title}><span class="tableau-magies__vertical">{m.data.nom_court}</span></a>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {relations.magies.map((ligne, i) => (
+              <tr class="tableau-magies__ligne" style={couleur(ligne)}>
+                <th scope="row" class="tableau-magies__nom">
+                  <a href={entryHref(ligne)}><span class="tableau-magies__point" aria-hidden="true" />{ligne.data.nom_court}</a>
+                </th>
+                {relations.cells[i].map((cell, j) => {
+                  const autre = relations.magies[j].data.nom_court;
+                  if (cell === null) return <td class="tableau-magies__vide" title={`${ligne.data.nom_court} : pas de liste`}>–</td>;
+                  const marques = MARQUES.filter((x) => cell[x.cle]);
+                  return marques.length ? (
+                    <td title={marques.map((x) => `${ligne.data.nom_court} ${x.texte} ${autre}`).join(' ; ')}>
+                      {marques.map((x) => (
+                        <>
+                          <span class={`tableau-magies__marque tableau-magies__marque--${x.cle}`} aria-hidden="true">{x.signe}</span>{' '}
+                        </>
+                      ))}
+                      <span class="tableau-magies__lecteur">{marques.map((x) => `${x.texte} ${autre}`).join(', ')}</span>
+                    </td>
+                  ) : (
+                    <td class="tableau-magies__non"><span class="tableau-magies__lecteur">aucune relation</span></td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )
+}

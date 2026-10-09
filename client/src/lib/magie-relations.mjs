@@ -95,7 +95,7 @@ export function relationsOfMagie(entries, magie) {
 
 /**
  * Pages de magie dont `resiste_a`, `vulnerable_a` et `incompatible_avec` sont celles de la base (lib/magies-db.mjs : tables magie_resistance et
- * v_magie_incompatible) : les pages de magie et la matrice de /wiki/races-et-magies/ n'ont ainsi qu'une source. Les autres pages sont rendues telles quelles.
+ * v_magie_incompatible) : les pages de magie et le tableau des relations de /wiki/magies/ n'ont ainsi qu'une source. Les autres pages sont rendues telles quelles.
  * `magies` = le résultat de chargerMagies().
  */
 export function entriesAvecRelationsDeLaBase(entries, magies) {
@@ -115,9 +115,21 @@ export function entriesAvecRelationsDeLaBase(entries, magies) {
   });
 }
 
-/** Tableau race × magie : lignes = races avec données (par titre), colonnes = magies (par nom court), cellule vraie si la race peut l'avoir. */
-export function accessMatrix(entries) {
-  const magies = [...magieIndex(entries).values()].sort(byNom);
+/**
+ * Pages de magie dans l'ordre `ordre` (ids de page : l'ordre du classeur, magie.ordre dans la base) ; une magie absente de
+ * `ordre` vient après, par nom court. Sans `ordre`, l'ordre alphabétique des noms courts.
+ */
+function magiesDansLOrdre(entries, ordre) {
+  const rang = (m) => {
+    const i = ordre.indexOf(m.id);
+    return i < 0 ? ordre.length : i;
+  };
+  return [...magieIndex(entries).values()].sort((a, b) => rang(a) - rang(b) || byNom(a, b));
+}
+
+/** Tableau race × magie : lignes = races avec données (par titre), colonnes = magies (voir magiesDansLOrdre), cellule vraie si la race peut l'avoir. */
+export function accessMatrix(entries, ordre = []) {
+  const magies = magiesDansLOrdre(entries, ordre);
   const races = entries.filter((e) => isRace(e) && Array.isArray(e.data.magies_innees)).sort(byTitle);
   const cells = races.map((race) => {
     const own = new Set(race.data.magies_innees.map(normalize));
@@ -127,11 +139,11 @@ export function accessMatrix(entries) {
 }
 
 /**
- * Tableau magie × magie : ligne = la magie décrite, colonne = l'autre. Cellule { fort, faible, incompatible }, ou null
- * quand la page de la ligne ne donne aucune liste de résistances (rien n'est supposé).
+ * Tableau magie × magie : ligne = la magie décrite, colonne = l'autre (les deux dans l'ordre de magiesDansLOrdre). Cellule { fort, faible, incompatible },
+ * ou null quand la page de la ligne ne donne aucune liste de résistances (rien n'est supposé).
  */
-export function relationMatrix(entries) {
-  const magies = [...magieIndex(entries).values()].sort(byNom);
+export function relationMatrix(entries, ordre = []) {
+  const magies = magiesDansLOrdre(entries, ordre);
   const cells = magies.map((row) => {
     const rel = relationsOfMagie(entries, row);
     const has = (list, col) => (list ?? []).some((r) => r.entry.id === col.id);

@@ -33,8 +33,8 @@ L'import des classeurs pose, en plus des champs ci-dessus, des listes **structur
 | magie | `nom_court: "Espace/Temps"` | nom de la magie dans ces listes (comparé sans casse ni accents) |
 | magie | `resiste_a`, `vulnerable_a`, `incompatible_avec` | « Résistance magique », « Vulnérabilité magique », « Magie non compatible » du bloc « Données » (une phrase libre n'est jamais transformée en liste : la clé est omise) |
 
-Le site en tire : le bloc « Magies innées disponibles » d'une race, « Disponibilité par race » d'une magie, la page `/wiki/races-et-magies/`
-(deux tableaux) et le rangement des races. (Les résistances, vulnérabilités et incompatibilités affichées sur une page de magie viennent de la base,
+Le site en tire : le bloc « Magies innées disponibles » d'une race, « Disponibilité par race » d'une magie, le tableau des magies innées en bas de
+`/wiki/races/`, celui des relations entre magies sous la carte de `/wiki/magies/`, et le rangement des races. (Les résistances, vulnérabilités et incompatibilités affichées sur une page de magie viennent de la base,
 voir « Pages de magie » plus bas.)
 `test/races-magies-content.test.mjs` vérifie ces champs sur le contenu réel (noms existants, concordance avec le texte de la page, effectifs).
 
@@ -68,8 +68,13 @@ voir l'exception ci-dessus).
 **Liste des races** (`/wiki/races/`, `components/RaceList.astro`) : deux colonnes côte à côte, races pures à gauche et hybrides à droite, l'une sous l'autre sur un
 écran étroit. L'ordre est celui du propriétaire (`ORDRE_DES_RACES` dans `lib/race-kinds.mjs`, différent de l'ordre de l'onglet « Race » de la fiche) ; une race
 absente de cette liste vient après les autres, par titre. Seules les races hybrides montrent leur classe raciale et leurs magies innées ; ni les magies innées des
-races pures ni les magies qu'une race ne peut pas avoir n'y sont listées (demande du propriétaire) : la page de la race et `/wiki/races-et-magies/` les donnent.
-Le tableau de `/wiki/races-et-magies/` range ses lignes de la même façon.
+races pures ni les magies qu'une race ne peut pas avoir n'y sont listées (demande du propriétaire) : la page de la race et le tableau du bas de page les donnent.
+
+**Tableaux des magies** (demande du propriétaire, qui remplacent l'ancienne page `/wiki/races-et-magies/`, supprimée) : en bas de `/wiki/races/`, les magies innées
+de chaque race (`components/magie/TableauMagiesInnees.astro`, lignes rangées comme les deux listes) ; sous la carte de `/wiki/magies/`, les relations entre
+magies (`TableauRelationsMagies.astro`). Les magies y sont dans l'ordre du classeur (`magie.ordre`, `ordreDesMagies` de `lib/magies.ts`) et dans leur couleur
+(`couleurDeMagie`) : colonnes teintées et une pastille de la couleur par magie innée, lignes teintées pour les relations. En-têtes verticaux et largeur fixe
+(`styles/magie/tableaux.css`, inséré en `?raw`) : les deux tableaux tiennent sans barre de défilement horizontale, du téléphone (360 px) à la largeur du site.
 
 
 ## Pages de magie : un gabarit commun, alimenté par la base
@@ -82,8 +87,8 @@ section « Disponibilité par race » (`magies_innees` des pages de race, avec l
 
 **Pour changer une magie ou un sort, on change la base, pas le `.md` fabriqué** (une modification du `.md` n'a plus d'effet sur ces pages). Aucun importeur ne réécrit encore ces lignes depuis les classeurs :
 le changement passe par une migration `data/migrations/NNNN-<nom>.sql` appliquée par `npm run db:migrate` (voir `docs/sql/remplissage.md`). Les notes de cellule d'un sort sont dans sa colonne `remarque`
-(la table `note_cellule` n'est qu'une trace : rien ne la lit). La matrice de `/wiki/races-et-magies/` lit aussi les résistances, vulnérabilités et incompatibilités dans la base
-(`entriesAvecRelationsDeLaBase`) : les pages de magie et la matrice n'ont qu'une source.
+(la table `note_cellule` n'est qu'une trace : rien ne la lit). Le tableau des relations de `/wiki/magies/` lit aussi les résistances, vulnérabilités et incompatibilités dans la base
+(`entriesAvecRelationsDeLaBase`) : les pages de magie et le tableau n'ont qu'une source.
 
 Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, testé dans `test/magies-page.test.mjs`) :
 
@@ -126,7 +131,7 @@ typées lues par `client/src/lib/races-db.mjs`, jamais le Markdown. **Aucun tabl
   `tools/db/races_onglet.py`, qui réécrit chaque section avec le code de l'importeur et exige la page à l'identique (`--verifier` le refait ; `test/races-onglet.test.mjs` le lance).
 - **Matrice de la fiche** (décision R8) : magies innées (`race_magie`), sauf quand l'onglet limite lui-même la magie innée :
   `race_magie_onglet` prime (« en inné uniquement » : le Nain, décision R11, et les 13 races hybrides, dont la liste est celle de la matrice). Le test vérifie que la liste affichée est celle de `magies_innees`
-  (pages de magie, `/wiki/races-et-magies/`).
+  (pages de magie, tableau de `/wiki/races/`).
 - **Race pure ou hybride** : la classe raciale est la classe « Hybride Animal » qui porte le nom de la race (même règle que `lib/race-kinds.mjs`, vérifiée par le test).
 - **Retirés** : la section « Écarts avec la fiche de personnage V15.2.2 », les « Sous-races et origines » et les valeurs de la fiche (AP, AM, « Divers », restrictions), la section « Sources », et la liste des
   classes accessibles (demande du propriétaire : `race_classe` reste dans la base, mais seule la classe raciale d'une race hybride est citée, dans le bandeau).
