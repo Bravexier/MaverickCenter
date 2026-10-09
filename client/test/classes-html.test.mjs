@@ -119,9 +119,9 @@ test('fiche d’un don : « Don » dans le bandeau et lien vers le don sur la pa
   assert.ok(ids(page('barde')).includes('don-barde-nouvel-accord'));
 });
 
-test('/wiki/classes/ : un tableau, une colonne par catégorie dans sa couleur ; noms des classes = leurs titres, description en infobulle', options, () => {
+test('/wiki/classes/ : une colonne par catégorie dans sa couleur, une pastille par classe (modèle de la carte des magies) ; noms = titres, description en infobulle', options, () => {
   const html = main(readFileSync(join(dossier, 'index.html'), 'utf8'));
-  const colonnes = [...html.matchAll(/<section class="classes-colonne" id="([^"]+)" style="--couleur-classe: (#[0-9a-f]{6});[^"]*">\s*<h2 class="classes-colonne__titre">([^<]+)</g)];
+  const colonnes = [...html.matchAll(/<section class="classes-groupe" id="([^"]+)" style="--couleur-classe: (#[0-9a-f]{6})">\s*<h2 class="classes-groupe__titre">\s*<span class="classes-groupe__point" aria-hidden="true"><\/span>\s*<span class="classes-groupe__nom">([^<]+)</g)];
   assert.deepEqual(
     colonnes.map(([, id, couleur, titre]) => [id, couleur, titre.trim()]),
     [
@@ -132,17 +132,18 @@ test('/wiki/classes/ : un tableau, une colonne par catégorie dans sa couleur ; 
       ['speciales', '#e3b104', 'Spéciales'],
     ],
   );
-  // chaque classe rendue par le gabarit une fois, sous son titre (une classe raciale porte le nom de sa race)
-  const liens = [...html.matchAll(/<a href="[^"]*\/wiki\/classes\/([^/"]+)\/"[^>]*>\s*([^<]+?)\s*<\/a>/g)].map(([, slug, nom]) => [slug, nom]);
+  // chaque classe rendue par le gabarit une fois, en pastille (point de couleur + nom), sous son titre (une classe raciale porte le nom de sa race)
+  const liens = [...html.matchAll(/<a class="classe-pastille" href="[^"]*\/wiki\/classes\/([^/"]+)\/"[^>]*>\s*<span class="classe-pastille__point" aria-hidden="true"><\/span>\s*<span class="classe-pastille__nom">([^<]+)<\/span>\s*<\/a>/g)].map(([, slug, nom]) => [slug, nom.trim()]);
   for (const { slug } of pages) assert.equal(liens.filter(([s]) => s === slug).length, 1, `${slug} : une fois dans le tableau`);
   assert.ok(!liens.some(([, nom]) => /\(classe\)/i.test(nom)), 'aucun « (classe) » (migration 0009)');
   assert.deepEqual(liens.find(([s]) => s === 'kitsune'), ['kitsune', 'Kitsune']);
   assert.ok(html.slice(html.indexOf('id="speciales"')).includes('/wiki/classes/parleur/'), 'le Parleur sous « Spéciales »');
   // infobulle : lien -> bulle cachée (role="tooltip"), `title` pour le cas sans JavaScript
-  const bulles = [...html.matchAll(/<a href="[^"]*" data-bulle="([^"]+)" aria-describedby="\1" title="([^"]+)">/g)];
+  const bulles = [...html.matchAll(/<a class="classe-pastille" href="[^"]*" data-bulle="([^"]+)" aria-describedby="\1" title="([^"]+)">/g)];
   assert.ok(bulles.length >= 30, `${bulles.length} infobulles`);
   for (const [, id] of bulles) assert.match(html, new RegExp(`<span class="bulle" role="tooltip" id="${id}" hidden>`));
-  assert.ok(html.includes('class="classes-colonne__compte">11<'), 'nombre de classes de la colonne');
+  assert.ok(html.includes('class="classes-groupe__compte">11<'), 'nombre de classes de la colonne');
+  assert.ok(!/<table\b/.test(html) && !html.includes('classes-colonne'), 'plus de tableau');
 });
 
 test('fil d’Ariane d’une classe : sa catégorie, avec l’ancre de sa colonne', options, () => {
