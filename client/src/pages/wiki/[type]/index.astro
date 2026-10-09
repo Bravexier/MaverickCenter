@@ -4,13 +4,15 @@ import EntryList from '../../../components/EntryList.astro';
 import RaceList from '../../../components/RaceList.astro';
 import ClassesTableau from '../../../components/classes/ClassesTableau.astro';
 import MagiesConstellation from '../../../components/magie/MagiesConstellation.astro';
+import TableauMagiesInnees from '../../../components/magie/TableauMagiesInnees.astro';
+import TableauRelationsMagies from '../../../components/magie/TableauRelationsMagies.astro';
 import { TYPES, TYPE_KEYS } from '../../../lib/types.mjs';
 import { groupClasses } from '../../../lib/class-groups.mjs';
 import { groupRaces } from '../../../lib/race-kinds.mjs';
 import { groupByClass } from '../../../lib/capacites.mjs';
 import { loadMagies } from '../../../lib/magies';
 import { entryHref } from '../../../lib/wiki';
-import { entriesOfType, loadWiki, url } from '../../../lib/wiki';
+import { entriesOfType, loadWiki } from '../../../lib/wiki';
 
 export function getStaticPaths() {
   return TYPE_KEYS.map((type) => ({ params: { type } }));
@@ -19,6 +21,7 @@ export function getStaticPaths() {
 const { type } = Astro.params as { type: keyof typeof TYPES };
 const { entries } = await loadWiki();
 const list = entriesOfType(entries, type);
+// Les magies : la carte (MagiesConstellation), puis le tableau des relations entre magies.
 const dbMagies = type === 'magies' ? loadMagies() : null;
 const entriesById = new Map(list.map((entry) => [entry.id, entry]));
 const magiesIndex = dbMagies
@@ -30,7 +33,7 @@ const magiesIndex = dbMagies
 // Les classes sont présentées en tableau, une colonne par catégorie (voir lib/class-groups.mjs) ; les autres types en liste alphabétique.
 const classGroups = type === 'classes' ? groupClasses(list) : [];
 // Les races sont présentées en deux colonnes, pures à gauche et hybrides à droite, dans l'ordre du propriétaire (lib/race-kinds.mjs) ;
-// seules les races hybrides montrent leurs magies innées.
+// seules les races hybrides montrent leurs magies innées. Le tableau des magies innées de toutes les races est en bas de la page.
 const raceGroups = type === 'races' ? groupRaces(entries) : [];
 // Les dons de classe (pages `capacites/…`) sont rangés par classe (une fiche par don : plus de 600).
 const capaciteGroups = type === 'capacites' ? groupByClass(entries) : [];
@@ -42,7 +45,13 @@ const capaciteDetail = (e: any) => [`Niveau ${e.data.niveau}`, e.data.specialite
   {type !== 'magies' && <p class="muted">{TYPES[type].blurb}</p>}
   {
     type === 'magies' ? (
-      <MagiesConstellation magies={magiesIndex} />
+      <>
+        <MagiesConstellation magies={magiesIndex} />
+        <section id="relations" aria-labelledby="relations-titre">
+          <h2 id="relations-titre">Relations entre magies</h2>
+          <TableauRelationsMagies entries={entries} />
+        </section>
+      </>
     ) : classGroups.length > 0 ? (
       <ClassesTableau groups={classGroups} />
     ) : capaciteGroups.length > 0 ? (
@@ -65,9 +74,6 @@ const capaciteDetail = (e: any) => [`Niveau ${e.data.niveau}`, e.data.specialite
       </>
     ) : raceGroups.length > 0 ? (
       <>
-        <p>
-          <a href={url('wiki/races-et-magies/')}>Tableau des races et de leurs magies innées</a>
-        </p>
         <div class="race-columns">
           {raceGroups.map((group) => (
             <section id={group.key} class="race-column">
@@ -76,6 +82,11 @@ const capaciteDetail = (e: any) => [`Niveau ${e.data.niveau}`, e.data.specialite
             </section>
           ))}
         </div>
+        <section id="magies-innees" aria-labelledby="magies-innees-titre">
+          <h2 id="magies-innees-titre">Magies innées par race</h2>
+          <p class="legend">Une pastille de la couleur de la magie : la race peut l’avoir en magie innée.</p>
+          <TableauMagiesInnees entries={entries} />
+        </section>
       </>
     ) : list.length ? (
       <EntryList entries={list} showType={false} />

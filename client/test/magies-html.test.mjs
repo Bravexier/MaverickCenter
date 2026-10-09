@@ -153,3 +153,23 @@ test('créatures invoquées : un bouton et un lien « Bestiaire » par créature
     assert.equal([...html.matchAll(/<li class="creature__rangee" hidden>/g)].length, [...html.matchAll(/<span class="invoque__bloc">/g)].length, `${slug} : une rangée de fiches par bloc`);
   }
 });
+
+// Tableau des relations entre magies, sous la carte de /wiki/magies/ (components/magie/TableauRelationsMagies.astro) : il remplace /wiki/races-et-magies/.
+const ORDRE_DU_CLASSEUR = ['Potentiel Illimité', 'Sang', 'Arcane', 'Corruption', 'Espace/Temps', 'Vide', 'Nécromancie', 'Feu', 'Eau', 'Glace', 'Terre', 'Vent', 'Foudre', 'Lumière', 'Ombre'];
+
+test('/wiki/magies/ : le tableau des relations suit la carte, lignes et colonnes dans l’ordre du classeur, chaque ligne dans la couleur de sa magie', options, () => {
+  const debut = indexMagies.indexOf('<section id="relations"');
+  assert.ok(debut > indexMagies.indexOf('class="magies-orbite"'), 'sous la carte des magies');
+  const tableau = contenu(indexMagies, debut, 'section');
+  assert.deepEqual([...tableau.matchAll(/<span class="tableau-magies__vertical">([^<]+)<\/span>/g)].map((m) => m[1]), ORDRE_DU_CLASSEUR, 'colonnes');
+  const lignes = [...tableau.matchAll(/<tr class="tableau-magies__ligne" style="--couleur-magie: (#[0-9a-f]{6})"><th scope="row" class="tableau-magies__nom"><a [^>]*><span[^>]*><\/span>([^<]+)<\/a>/g)];
+  assert.deepEqual(lignes.map((m) => m[2]), ORDRE_DU_CLASSEUR, 'lignes');
+  assert.equal(lignes[7][1], '#ff0000', 'la ligne du Feu est rouge');
+  assert.match(tableau, /<td title="Feu faible contre Eau"><span class="tableau-magies__marque tableau-magies__marque--faible" aria-hidden="true">▼<\/span>/);
+  assert.match(tableau, /<td title="Nécromancie fort contre Sang ; Nécromancie incompatible avec Sang">/, 'deux marques dans une case');
+});
+
+test('/wiki/races-et-magies/ n’existe plus et aucune page de magie n’y renvoie', options, () => {
+  assert.ok(!existsSync(fileURLToPath(new URL('../dist/wiki/races-et-magies/', import.meta.url))));
+  for (const { slug, html } of [{ slug: 'index', html: indexMagies }, ...pages]) assert.ok(!html.includes('races-et-magies'), slug);
+});
