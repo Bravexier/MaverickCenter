@@ -113,7 +113,7 @@ Les 27 pages de `/wiki/races/<race>/` sont rendues comme les pages de magie : `c
 typées lues par `client/src/lib/races-db.mjs`, jamais le Markdown. **Aucun tableau Markdown** : ce qui était un tableau dans la page (valeurs de départ, tableau du Drakos ou du Mort-vivant,
 écarts) est une table de la base, rendue en tuiles, en cartes ou en vrai tableau HTML.
 
-- **Contenu de l'onglet** (migration `0006-races-onglet`, décision R13) : `race_onglet` (description générale, histoire, description, valeurs de départ, avantages, inconvénients, don de base),
+- **Contenu de l'onglet** (migration `0007-races-onglet`, décision R13) : `race_onglet` (description générale, histoire, description, valeurs de départ, avantages, inconvénients, don de base),
   `race_don` (un don par ethnie du tableau de l'onglet, ou le don unique de la race ; la note de cellule d'un don est dans `remarque`), `race_don_tableau_colonne` / `_ligne` / `_cellule`
   (le tableau en panneaux du Drakos et du Mort-vivant), `mode_hyper_effet` version `onglet_race` (avec le nom de la capacité, colonne `nom`). Les lignes ont été tirées des pages par
   `tools/db/races_onglet.py`, qui réécrit chaque section avec le code de l'importeur et exige la page à l'identique (`--verifier` le refait ; `test/races-onglet.test.mjs` le lance).
@@ -182,10 +182,11 @@ frappe, d'orthographe, d'accent, d'accord, de ponctuation, de casse et d'espace 
 d'une règle est refusé par l'outil et se demande au propriétaire.
 
 Depuis la conversion en base, la correction se fait **dans la base** : les sorts et les 15 magies (migration `data/migrations/0003-orthographe-magies`), puis toute la base
-(migration `0005-orthographe-base` : pages, classes, capacités, races, bestiaire, équipement, guides, lore et tables typées), chacune avec son registre `.json` ;
-`client/test/orthographe-magies.test.mjs` et `orthographe-base.test.mjs` vérifient que rien d'autre qu'une graphie n'a changé. Un nouvel import d'un classeur réintroduirait les fautes :
+(migration `0005-orthographe-base` : pages, classes, capacités, races, bestiaire, équipement, guides, lore et tables typées), puis les noms (migration `0006-orthographe-noms` :
+sens le plus probable, graphie majoritaire pour un nom propre ; le nom change partout, sa clé suit, son identifiant et l'adresse de sa page jamais), chacune avec son registre `.json` ;
+`client/test/orthographe-magies.test.mjs`, `orthographe-base.test.mjs` et `orthographe-noms.test.mjs` vérifient que rien d'autre qu'une graphie n'a changé. Un nouvel import d'un classeur réintroduirait les fautes :
 refaire la correction par une migration. Les citations « telles quelles » de la fiche (tableaux des écarts des races) gardent leurs fautes. Les points qui demandent une décision
-(mot manquant, accord douteux, nom dont la clé changerait) sont dans `docs/sql/orthographe-a-valider.md`. Les noms propres et les jeux de mots du classeur sont gardés (les noms
+(mot manquant, accord douteux) sont dans `docs/sql/orthographe-a-valider.md`. Les noms propres et les jeux de mots du classeur sont gardés (les noms
 coupés sur deux cases, « Tenir ... » / « ... ou charger ? », sont voulus : ils se répondent pour souligner le choix).
 
 ## Liens entre pages

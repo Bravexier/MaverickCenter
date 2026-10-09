@@ -21,6 +21,9 @@ const python = spawnSync('python3', ['-I', '-c', 'pass']);
 const sansPython = python.status !== 0 && 'python3 absent';
 
 const CLASSEUR = 'https://docs.google.com/spreadsheets/d/1Px7F_VtSOEkyUxrk2da1UiBJ6ji3n5i95LfNl63biE4/edit';
+// 0006 (noms à trancher) a corrigé le nom d'une invocation (« Marionette de lombre » -> « Marionnette de l'ombre ») : les sources citent l'onglet sous son nom du classeur
+const ONGLET_DU_CLASSEUR = new Map(JSON.parse(readFileSync(fileURLToPath(new URL('../../data/migrations/0006-orthographe-noms.json', import.meta.url)), 'utf8')).corrections
+  .filter((c) => c.table === 'invocation' && c.col === 'nom').map((c) => [c.apres, c.avant]));
 const MARQUEUR = '**Note de la cellule « ';
 const nbNotes = (texte) => texte.split(MARQUEUR).length - 1;
 const lire = (dossier, slug) => readFileSync(join(dossier, `${slug}.md`), 'utf8');
@@ -848,7 +851,7 @@ function problemesStructure(pages) {
     if (cles.join() !== CLES_ENTETE.filter((c) => c !== 'summary' || cles.includes('summary')).join()) problemes.push(`${f.slug} : clés d'en-tête ${cles.join(', ')}`);
     const onglet = f.introduction ? f.titre : ligneEtiquetee(f.corps, 'Invocation')?.match(/^(.*) \(onglet du classeur « Invocation »\)$/)?.[1];
     const sources = f.entete.match(/^sources: (.*)$/m)?.[1] ?? '';
-    if (!onglet || !sources.includes(CLASSEUR) || !sources.includes(`onglet « ${onglet} »`)) problemes.push(`${f.slug} : sources ${sources || '(absentes)'} ne désignent pas le classeur et l'onglet « ${onglet} »`);
+    if (!onglet || !sources.includes(CLASSEUR) || !sources.includes(`onglet « ${ONGLET_DU_CLASSEUR.get(onglet) ?? onglet} »`)) problemes.push(`${f.slug} : sources ${sources || '(absentes)'} ne désignent pas le classeur et l'onglet « ${onglet} »`);
     if (!f.introduction) {
       const tableau = sansLiens(f.corps).split(/\n\n+/).find((p) => p.startsWith('| '));
       const lignes = (tableau ?? '').split('\n');

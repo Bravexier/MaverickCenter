@@ -88,7 +88,7 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   les créatures invoquées ont une fiche minimale au clic, sous leur bloc. Pas de légende, pas de source citée (ni par sort, ni en pied de page), pas de liste des lanceurs sur ces pages.
   `test/magies-html.test.mjs` contrôle le site construit (ids, `aria-*`, bulles, éléments retirés) : il se saute sans `dist/` et la CI le lance après le build.
 - Pages de race : rendues depuis la base (`lib/races-db.mjs`, `components/race/`), jamais depuis leur `.md` (recherche et `[[liens]]` seulement). L'onglet de la race est la source (décision R13) :
-  tables `race_onglet`, `race_don`, `race_don_tableau_*`, `race_magie_onglet`, `mode_hyper_effet` version `onglet_race` (migration `0006-races-onglet`, tirée des pages par `tools/db/races_onglet.py`, dont `--verifier`
+  tables `race_onglet`, `race_don`, `race_don_tableau_*`, `race_magie_onglet`, `mode_hyper_effet` version `onglet_race` (migration `0007-races-onglet`, tirée des pages par `tools/db/races_onglet.py`, dont `--verifier`
   tourne dans `test/races-onglet.test.mjs`) ; ni écarts avec la fiche V15.2.2, ni sous-races ou valeurs de la fiche, ni sources. Classes et magies innées : matrices de la fiche (R8), sauf `race_magie_onglet` (R11).
   Relations : la case (ligne A, colonne B) de « Relation entre les races » dit comment A voit B (R12, vue `v_regard_peuple`) ; `lib/race-relations.mjs` ne regroupe jamais deux peuples dont les relations diffèrent
   (Elfe Noir Charbon / Salé). CSS dans `styles/race/`, inséré par `RacePage.astro` (`?raw`). `test/races-html.test.mjs` contrôle le site construit (CI après le build).
@@ -101,10 +101,13 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   (`lib/capacites.mjs`, `lib/classe-bonus.mjs`, `test/capacites-content.test.mjs`). Le +4 AM d'une classe raciale se lit dans le texte de la capacité
   de niveau 10 de sa 2ᵉ spécialité (« considérer comme classe magique »). Voir `docs/content-guide.md`.
 - Orthographe : corrigée **dans la base** par des migrations de données, sorts et magies (`0003-orthographe-magies`, 500 corrections) puis **toute la base** (`0005-orthographe-base` :
-  pages, classes, capacités, races, bestiaire, équipement, guides, lore et tables typées ; 2 247 corrections relues deux fois, 56 noms à clé inchangée). Chaque migration a son registre `.json`
-  et son test (`client/test/orthographe-magies.test.mjs`, `orthographe-base.test.mjs`). Une phrase corrigée l'est partout où elle est écrite (page, résumé, tables typées, extraits, notes de cellule),
+  pages, classes, capacités, races, bestiaire, équipement, guides, lore et tables typées ; 2 247 corrections relues deux fois, 56 noms à clé inchangée), puis les **noms** (`0006-orthographe-noms` :
+  décision du propriétaire, sens le plus probable et, pour un nom propre écrit de plusieurs façons, graphie majoritaire ; 741 occurrences, 147 clés recalculées). Chaque migration a son registre `.json`
+  et son test (`client/test/orthographe-magies.test.mjs`, `orthographe-base.test.mjs`, `orthographe-noms.test.mjs`). Une phrase corrigée l'est partout où elle est écrite (page, résumé, tables typées, extraits, notes de cellule),
   jamais dans les citations « telles quelles » de la fiche V15.2.2 (tableaux des écarts des races), ni dans `source`, `ecart_source`, `alias`, `page_tag`, `commentaire_orphelin` (empreinte de son texte), ni dans une adresse ou un lien.
-  Un nom fautif dont la correction changerait la clé (donc l'identifiant ou un lien) n'est pas corrigé à la main. Les points en attente du propriétaire sont dans `docs/sql/orthographe-a-valider.md`.
+  Un nom corrigé l'est partout (titres, noms typés, textes, cibles des `[[liens]]`) et sa clé `X_cle` est recalculée, mais **son identifiant ne change jamais** : depuis 0006, aucune table ne dérive plus l'id
+  du nom (sort, classe, invocation, créature et leurs attaques et capacités gardent la clé du nom d'origine ; une page renommée garde son adresse). L'écriture de la source gardée comme trace
+  (`gemmes_brut`, `nom_source`, `race_brut`) n'est pas corrigée. Les points en attente du propriétaire sont dans `docs/sql/orthographe-a-valider.md`.
   Les tests qui citent un texte de la base (notes de cellule « texte intégral ») suivent ces corrections ; leurs entrées synthétiques (qui imitent le classeur) gardent le texte d'origine.
 - Niveaux de maîtrise (NM) des sorts : `sort_bonus_maitrise` (une ligne par expression de NM écrite dans une cellule, exhaustive, typée seulement quand l'écriture est sans ambiguïté) et la colonne `sort.bonus_maitrise` (« Bonus Maîtrise »), `sort_mode` + `sort.mode_brut`
   (le mode IC / imparable / inesquivable, séparé du type), vue `v_sort_bonus_au_nm` et `lib/sort-maitrise.mjs` (lecture « à N NM », même résultat en SQL et en JavaScript). Les tableaux de magie n'ont pas de colonne Maîtrise : l'expression de NM d'une cellule

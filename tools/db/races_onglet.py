@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Contenu de l'onglet de chaque race (classeur « Les races ») : des pages de races vers les tables typées (migration 0006-races-onglet).
+"""Contenu de l'onglet de chaque race (classeur « Les races ») : des pages de races vers les tables typées (migration 0007-races-onglet).
 
-    python3 -I tools/db/races_onglet.py --ecrire      # (ré)écrit data/migrations/0006-races-onglet.sql depuis les pages de data/rows
+    python3 -I tools/db/races_onglet.py --ecrire [--schema-ancien <fichier>]   # (ré)écrit data/migrations/0007-races-onglet.sql depuis les pages de data/rows
     python3 -I tools/db/races_onglet.py --verifier    # data/rows (déjà migré) contient exactement ce que l'extraction donne : code 1 sinon
 
 Bibliothèque standard uniquement. Les onglets de race n'ont été lus que par tools/sheets/races.py, qui en a écrit les pages `races/<slug>` (corps_md,
-corrigé depuis par la migration 0005) ; aucun dump n'est dans le dépôt. Ce script relit donc ces pages, section par section, et en tire les valeurs de
+corrigé depuis par les migrations 0005 et 0006) ; aucun dump n'est dans le dépôt. Ce script relit donc ces pages, section par section, et en tire les valeurs de
 l'onglet (décision R13 du propriétaire : l'onglet est la source, la fiche V15.2.2 n'en est qu'un dérivé fait à la main, pas toujours à jour) :
 
   race_onglet               une ligne par race : description générale, histoire, description, valeurs de départ, avantages, inconvénients, don de base,
@@ -35,7 +35,7 @@ import maverick as T  # noqa: E402
 
 RACINE = os.path.abspath(os.path.join(HERE, '..', '..'))
 ROWS = os.path.join(RACINE, 'data', 'rows')
-MIGRATION = os.path.join(RACINE, 'data', 'migrations', '0006-races-onglet.sql')
+MIGRATION = os.path.join(RACINE, 'data', 'migrations', '0007-races-onglet.sql')
 
 _spec = importlib.util.spec_from_file_location('races_importeur', os.path.join(RACINE, 'tools', 'sheets', 'races.py'))
 R = importlib.util.module_from_spec(_spec)
@@ -383,10 +383,13 @@ def lire_race(race_id, onglet, corps):
 # --------------------------------------------------------------------------------------------------------------------
 # Base -> extraction complète
 # --------------------------------------------------------------------------------------------------------------------
-def base(rows=ROWS):
-    """Base reconstruite depuis data/rows ; avant la migration (lignes en version N-1), avec le schéma du dernier commit."""
+def base(rows=ROWS, schema_ancien=None):
+    """Base reconstruite depuis data/rows ; avant la migration (lignes en version N-1), avec le schéma précédent : `schema_ancien`, sinon celui
+    du dernier commit (comme tools/db/migrer.py)."""
     if T.version_rows(rows) == T.version_schema():
         return T.reconstruire(':memory:', rows)
+    if schema_ancien:
+        return T.reconstruire(':memory:', rows, schema_ancien)
     r = subprocess.run(['git', 'show', 'HEAD:data/schema.sql'], cwd=RACINE, capture_output=True, text=True, check=True)
     with tempfile.NamedTemporaryFile('w', suffix='.sql', delete=False, encoding='utf-8') as tmp:
         tmp.write(r.stdout)
@@ -502,7 +505,7 @@ def insert(table, row):
     return 'INSERT INTO %s (%s) VALUES (%s);' % (table, ', '.join(row), ', '.join(sql_val(x) for x in row.values()))
 
 
-ENTETE = """-- 0006-races-onglet : contenu de l'onglet de chaque race (classeur « Les races ») dans des tables typées, pour que les pages de race soient rendues
+ENTETE = """-- 0007-races-onglet : contenu de l'onglet de chaque race (classeur « Les races ») dans des tables typées, pour que les pages de race soient rendues
 -- depuis la base comme les pages de magie (décisions R12 et R13 du propriétaire, docs/decisions-regles.md). Migration de structure ET de données.
 --   * race_onglet : une ligne par race (présentation, histoire, description, valeurs de départ de l'onglet, avantages, inconvénients, don de base) ;
 --   * race_don : dons raciaux (une ligne par ethnie du tableau de l'onglet, ou le don unique de la race) ; la note de cellule d'un don est dans `remarque` ;
@@ -510,7 +513,7 @@ ENTETE = """-- 0006-races-onglet : contenu de l'onglet de chaque race (classeur 
 --   * race_magie_onglet : magies innées que l'onglet limite explicitement (« en inné uniquement » : le Nain, décision R11) ;
 --   * mode_hyper_effet : colonne `nom` (nom de la capacité quand la source en donne un) et la version 'onglet_race' (27 lignes) ;
 --   * v_regard_peuple : la matrice des relations lue dans le sens tranché (R12 : la case (ligne A, colonne B) dit comment A voit B).
--- Les lignes sont tirées des pages races/<slug> (écrites par tools/sheets/races.py depuis les onglets, puis corrigées par 0005) par tools/db/races_onglet.py,
+-- Les lignes sont tirées des pages races/<slug> (écrites par tools/sheets/races.py depuis les onglets, puis corrigées par 0005 et 0006) par tools/db/races_onglet.py,
 -- qui réécrit chaque section lue avec le code de l'importeur et exige la page à l'identique : rien n'est interprété ni complété.
 """
 
@@ -642,10 +645,12 @@ def verifier(db, t):
 
 
 def main(argv):
+    ancien = argv[argv.index('--schema-ancien') + 1] if '--schema-ancien' in argv[:-1] else None
+    argv = [a for a in argv if a not in ('--schema-ancien', ancien)]
     if argv not in (['--ecrire'], ['--verifier']):
-        sys.exit('usage : races_onglet.py --ecrire | --verifier')
+        sys.exit('usage : races_onglet.py --ecrire [--schema-ancien <fichier>] | --verifier')
     try:
-        db = base()
+        db = base(schema_ancien=ancien)
         t = lignes(extraire(db))
     except Arret as e:
         print('arrêt : %s' % e)

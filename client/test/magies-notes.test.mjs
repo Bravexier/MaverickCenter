@@ -208,7 +208,7 @@ test('les notes suivent la table des sorts (même ordre qu\'elle), avant les tex
 
 test('les quatre « Verrouillage » de la Corruption portent la même note, citée quatre fois', () => {
   const identiques = entrees(page('magie-de-la-corruption')).filter((e) => e.texte.startsWith('Si la cible est dans la posture indiquée'));
-  assert.deepEqual(identiques.map((e) => e.sort), ['Verrouillage Simple', 'Verrouille Visible', 'Verrouillage Magique', 'Verrouillage Physique']);
+  assert.deepEqual(identiques.map((e) => e.sort), ['Verrouillage Simple', 'Verrouillage Visible', 'Verrouillage Magique', 'Verrouillage Physique']);
   assert.equal(new Set(identiques.map((e) => e.texte)).size, 1);
 });
 

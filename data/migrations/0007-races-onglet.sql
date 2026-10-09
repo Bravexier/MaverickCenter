@@ -1,4 +1,4 @@
--- 0006-races-onglet : contenu de l'onglet de chaque race (classeur « Les races ») dans des tables typées, pour que les pages de race soient rendues
+-- 0007-races-onglet : contenu de l'onglet de chaque race (classeur « Les races ») dans des tables typées, pour que les pages de race soient rendues
 -- depuis la base comme les pages de magie (décisions R12 et R13 du propriétaire, docs/decisions-regles.md). Migration de structure ET de données.
 --   * race_onglet : une ligne par race (présentation, histoire, description, valeurs de départ de l'onglet, avantages, inconvénients, don de base) ;
 --   * race_don : dons raciaux (une ligne par ethnie du tableau de l'onglet, ou le don unique de la race) ; la note de cellule d'un don est dans `remarque` ;
@@ -6,7 +6,7 @@
 --   * race_magie_onglet : magies innées que l'onglet limite explicitement (« en inné uniquement » : le Nain, décision R11) ;
 --   * mode_hyper_effet : colonne `nom` (nom de la capacité quand la source en donne un) et la version 'onglet_race' (27 lignes) ;
 --   * v_regard_peuple : la matrice des relations lue dans le sens tranché (R12 : la case (ligne A, colonne B) dit comment A voit B).
--- Les lignes sont tirées des pages races/<slug> (écrites par tools/sheets/races.py depuis les onglets, puis corrigées par 0005) par tools/db/races_onglet.py,
+-- Les lignes sont tirées des pages races/<slug> (écrites par tools/sheets/races.py depuis les onglets, puis corrigées par 0005 et 0006) par tools/db/races_onglet.py,
 -- qui réécrit chaque section lue avec le code de l'importeur et exige la page à l'identique : rien n'est interprété ni complété.
 
 ALTER TABLE mode_hyper_effet ADD COLUMN nom TEXT;
@@ -170,19 +170,19 @@ Les Drakos possèdent des ailes qui se développent et peuvent être utilisées 
 *Note : Les Drakos de la Terre sont totalement dépourvus d''ailes, mais possèdent une masse musculaire plus importante, une queue bien plus épaisse et puissante. Les Drakos du Vent possèdent deux paires d''ailes dans le dos, ce qui leur permet de pouvoir naturellement voler contrairement aux autres.
 
 Culture : Variable selon la zone de départ', 13, 10, 0, 4, 3, 'Accès à toutes les classes, accès à toutes les magies, peut planer avec ses ailes', 'La magie innée va déterminer la couleur des écailles draconiques et des particularités du don racial.', 'Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).', NULL, NULL, NULL, 'Écaille draconique', 'races', 'Les races › Drakos › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)');
-INSERT INTO race_onglet (race_id, onglet, description_generale, histoire, description, sante_depart, chakra_depart, barriere_bonus, vitesse_sol, vitesse_nage, avantages, inconvenients, don_base, dons_rubrique, dons_rubrique_nom, dons_rubrique_don, dons_tableau_titre, origine, source_ref) VALUES ('races/drassahthac', 'Drassah''thac', 'Race hybride entre humain et félin, ils viennent de la Déesse de la Chance, Drassah. Il en existe 5 types, Goutière, Lynx, Tigre, Lion et Léopard.
+INSERT INTO race_onglet (race_id, onglet, description_generale, histoire, description, sante_depart, chakra_depart, barriere_bonus, vitesse_sol, vitesse_nage, avantages, inconvenients, don_base, dons_rubrique, dons_rubrique_nom, dons_rubrique_don, dons_tableau_titre, origine, source_ref) VALUES ('races/drassahthac', 'Drassah''thac', 'Race hybride entre humain et félin, ils viennent de la Déesse de la Chance, Drassah. Il en existe 5 types, Gouttière, Lynx, Tigre, Lion et Léopard.
 
-Ce sont des combattants étranges qui sont capables d''utiliser la Chance pour influencer leurs attaques. Ce sont des joueurs qui jouent tout le temps avec le hasard. Comment reconnaître un Drassah''Thac en bonne santé ? Il parie tout le temps.
+Ce sont des combattants étranges qui sont capables d''utiliser la Chance pour influencer leurs attaques. Ce sont des joueurs qui jouent tout le temps avec le hasard. Comment reconnaître un Drassah''thac en bonne santé ? Il parie tout le temps.
 
-Ce sont les premiers hybrides animaux à être apparus et ceux en l''an -450.', 'Ce sont les premiers hybrides animaux à avoir existé, ils sont arrivés peu après les humains, elfes et nains. Les Drassah''Thac contrairement aux autres hybrides animaux qui vont suivre, ils ont accès à toutes les magies.
+Ce sont les premiers hybrides animaux à être apparus et ceux en l''an -450.', 'Ce sont les premiers hybrides animaux à avoir existé, ils sont arrivés peu après les humains, elfes et nains. Les Drassah''thac contrairement aux autres hybrides animaux qui vont suivre, ils ont accès à toutes les magies.
 
-Les Drassah''Thac ont un conflit millénaire avec les Elfes Forestiers pour des raisons qui ont été oubliées au fur et à mesure du temps, se déclarant la guerre par principe, sinon avec les autres races, les relations sont au beau fixe.', 'Les Drassah''Thac sont très proches des humains anatomiquement parlant, à la taille adulte, ils mesurent en moyenne entre 1m60 et 1m90.
+Les Drassah''thac ont un conflit millénaire avec les Elfes Forestiers pour des raisons qui ont été oubliées au fur et à mesure du temps, se déclarant la guerre par principe, sinon avec les autres races, les relations sont au beau fixe.', 'Les Drassah''thac sont très proches des humains anatomiquement parlant, à la taille adulte, ils mesurent en moyenne entre 1m60 et 1m90.
 
-Le poids moyen d''un Drassah''Thac est de 60kg, il peut varier selon la forme de félin choisie.
+Le poids moyen d''un Drassah''thac est de 60kg, il peut varier selon la forme de félin choisie.
 
 Ils possèdent les oreilles de félin, la fourrure d''un félin qui varie de couleur selon l''habitat naturel, fourrure qui est présente sur le dos, les bras, les jambes, les cheveux sont généralement plus longs.
 
-Les Drassah''Thac possèdent 5 variantes de leur race :
+Les Drassah''thac possèdent 5 variantes de leur race :
 
 - Ceux de l''est (culture Asie) possèdent des attributs de tigre. Plus massifs avec un caractère assez bouillant pour la plupart.
 
@@ -229,7 +229,7 @@ INSERT INTO race_onglet (race_id, onglet, description_generale, histoire, descri
 
 Les elfes forestiers sont de bons combattants d''agilité et aussi de bons mages.
 
-Cette race est apparue pour la première fois en l''an -50, c''est une lente évolution des elfes dorée dans le milieu forestier.', 'L''une des branches qu''ont engendrées les Elfes Dorés, il s''agit d''Elfes dorés qui ont lentement évolué dans les milieux forestiers, d''où le nom d''Elfes Forestiers. Ils ont été pendant un temps esclaves de leurs ancêtres quand l''empire doré existait, le jour où les elfes dorés ont disparu, les forestiers ont gagné leur liberté et ont conquis les forêts.
+Cette race est apparue pour la première fois en l''an -50, c''est une lente évolution des elfes dorés dans le milieu forestier.', 'L''une des branches qu''ont engendrées les Elfes Dorés, il s''agit d''Elfes dorés qui ont lentement évolué dans les milieux forestiers, d''où le nom d''Elfes Forestiers. Ils ont été pendant un temps esclaves de leurs ancêtres quand l''empire doré existait, le jour où les elfes dorés ont disparu, les forestiers ont gagné leur liberté et ont conquis les forêts.
 
 Ce sont des populations assez ouvertes avec les autres races, notamment les humains avec qui ils ont établi énormément de routes commerciales.', 'Les elfes forestiers ressemblent beaucoup aux humains d''une manière globale, mais possèdent quelques différences : une pilosité beaucoup moins marquée, des cheveux plus lisses et des oreilles pointues un peu plus longues que celles des humains.
 
@@ -394,7 +394,7 @@ INSERT INTO race_onglet (race_id, onglet, description_generale, histoire, descri
 
 Les humains ont un grand potentiel d''adaptation, ce qui leur permet de maîtriser toutes les magies et classes, ce sont également eux qui ont les plus gros changements physiques quand ils deviennent de plus en plus puissants.
 
-Cette race fait partie des 3 premières à être arrivées dans le monde avec les Nains et les Elfes Dorées.', 'Race majoritaire dans le monde de Maverick, une légende dirait que ce sont les premiers êtres humanoïdes à être apparus sur cette terre.
+Cette race fait partie des 3 premières à être arrivées dans le monde avec les Nains et les Elfes Dorés.', 'Race majoritaire dans le monde de Maverick, une légende dirait que ce sont les premiers êtres humanoïdes à être apparus sur cette terre.
 
 Les humains ont un grand potentiel d''adaptation, ce qui leur permet de maîtriser toutes les magies et classes, ce sont également eux qui ont les plus gros changements physiques quand ils deviennent de plus en plus puissants.', 'Un humain adulte mesure en moyenne entre 1m50 et 1m90. À noter que certaines magies, notamment celles du Sang et de la Terre peuvent influencer la taille moyenne des individus.
 
@@ -437,7 +437,7 @@ Culture :', 5, 12, 3, 6, 2, 'Classe possible : Jackalope.', 'Magie Terre, Foudre
 INSERT INTO race_onglet (race_id, onglet, description_generale, histoire, description, sante_depart, chakra_depart, barriere_bonus, vitesse_sol, vitesse_nage, avantages, inconvenients, don_base, dons_rubrique, dons_rubrique_nom, dons_rubrique_don, dons_tableau_titre, origine, source_ref) VALUES ('races/kitsune', 'Kitsune', 'Une race hybride entre humains et renard, le point de départ de la race est une abomination d''humain/renard. Mais un jour, les dieux finirent par éprouver de la pitié pour ces êtres. Ils leur accordèrent alors la capacité de s’adapter, leur permettant de retrouver une apparence majoritairement humaine, tout en conservant certains attributs de renard.
 
 Les Kitsunes sont réputés pour leur grande agilité au combat, ainsi que pour leur grâce naturelle. Très attachés à leur apparence, ils font souvent preuve de fierté, voire d’un certain orgueil.
-Apparu avec tous les autres animaux hybrides dans les ans -400 à -350.', 'Nous parlons d''une époque où les kistunes un culte d''humains ayant subi une malédiction d''origine encore inconnue, les transformant en une abomination d''humain/renard. Mais un jour, les dieux ont eu pitié des kitsunes et les ont permis de s''adapter et de récupérer leur apparence humaine. Le premier d''entre eux nommé "le Grand Druide" aurait vu 3 dieux dans une vision, Séraphin, Aurora et Eoline. Persuadés, que c''est un signe divin, les kitsunes vouent un culte envers ces 3 dieux qui sont considérés comme les créateurs des kitsunes tels qu''on les connaît aujourd''hui.
+Apparu avec tous les autres animaux hybrides dans les ans -400 à -350.', 'Nous parlons d''une époque où les kitsunes un culte d''humains ayant subi une malédiction d''origine encore inconnue, les transformant en une abomination d''humain/renard. Mais un jour, les dieux ont eu pitié des kitsunes et les ont permis de s''adapter et de récupérer leur apparence humaine. Le premier d''entre eux nommé "le Grand Druide" aurait vu 3 dieux dans une vision, Séraphin, Aurora et Eoline. Persuadés, que c''est un signe divin, les kitsunes vouent un culte envers ces 3 dieux qui sont considérés comme les créateurs des kitsunes tels qu''on les connaît aujourd''hui.
 
 Comme pour les autres hybrides animales, il existe 2 types de kitsunes :
 
@@ -445,7 +445,7 @@ Comme pour les autres hybrides animales, il existe 2 types de kitsunes :
 
 - Les Tribaux : Les Kitsunes tribaux quant à eux ont les poils beaucoup moins lisses et ont un tempérament plus isolationniste, pour eux, ils sont le centre du monde et les autres créatures sont d''étranges êtres incompréhensibles aussi bien de la langue que du physique, les Kitsunes urbains eux sont perçus comme des Hérétiques et ennemis des 3 dieux.
 
-Les Kitsune tribaux élisent également leur chef selon les 3 représentants sacrés des Dieux que sont l''Archidiacre de la Lumière, Émissaire du Feu et Pontife du Vent. Une fois rassemblés lors du Rituel de la Lune, les 3 représentants de par leur droit divin vont désigner le nouveau chef. Ils sont sous la doctrine du mandat céleste.', 'Les Kitsunes sont très proches des humains anatomiquement parlant, à la taille adulte, ils mesurent en moyenne 1m65. Ils possèdent les oreilles de renard, la fourrure d''un renard qui varie de couleur selon l''habitat naturel, fourrure qui est présente sur le dos, les bras, les jambes, les cheveux sont généralement plus longs. Ils ont la queue de renard très épaisse.
+Les Kitsunes tribaux élisent également leur chef selon les 3 représentants sacrés des Dieux que sont l''Archidiacre de la Lumière, Émissaire du Feu et Pontife du Vent. Une fois rassemblés lors du Rituel de la Lune, les 3 représentants de par leur droit divin vont désigner le nouveau chef. Ils sont sous la doctrine du mandat céleste.', 'Les Kitsunes sont très proches des humains anatomiquement parlant, à la taille adulte, ils mesurent en moyenne 1m65. Ils possèdent les oreilles de renard, la fourrure d''un renard qui varie de couleur selon l''habitat naturel, fourrure qui est présente sur le dos, les bras, les jambes, les cheveux sont généralement plus longs. Ils ont la queue de renard très épaisse.
 
 Mâle
 
@@ -532,7 +532,7 @@ Aujourd’hui, les Marcass sont dispersés à travers le monde. Ils se sont int�
 
 Les Marcass ont une taille moyenne de 1m80.
 
-Ils ont une force physique plus que correcte sans pour autant égaler la force physique des Orios ou des Minotaure, ils restent plus forts que des humains ou des fenrirs.
+Ils ont une force physique plus que correcte sans pour autant égaler la force physique des Orios ou des Minotaures, ils restent plus forts que des humains ou des fenrirs.
 
 Les mâles possèdent peu de cheveux mais beaucoup de barbe.
 
@@ -543,7 +543,7 @@ Cette race aquatique particulière est reliée à la magie de l''Eau, de la Foud
 
 Apparu avec tous les autres hybrides animaux dans les ans -400 à -350.', 'Au tout début, les Médusains n’étaient autres que des humains nomades voyageant dans tout Maverick pour parler de leurs histoires et partager avec d’autres peuples leur foi envers leurs trois divinités : Océane la déesse de l’eau, Volt le dieu de la foudre et Aurora la déesse de la lumière. Hélas lors de l’un de leurs voyages, ils se mirent à dos Séraphe dieu de la guerre ; la raison de cette colère est aujourd’hui encore totalement inconnue de tous, sauf des chefs spirituels de chacune des quatre sociétés médusaines : Les urbains, les Médusains de la foudre, les Médusains de la lumière et les Médusains de l’eau.
 
-Face à cette colère, les nomades furent presque totalement éradiqués des terres de Maverick. Océane, face à cette violence et aux appels à l’aide de son peuple, décida d’intervenir : elle transforma les survivants en mi-homme mi-méduse et leur donna refuge dans ses océans, notamment dans une ville sous-marine se situant dans les Eaux froide.
+Face à cette colère, les nomades furent presque totalement éradiqués des terres de Maverick. Océane, face à cette violence et aux appels à l’aide de son peuple, décida d’intervenir : elle transforma les survivants en mi-homme mi-méduse et leur donna refuge dans ses océans, notamment dans une ville sous-marine se situant dans les Eaux froides.
 
 - Les urbains : Allant de la sagesse, au soin et à l’invention, on les retrouve souvent dans l''humanitaire, toujours prêts à aider et soutenir les plus démunis. Ils agissent toujours avec bonté et attention envers les autres peuples, très protecteurs avec leur semblable.
 
@@ -606,7 +606,7 @@ INSERT INTO race_onglet (race_id, onglet, description_generale, histoire, descri
 
 Ce sont d''excellents combattants au corps-à-corps, le tout avec un capital de santé plus élevé que la moyenne en dépit d''un capital de chakra bien plus faible et d''une limitation des magies qui leur sont possibles d''avoir de manière innée.
 
-Cette race fait partie des 3 premières à être arrivées dans le monde avec les Humains et les Elfes Dorées.', 'Arrivés peu après les Humains et les Elfes Dorés, les Nains ont rapidement trouvé leur place au sein des montagnes et des cavernes. Leur petite taille, particulièrement adaptée à l’exploration d’espaces étroits, leur a permis de s’y installer efficacement. Cela ne les a toutefois jamais empêchés de voir les choses en grand, fondant d’immenses cités creusées à même la roche.
+Cette race fait partie des 3 premières à être arrivées dans le monde avec les Humains et les Elfes Dorés.', 'Arrivés peu après les Humains et les Elfes Dorés, les Nains ont rapidement trouvé leur place au sein des montagnes et des cavernes. Leur petite taille, particulièrement adaptée à l’exploration d’espaces étroits, leur a permis de s’y installer efficacement. Cela ne les a toutefois jamais empêchés de voir les choses en grand, fondant d’immenses cités creusées à même la roche.
 
 Marchands, forgerons, joailliers et mineurs par nature, quand on voit un nain, c''est le terme "d''artisan" qui vient à l''esprit.
 
@@ -650,11 +650,11 @@ Les 3 couleurs principales de yeux pour les namazus sont : Bordeaux, Mauve, Eau.
 Culture : Espagne', 12, 8, 0, 4, 8, 'Armure naturelle de 3AP, Classe possible : Namazus.', 'Magie Eau, Ombre ou Sang en innée.', 'Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).', 'Magie innée', NULL, 'Don', NULL, 'races', 'Les races › Namazus › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)');
 INSERT INTO race_onglet (race_id, onglet, description_generale, histoire, description, sante_depart, chakra_depart, barriere_bonus, vitesse_sol, vitesse_nage, avantages, inconvenients, don_base, dons_rubrique, dons_rubrique_nom, dons_rubrique_don, dons_tableau_titre, origine, source_ref) VALUES ('races/olwman', 'Olwman', 'Une race hybride entre humain et hibou, ce sont des créatures qui affectionnent les endroits perchés mais aussi les tours dans les montagnes, là où ils peuvent se consacrer au savoir et à la connaissance.
 
-C''est une race pour la plupart pacifique qui joue souvent le rôle de coursier de nuit, mais cette race avait déjà eu des soucis avec d''autres races hybrides, notamment les Namazu ainsi que les Rocks, guerre de territoire et de chasse.
+C''est une race pour la plupart pacifique qui joue souvent le rôle de coursier de nuit, mais cette race avait déjà eu des soucis avec d''autres races hybrides, notamment les Namazu ainsi que les Rokhs, guerre de territoire et de chasse.
 
 Apparu avec tous les autres hybrides animaux dans les ans -400 à -350.', 'Les Origines de cette race sont très mystérieuses, on parle d''Umbro mais aussi de Notix dans leurs origines étant donné qu''ils peuvent posséder cette magie de manière innée, mais aussi pour leur côté très raffiné et aussi leur soif de savoir.
 
-Tribus ou bien urbains, les owlmans possèdent tous une doctrine qu''ils s''efforcent de respecter à la lettre : "Respecte tes aînés peu importe leur race mais encore plus si cet aîné sait plus de choses que toi". En effet, les olwman sont naturellement attirés par la connaissance et le savoir et ont bâti leur culture autour de ça. Dans les tribus d''owlmans, le chef de la colonie est toujours un olwman très âgé qui sait beaucoup de choses, car chez les olwman, être âgé signifie être plus sage et intelligent, ce n''est pas un hasard d''ailleurs que la majorité des chefs de tribus sont des olwman qui sont innés de la magie de l''Espace/Temps, vu qu''ils peuvent vivre plus longtemps grâce à cette magie, donc ils sont portés en respect par les Olwmans. Au-delà de ça, ils ont des manières raffinées, des saveurs raffinées ils aiment bien la bonne nourriture, qui font un peu penser à comment se comporte le Dieu de l''Ombre Umbro.', 'C''est une race assez petite pour la plupart des individus, pas plus de 1m60 en moyenne, ils sont également très légers avec un petit 50kg en moyenne, leur anatomie particulière et le fait qu''ils sont capables de voler avec leurs propres ailes font que cette race se doit d''être légère en poids. Comme dit précédemment, les Olwmans sont tous capables de voler car leurs ailes sont aussi leurs bras, leurs mains font grandement penser à des serres et ils possèdent des plumes presque partout sur leur corps (cheveux, bras, dos, un peu sur les jambes). Leurs pieds sont des serres très acérées qui peuvent utilisé comme des pieds pour marcher. Comme tous les hybrides animaux, ils ont la tête humaine. Comme ce sont des demi-hiboux, ils possèdent des aigrettes à la place des sourcils.
+Tribus ou bien urbains, les olwmans possèdent tous une doctrine qu''ils s''efforcent de respecter à la lettre : "Respecte tes aînés peu importe leur race mais encore plus si cet aîné sait plus de choses que toi". En effet, les olwman sont naturellement attirés par la connaissance et le savoir et ont bâti leur culture autour de ça. Dans les tribus d''olwmans, le chef de la colonie est toujours un olwman très âgé qui sait beaucoup de choses, car chez les olwman, être âgé signifie être plus sage et intelligent, ce n''est pas un hasard d''ailleurs que la majorité des chefs de tribus sont des olwman qui sont innés de la magie de l''Espace/Temps, vu qu''ils peuvent vivre plus longtemps grâce à cette magie, donc ils sont portés en respect par les Olwmans. Au-delà de ça, ils ont des manières raffinées, des saveurs raffinées ils aiment bien la bonne nourriture, qui font un peu penser à comment se comporte le Dieu de l''Ombre Umbro.', 'C''est une race assez petite pour la plupart des individus, pas plus de 1m60 en moyenne, ils sont également très légers avec un petit 50kg en moyenne, leur anatomie particulière et le fait qu''ils sont capables de voler avec leurs propres ailes font que cette race se doit d''être légère en poids. Comme dit précédemment, les Olwmans sont tous capables de voler car leurs ailes sont aussi leurs bras, leurs mains font grandement penser à des serres et ils possèdent des plumes presque partout sur leur corps (cheveux, bras, dos, un peu sur les jambes). Leurs pieds sont des serres très acérées qui peuvent utilisé comme des pieds pour marcher. Comme tous les hybrides animaux, ils ont la tête humaine. Comme ce sont des demi-hiboux, ils possèdent des aigrettes à la place des sourcils.
 
 Le plumage des olwmans est sombre (noir, marron, etc...)
 
@@ -702,15 +702,15 @@ Il existe deux types de Rokh dans le monde :
 
 - Les Rokhs Tribaux, ce sont des Rokhs qui s''organisent en tribu un peu partout dans le monde, c''est assez simple, mais les dirigeants sont un cercle de 5 individus dominé par un Chef, on reconnaît facilement les grades grâce à des tatouages en forme de trait sur le front, le dirigeant de la tribu en possède 5 et les différents membres du cercle en possèdent 4. Dans les tribus, chaque membre possède des traits sur le front, chacun a une symbolique : 1 trait = Naissance, 2 traits = Adulte, 3 traits = Parent et Marié(e), 4 traits = Membre du Cercle, 5 traits = Guide de la colonie. Les tribus ne se mélangent pas trop avec les autres tribus ou bien les urbains, mais les rencontres entre aventuriers et locaux sont assez fréquentes et permettent des échanges de savoir.
 
-- Les Rokhs Urbains, ce sont des rocks qui vivent tout simplement hors des tribus, ils gardent des bases de leur culture rock, mais c''est juste une base. Ils sont généralement les coursiers de la journée et gèrent les transports aériens, avec des ailes c''est plus simple.
+- Les Rokhs Urbains, ce sont des Rokhs qui vivent tout simplement hors des tribus, ils gardent des bases de leur culture rokh, mais c''est juste une base. Ils sont généralement les coursiers de la journée et gèrent les transports aériens, avec des ailes c''est plus simple.
 
-Ils ont beau être différents, pourtant les deux types de Rokhs ont gardé une tradition qu''ils partagent avec les Olwmans, c''est que la ponte des œufs doit se faire toujours sur le sommet de volcan endormi de l''Île Œuf qui selon des rumeurs le point d''origine des premiers Rocks et Olwmans.
+Ils ont beau être différents, pourtant les deux types de Rokhs ont gardé une tradition qu''ils partagent avec les Olwmans, c''est que la ponte des œufs doit se faire toujours sur le sommet de volcan endormi de l''Île Œuf qui selon des rumeurs le point d''origine des premiers Rokhs et Olwmans.
 
 Eh oui ! Les Rokhs pondent des œufs pour donner naissance, la première moitié du temps, le bébé est dans le ventre de sa mère et la seconde moitié, la mère va pondre l''œuf qui contient le futur enfant. Malgré la résistance de l''œuf, la prudence est de mise, car il suffit d''une cassure pour que l''enfant meure à cause de maladie ou d''infection.', 'C''est une race assez petite pour la plupart des individus, pas plus de 1m60 en moyenne, ils sont également très légers avec un petit 60kg en moyenne, leur anatomie particulière et le fait qu''ils sont capables de voler avec leurs propres ailes font que cette race se doit d''être légère en poids.
 
 Il y a une petite différence entre les sexes au-delà des éléments communs aux humains : Les femelles sont plus grandes en taille que les mâles.
 
-Comme dit précédemment, les Rocks sont tous capables de voler car leurs ailes sont aussi leurs bras, leurs mains font grandement penser à des serres et ils possèdent des plumes presque partout sur leur corps (cheveux, bras, dos, un peu sur les jambes). Leurs pieds sont des serres très acérées qui peuvent utilisé comme des pieds pour marcher. Comme tous les hybrides animaux, ils ont la tête humaine.
+Comme dit précédemment, les Rokhs sont tous capables de voler car leurs ailes sont aussi leurs bras, leurs mains font grandement penser à des serres et ils possèdent des plumes presque partout sur leur corps (cheveux, bras, dos, un peu sur les jambes). Leurs pieds sont des serres très acérées qui peuvent utilisé comme des pieds pour marcher. Comme tous les hybrides animaux, ils ont la tête humaine.
 
 Le plumage des rokhs est clair (blanc, marron, etc...)
 
@@ -808,7 +808,7 @@ INSERT INTO race_don (id, race_id, slug, rang, forme, etiquette, nom, texte, eth
 INSERT INTO race_don (id, race_id, slug, rang, forme, etiquette, nom, texte, ethnie_id, origine, source_ref, remarque) VALUES ('races/humain#don:humain-tropical', 'races/humain', 'humain-tropical', 3, 'ethnie', 'Humain Tropical', 'Tempête sage', '- Survie, Observation et Stabilité (OU Réflexe) = 5% en acquis.
 - Les météos Pluie, Pluie diluvienne, Orage, Vent violent et les terrains liés à eux n''ont aucun effet négatif.', 'races/humain#ethnie:humain-tropical', 'races', 'Les races › Humain › Don R (Race)', NULL);
 INSERT INTO race_don (id, race_id, slug, rang, forme, etiquette, nom, texte, ethnie_id, origine, source_ref, remarque) VALUES ('races/humain#don:humain-toundra', 'races/humain', 'humain-toundra', 4, 'ethnie', 'Humain Toundra', 'Homme Blizzard', '- Survie, Vie en nature et Vigueur = 5% en acquis.
-- Les météos Neige, Tempête de neige, Brouillard, Purée de poix et les terrains liés à eux n''ont aucun effet négatif.', 'races/humain#ethnie:humain-toundra', 'races', 'Les races › Humain › Don R (Race)', NULL);
+- Les météos Neige, Tempête de neige, Brouillard, Purée de pois et les terrains liés à eux n''ont aucun effet négatif.', 'races/humain#ethnie:humain-toundra', 'races', 'Les races › Humain › Don R (Race)', NULL);
 INSERT INTO race_don (id, race_id, slug, rang, forme, etiquette, nom, texte, ethnie_id, origine, source_ref, remarque) VALUES ('races/jackalope#don:terre-en-innee', 'races/jackalope', 'terre-en-innee', 1, 'ethnie', 'Terre en innée', NULL, '- Permet de faire des grands sauts de 4m de haut (+2 au niveau 10)
 - 1 cran de résistance en plus à la magie innée et son altération d''état.', 'races/jackalope#ethnie:jackalope-terre', 'races', 'Les races › Jackalope › Don R (Race)', NULL);
 INSERT INTO race_don (id, race_id, slug, rang, forme, etiquette, nom, texte, ethnie_id, origine, source_ref, remarque) VALUES ('races/jackalope#don:foudre-en-innee', 'races/jackalope', 'foudre-en-innee', 2, 'ethnie', 'Foudre en innée', NULL, '- Permet de faire des grands sauts de 4m de haut (+2 au niveau 10)
@@ -934,7 +934,7 @@ INSERT INTO race_don_tableau_cellule (race_id, ligne, colonne, valeur, origine, 
 INSERT INTO race_don_tableau_cellule (race_id, ligne, colonne, valeur, origine, source_ref) VALUES ('races/drakos', 4, 2, '0AP/4AM', 'races', 'Les races › Drakos › Don R (Race), tableau');
 INSERT INTO race_don_tableau_cellule (race_id, ligne, colonne, valeur, origine, source_ref) VALUES ('races/drakos', 4, 3, '5% Manipulation', 'races', 'Les races › Drakos › Don R (Race), tableau');
 INSERT INTO race_don_tableau_cellule (race_id, ligne, colonne, valeur, origine, source_ref) VALUES ('races/drakos', 4, 4, 'Surcharge magique', 'races', 'Les races › Drakos › Don R (Race), tableau');
-INSERT INTO race_don_tableau_cellule (race_id, ligne, colonne, valeur, origine, source_ref) VALUES ('races/drakos', 5, 1, 'Tempe/Espace', 'races', 'Les races › Drakos › Don R (Race), tableau');
+INSERT INTO race_don_tableau_cellule (race_id, ligne, colonne, valeur, origine, source_ref) VALUES ('races/drakos', 5, 1, 'Temps/Espace', 'races', 'Les races › Drakos › Don R (Race), tableau');
 INSERT INTO race_don_tableau_cellule (race_id, ligne, colonne, valeur, origine, source_ref) VALUES ('races/drakos', 5, 2, '1AP/3AM', 'races', 'Les races › Drakos › Don R (Race), tableau');
 INSERT INTO race_don_tableau_cellule (race_id, ligne, colonne, valeur, origine, source_ref) VALUES ('races/drakos', 5, 3, '5% Connaissance', 'races', 'Les races › Drakos › Don R (Race), tableau');
 INSERT INTO race_don_tableau_cellule (race_id, ligne, colonne, valeur, origine, source_ref) VALUES ('races/drakos', 5, 4, 'Fatigue', 'races', 'Les races › Drakos › Don R (Race), tableau');

@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 6 : 142 tables, 2 tables de recherche plein texte (FTS5) et 30 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 7 : 142 tables, 2 tables de recherche plein texte (FTS5) et 30 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -404,7 +404,7 @@ SORT : une ligne par sort de la table des sorts (14 magies x 23 sorts = 322 ; Po
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
-| `id` | TEXT | oui | PK | '<magie.id>#sort:<slug du nom>' |
+| `id` | TEXT | oui | PK | '<magie.id>#sort:<clé du nom à l'import>' ; gelé : un renommage change nom et nom_cle, jamais l'id (0006) |
 | `magie_id` | TEXT | oui | → magie.id |  |
 | `nom` | TEXT | oui |  | espaces insécables remplacés par des espaces (identifiant) |
 | `nom_cle` | TEXT | oui |  | normalize(nom) comme text.mjs : 'boule-de-sang' ; recherche d'un sort par son nom |
@@ -733,7 +733,7 @@ Mode super : objets légendaires ou enchantés (Mode Super!A3:T59). Cellule « E
 
 ### `mode_hyper_effet`
 
-Effets du mode hyper. Plusieurs lectures du même sujet coexistent et ne disent pas toujours la même chose ; elles sont TOUTES conservées, une ligne par (version, cible), et la requête choisit sa version (aucune source ne dit laquelle prévaut, voir ecart_source) : version 'classeur_modes' : classeur « Mode hyper et co », onglet Mode Hyper (général, 15 magies mono / bi, 27 races) ; version 'magie_masque' : classeur V8, onglet masqué « Mode Hyper (Magie) » (14 magies seules + 73 couples + « Avantages de base ») ; version 'onglet_magie' : classeur V8, bloc « Capacité Mode Hyper » de chaque onglet de magie (15 magies : mono, bi ou forme complète) ; version 'fiche' : fiche auto V15.2.2 : Magie!V2:W16 (15 magies mono / bi), Personnage!BI32 (« Effets de base »), Race!W (races) ; version 'onglet_race' : classeur « Les races », bloc « Capacité Mode Hyper » de l'onglet de chaque race (décision du propriétaire : PRIME sur 'fiche' pour les races ; migration 0006, `nom` = nom de la capacité, `libelle` = nom de l'onglet). portee 'general' : effet commun (libelle = « Général » ou le titre de l'encadré) ; 'magie' : une magie ; 'duo' : un couple de magies (version 'magie_masque') ; 'race' : une race (variante NULL : la source n'en distingue pas). variante 'mono' / 'bi' : colonnes « Mono magie » / « Bi magie » ; 'mono_et_bi' : cellule fusionnée sur les deux ; 'forme_complete' : Potentiel Illimité (« Forme Complète ») ; le couple d'une version 'magie_masque' est une variante 'bi'. `variante_brut` : libellé de colonne écrit.
+Effets du mode hyper. Plusieurs lectures du même sujet coexistent et ne disent pas toujours la même chose ; elles sont TOUTES conservées, une ligne par (version, cible), et la requête choisit sa version (aucune source ne dit laquelle prévaut, voir ecart_source) : version 'classeur_modes' : classeur « Mode hyper et co », onglet Mode Hyper (général, 15 magies mono / bi, 27 races) ; version 'magie_masque' : classeur V8, onglet masqué « Mode Hyper (Magie) » (14 magies seules + 73 couples + « Avantages de base ») ; version 'onglet_magie' : classeur V8, bloc « Capacité Mode Hyper » de chaque onglet de magie (15 magies : mono, bi ou forme complète) ; version 'fiche' : fiche auto V15.2.2 : Magie!V2:W16 (15 magies mono / bi), Personnage!BI32 (« Effets de base »), Race!W (races) ; version 'onglet_race' : classeur « Les races », bloc « Capacité Mode Hyper » de l'onglet de chaque race (décision du propriétaire : PRIME sur 'fiche' pour les races ; migration 0007, `nom` = nom de la capacité, `libelle` = nom de l'onglet). portee 'general' : effet commun (libelle = « Général » ou le titre de l'encadré) ; 'magie' : une magie ; 'duo' : un couple de magies (version 'magie_masque') ; 'race' : une race (variante NULL : la source n'en distingue pas). variante 'mono' / 'bi' : colonnes « Mono magie » / « Bi magie » ; 'mono_et_bi' : cellule fusionnée sur les deux ; 'forme_complete' : Potentiel Illimité (« Forme Complète ») ; le couple d'une version 'magie_masque' est une variante 'bi'. `variante_brut` : libellé de colonne écrit.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1045,7 +1045,7 @@ RACE_MAGIE : matrice « Accessibilité Magie » : 27 races x 15 magies = 405 lig
 
 ### `race_onglet`
 
-▸ CONTENU DE L'ONGLET DE LA RACE : classeur « Les races », un onglet par race (migration 0006). Décision R13 du propriétaire : l'onglet est la SOURCE ; la fiche V15.2.2 (tables race, ethnie, race_restriction_carac…) en est un dérivé fait à la main, pas toujours à jour, dont les écarts ne sont plus affichés. Les pages de race du site sont rendues depuis ces tables (lib/races-db.mjs). Textes tels qu'écrits : paragraphes séparés par une ligne vide, retours à la ligne et puces « - » conservés ; un nombre n'est typé que s'il est écrit en chiffres. Lignes tirées des pages races/<slug> par tools/db/races_onglet.py (preuve : chaque section se réécrit à l'identique avec le code de tools/sheets/races.py, l'importeur qui a lu les onglets). RACE_ONGLET : une ligne par race.
+▸ CONTENU DE L'ONGLET DE LA RACE : classeur « Les races », un onglet par race (migration 0007). Décision R13 du propriétaire : l'onglet est la SOURCE ; la fiche V15.2.2 (tables race, ethnie, race_restriction_carac…) en est un dérivé fait à la main, pas toujours à jour, dont les écarts ne sont plus affichés. Les pages de race du site sont rendues depuis ces tables (lib/races-db.mjs). Textes tels qu'écrits : paragraphes séparés par une ligne vide, retours à la ligne et puces « - » conservés ; un nombre n'est typé que s'il est écrit en chiffres. Lignes tirées des pages races/<slug> par tools/db/races_onglet.py (preuve : chaque section se réécrit à l'identique avec le code de tools/sheets/races.py, l'importeur qui a lu les onglets). RACE_ONGLET : une ligne par race.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1181,7 +1181,7 @@ INVOCATION : une ligne par onglet du classeur (3) Une « invocation » est un TY
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `id` | TEXT | oui | PK, → page.id | = id de la page d'introduction de l'onglet |
-| `nom` | TEXT | oui | unique | nom de l'onglet = titre de la page : 'Appel aux golems', 'Marionette de lombre' |
+| `nom` | TEXT | oui | unique | nom de l'onglet = titre de la page : 'Appel aux golems', « Marionnette de l'ombre » (onglet « Marionette de lombre », nom corrigé par 0006) |
 | `nom_cle` | TEXT | oui | unique | normalize(nom) |
 | `ordre` | INTEGER | oui | unique | rang de l'onglet dans le classeur |
 | `bandeau` | TEXT | oui |  | bandeau de l'onglet (AJ1, AP1, Z1) : 'INVOCATION GOLEM', 'INVOCATION NON-MORT' |
@@ -1199,7 +1199,7 @@ Capacités communes d'une invocation : la liste « ▸ Toutes ces créatures ont
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
-| `id` | TEXT | oui | PK | '<invocation.id>#commune:<nom_cle>' |
+| `id` | TEXT | oui | PK | '<invocation.id>#commune:<clé du nom à l'import>' ; gelé : un renommage change nom et nom_cle, jamais l'id (0006) |
 | `invocation_id` | TEXT | oui | → invocation.id |  |
 | `rang` | INTEGER | oui |  | ordre dans la liste |
 | `nom` | TEXT | oui |  | « Inerte », « Non-Mort », « Élémentaire » : jusqu'au premier « . » |
@@ -1264,7 +1264,7 @@ CREATURE : une ligne par carte (63 = 30 golems/poupées + 28 non-morts + 5 mario
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `id` | TEXT | oui | PK, → page.id | = id de la page (entité typée qui a SA page) |
-| `nom` | TEXT | oui | unique | nom de la carte (D1 / T1) = titre de la page ; coquilles conservées |
+| `nom` | TEXT | oui | unique | nom de la carte (D1 / T1) = titre de la page ; orthographe corrigée par 0006 (l'id garde la clé d'origine) |
 | `nom_cle` | TEXT | oui | unique | normalize(nom) : 'golem-de-magma' ; jointures par nom avec les autres domaines |
 | `invocation_id` | TEXT | oui | → invocation.id |  |
 | `bloc_id` | TEXT | oui | → invocation_bloc.id | bloc de marge (combinaison de magies ou palier EP) ; FK composite plus bas |
@@ -1343,7 +1343,7 @@ ATTAQUES : ligne « Dégâts » de la carte, une ligne de texte par attaque « P
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
-| `id` | TEXT | oui | PK | '<creature.id>#attaque:<nom_cle>' ; '…~2' pour une attaque écrite deux fois à l'identique (Golem d'ombre) |
+| `id` | TEXT | oui | PK | '<creature.id>#attaque:<clé du nom à l'import>' ; gelé : un renommage change nom et nom_cle, jamais l'id (0006) ; '…~2' pour une attaque écrite deux fois à l'identique (Golem d'ombre) |
 | `creature_id` | TEXT | oui | → creature.id |  |
 | `rang` | INTEGER | oui |  | ligne dans la cellule « Dégâts » (position : n'entre pas dans l'identifiant) |
 | `nom` | TEXT | oui |  | avant le premier « - » : « Poing », « Arbalécho », « L'arme du lanceur » |
@@ -1384,7 +1384,7 @@ CAPACITÉS : cellule « Capacité(s) », un paragraphe (séparé par une ligne v
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
-| `id` | TEXT | oui | PK | '<creature.id>#capacite:<nom_cle>' ; '…#capacite:sort-supplementaire:npm3' quand le nom se répète à un autre NPM |
+| `id` | TEXT | oui | PK | '<creature.id>#capacite:<clé du nom à l'import>' ; gelé : un renommage change nom et nom_cle, jamais l'id (0006) ; '…#capacite:sort-supplementaire:npm3' quand le nom se répète à un autre NPM |
 | `creature_id` | TEXT | oui | → creature.id |  |
 | `rang` | INTEGER | oui |  | ordre des paragraphes |
 | `npm_min` | INTEGER | non |  | préfixe « (NPM 3) » : niveau de puissance magique à partir duquel la capacité s'ajoute ; NULL = capacité de base |

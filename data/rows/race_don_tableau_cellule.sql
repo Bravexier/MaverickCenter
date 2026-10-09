@@ -15,7 +15,7 @@ INSERT INTO race_don_tableau_cellule (race_id, ligne, colonne, valeur, origine, 
 INSERT INTO race_don_tableau_cellule (race_id, ligne, colonne, valeur, origine, source_ref) VALUES ('races/drakos', 4, 2, '0AP/4AM', 'races', 'Les races › Drakos › Don R (Race), tableau');
 INSERT INTO race_don_tableau_cellule (race_id, ligne, colonne, valeur, origine, source_ref) VALUES ('races/drakos', 4, 3, '5% Manipulation', 'races', 'Les races › Drakos › Don R (Race), tableau');
 INSERT INTO race_don_tableau_cellule (race_id, ligne, colonne, valeur, origine, source_ref) VALUES ('races/drakos', 4, 4, 'Surcharge magique', 'races', 'Les races › Drakos › Don R (Race), tableau');
-INSERT INTO race_don_tableau_cellule (race_id, ligne, colonne, valeur, origine, source_ref) VALUES ('races/drakos', 5, 1, 'Tempe/Espace', 'races', 'Les races › Drakos › Don R (Race), tableau');
+INSERT INTO race_don_tableau_cellule (race_id, ligne, colonne, valeur, origine, source_ref) VALUES ('races/drakos', 5, 1, 'Temps/Espace', 'races', 'Les races › Drakos › Don R (Race), tableau');
 INSERT INTO race_don_tableau_cellule (race_id, ligne, colonne, valeur, origine, source_ref) VALUES ('races/drakos', 5, 2, '1AP/3AM', 'races', 'Les races › Drakos › Don R (Race), tableau');
 INSERT INTO race_don_tableau_cellule (race_id, ligne, colonne, valeur, origine, source_ref) VALUES ('races/drakos', 5, 3, '5% Connaissance', 'races', 'Les races › Drakos › Don R (Race), tableau');
 INSERT INTO race_don_tableau_cellule (race_id, ligne, colonne, valeur, origine, source_ref) VALUES ('races/drakos', 5, 4, 'Fatigue', 'races', 'Les races › Drakos › Don R (Race), tableau');

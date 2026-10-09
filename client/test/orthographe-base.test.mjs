@@ -15,6 +15,10 @@ const registre = JSON.parse(readFileSync(join(dossier, '0005-orthographe-base.js
 const sql = readFileSync(join(dossier, '0005-orthographe-base.sql'), 'utf8');
 const corrections = registre.corrections;
 const db = ouvrirBase({ sansExemples: false });
+// 0006 (noms à trancher) a corrigé ensuite des noms dans certaines de ces cellules : on y lit le texte de 0005 en défaisant ces renommages
+const noms0006 = JSON.parse(readFileSync(join(dossier, '0006-orthographe-noms.json'), 'utf8')).corrections;
+const avant0006 = (c, texte) => noms0006.filter((n) => n.table === c.table && n.col === c.col && JSON.stringify(n.cle) === JSON.stringify(c.cle))
+  .reduceRight((t, n) => t.replaceAll(n.apres, n.avant), texte);
 
 const NATURES = ['accent', 'casse', 'espace', 'frappe', 'grammaire', 'orthographe', 'ponctuation'];
 // tables de trace ou de clés : jamais réécrites (sources citées, écarts entre sources, alias, étiquettes, commentaires orphelins identifiés par l'empreinte de leur texte)
@@ -69,11 +73,11 @@ test('registre : ni adresse ni lien [[…]] touchés ; un nom ne change que d’
   for (const p of db.prepare('SELECT id, titre, titre_cle FROM page').all()) assert.equal(normalize(p.titre), p.titre_cle, `${p.id} : titre et clé désaccordés`);
 });
 
-test('base : chaque correction est faite (le texte corrigé est dans sa cellule)', () => {
+test('base : chaque correction est faite (le texte corrigé est dans sa cellule, aux noms corrigés par 0006 près)', () => {
   for (const c of corrections) {
     const v = valeur(c);
     assert.ok(typeof v === 'string', `${c.table} ${JSON.stringify(c.cle)} : ligne absente de la base`);
-    assert.ok(v.includes(c.apres), `${c.table} ${JSON.stringify(c.cle)} ${c.col} : « ${c.apres} » absent (corrigé à partir de « ${c.avant} »)`);
+    assert.ok(v.includes(c.apres) || avant0006(c, v).includes(c.apres), `${c.table} ${JSON.stringify(c.cle)} ${c.col} : « ${c.apres} » absent (corrigé à partir de « ${c.avant} »)`);
   }
 });
 

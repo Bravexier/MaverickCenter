@@ -1,4 +1,4 @@
-// Contenu de l'onglet de chaque race dans la base (migration 0006-races-onglet ; tables race_onglet, race_don, race_don_tableau_*, race_magie_onglet,
+// Contenu de l'onglet de chaque race dans la base (migration 0007-races-onglet ; tables race_onglet, race_don, race_don_tableau_*, race_magie_onglet,
 // mode_hyper_effet 'onglet_race') et son chargement pour les pages de race (lib/races-db.mjs). Décision R13 : l'onglet est la source.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -28,7 +28,7 @@ const pages = (type) =>
 const entries = [...pages('races'), ...pages('magies'), ...pages('classes')];
 const texteDe = (blocs) => blocs.flatMap((b) => ('items' in b ? b.items : [b.texte])).join('\n');
 
-test('migration 0006 : les tables de l’onglet se relisent depuis les pages, à l’identique (tools/db/races_onglet.py --verifier)', () => {
+test('migration 0007 : les tables de l’onglet se relisent depuis les pages, à l’identique (tools/db/races_onglet.py --verifier)', () => {
   const r = spawnSync('python3', ['-I', join(racine, 'tools', 'db', 'races_onglet.py'), '--verifier'], { encoding: 'utf8', cwd: racine });
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /conformes aux pages/);

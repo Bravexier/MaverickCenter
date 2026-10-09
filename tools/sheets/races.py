@@ -14,7 +14,7 @@ par tools/sheets/xlsx_to_json.py ou sheets_api_to_json.py (format : voir ces scr
 fiable : elles ne sont jamais exécutées, seulement copiées (échappées pour le Markdown). Aucune valeur n'est calculée,
 corrigée ni complétée, à une exception près, explicite et signalée (RACE_DETAIL_OVERRIDES, voir plus bas).
 
-AFFICHAGE (migration 0006, décisions R12 et R13 de docs/decisions-regles.md) : le site ne rend plus le Markdown de ces pages. Les pages de race sont
+AFFICHAGE (migration 0007, décisions R12 et R13 de docs/decisions-regles.md) : le site ne rend plus le Markdown de ces pages. Les pages de race sont
 rendues depuis les tables de l'onglet (race_onglet, race_don, race_don_tableau_*, race_magie_onglet, mode_hyper_effet 'onglet_race'), tirées de ces
 pages par tools/db/races_onglet.py (preuve : chaque section se réécrit à l'identique avec les fonctions de ce script) ; les écarts avec la fiche
 n'y sont plus affichés (l'onglet est la source). Après une nouvelle importation, `python3 -I tools/db/races_onglet.py --verifier` signale que les

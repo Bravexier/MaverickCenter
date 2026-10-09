@@ -4,7 +4,7 @@ INSERT INTO creature_effet (creature_id, rang, libelle, nom, sort_id, texte, ori
 - Récupère 10% de santé la nuit ou dans l''ombre
 - Les attaques ignorent 3AP ou 3AM
 - Confusion 1 sur le lanceur
-- Folle de guerre sur le lanceur', 'bestiaire', 'Invocation › Marionette de lombre › S128:X128; S129:X135');
+- Folie de guerre sur le lanceur', 'bestiaire', 'Invocation › Marionette de lombre › S128:X128; S129:X135');
 INSERT INTO creature_effet (creature_id, rang, libelle, nom, sort_id, texte, origine, source_ref) VALUES ('bestiaire/double-sombre', 1, 'Effet "Manteau noir"', 'Manteau noir', 'magies/magie-de-lombre#sort:manteau-noir', '- +6 dégâts
 - Donne un bonus de 1d4 d''attaques sournoises (même si le lanceur n''a pas les attaques sournoises)', 'bestiaire', 'Invocation › Marionette de lombre › S70:X70; S71:X77');
 INSERT INTO creature_effet (creature_id, rang, libelle, nom, sort_id, texte, origine, source_ref) VALUES ('bestiaire/executeur-lunaire', 1, 'Effet "Manteau noir"', 'Manteau noir', 'magies/magie-de-lombre#sort:manteau-noir', '- +8 dégâts

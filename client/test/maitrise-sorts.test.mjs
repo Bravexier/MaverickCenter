@@ -185,5 +185,10 @@ test('migration 0004 : le registre JSON décrit exactement les lignes de la base
   assert.equal(registre.bonus.length, lignes.length);
   assert.equal(registre.modes.length, db.prepare('SELECT count(*) AS n FROM sort_mode').get().n);
   const cle = (l) => `${l.sort_id}|${l.champ}|${l.rang}|${l.nature}|${l.texte_brut}|${l.contexte}`;
-  assert.deepEqual(registre.bonus.map(cle).sort(), lignes.map(cle).sort());
+  // 0006 (noms à trancher) a corrigé ensuite un nom dans le contexte de certaines lignes (« Purée de pois ») : le registre décrit les lignes d'avant
+  const noms0006 = JSON.parse(readFileSync(join(trouverRacine(), 'data', 'migrations', '0006-orthographe-noms.json'), 'utf8')).corrections
+    .filter((c) => c.table === 'sort_bonus_maitrise' && c.col === 'contexte');
+  const projete = (l) => noms0006.filter((c) => c.cle.sort_id === l.sort_id && c.cle.champ === l.champ && c.cle.rang === l.rang)
+    .reduce((x, c) => ({ ...x, contexte: x.contexte.replaceAll(c.avant, c.apres) }), l);
+  assert.deepEqual(registre.bonus.map(projete).map(cle).sort(), lignes.map(cle).sort());
 });
