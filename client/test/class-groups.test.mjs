@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { CLASS_COLORS, classCategory, classColor, groupClasses } from '../src/lib/class-groups.mjs';
+import { CLASS_COLORS, CLASS_GROUPS, classCategory, classColor, classLabel, groupClasses } from '../src/lib/class-groups.mjs';
 
 const page = (title, ...tags) => ({ id: `classes/${title.toLowerCase()}`, data: { title, tags: ['classe', ...tags] } });
 const titles = (section) => section.entries.map((e) => e.data.title);
+const keys = (groups) => groups.map((g) => g.key);
 
 const sample = [
   page('Mage', 'magique'),
@@ -18,57 +19,58 @@ const sample = [
   page('Anansi (classe)', 'hybride animal'),
 ];
 
-test('les classes sont rangées dans l’ordre : physiques (mêlée puis distance), magiques, raciales, autres', () => {
+test('cinq catégories, dans l’ordre : physiques mêlée, physiques distance, magiques, raciales, spéciales', () => {
   const groups = groupClasses(sample);
-  assert.deepEqual(groups.map((g) => g.key), ['physiques', 'magiques', 'raciales', 'autres']);
-  assert.deepEqual(groups[0].sections.map((s) => s.key), ['melee', 'distance']);
-  assert.deepEqual(groups.map((g) => g.label), ['Physiques', 'Magiques', 'Raciales', 'Autres']);
-  assert.deepEqual(groups[0].sections.map((s) => s.label), ['Mêlée', 'Distance']);
+  assert.deepEqual(keys(groups), ['melee', 'distance', 'magiques', 'raciales', 'speciales']);
+  assert.deepEqual(groups.map((g) => g.label), ['Physiques Mêlée', 'Physiques Distance', 'Magiques', 'Raciales', 'Spéciales']);
+  assert.deepEqual(keys(CLASS_GROUPS), keys(groups));
+  for (const g of groups) assert.deepEqual(g.sections.map((s) => [s.key, s.label]), [[g.key, null]], `${g.key} : une seule liste, sans sous-titre`);
 });
 
-test('chaque section est triée par titre, en ignorant la casse et les accents', () => {
-  const [physiques, , raciales] = groupClasses(sample);
-  assert.deepEqual(titles(physiques.sections[0]), ['Bimane', 'Guerrier']);
-  assert.deepEqual(titles(physiques.sections[1]), ['Arbalétrier', 'Archer']);
+test('chaque catégorie est triée par nom, en ignorant la casse et les accents', () => {
+  const [melee, distance, , raciales] = groupClasses(sample);
+  assert.deepEqual(titles(melee.sections[0]), ['Bimane', 'Guerrier']);
+  assert.deepEqual(titles(distance.sections[0]), ['Arbalétrier', 'Archer']);
   assert.deepEqual(titles(raciales.sections[0]), ['Anansi (classe)', 'Kitsune (classe)']);
 });
 
-test('« Autres » réunit l’Archimage (spéciale), le Flagelleur (hybride) et le Parleur, sortis de « mêlée » à la demande du propriétaire', () => {
+test('« Spéciales » réunit l’Archimage (spéciale), le Flagelleur (hybride) et le Parleur, sorti de la mêlée à la demande du propriétaire', () => {
   const groups = groupClasses(sample);
-  const autres = groups.find((g) => g.key === 'autres');
-  assert.deepEqual(autres.sections.map((s) => [s.key, s.label, titles(s)]), [['autres', null, ['Archimage', 'Flagelleur', 'Parleur']]]);
+  const speciales = groups.find((g) => g.key === 'speciales');
+  assert.deepEqual(speciales.sections.map((s) => [s.key, s.label, titles(s)]), [['speciales', null, ['Archimage', 'Flagelleur', 'Parleur']]]);
   assert.deepEqual(titles(groups[0].sections[0]), ['Bimane', 'Guerrier'], 'le Parleur n’est plus dans la mêlée');
 });
 
-test('une classe sans catégorie reconnue n’est pas perdue : section « Non classées »', () => {
+test('une classe sans catégorie reconnue n’est pas perdue : section « Non classées », sous « Spéciales »', () => {
   const groups = groupClasses([...sample, page('Mystère', 'autre-chose'), { id: 'classes/sans', data: { title: 'Sans tags', tags: [] } }]);
-  const autres = groups.find((g) => g.key === 'autres');
-  const last = autres.sections.at(-1);
-  assert.equal(last.key, 'non-classees');
-  assert.deepEqual(titles(last), ['Mystère', 'Sans tags']);
+  const last = groups.at(-1);
+  assert.equal(last.key, 'speciales');
+  assert.deepEqual(last.sections.at(-1), { key: 'non-classees', label: 'Non classées', entries: last.sections.at(-1).entries });
+  assert.deepEqual(titles(last.sections.at(-1)), ['Mystère', 'Sans tags']);
   assert.equal(groups.flatMap((g) => g.sections).flatMap((s) => s.entries).length, sample.length + 2);
+  // sans classe spéciale, la catégorie n'existe que pour les non classées
+  const seules = groupClasses([page('Mage', 'magique'), page('Mystère', 'autre-chose')]);
+  assert.deepEqual(seules.map((g) => [g.key, g.sections.map((s) => s.key)]), [['magiques', ['magiques']], ['speciales', ['non-classees']]]);
 });
 
-test('les groupes et sections vides sont omis', () => {
-  const groups = groupClasses([page('Mage', 'magique'), page('Archer', 'distance')]);
-  assert.deepEqual(groups.map((g) => g.key), ['physiques', 'magiques']);
-  assert.deepEqual(groups[0].sections.map((s) => s.key), ['distance']);
+test('les catégories vides sont omises', () => {
+  assert.deepEqual(keys(groupClasses([page('Mage', 'magique'), page('Archer', 'distance')])), ['distance', 'magiques']);
   assert.deepEqual(groupClasses([]), []);
 });
 
 test('les tags sont comparés sans tenir compte de la casse ni des accents', () => {
   const groups = groupClasses([page('A', 'CÀC'), page('B', 'Distance'), page('C', 'SPECIALE'), page('D', 'Hybride Animal')]);
-  assert.deepEqual(groups.flatMap((g) => g.sections.map((s) => `${g.key}/${s.key}`)), [
-    'physiques/melee',
-    'physiques/distance',
-    'raciales/hybride-animal',
-    'autres/autres',
-  ]);
+  assert.deepEqual(keys(groups), ['melee', 'distance', 'raciales', 'speciales']);
+});
+
+test('« hybride » (Flagelleur) et « hybride animal » (classes raciales) ne se confondent pas', () => {
+  assert.equal(classCategory(page('Flagelleur', 'hybride')).key, 'speciales');
+  assert.equal(classCategory(page('Fenrir (classe)', 'hybride animal')).key, 'raciales');
 });
 
 test('une classe qui porte deux tags de catégorie n’apparaît qu’une fois, dans la première catégorie affichée', () => {
   const groups = groupClasses([page('Double', 'magique', 'càc')]);
-  assert.deepEqual(groups.map((g) => g.key), ['physiques']);
+  assert.deepEqual(keys(groups), ['melee']);
   assert.deepEqual(titles(groups[0].sections[0]), ['Double']);
 });
 
@@ -79,28 +81,42 @@ test('le tri ne modifie pas la liste d’origine', () => {
   assert.deepEqual(input, copy);
 });
 
-test('classCategory donne le groupe et la section d’une classe, ou rien pour une autre page', () => {
-  assert.deepEqual(classCategory(page('Archer', 'distance')), { group: 'Physiques', groupKey: 'physiques', section: 'Distance', sectionKey: 'distance' });
-  assert.deepEqual(classCategory(page('Mage', 'magique')), { group: 'Magiques', groupKey: 'magiques', section: null, sectionKey: 'magiques' });
-  assert.deepEqual(classCategory(page('Kitsune (classe)', 'hybride animal')), { group: 'Raciales', groupKey: 'raciales', section: null, sectionKey: 'hybride-animal' });
-  assert.deepEqual(classCategory(page('Archimage', 'spéciale')), { group: 'Autres', groupKey: 'autres', section: null, sectionKey: 'autres' });
+test('classLabel retire « (classe) » du titre (le nom de la race seul), sans toucher aux autres titres', () => {
+  assert.equal(classLabel(page('Kitsune (classe)')), 'Kitsune');
+  assert.equal(classLabel(page('Médusain (Classe)')), 'Médusain');
+  assert.equal(classLabel(page('Mage Bleu')), 'Mage Bleu');
+  assert.equal(classLabel(page('Classe d’exemple')), 'Classe d’exemple');
+});
+
+test('le tri suit le nom affiché, sans « (classe) »', () => {
+  const [raciales] = groupClasses([page('Mage (classe)', 'hybride animal'), page('Mage Bleu', 'hybride animal')]);
+  assert.deepEqual(titles(raciales.sections[0]).map((t) => classLabel({ data: { title: t } })), ['Mage', 'Mage Bleu']);
+});
+
+test('classCategory donne la catégorie d’une classe, ou rien pour une autre page', () => {
+  assert.deepEqual(classCategory(page('Guerrier', 'càc')), { key: 'melee', label: 'Physiques Mêlée' });
+  assert.deepEqual(classCategory(page('Archer', 'distance')), { key: 'distance', label: 'Physiques Distance' });
+  assert.deepEqual(classCategory(page('Mage', 'magique')), { key: 'magiques', label: 'Magiques' });
+  assert.deepEqual(classCategory(page('Kitsune (classe)', 'hybride animal')), { key: 'raciales', label: 'Raciales' });
+  assert.deepEqual(classCategory(page('Archimage', 'spéciale')), { key: 'speciales', label: 'Spéciales' });
   assert.equal(classCategory(page('Mystère', 'autre')), null);
 });
 
 test('l’exception du Parleur suit l’identifiant de la page, pas son titre ni ses tags', () => {
-  assert.equal(classCategory({ id: 'classes/parleur', data: { title: 'Autre titre', tags: ['classe', 'càc'] } }).groupKey, 'autres');
-  assert.equal(classCategory({ id: 'classes/autre-page', data: { title: 'Parleur', tags: ['classe', 'càc'] } }).groupKey, 'physiques');
+  assert.equal(classCategory({ id: 'classes/parleur', data: { title: 'Autre titre', tags: ['classe', 'càc'] } }).key, 'speciales');
+  assert.equal(classCategory({ id: 'classes/autre-page', data: { title: 'Parleur', tags: ['classe', 'càc'] } }).key, 'melee');
 });
 
-test('couleur d’une classe d’après sa rubrique : rouge (mêlée), vert (distance), bleu (magiques), violet (raciales), jaune (autres, Parleur compris)', () => {
+test('couleur d’une classe d’après sa catégorie : rouge (mêlée), vert (distance), bleu (magiques), violet (raciales), jaune (spéciales, Parleur compris)', () => {
   const couleur = (titre) => classColor(sample.find((e) => e.data.title === titre));
   assert.equal(couleur('Guerrier'), CLASS_COLORS.melee);
   assert.equal(couleur('Archer'), CLASS_COLORS.distance);
   assert.equal(couleur('Mage'), CLASS_COLORS.magiques);
-  assert.equal(couleur('Kitsune (classe)'), CLASS_COLORS['hybride-animal']);
-  assert.equal(couleur('Archimage'), CLASS_COLORS.autres);
-  assert.equal(couleur('Flagelleur'), CLASS_COLORS.autres);
-  assert.equal(couleur('Parleur'), CLASS_COLORS.autres, 'exception du propriétaire : le Parleur est rangé sous « Autres »');
-  assert.equal(classColor(page('Inconnue', 'autre-chose')), CLASS_COLORS.autres, 'une classe non classée va sous « Autres »');
+  assert.equal(couleur('Kitsune (classe)'), CLASS_COLORS.raciales);
+  assert.equal(couleur('Archimage'), CLASS_COLORS.speciales);
+  assert.equal(couleur('Flagelleur'), CLASS_COLORS.speciales);
+  assert.equal(couleur('Parleur'), CLASS_COLORS.speciales, 'exception du propriétaire : le Parleur est rangé sous « Spéciales »');
+  assert.equal(classColor(page('Inconnue', 'autre-chose')), CLASS_COLORS.speciales, 'une classe non classée va sous « Spéciales »');
+  assert.deepEqual(Object.keys(CLASS_COLORS), keys(CLASS_GROUPS), 'une couleur par catégorie');
   assert.equal(new Set(Object.values(CLASS_COLORS)).size, 5);
 });

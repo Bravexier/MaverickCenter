@@ -118,3 +118,35 @@ test('fiche d’un don : « Don » dans le bandeau et lien vers le don sur la pa
   assert.match(html, /href="[^"]*\/wiki\/classes\/barde\/#don-barde-nouvel-accord"/);
   assert.ok(ids(page('barde')).includes('don-barde-nouvel-accord'));
 });
+
+test('/wiki/classes/ : un tableau, une colonne par catégorie dans sa couleur ; noms sans « (classe) », description en infobulle', options, () => {
+  const html = main(readFileSync(join(dossier, 'index.html'), 'utf8'));
+  const colonnes = [...html.matchAll(/<section class="classes-colonne" id="([^"]+)" style="--couleur-classe: (#[0-9a-f]{6});[^"]*">\s*<h2 class="classes-colonne__titre">([^<]+)</g)];
+  assert.deepEqual(
+    colonnes.map(([, id, couleur, titre]) => [id, couleur, titre.trim()]),
+    [
+      ['melee', '#c62828', 'Physiques Mêlée'],
+      ['distance', '#2e7d32', 'Physiques Distance'],
+      ['magiques', '#1e5bb8', 'Magiques'],
+      ['raciales', '#7b3fa6', 'Raciales'],
+      ['speciales', '#e3b104', 'Spéciales'],
+    ],
+  );
+  // chaque classe rendue par le gabarit une fois, sous son nom sans « (classe) »
+  const liens = [...html.matchAll(/<a href="[^"]*\/wiki\/classes\/([^/"]+)\/"[^>]*>\s*([^<]+?)\s*<\/a>/g)].map(([, slug, nom]) => [slug, nom]);
+  for (const { slug } of pages) assert.equal(liens.filter(([s]) => s === slug).length, 1, `${slug} : une fois dans le tableau`);
+  assert.ok(!liens.some(([, nom]) => /\(classe\)/i.test(nom)), '« (classe) » retiré');
+  assert.deepEqual(liens.find(([s]) => s === 'kitsune'), ['kitsune', 'Kitsune']);
+  assert.ok(html.slice(html.indexOf('id="speciales"')).includes('/wiki/classes/parleur/'), 'le Parleur sous « Spéciales »');
+  // infobulle : lien -> bulle cachée (role="tooltip"), `title` pour le cas sans JavaScript
+  const bulles = [...html.matchAll(/<a href="[^"]*" data-bulle="([^"]+)" aria-describedby="\1" title="([^"]+)">/g)];
+  assert.ok(bulles.length >= 30, `${bulles.length} infobulles`);
+  for (const [, id] of bulles) assert.match(html, new RegExp(`<span class="bulle" role="tooltip" id="${id}" hidden>`));
+  assert.ok(html.includes('class="classes-colonne__compte">11<'), 'nombre de classes de la colonne');
+});
+
+test('fil d’Ariane d’une classe : sa catégorie, avec l’ancre de sa colonne', options, () => {
+  assert.match(page('kitsune'), /Classes<\/a> › <a href="[^"]*\/wiki\/classes\/#raciales">Raciales<\/a>/);
+  assert.match(page('parleur'), /Classes<\/a> › <a href="[^"]*\/wiki\/classes\/#speciales">Spéciales<\/a>/);
+  assert.match(page('archer'), /Classes<\/a> › <a href="[^"]*\/wiki\/classes\/#distance">Physiques Distance<\/a>/);
+});

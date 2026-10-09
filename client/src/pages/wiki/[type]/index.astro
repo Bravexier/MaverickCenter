@@ -2,6 +2,7 @@
 import Base from '../../../layouts/Base.astro';
 import EntryList from '../../../components/EntryList.astro';
 import RaceList from '../../../components/RaceList.astro';
+import ClassesTableau from '../../../components/classes/ClassesTableau.astro';
 import MagiesConstellation from '../../../components/magie/MagiesConstellation.astro';
 import { TYPES, TYPE_KEYS } from '../../../lib/types.mjs';
 import { groupClasses } from '../../../lib/class-groups.mjs';
@@ -26,7 +27,7 @@ const magiesIndex = dbMagies
       return entry ? [{ entry, magie }] : [];
     })
   : [];
-// Les classes sont présentées par catégorie (voir lib/class-groups.mjs) ; les autres types en liste alphabétique.
+// Les classes sont présentées en tableau, une colonne par catégorie (voir lib/class-groups.mjs) ; les autres types en liste alphabétique.
 const classGroups = type === 'classes' ? groupClasses(list) : [];
 // Les races sont présentées pures puis hybrides (voir lib/race-kinds.mjs), avec leurs magies innées.
 const raceGroups = type === 'races' ? groupRaces(entries) : [];
@@ -42,22 +43,7 @@ const capaciteDetail = (e: any) => [`Niveau ${e.data.niveau}`, e.data.specialite
     type === 'magies' ? (
       <MagiesConstellation magies={magiesIndex} />
     ) : classGroups.length > 0 ? (
-      <>
-        <nav class="class-nav" aria-label="Catégories de classes">
-          {classGroups.map((group) => <a class="badge" href={`#${group.key}`}>{group.label}</a>)}
-        </nav>
-        {classGroups.map((group) => (
-          <section id={group.key}>
-            <h2>{group.label}</h2>
-            {group.sections.map((section) => (
-              <section id={section.key === group.key ? undefined : section.key}>
-                {section.label && <h3>{section.label}</h3>}
-                <EntryList entries={section.entries} showType={false} />
-              </section>
-            ))}
-          </section>
-        ))}
-      </>
+      <ClassesTableau groups={classGroups} />
     ) : capaciteGroups.length > 0 ? (
       <>
         <p class="muted">
