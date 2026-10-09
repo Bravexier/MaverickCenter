@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { TYPES } from '../lib/types.mjs';
 import { loadWiki, typeOf } from '../lib/wiki';
 import { adresseDePage } from '../lib/metiers.mjs';
+import { sansMarqueurs } from '../lib/guide.mjs';
 
 /** Texte brut approximatif d'une page, pour la recherche plein texte côté navigateur. */
 function plainText(body: string) {
@@ -26,7 +27,7 @@ export const GET: APIRoute = async () => {
       summary: entry.data.summary ?? '',
       aliases: entry.data.aliases,
       tags: entry.data.tags,
-      text: plainText(entry.body ?? ''),
+      text: plainText(sansMarqueurs(entry.body ?? '')),
     };
   });
   return new Response(JSON.stringify(index), { headers: { 'Content-Type': 'application/json' } });

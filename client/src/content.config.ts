@@ -34,6 +34,8 @@ const wiki = defineCollection({
     ligne: z.number().int().optional(), // ligne de la cellule « Lvl N » dans l'onglet (ordre de haut en bas)
     type_capacite: z.string().optional(), // type tel qu'écrit (« Actif (1 fois/Combat) »)
     choix_exclusif_avec: z.array(z.string()).optional(), // ids des capacités de la même ligne : une seule au choix
+    // Guide du joueur : numéro de chapitre (1, 2, 3… : ordre de lecture, flèches et pagination ; voir lib/guide.mjs). Absent = page de référence.
+    chapitre: z.number().int().positive().optional(),
   }),
 });
 

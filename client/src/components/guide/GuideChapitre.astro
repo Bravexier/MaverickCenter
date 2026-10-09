@@ -1,0 +1,139 @@
+---
+import guideCss from '../../styles/guide/guide.css?raw';
+import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
+import { chapitresDuGuide, morceauxDuChapitre, voisins } from '../../lib/guide.mjs';
+import { rendreMarkdown } from '../../lib/guide-rendu';
+import { idBulle, pageHref } from '../../lib/magies';
+import type { WikiEntry } from '../../lib/wiki';
+import Bulles from '../magie/Bulles.astro';
+import GuideBloc from './GuideBloc.astro';
+
+// Un chapitre du guide (lib/guide.mjs) : une page à la fois, à lire dans l'ordre (demande du propriétaire). Une flèche de chaque côté du texte
+// (Précédent à gauche, Suivant à droite ; grisée au premier et au dernier chapitre), qui suit la lecture ; en bas, les mêmes liens avec le titre du
+// chapitre voisin, puis la pagination : un numéro par chapitre, son titre en infobulle (components/magie/Bulles.astro ; sans JavaScript, `title`).
+// Les flèches du clavier (← →) tournent les pages. Le texte est le Markdown de la page, coupé à ses blocs tirés de la base (GuideBloc).
+interface Props {
+  entry: WikiEntry;
+  entries: WikiEntry[];
+}
+const { entry, entries } = Astro.props;
+
+const chapitres = chapitresDuGuide(entries);
+const { chapitre, precedent, suivant } = voisins(chapitres, entry.id);
+const morceaux = await Promise.all(
+  morceauxDuChapitre(entry.body ?? '').map(async (m) => ('bloc' in m ? m : { html: await rendreMarkdown(m.markdown, entry.id, entry.data.status) })),
+);
+const css = [guideCss, magieTooltipsCss].join('\n');
+const etiquette = (c: { numero: number; titre: string }) => `Chapitre ${c.numero} : ${c.titre}`;
+---
+
+<style is:inline set:html={css}></style>
+<div class="guide" data-guide>
+  <div class="guide-cadre">
+    {
+      precedent ? (
+        <a class="guide-fleche guide-fleche--precedent" href={pageHref(precedent.id)} rel="prev" title={etiquette(precedent)} data-guide-precedent>
+          <span aria-hidden="true">‹</span>
+          <span class="guide-invisible">Précédent : {etiquette(precedent)}</span>
+        </a>
+      ) : (
+        <span class="guide-fleche guide-fleche--precedent" role="link" aria-disabled="true" title="Premier chapitre">
+          <span aria-hidden="true">‹</span>
+          <span class="guide-invisible">Précédent (premier chapitre)</span>
+        </span>
+      )
+    }
+
+    <article class="guide-page" aria-labelledby="guide-titre">
+      <p class="guide-numero">Guide du joueur · chapitre {chapitre.numero} sur {chapitres.length}</p>
+      <h1 id="guide-titre">{chapitre.titre}</h1>
+      {
+        morceaux.map((m) =>
+          'bloc' in m ? <GuideBloc bloc={m.bloc} entry={entry} entries={entries} chapitres={chapitres} /> : <div class="guide-texte" set:html={m.html} />,
+        )
+      }
+    </article>
+
+    {
+      suivant ? (
+        <a class="guide-fleche guide-fleche--suivant" href={pageHref(suivant.id)} rel="next" title={etiquette(suivant)} data-guide-suivant>
+          <span aria-hidden="true">›</span>
+          <span class="guide-invisible">Suivant : {etiquette(suivant)}</span>
+        </a>
+      ) : (
+        <span class="guide-fleche guide-fleche--suivant" role="link" aria-disabled="true" title="Dernier chapitre">
+          <span aria-hidden="true">›</span>
+          <span class="guide-invisible">Suivant (dernier chapitre)</span>
+        </span>
+      )
+    }
+  </div>
+
+  <nav class="guide-bas" aria-label="Chapitres du guide">
+    <div class="guide-voisins">
+      {
+        precedent ? (
+          <a class="guide-voisin guide-voisin--precedent" href={pageHref(precedent.id)} rel="prev">
+            <span class="guide-voisin__sens">‹ Précédent</span>
+            <span class="guide-voisin__titre">{precedent.titre}</span>
+          </a>
+        ) : (
+          <span class="guide-voisin guide-voisin--precedent" aria-disabled="true">
+            <span class="guide-voisin__sens">‹ Précédent</span>
+          </span>
+        )
+      }
+      {
+        suivant ? (
+          <a class="guide-voisin guide-voisin--suivant" href={pageHref(suivant.id)} rel="next">
+            <span class="guide-voisin__sens">Suivant ›</span>
+            <span class="guide-voisin__titre">{suivant.titre}</span>
+          </a>
+        ) : (
+          <span class="guide-voisin guide-voisin--suivant" aria-disabled="true">
+            <span class="guide-voisin__sens">Suivant ›</span>
+          </span>
+        )
+      }
+    </div>
+    <ol class="guide-pagination">
+      {
+        chapitres.map((c) => {
+          const id = idBulle('guide-chapitre');
+          return (
+            <li>
+              <span class="bulle-zone">
+                <a
+                  class="guide-pagination__numero"
+                  href={pageHref(c.id)}
+                  aria-current={c.id === chapitre.id ? 'page' : undefined}
+                  aria-label={etiquette(c)}
+                  data-bulle={id}
+                  title={etiquette(c)}
+                >
+                  {c.numero}
+                </a>
+                <span class="bulle" role="tooltip" id={id} hidden>
+                  <span class="bulle__sous">Chapitre {c.numero}</span>
+                  <span class="bulle__titre">{c.titre}</span>
+                </span>
+              </span>
+            </li>
+          );
+        })
+      }
+    </ol>
+  </nav>
+</div>
+<Bulles />
+<script is:inline>
+  // ← et → : chapitre précédent ou suivant, sauf pendant une saisie ou avec une touche de modification (défilement d'un tableau, raccourcis du navigateur).
+  document.addEventListener('keydown', function (e) {
+    var sens = { ArrowLeft: '[data-guide-precedent]', ArrowRight: '[data-guide-suivant]' }[e.key];
+    if (!sens || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    var cible = e.target;
+    if (cible && cible.closest && cible.closest('input, textarea, select, [contenteditable], .guide-defile')) return;
+    var lien = document.querySelector(sens);
+    if (lien) location.href = lien.href;
+  });
+</script>

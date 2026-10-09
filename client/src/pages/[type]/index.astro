@@ -7,6 +7,7 @@ import MagiesConstellation from '../../components/magie/MagiesConstellation.astr
 import TableauMagiesInnees from '../../components/magie/TableauMagiesInnees.astro';
 import TableauRelationsMagies from '../../components/magie/TableauRelationsMagies.astro';
 import MetiersTableau from '../../components/metier/MetiersTableau.astro';
+import GuideChapitre from '../../components/guide/GuideChapitre.astro';
 import { TYPES, TYPE_KEYS } from '../../lib/types.mjs';
 import { groupClasses } from '../../lib/class-groups.mjs';
 import { groupRaces } from '../../lib/race-kinds.mjs';
@@ -14,6 +15,7 @@ import { groupByClass } from '../../lib/capacites.mjs';
 import { loadMagies } from '../../lib/magies';
 import { ouvrirBase } from '../../lib/donnees.mjs';
 import { chargerMetiers, PAGE_DES_REGLES } from '../../lib/metiers.mjs';
+import { PREMIER_CHAPITRE } from '../../lib/guide.mjs';
 import { entryHref } from '../../lib/wiki';
 import { entriesOfType, loadWiki } from '../../lib/wiki';
 
@@ -43,14 +45,19 @@ const capaciteGroups = type === 'capacites' ? groupByClass(entries) : [];
 // Les métiers : un long tableau (lib/metiers.mjs, components/metier/MetiersTableau.astro), sans page par métier ; la page des règles est citée au-dessus.
 const metiers = type === 'metiers' ? chargerMetiers(ouvrirBase()) : [];
 const pageDesRegles = type === 'metiers' ? list.find((e) => e.id === PAGE_DES_REGLES) : undefined;
+// Le guide : son premier chapitre (« Bienvenue »), une page de livre avec flèches et pagination (lib/guide.mjs, components/guide/GuideChapitre.astro) ;
+// les autres pages du type guide sont des pages de référence citées par les chapitres.
+const premierChapitre = type === 'guide' ? entries.find((e) => e.id === PREMIER_CHAPITRE) : undefined;
 const capaciteDetail = (e: any) => [`Niveau ${e.data.niveau}`, e.data.specialite, e.data.type_capacite].filter(Boolean).join(' · ');
 ---
 
-<Base title={TYPES[type].label}>
-  <h1>{TYPES[type].label}</h1>
-  {type !== 'magies' && <p class="muted">{TYPES[type].blurb}</p>}
+<Base title={premierChapitre ? `${TYPES[type].label} : ${premierChapitre.data.title}` : TYPES[type].label} description={premierChapitre?.data.summary}>
+  {!premierChapitre && <h1>{TYPES[type].label}</h1>}
+  {type !== 'magies' && !premierChapitre && <p class="muted">{TYPES[type].blurb}</p>}
   {
-    type === 'magies' ? (
+    premierChapitre ? (
+      <GuideChapitre entry={premierChapitre} entries={entries} />
+    ) : type === 'magies' ? (
       <>
         <MagiesConstellation magies={magiesIndex} />
         <section id="relations" aria-labelledby="relations-titre">

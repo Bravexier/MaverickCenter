@@ -2,7 +2,8 @@
 // une ligne par métier de la table `metier`, à la manière des tableaux de sorts ; la description du métier (et son avantage possible) s'ouvre sous sa ligne.
 // Les pages `metiers/<slug>` restent dans la base et dans les `.md` fabriqués (recherche, mots-clés, `[[liens]]`), mais tout lien vers un métier
 // mène à sa ligne : /metiers/#metier-forgeron. « Règles des métiers », du même type mais sans ligne dans `metier`, garde sa page.
-// Sans dépendance : importé par wikilinks.mjs (au démarrage d'Astro), par wiki.ts et par les tests ; `chargerMetiers` reçoit la base ouverte par lib/donnees.mjs.
+// Sans dépendance (sauf lib/guide.mjs, pur lui aussi) : importé par wikilinks.mjs (au démarrage d'Astro), par wiki.ts et par les tests ; `chargerMetiers` reçoit la base ouverte par lib/donnees.mjs.
+import { PREMIER_CHAPITRE } from './guide.mjs';
 
 /** La seule page du type `metiers` qui n'est pas un métier (test/metiers.test.mjs vérifie que les autres sont exactement les lignes de `metier`). */
 export const PAGE_DES_REGLES = 'metiers/regles-des-metiers';
@@ -13,9 +14,13 @@ export const estUnMetier = (id) => id.startsWith('metiers/') && id !== PAGE_DES_
 /** Ancre HTML de la ligne d'un métier : « metier-forgeron » pour « metiers/forgeron ». */
 export const ancreDeMetier = (id) => `metier-${id.slice(id.indexOf('/') + 1)}`;
 
-/** Adresse d'une page du wiki, relative à la racine du site : { chemin: '<id>/', ancre: '' } ; pour un métier, la ligne du tableau. */
+/**
+ * Adresse d'une page du wiki, relative à la racine du site : { chemin: '<id>/', ancre: '' } ; pour un métier, la ligne du tableau ; pour le premier
+ * chapitre du guide, l'accueil de l'onglet Guide (lib/guide.mjs).
+ */
 export function adresseDePage(id) {
-  return estUnMetier(id) ? { chemin: 'metiers/', ancre: ancreDeMetier(id) } : { chemin: `${id}/`, ancre: '' };
+  if (estUnMetier(id)) return { chemin: 'metiers/', ancre: ancreDeMetier(id) };
+  return { chemin: id === PREMIER_CHAPITRE ? 'guide/' : `${id}/`, ancre: '' };
 }
 
 /** La même adresse en une chaîne : « races/elfe/ », « metiers/#metier-forgeron ». */
