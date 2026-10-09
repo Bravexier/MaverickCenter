@@ -1,4 +1,4 @@
-/* Chargé uniquement depuis components/classes/ClassesPastilles.astro (?raw) : les classes de /wiki/classes/.
+/* Chargé uniquement depuis components/classes/ClassesPastilles.astro (?raw) : les classes de /classes/.
    Une colonne par catégorie, dans sa couleur (--couleur-classe, lib/class-groups.mjs#CLASS_COLORS) : rouge (physiques mêlée), vert (physiques distance),
    bleu (magiques), violet (raciales), jaune (spéciales), comme les pages de classe. Chaque classe est une pastille sur le modèle de la carte des magies
    (styles/magie/orbit.css, .magies-orbite__noeud) : pilule bordée et teintée de la couleur, point de couleur, nom en gras, légère élévation au survol. */

@@ -5,5 +5,14 @@ import { url } from '../lib/wiki';
 
 <Base title="Page introuvable">
   <h1>Page introuvable</h1>
-  <p>Cette page n’existe pas (ou plus). Essayez la <a href={url('recherche/')}>recherche</a> ou l’<a href={url('wiki/')}>index du wiki</a>.</p>
+  <p id="introuvable" data-base={url()}>Cette page n’existe pas (ou plus). Essayez la <a href={url('recherche/')}>recherche</a> ou l’<a href={url('pages/')}>index du wiki</a>.</p>
 </Base>
+
+<script>
+  import { legacyWikiRedirect } from '../lib/nav.mjs';
+
+  // Anciennes adresses /wiki/… (liens enregistrés avant la suppression du préfixe) : renvoi vers la page à sa nouvelle adresse.
+  const base = document.querySelector<HTMLElement>('#introuvable')!.dataset.base!;
+  const target = legacyWikiRedirect(location.pathname, base);
+  if (target) location.replace(target + location.search + location.hash);
+</script>

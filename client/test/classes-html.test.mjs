@@ -1,4 +1,4 @@
-// Pages de classe CONSTRUITES (client/dist/wiki/classes/*/index.html), rendues par le gabarit (components/classes/ClassePage.astro) depuis les tables
+// Pages de classe CONSTRUITES (client/dist/classes/*/index.html), rendues par le gabarit (components/classes/ClassePage.astro) depuis les tables
 // de la base : aucun tableau Markdown, pas de source citée, les DONS disposés comme l'onglet avec leurs choix encadrés (« Au choix », « ou »),
 // les spécialités en onglets.
 // Ce test lit le site construit : il ne tourne qu'après `npm run build` (la CI l'exécute juste après) et se saute sinon.
@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-const dossier = fileURLToPath(new URL('../dist/wiki/classes/', import.meta.url));
+const dossier = fileURLToPath(new URL('../dist/classes/', import.meta.url));
 const present = existsSync(dossier);
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
 // pages rendues par le gabarit (la classe d'exemple, sans ligne dans la base, garde le rendu Markdown)
@@ -96,7 +96,7 @@ test('bandeau : « Don de départ » en tuiles ; classe magique (+4 AM) par cat�
   assert.match(page('barde'), /<strong>Classe magique<\/strong> \+4 AM de base/);
   assert.match(page('archimage'), /<strong>Classe magique<\/strong> \+4 AM de base/);
   assert.match(page('orios'), /<strong>Classe magique<\/strong> avec la spécialité <a href="#specialite-chaman">Chaman<\/a>/);
-  assert.match(page('orios'), /<strong>Classe raciale<\/strong> de la race <a href="[^"]*\/wiki\/races\/orios\/">Orios<\/a>/);
+  assert.match(page('orios'), /<strong>Classe raciale<\/strong> de la race <a href="[^"]*\/races\/orios\/">Orios<\/a>/);
   assert.ok(!page('guerrier').includes('Classe magique'));
   assert.match(page('orios'), /class="specialite__magique"[^>]*>\s*Classe magique · \+4 AM/);
 });
@@ -108,18 +108,18 @@ test('inventaire : infobulle de l’objet (glossaire) et « ou » entre deux opt
   assert.ok(bulle, 'objet avec infobulle');
   assert.match(html, new RegExp(`<span class="bulle" role="tooltip" id="${bulle[1]}" hidden>`));
   assert.equal(compte(html, /class="annexe-classe__carte"/g), 14);
-  assert.match(html, /<h3><a href="[^"]*\/wiki\/magies\/magie-du-sang\/">SANG<\/a><\/h3>/);
+  assert.match(html, /<h3><a href="[^"]*\/magies\/magie-du-sang\/">SANG<\/a><\/h3>/);
 });
 
 test('fiche d’un don : « Don » dans le bandeau et lien vers le don sur la page de la classe', options, () => {
-  const fiche = fileURLToPath(new URL('../dist/wiki/capacites/barde-nouvel-accord/index.html', import.meta.url));
+  const fiche = fileURLToPath(new URL('../dist/capacites/barde-nouvel-accord/index.html', import.meta.url));
   const html = readFileSync(fiche, 'utf8');
   assert.match(html, /<span class="badge">Don<\/span>/);
-  assert.match(html, /href="[^"]*\/wiki\/classes\/barde\/#don-barde-nouvel-accord"/);
+  assert.match(html, /href="[^"]*\/classes\/barde\/#don-barde-nouvel-accord"/);
   assert.ok(ids(page('barde')).includes('don-barde-nouvel-accord'));
 });
 
-test('/wiki/classes/ : une colonne par catégorie dans sa couleur, une pastille par classe (modèle de la carte des magies) ; noms = titres, description en infobulle', options, () => {
+test('/classes/ : une colonne par catégorie dans sa couleur, une pastille par classe (modèle de la carte des magies) ; noms = titres, description en infobulle', options, () => {
   const html = main(readFileSync(join(dossier, 'index.html'), 'utf8'));
   const colonnes = [...html.matchAll(/<section class="classes-groupe" id="([^"]+)" style="--couleur-classe: (#[0-9a-f]{6})">\s*<h2 class="classes-groupe__titre">\s*<span class="classes-groupe__point" aria-hidden="true"><\/span>\s*<span class="classes-groupe__nom">([^<]+)</g)];
   assert.deepEqual(
@@ -133,11 +133,11 @@ test('/wiki/classes/ : une colonne par catégorie dans sa couleur, une pastille 
     ],
   );
   // chaque classe rendue par le gabarit une fois, en pastille (point de couleur + nom), sous son titre (une classe raciale porte le nom de sa race)
-  const liens = [...html.matchAll(/<a class="classe-pastille" href="[^"]*\/wiki\/classes\/([^/"]+)\/"[^>]*>\s*<span class="classe-pastille__point" aria-hidden="true"><\/span>\s*<span class="classe-pastille__nom">([^<]+)<\/span>\s*<\/a>/g)].map(([, slug, nom]) => [slug, nom.trim()]);
+  const liens = [...html.matchAll(/<a class="classe-pastille" href="[^"]*\/classes\/([^/"]+)\/"[^>]*>\s*<span class="classe-pastille__point" aria-hidden="true"><\/span>\s*<span class="classe-pastille__nom">([^<]+)<\/span>\s*<\/a>/g)].map(([, slug, nom]) => [slug, nom.trim()]);
   for (const { slug } of pages) assert.equal(liens.filter(([s]) => s === slug).length, 1, `${slug} : une fois dans le tableau`);
   assert.ok(!liens.some(([, nom]) => /\(classe\)/i.test(nom)), 'aucun « (classe) » (migration 0009)');
   assert.deepEqual(liens.find(([s]) => s === 'kitsune'), ['kitsune', 'Kitsune']);
-  assert.ok(html.slice(html.indexOf('id="speciales"')).includes('/wiki/classes/parleur/'), 'le Parleur sous « Spéciales »');
+  assert.ok(html.slice(html.indexOf('id="speciales"')).includes('/classes/parleur/'), 'le Parleur sous « Spéciales »');
   // infobulle : lien -> bulle cachée (role="tooltip"), `title` pour le cas sans JavaScript
   const bulles = [...html.matchAll(/<a class="classe-pastille" href="[^"]*" data-bulle="([^"]+)" aria-describedby="\1" title="([^"]+)">/g)];
   assert.ok(bulles.length >= 30, `${bulles.length} infobulles`);
@@ -147,9 +147,9 @@ test('/wiki/classes/ : une colonne par catégorie dans sa couleur, une pastille 
 });
 
 test('fil d’Ariane d’une classe : sa catégorie, avec l’ancre de sa colonne', options, () => {
-  assert.match(page('kitsune'), /Classes<\/a> › <a href="[^"]*\/wiki\/classes\/#raciales">Raciales<\/a>/);
-  assert.match(page('parleur'), /Classes<\/a> › <a href="[^"]*\/wiki\/classes\/#speciales">Spéciales<\/a>/);
-  assert.match(page('archer'), /Classes<\/a> › <a href="[^"]*\/wiki\/classes\/#distance">Physiques Distance<\/a>/);
+  assert.match(page('kitsune'), /Classes<\/a> › <a href="[^"]*\/classes\/#raciales">Raciales<\/a>/);
+  assert.match(page('parleur'), /Classes<\/a> › <a href="[^"]*\/classes\/#speciales">Spéciales<\/a>/);
+  assert.match(page('archer'), /Classes<\/a> › <a href="[^"]*\/classes\/#distance">Physiques Distance<\/a>/);
 });
 
 test('« (classe) » supprimé de partout (migration 0009) : aucune page du wiki construit ne l’écrit ; la classe raciale porte le nom de sa race', options, () => {

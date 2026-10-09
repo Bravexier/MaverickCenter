@@ -147,7 +147,7 @@ const isExample = rules.meta.status === 'example';
     const item = choice(kind, id);
     if (!item?.wiki) return el('span', item?.name);
     const a = el('a', item.name);
-    a.href = `${base}/wiki/${item.wiki}/${suffix}`;
+    a.href = `${base}/${item.wiki}/${suffix}`;
     return a;
   }
 

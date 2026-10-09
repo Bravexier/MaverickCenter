@@ -20,6 +20,7 @@ import { url } from '../lib/wiki';
     title: string;
     type: string;
     path: string;
+    ancre?: string;
     summary: string;
     aliases: string[];
     tags: string[];
@@ -54,7 +55,7 @@ import { url } from '../lib/wiki';
     status.textContent = `${hits.length} résultat(s)`;
     for (const hit of hits) {
       const li = document.createElement('li');
-      const a = Object.assign(document.createElement('a'), { href: `${base}${hit.path}${suffix}`, textContent: hit.title });
+      const a = Object.assign(document.createElement('a'), { href: `${base}${hit.path}${suffix}${hit.ancre ? `#${hit.ancre}` : ''}`, textContent: hit.title });
       const badge = Object.assign(document.createElement('span'), { className: 'badge', textContent: hit.type });
       li.append(a, ' ', badge);
       if (hit.summary) {

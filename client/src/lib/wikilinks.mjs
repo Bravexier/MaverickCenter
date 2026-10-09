@@ -7,6 +7,7 @@ import { basename, join } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { normalize } from './text.mjs';
 import { TYPE_KEYS } from './types.mjs';
+import { cheminDePage } from './metiers.mjs';
 
 const WIKILINK_SOURCE = String.raw`\[\[([^\[\]|]+?)(?:\|([^\[\]]+?))?\]\]`;
 
@@ -85,8 +86,9 @@ export function extractLinks(body) {
   }));
 }
 
+/** Adresse d'une page (un métier : sa ligne du tableau de /metiers/, voir metiers.mjs). */
 export function entryUrl(base, entry) {
-  return `${base.replace(/\/$/, '')}/wiki/${entry.type}/${entry.slug}/`;
+  return `${base.replace(/\/$/, '')}/${cheminDePage(`${entry.type}/${entry.slug}`)}`;
 }
 
 /** Plugin remark : remplace `[[…]]` par des liens (ou un repère « page manquante »). */

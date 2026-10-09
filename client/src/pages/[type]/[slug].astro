@@ -1,26 +1,28 @@
 ---
 import { render } from 'astro:content';
-import Base from '../../../layouts/Base.astro';
-import EntryList from '../../../components/EntryList.astro';
-import MagiesDeRace from '../../../components/magie/MagiesDeRace.astro';
-import RacesDeMagie from '../../../components/magie/RacesDeMagie.astro';
-import MagiePage from '../../../components/magie/MagiePage.astro';
-import RacePage from '../../../components/race/RacePage.astro';
-import ClassePage from '../../../components/classes/ClassePage.astro';
-import ChoixDeCapacite from '../../../components/classes/ChoixDeCapacite.astro';
-import { TYPES } from '../../../lib/types.mjs';
-import { normalize } from '../../../lib/text.mjs';
-import { classCategory } from '../../../lib/class-groups.mjs';
-import { isMagicalClass } from '../../../lib/classe-magique.mjs';
-import { loadMagies } from '../../../lib/magies';
-import { loadRaces } from '../../../lib/races';
-import { loadClasses } from '../../../lib/classes';
-import { raceKind, raceOfClass } from '../../../lib/race-kinds.mjs';
-import { entryHref, loadWiki, slugOf, typeOf, url, type WikiEntry } from '../../../lib/wiki';
+import Base from '../../layouts/Base.astro';
+import EntryList from '../../components/EntryList.astro';
+import MagiesDeRace from '../../components/magie/MagiesDeRace.astro';
+import RacesDeMagie from '../../components/magie/RacesDeMagie.astro';
+import MagiePage from '../../components/magie/MagiePage.astro';
+import RacePage from '../../components/race/RacePage.astro';
+import ClassePage from '../../components/classes/ClassePage.astro';
+import ChoixDeCapacite from '../../components/classes/ChoixDeCapacite.astro';
+import { TYPES } from '../../lib/types.mjs';
+import { normalize } from '../../lib/text.mjs';
+import { classCategory } from '../../lib/class-groups.mjs';
+import { isMagicalClass } from '../../lib/classe-magique.mjs';
+import { loadMagies } from '../../lib/magies';
+import { loadRaces } from '../../lib/races';
+import { loadClasses } from '../../lib/classes';
+import { raceKind, raceOfClass } from '../../lib/race-kinds.mjs';
+import { estUnMetier } from '../../lib/metiers.mjs';
+import { entryHref, loadWiki, slugOf, typeOf, url, type WikiEntry } from '../../lib/wiki';
 
 export async function getStaticPaths() {
   const { entries } = await loadWiki();
-  return entries.map((entry) => ({ params: { type: typeOf(entry), slug: slugOf(entry) }, props: { entry } }));
+  // Les métiers n'ont pas de page : ce sont les lignes du tableau de /metiers/ (lib/metiers.mjs), où mènent leurs liens.
+  return entries.filter((entry) => !estUnMetier(entry.id)).map((entry) => ({ params: { type: typeOf(entry), slug: slugOf(entry) }, props: { entry } }));
 }
 
 const { entry } = Astro.props as { entry: WikiEntry };
@@ -51,7 +53,7 @@ const statusNote = entry.data.status === 'example' ? 'Contenu d’exemple : à r
 ---
 
 <Base title={entry.data.title} description={entry.data.summary}>
-  <p class="muted"><a href={url('wiki/')}>Wiki</a> › <a href={url(`wiki/${typeOf(entry)}/`)}>{type.label}</a>{
+  <p class="muted"><a href={url()}>Accueil</a> › <a href={url(`${typeOf(entry)}/`)}>{type.label}</a>{
     typeOf(entry) === 'capacites' && classOfAbility && (
       <>
         {' › '}
@@ -63,14 +65,14 @@ const statusNote = entry.data.status === 'example' ? 'Contenu d’exemple : à r
     race && (
       <>
         {' › '}
-        <a href={url(`wiki/races/#${race.hybride ? 'hybrides' : 'pures'}`)}>{race.hybride ? 'Races hybrides' : 'Races pures'}</a>
+        <a href={url(`races/#${race.hybride ? 'hybrides' : 'pures'}`)}>{race.hybride ? 'Races hybrides' : 'Races pures'}</a>
       </>
     )
   }{
     category && (
       <>
         {' › '}
-        <a href={url(`wiki/classes/#${category.key}`)}>{category.label}</a>
+        <a href={url(`classes/#${category.key}`)}>{category.label}</a>
       </>
     )
   }</p>

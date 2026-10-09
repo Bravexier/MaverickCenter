@@ -17,7 +17,7 @@ const baseName = (title) => normalize(title);
 export const HYBRIDES_SANS_CLASSE_RACIALE = new Set(['races/drassahthac']);
 
 /**
- * Ordre d'affichage des races, races pures puis hybrides (demande du propriétaire, liste de /wiki/races/). Ce n'est pas
+ * Ordre d'affichage des races, races pures puis hybrides (demande du propriétaire, liste de /races/). Ce n'est pas
  * l'ordre de l'onglet « Race » de la fiche (race.ordre dans la base). Une race absente de la liste vient après, par titre.
  */
 export const ORDRE_DES_RACES = [

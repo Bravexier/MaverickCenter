@@ -8,26 +8,26 @@ export const NAV = [
     key: 'regles',
     label: 'Règles',
     items: [
-      { label: 'Guide', path: 'wiki/guide/' },
+      { label: 'Guide', path: 'guide/' },
       { label: 'Fiche de personnage', path: 'generateur/' },
-      { label: 'Races', path: 'wiki/races/' },
-      { label: 'Magies', path: 'wiki/magies/' },
-      { label: 'Classes', path: 'wiki/classes/' },
-      { label: 'Métiers', path: 'wiki/metiers/' },
+      { label: 'Races', path: 'races/' },
+      { label: 'Magies', path: 'magies/' },
+      { label: 'Classes', path: 'classes/' },
+      { label: 'Métiers', path: 'metiers/' },
     ],
   },
   {
     key: 'objets',
     label: 'Objets et artisanat',
     items: [
-      { label: 'Armes', path: 'wiki/ressources/armes/' },
-      { label: 'Armures', path: 'wiki/ressources/armures/' },
-      { label: 'Boucliers', path: 'wiki/ressources/bouclier/' },
-      { label: 'Bâtons magiques', path: 'wiki/ressources/baton-magique/' },
-      { label: 'Pièces élémentaires', path: 'wiki/ressources/pieces-elementaires/' },
-      { label: 'Alchimie', path: 'wiki/ressources/alchimie/' },
-      { label: 'Livres et parchemins', path: 'wiki/ressources/livre-parchemin/' },
-      { label: 'Accessoires', path: 'wiki/ressources/accessoires/' },
+      { label: 'Armes', path: 'ressources/armes/' },
+      { label: 'Armures', path: 'ressources/armures/' },
+      { label: 'Boucliers', path: 'ressources/bouclier/' },
+      { label: 'Bâtons magiques', path: 'ressources/baton-magique/' },
+      { label: 'Pièces élémentaires', path: 'ressources/pieces-elementaires/' },
+      { label: 'Alchimie', path: 'ressources/alchimie/' },
+      { label: 'Livres et parchemins', path: 'ressources/livre-parchemin/' },
+      { label: 'Accessoires', path: 'ressources/accessoires/' },
     ],
   },
   {
@@ -44,9 +44,9 @@ export const NAV = [
     key: 'outils',
     label: 'Outils',
     items: [
-      { label: 'Index du wiki', path: 'wiki/' },
-      { label: 'Bestiaire', path: 'wiki/bestiaire/' },
-      { label: 'Dons de classe', path: 'wiki/capacites/' },
+      { label: 'Index du wiki', path: 'pages/' },
+      { label: 'Bestiaire', path: 'bestiaire/' },
+      { label: 'Dons de classe', path: 'capacites/' },
       { label: 'Mots-clés', path: 'tags/' },
       { label: 'Base de données', path: 'donnees/' },
     ],
@@ -62,10 +62,21 @@ export function navPaths(nav = NAV) {
 export function groupIsCurrent(group, pathname, base = '/') {
   const prefix = base.replace(/\/$/, '') + '/';
   const rel = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : pathname.replace(/^\//, '');
-  return group.items.some((i) => i.path && (rel === i.path || (i.path !== 'wiki/' && rel.startsWith(i.path))));
+  return group.items.some((i) => i.path && rel.startsWith(i.path));
 }
 
 /** Rubrique à ouvrir pour cette page : celle de la page, sinon la première (accueil, recherche…). */
 export function activeGroup(pathname, base = '/', nav = NAV) {
   return nav.find((g) => groupIsCurrent(g, pathname, base)) ?? nav[0];
+}
+
+/**
+ * Nouvelle adresse d'une ancienne adresse du wiki : les pages étaient sous `/wiki/` (`/wiki/races/elfe/` → `/races/elfe/`),
+ * l'index du wiki était `/wiki/` (→ `/pages/`). `null` si `pathname` n'est pas une ancienne adresse. Lu par la page 404.
+ */
+export function legacyWikiRedirect(pathname, base = '/') {
+  const root = base.replace(/\/$/, '') + '/';
+  const old = `${root}wiki`;
+  if (pathname !== old && !pathname.startsWith(`${old}/`)) return null;
+  return root + (pathname.slice(old.length + 1) || 'pages/');
 }
