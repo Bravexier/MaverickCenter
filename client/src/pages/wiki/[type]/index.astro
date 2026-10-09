@@ -2,7 +2,7 @@
 import Base from '../../../layouts/Base.astro';
 import EntryList from '../../../components/EntryList.astro';
 import RaceList from '../../../components/RaceList.astro';
-import ClassesTableau from '../../../components/classes/ClassesTableau.astro';
+import ClassesPastilles from '../../../components/classes/ClassesPastilles.astro';
 import MagiesConstellation from '../../../components/magie/MagiesConstellation.astro';
 import TableauMagiesInnees from '../../../components/magie/TableauMagiesInnees.astro';
 import TableauRelationsMagies from '../../../components/magie/TableauRelationsMagies.astro';
@@ -30,7 +30,7 @@ const magiesIndex = dbMagies
       return entry ? [{ entry, magie }] : [];
     })
   : [];
-// Les classes sont présentées en tableau, une colonne par catégorie (voir lib/class-groups.mjs) ; les autres types en liste alphabétique.
+// Les classes sont présentées en pastilles (sur le modèle de la carte des magies), une colonne par catégorie (voir lib/class-groups.mjs) ; les autres types en liste alphabétique.
 const classGroups = type === 'classes' ? groupClasses(list) : [];
 // Les races sont présentées en deux colonnes, pures à gauche et hybrides à droite, dans l'ordre du propriétaire (lib/race-kinds.mjs) ;
 // nom et accroche seulement. Le tableau des magies innées de toutes les races est en bas de la page.
@@ -53,7 +53,7 @@ const capaciteDetail = (e: any) => [`Niveau ${e.data.niveau}`, e.data.specialite
         </section>
       </>
     ) : classGroups.length > 0 ? (
-      <ClassesTableau groups={classGroups} />
+      <ClassesPastilles groups={classGroups} />
     ) : capaciteGroups.length > 0 ? (
       <>
         <p class="muted">

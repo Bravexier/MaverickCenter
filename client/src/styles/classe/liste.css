@@ -1,93 +1,114 @@
-/* Chargé uniquement depuis components/classes/ClassesTableau.astro (?raw) : le tableau des classes de /wiki/classes/.
+/* Chargé uniquement depuis components/classes/ClassesPastilles.astro (?raw) : les classes de /wiki/classes/.
    Une colonne par catégorie, dans sa couleur (--couleur-classe, lib/class-groups.mjs#CLASS_COLORS) : rouge (physiques mêlée), vert (physiques distance),
-   bleu (magiques), violet (raciales), jaune (spéciales), comme les pages de classe. Les lignes ont toutes la même hauteur, si bien que les rayures
-   s'alignent d'une colonne à l'autre ; les titres partagent une même rangée (subgrid). Écran large : un seul tableau ; étroit : des cartes qui passent à la ligne. */
-.classes-tableau {
+   bleu (magiques), violet (raciales), jaune (spéciales), comme les pages de classe. Chaque classe est une pastille sur le modèle de la carte des magies
+   (styles/magie/orbit.css, .magies-orbite__noeud) : pilule bordée et teintée de la couleur, point de couleur, nom en gras, légère élévation au survol. */
+.classes-pastilles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
-  gap: 0 0.75rem;
-  margin: 1.25rem 0 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  gap: 0 1rem;
+  margin: 1.5rem 0 2rem;
 }
 
-.classes-colonne {
+.classes-groupe {
   --cla: var(--couleur-classe, #6b5a45);
-  --cla-texte: var(--couleur-texte-classe, #fff);
-  --cla-readable: color-mix(in srgb, var(--cla) 55%, #000);
-  --cla-soft: color-mix(in srgb, var(--cla) 10%, var(--surface));
-  --cla-hover: color-mix(in srgb, var(--cla) 20%, var(--surface));
+  --cla-readable: color-mix(in srgb, var(--cla) 60%, #000);
   --cla-line: color-mix(in srgb, var(--cla) 40%, var(--border));
   /* infobulles (styles/magie/tooltips.css) : mêmes variables que les pages de magie */
   --mag: var(--cla);
-  --mag-soft: var(--cla-soft);
+  --mag-soft: color-mix(in srgb, var(--cla) 10%, var(--surface));
   --mag-line: var(--cla-line);
+  /* titre et corps sur deux rangées partagées avec les autres catégories de la même ligne : les soulignements s'alignent même quand un titre passe à la ligne */
   display: grid;
   grid-row: span 2;
   grid-template-rows: subgrid;
   row-gap: 0;
-  margin-bottom: 0.75rem;
-  border: 1px solid var(--cla-line);
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--surface);
+  scroll-margin-top: 1rem;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .classes-colonne { --cla-readable: color-mix(in srgb, var(--cla) 55%, #fff); }
+  :root:not([data-theme="light"]) .classes-groupe { --cla-readable: color-mix(in srgb, var(--cla) 60%, #fff); }
 }
-:root[data-theme="dark"] .classes-colonne { --cla-readable: color-mix(in srgb, var(--cla) 55%, #fff); }
+:root[data-theme="dark"] .classes-groupe { --cla-readable: color-mix(in srgb, var(--cla) 60%, #fff); }
 
-.classes-colonne__titre {
+.classes-groupe__titre {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: flex-end;
   gap: 0.5rem;
-  margin: 0;
-  padding: 0.55rem 0.75rem;
-  background: var(--cla);
-  color: var(--cla-texte);
-  font-size: 1rem;
-}
-.classes-colonne__compte {
-  flex: none;
-  padding: 0.05rem 0.5rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--cla-texte) 20%, transparent);
-  font-size: 0.78rem;
-  font-weight: 600;
-}
-
-.classes-colonne ul { margin: 0; padding: 0; list-style: none; }
-.classes-colonne li:nth-child(even) { background: var(--cla-soft); }
-.classes-colonne .bulle-zone { display: block; }
-.classes-colonne li a {
-  display: block;
-  padding: 0.4rem 0.75rem;
+  margin: 0 0 0.85rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 3px solid var(--cla);
   color: var(--cla-readable);
-  font-weight: 600;
-  line-height: 1.4;
-  text-decoration: none;
+  font-size: 1.05rem;
+  line-height: 1.25;
 }
-.classes-colonne li a:hover,
-.classes-colonne li a[data-ouverte] { background: var(--cla-hover); text-decoration: underline; }
-.classes-colonne li a:focus-visible { outline: 2px solid var(--cla); outline-offset: -2px; }
-.classes-colonne h3 {
-  margin: 0;
-  padding: 0.45rem 0.75rem 0.25rem;
-  border-top: 1px solid var(--cla-line);
+.classes-groupe__point {
+  flex: 0 0 0.8rem;
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--text) 28%, var(--cla));
+  border-radius: 50%;
+  background: var(--cla);
+}
+.classes-groupe__compte {
+  flex: none;
+  margin-left: auto;
+  padding: 0.05rem 0.5rem;
+  border: 1px solid var(--cla-line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--cla) 12%, var(--surface));
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.classes-groupe__corps { margin-bottom: 1.5rem; }
+.classes-groupe h3 {
+  margin: 0.9rem 0 0.4rem;
   color: var(--muted);
   font-size: 0.78rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-/* Écran large : les colonnes forment un seul tableau. */
-@media (min-width: 56rem) {
-  .classes-tableau {
-    grid-template-columns: repeat(var(--colonnes, 5), minmax(0, 1fr));
-    gap: 0;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  .classes-colonne { margin: 0; border: 0; border-radius: 0; }
-  .classes-colonne + .classes-colonne { border-left: 1px solid var(--border); }
+.classes-groupe__liste { display: flex; flex-direction: column; gap: 0.55rem; margin: 0; padding: 0; list-style: none; }
+.classes-groupe .bulle-zone { display: block; }
+
+.classe-pastille {
+  position: relative;
+  display: flex;
+  min-height: 2.6rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--cla) 68%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--cla) 10%, var(--surface));
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--text) 10%, transparent);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+.classe-pastille__point {
+  flex: 0 0 0.65rem;
+  width: 0.65rem;
+  height: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--text) 28%, var(--cla));
+  border-radius: 50%;
+  background: var(--cla);
+}
+.classe-pastille__nom { overflow-wrap: anywhere; }
+.classe-pastille:hover,
+.classe-pastille:focus-visible,
+.classe-pastille[data-ouverte] {
+  outline: 2px solid var(--cla);
+  outline-offset: 3px;
+  box-shadow: 0 5px 18px color-mix(in srgb, var(--cla) 25%, transparent);
+  transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .classe-pastille { transition: none; }
 }

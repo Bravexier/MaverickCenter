@@ -1,0 +1,72 @@
+---
+import listeCss from '../../styles/classe/liste.css?raw';
+import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
+import { CLASS_COLORS, type groupClasses } from '../../lib/class-groups.mjs';
+import { idBulle } from '../../lib/magies';
+import { entryHref } from '../../lib/wiki';
+import Bulles from '../magie/Bulles.astro';
+
+// /wiki/classes/ : les cinq catégories (lib/class-groups.mjs) côte à côte, chacune dans sa couleur (celle des pages de classe), et une PASTILLE par
+// classe sur le modèle de la carte des magies (components/magie/MagiesConstellation.astro) : pilule bordée et teintée de la couleur, point de couleur,
+// nom en gras (le titre : une classe raciale porte le nom de sa race). Le résumé de la classe est dans une infobulle (components/magie/Bulles.astro ;
+// sans JavaScript, l'attribut `title` du lien en tient lieu). Sur un écran étroit, les catégories passent à la ligne.
+interface Props {
+  groups: ReturnType<typeof groupClasses>;
+}
+const { groups } = Astro.props;
+const css = [listeCss, magieTooltipsCss].join('\n');
+const compte = (group: Props['groups'][number]) => group.sections.reduce((n, s) => n + s.entries.length, 0);
+---
+
+<style is:inline set:html={css}></style>
+<div class="classes-pastilles">
+  {
+    groups.map((group) => (
+      <section class="classes-groupe" id={group.key} style={`--couleur-classe: ${CLASS_COLORS[group.key]}`}>
+        <h2 class="classes-groupe__titre">
+          <span class="classes-groupe__point" aria-hidden="true" />
+          <span class="classes-groupe__nom">{group.label}</span>
+          <span class="classes-groupe__compte">{compte(group)}</span>
+        </h2>
+        <div class="classes-groupe__corps">
+        {group.sections.map((section) => (
+          <>
+            {section.label && <h3 id={section.key}>{section.label}</h3>}
+            <ul class="classes-groupe__liste">
+              {section.entries.map((entry) => {
+                const resume = entry.data.summary;
+                const id = resume ? idBulle('classe') : null;
+                const pastille = (
+                  <>
+                    <span class="classe-pastille__point" aria-hidden="true" />
+                    <span class="classe-pastille__nom">{entry.data.title}</span>
+                  </>
+                );
+                return (
+                  <li>
+                    {id ? (
+                      <span class="bulle-zone">
+                        <a class="classe-pastille" href={entryHref(entry)} data-bulle={id} aria-describedby={id} title={resume}>
+                          {pastille}
+                        </a>
+                        <span class="bulle" role="tooltip" id={id} hidden>
+                          {resume}
+                        </span>
+                      </span>
+                    ) : (
+                      <a class="classe-pastille" href={entryHref(entry)}>
+                        {pastille}
+                      </a>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        ))}
+        </div>
+      </section>
+    ))
+  }
+</div>
+<Bulles />
