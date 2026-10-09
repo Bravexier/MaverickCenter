@@ -228,6 +228,29 @@ pas de source citée ; le Markdown de la page ne sert plus qu'à la recherche et
 
 **Pour changer une classe ou un don, on change la base** (une migration `data/migrations/NNNN-<nom>.sql`, voir `docs/sql/remplissage.md`) : modifier le `.md` fabriqué n'a plus d'effet sur la page.
 
+## Guide du joueur (`/guide/`) : des chapitres à lire dans l'ordre
+
+L'onglet Guide n'est plus une liste de liens (demande du propriétaire) : c'est un **guide du joueur** pour débutants, lu page après page, avec une flèche de
+chaque côté du texte (grisée au premier et au dernier chapitre), les touches ← → et, en bas, les chapitres voisins et la pagination (titre en infobulle).
+
+- **Un chapitre** est une page `guide/<slug>` (famille `docs`) dont le frontmatter porte `chapitre: N` (1, 2, 3… sans trou : l'ordre de lecture) et
+  `partie: <id>`. Les autres pages du type `guide` (« Fiche de personnage : … », combat, conseils au MJ, listes) sont des **pages de référence** :
+  citées par les chapitres et listées, par document source, à la dernière page (« Les documents des règles »).
+- **Les parties** et leurs couleurs sont dans `client/src/lib/guide.mjs#PARTIES` : Découvrir, Créer son personnage, Jouer, Progresser, Pour aller plus
+  loin ; les chapitres d'une partie se suivent. La pagination et le sommaire de la page 1 sont regroupés par partie. Le plan (24 pages, validé par le
+  propriétaire) : découvrir le jeu et la règle du D100 **avant** de créer son personnage ; la création en six étapes, dans l'ordre où l'on remplit la
+  fiche, les attributs (qui se calculent) à la fin ; l'équipement avant les dégâts (la formule utilise l'armure). `test/guide.test.mjs` l'épingle.
+- **Le premier chapitre** (`guide/bienvenue`) est servi à `/guide/` : il n'a pas de page à lui, ses liens y mènent (`adresseDePage`).
+- **Les blocs tirés de la base** : une ligne seule `<!-- guide:<bloc> -->` dans le Markdown (`BLOCS`) est remplacée au rendu par un tableau lu dans
+  la base (`lib/guide-db.mjs`, `components/guide/GuideBloc.astro`) : progression (`niveau_global`), postures, compétences, initiative, ce que donne
+  chaque magie, types de don, entraînement… Ne jamais recopier ces chiffres dans le texte. Un lien Markdown vers une rubrique s'écrit depuis la racine
+  (`[les races](/races/)`) : le préfixe de déploiement est ajouté au rendu (`avecPrefixe`).
+- **Les personnages fil rouge** (`lib/guide-fil-rouge.mjs`) : quatre pré-tirés (archer felfe Vide, mage rouge majin Feu, guerrier orios Sang, barde
+  kitsune Vent). Seuls leurs choix y sont écrits (race, ethnie, magie, classe ; `nom` à venir) ; santé, chakra, barrière, maîtrises, équipement et
+  emplacements de sorts sont lus dans la base et calculés comme la fiche automatique V15.2.2.
+- Un chapitre n'a ni fil d'Ariane, ni mots-clés, ni pages liées, ni sources sous le texte (la lecture continue par la pagination) ; `sources:` reste
+  dans le frontmatter. Rendu : `components/guide/GuideChapitre.astro`, CSS `styles/guide/guide.css` (`?raw`).
+
 ## Niveaux de maîtrise (NM) des sorts
 
 Chaque sort existe sur plusieurs niveaux de maîtrise (0 à 3 NM, jamais plus de 3). Un NM s'obtient par niveau du personnage (à partir du niveau 2, redistribuable parmi les sorts choisis), par la lecture d'un livre de

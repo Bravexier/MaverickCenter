@@ -23,6 +23,9 @@ npm run build    # site statique dans client/dist/
 - **Wiki** : une catégorie par salon Discord (races, classes, magies, bestiaire, ressources & craft, métiers, guide, lore, cartes), à la racine du site
   (`/races/`, `/races/nain/`…) ; index alphabétique de toutes les pages : `/pages/`.
   Les pages se relient avec `[[Titre]]` ; chaque page affiche ses rétroliens, ses mots-clés (`/tags/`) et est trouvable par la recherche (`/recherche/`).
+- **Guide du joueur** (`/guide/`) : 24 pages à lire dans l'ordre, pour découvrir le jeu même sans jamais avoir joué à un JDR, en cinq parties de couleur
+  (Découvrir, Créer son personnage, Jouer, Progresser, Pour aller plus loin), avec flèches Précédent / Suivant et pagination ; quatre personnages
+  fil rouge sont créés étape par étape. Les tableaux (progression, postures, compétences…) sont tirés de la base.
 - **Générateur de fiche** (`/generateur/`) : race, classes, magies, répartition de points, valeurs dérivées ; sauvegarde automatique
   dans le navigateur, export/import JSON, impression/PDF. Les règles sont des **données** (`client/src/data/rules.json`).
 

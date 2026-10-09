@@ -1,0 +1,352 @@
+/* Chargé uniquement depuis components/guide/GuideChapitre.astro (?raw) : les chapitres du guide du joueur (/guide/ et /guide/<chapitre>/).
+   Une page de livre (le texte sur une feuille) entre deux flèches qui suivent la lecture (Précédent à gauche, Suivant à droite, grisées aux bords),
+   puis, en bas, les chapitres voisins et la pagination (un numéro par chapitre, titre en infobulle). Sur un écran étroit, les flèches de côté
+   disparaissent : les liens du bas en tiennent lieu. Les blocs tirés de la base (GuideBloc.astro) ont leurs styles plus bas. */
+/* Couleur de la partie (lib/guide.mjs#PARTIES), posée par `--couleur-partie` sur la page et sur chaque groupe de la pagination et du sommaire :
+   --guide pour les aplats (texte blanc dessus), --guide-texte pour un texte coloré sur la feuille (éclairci en thème sombre). */
+.guide,
+.guide-pagination__partie,
+.guide-sommaire__partie {
+  --guide: var(--couleur-partie, var(--accent));
+  --guide-texte: var(--guide);
+  --guide-soft: color-mix(in srgb, var(--guide) 12%, var(--surface));
+  --guide-line: color-mix(in srgb, var(--guide) 40%, var(--border));
+  /* infobulles (styles/magie/tooltips.css) : mêmes variables que les pages de magie */
+  --mag: var(--guide);
+  --mag-soft: var(--guide-soft);
+  --mag-line: var(--guide-line);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) :is(.guide, .guide-pagination__partie, .guide-sommaire__partie) { --guide-texte: color-mix(in srgb, var(--guide) 45%, #fff); }
+}
+:root[data-theme="dark"] :is(.guide, .guide-pagination__partie, .guide-sommaire__partie) { --guide-texte: color-mix(in srgb, var(--guide) 45%, #fff); }
+.guide { margin-top: 0.5rem; }
+.guide-partie {
+  display: inline-block;
+  margin-right: 0.5rem;
+  padding: 0.05rem 0.55rem;
+  border-radius: 999px;
+  background: var(--guide);
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.guide-invisible {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.guide-cadre {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) 3rem;
+  gap: 1rem;
+  align-items: start;
+}
+
+/* Les flèches de côté : rondes, collées au milieu de l'écran pendant la lecture (sticky dans la colonne de la page). */
+.guide-fleche {
+  position: sticky;
+  top: calc(50vh - 1.5rem);
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  margin-top: 6rem;
+  border: 2px solid var(--guide-line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--guide-texte);
+  font-size: 2rem;
+  line-height: 1;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.08);
+  transition: background-color 0.15s, color 0.15s, transform 0.15s;
+}
+.guide-fleche > span[aria-hidden] { margin-top: -0.2rem; }
+a.guide-fleche:hover,
+a.guide-fleche:focus-visible { background: var(--guide); border-color: var(--guide); color: #fff; }
+a.guide-fleche--precedent:hover { transform: translateX(-2px); }
+a.guide-fleche--suivant:hover { transform: translateX(2px); }
+a.guide-fleche:focus-visible { outline: 2px solid var(--guide); outline-offset: 3px; }
+.guide-fleche[aria-disabled='true'] { border-color: var(--border); background: transparent; color: var(--border); box-shadow: none; cursor: not-allowed; }
+
+/* La page : une feuille, le texte en colonne de lecture. */
+.guide-page {
+  min-width: 0;
+  padding: 1.5rem clamp(1rem, 4vw, 2.75rem) 2rem;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) * 1.5);
+  background: var(--surface);
+  box-shadow: 0 1px 0 var(--border), 0 10px 30px rgb(0 0 0 / 0.05);
+}
+.guide-numero {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.guide-page h1 {
+  margin: 0.2rem 0 1.25rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 3px solid var(--guide);
+  font-size: clamp(1.6rem, 4vw, 2.1rem);
+}
+.guide-texte { max-width: 46rem; }
+.guide-texte h2 { margin-top: 2.2rem; color: var(--guide-texte); }
+.guide-texte h3 { margin-top: 1.6rem; }
+.guide-texte blockquote {
+  margin: 1rem 0;
+  padding: 0.6rem 1rem;
+  border-left: 4px solid var(--guide);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--guide-soft);
+}
+.guide-texte blockquote p { margin: 0.3rem 0; }
+.guide-texte table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; margin: 1rem 0; }
+.guide-texte th, .guide-texte td { border: 1px solid var(--border); padding: 0.35rem 0.65rem; vertical-align: top; }
+.guide-texte thead th { background: var(--guide-soft); text-align: left; }
+.guide-texte li + li { margin-top: 0.2rem; }
+.guide-texte code { font-size: 0.92em; }
+
+/* En bas : les chapitres voisins, puis la pagination. */
+.guide-bas {
+  display: grid;
+  gap: 1rem;
+  margin: 1.5rem 4rem 0;
+}
+.guide-voisins {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.guide-voisin {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+.guide-voisin--suivant { text-align: right; }
+.guide-voisin__sens { color: var(--muted); font-size: 0.85rem; }
+.guide-voisin__titre { color: var(--guide-texte); font-weight: 700; }
+a.guide-voisin:hover, a.guide-voisin:focus-visible { border-color: var(--guide); box-shadow: inset 0 0 0 1px var(--guide); }
+.guide-voisin[aria-disabled='true'] { border-style: dashed; background: transparent; }
+.guide-voisin[aria-disabled='true'] .guide-voisin__sens { color: var(--border); }
+
+.guide-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* un groupe par partie : son nom au-dessus de ses numéros, souligné de sa couleur */
+.guide-pagination__partie { display: grid; justify-items: center; gap: 0.3rem; }
+.guide-pagination__titre {
+  padding: 0 0.3rem 0.1rem;
+  border-bottom: 2px solid var(--guide);
+  color: var(--guide-texte);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.guide-pagination__numeros { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.35rem; margin: 0; padding: 0; list-style: none; }
+.guide-pagination .bulle-zone { display: block; }
+.guide-pagination__numero {
+  display: grid;
+  place-items: center;
+  min-width: 2.3rem;
+  height: 2.3rem;
+  padding: 0 0.4rem;
+  border: 1px solid var(--guide-line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--guide-texte);
+  font-weight: 700;
+  text-decoration: none;
+}
+.guide-pagination__numero:hover,
+.guide-pagination__numero[data-ouverte] { background: var(--guide-soft); }
+.guide-pagination__numero:focus-visible { outline: 2px solid var(--guide); outline-offset: 2px; }
+.guide-pagination__numero[aria-current='page'] { border-color: var(--guide); background: var(--guide); color: #fff; }
+
+@media (max-width: 52rem) {
+  .guide-cadre { grid-template-columns: minmax(0, 1fr); }
+  .guide-fleche { display: none; }
+  .guide-bas { margin-inline: 0; }
+}
+@media (max-width: 30rem) {
+  .guide-voisins { grid-template-columns: 1fr; }
+  .guide-voisin--suivant { text-align: left; }
+}
+
+/* ---- Blocs tirés de la base (components/guide/GuideBloc.astro) ---- */
+.guide-defile { max-width: 100%; margin: 1rem 0 1.25rem; overflow-x: auto; }
+.guide-defile:focus-visible { outline: 2px solid var(--guide); outline-offset: 2px; }
+.guide-table { border-collapse: collapse; font-size: 0.92rem; }
+.guide-table th, .guide-table td { padding: 0.4rem 0.65rem; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+.guide-table thead th { background: var(--guide-soft); }
+.guide-table tbody th { white-space: nowrap; }
+.guide-table--niveaux { width: 100%; }
+.guide-table--niveaux thead th { font-size: 0.82rem; line-height: 1.3; }
+.guide-table--niveaux tbody th { text-align: center; color: var(--guide-texte); }
+.guide-table--niveaux tbody tr:nth-child(5n) { border-bottom: 3px solid var(--guide-line); }
+.guide-table--compacte td, .guide-table--compacte th { text-align: center; }
+.guide-table td.guide-nombre { text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.guide-gains { margin: 0; padding-left: 1rem; font-size: 0.88rem; }
+.guide-rate td { color: var(--danger); font-weight: 600; }
+.guide-note { margin: 0.35rem 0 0; color: var(--muted); font-size: 0.85rem; }
+.guide-lettre { color: var(--muted); font-weight: 400; font-size: 0.9em; }
+
+/* Sommaire (chapitre 1) : les parties l'une sous l'autre, chacune dans sa couleur, une carte par chapitre. */
+.guide-sommaire { margin: 1rem 0 0.5rem; }
+.guide-sommaire__partie + .guide-sommaire__partie { margin-top: 1.1rem; }
+.guide-sommaire__titre-partie {
+  margin: 0 0 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 2px solid var(--guide);
+  color: var(--guide-texte);
+  font-size: 1.05rem;
+}
+.guide-sommaire__liste {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.guide-sommaire__liste li {
+  display: grid;
+  gap: 0.3rem;
+  align-content: start;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--guide);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+.guide-sommaire__lien { display: flex; align-items: baseline; gap: 0.55rem; color: var(--guide-texte); font-weight: 700; text-decoration: none; }
+.guide-sommaire__lien:hover .guide-sommaire__titre { text-decoration: underline; }
+.guide-sommaire__numero {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  background: var(--guide);
+  color: #fff;
+  font-size: 0.9rem;
+}
+.guide-sommaire__resume { color: var(--muted); font-size: 0.9rem; line-height: 1.45; }
+
+/* Les 15 magies (chapitre 2) et le tableau de ce qu'elles donnent (chapitre 3) : pastille de la couleur de la magie. */
+.guide-magies {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 10.5rem), 1fr));
+  gap: 0.6rem;
+  margin: 1rem 0 1.25rem;
+  padding: 0;
+  list-style: none;
+}
+.guide-magies li { display: grid; justify-items: start; gap: 0.15rem; }
+.guide-magie {
+  --c: var(--couleur-magie, var(--guide));
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.75rem 0.3rem 0.5rem;
+  /* bord et point mêlés de gris : une magie claire (Vide, Lumière) reste visible sur la feuille */
+  border: 2px solid color-mix(in srgb, var(--c) 65%, var(--muted));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c) 12%, var(--surface));
+  color: var(--text);
+  font-weight: 700;
+  text-decoration: none;
+}
+.guide-magie:hover, .guide-magie:focus-visible { background: color-mix(in srgb, var(--c) 24%, var(--surface)); }
+.guide-magie__point { width: 0.75rem; height: 0.75rem; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 55%, var(--muted)); flex: none; }
+.guide-magie__dieu { padding-left: 0.6rem; color: var(--muted); font-size: 0.85rem; }
+.guide-magie--ligne { padding: 0.1rem 0.6rem 0.1rem 0.4rem; border-width: 1px; font-size: 0.92rem; }
+
+/* Compétences (chapitre 3) : un cadre par caractéristique. */
+.guide-competences {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0 1.25rem;
+}
+.guide-competences__groupe { padding: 0.6rem 0.9rem; border: 1px solid var(--border); border-top: 3px solid var(--guide); border-radius: var(--radius); background: var(--bg); }
+.guide-competences__groupe h4 { margin: 0 0 0.4rem; }
+.guide-competences__groupe ul { margin: 0; padding-left: 1.1rem; font-size: 0.9rem; line-height: 1.45; }
+.guide-competences__groupe li + li { margin-top: 0.25rem; }
+
+/* Types de don (chapitre 5). */
+.guide-definitions { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; margin: 1rem 0; }
+.guide-definitions dt { font-weight: 700; color: var(--guide-texte); }
+.guide-definitions dd { margin: 0; }
+@media (max-width: 30rem) {
+  .guide-definitions { grid-template-columns: 1fr; }
+  .guide-definitions dd { margin-bottom: 0.4rem; }
+}
+
+/* Postures (page « Les postures ») : les six colonnes du tableau de la fiche, trois par rangée sur un écran large. */
+.guide-postures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 0.6rem;
+  margin: 1rem 0 1.25rem;
+}
+.guide-posture { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); overflow: hidden; }
+.guide-posture h3 { margin: 0; font-size: 1rem; }
+.guide-posture__nom {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 0;
+  background: var(--guide);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: help;
+}
+.guide-posture__nom:focus-visible { outline: 2px solid var(--text); outline-offset: -4px; }
+.guide-posture ul { margin: 0; padding: 0.5rem 0.6rem 0.6rem 1.5rem; font-size: 0.88rem; line-height: 1.4; }
+.guide-posture li + li { margin-top: 0.3rem; }
+
+/* Pages de référence (dernier chapitre), par document source. */
+.guide-references {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.guide-references__groupe { padding: 0.6rem 0.9rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
+.guide-references__groupe h3 { margin: 0 0 0.4rem; font-size: 1rem; }
+.guide-references__groupe ul { margin: 0; padding-left: 1.1rem; font-size: 0.92rem; }
+
+/* Les personnages fil rouge (partie « Créer son personnage ») : une carte par personnage, côte à côte. */
+.guide-fil-rouge {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: 0.6rem;
+  margin: 1rem 0 1.25rem;
+}
+.guide-fil-rouge__perso { padding: 0.6rem 0.8rem 0.7rem; border: 1px solid var(--guide-line); border-top: 4px solid var(--guide); border-radius: var(--radius); background: var(--guide-soft); }
+.guide-fil-rouge__nom { margin: 0 0 0.4rem; color: var(--guide-texte); font-size: 1rem; }
+.guide-fil-rouge dl { display: grid; gap: 0.1rem; margin: 0; font-size: 0.86rem; line-height: 1.4; }
+.guide-fil-rouge dt { margin-top: 0.3rem; color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
+.guide-fil-rouge dd { margin: 0; }
+.guide-fil-rouge dd ul { margin: 0; padding-left: 1rem; }
