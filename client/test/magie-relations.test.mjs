@@ -101,6 +101,18 @@ test('relationMatrix : symboles croisés, ligne = la magie décrite', () => {
   assert.equal(at('magies/corruption', 'magies/feu'), null, 'aucune donnée pour la Corruption : case vide, pas « aucune relation »');
 });
 
+test('accessMatrix et relationMatrix : colonnes dans l’ordre donné (celui du classeur), une magie hors de l’ordre vient après, par nom', () => {
+  const ordre = ['magies/potentiel-illimite', 'magies/corruption', 'magies/espace-temps', 'magies/feu'];
+  const entries = [...MAGIES, race('orios', 'Orios', ['Eau', 'Feu'])];
+  const attendu = ['Potentiel Illimité', 'Corruption', 'Espace/Temps', 'Feu', 'Eau', 'Glace'];
+  const acces = accessMatrix(entries, ordre);
+  assert.deepEqual(acces.magies.map((e) => e.data.nom_court), attendu);
+  assert.deepEqual(acces.cells[0], [false, false, false, true, true, false], 'les cases suivent les colonnes');
+  const rel = relationMatrix(MAGIES, ordre);
+  assert.deepEqual(rel.magies.map((e) => e.data.nom_court), attendu, 'lignes et colonnes dans le même ordre');
+  assert.deepEqual(rel.cells[3][4], { fort: false, faible: true, incompatible: false }, 'Feu (ligne 4) faible contre Eau (colonne 5)');
+});
+
 test('unresolvedNames liste, par page, les noms de magies qui ne correspondent à aucune magie', () => {
   const a = magie('a', 'A', { resiste_a: ['A', 'B'], incompatible_avec: ['Fantôme'] });
   const b = magie('b', 'B', { vulnerable_a: ['Nulle part'] });

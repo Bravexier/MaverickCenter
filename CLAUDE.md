@@ -86,7 +86,7 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
 - Pages de magie : rendues depuis la base (`lib/magies-db.mjs`, `lib/magies.ts`), jamais depuis leur `.md` (qui ne sert qu'à la recherche et aux `[[liens]]`) ; la remarque d'un sort
   (note de cellule) est `sort.remarque`, la table `note_cellule` n'est qu'une trace et ne doit pas être lue. Le panneau d'un sort s'ouvre sous sa ligne (script de `MagieSorts.astro`, sans JavaScript tout est affiché).
   Leur CSS est dans `styles/magie.css`, inséré par `MagiePage.astro` (`?raw`) : ne pas le mettre dans `global.css` ni l'importer (Astro l'attacherait à toutes les pages de la route `[type]/[slug]`).
-  La matrice de `/wiki/races-et-magies/` lit les mêmes relations dans la base (`entriesAvecRelationsDeLaBase`).
+  Le tableau des relations sous la carte de `/wiki/magies/` (`TableauRelationsMagies.astro`) lit les mêmes relations dans la base (`entriesAvecRelationsDeLaBase`).
   Dans le panneau d'un sort, remarque et texte du sort sont dans le même cadre « Effets » que les effets secondaires ; les altérations d'état sont des pastilles **dans le texte** (`morceauxAvecEtats`, d'après `sort_etat`) avec infobulle (`Bulles.astro` : une bulle ne contient que des `<span>`, sinon le `<p>` qui la porte se ferme) ;
   les créatures invoquées ont une fiche minimale au clic, sous leur bloc. Pas de légende, pas de source citée (ni par sort, ni en pied de page), pas de liste des lanceurs sur ces pages.
   `test/magies-html.test.mjs` contrôle le site construit (ids, `aria-*`, bulles, éléments retirés) : il se saute sans `dist/` et la CI le lance après le build.
@@ -96,7 +96,8 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   Relations : la case (ligne A, colonne B) de « Relation entre les races » dit comment A voit B (R12, vue `v_regard_peuple`) ; `lib/race-relations.mjs` ne regroupe jamais deux peuples dont les relations diffèrent
   (Elfe Noir Charbon / Salé). CSS dans `styles/race/`, inséré par `RacePage.astro` (`?raw`). `test/races-html.test.mjs` contrôle le site construit (CI après le build).
 - Races ↔ magies : les pages portent des listes structurées (`magies_innees`, `nom_court`, `resiste_a`, `vulnerable_a`, `incompatible_avec`)
-  posées par `tools/sheets/races.py` et `magies.py` ; le site en tire les liens, les tableaux de `/wiki/races-et-magies/` et la distinction
+  posées par `tools/sheets/races.py` et `magies.py` ; le site en tire les liens, les deux tableaux (magies innées en bas de `/wiki/races/`, relations sous la carte de `/wiki/magies/` ;
+  l'ancienne page `/wiki/races-et-magies/` est supprimée ; magies dans l'ordre du classeur et dans leur couleur, sans défilement horizontal, `styles/magie/tableaux.css`) et la distinction
   races pures / hybrides (`lib/magie-relations.mjs`, `lib/race-kinds.mjs` : hybride = classe raciale, plus le Drassah'thac, décision R14). La liste `/wiki/races/` suit l'ordre
   du propriétaire (`ORDRE_DES_RACES`), pures et hybrides côte à côte, magies innées des seules hybrides. Voir `docs/content-guide.md`. Les champs sont déclarés dans `content.config.ts`
   (un champ non déclaré est supprimé par Astro). Exception explicite : la liste du Nain vient de l'onglet « Nain » de « Les races » (`RACE_DETAIL_OVERRIDES` dans `races.py`), pas de la matrice.

@@ -114,5 +114,31 @@ test('liste des races : magies innées des races hybrides seulement, jamais les 
   assert.ok(!colonne('pures').includes('Magies innées'), 'races pures : pas de magies innées');
   assert.ok(!colonne('pures').includes('class="chip'), 'races pures : aucune pastille');
   assert.equal((colonne('hybrides').match(/Magies innées :/g) ?? []).length, 14);
-  assert.ok(!/sur \d+|toutes \(|non disponible|ne peut pas/i.test(liste), 'ni total, ni magies inaccessibles');
+  const listes = colonne('pures') + colonne('hybrides');
+  assert.ok(!/sur \d+|toutes \(|non disponible|ne peut pas/i.test(listes), 'ni total, ni magies inaccessibles');
+});
+
+// Le tableau des magies innées de toutes les races, en bas de /wiki/races/ (components/magie/TableauMagiesInnees.astro) : il remplace /wiki/races-et-magies/.
+test('liste des races : tableau des magies innées en bas de page, races dans l’ordre des listes, magies dans l’ordre du classeur et dans leur couleur', options, () => {
+  assert.ok(!liste.includes('races-et-magies'), 'plus de lien vers l’ancienne page');
+  const debut = liste.indexOf('<section id="magies-innees"');
+  assert.ok(debut > liste.indexOf('id="hybrides"'), 'après les deux listes');
+  const tableau = liste.slice(debut);
+  assert.deepEqual([...tableau.matchAll(/<span class="tableau-magies__vertical">([^<]+)<\/span>/g)].map((m) => m[1]), [
+    'Potentiel Illimité', 'Sang', 'Arcane', 'Corruption', 'Espace/Temps', 'Vide', 'Nécromancie', 'Feu', 'Eau', 'Glace', 'Terre', 'Vent', 'Foudre', 'Lumière', 'Ombre', 'Total',
+  ]);
+  assert.equal((tableau.match(/<col class="tableau-magies__col-magie" style="--couleur-magie: #[0-9a-f]{6}">/g) ?? []).length, 15, 'colonnes teintées');
+  const lignes = [...tableau.matchAll(/<th scope="row" class="tableau-magies__nom"><a href="[^"]*\/wiki\/races\/([^/"]+)\/">([^<]+)<\/a><\/th>(.*?)<\/tr>/g)].filter((m) => m[1] !== 'exemple-race');
+  assert.deepEqual(lignes.map((m) => m[2].replace(/&#39;/g, "'")), [...nomsDe(colonne('pures')), ...nomsDe(colonne('hybrides'))]);
+  const pastilles = (slug) => (lignes.find((m) => m[1] === slug)[3].match(/class="tableau-magies__point"/g) ?? []).length;
+  assert.equal(pastilles('humain'), 15);
+  assert.equal(pastilles('nain'), 5);
+  assert.equal(pastilles('drassahthac'), 14);
+  assert.equal(pastilles('orios'), 3);
+  assert.match(lignes.find((m) => m[1] === 'nain')[3], /<td class="tableau-magies__total">5<\/td>$/);
+});
+
+test('pages de race : le lien « Voir le tableau » mène au tableau de /wiki/races/', options, () => {
+  for (const { slug, html } of pages) assert.ok(!html.includes('races-et-magies'), slug);
+  assert.match(page('orios'), /href="[^"]*\/wiki\/races\/#magies-innees">Voir le tableau de toutes les races et de leurs magies</);
 });

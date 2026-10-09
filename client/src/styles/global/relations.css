@@ -22,15 +22,4 @@ a.chip:hover { background: var(--accent-soft); }
 .race-list__nom { font-weight: 600; }
 .race-list__magies { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; margin-top: 0.3rem; }
 .race-list__magies .chips { margin: 0; }
-.matrix-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); margin: 1rem 0; }
-.matrix { border-collapse: collapse; font-size: 0.85rem; min-width: 100%; }
-.matrix th, .matrix td { padding: 0.3rem 0.45rem; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap; }
-.matrix thead th { position: sticky; top: 0; background: var(--surface); }
-.matrix tbody th { text-align: left; position: sticky; left: 0; background: var(--surface); font-weight: normal; }
-.matrix tr.group-row th { background: var(--accent-soft); color: var(--accent); text-align: left; position: static; }
-.matrix .yes { color: var(--good); font-weight: bold; }
-.matrix .no { color: var(--border); }
-.matrix .fort { color: var(--good); }
-.matrix .faible { color: var(--danger); }
-.matrix .incompatible { color: var(--muted); }
 .legend { color: var(--muted); font-size: 0.9rem; }

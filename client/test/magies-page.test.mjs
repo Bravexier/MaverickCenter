@@ -434,7 +434,7 @@ test('créatures invoquées : fiche minimale (stats et capacités) pour chacune,
   assert.ok(petrole.capacites.some((k) => k.etiquette === 'Non enflammé'), 'étiquette « Non enflammé » du Golem de pétrole');
 });
 
-test('une seule source pour les relations entre magies : la matrice de /wiki/races-et-magies/ lit la base comme les pages de magie', () => {
+test('une seule source pour les relations entre magies : le tableau de /wiki/magies/ lit la base comme les pages de magie', () => {
   const racine = fileURLToPath(new URL('../src/content/wiki/magies/', import.meta.url));
   const entries = [...m.magies.values()].map((x) => {
     const { data } = splitFrontmatter(readFileSync(join(racine, `${x.slug}.md`), 'utf8'));
