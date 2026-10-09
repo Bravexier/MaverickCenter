@@ -110,12 +110,17 @@ test('liste des races : deux colonnes, pures puis hybrides, dans l’ordre du pr
   ]);
 });
 
-test('liste des races : magies innées des races hybrides seulement, jamais les magies qu’une race ne peut pas avoir', options, () => {
-  assert.ok(!colonne('pures').includes('Magies innées'), 'races pures : pas de magies innées');
-  assert.ok(!colonne('pures').includes('class="chip'), 'races pures : aucune pastille');
-  assert.equal((colonne('hybrides').match(/Magies innées :/g) ?? []).length, 14);
-  const listes = colonne('pures') + colonne('hybrides');
-  assert.ok(!/sur \d+|toutes \(|non disponible|ne peut pas/i.test(listes), 'ni total, ni magies inaccessibles');
+test('liste des races : le nom et l’accroche seulement, ni magies ni classe raciale (le tableau du bas de page donne les magies)', options, () => {
+  for (const id of ['pures', 'hybrides']) {
+    const html = colonne(id);
+    assert.ok(html.length > 0, id);
+    assert.ok(!html.includes('Magies innées'), `${id} : pas de magies innées`);
+    assert.ok(!html.includes('class="chip'), `${id} : aucune pastille`);
+    assert.ok(!html.includes('Classe raciale'), `${id} : pas de classe raciale`);
+    assert.ok(!/href="[^"]*\/wiki\/(magies|classes)\//.test(html), `${id} : aucun lien vers une magie ou une classe`);
+    const liens = [...html.matchAll(/<a\b[^>]*href="([^"]+)"/g)].map((m) => m[1]);
+    assert.ok(liens.every((h) => /\/wiki\/races\/[^/]+\/$/.test(h)), `${id} : seulement les liens vers les races`);
+  }
 });
 
 // Le tableau des magies innées de toutes les races, en bas de /wiki/races/ (components/magie/TableauMagiesInnees.astro) : il remplace /wiki/races-et-magies/.

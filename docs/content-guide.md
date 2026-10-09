@@ -67,8 +67,8 @@ voir l'exception ci-dessus).
 
 **Liste des races** (`/wiki/races/`, `components/RaceList.astro`) : deux colonnes côte à côte, races pures à gauche et hybrides à droite, l'une sous l'autre sur un
 écran étroit. L'ordre est celui du propriétaire (`ORDRE_DES_RACES` dans `lib/race-kinds.mjs`, différent de l'ordre de l'onglet « Race » de la fiche) ; une race
-absente de cette liste vient après les autres, par titre. Seules les races hybrides montrent leur classe raciale et leurs magies innées ; ni les magies innées des
-races pures ni les magies qu'une race ne peut pas avoir n'y sont listées (demande du propriétaire) : la page de la race et le tableau du bas de page les donnent.
+absente de cette liste vient après les autres, par titre. Chaque race n'y a que son nom et son accroche (demande du propriétaire) : ni magies innées ni classe
+raciale ; le tableau du bas de page donne les magies innées, la page de la race sa classe raciale.
 
 **Tableaux des magies** (demande du propriétaire, qui remplacent l'ancienne page `/wiki/races-et-magies/`, supprimée) : en bas de `/wiki/races/`, les magies innées
 de chaque race (`components/magie/TableauMagiesInnees.astro`, lignes rangées comme les deux listes) ; sous la carte de `/wiki/magies/`, les relations entre
