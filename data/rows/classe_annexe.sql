@@ -45,7 +45,7 @@ INSERT INTO classe_annexe (classe_id, rang, libelle, libelle_cle, magie_id, text
 (Passif) Pied véloce. +1 vitesse au sol en cas de météo “orage” ou “champ magnétique”.
 (Passif) Dynamo. Gagne +3 dégâts de foudre (cumulable 3 fois) pour la prochaine action lorsque la foudre magique ou naturelle le touche.
 (Passif) Prédateur cinétique. Si cette créature a parcouru 4 cases ou plus en ligne droite pour atteindre sa cible = +5% à la réussite de sa prochaine attaque.', 'classes', 'Classe Maverick V7 › Mage Bleu › A113:AR117');
-INSERT INTO classe_annexe (classe_id, rang, libelle, libelle_cle, magie_id, texte, origine, source_ref) VALUES ('classes/mage-bleu', 13, 'LUMIERE', 'lumiere', 'magies/magie-de-la-lumiere', '(Passif) Force solaire. Augmente tous les dégâts de +5 (+7 en grand soleil) mais prend 10% de la santé max en dégâts à chaque fin de tour.
+INSERT INTO classe_annexe (classe_id, rang, libelle, libelle_cle, magie_id, texte, origine, source_ref) VALUES ('classes/mage-bleu', 13, 'LUMIÈRE', 'lumiere', 'magies/magie-de-la-lumiere', '(Passif) Force solaire. Augmente tous les dégâts de +5 (+7 en grand soleil) mais prend 10% de la santé max en dégâts à chaque fin de tour.
 (Réaction 1 fois/tour) Lumière de force. Permet d''annuler 5 dégâts d''une attaque encaissée.
 (Passif) Soin non-mort. Cette créature est capable de soigner les non-morts et morts-vivants avec la magie de la lumière.
 (Passif) Lanterne sur bâton. Cette créature dévoile les ennemis invisibles ou discrets dans un rayon de 2 cases autour de lui.', 'classes', 'Classe Maverick V7 › Mage Bleu › A118:AR122');

@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 5;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 6;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -486,7 +486,7 @@ CREATE TABLE amelioration_cadaverique (
 -- SORT : une ligne par sort de la table des sorts (14 magies x 23 sorts = 322 ; Potentiel Illimité n'a pas de table propre :
 -- il pioche dans les 14 autres, règle de la fiche, hors de ce domaine)
 CREATE TABLE sort (
-  id                    TEXT    NOT NULL PRIMARY KEY,   -- '<magie.id>#sort:<slug du nom>'
+  id                    TEXT    NOT NULL PRIMARY KEY,   -- '<magie.id>#sort:<clé du nom à l'import>' ; gelé : un renommage change nom et nom_cle, jamais l'id (0006)
   magie_id              TEXT    NOT NULL REFERENCES magie(id),
   nom                   TEXT    NOT NULL CHECK (length(nom) > 0),               -- espaces insécables remplacés par des espaces (identifiant)
   nom_cle               TEXT    NOT NULL CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),               -- normalize(nom) comme text.mjs : 'boule-de-sang' ; recherche d'un sort par son nom
@@ -535,7 +535,6 @@ CREATE TABLE sort (
                                                         -- dans l'ordre de lecture ; NULL quand le sort n'écrit aucun NM. Recopie lisible de sort_bonus_maitrise (db:check et les tests contrôlent l'accord)
   UNIQUE (magie_id, ordre),
   UNIQUE (magie_id, nom),
-  CHECK (id = magie_id || '#sort:' || nom_cle),
   -- le typé suit toujours le brut (la valeur typée n'est jamais une valeur saisie : tools/db/magies.py et db:check recalculent avec le même analyseur)
   CHECK (imparable = (instr(lower(type_brut), 'imparable') > 0)),
   CHECK (inesquivable = (instr(lower(type_brut), 'inesquivable') > 0)),
@@ -1032,8 +1031,7 @@ CREATE TABLE classe (
   description       TEXT,                        -- texte de présentation (AM2). NULL : Anansi, Goleois (titre sans texte), Grenadier (pas de zone de description)
   origine            TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'classes'),
   source_ref         TEXT    NOT NULL CHECK (length(source_ref) > 0), -- onglet + zones lues (départ, à savoir, description) + cellule du Sommaire
-  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
-  CHECK (id = 'classes/' || nom_cle)
+  remarque TEXT    -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 CREATE INDEX classe_categorie ON classe (categorie_id, ordre);   -- « les classes d'une catégorie »
@@ -1443,7 +1441,7 @@ CREATE INDEX relation_peuple_echelle ON relation_peuple (echelle_id);
 -- (Animation des morts), marionettes d'ombre (Marionette de lombre).
 CREATE TABLE invocation (
   id            TEXT    NOT NULL PRIMARY KEY REFERENCES page(id),   -- = id de la page d'introduction de l'onglet
-  nom           TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),    -- nom de l'onglet = titre de la page : 'Appel aux golems', 'Marionette de lombre'
+  nom           TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),    -- nom de l'onglet = titre de la page : 'Appel aux golems', « Marionnette de l'ombre » (onglet « Marionette de lombre », nom corrigé par 0006)
   nom_cle       TEXT    NOT NULL UNIQUE CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),    -- normalize(nom)
   ordre         INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),   -- rang de l'onglet dans le classeur
   bandeau       TEXT    NOT NULL,           -- bandeau de l'onglet (AJ1, AP1, Z1) : 'INVOCATION GOLEM', 'INVOCATION NON-MORT'
@@ -1460,8 +1458,7 @@ CREATE TABLE invocation (
                                             -- tableau figure dans les deux classeurs (identité vérifiée à l'import) ; une seule copie, pas de doublon ici.
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'bestiaire'),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
-  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
-  CHECK (id = 'bestiaire/' || nom_cle)      -- l'id de page est '<type>/<slug>' et le slug est normalize(titre)
+  remarque TEXT    -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 CREATE INDEX invocation_sort ON invocation (sort_id) WHERE sort_id IS NOT NULL;
@@ -1470,7 +1467,7 @@ CREATE INDEX invocation_sort ON invocation (sort_id) WHERE sort_id IS NOT NULL;
 -- (golems : Inerte, Élémentaire ; non-morts : Non-Mort, Élémentaire). Une ligne = un élément de la liste « - Nom. Texte ».
 -- Reconstruction : '- ' || nom || '. ' || texte = l'élément de liste de texte_general.
 CREATE TABLE invocation_capacite_commune (
-  id            TEXT    NOT NULL PRIMARY KEY,         -- '<invocation.id>#commune:<nom_cle>'
+  id            TEXT    NOT NULL PRIMARY KEY,         -- '<invocation.id>#commune:<clé du nom à l'import>' ; gelé : un renommage change nom et nom_cle, jamais l'id (0006)
   invocation_id TEXT    NOT NULL REFERENCES invocation(id),
   rang          INTEGER NOT NULL CHECK (rang >= 1),   -- ordre dans la liste
   nom           TEXT    NOT NULL CHECK (length(nom) > 0),                     -- « Inerte », « Non-Mort », « Élémentaire » : jusqu'au premier « . »
@@ -1480,8 +1477,7 @@ CREATE TABLE invocation_capacite_commune (
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (invocation_id, rang),
-  UNIQUE (invocation_id, nom_cle),
-  CHECK (id = invocation_id || '#commune:' || nom_cle)
+  UNIQUE (invocation_id, nom_cle)
 ) STRICT;
 
 -- Résistances / vulnérabilités / immunités écrites dans une capacité COMMUNE (aujourd'hui : « Non-Mort » : immunisée à la peur, à la
@@ -1552,7 +1548,7 @@ CREATE INDEX invocation_bloc_magie_magie ON invocation_bloc_magie (magie_id);
 -- CREATURE : une ligne par carte (63 = 30 golems/poupées + 28 non-morts + 5 marionettes)
 CREATE TABLE creature (
   id            TEXT    NOT NULL PRIMARY KEY REFERENCES page(id),   -- = id de la page (entité typée qui a SA page)
-  nom           TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),    -- nom de la carte (D1 / T1) = titre de la page ; coquilles conservées
+  nom           TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),    -- nom de la carte (D1 / T1) = titre de la page ; orthographe corrigée par 0006 (l'id garde la clé d'origine)
   nom_cle       TEXT    NOT NULL UNIQUE CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),    -- normalize(nom) : 'golem-de-magma' ; jointures par nom avec les autres domaines
   invocation_id TEXT    NOT NULL REFERENCES invocation(id),
   bloc_id       TEXT    NOT NULL,           -- bloc de marge (combinaison de magies ou palier EP) ; FK composite plus bas
@@ -1595,7 +1591,6 @@ CREATE TABLE creature (
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (bloc_id, rang),
   FOREIGN KEY (bloc_id, invocation_id) REFERENCES invocation_bloc (id, invocation_id),
-  CHECK (id = 'bestiaire/' || nom_cle),     -- l'id de page est '<type>/<slug>' et le slug est normalize(titre)
   CHECK ((chakra_brut IS NULL) = (chakra_forme IS NULL)),
   CHECK ((chakra_valeur IS NULL) = (chakra_forme IS NULL)),
   CHECK ((barriere_brut IS NULL) = (barriere_forme IS NULL)),
@@ -1666,7 +1661,7 @@ CREATE TABLE creature_bonus_npm (
 -- `brut` = la ligne entière (reconstruction : nom || ' - ' || reste ; contrôlée à l'import). Les colonnes typées ne sont remplies que
 -- pour les formes sans ambiguïté ; `precisions` garde TOUTES les parenthèses (zone, cône, coût en santé, « 2Po-Cône »…).
 CREATE TABLE creature_attaque (
-  id          TEXT    NOT NULL PRIMARY KEY,           -- '<creature.id>#attaque:<nom_cle>' ; '…~2' pour une attaque écrite deux fois à l'identique (Golem d'ombre)
+  id          TEXT    NOT NULL PRIMARY KEY,           -- '<creature.id>#attaque:<clé du nom à l'import>' ; gelé : un renommage change nom et nom_cle, jamais l'id (0006) ; '…~2' pour une attaque écrite deux fois à l'identique (Golem d'ombre)
   creature_id TEXT    NOT NULL REFERENCES creature(id),
   rang        INTEGER NOT NULL CHECK (rang >= 1),     -- ligne dans la cellule « Dégâts » (position : n'entre pas dans l'identifiant)
   nom         TEXT    NOT NULL CHECK (length(nom) > 0),                       -- avant le premier « - » : « Poing », « Arbalécho », « L'arme du lanceur »
@@ -1688,7 +1683,6 @@ CREATE TABLE creature_attaque (
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (creature_id, rang),
   UNIQUE (creature_id, nom_cle, occurrence),
-  CHECK (id = creature_id || '#attaque:' || nom_cle || CASE WHEN occurrence > 1 THEN '~' || occurrence ELSE '' END),
   CHECK ((des_nombre IS NULL) = (des_faces IS NULL)),
   CHECK (bonus_fixe IS NULL OR des_nombre IS NOT NULL),
   CHECK ((portee_min IS NULL) = (portee_max IS NULL)),
@@ -1719,7 +1713,7 @@ CREATE INDEX creature_attaque_nom ON creature_attaque (nom_cle);
 -- Forme du paragraphe : « [(NPM n) ][[étiquette] ]Nom. Texte ». Reconstruction exacte :
 --   ['(NPM ' || npm_min || ') '] || ['[' || etiquette || '] '] || nom || '. ' || texte   (contrôlée à l'import)
 CREATE TABLE creature_capacite (
-  id          TEXT    NOT NULL PRIMARY KEY,           -- '<creature.id>#capacite:<nom_cle>' ; '…#capacite:sort-supplementaire:npm3' quand le nom se répète à un autre NPM
+  id          TEXT    NOT NULL PRIMARY KEY,           -- '<creature.id>#capacite:<clé du nom à l'import>' ; gelé : un renommage change nom et nom_cle, jamais l'id (0006) ; '…#capacite:sort-supplementaire:npm3' quand le nom se répète à un autre NPM
   creature_id TEXT    NOT NULL REFERENCES creature(id),
   rang        INTEGER NOT NULL CHECK (rang >= 1),     -- ordre des paragraphes
   npm_min     INTEGER CHECK (npm_min BETWEEN 1 AND 5),   -- préfixe « (NPM 3) » : niveau de puissance magique à partir duquel la capacité s'ajoute ; NULL = capacité de base
@@ -1734,8 +1728,7 @@ CREATE TABLE creature_capacite (
   source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0), -- plage de la cellule « Capacité(s) » (G19:R28)
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (creature_id, rang),
-  CHECK (length(nom_cle) > 0),
-  CHECK (id = creature_id || '#capacite:' || nom_cle || COALESCE(':npm' || npm_min, ''))
+  CHECK (length(nom_cle) > 0)
 ) STRICT;
 
 CREATE INDEX creature_capacite_nom ON creature_capacite (nom_cle);

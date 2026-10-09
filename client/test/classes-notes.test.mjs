@@ -108,8 +108,8 @@ const NOTES = [
     "Note de cellule : L'obstacle doit être assez fin, les mj seront libres de décider."],
   // liste, étoile à protéger
   ["Mage", "X30", "mage-soin-etrange", 1, "\"MAGE BLANC\"",
-    "Il est capable de soigner aussi les morts vivants.\n*Sort d'attaque basique lvl 1 :\n- Boule de sang\n- Boule de chakra\n- Boule sombre\n- Coup du sablier\n- Bulle de vide\n- Tir d'âme\n- Boule de feu\n- Bulle d'eau\n- Éclat glacé\n- Lance pierre\n- Lame d'air\n- Éclair\n- Frappe lumineuse\n- Sphère obscure",
-    "Note de cellule : Il est capable de soigner aussi les morts vivants.  \n\\*Sort d'attaque basique lvl 1 :\n\n- Boule de sang\n- Boule de chakra\n- Boule sombre\n- Coup du sablier\n- Bulle de vide\n- Tir d'âme\n- Boule de feu\n- Bulle d'eau\n- Éclat glacé\n- Lance pierre\n- Lame d'air\n- Éclair\n- Frappe lumineuse\n- Sphère obscure"],
+    "Il est capable de soigner aussi les morts vivants.\n*Sort d'attaque basique lvl 1 :\n- Boule de sang\n- Boule de chakra\n- Boule sombre\n- Coup du sablier\n- Bulle de vide\n- Tir d'âme\n- Boule de feu\n- Bulle d'eau\n- Éclat glacé\n- Lance-pierre\n- Lame d'air\n- Éclair\n- Frappe lumineuse\n- Sphère obscure",
+    "Note de cellule : Il est capable de soigner aussi les morts vivants.  \n\\*Sort d'attaque basique lvl 1 :\n\n- Boule de sang\n- Boule de chakra\n- Boule sombre\n- Coup du sablier\n- Bulle de vide\n- Tir d'âme\n- Boule de feu\n- Bulle d'eau\n- Éclat glacé\n- Lance-pierre\n- Lame d'air\n- Éclair\n- Frappe lumineuse\n- Sphère obscure"],
   // tabulations en fin de ligne dans le classeur : retirées ; trois lignes
   ["Mage", "A44", "mage-toujours-plus", 1, "\"MAGE NOIR\"",
     "Bien entendu qu'on parle des sorts qui sont non IC. Le deuxième sort crame un IC sur les 3 disponibles dans le tour donc prudence à en avoir un avant d'utiliser cette capacité.\nPeut lancer deux sorts de soin ou/et d'amplification en 1 seul tour. Il est nécessaire de réussir un jet de concentration entre les deux sorts.\t\t\t\t\t\nLes deux sorts doivent être différents.",

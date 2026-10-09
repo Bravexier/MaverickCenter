@@ -1,0 +1,7651 @@
+{
+ "migration": "0006-orthographe-noms",
+ "corrections": [
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/appel-aux-golems"
+   },
+   "col": "corps_md",
+   "avant": "Poupée corrompu",
+   "apres": "Poupée corrompue",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « poupée » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/appel-aux-golems"
+   },
+   "col": "corps_md",
+   "avant": "Poupée sacré",
+   "apres": "Poupée sacrée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « poupée » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/bete-de-lombre"
+   },
+   "col": "corps_md",
+   "avant": "Folle de guerre",
+   "apres": "Folie de guerre",
+   "n": 2,
+   "nature": "orthographe",
+   "raison": "Nom d'état : « folie de guerre » (« folle » est un adjectif sans nom)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/bete-de-lombre"
+   },
+   "col": "corps_md",
+   "avant": "Marionette de lombre",
+   "apres": "Marionnette de l'ombre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« marionnette » prend deux n ; apostrophe de « l'ombre » (nom du sort : « Marionnette de l'ombre »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/double-sombre"
+   },
+   "col": "corps_md",
+   "avant": "Marionette de lombre",
+   "apres": "Marionnette de l'ombre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« marionnette » prend deux n ; apostrophe de « l'ombre » (nom du sort : « Marionnette de l'ombre »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/executeur-lunaire"
+   },
+   "col": "corps_md",
+   "avant": "Marionette de lombre",
+   "apres": "Marionnette de l'ombre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« marionnette » prend deux n ; apostrophe de « l'ombre » (nom du sort : « Marionnette de l'ombre »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/golem-de-chair"
+   },
+   "col": "corps_md",
+   "avant": "Taille disproportionné",
+   "apres": "Taille disproportionnée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « taille » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/golem-de-foudre"
+   },
+   "col": "corps_md",
+   "avant": "Brume Noir",
+   "apres": "Brume Noire",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « brume » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/golem-de-lumiere"
+   },
+   "col": "corps_md",
+   "avant": "Poupée sacré",
+   "apres": "Poupée sacrée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « poupée » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/golem-de-petrole"
+   },
+   "col": "corps_md",
+   "avant": "Poupée corrompu",
+   "apres": "Poupée corrompue",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « poupée » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/golem-de-sable"
+   },
+   "col": "corps_md",
+   "avant": "tempête sable",
+   "apres": "tempête de sable",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« tempête de sable », comme ailleurs dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/goule"
+   },
+   "col": "corps_md",
+   "avant": "des Mort-Vivant",
+   "apres": "des Morts-Vivants",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Pluriel après « des » : les deux éléments du nom composé s'accordent."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/goule"
+   },
+   "col": "corps_md",
+   "avant": "Radiation corrompu",
+   "apres": "Radiation corrompue",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « radiation » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/marionette-de-lombre"
+   },
+   "col": "corps_md",
+   "avant": "MARIONETTE",
+   "apres": "MARIONNETTE",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« marionnette » prend deux n."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/marionette-de-lombre"
+   },
+   "col": "corps_md",
+   "avant": "Sihouetteur",
+   "apres": "Silhouetteur",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Dérivé de « silhouette » (forme du texte de la créature)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/marionette-de-lombre"
+   },
+   "col": "titre",
+   "avant": "Marionette de lombre",
+   "apres": "Marionnette de l'ombre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« marionnette » prend deux n ; apostrophe de « l'ombre » (nom du sort : « Marionnette de l'ombre »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/momie"
+   },
+   "col": "corps_md",
+   "avant": "Veilliessement",
+   "apres": "Vieillissement",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Lettres inversées : « vieillissement » (sort de l'Espace/Temps)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/ombre-rampante"
+   },
+   "col": "corps_md",
+   "avant": "Marionette de lombre",
+   "apres": "Marionnette de l'ombre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« marionnette » prend deux n ; apostrophe de « l'ombre » (nom du sort : « Marionnette de l'ombre »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/poupee-arcanique"
+   },
+   "col": "corps_md",
+   "avant": "Foudre argenté",
+   "apres": "Foudre argentée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « foudre » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/poupee-corrompu"
+   },
+   "col": "titre",
+   "avant": "Poupée corrompu",
+   "apres": "Poupée corrompue",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « poupée » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/poupee-de-glaise"
+   },
+   "col": "corps_md",
+   "avant": "Lance pierre",
+   "apres": "Lance-pierre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Nom composé « lance-pierre » (trait d'union)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/poupee-necrotique"
+   },
+   "col": "corps_md",
+   "avant": "Répar Os",
+   "apres": "Répar'Os",
+   "n": 1,
+   "nature": "ponctuation",
+   "raison": "Même forme que les autres noms de la série (« Destruc'Os », « Fractur'Os »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/poupee-sacre"
+   },
+   "col": "titre",
+   "avant": "Poupée sacré",
+   "apres": "Poupée sacrée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « poupée » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/poupee-terrestre"
+   },
+   "col": "corps_md",
+   "avant": "Lance pierre",
+   "apres": "Lance-pierre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Nom composé « lance-pierre » (trait d'union)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/reanime"
+   },
+   "col": "corps_md",
+   "avant": "Para-tonnerre",
+   "apres": "Paratonnerre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le nom s'écrit en un mot : « paratonnerre »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/sihouetteur-obscur"
+   },
+   "col": "corps_md",
+   "avant": "Marionette de lombre",
+   "apres": "Marionnette de l'ombre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« marionnette » prend deux n ; apostrophe de « l'ombre » (nom du sort : « Marionnette de l'ombre »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/sihouetteur-obscur"
+   },
+   "col": "titre",
+   "avant": "Sihouetteur",
+   "apres": "Silhouetteur",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Dérivé de « silhouette » (forme du texte de la créature)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/squamique"
+   },
+   "col": "corps_md",
+   "avant": "Foudre argenté",
+   "apres": "Foudre argentée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « foudre » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/squelette-de-pierre"
+   },
+   "col": "corps_md",
+   "avant": "Épée osseuse lié",
+   "apres": "Épée osseuse liée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « épée » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/temposs"
+   },
+   "col": "corps_md",
+   "avant": "Arme distordu",
+   "apres": "Arme distordue",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « arme » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/zombinox"
+   },
+   "col": "corps_md",
+   "avant": "Tu ne passe pas",
+   "apres": "Tu ne passes pas",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "2e personne du singulier : « tu passes »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/anansi-anti-corps"
+   },
+   "col": "titre",
+   "avant": "Anti-corps",
+   "apres": "Anticorps",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le nom s'écrit en un mot : « anticorps »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/anansi-attention-migale"
+   },
+   "col": "titre",
+   "avant": "Attention migale",
+   "apres": "Attention mygale",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "L'araignée s'écrit « mygale »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/archimage-pacte-noire"
+   },
+   "col": "titre",
+   "avant": "Pacte Noire",
+   "apres": "Pacte Noir",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "« pacte » est masculin."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/barde-bain-de-foules"
+   },
+   "col": "titre",
+   "avant": "Bain de foules",
+   "apres": "Bain de foule",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Expression figée « bain de foule »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/barde-balade-guerriere"
+   },
+   "col": "titre",
+   "avant": "Balade guerrière",
+   "apres": "Ballade guerrière",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Chant : « ballade » (« balade » est une promenade)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/bimane-frappe-fatiguante"
+   },
+   "col": "titre",
+   "avant": "Frappe fatiguante",
+   "apres": "Frappe fatigante",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "L'adjectif s'écrit « fatigant(e) » (le participe est « fatiguant »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/clerc-tend-lautre-joue"
+   },
+   "col": "titre",
+   "avant": "Tend l'autre joue",
+   "apres": "Tends l'autre joue",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Impératif de « tendre » à la 2e personne : « tends »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/cuirasse-tu-passe-pas"
+   },
+   "col": "titre",
+   "avant": "Tu passe pas",
+   "apres": "Tu passes pas",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "2e personne du singulier : « tu passes »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/fenrir-griffe-sanglant"
+   },
+   "col": "titre",
+   "avant": "Griffe sanglant",
+   "apres": "Griffe sanglante",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « griffe » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/flagelleur-dit-mon-nom"
+   },
+   "col": "titre",
+   "avant": "Dit mon nom",
+   "apres": "Dis mon nom",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Impératif de « dire » à la 2e personne : « dis »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/flagelleur-puni-moi"
+   },
+   "col": "titre",
+   "avant": "Puni-moi",
+   "apres": "Punis-moi",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Impératif de « punir » à la 2e personne : « punis »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/frappeur-asymbiotique"
+   },
+   "col": "corps_md",
+   "avant": "Frappeud",
+   "apres": "Frappeur",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Nom de la classe : « Frappeur »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/frappeur-distracteur"
+   },
+   "col": "corps_md",
+   "avant": "Vigilence",
+   "apres": "Vigilance",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le nom s'écrit « vigilance »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/frappeur-distracteur"
+   },
+   "col": "resume",
+   "avant": "Vigilence",
+   "apres": "Vigilance",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le nom s'écrit « vigilance »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/goleois-balade-barbare"
+   },
+   "col": "titre",
+   "avant": "Balade barbare",
+   "apres": "Ballade barbare",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Chant : « ballade » (« balade » est une promenade)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/grenadier-attend"
+   },
+   "col": "titre",
+   "avant": "Attend ...",
+   "apres": "Attends ...",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Impératif de « attendre » à la 2e personne : « attends »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/guerrier-contre-coup"
+   },
+   "col": "titre",
+   "avant": "Contre coup",
+   "apres": "Contrecoup",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le nom s'écrit en un mot : « contrecoup »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/kitsune-vif-allure"
+   },
+   "col": "titre",
+   "avant": "Vif allure",
+   "apres": "Vive allure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "« allure » est féminin : « à vive allure »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/lancier-riposte-infini"
+   },
+   "col": "titre",
+   "avant": "Riposte infini",
+   "apres": "Riposte infinie",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « riposte » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/maclier-prise-alternatif"
+   },
+   "col": "titre",
+   "avant": "Prise alternatif",
+   "apres": "Prise alternative",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « prise » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/mage-soin-etrange"
+   },
+   "col": "corps_md",
+   "avant": "Lance pierre",
+   "apres": "Lance-pierre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Nom composé « lance-pierre » (trait d'union)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/mage-vert-meilleur-attaque"
+   },
+   "col": "titre",
+   "avant": "Meilleur attaque",
+   "apres": "Meilleure attaque",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « attaque » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/martiale-force-inne"
+   },
+   "col": "titre",
+   "avant": "Force inné",
+   "apres": "Force innée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « force » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/martiale-rage-audacieux"
+   },
+   "col": "titre",
+   "avant": "Rage audacieux",
+   "apres": "Rage audacieuse",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « rage » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/martiale-rage-prudent"
+   },
+   "col": "titre",
+   "avant": "Rage prudent",
+   "apres": "Rage prudente",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « rage » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/mercenaire-je-te-choisi"
+   },
+   "col": "titre",
+   "avant": "Je te choisi",
+   "apres": "Je te choisis",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Présent de « choisir » à la 1re personne : « je choisis »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/minotaure-parceque"
+   },
+   "col": "titre",
+   "avant": "ParceQUE",
+   "apres": "Parce QUE",
+   "n": 1,
+   "nature": "ponctuation",
+   "raison": "Locution en deux mots (les capitales du cri sont gardées)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/moine-prend-ca"
+   },
+   "col": "titre",
+   "avant": "Prend ça",
+   "apres": "Prends ça",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Impératif de « prendre » à la 2e personne : « prends »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/moine-tu-vivra"
+   },
+   "col": "titre",
+   "avant": "Tu vivra",
+   "apres": "Tu vivras",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Futur de « vivre » à la 2e personne : « tu vivras »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/namazu-dent-infecte"
+   },
+   "col": "titre",
+   "avant": "Dent Infecté",
+   "apres": "Dent Infectée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « dent » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/pugiliste-a-deux-main"
+   },
+   "col": "titre",
+   "avant": "A deux Main",
+   "apres": "À deux Mains",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Préposition « à » accentuée et pluriel après « deux »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/pugiliste-suplexe"
+   },
+   "col": "titre",
+   "avant": "Suplexe",
+   "apres": "Suplex",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "La prise de catch s'écrit « suplex »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/tueur-anti-corps"
+   },
+   "col": "titre",
+   "avant": "Anti corps",
+   "apres": "Anticorps",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le nom s'écrit en un mot : « anticorps »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/tueur-innaretable"
+   },
+   "col": "titre",
+   "avant": "innarêtable",
+   "apres": "inarrêtable",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« inarrêtable » : un n, deux r."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/voleur-mcgyver"
+   },
+   "col": "titre",
+   "avant": "McGyver",
+   "apres": "MacGyver",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le personnage de série s'écrit « MacGyver »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/voleur-tu-ma-pas-vu"
+   },
+   "col": "titre",
+   "avant": "Tu m'a pas vu",
+   "apres": "Tu m'as pas vu",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Verbe avoir à la 2e personne : « tu as »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/anansi"
+   },
+   "col": "corps_md",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/anansi"
+   },
+   "col": "corps_md",
+   "avant": "panacée mineur",
+   "apres": "panacée mineure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/bimane"
+   },
+   "col": "corps_md",
+   "avant": "pierre à aiguisé",
+   "apres": "pierre à aiguiser",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Infinitif après « à » : « pierre à aiguiser »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/clerc"
+   },
+   "col": "corps_md",
+   "avant": "panacée mineur",
+   "apres": "panacée mineure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/fenrir"
+   },
+   "col": "corps_md",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/fenrir"
+   },
+   "col": "corps_md",
+   "avant": "pierre à aiguisé",
+   "apres": "pierre à aiguiser",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Infinitif après « à » : « pierre à aiguiser »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/frappeur"
+   },
+   "col": "corps_md",
+   "avant": "Armure de Cuir complet",
+   "apres": "Armure de Cuir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/goleois"
+   },
+   "col": "corps_md",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/grenadier"
+   },
+   "col": "corps_md",
+   "avant": "Armure de Cuir complet",
+   "apres": "Armure de Cuir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/guerrier"
+   },
+   "col": "corps_md",
+   "avant": "pierre à aiguisé",
+   "apres": "pierre à aiguiser",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Infinitif après « à » : « pierre à aiguiser »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/jackalope"
+   },
+   "col": "corps_md",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/jackalope"
+   },
+   "col": "corps_md",
+   "avant": "Jacklope",
+   "apres": "Jackalope",
+   "n": 1,
+   "nature": "harmonisation",
+   "raison": "La classe s'appelle « Jackalope » (titre et texte de la page)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/kitsune"
+   },
+   "col": "corps_md",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/lanceur"
+   },
+   "col": "corps_md",
+   "avant": "Armes de Jet Léger",
+   "apres": "Armes de Jet Légères",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armes » (féminin pluriel)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/lanceur"
+   },
+   "col": "corps_md",
+   "avant": "Armes de Jet Lourde",
+   "apres": "Armes de Jet Lourdes",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armes » (féminin pluriel)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/lanceur"
+   },
+   "col": "corps_md",
+   "avant": "Armure de Cuir complet",
+   "apres": "Armure de Cuir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/maclier"
+   },
+   "col": "corps_md",
+   "avant": "panacée mineur",
+   "apres": "panacée mineure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/mage-bleu"
+   },
+   "col": "corps_md",
+   "avant": "LUMIERE",
+   "apres": "LUMIÈRE",
+   "n": 1,
+   "nature": "accent",
+   "raison": "Accent conservé en majuscule (cf. « NÉCROMANCIE »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/mage-rouge"
+   },
+   "col": "corps_md",
+   "avant": "Armure de Peau complet",
+   "apres": "Armure de Peau complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/mage-rouge"
+   },
+   "col": "corps_md",
+   "avant": "pierre à aiguisé",
+   "apres": "pierre à aiguiser",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Infinitif après « à » : « pierre à aiguiser »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/marcass"
+   },
+   "col": "corps_md",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/martiale"
+   },
+   "col": "corps_md",
+   "avant": "Armure de Cuir complet",
+   "apres": "Armure de Cuir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/medusain"
+   },
+   "col": "corps_md",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/mercenaire"
+   },
+   "col": "corps_md",
+   "avant": "Chasseur de Prime",
+   "apres": "Chasseur de Primes",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Le titre de section et le texte écrivent « Chasseur de Primes »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/minotaure"
+   },
+   "col": "corps_md",
+   "avant": "Armure de cuir complet",
+   "apres": "Armure de cuir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/minotaure"
+   },
+   "col": "corps_md",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/moine"
+   },
+   "col": "corps_md",
+   "avant": "Armure de Cuir complet",
+   "apres": "Armure de Cuir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/moine"
+   },
+   "col": "corps_md",
+   "avant": "panacée mineur",
+   "apres": "panacée mineure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/namazu"
+   },
+   "col": "corps_md",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/ocultomancien"
+   },
+   "col": "corps_md",
+   "avant": "Métérologue",
+   "apres": "Météorologue",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Lettre manquante : « météorologue » (titre de section et texte)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/ocultomancien"
+   },
+   "col": "corps_md",
+   "avant": "Occultomancien",
+   "apres": "Ocultomancien",
+   "n": 1,
+   "nature": "harmonisation",
+   "raison": "Graphie majoritaire du nom de la classe (48 « Ocultomancien » contre 3)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/ocultomancien"
+   },
+   "col": "resume",
+   "avant": "Occultomancien",
+   "apres": "Ocultomancien",
+   "n": 1,
+   "nature": "harmonisation",
+   "raison": "Graphie majoritaire du nom de la classe (48 « Ocultomancien » contre 3)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/olwman"
+   },
+   "col": "corps_md",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/orios"
+   },
+   "col": "corps_md",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/parleur"
+   },
+   "col": "corps_md",
+   "avant": "Armure de Cuir complet",
+   "apres": "Armure de Cuir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/parleur"
+   },
+   "col": "corps_md",
+   "avant": "plume à gravé",
+   "apres": "plume à graver",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Infinitif après « à » : « plume à graver »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/pugiliste"
+   },
+   "col": "corps_md",
+   "avant": "panacée mineur",
+   "apres": "panacée mineure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/rokh"
+   },
+   "col": "corps_md",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/satyre"
+   },
+   "col": "corps_md",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/tueur"
+   },
+   "col": "corps_md",
+   "avant": "Armure de Cuir complet",
+   "apres": "Armure de Cuir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/voleur"
+   },
+   "col": "corps_md",
+   "avant": "Armure de Cuir complet",
+   "apres": "Armure de Cuir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/distance-et-voyage"
+   },
+   "col": "corps_md",
+   "avant": "Purée de poix",
+   "apres": "Purée de pois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Expression « purée de pois » (brouillard épais) ; « poix » est la résine."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-armure-defense-bouclier"
+   },
+   "col": "corps_md",
+   "avant": "Parade partiel",
+   "apres": "Parade partielle",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « parade » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-attributs"
+   },
+   "col": "corps_md",
+   "avant": "Mithril",
+   "apres": "Mythril",
+   "n": 1,
+   "nature": "harmonisation",
+   "raison": "Graphie majoritaire de la base : « Mythril »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-capacites-dons"
+   },
+   "col": "titre",
+   "avant": "Capacités/Don",
+   "apres": "Capacités/Dons",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Pluriel parallèle à « Capacités »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-tableau-resistances-faiblesses"
+   },
+   "col": "titre",
+   "avant": "Résistance/Faiblesses",
+   "apres": "Résistances/Faiblesses",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Même nombre pour les deux termes (le texte parle des « résistances et faiblesses »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/guide-pour-mj-maverick"
+   },
+   "col": "corps_md",
+   "avant": "Les Actions et mouvement",
+   "apres": "Les Actions et mouvements",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "La page liée s'appelle « Les Actions et mouvements »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/guide-pour-mj-maverick"
+   },
+   "col": "corps_md",
+   "avant": "Résistance/Faiblesses",
+   "apres": "Résistances/Faiblesses",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Même nombre pour les deux termes (le texte parle des « résistances et faiblesses »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/liste-des-alterations-d-etat"
+   },
+   "col": "corps_md",
+   "avant": "Aggripé",
+   "apres": "Agrippé",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« agripper » : un g, deux p."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/liste-des-alterations-d-etat"
+   },
+   "col": "corps_md",
+   "avant": "Folle de Guerre",
+   "apres": "Folie de Guerre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Nom d'état : « folie de guerre » (« folle » est un adjectif sans nom)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/liste-des-effets-mode-super"
+   },
+   "col": "corps_md",
+   "avant": "Foudre étincellante",
+   "apres": "Foudre étincelante",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« étincelant » prend un seul l."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/liste-des-effets-mode-super"
+   },
+   "col": "corps_md",
+   "avant": "Guérriseur",
+   "apres": "Guérisseur",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« guérisseur » : un r, deux s."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/meteo"
+   },
+   "col": "corps_md",
+   "avant": "Purée de poix",
+   "apres": "Purée de pois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Expression « purée de pois » (brouillard épais) ; « poix » est la résine."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/meteo"
+   },
+   "col": "corps_md",
+   "avant": "purée de poix",
+   "apres": "purée de pois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Expression « purée de pois » (brouillard épais) ; « poix » est la résine."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/mode-hyper-magie"
+   },
+   "col": "corps_md",
+   "avant": "Innerte",
+   "apres": "Inerte",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« inerte » : un seul n."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/mode-hyper-magie"
+   },
+   "col": "corps_md",
+   "avant": "des os froid",
+   "apres": "des os froids",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Pluriel après « des »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/relations-entre-les-races"
+   },
+   "col": "corps_md",
+   "avant": "Supprémaciste",
+   "apres": "Suprémaciste",
+   "n": 72,
+   "nature": "orthographe",
+   "raison": "« suprémaciste » prend un seul p."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/relations-entre-les-races"
+   },
+   "col": "corps_md",
+   "avant": "Marcass Ubain",
+   "apres": "Marcass Urbain",
+   "n": 72,
+   "nature": "frappe",
+   "raison": "Lettre manquante, comme les autres peuples « … Urbain »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "lore/relations-entre-les-races"
+   },
+   "col": "corps_md",
+   "avant": "recopiés tels qu'écrits, y compris « Elfe Argenté Suprémaciste », « Jackalope Feu » et « Marcass Urbain » : rien n'y est corrigé. Seuls les retours à la ligne et les espaces multiples d'une étiquette sont ramenés à une espace.",
+   "apres": "recopiés tels qu'écrits. Seuls les retours à la ligne et les espaces multiples d'une étiquette sont ramenés à une espace, et deux fautes d'orthographe y sont corrigées : « Elfe Argenté Suprémaciste » et « Marcass Urbain ».",
+   "n": 1,
+   "nature": "phrase",
+   "raison": "La page disait que rien n'était corrigé dans les étiquettes ; deux le sont désormais."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-de-la-corruption"
+   },
+   "col": "corps_md",
+   "avant": "Verrouille Visible",
+   "apres": "Verrouillage Visible",
+   "n": 2,
+   "nature": "orthographe",
+   "raison": "Les trois autres sorts de la série s'appellent « Verrouillage … »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-de-la-foudre"
+   },
+   "col": "corps_md",
+   "avant": "Para-tonnerre",
+   "apres": "Paratonnerre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le nom s'écrit en un mot : « paratonnerre »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-de-la-foudre"
+   },
+   "col": "corps_md",
+   "avant": "para-tonnerre",
+   "apres": "paratonnerre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le nom s'écrit en un mot : « paratonnerre »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-de-la-foudre"
+   },
+   "col": "corps_md",
+   "avant": "Colonne tesla",
+   "apres": "Colonne Tesla",
+   "n": 2,
+   "nature": "casse",
+   "raison": "« Tesla » est un nom propre (Nikola Tesla)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-de-la-necromancie"
+   },
+   "col": "corps_md",
+   "avant": "Purée de poix",
+   "apres": "Purée de pois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Expression « purée de pois » (brouillard épais) ; « poix » est la résine."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-de-la-necromancie"
+   },
+   "col": "corps_md",
+   "avant": "Répar Os",
+   "apres": "Répar'Os",
+   "n": 1,
+   "nature": "ponctuation",
+   "raison": "Même forme que les autres noms de la série (« Destruc'Os », « Fractur'Os »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-de-la-necromancie"
+   },
+   "col": "corps_md",
+   "avant": "Résurrection Noir",
+   "apres": "Résurrection Noire",
+   "n": 3,
+   "nature": "grammaire",
+   "raison": "Accord avec « résurrection » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-de-la-necromancie"
+   },
+   "col": "corps_md",
+   "avant": "Vague de cadavre",
+   "apres": "Vague de cadavres",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Une vague de plusieurs cadavres : complément au pluriel."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-de-la-necromancie"
+   },
+   "col": "corps_md",
+   "avant": "vague de cadavre",
+   "apres": "vague de cadavres",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Une vague de plusieurs cadavres : complément au pluriel."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-de-la-terre"
+   },
+   "col": "corps_md",
+   "avant": "Lance Pierre",
+   "apres": "Lance-pierre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Nom composé « lance-pierre » (trait d'union)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-de-la-terre"
+   },
+   "col": "corps_md",
+   "avant": "tempête sable",
+   "apres": "tempête de sable",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« tempête de sable », comme ailleurs dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-de-larcane"
+   },
+   "col": "corps_md",
+   "avant": "Foudre argenté",
+   "apres": "Foudre argentée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « foudre » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-de-leau"
+   },
+   "col": "corps_md",
+   "avant": "Climatospetique",
+   "apres": "Climatosceptique",
+   "n": 1,
+   "nature": "harmonisation",
+   "raison": "Nom du don de l'Ocultomancien, écrit « Climatosceptique » (climat + sceptique)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-de-leau"
+   },
+   "col": "corps_md",
+   "avant": "Onde Confusion",
+   "apres": "Onde de Confusion",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Nom du sort complété (« onde de confusion »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-de-lombre"
+   },
+   "col": "corps_md",
+   "avant": "Brume mental",
+   "apres": "Brume mentale",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « brume » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-du-vent"
+   },
+   "col": "corps_md",
+   "avant": "Estoc hurlante",
+   "apres": "Estoc hurlant",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "« estoc » est masculin."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-du-vide"
+   },
+   "col": "corps_md",
+   "avant": "Touché du Vide",
+   "apres": "Toucher du Vide",
+   "n": 2,
+   "nature": "orthographe",
+   "raison": "Le nom du contact est « le toucher » (« touché » est le participe)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "metiers/marin"
+   },
+   "col": "corps_md",
+   "avant": "Vie de nature",
+   "apres": "Vie en nature",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "La compétence s'appelle « Vie en nature » dans les autres métiers."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/drakos"
+   },
+   "col": "corps_md",
+   "avant": "Drakos Bordeau",
+   "apres": "Drakos Bordeaux",
+   "n": 2,
+   "nature": "orthographe",
+   "raison": "La couleur s'écrit « bordeaux »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/drakos"
+   },
+   "col": "corps_md",
+   "avant": "Tempe/Espace",
+   "apres": "Temps/Espace",
+   "n": 3,
+   "nature": "frappe",
+   "raison": "« Temps » (magie Espace/Temps)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/drassahthac"
+   },
+   "col": "corps_md",
+   "avant": "Goutière",
+   "apres": "Gouttière",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« gouttière » prend deux t."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/drassahthac"
+   },
+   "col": "corps_md",
+   "avant": "Drassah'Thac",
+   "apres": "Drassah'thac",
+   "n": 6,
+   "nature": "harmonisation",
+   "raison": "Graphie majoritaire de la race : « Drassah'thac » (402 contre 6)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/elfe-argente"
+   },
+   "col": "corps_md",
+   "avant": "Supprémaciste",
+   "apres": "Suprémaciste",
+   "n": 2,
+   "nature": "orthographe",
+   "raison": "« suprémaciste » prend un seul p."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/elfe-forestier"
+   },
+   "col": "corps_md",
+   "avant": "elfes dorée",
+   "apres": "elfes dorés",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « elfes » (masculin pluriel), comme la race des Elfes Dorés."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/humain"
+   },
+   "col": "corps_md",
+   "avant": "Elfes Dorées",
+   "apres": "Elfes Dorés",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « elfes » (masculin pluriel)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/humain"
+   },
+   "col": "corps_md",
+   "avant": "Purée de poix",
+   "apres": "Purée de pois",
+   "n": 2,
+   "nature": "orthographe",
+   "raison": "Expression « purée de pois » (brouillard épais) ; « poix » est la résine."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/kitsune"
+   },
+   "col": "corps_md",
+   "avant": "kistunes",
+   "apres": "kitsunes",
+   "n": 1,
+   "nature": "harmonisation",
+   "raison": "Lettres inversées : la race s'écrit « kitsunes » partout ailleurs."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/kitsune"
+   },
+   "col": "corps_md",
+   "avant": "Les Kitsune tribaux",
+   "apres": "Les Kitsunes tribaux",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Pluriel du nom de la race, écrit « Kitsunes » ailleurs sur la page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/marcass"
+   },
+   "col": "corps_md",
+   "avant": "des Minotaure",
+   "apres": "des Minotaures",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Pluriel du nom de la race après « des »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/medusain"
+   },
+   "col": "corps_md",
+   "avant": "Eaux froide",
+   "apres": "Eaux froides",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « eaux » (féminin pluriel)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/nain"
+   },
+   "col": "corps_md",
+   "avant": "Elfes Dorées",
+   "apres": "Elfes Dorés",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « elfes » (masculin pluriel)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/olwman"
+   },
+   "col": "corps_md",
+   "avant": "owlmans",
+   "apres": "olwmans",
+   "n": 2,
+   "nature": "harmonisation",
+   "raison": "Graphie majoritaire de la race : « Olwman »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/olwman"
+   },
+   "col": "corps_md",
+   "avant": "Rocks",
+   "apres": "Rokhs",
+   "n": 1,
+   "nature": "harmonisation",
+   "raison": "Graphie majoritaire de la race : « Rokhs »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/rokh"
+   },
+   "col": "corps_md",
+   "avant": "Rocks",
+   "apres": "Rokhs",
+   "n": 2,
+   "nature": "harmonisation",
+   "raison": "Graphie majoritaire de la race : « Rokhs »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/rokh"
+   },
+   "col": "corps_md",
+   "avant": "des rocks",
+   "apres": "des Rokhs",
+   "n": 1,
+   "nature": "harmonisation",
+   "raison": "Graphie majoritaire de la race : « Rokhs »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/rokh"
+   },
+   "col": "corps_md",
+   "avant": "culture rock",
+   "apres": "culture rokh",
+   "n": 1,
+   "nature": "harmonisation",
+   "raison": "Graphie majoritaire de la race : « Rokh »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/accessoires"
+   },
+   "col": "corps_md",
+   "avant": "Diament",
+   "apres": "Diamant",
+   "n": 5,
+   "nature": "frappe",
+   "raison": "« diamant »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/accessoires"
+   },
+   "col": "corps_md",
+   "avant": "Emmeraude",
+   "apres": "Émeraude",
+   "n": 2,
+   "nature": "orthographe",
+   "raison": "Un seul m, accent sur la majuscule : « Émeraude »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/accessoires"
+   },
+   "col": "corps_md",
+   "avant": "Gyspe",
+   "apres": "Gypse",
+   "n": 2,
+   "nature": "frappe",
+   "raison": "Lettres inversées : « gypse »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/accessoires"
+   },
+   "col": "corps_md",
+   "avant": "Onix",
+   "apres": "Onyx",
+   "n": 20,
+   "nature": "orthographe",
+   "raison": "La pierre s'écrit « onyx »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients"
+   },
+   "col": "corps_md",
+   "avant": "Champignon bleue",
+   "apres": "Champignon bleu",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « champignon » (masculin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients"
+   },
+   "col": "corps_md",
+   "avant": "Coeur abyssale",
+   "apres": "Coeur abyssal",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « cœur » (masculin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients"
+   },
+   "col": "corps_md",
+   "avant": "Coeur spatio-temporelle",
+   "apres": "Coeur spatio-temporel",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « cœur » (masculin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients"
+   },
+   "col": "corps_md",
+   "avant": "cyante",
+   "apres": "cyan",
+   "n": 2,
+   "nature": "orthographe",
+   "raison": "« cyante » n'existe pas : « cyan » est un adjectif invariable (la page écrit « Fioles Cyan »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients"
+   },
+   "col": "corps_md",
+   "avant": "Gelée verte foncé",
+   "apres": "Gelée vert foncé",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Couleur composée « vert foncé » : invariable (cf. « Champignon vert foncé »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients"
+   },
+   "col": "corps_md",
+   "avant": "Herbe verte foncé",
+   "apres": "Herbe vert foncé",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Couleur composée « vert foncé » : invariable (cf. « Champignon vert foncé »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients"
+   },
+   "col": "titre",
+   "avant": "Liste d’ingrédient",
+   "apres": "Liste d’ingrédients",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Pluriel : la page liste plusieurs ingrédients."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armes"
+   },
+   "col": "corps_md",
+   "avant": "Croc Obsidien",
+   "apres": "Croc d'Obsidienne",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« obsidien » n'existe pas : le croc est en obsidienne (nom féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armes"
+   },
+   "col": "corps_md",
+   "avant": "Étendard déchirée",
+   "apres": "Étendard déchiré",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « étendard » (masculin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armes"
+   },
+   "col": "corps_md",
+   "avant": "Grèves cloutés",
+   "apres": "Grèves cloutées",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « grèves » (féminin pluriel)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armes"
+   },
+   "col": "corps_md",
+   "avant": "les médusain",
+   "apres": "les médusains",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Pluriel du nom de peuple après « les »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armes"
+   },
+   "col": "corps_md",
+   "avant": "Origine Rock",
+   "apres": "Origine Rokh",
+   "n": 1,
+   "nature": "harmonisation",
+   "raison": "Graphie majoritaire de la race : « Rokh » (la description dit « Cette arme Rokh »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Celloluse",
+   "apres": "Cellulose",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Lettres inversées : « cellulose »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Armure de Cuir complet",
+   "apres": "Armure de Cuir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Armure de Peau complet",
+   "apres": "Armure de Peau complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Armure Acier complet",
+   "apres": "Armure Acier complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Armure Argent complet",
+   "apres": "Armure Argent complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Armure Bronze complet",
+   "apres": "Armure Bronze complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Armure Corne/Os complet",
+   "apres": "Armure Corne/Os complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Armure Cuivre complet",
+   "apres": "Armure Cuivre complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Armure de Bois complet",
+   "apres": "Armure de Bois complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Armure de Cellulose complet",
+   "apres": "Armure de Cellulose complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Armure de Chitine complet",
+   "apres": "Armure de Chitine complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Armure de Corail complet",
+   "apres": "Armure de Corail complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Armure Écailles complet",
+   "apres": "Armure Écailles complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Armure Fer complet",
+   "apres": "Armure Fer complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Armure Fer Noir complet",
+   "apres": "Armure Fer Noir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Armure Fonte complet",
+   "apres": "Armure Fonte complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Armure Laiton complet",
+   "apres": "Armure Laiton complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Armure Maverium complet",
+   "apres": "Armure Maverium complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Armure Mythril complet",
+   "apres": "Armure Mythril complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Armure Or complet",
+   "apres": "Armure Or complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Armure Titane complet",
+   "apres": "Armure Titane complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Armure Vif Argent complet",
+   "apres": "Armure Vif Argent complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "avant": "Souffre",
+   "apres": "Soufre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le minéral s'écrit « soufre » (« souffre » est le verbe souffrir)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/baton-magique"
+   },
+   "col": "corps_md",
+   "avant": "Mancelinier",
+   "apres": "Mancenillier",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "L'arbre toxique s'écrit « mancenillier »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/baton-magique"
+   },
+   "col": "corps_md",
+   "avant": "Onix",
+   "apres": "Onyx",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "La pierre s'écrit « onyx »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/bouclier"
+   },
+   "col": "corps_md",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 22,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/bouclier"
+   },
+   "col": "corps_md",
+   "avant": "Souffre",
+   "apres": "Soufre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le minéral s'écrit « soufre » (« souffre » est le verbe souffrir)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/equipement-inventaire"
+   },
+   "col": "corps_md",
+   "avant": "1kg de oeuf, 20 oeufs",
+   "apres": "1kg d'oeufs, 20 oeufs",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Élision obligatoire et même nombre que « 20 oeufs »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/equipement-inventaire"
+   },
+   "col": "corps_md",
+   "avant": "Fiole en verre (Moyen)",
+   "apres": "Fiole en verre (Moyenne)",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « fiole » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/familiers"
+   },
+   "col": "corps_md",
+   "avant": "techtonique",
+   "apres": "tectonique",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« tectonique » s'écrit sans h."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/fiole-cyante"
+   },
+   "col": "corps_md",
+   "avant": "cyante",
+   "apres": "cyan",
+   "n": 5,
+   "nature": "orthographe",
+   "raison": "« cyante » n'existe pas : « cyan » est un adjectif invariable (la page écrit « Fioles Cyan »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/fiole-cyante"
+   },
+   "col": "titre",
+   "avant": "cyante",
+   "apres": "cyan",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« cyante » n'existe pas : « cyan » est un adjectif invariable (la page écrit « Fioles Cyan »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/fiole-verte-fonce"
+   },
+   "col": "titre",
+   "avant": "Fiole verte foncé",
+   "apres": "Fiole verte foncée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Même accord que les autres objets de la page (« fiole verte foncée »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/huile-hemophile"
+   },
+   "col": "corps_md",
+   "avant": "Huile Hémophilie",
+   "apres": "Huile Hémophile",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Le titre et les objets de la page s'appellent « huile hémophile » (adjectif)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/huile-hemophile"
+   },
+   "col": "resume",
+   "avant": "Huile Hémophilie",
+   "apres": "Huile Hémophile",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Le titre et les objets de la page s'appellent « huile hémophile » (adjectif)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/livre-parchemin"
+   },
+   "col": "corps_md",
+   "avant": "1kg de oeuf, 20 oeufs",
+   "apres": "1kg d'oeufs, 20 oeufs",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Élision obligatoire et même nombre que « 20 oeufs »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/livre-parchemin"
+   },
+   "col": "corps_md",
+   "avant": "Pachemin",
+   "apres": "Parchemin",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Lettre manquante : « parchemin »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/livre-parchemin"
+   },
+   "col": "titre",
+   "avant": "LivreParchemin",
+   "apres": "Livre/Parchemin",
+   "n": 1,
+   "nature": "ponctuation",
+   "raison": "Deux mots collés (sections « Livre » et « Parchemin »), comme « Machine de Guerre/Siège »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/machine-de-guerresiege"
+   },
+   "col": "titre",
+   "avant": "Machine de GuerreSiège",
+   "apres": "Machine de Guerre/Siège",
+   "n": 1,
+   "nature": "ponctuation",
+   "raison": "Deux mots collés (« Guerre » et « Siège »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/maladie"
+   },
+   "col": "corps_md",
+   "avant": "Altératis Brune",
+   "apres": "Altératis Brun",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Les autres Altératis portent une couleur au masculin (Bleu, Vert)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/objets-de-depart-des-classes"
+   },
+   "col": "corps_md",
+   "avant": "Brevage",
+   "apres": "Breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/objets-de-depart-des-classes"
+   },
+   "col": "corps_md",
+   "avant": "huile hémophilie",
+   "apres": "huile hémophile",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Le titre et les objets de la page s'appellent « huile hémophile » (adjectif)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/objets-de-depart-des-classes"
+   },
+   "col": "corps_md",
+   "avant": "Panacée mineur",
+   "apres": "Panacée mineure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/objets-de-depart-des-classes"
+   },
+   "col": "corps_md",
+   "avant": "Pierre à aiguisé",
+   "apres": "Pierre à aiguiser",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Infinitif après « à » : « pierre à aiguiser »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/objets-de-depart-des-classes"
+   },
+   "col": "corps_md",
+   "avant": "Plume à gravé",
+   "apres": "Plume à graver",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Infinitif après « à » : « plume à graver »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/panacee"
+   },
+   "col": "corps_md",
+   "avant": "Panacée majeur",
+   "apres": "Panacée majeure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/panacee"
+   },
+   "col": "corps_md",
+   "avant": "Panacée mineur",
+   "apres": "Panacée mineure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/panacee"
+   },
+   "col": "corps_md",
+   "avant": "Panacée parfait",
+   "apres": "Panacée parfaite",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/pieces-elementaires"
+   },
+   "col": "corps_md",
+   "avant": "Absentisme",
+   "apres": "Absentéisme",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le mot s'écrit « absentéisme »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/pieces-elementaires"
+   },
+   "col": "corps_md",
+   "avant": "Carapace des flamboiement",
+   "apres": "Carapace des flamboiements",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Pluriel après « des »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/pieces-elementaires"
+   },
+   "col": "corps_md",
+   "avant": "Charge éolien",
+   "apres": "Charge éolienne",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « charge » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/pieces-elementaires"
+   },
+   "col": "corps_md",
+   "avant": "Comdamnation",
+   "apres": "Condamnation",
+   "n": 2,
+   "nature": "frappe",
+   "raison": "Frappe : « condamnation »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/pieces-elementaires"
+   },
+   "col": "corps_md",
+   "avant": "Concentration gelé",
+   "apres": "Concentration gelée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « concentration » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/pieces-elementaires"
+   },
+   "col": "corps_md",
+   "avant": "Entrave frigorifière",
+   "apres": "Entrave frigorifique",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« frigorifière » n'existe pas : « frigorifique »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/pieces-elementaires"
+   },
+   "col": "corps_md",
+   "avant": "Espace/Yemps",
+   "apres": "Espace/Temps",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Frappe dans le nom de la magie Espace/Temps."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/pieces-elementaires"
+   },
+   "col": "corps_md",
+   "avant": "Exanguination",
+   "apres": "Exsanguination",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le mot s'écrit « exsanguination »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/pieces-elementaires"
+   },
+   "col": "corps_md",
+   "avant": "LUMIERE",
+   "apres": "LUMIÈRE",
+   "n": 9,
+   "nature": "accent",
+   "raison": "Accent conservé en majuscule (cf. « NÉCROMANCIE »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/pieces-elementaires"
+   },
+   "col": "corps_md",
+   "avant": "Mélallomorphique",
+   "apres": "Métallomorphique",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Frappe : « métal » + « morphique »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/pieces-elementaires"
+   },
+   "col": "corps_md",
+   "avant": "Neutralité forcé",
+   "apres": "Neutralité forcée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « neutralité » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/pieces-elementaires"
+   },
+   "col": "corps_md",
+   "avant": "Onde glacière",
+   "apres": "Onde glaciaire",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« glacière » est un nom ; l'adjectif est « glaciaire »."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/pieces-elementaires"
+   },
+   "col": "corps_md",
+   "avant": "Pichenette pointu",
+   "apres": "Pichenette pointue",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « pichenette » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/pieces-elementaires"
+   },
+   "col": "corps_md",
+   "avant": "Poussé d'air",
+   "apres": "Poussée d'air",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le nom est « poussée » (féminin)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/pieces-elementaires"
+   },
+   "col": "corps_md",
+   "avant": "Suriken",
+   "apres": "Shuriken",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« shuriken » (cf. « Shuriken de Vent »)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/pieces-elementaires"
+   },
+   "col": "corps_md",
+   "avant": "Colonne tesla",
+   "apres": "Colonne Tesla",
+   "n": 1,
+   "nature": "casse",
+   "raison": "« Tesla » est un nom propre (Nikola Tesla)."
+  },
+  {
+   "table": "arme",
+   "cle": {
+    "id": "ressources/armes#arme:arme-de-monstres:etendard-dechiree"
+   },
+   "col": "nom",
+   "avant": "Étendard déchirée",
+   "apres": "Étendard déchiré",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « étendard » (masculin)."
+  },
+  {
+   "table": "arme",
+   "cle": {
+    "id": "ressources/armes#arme:arme-de-monstres:etendard-dechiree"
+   },
+   "col": "nom_brut",
+   "avant": "Étendard déchirée",
+   "apres": "Étendard déchiré",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « étendard » (masculin)."
+  },
+  {
+   "table": "arme",
+   "cle": {
+    "id": "ressources/armes#arme:baton-de-combat:croc-obsidien"
+   },
+   "col": "nom",
+   "avant": "Croc Obsidien",
+   "apres": "Croc d'Obsidienne",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« obsidien » n'existe pas : le croc est en obsidienne (nom féminin)."
+  },
+  {
+   "table": "arme",
+   "cle": {
+    "id": "ressources/armes#arme:baton-de-combat:croc-obsidien"
+   },
+   "col": "nom_brut",
+   "avant": "Croc Obsidien",
+   "apres": "Croc d'Obsidienne",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« obsidien » n'existe pas : le croc est en obsidienne (nom féminin)."
+  },
+  {
+   "table": "arme",
+   "cle": {
+    "id": "ressources/armes#arme:hache:tomahawk"
+   },
+   "col": "effet",
+   "avant": "Origine Rock",
+   "apres": "Origine Rokh",
+   "n": 1,
+   "nature": "harmonisation",
+   "raison": "Graphie majoritaire de la race : « Rokh » (la description dit « Cette arme Rokh »)."
+  },
+  {
+   "table": "arme",
+   "cle": {
+    "id": "ressources/armes#arme:hache:tomahawk"
+   },
+   "col": "provenance",
+   "avant": "Rock",
+   "apres": "Rokh",
+   "n": 1,
+   "nature": "harmonisation",
+   "raison": "Graphie majoritaire de la race : « Rokh »."
+  },
+  {
+   "table": "arme",
+   "cle": {
+    "id": "ressources/armes#arme:lance-arme-dhast:lance-shotel"
+   },
+   "col": "description",
+   "avant": "les médusain",
+   "apres": "les médusains",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Pluriel du nom de peuple après « les »."
+  },
+  {
+   "table": "arme",
+   "cle": {
+    "id": "ressources/armes#arme:pugilat:greves-cloutes"
+   },
+   "col": "nom",
+   "avant": "Grèves cloutés",
+   "apres": "Grèves cloutées",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « grèves » (féminin pluriel)."
+  },
+  {
+   "table": "arme",
+   "cle": {
+    "id": "ressources/armes#arme:pugilat:greves-cloutes"
+   },
+   "col": "nom_brut",
+   "avant": "Grèves cloutés",
+   "apres": "Grèves cloutées",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « grèves » (féminin pluriel)."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:arbalete:glace"
+   },
+   "col": "capacite_brut",
+   "avant": "Entrave frigorifière",
+   "apres": "Entrave frigorifique",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« frigorifière » n'existe pas : « frigorifique »."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:arbalete:glace"
+   },
+   "col": "capacite_nom",
+   "avant": "Entrave frigorifière",
+   "apres": "Entrave frigorifique",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« frigorifière » n'existe pas : « frigorifique »."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:arbalete:ombre"
+   },
+   "col": "capacite_brut",
+   "avant": "Pichenette pointu",
+   "apres": "Pichenette pointue",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « pichenette » (féminin)."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:arbalete:ombre"
+   },
+   "col": "capacite_nom",
+   "avant": "Pichenette pointu",
+   "apres": "Pichenette pointue",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « pichenette » (féminin)."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:arbalete:sang"
+   },
+   "col": "capacite_brut",
+   "avant": "Comdamnation",
+   "apres": "Condamnation",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Frappe : « condamnation »."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:arbalete:sang"
+   },
+   "col": "capacite_nom",
+   "avant": "Comdamnation",
+   "apres": "Condamnation",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Frappe : « condamnation »."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:arc:foudre"
+   },
+   "col": "capacite_brut",
+   "avant": "Colonne tesla",
+   "apres": "Colonne Tesla",
+   "n": 1,
+   "nature": "casse",
+   "raison": "« Tesla » est un nom propre (Nikola Tesla)."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:arc:foudre"
+   },
+   "col": "capacite_texte",
+   "avant": "Colonne tesla",
+   "apres": "Colonne Tesla",
+   "n": 1,
+   "nature": "casse",
+   "raison": "« Tesla » est un nom propre (Nikola Tesla)."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:arc:necromancie"
+   },
+   "col": "capacite_brut",
+   "avant": "Absentisme",
+   "apres": "Absentéisme",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le mot s'écrit « absentéisme »."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:arc:necromancie"
+   },
+   "col": "capacite_nom",
+   "avant": "Absentisme",
+   "apres": "Absentéisme",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le mot s'écrit « absentéisme »."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:arme-de-jet:eau"
+   },
+   "col": "nom",
+   "avant": "Suriken",
+   "apres": "Shuriken",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« shuriken » (cf. « Shuriken de Vent »)."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:arme-de-jet:sang"
+   },
+   "col": "capacite_brut",
+   "avant": "Comdamnation",
+   "apres": "Condamnation",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Frappe : « condamnation »."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:arme-de-jet:sang"
+   },
+   "col": "capacite_nom",
+   "avant": "Comdamnation",
+   "apres": "Condamnation",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Frappe : « condamnation »."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:arme-dhast:glace"
+   },
+   "col": "capacite_brut",
+   "avant": "Concentration gelé",
+   "apres": "Concentration gelée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « concentration » (féminin)."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:arme-dhast:glace"
+   },
+   "col": "capacite_nom",
+   "avant": "Concentration gelé",
+   "apres": "Concentration gelée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « concentration » (féminin)."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:arme-dhast:vent"
+   },
+   "col": "capacite_brut",
+   "avant": "Poussé d'air",
+   "apres": "Poussée d'air",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le nom est « poussée » (féminin)."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:arme-dhast:vent"
+   },
+   "col": "capacite_nom",
+   "avant": "Poussé d'air",
+   "apres": "Poussée d'air",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le nom est « poussée » (féminin)."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:dague:arcane"
+   },
+   "col": "capacite_brut",
+   "avant": "Neutralité forcé",
+   "apres": "Neutralité forcée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « neutralité » (féminin)."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:dague:arcane"
+   },
+   "col": "capacite_nom",
+   "avant": "Neutralité forcé",
+   "apres": "Neutralité forcée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « neutralité » (féminin)."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:epee:terre"
+   },
+   "col": "capacite_brut",
+   "avant": "Mélallomorphique",
+   "apres": "Métallomorphique",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Frappe : « métal » + « morphique »."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:epee:terre"
+   },
+   "col": "capacite_nom",
+   "avant": "Mélallomorphique",
+   "apres": "Métallomorphique",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Frappe : « métal » + « morphique »."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:masse:espace-temps"
+   },
+   "col": "capacite_brut",
+   "avant": "Espace/Yemps",
+   "apres": "Espace/Temps",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Frappe dans le nom de la magie Espace/Temps."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:masse:espace-temps"
+   },
+   "col": "capacite_texte",
+   "avant": "Espace/Yemps",
+   "apres": "Espace/Temps",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Frappe dans le nom de la magie Espace/Temps."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:masse:glace"
+   },
+   "col": "capacite_brut",
+   "avant": "Onde glacière",
+   "apres": "Onde glaciaire",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« glacière » est un nom ; l'adjectif est « glaciaire »."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:masse:glace"
+   },
+   "col": "capacite_nom",
+   "avant": "Onde glacière",
+   "apres": "Onde glaciaire",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« glacière » est un nom ; l'adjectif est « glaciaire »."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:pugilat:sang"
+   },
+   "col": "capacite_brut",
+   "avant": "Exanguination",
+   "apres": "Exsanguination",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le mot s'écrit « exsanguination »."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:pugilat:sang"
+   },
+   "col": "capacite_nom",
+   "avant": "Exanguination",
+   "apres": "Exsanguination",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le mot s'écrit « exsanguination »."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:pugilat:vent"
+   },
+   "col": "capacite_brut",
+   "avant": "Charge éolien",
+   "apres": "Charge éolienne",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « charge » (féminin)."
+  },
+  {
+   "table": "arme_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#arme-elementaire:pugilat:vent"
+   },
+   "col": "capacite_nom",
+   "avant": "Charge éolien",
+   "apres": "Charge éolienne",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « charge » (féminin)."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-acier-complet"
+   },
+   "col": "nom",
+   "avant": "Armure Acier complet",
+   "apres": "Armure Acier complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-argent-complet"
+   },
+   "col": "nom",
+   "avant": "Armure Argent complet",
+   "apres": "Armure Argent complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-bronze-complet"
+   },
+   "col": "nom",
+   "avant": "Armure Bronze complet",
+   "apres": "Armure Bronze complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-celloluse-acier"
+   },
+   "col": "nom",
+   "avant": "Celloluse",
+   "apres": "Cellulose",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Lettres inversées : « cellulose »."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-corne-os-complet"
+   },
+   "col": "nom",
+   "avant": "Armure Corne/Os complet",
+   "apres": "Armure Corne/Os complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-cuivre-complet"
+   },
+   "col": "nom",
+   "avant": "Armure Cuivre complet",
+   "apres": "Armure Cuivre complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-de-bois-complet"
+   },
+   "col": "nom",
+   "avant": "Armure de Bois complet",
+   "apres": "Armure de Bois complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-de-cellulose-complet"
+   },
+   "col": "nom",
+   "avant": "Armure de Cellulose complet",
+   "apres": "Armure de Cellulose complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-de-chitine-complet"
+   },
+   "col": "nom",
+   "avant": "Armure de Chitine complet",
+   "apres": "Armure de Chitine complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-de-corail-complet"
+   },
+   "col": "nom",
+   "avant": "Armure de Corail complet",
+   "apres": "Armure de Corail complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-de-cuir-complet"
+   },
+   "col": "nom",
+   "avant": "Armure de Cuir complet",
+   "apres": "Armure de Cuir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-de-peau-complet"
+   },
+   "col": "nom",
+   "avant": "Armure de Peau complet",
+   "apres": "Armure de Peau complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-ecailles-complet"
+   },
+   "col": "nom",
+   "avant": "Armure Écailles complet",
+   "apres": "Armure Écailles complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-fer-complet"
+   },
+   "col": "nom",
+   "avant": "Armure Fer complet",
+   "apres": "Armure Fer complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-fer-noir-complet"
+   },
+   "col": "nom",
+   "avant": "Armure Fer Noir complet",
+   "apres": "Armure Fer Noir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-fonte-complet"
+   },
+   "col": "nom",
+   "avant": "Armure Fonte complet",
+   "apres": "Armure Fonte complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-laiton-complet"
+   },
+   "col": "nom",
+   "avant": "Armure Laiton complet",
+   "apres": "Armure Laiton complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-maverium-complet"
+   },
+   "col": "nom",
+   "avant": "Armure Maverium complet",
+   "apres": "Armure Maverium complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-mythril-complet"
+   },
+   "col": "nom",
+   "avant": "Armure Mythril complet",
+   "apres": "Armure Mythril complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-or-complet"
+   },
+   "col": "nom",
+   "avant": "Armure Or complet",
+   "apres": "Armure Or complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-titane-complet"
+   },
+   "col": "nom",
+   "avant": "Armure Titane complet",
+   "apres": "Armure Titane complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-vif-argent-complet"
+   },
+   "col": "nom",
+   "avant": "Armure Vif Argent complet",
+   "apres": "Armure Vif Argent complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "armure_elementaire",
+   "cle": {
+    "id": "ressources/pieces-elementaires#armure-elementaire:intermediaire:feu"
+   },
+   "col": "nom",
+   "avant": "Carapace des flamboiement",
+   "apres": "Carapace des flamboiements",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Pluriel après « des »."
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:acier"
+   },
+   "col": "nom",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:argent"
+   },
+   "col": "nom",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:bois"
+   },
+   "col": "nom",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:bronze"
+   },
+   "col": "nom",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:cellulose"
+   },
+   "col": "nom",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:chitine"
+   },
+   "col": "nom",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:corail"
+   },
+   "col": "nom",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:corne-os"
+   },
+   "col": "nom",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:cuir"
+   },
+   "col": "nom",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:cuivre"
+   },
+   "col": "nom",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:ecailles"
+   },
+   "col": "nom",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:fer"
+   },
+   "col": "nom",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:fer-noir"
+   },
+   "col": "nom",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:fonte"
+   },
+   "col": "nom",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:laiton"
+   },
+   "col": "nom",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:maverium"
+   },
+   "col": "nom",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:mythril"
+   },
+   "col": "nom",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:or"
+   },
+   "col": "nom",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:titane"
+   },
+   "col": "nom",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "bouclier",
+   "cle": {
+    "id": "ressources/bouclier#bouclier:pavoi:vif-argent"
+   },
+   "col": "nom",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "bouclier_classe",
+   "cle": {
+    "id": "pavoi"
+   },
+   "col": "nom",
+   "avant": "Pavoi",
+   "apres": "Pavois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le grand bouclier s'écrit « pavois » (invariable), comme dans le texte de la page."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/anansi-anti-corps"
+   },
+   "col": "nom",
+   "avant": "Anti-corps",
+   "apres": "Anticorps",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le nom s'écrit en un mot : « anticorps »."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/anansi-attention-migale"
+   },
+   "col": "nom",
+   "avant": "Attention migale",
+   "apres": "Attention mygale",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "L'araignée s'écrit « mygale »."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/archimage-pacte-noire"
+   },
+   "col": "nom",
+   "avant": "Pacte Noire",
+   "apres": "Pacte Noir",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "« pacte » est masculin."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/barde-bain-de-foules"
+   },
+   "col": "nom",
+   "avant": "Bain de foules",
+   "apres": "Bain de foule",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Expression figée « bain de foule »."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/barde-balade-guerriere"
+   },
+   "col": "nom",
+   "avant": "Balade guerrière",
+   "apres": "Ballade guerrière",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Chant : « ballade » (« balade » est une promenade)."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/bimane-frappe-fatiguante"
+   },
+   "col": "nom",
+   "avant": "Frappe fatiguante",
+   "apres": "Frappe fatigante",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "L'adjectif s'écrit « fatigant(e) » (le participe est « fatiguant »)."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/clerc-tend-lautre-joue"
+   },
+   "col": "nom",
+   "avant": "Tend l'autre joue",
+   "apres": "Tends l'autre joue",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Impératif de « tendre » à la 2e personne : « tends »."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/cuirasse-tu-passe-pas"
+   },
+   "col": "nom",
+   "avant": "Tu passe pas",
+   "apres": "Tu passes pas",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "2e personne du singulier : « tu passes »."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/fenrir-griffe-sanglant"
+   },
+   "col": "nom",
+   "avant": "Griffe sanglant",
+   "apres": "Griffe sanglante",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « griffe » (féminin)."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/flagelleur-dit-mon-nom"
+   },
+   "col": "nom",
+   "avant": "Dit mon nom",
+   "apres": "Dis mon nom",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Impératif de « dire » à la 2e personne : « dis »."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/flagelleur-puni-moi"
+   },
+   "col": "nom",
+   "avant": "Puni-moi",
+   "apres": "Punis-moi",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Impératif de « punir » à la 2e personne : « punis »."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/frappeur-asymbiotique"
+   },
+   "col": "effet",
+   "avant": "Frappeud",
+   "apres": "Frappeur",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Nom de la classe : « Frappeur »."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/frappeur-distracteur"
+   },
+   "col": "effet",
+   "avant": "Vigilence",
+   "apres": "Vigilance",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le nom s'écrit « vigilance »."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/goleois-balade-barbare"
+   },
+   "col": "nom",
+   "avant": "Balade barbare",
+   "apres": "Ballade barbare",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Chant : « ballade » (« balade » est une promenade)."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/grenadier-attend"
+   },
+   "col": "nom",
+   "avant": "Attend ...",
+   "apres": "Attends ...",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Impératif de « attendre » à la 2e personne : « attends »."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/guerrier-contre-coup"
+   },
+   "col": "nom",
+   "avant": "Contre coup",
+   "apres": "Contrecoup",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le nom s'écrit en un mot : « contrecoup »."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/kitsune-vif-allure"
+   },
+   "col": "nom",
+   "avant": "Vif allure",
+   "apres": "Vive allure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "« allure » est féminin : « à vive allure »."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/lancier-riposte-infini"
+   },
+   "col": "nom",
+   "avant": "Riposte infini",
+   "apres": "Riposte infinie",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « riposte » (féminin)."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/maclier-prise-alternatif"
+   },
+   "col": "nom",
+   "avant": "Prise alternatif",
+   "apres": "Prise alternative",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « prise » (féminin)."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/mage-soin-etrange"
+   },
+   "col": "remarque",
+   "avant": "Lance pierre",
+   "apres": "Lance-pierre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Nom composé « lance-pierre » (trait d'union)."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/mage-vert-meilleur-attaque"
+   },
+   "col": "nom",
+   "avant": "Meilleur attaque",
+   "apres": "Meilleure attaque",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « attaque » (féminin)."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/martiale-force-inne"
+   },
+   "col": "nom",
+   "avant": "Force inné",
+   "apres": "Force innée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « force » (féminin)."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/martiale-rage-audacieux"
+   },
+   "col": "nom",
+   "avant": "Rage audacieux",
+   "apres": "Rage audacieuse",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « rage » (féminin)."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/martiale-rage-prudent"
+   },
+   "col": "nom",
+   "avant": "Rage prudent",
+   "apres": "Rage prudente",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « rage » (féminin)."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/mercenaire-je-te-choisi"
+   },
+   "col": "nom",
+   "avant": "Je te choisi",
+   "apres": "Je te choisis",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Présent de « choisir » à la 1re personne : « je choisis »."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/minotaure-parceque"
+   },
+   "col": "nom",
+   "avant": "ParceQUE",
+   "apres": "Parce QUE",
+   "n": 1,
+   "nature": "ponctuation",
+   "raison": "Locution en deux mots (les capitales du cri sont gardées)."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/moine-prend-ca"
+   },
+   "col": "nom",
+   "avant": "Prend ça",
+   "apres": "Prends ça",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Impératif de « prendre » à la 2e personne : « prends »."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/moine-tu-vivra"
+   },
+   "col": "nom",
+   "avant": "Tu vivra",
+   "apres": "Tu vivras",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Futur de « vivre » à la 2e personne : « tu vivras »."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/namazu-dent-infecte"
+   },
+   "col": "nom",
+   "avant": "Dent Infecté",
+   "apres": "Dent Infectée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « dent » (féminin)."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/pugiliste-a-deux-main"
+   },
+   "col": "nom",
+   "avant": "A deux Main",
+   "apres": "À deux Mains",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Préposition « à » accentuée et pluriel après « deux »."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/pugiliste-suplexe"
+   },
+   "col": "nom",
+   "avant": "Suplexe",
+   "apres": "Suplex",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "La prise de catch s'écrit « suplex »."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/tueur-anti-corps"
+   },
+   "col": "nom",
+   "avant": "Anti corps",
+   "apres": "Anticorps",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le nom s'écrit en un mot : « anticorps »."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/tueur-innaretable"
+   },
+   "col": "nom",
+   "avant": "innarêtable",
+   "apres": "inarrêtable",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« inarrêtable » : un n, deux r."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/voleur-mcgyver"
+   },
+   "col": "nom",
+   "avant": "McGyver",
+   "apres": "MacGyver",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le personnage de série s'écrit « MacGyver »."
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/voleur-tu-ma-pas-vu"
+   },
+   "col": "nom",
+   "avant": "Tu m'a pas vu",
+   "apres": "Tu m'as pas vu",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Verbe avoir à la 2e personne : « tu as »."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/anansi"
+   },
+   "col": "inventaire_depart",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/anansi"
+   },
+   "col": "inventaire_depart",
+   "avant": "panacée mineur",
+   "apres": "panacée mineure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/bimane"
+   },
+   "col": "inventaire_depart",
+   "avant": "pierre à aiguisé",
+   "apres": "pierre à aiguiser",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Infinitif après « à » : « pierre à aiguiser »."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/clerc"
+   },
+   "col": "inventaire_depart",
+   "avant": "panacée mineur",
+   "apres": "panacée mineure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/fenrir"
+   },
+   "col": "inventaire_depart",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/fenrir"
+   },
+   "col": "inventaire_depart",
+   "avant": "pierre à aiguisé",
+   "apres": "pierre à aiguiser",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Infinitif après « à » : « pierre à aiguiser »."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/frappeur"
+   },
+   "col": "armure_depart",
+   "avant": "Armure de Cuir complet",
+   "apres": "Armure de Cuir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/goleois"
+   },
+   "col": "inventaire_depart",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/grenadier"
+   },
+   "col": "armure_depart",
+   "avant": "Armure de Cuir complet",
+   "apres": "Armure de Cuir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/guerrier"
+   },
+   "col": "inventaire_depart",
+   "avant": "pierre à aiguisé",
+   "apres": "pierre à aiguiser",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Infinitif après « à » : « pierre à aiguiser »."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/jackalope"
+   },
+   "col": "description_titre",
+   "avant": "Jacklope",
+   "apres": "Jackalope",
+   "n": 1,
+   "nature": "harmonisation",
+   "raison": "La classe s'appelle « Jackalope » (titre et texte de la page)."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/jackalope"
+   },
+   "col": "inventaire_depart",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/kitsune"
+   },
+   "col": "inventaire_depart",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/lanceur"
+   },
+   "col": "arme_depart",
+   "avant": "Armes de Jet Léger",
+   "apres": "Armes de Jet Légères",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armes » (féminin pluriel)."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/lanceur"
+   },
+   "col": "arme_depart",
+   "avant": "Armes de Jet Lourde",
+   "apres": "Armes de Jet Lourdes",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armes » (féminin pluriel)."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/lanceur"
+   },
+   "col": "armure_depart",
+   "avant": "Armure de Cuir complet",
+   "apres": "Armure de Cuir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/maclier"
+   },
+   "col": "inventaire_depart",
+   "avant": "panacée mineur",
+   "apres": "panacée mineure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/mage-rouge"
+   },
+   "col": "armure_depart",
+   "avant": "Armure de Peau complet",
+   "apres": "Armure de Peau complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/mage-rouge"
+   },
+   "col": "inventaire_depart",
+   "avant": "pierre à aiguisé",
+   "apres": "pierre à aiguiser",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Infinitif après « à » : « pierre à aiguiser »."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/marcass"
+   },
+   "col": "inventaire_depart",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/martiale"
+   },
+   "col": "armure_depart",
+   "avant": "Armure de Cuir complet",
+   "apres": "Armure de Cuir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/medusain"
+   },
+   "col": "inventaire_depart",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/minotaure"
+   },
+   "col": "armure_depart",
+   "avant": "Armure de cuir complet",
+   "apres": "Armure de cuir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/minotaure"
+   },
+   "col": "inventaire_depart",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/moine"
+   },
+   "col": "armure_depart",
+   "avant": "Armure de Cuir complet",
+   "apres": "Armure de Cuir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/moine"
+   },
+   "col": "inventaire_depart",
+   "avant": "panacée mineur",
+   "apres": "panacée mineure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/namazu"
+   },
+   "col": "inventaire_depart",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/ocultomancien"
+   },
+   "col": "description",
+   "avant": "Occultomancien",
+   "apres": "Ocultomancien",
+   "n": 1,
+   "nature": "harmonisation",
+   "raison": "Graphie majoritaire du nom de la classe (48 « Ocultomancien » contre 3)."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/olwman"
+   },
+   "col": "inventaire_depart",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/orios"
+   },
+   "col": "inventaire_depart",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/parleur"
+   },
+   "col": "armure_depart",
+   "avant": "Armure de Cuir complet",
+   "apres": "Armure de Cuir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/parleur"
+   },
+   "col": "inventaire_depart",
+   "avant": "plume à gravé",
+   "apres": "plume à graver",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Infinitif après « à » : « plume à graver »."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/pugiliste"
+   },
+   "col": "inventaire_depart",
+   "avant": "panacée mineur",
+   "apres": "panacée mineure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/rokh"
+   },
+   "col": "inventaire_depart",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/satyre"
+   },
+   "col": "inventaire_depart",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/tueur"
+   },
+   "col": "armure_depart",
+   "avant": "Armure de Cuir complet",
+   "apres": "Armure de Cuir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/voleur"
+   },
+   "col": "armure_depart",
+   "avant": "Armure de Cuir complet",
+   "apres": "Armure de Cuir complète",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « armure » (féminin), comme « Armure Complète » dans la même page."
+  },
+  {
+   "table": "classe_annexe",
+   "cle": {
+    "classe_id": "classes/mage-bleu",
+    "rang": 13
+   },
+   "col": "libelle",
+   "avant": "LUMIERE",
+   "apres": "LUMIÈRE",
+   "n": 1,
+   "nature": "accent",
+   "raison": "Accent conservé en majuscule (cf. « NÉCROMANCIE »)."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/anansi",
+    "rang": 2,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/anansi",
+    "rang": 5,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "panacée mineur",
+   "apres": "panacée mineure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/bimane",
+    "rang": 3,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "pierre à aiguisé",
+   "apres": "pierre à aiguiser",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Infinitif après « à » : « pierre à aiguiser »."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/clerc",
+    "rang": 5,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "panacée mineur",
+   "apres": "panacée mineure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/fenrir",
+    "rang": 2,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/fenrir",
+    "rang": 5,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "pierre à aiguisé",
+   "apres": "pierre à aiguiser",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Infinitif après « à » : « pierre à aiguiser »."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/goleois",
+    "rang": 2,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/guerrier",
+    "rang": 5,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "pierre à aiguisé",
+   "apres": "pierre à aiguiser",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Infinitif après « à » : « pierre à aiguiser »."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/jackalope",
+    "rang": 2,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/kitsune",
+    "rang": 2,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/maclier",
+    "rang": 5,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "panacée mineur",
+   "apres": "panacée mineure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/mage-rouge",
+    "rang": 5,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "pierre à aiguisé",
+   "apres": "pierre à aiguiser",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Infinitif après « à » : « pierre à aiguiser »."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/marcass",
+    "rang": 2,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/medusain",
+    "rang": 2,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/minotaure",
+    "rang": 2,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/moine",
+    "rang": 4,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "panacée mineur",
+   "apres": "panacée mineure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/namazu",
+    "rang": 2,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/olwman",
+    "rang": 2,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/orios",
+    "rang": 2,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/parleur",
+    "rang": 4,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "plume à gravé",
+   "apres": "plume à graver",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Infinitif après « à » : « plume à graver »."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/pugiliste",
+    "rang": 3,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "panacée mineur",
+   "apres": "panacée mineure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/rokh",
+    "rang": 2,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "classe_objet_depart",
+   "cle": {
+    "classe_id": "classes/satyre",
+    "rang": 2,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "brevage",
+   "apres": "breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "creature",
+   "cle": {
+    "id": "bestiaire/golem-de-chair"
+   },
+   "col": "description",
+   "avant": "Taille disproportionné",
+   "apres": "Taille disproportionnée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « taille » (féminin)."
+  },
+  {
+   "table": "creature",
+   "cle": {
+    "id": "bestiaire/goule"
+   },
+   "col": "description",
+   "avant": "des Mort-Vivant",
+   "apres": "des Morts-Vivants",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Pluriel après « des » : les deux éléments du nom composé s'accordent."
+  },
+  {
+   "table": "creature",
+   "cle": {
+    "id": "bestiaire/poupee-corrompu"
+   },
+   "col": "nom",
+   "avant": "Poupée corrompu",
+   "apres": "Poupée corrompue",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « poupée » (féminin)."
+  },
+  {
+   "table": "creature",
+   "cle": {
+    "id": "bestiaire/poupee-sacre"
+   },
+   "col": "nom",
+   "avant": "Poupée sacré",
+   "apres": "Poupée sacrée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « poupée » (féminin)."
+  },
+  {
+   "table": "creature",
+   "cle": {
+    "id": "bestiaire/sihouetteur-obscur"
+   },
+   "col": "nom",
+   "avant": "Sihouetteur",
+   "apres": "Silhouetteur",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Dérivé de « silhouette » (forme du texte de la créature)."
+  },
+  {
+   "table": "creature_attaque",
+   "cle": {
+    "id": "bestiaire/squelette-de-pierre#attaque:epee-osseuse-lie"
+   },
+   "col": "brut",
+   "avant": "Épée osseuse lié",
+   "apres": "Épée osseuse liée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « épée » (féminin)."
+  },
+  {
+   "table": "creature_attaque",
+   "cle": {
+    "id": "bestiaire/squelette-de-pierre#attaque:epee-osseuse-lie"
+   },
+   "col": "nom",
+   "avant": "Épée osseuse lié",
+   "apres": "Épée osseuse liée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « épée » (féminin)."
+  },
+  {
+   "table": "creature_capacite",
+   "cle": {
+    "id": "bestiaire/bete-de-lombre#capacite:folle-de-guerre"
+   },
+   "col": "nom",
+   "avant": "Folle de guerre",
+   "apres": "Folie de guerre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Nom d'état : « folie de guerre » (« folle » est un adjectif sans nom)."
+  },
+  {
+   "table": "creature_capacite",
+   "cle": {
+    "id": "bestiaire/golem-de-foudre#capacite:anti-brumeux:npm3"
+   },
+   "col": "texte",
+   "avant": "Brume Noir",
+   "apres": "Brume Noire",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « brume » (féminin)."
+  },
+  {
+   "table": "creature_capacite",
+   "cle": {
+    "id": "bestiaire/golem-de-sable#capacite:forcareno:npm5"
+   },
+   "col": "texte",
+   "avant": "tempête sable",
+   "apres": "tempête de sable",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« tempête de sable », comme ailleurs dans la même page."
+  },
+  {
+   "table": "creature_capacite",
+   "cle": {
+    "id": "bestiaire/goule#capacite:radiation-corrompu:npm3"
+   },
+   "col": "nom",
+   "avant": "Radiation corrompu",
+   "apres": "Radiation corrompue",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « radiation » (féminin)."
+  },
+  {
+   "table": "creature_capacite",
+   "cle": {
+    "id": "bestiaire/momie#capacite:sort-supplementaire:npm5"
+   },
+   "col": "texte",
+   "avant": "Veilliessement",
+   "apres": "Vieillissement",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Lettres inversées : « vieillissement » (sort de l'Espace/Temps)."
+  },
+  {
+   "table": "creature_capacite",
+   "cle": {
+    "id": "bestiaire/poupee-arcanique#capacite:sort-supplementaire:npm5"
+   },
+   "col": "texte",
+   "avant": "Foudre argenté",
+   "apres": "Foudre argentée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « foudre » (féminin)."
+  },
+  {
+   "table": "creature_capacite",
+   "cle": {
+    "id": "bestiaire/poupee-de-glaise#capacite:lanceur-de-sorts"
+   },
+   "col": "texte",
+   "avant": "Lance pierre",
+   "apres": "Lance-pierre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Nom composé « lance-pierre » (trait d'union)."
+  },
+  {
+   "table": "creature_capacite",
+   "cle": {
+    "id": "bestiaire/poupee-necrotique#capacite:sort-supplementaire:npm5"
+   },
+   "col": "texte",
+   "avant": "Répar Os",
+   "apres": "Répar'Os",
+   "n": 1,
+   "nature": "ponctuation",
+   "raison": "Même forme que les autres noms de la série (« Destruc'Os », « Fractur'Os »)."
+  },
+  {
+   "table": "creature_capacite",
+   "cle": {
+    "id": "bestiaire/poupee-terrestre#capacite:lanceur-de-sorts"
+   },
+   "col": "texte",
+   "avant": "Lance pierre",
+   "apres": "Lance-pierre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Nom composé « lance-pierre » (trait d'union)."
+  },
+  {
+   "table": "creature_capacite",
+   "cle": {
+    "id": "bestiaire/reanime#capacite:para-tonnerre:npm3"
+   },
+   "col": "nom",
+   "avant": "Para-tonnerre",
+   "apres": "Paratonnerre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le nom s'écrit en un mot : « paratonnerre »."
+  },
+  {
+   "table": "creature_capacite",
+   "cle": {
+    "id": "bestiaire/squamique#capacite:sort-supplementaire:npm5"
+   },
+   "col": "texte",
+   "avant": "Foudre argenté",
+   "apres": "Foudre argentée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « foudre » (féminin)."
+  },
+  {
+   "table": "creature_capacite",
+   "cle": {
+    "id": "bestiaire/temposs#capacite:arme-distordu"
+   },
+   "col": "nom",
+   "avant": "Arme distordu",
+   "apres": "Arme distordue",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « arme » (féminin)."
+  },
+  {
+   "table": "creature_capacite",
+   "cle": {
+    "id": "bestiaire/zombinox#capacite:tu-ne-passe-pas:npm5"
+   },
+   "col": "nom",
+   "avant": "Tu ne passe pas",
+   "apres": "Tu ne passes pas",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "2e personne du singulier : « tu passes »."
+  },
+  {
+   "table": "creature_capacite_sort",
+   "cle": {
+    "capacite_id": "bestiaire/poupee-arcanique#capacite:sort-supplementaire:npm5",
+    "rang": 1
+   },
+   "col": "sort_nom_brut",
+   "avant": "Foudre argenté",
+   "apres": "Foudre argentée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « foudre » (féminin)."
+  },
+  {
+   "table": "creature_capacite_sort",
+   "cle": {
+    "capacite_id": "bestiaire/poupee-de-glaise#capacite:lanceur-de-sorts",
+    "rang": 1
+   },
+   "col": "sort_nom_brut",
+   "avant": "Lance pierre",
+   "apres": "Lance-pierre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Nom composé « lance-pierre » (trait d'union)."
+  },
+  {
+   "table": "creature_capacite_sort",
+   "cle": {
+    "capacite_id": "bestiaire/poupee-necrotique#capacite:sort-supplementaire:npm5",
+    "rang": 1
+   },
+   "col": "sort_nom_brut",
+   "avant": "Répar Os",
+   "apres": "Répar'Os",
+   "n": 1,
+   "nature": "ponctuation",
+   "raison": "Même forme que les autres noms de la série (« Destruc'Os », « Fractur'Os »)."
+  },
+  {
+   "table": "creature_capacite_sort",
+   "cle": {
+    "capacite_id": "bestiaire/poupee-terrestre#capacite:lanceur-de-sorts",
+    "rang": 1
+   },
+   "col": "sort_nom_brut",
+   "avant": "Lance pierre",
+   "apres": "Lance-pierre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Nom composé « lance-pierre » (trait d'union)."
+  },
+  {
+   "table": "creature_capacite_sort",
+   "cle": {
+    "capacite_id": "bestiaire/squamique#capacite:sort-supplementaire:npm5",
+    "rang": 1
+   },
+   "col": "sort_nom_brut",
+   "avant": "Foudre argenté",
+   "apres": "Foudre argentée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « foudre » (féminin)."
+  },
+  {
+   "table": "creature_effet",
+   "cle": {
+    "creature_id": "bestiaire/bete-de-lombre",
+    "rang": 1
+   },
+   "col": "texte",
+   "avant": "Folle de guerre",
+   "apres": "Folie de guerre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Nom d'état : « folie de guerre » (« folle » est un adjectif sans nom)."
+  },
+  {
+   "table": "dieu",
+   "cle": {
+    "id": "atheiste"
+   },
+   "col": "nom",
+   "avant": "Athéiste",
+   "apres": "Athée",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "La forme usuelle est « athée »."
+  },
+  {
+   "table": "etat",
+   "cle": {
+    "id": "guide/liste-des-alterations-d-etat#etat:aggripe"
+   },
+   "col": "nom",
+   "avant": "Aggripé",
+   "apres": "Agrippé",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« agripper » : un g, deux p."
+  },
+  {
+   "table": "etat",
+   "cle": {
+    "id": "guide/liste-des-alterations-d-etat#etat:folle-de-guerre"
+   },
+   "col": "nom",
+   "avant": "Folle de Guerre",
+   "apres": "Folie de Guerre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Nom d'état : « folie de guerre » (« folle » est un adjectif sans nom)."
+  },
+  {
+   "table": "ethnie",
+   "cle": {
+    "id": "races/drakos#ethnie:drakos-bordeau"
+   },
+   "col": "nom",
+   "avant": "Drakos Bordeau",
+   "apres": "Drakos Bordeaux",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "La couleur s'écrit « bordeaux »."
+  },
+  {
+   "table": "ethnie",
+   "cle": {
+    "id": "races/elfe-argente#ethnie:elfe-argente-suppremaciste"
+   },
+   "col": "nom",
+   "avant": "Supprémaciste",
+   "apres": "Suprémaciste",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« suprémaciste » prend un seul p."
+  },
+  {
+   "table": "ethnie",
+   "cle": {
+    "id": "races/humain#ethnie:humain-toundra"
+   },
+   "col": "descriptif",
+   "avant": "Purée de poix",
+   "apres": "Purée de pois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Expression « purée de pois » (brouillard épais) ; « poix » est la résine."
+  },
+  {
+   "table": "familier",
+   "cle": {
+    "id": "ressources/familiers#familier:petit:herisson-brun"
+   },
+   "col": "description",
+   "avant": "techtonique",
+   "apres": "tectonique",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« tectonique » s'écrit sans h."
+  },
+  {
+   "table": "invocation",
+   "cle": {
+    "id": "bestiaire/marionette-de-lombre"
+   },
+   "col": "bandeau",
+   "avant": "MARIONETTE",
+   "apres": "MARIONNETTE",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« marionnette » prend deux n."
+  },
+  {
+   "table": "invocation",
+   "cle": {
+    "id": "bestiaire/marionette-de-lombre"
+   },
+   "col": "nom",
+   "avant": "Marionette de lombre",
+   "apres": "Marionnette de l'ombre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« marionnette » prend deux n ; apostrophe de « l'ombre » (nom du sort : « Marionnette de l'ombre »)."
+  },
+  {
+   "table": "maladie",
+   "cle": {
+    "id": "ressources/maladie#maladie:alteratis-brune"
+   },
+   "col": "nom",
+   "avant": "Altératis Brune",
+   "apres": "Altératis Brun",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Les autres Altératis portent une couleur au masculin (Bleu, Vert)."
+  },
+  {
+   "table": "meteo",
+   "cle": {
+    "id": "guide/meteo#meteo:puree-de-poix"
+   },
+   "col": "description",
+   "avant": "purée de poix",
+   "apres": "purée de pois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Expression « purée de pois » (brouillard épais) ; « poix » est la résine."
+  },
+  {
+   "table": "meteo",
+   "cle": {
+    "id": "guide/meteo#meteo:puree-de-poix"
+   },
+   "col": "nom",
+   "avant": "Purée de poix",
+   "apres": "Purée de pois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Expression « purée de pois » (brouillard épais) ; « poix » est la résine."
+  },
+  {
+   "table": "metier",
+   "cle": {
+    "id": "metiers/marin"
+   },
+   "col": "bonus_brut",
+   "avant": "Vie de nature",
+   "apres": "Vie en nature",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "La compétence s'appelle « Vie en nature » dans les autres métiers."
+  },
+  {
+   "table": "metier_bonus",
+   "cle": {
+    "metier_id": "metiers/marin",
+    "rang": 2,
+    "option": 1
+   },
+   "col": "cible",
+   "avant": "Vie de nature",
+   "apres": "Vie en nature",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "La compétence s'appelle « Vie en nature » dans les autres métiers."
+  },
+  {
+   "table": "metier_bonus",
+   "cle": {
+    "metier_id": "metiers/marin",
+    "rang": 2,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "Vie de nature",
+   "apres": "Vie en nature",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "La compétence s'appelle « Vie en nature » dans les autres métiers."
+  },
+  {
+   "table": "mode_hyper_effet",
+   "cle": {
+    "id": "magie_masque:duo:magies/magie-de-la-necromancie+magies/magie-de-la-glace"
+   },
+   "col": "effet",
+   "avant": "des os froid",
+   "apres": "des os froids",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Pluriel après « des »."
+  },
+  {
+   "table": "mode_hyper_effet",
+   "cle": {
+    "id": "magie_masque:duo:magies/magie-du-vide+magies/magie-de-la-lumiere"
+   },
+   "col": "effet",
+   "avant": "Innerte",
+   "apres": "Inerte",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« inerte » : un seul n."
+  },
+  {
+   "table": "mode_super_objet",
+   "cle": {
+    "id": "guide/liste-des-effets-mode-super#objet:foudre-etincellante"
+   },
+   "col": "nom",
+   "avant": "Foudre étincellante",
+   "apres": "Foudre étincelante",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« étincelant » prend un seul l."
+  },
+  {
+   "table": "mode_super_objet",
+   "cle": {
+    "id": "guide/liste-des-effets-mode-super#objet:guerriseur"
+   },
+   "col": "nom",
+   "avant": "Guérriseur",
+   "apres": "Guérisseur",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« guérisseur » : un r, deux s."
+  },
+  {
+   "table": "note_cellule",
+   "cle": {
+    "entite_table": "capacite",
+    "entite_id": "capacites/mage-soin-etrange",
+    "rang": 1
+   },
+   "col": "texte",
+   "avant": "Lance pierre",
+   "apres": "Lance-pierre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Nom composé « lance-pierre » (trait d'union)."
+  },
+  {
+   "table": "note_cellule",
+   "cle": {
+    "entite_table": "sort",
+    "entite_id": "magies/magie-de-la-foudre#sort:colonne-tesla",
+    "rang": 1
+   },
+   "col": "texte",
+   "avant": "Para-tonnerre",
+   "apres": "Paratonnerre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le nom s'écrit en un mot : « paratonnerre »."
+  },
+  {
+   "table": "note_cellule",
+   "cle": {
+    "entite_table": "sort",
+    "entite_id": "magies/magie-de-leau#sort:larmes-doceane",
+    "rang": 1
+   },
+   "col": "texte",
+   "avant": "Climatospetique",
+   "apres": "Climatosceptique",
+   "n": 1,
+   "nature": "harmonisation",
+   "raison": "Nom du don de l'Ocultomancien, écrit « Climatosceptique » (climat + sceptique)."
+  },
+  {
+   "table": "objet_depart",
+   "cle": {
+    "id": "ressources/objets-de-depart-des-classes#objet:brevage-immonde"
+   },
+   "col": "nom",
+   "avant": "Brevage",
+   "apres": "Breuvage",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« breuvage » s'écrit -eu-."
+  },
+  {
+   "table": "objet_depart",
+   "cle": {
+    "id": "ressources/objets-de-depart-des-classes#objet:p-huile-hemophile"
+   },
+   "col": "description",
+   "avant": "huile hémophilie",
+   "apres": "huile hémophile",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Le titre et les objets de la page s'appellent « huile hémophile » (adjectif)."
+  },
+  {
+   "table": "objet_depart",
+   "cle": {
+    "id": "ressources/objets-de-depart-des-classes#objet:panacee-mineur"
+   },
+   "col": "nom",
+   "avant": "Panacée mineur",
+   "apres": "Panacée mineure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "objet_depart",
+   "cle": {
+    "id": "ressources/objets-de-depart-des-classes#objet:pierre-a-aiguise"
+   },
+   "col": "nom",
+   "avant": "Pierre à aiguisé",
+   "apres": "Pierre à aiguiser",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Infinitif après « à » : « pierre à aiguiser »."
+  },
+  {
+   "table": "objet_depart",
+   "cle": {
+    "id": "ressources/objets-de-depart-des-classes#objet:plume-a-grave"
+   },
+   "col": "nom",
+   "avant": "Plume à gravé",
+   "apres": "Plume à graver",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Infinitif après « à » : « plume à graver »."
+  },
+  {
+   "table": "peuple",
+   "cle": {
+    "id": "lore/relations-entre-les-races#peuple:elfe-argente-suppremaciste"
+   },
+   "col": "nom",
+   "avant": "Supprémaciste",
+   "apres": "Suprémaciste",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« suprémaciste » prend un seul p."
+  },
+  {
+   "table": "peuple",
+   "cle": {
+    "id": "lore/relations-entre-les-races#peuple:marcass-ubain"
+   },
+   "col": "nom",
+   "avant": "Marcass Ubain",
+   "apres": "Marcass Urbain",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Lettre manquante, comme les autres peuples « … Urbain »."
+  },
+  {
+   "table": "recette",
+   "cle": {
+    "id": "ressources/armures#recette:materiau:or"
+   },
+   "col": "texte_brut",
+   "avant": "Souffre",
+   "apres": "Soufre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le minéral s'écrit « soufre » (« souffre » est le verbe souffrir)."
+  },
+  {
+   "table": "recette",
+   "cle": {
+    "id": "ressources/fiole-cyante#recette:fiole-cyante:1"
+   },
+   "col": "nom",
+   "avant": "cyante",
+   "apres": "cyan",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« cyante » n'existe pas : « cyan » est un adjectif invariable (la page écrit « Fioles Cyan »)."
+  },
+  {
+   "table": "recette",
+   "cle": {
+    "id": "ressources/fiole-verte-fonce#recette:fiole-verte-fonce:1"
+   },
+   "col": "nom",
+   "avant": "Fiole verte foncé",
+   "apres": "Fiole verte foncée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Même accord que les autres objets de la page (« fiole verte foncée »)."
+  },
+  {
+   "table": "recette",
+   "cle": {
+    "id": "ressources/fiole-verte-fonce#recette:fiole-verte-fonce:2"
+   },
+   "col": "nom",
+   "avant": "Fiole verte foncé",
+   "apres": "Fiole verte foncée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Même accord que les autres objets de la page (« fiole verte foncée »)."
+  },
+  {
+   "table": "recette_ingredient",
+   "cle": {
+    "recette_id": "ressources/armures#recette:materiau:or",
+    "rang": 3,
+    "option": 1
+   },
+   "col": "texte",
+   "avant": "Souffre",
+   "apres": "Soufre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le minéral s'écrit « soufre » (« souffre » est le verbe souffrir)."
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients#ingredient:amplificateur:coeur-abyssale"
+   },
+   "col": "nom",
+   "avant": "Coeur abyssale",
+   "apres": "Coeur abyssal",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « cœur » (masculin)."
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients#ingredient:amplificateur:coeur-spatio-temporelle"
+   },
+   "col": "nom",
+   "avant": "Coeur spatio-temporelle",
+   "apres": "Coeur spatio-temporel",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « cœur » (masculin)."
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients#ingredient:amplificateur:herbe-cyante"
+   },
+   "col": "nom",
+   "avant": "cyante",
+   "apres": "cyan",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« cyante » n'existe pas : « cyan » est un adjectif invariable (la page écrit « Fioles Cyan »)."
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients#ingredient:amplificateur:herbe-verte-fonce"
+   },
+   "col": "nom",
+   "avant": "Herbe verte foncé",
+   "apres": "Herbe vert foncé",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Couleur composée « vert foncé » : invariable (cf. « Champignon vert foncé »)."
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients#ingredient:essence:champignon-bleue"
+   },
+   "col": "nom",
+   "avant": "Champignon bleue",
+   "apres": "Champignon bleu",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « champignon » (masculin)."
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients#ingredient:essence:gelee-cyante"
+   },
+   "col": "nom",
+   "avant": "cyante",
+   "apres": "cyan",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« cyante » n'existe pas : « cyan » est un adjectif invariable (la page écrit « Fioles Cyan »)."
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients#ingredient:essence:gelee-verte-fonce"
+   },
+   "col": "nom",
+   "avant": "Gelée verte foncé",
+   "apres": "Gelée vert foncé",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Couleur composée « vert foncé » : invariable (cf. « Champignon vert foncé »)."
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/armures#mentionne:souffre"
+   },
+   "col": "nom",
+   "avant": "Souffre",
+   "apres": "Soufre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le minéral s'écrit « soufre » (« souffre » est le verbe souffrir)."
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/baton-magique#bois:mancelinier"
+   },
+   "col": "nom",
+   "avant": "Mancelinier",
+   "apres": "Mancenillier",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "L'arbre toxique s'écrit « mancenillier »."
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/baton-magique#gemme:onix"
+   },
+   "col": "nom",
+   "avant": "Onix",
+   "apres": "Onyx",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "La pierre s'écrit « onyx »."
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/equipement-inventaire#materiel:fiole-en-verre-moyen"
+   },
+   "col": "nom",
+   "avant": "Fiole en verre (Moyen)",
+   "apres": "Fiole en verre (Moyenne)",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « fiole » (féminin)."
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/equipement-inventaire#produit:1kg-de-oeuf-20-oeuf"
+   },
+   "col": "nom",
+   "avant": "1kg de oeuf, 20 oeuf",
+   "apres": "1kg d'oeufs, 20 oeufs",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Élision obligatoire (« d'oeufs ») et pluriel après « 20 »."
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/fiole-cyante#potion:fiole-cyante-moyenne"
+   },
+   "col": "nom",
+   "avant": "cyante",
+   "apres": "cyan",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« cyante » n'existe pas : « cyan » est un adjectif invariable (la page écrit « Fioles Cyan »)."
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/fiole-cyante#potion:mega-fiole-cyante"
+   },
+   "col": "nom",
+   "avant": "cyante",
+   "apres": "cyan",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« cyante » n'existe pas : « cyan » est un adjectif invariable (la page écrit « Fioles Cyan »)."
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/fiole-cyante#potion:petite-fiole-cyante"
+   },
+   "col": "nom",
+   "avant": "cyante",
+   "apres": "cyan",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« cyante » n'existe pas : « cyan » est un adjectif invariable (la page écrit « Fioles Cyan »)."
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/fiole-cyante#potion:super-fiole-cyante"
+   },
+   "col": "nom",
+   "avant": "cyante",
+   "apres": "cyan",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« cyante » n'existe pas : « cyan » est un adjectif invariable (la page écrit « Fioles Cyan »)."
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/fiole-cyante#potion:ultime-fiole-cyante"
+   },
+   "col": "nom",
+   "avant": "cyante",
+   "apres": "cyan",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« cyante » n'existe pas : « cyan » est un adjectif invariable (la page écrit « Fioles Cyan »)."
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/panacee#potion:panacee-majeur"
+   },
+   "col": "nom",
+   "avant": "Panacée majeur",
+   "apres": "Panacée majeure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/panacee#potion:panacee-mineur"
+   },
+   "col": "nom",
+   "avant": "Panacée mineur",
+   "apres": "Panacée mineure",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/panacee#potion:panacee-parfait"
+   },
+   "col": "nom",
+   "avant": "Panacée parfait",
+   "apres": "Panacée parfaite",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « panacée » (féminin)."
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-la-corruption#sort:verrouille-visible"
+   },
+   "col": "nom",
+   "avant": "Verrouille Visible",
+   "apres": "Verrouillage Visible",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Les trois autres sorts de la série s'appellent « Verrouillage … »."
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-la-foudre#sort:colonne-tesla"
+   },
+   "col": "effets",
+   "avant": "para-tonnerre",
+   "apres": "paratonnerre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le nom s'écrit en un mot : « paratonnerre »."
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-la-foudre#sort:colonne-tesla"
+   },
+   "col": "nom",
+   "avant": "Colonne tesla",
+   "apres": "Colonne Tesla",
+   "n": 1,
+   "nature": "casse",
+   "raison": "« Tesla » est un nom propre (Nikola Tesla)."
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-la-foudre#sort:colonne-tesla"
+   },
+   "col": "remarque",
+   "avant": "Para-tonnerre",
+   "apres": "Paratonnerre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le nom s'écrit en un mot : « paratonnerre »."
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-la-necromancie#sort:cimetiere-ouvert"
+   },
+   "col": "bonus_maitrise",
+   "avant": "Purée de poix",
+   "apres": "Purée de pois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Expression « purée de pois » (brouillard épais) ; « poix » est la résine."
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-la-necromancie#sort:cimetiere-ouvert"
+   },
+   "col": "effets",
+   "avant": "Purée de poix",
+   "apres": "Purée de pois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Expression « purée de pois » (brouillard épais) ; « poix » est la résine."
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-la-necromancie#sort:repar-os"
+   },
+   "col": "nom",
+   "avant": "Répar Os",
+   "apres": "Répar'Os",
+   "n": 1,
+   "nature": "ponctuation",
+   "raison": "Même forme que les autres noms de la série (« Destruc'Os », « Fractur'Os »)."
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-la-necromancie#sort:resurrection-noir"
+   },
+   "col": "nom",
+   "avant": "Résurrection Noir",
+   "apres": "Résurrection Noire",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « résurrection » (féminin)."
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-la-necromancie#sort:vague-de-cadavre"
+   },
+   "col": "effets",
+   "avant": "vague de cadavre",
+   "apres": "vague de cadavres",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Une vague de plusieurs cadavres : complément au pluriel."
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-la-necromancie#sort:vague-de-cadavre"
+   },
+   "col": "nom",
+   "avant": "Vague de cadavre",
+   "apres": "Vague de cadavres",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Une vague de plusieurs cadavres : complément au pluriel."
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-la-terre#sort:lance-pierre"
+   },
+   "col": "nom",
+   "avant": "Lance Pierre",
+   "apres": "Lance-pierre",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Nom composé « lance-pierre » (trait d'union)."
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-la-terre#sort:redemption-de-dimitri"
+   },
+   "col": "effets",
+   "avant": "tempête sable",
+   "apres": "tempête de sable",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "« tempête de sable », comme ailleurs dans la même page."
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-larcane#sort:foudre-argente"
+   },
+   "col": "nom",
+   "avant": "Foudre argenté",
+   "apres": "Foudre argentée",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « foudre » (féminin)."
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-leau#sort:larmes-doceane"
+   },
+   "col": "remarque",
+   "avant": "Climatospetique",
+   "apres": "Climatosceptique",
+   "n": 1,
+   "nature": "harmonisation",
+   "raison": "Nom du don de l'Ocultomancien, écrit « Climatosceptique » (climat + sceptique)."
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-leau#sort:onde-confusion"
+   },
+   "col": "nom",
+   "avant": "Onde Confusion",
+   "apres": "Onde de Confusion",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Nom du sort complété (« onde de confusion »)."
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-lombre#sort:brume-mental"
+   },
+   "col": "nom",
+   "avant": "Brume mental",
+   "apres": "Brume mentale",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Accord avec « brume » (féminin)."
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-du-vent#sort:estoc-hurlante"
+   },
+   "col": "nom",
+   "avant": "Estoc hurlante",
+   "apres": "Estoc hurlant",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "« estoc » est masculin."
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-du-vide#sort:touche-du-vide"
+   },
+   "col": "nom",
+   "avant": "Touché du Vide",
+   "apres": "Toucher du Vide",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Le nom du contact est « le toucher » (« touché » est le participe)."
+  },
+  {
+   "table": "sort_bonus_maitrise",
+   "cle": {
+    "sort_id": "magies/magie-de-la-necromancie#sort:cimetiere-ouvert",
+    "champ": "effets",
+    "rang": 1
+   },
+   "col": "contexte",
+   "avant": "Purée de poix",
+   "apres": "Purée de pois",
+   "n": 1,
+   "nature": "orthographe",
+   "raison": "Expression « purée de pois » (brouillard épais) ; « poix » est la résine."
+  },
+  {
+   "table": "specialite",
+   "cle": {
+    "id": "classes/mercenaire#specialite:chasseur-de-primes"
+   },
+   "col": "description_titre",
+   "avant": "Chasseur de Prime",
+   "apres": "Chasseur de Primes",
+   "n": 1,
+   "nature": "grammaire",
+   "raison": "Le titre de section et le texte écrivent « Chasseur de Primes »."
+  },
+  {
+   "table": "specialite",
+   "cle": {
+    "id": "classes/ocultomancien#specialite:meteorologue"
+   },
+   "col": "description_titre",
+   "avant": "Métérologue",
+   "apres": "Météorologue",
+   "n": 1,
+   "nature": "frappe",
+   "raison": "Lettre manquante : « météorologue » (titre de section et texte)."
+  }
+ ],
+ "cles": [
+  {
+   "table": "arme",
+   "cle": {
+    "id": "ressources/armes#arme:arme-de-monstres:etendard-dechiree"
+   },
+   "col": "nom_cle",
+   "avant": "etendard-dechiree",
+   "apres": "etendard-dechire"
+  },
+  {
+   "table": "arme",
+   "cle": {
+    "id": "ressources/armes#arme:baton-de-combat:croc-obsidien"
+   },
+   "col": "nom_cle",
+   "avant": "croc-obsidien",
+   "apres": "croc-dobsidienne"
+  },
+  {
+   "table": "arme",
+   "cle": {
+    "id": "ressources/armes#arme:pugilat:greves-cloutes"
+   },
+   "col": "nom_cle",
+   "avant": "greves-cloutes",
+   "apres": "greves-cloutees"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-acier-complet"
+   },
+   "col": "nom_cle",
+   "avant": "armure-acier-complet",
+   "apres": "armure-acier-complete"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-argent-complet"
+   },
+   "col": "nom_cle",
+   "avant": "armure-argent-complet",
+   "apres": "armure-argent-complete"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-bronze-complet"
+   },
+   "col": "nom_cle",
+   "avant": "armure-bronze-complet",
+   "apres": "armure-bronze-complete"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-celloluse-acier"
+   },
+   "col": "nom_cle",
+   "avant": "armure-celloluse-acier",
+   "apres": "armure-cellulose-acier"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-corne-os-complet"
+   },
+   "col": "nom_cle",
+   "avant": "armure-corne-os-complet",
+   "apres": "armure-corne-os-complete"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-cuivre-complet"
+   },
+   "col": "nom_cle",
+   "avant": "armure-cuivre-complet",
+   "apres": "armure-cuivre-complete"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-de-bois-complet"
+   },
+   "col": "nom_cle",
+   "avant": "armure-de-bois-complet",
+   "apres": "armure-de-bois-complete"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-de-cellulose-complet"
+   },
+   "col": "nom_cle",
+   "avant": "armure-de-cellulose-complet",
+   "apres": "armure-de-cellulose-complete"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-de-chitine-complet"
+   },
+   "col": "nom_cle",
+   "avant": "armure-de-chitine-complet",
+   "apres": "armure-de-chitine-complete"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-de-corail-complet"
+   },
+   "col": "nom_cle",
+   "avant": "armure-de-corail-complet",
+   "apres": "armure-de-corail-complete"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-de-cuir-complet"
+   },
+   "col": "nom_cle",
+   "avant": "armure-de-cuir-complet",
+   "apres": "armure-de-cuir-complete"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-de-peau-complet"
+   },
+   "col": "nom_cle",
+   "avant": "armure-de-peau-complet",
+   "apres": "armure-de-peau-complete"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-ecailles-complet"
+   },
+   "col": "nom_cle",
+   "avant": "armure-ecailles-complet",
+   "apres": "armure-ecailles-complete"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-fer-complet"
+   },
+   "col": "nom_cle",
+   "avant": "armure-fer-complet",
+   "apres": "armure-fer-complete"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-fer-noir-complet"
+   },
+   "col": "nom_cle",
+   "avant": "armure-fer-noir-complet",
+   "apres": "armure-fer-noir-complete"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-fonte-complet"
+   },
+   "col": "nom_cle",
+   "avant": "armure-fonte-complet",
+   "apres": "armure-fonte-complete"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-laiton-complet"
+   },
+   "col": "nom_cle",
+   "avant": "armure-laiton-complet",
+   "apres": "armure-laiton-complete"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-maverium-complet"
+   },
+   "col": "nom_cle",
+   "avant": "armure-maverium-complet",
+   "apres": "armure-maverium-complete"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-mythril-complet"
+   },
+   "col": "nom_cle",
+   "avant": "armure-mythril-complet",
+   "apres": "armure-mythril-complete"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-or-complet"
+   },
+   "col": "nom_cle",
+   "avant": "armure-or-complet",
+   "apres": "armure-or-complete"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-titane-complet"
+   },
+   "col": "nom_cle",
+   "avant": "armure-titane-complet",
+   "apres": "armure-titane-complete"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-vif-argent-complet"
+   },
+   "col": "nom_cle",
+   "avant": "armure-vif-argent-complet",
+   "apres": "armure-vif-argent-complete"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/anansi-anti-corps"
+   },
+   "col": "nom_cle",
+   "avant": "anti-corps",
+   "apres": "anticorps"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/anansi-attention-migale"
+   },
+   "col": "nom_cle",
+   "avant": "attention-migale",
+   "apres": "attention-mygale"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/archimage-pacte-noire"
+   },
+   "col": "nom_cle",
+   "avant": "pacte-noire",
+   "apres": "pacte-noir"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/barde-bain-de-foules"
+   },
+   "col": "nom_cle",
+   "avant": "bain-de-foules",
+   "apres": "bain-de-foule"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/barde-balade-guerriere"
+   },
+   "col": "nom_cle",
+   "avant": "balade-guerriere",
+   "apres": "ballade-guerriere"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/bimane-frappe-fatiguante"
+   },
+   "col": "nom_cle",
+   "avant": "frappe-fatiguante",
+   "apres": "frappe-fatigante"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/clerc-tend-lautre-joue"
+   },
+   "col": "nom_cle",
+   "avant": "tend-lautre-joue",
+   "apres": "tends-lautre-joue"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/cuirasse-tu-passe-pas"
+   },
+   "col": "nom_cle",
+   "avant": "tu-passe-pas",
+   "apres": "tu-passes-pas"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/fenrir-griffe-sanglant"
+   },
+   "col": "nom_cle",
+   "avant": "griffe-sanglant",
+   "apres": "griffe-sanglante"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/flagelleur-dit-mon-nom"
+   },
+   "col": "nom_cle",
+   "avant": "dit-mon-nom",
+   "apres": "dis-mon-nom"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/flagelleur-puni-moi"
+   },
+   "col": "nom_cle",
+   "avant": "puni-moi",
+   "apres": "punis-moi"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/goleois-balade-barbare"
+   },
+   "col": "nom_cle",
+   "avant": "balade-barbare",
+   "apres": "ballade-barbare"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/grenadier-attend"
+   },
+   "col": "nom_cle",
+   "avant": "attend",
+   "apres": "attends"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/guerrier-contre-coup"
+   },
+   "col": "nom_cle",
+   "avant": "contre-coup",
+   "apres": "contrecoup"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/kitsune-vif-allure"
+   },
+   "col": "nom_cle",
+   "avant": "vif-allure",
+   "apres": "vive-allure"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/lancier-riposte-infini"
+   },
+   "col": "nom_cle",
+   "avant": "riposte-infini",
+   "apres": "riposte-infinie"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/maclier-prise-alternatif"
+   },
+   "col": "nom_cle",
+   "avant": "prise-alternatif",
+   "apres": "prise-alternative"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/mage-vert-meilleur-attaque"
+   },
+   "col": "nom_cle",
+   "avant": "meilleur-attaque",
+   "apres": "meilleure-attaque"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/martiale-force-inne"
+   },
+   "col": "nom_cle",
+   "avant": "force-inne",
+   "apres": "force-innee"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/martiale-rage-audacieux"
+   },
+   "col": "nom_cle",
+   "avant": "rage-audacieux",
+   "apres": "rage-audacieuse"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/martiale-rage-prudent"
+   },
+   "col": "nom_cle",
+   "avant": "rage-prudent",
+   "apres": "rage-prudente"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/mercenaire-je-te-choisi"
+   },
+   "col": "nom_cle",
+   "avant": "je-te-choisi",
+   "apres": "je-te-choisis"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/minotaure-parceque"
+   },
+   "col": "nom_cle",
+   "avant": "parceque",
+   "apres": "parce-que"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/moine-prend-ca"
+   },
+   "col": "nom_cle",
+   "avant": "prend-ca",
+   "apres": "prends-ca"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/moine-tu-vivra"
+   },
+   "col": "nom_cle",
+   "avant": "tu-vivra",
+   "apres": "tu-vivras"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/namazu-dent-infecte"
+   },
+   "col": "nom_cle",
+   "avant": "dent-infecte",
+   "apres": "dent-infectee"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/pugiliste-a-deux-main"
+   },
+   "col": "nom_cle",
+   "avant": "a-deux-main",
+   "apres": "a-deux-mains"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/pugiliste-suplexe"
+   },
+   "col": "nom_cle",
+   "avant": "suplexe",
+   "apres": "suplex"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/tueur-anti-corps"
+   },
+   "col": "nom_cle",
+   "avant": "anti-corps",
+   "apres": "anticorps"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/tueur-innaretable"
+   },
+   "col": "nom_cle",
+   "avant": "innaretable",
+   "apres": "inarretable"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/voleur-mcgyver"
+   },
+   "col": "nom_cle",
+   "avant": "mcgyver",
+   "apres": "macgyver"
+  },
+  {
+   "table": "capacite",
+   "cle": {
+    "id": "capacites/voleur-tu-ma-pas-vu"
+   },
+   "col": "nom_cle",
+   "avant": "tu-ma-pas-vu",
+   "apres": "tu-mas-pas-vu"
+  },
+  {
+   "table": "creature",
+   "cle": {
+    "id": "bestiaire/poupee-corrompu"
+   },
+   "col": "nom_cle",
+   "avant": "poupee-corrompu",
+   "apres": "poupee-corrompue"
+  },
+  {
+   "table": "creature",
+   "cle": {
+    "id": "bestiaire/poupee-sacre"
+   },
+   "col": "nom_cle",
+   "avant": "poupee-sacre",
+   "apres": "poupee-sacree"
+  },
+  {
+   "table": "creature",
+   "cle": {
+    "id": "bestiaire/sihouetteur-obscur"
+   },
+   "col": "nom_cle",
+   "avant": "sihouetteur-obscur",
+   "apres": "silhouetteur-obscur"
+  },
+  {
+   "table": "creature_attaque",
+   "cle": {
+    "id": "bestiaire/squelette-de-pierre#attaque:epee-osseuse-lie"
+   },
+   "col": "nom_cle",
+   "avant": "epee-osseuse-lie",
+   "apres": "epee-osseuse-liee"
+  },
+  {
+   "table": "creature_capacite",
+   "cle": {
+    "id": "bestiaire/bete-de-lombre#capacite:folle-de-guerre"
+   },
+   "col": "nom_cle",
+   "avant": "folle-de-guerre",
+   "apres": "folie-de-guerre"
+  },
+  {
+   "table": "creature_capacite",
+   "cle": {
+    "id": "bestiaire/goule#capacite:radiation-corrompu:npm3"
+   },
+   "col": "nom_cle",
+   "avant": "radiation-corrompu",
+   "apres": "radiation-corrompue"
+  },
+  {
+   "table": "creature_capacite",
+   "cle": {
+    "id": "bestiaire/reanime#capacite:para-tonnerre:npm3"
+   },
+   "col": "nom_cle",
+   "avant": "para-tonnerre",
+   "apres": "paratonnerre"
+  },
+  {
+   "table": "creature_capacite",
+   "cle": {
+    "id": "bestiaire/temposs#capacite:arme-distordu"
+   },
+   "col": "nom_cle",
+   "avant": "arme-distordu",
+   "apres": "arme-distordue"
+  },
+  {
+   "table": "creature_capacite",
+   "cle": {
+    "id": "bestiaire/zombinox#capacite:tu-ne-passe-pas:npm5"
+   },
+   "col": "nom_cle",
+   "avant": "tu-ne-passe-pas",
+   "apres": "tu-ne-passes-pas"
+  },
+  {
+   "table": "invocation",
+   "cle": {
+    "id": "bestiaire/marionette-de-lombre"
+   },
+   "col": "nom_cle",
+   "avant": "marionette-de-lombre",
+   "apres": "marionnette-de-lombre"
+  },
+  {
+   "table": "maladie",
+   "cle": {
+    "id": "ressources/maladie#maladie:alteratis-brune"
+   },
+   "col": "nom_cle",
+   "avant": "alteratis-brune",
+   "apres": "alteratis-brun"
+  },
+  {
+   "table": "metier_bonus",
+   "cle": {
+    "metier_id": "metiers/marin",
+    "rang": 2,
+    "option": 1
+   },
+   "col": "cible_cle",
+   "avant": "vie-de-nature",
+   "apres": "vie-en-nature"
+  },
+  {
+   "table": "objet_depart",
+   "cle": {
+    "id": "ressources/objets-de-depart-des-classes#objet:brevage-immonde"
+   },
+   "col": "nom_cle",
+   "avant": "brevage-immonde",
+   "apres": "breuvage-immonde"
+  },
+  {
+   "table": "objet_depart",
+   "cle": {
+    "id": "ressources/objets-de-depart-des-classes#objet:panacee-mineur"
+   },
+   "col": "nom_cle",
+   "avant": "panacee-mineur",
+   "apres": "panacee-mineure"
+  },
+  {
+   "table": "objet_depart",
+   "cle": {
+    "id": "ressources/objets-de-depart-des-classes#objet:pierre-a-aiguise"
+   },
+   "col": "nom_cle",
+   "avant": "pierre-a-aiguise",
+   "apres": "pierre-a-aiguiser"
+  },
+  {
+   "table": "objet_depart",
+   "cle": {
+    "id": "ressources/objets-de-depart-des-classes#objet:plume-a-grave"
+   },
+   "col": "nom_cle",
+   "avant": "plume-a-grave",
+   "apres": "plume-a-graver"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/marionette-de-lombre"
+   },
+   "col": "titre_cle",
+   "avant": "marionette-de-lombre",
+   "apres": "marionnette-de-lombre"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/poupee-corrompu"
+   },
+   "col": "titre_cle",
+   "avant": "poupee-corrompu",
+   "apres": "poupee-corrompue"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/poupee-sacre"
+   },
+   "col": "titre_cle",
+   "avant": "poupee-sacre",
+   "apres": "poupee-sacree"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "bestiaire/sihouetteur-obscur"
+   },
+   "col": "titre_cle",
+   "avant": "sihouetteur-obscur",
+   "apres": "silhouetteur-obscur"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/anansi-anti-corps"
+   },
+   "col": "titre_cle",
+   "avant": "anti-corps-anansi",
+   "apres": "anticorps-anansi"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/anansi-attention-migale"
+   },
+   "col": "titre_cle",
+   "avant": "attention-migale-anansi",
+   "apres": "attention-mygale-anansi"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/archimage-pacte-noire"
+   },
+   "col": "titre_cle",
+   "avant": "pacte-noire-archimage",
+   "apres": "pacte-noir-archimage"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/barde-bain-de-foules"
+   },
+   "col": "titre_cle",
+   "avant": "bain-de-foules-barde",
+   "apres": "bain-de-foule-barde"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/barde-balade-guerriere"
+   },
+   "col": "titre_cle",
+   "avant": "balade-guerriere-barde",
+   "apres": "ballade-guerriere-barde"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/bimane-frappe-fatiguante"
+   },
+   "col": "titre_cle",
+   "avant": "frappe-fatiguante-bimane",
+   "apres": "frappe-fatigante-bimane"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/clerc-tend-lautre-joue"
+   },
+   "col": "titre_cle",
+   "avant": "tend-lautre-joue-clerc",
+   "apres": "tends-lautre-joue-clerc"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/cuirasse-tu-passe-pas"
+   },
+   "col": "titre_cle",
+   "avant": "tu-passe-pas-cuirasse",
+   "apres": "tu-passes-pas-cuirasse"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/fenrir-griffe-sanglant"
+   },
+   "col": "titre_cle",
+   "avant": "griffe-sanglant-fenrir",
+   "apres": "griffe-sanglante-fenrir"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/flagelleur-dit-mon-nom"
+   },
+   "col": "titre_cle",
+   "avant": "dit-mon-nom-flagelleur",
+   "apres": "dis-mon-nom-flagelleur"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/flagelleur-puni-moi"
+   },
+   "col": "titre_cle",
+   "avant": "puni-moi-flagelleur",
+   "apres": "punis-moi-flagelleur"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/goleois-balade-barbare"
+   },
+   "col": "titre_cle",
+   "avant": "balade-barbare-goleois",
+   "apres": "ballade-barbare-goleois"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/grenadier-attend"
+   },
+   "col": "titre_cle",
+   "avant": "attend-grenadier",
+   "apres": "attends-grenadier"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/guerrier-contre-coup"
+   },
+   "col": "titre_cle",
+   "avant": "contre-coup-guerrier",
+   "apres": "contrecoup-guerrier"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/kitsune-vif-allure"
+   },
+   "col": "titre_cle",
+   "avant": "vif-allure-kitsune",
+   "apres": "vive-allure-kitsune"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/lancier-riposte-infini"
+   },
+   "col": "titre_cle",
+   "avant": "riposte-infini-lancier",
+   "apres": "riposte-infinie-lancier"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/maclier-prise-alternatif"
+   },
+   "col": "titre_cle",
+   "avant": "prise-alternatif-maclier",
+   "apres": "prise-alternative-maclier"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/mage-vert-meilleur-attaque"
+   },
+   "col": "titre_cle",
+   "avant": "meilleur-attaque-mage-vert",
+   "apres": "meilleure-attaque-mage-vert"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/martiale-force-inne"
+   },
+   "col": "titre_cle",
+   "avant": "force-inne-martiale",
+   "apres": "force-innee-martiale"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/martiale-rage-audacieux"
+   },
+   "col": "titre_cle",
+   "avant": "rage-audacieux-martiale",
+   "apres": "rage-audacieuse-martiale"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/martiale-rage-prudent"
+   },
+   "col": "titre_cle",
+   "avant": "rage-prudent-martiale",
+   "apres": "rage-prudente-martiale"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/mercenaire-je-te-choisi"
+   },
+   "col": "titre_cle",
+   "avant": "je-te-choisi-mercenaire",
+   "apres": "je-te-choisis-mercenaire"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/minotaure-parceque"
+   },
+   "col": "titre_cle",
+   "avant": "parceque-minotaure",
+   "apres": "parce-que-minotaure"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/moine-prend-ca"
+   },
+   "col": "titre_cle",
+   "avant": "prend-ca-moine",
+   "apres": "prends-ca-moine"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/moine-tu-vivra"
+   },
+   "col": "titre_cle",
+   "avant": "tu-vivra-moine",
+   "apres": "tu-vivras-moine"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/namazu-dent-infecte"
+   },
+   "col": "titre_cle",
+   "avant": "dent-infecte-namazu",
+   "apres": "dent-infectee-namazu"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/pugiliste-a-deux-main"
+   },
+   "col": "titre_cle",
+   "avant": "a-deux-main-pugiliste",
+   "apres": "a-deux-mains-pugiliste"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/pugiliste-suplexe"
+   },
+   "col": "titre_cle",
+   "avant": "suplexe-pugiliste",
+   "apres": "suplex-pugiliste"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/tueur-anti-corps"
+   },
+   "col": "titre_cle",
+   "avant": "anti-corps-tueur",
+   "apres": "anticorps-tueur"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/tueur-innaretable"
+   },
+   "col": "titre_cle",
+   "avant": "innaretable-tueur",
+   "apres": "inarretable-tueur"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/voleur-mcgyver"
+   },
+   "col": "titre_cle",
+   "avant": "mcgyver-voleur",
+   "apres": "macgyver-voleur"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/voleur-tu-ma-pas-vu"
+   },
+   "col": "titre_cle",
+   "avant": "tu-ma-pas-vu-voleur",
+   "apres": "tu-mas-pas-vu-voleur"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-capacites-dons"
+   },
+   "col": "titre_cle",
+   "avant": "fiche-de-personnage-capacites-don",
+   "apres": "fiche-de-personnage-capacites-dons"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-tableau-resistances-faiblesses"
+   },
+   "col": "titre_cle",
+   "avant": "fiche-de-personnage-tableau-resistance-faiblesses",
+   "apres": "fiche-de-personnage-tableau-resistances-faiblesses"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients"
+   },
+   "col": "titre_cle",
+   "avant": "liste-dingredient",
+   "apres": "liste-dingredients"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/fiole-cyante"
+   },
+   "col": "titre_cle",
+   "avant": "fiole-cyante",
+   "apres": "fiole-cyan"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/fiole-verte-fonce"
+   },
+   "col": "titre_cle",
+   "avant": "fiole-verte-fonce",
+   "apres": "fiole-verte-foncee"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/livre-parchemin"
+   },
+   "col": "titre_cle",
+   "avant": "livreparchemin",
+   "apres": "livre-parchemin"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/machine-de-guerresiege"
+   },
+   "col": "titre_cle",
+   "avant": "machine-de-guerresiege",
+   "apres": "machine-de-guerre-siege"
+  },
+  {
+   "table": "peuple",
+   "cle": {
+    "id": "lore/relations-entre-les-races#peuple:elfe-argente-suppremaciste"
+   },
+   "col": "nom_cle",
+   "avant": "elfe-argente-suppremaciste",
+   "apres": "elfe-argente-supremaciste"
+  },
+  {
+   "table": "peuple",
+   "cle": {
+    "id": "lore/relations-entre-les-races#peuple:marcass-ubain"
+   },
+   "col": "nom_cle",
+   "avant": "marcass-ubain",
+   "apres": "marcass-urbain"
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients#ingredient:amplificateur:coeur-abyssale"
+   },
+   "col": "nom_cle",
+   "avant": "coeur-abyssale",
+   "apres": "coeur-abyssal"
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients#ingredient:amplificateur:coeur-spatio-temporelle"
+   },
+   "col": "nom_cle",
+   "avant": "coeur-spatio-temporelle",
+   "apres": "coeur-spatio-temporel"
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients#ingredient:amplificateur:herbe-cyante"
+   },
+   "col": "nom_cle",
+   "avant": "herbe-cyante",
+   "apres": "herbe-cyan"
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients#ingredient:amplificateur:herbe-verte-fonce"
+   },
+   "col": "nom_cle",
+   "avant": "herbe-verte-fonce",
+   "apres": "herbe-vert-fonce"
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients#ingredient:essence:champignon-bleue"
+   },
+   "col": "nom_cle",
+   "avant": "champignon-bleue",
+   "apres": "champignon-bleu"
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients#ingredient:essence:gelee-cyante"
+   },
+   "col": "nom_cle",
+   "avant": "gelee-cyante",
+   "apres": "gelee-cyan"
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/alchimie-liste-ingredients#ingredient:essence:gelee-verte-fonce"
+   },
+   "col": "nom_cle",
+   "avant": "gelee-verte-fonce",
+   "apres": "gelee-vert-fonce"
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/armures#mentionne:souffre"
+   },
+   "col": "nom_cle",
+   "avant": "souffre",
+   "apres": "soufre"
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/baton-magique#bois:mancelinier"
+   },
+   "col": "nom_cle",
+   "avant": "mancelinier",
+   "apres": "mancenillier"
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/baton-magique#gemme:onix"
+   },
+   "col": "nom_cle",
+   "avant": "onix",
+   "apres": "onyx"
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/equipement-inventaire#materiel:fiole-en-verre-moyen"
+   },
+   "col": "nom_cle",
+   "avant": "fiole-en-verre-moyen",
+   "apres": "fiole-en-verre-moyenne"
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/equipement-inventaire#produit:1kg-de-oeuf-20-oeuf"
+   },
+   "col": "nom_cle",
+   "avant": "1kg-de-oeuf-20-oeuf",
+   "apres": "1kg-doeufs-20-oeufs"
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/fiole-cyante#potion:fiole-cyante-moyenne"
+   },
+   "col": "nom_cle",
+   "avant": "fiole-cyante-moyenne",
+   "apres": "fiole-cyan-moyenne"
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/fiole-cyante#potion:mega-fiole-cyante"
+   },
+   "col": "nom_cle",
+   "avant": "mega-fiole-cyante",
+   "apres": "mega-fiole-cyan"
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/fiole-cyante#potion:petite-fiole-cyante"
+   },
+   "col": "nom_cle",
+   "avant": "petite-fiole-cyante",
+   "apres": "petite-fiole-cyan"
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/fiole-cyante#potion:super-fiole-cyante"
+   },
+   "col": "nom_cle",
+   "avant": "super-fiole-cyante",
+   "apres": "super-fiole-cyan"
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/fiole-cyante#potion:ultime-fiole-cyante"
+   },
+   "col": "nom_cle",
+   "avant": "ultime-fiole-cyante",
+   "apres": "ultime-fiole-cyan"
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/panacee#potion:panacee-majeur"
+   },
+   "col": "nom_cle",
+   "avant": "panacee-majeur",
+   "apres": "panacee-majeure"
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/panacee#potion:panacee-mineur"
+   },
+   "col": "nom_cle",
+   "avant": "panacee-mineur",
+   "apres": "panacee-mineure"
+  },
+  {
+   "table": "ressource",
+   "cle": {
+    "id": "ressources/panacee#potion:panacee-parfait"
+   },
+   "col": "nom_cle",
+   "avant": "panacee-parfait",
+   "apres": "panacee-parfaite"
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-la-corruption#sort:verrouille-visible"
+   },
+   "col": "nom_cle",
+   "avant": "verrouille-visible",
+   "apres": "verrouillage-visible"
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-la-necromancie#sort:repar-os"
+   },
+   "col": "nom_cle",
+   "avant": "repar-os",
+   "apres": "reparos"
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-la-necromancie#sort:resurrection-noir"
+   },
+   "col": "nom_cle",
+   "avant": "resurrection-noir",
+   "apres": "resurrection-noire"
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-la-necromancie#sort:vague-de-cadavre"
+   },
+   "col": "nom_cle",
+   "avant": "vague-de-cadavre",
+   "apres": "vague-de-cadavres"
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-larcane#sort:foudre-argente"
+   },
+   "col": "nom_cle",
+   "avant": "foudre-argente",
+   "apres": "foudre-argentee"
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-leau#sort:onde-confusion"
+   },
+   "col": "nom_cle",
+   "avant": "onde-confusion",
+   "apres": "onde-de-confusion"
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-de-lombre#sort:brume-mental"
+   },
+   "col": "nom_cle",
+   "avant": "brume-mental",
+   "apres": "brume-mentale"
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-du-vent#sort:estoc-hurlante"
+   },
+   "col": "nom_cle",
+   "avant": "estoc-hurlante",
+   "apres": "estoc-hurlant"
+  },
+  {
+   "table": "sort",
+   "cle": {
+    "id": "magies/magie-du-vide#sort:touche-du-vide"
+   },
+   "col": "nom_cle",
+   "avant": "touche-du-vide",
+   "apres": "toucher-du-vide"
+  }
+ ]
+}
