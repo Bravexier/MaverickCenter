@@ -1,0 +1,269 @@
+---
+import raceBaseCss from '../../styles/race/base.css?raw';
+import racePageCss from '../../styles/race/page.css?raw';
+import raceRelationsCss from '../../styles/race/relations.css?raw';
+import { groupClasses } from '../../lib/class-groups.mjs';
+import { pageHref } from '../../lib/magies';
+import type { RaceDb, Races } from '../../lib/races';
+import { relationsDeRace } from '../../lib/race-relations.mjs';
+import { couleurDeMagie } from '../../lib/sort-format.mjs';
+import { entryHref, url, type WikiEntry } from '../../lib/wiki';
+import Texte from '../magie/Texte.astro';
+import RaceRelations from './RaceRelations.astro';
+
+const raceCss = [raceBaseCss, racePageCss, raceRelationsCss].join('\n');
+
+// Gabarit commun des pages de race, sur le modèle des pages de magie : bandeau (nom, nature, valeurs de départ), présentation, histoire, avantages et
+// inconvénients, dons raciaux, capacité Mode Hyper, magies innées, classes accessibles, relations avec les autres peuples. Il affiche les lignes de la
+// base (lib/races-db.mjs) : pour changer une race, on change la base. Aucun tableau Markdown, pas d'écarts avec la fiche V15.2.2 (décision R13), pas de
+// source citée. Seuls le titre, les alias et le statut viennent de la page du wiki ; les classes sont rangées comme sur /wiki/classes/.
+interface Props {
+  entry: WikiEntry;
+  entries: WikiEntry[];
+  race: RaceDb;
+  races: Races;
+  statusNote?: string;
+}
+const { entry, entries, race, races, statusNote } = Astro.props;
+const hybride = race.classeRaciale !== null;
+const pageDe = (id: string) => entries.find((e) => e.id === id);
+const pageClasseRaciale = race.classeRaciale ? pageDe(race.classeRaciale.id) : undefined;
+const pageModeHyper = pageDe('guide/liste-des-effets-mode-hyper');
+
+const relations = relationsDeRace(races.relations, race.id);
+const aPresentation = race.descriptionGenerale.length > 0 || race.description.length > 0 || race.histoire.length > 0;
+const aDons = race.dons.length > 0 || race.tableau !== null;
+const classesAvec = groupClasses(race.classes.avec.map((c) => pageDe(c.id)).filter((e): e is WikiEntry => Boolean(e)));
+const classesSans = race.classes.sans.map((c) => ({ ...c, page: pageDe(c.id) }));
+const aClasses = race.classes.avec.length + race.classes.sans.length > 0;
+const totalMagies = race.magiesInnees.avec.length + race.magiesInnees.sans.length;
+
+const titreDon = (d: RaceDb['dons'][number]) => (d.forme === 'ethnie' ? d.etiquette! : d.nom!);
+const nav = [
+  { href: '#presentation', label: 'Présentation', show: race.descriptionGenerale.length > 0 },
+  { href: '#histoire', label: 'Histoire', show: race.histoire.length > 0 },
+  { href: '#avantages', label: 'Avantages', show: race.avantages.length + race.inconvenients.length > 0 },
+  { href: '#dons', label: 'Dons raciaux', show: aDons },
+  { href: '#mode-hyper', label: 'Mode Hyper', show: race.hyper !== null },
+  { href: '#magies-innees', label: 'Magies', show: totalMagies > 0 },
+  { href: '#classes', label: 'Classes', show: aClasses },
+  { href: '#relations', label: 'Relations', show: relations.peuples.length > 0 },
+].filter((n) => n.show);
+---
+
+<style is:inline set:html={raceCss}></style>
+<div class={`race race--${hybride ? 'hybride' : 'pure'}`}>
+  <header class="race-hero">
+    <p class="race-hero__surtitre">{hybride ? 'Race hybride' : 'Race pure'}</p>
+    <h1>{entry.data.title}</h1>
+    {entry.data.aliases.length > 0 && <p class="race-hero__aliases">Aussi appelée {entry.data.aliases.join(' · ')}</p>}
+    {race.presentation && <p class="race-hero__accroche">{race.presentation}</p>}
+    {
+      race.stats.length > 0 && (
+        <dl class="race-stats">
+          {race.stats.map((s) => (
+            <div class={`race-stat${s.valeur === 0 ? ' race-stat--nul' : ''}`}>
+              <dt>{s.label}</dt>
+              <dd>{s.valeur}</dd>
+            </div>
+          ))}
+        </dl>
+      )
+    }
+    {
+      race.classeRaciale && (
+        <p class="race-hero__classe">
+          <strong>Classe raciale</strong>{' '}
+          {pageClasseRaciale ? <a href={entryHref(pageClasseRaciale)}>{pageClasseRaciale.data.title}</a> : race.classeRaciale.nom}
+        </p>
+      )
+    }
+  </header>
+
+  {statusNote && <p class="banner" role="note">{statusNote}</p>}
+
+  {
+    nav.length > 1 && (
+      <nav class="race-nav no-print" aria-label="Sections de la page">
+        {nav.map((n) => <a href={n.href}>{n.label}</a>)}
+      </nav>
+    )
+  }
+
+  {
+    aPresentation && (
+      <div class="race-section race-presentation">
+        <div class="race-presentation__texte">
+          {race.descriptionGenerale.length > 0 && (
+            <section class="race-prose" id="presentation" aria-label="Présentation">
+              <Texte blocs={race.descriptionGenerale} />
+            </section>
+          )}
+          {race.histoire.length > 0 && (
+            <section class="race-card race-histoire" id="histoire" aria-labelledby="histoire-titre">
+              <h2 id="histoire-titre">Histoire</h2>
+              <div class="race-prose"><Texte blocs={race.histoire} /></div>
+            </section>
+          )}
+        </div>
+        {race.description.length > 0 && (
+          <aside class="race-card race-card--description" aria-labelledby="description-titre">
+            <h2 id="description-titre">Description</h2>
+            <div class="race-prose"><Texte blocs={race.description} /></div>
+          </aside>
+        )}
+      </div>
+    )
+  }
+
+  {
+    race.avantages.length + race.inconvenients.length + race.donBase.length > 0 && (
+      <section class="race-section" id="avantages" aria-labelledby="avantages-titre">
+        <h2 id="avantages-titre">Avantages et inconvénients</h2>
+        <div class="race-traits">
+          {race.avantages.length > 0 && (
+            <article class="race-trait race-trait--avantage">
+              <h3>Avantages</h3>
+              <Texte blocs={race.avantages} />
+            </article>
+          )}
+          {race.inconvenients.length > 0 && (
+            <article class="race-trait race-trait--inconvenient">
+              <h3>Inconvénients</h3>
+              <Texte blocs={race.inconvenients} />
+            </article>
+          )}
+          {race.donBase.length > 0 && (
+            <article class="race-trait race-trait--base">
+              <h3>Don de base</h3>
+              <Texte blocs={race.donBase} />
+            </article>
+          )}
+        </div>
+      </section>
+    )
+  }
+
+  {
+    aDons && (
+      <section class="race-section" id="dons" aria-labelledby="dons-titre">
+        <h2 id="dons-titre">
+          Dons raciaux{race.dons.length > 1 && <> <span class="count">{race.dons.length}</span></>}
+        </h2>
+        {race.dons.length > 0 && (
+          <div class={`race-dons${race.dons.length === 1 ? ' race-dons--seul' : ''}`}>
+            {race.dons.map((d) => (
+              <article class="race-don" id={`don-${d.slug}`}>
+                {d.forme === 'ethnie' && race.rubriques && <p class="race-don__rubrique">{race.rubriques.etiquette}</p>}
+                <h3>{titreDon(d)}</h3>
+                {d.forme === 'ethnie' && d.nom && <p class="race-don__nom">{d.nom}</p>}
+                <div class="race-prose"><Texte blocs={d.texte} /></div>
+                {d.remarque && <p class="race-don__remarque"><strong>Remarque</strong> {d.remarque}</p>}
+              </article>
+            ))}
+          </div>
+        )}
+        {race.tableau && (
+          <div class="race-tableau">
+            {race.tableau.titre && <h3>{race.tableau.titre}</h3>}
+            <div class="race-tableau__defile">
+              <table class="race-table">
+                <thead>
+                  <tr>{race.tableau.colonnes.map((c) => <th scope="col">{c}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {race.tableau.lignes.map((l) => (
+                    <tr>
+                      {l.map((cellule, i) =>
+                        i === 0 ? (
+                          <th scope="row"><Texte blocs={cellule} /></th>
+                        ) : (
+                          <td data-label={race.tableau!.colonnes[i]}><Texte blocs={cellule} /></td>
+                        ),
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </section>
+    )
+  }
+
+  {
+    race.hyper && (
+      <section class="race-section" id="mode-hyper" aria-labelledby="mode-hyper-titre">
+        <h2 id="mode-hyper-titre">Capacité Mode Hyper</h2>
+        {pageModeHyper && <p class="muted"><a href={pageHref(pageModeHyper.id)}>Liste des effets mode hyper</a></p>}
+        <article class="race-hyper">
+          <h3>{race.hyper.nom}</h3>
+          <Texte blocs={race.hyper.blocs} />
+        </article>
+      </section>
+    )
+  }
+
+  {
+    totalMagies > 0 && (
+      <section class="race-section race-card" id="magies-innees" aria-labelledby="magies-innees-titre">
+        <h2 id="magies-innees-titre">
+          Magies innées <span class="count">{race.magiesInnees.avec.length} sur {totalMagies}</span>
+        </h2>
+        {race.magiesInnees.avec.length > 0 ? (
+          <ul class="chips race-magies">
+            {race.magiesInnees.avec.map((m) => (
+              <li><a class="chip race-magie" href={pageHref(m.id)} style={`--couleur-magie: ${couleurDeMagie(m.nom)}`}>{m.nom}</a></li>
+            ))}
+          </ul>
+        ) : (
+          <p class="muted">Aucune magie innée.</p>
+        )}
+        {race.magiesInnees.sans.length > 0 && (
+          <details>
+            <summary>Magies innées non disponibles ({race.magiesInnees.sans.length})</summary>
+            <ul class="chips">
+              {race.magiesInnees.sans.map((m) => <li><a class="chip" href={pageHref(m.id)}>{m.nom}</a></li>)}
+            </ul>
+          </details>
+        )}
+        <p class="legend"><a href={url('wiki/races-et-magies/')}>Voir le tableau de toutes les races et de leurs magies</a></p>
+      </section>
+    )
+  }
+
+  {
+    aClasses && (
+      <section class="race-section race-card" id="classes" aria-labelledby="classes-titre">
+        <h2 id="classes-titre">
+          Classes accessibles <span class="count">{race.classes.avec.length} sur {race.classes.avec.length + race.classes.sans.length}</span>
+        </h2>
+        <div class="race-classes">
+          {classesAvec.map((g) => (
+            <div class="race-classes__groupe">
+              {g.sections.map((s) => (
+                <>
+                  <h3>{g.label}{s.label && <> › {s.label}</>}</h3>
+                  <ul class="chips">
+                    {s.entries.map((c) => <li><a class="chip" href={entryHref(c)}>{c.data.title}</a></li>)}
+                  </ul>
+                </>
+              ))}
+            </div>
+          ))}
+        </div>
+        {classesSans.length > 0 && (
+          <details>
+            <summary>Classes non accessibles ({classesSans.length})</summary>
+            <ul class="chips">
+              {classesSans.map((c) => <li>{c.page ? <a class="chip" href={entryHref(c.page)}>{c.page.data.title}</a> : <span class="chip">{c.nom}</span>}</li>)}
+            </ul>
+          </details>
+        )}
+      </section>
+    )
+  }
+
+  <RaceRelations race={race} races={races} relations={relations} />
+</div>

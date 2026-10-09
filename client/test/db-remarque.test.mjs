@@ -23,8 +23,10 @@ const entites = db
 const tablesAvecNotes = db.prepare("SELECT DISTINCT entite_table AS t FROM note_cellule WHERE entite_table <> 'page' ORDER BY 1").all().map((r) => r.t);
 
 // Colonnes ajoutées APRÈS `remarque` par des migrations ultérieures (une colonne ajoutée va en dernier : l'export d'une base migrée = celui d'une base neuve) :
-// table -> colonnes dans l'ordre. Migration 0004 : le mode du sort et ses bonus de niveau de maîtrise.
-const APRES_REMARQUE = { sort: ['mode_brut', 'bonus_maitrise'] };
+// table -> colonnes dans l'ordre. Migration 0004 : le mode du sort et ses bonus de niveau de maîtrise ; 0007 : le nom d'une capacité Mode Hyper.
+const APRES_REMARQUE = { sort: ['mode_brut', 'bonus_maitrise'], mode_hyper_effet: ['nom'] };
+// Tables d'entités créées APRÈS 0002 par une migration qui leur donne directement leur `remarque` (0007 : les dons raciaux de l'onglet de la race).
+const CREEES_APRES_0002 = ['race_don'];
 
 test('toute table d’entités a une colonne `remarque` TEXT facultative, en dernier (sauf colonnes ajoutées ensuite par migration) ; aucune autre table n’en a (la table page non plus)', () => {
   assert.ok(entites.length >= 60, `tables d'entités : ${entites.length}`);
@@ -56,7 +58,7 @@ test('plusieurs notes sur une ligne : réunies dans l’ordre, séparées par un
 });
 
 test('aucune note de cellule perdue : une remarque par entité qui a des notes, et chaque note (sans espaces de bordure) figure dans la remarque de sa ligne', () => {
-  assert.deepEqual(tablesAvecNotes, ['accessoire_effet', 'arme', 'arme_elementaire', 'capacite', 'creature', 'maladie', 'sort']);
+  assert.deepEqual(tablesAvecNotes, ['accessoire_effet', 'arme', 'arme_elementaire', 'capacite', 'creature', 'maladie', 'race_don', 'sort']);
   for (const t of tablesAvecNotes) {
     const attendues = db.prepare('SELECT count(DISTINCT entite_id) AS n FROM note_cellule WHERE entite_table = ?').get(t).n;
     assert.equal(db.prepare(`SELECT count(*) AS n FROM "${t}" WHERE remarque IS NOT NULL`).get().n, attendues, `${t} : lignes avec remarque`);
@@ -98,7 +100,7 @@ test('db:migrate : refuse un schéma précédent dont la version ne précède pa
 test('la migration 0002 est additive : colonnes facultatives ajoutées et remplies, rien n’est supprimé ni réécrit', () => {
   const sql = readFileSync(join(racine, 'data', 'migrations', '0002-remarque.sql'), 'utf8');
   const instructions = sql.split('\n').filter((l) => l.trim() && !l.startsWith('--') && !l.startsWith('  WHERE'));
-  assert.equal(instructions.filter((l) => /^ALTER TABLE \w+ ADD COLUMN remarque TEXT;$/.test(l)).length, entites.length);
+  assert.equal(instructions.filter((l) => /^ALTER TABLE \w+ ADD COLUMN remarque TEXT;$/.test(l)).length, entites.filter((t) => !CREEES_APRES_0002.includes(t)).length);
   assert.ok(!/\b(DROP|DELETE|RENAME)\b/i.test(sql), 'migration additive');
-  assert.equal(instructions.filter((l) => l.startsWith('UPDATE ')).length, tablesAvecNotes.length);
+  assert.equal(instructions.filter((l) => l.startsWith('UPDATE ')).length, tablesAvecNotes.filter((t) => !CREEES_APRES_0002.includes(t)).length);
 });

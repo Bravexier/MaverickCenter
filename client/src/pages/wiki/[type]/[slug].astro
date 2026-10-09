@@ -5,6 +5,7 @@ import EntryList from '../../../components/EntryList.astro';
 import MagiesDeRace from '../../../components/magie/MagiesDeRace.astro';
 import RacesDeMagie from '../../../components/magie/RacesDeMagie.astro';
 import MagiePage from '../../../components/magie/MagiePage.astro';
+import RacePage from '../../../components/race/RacePage.astro';
 import CapacitesDeClasse from '../../../components/classes/CapacitesDeClasse.astro';
 import ChoixDeCapacite from '../../../components/classes/ChoixDeCapacite.astro';
 import { TYPES } from '../../../lib/types.mjs';
@@ -12,6 +13,7 @@ import { normalize } from '../../../lib/text.mjs';
 import { classCategory } from '../../../lib/class-groups.mjs';
 import { isMagicalClass } from '../../../lib/classe-magique.mjs';
 import { loadMagies } from '../../../lib/magies';
+import { loadRaces } from '../../../lib/races';
 import { raceKind, raceOfClass } from '../../../lib/race-kinds.mjs';
 import { entryHref, loadWiki, slugOf, typeOf, url, type WikiEntry } from '../../../lib/wiki';
 
@@ -33,7 +35,11 @@ const classOfAbility = typeOf(entry) === 'capacites' ? entries.find((e) => e.id 
 // (la magie d'exemple) garde le rendu Markdown.
 const magies = typeOf(entry) === 'magies' ? loadMagies() : null;
 const magie = magies?.magies.get(entry.id) ?? null;
-const Content = magie ? null : (await render(entry)).Content; // le gabarit des magies ne rend pas le Markdown
+// Pages de race : même principe (components/race/RacePage.astro, tables race, race_onglet, race_don… ; lib/races-db.mjs) ; la race d'exemple garde le Markdown.
+const races = typeOf(entry) === 'races' ? loadRaces() : null;
+const race = races?.races.get(entry.id) ?? null;
+const gabarit = Boolean(magie || race);
+const Content = gabarit ? null : (await render(entry)).Content; // les gabarits des magies et des races ne rendent pas le Markdown
 const mentions = outgoing.get(entry.id) ?? [];
 const mentionedBy = incoming.get(entry.id) ?? [];
 // Seules les pages d'exemple ont un bandeau : plus de bandeau « brouillon » sur les pages `draft` (demande du propriétaire).
@@ -47,6 +53,13 @@ const statusNote = entry.data.status === 'example' ? 'Contenu d’exemple : à r
         {' › '}
         <a href={entryHref(classOfAbility)}>{classOfAbility.data.title}</a>
         {entry.data.specialite && <> › {entry.data.specialite}</>}
+      </>
+    )
+  }{
+    race && (
+      <>
+        {' › '}
+        <a href={url(`wiki/races/#${race.classeRaciale ? 'hybrides' : 'pures'}`)}>{race.classeRaciale ? 'Races hybrides' : 'Races pures'}</a>
       </>
     )
   }{
@@ -66,6 +79,8 @@ const statusNote = entry.data.status === 'example' ? 'Contenu d’exemple : à r
   {
     magie && magies ? (
       <MagiePage entry={entry} entries={entries} magie={magie} magies={magies} statusNote={statusNote} />
+    ) : race && races ? (
+      <RacePage entry={entry} entries={entries} race={race} races={races} statusNote={statusNote} />
     ) : (
       <>
         <h1>
@@ -114,8 +129,8 @@ const statusNote = entry.data.status === 'example' ? 'Contenu d’exemple : à r
   }
 
   {
-    /* Les pages de magie rendues par le gabarit ne citent pas leurs sources (demande du propriétaire) ; `sources:` reste dans le front matter pour la traçabilité. */
-    entry.data.sources.length > 0 && !magie && (
+    /* Les pages de magie et de race rendues par un gabarit ne citent pas leurs sources (demande du propriétaire) ; `sources:` reste dans le front matter pour la traçabilité. */
+    entry.data.sources.length > 0 && !gabarit && (
       <section>
         <h2>Sources</h2>
         <ul>

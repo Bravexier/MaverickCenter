@@ -1,0 +1,119 @@
+---
+import { pageHref } from '../../lib/magies';
+import type { RaceDb, Races } from '../../lib/races';
+import { nomCourtDePeuple, tonalite, type relationsDeRace } from '../../lib/race-relations.mjs';
+
+// Relations d'une race avec les autres peuples (matrice « Relation entre les races », sens R12 : la case (ligne A, colonne B) dit comment A voit B),
+// rangées par niveau, du plus amical au plus hostile. Deux lectures : le regard des peuples de la race sur les autres, et celui des autres sur eux.
+// Regroupements (lib/race-relations.mjs) : un bloc par groupe de peuples de la race au regard identique ; dans un niveau, une race dont tous les
+// peuples y sont est citée une fois, sinon chacun de ses peuples l'est à son propre niveau. Les relations entre peuples de la race : une matrice.
+interface Props {
+  race: RaceDb;
+  races: Races;
+  relations: ReturnType<typeof relationsDeRace>;
+}
+const { race, races, relations } = Astro.props;
+const neutre = races.relations.echelle.find((e) => e.id === 'neutre')?.ordre ?? 0;
+const nomRace = (id: string | null) => (id ? (races.races.get(id)?.nom ?? id) : '');
+const lien = (id: string | null) => (id ? `${pageHref(id)}#relations` : undefined);
+const plusieurs = relations.peuples.length > 1;
+type Bloc = (typeof relations.voit)[number];
+const nomsBloc = (b: Bloc) => b.peuples.map((p: { nom: string }) => p.nom).join(' · ');
+const lectures = [
+  { cle: 'voit', titre: `Comment ${plusieurs ? 'ses peuples voient' : 'ce peuple voit'} les autres`, blocs: relations.voit, ouvert: true },
+  { cle: 'vu', titre: `Comment les autres ${plusieurs ? 'voient ses peuples' : 'voient ce peuple'}`, blocs: relations.vu, ouvert: false },
+];
+---
+
+{
+  relations.peuples.length > 0 ? (
+    <section class="race-section" id="relations" aria-labelledby="relations-titre">
+      <h2 id="relations-titre">Relations avec les autres peuples</h2>
+      <p class="muted">
+        {plusieurs ? `${relations.peuples.length} peuples : ${relations.peuples.map((p) => p.nom).join(', ')}.` : `Peuple : ${relations.peuples[0].nom}.`}
+      </p>
+      {lectures.map((l) => (
+        <details class="regards" open={l.ouvert}>
+          <summary><h3>{l.titre}</h3></summary>
+          <div class={`regards__blocs${l.blocs.length > 1 ? ' regards__blocs--plusieurs' : ''}`}>
+            {l.blocs.map((b) => (
+              <article class="regards__bloc">
+                {plusieurs && (
+                  <h4>
+                    {b.tous ? <>Tous ses peuples <span class="regards__qui">{nomsBloc(b)}</span></> : nomsBloc(b)}
+                  </h4>
+                )}
+                <dl class="regards__niveaux">
+                  {b.niveaux.map((n) => (
+                    <div class={`regard regard--${tonalite(n.echelle, neutre)} regard--${n.echelle.id}`}>
+                      <dt>
+                        <span class="regard__niveau">{n.echelle.libelle}</span>
+                        <span class="regard__compte">{n.cibles.reduce((t, c) => t + c.peuples.length, 0)}</span>
+                      </dt>
+                      <dd>
+                        <ul class="chips">
+                          {n.cibles.map((c) => (
+                            <li>
+                              <a
+                                class="chip regard__cible"
+                                href={lien(c.raceId)}
+                                title={c.toute && c.peuples.length > 1 ? `Tous ses peuples : ${c.peuples.map((p) => p.nom).join(', ')}` : c.peuples.map((p) => p.nom).join(', ')}
+                              >
+                                {c.raceId ? nomRace(c.raceId) : c.peuples[0].nom}
+                                {!c.toute && c.raceId && (
+                                  <small class="regard__peuples">{c.peuples.map((p) => nomCourtDePeuple(p.nom, nomRace(c.raceId))).join(' · ')}</small>
+                                )}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </article>
+            ))}
+          </div>
+        </details>
+      ))}
+      {relations.interne && (
+        <div class="regards__interne">
+          <h3>Entre ses peuples</h3>
+          <div class="race-tableau__defile">
+            <table class="race-table regards__matrice">
+              <caption>En ligne, le peuple qui voit ; en colonne, le peuple vu.</caption>
+              <thead>
+                <tr>
+                  <td></td>
+                  {relations.interne.peuples.map((p) => <th scope="col">{p.nom}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {relations.interne.peuples.map((a) => (
+                  <tr>
+                    <th scope="row">{a.nom}</th>
+                    {relations.interne!.peuples.map((b) => {
+                      const e = relations.interne!.cases.get(a.id)!.get(b.id);
+                      return a.id === b.id ? (
+                        <td class="regards__soi" aria-label="lui-même">—</td>
+                      ) : e ? (
+                        <td class={`regard--${tonalite(e, neutre)} regard--${e.id}`}><span class="regard__niveau">{e.libelle}</span></td>
+                      ) : (
+                        <td></td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </section>
+  ) : (
+    <section class="race-section" id="relations" aria-labelledby="relations-titre">
+      <h2 id="relations-titre">Relations avec les autres peuples</h2>
+      <p class="muted">Cette race n’a pas de peuple dans l’onglet « Relation entre les races ».</p>
+    </section>
+  )
+}
