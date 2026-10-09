@@ -1,5 +1,5 @@
 /* Chargé uniquement depuis components/classes/ClassePage.astro (?raw), pour ne pas alourdir les autres pages du wiki. Même grammaire que les pages de magie et de race.
-   La couleur d'une classe (--couleur-classe, lib/class-groups.mjs#classColor) suit sa catégorie de /wiki/classes/ et s'emploie sur toute la page comme celle
+   La couleur d'une classe (--couleur-classe, lib/class-groups.mjs#classColor) suit sa catégorie de /classes/ et s'emploie sur toute la page comme celle
    d'une magie : rouge (mêlée), vert (distance), bleu (magiques), violet (raciales), jaune (spéciales). Un repère visuel, sans valeur de règle. */
 .classe {
   --cla: var(--couleur-classe, #6b5a45);

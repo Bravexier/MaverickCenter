@@ -1,4 +1,4 @@
-// Métiers (lib/metiers.mjs) : plus de page par métier, un long tableau sur /wiki/metiers/ (demande du propriétaire) ; tout lien vers un métier mène à sa ligne.
+// Métiers (lib/metiers.mjs) : plus de page par métier, un long tableau sur /metiers/ (demande du propriétaire) ; tout lien vers un métier mène à sa ligne.
 //   node --test test/metiers.test.mjs
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -19,10 +19,10 @@ test('un métier est une page du type metiers, sauf la page des règles', () => 
 
 test('un lien vers un métier mène à sa ligne du tableau ; les autres pages gardent leur adresse', () => {
   assert.equal(ancreDeMetier('metiers/ange-gardien'), 'metier-ange-gardien');
-  assert.deepEqual(adresseDePage('metiers/forgeron'), { chemin: 'wiki/metiers/', ancre: 'metier-forgeron' });
-  assert.equal(cheminDePage('metiers/forgeron'), 'wiki/metiers/#metier-forgeron');
-  assert.deepEqual(adresseDePage(PAGE_DES_REGLES), { chemin: `wiki/${PAGE_DES_REGLES}/`, ancre: '' });
-  assert.equal(cheminDePage('races/elfe'), 'wiki/races/elfe/');
+  assert.deepEqual(adresseDePage('metiers/forgeron'), { chemin: 'metiers/', ancre: 'metier-forgeron' });
+  assert.equal(cheminDePage('metiers/forgeron'), 'metiers/#metier-forgeron');
+  assert.deepEqual(adresseDePage(PAGE_DES_REGLES), { chemin: `${PAGE_DES_REGLES}/`, ancre: '' });
+  assert.equal(cheminDePage('races/elfe'), 'races/elfe/');
 });
 
 test('les [[liens]] vers un métier mènent à sa ligne, préfixe de déploiement compris', () => {
@@ -30,9 +30,9 @@ test('les [[liens]] vers un métier mènent à sa ligne, préfixe de déploiemen
     { id: 'metiers/mineur', type: 'metiers', slug: 'mineur', title: 'Mineur', aliases: [] },
     { id: PAGE_DES_REGLES, type: 'metiers', slug: PAGE_DES_REGLES.split('/')[1], title: 'Règles des métiers', aliases: [] },
   ]);
-  assert.equal(entryUrl('/', index.byId.get('metiers/mineur')), '/wiki/metiers/#metier-mineur');
-  assert.equal(entryUrl('/MaverickCenter/', index.byId.get('metiers/mineur')), '/MaverickCenter/wiki/metiers/#metier-mineur');
-  assert.equal(entryUrl('/', index.byId.get(PAGE_DES_REGLES)), `/wiki/${PAGE_DES_REGLES}/`);
+  assert.equal(entryUrl('/', index.byId.get('metiers/mineur')), '/metiers/#metier-mineur');
+  assert.equal(entryUrl('/MaverickCenter/', index.byId.get('metiers/mineur')), '/MaverickCenter/metiers/#metier-mineur');
+  assert.equal(entryUrl('/', index.byId.get(PAGE_DES_REGLES)), `/${PAGE_DES_REGLES}/`);
 });
 
 test('les métiers sont exactement les lignes de la table metier ; la page des règles existe et n’en est pas une', () => {

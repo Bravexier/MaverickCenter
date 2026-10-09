@@ -1,9 +1,9 @@
 ---
-import Base from '../../layouts/Base.astro';
-import EntryList from '../../components/EntryList.astro';
-import { TYPES } from '../../lib/types.mjs';
-import { loadWiki, url } from '../../lib/wiki';
-import { cheminDePage } from '../../lib/metiers.mjs';
+import Base from '../layouts/Base.astro';
+import EntryList from '../components/EntryList.astro';
+import { TYPES } from '../lib/types.mjs';
+import { loadWiki, url } from '../lib/wiki';
+import { cheminDePage } from '../lib/metiers.mjs';
 
 const { entries, unresolved } = await loadWiki();
 ---
@@ -13,7 +13,7 @@ const { entries, unresolved } = await loadWiki();
   <p>
     {
       Object.entries(TYPES).map(([key, type]) => (
-        <a class="badge" href={url(`wiki/${key}/`)}>{type.label}</a>
+        <a class="badge" href={url(`${key}/`)}>{type.label}</a>
       ))
     }
   </p>

@@ -1,4 +1,4 @@
-// Page des métiers CONSTRUITE (client/dist/wiki/metiers/index.html) : un long tableau (Nom, Bonus, Artisanat, Équipement supplémentaire), une ligne par métier,
+// Page des métiers CONSTRUITE (client/dist/metiers/index.html) : un long tableau (Nom, Bonus, Artisanat, Équipement supplémentaire), une ligne par métier,
 // la description sous la ligne ; plus de page par métier, et tout lien du site vers un métier mène à sa ligne (lib/metiers.mjs).
 // Ce test lit le site construit : il ne tourne qu'après `npm run build` (la CI l'exécute juste après) et se saute sinon.
 //   node --test test/metiers-html.test.mjs
@@ -9,7 +9,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
-const dossier = join(dist, 'wiki', 'metiers');
+const dossier = join(dist, 'metiers');
 const present = existsSync(join(dossier, 'index.html'));
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
 const html = present ? readFileSync(join(dossier, 'index.html'), 'utf8') : '';
@@ -40,14 +40,14 @@ test('chaque ligne ouvre sa description juste en dessous ; les aria-* mènent à
 test('plus de page par métier : seule la page des règles reste à côté du tableau', options, () => {
   const sousDossiers = readdirSync(dossier, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
   assert.deepEqual(sousDossiers, ['regles-des-metiers']);
-  assert.match(main, /href="\/wiki\/metiers\/regles-des-metiers\/"/);
+  assert.match(main, /href="\/metiers\/regles-des-metiers\/"/);
 });
 
 test('tout lien du site vers un métier mène à une ligne du tableau', options, () => {
   let liens = 0;
   for (const fichier of pagesHtml(dist)) {
     const page = readFileSync(fichier, 'utf8');
-    for (const [, cible] of page.matchAll(/href="[^"]*\/wiki\/metiers\/([^"]*)"/g)) {
+    for (const [, cible] of page.matchAll(/href="[^"]*\/metiers\/([^"]*)"/g)) {
       if (cible === '' || cible === 'regles-des-metiers/') continue;
       assert.match(cible, /^#metier-/, `${relative(dist, fichier)} : lien vers une page de métier (${cible})`);
       assert.ok(lignes.includes(cible.slice(1)), `${relative(dist, fichier)} : ${cible} sans ligne`);

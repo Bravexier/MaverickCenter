@@ -20,7 +20,8 @@ npm run build    # site statique dans client/dist/
 
 ## Ce que contient le site
 
-- **Wiki** (`/wiki/`) : une catégorie par salon Discord (races, classes, magies, bestiaire, ressources & craft, métiers, guide, lore, cartes).
+- **Wiki** : une catégorie par salon Discord (races, classes, magies, bestiaire, ressources & craft, métiers, guide, lore, cartes), à la racine du site
+  (`/races/`, `/races/nain/`…) ; index alphabétique de toutes les pages : `/pages/`.
   Les pages se relient avec `[[Titre]]` ; chaque page affiche ses rétroliens, ses mots-clés (`/tags/`) et est trouvable par la recherche (`/recherche/`).
 - **Générateur de fiche** (`/generateur/`) : race, classes, magies, répartition de points, valeurs dérivées ; sauvegarde automatique
   dans le navigateur, export/import JSON, impression/PDF. Les règles sont des **données** (`client/src/data/rules.json`).

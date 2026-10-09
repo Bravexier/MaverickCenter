@@ -1,4 +1,4 @@
-// Pages de race CONSTRUITES (client/dist/wiki/races/*/index.html), rendues par le gabarit (components/race/RacePage.astro) depuis les tables de la base :
+// Pages de race CONSTRUITES (client/dist/races/*/index.html), rendues par le gabarit (components/race/RacePage.astro) depuis les tables de la base :
 // aucun tableau Markdown, plus d'écarts avec la fiche V15.2.2 ni de source citée (décision R13), relations par niveau sans regrouper les peuples qui diffèrent.
 // Ce test lit le site construit : il ne tourne qu'après `npm run build` (la CI l'exécute juste après) et se saute sinon.
 //   node --test test/races-html.test.mjs
@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-const dossier = fileURLToPath(new URL('../dist/wiki/races/', import.meta.url));
+const dossier = fileURLToPath(new URL('../dist/races/', import.meta.url));
 const present = existsSync(dossier);
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
 // pages rendues par le gabarit (la race d'exemple, sans ligne dans la base, garde le rendu Markdown)
@@ -78,16 +78,16 @@ test('relations : Elfe noir en deux blocs (Charbon, Salé), la matrice entre ses
 
 test('race hybride : bandeau « Race hybride » et lien vers sa classe raciale', options, () => {
   assert.match(page('orios'), /race-hero__surtitre">Race hybride</);
-  assert.match(page('orios'), /Classe raciale<\/strong>\s*<a href="[^"]*\/wiki\/classes\/orios\/"/);
+  assert.match(page('orios'), /Classe raciale<\/strong>\s*<a href="[^"]*\/classes\/orios\/"/);
   assert.match(page('humain'), /race-hero__surtitre">Race pure</);
   // décision R14 : le Drassah'thac est hybride sans avoir de classe raciale ; la Lamia est pure
   assert.match(page('drassahthac'), /race-hero__surtitre">Race hybride</);
   assert.ok(!page('drassahthac').includes('class="race-hero__classe"'), 'drassahthac : pas de classe raciale');
-  assert.match(page('drassahthac'), /href="[^"]*\/wiki\/races\/#hybrides">Races hybrides</);
+  assert.match(page('drassahthac'), /href="[^"]*\/races\/#hybrides">Races hybrides</);
   assert.match(page('lamia'), /race-hero__surtitre">Race pure</);
 });
 
-// La liste /wiki/races/ : deux colonnes côte à côte, races pures puis hybrides, dans l'ordre du propriétaire ; les magies innées des seules races hybrides.
+// La liste /races/ : deux colonnes côte à côte, races pures puis hybrides, dans l'ordre du propriétaire ; les magies innées des seules races hybrides.
 const liste = present && existsSync(join(dossier, 'index.html')) ? main(readFileSync(join(dossier, 'index.html'), 'utf8')) : '';
 const colonne = (id) => {
   const debut = liste.indexOf(`id="${id}"`);
@@ -95,7 +95,7 @@ const colonne = (id) => {
 };
 // sans la race d'exemple, présente quand le site est construit sans HIDE_EXAMPLES=1 (c'est le cas de la CI)
 const nomsDe = (html) =>
-  [...html.matchAll(/class="race-list__nom" href="[^"]*\/wiki\/races\/([^/"]+)\/">([^<]+)</g)]
+  [...html.matchAll(/class="race-list__nom" href="[^"]*\/races\/([^/"]+)\/">([^<]+)</g)]
     .filter((m) => m[1] !== 'exemple-race')
     .map((m) => m[2].replace(/&#39;/g, "'"));
 
@@ -117,13 +117,13 @@ test('liste des races : le nom et l’accroche seulement, ni magies ni classe ra
     assert.ok(!html.includes('Magies innées'), `${id} : pas de magies innées`);
     assert.ok(!html.includes('class="chip'), `${id} : aucune pastille`);
     assert.ok(!html.includes('Classe raciale'), `${id} : pas de classe raciale`);
-    assert.ok(!/href="[^"]*\/wiki\/(magies|classes)\//.test(html), `${id} : aucun lien vers une magie ou une classe`);
+    assert.ok(!/href="[^"]*\/(magies|classes)\//.test(html), `${id} : aucun lien vers une magie ou une classe`);
     const liens = [...html.matchAll(/<a\b[^>]*href="([^"]+)"/g)].map((m) => m[1]);
-    assert.ok(liens.every((h) => /\/wiki\/races\/[^/]+\/$/.test(h)), `${id} : seulement les liens vers les races`);
+    assert.ok(liens.every((h) => /\/races\/[^/]+\/$/.test(h)), `${id} : seulement les liens vers les races`);
   }
 });
 
-// Le tableau des magies innées de toutes les races, en bas de /wiki/races/ (components/magie/TableauMagiesInnees.astro) : il remplace /wiki/races-et-magies/.
+// Le tableau des magies innées de toutes les races, en bas de /races/ (components/magie/TableauMagiesInnees.astro) : il remplace /races-et-magies/.
 test('liste des races : tableau des magies innées en bas de page, races dans l’ordre des listes, magies dans l’ordre du classeur et dans leur couleur', options, () => {
   assert.ok(!liste.includes('races-et-magies'), 'plus de lien vers l’ancienne page');
   const debut = liste.indexOf('<section id="magies-innees"');
@@ -133,7 +133,7 @@ test('liste des races : tableau des magies innées en bas de page, races dans l�
     'Potentiel Illimité', 'Sang', 'Arcane', 'Corruption', 'Espace/Temps', 'Vide', 'Nécromancie', 'Feu', 'Eau', 'Glace', 'Terre', 'Vent', 'Foudre', 'Lumière', 'Ombre', 'Total',
   ]);
   assert.equal((tableau.match(/<col class="tableau-magies__col-magie" style="--couleur-magie: #[0-9a-f]{6}">/g) ?? []).length, 15, 'colonnes teintées');
-  const lignes = [...tableau.matchAll(/<th scope="row" class="tableau-magies__nom"><a href="[^"]*\/wiki\/races\/([^/"]+)\/">([^<]+)<\/a><\/th>(.*?)<\/tr>/g)].filter((m) => m[1] !== 'exemple-race');
+  const lignes = [...tableau.matchAll(/<th scope="row" class="tableau-magies__nom"><a href="[^"]*\/races\/([^/"]+)\/">([^<]+)<\/a><\/th>(.*?)<\/tr>/g)].filter((m) => m[1] !== 'exemple-race');
   assert.deepEqual(lignes.map((m) => m[2].replace(/&#39;/g, "'")), [...nomsDe(colonne('pures')), ...nomsDe(colonne('hybrides'))]);
   const pastilles = (slug) => (lignes.find((m) => m[1] === slug)[3].match(/class="tableau-magies__point"/g) ?? []).length;
   assert.equal(pastilles('humain'), 15);
@@ -146,7 +146,7 @@ test('liste des races : tableau des magies innées en bas de page, races dans l�
   assert.equal((tableau.match(/<tr>/g) ?? []).length - 1, (tableau.match(/<th scope="row"/g) ?? []).length, 'une ligne par race (plus celle des en-têtes)');
 });
 
-test('pages de race : le lien « Voir le tableau » mène au tableau de /wiki/races/', options, () => {
+test('pages de race : le lien « Voir le tableau » mène au tableau de /races/', options, () => {
   for (const { slug, html } of pages) assert.ok(!html.includes('races-et-magies'), slug);
-  assert.match(page('orios'), /href="[^"]*\/wiki\/races\/#magies-innees">Voir le tableau de toutes les races et de leurs magies</);
+  assert.match(page('orios'), /href="[^"]*\/races\/#magies-innees">Voir le tableau de toutes les races et de leurs magies</);
 });

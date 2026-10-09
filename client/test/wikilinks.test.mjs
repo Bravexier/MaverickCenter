@@ -39,8 +39,8 @@ test('extractLinks ignore les blocs et codes en ligne', () => {
 
 test('entryUrl respecte le préfixe de déploiement', () => {
   const entry = index.byId.get('races/elfe');
-  assert.equal(entryUrl('/', entry), '/wiki/races/elfe/');
-  assert.equal(entryUrl('/MaverickCenter/', entry), '/MaverickCenter/wiki/races/elfe/');
+  assert.equal(entryUrl('/', entry), '/races/elfe/');
+  assert.equal(entryUrl('/MaverickCenter/', entry), '/MaverickCenter/races/elfe/');
 });
 
 test('splitFrontmatter lit le YAML et rend le corps', () => {
@@ -72,7 +72,7 @@ test('remarkWikilinks remplace les liens, marque les manquants, épargne les lie
     const kids = tree.children[0].children;
 
     const links = kids.filter((n) => n.type === 'link' && n.data);
-    assert.deepEqual(links.map((n) => n.url), ['/wiki/races/elfe/', '/wiki/classes/mage/']);
+    assert.deepEqual(links.map((n) => n.url), ['/races/elfe/', '/classes/mage/']);
     assert.equal(links[1].children[0].value, 'ce mage');
 
     const missing = kids.filter((n) => n.data?.hProperties?.className?.includes('wikilink--missing'));

@@ -15,7 +15,7 @@ const nbLignes = sections.reduce((n, s) => n + s.objets.filter((o) => o.genre ==
   <p>
     Les données structurées du jeu, telles qu’elles sont rangées dans la base : {nbTables} tables ({nbLignes.toLocaleString('fr-FR')} lignes) et {nbVues} vues.
     Chaque ligne garde le texte de sa source ; une valeur absente est marquée <span class="donnees-nul">∅</span> et n’est jamais remplacée par une valeur inventée.
-    Les identifiants et les clés étrangères sont des liens : un sort renvoie à sa magie, une capacité à sa page du wiki. Le texte intégral des pages est dans le <a href={url('wiki/')}>wiki</a>.
+    Les identifiants et les clés étrangères sont des liens : un sort renvoie à sa magie, une capacité à sa page du wiki. Le texte intégral des pages est dans le <a href={url('pages/')}>wiki</a>.
   </p>
   {
     !portable && (

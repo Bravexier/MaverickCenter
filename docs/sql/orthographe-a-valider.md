@@ -13,7 +13,7 @@ Trois migrations de données ont corrigé l'orthographe de la base (décision R1
 - `0006-orthographe-noms` : les **noms** laissés en attente par 0003 et 0005, tranchés selon ta consigne : corriger en gardant le sens le plus probable
   (un jeu de mots ou une référence perdus, tant pis : on y reviendra) ; pour un nom propre écrit de plusieurs façons, la graphie majoritaire l'emporte.
   Chaque nom est corrigé partout où il est écrit (741 occurrences, 423 cellules) et sa clé recalculée (147) ; les **identifiants ne changent pas** : une page
-  renommée garde son adresse (`/wiki/bestiaire/sihouetteur-obscur/` affiche « Silhouetteur obscur »). Registre : `data/migrations/0006-orthographe-noms.json`.
+  renommée garde son adresse (`/bestiaire/sihouetteur-obscur/` affiche « Silhouetteur obscur »). Registre : `data/migrations/0006-orthographe-noms.json`.
 
 Les **phrases** qui suivent n'ont **pas** été touchées, parce que les corriger demanderait d'ajouter, de retirer ou de remplacer un mot, de choisir entre deux lectures,
 ou parce que la graphie est peut-être un terme du jeu. Elles attendent ta décision (la règle d'or : on ne devine pas). Les noms sont tranchés (0006, ci-dessous).

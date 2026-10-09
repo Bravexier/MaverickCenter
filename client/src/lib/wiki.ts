@@ -11,7 +11,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 /** URL absolue (avec le préfixe de déploiement) d'un chemin du site. */
 export const url = (path = '') => `${base}/${path.replace(/^\//, '')}`;
-/** Lien vers une page du wiki ; pour un métier, sa ligne du tableau de /wiki/metiers/ (lib/metiers.mjs). */
+/** Lien vers une page du wiki ; pour un métier, sa ligne du tableau de /metiers/ (lib/metiers.mjs). */
 export const entryHref = (entry: WikiEntry) => url(cheminDePage(entry.id));
 export const typeOf = (entry: WikiEntry) => entry.id.split('/')[0] as TypeKey;
 export const slugOf = (entry: WikiEntry) => entry.id.split('/')[1];

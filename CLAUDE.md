@@ -74,12 +74,18 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   côté navigateur ; `wikilinks.mjs` utilise `node:fs` et ne doit pas l'être).
 - `HIDE_EXAMPLES=1` filtre les pages d'exemple à deux endroits qui doivent rester d'accord : `scanContent` (index des liens,
   dans `astro.config.mjs`) et `loadWiki` (`src/lib/wiki.ts`).
+- **Adresses** (demande du propriétaire) : plus de préfixe `/wiki/`. Une page est à `/<type>/<slug>/` (`src/pages/[type]/` ; un métier : sa ligne de `/metiers/`, voir plus bas), l'index alphabétique (« Index du wiki », « Pages à créer »)
+  à `/pages/` ; le dossier `src/content/wiki/`, la collection `wiki` et `lib/wiki.ts` gardent leur nom. Une ancienne adresse `/wiki/…` est renvoyée vers la nouvelle par la page 404
+  (`legacyWikiRedirect`, `lib/nav.mjs`, testé). `test/site-html.test.mjs` contrôle le site construit (CI après le build).
+- **En-tête** (`layouts/Base.astro`, `styles/global/site-shell.css`) : le logo officiel (`public/logo.webp`, redimensionné) remplace le titre et mène à l'accueil ; rubriques et recherche
+  sur la même bande, à droite du logo, entrées de la rubrique dessous (sous-grille ; sous 60rem, le menu passe sous le logo). Les icônes `favicon.png` (32 px) et `apple-touch-icon.png`
+  sont tirées du même logo.
 - La publication claude.ai (`node tools/build-artifact.mjs --out <dossier>`) impose : liens relatifs avec `index.html` explicite,
   accueil écrit en fragment (sans `<html>`/`<head>`/`<body>`), aucun script/CSS externe, pas d'impression ni de téléchargement
   (boutons masqués), et au plus 255 fichiers par publication (le script écrit `batch-N.json`). Détail dans le commentaire du script.
 - Astro met le rendu Markdown en cache dans `client/node_modules/.astro/` (clé = contenu du fichier). Si vous modifiez le plugin
   des `[[liens]]` sans toucher aux pages, supprimez ce dossier avant de reconstruire, sinon l'ancien rendu est réutilisé (la CI repart de zéro).
-- La page `/wiki/classes/` présente 5 colonnes côte à côte, une par catégorie (Physiques Mêlée, Physiques Distance, Magiques, Raciales, Spéciales), d'après les tags
+- La page `/classes/` présente 5 colonnes côte à côte, une par catégorie (Physiques Mêlée, Physiques Distance, Magiques, Raciales, Spéciales), d'après les tags
   posés par l'import (catégorie du Sommaire du classeur) : `client/src/lib/class-groups.mjs`, testé ; chaque classe y est une **pastille sur le modèle de la carte des magies** (pas de tableau,
   demande du propriétaire) : `components/classes/ClassesPastilles.astro`, CSS `styles/classe/liste.css` (`?raw`).
   « Raciales » = « Classe Hybride Animal » ; « Spéciales » = « Classe Hybride » + « Classe spéciale » ; le Parleur (classé mêlée dans le classeur) est volontairement sous « Spéciales »
@@ -89,7 +95,7 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
 - Pages de magie : rendues depuis la base (`lib/magies-db.mjs`, `lib/magies.ts`), jamais depuis leur `.md` (qui ne sert qu'à la recherche et aux `[[liens]]`) ; la remarque d'un sort
   (note de cellule) est `sort.remarque`, la table `note_cellule` n'est qu'une trace et ne doit pas être lue. Le panneau d'un sort s'ouvre sous sa ligne (script de `MagieSorts.astro`, sans JavaScript tout est affiché).
   Leur CSS est dans `styles/magie.css`, inséré par `MagiePage.astro` (`?raw`) : ne pas le mettre dans `global.css` ni l'importer (Astro l'attacherait à toutes les pages de la route `[type]/[slug]`).
-  Le tableau des relations sous la carte de `/wiki/magies/` (`TableauRelationsMagies.astro`) lit les mêmes relations dans la base (`entriesAvecRelationsDeLaBase`).
+  Le tableau des relations sous la carte de `/magies/` (`TableauRelationsMagies.astro`) lit les mêmes relations dans la base (`entriesAvecRelationsDeLaBase`).
   Dans le panneau d'un sort, remarque et texte du sort sont dans le même cadre « Effets » que les effets secondaires ; les altérations d'état sont des pastilles **dans le texte** (`morceauxAvecEtats`, d'après `sort_etat`) avec infobulle (`Bulles.astro` : une bulle ne contient que des `<span>`, sinon le `<p>` qui la porte se ferme) ;
   les créatures invoquées ont une fiche minimale au clic, sous leur bloc. Pas de légende, pas de source citée (ni par sort, ni en pied de page), pas de liste des lanceurs sur ces pages.
   `test/magies-html.test.mjs` contrôle le site construit (ids, `aria-*`, bulles, éléments retirés) : il se saute sans `dist/` et la CI le lance après le build.
@@ -99,19 +105,19 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   Relations : la case (ligne A, colonne B) de « Relation entre les races » dit comment A voit B (R12, vue `v_regard_peuple`) ; `lib/race-relations.mjs` ne regroupe jamais deux peuples dont les relations diffèrent
   (Elfe Noir Charbon / Salé). CSS dans `styles/race/`, inséré par `RacePage.astro` (`?raw`). `test/races-html.test.mjs` contrôle le site construit (CI après le build).
 - Races ↔ magies : les pages portent des listes structurées (`magies_innees`, `nom_court`, `resiste_a`, `vulnerable_a`, `incompatible_avec`)
-  posées par `tools/sheets/races.py` et `magies.py` ; le site en tire les liens, les deux tableaux (magies innées en bas de `/wiki/races/`, relations sous la carte de `/wiki/magies/` ;
+  posées par `tools/sheets/races.py` et `magies.py` ; le site en tire les liens, les deux tableaux (magies innées en bas de `/races/`, relations sous la carte de `/magies/` ;
   l'ancienne page `/wiki/races-et-magies/` est supprimée ; magies dans l'ordre du classeur et dans leur couleur, sans défilement horizontal, `styles/magie/tableaux.css`) et la distinction
-  races pures / hybrides (`lib/magie-relations.mjs`, `lib/race-kinds.mjs` : hybride = classe raciale, plus le Drassah'thac, décision R14). La liste `/wiki/races/` suit l'ordre
+  races pures / hybrides (`lib/magie-relations.mjs`, `lib/race-kinds.mjs` : hybride = classe raciale, plus le Drassah'thac, décision R14). La liste `/races/` suit l'ordre
   du propriétaire (`ORDRE_DES_RACES`), pures et hybrides côte à côte, nom et accroche seulement (ni magies ni classe raciale). Voir `docs/content-guide.md`. Les champs sont déclarés dans `content.config.ts`
   (un champ non déclaré est supprimé par Astro). Exception explicite : la liste du Nain vient de l'onglet « Nain » de « Les races » (`RACE_DETAIL_OVERRIDES` dans `races.py`), pas de la matrice.
 - Pages de classe : rendues depuis la base (`lib/classes-db.mjs`, `components/classes/ClassePage.astro`), jamais depuis leur `.md`. Les « capacités » s'affichent **Dons** (demande du propriétaire ; type `capacites`,
   table `capacite` et ids inchangés, libellé dans `type_page` par la migration `0008-dons-de-classe`, que `db:check` compare à `types.mjs`). Les dons suivent la disposition de l'onglet (`lib/classe-dons.mjs#plateauDeDons`),
   les choix sont ceux de `v_capacite_exclusive`, encadrés avec « ou », options côte à côte ; les spécialités sont des **onglets** (premier à gauche, second à droite ; script de `ClasseDons.astro`,
-  un lien `#don-…` ouvre le bon onglet, sans JavaScript tout est affiché). Couleur de la page d'après la catégorie de `/wiki/classes/` (`classColor` : rouge mêlée, vert distance, bleu magiques,
+  un lien `#don-…` ouvre le bon onglet, sans JavaScript tout est affiché). Couleur de la page d'après la catégorie de `/classes/` (`classColor` : rouge mêlée, vert distance, bleu magiques,
   violet raciales, jaune spéciales). CSS dans `styles/classe/`, inséré par `ClassePage.astro` (`?raw`). `test/classes-html.test.mjs` contrôle le site construit (CI après le build).
-- Métiers : **pas de page par métier** (demande du propriétaire) ; `/wiki/metiers/` est un tableau tiré de la table `metier` (`lib/metiers.mjs#chargerMetiers`), description sous la ligne.
+- Métiers : **pas de page par métier** (demande du propriétaire) ; `/metiers/` est un tableau tiré de la table `metier` (`lib/metiers.mjs#chargerMetiers`), description sous la ligne.
   Les pages `metiers/<slug>` restent (recherche, mots-clés, `[[liens]]`) mais `[slug].astro` ne les construit pas : tout lien vers une page passe par `cheminDePage` (via `entryHref`, `pageHref`, `entryUrl`),
-  qui renvoie un métier à `/wiki/metiers/#metier-<slug>` ; ne pas écrire `wiki/${id}/` à la main. Seule « Règles des métiers » (`PAGE_DES_REGLES`) garde sa page.
+  qui renvoie un métier à `/metiers/#metier-<slug>` ; ne pas écrire `${id}/` à la main. Seule « Règles des métiers » (`PAGE_DES_REGLES`) garde sa page.
   `test/metiers-html.test.mjs` vérifie qu'aucun lien du site construit ne mène à une page de métier.
 - Dons de classe (« capacités ») : une page `capacites/<classe>-<nom>` par don ; les dons d'une même ligne de l'onglet sont un choix exclusif
   (`choix_exclusif_avec`, symétrique), une spécialité exclut l'autre ; l'Archimage n'a pas de spécialité mais des groupes par palier

@@ -1,24 +1,24 @@
-// Métiers : pas de page par métier (demande du propriétaire). /wiki/metiers/ est un long tableau (Nom, Bonus, Artisanat, Équipement supplémentaire),
+// Métiers : pas de page par métier (demande du propriétaire). /metiers/ est un long tableau (Nom, Bonus, Artisanat, Équipement supplémentaire),
 // une ligne par métier de la table `metier`, à la manière des tableaux de sorts ; la description du métier (et son avantage possible) s'ouvre sous sa ligne.
 // Les pages `metiers/<slug>` restent dans la base et dans les `.md` fabriqués (recherche, mots-clés, `[[liens]]`), mais tout lien vers un métier
-// mène à sa ligne : /wiki/metiers/#metier-forgeron. « Règles des métiers », du même type mais sans ligne dans `metier`, garde sa page.
+// mène à sa ligne : /metiers/#metier-forgeron. « Règles des métiers », du même type mais sans ligne dans `metier`, garde sa page.
 // Sans dépendance : importé par wikilinks.mjs (au démarrage d'Astro), par wiki.ts et par les tests ; `chargerMetiers` reçoit la base ouverte par lib/donnees.mjs.
 
 /** La seule page du type `metiers` qui n'est pas un métier (test/metiers.test.mjs vérifie que les autres sont exactement les lignes de `metier`). */
 export const PAGE_DES_REGLES = 'metiers/regles-des-metiers';
 
-/** Vrai si la page d'id donné est un métier : une ligne du tableau de /wiki/metiers/, sans page à elle. */
+/** Vrai si la page d'id donné est un métier : une ligne du tableau de /metiers/, sans page à elle. */
 export const estUnMetier = (id) => id.startsWith('metiers/') && id !== PAGE_DES_REGLES;
 
 /** Ancre HTML de la ligne d'un métier : « metier-forgeron » pour « metiers/forgeron ». */
 export const ancreDeMetier = (id) => `metier-${id.slice(id.indexOf('/') + 1)}`;
 
-/** Adresse d'une page du wiki, relative à la racine du site : { chemin: 'wiki/<id>/', ancre: '' } ; pour un métier, la ligne du tableau. */
+/** Adresse d'une page du wiki, relative à la racine du site : { chemin: '<id>/', ancre: '' } ; pour un métier, la ligne du tableau. */
 export function adresseDePage(id) {
-  return estUnMetier(id) ? { chemin: 'wiki/metiers/', ancre: ancreDeMetier(id) } : { chemin: `wiki/${id}/`, ancre: '' };
+  return estUnMetier(id) ? { chemin: 'metiers/', ancre: ancreDeMetier(id) } : { chemin: `${id}/`, ancre: '' };
 }
 
-/** La même adresse en une chaîne : « wiki/races/elfe/ », « wiki/metiers/#metier-forgeron ». */
+/** La même adresse en une chaîne : « races/elfe/ », « metiers/#metier-forgeron ». */
 export function cheminDePage(id) {
   const { chemin, ancre } = adresseDePage(id);
   return ancre ? `${chemin}#${ancre}` : chemin;
