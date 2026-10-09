@@ -42,8 +42,7 @@ const phraseCourte = (magie: MagieDb) => {
 
 const noeuds = disposition.flatMap((place, ordre) => {
   const item = index.get(normalize(place.cle));
-  const alignementTooltip = place.mx < 400 ? 'gauche' : place.mx > 600 ? 'droite' : 'centre';
-  return item ? [{ ...place, ...item, ordre, alignementTooltip, description: phraseCourte(item.magie), couleur: couleurDeMagie(item.magie.nom) }] : [];
+  return item ? [{ ...place, ...item, ordre, description: phraseCourte(item.magie), couleur: couleurDeMagie(item.magie.nom) }] : [];
 });
 const parNom = new Map(noeuds.map((noeud) => [normalize(noeud.cle), noeud]));
 const liens: { a: any; b: any; type: string }[] = [];
@@ -79,8 +78,8 @@ if (lumiere && ombre && (vulnérableÀ(lumiere, ombre) || vulnérableÀ(ombre, l
     {
       noeuds.map((noeud) => (
         <li
-          class={`magies-orbite__position magies-orbite__position--${noeud.region} magies-orbite__position--tooltip-${noeud.alignementTooltip}`}
-          style={`--x: ${noeud.x / 10}%; --y: ${noeud.y / 9.2}%; --mx: ${noeud.mx / 10}%; --my: ${noeud.my / 9.2}%; --couleur-magie: ${noeud.couleur}; --ordre: ${noeud.ordre}`}
+          class={`magies-orbite__position magies-orbite__position--${noeud.region}`}
+          style={`--x: ${noeud.x / 10}%; --y: ${noeud.y / 9.2}%; --mx: ${noeud.mx / 10}%; --mx-fraction: ${noeud.mx / 1000}; --my: ${noeud.my / 9.2}%; --couleur-magie: ${noeud.couleur}; --ordre: ${noeud.ordre}`}
         >
           <a
             class="magies-orbite__noeud"
