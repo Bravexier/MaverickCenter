@@ -42,3 +42,22 @@ test('en-tête : le logo à la place du titre, le menu à côté ; le logo en ic
   for (const fichier of ['logo.webp', 'favicon.png', 'apple-touch-icon.png']) assert.ok(existsSync(join(dist, fichier)), fichier);
   assert.ok(!existsSync(join(dist, 'favicon.svg')), 'ancienne icône retirée');
 });
+
+test('en-tête : la bande a la hauteur du menu, pas du logo, dont la pointe de l’épée dépasse dessous ; sur téléphone, le logo reste dans la bande', options, () => {
+  const css = readdirSync(join(dist, '_astro'))
+    .filter((f) => f.endsWith('.css'))
+    .map((f) => lire(`_astro/${f}`))
+    .find((c) => c.includes('.brand img{'));
+  assert.ok(css, 'feuille de style de l’en-tête');
+  /** Déclarations des règles `selecteur{…}` d'un morceau de CSS minifié (l'ordre des propriétés n'est pas garanti). */
+  const regles = (morceau, selecteur) => [...morceau.matchAll(new RegExp(`(?:^|[}{])${selecteur.replace(/[.*]/g, '\\$&')}\\{([^}]*)\\}`, 'g'))].map((m) => m[1].split(';'));
+  const telephone = css.indexOf('@media (width<=60rem){');
+  assert.ok(telephone > 0, 'règles du téléphone');
+  const [bureau, petit] = [css.slice(0, telephone), css.slice(telephone)];
+  // bureau : l'image hors du flux (la hauteur de la bande vient du menu), le lien garde sa largeur et prend la hauteur de la bande, l'en-tête passe devant la page
+  assert.ok(regles(bureau, '.brand img').some((d) => d.includes('position:absolute') && d.includes('top:0') && d.includes('pointer-events:none')), 'image en absolu, sans capter les clics');
+  assert.ok(regles(bureau, '.brand').some((d) => d.includes('align-self:stretch') && d.includes('position:relative') && d.some((x) => x.startsWith('width:'))), 'lien : largeur du logo, hauteur de la bande');
+  assert.ok(regles(bureau, '.site-header').some((d) => d.includes('position:relative') && d.some((x) => x.startsWith('z-index:'))), 'la pointe passe devant le contenu');
+  // téléphone : le menu passe sous le logo, qui reprend sa place dans le flux
+  assert.ok(regles(petit, '.brand img').some((d) => d.includes('position:static')), 'logo dans le flux sur téléphone');
+});
