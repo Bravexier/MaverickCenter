@@ -88,12 +88,14 @@ test('infobulles : un déclencheur par bulle, un texte de repli (title), une bul
   assert.ok(bulles > 100, `infobulles posées : ${bulles}`);
 });
 
-test('règle spéciale du NPM 5 : une seule pastille « i », dans le titre du tableau du NPM 5, et plus d’encart sous le tableau', options, () => {
+test('règle spéciale du NPM 5 : une seule pastille « i », dans le titre du tableau du NPM 5 juste après son texte, et plus d’encart sous le tableau', options, () => {
   for (const { slug, html } of avecSorts) {
     const infos = [...html.matchAll(/class="info"/g)].length;
     assert.equal(infos, 1, `${slug} : une pastille « i »`);
     const npm5 = html.slice(html.indexOf('id="npm-5"'));
     assert.ok(npm5.indexOf('class="info"') > 0 && npm5.indexOf('class="info"') < npm5.indexOf('class="sorts-wrap"'), `${slug} : la pastille est dans le titre du tableau 5`);
+    // à gauche, après le texte du titre, avant les pastilles de niveau (demande du propriétaire)
+    assert.ok(npm5.indexOf('class="npm__nom"') < npm5.indexOf('class="info"') && npm5.indexOf('class="info"') < npm5.indexOf('class="npm__pips"'), `${slug} : la pastille suit le texte du titre`);
     assert.ok(!html.includes('magie-regle'), `${slug} : plus d'encart de règle sous le tableau`);
   }
 });

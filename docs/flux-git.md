@@ -164,4 +164,6 @@ supprimées. `develop` (ancienne tentative, entièrement fusionnée) sera suppri
 
 Une session travaille sur une `feature/<nom>` créée depuis `dev` (ou une `hotfix/<nom>` depuis `master`) et ouvre sa PR vers cette branche. Les noms
 de branche que l'environnement propose parfois (`claude/…`, `dev/…`) sont refusés : `dev/…` ne peut même pas exister à côté de la branche `dev`
-(Git ne peut pas avoir à la fois `dev` et `dev/xxx`), et `claude/…` serait supprimée par la garde.
+(Git ne peut pas avoir à la fois `dev` et `dev/xxx`), et `claude/…` serait supprimée par la garde. Le `<nom>` décrit l'évolution ou le correctif
+demandé (`feature/npm5-info-apres-titre`), jamais un nom aléatoire proposé par l'environnement (`feature/awesome-pascal-…`) : la session renomme
+sa branche avant le premier push (demande du propriétaire).

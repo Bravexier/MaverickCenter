@@ -1,6 +1,8 @@
 @media print {
   .magie-nav, .sort-detail__fermer, .info, .bulle:not(.bulle--large) { display: none !important; }
-  .bulle--large[hidden] { display: block !important; position: static; flex: 1 0 100%; max-width: none; box-shadow: none; }
+  .bulle--large[hidden] { display: block !important; position: static; width: auto; max-width: none; box-shadow: none; }
+  /* la règle d'un tableau (pastille « i », placée après le texte du titre) est écrite sur sa propre ligne, sous le titre */
+  .npm__titre > .bulle-zone { order: 1; flex: 1 0 100%; }
   .magie-hero { color: #000; background: none; border: 1px solid #000; }
   .sorts .sort__detail[hidden] { display: table-row; }
   .sorts tbody.sort { break-inside: avoid; }

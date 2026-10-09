@@ -9,7 +9,8 @@ import SortDetail from './SortDetail.astro';
 // Sorts d'une magie : un tableau par niveau de puissance magique (NPM), une ligne par sort (Nom, Type, Coût, Portée, Zone, D/S/B).
 // Le bonus de niveau de maîtrise (NM) qu'une cellule écrit entre parenthèses (« 55 (-5/NM) ») est une pastille à côté de sa valeur, à sa place
 // (lib/sort-maitrise.mjs#marquerBonus) ; celui du type (« IC pour 3 NM ») suit les types et le mode. Ceux des effets restent dans leur texte, sous la ligne.
-// La règle spéciale d'un niveau (« sort niveau 5 ») est dans l'infobulle « i » du titre de son tableau.
+// La règle spéciale d'un niveau (« sort niveau 5 ») est dans l'infobulle « i » du titre de son tableau, juste après le texte du titre.
+// Sans JavaScript (et à l'impression), la règle est écrite en entier, sur sa propre ligne sous le titre (`order: 1`).
 // Sélectionner une ligne ouvre juste en dessous ses détails (SortDetail.astro) : effets (avec la remarque du classeur et le texte du sort), règles propres.
 interface Props {
   magie: MagieDb;
@@ -36,10 +37,10 @@ const texteDeRegle = (r: { titre: string; texte: string }) => (r.texte.startsWit
         <h3 class="npm__titre">
           <span class="npm__badge">NPM {groupe.niveau}</span>
           <span class="npm__nom" id={`npm-${groupe.niveau}-titre`}>Niveau de Puissance Magique {groupe.niveau}</span>
+          {regle(groupe.niveau).map((r) => <Info titre={r.titre} texte={texteDeRegle(r)} />)}
           <span class="npm__pips" role="img" aria-label={`Niveau ${groupe.niveau} sur 5`}>
             {[1, 2, 3, 4, 5].map((n) => <i class={n <= groupe.niveau ? 'on' : ''} />)}
           </span>
-          {regle(groupe.niveau).map((r) => <Info titre={r.titre} texte={texteDeRegle(r)} />)}
         </h3>
         <div class="sorts-wrap">
           <table class="sorts">
@@ -120,7 +121,8 @@ const texteDeRegle = (r: { titre: string; texte: string }) => (r.texte.startsWit
     .sorts .sort__detail[hidden] { display: table-row !important; }
     .creature__fiche[hidden], .creature__rangee[hidden] { display: block !important; }
     .creature__bouton { pointer-events: none; }
-    .bulle--large[hidden] { display: block !important; position: static; flex: 1 0 100%; max-width: none; box-shadow: none; }
+    .bulle--large[hidden] { display: block !important; position: static; width: auto; max-width: none; box-shadow: none; }
+    .npm__titre > .bulle-zone { order: 1; flex: 1 0 100%; }
     .info { display: none; }
   </style>
 </noscript>
