@@ -16,11 +16,13 @@ import { loadMagies } from '../../../lib/magies';
 import { loadRaces } from '../../../lib/races';
 import { loadClasses } from '../../../lib/classes';
 import { raceKind, raceOfClass } from '../../../lib/race-kinds.mjs';
+import { estUnMetier } from '../../../lib/metiers.mjs';
 import { entryHref, loadWiki, slugOf, typeOf, url, type WikiEntry } from '../../../lib/wiki';
 
 export async function getStaticPaths() {
   const { entries } = await loadWiki();
-  return entries.map((entry) => ({ params: { type: typeOf(entry), slug: slugOf(entry) }, props: { entry } }));
+  // Les métiers n'ont pas de page : ce sont les lignes du tableau de /wiki/metiers/ (lib/metiers.mjs), où mènent leurs liens.
+  return entries.filter((entry) => !estUnMetier(entry.id)).map((entry) => ({ params: { type: typeOf(entry), slug: slugOf(entry) }, props: { entry } }));
 }
 
 const { entry } = Astro.props as { entry: WikiEntry };

@@ -40,6 +40,7 @@ stables, SQL portable, modifications historisées, règles en données, moteur p
 | `client/src/lib/magies-db.mjs`, `sort-format.mjs`, `components/MagiePage.astro`, `styles/magie.css` | Pages de magie : gabarit commun alimenté par les **tables typées** de la base (magie, sort, invocation…), **pas** par le Markdown ; un tableau par NPM, détails d'un sort sous sa ligne (voir `docs/content-guide.md`, « Pages de magie ») |
 | `client/src/lib/races-db.mjs`, `race-relations.mjs`, `components/race/RacePage.astro`, `styles/race/` | Pages de race : même principe que les magies, alimentées par les **tables** de la base (`race_onglet`, `race_don`…, relations entre peuples), **pas** par le Markdown ; aucun tableau Markdown (voir `docs/content-guide.md`, « Pages de race ») |
 | `client/src/lib/classes-db.mjs`, `classe-dons.mjs`, `components/classes/ClassePage.astro`, `styles/classe/` | Pages de classe : même principe, alimentées par les **tables** (`classe`, `specialite`, `capacite`, `v_capacite_exclusive`…) ; les **dons** (« capacités » des onglets) disposés comme l'onglet, chaque choix encadré (voir `docs/content-guide.md`, « Pages de classe ») |
+| `client/src/lib/metiers.mjs`, `components/metier/MetiersTableau.astro`, `styles/metier/tableau.css` | Page des métiers : un long tableau (Nom, Bonus, Artisanat, Équipement supplémentaire) lu dans la table `metier`, la description sous la ligne ; **pas de page par métier**, tout lien vers un métier mène à sa ligne (voir `docs/content-guide.md`, « Métiers ») |
 | `client/src/lib/character.mjs` | Moteur de fiche (fonctions pures, piloté par `src/data/rules.json`) |
 | `client/src/data/rules.json` | Règles de création de personnage |
 | `client/test/` | Tests `node:test` (`npm test`) |
@@ -108,6 +109,10 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   les choix sont ceux de `v_capacite_exclusive`, encadrés avec « ou », options côte à côte ; les spécialités sont des **onglets** (premier à gauche, second à droite ; script de `ClasseDons.astro`,
   un lien `#don-…` ouvre le bon onglet, sans JavaScript tout est affiché). Couleur de la page d'après la catégorie de `/wiki/classes/` (`classColor` : rouge mêlée, vert distance, bleu magiques,
   violet raciales, jaune spéciales). CSS dans `styles/classe/`, inséré par `ClassePage.astro` (`?raw`). `test/classes-html.test.mjs` contrôle le site construit (CI après le build).
+- Métiers : **pas de page par métier** (demande du propriétaire) ; `/wiki/metiers/` est un tableau tiré de la table `metier` (`lib/metiers.mjs#chargerMetiers`), description sous la ligne.
+  Les pages `metiers/<slug>` restent (recherche, mots-clés, `[[liens]]`) mais `[slug].astro` ne les construit pas : tout lien vers une page passe par `cheminDePage` (via `entryHref`, `pageHref`, `entryUrl`),
+  qui renvoie un métier à `/wiki/metiers/#metier-<slug>` ; ne pas écrire `wiki/${id}/` à la main. Seule « Règles des métiers » (`PAGE_DES_REGLES`) garde sa page.
+  `test/metiers-html.test.mjs` vérifie qu'aucun lien du site construit ne mène à une page de métier.
 - Dons de classe (« capacités ») : une page `capacites/<classe>-<nom>` par don ; les dons d'une même ligne de l'onglet sont un choix exclusif
   (`choix_exclusif_avec`, symétrique), une spécialité exclut l'autre ; l'Archimage n'a pas de spécialité mais des groupes par palier
   (`lib/capacites.mjs`, `lib/classe-bonus.mjs`, `test/capacites-content.test.mjs`). Le +4 AM d'une classe raciale se lit dans le texte de la capacité

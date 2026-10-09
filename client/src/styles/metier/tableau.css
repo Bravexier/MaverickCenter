@@ -1,0 +1,59 @@
+/* Chargé uniquement depuis components/metier/MetiersTableau.astro (?raw) : le tableau de /wiki/metiers/, à l'image des tableaux de sorts
+   (styles/magie/sorts.css, sort-detail.css), dans la couleur d'accent du site. Une ligne par métier ; sa description s'ouvre sous la ligne.
+   Sur un téléphone, chaque ligne devient une carte (comme styles/magie/responsive.css). */
+.metiers {
+  --met: var(--accent);
+  --met-soft: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  --met-line: color-mix(in srgb, var(--accent) 35%, var(--border));
+  margin: 1rem 0 2rem;
+}
+.metiers .js-only { display: none; }
+html.js .metiers .js-only { display: inline; }
+.metiers-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.metiers-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.metiers-table thead th { text-align: left; font-size: 0.72rem; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 600; color: var(--muted); padding: 0.55rem 0.75rem; background: var(--met-soft); border-bottom: 1px solid var(--met-line); }
+.metier { scroll-margin-top: 1rem; }
+.metiers-table tbody.metier + tbody.metier > tr:first-child > * { border-top: 1px solid var(--border); }
+.metier__main > * { padding: 0.55rem 0.75rem; vertical-align: top; }
+.metier__main { cursor: pointer; }
+.metier__main:hover { background: var(--met-soft); }
+.metier.is-selected > .metier__main { background: var(--met-soft); box-shadow: inset 4px 0 0 var(--met); }
+.metier__nom { text-align: left; min-width: 9rem; }
+.metier__choisir { all: unset; cursor: pointer; font-weight: 700; color: var(--text); line-height: 1.35; }
+.metier__choisir::before { content: '▸'; display: inline-block; margin-right: 0.35rem; color: var(--met); transition: transform 0.15s; }
+.metier__choisir[aria-expanded="true"]::before { transform: rotate(90deg); }
+.metier__choisir:hover { text-decoration: underline dotted; }
+.metier__choisir:focus-visible { outline: 2px solid var(--met); outline-offset: 2px; border-radius: 4px; }
+.metier__bonus { min-width: 10rem; }
+/* caractéristiques entre crochets dans la source (« [FORCE + VOLONTÉ] ») : pastille après le texte de l'artisanat */
+.metier__test { display: inline-block; margin-top: 0.2rem; padding: 0 0.45rem; font-size: 0.7rem; letter-spacing: 0.03em; border-radius: 4px; border: 1px solid var(--met-line); color: var(--muted); white-space: nowrap; }
+.metiers .vide { color: var(--muted); opacity: 0.6; }
+
+/* Description, sous la ligne */
+.metiers-table .metier__detail[hidden] { display: none; }
+.metiers-table .metier__detail > td { padding: 0; background: var(--met-soft); border-top: 1px dashed var(--met-line); box-shadow: inset 4px 0 0 var(--met); }
+.metier-detail { padding: 0.8rem 1.2rem 0.9rem 1.4rem; display: grid; gap: 0.5rem; font-size: 0.95rem; }
+.metier-detail__tete { display: flex; align-items: center; gap: 0.8rem; }
+.metier-detail__tete h2 { margin: 0; font-size: 1.05rem; }
+.metier-detail__fermer { display: none; margin-left: auto; font-size: 0.8rem; padding: 0.15rem 0.7rem; }
+html.js .metier-detail__fermer { display: inline-block; }
+.metier-detail__texte { margin: 0; max-width: 52rem; white-space: pre-line; }
+.metier-detail__remarque { color: var(--muted); }
+
+@media (max-width: 44rem) {
+  .metiers-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .metiers-table, .metiers-table tbody.metier { display: block; }
+  .metiers-table tbody.metier + tbody.metier { border-top: 1px solid var(--border); }
+  .metiers-table tbody.metier + tbody.metier > tr:first-child > * { border-top: 0; }
+  .metiers-table .metier__main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.35rem; padding: 0.6rem 0.8rem; }
+  .metiers-table .metier__main > * { padding: 0; }
+  .metiers-table .metier__main td[data-label]::before { content: attr(data-label); display: block; font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .metiers-table .metier__detail:not([hidden]), .metiers-table .metier__detail > td { display: block; }
+  .metier-detail { padding-inline: 0.8rem; }
+}
+
+@media print {
+  .metier-detail__fermer { display: none !important; }
+  .metiers-table .metier__detail[hidden] { display: table-row; }
+  .metiers-table tbody.metier { break-inside: avoid; }
+}

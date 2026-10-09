@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import { url } from '../../lib/wiki';
+import { cheminDePage } from '../../lib/metiers.mjs';
 import { lister, ouvrirBase, preparerTable } from '../../lib/donnees.mjs';
 
 export function getStaticPaths() {
@@ -52,7 +53,7 @@ const nature = t.genre === 'vue' ? 'Vue : calculée à partir d’autres tables,
         {
           t.lignes.map((l) => (
             <tr id={l.ancre ?? undefined}>
-              {avecPage && <td>{l.page && <a href={url(`wiki/${l.page}/`)} title="Page du wiki">↗</a>}</td>}
+              {avecPage && <td>{l.page && <a href={url(cheminDePage(l.page))} title="Page du wiki">↗</a>}</td>}
               {l.cellules.map((c) =>
                 c.nul ? <td class="nul" /> : c.lien ? <td><a href={`${url(`donnees/${c.lien.table}/`)}#${c.lien.ancre}`}>{c.t}</a></td> : <td>{c.t}</td>,
               )}
