@@ -13,14 +13,14 @@ INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, 
 - Permet de relancer une esquive/parade si ce jet est raté (1 fois par combat)', 4, 'equipement', 'Ressources et Craft › Pièces élémentaires › AW121:BC127', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:intermediaire:feu', 'Intermédiaire', 'magies/magie-du-feu', 'FEU', 'Carapace des flamboiement', 10, 10, '- +1 cran de résistance au Feu
 - +4 dégâts avec les sorts de Feu
-- Permet de marcher sur toutes les surfaces de feu sans prendre de dégâts et 2d8 dégâts de feu en réponse aux assaillants qui attaque le corps.', 7, 'equipement', 'Ressources et Craft › Pièces élémentaires › BU121:CA127', NULL);
+- Permet de marcher sur toutes les surfaces de feu sans prendre de dégâts et 2d8 dégâts de feu en réponse aux assaillants qui attaquent le corps.', 7, 'equipement', 'Ressources et Craft › Pièces élémentaires › BU121:CA127', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:intermediaire:foudre', 'Intermédiaire', 'magies/magie-de-la-foudre', 'FOUDRE', 'Carapace des orages', 12, 8, '- +1 cran de résistance au Foudre
 - +4 dégâts avec les sorts de Foudre
 - (Choix possible) (actif) Invoque la météo "Orage" dès le début du combat. Dure 3 tours.', 12, 'equipement', 'Ressources et Craft › Pièces élémentaires › DI121:DO127', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:intermediaire:glace', 'Intermédiaire', 'magies/magie-de-la-glace', 'GLACE', 'Carapace des glaciers', 4, 16, '- +1 cran de résistance à la Glace
 - +4 dégâts avec les sorts de Glace
 - Si la santé descend en dessous de 25% de santé max, l''armure réagit et redonne 25% de la barrière max (1 fois/combat)', 9, 'equipement', 'Ressources et Craft › Pièces élémentaires › CK121:CQ127', NULL);
-INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:intermediaire:lumiere', 'Intermédiaire', 'magies/magie-de-la-lumiere', 'LUMIERE', 'Carapace des éveils', 8, 12, '- +1 cran de résistance de la Lumière
+INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:intermediaire:lumiere', 'Intermédiaire', 'magies/magie-de-la-lumiere', 'LUMIÈRE', 'Carapace des éveils', 8, 12, '- +1 cran de résistance de la Lumière
 - +4 dégâts avec les sorts de la Lumière
 - Les sorts de soin ont un bonus de +7.', 13, 'equipement', 'Ressources et Craft › Pièces élémentaires › DQ121:DW127', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:intermediaire:necromancie', 'Intermédiaire', 'magies/magie-de-la-necromancie', 'NÉCROMANCIE', 'Carapace des os', 8, 12, '- +1 cran de résistance à la Nécromancie
@@ -31,13 +31,13 @@ INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, 
 - Si jamais le porteur prend un coup, il impose un malus de 10% au prochain jet de l''assaillant', 14, 'equipement', 'Ressources et Craft › Pièces élémentaires › DY121:EE127', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:intermediaire:sang', 'Intermédiaire', 'magies/magie-du-sang', 'SANG', 'Carapace des châtiments', 14, 6, '- +1 cran de résistance au Sang
 - +4 dégâts avec les sorts de Sang
-- Se charge en sang tout les tours, au bout de 3 tours, permet de libérer une vague qui force le jet de vigueur à tout les ennemis à 3 cases du lanceur, si ils ratent, ils prennent "saignement 1"', 1, 'equipement', 'Ressources et Craft › Pièces élémentaires › Y121:AE127', NULL);
+- Se charge en sang tous les tours, au bout de 3 tours, permet de libérer une vague qui force le jet de vigueur à tous les ennemis à 3 cases du lanceur, s''ils ratent, ils prennent "saignement 1"', 1, 'equipement', 'Ressources et Craft › Pièces élémentaires › Y121:AE127', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:intermediaire:terre', 'Intermédiaire', 'magies/magie-de-la-terre', 'TERRE', 'Carapace des rochers', 16, 4, '- +1 cran de résistance à la Terre
 - +4 dégâts avec les sorts à la Terre
 - Si la santé tombe en dessous de 50%, invoque la météo "Champ magnétique". Dure 3 tours.', 10, 'equipement', 'Ressources et Craft › Pièces élémentaires › CS121:CY127', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:intermediaire:vent', 'Intermédiaire', 'magies/magie-du-vent', 'VENT', 'Carapace des mistrals', 10, 10, '- +1 cran de résistance au Vent
 - +4 dégâts avec les sorts de Vent
-- Augmente de 3 l''AM lors d''une météo venteuse ou après avoir subit un sort du Vent (dure 3 tours, non-cumulable)', 11, 'equipement', 'Ressources et Craft › Pièces élémentaires › DA121:DG127', NULL);
+- Augmente de 3 l''AM lors d''une météo venteuse ou après avoir subi un sort du Vent (dure 3 tours, non-cumulable)', 11, 'equipement', 'Ressources et Craft › Pièces élémentaires › DA121:DG127', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:intermediaire:vide', 'Intermédiaire', 'magies/magie-du-vide', 'VIDE', 'Carapace des interdits', 13, 7, '- +1 cran de résistance au Vide
 - +4 dégâts avec les sorts de Vide
 - Applique l''effet du sort "dissipation" sur un assaillant, lui retirant un effet positif aléatoire.', 5, 'equipement', 'Ressources et Craft › Pièces élémentaires › BE121:BK127', NULL);
@@ -58,16 +58,16 @@ INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, 
 - Réduit de 1 la résistance au feu des ennemis dans un rayon de 3 cases (casse l''immunité)', 7, 'equipement', 'Ressources et Craft › Pièces élémentaires › BU110:CA116', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:leger:foudre', 'Léger', 'magies/magie-de-la-foudre', 'FOUDRE', 'Garde survoltée', 6, 4, '- +1 cran de résistance au Foudre
 - +6 dégâts avec les sorts de Foudre
-- Permet de lancer les sorts "Nerveux" et "Chargeur" sans avoir besoin de les mettres dans les emplacements de sorts.', 12, 'equipement', 'Ressources et Craft › Pièces élémentaires › DI110:DO116', NULL);
+- Permet de lancer les sorts "Nerveux" et "Chargeur" sans avoir besoin de les mettre dans les emplacements de sorts.', 12, 'equipement', 'Ressources et Craft › Pièces élémentaires › DI110:DO116', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:leger:glace', 'Léger', 'magies/magie-de-la-glace', 'GLACE', 'Garde polaire', 2, 8, '- +1 cran de résistance à la Glace
 - +6 dégâts avec les sorts de Glace
-- Au bout de 3 coups subit, l''armure invoque au choix entre "Neige" ou "Tempête de neige"', 9, 'equipement', 'Ressources et Craft › Pièces élémentaires › CK110:CQ116', NULL);
-INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:leger:lumiere', 'Léger', 'magies/magie-de-la-lumiere', 'LUMIERE', 'Garde éclatante', 4, 6, '- +1 cran de résistance de la Lumière
+- Au bout de 3 coups subis, l''armure invoque au choix entre "Neige" ou "Tempête de neige"', 9, 'equipement', 'Ressources et Craft › Pièces élémentaires › CK110:CQ116', NULL);
+INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:leger:lumiere', 'Léger', 'magies/magie-de-la-lumiere', 'LUMIÈRE', 'Garde éclatante', 4, 6, '- +1 cran de résistance de la Lumière
 - +6 dégâts avec les sorts de la Lumière
-- Le porteur obtient un champ de force qui bloque 10 dégâts au début de son tour pour chaque ennemis adjacent à lui', 13, 'equipement', 'Ressources et Craft › Pièces élémentaires › DQ110:DW116', NULL);
+- Le porteur obtient un champ de force qui bloque 10 dégâts au début de son tour pour chaque ennemi adjacent à lui', 13, 'equipement', 'Ressources et Craft › Pièces élémentaires › DQ110:DW116', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:leger:necromancie', 'Léger', 'magies/magie-de-la-necromancie', 'NÉCROMANCIE', 'Garde Carcasse', 3, 7, '- +1 cran de résistance à la Nécromancie
 - +6 dégâts avec les sorts de Nécromancie
-- Permet avec le sort "animation de mort" d''invoqué directement le Squelette venin au lieu du Zombi.', 6, 'equipement', 'Ressources et Craft › Pièces élémentaires › BM110:BS116', NULL);
+- Permet avec le sort "animation de mort" d''invoquer directement le Squelette venin au lieu du Zombi.', 6, 'equipement', 'Ressources et Craft › Pièces élémentaires › BM110:BS116', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:leger:ombre', 'Léger', 'magies/magie-de-lombre', 'OMBRE', 'Garde obscurcissante', 6, 4, '- +1 cran de résistance de l''Ombre
 - +6 dégâts avec les sorts de l''Ombre
 - Avantage sur les jets de Ruse (Sauf quand ça concerne le crochetage)', 14, 'equipement', 'Ressources et Craft › Pièces élémentaires › DY110:EE116', NULL);
@@ -76,7 +76,7 @@ INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, 
 - Si un coup encaissé inflige 25% ou plus de la santé max = Double AP et AM (armure+base) pour le prochain tour. (non cumulable)', 1, 'equipement', 'Ressources et Craft › Pièces élémentaires › Y110:AE116', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:leger:terre', 'Léger', 'magies/magie-de-la-terre', 'TERRE', 'Garde-terre', 8, 2, '- +1 cran de résistance à la Terre
 - +6 dégâts avec les sorts à la Terre
-- Permet avec le sort "invocation de golem" d''invoqué directement le Golem de verre au lieu du Golem de pain.', 10, 'equipement', 'Ressources et Craft › Pièces élémentaires › CS110:CY116', NULL);
+- Permet avec le sort "invocation de golem" d''invoquer directement le Golem de verre au lieu du Golem de pain.', 10, 'equipement', 'Ressources et Craft › Pièces élémentaires › CS110:CY116', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:leger:vent', 'Léger', 'magies/magie-du-vent', 'VENT', 'Garde fœhn', 5, 5, '- +1 cran de résistance au Vent
 - +6 dégâts avec les sorts de Vent
 - (Choix possible) (actif) Invoque la météo "Vent Violent" dès le début du combat. Dure 3 tours.', 11, 'equipement', 'Ressources et Craft › Pièces élémentaires › DA110:DG116', NULL);
@@ -97,43 +97,43 @@ INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, 
 - Lance 2 initiatives, garde le résultat au choix', 4, 'equipement', 'Ressources et Craft › Pièces élémentaires › AW132:BC138', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:lourd:feu', 'Lourd', 'magies/magie-du-feu', 'FEU', 'Rempart de l''embraseur', 15, 15, '- +1 cran de résistance au Feu
 - +2 dégâts avec les sorts de Feu
-- Permet de récupéré 2d6 santé (ou chakra) lorsque l’on se trouve dans un endroit chaud ou durant les météos qui amplifie le feu.', 7, 'equipement', 'Ressources et Craft › Pièces élémentaires › BU132:CA138', NULL);
+- Permet de récupérer 2d6 santé (ou chakra) lorsque l’on se trouve dans un endroit chaud ou durant les météos qui amplifient le feu.', 7, 'equipement', 'Ressources et Craft › Pièces élémentaires › BU132:CA138', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:lourd:foudre', 'Lourd', 'magies/magie-de-la-foudre', 'FOUDRE', 'Rempart de la fulgurance', 18, 12, '- +1 cran de résistance au Foudre
 - +2 dégâts avec les sorts de Foudre
 - Si l''ennemi fait 90 ou plus sur son jet d''attaque avec une arme de corps à corps = Paralysie 1 non esquivable.', 12, 'equipement', 'Ressources et Craft › Pièces élémentaires › DI132:DO138', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:lourd:glace', 'Lourd', 'magies/magie-de-la-glace', 'GLACE', 'Rempart de l''iceberg', 6, 24, '- +1 cran de résistance à la Glace
 - +2 dégâts avec les sorts de Glace
-- (Action) Créer un sol gelée sur 5 cases autour du lanceur, oblige un jet de Stabilité/Réflexe pour ne pas tomber et perdre son déplacement (sauf ceux de la glace)', 9, 'equipement', 'Ressources et Craft › Pièces élémentaires › CK132:CQ138', NULL);
-INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:lourd:lumiere', 'Lourd', 'magies/magie-de-la-lumiere', 'LUMIERE', 'Rempart de l''aube', 12, 18, '- +1 cran de résistance de la Lumière
+- (Action) Crée un sol gelé sur 5 cases autour du lanceur, oblige un jet de Stabilité/Réflexe pour ne pas tomber et perdre son déplacement (sauf ceux de la glace)', 9, 'equipement', 'Ressources et Craft › Pièces élémentaires › CK132:CQ138', NULL);
+INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:lourd:lumiere', 'Lourd', 'magies/magie-de-la-lumiere', 'LUMIÈRE', 'Rempart de l''aube', 12, 18, '- +1 cran de résistance de la Lumière
 - +2 dégâts avec les sorts de la Lumière
-- Au bout de 3 coups subit, l''armure invoque la météo "Grand Soleil" . Dure 3 tours.', 13, 'equipement', 'Ressources et Craft › Pièces élémentaires › DQ132:DW138', NULL);
+- Au bout de 3 coups subis, l''armure invoque la météo "Grand Soleil" . Dure 3 tours.', 13, 'equipement', 'Ressources et Craft › Pièces élémentaires › DQ132:DW138', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:lourd:necromancie', 'Lourd', 'magies/magie-de-la-necromancie', 'NÉCROMANCIE', 'Rempart de l''âme', 15, 15, '- +1 cran de résistance à la Nécromancie
 - +2 dégâts avec les sorts de Nécromancie
 - Augmente de 2 le maximum d''âmes', 6, 'equipement', 'Ressources et Craft › Pièces élémentaires › BM132:BS138', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:lourd:ombre', 'Lourd', 'magies/magie-de-lombre', 'OMBRE', 'Rempart de la nuit', 18, 12, '- +1 cran de résistance de l''Ombre
 - +2 dégâts avec les sorts de l''Ombre
-- Au bout de 3 coups subit, l''armure invoque la météo "Brouillard obscur" . Dure 3 tours.', 14, 'equipement', 'Ressources et Craft › Pièces élémentaires › DY132:EE138', NULL);
+- Au bout de 3 coups subis, l''armure invoque la météo "Brouillard obscur" . Dure 3 tours.', 14, 'equipement', 'Ressources et Craft › Pièces élémentaires › DY132:EE138', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:lourd:sang', 'Lourd', 'magies/magie-du-sang', 'SANG', 'Rempart de l''artère', 18, 12, '- +1 cran de résistance au Sang
 - +2 dégâts avec les sorts de Sang
-- Réduit de 1 tour les altérations d''états qui demande la vigueur pour être contrer.', 1, 'equipement', 'Ressources et Craft › Pièces élémentaires › Y132:AE138', NULL);
+- Réduit de 1 tour les altérations d''états qui demandent la vigueur pour être contrées.', 1, 'equipement', 'Ressources et Craft › Pièces élémentaires › Y132:AE138', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:lourd:terre', 'Lourd', 'magies/magie-de-la-terre', 'TERRE', 'Rempart de l''abîme', 24, 6, '- +1 cran de résistance à la Terre
 - +2 dégâts avec les sorts à la Terre
 - Quand un sort de la terre est réussi, l''AP de l''armure augmente de 3 pendant 1 tour (non cumulable)', 10, 'equipement', 'Ressources et Craft › Pièces élémentaires › CS132:CY138', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:lourd:vent', 'Lourd', 'magies/magie-du-vent', 'VENT', 'Rempart de la rafale', 15, 15, '- +1 cran de résistance au Vent
 - +2 dégâts avec les sorts de Vent
-- Réduit de moitié les dégâts de chute et créer une explosion en zone de 3x3 lors d''un atterrissage faisant 2d8 de dégâts et repousse de 1 case si jet d''Athlétisme/Équilibre raté.', 11, 'equipement', 'Ressources et Craft › Pièces élémentaires › DA132:DG138', NULL);
+- Réduit de moitié les dégâts de chute et crée une explosion en zone de 3x3 lors d''un atterrissage faisant 2d8 de dégâts et repousse de 1 case si jet d''Athlétisme/Équilibre raté.', 11, 'equipement', 'Ressources et Craft › Pièces élémentaires › DA132:DG138', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:lourd:vide', 'Lourd', 'magies/magie-du-vide', 'VIDE', 'Rempart de la connaissance', 20, 10, '- +1 cran de résistance au Vide
 - +2 dégâts avec les sorts de Vide
-- Si le porteur subit un coup critique, une "Zone Vide" se créer à 5 cases du lanceur pendant 1 tour.', 5, 'equipement', 'Ressources et Craft › Pièces élémentaires › BE132:BK138', NULL);
+- Si le porteur subit un coup critique, une "Zone Vide" se crée à 5 cases du lanceur pendant 1 tour.', 5, 'equipement', 'Ressources et Craft › Pièces élémentaires › BE132:BK138', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:vetement:arcane', 'Vêtement', 'magies/magie-de-larcane', 'ARCANE', 'Tissu du commencement', 0, 2, '- +1 cran de résistance à la Corruption
 - +8 dégâts avec les sorts d''Arcane
 - Si un ennemi arrive au CAC du porteur, invoque le sort "Champ gardien" pour un coût réduit de moitié (Réaction - 1 fois/tour)', 2, 'equipement', 'Ressources et Craft › Pièces élémentaires › AG99:AM105', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:vetement:corruption', 'Vêtement', 'magies/magie-de-la-corruption', 'CORRUPTION', 'Tissu du témoin', 0, 2, '- +1 cran de résistance à l''Arcane
 - +8 dégâts avec les sorts de Corruption
-- Chaque attaque au corps à corps porter par le porteur va obliger la cible à fuir le porteur à hauteur de la moitié de son déplacement.', 3, 'equipement', 'Ressources et Craft › Pièces élémentaires › AO99:AU105', NULL);
+- Chaque attaque au corps à corps portée par le porteur va obliger la cible à fuir le porteur à hauteur de la moitié de son déplacement.', 3, 'equipement', 'Ressources et Craft › Pièces élémentaires › AO99:AU105', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:vetement:eau', 'Vêtement', 'magies/magie-de-leau', 'EAU', 'Tissu du lac', 0, 2, '- +1 cran de résistance à l''Eau
 - +8 dégâts avec les sorts de l''Eau
-- Régénère 2d6 santé tout les 2 tours.', 8, 'equipement', 'Ressources et Craft › Pièces élémentaires › CC99:CI105', NULL);
+- Régénère 2d6 santé tous les 2 tours.', 8, 'equipement', 'Ressources et Craft › Pièces élémentaires › CC99:CI105', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:vetement:espace-temps', 'Vêtement', 'magies/magie-de-lespace-temps', 'ESPACE/TEMPS', 'Tissu du paradoxe', 0, 2, '- +1 cran de résistance à l''Espace/Temps
 - +8 dégâts avec les sorts de l''Espace/Temps
 - Permet d''avoir une parade/esquive supplémentaire par tour (sauf en offensif)', 4, 'equipement', 'Ressources et Craft › Pièces élémentaires › AW99:BC105', NULL);
@@ -146,7 +146,7 @@ INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, 
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:vetement:glace', 'Vêtement', 'magies/magie-de-la-glace', 'GLACE', 'Tissu du froid', 0, 2, '- +1 cran de résistance à la Glace
 - +8 dégâts avec les sorts de Glace
 - +1 cran de résistance au Feu et immunité à la brûlure', 9, 'equipement', 'Ressources et Craft › Pièces élémentaires › CK99:CQ105', NULL);
-INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:vetement:lumiere', 'Vêtement', 'magies/magie-de-la-lumiere', 'LUMIERE', 'Tissu du jour', 1, 1, '- +1 cran de résistance de la Lumière
+INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:vetement:lumiere', 'Vêtement', 'magies/magie-de-la-lumiere', 'LUMIÈRE', 'Tissu du jour', 1, 1, '- +1 cran de résistance de la Lumière
 - +8 dégâts avec les sorts de la Lumière
 - Si un adversaire reste 2 tours ou plus sur une case adjacente du porteur, il prend "Aveuglement 3" (incontrable)', 13, 'equipement', 'Ressources et Craft › Pièces élémentaires › DQ99:DW105', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:vetement:necromancie', 'Vêtement', 'magies/magie-de-la-necromancie', 'NÉCROMANCIE', 'Tissu du défunt', 0, 2, '- +1 cran de résistance à la Nécromancie
@@ -154,7 +154,7 @@ INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, 
 - Récupère 3 âmes par tour au lieu de 1.', 6, 'equipement', 'Ressources et Craft › Pièces élémentaires › BM99:BS105', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:vetement:ombre', 'Vêtement', 'magies/magie-de-lombre', 'OMBRE', 'Tissu du crépuscule', 1, 1, '- +1 cran de résistance de l''Ombre
 - +8 dégâts avec les sorts de l''Ombre
-- Tout les dégâts qui sont infligés au porteur perdent 1d.', 14, 'equipement', 'Ressources et Craft › Pièces élémentaires › DY99:EE105', NULL);
+- Tous les dégâts qui sont infligés au porteur perdent 1d.', 14, 'equipement', 'Ressources et Craft › Pièces élémentaires › DY99:EE105', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:vetement:sang', 'Vêtement', 'magies/magie-du-sang', 'SANG', 'Tissu du saigneur', 2, 0, '- +1 cran de résistance au Sang
 - +8 dégâts avec les sorts de Sang
 - Le maximum de sang augmente de 5.', 1, 'equipement', 'Ressources et Craft › Pièces élémentaires › Y99:AE105', NULL);
@@ -166,4 +166,4 @@ INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, 
 - Les sorts de placement du Vent voient leur portée augmentée de 2.', 11, 'equipement', 'Ressources et Craft › Pièces élémentaires › DA99:DG105', NULL);
 INSERT INTO armure_elementaire (id, categorie, magie_id, colonne_brut, nom, ap, am, effets_brut, ordre, origine, source_ref, remarque) VALUES ('ressources/pieces-elementaires#armure-elementaire:vetement:vide', 'Vêtement', 'magies/magie-du-vide', 'VIDE', 'Tissu du néant', 2, 0, '- +1 cran de résistance au Vide
 - +8 dégâts avec les sorts de Vide
-- (Action) Permet au porteur de devenir Insensible pendant 3 tours, aucun sorts positifs/négatif/offensif ne peut le toucher, prendre un coup physique annule l''effet.', 5, 'equipement', 'Ressources et Craft › Pièces élémentaires › BE99:BK105', NULL);
+- (Action) Permet au porteur de devenir Insensible pendant 3 tours, aucun sort positif/négatif/offensif ne peut le toucher, prendre un coup physique annule l''effet.', 5, 'equipement', 'Ressources et Craft › Pièces élémentaires › BE99:BK105', NULL);

@@ -54,7 +54,7 @@ test('les valeurs de départ sont celles de l’onglet (Santé, Chakra, Barrièr
 
 test('Avantage(s), Inconvénient(s), don de base et capacité Mode Hyper sont ceux de l’onglet', () => {
   const nain = race('nain').body;
-  assert.match(section(nain, 'Avantage(s) et inconvénient(s)'), /\*\*Avantage\(s\)\*\* : Les armures lourdes ne les ralenties pas, accès à toutes les classes\./);
+  assert.match(section(nain, 'Avantage(s) et inconvénient(s)'), /\*\*Avantage\(s\)\*\* : Les armures lourdes ne les ralentissent pas, accès à toutes les classes\./);
   assert.match(section(nain, 'Avantage(s) et inconvénient(s)'), /\*\*Inconvénient\(s\)\*\* : Magie du Feu, Terre, Foudre, Arcane, Potentiel illimité en inné uniquement\./);
   for (const r of races) assert.match(section(r.body, 'Don de base'), /^(?:Méditation|Repos) \(Action 3 fois\/jour\)/m, r.slug);
   assert.match(section(race('humain').body, 'Capacité Mode Hyper'), /^\*\*Adrénaline\*\* : 1d de dégâts en plus/m);

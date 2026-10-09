@@ -135,7 +135,7 @@ test('panneau d’un sort : un seul cadre « Effets » par sort, les règles d�
   }
   const necro = pages.find((p) => p.slug === 'magie-de-la-necromancie').html;
   assert.match(necro, /<summary>Règles de l’invocation<\/summary>/);
-  assert.match(necro, /<summary>TABLEAU &quot;AMELIORATION CADAVERIQUE&quot;<\/summary>/);
+  assert.match(necro, /<summary>TABLEAU &quot;AMÉLIORATION CADAVÉRIQUE&quot;<\/summary>/);
 });
 
 test('créatures invoquées : un bouton et un lien « Bestiaire » par créature, une fiche cachée par bouton, juste sous le bloc de la créature', options, () => {
