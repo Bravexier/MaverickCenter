@@ -131,6 +131,30 @@ typées lues par `client/src/lib/races-db.mjs`, jamais le Markdown. **Aucun tabl
 
 **Pour changer une race, on change la base** (une migration `data/migrations/NNNN-<nom>.sql`, voir `docs/sql/remplissage.md`) : modifier le `.md` fabriqué n'a plus d'effet sur la page.
 
+## Pages de classe : un gabarit commun, alimenté par la base
+
+Les 39 pages de `/wiki/classes/<classe>/` sont rendues comme les pages de magie et de race : `components/classes/ClassePage.astro` (avec `ClasseDons`, `ChoixDeDons`, `DonCarte`) affiche
+les lignes des tables lues par `client/src/lib/classes-db.mjs` : `classe`, `categorie_classe`, `specialite`, `capacite`, la vue `v_capacite_exclusive`, `type_don`, `classe_maitrise_arme`,
+`classe_maitrise_armure`, `classe_objet_depart`, `objet_depart`, `classe_annexe`. **Aucun tableau Markdown** (le « Don de départ » est en tuiles, le tableau sans titre du Mage Bleu en cartes),
+pas de source citée ; le Markdown de la page ne sert plus qu'à la recherche et aux `[[liens]]`. La classe d'exemple, sans ligne dans `classe`, garde le rendu Markdown.
+
+- **Bandeau** : catégorie du Sommaire, santé, chakra et barrière de départ, « Classe magique +4 AM » (la classe elle-même, ou seulement « avec la spécialité … » quand c'est le don
+  de cette spécialité qui le dit : classes raciales, Flagelleur ; `lib/classe-magique.mjs`), « Classe raciale » avec le lien vers la race.
+- **Couleur** (demande du propriétaire), sur toute la page comme celle d'une magie, d'après la rubrique de `/wiki/classes/` (`lib/class-groups.mjs#classColor`, testé) : rouge pour les
+  physiques de mêlée, vert pour les physiques à distance, bleu pour les magiques, violet pour les raciales (hybrides), jaune pour les autres (Parleur compris). Repère visuel sans valeur de règle.
+- **Sections** : présentation et « Chose à savoir », descriptions des spécialités, « Au départ » (maîtrises, arme, armure, inventaire : chaque objet du glossaire a son infobulle, « A OU B »
+  est un emplacement à deux options), **Dons**, tableau sans titre de l'onglet (Mage Bleu : une carte par magie).
+- **Dons** (les « capacités » des onglets ; demande du propriétaire : c'est leur nom) : disposés **comme l'onglet** (`lib/classe-dons.mjs#plateauDeDons`, testé dans
+  `test/classes-dons.test.mjs`), de haut en bas : les dons reçus sans choix (colonne P : niveaux 1 et 5), les deux spécialités côte à côte (une seule au choix : elle exclut l'autre et
+  tous ses dons), sous chaque bannière son cartouche puis ses trois choix, et le don du niveau 20 en bas ; l'Archimage a des groupes de 2 ou 3 dons au choix. **Chaque choix est encadré**
+  (« Au choix · Niveau N : un seul des deux ») avec une pastille « ou » entre les options ; les choix sont ceux de la vue `v_capacite_exclusive` (la disposition de l'onglet fait foi), le test
+  vérifie qu'ils coïncident. Une carte de don : niveau, nom (lien vers la fiche), type (nom du guide, sa définition en infobulle native) et sa précision telle qu'écrite (« 2 fois/Combat »),
+  effet, remarque du classeur. Ancre `#don-<slug>` : la fiche d'un don y renvoie.
+- Le CSS est dans `client/src/styles/classe/` (et `styles/magie/tooltips.css` pour les infobulles), injecté par `ClassePage.astro` (`?raw`) seulement. `test/classes-html.test.mjs` contrôle
+  le site construit (la CI le lance après le build).
+
+**Pour changer une classe ou un don, on change la base** (une migration `data/migrations/NNNN-<nom>.sql`, voir `docs/sql/remplissage.md`) : modifier le `.md` fabriqué n'a plus d'effet sur la page.
+
 ## Niveaux de maîtrise (NM) des sorts
 
 Chaque sort existe sur plusieurs niveaux de maîtrise (0 à 3 NM, jamais plus de 3). Un NM s'obtient par niveau du personnage (à partir du niveau 2, redistribuable parmi les sorts choisis), par la lecture d'un livre de
@@ -148,10 +172,11 @@ en chakra qui baisse, portée, zone, dégâts / soins / barrière, effet seconda
   (`IC pour 3 NM`, `IC x 2 si 3NM`, `IC x 1/NM`) est un bonus de maîtrise (`champ = 'type'`). `type_brut` reste la cellule telle qu'écrite.
 - Les corrections de ces données passent par une migration (`data/migrations/0004-bonus-maitrise.sql`, registre `.json` ligne par ligne) ; le registre est la trace de ce qui a été extrait de quelle cellule.
 
-## Capacités de classe (type `capacites`)
+## Dons de classe (type `capacites`)
 
-Chaque capacité d'un onglet de « Classe Maverick V7 » a sa fiche `capacites/<classe>-<nom>.md` (le tableau d'aptitudes n'est plus dans la page
-de la classe). Champs du frontmatter, déclarés dans `content.config.ts` et lus par `client/src/lib/capacites.mjs` :
+Les « capacités » des onglets de classe sont des **dons** (leur nom dans le jeu) : c'est ce qu'affiche le site (« Dons de classe », « Don » ; migration `0008-dons-de-classe`),
+alors que les identifiants gardent `capacites/…` et la table `capacite` (identifiants stables). Chaque don d'un onglet de « Classe Maverick V7 » a sa fiche
+`capacites/<classe>-<nom>.md` ; la page de la classe les montre tous, disposés comme l'onglet (voir « Pages de classe » plus haut). Champs du frontmatter, déclarés dans `content.config.ts` et lus par `client/src/lib/capacites.mjs` :
 
 | Champ | Contenu |
 | --- | --- |

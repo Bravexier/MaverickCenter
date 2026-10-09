@@ -39,6 +39,7 @@ stables, SQL portable, modifications historisées, règles en données, moteur p
 | `client/src/lib/wiki.ts` | Chargement des pages + graphe (liens sortants, rétroliens, tags) |
 | `client/src/lib/magies-db.mjs`, `sort-format.mjs`, `components/MagiePage.astro`, `styles/magie.css` | Pages de magie : gabarit commun alimenté par les **tables typées** de la base (magie, sort, invocation…), **pas** par le Markdown ; un tableau par NPM, détails d'un sort sous sa ligne (voir `docs/content-guide.md`, « Pages de magie ») |
 | `client/src/lib/races-db.mjs`, `race-relations.mjs`, `components/race/RacePage.astro`, `styles/race/` | Pages de race : même principe que les magies, alimentées par les **tables** de la base (`race_onglet`, `race_don`…, relations entre peuples), **pas** par le Markdown ; aucun tableau Markdown (voir `docs/content-guide.md`, « Pages de race ») |
+| `client/src/lib/classes-db.mjs`, `classe-dons.mjs`, `components/classes/ClassePage.astro`, `styles/classe/` | Pages de classe : même principe, alimentées par les **tables** (`classe`, `specialite`, `capacite`, `v_capacite_exclusive`…) ; les **dons** (« capacités » des onglets) disposés comme l'onglet, chaque choix encadré (voir `docs/content-guide.md`, « Pages de classe ») |
 | `client/src/lib/character.mjs` | Moteur de fiche (fonctions pures, piloté par `src/data/rules.json`) |
 | `client/src/data/rules.json` | Règles de création de personnage |
 | `client/test/` | Tests `node:test` (`npm test`) |
@@ -96,7 +97,11 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   posées par `tools/sheets/races.py` et `magies.py` ; le site en tire les liens, les tableaux de `/wiki/races-et-magies/` et la distinction
   races pures / hybrides (`lib/magie-relations.mjs`, `lib/race-kinds.mjs`). Voir `docs/content-guide.md`. Les champs sont déclarés dans `content.config.ts`
   (un champ non déclaré est supprimé par Astro). Exception explicite : la liste du Nain vient de l'onglet « Nain » de « Les races » (`RACE_DETAIL_OVERRIDES` dans `races.py`), pas de la matrice.
-- Capacités de classe : une page `capacites/<classe>-<nom>` par capacité ; les capacités d'une même ligne de l'onglet sont un choix exclusif
+- Pages de classe : rendues depuis la base (`lib/classes-db.mjs`, `components/classes/ClassePage.astro`), jamais depuis leur `.md`. Les « capacités » s'affichent **Dons** (demande du propriétaire ; type `capacites`,
+  table `capacite` et ids inchangés, libellé dans `type_page` par la migration `0008-dons-de-classe`, que `db:check` compare à `types.mjs`). Les dons suivent la disposition de l'onglet (`lib/classe-dons.mjs#plateauDeDons`),
+  les choix sont ceux de `v_capacite_exclusive`, encadrés avec « ou ». Couleur de la page d'après la rubrique de `/wiki/classes/` (`classColor` : rouge mêlée, vert distance, bleu magiques,
+  violet raciales, jaune autres). CSS dans `styles/classe/`, inséré par `ClassePage.astro` (`?raw`). `test/classes-html.test.mjs` contrôle le site construit (CI après le build).
+- Dons de classe (« capacités ») : une page `capacites/<classe>-<nom>` par don ; les dons d'une même ligne de l'onglet sont un choix exclusif
   (`choix_exclusif_avec`, symétrique), une spécialité exclut l'autre ; l'Archimage n'a pas de spécialité mais des groupes par palier
   (`lib/capacites.mjs`, `lib/classe-bonus.mjs`, `test/capacites-content.test.mjs`). Le +4 AM d'une classe raciale se lit dans le texte de la capacité
   de niveau 10 de sa 2ᵉ spécialité (« considérer comme classe magique »). Voir `docs/content-guide.md`.

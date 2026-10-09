@@ -66,7 +66,8 @@ et réécrit `data/rows` avec la nouvelle version. Voir `docs/sql/conception.md`
 `0005-orthographe-base.sql` (données : passe complète d'orthographe sur toute la base, registre `.json`),
 `0006-orthographe-noms.sql` (structure et données : les sept tables qui dérivaient l'id du nom sont reconstruites sans cette contrainte, puis les noms à trancher sont corrigés partout et leurs clés recalculées ; registre `.json`), `0007-races-onglet.sql` (structure et données : contenu de l'onglet de chaque race,
 tables `race_onglet`, `race_don`, `race_don_tableau_*`, `race_magie_onglet`, colonne `mode_hyper_effet.nom` et version `onglet_race`, vue `v_regard_peuple` ; écrite par `tools/db/races_onglet.py --ecrire`
-depuis les pages de race, `--verifier` contrôle que les tables sont toujours celles des pages).
+depuis les pages de race, `--verifier` contrôle que les tables sont toujours celles des pages), `0008-dons-de-classe.sql` (données : le type de page `capacites` s'affiche « Dons de classe »,
+singulier « Don », dans `type_page` ; ids, adresses et table `capacite` inchangés).
 
 ## La colonne `remarque`
 

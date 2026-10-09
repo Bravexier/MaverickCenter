@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { classCategory, groupClasses } from '../src/lib/class-groups.mjs';
+import { CLASS_COLORS, classCategory, classColor, groupClasses } from '../src/lib/class-groups.mjs';
 
 const page = (title, ...tags) => ({ id: `classes/${title.toLowerCase()}`, data: { title, tags: ['classe', ...tags] } });
 const titles = (section) => section.entries.map((e) => e.data.title);
@@ -90,4 +90,17 @@ test('classCategory donne le groupe et la section d’une classe, ou rien pour u
 test('l’exception du Parleur suit l’identifiant de la page, pas son titre ni ses tags', () => {
   assert.equal(classCategory({ id: 'classes/parleur', data: { title: 'Autre titre', tags: ['classe', 'càc'] } }).groupKey, 'autres');
   assert.equal(classCategory({ id: 'classes/autre-page', data: { title: 'Parleur', tags: ['classe', 'càc'] } }).groupKey, 'physiques');
+});
+
+test('couleur d’une classe d’après sa rubrique : rouge (mêlée), vert (distance), bleu (magiques), violet (raciales), jaune (autres, Parleur compris)', () => {
+  const couleur = (titre) => classColor(sample.find((e) => e.data.title === titre));
+  assert.equal(couleur('Guerrier'), CLASS_COLORS.melee);
+  assert.equal(couleur('Archer'), CLASS_COLORS.distance);
+  assert.equal(couleur('Mage'), CLASS_COLORS.magiques);
+  assert.equal(couleur('Kitsune (classe)'), CLASS_COLORS['hybride-animal']);
+  assert.equal(couleur('Archimage'), CLASS_COLORS.autres);
+  assert.equal(couleur('Flagelleur'), CLASS_COLORS.autres);
+  assert.equal(couleur('Parleur'), CLASS_COLORS.autres, 'exception du propriétaire : le Parleur est rangé sous « Autres »');
+  assert.equal(classColor(page('Inconnue', 'autre-chose')), CLASS_COLORS.autres, 'une classe non classée va sous « Autres »');
+  assert.equal(new Set(Object.values(CLASS_COLORS)).size, 5);
 });
