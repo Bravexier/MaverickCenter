@@ -1,5 +1,6 @@
 // Pages de classe CONSTRUITES (client/dist/wiki/classes/*/index.html), rendues par le gabarit (components/classes/ClassePage.astro) depuis les tables
-// de la base : aucun tableau Markdown, pas de source citée, les DONS disposés comme l'onglet avec leurs choix encadrés (« Au choix », « ou »).
+// de la base : aucun tableau Markdown, pas de source citée, les DONS disposés comme l'onglet avec leurs choix encadrés (« Au choix », « ou »),
+// les spécialités en onglets.
 // Ce test lit le site construit : il ne tourne qu'après `npm run build` (la CI l'exécute juste après) et se saute sinon.
 //   node --test test/classes-html.test.mjs
 import assert from 'node:assert/strict';
@@ -58,13 +59,27 @@ test('dons : un par don de la classe, chacun avec son ancre ; les choix sont enc
   for (const { slug, html } of pages.filter((p) => p.slug !== 'archimage')) {
     assert.equal(compte(html, /class="choix choix--2"/g), 6, `${slug} : 3 choix par spécialité`);
     assert.equal(compte(html, /class="choix__ou"/g), 6, `${slug} : « ou » entre les deux options`);
-    assert.equal(compte(html, /class="specialites__ou"/g), 1, `${slug} : « ou » entre les spécialités`);
+    assert.equal(compte(html, /class="onglets__ou"/g), 1, `${slug} : « ou » entre les onglets des spécialités`);
     assert.equal(compte(html, /class="etage etage--don"/g), 3, `${slug} : dons reçus sans choix (niveaux 1, 5, 20)`);
   }
   const archimage = page('archimage');
   assert.equal(compte(archimage, /class="choix choix--2"/g), 1);
   assert.equal(compte(archimage, /class="choix choix--3"/g), 3);
   assert.equal(compte(archimage, /class="specialite"/g), 0, 'Archimage : pas de spécialité');
+});
+
+test('spécialités en onglets : deux liens d’onglet (gauche puis droite) vers leurs panneaux, le premier ouvert ; chaque panneau garde son titre', options, () => {
+  for (const { slug, html } of pages.filter((p) => p.slug !== 'archimage')) {
+    const onglets = [...html.matchAll(/<a class="onglet( is-active)?" id="(onglet-[^"]+)" href="#(specialite-[^"]+)">/g)];
+    assert.equal(onglets.length, 2, `${slug} : deux onglets`);
+    assert.deepEqual(onglets.map((o) => Boolean(o[1])), [true, false], `${slug} : le premier onglet est ouvert`);
+    const panneaux = [...html.matchAll(/<section class="specialite( is-active)?" id="(specialite-[^"]+)"/g)];
+    assert.deepEqual(panneaux.map((p) => p[2]), onglets.map((o) => o[3]), `${slug} : un panneau par onglet, dans le même ordre`);
+    assert.deepEqual(panneaux.map((p) => Boolean(p[1])), [true, false], `${slug} : le premier panneau est ouvert`);
+    assert.equal(compte(html, /<h3 class="specialite__titre"/g), 2, `${slug} : titre de chaque panneau (sans JavaScript)`);
+    assert.match(html, /data-onglets/);
+  }
+  assert.match(page('barde'), /id="onglet-danseur" href="#specialite-danseur">\s*<span class="onglet__surtitre">Spécialité<\/span>\s*<span class="onglet__nom">DANSEUR<\/span>/);
 });
 
 test('Barde : l’ordre de l’onglet (Prestation, Son perturbant, les spécialités, Chant double) et les paires du Ménestrel', options, () => {

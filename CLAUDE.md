@@ -99,7 +99,8 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   (un champ non déclaré est supprimé par Astro). Exception explicite : la liste du Nain vient de l'onglet « Nain » de « Les races » (`RACE_DETAIL_OVERRIDES` dans `races.py`), pas de la matrice.
 - Pages de classe : rendues depuis la base (`lib/classes-db.mjs`, `components/classes/ClassePage.astro`), jamais depuis leur `.md`. Les « capacités » s'affichent **Dons** (demande du propriétaire ; type `capacites`,
   table `capacite` et ids inchangés, libellé dans `type_page` par la migration `0008-dons-de-classe`, que `db:check` compare à `types.mjs`). Les dons suivent la disposition de l'onglet (`lib/classe-dons.mjs#plateauDeDons`),
-  les choix sont ceux de `v_capacite_exclusive`, encadrés avec « ou ». Couleur de la page d'après la rubrique de `/wiki/classes/` (`classColor` : rouge mêlée, vert distance, bleu magiques,
+  les choix sont ceux de `v_capacite_exclusive`, encadrés avec « ou », options côte à côte ; les spécialités sont des **onglets** (premier à gauche, second à droite ; script de `ClasseDons.astro`,
+  un lien `#don-…` ouvre le bon onglet, sans JavaScript tout est affiché). Couleur de la page d'après la rubrique de `/wiki/classes/` (`classColor` : rouge mêlée, vert distance, bleu magiques,
   violet raciales, jaune autres). CSS dans `styles/classe/`, inséré par `ClassePage.astro` (`?raw`). `test/classes-html.test.mjs` contrôle le site construit (CI après le build).
 - Dons de classe (« capacités ») : une page `capacites/<classe>-<nom>` par don ; les dons d'une même ligne de l'onglet sont un choix exclusif
   (`choix_exclusif_avec`, symétrique), une spécialité exclut l'autre ; l'Archimage n'a pas de spécialité mais des groupes par palier

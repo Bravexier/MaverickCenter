@@ -1,5 +1,5 @@
-/* Dons de la classe, disposés comme l'onglet (components/classes/ClasseDons.astro) : un « plateau » de haut en bas (du niveau 1 au niveau 20),
-   les dons reçus sans choix au centre (colonne P de l'onglet), les spécialités côte à côte, chaque choix dans un cadre « Au choix » avec une
+/* Dons de la classe, disposés comme l'onglet du classeur (components/classes/ClasseDons.astro) : un « plateau » de haut en bas (du niveau 1 au niveau 20),
+   les dons reçus sans choix au centre (colonne P de l'onglet), les spécialités en onglets, chaque choix dans un cadre « Au choix » avec une
    pastille « ou » entre les options. Les options d'un choix sont côte à côte quand leur cadre a la place (requête de conteneur), sinon l'une sous l'autre. */
 .dons-aide { margin-top: -0.2rem; }
 .plateau { position: relative; display: grid; gap: 1.1rem; margin: 1rem 0 0; padding: 0; list-style: none; }
@@ -39,32 +39,61 @@
 .choix__tete, .specialites__tete { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.55rem; margin: 0 0 0.5rem; font-size: 0.85rem; color: var(--muted); }
 .choix__badge { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.1rem 0.55rem; border-radius: 4px; background: var(--cla); color: var(--cla-texte); }
 .choix__options { display: flex; flex-direction: column; gap: 0.35rem; }
-.choix__ou, .specialites__ou { display: flex; align-items: center; gap: 0.5rem; color: var(--cla-readable); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
-.choix__ou::before, .choix__ou::after, .specialites__ou::before, .specialites__ou::after { content: ''; flex: 1; border-top: 1px solid var(--cla-line); }
-.choix__ou > span, .specialites__ou > span { display: inline-flex; align-items: center; justify-content: center; flex: none; border-radius: 50%; border: 2px solid var(--cla); background: var(--surface); text-indent: 0.12em; }
+.choix__ou { display: flex; align-items: center; gap: 0.5rem; color: var(--cla-readable); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+.choix__ou::before, .choix__ou::after { content: ''; flex: 1; border-top: 1px solid var(--cla-line); }
+.choix__ou > span { display: inline-flex; align-items: center; justify-content: center; flex: none; border-radius: 50%; border: 2px solid var(--cla); background: var(--surface); text-indent: 0.12em; }
 .choix__ou > span { width: 2.1rem; height: 2.1rem; font-size: 0.75rem; }
-@container (min-width: 34rem) {
+@container (min-width: 30rem) {
   .choix__options { flex-direction: row; align-items: stretch; }
   .choix__options > .don { flex: 1 1 0; }
   .choix__ou { flex-direction: column; }
   .choix__ou::before, .choix__ou::after { border-top: 0; border-left: 1px solid var(--cla-line); }
 }
 
-/* Les spécialités : bannières côte à côte (A17 et X17 de l'onglet), une seule au choix */
+/* Les spécialités : un ONGLET chacune (demande du propriétaire), le premier dans le coin gauche, le second dans le coin droit, comme les bannières
+   A17 et X17 de l'onglet du classeur ; une seule au choix (pastille « ou » entre les onglets). Avec JavaScript (html.js, posé avant l'affichage par
+   ClasseDons.astro), seul le panneau ouvert est visible et son titre devient l'onglet ; sans JavaScript, les deux panneaux se suivent avec leur titre. */
 .specialites { border: 2px dashed var(--cla-line); border-radius: 16px; padding: 0.6rem 0.7rem 0.8rem; background: var(--bg); }
-.specialites__colonnes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; }
-.specialites__ou > span { width: 2.8rem; height: 2.8rem; font-size: 0.85rem; background: var(--cla); color: var(--cla-texte); }
-.specialite { display: grid; align-content: start; gap: 0.75rem; min-width: 0; background: var(--surface); border: 1px solid var(--cla-line); border-radius: 12px; padding: 0 0.7rem 0.8rem; overflow: hidden; scroll-margin-top: 1rem; }
-.specialite__banniere { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; margin: 0 -0.7rem; padding: 0.55rem 0.9rem 0.6rem; color: #fff; background: linear-gradient(135deg, var(--hero-1), var(--hero-2)); font-size: 1.15rem; letter-spacing: 0.1em; }
+.onglets { position: relative; z-index: 1; display: flex; align-items: flex-end; justify-content: space-between; gap: 0.5rem; margin-bottom: -1px; }
+.onglets--2 { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+.onglets--2 > .onglet:first-child { justify-self: start; }
+.onglets--2 > .onglet:last-child { justify-self: end; align-items: flex-end; text-align: right; }
+.onglet { display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem; max-width: 100%; padding: 0.45rem 1.1rem 0.6rem; border: 1px solid var(--cla-line); border-bottom: 0; border-radius: 12px 12px 0 0;
+  background: linear-gradient(135deg, var(--hero-1), var(--hero-2)); color: #fff; text-decoration: none; }
+.onglet__surtitre { font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.8; }
+.onglet__nom { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.1em; line-height: 1.25; overflow-wrap: normal; word-break: normal; }
+.onglet__magique { margin-top: 0.15rem; font-size: 0.7rem; letter-spacing: 0.04em; padding: 0.05rem 0.5rem; border-radius: 999px; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.3); }
+.onglet:focus-visible { outline: 2px solid var(--cla); outline-offset: 2px; }
+html.js .onglet { cursor: pointer; }
+html.js .onglet:not(.is-active) { background: var(--cla-soft); color: var(--cla-readable); border-color: var(--border); }
+html.js .onglet:not(.is-active) .onglet__magique { background: var(--surface); border-color: var(--cla-line); }
+html.js .onglet:not(.is-active):hover { background: color-mix(in srgb, var(--cla) 20%, var(--surface)); }
+.onglets__ou { align-self: center; display: flex; justify-content: center; padding-bottom: 0.4rem; }
+.onglets__ou > span { display: inline-flex; align-items: center; justify-content: center; width: 2.6rem; height: 2.6rem; border-radius: 50%; background: var(--cla); color: var(--cla-texte);
+  font-size: 0.85rem; font-weight: 700; letter-spacing: 0.12em; text-indent: 0.12em; text-transform: uppercase; }
+.specialite { display: grid; align-content: start; gap: 0.8rem; min-width: 0; background: var(--surface); border: 1px solid var(--cla-line); border-radius: 0 0 12px 12px; padding: 0.8rem; scroll-margin-top: 1rem; }
+.specialite + .specialite { margin-top: 0.8rem; border-radius: 12px; }
+html.js .specialites[data-onglets] .specialite:not(.is-active) { display: none; }
+html.js .specialites[data-onglets] .specialite { margin-top: 0; border-radius: 0 0 12px 12px; }
+/* titre du panneau : visible sans JavaScript ; avec JavaScript, l'onglet le montre déjà (gardé pour les lecteurs d'écran) */
+.specialite__titre { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; margin: 0; padding: 0.5rem 0.8rem; border-radius: 8px; color: #fff;
+  background: linear-gradient(135deg, var(--hero-1), var(--hero-2)); font-size: 1.1rem; letter-spacing: 0.1em; }
 .specialite__surtitre { width: 100%; font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.8; }
 .specialite__magique { font-size: 0.7rem; font-weight: normal; letter-spacing: 0.04em; padding: 0.05rem 0.5rem; border-radius: 999px; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.3); }
-@media (min-width: 56rem) {
-  .specialites__colonnes--2 { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
-  .specialites__colonnes--2 > .specialites__ou { flex-direction: column; }
-  .specialites__colonnes--2 > .specialites__ou::before, .specialites__colonnes--2 > .specialites__ou::after { border-top: 0; border-left: 2px solid var(--cla-line); }
+html.js .specialites[data-onglets] .specialite__titre { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.specialite__cartouche { display: grid; justify-items: center; }
+.specialite__cartouche > .don { width: min(100%, 36rem); }
+@media (max-width: 30rem) {
+  .onglets--2 { gap: 0.3rem; }
+  .onglet { padding: 0.4rem 0.55rem 0.5rem; }
+  .onglet__nom { font-size: 0.8rem; letter-spacing: 0.02em; }
+  .onglets__ou > span { width: 1.9rem; height: 1.9rem; font-size: 0.68rem; letter-spacing: 0.06em; text-indent: 0.06em; }
 }
 
 @media print {
-  .plateau::before { display: none; }
+  .plateau::before, .onglets { display: none; }
+  html.js .specialites[data-onglets] .specialite { display: grid !important; border-radius: 12px; }
+  html.js .specialites[data-onglets] .specialite + .specialite { margin-top: 0.8rem; }
+  html.js .specialites[data-onglets] .specialite__titre { position: static; width: auto; height: auto; margin: 0; padding: 0.5rem 0.8rem; overflow: visible; clip: auto; white-space: normal; }
   .don, .choix { break-inside: avoid; }
 }
