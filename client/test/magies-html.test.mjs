@@ -54,16 +54,52 @@ test('index des magies : 15 noms courts, descriptions en tooltip, version au foo
   assert.ok(!indexMagies.includes('Écoles, sorts et règles de magie.'));
 });
 
-test('index des magies sur téléphone : chaque infobulle est bornée à la carte (sinon, même cachée, elle fait défiler la page horizontalement)', options, () => {
+test('carte des magies : chaque infobulle est bornée à la carte (sinon, même cachée, elle fait défiler la page horizontalement)', options, () => {
   const positions = [...indexMagies.matchAll(/class="magies-orbite__position[^"]*" style="([^"]+)"/g)].map((m) => m[1]);
   assert.equal(positions.length, 15);
   for (const style of positions) {
-    const mx = Number(style.match(/--mx: ([\d.]+)%/)?.[1]);
-    assert.equal(Number(style.match(/--mx-fraction: ([\d.]+)/)?.[1]), mx / 100, style);
+    for (const axe of ['x', 'mx']) {
+      const valeur = Number(style.match(new RegExp(`--${axe}: ([\\d.]+)%`))?.[1]);
+      assert.equal(Number(style.match(new RegExp(`--${axe}-fraction: ([\\d.]+)`))?.[1]), valeur / 100, style);
+    }
   }
-  const telephone = indexMagies.slice(indexMagies.indexOf('@media (max-width: 44rem)'));
-  assert.match(telephone, /\.magies-orbite \{ container-type: inline-size;/, 'la carte est le conteneur des unités cqw');
-  assert.match(telephone, /\.magies-orbite__noeud::after \{[^}]*box-sizing: border-box;[^}]*clamp\(/, 'largeur bornée bordure comprise, position ramenée dans la carte');
+  assert.match(indexMagies, /\.magies-orbite \{[^}]*container-type: inline-size;/, 'la carte est le conteneur des unités cqw, à toutes les largeurs');
+  assert.match(indexMagies, /\.magies-orbite__noeud::after \{[^}]*--centre-bulle: calc\(var\(--x-fraction\) \* 100cqw\);[^}]*clamp\([^}]*box-sizing: border-box;/, 'largeur bornée bordure comprise, position ramenée dans la carte');
+  const etroit = indexMagies.slice(indexMagies.indexOf('@media (max-width: 60rem)'));
+  assert.match(etroit, /\.magies-orbite__noeud::after \{ --centre-bulle: calc\(var\(--mx-fraction\) \* 100cqw\); \}/, 'sur écran étroit, la bulle suit la carte étroite');
+});
+
+// Carte des magies dense (demande du propriétaire : la page était « trop aérée ») : la carte du grand écran est large et basse, et aucune pastille n'en
+// touche une autre, ni sur grand écran (carte de 58 à 62rem de large) ni sur écran étroit (téléphone de 320px à 60rem). Les largeurs reprennent
+// styles/magie/orbit.css (9rem, 8rem pour l'hexagone élémentaire, 12rem pour le Potentiel Illimité ; en cqw sous 60rem), hauteur 2.9rem.
+test('carte des magies : compacte, et aucune pastille ne touche une autre', options, () => {
+  const ratio = Number(indexMagies.match(/\.magies-orbite \{[^}]*aspect-ratio: 1000 \/ (\d+);/)?.[1]);
+  const hauteurEtroite = Number(indexMagies.match(/\.magies-orbite \{ height: ([\d.]+)rem; aspect-ratio: auto; \}/)?.[1]);
+  assert.ok(ratio > 0 && ratio <= 450, `carte du grand écran plus large que haute (1000 / ${ratio})`);
+  assert.ok(hauteurEtroite > 0 && hauteurEtroite <= 40, `carte étroite de ${hauteurEtroite}rem`);
+  const noeuds = [...indexMagies.matchAll(/class="magies-orbite__position magies-orbite__position--([\w-]+)" style="([^"]+)"[^]*?aria-label="([^"]+)"/g)].map(([, region, style, nom]) => {
+    const v = (axe) => Number(style.match(new RegExp(`--${axe}: ([\\d.]+)%`))[1]) / 100;
+    return { region, nom, x: v('x'), y: v('y'), mx: v('mx'), my: v('my') };
+  });
+  assert.equal(noeuds.length, 15);
+  const ecart = (a, b) => Math.max(Math.abs(a.cx - b.cx) - (a.l + b.l) / 2, Math.abs(a.cy - b.cy) - 2.9);
+  const verifier = (boites, ecran) => {
+    for (const [i, a] of boites.entries()) {
+      assert.ok(a.cx - a.l / 2 >= 0 && a.cx + a.l / 2 <= a.largeur + 1e-9, `${ecran} : pastille hors de la carte (${a.nom})`);
+      for (const b of boites.slice(i + 1)) assert.ok(ecart(a, b) >= 0.25, `${ecran} : pastilles qui se touchent (${a.nom} / ${b.nom})`);
+    }
+  };
+  for (const vue of [60, 64, 90]) {
+    const largeur = Math.min(vue, 64) - 2;
+    const hauteur = (largeur * ratio) / 1000;
+    const l = { potentiel: Math.min(12, 0.32 * vue), elementaire: Math.min(8, 0.16 * vue) };
+    verifier(noeuds.map((n) => ({ ...n, largeur, cx: n.x * largeur, cy: n.y * hauteur, l: l[n.region] ?? Math.min(9, 0.16 * vue) })), `écran de ${vue}rem`);
+  }
+  for (const vue of [20, 22.5, 24.375, 30, 45, 59.9]) {
+    const largeur = Math.min(vue, 64) - 2;
+    const l = { potentiel: Math.min(12, 0.8 * largeur), elementaire: Math.min(8, 0.36 * largeur) };
+    verifier(noeuds.map((n) => ({ ...n, largeur, cx: n.mx * largeur, cy: n.my * hauteurEtroite, l: l[n.region] ?? Math.min(9, 0.46 * largeur) })), `écran étroit de ${vue}rem`);
+  }
 });
 
 test('chaque identifiant est unique dans une page ; aria-controls, aria-describedby et data-bulle désignent un élément qui existe', options, () => {
