@@ -141,6 +141,9 @@ test('liste des races : tableau des magies innées en bas de page, races dans l�
   assert.equal(pastilles('drassahthac'), 14);
   assert.equal(pastilles('orios'), 3);
   assert.match(lignes.find((m) => m[1] === 'nain')[3], /<td class="tableau-magies__total">5<\/td>$/);
+  // pas de ligne de séparation « Races pures » / « Races hybrides » (demande du propriétaire) : une ligne de tableau par race, rien d'autre
+  assert.ok(!/Races (pures|hybrides)|scope="colgroup"/.test(tableau), 'aucune ligne de séparation');
+  assert.equal((tableau.match(/<tr>/g) ?? []).length - 1, (tableau.match(/<th scope="row"/g) ?? []).length, 'une ligne par race (plus celle des en-têtes)');
 });
 
 test('pages de race : le lien « Voir le tableau » mène au tableau de /wiki/races/', options, () => {
