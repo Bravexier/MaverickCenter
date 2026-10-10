@@ -232,6 +232,9 @@ pas de source citée ; le Markdown de la page ne sert plus qu'à la recherche et
 
 L'onglet Guide n'est plus une liste de liens (demande du propriétaire) : c'est un **guide du joueur** pour débutants, lu page après page, avec une flèche de
 chaque côté du texte (grisée au premier et au dernier chapitre), les touches ← → et, en bas, les chapitres voisins et la pagination (titre en infobulle).
+Sur écran tactile, **glisser le doigt** vers la gauche mène au chapitre suivant, vers la droite au précédent (demande du propriétaire ; script de
+`GuideChapitre.astro`) : geste franchement horizontal, d'un seul doigt, ni sur un tableau qui défile, ni depuis le bord de l'écran (gestes du système), ni
+sur une page zoomée ; la page suit un peu le doigt. `overscroll-behavior-x: none` empêche Chrome d'en faire aussi un retour dans l'historique.
 
 - **Un chapitre** est une page `guide/<slug>` (famille `docs`) dont le frontmatter porte `chapitre: N` (1, 2, 3… sans trou : l'ordre de lecture) et
   `partie: <id>`. Les autres pages du type `guide` (« Fiche de personnage : … », combat, conseils au MJ, listes) sont des **pages de référence** :
