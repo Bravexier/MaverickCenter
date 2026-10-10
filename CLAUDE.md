@@ -48,11 +48,12 @@ stables, SQL portable, modifications historisées, règles en données, moteur p
 | `client/src/data/rules.json` | Règles de création de personnage |
 | `client/test/` | Tests `node:test` (`npm test`) |
 | `tools/import-gdocs.mjs` | Export des Google Docs/Sheets listés dans `sources/sources.json` |
-| `deploy/` | Paquet d'hébergement NAS (nginx + Docker, mot de passe) **jusqu'à la 1.0**, inchangé : `build.sh` qui le génère, `update-nas.sh` (mise à jour auto depuis la branche `site`, reconstruite depuis `dev`). `deploy/installateur/` : l'hébergement **à partir de la 1.0** — `installateur.sh` (modèle) et `fabriquer.mjs` → un installateur `.sh` autonome par livraison, mode **prod** (serveur normal) ou **test** (copie le `db/` du serveur normal à l'installation) ; `mise-a-jour.sh` exécute le dernier du mode de l'instance ; `fabriquer.sh prod\|test` à la main |
+| `deploy/` | Paquet d'hébergement NAS (nginx + service des personnages dans Docker, mot de passe) **jusqu'à la 1.0** : `build.sh` qui le génère, `update-nas.sh` (mise à jour auto depuis la branche `site`, reconstruite depuis `dev`). `deploy/installateur/` : l'hébergement **à partir de la 1.0** — `installateur.sh` (modèle) et `fabriquer.mjs` → un installateur `.sh` autonome par livraison, mode **prod** (serveur normal) ou **test** (copie le `db/` du serveur normal à l'installation) ; `mise-a-jour.sh` exécute le dernier du mode de l'instance ; `fabriquer.sh prod\|test` à la main |
 | `tools/flux-git/`, `.github/workflows/` | Flux Git (`docs/flux-git.md`) : `regles.mjs` (pur, testé), `cli.mjs` (le bot) ; `garde-branches.yml` (création, PR, et balayage de toutes les branches toutes les 6 h), `livraison.yml` (versions, puis le site sur la branche `site` avant la 1.0 ou les installateurs en *releases* ensuite ; refuse si le dépôt n'est pas privé), `ci.yml` ; règles GitHub importables dans `.github/rulesets/` |
 | `tools/build-artifact.mjs` | Version « portable » (liens relatifs, CSS/JS inline) publiée comme page privée claude.ai |
 | `data/schema.sql`, `data/rows/` | **Base SQLite** : structure (160 tables STRICT, FTS5, 34 vues) et lignes versionnées (1015 pages + 7 domaines ; les 18 tables des fiches de personnages et des groupes de jeu, section 13, restent vides). Depuis `client/` : `npm run db:build` (→ `var/maverick.db`, ignoré par git), `db:check`, `db:pages-check` / `db:sync-pages` (pages des `.md` → `data/rows`), `db:init` (base vide), `db:doc` (régénère `docs/sql/structure.md` et `apercu.md`), `db:migrate` (changement de schéma : `data/migrations/`). Chaque table d'entités a une colonne `remarque` (texte libre, vide par défaut) qui reprend les notes de cellule des classeurs. Le site en tire ses pages (fichiers `.md` fabriqués au build) et l'onglet **DB** (`/donnees/` : toutes les tables, et la base en téléchargement `/donnees/maverick.db`) ; les lignes typées ne se réimportent pas encore depuis les classeurs. Voir `docs/sql/remplissage.md`. |
-| `api/` | Services CRUD de personnages (Node sans dépendance + .NET). Non utilisés par le site pour l'instant. |
+| `client/serveur/` | **Mode client / serveur** (`docs/serveur.md`) : le service des personnages (Node ≥ 22.13, `node:sqlite`, **aucun paquet npm**) qui répond sous `/api/` (prétirés : liste, lecture, création, modification avec `version`, contrôles de `v_personnage_controle`) et écrit dans la **base vivante** `db/vivante.db` = copie de `site/donnees/maverick.db` + lignes de la section 13, refaite quand les règles changent (fiches reprises, ou rien ne change et `/api/etat` dit pourquoi ; archives dans `db/archives/`). Livré **avec le site** : `serveur/livraison.mjs` (intégration Astro) le copie dans `dist/_serveur/` avec `version.json` ; format d'une fiche partagé avec les pages : `src/lib/fiche-format.mjs` |
+| `api/` | Services CRUD de personnages d'avant le site (Node sans dépendance + .NET). Non utilisés par le site ; le service actif est `client/serveur/`. |
 | `docs/` | `sources.md`, `content-guide.md`, `character-generator.md`, `fiche-auto.md` (fiche Google corrigée V1.2) |
 
 ## Commandes (depuis `client/`, Node ≥ 22.12)
@@ -60,6 +61,7 @@ stables, SQL portable, modifications historisées, règles en données, moteur p
 ```bash
 npm install
 npm run dev        # http://localhost:4321 — relancer après l'ajout d'un NOUVEAU fichier de contenu
+npm run serveur    # le service des personnages (http://127.0.0.1:8787/api/, base vivante dans var/serveur/) : `npm run dev` lui transmet /api/
 npm run build      # build statique dans dist/ ; les [[liens]] cassés produisent un avertissement [wikilinks]
 npm test           # tests unitaires + intégrité de rules.json
 HIDE_EXAMPLES=1 npm run build   # version à montrer : sans les pages `status: example`
@@ -156,6 +158,16 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   `db:export-pages` efface alors le `.md` : vérifier la sortie de `db:sync-pages` avant d'exporter. `test/guide.test.mjs` épingle le plan.
   Sur écran tactile, glisser le doigt tourne la page (script de `GuideChapitre.astro`, hors tableau qui défile et bord de l'écran) ; `html { overscroll-behavior-x: none; }`
   de `styles/guide/guide.css` empêche Chrome d'en faire aussi un retour dans l'historique : ne pas le retirer (`test/guide-html.test.mjs`).
+- **Service des personnages** (`client/serveur/`, `docs/serveur.md`) : deux conteneurs dans chaque `docker-compose.yml` (NAS et installateurs), nginx et
+  `serveur` (`node:22-alpine`, exécute `site/_serveur/serveur/index.mjs`, port 8787 sans port publié) ; `deploy/nginx.conf` (commun) transmet `/api/` (adresse
+  résolue à chaque requête, `proxy_connect_timeout 5s`) et répond 404 sur `/_serveur/`. Le service se relance seul quand `version.json` change (code 0, `restart:
+  unless-stopped`), refait la base vivante quand `site/donnees/maverick.db` change, rouvre `db/vivante.db` remplacée : un changement compte vu deux fois
+  de suite (`guetteur`). L'installateur de test remplace le **contenu** de `db/`, jamais le dossier (monté dans le conteneur). Avant la 1.0 : prétirés
+  seulement, pas de comptes (mot de passe du site) ; une écriture exige `Content-Type: application/json` et refuse `Sec-Fetch-Site` d'un autre site.
+  Les adresses de l'API finissent par « / » (`/api/personnages/<id>/`) : en développement, Astro (`trailingSlash: 'always'`) refuse les autres avant de les relayer.
+  Le service n'importe que `node:…` et des chemins relatifs (`modulesDuServeur`, testé) ; `tools/build-artifact.mjs` n'emporte pas `_serveur/`.
+  Une table ajoutée à la section 13 va dans `TABLES_VIVANTES` (`base-vivante.mjs`) et, si elle cite `personnage`, dans `PARTIES_DE_FICHE` ou `HORS_FICHE`
+  (`fiche-format.mjs`) : les tests `serveur-*` le vérifient contre `data/schema.sql`.
 - `npm run autolink` (aperçu) / `-- --write` : maillage automatique des pages, voir `docs/content-guide.md`.
 - Le générateur ne gère ni compétences, ni équipement, ni dés (voir `docs/character-generator.md`).
 - **Fiches de personnages** (section 13 de `data/schema.sql`, migration `0011-personnages`) : les tables gardent les **choix** du joueur (race, ethnie, magies, classes, caractéristiques de base et croix (R19), points de compétences,
@@ -164,7 +176,7 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   Demande du propriétaire : fiche de **joueur** (visible de lui seul et des administrateurs, ouvrable à des utilisateurs désignés, à tous les MJ ou à tous) ou **prétiré** (à personne, visible par tous) ;
   **groupes** de jeu (one-shot, campagne) : une fiche inscrite par membre et par groupe, visible des membres de ce groupe ; rôles cumulables `mj`, `editeur`, `admin` (`utilisateur_role`).
   Qui voit quoi : `v_personnage_visible` ; inscriptions : `v_groupe_controle` (voir `docs/character-generator.md`, « Fiches dans la base »).
-  Les tables restent **vides dans `data/rows`** (les fiches réelles vivront dans la base du serveur, jamais dans git ni dans `/donnees/maverick.db`). Les bugs de la fiche relevés (non reproduits) sont dans `docs/sql/a-valider.md` §3.
+  Les tables restent **vides dans `data/rows`** (les fiches réelles vivent dans la base vivante du service, `db/` de l'instance : voir plus haut ; jamais dans git ni dans `/donnees/maverick.db`). Les bugs de la fiche relevés (non reproduits) sont dans `docs/sql/a-valider.md` §3.
 
 ## Conventions de travail
 

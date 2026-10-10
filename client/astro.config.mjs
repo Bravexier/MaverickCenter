@@ -2,9 +2,12 @@ import { defineConfig } from 'astro/config';
 import { unified } from '@astrojs/markdown-remark';
 import { fileURLToPath } from 'node:url';
 import { buildIndex, remarkWikilinks, scanContent } from './src/lib/wikilinks.mjs';
+import { integrationServeur } from './serveur/livraison.mjs';
 
 // Déploiement sous un sous-chemin (ex. GitHub Pages) : SITE_BASE=/MaverickCenter/ SITE_URL=https://…
 const base = process.env.SITE_BASE ?? '/';
+// Service des personnages (mode client / serveur, docs/serveur.md) : en développement, `npm run serveur` écoute ici et `npm run dev` lui transmet /api/.
+const service = `http://127.0.0.1:${process.env.PORT_SERVICE ?? 8787}`;
 const contentDir = fileURLToPath(new URL('./src/content/wiki', import.meta.url));
 
 // HIDE_EXAMPLES=1 : version à montrer, sans les pages de démonstration (`status: example`).
@@ -21,6 +24,13 @@ export default defineConfig({
   build: { inlineStylesheets: process.env.INLINE_CSS === '1' ? 'always' : 'auto' },
   site: process.env.SITE_URL,
   trailingSlash: 'always',
+  // Le service est livré avec le site, dans dist/_serveur/ (serveur/livraison.mjs).
+  integrations: [integrationServeur()],
+  vite: {
+    server: {
+      proxy: { [`${base}api/`]: { target: service, rewrite: (chemin) => chemin.slice(base.length - 1) } },
+    },
+  },
   markdown: {
     // Sätteri est le processeur par défaut d'Astro 7 mais n'exécute pas les plugins remark :
     // on garde unified pour le plugin des [[liens]].

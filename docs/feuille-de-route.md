@@ -34,7 +34,9 @@ au moment de la bascule, la base est la référence. Le registre `tools/sheets/c
   une règle : un effet non codé est absent de la simulation, pas deviné.
 - **Le moteur de règles reste pur et sans dépendance** (`client/src/lib/*.mjs`) : le même code sert au site, à l'API, au générateur de fiche et au simulateur.
 - **Un site statique ne suffit plus pour l'édition ni pour la simulation** : il faudra un service (API + authentification, rôles lecteur / éditeur) ; le site
-  de lecture peut rester statique ou devenir rendu côté serveur selon l'hébergement choisi.
+  de lecture peut rester statique ou devenir rendu côté serveur selon l'hébergement choisi. Premier pas, préparé avant la 1.0 (demande du propriétaire) :
+  le **mode client / serveur** ([`serveur.md`](serveur.md)) — un service Node sans dépendance (`client/serveur/`), livré avec le site et servi par nginx sous
+  `/api/`, qui enregistre les prétirés dans la base vivante (`db/`) ; l'authentification s'y ajoutera à la 1.0.
 
 ## Authentification : Discord (décision du propriétaire du projet)
 
@@ -56,8 +58,9 @@ Toute la communauté est sur Discord : la connexion se fait par « Se connecter 
 
 ## Fiches de personnages : joueurs, prétirés, groupes et visibilité (demande du propriétaire)
 
-Les tables sont prêtes dans la base (section 13 de `data/schema.sql`, détail dans `character-generator.md`, « Fiches dans la base ») ; les pages de gestion viendront
-plus tard (elles supposent la connexion Discord).
+Les tables sont prêtes dans la base (section 13 de `data/schema.sql`, détail dans `character-generator.md`, « Fiches dans la base »). Les **prétirés**
+s'enregistrent dès avant la 1.0 par le service des personnages ([`serveur.md`](serveur.md)) ; les fiches de joueur, le partage et les groupes supposent
+la connexion Discord (1.0).
 
 - **Deux sortes de fiches** : celles qu'un joueur crée pour son propre personnage, et les **prétirés**, qui ne sont à personne et que tout le monde voit.
 - Une fiche de joueur n'est **visible que de lui seul (et des administrateurs)**. Il peut l'ouvrir à **un ou plusieurs utilisateurs désignés**, à **tous les MJ**

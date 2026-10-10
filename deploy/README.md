@@ -1,8 +1,9 @@
 # Héberger le site sur un NAS
 
-Le site est **100 % statique** : un dossier de fichiers HTML à servir avec n'importe quel serveur web.
-Ce dossier contient tout pour le faire tourner avec nginx dans Docker (Synology *Container Manager*,
-QNAP *Container Station*, Unraid, TrueNAS, ou tout hôte Docker).
+Le site est un dossier de pages statiques, servi par nginx, accompagné d'un petit **service** (Node) qui enregistre les fiches de personnages
+dans sa base, `db/` (mode client / serveur : [`docs/serveur.md`](../docs/serveur.md)). Le code du service arrive avec le site (`site/_serveur/`).
+Ce dossier contient tout pour les faire tourner dans Docker (Synology *Container Manager*, QNAP *Container Station*, Unraid, TrueNAS, ou tout hôte
+Docker) : deux conteneurs, `maverick-center` (nginx) et `maverick-center-serveur` (le service).
 
 > Ce paquet est l'installation du NAS, jusqu'à la 1.0. À partir de la 1.0, la solution sera hébergée et installée par les
 > installateurs autonomes de [`installateur/`](installateur/README.md) (serveur normal et serveur de test).
@@ -22,10 +23,27 @@ QNAP *Container Station*, Unraid, TrueNAS, ou tout hôte Docker).
 
 Sur Synology : *Container Manager → Projet → Créer*, choisissez le dossier décompressé : il détecte `docker-compose.yml`.
 
+Le dossier `db/` (créé au premier lancement) contient la base vivante du service : **les fiches enregistrées**. C'est la seule donnée qui ne se
+reconstruit pas : sauvegardez-le (par exemple avec *Hyper Backup*), de préférence conteneur `maverick-center-serveur` arrêté.
+
+## Passage au mode client / serveur (une seule fois, NAS installé avant ce changement)
+
+`update-nas.sh` ne met à jour que `site/` : il apporte le code du service, mais pas la nouvelle configuration. Une fois :
+
+1. Remplacez `docker-compose.yml` et `nginx.conf` dans le dossier du projet par ceux du dépôt (dossier `deploy/` sur GitHub : ouvrir le fichier,
+   *Download raw file*, puis le déposer avec *File Station* à la place de l'ancien). Gardez `.htpasswd`, `.github-token` et `site/`.
+2. Relancez le projet : `docker compose up -d` (Synology : *Container Manager → Projet → maverick-center → Action → Compiler*). Le conteneur
+   `maverick-center-serveur` apparaît ; il attend que `site/_serveur/` existe (prochaine mise à jour du site) puis crée `db/vivante.db`.
+3. Vérifiez : `http://IP-DU-NAS:8080/api/etat/` doit afficher l'état du service (`"disponible":true`).
+
+Ensuite, plus rien à faire à la main : le service se relance seul quand une mise à jour du site apporte une nouvelle version de son code, et
+refait sa base quand les règles changent, sans perdre les fiches (voir `docs/serveur.md`).
+
 ## Sans Docker
 
 Servez le dossier `site/` avec le serveur web du NAS (Synology *Web Station*, par exemple) et activez un mot de passe
-d'accès dans ses réglages. Aucun module serveur n'est nécessaire (pas de PHP, pas de base de données).
+d'accès dans ses réglages : la lecture fonctionne. L'enregistrement des fiches demande en plus le service (Node.js ≥ 22.13 :
+`node site/_serveur/serveur/index.mjs`, voir ses variables dans `docs/serveur.md`) et un renvoi de `/api/` vers lui (port 8787).
 
 ## Accès depuis l'extérieur du réseau local
 
@@ -85,5 +103,7 @@ voir `docs/flux-git.md`) refuse de publier si le dépôt n'est plus privé.
 ## Ce qui a été vérifié
 
 Le site statique est construit et testé (tests unitaires, contrôle navigateur). Le script `update-nas.sh` est testé contre un
-faux serveur GitHub (`client/test/update-nas.test.mjs`). Ni la configuration nginx, ni `docker-compose.yml`, ni le contact avec le
-vrai GitHub depuis un NAS n'ont pu être exécutés dans l'environnement de développement : le premier lancement sur le NAS est le vrai test.
+faux serveur GitHub (`client/test/update-nas.test.mjs`), le service par `client/test/serveur-*.test.mjs`. `docker-compose.yml` et `nginx.conf` ont été
+lancés avec Docker dans l'environnement de développement (le 2026-10-10 : mot de passe, pages, `/api/`, `/_serveur/` refusé, relance du service sur une
+nouvelle version, base refaite quand les règles changent, site servi service arrêté). Le contact avec le vrai GitHub depuis un NAS n'a pas pu l'être :
+le premier lancement sur le NAS reste le vrai test.

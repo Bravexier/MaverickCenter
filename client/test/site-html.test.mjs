@@ -61,3 +61,12 @@ test('en-tête : la bande a la hauteur du menu, pas du logo, dont la pointe de l
   // téléphone : le menu passe sous le logo, qui reprend sa place dans le flux
   assert.ok(regles(petit, '.brand img').some((d) => d.includes('position:static')), 'logo dans le flux sur téléphone');
 });
+
+test('le service des personnages est livré avec le site, dans _serveur/ (mode client / serveur, docs/serveur.md)', options, async () => {
+  const { DOSSIER_LIVRE, ENTREE, modulesDuServeur } = await import('../serveur/livraison.mjs');
+  const info = JSON.parse(lire(`${DOSSIER_LIVRE}/version.json`));
+  assert.equal(info.version, JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version);
+  assert.deepEqual(info.modules, modulesDuServeur());
+  assert.ok(existsSync(join(dist, DOSSIER_LIVRE, ENTREE)));
+  assert.ok(existsSync(join(dist, 'donnees', 'maverick.db')), 'la base des règles qu’il recopie');
+});

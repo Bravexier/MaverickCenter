@@ -2,6 +2,7 @@
 # Prérequis : créer .htpasswd (voir README.md), sinon nginx refuse de démarrer.
 # Port et nom du conteneur : fichier .env de l'instance (posé par l'installateur : 8080 / maverick-center en production,
 # 8081 / maverick-center-test en test). Changez-les dans .env plutôt qu'ici.
+# Deux conteneurs : nginx sert le site (site/) et transmet /api/ au service des personnages, qui écrit dans la base vivante (db/).
 services:
   maverick-center:
     image: nginx:1.27-alpine
@@ -13,3 +14,19 @@ services:
       - ./site:/usr/share/nginx/html:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./.htpasswd:/etc/nginx/.htpasswd:ro
+
+  # Service des personnages (docs/serveur.md) : son code arrive avec le site (site/_serveur/) et il se relance seul quand une installation
+  # en livre une nouvelle version. Aucun port publié : seul nginx l'atteint.
+  serveur:
+    image: node:22-alpine
+    container_name: ${MAVERICK_CONTENEUR:-maverick-center}-serveur
+    restart: unless-stopped
+    command: ["sh", "-c", "until [ -f /site/_serveur/serveur/index.mjs ]; do echo 'Service des personnages : en attente du site (site/_serveur/)'; sleep 30; done; exec node --disable-warning=ExperimentalWarning /site/_serveur/serveur/index.mjs"]
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8787"
+      MAVERICK_REGLES: /site/donnees/maverick.db
+      MAVERICK_DB: /db
+    volumes:
+      - ./site:/site:ro
+      - ./db:/db

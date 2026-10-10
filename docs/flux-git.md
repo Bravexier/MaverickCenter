@@ -102,7 +102,8 @@ sur l'hôte, sans téléchargement ni jeton. Il est publié comme *release* GitH
 - **Serveur normal** : le site réellement utilisé (`maverick-center`, port 8080). Une installation remplace le site, **jamais la base vivante** (`db/`).
 
 La copie est faite par l'installateur, sur le serveur, au moment où il s'exécute : GitHub n'a pas accès à la base de production, et elle ne doit pas
-quitter le serveur. La base vivante (`db/`) se remplira avec les utilisateurs de la 1.0 ; jusque-là, la base du site (`/donnees/`) est reconstruite
+quitter le serveur. La base vivante (`db/`) est celle du service des personnages ([`serveur.md`](serveur.md)) : les prétirés dès avant la 1.0, puis les
+utilisateurs et leurs fiches ; la base des règles du site (`/donnees/`), elle, est reconstruite
 depuis `data/rows` à chaque version.
 
 **Le jour de la 1.0** : sur l'hôte choisi, lancer l'installateur `v1.0.0` (serveur normal), puis `v1.0.0-test` (serveur de test, qui copie sa base) ;
