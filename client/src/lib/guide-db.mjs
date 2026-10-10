@@ -74,7 +74,7 @@ export function chargerMagiesDuGuide(db) {
   }
   return db
     .prepare(
-      `SELECT m.id, m.nom, m.chakra_offert, m.sante_offerte, m.caracteristique_brut, c.nom AS caracteristique
+      `SELECT m.id, m.nom, m.chakra_offert, m.sante_offerte, m.caracteristique_id, m.caracteristique_brut, c.nom AS caracteristique
          FROM magie m LEFT JOIN caracteristique c ON c.id = m.caracteristique_id ORDER BY m.ordre`,
     )
     .all()
@@ -83,6 +83,7 @@ export function chargerMagiesDuGuide(db) {
       nom: m.nom,
       // « AU CHOIX ou ALÉATOIRE » (Potentiel Illimité) reste écrit comme la source, en minuscules
       caracteristique: m.caracteristique ?? m.caracteristique_brut?.toLowerCase() ?? null,
+      caracteristique_id: m.caracteristique_id,
       chakra: m.chakra_offert,
       sante: m.sante_offerte,
       dieux: dieux.get(m.id) ?? [],

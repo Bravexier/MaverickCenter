@@ -3,6 +3,7 @@
 // décisions R6 et R7 (corrections de la fiche auto, docs/fiche-auto.md, point 4).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { couleurDeCaracteristique } from '../src/lib/caracteristiques-postures.mjs';
 import { CLASS_COLORS } from '../src/lib/class-groups.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
@@ -32,6 +33,12 @@ test('maîtrise d’arme : 1 dé sans maîtrise (guide, cité mot pour mot), 5 d
   assert.equal(db.prepare("SELECT texte FROM regle_constante WHERE id = 'maitrise_arme.des_max'").get().texte, '1d, 2d, 3d, 4d, 5d');
   assert.match(db.prepare("SELECT sql FROM sqlite_master WHERE name = 'personnage_maitrise_arme'").get().sql, /CHECK \(des BETWEEN 1 AND 5\)/,
     'la base garde des dés, de 1 à 5');
+});
+
+test('caractéristiques : l’ordre de la fiche et leur couleur (demande du propriétaire), que leurs compétences reprennent ; texte foncé sur ces couleurs claires', () => {
+  assert.deepEqual(regles.caracteristiques.map((c) => c.nom), ['Force', 'Volonté', 'Intelligence', 'Perception', 'Social', 'Agilité']);
+  for (const c of regles.caracteristiques) assert.deepEqual([c.couleur, c.texte], [couleurDeCaracteristique(c.id), '#171210'], c.id);
+  assert.ok(regles.competences.every((k) => regles.caracteristiques.some((c) => c.id === k.caracteristique_id)), 'chaque compétence trouve la couleur de sa caractéristique');
 });
 
 test('races : l’ordre et les couleurs de /races/, valeurs de l’onglet de la race (R13), bornes des six caractéristiques', () => {

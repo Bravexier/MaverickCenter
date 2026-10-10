@@ -63,6 +63,12 @@ test('les tableaux viennent de la base : progression, postures, compétences, pe
   assert.equal((postures.match(/class="guide-posture__nom"/g) ?? []).length, 6);
   const competences = lire('guide/caracteristiques-et-competences').main;
   assert.equal((competences.match(/class="guide-competences__groupe"/g) ?? []).length, 6);
+  // chacune dans sa couleur (demande du propriétaire, lib/caracteristiques-postures.mjs)
+  assert.deepEqual([...postures.matchAll(/class="guide-posture" style="--c: (#[0-9a-f]{6}); --c-texte: #171210"/g)].map((m) => m[1]),
+    ['#ff6666', '#99ff99', '#eeeeee', '#9999ff', '#ffff66', '#cc66ff'], 'Offensif, Défensif, Neutre, Focus, Vigilance, Symbiose');
+  assert.deepEqual([...competences.matchAll(/class="guide-competences__groupe" style="--c: (#[0-9a-f]{6}); --c-texte: #171210"/g)].map((m) => m[1]),
+    ['#ff6666', '#ff99ff', '#66ccff', '#ffcc00', '#dddddd', '#99ff66'], 'Force, Volonté, Intelligence, Perception, Social, Agilité');
+  assert.match(lire('guide/choisir-ses-magies').main, /<span class="guide-carac" style="--c: #dddddd; --c-texte: #171210">Social<\/span>/, '+1 en Social du Feu');
   const attributs = lire('guide/finaliser-son-personnage').main;
   assert.equal((attributs.match(/class="guide-fil-rouge__perso"/g) ?? []).length, 4);
   assert.match(attributs, /20 de la race \+ 9 de la classe \+ 10 de la magie = 39/, 'santé du guerrier orios');

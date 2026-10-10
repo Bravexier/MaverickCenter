@@ -16,7 +16,8 @@ La fiche se remplit dans l'ordre du guide (« Créer son personnage »), une sec
 guide : 1 race et ethnie, 2 magies et dieux, 3 classe(s) et spécialités (avec l'XP et le niveau), 4 caractéristiques, compétences et maîtrises d'armes,
 5 sorts, 6 attributs, alignement, bourse, métier ; puis 7 gains de niveau et dons à choisir, 8 équipement (armes, armure, bouclier, accessoires,
 inventaire), 9 état en jeu, notes, événements, et le contrôle des règles. Races, magies et classes sont des **pastilles** dans les couleurs de leurs pages
-(`/races/`, `/magies/`, `/classes/`) ; celles que les règles ferment sont grisées. Le **Potentiel Illimité** en magie innée met l'Archimage en classe 1
+(`/races/`, `/magies/`, `/classes/`) ; celles que les règles ferment sont grisées. Chaque caractéristique, et le tableau de ses compétences, a sa couleur
+(demande du propriétaire, `lib/caracteristiques-postures.mjs`, transmise par `regles.json` : `couleur` et `texte` de chaque caractéristique). Le **Potentiel Illimité** en magie innée met l'Archimage en classe 1
 et l'y **verrouille** (les autres classes 1 sont grisées, la pastille de l'Archimage ne se retire pas) ; sans lui, l'Archimage est grisée à tous les rangs,
 et quitter le Potentiel Illimité la retire (décision R23). Les dons à choix d'une classe ou d'une spécialité retirée partent avec elle. Tout ce que la base
 garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).

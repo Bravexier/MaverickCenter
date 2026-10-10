@@ -311,12 +311,13 @@ function construireCaracteristiques() {
       valeur.textContent = c.base === null ? '—' : String(c.valeur);
       bonus.textContent = c.bonus ? `dont +${c.bonus} de la magie innée` : `de ${c.min} à ${c.max}`;
     });
-    return el('div', { class: 'carac' }, el('span', { class: 'carac__nom' }, k.nom), valeur, bonus, base, croix);
+    return el('div', { class: 'carac', style: `--c: ${k.couleur}; --c-texte: ${k.texte}` }, el('span', { class: 'carac__nom' }, k.nom), valeur, bonus, base, croix);
   }));
 
   const budgetC = budgetCompetences(regles, fiche);
   etatBudget($('budget-competences'), budgetC.total, budgetC.attendu, 'Points naturels');
-  reconstruire($('competences'), 'fixe', () => regles.caracteristiques.map((k) => el('div', {},
+  // un tableau par caractéristique, dans sa couleur
+  reconstruire($('competences'), 'fixe', () => regles.caracteristiques.map((k) => el('div', { class: 'competences__groupe', style: `--c: ${k.couleur}; --c-texte: ${k.texte}` },
     el('table', { class: 'fiche-table' },
       el('thead', {}, el('tr', {}, el('th', {}, k.nom), el('th', { class: 'nombre' }, 'Nat.'), el('th', { class: 'nombre' }, 'Acquis'), el('th', { class: 'nombre' }, 'Score'))),
       el('tbody', {}, regles.competences.filter((x) => x.caracteristique_id === k.id).map((comp) => {

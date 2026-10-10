@@ -244,26 +244,45 @@ input[aria-invalid='true'], select[aria-invalid='true'] { border-color: var(--da
 #progression select { width: auto; }
 .fiche-defile { overflow-x: auto; }
 
-/* caractéristiques : six cartes */
+/* caractéristiques : six cartes, chacune dans sa couleur (--c, --c-texte posées par le script : lib/caracteristiques-postures.mjs, demande du
+   propriétaire). Couleurs claires : le nom est un aplat au texte foncé, bordé de --text pour qu'un gris clair (Social) reste visible sur la feuille. */
 .caracs { display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 8.5rem), 1fr)); }
 .carac {
+  --c: var(--etape);
   display: grid;
   gap: 0.3rem;
   justify-items: center;
   padding: 0.6rem;
-  border: 1px solid var(--etape-ligne);
+  border: 1px solid color-mix(in srgb, var(--c) 60%, var(--border));
   border-radius: var(--radius);
-  background: var(--etape-doux);
+  background: color-mix(in srgb, var(--c) 12%, var(--surface));
   text-align: center;
 }
-.carac__nom { font-weight: 700; }
-.carac__valeur { font-size: 1.8rem; font-weight: 700; line-height: 1; color: color-mix(in srgb, var(--etape) 70%, var(--text)); }
+.carac__nom {
+  padding: 0.05rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--text) 25%, var(--c));
+  border-radius: 999px;
+  background: var(--c);
+  color: var(--c-texte, #fff);
+  font-weight: 700;
+}
+.carac__valeur { font-size: 1.8rem; font-weight: 700; line-height: 1; color: color-mix(in srgb, var(--c) 35%, var(--text)); }
 .carac__bonus { font-size: 0.75rem; color: var(--muted); }
 .carac input { width: 4.5rem; text-align: center; }
 .carac select { width: 100%; font-size: 0.8rem; }
 
-/* compétences : six blocs de cinq */
-.competences { display: grid; gap: 0.8rem 1.2rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); }
+/* compétences : six blocs de cinq, chacun dans la couleur de sa caractéristique (en-tête en aplat, lignes à peine teintées) */
+.competences { display: grid; gap: 0.8rem 1.2rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); align-items: start; }
+.competences__groupe {
+  --c: var(--etape);
+  border: 1px solid color-mix(in srgb, var(--c) 60%, var(--border));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--c) 7%, var(--surface));
+  overflow: hidden;
+}
+.competences__groupe thead th { background: var(--c); color: var(--c-texte, #fff); }
+.competences__groupe thead th:first-child { font-size: 0.9rem; font-weight: 700; }
+.competences__groupe tbody tr:last-child td { border-bottom: 0; }
 .competences .fiche-table td:first-child { width: 45%; }
 .competences .fiche-table input[type='number'] { width: 3.8rem; padding-inline: 0.35rem; }
 .score { font-weight: 700; white-space: nowrap; }

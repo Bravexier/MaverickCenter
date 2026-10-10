@@ -184,6 +184,9 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   Guide : `data-ed-morceau` = un morceau de texte visible du corps (`decouperCorps`) ; les liens du wiki portent `data-cible` (`wikilinks.mjs`) et la couleur d'une case
   s'écrit `{couleur:x}` (`markdown-couleurs.mjs`, plugin déclaré dans `astro.config.mjs` ET `lib/guide-rendu.ts`, qui doivent rester d'accord) ; `test/markdown-edition.test.mjs`
   rejoue l'aller-retour Markdown → HTML → Markdown sur toutes les pages du guide.
+- **Couleurs des caractéristiques (et de leurs compétences) et des postures** (demande du propriétaire) : `lib/caracteristiques-postures.mjs` (clés = ids de la base,
+  `test/caracteristiques-postures.test.mjs`), posées en `--c` / `--c-texte` (aplat clair, texte foncé) dans le guide (`GuideBloc.astro`) et la fiche ; la fiche les reçoit
+  par `regles.json` (`fiche-regles.mjs`), son script n'importe pas le module.
 - `npm run autolink` (aperçu) / `-- --write` : maillage automatique des pages, voir `docs/content-guide.md`.
 - **Fiche de personnage** (`/fiche/`, `docs/character-generator.md`) : `/generateur/` n'existe plus, la page 404 y renvoie (`lib/nav.mjs#nouvelleAdresse`,
   `PAGES_RENOMMEES`). Les règles de la page viennent de la base au build (`lib/fiche-regles.mjs`), jamais écrites à la main ; chaque calcul de

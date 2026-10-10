@@ -155,7 +155,7 @@ test('les blocs de règles relisent la base dans l’ordre de la fiche', () => {
   assert.ok(competences[1].competences.some((k) => k.nom === 'Calme'), 'Calme et non Prouesse (décision R4)');
   const magies = chargerMagiesDuGuide(db);
   assert.equal(magies.length, 15);
-  assert.deepEqual(magies.find((m) => m.nom === 'Feu'), { id: 'magies/magie-du-feu', nom: 'Feu', caracteristique: 'Social', chakra: 5, sante: 0, dieux: ['Séraphin'] });
+  assert.deepEqual(magies.find((m) => m.nom === 'Feu'), { id: 'magies/magie-du-feu', nom: 'Feu', caracteristique: 'Social', caracteristique_id: 'social', chakra: 5, sante: 0, dieux: ['Séraphin'] });
   assert.equal(magies.find((m) => m.nom === 'Potentiel Illimité').caracteristique, 'au choix ou aléatoire');
   assert.deepEqual(chargerInitiative(db).map((i) => i.bonus_brut), ['-2 initiative', '+0 initiative', '+2 initiative', '+4 initiative', '+6 initiative']);
   assert.deepEqual(chargerEntrainement(db).map((e) => e.rate), [false, false, false, false, false, true]);
