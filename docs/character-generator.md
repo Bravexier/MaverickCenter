@@ -81,7 +81,7 @@ depuis les règles de la base, si bien qu'une règle corrigée corrige toutes le
 | `personnage_progression` | À chaque niveau global à partir du 2 : les 15 points d'attributs répartis entre santé et chakra, et le dé bonus des niveaux 5, 10, 15, 20 |
 | `personnage_capacite` | Dons de classe **à choix** (options d'une ligne, paliers de l'Archimage) ; les autres se déduisent |
 | `personnage_sort` | Sorts de la liste (AA55:AY74) et leur NM |
-| `personnage_maitrise_arme` | Dés de maîtrise par famille d'armes (AA2:AV7) |
+| `personnage_maitrise_arme` | Dés de maîtrise par famille d'armes (AA2:AV7) : 1 dé sans maîtrise, un de plus par point de maîtrise, 5 au plus ; la page fait choisir des points (4 au plus, constantes `maitrise_arme.*` de `regle_constante`) |
 | `personnage_arme`, `personnage_armure`, `personnage_bouclier_materiau`, `personnage_accessoire`, `personnage_inventaire` | Équipement : catalogue de la base (arme, matériau, améliorations, pièces élémentaires, effets d'accessoire et valeur tirée, case « Malédiction ») et sac |
 | `groupe`, `groupe_membre` | Groupe de jeu (one-shot ou campagne), ses membres (MJ ou joueur) et la fiche que chacun y a inscrite |
 

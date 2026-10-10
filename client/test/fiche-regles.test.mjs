@@ -24,6 +24,16 @@ test('tout est sérialisable et chaque liste a toutes les lignes de sa table', (
   assert.equal(regles.constantes['caracteristique.bonus_magie_innee'], 1);
 });
 
+test('maîtrise d’arme : 1 dé sans maîtrise (guide, cité mot pour mot), 5 dés au plus (liste « 1d » à « 5d » de la fiche auto), soit 4 points', () => {
+  assert.equal(regles.constantes['maitrise_arme.des_sans_maitrise'], 1);
+  assert.equal(regles.constantes['maitrise_arme.des_max'], 5);
+  const guide = db.prepare("SELECT texte, page_id FROM regle_constante WHERE id = 'maitrise_arme.des_sans_maitrise'").get();
+  assert.ok(db.prepare('SELECT corps_md FROM page WHERE id = ?').get(guide.page_id).corps_md.includes(guide.texte), guide.texte);
+  assert.equal(db.prepare("SELECT texte FROM regle_constante WHERE id = 'maitrise_arme.des_max'").get().texte, '1d, 2d, 3d, 4d, 5d');
+  assert.match(db.prepare("SELECT sql FROM sqlite_master WHERE name = 'personnage_maitrise_arme'").get().sql, /CHECK \(des BETWEEN 1 AND 5\)/,
+    'la base garde des dés, de 1 à 5');
+});
+
 test('races : l’ordre et les couleurs de /races/, valeurs de l’onglet de la race (R13), bornes des six caractéristiques', () => {
   assert.deepEqual(regles.races.map((r) => r.id), ORDRE_DES_RACES);
   for (const r of regles.races) {

@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 15;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 16;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -3475,7 +3475,8 @@ CREATE TABLE personnage_sort (
 
 CREATE INDEX personnage_sort_sort ON personnage_sort (sort_id);
 
--- « Maîtrise d'armes » (AA2:AV7) : nombre de dés (1d à 5d) par famille d'armes. Famille absente = pas de maîtrise.
+-- « Maîtrise d'armes » (AA2:AV7) : nombre de dés (1d à 5d) par famille d'armes. Famille absente = pas de maîtrise (1d). Chaque point de maîtrise
+-- ajoute un dé : 4 points au plus (regle_constante 'maitrise_arme.des_sans_maitrise' et 'maitrise_arme.des_max', migration 0016).
 CREATE TABLE personnage_maitrise_arme (
   personnage_id   TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
   arme_famille_id TEXT    NOT NULL REFERENCES arme_famille(id),

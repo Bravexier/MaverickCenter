@@ -212,6 +212,16 @@ function bonusDAccessoires(regles, fiche, cible) {
   return total;
 }
 
+/**
+ * Maîtrise d'une famille d'armes : la base garde le nombre de dés de dégâts (personnage_maitrise_arme.des, liste « 1d » à « 5d » de la fiche
+ * auto V15.2.2) ; sans maîtrise, 1 dé, et chaque point de maîtrise en ajoute un (guide « Maîtrise d'arme ») : 4 points au plus, donc 5 dés.
+ */
+export function maitriseDArme(regles) {
+  const sans = constante(regles, 'maitrise_arme.des_sans_maitrise');
+  const max = constante(regles, 'maitrise_arme.des_max');
+  return { desSansMaitrise: sans, desMax: max, pointsMax: max - sans, desDe: (points) => sans + points, pointsDe: (des) => Math.max(0, des - sans) };
+}
+
 /** Points gagnés par la progression (personnage_progression) : santé, chakra, et le dé (sur l'un, l'autre ou les deux, « 1d4 pour les deux »). */
 function gainsDeProgression(fiche) {
   let sante = 0;
