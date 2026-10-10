@@ -62,6 +62,8 @@ La base des fiches (section 13, `docs/character-generator.md`, « Fiches dans la
 
 La « Fiche personnage Auto Maverick V1.1 » du Drive (créée le 3 avril 2026, après la V15.2.2) a la même disposition (les cellules citées par la base y sont les mêmes). Elle corrige **B2** et **B3** (dons de la classe 2 au niveau de la classe 2), **en partie B4** (+4 AM de la 2ᵉ spécialité « Masochiste » du Flagelleur, mais pas des 2ᵉ spécialités des classes raciales, R7), et **ni B1 ni B5**. Elle ajoute des calculs absents de la V15.2.2 (+3 Atk du Guerrier, +10 avec « Hyper contact » ; portée +1 des armes de mêlée du Hujin ; XP du palier suivant), que le moteur reprendra de leurs dons.
 
+La **V1.2** (2026-10-10, Drive du propriétaire : copie de la V1.1 qui lit les copies des classeurs) corrige B1 à B5 et les autres erreurs relevées depuis ; la liste, les cellules et ce qui reste à trancher (armure élémentaire, Mode Hyper des magies, matrice Arcane/Corruption) sont dans `docs/fiche-auto.md`.
+
 Questions :
 
 | # | Question | Ce que fait la base en attendant |
@@ -70,5 +72,5 @@ Questions :
 | Q2 | Corruption en **magie acquise** pour l'Elfe Noir Charbon et le Felfe Noir, que la fiche (BDD!F2) refuse toujours | **Décidé : permise** (R20, modification récente pas encore sur la fiche) |
 | Q3 | Les personnages déjà en jeu, que les joueurs ont remplis dans leur copie de la fiche auto (Google Sheets) : faut-il les reprendre dans la base ? Le Drive accessible ne montre que les modèles (V15.0.5, V15.2.2, V1.1, « Proposition Fiche de personnage Maverick ») | Rien n'est importé ; une reprise lirait les cellules citées en commentaire des tables |
 | Q4 | Un joueur qui prend un **prétiré** dans un groupe joue-t-il la fiche partagée (son état en jeu, santé ou XP, est alors commun à toutes les tables qui l'utilisent) ou une **copie** qui devient sa fiche ? | Les deux sont possibles : `groupe_membre.personnage_id` accepte un prétiré, et une copie serait une fiche `joueur` ordinaire |
-| Q5 | Quelle fiche auto fait référence : la V15.2.2, que cite la base, ou la V1.1, plus récente ? | La base cite la V15.2.2 ; ses cellules sont les mêmes dans la V1.1 |
+| Q5 | Quelle fiche auto fait référence : la V15.2.2, que cite la base, la V1.1, plus récente, ou la V1.2 corrigée (`docs/fiche-auto.md`) ? | La base cite la V15.2.2 (sa copie d'archive, migration 0014) ; ses cellules sont les mêmes dans la V1.1 et la V1.2 |
 

@@ -22,7 +22,7 @@ Le propriétaire n'aime pas que la donnée des magies « soit un script » : la 
 
 1. **SQLite ≥ 3.45** (tables STRICT, FTS5, fonctions de fenêtre). Lecture : `node:sqlite` (Node ≥ 22.13, sans option). Écriture : `sqlite3` de la bibliothèque standard Python (`python3 -I`).
 2. **Site Astro statique + API Node en lecture seule** dans Docker derrière nginx avec mot de passe. Aucune écriture par le web.
-3. **La source de vérité reste Google Sheets / Docs** (propriété d'un tiers). La base est une **copie reconstruite** : l'import est idempotent et déterministe.
+3. **La source de vérité reste Google Sheets / Docs** (copies dans le Drive du propriétaire depuis la migration `0014-sources-copies-drive` ; originaux de l'ancien mainteneur). La base est une **copie reconstruite** : l'import est idempotent et déterministe.
 4. **Persistance dans git par export texte déterministe** (`data/rows/<table>.sql`). Le fichier `.db` n'est jamais commité ; les tables dérivées se recalculent.
 5. **Règle d'or** : jamais de règle ni de valeur inventée. Absent = `NULL`, jamais une valeur par défaut ; chaque ligne importée garde sa provenance (`origine`, `source_ref`).
 6. Conventions de nommage (§2) : français, singulier, snake_case, ASCII ; clés TEXT lisibles `<type>/<slug>` ; tables STRICT ; clés étrangères actives ; CHECK pour les énumérations.
@@ -139,7 +139,7 @@ vierge (Python et Node). Les 131 tables de base sont **toutes non vides** une fo
 ### 4.1 Le flux
 
 ```
-Google Sheets / Docs (source de vérité, propriété d'un tiers)
+Google Sheets / Docs (source de vérité, copies du propriétaire)
    │  tools/sheets/xlsx_to_json.py, sheets_api_to_json.py, tools/import-gdocs.mjs      (existants)
    ▼
 dumps JSON ─► tools/sheets/corriger-dump.py   (registre tools/sheets/corrections.json, appliqué AVANT les extracteurs)
