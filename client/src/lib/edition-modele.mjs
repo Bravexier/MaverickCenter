@@ -9,7 +9,8 @@
  *   texte    texte long : paragraphes séparés par une ligne vide, puces « - », retours à la ligne gardés (lib/sort-format.mjs#blocsDeTexte) ;
  *   markdown corps Markdown d'une page (guide) ;
  *   entier   nombre entier (signe permis) ;
- *   choix    une valeur d'une liste (`choix` : [{ valeur, libelle }]).
+ *   choix    une valeur d'une liste : `choix` ([{ valeur, libelle }], contrôlée ici) ou `liste` (nom d'une liste de GET /api/edition/listes/, lue dans
+ *            la base vivante et contrôlée par le service).
  * Options : `requis` (vide refusé), `vide` (valeur enregistrée pour un champ vidé quand la colonne n'accepte pas NULL : '' ou 'Rien'),
  * `min` / `max` (entier).
  */
@@ -92,6 +93,40 @@ export const TABLES = {
     libelle: 'Case du tableau des dons',
     colonnes: { valeur: { type: 'texte', libelle: 'Case', requis: true } },
   },
+  // Classes : bandeau (don de départ), présentation, chose à savoir, équipement de départ ; spécialités ; dons (« capacités »)
+  classe: {
+    libelle: 'Classe',
+    colonnes: {
+      sante_depart: { type: 'entier', libelle: 'Santé de départ', requis: true, min: 0 },
+      chakra_depart: { type: 'entier', libelle: 'Chakra de départ', requis: true, min: 0 },
+      barriere_depart: { type: 'entier', libelle: 'Barrière de départ', requis: true, min: 0 },
+      description: { type: 'texte', libelle: 'Présentation' },
+      chose_a_savoir: { type: 'texte', libelle: 'Chose à savoir' },
+      maitrise_arme: { type: 'texte', libelle: 'Maîtrise des armes (une ligne « - » par maîtrise)' },
+      maitrise_armure: { type: 'texte', libelle: 'Maîtrise des armures (une ligne « - » par maîtrise)' },
+      arme_depart: { type: 'ligne', libelle: 'Arme de départ' },
+      armure_depart: { type: 'ligne', libelle: 'Armure de départ' },
+      inventaire_depart: { type: 'ligne', libelle: 'Inventaire de départ (objets séparés par « , », « A OU B »)' },
+      remarque: { type: 'texte', libelle: 'Remarque' },
+    },
+  },
+  specialite: {
+    libelle: 'Spécialité',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Nom', requis: true },
+      description: { type: 'texte', libelle: 'Description' },
+      remarque: { type: 'texte', libelle: 'Remarque' },
+    },
+  },
+  capacite: {
+    libelle: 'Don de classe',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Nom', requis: true },
+      type_brut: { type: 'ligne', libelle: 'Type (« Actif (1 fois/combat) »)' },
+      effet: { type: 'texte', libelle: 'Effet' },
+      remarque: { type: 'texte', libelle: 'Remarque' },
+    },
+  },
   // Sorts : chaque case du tableau et du détail. Une seule colonne par ligne peut avoir un effet dû aux NM (règle de l'édition, demande du propriétaire)
   sort: {
     libelle: 'Sort',
@@ -138,6 +173,19 @@ export const ENTITES = {
       presentation: { type: 'texte', libelle: 'Présentation (une phrase)' },
     },
   },
+  // une classe parmi les catégories du Sommaire ; une classe raciale (« Classe Hybride Animal ») porte le nom de sa race, une race hybride qui n'en a pas
+  classe: {
+    table: 'classe',
+    libelle: 'classe',
+    champs: {
+      categorie_id: { type: 'choix', libelle: 'Catégorie', requis: true, liste: 'categories' },
+      nom: { type: 'ligne', libelle: 'Nom (une classe raciale prend celui de sa race)' },
+      race_id: { type: 'choix', libelle: 'Race hybride (classe raciale seulement)', liste: 'racesSansClasse' },
+      sante_depart: { type: 'entier', libelle: 'Santé de départ', min: 0 },
+      chakra_depart: { type: 'entier', libelle: 'Chakra de départ', min: 0 },
+      barriere_depart: { type: 'entier', libelle: 'Barrière de départ', min: 0 },
+    },
+  },
   // un peuple de la matrice « Relation entre les races » (une race sans peuple n'a pas de relations : Anansi, Farfadet, Goleois)
   peuple: {
     table: 'peuple',
@@ -176,7 +224,7 @@ export function valeurDuChamp(champ, brute, nom = champ.libelle) {
   let texte = String(brute ?? '').replace(/\r\n?/g, '\n');
   if (champ.type === 'ligne' || champ.type === 'choix') texte = texte.replace(/\s*\n\s*/g, ' ');
   texte = champ.type === 'markdown' ? texte.replace(/\s+$/, '') : texte.trim();
-  if (champ.type === 'choix' && texte !== '' && !(champ.choix ?? []).some((c) => c.valeur === texte)) throw new ErreurValeur(`« ${nom} » : valeur hors de la liste`);
+  if (champ.type === 'choix' && champ.choix && texte !== '' && !champ.choix.some((c) => c.valeur === texte)) throw new ErreurValeur(`« ${nom} » : valeur hors de la liste`);
   if (texte === '') {
     if (champ.requis) throw new ErreurValeur(`« ${nom} » : valeur obligatoire`);
     return champ.vide ?? null;

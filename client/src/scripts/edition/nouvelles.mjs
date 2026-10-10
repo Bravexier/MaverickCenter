@@ -7,9 +7,14 @@
 import raceBaseCss from '../../styles/race/base.css?raw';
 import racePageCss from '../../styles/race/page.css?raw';
 import raceRelationsCss from '../../styles/race/relations.css?raw';
+import classeBaseCss from '../../styles/classe/base.css?raw';
+import classePageCss from '../../styles/classe/page.css?raw';
+import { classColor, CLASS_GROUPS } from '../../lib/class-groups.mjs';
+import { texteSurCouleur } from '../../lib/sort-format.mjs';
 import { attributEd, ENTITES } from '../../lib/edition-modele.mjs';
 import { echapperHtml } from '../../lib/edition-rendu.mjs';
 import { RACE_COLORS, TAG_RACE_HYBRIDE } from '../../lib/race-kinds.mjs';
+import { normalize } from '../../lib/text.mjs';
 
 const ed_ = (table, cle, colonne) => echapperHtml(attributEd(table, cle, colonne));
 const estPage404 = () => Boolean(document.querySelector('#introuvable'));
@@ -17,7 +22,7 @@ const estPage404 = () => Boolean(document.querySelector('#introuvable'));
 const idDeLAdresse = (base) => decodeURIComponent(location.pathname.slice(base.length - 1)).replace(/^\/|\/$/g, '');
 
 const lignesDe = (lignes, table) => lignes.filter((l) => l.table === table && l.ligne);
-const champsDe = (entite) => Object.entries(ENTITES[entite].champs).map(([nom, c]) => ({ nom, libelle: c.libelle, type: c.type, requis: c.requis, choix: c.choix }));
+const champsDe = (entite) => Object.entries(ENTITES[entite].champs).map(([nom, c]) => ({ nom, libelle: c.libelle, type: c.type, requis: c.requis, choix: c.choix, liste: c.liste }));
 
 // --- Page d'une race créée --------------------------------------------------------------------------------------------------------------------
 function pageDeRace(lignes, id) {
@@ -54,7 +59,40 @@ function pageDeRace(lignes, id) {
   };
 }
 
-const PAGES = { races: pageDeRace };
+// --- Page d'une classe créée -------------------------------------------------------------------------------------------------------------------
+function pageDeClasse(lignes, id) {
+  const classe = lignesDe(lignes, 'classe').find((l) => l.cle.id === id)?.ligne;
+  if (!classe) return null;
+  const tags = lignes.filter((l) => l.table === 'page_tag' && l.ligne?.page_id === id).map((l) => l.ligne.libelle);
+  const couleur = classColor({ id, data: { tags } });
+  const c = (col) => ed_('classe', { id }, col);
+  const stat = (libelle, col) => `<div class="classe-stat"><dt>${libelle}</dt><dd data-ed="${c(col)}"></dd></div>`;
+  const carte = (titre, col, rendu, balise = 'p') => `<article class="depart-carte" data-ed-cadre="${balise}"><h3>${titre}</h3><${balise} data-ed="${c(col)}"${rendu ? ` data-ed-rendu="${rendu}"` : ''}></${balise}></article>`;
+  return {
+    css: [classeBaseCss, classePageCss].join('\n'),
+    titre: classe.nom,
+    html: `<p class="muted"><a href="#">Classes</a></p>
+    <div class="classe" style="--couleur-classe: ${couleur}; --couleur-texte-classe: ${texteSurCouleur(couleur)}">
+      <header class="classe-hero">
+        <p class="classe-hero__surtitre">${echapperHtml(tags.find((t) => t !== 'classe') ?? 'Classe')}</p>
+        <h1>${echapperHtml(classe.nom)}</h1>
+        <dl class="classe-stats">${stat('Santé de départ', 'sante_depart')}${stat('Chakra de départ', 'chakra_depart')}${stat('Barrière de départ', 'barriere_depart')}</dl>
+      </header>
+      <p class="banner" role="note">Classe créée sur le site de dev : sa page sera construite comme les autres à la prochaine version du site, une fois le journal des
+        modifications rapatrié. Complétez-la ici (crayon) ; ses spécialités et ses dons ne s’ajoutent pas encore depuis le site.</p>
+      <div class="classe-section classe-presentation">
+        <section class="classe-prose" id="presentation" aria-label="Présentation" data-ed="${c('description')}" data-ed-rendu="blocs" data-ed-cadre></section>
+        <aside class="classe-card classe-card--a-savoir" id="a-savoir" data-ed-cadre=".classe-prose"><h2>Chose à savoir</h2><div class="classe-prose" data-ed="${c('chose_a_savoir')}" data-ed-rendu="blocs"></div></aside>
+      </div>
+      <section class="classe-section" id="depart"><h2>Au départ</h2><div class="classe-depart">
+        ${carte('Maîtrise des armes', 'maitrise_arme', 'liste', 'ul')}${carte('Maîtrise des armures', 'maitrise_armure', 'liste', 'ul')}
+        ${carte('Arme de départ', 'arme_depart')}${carte('Armure de départ', 'armure_depart')}${carte('Inventaire de départ', 'inventaire_depart', 'inventaire', 'ul')}
+      </div></section>
+    </div>`,
+  };
+}
+
+const PAGES = { races: pageDeRace, classes: pageDeClasse };
 
 function dessinerPage(ed, lignes) {
   const id = idDeLAdresse(ed.base);
@@ -86,6 +124,19 @@ function pastilleDeRace(ed, race, hybride) {
   if (compte) compte.textContent = String(groupe.children.length);
 }
 
+function pastilleDeClasse(ed, classe, tags) {
+  const cles = tags.map(normalize);
+  const groupe = CLASS_GROUPS.find((g) => g.tags.some((t) => cles.includes(normalize(t)))) ?? CLASS_GROUPS.at(-1);
+  const liste = document.querySelector(`.classes-groupe#${groupe.key} .classes-groupe__liste`);
+  if (!liste || document.querySelector(`[data-ed-classe="${CSS.escape(classe.id)}"]`)) return;
+  const li = document.createElement('li');
+  li.dataset.edClasse = classe.id;
+  li.innerHTML = `<a class="classe-pastille ed-nouveau" href="${echapperHtml(`${ed.base}${classe.id}/`)}" title="Créée sur le site de dev"><span class="classe-pastille__point" aria-hidden="true"></span><span class="classe-pastille__nom">${echapperHtml(classe.nom)}</span></a>`;
+  liste.append(li);
+  const compte = liste.closest('.classes-groupe')?.querySelector('.classes-groupe__compte');
+  if (compte) compte.textContent = String(Number(compte.textContent) + 1);
+}
+
 function boutonCreer(ed, { avant, libelle, entite, titre, aide, apres }) {
   if (!avant || document.querySelector(`.ed-creer-${entite}`)) return;
   const outils = document.createElement('div');
@@ -111,10 +162,16 @@ function boutonCreer(ed, { avant, libelle, entite, titre, aide, apres }) {
 
 export const nouvelles = {
   nom: 'nouvelles',
-  actif: (doc) => Boolean(doc.querySelector('#introuvable, .races-pastilles')),
+  actif: (doc) => Boolean(doc.querySelector('#introuvable, .races-pastilles, .classes-pastilles')),
 
   surcouche(ed, lignes) {
     if (estPage404()) dessinerPage(ed, lignes);
+    if (document.querySelector('.classes-pastilles')) {
+      for (const l of lignesDe(lignes, 'classe')) {
+        if (!l.creee) continue;
+        pastilleDeClasse(ed, l.ligne, lignes.filter((t) => t.table === 'page_tag' && t.ligne?.page_id === l.cle.id).map((t) => t.ligne.libelle));
+      }
+    }
     if (document.querySelector('.races-pastilles')) {
       for (const l of lignesDe(lignes, 'race')) {
         if (!l.creee) continue;
@@ -125,6 +182,18 @@ export const nouvelles = {
   },
 
   debut(ed) {
+    boutonCreer(ed, {
+      avant: document.querySelector('.classes-pastilles'),
+      libelle: '+ Ajouter une classe',
+      entite: 'classe',
+      titre: 'Nouvelle classe',
+      aide: 'Choisissez sa catégorie. Une classe raciale (« Classe Hybride Animal ») se crée pour une race hybride qui n’en a pas encore : elle en prend le nom et '
+        + 'n’est accessible qu’à elle. La classe est créée tout de suite dans la base du site de dev ; sa page s’ouvre ensuite pour la compléter.',
+      apres: (r) => {
+        const id = r.crees.find((c) => c.entite === 'classe')?.id;
+        if (id) location.assign(`${ed.base}${id}/`);
+      },
+    });
     boutonCreer(ed, {
       avant: document.querySelector('.races-pastilles'),
       libelle: '+ Ajouter une race',

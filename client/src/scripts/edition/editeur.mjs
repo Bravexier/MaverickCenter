@@ -126,10 +126,11 @@ export function demarrer(racine, etatService) {
     if (cible) cible.innerHTML = rendreChamp(el.dataset.edRendu, ligne[info.colonne], ligne, ed.listes);
   }
 
-  /** Un cadre [data-ed-cadre] est caché en lecture quand tous ses champs sont vides. */
+  /** Un cadre [data-ed-cadre] est caché en lecture quand tous ses champs sont vides (ceux que désigne la valeur de l'attribut, si elle en a une). */
   function cadres(portee = document) {
     for (const cadre of portee.querySelectorAll('[data-ed-cadre]')) {
-      const champs = cadre.matches('[data-ed]') ? [cadre] : [...cadre.querySelectorAll('[data-ed]')];
+      const selection = cadre.getAttribute('data-ed-cadre');
+      const champs = selection ? [...cadre.querySelectorAll(selection)] : cadre.matches('[data-ed]') ? [cadre] : [...cadre.querySelectorAll('[data-ed]')];
       cadre.hidden = champs.length > 0 && champs.every((c) => c.textContent.trim() === '');
     }
   }

@@ -2,6 +2,8 @@
 // construite avant une modification, ou juste après l'enregistrement, le script réécrit l'élément `data-ed` avec ces fonctions : elles produisent le
 // même HTML que les gabarits Astro (components/magie/Texte.astro, components/metier/MetiersTableau.astro…), à partir des mêmes fonctions pures.
 // Fonctions pures (chaîne HTML en sortie, tout texte échappé), sans dépendance navigateur : testées dans test/edition-rendu.test.mjs.
+import { analyserTypeDeDon, decouperInventaire, lignesDeListe } from './classe-champs.mjs';
+import { typeDeDon } from './classe-dons.mjs';
 import { decouperBonus, RIEN } from './metier-champs.mjs';
 import { analyserType, bonusDeMaitrise } from './sort-analyse.mjs';
 import { blocsDeTexte, coutDeSort, marquesDeMode, morceauxAvecLiens, valeurDeSort } from './sort-format.mjs';
@@ -79,6 +81,25 @@ export const RENDUS = {
     return marquerBonus(cout.parts, bonusDeLaCase('cout', valeur), 'cout')
       .map((part, i) => (i === 0 ? `<div>${segmentsHtml(part)}</div>` : `<div class="supplement">+ ${segmentsHtml(part)}</div>`))
       .join('');
+  },
+  // Classes (components/classes/ClassePage.astro, DonCarte.astro) : listes à tirets, inventaire (sans les infobulles du glossaire), type d'un don
+  liste: (valeur) => lignesDeListe(valeur).map((l) => `<li>${echapperHtml(l)}</li>`).join(''),
+  inventaire: (valeur) => {
+    const emplacements = [];
+    for (const o of decouperInventaire(valeur, [])) (emplacements[o.rang - 1] ??= []).push(o);
+    return emplacements
+      .filter(Boolean)
+      .map((options) => `<li${options.length > 1 ? ' class="inventaire__choix"' : ''}>${options
+        .map((o, j) => `${j > 0 ? '<span class="inventaire__ou">ou</span>' : ''}<span class="objet objet--seul">${echapperHtml(o.texte)}</span>`)
+        .join('')}</li>`)
+      .join('');
+  },
+  'don-type': (valeur) => {
+    if (!valeur) return '';
+    const { type } = analyserTypeDeDon(valeur);
+    const { mot, precision } = typeDeDon(valeur);
+    const libelle = { passif: 'Passif', actif: 'Actif', action: 'Action', reaction: 'Réaction' }[type] ?? mot;
+    return `${type ? `<span class="don-type" data-type="${type}">${echapperHtml(libelle)}</span>` : ''}${precision ? `<span class="don__precision">${echapperHtml(precision)}</span>` : ''}`;
   },
   'sort-portee': valeurDeCase('portee', false),
   'sort-zone': valeurDeCase('zone', false),

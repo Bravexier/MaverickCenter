@@ -17,6 +17,10 @@ import {
 } from '../src/lib/metier-champs.mjs';
 import { analyserCout, analyserPortee, analyserType, analyserZone, bonusDeMaitrise, COLONNES_NM, TYPES_DE_SORT } from '../src/lib/sort-analyse.mjs';
 import { LIBELLES_CHAMP_NM, ORDRE_CHAMPS_NM, texteDeBonus } from '../src/lib/sort-maitrise.mjs';
+import {
+  analyserTypeDeDon, bouclierMax, CATEGORIE_RACIALE, decouperInventaire, decouperMaitriseArme, decouperMaitriseArmure, MOT_CLE_DE_CATEGORIE,
+} from '../src/lib/classe-champs.mjs';
+import { HYBRIDES_SANS_CLASSE_RACIALE, TAG_RACE_HYBRIDE } from '../src/lib/race-kinds.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { ErreurJournal, cleDe, lireLigne, ouvrirLot, structure } from './edition-journal.mjs';
 
@@ -392,8 +396,131 @@ function magiesInnees(ctx, op) {
   return `Magies innées de ${race.nom} : ${choisies.map((m) => m.nom).join(', ') || 'aucune'}`;
 }
 
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Classes (classe, classe_maitrise_arme, classe_maitrise_armure, classe_objet_depart, race_classe), spécialités, dons (capacite)
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Provenance des lignes de détail : celle d'une ligne en place (la même cellule), sinon celle de la ligne principale. */
+const provenanceDe = (db, table, filtre, defaut) => {
+  const ou = Object.keys(filtre).map((c) => `"${c}" = ?`).join(' AND ');
+  return db.prepare(`SELECT source_ref FROM "${table}" WHERE ${ou} LIMIT 1`).get(...Object.values(filtre))?.source_ref ?? defaut;
+};
+
+/** Met à jour des champs d'une page du wiki ({ colonne: [ancien, nouveau] }), chacun seulement s'il disait encore l'ancien (rien d'écrit à la main n'est écrasé). */
+function suivrePage(ctx, pageId, champs) {
+  const page = lireLigne(ctx.db, 'page', { id: pageId });
+  if (!page) return;
+  const changes = {};
+  for (const [colonne, [ancien, nouveau]] of Object.entries(champs)) {
+    if (ancien !== undefined && page[colonne] === ancien && nouveau !== ancien) changes[colonne] = nouveau;
+  }
+  if (changes.titre) changes.titre_cle = normalize(changes.titre);
+  if (Object.keys(changes).length) ctx.w.modifier('page', { id: pageId }, changes);
+}
+
+/** Les races hybrides qui n'ont pas encore de classe raciale (demande du propriétaire : seule l'une d'elles peut recevoir une classe raciale). */
+export function racesHybridesSansClasse(db) {
+  const raciales = new Set(db.prepare('SELECT nom_cle FROM classe WHERE categorie_id = ?').all(CATEGORIE_RACIALE).map((c) => c.nom_cle));
+  const marquees = new Set(db.prepare('SELECT page_id FROM page_tag WHERE tag_id = ?').all(TAG_RACE_HYBRIDE).map((t) => t.page_id));
+  return db.prepare('SELECT id, nom FROM race ORDER BY nom').all()
+    .filter((r) => (marquees.has(r.id) || HYBRIDES_SANS_CLASSE_RACIALE.has(r.id)) && !raciales.has(r.id.slice(r.id.indexOf('/') + 1)));
+}
+
+const CLASSE = {
+  colonnes(_ctx, ligne) {
+    return { bouclier_classe_max: bouclierMax(decouperMaitriseArmure(ligne.maitrise_armure)) };
+  },
+  deriver(ctx, avant, apres) {
+    const { db } = ctx;
+    const detail = (table, lignes) =>
+      synchroniser(ctx, table, { classe_id: apres.id }, lignes, { origine: 'classes', source_ref: provenanceDe(db, table, { classe_id: apres.id }, apres.source_ref) });
+    if (apres.maitrise_arme !== avant.maitrise_arme) detail('classe_maitrise_arme', decouperMaitriseArme(apres.maitrise_arme));
+    if (apres.maitrise_armure !== avant.maitrise_armure) detail('classe_maitrise_armure', decouperMaitriseArmure(apres.maitrise_armure));
+    if (apres.inventaire_depart !== avant.inventaire_depart) detail('classe_objet_depart', decouperInventaire(apres.inventaire_depart, db.prepare('SELECT id, nom_cle FROM objet_depart').all()));
+    if (apres.description !== avant.description) {
+      suivrePage(ctx, apres.id, { resume: [resumeDeDescription(avant.description) || null, resumeDeDescription(apres.description) || null] });
+    }
+  },
+  creer(ctx, valeurs) {
+    const { db, w, instant } = ctx;
+    const categorie = lireLigne(db, 'categorie_classe', { id: valeurs.categorie_id ?? '' });
+    if (!categorie) throw refus(`Nouvelle classe : catégorie inconnue (${valeurs.categorie_id})`);
+    let nom = valeurs.nom;
+    let race = null;
+    if (categorie.id === CATEGORIE_RACIALE) {
+      // classe raciale : une race hybride qui n'a pas encore la sienne ; la classe porte le nom de la race (lib/race-kinds.mjs, lib/races-db.mjs)
+      race = racesHybridesSansClasse(db).find((r) => r.id === valeurs.race_id);
+      if (!race) throw refus('Classe raciale : choisissez une race hybride qui n’a pas encore de classe raciale.');
+      nom = race.nom;
+    } else if (valeurs.race_id) throw refus('Seule une classe raciale (« Classe Hybride Animal ») se rattache à une race.');
+    if (!nom) throw refus('Nouvelle classe : « Nom » obligatoire');
+    if (db.prepare('SELECT 1 FROM classe WHERE nom = ?').get(nom)) throw new ErreurEdition(409, `La classe ${nom} existe déjà.`);
+    const slug = race ? race.id.slice(race.id.indexOf('/') + 1) : normalize(nom);
+    const id = creerPage(ctx, { type: 'classes', slug, titre: nom, corps: `${A_COMPLETER}
+`, origine: 'classes', tags: ['classe', MOT_CLE_DE_CATEGORIE[categorie.id]] });
+    const source = `${provenance(instant)} › ${nom}`;
+    w.inserer('classe', {
+      id, nom, nom_cle: slug, categorie_id: categorie.id, ordre: ordreSuivant(db, 'classe'), sante_depart: valeurs.sante_depart ?? 0,
+      chakra_depart: valeurs.chakra_depart ?? 0, barriere_depart: valeurs.barriere_depart ?? 0, maitrise_arme: null, maitrise_armure: null,
+      bouclier_classe_max: null, inventaire_depart: null, arme_depart: null, armure_depart: null, chose_a_savoir: null, chose_a_savoir_lien: null,
+      description_titre: null, description: null, origine: 'classes', source_ref: source, remarque: null, magie_innee_id: null,
+    });
+    w.inserer('page_entite', { entite_table: 'classe', entite_id: id, page_id: id, principale: 1, origine: 'classes' });
+    // matrice « Accessibilité de Classe » de la fiche : une colonne de plus ; une classe raciale n'est accessible qu'à sa race (comme les 13 du classeur)
+    const ordre = ordreSuivant(db, 'race_classe');
+    for (const r of db.prepare('SELECT id FROM race').all()) {
+      const accessible = race && r.id === race.id ? 1 : 0;
+      w.inserer('race_classe', { race_id: r.id, classe_id: id, ordre, accessible, valeur_brut: String(accessible), origine: 'races', source_ref: source });
+    }
+    return { id, resume: `Classe créée : ${nom} (${categorie.libelle}${race ? `, classe raciale de ${race.nom}` : ''})` };
+  },
+};
+
+const SPECIALITE = {
+  deriver(ctx, avant, apres) {
+    if (apres.nom === avant.nom) return;
+    // les fiches de dons de la spécialité la citent par son nom (front matter `specialite`, mot-clé)
+    for (const k of ctx.db.prepare('SELECT id FROM capacite WHERE specialite_id = ?').all(apres.id)) {
+      const page = lireLigne(ctx.db, 'page', { id: k.id });
+      if (!page) continue;
+      const donnees = page.donnees ? JSON.parse(page.donnees) : {};
+      if (donnees.specialite === avant.nom) ctx.w.modifier('page', { id: k.id }, { donnees: JSON.stringify({ ...donnees, specialite: apres.nom }) });
+      for (const t of ctx.db.prepare('SELECT * FROM page_tag WHERE page_id = ? AND tag_id = ?').all(k.id, normalize(avant.nom))) {
+        if (!ctx.db.prepare('SELECT 1 FROM page_tag WHERE page_id = ? AND tag_id = ?').get(k.id, normalize(apres.nom))) {
+          ctx.w.modifier('page_tag', { page_id: k.id, ordre: t.ordre }, { tag_id: normalize(apres.nom), libelle: apres.nom.toLowerCase() });
+        }
+      }
+    }
+  },
+};
+
+const premiereLigne = (texte) => String(texte ?? '').split('\n').map((l) => l.trim()).find(Boolean) ?? null;
+const CAPACITE = {
+  colonnes(_ctx, ligne) {
+    return ligne.type_brut ? analyserTypeDeDon(ligne.type_brut) : { type: null, limite_nombre: null, limite_periode: null };
+  },
+  deriver(ctx, avant, apres) {
+    const classe = lireLigne(ctx.db, 'classe', { id: apres.classe_id });
+    const page = lireLigne(ctx.db, 'page', { id: apres.id });
+    if (!page) return;
+    // la fiche du don (page capacites/…) : titre « Nom (Classe) », résumé (première ligne de l'effet), corps (l'effet), type
+    suivrePage(ctx, apres.id, {
+      titre: [`${avant.nom} (${classe?.nom})`, `${apres.nom} (${classe?.nom})`],
+      resume: [premiereLigne(avant.effet), premiereLigne(apres.effet)],
+      corps_md: [`${avant.effet ?? ''}\n`, `${apres.effet ?? ''}\n`],
+    });
+    if (page.titre === avant.nom && apres.nom !== avant.nom) ctx.w.modifier('page', { id: apres.id }, { titre: apres.nom, titre_cle: normalize(apres.nom) });
+    const donnees = page.donnees ? JSON.parse(page.donnees) : null;
+    if (donnees && donnees.type_capacite === avant.type_brut && apres.type_brut !== avant.type_brut) {
+      ctx.w.modifier('page', { id: apres.id }, { donnees: JSON.stringify({ ...donnees, type_capacite: apres.type_brut }) });
+    }
+  },
+};
+
 /** Ce que l'édition sait faire, table par table : colonnes recalculées dans la ligne, dérivations ailleurs, création, suppression. */
-const DOMAINES = { metier: METIER, magie: MAGIE, magie_role: MAGIE_ROLE, sort: SORT, race: RACE, peuple: PEUPLE };
+const DOMAINES = {
+  metier: METIER, magie: MAGIE, magie_role: MAGIE_ROLE, sort: SORT, race: RACE, peuple: PEUPLE, classe: CLASSE, specialite: SPECIALITE, capacite: CAPACITE,
+};
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // Application d'un lot
@@ -563,6 +690,8 @@ export function listes(db) {
     echelle: db.prepare('SELECT id, libelle, ordre FROM echelle_relation ORDER BY ordre').all(),
     peuples: db.prepare('SELECT id, nom, ordre, race_id FROM peuple ORDER BY ordre').all(),
     races: db.prepare('SELECT id, nom FROM race ORDER BY nom').all(),
+    categories: db.prepare('SELECT id AS valeur, libelle FROM categorie_classe ORDER BY ordre').all(),
+    racesSansClasse: racesHybridesSansClasse(db).map((r) => ({ valeur: r.id, libelle: r.nom })),
   };
 }
 
