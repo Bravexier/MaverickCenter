@@ -185,7 +185,7 @@ test('les personnages fil rouge : des choix permis par la base, et des attributs
   assert.deepEqual([mage.magie.nom, mage.attributs.sante, mage.attributs.chakra, mage.attributs.barriere, mage.emplacements], ['Feu', 8, 24, 13, 2]);
 });
 
-test('décisions R17 et R18 : l’exemple 2 des dégâts donne 18 ; à court de chakra, 2 santé pour 1 chakra', () => {
+test('décisions R17 et R18 : l’exemple 2 des dégâts donne 18 ; à court de chakra, toujours 2 santé pour 1 chakra', () => {
   const corps = (id) => pagesDuGuide.find((p) => p.id === id).body;
   assert.match(corps('guide/formule-des-degats'), /total de 18\.5 dégâts[\s\S]*donc 18 dégâts[\s\S]*J'ai pris 18 points de dégâts/);
   assert.doesNotMatch(corps('guide/formule-des-degats'), /16\.5/);
@@ -193,4 +193,7 @@ test('décisions R17 et R18 : l’exemple 2 des dégâts donne 18 ; à court de 
   for (const id of ['guide/la-magie-en-jeu', 'guide/le-mode-hyper']) assert.match(corps(id), /2 points de santé pour 1 point de chakra/, id);
   assert.match(corps('guide/le-mode-hyper'), /\| Coût des sorts en chakra \| 0 \| 0 \|/);
   assert.match(corps('guide/le-mode-hyper'), /10 % du maximum par tour/);
+  // « la règle des 2 points de santé pour chaque point de chakra en dessous de zéro c'est tout le temps » : sortie du Mode Hyper 100 % comprise
+  assert.match(corps('guide/le-mode-hyper'), /75 % de son chakra maximum\*\* ; s’il ne les a pas, il paie ce qui manque avec sa santé, comme toujours : \*\*2 points de santé pour 1 point de chakra\*\*/);
+  assert.match(corps('guide/la-magie-en-jeu'), /tarif de tout chakra dépensé sans l’avoir/);
 });
