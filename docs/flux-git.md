@@ -82,8 +82,10 @@ connexion par Discord (identification et utilisateurs, voir [`feuille-de-route.m
 
 Pas de serveur normal ni de serveur de test. Après chaque fusion qui change `dev` (une feature, la refusion après une livraison ou un hotfix),
 le job `Site` reconstruit le site depuis `dev` (sans les pages d'exemple) et le publie sur la branche **`site`** ; le NAS la suit avec sa propre
-installation, comme aujourd'hui (`deploy/`, `update-nas.sh` toutes les 5 minutes). Les versions suivent les règles ci-dessus ; une livraison
-`dev` → `master` ne fait que les versions (et `dev`, qui la reçoit, republie le site). Rien n'est à changer sur le NAS.
+installation, comme aujourd'hui (`deploy/`, `update-site.sh` toutes les 5 minutes ; un NAS déjà installé garde sa copie, nommée `update-nas.sh`). Les versions
+suivent les règles ci-dessus ; une livraison `dev` → `master` ne fait que les versions (et `dev`, qui la reçoit, republie le site). Rien n'est à changer sur le NAS.
+Le serveur de test du VPS (`dev.maverick-jdr.com`) suit la même branche avec le même script en attendant la 0.2.0 :
+[`deploy/vps/README.md`](../deploy/vps/README.md), « Avant la 0.2.0 ».
 
 ### À partir de la 0.2.0 : serveur normal et serveur de test, un script d'installation par fusion
 

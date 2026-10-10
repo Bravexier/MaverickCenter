@@ -13,7 +13,7 @@ services:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./.htpasswd:/etc/nginx/.htpasswd:ro
 
-  # Service des personnages (docs/serveur.md) : son code arrive avec le site (site/_serveur/, mis à jour par update-nas.sh) et il se relance
+  # Service des personnages (docs/serveur.md) : son code arrive avec le site (site/_serveur/, mis à jour par update-site.sh) et il se relance
   # seul quand une nouvelle version est livrée. Aucun port publié : seul nginx l'atteint. db/ = sa base vivante (fiches) : à sauvegarder.
   serveur:
     image: node:22-alpine

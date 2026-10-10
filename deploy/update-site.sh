@@ -1,24 +1,27 @@
 #!/bin/sh
-# Met à jour le site Maverick Center sur le NAS depuis la branche « site » du dépôt GitHub privé.
-# Cette branche est reconstruite depuis dev par .github/workflows/livraison.yml (job « Site ») après chaque fusion, jusqu'à la 1.0.
+# Installe la branche « site » du dépôt GitHub privé dans un dossier et la tient à jour : le NAS, ou le serveur de test d'un VPS avant
+# la 0.2.0 (deploy/vps/README.md). Rien de propre au NAS, d'où son nom (ancien nom : update-nas.sh).
+# Cette branche est reconstruite depuis dev par .github/workflows/livraison.yml (job « Site ») après chaque fusion, jusqu'à la 0.2.0.
 #
-# Le NAS ne fait que des connexions SORTANTES : aucun port à ouvrir.
+# L'hôte ne fait que des connexions SORTANTES : aucun port à ouvrir.
 # Prérequis : sh, curl, tar (rsync est utilisé s'il est présent). Pas de Node, pas de Docker requis pour ce script.
 # Jeton GitHub : fichier .github-token à côté du script (droits 600). Jeton « fine-grained » limité à CE dépôt,
 # permission « Contents : Read-only ». Il n'apparaît jamais dans la ligne de commande de curl (donc pas dans `ps`).
 #
-# Usage : sh update-nas.sh [--force]     (--force réinstalle même si la version installée est déjà la dernière)
+# Usage : sh update-site.sh [--force]    (--force réinstalle même si la version installée est déjà la dernière)
 # Planification toutes les 5 minutes :
 #   Synology : Panneau de configuration > Planificateur de tâches > Script défini par l'utilisateur, exécuté en root
-#   Autres   : crontab -e  puis  */5 * * * * sh /chemin/vers/update-nas.sh
-# Réglages facultatifs : fichier update-nas.env à côté du script (REPO, BRANCH, BASE_DIR, SITE_DIR, TOKEN_FILE, MIN_PAGES).
+#   Autres   : crontab -e  puis  */5 * * * * sh /chemin/vers/update-site.sh
+# Réglages facultatifs : fichier update-site.env à côté du script (REPO, BRANCH, BASE_DIR, SITE_DIR, TOKEN_FILE, MIN_PAGES).
+# Sans lui, l'ancien update-nas.env est lu s'il existe (NAS réglé avant le changement de nom).
 # Aucun redémarrage de nginx n'est nécessaire : les fichiers statiques sont relus à chaque requête.
 set -eu
 umask 022
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 # shellcheck disable=SC1091
-if [ -f "$SCRIPT_DIR/update-nas.env" ]; then . "$SCRIPT_DIR/update-nas.env"; fi
+if [ -f "$SCRIPT_DIR/update-site.env" ]; then . "$SCRIPT_DIR/update-site.env"
+elif [ -f "$SCRIPT_DIR/update-nas.env" ]; then . "$SCRIPT_DIR/update-nas.env"; fi
 
 REPO=${REPO:-Bravexier/MaverickCenter}
 BRANCH=${BRANCH:-site}
@@ -36,7 +39,7 @@ FORCE=0
 case "${1:-}" in
   "") ;;
   --force) FORCE=1 ;;
-  *) echo "Usage : sh update-nas.sh [--force]" >&2; exit 2 ;;
+  *) echo "Usage : sh update-site.sh [--force]" >&2; exit 2 ;;
 esac
 
 # Rotation simple du journal (garde les 500 dernières lignes au-delà de 200 Ko)

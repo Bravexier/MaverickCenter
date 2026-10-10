@@ -1,22 +1,22 @@
-// Teste deploy/update-nas.sh contre un faux serveur GitHub (aucun accès réseau réel, aucun NAS).
+// Teste deploy/update-site.sh (ancien nom : update-nas.sh) contre un faux serveur GitHub (aucun accès réseau réel, aucun NAS ni serveur).
 // Nécessite sh, curl et tar ; sinon les tests sont ignorés.
 import assert from 'node:assert/strict';
 import { execFile, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-const SCRIPT = process.env.UPDATE_NAS_SCRIPT ?? fileURLToPath(new URL('../../deploy/update-nas.sh', import.meta.url));
+const SCRIPT = process.env.UPDATE_SITE_SCRIPT ?? fileURLToPath(new URL('../../deploy/update-site.sh', import.meta.url));
 const have = (cmd) => spawnSync(cmd, ['--version'], { stdio: 'ignore' }).status === 0;
 const skip = !(have('curl') && have('tar')) && 'sh, curl ou tar indisponible';
 
 const TOKEN = 'github_pat_TESTTOKEN123';
 const SHA_A = 'a'.repeat(40);
 const SHA_B = 'b'.repeat(40);
-const root = mkdtempSync(join(tmpdir(), 'update-nas-test-'));
+const root = mkdtempSync(join(tmpdir(), 'update-site-test-'));
 const state = { sha: SHA_A, tarball: null, token: TOKEN, tarballRequests: 0, auth: [] };
 let server;
 let apiUrl;
@@ -215,4 +215,39 @@ test('SITE_DIR dangereux ou relatif : refusé', { skip }, async () => {
   res = await n.run([], { SITE_DIR: 'site' });
   assert.equal(res.code, 1);
   assert.match(res.out, /chemin absolu/);
+});
+
+test('réglages : update-site.env à côté du script ; sans lui, l\'ancien update-nas.env est encore lu', { skip }, async () => {
+  serve(SHA_A, site(25, 'v1'));
+  // Les réglages se lisent à côté du script : on en pose une copie dans un dossier à elle. L'environnement vise une adresse fermée,
+  // que seul un fichier de réglages lu peut corriger.
+  const base = join(root, 'reglages');
+  mkdirSync(base);
+  const script = join(base, 'update-site.sh');
+  copyFileSync(SCRIPT, script);
+  writeFileSync(join(base, '.github-token'), `${TOKEN}\n`);
+  const run = () =>
+    new Promise((ok) => {
+      execFile('sh', [script], { env: { PATH: process.env.PATH, TMPDIR: root, GITHUB_API: 'http://127.0.0.1:1' } },
+        (error, stdout, stderr) => ok({ code: error ? error.code : 0, out: stdout + stderr }));
+    });
+  const reglages = `REPO=o/r\nGITHUB_API=${apiUrl}\n`;
+
+  let res = await run();
+  assert.equal(res.code, 1, 'sans fichier de réglages, rien ne corrige l\'adresse fermée');
+
+  // NAS réglé avant le changement de nom du script : son update-nas.env sert toujours.
+  writeFileSync(join(base, 'update-nas.env'), reglages);
+  res = await run();
+  assert.equal(res.code, 0, res.out);
+  assert.match(res.out, /Installé : version aaaaaaa, 26 pages/);
+
+  // Les deux fichiers : le nouveau nom l'emporte et l'ancien n'est plus lu (son MIN_PAGES=1 laisserait passer l'archive).
+  writeFileSync(join(base, 'update-nas.env'), `${reglages}MIN_PAGES=1\n`);
+  writeFileSync(join(base, 'update-site.env'), `${reglages}MIN_PAGES=99\n`);
+  serve(SHA_B, site(25, 'v2'));
+  res = await run();
+  assert.equal(res.code, 1);
+  assert.match(res.out, /26 page\(s\) seulement, 99 attendues/);
+  assert.equal(readFileSync(join(base, 'site/index.html'), 'utf8'), '<h1>accueil v1</h1>');
 });

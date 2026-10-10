@@ -14,7 +14,7 @@ cd "$root/deploy"
 rm -rf site maverick-center-nas.zip maverick-center-nas.tar.gz
 cp -r ../client/dist site
 
-files=(site docker-compose.yml nginx.conf README.md update-nas.sh)
+files=(site docker-compose.yml nginx.conf README.md update-site.sh)
 if command -v zip >/dev/null 2>&1; then
   zip -qr maverick-center-nas.zip "${files[@]}"
   echo "OK : deploy/maverick-center-nas.zip"

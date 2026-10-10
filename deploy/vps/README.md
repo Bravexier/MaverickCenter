@@ -65,6 +65,9 @@ chaque instance ; rien n'est affiché. Relancer le script les conserve (`--regen
 
 ## 5. Poser le site (les deux installateurs)
 
+> Avant la 0.2.0, il n'y a pas encore d'installateur : voir [« Avant la 0.2.0 »](#avant-la-020--le-serveur-de-test-suit-la-branche-site) plus bas,
+> qui remplace les étapes 5 et 6 pour le serveur de test.
+
 1. Dans GitHub, page **Releases** du dépôt (privé : connexion nécessaire), télécharger les deux fichiers de la dernière version :
    `maverick-center-vX.Y.Z-install.sh` (normal) et `maverick-center-vX.Y.Z-test-install.sh` (test).
 2. Les copier sur le serveur : `scp -i .ssh\maverick_key maverick-center-*-install.sh ubuntu@<IP>:~/`
@@ -97,6 +100,52 @@ sudo crontab -e                                       # puis ajouter :
 Chaque fusion dans `dev` met à jour le serveur de test dans les 5 minutes, chaque livraison `dev` → `master` met à jour le serveur normal. La base du
 test n'est pas touchée par ces mises à jour ; celle du normal non plus. Un fichier `GELER` dans le dossier d'une instance suspend ses mises à jour.
 
+## Avant la 0.2.0 : le serveur de test suit la branche `site`
+
+Tant que `dev` est en 0.1.x, il n'y a ni installateur ni *release* : après chaque fusion dans `dev`, le bot publie le site construit sur la
+branche **`site`** ([`docs/flux-git.md`](../../docs/flux-git.md)). Le serveur de test peut déjà la suivre avec le script qui sert au NAS,
+[`update-site.sh`](../update-site.sh), **à la place des étapes 5 et 6**. Les étapes 1 à 4 restent les mêmes, en copiant tout le dossier `deploy`
+(`scp -i .ssh\maverick_key -r deploy ubuntu@<IP>:~/` ; les scripts sont alors dans `~/deploy/vps/`).
+
+1. **Poser l'instance de test** (son `.env` et son `.htpasswd` viennent de `instances.sh`) :
+
+   ```
+   cd /srv/maverick-center-test
+   sudo cp ~/deploy/installateur/docker-compose.yml ~/deploy/nginx.conf ~/deploy/update-site.sh .
+   echo "mode=test" | sudo tee VERSION     # l'installateur 0.2.0-test reconnaîtra ce dossier plus tard
+   ```
+
+2. **Jeton GitHub** en lecture seule (le même qu'à l'étape 6 : dépôt `MaverickCenter` seulement, *Contents : Read-only*), **déposé directement sur
+   le serveur**. Lancer la commande, coller le jeton, puis Entrée : il ne s'affiche pas et n'entre pas dans l'historique.
+
+   ```
+   sudo sh -c 'f=/srv/maverick-center-test/.github-token; umask 077; stty -echo; read -r t; stty echo; printf %s "$t" > "$f"; chmod 600 "$f"'
+   ```
+
+3. **Premier téléchargement, puis les conteneurs** :
+
+   ```
+   sudo sh update-site.sh                  # pose la branche site dans site/ (journal : update.log)
+   sudo docker compose up -d
+   ```
+
+4. **Mise à jour automatique** toutes les 2 minutes (la commande peut être relancée : pas de doublon) :
+
+   ```
+   (sudo crontab -l 2>/dev/null | grep -v maverick-center-test/update-site.sh; echo '*/2 * * * * sh /srv/maverick-center-test/update-site.sh >/dev/null 2>&1') | sudo crontab -
+   ```
+
+Ce qui diffère d'un serveur installé à partir de la 0.2.0 :
+
+- **Pas de bandeau « Serveur de test »** sur `https://dev.maverick-jdr.com` : la branche `site` est le site unique, construit sans le mode test.
+  Le bandeau arrive avec l'installateur de test.
+- **`https://maverick-jdr.com` répond 502** tant que le serveur normal n'est pas installé (Caddy est prêt, l'instance n'existe pas encore) : c'est attendu.
+- `sudo docker ps` montre 2 conteneurs (`maverick-center-test` et `maverick-center-test-serveur`), pas 4.
+- `db/` est créé au premier lancement, sans fiche. Il est conservé ensuite, y compris par l'installateur de test (`MAVERICK_BASE_TEST=conservee`).
+
+**Le jour de la 0.2.0** : installer le serveur normal puis le serveur de test (étape 5), retirer la ligne `update-site.sh` de `sudo crontab -e`
+et la remplacer par celles de l'étape 6 (`mise-a-jour.sh`). La branche `site` cesse alors d'avancer.
+
 ## Vérifier
 
 ```
@@ -123,6 +172,6 @@ sudo sqlite3 /srv/maverick-center/db/vivante.db ".backup /root/vivante-$(date +%
 | --- | --- |
 | Certificat HTTPS impossible | L'adresse ne pointe pas encore vers le serveur (DNS) : `sudo journalctl -u caddy -n 50` |
 | 401 sur le site | Les mots de passe de Caddy et de l'instance ne concordent plus : `sudo bash ~/vps/instances.sh --regenerer-acces` puis `docker compose restart` dans les deux dossiers |
-| 502 | L'instance n'est pas lancée : `cd /srv/maverick-center && sudo docker compose up -d` |
+| 502 | L'instance n'est pas lancée : `cd /srv/maverick-center && sudo docker compose up -d` (avant la 0.2.0, c'est la réponse attendue de `maverick-jdr.com` : le serveur normal n'existe pas encore) |
 | Revenir à une version précédente | Voir [`deploy/installateur/README.md`](../installateur/README.md), « Revenir à une version précédente » (fichier `GELER`) |
 | Verrouillé hors du serveur | Console VNC d'Infomaniak (page du serveur) |

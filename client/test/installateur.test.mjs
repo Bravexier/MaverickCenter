@@ -85,7 +85,7 @@ for (const rsync of ['auto', '0']) {
     assert.match(lire(prod, '.env'), /MAVERICK_PORT=8080/);
     assert.match(lire(prod, '.env'), /MAVERICK_CONTENEUR=maverick-center$/m);
     assert.ok(existsSync(join(prod, 'db')), 'dossier de la base vivante créé');
-    assert.ok(existsSync(join(prod, 'docker-compose.yml')) && existsSync(join(prod, 'nginx.conf')) && existsSync(join(prod, 'mise-a-jour.sh')) && !existsSync(join(prod, 'update-nas.sh')));
+    assert.ok(existsSync(join(prod, 'docker-compose.yml')) && existsSync(join(prod, 'nginx.conf')) && existsSync(join(prod, 'mise-a-jour.sh')) && !existsSync(join(prod, 'update-site.sh')));
     assert.match(r1.out, /Première installation/);
 
     // Ce que l'administrateur et l'usage réel ont posé : jamais touché par une mise à jour.
