@@ -44,8 +44,8 @@ stables, SQL portable, modifications historisées, règles en données, moteur p
 | `client/src/lib/classes-db.mjs`, `classe-dons.mjs`, `components/classes/ClassePage.astro`, `styles/classe/` | Pages de classe : même principe, alimentées par les **tables** (`classe`, `specialite`, `capacite`, `v_capacite_exclusive`…) ; les **dons** (« capacités » des onglets) disposés comme l'onglet, chaque choix encadré (voir `docs/content-guide.md`, « Pages de classe ») |
 | `client/src/lib/metiers.mjs`, `components/metier/MetiersTableau.astro`, `styles/metier/tableau.css` | Page des métiers : un long tableau (Nom, Bonus, Artisanat, Équipement supplémentaire) lu dans la table `metier`, la description sous la ligne ; **pas de page par métier**, tout lien vers un métier mène à sa ligne (voir `docs/content-guide.md`, « Métiers ») |
 | `client/src/lib/guide.mjs`, `guide-db.mjs`, `guide-fil-rouge.mjs`, `components/guide/`, `styles/guide/` | Guide du joueur (`/guide/`) : 24 chapitres (pages `guide/…` avec `chapitre` et `partie`) lus dans l'ordre, flèches (et glissement du doigt sur mobile), pagination par partie colorée ; tableaux et personnages fil rouge tirés de la base (voir `docs/content-guide.md`, « Guide du joueur ») |
-| `client/src/lib/character.mjs` | Moteur de fiche (fonctions pures, piloté par `src/data/rules.json`) |
-| `client/src/data/rules.json` | Règles de création de personnage |
+| `client/src/pages/fiche/index.astro`, `src/scripts/fiche.mjs`, `lib/fiche-regles.mjs`, `lib/fiche-moteur.mjs`, `lib/fiche-controles.mjs`, `styles/fiche/` | **Fiche de personnage** (`/fiche/`, `/fiche/?id=<id>`) : création et modification d'un prétiré sur le même écran, une section par étape du guide (couleurs de ses parties), races/magies/classes en pastilles ; règles tirées de la base au build (`/fiche/regles.json`), calculs purs et testés contre les vues de la base et le fil rouge du guide, enregistrement par le service (`/api/`) ; voir `docs/character-generator.md` |
+| `client/src/pages/personnages.astro`, `src/scripts/personnages.mjs`, `lib/personnages-liste.mjs`, `styles/personnages/` | **Recherche des personnages** (`/personnages/`) : filtres, tableau trié par chaque colonne, filtres et tri dans l'adresse |
 | `client/test/` | Tests `node:test` (`npm test`) |
 | `tools/import-gdocs.mjs` | Export des Google Docs/Sheets listés dans `sources/sources.json` |
 | `deploy/` | Paquet d'hébergement NAS (nginx + service des personnages dans Docker, mot de passe) **jusqu'à la 1.0** : `build.sh` qui le génère, `update-nas.sh` (mise à jour auto depuis la branche `site`, reconstruite depuis `dev`). `deploy/installateur/` : l'hébergement **à partir de la 1.0** — `installateur.sh` (modèle) et `fabriquer.mjs` → un installateur `.sh` autonome par livraison, mode **prod** (serveur normal) ou **test** (copie le `db/` du serveur normal à l'installation) ; `mise-a-jour.sh` exécute le dernier du mode de l'instance ; `fabriquer.sh prod\|test` à la main |
@@ -63,7 +63,7 @@ npm install
 npm run dev        # http://localhost:4321 — relancer après l'ajout d'un NOUVEAU fichier de contenu
 npm run serveur    # le service des personnages (http://127.0.0.1:8787/api/, base vivante dans var/serveur/) : `npm run dev` lui transmet /api/
 npm run build      # build statique dans dist/ ; les [[liens]] cassés produisent un avertissement [wikilinks]
-npm test           # tests unitaires + intégrité de rules.json
+npm test           # tests unitaires (et du service, des règles de la base…)
 HIDE_EXAMPLES=1 npm run build   # version à montrer : sans les pages `status: example`
 ```
 
@@ -75,8 +75,10 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   `astro.config.mjs` force `unified()` de `@astrojs/markdown-remark` pour le plugin des `[[liens]]` : ne pas le retirer.
 - L'index des liens du plugin est lu une fois au démarrage (`scanContent`) ; les pages (`wiki.ts`) sont, elles, rechargées par Astro.
   Les deux doivent rester d'accord sur l'id d'une page (`<type>/<slug>`, d'où `generateId` dans `content.config.ts`).
-- `src/lib/*.mjs` doit rester sans dépendance navigateur/Astro (`text.mjs`, `search.mjs`, `character.mjs` sont importés
-  côté navigateur ; `wikilinks.mjs` utilise `node:fs` et ne doit pas l'être).
+- `src/lib/*.mjs` doit rester sans dépendance navigateur/Astro (`text.mjs`, `search.mjs`, `fiche-moteur.mjs`, `fiche-format.mjs`, `personnages-liste.mjs`
+  sont importés côté navigateur ; `wikilinks.mjs` utilise `node:fs` et ne doit pas l'être). Le code qui touche au DOM d'une page va dans `src/scripts/`
+  (`fiche.mjs`, `personnages.mjs`) ; deux scripts de page ne doivent jamais importer le même module (la version portable refuse le module partagé
+  que Vite en ferait : `tools/build-artifact.mjs`, CI).
 - `HIDE_EXAMPLES=1` filtre les pages d'exemple à deux endroits qui doivent rester d'accord : `scanContent` (index des liens,
   dans `astro.config.mjs`) et `loadWiki` (`src/lib/wiki.ts`).
 - **Adresses** (demande du propriétaire) : plus de préfixe `/wiki/`. Une page est à `/<type>/<slug>/` (`src/pages/[type]/` ; un métier : sa ligne de `/metiers/`, voir plus bas), l'index alphabétique (« Index du wiki », « Pages à créer »)
@@ -169,7 +171,12 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   Une table ajoutée à la section 13 va dans `TABLES_VIVANTES` (`base-vivante.mjs`) et, si elle cite `personnage`, dans `PARTIES_DE_FICHE` ou `HORS_FICHE`
   (`fiche-format.mjs`) : les tests `serveur-*` le vérifient contre `data/schema.sql`.
 - `npm run autolink` (aperçu) / `-- --write` : maillage automatique des pages, voir `docs/content-guide.md`.
-- Le générateur ne gère ni compétences, ni équipement, ni dés (voir `docs/character-generator.md`).
+- **Fiche de personnage** (`/fiche/`, `docs/character-generator.md`) : `/generateur/` n'existe plus, la page 404 y renvoie (`lib/nav.mjs#nouvelleAdresse`,
+  `PAGES_RENOMMEES`). Les règles de la page viennent de la base au build (`lib/fiche-regles.mjs`), jamais écrites à la main ; chaque calcul de
+  `lib/fiche-moteur.mjs` cite sa source (fiche auto V15.2.2, guide, décisions) et a son test, comparé aux vues SQL quand elles existent. Les contrôles qui font
+  foi sont ceux de `v_personnage_controle` (rendus par le service) ; toute règle ajoutée à la vue doit avoir son libellé dans `lib/fiche-controles.mjs`
+  (`test/fiche-controles.test.mjs`). Avant la 1.0 la fiche ne crée que des prétirés. Une colonne ajoutée à la section 13 apparaît dans le JSON d'une fiche
+  sans rien changer au service ; la page, elle, doit lui donner un champ.
 - **Fiches de personnages** (section 13 de `data/schema.sql`, migration `0011-personnages`) : les tables gardent les **choix** du joueur (race, ethnie, magies, classes, caractéristiques de base et croix (R19), points de compétences,
   gains de niveau, dons à choix, sorts et NM, équipement), cellule de la fiche auto V15.2.2 citée en commentaire ; **rien de ce que la fiche calcule n'est stocké** (niveaux, santé, totaux…).
   `v_personnage_niveau` (R2) et `v_personnage_controle` (une ligne par règle enfreinte, vide pour une fiche `valide`) ; `test/personnages-db.test.mjs` écrit dans une copie de la base.
@@ -192,5 +199,4 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   `dev` → `master` ou un hotfix → `master` : seulement à la demande du propriétaire, par « Create a merge commit ». Ne jamais mettre `[V: X+1]` de soi-même :
   le passage en 1.0 est le signal du propriétaire (connexion Discord, serveurs normal et de test).
 - Toute logique de règle ou de lien nouvelle → test dans `client/test/`.
-- `rules.test.mjs` doit rester vert quand de vraies données remplacent l'exemple.
 - Ne pas modifier `api/` sans demande : c'est l'existant d'avant le site.

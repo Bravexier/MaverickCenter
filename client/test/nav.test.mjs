@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { test } from 'node:test';
-import { NAV, activeGroup, groupIsCurrent, legacyWikiRedirect, navPaths } from '../src/lib/nav.mjs';
+import { NAV, activeGroup, groupIsCurrent, legacyWikiRedirect, navPaths, nouvelleAdresse } from '../src/lib/nav.mjs';
 import { TYPE_KEYS } from '../src/lib/types.mjs';
 
 const content = new URL('../src/content/wiki/', import.meta.url);
 
 test('le menu a les rubriques voulues, dans l’ordre', () => {
   assert.deepEqual(NAV.map((g) => g.label).slice(0, 4), ['Règles', 'Objets et artisanat', 'Codex', 'Statistiques']);
-  assert.deepEqual(NAV[0].items.map((i) => i.label), ['Guide', 'Fiche de personnage', 'Races', 'Magies', 'Classes', 'Métiers']);
+  assert.deepEqual(NAV[0].items.map((i) => i.label), ['Guide', 'Races', 'Magies', 'Classes', 'Métiers', 'Fiche de personnage', 'Personnages'], 'la fiche à droite, après les métiers');
 });
 
 test('chaque lien du menu pointe vers une page qui existe', () => {
@@ -16,14 +16,15 @@ test('chaque lien du menu pointe vers une page qui existe', () => {
     const m = path.match(/^([^/]+)\/(?:([^/]+)\/)?$/);
     if (m && TYPE_KEYS.includes(m[1])) {
       if (m[2]) assert.ok(existsSync(new URL(`${m[1]}/${m[2]}.md`, content)), `page absente : ${path}`);
-    } else assert.ok(['pages/', 'generateur/', 'tags/', 'donnees/'].includes(path), `chemin inconnu : ${path}`);
+    } else assert.ok(['pages/', 'fiche/', 'personnages/', 'tags/', 'donnees/'].includes(path), `chemin inconnu : ${path}`);
   }
 });
 
 test('la rubrique courante est repérée, avec ou sans préfixe de déploiement', () => {
   const [regles, objets] = NAV;
   assert.equal(groupIsCurrent(regles, '/races/elfe/'), true);
-  assert.equal(groupIsCurrent(regles, '/MaverickCenter/generateur/', '/MaverickCenter/'), true);
+  assert.equal(groupIsCurrent(regles, '/MaverickCenter/fiche/', '/MaverickCenter/'), true);
+  assert.equal(groupIsCurrent(regles, '/personnages/'), true);
   assert.equal(groupIsCurrent(objets, '/ressources/armures/'), true);
   assert.equal(groupIsCurrent(objets, '/races/'), false);
   assert.equal(groupIsCurrent(NAV.find((g) => g.key === 'outils'), '/pages/'), true, 'index du wiki');
@@ -45,4 +46,14 @@ test('les pages ne sont plus sous /wiki/ : une ancienne adresse mène à la nouv
   assert.equal(legacyWikiRedirect('/races/inconnue/'), null, 'une vraie page absente reste introuvable');
   assert.equal(legacyWikiRedirect('/wikipedia/'), null);
   assert.equal(legacyWikiRedirect('/autre/wiki/races/', '/MaverickCenter/'), null, 'hors du préfixe de déploiement');
+});
+
+test('/generateur/ est devenu /fiche/ : l’ancienne adresse mène à la nouvelle (page 404), les adresses du wiki aussi', () => {
+  assert.equal(nouvelleAdresse('/generateur/'), '/fiche/');
+  assert.equal(nouvelleAdresse('/generateur'), '/fiche/');
+  assert.equal(nouvelleAdresse('/MaverickCenter/generateur/', '/MaverickCenter/'), '/MaverickCenter/fiche/');
+  assert.equal(nouvelleAdresse('/wiki/races/nain/'), '/races/nain/');
+  assert.equal(nouvelleAdresse('/generateurs/'), null);
+  assert.equal(nouvelleAdresse('/races/inconnue/'), null);
+  assert.equal(nouvelleAdresse('/autre/generateur/', '/MaverickCenter/'), null);
 });

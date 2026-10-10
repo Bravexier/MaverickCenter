@@ -295,6 +295,10 @@ si bien que le chargeur et l'index lisent la même base sans filtre. `HIDE_EXAMP
 
 ### 8.3 Le générateur de fiche : `rules.json` généré par SELECT
 
+> **Remplacé** (2026-10-10) : l'ancien générateur, `character.mjs` et `rules.json` ont été retirés. La fiche de personnage (`/fiche/`) lit les règles dans
+> `/fiche/regles.json`, tiré de la base au build par `client/src/lib/fiche-regles.mjs` (des SELECT simples, rien de calculé), et calcule avec
+> `client/src/lib/fiche-moteur.mjs` (voir `docs/character-generator.md`). Le texte ci-dessous est la conception d'origine.
+
 `character.mjs` reste pur : il lit toujours `client/src/data/rules.json`. Ce fichier est **produit** par `npm run db:export-rules` (Node, `node:sqlite`) : chaque clé est le résultat d'**un SELECT simple** (19 requêtes vérifiées dans `queries.json`, domaine `export_rules` :
 `attributes`, `skills`, `creation_constants`, `creation_pool`, `constants`, `levels`, `unlocks`, `thresholds`, `resistance_tiers`, `resistance_matrix`, `initiative`, `training`, `gift_types`, `gods`, `states`, `state_stages`, `state_tiers`, `postures`, `posture_effects`), plus le catalogue `races` / `classes` / `magies` tiré de `race`, `classe`, `magie`, `race_classe`, `race_magie` (accessibilités).
 Aucune règle n'est codée dans l'export, aucune valeur n'est calculée. Ce qui n'est dans aucune source (par exemple `allowedClasses` d'une magie) est **absent**, pas inventé.

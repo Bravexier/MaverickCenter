@@ -9,11 +9,13 @@ export const NAV = [
     label: 'Règles',
     items: [
       { label: 'Guide', path: 'guide/' },
-      { label: 'Fiche de personnage', path: 'generateur/' },
       { label: 'Races', path: 'races/' },
       { label: 'Magies', path: 'magies/' },
       { label: 'Classes', path: 'classes/' },
       { label: 'Métiers', path: 'metiers/' },
+      // à droite, après les métiers (demande du propriétaire) : la fiche (création et modification) et la recherche des personnages
+      { label: 'Fiche de personnage', path: 'fiche/' },
+      { label: 'Personnages', path: 'personnages/' },
     ],
   },
   {
@@ -79,4 +81,20 @@ export function legacyWikiRedirect(pathname, base = '/') {
   const old = `${root}wiki`;
   if (pathname !== old && !pathname.startsWith(`${old}/`)) return null;
   return root + (pathname.slice(old.length + 1) || 'pages/');
+}
+
+/** Pages renommées (demande du propriétaire) : ancienne adresse → nouvelle, relatives à la racine du site. */
+export const PAGES_RENOMMEES = { 'generateur/': 'fiche/' };
+
+/**
+ * Nouvelle adresse d'une ancienne adresse du site : les pages du wiki sous `/wiki/` (legacyWikiRedirect) et les pages renommées (le générateur
+ * `/generateur/` est devenu la fiche `/fiche/`). `null` si ce n'en est pas une. Lu par la page 404.
+ */
+export function nouvelleAdresse(pathname, base = '/') {
+  const wiki = legacyWikiRedirect(pathname, base);
+  if (wiki) return wiki;
+  const root = base.replace(/\/$/, '') + '/';
+  if (!pathname.startsWith(root)) return null;
+  const rel = pathname.slice(root.length).replace(/\/?$/, '/');
+  return PAGES_RENOMMEES[rel] ? root + PAGES_RENOMMEES[rel] : null;
 }

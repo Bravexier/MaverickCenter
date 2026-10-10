@@ -72,7 +72,7 @@ classeurs, le guide ou une décision du propriétaire ; ce qu'il dit de différe
 statut `draft`. Exception : `https://maverick-jdr.fandom.com/fr/wiki/Progression`, dont le propriétaire du projet indique que le **tableau de progression est encore à jour** et qu'il
 fait foi pour les budgets de points (décision R3 de `docs/decisions-regles.md`). Il n'est pas encore importé : depuis une session cloud l'hôte
 `maverick-jdr.fandom.com` est bloqué par la politique réseau de l'environnement (à ajouter aux domaines autorisés, comme pour Discord et Google). Le contenu importé irait dans
-`sources/raw/` et ses règles dans `rules.json` avec cette URL en source ; tant qu'il n'est pas lu, les budgets suivent le guide et la fiche, signalés « à confirmer ».
+`sources/raw/` et ses règles dans la base (`data/rows`, tables `niveau_global` et `seuil_niveau`) avec cette URL en source ; tant qu'il n'est pas lu, les budgets suivent le guide et la fiche, signalés « à confirmer ».
 
 ### Google Sheets (classeurs de règles)
 
@@ -133,5 +133,6 @@ relancer l'extracteur sur ces pages.
 1. Importer/exporter les sources (ci-dessus).
 2. Lire chaque document, renseigner `type` dans `sources/sources.json`.
 3. Rédiger les pages du wiki ([guide de contenu](content-guide.md)) en citant la source dans `sources:`.
-4. Remplir [`rules.json`](character-generator.md) à partir des tableaux de règles (races, classes, magies…).
+4. Remplir la base (`data/rows`, [`sql/remplissage.md`](sql/remplissage.md)) à partir des tableaux de règles (races, classes, magies…) : la fiche de
+   personnage ([`character-generator.md`](character-generator.md)) les lit dans `/fiche/regles.json`, tiré de la base au build.
 5. Supprimer les pages `status: example`.

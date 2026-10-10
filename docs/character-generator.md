@@ -1,50 +1,46 @@
-# Générateur de fiche de personnage
+# Fiche de personnage
 
-Page : `client/src/pages/generateur.astro` · moteur : `client/src/lib/character.mjs` · règles : `client/src/data/rules.json`.
+Deux pages (demande du propriétaire), branchées sur le service des personnages ([`serveur.md`](serveur.md)) :
 
-Le moteur ne contient **aucune règle de Maverick** : tout vient de `rules.json`. Les données actuelles sont des
-exemples (`meta.status: "example"` → bandeau d'avertissement sur la page). Remplacer ce fichier par les vraies règles
-suffit à changer le comportement du générateur.
+| Page | Rôle | Fichiers |
+| --- | --- | --- |
+| `/fiche/` (et `/fiche/?id=<id>`) | **Créer et modifier** un prétiré, sur le même écran | `client/src/pages/fiche/index.astro`, `src/scripts/fiche.mjs`, `styles/fiche/fiche.css` |
+| `/personnages/` | **Rechercher** les personnages : filtres, tableau trié par la colonne choisie | `client/src/pages/personnages.astro`, `src/scripts/personnages.mjs`, `lib/personnages-liste.mjs` |
 
-## Schéma de `rules.json`
+L'ancienne adresse `/generateur/` mène à `/fiche/` (page 404, `lib/nav.mjs#nouvelleAdresse`). Dans le menu, « Fiche de personnage » et « Personnages »
+viennent à droite, après « Métiers ».
 
-| Clé | Contenu |
-| --- | --- |
-| `meta` | `status` (`example` affiche le bandeau), `version` (inscrite dans les fiches exportées), `note` |
-| `attributes[]` | `{ id, label }` — les caractéristiques |
-| `creation` | `base` (valeur de départ), `pool` (points à répartir), `max` (valeur maximale **avant** bonus) |
-| `limits` | `classes` et `magies` : nombre maximal de choix (1 = bouton radio de fait) |
-| `races[]` | `{ id, name, wiki?, modifiers?, traits? }` |
-| `classes[]` | idem + `allowedRaces?` (ids de races ; absent = toutes) |
-| `magies[]` | `{ id, name, wiki?, allowedClasses? }` (au moins une des classes listées doit être choisie ; absent = libre) |
-| `derived[]` | `{ id, label, base?, add? }` → valeur = `base + Σ(caractéristique finale × coefficient)` |
+## La page `/fiche/`
 
-- `modifiers` : `{ "idCaracteristique": bonus }`, cumulés entre la race et les classes.
-- `wiki` : id d'une page (`"races/elfe"`) — le nom devient un lien dans la fiche.
-- `traits` : textes listés sur la fiche pour la race et les classes choisies.
+La fiche se remplit dans l'ordre du guide (« Créer son personnage »), une section par étape, numérotée et teintée de la couleur de sa partie du
+guide : 1 race et ethnie, 2 magies et dieux, 3 classe(s) et spécialités (avec l'XP et le niveau), 4 caractéristiques, compétences et maîtrises d'armes,
+5 sorts, 6 attributs, alignement, bourse, métier ; puis 7 gains de niveau et dons à choisir, 8 équipement (armes, armure, bouclier, accessoires,
+inventaire), 9 état en jeu, notes, événements, et le contrôle des règles. Races, magies et classes sont des **pastilles** dans les couleurs de leurs pages
+(`/races/`, `/magies/`, `/classes/`) ; celles que les règles ferment sont grisées. Tout ce que la base garde d'une fiche se saisit (section 13 de
+`data/schema.sql`, ci-dessous).
 
-Caractéristique finale = `creation.base` + points dépensés + bonus de race/classes.
+- **Règles** : `/fiche/regles.json`, tiré de la base au build par `lib/fiche-regles.mjs` (races et leurs bornes, ethnies, magies, dieux, métiers, classes,
+  spécialités, dons à choix groupés comme sur la page de chaque classe, sorts, tables de niveau, constantes, catalogues d'équipement), rien de recalculé.
+- **Calculs pendant la saisie** : `lib/fiche-moteur.mjs`, fonctions pures (testées par `test/fiche-moteur.test.mjs`, contre les vues de la base et les
+  personnages fil rouge du guide) : niveau global et niveaux de classe (R2) ; classes et magies innées que la race permet (R8, R11), ethnies, magie acquise
+  refusée et pourquoi (incompatibilité, mono-magie R15, exceptions R20) ; caractéristiques (+1 de la magie innée, bornes de la race) et budget exact (R3) ;
+  scores de compétences (10 × caractéristique + naturel + acquis, croix R19), plafonds et budget ; gains de niveau attendus ; classe magique (R6, R7) ;
+  attributs comme la fiche automatique (santé, chakra, barrière, vitesse, armure de base, initiative, 4ᵉ barre, Corruption) ; emplacements de sorts
+  (conditions × puissance magique, R16), sorts possibles, NM ; dons à choisir selon la classe, la spécialité et le niveau de classe.
+- **Contrôle** : à chaque enregistrement, le service rend les règles de `v_personnage_controle` que la fiche enfreint, affichées en français
+  (`lib/fiche-controles.mjs`) ; une fiche ne passe « validée » que sans aucune. Ce que la base ne contrôle pas encore (bonus d'équipement, nombre de
+  sorts par emplacement, plafond de NPM du Potentiel Illimité) n'est montré que comme compteur.
+- **Enregistrement** : création (`POST`) puis modification (`PUT` avec la version lue : si quelqu'un a modifié la fiche entre-temps, rien n'est écrasé et
+  la page propose de la recharger). Sans le service (version portable, service arrêté), la fiche se remplit, s'**exporte** en JSON et s'**imprime** ; un
+  fichier exporté se **réimporte** pour créer le prétiré.
+- Avant la 1.0, la page ne crée que des **prétirés** (à personne, visibles de tous) : les fiches de joueur arriveront avec la connexion Discord.
 
-## Brancher les vraies règles
+## La page `/personnages/`
 
-1. Lire les documents sources ([sources.md](sources.md)) et créer les pages du wiki correspondantes.
-2. Éditer `rules.json` : attributs, coût/réserve de création, races, classes, magies, valeurs dérivées.
-3. Mettre `meta.status` à `"verified"` et changer `meta.version`.
-4. `cd client && npm test` : `rules.test.mjs` vérifie les ids uniques, les références de modificateurs/restrictions
-   et que chaque `wiki` pointe vers une page existante.
-5. Supprimer les pages et entrées `example`.
-
-## Ce que le moteur ne gère pas (encore)
-
-Compétences, équipement, jets de dés, niveaux/expérience, coûts de points non linéaires, bonus conditionnels,
-formules arbitraires. Si les règles de Maverick en ont besoin, étendre `character.mjs` **avec des tests**
-(`client/test/character.test.mjs`) plutôt que d'évaluer des formules libres venant des données.
-
-## Fiches exportées
-
-« Exporter » produit `{ format: "maverick-character", version: 1, rules: <meta.version>, character: {…} }`.
-À l'import (et au chargement du `localStorage`), la fiche est nettoyée par `sanitize` : ids inconnus retirés,
-choix incompatibles retirés en cascade (race → classes → magies), limites respectées.
+Le tableau liste les prétirés (archivés cachés par défaut) : nom (lien vers la fiche) et surnom, statut, race et ethnie, magies, classes et spécialités,
+niveau (trié par l'XP), métier, nombre de règles à revoir, date de modification. **Chaque colonne se trie** dans les deux sens (bouton dans l'en-tête,
+`aria-sort`) ; filtres : texte (nom, surnom, origine, sans accents), statut, race, magie (innée ou acquise), classe (1ʳᵉ ou 2ᵉ), niveaux, règles à revoir.
+Filtres et tri vivent dans l'adresse de la page : une recherche se garde et se partage. Logique pure et testée : `lib/personnages-liste.mjs`.
 
 ## Fiches dans la base
 
@@ -102,5 +98,6 @@ Les tables restent **vides dans `data/rows`** : les fiches réelles vivent dans 
 [`serveur.md`](serveur.md) : les prétirés dès maintenant, les fiches de joueur à la 1.0), jamais dans git ni dans la base téléchargeable de `/donnees/`. `client/test/personnages-db.test.mjs` crée des fiches dans une copie de la base et vérifie chaque contrôle et chaque règle de
 visibilité.
 
-Suite prévue : le moteur pur (`client/src/lib/`) qui calcule les valeurs dérivées d'une fiche (santé, chakra, barrière, initiative, vitesse, AP/AM, totaux de
-compétences, résistances, nombre de sorts) depuis ces tables, puis le générateur et l'édition des fiches.
+Le moteur pur (`lib/fiche-moteur.mjs`, ci-dessus) calcule déjà depuis ces choix le niveau, les budgets, les scores de compétences, les attributs et les
+emplacements de sorts ; restent à coder, sans les déduire, les effets d'équipement (AP/AM des pièces, bonus des améliorations), les résistances et ce qui
+sert à la simulation (`feuille-de-route.md`).

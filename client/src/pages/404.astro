@@ -9,10 +9,10 @@ import { url } from '../lib/wiki';
 </Base>
 
 <script>
-  import { legacyWikiRedirect } from '../lib/nav.mjs';
+  import { nouvelleAdresse } from '../lib/nav.mjs';
 
-  // Anciennes adresses /wiki/… (liens enregistrés avant la suppression du préfixe) : renvoi vers la page à sa nouvelle adresse.
+  // Anciennes adresses (/wiki/…, liens enregistrés avant la suppression du préfixe ; /generateur/, devenu /fiche/) : renvoi vers la nouvelle adresse.
   const base = document.querySelector<HTMLElement>('#introuvable')!.dataset.base!;
-  const target = legacyWikiRedirect(location.pathname, base);
+  const target = nouvelleAdresse(location.pathname, base);
   if (target) location.replace(target + location.search + location.hash);
 </script>

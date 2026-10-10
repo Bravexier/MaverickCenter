@@ -1,7 +1,7 @@
 # Décisions du propriétaire sur les règles
 
-Registre des choix que le propriétaire du projet a tranchés quand les sources se contredisent ou se taisent. Une décision est la règle jouée : le
-moteur du générateur (`rules.json`, section `decisions[]`, statut `P`) et les pages du wiki la suivent, et un test l'épingle. On ne déduit jamais une
+Registre des choix que le propriétaire du projet a tranchés quand les sources se contredisent ou se taisent. Une décision est la règle jouée : la
+base, le moteur de la fiche de personnage (`client/src/lib/fiche-moteur.mjs`) et les pages du wiki la suivent, et un test l'épingle. On ne déduit jamais une
 règle d'une vraisemblance ; ce qui n'est pas ici ni dans une source reste absent. Les citations sont les mots du propriétaire.
 
 | Réf. | Question | Décision | Citation | Conséquence |

@@ -1,10 +1,10 @@
 # Maverick Center
 
-Outils autour de **Maverick JDR** : un wiki dont les pages sont reliées par mots-clés, et un générateur de fiche de personnage.
+Outils autour de **Maverick JDR** : un wiki dont les pages sont reliées par mots-clés, et la fiche de personnage.
 Le contenu du jeu vient d'un serveur Discord et de Google Docs (voir [docs/sources.md](docs/sources.md)).
 
-> ⚠️ Le contenu actuel du wiki et de `rules.json` est de la **démonstration** (`status: example`), pas les règles de Maverick.
-> Il sera remplacé par l'import des sources.
+> ⚠️ Les pages `status: example` du wiki sont de la **démonstration**, pas les règles de Maverick (`HIDE_EXAMPLES=1` les retire).
+> Tout le reste vient des sources importées (voir [docs/sources.md](docs/sources.md)).
 
 ## Démarrage
 
@@ -27,8 +27,9 @@ npm run build    # site statique dans client/dist/ (avec le service, dans dist/_
 - **Guide du joueur** (`/guide/`) : 24 pages à lire dans l'ordre, pour découvrir le jeu même sans jamais avoir joué à un JDR, en cinq parties de couleur
   (Découvrir, Créer son personnage, Jouer, Progresser, Pour aller plus loin), avec flèches Précédent / Suivant et pagination ; quatre personnages
   fil rouge sont créés étape par étape. Les tableaux (progression, postures, compétences…) sont tirés de la base.
-- **Générateur de fiche** (`/generateur/`) : race, classes, magies, répartition de points, valeurs dérivées ; sauvegarde automatique
-  dans le navigateur, export/import JSON, impression/PDF. Les règles sont des **données** (`client/src/data/rules.json`).
+- **Fiche de personnage** (`/fiche/`) : créer et modifier un prétiré étape par étape (race, magies, classes, caractéristiques, compétences, sorts,
+  progression, dons, équipement), les valeurs calculées au fil de la saisie et contrôlées par la base ; export/import JSON, impression.
+  **Personnages** (`/personnages/`) : tous les prétirés, avec filtres et tri par colonne. Voir [docs/character-generator.md](docs/character-generator.md).
 
 ## Mode client / serveur
 
@@ -58,7 +59,7 @@ Pour une page privée claude.ai (une simple adresse à ouvrir) : `node tools/bui
 - [Sources (Discord, Google Docs) et import](docs/sources.md)
 - [Flux Git : branches, versions, livraisons](docs/flux-git.md)
 - [Écrire des pages du wiki](docs/content-guide.md)
-- [Schéma des règles du générateur](docs/character-generator.md)
+- [Fiche de personnage et fiches dans la base](docs/character-generator.md)
 - [Mode client / serveur : le service des personnages](docs/serveur.md)
 - [CLAUDE.md](CLAUDE.md) — contexte pour les sessions Claude Code
 
