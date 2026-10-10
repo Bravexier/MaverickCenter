@@ -1,0 +1,282 @@
+// Moteur de la fiche de personnage (page /fiche/) : ce qui se CALCULE à partir des choix d'une fiche (format de lib/fiche-format.mjs) et des
+// règles de la base (/fiche/regles.json, lib/fiche-regles.mjs). Fonctions pures, sans dépendance : importé par le navigateur.
+// Chaque formule cite sa source ; aucune n'est déduite. Les contrôles qui font foi sont ceux de la base (v_personnage_controle, rendus par le
+// service à chaque enregistrement) : ici, les compteurs et les bornes affichés pendant la saisie, calculés de la même façon.
+
+const constante = (regles, id) => {
+  const v = regles.constantes[id];
+  if (v === undefined) throw new Error(`constante « ${id} » absente des règles`);
+  return v;
+};
+export const trouver = (liste, id) => (id ? liste.find((x) => x.id === id) ?? null : null);
+const entier = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+
+/** Niveau global : le plus haut niveau dont l'XP minimale est atteinte (Personnage!W8 ; v_personnage_niveau). */
+export function niveauGlobal(regles, xp) {
+  let niveau = regles.niveaux[0].niveau;
+  for (const n of regles.niveaux) if (n.xp_min <= entier(xp)) niveau = Math.max(niveau, n.niveau);
+  return niveau;
+}
+
+export const ligneDeNiveau = (regles, niveau) => regles.niveaux.find((n) => n.niveau === niveau) ?? null;
+
+/** XP du niveau suivant, ou null au niveau maximal. */
+export function xpDuNiveauSuivant(regles, niveau) {
+  return regles.niveaux.find((n) => n.niveau === niveau + 1)?.xp_min ?? null;
+}
+
+/**
+ * Niveaux de classe (décision R2, v_personnage_niveau) : mono-classe, la classe 1 gagne 2 niveaux par niveau global jusqu'à 20 et l'excédent va
+ * à la classe 2 (prise au niveau global 11) ; bi-classe, chacune = niveau global.
+ */
+export function niveauxDeClasse(regles, niveau, mode) {
+  if (mode === 'bi') return { classe1: niveau, classe2: niveau };
+  const plafond = constante(regles, 'classe.mono_niveau_max');
+  const total = constante(regles, 'classe.mono_niveaux_par_niveau_global') * niveau;
+  return { classe1: Math.min(plafond, total), classe2: Math.max(0, total - plafond) };
+}
+
+/** Classes que la race permet (matrice « Accessibilité de Classe », décision R8) ; sans race, toutes. */
+export function classesPermises(regles, raceId) {
+  const race = trouver(regles.races, raceId);
+  return new Set(race ? race.classes : regles.classes.map((c) => c.id));
+}
+
+/** Magies innées que la race permet (liste de l'onglet de la race quand elle existe, R11 ; sinon la matrice, R8) ; sans race, toutes. */
+export function magiesInneesPermises(regles, raceId) {
+  const race = trouver(regles.races, raceId);
+  return new Set(race ? race.magies : regles.magies.map((m) => m.id));
+}
+
+/** Ethnies proposées : celles de la race ; une ethnie liée à une magie ne va qu'avec cette magie innée (BDD!X2). */
+export function ethniesDeLaRace(regles, raceId) {
+  return regles.ethnies.filter((e) => e.race_id === raceId);
+}
+export const ethnieCompatible = (ethnie, magieInneeId) => !ethnie.magie_id || ethnie.magie_id === magieInneeId;
+
+/**
+ * Pourquoi une magie ne peut pas être la magie acquise de cette fiche (null : elle le peut) : même magie que l'innée, magies incompatibles
+ * (« Magie non compatible »), mono-magie (décision R15) sauf ethnie citée par la magie (décision R20 : Corruption de l'Elfe Noir Charbon et du Felfe Noir).
+ */
+export function refusMagieAcquise(regles, fiche, magieId) {
+  const innee = trouver(regles.magies, fiche.magie_innee_id);
+  const acquise = trouver(regles.magies, magieId);
+  if (!acquise) return 'magie inconnue';
+  if (innee?.id === acquise.id) return 'c’est déjà la magie innée';
+  if (innee && (innee.incompatibles.includes(acquise.id) || acquise.incompatibles.includes(innee.id))) return `incompatible avec ${innee.nom}`;
+  for (const m of [innee, acquise]) {
+    if (m?.mono_magie && !m.ethnies_secondaires.includes(fiche.ethnie_id)) return `${m.nom} : mono-magie`;
+  }
+  return null;
+}
+
+/** Caractéristique qui reçoit le point de la magie innée : celle de la magie, ou celle que la fiche choisit quand la magie la laisse au choix. */
+export function caracteristiqueDeMagie(regles, fiche) {
+  const innee = trouver(regles.magies, fiche.magie_innee_id);
+  if (!innee) return null;
+  return innee.caracteristique_id ?? fiche.caracteristique_magie_id ?? null;
+}
+
+/**
+ * Les six caractéristiques : base saisie, croix, +1 de la magie innée (guide, étape 2), valeur, bornes de la race (v_race_carac_borne ; sans race,
+ * celles de regle_constante).
+ */
+export function caracteristiquesDe(regles, fiche) {
+  const race = trouver(regles.races, fiche.race_id);
+  const bonus = caracteristiqueDeMagie(regles, fiche);
+  const parId = new Map((fiche.caracteristiques ?? []).map((c) => [c.caracteristique_id, c]));
+  return regles.caracteristiques.map((k) => {
+    const saisie = parId.get(k.id);
+    const base = saisie ? entier(saisie.base) : null;
+    const plus = bonus === k.id ? constante(regles, 'caracteristique.bonus_magie_innee') : 0;
+    const [min, max] = race?.bornes[k.id] ?? [constante(regles, 'caracteristique.base_min'), constante(regles, 'caracteristique.base_max')];
+    return { id: k.id, nom: k.nom, lettre: k.lettre, base, croix: saisie ? entier(saisie.croix) : 0, bonus: plus, valeur: (base ?? 0) + plus, min, max };
+  });
+}
+
+/** Total des bases et budget exact du niveau (seuil 'caracteristiques_total', décision R3). */
+export function budgetCaracteristiques(regles, fiche) {
+  const niveau = niveauGlobal(regles, fiche.xp);
+  return {
+    total: (fiche.caracteristiques ?? []).reduce((s, c) => s + entier(c.base), 0),
+    attendu: ligneDeNiveau(regles, niveau).caracteristiques_total,
+  };
+}
+
+/**
+ * Les trente compétences : naturel et acquis saisis, plafonds (naturel : seuil du niveau ; acquis : 5 par point de caractéristique de base) et
+ * score (guide, « Réussir une action » : 10 × la caractéristique + naturel + acquis ; une croix −20 %, deux croix : inutilisable, décision R19).
+ */
+export function competencesDe(regles, fiche) {
+  const niveau = niveauGlobal(regles, fiche.xp);
+  const caracs = new Map(caracteristiquesDe(regles, fiche).map((c) => [c.id, c]));
+  const parId = new Map((fiche.competences ?? []).map((c) => [c.competence_id, c]));
+  const maxNaturel = ligneDeNiveau(regles, niveau).competence_naturel_max;
+  return regles.competences.map((k) => {
+    const saisie = parId.get(k.id);
+    const carac = caracs.get(k.caracteristique_id);
+    const naturel = saisie ? entier(saisie.naturel) : 0;
+    const acquis = saisie ? entier(saisie.acquis) : 0;
+    const utilisable = carac.croix < 2;
+    const malus = carac.croix === 1 ? constante(regles, 'competence.croix_1_malus') : 0;
+    return {
+      id: k.id, nom: k.nom, caracteristique_id: k.caracteristique_id, naturel, acquis, maxNaturel,
+      maxAcquis: (carac.base ?? 0) * constante(regles, 'competence.acquis_max_par_point_caracteristique'),
+      score: utilisable ? carac.valeur * constante(regles, 'competence.base_par_point_caracteristique') + naturel + acquis + malus : null,
+    };
+  });
+}
+
+/** Total des points naturels et budget cumulé exact du niveau (v_niveau.points_competences_cumul, décision R3). */
+export function budgetCompetences(regles, fiche) {
+  const niveau = niveauGlobal(regles, fiche.xp);
+  return { total: (fiche.competences ?? []).reduce((s, c) => s + entier(c.naturel), 0), attendu: ligneDeNiveau(regles, niveau).points_competences_cumul };
+}
+
+/** Gains de niveau attendus, du niveau 2 au niveau global : points d'attributs (santé + chakra, exactement) et dé bonus du niveau, s'il y en a un. */
+export function progressionAttendue(regles, niveau) {
+  return regles.niveaux.filter((n) => n.niveau >= 2 && n.niveau <= niveau).map((n) => ({ niveau: n.niveau, points: n.points_attributs ?? 0, de: n.de_attributs_bonus }));
+}
+
+/**
+ * Une classe compte comme classe magique (+4 AM, une condition d'emplacement de sorts) : par sa catégorie ou l'Archimage (décision R6), ou par
+ * la spécialité choisie dont le don de niveau 10 dit « considérer comme classe magique » (décision R7), au niveau de classe 10.
+ */
+export function classeMagique(regles, choixDeClasse, niveauDeClasse) {
+  const classe = trouver(regles.classes, choixDeClasse?.classe_id);
+  if (!classe) return false;
+  if (classe.magique) return true;
+  const specialite = classe.specialites.find((s) => s.id === choixDeClasse.specialite_id);
+  return Boolean(specialite?.magique) && niveauDeClasse >= 10;
+}
+
+/** Classes de la fiche, rang par rang, avec leur niveau et leur caractère magique. */
+export function classesDe(regles, fiche) {
+  const niveaux = niveauxDeClasse(regles, niveauGlobal(regles, fiche.xp), fiche.mode_classe);
+  return [1, 2].map((rang) => {
+    const choix = (fiche.classes ?? []).find((c) => c.rang === rang) ?? null;
+    const niveau = rang === 1 ? niveaux.classe1 : niveaux.classe2;
+    return { rang, niveau, choix, classe: trouver(regles.classes, choix?.classe_id), magique: classeMagique(regles, choix, niveau) };
+  });
+}
+
+/** Valeur d'un accessoire de la propriété « Attributs » pour une cible (Santé, Chakra, Barrière) : signe de SON accessoire (malédiction). */
+function bonusDAccessoires(regles, fiche, cible) {
+  let total = 0;
+  for (const a of fiche.accessoires ?? []) {
+    const effet = trouver(regles.accessoires, a.accessoire_effet_id);
+    if (!effet || effet.propriete !== 'attributs' || effet.cible !== cible) continue;
+    const valeur = effet.min !== null ? entier(a.valeur) : entier(effet.valeur);
+    total += a.maudit ? -valeur : valeur;
+  }
+  return total;
+}
+
+/** Points gagnés par la progression (personnage_progression) : santé, chakra, et le dé (sur l'un, l'autre ou les deux, « 1d4 pour les deux »). */
+function gainsDeProgression(fiche) {
+  let sante = 0;
+  let chakra = 0;
+  for (const p of fiche.progression ?? []) {
+    sante += entier(p.points_sante);
+    chakra += entier(p.points_chakra);
+    const de = entier(p.de_resultat);
+    if (p.de_choix === 'sante' || p.de_choix === 'les_deux') sante += de;
+    if (p.de_choix === 'chakra' || p.de_choix === 'les_deux') chakra += de;
+  }
+  return { sante, chakra };
+}
+
+/**
+ * Les attributs, comme la fiche automatique V15.2.2 (Personnage!F14, M14, T14 ; BDD!K30, K32, K34 ; guide, étape 6) :
+ *   santé    = classes + race + magie innée + magie acquise + ethnie + accessoires « Santé » + gains de niveau
+ *   chakra   = classes + race + magie innée + magie acquise + ethnie + accessoires « Chakra » + gains de niveau
+ *   barrière = chakra ÷ 2 (arrondi à l'inférieur) + classes + race + ethnie + accessoires « Barrière »
+ * Vitesse de la race et de l'ethnie ; armure de base : AP/AM de la race et de l'ethnie, AM de chaque classe magique (guide, étape 6) ; initiative :
+ * 1D20 + le bonus de l'Agilité (table initiative_agilite) ; 4ᵉ barre (Sang, Âme) de la magie qui en a une ; Corruption au plus le chakra.
+ */
+export function attributsDe(regles, fiche) {
+  const race = trouver(regles.races, fiche.race_id);
+  const ethnie = trouver(regles.ethnies, fiche.ethnie_id);
+  const magies = [fiche.magie_innee_id, fiche.magie_acquise_id].map((id) => trouver(regles.magies, id)).filter(Boolean);
+  const classes = classesDe(regles, fiche).filter((c) => c.classe);
+  const somme = (cle) => classes.reduce((s, c) => s + c.classe[cle], 0);
+  const progression = gainsDeProgression(fiche);
+  const detail = {
+    sante: { classes: somme('sante'), race: race?.sante ?? 0, magies: magies.reduce((s, m) => s + m.sante, 0), ethnie: ethnie?.sante ?? 0, accessoires: bonusDAccessoires(regles, fiche, 'Santé'), niveaux: progression.sante },
+    chakra: { classes: somme('chakra'), race: race?.chakra ?? 0, magies: magies.reduce((s, m) => s + m.chakra, 0), ethnie: ethnie?.chakra ?? 0, accessoires: bonusDAccessoires(regles, fiche, 'Chakra'), niveaux: progression.chakra },
+  };
+  const total = (d) => Object.values(d).reduce((s, v) => s + v, 0);
+  const chakra = total(detail.chakra);
+  detail.barriere = {
+    chakra: Math.floor(chakra / constante(regles, 'barriere.diviseur_chakra')), classes: somme('barriere'), race: race?.barriere ?? 0, ethnie: ethnie?.barriere ?? 0,
+    accessoires: bonusDAccessoires(regles, fiche, 'Barrière'),
+  };
+  const agilite = caracteristiquesDe(regles, fiche).find((c) => c.id === 'agilite');
+  const initiative = regles.initiative.find((i) => i.agilite === agilite?.valeur) ?? null;
+  const barre4 = magies.find((m) => m.barre4)?.barre4 ?? null;
+  return {
+    sante: total(detail.sante),
+    chakra,
+    barriere: total(detail.barriere),
+    detail,
+    vitesseSol: race ? race.vitesse_sol + (ethnie?.vitesse ?? 0) : null,
+    vitesseNage: race ? race.vitesse_nage + (ethnie?.vitesse ?? 0) : null,
+    ap: (race?.ap ?? 0) + (ethnie?.ap ?? 0),
+    am: (race?.am ?? 0) + (ethnie?.am ?? 0) + classes.filter((c) => c.magique).length * regles.am_classe_magique,
+    initiative,
+    quatriemeBarre: barre4 && { ressource: barre4.ressource === 'ame' ? 'Âme' : 'Sang', max: barre4.max },
+    corruptionMax: chakra,
+  };
+}
+
+/** Puissance magique du niveau (table niveau_global ; la 5 au niveau 16, décision R16). */
+export function puissanceMagique(regles, niveau) {
+  return Math.max(0, ...regles.niveaux.filter((n) => n.niveau <= niveau && n.puissance_magique).map((n) => n.puissance_magique));
+}
+
+/** Plus haut niveau de sort (NPM) accessible : la puissance magique, sans le palier réservé aux personnages sans magie acquise (v_personnage_controle). */
+export function npmMax(regles, fiche) {
+  const niveau = niveauGlobal(regles, fiche.xp);
+  return Math.max(0, ...regles.niveaux
+    .filter((n) => n.niveau <= niveau && n.puissance_magique && (!fiche.magie_acquise_id || !n.puissance_magique_note))
+    .map((n) => n.puissance_magique));
+}
+
+/**
+ * Emplacements de sorts (guide, étape 5 ; Doc « Créer sa fiche » › Tableau magie) : conditions remplies (magie innée, magie acquise, chaque classe
+ * magique) × puissance magique. Avec deux magies, les emplacements du palier 5 s'ouvrent quand même (correction 29 de la fiche).
+ */
+export function emplacementsDeSorts(regles, fiche) {
+  const conditions = (fiche.magie_innee_id ? 1 : 0) + (fiche.magie_acquise_id ? 1 : 0) + classesDe(regles, fiche).filter((c) => c.magique).length;
+  const puissance = puissanceMagique(regles, niveauGlobal(regles, fiche.xp));
+  return { conditions, puissance, total: conditions * puissance };
+}
+
+/** Sorts que la fiche peut prendre : de sa magie innée ou acquise (toutes pour le Potentiel Illimité), jusqu'au NPM accessible. */
+export function sortsPossibles(regles, fiche) {
+  const toutes = fiche.magie_innee_id === 'magies/potentiel-illimite';
+  const magies = new Set([fiche.magie_innee_id, fiche.magie_acquise_id].filter(Boolean));
+  const max = npmMax(regles, fiche);
+  return regles.sorts.filter((s) => (toutes || magies.has(s.magie_id)) && s.niveau <= max);
+}
+
+/** Niveau de maîtrise : au plus niveau global − 1 par sort (BDD!BB6), et au plus les NM gagnés en tout (v_niveau.niveaux_maitrise_cumul). */
+export function maitriseDesSorts(regles, fiche) {
+  const niveau = niveauGlobal(regles, fiche.xp);
+  return {
+    maxParSort: Math.max(0, niveau - constante(regles, 'sort.nm_ecart_niveau_global')),
+    total: (fiche.sorts ?? []).reduce((s, x) => s + entier(x.niveau_maitrise), 0),
+    disponibles: ligneDeNiveau(regles, niveau).niveaux_maitrise_cumul,
+  };
+}
+
+/** Dons à choisir pour chaque classe : les groupes de sa classe et de sa spécialité choisie, jusqu'à son niveau de classe. */
+export function donsAChoisir(regles, fiche) {
+  return classesDe(regles, fiche)
+    .filter((c) => c.classe)
+    .map((c) => ({
+      rang: c.rang,
+      classe: c.classe,
+      groupes: c.classe.choix.filter((g) => g.niveau <= c.niveau && (g.specialite_id === null || g.specialite_id === c.choix.specialite_id)),
+    }));
+}
