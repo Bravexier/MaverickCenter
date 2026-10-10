@@ -85,7 +85,8 @@ function fauxOutils() {
   mkdirSync(bin, { recursive: true });
   const journal = join(racine, 'appels.log');
   for (const nom of ['caddy', 'systemctl']) {
-    writeFileSync(join(bin, nom), `#!/bin/sh\necho "${nom} $*" >> "${journal}"\nexit 0\n`);
+    // Le journal note aussi si les variables de maverick.env sont dans l'environnement de l'outil (jamais leur valeur).
+    writeFileSync(join(bin, nom), `#!/bin/sh\necho "${nom} $* domaine=\${MAVERICK_DOMAINE:-absent} acces=\${MAVERICK_ACCES_TEST:+present}" >> "${journal}"\nexit 0\n`);
     chmodSync(join(bin, nom), 0o755);
   }
   return { bin, journal };
@@ -135,7 +136,14 @@ test('instances.sh : deux instances sur 127.0.0.1, base de test conservée, mots
   assert.notEqual(caddy.MAVERICK_ACCES_NORMAL, caddy.MAVERICK_ACCES_TEST, 'un mot de passe par instance');
   assert.equal(statSync(join(d.caddy, 'maverick.env')).mode & 0o777, 0o600, 'mots de passe lisibles par root seulement');
   assert.equal(lireFichier(join(d.caddy, 'Caddyfile')), lire('Caddyfile'));
-  assert.match(lireFichier(join(d.systemd, 'caddy.service.d', 'maverick.conf')), /EnvironmentFile=.*maverick\.env/);
+  const unite = lireFichier(join(d.systemd, 'caddy.service.d', 'maverick.conf'));
+  assert.match(unite, /EnvironmentFile=.*maverick\.env/);
+  // L'unité des paquets Ubuntu lance « caddy run --environ », qui écrit l'environnement (donc les mots de passe) dans le journal.
+  assert.match(unite, /^ExecStart=\nExecStart=\S*caddy run --config \S+Caddyfile$/m, 'ExecStart redéfini');
+  assert.doesNotMatch(unite, /--environ/, 'jamais de mot de passe dans journalctl -u caddy');
+  // Caddy 2.6 (paquets Ubuntu) n'a pas « validate --envfile » : les variables passent par l'environnement.
+  const validation = lireFichier(join(racine, 'appels.log')).trim().split('\n').findLast((l) => l.startsWith('caddy validate'));
+  assert.match(validation, /^caddy validate --config \S+Caddyfile --adapter caddyfile domaine=maverick-jdr\.com acces=present$/);
   assert.ok(!r.out.includes(Buffer.from(caddy.MAVERICK_ACCES_NORMAL, 'base64').toString().split(':')[1]), 'aucun mot de passe affiché');
 
   // Relance : les accès sont conservés, le réglage de port est rétabli s'il a été changé, le domaine peut changer.

@@ -79,12 +79,17 @@ fi
 echo "== Caddy"
 install -m 644 "$ici/Caddyfile" "$ETC_CADDY/Caddyfile"
 mkdir -p "$ETC_SYSTEMD/caddy.service.d"
+# ExecStart est redéfini sans « --environ » : l'unité de la distribution le passe à Caddy, qui écrirait alors tout son environnement,
+# donc les mots de passe internes, dans le journal (journalctl -u caddy).
 cat > "$ETC_SYSTEMD/caddy.service.d/maverick.conf" <<CONF
 [Service]
 EnvironmentFile=$ENV_CADDY
+ExecStart=
+ExecStart=$(command -v caddy) run --config $ETC_CADDY/Caddyfile
 CONF
 systemctl daemon-reload
-caddy validate --config "$ETC_CADDY/Caddyfile" --adapter caddyfile --envfile "$ENV_CADDY"
+# Les variables sont données par l'environnement, pas par « --envfile » : le Caddy des paquets Ubuntu (2.6) ne connaît pas cette option.
+(set -a; . "$ENV_CADDY"; set +a; caddy validate --config "$ETC_CADDY/Caddyfile" --adapter caddyfile)
 systemctl enable caddy
 systemctl restart caddy
 
