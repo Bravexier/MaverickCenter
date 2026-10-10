@@ -12,9 +12,9 @@
 //   dev → master      dev et master : X.Y+1.0          ou X+1.0.0 si la PR porte [V: X+1]
 //   hotfix → master   master inchangée ; master est refusionnée dans dev, puis dev : X.Y.Z+1
 //
-// Ce qui est livré dépend de la version (la 1.0 est le signal du propriétaire ; elle apporte la connexion Discord) :
-//   avant la 1.0      un seul site, reconstruit depuis dev après chaque fusion (branche « site », fonctionnement d'avant le flux)
-//   à partir de 1.0   un installateur de production (master) et un installateur de test (dev) après chaque fusion
+// Ce qui est livré dépend de la version (PREMIERE_VERSION_HEBERGEE, décision du propriétaire ; la 1.0, elle, reste son signal d'ouverture à tout le Discord) :
+//   avant la 0.2.0    un seul site, reconstruit depuis dev après chaque fusion (branche « site », fonctionnement d'avant le flux)
+//   à partir de 0.2.0 un installateur de production (master) et un installateur de test (dev) après chaque fusion
 
 export const MASTER = 'master';
 export const DEV = 'dev';
@@ -29,7 +29,13 @@ export const FAMILLES = {
   hotfix: { prefixe: 'hotfix/', depuis: MASTER, opposees: [DEV, 'feature/'], admises: [] },
 };
 
-/** Branche de publication du site avant la 1.0, écrite par le bot seul. */
+/**
+ * Première version livrée par installateurs (serveur normal et serveur de test) : avant elle, un seul site publié sur la branche « site ».
+ * Décision du propriétaire (2026-10-10) : le duo normal / test est mis à l'essai en 0.Y, avant l'ouverture à tout le Discord (la 1.0).
+ */
+export const PREMIERE_VERSION_HEBERGEE = '0.2.0';
+
+/** Branche de publication du site avant PREMIERE_VERSION_HEBERGEE, écrite par le bot seul. */
 export const SITE = 'site';
 
 /** `feature`, `hotfix`, `principale` (master, dev), `publication` (site) ou null pour tout autre nom. */
@@ -121,13 +127,18 @@ export function avantLaUn(version) {
   return lireVersion(version)[0] === 0;
 }
 
+/** Avant PREMIERE_VERSION_HEBERGEE : le site unique (branche « site »), pas d'installateurs. */
+export function avantHebergement(version) {
+  return comparerVersions(version, PREMIERE_VERSION_HEBERGEE) < 0;
+}
+
 /**
- * Ce que produit une branche arrivée à cette version : avant la 1.0, dev → `site` (le site unique) et master → rien ;
- * à partir de la 1.0, master → `prod` (installateur du serveur normal) et dev → `test` (installateur du serveur de test).
+ * Ce que produit une branche arrivée à cette version : avant PREMIERE_VERSION_HEBERGEE, dev → `site` (le site unique) et master → rien ;
+ * ensuite, master → `prod` (installateur du serveur normal) et dev → `test` (installateur du serveur de test).
  */
 export function livrableDe(branche, version) {
   if (branche !== MASTER && branche !== DEV) throw new Error(`branche livrable : master ou dev (reçu « ${branche} »)`);
-  if (avantLaUn(version)) return branche === DEV ? 'site' : null;
+  if (avantHebergement(version)) return branche === DEV ? 'site' : null;
   return branche === DEV ? 'test' : 'prod';
 }
 

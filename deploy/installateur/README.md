@@ -1,9 +1,9 @@
-# Installateurs : serveur normal et serveur de test (à partir de la 1.0)
+# Installateurs : serveur normal et serveur de test (à partir de la 0.2.0)
 
-À partir de la 1.0 (signal du propriétaire, avec la connexion Discord), la solution est hébergée hors du NAS et installée par des
+À partir de la 0.2.0 (`PREMIERE_VERSION_HEBERGEE`, décision du propriétaire ; la 1.0 est ensuite l'ouverture à tout le Discord), la solution est hébergée hors du NAS et installée par des
 **installateurs** : un script `.sh` autonome par fusion, qui contient le site et l'installe dans le dossier d'une instance, sans téléchargement ni
 jeton. Ils sont publiés en *release* GitHub (privée comme le dépôt) par `.github/workflows/livraison.yml` ; voir [`docs/flux-git.md`](../../docs/flux-git.md).
-Avant la 1.0, rien de tout cela ne sert : le NAS a sa propre installation ([`../README.md`](../README.md), branche `site`).
+Avant la 0.2.0, rien de tout cela ne sert : le NAS a sa propre installation ([`../README.md`](../README.md), branche `site`).
 
 > Le contenu des pages appartient au propriétaire du jeu. La configuration fournie protège donc l'accès par mot de passe
 > et interdit l'indexation par les moteurs de recherche. Ne la désactivez pas sans son accord.
@@ -16,7 +16,7 @@ Prérequis sur l'hôte : un hôte Docker (Linux), `sh`, `tar`, `gzip`, et `sha25
 | Installateur | `maverick-center-vX.Y.Z-install.sh` (fusion dans `master`) | `maverick-center-vX.Y.Z-test-install.sh` (fusion dans `dev`) |
 | Dossier conseillé | `/srv/maverick-center` | `/srv/maverick-center-test` (à côté du serveur normal) |
 | Adresse | `http://<hôte>:8080` | `http://<hôte>:8081`, bandeau « Serveur de test » sur chaque page |
-| Base vivante `db/` | jamais touchée par une installation | **son contenu est remplacé à chaque installation par une copie de celle du serveur normal, prise à cet instant** (le dossier reste : il est monté dans le conteneur du service, qui rouvre la base) |
+| Base vivante `db/` | jamais touchée par une installation | **son contenu est remplacé à chaque installation par une copie de celle du serveur normal, prise à cet instant** (le dossier reste : il est monté dans le conteneur du service, qui rouvre la base). **Sauf** si le `.env` de l'instance contient `MAVERICK_BASE_TEST=conservee` : la copie n'est faite qu'à la première installation (`db/` vide), puis `db/` n'est plus touché, pour que les modifications faites en test durent ([`deploy/vps/`](../vps/README.md) pose ce réglage) |
 
 Une instance = un dossier : `site/` (remplacé à chaque installation, avec le code du service des personnages, `site/_serveur/`), `db/` (base vivante
 du service : utilisateurs, fiches, et ce qu'ils font ; voir [`docs/serveur.md`](../../docs/serveur.md)), `docker-compose.yml` (deux conteneurs : nginx et le service),

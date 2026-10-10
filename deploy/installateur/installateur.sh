@@ -138,8 +138,17 @@ PAGES=$(find "$TRAVAIL/site" -name index.html | wc -l | tr -d ' ')
 [ "$PAGES" -eq "$PAGES_ATTENDUES" ] || die "archive refusée : $PAGES pages au lieu de $PAGES_ATTENDUES (rien n'a été modifié)"
 
 # ---------------------------------------------------------------- base (avant le site : en cas d'échec, rien n'a changé)
+# Test seulement : MAVERICK_BASE_TEST=conservee dans le .env de l'instance. La base de test est alors copiée de la production à la première
+# installation seulement ; ensuite son db/ n'est plus touché (les modifications faites en test durent, jusqu'à ce qu'on retire la ligne).
+BASE_CONSERVEE=0
+if [ "$MODE" = test ] && [ -f "$DOSSIER/.env" ] && grep -q '^MAVERICK_BASE_TEST=conservee[[:space:]]*$' "$DOSSIER/.env" \
+  && [ -d "$DOSSIER/db" ] && find "$DOSSIER/db/" -mindepth 1 -maxdepth 1 | grep -q .; then
+  BASE_CONSERVEE=1
+fi
 if [ "$MODE" = prod ]; then
   mkdir -p "$DOSSIER/db"
+elif [ "$BASE_CONSERVEE" -eq 1 ]; then
+  log "Base de test conservée (MAVERICK_BASE_TEST=conservee dans $DOSSIER/.env) : $DOSSIER/db n'est pas touché."
 else
   COPIE="$DOSSIER/.db.copie.$$"
   mkdir "$COPIE"

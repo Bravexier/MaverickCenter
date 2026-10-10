@@ -53,7 +53,7 @@ un hotfix → `master` reste `0.2.0`, `dev` reçoit le correctif et passe en `0.
 
 Après une livraison, `dev` rejoint `master` (avance rapide, ou fusion si `dev` a bougé entre-temps). Après un hotfix, `master` est refusionnée dans `dev`.
 Si cette refusion est en conflit (le hotfix et `dev` ont modifié les mêmes lignes), le bot ne touche pas `dev` et le signale (son passage finit en
-rouge, l'installateur de production du hotfix est quand même publié à partir de la 1.0) ; la refusion se fait alors par une `feature/<nom>` créée
+rouge, l'installateur de production du hotfix est quand même publié à partir de la 0.2.0) ; la refusion se fait alors par une `feature/<nom>` créée
 depuis `dev`, dans laquelle on fusionne `master` et résout les conflits, puis une PR vers `dev`. Seuls les conflits sur la ligne de version se
 résolvent seuls. Même chose si le hotfix modifie `.github/workflows/` et que le bot n'a pas de `BOT_TOKEN` avec la permission *Workflows*.
 
@@ -69,23 +69,25 @@ Plusieurs fusions rapprochées sont traitées chacune à leur tour par le bot (i
 entre-temps). Relancer un passage déjà fait (*Re-run*) ne refait rien : le bot reconnaît la PR à ses commits « (PR #n) » et s'arrête ; pour republier
 une branche, *Actions → Version et livraison → Run workflow*.
 
-## Ce qui est publié : le site unique, puis deux serveurs à la 1.0
+## Ce qui est publié : le site unique, puis deux serveurs dès la 0.2.0
 
-**La 1.0 est le signal du propriétaire.** Elle apporte la connexion par Discord (identification et utilisateurs, voir
-[`feuille-de-route.md`](feuille-de-route.md)) : c'est à partir d'elle qu'il y a un usage réel, donc un serveur normal et un serveur de test.
-Le bot choisit seul d'après la version (`tools/flux-git/regles.mjs`, `livrableDe`) ; on passe en 1.0 par une livraison `dev` → `master`
-portant `[V: X+1]`, à la demande du propriétaire.
+**La première version hébergée est la 0.2.0** (`PREMIERE_VERSION_HEBERGEE` dans `tools/flux-git/regles.mjs`, décision du propriétaire du 2026-10-10) :
+le duo serveur normal / serveur de test est mis à l'essai en 0.Y, avec le serveur de [`deploy/vps/`](../deploy/vps/README.md), avant la connexion
+par Discord. Le bot choisit seul d'après la version (`livrableDe`) ; la première livraison `dev` → `master` (0.1.x → 0.2.0) produit les deux premiers
+installateurs. **La 1.0 reste le signal du propriétaire** : l'ouverture à tout le Discord (et non plus aux seuls MJ et administrateurs), avec la
+connexion par Discord (identification et utilisateurs, voir [`feuille-de-route.md`](feuille-de-route.md)) ; on y passe par une livraison `dev` →
+`master` portant `[V: X+1]`, à la demande du propriétaire.
 
-### Avant la 1.0 (versions 0.x) : le fonctionnement actuel, un seul site
+### Avant la 0.2.0 (versions 0.1.x) : le fonctionnement d'avant, un seul site
 
 Pas de serveur normal ni de serveur de test. Après chaque fusion qui change `dev` (une feature, la refusion après une livraison ou un hotfix),
 le job `Site` reconstruit le site depuis `dev` (sans les pages d'exemple) et le publie sur la branche **`site`** ; le NAS la suit avec sa propre
 installation, comme aujourd'hui (`deploy/`, `update-nas.sh` toutes les 5 minutes). Les versions suivent les règles ci-dessus ; une livraison
 `dev` → `master` ne fait que les versions (et `dev`, qui la reçoit, republie le site). Rien n'est à changer sur le NAS.
 
-### À partir de la 1.0 : serveur normal et serveur de test, un script d'installation par fusion
+### À partir de la 0.2.0 : serveur normal et serveur de test, un script d'installation par fusion
 
-La solution est alors hébergée (le NAS est temporaire, l'hébergement reste à choisir : `feuille-de-route.md`). Après chaque fusion, le job
+La solution est alors hébergée (le NAS est temporaire ; le serveur : [`deploy/vps/`](../deploy/vps/README.md)). Après chaque fusion, le job
 `Installateur` construit le site et publie un **installateur** (`deploy/installateur/`) : un script `.sh` autonome qui contient le site et l'installe
 sur l'hôte, sans téléchargement ni jeton. Il est publié comme *release* GitHub du dépôt (privée comme lui). La branche `site` n'est plus mise à jour.
 
@@ -106,10 +108,10 @@ quitter le serveur. La base vivante (`db/`) est celle du service des personnages
 utilisateurs et leurs fiches ; la base des règles du site (`/donnees/`), elle, est reconstruite
 depuis `data/rows` à chaque version.
 
-**Le jour de la 1.0** : sur l'hôte choisi, lancer l'installateur `v1.0.0` (serveur normal), puis `v1.0.0-test` (serveur de test, qui copie sa base) ;
+**Le premier jour hébergé (0.2.0)** : sur l'hôte, lancer l'installateur `v0.2.0` (serveur normal), puis `v0.2.0-test` (serveur de test, qui copie sa base) ;
 la mise à jour automatique de chaque instance est `mise-a-jour.sh`. Le NAS n'est pas touché (sa branche `site` cesse simplement d'avancer).
 Détails : [`deploy/installateur/README.md`](../deploy/installateur/README.md). Republier une branche sans changer sa version :
-*Actions → Version et livraison → Run workflow* (le site avant la 1.0, une étiquette `…-rebuild.N` ensuite).
+*Actions → Version et livraison → Run workflow* (le site avant la 0.2.0, une étiquette `…-rebuild.N` ensuite).
 
 ## Au quotidien
 
@@ -162,7 +164,7 @@ supprimées. `develop` (ancienne tentative, entièrement fusionnée) sera suppri
    workflows restent alors la seule protection : suppression des branches non conformes (à la création et au balayage), check rouge sur une PR
    non conforme, ni version ni publication pour une fusion hors règles ; ils n'empêchent ni une fusion ni une poussée directe. Dans ce cas, **ne
    pas créer `BOT_TOKEN`** : le jeton par défaut des workflows suffit tant que les branches ne sont pas protégées.
-4. **Serveur** : rien sur le NAS (il suit toujours la branche `site`, avec sa propre installation). À la 1.0, voir « Le jour de la 1.0 » ci-dessus.
+4. **Serveur** : rien sur le NAS (il suit toujours la branche `site`, avec sa propre installation). Dès la 0.2.0, voir « Le premier jour hébergé » ci-dessus.
 5. **Vérifier les bots** : après la première fusion d'une `feature/<nom>` dans `dev`, *Actions → Version et livraison* doit montrer les jobs
    `Version` (commit « chore: version v0.1.26 … » sur `dev`), `Site (avant la 1.0)` (branche `site` republiée) et `Supprimer la branche fusionnée`.
 
