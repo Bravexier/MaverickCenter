@@ -4,7 +4,7 @@
 // ses écarts ne sont pas affichés. Seule la matrice des magies innées de la fiche sert encore, quand l'onglet ne les limite pas lui-même (R8, R11 :
 // race_magie_onglet prime). Les classes accessibles (race_classe) ne sont pas affichées (demande du propriétaire) : seule la classe raciale l'est.
 // Node seulement (la base est ouverte par lib/donnees.mjs au build). Une requête par table, puis assemblage en mémoire.
-import { HYBRIDES_SANS_CLASSE_RACIALE } from './race-kinds.mjs';
+import { HYBRIDES_SANS_CLASSE_RACIALE, TAG_RACE_HYBRIDE } from './race-kinds.mjs';
 import { blocsDeTexte } from './sort-format.mjs';
 
 const apres = (id, separateur) => id.slice(id.indexOf(separateur) + separateur.length);
@@ -41,9 +41,11 @@ export function chargerRaces(db) {
   const lignes = regrouper(all('SELECT race_id, rang, ethnie_id FROM race_don_tableau_ligne ORDER BY race_id, rang'), 'race_id');
   const cellules = regrouper(all('SELECT race_id, ligne, colonne, valeur FROM race_don_tableau_cellule ORDER BY race_id, ligne, colonne'), 'race_id');
   const hyper = new Map(
-    all("SELECT race_id, nom, effet FROM mode_hyper_effet WHERE version = 'onglet_race' AND portee = 'race'").map((h) => [h.race_id, h]),
+    all("SELECT id, race_id, nom, effet FROM mode_hyper_effet WHERE version = 'onglet_race' AND portee = 'race'").map((h) => [h.race_id, h]),
   );
   const onglets = new Map(all('SELECT * FROM race_onglet').map((o) => [o.race_id, o]));
+  // races créées hybrides depuis le site de dev, avant leur classe raciale (même règle que lib/race-kinds.mjs#raceKind)
+  const marqueesHybrides = new Set(db.prepare('SELECT page_id FROM page_tag WHERE tag_id = ?').all(TAG_RACE_HYBRIDE).map((t) => t.page_id));
 
   const races = new Map();
   for (const r of all('SELECT * FROM race ORDER BY ordre')) {
@@ -64,11 +66,11 @@ export function chargerRaces(db) {
       // valeurs de départ de l'onglet (« DONNÉES »)
       stats: o
         ? [
-            { label: 'Santé de départ', valeur: o.sante_depart },
-            { label: 'Chakra de départ', valeur: o.chakra_depart },
-            { label: 'Barrière bonus', valeur: o.barriere_bonus },
-            { label: 'Vitesse au sol', valeur: o.vitesse_sol },
-            { label: 'Vitesse de nage', valeur: o.vitesse_nage },
+            { label: 'Santé de départ', valeur: o.sante_depart, colonne: 'sante_depart' },
+            { label: 'Chakra de départ', valeur: o.chakra_depart, colonne: 'chakra_depart' },
+            { label: 'Barrière bonus', valeur: o.barriere_bonus, colonne: 'barriere_bonus' },
+            { label: 'Vitesse au sol', valeur: o.vitesse_sol, colonne: 'vitesse_sol' },
+            { label: 'Vitesse de nage', valeur: o.vitesse_nage, colonne: 'vitesse_nage' },
           ]
         : [],
       descriptionGenerale: blocsDeTexte(o?.description_generale),
@@ -92,10 +94,13 @@ export function chargerRaces(db) {
           ? {
               titre: o?.dons_tableau_titre ?? null,
               colonnes: colonnesTableau.map((c) => c.libelle),
+              rangsColonnes: colonnesTableau.map((c) => c.rang),
               lignes: (lignes.get(r.id) ?? []).map((l) => (cellulesParLigne.get(l.rang) ?? []).map((c) => blocsDeTexte(c.valeur))),
+              // (ligne, colonne) de chaque case, pour le mode modification du site de dev
+              cases: (lignes.get(r.id) ?? []).map((l) => (cellulesParLigne.get(l.rang) ?? []).map((c) => ({ ligne: c.ligne, colonne: c.colonne }))),
             }
           : null,
-      hyper: h ? { nom: h.nom, blocs: blocsDeTexte(h.effet) } : null,
+      hyper: h ? { id: h.id, nom: h.nom, blocs: blocsDeTexte(h.effet) } : null,
       // magies innées : la liste de l'onglet quand il en écrit une (R11), sinon la matrice de la fiche (R8)
       magiesInnees: {
         source: magiesOnglet.has(r.id) ? 'onglet' : 'matrice',
@@ -104,7 +109,7 @@ export function chargerRaces(db) {
       },
       classeRaciale: classesRaciales.get(slug) ?? null,
       // race hybride : elle a sa classe raciale, ou c'est une exception du propriétaire (Drassah'thac, décision R14) ; même règle que lib/race-kinds.mjs
-      hybride: classesRaciales.has(slug) || HYBRIDES_SANS_CLASSE_RACIALE.has(r.id),
+      hybride: classesRaciales.has(slug) || HYBRIDES_SANS_CLASSE_RACIALE.has(r.id) || marqueesHybrides.has(r.id),
     });
   }
 

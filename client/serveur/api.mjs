@@ -10,6 +10,7 @@
 //   GET  /api/edition/en-attente/   lignes modifiées depuis la construction des pages (ce que les pages statiques doivent montrer à la place)
 //   POST /api/edition/lignes/       { lignes: [{ table, cle }] } → la ligne actuelle de chacune (passage en mode modification)
 //   GET  /api/edition/listes/       listes des formulaires (compétences, catégories de classe, races hybrides…)
+//   POST /api/edition/race/         { race } → magies innées et relations de la race, dans la base vivante
 //   POST /api/edition/              { page, operations } → applique un lot d'un bloc et le note au journal
 //   GET  /api/edition/journal/      le journal des modifications en attente, à rapatrier dans data/rows (npm run db:appliquer-edition)
 // Les adresses finissent par « / », comme celles du site (en développement, Astro refuse une adresse sans « / » finale avant de la transmettre) ;
@@ -18,7 +19,7 @@
 // Avant la 1.0, pas de comptes : quiconque a le mot de passe du site (nginx) lit et écrit les prétirés. Les écritures exigent un corps JSON
 // (Content-Type: application/json) et refusent une requête qu'un navigateur dit venir d'un autre site (Sec-Fetch-Site) : un formulaire ou un
 // script d'un autre site ne peut pas écrire à la place de quelqu'un de connecté.
-import { ErreurEdition, enregistrer, listes, lireLignes } from './edition.mjs';
+import { ErreurEdition, donneesDeRace, enregistrer, listes, lireLignes } from './edition.mjs';
 import { journalExporte, lignesEnAttente } from './edition-journal.mjs';
 import { ErreurFiche, controlesDe, enregistrerFiche, lireFiche, listerFiches, niveauDe } from './fiches.mjs';
 
@@ -103,8 +104,8 @@ export function traiter(requete, service) {
 /** Les routes /api/edition/… (site de dev seulement). */
 function traiterEdition(requete, service, action, reste, permis) {
   if (!service.edition) return erreur(403, 'L’édition des règles n’est ouverte que sur le site de dev.');
-  if (reste.length || !['en-attente', 'lignes', 'listes', 'journal', undefined].includes(action)) return erreur(404, 'Adresse inconnue.');
-  const refus = action === undefined || action === 'lignes' ? permis('POST') : permis('GET');
+  if (reste.length || !['en-attente', 'lignes', 'listes', 'journal', 'race', undefined].includes(action)) return erreur(404, 'Adresse inconnue.');
+  const refus = action === undefined || action === 'lignes' || action === 'race' ? permis('POST') : permis('GET');
   if (refus) return refus;
   const db = service.base();
   if (!db) return erreur(503, 'La base n’est pas disponible pour le moment.', { etat: service.etat() });
@@ -121,6 +122,7 @@ function traiterEdition(requete, service, action, reste, permis) {
   if (illisible) return illisible;
   try {
     if (action === 'lignes') return json(200, { lignes: lireLignes(db, valeur?.lignes) });
+    if (action === 'race') return json(200, donneesDeRace(db, valeur?.race));
     const resultat = enregistrer(db, valeur);
     if (resultat.lot) service.journal?.(`édition : lot ${resultat.lot} (${resultat.modifications} ligne(s)) depuis ${valeur.page ?? '?'}`);
     return json(200, resultat);

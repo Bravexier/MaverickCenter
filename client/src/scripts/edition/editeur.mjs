@@ -107,7 +107,7 @@ export function demarrer(racine, etatService) {
     rendre: (el, ligne) => rendreElement(el, ligne),
     formulaire: ouvrirFormulaire,
   };
-  const extensions = EXTENSIONS.filter((x) => x.actif(document));
+  const actives = () => EXTENSIONS.filter((x) => x.actif(document));
 
   // --- Affichage d'un champ depuis sa ligne ----------------------------------------------------------------------------------------------------
   const elementsDe = (table, cle) => {
@@ -129,7 +129,7 @@ export function demarrer(racine, etatService) {
   /** Un cadre [data-ed-cadre] est caché en lecture quand tous ses champs sont vides. */
   function cadres(portee = document) {
     for (const cadre of portee.querySelectorAll('[data-ed-cadre]')) {
-      const champs = [...cadre.querySelectorAll('[data-ed]')];
+      const champs = cadre.matches('[data-ed]') ? [cadre] : [...cadre.querySelectorAll('[data-ed]')];
       cadre.hidden = champs.length > 0 && champs.every((c) => c.textContent.trim() === '');
     }
   }
@@ -137,7 +137,7 @@ export function demarrer(racine, etatService) {
   /** Réécrit tous les champs (modifiables ou en lecture seule) qui affichent cette ligne ; null = ligne supprimée (les extensions retirent l'élément). */
   function appliquerLigne(table, cle, ligne) {
     if (ligne) for (const el of elementsDe(table, cle)) if (!editeurs.has(el)) rendreElement(el, ligne);
-    for (const x of extensions) x.ligne?.(ed, table, cle, ligne);
+    for (const x of actives()) x.ligne?.(ed, table, cle, ligne);
     if (!ed.enEdition) cadres();
   }
 
@@ -222,7 +222,7 @@ export function demarrer(racine, etatService) {
         const info = lireAttributEd(el.dataset.ed);
         if (info) demandes.set(cleDeLigne(info.table, info.cle), { table: info.table, cle: info.cle });
       }
-      for (const x of extensions) for (const d of x.lignesACharger?.(ed) ?? []) demandes.set(cleDeLigne(d.table, d.cle), d);
+      for (const x of actives()) for (const d of x.lignesACharger?.(ed) ?? []) demandes.set(cleDeLigne(d.table, d.cle), d);
       const { lignes } = demandes.size ? await appel('POST', 'edition/lignes/', { lignes: [...demandes.values()] }) : { lignes: [] };
       lignesChargees = new Map(lignes.filter((l) => l.ligne).map((l) => [cleDeLigne(l.table, l.cle), l.ligne]));
       ed.lignes = lignesChargees;
@@ -230,7 +230,7 @@ export function demarrer(racine, etatService) {
       // les champs vides, cachés en lecture, s'affichent pour pouvoir être remplis
       for (const cadre of document.querySelectorAll('[data-ed-cadre][hidden]')) cadre.hidden = false;
       monterChamps();
-      for (const x of extensions) x.debut?.(ed);
+      for (const x of actives()) x.debut?.(ed);
       modifie = false;
       confirmer.hidden = false;
       crayon.title = 'Quitter le mode modification (sans enregistrer)';
@@ -245,7 +245,7 @@ export function demarrer(racine, etatService) {
 
   function quitter(nouvelles) {
     demonter(nouvelles);
-    for (const x of extensions) x.fin?.(ed);
+    for (const x of actives()) x.fin?.(ed);
     document.body.classList.remove('ed-mode');
     cadres();
     modifie = false;
@@ -271,7 +271,7 @@ export function demarrer(racine, etatService) {
 
   async function enregistrer() {
     if (!ed.enEdition || occupe) return;
-    for (const x of extensions) {
+    for (const x of actives()) {
       const probleme = x.verifier?.(ed, editeurs);
       if (probleme) {
         annoncer(probleme, 'erreur');
@@ -279,7 +279,7 @@ export function demarrer(racine, etatService) {
       }
     }
     let operations = operationsDesChamps();
-    for (const x of extensions) operations = x.operations ? x.operations(ed, operations, editeurs) : operations;
+    for (const x of actives()) operations = x.operations ? x.operations(ed, operations, editeurs) : operations;
     if (!operations.length) {
       quitter();
       annoncer('Aucune modification : la page repasse en lecture.');
@@ -292,7 +292,7 @@ export function demarrer(racine, etatService) {
       const nouvelles = new Map(r.lignes.map((l) => [cleDeLigne(l.table, l.cle), l.ligne]));
       quitter(nouvelles);
       for (const l of r.lignes) appliquerLigne(l.table, l.cle, l.ligne);
-      for (const x of extensions) x.apresEnregistrement?.(ed, r);
+      for (const x of actives()) x.apresEnregistrement?.(ed, r);
       annoncer(r.modifications ? `Enregistré : ${r.modifications} ligne${r.modifications > 1 ? 's' : ''} de la base modifiée${r.modifications > 1 ? 's' : ''}.` : 'Rien n’a changé dans la base.');
       afficherJournal(await appel('GET', 'etat/').catch(() => null));
     } catch (e) {
@@ -404,9 +404,10 @@ export function demarrer(racine, etatService) {
     try {
       const [listes, enAttente] = await Promise.all([appel('GET', 'edition/listes/'), appel('GET', 'edition/en-attente/')]);
       Object.assign(ed.listes, listes);
-      for (const x of extensions) x.surcouche?.(ed, enAttente.lignes);
+      // une extension après l'autre, chacune seulement si elle s'applique à la page telle que les précédentes l'ont laissée
+      for (const x of EXTENSIONS) if (x.actif(document)) await x.surcouche?.(ed, enAttente.lignes);
       for (const l of enAttente.lignes) appliquerLigne(l.table, l.cle, l.ligne);
-      for (const x of extensions) x.pret?.(ed);
+      for (const x of actives()) x.pret?.(ed);
     } catch (e) {
       annoncer(`Les modifications du site de dev n’ont pas pu être affichées : ${e.message}`, 'erreur');
     }

@@ -7,9 +7,11 @@
 //   { op: 'modifier',  table, cle: { … }, valeurs: { colonne: valeur }, avant?: { colonne: valeur lue } }   avant : refus 409 si la base a changé depuis
 //   { op: 'creer',     entite, valeurs: { … } }                                                            entite : clé de ENTITES
 //   { op: 'supprimer', entite, cle: { … } }
+//   { op: 'relations', cases: [{ voit, vu, echelle }] }                                                     relations entre peuples (races)
+//   { op: 'magies_innees', race, magies: [ids] }                                                             magies innées d'une race
 // Node seulement (node:sqlite), sans dépendance.
 import { randomUUID } from 'node:crypto';
-import { ENTITES, ErreurValeur, TABLES, valeurDuChamp } from '../src/lib/edition-modele.mjs';
+import { ENTITES, ErreurValeur, MOT_CLE_RACE_HYBRIDE, TABLES, valeurDuChamp } from '../src/lib/edition-modele.mjs';
 import {
   CHAMPS_DU_CORPS, RIEN, corpsDeMetier, decouperArtisanat, decouperBonus, famillesDeRecette, remplacerChampDuCorps, resumeDeDescription,
 } from '../src/lib/metier-champs.mjs';
@@ -262,8 +264,136 @@ const SORT = {
   },
 };
 
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Races (race, race_onglet, race_don, race_don_tableau_*, race_magie, race_magie_onglet, race_classe ; peuple, relation_peuple)
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+/** Valeur visible posée dans un champ obligatoire d'une entité créée depuis le site, en attendant le vrai texte (jamais une règle inventée). */
+export const A_COMPLETER = 'À compléter.';
+const PAGE_DES_RELATIONS = 'lore/relations-entre-les-races';
+const ordreSuivant = (db, table, colonne = 'ordre') => (db.prepare(`SELECT max("${colonne}") AS m FROM "${table}"`).get().m ?? 0) + 1;
+
+const RACE = {
+  deriver(ctx, avant, apres) {
+    // la phrase de présentation est aussi le résumé de la page de la race (quand ils étaient égaux)
+    if (apres.presentation === avant.presentation) return;
+    const page = lireLigne(ctx.db, 'page', { id: apres.id });
+    if (page && (page.resume ?? null) === (avant.presentation ?? null)) ctx.w.modifier('page', { id: apres.id }, { resume: apres.presentation });
+  },
+  creer(ctx, valeurs) {
+    const { db, w, instant } = ctx;
+    const slug = normalize(valeurs.nom);
+    if (db.prepare('SELECT 1 FROM race WHERE nom = ?').get(valeurs.nom)) throw new ErreurEdition(409, `La race ${valeurs.nom} existe déjà.`);
+    const hybride = valeurs.nature === 'hybride';
+    const id = creerPage(ctx, {
+      type: 'races', slug, titre: valeurs.nom, resume: valeurs.presentation ?? null, donnees: { magies_innees: [] },
+      corps: valeurs.presentation ? `${valeurs.presentation}
+` : `${A_COMPLETER}
+`, origine: 'races', tags: ['race', ...(hybride ? [MOT_CLE_RACE_HYBRIDE] : [])],
+    });
+    const source = `${provenance(instant)} › ${valeurs.nom}`;
+    w.inserer('race', {
+      id, nom: valeurs.nom, ordre: ordreSuivant(db, 'race'), presentation: valeurs.presentation ?? null, sante: null, chakra_depart: null, barriere_bonus: null,
+      vitesse_terre: null, vitesse_nage: null, ap: null, am: null, divers: null, don_base_brut: null, don_base_nom: null, don_base_type: null, don_base_effets: null,
+      origine: 'races', source_ref: source, remarque: null,
+    });
+    w.inserer('page_entite', { entite_table: 'race', entite_id: id, page_id: id, principale: 1, origine: 'races' });
+    const onglet = db.prepare('SELECT 1 FROM race_onglet WHERE onglet = ?').get(valeurs.nom) ? `${valeurs.nom} (${slug})` : valeurs.nom;
+    w.inserer('race_onglet', {
+      race_id: id, onglet, description_generale: valeurs.presentation ?? A_COMPLETER, histoire: A_COMPLETER, description: null, sante_depart: 0, chakra_depart: 0,
+      barriere_bonus: 0, vitesse_sol: 0, vitesse_nage: 0, avantages: A_COMPLETER, inconvenients: A_COMPLETER, don_base: A_COMPLETER, dons_rubrique: null,
+      dons_rubrique_nom: null, dons_rubrique_don: null, dons_tableau_titre: null, origine: 'races', source_ref: source,
+    });
+    // matrices de la fiche : la race y a sa ligne, rien d'accessible tant que le propriétaire ne l'a pas décidé (magies innées : cases à cocher de sa page)
+    for (const m of db.prepare('SELECT magie_id, min(ordre) AS ordre FROM race_magie GROUP BY magie_id').all()) {
+      w.inserer('race_magie', { race_id: id, magie_id: m.magie_id, ordre: m.ordre, accessible: 0, valeur_brut: '0', origine: 'races', source_ref: source });
+    }
+    for (const c of db.prepare('SELECT id FROM classe').all()) {
+      const ordre = db.prepare('SELECT min(ordre) AS o FROM race_classe WHERE classe_id = ?').get(c.id).o ?? ordreSuivant(db, 'race_classe');
+      w.inserer('race_classe', { race_id: id, classe_id: c.id, ordre, accessible: 0, valeur_brut: '0', origine: 'races', source_ref: source });
+    }
+    creerPeuple(ctx, { nom: valeurs.nom, race_id: id });
+    return { id, resume: `Race créée : ${valeurs.nom} (${hybride ? 'hybride' : 'pure'})` };
+  },
+};
+
+function creerPeuple(ctx, { nom, race_id: raceId }) {
+  const { db, w, instant } = ctx;
+  if (!lireLigne(db, 'race', { id: raceId })) throw refus(`Peuple : race inconnue (${raceId})`);
+  const id = `${PAGE_DES_RELATIONS}#peuple:${normalize(nom)}`;
+  if (lireLigne(db, 'peuple', { id }) || db.prepare('SELECT 1 FROM peuple WHERE nom = ?').get(nom)) throw new ErreurEdition(409, `Le peuple ${nom} existe déjà.`);
+  w.inserer('peuple', { id, nom, nom_cle: normalize(nom), ordre: ordreSuivant(db, 'peuple'), race_id: raceId, origine: 'races', source_ref: `${provenance(instant)} › ${nom}`, remarque: null });
+  w.inserer('page_entite', { entite_table: 'peuple', entite_id: id, page_id: PAGE_DES_RELATIONS, principale: 0, origine: 'races' });
+  return id;
+}
+
+const PEUPLE = {
+  creer(ctx, valeurs) {
+    const id = creerPeuple(ctx, valeurs);
+    return { id, resume: `Peuple créé : ${valeurs.nom}` };
+  },
+};
+
+/**
+ * Relations entre peuples (matrice « Relation entre les races », sens R12 : la case (A, B) dit comment A voit B) : { op: 'relations', cases: [{ voit, vu,
+ * echelle }] } ; echelle null retire la case. Une case absente est créée.
+ */
+function relations(ctx, op) {
+  const { db, w, instant } = ctx;
+  if (!Array.isArray(op.cases) || !op.cases.length || op.cases.length > 5000) throw refus('Relations : cases attendues');
+  const echelles = new Set(db.prepare('SELECT id FROM echelle_relation').all().map((e) => e.id));
+  const noms = new Set();
+  for (const [i, c] of op.cases.entries()) {
+    if (!c || typeof c.voit !== 'string' || typeof c.vu !== 'string' || c.voit === c.vu) throw refus(`Relations : case ${i} invalide`);
+    for (const p of [c.voit, c.vu]) {
+      const peuple = lireLigne(db, 'peuple', { id: p });
+      if (!peuple) throw refus(`Relations : peuple inconnu (${p})`);
+      noms.add(peuple.nom);
+    }
+    if (c.echelle !== null && !echelles.has(c.echelle)) throw refus(`Relations : niveau inconnu (${c.echelle})`);
+    const cle = { ligne_peuple_id: c.voit, colonne_peuple_id: c.vu };
+    const avant = lireLigne(db, 'relation_peuple', cle);
+    if (c.echelle === null) w.supprimer('relation_peuple', cle);
+    else if (avant) w.modifier('relation_peuple', cle, { echelle_id: c.echelle });
+    else w.inserer('relation_peuple', { ...cle, echelle_id: c.echelle, origine: 'races', source_ref: `${provenance(instant)} › relations` });
+  }
+  return `Relations entre peuples : ${op.cases.length} case(s) (${[...noms].slice(0, 6).join(', ')}${noms.size > 6 ? '…' : ''})`;
+}
+
+/**
+ * Magies innées d'une race : { op: 'magies_innees', race, magies: [ids] }. La liste de l'onglet prime quand la race en a une (décision R11 :
+ * race_magie_onglet), sinon la matrice de la fiche (R8 : race_magie) ; la liste `magies_innees` de la page de la race suit (liens races ↔ magies).
+ */
+function magiesInnees(ctx, op) {
+  const { db, w, instant } = ctx;
+  const race = lireLigne(db, 'race', { id: op.race });
+  if (!race) throw refus(`Magies innées : race inconnue (${op.race})`);
+  if (!Array.isArray(op.magies)) throw refus('Magies innées : liste attendue');
+  const magies = db.prepare('SELECT id, nom, ordre FROM magie ORDER BY ordre').all();
+  const voulues = new Set(op.magies);
+  for (const m of voulues) if (!magies.some((x) => x.id === m)) throw refus(`Magies innées : magie inconnue (${m})`);
+  const choisies = magies.filter((m) => voulues.has(m.id));
+  const parOnglet = db.prepare('SELECT count(*) AS n FROM race_magie_onglet WHERE race_id = ?').get(race.id).n > 0;
+  if (parOnglet) {
+    synchroniser(ctx, 'race_magie_onglet', { race_id: race.id }, choisies.map((m, i) => ({ magie_id: m.id, rang: i + 1, nom_brut: m.nom })),
+      { origine: 'races', source_ref: `${provenance(instant)} › ${race.nom} › magies innées` });
+  } else {
+    for (const m of magies) {
+      const cle = { race_id: race.id, magie_id: m.id };
+      if (!lireLigne(db, 'race_magie', cle)) continue;
+      const a = voulues.has(m.id) ? 1 : 0;
+      w.modifier('race_magie', cle, { accessible: a, valeur_brut: String(a) });
+    }
+  }
+  const page = lireLigne(db, 'page', { id: race.id });
+  if (page) {
+    const donnees = page.donnees ? JSON.parse(page.donnees) : {};
+    w.modifier('page', { id: race.id }, { donnees: JSON.stringify({ ...donnees, magies_innees: choisies.map((m) => m.nom) }) });
+  }
+  return `Magies innées de ${race.nom} : ${choisies.map((m) => m.nom).join(', ') || 'aucune'}`;
+}
+
 /** Ce que l'édition sait faire, table par table : colonnes recalculées dans la ligne, dérivations ailleurs, création, suppression. */
-const DOMAINES = { metier: METIER, magie: MAGIE, magie_role: MAGIE_ROLE, sort: SORT };
+const DOMAINES = { metier: METIER, magie: MAGIE, magie_role: MAGIE_ROLE, sort: SORT, race: RACE, peuple: PEUPLE };
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // Application d'un lot
@@ -321,9 +451,20 @@ function modifier(ctx, op) {
 function creer(ctx, op) {
   const entite = ENTITES[op.entite];
   if (!entite) throw refus(`entité « ${op.entite} » : pas de création depuis le site`);
-  const valeurs = valeursValidees(entite.table, op.valeurs ?? {}, entite.creation);
-  for (const c of entite.creation) {
-    const champ = TABLES[entite.table].colonnes[c];
+  const brutes = op.valeurs ?? {};
+  if (typeof brutes !== 'object' || Array.isArray(brutes)) throw refus(`Nouveau ${entite.libelle} : valeurs attendues`);
+  const valeurs = {};
+  for (const [c, brute] of Object.entries(brutes)) {
+    const champ = entite.champs[c];
+    if (!champ) throw refus(`Nouveau ${entite.libelle} : le champ « ${c} » ne se donne pas à la création`);
+    try {
+      valeurs[c] = valeurDuChamp(champ, brute);
+    } catch (e) {
+      if (e instanceof ErreurValeur) throw refus(`Nouveau ${entite.libelle} : ${e.message}`);
+      throw e;
+    }
+  }
+  for (const [c, champ] of Object.entries(entite.champs)) {
     if (champ.requis && (valeurs[c] === undefined || valeurs[c] === null)) throw refus(`Nouveau ${entite.libelle} : « ${champ.libelle} » obligatoire`);
   }
   const r = DOMAINES[entite.table].creer(ctx, valeurs, op);
@@ -338,7 +479,7 @@ function supprimer(ctx, op) {
   return DOMAINES[entite.table].supprimer(ctx, op.cle, op).resume;
 }
 
-const OPERATIONS = { modifier, creer, supprimer };
+const OPERATIONS = { modifier, creer, supprimer, relations, magies_innees: magiesInnees };
 
 /**
  * Applique un lot dans la base vivante, d'un bloc : tout passe ou rien n'est écrit (ErreurEdition : statut HTTP, message en français).
@@ -418,5 +559,30 @@ export function listes(db) {
   return {
     competences: competences(db),
     caracteristiques: caracteristiques(db),
+    magies: db.prepare('SELECT id, nom FROM magie ORDER BY ordre').all(),
+    echelle: db.prepare('SELECT id, libelle, ordre FROM echelle_relation ORDER BY ordre').all(),
+    peuples: db.prepare('SELECT id, nom, ordre, race_id FROM peuple ORDER BY ordre').all(),
+    races: db.prepare('SELECT id, nom FROM race ORDER BY nom').all(),
+  };
+}
+
+/**
+ * L'état vivant d'une race pour sa page (mode modification, ou page construite avant une modification) : ses magies innées (la liste de l'onglet si
+ * elle en a une, sinon la matrice : R11, R8) et de quoi calculer ses relations (lib/race-relations.mjs#relationsDeRace), comme lib/races-db.mjs.
+ */
+export function donneesDeRace(db, raceId) {
+  const race = typeof raceId === 'string' ? lireLigne(db, 'race', { id: raceId }) : null;
+  if (!race) throw new ErreurEdition(404, 'Race introuvable.');
+  const onglet = db.prepare('SELECT o.magie_id FROM race_magie_onglet o JOIN magie m ON m.id = o.magie_id WHERE o.race_id = ? ORDER BY m.ordre').all(race.id);
+  const matrice = db.prepare('SELECT r.magie_id FROM race_magie r JOIN magie m ON m.id = r.magie_id WHERE r.race_id = ? AND r.accessible = 1 ORDER BY m.ordre').all(race.id);
+  return {
+    race: { id: race.id, nom: race.nom },
+    magiesInnees: { source: onglet.length ? 'onglet' : 'matrice', ids: (onglet.length ? onglet : matrice).map((m) => m.magie_id) },
+    relations: {
+      peuples: db.prepare('SELECT id, nom, ordre, race_id AS raceId FROM peuple ORDER BY ordre').all(),
+      regards: db.prepare('SELECT peuple_id AS peupleId, vu_peuple_id AS vuPeupleId, echelle_id AS echelleId FROM v_regard_peuple').all(),
+      echelle: db.prepare('SELECT id, libelle, ordre FROM echelle_relation ORDER BY ordre').all(),
+    },
+    races: db.prepare('SELECT id, nom FROM race').all(),
   };
 }

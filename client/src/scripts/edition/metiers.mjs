@@ -3,7 +3,7 @@
 //   - supprimer : bouton sur chaque ligne en mode modification ; la suppression part avec le bouton de confirmation ;
 //   - un métier créé ou supprimé depuis la construction du site apparaît ou disparaît au chargement (lignes en attente).
 // Chaque ajout ou retrait redemande les filtres et le tri du tableau (évènement « metiers:rafraichir »).
-import { attributEd, cleDeLigne, ENTITES, TABLES } from '../../lib/edition-modele.mjs';
+import { attributEd, cleDeLigne, ENTITES } from '../../lib/edition-modele.mjs';
 import { echapperHtml } from '../../lib/edition-rendu.mjs';
 
 const table = () => document.querySelector('.metiers-table');
@@ -75,10 +75,7 @@ function boutonSupprimer(tbody) {
 }
 
 const champsDeCreation = () =>
-  ENTITES.metier.creation.map((c) => {
-    const champ = TABLES.metier.colonnes[c];
-    return { nom: c, libelle: champ.libelle, type: champ.type, requis: champ.requis, valeur: champ.vide === 'Rien' ? 'Rien' : '' };
-  });
+  Object.entries(ENTITES.metier.champs).map(([c, champ]) => ({ nom: c, libelle: champ.libelle, type: champ.type, requis: champ.requis, valeur: champ.vide === 'Rien' ? 'Rien' : '' }));
 
 export const metiers = {
   nom: 'metiers',

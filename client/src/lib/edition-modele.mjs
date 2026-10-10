@@ -52,6 +52,46 @@ export const TABLES = {
       effet: { type: 'texte', libelle: 'Effet', requis: true },
     },
   },
+  // Races : la phrase de présentation, tout l'onglet de la race (textes, valeurs de départ, dons, tableau en panneaux, mode Hyper) ;
+  // les magies innées et les relations entre peuples ont leurs opérations (`magies_innees`, `relations`)
+  race: {
+    libelle: 'Race',
+    colonnes: { presentation: { type: 'texte', libelle: 'Présentation' } },
+  },
+  race_onglet: {
+    libelle: 'Onglet de la race',
+    colonnes: {
+      description_generale: { type: 'texte', libelle: 'Présentation générale', requis: true },
+      histoire: { type: 'texte', libelle: 'Histoire', requis: true },
+      description: { type: 'texte', libelle: 'Description' },
+      sante_depart: { type: 'entier', libelle: 'Santé de départ', requis: true },
+      chakra_depart: { type: 'entier', libelle: 'Chakra de départ', requis: true },
+      barriere_bonus: { type: 'entier', libelle: 'Barrière bonus', requis: true },
+      vitesse_sol: { type: 'entier', libelle: 'Vitesse au sol', requis: true },
+      vitesse_nage: { type: 'entier', libelle: 'Vitesse de nage', requis: true },
+      avantages: { type: 'texte', libelle: 'Avantages', requis: true },
+      inconvenients: { type: 'texte', libelle: 'Inconvénients', requis: true },
+      don_base: { type: 'texte', libelle: 'Don de base', requis: true },
+      dons_tableau_titre: { type: 'ligne', libelle: 'Titre du tableau des dons' },
+    },
+  },
+  race_don: {
+    libelle: 'Don racial',
+    colonnes: {
+      etiquette: { type: 'ligne', libelle: 'Ethnie' },
+      nom: { type: 'ligne', libelle: 'Nom du don' },
+      texte: { type: 'texte', libelle: 'Don', requis: true },
+      remarque: { type: 'texte', libelle: 'Remarque' },
+    },
+  },
+  race_don_tableau_colonne: {
+    libelle: 'En-tête du tableau des dons',
+    colonnes: { libelle: { type: 'ligne', libelle: 'En-tête', requis: true } },
+  },
+  race_don_tableau_cellule: {
+    libelle: 'Case du tableau des dons',
+    colonnes: { valeur: { type: 'texte', libelle: 'Case', requis: true } },
+  },
   // Sorts : chaque case du tableau et du détail. Une seule colonne par ligne peut avoir un effet dû aux NM (règle de l'édition, demande du propriétaire)
   sort: {
     libelle: 'Sort',
@@ -70,15 +110,42 @@ export const TABLES = {
 };
 
 /**
- * Entités qu'une page peut créer ou supprimer, avec les champs demandés à la création (colonnes de TABLES[table] ; les autres prennent leur valeur
- * « vide »). `adresse(id)` : où mène l'entité créée.
+ * Entités qu'une page peut créer ou supprimer, avec les champs demandés à la création (`champs`, même format que les colonnes de TABLES ; ce qui
+ * n'est pas demandé prend sa valeur « vide » ou une valeur de départ visible, « À compléter. »).
  */
+const champsDe = (table, colonnes) => Object.fromEntries(colonnes.map((c) => [c, TABLES[table].colonnes[c]]));
+/** Nature d'une race (demande du propriétaire : une race hybride peut être créée avant sa classe raciale ; lib/race-kinds.mjs). */
+export const NATURES_DE_RACE = [
+  { valeur: 'pure', libelle: 'Race pure' },
+  { valeur: 'hybride', libelle: 'Race hybride (elle aura sa classe raciale)' },
+];
+/** Le mot-clé d'une race hybride créée depuis le site : il la range parmi les hybrides tant qu'elle n'a pas sa classe raciale. */
+export const MOT_CLE_RACE_HYBRIDE = 'race hybride';
+
 export const ENTITES = {
   metier: {
     table: 'metier',
     libelle: 'métier',
-    creation: ['nom', 'description', 'bonus_brut', 'artisanat_brut', 'equipement_brut', 'avantage_brut'],
+    champs: champsDe('metier', ['nom', 'description', 'bonus_brut', 'artisanat_brut', 'equipement_brut', 'avantage_brut']),
     suppression: true,
+  },
+  race: {
+    table: 'race',
+    libelle: 'race',
+    champs: {
+      nom: { type: 'ligne', libelle: 'Nom', requis: true },
+      nature: { type: 'choix', libelle: 'Nature', requis: true, choix: NATURES_DE_RACE },
+      presentation: { type: 'texte', libelle: 'Présentation (une phrase)' },
+    },
+  },
+  // un peuple de la matrice « Relation entre les races » (une race sans peuple n'a pas de relations : Anansi, Farfadet, Goleois)
+  peuple: {
+    table: 'peuple',
+    libelle: 'peuple',
+    champs: {
+      nom: { type: 'ligne', libelle: 'Nom du peuple', requis: true },
+      race_id: { type: 'ligne', libelle: 'Race', requis: true },
+    },
   },
 };
 
