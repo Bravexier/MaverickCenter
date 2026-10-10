@@ -14590,7 +14590,7 @@ Cette page suit l''onglet « Kitsune » du Google Sheet « Les races », qui pri
 | --- | --- | --- |
 | Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/lamia', 'races', 'lamia', 'Lamia', 'lamia', 'Les semi-serpents, une race exclusivement femelle', '{"magies_innees": ["Sang", "Arcane", "Espace/Temps", "Vide", "Nécromancie", "Feu", "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre"]}', 'Les semi-serpents, une race exclusivement femelle
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/lamia', 'races', 'lamia', 'Lamia', 'lamia', 'Les semi-serpents, une race exclusivement femelle', '{"magies_innees": ["Sang", "Arcane", "Corruption", "Espace/Temps", "Vide", "Nécromancie", "Feu", "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre"]}', 'Les semi-serpents, une race exclusivement femelle
 
 ## Présentation
 
@@ -14684,9 +14684,11 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité Magie »), pas de l''onglet de la race.
 
-Nombre : 13 sur 15.
+Nombre : 14 sur 15.
 
-Sang, Arcane, Espace/Temps, Vide, Nécromancie, Feu, Eau, Glace, Terre, Vent, Foudre, Lumière, Ombre
+Sang, Arcane, Corruption, Espace/Temps, Vide, Nécromancie, Feu, Eau, Glace, Terre, Vent, Foudre, Lumière, Ombre
+
+Corruption : à 0 dans la matrice de la fiche, accessible d''après le propriétaire du projet (décision R22).
 
 ## Écarts avec la fiche de personnage V15.2.2
 

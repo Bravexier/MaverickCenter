@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 12;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 13;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -1381,7 +1381,8 @@ CREATE TABLE race_classe (
 
 CREATE INDEX race_classe_classe ON race_classe (classe_id, accessible);   -- « races qui peuvent prendre la classe X »
 
--- RACE_MAGIE : matrice « Accessibilité Magie » : 27 races x 15 magies = 405 lignes (244 à 1, 161 à 0).
+-- RACE_MAGIE : matrice « Accessibilité Magie » : 27 races x 15 magies = 405 lignes (245 à 1, 160 à 0). Une case corrigée par le propriétaire :
+-- Lamia × Corruption, à 0 dans la fiche (E24), vaut 1 (décision R22, migration 0013 ; source_ref le dit).
 -- Selon les formules de la fiche, elle ne restreint que la magie INNÉE (BDD!D2 -> liste de Personnage!S2) ; la liste des magies
 -- acquises ne la lit pas. Elle remplace le champ de frontmatter `magies_innees` des pages de race.
 CREATE TABLE race_magie (

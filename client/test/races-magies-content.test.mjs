@@ -61,10 +61,11 @@ test('les 27 races portent la liste de leurs magies innées, et tous les noms d�
   assert.deepEqual(unresolvedNames(all), []);
 });
 
-test('9 races ont les 15 magies, 3 races les 14 magies sans Potentiel Illimité, la Lamia 13 (sans Potentiel Illimité ni Corruption)', () => {
+test('9 races ont les 15 magies, 4 races les 14 magies sans Potentiel Illimité (dont la Lamia, qui a la Corruption : décision R22)', () => {
   for (const slug of TOUTES) assert.deepEqual([...names(slug)].sort(), [...NOMS].sort(), slug);
-  for (const slug of SANS_PI) assert.deepEqual([...names(slug)].sort(), NOMS.filter((n) => n !== 'Potentiel Illimité').sort(), slug);
-  assert.deepEqual([...names('lamia')].sort(), NOMS.filter((n) => n !== 'Potentiel Illimité' && n !== 'Corruption').sort());
+  for (const slug of [...SANS_PI, 'lamia']) assert.deepEqual([...names(slug)].sort(), NOMS.filter((n) => n !== 'Potentiel Illimité').sort(), slug);
+  // la fiche met la case Lamia × Corruption (E24) à 0 : corrigée par la migration 0013, dans l'ordre des colonnes de la matrice
+  assert.deepEqual(names('lamia').slice(0, 4), ['Sang', 'Arcane', 'Corruption', 'Espace/Temps']);
 });
 
 test('les 13 races restreintes ont exactement les 3 magies de l’onglet « Accessibilité Magie », dans l’ordre des colonnes', () => {

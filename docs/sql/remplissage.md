@@ -70,7 +70,8 @@ depuis les pages de race, `--verifier` contrôle que les tables sont toujours ce
 singulier « Don », dans `type_page` ; ids, adresses et table `capacite` inchangés), `0009-classes-sans-suffixe.sql` (données : « (classe) » retiré du titre des 13 classes raciales, clés de titre recalculées), `0010-mono-magie.sql` (structure et données, décision R15 :
 colonne `magie.mono_magie`, 1 pour le Potentiel Illimité et la Corruption, table `magie` reconstruite ; l'Elfe Noir Salé retiré des ethnies de la Corruption), `0011-personnages.sql` (structure et données : tables des fiches de personnages, des groupes de jeu et des rôles, section 13, vides dans `data/rows` ; vues `v_personnage_niveau`,
 `v_personnage_visible`, `v_groupe_controle` et `v_personnage_controle` ; trois constantes de la fiche dans `regle_constante` : voir `docs/character-generator.md`, « Fiches dans la base »), `0012-eaunoire.sql` (données, décision R21 :
-la déesse de la Corruption s'appelle « Eaunoire », dans `dieu.nom` et la phrase de l'Elfe noir, page et onglet ; identifiant `demon-deau-noire` inchangé).
+la déesse de la Corruption s'appelle « Eaunoire », dans `dieu.nom` et la phrase de l'Elfe noir, page et onglet ; identifiant `demon-deau-noire` inchangé), `0013-lamia-corruption.sql` (données, décision R22 :
+la Lamia a la Corruption en magie innée, case E24 de la matrice `race_magie` et page de la Lamia, front matter et section « Magies accessibles »).
 
 ## La colonne `remarque`
 
