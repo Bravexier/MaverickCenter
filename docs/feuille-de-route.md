@@ -25,7 +25,7 @@ au moment de la bascule, la base est la référence. Le registre `tools/sheets/c
 ## Ce que cela impose dès maintenant
 
 - **Le NAS est temporaire.** Rien de spécifique au NAS en dehors de `deploy/` : le site et l'API doivent tourner dans un conteneur, configurés par variables
-  d'environnement ; la mise à jour automatique (`update-nas.sh`) est un habillage, pas l'architecture. L'hébergement final reste à choisir ; la solution y sera
+  d'environnement ; la mise à jour automatique (`update-site.sh`) est un habillage, pas l'architecture. L'hébergement final reste à choisir ; la solution y sera
   installée pour la 1.0 (décision du propriétaire), par les installateurs autonomes de `deploy/installateur/` (serveur normal et serveur de test, voir `flux-git.md`).
 - **La base SQLite est le pivot.** Identifiants stables et jamais réutilisés (une page renommée garde son identifiant), SQL portable (une bascule vers PostgreSQL
   doit rester possible si plusieurs personnes éditent en même temps), modifications historisées (qui, quand, avant/après, état « brouillon / validé »).

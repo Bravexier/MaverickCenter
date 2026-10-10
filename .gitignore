@@ -24,6 +24,7 @@ deploy/.installed-sha
 deploy/update.log
 deploy/.update.lock/
 deploy/update-nas.env
+deploy/update-site.env
 # Installateurs fabriqués à la main (deploy/installateur/fabriquer.sh)
 deploy/installateur/sortie/
 

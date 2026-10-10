@@ -1,5 +1,5 @@
 // deploy/installateur/mise-a-jour.sh, la mise à jour automatique des instances posées par un installateur (à partir de la 1.0 ; le NAS d'avant
-// a la sienne, testée par update-nas.test.mjs).
+// a la sienne, testée par update-site.test.mjs).
 // Contre un faux GitHub (API des livraisons, aucun accès réseau réel, aucun NAS) : il choisit la dernière livraison de son mode
 // (production : « latest » ; test : la plus récente étiquette « -test »), télécharge son installateur (fabriqué pour de vrai par
 // deploy/installateur/fabriquer.mjs) et l'exécute. Nécessite sh, curl, tar et gzip ; sinon ignoré.

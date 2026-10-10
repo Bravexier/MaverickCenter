@@ -56,6 +56,30 @@ test('durcir.sh : seuls 22, 80 et 443 sont ouverts, SSH par clé, jamais de coup
   assert.match(d, /sshd -t/, 'configuration SSH validée avant rechargement');
 });
 
+test('avant la 0.2.0 : le README pose le serveur de test depuis la branche « site », avec des fichiers qui existent', () => {
+  const deploy = join(vps, '..');
+  const section = lire('README.md').split(/^## /m).find((s) => s.startsWith('Avant la 0.2.0'));
+  assert.ok(section, 'section « Avant la 0.2.0 » du README');
+  // Les fichiers copiés dans l'instance portent ce nom dans deploy/ : un renommage doit suivre ici.
+  const copies = section.match(/sudo cp (.+) \.\r?\n/)[1].split(' ').map((f) => f.replace('~/deploy/', ''));
+  assert.deepEqual(copies, ['installateur/docker-compose.yml', 'nginx.conf', 'update-site.sh']);
+  for (const f of copies) assert.ok(existsSync(join(deploy, f)), `deploy/${f} existe`);
+  // « mode=test » : ce que l'installateur lit pour reconnaître une instance de test (sinon il la prendrait pour une production).
+  assert.match(section, /echo "mode=test" \| sudo tee VERSION/);
+  assert.match(installateur, /sed -n 's\/\^mode=\/\/p' "\$1\/VERSION"/);
+  assert.match(section, /\*\/2 \* \* \* \* sh \/srv\/maverick-center-test\/update-site\.sh/);
+  assert.match(section, /grep -v maverick-center-test\/update-site\.sh/, 'cron posé sans doublon');
+  assert.match(section, /stty -echo; read -r t; stty echo/, 'le jeton se colle sans s\'afficher, jamais en argument');
+  assert.match(section, /bandeau « Serveur de test »/);
+  assert.match(section, /répond 502/);
+});
+
+test('.gitattributes : les scripts et deploy/ restent en LF (un clone Windows les envoie tels quels par scp)', () => {
+  const attributs = readFileSync(fileURLToPath(new URL('../../.gitattributes', import.meta.url)), 'utf8');
+  assert.match(attributs, /^\*\.sh text eol=lf\r?$/m);
+  assert.match(attributs, /^deploy\/\*\* text eol=lf\r?$/m);
+});
+
 function fauxOutils() {
   const bin = join(racine, 'bin');
   mkdirSync(bin, { recursive: true });
