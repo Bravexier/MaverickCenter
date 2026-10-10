@@ -8,7 +8,7 @@
 //       une PR : source permise pour la cible, bon point de départ, version non modifiée à la main (code 1 sinon)
 //   node tools/flux-git/cli.mjs appliquer --base <cible> --head <source> [--pr <n>] [--texte-fichier <f>]... [--pousser]
 //       après une fusion : incréments de version, refusion de master dans dev, puis ce qu'il faut publier (regles.mjs, livrableDe) :
-//       avant la 1.0 le site (branche « site », depuis dev), à partir de la 1.0 les installateurs (étiquettes posées ici)
+//       avant la 0.2.0 le site (branche « site », depuis dev), à partir de la 0.2.0 les installateurs (étiquettes posées ici)
 //   node tools/flux-git/cli.mjs balayer [--pousser]
 //       toutes les branches du dépôt, depuis la branche par défaut (une branche créée depuis un vieux commit échappe à la garde de
 //       création, lue dans ce commit) : nom interdit et déjà fusionnée → supprimée ; nom interdit avec du travail non fusionné, ou
@@ -17,12 +17,12 @@
 //       après la fusion : supprime la branche sur GitHub seulement si elle pointe encore sur le commit fusionné (bail atomique) ;
 //       si elle a reçu des commits depuis, elle est gardée (avertissement)
 //   node tools/flux-git/cli.mjs regenerer --branche master|dev [--pousser]
-//       republier une branche sans changer sa version (nouvelle étiquette d'installateur, ou le site avant la 1.0)
+//       republier une branche sans changer sa version (nouvelle étiquette d'installateur, ou le site avant la 0.2.0)
 //
 // Options communes : --distant <nom> (défaut origin). Sans --pousser, rien ne quitte le dépôt local (essai à blanc).
 // Résultat de appliquer/regenerer : JSON sur la sortie standard, et dans $GITHUB_OUTPUT s'il existe :
-//   installateurs=<json>   les installateurs à fabriquer ([] avant la 1.0)
-//   site=<commit>          le commit de dev à publier sur la branche « site » (vide à partir de la 1.0)
+//   installateurs=<json>   les installateurs à fabriquer ([] avant la 0.2.0)
+//   site=<commit>          le commit de dev à publier sur la branche « site » (vide à partir de la 0.2.0)
 //   a_supprimer=<branche>  la feature ou la hotfix fusionnée, à supprimer sur GitHub une fois tout fait (vide sinon)
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -264,7 +264,7 @@ function appliquer({ base, head, pr, textes, distant, envoyer, tentatives = 10 }
   if (!type) throw new Refus(`fusion hors des règles (${head} → ${base}) : aucune version ni publication. Seules feature/<nom> → dev, dev → master et hotfix/<nom> → master sont gérées.`);
   const majeure = type === 'livraison' && demandeMajeure(...textes);
   const ref = pr ? ` (PR #${pr})` : '';
-  let prodDuHotfix; // undefined : pas encore traité ; null : rien à livrer (avant la 1.0) ; sinon la livraison de production déjà étiquetée
+  let prodDuHotfix; // undefined : pas encore traité ; null : rien à livrer (avant la 0.2.0) ; sinon la livraison de production déjà étiquetée
   for (let essai = 1; essai <= tentatives; essai += 1) {
     const reessayer = (e) => {
       if (essai === tentatives) throw e;
@@ -362,7 +362,7 @@ function regenerer({ branche, distant, envoyer }) {
   const sha = sortie(['rev-parse', `${distant}/${branche}`]);
   const version = versionSur(sha);
   const mode = livrableDe(branche, version);
-  if (!mode) throw new Refus(`master est en v${version} : avant la 1.0, master n'a pas de serveur, rien à publier (le site suit dev)`);
+  if (!mode) throw new Refus(`master est en v${version} : avant la 0.2.0, master n'a pas de serveur, rien à publier (le site suit dev)`);
   const tag = mode === 'site' ? null : etiquette({ mode, version, existantes: etiquettesExistantes(), motif: 'rebuild' });
   if (envoyer && tag) pousser(distant, [`${sha}:refs/tags/${tag}`]);
   return { type: 'regeneration', journal: [], livraisons: [{ mode, branche, sha, version, tag, type: 'regeneration' }], poussee: Boolean(envoyer) };
@@ -428,7 +428,7 @@ try {
     if (process.env.GITHUB_STEP_SUMMARY) {
       const lignes = [`### ${r.type}${r.majeure ? ' (majeure)' : ''}`, '', ...r.journal.map((j) => `- ${j}`),
         ...installateurs.map((l) => `- installateur ${l.mode} : \`${l.tag}\` (${l.branche} ${l.sha.slice(0, 7)})`),
-        ...(site ? [`- site (avant la 1.0) : branche \`site\` reconstruite depuis dev ${site.sha.slice(0, 7)} (v${site.version})`] : []),
+        ...(site ? [`- site (avant la 0.2.0) : branche \`site\` reconstruite depuis dev ${site.sha.slice(0, 7)} (v${site.version})`] : []),
         ...(r.erreur ? [`- **à faire** : ${r.erreur}`] : [])];
       appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lignes.join('\n')}\n`);
     }
