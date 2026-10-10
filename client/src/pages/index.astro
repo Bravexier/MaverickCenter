@@ -1,38 +1,31 @@
 ---
 import Base from '../layouts/Base.astro';
-import { TYPES } from '../lib/types.mjs';
-import { entriesOfType, loadWiki, url } from '../lib/wiki';
+import Carrousel from '../components/galerie/Carrousel.astro';
+import accueilCss from '../styles/accueil/accueil.css?raw';
+import { url } from '../lib/wiki';
 
-const { entries, unresolved } = await loadWiki();
+// Accueil (demande du propriétaire) : un texte de bienvenue et le défilement des images de la galerie (components/galerie/Carrousel.astro).
+// La présentation du jeu reprend le texte d'accueil du propriétaire (premier chapitre du guide, guide/bienvenue).
 ---
 
 <Base title="Accueil">
-  <h1>Maverick Center</h1>
-  <p class="prose">
-    Le codex de Maverick JDR : toutes les règles et le lore au même endroit, avec des pages reliées entre elles par mots-clés,
-    et la fiche de personnage.
-  </p>
-
-  <ul class="grid">
-    <li><a class="card" href={url('fiche/')}><strong>Fiche de personnage →</strong><small>Race, magies, classe, caractéristiques, sorts, équipement : créez un prétiré étape par étape.</small></a></li>
-    <li><a class="card" href={url('personnages/')}><strong>Personnages →</strong><small>Tous les prétirés : recherche, filtres et tri.</small></a></li>
-  </ul>
-
-  <h2>Parcourir le wiki</h2>
-  <ul class="grid">
-    {
-      Object.entries(TYPES).map(([key, type]) => (
-        <li>
-          <a class="card" href={url(`${key}/`)}>
-            <strong>{type.label}</strong>
-            <small>{type.blurb} ({entriesOfType(entries, key).length})</small>
-          </a>
-        </li>
-      ))
-    }
-  </ul>
-  <p class="muted">
-    {entries.length} pages · {unresolved.length} lien(s) à créer.
-    <a href={url('pages/')}>Index alphabétique</a> · <a href={url('tags/')}>Mots-clés</a>
-  </p>
+  <style is:inline set:html={accueilCss}></style>
+  <div class="accueil">
+    <section class="accueil__texte" aria-labelledby="titre-accueil">
+      <h1 id="titre-accueil">Bienvenue sur Maverick Center</h1>
+      <p class="accueil__accroche">
+        MaverickJDR est un jeu de rôle dans un univers médiéval-fantasy où la magie est omniprésente : un jeu complet, mais pensé pour rester simple et accessible.
+      </p>
+      <p>
+        Maverick Center en rassemble les règles et le lore, en pages reliées entre elles par mots-clés, et les outils de vos personnages : la fiche pour
+        les créer, la liste pour les retrouver.
+      </p>
+      <p>Première visite ? Le guide vous accompagne pas à pas : découvrir le jeu, créer son personnage, jouer, progresser.</p>
+      <p class="accueil__actions">
+        <a class="accueil__bouton accueil__bouton--principal" href={url('guide/')}>Lire le guide</a>
+        <a class="accueil__bouton" href={url('fiche/')}>Créer un personnage</a>
+      </p>
+    </section>
+    <Carrousel />
+  </div>
 </Base>

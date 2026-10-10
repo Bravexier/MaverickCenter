@@ -7,8 +7,8 @@ Deux pages (demande du propriétaire), branchées sur le service des personnages
 | `/fiche/` (et `/fiche/?id=<id>`) | **Créer et modifier** un prétiré, sur le même écran | `client/src/pages/fiche/index.astro`, `src/scripts/fiche.mjs`, `styles/fiche/fiche.css` |
 | `/personnages/` | **Rechercher** les personnages : filtres, tableau trié par la colonne choisie | `client/src/pages/personnages.astro`, `src/scripts/personnages.mjs`, `lib/personnages-liste.mjs` |
 
-L'ancienne adresse `/generateur/` mène à `/fiche/` (page 404, `lib/nav.mjs#nouvelleAdresse`). Dans le menu, « Fiche de personnage » et « Personnages »
-viennent à droite, après « Métiers ».
+L'ancienne adresse `/generateur/` mène à `/fiche/` (page 404, `lib/nav.mjs#nouvelleAdresse`). Dans le menu, la rubrique « Personnages » réunit
+« Fiche de personnage » (`/fiche/`) et « Listes » (`/personnages/`), puis « Groupes » et « Chroniques » (bientôt).
 
 ## La page `/fiche/`
 

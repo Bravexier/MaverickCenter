@@ -12,7 +12,7 @@ const { tag } = Astro.props;
 ---
 
 <Base title={`Mot-clé : ${tag.label}`}>
-  <p class="muted"><a href={url('tags/')}>Mots-clés</a> ›</p>
+  <p class="muted"><a href={url('recherche/#mots-cles')}>Mots-clés</a> ›</p>
   <h1>{tag.label}</h1>
   <EntryList entries={tag.entries} />
 </Base>

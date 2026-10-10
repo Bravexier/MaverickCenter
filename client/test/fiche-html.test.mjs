@@ -47,12 +47,12 @@ test('/personnages/ : filtres et tableau dont chaque colonne se trie (un bouton 
   assert.match(html, /<a class="personnages-nouveau" href="\/fiche\/">/);
 });
 
-test('plus de /generateur/ : la page 404 renvoie l’ancienne adresse vers /fiche/ ; le menu met la fiche après les métiers', options, () => {
+test('plus de /generateur/ : la page 404 renvoie l’ancienne adresse vers /fiche/ ; la fiche ouvre la rubrique Personnages du menu', options, () => {
   assert.ok(!existsSync(join(dist, 'generateur')), 'dossier dist/generateur/');
   // le script de la page 404 est inséré dans la page (petit) ou dans un fichier de _astro/
   const scripts = [lire('404.html'), ...readdirSync(join(dist, '_astro')).filter((f) => f.endsWith('.js')).map((f) => lire(`_astro/${f}`))];
   assert.ok(scripts.some((s) => /"generateur\/":`fiche\/`|"generateur\/":"fiche\/"/.test(s)), 'correspondance /generateur/ → /fiche/ dans le script de la page 404');
-  const menu = lire('index.html').match(/<ul class="site-nav__items" data-group="regles"[^>]*>([\s\S]*?)<\/ul>/)[1];
-  assert.deepEqual([...menu.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`),
-    ['Guide /guide/', 'Races /races/', 'Magies /magies/', 'Classes /classes/', 'Métiers /metiers/', 'Fiche de personnage /fiche/', 'Personnages /personnages/']);
+  const menu = lire('index.html').match(/<ul class="site-nav__items" data-group="personnages"[^>]*>([\s\S]*?)<\/ul>/)[1];
+  assert.deepEqual([...menu.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`), ['Fiche de personnage /fiche/', 'Listes /personnages/']);
+  assert.match(lire('fiche/index.html'), /<button type="button" class="nav-group__toggle" data-group="personnages" aria-pressed="true" aria-current="true">/, 'rubrique ouverte sur la fiche');
 });

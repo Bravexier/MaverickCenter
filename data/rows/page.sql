@@ -7296,11 +7296,11 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | Magie Maverick V8 (Sheet) | les 15 magies et leurs sorts, les résistances, les altérations d’état, la météo | [Magies](/magies/) |
 | Classe Maverick V7 (Sheet) | les classes, leurs spécialités, leurs dons et leur équipement de départ | [Classes](/classes/) et [Dons de classe](/capacites/) |
 | MÉTIER (Doc) | les métiers et leurs bonus | [Métiers](/metiers/) |
-| Ressources et Craft (Sheet), Alchimie (Doc) | les armes, armures, boucliers, accessoires, l’artisanat et l’alchimie | rubrique Objets et artisanat : [Armes](/ressources/armes/), [Armures](/ressources/armures/), [Alchimie](/ressources/alchimie/)… |
+| Ressources et Craft (Sheet), Alchimie (Doc) | les armes, armures, boucliers, accessoires, l’artisanat et l’alchimie | rubrique Inventaire : [Armes](/ressources/armes/), [Armures](/ressources/armures/), [Accessoires](/ressources/accessoires/)… ; [Alchimie](/ressources/alchimie/) |
 | Invocation (Sheet) | les créatures et les invocations | [Bestiaire](/bestiaire/) |
 | Mode hyper et co (Sheet) | les effets du Mode Hyper et du Mode Super | [[Liste des effets mode hyper]], [[Liste des effets mode super]] |
 
-Toutes les données sont aussi consultables, table par table, dans la [base de données](/donnees/).
+Les liens vers ces documents (et l’ancien wiki du jeu) sont réunis dans les [Archives](/archives/). Toutes les données sont aussi consultables, table par table, dans la [base de données](/donnees/).
 
 ## Les pages détaillées du guide
 
