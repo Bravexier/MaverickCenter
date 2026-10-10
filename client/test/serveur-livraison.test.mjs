@@ -81,7 +81,9 @@ test('docker-compose.yml du NAS et des installateurs : un conteneur « serveur �
     assert.ok(!serveur.ports, `${fichier} : seul nginx atteint le service`);
     assert.match(serveur.command.join(' '), new RegExp(`exec node --disable-warning=ExperimentalWarning ${ENTREE_LIVREE.replaceAll('.', '\\.')}$`), fichier);
     assert.match(serveur.command.join(' '), new RegExp(`until \\[ -f ${ENTREE_LIVREE.replaceAll('.', '\\.')} \\]`), `${fichier} : attend le site`);
-    assert.deepEqual(serveur.environment, { HOST: '0.0.0.0', PORT: '8787', MAVERICK_REGLES: '/site/donnees/maverick.db', MAVERICK_DB: '/db' }, fichier);
+    // édition des règles (docs/serveur.md, « Édition ») : réglée par le .env de l'instance (1 sur le serveur de test), jamais sur le NAS
+    const edition = fichier.includes('installateur') ? { MAVERICK_EDITION: '${MAVERICK_EDITION:-0}' } : {};
+    assert.deepEqual(serveur.environment, { HOST: '0.0.0.0', PORT: '8787', MAVERICK_REGLES: '/site/donnees/maverick.db', MAVERICK_DB: '/db', ...edition }, fichier);
     assert.deepEqual(serveur.volumes, ['./site:/site:ro', './db:/db'], fichier);
     assert.ok(compose.services['maverick-center'].volumes.includes('./site:/usr/share/nginx/html:ro'), fichier);
   }

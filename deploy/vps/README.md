@@ -140,6 +140,17 @@ branche **`site`** ([`docs/flux-git.md`](../../docs/flux-git.md)). Le serveur de
    (sudo crontab -l 2>/dev/null | grep -v maverick-center-test/update-site.sh; echo '*/2 * * * * sh /srv/maverick-center-test/update-site.sh >/dev/null 2>&1') | sudo crontab -
    ```
 
+5. **Mode modification** (crayon sur les pages du guide, des races, des magies, des classes et des métiers ; [`docs/serveur.md`](../../docs/serveur.md),
+   « Édition ») : `instances.sh` pose `MAVERICK_EDITION=1` dans le `.env` du serveur de test. Sur une instance de test posée avant ce réglage,
+   reprendre le `docker-compose.yml` (qui le transmet au service) puis relancer les conteneurs :
+
+   ```
+   sudo bash ~/deploy/vps/instances.sh                    # sûr à relancer : ajoute MAVERICK_EDITION=1 au .env du test
+   cd /srv/maverick-center-test && sudo cp ~/deploy/installateur/docker-compose.yml . && sudo docker compose up -d
+   ```
+
+   Le serveur normal n'a jamais ce réglage : ses pages ne se modifient pas.
+
 Ce qui diffère d'un serveur installé à partir de la 0.2.0 :
 
 - **Pas de bandeau « Serveur de test »** sur `https://dev.maverick-jdr.com` : la branche `site` est le site unique, construit sans le mode test.

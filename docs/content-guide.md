@@ -196,6 +196,10 @@ Un seul **long tableau** (demande du propriétaire), à l'image des tableaux de 
 Cliquer sur un métier ouvre sous sa ligne sa **description** (et son « Avantage possible », sauf s'il se réduit à « … ») ; sans JavaScript, tout est affiché
 (`lib/metiers.mjs#chargerMetiers`, `components/metier/MetiersTableau.astro`, CSS `styles/metier/tableau.css` inséré en `?raw`).
 
+**Filtres et tri** (demande du propriétaire) : au-dessus du tableau, un filtre par colonne (texte cherché sans accents ni casse) ; un clic sur l'en-tête
+d'une colonne la trie (puis à l'envers) ; filtres et tri sont dans l'adresse (`?nom=…&tri=bonus`), pour partager une recherche (`lib/metiers-tri.mjs`, testé).
+Sur le site de dev, un métier s'ajoute, se modifie ou se supprime depuis le tableau (`docs/serveur.md`, « Édition »).
+
 **Les métiers n'ont plus de page à eux** : les pages `metiers/<slug>` restent dans la base et dans les `.md` fabriqués (recherche, mots-clés, `[[liens]]`), mais aucune route n'est construite
 et **tout lien vers un métier mène à sa ligne** (`[[Forgeron]]` → `/metiers/#metier-forgeron`, qui ouvre la description) : `lib/metiers.mjs#cheminDePage`, utilisé par `entryHref`, `pageHref`,
 le plugin des `[[liens]]`, l'index de recherche et l'onglet DB. Seule « Règles des métiers » (`PAGE_DES_REGLES`, sans ligne dans `metier`) garde sa page, citée au-dessus du tableau.
@@ -253,6 +257,14 @@ sur une page zoomée ; la page suit un peu le doigt. `overscroll-behavior-x: non
   emplacements de sorts sont lus dans la base et calculés comme la fiche automatique V15.2.2.
 - Un chapitre n'a ni fil d'Ariane, ni mots-clés, ni pages liées, ni sources sous le texte (la lecture continue par la pagination) ; `sources:` reste
   dans le frontmatter. Rendu : `components/guide/GuideChapitre.astro`, CSS `styles/guide/guide.css` (`?raw`).
+- **Modifier une page du guide sur le site de dev** (demande du propriétaire ; `docs/serveur.md`, « Édition ») : crayon, puis le texte se modifie en
+  place, avec une barre d'outils (paragraphe, titres, citation, listes, gras, italique, barré, lien vers une page du wiki ou une adresse, retirer un
+  lien, tableau, ajouter ou supprimer une ligne ou une colonne, couleur des cases). Les blocs tirés de la base ne se modifient pas ; le titre, si
+  (l'ancien devient un alias). À l'enregistrement, chaque morceau de texte modifié est réécrit en Markdown (`lib/markdown-edition.mjs`, aller-retour
+  vérifié sur toutes les pages du guide par `test/markdown-edition.test.mjs`) : un morceau inchangé garde son écriture exacte.
+- **Couleur d'une case de tableau** : `{couleur:vert}` en tête de case (`| {couleur:vert} Réussite | … |`) ; couleurs : rouge, orange, jaune, vert,
+  bleu, violet, gris (`COULEURS_DE_CASE`). Le plugin `lib/markdown-couleurs.mjs` en fait l'attribut `data-couleur` (palette dans
+  `styles/global/wiki.css`) ; tout autre texte entre accolades reste tel quel.
 
 ## Niveaux de maîtrise (NM) des sorts
 

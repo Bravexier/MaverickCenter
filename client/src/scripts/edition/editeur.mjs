@@ -8,7 +8,7 @@
 // lignes ajoutées ou supprimées, création d'une race ou d'une classe, relations entre peuples, règle des niveaux de maîtrise, éditeur du guide.
 import css from '../../styles/edition/edition.css?raw';
 import { cleDeLigne, lireAttributEd } from '../../lib/edition-modele.mjs';
-import { rendreChamp } from '../../lib/edition-rendu.mjs';
+import { CONTEXTE_PASTILLE, rendreChamp } from '../../lib/edition-rendu.mjs';
 import { EXTENSIONS } from './extensions.mjs';
 
 const CRAYON = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
@@ -118,12 +118,29 @@ export function demarrer(racine, etatService) {
     });
   };
 
+  /** Le texte qui précède une pastille dans son paragraphe, sa puce ou sa ligne de case, sans le texte caché des infobulles (lib/edition-rendu.mjs#placerPastilles). */
+  function texteAvant(zone) {
+    const bloc = zone.closest('p, li, div') ?? zone.parentElement;
+    const parcours = document.createTreeWalker(bloc, NodeFilter.SHOW_TEXT);
+    let texte = '';
+    for (let n = parcours.nextNode(); n && !zone.contains(n); n = parcours.nextNode()) {
+      if (zone.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING) break;
+      if (!n.parentElement.closest('.bulle')) texte += n.nodeValue;
+    }
+    return texte.slice(-CONTEXTE_PASTILLE);
+  }
+
   /** Réécrit l'affichage d'un champ ; `data-ed-cible` : seul ce sous-élément change (le bouton qui porte le nom d'un sort ou d'un métier). */
   function rendreElement(el, ligne) {
     const info = lireAttributEd(el.dataset.ed ?? el.dataset.edLecture);
     if (!info || !ligne) return;
     const cible = el.dataset.edCible ? el.querySelector(el.dataset.edCible) : el;
-    if (cible) cible.innerHTML = rendreChamp(el.dataset.edRendu, ligne[info.colonne], ligne, ed.listes);
+    if (!cible) return;
+    // les pastilles d'altération d'état que le champ montrait (texte d'un sort) restent sur leur mot (lib/edition-rendu.mjs#htmlDeBlocs)
+    const pastilles = [...cible.querySelectorAll('.bulle-zone')]
+      .filter((z) => z.querySelector('.chip--etat'))
+      .map((z) => ({ forme: z.querySelector('.chip--etat').textContent, avant: texteAvant(z), html: z.outerHTML }));
+    cible.innerHTML = rendreChamp(el.dataset.edRendu, ligne[info.colonne], ligne, { ...ed.listes, pastilles });
   }
 
   /** Un cadre [data-ed-cadre] est caché en lecture quand tous ses champs sont vides (ceux que désigne la valeur de l'attribut, si elle en a une). */

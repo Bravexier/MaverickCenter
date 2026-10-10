@@ -28,6 +28,12 @@ export default defineConfig({
   // Le service est livré avec le site, dans dist/_serveur/ (serveur/livraison.mjs).
   integrations: [integrationServeur()],
   vite: {
+    // version portable : le chargeur du mode modification (components/edition/Edition.astro) devient un module vide (src/scripts/edition-absente.mjs)
+    resolve: {
+      alias: process.env.INLINE_CSS === '1'
+        ? [{ find: /^\.\.\/\.\.\/scripts\/edition\.mjs$/, replacement: fileURLToPath(new URL('./src/scripts/edition-absente.mjs', import.meta.url)) }]
+        : [],
+    },
     server: {
       proxy: { [`${base}api/`]: { target: service, rewrite: (chemin) => chemin.slice(base.length - 1) } },
     },

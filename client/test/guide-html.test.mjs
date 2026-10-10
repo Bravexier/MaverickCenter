@@ -19,7 +19,7 @@ const accueil = present ? lire('guide') : { html: '', main: '', ids: [] };
 const numeros = (main) => [...main.matchAll(/class="guide-pagination__numero" href="([^"]+)"[^>]*?aria-label="Chapitre (\d+) : ([^"]+)"/g)].map((m) => ({ href: m[1], n: Number(m[2]), titre: m[3] }));
 
 test('/guide/ est le premier chapitre : flèche gauche grisée, flèche droite vers le chapitre 2, pagination des 24 chapitres', options, () => {
-  assert.match(accueil.main, /<h1 id="guide-titre">Bienvenue dans Maverick<\/h1>/);
+  assert.match(accueil.main, /<h1 id="guide-titre"[^>]*>Bienvenue dans Maverick<\/h1>/);
   assert.match(accueil.main, /<span class="guide-fleche guide-fleche--precedent" role="link" aria-disabled="true"/);
   assert.match(accueil.main, /<a class="guide-fleche guide-fleche--suivant" href="\/guide\/le-jeu-de-role\/" rel="next"/);
   const pagination = numeros(accueil.main);

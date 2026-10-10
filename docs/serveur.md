@@ -87,6 +87,61 @@ service (qui accepte les deux formes).
 - **Écritures** : corps JSON (`Content-Type: application/json`) d'au plus 1 Mo, et pas de requête qu'un navigateur dit venir d'un autre site
   (`Sec-Fetch-Site`) : un formulaire ou un script d'un autre site ne peut pas écrire à la place de quelqu'un qui a le mot de passe.
 
+## Édition des règles (site de dev)
+
+Demande du propriétaire : sur le **site de dev seulement**, et **sur ordinateur seulement** (écran large et pointeur précis : ni téléphone ni
+tablette), les pages du guide, des races, des magies, des classes et des métiers se modifient en place. Le service n'ouvre ses routes
+`/api/edition/` que s'il est lancé avec `MAVERICK_EDITION=1` (le `.env` du serveur de test, posé par `deploy/vps/instances.sh` ou l'installateur
+de test ; `npm run serveur` l'ouvre par défaut, `MAVERICK_EDITION=0` le ferme) : ailleurs elles répondent `403` et `/api/etat/` dit
+`edition: false`, et la page ne charge même pas l'éditeur (`src/scripts/edition.mjs`).
+
+**Sur la page** : un crayon à cocher, à droite, passe en mode modification ; chaque champ affiché depuis la base (attribut `data-ed`,
+`src/lib/edition-modele.mjs`) devient une saisie remplie avec la valeur de la base vivante. Le bouton « Enregistrer » flottant (ou Ctrl+S) envoie
+toutes les modifications de la page **d'un bloc** puis repasse en lecture ; décocher le crayon les abandonne. Ce qui se modifie :
+
+| Pages | Champs, et ce que la base recalcule |
+| --- | --- |
+| Guide | Titre et texte : éditeur en place (paragraphes, titres, citations, listes, gras, italique, barré, liens vers une page du wiki ou une adresse, tableaux, lignes, colonnes et couleur des cases), réécrit en Markdown (`lib/markdown-edition.mjs`) ; les blocs tirés de la base restent à leur place ; un ancien titre devient un alias |
+| Races | Chaque case de l'onglet (présentation, histoire, valeurs de départ, avantages, dons et leur tableau, capacité Mode Hyper…), magies innées, relations entre peuples (déplacer ou ajouter une race ou une ethnie dans le tableau d'une race) ; créer une race (pure ou hybride) ou un peuple |
+| Magies | Présentation, description, explication, rôles, Mode Hyper ; chaque case de chaque sort (type, mode, NM et états recalculés : `lib/sort-analyse.mjs`). **Une seule colonne par ligne avec un effet de NM** : signalée en direct, refusée à l'enregistrement. La table des relations entre magies ne se modifie pas |
+| Classes | Tous les champs (maîtrises, inventaire, spécialités, dons : tables de détail recalculées, `lib/classe-champs.mjs`) ; créer une classe dans une catégorie ; une classe raciale se crée pour une race hybride qui n'en a pas encore |
+| Métiers | Ajouter, modifier, supprimer (refusé si une fiche l'utilise) ; bonus et recettes recalculés (`lib/metier-champs.mjs`) ; filtres et tri par colonne |
+
+**Le journal** (section 14 de `data/schema.sql` : `modification_lot`, `modification`) : le service écrit chaque ligne touchée (avant, après) dans la
+même transaction que la modification (`serveur/edition-journal.mjs`). Une saisie envoie la valeur qu'elle a lue (`avant`) : si la base a changé
+depuis, `409` et rien n'est écrit. Les pages étant statiques, chacune demande au chargement les lignes modifiées depuis sa construction
+(`GET /api/edition/en-attente/`) et les réaffiche (pour une page du guide : l'aperçu HTML noté avec le texte, assaini) ; une race ou une classe
+créée a sa page provisoire sur la page 404 du site de dev, jusqu'à la livraison suivante.
+
+**Quand une livraison change les règles**, la base vivante est refaite (ci-dessus) et le journal y est **rejoué**, lot par lot : une modification
+déjà présente dans les nouvelles règles passe « intégrée », un lot qui contredit les nouvelles règles passe « conflit » en entier (rien n'en est
+réappliqué) ; `/api/etat/` compte les modifications `en_attente` et `conflit`, affichées à côté du crayon.
+
+**Rapatriement dans le dépôt** : le lien « N modifications à rapatrier » (à côté du crayon, `GET /api/edition/journal/`) télécharge le journal, puis
+
+```bash
+cd client
+npm run db:appliquer-edition -- ~/Téléchargements/journal-edition-AAAA-MM-JJ.json   # rejoue le journal sur data/rows (rien d'écrit en cas de conflit)
+npm run db:build && npm run db:check && npm test                                    # puis commit de data/rows (PR vers dev)
+```
+
+Une fois livrées, ces modifications reviennent « intégrées » sur le site de dev. Les tests qui épinglent les données importées (effectifs, fidélité
+des pages de race à leur onglet : `races_onglet.py --verifier`) disent alors ce qui a changé ; c'est au propriétaire de décider, au premier
+rapatriement, que le site devient la source de ces données (`docs/feuille-de-route.md`, étape 2).
+
+| Requête | Réponse |
+| --- | --- |
+| `GET /api/edition/en-attente/` | Lignes modifiées depuis la construction des pages (`{ lignes: [{ table, cle, creee, ligne, apercu? }] }`) |
+| `POST /api/edition/lignes/` | `{ lignes: [{ table, cle }] }` → la ligne actuelle de chacune (passage en mode modification) |
+| `GET /api/edition/listes/` | Listes des formulaires (compétences, catégories de classe, races hybrides sans classe raciale…) |
+| `GET /api/edition/pages/` | Les pages du wiki (`id`, `titre`) : cibles d'un lien posé dans le texte du guide |
+| `POST /api/edition/race/` | `{ race }` → magies innées et relations de la race dans la base vivante |
+| `POST /api/edition/` | `{ page, operations: [...] }` → applique un lot d'un bloc (`modifier`, `creer`, `supprimer`, `relations`, `magies_innees` : `serveur/edition.mjs`) |
+| `GET /api/edition/journal/` | Le journal des modifications en attente (`maverick-edition/1`), en pièce jointe |
+
+**Avant la 1.0, pas de comptes** : quiconque a le mot de passe du site de dev peut modifier les règles (le journal n'a pas d'auteur :
+`modification_lot.auteur_id` attend la connexion Discord). Mêmes protections d'écriture que les fiches (JSON, `Sec-Fetch-Site`).
+
 ## Hébergement
 
 Deux conteneurs dans le même `docker-compose.yml` (NAS : [`deploy/`](../deploy/README.md) ; à partir de la 1.0 : les
@@ -97,7 +152,7 @@ Deux conteneurs dans le même `docker-compose.yml` (NAS : [`deploy/`](../deploy/
   pendant que les pages de lecture restent servies.
 - **serveur** (`node:22-alpine`) exécute `site/_serveur/serveur/index.mjs` ; aucun port publié (seul nginx l'atteint). Variables :
   `MAVERICK_REGLES` (base des règles, `/site/donnees/maverick.db`), `MAVERICK_DB` (dossier de la base vivante, `/db`), `HOST`, `PORT` (8787),
-  `MAVERICK_INTERVALLE` (surveillance, 15 000 ms).
+  `MAVERICK_INTERVALLE` (surveillance, 15 000 ms), `MAVERICK_EDITION` (`1` : édition des règles ouverte, serveur de test seulement).
 
 **Mises à jour, sans rien relancer à la main** : le service surveille trois fichiers (un changement compte quand il a été vu deux fois de suite,
 pour ne pas agir au milieu d'une copie) :
@@ -119,7 +174,8 @@ npm run dev         # dans un autre terminal : le site, qui transmet /api/ au se
 ```
 
 Les tests (`npm test`) : `serveur-base-vivante` (création, reprise des fiches, refus sans perte, archives), `serveur-api` (chaque route, chaque
-refus, conflit de versions, serveur HTTP réel et sa surveillance), `serveur-livraison` (modules livrés, service livré démarré tel quel,
+refus, conflit de versions, serveur HTTP réel et sa surveillance), `serveur-edition*` et `serveur-edition-journal` (édition : chaque domaine,
+journal, rejeu), `db-appliquer-edition` (rapatriement dans data/rows), `serveur-livraison` (modules livrés, service livré démarré tel quel,
 `docker-compose.yml` et `nginx.conf` cohérents), `installateur` (contenu de `db/` remplacé, dossier gardé) ; `site-html` contrôle `dist/_serveur/`
 après le build.
 

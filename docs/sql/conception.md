@@ -363,10 +363,16 @@ Aujourd'hui les identifiants se dérivent des noms de la source (§2). Pour teni
 - **Fait (migration 0006)** : les sept tables qui contraignaient l'id à « préfixe || nom_cle » (`sort`, `classe`, `invocation`, `invocation_capacite_commune`, `creature`, `creature_attaque`, `creature_capacite`) ne le font plus : un nom corrigé change `nom` et `nom_cle`, l'id garde la clé d'origine (aucune redirection nécessaire). Les pages gardent aussi leur id et leur slug quand leur titre change.
 - **À la bascule vers l'édition** (migration 2, additive) : table `redirection(ancien_id, id)` lue par l'API (`/pages/{ancien}` → 301) et le résolveur de liens ; les identifiants sont **gelés** (un renommage change le titre, jamais l'id) ; l'identifiant n'est plus dérivé du slug.
 
-### 10.3 Historique des modifications (non construit)
+### 10.3 Historique des modifications (premier pas : l'édition du site de dev)
 
-Quand la base devient canonique, une migration additive ajoutera une table de modifications écrite **par le service d'écriture dans la même transaction que la modification** : (entité, champ, avant, après, auteur, instant, état `brouillon` / `validé`).
-Pas de déclencheurs SQL cachés. La persistance git par export texte est alors complétée par la sauvegarde SQLite en ligne ; l'export déterministe reste le moyen de relire et de comparer. Rien de cela n'est dessiné plus loin tant que la bascule n'est pas décidée avec le propriétaire.
+Section 14 de `data/schema.sql` (migration `0017-edition`) : `modification_lot` (un enregistrement depuis une page : instant, page, résumé, auteur —
+NULL avant la connexion Discord) et `modification` (une ligne touchée : table, clé, opération, colonnes **avant / après**, état `en_attente` /
+`integree` / `conflit`, aperçu HTML d'une page du guide). Le service d'écriture (`client/serveur/edition.mjs`) les écrit **dans la même transaction
+que la modification**, sans déclencheur SQL caché ; elles restent **vides dans `data/rows`** et ne vivent que dans la base vivante du site de dev.
+Quand de nouvelles règles arrivent, le journal est rejoué sur elles (une modification déjà présente est « intégrée », un lot contredit passe
+« conflit » en entier) ; `npm run db:appliquer-edition` le rejoue de même sur `data/rows`, que l'export déterministe réécrit (relecture et
+comparaison par git). Voir `docs/serveur.md`, « Édition ». Restent à décider avec le propriétaire : l'état `brouillon / validé` (relecture avant
+publication), l'auteur (connexion Discord) et le moment où la base devient canonique (les classeurs, une archive).
 
 ### 10.4 Portabilité vers PostgreSQL
 

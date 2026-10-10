@@ -59,7 +59,7 @@ test('sections de l’onglet : présentation, histoire, avantages, dons, Mode Hy
     assert.ok(!main(html).includes('Classes accessibles') && !main(html).includes('Classes non accessibles'), `${slug} : liste des classes`);
     assert.equal((html.match(/class="race-stat[ "]/g) ?? []).length, 5, `${slug} : 5 valeurs de départ`);
   }
-  assert.match(page('drakos'), /<dt>Santé de départ<\/dt>\s*<dd>13<\/dd>/);
+  assert.match(page('drakos'), /<dt>Santé de départ<\/dt>\s*<dd[^>]*>13<\/dd>/);
 });
 
 test('relations : Elfe noir en deux blocs (Charbon, Salé), la matrice entre ses peuples ; une race sans peuple le dit', options, () => {

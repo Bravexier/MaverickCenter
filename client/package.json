@@ -23,7 +23,8 @@
     "predev": "node --no-warnings scripts/db-export-pages.mjs",
     "prebuild": "node --no-warnings scripts/db-export-pages.mjs",
     "pretest": "node --no-warnings scripts/db-export-pages.mjs",
-    "db:migrate": "python3 -I ../tools/db/migrer.py"
+    "db:migrate": "python3 -I ../tools/db/migrer.py",
+    "db:appliquer-edition": "node --no-warnings scripts/db-appliquer-edition.mjs"
   },
   "dependencies": {
     "@astrojs/markdown-remark": "^7.3.1",

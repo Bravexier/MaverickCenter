@@ -1,7 +1,10 @@
 // Filtres et tri du tableau de /metiers/ (demande du propriétaire : filtrer et trier les métiers pour chaque colonne), lus sur le texte affiché de
-// chaque cellule ; l'état tient dans l'adresse (?tri=bonus&sens=desc&nom=forg), comme la recherche des personnages. Fonctions pures, sans dépendance
-// (sauf text.mjs) : importées par le seul script de components/metier/MetiersTableau.astro et par les tests.
-import { normalize } from './text.mjs';
+// chaque cellule ; l'état tient dans l'adresse (?tri=bonus&sens=desc&nom=forg), comme la recherche des personnages. Fonctions pures, sans aucune
+// dépendance (comme lib/personnages-liste.mjs : un module partagé avec le script de la recherche, text.mjs, deviendrait un module commun que la version
+// portable ne sait pas mettre en ligne) : importées par le seul script de components/metier/MetiersTableau.astro et par les tests.
+
+/** Texte comparable : sans accents ni casse, blancs réduits. */
+const normaliser = (texte) => String(texte ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
 
 /** Colonnes du tableau, dans l'ordre : clé (paramètre d'adresse), libellé. */
 export const COLONNES_METIERS = [
@@ -13,13 +16,13 @@ export const COLONNES_METIERS = [
 const CLES = COLONNES_METIERS.map((c) => c.cle);
 
 /** Cellule sans contenu (« — » affiché pour « Rien ») : triée après les autres, quel que soit le sens. */
-const estVide = (texte) => normalize(texte) === '';
+const estVide = (texte) => /^[\s—–-]*$/u.test(String(texte ?? ''));
 
 /** Vrai si le texte d'une cellule contient tous les mots du filtre (sans casse ni accents ; filtre vide : toujours vrai). */
 export function correspond(texte, filtre) {
-  const mots = normalize(filtre).split('-').filter(Boolean);
+  const mots = normaliser(filtre).split(' ').filter(Boolean);
   if (!mots.length) return true;
-  const cible = normalize(texte);
+  const cible = normaliser(texte);
   return mots.every((m) => cible.includes(m));
 }
 

@@ -84,6 +84,7 @@ for (const rsync of ['auto', '0']) {
     assert.deepEqual({ tag: champs(prod).tag, mode: champs(prod).mode, version: champs(prod).version }, { tag: 'v0.2.0', mode: 'prod', version: '0.2.0' });
     assert.match(lire(prod, '.env'), /MAVERICK_PORT=8080/);
     assert.match(lire(prod, '.env'), /MAVERICK_CONTENEUR=maverick-center$/m);
+    assert.doesNotMatch(lire(prod, '.env'), /MAVERICK_EDITION/, 'jamais d’édition sur le serveur normal');
     assert.ok(existsSync(join(prod, 'db')), 'dossier de la base vivante créé');
     assert.ok(existsSync(join(prod, 'docker-compose.yml')) && existsSync(join(prod, 'nginx.conf')) && existsSync(join(prod, 'mise-a-jour.sh')) && !existsSync(join(prod, 'update-site.sh')));
     assert.match(r1.out, /Première installation/);
@@ -130,6 +131,7 @@ test('test : la base est une copie de celle de la production à l\'instant de l\
   assert.equal(champs(test_).mode, 'test');
   assert.match(lire(test_, '.env'), /MAVERICK_PORT=8081/);
   assert.match(lire(test_, '.env'), /MAVERICK_CONTENEUR=maverick-center-test/);
+  assert.match(lire(test_, '.env'), /^MAVERICK_EDITION=1$/m, 'édition des règles ouverte sur le serveur de test');
   const copie = new DatabaseSync(join(test_, 'db', 'maverick.db'));
   assert.deepEqual(copie.prepare('SELECT nom FROM fiche ORDER BY nom').all().map((l) => l.nom), ['Aldric', 'Brune']);
   copie.exec("INSERT INTO fiche VALUES ('Essai')"); // ce qu'on fait en test…

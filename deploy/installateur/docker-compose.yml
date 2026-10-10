@@ -27,6 +27,8 @@ services:
       PORT: "8787"
       MAVERICK_REGLES: /site/donnees/maverick.db
       MAVERICK_DB: /db
+      # Édition des règles depuis le site (docs/serveur.md, « Édition ») : 1 sur le serveur de test seulement (.env de l'instance de test).
+      MAVERICK_EDITION: ${MAVERICK_EDITION:-0}
     volumes:
       - ./site:/site:ro
       - ./db:/db

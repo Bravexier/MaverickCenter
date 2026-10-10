@@ -737,6 +737,10 @@ export function listes(db) {
     races: db.prepare('SELECT id, nom FROM race ORDER BY nom').all(),
     categories: db.prepare('SELECT id AS valeur, libelle FROM categorie_classe ORDER BY ordre').all(),
     racesSansClasse: racesHybridesSansClasse(db).map((r) => ({ valeur: r.id, libelle: r.nom })),
+    // glossaire des objets de départ (infobulles de l'inventaire d'une classe : lib/edition-rendu.mjs)
+    objets: db.prepare('SELECT id, nom, nom_cle, description FROM objet_depart ORDER BY id').all(),
+    // types de don du guide (infobulle du type d'un don)
+    typesDon: db.prepare('SELECT id, nom, definition FROM type_don ORDER BY ordre').all(),
   };
 }
 

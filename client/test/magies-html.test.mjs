@@ -331,7 +331,7 @@ test('Potentiel Illimité : chaque onglet reprend, du NPM 1 au NPM 4, les tablea
   }
   assert.equal(total, 280);
   assert.ok(!potentiel.includes('class="info"'), 'pas de règle du NPM 5 sur cette page');
-  assert.match(potentiel, /<tbody class="sort" id="sort-feu-boule-de-feu">/, 'lien profond vers un sort : #sort-<magie>-<sort>');
+  assert.match(potentiel, /<tbody class="sort" id="sort-feu-boule-de-feu"[ >]/, 'lien profond vers un sort : #sort-<magie>-<sort>');
 });
 
 // Petits correctifs du propriétaire sur les pages de magie : races, « Magie non compatible », Mode Hyper, altération d'état liée.
