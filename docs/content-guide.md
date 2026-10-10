@@ -236,6 +236,9 @@ pas de source citée ; le Markdown de la page ne sert plus qu'à la recherche et
 
 L'onglet Guide n'est plus une liste de liens (demande du propriétaire) : c'est un **guide du joueur** pour débutants, lu page après page, avec une flèche de
 chaque côté du texte (grisée au premier et au dernier chapitre), les touches ← → et, en bas, les chapitres voisins et la pagination (titre en infobulle).
+La page prend **toute la largeur** du site : les flèches ne prennent pas de place, elles passent **par-dessus** ses bords, collées en bas de l'écran, et
+s'effacent dès que les liens du bas arrivent à l'écran (demande du propriétaire ; `styles/guide/guide.css`, script de `GuideChapitre.astro`). Sous 52rem,
+elles disparaissent.
 Sur écran tactile, **glisser le doigt** vers la gauche mène au chapitre suivant, vers la droite au précédent (demande du propriétaire ; script de
 `GuideChapitre.astro`) : geste franchement horizontal, d'un seul doigt, ni sur un tableau qui défile, ni depuis le bord de l'écran (gestes du système), ni
 sur une page zoomée ; la page suit un peu le doigt. `overscroll-behavior-x: none` empêche Chrome d'en faire aussi un retour dans l'historique.

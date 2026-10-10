@@ -9,9 +9,9 @@ import type { WikiEntry } from '../../lib/wiki';
 import Bulles from '../magie/Bulles.astro';
 import GuideBloc from './GuideBloc.astro';
 
-// Un chapitre du guide (lib/guide.mjs) : une page à la fois, à lire dans l'ordre (demande du propriétaire). Une flèche de chaque côté du texte
-// (Précédent à gauche, Suivant à droite ; grisée au premier et au dernier chapitre), qui suit la lecture ; en bas, les mêmes liens avec le titre du
-// chapitre voisin, puis la pagination : un numéro par chapitre, son titre en infobulle (components/magie/Bulles.astro ; sans JavaScript, `title`).
+// Un chapitre du guide (lib/guide.mjs) : une page à la fois, à lire dans l'ordre (demande du propriétaire). La page prend toute la largeur ; une
+// flèche de chaque côté (Précédent à gauche, Suivant à droite ; grisée au premier et au dernier chapitre) passe par-dessus son bord, en bas de l'écran,
+// et s'efface quand les liens du bas arrivent ; en bas, les mêmes liens avec le titre du chapitre voisin, puis la pagination : un numéro par chapitre, son titre en infobulle (components/magie/Bulles.astro ; sans JavaScript, `title`).
 // Les flèches du clavier (← →) et, sur écran tactile, un glissement du doigt vers la gauche ou la droite tournent les pages. Le texte est le Markdown de la page, coupé à ses blocs tirés de la base (GuideBloc).
 // Chaque partie du guide a sa couleur (lib/guide.mjs#PARTIES) : celle du chapitre colore la page, les numéros de la pagination sont regroupés par partie.
 interface Props {
@@ -163,7 +163,7 @@ const etiquette = (c: { numero: number; titre: string }) => `Chapitre ${c.numero
     function selection() {
       return window.getSelection && String(window.getSelection()) !== '';
     }
-    // Décalage borné à 64 px (4rem) : sur grand écran, la page reste dans son cadre, à la place de la flèche.
+    // Décalage borné à 64 px : au-delà de la marge de <main>, la page est coupée (overflow-x: clip, styles/guide/guide.css), l'écran ne défile pas de côté.
     function decaler(x, transition, opacite) {
       if (calme) return;
       x = Math.max(-64, Math.min(64, x));
@@ -216,5 +216,17 @@ const etiquette = (c: { numero: number; titre: string }) => `Chapitre ${c.numero
     window.addEventListener('pageshow', function () {
       decaler(0, '');
     });
+  })();
+
+  // Les flèches de côté (collées en bas de l'écran) s'effacent dès que les liens du bas (Précédent / Suivant, avec le titre du chapitre) arrivent à
+  // l'écran : ils font le même travail, et les flèches ne doivent pas venir se poser à côté (demande du propriétaire). Sans JavaScript, elles s'arrêtent
+  // au pied de la page.
+  (function () {
+    var guide = document.querySelector('[data-guide]');
+    var bas = document.querySelector('.guide-voisins');
+    if (!guide || !bas || !('IntersectionObserver' in window)) return;
+    new IntersectionObserver(function (entrees) {
+      guide.toggleAttribute('data-bas-visible', entrees[entrees.length - 1].isIntersecting);
+    }).observe(bas);
   })();
 </script>
