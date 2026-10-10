@@ -142,6 +142,15 @@ export const TABLES = {
       texte_niveau5: { type: 'texte', libelle: 'Texte du sort (niveau 5)' },
     },
   },
+  // Pages du guide : titre et texte (Markdown réécrit par l'éditeur visuel, lib/markdown-edition.mjs) ; le service refuse toute autre page (celles des
+  // races, magies, classes et métiers suivent leurs tables)
+  page: {
+    libelle: 'Page',
+    colonnes: {
+      titre: { type: 'ligne', libelle: 'Titre', requis: true },
+      corps_md: { type: 'markdown', libelle: 'Texte', requis: true },
+    },
+  },
 };
 
 /**

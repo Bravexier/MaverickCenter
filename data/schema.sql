@@ -3849,6 +3849,9 @@ CREATE TABLE modification (
   apres      TEXT    CHECK (apres IS NULL OR (json_valid(apres) AND json_type(apres) = 'object')),
   etat       TEXT    NOT NULL CHECK (etat IN ('en_attente', 'integree', 'conflit')),
   detail     TEXT,                                                   -- raison d'un conflit ; NULL sinon
+  apercu     TEXT    CHECK (apercu IS NULL OR (json_valid(apercu) AND json_type(apercu) = 'array')),
+                                                                     -- page du guide : le HTML de l'éditeur, un élément par morceau de texte du corps,
+                                                                     -- que le site montre tant que la page construite ne l'a pas (assaini à l'affichage)
   PRIMARY KEY (lot_id, rang),
   CHECK ((operation = 'inserer') = (avant IS NULL)),
   CHECK ((operation = 'supprimer') = (apres IS NULL)),

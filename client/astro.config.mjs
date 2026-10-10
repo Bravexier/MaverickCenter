@@ -2,6 +2,7 @@ import { defineConfig } from 'astro/config';
 import { unified } from '@astrojs/markdown-remark';
 import { fileURLToPath } from 'node:url';
 import { buildIndex, remarkWikilinks, scanContent } from './src/lib/wikilinks.mjs';
+import { remarkCouleursDeCase } from './src/lib/markdown-couleurs.mjs';
 import { integrationServeur } from './serveur/livraison.mjs';
 
 // Déploiement sous un sous-chemin (ex. GitHub Pages) : SITE_BASE=/MaverickCenter/ SITE_URL=https://…
@@ -33,7 +34,7 @@ export default defineConfig({
   },
   markdown: {
     // Sätteri est le processeur par défaut d'Astro 7 mais n'exécute pas les plugins remark :
-    // on garde unified pour le plugin des [[liens]].
-    processor: unified({ remarkPlugins: [[remarkWikilinks, { index, base }]] }),
+    // on garde unified pour le plugin des [[liens]] (et celui de la couleur des cases de tableau, lib/markdown-couleurs.mjs).
+    processor: unified({ remarkPlugins: [[remarkWikilinks, { index, base }], remarkCouleursDeCase] }),
   },
 });

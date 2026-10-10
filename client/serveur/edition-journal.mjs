@@ -96,15 +96,16 @@ export function ouvrirLot(db, { id, instant, pageId = null, auteurId = null }) {
   db.prepare('INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES (?, ?, ?, ?, ?)').run(id, instant, auteurId, pageId, '…');
   let rang = 0;
   const noter = db.prepare(
-    "INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat, detail) VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente', NULL)",
+    "INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat, detail, apercu) VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente', NULL, ?)",
   );
   const interdire = (table) => {
     if (TABLES_INTERDITES.has(table)) throw new ErreurJournal(`${table} : table du journal, jamais modifiée par l'édition`);
   };
   const lignes = []; // { table, cle, operation } : ce que le lot a touché, dans l'ordre
-  const note = (table, cle, operation, avant, apres) => {
+  const note = (table, cle, operation, avant, apres, apercu = null) => {
     rang += 1;
-    noter.run(id, rang, table, JSON.stringify(cle), operation, avant === null ? null : JSON.stringify(avant), apres === null ? null : JSON.stringify(apres));
+    noter.run(id, rang, table, JSON.stringify(cle), operation, avant === null ? null : JSON.stringify(avant), apres === null ? null : JSON.stringify(apres),
+      apercu === null ? null : JSON.stringify(apercu));
     lignes.push({ table, cle, operation });
   };
   return {
@@ -117,8 +118,11 @@ export function ouvrirLot(db, { id, instant, pageId = null, auteurId = null }) {
       note(table, cleDe(db, table, ligne), 'inserer', null, ligne);
       return ligne;
     },
-    /** Modifie les colonnes données (celles qui changent seulement sont notées) ; rend la ligne modifiée. */
-    modifier(table, cle, valeurs) {
+    /**
+     * Modifie les colonnes données (celles qui changent seulement sont notées) ; rend la ligne modifiée. `apercu` : le HTML d'une page du guide tel que
+     * l'éditeur l'a laissé (un élément par morceau de texte du corps), noté avec la modification.
+     */
+    modifier(table, cle, valeurs, { apercu = null } = {}) {
       interdire(table);
       const avant = lireLigne(db, table, cle);
       if (!avant) throw new ErreurJournal(`${table} ${JSON.stringify(cleDe(db, table, cle))} : ligne introuvable`);
@@ -127,7 +131,7 @@ export function ouvrirLot(db, { id, instant, pageId = null, auteurId = null }) {
       if (!changees.length) return avant;
       if (changees.some((c) => structure(db, table).cle.includes(c))) throw new ErreurJournal(`${table} : la clé primaire d'une ligne ne change pas`);
       modifierBrut(db, table, cle, sous(valeurs, changees));
-      note(table, cleDe(db, table, avant), 'modifier', sous(avant, changees), sous(valeurs, changees));
+      note(table, cleDe(db, table, avant), 'modifier', sous(avant, changees), sous(valeurs, changees), apercu);
       return lireLigne(db, table, cle);
     },
     /** Supprime une ligne (rien si elle n'existe pas) ; rend la ligne supprimée ou null. */
@@ -282,14 +286,15 @@ export function rejouer(db) {
 /**
  * L'état net des lignes que le journal a en attente : une entrée par ligne (table, clé), avec la ligne telle qu'elle est maintenant dans la base
  * (null si elle a été supprimée) et `creee` si elle n'existait pas dans les règles livrées (sa première modification en attente est une insertion).
- * C'est ce que les pages statiques doivent montrer à la place de leur contenu construit.
+ * C'est ce que les pages statiques doivent montrer à la place de leur contenu construit. Une page dont le corps a changé a aussi `apercu` : celui de
+ * la dernière modification de son corps (null si elle n'en a pas noté : la page ne peut pas montrer son nouveau texte avant la prochaine livraison).
  * @param {{ tables?: string[] }} [filtre]
  */
 export function lignesEnAttente(db, { tables } = {}) {
   const vues = new Map();
   const toutes = db
     .prepare(
-      `SELECT m.table_nom, m.cle, m.operation FROM modification m JOIN modification_lot l ON l.id = m.lot_id
+      `SELECT m.table_nom, m.cle, m.operation, m.apres, m.apercu FROM modification m JOIN modification_lot l ON l.id = m.lot_id
        WHERE m.etat = 'en_attente' ORDER BY l.fait_le, l.id, m.rang`,
     )
     .all();
@@ -297,6 +302,7 @@ export function lignesEnAttente(db, { tables } = {}) {
     if (tables && !tables.includes(m.table_nom)) continue;
     const k = `${m.table_nom}\u0000${m.cle}`;
     if (!vues.has(k)) vues.set(k, { table: m.table_nom, cle: JSON.parse(m.cle), creee: m.operation === 'inserer' });
+    if (m.table_nom === 'page' && m.apres && 'corps_md' in JSON.parse(m.apres)) vues.get(k).apercu = m.apercu === null ? null : JSON.parse(m.apercu);
   }
   return [...vues.values()].map((v) => ({ ...v, ligne: lireLigne(db, v.table, v.cle) }));
 }
@@ -317,6 +323,7 @@ export function journalExporte(db, { etats = ['en_attente'] } = {}) {
       apres: m.apres === null ? null : JSON.parse(m.apres),
       etat: m.etat,
       detail: m.detail,
+      apercu: m.apercu === null ? null : JSON.parse(m.apercu),
     });
   }
   return { format: 'maverick-edition/1', lots: [...parLot.values()].filter((l) => l.modifications.length) };
@@ -330,13 +337,14 @@ export function chargerJournal(db, journal) {
   if (journal?.format !== 'maverick-edition/1') throw new ErreurJournal('journal illisible (format « maverick-edition/1 » attendu)');
   const lot = db.prepare('INSERT OR IGNORE INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES (?, ?, NULL, ?, ?)');
   const mod = db.prepare(
-    "INSERT OR IGNORE INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat, detail) VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente', NULL)",
+    "INSERT OR IGNORE INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat, detail, apercu) VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente', NULL, ?)",
   );
   let n = 0;
   for (const l of journal.lots ?? []) {
     lot.run(l.id, l.fait_le, l.page_id ?? null, l.resume);
     for (const m of l.modifications ?? []) {
-      mod.run(l.id, m.rang, m.table, JSON.stringify(m.cle), m.operation, m.avant === null ? null : JSON.stringify(m.avant), m.apres === null ? null : JSON.stringify(m.apres));
+      mod.run(l.id, m.rang, m.table, JSON.stringify(m.cle), m.operation, m.avant === null ? null : JSON.stringify(m.avant), m.apres === null ? null : JSON.stringify(m.apres),
+        m.apercu ? JSON.stringify(m.apercu) : null);
       n += 1;
     }
   }

@@ -5,6 +5,7 @@
 //
 // Opérations d'un lot (corps de POST /api/edition/) :
 //   { op: 'modifier',  table, cle: { … }, valeurs: { colonne: valeur }, avant?: { colonne: valeur lue } }   avant : refus 409 si la base a changé depuis
+//                      apercu?: [html]  page du guide : son HTML dans l'éditeur, un élément par morceau de texte du corps (lignesEnAttente)
 //   { op: 'creer',     entite, valeurs: { … } }                                                            entite : clé de ENTITES
 //   { op: 'supprimer', entite, cle: { … } }
 //   { op: 'relations', cases: [{ voit, vu, echelle }] }                                                     relations entre peuples (races)
@@ -21,6 +22,8 @@ import {
   analyserTypeDeDon, bouclierMax, CATEGORIE_RACIALE, decouperInventaire, decouperMaitriseArme, decouperMaitriseArmure, MOT_CLE_DE_CATEGORIE,
 } from '../src/lib/classe-champs.mjs';
 import { HYBRIDES_SANS_CLASSE_RACIALE, TAG_RACE_HYBRIDE } from '../src/lib/race-kinds.mjs';
+import { morceauxDuChapitre } from '../src/lib/guide.mjs';
+import { decouperCorps } from '../src/lib/markdown-edition.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { ErreurJournal, cleDe, lireLigne, ouvrirLot, structure } from './edition-journal.mjs';
 
@@ -517,9 +520,50 @@ const CAPACITE = {
   },
 };
 
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Pages du guide (page : titre, corps Markdown ; alias)
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Taille maximale de l'aperçu HTML d'une page (le corps du plus long chapitre rendu fait une centaine de kilo-octets). */
+export const APERCU_MAX = 2_000_000;
+
+const PAGE = {
+  colonnes(ctx, ligne) {
+    if (ligne.type !== 'guide') throw refus(`${ligne.id} : seules les pages du guide se modifient ici (les autres pages suivent leurs tables)`);
+    try {
+      morceauxDuChapitre(ligne.corps_md); // un bloc inconnu (`<!-- guide:… -->`) arrêterait le build
+    } catch (e) {
+      throw refus(e.message);
+    }
+    const autre = lireLigne(ctx.db, 'page', { id: ligne.id }).titre !== ligne.titre
+      && ctx.db.prepare('SELECT page_id FROM cle_page WHERE cle = ? AND page_id <> ?').get(normalize(ligne.titre), ligne.id);
+    if (autre) throw new ErreurEdition(409, `Titre « ${ligne.titre} » : c’est déjà le nom de la page ${autre.page_id} (les [[liens]] deviendraient ambigus).`);
+    return { corps_md: ligne.corps_md.endsWith('\n') ? ligne.corps_md : `${ligne.corps_md}\n` };
+  },
+  deriver(ctx, avant, apres) {
+    // un titre changé : l'ancien devient un alias, pour que les [[liens]] qui l'écrivent mènent toujours à la page (son adresse ne change pas)
+    if (normalize(avant.titre) === normalize(apres.titre) || normalize(avant.titre) === apres.slug) return;
+    const { db, w } = ctx;
+    if (db.prepare('SELECT 1 FROM alias WHERE page_id = ? AND (texte = ? OR cle = ?)').get(apres.id, avant.titre, normalize(avant.titre))) return;
+    const ordre = db.prepare('SELECT coalesce(max(ordre) + 1, 0) AS n FROM alias WHERE page_id = ?').get(apres.id).n;
+    w.inserer('alias', { page_id: apres.id, ordre, texte: avant.titre, cle: normalize(avant.titre) });
+  },
+};
+
+/** L'aperçu envoyé avec le corps d'une page : un texte HTML par morceau visible du corps (assaini par la page qui le montre), sinon rien. */
+function apercuDe(op, corps) {
+  const a = op.apercu;
+  if (a === undefined || a === null) return null;
+  if (!Array.isArray(a) || !a.every((h) => typeof h === 'string')) throw refus('apercu : liste de textes HTML attendue');
+  if (a.reduce((n, h) => n + h.length, 0) > APERCU_MAX) throw refus('apercu : trop long');
+  if (a.length !== decouperCorps(corps).filter((m) => m.visible).length) throw refus('apercu : un texte HTML par morceau de texte du corps attendu');
+  return a;
+}
+
 /** Ce que l'édition sait faire, table par table : colonnes recalculées dans la ligne, dérivations ailleurs, création, suppression. */
 const DOMAINES = {
   metier: METIER, magie: MAGIE, magie_role: MAGIE_ROLE, sort: SORT, race: RACE, peuple: PEUPLE, classe: CLASSE, specialite: SPECIALITE, capacite: CAPACITE,
+  page: PAGE,
 };
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -570,7 +614,8 @@ function modifier(ctx, op) {
   const domaine = DOMAINES[table];
   const ligne = { ...avant, ...valeurs };
   const toutes = { ...valeurs, ...clesDeNom(db, table, valeurs), ...(domaine?.colonnes ? domaine.colonnes(ctx, ligne) : {}) };
-  const apres = w.modifier(table, op.cle, toutes);
+  const apercu = table === 'page' && 'corps_md' in valeurs ? apercuDe(op, toutes.corps_md ?? ligne.corps_md) : null;
+  const apres = w.modifier(table, op.cle, toutes, { apercu });
   if (domaine?.deriver) domaine.deriver(ctx, avant, apres);
   return `${TABLES[table].libelle} ${avant.nom ?? avant.titre ?? JSON.stringify(op.cle)} : ${Object.keys(valeurs).map((c) => TABLES[table].colonnes[c].libelle).join(', ')}`;
 }
@@ -694,6 +739,9 @@ export function listes(db) {
     racesSansClasse: racesHybridesSansClasse(db).map((r) => ({ valeur: r.id, libelle: r.nom })),
   };
 }
+
+/** Les pages du wiki qu'un lien du guide peut viser (base vivante : une race ou une classe créée depuis le site en fait partie), par titre. */
+export const pagesDuWiki = (db) => db.prepare("SELECT id, titre FROM page WHERE statut <> 'example' ORDER BY titre_cle, id").all();
 
 /**
  * L'état vivant d'une race pour sa page (mode modification, ou page construite avant une modification) : ses magies innées (la liste de l'onglet si

@@ -162,3 +162,51 @@ textarea.ed-saisie--ligne { resize: none; min-height: 0; }
 @media print {
   .ed-cote, .ed-annonce { display: none !important; }
 }
+
+/* Guide : texte modifiable en place (src/scripts/edition/guide.mjs) et sa barre d'outils, en haut de l'écran */
+.ed-texte-guide { outline: 2px dashed color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 6px; border-radius: 4px; min-height: 2.5em; cursor: text; }
+.ed-texte-guide:focus { outline-style: solid; }
+.ed-texte-guide a { cursor: text; }
+.ed-texte-guide :is(td, th):empty::after, .ed-texte-guide :is(td, th):has(> br:only-child)::after { content: ' '; }
+.ed-barre-guide {
+  position: fixed;
+  top: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 65;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem 0.6rem;
+  max-width: calc(100vw - 7rem);
+  padding: 0.35rem 0.5rem;
+  font: 0.8rem/1.2 system-ui, sans-serif;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.2);
+}
+.ed-barre-guide__groupe { display: flex; align-items: center; gap: 0.2rem; }
+.ed-barre-guide__groupe + .ed-barre-guide__groupe { padding-left: 0.6rem; border-left: 1px solid var(--border); }
+.ed-barre-guide__titre { color: var(--muted); margin-right: 0.15rem; }
+.ed-barre-guide button {
+  font: inherit;
+  min-width: 1.8rem;
+  padding: 0.25rem 0.45rem;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.ed-barre-guide button:hover, .ed-barre-guide button:focus-visible { border-color: var(--accent); }
+.ed-barre-guide .ed-gras { font-weight: 800; }
+.ed-barre-guide .ed-italique { font-style: italic; font-family: Georgia, serif; }
+.ed-barre-guide .ed-barre { text-decoration: line-through; }
+.ed-barre-guide .ed-couleur { min-width: 1.4rem; height: 1.4rem; padding: 0; border-radius: 50%; }
+.ed-barre-guide .ed-couleur[data-couleur] { background: color-mix(in srgb, var(--case) 60%, var(--surface)); }
+
+@media print {
+  .ed-barre-guide { display: none !important; }
+}

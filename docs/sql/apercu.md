@@ -1,6 +1,6 @@
 # Aperçu du schéma de la base
 
-> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 160 tables, 2 tables de recherche, 34 vues.
+> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 162 tables, 2 tables de recherche, 34 vues.
 > Ce qui reste à trancher sur le **contenu** (pas sur la forme) est dans [`a-valider.md`](a-valider.md).
 
 **Lecture des colonnes** : **gras** = clé primaire ; `→table` = clé étrangère vers cette table ; `?` = peut être absente (`NULL`, jamais une valeur inventée) ; `+provenance` = `origine` (famille d'import) et `source_ref` (classeur › onglet › plage). Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté.
@@ -310,3 +310,14 @@
 | `v_personnage_visible` *(vue)* | Qui voit quelle fiche (demande du propriétaire) : une ligne par (fiche, utilisateur, motif) ; un utilisateur voit une fiche s'il a au moins une ligne. |  |
 | `v_groupe_controle` *(vue)* | Contrôle des inscriptions dans les groupes : une ligne par anomalie (vide = conforme). |  |
 | `v_personnage_controle` *(vue)* | Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). |  |
+
+## 14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)
+
+**Relations dans cette section** : `modification→modification_lot`
+
+**Vers d'autres sections** : `modification_lot→utilisateur (§13)`
+
+| Table | Rôle | Colonnes |
+| --- | --- | --- |
+| `modification_lot` | Un enregistrement fait depuis une page (le bouton de confirmation) : toutes ses modifications passent ou aucune. | **id**, fait_le, auteur_id→utilisateur?, page_id?, resume |
+| `modification` | Une ligne de table touchée par un lot. | **lot_id**→modification_lot, **rang**, table_nom, cle, operation, avant?, apres?, etat, detail?, apercu? |

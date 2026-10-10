@@ -9,3 +9,13 @@
 .linked-pages { display: grid; gap: 1rem 2rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); }
 .class-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
 main a { overflow-wrap: anywhere; } /* les URLs de la section « Sources » ne doivent pas élargir la page */
+/* Couleur d'une case de tableau (« {couleur:vert} » en tête de case : lib/markdown-couleurs.mjs, modifiable depuis le site de dev). Teinte mêlée au fond
+   de la page : lisible en clair comme en sombre. Attribut doublé : passe devant le fond des en-têtes de tableau des gabarits (guide). */
+:is(td, th)[data-couleur][data-couleur] { background: color-mix(in srgb, var(--case) 26%, var(--surface)); }
+[data-couleur="rouge"] { --case: #c0392b; }
+[data-couleur="orange"] { --case: #e07b24; }
+[data-couleur="jaune"] { --case: #d4ac0d; }
+[data-couleur="vert"] { --case: #2e8b57; }
+[data-couleur="bleu"] { --case: #2a6fb0; }
+[data-couleur="violet"] { --case: #7b4fb0; }
+[data-couleur="gris"] { --case: #8a8a8a; }
