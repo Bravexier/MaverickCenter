@@ -1,0 +1,156 @@
+/* Mode modification du site de dev (src/scripts/edition/editeur.mjs, qui insère cette feuille) : jamais chargé en production ni sur mobile.
+   Crayon à cocher et bouton de confirmation flottants sur le côté droit ; champs modifiables encadrés ; formulaires de création ; annonces. */
+.ed-cote {
+  position: fixed;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.6rem;
+  pointer-events: none;
+}
+.ed-cote > * { pointer-events: auto; }
+.ed-crayon,
+.ed-confirmer {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 999px;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.22);
+}
+.ed-crayon {
+  width: 3.2rem;
+  height: 3.2rem;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--accent);
+  background: var(--surface);
+  border: 2px solid var(--accent);
+}
+.ed-crayon svg { width: 1.45rem; height: 1.45rem; }
+.ed-crayon[aria-pressed='true'] { color: var(--surface); background: var(--accent); }
+.ed-crayon:focus-visible,
+.ed-confirmer:focus-visible,
+.ed-journal:focus-visible { outline: 3px solid var(--text); outline-offset: 3px; }
+.ed-confirmer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.7rem 1.1rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--good);
+  border: 0;
+}
+.ed-confirmer[hidden] { display: none; }
+.ed-confirmer:disabled { opacity: 0.6; cursor: progress; }
+.ed-confirmer svg { width: 1.1rem; height: 1.1rem; }
+.ed-journal {
+  font-size: 0.75rem;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  text-decoration: none;
+}
+.ed-journal[hidden] { display: none; }
+
+/* Champs : en mode modification, chaque champ modifiable est encadré et remplacé par sa saisie */
+body.ed-mode [data-ed] { outline: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 2px; border-radius: 3px; }
+body.ed-mode [data-ed-cadre] { display: block !important; }
+.ed-saisie {
+  display: block;
+  width: 100%;
+  min-width: 6rem;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 0.95em;
+  color: var(--text);
+  background: color-mix(in srgb, var(--warn-bg) 55%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-radius: 5px;
+  padding: 0.25rem 0.4rem;
+  text-transform: none;
+  letter-spacing: normal;
+  text-align: left;
+}
+textarea.ed-saisie { resize: vertical; min-height: 2.4em; line-height: 1.45; field-sizing: content; }
+textarea.ed-saisie--ligne { resize: none; min-height: 0; }
+.ed-saisie:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ed-saisie.ed-modifiee { border-color: var(--good); box-shadow: inset 3px 0 0 var(--good); }
+.ed-libelle { display: block; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.1rem; }
+
+/* Outils ajoutés par les extensions (ajouter, supprimer, déplacer) */
+.ed-outils { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.6rem 0; }
+.ed-outil {
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--accent);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 0.2rem 0.7rem;
+}
+.ed-outil:hover { background: var(--accent-soft); }
+.ed-outil--danger { color: var(--danger); border-color: var(--danger); }
+.ed-outil[aria-pressed='true'] { color: var(--surface); background: var(--danger); }
+.ed-supprime { opacity: 0.45; text-decoration: line-through; }
+.ed-supprime .ed-outil--danger { opacity: 1; text-decoration: none; }
+.ed-nouveau { box-shadow: inset 4px 0 0 var(--good); }
+
+/* Formulaire de création (dialog) */
+.ed-dialogue {
+  width: min(42rem, calc(100vw - 2rem));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0;
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: 0 18px 50px rgb(0 0 0 / 0.35);
+}
+.ed-dialogue::backdrop { background: rgb(0 0 0 / 0.45); }
+.ed-dialogue form { display: grid; gap: 0.75rem; padding: 1.1rem 1.3rem 1.2rem; }
+.ed-dialogue h2 { margin: 0; font-size: 1.2rem; }
+.ed-dialogue label { display: grid; gap: 0.2rem; }
+.ed-dialogue .ed-aide { margin: 0; font-size: 0.85rem; color: var(--muted); }
+.ed-dialogue .ed-erreur { margin: 0; color: var(--danger); font-weight: 600; }
+.ed-dialogue .ed-boutons { display: flex; justify-content: flex-end; gap: 0.6rem; }
+.ed-dialogue button { font: inherit; padding: 0.35rem 1rem; border-radius: 6px; cursor: pointer; }
+.ed-dialogue button[type='submit'] { color: #fff; background: var(--good); border: 0; font-weight: 700; }
+
+/* Annonces (enregistré, erreur) */
+.ed-annonce {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 70;
+  max-width: min(32rem, calc(100vw - 2rem));
+  padding: 0.65rem 2.2rem 0.65rem 0.9rem;
+  font-size: 0.92rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--good);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.25);
+  white-space: pre-line;
+}
+.ed-annonce[hidden] { display: none; }
+.ed-annonce--erreur { border-left-color: var(--danger); }
+.ed-annonce button { position: absolute; top: 0.35rem; right: 0.4rem; border: 0; background: none; color: var(--muted); font-size: 1.1rem; cursor: pointer; }
+
+/* Page d'une entité créée depuis le site, avant la prochaine version du site (page 404 du site de dev) */
+.ed-page-nouvelle { display: grid; gap: 1rem; }
+.ed-page-nouvelle .banner { margin: 0; }
+.ed-page-nouvelle dl { display: grid; grid-template-columns: minmax(10rem, 14rem) 1fr; gap: 0.5rem 1rem; margin: 0; }
+.ed-page-nouvelle dt { font-weight: 600; color: var(--muted); }
+.ed-page-nouvelle dd { margin: 0; }
+
+@media print {
+  .ed-cote, .ed-annonce { display: none !important; }
+}

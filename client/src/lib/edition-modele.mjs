@@ -90,5 +90,6 @@ export function lireAttributEd(texte) {
   }
 }
 
-/** Clé de regroupement d'une ligne (table + clé primaire) : les colonnes de la clé dans l'ordre où elles sont écrites. */
-export const cleDeLigne = (table, cle) => `${table}\u0000${JSON.stringify(cle)}`;
+/** Clé de regroupement d'une ligne (table + clé primaire), indépendante de l'ordre des colonnes de la clé. */
+export const cleDeLigne = (table, cle) =>
+  `${table}\u0000${JSON.stringify(Object.entries(cle ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))}`;
