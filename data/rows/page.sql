@@ -6111,7 +6111,7 @@ L’activité JDR se fait principalement sur le Discord officiel : <https://disc
 
 ## Sommaire
 
-Ce guide est fait pour ceux qui découvrent Maverick, et même le jeu de rôle. Il se lit comme un livre, une page après l’autre : les flèches de part et d’autre du texte (ou les touches ← et → du clavier) tournent les pages, et les numéros en bas de page mènent directement à un chapitre. Chaque partie a sa couleur.
+Ce guide est fait pour ceux qui découvrent Maverick, et même le jeu de rôle. Il se lit comme un livre, une page après l’autre : les flèches de part et d’autre du texte (ou les touches ← et → du clavier, ou un glissement du doigt sur téléphone) tournent les pages, et les numéros en bas de page mènent directement à un chapitre. Chaque partie a sa couleur.
 
 <!-- guide:sommaire -->
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');

@@ -1,4 +1,4 @@
-// Guide du joueur CONSTRUIT (client/dist/guide/) : des chapitres lus dans l'ordre (lib/guide.mjs), une flèche de chaque côté (grisée au bord), le glissement du doigt, la pagination
+// Guide du joueur CONSTRUIT (client/dist/guide/) : des chapitres lus dans l'ordre (lib/guide.mjs), la page sur toute la largeur, une flèche de chaque côté par-dessus (grisée au bord), le glissement du doigt, la pagination
 // par partie colorée avec le titre de chaque chapitre en infobulle, et les tableaux tirés de la base (demande du propriétaire).
 // Ce test lit le site construit : il ne tourne qu'après `npm run build` (la CI l'exécute juste après) et se saute sinon.
 //   node --test test/guide-html.test.mjs
@@ -53,6 +53,17 @@ test('sur écran tactile, glisser le doigt tourne la page, sans que le navigateu
   assert.match(main, /closest\('input, textarea, select, \[contenteditable\], \.guide-defile'\)/, 'pas sur un tableau qui défile ni dans un champ');
   assert.match(main, /t\.clientX < 24 \|\| t\.clientX > window\.innerWidth - 24/, 'pas depuis le bord de l’écran (gestes du système)');
   assert.match(main, /html \{ overscroll-behavior-x: none; \}/, 'Chrome ne fait pas du même geste un retour arrière');
+});
+
+test('la page prend toute la largeur : les flèches passent par-dessus, en bas de l’écran, et s’effacent quand les liens du bas arrivent', options, () => {
+  const { main } = lire('guide/les-degats');
+  assert.match(main, /\.guide-cadre \{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\);\s*\}/, 'une seule colonne : plus de colonnes pour les flèches');
+  assert.match(main, /\.guide-cadre > \* \{ grid-area: 1 \/ 1; \}/, 'page et flèches dans la même case');
+  assert.match(main, /\.guide-fleche \{\s*position: sticky;\s*bottom: 1\.5rem;/, 'flèches collées en bas de l’écran');
+  assert.match(main, /\.guide\[data-bas-visible\] \.guide-fleche \{ opacity: 0; visibility: hidden; \}/);
+  assert.match(main, /new IntersectionObserver\(function \(entrees\) \{\s*guide\.toggleAttribute\('data-bas-visible'[\s\S]*?\}\)\.observe\(bas\)/, 'effacées dès que les liens du bas sont à l’écran');
+  assert.doesNotMatch(main, /\.guide-texte \{ max-width/, 'le texte n’a plus sa colonne étroite');
+  assert.match(main, /main \{ overflow-x: clip; \}/, 'la page qui suit le doigt n’élargit pas l’écran');
 });
 
 test('les tableaux viennent de la base : progression, postures, compétences, personnages fil rouge', options, () => {

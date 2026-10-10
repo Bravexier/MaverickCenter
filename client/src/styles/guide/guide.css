@@ -1,7 +1,9 @@
 /* Chargé uniquement depuis components/guide/GuideChapitre.astro (?raw) : les chapitres du guide du joueur (/guide/ et /guide/<chapitre>/).
-   Une page de livre (le texte sur une feuille) entre deux flèches qui suivent la lecture (Précédent à gauche, Suivant à droite, grisées aux bords),
-   puis, en bas, les chapitres voisins et la pagination (un numéro par chapitre, titre en infobulle). Sur un écran étroit, les flèches de côté
-   disparaissent : les liens du bas en tiennent lieu. Les blocs tirés de la base (GuideBloc.astro) ont leurs styles plus bas. */
+   Une page de livre (le texte sur une feuille) sur toute la largeur du site ; deux flèches rondes passent PAR-DESSUS ses bords, en bas de l'écran
+   (Précédent à gauche, Suivant à droite, grisées aux bords), et s'effacent quand les liens du bas arrivent à l'écran (demande du propriétaire : les
+   flèches ne doivent pas prendre de place à la page). En bas, les chapitres voisins et la pagination (un numéro par chapitre, titre en infobulle).
+   Sur un écran étroit, les flèches disparaissent : le glissement du doigt et les liens du bas en tiennent lieu. Les blocs tirés de la base
+   (GuideBloc.astro) ont leurs styles plus bas. */
 /* Couleur de la partie (lib/guide.mjs#PARTIES), posée par `--couleur-partie` sur la page et sur chaque groupe de la pagination et du sommaire :
    --guide pour les aplats (texte blanc dessus), --guide-texte pour un texte coloré sur la feuille (éclairci en thème sombre). */
 .guide,
@@ -24,6 +26,9 @@
 /* Un glissement horizontal du doigt tourne la page (script de GuideChapitre.astro) : le navigateur ne doit pas en faire, en plus, un retour ou une avance
    dans l'historique (Chrome sur écran tactile). Les gestes du système depuis le bord de l'écran (retour arrière d'Android, de Safari) restent actifs. */
 html { overscroll-behavior-x: none; }
+/* La page suit le doigt qui glisse (décalage borné à 64 px) : sans ce clip, elle élargirait l'écran, qui défilerait de côté. `clip` ne crée pas de zone
+   de défilement (les flèches restent collantes) ; la marge intérieure de <main> (1rem) laisse voir le débord des flèches et les contours de focus. */
+main { overflow-x: clip; }
 .guide-partie {
   display: inline-block;
   margin-right: 0.5rem;
@@ -44,22 +49,24 @@ html { overscroll-behavior-x: none; }
   white-space: nowrap;
 }
 
+/* La page et les deux flèches dans la même case de grille : la page en donne la hauteur, les flèches passent par-dessus ses bords. */
 .guide-cadre {
   display: grid;
-  grid-template-columns: 3rem minmax(0, 1fr) 3rem;
-  gap: 1rem;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr);
 }
+.guide-cadre > * { grid-area: 1 / 1; }
 
-/* Les flèches de côté : rondes, collées au milieu de l'écran pendant la lecture (sticky dans la colonne de la page). */
+/* Les flèches : rondes, à cheval sur le bord de la page, collées en bas de l'écran pendant la lecture (sticky en bas de la case : au bout de la page,
+   elles s'arrêtent à son pied). Le script de GuideChapitre.astro les efface (data-bas-visible) dès que les liens du bas arrivent à l'écran. */
 .guide-fleche {
   position: sticky;
-  top: calc(50vh - 1.5rem);
+  bottom: 1.5rem;
+  z-index: 1;
+  align-self: end;
   display: grid;
   place-items: center;
   width: 3rem;
   height: 3rem;
-  margin-top: 6rem;
   border: 2px solid var(--guide-line);
   border-radius: 50%;
   background: var(--surface);
@@ -67,16 +74,20 @@ html { overscroll-behavior-x: none; }
   font-size: 2rem;
   line-height: 1;
   text-decoration: none;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.08);
-  transition: background-color 0.15s, color 0.15s, transform 0.15s;
+  box-shadow: 0 3px 12px rgb(0 0 0 / 0.18);
+  transition: background-color 0.15s, color 0.15s, transform 0.15s, opacity 0.2s, visibility 0.2s;
 }
+.guide-fleche--precedent { justify-self: start; margin-left: -0.5rem; }
+.guide-fleche--suivant { justify-self: end; margin-right: -0.5rem; }
+.guide[data-bas-visible] .guide-fleche { opacity: 0; visibility: hidden; }
 .guide-fleche > span[aria-hidden] { margin-top: -0.2rem; }
 a.guide-fleche:hover,
 a.guide-fleche:focus-visible { background: var(--guide); border-color: var(--guide); color: #fff; }
 a.guide-fleche--precedent:hover { transform: translateX(-2px); }
 a.guide-fleche--suivant:hover { transform: translateX(2px); }
 a.guide-fleche:focus-visible { outline: 2px solid var(--guide); outline-offset: 3px; }
-.guide-fleche[aria-disabled='true'] { border-color: var(--border); background: transparent; color: var(--border); box-shadow: none; cursor: not-allowed; }
+/* Grisée (premier ou dernier chapitre) : fond plein quand même, elle passe par-dessus le texte. */
+.guide-fleche[aria-disabled='true'] { border-color: var(--border); color: var(--border); box-shadow: none; cursor: not-allowed; }
 
 /* La page : une feuille, le texte en colonne de lecture. */
 .guide-page {
@@ -100,7 +111,6 @@ a.guide-fleche:focus-visible { outline: 2px solid var(--guide); outline-offset: 
   border-bottom: 3px solid var(--guide);
   font-size: clamp(1.6rem, 4vw, 2.1rem);
 }
-.guide-texte { max-width: 46rem; }
 .guide-texte h2 { margin-top: 2.2rem; color: var(--guide-texte); }
 .guide-texte h3 { margin-top: 1.6rem; }
 .guide-texte blockquote {
@@ -121,7 +131,7 @@ a.guide-fleche:focus-visible { outline: 2px solid var(--guide); outline-offset: 
 .guide-bas {
   display: grid;
   gap: 1rem;
-  margin: 1.5rem 4rem 0;
+  margin-top: 1.5rem;
 }
 .guide-voisins {
   display: grid;
@@ -185,11 +195,7 @@ a.guide-voisin:hover, a.guide-voisin:focus-visible { border-color: var(--guide);
 .guide-pagination__numero[aria-current='page'] { border-color: var(--guide); background: var(--guide); color: #fff; }
 
 @media (max-width: 52rem) {
-  /* La page suit le doigt qui glisse (script de GuideChapitre.astro) : sans ce clip, elle élargirait l'écran, qui défilerait de côté. `clip` ne crée pas
-     de zone de défilement ; la marge laisse voir les contours de focus. Plus large, la page ne sort pas du cadre (décalage borné aux 4rem de la flèche). */
-  .guide-cadre { grid-template-columns: minmax(0, 1fr); overflow-x: clip; overflow-clip-margin: 0.5rem; }
   .guide-fleche { display: none; }
-  .guide-bas { margin-inline: 0; }
 }
 @media (max-width: 30rem) {
   .guide-voisins { grid-template-columns: 1fr; }
