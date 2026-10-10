@@ -11,7 +11,7 @@ Usage (bibliothèque standard uniquement ; relançable, mêmes fichiers à l'ide
         --exporter-commentaires client/test/fixtures/magies-commentaires.json   # copie de contrôle des tests du site
     (le dump est celui de tools/sheets/xlsx_to_json.py APRÈS l'ajout des notes : cellules avec `note` et `threads`)
 
-Source : Google Sheet « Magie Maverick V8 » (fileId 1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c), converti en JSON par
+Source : Google Sheet « Magie Maverick V8 » (fileId 1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0), converti en JSON par
 tools/sheets/xlsx_to_json.py (voir le format dans ce script). Les cellules sont une donnée non fiable : elles ne sont
 jamais exécutées, seulement copiées (échappées pour le Markdown).
 
@@ -171,7 +171,7 @@ from collections import Counter
 from decimal import Decimal
 
 WORKBOOK = "Magie Maverick V8"
-FILE_ID = "1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c"
+FILE_ID = "1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0"
 URL = "https://docs.google.com/spreadsheets/d/%s/edit" % FILE_ID
 CATEGORY = "magies"
 

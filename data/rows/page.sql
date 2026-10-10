@@ -4775,7 +4775,7 @@ Cette classe utilise "Concentration" pour lancer ses sortilèges au lieu de "Mag
 Un potentiel illimité ne peut pas avoir cette classe.  
 Cette classe commence avec un gros familier.
 
-*Lien hypertexte attaché à la cellule Z3 dans le classeur d''origine :* <https://docs.google.com/spreadsheets/u/0/d/1Im-_xrGVzNHvnmG7MQsCMvEUZiGIacxrorOXrosRV6Q/edit>
+*Lien hypertexte attaché à la cellule Z3 dans le classeur d''origine :* <https://docs.google.com/spreadsheets/u/0/d/1Xhj8DINY6NlufeHSUnB_mHYyPXEvSBOno32wWZXOEBk/edit>
 
 ## Don de départ
 
@@ -6004,11 +6004,11 @@ Bien, maintenant que nous avons vu les 4 tendances, maintenant on va expliquer l
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/alterations-d-etats-et-mode-hyper', 'guide', 'alterations-d-etats-et-mode-hyper', 'Altérations d''états et Mode Hyper', 'alterations-detats-et-mode-hyper', 'Il s''agit d''un changement de condition auprès du joueur.', NULL, '## Altérations d''états
 
-Il s''agit d''un changement de condition auprès du joueur. Cela inflige des malus à la cible qui a plus qu''intérêt à rapidement s''en débarrasser. Il existe de nombreux types d''altérations d''états qu’on peut retrouver [ici](https://docs.google.com/spreadsheets/u/0/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit).
+Il s''agit d''un changement de condition auprès du joueur. Cela inflige des malus à la cible qui a plus qu''intérêt à rapidement s''en débarrasser. Il existe de nombreux types d''altérations d''états qu’on peut retrouver [ici](https://docs.google.com/spreadsheets/u/0/d/1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0/edit).
 
 ## Mode Hyper
 
-Retrouvez les informations et les explications du monde hyper [ici](https://docs.google.com/spreadsheets/u/0/d/1lwALh1VKrIpgmEqX2MdYirKkPzGjSJXXDHtp2uYXO7w/edit).
+Retrouvez les informations et les explications du monde hyper [ici](https://docs.google.com/spreadsheets/u/0/d/1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo/edit).
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/attaque-et-defense', 'guide', 'attaque-et-defense', 'Attaque et Défense', 'attaque-et-defense', 'Quand une attaque est prodiguée, un jet de D100 est nécessaire pour réussir l''action (il faut faire son score ou moins pour réussir).', NULL, '## Attaque
 
@@ -6466,7 +6466,7 @@ Faites en sorte de garder cette section dans un coin de votre esprit ou à port�
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-accessoires-et-ceinture', 'guide', 'fiche-accessoires-et-ceinture', 'Fiche de personnage : Accessoires et Ceinture', 'fiche-de-personnage-accessoires-et-ceinture', '6 emplacements pour y mettre des accessoires aux effets variés.', NULL, '## Accessoires
 
-6 emplacements pour y mettre des accessoires aux effets variés. Plus d’info dans “[Ressources et craft](https://docs.google.com/spreadsheets/u/0/d/12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA/edit)” et l’onglet “Accessoires”.
+6 emplacements pour y mettre des accessoires aux effets variés. Plus d’info dans “[Ressources et craft](https://docs.google.com/spreadsheets/u/0/d/1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw/edit)” et l’onglet “Accessoires”.
 
 ## Ceinture
 
@@ -6504,9 +6504,9 @@ L''armure est divisée en 6 morceaux :
 
 Elle possède également une Dur. (durabilité comme pour les armes)
 
-**Bonus/Malus** : Cela correspond à des particularités, effets secondaires de l’armure mais aussi de son comportement contre les dégâts physiques (Estoc, Taille, Frappe), allez dans le document [Ressources et Craft](https://docs.google.com/spreadsheets/u/0/d/12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA/edit), et dans Armures pour plus d''informations.
+**Bonus/Malus** : Cela correspond à des particularités, effets secondaires de l’armure mais aussi de son comportement contre les dégâts physiques (Estoc, Taille, Frappe), allez dans le document [Ressources et Craft](https://docs.google.com/spreadsheets/u/0/d/1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw/edit), et dans Armures pour plus d''informations.
 
-Le Bouclier permet d’avoir des AP et AM en plus de votre armure mais pour qu’ils soient comptés, ça implique une “Parade partielle”. Il peut être de différentes compositions, allez [ici](https://docs.google.com/spreadsheets/u/0/d/12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA/edit) pour plus d''informations.
+Le Bouclier permet d’avoir des AP et AM en plus de votre armure mais pour qu’ils soient comptés, ça implique une “Parade partielle”. Il peut être de différentes compositions, allez [ici](https://docs.google.com/spreadsheets/u/0/d/1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw/edit) pour plus d''informations.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-attributs', 'guide', 'fiche-attributs', 'Fiche de personnage : Attributs', 'fiche-de-personnage-attributs', 'Santé : Il s''agit du nombre de points de vie que possède le personnage.', NULL, '**Santé** : Il s''agit du nombre de points de vie que possède le personnage, si ce score atteint 0 ou moins le personnage est considéré comme dans le coma et doit faire des jets de survie. Si jamais 3 jets de survie échouent, le personnage meurt. Un seul jet de survie réussi suffit à stabiliser le personnage. La santé est déterminée par plusieurs choses => La Race, la ou les Classes ainsi que de la Magie du Sang (si jamais vous avez cette magie)
 
@@ -6537,8 +6537,8 @@ Pour résumer : Vous avez par exemple 25 de chakra maximum, si jamais vous avez 
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-capacites-dons', 'guide', 'fiche-capacites-dons', 'Fiche de personnage : Capacités/Dons', 'fiche-de-personnage-capacites-dons', 'Il s''agit du tableau où se trouvent toutes les capacités spéciales de votre personnage, il se divise en 4 catégories.', NULL, 'Il s''agit du tableau où se trouvent toutes les capacités spéciales de votre personnage, il se divise en 4 catégories :
 
 - **BASE** : Cet emplacement unique est ici pour y inscrire soit méditation ou soit repos. Le don est trouvable dans la race.
-- **RACE** : Cet emplacement unique est ici pour y inscrire le don racial de votre race, voir [ici](https://docs.google.com/spreadsheets/u/0/d/1KXO4Np9SnaOYopV1cUKsO-MPjNxgyJ39BEyDAai1Kg4/edit) pour avoir la liste des races.
-- **MÉTIER** : Cet emplacement est là pour noter le métier de votre personnage, les [métiers](https://docs.google.com/document/u/0/d/1ilcolQXx_MRTMKt6N2n243N8GU9HSajihMT_JNRDI14/edit) donnent des bonus divers et variés.
+- **RACE** : Cet emplacement unique est ici pour y inscrire le don racial de votre race, voir [ici](https://docs.google.com/spreadsheets/u/0/d/150Q6SJi4ft0oROtwT6snMAZUdWMVtkblxwYY9TqxV4Q/edit) pour avoir la liste des races.
+- **MÉTIER** : Cet emplacement est là pour noter le métier de votre personnage, les [métiers](https://docs.google.com/document/u/0/d/1EK51ZTpXfzZNhRm-uINaRqkMz_RjBW0r-wir4pAg6uc/edit) donnent des bonus divers et variés.
 - **ENTRAÎNEMENT** : Cet emplacement est là pour noter tous les bonus relatifs à l''avancée des différents entraînements qu''aurait faits votre personnage. Vous ne pouvez monter que 15 compétences maximum grâce à cette case et à hauteur maximum 10% de bonus.
 
 Lors d''un entraînement, un jet de D100 est lancé et selon le score vous montez plus ou moins votre compétence
@@ -6596,7 +6596,7 @@ Il existe des situations ou bien des altérations d''état qui sont capables de 
 - 1 croix, malus de 20% pour tout test en rapport avec cette caractéristique.
 - 2 croix, impossibilité d''utiliser les compétences liées à cette caractéristique.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-classe', 'guide', 'fiche-classe', 'Fiche de personnage : Classe', 'fiche-de-personnage-classe', 'La Classe d''un personnage représente sa façon de se battre sur le champ de bataille, chaque classe possède son lot d''avantages qui lui permet d''être utile dans des situations bien précises ou bien de manière générale.', NULL, 'C''est là où sont notées les différentes classes de votre personnage, plus d''infos sur les classes en elles-mêmes [ici](https://docs.google.com/spreadsheets/u/0/d/1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs/edit).
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-classe', 'guide', 'fiche-classe', 'Fiche de personnage : Classe', 'fiche-de-personnage-classe', 'La Classe d''un personnage représente sa façon de se battre sur le champ de bataille, chaque classe possède son lot d''avantages qui lui permet d''être utile dans des situations bien précises ou bien de manière générale.', NULL, 'C''est là où sont notées les différentes classes de votre personnage, plus d''infos sur les classes en elles-mêmes [ici](https://docs.google.com/spreadsheets/u/0/d/1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I/edit).
 
 La Classe d''un personnage représente sa façon de se battre sur le champ de bataille, chaque classe possède son lot d''avantages qui lui permet d''être utile dans des situations bien précises ou bien de manière générale.
 
@@ -6725,7 +6725,7 @@ Ce tableau correspond à ce que votre personnage maîtrise comme armes, plus il 
 
 Les maîtrises d’armes augmentent
 
-Concrètement : Aucune maîtrise d''arme = 1d de dégâts, 1 point de maîtrise = 2d de dégâts, etc.... Chaque catégorie d''arme possède son dé de dégâts, toutes les dagues feront le D6 et ainsi de suite. Plus de détails sur les armes [ici](https://docs.google.com/spreadsheets/u/0/d/12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA/edit).
+Concrètement : Aucune maîtrise d''arme = 1d de dégâts, 1 point de maîtrise = 2d de dégâts, etc.... Chaque catégorie d''arme possède son dé de dégâts, toutes les dagues feront le D6 et ainsi de suite. Plus de détails sur les armes [ici](https://docs.google.com/spreadsheets/u/0/d/1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw/edit).
 
 ## Armes
 
@@ -6744,12 +6744,12 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 Le sommet de la fiche contient le carré "Personnage" il s''agit, ni plus ni moins, des informations générales de votre personnage, il se décompose comme ceci :
 
 - **Nom** : Le nom complet de votre personnage.
-- **Race** : La race de votre personnage parmi les 23 disponibles. Il faut également préciser l''ethnie de votre [race](https://docs.google.com/spreadsheets/u/0/d/1KXO4Np9SnaOYopV1cUKsO-MPjNxgyJ39BEyDAai1Kg4/edit) (s''il y en a)
+- **Race** : La race de votre personnage parmi les 23 disponibles. Il faut également préciser l''ethnie de votre [race](https://docs.google.com/spreadsheets/u/0/d/150Q6SJi4ft0oROtwT6snMAZUdWMVtkblxwYY9TqxV4Q/edit) (s''il y en a)
 - **Origine** : Le lieu de naissance du personnage.
-- **[[Alignement]]** : C''est ici qu''on note l''alignement ainsi que le score d''alignement (gauche = score Loyal/Chaos, droite = score Bon/Mauvais). Vous pouvez retrouver plus d''informations [ici](https://docs.google.com/document/u/0/d/1Xph3vnjwmZpBG3UHDyBBqZQdVUnMLVxEllK3vXUw598/edit).
+- **[[Alignement]]** : C''est ici qu''on note l''alignement ainsi que le score d''alignement (gauche = score Loyal/Chaos, droite = score Bon/Mauvais). Vous pouvez retrouver plus d''informations [ici](https://docs.google.com/document/u/0/d/17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM/edit).
 - **Surnom** : Le surnom de votre personnage, souvent utilisé pour les noms de scène.
 - **Magie innée** : C’est ici qu’on indique la magie innée du personnage, tout le monde en possède une. Certaines races possèdent des interdits au niveau des magies, donc prudence.
-- **Magie acquise** : C’est ici qu’on note la seconde magie que possède le personnage, avoir une magie acquise n’est pas obligatoire contrairement à la magie innée. Attention, certaines magies ne peuvent pas se mélanger entre elles, aller [ici](https://docs.google.com/spreadsheets/u/0/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit) pour plus d’info.
+- **Magie acquise** : C’est ici qu’on note la seconde magie que possède le personnage, avoir une magie acquise n’est pas obligatoire contrairement à la magie innée. Attention, certaines magies ne peuvent pas se mélanger entre elles, aller [ici](https://docs.google.com/spreadsheets/u/0/d/1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0/edit) pour plus d’info.
 - **Dieu inné** : Il s’agit de la divinité qui est reliée à la magie innée. Retrouvez les différents dieux [ici](https://maverick-jdr.fandom.com/fr/wiki/Divinit%C3%A9s).
 - **Dieu choisi** : Il s’agit du dieu que le personnage a décidé de prier qui n’est pas l’inné. Cet emplacement peut très bien être vide.
 - **Bourse** : Il existe 3 types de monnaies, quand un personnage est créé, lancer 1D20 et le score va correspondre à votre or de départ.
@@ -6772,7 +6772,7 @@ Plutôt simple, vous multipliez le nombre de conditions remplies par votre nivea
 
 \*Quand vous avez 2 magies, vous n''avez pas accès aux sortilèges de niveau 5, MAIS vous débloquerez tout de même les emplacements.
 
-- Le reste correspond aux statistiques des sortilèges, voir [ici](https://docs.google.com/spreadsheets/u/0/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit) pour plus de détails.
+- Le reste correspond aux statistiques des sortilèges, voir [ici](https://docs.google.com/spreadsheets/u/0/d/1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0/edit) pour plus de détails.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-tableau-posture', 'guide', 'fiche-tableau-posture', 'Fiche de personnage : Tableau Posture', 'fiche-de-personnage-tableau-posture', 'Ce sont des états où se trouve votre personnage ce qui implique des bonus et malus pendant le combat.', NULL, 'Voici les postures de combats ! Ce sont des états où se trouve votre personnage ce qui implique des bonus et malus pendant le combat.
 
@@ -6836,9 +6836,9 @@ Cette posture étrange permet d''être en parfaite fusion avec sa magie, dans ce
 
 ## Mode Hyper
 
-Voici le tableau où on rassemble les informations sur le [[Altérations d''états et Mode Hyper|mode hyper]] du personnage, allez [ici](https://docs.google.com/spreadsheets/u/0/d/1lwALh1VKrIpgmEqX2MdYirKkPzGjSJXXDHtp2uYXO7w/edit) pour en savoir davantage.
+Voici le tableau où on rassemble les informations sur le [[Altérations d''états et Mode Hyper|mode hyper]] du personnage, allez [ici](https://docs.google.com/spreadsheets/u/0/d/1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo/edit) pour en savoir davantage.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-tableau-resistances-faiblesses', 'guide', 'fiche-tableau-resistances-faiblesses', 'Fiche de personnage : Tableau Résistances/Faiblesses', 'fiche-de-personnage-tableau-resistances-faiblesses', 'Ceci est le tableau où on va inscrire les résistances et faiblesses de votre personnage, tout est lié avec vos magies.', NULL, 'Ceci est le tableau où on va inscrire les résistances et faiblesses de votre personnage, tout est lié avec vos magies et tout est indiqué [ici](https://docs.google.com/spreadsheets/u/0/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit).
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-tableau-resistances-faiblesses', 'guide', 'fiche-tableau-resistances-faiblesses', 'Fiche de personnage : Tableau Résistances/Faiblesses', 'fiche-de-personnage-tableau-resistances-faiblesses', 'Ceci est le tableau où on va inscrire les résistances et faiblesses de votre personnage, tout est lié avec vos magies.', NULL, 'Ceci est le tableau où on va inscrire les résistances et faiblesses de votre personnage, tout est lié avec vos magies et tout est indiqué [ici](https://docs.google.com/spreadsheets/u/0/d/1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0/edit).
 
 Ce que vous devez savoir c’est que les résistances et faiblesses communiquent ensemble : Deux vulnérabilités à la même magie entraînent une grande vulnérabilité et deux résistances à la même magie entraînent une grande résistance, etc …
 
@@ -8783,7 +8783,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 Il existe deux types de vitesse : Vitesse terrestre et Vitesse de nage, qui peut varier selon les races.
 
-Vous pouvez retrouver les vitesses des races [ici](https://docs.google.com/spreadsheets/u/0/d/1KXO4Np9SnaOYopV1cUKsO-MPjNxgyJ39BEyDAai1Kg4/edit).
+Vous pouvez retrouver les vitesses des races [ici](https://docs.google.com/spreadsheets/u/0/d/150Q6SJi4ft0oROtwT6snMAZUdWMVtkblxwYY9TqxV4Q/edit).
 
 Il existe des équipements, accessoires et sortilèges qui peuvent augmenter ou bien diminuer la vitesse.
 
@@ -18288,16 +18288,16 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 | Nom | Prix | Description |
 | --- | --- | --- |
-| Fiole en verre (Petite) | 50 RF | <https://docs.google.com/document/d/1n5KJ8rmk1Yj8QY__v31XnpDwQw6gSyjx1tve9bTZM2k/edit?usp=sharing> |
-| Fiole en verre (Moyenne) | 2 RO | <https://docs.google.com/document/d/1n5KJ8rmk1Yj8QY__v31XnpDwQw6gSyjx1tve9bTZM2k/edit?usp=sharing> |
-| Fiole en verre (Super) | 8 RO | <https://docs.google.com/document/d/1n5KJ8rmk1Yj8QY__v31XnpDwQw6gSyjx1tve9bTZM2k/edit?usp=sharing> |
-| Fiole en verre (Méga) | 20 RO | <https://docs.google.com/document/d/1n5KJ8rmk1Yj8QY__v31XnpDwQw6gSyjx1tve9bTZM2k/edit?usp=sharing> |
+| Fiole en verre (Petite) | 50 RF | <https://docs.google.com/document/d/1Lv6pMUx4aaVUTot2tYFl17de1FtxmVbJUlnBXo0J20s/edit?usp=sharing> |
+| Fiole en verre (Moyenne) | 2 RO | <https://docs.google.com/document/d/1Lv6pMUx4aaVUTot2tYFl17de1FtxmVbJUlnBXo0J20s/edit?usp=sharing> |
+| Fiole en verre (Super) | 8 RO | <https://docs.google.com/document/d/1Lv6pMUx4aaVUTot2tYFl17de1FtxmVbJUlnBXo0J20s/edit?usp=sharing> |
+| Fiole en verre (Méga) | 20 RO | <https://docs.google.com/document/d/1Lv6pMUx4aaVUTot2tYFl17de1FtxmVbJUlnBXo0J20s/edit?usp=sharing> |
 | Galet rond | 2 RO | Une petite pierre qui permet de raffiner du corail brut. |
-| Kit d''alchimiste (Novice) | 5 RO | <https://docs.google.com/document/d/1n5KJ8rmk1Yj8QY__v31XnpDwQw6gSyjx1tve9bTZM2k/edit?usp=sharing> |
-| Kit d''alchimiste (Apprenti) | 10 RO | <https://docs.google.com/document/d/1n5KJ8rmk1Yj8QY__v31XnpDwQw6gSyjx1tve9bTZM2k/edit?usp=sharing> |
-| Kit d''alchimiste (Avancé) | 20 RO | <https://docs.google.com/document/d/1n5KJ8rmk1Yj8QY__v31XnpDwQw6gSyjx1tve9bTZM2k/edit?usp=sharing> |
-| Kit d''alchimiste (Expert) | 40 RO | <https://docs.google.com/document/d/1n5KJ8rmk1Yj8QY__v31XnpDwQw6gSyjx1tve9bTZM2k/edit?usp=sharing> |
-| Kit d''alchimiste (Maître) | 80 RO | <https://docs.google.com/document/d/1n5KJ8rmk1Yj8QY__v31XnpDwQw6gSyjx1tve9bTZM2k/edit?usp=sharing> |
+| Kit d''alchimiste (Novice) | 5 RO | <https://docs.google.com/document/d/1Lv6pMUx4aaVUTot2tYFl17de1FtxmVbJUlnBXo0J20s/edit?usp=sharing> |
+| Kit d''alchimiste (Apprenti) | 10 RO | <https://docs.google.com/document/d/1Lv6pMUx4aaVUTot2tYFl17de1FtxmVbJUlnBXo0J20s/edit?usp=sharing> |
+| Kit d''alchimiste (Avancé) | 20 RO | <https://docs.google.com/document/d/1Lv6pMUx4aaVUTot2tYFl17de1FtxmVbJUlnBXo0J20s/edit?usp=sharing> |
+| Kit d''alchimiste (Expert) | 40 RO | <https://docs.google.com/document/d/1Lv6pMUx4aaVUTot2tYFl17de1FtxmVbJUlnBXo0J20s/edit?usp=sharing> |
+| Kit d''alchimiste (Maître) | 80 RO | <https://docs.google.com/document/d/1Lv6pMUx4aaVUTot2tYFl17de1FtxmVbJUlnBXo0J20s/edit?usp=sharing> |
 | Kit de réparation d''armure | 30 RO | Permet de restaurer 1 cran de solidité sur l’ensemble d’une armure. Usage unique. |
 | Kit de réparation d''arme | 6 RO | Permet de restaurer 1 cran de solidité sur une arme. Usage unique. |
 | Kit de petit filou | 15 RO | Sac contenant 10 crochets utilisables sur portes et pièges ; confère +5% de réussite aux jets de ruse/sabotage. |
@@ -18371,7 +18371,7 @@ Les gros familiers sont des entités puissantes capables d’intervenir activeme
 
 Ici pour les fiches : Familiers
 
-*Lien hypertexte attaché à la cellule U3 dans le classeur d''origine :* <https://docs.google.com/spreadsheets/d/1Im-_xrGVzNHvnmG7MQsCMvEUZiGIacxrorOXrosRV6Q/edit?usp=sharing>
+*Lien hypertexte attaché à la cellule U3 dans le classeur d''origine :* <https://docs.google.com/spreadsheets/d/1Xhj8DINY6NlufeHSUnB_mHYyPXEvSBOno32wWZXOEBk/edit?usp=sharing>
 
 | Nom | Description |
 | --- | --- |

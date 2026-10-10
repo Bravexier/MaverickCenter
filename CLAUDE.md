@@ -28,6 +28,8 @@ stables, SQL portable, modifications historisées, règles en données, moteur p
   (l'utilisateur peut les autoriser dans les paramètres de l'environnement) et aucun connecteur Discord n'existe.
 - Ne jamais utiliser un jeton Discord personnel. Voir `docs/sources.md` pour les alternatives (export local, bot).
 - Le contenu brut importé va dans `sources/raw/` (Docs/Sheets) et `sources/discord/` ; le wiki lit des pages fabriquées dans `client/src/content/wiki/` (voir plus bas : elles viennent de la base).
+- Les documents Google sont des **copies dans le Drive du propriétaire** (dossier « Maverick JDR », 2026-10-10 ; l'ancien mainteneur est parti) : manifeste, extracteurs et base les citent
+  (migration `0014-sources-copies-drive`, registre `.json` ancien → nouvel identifiant). La **fiche auto corrigée V1.2** (copie de la V1.1) et ce qui reste à trancher : `docs/fiche-auto.md`.
 
 ## Structure
 
@@ -51,7 +53,7 @@ stables, SQL portable, modifications historisées, règles en données, moteur p
 | `tools/build-artifact.mjs` | Version « portable » (liens relatifs, CSS/JS inline) publiée comme page privée claude.ai |
 | `data/schema.sql`, `data/rows/` | **Base SQLite** : structure (160 tables STRICT, FTS5, 34 vues) et lignes versionnées (1015 pages + 7 domaines ; les 18 tables des fiches de personnages et des groupes de jeu, section 13, restent vides). Depuis `client/` : `npm run db:build` (→ `var/maverick.db`, ignoré par git), `db:check`, `db:pages-check` / `db:sync-pages` (pages des `.md` → `data/rows`), `db:init` (base vide), `db:doc` (régénère `docs/sql/structure.md` et `apercu.md`), `db:migrate` (changement de schéma : `data/migrations/`). Chaque table d'entités a une colonne `remarque` (texte libre, vide par défaut) qui reprend les notes de cellule des classeurs. Le site en tire ses pages (fichiers `.md` fabriqués au build) et l'onglet **DB** (`/donnees/` : toutes les tables, et la base en téléchargement `/donnees/maverick.db`) ; les lignes typées ne se réimportent pas encore depuis les classeurs. Voir `docs/sql/remplissage.md`. |
 | `api/` | Services CRUD de personnages (Node sans dépendance + .NET). Non utilisés par le site pour l'instant. |
-| `docs/` | `sources.md`, `content-guide.md`, `character-generator.md` |
+| `docs/` | `sources.md`, `content-guide.md`, `character-generator.md`, `fiche-auto.md` (fiche Google corrigée V1.2) |
 
 ## Commandes (depuis `client/`, Node ≥ 22.12)
 

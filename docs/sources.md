@@ -39,6 +39,13 @@ et aucun connecteur Discord n'était disponible dans le registre au moment de la
 12 documents distincts (le doc `1vn5Tq11…` avait été cité deux fois), listés dans `sources/sources.json`
 avec `"type": null` — **à classer** après lecture (renseigner `type` et `title`).
 
+**Copies du propriétaire (2026-10-10).** L'ancien mainteneur des documents est parti : ils ont été copiés dans le Drive du propriétaire du projet
+(dossier « Maverick JDR »), et le manifeste, les extracteurs `tools/sheets/*.py` et la base (migration `0014-sources-copies-drive`, registre `.json`)
+citent désormais ces copies ; dans le manifeste, `original` garde l'URL d'origine. Une copie garde le titre et les identifiants d'onglets (`gid`)
+de l'original : les libellés « Google Sheet « … », onglet « … » » restent justes. Les documents `1CwDq…` et `1vn5Tq11…` étaient introuvables depuis
+le compte du propriétaire : ils restent sur l'original (`note`). Pour que l'export et les liens du site marchent pour tous, les copies doivent être
+partagées comme les originaux (« tous les utilisateurs disposant du lien », lecture). La fiche auto corrigée (V1.2), qui lit ces copies : `docs/fiche-auto.md`.
+
 Export automatique, à lancer **depuis une machine qui a accès à Google** (documents partagés en
 « Toute personne disposant du lien ») :
 

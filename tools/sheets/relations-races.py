@@ -78,7 +78,7 @@ STATUS = "draft"
 TAGS = ["relations", "peuples", "race"]
 
 BOOK_TITLE = "Les races"
-BOOK_ID = "1KXO4Np9SnaOYopV1cUKsO-MPjNxgyJ39BEyDAai1Kg4"
+BOOK_ID = "150Q6SJi4ft0oROtwT6snMAZUdWMVtkblxwYY9TqxV4Q"
 TAB = "Relation entre les races"
 SOURCES = [
     "Google Sheet « %s », onglet « %s »" % (BOOK_TITLE, TAB),

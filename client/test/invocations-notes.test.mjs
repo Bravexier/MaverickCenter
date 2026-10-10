@@ -20,7 +20,7 @@ const bestiaire = fileURLToPath(new URL('../src/content/wiki/bestiaire', import.
 const python = spawnSync('python3', ['-I', '-c', 'pass']);
 const sansPython = python.status !== 0 && 'python3 absent';
 
-const CLASSEUR = 'https://docs.google.com/spreadsheets/d/1Px7F_VtSOEkyUxrk2da1UiBJ6ji3n5i95LfNl63biE4/edit';
+const CLASSEUR = 'https://docs.google.com/spreadsheets/d/1U56C8wQ2hf19ryTA_t9AeUPsORurift8As6dOEgmNgo/edit';
 // 0006 (noms à trancher) a corrigé le nom d'une invocation (« Marionette de lombre » -> « Marionnette de l'ombre ») : les sources citent l'onglet sous son nom du classeur
 const ONGLET_DU_CLASSEUR = new Map(JSON.parse(readFileSync(fileURLToPath(new URL('../../data/migrations/0006-orthographe-noms.json', import.meta.url)), 'utf8')).corrections
   .filter((c) => c.table === 'invocation' && c.col === 'nom').map((c) => [c.apres, c.avant]));

@@ -71,7 +71,9 @@ singulier « Don », dans `type_page` ; ids, adresses et table `capacite` inchan
 colonne `magie.mono_magie`, 1 pour le Potentiel Illimité et la Corruption, table `magie` reconstruite ; l'Elfe Noir Salé retiré des ethnies de la Corruption), `0011-personnages.sql` (structure et données : tables des fiches de personnages, des groupes de jeu et des rôles, section 13, vides dans `data/rows` ; vues `v_personnage_niveau`,
 `v_personnage_visible`, `v_groupe_controle` et `v_personnage_controle` ; trois constantes de la fiche dans `regle_constante` : voir `docs/character-generator.md`, « Fiches dans la base »), `0012-eaunoire.sql` (données, décision R21 :
 la déesse de la Corruption s'appelle « Eaunoire », dans `dieu.nom` et la phrase de l'Elfe noir, page et onglet ; identifiant `demon-deau-noire` inchangé), `0013-lamia-corruption.sql` (données, décision R22 :
-la Lamia a la Corruption en magie innée, case E24 de la matrice `race_magie` et page de la Lamia, front matter et section « Magies accessibles »).
+la Lamia a la Corruption en magie innée, case E24 de la matrice `race_magie` et page de la Lamia, front matter et section « Magies accessibles »), `0014-sources-copies-drive.sql`
+(données : les documents Google cités pointent sur leurs copies du Drive du propriétaire, registre `0014-sources-copies-drive.json` ; la table `source`, dont l'id dérive de
+l'identifiant Google, est réécrite avec ses renvois `page_source`, ainsi que les liens du corps des pages, du Mage Bleu et des ressources d'Alchimie ; voir `docs/sources.md`).
 
 ## La colonne `remarque`
 
