@@ -5908,7 +5908,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ## La magie
 
 - Sort réussi : son coût ; raté : la moitié ; échec critique : le double.
-- Plus assez de chakra : 2 points de santé par point de chakra manquant.
+- Plus assez de chakra, quelle qu’en soit la raison : 2 points de santé par point de chakra manquant.
 - Mode Hyper : les sorts ne coûtent plus de chakra, mais le mode en brûle 10 % du maximum par tour.
 - Emplacements de sorts = conditions remplies (magie innée, magie acquise, classe magique, seconde classe magique) × puissance magique.
 
@@ -7094,7 +7094,7 @@ Lancer un sort, c’est un jet de D100 dans la compétence *Magie* (certaines cl
 - **raté** : la moitié du coût, arrondie à l’inférieur ;
 - **échec critique** : le double du coût, et d’autres ennuis au choix du MJ.
 
-À court de chakra, le personnage peut quand même lancer son sort : il paie ce qui manque avec sa santé, **2 points de santé pour 1 point de chakra**. Certains sorts sont des **IC** (*Instant Cast*) : ils ne prennent pas l’action du tour. Les sorts de la nécromancie et de la magie du sang puisent en plus dans la 4ᵉ barre, l’âme ou le sang.
+À court de chakra, le personnage peut quand même lancer son sort : il paie ce qui manque avec sa santé, **2 points de santé pour 1 point de chakra**. C’est le tarif de tout chakra dépensé sans l’avoir, quelle qu’en soit la raison. Certains sorts sont des **IC** (*Instant Cast*) : ils ne prennent pas l’action du tour. Les sorts de la nécromancie et de la magie du sang puisent en plus dans la 4ᵉ barre, l’âme ou le sang.
 
 ## Les sorts de niveau 5
 
@@ -7207,7 +7207,7 @@ S’y ajoutent un effet propre à chaque magie et un autre propre à chaque race
 
 ## Le Mode Hyper 100 %
 
-Au **niveau 10**, le personnage peut renfermer son aura pour atteindre sa pleine puissance pendant **3 tours** : le chakra ne s’évapore plus, toutes les postures sont actives et sans inconvénients, chaque sort peut être surchargé (un dé de dégâts en plus) et toutes les attaques font +10 dégâts de plus. Ensuite, il revient au Mode Hyper normal en dépensant **75 % de son chakra maximum** ; s’il ne les a pas, le manque est pris sur sa santé.
+Au **niveau 10**, le personnage peut renfermer son aura pour atteindre sa pleine puissance pendant **3 tours** : le chakra ne s’évapore plus, toutes les postures sont actives et sans inconvénients, chaque sort peut être surchargé (un dé de dégâts en plus) et toutes les attaques font +10 dégâts de plus. Ensuite, il revient au Mode Hyper normal en dépensant **75 % de son chakra maximum** ; s’il ne les a pas, il paie ce qui manque avec sa santé, comme toujours : **2 points de santé pour 1 point de chakra**.
 
 ## Le Mode Super
 
