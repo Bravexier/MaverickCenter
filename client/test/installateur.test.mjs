@@ -144,12 +144,18 @@ test('test : la base est une copie de celle de la production à l\'instant de l\
   verifierProd.exec("INSERT INTO fiche VALUES ('Cyrielle')");
   verifierProd.close();
 
-  // Nouvelle installation de test : nouvelle copie, les essais précédents disparaissent.
+  // Nouvelle installation de test : nouvelle copie, les essais précédents disparaissent. Le dossier db/ lui-même reste (même inode) : il est
+  // monté dans le conteneur du service, qui ne verrait pas un dossier remplacé ; seul son contenu change.
+  const dossierDb = statSync(join(test_, 'db')).ino;
+  writeFileSync(join(test_, 'db', 'essai-du-test.txt'), 'disparaît');
   const r2 = lancer(installateur({ mode: 'test', label: 'dev2', version: '0.2.4' }).fichier, ['--dossier', test_, '--dossier-prod', prod]);
   assert.equal(r2.code, 0, r2.out);
   const copie2 = new DatabaseSync(join(test_, 'db', 'maverick.db'));
   assert.deepEqual(copie2.prepare('SELECT nom FROM fiche ORDER BY nom').all().map((l) => l.nom), ['Aldric', 'Brune', 'Cyrielle']);
   copie2.close();
+  assert.equal(statSync(join(test_, 'db')).ino, dossierDb, 'db/ gardé, contenu remplacé');
+  assert.deepEqual(readdirSync(join(test_, 'db')).sort(), ['.copie-de-la-production', 'maverick.db', 'pieces']);
+  assert.ok(!readdirSync(test_).some((f) => f.startsWith('.db.')), 'aucun dossier provisoire restant');
 });
 
 test('refus : mauvais mode d\'instance, production introuvable ou confondue avec le test', { skip }, () => {

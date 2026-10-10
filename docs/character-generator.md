@@ -98,8 +98,8 @@ depuis les règles de la base, si bien qu'une règle corrigée corrige toutes le
   accessoire. Une fiche `valide` n'y a aucune ligne. Ce qui demande le moteur (bonus de classe, d'équipement et de race, nombre de sorts, plafond de NPM du
   Potentiel Illimité, résistances, valeurs dérivées) n'y est pas encore.
 
-Les tables restent **vides dans `data/rows`** : les fiches réelles vivront dans la base du serveur (édition à la 1.0), jamais dans git ni dans la base
-téléchargeable de `/donnees/`. `client/test/personnages-db.test.mjs` crée des fiches dans une copie de la base et vérifie chaque contrôle et chaque règle de
+Les tables restent **vides dans `data/rows`** : les fiches réelles vivent dans la base vivante du service des personnages (`db/` de l'instance,
+[`serveur.md`](serveur.md) : les prétirés dès maintenant, les fiches de joueur à la 1.0), jamais dans git ni dans la base téléchargeable de `/donnees/`. `client/test/personnages-db.test.mjs` crée des fiches dans une copie de la base et vérifie chaque contrôle et chaque règle de
 visibilité.
 
 Suite prévue : le moteur pur (`client/src/lib/`) qui calcule les valeurs dérivées d'une fiche (santé, chakra, barrière, initiative, vitesse, AP/AM, totaux de
