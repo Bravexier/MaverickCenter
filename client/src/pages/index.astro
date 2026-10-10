@@ -10,10 +10,13 @@ const { entries, unresolved } = await loadWiki();
   <h1>Maverick Center</h1>
   <p class="prose">
     Le codex de Maverick JDR : toutes les règles et le lore au même endroit, avec des pages reliées entre elles par mots-clés,
-    et un générateur de fiche de personnage.
+    et la fiche de personnage.
   </p>
 
-  <p><a class="card" href={url('generateur/')}><strong>Générateur de fiche de personnage →</strong><small>Race, classe, magie, caractéristiques : créez et imprimez votre fiche.</small></a></p>
+  <ul class="grid">
+    <li><a class="card" href={url('fiche/')}><strong>Fiche de personnage →</strong><small>Race, magies, classe, caractéristiques, sorts, équipement : créez un prétiré étape par étape.</small></a></li>
+    <li><a class="card" href={url('personnages/')}><strong>Personnages →</strong><small>Tous les prétirés : recherche, filtres et tri.</small></a></li>
+  </ul>
 
   <h2>Parcourir le wiki</h2>
   <ul class="grid">

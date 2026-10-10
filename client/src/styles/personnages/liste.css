@@ -1,0 +1,72 @@
+/* Chargé uniquement depuis pages/personnages.astro (?raw) : la recherche des personnages. Filtres en tête, tableau dont chaque colonne se trie
+   (bouton dans l'en-tête, flèche du sens), nom en lien vers la fiche, statut et règles à revoir en pastilles. Couleurs de la partie « Créer son
+   personnage » du guide, comme la fiche. */
+.personnages { --vert: #2e7d4f; display: grid; gap: 1rem; }
+.personnages-entete { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 0.75rem; }
+.personnages-entete h1 { margin: 0; }
+.personnages-entete p { margin: 0.25rem 0 0; color: var(--muted); }
+.personnages-nouveau {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  background: var(--vert);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--vert) 35%, transparent);
+}
+.personnages-nouveau:hover { filter: brightness(1.1); }
+.personnages-filtres {
+  display: grid;
+  gap: 0.6rem 0.8rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr));
+  padding: 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--vert) 40%, var(--border));
+  border-radius: calc(var(--radius) + 4px);
+  background: color-mix(in srgb, var(--vert) 6%, var(--surface));
+}
+.personnages-filtres label { display: grid; gap: 0.2rem; font-size: 0.85rem; color: var(--muted); }
+.personnages-filtres input, .personnages-filtres select { width: 100%; color: var(--text); }
+.personnages-filtres .large { grid-column: span 2; }
+.personnages-filtres .niveaux { display: flex; gap: 0.4rem; }
+.personnages-filtres .actions { display: flex; align-items: end; }
+.personnages-compte { margin: 0; color: var(--muted); }
+
+.personnages-tableau { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.personnages-tableau table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.personnages-tableau th, .personnages-tableau td { padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.personnages-tableau td.nombre, .personnages-tableau td:first-child { white-space: nowrap; }
+.personnages-tableau td.long { min-width: 8rem; }
+.personnages-tableau th { position: sticky; top: 0; background: color-mix(in srgb, var(--vert) 10%, var(--surface)); padding: 0; }
+.personnages-tableau th button {
+  white-space: nowrap;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+  padding: 0.5rem 0.45rem;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--text);
+  font-weight: 700;
+  text-align: left;
+}
+.personnages-tableau th button:hover, .personnages-tableau th button:focus-visible { background: color-mix(in srgb, var(--vert) 18%, var(--surface)); }
+.personnages-tableau th .fleche { color: var(--muted); font-size: 0.75rem; }
+.personnages-tableau th[aria-sort] .fleche { color: var(--vert); }
+.personnages-tableau th.nombre button { justify-content: flex-end; flex-direction: row-reverse; }
+.personnages-tableau td.nombre { text-align: right; font-variant-numeric: tabular-nums; }
+.personnages-tableau tbody tr:hover { background: color-mix(in srgb, var(--vert) 5%, var(--surface)); }
+.personnages-tableau a { font-weight: 700; }
+.personnages-vide { padding: 1rem; color: var(--muted); }
+
+.statut { display: inline-block; padding: 0.05rem 0.55rem; border-radius: 999px; font-size: 0.78rem; font-weight: 700; border: 1px solid var(--border); }
+.statut[data-statut='valide'] { color: var(--good); border-color: color-mix(in srgb, var(--good) 55%, var(--border)); background: color-mix(in srgb, var(--good) 10%, var(--surface)); }
+.statut[data-statut='brouillon'] { color: #b45309; border-color: color-mix(in srgb, #b45309 50%, var(--border)); background: color-mix(in srgb, #b45309 8%, var(--surface)); }
+.statut[data-statut='archive'] { color: var(--muted); }
+.regles-a-revoir { font-weight: 700; color: var(--danger); }
+.regles-a-revoir[data-zero] { color: var(--good); font-weight: normal; }

@@ -1,0 +1,325 @@
+/* Chargé uniquement depuis pages/fiche/index.astro (?raw) : la fiche de personnage (création et modification d'un prétiré).
+   Une section par étape du guide (« Créer son personnage », puis progresser et jouer), numérotée et teintée de la couleur de sa partie
+   (lib/guide.mjs#PARTIES, --etape) ; races, magies et classes en PASTILLES comme sur /races/, /magies/ et /classes/ (pilule bordée et teintée de la
+   couleur, point de couleur, nom en gras), la choisie pleine, celles que les règles ferment grisées et barrées. */
+.fiche {
+  --vert: #2e7d4f;
+  display: grid;
+  gap: 1.25rem;
+}
+/* l'attribut hidden l'emporte sur les display des blocs (un champ caché par le script reste caché) */
+.fiche [hidden] { display: none !important; }
+
+/* ----------------------------------------------------------------- en-tête et barre d'enregistrement */
+.fiche-entete { display: grid; gap: 0.4rem; }
+.fiche-entete h1 { margin: 0; font-size: clamp(1.6rem, 4vw, 2.3rem); }
+.fiche-surtitre { margin: 0; color: var(--vert); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.fiche-intro { margin: 0; color: var(--muted); }
+.fiche-barre {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--text) 10%, transparent);
+}
+.fiche-barre label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; }
+.fiche-barre__principal { font-weight: 700; color: #fff; background: var(--vert); border-color: var(--vert); padding-inline: 1.1rem; }
+.fiche-barre__principal:hover:not(:disabled) { filter: brightness(1.1); }
+.fiche-bouton-fichier span {
+  display: inline-block;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  cursor: pointer;
+}
+.fiche-bouton-fichier span:hover, .fiche-bouton-fichier span:focus-visible { border-color: var(--accent); }
+.fiche-barre > button:not(.fiche-barre__principal), .fiche-bouton-fichier span { padding: 0.3rem 0.65rem; font-size: 0.85rem; }
+.fiche-message { flex: 1 1 14rem; margin: 0; font-size: 0.9rem; }
+.fiche-message:empty { display: none; }
+.fiche-message[data-ton='ok'] { color: var(--good); }
+.fiche-message[data-ton='erreur'] { color: var(--danger); }
+.fiche-message[data-ton='attente'] { color: var(--muted); }
+.fiche-niveau-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.15rem 0.7rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vert) 14%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--vert) 50%, var(--border));
+  font-weight: 700;
+}
+
+/* sommaire des étapes */
+.fiche-etapes { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
+.fiche-etapes a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.7rem 0.2rem 0.25rem;
+  border: 1px solid color-mix(in srgb, var(--etape) 45%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--etape) 8%, var(--surface));
+  color: var(--text);
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+.fiche-etapes a:hover { border-color: var(--etape); }
+.fiche-etapes .num {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: var(--etape);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* ----------------------------------------------------------------- étapes */
+.fiche-etape {
+  --etape-doux: color-mix(in srgb, var(--etape) 9%, var(--surface));
+  --etape-ligne: color-mix(in srgb, var(--etape) 40%, var(--border));
+  scroll-margin-top: 4.5rem;
+  border: 1px solid var(--etape-ligne);
+  border-radius: calc(var(--radius) + 4px);
+  background: var(--surface);
+  overflow: hidden;
+}
+.fiche-etape > h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0.7rem 1rem;
+  background: linear-gradient(90deg, var(--etape-doux), var(--surface));
+  border-bottom: 3px solid var(--etape);
+  font-size: 1.2rem;
+}
+.fiche-etape > h2 .num {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--etape);
+  color: #fff;
+  font-size: 1rem;
+}
+.fiche-etape > h2 small { margin-left: auto; color: var(--muted); font-size: 0.8rem; font-weight: normal; }
+.fiche-etape__corps { display: grid; gap: 1.1rem; padding: 1rem; }
+.fiche-etape h3 { margin: 0 0 0.5rem; font-size: 1rem; color: color-mix(in srgb, var(--etape) 65%, var(--text)); }
+.fiche-aide { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.fiche-aide a { color: inherit; }
+
+/* champs */
+.fiche-champs { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr)); }
+.fiche-champ { display: grid; gap: 0.25rem; font-size: 0.9rem; }
+.fiche-champ > span { color: var(--muted); }
+.fiche-champ input, .fiche-champ select, .fiche-champ textarea { width: 100%; }
+.fiche-champ--large { grid-column: 1 / -1; }
+.fiche-champ textarea { min-height: 6rem; resize: vertical; }
+.fiche-coche { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; }
+input[type='number'] { max-width: 7rem; }
+input[aria-invalid='true'], select[aria-invalid='true'] { border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger); }
+
+/* ----------------------------------------------------------------- pastilles (races, ethnies, magies, classes, modes) */
+.pastilles { display: grid; gap: 0.5rem 0.6rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr)); margin: 0; padding: 0; list-style: none; }
+.pastilles--etroites { display: flex; flex-wrap: wrap; }
+.pastilles--etroites .pastille { width: auto; padding-inline: 1rem; }
+/* classes : les cinq colonnes de /classes/ côte à côte, pastilles plus serrées */
+.groupes-pastilles.groupes-pastilles--classes { grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr)); gap: 1rem; }
+.groupes-pastilles--classes .pastilles { grid-template-columns: 1fr; gap: 0.4rem; }
+.groupes-pastilles--classes .pastille { min-height: 2.1rem; font-size: 0.85rem; padding-block: 0.25rem; }
+.groupe-pastilles { --c: var(--etape); display: grid; gap: 0.5rem; }
+.groupe-pastilles > h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  padding-bottom: 0.25rem;
+  border-bottom: 2px solid var(--c);
+  color: color-mix(in srgb, var(--c) 60%, var(--text));
+  font-size: 0.9rem;
+}
+.groupes-pastilles { display: grid; gap: 1rem 1.5rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); align-items: start; }
+.pastille {
+  --c: var(--etape);
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 2.4rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--c) 68%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c) 10%, var(--surface));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--text) 8%, transparent);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+.pastille__point {
+  flex: 0 0 0.65rem;
+  width: 0.65rem;
+  height: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--text) 28%, var(--c));
+  border-radius: 50%;
+  background: var(--c);
+}
+.pastille:hover:not(:disabled), .pastille:focus-visible {
+  outline: 2px solid var(--c);
+  outline-offset: 2px;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 16px color-mix(in srgb, var(--c) 25%, transparent);
+}
+.pastille[aria-pressed='true'] {
+  background: var(--c);
+  border-color: var(--c);
+  color: var(--texte-sur-c, #fff);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--c) 40%, transparent);
+}
+.pastille[aria-pressed='true'] .pastille__point { background: var(--surface); border-color: var(--surface); }
+.pastille:disabled { opacity: 0.4; box-shadow: none; text-decoration: line-through; cursor: not-allowed; }
+/* choisie alors que les règles la ferment (race changée, fiche importée) : reste cliquable pour la retirer, cerclée de rouge */
+.pastille[data-refus] { outline: 2px dashed var(--danger); outline-offset: 2px; }
+.pastille small { font-weight: normal; opacity: 0.85; }
+
+/* fiche résumé d'un choix (race, magie, classe) */
+.fiche-resume { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0; padding: 0; list-style: none; font-size: 0.85rem; }
+.fiche-resume li {
+  padding: 0.1rem 0.6rem;
+  border: 1px solid var(--etape-ligne);
+  border-radius: 999px;
+  background: var(--etape-doux);
+}
+.fiche-resume strong { color: color-mix(in srgb, var(--etape) 65%, var(--text)); }
+
+/* ----------------------------------------------------------------- compteurs de budget */
+.budget {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.1rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.budget[data-etat='ok'] { border-color: color-mix(in srgb, var(--good) 60%, var(--border)); color: var(--good); }
+.budget[data-etat='manque'] { border-color: color-mix(in srgb, #b45309 60%, var(--border)); color: #b45309; }
+.budget[data-etat='trop'] { border-color: var(--danger); color: var(--danger); }
+.fiche-entete-bloc { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; }
+
+/* ----------------------------------------------------------------- tableaux de saisie */
+.fiche-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.fiche-table th, .fiche-table td { padding: 0.3rem 0.45rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+.fiche-table th { color: var(--muted); font-weight: normal; font-size: 0.8rem; }
+.fiche-table td.nombre, .fiche-table th.nombre { text-align: right; font-variant-numeric: tabular-nums; }
+.fiche-table input[type='number'] { width: 5.2rem; }
+.fiche-table select { width: 100%; min-width: 0; }
+.fiche-table--fixe { table-layout: fixed; }
+.fiche-table--fixe th:first-child, .fiche-table--fixe td:first-child { width: 7.5rem; }
+.fiche-table--fixe .etroite { width: 5.5rem; }
+#progression select { width: auto; }
+.fiche-defile { overflow-x: auto; }
+
+/* caractéristiques : six cartes */
+.caracs { display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 8.5rem), 1fr)); }
+.carac {
+  display: grid;
+  gap: 0.3rem;
+  justify-items: center;
+  padding: 0.6rem;
+  border: 1px solid var(--etape-ligne);
+  border-radius: var(--radius);
+  background: var(--etape-doux);
+  text-align: center;
+}
+.carac__nom { font-weight: 700; }
+.carac__valeur { font-size: 1.8rem; font-weight: 700; line-height: 1; color: color-mix(in srgb, var(--etape) 70%, var(--text)); }
+.carac__bonus { font-size: 0.75rem; color: var(--muted); }
+.carac input { width: 4.5rem; text-align: center; }
+.carac select { width: 100%; font-size: 0.8rem; }
+
+/* compétences : six blocs de cinq */
+.competences { display: grid; gap: 0.8rem 1.2rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); }
+.competences .fiche-table td:first-child { width: 45%; }
+.competences .fiche-table input[type='number'] { width: 3.8rem; padding-inline: 0.35rem; }
+.score { font-weight: 700; white-space: nowrap; }
+.score[data-hors] { color: var(--danger); }
+
+/* ----------------------------------------------------------------- attributs calculés */
+.attributs { display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 9rem), 1fr)); }
+.attribut {
+  --a: var(--etape);
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--a) 45%, var(--border));
+  border-left: 5px solid var(--a);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--a) 7%, var(--surface));
+}
+.attribut__nom { color: var(--muted); font-size: 0.8rem; }
+.attribut__valeur { font-size: 1.6rem; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.attribut__detail { color: var(--muted); font-size: 0.72rem; line-height: 1.3; }
+.attribut[data-a='sante'] { --a: #c62828; }
+.attribut[data-a='chakra'] { --a: #1e5bb8; }
+.attribut[data-a='barriere'] { --a: #7b3fa6; }
+
+/* listes ajoutables (sorts, sac…) */
+.fiche-ligne-ajout { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.fiche-ligne-ajout select { flex: 1 1 18rem; min-width: 0; }
+.retirer { padding: 0.15rem 0.5rem; background: none; color: var(--danger); border-color: transparent; }
+.retirer:hover { border-color: var(--danger) !important; }
+
+/* dons à choix */
+.dons-groupe { display: grid; gap: 0.35rem; padding: 0.6rem 0.8rem; border: 1px solid var(--etape-ligne); border-radius: var(--radius); }
+.dons-groupe legend { padding: 0 0.3rem; font-size: 0.85rem; color: var(--muted); }
+.dons-options { display: flex; flex-wrap: wrap; gap: 0.4rem 1rem; }
+.dons-options label { display: flex; align-items: center; gap: 0.35rem; }
+
+/* équipement */
+.equipement { display: grid; gap: 0.8rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); }
+.objet { display: grid; gap: 0.5rem; padding: 0.7rem; border: 1px solid var(--etape-ligne); border-radius: var(--radius); background: var(--etape-doux); }
+.objet h4 { margin: 0; font-size: 0.95rem; }
+.objet .fiche-champs { grid-template-columns: 1fr; gap: 0.45rem; }
+.objet .fiche-champs--paire { grid-template-columns: minmax(0, 1fr) 6rem; align-items: end; }
+
+/* contrôles de la base */
+.controles { margin: 0; padding-left: 1.2rem; }
+.controles li { margin: 0.15rem 0; }
+.controles[data-vide] { list-style: none; padding: 0; color: var(--good); }
+
+@media (max-width: 40rem) {
+  .fiche-etape__corps { padding: 0.75rem; }
+  .fiche-barre { position: static; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pastille { transition: none; }
+}
+@media print {
+  .site-header, .site-footer, .fiche-barre, .fiche-etapes, .fiche-ligne-ajout, .retirer, .fiche-indisponible { display: none !important; }
+  .fiche-etape { break-inside: avoid-page; }
+  .pastille:not([aria-pressed='true']) { display: none; }
+  .pastilles { display: flex; flex-wrap: wrap; }
+  .pastilles > li:not(:has(.pastille[aria-pressed='true'])) { display: none; }
+}

@@ -1,0 +1,215 @@
+// Moteur de la fiche (lib/fiche-moteur.mjs) sur les vraies règles (lib/fiche-regles.mjs, la base construite) : chaque calcul comparé à sa source —
+// les vues de la base (v_personnage_niveau, v_personnage_controle, par le service sur une base vivante temporaire), les personnages fil rouge du
+// guide (lib/guide-fil-rouge.mjs) et les décisions du propriétaire (R2, R3, R6, R7, R15, R16, R19, R20).
+import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { after, test } from 'node:test';
+import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
+import { enregistrerFiche } from '../serveur/fiches.mjs';
+import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
+import { ficheVide } from '../src/lib/fiche-format.mjs';
+import {
+  attributsDe, budgetCaracteristiques, budgetCompetences, caracteristiquesDe, classeMagique, classesPermises, competencesDe, donsAChoisir,
+  emplacementsDeSorts, ethnieCompatible, ethniesDeLaRace, magiesInneesPermises, maitriseDesSorts, niveauGlobal, niveauxDeClasse, npmMax,
+  progressionAttendue, puissanceMagique, refusMagieAcquise, sortsPossibles, xpDuNiveauSuivant,
+} from '../src/lib/fiche-moteur.mjs';
+import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { FIL_ROUGE, chargerFilRouge } from '../src/lib/guide-fil-rouge.mjs';
+
+const db = ouvrirBase({ sansExemples: false });
+const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+const racine = mkdtempSync(join(tmpdir(), 'maverick-moteur-'));
+after(() => rmSync(racine, { recursive: true, force: true }));
+const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: racine }).chemin);
+
+/** Humain central, Feu inné (Social), Guerrier ; 14 points de caractéristiques, 100 de compétences : conforme au niveau 1. */
+function ficheConforme(surcharge = {}) {
+  return {
+    ...ficheVide('Essai'),
+    race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central', magie_innee_id: 'magies/magie-du-feu',
+    classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: null }],
+    caracteristiques: Object.entries({ force: 4, volonte: 2, intelligence: 2, perception: 2, social: 2, agilite: 2 }).map(([caracteristique_id, base]) => ({ caracteristique_id, base, croix: 0 })),
+    competences: ['arc', 'arme-lourde', 'athletisme', 'parade', 'stabilite'].map((competence_id) => ({ competence_id, naturel: 20, acquis: 0 })),
+    ...surcharge,
+  };
+}
+
+test('niveau global et niveaux de classe : mêmes valeurs que v_personnage_niveau (décision R2), pour toute XP et les deux modes', () => {
+  for (const mode of ['mono', 'bi']) {
+    for (const xp of [0, 199, 200, 1649, 1650, 11450, 17049, 17050, 95450, 460249, 460250, 9999999]) {
+      const { personnage } = enregistrerFiche(vivante, { ...ficheVide(`xp ${xp}`), xp, mode_classe: mode });
+      const sql = { ...vivante.prepare('SELECT niveau_global, niveau_classe_1, niveau_classe_2 FROM v_personnage_niveau WHERE personnage_id = ?').get(personnage.id) };
+      const niveau = niveauGlobal(regles, xp);
+      const classes = niveauxDeClasse(regles, niveau, mode);
+      assert.deepEqual({ niveau_global: niveau, niveau_classe_1: classes.classe1, niveau_classe_2: classes.classe2 }, sql, `${mode} ${xp} XP`);
+    }
+  }
+  assert.equal(xpDuNiveauSuivant(regles, 1), 200);
+  assert.equal(xpDuNiveauSuivant(regles, 20), null);
+});
+
+test('une fiche que le moteur dit dans ses budgets n’a aucune ligne de contrôle dans la base ; hors budget, la base dit la même chose', () => {
+  const fiche = ficheConforme({ statut: 'valide' });
+  assert.deepEqual(budgetCaracteristiques(regles, fiche), { total: 14, attendu: 14 });
+  assert.deepEqual(budgetCompetences(regles, fiche), { total: 100, attendu: 100 });
+  const { controles } = enregistrerFiche(vivante, fiche);
+  assert.deepEqual(controles, []);
+
+  const hors = ficheConforme({ caracteristiques: fiche.caracteristiques.map((c) => (c.caracteristique_id === 'force' ? { ...c, base: 3 } : c)) });
+  assert.deepEqual(budgetCaracteristiques(regles, hors), { total: 13, attendu: 14 });
+  const r = enregistrerFiche(vivante, hors);
+  assert.deepEqual(r.controles.map((c) => c.regle), ['caracteristiques_total']);
+  assert.equal(r.controles[0].detail, '13 / 14');
+
+  // Niveau 5 : 15 caractéristiques, 100 + 20 + 20 + 20 + 40 compétences, naturel au plus 30 (seuils du niveau).
+  const niveau5 = ficheConforme({ xp: 1650 });
+  assert.deepEqual(budgetCaracteristiques(regles, niveau5), { total: 14, attendu: 15 });
+  assert.deepEqual(budgetCompetences(regles, niveau5), { total: 100, attendu: 200 });
+  assert.equal(competencesDe(regles, niveau5)[0].maxNaturel, 30);
+});
+
+test('caractéristiques : +1 de la magie innée sur sa caractéristique (ou celle choisie pour le Potentiel Illimité), bornes de la race', () => {
+  const feu = caracteristiquesDe(regles, ficheConforme());
+  assert.deepEqual(feu.find((c) => c.id === 'social'), { id: 'social', nom: 'Social', lettre: feu.find((c) => c.id === 'social').lettre, base: 2, croix: 0, bonus: 1, valeur: 3, min: 1, max: 4 });
+  assert.equal(feu.filter((c) => c.bonus).length, 1);
+  const pi = caracteristiquesDe(regles, ficheConforme({ magie_innee_id: 'magies/potentiel-illimite', caracteristique_magie_id: 'agilite' }));
+  assert.equal(pi.find((c) => c.id === 'agilite').valeur, 3);
+  assert.equal(caracteristiquesDe(regles, ficheConforme({ magie_innee_id: 'magies/potentiel-illimite' })).filter((c) => c.bonus).length, 0);
+  const sansRace = caracteristiquesDe(regles, { ...ficheVide(), caracteristiques: [] });
+  assert.ok(sansRace.every((c) => c.base === null && c.min === 1 && c.max === 4));
+});
+
+test('compétences : score = 10 × caractéristique + naturel + acquis ; une croix −20, deux croix inutilisable (R19) ; acquis au plus 5 par point de base', () => {
+  const fiche = ficheConforme({
+    competences: [{ competence_id: 'arme-lourde', naturel: 20, acquis: 5 }],
+    caracteristiques: ficheConforme().caracteristiques.map((c) => (c.caracteristique_id === 'social' ? { ...c, croix: 1 } : c.caracteristique_id === 'agilite' ? { ...c, croix: 2 } : c)),
+  });
+  const parId = new Map(competencesDe(regles, fiche).map((c) => [c.id, c]));
+  const force = regles.competences.find((c) => c.id === 'arme-lourde').caracteristique_id;
+  assert.equal(force, 'force');
+  assert.deepEqual({ score: parId.get('arme-lourde').score, maxAcquis: parId.get('arme-lourde').maxAcquis }, { score: 4 * 10 + 20 + 5, maxAcquis: 20 });
+  const social = regles.competences.find((c) => c.caracteristique_id === 'social');
+  assert.equal(parId.get(social.id).score, 3 * 10 - 20, 'Social 2 + 1 (Feu) ; une croix');
+  const agilite = regles.competences.find((c) => c.caracteristique_id === 'agilite');
+  assert.equal(parId.get(agilite.id).score, null);
+});
+
+test('attributs des quatre personnages fil rouge : les mêmes que le guide (santé, chakra, barrière, vitesse, AP/AM, emplacements de sorts)', () => {
+  const guide = chargerFilRouge(db);
+  for (const p of FIL_ROUGE) {
+    const g = guide.find((x) => x.id === p.id);
+    const fiche = { ...ficheVide(p.id), race_id: p.race, ethnie_id: p.ethnie, magie_innee_id: p.magie, classes: [{ rang: 1, classe_id: p.classe, specialite_id: null }] };
+    const a = attributsDe(regles, fiche);
+    assert.deepEqual(
+      { sante: a.sante, chakra: a.chakra, barriere: a.barriere, vitesseSol: a.vitesseSol, vitesseNage: a.vitesseNage, ap: a.ap, am: a.am },
+      { sante: g.attributs.sante, chakra: g.attributs.chakra, barriere: g.attributs.barriere, vitesseSol: g.attributs.vitesseSol, vitesseNage: g.attributs.vitesseNage, ap: g.attributs.ap, am: g.attributs.am },
+      p.id,
+    );
+    assert.equal(emplacementsDeSorts(regles, fiche).total, g.emplacements, p.id);
+  }
+});
+
+test('attributs : deux classes et deux magies comptent ; gains de niveau et dé ; accessoires « Attributs » signés par leur malédiction ; barrière = chakra ÷ 2', () => {
+  const ecu = (cible, maudit = 0) => {
+    const effet = regles.accessoires.find((e) => e.propriete === 'attributs' && e.cible === cible && e.valeur);
+    return { effet, ligne: { emplacement: 'chef', accessoire_effet_id: effet.id, valeur: null, maudit } };
+  };
+  const base = { ...ficheVide('a'), race_id: 'races/humain', magie_innee_id: 'magies/magie-du-feu', classes: [{ rang: 1, classe_id: 'classes/guerrier' }] };
+  const a0 = attributsDe(regles, base);
+  const mage = regles.classes.find((c) => c.id === 'classes/mage');
+  const glace = regles.magies.find((m) => m.id === 'magies/magie-de-la-glace');
+  const deux = attributsDe(regles, { ...base, mode_classe: 'bi', magie_acquise_id: glace.id, classes: [...base.classes, { rang: 2, classe_id: mage.id }] });
+  assert.equal(deux.sante, a0.sante + mage.sante + glace.sante);
+  assert.equal(deux.chakra, a0.chakra + mage.chakra + glace.chakra);
+  assert.equal(deux.am, a0.am + regles.am_classe_magique, 'le Mage est une classe magique');
+
+  const sante = ecu('Santé');
+  const chakra = ecu('Chakra', 1);
+  const avecTout = attributsDe(regles, {
+    ...base, xp: 1650,
+    progression: [{ niveau: 2, points_sante: 10, points_chakra: 5 }, { niveau: 5, points_sante: 0, points_chakra: 15, de_choix: 'les_deux', de_resultat: 3 }],
+    accessoires: [sante.ligne, { ...chakra.ligne, emplacement: 'collier' }],
+  });
+  assert.equal(avecTout.sante, a0.sante + 10 + 3 + sante.effet.valeur);
+  assert.equal(avecTout.chakra, a0.chakra + 5 + 15 + 3 - chakra.effet.valeur, 'accessoire maudit : en moins');
+  assert.equal(avecTout.barriere, Math.floor(avecTout.chakra / 2) + avecTout.detail.barriere.classes + avecTout.detail.barriere.race + avecTout.detail.barriere.ethnie);
+  assert.equal(avecTout.corruptionMax, avecTout.chakra);
+  assert.deepEqual(attributsDe(regles, { ...base, magie_innee_id: 'magies/magie-du-sang' }).quatriemeBarre, { ressource: 'Sang', max: regles.magies.find((m) => m.id === 'magies/magie-du-sang').barre4.max });
+  assert.equal(attributsDe(regles, ficheConforme()).initiative.bonus, 0, 'Agilité 2 : +0');
+});
+
+test('classe magique : catégorie et Archimage (R6), spécialité « considérée comme classe magique » au niveau de classe 10 (R7)', () => {
+  const orios = regles.classes.find((c) => c.id === 'classes/orios');
+  const chaman = orios.specialites.find((s) => s.magique);
+  const autre = orios.specialites.find((s) => !s.magique);
+  assert.ok(chaman && autre);
+  assert.equal(classeMagique(regles, { classe_id: orios.id, specialite_id: chaman.id }, 10), true);
+  assert.equal(classeMagique(regles, { classe_id: orios.id, specialite_id: chaman.id }, 9), false);
+  assert.equal(classeMagique(regles, { classe_id: orios.id, specialite_id: autre.id }, 20), false);
+  assert.equal(classeMagique(regles, { classe_id: 'classes/archimage', specialite_id: null }, 1), true);
+  assert.equal(classeMagique(regles, { classe_id: 'classes/guerrier', specialite_id: null }, 20), false);
+  const fiche = { ...ficheVide(), race_id: 'races/orios', xp: 11450, magie_innee_id: 'magies/magie-du-sang', classes: [{ rang: 1, classe_id: orios.id, specialite_id: chaman.id }] };
+  assert.equal(emplacementsDeSorts(regles, fiche).conditions, 2);
+});
+
+test('race : classes et magies innées permises (R8, R11), ethnies de la race et de sa magie', () => {
+  assert.ok(!classesPermises(regles, 'races/medusain').has('classes/guerrier'), 'le Médusain n’a pas Guerrier');
+  assert.ok(classesPermises(regles, null).has('classes/guerrier'));
+  assert.deepEqual([...magiesInneesPermises(regles, 'races/nain')].sort(),
+    ['magies/magie-de-la-foudre', 'magies/magie-de-la-terre', 'magies/magie-de-larcane', 'magies/magie-du-feu', 'magies/potentiel-illimite'], 'Nain : liste de son onglet (R11)');
+  const orios = ethniesDeLaRace(regles, 'races/orios');
+  assert.ok(orios.length > 1 && orios.every((e) => e.race_id === 'races/orios'));
+  const deSang = orios.find((e) => e.magie_id === 'magies/magie-du-sang');
+  assert.ok(deSang);
+  assert.equal(ethnieCompatible(deSang, 'magies/magie-du-sang'), true);
+  assert.equal(ethnieCompatible(deSang, 'magies/magie-du-feu'), false);
+});
+
+test('magie acquise : même magie, incompatibles, mono-magie (R15) sauf Corruption de l’Elfe Noir Charbon et du Felfe Noir (R20)', () => {
+  const fiche = (innee, ethnie = null) => ({ ...ficheVide(), magie_innee_id: innee, ethnie_id: ethnie });
+  assert.equal(refusMagieAcquise(regles, fiche('magies/magie-du-feu'), 'magies/magie-de-leau'), null);
+  assert.match(refusMagieAcquise(regles, fiche('magies/magie-du-feu'), 'magies/magie-du-feu'), /déjà la magie innée/);
+  assert.match(refusMagieAcquise(regles, fiche('magies/magie-du-sang'), 'magies/magie-de-larcane'), /incompatible/);
+  assert.match(refusMagieAcquise(regles, fiche('magies/potentiel-illimite'), 'magies/magie-du-feu'), /incompatible|mono-magie/);
+  assert.match(refusMagieAcquise(regles, fiche('magies/magie-du-feu'), 'magies/magie-de-la-corruption'), /mono-magie/);
+  assert.equal(refusMagieAcquise(regles, fiche('magies/magie-du-feu', 'races/elfe-noir#ethnie:elfe-noir-charbon'), 'magies/magie-de-la-corruption'), null);
+  assert.equal(refusMagieAcquise(regles, fiche('magies/magie-du-feu', 'races/felfe#ethnie:felfe-noir'), 'magies/magie-de-la-corruption'), null);
+  assert.match(refusMagieAcquise(regles, fiche('magies/magie-du-feu', 'races/elfe-noir#ethnie:elfe-noir-sale'), 'magies/magie-de-la-corruption'), /mono-magie/);
+  assert.match(refusMagieAcquise(regles, fiche('magies/magie-de-larcane', 'races/elfe-noir#ethnie:elfe-noir-charbon'), 'magies/magie-de-la-corruption'), /incompatible/, 'les incompatibilités restent');
+});
+
+test('sorts : puissance magique 5 au niveau 16 (R16), palier 5 fermé avec une magie acquise mais ses emplacements ouverts ; NM au plus niveau − 1', () => {
+  assert.deepEqual([1, 3, 4, 8, 12, 15, 16, 20].map((n) => puissanceMagique(regles, n)), [1, 1, 2, 3, 4, 4, 5, 5]);
+  const seize = { ...ficheVide(), xp: 95450, magie_innee_id: 'magies/magie-du-feu' };
+  assert.equal(npmMax(regles, seize), 5);
+  const bi = { ...seize, magie_acquise_id: 'magies/magie-de-leau' };
+  assert.equal(npmMax(regles, bi), 4);
+  assert.deepEqual(emplacementsDeSorts(regles, bi), { conditions: 2, puissance: 5, total: 10 });
+  assert.ok(sortsPossibles(regles, bi).every((s) => s.niveau <= 4 && ['magies/magie-du-feu', 'magies/magie-de-leau'].includes(s.magie_id)));
+  const pi = { ...ficheVide(), magie_innee_id: 'magies/potentiel-illimite' };
+  assert.ok(new Set(sortsPossibles(regles, pi).map((s) => s.magie_id)).size > 2, 'le Potentiel Illimité pioche dans toutes les magies');
+  assert.ok(sortsPossibles(regles, pi).every((s) => s.niveau === 1));
+  const nm = maitriseDesSorts(regles, { ...seize, sorts: [{ sort_id: 'x', rang: 1, niveau_maitrise: 3 }, { sort_id: 'y', rang: 2, niveau_maitrise: 2 }] });
+  assert.deepEqual(nm, { maxParSort: 15, total: 5, disponibles: regles.niveaux.find((n) => n.niveau === 16).niveaux_maitrise_cumul });
+});
+
+test('progression attendue : 15 points par niveau à partir du 2, le dé aux niveaux 5, 10, 15 et 20', () => {
+  const p = progressionAttendue(regles, 20);
+  assert.equal(p.length, 19);
+  assert.ok(p.every((x) => x.points === 15));
+  assert.deepEqual(p.filter((x) => x.de).map((x) => x.niveau), [5, 10, 15, 20]);
+  assert.deepEqual(progressionAttendue(regles, 1), []);
+});
+
+test('dons à choisir : groupes de la classe et de la spécialité choisie, jusqu’au niveau de classe', () => {
+  const epeiste = 'classes/guerrier#specialite:epeiste';
+  const fiche = (xp, specialite_id = null) => ({ ...ficheVide(), xp, classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id }] });
+  assert.deepEqual(donsAChoisir(regles, fiche(0))[0].groupes, [], 'Guerrier niveau de classe 2 : aucun choix');
+  const dix = donsAChoisir(regles, fiche(8250, epeiste))[0];
+  assert.equal(dix.classe.id, 'classes/guerrier');
+  assert.ok(dix.groupes.length >= 1 && dix.groupes.every((g) => g.specialite_id === epeiste && g.niveau <= 18));
+  const archimage = donsAChoisir(regles, { ...ficheVide(), xp: 11450, classes: [{ rang: 1, classe_id: 'classes/archimage' }] })[0];
+  assert.ok(archimage.groupes.length >= 2 && archimage.groupes.every((g) => g.specialite_id === null));
+});

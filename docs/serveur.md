@@ -125,7 +125,7 @@ après le build.
 
 ## Suite
 
-- Pages du site branchées sur l'API : `/fiche/` (création et modification d'un prétiré, à la place de `/generateur/`) et `/personnages/`
-  (recherche avec filtres, tableau trié par colonne).
+- Pages du site branchées sur l'API : `/fiche/` (création et modification d'un prétiré) et `/personnages/` (recherche), voir
+  [`character-generator.md`](character-generator.md).
 - 1.0 : connexion Discord (sessions, rôles), fiches de joueur, partage, groupes (`v_personnage_visible`), protection des pages par le service
   (`auth_request`) à la place du mot de passe partagé.
