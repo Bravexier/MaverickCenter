@@ -6,7 +6,7 @@ import { libelleDuControle } from '../lib/fiche-controles.mjs';
 import { CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ficheVide } from '../lib/fiche-format.mjs';
 import {
   attributsDe, budgetCaracteristiques, budgetCompetences, caracteristiquesDe, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe,
-  donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethniesDeLaRace, magiesInneesPermises, maitriseDesSorts, niveauGlobal, npmMax,
+  donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethniesDeLaRace, magiesInneesPermises, maitriseDArme, maitriseDesSorts, niveauGlobal, npmMax,
   progressionAttendue, refusClasse, refusMagieAcquise, sortsPossibles, trouver, xpDuNiveauSuivant,
 } from '../lib/fiche-moteur.mjs';
 
@@ -347,19 +347,25 @@ function construireCaracteristiques() {
         return el('tr', {}, el('td', {}, comp.nom), el('td', { class: 'nombre' }, naturel), el('td', { class: 'nombre' }, acquis), el('td', { class: 'nombre' }, score));
       }))))));
 
+  // la base garde le nombre de dés (1 sans maîtrise, 5 au plus) ; on choisit des points de maîtrise (4 au plus), un dé de plus chacun
+  const maitrise = maitriseDArme(regles);
   reconstruire($('maitrises'), 'fixe', () => [
     el('thead', {}, el('tr', {}, el('th', {}, 'Famille d’armes'), el('th', {}, 'Dé'), el('th', {}, 'Maîtrise'))),
     el('tbody', {}, regles.familles_armes.map((f) => {
       const choix = el('select', {
         'aria-label': `Maîtrise : ${f.nom}`,
         onchange: (ev) => {
-          const des = entier(ev.target.value);
+          const points = entier(ev.target.value);
           retirer('maitrises_armes', (x) => x.arme_famille_id === f.id);
-          if (des > 0) fiche.maitrises_armes.push({ arme_famille_id: f.id, des });
+          if (points > 0) fiche.maitrises_armes.push({ arme_famille_id: f.id, des: maitrise.desDe(points) });
           changer();
         },
-      }, option('0', 'Aucune'), [1, 2, 3, 4, 5].map((n) => option(String(n), `${n} point${n > 1 ? 's' : ''} (${n + 1} dés)`)));
-      synchro(() => poser(choix, String(ligneDe('maitrises_armes', (x) => x.arme_famille_id === f.id)?.des ?? 0)));
+      }, option('0', `Aucune (${maitrise.desSansMaitrise} dé)`),
+      Array.from({ length: maitrise.pointsMax }, (_, i) => i + 1).map((n) => option(String(n), `${n} point${n > 1 ? 's' : ''} (${maitrise.desDe(n)} dés)`)));
+      synchro(() => {
+        const ligneDeMaitrise = ligneDe('maitrises_armes', (x) => x.arme_famille_id === f.id);
+        poser(choix, String(ligneDeMaitrise ? maitrise.pointsDe(ligneDeMaitrise.des) : 0));
+      });
       return el('tr', {}, el('td', {}, f.nom), el('td', { class: 'muted' }, f.de ?? ''), el('td', {}, choix));
     })),
   ]);

@@ -13,7 +13,7 @@ import { ficheVide } from '../src/lib/fiche-format.mjs';
 import {
   attributsDe, budgetCaracteristiques, budgetCompetences, caracteristiquesDe, classeImposee, classeMagique, classesPermises, classesSelonLaMagieInnee,
   competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethniesDeLaRace, magiesInneesPermises, maitriseDesSorts, niveauGlobal,
-  niveauxDeClasse, npmMax, progressionAttendue, puissanceMagique, refusClasse, refusMagieAcquise, sortsPossibles, xpDuNiveauSuivant,
+  maitriseDArme, niveauxDeClasse, npmMax, progressionAttendue, puissanceMagique, refusClasse, refusMagieAcquise, sortsPossibles, xpDuNiveauSuivant,
 } from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { FIL_ROUGE, chargerFilRouge } from '../src/lib/guide-fil-rouge.mjs';
@@ -228,6 +228,18 @@ test('décision R23 : choisir le Potentiel Illimité met l’Archimage en classe
     assert.ok(enregistrerFiche(vivante, f).controles.some((c) => c.regle === 'capacite_hors_classe' && c.detail === don.capacite_id), 'la base refuse le don gardé');
     assert.ok(!enregistrerFiche(vivante, { ...f, capacites: donsValables(regles, f) }).controles.some((c) => c.regle === 'capacite_hors_classe'));
   }
+});
+
+test('maîtrise d’arme : 1 dé sans maîtrise, un de plus par point, 4 points au plus (5 dés) ; la base garde les dés et refuse un 5ᵉ point', () => {
+  const m = maitriseDArme(regles);
+  assert.deepEqual({ desSansMaitrise: m.desSansMaitrise, desMax: m.desMax, pointsMax: m.pointsMax }, { desSansMaitrise: 1, desMax: 5, pointsMax: 4 });
+  assert.deepEqual([0, 1, 2, 3, 4].map(m.desDe), [1, 2, 3, 4, 5]);
+  assert.deepEqual([1, 2, 5].map(m.pointsDe), [0, 1, 4]);
+  const avec = (points) => ficheConforme({ maitrises_armes: [{ arme_famille_id: 'epees', des: m.desDe(points) }] });
+  const { personnage, controles } = enregistrerFiche(vivante, avec(m.pointsMax));
+  assert.deepEqual(controles, []);
+  assert.deepEqual(personnage.maitrises_armes, [{ arme_famille_id: 'epees', des: 5 }], '4 points : 5 dés');
+  assert.throws(() => enregistrerFiche(vivante, avec(m.pointsMax + 1)), (e) => e.statut === 400 && /maitrises_armes\[0\] : valeur hors des bornes/.test(e.details.problemes.join()));
 });
 
 test('magie acquise : même magie, incompatibles, mono-magie (R15) sauf Corruption de l’Elfe Noir Charbon et du Felfe Noir (R20)', () => {
