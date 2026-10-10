@@ -103,7 +103,7 @@ const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
             <label class="fiche-champ"><span>Expérience (XP)</span><input type="number" min="0" step="1" data-champ="xp" data-entier id="xp" /></label>
             <p class="fiche-champ"><span>Niveau</span><strong id="niveau-detail">—</strong></p>
           </div>
-          <div id="bloc-classe-1"><h3 id="titre-classe-1">Classe</h3><div id="classe-1" class="groupes-pastilles groupes-pastilles--classes"></div><div id="specialite-1"></div></div>
+          <div id="bloc-classe-1"><h3 id="titre-classe-1">Classe</h3><p class="fiche-aide" id="classe-imposee" hidden></p><div id="classe-1" class="groupes-pastilles groupes-pastilles--classes"></div><div id="specialite-1"></div></div>
           <div id="bloc-classe-2" hidden><h3 id="titre-classe-2">Seconde classe</h3><div id="classe-2" class="groupes-pastilles groupes-pastilles--classes"></div><div id="specialite-2"></div></div>
         </div>
       </section>

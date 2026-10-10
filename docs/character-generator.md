@@ -16,13 +16,16 @@ La fiche se remplit dans l'ordre du guide (« Créer son personnage »), une sec
 guide : 1 race et ethnie, 2 magies et dieux, 3 classe(s) et spécialités (avec l'XP et le niveau), 4 caractéristiques, compétences et maîtrises d'armes,
 5 sorts, 6 attributs, alignement, bourse, métier ; puis 7 gains de niveau et dons à choisir, 8 équipement (armes, armure, bouclier, accessoires,
 inventaire), 9 état en jeu, notes, événements, et le contrôle des règles. Races, magies et classes sont des **pastilles** dans les couleurs de leurs pages
-(`/races/`, `/magies/`, `/classes/`) ; celles que les règles ferment sont grisées. Tout ce que la base garde d'une fiche se saisit (section 13 de
-`data/schema.sql`, ci-dessous).
+(`/races/`, `/magies/`, `/classes/`) ; celles que les règles ferment sont grisées. Le **Potentiel Illimité** en magie innée met l'Archimage en classe 1
+et l'y **verrouille** (les autres classes 1 sont grisées, la pastille de l'Archimage ne se retire pas) ; sans lui, l'Archimage est grisée à tous les rangs,
+et quitter le Potentiel Illimité la retire (décision R23). Les dons à choix d'une classe ou d'une spécialité retirée partent avec elle. Tout ce que la base
+garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
 
 - **Règles** : `/fiche/regles.json`, tiré de la base au build par `lib/fiche-regles.mjs` (races et leurs bornes, ethnies, magies, dieux, métiers, classes,
   spécialités, dons à choix groupés comme sur la page de chaque classe, sorts, tables de niveau, constantes, catalogues d'équipement), rien de recalculé.
 - **Calculs pendant la saisie** : `lib/fiche-moteur.mjs`, fonctions pures (testées par `test/fiche-moteur.test.mjs`, contre les vues de la base et les
-  personnages fil rouge du guide) : niveau global et niveaux de classe (R2) ; classes et magies innées que la race permet (R8, R11), ethnies, magie acquise
+  personnages fil rouge du guide) : niveau global et niveaux de classe (R2) ; classes et magies innées que la race permet (R8, R11), classe réservée à une
+  magie innée et imposée par elle (`classe.magie_innee_id` : l'Archimage et le Potentiel Illimité, R23), ethnies, magie acquise
   refusée et pourquoi (incompatibilité, mono-magie R15, exceptions R20) ; caractéristiques (+1 de la magie innée, bornes de la race) et budget exact (R3) ;
   scores de compétences (10 × caractéristique + naturel + acquis, croix R19), plafonds et budget ; gains de niveau attendus ; classe magique (R6, R7) ;
   attributs comme la fiche automatique (santé, chakra, barrière, vitesse, armure de base, initiative, 4ᵉ barre, Corruption) ; emplacements de sorts
@@ -86,7 +89,8 @@ depuis les règles de la base, si bien qu'une règle corrigée corrige toutes le
 
 - `v_personnage_niveau` : niveau global (d'après l'XP) et niveaux de classe 1 et 2 (décision R2).
 - `v_personnage_visible` et `v_groupe_controle` : voir plus haut.
-- `v_personnage_controle` : une ligne par règle enfreinte (`regle`, `detail`) : classe ou magie innée hors de la matrice de la race (R8, R11), magies incompatibles,
+- `v_personnage_controle` : une ligne par règle enfreinte (`regle`, `detail`) : classe ou magie innée hors de la matrice de la race (R8, R11), classe réservée
+  à une autre magie innée et classe 1 imposée par la magie innée (l'Archimage et le Potentiel Illimité, R23), magies incompatibles,
   mono-magie (R15 ; l'Elfe Noir Charbon et le Felfe Noir peuvent aussi acquérir la Corruption, R20), ethnie (de la race, liée à la magie innée quand elle en porte
   une), bornes et total exact des caractéristiques (R3), plafonds et total exact des compétences (R3), gains de niveau (points exacts, dé), 2ᵉ classe, spécialité
   avant le niveau de classe 10, dons hors classe ou exclusifs, sorts (magie du personnage, toutes pour le Potentiel Illimité ; NPM au plus la puissance magique

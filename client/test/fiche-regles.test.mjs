@@ -39,7 +39,7 @@ test('races : l’ordre et les couleurs de /races/, valeurs de l’onglet de la 
   assert.equal(regles.races.find((r) => r.id === 'races/humain').nature, 'pure');
 });
 
-test('classes : couleurs de /classes/ ; magiques = catégorie Magique et Archimage (R6) ; spécialités magiques = 13 classes raciales et le Flagelleur (R7)', () => {
+test('classes : couleurs de /classes/ ; magiques = catégorie Magique et Archimage (R6) ; spécialités magiques = 13 classes raciales et le Flagelleur (R7) ; Archimage du Potentiel Illimité (R23)', () => {
   assert.ok(regles.classes.every((c) => Object.values(CLASS_COLORS).includes(c.couleur)));
   assert.equal(regles.classes.find((c) => c.id === 'classes/parleur').couleur, CLASS_COLORS.speciales, 'Parleur sous « Spéciales »');
   assert.deepEqual(regles.classes.find((c) => c.id === 'classes/parleur').groupe, { key: 'speciales', label: 'Spéciales', ordre: 4 });
@@ -51,6 +51,8 @@ test('classes : couleurs de /classes/ ; magiques = catégorie Magique et Archima
   const specialites = regles.classes.flatMap((c) => c.specialites.filter((s) => s.magique).map(() => c));
   assert.equal(specialites.length, 14);
   assert.deepEqual(specialites.filter((c) => c.couleur !== CLASS_COLORS.raciales).map((c) => c.id), ['classes/flagelleur']);
+  // Classe réservée à une magie innée, qui l'impose (classe.magie_innee_id, décision R23) : l'Archimage et le Potentiel Illimité, seulement
+  assert.deepEqual(regles.classes.filter((c) => c.magie_innee_id !== null).map((c) => [c.id, c.magie_innee_id]), [['classes/archimage', 'magies/potentiel-illimite']]);
 });
 
 test('dons à choix : chaque don « choix » qui a une alternative est dans un seul groupe de sa classe, avec toutes ses alternatives', () => {

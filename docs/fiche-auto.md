@@ -72,3 +72,4 @@ Restent à tester avec l'accès autorisé (ils lisent les classeurs) : 6, 15, 16
 | 25 (magies) | Capacités Mode Hyper de 8 magies différentes du classeur « Mode hyper et co » | Choix de la source à faire (fiche, « Mode hyper et co » ou onglet « Mode Hyper (Magie) » du classeur de magie) |
 | 26 | Matrice des résistances Arcane/Corruption (`Magie!F2:S16`) | Question ouverte, `docs/sql/a-valider.md` §2 |
 | — | Ambidextrie : « Fausse Patte » et « Ravageur » (−5 % avec les armes légères ou lourdes), « Directrice » (main directrice) | La fiche ne distingue ni la catégorie d'arme ni la main directrice |
+| R23 | `BDD!B27` propose l'Archimage d'après la race (les 10 races qui ont le Potentiel Illimité en magie innée), sans regarder la magie innée choisie | Le propriétaire se concentre désormais sur la fiche du site (`/fiche/`), qui suit R23 |

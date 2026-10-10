@@ -119,8 +119,9 @@ test('race, ethnie, magies : classe et magie innée hors matrice, ethnie d’une
   }
 
   personnageValide('race-5', { magie_innee_id: 'magies/potentiel-illimite' });
-  assert.deepEqual(regles('race-5'), ['caracteristique_magie'], 'Potentiel Illimité : le point de caractéristique est à choisir');
+  assert.deepEqual(regles('race-5'), ['caracteristique_magie', 'classe_imposee'], 'Potentiel Illimité : le point de caractéristique est à choisir, l’Archimage imposée (R23)');
   db.prepare("UPDATE personnage SET caracteristique_magie_id = 'force' WHERE id = 'race-5'").run();
+  db.prepare("UPDATE personnage_classe SET classe_id = 'classes/archimage' WHERE personnage_id = 'race-5'").run();
   assert.deepEqual(regles('race-5'), []);
 
   const classeInterdite = db.prepare("SELECT classe_id FROM race_classe WHERE race_id = 'races/humain' AND accessible = 0 LIMIT 1").get();
@@ -278,6 +279,45 @@ test('décision R20 : l’Elfe Noir Charbon et le Felfe Noir peuvent acquérir l
     magie_innee_id: 'magies/magie-de-larcane', magie_acquise_id: 'magies/magie-de-la-corruption',
   });
   assert.ok(regles('r20-arcane').includes('magies_incompatibles'), 'Arcane et Corruption restent incompatibles');
+});
+
+test('décision R23 : l’Archimage est réservée au Potentiel Illimité inné, qui l’impose en classe 1 (« Chose à savoir » de l’Archimage)', () => {
+  // La règle est une donnée de la classe (migration 0015), tirée du bloc « CHOSE A SAVOIR » de son onglet
+  assert.deepEqual(db.prepare('SELECT id, magie_innee_id FROM classe WHERE magie_innee_id IS NOT NULL').all().map((r) => ({ ...r })),
+    [{ id: 'classes/archimage', magie_innee_id: 'magies/potentiel-illimite' }]);
+  assert.match(db.prepare("SELECT chose_a_savoir FROM classe WHERE id = 'classes/archimage'").get().chose_a_savoir,
+    /vous ne pouvez pas la prendre si vous n'êtes pas du potentiel illimité et est imposée quand vous êtes du potentiel illimité/);
+  assert.throws(() => db.prepare("UPDATE classe SET magie_innee_id = 'magies/potentiel-illimite' WHERE id = 'classes/mage'").run(), /UNIQUE/,
+    'une magie innée impose au plus une classe');
+
+  // Sans le Potentiel Illimité, pas d'Archimage, ni en classe 1 ni en classe 2
+  personnageValide('r23-feu');
+  db.prepare("UPDATE personnage_classe SET classe_id = 'classes/archimage' WHERE personnage_id = 'r23-feu'").run();
+  assert.deepEqual(controle('r23-feu'), [{ regle: 'classe_reservee', detail: 'classes/archimage' }]);
+  personnageValide('r23-feu-bi', { mode_classe: 'bi' });
+  inserer('personnage_classe', { personnage_id: 'r23-feu-bi', rang: 2, classe_id: 'classes/archimage' });
+  assert.deepEqual(controle('r23-feu-bi'), [{ regle: 'classe_reservee', detail: 'classes/archimage' }]);
+
+  // Avec lui, l'Archimage en classe 1 ; la seconde classe reste libre
+  const pi = { magie_innee_id: 'magies/potentiel-illimite', caracteristique_magie_id: 'force' };
+  personnageValide('r23-pi', pi);
+  assert.deepEqual(controle('r23-pi'), [{ regle: 'classe_imposee', detail: 'classes/archimage' }]);
+  db.prepare("UPDATE personnage_classe SET classe_id = 'classes/archimage' WHERE personnage_id = 'r23-pi'").run();
+  assert.deepEqual(controle('r23-pi'), []);
+  personnageValide('r23-pi-bi', { ...pi, mode_classe: 'bi' });
+  inserer('personnage_classe', { personnage_id: 'r23-pi-bi', rang: 2, classe_id: 'classes/archimage' });
+  assert.deepEqual(controle('r23-pi-bi'), [{ regle: 'classe_imposee', detail: 'classes/archimage' }], 'Archimage en classe 2 : la classe 1 doit l’être');
+  db.prepare("DELETE FROM personnage_classe WHERE personnage_id = 'r23-pi-bi'").run();
+  inserer('personnage_classe', { personnage_id: 'r23-pi-bi', rang: 1, classe_id: 'classes/archimage' });
+  inserer('personnage_classe', { personnage_id: 'r23-pi-bi', rang: 2, classe_id: 'classes/guerrier' });
+  assert.deepEqual(controle('r23-pi-bi'), []);
+
+  // Brouillon sans classe : rien à dire tant qu'aucune classe 1 n'est choisie
+  inserer('personnage', {
+    id: 'r23-brouillon', nature: 'pretire', visibilite: 'tous', statut: 'brouillon', nom: 'r23', ...pi, mode_classe: 'mono', xp: 0,
+    alignement_loyal: 0, alignement_chaotique: 0, alignement_bon: 0, alignement_mauvais: 0, bourse_pp: 0, bourse_ro: 0, bourse_rf: 0, ambidextrie: 0, cree_le: INSTANT, modifie_le: INSTANT,
+  });
+  assert.deepEqual(controle('r23-brouillon'), []);
 });
 
 test('décision R19 : jusqu’à deux croix par caractéristique, la règle du guide et les malus de la fiche', () => {

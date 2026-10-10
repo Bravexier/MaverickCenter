@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 14;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 15;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -1038,10 +1038,15 @@ CREATE TABLE classe (
   description       TEXT,                        -- texte de présentation (AM2). NULL : Anansi, Goleois (titre sans texte), Grenadier (pas de zone de description)
   origine            TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'classes'),
   source_ref         TEXT    NOT NULL CHECK (length(source_ref) > 0), -- onglet + zones lues (départ, à savoir, description) + cellule du Sommaire
-  remarque TEXT    -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  magie_innee_id     TEXT    REFERENCES magie(id)   -- magie innée qui RÉSERVE et IMPOSE la classe : sans elle on ne prend pas la classe, avec elle la classe est
+                                                 -- la classe 1. Archimage : Potentiel Illimité (« CHOSE A SAVOIR » de son onglet, décision R23, migration 0015) ;
+                                                 -- NULL pour les autres classes. Contrôlé par v_personnage_controle (classe_reservee, classe_imposee)
 ) STRICT;
 
 CREATE INDEX classe_categorie ON classe (categorie_id, ordre);   -- « les classes d'une catégorie »
+
+CREATE UNIQUE INDEX classe_magie_innee ON classe (magie_innee_id) WHERE magie_innee_id IS NOT NULL;   -- une magie innée impose au plus une classe
 
 -- SPÉCIALITÉ : deux par classe, choisies au niveau de classe 10
 -- Onglet normal : bannières en majuscules de la ligne 17 (A17 = rang 1, X17 = rang 2) ; description = titre + texte dans la zone AM.
@@ -3602,7 +3607,7 @@ CREATE VIEW v_groupe_controle AS
   WHERE p.nature = 'joueur' AND p.proprietaire_id <> m.utilisateur_id;
 
 -- Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi.
--- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20) ; ce qui
+-- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23) ; ce qui
 -- demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Une fiche 'brouillon' peut
 -- avoir des lignes, une fiche 'valide' non (test).
 CREATE VIEW v_personnage_controle AS
@@ -3611,6 +3616,17 @@ CREATE VIEW v_personnage_controle AS
   FROM personnage_classe pc JOIN personnage p ON p.id = pc.personnage_id
   WHERE p.race_id IS NOT NULL
     AND NOT EXISTS (SELECT 1 FROM race_classe rc WHERE rc.race_id = p.race_id AND rc.classe_id = pc.classe_id AND rc.accessible = 1)
+  UNION ALL
+  -- Classe réservée à une magie innée, qui l'impose en classe 1 (classe.magie_innee_id ; l'Archimage et le Potentiel Illimité, décision R23)
+  SELECT pc.personnage_id, 'classe_reservee', pc.classe_id
+  FROM personnage_classe pc JOIN classe c ON c.id = pc.classe_id JOIN personnage p ON p.id = pc.personnage_id
+  WHERE c.magie_innee_id IS NOT NULL AND c.magie_innee_id IS NOT p.magie_innee_id
+  UNION ALL
+  SELECT p.id, 'classe_imposee', c.id
+  FROM personnage p
+  JOIN classe c ON c.magie_innee_id = p.magie_innee_id
+  JOIN personnage_classe pc ON pc.personnage_id = p.id AND pc.rang = 1
+  WHERE pc.classe_id <> c.id
   UNION ALL
   -- Magie innée accessible à la race : matrice « Accessibilité Magie » (R8), sauf liste de l'onglet de la race qui prime (R11)
   SELECT p.id, 'magie_innee_inaccessible', p.magie_innee_id

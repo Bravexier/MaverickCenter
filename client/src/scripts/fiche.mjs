@@ -5,9 +5,9 @@
 import { libelleDuControle } from '../lib/fiche-controles.mjs';
 import { CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ficheVide } from '../lib/fiche-format.mjs';
 import {
-  attributsDe, budgetCaracteristiques, budgetCompetences, caracteristiquesDe, classesDe, classesPermises, competencesDe, donsAChoisir,
-  emplacementsDeSorts, ethnieCompatible, ethniesDeLaRace, magiesInneesPermises, maitriseDesSorts, niveauGlobal, npmMax, progressionAttendue,
-  refusMagieAcquise, sortsPossibles, trouver, xpDuNiveauSuivant,
+  attributsDe, budgetCaracteristiques, budgetCompetences, caracteristiquesDe, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe,
+  donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethniesDeLaRace, magiesInneesPermises, maitriseDesSorts, niveauGlobal, npmMax,
+  progressionAttendue, refusClasse, refusMagieAcquise, sortsPossibles, trouver, xpDuNiveauSuivant,
 } from '../lib/fiche-moteur.mjs';
 
 const racine = document.getElementById('fiche');
@@ -102,24 +102,29 @@ const retirer = (cle, critere) => {
 
 // ------------------------------------------------------------------ pastilles
 /**
- * Une pastille (bouton à bascule) : `choisie()` et `refus()` sont relus à chaque rafraîchissement (le bouton reste en place, le focus aussi). Une
- * pastille refusée par les règles est grisée ; choisie malgré tout (règles changées, fiche importée), elle reste cliquable et cerclée de rouge.
+ * Une pastille (bouton à bascule) : `choisie()`, `refus()` et `verrou()` sont relus à chaque rafraîchissement (le bouton reste en place, le focus
+ * aussi). Une pastille refusée par les règles est grisée ; choisie malgré tout (règles changées, fiche importée), elle reste cliquable et cerclée de
+ * rouge. Une pastille choisie que les règles imposent (`verrou()` dit pourquoi) ne se retire pas : le clic est sans effet.
  */
-function pastille({ texte, couleur, texteSurCouleur, choisie, refus = () => null, surClic, detail }) {
+function pastille({ texte, couleur, texteSurCouleur, choisie, refus = () => null, verrou = () => null, surClic, detail }) {
   const bouton = el('button', {
     type: 'button',
     class: 'pastille',
     style: `--c: ${couleur}${texteSurCouleur ? `; --texte-sur-c: ${texteSurCouleur}` : ''}`,
     'aria-pressed': 'false',
-    onclick: surClic,
+    onclick: () => { if (!bouton.hasAttribute('data-verrou')) surClic(); },
   }, el('span', { class: 'pastille__point', 'aria-hidden': 'true' }), el('span', {}, texte), detail ? el('small', {}, detail) : null);
   synchro(() => {
     const oui = Boolean(choisie());
     const non = refus();
+    const impose = oui && !non ? verrou() : null;
     bouton.setAttribute('aria-pressed', oui ? 'true' : 'false');
     bouton.disabled = Boolean(non) && !oui;
     bouton.toggleAttribute('data-refus', Boolean(non) && oui);
-    if (non) bouton.title = non;
+    bouton.toggleAttribute('data-verrou', Boolean(impose));
+    if (impose) bouton.setAttribute('aria-disabled', 'true');
+    else bouton.removeAttribute('aria-disabled');
+    if (non || impose) bouton.title = non || impose;
     else bouton.removeAttribute('title');
   });
   return el('li', {}, bouton);
@@ -176,6 +181,9 @@ function construireMagies() {
       fiche.magie_innee_id = fiche.magie_innee_id === m.id ? null : m.id;
       if (fiche.magie_acquise_id === fiche.magie_innee_id) fiche.magie_acquise_id = null;
       if (!fiche.magie_innee_id || trouver(regles.magies, fiche.magie_innee_id).caracteristique_id) fiche.caracteristique_magie_id = null;
+      // le Potentiel Illimité impose l'Archimage en classe 1, que nulle autre magie innée n'ouvre (décision R23)
+      fiche.classes = classesSelonLaMagieInnee(regles, fiche);
+      fiche.capacites = donsValables(regles, fiche);
       changer();
     },
   })));
@@ -221,6 +229,10 @@ function construireClasses() {
     g.classes.push(k);
   }
   groupes.sort((a, b) => a.ordre - b.ordre);
+  const imposee = classeImposee(regles, fiche);
+  const magieImposante = imposee && trouver(regles.magies, imposee.magie_innee_id);
+  $('classe-imposee').hidden = !imposee;
+  $('classe-imposee').textContent = imposee ? `Classe imposée par la magie innée ${magieImposante.nom} : ${imposee.nom}, qui lui est réservée.` : '';
   for (const c of calcul.classes) {
     $(`bloc-classe-${c.rang}`).hidden = c.rang === 2 && c.niveau === 0 && !c.choix;
     $(`titre-classe-${c.rang}`).textContent = `${c.rang === 1 ? (fiche.mode_classe === 'bi' ? 'Première classe' : 'Classe') : 'Seconde classe'} — niveau de classe ${c.niveau}`
@@ -229,11 +241,13 @@ function construireClasses() {
     const choixDe = (r) => calcul.classes.find((x) => x.rang === r)?.choix ?? null;
     reconstruire($(`classe-${rang}`), 'fixe', () => groupes.map((g) => groupe(g.label, g.couleur, g.classes.map((k) => pastille({
       texte: k.nom, couleur: k.couleur, choisie: () => choixDe(rang)?.classe_id === k.id,
-      refus: () => (!classesPermises(regles, fiche.race_id).has(k.id) ? 'classe que la race ne permet pas' : choixDe(3 - rang)?.classe_id === k.id ? 'déjà l’autre classe' : null),
+      refus: () => refusClasse(regles, fiche, k.id, rang),
+      verrou: () => (rang === 1 && classeImposee(regles, fiche)?.id === k.id ? `imposée par la magie innée ${trouver(regles.magies, fiche.magie_innee_id).nom}` : null),
       surClic: () => {
         const deja = choixDe(rang)?.classe_id === k.id;
         retirer('classes', (l) => l.rang === rang);
         if (!deja) fiche.classes.push({ rang, classe_id: k.id, specialite_id: null });
+        fiche.capacites = donsValables(regles, fiche);
         changer();
       },
     })))));
@@ -249,6 +263,7 @@ function construireClasses() {
           surClic: () => {
             const l = ligneDe('classes', (x) => x.rang === rang);
             l.specialite_id = l.specialite_id === s.id ? null : s.id;
+            fiche.capacites = donsValables(regles, fiche);
             changer();
           },
         }))));

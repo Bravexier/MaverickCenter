@@ -17,6 +17,7 @@ import { COLONNES_DU_SERVICE, HORS_FICHE, PARTIES_DE_FICHE, ficheVide } from '..
 const racine = mkdtempSync(join(tmpdir(), 'maverick-api-'));
 after(() => rmSync(racine, { recursive: true, force: true }));
 const REGLES = cheminBase({ sansExemples: false });
+const VERSION_DU_SCHEMA = new DatabaseSync(REGLES, { readOnly: true }).prepare('PRAGMA user_version').get().user_version;
 const { chemin } = preparerBaseVivante({ regles: REGLES, dossier: join(racine, 'db') });
 const db = ouvrirBaseVivante(chemin);
 const journal = [];
@@ -153,7 +154,8 @@ test('« valide » refusé tant que la fiche enfreint une règle de la base (422
   assert.equal(lire(p.id).personnage.statut, 'brouillon');
   const b = appel('PUT', `/api/personnages/${p.id}`, { version: p.version, classes: [{ rang: 1, classe_id: 'classes/guerrier' }, { rang: 2, classe_id: 'classes/archimage' }] });
   assert.equal(b.statut, 200);
-  assert.deepEqual(b.corps.controles.map((c) => c.regle).filter((x) => x.startsWith('classe')), ['classe_2_en_trop'], 'brouillon : contrôles rendus, fiche enregistrée');
+  assert.deepEqual(b.corps.controles.map((c) => c.regle).filter((x) => x.startsWith('classe')), ['classe_2_en_trop', 'classe_reservee'],
+    'brouillon : contrôles rendus (dont l’Archimage sans Potentiel Illimité, R23), fiche enregistrée');
 });
 
 test('fiche de joueur : ni listée, ni lue, ni modifiable sans comptes (avant la 1.0)', () => {
@@ -210,7 +212,7 @@ test('serveur HTTP : état, création, corps trop gros ; surveillance : nouvelle
   try {
     let etat = await (await fetch(`${s.url}/api/etat`)).json();
     assert.deepEqual({ version: etat.version, code: etat.code, disponible: etat.base.disponible, a_jour: etat.base.a_jour, pretires: etat.base.pretires, schema: etat.base.schema },
-      { version: '9.9.9', code: 'abcdef0123456789', disponible: true, a_jour: true, pretires: 0, schema: 14 });
+      { version: '9.9.9', code: 'abcdef0123456789', disponible: true, a_jour: true, pretires: 0, schema: VERSION_DU_SCHEMA });
     const reponse = await fetch(`${s.url}/api/personnages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nom: 'Hugo' }) });
     assert.equal(reponse.status, 201);
     assert.equal(reponse.headers.get('cache-control'), 'no-store');

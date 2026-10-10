@@ -42,6 +42,46 @@ export function classesPermises(regles, raceId) {
   return new Set(race ? race.classes : regles.classes.map((c) => c.id));
 }
 
+/**
+ * Classe qu'impose la magie innée de la fiche, en classe 1 (classe.magie_innee_id : le Potentiel Illimité impose l'Archimage, « Chose à savoir » de
+ * l'Archimage, décision R23), ou null.
+ */
+export function classeImposee(regles, fiche) {
+  return fiche.magie_innee_id ? regles.classes.find((c) => c.magie_innee_id === fiche.magie_innee_id) ?? null : null;
+}
+
+/**
+ * Pourquoi une classe ne peut pas être la classe `rang` de cette fiche (null : elle le peut) : classe que la race ne permet pas (R8), classe réservée à
+ * une autre magie innée, autre classe que celle qu'impose la magie innée en classe 1 (décision R23 : l'Archimage n'est ouverte qu'au Potentiel
+ * Illimité, qui l'impose), classe déjà prise à l'autre rang. Mêmes règles que v_personnage_controle (classe_inaccessible, classe_reservee, classe_imposee).
+ */
+export function refusClasse(regles, fiche, classeId, rang) {
+  const classe = trouver(regles.classes, classeId);
+  if (!classe) return 'classe inconnue';
+  if (!classesPermises(regles, fiche.race_id).has(classe.id)) return 'classe que la race ne permet pas';
+  if (classe.magie_innee_id && classe.magie_innee_id !== fiche.magie_innee_id) {
+    return `réservée à la magie innée ${trouver(regles.magies, classe.magie_innee_id)?.nom ?? classe.magie_innee_id}`;
+  }
+  const imposee = classeImposee(regles, fiche);
+  if (rang === 1 && imposee && imposee.id !== classe.id) return `la magie innée ${trouver(regles.magies, fiche.magie_innee_id)?.nom} impose ${imposee.nom}`;
+  if ((fiche.classes ?? []).some((c) => c.rang !== rang && c.classe_id === classe.id)) return 'déjà l’autre classe';
+  return null;
+}
+
+/**
+ * Classes de la fiche une fois la magie innée choisie (décision R23) : une classe réservée à une autre magie innée est retirée, et la classe qu'impose
+ * la magie innée devient la classe 1, à la place de celle qui y était (spécialité à choisir). Rend une nouvelle liste ; la fiche n'est pas modifiée.
+ */
+export function classesSelonLaMagieInnee(regles, fiche) {
+  const classes = (fiche.classes ?? []).filter((c) => {
+    const reservee = trouver(regles.classes, c.classe_id)?.magie_innee_id;
+    return !reservee || reservee === fiche.magie_innee_id;
+  });
+  const imposee = classeImposee(regles, fiche);
+  if (!imposee || classes.some((c) => c.rang === 1 && c.classe_id === imposee.id)) return classes;
+  return [{ rang: 1, classe_id: imposee.id, specialite_id: null }, ...classes.filter((c) => c.rang !== 1 && c.classe_id !== imposee.id)];
+}
+
 /** Magies innées que la race permet (liste de l'onglet de la race quand elle existe, R11 ; sinon la matrice, R8) ; sans race, toutes. */
 export function magiesInneesPermises(regles, raceId) {
   const race = trouver(regles.races, raceId);
@@ -279,4 +319,19 @@ export function donsAChoisir(regles, fiche) {
       classe: c.classe,
       groupes: c.classe.choix.filter((g) => g.niveau <= c.niveau && (g.specialite_id === null || g.specialite_id === c.choix.specialite_id)),
     }));
+}
+
+/**
+ * Dons choisis qui restent valables après un changement de classe ou de spécialité : ceux d'une classe de la fiche, et de sa spécialité choisie quand ils
+ * en dépendent (règle capacite_hors_classe de v_personnage_controle). Un don que les règles ne rangent dans aucun choix est gardé tel quel.
+ */
+export function donsValables(regles, fiche) {
+  const origine = new Map();
+  for (const classe of regles.classes) {
+    for (const g of classe.choix) for (const o of g.options) origine.set(o.id, { classe_id: classe.id, specialite_id: g.specialite_id });
+  }
+  return (fiche.capacites ?? []).filter((d) => {
+    const o = origine.get(d.capacite_id);
+    return !o || (fiche.classes ?? []).some((c) => c.classe_id === o.classe_id && (o.specialite_id === null || o.specialite_id === c.specialite_id));
+  });
 }

@@ -199,6 +199,9 @@ input[aria-invalid='true'], select[aria-invalid='true'] { border-color: var(--da
 .pastille:disabled { opacity: 0.4; box-shadow: none; text-decoration: line-through; cursor: not-allowed; }
 /* choisie alors que les règles la ferment (race changée, fiche importée) : reste cliquable pour la retirer, cerclée de rouge */
 .pastille[data-refus] { outline: 2px dashed var(--danger); outline-offset: 2px; }
+/* imposée par les règles (l'Archimage du Potentiel Illimité, décision R23) : ne se retire pas */
+.pastille[data-verrou] { cursor: not-allowed; }
+.pastille[data-verrou]:hover { transform: none; }
 .pastille small { font-weight: normal; opacity: 0.85; }
 
 /* fiche résumé d'un choix (race, magie, classe) */
