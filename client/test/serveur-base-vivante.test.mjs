@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import {
-  ARCHIVES_GARDEES, DOSSIER_ARCHIVES, ErreurBaseVivante, FICHIER_BASE, FICHIER_ETAT, TABLES_VIVANTES, clesRompues, empreinteFichier, lireEtat,
+  ARCHIVES_GARDEES, DOSSIER_ARCHIVES, ErreurBaseVivante, FICHIER_BASE, FICHIER_ETAT, TABLES_EDITION, TABLES_FICHES, TABLES_VIVANTES, clesRompues, empreinteFichier, lireEtat,
   preparerBaseVivante,
 } from '../serveur/base-vivante.mjs';
 import { cheminBase, trouverRacine } from '../src/lib/donnees.mjs';
@@ -74,11 +74,15 @@ function lignesVivantes(chemin) {
 }
 const sansArchives = (dossier) => readdirSync(dossier).filter((f) => f !== DOSSIER_ARCHIVES).sort();
 
-test('TABLES_VIVANTES : exactement les tables de la section 13 de data/schema.sql, chacune après les tables qu’elle cite', () => {
+test('TABLES_VIVANTES : exactement les tables des sections 13 (fiches) puis 14 (journal des modifications) de data/schema.sql, chacune après les tables qu’elle cite', () => {
   const schema = readFileSync(join(trouverRacine(), 'data', 'schema.sql'), 'utf8');
-  const section = schema.slice(schema.indexOf('-- 13. PERSONNAGES'));
-  assert.ok(section.length < schema.length, 'section 13 trouvée');
-  assert.deepEqual([...section.matchAll(/^CREATE TABLE (\w+)/gm)].map((m) => m[1]), [...TABLES_VIVANTES]);
+  const debut13 = schema.indexOf('-- 13. PERSONNAGES');
+  const debut14 = schema.indexOf('-- 14. ÉDITION');
+  assert.ok(debut13 > 0 && debut14 > debut13, 'sections 13 et 14 trouvées');
+  const tables = (texte) => [...texte.matchAll(/^CREATE TABLE (\w+)/gm)].map((m) => m[1]);
+  assert.deepEqual(tables(schema.slice(debut13, debut14)), [...TABLES_FICHES]);
+  assert.deepEqual(tables(schema.slice(debut14)), [...TABLES_EDITION]);
+  assert.deepEqual([...TABLES_VIVANTES], [...TABLES_FICHES, ...TABLES_EDITION]);
   const db = lecture(REGLES);
   for (const [i, t] of TABLES_VIVANTES.entries()) {
     for (const f of db.prepare(`PRAGMA foreign_key_list("${t}")`).all()) {

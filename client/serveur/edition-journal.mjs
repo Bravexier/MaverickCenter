@@ -1,0 +1,344 @@
+// Journal des modifications faites depuis le site de dev (section 14 de data/schema.sql : modification_lot, modification ; docs/serveur.md, « Édition »).
+// Une modification = une ligne de table touchée (dérivées comprises), avec ses valeurs avant et après ; elle est écrite dans la même transaction que
+// la modification elle-même. Ce module ne sait rien des règles du jeu : client/serveur/edition.mjs décide QUOI écrire, ici on l'écrit, on le rejoue
+// et on le relit.
+//   - ouvrirLot      : écrit des lignes (insérer, modifier, supprimer) en les notant au journal ;
+//   - rejouer        : après une livraison qui refait la base vivante, réapplique les modifications en attente sur les nouvelles règles
+//                      (celles que les règles contiennent déjà passent « integree », celles que les règles ont changées autrement « conflit ») ;
+//   - lignesEnAttente: l'état net des lignes modifiées (ce que les pages statiques doivent montrer à la place de leur contenu construit) ;
+//   - journalExporte : le journal à rapatrier dans data/rows (`npm run db:appliquer-edition`).
+// Node seulement (node:sqlite), sans dépendance ; partagé par le service et par client/scripts/db-appliquer-edition.mjs.
+
+/** Tables du journal lui-même et des fiches : jamais modifiées par l'édition (les fiches ont leur API). */
+export const TABLES_INTERDITES = new Set(['modification_lot', 'modification']);
+
+export class ErreurJournal extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'ErreurJournal';
+  }
+}
+
+const infos = new WeakMap(); // db -> Map(table -> { colonnes, cle })
+
+/** Colonnes et clé primaire d'une table (refuse une table inconnue : les noms viennent de requêtes). */
+export function structure(db, table) {
+  let parBase = infos.get(db);
+  if (!parBase) infos.set(db, (parBase = new Map()));
+  if (parBase.has(table)) return parBase.get(table);
+  if (!/^[a-z0-9_]+$/.test(table)) throw new ErreurJournal(`table invalide : ${table}`);
+  const lignes = db.prepare(`PRAGMA table_info("${table}")`).all();
+  if (!lignes.length) throw new ErreurJournal(`table inconnue : ${table}`);
+  const cle = lignes.filter((c) => c.pk).sort((a, b) => a.pk - b.pk).map((c) => c.name);
+  const s = { colonnes: lignes.map((c) => c.name), types: Object.fromEntries(lignes.map((c) => [c.name, c.type.toUpperCase()])), cle };
+  parBase.set(table, s);
+  return s;
+}
+
+const guillemets = (c) => `"${c}"`;
+
+/** La clé primaire d'une ligne, colonnes dans l'ordre de la clé : la même ligne donne toujours le même texte JSON. */
+export function cleDe(db, table, ligne) {
+  const { cle } = structure(db, table);
+  const objet = {};
+  for (const c of cle) {
+    if (ligne[c] === undefined) throw new ErreurJournal(`${table} : clé incomplète (${c} manque)`);
+    objet[c] = ligne[c];
+  }
+  return objet;
+}
+export const texteDeCle = (db, table, ligne) => JSON.stringify(cleDe(db, table, ligne));
+
+function ouDe(db, table) {
+  const { cle } = structure(db, table);
+  return cle.map((c) => `${guillemets(c)} = ?`).join(' AND ');
+}
+
+/** La ligne de clé donnée, ou null. */
+export function lireLigne(db, table, cle) {
+  const c = cleDe(db, table, cle);
+  return db.prepare(`SELECT * FROM "${table}" WHERE ${ouDe(db, table)}`).get(...Object.values(c)) ?? null;
+}
+
+function verifierColonnes(db, table, valeurs) {
+  const { colonnes } = structure(db, table);
+  for (const c of Object.keys(valeurs)) if (!colonnes.includes(c)) throw new ErreurJournal(`${table} : colonne inconnue « ${c} »`);
+}
+
+const egal = (a, b) => (a ?? null) === (b ?? null);
+const sous = (ligne, colonnes) => Object.fromEntries(colonnes.map((c) => [c, ligne[c] ?? null]));
+
+function insererBrut(db, table, valeurs) {
+  verifierColonnes(db, table, valeurs);
+  const cols = Object.keys(valeurs);
+  db.prepare(`INSERT INTO "${table}" (${cols.map(guillemets).join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`).run(...cols.map((c) => valeurs[c] ?? null));
+}
+function modifierBrut(db, table, cle, valeurs) {
+  verifierColonnes(db, table, valeurs);
+  const cols = Object.keys(valeurs);
+  if (!cols.length) return;
+  const c = cleDe(db, table, cle);
+  db.prepare(`UPDATE "${table}" SET ${cols.map((k) => `${guillemets(k)} = ?`).join(', ')} WHERE ${ouDe(db, table)}`)
+    .run(...cols.map((k) => valeurs[k] ?? null), ...Object.values(c));
+}
+function supprimerBrut(db, table, cle) {
+  const c = cleDe(db, table, cle);
+  db.prepare(`DELETE FROM "${table}" WHERE ${ouDe(db, table)}`).run(...Object.values(c));
+}
+
+/**
+ * Ouvre un lot : rend de quoi écrire des lignes en les notant au journal. À appeler dans une transaction ouverte par l'appelant (qui l'annule si une
+ * écriture échoue) ; `terminer(resume)` complète le lot. Une modification qui ne change rien n'est pas notée.
+ * @param {import('node:sqlite').DatabaseSync} db
+ * @param {{ id: string, instant: string, pageId?: string | null, auteurId?: string | null }} o
+ */
+export function ouvrirLot(db, { id, instant, pageId = null, auteurId = null }) {
+  db.prepare('INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES (?, ?, ?, ?, ?)').run(id, instant, auteurId, pageId, '…');
+  let rang = 0;
+  const noter = db.prepare(
+    "INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat, detail) VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente', NULL)",
+  );
+  const interdire = (table) => {
+    if (TABLES_INTERDITES.has(table)) throw new ErreurJournal(`${table} : table du journal, jamais modifiée par l'édition`);
+  };
+  const lignes = []; // { table, cle, operation } : ce que le lot a touché, dans l'ordre
+  const note = (table, cle, operation, avant, apres) => {
+    rang += 1;
+    noter.run(id, rang, table, JSON.stringify(cle), operation, avant === null ? null : JSON.stringify(avant), apres === null ? null : JSON.stringify(apres));
+    lignes.push({ table, cle, operation });
+  };
+  return {
+    lire: (table, cle) => lireLigne(db, table, cle),
+    /** Insère une ligne complète ; rend la ligne telle qu'enregistrée. */
+    inserer(table, valeurs) {
+      interdire(table);
+      insererBrut(db, table, valeurs);
+      const ligne = lireLigne(db, table, valeurs);
+      note(table, cleDe(db, table, ligne), 'inserer', null, ligne);
+      return ligne;
+    },
+    /** Modifie les colonnes données (celles qui changent seulement sont notées) ; rend la ligne modifiée. */
+    modifier(table, cle, valeurs) {
+      interdire(table);
+      const avant = lireLigne(db, table, cle);
+      if (!avant) throw new ErreurJournal(`${table} ${JSON.stringify(cleDe(db, table, cle))} : ligne introuvable`);
+      verifierColonnes(db, table, valeurs);
+      const changees = Object.keys(valeurs).filter((c) => !egal(avant[c], valeurs[c]));
+      if (!changees.length) return avant;
+      if (changees.some((c) => structure(db, table).cle.includes(c))) throw new ErreurJournal(`${table} : la clé primaire d'une ligne ne change pas`);
+      modifierBrut(db, table, cle, sous(valeurs, changees));
+      note(table, cleDe(db, table, avant), 'modifier', sous(avant, changees), sous(valeurs, changees));
+      return lireLigne(db, table, cle);
+    },
+    /** Supprime une ligne (rien si elle n'existe pas) ; rend la ligne supprimée ou null. */
+    supprimer(table, cle) {
+      interdire(table);
+      const avant = lireLigne(db, table, cle);
+      if (!avant) return null;
+      supprimerBrut(db, table, cle);
+      note(table, cleDe(db, table, avant), 'supprimer', avant, null);
+      return avant;
+    },
+    lignes,
+    get nombre() {
+      return rang;
+    },
+    terminer(resume) {
+      db.prepare('UPDATE modification_lot SET resume = ? WHERE id = ?').run(String(resume || 'Modification').slice(0, 500), id);
+    },
+  };
+}
+
+const citeesPar = new WeakMap(); // db -> Map(table visée -> tables qui la citent)
+/** Les tables dont une clé étrangère vise `table`. */
+export function tablesQuiCitent(db, table) {
+  let carte = citeesPar.get(db);
+  if (!carte) {
+    carte = new Map();
+    for (const { name } of db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all()) {
+      let liens = [];
+      try {
+        liens = db.prepare(`PRAGMA foreign_key_list("${name}")`).all();
+      } catch {
+        continue; // table virtuelle
+      }
+      for (const f of liens) {
+        if (!carte.has(f.table)) carte.set(f.table, new Set());
+        carte.get(f.table).add(name);
+      }
+    }
+    citeesPar.set(db, carte);
+  }
+  return [...(carte.get(table) ?? [])];
+}
+
+/** Compare une ligne de la base aux valeurs notées (colonnes de l'objet seulement). */
+const correspond = (ligne, valeurs) => Object.entries(valeurs).every(([c, v]) => egal(ligne[c], v));
+
+/**
+ * Rejoue une modification en attente sur la base (règles neuves) : rend 'applique' (réécrite), 'integree' (déjà là) ou un message de conflit.
+ * Lève une erreur SQLite si l'écriture est refusée (contrainte) : l'appelant en fait un conflit.
+ */
+function rejouerUne(db, m) {
+  const cle = JSON.parse(m.cle);
+  const avant = m.avant === null ? null : JSON.parse(m.avant);
+  const apres = m.apres === null ? null : JSON.parse(m.apres);
+  structure(db, m.table_nom); // table disparue : erreur
+  const ligne = lireLigne(db, m.table_nom, cle);
+  if (m.operation === 'inserer') {
+    if (!ligne) {
+      insererBrut(db, m.table_nom, apres);
+      return 'applique';
+    }
+    return correspond(ligne, apres) ? 'integree' : 'la ligne existe déjà dans les règles, avec d’autres valeurs';
+  }
+  if (m.operation === 'supprimer') {
+    if (!ligne) return 'integree';
+    if (!correspond(ligne, avant)) return 'la ligne a changé dans les règles depuis sa suppression';
+    supprimerBrut(db, m.table_nom, cle);
+    return 'applique';
+  }
+  if (!ligne) return 'la ligne n’existe plus dans les règles';
+  if (correspond(ligne, apres)) return 'integree';
+  if (!correspond(ligne, avant)) {
+    const changees = Object.keys(avant).filter((c) => !egal(ligne[c], avant[c]));
+    return `les règles ont changé ${changees.join(', ')} autrement`;
+  }
+  modifierBrut(db, m.table_nom, cle, apres);
+  return 'applique';
+}
+
+/**
+ * Rejoue toutes les modifications en attente, lot par lot dans l'ordre (fait_le, puis id), chaque lot d'un bloc : si l'une de ses modifications est en
+ * conflit (ou rompt une clé étrangère des tables touchées), le lot entier est annulé et ses modifications en attente passent « conflit ».
+ * À appeler dans une transaction (l'appelant valide) ; les clés étrangères peuvent être suspendues (contrôle explicite par lot).
+ * @returns {{ appliquees: number, integrees: number, conflits: number, lots: number }}
+ */
+export function rejouer(db) {
+  const bilan = { appliquees: 0, integrees: 0, conflits: 0, lots: 0 };
+  const enAttente = db
+    .prepare(
+      `SELECT m.* FROM modification m JOIN modification_lot l ON l.id = m.lot_id
+       WHERE m.etat = 'en_attente' ORDER BY l.fait_le, l.id, m.rang`,
+    )
+    .all();
+  const parLot = new Map();
+  for (const m of enAttente) {
+    if (!parLot.has(m.lot_id)) parLot.set(m.lot_id, []);
+    parLot.get(m.lot_id).push(m);
+  }
+  const marquer = db.prepare('UPDATE modification SET etat = ?, detail = ? WHERE lot_id = ? AND rang = ?');
+  for (const [lot, modifications] of parLot) {
+    bilan.lots += 1;
+    db.exec('SAVEPOINT rejeu_lot');
+    const resultats = [];
+    let conflit = null;
+    for (const m of modifications) {
+      let r;
+      try {
+        r = rejouerUne(db, m);
+      } catch (e) {
+        r = `écriture refusée : ${e.message}`;
+      }
+      resultats.push(r);
+      if (r !== 'applique' && r !== 'integree') {
+        conflit = `${m.table_nom} ${m.cle} : ${r}`;
+        break;
+      }
+    }
+    if (!conflit) {
+      // clés étrangères des tables touchées ET des tables qui les citent (une suppression peut rompre une référence ailleurs)
+      const tables = new Set();
+      for (const m of modifications) {
+        tables.add(m.table_nom);
+        for (const t of tablesQuiCitent(db, m.table_nom)) tables.add(t);
+      }
+      for (const t of tables) {
+        const rompue = db.prepare(`PRAGMA foreign_key_check("${t}")`).get();
+        if (rompue) {
+          conflit = `${t} : clé étrangère rompue vers ${rompue.parent}`;
+          break;
+        }
+      }
+    }
+    if (conflit) {
+      db.exec('ROLLBACK TO rejeu_lot');
+      db.exec('RELEASE rejeu_lot');
+      for (const m of modifications) marquer.run('conflit', `lot ${lot} : ${conflit}`, m.lot_id, m.rang);
+      bilan.conflits += modifications.length;
+      continue;
+    }
+    db.exec('RELEASE rejeu_lot');
+    modifications.forEach((m, i) => {
+      if (resultats[i] === 'integree') {
+        marquer.run('integree', null, m.lot_id, m.rang);
+        bilan.integrees += 1;
+      } else bilan.appliquees += 1;
+    });
+  }
+  return bilan;
+}
+
+/**
+ * L'état net des lignes que le journal a en attente : une entrée par ligne (table, clé), avec la ligne telle qu'elle est maintenant dans la base
+ * (null si elle a été supprimée) et `creee` si elle n'existait pas dans les règles livrées (sa première modification en attente est une insertion).
+ * C'est ce que les pages statiques doivent montrer à la place de leur contenu construit.
+ * @param {{ tables?: string[] }} [filtre]
+ */
+export function lignesEnAttente(db, { tables } = {}) {
+  const vues = new Map();
+  const toutes = db
+    .prepare(
+      `SELECT m.table_nom, m.cle, m.operation FROM modification m JOIN modification_lot l ON l.id = m.lot_id
+       WHERE m.etat = 'en_attente' ORDER BY l.fait_le, l.id, m.rang`,
+    )
+    .all();
+  for (const m of toutes) {
+    if (tables && !tables.includes(m.table_nom)) continue;
+    const k = `${m.table_nom}\u0000${m.cle}`;
+    if (!vues.has(k)) vues.set(k, { table: m.table_nom, cle: JSON.parse(m.cle), creee: m.operation === 'inserer' });
+  }
+  return [...vues.values()].map((v) => ({ ...v, ligne: lireLigne(db, v.table, v.cle) }));
+}
+
+/** Le journal, lots et modifications, pour le rapatrier dans data/rows (format « maverick-edition/1 »). */
+export function journalExporte(db, { etats = ['en_attente'] } = {}) {
+  const lots = db.prepare('SELECT * FROM modification_lot ORDER BY fait_le, id').all();
+  const mods = db.prepare('SELECT * FROM modification ORDER BY lot_id, rang').all();
+  const parLot = new Map(lots.map((l) => [l.id, { ...l, modifications: [] }]));
+  for (const m of mods) {
+    if (!etats.includes(m.etat)) continue;
+    parLot.get(m.lot_id).modifications.push({
+      rang: m.rang,
+      table: m.table_nom,
+      cle: JSON.parse(m.cle),
+      operation: m.operation,
+      avant: m.avant === null ? null : JSON.parse(m.avant),
+      apres: m.apres === null ? null : JSON.parse(m.apres),
+      etat: m.etat,
+      detail: m.detail,
+    });
+  }
+  return { format: 'maverick-edition/1', lots: [...parLot.values()].filter((l) => l.modifications.length) };
+}
+
+/**
+ * Charge un journal exporté dans une base (outil de rapatriement) : chaque lot et ses modifications, état « en_attente », prêts pour `rejouer`.
+ * Un lot déjà présent est ignoré.
+ */
+export function chargerJournal(db, journal) {
+  if (journal?.format !== 'maverick-edition/1') throw new ErreurJournal('journal illisible (format « maverick-edition/1 » attendu)');
+  const lot = db.prepare('INSERT OR IGNORE INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES (?, ?, NULL, ?, ?)');
+  const mod = db.prepare(
+    "INSERT OR IGNORE INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat, detail) VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente', NULL)",
+  );
+  let n = 0;
+  for (const l of journal.lots ?? []) {
+    lot.run(l.id, l.fait_le, l.page_id ?? null, l.resume);
+    for (const m of l.modifications ?? []) {
+      mod.run(l.id, m.rang, m.table, JSON.stringify(m.cle), m.operation, m.avant === null ? null : JSON.stringify(m.avant), m.apres === null ? null : JSON.stringify(m.apres));
+      n += 1;
+    }
+  }
+  return n;
+}

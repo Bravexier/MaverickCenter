@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 16;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 17;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -3814,3 +3814,45 @@ CREATE VIEW v_personnage_controle AS
   FROM personnage_accessoire pa JOIN accessoire_effet ae ON ae.id = pa.accessoire_effet_id
   WHERE (ae.bonus_min IS NULL) <> (pa.valeur IS NULL)
      OR pa.valeur < ae.bonus_min OR pa.valeur > ae.bonus_max;
+
+-- ====================================================================================================================
+-- 14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)
+-- Demande du propriétaire : sur le site de dev (serveur de test, service lancé avec MAVERICK_EDITION=1), les pages du guide, des races, des magies,
+-- des classes et des métiers se modifient en place. Le service écrit chaque modification dans la base vivante ET dans ce journal, dans la même
+-- transaction (docs/sql/conception.md §10.3) : une ligne par ligne de table touchée (dérivées comprises), avec ses valeurs avant et après. Le journal
+-- sert à trois choses : rejouer les modifications quand une livraison refait la base vivante (client/serveur/edition-journal.mjs), montrer sur les
+-- pages statiques ce qui a changé depuis leur construction, et rapatrier les modifications dans data/rows (`npm run db:appliquer-edition`).
+-- Comme la section 13, ces tables n'ont ni `origine`, ni `source_ref`, ni `remarque`, et data/rows les garde VIDES. Instants : ISO 8601 en UTC.
+-- ====================================================================================================================
+
+-- Un enregistrement fait depuis une page (le bouton de confirmation) : toutes ses modifications passent ou aucune.
+CREATE TABLE modification_lot (
+  id         TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0),   -- UUID tiré par le service
+  fait_le    TEXT    NOT NULL CHECK (fait_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
+  auteur_id  TEXT    REFERENCES utilisateur(id),                     -- NULL avant la connexion Discord (1.0) : quiconque ouvre le site de dev
+  page_id    TEXT    CHECK (page_id IS NULL OR length(page_id) > 0), -- page d'où l'enregistrement est fait (« races/elfe-noir ») ; sans clé étrangère :
+                                                                     -- une page créée par l'édition peut ne pas encore être dans les règles livrées
+  resume     TEXT    NOT NULL CHECK (length(resume) > 0)             -- « Métier Forgeron : bonus_brut » : ce que le service a fait, lisible
+) STRICT;
+
+-- Une ligne de table touchée par un lot. `cle` = la clé primaire de la ligne ({"id": "metiers/forgeron"}) ; `avant` / `apres` = les colonnes
+-- modifiées (toute la ligne pour une insertion ou une suppression). État : 'en_attente' (dans la base vivante, pas encore dans data/rows),
+-- 'integree' (les règles livrées la contiennent déjà : elle est revenue par git), 'conflit' (les règles livrées ont changé la ligne autrement :
+-- elle n'est pas rejouée, `detail` dit pourquoi).
+CREATE TABLE modification (
+  lot_id     TEXT    NOT NULL REFERENCES modification_lot(id),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),                     -- ordre d'application dans le lot
+  table_nom  TEXT    NOT NULL CHECK (length(table_nom) > 0 AND table_nom NOT GLOB '*[^a-z0-9_]*'),
+  cle        TEXT    NOT NULL CHECK (json_valid(cle) AND json_type(cle) = 'object'),
+  operation  TEXT    NOT NULL CHECK (operation IN ('inserer', 'modifier', 'supprimer')),
+  avant      TEXT    CHECK (avant IS NULL OR (json_valid(avant) AND json_type(avant) = 'object')),
+  apres      TEXT    CHECK (apres IS NULL OR (json_valid(apres) AND json_type(apres) = 'object')),
+  etat       TEXT    NOT NULL CHECK (etat IN ('en_attente', 'integree', 'conflit')),
+  detail     TEXT,                                                   -- raison d'un conflit ; NULL sinon
+  PRIMARY KEY (lot_id, rang),
+  CHECK ((operation = 'inserer') = (avant IS NULL)),
+  CHECK ((operation = 'supprimer') = (apres IS NULL)),
+  CHECK ((etat = 'conflit') = (detail IS NOT NULL))
+) STRICT;
+CREATE INDEX modification_etat ON modification (etat);
+CREATE INDEX modification_ligne ON modification (table_nom, cle);

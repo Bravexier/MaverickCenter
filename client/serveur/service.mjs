@@ -78,6 +78,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     try {
       const r = preparerBaseVivante({ regles, dossier });
       if (r.refaite) journal(`base vivante faite pour les règles ${r.empreinte.slice(0, 12)} (schéma ${r.schema})${r.archive ? ` ; l’ancienne est archivée : ${basename(r.archive)}` : ''}`);
+      if (r.rejeu?.lots) journal(`journal des modifications rejoué : ${r.rejeu.appliquees} réappliquée(s), ${r.rejeu.integrees} déjà dans les règles, ${r.rejeu.conflits} en conflit`);
       etat.erreur = null;
     } catch (e) {
       etat.erreur = e.message;
