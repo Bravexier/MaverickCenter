@@ -57,4 +57,8 @@ echo "== fail2ban (bloque les essais de connexion répétés)"
 systemctl enable --now fail2ban
 
 echo
+# Une mise à jour du noyau ou de la libc ne prend effet qu'au redémarrage : on le dit, on ne redémarre pas à la place de l'administrateur.
+if [ -f /var/run/reboot-required ]; then
+  echo "Un redémarrage est demandé par les mises à jour : « sudo reboot » quand vous êtes prêt, après avoir vérifié la connexion ci-dessous."
+fi
 echo "Terminé. Ouvrez MAINTENANT une nouvelle fenêtre et vérifiez que « ssh -i <votre clé> $COMPTE@<IP> » fonctionne avant de fermer celle-ci."

@@ -54,6 +54,15 @@ test('durcir.sh : seuls 22, 80 et 443 sont ouverts, SSH par clé, jamais de coup
   assert.match(d, /PermitRootLogin no/);
   assert.ok(d.indexOf('authorized_keys') < d.indexOf('PasswordAuthentication no'), 'la clé est vérifiée avant de désactiver le mot de passe');
   assert.match(d, /sshd -t/, 'configuration SSH validée avant rechargement');
+  assert.match(d, /-f \/var\/run\/reboot-required/, 'un redémarrage demandé par les mises à jour est annoncé');
+  assert.doesNotMatch(d, /^\s*(sudo )?(reboot|shutdown|systemctl reboot)\b/m, 'jamais de redémarrage fait par le script');
+});
+
+test('README : le pare-feu de l\'hébergeur doit laisser passer 80 et 443 (sinon pas de certificat)', () => {
+  const avant = lire('README.md').split(/^## /m).find((s) => s.startsWith('Avant de commencer'));
+  assert.match(avant, /Pare-feu de l'hébergeur/);
+  assert.match(avant, /TCP pour les ports 80 et 443/);
+  assert.match(lire('README.md'), /Timeout during connect \(likely firewall problem\)/, 'le symptôme vu dans le journal de Caddy est cité');
 });
 
 test('avant la 0.2.0 : le README pose le serveur de test depuis la branche « site », avec des fichiers qui existent', () => {
@@ -69,7 +78,10 @@ test('avant la 0.2.0 : le README pose le serveur de test depuis la branche « si
   assert.match(installateur, /sed -n 's\/\^mode=\/\/p' "\$1\/VERSION"/);
   assert.match(section, /\*\/2 \* \* \* \* sh \/srv\/maverick-center-test\/update-site\.sh/);
   assert.match(section, /grep -v maverick-center-test\/update-site\.sh/, 'cron posé sans doublon');
-  assert.match(section, /stty -echo; read -r t; stty echo/, 'le jeton se colle sans s\'afficher, jamais en argument');
+  // Forme lancée telle quelle sous cmd.exe et PowerShell : ni « $ », ni « % », ni guillemet double à l'intérieur.
+  const jeton = section.match(/^\s*(ssh -t .*\.github-token.*)$/m)[1];
+  assert.match(jeton, /^ssh -t -i \S+ ubuntu@<IP> "sudo sh -c 'umask 077; stty -echo; head -n 1 > \S+\.github-token; stty echo; chmod 600 /, 'le jeton se colle sans s\'afficher, jamais en argument');
+  assert.doesNotMatch(jeton.slice(jeton.indexOf('"') + 1, jeton.lastIndexOf('"')), /[$%"]/);
   assert.match(section, /bandeau « Serveur de test »/);
   assert.match(section, /répond 502/);
 });

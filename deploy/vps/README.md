@@ -26,8 +26,11 @@ voient pas, mais les ports 8080 et 8081 ne servent à rien en direct. À la conn
 
 1. **DNS** (OVH, zone de `maverick-jdr.com`) : des enregistrements **A** (IPv4) et **AAAA** (IPv6) vers le serveur pour le domaine lui-même, `www` et **`dev`**.
    Caddy obtient son certificat HTTPS seulement quand l'adresse pointe vers le serveur (sinon il réessaie sans succès).
-2. **Accès SSH par clé** au serveur (compte `ubuntu` chez Infomaniak). Le pare-feu d'Infomaniak peut rester tel quel ; `durcir.sh` règle celui du serveur.
-3. Ces fichiers sur votre ordinateur (cloner le dépôt, ou télécharger la branche en zip).
+2. **Accès SSH par clé** au serveur (compte `ubuntu` chez Infomaniak).
+3. **Pare-feu de l'hébergeur** : il filtre avant le serveur, `durcir.sh` ne règle que celui du serveur (`ufw`). Chez Infomaniak (Manager → le serveur →
+   *Régler le Firewall*), seuls le SSH (22) et le ping étaient ouverts au départ (constaté le 2026-10-10). **Ajouter une règle TCP pour les ports 80 et 443**
+   (et UDP 443 pour HTTP/3), pour toutes les adresses, sans toucher à la règle du 22. Sans cela, Caddy n'obtient aucun certificat.
+4. Ces fichiers sur votre ordinateur (cloner le dépôt, ou télécharger la branche en zip).
 
 ## 1. Copier ce dossier sur le serveur
 
@@ -46,7 +49,8 @@ sudo bash ~/vps/durcir.sh
 ```
 
 **Gardez cette fenêtre ouverte**, ouvrez-en une deuxième et vérifiez qu'une **nouvelle** connexion par clé fonctionne avant de fermer la première.
-Le script refuse de désactiver le mot de passe s'il ne trouve aucune clé installée.
+Le script refuse de désactiver le mot de passe s'il ne trouve aucune clé installée. S'il annonce à la fin qu'un redémarrage est demandé par les
+mises à jour, le faire quand vous êtes prêt (`sudo reboot`) : Docker, Caddy et les conteneurs sont relancés au démarrage.
 
 ## 3. Installer Docker et Caddy
 
@@ -116,10 +120,11 @@ branche **`site`** ([`docs/flux-git.md`](../../docs/flux-git.md)). Le serveur de
    ```
 
 2. **Jeton GitHub** en lecture seule (le même qu'à l'étape 6 : dépôt `MaverickCenter` seulement, *Contents : Read-only*), **déposé directement sur
-   le serveur**. Lancer la commande, coller le jeton, puis Entrée : il ne s'affiche pas et n'entre pas dans l'historique.
+   le serveur**. Depuis votre ordinateur (invite de commandes ou PowerShell) : lancer la commande, coller le jeton, puis Entrée. Il ne s'affiche
+   pas et n'entre dans aucun historique.
 
    ```
-   sudo sh -c 'f=/srv/maverick-center-test/.github-token; umask 077; stty -echo; read -r t; stty echo; printf %s "$t" > "$f"; chmod 600 "$f"'
+   ssh -t -i .ssh\maverick_key ubuntu@<IP> "sudo sh -c 'umask 077; stty -echo; head -n 1 > /srv/maverick-center-test/.github-token; stty echo; chmod 600 /srv/maverick-center-test/.github-token; echo; echo Jeton enregistre'"
    ```
 
 3. **Premier téléchargement, puis les conteneurs** :
@@ -170,7 +175,8 @@ sudo sqlite3 /srv/maverick-center/db/vivante.db ".backup /root/vivante-$(date +%
 
 | Symptôme | Piste |
 | --- | --- |
-| Certificat HTTPS impossible | L'adresse ne pointe pas encore vers le serveur (DNS) : `sudo journalctl -u caddy -n 50` |
+| Certificat HTTPS impossible | `sudo journalctl -u caddy -n 50`. « Timeout during connect (likely firewall problem) » : les ports 80 et 443 sont fermés dans le pare-feu de l'hébergeur (« Avant de commencer », point 3). Sinon, l'adresse ne pointe pas encore vers le serveur (DNS). Une fois corrigé, `sudo systemctl restart caddy` redemande les certificats tout de suite |
+| `caddy_legacy_user_removed` dans le journal de Caddy | Sans conséquence : le Caddy 2.6 des paquets Ubuntu ne sait plus demander de certificat de secours à ZeroSSL ; Let's Encrypt suffit |
 | 401 sur le site | Les mots de passe de Caddy et de l'instance ne concordent plus : `sudo bash ~/vps/instances.sh --regenerer-acces` puis `docker compose restart` dans les deux dossiers |
 | 502 | L'instance n'est pas lancée : `cd /srv/maverick-center && sudo docker compose up -d` (avant la 0.2.0, c'est la réponse attendue de `maverick-jdr.com` : le serveur normal n'existe pas encore) |
 | Revenir à une version précédente | Voir [`deploy/installateur/README.md`](../installateur/README.md), « Revenir à une version précédente » (fichier `GELER`) |
