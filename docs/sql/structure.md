@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 12 : 160 tables, 2 tables de recherche plein texte (FTS5) et 34 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 13 : 160 tables, 2 tables de recherche plein texte (FTS5) et 34 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -1033,7 +1033,7 @@ RACE_CLASSE : matrice « Accessibilité de Classe » : 27 races x 39 classes = 1
 
 ### `race_magie`
 
-RACE_MAGIE : matrice « Accessibilité Magie » : 27 races x 15 magies = 405 lignes (244 à 1, 161 à 0). Selon les formules de la fiche, elle ne restreint que la magie INNÉE (BDD!D2 -> liste de Personnage!S2) ; la liste des magies acquises ne la lit pas. Elle remplace le champ de frontmatter `magies_innees` des pages de race.
+RACE_MAGIE : matrice « Accessibilité Magie » : 27 races x 15 magies = 405 lignes (245 à 1, 160 à 0). Une case corrigée par le propriétaire : Lamia × Corruption, à 0 dans la fiche (E24), vaut 1 (décision R22, migration 0013 ; source_ref le dit). Selon les formules de la fiche, elle ne restreint que la magie INNÉE (BDD!D2 -> liste de Personnage!S2) ; la liste des magies acquises ne la lit pas. Elle remplace le champ de frontmatter `magies_innees` des pages de race.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
