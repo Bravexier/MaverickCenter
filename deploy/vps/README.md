@@ -1,7 +1,7 @@
 # Hébergement sur un serveur (VPS) : serveur normal et serveur de test
 
-Met en place, sur un serveur Ubuntu/Debian neuf (écrits pour Ubuntu 26.04 chez Infomaniak ; contrôlés ici — syntaxe, `instances.sh` exécuté avec de faux outils — mais **pas encore lancés sur le vrai serveur** :
-le premier lancement est le vrai test), les deux instances décrites dans [`docs/flux-git.md`](../../docs/flux-git.md) :
+Met en place, sur un serveur Ubuntu/Debian neuf (écrits pour Ubuntu 26.04 chez Infomaniak, où ils ont été lancés pour la première fois le 2026-10-10 avec les paquets de la distribution :
+Docker 29.1, Caddy 2.6.2 ; `instances.sh` est aussi exécuté par les tests, avec de faux outils), les deux instances décrites dans [`docs/flux-git.md`](../../docs/flux-git.md) :
 
 | | Adresse | Branche | Port interne | Base `db/` |
 | --- | --- | --- | --- | --- |
