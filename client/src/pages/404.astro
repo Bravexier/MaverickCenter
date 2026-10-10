@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 import { url } from '../lib/wiki';
 ---
 
-<Base title="Page introuvable">
+<Base title="Page introuvable" edition="404">
   <h1>Page introuvable</h1>
   <p id="introuvable" data-base={url()}>Cette page n’existe pas (ou plus). Essayez la <a href={url('recherche/')}>recherche</a> ou l’<a href={url('pages/')}>index du wiki</a>.</p>
 </Base>

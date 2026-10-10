@@ -2,6 +2,7 @@
 import { coutDeSort, marquesDeMode, valeurDeSort } from '../../lib/sort-format.mjs';
 import { marquerBonus } from '../../lib/sort-maitrise.mjs';
 import type { Magies, SortDb } from '../../lib/magies';
+import { attributEd } from '../../lib/edition-modele.mjs';
 import Segments from './Segments.astro';
 import SortDetail from './SortDetail.astro';
 
@@ -35,11 +36,13 @@ const nmDuType = s.bonus.filter((b) => b.champ === 'type');
 // altérations d'état écrites dans la cellule D/S/B (une seule dans les données) : pastille dans le texte, comme pour les effets
 const etatsDsb = s.etats.filter((e) => e.champ === 'dsb');
 const detail = `detail-${prefixe}${s.slug}`;
+// champs modifiables sur le site de dev (lib/edition-modele.mjs) ; leur rendu après modification : lib/edition-rendu.mjs (sort-…)
+const ed = (colonne: string) => attributEd('sort', { id: s.id }, colonne);
 ---
 
-<tbody class="sort" id={ancre}>
+<tbody class="sort" id={ancre} data-ed-sort={s.id}>
   <tr class="sort__main">
-    <th scope="row" class="sort__nom">
+    <th scope="row" class="sort__nom" data-ed={ed('nom')} data-ed-cible=".sort__choisir">
       <button type="button" class="sort__choisir" aria-expanded="false" aria-controls={detail}>
         {s.nom}
       </button>
@@ -51,12 +54,12 @@ const detail = `detail-${prefixe}${s.slug}`;
         )
       }
     </th>
-    <td data-label="Type" class="sort__type">
+    <td data-label="Type" class="sort__type" data-ed={ed('type_brut')} data-ed-rendu="sort-type">
       {s.types.map((t) => <><span class="genre" data-genre={t.type}>{t.libelle}</span>{' '}</>)}
       {marques.map((m) => <><span class={`marque marque--${m.genre}`}>{m.texte}</span>{' '}</>)}
       {nmDuType.map((b) => <><span class="nm">{b.texteBrut}</span>{' '}</>)}
     </td>
-    <td data-label="Coût" class="sort__cout">
+    <td data-label="Coût" class="sort__cout" data-ed={ed('cout_brut')} data-ed-rendu="sort-cout">
       {
         cout.vide ? (
           <span class="vide" aria-label="aucun">—</span>
@@ -73,7 +76,7 @@ const detail = `detail-${prefixe}${s.slug}`;
     </td>
     {
       valeurs.map(([label, v, cle]) => (
-        <td data-label={label} class={`sort__${cle}`}>
+        <td data-label={label} class={`sort__${cle}`} data-ed={ed(`${cle}_brut`)} data-ed-rendu={`sort-${cle}`}>
           {v.vide ? <span class="vide" aria-label="aucun">—</span> : v.lignes.map((l) => <div><Segments segments={l} etats={cle === 'dsb' ? etatsDsb : undefined} {magies} /></div>)}
         </td>
       ))

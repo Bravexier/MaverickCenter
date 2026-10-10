@@ -4,6 +4,7 @@
 //   MAVERICK_DB      dossier de la base vivante               (défaut : db/, à côté de site/)
 //   HOST, PORT       adresse d'écoute                         (défaut : 127.0.0.1:8787 ; 0.0.0.0 dans le conteneur)
 //   MAVERICK_INTERVALLE  surveillance des fichiers, en ms     (défaut : 15000)
+//   MAVERICK_EDITION     1 = édition des règles depuis les pages (site de dev SEULEMENT ; défaut : fermée)
 import { fileURLToPath } from 'node:url';
 import { demarrerService } from './service.mjs';
 
@@ -14,6 +15,7 @@ const service = await demarrerService({
   hote: process.env.HOST || '127.0.0.1',
   port: Number(process.env.PORT || 8787),
   intervalle: Number(process.env.MAVERICK_INTERVALLE || 15000),
+  edition: process.env.MAVERICK_EDITION === '1',
   fichierVersion: ici('../version.json'),
 });
 

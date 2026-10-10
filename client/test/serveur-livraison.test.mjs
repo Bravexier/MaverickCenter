@@ -18,8 +18,13 @@ const depot = fileURLToPath(new URL('../../', import.meta.url));
 const lire = (chemin) => readFileSync(join(depot, chemin), 'utf8');
 const ENTREE_LIVREE = `/site/${DOSSIER_LIVRE}/${ENTREE}`;
 
-test('modules livrés : l’entrée, le service et le format des fiches ; ni le lanceur de développement, ni cette livraison, ni un paquet npm', () => {
-  assert.deepEqual(modulesDuServeur(), ['serveur/api.mjs', 'serveur/base-vivante.mjs', 'serveur/fiches.mjs', 'serveur/index.mjs', 'serveur/service.mjs', 'src/lib/fiche-format.mjs']);
+test('modules livrés : l’entrée, le service, le format des fiches et l’édition (modèle, découpages partagés avec les pages) ; ni le lanceur de développement, ni cette livraison, ni un paquet npm', () => {
+  assert.deepEqual(modulesDuServeur(), [
+    'serveur/api.mjs', 'serveur/base-vivante.mjs', 'serveur/edition-journal.mjs', 'serveur/edition.mjs', 'serveur/fiches.mjs', 'serveur/index.mjs',
+    'serveur/service.mjs', 'src/lib/classe-champs.mjs', 'src/lib/edition-modele.mjs', 'src/lib/fiche-format.mjs', 'src/lib/guide.mjs',
+    'src/lib/markdown-edition.mjs', 'src/lib/metier-champs.mjs', 'src/lib/race-kinds.mjs', 'src/lib/sort-analyse.mjs', 'src/lib/sort-maitrise.mjs',
+    'src/lib/text.mjs',
+  ]);
   const faux = join(racine, 'faux-client');
   mkdirSync(join(faux, 'serveur'), { recursive: true });
   writeFileSync(join(faux, 'serveur', 'index.mjs'), "import { a } from './a.mjs';\nexport { b } from \"./b.mjs\";\nconst c = await import('./c.mjs');\n");
@@ -76,7 +81,9 @@ test('docker-compose.yml du NAS et des installateurs : un conteneur « serveur �
     assert.ok(!serveur.ports, `${fichier} : seul nginx atteint le service`);
     assert.match(serveur.command.join(' '), new RegExp(`exec node --disable-warning=ExperimentalWarning ${ENTREE_LIVREE.replaceAll('.', '\\.')}$`), fichier);
     assert.match(serveur.command.join(' '), new RegExp(`until \\[ -f ${ENTREE_LIVREE.replaceAll('.', '\\.')} \\]`), `${fichier} : attend le site`);
-    assert.deepEqual(serveur.environment, { HOST: '0.0.0.0', PORT: '8787', MAVERICK_REGLES: '/site/donnees/maverick.db', MAVERICK_DB: '/db' }, fichier);
+    // édition des règles (docs/serveur.md, « Édition ») : réglée par le .env de l'instance (1 sur le serveur de test), jamais sur le NAS
+    const edition = fichier.includes('installateur') ? { MAVERICK_EDITION: '${MAVERICK_EDITION:-0}' } : {};
+    assert.deepEqual(serveur.environment, { HOST: '0.0.0.0', PORT: '8787', MAVERICK_REGLES: '/site/donnees/maverick.db', MAVERICK_DB: '/db', ...edition }, fichier);
     assert.deepEqual(serveur.volumes, ['./site:/site:ro', './db:/db'], fichier);
     assert.ok(compose.services['maverick-center'].volumes.includes('./site:/usr/share/nginx/html:ro'), fichier);
   }

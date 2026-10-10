@@ -3,6 +3,7 @@ import type { ClasseDb } from '../../lib/classes';
 import Onglets from '../Onglets.astro';
 import ChoixDeDons from './ChoixDeDons.astro';
 import DonCarte from './DonCarte.astro';
+import { attributEd } from '../../lib/edition-modele.mjs';
 
 // Les dons d'une classe disposés comme l'onglet du classeur (lib/classe-dons.mjs#plateauDeDons), de haut en bas : les dons reçus sans choix
 // (colonne P), les spécialités (une seule au choix : elle exclut l'autre et tous ses dons), puis le don du niveau 20 ; pour l'Archimage, des groupes
@@ -57,7 +58,7 @@ const { classe } = Astro.props;
                     )}
                     <a class={`onglet${i === 0 ? ' is-active' : ''}`} id={`onglet-${col.specialite.slug}`} href={`#${col.specialite.ancre}`}>
                       <span class="onglet__surtitre">Spécialité</span>
-                      <span class="onglet__nom">{col.specialite.nom}</span>
+                      <span class="onglet__nom" data-ed-lecture={attributEd('specialite', { id: col.specialite.id }, 'nom')}>{col.specialite.nom}</span>
                       {col.cartouche?.classeMagique && classe.amMagique !== null && (
                         <span class="onglet__magique" title="Le don de cette spécialité la fait considérer comme classe magique">
                           Classe magique · +{classe.amMagique} AM
@@ -71,7 +72,7 @@ const { classe } = Astro.props;
                 <section class={`specialite${i === 0 ? ' is-active' : ''}`} id={col.specialite.ancre} aria-labelledby={`${col.specialite.ancre}-titre`}>
                   <h3 class="specialite__titre" id={`${col.specialite.ancre}-titre`}>
                     <span class="specialite__surtitre">Spécialité</span>
-                    <span class="specialite__nom">{col.specialite.nom}</span>
+                    <span class="specialite__nom" data-ed={attributEd('specialite', { id: col.specialite.id }, 'nom')}>{col.specialite.nom}</span>
                     {col.cartouche?.classeMagique && classe.amMagique !== null && (
                       <span class="specialite__magique">Classe magique · +{classe.amMagique} AM</span>
                     )}

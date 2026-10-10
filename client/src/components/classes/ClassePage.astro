@@ -11,6 +11,7 @@ import type { WikiEntry } from '../../lib/wiki';
 import Bulles from '../magie/Bulles.astro';
 import Texte from '../magie/Texte.astro';
 import ClasseDons from './ClasseDons.astro';
+import { attributEd } from '../../lib/edition-modele.mjs';
 
 const classeCss = [classeBaseCss, classePageCss, classeDonsCss, magieTooltipsCss].join('\n');
 
@@ -44,6 +45,9 @@ const nav = [
 const specialitesMagiques = colonnes.filter((c) => c.cartouche?.classeMagique);
 const magiqueEnSoi = magique && (classe.categorie?.amBase != null || specialitesMagiques.length === 0);
 const bulles = classe.inventaire.map((options) => options.map((o) => (o.description ? idBulle('objet') : null)));
+// Champs modifiables sur le site de dev (lib/edition-modele.mjs) ; un champ vide est rendu caché (`data-ed-cadre`) pour pouvoir être rempli.
+const ed = (colonne: string) => attributEd('classe', { id: classe.id }, colonne);
+const edSpe = (id: string, colonne: string) => attributEd('specialite', { id }, colonne);
 ---
 
 <style is:inline set:html={classeCss}></style>
@@ -57,7 +61,7 @@ const bulles = classe.inventaire.map((options) => options.map((o) => (o.descript
         classe.depart.map((s) => (
           <div class={`classe-stat${s.valeur === 0 ? ' classe-stat--nul' : ''}`}>
             <dt>{s.label}</dt>
-            <dd>{s.valeur}</dd>
+            <dd data-ed={ed(s.colonne)}>{s.valeur}</dd>
           </div>
         ))
       }
@@ -102,17 +106,17 @@ const bulles = classe.inventaire.map((options) => options.map((o) => (o.descript
   }
 
   {
-    classe.description.length + classe.aSavoir.length > 0 && (
-      <div class="classe-section classe-presentation">
-        {classe.description.length > 0 && (
-          <section class="classe-prose" id="presentation" aria-label="Présentation">
+    (
+      <div class="classe-section classe-presentation" data-ed-cadre hidden={classe.description.length + classe.aSavoir.length === 0}>
+        {(
+          <section class="classe-prose" id="presentation" aria-label="Présentation" data-ed={ed('description')} data-ed-rendu="blocs" data-ed-cadre hidden={classe.description.length === 0}>
             <Texte blocs={classe.description} />
           </section>
         )}
-        {classe.aSavoir.length > 0 && (
-          <aside class="classe-card classe-card--a-savoir" id="a-savoir" aria-labelledby="a-savoir-titre">
+        {(
+          <aside class="classe-card classe-card--a-savoir" id="a-savoir" aria-labelledby="a-savoir-titre" data-ed-cadre=".classe-prose" hidden={classe.aSavoir.length === 0}>
             <h2 id="a-savoir-titre">Chose à savoir</h2>
-            <div class="classe-prose"><Texte blocs={classe.aSavoir} /></div>
+            <div class="classe-prose" data-ed={ed('chose_a_savoir')} data-ed-rendu="blocs"><Texte blocs={classe.aSavoir} /></div>
             {classe.aSavoirLien && (
               <p class="classe-card__lien">
                 <a href={classe.aSavoirLien} rel="noopener noreferrer">Lien joint au texte dans le classeur</a>
@@ -131,14 +135,12 @@ const bulles = classe.inventaire.map((options) => options.map((o) => (o.descript
         <div class="classe-specialites">
           {specialitesDecrites.map((s) => (
             <article class="classe-specialite">
-              <h3>{s.nom}</h3>
-              <div class="classe-prose"><Texte blocs={s.description} /></div>
-              {s.remarque.length > 0 && (
-                <div class="classe-remarque">
-                  <p class="classe-remarque__titre">Remarque</p>
-                  <Texte blocs={s.remarque} />
-                </div>
-              )}
+              <h3 data-ed={edSpe(s.id, 'nom')}>{s.nom}</h3>
+              <div class="classe-prose" data-ed={edSpe(s.id, 'description')} data-ed-rendu="blocs"><Texte blocs={s.description} /></div>
+              <div class="classe-remarque" data-ed-cadre=".classe-remarque__texte" hidden={s.remarque.length === 0}>
+                <p class="classe-remarque__titre">Remarque</p>
+                <div class="classe-remarque__texte" data-ed={edSpe(s.id, 'remarque')} data-ed-rendu="blocs"><Texte blocs={s.remarque} /></div>
+              </div>
               {colonnes.some((c) => c.specialite.id === s.id) && (
                 <p class="classe-specialite__lien"><a href={`#${s.ancre}`}>Ses dons</a></p>
               )}
@@ -150,38 +152,38 @@ const bulles = classe.inventaire.map((options) => options.map((o) => (o.descript
   }
 
   {
-    aDepart && (
-      <section class="classe-section" id="depart" aria-labelledby="depart-titre">
+    (
+      <section class="classe-section" id="depart" aria-labelledby="depart-titre" data-ed-cadre hidden={!aDepart}>
         <h2 id="depart-titre">Au départ</h2>
         <div class="classe-depart">
-          {classe.maitriseArme.length > 0 && (
-            <article class="depart-carte">
+          {(
+            <article class="depart-carte" data-ed-cadre="ul" hidden={classe.maitriseArme.length === 0}>
               <h3>Maîtrise des armes</h3>
-              <ul>{classe.maitriseArme.map((l) => <li>{l}</li>)}</ul>
+              <ul data-ed={ed('maitrise_arme')} data-ed-rendu="liste">{classe.maitriseArme.map((l) => <li>{l}</li>)}</ul>
             </article>
           )}
-          {classe.maitriseArmure.length > 0 && (
-            <article class="depart-carte">
+          {(
+            <article class="depart-carte" data-ed-cadre="ul" hidden={classe.maitriseArmure.length === 0}>
               <h3>Maîtrise des armures</h3>
-              <ul>{classe.maitriseArmure.map((l) => <li>{l}</li>)}</ul>
+              <ul data-ed={ed('maitrise_armure')} data-ed-rendu="liste">{classe.maitriseArmure.map((l) => <li>{l}</li>)}</ul>
             </article>
           )}
-          {classe.armeDepart && (
-            <article class="depart-carte">
+          {(
+            <article class="depart-carte" data-ed-cadre="p" hidden={!classe.armeDepart}>
               <h3>Arme de départ</h3>
-              <p>{classe.armeDepart}</p>
+              <p data-ed={ed('arme_depart')}>{classe.armeDepart}</p>
             </article>
           )}
-          {classe.armureDepart && (
-            <article class="depart-carte">
+          {(
+            <article class="depart-carte" data-ed-cadre="p" hidden={!classe.armureDepart}>
               <h3>Armure de départ</h3>
-              <p>{classe.armureDepart}</p>
+              <p data-ed={ed('armure_depart')}>{classe.armureDepart}</p>
             </article>
           )}
-          {classe.inventaire.length > 0 && (
-            <article class="depart-carte depart-carte--inventaire">
+          {(
+            <article class="depart-carte depart-carte--inventaire" data-ed-cadre=".inventaire" hidden={classe.inventaire.length === 0}>
               <h3>Inventaire de départ</h3>
-              <ul class="inventaire">
+              <ul class="inventaire" data-ed={ed('inventaire_depart')} data-ed-rendu="inventaire">
                 {classe.inventaire.map((options, i) => (
                   <li class={options.length > 1 ? 'inventaire__choix' : undefined}>
                     {options.map((o, j) => (
@@ -238,14 +240,10 @@ const bulles = classe.inventaire.map((options) => options.map((o) => (o.descript
     )
   }
 
-  {
-    classe.remarque.length > 0 && (
-      <div class="classe-remarque">
-        <p class="classe-remarque__titre">Remarque</p>
-        <Texte blocs={classe.remarque} />
-      </div>
-    )
-  }
+  <div class="classe-remarque" data-ed-cadre=".classe-remarque__texte" hidden={classe.remarque.length === 0}>
+    <p class="classe-remarque__titre">Remarque</p>
+    <div class="classe-remarque__texte" data-ed={ed('remarque')} data-ed-rendu="blocs"><Texte blocs={classe.remarque} /></div>
+  </div>
 
   <Bulles />
 </div>

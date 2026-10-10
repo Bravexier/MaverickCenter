@@ -79,7 +79,7 @@ test('spécialités en onglets : deux liens d’onglet (gauche puis droite) vers
     assert.equal(compte(html, /<h3 class="specialite__titre"/g), 2, `${slug} : titre de chaque panneau (sans JavaScript)`);
     assert.match(html, /data-onglets/);
   }
-  assert.match(page('barde'), /id="onglet-danseur" href="#specialite-danseur">\s*<span class="onglet__surtitre">Spécialité<\/span>\s*<span class="onglet__nom">DANSEUR<\/span>/);
+  assert.match(page('barde'), /id="onglet-danseur" href="#specialite-danseur">\s*<span class="onglet__surtitre">Spécialité<\/span>\s*<span class="onglet__nom"[^>]*>DANSEUR<\/span>/);
 });
 
 test('Barde : l’ordre de l’onglet (Prestation, Son perturbant, les spécialités, Chant double) et les paires du Ménestrel', options, () => {
@@ -87,7 +87,8 @@ test('Barde : l’ordre de l’onglet (Prestation, Son perturbant, les spéciali
   const ordre = ['don-barde-prestation', 'don-barde-son-perturbant', 'specialite-danseur', 'specialite-menestrel', 'don-barde-chant-double'].map((id) => html.indexOf(`id="${id}"`));
   assert.ok(ordre.every((i, k) => i > 0 && (k === 0 || i > ordre[k - 1])), `ordre ${ordre}`);
   const menestrel = html.slice(html.indexOf('id="specialite-menestrel"'), html.indexOf('id="don-barde-chant-double"'));
-  const paires = [...menestrel.matchAll(/<div class="choix choix--2"[\s\S]*?<\/div>\s*<\/div>/g)].map((m) => [...m[0].matchAll(/class="don__nom"><a [^>]*>([^<]+)</g)].map((x) => x[1]));
+  // un choix = ce qui suit son cadre jusqu'au choix suivant (les cartes contiennent des blocs vides cachés, champs modifiables du site de dev)
+  const paires = menestrel.split('<div class="choix choix--2"').slice(1).map((m) => [...m.matchAll(/class="don__nom"[^>]*><a [^>]*>([^<]+)</g)].map((x) => x[1]));
   assert.deepEqual(paires, [['Nouvel accord', 'Écho'], ['Ballade guerrière', 'Amplification'], ['Exaltation', 'Touérk !']]);
 });
 

@@ -4,7 +4,7 @@
 #
 # Ce que fait le script (sûr à relancer, il ne touche ni au site ni à db/) :
 #   /srv/maverick-center        serveur normal : .env (port 127.0.0.1:8080), .htpasswd
-#   /srv/maverick-center-test   serveur de test : .env (port 127.0.0.1:8081, MAVERICK_BASE_TEST=conservee), .htpasswd
+#   /srv/maverick-center-test   serveur de test : .env (port 127.0.0.1:8081, MAVERICK_BASE_TEST=conservee, MAVERICK_EDITION=1), .htpasswd
 #   /etc/caddy/maverick.env     mot de passe interne de chaque instance (droits 600) ; /etc/caddy/Caddyfile : deploy/vps/Caddyfile
 # Le site lui-même est posé ensuite par les installateurs (deploy/installateur/, voir README.md de ce dossier).
 set -euo pipefail
@@ -54,6 +54,8 @@ preparer "$TEST" maverick-center-test 8081
 # Serveur de test : la base de test est copiée de la production à la première installation, puis gardée (décision du propriétaire :
 # on y modifie les règles, une mise à jour du site ne doit pas effacer ces modifications).
 poser "$TEST/.env" MAVERICK_BASE_TEST conservee
+# Serveur de test : les règles s'y modifient depuis les pages (crayon, docs/serveur.md, « Édition » ; demande du propriétaire : le site de dev seulement).
+poser "$TEST/.env" MAVERICK_EDITION 1
 
 mkdir -p "$ETC_CADDY"
 if [ "$REGENERER" -eq 1 ] || [ ! -f "$ENV_CADDY" ] || [ ! -f "$NORMAL/.htpasswd" ] || [ ! -f "$TEST/.htpasswd" ]; then

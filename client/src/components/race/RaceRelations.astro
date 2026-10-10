@@ -27,7 +27,7 @@ const lectures = [
 
 {
   relations.peuples.length > 0 ? (
-    <section class="race-section" id="relations" aria-labelledby="relations-titre">
+    <section class="race-section" id="relations" aria-labelledby="relations-titre" data-ed-relations={race.id}>
       <h2 id="relations-titre">Relations avec les autres peuples</h2>
       <p class="muted">
         {plusieurs ? `${relations.peuples.length} peuples : ${relations.peuples.map((p) => p.nom).join(', ')}.` : `Peuple : ${relations.peuples[0].nom}.`}
@@ -111,7 +111,7 @@ const lectures = [
       )}
     </section>
   ) : (
-    <section class="race-section" id="relations" aria-labelledby="relations-titre">
+    <section class="race-section" id="relations" aria-labelledby="relations-titre" data-ed-relations={race.id}>
       <h2 id="relations-titre">Relations avec les autres peuples</h2>
       <p class="muted">Cette race n’a pas de peuple dans l’onglet « Relation entre les races ».</p>
     </section>

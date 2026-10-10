@@ -1,6 +1,7 @@
 ---
 import { pageHref, sortAncre, type Magies, type SortDb } from '../../lib/magies';
 import { lignesDeStat } from '../../lib/sort-format.mjs';
+import { attributEd } from '../../lib/edition-modele.mjs';
 import Texte from './Texte.astro';
 
 // Détails d'un sort, affichés juste sous sa ligne quand on la sélectionne : ses effets (le texte des effets secondaires, puis la remarque du classeur
@@ -21,24 +22,26 @@ const memeNom = sort.memeNom.map((id) => magies.sorts.get(id)!).map((o) => ({ so
 const aDesEffets = sort.effets.length > 0 || sort.remarque.length > 0 || Boolean(sort.incantation);
 const titre = `detail-${prefixe}${sort.slug}-titre`;
 const fiche = (c: { id: string }) => `fiche-${prefixe}${c.id.split('/')[1]}`;
+// champs modifiables sur le site de dev : effets, remarque et texte du sort de niveau 5 (vides : cachés en lecture, affichés en mode modification)
+const ed = (colonne: string) => attributEd('sort', { id: sort.id }, colonne);
 ---
 
 <div class="sort-detail" role="region" aria-labelledby={titre}>
   <header class="sort-detail__tete">
-    <h4 id={titre}>{sort.nom}</h4>
+    <h4 id={titre} data-ed-lecture={ed('nom')}>{sort.nom}</h4>
     <button type="button" class="sort-detail__fermer" aria-label={`Fermer les détails de ${sort.nom}`}>Fermer</button>
   </header>
 
-  {
-    aDesEffets && (
-      <section class="sort-detail__bloc">
-        <h5>Effets</h5>
-        <Texte blocs={sort.effets} etats={aPlacer} {magies} />
-        {sort.remarque.length > 0 && <Texte blocs={sort.remarque} etats={aPlacer} {magies} />}
-        {sort.incantation && <blockquote class="incantation"><Texte blocs={sort.incantation} /></blockquote>}
-      </section>
-    )
-  }
+  <section class="sort-detail__bloc" data-ed-cadre hidden={!aDesEffets}>
+    <h5>Effets</h5>
+    <div data-ed={ed('effets')} data-ed-rendu="blocs"><Texte blocs={sort.effets} etats={aPlacer} {magies} /></div>
+    <div data-ed-cadre hidden={sort.remarque.length === 0}><div data-ed={ed('remarque')} data-ed-rendu="blocs"><Texte blocs={sort.remarque} etats={aPlacer} {magies} /></div></div>
+    {
+      sort.niveau === 5 && (
+        <blockquote class="incantation" data-ed-cadre hidden={!sort.incantation}><div data-ed={ed('texte_niveau5')} data-ed-rendu="blocs">{sort.incantation && <Texte blocs={sort.incantation} />}</div></blockquote>
+      )
+    }
+  </section>
 
   {
     sort.invoque.map((i) => (

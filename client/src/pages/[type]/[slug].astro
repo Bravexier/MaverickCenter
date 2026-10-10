@@ -20,6 +20,7 @@ import { raceKind, raceOfClass } from '../../lib/race-kinds.mjs';
 import { estUnMetier } from '../../lib/metiers.mjs';
 import { estUnChapitre, PREMIER_CHAPITRE } from '../../lib/guide.mjs';
 import { entryHref, loadWiki, slugOf, typeOf, url, type WikiEntry } from '../../lib/wiki';
+import { attributEd } from '../../lib/edition-modele.mjs';
 
 export async function getStaticPaths() {
   const { entries } = await loadWiki();
@@ -56,9 +57,13 @@ const mentions = outgoing.get(entry.id) ?? [];
 const mentionedBy = incoming.get(entry.id) ?? [];
 // Seules les pages d'exemple ont un bandeau : plus de bandeau « brouillon » sur les pages `draft` (demande du propriétaire).
 const statusNote = entry.data.status === 'example' ? 'Contenu d’exemple : à remplacer par le contenu réel du codex.' : '';
+// Mode modification du site de dev (demande du propriétaire) : les pages du guide, des races, des magies et des classes (les métiers sont sur /metiers/).
+const modifiable = ['guide', 'races', 'magies', 'classes'].includes(typeOf(entry)) && entry.data.status !== 'example';
+// une page de référence du guide : titre et texte modifiables (src/scripts/edition/guide.mjs) ; les autres pages suivent leurs tables
+const texteModifiable = modifiable && typeOf(entry) === 'guide' && !chapitre;
 ---
 
-<Base title={entry.data.title} description={entry.data.summary}>
+<Base title={entry.data.title} description={entry.data.summary} edition={modifiable ? entry.id : undefined}>
   {/* un chapitre du guide n'a pas de fil d'Ariane : la page de livre reste à la même place d'un chapitre à l'autre */}
   {!chapitre && <p class="muted"><a href={url()}>Accueil</a> › <a href={url(`${typeOf(entry)}/`)}>{type.label}</a>{
     typeOf(entry) === 'capacites' && classOfAbility && (
@@ -95,7 +100,7 @@ const statusNote = entry.data.status === 'example' ? 'Contenu d’exemple : à r
     ) : (
       <>
         <h1>
-          {entry.data.title}{' '}
+          {texteModifiable ? <span data-ed={attributEd('page', { id: entry.id }, 'titre')}>{entry.data.title}</span> : entry.data.title}{' '}
           {
             kind ? (
               <span class={`badge badge--${kind}`}>{kind === 'hybride' ? 'Race hybride' : 'Race pure'}</span>
@@ -115,7 +120,11 @@ const statusNote = entry.data.status === 'example' ? 'Contenu d’exemple : à r
         {typeOf(entry) === 'races' && <MagiesDeRace entry={entry} entries={entries} />}
         {typeOf(entry) === 'magies' && <RacesDeMagie entry={entry} entries={entries} />}
 
-        <div class="prose">{Content && <Content />}</div>
+        {texteModifiable ? (
+          <div class="prose" data-ed-corps={entry.id} data-ed-morceau>{Content && <Content />}</div>
+        ) : (
+          <div class="prose">{Content && <Content />}</div>
+        )}
       </>
     )
   }

@@ -2,6 +2,7 @@ import { defineConfig } from 'astro/config';
 import { unified } from '@astrojs/markdown-remark';
 import { fileURLToPath } from 'node:url';
 import { buildIndex, remarkWikilinks, scanContent } from './src/lib/wikilinks.mjs';
+import { remarkCouleursDeCase } from './src/lib/markdown-couleurs.mjs';
 import { integrationServeur } from './serveur/livraison.mjs';
 
 // Déploiement sous un sous-chemin (ex. GitHub Pages) : SITE_BASE=/MaverickCenter/ SITE_URL=https://…
@@ -27,13 +28,19 @@ export default defineConfig({
   // Le service est livré avec le site, dans dist/_serveur/ (serveur/livraison.mjs).
   integrations: [integrationServeur()],
   vite: {
+    // version portable : le chargeur du mode modification (components/edition/Edition.astro) devient un module vide (src/scripts/edition-absente.mjs)
+    resolve: {
+      alias: process.env.INLINE_CSS === '1'
+        ? [{ find: /^\.\.\/\.\.\/scripts\/edition\.mjs$/, replacement: fileURLToPath(new URL('./src/scripts/edition-absente.mjs', import.meta.url)) }]
+        : [],
+    },
     server: {
       proxy: { [`${base}api/`]: { target: service, rewrite: (chemin) => chemin.slice(base.length - 1) } },
     },
   },
   markdown: {
     // Sätteri est le processeur par défaut d'Astro 7 mais n'exécute pas les plugins remark :
-    // on garde unified pour le plugin des [[liens]].
-    processor: unified({ remarkPlugins: [[remarkWikilinks, { index, base }]] }),
+    // on garde unified pour le plugin des [[liens]] (et celui de la couleur des cases de tableau, lib/markdown-couleurs.mjs).
+    processor: unified({ remarkPlugins: [[remarkWikilinks, { index, base }], remarkCouleursDeCase] }),
   },
 });

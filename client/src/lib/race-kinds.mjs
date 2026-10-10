@@ -3,7 +3,8 @@
 // Une race hybride est une race qui a accès à sa propre classe raciale (une classe « Hybride Animal » du classeur des
 // classes, qui porte le nom de la race : la classe « Orios », classes/orios, pour la race Orios) ; les autres races sont pures. La
 // distinction ne se déduit pas du texte des pages : elle suit l'existence de la page de la classe raciale, sauf pour les
-// races de HYBRIDES_SANS_CLASSE_RACIALE (décision R14 du propriétaire). Le fait que les races hybrides à classe raciale
+// races de HYBRIDES_SANS_CLASSE_RACIALE (décision R14 du propriétaire) et de celles qu'on a créées hybrides depuis le site de dev avant de leur
+// donner leur classe raciale (mot-clé « race hybride », TAG_RACE_HYBRIDE). Le fait que les races hybrides à classe raciale
 // n'aient que 3 magies innées est vérifié par un test sur le contenu réel (test/races-magies-content.test.mjs).
 import { normalize } from './text.mjs';
 
@@ -40,8 +41,16 @@ export function raceOfClass(entries, cls) {
   return entries.find((e) => e.id.startsWith('races/') && normalize(e.data.title) === name) ?? null;
 }
 
+/**
+ * Mot-clé (normalisé) d'une race hybride créée depuis le site de dev avant sa classe raciale (lib/edition-modele.mjs#MOT_CLE_RACE_HYBRIDE, demande du
+ * propriétaire : « à la création d'une classe raciale, on doit sélectionner une race hybride qui n'en a pas déjà »).
+ */
+export const TAG_RACE_HYBRIDE = 'race-hybride';
+const marqueeHybride = (race) => (race.data?.tags ?? []).some((t) => normalize(t) === TAG_RACE_HYBRIDE);
+
 /** @returns {'hybride' | 'pure'} */
-export const raceKind = (entries, race) => (HYBRIDES_SANS_CLASSE_RACIALE.has(race.id) || racialClassOf(entries, race) ? 'hybride' : 'pure');
+export const raceKind = (entries, race) =>
+  HYBRIDES_SANS_CLASSE_RACIALE.has(race.id) || marqueeHybride(race) || racialClassOf(entries, race) ? 'hybride' : 'pure';
 
 /** Couleur des races pures et des races hybrides : celle de la liste /races/ et du bandeau des pages de race (repère visuel sans valeur de règle). */
 export const RACE_COLORS = { pure: '#2f6a6a', hybride: '#8a5a1c' };

@@ -109,7 +109,8 @@ export function remarkWikilinks({ index, base = '/' }) {
           url: entryUrl(base, found.entry),
           title: null,
           children: [{ type: 'text', value: label }],
-          data: { hProperties: { className: ['wikilink'] } },
+          // data-cible : la cible telle qu'écrite, que l'éditeur du guide (lib/markdown-edition.mjs) réécrit en [[cible|texte]]
+          data: { hProperties: { className: ['wikilink'], 'data-cible': target } },
         });
       } else {
         const why = found?.ambiguous ? 'ambigu' : 'introuvable';
@@ -122,7 +123,7 @@ export function remarkWikilinks({ index, base = '/' }) {
           children: [{ type: 'text', value: label }],
           data: {
             hName: 'span',
-            hProperties: { className: ['wikilink', 'wikilink--missing'], title: `Page ${why}` },
+            hProperties: { className: ['wikilink', 'wikilink--missing'], title: `Page ${why}`, 'data-cible': target },
           },
         });
       }

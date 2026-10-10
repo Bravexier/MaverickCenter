@@ -51,7 +51,11 @@ const premierChapitre = type === 'guide' ? entries.find((e) => e.id === PREMIER_
 const capaciteDetail = (e: any) => [`Niveau ${e.data.niveau}`, e.data.specialite, e.data.type_capacite].filter(Boolean).join(' · ');
 ---
 
-<Base title={premierChapitre ? `${TYPES[type].label} : ${premierChapitre.data.title}` : TYPES[type].label} description={premierChapitre?.data.summary}>
+<Base
+  title={premierChapitre ? `${TYPES[type].label} : ${premierChapitre.data.title}` : TYPES[type].label}
+  description={premierChapitre?.data.summary}
+  edition={premierChapitre ? premierChapitre.id : ['races', 'magies', 'classes', 'metiers'].includes(type) ? `${type}/` : undefined}
+>
   {!premierChapitre && <h1>{TYPES[type].label}</h1>}
   {type !== 'magies' && !premierChapitre && <p class="muted">{TYPES[type].blurb}</p>}
   {

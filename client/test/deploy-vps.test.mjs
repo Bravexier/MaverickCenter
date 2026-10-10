@@ -138,7 +138,7 @@ test('instances.sh : deux instances sur 127.0.0.1, base de test conservée, mots
   const normal = env(join(d.normal, '.env'));
   assert.deepEqual(normal, { MAVERICK_CONTENEUR: 'maverick-center', MAVERICK_PORT: '127.0.0.1:8080' });
   const test_ = env(join(d.test, '.env'));
-  assert.deepEqual(test_, { MAVERICK_CONTENEUR: 'maverick-center-test', MAVERICK_PORT: '127.0.0.1:8081', MAVERICK_BASE_TEST: 'conservee' });
+  assert.deepEqual(test_, { MAVERICK_CONTENEUR: 'maverick-center-test', MAVERICK_PORT: '127.0.0.1:8081', MAVERICK_BASE_TEST: 'conservee', MAVERICK_EDITION: '1' });
   assert.ok(!existsSync(join(d.normal, 'site')) && !existsSync(join(d.test, 'site')), 'pas de site : un dossier avec site/ compterait comme une production');
 
   const caddy = env(join(d.caddy, 'maverick.env'));

@@ -1,0 +1,24 @@
+// Chargeur du mode modification (components/edition/Edition.astro) : léger, il est sur toutes les pages modifiables, y compris en production où il ne
+// fait rien. L'éditeur n'est chargé que si les deux conditions sont réunies (demande du propriétaire) :
+//   - un ordinateur : écran large ET pointeur précis qui survole (pas un téléphone ni une tablette) ;
+//   - le site de dev : le service répond `edition: true` à /api/etat/ (MAVERICK_EDITION=1, docs/serveur.md, « Édition »).
+const racine = document.querySelector('[data-edition]');
+const BUREAU = matchMedia('(min-width: 60rem) and (hover: hover) and (pointer: fine)');
+let lance = false;
+
+async function lancer() {
+  if (lance || !racine || !BUREAU.matches) return;
+  lance = true;
+  try {
+    const reponse = await fetch(`${racine.dataset.api}etat/`, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+    const etat = reponse.ok ? await reponse.json() : null;
+    if (!etat?.edition) return;
+    const { demarrer } = await import('./edition/editeur.mjs');
+    demarrer(racine, etat);
+  } catch {
+    // service absent (site statique seul, version portable) : pas d'édition
+  }
+}
+
+lancer();
+BUREAU.addEventListener('change', lancer);

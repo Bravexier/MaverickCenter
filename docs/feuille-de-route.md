@@ -10,6 +10,9 @@ n'est encore réalisé au-delà de la première étape.
 2. **Un outil qui remplace Google Docs/Sheets** (à long terme) : modifier sorts, dons, classes et races depuis le site, avec historique et relecture. À ce moment-là
    la source de vérité bascule : la base devient canonique, les classeurs deviennent une archive en lecture seule. Le moment de la bascule se décide avec le
    propriétaire du contenu ; avant cela, aucune édition n'est faite dans le site (les corrections passent par `tools/sheets/corrections.json`).
+   **Premier pas** (demande du propriétaire, 2026-10) : sur le site de dev seulement, les pages du guide, des races, des magies, des classes et des
+   métiers se modifient en place (crayon) ; chaque modification est notée au journal (avant / après) et se rapatrie dans `data/rows` par
+   `npm run db:appliquer-edition` (`docs/serveur.md`, « Édition »). Relecture (`brouillon / validé`), auteur et bascule restent à faire.
 3. **Simulation de combats** (à long terme) : jouer des combats pour juger l'équilibrage des sorts, des classes et des races.
 
 ## Orthographe : relecture complète à la conversion en SQL

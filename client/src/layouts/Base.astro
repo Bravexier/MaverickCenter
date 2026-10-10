@@ -4,12 +4,17 @@ import packageInfo from '../../package.json';
 import { url } from '../lib/wiki';
 import { NAV, activeGroup, groupIsCurrent } from '../lib/nav.mjs';
 import { modeDuSite } from '../lib/mode-site.mjs';
+import Edition from '../components/edition/Edition.astro';
 
 interface Props {
   title: string;
   description?: string;
+  /** Id de la page modifiable (guide, races, magies, classes, métiers) : le mode modification du site de dev s'y propose (components/edition/Edition.astro). */
+  edition?: string;
 }
-const { title, description = 'Wiki et outils pour le JDR Maverick' } = Astro.props;
+const { title, description = 'Wiki et outils pour le JDR Maverick', edition } = Astro.props;
+// Version portable (tools/build-artifact.mjs, INLINE_CSS=1) : pas de service, donc pas de mode modification.
+const portable = process.env.INLINE_CSS === '1';
 
 const base = import.meta.env.BASE_URL;
 const active = activeGroup(Astro.url.pathname, base);
@@ -72,6 +77,7 @@ const site = modeDuSite(process.env, packageInfo.version);
       <span>Projet de fan pour Maverick JDR — contenu issu du Discord et des Google Docs du MJ.</span>
       <span class="site-footer__version">{site.etiquette}</span>
     </footer>
+    {edition && !portable && <Edition page={edition} />}
       <script is:inline>
       (function () {
         var toggles = document.querySelectorAll('.nav-group__toggle');

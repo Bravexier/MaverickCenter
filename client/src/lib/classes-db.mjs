@@ -107,9 +107,9 @@ export function chargerClasses(db) {
       categorie: categorie ? { id: categorie.id, libelle: categorie.libelle, note: categorie.note, amBase: categorie.am_base } : null,
       // « Don de départ » de l'onglet (A2:F5) : santé, chakra et barrière au niveau 1
       depart: [
-        { label: 'Santé de départ', valeur: c.sante_depart },
-        { label: 'Chakra de départ', valeur: c.chakra_depart },
-        { label: 'Barrière de départ', valeur: c.barriere_depart },
+        { label: 'Santé de départ', valeur: c.sante_depart, colonne: 'sante_depart' },
+        { label: 'Chakra de départ', valeur: c.chakra_depart, colonne: 'chakra_depart' },
+        { label: 'Barrière de départ', valeur: c.barriere_depart, colonne: 'barriere_depart' },
       ],
       maitriseArme: (armes.get(c.id) ?? []).map((a) => a.brut),
       maitriseArmure: (armures.get(c.id) ?? []).map((a) => a.brut),

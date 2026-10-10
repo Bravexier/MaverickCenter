@@ -4,6 +4,7 @@ import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
 import { chapitresDuGuide, morceauxDuChapitre, partiesDuGuide, voisins } from '../../lib/guide.mjs';
 import { rendreMarkdown } from '../../lib/guide-rendu';
 import { idBulle, pageHref } from '../../lib/magies';
+import { attributEd } from '../../lib/edition-modele.mjs';
 import type { WikiEntry } from '../../lib/wiki';
 import Bulles from '../magie/Bulles.astro';
 import GuideBloc from './GuideBloc.astro';
@@ -46,12 +47,13 @@ const etiquette = (c: { numero: number; titre: string }) => `Chapitre ${c.numero
       )
     }
 
-    <article class="guide-page" aria-labelledby="guide-titre">
+    {/* data-ed, data-ed-corps, data-ed-morceau : titre et morceaux de texte modifiables sur le site de dev (src/scripts/edition/guide.mjs) */}
+    <article class="guide-page" aria-labelledby="guide-titre" data-ed-corps={entry.id}>
       <p class="guide-numero"><span class="guide-partie">{chapitre.partie.titre}</span> Guide du joueur · chapitre {chapitre.numero} sur {chapitres.length}</p>
-      <h1 id="guide-titre">{chapitre.titre}</h1>
+      <h1 id="guide-titre" data-ed={attributEd('page', { id: entry.id }, 'titre')}>{chapitre.titre}</h1>
       {
         morceaux.map((m) =>
-          'bloc' in m ? <GuideBloc bloc={m.bloc} entry={entry} entries={entries} chapitres={chapitres} /> : <div class="guide-texte" set:html={m.html} />,
+          'bloc' in m ? <GuideBloc bloc={m.bloc} entry={entry} entries={entries} chapitres={chapitres} /> : <div class="guide-texte" data-ed-morceau set:html={m.html} />,
         )
       }
     </article>

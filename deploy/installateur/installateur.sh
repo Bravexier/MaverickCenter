@@ -242,6 +242,8 @@ if [ ! -f "$DOSSIER/.env" ]; then
     echo "# Réglages de cette instance, lus par docker compose. Créé à la première installation, jamais écrasé."
     echo "MAVERICK_CONTENEUR=$CONTENEUR"
     echo "MAVERICK_PORT=$PORT"
+    # serveur de test : les pages du guide, des races, des magies, des classes et des métiers s'y modifient (docs/serveur.md, « Édition »)
+    if [ "$MODE" = test ]; then echo "MAVERICK_EDITION=1"; fi
   } > "$DOSSIER/.env"
 fi
 

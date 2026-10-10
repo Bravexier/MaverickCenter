@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 16 : 160 tables, 2 tables de recherche plein texte (FTS5) et 34 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 17 : 162 tables, 2 tables de recherche plein texte (FTS5) et 34 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -21,6 +21,7 @@
 - [11. TABLES DÉRIVÉES (jamais exportées dans data/rows/, recalculées par `npm run db:build`)](#11-tables-dérivées-jamais-exportées-dans-datarows-recalculées-par-npm-run-dbbuild) : `lien`, `lien_candidat`, `page_fts`, `entite_fts`
 - [12. VUES (toujours à jour : rien à recalculer)](#12-vues-toujours-à-jour--rien-à-recalculer) : `cle_page`, `lien_page`, `lien_a_creer`, `tag`, `v_magie_incompatible`, `v_sort_bonus_au_nm`, `v_race_carac_borne`, `v_race_classe_accessible`, `v_race_magie_accessible`, `v_regard_peuple`, `v_creature_magie`, `v_creature_resistance`, `v_creature_sort`, `v_creature_cout_invocation`, `v_creature_meme_bloc`, `v_arme`, `v_ingredient_possible`, `v_ressource_recette`, `v_metier_recette`, `v_potion`, `v_arme_composee`, `v_armure_piece`, `v_niveau`, `v_competence`, `v_resistance_magie_lectures`, `v_resistance_ecart`, `v_mode_hyper_lectures`, `v_classe_capacite`, `v_capacite_exclusive`, `v_capacite_partagee`
 - [13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-joueurs-et-prétirés-les-groupes-de-jeu-et-la-visibilité-saisie-jamais-importée--migration-0011) : `utilisateur`, `utilisateur_role`, `personnage`, `personnage_partage`, `personnage_classe`, `personnage_caracteristique`, `personnage_competence`, `personnage_progression`, `personnage_capacite`, `personnage_sort`, `personnage_maitrise_arme`, `personnage_arme`, `personnage_armure`, `personnage_bouclier_materiau`, `personnage_accessoire`, `personnage_inventaire`, `groupe`, `groupe_membre`, `v_personnage_niveau`, `v_personnage_visible`, `v_groupe_controle`, `v_personnage_controle`
+- [14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)](#14-édition--le-journal-des-modifications-faites-depuis-le-site-de-dev-saisie-jamais-importée--migration-0017) : `modification_lot`, `modification`
 
 ## 0. FAMILLES D'IMPORT
 
@@ -3158,3 +3159,34 @@ Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme po
 | `personnage_id` | TEXT | non |  |  |
 | `regle` | — | non |  |  |
 | `detail` | BLOB | non |  |  |
+
+## 14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)
+
+### `modification_lot`
+
+Un enregistrement fait depuis une page (le bouton de confirmation) : toutes ses modifications passent ou aucune.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | TEXT | oui | PK | UUID tiré par le service |
+| `fait_le` | TEXT | oui |  |  |
+| `auteur_id` | TEXT | non | → utilisateur.id | NULL avant la connexion Discord (1.0) : quiconque ouvre le site de dev |
+| `page_id` | TEXT | non |  | page d'où l'enregistrement est fait (« races/elfe-noir ») ; sans clé étrangère : une page créée par l'édition peut ne pas encore être dans les règles livrées |
+| `resume` | TEXT | oui |  | « Métier Forgeron : bonus_brut » : ce que le service a fait, lisible |
+
+### `modification`
+
+Une ligne de table touchée par un lot. `cle` = la clé primaire de la ligne ({"id": "metiers/forgeron"}) ; `avant` / `apres` = les colonnes modifiées (toute la ligne pour une insertion ou une suppression). État : 'en_attente' (dans la base vivante, pas encore dans data/rows), 'integree' (les règles livrées la contiennent déjà : elle est revenue par git), 'conflit' (les règles livrées ont changé la ligne autrement : elle n'est pas rejouée, `detail` dit pourquoi).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `lot_id` | TEXT | oui | PK 1, → modification_lot.id |  |
+| `rang` | INTEGER | oui | PK 2 | ordre d'application dans le lot |
+| `table_nom` | TEXT | oui |  |  |
+| `cle` | TEXT | oui |  |  |
+| `operation` | TEXT | oui |  |  |
+| `avant` | TEXT | non |  |  |
+| `apres` | TEXT | non |  |  |
+| `etat` | TEXT | oui |  |  |
+| `detail` | TEXT | non |  | raison d'un conflit ; NULL sinon |
+| `apercu` | TEXT | non |  |  |
