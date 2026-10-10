@@ -13,7 +13,7 @@ la citer depuis une source (`sources:` dans le frontmatter) ou la laisser absent
 
 ## Décisions du propriétaire
 
-`docs/decisions-regles.md` : les choix tranchés quand les sources se contredisent (27 races, mono-classe, budgets exacts, Calme, Mode Hyper +15/+7, Archimage magique, sens des relations entre peuples, onglet de race source, Drassah'thac hybride, Corruption et Potentiel Illimité mono-magie, puissance magique 5 au niveau 16, 2 santé pour 1 chakra manquant, croix des caractéristiques, Corruption acquise des Elfes noirs Charbon et Felfes noirs…).
+`docs/decisions-regles.md` : les choix tranchés quand les sources se contredisent (27 races, mono-classe, budgets exacts, Calme, Mode Hyper +15/+7, Archimage magique, sens des relations entre peuples, onglet de race source, Drassah'thac hybride, Corruption et Potentiel Illimité mono-magie, puissance magique 5 au niveau 16, 2 santé pour 1 chakra manquant, croix des caractéristiques, Corruption acquise des Elfes noirs Charbon et Felfes noirs, déesse de la Corruption « Eaunoire »…).
 Les suivre ; ne jamais en déduire d'autres.
 
 ## Vision à long terme
@@ -41,7 +41,7 @@ stables, SQL portable, modifications historisées, règles en données, moteur p
 | `client/src/lib/races-db.mjs`, `race-relations.mjs`, `components/race/RacePage.astro`, `styles/race/` | Pages de race : même principe que les magies, alimentées par les **tables** de la base (`race_onglet`, `race_don`…, relations entre peuples), **pas** par le Markdown ; aucun tableau Markdown (voir `docs/content-guide.md`, « Pages de race ») |
 | `client/src/lib/classes-db.mjs`, `classe-dons.mjs`, `components/classes/ClassePage.astro`, `styles/classe/` | Pages de classe : même principe, alimentées par les **tables** (`classe`, `specialite`, `capacite`, `v_capacite_exclusive`…) ; les **dons** (« capacités » des onglets) disposés comme l'onglet, chaque choix encadré (voir `docs/content-guide.md`, « Pages de classe ») |
 | `client/src/lib/metiers.mjs`, `components/metier/MetiersTableau.astro`, `styles/metier/tableau.css` | Page des métiers : un long tableau (Nom, Bonus, Artisanat, Équipement supplémentaire) lu dans la table `metier`, la description sous la ligne ; **pas de page par métier**, tout lien vers un métier mène à sa ligne (voir `docs/content-guide.md`, « Métiers ») |
-| `client/src/lib/guide.mjs`, `guide-db.mjs`, `guide-fil-rouge.mjs`, `components/guide/`, `styles/guide/` | Guide du joueur (`/guide/`) : 24 chapitres (pages `guide/…` avec `chapitre` et `partie`) lus dans l'ordre, flèches, pagination par partie colorée ; tableaux et personnages fil rouge tirés de la base (voir `docs/content-guide.md`, « Guide du joueur ») |
+| `client/src/lib/guide.mjs`, `guide-db.mjs`, `guide-fil-rouge.mjs`, `components/guide/`, `styles/guide/` | Guide du joueur (`/guide/`) : 24 chapitres (pages `guide/…` avec `chapitre` et `partie`) lus dans l'ordre, flèches (et glissement du doigt sur mobile), pagination par partie colorée ; tableaux et personnages fil rouge tirés de la base (voir `docs/content-guide.md`, « Guide du joueur ») |
 | `client/src/lib/character.mjs` | Moteur de fiche (fonctions pures, piloté par `src/data/rules.json`) |
 | `client/src/data/rules.json` | Règles de création de personnage |
 | `client/test/` | Tests `node:test` (`npm test`) |
@@ -152,6 +152,8 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   fil rouge de `lib/guide-fil-rouge.mjs` (leurs choix seulement ; les chiffres sont calculés). Les autres pages `guide/…` restent des pages de référence, listées
   à la dernière page. Une page ajoutée à la main doit avoir une première source « Google Doc « … » » (famille `docs`), sinon `db:sync-pages` la refuse — et
   `db:export-pages` efface alors le `.md` : vérifier la sortie de `db:sync-pages` avant d'exporter. `test/guide.test.mjs` épingle le plan.
+  Sur écran tactile, glisser le doigt tourne la page (script de `GuideChapitre.astro`, hors tableau qui défile et bord de l'écran) ; `html { overscroll-behavior-x: none; }`
+  de `styles/guide/guide.css` empêche Chrome d'en faire aussi un retour dans l'historique : ne pas le retirer (`test/guide-html.test.mjs`).
 - `npm run autolink` (aperçu) / `-- --write` : maillage automatique des pages, voir `docs/content-guide.md`.
 - Le générateur ne gère ni compétences, ni équipement, ni dés (voir `docs/character-generator.md`).
 - **Fiches de personnages** (section 13 de `data/schema.sql`, migration `0011-personnages`) : les tables gardent les **choix** du joueur (race, ethnie, magies, classes, caractéristiques de base et croix (R19), points de compétences,

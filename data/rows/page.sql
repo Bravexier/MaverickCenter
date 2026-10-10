@@ -13185,7 +13185,7 @@ L''une des races descendantes des Elfes Dorés, ce sont des elfes soit à la pea
 
 Ces Elfes sont de profonds esclavagistes et l''esclavage fait partie de leur culture, ils ont des coutumes, une façon de vivre et un style vestimentaire qui est celle des Romains. Bien que leur tendance esclavagiste diminue avec le temps.
 
-Cette race est apparue pour la première fois en l''an 12, après une fuite possible grâce au démon d''eau noire.
+Cette race est apparue pour la première fois en l''an 12, après une fuite possible grâce à Eaunoire.
 
 ## Histoire
 

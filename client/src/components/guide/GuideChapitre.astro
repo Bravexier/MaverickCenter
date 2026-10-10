@@ -11,7 +11,7 @@ import GuideBloc from './GuideBloc.astro';
 // Un chapitre du guide (lib/guide.mjs) : une page à la fois, à lire dans l'ordre (demande du propriétaire). Une flèche de chaque côté du texte
 // (Précédent à gauche, Suivant à droite ; grisée au premier et au dernier chapitre), qui suit la lecture ; en bas, les mêmes liens avec le titre du
 // chapitre voisin, puis la pagination : un numéro par chapitre, son titre en infobulle (components/magie/Bulles.astro ; sans JavaScript, `title`).
-// Les flèches du clavier (← →) tournent les pages. Le texte est le Markdown de la page, coupé à ses blocs tirés de la base (GuideBloc).
+// Les flèches du clavier (← →) et, sur écran tactile, un glissement du doigt vers la gauche ou la droite tournent les pages. Le texte est le Markdown de la page, coupé à ses blocs tirés de la base (GuideBloc).
 // Chaque partie du guide a sa couleur (lib/guide.mjs#PARTIES) : celle du chapitre colore la page, les numéros de la pagination sont regroupés par partie.
 interface Props {
   entry: WikiEntry;
@@ -145,4 +145,74 @@ const etiquette = (c: { numero: number; titre: string }) => `Chapitre ${c.numero
     var lien = document.querySelector(sens);
     if (lien) location.href = lien.href;
   });
+
+  // Écran tactile : glisser le doigt vers la gauche tourne la page (chapitre suivant), vers la droite revient au précédent (demande du propriétaire).
+  // Le geste doit être franchement horizontal (au moins 2 fois plus large que haut, et 60 px ou le quart de l'écran), d'un seul doigt ; il ne compte
+  // pas sur un tableau qui défile, dans un champ, pendant une sélection de texte, sur une page zoomée (le doigt la déplace) ni au bord de l'écran
+  // (gestes du système, comme le retour arrière). La page suit un peu le doigt pour montrer que le geste est compris, sauf mouvement réduit.
+  (function () {
+    var page = document.querySelector('.guide-page');
+    if (!page) return;
+    var calme = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var depart = null;
+    function voisin(dx) {
+      return document.querySelector(dx < 0 ? '[data-guide-suivant]' : '[data-guide-precedent]');
+    }
+    function selection() {
+      return window.getSelection && String(window.getSelection()) !== '';
+    }
+    // Décalage borné à 64 px (4rem) : sur grand écran, la page reste dans son cadre, à la place de la flèche.
+    function decaler(x, transition, opacite) {
+      if (calme) return;
+      x = Math.max(-64, Math.min(64, x));
+      page.style.transition = transition;
+      page.style.transform = x ? 'translateX(' + x + 'px)' : '';
+      page.style.opacity = opacite || '';
+    }
+    document.addEventListener('touchstart', function (e) {
+      depart = null;
+      var t = e.touches[0];
+      var cible = e.target;
+      if (e.touches.length !== 1 || !cible.closest || !cible.closest('[data-guide]') || selection()) return;
+      if (cible.closest('input, textarea, select, [contenteditable], .guide-defile')) return;
+      if (window.visualViewport && visualViewport.scale > 1.01) return;
+      if (t.clientX < 24 || t.clientX > window.innerWidth - 24) return;
+      depart = { x: t.clientX, y: t.clientY, horizontal: null };
+    }, { passive: true });
+    document.addEventListener('touchmove', function (e) {
+      if (!depart) return;
+      if (e.touches.length !== 1) {
+        depart = null;
+        decaler(0, 'transform 0.2s ease');
+        return;
+      }
+      var dx = e.touches[0].clientX - depart.x;
+      var dy = e.touches[0].clientY - depart.y;
+      if (depart.horizontal === null && Math.abs(dx) + Math.abs(dy) > 12) depart.horizontal = Math.abs(dx) > 2 * Math.abs(dy);
+      if (depart.horizontal) decaler(dx * (voisin(dx) ? 0.35 : 0.1), 'none');
+    }, { passive: true });
+    document.addEventListener('touchend', function (e) {
+      if (!depart) return;
+      var t = e.changedTouches[0];
+      var dx = t.clientX - depart.x;
+      var dy = t.clientY - depart.y;
+      var lien = voisin(dx);
+      var tourne = depart.horizontal && lien && Math.abs(dx) >= Math.max(60, window.innerWidth / 4) && Math.abs(dx) > 2 * Math.abs(dy) && !selection();
+      depart = null;
+      if (!tourne) {
+        decaler(0, 'transform 0.2s ease');
+        return;
+      }
+      decaler(dx < 0 ? -64 : 64, 'transform 0.15s ease, opacity 0.15s ease', '0.4');
+      location.href = lien.href;
+    }, { passive: true });
+    document.addEventListener('touchcancel', function () {
+      if (depart) decaler(0, 'transform 0.2s ease');
+      depart = null;
+    }, { passive: true });
+    // Retour arrière : la page restaurée par le navigateur ne doit pas rester décalée.
+    window.addEventListener('pageshow', function () {
+      decaler(0, '');
+    });
+  })();
 </script>

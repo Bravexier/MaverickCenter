@@ -1,4 +1,4 @@
-// Guide du joueur CONSTRUIT (client/dist/guide/) : des chapitres lus dans l'ordre (lib/guide.mjs), une flèche de chaque côté (grisée au bord), la pagination
+// Guide du joueur CONSTRUIT (client/dist/guide/) : des chapitres lus dans l'ordre (lib/guide.mjs), une flèche de chaque côté (grisée au bord), le glissement du doigt, la pagination
 // par partie colorée avec le titre de chaque chapitre en infobulle, et les tableaux tirés de la base (demande du propriétaire).
 // Ce test lit le site construit : il ne tourne qu'après `npm run build` (la CI l'exécute juste après) et se saute sinon.
 //   node --test test/guide-html.test.mjs
@@ -44,6 +44,15 @@ test('le dernier chapitre grise la flèche droite ; un chapitre du milieu a ses 
   const degats = lire('guide/les-degats');
   assert.match(degats.main, /rel="prev"[\s\S]*rel="next"/);
   assert.match(degats.main, /class="guide-partie">Jouer</);
+});
+
+test('sur écran tactile, glisser le doigt tourne la page, sans que le navigateur ajoute un retour dans l’historique', options, () => {
+  const { main } = lire('guide/les-degats');
+  for (const evenement of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) assert.match(main, new RegExp(`addEventListener\\('${evenement}', function \\(e?\\) \\{[\\s\\S]*?\\}, \\{ passive: true \\}\\)`), evenement);
+  assert.match(main, /dx < 0 \? '\[data-guide-suivant\]' : '\[data-guide-precedent\]'/, 'vers la gauche : chapitre suivant ; vers la droite : précédent');
+  assert.match(main, /closest\('input, textarea, select, \[contenteditable\], \.guide-defile'\)/, 'pas sur un tableau qui défile ni dans un champ');
+  assert.match(main, /t\.clientX < 24 \|\| t\.clientX > window\.innerWidth - 24/, 'pas depuis le bord de l’écran (gestes du système)');
+  assert.match(main, /html \{ overscroll-behavior-x: none; \}/, 'Chrome ne fait pas du même geste un retour arrière');
 });
 
 test('les tableaux viennent de la base : progression, postures, compétences, personnages fil rouge', options, () => {

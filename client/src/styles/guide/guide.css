@@ -21,6 +21,9 @@
 }
 :root[data-theme="dark"] :is(.guide, .guide-pagination__partie, .guide-sommaire__partie) { --guide-texte: color-mix(in srgb, var(--guide) 45%, #fff); }
 .guide { margin-top: 0.5rem; }
+/* Un glissement horizontal du doigt tourne la page (script de GuideChapitre.astro) : le navigateur ne doit pas en faire, en plus, un retour ou une avance
+   dans l'historique (Chrome sur écran tactile). Les gestes du système depuis le bord de l'écran (retour arrière d'Android, de Safari) restent actifs. */
+html { overscroll-behavior-x: none; }
 .guide-partie {
   display: inline-block;
   margin-right: 0.5rem;
@@ -182,7 +185,9 @@ a.guide-voisin:hover, a.guide-voisin:focus-visible { border-color: var(--guide);
 .guide-pagination__numero[aria-current='page'] { border-color: var(--guide); background: var(--guide); color: #fff; }
 
 @media (max-width: 52rem) {
-  .guide-cadre { grid-template-columns: minmax(0, 1fr); }
+  /* La page suit le doigt qui glisse (script de GuideChapitre.astro) : sans ce clip, elle élargirait l'écran, qui défilerait de côté. `clip` ne crée pas
+     de zone de défilement ; la marge laisse voir les contours de focus. Plus large, la page ne sort pas du cadre (décalage borné aux 4rem de la flèche). */
+  .guide-cadre { grid-template-columns: minmax(0, 1fr); overflow-x: clip; overflow-clip-margin: 0.5rem; }
   .guide-fleche { display: none; }
   .guide-bas { margin-inline: 0; }
 }

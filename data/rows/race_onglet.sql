@@ -144,7 +144,7 @@ INSERT INTO race_onglet (race_id, onglet, description_generale, histoire, descri
 
 Ces Elfes sont de profonds esclavagistes et l''esclavage fait partie de leur culture, ils ont des coutumes, une façon de vivre et un style vestimentaire qui est celle des Romains. Bien que leur tendance esclavagiste diminue avec le temps.
 
-Cette race est apparue pour la première fois en l''an 12, après une fuite possible grâce au démon d''eau noire.', 'Les Elfes Charbon, reconnaissables à leur peau noire profonde, sont issus d’elfes dorés corrompus. Cette corruption est à l’origine de leur apparence si particulière. Toutefois, certains d’entre eux sont parvenus à se libérer de cette influence, devenant ainsi des elfes à la peau blanche immaculée, comparée au sel. Ces derniers sont appelés Elfes Salés.
+Cette race est apparue pour la première fois en l''an 12, après une fuite possible grâce à Eaunoire.', 'Les Elfes Charbon, reconnaissables à leur peau noire profonde, sont issus d’elfes dorés corrompus. Cette corruption est à l’origine de leur apparence si particulière. Toutefois, certains d’entre eux sont parvenus à se libérer de cette influence, devenant ainsi des elfes à la peau blanche immaculée, comparée au sel. Ces derniers sont appelés Elfes Salés.
 
 Les Elfes Charbon considèrent ces individus comme des hérésies vivantes et des traîtres, indignes de leur condition, et cherchent activement à les éliminer.
 
