@@ -28,7 +28,7 @@ const wiki = fileURLToPath(new URL('../src/content/wiki', import.meta.url));
 const python = spawnSync('python3', ['-I', '-c', 'pass']);
 const sansPython = python.status !== 0 && 'python3 absent';
 
-const CLASSEUR = 'https://docs.google.com/spreadsheets/d/1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs/edit';
+const CLASSEUR = 'https://docs.google.com/spreadsheets/d/1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I/edit';
 const MARQUEUR = 'Note de cellule : ';
 const colonne = (lettres) => [...lettres].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0);
 const adresse = (ref) => {

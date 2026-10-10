@@ -1,0 +1,27 @@
+{
+  "$comment": "Registre de la migration 0014-sources-copies-drive : les documents Google de l'ancien mainteneur (propriétaire payoumorfot@hotmail.fr, partagés « tous les utilisateurs disposant du lien ») ont été copiés le 2026-10-10 dans le Drive du propriétaire du projet, dossier « Maverick JDR ». Chaque entrée donne l'identifiant d'origine (avant) et celui de la copie (apres) ; le titre est celui du fichier, inchangé par la copie. Les onglets gardent leurs identifiants (gid). La migration remplace l'identifiant d'origine par celui de la copie partout où la base le cite.",
+  "date": "2026-10-10",
+  "dossier": "https://drive.google.com/drive/folders/1VFQUx-xYCu6WKFWQ0XEZfyLfDuvrXvxh",
+  "copies": [
+    { "titre": "Classe Maverick V7", "genre": "sheet", "avant": "1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs", "apres": "1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I" },
+    { "titre": "Les races", "genre": "sheet", "avant": "1KXO4Np9SnaOYopV1cUKsO-MPjNxgyJ39BEyDAai1Kg4", "apres": "150Q6SJi4ft0oROtwT6snMAZUdWMVtkblxwYY9TqxV4Q" },
+    { "titre": "Magie Maverick V8", "genre": "sheet", "avant": "1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c", "apres": "1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0" },
+    { "titre": "Invocation", "genre": "sheet", "avant": "1Px7F_VtSOEkyUxrk2da1UiBJ6ji3n5i95LfNl63biE4", "apres": "1U56C8wQ2hf19ryTA_t9AeUPsORurift8As6dOEgmNgo" },
+    { "titre": "Ressources et Craft", "genre": "sheet", "avant": "12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA", "apres": "1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw" },
+    { "titre": "Mode hyper et co", "genre": "sheet", "avant": "1lwALh1VKrIpgmEqX2MdYirKkPzGjSJXXDHtp2uYXO7w", "apres": "1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo" },
+    { "titre": "Familiers", "genre": "sheet", "avant": "1Im-_xrGVzNHvnmG7MQsCMvEUZiGIacxrorOXrosRV6Q", "apres": "1Xhj8DINY6NlufeHSUnB_mHYyPXEvSBOno32wWZXOEBk" },
+    { "titre": "Prototype", "genre": "sheet", "avant": "19nep7rdsAQ13NjfFb3r6R1lEHrdtZ2gT8zf4wK9KL0E", "apres": "1lFmQtog0ndYBkrmTUGkWStWNA85W9J4gk5LGLbaULKQ" },
+    { "titre": "Règle du jeu/Guide pour MJ - Maverick", "genre": "doc", "avant": "1Xph3vnjwmZpBG3UHDyBBqZQdVUnMLVxEllK3vXUw598", "apres": "17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM" },
+    { "titre": "Créer sa fiche de personnage", "genre": "doc", "avant": "12Sp_j_KbtzRbooe7WGsaP2Dce8F4TbLvpS0Eu8TwSMI", "apres": "1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA" },
+    { "titre": "MÉTIER", "genre": "doc", "avant": "1ilcolQXx_MRTMKt6N2n243N8GU9HSajihMT_JNRDI14", "apres": "1EK51ZTpXfzZNhRm-uINaRqkMz_RjBW0r-wir4pAg6uc" },
+    { "titre": "Alchimie", "genre": "doc", "avant": "1n5KJ8rmk1Yj8QY__v31XnpDwQw6gSyjx1tve9bTZM2k", "apres": "1Lv6pMUx4aaVUTot2tYFl17de1FtxmVbJUlnBXo0J20s" },
+    { "titre": "Fiche personnage Maverick Auto V15.2.2", "genre": "sheet", "avant": "1SvzNbdDVQyLE9cyp9U5USHBsxHpwxhtaWrFTu9CpLY4", "apres": "1tDuJpoVVqMtRXBi0WKgH6lwzdQXVdNWPZVLFbdbFqY0", "dossier": "Anciennes fiches auto" },
+    { "titre": "Fiche personnage Auto Maverick V1.1", "genre": "sheet", "avant": "1CLmJNumrsQW5lXplPprOqlaEVE-2RBQP46pNZ6zLwjY", "apres": "1XqTfzYIuBp_av1keDZr9HPLJ-VQAgPLpruz11LksR9E", "dossier": "Anciennes fiches auto" },
+    { "titre": "Fiche de perso V15.0.5 automatique", "genre": "sheet", "avant": "1LmlWEC8Q6UPZMMfmqimxBUYme-yKopghm1gl4StmkNs", "apres": "1f8SWtukk-2HNjnnHo0PaQ1_omCw3vsPl0Z4g66bPjqY", "dossier": "Anciennes fiches auto" }
+  ],
+  "fiche_corrigee": { "titre": "Fiche personnage Maverick Auto V1.2", "genre": "sheet", "id": "1LYTcRXjB7yMuZJC2DVd71LWkSy87AEEVl5FGUra7eWM", "copie_de": "1CLmJNumrsQW5lXplPprOqlaEVE-2RBQP46pNZ6zLwjY", "doc": "docs/fiche-auto.md" },
+  "non_copies": [
+    { "id": "1CwDqDKurMOdqig3ozX4NQETbBW9sggsxEqM1WfbOG5M", "raison": "introuvable dans le Drive du propriétaire (ni partagé avec lui, ni accessible par recherche) le 2026-10-10" },
+    { "id": "1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8", "raison": "introuvable dans le Drive du propriétaire (ni partagé avec lui, ni accessible par recherche) le 2026-10-10" }
+  ]
+}

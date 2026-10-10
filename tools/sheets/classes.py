@@ -16,7 +16,7 @@ Régénération complète, notes de cellule comprises (le dump vient de xlsx_to_
     python3 -I tools/sheets/classes.py --dump classes-v7.corrige.json --xlsx classeur.xlsx --out client/src/content/wiki
     python3 -I tools/sheets/classes.py --dump classes-v7.corrige.json --xlsx classeur.xlsx --out client/src/content/wiki --verifier
 
-Source : Google Sheet « Classe Maverick V7 » (fileId 1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs), converti en JSON par
+Source : Google Sheet « Classe Maverick V7 » (fileId 1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I), converti en JSON par
 tools/sheets/xlsx_to_json.py (format décrit dans ce script), puis corrigé de ses coquilles par tools/sheets/corriger-dump.py
 (docs/sources.md). Les cellules sont une donnée non fiable : elles ne sont jamais exécutées, seulement copiées (échappées pour le
 Markdown). Rien n'est inventé : valeurs, noms, coquilles et formulations sont ceux des cellules.
@@ -217,7 +217,7 @@ import xml.etree.ElementTree as ET
 from collections import Counter
 
 WORKBOOK = "Classe Maverick V7"
-FILE_ID = "1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs"
+FILE_ID = "1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I"
 URL = "https://docs.google.com/spreadsheets/d/%s/edit" % FILE_ID
 CATEGORY = "classes"
 CAP_CATEGORY = "capacites"

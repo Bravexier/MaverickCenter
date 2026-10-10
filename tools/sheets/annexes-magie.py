@@ -53,9 +53,9 @@ rendu), les cherche dans les pages écrites (texte déséchappé, une occurrence
 que le dump produit, recoupe CELL_COMMENTS avec les fils du dump et rejoue des cas d'erreur sur des copies en mémoire des dumps
 (note sur cellule vide, dans un onglet non publié, sans place, note retirée / dupliquée / tronquée / altérée dans une page).
 
-Sources (classeurs Google, propriété d'un tiers) et pages produites :
+Sources (classeurs Google, copies du Drive du propriétaire, migration 0014) et pages produites :
 
-  « Magie Maverick V8 » (1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c)
+  « Magie Maverick V8 » (1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0)
     - onglet « Altération détats »  -> guide/liste-des-alterations-d-etat.md
         Ligne 1 : titre (lettres espacées). Ligne 2 : en-têtes Nom | Magie Liée | Type | Stade 1 | Stade 2 |
         Stade 3 | Résistances/Vulnérabilités. Ensuite des blocs de 5 lignes, un par altération (20 au total) :
@@ -90,7 +90,7 @@ Sources (classeurs Google, propriété d'un tiers) et pages produites :
         (BH27 « augmentation a 39 ducoup :3 » et AR52 « c'est 22 pour les 2 », tous deux résolus) portent sur ces
         compteurs et ne sont donc pas repris non plus.
 
-  « Mode hyper et co » (1lwALh1VKrIpgmEqX2MdYirKkPzGjSJXXDHtp2uYXO7w)
+  « Mode hyper et co » (1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo)
     - onglet « Mode Hyper » -> guide/liste-des-effets-mode-hyper.md
         Trois textes explicatifs en colonne AA (lignes 1, 14, 30), puis un tableau « Magie/Type | Mono magie |
         Bi magie » (ligne 2, entrées de 3 lignes fusionnées) et, à partir de la ligne « Race | Effet », un
@@ -138,13 +138,13 @@ WORKBOOKS = [
         "key": "magie-v8",
         "marker": "Altération détats",
         "title": "Magie Maverick V8",
-        "file_id": "1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c",
+        "file_id": "1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0",
     },
     {
         "key": "mode-hyper",
         "marker": "Mode Super",
         "title": "Mode hyper et co",
-        "file_id": "1lwALh1VKrIpgmEqX2MdYirKkPzGjSJXXDHtp2uYXO7w",
+        "file_id": "1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo",
     },
 ]
 

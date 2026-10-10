@@ -1,5 +1,5 @@
 {
-  "$comment": "Manifeste des sources de Maverick JDR. 'type' = dossier de client/src/content/wiki/ (null = à classer après lecture du contenu). Les URLs sont celles fournies par le MJ ; le doublon 1vn5Tq11… (cité deux fois) n'apparaît qu'une fois.",
+  "$comment": "Manifeste des sources de Maverick JDR. 'type' = dossier de client/src/content/wiki/ (null = à classer après lecture du contenu). Les documents Google pointent sur les copies du Drive du propriétaire (dossier « Maverick JDR », 2026-10-10 ; registre data/migrations/0014-sources-copies-drive.json) ; 'original' garde l'URL fournie par le MJ (document de l'ancien mainteneur). Le doublon 1vn5Tq11… (cité deux fois) n'apparaît qu'une fois.",
   "discord": {
     "guildId": "374464159254839298",
     "invite": "https://discord.gg/GMGBnjzfMk",
@@ -54,96 +54,108 @@
       "kind": "doc",
       "type": null,
       "title": null,
-      "url": "https://docs.google.com/document/d/1CwDqDKurMOdqig3ozX4NQETbBW9sggsxEqM1WfbOG5M/edit?tab=t.0#heading=h.2h6bnqhu7awm"
+      "url": "https://docs.google.com/document/d/1CwDqDKurMOdqig3ozX4NQETbBW9sggsxEqM1WfbOG5M/edit?tab=t.0#heading=h.2h6bnqhu7awm",
+      "note": "Non copié : introuvable dans le Drive du propriétaire (ni partagé avec lui, ni accessible par recherche) le 2026-10-10 ; l'URL est celle de l'original."
     },
     {
-      "id": "1KXO4Np9SnaOYopV1cUKsO-MPjNxgyJ39BEyDAai1Kg4",
+      "id": "150Q6SJi4ft0oROtwT6snMAZUdWMVtkblxwYY9TqxV4Q",
       "kind": "sheet",
       "type": null,
-      "title": null,
+      "title": "Les races",
       "gids": [
         "1883785537"
       ],
-      "url": "https://docs.google.com/spreadsheets/d/1KXO4Np9SnaOYopV1cUKsO-MPjNxgyJ39BEyDAai1Kg4/edit?gid=1883785537#gid=1883785537"
+      "url": "https://docs.google.com/spreadsheets/d/150Q6SJi4ft0oROtwT6snMAZUdWMVtkblxwYY9TqxV4Q/edit?gid=1883785537#gid=1883785537",
+      "original": "https://docs.google.com/spreadsheets/d/1KXO4Np9SnaOYopV1cUKsO-MPjNxgyJ39BEyDAai1Kg4/edit?gid=1883785537#gid=1883785537"
     },
     {
-      "id": "12Sp_j_KbtzRbooe7WGsaP2Dce8F4TbLvpS0Eu8TwSMI",
+      "id": "1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA",
       "kind": "doc",
       "type": null,
-      "title": null,
-      "url": "https://docs.google.com/document/d/12Sp_j_KbtzRbooe7WGsaP2Dce8F4TbLvpS0Eu8TwSMI/edit?tab=t.0"
+      "title": "Créer sa fiche de personnage",
+      "url": "https://docs.google.com/document/d/1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA/edit?tab=t.0",
+      "original": "https://docs.google.com/document/d/12Sp_j_KbtzRbooe7WGsaP2Dce8F4TbLvpS0Eu8TwSMI/edit?tab=t.0"
     },
     {
-      "id": "1Xph3vnjwmZpBG3UHDyBBqZQdVUnMLVxEllK3vXUw598",
+      "id": "17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM",
       "kind": "doc",
       "type": null,
-      "title": null,
-      "url": "https://docs.google.com/document/d/1Xph3vnjwmZpBG3UHDyBBqZQdVUnMLVxEllK3vXUw598/edit?tab=t.0"
+      "title": "Règle du jeu/Guide pour MJ - Maverick",
+      "url": "https://docs.google.com/document/d/17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM/edit?tab=t.0",
+      "original": "https://docs.google.com/document/d/1Xph3vnjwmZpBG3UHDyBBqZQdVUnMLVxEllK3vXUw598/edit?tab=t.0"
     },
     {
-      "id": "1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c",
+      "id": "1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0",
       "kind": "sheet",
       "type": null,
-      "title": null,
+      "title": "Magie Maverick V8",
       "gids": [
         "91381518"
       ],
-      "url": "https://docs.google.com/spreadsheets/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit?gid=91381518#gid=91381518"
+      "url": "https://docs.google.com/spreadsheets/d/1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0/edit?gid=91381518#gid=91381518",
+      "original": "https://docs.google.com/spreadsheets/d/1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c/edit?gid=91381518#gid=91381518"
     },
     {
-      "id": "1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs",
+      "id": "1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I",
       "kind": "sheet",
       "type": null,
-      "title": null,
+      "title": "Classe Maverick V7",
       "gids": [
         "74362786"
       ],
-      "url": "https://docs.google.com/spreadsheets/d/1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs/edit?gid=74362786#gid=74362786"
+      "url": "https://docs.google.com/spreadsheets/d/1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I/edit?gid=74362786#gid=74362786",
+      "original": "https://docs.google.com/spreadsheets/d/1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs/edit?gid=74362786#gid=74362786"
     },
     {
       "id": "1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8",
       "kind": "doc",
       "type": null,
       "title": null,
-      "url": "https://docs.google.com/document/d/1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8/edit?usp=sharing"
+      "url": "https://docs.google.com/document/d/1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8/edit?usp=sharing",
+      "note": "Non copié : introuvable dans le Drive du propriétaire (ni partagé avec lui, ni accessible par recherche) le 2026-10-10 ; l'URL est celle de l'original."
     },
     {
-      "id": "12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA",
+      "id": "1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw",
       "kind": "sheet",
       "type": null,
-      "title": null,
-      "url": "https://docs.google.com/spreadsheets/d/12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA/edit"
+      "title": "Ressources et Craft",
+      "url": "https://docs.google.com/spreadsheets/d/1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw/edit",
+      "original": "https://docs.google.com/spreadsheets/d/12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA/edit"
     },
     {
-      "id": "1Px7F_VtSOEkyUxrk2da1UiBJ6ji3n5i95LfNl63biE4",
+      "id": "1U56C8wQ2hf19ryTA_t9AeUPsORurift8As6dOEgmNgo",
       "kind": "sheet",
       "type": null,
-      "title": null,
+      "title": "Invocation",
       "gids": [
         "864516453"
       ],
-      "url": "https://docs.google.com/spreadsheets/d/1Px7F_VtSOEkyUxrk2da1UiBJ6ji3n5i95LfNl63biE4/edit?gid=864516453#gid=864516453"
+      "url": "https://docs.google.com/spreadsheets/d/1U56C8wQ2hf19ryTA_t9AeUPsORurift8As6dOEgmNgo/edit?gid=864516453#gid=864516453",
+      "original": "https://docs.google.com/spreadsheets/d/1Px7F_VtSOEkyUxrk2da1UiBJ6ji3n5i95LfNl63biE4/edit?gid=864516453#gid=864516453"
     },
     {
-      "id": "1lwALh1VKrIpgmEqX2MdYirKkPzGjSJXXDHtp2uYXO7w",
+      "id": "1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo",
       "kind": "sheet",
       "type": null,
-      "title": null,
-      "url": "https://docs.google.com/spreadsheets/d/1lwALh1VKrIpgmEqX2MdYirKkPzGjSJXXDHtp2uYXO7w/edit"
+      "title": "Mode hyper et co",
+      "url": "https://docs.google.com/spreadsheets/d/1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo/edit",
+      "original": "https://docs.google.com/spreadsheets/d/1lwALh1VKrIpgmEqX2MdYirKkPzGjSJXXDHtp2uYXO7w/edit"
     },
     {
-      "id": "1n5KJ8rmk1Yj8QY__v31XnpDwQw6gSyjx1tve9bTZM2k",
+      "id": "1Lv6pMUx4aaVUTot2tYFl17de1FtxmVbJUlnBXo0J20s",
       "kind": "doc",
       "type": null,
-      "title": null,
-      "url": "https://docs.google.com/document/d/1n5KJ8rmk1Yj8QY__v31XnpDwQw6gSyjx1tve9bTZM2k/edit?tab=t.0"
+      "title": "Alchimie",
+      "url": "https://docs.google.com/document/d/1Lv6pMUx4aaVUTot2tYFl17de1FtxmVbJUlnBXo0J20s/edit?tab=t.0",
+      "original": "https://docs.google.com/document/d/1n5KJ8rmk1Yj8QY__v31XnpDwQw6gSyjx1tve9bTZM2k/edit?tab=t.0"
     },
     {
-      "id": "1ilcolQXx_MRTMKt6N2n243N8GU9HSajihMT_JNRDI14",
+      "id": "1EK51ZTpXfzZNhRm-uINaRqkMz_RjBW0r-wir4pAg6uc",
       "kind": "doc",
       "type": null,
-      "title": null,
-      "url": "https://docs.google.com/document/d/1ilcolQXx_MRTMKt6N2n243N8GU9HSajihMT_JNRDI14/edit?tab=t.0"
+      "title": "MÉTIER",
+      "url": "https://docs.google.com/document/d/1EK51ZTpXfzZNhRm-uINaRqkMz_RjBW0r-wir4pAg6uc/edit?tab=t.0",
+      "original": "https://docs.google.com/document/d/1ilcolQXx_MRTMKt6N2n243N8GU9HSajihMT_JNRDI14/edit?tab=t.0"
     }
   ],
   "fandom": [

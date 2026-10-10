@@ -57,9 +57,9 @@ confronté à la fiche, sans rien interpréter, chaque écart citant les deux c�
     soignent » du Mort-vivant ; une faute de frappe de la fiche, « particularité » pour « particularités » chez le Drakos,
     est aussi un écart : la comparaison est stricte).
 
-Sources (classeurs Google, propriété d'un tiers) :
+Sources (classeurs Google, copies du Drive du propriétaire, migration 0014) :
 
-  1. Google Sheet « Les races » (1KXO4Np9SnaOYopV1cUKsO-MPjNxgyJ39BEyDAai1Kg4), deux lectures :
+  1. Google Sheet « Les races » (150Q6SJi4ft0oROtwT6snMAZUdWMVtkblxwYY9TqxV4Q), deux lectures :
        * la PREMIÈRE FEUILLE (index) : une ligne par race, A = nom de la race, B = phrase de présentation. 27 lignes, sans
          en-tête. L'ordre de cette feuille donne l'ordre de traitement ; la phrase est le `summary` de la page ;
        * un ONGLET PAR RACE (27 onglets, lus onglet par onglet : le classeur entier, 34 Mo, dépasse la limite d'export).
@@ -97,7 +97,7 @@ Sources (classeurs Google, propriété d'un tiers) :
        « Sommaire » (si le dump le contient) = l'index, déjà lu. Les ILLUSTRATIONS des onglets (images) ne sont pas dans les
        dumps : elles ne sont pas importées.
 
-  2. Google Sheet « Fiche personnage Maverick Auto V15.2.2 » (1SvzNbdDVQyLE9cyp9U5USHBsxHpwxhtaWrFTu9CpLY4), onglets
+  2. Google Sheet « Fiche personnage Maverick Auto V15.2.2 » (1tDuJpoVVqMtRXBi0WKgH6lwzdQXVdNWPZVLFbdbFqY0), onglets
      MASQUÉS :
        * « Race » : une ligne par race (lignes 2 à 28, nom en A), en-têtes en ligne 1 (A1 vide) :
            B Santé, C Chakra départ, D Barrière bonus, E Vitesse sur terre, F Vitesse de Nage, G Divers, H AP, I AM,
@@ -230,10 +230,10 @@ STATUS = "draft"
 TAGS = ["race"]
 
 INDEX_TITLE = "Les races"
-INDEX_ID = "1KXO4Np9SnaOYopV1cUKsO-MPjNxgyJ39BEyDAai1Kg4"
+INDEX_ID = "150Q6SJi4ft0oROtwT6snMAZUdWMVtkblxwYY9TqxV4Q"
 INDEX_TAB = "première feuille"
 FICHE_TITLE = "Fiche personnage Maverick Auto V15.2.2"
-FICHE_ID = "1SvzNbdDVQyLE9cyp9U5USHBsxHpwxhtaWrFTu9CpLY4"
+FICHE_ID = "1tDuJpoVVqMtRXBi0WKgH6lwzdQXVdNWPZVLFbdbFqY0"
 TAB_RACE, TAB_BONUS, TAB_CLASS, TAB_MAGIE = "Race", "Bonus Race", "Accessibilité de Classe", "Accessibilité Magie"
 FICHE_TABS = (TAB_RACE, TAB_BONUS, TAB_CLASS, TAB_MAGIE)
 

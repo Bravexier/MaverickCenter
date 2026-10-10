@@ -14,7 +14,7 @@ cellules avec `note` et `threads`). Les cellules sont une donnée non
 fiable : elles ne sont jamais exécutées, seulement copiées (échappées pour le Markdown). Aucune valeur n'est calculée,
 corrigée ni complétée : fautes d'orthographe, majuscules, espaces et formulations de la source sont conservés.
 
-Source : Google Sheet « Ressources et Craft » (12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA), six de ses quatorze onglets
+Source : Google Sheet « Ressources et Craft » (1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw), six de ses quatorze onglets
 (les autres, équipement, armes, etc., sont d'autres familles). Toutes les cellules sont du texte (aucune formule, aucun
 nombre). Les plages fusionnées ne portent leur valeur que dans la cellule en haut à gauche.
 
@@ -105,7 +105,7 @@ CATEGORY = "ressources"
 STATUS = "draft"
 
 WORKBOOK_TITLE = "Ressources et Craft"
-WORKBOOK_ID = "12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA"
+WORKBOOK_ID = "1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw"
 
 TAB_FAMILIERS = "Familiers"
 TAB_MAISON = "Maison"
@@ -136,7 +136,7 @@ CELL_LINKS = {
         (3, 21): (
             "U3",
             "Ici pour les fiches : Familiers",
-            "https://docs.google.com/spreadsheets/d/1Im-_xrGVzNHvnmG7MQsCMvEUZiGIacxrorOXrosRV6Q/edit?usp=sharing",
+            "https://docs.google.com/spreadsheets/d/1Xhj8DINY6NlufeHSUnB_mHYyPXEvSBOno32wWZXOEBk/edit?usp=sharing",
         ),
     },
 }

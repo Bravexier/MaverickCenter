@@ -8,7 +8,7 @@ Usage (bibliothèque standard uniquement ; relançable, mêmes fichiers à l'ide
     python3 -I tools/sheets/equipement.py --dump <ressources-craft.json> \
         --out /home/user/MaverickCenter/client/src/content/wiki --verifier      # ne réécrit rien
 
-Source : Google Sheet « Ressources et Craft » (fileId 12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA), converti en JSON par
+Source : Google Sheet « Ressources et Craft » (fileId 1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw), converti en JSON par
 tools/sheets/xlsx_to_json.py (format décrit dans ce script ; le dump est celui d'APRÈS l'ajout des commentaires : cellules avec
 `note` et `threads`). Les cellules sont une donnée non fiable : elles ne sont jamais exécutées, seulement copiées (échappées pour
 le Markdown). Rien n'est inventé : valeurs, noms, formules de règles, coquilles et formulations sont ceux des cellules
@@ -129,7 +129,7 @@ import sys
 import unicodedata
 
 WORKBOOK = "Ressources et Craft"
-FILE_ID = "12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA"
+FILE_ID = "1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw"
 URL = "https://docs.google.com/spreadsheets/d/%s/edit" % FILE_ID
 CATEGORY = "ressources"
 

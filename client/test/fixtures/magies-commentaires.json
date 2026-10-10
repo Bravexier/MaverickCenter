@@ -1,6 +1,6 @@
 {
   "classeur": "Magie Maverick V8",
-  "fichier": "1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c",
+  "fichier": "1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0",
   "regenerer": "python3 -I tools/sheets/magies.py --dump <magie-v8.json avec notes> --exporter-commentaires client/test/fixtures/magies-commentaires.json",
   "contrat": "une entrée par note ou par fil cité dans les pages ; `lignes` = les lignes du commentaire, sans blancs de bord de ligne ni lignes vides en tête et en queue, lignes vides intermédiaires conservées (voir magies.py)",
   "entrees": [
