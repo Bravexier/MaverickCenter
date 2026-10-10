@@ -27,7 +27,7 @@ export function chargerFilRouge(db, personnages = FIL_ROUGE) {
     );
     const ethnie = un('SELECT id, nom, descriptif, bonus_pv, bonus_chakra, bonus_barriere, bonus_ap, bonus_am, bonus_vitesse FROM ethnie WHERE id = ?', p.ethnie);
     const magie = un(
-      `SELECT m.id, m.nom, m.chakra_offert, m.sante_offerte, m.barre4_ressource, m.barre4_max, c.nom AS caracteristique
+      `SELECT m.id, m.nom, m.chakra_offert, m.sante_offerte, m.barre4_ressource, m.barre4_max, m.caracteristique_id, c.nom AS caracteristique
          FROM magie m LEFT JOIN caracteristique c ON c.id = m.caracteristique_id WHERE m.id = ?`,
       p.magie,
     );
@@ -59,6 +59,7 @@ export function chargerFilRouge(db, personnages = FIL_ROUGE) {
         id: magie.id,
         nom: magie.nom,
         caracteristique: magie.caracteristique,
+        caracteristique_id: magie.caracteristique_id,
         chakra: magie.chakra_offert,
         sante: magie.sante_offerte,
         dieux,

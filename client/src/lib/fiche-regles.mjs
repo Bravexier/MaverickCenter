@@ -5,6 +5,7 @@
 // Node seulement (la base est ouverte par lib/donnees.mjs).
 import { groupesDeChoix } from './classe-dons.mjs';
 import { ditClasseMagique } from './classe-magique.mjs';
+import { couleurDeCaracteristique } from './caracteristiques-postures.mjs';
 import { CLASS_GROUPS, classCategory, classColor } from './class-groups.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS, raceKind } from './race-kinds.mjs';
 import { couleurDeMagie, texteSurCouleur } from './sort-format.mjs';
@@ -46,7 +47,9 @@ export function chargerReglesDeFiche(db) {
            g.niveaux_maitrise, v.caracteristiques_total, v.competence_naturel_max, v.points_competences_cumul, v.niveaux_maitrise_cumul
     FROM niveau_global g JOIN v_niveau v ON v.niveau = g.niveau ORDER BY g.niveau`);
 
-  const caracteristiques = lignes(db, 'SELECT id, nom, lettre FROM caracteristique ORDER BY ordre');
+  // couleur de la caractéristique, reprise par ses compétences (demande du propriétaire, lib/caracteristiques-postures.mjs)
+  const caracteristiques = lignes(db, 'SELECT id, nom, lettre FROM caracteristique ORDER BY ordre')
+    .map((c) => ({ ...c, couleur: couleurDeCaracteristique(c.id), texte: texteSurCouleur(couleurDeCaracteristique(c.id)) }));
   const competences = lignes(db, 'SELECT id, nom, caracteristique_id FROM competence ORDER BY ordre');
   const initiative = lignes(db, 'SELECT agilite, bonus, bonus_brut, note FROM initiative_agilite ORDER BY agilite');
 

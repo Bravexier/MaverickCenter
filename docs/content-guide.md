@@ -250,7 +250,10 @@ sur une page zoomée ; la page suit un peu le doigt. `overscroll-behavior-x: non
 - **Le premier chapitre** (`guide/bienvenue`) est servi à `/guide/` : il n'a pas de page à lui, ses liens y mènent (`adresseDePage`).
 - **Les blocs tirés de la base** : une ligne seule `<!-- guide:<bloc> -->` dans le Markdown (`BLOCS`) est remplacée au rendu par un tableau lu dans
   la base (`lib/guide-db.mjs`, `components/guide/GuideBloc.astro`) : progression (`niveau_global`), postures, compétences, initiative, ce que donne
-  chaque magie, types de don, entraînement… Ne jamais recopier ces chiffres dans le texte. Un lien Markdown vers une rubrique s'écrit depuis la racine
+  chaque magie, types de don, entraînement… Ne jamais recopier ces chiffres dans le texte. Les caractéristiques (cadre de leurs compétences, « +1 en … » d'une
+  magie) et les postures y sont dans leur couleur (demande du propriétaire, `lib/caracteristiques-postures.mjs`, clés = ids de la base, testé : Force
+  #FF6666, Volonté #FF99FF, Intelligence #66CCFF, Perception #FFCC00, Social #DDDDDD, Agilité #99FF66 ; Offensif #FF6666, Neutre #EEEEEE, Défensif
+  #99FF99, Focus #9999FF, Vigilance #FFFF66, Symbiose #CC66FF) : couleurs claires, en aplat sous un texte foncé. Un lien Markdown vers une rubrique s'écrit depuis la racine
   (`[les races](/races/)`) : le préfixe de déploiement est ajouté au rendu (`avecPrefixe`).
 - **Les personnages fil rouge** (`lib/guide-fil-rouge.mjs`) : quatre pré-tirés (archer felfe Vide, mage rouge majin Feu, guerrier orios Sang, barde
   kitsune Vent). Seuls leurs choix y sont écrits (race, ethnie, magie, classe ; `nom` à venir) ; santé, chakra, barrière, maîtrises, équipement et

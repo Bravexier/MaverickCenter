@@ -1,6 +1,7 @@
 ---
 import { ouvrirBase } from '../../lib/donnees.mjs';
 import { pagesDeReference, partiesDuGuide } from '../../lib/guide.mjs';
+import { couleurDeCaracteristique, couleurDePosture, styleDeCouleur } from '../../lib/caracteristiques-postures.mjs';
 import { chargerFilRouge } from '../../lib/guide-fil-rouge.mjs';
 import {
   chargerCompetences,
@@ -117,7 +118,7 @@ const nombre = (n: number) => n.toLocaleString('fr-FR');
                   <dt>Magie innée</dt>
                   <dd><a href={pageHref(p.magie.id)}>{p.magie.nom}</a></dd>
                   <dt>Bonus de caractéristique</dt>
-                  <dd>+1 en {p.magie.caracteristique ?? 'au choix ou aléatoire'}</dd>
+                  <dd>+1 en {p.magie.caracteristique_id ? <span class="guide-carac" style={styleDeCouleur(couleurDeCaracteristique(p.magie.caracteristique_id))}>{p.magie.caracteristique}</span> : 'au choix ou aléatoire'}</dd>
                   <dt>Chakra offert</dt>
                   <dd>{p.magie.chakra}</dd>
                   {p.magie.sante > 0 && (<><dt>Santé offerte</dt><dd>{p.magie.sante}</dd></>)}
@@ -226,7 +227,7 @@ const nombre = (n: number) => n.toLocaleString('fr-FR');
                   <span class="guide-magie__nom">{m.nom}</span>
                 </a>
               </th>
-              <td>{m.caracteristique ?? '—'}</td>
+              <td>{m.caracteristique_id ? <span class="guide-carac" style={styleDeCouleur(couleurDeCaracteristique(m.caracteristique_id))}>{m.caracteristique}</span> : (m.caracteristique ?? '—')}</td>
               <td class="guide-nombre">{m.chakra ?? '—'}</td>
               <td class="guide-nombre">{m.sante ?? '—'}</td>
             </tr>
@@ -263,9 +264,9 @@ const nombre = (n: number) => n.toLocaleString('fr-FR');
   bloc === 'competences' && (
     <div class="guide-competences">
       {competences.map((c) => (
-        <section class="guide-competences__groupe" aria-labelledby={`competences-${c.id}`}>
+        <section class="guide-competences__groupe" style={styleDeCouleur(couleurDeCaracteristique(c.id))} aria-labelledby={`competences-${c.id}`}>
           <h4 id={`competences-${c.id}`}>
-            {c.nom} <span class="guide-lettre">({c.lettre})</span>
+            <span class="guide-carac">{c.nom}</span> <span class="guide-lettre">({c.lettre})</span>
           </h4>
           <ul>
             {c.competences.map((k) => (
@@ -356,7 +357,7 @@ const nombre = (n: number) => n.toLocaleString('fr-FR');
       {postures.map((p) => {
         const id = idBulle('posture');
         return (
-          <section class="guide-posture" aria-labelledby={`${id}-titre`}>
+          <section class="guide-posture" style={styleDeCouleur(couleurDePosture(p.id))} aria-labelledby={`${id}-titre`}>
             <h3 id={`${id}-titre`}>
               <span class="bulle-zone">
                 <button type="button" class="guide-posture__nom" data-bulle={id} aria-describedby={id} title={p.description}>
