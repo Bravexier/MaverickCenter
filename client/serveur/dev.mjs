@@ -11,6 +11,8 @@ const service = await demarrerService({
   hote: process.env.HOST || '127.0.0.1',
   port: Number(process.env.PORT || 8787),
   intervalle: 0,
+  // en développement, l'édition est ouverte (comme sur le site de dev) sauf MAVERICK_EDITION=0
+  edition: process.env.MAVERICK_EDITION !== '0',
 });
 
 for (const signal of ['SIGTERM', 'SIGINT']) {

@@ -50,10 +50,11 @@ const inode = (chemin) => {
  * @param {number} [o.port] 0 = un port libre au hasard (tests)
  * @param {number} [o.intervalle] surveillance des fichiers en ms ; 0 = aucune
  * @param {string|null} [o.fichierVersion] version.json du service livré (null en développement)
+ * @param {boolean} [o.edition] édition des règles ouverte (site de dev seulement : MAVERICK_EDITION=1)
  * @param {(ligne: string) => void} [o.journal]
  * @param {() => void} [o.relancer] appelé après l'arrêt quand une nouvelle version du service est livrée
  */
-export async function demarrerService({ regles, dossier, hote = '127.0.0.1', port = 8787, intervalle = 15000, fichierVersion = null,
+export async function demarrerService({ regles, dossier, hote = '127.0.0.1', port = 8787, intervalle = 15000, fichierVersion = null, edition = false,
   journal = (ligne) => console.log(horodater(ligne)), relancer = () => process.exit(0) }) {
   const chemin = join(dossier, FICHIER_BASE);
   const version = (() => {
@@ -97,16 +98,23 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
   function decrire() {
     const enregistre = lireEtat(dossier);
     let personnages = null;
+    let modifications = null;
     try {
       personnages = etat.db?.prepare("SELECT count(*) AS n FROM personnage WHERE nature = 'pretire'").get().n ?? null;
+      if (edition && etat.db) {
+        modifications = Object.fromEntries(['en_attente', 'conflit'].map((e) => [e, etat.db.prepare('SELECT count(*) AS n FROM modification WHERE etat = ?').get(e).n]));
+      }
     } catch {
-      // base rouverte entre-temps : le compte est facultatif
+      // base rouverte entre-temps : les comptes sont facultatifs
     }
     return {
       service: 'maverick-center',
       version: version.version,
       code: version.empreinte,
       demarre_le: etat.demarre_le,
+      // édition des règles depuis les pages : site de dev seulement (docs/serveur.md, « Édition »)
+      edition: Boolean(edition),
+      ...(edition ? { modifications } : {}),
       base: {
         disponible: Boolean(etat.db),
         a_jour: Boolean(etat.db) && !etat.erreur,
@@ -154,7 +162,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       try {
         const adresse = new URL(req.url ?? '/', 'http://service');
         reponse = traiter({ methode: req.method ?? 'GET', chemin: adresse.pathname, entetes: req.headers, corps: Buffer.concat(morceaux).toString('utf8') },
-          { base: () => etat.db, etat: decrire, journal });
+          { base: () => etat.db, etat: decrire, journal, edition: Boolean(edition) });
       } catch (e) {
         journal(`ERREUR ${req.method} ${req.url} : ${e.stack ?? e.message}`);
         reponse = { statut: 500, corps: { erreur: 'Erreur interne du service.' } };
@@ -168,7 +176,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     serveur.listen(port, hote, ok);
   });
   const ecoute = serveur.address();
-  journal(`service des personnages ${version.version} : http://${hote}:${ecoute.port}/api/ (règles ${regles}, base ${chemin})`);
+  journal(`service des personnages ${version.version} : http://${hote}:${ecoute.port}/api/ (règles ${regles}, base ${chemin})${edition ? ' ; édition des règles OUVERTE (site de dev)' : ''}`);
 
   let minuterie = null;
   let arrete = false;
