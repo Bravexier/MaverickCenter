@@ -13,7 +13,7 @@ la citer depuis une source (`sources:` dans le frontmatter) ou la laisser absent
 
 ## Décisions du propriétaire
 
-`docs/decisions-regles.md` : les choix tranchés quand les sources se contredisent (27 races, mono-classe, budgets exacts, Calme, Mode Hyper +15/+7, Archimage magique, sens des relations entre peuples, onglet de race source, Drassah'thac hybride, Corruption et Potentiel Illimité mono-magie, puissance magique 5 au niveau 16, 2 santé pour 1 chakra manquant, croix des caractéristiques, Corruption acquise des Elfes noirs Charbon et Felfes noirs, déesse de la Corruption « Eaunoire », Corruption innée de la Lamia…).
+`docs/decisions-regles.md` : les choix tranchés quand les sources se contredisent (27 races, mono-classe, budgets exacts, Calme, Mode Hyper +15/+7, Archimage magique, sens des relations entre peuples, onglet de race source, Drassah'thac hybride, Corruption et Potentiel Illimité mono-magie, puissance magique 5 au niveau 16, 2 santé pour 1 chakra manquant, croix des caractéristiques, Corruption acquise des Elfes noirs Charbon et Felfes noirs, déesse de la Corruption « Eaunoire », Corruption innée de la Lamia, Archimage réservée au Potentiel Illimité qui l'impose…).
 Les suivre ; ne jamais en déduire d'autres.
 
 ## Vision à long terme
@@ -176,7 +176,9 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   `lib/fiche-moteur.mjs` cite sa source (fiche auto V15.2.2, guide, décisions) et a son test, comparé aux vues SQL quand elles existent. Les contrôles qui font
   foi sont ceux de `v_personnage_controle` (rendus par le service) ; toute règle ajoutée à la vue doit avoir son libellé dans `lib/fiche-controles.mjs`
   (`test/fiche-controles.test.mjs`). Avant la 1.0 la fiche ne crée que des prétirés. Une colonne ajoutée à la section 13 apparaît dans le JSON d'une fiche
-  sans rien changer au service ; la page, elle, doit lui donner un champ.
+  sans rien changer au service ; la page, elle, doit lui donner un champ. L'Archimage n'est ouverte qu'au Potentiel Illimité inné, qui l'impose en classe 1 et l'y verrouille
+  (décision R23 : colonne `classe.magie_innee_id`, migration `0015-archimage-potentiel-illimite`, règles `classe_reservee` / `classe_imposee`, `classesSelonLaMagieInnee`) ;
+  un don à choix d'une classe ou d'une spécialité retirée part avec elle (`donsValables`).
 - **Fiches de personnages** (section 13 de `data/schema.sql`, migration `0011-personnages`) : les tables gardent les **choix** du joueur (race, ethnie, magies, classes, caractéristiques de base et croix (R19), points de compétences,
   gains de niveau, dons à choix, sorts et NM, équipement), cellule de la fiche auto V15.2.2 citée en commentaire ; **rien de ce que la fiche calcule n'est stocké** (niveaux, santé, totaux…).
   `v_personnage_niveau` (R2) et `v_personnage_controle` (une ligne par règle enfreinte, vide pour une fiche `valide`) ; `test/personnages-db.test.mjs` écrit dans une copie de la base.
