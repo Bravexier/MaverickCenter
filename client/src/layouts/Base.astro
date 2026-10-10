@@ -33,10 +33,6 @@ const site = modeDuSite(process.env, packageInfo.version);
       <div class="site-header__inner">
         <a class="brand" href={url()}><img src={url('logo.webp')} alt="Maverick Center" width="319" height="320" /></a>
         <div class="site-header__menu">
-          <form class="search-form" action={url('recherche/')} role="search">
-            <input type="search" name="q" placeholder="Rechercher…" aria-label="Rechercher dans le wiki" />
-            <button type="submit">OK</button>
-          </form>
           <nav class="site-nav" aria-label="Navigation principale">
             <ul class="site-nav__groups">
               {

@@ -1,0 +1,36 @@
+---
+import Base from '../layouts/Base.astro';
+import galeriesCss from '../styles/galerie/galeries.css?raw';
+import { GALERIE, ancreDImage, galerieEnConstruction } from '../lib/galerie.mjs';
+import { url } from '../lib/wiki';
+
+// Galeries (menu Outils, demande du propriétaire) : toutes les images de lib/galerie.mjs, celles qui défilent sur l'accueil. En construction : le logo seul.
+// CSS : styles/galerie/galeries.css, inséré ici (?raw).
+---
+
+<Base title="Galeries" description="Les images de Maverick, qui défilent aussi sur l’accueil">
+  <style is:inline set:html={galeriesCss}></style>
+  <h1>Galeries</h1>
+  <p class="prose">Les images de Maverick : elles défilent aussi sur l’accueil. Cliquez sur une image pour l’ouvrir en grand.</p>
+  {
+    galerieEnConstruction() && (
+      <p class="galerie-chantier">
+        <span class="galerie-chantier__badge">En construction</span> Pour l’instant, la galerie n’a que le logo.
+      </p>
+    )
+  }
+  <ul class="galerie">
+    {
+      GALERIE.map((image) => (
+        <li id={ancreDImage(image)}>
+          <figure>
+            <a href={url(image.fichier)}>
+              <img src={url(image.fichier)} alt={image.alt} width={image.largeur} height={image.hauteur} loading="lazy" decoding="async" />
+            </a>
+            <figcaption>{image.titre}</figcaption>
+          </figure>
+        </li>
+      ))
+    }
+  </ul>
+</Base>

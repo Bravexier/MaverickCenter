@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { searchIndex } from '../src/lib/search.mjs';
+import { filtrerMotsCles, searchIndex } from '../src/lib/search.mjs';
 
 const doc = (title, extra = {}) => ({ title, aliases: [], tags: [], summary: '', text: '', ...extra });
 const index = [
@@ -23,4 +23,14 @@ test('alias et tags sont cherchés, requête vide = aucun résultat', () => {
   assert.deepEqual(searchIndex(index, 'haut elfe').map((d) => d.title), ['Elfe']);
   assert.deepEqual(searchIndex(index, 'peuple').map((d) => d.title), ['Elfe']);
   assert.deepEqual(searchIndex(index, '   '), []);
+});
+
+test('mots-clés de la page de recherche : tous sans recherche, sinon ceux qui contiennent chaque mot (casse et accents ignorés)', () => {
+  const cles = ['alchimie', 'armure-magique', 'armure-physique', 'feu', 'magie-du-feu'];
+  assert.deepEqual(filtrerMotsCles(cles, ''), cles);
+  assert.deepEqual(filtrerMotsCles(cles, '  '), cles);
+  assert.deepEqual(filtrerMotsCles(cles, 'Feu'), ['feu', 'magie-du-feu']);
+  assert.deepEqual(filtrerMotsCles(cles, 'armure MAGIQUE'), ['armure-magique']);
+  assert.deepEqual(filtrerMotsCles(cles, 'Alchîmie'), ['alchimie']);
+  assert.deepEqual(filtrerMotsCles(cles, 'glace'), []);
 });

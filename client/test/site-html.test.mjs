@@ -43,6 +43,52 @@ test('en-tête : le logo à la place du titre, le menu à côté ; le logo en ic
   assert.ok(!existsSync(join(dist, 'favicon.svg')), 'ancienne icône retirée');
 });
 
+test('en-tête : plus de barre de recherche (une page à part, avec les mots-clés) ; le menu voulu par le propriétaire', options, () => {
+  const html = lire('index.html');
+  const entete = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
+  assert.ok(!/<form|type="search"/.test(entete), 'aucun formulaire de recherche dans l’en-tête');
+  assert.deepEqual([...entete.matchAll(/class="nav-group__toggle" data-group="([^"]+)"[^>]*>([^<]+)</g)].map((m) => `${m[1]} ${m[2].trim()}`),
+    ['regles Règles', 'personnages Personnages', 'inventaire Inventaire', 'codex Codex', 'outils Outils']);
+  const outils = entete.match(/<ul class="site-nav__items" data-group="outils"[^>]*>([\s\S]*?)<\/ul>/)[1];
+  assert.deepEqual([...outils.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`), ['Galeries /galeries/', 'Recherche /recherche/', 'Archives /archives/']);
+  assert.match(lire('ressources/alchimie/index.html'), /data-group="inventaire" aria-pressed="true" aria-current="true"/, 'une ressource hors menu ouvre l’Inventaire');
+});
+
+test('accueil : texte de bienvenue et défilement des images de la galerie (en construction : le logo seul)', options, () => {
+  const html = lire('index.html');
+  const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
+  assert.match(main, /<h1 id="titre-accueil">Bienvenue sur Maverick Center<\/h1>/);
+  assert.match(main, /<a class="accueil__bouton accueil__bouton--principal" href="\/guide\/">Lire le guide<\/a>/);
+  assert.match(main, /<section class="carrousel" aria-roledescription="carrousel" aria-label="Galerie"/);
+  assert.match(main, /<a href="\/galeries\/#image-logo"><img src="\/logo\.webp" alt="Logo de Maverick[^"]*" width="319" height="320"/, 'l’image mène à sa place sur /galeries/');
+  assert.match(main, /class="carrousel__badge">En construction</);
+  assert.ok(!main.includes('class="carrousel__commandes"'), 'pas de flèches pour une seule image');
+  assert.ok(!main.includes('class="card"'), 'plus la grille des rubriques');
+});
+
+test('/galeries/ : toutes les images ; /archives/ : les documents sources et l’ancien wiki', options, () => {
+  const galeries = lire('galeries/index.html');
+  assert.match(galeries, /<li id="image-logo"><figure><a href="\/logo\.webp"><img src="\/logo\.webp"/);
+  const archives = lire('archives/index.html');
+  for (const titre of ['Classeurs et documents du jeu', 'Fiches de personnage automatiques', 'Documents introuvables', 'L’ancien wiki']) assert.ok(archives.includes(`>${titre}</h2>`), titre);
+  assert.match(archives, /<a href="https:\/\/docs\.google\.com\/spreadsheets\/d\/1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I\/edit[^"]*" rel="noopener noreferrer" target="_blank">Classe Maverick V7<\/a>/);
+  assert.match(archives, /href="https:\/\/maverick-jdr\.fandom\.com\/fr\/wiki\/Progression"/);
+  assert.ok(!archives.includes('payoumorfot'), 'pas d’adresse de courriel du registre');
+});
+
+test('/recherche/ : la recherche et tous les mots-clés ; plus de /tags/ (la page 404 y renvoie), la page d’un mot-clé ramène à la recherche', options, () => {
+  const html = lire('recherche/index.html');
+  assert.match(html, /<form id="search-form" action="\/recherche\/"/);
+  const motsCles = [...html.matchAll(/<li data-cle="([^"]+)"><a class="badge" href="\/tags\/([^"/]+)\/">/g)];
+  assert.ok(motsCles.length > 100, `${motsCles.length} mots-clés`);
+  for (const [, cle, adresse] of motsCles) {
+    assert.equal(cle, adresse);
+    assert.ok(existsSync(join(dist, 'tags', cle, 'index.html')), `tags/${cle}/`);
+  }
+  assert.ok(!existsSync(join(dist, 'tags', 'index.html')), 'ancienne liste des mots-clés');
+  assert.match(lire(`tags/${motsCles[0][1]}/index.html`), /<a href="\/recherche\/#mots-cles">Mots-clés<\/a> ›/);
+});
+
 test('en-tête : la bande a la hauteur du menu, pas du logo, dont la pointe de l’épée dépasse dessous ; sur téléphone, le logo reste dans la bande', options, () => {
   const css = readdirSync(join(dist, '_astro'))
     .filter((f) => f.endsWith('.css'))

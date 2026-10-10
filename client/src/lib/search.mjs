@@ -35,3 +35,13 @@ export function searchIndex(index, query) {
     .sort((a, b) => b.score - a.score || a.doc.title.localeCompare(b.doc.title, 'fr'))
     .map((r) => r.doc);
 }
+
+/**
+ * Mots-clés qui correspondent à la recherche (page /recherche/, où la liste des mots-clés est mêlée à la recherche) : ceux dont la clé (`normalize`
+ * du libellé, celle des adresses /tags/<clé>/) contient chaque mot cherché. Recherche vide : tous. Garde l'ordre reçu.
+ * @param {string[]} cles
+ */
+export function filtrerMotsCles(cles, query) {
+  const tokens = normalize(query).split('-').filter(Boolean);
+  return cles.filter((cle) => tokens.every((token) => cle.includes(token)));
+}
