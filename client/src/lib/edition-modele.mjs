@@ -26,6 +26,47 @@ export const TABLES = {
       remarque: { type: 'texte', libelle: 'Remarque' },
     },
   },
+  // Magies : présentation, description, explication (la table des relations entre magies ne se modifie pas : demande du propriétaire)
+  magie: {
+    libelle: 'Magie',
+    colonnes: {
+      banniere: { type: 'texte', libelle: 'Bannière' },
+      description: { type: 'texte', libelle: 'Présentation' },
+      description_physique: { type: 'texte', libelle: 'Description physique' },
+      explication: { type: 'texte', libelle: 'Explication' },
+      sante_offerte: { type: 'entier', libelle: 'Santé offerte', min: 0 },
+      chakra_offert: { type: 'entier', libelle: 'Chakra offert', min: 0 },
+      caracteristique_brut: { type: 'ligne', libelle: 'Caractéristique bonus' },
+      barre4_texte: { type: 'texte', libelle: '4ème barre' },
+      remarque: { type: 'texte', libelle: 'Remarque' },
+    },
+  },
+  magie_role: {
+    libelle: 'Rôle de magie',
+    colonnes: { role_brut: { type: 'ligne', libelle: 'Rôle', requis: true } },
+  },
+  mode_hyper_effet: {
+    libelle: 'Capacité Mode Hyper',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Nom de la capacité' },
+      effet: { type: 'texte', libelle: 'Effet', requis: true },
+    },
+  },
+  // Sorts : chaque case du tableau et du détail. Une seule colonne par ligne peut avoir un effet dû aux NM (règle de l'édition, demande du propriétaire)
+  sort: {
+    libelle: 'Sort',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Nom', requis: true },
+      type_brut: { type: 'ligne', libelle: 'Type', requis: true },
+      cout_brut: { type: 'ligne', libelle: 'Coût', requis: true },
+      portee_brut: { type: 'ligne', libelle: 'Portée', requis: true },
+      zone_brut: { type: 'ligne', libelle: 'Zone', requis: true },
+      dsb_brut: { type: 'ligne', libelle: 'D/S/B' },
+      effets: { type: 'texte', libelle: 'Effets secondaires' },
+      remarque: { type: 'texte', libelle: 'Remarque' },
+      texte_niveau5: { type: 'texte', libelle: 'Texte du sort (niveau 5)' },
+    },
+  },
 };
 
 /**

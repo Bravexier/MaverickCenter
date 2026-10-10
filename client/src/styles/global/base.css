@@ -49,6 +49,9 @@
 
 * { box-sizing: border-box; }
 
+/* Champ vide d'une page modifiable (mode modification du site de dev, components/edition/Edition.astro) : caché en lecture, quel que soit son affichage */
+[data-ed-cadre][hidden] { display: none !important; }
+
 body {
   margin: 0;
   background: var(--bg);

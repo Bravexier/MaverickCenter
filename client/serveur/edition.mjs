@@ -13,6 +13,8 @@ import { ENTITES, ErreurValeur, TABLES, valeurDuChamp } from '../src/lib/edition
 import {
   CHAMPS_DU_CORPS, RIEN, corpsDeMetier, decouperArtisanat, decouperBonus, famillesDeRecette, remplacerChampDuCorps, resumeDeDescription,
 } from '../src/lib/metier-champs.mjs';
+import { analyserCout, analyserPortee, analyserType, analyserZone, bonusDeMaitrise, COLONNES_NM, TYPES_DE_SORT } from '../src/lib/sort-analyse.mjs';
+import { LIBELLES_CHAMP_NM, ORDRE_CHAMPS_NM, texteDeBonus } from '../src/lib/sort-maitrise.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { ErreurJournal, cleDe, lireLigne, ouvrirLot, structure } from './edition-journal.mjs';
 
@@ -161,8 +163,107 @@ const METIER = {
   },
 };
 
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Magies (tables magie, magie_role, mode_hyper_effet) et sorts (sort, sort_type, sort_mode, sort_bonus_maitrise, sort_etat)
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Caractéristique reconnue dans « Caractéristique bonus » (« FORCE ») ; NULL pour une écriture qui n'en nomme pas une seule (« AU CHOIX ou ALÉATOIRE »). */
+function caracteristiqueDe(db, brut) {
+  if (!brut) return null;
+  return caracteristiques(db).find((c) => normalize(c.nom) === normalize(brut))?.id ?? null;
+}
+
+const MAGIE = {
+  colonnes(ctx, ligne) {
+    const sortie = { caracteristique_id: caracteristiqueDe(ctx.db, ligne.caracteristique_brut) };
+    // 4ème barre : seulement pour une magie qui en a une (Sang, Nécromancie) ; maximum et régénération lus dans le texte (« maximum de 10 Sang »)
+    if (ligne.barre4_ressource === null && ligne.barre4_texte !== null) throw refus('4ème barre : cette magie n’en a pas (seules le Sang et la Nécromancie en ont une).');
+    if (ligne.barre4_ressource !== null) {
+      if (ligne.barre4_texte === null) throw refus('4ème barre : le texte est obligatoire pour une magie qui en a une.');
+      sortie.barre4_max = Number(/maximum de (\d+)/i.exec(ligne.barre4_texte)?.[1] ?? NaN) || null;
+      sortie.barre4_regen = Number(/régénère de (\d+)/i.exec(ligne.barre4_texte)?.[1] ?? NaN) || null;
+    }
+    return sortie;
+  },
+};
+
+const ROLES = { degats: 'degats', renforcement: 'renforcement', soin: 'soin', entrave: 'entrave', placement: 'placement', invocation: 'invocation' };
+const MAGIE_ROLE = {
+  colonnes(_ctx, ligne) {
+    const role = ROLES[normalize(ligne.role_brut)];
+    if (!role) throw refus(`Rôle « ${ligne.role_brut} » : un de ${Object.keys(ROLES).map((r) => r.toUpperCase()).join(', ')}`);
+    return { role };
+  },
+};
+
+/** Remplace les lignes de sort_bonus_maitrise d'une case par celles que son texte écrit maintenant ; la colonne « Bonus Maîtrise » du sort suit. */
+function deriverBonusDuSort(ctx, sort, champs) {
+  const { db, w } = ctx;
+  for (const champ of champs) {
+    const lignes = bonusDeMaitrise(champ, sort[COLONNES_NM[champ]]).map(({ champ: _c, ...l }) => l);
+    synchroniser(ctx, 'sort_bonus_maitrise', { sort_id: sort.id, champ }, lignes, { origine: 'magies', source_ref: sort.source_ref });
+  }
+  const tous = db.prepare('SELECT champ, rang, nature, texte_brut, contexte FROM sort_bonus_maitrise WHERE sort_id = ?').all(sort.id)
+    .sort((a, b) => ORDRE_CHAMPS_NM.indexOf(a.champ) - ORDRE_CHAMPS_NM.indexOf(b.champ) || a.rang - b.rang)
+    .map((b) => ({ champ: b.champ, rang: b.rang, nature: b.nature, texteBrut: b.texte_brut, contexte: b.contexte }));
+  w.modifier('sort', { id: sort.id }, { bonus_maitrise: texteDeBonus(tous) });
+  return tous;
+}
+
+/** Écritures qui varient entre le texte d'un sort et l'extrait de sort_etat (guillemets, espaces insécables) : même règle que lib/sort-format.mjs. */
+const pourComparer = (texte) => String(texte ?? '').replace(/[«»“”]/g, '"').replace(/[\u00a0\u202f]/g, ' ');
+
+/**
+ * sort_etat est un index tiré du texte, non exhaustif (data/schema.sql) : quand une case change, ses lignes dont l'extrait n'y est plus écrit sont
+ * retirées ; aucune nouvelle n'est déduite (une altération d'état ajoutée au texte n'y figure pas tant que l'index n'est pas refait).
+ */
+function deriverEtatsDuSort(ctx, sort, champs) {
+  const { db, w } = ctx;
+  for (const l of db.prepare('SELECT * FROM sort_etat WHERE sort_id = ?').all(sort.id)) {
+    if (!champs.includes(l.champ)) continue;
+    const texte = pourComparer(sort[COLONNES_NM[l.champ]]);
+    if (!texte.includes(pourComparer(l.extrait))) w.supprimer('sort_etat', cleDe(db, 'sort_etat', l));
+  }
+}
+
+const libelleNM = (champ) => (champ === 'remarque' ? 'Effets' : LIBELLES_CHAMP_NM[champ]);
+
+const SORT = {
+  colonnes(_ctx, ligne) {
+    if (ligne.texte_niveau5 !== null && ligne.niveau !== 5) throw refus('Le texte du sort n’existe que pour un sort de niveau 5.');
+    const type = analyserType(ligne.type_brut);
+    if (type.inconnus.length) throw refus(`Type « ${type.inconnus.join(', ')} » inconnu : les types sont ${TYPES_DE_SORT.join(', ')} (séparés par « / », le mode entre parenthèses)`);
+    if (!type.types.length) throw refus('Type : au moins un type de sort, avant les parenthèses du mode');
+    return {
+      dsb_brut: ligne.dsb_brut === '/' ? null : ligne.dsb_brut,
+      mode_brut: type.mode_brut, ic_direct: type.ic_direct, ic_nm_min: type.ic_nm_min, imparable: type.imparable, inesquivable: type.inesquivable,
+      ...analyserCout(ligne.cout_brut),
+      ...analyserPortee(ligne.portee_brut),
+      ...analyserZone(ligne.zone_brut),
+    };
+  },
+  deriver(ctx, avant, apres) {
+    if (apres.type_brut !== avant.type_brut) {
+      const type = analyserType(apres.type_brut);
+      synchroniser(ctx, 'sort_type', { sort_id: apres.id }, type.types.map((t, i) => ({ rang: i + 1, ...t })), { origine: 'magies', source_ref: apres.source_ref });
+      synchroniser(ctx, 'sort_mode', { sort_id: apres.id }, type.modes.map((m, i) => ({ rang: i + 1, ...m })), { origine: 'magies', source_ref: apres.source_ref });
+    }
+    const champs = Object.entries(COLONNES_NM).filter(([, c]) => (apres[c] ?? null) !== (avant[c] ?? null)).map(([champ]) => champ);
+    if (!champs.length) return;
+    const bonus = deriverBonusDuSort(ctx, apres, champs);
+    deriverEtatsDuSort(ctx, apres, champs.filter((c) => c !== 'portee' && c !== 'remarque'));
+    // Règle de l'édition (demande du propriétaire) : une seule colonne par ligne peut avoir un effet dû aux NM (effets et remarque : la case « Effets »)
+    const colonnes = [...new Set(bonus.map((b) => (b.champ === 'remarque' ? 'effets' : b.champ)))];
+    if (colonnes.length > 1) {
+      throw refus(`${apres.nom} : une seule colonne par ligne peut avoir un effet dû aux NM, ici ${colonnes.map(libelleNM).join(' et ')}. Retirez l’expression de NM (« (+1/NM) », « 3NM = … ») de l’une d’elles.`, {
+        regle: 'une_colonne_nm', sort: apres.id, colonnes,
+      });
+    }
+  },
+};
+
 /** Ce que l'édition sait faire, table par table : colonnes recalculées dans la ligne, dérivations ailleurs, création, suppression. */
-const DOMAINES = { metier: METIER };
+const DOMAINES = { metier: METIER, magie: MAGIE, magie_role: MAGIE_ROLE, sort: SORT };
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // Application d'un lot

@@ -11,6 +11,7 @@ import magiePrintCss from '../../styles/magie/print.css?raw';
 import { racesOfMagie } from '../../lib/magie-relations.mjs';
 import { magiesDuPotentiel, POTENTIEL_ILLIMITE } from '../../lib/potentiel-illimite.mjs';
 import { pageHref, type Magies, type MagieDb } from '../../lib/magies';
+import { attributEd } from '../../lib/edition-modele.mjs';
 import type { WikiEntry } from '../../lib/wiki';
 import Bulles from './Bulles.astro';
 import MagieAffinites from './MagieAffinites.astro';
@@ -37,13 +38,14 @@ const { entry, entries, magie, magies, statusNote } = Astro.props;
 const couleur = couleurDeMagie(magie.nom);
 const couleurTexte = texteSurCouleurDeMagie(magie.nom);
 
+// Champs modifiables sur le site de dev (lib/edition-modele.mjs) : chaque élément qui affiche une colonne de la base porte son attribut `data-ed` ;
+// un champ vide est rendu caché (`data-ed-cadre`), pour pouvoir être rempli en mode modification.
+const ed = (colonne: string) => attributEd('magie', { id: magie.id }, colonne);
 const ressources = [
-  { label: 'Santé offerte', valeur: String(magie.sante ?? '') },
-  { label: 'Chakra offert', valeur: String(magie.chakra ?? '') },
-  { label: 'Caractéristique bonus', valeur: magie.caracteristique ? magie.caracteristique.brut : '' },
-]
-  .filter((r) => r.valeur !== '')
-  .map((r) => ({ ...r, valeur: nombre(r.valeur), nul: r.valeur === '0', texte: !/^-?\d+$/.test(r.valeur) }));
+  { label: 'Santé offerte', valeur: String(magie.sante ?? ''), colonne: 'sante_offerte' },
+  { label: 'Chakra offert', valeur: String(magie.chakra ?? ''), colonne: 'chakra_offert' },
+  { label: 'Caractéristique bonus', valeur: magie.caracteristique ? magie.caracteristique.brut : '', colonne: 'caracteristique_brut' },
+].map((r) => ({ ...r, vide: r.valeur === '', valeur: nombre(r.valeur), nul: r.valeur === '0', texte: !/^-?\d+$/.test(r.valeur) }));
 const groupes = sortsParNpm(magie.sorts);
 const autresMagies = magie.id === POTENTIEL_ILLIMITE ? magiesDuPotentiel(magies.magies) : [];
 const { avec, sans } = racesOfMagie(entries, entry);
@@ -70,23 +72,19 @@ const nav = [
     {
       magie.roles.length > 0 && (
         <ul class="magie-hero__roles" aria-label="Rôles">
-          {magie.roles.map((r) => <li>{r.brut}</li>)}
+          {magie.roles.map((r) => <li data-ed={attributEd('magie_role', { magie_id: magie.id, rang: r.rang }, 'role_brut')}>{r.brut}</li>)}
         </ul>
       )
     }
-    {
-      ressources.length > 0 && (
-        <dl class="magie-stats">
-          {ressources.map((r) => (
-            <div class={`magie-stat${r.nul ? ' magie-stat--nul' : ''}${r.texte ? ' magie-stat--texte' : ''}`}>
-              <dt>{r.label}</dt>
-              <dd>{r.valeur}</dd>
-            </div>
-          ))}
-        </dl>
-      )
-    }
-    {magie.barre4 && <p class="magie-hero__barre"><strong>4ème barre</strong> {magie.barre4.texte}</p>}
+    <dl class="magie-stats">
+      {ressources.map((r) => (
+        <div class={`magie-stat${r.nul ? ' magie-stat--nul' : ''}${r.texte ? ' magie-stat--texte' : ''}`} data-ed-cadre hidden={r.vide}>
+          <dt>{r.label}</dt>
+          <dd data-ed={ed(r.colonne)}>{r.valeur}</dd>
+        </div>
+      ))}
+    </dl>
+    {magie.barre4 && <p class="magie-hero__barre"><strong>4ème barre</strong> <span data-ed={ed('barre4_texte')}>{magie.barre4.texte}</span></p>}
   </header>
 
   {statusNote && <p class="banner" role="note">{statusNote}</p>}
@@ -104,33 +102,21 @@ const nav = [
     )
   }
 
-  {
-    aPresentation && (
-      <section class="magie-section magie-presentation" id="presentation" aria-label="Présentation">
-        <div class="magie-prose magie-presentation__texte">
-          {magie.banniere && <p class="banner" role="note"><strong>{magie.banniere}</strong></p>}
-          <Texte blocs={magie.description} />
-        </div>
-        {
-          magie.descriptionPhysique.length > 0 && (
-            <aside class="magie-card magie-card--physique">
-              <h2>Description physique</h2>
-              <div class="magie-prose"><Texte blocs={magie.descriptionPhysique} /></div>
-            </aside>
-          )
-        }
-      </section>
-    )
-  }
+  <section class="magie-section magie-presentation" id="presentation" aria-label="Présentation" data-ed-cadre hidden={!aPresentation}>
+    <div class="magie-prose magie-presentation__texte">
+      <p class="banner" role="note" data-ed-cadre hidden={!magie.banniere}><strong data-ed={ed('banniere')}>{magie.banniere}</strong></p>
+      <div data-ed={ed('description')} data-ed-rendu="blocs"><Texte blocs={magie.description} /></div>
+    </div>
+    <aside class="magie-card magie-card--physique" data-ed-cadre hidden={magie.descriptionPhysique.length === 0}>
+      <h2>Description physique</h2>
+      <div class="magie-prose" data-ed={ed('description_physique')} data-ed-rendu="blocs"><Texte blocs={magie.descriptionPhysique} /></div>
+    </aside>
+  </section>
 
-  {
-    magie.explication.length > 0 && (
-      <section class="magie-section magie-card" id="explication" aria-labelledby="explication-titre">
-        <h2 id="explication-titre">Explication</h2>
-        <div class="magie-prose"><Texte blocs={magie.explication} /></div>
-      </section>
-    )
-  }
+  <section class="magie-section magie-card" id="explication" aria-labelledby="explication-titre" data-ed-cadre hidden={magie.explication.length === 0}>
+    <h2 id="explication-titre">Explication</h2>
+    <div class="magie-prose" data-ed={ed('explication')} data-ed-rendu="blocs"><Texte blocs={magie.explication} /></div>
+  </section>
 
   <MagieEtats magie={magie} magies={magies} />
 
@@ -149,7 +135,7 @@ const nav = [
           {magie.modeHyper.map((v) => (
             <article class="hyper__carte">
               <h3>{v.libelle}</h3>
-              <Texte blocs={v.blocs} />
+              <div data-ed={attributEd('mode_hyper_effet', { id: v.id }, 'effet')} data-ed-rendu="blocs"><Texte blocs={v.blocs} /></div>
             </article>
           ))}
         </div>

@@ -67,7 +67,7 @@ export function chargerMagies(db) {
     'magie_id',
   );
   const modesHyper = regrouper(
-    all(`SELECT magie_id, variante, variante_brut, effet FROM mode_hyper_effet WHERE version = 'onglet_magie' ORDER BY magie_id`),
+    all(`SELECT id, magie_id, variante, variante_brut, effet FROM mode_hyper_effet WHERE version = 'onglet_magie' ORDER BY magie_id`),
     'magie_id',
   );
   const ameliorations = regrouper(all('SELECT magie_id, rang, nom, effet FROM amelioration_cadaverique ORDER BY magie_id, rang'), 'magie_id');
@@ -93,6 +93,8 @@ export function chargerMagies(db) {
       description: blocsDeTexte(m.description),
       descriptionPhysique: blocsDeTexte(m.description_physique),
       explication: blocsDeTexte(m.explication),
+      // valeurs brutes (mode modification du site de dev : un champ vide reste affiché pour être rempli)
+      banniereBrute: m.banniere,
       sante: m.sante_offerte,
       chakra: m.chakra_offert,
       caracteristique: m.caracteristique_brut ? { nom: m.caracteristique_nom ?? m.caracteristique_brut, brut: m.caracteristique_brut } : null,
@@ -100,7 +102,7 @@ export function chargerMagies(db) {
       incompatibiliteNote: m.incompatibilite_note,
       // « Mono-magie uniquement » (décision R15) : ne se combine avec aucune autre magie, sauf pour les ethnies de ethniesSecondaires
       monoMagie: m.mono_magie === 1,
-      roles: (roles.get(m.id) ?? []).map((r) => ({ role: r.role, brut: r.role_brut })),
+      roles: (roles.get(m.id) ?? []).map((r) => ({ rang: r.rang, role: r.role, brut: r.role_brut })),
       // « Aucune » dans la source = aucune ligne
       // chaque élément : { id de la magie ou de l'état visé, brut = écriture de la source (« Gelé », « Pétrification ») }
       resistances: {
@@ -109,7 +111,7 @@ export function chargerMagies(db) {
       },
       incompatibles: (incompatibles.get(m.id) ?? []).map((r) => r.autre),
       modeHyper: (modesHyper.get(m.id) ?? [])
-        .map((r) => ({ variante: r.variante, libelle: r.variante_brut ?? r.variante, blocs: blocsDeTexte(r.effet) }))
+        .map((r) => ({ id: r.id, variante: r.variante, libelle: r.variante_brut ?? r.variante, blocs: blocsDeTexte(r.effet) }))
         .sort((a, b) => ORDRE_VARIANTES.indexOf(a.variante) - ORDRE_VARIANTES.indexOf(b.variante)),
       ameliorations: (ameliorations.get(m.id) ?? []).map((a) => ({ nom: a.nom, effets: elementsDeTexte(a.effet) })),
       ethniesSecondaires: (ethnies.get(m.id) ?? []).map((e) => ({ nom: e.ethnie_brut, pageId: e.ethnie_id.slice(0, e.ethnie_id.indexOf('#')) })),

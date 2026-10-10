@@ -98,6 +98,7 @@ export function demarrer(racine, etatService) {
     },
     appel,
     annoncer,
+    editeurs,
     marquerModifie() {
       modifie = true;
     },
@@ -117,10 +118,12 @@ export function demarrer(racine, etatService) {
     });
   };
 
+  /** Réécrit l'affichage d'un champ ; `data-ed-cible` : seul ce sous-élément change (le bouton qui porte le nom d'un sort ou d'un métier). */
   function rendreElement(el, ligne) {
     const info = lireAttributEd(el.dataset.ed ?? el.dataset.edLecture);
     if (!info || !ligne) return;
-    el.innerHTML = rendreChamp(el.dataset.edRendu, ligne[info.colonne], ligne, ed.listes);
+    const cible = el.dataset.edCible ? el.querySelector(el.dataset.edCible) : el;
+    if (cible) cible.innerHTML = rendreChamp(el.dataset.edRendu, ligne[info.colonne], ligne, ed.listes);
   }
 
   /** Un cadre [data-ed-cadre] est caché en lecture quand tous ses champs sont vides. */
@@ -200,9 +203,9 @@ export function demarrer(racine, etatService) {
 
   function demonter(nouvelles = new Map()) {
     for (const [el, e] of editeurs) {
+      el.innerHTML = e.html;
       const ligne = nouvelles.get(cleDeLigne(e.info.table, e.info.cle));
       if (ligne) rendreElement(el, ligne);
-      else el.innerHTML = e.html;
       el.classList.remove('ed-champ');
     }
     editeurs.clear();
@@ -224,6 +227,8 @@ export function demarrer(racine, etatService) {
       lignesChargees = new Map(lignes.filter((l) => l.ligne).map((l) => [cleDeLigne(l.table, l.cle), l.ligne]));
       ed.lignes = lignesChargees;
       document.body.classList.add('ed-mode');
+      // les champs vides, cachés en lecture, s'affichent pour pouvoir être remplis
+      for (const cadre of document.querySelectorAll('[data-ed-cadre][hidden]')) cadre.hidden = false;
       monterChamps();
       for (const x of extensions) x.debut?.(ed);
       modifie = false;

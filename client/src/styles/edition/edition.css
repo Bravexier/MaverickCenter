@@ -61,7 +61,6 @@
 
 /* Champs : en mode modification, chaque champ modifiable est encadré et remplacé par sa saisie */
 body.ed-mode [data-ed] { outline: 1px dashed color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 2px; border-radius: 3px; }
-body.ed-mode [data-ed-cadre] { display: block !important; }
 .ed-saisie {
   display: block;
   width: 100%;
@@ -102,6 +101,9 @@ textarea.ed-saisie--ligne { resize: none; min-height: 0; }
 .ed-supprime { opacity: 0.45; text-decoration: line-through; }
 .ed-supprime .ed-outil--danger { opacity: 1; text-decoration: none; }
 .ed-nouveau { box-shadow: inset 4px 0 0 var(--good); }
+.ed-alerte { margin: 0.35rem 0 0; padding: 0.2rem 0.45rem; font-size: 0.78rem; font-weight: 400; line-height: 1.35; color: var(--warn-text); background: var(--warn-bg); border-radius: 5px; }
+.ed-alerte--bloquante { color: #fff; background: var(--danger); }
+.ed-details { margin-top: 0.35rem; font-size: 0.75rem; padding: 0.05rem 0.5rem; }
 
 /* Formulaire de création (dialog) */
 .ed-dialogue {

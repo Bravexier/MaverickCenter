@@ -54,7 +54,7 @@ const ed = (id: string, colonne: string) => attributEd('metier', { id }, colonne
         metiers.map((m) => (
           <tbody class="metier" id={m.ancre} data-ed-metier={m.id}>
             <tr class="metier__main">
-              <th scope="row" class="metier__nom" data-ed={ed(m.id, 'nom')} data-ed-rendu="metier-nom" data-colonne="nom">
+              <th scope="row" class="metier__nom" data-ed={ed(m.id, 'nom')} data-ed-cible=".metier__choisir" data-colonne="nom">
                 <button type="button" class="metier__choisir" aria-expanded="false" aria-controls={`detail-${m.ancre}`}>
                   {m.nom}
                 </button>
@@ -160,7 +160,7 @@ const ed = (id: string, colonne: string) => attributEd('metier', { id }, colonne
       bouton(ligne)?.focus();
       return;
     }
-    if (!cible.closest('.metier__main') || cible.closest('a, input, textarea, select, [contenteditable], .ed-outil')) return;
+    if (!cible.closest('.metier__main') || cible.closest('a, input, textarea, select, [contenteditable]')) return;
     if (!cible.closest('button') && (getSelection()?.toString() ?? '') !== '') return;
     basculer(ligne);
   });

@@ -21,7 +21,7 @@ function nouvelleLigne(id) {
   tbody.dataset.edMetier = id;
   tbody.innerHTML = `
     <tr class="metier__main">
-      <th scope="row" class="metier__nom" data-ed="${ed('nom')}" data-ed-rendu="metier-nom" data-colonne="nom"></th>
+      <th scope="row" class="metier__nom" data-ed="${ed('nom')}" data-ed-cible=".metier__choisir" data-colonne="nom"><button type="button" class="metier__choisir" aria-expanded="false" aria-controls="detail-${ancre}"></button></th>
       <td data-label="Bonus" class="metier__bonus" data-ed="${ed('bonus_brut')}" data-ed-rendu="metier-bonus" data-colonne="bonus"></td>
       <td data-label="Artisanat" class="metier__artisanat" data-ed="${ed('artisanat_brut')}" data-ed-rendu="metier-artisanat" data-colonne="artisanat"></td>
       <td data-label="Équipement supplémentaire" class="metier__equipement" data-ed="${ed('equipement_brut')}" data-ed-rendu="metier-equipement" data-colonne="equipement"></td>

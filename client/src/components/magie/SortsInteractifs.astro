@@ -22,7 +22,8 @@
   document.documentElement.classList.add('js');
 
   const lignes = [...document.querySelectorAll<HTMLElement>('tbody.sort')];
-  const bouton = (ligne: HTMLElement) => ligne.querySelector<HTMLButtonElement>('.sort__choisir')!;
+  // (le bouton est remplacé par une saisie en mode modification du site de dev : il peut manquer)
+  const bouton = (ligne: HTMLElement) => ligne.querySelector<HTMLButtonElement>('.sort__choisir');
   const detail = (ligne: HTMLElement) => ligne.querySelector<HTMLElement>('.sort__detail');
   const adresseSansSort = () => location.pathname + location.search;
 
@@ -32,16 +33,16 @@
       const d = detail(ligne);
       const focusDedans = !!d && d.contains(document.activeElement);
       ligne.classList.remove('is-selected');
-      bouton(ligne).setAttribute('aria-expanded', 'false');
+      bouton(ligne)?.setAttribute('aria-expanded', 'false');
       if (d) d.hidden = true;
-      if (focusDedans) bouton(ligne).focus();
+      if (focusDedans) bouton(ligne)?.focus();
     }
   }
 
   function ouvrir(ligne: HTMLElement, defiler: boolean) {
     fermer();
     ligne.classList.add('is-selected');
-    bouton(ligne).setAttribute('aria-expanded', 'true');
+    bouton(ligne)?.setAttribute('aria-expanded', 'true');
     const d = detail(ligne);
     if (d) {
       d.hidden = false;
@@ -64,17 +65,17 @@
   for (const ligne of lignes) {
     // Un clic sur la ligne principale ouvre ou ferme ; un lien, ou un texte en cours de sélection (copier un coût), ne l'ouvre pas.
     ligne.querySelector('.sort__main')?.addEventListener('click', (e) => {
-      if ((e.target as HTMLElement).closest('a')) return;
+      if ((e.target as HTMLElement).closest('a, input, textarea, select')) return;
       if (!(e.target as HTMLElement).closest('button') && (getSelection()?.toString() ?? '') !== '') return;
       basculer(ligne);
     });
     detail(ligne)?.querySelector('.sort-detail__fermer')?.addEventListener('click', () => {
       toutFermer();
-      bouton(ligne).focus();
+      bouton(ligne)?.focus();
     });
   }
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') toutFermer();
+    if (e.key === 'Escape' && !(e.target as HTMLElement).closest?.('input, textarea, select')) toutFermer();
   });
 
   // Créatures d'une invocation : un clic sur le nom ouvre sa fiche minimale (stats, dégâts, capacités) juste sous son bloc, un autre clic la referme ;
