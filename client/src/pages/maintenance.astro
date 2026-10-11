@@ -1,0 +1,30 @@
+---
+import Base from '../layouts/Base.astro';
+import maintenanceCss from '../styles/maintenance/maintenance.css?raw';
+import { url } from '../lib/wiki';
+
+// Maintenance en cours (demande du propriétaire ; serveur/maintenance.mjs, docs/serveur.md, « Maintenance pendant une mise à jour ») : pendant une
+// vraie mise à jour, chaque page du site part ici (script en ligne de layouts/Base.astro). Menus grisés et inertes ; le script de la page demande au
+// service, toutes les 3 s, si ce serveur est toujours en maintenance, montre l'étape, et ramène à la page d'où l'on venait (`?retour=`) dès que la
+// nouvelle version tourne ici. Site de dev : le lien vers le run GitHub et « Lever la maintenance ». Hors de tout menu ; pas de script dans la version
+// portable (pas de service).
+const portable = process.env.INLINE_CSS === '1';
+---
+
+<Base title="Maintenance en cours" description="Le site est en cours de mise à jour : merci de revenir dans quelques minutes." maintenance>
+  <style is:inline set:html={maintenanceCss}></style>
+  <section class="maintenance" data-maintenance data-api={url('api/')} data-accueil={url()} aria-live="polite">
+    <p class="maintenance__icone" aria-hidden="true">🚧</p>
+    <h1>Maintenance en cours</h1>
+    <p class="maintenance__message">En travaux, merci de revenir dans quelques minutes.</p>
+    <p class="maintenance__detail" data-maintenance-detail hidden></p>
+    <ol class="maintenance__etapes" data-maintenance-etapes hidden>
+      <li data-etape="preparation">Préparation et contrôles des modifications</li>
+      <li data-etape="livraison">Livraison de la nouvelle version</li>
+      <li data-etape="installation">Installation sur ce serveur</li>
+    </ol>
+    <p class="maintenance__retour">Cette page se ferme d’elle-même dès que le site est de nouveau disponible.</p>
+    <div class="maintenance__dev" data-maintenance-dev hidden></div>
+  </section>
+  {!portable && <script>import '../scripts/maintenance.mjs';</script>}
+</Base>

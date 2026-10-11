@@ -11,8 +11,10 @@ interface Props {
   description?: string;
   /** Id de la page modifiable (guide, races, magies, classes, métiers) : le mode modification du site de dev s'y propose (components/edition/Edition.astro). */
   edition?: string;
+  /** La page de maintenance (pages/maintenance.astro) : menus grisés et inertes, et pas de renvoi vers elle-même. */
+  maintenance?: boolean;
 }
-const { title, description = 'Wiki et outils pour le JDR Maverick', edition } = Astro.props;
+const { title, description = 'Wiki et outils pour le JDR Maverick', edition, maintenance = false } = Astro.props;
 // Version portable (tools/build-artifact.mjs, INLINE_CSS=1) : pas de service, donc pas de mode modification.
 const portable = process.env.INLINE_CSS === '1';
 
@@ -31,11 +33,42 @@ const site = modeDuSite(process.env, packageInfo.version);
     <link rel="icon" type="image/png" sizes="32x32" href={url('favicon.png')} />
     <link rel="apple-touch-icon" href={url('apple-touch-icon.png')} />
     <title>{site.test ? '[TEST] ' : ''}{title === 'Accueil' ? 'Maverick Center' : `${title} — Maverick Center`}</title>
+    {
+      /* Maintenance pendant une mise à jour (demande du propriétaire ; serveur/maintenance.mjs, docs/serveur.md) : chaque page demande au service si
+         ce serveur est en maintenance — au chargement, au retour sur l'onglet, puis toutes les 30 s — et, si oui, grise le menu et part vers
+         /maintenance/ (qui revient ici dès que la nouvelle version tourne). Sans service (site statique seul), rien ne se passe. Pas dans la version
+         portable, ni sur la page de maintenance (son propre script). Script en ligne : aucun module partagé entre pages (tools/build-artifact.mjs). */
+      !portable && !maintenance && (
+        <script is:inline data-maintenance-api={url('api/maintenance/')} data-maintenance-page={url('maintenance/')}>
+          (function () {
+            var s = document.currentScript, api = s.getAttribute('data-maintenance-api'), page = s.getAttribute('data-maintenance-page'), parti = false;
+            function verifier() {
+              if (parti || document.hidden) return;
+              fetch(api, { cache: 'no-store', headers: { Accept: 'application/json' } })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (m) {
+                  if (!m || m.active !== true || parti) return;
+                  parti = true;
+                  document.documentElement.setAttribute('data-maintenance', '');
+                  var entete = document.querySelector('.site-header__inner');
+                  if (entete) entete.inert = true;
+                  location.replace(page + '?retour=' + encodeURIComponent(location.pathname + location.search + location.hash));
+                })
+                .catch(function () {});
+            }
+            verifier();
+            setInterval(verifier, 30000);
+            document.addEventListener('visibilitychange', verifier);
+            addEventListener('pageshow', function (e) { if (e.persisted) { parti = false; verifier(); } });
+          })();
+        </script>
+      )
+    }
   </head>
   <body>
     {site.test && <p class="bandeau-test" role="note"><strong>Serveur de test</strong> — {site.etiquette}, version en cours de développement : ce n’est pas le site de production.</p>}
-    <header class="site-header">
-      <div class="site-header__inner">
+    <header class:list={['site-header', { 'site-header--maintenance': maintenance }]}>
+      <div class="site-header__inner" inert={maintenance || undefined}>
         <a class="brand" href={url()}><img src={url('logo.webp')} alt="Maverick Center" width="319" height="320" /></a>
         <div class="site-header__menu">
           <nav class="site-nav" aria-label="Navigation principale">

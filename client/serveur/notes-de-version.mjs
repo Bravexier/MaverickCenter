@@ -131,7 +131,7 @@ const ID_LOT = /^[0-9a-f-]{36}$/;
 export const JOB_LIVRER = 'livrer';
 export const ETAPE_FUSION_DEV = 'Fusion dans dev';
 /** États où un run peut encore changer quelque chose : le service le suit (une relance « Re-run » d'un échec est vue aussi). */
-const SUIVIS = ['lance', 'en_cours', 'fusionne', 'echec', 'echec_livraison'];
+export const SUIVIS = ['lance', 'en_cours', 'fusionne', 'echec', 'echec_livraison'];
 /** États qui empêchent un nouveau lancement (le lot occupe la place ou attend sa livraison). */
 const OCCUPANTS = ['envoi', 'lance', 'en_cours', 'fusionne', 'echec_livraison'];
 /** États dont le lot n'est plus servi au workflow. */
@@ -144,7 +144,7 @@ export const DELAI_GITHUB = 30_000;
 
 const versionNumerique = (v) => String(v ?? '').split('.').slice(0, 2).map((n) => Number.parseInt(n, 10) || 0);
 /** La version `a` (X.Y ou X.Y.Z) est-elle au moins `b` (X.Y) ? */
-const auMoins = (a, b) => {
+export const auMoins = (a, b) => {
   const [x1, y1] = versionNumerique(a);
   const [x2, y2] = versionNumerique(b);
   return x1 > x2 || (x1 === x2 && y1 >= y2);
@@ -304,6 +304,17 @@ export function libererLot(db, dossier, { instant, lot, annulerRun = null }) {
   retirerLot(dossier, l.lot, '.annule');
   if (l.run?.id && annulerRun) annulerRun(l.run.id).catch(() => {});
   return ecrireLancement(dossier, { ...l, etat: 'annule', libere_le: instant });
+}
+
+/**
+ * « Lever la maintenance » (page de maintenance du site de dev ; serveur/maintenance.mjs) : le lancement du lot `lot` ne met plus les sites en
+ * maintenance, sans rien changer d'autre (le run continue, la livraison aussi). `lot` : celui que la page affiche (un onglet périmé : 409).
+ */
+export function leverMaintenance(dossier, { lot, instant }) {
+  const l = lireLancement(dossier);
+  if (!l?.lot || lot !== l.lot) throw new ErreurNotes(409, 'Ce lancement n’est plus le dernier : rechargez la page.', { lancement: l });
+  if (l.maintenance_levee_le) return l;
+  return modifierLancement(dossier, l.lot, null, () => ({ maintenance_levee_le: instant }));
 }
 
 /**

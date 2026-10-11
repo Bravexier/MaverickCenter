@@ -6,12 +6,15 @@
 //   - la base des règles publiée par le site : quand une livraison la change, la base vivante est refaite (fiches reprises) ;
 //   - la base vivante : remplacée par l'installateur du serveur de test (copie de la production), elle est rouverte ;
 //   - version.json du service livré : une nouvelle version arrête le processus (code 0), que Docker relance (restart: unless-stopped).
+// Sur le site de dev, la même minuterie suit aussi une vraie mise à jour en cours (run GitHub, note arrivée) et publie l'annonce de maintenance que
+// lisent les deux serveurs (maintenance.mjs).
 import { createServer } from 'node:http';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { CORPS_MAX, traiter } from './api.mjs';
 import { FICHIER_BASE, lireEtat, ouvrirBaseVivante, preparerBaseVivante, signature } from './base-vivante.mjs';
-import { creerGithub } from './notes-de-version.mjs';
+import { annonceDuLancement, DUREE_MAX_MAINTENANCE, etatDeMaintenance, lireAnnonce, publierAnnonce } from './maintenance.mjs';
+import { actualiserLancement, creerGithub, lireLancement, lireReference, sansNouvelles, SUIVIS } from './notes-de-version.mjs';
 
 /** Rend une fonction qui dit, pour chaque valeur observée, s'il faut agir : la valeur a changé et elle était déjà la même à l'observation précédente. */
 export function guetteur(initiale) {
@@ -56,12 +59,14 @@ const inode = (chemin) => {
  * @param {string} [o.depot] dépôt GitHub du workflow de mise à jour
  * @param {string|null} [o.adresse] adresse publique du site (https://dev.<domaine>) ; sinon l'hôte de la requête
  * @param {string|null} [o.jetonFichier] fichier du jeton GitHub (permission Actions) ; sans lui, le workflow se lance à la main
+ * @param {string|null} [o.maintenance] dossier partagé de l'annonce de maintenance (MAVERICK_MAINTENANCE : le même pour les deux serveurs) ;
+ *   sans lui, le site de dev se met en maintenance d'après son seul lancement et la production ne l'est jamais
  * @param {string} [o.versionParDefaut] version annoncée sans version.json (développement : celle de package.json)
  * @param {(ligne: string) => void} [o.journal]
  * @param {() => void} [o.relancer] appelé après l'arrêt quand une nouvelle version du service est livrée
  */
 export async function demarrerService({ regles, dossier, hote = '127.0.0.1', port = 8787, intervalle = 15000, fichierVersion = null, edition = false,
-  reference = null, depot = 'Bravexier/MaverickCenter', adresse = null, jetonFichier = null, versionParDefaut = 'développement',
+  reference = null, depot = 'Bravexier/MaverickCenter', adresse = null, jetonFichier = null, maintenance = null, versionParDefaut = 'développement',
   journal = (ligne) => console.log(horodater(ligne)), relancer = () => process.exit(0) }) {
   const chemin = join(dossier, FICHIER_BASE);
   const version = (() => {
@@ -150,6 +155,58 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     };
   }
 
+  let erreurMaintenance = null; // dernière erreur de publication de l'annonce, notée une fois
+
+  /**
+   * L'état de maintenance de CE serveur (maintenance.mjs) : sur le site de dev, l'annonce vient de son lancement et elle est d'abord publiée dans le
+   * dossier partagé (la production la lit) ; ailleurs, l'annonce publiée. Site de dev en maintenance : le lot et le run, pour la page.
+   */
+  function etatMaintenance() {
+    const instant = maintenant();
+    const lancement = edition ? lireLancement(dossier) : null;
+    let annonce = edition ? annonceDuLancement(lancement, { instant }) : undefined;
+    if (annonce !== undefined && maintenance) {
+      try {
+        if (publierAnnonce(maintenance, annonce)) {
+          journal(annonce ? `maintenance : annonce publiée (V${annonce.version_cible}, ${annonce.etat})` : 'maintenance : annonce retirée');
+        }
+        erreurMaintenance = null;
+      } catch (e) {
+        if (erreurMaintenance !== e.message) journal(`ERREUR maintenance : publication de l’annonce dans ${maintenance} : ${e.message}`);
+        erreurMaintenance = e.message;
+      }
+    }
+    if (annonce === undefined) annonce = lireAnnonce(maintenance);
+    const m = etatDeMaintenance({ annonce, version: version.version, instant });
+    if (!m.active || !edition || annonce?.lot !== lancement?.lot) return m;
+    return { ...m, lot: lancement.lot, run: lancement.run?.url ?? null, levable: true };
+  }
+
+  /**
+   * Site de dev : une vraie mise à jour se suit aussi sans personne sur la page « Mise à jour » (ses pages renvoient vers /maintenance/) — note
+   * arrivée dans les règles, livrée sur master, run GitHub fini ou relancé —, puis l'annonce de maintenance est republiée.
+   */
+  function suivreLaMiseAJour() {
+    if (!edition) return;
+    const recent = (l) => Boolean(l?.lot) && Date.now() - Date.parse(l.lance_le) <= DUREE_MAX_MAINTENANCE; // au-delà, plus rien à suivre ici
+    try {
+      if (etat.db && recent(lireLancement(dossier))) actualiserLancement(etat.db, dossier, { reference: lireReference(reference) });
+    } catch (e) {
+      journal(`ERREUR maintenance : suivi du lancement : ${e.message}`);
+    }
+    etatMaintenance();
+    const l = lireLancement(dossier);
+    if (github?.configure() && l && !l.simulation && SUIVIS.includes(l.etat) && !sansNouvelles(l, maintenant())) {
+      github.suivre().then(() => etatMaintenance()).catch(() => {});
+    }
+  }
+
+  /** GET /api/maintenance/ : sans minuterie (développement, tests), c'est la page de maintenance, qui interroge sans cesse, qui fait avancer le suivi. */
+  function maintenanceDemandee() {
+    if (intervalle <= 0) suivreLaMiseAJour();
+    return etatMaintenance();
+  }
+
   ouvrir();
 
   const serveur = createServer((req, res) => {
@@ -185,7 +242,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       try {
         const url = new URL(req.url ?? '/', 'http://service');
         reponse = traiter({ methode: req.method ?? 'GET', chemin: url.pathname, entetes: req.headers, corps: Buffer.concat(morceaux).toString('utf8') },
-          { base: () => etat.db, etat: decrire, journal, edition: Boolean(edition), dossier, reference, depot, adresse, github });
+          { base: () => etat.db, etat: decrire, journal, edition: Boolean(edition), dossier, reference, depot, adresse, github, maintenance: maintenanceDemandee });
       } catch (e) {
         journal(`ERREUR ${req.method} ${req.url} : ${e.stack ?? e.message}`);
         reponse = { statut: 500, corps: { erreur: 'Erreur interne du service.' } };
@@ -199,7 +256,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     serveur.listen(port, hote, ok);
   });
   const ecoute = serveur.address();
-  journal(`service des personnages ${version.version} : http://${hote}:${ecoute.port}/api/ (règles ${regles}, base ${chemin})${edition ? ' ; édition des règles OUVERTE (site de dev)' : ''}`);
+  journal(`service des personnages ${version.version} : http://${hote}:${ecoute.port}/api/ (règles ${regles}, base ${chemin})${edition ? ' ; édition des règles OUVERTE (site de dev)' : ''}${maintenance ? ` ; annonce de maintenance : ${maintenance}` : ''}`);
 
   let minuterie = null;
   let arrete = false;
@@ -236,9 +293,10 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
         journal('base des règles changée');
         ouvrir();
       }
+      suivreLaMiseAJour();
     }, intervalle);
     minuterie.unref?.();
   }
 
-  return { url: `http://${hote}:${ecoute.port}`, port: ecoute.port, arreter, etat: decrire };
+  return { url: `http://${hote}:${ecoute.port}`, port: ecoute.port, arreter, etat: decrire, maintenance: etatMaintenance };
 }

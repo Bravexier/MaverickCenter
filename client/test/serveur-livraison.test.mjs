@@ -21,7 +21,7 @@ const ENTREE_LIVREE = `/site/${DOSSIER_LIVRE}/${ENTREE}`;
 test('modules livrés : l’entrée, le service, le format des fiches et l’édition (modèle, découpages partagés avec les pages) ; ni le lanceur de développement, ni cette livraison, ni un paquet npm', () => {
   assert.deepEqual(modulesDuServeur(), [
     'serveur/api.mjs', 'serveur/base-vivante.mjs', 'serveur/edition-journal.mjs', 'serveur/edition.mjs', 'serveur/fiches-retraits.mjs', 'serveur/fiches.mjs', 'serveur/index.mjs',
-    'serveur/notes-de-version.mjs', 'serveur/service.mjs', 'src/lib/classe-champs.mjs', 'src/lib/corps-classes.mjs', 'src/lib/corps-magies.mjs',
+    'serveur/maintenance.mjs', 'serveur/notes-de-version.mjs', 'serveur/service.mjs', 'src/lib/classe-champs.mjs', 'src/lib/corps-classes.mjs', 'src/lib/corps-magies.mjs',
     'src/lib/corps-metiers.mjs', 'src/lib/corps-races.mjs', 'src/lib/dons-edition.mjs', 'src/lib/edition-modele.mjs', 'src/lib/fiche-format.mjs', 'src/lib/guide.mjs', 'src/lib/json-python.mjs', 'src/lib/markdown-edition.mjs', 'src/lib/markdown-sur.mjs', 'src/lib/metier-champs.mjs', 'src/lib/notes-de-version-sens.mjs',
     'src/lib/notes-de-version.mjs', 'src/lib/race-kinds.mjs', 'src/lib/sort-analyse.mjs', 'src/lib/sort-etats.mjs', 'src/lib/sort-maitrise.mjs', 'src/lib/text.mjs',
   ]);
@@ -84,11 +84,15 @@ test('docker-compose.yml du NAS et des installateurs : un conteneur « serveur �
     // édition des règles (docs/serveur.md, « Édition ») : réglée par le .env de l'instance (1 sur le serveur de test), jamais sur le NAS
     // page « Mise à jour » (docs/serveur.md) : adresse publique et jeton GitHub du serveur de test, dans un dossier secrets/ en lecture seule
     const installateur = fichier.includes('installateur');
+    // maintenance pendant une mise à jour (docs/serveur.md) : un dossier d'annonce monté, celui de l'instance sauf réglage (serveur de test : celui du
+    // serveur normal) ; le NAS d'avant la 0.2.0 n'a qu'un site, sans mise à jour depuis la page
     const edition = installateur
-      ? { MAVERICK_EDITION: '${MAVERICK_EDITION:-0}', MAVERICK_ADRESSE_PUBLIQUE: '${MAVERICK_ADRESSE_PUBLIQUE:-}', MAVERICK_GITHUB_JETON_FICHIER: '/secrets/github-actions-token' }
+      ? { MAVERICK_EDITION: '${MAVERICK_EDITION:-0}', MAVERICK_ADRESSE_PUBLIQUE: '${MAVERICK_ADRESSE_PUBLIQUE:-}', MAVERICK_GITHUB_JETON_FICHIER: '/secrets/github-actions-token',
+        MAVERICK_MAINTENANCE: '/maintenance' }
       : {};
     assert.deepEqual(serveur.environment, { HOST: '0.0.0.0', PORT: '8787', MAVERICK_REGLES: '/site/donnees/maverick.db', MAVERICK_DB: '/db', ...edition }, fichier);
-    assert.deepEqual(serveur.volumes, ['./site:/site:ro', './db:/db', ...(installateur ? ['./secrets:/secrets:ro'] : [])], fichier);
+    assert.deepEqual(serveur.volumes, ['./site:/site:ro', './db:/db',
+      ...(installateur ? ['./secrets:/secrets:ro', '${MAVERICK_DOSSIER_MAINTENANCE:-./maintenance}:/maintenance'] : [])], fichier);
     assert.ok(compose.services['maverick-center'].volumes.includes('./site:/usr/share/nginx/html:ro'), fichier);
   }
   assert.match(YAML.parse(lire('deploy/installateur/docker-compose.yml')).services.serveur.container_name, /^\$\{MAVERICK_CONTENEUR:-maverick-center\}-serveur$/,

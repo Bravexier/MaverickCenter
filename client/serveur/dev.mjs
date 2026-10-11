@@ -18,6 +18,8 @@ const service = await demarrerService({
   reference: reference.chemin,
   versionParDefaut: JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version,
   jetonFichier: process.env.MAVERICK_GITHUB_JETON_FICHIER || null,
+  // maintenance pendant une vraie mise à jour (serveur/maintenance.mjs) : sans dossier partagé, d'après le seul lancement de ce service
+  maintenance: process.env.MAVERICK_MAINTENANCE || null,
   hote: process.env.HOST || '127.0.0.1',
   port: Number(process.env.PORT || 8787),
   intervalle: 0,

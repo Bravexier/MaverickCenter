@@ -2,6 +2,8 @@
 // Sans réseau ni état propre : service.mjs lit la requête HTTP et fournit la base vivante ; les tests appellent `traiter` directement.
 //
 //   GET  /api/etat/                 état du service et de la base vivante
+//   GET  /api/maintenance/          ce serveur est-il en maintenance (vraie mise à jour en cours, nouvelle version pas encore ici) ? — maintenance.mjs
+//   POST /api/maintenance/lever/    { lot } → lève la maintenance des deux serveurs (site de dev seulement : il tient le lancement)
 //   GET  /api/personnages/          résumé de chaque prétiré (recherche)
 //   POST /api/personnages/          crée un prétiré                       → 201, { personnage, controles, niveau }
 //   GET  /api/personnages/<id>/     une fiche                             → { personnage, controles, niveau }
@@ -34,7 +36,8 @@
 import { ErreurEdition, donneesDeClasse, donneesDeRace, enregistrer, listes, lireLignes, pagesDuWiki } from './edition.mjs';
 import { journalExporte, lignesEnAttente } from './edition-journal.mjs';
 import {
-  actualiserLancement, CONFIRMATION, enregistrerBrouillon, ErreurNotes, estLiberable, figerLot, libererLot, lireLot, lireReference, noteEnPreparation, occupe,
+  actualiserLancement, CONFIRMATION, enregistrerBrouillon, ErreurNotes, estLiberable, figerLot, leverMaintenance, libererLot, lireLot, lireReference,
+  noteEnPreparation, occupe,
 } from './notes-de-version.mjs';
 import { ErreurFiche, controlesDe, enregistrerFiche, lireFiche, listerFiches, niveauDe, supprimerFiche } from './fiches.mjs';
 import { CHAMP_VERSION } from '../src/lib/fiche-format.mjs';
@@ -77,6 +80,7 @@ export function traiter(requete, service) {
   const permis = (...methodes) => (methodes.includes(methode) ? null : json(405, { erreur: `Méthode ${methode} non permise ici.` }, { Allow: methodes.join(', ') }));
 
   if (ressource === 'etat' && brut === undefined) return permis('GET') ?? json(200, service.etat());
+  if (ressource === 'maintenance') return traiterMaintenance(requete, service, brut, reste, permis);
   if (ressource === 'edition') return traiterEdition(requete, service, brut, reste, permis);
   if (ressource === 'mise-a-jour') return traiterMiseAJour(requete, service, brut, reste, permis);
   if (ressource !== 'personnages' || reste.length) return erreur(404, 'Adresse inconnue.');
@@ -158,6 +162,32 @@ function traiterEdition(requete, service, action, reste, permis) {
   }
 }
 
+const sansMaintenance = { active: false };
+
+/**
+ * Les routes /api/maintenance/… : l'état de maintenance de ce serveur (lu par chaque page du site, sans la base : il répond même pendant qu'elle
+ * se refait), et « Lever la maintenance » sur le site de dev.
+ */
+function traiterMaintenance(requete, service, action, reste, permis) {
+  if (reste.length || ![undefined, 'lever'].includes(action)) return erreur(404, 'Adresse inconnue.');
+  if (action === undefined) return permis('GET') ?? json(200, service.maintenance?.() ?? sansMaintenance);
+  const refus = permis('POST');
+  if (refus) return refus;
+  if (!service.edition) return erreur(403, 'La maintenance ne se lève que depuis le site de dev.');
+  const interdit = refusEcriture(requete.entetes ?? {});
+  if (interdit) return interdit;
+  const { valeur, refus: illisible } = lireCorps(requete.corps);
+  if (illisible) return illisible;
+  try {
+    const lancement = leverMaintenance(service.dossier, { lot: valeur?.lot, instant: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z') });
+    service.journal?.(`maintenance levée depuis la page (lot ${lancement.lot})`);
+    return json(200, service.maintenance?.() ?? sansMaintenance);
+  } catch (e) {
+    if (e instanceof ErreurNotes) return erreur(e.statut, e.message, e.details);
+    throw e;
+  }
+}
+
 /** L'adresse publique du site (le workflow GitHub y télécharge le lot figé) : MAVERICK_ADRESSE_PUBLIQUE, sinon d'après la requête. */
 function adressePublique(service, entetes) {
   if (service.adresse) return String(service.adresse).replace(/\/+$/, '');
@@ -205,6 +235,7 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
     if (action === 'liberer') {
       // `lot` : le lancement que la page affiche (un onglet périmé n'annule pas le suivant) ; le run éventuel est annulé sur GitHub
       const lancement = libererLot(db, service.dossier, { instant, lot: valeur?.lot, annulerRun: service.github?.annulerRun ?? null });
+      service.maintenance?.(); // annulé : l'annonce de maintenance est retirée tout de suite (les deux serveurs rouvrent)
       return json(200, { lancement, liberable: estLiberable(lancement, instant), occupe: occupe(lancement, instant) });
     }
     const note = noteEnPreparation(db, { reference: service.reference, versionDev });
@@ -215,7 +246,9 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
       ...(service.limites ? { limites: service.limites } : {}),
     });
     service.journal?.(`${lancement.simulation ? 'simulation de mise à jour' : 'mise à jour'} : lot ${lancement.lot} figé (${lancement.modifications} modification(s), V${note.version_cible})`);
-    if (github.configure) service.github.declencher().catch(() => {});
+    // vraie mise à jour : l'annonce de maintenance part tout de suite (les deux serveurs passent en maintenance), et suit le déclenchement
+    service.maintenance?.();
+    if (github.configure) service.github.declencher().then(() => service.maintenance?.()).catch(() => {});
     return json(202, { lancement, github });
   } catch (e) {
     if (e instanceof ErreurNotes) return erreur(e.statut, e.message, e.details);

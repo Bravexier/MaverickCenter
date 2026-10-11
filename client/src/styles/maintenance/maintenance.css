@@ -1,0 +1,21 @@
+/* Maintenance en cours (/maintenance/, pages/maintenance.astro, scripts/maintenance.mjs). Inséré par la page (?raw). */
+.maintenance { max-width: 38rem; margin: 3rem auto; padding: 2rem 1.5rem; text-align: center; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.maintenance h1 { margin: 0 0 0.6rem; }
+.maintenance__icone { margin: 0; font-size: 3rem; line-height: 1; }
+.maintenance__message { margin: 0 0 1rem; font-size: 1.25rem; font-weight: bold; }
+.maintenance__detail, .maintenance__retour { color: var(--muted); }
+.maintenance__retour { margin-bottom: 0; font-size: 0.9rem; }
+.maintenance__etapes { display: inline-flex; flex-direction: column; gap: 0.35rem; margin: 0.4rem auto 1rem; padding: 0; list-style: none; text-align: left; counter-reset: etape; }
+.maintenance__etapes li { counter-increment: etape; display: flex; align-items: center; gap: 0.6rem; color: var(--muted); }
+.maintenance__etapes li::before {
+  content: counter(etape); flex: none; display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 50%;
+  border: 2px solid var(--border); font-size: 0.85rem; font-weight: bold;
+}
+.maintenance__etapes li.fait { color: var(--text); }
+.maintenance__etapes li.fait::before { content: '✓'; border-color: var(--accent); background: var(--accent); color: var(--surface); }
+.maintenance__etapes li[aria-current='step'] { color: var(--text); font-weight: bold; }
+.maintenance__etapes li[aria-current='step']::before { border-color: var(--accent); color: var(--accent); animation: maintenance-pulse 1.6s ease-in-out infinite; }
+@keyframes maintenance-pulse { 50% { box-shadow: 0 0 0 0.35rem var(--accent-soft); } }
+@media (prefers-reduced-motion: reduce) { .maintenance__etapes li[aria-current='step']::before { animation: none; } }
+.maintenance__dev { margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.9rem; }
+.maintenance__dev p { margin: 0 0 0.6rem; }
