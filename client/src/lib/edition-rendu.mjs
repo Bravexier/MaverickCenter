@@ -86,9 +86,18 @@ const valeurDeCase = (champ, liste) => (valeur, _ligne, ctx = {}) => {
   return lignes.map((l) => `<div>${segmentsHtml(l, () => places[i++])}</div>`).join('');
 };
 
-/** Pastille d'une compétence (ou de l'initiative) que vise un bonus de métier, dans la couleur de sa caractéristique (lib/caracteristiques-postures.mjs). */
+/** Attributs de la fiche qu'un bonus de métier peut viser (metier_bonus.attribut : décisions R33, R37) : libellé de la pastille. */
+const ATTRIBUTS_DE_LA_FICHE = { initiative: 'Initiative', vitesse: 'Vitesse', vitesse_nage: 'Vitesse de nage' };
+
+/**
+ * Pastille d'une compétence que vise un bonus de métier, dans la couleur de sa caractéristique (lib/caracteristiques-postures.mjs), ou d'un attribut
+ * (initiative, vitesse, vitesse de nage : la cible telle qu'écrite en titre, « Vitesse au sol pour le sprint »).
+ */
 function pastilleDeCible(option, ctx) {
-  if (option.attribut === 'initiative') return '<span class="metier-cible metier-cible--attribut" title="Bonus d’initiative">Initiative</span>';
+  if (option.attribut) {
+    const libelle = ATTRIBUTS_DE_LA_FICHE[option.attribut] ?? option.attribut;
+    return `<span class="metier-cible metier-cible--attribut" title="${echapperHtml(`Bonus : ${libelle.toLowerCase()} (« ${option.cible} »)`)}">${echapperHtml(libelle)}</span>`;
+  }
   const competence = (ctx.competences ?? []).find((c) => typeof c === 'object' && c.id === option.competence_id);
   const carac = (ctx.caracteristiques ?? []).find((c) => c.id === competence?.caracteristique_id);
   const nom = competence?.nom ?? option.cible;
@@ -96,8 +105,8 @@ function pastilleDeCible(option, ctx) {
 }
 
 /**
- * Les bonus d'un métier (lignes de lib/metier-champs.mjs#decouperBonus), un rang par ligne : un rang lié (décision R33 : chaque option vise une compétence
- * ou l'initiative) s'écrit « valeur » puis la pastille de chaque cible, reliées par « ou » (un choix, fait dans la fiche) ; un autre rang garde son texte.
+ * Les bonus d'un métier (lignes de lib/metier-champs.mjs#decouperBonus), un rang par ligne : un rang lié (décisions R33, R37 : chaque option vise une compétence
+ * ou un attribut) s’écrit « valeur » puis la pastille de chaque cible, reliées par « ou » (un choix, fait dans la fiche) ; un autre rang garde son texte.
  */
 export function htmlDesBonus(lignes, ctx = {}) {
   const rangs = [];

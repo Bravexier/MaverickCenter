@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 24 : 168 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 25 : 168 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -1818,7 +1818,7 @@ Métiers (Google Doc « MÉTIER » : une page par métier, 72). `bonus_brut`, `a
 
 ### `metier_bonus`
 
-Bonus d'un métier : le champ « Bonus » découpé sur les virgules suivies d'un signe (« +3% Esquive, +3% Réflexe » -> 2 rangs ; « Diplomatie OU Intimidation » -> 2 options du même rang). `valeur`/`unite`/`cible` ne sont renseignés que pour la forme « +N% Cible » ou « +N Cible » ; tout autre fragment garde son texte et valeur NULL. `cible_cle` = normalize(cible). Lien de règle (décision R33) : `competence_id` quand la cible est une compétence de la fiche (le bonus s'ajoute à son Acquis), `attribut` 'initiative' pour « +N INI » (le bonus s'ajoute à l'initiative) ; « +N% dans une compétence sociale au choix » donne une option par compétence de la caractéristique Social. Un rang à plusieurs options liées est un choix, fait dans la fiche (personnage_metier_bonus).
+Bonus d'un métier : le champ « Bonus » découpé sur les virgules suivies d'un signe (« +3% Esquive, +3% Réflexe » -> 2 rangs ; « Diplomatie OU Intimidation » -> 2 options du même rang). `valeur`/`unite`/`cible` ne sont renseignés que pour la forme « +N% Cible » ou « +N Cible » ; tout autre fragment garde son texte et valeur NULL. `cible_cle` = normalize(cible). Lien de règle (décision R33) : `competence_id` quand la cible est une compétence de la fiche (le bonus s'ajoute à son Acquis, au plus jusqu'au plafond : décision R38), `attribut` pour un attribut de la fiche : 'initiative' (« +N INI »), 'vitesse' (« +1 Vitesse au sol pour le sprint ») et 'vitesse_nage' (« +1 Vitesse nage ») (décision R37) ; « +N% dans une compétence sociale au choix » donne une option par compétence de la caractéristique Social. Un rang à plusieurs options liées est un choix, fait dans la fiche (personnage_metier_bonus).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1833,7 +1833,7 @@ Bonus d'un métier : le champ « Bonus » découpé sur les virgules suivies d'u
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 | `competence_id` | TEXT | non | → competence.id | compétence que le bonus augmente (Acquis), décision R33 |
-| `attribut` | TEXT | non |  | attribut que le bonus augmente : « +1 INI » -> 'initiative' (décision R33) |
+| `attribut` | TEXT | non |  | attribut que le bonus augmente (décisions R33, R37) |
 
 ### `metier_recette_famille`
 
@@ -3157,7 +3157,7 @@ Niveau global et niveaux de classe d'un personnage. Niveau global = plus haut ni
 
 *vue*
 
-Bonus que le métier d'une fiche apporte (décision R33) : une ligne par rang lié de metier_bonus (compétence ou attribut) — l'option seule du rang, ou, quand le rang en propose plusieurs, celle que la fiche a choisie (personnage_metier_bonus). `valeur` s'ajoute à l'Acquis de la compétence (`competence_id`) ou à l'initiative (`attribut` 'initiative').
+Bonus que le métier d'une fiche apporte (décision R33) : une ligne par rang lié de metier_bonus (compétence ou attribut) — l'option seule du rang, ou, quand le rang en propose plusieurs, celle que la fiche a choisie (personnage_metier_bonus). `valeur` s'ajoute à l'Acquis de la compétence (`competence_id`, sans dépasser son plafond : décision R38) ou à l'attribut (`attribut` : initiative, vitesse, vitesse de nage ; R33, R37).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

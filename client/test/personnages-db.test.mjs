@@ -150,7 +150,7 @@ test('caractéristiques et compétences : bornes, totaux exacts (décision R3), 
   ]);
 });
 
-test('métier (décision R33) : bonus d’acquis et d’initiative, rang à choix à choisir parmi ses options, acquis plafonné bonus du métier compris', () => {
+test('métier (décisions R33, R38) : bonus d’acquis et d’initiative, rang à choix à choisir parmi ses options, acquis plafonné, le plafond prévalant sur le bonus', () => {
   const bonus = (id) => db.prepare('SELECT rang, competence_id, attribut, valeur FROM v_personnage_metier_bonus WHERE personnage_id = ? ORDER BY rang').all(id).map((r) => ({ ...r }));
   // un métier dont un rang est « +N INI » et un autre un choix entre deux compétences (le Coursier à l'import), lu dans la base
   const metier = db.prepare(`SELECT b.metier_id FROM metier_bonus b WHERE b.attribut = 'initiative'
@@ -179,6 +179,16 @@ test('métier (décision R33) : bonus d’acquis et d’initiative, rang à choi
   assert.ok(!regles('metier-2').includes('competence_acquis_max'), 'au plafond : permis');
   db.prepare('UPDATE personnage_competence SET acquis = acquis + 1 WHERE personnage_id = ? AND competence_id = ?').run('metier-2', savant.competence_id);
   assert.deepEqual(controle('metier-2').filter((c) => c.regle === 'competence_acquis_max'), [{ regle: 'competence_acquis_max', detail: `${savant.competence_id} = 11` }]);
+
+  // le plafond prévaut sur le bonus (décision R38) : avec 1 en Intelligence (plafond 5), un bonus plus grand est rogné, sans erreur ; un point saisi en plus en est une
+  personnageValide('metier-3', { metier_id: savant.metier_id });
+  db.prepare("UPDATE personnage_caracteristique SET base = base + 1 WHERE personnage_id = 'metier-3' AND caracteristique_id = 'force'").run();
+  db.prepare("UPDATE personnage_caracteristique SET base = 1 WHERE personnage_id = 'metier-3' AND caracteristique_id = 'intelligence'").run();
+  db.prepare("UPDATE metier_bonus SET valeur = 9 WHERE metier_id = ? AND competence_id = ?").run(savant.metier_id, savant.competence_id);
+  assert.ok(!regles('metier-3').includes('competence_acquis_max'), regles('metier-3').join());
+  inserer('personnage_competence', { personnage_id: 'metier-3', competence_id: savant.competence_id, naturel: 0, acquis: 1 });
+  assert.deepEqual(controle('metier-3').filter((c) => c.regle === 'competence_acquis_max'), [{ regle: 'competence_acquis_max', detail: `${savant.competence_id} = 6` }]);
+  db.prepare("UPDATE metier_bonus SET valeur = ? WHERE metier_id = ? AND competence_id = ?").run(savant.valeur, savant.metier_id, savant.competence_id);
 });
 
 test('progression : un gain par niveau, 15 points d’attributs exactement, le dé aux niveaux 5, 10, 15 et 20 seulement', () => {

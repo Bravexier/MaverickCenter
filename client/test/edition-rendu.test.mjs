@@ -37,12 +37,13 @@ test('blocs d’un texte long : paragraphes, puces, intertitres « ▸ », adres
   assert.equal(htmlDeBlocs(null), '');
 });
 
-test('métiers : bonus liés en pastilles (R33), texte libre gardé, artisanat, caractéristiques (R34), objets de départ (R35), « Rien » = tiret', () => {
+test('métiers : bonus liés en pastilles (R33, R37), texte libre gardé, artisanat, caractéristiques (R34), objets de départ (R35), « Rien » = tiret', () => {
   const ctx = { competences, caracteristiques, objets };
-  const bonus = RENDUS['metier-bonus']('+1 INI, +2% Athlétisme OU Équilibre, +1 Vitesse au sol pour le sprint', {}, ctx);
+  const bonus = RENDUS['metier-bonus']('+1 INI, +2% Athlétisme OU Équilibre, +1 butin pour les ingrédients, +1 Vitesse nage', {}, ctx);
   assert.match(bonus, /^<div class="metier-bonus"><span class="metier-bonus__valeur">\+1<\/span> <span class="metier-cible metier-cible--attribut"[^>]*>Initiative<\/span><\/div>/);
   assert.match(bonus, /<span class="metier-bonus__valeur">\+2%<\/span> <span class="metier-cible" style="--c: #ff6666; [^"]*" title="Acquis de Athlétisme \(Force\)">Athlétisme<\/span> <span class="metier-bonus__ou">ou<\/span> <span class="metier-cible" style="--c: #99ff66;/);
-  assert.match(bonus, /<div class="metier-bonus metier-bonus--texte" title="[^"]*">\+1 Vitesse au sol pour le sprint<\/div>$/);
+  assert.match(bonus, /<div class="metier-bonus metier-bonus--texte" title="[^"]*">\+1 butin pour les ingrédients<\/div>/);
+  assert.match(bonus, /<span class="metier-cible metier-cible--attribut" title="Bonus : vitesse de nage \(« Vitesse nage »\)">Vitesse de nage<\/span><\/div>$/, 'vitesse de nage (R37)');
   assert.equal(RENDUS['metier-bonus']('', {}, ctx), '');
   assert.match(RENDUS['metier-artisanat'](null, {}), /class="vide"/);
   assert.equal(RENDUS['metier-artisanat']('Golems <3', {}), 'Golems &lt;3');

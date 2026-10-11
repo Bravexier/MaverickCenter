@@ -679,3 +679,61 @@ test('décision R35 : les objets de départ du métier entrent dans l’inventai
   // dans la base : les objets de chaque métier redonnent son équipement
   for (const m of regles.metiers) assert.ok(m.objets.every((o) => o.options.length >= 1 && o.options.every((t) => t.trim())), m.id);
 });
+
+test('décision R37 : la vitesse et la vitesse de nage du métier s’ajoutent à celles de la race', () => {
+  const vite = regles.metiers.find((m) => m.bonus.some((b) => b.options.some((o) => o.attribut === 'vitesse')));
+  const nageur = regles.metiers.find((m) => m.bonus.some((b) => b.options.some((o) => o.attribut === 'vitesse_nage')));
+  const valeur = (m, attribut) => m.bonus.filter((b) => b.options.length === 1 && b.options[0].attribut === attribut).reduce((t, b) => t + b.valeur, 0);
+  const base = attributsDe(regles, ficheConforme());
+  const a = attributsDe(regles, ficheConforme({ metier_id: vite.id }));
+  assert.equal(a.vitesseSol, base.vitesseSol + valeur(vite, 'vitesse'));
+  assert.equal(a.vitesseMetier, valeur(vite, 'vitesse'));
+  const b = attributsDe(regles, ficheConforme({ metier_id: nageur.id }));
+  assert.equal(b.vitesseNage, base.vitesseNage + valeur(nageur, 'vitesse_nage'));
+  assert.equal(b.vitesseSol, base.vitesseSol + valeur(nageur, 'vitesse'));
+  assert.equal(attributsDe(regles, { ...ficheVide(), metier_id: vite.id }).vitesseSol, null, 'sans race, pas de vitesse');
+});
+
+test('décision R38 : le plafond d’Acquis prévaut sur le bonus du métier — rogné, jamais une erreur ; la base dit la même chose', () => {
+  // un métier qui donne un seul bonus fixe de N à une compétence, sur une caractéristique de base 1 (plafond 5) : N > 5 est rogné à 5
+  const r = { ...regles, metiers: [{ id: 'metiers/essai-plafond', nom: 'Essai', artisanat: null, objets: [], bonus: [{ rang: 1, texte: '+7% Connaissance', valeur: 7, unite: '%', options: [{ competence_id: 'connaissance', attribut: null }] }] }] };
+  const fiche = ficheConforme({ metier_id: 'metiers/essai-plafond' });
+  const intelligence = fiche.caracteristiques.find((c) => c.caracteristique_id === 'intelligence');
+  const plafond = intelligence.base * regles.constantes['competence.acquis_max_par_point_caracteristique'];
+  const c = competencesDe(r, fiche).find((x) => x.id === 'connaissance');
+  assert.deepEqual([c.metierBrut, c.metier, c.plafondAcquis, c.maxAcquis], [7, Math.min(7, plafond), plafond, Math.max(0, plafond - 7)]);
+  const sans = competencesDe(r, { ...fiche, metier_id: null }).find((x) => x.id === 'connaissance');
+  assert.equal(c.score, sans.score + Math.min(7, plafond));
+  // dans la base : un vrai métier dont le bonus dépasse le plafond d'une caractéristique de base 1
+  const grand = regles.metiers.flatMap((m) => m.bonus.filter((b) => b.options.length === 1 && b.options[0].competence_id && b.valeur > regles.constantes['competence.acquis_max_par_point_caracteristique'])
+    .map((b) => ({ metier: m, competence: regles.competences.find((k) => k.id === b.options[0].competence_id), valeur: b.valeur })))[0];
+  if (grand) {
+    const bases = Object.fromEntries(regles.caracteristiques.map((k) => [k.id, 2]));
+    bases[grand.competence.caracteristique_id] = 1;
+    const autre = regles.caracteristiques.find((k) => k.id !== grand.competence.caracteristique_id).id; // reçoit le reste des 14 points
+    bases[autre] += 14 - Object.values(bases).reduce((t, v) => t + v, 0);
+    const caracteristiques = Object.entries(bases).map(([caracteristique_id, base]) => ({ caracteristique_id, base, croix: 0 }));
+    const metier_bonus = grand.metier.bonus.filter((b) => b.options.filter((o) => o.competence_id).length > 1).map((b) => ({ rang: b.rang, competence_id: b.options.find((o) => o.competence_id).competence_id }));
+    const { controles } = enregistrerFiche(vivante, ficheConforme({ metier_id: grand.metier.id, caracteristiques, metier_bonus }));
+    assert.ok(!controles.some((x) => x.regle === 'competence_acquis_max'), `${grand.metier.id} : bonus rogné, pas d’erreur`);
+    // un point d'acquis saisi sur cette compétence (en plus de son naturel s'il y en a)
+    const naturel = ficheConforme().competences.find((x) => x.competence_id === grand.competence.id)?.naturel ?? 0;
+    const competences = [...ficheConforme().competences.filter((x) => x.competence_id !== grand.competence.id), { competence_id: grand.competence.id, naturel, acquis: 1 }];
+    const unDePlus = ficheConforme({ metier_id: grand.metier.id, caracteristiques, metier_bonus, competences });
+    assert.ok(enregistrerFiche(vivante, unDePlus).controles.some((x) => x.regle === 'competence_acquis_max'), 'un point saisi au-delà de ce que le bonus laisse');
+    assert.equal(competencesDe(regles, unDePlus).find((x) => x.id === grand.competence.id).maxAcquis, 0);
+  }
+});
+
+test('décision R39 : une croix retire 20 à la compétence d’artisanat (comme −2 à la caractéristique), deux croix la rendent inutilisable', () => {
+  const r = { ...regles, metiers: [{ id: 'metiers/essai', nom: 'Essai', bonus: [], objets: [], artisanat: { texte: 'Fabrique', caracteristiques: ['force', 'intelligence'] } }] };
+  const fiche = (croix) => ({ metier_id: 'metiers/essai', caracteristiques: Object.entries({ force: 3, volonte: 1, intelligence: 2, perception: 1, social: 1, agilite: 1 })
+    .map(([caracteristique_id, base]) => ({ caracteristique_id, base, croix: croix[caracteristique_id] ?? 0 })) });
+  assert.equal(artisanatDe(r, fiche({})).score, 50);
+  assert.equal(artisanatDe(r, fiche({ force: 1 })).score, 30, '3 × 10 − 20 + 2 × 10');
+  assert.equal(artisanatDe(r, fiche({ force: 1, intelligence: 1 })).score, 10, 'une croix sur chacune');
+  assert.equal(artisanatDe(r, fiche({ volonte: 1 })).score, 50, 'une croix ailleurs ne change rien');
+  const deux = artisanatDe(r, fiche({ intelligence: 2 }));
+  assert.deepEqual([deux.score, deux.inutilisable], [null, true]);
+  assert.equal(regles.constantes['competence.croix_1_malus'], -20);
+});

@@ -11515,7 +11515,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 **Artisanat possible :** Rien
 
-**Équipement supplémentaire possible :** Arc ou Arbalète en acier (Arme)
+**Équipement supplémentaire possible :** Arc en acier (Arme) OU Arbalète en acier (Arme)
 
 **Avantage possible :** Pour chasser, faire un double jet de butin pour chasser, …
 ', 'draft', 'docs', 'Google Doc « MÉTIER »');
@@ -11705,7 +11705,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 **Artisanat possible :** Rien
 
-**Équipement supplémentaire possible :** Pelle OU faucille en acier (arme)
+**Équipement supplémentaire possible :** Pelle en acier (arme) OU Faucille en acier (arme)
 
 **Avantage possible :** Observer un cimetière, déterrer quelque chose, …
 ', 'draft', 'docs', 'Google Doc « MÉTIER »');
@@ -11735,7 +11735,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 **Artisanat possible :** Rien
 
-**Équipement supplémentaire possible :** Glaive lourd ou léger en acier (arme)
+**Équipement supplémentaire possible :** Glaive lourd en acier (arme) OU Glaive léger en acier (arme)
 
 **Avantage possible :** …
 ', 'draft', 'docs', 'Google Doc « MÉTIER »');
@@ -11931,7 +11931,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'docs', 'Google Doc « MÉTIER »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('metiers/prostitue', 'metiers', 'prostitue', 'Prostitué', 'prostitue', 'La prostituée offre ses services contre paiement, accueillant clients dans des établissements, des quartiers dédiés ou lors de déplacements.', NULL, '**Description du métier :** La prostituée offre ses services contre paiement, accueillant clients dans des établissements, des quartiers dédiés ou lors de déplacements. C’est un métier à risque et la quasi-intégralité de ceux qui pratiquent ce métier ne l’ont pas fait volontairement.
 
-**Bonus :** +3% Manipulation, Survie
+**Bonus :** +3% Manipulation, +3% Survie
 
 **Artisanat possible :** Rien
 

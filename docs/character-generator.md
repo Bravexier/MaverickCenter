@@ -25,14 +25,16 @@ naturel et l'acquis des compétences des curseurs (naturel : jusqu'au maximum du
 sur un curseur (ou Entrée) le remplace par une case de saisie : le nombre tapé est ramené au maximum au-dessus, au minimum en dessous (`borner`) ; Échap
 abandonne.
 
-- **Métier** (décisions R33 à R35) : sous la liste des métiers, ce que donne le métier choisi (`bonusDuMetier`, `artisanatDe`, `objetsDuMetier`) — ses
-  bonus, chacun **en Acquis** de sa compétence ou à l'**initiative** (« +1 INI ») ; un rang à plusieurs compétences (« +3% Diplomatie OU Intimidation »,
+- **Métier** (décisions R33 à R40) : sous la liste des métiers, ce que donne le métier choisi (`bonusDuMetier`, `artisanatDe`, `objetsDuMetier`) — ses
+  bonus, chacun **en Acquis** de sa compétence ou à un attribut : l'**initiative** (« +1 INI »), la **vitesse** ou la **vitesse de nage** (R37) ; un rang à plusieurs compétences (« +3% Diplomatie OU Intimidation »,
   « une compétence sociale au choix ») **se choisit ici** en pastilles (`personnage_metier_bonus`) ; un bonus en texte libre est rappelé sans effet. Sa
-  **compétence d'artisanat** : 10 × chacune de ses deux caractéristiques, avec leur valeur (« Force 3 × 10 + Intelligence 2 × 10 = 50 % »). Ses **objets de
+  **compétence d'artisanat** : 10 × chacune de ses deux caractéristiques, avec leur valeur (« Force 3 × 10 + Intelligence 2 × 10 = 50 % ») ; une croix sur
+  l'une retire 20 (comme −2 à la caractéristique), deux croix la rendent inutilisable (R39). Ses **objets de
   départ** : choisir le métier les ajoute à l'inventaire, en changer retire ceux de l'ancien encore tels quels (même nom, même quantité :
   `inventaireSelonLeMetier`) ; un objet à choisir (« Pelle OU faucille… ») se choisit en pastilles (`choisirObjetDeMetier`). Dans les compétences, l'Acquis
-  du métier s'affiche « +N » à côté du curseur : il compte dans le score et dans le plafond de 5 par point de caractéristique de base (le curseur s'arrête
-  d'autant plus tôt) ; l'initiative affiche 1D20 + l'Agilité + le métier.
+  du métier s'affiche « +N » à côté du curseur : il compte dans le score, mais **le plafond de 5 par point de caractéristique de base prévaut sur lui**
+  (R38 : au-delà, il est rogné, sans erreur ; le curseur s'arrête à ce qu'il laisse) ; l'initiative affiche 1D20 + l'Agilité + le métier, la vitesse
+  celle de la race, de l'ethnie et du métier.
 - **Alignement** : les quatre scores (L, C, B, M) serrés, axe Loi/Chaos puis axe Bien/Mal, et l'alignement qui en résulte à côté (`alignementDe`) : sur
   chaque axe, 5 points d'écart ou plus donnent la tendance, en dessous le personnage est Neutre (guide « Alignement », constante `alignement.ecart_axe`) ;
   les neuf noms sont ceux du guide « Les neuf alignements » (« Neutre » sur les deux axes, que la fiche auto écrit « Neutre Pur »).

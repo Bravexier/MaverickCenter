@@ -14,7 +14,7 @@ la citer depuis une source (`sources:` dans le frontmatter) ou la laisser absent
 
 ## Décisions du propriétaire
 
-`docs/decisions-regles.md` : les choix tranchés quand les sources se contredisent (27 races, mono-classe, budgets exacts, Calme, Mode Hyper +15/+7, Archimage magique, sens des relations entre peuples, onglet de race source, Drassah'thac hybride, Corruption et Potentiel Illimité mono-magie, quota de maîtrise d'arme des classes et de leurs dons, puissance magique 5 au niveau 16, 2 santé pour 1 chakra manquant, croix des caractéristiques, Corruption acquise des Elfes noirs Charbon et Felfes noirs, déesse de la Corruption « Eaunoire », Corruption innée de la Lamia, Archimage réservée au Potentiel Illimité qui l'impose, Mage Bleu fermé au Potentiel Illimité, NM de livre ou du MJ et 3 NM au plus sur un sort, pas d'emplacement de sort en plus, Lamia à une seule magie, couleurs des notes de version, 3 magies innées des hybrides = simple constat, liste des magies innées qui fait foi sur la phrase des inconvénients, quota de maîtrise d'arme, bonus de métier en Acquis ou à l'initiative avec choix dans la fiche, artisanat = 10 × ses 2 caractéristiques, équipement du métier = objets de départ…).
+`docs/decisions-regles.md` : les choix tranchés quand les sources se contredisent (27 races, mono-classe, budgets exacts, Calme, Mode Hyper +15/+7, Archimage magique, sens des relations entre peuples, onglet de race source, Drassah'thac hybride, Corruption et Potentiel Illimité mono-magie, quota de maîtrise d'arme des classes et de leurs dons, puissance magique 5 au niveau 16, 2 santé pour 1 chakra manquant, croix des caractéristiques, Corruption acquise des Elfes noirs Charbon et Felfes noirs, déesse de la Corruption « Eaunoire », Corruption innée de la Lamia, Archimage réservée au Potentiel Illimité qui l'impose, Mage Bleu fermé au Potentiel Illimité, NM de livre ou du MJ et 3 NM au plus sur un sort, pas d'emplacement de sort en plus, Lamia à une seule magie, couleurs des notes de version, 3 magies innées des hybrides = simple constat, liste des magies innées qui fait foi sur la phrase des inconvénients, quota de maîtrise d'arme, bonus de métier en Acquis (rogné au plafond) ou à l'initiative et aux vitesses avec choix dans la fiche, artisanat = 10 × ses 2 caractéristiques (−20 par croix), équipement du métier = objets de départ aux options écrites en entier…).
 Les suivre ; ne jamais en déduire d'autres.
 
 ## Vision à long terme
@@ -144,8 +144,8 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   Les pages `metiers/<slug>` restent (recherche, mots-clés, `[[liens]]`) mais `[slug].astro` ne les construit pas : tout lien vers une page passe par `cheminDePage` (via `entryHref`, `pageHref`, `entryUrl`),
   qui renvoie un métier à `/metiers/#metier-<slug>` ; ne pas écrire `${id}/` à la main. Seule « Règles des métiers » (`PAGE_DES_REGLES`) garde sa page.
   `test/metiers-html.test.mjs` vérifie qu'aucun lien du site construit ne mène à une page de métier.
-  Règles des métiers (décisions R33 à R35, migration `0024-metiers-fiche`) : un bonus vise une compétence (`metier_bonus.competence_id`, son Acquis) ou l'initiative
-  (`attribut`), un rang à plusieurs compétences se choisit dans la fiche (`personnage_metier_bonus`, `v_personnage_metier_bonus`) ; l'artisanat = un texte + 2 caractéristiques
+  Règles des métiers (décisions R33 à R40, migrations `0024-metiers-fiche`, `0025-metiers-precisions`) : un bonus vise une compétence (`metier_bonus.competence_id`, son Acquis,
+  rogné au plafond : R38) ou un attribut (`attribut` : initiative, vitesse, vitesse de nage ; `ATTRIBUT_DE_CIBLE`), un rang à plusieurs compétences se choisit dans la fiche (`personnage_metier_bonus`, `v_personnage_metier_bonus`) ; l'artisanat = un texte + 2 caractéristiques
   (10 × chacune, constante `metier.artisanat_par_point_caracteristique`) ; l'équipement = des objets de départ (`metier_objet_depart`) ajoutés à l'inventaire. Les cellules du
   tableau sont les rendus de `lib/edition-rendu.mjs` (un seul HTML avec le mode modification) ; sur le site de dev, l'artisanat se modifie en texte + deux listes
   (`artisanat_brut` en est recalculé, jamais saisi). Un nom de compétence dans « Bonus » la lie (`decouperBonus`) : ne rien lier d'autre par vraisemblance.
@@ -219,8 +219,9 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   en curseurs aussi, dans les cartes des attributs avec leur maximum, plus des boutons + et − (`ajusterValeurDuMoment` ; chakra actuel ≤ chakra − corruption hors magie de la Corruption :
   `valeursDuMoment` ; santé rouge, barrière jaune, chakra bleu, corruption noire), clic droit ou Entrée sur un curseur = saisie bornée (`borner`), alignement calculé à côté de ses quatre
   scores (`alignementDe`, guide « Alignement »), jauge d'XP en tête du bloc de progression (`progressionXp`), pas de lien vers le guide ;
-  une fiche se supprime (`DELETE /api/personnages/<id>/` avec sa version). Le métier (R33 à R35) : son bonus s'ajoute à l'Acquis de la compétence (affiché « +N », compté
-  dans le score et le plafond de 5 par point de base : `competencesDe`) ou à l'initiative (`attributsDe`), un rang à choix se choisit sous le métier (`bonusDuMetier`,
+  une fiche se supprime (`DELETE /api/personnages/<id>/` avec sa version). Le métier (R33 à R40) : son bonus s'ajoute à l'Acquis de la compétence (affiché « +N », compté
+  dans le score, rogné au plafond de 5 par point de base qui prévaut sur lui : `competencesDe`) ou à l'initiative et aux vitesses (`attributsDe`), une croix retire 20 à
+  l'artisanat, deux le rendent inutilisable (R39), un rang à choix se choisit sous le métier (`bonusDuMetier`,
   `choixDeMetierValables`), la compétence d'artisanat s'affiche (`artisanatDe`) et ses objets de départ entrent dans l'inventaire au choix du métier (`inventaireSelonLeMetier`,
   `choisirObjetDeMetier`) ; l'Acquis du métier n'est jamais écrit dans `personnage_competence`.
 - **Fiches de personnages** (section 13 de `data/schema.sql`, migration `0011-personnages`) : les tables gardent les **choix** du joueur (race, ethnie, magies, classes, caractéristiques de base et croix (R19), points de compétences,
