@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { autolink, buildTerms, fold } from '../src/lib/autolink.mjs';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { aMailler, autolink, buildTerms, fold, TYPES_SANS_MAILLAGE } from '../src/lib/autolink.mjs';
+import { TYPE_KEYS } from '../src/lib/types.mjs';
 
 const pages = [
   { id: 'metiers/forgeron', title: 'Forgeron', aliases: [] },
@@ -96,4 +99,18 @@ test('la liste d’exclusion écarte une locution courante', () => {
   const guide = [{ id: 'guide/resume', title: 'En résumé', aliases: [] }];
   assert.equal(autolink('Voici en résumé le tour.', buildTerms(guide).terms, 'x').body, 'Voici [[En résumé|en résumé]] le tour.');
   assert.equal(autolink('Voici en résumé le tour.', buildTerms(guide, { ignore: ['en résumé'] }).terms, 'x').body, 'Voici en résumé le tour.');
+});
+
+test('les pages que l’édition refait depuis les tables (races, classes, dons, magies) ne reçoivent pas de liens ; elles restent des cibles', () => {
+  // un lien posé dans leur corps serait perdu à la première modification (lib/corps-races.mjs, corps-classes.mjs, corps-magies.mjs)
+  for (const id of ['races/drakos', 'classes/guerrier', 'capacites/guerrier-brave', 'magies/magie-du-feu']) {
+    assert.equal(aMailler({ id, type: id.split('/')[0] }), false, id);
+    assert.equal(aMailler({ id }), false, `${id} (sans type)`);
+  }
+  for (const id of ['metiers/forgeron', 'guide/postures', 'lore/histoire', 'bestiaire/loup']) assert.equal(aMailler({ id, type: id.split('/')[0] }), true, id);
+  for (const t of TYPES_SANS_MAILLAGE) assert.ok(TYPE_KEYS.includes(t), `type ${t} connu`);
+  // le script ne maille que ces pages ; les titres de toutes les pages restent des termes
+  const script = readFileSync(fileURLToPath(new URL('../scripts/autolink.mjs', import.meta.url)), 'utf8');
+  assert.match(script, /for \(const page of pages\.filter\(aMailler\)\)/);
+  assert.match(script, /buildTerms\(pages,/);
 });

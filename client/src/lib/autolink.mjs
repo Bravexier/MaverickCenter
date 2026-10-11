@@ -29,6 +29,16 @@ export function fold(text) {
 const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
+ * Types dont le corps est refait depuis les tables par l'édition du site de dev, en entier ou par sections (rendus des importeurs : lib/corps-races.mjs,
+ * corps-classes.mjs, corps-magies.mjs) : un lien posé dans leur corps serait perdu à la première modification, et tools/db/races_onglet.py --verifier
+ * comme test/corps-classes refusent un corps qui ne redit pas l'importeur. Le maillage ne les modifie pas (ils restent des cibles de liens) ; les
+ * métiers gardent leurs liens à la modification (lib/corps-metiers.mjs).
+ */
+export const TYPES_SANS_MAILLAGE = new Set(['races', 'classes', 'capacites', 'magies']);
+/** La page reçoit-elle des liens du maillage ? */
+export const aMailler = (page) => !TYPES_SANS_MAILLAGE.has(page.type ?? String(page.id ?? '').split('/')[0]);
+
+/**
  * Prépare la liste des termes à lier. `ignore` : locutions à ne jamais lier (ex. « en résumé »).
  * @param {{ id: string, title: string, aliases?: string[] }[]} pages
  * @returns {{ terms: { id: string, title: string, term: string, words: number, regex: RegExp }[], ambiguous: string[] }}
