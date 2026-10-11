@@ -376,7 +376,38 @@ journal). Les tests s'en servent ainsi :
   feu, Forgeron…) n'est vérifié sur l'état courant que tant que le site n'a pas réécrit la colonne ;
 - une entité créée par le site sans tout ce que l'import donnait (classe sans don, race sans magie innée) est admise et signalée « à compléter » ;
   une entité importée incomplète reste une erreur ;
-- les tests du service lisent l'état avant d'écrire (ordre = max + 1, races hybrides sans classe raciale) et prennent des noms absents de la base.
+- les tests du service lisent l'état avant d'écrire (ordre = max + 1, races hybrides sans classe raciale) et prennent des noms absents de la base ;
+- un test qui lit `data/rows` **tient avec une note de version en attente de livraison** : pendant une mise à jour (le job `preparer` lance
+  `npm test` après avoir écrit la note du lot, qui n'est pas encore sur master) et sur `dev` avant la livraison, `data/rows` en porte une. Un
+  test qui applique un lot part d'une copie sans elle (`client/test/aide-mise-a-jour.mjs#copieSansNoteEnAttente`, d'après
+  `notesEnAttente` de `mise-a-jour-regles.mjs` : sinon, code 7) ; un test qui écrit une note prend une version libre (`versionLibre`) et lit
+  celle qu'une mise à jour rend (jamais « 0.2 » en dur) ; les balayages de tout le texte de la base (ancienne graphie, ancien identifiant,
+  « (classe) »…) sautent la section 15 (`lib/notes-de-version.mjs#TABLES_DES_NOTES` : des traces, qui citent la production d'avant la
+  livraison et les valeurs au moment de chaque modification) ; la page `/mise-a-jour/` construite se compare aux notes de la base (les notes
+  d'exemple disparaissent à la première mise à jour : `site-html`). Le run 38151792080 (simulation du 2026-10-11) a échoué sur 14 tests qui
+  l'ignoraient (et le test de la page construite aurait suivi) ; le job `simulation-de-mise-a-jour` de la CI (ci-dessous) le vérifie sur
+  chaque PR.
+
+**Simulation en CI** (job `simulation-de-mise-a-jour` de `.github/workflows/ci.yml`, parallèle au job `client`, sur chaque PR et après chaque
+fusion) : `client/scripts/mise-a-jour-simulation.mjs` fabrique un **lot synthétique** — le service fait de vraies modifications dans une base
+vivante tirée de `data/rows` (texte des chapitres 1 et 2 du guide, description et bonus d'un métier, coût d'un sort, un don créé et gardé, un
+autre créé puis supprimé ; valeurs lues avant d'écrire, noms libres), écrit le champ libre et fige le lot par `POST /api/mise-a-jour/lancer/`
+en simulation —, puis le job le rejoue comme `preparer` (`mise-a-jour-regles.mjs`, production `origin/master`), indexe `data/rows` et lance
+exactement les contrôles de `preparer` (`CONTROLES` de `mise-a-jour-github.mjs` : `db:build`, `db:check` puis tout le job `client` — `npm test`,
+build, tests du site construit, build de test, installateur, version portable ; le test épingle la liste), sans qu'aucun fichier ne change
+ensuite. Une PR qui rendrait la mise à jour impossible y est rouge. Quand `data/rows` porte déjà une note en attente (PR de mise à jour, `dev`
+avant la livraison), aucun lot n'est écrit (un second serait refusé, code 7) : `data/rows` est contrôlé tel quel, déjà dans l'état d'après une
+mise à jour. Le job n'est pas (encore) un check requis des règles de branches (`.github/rulesets/`) ni de `CHECKS_REQUIS` ; il coûte à peu près
+les minutes du job `client`. En local :
+
+```bash
+cd client
+git fetch origin master
+node scripts/mise-a-jour-simulation.mjs --lot /tmp/lot.json --reference origin/master   # --guide : les deux chapitres seulement (comme le run 38151792080)
+node scripts/mise-a-jour-regles.mjs --lot /tmp/lot.json --reference origin/master
+npm run db:build && npm run db:check && npm test                                        # puis, au besoin, le reste du job client (build…)
+git checkout -- ../data/rows                                                            # data/rows remis tel qu'il était
+```
 
 `db:check` compare de même chaque note de cellule à la remarque d'import (`valeurDImport`) et ignore une ligne créée ou supprimée par le site ;
 `tools/db/races_onglet.py --verifier` ignore une race créée depuis le site (son onglet cite « Site de dev › … », pas le classeur). Une migration
@@ -434,7 +465,8 @@ npm run dev         # dans un autre terminal : le site, qui transmet /api/ au se
 Les tests (`npm test`) : `serveur-base-vivante` (création, reprise des fiches, refus sans perte, archives), `serveur-api` (chaque route, chaque
 refus, conflit de versions, serveur HTTP réel et sa surveillance), `serveur-edition*` et `serveur-edition-journal` (édition : chaque domaine,
 journal, rejeu), `serveur-notes-de-version` (page Mise à jour : routes, lot figé, faux GitHub), `notes-de-version` et `notes-de-version-sens`
-(liste et couleurs), `mise-a-jour-regles` (lot appliqué à data/rows : conflit, liste blanche), `mise-a-jour-github` (le workflow), `db-appliquer-edition` (rapatriement dans data/rows, versé dans l’historique), `historique-site` (ce que le site a changé, état d’import), `serveur-livraison` (modules livrés, service livré démarré tel quel,
+(liste et couleurs), `mise-a-jour-regles` (lot appliqué à data/rows : conflit, liste blanche), `mise-a-jour-github` (le workflow),
+`mise-a-jour-simulation` (le lot synthétique de la CI, l'état « note en attente », le job `simulation-de-mise-a-jour`), `db-appliquer-edition` (rapatriement dans data/rows, versé dans l’historique), `historique-site` (ce que le site a changé, état d’import), `serveur-livraison` (modules livrés, service livré démarré tel quel,
 `docker-compose.yml` et `nginx.conf` cohérents), `installateur` (contenu de `db/` remplacé, dossier gardé) ; `site-html` contrôle `dist/_serveur/`
 après le build.
 
