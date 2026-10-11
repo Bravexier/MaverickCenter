@@ -8,7 +8,7 @@
 // Le site de dev est la source des races et des magies innées qu'il modifie ou crée (décision du propriétaire) : les listes et effectifs ci-dessus se
 // lisent sur les pages telles que l'import les a écrites (historique_modification, lib/historique-site.mjs) ; toute race d'aujourd'hui doit porter la
 // liste de ses tables (R8, R11) et la redire dans sa section « Magies accessibles ».
-// À trancher par le propriétaire : « une race hybride a exactement 3 magies innées » est-il une règle ? Ici, seulement un effectif de l'import.
+// « Une race hybride a exactement 3 magies innées » n'est pas une règle (décision R30) : ici, seulement un effectif de l'import.
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
@@ -115,7 +115,7 @@ test('races hybrides = les 13 races qui ont leur classe raciale, avec exactement
   assert.equal(raceKind(all, drassahthac), 'hybride');
   assert.equal(racialClassOf(all, drassahthac), null, 'le Drassah’thac n’a pas de classe raciale');
   for (const r of races.filter((x) => historique.creee('race', { id: x.id }) && !x.data.magies_innees.length)) t.diagnostic(`${r.id} : créée depuis le site, sans magie innée (à compléter)`);
-  // à l'import (effectifs du classeur, pas une règle : voir l'en-tête)
+  // à l'import (effectifs du classeur, pas une règle : décision R30)
   const hybrides = racesImport.filter((r) => raceKind(allImport, r) === 'hybride').map((r) => r.id.split('/')[1]).sort();
   assert.deepEqual(hybrides, [...Object.keys(HYBRIDES), 'drassahthac'].sort());
   for (const r of racesImport) {

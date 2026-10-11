@@ -21,12 +21,18 @@ mêmes qui l'ont écrite (tools/sheets/races.py : md_text, labeled, render_ethni
 s'arrête sans rien écrire. Les sections tirées de la fiche (AP, AM, « Divers », restrictions, sous-races, matrices, écarts) ne sont pas relues : leurs
 valeurs sont déjà dans les tables race, ethnie, race_classe, race_magie.
 
+Décision R31 (docs/decisions-regles.md) : la liste des magies innées (race_magie_onglet) fait foi, la phrase « Inconvénient(s) » qui les citait à
+l'import redevient un texte libre. La liste n'est donc comparée à la phrase que pour une race dont le site de dev n'a touché ni la liste ni la phrase
+(table historique_modification : listes_du_site) ; pour les autres, la phrase n'est même pas lue (elle peut ne plus citer de magie, ou en citer une
+inconnue).
+
 Une race créée depuis le site de dev (provenance « Site de dev › … », que seul le service écrit : client/serveur/edition.mjs#provenance) n'a pas d'onglet
 dans le classeur : ni source « onglet » dans ses sources, ni rang dans l'index, ni capacité Mode Hyper. Elle n'est ni extraite ni comparée ici ; son corps
 est le rendu de ses seules tables (client/src/lib/corps-races.mjs#corpsDeRaceCreee), contrôlé par client/test/serveur-edition-corps.test.mjs. Les races
 importées restent contrôlées en entier, et une race du classeur ne peut pas passer pour créée : sa provenance n'est pas modifiable depuis le site.
 """
 import importlib.util
+import json
 import os
 import re
 import subprocess
@@ -382,8 +388,12 @@ def lire_race(race_id, onglet, corps):
     if R.cell_md(' / '.join(str(n) for n in nombres[3:])) != valeurs[3] or [R.cell_md(str(n)) for n in nombres[:3]] != valeurs[:3]:
         raise Arret('%s : valeurs de départ non réversibles' % race_id)
 
-    cites = R.cited_magics(v['inconvenients'])
-    v['magies_citees'] = cites[0] if cites else []
+    try:
+        cites = R.cited_magics(v['inconvenients'])
+        v['magies_citees'] = cites[0] if cites else []
+    except ValueError as e:
+        v['magies_citees'] = None                    # illisible : refusé par extraire, sauf si la liste est celle du site (R31)
+        v['citation_illisible'] = str(e)
     return v
 
 
@@ -404,6 +414,20 @@ def base(rows=ROWS, schema_ancien=None):
         return T.reconstruire(':memory:', rows, tmp.name)
     finally:
         os.unlink(tmp.name)
+
+
+def listes_du_site(db):
+    """Races dont le site de dev a modifié la liste des magies innées (race_magie_onglet) ou la phrase « Inconvénient(s) » (race_onglet.inconvenients) :
+    historique_modification (modifications rapatriées ou livrées). Leur liste fait foi (R31) : elle n'est plus comparée à la phrase."""
+    if not db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'historique_modification'").fetchone():
+        return set()
+    races = set()
+    for table, cle, avant, apres in db.execute(
+            "SELECT table_nom, cle, avant, apres FROM historique_modification WHERE table_nom IN ('race_magie_onglet', 'race_onglet')"):
+        race_id = json.loads(cle).get('race_id')
+        if table == 'race_magie_onglet' or any('inconvenients' in json.loads(v or '{}') for v in (avant, apres)):
+            races.add(race_id)
+    return races
 
 
 def extraire(db):
@@ -428,6 +452,7 @@ def extraire(db):
             raise Arret('%s : sous-race de la fiche « %s » : %d ethnie(s)' % (race_id, nom, len(ids)))
         return ids[0]
 
+    du_site = listes_du_site(db)
     out = []
     for race_id, nom, source_ref, corps in races:
         if len(onglets.get(race_id, [])) != 1:
@@ -443,6 +468,10 @@ def extraire(db):
         if v['tableau']:
             for l in v['tableau']['lignes']:
                 l['ethnie_id'] = ethnie_de(race_id, l['fiche'])
+        if race_id in du_site:
+            v['magies_citees'] = []                  # R31 : la liste de la base fait foi, la phrase n'est pas relue
+        elif v['magies_citees'] is None:
+            raise Arret('%s : %s' % (race_id, v['citation_illisible']))
         v['magie_ids'] = [magies[n] for n in v['magies_citees']]
         out.append(v)
     if len({v['rang_index'] for v in out}) != len(out):
@@ -641,15 +670,17 @@ def verifier(db, t):
     ecarts = []
     filtres = {'mode_hyper_effet': "version = 'onglet_race'", 'page_entite': "entite_table = 'race_don'", 'note_cellule': "entite_table = 'race_don'"}
     creees = {rid for rid, ref in db.execute('SELECT id, source_ref FROM race') if ref.startswith(PROVENANCE_DU_SITE)}
+    du_site = listes_du_site(db)                     # R31 : leur liste de magies innées fait foi
     # la race d'une ligne : race_id, ou la page (page_entite), ou l'entité « races/<slug>#don:… » (note_cellule)
     race_de = {'page_entite': 'page_id', 'note_cellule': 'entite_id'}
     for table, attendues in t.items():
         cols = T.colonnes(db, table)
         where = filtres.get(table, '1')
         i = cols.index(race_de.get(table, 'race_id'))
+        ignorees = creees | du_site if table == 'race_magie_onglet' else creees
         presentes = sorted(tuple(r) for r in db.execute('SELECT %s FROM "%s" WHERE %s' % (', '.join('"%s"' % c for c in cols), table, where))
-                           if r[i].split('#')[0] not in creees)
-        voulues = sorted(tuple(r[c] for c in cols) for r in attendues)
+                           if r[i].split('#')[0] not in ignorees)
+        voulues = sorted(tuple(r[c] for c in cols) for r in attendues if table != 'race_magie_onglet' or r['race_id'] not in du_site)
         if presentes != voulues:
             ecarts.append('%s : %d ligne(s) en base, %d attendue(s), %d différente(s)' % (
                 table, len(presentes), len(voulues), len(set(presentes) ^ set(voulues))))
@@ -671,6 +702,9 @@ def main(argv):
         print('arrêt : %s' % e)
         return 1
     if argv == ['--ecrire']:
+        if listes_du_site(db):
+            print('arrêt : des listes de magies innées viennent du site de dev (R31) : la migration 0007 ne se réécrit plus depuis les pages')
+            return 1
         with open(MIGRATION, 'w', encoding='utf-8', newline='\n') as fh:
             fh.write(migration_sql(t))
         print('%s écrite : %s' % (os.path.relpath(MIGRATION, RACINE), ', '.join('%s %d' % (k, len(v)) for k, v in t.items())))

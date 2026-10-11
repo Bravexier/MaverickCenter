@@ -39,8 +39,8 @@
 //     d'un don du nom de son ethnie ou du don (race#don:<normalize(nom)>), alors que l'id d'une ligne ne change jamais : une remarque posée ailleurs
 //     l'arrête, un renommage qui change cette clé le fait diverger (race_don, page_entite) ; un changement de graphie (même clé) se relit, et la note
 //     de cellule (note_cellule) d'un don du Médusain suit sa remarque ;
-//   - race_magie_onglet est tirée par races_onglet.py des magies que cite « Inconvénient(s) » : modifier l'une sans l'autre les fait diverger (D10, à
-//     trancher : pas de refus).
+//   - race_magie_onglet a été tirée par races_onglet.py des magies que cite « Inconvénient(s) » : la liste fait foi (décision R31), la phrase est un
+//     texte libre ; races_onglet.py --verifier ne les compare plus pour une race dont le site a touché l'une ou l'autre (listes_du_site).
 //
 // Fonctions pures, sans dépendance (aucun accès à la base : les lignes sont passées par l'appelant, voir etatDeRace).
 
