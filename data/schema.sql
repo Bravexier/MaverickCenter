@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 23;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 24;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -2275,7 +2275,10 @@ CREATE TABLE baton_magique (
 ) STRICT;
 
 -- Métiers (Google Doc « MÉTIER » : une page par métier, 72). `bonus_brut`, `artisanat_brut`, `equipement_brut`, `avantage_brut` sont les
--- quatre champs de la page, tels qu'écrits (liens [[…]] et échappements Markdown retirés).
+-- quatre champs de la page, tels qu'écrits (liens [[…]] et échappements Markdown retirés). Artisanat (décision R34) : un texte libre (ce que le
+-- métier fabrique, `artisanat_texte`) et deux caractéristiques (`test_carac_1_id`, `test_carac_2_id`) ; la compétence d'artisanat vaut 10 × la
+-- première + 10 × la seconde (regle_constante 'metier.artisanat_par_point_caracteristique'). Sur le site de dev, ce sont ces trois colonnes qui se
+-- modifient ; `artisanat_brut`, `test_brut` et `peut_fabriquer` en sont recalculés.
 CREATE TABLE metier (
   id                 TEXT    NOT NULL PRIMARY KEY REFERENCES page(id),   -- id de la page : 'metiers/forgeron'
   nom                TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),         -- titre de la page : « Éleveur (choix animal) »
@@ -2286,9 +2289,10 @@ CREATE TABLE metier (
   peut_fabriquer     INTEGER NOT NULL CHECK (peut_fabriquer IN (0, 1)),   -- 0 si « Artisanat possible : Rien »
   artisanat_texte    TEXT,                            -- partie avant le crochet : « Peut faire des armes métalliques » ; NULL si « Rien »
   test_brut          TEXT,                            -- contenu du crochet : « FORCE  + VOLONTÉ », « PERCEPTION x2 », « Artisanat SOCIAL + INTELLIGENCE » ; NULL si aucun
-  test_carac_1_id    TEXT    REFERENCES caracteristique(id),   -- renseignées seulement pour la forme exacte « CARAC + CARAC »
-  test_carac_2_id    TEXT    REFERENCES caracteristique(id),
-  equipement_brut    TEXT    NOT NULL,                -- « Équipement supplémentaire possible » : « Kit de réparation d'arme, Maillet en fer » ; « Rien »
+  test_carac_1_id    TEXT    REFERENCES caracteristique(id),   -- les deux caractéristiques de la compétence d'artisanat (décision R34) : « CARAC + CARAC »,
+  test_carac_2_id    TEXT    REFERENCES caracteristique(id),   -- « Artisanat CARAC + CARAC », et « CARAC x2 » = deux fois la même ; NULL sans crochet
+  equipement_brut    TEXT    NOT NULL,                -- « Équipement supplémentaire possible » : « Kit de réparation d'arme, Maillet en fer » ; « Rien ».
+                                                      -- Ses objets de départ (décision R35) : metier_objet_depart
   avantage_brut      TEXT,                            -- « Avantage possible » ; NULL si vide (Artisan)
   origine            TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref         TEXT    NOT NULL CHECK (length(source_ref) > 0),
@@ -2302,8 +2306,10 @@ CREATE INDEX metier_peut_fabriquer ON metier (peut_fabriquer);
 
 -- Bonus d'un métier : le champ « Bonus » découpé sur les virgules suivies d'un signe (« +3% Esquive, +3% Réflexe » -> 2 rangs ;
 -- « Diplomatie OU Intimidation » -> 2 options du même rang). `valeur`/`unite`/`cible` ne sont renseignés que pour la forme
--- « +N% Cible » ou « +N Cible » ; tout autre fragment garde son texte et valeur NULL. `cible_cle` = normalize(cible) : se joint aux
--- compétences et attributs du domaine fiche par nom, sans clé étrangère entre domaines.
+-- « +N% Cible » ou « +N Cible » ; tout autre fragment garde son texte et valeur NULL. `cible_cle` = normalize(cible).
+-- Lien de règle (décision R33) : `competence_id` quand la cible est une compétence de la fiche (le bonus s'ajoute à son Acquis), `attribut`
+-- 'initiative' pour « +N INI » (le bonus s'ajoute à l'initiative) ; « +N% dans une compétence sociale au choix » donne une option par compétence
+-- de la caractéristique Social. Un rang à plusieurs options liées est un choix, fait dans la fiche (personnage_metier_bonus).
 CREATE TABLE metier_bonus (
   metier_id   TEXT    NOT NULL REFERENCES metier(id),
   rang        INTEGER NOT NULL CHECK (rang >= 1),
@@ -2315,11 +2321,17 @@ CREATE TABLE metier_bonus (
   cible_cle   TEXT CHECK (cible_cle IS NULL OR (cible_cle NOT GLOB '*[^a-z0-9-]*' AND cible_cle NOT GLOB '*--*' AND cible_cle NOT GLOB '-*' AND cible_cle NOT GLOB '*-')),
   origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  competence_id TEXT  REFERENCES competence(id),      -- compétence que le bonus augmente (Acquis), décision R33
+  attribut    TEXT    CHECK (attribut IN ('initiative')),   -- attribut que le bonus augmente : « +1 INI » -> 'initiative' (décision R33)
   PRIMARY KEY (metier_id, rang, option),
-  CHECK ((valeur IS NULL) = (cible IS NULL))
+  CHECK ((valeur IS NULL) = (cible IS NULL)),
+  CHECK (competence_id IS NULL OR attribut IS NULL),
+  CHECK ((competence_id IS NULL AND attribut IS NULL) OR valeur IS NOT NULL)
 ) STRICT, WITHOUT ROWID;
 
 CREATE INDEX metier_bonus_cible ON metier_bonus (cible_cle) WHERE cible_cle IS NOT NULL;
+
+CREATE INDEX metier_bonus_competence ON metier_bonus (competence_id) WHERE competence_id IS NOT NULL;
 
 -- Familles de recettes qu'un métier dit pouvoir fabriquer : le champ « Artisanat possible » cite « fioles », « philtres », « remèdes »,
 -- « huiles », « alchimie primitive ». Seuls ces cinq mots désignent une famille de recettes de la base ; les autres artisanats
@@ -2334,6 +2346,23 @@ CREATE TABLE metier_recette_famille (
 ) STRICT, WITHOUT ROWID;
 
 CREATE INDEX metier_recette_famille_famille ON metier_recette_famille (famille);
+
+-- Objets de départ d'un métier (décision R35 : l'« Équipement supplémentaire possible » s'ajoute à l'inventaire à la création du personnage) :
+-- le champ découpé comme l'inventaire de départ d'une classe (classe_objet_depart, lib/classe-champs.mjs#decouperInventaire) : un rang par objet
+-- séparé par « , », une option par « OU » (un choix, fait dans la fiche) ; « Rien » : aucun objet. Le texte reste tel qu'écrit (« Crochet (x3) ») ;
+-- objet_depart_id quand il est, sans « (xN) », le nom d'un objet du glossaire des inventaires de départ.
+CREATE TABLE metier_objet_depart (
+  metier_id        TEXT    NOT NULL REFERENCES metier(id),
+  rang             INTEGER NOT NULL CHECK (rang >= 1),
+  option           INTEGER NOT NULL CHECK (option >= 1),
+  texte            TEXT    NOT NULL CHECK (length(texte) > 0),
+  objet_depart_id  TEXT    REFERENCES objet_depart(id),
+  origine          TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
+  source_ref       TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (metier_id, rang, option)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX metier_objet_depart_objet ON metier_objet_depart (objet_depart_id) WHERE objet_depart_id IS NOT NULL;
 
 -- Une ligne par arme listée (161 : 147 + 14 armes de monstres). Les colonnes typées sont extraites des clauses du texte d'effet
 -- (séparées par des virgules ou des retours à la ligne) ; une clause qui n'a pas exactement la forme attendue n'est pas interprétée
@@ -3446,6 +3475,16 @@ CREATE TABLE personnage_competence (
   PRIMARY KEY (personnage_id, competence_id)
 ) STRICT, WITHOUT ROWID;
 
+-- Bonus de métier choisis (décision R33 : « En cas de choix c'est à saisir dans la fiche de personnage ») : pour chaque rang de metier_bonus du métier
+-- de la fiche qui propose plusieurs compétences (« +3% Diplomatie OU Intimidation »), la compétence retenue. Un rang à une seule option ne se choisit pas ;
+-- le bonus de métier se calcule (v_personnage_metier_bonus), il ne s'écrit pas dans personnage_competence.acquis.
+CREATE TABLE personnage_metier_bonus (
+  personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  rang           INTEGER NOT NULL CHECK (rang >= 1),   -- rang du bonus dans metier_bonus (métier de la fiche)
+  competence_id  TEXT    NOT NULL REFERENCES competence(id),
+  PRIMARY KEY (personnage_id, rang)
+) STRICT, WITHOUT ROWID;
+
 -- Gains d'attributs à chaque niveau global à partir du 2 : les points d'attributs (niveau_global.points_attributs, 15) répartis entre santé et chakra
 -- (la fiche compte F14 + M14 : BDD!K40), et le dé bonus des niveaux qui en donnent un (niveau_global.de_attributs_bonus : « 1d8 santé OU 1d8 chakra
 -- OU 1d4 pour les deux »). La fiche ajoute tout à la main dans la formule de F14/M14 (« +0 ») : ici chaque gain est daté par son niveau.
@@ -3589,6 +3628,17 @@ CREATE VIEW v_personnage_niveau AS
   FROM personnage p
   JOIN niveau_global n ON n.niveau = (SELECT MAX(g.niveau) FROM niveau_global g WHERE g.xp_min <= p.xp);
 
+-- Bonus que le métier d'une fiche apporte (décision R33) : une ligne par rang lié de metier_bonus (compétence ou attribut) — l'option seule du rang,
+-- ou, quand le rang en propose plusieurs, celle que la fiche a choisie (personnage_metier_bonus). `valeur` s'ajoute à l'Acquis de la compétence
+-- (`competence_id`) ou à l'initiative (`attribut` 'initiative').
+CREATE VIEW v_personnage_metier_bonus AS
+  SELECT p.id AS personnage_id, b.rang, b.competence_id, b.attribut, b.valeur
+  FROM personnage p
+  JOIN metier_bonus b ON b.metier_id = p.metier_id
+  WHERE (b.competence_id IS NOT NULL OR b.attribut IS NOT NULL)
+    AND ((SELECT count(*) FROM metier_bonus o WHERE o.metier_id = b.metier_id AND o.rang = b.rang) = 1
+         OR EXISTS (SELECT 1 FROM personnage_metier_bonus c WHERE c.personnage_id = p.id AND c.rang = b.rang AND c.competence_id = b.competence_id));
+
 -- Qui voit quelle fiche (demande du propriétaire) : une ligne par (fiche, utilisateur, motif) ; un utilisateur voit une fiche s'il a au moins une ligne.
 -- Motifs : 'proprietaire' ; 'admin' (toutes les fiches) ; 'tous' (visibilité 'tous', donc tout prétiré) ; 'mj' (visibilité 'mj' : utilisateurs de rôle
 -- 'mj') ; 'groupe' (membres du groupe `groupe_id` où la fiche est inscrite) ; 'partage' (utilisateur désigné par le propriétaire).
@@ -3619,7 +3669,7 @@ CREATE VIEW v_groupe_controle AS
   WHERE p.nature = 'joueur' AND p.proprietaire_id <> m.utilisateur_id;
 
 -- Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi.
--- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26) ; ce qui
+-- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33) ; ce qui
 -- demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Une fiche 'brouillon' peut
 -- avoir des lignes, une fiche 'valide' non (test).
 CREATE VIEW v_personnage_controle AS
@@ -3723,11 +3773,27 @@ CREATE VIEW v_personnage_controle AS
   WHERE p.statut <> 'brouillon'
     AND COALESCE((SELECT SUM(pc.naturel) FROM personnage_competence pc WHERE pc.personnage_id = n.personnage_id), 0) <> v.points_competences_cumul
   UNION ALL
-  SELECT pco.personnage_id, 'competence_acquis_max', pco.competence_id || ' = ' || pco.acquis
-  FROM personnage_competence pco
-  JOIN competence co ON co.id = pco.competence_id
-  JOIN personnage_caracteristique pca ON pca.personnage_id = pco.personnage_id AND pca.caracteristique_id = co.caracteristique_id
-  WHERE pco.acquis > pca.base * (SELECT r.valeur FROM regle_constante r WHERE r.id = 'competence.acquis_max_par_point_caracteristique')
+  -- (l'Acquis compte le bonus du métier, décision R33 : la page « Règles des métiers » dit ses bonus « d'acquis »)
+  SELECT pca.personnage_id, 'competence_acquis_max', co.id || ' = ' || (COALESCE(pco.acquis, 0) + COALESCE(mb.valeur, 0))
+  FROM personnage_caracteristique pca
+  JOIN competence co ON co.caracteristique_id = pca.caracteristique_id
+  LEFT JOIN personnage_competence pco ON pco.personnage_id = pca.personnage_id AND pco.competence_id = co.id
+  LEFT JOIN (SELECT personnage_id, competence_id, SUM(valeur) AS valeur FROM v_personnage_metier_bonus WHERE competence_id IS NOT NULL
+             GROUP BY personnage_id, competence_id) mb ON mb.personnage_id = pca.personnage_id AND mb.competence_id = co.id
+  WHERE COALESCE(pco.acquis, 0) + COALESCE(mb.valeur, 0)
+        > pca.base * (SELECT r.valeur FROM regle_constante r WHERE r.id = 'competence.acquis_max_par_point_caracteristique')
+  UNION ALL
+  -- Métier (décision R33) : un bonus choisi est une compétence d'un rang à choix du métier de la fiche ; chaque rang à choix a le sien (sauf brouillon)
+  SELECT c.personnage_id, 'metier_bonus_hors_choix', c.competence_id
+  FROM personnage_metier_bonus c JOIN personnage p ON p.id = c.personnage_id
+  WHERE NOT EXISTS (SELECT 1 FROM metier_bonus b WHERE b.metier_id = p.metier_id AND b.rang = c.rang AND b.competence_id = c.competence_id
+                      AND (SELECT count(*) FROM metier_bonus o WHERE o.metier_id = b.metier_id AND o.rang = b.rang) > 1)
+  UNION ALL
+  SELECT p.id, 'metier_bonus_manquant', b.texte
+  FROM personnage p JOIN metier_bonus b ON b.metier_id = p.metier_id AND b.option = 1
+  WHERE p.statut <> 'brouillon'
+    AND (SELECT count(*) FROM metier_bonus o WHERE o.metier_id = b.metier_id AND o.rang = b.rang AND o.competence_id IS NOT NULL) > 1
+    AND NOT EXISTS (SELECT 1 FROM personnage_metier_bonus c WHERE c.personnage_id = p.id AND c.rang = b.rang)
   UNION ALL
   -- Progression : un gain par niveau atteint (2 à niveau global), points d'attributs exacts (R3), dé seulement aux niveaux qui en donnent un
   SELECT pp.personnage_id, 'progression_niveau_non_atteint', CAST(pp.niveau AS TEXT)

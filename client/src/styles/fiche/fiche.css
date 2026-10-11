@@ -278,6 +278,14 @@ main:has(> .fiche) { max-width: 100rem; }
   background: var(--etape-doux);
 }
 .fiche-resume strong { color: color-mix(in srgb, var(--etape) 65%, var(--text)); }
+/* ce que donne le métier (décisions R33 à R35) : un rang à choix ou un objet à choisir montre ses options en pastilles, sur toute la largeur */
+#metier-bloc[hidden] { display: none; }
+.metier-fiche { margin-top: 0.4rem; }
+.metier-fiche li.metier-fiche__choix { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; border-radius: 10px; }
+.metier-fiche li.metier-fiche__artisanat { flex-basis: 100%; border-radius: 10px; }
+.metier-fiche li[hidden] { display: none; }
+.metier-fiche .pastilles { margin: 0; }
+.metier-fiche .pastilles li { padding: 0; border: 0; background: none; }
 
 /* ----------------------------------------------------------------- compteurs de budget */
 .budget {

@@ -28,7 +28,7 @@ const appel = (methode, chemin_, corps, s = service) =>
 const enregistrer = (operations, page = 'metiers/') => appel('POST', '/api/edition/', { page, operations });
 const ligne = (sql, ...p) => db.prepare(sql).get(...p);
 const lignes = (sql, ...p) => db.prepare(sql).all(...p);
-const competences = lignes('SELECT nom FROM competence').map((c) => c.nom);
+const competences = lignes('SELECT id, nom, caracteristique_id, ordre FROM competence ORDER BY ordre').map((c) => ({ ...c }));
 /** Un nom de métier que la base n'a pas encore : `nom`, ou `nom 2`, `nom 3`… */
 const nomLibre = (nom) => {
   const pris = (n) => ligne('SELECT 1 FROM metier WHERE nom = ? OR id = ? UNION ALL SELECT 1 FROM page WHERE id = ?', n, `metiers/${normalize(n)}`, `metiers/${normalize(n)}`);
@@ -87,19 +87,54 @@ test('modifier le bonus d’un métier : metier_bonus et la ligne « Bonus » de
   assert.match(journal.at(-1), /^édition : lot .+ depuis metiers\//);
 });
 
-test('modifier l’artisanat : colonnes typées et familles de recettes recalculées ; le nom suit dans la page (titre, clé)', () => {
+test('modifier l’artisanat (décision R34) : texte et deux caractéristiques ; « Artisanat possible », test et familles de recettes recalculés ; le nom suit', () => {
   const id = creerMetier({ nom: 'Essai de l’artisanat', description: 'Un métier d’essai.', bonus_brut: '+1 INI' });
   const nom = nomLibre('Chef des rois');
   const r = enregistrer([{ op: 'modifier', table: 'metier', cle: { id },
-    valeurs: { nom, artisanat_brut: 'Peut fabriquer les fioles et les huiles [FORCE + AGILITÉ]' } }]);
+    valeurs: { nom, artisanat_texte: 'Peut fabriquer les fioles et les huiles', test_carac_1_id: 'force', test_carac_2_id: 'agilite' } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   const m = ligne('SELECT * FROM metier WHERE id = ?', id);
   assert.equal(m.nom_cle, normalize(nom));
-  assert.deepEqual([m.peut_fabriquer, m.artisanat_texte, m.test_brut, m.test_carac_1_id, m.test_carac_2_id], [1, 'Peut fabriquer les fioles et les huiles', 'FORCE + AGILITÉ', 'force', 'agilite']);
+  assert.deepEqual([m.peut_fabriquer, m.artisanat_texte, m.test_brut, m.test_carac_1_id, m.test_carac_2_id, m.artisanat_brut],
+    [1, 'Peut fabriquer les fioles et les huiles', 'FORCE + AGILITÉ', 'force', 'agilite', 'Peut fabriquer les fioles et les huiles [FORCE + AGILITÉ]']);
   assert.deepEqual(lignes('SELECT famille FROM metier_recette_famille WHERE metier_id = ? ORDER BY famille', id).map((f) => f.famille), ['fiole', 'huile']);
   const p = ligne('SELECT titre, titre_cle, corps_md FROM page WHERE id = ?', id);
   assert.deepEqual([p.titre, p.titre_cle], [nom, normalize(nom)]);
   assert.match(p.corps_md, /^\*\*Artisanat possible :\*\* Peut fabriquer les fioles et les huiles \\\[FORCE \+ AGILITÉ\\\]$/m);
+
+  // le texte seul change : le test garde son écriture ; une seule caractéristique : refusé ; texte vidé : rien à fabriquer, caractéristiques parties
+  db.prepare("UPDATE metier SET test_brut = 'FORCE  + AGILITÉ', artisanat_brut = 'Peut fabriquer les fioles et les huiles [FORCE  + AGILITÉ]' WHERE id = ?").run(id);
+  assert.equal(enregistrer([{ op: 'modifier', table: 'metier', cle: { id }, valeurs: { artisanat_texte: 'Des fioles' } }]).statut, 200);
+  assert.equal(ligne('SELECT artisanat_brut FROM metier WHERE id = ?', id).artisanat_brut, 'Des fioles [FORCE  + AGILITÉ]');
+  const seule = enregistrer([{ op: 'modifier', table: 'metier', cle: { id }, valeurs: { test_carac_2_id: '' } }]);
+  assert.equal(seule.statut, 400);
+  assert.match(seule.corps.erreur, /deux caractéristiques/);
+  assert.equal(enregistrer([{ op: 'modifier', table: 'metier', cle: { id }, valeurs: { test_carac_1_id: 'volonte' } }]).statut, 200);
+  assert.equal(ligne('SELECT test_brut FROM metier WHERE id = ?', id).test_brut, 'VOLONTÉ + AGILITÉ', 'caractéristiques changées : test réécrit');
+  assert.equal(enregistrer([{ op: 'modifier', table: 'metier', cle: { id }, valeurs: { artisanat_texte: '' } }]).statut, 200);
+  const vide = ligne('SELECT * FROM metier WHERE id = ?', id);
+  assert.deepEqual([vide.peut_fabriquer, vide.artisanat_texte, vide.test_carac_1_id, vide.test_carac_2_id, vide.test_brut, vide.artisanat_brut], [0, null, null, null, null, 'Rien']);
+  assert.equal(lignes('SELECT 1 FROM metier_recette_famille WHERE metier_id = ?', id).length, 0);
+  assert.equal(enregistrer([{ op: 'modifier', table: 'metier', cle: { id }, valeurs: { test_carac_1_id: 'inconnue', test_carac_2_id: 'force', artisanat_texte: 'X' } }]).statut, 422, 'caractéristique inconnue');
+  assert.equal(enregistrer([{ op: 'modifier', table: 'metier', cle: { id }, valeurs: { artisanat_brut: 'X' } }]).statut, 400, '« Artisanat possible » ne se modifie plus directement');
+});
+
+test('modifier le bonus et l’équipement : liens vers les compétences et l’initiative (R33), objets de départ (R35)', () => {
+  const id = creerMetier({ nom: 'Essai des liens', description: 'Un métier d’essai.', bonus_brut: '+1 INI' });
+  const r = enregistrer([{ op: 'modifier', table: 'metier', cle: { id },
+    valeurs: { bonus_brut: '+2 INI, +3% Diplomatie OU Intimidation, +1 butin', equipement_brut: 'Corde, Arc OU Fronde' } }]);
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  assert.deepEqual(lignes('SELECT rang, option, competence_id, attribut, valeur FROM metier_bonus WHERE metier_id = ? ORDER BY rang, option', id).map((l) => ({ ...l })), [
+    { rang: 1, option: 1, competence_id: null, attribut: 'initiative', valeur: 2 },
+    { rang: 2, option: 1, competence_id: 'diplomatie', attribut: null, valeur: 3 },
+    { rang: 2, option: 2, competence_id: 'intimidation', attribut: null, valeur: 3 },
+    { rang: 3, option: 1, competence_id: null, attribut: null, valeur: null },
+  ]);
+  assert.deepEqual(lignes('SELECT rang, option, texte FROM metier_objet_depart WHERE metier_id = ? ORDER BY rang, option', id).map((l) => [l.rang, l.option, l.texte]),
+    [[1, 1, 'Corde'], [2, 1, 'Arc'], [2, 2, 'Fronde']]);
+  assert.match(ligne('SELECT source_ref FROM metier_objet_depart WHERE metier_id = ? AND rang = 1', id).source_ref, / › Équipement supplémentaire possible$/);
+  assert.equal(enregistrer([{ op: 'modifier', table: 'metier', cle: { id }, valeurs: { equipement_brut: '' } }]).statut, 200);
+  assert.equal(lignes('SELECT 1 FROM metier_objet_depart WHERE metier_id = ?', id).length, 0, '« Rien » : aucun objet');
 });
 
 test('refus : lot entier annulé ; colonne hors du modèle, valeur obligatoire, nom déjà pris, modifié entre-temps', () => {
@@ -132,7 +167,7 @@ test('créer un métier : page (titre, résumé, corps, mot-clé), ligne metier,
   const nom = nomLibre('Souffleur de verre');
   const slug = normalize(nom);
   const id = `metiers/${slug}`;
-  const r = enregistrer([{ op: 'creer', entite: 'metier', valeurs: { nom, description: 'Il souffle le verre. Avec patience.', bonus_brut: '+3% Calme, +2% Fermeté', artisanat_brut: '', equipement_brut: 'Canne' } }]);
+  const r = enregistrer([{ op: 'creer', entite: 'metier', valeurs: { nom, description: 'Il souffle le verre. Avec patience.', bonus_brut: '+3% Calme, +2% Fermeté', artisanat_texte: '', equipement_brut: 'Canne' } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   assert.deepEqual(r.corps.crees, [{ entite: 'metier', id }]);
   const m = ligne('SELECT * FROM metier WHERE id = ?', id);
@@ -142,7 +177,9 @@ test('créer un métier : page (titre, résumé, corps, mot-clé), ligne metier,
   const p = ligne('SELECT * FROM page WHERE id = ?', id);
   assert.deepEqual([p.type, p.slug, p.titre, p.resume, p.statut, p.origine], ['metiers', slug, nom, 'Il souffle le verre.', 'draft', 'docs']);
   assert.match(p.corps_md, /^\*\*Description du métier :\*\* Il souffle le verre\. Avec patience\.\n\n\*\*Bonus :\*\* \+3% Calme, \+2% Fermeté\n/);
-  assert.deepEqual(lignes('SELECT texte FROM metier_bonus WHERE metier_id = ? ORDER BY rang', id).map((b) => b.texte), decouperBonus('+3% Calme, +2% Fermeté', competences).map((b) => b.texte));
+  assert.deepEqual(lignes('SELECT texte, competence_id FROM metier_bonus WHERE metier_id = ? ORDER BY rang', id).map((b) => [b.texte, b.competence_id]),
+    decouperBonus('+3% Calme, +2% Fermeté', competences).map((b) => [b.texte, b.competence_id]));
+  assert.deepEqual(lignes('SELECT texte FROM metier_objet_depart WHERE metier_id = ?', id).map((o) => o.texte), ['Canne']);
   assert.equal(ligne('SELECT libelle FROM page_tag WHERE page_id = ?', id).libelle, 'métier');
   assert.equal(ligne("SELECT principale FROM page_entite WHERE entite_table = 'metier' AND entite_id = ?", id).principale, 1);
   assert.ok(appel('GET', '/api/edition/en-attente/').corps.lignes.some((l) => l.table === 'metier' && l.creee && l.cle.id === id));
@@ -153,7 +190,7 @@ test('créer un métier : page (titre, résumé, corps, mot-clé), ligne metier,
   const s = enregistrer([{ op: 'supprimer', entite: 'metier', cle: { id } }]);
   assert.equal(s.statut, 200, JSON.stringify(s.corps));
   for (const t of ['metier', 'page']) assert.equal(ligne(`SELECT count(*) AS n FROM ${t} WHERE id = ?`, id).n, 0, t);
-  for (const t of ['metier_bonus', 'metier_recette_famille']) assert.equal(ligne(`SELECT count(*) AS n FROM ${t} WHERE metier_id = ?`, id).n, 0, t);
+  for (const t of ['metier_bonus', 'metier_objet_depart', 'metier_recette_famille']) assert.equal(ligne(`SELECT count(*) AS n FROM ${t} WHERE metier_id = ?`, id).n, 0, t);
   assert.equal(ligne('SELECT count(*) AS n FROM page_tag WHERE page_id = ?', id).n, 0);
 });
 
@@ -173,7 +210,9 @@ test('lignes lues pour le mode modification, listes, journal à rapatrier', () =
   assert.equal(r.corps.lignes[0].ligne.nom, METIER_B.nom);
   assert.equal(r.corps.lignes[1].ligne, null);
   assert.equal(appel('POST', '/api/edition/lignes/', { lignes: [{ table: 'personnage', cle: { id: 'p-ed' } }] }).statut, 400, 'hors du modèle');
-  assert.ok(appel('GET', '/api/edition/listes/').corps.competences.includes('Esquive'));
+  const listes = appel('GET', '/api/edition/listes/').corps;
+  assert.ok(listes.competences.some((c) => c.id === 'esquive' && c.nom === 'Esquive' && c.caracteristique_id === 'agilite'));
+  assert.deepEqual(listes.caracteristiquesDArtisanat.map((c) => c.valeur), listes.caracteristiques.map((c) => c.id), 'une option par caractéristique');
   const j = appel('GET', '/api/edition/journal/');
   assert.equal(j.statut, 200);
   assert.match(j.entetes['Content-Disposition'], /^attachment; filename="journal-edition-\d{4}-\d\d-\d\d\.json"$/);

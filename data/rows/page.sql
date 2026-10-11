@@ -11947,7 +11947,9 @@ Les bonus que peut apporter un métier peuvent varier selon le métier en questi
 
   *Exemple : Les joueurs entrent dans une caverne, un des joueurs va faire un jet d’orientation pour se repérer dans la grotte avec un avantage car il possède le métier de [[Mineur]].*
 
-- Dans le cas de l’artisanat, fabriquer un objet quoi. Il faudra évidemment le bon métier pour pouvoir fabriquer l’objet. Pour la fabrication, il sera nécessaire de combiner deux caractéristiques ensemble pour connaître les chances de réussite.
+- Dans le cas de l’artisanat, fabriquer un objet quoi. Il faudra évidemment le bon métier pour pouvoir fabriquer l’objet. Pour la fabrication, il sera nécessaire de combiner deux caractéristiques ensemble pour connaître les chances de réussite. La compétence d’artisanat vaut **10 × chacune des deux caractéristiques** du métier, additionnées.
+
+  *Exemple : Un sculpteur (Force + Intelligence) qui a 3 en Force et 2 en Intelligence a 3 × 10 + 2 × 10 = 50 % ; un joaillier (Perception + Intelligence) qui a 5 en Intelligence et 4 en Perception a 5 × 10 + 4 × 10 = 90 %.*
 
   *Exemple : Pour fabriquer une épée : il faut être forgeron. Pour fabriquer un soin, un remède ou un philtre : il faut être alchimiste. (Les métiers qui peuvent fabriquer les objets seront indiqués et avec les objets)*
 

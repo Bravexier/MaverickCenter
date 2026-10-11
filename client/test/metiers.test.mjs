@@ -60,22 +60,42 @@ test('les colonnes redonnent les champs de la source, sans rien réécrire', () 
   for (const m of metiers) {
     const brut = ligneBrute.get(m.id);
     assert.equal(m.nom, brut.nom);
-    // Bonus : un rang par ligne ; joints par « , », ils redonnent le champ entier
-    assert.equal(m.bonus.join(', '), brut.bonus_brut, `${m.id} : bonus`);
-    // Artisanat : texte avant le crochet, puis les caractéristiques du crochet (doubles espaces réduits) ; « Rien » : aucun
+    assert.deepEqual(m.ligne, { ...brut }, `${m.id} : la ligne de la table, telle quelle (cellules : lib/edition-rendu.mjs)`);
+    // Bonus : un rang par élément ; leurs textes joints par « , » redonnent le champ entier
+    assert.equal(m.bonus.map((b) => b.texte).join(', '), brut.bonus_brut, `${m.id} : bonus`);
+    // Artisanat : texte avant le crochet, puis le crochet (doubles espaces réduits) ; « Rien » : aucun
     const artisanat = m.artisanat ? `${m.artisanat.texte}${m.artisanat.test ? ` [${m.artisanat.test}]` : ''}` : 'Rien';
     assert.equal(artisanat, brut.artisanat_brut.replace(/\s+/g, ' '), `${m.id} : artisanat`);
-    assert.equal(m.equipement ?? 'Rien', brut.equipement_brut, `${m.id} : équipement`);
+    // Objets de départ : leurs textes, les options d'un choix jointes par « OU », redonnent l'équipement (« Rien » : aucun)
+    assert.equal(m.objets.map((o) => o.join(' OU ')).join(', ') || 'Rien', brut.equipement_brut, `${m.id} : équipement`);
     assert.equal(m.description, brut.description);
   }
   assert.equal(dImport('metiers/forgeron', 'artisanat_brut').replace(/\s+/g, ' '), 'Peut faire des armes métalliques [FORCE + VOLONTÉ]');
   if (intact('metiers/forgeron', 'artisanat_brut')) {
-    assert.deepEqual(metiers.find((m) => m.id === 'metiers/forgeron').artisanat, { texte: 'Peut faire des armes métalliques', test: 'FORCE + VOLONTÉ' });
+    assert.deepEqual(metiers.find((m) => m.id === 'metiers/forgeron').artisanat,
+      { texte: 'Peut faire des armes métalliques', test: 'FORCE + VOLONTÉ', caracteristiques: ['force', 'volonte'] });
   }
   assert.equal(dImport('metiers/coursier', 'bonus_brut'), '+1 INI, +2% Athlétisme OU Équilibre');
-  if (intact('metiers/coursier', 'bonus_brut')) assert.deepEqual(metiers.find((m) => m.id === 'metiers/coursier').bonus, ['+1 INI', '+2% Athlétisme OU Équilibre']);
+  if (intact('metiers/coursier', 'bonus_brut')) {
+    assert.deepEqual(metiers.find((m) => m.id === 'metiers/coursier').bonus, [
+      { texte: '+1 INI', valeur: 1, unite: null, options: [{ competence_id: null, attribut: 'initiative' }] },
+      { texte: '+2% Athlétisme OU Équilibre', valeur: 2, unite: '%', options: [{ competence_id: 'athletisme', attribut: null }, { competence_id: 'equilibre', attribut: null }] },
+    ]);
+  }
   assert.equal(dImport('metiers/acrobate', 'equipement_brut'), 'Rien');
-  if (intact('metiers/acrobate', 'equipement_brut')) assert.equal(metiers.find((m) => m.id === 'metiers/acrobate').equipement, null);
+  if (intact('metiers/acrobate', 'equipement_brut')) assert.deepEqual(metiers.find((m) => m.id === 'metiers/acrobate').objets, []);
+});
+
+test('artisanat (décision R34) : chaque métier qui fabrique avec un test a ses deux caractéristiques ; le Peintre « PERCEPTION x2 » en a deux fois une', () => {
+  for (const m of metiers) if (m.artisanat?.test) assert.equal(m.artisanat.caracteristiques.length, 2, m.id);
+  if (intact('metiers/peintre', 'artisanat_brut') && ligneBrute.has('metiers/peintre')) {
+    assert.deepEqual(metiers.find((m) => m.id === 'metiers/peintre').artisanat.caracteristiques, ['perception', 'perception']);
+  }
+  // la constante de la compétence d'artisanat (10 par point de caractéristique) et sa phrase dans la page des règles
+  const c = db.prepare("SELECT valeur, texte, page_id FROM regle_constante WHERE id = 'metier.artisanat_par_point_caracteristique'").get();
+  assert.equal(c.valeur, 10);
+  assert.equal(c.page_id, PAGE_DES_REGLES);
+  assert.ok(db.prepare('SELECT corps_md FROM page WHERE id = ?').get(PAGE_DES_REGLES).corps_md.includes(c.texte), 'phrase écrite dans la page des règles');
 });
 
 test('avantage possible : gardé, sauf vide ou réduit à « … »', () => {

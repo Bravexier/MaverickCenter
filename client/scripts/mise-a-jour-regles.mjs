@@ -142,6 +142,7 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
         WHERE m.etat <> 'conflit' ORDER BY ${ORDRE_DE_REJEU}`).all();
       touchees = new Set(historique.map((m) => m.table_nom));
       if (recalcul.pages.length) touchees.add('page');
+      for (const t of recalcul.tablesCompletees ?? []) touchees.add(t); // liens de règle des métiers refaits après le rejeu (décisions R33, R35)
       // notes d'exemple (lorem ipsum) retirées par la première vraie mise à jour ; la note de ce même lot (relance) est refaite — celle d'un autre
       // lot à la même version n'existe pas ici (refusé plus haut : code 7)
       const remplacees = db.prepare('SELECT version FROM note_version WHERE exemple = 1 OR (version = ? AND lot = ?)').all(version, lot.id).map((n) => n.version);

@@ -5,9 +5,10 @@
 import { libelleDuControle } from '../lib/fiche-controles.mjs';
 import { CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ficheVide } from '../lib/fiche-format.mjs';
 import {
-  ajusterValeurDuMoment, alignementDe, attributsDe, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, classesDe,
-  classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, lignesDeSorts,
-  magieAcquiseValable, notationDesDes, magiesInneesPermises, maitriseDArme, maitriseDesSorts, niveauGlobal, nmDuSort, npmMax, progressionAttendue, progressionXp,
+  ajusterValeurDuMoment, alignementDe, artisanatDe, attributsDe, bonusDuMetier, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
+  choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsValables,
+  emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
+  magiesInneesPermises, maitriseDArme, maitriseDesSorts, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionAttendue, progressionXp,
   quotaDeMaitrise, refusClasse, refusMagieAcquise, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
 } from '../lib/fiche-moteur.mjs';
 
@@ -28,6 +29,8 @@ const synchros = new Map();
 let enConstruction = null;
 /** Calculs du moteur, refaits une fois par rafraîchissement et lus par les synchronisations. */
 let calcul = null;
+/** Monte quand l'inventaire est remplacé d'un bloc (objets de départ d'un métier) : son tableau est alors reconstruit, même à nombre de lignes égal. */
+let versionInventaire = 0;
 
 // ------------------------------------------------------------------ outils
 function el(tag, attrs = {}, ...enfants) {
@@ -408,14 +411,87 @@ function construireCaracteristiques() {
           naturel.title = `De 0 à ${c.maxNaturel} au niveau du personnage`;
           acquis.max = String(c.maxAcquis);
           poser(acquis, c.acquis);
-          valeurAcquis.textContent = String(c.acquis);
-          valeurAcquis.toggleAttribute('data-hors', c.acquis > c.maxAcquis);
-          acquis.title = `De 0 à ${c.maxAcquis} : 5 par point de caractéristique de base (race, classe, dons, équipement, entraînement)`;
+          // le bonus du métier est de l'Acquis (décision R33) : affiché à côté, compté dans le plafond et le score, jamais saisi
+          valeurAcquis.textContent = c.metier ? `${c.acquis} +${c.metier}` : String(c.acquis);
+          valeurAcquis.toggleAttribute('data-hors', c.acquis + c.metier > c.plafondAcquis);
+          valeurAcquis.title = c.metier ? `${c.acquis} saisi(s) + ${c.metier} du métier` : '';
+          acquis.title = `De 0 à ${c.maxAcquis} : 5 par point de caractéristique de base (race, classe, dons, équipement, entraînement)${c.metier ? `, moins les ${c.metier} du métier` : ''}`;
           score.textContent = c.score === null ? 'inutilisable' : `${c.score} %`;
         });
         return el('tr', {}, el('td', {}, comp.nom), el('td', { class: 'curseur-td' }, el('span', { class: 'curseur-cellule' }, naturel, valeurNaturel)),
           el('td', { class: 'curseur-td' }, el('span', { class: 'curseur-cellule' }, acquis, valeurAcquis)), el('td', { class: 'nombre' }, score));
       }))))));
+}
+
+// ------------------------------------------------------------------ métier
+/**
+ * Le métier (décisions R33 à R35) : ses bonus, chacun vers une compétence (son Acquis) ou l'initiative — un rang à plusieurs compétences se choisit ici
+ * (« En cas de choix c'est à saisir dans la fiche de personnage ») —, sa compétence d'artisanat (10 × chacune de ses deux caractéristiques) et ses objets
+ * de départ, ajoutés à l'inventaire quand on choisit le métier (un objet à choisir l'est ici). Changer de métier retire les objets de l'ancien encore
+ * tels quels et ses bonus choisis (changerDeMetier).
+ */
+function changerDeMetier(nouveau) {
+  const ancien = fiche.metier_id ?? null;
+  if (ancien === nouveau) return;
+  fiche.metier_id = nouveau;
+  fiche.metier_bonus = choixDeMetierValables(regles, fiche);
+  fiche.inventaire = inventaireSelonLeMetier(regles, fiche, ancien);
+  versionInventaire += 1;
+  changer();
+}
+
+function construireMetier() {
+  const bloc = $('metier-bloc');
+  bloc.hidden = !trouver(regles.metiers, fiche.metier_id);
+  reconstruire(bloc, `${fiche.metier_id}`, () => {
+    const { metier, rangs } = bonusDuMetier(regles, fiche);
+    if (!metier) return [];
+    const competence = (id) => trouver(regles.competences, id);
+    const couleurDe = (id) => trouver(regles.caracteristiques, competence(id)?.caracteristique_id);
+    const valeur = (b) => `${signe(entier(b.valeur))}${b.unite ?? ''}`;
+    const nomDeCible = (o) => (o.attribut === 'initiative' ? 'à l’initiative' : competence(o.competence_id)?.nom ?? o.competence_id);
+    const lignesDeBonus = rangs.map((b) => {
+      if (b.aChoisir) {
+        return el('li', { class: 'metier-fiche__choix' }, el('strong', {}, `${valeur(b)} au choix `),
+          el('ul', { class: 'pastilles pastilles--etroites' }, b.options.filter((o) => o.competence_id).map((o) => {
+            const k = couleurDe(o.competence_id);
+            return pastille({
+              texte: competence(o.competence_id)?.nom ?? o.competence_id, couleur: k?.couleur ?? '#8a7a66', texteSurCouleur: k?.texte,
+              choisie: () => (fiche.metier_bonus ?? []).some((c) => entier(c.rang) === b.rang && c.competence_id === o.competence_id),
+              surClic: () => {
+                const deja = (fiche.metier_bonus ?? []).some((c) => entier(c.rang) === b.rang && c.competence_id === o.competence_id);
+                retirer('metier_bonus', (c) => entier(c.rang) === b.rang);
+                if (!deja) fiche.metier_bonus.push({ rang: b.rang, competence_id: o.competence_id });
+                changer();
+              },
+            });
+          })));
+      }
+      if (b.retenue) return el('li', {}, el('strong', {}, `${valeur(b)} `), nomDeCible(b.retenue), b.retenue.competence_id ? el('small', { class: 'muted' }, ' (acquis)') : null);
+      return el('li', { class: 'muted', title: 'Texte libre : sans effet automatique sur la fiche' }, b.texte);
+    });
+    const artisanat = el('li', { class: 'metier-fiche__artisanat' });
+    synchro(() => {
+      const a = artisanatDe(regles, fiche);
+      artisanat.hidden = !a;
+      if (!a) return;
+      const par = regles.constantes['metier.artisanat_par_point_caracteristique'];
+      const formule = a.caracteristiques.map((c) => `${c.nom} ${c.valeur} × ${par}`).join(' + ');
+      artisanat.replaceChildren(el('strong', {}, 'Artisanat '), a.texte, a.score === null ? '' : ` : ${formule} = `, a.score === null ? '' : el('strong', {}, `${a.score} %`));
+    });
+    const objets = objetsDuMetier(regles, metier.id).map((r) => (r.options.length === 1
+      ? el('li', {}, el('strong', {}, 'Objet de départ '), r.options[0].texte)
+      : el('li', { class: 'metier-fiche__choix' }, el('strong', {}, 'Objet de départ au choix '),
+        el('ul', { class: 'pastilles pastilles--etroites' }, r.options.map((o, i) => pastille({
+          texte: o.texte, couleur: '#8a7a66', choisie: () => objetChoisi(fiche, r) === i,
+          surClic: () => {
+            fiche.inventaire = choisirObjetDeMetier(regles, fiche, r.rang, i);
+            versionInventaire += 1;
+            changer();
+          },
+        }))))));
+    return el('ul', { class: 'fiche-resume metier-fiche', 'aria-label': `Ce que donne le métier ${metier.nom}` }, lignesDeBonus, artisanat, objets);
+  });
 }
 
 // ------------------------------------------------------------------ maîtrises d'armes
@@ -655,7 +731,11 @@ function construireAttributs() {
   const barres = ['sante_actuelle', 'barriere_actuelle', 'chakra_actuel', 'barre4_actuelle'].filter((c) => calcul.jauges.some((j) => j.champ === c));
   reconstruire($('attributs-barres'), barres.join(), () => barres.map(carteDeJauge));
   reconstruire($('attributs-autres'), 'fixe', () => [
-    carteFixe('initiative', 'Initiative', (a) => [a.initiative ? `1D20 ${a.initiative.bonus >= 0 ? '+' : '−'} ${Math.abs(a.initiative.bonus)}` : '1D20', a.initiative?.note ?? 'selon l’Agilité']),
+    // 1D20 + le bonus de l'Agilité + celui du métier (« +X INI », décision R33)
+    carteFixe('initiative', 'Initiative', (a) => [
+      a.initiative || a.initiativeMetier ? `1D20 ${a.initiativeBonus >= 0 ? '+' : '−'} ${Math.abs(a.initiativeBonus)}` : '1D20',
+      [a.initiative?.note ?? 'selon l’Agilité', a.initiativeMetier ? `${signe(a.initiativeMetier)} du métier` : null].filter(Boolean).join(' · '),
+    ]),
     carteFixe('vitesse', 'Vitesse', (a) => [a.vitesseSol ?? '—', a.vitesseNage !== null ? `nage ${a.vitesseNage}` : 'selon la race']),
     carteDeJauge('corruption'),
     carteFixe('armure', 'Armure de base', (a) => [`${a.ap} / ${a.am}`, 'AP / AM, sans l’équipement']),
@@ -899,7 +979,7 @@ function construireEquipement() {
     })),
   ]);
 
-  reconstruire($('inventaire'), `${(fiche.inventaire ?? []).length}`, () => [
+  reconstruire($('inventaire'), `${versionInventaire}:${(fiche.inventaire ?? []).length}`, () => [
     el('thead', {}, el('tr', {}, el('th', {}, 'Objet'), el('th', { class: 'nombre' }, 'Quantité'), el('th', {}, ''))),
     el('tbody', {}, (fiche.inventaire ?? []).length === 0
       ? el('tr', {}, el('td', { colspan: '3', class: 'muted' }, 'Sac vide.'))
@@ -974,6 +1054,7 @@ function rafraichir() {
   construireXp();
   construireRaces();
   construireAlignement();
+  construireMetier();
   construireMagies();
   construireClasses();
   construireCaracteristiques();
@@ -1006,6 +1087,7 @@ function aEnvoyer() {
 
 function appliquer(donnees) {
   fiche = { ...ficheVide(''), ...donnees.personnage };
+  versionInventaire += 1;   // une autre fiche : ses lignes d'inventaire sont d'autres objets
   for (const cle of Object.keys(PARTIES_DE_FICHE)) fiche[cle] ??= [];
   id = fiche.id;
   version = fiche[CHAMP_VERSION];
@@ -1112,6 +1194,7 @@ async function supprimer() {
 function nouvelle() {
   if (modifie && !confirm('Abandonner les modifications non enregistrées ?')) return;
   fiche = ficheVide('');
+  versionInventaire += 1;   // une autre fiche : ses lignes d'inventaire sont d'autres objets
   id = null;
   version = null;
   controles = null;
@@ -1137,6 +1220,7 @@ async function importer(fichier) {
     if (modifie && !confirm('Remplacer la fiche en cours par celle du fichier ?')) return;
     for (const c of [...COLONNES_DU_SERVICE, CHAMP_VERSION]) delete objet[c];
     fiche = { ...ficheVide(''), ...objet };
+    versionInventaire += 1;   // une autre fiche : ses lignes d'inventaire sont d'autres objets
     for (const cle of Object.keys(PARTIES_DE_FICHE)) if (!Array.isArray(fiche[cle])) fiche[cle] = [];
     id = null;
     version = null;
@@ -1181,6 +1265,7 @@ async function demarrer() {
   racine.addEventListener('input', (ev) => {
     const t = ev.target;
     if (!(t instanceof HTMLElement) || !t.dataset.champ) return;
+    if (t.dataset.champ === 'metier_id') return changerDeMetier(t.value || null);   // bonus choisis et objets de départ suivent (décisions R33, R35)
     if (t instanceof HTMLInputElement && t.type === 'checkbox') fiche[t.dataset.champ] = t.checked ? 1 : 0;
     else if ('entier' in t.dataset) fiche[t.dataset.champ] = t.value === '' ? ('videNull' in t.dataset ? null : 0) : entier(t.value);
     else fiche[t.dataset.champ] = t.value === '' ? null : t.value;

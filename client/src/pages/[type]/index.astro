@@ -14,7 +14,7 @@ import { groupRaces } from '../../lib/race-kinds.mjs';
 import { groupByClass } from '../../lib/capacites.mjs';
 import { loadMagies } from '../../lib/magies';
 import { ouvrirBase } from '../../lib/donnees.mjs';
-import { chargerMetiers, PAGE_DES_REGLES } from '../../lib/metiers.mjs';
+import { chargerMetiers, contexteDesMetiers, PAGE_DES_REGLES } from '../../lib/metiers.mjs';
 import { PREMIER_CHAPITRE } from '../../lib/guide.mjs';
 import { entryHref } from '../../lib/wiki';
 import { entriesOfType, loadWiki } from '../../lib/wiki';
@@ -44,6 +44,7 @@ const raceGroups = type === 'races' ? groupRaces(entries) : [];
 const capaciteGroups = type === 'capacites' ? groupByClass(entries) : [];
 // Les métiers : un long tableau (lib/metiers.mjs, components/metier/MetiersTableau.astro), sans page par métier ; la page des règles est citée au-dessus.
 const metiers = type === 'metiers' ? chargerMetiers(ouvrirBase()) : [];
+const contexteMetiers = type === 'metiers' ? contexteDesMetiers(ouvrirBase()) : null;
 const pageDesRegles = type === 'metiers' ? list.find((e) => e.id === PAGE_DES_REGLES) : undefined;
 // Le guide : son premier chapitre (« Bienvenue »), une page de livre avec flèches et pagination (lib/guide.mjs, components/guide/GuideChapitre.astro) ;
 // les autres pages du type guide sont des pages de référence citées par les chapitres.
@@ -72,7 +73,7 @@ const capaciteDetail = (e: any) => [`Niveau ${e.data.niveau}`, e.data.specialite
     ) : metiers.length > 0 ? (
       <>
         {pageDesRegles && <p>Les règles générales sont sur la page <a href={entryHref(pageDesRegles)}>{pageDesRegles.data.title}</a>.</p>}
-        <MetiersTableau metiers={metiers} />
+        <MetiersTableau metiers={metiers} contexte={contexteMetiers!} />
       </>
     ) : classGroups.length > 0 ? (
       <ClassesPastilles groups={classGroups} />

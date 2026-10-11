@@ -4,7 +4,8 @@
 // Fonctions pures (chaîne HTML en sortie, tout texte échappé), sans dépendance navigateur : testées dans test/edition-rendu.test.mjs.
 import { analyserTypeDeDon, decouperInventaire, lignesDeListe } from './classe-champs.mjs';
 import { typeDeDon } from './classe-dons.mjs';
-import { decouperBonus, RIEN } from './metier-champs.mjs';
+import { styleDeCouleur, couleurDeCaracteristique } from './caracteristiques-postures.mjs';
+import { decouperBonus, decouperEquipement } from './metier-champs.mjs';
 import { analyserType, bonusDeMaitrise } from './sort-analyse.mjs';
 import { blocsDeTexte, coutDeSort, marquesDeMode, morceauxAvecEtats, morceauxAvecLiens, valeurDeSort } from './sort-format.mjs';
 import { marquerBonus } from './sort-maitrise.mjs';
@@ -85,6 +86,59 @@ const valeurDeCase = (champ, liste) => (valeur, _ligne, ctx = {}) => {
   return lignes.map((l) => `<div>${segmentsHtml(l, () => places[i++])}</div>`).join('');
 };
 
+/** Pastille d'une compétence (ou de l'initiative) que vise un bonus de métier, dans la couleur de sa caractéristique (lib/caracteristiques-postures.mjs). */
+function pastilleDeCible(option, ctx) {
+  if (option.attribut === 'initiative') return '<span class="metier-cible metier-cible--attribut" title="Bonus d’initiative">Initiative</span>';
+  const competence = (ctx.competences ?? []).find((c) => typeof c === 'object' && c.id === option.competence_id);
+  const carac = (ctx.caracteristiques ?? []).find((c) => c.id === competence?.caracteristique_id);
+  const nom = competence?.nom ?? option.cible;
+  return `<span class="metier-cible" style="${styleDeCouleur(couleurDeCaracteristique(competence?.caracteristique_id))}" title="${echapperHtml(`Acquis de ${nom}${carac ? ` (${carac.nom})` : ''}`)}">${echapperHtml(nom)}</span>`;
+}
+
+/**
+ * Les bonus d'un métier (lignes de lib/metier-champs.mjs#decouperBonus), un rang par ligne : un rang lié (décision R33 : chaque option vise une compétence
+ * ou l'initiative) s'écrit « valeur » puis la pastille de chaque cible, reliées par « ou » (un choix, fait dans la fiche) ; un autre rang garde son texte.
+ */
+export function htmlDesBonus(lignes, ctx = {}) {
+  const rangs = [];
+  for (const l of lignes) (rangs[l.rang - 1] ??= []).push(l);
+  return rangs
+    .filter(Boolean)
+    .map((options) => {
+      const lie = options.every((o) => o.competence_id || o.attribut);
+      if (!lie) return `<div class="metier-bonus metier-bonus--texte" title="Texte libre : sans effet automatique sur la fiche">${echapperHtml(options[0].texte)}</div>`;
+      const { valeur, unite } = options[0];
+      const cibles = options.map((o) => pastilleDeCible(o, ctx)).join(' <span class="metier-bonus__ou">ou</span> ');
+      return `<div class="metier-bonus"><span class="metier-bonus__valeur">${valeur >= 0 ? '+' : '−'}${Math.abs(valeur)}${unite ?? ''}</span> ${cibles}</div>`;
+    })
+    .join('');
+}
+
+/** Une caractéristique de l'artisanat (décision R34) : sa pastille, dans sa couleur ; rien sans caractéristique. */
+export function htmlDeCaracteristique(id, ctx = {}) {
+  if (!id) return '';
+  const nom = (ctx.caracteristiques ?? []).find((c) => c.id === id)?.nom ?? id;
+  return `<span class="metier-carac" style="${styleDeCouleur(couleurDeCaracteristique(id))}" title="${echapperHtml(`10 × ${nom}`)}">${echapperHtml(nom)}</span>`;
+}
+
+/** Les objets de départ d'un métier (décision R35), un par puce, les options d'un choix reliées par « ou » ; un objet du glossaire a sa description en titre. */
+export function htmlDesObjets(objets, ctx = {}) {
+  if (!objets.length) return VIDE;
+  const glossaire = new Map((ctx.objets ?? []).map((o) => [o.id, o]));
+  const rangs = [];
+  for (const o of objets) (rangs[o.rang - 1] ??= []).push(o);
+  const objet = (o) => {
+    const g = glossaire.get(o.objet_depart_id);
+    return g?.description
+      ? `<span class="metier-objet metier-objet--glossaire" title="${echapperHtml(`${g.nom} : ${g.description}`)}">${echapperHtml(o.texte)}</span>`
+      : `<span class="metier-objet">${echapperHtml(o.texte)}</span>`;
+  };
+  return `<ul class="metier-objets">${rangs
+    .filter(Boolean)
+    .map((options) => `<li${options.length > 1 ? ' class="metier-objets__choix"' : ''}>${options.map(objet).join(' <span class="metier-objets__ou">ou</span> ')}</li>`)
+    .join('')}</ul>`;
+}
+
 /**
  * Rendus nommés (attribut `data-ed-rendu` ; sans attribut : `texte`). Chacun reçoit la valeur de la colonne, la ligne entière et le contexte de la page
  * ({ competences } : listes du service ; { pastilles } : celles que le champ montrait, voir htmlDeBlocs) et rend du HTML.
@@ -92,18 +146,11 @@ const valeurDeCase = (champ, liste) => (valeur, _ligne, ctx = {}) => {
 export const RENDUS = {
   texte: (valeur) => echapperHtml(valeur ?? ''),
   blocs: (valeur, _ligne, ctx = {}) => htmlDeBlocs(valeur, ctx.pastilles),
-  // Métiers (components/metier/MetiersTableau.astro)
-  'metier-bonus': (valeur, _ligne, ctx = {}) => {
-    const rangs = [];
-    for (const b of decouperBonus(valeur ?? '', ctx.competences ?? [])) rangs[b.rang - 1] ??= b.texte;
-    return rangs.filter(Boolean).map((t) => `<div>${echapperHtml(t)}</div>`).join('');
-  },
-  'metier-artisanat': (_valeur, ligne) => {
-    if (!ligne.peut_fabriquer) return VIDE;
-    const test = ligne.test_brut ? ` <span class="metier__test" title="Caractéristiques à combiner pour fabriquer">${echapperHtml(ligne.test_brut.replace(/\s+/g, ' ').trim())}</span>` : '';
-    return `${echapperHtml(ligne.artisanat_texte)}${test}`;
-  },
-  'metier-equipement': (valeur) => (valeur === RIEN || !valeur ? VIDE : echapperHtml(valeur)),
+  // Métiers (components/metier/MetiersTableau.astro, qui affiche ces mêmes rendus) : ctx.competences, ctx.caracteristiques, ctx.objets (listes du service)
+  'metier-bonus': (valeur, _ligne, ctx = {}) => htmlDesBonus(decouperBonus(valeur ?? '', ctx.competences ?? []), ctx),
+  'metier-artisanat': (valeur) => (valeur ? echapperHtml(valeur) : VIDE),
+  'metier-carac': (valeur, _ligne, ctx = {}) => htmlDeCaracteristique(valeur, ctx),
+  'metier-equipement': (valeur, _ligne, ctx = {}) => htmlDesObjets(decouperEquipement(valeur, ctx.objets ?? []), ctx),
   'metier-avantage': (valeur) => (valeur && valeur.trim() !== '…' ? echapperHtml(valeur) : ''),
   // Sorts (components/magie/LigneDeSort.astro) : types, mode et NM du type ; coût (principal + supplément) ; portée, zone, D/S/B
   'sort-type': (valeur) => {

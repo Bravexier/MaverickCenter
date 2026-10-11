@@ -107,7 +107,7 @@ toutes les modifications de la page **d'un bloc** puis repasse en lecture ; déc
 | Races | Chaque case de l'onglet (présentation, histoire, valeurs de départ, avantages, dons et leur tableau, capacité Mode Hyper…), magies innées, relations entre peuples (déplacer ou ajouter une race ou une ethnie dans le tableau d'une race) ; créer une race (pure ou hybride) ou un peuple |
 | Magies | Présentation, description, explication, rôles, Mode Hyper ; chaque case de chaque sort (type, mode, NM et états recalculés : `lib/sort-analyse.mjs` ; une ligne peut avoir un effet de NM dans plusieurs colonnes). La table des relations entre magies ne se modifie pas |
 | Classes | Tous les champs (maîtrises, inventaire, spécialités, dons : tables de détail recalculées, `lib/classe-champs.mjs`) ; créer une classe dans une catégorie ; une classe raciale se crée pour une race hybride qui n'en a pas encore |
-| Métiers | Ajouter, modifier, supprimer (refusé si une fiche l'utilise) ; bonus et recettes recalculés (`lib/metier-champs.mjs`) ; corps de la page (`lib/corps-metiers.mjs` : un champ réécrit en entier, paragraphes compris, ses liens `[[…]]` gardés tant que leur texte reste écrit) ; filtres et tri par colonne |
+| Métiers | Ajouter, modifier, supprimer (refusé si une fiche l'utilise) ; bonus (et leur compétence ou l'initiative, décision R33), objets de départ (R35) et recettes recalculés (`lib/metier-champs.mjs`) ; artisanat en trois champs, texte et deux listes de caractéristiques (R34 : « Artisanat possible » en est recalculé, une seule caractéristique est refusée, sans texte elles partent) ; corps de la page (`lib/corps-metiers.mjs` : un champ réécrit en entier, paragraphes compris, ses liens `[[…]]` gardés tant que leur texte reste écrit) ; filtres et tri par colonne |
 
 Ce qui suit aussi, pour que les outils du dépôt acceptent les modifications rapatriées (`serveur-edition-derivations`, `serveur-edition-rapatriement`,
 `sort-etats`) : une page créée (race, classe, métier) a pour seule source sa provenance « Site de dev › édition du AAAA-MM-JJ » (tables `source`,
@@ -144,7 +144,10 @@ se rejouent dans l'ordre où ils ont été enregistrés. Une colonne qui vaut d�
 **corps et le résumé des pages typées** ne sont pas des valeurs figées du journal (`colonneDerivee`) : le rejeu ne les compare ni ne les écrit, puis
 `rejouerLeJournal` (`serveur/edition.mjs`) les refait depuis les tables rejouées, pour chaque page qu'elles touchent — dans la base vivante comme dans
 `db:appliquer-edition` et la mise à jour des règles. Un lot n'est donc jamais en conflit pour une page qu'une autre modification ou une livraison a
-réécrite, et un lot noté avant que l'édition ne suive le corps voit le corps de ses pages rattrapé (`serveur-edition-rejeu-corps`).
+réécrite, et un lot noté avant que l'édition ne suive le corps voit le corps de ses pages rattrapé (`serveur-edition-rejeu-corps`). De même, les
+**liens de règle des métiers** (décisions R33, R35) qu'un lot noté avant la migration `0024-metiers-fiche` n'écrivait pas — compétence ou initiative d'un
+bonus, objets de départ d'un équipement — sont refaits depuis les champs des métiers touchés (`completerLesMetiers`) ; la mise à jour des règles compte
+ces tables parmi celles qu'elle a le droit d'écrire (`tablesCompletees`).
 
 **Rapatriement dans le dépôt** : le lien « N modifications à rapatrier » (à côté du crayon, `GET /api/edition/journal/`) télécharge le journal, puis
 

@@ -39,8 +39,23 @@ th[aria-sort="descending"] .metiers-tri::after { content: '↓'; opacity: 1; col
 .metier__choisir:hover { text-decoration: underline dotted; }
 .metier__choisir:focus-visible { outline: 2px solid var(--met); outline-offset: 2px; border-radius: 4px; }
 .metier__bonus { min-width: 10rem; }
-/* caractéristiques entre crochets dans la source (« [FORCE + VOLONTÉ] ») : pastille après le texte de l'artisanat */
-.metier__test { display: inline-block; margin-top: 0.2rem; padding: 0 0.45rem; font-size: 0.7rem; letter-spacing: 0.03em; border-radius: 4px; border: 1px solid var(--met-line); color: var(--muted); white-space: nowrap; }
+/* Bonus (décision R33) : un rang par ligne ; chaque compétence visée (son Acquis) ou l'initiative est une pastille dans la couleur de sa
+   caractéristique (lib/caracteristiques-postures.mjs, --c / --c-texte posés par lib/edition-rendu.mjs) ; un bonus en texte libre reste en italique */
+.metier-bonus + .metier-bonus { margin-top: 0.2rem; }
+.metier-bonus__valeur { font-weight: 700; font-variant-numeric: tabular-nums; }
+.metier-bonus__ou, .metier-objets__ou { font-size: 0.78rem; color: var(--muted); }
+.metier-bonus--texte { font-style: italic; color: var(--muted); }
+.metier-cible, .metier-carac { display: inline-block; padding: 0 0.45rem; border-radius: 999px; font-size: 0.82rem; line-height: 1.5; white-space: nowrap;
+  background: var(--c, var(--met-soft)); color: var(--c-texte, var(--text)); }
+.metier-cible--attribut { background: var(--met-soft); color: var(--text); border: 1px solid var(--met-line); }
+/* Caractéristiques de l'artisanat (décision R34) : deux pastilles, « + » entre elles ; « — » quand le métier n'en a pas */
+.metier__caracs { white-space: nowrap; }
+.metier__carac:not(:empty) + .metier__carac:not(:empty)::before { content: '+'; margin: 0 0.3rem; color: var(--muted); }
+.metier__caracs:not(:has(.metier__carac:not(:empty)))::before { content: '—'; color: var(--muted); opacity: 0.6; }
+/* Objets de départ (décision R35) : un par puce ; les options d'un choix reliées par « ou » */
+.metier-objets { margin: 0; padding-left: 1.1rem; }
+.metier-objets li + li { margin-top: 0.1rem; }
+.metier-objet--glossaire { text-decoration: underline dotted; cursor: help; }
 .metiers .vide { color: var(--muted); opacity: 0.6; }
 
 /* Description, sous la ligne */
@@ -62,6 +77,8 @@ html.js .metier-detail__fermer { display: inline-block; }
   .metiers-table .metier__main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.35rem; padding: 0.6rem 0.8rem; }
   .metiers-table .metier__main > * { padding: 0; }
   .metiers-table .metier__main td[data-label]::before { content: attr(data-label); display: block; font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .metiers-table .metier__main td.metier__caracs::before { content: attr(data-label); }
+  .metiers-table .metier__main td.metier__caracs:not(:has(.metier__carac:not(:empty)))::after { content: '—'; color: var(--muted); opacity: 0.6; }
   .metiers-table .metier__detail:not([hidden]), .metiers-table .metier__detail > td { display: block; }
   .metier-detail { padding-inline: 0.8rem; }
 }

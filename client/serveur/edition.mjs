@@ -14,7 +14,9 @@
 //   { op: 'magies_innees', race, magies: [ids] }                                                             magies innées d'une race
 // Node seulement (node:sqlite), sans dépendance.
 import { ENTITES, ErreurValeur, MOT_CLE_RACE_HYBRIDE, TABLES, valeurDuChamp } from '../src/lib/edition-modele.mjs';
-import { RIEN, corpsDeMetier, decouperArtisanat, decouperBonus, famillesDeRecette } from '../src/lib/metier-champs.mjs';
+import {
+  RIEN, artisanatBrut, corpsDeMetier, decouperBonus, decouperEquipement, famillesDeRecette, testDArtisanat,
+} from '../src/lib/metier-champs.mjs';
 import { pageDuMetier, resumeDuMetier } from '../src/lib/corps-metiers.mjs';
 import {
   COLONNES_DE_SORT, ErreurCorpsMagie, PAGE_DE_LA_LIGNE, corpsAvecTitreRenomme, corpsDeMagieApres, resumeDeMagieApres,
@@ -150,13 +152,56 @@ function creerPage(ctx, { type, slug, titre, resume = null, donnees = null, corp
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
-// Métiers (tables metier, metier_bonus, metier_recette_famille ; page metiers/<slug>)
+// Métiers (tables metier, metier_bonus, metier_objet_depart, metier_recette_famille ; page metiers/<slug>)
 // ---------------------------------------------------------------------------------------------------------------------------------------------
-const competences = (db) => db.prepare('SELECT nom FROM competence').all().map((c) => c.nom);
-const caracteristiques = (db) => db.prepare('SELECT id, nom FROM caracteristique').all();
+const competences = (db) => db.prepare('SELECT id, nom, caracteristique_id, ordre FROM competence ORDER BY ordre').all().map((c) => ({ ...c }));
+const caracteristiques = (db) => db.prepare('SELECT id, nom FROM caracteristique ORDER BY ordre').all();
+const objetsDuGlossaire = (db) => db.prepare('SELECT id, nom_cle FROM objet_depart').all();
+const COLONNES_D_ARTISANAT = ['artisanat_texte', 'test_carac_1_id', 'test_carac_2_id'];
 
-/** Colonnes de la ligne de metier que l'artisanat détermine. */
-const colonnesArtisanat = (db, brut) => decouperArtisanat(brut, caracteristiques(db));
+/**
+ * Colonnes de la ligne de metier que l'artisanat détermine (décision R34) : le texte et les deux caractéristiques se modifient, « Artisanat possible »
+ * (artisanat_brut), le test écrit (test_brut) et peut_fabriquer en sont recalculés. Sans texte, rien à fabriquer : les caractéristiques partent avec ;
+ * une seule caractéristique est refusée. Le test garde son écriture (« PERCEPTION x2 ») tant que ses caractéristiques ne changent pas.
+ */
+function colonnesArtisanat(db, ligne, avant = null) {
+  const texte = ligne.artisanat_texte ?? null;
+  let [c1, c2] = texte ? [ligne.test_carac_1_id ?? null, ligne.test_carac_2_id ?? null] : [null, null];
+  if ((c1 === null) !== (c2 === null)) throw refus('Artisanat : choisissez les deux caractéristiques (ou aucune).');
+  const inchangees = avant && avant.test_brut && c1 === avant.test_carac_1_id && c2 === avant.test_carac_2_id;
+  const test = c1 === null ? null : inchangees ? avant.test_brut : testDArtisanat(c1, c2, caracteristiques(db));
+  return { artisanat_texte: texte, test_carac_1_id: c1, test_carac_2_id: c2, test_brut: test, peut_fabriquer: texte ? 1 : 0, artisanat_brut: artisanatBrut(texte, test) };
+}
+
+/**
+ * Les liens de règle des métiers que des lots rejoués ont touchés (rejouerLeJournal) : un lot noté avant la décision R33 a pu insérer des bonus sans
+ * leur compétence ou attribut, ou changer un équipement sans ses objets de départ (metier_objet_depart, R35). Ils sont refaits depuis les champs, avec
+ * les découpages de l'édition, sans être notés au journal (le même rejeu redonne les mêmes lignes : base vivante et data/rows restent d'accord).
+ */
+function completerLesMetiers(db, ids) {
+  const tables = new Set();
+  const comp = competences(db);
+  const objets = objetsDuGlossaire(db);
+  const lier = db.prepare(`UPDATE metier_bonus SET competence_id = ?, attribut = ? WHERE metier_id = ? AND rang = ? AND option = ? AND texte = ?
+    AND (competence_id IS NOT ? OR attribut IS NOT ?)`);
+  for (const id of ids) {
+    const metier = lireLigne(db, 'metier', { id });
+    if (!metier) continue;
+    for (const b of decouperBonus(metier.bonus_brut, comp)) {
+      if (lier.run(b.competence_id, b.attribut, id, b.rang, b.option, b.texte, b.competence_id, b.attribut).changes) tables.add('metier_bonus');
+    }
+    const voulus = decouperEquipement(metier.equipement_brut, objets);
+    const enPlace = db.prepare('SELECT rang, option, texte, objet_depart_id FROM metier_objet_depart WHERE metier_id = ? ORDER BY rang, option').all(id);
+    if (JSON.stringify(enPlace.map((o) => ({ ...o }))) === JSON.stringify(voulus)) continue;
+    const source = provenanceDeDetail(metier.source_ref, 'Équipement supplémentaire possible');
+    db.prepare('DELETE FROM metier_objet_depart WHERE metier_id = ?').run(id);
+    const inserer = db.prepare(`INSERT INTO metier_objet_depart (metier_id, rang, option, texte, objet_depart_id, origine, source_ref)
+      VALUES (?, ?, ?, ?, ?, 'docs_typees', ?)`);
+    for (const o of voulus) inserer.run(id, o.rang, o.option, o.texte, o.objet_depart_id, source);
+    tables.add('metier_objet_depart');
+  }
+  return tables;
+}
 
 function deriverMetier(ctx, avant, apres) {
   const { db, w } = ctx;
@@ -170,6 +215,10 @@ function deriverMetier(ctx, avant, apres) {
     synchroniser(ctx, 'metier_recette_famille', { metier_id: id }, famillesDeRecette(apres.artisanat_brut),
       { origine: 'docs_typees', source_ref: provenanceDeDetail(apres.source_ref, 'Artisanat possible') });
   }
+  if (apres.equipement_brut !== avant?.equipement_brut) {
+    synchroniser(ctx, 'metier_objet_depart', { metier_id: id }, decouperEquipement(apres.equipement_brut, objetsDuGlossaire(db)),
+      { origine: 'docs_typees', source_ref: provenanceDeDetail(apres.source_ref, 'Équipement supplémentaire possible') });
+  }
   if (!page) return;
   // corps : seuls les champs des colonnes modifiées sont réécrits, en entier (paragraphes compris), leurs [[liens]] gardés tant que leur texte reste
   // écrit ; résumé : première phrase du premier paragraphe de la description (lib/corps-metiers.mjs)
@@ -178,17 +227,21 @@ function deriverMetier(ctx, avant, apres) {
 }
 
 const METIER = {
-  /** Colonnes de la même ligne qui suivent les colonnes modifiées. */
-  colonnes: (ctx, ligne) => colonnesArtisanat(ctx.db, ligne.artisanat_brut),
+  /** Colonnes de la même ligne qui suivent les colonnes modifiées : l'artisanat recalculé quand l'une de ses trois colonnes change. */
+  colonnes: (ctx, ligne, valeurs, avant) => (COLONNES_D_ARTISANAT.some((c) => c in valeurs) ? colonnesArtisanat(ctx.db, ligne, avant) : {}),
   deriver: deriverMetier,
   creer(ctx, valeurs) {
     const { db, w, instant } = ctx;
-    const ligne = { ...valeurs, artisanat_brut: valeurs.artisanat_brut ?? RIEN, equipement_brut: valeurs.equipement_brut ?? RIEN };
+    const ligne = { ...valeurs, equipement_brut: valeurs.equipement_brut ?? RIEN };
     const slug = normalize(ligne.nom);
-    const id = creerPage(ctx, { type: 'metiers', slug, titre: ligne.nom, resume: resumeDuMetier(ligne.description) || null, corps: corpsDeMetier(ligne), tags: ['métier'] });
+    const artisanat = colonnesArtisanat(db, ligne);
+    const id = creerPage(ctx, {
+      type: 'metiers', slug, titre: ligne.nom, resume: resumeDuMetier(ligne.description) || null, corps: corpsDeMetier({ ...ligne, ...artisanat }), tags: ['métier'],
+    });
     const metier = w.inserer('metier', {
-      id, nom: ligne.nom, nom_cle: slug, description: ligne.description ?? '', bonus_brut: ligne.bonus_brut ?? '', artisanat_brut: ligne.artisanat_brut,
-      ...colonnesArtisanat(db, ligne.artisanat_brut), equipement_brut: ligne.equipement_brut, avantage_brut: ligne.avantage_brut ?? null,
+      id, nom: ligne.nom, nom_cle: slug, description: ligne.description ?? '', bonus_brut: ligne.bonus_brut ?? '', artisanat_brut: artisanat.artisanat_brut,
+      peut_fabriquer: artisanat.peut_fabriquer, artisanat_texte: artisanat.artisanat_texte, test_brut: artisanat.test_brut, test_carac_1_id: artisanat.test_carac_1_id,
+      test_carac_2_id: artisanat.test_carac_2_id, equipement_brut: ligne.equipement_brut, avantage_brut: ligne.avantage_brut ?? null,
       origine: 'docs_typees', source_ref: `${provenance(instant)} › ${ligne.nom} › champs de la page`, remarque: null,
     });
     w.inserer('page_entite', { entite_table: 'metier', entite_id: id, page_id: id, principale: 1, origine: 'docs_typees' });
@@ -201,7 +254,7 @@ const METIER = {
     if (!metier) throw new ErreurEdition(404, 'Métier introuvable.');
     const fiches = db.prepare('SELECT count(*) AS n FROM personnage WHERE metier_id = ?').get(metier.id).n;
     if (fiches) throw new ErreurEdition(409, `${metier.nom} est le métier de ${fiches} fiche(s) de personnage : changez-le d’abord.`);
-    for (const t of ['metier_bonus', 'metier_recette_famille']) synchroniser(ctx, t, { metier_id: metier.id }, []);
+    for (const t of ['metier_bonus', 'metier_objet_depart', 'metier_recette_famille']) synchroniser(ctx, t, { metier_id: metier.id }, []);
     w.supprimer('metier', { id: metier.id });
     supprimerPage(ctx, metier.id);
     return { id: metier.id, resume: `Métier supprimé : ${metier.nom}` };
@@ -961,13 +1014,14 @@ export function recalculerLesPages(db, modifications) {
 
 /**
  * Rejoue les modifications en attente du journal (edition-journal.mjs#rejouer, colonnes dérivées : colonneDerivee), puis refait le corps des pages
- * qu'elles touchent (recalculerLesPages). À appeler dans une transaction, comme rejouer. Rend le bilan du rejeu ; `sortie` reçoit { pages,
- * illisibles } (pages réécrites).
+ * qu'elles touchent (recalculerLesPages) et les liens de règle des métiers touchés (completerLesMetiers). À appeler dans une transaction, comme rejouer.
+ * Rend le bilan du rejeu ; `sortie` reçoit { pages, illisibles } (pages réécrites) et `tablesCompletees` (tables des métiers ainsi complétées).
  */
 export function rejouerLeJournal(db, sortie = {}) {
   const appliquees = [];
   const bilan = rejouer(db, { derivee: colonneDerivee, applique: (m) => appliquees.push(m) });
-  Object.assign(sortie, recalculerLesPages(db, appliquees));
+  const metiers = new Set(appliquees.filter((m) => m.table === 'metier' || m.table === 'metier_bonus').map((m) => m.cle?.metier_id ?? m.cle?.id));
+  Object.assign(sortie, recalculerLesPages(db, appliquees), { tablesCompletees: [...completerLesMetiers(db, metiers)] });
   return bilan;
 }
 
@@ -1019,7 +1073,7 @@ function modifier(ctx, op) {
   }
   const domaine = DOMAINES[table];
   const ligne = { ...avant, ...valeurs };
-  const toutes = { ...valeurs, ...clesDeNom(db, table, valeurs), ...(domaine?.colonnes ? domaine.colonnes(ctx, ligne) : {}) };
+  const toutes = { ...valeurs, ...clesDeNom(db, table, valeurs), ...(domaine?.colonnes ? domaine.colonnes(ctx, ligne, valeurs, avant) : {}) };
   const apercu = table === 'page' && 'corps_md' in valeurs ? apercuDe(op, toutes.corps_md ?? ligne.corps_md) : null;
   const apres = w.modifier(table, op.cle, toutes, { apercu });
   if (domaine?.deriver) domaine.deriver(ctx, avant, apres);
@@ -1144,6 +1198,8 @@ export function listes(db) {
   return {
     competences: competences(db),
     caracteristiques: caracteristiques(db),
+    // caractéristiques de l'artisanat d'un métier (champ « choix » : décision R34)
+    caracteristiquesDArtisanat: caracteristiques(db).map((c) => ({ valeur: c.id, libelle: c.nom })),
     magies: db.prepare('SELECT id, nom FROM magie ORDER BY ordre').all(),
     echelle: db.prepare('SELECT id, libelle, ordre FROM echelle_relation ORDER BY ordre').all(),
     peuples: db.prepare('SELECT id, nom, ordre, race_id FROM peuple ORDER BY ordre').all(),

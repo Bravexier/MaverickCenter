@@ -75,6 +75,8 @@ const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
               <label class="fiche-champ"><span>Lieu d’origine</span><input data-champ="lieu_origine" maxlength="120" autocomplete="off" /></label>
               <label class="fiche-champ"><span>Métier</span><select data-champ="metier_id" id="metiers"><option value="">Sans métier</option></select></label>
             </div>
+            {/* ce que donne le métier (décisions R33 à R35) : bonus d'acquis ou d'initiative (choix à faire ici), artisanat, objets de départ */}
+            <div id="metier-bloc" hidden></div>
             <div class="choix-grille">
               <details class="choix" id="choix-race"><summary><span class="choix__etiquette">Race</span><span class="choix__valeur" id="valeur-race"></span></summary><div class="choix__panneau"><div id="races" class="groupes-pastilles"></div></div></details>
               <details class="choix" id="choix-ethnie" hidden><summary><span class="choix__etiquette">Ethnie</span><span class="choix__valeur" id="valeur-ethnie"></span></summary><div class="choix__panneau"><ul id="ethnies" class="pastilles"></ul></div></details>

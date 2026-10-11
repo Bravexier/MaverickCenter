@@ -24,7 +24,7 @@ export const DOMAINES = [
 export const TABLES_LUES = [
   'sort', 'magie', 'magie_role', 'mode_hyper_effet', 'classe', 'categorie_classe', 'specialite', 'capacite', 'race', 'race_onglet', 'race_don',
   'race_don_tableau_colonne', 'race_don_tableau_cellule', 'race_magie', 'race_magie_onglet', 'peuple', 'relation_peuple', 'echelle_relation',
-  'metier', 'page',
+  'metier', 'caracteristique', 'page',
 ];
 
 const colonnesDe = (table) => Object.entries(TABLES[table].colonnes).map(([colonne, c]) => ({ colonne, libelle: c.libelle }));
@@ -105,6 +105,8 @@ const DEFINITIONS = [
   {
     table: 'metier', domaine: 'metiers', cle: ['id'], colonnes: colonnesDe('metier'), genre: 'Métier',
     groupe: () => null, entite: (r) => r.nom, ordre: (r) => [r.nom],
+    // les caractéristiques de l'artisanat (décision R34) se lisent par leur nom, pas par leur identifiant
+    valeur: (colonne, v, x) => (colonne.startsWith('test_carac_') && v ? x.nom('caracteristique', v) : v),
   },
   {
     table: 'page', domaine: 'guide', cle: ['id'], colonnes: colonnesDe('page'), genre: 'Page du guide',
@@ -127,7 +129,7 @@ function chapitreDe(page) {
 
 /** Contexte de nommage : noms et ordres lus d'abord dans dev, puis dans la référence (entité retirée). */
 function contexte(ref, dev) {
-  const index = (base) => Object.fromEntries(['magie', 'classe', 'specialite', 'race', 'categorie_classe', 'peuple'].map((t) => [t, parId(lignesDe(base, t))]));
+  const index = (base) => Object.fromEntries(['magie', 'classe', 'specialite', 'race', 'categorie_classe', 'peuple', 'caracteristique'].map((t) => [t, parId(lignesDe(base, t))]));
   const d = index(dev);
   const r = index(ref);
   const ligne = (table, id) => d[table].get(id) ?? r[table].get(id) ?? null;
@@ -193,8 +195,9 @@ function comparerTable(def, ref, dev, x) {
     }
     def.colonnes.forEach(({ colonne, libelle }, i) => {
       const absente = colonnesRef && !colonnesRef.has(colonne);
-      const v1 = absente ? null : avant[colonne];
-      const v2 = r[colonne];
+      const lire = (v) => (def.valeur ? def.valeur(colonne, v, x) : v);
+      const v1 = lire(absente ? null : avant[colonne]);
+      const v2 = lire(r[colonne]);
       if (pareil(v1, v2)) return;
       const nature = texte(v1) === null ? 'ajoute' : texte(v2) === null ? 'retire' : 'modifie';
       sortie.push(ligneDeNote({ ...base, ordre: [...base.ordre, i], champ: libelle, colonne, nature, avant: v1, apres: v2 }));

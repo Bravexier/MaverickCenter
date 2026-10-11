@@ -139,3 +139,16 @@ test('magies : couleur des pages de magie, mono-magie (R15) et ses exceptions (R
     ['races/elfe-noir#ethnie:elfe-noir-charbon', 'races/felfe#ethnie:felfe-noir']);
   assert.ok(regles.magies.every((m) => /^#[0-9a-f]{6}$/i.test(m.couleur) && m.dieux.length >= 1), 'chaque magie a son dieu inné');
 });
+
+test('métiers (décisions R33 à R35) : bonus par rang avec leur compétence ou l’initiative, artisanat et ses deux caractéristiques, objets de départ par rang', () => {
+  const compter = (sql) => db.prepare(sql).get().n;
+  assert.equal(regles.metiers.reduce((t, m) => t + m.bonus.reduce((u, b) => u + b.options.length, 0), 0), compte('metier_bonus'), 'chaque option de metier_bonus');
+  assert.equal(regles.metiers.reduce((t, m) => t + m.objets.reduce((u, o) => u + o.options.length, 0), 0), compte('metier_objet_depart'), 'chaque objet de départ');
+  assert.equal(regles.metiers.filter((m) => m.artisanat).length, compter('SELECT count(*) AS n FROM metier WHERE artisanat_texte IS NOT NULL'));
+  const competences = new Set(regles.competences.map((c) => c.id));
+  for (const m of regles.metiers) {
+    for (const b of m.bonus) for (const o of b.options) assert.ok(!o.competence_id || competences.has(o.competence_id), `${m.id} : ${o.competence_id}`);
+    if (m.artisanat?.caracteristiques.length) assert.ok(m.artisanat.caracteristiques.every((c) => regles.caracteristiques.some((k) => k.id === c)), m.id);
+  }
+  assert.ok(regles.metiers.some((m) => m.bonus.some((b) => b.options.some((o) => o.attribut === 'initiative'))), '« +X INI » vers l’initiative');
+});

@@ -1,11 +1,15 @@
 ---
 import tableauCss from '../../styles/metier/tableau.css?raw';
-import type { chargerMetiers } from '../../lib/metiers.mjs';
+import type { chargerMetiers, contexteDesMetiers } from '../../lib/metiers.mjs';
 import { attributEd } from '../../lib/edition-modele.mjs';
+import { RENDUS } from '../../lib/edition-rendu.mjs';
 import { COLONNES_METIERS } from '../../lib/metiers-tri.mjs';
 
 // Tableau de /metiers/ (demande du propriétaire), à l'image des tableaux de sorts (components/magie/MagieSorts.astro) : une ligne par métier de la table
-// `metier` (Nom, Bonus, Artisanat, Équipement supplémentaire) ; sélectionner une ligne ouvre juste en dessous la description du métier (et son avantage possible).
+// `metier` (Nom, Bonus, Artisanat, Caractéristiques, Équipement supplémentaire) ; sélectionner une ligne ouvre juste en dessous la description du métier
+// (et son avantage possible). Bonus : chaque compétence visée (son Acquis) ou l'initiative est une pastille, dans la couleur de sa caractéristique
+// (décision R33) ; artisanat : un texte libre et, à part, ses deux caractéristiques (R34) ; équipement : les objets de départ (R35).
+// Les cellules sont les rendus de lib/edition-rendu.mjs, ceux que le mode modification réécrit après un enregistrement : un seul HTML.
 // Les métiers n'ont pas de page à eux : un lien vers un métier mène à sa ligne (`#metier-forgeron`, lib/metiers.mjs), que le script ouvre.
 // Sans JavaScript (et à l'impression), toutes les descriptions sont affichées.
 // Filtres et tri (demande du propriétaire, pour chaque colonne) : posés par le script (sans JavaScript, le tableau reste lisible tel quel), état dans
@@ -13,11 +17,13 @@ import { COLONNES_METIERS } from '../../lib/metiers-tri.mjs';
 // (src/scripts/edition/) le rend modifiable ; une ligne ajoutée ou supprimée là redemande le tri (évènement « metiers:rafraichir »).
 interface Props {
   metiers: ReturnType<typeof chargerMetiers>;
+  contexte: ReturnType<typeof contexteDesMetiers>;
 }
-const { metiers } = Astro.props;
+const { metiers, contexte } = Astro.props;
 
 const colonnes = COLONNES_METIERS.map((c) => c.libelle);
 const ed = (id: string, colonne: string) => attributEd('metier', { id }, colonne);
+const rendu = (nom: string, m: (typeof metiers)[number], colonne: string) => RENDUS[nom](m.ligne[colonne], m.ligne, contexte);
 ---
 
 <style is:inline set:html={tableauCss}></style>
@@ -59,22 +65,13 @@ const ed = (id: string, colonne: string) => attributEd('metier', { id }, colonne
                   {m.nom}
                 </button>
               </th>
-              <td data-label="Bonus" class="metier__bonus" data-ed={ed(m.id, 'bonus_brut')} data-ed-rendu="metier-bonus" data-colonne="bonus">
-                {m.bonus.map((b) => <div>{b}</div>)}
+              <td data-label="Bonus" class="metier__bonus" data-ed={ed(m.id, 'bonus_brut')} data-ed-rendu="metier-bonus" data-colonne="bonus" set:html={rendu('metier-bonus', m, 'bonus_brut')} />
+              <td data-label="Artisanat" class="metier__artisanat" data-ed={ed(m.id, 'artisanat_texte')} data-ed-rendu="metier-artisanat" data-colonne="artisanat" set:html={rendu('metier-artisanat', m, 'artisanat_texte')} />
+              <td data-label="Caractéristiques" class="metier__caracs" data-colonne="caracteristiques" title="Compétence d’artisanat : 10 × chacune des deux caractéristiques">
+                <span class="metier__carac" data-ed={ed(m.id, 'test_carac_1_id')} data-ed-rendu="metier-carac" set:html={rendu('metier-carac', m, 'test_carac_1_id')} />
+                <span class="metier__carac" data-ed={ed(m.id, 'test_carac_2_id')} data-ed-rendu="metier-carac" set:html={rendu('metier-carac', m, 'test_carac_2_id')} />
               </td>
-              <td data-label="Artisanat" class="metier__artisanat" data-ed={ed(m.id, 'artisanat_brut')} data-ed-rendu="metier-artisanat" data-colonne="artisanat">
-                {m.artisanat ? (
-                  <>
-                    {m.artisanat.texte}
-                    {m.artisanat.test && <> <span class="metier__test" title="Caractéristiques à combiner pour fabriquer">{m.artisanat.test}</span></>}
-                  </>
-                ) : (
-                  <span class="vide" aria-label="aucun">—</span>
-                )}
-              </td>
-              <td data-label="Équipement supplémentaire" class="metier__equipement" data-ed={ed(m.id, 'equipement_brut')} data-ed-rendu="metier-equipement" data-colonne="equipement">
-                {m.equipement ?? <span class="vide" aria-label="aucun">—</span>}
-              </td>
+              <td data-label="Équipement supplémentaire" class="metier__equipement" data-ed={ed(m.id, 'equipement_brut')} data-ed-rendu="metier-equipement" data-colonne="equipement" set:html={rendu('metier-equipement', m, 'equipement_brut')} />
             </tr>
             <tr class="metier__detail" id={`detail-${m.ancre}`} hidden>
               <td colspan={colonnes.length}>

@@ -1,8 +1,10 @@
-// Champs d'un métier et ce que la base en tire (tables metier, metier_bonus, metier_recette_famille, page du métier) : les mêmes découpages que
-// l'importeur du Google Doc « MÉTIER », réécrits ici pour l'édition depuis le site de dev (client/serveur/edition.mjs). Un test les rejoue sur les
-// 72 métiers de la base : ils doivent redonner exactement les lignes en place (test/metier-champs.test.mjs).
+// Champs d'un métier et ce que la base en tire (tables metier, metier_bonus, metier_objet_depart, metier_recette_famille, page du métier) : les mêmes
+// découpages que l'importeur du Google Doc « MÉTIER », réécrits ici pour l'édition depuis le site de dev (client/serveur/edition.mjs), et les liens de
+// règle que la fiche de personnage applique (décisions R33 à R35). Un test les rejoue sur les métiers de la base : ils doivent redonner exactement
+// les lignes en place (test/metier-champs.test.mjs).
 // Le corps de la page (champs « **Libellé :** valeur ») est fabriqué par lib/corps-metiers.mjs : ses fonctions sont réexportées ici.
-// Fonctions pures, sans dépendance (sauf text.mjs et corps-metiers.mjs) : partagées par le service et par les pages.
+// Fonctions pures, sans dépendance (sauf text.mjs, corps-metiers.mjs et classe-champs.mjs) : partagées par le service et par les pages.
+import { decouperInventaire } from './classe-champs.mjs';
 import { normalize } from './text.mjs';
 
 export { CHAMPS_DU_CORPS, corpsDeMetier, echapperMarkdown, remplacerChampDuCorps } from './corps-metiers.mjs';
@@ -11,28 +13,51 @@ export { CHAMPS_DU_CORPS, corpsDeMetier, echapperMarkdown, remplacerChampDuCorps
 export const RIEN = 'Rien';
 
 /**
- * Cibles qu'un bonus « +N% Cible » ou « +N Cible » peut viser pour être typé : les compétences de la fiche (table competence, passées par
- * l'appelant) et deux attributs que l'importeur reconnaissait aussi. Toute autre cible (« Vitesse au sol pour le sprint », « butin pour… ») laisse le
- * fragment en texte (valeur NULL).
+ * Cibles typées d'un bonus « +N% Cible » ou « +N Cible » qui ne sont pas des compétences : l'initiative (« +1 INI », que la fiche ajoute à
+ * l'initiative : décision R33) et « Vitesse nage », que l'importeur typait aussi (sans effet sur la fiche : le propriétaire n'en a rien dit). Toute
+ * autre cible (« Vitesse au sol pour le sprint », « butin pour… ») laisse le fragment en texte (valeur NULL).
  */
 export const ATTRIBUTS_TYPES = ['INI', 'Vitesse nage'];
+
+/** Attribut de la fiche que vise une cible typée (colonne metier_bonus.attribut), par sa clé : « INI » → 'initiative'. */
+export const ATTRIBUT_DE_CIBLE = { ini: 'initiative' };
+
+/** Liste de compétences reçue : des noms (« Esquive ») ou des lignes { id, nom, caracteristique_id?, ordre? } de la table competence. */
+const lignesDeCompetences = (competences) =>
+  [...competences].map((c) => (typeof c === 'string' ? { id: normalize(c), nom: c, caracteristique_id: null, ordre: null } : c));
 
 /**
  * Le champ « Bonus » découpé (table metier_bonus) : un rang par fragment séparé par « , » (quand le fragment suivant commence par un signe, ou que
  * le fragment en cours est un bonus typé ; sinon la virgule fait partie du texte : « armures cuir, peau, cellulose »), une option par « OU ».
  * `valeur`, `unite`, `cible` seulement pour « +N% Cible » / « +N Cible » dont la cible est connue ; le texte de chaque option est celui du rang.
+ * Liens de règle (décision R33) : `competence_id` quand la cible est le nom d'une compétence (son Acquis), `attribut` 'initiative' pour « INI » ;
+ * « +N% dans une compétence sociale au choix » : une option par compétence de la caractéristique nommée (Social), dans l'ordre de la fiche.
  * @param {string} brut
- * @param {Iterable<string>} cibles noms des compétences (comparés par normalize)
- * @returns {{ rang: number, option: number, texte: string, valeur: number | null, unite: string | null, cible: string | null, cible_cle: string | null }[]}
+ * @param {Iterable<string | { id: string, nom: string, caracteristique_id?: string, ordre?: number }>} competences la table competence (ou ses noms)
+ * @returns {{ rang: number, option: number, texte: string, valeur: number | null, unite: string | null, cible: string | null, cible_cle: string | null,
+ *   competence_id: string | null, attribut: string | null }[]}
  */
-export function decouperBonus(brut, cibles) {
-  const connues = new Set([...cibles, ...ATTRIBUTS_TYPES].map(normalize));
+export function decouperBonus(brut, competences) {
+  const liste = lignesDeCompetences(competences);
+  const parCle = new Map(liste.map((c) => [normalize(c.nom), c]));
+  const connues = new Set([...parCle.keys(), ...ATTRIBUTS_TYPES.map(normalize)]);
+  const lien = (cle) => ({ competence_id: parCle.get(cle)?.id ?? null, attribut: ATTRIBUT_DE_CIBLE[cle] ?? null });
   const options = (fragment) => {
+    // « +5% dans une compétence sociale au choix » : les compétences de la caractéristique dont l'adjectif est le nom (« sociale » → Social)
+    const auChoix = /^([+-]\d+)(%?) dans une compétence (\p{L}+) au choix\.?$/u.exec(fragment);
+    if (auChoix) {
+      const adjectif = normalize(auChoix[3]);
+      const deLaCarac = liste
+        .filter((c) => c.caracteristique_id && (c.caracteristique_id === adjectif || `${c.caracteristique_id}e` === adjectif))
+        .sort((a, b) => (a.ordre ?? 0) - (b.ordre ?? 0));
+      if (!deLaCarac.length) return null;
+      return deLaCarac.map((c) => ({ valeur: Number(auChoix[1]), unite: auChoix[2] || null, cible: c.nom, cible_cle: normalize(c.nom), competence_id: c.id, attribut: null }));
+    }
     const tete = /^([+-]\d+)(%?) (.+)$/.exec(fragment);
     if (!tete) return null;
     const noms = tete[3].split(' OU ').map((c, i, tout) => (i === tout.length - 1 ? c.replace(/\.$/, '') : c));
     if (!noms.every((c) => connues.has(normalize(c)))) return null;
-    return noms.map((c) => ({ valeur: Number(tete[1]), unite: tete[2] || null, cible: c, cible_cle: normalize(c) }));
+    return noms.map((c) => ({ valeur: Number(tete[1]), unite: tete[2] || null, cible: c, cible_cle: normalize(c), ...lien(normalize(c)) }));
   };
   const fragments = [];
   for (const morceau of String(brut).split(', ')) {
@@ -44,14 +69,32 @@ export function decouperBonus(brut, cibles) {
   fragments.forEach((texte, i) => {
     const typees = options(texte);
     if (typees) typees.forEach((o, j) => lignes.push({ rang: i + 1, option: j + 1, texte, ...o }));
-    else lignes.push({ rang: i + 1, option: 1, texte, valeur: null, unite: null, cible: null, cible_cle: null });
+    else lignes.push({ rang: i + 1, option: 1, texte, valeur: null, unite: null, cible: null, cible_cle: null, competence_id: null, attribut: null });
   });
   return lignes.filter((l) => l.texte !== '');
 }
 
 /**
+ * Les deux caractéristiques du test d'artisanat écrit entre crochets (décision R34), ou null : « FORCE + VOLONTÉ », « Artisanat SOCIAL + INTELLIGENCE »
+ * (mot « Artisanat » en tête), « PERCEPTION x2 » (deux fois la même).
+ * @param {string | null} test
+ * @param {{ id: string, nom: string }[]} caracteristiques
+ * @returns {[string, string] | null}
+ */
+export function caracteristiquesDuTest(test, caracteristiques) {
+  const parNom = new Map(caracteristiques.map((c) => [normalize(c.nom), c.id]));
+  const texte = String(test ?? '').trim();
+  const deux = /^(?:Artisanat\s+)?([A-ZÀ-Ý]+)\s*\+\s*([A-ZÀ-Ý]+)$/u.exec(texte);
+  const double = /^([A-ZÀ-Ý]+)\s*x\s*2$/u.exec(texte);
+  const [a, b] = deux ? [deux[1], deux[2]] : double ? [double[1], double[1]] : [];
+  const ida = a && parNom.get(normalize(a));
+  const idb = b && parNom.get(normalize(b));
+  return ida && idb ? [ida, idb] : null;
+}
+
+/**
  * Le champ « Artisanat possible » découpé (colonnes de metier) : « Rien » → rien à fabriquer ; sinon le texte avant le crochet final et le contenu
- * du crochet (test de fabrication), dont les deux caractéristiques ne sont typées que pour la forme exacte « CARAC + CARAC ».
+ * du crochet (test de fabrication), dont les deux caractéristiques (caracteristiquesDuTest).
  * @param {string} brut
  * @param {{ id: string, nom: string }[]} caracteristiques
  */
@@ -60,12 +103,30 @@ export function decouperArtisanat(brut, caracteristiques) {
   if (texte === RIEN) return { peut_fabriquer: 0, artisanat_texte: null, test_brut: null, test_carac_1_id: null, test_carac_2_id: null };
   const m = /^(.*?)\s*\[([^\]]*)\]$/s.exec(texte);
   if (!m) return { peut_fabriquer: 1, artisanat_texte: texte, test_brut: null, test_carac_1_id: null, test_carac_2_id: null };
-  const parNom = new Map(caracteristiques.map((c) => [normalize(c.nom), c.id]));
-  const deux = /^([A-ZÀ-Ý]+)\s*\+\s*([A-ZÀ-Ý]+)$/u.exec(m[2]);
-  const a = deux ? parNom.get(normalize(deux[1])) : undefined;
-  const b = deux ? parNom.get(normalize(deux[2])) : undefined;
-  return { peut_fabriquer: 1, artisanat_texte: m[1], test_brut: m[2], test_carac_1_id: a && b ? a : null, test_carac_2_id: a && b ? b : null };
+  const caracs = caracteristiquesDuTest(m[2], caracteristiques);
+  return { peut_fabriquer: 1, artisanat_texte: m[1], test_brut: m[2], test_carac_1_id: caracs?.[0] ?? null, test_carac_2_id: caracs?.[1] ?? null };
 }
+
+/** Le test d'artisanat écrit d'après ses deux caractéristiques : « FORCE + VOLONTÉ » (noms en capitales, comme la source) ; null sans caractéristique. */
+export function testDArtisanat(carac1, carac2, caracteristiques) {
+  if (!carac1 || !carac2) return null;
+  const nom = (id) => (caracteristiques.find((c) => c.id === id)?.nom ?? id).toLocaleUpperCase('fr');
+  return `${nom(carac1)} + ${nom(carac2)}`;
+}
+
+/**
+ * Le champ « Artisanat possible » tel que la page l'écrit, d'après ses parties (décision R34 : texte libre + test) : « Rien » sans texte, sinon le texte
+ * suivi du test entre crochets s'il y en a un.
+ */
+export const artisanatBrut = (texte, test) => (!texte ? RIEN : test ? `${texte} [${test}]` : texte);
+
+/**
+ * L'« Équipement supplémentaire possible » découpé en objets de départ (table metier_objet_depart, décision R35), comme l'inventaire de départ d'une
+ * classe (lib/classe-champs.mjs#decouperInventaire) : un rang par « , », une option par « OU », le lien vers le glossaire des objets ; « Rien » : aucun.
+ * @param {string} brut
+ * @param {{ id: string, nom_cle: string }[]} objets glossaire (table objet_depart)
+ */
+export const decouperEquipement = (brut, objets) => (String(brut ?? '').trim() === RIEN ? [] : decouperInventaire(brut, objets));
 
 /** Les seuls mots du champ « Artisanat possible » qui désignent une famille de recettes de la base (table metier_recette_famille). */
 export const FAMILLES_DE_RECETTE = [

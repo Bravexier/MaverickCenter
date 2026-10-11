@@ -191,10 +191,27 @@ Sur un écran étroit, les colonnes passent à la ligne. Le fil d'Ariane d'une c
 
 ## Métiers (`/metiers/`) : un tableau, pas de page par métier
 
-Un seul **long tableau** (demande du propriétaire), à l'image des tableaux de sorts : une ligne par métier de la table `metier`, par ordre alphabétique, en quatre colonnes
-**Nom**, **Bonus** (un rang de `metier_bonus` par ligne), **Artisanat** (le texte, puis les caractéristiques du crochet en pastille ; « — » pour « Rien ») et **Équipement supplémentaire**.
-Cliquer sur un métier ouvre sous sa ligne sa **description** (et son « Avantage possible », sauf s'il se réduit à « … ») ; sans JavaScript, tout est affiché
-(`lib/metiers.mjs#chargerMetiers`, `components/metier/MetiersTableau.astro`, CSS `styles/metier/tableau.css` inséré en `?raw`).
+Un seul **long tableau** (demande du propriétaire), à l'image des tableaux de sorts : une ligne par métier de la table `metier`, par ordre alphabétique, en cinq colonnes :
+- **Nom** ;
+- **Bonus** (décision R33) : un rang de `metier_bonus` par ligne ; chaque compétence que le bonus augmente (`competence_id` : son Acquis) est une **pastille dans la couleur
+  de sa caractéristique**, l'initiative (« +1 INI », `attribut`) une pastille neutre, les options d'un choix reliées par « ou » (le choix se fait dans la fiche) ; un bonus
+  qui ne vise ni l'une ni l'autre (« +1AP donné par les armures… », « Peut avoir un faucon ») reste son texte, en italique : il n'a pas d'effet automatique sur la fiche ;
+- **Artisanat** (décision R34) : le texte libre de ce que le métier fabrique (« — » s'il ne fabrique rien) ;
+- **Caractéristiques** : les deux caractéristiques de la compétence d'artisanat (`test_carac_1_id`, `test_carac_2_id`), en pastilles ; la compétence vaut 10 × chacune
+  (constante `metier.artisanat_par_point_caracteristique`, page « Règles des métiers ») ;
+- **Équipement supplémentaire** (décision R35) : les objets de départ (`metier_objet_depart`), un par puce, les options d'un choix reliées par « ou » ; un objet du
+  glossaire des inventaires de départ a sa description en infobulle.
+
+Les cellules sont les rendus de `lib/edition-rendu.mjs` (`metier-bonus`, `metier-artisanat`, `metier-carac`, `metier-equipement`), ceux que le mode modification réécrit après un
+enregistrement : un seul HTML (`test/edition-rendu.test.mjs` le vérifie sur le site construit). Cliquer sur un métier ouvre sous sa ligne sa **description** (et son « Avantage
+possible », sauf s'il se réduit à « … ») ; sans JavaScript, tout est affiché (`lib/metiers.mjs#chargerMetiers`, `contexteDesMetiers`, `components/metier/MetiersTableau.astro`,
+CSS `styles/metier/tableau.css` inséré en `?raw`).
+
+**Champs et liens** (`lib/metier-champs.mjs`, rejoué sur toute la base par `test/metier-champs.test.mjs`) : « Bonus » se découpe sur « , » (rangs) et « OU » (options), et un nom de
+compétence (casse et accents ignorés) la lie ; « +N% dans une compétence sociale au choix » donne une option par compétence de la caractéristique nommée. « Équipement
+supplémentaire » se découpe comme l'inventaire de départ d'une classe (« , » puis « OU » ; « (xN) » = la quantité, `objetDInventaire`). Sur le site de dev, l'artisanat se
+modifie en trois champs (texte, caractéristique 1, caractéristique 2) ; « Artisanat possible » (`artisanat_brut`, que la page du métier écrit) en est recalculé, son crochet
+gardant l'écriture de la source tant que ses caractéristiques ne changent pas.
 
 **Filtres et tri** (demande du propriétaire) : au-dessus du tableau, un filtre par colonne (texte cherché sans accents ni casse) ; un clic sur l'en-tête
 d'une colonne la trie (puis à l'envers) ; filtres et tri sont dans l'adresse (`?nom=…&tri=bonus`), pour partager une recherche (`lib/metiers-tri.mjs`, testé).
