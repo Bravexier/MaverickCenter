@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 21;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 22;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -1261,6 +1261,8 @@ CREATE TABLE race (
     CHECK (origine = 'races'),
   source_ref      TEXT    NOT NULL CHECK (length(source_ref) > 0), -- « Fiche auto V15.2.2 › Race › A3:W3 ; Les races › première feuille › A2:B2 »
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  mono_magie      INTEGER NOT NULL CHECK (mono_magie IN (0, 1)),   -- 1 = « Une seule magie autorisé » (inconvénients de l'onglet de la race) : pas de magie
+                                              -- acquise, quelle que soit l'innée (décision R28 du propriétaire : la Lamia ; migration 0022)
   CHECK ((don_base_nom IS NULL) = (don_base_type IS NULL) AND (don_base_nom IS NULL) = (don_base_effets IS NULL)),
   CHECK (don_base_nom IS NULL OR don_base_brut IS NOT NULL)
 ) STRICT;
@@ -3664,6 +3666,11 @@ CREATE VIEW v_personnage_controle AS
   JOIN magie m ON m.mono_magie = 1 AND m.id IN (p.magie_innee_id, p.magie_acquise_id)
   WHERE p.magie_acquise_id IS NOT NULL
     AND NOT EXISTS (SELECT 1 FROM magie_ethnie_secondaire s WHERE s.magie_id = m.id AND s.ethnie_id = p.ethnie_id)
+  UNION ALL
+  -- Race à une seule magie (race.mono_magie ; la Lamia, décision R28) : pas de magie acquise
+  SELECT p.id, 'race_mono_magie', p.magie_acquise_id
+  FROM personnage p JOIN race r ON r.id = p.race_id
+  WHERE r.mono_magie = 1 AND p.magie_acquise_id IS NOT NULL
   UNION ALL
   -- Ethnie : de la race choisie ; obligatoire quand la race en a ; liée à la magie innée quand elle porte une magie (BDD!X2)
   SELECT p.id, 'ethnie_hors_race', p.ethnie_id

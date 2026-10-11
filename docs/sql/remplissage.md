@@ -83,6 +83,7 @@ pour l'Archimage d'après son « CHOSE A SAVOIR » ; règles `classe_reservee` e
 `classe.chose_a_savoir_lien` et sa ligne dans la page, et celui de la page `ressources/familiers` avec la phrase qui le portait sont retirés ; la page `/archives/` ne montre plus ces classeurs), `0020-mage-bleu-potentiel-illimite.sql`
 (structure et données, décision R25 : colonne `classe.magie_innee_exclue_id`, Potentiel Illimité pour le Mage Bleu d'après son « CHOSE A SAVOIR » ; règle `classe_exclue`),
 `0021-nm-plafond.sql` (structure et données, décision R26 : colonnes `personnage_sort.nm_livre` et `nm_cadeau`, constante `sort.nm_max` = 3 et sa phrase dans le guide ; règles `sort_nm_plafond`, `sort_nm_max` et `sorts_nm_total` sur les NM de niveau).
+`0022-lamia-une-seule-magie.sql` (structure et données, décision R28 : colonne `race.mono_magie`, à 1 pour la Lamia seule — « Une seule magie autorisé », inconvénients de son onglet —, table reconstruite comme `magie` en 0010 ; règle `race_mono_magie` de `v_personnage_controle`).
 
 ## La colonne `remarque`
 

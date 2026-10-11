@@ -33,8 +33,10 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   spécialités, dons à choix groupés comme sur la page de chaque classe, sorts, tables de niveau, constantes, catalogues d'équipement), rien de recalculé.
 - **Calculs pendant la saisie** : `lib/fiche-moteur.mjs`, fonctions pures (testées par `test/fiche-moteur.test.mjs`, contre les vues de la base et les
   personnages fil rouge du guide) : niveau global et niveaux de classe (R2) ; classes et magies innées que la race permet (R8, R11), classe réservée à une
-  magie innée et imposée par elle (`classe.magie_innee_id` : l'Archimage et le Potentiel Illimité, R23), ethnies, magie acquise
-  refusée et pourquoi (incompatibilité, mono-magie R15, exceptions R20) ; caractéristiques (+1 de la magie innée, bornes de la race) et budget exact (R3) ;
+  magie innée et imposée par elle (`classe.magie_innee_id` : l'Archimage et le Potentiel Illimité, R23), ethnies et ethnie sans choix posée d'office
+  (`ethnieImposee` : la seule de la race — Lamia, Majin, Hujin, Elfe doré — ou la seule de la magie innée — races hybrides, Drakos ; demande du propriétaire),
+  magie acquise refusée et pourquoi (race à une seule magie R28, incompatibilité, mono-magie R15, exceptions R20) et retirée d'office quand un changement de race
+  ou de magie innée la ferme (`magieAcquiseValable`, demande du propriétaire) ; caractéristiques (+1 de la magie innée, bornes de la race) et budget exact (R3) ;
   scores de compétences (10 × caractéristique + naturel + acquis, croix R19), plafonds et budget ; gains de niveau attendus ; classe magique (R6, R7) ;
   attributs comme la fiche automatique (santé, chakra, barrière, vitesse, armure de base, initiative, 4ᵉ barre, Corruption) ; emplacements de sorts
   (conditions × puissance magique, R16), sorts possibles, NM ; dons à choisir selon la classe, la spécialité et le niveau de classe.
@@ -99,7 +101,7 @@ depuis les règles de la base, si bien qu'une règle corrigée corrige toutes le
 - `v_personnage_visible` et `v_groupe_controle` : voir plus haut.
 - `v_personnage_controle` : une ligne par règle enfreinte (`regle`, `detail`) : classe ou magie innée hors de la matrice de la race (R8, R11), classe réservée
   à une autre magie innée et classe 1 imposée par la magie innée (l'Archimage et le Potentiel Illimité, R23), classe fermée à la magie innée (le Mage Bleu
-  et le Potentiel Illimité, R25), magies incompatibles,
+  et le Potentiel Illimité, R25), magie acquise d'une race à une seule magie (la Lamia, R28), magies incompatibles,
   mono-magie (R15 ; l'Elfe Noir Charbon et le Felfe Noir peuvent aussi acquérir la Corruption, R20), ethnie (de la race, liée à la magie innée quand elle en porte
   une), bornes et total exact des caractéristiques (R3), plafonds et total exact des compétences (R3), gains de niveau (points exacts, dé), 2ᵉ classe, spécialité
   avant le niveau de classe 10, dons hors classe ou exclusifs, sorts (magie du personnage, toutes pour le Potentiel Illimité ; NPM au plus la puissance magique

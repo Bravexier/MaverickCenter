@@ -345,6 +345,19 @@ test('décision R25 : le Mage Bleu est fermé au Potentiel Illimité, à tous le
   assert.deepEqual(controle('r25-feu'), [], 'sans Potentiel Illimité, le Mage Bleu reste ouvert');
 });
 
+test('décision R28 : la Lamia n’a qu’une magie, pas de magie acquise (« Une seule magie autorisé », onglet de la race)', () => {
+  assert.deepEqual(db.prepare('SELECT id FROM race WHERE mono_magie = 1').all().map((r) => r.id), ['races/lamia']);
+  assert.match(db.prepare("SELECT inconvenients FROM race_onglet WHERE race_id = 'races/lamia'").get().inconvenients, /Une seule magie autorisé/);
+  const lamia = { race_id: 'races/lamia', ethnie_id: 'races/lamia#ethnie:lamia' };
+  const r28 = (id) => controle(id).filter((c) => c.regle === 'race_mono_magie');
+  personnageValide('r28-lamia', { ...lamia, magie_acquise_id: 'magies/magie-de-leau' });
+  assert.deepEqual(r28('r28-lamia'), [{ regle: 'race_mono_magie', detail: 'magies/magie-de-leau' }]);
+  personnageValide('r28-lamia-seule', lamia);
+  assert.deepEqual(r28('r28-lamia-seule'), [], 'sa magie innée seule');
+  personnageValide('r28-humain', { magie_acquise_id: 'magies/magie-de-leau' });
+  assert.deepEqual(controle('r28-humain'), [], 'les autres races gardent leur magie acquise');
+});
+
 test('décision R19 : jusqu’à deux croix par caractéristique, la règle du guide et les malus de la fiche', () => {
   personnageValide('croix');
   db.prepare("UPDATE personnage_caracteristique SET croix = 2 WHERE personnage_id = 'croix' AND caracteristique_id = 'force'").run();

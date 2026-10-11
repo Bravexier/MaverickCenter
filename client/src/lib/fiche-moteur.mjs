@@ -113,19 +113,39 @@ export function ethniesDeLaRace(regles, raceId) {
 export const ethnieCompatible = (ethnie, magieInneeId) => !ethnie.magie_id || ethnie.magie_id === magieInneeId;
 
 /**
- * Pourquoi une magie ne peut pas être la magie acquise de cette fiche (null : elle le peut) : même magie que l'innée, magies incompatibles
- * (« Magie non compatible »), mono-magie (décision R15) sauf ethnie citée par la magie (décision R20 : Corruption de l'Elfe Noir Charbon et du Felfe Noir).
+ * Ethnie que la fiche n'a pas à choisir (demande du propriétaire) : la seule de la race qui aille avec la magie innée — race à une seule ethnie
+ * (Lamia, Majin, Hujin, Elfe doré), ou race dont chaque ethnie porte sa magie (races hybrides, Drakos) une fois l'innée choisie. null s'il reste un choix.
+ */
+export function ethnieImposee(regles, fiche) {
+  const possibles = ethniesDeLaRace(regles, fiche.race_id).filter((e) => ethnieCompatible(e, fiche.magie_innee_id));
+  return possibles.length === 1 ? possibles[0].id : null;
+}
+
+/**
+ * Pourquoi une magie ne peut pas être la magie acquise de cette fiche (null : elle le peut) : race à une seule magie (race.mono_magie : la Lamia,
+ * décision R28), même magie que l'innée, magies incompatibles (« Magie non compatible »), mono-magie (décision R15) sauf ethnie citée par la magie
+ * (décision R20 : Corruption de l'Elfe Noir Charbon et du Felfe Noir).
  */
 export function refusMagieAcquise(regles, fiche, magieId) {
   const innee = trouver(regles.magies, fiche.magie_innee_id);
   const acquise = trouver(regles.magies, magieId);
   if (!acquise) return 'magie inconnue';
+  const race = trouver(regles.races, fiche.race_id);
+  if (race?.mono_magie) return `${race.nom} : une seule magie`;
   if (innee?.id === acquise.id) return 'c’est déjà la magie innée';
   if (innee && (innee.incompatibles.includes(acquise.id) || acquise.incompatibles.includes(innee.id))) return `incompatible avec ${innee.nom}`;
   for (const m of [innee, acquise]) {
     if (m?.mono_magie && !m.ethnies_secondaires.includes(fiche.ethnie_id)) return `${m.nom} : mono-magie`;
   }
   return null;
+}
+
+/**
+ * La magie acquise qui reste après un changement de race ou de magie innée (demande du propriétaire) : celle de la fiche si elle est toujours permise
+ * (refusMagieAcquise), sinon aucune — incompatible avec la nouvelle innée, mono-magie, race à une seule magie.
+ */
+export function magieAcquiseValable(regles, fiche) {
+  return fiche.magie_acquise_id && !refusMagieAcquise(regles, fiche, fiche.magie_acquise_id) ? fiche.magie_acquise_id : null;
 }
 
 /** Caractéristique qui reçoit le point de la magie innée : celle de la magie, ou celle que la fiche choisit quand la magie la laisse au choix. */

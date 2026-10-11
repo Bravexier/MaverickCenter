@@ -10,6 +10,7 @@ export const LIBELLES_DES_CONTROLES = Object.freeze({
   magie_innee_inaccessible: 'Magie innée que la race ne permet pas',
   magies_incompatibles: 'Magie innée et magie acquise incompatibles',
   mono_magie: 'Magie mono-magie avec une seconde magie',
+  race_mono_magie: 'Magie acquise pour une race à une seule magie',
   ethnie_hors_race: 'Ethnie d’une autre race',
   ethnie_manquante: 'Ethnie à choisir',
   ethnie_magie: 'Ethnie liée à une autre magie innée',

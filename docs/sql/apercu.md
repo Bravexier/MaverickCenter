@@ -124,7 +124,7 @@
 
 | Table | Rôle | Colonnes |
 | --- | --- | --- |
-| `race` | RACE : une ligne par race (27 dans les cinq onglets du classeur ; le guide dit « 23 disponibles », voir design.md §12) | **id**→page, nom, ordre, presentation?, sante?, chakra_depart?, barriere_bonus?, vitesse_terre?, vitesse_nage?, ap?, am?, divers?, don_base_brut?, don_base_nom?, don_base_type?, don_base_effets?, remarque?, +provenance |
+| `race` | RACE : une ligne par race (27 dans les cinq onglets du classeur ; le guide dit « 23 disponibles », voir design.md §12) | **id**→page, nom, ordre, presentation?, sante?, chakra_depart?, barriere_bonus?, vitesse_terre?, vitesse_nage?, ap?, am?, divers?, don_base_brut?, don_base_nom?, don_base_type?, don_base_effets?, remarque?, mono_magie, +provenance |
 | `race_restriction_carac` | RACE_RESTRICTION_CARAC : restrictions de caractéristique d'une race (onglet « Race », 6 paires de colonnes « < ou > » / « Restrictions <caractéristique> »). | **race_id**→race, **caracteristique_id**→caracteristique, operateur, valeur, +provenance |
 | `ethnie` | ETHNIE : une ligne par ligne de l'onglet « Bonus Race » (96) : sous-race, origine ou variété d'une race (« Elfe Noir Charbon », « Drakos Rouge », « Mort-Vivant Eau », « Orios de Terre »…). | **id**, race_id→race, slug, nom, ordre, libelle?, magie_id→magie?, descriptif?, race_brut, bonus_pv?, bonus_chakra?, bonus_barriere?, bonus_ap?, bonus_am?, bonus_vitesse?, remarque?, +provenance |
 | `ethnie_resistance` | Résistances d'une ethnie (col. | **ethnie_id**→ethnie, **rang**, cible_type, cible_magie_id→magie?, cible_etat_id→etat?, cible_brut, valeur, +provenance |
