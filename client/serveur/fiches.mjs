@@ -58,6 +58,27 @@ export function lireFiche(db, id) {
   return fiche;
 }
 
+/**
+ * Supprime le prétiré `id` (demande du propriétaire) et toutes ses lignes : les tables de la fiche sont en ON DELETE CASCADE, une inscription dans un
+ * groupe passe à NULL (groupe_membre). Exige la `version` lue, comme une modification : si la fiche a changé depuis, rien n'est supprimé (409).
+ * Erreurs : ErreurFiche (404, 409).
+ */
+export function supprimerFiche(db, id, version) {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const avant = lireFiche(db, id);
+    if (!avant) throw new ErreurFiche(404, 'Fiche introuvable.');
+    if (version !== avant[CHAMP_VERSION]) {
+      throw new ErreurFiche(409, 'Cette fiche a été modifiée entre-temps : rechargez-la avant de la supprimer.', { personnage: avant });
+    }
+    db.prepare("DELETE FROM personnage WHERE id = ? AND nature = 'pretire'").run(id);
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
+}
+
 /** Règles de v_personnage_controle enfreintes par la fiche (vide : conforme à ce que la base sait contrôler). */
 export function controlesDe(db, id) {
   return db.prepare('SELECT regle, detail FROM v_personnage_controle WHERE personnage_id = ? ORDER BY regle, detail').all(id).map((r) => ({ ...r }));

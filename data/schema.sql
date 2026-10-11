@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 17;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 18;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -3608,7 +3608,7 @@ CREATE VIEW v_groupe_controle AS
   WHERE p.nature = 'joueur' AND p.proprietaire_id <> m.utilisateur_id;
 
 -- Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi.
--- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23) ; ce qui
+-- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24) ; ce qui
 -- demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Une fiche 'brouillon' peut
 -- avoir des lignes, une fiche 'valide' non (test).
 CREATE VIEW v_personnage_controle AS
@@ -3762,7 +3762,8 @@ CREATE VIEW v_personnage_controle AS
   UNION ALL
   -- Sorts : d'une magie du personnage (le Potentiel Illimité « pioche ses sorts dans toutes les magies existantes », son Explication) ;
   -- NPM au plus la puissance magique du niveau (niveau_global : niveau 16 pour la 5, décision R16), le palier dont la note dit « non disponible pour
-  -- les personnages avec une magie acquise » ne comptant pas pour eux ; NM au plus niveau global − 1 (BDD!BB6) ; total des NM au plus les NM gagnés
+  -- les personnages avec une magie acquise » ne comptant pas pour eux ; NM au plus niveau global − 1 (BDD!BB6). Plus de NM que ceux gagnés est permis :
+  -- le MJ peut en donner (décision R24)
   SELECT ps.personnage_id, 'sort_hors_magie', ps.sort_id
   FROM personnage_sort ps JOIN sort s ON s.id = ps.sort_id JOIN personnage p ON p.id = ps.personnage_id
   WHERE s.magie_id <> COALESCE(p.magie_innee_id, '') AND s.magie_id <> COALESCE(p.magie_acquise_id, '')
@@ -3779,10 +3780,6 @@ CREATE VIEW v_personnage_controle AS
   SELECT ps.personnage_id, 'sort_nm_max', ps.sort_id || ' = ' || ps.niveau_maitrise
   FROM personnage_sort ps JOIN v_personnage_niveau n ON n.personnage_id = ps.personnage_id
   WHERE ps.niveau_maitrise > n.niveau_global - (SELECT r.valeur FROM regle_constante r WHERE r.id = 'sort.nm_ecart_niveau_global')
-  UNION ALL
-  SELECT n.personnage_id, 'sorts_nm_total', (SELECT SUM(ps.niveau_maitrise) FROM personnage_sort ps WHERE ps.personnage_id = n.personnage_id) || ' / ' || v.niveaux_maitrise_cumul
-  FROM v_personnage_niveau n JOIN v_niveau v ON v.niveau = n.niveau_global
-  WHERE (SELECT SUM(ps.niveau_maitrise) FROM personnage_sort ps WHERE ps.personnage_id = n.personnage_id) > v.niveaux_maitrise_cumul
   UNION ALL
   -- Bouclier : des matériaux seulement avec un bouclier, quantités au plus la classe du bouclier (validation de Personnage!AL27)
   SELECT p.id, 'bouclier_quantite', SUM(m.quantite) || ' / ' || COALESCE(MAX(bc.classe), 0)

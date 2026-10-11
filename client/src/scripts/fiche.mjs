@@ -5,9 +5,9 @@
 import { libelleDuControle } from '../lib/fiche-controles.mjs';
 import { CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ficheVide } from '../lib/fiche-format.mjs';
 import {
-  attributsDe, budgetCaracteristiques, budgetCompetences, caracteristiquesDe, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe,
-  donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethniesDeLaRace, magiesInneesPermises, maitriseDArme, maitriseDesSorts, niveauGlobal, npmMax,
-  progressionAttendue, refusClasse, refusMagieAcquise, sortsPossibles, trouver, xpDuNiveauSuivant,
+  attributsDe, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, classesDe, classesSelonLaMagieInnee,
+  competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethniesDeLaRace, lignesDeSorts, magiesInneesPermises, maitriseDArme,
+  maitriseDesSorts, niveauGlobal, nmExcedentaires, npmMax, progressionAttendue, progressionXp, refusClasse, refusMagieAcquise, trouver,
 } from '../lib/fiche-moteur.mjs';
 
 const racine = document.getElementById('fiche');
@@ -112,7 +112,12 @@ function pastille({ texte, couleur, texteSurCouleur, choisie, refus = () => null
     class: 'pastille',
     style: `--c: ${couleur}${texteSurCouleur ? `; --texte-sur-c: ${texteSurCouleur}` : ''}`,
     'aria-pressed': 'false',
-    onclick: () => { if (!bouton.hasAttribute('data-verrou')) surClic(); },
+    onclick: () => {
+      if (bouton.hasAttribute('data-verrou')) return;
+      const menu = bouton.closest('details.choix');
+      surClic();
+      fermerMenu(menu);
+    },
   }, el('span', { class: 'pastille__point', 'aria-hidden': 'true' }), el('span', {}, texte), detail ? el('small', {}, detail) : null);
   synchro(() => {
     const oui = Boolean(choisie());
@@ -130,6 +135,32 @@ function pastille({ texte, couleur, texteSurCouleur, choisie, refus = () => null
   return el('li', {}, bouton);
 }
 
+// ------------------------------------------------------------------ menus déroulants des choix
+/**
+ * Un choix (race, ethnie, magies, classes, spécialités) est un menu déroulant (demande du propriétaire, pour gagner de la place : ces choix bougent
+ * peu) : <details class="choix"> de la page, fermé il montre le choix fait, ouvert les pastilles ; un clic sur une pastille, ailleurs ou Échap le referme.
+ */
+function fermerMenu(menu, focus = false) {
+  if (!menu?.open) return;
+  menu.open = false;
+  if (focus) menu.querySelector('summary')?.focus();
+}
+
+/**
+ * Ce que montre un menu fermé : une pastille par choix fait (`refus` : choisi mais fermé par les règles, cerclé de rouge ; `verrou` : imposé), ou
+ * `vide` en grisé.
+ */
+function afficherChoix(id, choix, vide = 'À choisir') {
+  const cible = $(`valeur-${id}`);
+  const faits = choix.filter(Boolean);
+  cible.replaceChildren(...(faits.length
+    ? faits.map((c) => el('span', {
+      class: 'choix__pastille', style: `--c: ${c.couleur}${c.texte ? `; --texte-sur-c: ${c.texte}` : ''}`,
+      dataset: { ...(c.refus ? { refus: '' } : {}), ...(c.verrou ? { verrou: '' } : {}) }, title: c.refus || c.verrou || null,
+    }, c.nom, c.verrou ? el('small', { class: 'choix__verrou' }, ' · imposée') : null))
+    : [el('span', { class: 'choix__vide' }, vide)]));
+}
+
 function groupe(titre, couleur, elements) {
   return el('div', { class: 'groupe-pastilles', style: `--c: ${couleur}` },
     el('h4', {}, el('span', { class: 'pastille__point', style: `--c: ${couleur}`, 'aria-hidden': 'true' }), titre),
@@ -145,13 +176,20 @@ function construireRaces() {
       surClic: () => {
         fiche.race_id = fiche.race_id === r.id ? null : r.id;
         if (fiche.ethnie_id && trouver(regles.ethnies, fiche.ethnie_id)?.race_id !== fiche.race_id) fiche.ethnie_id = null;
+        fiche.caracteristiques = caracteristiquesCompletes(regles, fiche, { borner: true });   // curseurs dans les bornes de la nouvelle race
         changer();
       },
     })));
   }));
   const ethnies = ethniesDeLaRace(regles, fiche.race_id);
-  $('bloc-ethnies').hidden = ethnies.length === 0;
+  $('choix-ethnie').hidden = ethnies.length === 0;
   const race = trouver(regles.races, fiche.race_id);
+  const ethnie = trouver(regles.ethnies, fiche.ethnie_id);
+  afficherChoix('race', [race && { nom: race.nom, couleur: race.couleur }]);
+  afficherChoix('ethnie', [ethnie && {
+    nom: ethnie.nom, couleur: race?.couleur ?? '#8a7a66',
+    refus: ethnie.race_id !== fiche.race_id ? 'ethnie d’une autre race' : ethnieCompatible(ethnie, fiche.magie_innee_id) ? null : 'liée à une autre magie innée',
+  }]);
   reconstruire($('ethnies'), `${fiche.race_id}`, () => ethnies.map((e) => pastille({
     texte: e.nom, couleur: race.couleur, choisie: () => fiche.ethnie_id === e.id,
     refus: () => (ethnieCompatible(e, fiche.magie_innee_id) ? null : `seulement avec la ${trouver(regles.magies, e.magie_id)?.nom ?? 'magie de l’ethnie'} innée`),
@@ -189,6 +227,14 @@ function construireMagies() {
   })));
   const innee = trouver(regles.magies, fiche.magie_innee_id);
   $('bloc-carac-magie').hidden = !innee || Boolean(innee.caracteristique_id);
+  const acquiseChoisie = trouver(regles.magies, fiche.magie_acquise_id);
+  afficherChoix('magie-innee', [innee && {
+    nom: innee.nom, couleur: innee.couleur, texte: innee.texte,
+    refus: magiesInneesPermises(regles, fiche.race_id).has(innee.id) ? null : 'magie que la race ne permet pas',
+  }]);
+  afficherChoix('magie-acquise', [acquiseChoisie && {
+    nom: acquiseChoisie.nom, couleur: acquiseChoisie.couleur, texte: acquiseChoisie.texte, refus: refusMagieAcquise(regles, fiche, acquiseChoisie.id),
+  }], 'Aucune');
   reconstruire($('magies-acquises'), 'fixe', () => [
     pastille({ texte: 'Aucune', couleur: '#8a7a66', choisie: () => !fiche.magie_acquise_id, surClic: () => { fiche.magie_acquise_id = null; changer(); } }),
     ...regles.magies.map((m) => pastille({
@@ -211,10 +257,6 @@ function construireMagies() {
 
 // ------------------------------------------------------------------ étape 3 : classes
 function construireClasses() {
-  const niveau = niveauGlobal(regles, fiche.xp);
-  const suivant = xpDuNiveauSuivant(regles, niveau);
-  $('niveau-detail').textContent = `${niveau}${suivant !== null ? ` (niveau ${niveau + 1} à ${suivant} XP)` : ' (maximum)'}`;
-  $('fiche-niveau').textContent = `Niveau ${niveau}`;
   reconstruire($('modes'), 'fixe', () => [['mono', 'Une classe'], ['bi', 'Deux classes']].map(([mode, texte]) => pastille({
     texte, couleur: '#2e7d4f', choisie: () => fiche.mode_classe === mode,
     surClic: () => {
@@ -234,11 +276,20 @@ function construireClasses() {
   $('classe-imposee').hidden = !imposee;
   $('classe-imposee').textContent = imposee ? `Classe imposée par la magie innée ${magieImposante.nom} : ${imposee.nom}, qui lui est réservée.` : '';
   for (const c of calcul.classes) {
-    $(`bloc-classe-${c.rang}`).hidden = c.rang === 2 && c.niveau === 0 && !c.choix;
-    $(`titre-classe-${c.rang}`).textContent = `${c.rang === 1 ? (fiche.mode_classe === 'bi' ? 'Première classe' : 'Classe') : 'Seconde classe'} — niveau de classe ${c.niveau}`
-      + (c.rang === 2 && fiche.mode_classe === 'mono' ? ' (prise au niveau 11, décision R2)' : '');
     const rang = c.rang;
+    $(`choix-classe-${rang}`).hidden = rang === 2 && c.niveau === 0 && !c.choix;
+    $(`titre-classe-${rang}`).textContent = `${rang === 1 ? (fiche.mode_classe === 'bi' ? 'Première classe' : 'Classe') : 'Seconde classe'} · niveau ${c.niveau}`;
+    $(`titre-classe-${rang}`).title = rang === 2 && fiche.mode_classe === 'mono' ? 'Prise au niveau 11 (décision R2)' : '';
     const choixDe = (r) => calcul.classes.find((x) => x.rang === r)?.choix ?? null;
+    afficherChoix(`classe-${rang}`, [c.classe && {
+      nom: c.classe.nom, couleur: c.classe.couleur, refus: refusClasse(regles, fiche, c.classe.id, rang),
+      verrou: rang === 1 && imposee?.id === c.classe.id ? `imposée par la magie innée ${magieImposante.nom}` : null,
+    }]);
+    const specialite = c.classe?.specialites.find((s) => s.id === c.choix?.specialite_id);
+    $(`choix-specialite-${rang}`).hidden = !c.classe?.specialites.length || $(`choix-classe-${rang}`).hidden;
+    afficherChoix(`specialite-${rang}`, [specialite && {
+      nom: specialite.nom, couleur: c.classe.couleur, refus: c.niveau < 10 ? 'au niveau de classe 10' : null,
+    }], c.niveau >= 10 ? 'À choisir' : 'Au niveau de classe 10');
     reconstruire($(`classe-${rang}`), 'fixe', () => groupes.map((g) => groupe(g.label, g.couleur, g.classes.map((k) => pastille({
       texte: k.nom, couleur: k.couleur, choisie: () => choixDe(rang)?.classe_id === k.id,
       refus: () => refusClasse(regles, fiche, k.id, rang),
@@ -251,23 +302,17 @@ function construireClasses() {
         changer();
       },
     })))));
-    reconstruire($(`specialite-${rang}`), `${c.choix?.classe_id}`, () => {
-      if (!c.classe || !c.classe.specialites.length) return [];
-      const titre = el('h4', {});
-      synchro(() => { titre.textContent = (calcul.classes.find((x) => x.rang === rang)?.niveau ?? 0) >= 10 ? 'Spécialité' : 'Spécialité (au niveau de classe 10)'; });
-      return el('div', { class: 'groupe-pastilles', style: `--c: ${c.classe.couleur}` }, titre,
-        el('ul', { class: 'pastilles' }, c.classe.specialites.map((s) => pastille({
-          texte: s.nom, couleur: c.classe.couleur, detail: s.magique ? 'classe magique' : null,
-          choisie: () => choixDe(rang)?.specialite_id === s.id,
-          refus: () => ((calcul.classes.find((x) => x.rang === rang)?.niveau ?? 0) < 10 ? 'au niveau de classe 10' : null),
-          surClic: () => {
-            const l = ligneDe('classes', (x) => x.rang === rang);
-            l.specialite_id = l.specialite_id === s.id ? null : s.id;
-            fiche.capacites = donsValables(regles, fiche);
-            changer();
-          },
-        }))));
-    });
+    reconstruire($(`specialite-${rang}`), `${c.choix?.classe_id}`, () => (!c.classe ? [] : c.classe.specialites.map((s) => pastille({
+      texte: s.nom, couleur: c.classe.couleur, detail: s.magique ? 'classe magique' : null,
+      choisie: () => choixDe(rang)?.specialite_id === s.id,
+      refus: () => ((calcul.classes.find((x) => x.rang === rang)?.niveau ?? 0) < 10 ? 'au niveau de classe 10' : null),
+      surClic: () => {
+        const l = ligneDe('classes', (x) => x.rang === rang);
+        l.specialite_id = l.specialite_id === s.id ? null : s.id;
+        fiche.capacites = donsValables(regles, fiche);
+        changer();
+      },
+    }))));
   }
 }
 
@@ -280,14 +325,13 @@ function etatBudget(badge, total, attendu, texte, exact = true) {
 function construireCaracteristiques() {
   const budget = budgetCaracteristiques(regles, fiche);
   etatBudget($('budget-caracs'), budget.total, budget.attendu, 'Points répartis');
+  // curseurs (demande du propriétaire) : de la borne basse à la borne haute de la race, jamais vides ni à 0 (caracteristiquesCompletes)
   reconstruire($('caracs'), 'fixe', () => regles.caracteristiques.map((k) => {
-    const nouvelle = () => ({ caracteristique_id: k.id, base: null, croix: 0 });
+    const nouvelle = () => ({ caracteristique_id: k.id, base: 1, croix: 0 });
     const base = el('input', {
-      type: 'number', step: '1', 'aria-label': `${k.nom} : valeur de base`,
+      type: 'range', step: '1', class: 'curseur', 'aria-label': `${k.nom} : valeur de base`,
       oninput: (ev) => {
-        const l = ligne('caracteristiques', (x) => x.caracteristique_id === k.id, nouvelle);
-        l.base = ev.target.value === '' ? null : entier(ev.target.value);
-        if (l.base === null && !l.croix) retirer('caracteristiques', (x) => x.caracteristique_id === k.id);
+        ligne('caracteristiques', (x) => x.caracteristique_id === k.id, nouvelle).base = entier(ev.target.value, 1);
         changer();
       },
     });
@@ -302,14 +346,15 @@ function construireCaracteristiques() {
     const bonus = el('span', { class: 'carac__bonus' });
     synchro(() => {
       const c = calcul.caracs.find((x) => x.id === k.id);
-      poser(base, c.base);
       base.min = String(c.min);
       base.max = String(c.max);
+      poser(base, c.base ?? c.min);
       base.setAttribute('aria-invalid', c.base !== null && (c.base < c.min || c.base > c.max) ? 'true' : 'false');
-      base.title = `Entre ${c.min} et ${c.max} pour cette race`;
+      base.title = `De ${c.min} à ${c.max} pour cette race`;
       poser(croix, String(c.croix));
       valeur.textContent = c.base === null ? '—' : String(c.valeur);
-      bonus.textContent = c.bonus ? `dont +${c.bonus} de la magie innée` : `de ${c.min} à ${c.max}`;
+      valeur.toggleAttribute('data-hors', c.base !== null && (c.base < c.min || c.base > c.max));
+      bonus.textContent = c.bonus ? `base ${c.base} +${c.bonus} (magie)` : `de ${c.min} à ${c.max}`;
     });
     return el('div', { class: 'carac', style: `--c: ${k.couleur}; --c-texte: ${k.texte}` }, el('span', { class: 'carac__nom' }, k.nom), valeur, bonus, base, croix);
   }));
@@ -319,33 +364,39 @@ function construireCaracteristiques() {
   // un tableau par caractéristique, dans sa couleur
   reconstruire($('competences'), 'fixe', () => regles.caracteristiques.map((k) => el('div', { class: 'competences__groupe', style: `--c: ${k.couleur}; --c-texte: ${k.texte}` },
     el('table', { class: 'fiche-table' },
-      el('thead', {}, el('tr', {}, el('th', {}, k.nom), el('th', { class: 'nombre' }, 'Nat.'), el('th', { class: 'nombre' }, 'Acquis'), el('th', { class: 'nombre' }, 'Score'))),
+      el('thead', {}, el('tr', {}, el('th', {}, k.nom), el('th', {}, 'Naturel'), el('th', { class: 'nombre' }, 'Acquis'), el('th', { class: 'nombre' }, 'Score'))),
       el('tbody', {}, regles.competences.filter((x) => x.caracteristique_id === k.id).map((comp) => {
-        const champ = (cle) => el('input', {
-          type: 'number', min: '0', step: '1', 'aria-label': `${comp.nom} : ${cle === 'naturel' ? 'points naturels' : 'points acquis'}`,
-          oninput: (ev) => {
-            const l = ligne('competences', (x) => x.competence_id === comp.id, () => ({ competence_id: comp.id, naturel: 0, acquis: 0 }));
-            l[cle] = entier(ev.target.value);
-            if (!l.naturel && !l.acquis) retirer('competences', (x) => x.competence_id === comp.id);
-            changer();
-          },
+        const ecrire = (cle, valeur) => {
+          const l = ligne('competences', (x) => x.competence_id === comp.id, () => ({ competence_id: comp.id, naturel: 0, acquis: 0 }));
+          l[cle] = valeur;
+          if (!l.naturel && !l.acquis) retirer('competences', (x) => x.competence_id === comp.id);
+          changer();
+        };
+        const naturel = el('input', {
+          type: 'range', min: '0', step: '1', class: 'curseur', 'aria-label': `${comp.nom} : points naturels`,
+          oninput: (ev) => ecrire('naturel', entier(ev.target.value)),
         });
-        const naturel = champ('naturel');
-        const acquis = champ('acquis');
+        const valeurNaturel = el('output', { class: 'curseur__valeur' });
+        const acquis = el('input', {
+          type: 'number', min: '0', step: '1', 'aria-label': `${comp.nom} : points acquis`,
+          oninput: (ev) => ecrire('acquis', entier(ev.target.value)),
+        });
         const score = el('span', { class: 'score' });
         synchro(() => {
           const c = calcul.competences.find((x) => x.id === comp.id);
-          if (document.activeElement !== naturel) poser(naturel, c.naturel || '');
-          if (document.activeElement !== acquis) poser(acquis, c.acquis || '');
           naturel.max = String(c.maxNaturel);
+          poser(naturel, c.naturel);
+          valeurNaturel.textContent = String(c.naturel);
+          valeurNaturel.toggleAttribute('data-hors', c.naturel > c.maxNaturel);
+          naturel.title = `De 0 à ${c.maxNaturel} au niveau du personnage`;
+          if (document.activeElement !== acquis) poser(acquis, c.acquis || '');
           acquis.max = String(c.maxAcquis);
-          naturel.setAttribute('aria-invalid', c.naturel > c.maxNaturel ? 'true' : 'false');
           acquis.setAttribute('aria-invalid', c.acquis > c.maxAcquis ? 'true' : 'false');
-          naturel.title = `Au plus ${c.maxNaturel} au niveau du personnage`;
           acquis.title = `Au plus ${c.maxAcquis} (5 par point de caractéristique de base)`;
           score.textContent = c.score === null ? 'inutilisable' : `${c.score} %`;
         });
-        return el('tr', {}, el('td', {}, comp.nom), el('td', { class: 'nombre' }, naturel), el('td', { class: 'nombre' }, acquis), el('td', { class: 'nombre' }, score));
+        return el('tr', {}, el('td', {}, comp.nom), el('td', { class: 'curseur-cellule' }, naturel, valeurNaturel),
+          el('td', { class: 'nombre' }, acquis), el('td', { class: 'nombre' }, score));
       }))))));
 
   // la base garde le nombre de dés (1 sans maîtrise, 5 au plus) ; on choisit des points de maîtrise (4 au plus), un dé de plus chacun
@@ -373,43 +424,59 @@ function construireCaracteristiques() {
 }
 
 // ------------------------------------------------------------------ étape 5 : sorts
+/**
+ * Tableau des sorts (demande du propriétaire) : une ligne par emplacement, chacune avec la liste des sorts possibles (magies du personnage, NPM
+ * accessible) moins ceux des autres lignes (lignesDeSorts) ; vider la liste libère l'emplacement. Les NM au-delà de ceux gagnés sont permis : le MJ
+ * peut en donner (décision R24) ; ils sont comptés à part.
+ */
 function construireSorts() {
   const emplacements = emplacementsDeSorts(regles, fiche);
   const nm = calcul.nm;
   const max = npmMax(regles, fiche);
-  $('emplacements-detail').textContent = `Emplacements : ${emplacements.conditions} condition${emplacements.conditions > 1 ? 's' : ''} remplie${emplacements.conditions > 1 ? 's' : ''} `
-    + `(magie innée, magie acquise, classes magiques) × puissance magique ${emplacements.puissance}. Sorts jusqu’au niveau ${max}.`;
+  $('emplacements-detail').textContent = emplacements.total
+    ? `${emplacements.total} emplacement${emplacements.total > 1 ? 's' : ''} (${emplacements.conditions} condition${emplacements.conditions > 1 ? 's' : ''} × puissance ${emplacements.puissance}), sorts jusqu’au NPM ${max}, NM au plus ${nm.maxParSort} par sort.`
+    : 'Pas encore d’emplacement de sort : choisissez une magie.';
   etatBudget($('budget-sorts'), (fiche.sorts ?? []).length, emplacements.total, 'Sorts', false);
-  $('nm-detail').textContent = `Niveaux de maîtrise (NM) : au plus ${nm.maxParSort} par sort.`;
-  etatBudget($('budget-nm'), nm.total, nm.disponibles, 'NM', false);
+  const enPlus = nmExcedentaires(regles, fiche);
+  const badge = $('budget-nm');
+  badge.textContent = `NM : ${nm.total} / ${nm.disponibles}${enPlus ? ` (+${enPlus} du MJ)` : ''}`;
+  badge.dataset.etat = enPlus ? 'info' : nm.total === nm.disponibles ? 'ok' : 'manque';
+  badge.title = enPlus ? 'Plus de NM que ceux gagnés : permis, donnés par le MJ (décision R24)' : 'NM répartis / NM gagnés';
 
-  const choisis = new Set((fiche.sorts ?? []).map((s) => s.sort_id));
-  const possibles = sortsPossibles(regles, fiche).filter((s) => !choisis.has(s.id));
-  reconstruire($('ajout-sort'), `${[...choisis].join()}|${fiche.magie_innee_id}|${fiche.magie_acquise_id}|${max}`, () => [
-    option('', possibles.length ? 'Choisir un sort…' : 'Aucun sort disponible : choisissez une magie'),
-    regles.magies.filter((m) => possibles.some((s) => s.magie_id === m.id)).map((m) => el('optgroup', { label: m.nom },
-      possibles.filter((s) => s.magie_id === m.id).map((s) => option(s.id, `NPM ${s.niveau} · ${s.nom}`)))),
-  ]);
-  reconstruire($('sorts'), `${(fiche.sorts ?? []).map((s) => s.sort_id).join()}`, () => [
-    el('thead', {}, el('tr', {}, el('th', {}, 'Sort'), el('th', {}, 'Magie'), el('th', { class: 'nombre' }, 'NPM'), el('th', {}, 'Coût'), el('th', {}, 'Portée'), el('th', { class: 'nombre' }, 'NM'), el('th', {}, ''))),
-    el('tbody', {}, (fiche.sorts ?? []).length === 0
-      ? el('tr', {}, el('td', { colspan: '7', class: 'muted' }, 'Aucun sort pour l’instant.'))
-      : fiche.sorts.map((s) => {
-        const sort = trouver(regles.sorts, s.sort_id);
-        const magie = trouver(regles.magies, sort?.magie_id);
-        const champ = el('input', {
-          type: 'number', min: '0', step: '1', 'aria-label': `NM de ${sort?.nom ?? s.sort_id}`,
-          oninput: (ev) => { s.niveau_maitrise = entier(ev.target.value); changer(); },
+  const lignes = lignesDeSorts(regles, fiche);
+  const cle = JSON.stringify([lignes.length, (fiche.sorts ?? []).map((x) => x.sort_id), fiche.magie_innee_id, fiche.magie_acquise_id, max]);
+  reconstruire($('sorts'), cle, () => [
+    el('thead', {}, el('tr', {}, el('th', { class: 'nombre' }, '#'), el('th', {}, 'Sort'), el('th', { class: 'nombre' }, 'NPM'), el('th', {}, 'Coût'), el('th', {}, 'Portée'), el('th', { class: 'nombre' }, 'NM'))),
+    el('tbody', {}, lignes.length === 0
+      ? el('tr', {}, el('td', { colspan: '6', class: 'muted' }, 'Aucun emplacement de sort.'))
+      : lignes.map((l) => {
+        const magies = regles.magies.filter((m) => l.choix.some((x) => x.magie_id === m.id));
+        const liste = el('select', {
+          'aria-label': `Sort de l’emplacement ${l.index + 1}`,
+          onchange: (ev) => {
+            const choix = ev.target.value;
+            if (!choix) fiche.sorts.splice(l.index, 1);
+            else if (fiche.sorts[l.index]) fiche.sorts[l.index] = { ...fiche.sorts[l.index], sort_id: choix, niveau_maitrise: 0 };
+            else fiche.sorts.push({ sort_id: choix, rang: fiche.sorts.length + 1, niveau_maitrise: 0 });
+            changer();
+          },
+        }, option('', l.choix.length ? '— libre —' : '— aucun sort possible —'),
+        magies.map((m) => el('optgroup', { label: m.nom }, l.choix.filter((x) => x.magie_id === m.id).map((x) => option(x.id, `${x.nom} (NPM ${x.niveau})`, x.id === l.ligne?.sort_id)))),
+        l.horsDesRegles ? el('optgroup', { label: 'Hors des magies ou du niveau' }, option(l.sort.id, l.sort.nom, true)) : null);
+        liste.setAttribute('aria-invalid', String(l.horsDesRegles));
+        const niveau = el('input', {
+          type: 'number', min: '0', step: '1', 'aria-label': `NM de l’emplacement ${l.index + 1}`, disabled: !l.ligne,
+          oninput: (ev) => { if (fiche.sorts[l.index]) { fiche.sorts[l.index].niveau_maitrise = entier(ev.target.value); changer(); } },
         });
         synchro(() => {
-          poser(champ, s.niveau_maitrise);
-          champ.max = String(calcul.nm.maxParSort);
-          champ.setAttribute('aria-invalid', s.niveau_maitrise > calcul.nm.maxParSort ? 'true' : 'false');
+          const x = fiche.sorts[l.index];
+          if (document.activeElement !== niveau) poser(niveau, x ? x.niveau_maitrise : '');
+          niveau.setAttribute('aria-invalid', x && x.niveau_maitrise > calcul.nm.maxParSort ? 'true' : 'false');
+          niveau.title = `Au plus ${calcul.nm.maxParSort} par sort (niveau − 1)`;
         });
-        return el('tr', {},
-          el('td', {}, sort?.nom ?? s.sort_id), el('td', {}, magie?.nom ?? ''), el('td', { class: 'nombre' }, sort?.niveau ?? ''),
-          el('td', {}, sort?.cout ?? ''), el('td', {}, sort?.portee ?? ''), el('td', { class: 'nombre' }, champ),
-          el('td', {}, el('button', { type: 'button', class: 'retirer', 'aria-label': `Retirer ${sort?.nom ?? 'le sort'}`, onclick: () => { retirer('sorts', (x) => x === s); changer(); } }, '✕')));
+        return el('tr', { class: l.index >= emplacements.total ? 'en-plus' : null, title: l.index >= emplacements.total ? 'Au-delà des emplacements' : null },
+          el('td', { class: 'nombre muted' }, String(l.index + 1)), el('td', {}, liste), el('td', { class: 'nombre' }, l.sort?.niveau ?? ''),
+          el('td', {}, l.sort?.cout ?? ''), el('td', {}, l.sort?.portee ?? ''), el('td', { class: 'nombre' }, niveau));
       })),
   ]);
 }
@@ -675,7 +742,23 @@ function construireControles() {
 }
 
 // ------------------------------------------------------------------ rafraîchissement
+/** Jauge d'XP de l'en-tête (demande du propriétaire) : l'XP se modifie dans le champ, ou s'ajoute avec le bouton + ; le niveau suit. */
+function construireXp() {
+  const p = progressionXp(regles, fiche.xp);
+  $('xp-niveau').textContent = `Niveau ${p.niveau}`;
+  $('fiche-niveau').textContent = `Niveau ${p.niveau}`;
+  $('xp-objectif').textContent = p.suivant === null ? 'XP · niveau maximal' : `/ ${p.suivant} XP`;
+  const jauge = $('xp-jauge');
+  jauge.setAttribute('aria-valuemin', String(p.debut));
+  jauge.setAttribute('aria-valuemax', String(p.suivant ?? p.xp));
+  jauge.setAttribute('aria-valuenow', String(p.xp));
+  jauge.setAttribute('aria-valuetext', p.suivant === null ? `${p.xp} XP, niveau maximal` : `${p.xp} XP ; niveau ${p.niveau + 1} à ${p.suivant} XP`);
+  $('xp-rempli').style.width = `${Math.round(p.part * 1000) / 10}%`;
+}
+
 function rafraichir() {
+  // les six caractéristiques sont toujours là, au minimum de la race (1) tant qu'on ne les a pas montées (demande du propriétaire)
+  fiche.caracteristiques = caracteristiquesCompletes(regles, fiche);
   calcul = {
     niveau: niveauGlobal(regles, fiche.xp),
     classes: classesDe(regles, fiche),
@@ -688,6 +771,7 @@ function rafraichir() {
   const titre = fiche.nom || (id ? 'Prétiré sans nom' : 'Nouveau prétiré');
   $('fiche-titre').textContent = titre;
   document.title = `${titre} — Fiche de personnage — Maverick Center`;
+  construireXp();
   construireRaces();
   construireMagies();
   construireClasses();
@@ -699,6 +783,7 @@ function rafraichir() {
   for (const liste of synchros.values()) for (const s of liste) s();
   construireControles();
   $('fiche-enregistrer').disabled = !modifie && id !== null;
+  $('fiche-supprimer').hidden = id === null;
   if (modifie) message(serviceJoignable ? 'Modifications non enregistrées.' : 'Service indisponible : exportez la fiche pour ne rien perdre.', 'attente');
 }
 
@@ -799,6 +884,29 @@ async function verifierService() {
   }
 }
 
+/** Supprime la fiche enregistrée (demande du propriétaire), après confirmation ; on revient à la liste des personnages. */
+async function supprimer() {
+  if (!id) return;
+  if (!confirm(`Supprimer définitivement « ${fiche.nom || 'ce prétiré'} » ? La fiche ne pourra pas être récupérée (exportez-la d’abord pour en garder une copie).`)) return;
+  message('Suppression…', 'attente');
+  try {
+    const reponse = await fetch(`${API}personnages/${encodeURIComponent(id)}/`, {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [CHAMP_VERSION]: version }),
+    });
+    const donnees = await reponse.json().catch(() => ({}));
+    if (reponse.ok) {
+      modifie = false;
+      location.assign(racine.dataset.personnages);
+      return;
+    }
+    message(donnees.erreur ?? `Erreur ${reponse.status}`, 'erreur');
+  } catch {
+    serviceJoignable = false;
+    afficherIndisponible('Le service des personnages ne répond pas : la fiche n’a pas été supprimée.');
+    message('Non supprimée : service injoignable.', 'erreur');
+  }
+}
+
 function nouvelle() {
   if (modifie && !confirm('Abandonner les modifications non enregistrées ?')) return;
   fiche = ficheVide('');
@@ -880,6 +988,7 @@ async function demarrer() {
   $('fiche-nouvelle').addEventListener('click', nouvelle);
   $('fiche-exporter').addEventListener('click', exporter);
   $('fiche-imprimer').addEventListener('click', () => window.print());
+  $('fiche-supprimer').addEventListener('click', supprimer);
   const fichier = $('fiche-importer');
   fichier.addEventListener('change', () => {
     if (fichier.files?.[0]) importer(fichier.files[0]);
@@ -891,12 +1000,31 @@ async function demarrer() {
       fichier.click();
     }
   });
-  $('bouton-ajout-sort').addEventListener('click', () => {
-    const choix = $('ajout-sort').value;
-    if (!choix) return;
-    fiche.sorts.push({ sort_id: choix, rang: fiche.sorts.length + 1, niveau_maitrise: 0 });
-    changer();
-    $('ajout-sort').focus();
+  // menus déroulants : un clic ailleurs ou Échap les referme
+  document.addEventListener('click', (ev) => {
+    for (const menu of racine.querySelectorAll('details.choix[open]')) if (!menu.contains(ev.target)) fermerMenu(menu);
+  });
+  racine.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape') fermerMenu(ev.target.closest?.('details.choix'), true);
+  });
+  // ajout d'XP : le bouton + ouvre un petit champ
+  const ajoutXp = $('xp-ajout');
+  const montrerAjoutXp = (oui) => {
+    ajoutXp.hidden = !oui;
+    $('xp-plus').setAttribute('aria-expanded', String(oui));
+    if (oui) $('xp-gain').focus();
+    else $('xp-gain').value = '';
+  };
+  $('xp-plus').addEventListener('click', () => montrerAjoutXp(ajoutXp.hidden));
+  $('xp-annuler').addEventListener('click', () => montrerAjoutXp(false));
+  ajoutXp.addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const gain = entier($('xp-gain').value);
+    if (gain > 0) {
+      fiche.xp = Math.max(0, entier(fiche.xp)) + gain;
+      changer();
+    }
+    montrerAjoutXp(false);
   });
   $('bouton-ajout-objet').addEventListener('click', () => {
     fiche.inventaire.push({ rang: fiche.inventaire.length + 1, nom: '', quantite: 1, ressource_id: null });
