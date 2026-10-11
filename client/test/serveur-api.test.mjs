@@ -9,7 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { TABLES_VIVANTES, ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
-import { LIGNES_MAX } from '../serveur/fiches.mjs';
+import { expliquer, LIGNES_MAX } from '../serveur/fiches.mjs';
 import { demarrerService, guetteur } from '../serveur/service.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { COLONNES_DU_SERVICE, HORS_FICHE, PARTIES_DE_FICHE, ficheVide } from '../src/lib/fiche-format.mjs';
@@ -51,6 +51,15 @@ test('format : chaque table qui cite une fiche est une partie de la fiche ou exp
   }
   for (const c of colonnes.filter((x) => x.notnull && !COLONNES_DU_SERVICE.includes(x.name))) assert.ok(c.name in ficheVide(), `${c.name} : obligatoire, absent de ficheVide`);
   for (const c of COLONNES_DU_SERVICE) assert.ok(colonnes.some((x) => x.name === c), c);
+});
+
+test('un choix que les règles n’ont plus (don ou spécialité supprimé depuis le site de dev, D11) : message en français, rien n’est écrit', () => {
+  assert.equal(expliquer('FOREIGN KEY constraint failed'), 'un choix de la fiche (don, spécialité…) n’existe plus dans les règles : rechargez la page');
+  const avant = db.prepare('SELECT count(*) AS n FROM personnage').get().n;
+  const r = appel('POST', '/api/personnages', { ...ficheVide('Sans règle'), capacites: [{ capacite_id: 'capacites/don-supprime-d11' }] });
+  assert.equal(r.statut, 400);
+  assert.ok(r.corps.problemes.some((p) => /capacite_id.*n’existe pas dans les règles/.test(p)), JSON.stringify(r.corps));
+  assert.equal(db.prepare('SELECT count(*) AS n FROM personnage').get().n, avant);
 });
 
 test('création : un prétiré (à personne, visible de tous), brouillon par défaut ; lu, listé, avec son niveau et ses contrôles', () => {

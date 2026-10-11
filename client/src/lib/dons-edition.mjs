@@ -115,8 +115,10 @@ export function motsClesDeDon({ libelleClasse, specialiteNom = null }) {
 /**
  * Ligne d'un nouveau don sans option (« à la fin de son niveau ») : parmi les dons de sa portée — ceux de sa spécialité (don de spécialité compris), sinon
  * les dons hors spécialité plus l'étage des spécialités (sa ligne et son niveau les plus petits) —, bas = la dernière ligne de niveau ≤ N, haut = la
- * première de niveau > N ; le plus petit numéro libre entre les deux, ou bas + 7 (puis le suivant libre) quand rien n'est au-dessus. Un numéro employé
- * par n'importe quel don de la classe n'est jamais repris : un nouveau don n'entre jamais par hasard dans un choix existant. null : plus de place.
+ * première de niveau > N ; le plus petit numéro libre entre les deux, ou bas + 7 (puis le suivant libre) quand rien n'est au-dessus. Quand rien n'est à
+ * son niveau ni en dessous (bas = 0 : une classe créée sur le site), le numéro libre le plus proche du milieu de l'écart, pour qu'un don d'un niveau
+ * plus bas ajouté ensuite ait encore sa place (à l'import, chaque écart offre au moins 6 numéros libres). Un numéro employé par n'importe quel don de
+ * la classe n'est jamais repris : un nouveau don n'entre jamais par hasard dans un choix existant. null : plus de place.
  * @param {object[]} dons les dons de la classe
  * @param {{ specialiteId?: string | null, niveau: number }} o
  */
@@ -137,7 +139,10 @@ export function placeNouvelleLigne(dons, { specialiteId = null, niveau }) {
     return l;
   }
   const haut = Math.min(...hauts);
-  for (let l = bas + 1; l < haut; l += 1) if (!occupees.has(l)) return l;
+  // rien à son niveau ni en dessous (classe créée sur le site) : vers le milieu de l'écart, pour qu'un don d'un niveau plus bas trouve encore sa place
+  const depart = bas === 0 ? Math.ceil(haut / 2) : bas + 1;
+  for (let l = depart; l < haut; l += 1) if (!occupees.has(l)) return l;
+  for (let l = depart - 1; l > bas; l -= 1) if (!occupees.has(l)) return l;
   return null;
 }
 

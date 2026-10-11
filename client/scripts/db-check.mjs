@@ -109,6 +109,13 @@ function couvre(sourceRef, classeur, onglet, cellule) {
 }
 const corrections = db.prepare("SELECT dump, classeur, onglet, cellule, champ, avant, apres FROM correction").all();
 bilan.corrections = corrections.length;
+// Le site de dev est la source des données qu'il modifie (décision du propriétaire) : une correction dont les lignes ont toutes été supprimées par le site
+// (D11 : un don, une spécialité ; historique_modification, `avant.source_ref` de la ligne supprimée) n'a plus de ligne à vérifier, elle est ignorée.
+const supprimeesParLeSite = noms.has('historique_modification')
+  ? db.prepare("SELECT avant FROM historique_modification WHERE operation = 'supprimer' AND avant IS NOT NULL").all()
+    .map((h) => { try { return JSON.parse(h.avant)?.source_ref; } catch { return null; } }).filter((s) => typeof s === 'string')
+  : [];
+let correctionsLignesSupprimees = 0;
 const tablesCellules = tables.filter((t) => !fts.includes(t.name) && !['correction', 'note_cellule', 'ecart_source'].includes(t.name) && colonnes(t.name).some((c) => c.name === 'source_ref'));
 for (const c of corrections.filter((x) => x.champ === 'v')) {
   let couvertes = 0, avecApres = 0;
@@ -121,9 +128,11 @@ for (const c of corrections.filter((x) => x.champ === 'v')) {
       if (txt.some((k) => typeof r[k] === 'string' && r[k].includes(c.apres))) avecApres += 1;
     }
   }
-  if (!couvertes) problemes.push(`correction ${c.dump}!${c.onglet}!${c.cellule} : aucune ligne typée ne couvre la cellule`);
+  if (!couvertes && supprimeesParLeSite.some((s) => couvre(s, c.classeur, c.onglet, c.cellule))) correctionsLignesSupprimees += 1;
+  else if (!couvertes) problemes.push(`correction ${c.dump}!${c.onglet}!${c.cellule} : aucune ligne typée ne couvre la cellule`);
   else if (!avecApres) problemes.push(`correction ${c.dump}!${c.onglet}!${c.cellule} : « ${c.apres} » ne figure dans aucune ligne qui couvre la cellule`);
 }
+if (correctionsLignesSupprimees) bilan.corrections_lignes_supprimees = correctionsLignesSupprimees;
 
 // Remarques : une note de cellule d'une entité dont la table a une colonne `remarque` figure dans la remarque que l'import a écrite (texte sans espaces de bordure). Tant que les
 // importeurs écrivent les deux, la remarque ne peut pas perdre une note ; la table `note_cellule` garde la cellule d'origine et la nature (note, commentaire résolu).

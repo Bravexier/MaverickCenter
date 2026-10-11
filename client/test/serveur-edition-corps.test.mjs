@@ -15,7 +15,9 @@ import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
-import { choseASavoirSansTexte, corpsDeClasse, corpsDeDon } from '../src/lib/corps-classes.mjs';
+import { choseASavoirSansTexte, corpsDeClasse, corpsDeDon, resumeDeDon } from '../src/lib/corps-classes.mjs';
+import { donneesDeDon } from '../src/lib/dons-edition.mjs';
+import { jsonCommePython } from '../src/lib/json-python.mjs';
 import { corpsDeMagieApres, morceauxDuCorpsDeMagie } from '../src/lib/corps-magies.mjs';
 import { corpsDeMetier, sansLiens } from '../src/lib/corps-metiers.mjs';
 import { corpsDeRace, corpsDeRaceCreee, etatDeRace } from '../src/lib/corps-races.mjs';
@@ -152,6 +154,24 @@ const refus = [
   { op: 'modifier', table: 'race_onglet', cle: { race_id: 'races/mort-vivant' }, valeurs: { dons_tableau_titre: 'Un titre' } },
   { op: 'modifier', table: 'mode_hyper_effet', cle: { id: avant.hyperElfe.id }, valeurs: { nom: null } },
 ].map((op) => traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' }, corps: JSON.stringify({ page: 'essai/', operations: [op] }) }, service));
+// D11 : une spécialité et ses dons créés dans la classe créée (une paire par « @i ») ; un don importé à note supprimé ; une spécialité importée
+// supprimée avec ses dons (celle du don « Chasseur de primes » du Mercenaire : la correction tracée de sa cellule AC22 n'a plus de ligne, db:check l'ignore)
+const D11 = {
+  crees: lot([
+    { op: 'creer', entite: 'specialite', valeurs: { classe_id: classeCreee, nom: 'ZORGLUBSPE', description: 'Spécialité zorglubspedesc.', don_nom: 'Zorglubcartouche', don_type: 'Passif', don_effet: 'Considérer comme classe magique.' } },
+    { op: 'creer', entite: 'capacite', valeurs: { classe_id: classeCreee, specialite_id: '@0', niveau: '15', nom: 'Zorglubdon un', type: 'Actif', precision: '1 fois/combat', effet: 'Effet zorglubdonun. Et la suite.' } },
+    { op: 'creer', entite: 'capacite', valeurs: { classe_id: classeCreee, specialite_id: '@0', avec: '@1', nom: 'Zorglubdon deux', type: 'Réaction', effet: 'Effet zorglubdondeux.' } },
+    { op: 'creer', entite: 'capacite', valeurs: { classe_id: classeCreee, niveau: '5', nom: 'Zorglubdon trois', type: 'Passif' } },
+  ], `${classeCreee}/`).crees.map((c) => c.id),
+  // un don à note de cellule, dans un choix de deux d'une spécialité (lu avant d'écrire : le site a pu changer la base)
+  donANote: vivante.prepare(`SELECT k.id FROM capacite k JOIN note_cellule n ON n.entite_table = 'capacite' AND n.entite_id = k.id
+    WHERE k.nature = 'choix' AND k.specialite_id IS NOT NULL ORDER BY k.id`).all().map((k) => k.id)
+    .find((id) => vivante.prepare("SELECT count(*) AS n FROM capacite a JOIN capacite b ON b.classe_id = a.classe_id AND b.ligne = a.ligne AND b.specialite_id = a.specialite_id AND b.nature = a.nature WHERE a.id = ?").get(id).n === 2),
+  mercenaire: lire("SELECT specialite_id FROM capacite WHERE id = 'capacites/mercenaire-chasseur-de-primes'")?.specialite_id ?? null,
+};
+D11.donsDuMercenaire = D11.mercenaire ? vivante.prepare('SELECT id FROM capacite WHERE specialite_id = ?').all(D11.mercenaire).map((k) => k.id) : [];
+lot([{ op: 'supprimer', entite: 'capacite', cle: { id: D11.donANote } }], 'classes/');
+if (D11.mercenaire) lot([{ op: 'supprimer', entite: 'specialite', cle: { id: D11.mercenaire } }], 'classes/mercenaire/');
 
 const journal = journalExporte(vivante);
 vivante.close();
@@ -189,7 +209,7 @@ const casesDe = (l) => l.slice(2, -2).split(/(?<!\\)\|/).map((c) => c.trim());
 const debut = (texte) => texte.split('\n')[0].slice(0, 40);
 
 test('le journal rapatrié s’applique sur la copie de data/rows ; chaque page réécrite y est une modification de la table page', () => {
-  assert.equal(nombreDeLots, 11);
+  assert.equal(nombreDeLots, D11.mercenaire ? 14 : 13);
   assert.equal(journal.lots.length, nombreDeLots);
   assert.equal(application.ecrit, true, JSON.stringify(application.conflits));
   assert.deepEqual(application.conflits, []);
@@ -312,7 +332,11 @@ test('pages créées par le site : le corps est le rendu de leurs tables, et le 
   assert.match(section(c, 'Classes accessibles'), /^Nombre : 0 sur \d+\.$/m);
   const classe = ligne('SELECT * FROM classe WHERE id = ?', classeCreee);
   const cc = corps(classeCreee);
-  assert.equal(cc, corpsDeClasse({ classe, categorie: ligne('SELECT * FROM categorie_classe WHERE id = ?', classe.categorie_id) }));
+  // sa spécialité créée ensuite (D11) a sa bannière
+  assert.equal(cc, corpsDeClasse({
+    classe, categorie: ligne('SELECT * FROM categorie_classe WHERE id = ?', classe.categorie_id), specialites: lignes('SELECT * FROM specialite WHERE classe_id = ?', classeCreee),
+    dons: lignes('SELECT id, specialite_id FROM capacite WHERE classe_id = ?', classeCreee),
+  }));
   assert.ok(cc.includes('Une classe zorglubclassecreee. Elle lance des sorts.'));
 });
 
@@ -346,9 +370,50 @@ test('chaque corps redit ses tables sur la copie : magies, races, classes, dons,
   for (const m of lignes('SELECT * FROM metier')) assert.equal(sansLiens(pages.get(m.id)), corpsDeMetier(m), m.id);
 });
 
+test('D11 : spécialité et dons créés, don à note et spécialité importée supprimés, rapatriés : fiches (corps, résumé, donnees), corps de la classe, recherche', () => {
+  const [spe, un, deux, trois] = D11.crees;
+  assert.equal(spe, `${classeCreee}#specialite:zorglubspe`);
+  const cartouche = ligne("SELECT id FROM capacite WHERE specialite_id = ? AND nature = 'specialite'", spe).id;
+  const specialites = lignes('SELECT * FROM specialite WHERE classe_id = ?', classeCreee);
+  const dons = lignes('SELECT * FROM capacite WHERE classe_id = ?', classeCreee);
+  assert.deepEqual(dons.map((d) => d.id).sort(), [cartouche, un, deux, trois].sort());
+  for (const don of dons) {
+    const page = ligne('SELECT * FROM page WHERE id = ?', don.id);
+    assert.equal(page.corps_md, corpsDeDon(don), don.id);
+    assert.equal(page.resume, resumeDeDon(don), don.id);
+    assert.equal(page.donnees, jsonCommePython(donneesDeDon(don, { specialites, donsDeLaClasse: dons })), don.id);
+    assert.deepEqual([page.origine, page.statut, page.type], ['classes', 'draft', 'capacites']);
+    const sources = lignes('SELECT s.texte FROM page_source ps JOIN source s ON s.id = ps.source_id WHERE ps.page_id = ?', don.id);
+    assert.equal(sources.length, 1, don.id);
+    assert.ok(sources[0].texte.startsWith('Site de dev › '), don.id);
+  }
+  assert.deepEqual(JSON.parse(ligne('SELECT donnees FROM page WHERE id = ?', un).donnees).choix_exclusif_avec, [deux]);
+  assert.equal(ligne('SELECT nature FROM capacite WHERE id = ?', trois).nature, 'classe');
+  const classe = ligne('SELECT * FROM classe WHERE id = ?', classeCreee);
+  const categorie = ligne('SELECT * FROM categorie_classe WHERE id = ?', classe.categorie_id);
+  assert.equal(corps(classeCreee), corpsDeClasse({ classe, categorie, specialites, dons, annexe: [] }));
+  assert.ok(corps(classeCreee).split('\n').includes('### ZORGLUBSPE'));
+  // supprimés : ni ligne, ni fiche, ni note ; dans sa spécialité, le survivant reste un choix sans alternative
+  assert.equal(ligne('SELECT 1 FROM capacite WHERE id = ?', D11.donANote), undefined);
+  assert.equal(ligne('SELECT 1 FROM page WHERE id = ?', D11.donANote), undefined);
+  assert.equal(ligne("SELECT 1 FROM note_cellule WHERE entite_table = 'capacite' AND entite_id = ?", D11.donANote), undefined);
+  if (D11.mercenaire) {
+    assert.equal(ligne('SELECT 1 FROM specialite WHERE id = ?', D11.mercenaire), undefined);
+    for (const id of D11.donsDuMercenaire) assert.equal(ligne('SELECT 1 FROM page WHERE id = ?', id), undefined, id);
+    assert.ok(!corps('classes/mercenaire').includes('### CHASSEUR DE PRIMES'));
+    assert.equal(ligne("SELECT count(*) AS n FROM historique_modification WHERE table_nom = 'capacite' AND operation = 'supprimer'").n >= D11.donsDuMercenaire.length, true);
+  }
+  // recherche : page_fts (db-derive) trouve les dons créés
+  const trouve = (mot) => lignes('SELECT page_id FROM page_fts WHERE page_fts MATCH ? ORDER BY page_id', mot).map((l) => l.page_id);
+  assert.deepEqual(trouve('zorglubdonun'), [un]);
+  assert.deepEqual(trouve('zorglubdondeux'), [deux]);
+});
+
 test('db:check passe sur la base construite depuis la copie', () => {
   const r = spawnSync(process.execPath, ['--no-warnings', join(RACINE, 'client', 'scripts', 'db-check.mjs'), chemin], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stdout + r.stderr);
+  // la correction tracée de la cellule AC22 du Mercenaire (« Chasseur de primes ») : sa seule ligne supprimée par le site, elle est ignorée
+  if (D11.mercenaire) assert.equal(JSON.parse(r.stdout).bilan.corrections_lignes_supprimees, 1);
 });
 
 test('recherche (page_fts) : la nouvelle valeur est trouvée dans sa page, l’ancienne nulle part', () => {

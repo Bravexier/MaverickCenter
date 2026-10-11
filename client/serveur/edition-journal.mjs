@@ -199,6 +199,53 @@ export function tablesQuiCitent(db, table) {
   return [...(carte.get(table) ?? [])];
 }
 
+const cascadesParBase = new WeakMap(); // db -> Map(table visée -> [{ enfant, de: [colonnes], vers: [colonnes] }])
+/** Les clés étrangères ON DELETE CASCADE qui visent `table` : la table qui cite, ses colonnes, les colonnes visées (la clé primaire si non dites). */
+function cascadesVers(db, table) {
+  let carte = cascadesParBase.get(db);
+  if (!carte) {
+    carte = new Map();
+    for (const { name } of db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all()) {
+      let liens = [];
+      try {
+        liens = db.prepare(`PRAGMA foreign_key_list("${name}")`).all();
+      } catch {
+        continue; // table virtuelle
+      }
+      const parId = new Map();
+      for (const f of liens) {
+        if (String(f.on_delete).toUpperCase() !== 'CASCADE') continue;
+        if (!parId.has(f.id)) parId.set(f.id, { enfant: name, parent: f.table, colonnes: [] });
+        parId.get(f.id).colonnes.push(f);
+      }
+      for (const { enfant, parent, colonnes } of parId.values()) {
+        colonnes.sort((a, b) => a.seq - b.seq);
+        const vers = colonnes.every((c) => c.to) ? colonnes.map((c) => c.to) : structure(db, parent).cle;
+        if (!carte.has(parent)) carte.set(parent, []);
+        carte.get(parent).push({ enfant, de: colonnes.map((c) => c.from), vers });
+      }
+    }
+    cascadesParBase.set(db, carte);
+  }
+  return carte.get(table) ?? [];
+}
+
+/**
+ * Applique les ON DELETE CASCADE du schéma avant de supprimer `ligne` de `table`, quand les clés étrangères sont coupées (PRAGMA foreign_keys = 0 :
+ * base vivante refaite par une livraison, mise à jour des règles) : SQLite ne les applique alors pas. Récursif ; les lignes ainsi retirées (les
+ * [[liens]] d'une page : lien, lien_candidat, tables dérivées) ne sont pas notées, comme les cascades de SQLite dans la base vivante.
+ */
+function supprimerLesCascades(db, table, ligne) {
+  for (const { enfant, de, vers } of cascadesVers(db, table)) {
+    const valeurs = vers.map((c) => ligne[c]);
+    if (valeurs.some((v) => v === null || v === undefined)) continue;
+    const ou = de.map((c) => `${guillemets(c)} = ?`).join(' AND ');
+    for (const e of db.prepare(`SELECT * FROM "${enfant}" WHERE ${ou}`).all(...valeurs)) supprimerLesCascades(db, enfant, e);
+    db.prepare(`DELETE FROM "${enfant}" WHERE ${ou}`).run(...valeurs);
+  }
+}
+const clesCoupees = (db) => Number(Object.values(db.prepare('PRAGMA foreign_keys').get() ?? {})[0] ?? 0) === 0;
+
 /** Compare une ligne de la base aux valeurs notées (colonnes de l'objet seulement). */
 const correspond = (ligne, valeurs) => Object.entries(valeurs).every(([c, v]) => egal(ligne[c], v));
 
@@ -235,6 +282,7 @@ function rejouerUne(db, m, derivee, suivantes = []) {
       if (recreee && Object.entries(sansDerivees(recreee.apres)).every(([c, v]) => deja(c, v))) return 'integree';
       return 'la ligne a changé dans les règles depuis sa suppression';
     }
+    if (clesCoupees(db)) supprimerLesCascades(db, m.table_nom, ligne);
     supprimerBrut(db, m.table_nom, cle);
     return 'applique';
   }

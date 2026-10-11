@@ -15,6 +15,7 @@ import { chargerJournal, journalExporte, ouvrirLot } from '../serveur/edition-jo
 import { morceauxDuCorpsDeMagie } from '../src/lib/corps-magies.mjs';
 import { corpsDeRace, etatDeRace } from '../src/lib/corps-races.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { normalize } from '../src/lib/text.mjs';
 
 const racine = mkdtempSync(join(tmpdir(), 'maverick-rejeu-corps-'));
 after(() => rmSync(racine, { recursive: true, force: true }));
@@ -78,6 +79,10 @@ test('colonnes dérivées : corps et résumé des pages typées, pas ceux du gui
   assert.equal(colonneDerivee('page', { id: 'guide/bienvenue' }, 'corps_md'), false);
   assert.equal(colonneDerivee('page', { id: FEU }, 'titre'), false);
   assert.equal(colonneDerivee('race', { id: HUMAIN }, 'presentation'), false);
+  // D11 : `donnees` des fiches de dons (classe, spécialité, choix…) est tiré des tables ; celui des pages de race (magies innées) ne l'est pas
+  assert.equal(colonneDerivee('page', { id: 'capacites/guerrier-affute' }, 'donnees'), true);
+  assert.equal(colonneDerivee('page', { id: HUMAIN }, 'donnees'), false);
+  assert.equal(colonneDerivee('page', { id: 'capacites/guerrier-affute' }, 'titre'), false);
 });
 
 test('rejoué sur des règles qui le contiennent déjà : tout est « intégré », même deux lots sur la même page ou une race créée puis réécrite', () => {
@@ -164,4 +169,89 @@ test('base vivante refaite par une livraison : un lot en attente noté sans sa p
   assert.ok(corps(vivante, DRAKOS).includes('Histoire du service d’avant.'));
   assert.ok(raceAJour(vivante, DRAKOS));
   vivante.close();
+});
+
+// --- D11 : spécialités et dons créés et supprimés -----------------------------------------------------------------------------------------------
+const GUERRIER = 'classes/guerrier';
+const AFFUTE = 'capacites/guerrier-affute';
+const HYPER_CONTACT = 'capacites/guerrier-hyper-contact';
+const donneesDe = (db) => Object.fromEntries(db.prepare("SELECT id, donnees FROM page WHERE type = 'capacites'").all().map((p) => [p.id, p.donnees]));
+const donneesDuDon = (db, id) => JSON.parse(db.prepare('SELECT donnees FROM page WHERE id = ?').get(id).donnees);
+
+test('D11 — spécialités et dons créés puis supprimés, rejoués sur des règles qui les contiennent : tout « intégré », aucune page réécrite', () => {
+  const nom = nomLibre('Classe', 'd11');
+  const id = `classes/${normalize(nom)}`;
+  const option = nomLibre('Option', 'd11');
+  const journal = journalDe([
+    [{ op: 'creer', entite: 'classe', valeurs: { nom, categorie_id: 'classe-magique' } }],
+    [
+      { op: 'creer', entite: 'specialite', valeurs: { classe_id: id, nom: 'PREMIERE', don_nom: 'Première', don_type: 'Passif', don_effet: 'Effet premier.' } },
+      { op: 'creer', entite: 'specialite', valeurs: { classe_id: id, nom: 'SECONDE', don_nom: 'Seconde', don_type: 'Actif' } },
+      { op: 'creer', entite: 'capacite', valeurs: { classe_id: id, specialite_id: '@0', niveau: '15', nom: 'Un', type: 'Passif', effet: 'Effet un.' } },
+      { op: 'creer', entite: 'capacite', valeurs: { classe_id: id, specialite_id: '@0', avec: '@2', nom: 'Deux', type: 'Passif' } },
+    ],
+    [{ op: 'supprimer', entite: 'specialite', cle: { id: `${id}#specialite:seconde` } }],
+    [{ op: 'creer', entite: 'capacite', valeurs: { classe_id: GUERRIER, avec: HYPER_CONTACT, nom: option, type: 'Passif' } }],
+    [{ op: 'supprimer', entite: 'capacite', cle: { id: `capacites/${normalize(nom)}-deux` } }],
+  ]);
+  const livree = reglesAvec(journal);
+  assert.equal(livree.prepare('SELECT nature FROM capacite WHERE id = ?').get(HYPER_CONTACT).nature, 'choix', 'le don reçu d’office devenu un choix');
+  const avant = { corps: corpsDe(livree), donnees: donneesDe(livree) };
+  const r = rejouerSur(livree, journal);
+  assert.deepEqual(r.conflits, []);
+  assert.equal(r.bilan.appliquees, 0, JSON.stringify(r.bilan));
+  assert.equal(r.bilan.integrees, journal.lots.reduce((n, l) => n + l.modifications.length, 0));
+  assert.deepEqual(r.pages, []);
+  assert.deepEqual({ corps: corpsDe(livree), donnees: donneesDe(livree) }, avant, 'aucune page réécrite');
+  livree.close();
+});
+
+test('D11 — une option rejouée sur des règles changées ailleurs (spécialité renommée, effet d’un voisin) : le lot passe, `donnees` des voisins recalculé', () => {
+  const db = base();
+  const affute = db.prepare('SELECT * FROM capacite WHERE id = ?').get(AFFUTE);
+  const voisin = db.prepare("SELECT id FROM capacite WHERE classe_id = ? AND ligne = ? AND specialite_id = ? AND nature = 'choix' AND id <> ?").get(GUERRIER, affute.ligne, affute.specialite_id, AFFUTE).id;
+  db.close();
+  const option = nomLibre('Option', 'livraison');
+  const journal = journalDe([[{ op: 'creer', entite: 'capacite', valeurs: { classe_id: GUERRIER, avec: AFFUTE, nom: option, type: 'Passif' } }]]);
+  const cree = journal.lots[0].modifications.find((m) => m.table === 'capacite' && m.operation === 'inserer').cle.id;
+  // la livraison, comme le site l'aurait livrée : la spécialité renommée (et la fiche de ses dons), l'effet du voisin changé (et sa fiche)
+  const livree = base(`
+    UPDATE specialite SET nom = 'ÉPÉISTE LIVRÉ', nom_cle = 'epeiste-livre' WHERE id = '${affute.specialite_id}';
+    UPDATE page SET donnees = json_set(donnees, '$.specialite', 'ÉPÉISTE LIVRÉ') WHERE id IN (SELECT id FROM capacite WHERE specialite_id = '${affute.specialite_id}');
+    UPDATE capacite SET effet = 'Effet livré.' WHERE id = '${voisin}';
+    UPDATE page SET corps_md = 'Effet livré.' || char(10), resume = 'Effet livré.' WHERE id = '${voisin}';`);
+  const r = rejouerSur(livree, journal);
+  assert.deepEqual(r.conflits, [], 'avant D11, `donnees` des voisins était une valeur figée du journal : le lot entier était perdu');
+  assert.ok(livree.prepare('SELECT 1 FROM capacite WHERE id = ?').get(cree), 'l’option est créée');
+  for (const id of [AFFUTE, voisin, cree]) {
+    const d = donneesDuDon(livree, id);
+    assert.equal(d.specialite, 'ÉPÉISTE LIVRÉ', id);
+    assert.deepEqual([...d.choix_exclusif_avec].sort(), [AFFUTE, voisin, cree].filter((x) => x !== id).sort(), id);
+  }
+  assert.equal(corps(livree, voisin), 'Effet livré.\n', 'l’effet de la livraison reste');
+  assert.ok(r.pages.includes(AFFUTE) && r.pages.includes(voisin));
+  livree.close();
+});
+
+test('D11 — le don « au choix avec » supprimé par la livraison : le lot est en conflit, la base reste intacte', () => {
+  const option = nomLibre('Option', 'perdue');
+  const journal = journalDe([[{ op: 'creer', entite: 'capacite', valeurs: { classe_id: GUERRIER, avec: HYPER_CONTACT, nom: option, type: 'Passif' } }]]);
+  const H = HYPER_CONTACT;
+  const livree = base(`
+    DELETE FROM note_cellule WHERE entite_table = 'capacite' AND entite_id = '${H}';
+    DELETE FROM capacite WHERE id = '${H}';
+    DELETE FROM page_entite WHERE page_id = '${H}';
+    DELETE FROM page_tag WHERE page_id = '${H}';
+    DELETE FROM page_source WHERE page_id = '${H}';
+    DELETE FROM alias WHERE page_id = '${H}';
+    DELETE FROM page WHERE id = '${H}';`);
+  const compte = (t) => livree.prepare(`SELECT count(*) AS n FROM "${t}"`).get().n;
+  const avant = { capacite: compte('capacite'), page: compte('page'), page_tag: compte('page_tag') };
+  const r = rejouerSur(livree, journal);
+  assert.equal(r.conflits.length, 1, JSON.stringify(r.conflits));
+  assert.match(r.conflits[0], /la ligne n’existe plus dans les règles/);
+  assert.equal(r.bilan.appliquees, 0);
+  assert.deepEqual({ capacite: compte('capacite'), page: compte('page'), page_tag: compte('page_tag') }, avant, 'rien de la création n’est écrit');
+  assert.equal(livree.prepare('SELECT 1 FROM capacite WHERE nom = ?').get(option), undefined);
+  livree.close();
 });

@@ -101,6 +101,13 @@ test('placeNouvelleLigne : à la fin de son niveau, sur un numéro libre de tout
   const plein = [...GUERRIER, ...[5, 6, 7, 8, 9, 10].map((l) => ({ ...don(`p${l}`, null, 1, 'classe', l, 1), id: `capacites/p${l}` }))];
   assert.equal(placeNouvelleLigne(plein, { niveau: 1 }), null, 'plus de place entre 4 et 11');
   assert.equal(placeNouvelleLigne([...GUERRIER, { ...don('y', null, 20, 'classe', 56, 1), id: 'capacites/y' }], { niveau: 20 }), 63);
+  // classe créée sur le site, avec sa seule spécialité (ligne 7) : rien en dessous, vers le milieu de l'écart (un niveau plus bas aura sa place)
+  const neuve = [{ ...don('lame', 'classes/x#specialite:lame', 10, 'specialite', 7, 1), classe_id: 'classes/x' }];
+  assert.equal(placeNouvelleLigne(neuve, { niveau: 5 }), 4);
+  const apres5 = [...neuve, { ...don('pas', null, 5, 'classe', 4, 1), classe_id: 'classes/x' }];
+  assert.equal(placeNouvelleLigne(apres5, { niveau: 1 }), 2);
+  assert.equal(placeNouvelleLigne([...apres5, { ...don('un', null, 1, 'classe', 2, 1), classe_id: 'classes/x' }], { niveau: 1 }), 3);
+  assert.equal(placeNouvelleLigne(apres5, { niveau: 5 }), 5);
 });
 
 test('donneesDeDon : rang du don reçu sans choix (de haut en bas), du cartouche (rang de la spécialité), choix exclusifs triés', () => {

@@ -169,7 +169,7 @@ test('créer un métier : page (titre, résumé, corps, mot-clé), ligne metier,
   const id = `metiers/${slug}`;
   const r = enregistrer([{ op: 'creer', entite: 'metier', valeurs: { nom, description: 'Il souffle le verre. Avec patience.', bonus_brut: '+3% Calme, +2% Fermeté', artisanat_texte: '', equipement_brut: 'Canne' } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
-  assert.deepEqual(r.corps.crees, [{ entite: 'metier', id }]);
+  assert.deepEqual(r.corps.crees, [{ entite: 'metier', id, operation: 0 }]);
   const m = ligne('SELECT * FROM metier WHERE id = ?', id);
   assert.equal(m.artisanat_brut, 'Rien');
   assert.equal(m.peut_fabriquer, 0);

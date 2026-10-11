@@ -9,8 +9,9 @@ import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import {
   ARCHIVES_GARDEES, DOSSIER_ARCHIVES, ErreurBaseVivante, FICHIER_BASE, FICHIER_ETAT, TABLES_EDITION, TABLES_FICHES, TABLES_VIVANTES, clesRompues, empreinteFichier, lireEtat,
-  preparerBaseVivante,
+  ouvrirBaseVivante, preparerBaseVivante,
 } from '../serveur/base-vivante.mjs';
+import { enregistrer } from '../serveur/edition.mjs';
 import { cheminBase, trouverRacine } from '../src/lib/donnees.mjs';
 
 const racine = mkdtempSync(join(tmpdir(), 'maverick-vivante-'));
@@ -133,6 +134,28 @@ test('nouvelles règles : la base est refaite, toutes les lignes de la section 1
   assert.deepEqual(sansArchives(dossier), [FICHIER_BASE, FICHIER_ETAT]);
   const db = lecture(chemin);
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), [], 'aucune référence rompue');
+  db.close();
+});
+
+test('une page qui a des [[liens]] supprimée sur le site, puis la base refaite sur des règles changées ailleurs : aucun conflit (ON DELETE CASCADE rejoués)', () => {
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: REGLES, dossier });
+  // un métier qui a un lien sortant (« Alchimiste » à l'import), un autre qu'un lien vise (« Mineur ») : lus dans les règles
+  const sortant = valeur(REGLES, "SELECT l.page_id AS id FROM lien l JOIN metier m ON m.id = l.page_id ORDER BY l.page_id LIMIT 1")?.id;
+  const vise = valeur(REGLES, "SELECT l.cible_page_id AS id FROM lien l JOIN metier m ON m.id = l.cible_page_id WHERE l.cible_page_id <> ? ORDER BY 1 LIMIT 1", sortant ?? '')?.id;
+  assert.ok(sortant && vise, 'des métiers liés dans les règles');
+  const vivante = ouvrirBaseVivante(chemin);
+  enregistrer(vivante, { page: 'metiers/', operations: [sortant, vise].map((id) => ({ op: 'supprimer', entite: 'metier', cle: { id } })) });
+  assert.equal(vivante.prepare('SELECT count(*) AS n FROM lien WHERE page_id IN (?, ?) OR cible_page_id IN (?, ?)').get(sortant, vise, sortant, vise).n, 0, 'cascade de SQLite');
+  vivante.close();
+  const r = preparerBaseVivante({ regles: regles("UPDATE race SET nom = 'Humain (livraison)' WHERE id = 'races/humain'"), dossier });
+  assert.equal(r.refaite, true);
+  assert.equal(r.rejeu.conflits, 0, JSON.stringify(r.rejeu));
+  assert.ok(r.rejeu.appliquees > 0);
+  assert.equal(valeur(chemin, 'SELECT count(*) AS n FROM metier WHERE id IN (?, ?)', sortant, vise).n, 0, 'les métiers restent supprimés');
+  assert.equal(valeur(chemin, 'SELECT count(*) AS n FROM lien WHERE page_id IN (?, ?) OR cible_page_id IN (?, ?)', sortant, vise, sortant, vise).n, 0);
+  const db = lecture(chemin);
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
   db.close();
 });
 

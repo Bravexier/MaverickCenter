@@ -8,8 +8,9 @@
 // Opérations d'un lot (corps de POST /api/edition/) :
 //   { op: 'modifier',  table, cle: { … }, valeurs: { colonne: valeur }, avant?: { colonne: valeur lue } }   avant : refus 409 si la base a changé depuis
 //                      apercu?: [html]  page du guide : son HTML dans l'éditeur, un élément par morceau de texte du corps (lignesEnAttente)
-//   { op: 'creer',     entite, valeurs: { … } }                                                            entite : clé de ENTITES
-//   { op: 'supprimer', entite, cle: { … } }
+//   { op: 'creer',     entite, valeurs: { … } }                                                            entite : clé de ENTITES ; une valeur « @i » d'un
+//                      don (specialite_id, avec) désigne la ligne créée par l'opération i du même lot (ctx.crees)
+//   { op: 'supprimer', entite, cle: { … } }                                                              entite : métier, spécialité, don
 //   { op: 'relations', cases: [{ voit, vu, echelle }] }                                                     relations entre peuples (races)
 //   { op: 'magies_innees', race, magies: [ids] }                                                             magies innées d'une race
 // Node seulement (node:sqlite), sans dépendance.
@@ -38,6 +39,10 @@ import { HYBRIDES_SANS_CLASSE_RACIALE, TAG_RACE_HYBRIDE } from '../src/lib/race-
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { decouperCorps } from '../src/lib/markdown-edition.mjs';
 import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
+import {
+  donneesDeDon, groupeDe, idDeDon, idDeSpecialite, listeDeFiches, motsClesDeDon, natureHorsSpecialite, NIVEAU_DES_SPECIALITES, NIVEAUX_DE_DON,
+  placeNouvelleLigne, slugDeClasse, SPECIALITES_MAX, titreDeDon, typeBrutDeSaisie,
+} from '../src/lib/dons-edition.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { ErreurJournal, cleDe, lireLigne, nouveauLot, ouvrirLot, rejouer, structure } from './edition-journal.mjs';
 
@@ -74,7 +79,7 @@ export const provenance = (instant) => `Site de dev › édition du ${instant.sl
  * Famille (page.origine) d'une page créée depuis le site, par type : celle des pages du même type (une race comme les races importées…). La provenance
  * « Site de dev › … » de sa première source la rattache à la même famille dans tools/db/pages_md.py#origine_migration (FAMILLE_DES_PAGES_DU_SITE).
  */
-export const FAMILLE_DES_PAGES_DU_SITE = { metiers: 'docs', races: 'races', classes: 'classes' };
+export const FAMILLE_DES_PAGES_DU_SITE = { metiers: 'docs', races: 'races', classes: 'classes', capacites: 'classes' };
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // Outils communs aux dérivations
@@ -683,7 +688,7 @@ const lignesDeClasse = (db, classe) => ({
   classe,
   categorie: lireLigne(db, 'categorie_classe', { id: classe.categorie_id }),
   specialites: db.prepare('SELECT * FROM specialite WHERE classe_id = ?').all(classe.id),
-  dons: db.prepare('SELECT specialite_id FROM capacite WHERE classe_id = ?').all(classe.id),
+  dons: db.prepare('SELECT id, specialite_id FROM capacite WHERE classe_id = ?').all(classe.id),
   annexe: db.prepare('SELECT * FROM classe_annexe WHERE classe_id = ?').all(classe.id),
 });
 
@@ -762,23 +767,209 @@ const CLASSE = {
   },
 };
 
+// --- Spécialités et dons : fiches des dons, création et suppression depuis le site (D11) ------------------------------------------------------
+
+const parCapacite = (rows) => {
+  const m = new Map();
+  for (const r of rows) {
+    if (!m.has(r.capacite_id)) m.set(r.capacite_id, []);
+    m.get(r.capacite_id).push(r.autre_id);
+  }
+  return m;
+};
+
+/** Les lignes dont la fiche d'un don tire `donnees` : spécialités et dons de la classe, alternatives de chaque don (v_capacite_exclusive). */
+function lignesDesDons(db, classeId) {
+  return {
+    specialites: db.prepare('SELECT * FROM specialite WHERE classe_id = ? ORDER BY rang').all(classeId),
+    dons: db.prepare('SELECT * FROM capacite WHERE classe_id = ? ORDER BY ligne, rang, id').all(classeId),
+    alternatives: parCapacite(db.prepare(
+      'SELECT e.capacite_id, e.autre_id FROM v_capacite_exclusive e JOIN capacite k ON k.id = e.capacite_id WHERE k.classe_id = ?',
+    ).all(classeId)),
+  };
+}
+
+/**
+ * `page.donnees` de la fiche de chaque don d'une classe, refait depuis les tables (lib/dons-edition.mjs#donneesDeDon, qui redonne les 660 fiches de
+ * l'import à l'octet près) : Map(id du don → texte JSON). Colonne dérivée (colonneDerivee) : le rejeu la refait aussi (recalculerLesPages).
+ */
+export function donneesDesDons(db, classeId) {
+  const { specialites, dons, alternatives } = lignesDesDons(db, classeId);
+  return new Map(dons.map((d) => [d.id, jsonCommePython(donneesDeDon(d, { specialites, donsDeLaClasse: dons, alternatives: alternatives.get(d.id) ?? [] }))]));
+}
+
+/** Écrit (au journal) `donnees` de chaque fiche de don de la classe qui ne dit plus ce que disent ses tables (spécialité renommée, type, choix…). */
+function suivreDonneesDesDons(ctx, classeId) {
+  for (const [id, donnees] of donneesDesDons(ctx.db, classeId)) {
+    const page = lireLigne(ctx.db, 'page', { id });
+    if (page && page.donnees !== donnees) ctx.w.modifier('page', { id }, { donnees });
+  }
+}
+
+const tableExiste = (db, table) => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table));
+
+/** Un identifiant que l'historique du site ou le journal a déjà employé pour une ligne de ces tables : jamais réutilisé (règle de la migration 0006). */
+function idDejaEmploye(db, tables, id) {
+  const marques = tables.map(() => '?').join(', ');
+  return ['historique_modification', 'modification'].some((t) => tableExiste(db, t)
+    && db.prepare(`SELECT 1 FROM "${t}" WHERE table_nom IN (${marques}) AND json_extract(cle, '$.id') = ?`).get(...tables, id));
+}
+
+/** Id de fiche de don pris : page ou don existant, clé (slug) d'une autre page dans cle_page, ou id employé par l'historique ou le journal. */
+const idDeDonPris = (db, id) => Boolean(lireLigne(db, 'page', { id }) || lireLigne(db, 'capacite', { id })
+  || db.prepare('SELECT 1 FROM cle_page WHERE cle = ? AND page_id <> ?').get(id.slice(id.indexOf('/') + 1), id)
+  || idDejaEmploye(db, ['page', 'capacite'], id));
+/** Clé de titre prise : un titre, un slug ou un alias de cle_page (les [[liens]] deviendraient ambigus). */
+const titrePris = (db, cle) => Boolean(db.prepare('SELECT 1 FROM cle_page WHERE cle = ?').get(cle));
+/** Id de spécialité pris : ligne existante (une spécialité renommée garde son id), ou employé par l'historique ou le journal (supprimée). */
+const specialitePrise = (db, id) => Boolean(lireLigne(db, 'specialite', { id }) || idDejaEmploye(db, ['specialite'], id));
+
+/** Les noms des fiches de personnage qui ont l'un de ces dons ou cette spécialité (une fois chacune), dans l'ordre alphabétique. */
+export function fichesQuiCitent(db, { capacites = [], specialite = null }) {
+  const vues = new Map();
+  const ajouter = (rows) => {
+    for (const r of rows) vues.set(r.id, r.nom);
+  };
+  for (const k of capacites) ajouter(db.prepare('SELECT p.id, p.nom FROM personnage_capacite pc JOIN personnage p ON p.id = pc.personnage_id WHERE pc.capacite_id = ?').all(k));
+  if (specialite) ajouter(db.prepare('SELECT p.id, p.nom FROM personnage_classe pc JOIN personnage p ON p.id = pc.personnage_id WHERE pc.specialite_id = ?').all(specialite));
+  return [...vues.values()].sort((a, b) => a.localeCompare(b, 'fr'));
+}
+
+/** Une ligne du même lot : un id, ou « @i » = la ligne de cette entité créée par l'opération i (ctx.crees) ; refus 400 sinon. */
+function reference(ctx, valeur, entite) {
+  if (valeur === null || valeur === undefined || valeur === '') return null;
+  const texte = String(valeur);
+  if (!texte.startsWith('@')) return texte;
+  const i = Number(texte.slice(1));
+  const cree = Number.isInteger(i) ? ctx.crees.find((c) => c.operation === i && c.entite === entite) : null;
+  if (!cree) throw refus(`« ${texte} » ne désigne pas ${entite === 'specialite' ? 'une spécialité créée' : 'un don créé'} plus haut dans ce lot.`);
+  return cree.id;
+}
+
+function classeDe(db, id, intitule) {
+  const classe = typeof id === 'string' && id ? lireLigne(db, 'classe', { id }) : null;
+  if (!classe) throw refus(`${intitule} : classe inconnue (${id})`);
+  return classe;
+}
+
+/** Les spécialités de la classe qui n'ont pas de don de spécialité (l'Archimage : la fiche les lit dans ses dons de niveau 10). */
+const specialitesSansCartouche = (db, classeId) => db.prepare(
+  "SELECT * FROM specialite s WHERE s.classe_id = ? AND NOT EXISTS (SELECT 1 FROM capacite k WHERE k.specialite_id = s.id AND k.nature = 'specialite')",
+).all(classeId);
+
+const specialitesFigees = (classe) =>
+  new ErreurEdition(409, `Les spécialités de la classe ${classe.nom} ne se modifient pas ici : la fiche de personnage les lit dans ses dons de niveau 10.`);
+
+/** Don « miroir » : hors spécialité, il porte le nom d'une spécialité sans don de spécialité de sa classe (Élémentaliste et Occultiste de l'Archimage). */
+const estMiroir = (db, don) => don.nature !== 'specialite' && !don.specialite_id && specialitesSansCartouche(db, don.classe_id).some((s) => s.nom_cle === don.nom_cle);
+
+/** Le libellé de classe des mots-clés d'une fiche de don : celui d'un don frère (l'écriture de l'onglet, « arbalètrier »), sinon le nom en minuscules. */
+function libelleDeClasseDesDons(db, classe) {
+  const t = db.prepare('SELECT t.libelle FROM page_tag t JOIN capacite k ON k.id = t.page_id WHERE k.classe_id = ? AND t.ordre = 1 ORDER BY k.ligne, k.rang, k.id LIMIT 1').get(classe.id);
+  return t?.libelle ?? classe.nom.toLowerCase();
+}
+
+/**
+ * Insère un don à une place déjà choisie : sa fiche (capacites/<slug> : titre, résumé, corps, donnees, mots-clés, une source « Site de dev › … »), sa ligne
+ * de capacite, son page_entite. Identifiant et titre tirés une fois du nom (lib/dons-edition.mjs), jamais recalculés ensuite. Rend la ligne.
+ */
+function creerDon(ctx, { classe, specialite = null, niveau, nature, ligne, rang, nom, typeBrut, effet = null }) {
+  const { db, w, instant } = ctx;
+  const colonnes = analyserTypeDeDon(typeBrut);
+  if (!colonnes.type) throw refus(`Type « ${typeBrut} » : le premier mot doit être Passif, Actif, Action, Réaction ou Variable`);
+  const id = idDeDon({ slugClasse: slugDeClasse(classe.id), nom, niveau, rang }, (x) => idDeDonPris(db, x));
+  const titre = titreDeDon({ nom, classeNom: classe.nom, niveau }, (cle) => titrePris(db, cle));
+  if (!titre) throw new ErreurEdition(409, `Un don « ${nom} » existe déjà dans cette classe, aussi au niveau ${niveau} : choisissez un autre nom.`);
+  const don = {
+    id, classe_id: classe.id, specialite_id: specialite?.id ?? null, niveau, nature, ligne, rang, nom, nom_cle: normalize(nom), type_brut: typeBrut, ...colonnes,
+    effet, origine: 'classes', source_ref: `${provenance(instant)} › ${classe.nom} › ${nom}`, remarque: null,
+  };
+  const L = lignesDesDons(db, classe.id);
+  creerPage(ctx, {
+    type: 'capacites', slug: id.slice(id.indexOf('/') + 1), titre, resume: resumeDeDon(don), corps: corpsDeDon(don),
+    donnees: donneesDeDon(don, { specialites: L.specialites, donsDeLaClasse: [...L.dons, don] }),
+    tags: motsClesDeDon({ libelleClasse: libelleDeClasseDesDons(db, classe), specialiteNom: specialite?.nom ?? null }),
+  });
+  w.inserer('capacite', don);
+  w.inserer('page_entite', { entite_table: 'capacite', entite_id: id, page_id: id, principale: 1, origine: 'classes' });
+  return don;
+}
+
+/** Retire un don : ses notes de cellule, sa ligne, puis sa fiche (alias, mots-clés, sources, entités rattachées) ; dans l'ordre des clés étrangères. */
+function retirerDon(ctx, don) {
+  const { db, w } = ctx;
+  for (const n of db.prepare("SELECT * FROM note_cellule WHERE entite_table = 'capacite' AND entite_id = ?").all(don.id)) w.supprimer('note_cellule', cleDe(db, 'note_cellule', n));
+  w.supprimer('capacite', { id: don.id });
+  supprimerPage(ctx, don.id);
+}
+
 const SPECIALITE = {
   deriver(ctx, avant, apres) {
     // la page de la classe écrit chaque spécialité qui a des dons (« ### NOM », sa description, sa remarque)
     suivrePageDeClasse(ctx, apres.classe_id, (L) => ({ ...L, specialites: L.specialites.map((s) => (s.id === avant.id ? avant : s)) }));
     if (apres.nom === avant.nom) return;
-    // les fiches de dons de la spécialité la citent par son nom (front matter `specialite`, mot-clé)
+    // les fiches de dons de la spécialité la citent par son nom (`donnees.specialite`, refait depuis les tables ; mot-clé)
+    suivreDonneesDesDons(ctx, apres.classe_id);
     for (const k of ctx.db.prepare('SELECT id FROM capacite WHERE specialite_id = ?').all(apres.id)) {
-      const page = lireLigne(ctx.db, 'page', { id: k.id });
-      if (!page) continue;
-      const donnees = page.donnees ? JSON.parse(page.donnees) : {};
-      if (donnees.specialite === avant.nom) ctx.w.modifier('page', { id: k.id }, { donnees: jsonCommePython({ ...donnees, specialite: apres.nom }) });
       for (const t of ctx.db.prepare('SELECT * FROM page_tag WHERE page_id = ? AND tag_id = ?').all(k.id, normalize(avant.nom))) {
         if (!ctx.db.prepare('SELECT 1 FROM page_tag WHERE page_id = ? AND tag_id = ?').get(k.id, normalize(apres.nom))) {
           ctx.w.modifier('page_tag', { page_id: k.id, ordre: t.ordre }, { tag_id: normalize(apres.nom), libelle: apres.nom.toLowerCase() });
         }
       }
     }
+  },
+  /**
+   * Une spécialité, avec son don de spécialité (niveau 10, sur la ligne des autres dons de spécialité de la classe) : sans lui, elle n'aurait ni colonne
+   * ni bannière sur la page. Refusée pour une classe dont une spécialité n'a pas de don de spécialité (Archimage), au-delà de SPECIALITES_MAX, ou pour
+   * un nom déjà pris dans la classe.
+   */
+  creer(ctx, v) {
+    const { db, w, instant } = ctx;
+    const classe = classeDe(db, v.classe_id, 'Nouvelle spécialité');
+    if (specialitesSansCartouche(db, classe.id).length) throw specialitesFigees(classe);
+    const specialites = db.prepare('SELECT * FROM specialite WHERE classe_id = ? ORDER BY rang').all(classe.id);
+    if (specialites.length >= SPECIALITES_MAX) {
+      throw new ErreurEdition(409, `La classe ${classe.nom} a déjà ${specialites.length} spécialités (${specialites.map((s) => s.nom).join(', ')}) : supprimez-en une d’abord.`);
+    }
+    const nomCle = normalize(v.nom);
+    if (!nomCle) throw refus(`Nouvelle spécialité « ${v.nom} » : le nom doit contenir au moins une lettre ou un chiffre`);
+    const homonyme = specialites.find((s) => s.nom_cle === nomCle);
+    if (homonyme) throw new ErreurEdition(409, `La classe ${classe.nom} a déjà une spécialité « ${homonyme.nom} ».`);
+    const id = idDeSpecialite(classe.id, v.nom, (x) => specialitePrise(db, x));
+    const specialite = w.inserer('specialite', {
+      id, classe_id: classe.id, rang: Math.max(0, ...specialites.map((s) => s.rang)) + 1, nom: v.nom, nom_cle: nomCle, description_titre: null,
+      description: v.description ?? null, origine: 'classes', source_ref: `${provenance(instant)} › ${classe.nom} › ${v.nom}`, remarque: null,
+    });
+    w.inserer('page_entite', { entite_table: 'specialite', entite_id: id, page_id: classe.id, principale: 0, origine: 'classes' });
+    const dons = db.prepare('SELECT * FROM capacite WHERE classe_id = ?').all(classe.id);
+    const ligne = dons.find((d) => d.nature === 'specialite')?.ligne ?? placeNouvelleLigne(dons, { niveau: NIVEAU_DES_SPECIALITES });
+    if (ligne === null) throw new ErreurEdition(409, 'Plus de place libre dans la grille de la classe à ce niveau.');
+    const cartouche = creerDon(ctx, {
+      classe, specialite, niveau: NIVEAU_DES_SPECIALITES, nature: 'specialite', ligne, rang: 1, nom: v.don_nom,
+      typeBrut: typeBrutDeSaisie(v.don_type, v.don_precision), effet: v.don_effet ?? null,
+    });
+    suivreDonneesDesDons(ctx, classe.id); // les autres dons de spécialité : choix exclusif avec le nouveau
+    suivrePageDeClasse(ctx, classe.id, (L) => ({ ...L, specialites: L.specialites.filter((s) => s.id !== id), dons: L.dons.filter((d) => d.id !== cartouche.id) }));
+    return { id, resume: `Spécialité créée : ${v.nom} (${classe.nom})` };
+  },
+  /** Une spécialité et tous ses dons (son don de spécialité compris) ; refusée si une fiche a la spécialité ou l'un de ses dons. */
+  supprimer(ctx, cle) {
+    const { db, w } = ctx;
+    const s = typeof cle.id === 'string' ? lireLigne(db, 'specialite', { id: cle.id }) : null;
+    if (!s) throw new ErreurEdition(404, 'Spécialité introuvable.');
+    const classe = lireLigne(db, 'classe', { id: s.classe_id });
+    const siens = db.prepare('SELECT * FROM capacite WHERE specialite_id = ? ORDER BY ligne, rang').all(s.id);
+    if (!siens.some((d) => d.nature === 'specialite')) throw specialitesFigees(classe);
+    const fiches = fichesQuiCitent(db, { capacites: siens.map((d) => d.id), specialite: s.id });
+    if (fiches.length) {
+      throw new ErreurEdition(409, `La spécialité ${s.nom} (ou l’un de ses dons) est choisie dans ${fiches.length} fiche(s) : ${listeDeFiches(fiches)}. Retirez-la de ces fiches d’abord.`);
+    }
+    for (const d of siens) retirerDon(ctx, d);
+    for (const l of db.prepare("SELECT * FROM page_entite WHERE entite_table = 'specialite' AND entite_id = ?").all(s.id)) w.supprimer('page_entite', cleDe(db, 'page_entite', l));
+    w.supprimer('specialite', { id: s.id });
+    suivreDonneesDesDons(ctx, classe.id);
+    suivrePageDeClasse(ctx, classe.id, (L) => ({ ...L, specialites: [...L.specialites, s], dons: [...L.dons, ...siens.map((d) => ({ id: d.id, specialite_id: d.specialite_id }))] }));
+    return { id: s.id, resume: `Spécialité supprimée : ${s.nom} (${classe.nom}, ${siens.length} don(s))` };
   },
 };
 
@@ -790,15 +981,92 @@ const CAPACITE = {
     const classe = lireLigne(ctx.db, 'classe', { id: apres.classe_id });
     const page = lireLigne(ctx.db, 'page', { id: apres.id });
     if (!page) return;
-    // la fiche du don (page capacites/…) : titre « Nom (Classe) », type ; corps (l'effet, puis « Note de cellule : » et la remarque) et résumé
-    // (capacity_summary de l'importeur) refaits depuis la ligne (lib/corps-classes.mjs)
+    // la fiche du don (page capacites/…) : titre « Nom (Classe) » ; corps (l'effet, puis « Note de cellule : » et la remarque) et résumé
+    // (capacity_summary de l'importeur) refaits depuis la ligne (lib/corps-classes.mjs) ; `donnees` (type) refait depuis les tables
     suivrePage(ctx, apres.id, { titre: [`${avant.nom} (${classe?.nom})`, `${apres.nom} (${classe?.nom})`] });
     ecrirePage(ctx, apres.id, changementsDePageDeDon(page, avant, apres));
     if (page.titre === avant.nom && apres.nom !== avant.nom) ctx.w.modifier('page', { id: apres.id }, { titre: apres.nom, titre_cle: normalize(apres.nom) });
-    const donnees = page.donnees ? JSON.parse(page.donnees) : null;
-    if (donnees && donnees.type_capacite === avant.type_brut && apres.type_brut !== avant.type_brut) {
-      ctx.w.modifier('page', { id: apres.id }, { donnees: jsonCommePython({ ...donnees, type_capacite: apres.type_brut }) });
+    suivreDonneesDesDons(ctx, apres.classe_id);
+  },
+  /**
+   * Un don, à la place que dit le bouton de la page : `avec` (un don, ou « @i ») = une option de plus dans son choix (même ligne, même niveau, même
+   * spécialité ; un don reçu sans choix devient un choix) ; sinon une nouvelle ligne à la fin de son niveau, dans une spécialité (nature 'choix', niveau
+   * 10 au moins) ou hors spécialité (reçu sans choix).
+   */
+  creer(ctx, v) {
+    const { db, w } = ctx;
+    const classe = classeDe(db, v.classe_id, 'Nouveau don');
+    const dons = db.prepare('SELECT * FROM capacite WHERE classe_id = ?').all(classe.id);
+    let place;
+    let voisin = null;
+    if (v.avec) {
+      const idVoisin = reference(ctx, v.avec, 'capacite');
+      voisin = lireLigne(db, 'capacite', { id: idVoisin });
+      if (!voisin) throw refus(`Nouveau don : « au choix avec » vise un don inconnu (${idVoisin})`);
+      if (voisin.classe_id !== classe.id) throw refus(`Nouveau don : au choix avec : ce don n’est pas de la classe ${classe.nom}`);
+      if (v.specialite_id && reference(ctx, v.specialite_id, 'specialite') !== voisin.specialite_id) {
+        throw refus('Nouveau don : la spécialité donnée n’est pas celle du don dont il devient une option');
+      }
+      if (voisin.nature === 'specialite') throw refus('Un don de spécialité ne reçoit pas d’option : ajoutez une spécialité.');
+      // l'emplacement (classe, ligne, spécialité) : le rang suivant, toutes natures confondues (index unique capacite_emplacement)
+      const emplacement = dons.filter((d) => d.ligne === voisin.ligne && (d.specialite_id ?? '') === (voisin.specialite_id ?? ''));
+      place = {
+        specialite: voisin.specialite_id ? lireLigne(db, 'specialite', { id: voisin.specialite_id }) : null, niveau: voisin.niveau, nature: 'choix',
+        ligne: voisin.ligne, rang: Math.max(...emplacement.map((d) => d.rang)) + 1,
+      };
+      // deux dons côte à côte sont un choix (docs/content-guide.md, « Règle des choix ») : le don reçu d'office devient une option
+      if (voisin.nature === 'classe') w.modifier('capacite', { id: voisin.id }, { nature: natureHorsSpecialite(2) });
+    } else {
+      let specialite = null;
+      if (v.specialite_id) {
+        const sid = reference(ctx, v.specialite_id, 'specialite');
+        specialite = lireLigne(db, 'specialite', { id: sid });
+        if (!specialite || specialite.classe_id !== classe.id) throw refus(`Nouveau don : ${sid} n’est pas une spécialité de la classe ${classe.nom}`);
+        if (!dons.some((d) => d.nature === 'specialite' && d.specialite_id === specialite.id)) {
+          throw refus(`La spécialité ${specialite.nom} n’a pas de don de spécialité (niveau ${NIVEAU_DES_SPECIALITES}) : on ne peut pas lui ajouter de don.`);
+        }
+      }
+      if (v.niveau === null || v.niveau === undefined) throw refus('Nouveau don : « Niveau de classe » obligatoire (sauf pour une option d’un choix)');
+      const niveau = Number(v.niveau);
+      if (!NIVEAUX_DE_DON.includes(niveau)) throw refus(`Nouveau don : niveau ${v.niveau} : un de ${NIVEAUX_DE_DON.join(', ')}`);
+      if (specialite && niveau < NIVEAU_DES_SPECIALITES) throw refus(`Un don de spécialité commence au niveau ${NIVEAU_DES_SPECIALITES}, quand la spécialité est choisie.`);
+      const ligne = placeNouvelleLigne(dons, { specialiteId: specialite?.id ?? null, niveau });
+      if (ligne === null) throw new ErreurEdition(409, 'Plus de place libre dans la grille de la classe à ce niveau.');
+      // un don seul sur sa ligne est reçu sans choix ; dans une spécialité, le schéma n'a pas cette nature : 'choix' (seul, jusqu'à ce qu'une option le rejoigne)
+      place = { specialite, niveau, nature: specialite ? 'choix' : natureHorsSpecialite(1), ligne, rang: 1 };
     }
+    const don = creerDon(ctx, { classe, ...place, nom: v.nom, typeBrut: typeBrutDeSaisie(v.type, v.precision), effet: v.effet ?? null });
+    suivreDonneesDesDons(ctx, classe.id); // choix exclusifs des deux côtés, nature et rang des voisins
+    suivrePageDeClasse(ctx, classe.id, (L) => ({ ...L, dons: L.dons.filter((d) => d.id !== don.id) }));
+    return { id: don.id, resume: `Don créé : ${v.nom} (${classe.nom}, niveau ${place.niveau}${voisin ? `, au choix avec ${voisin.nom}` : ''})` };
+  },
+  /**
+   * Un don ; refusé pour un don de spécialité (on supprime la spécialité), un don miroir de l'Archimage, ou un don choisi dans une fiche. Hors spécialité,
+   * le don resté seul de son choix devient reçu sans choix ; dans une spécialité, il reste un choix sans alternative (la nature 'classe' n'y existe pas).
+   */
+  supprimer(ctx, cle) {
+    const { db, w } = ctx;
+    const don = typeof cle.id === 'string' ? lireLigne(db, 'capacite', { id: cle.id }) : null;
+    if (!don) throw new ErreurEdition(404, 'Don introuvable.');
+    const classe = lireLigne(db, 'classe', { id: don.classe_id });
+    if (don.nature === 'specialite') {
+      const s = lireLigne(db, 'specialite', { id: don.specialite_id });
+      throw new ErreurEdition(409, `« ${don.nom} » est le don de la spécialité ${s?.nom ?? don.specialite_id} : supprimez la spécialité (elle emporte ses dons).`);
+    }
+    if (estMiroir(db, don)) throw new ErreurEdition(409, `« ${don.nom} » est aussi une spécialité de la classe ${classe.nom} pour la fiche de personnage : il ne se supprime pas d’ici.`);
+    const fiches = fichesQuiCitent(db, { capacites: [don.id] });
+    if (fiches.length) throw new ErreurEdition(409, `« ${don.nom} » est choisi dans ${fiches.length} fiche(s) : ${listeDeFiches(fiches)}. Retirez-le de ces fiches d’abord.`);
+    const freres = groupeDe(don, db.prepare('SELECT * FROM capacite WHERE classe_id = ?').all(classe.id)).filter((d) => d.id !== don.id);
+    retirerDon(ctx, don);
+    let suite = '';
+    if (!don.specialite_id && don.nature === 'choix' && freres.length === 1) {
+      // un don seul sur sa ligne est reçu sans choix (docs/content-guide.md, « Règle des choix » ; règle de l'importeur)
+      w.modifier('capacite', { id: freres[0].id }, { nature: natureHorsSpecialite(1) });
+      suite = ` ; ${freres[0].nom} devient reçu sans choix`;
+    }
+    suivreDonneesDesDons(ctx, classe.id);
+    suivrePageDeClasse(ctx, classe.id, (L) => ({ ...L, dons: [...L.dons, { id: don.id, specialite_id: don.specialite_id }] }));
+    return { id: don.id, resume: `Don supprimé : ${don.nom} (${classe.nom})${suite}` };
   },
 };
 
@@ -858,12 +1126,17 @@ const DOMAINES = {
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
 /**
- * Colonnes dérivées du journal : le corps et le résumé des pages typées (tout sauf le guide, dont le corps est le texte modifié lui-même), que
- * l'édition tire des tables (ecrirePage). Le rejeu ne les compare pas et ne les écrit pas (edition-journal.mjs#rejouer) : rejouerLeJournal les refait
- * depuis les lignes rejouées.
+ * Colonnes dérivées du journal : le corps et le résumé des pages typées (tout sauf le guide, dont le corps est le texte modifié lui-même), et `donnees`
+ * des fiches de dons (D11 : classe, spécialité, niveau, nature, rang, ligne, type, choix exclusifs, lib/dons-edition.mjs#donneesDeDon), que l'édition
+ * tire des tables (ecrirePage, suivreDonneesDesDons). Le rejeu ne les compare pas et ne les écrit pas (edition-journal.mjs#rejouer) : rejouerLeJournal
+ * les refait depuis les lignes rejouées. Les `donnees` des pages de race (magies innées) ne sont pas dérivées.
  */
-export const colonneDerivee = (table, cle, colonne) =>
-  table === 'page' && (colonne === 'corps_md' || colonne === 'resume') && !String(cle?.id ?? '').startsWith('guide/');
+export const colonneDerivee = (table, cle, colonne) => {
+  if (table !== 'page') return false;
+  const id = String(cle?.id ?? '');
+  if (colonne === 'corps_md' || colonne === 'resume') return !id.startsWith('guide/');
+  return colonne === 'donnees' && id.startsWith('capacites/');
+};
 
 /**
  * Les lignes que des modifications rejouées ont touchées, chacune une fois : { table, cle, avant (telle que dans les règles avant le rejeu ; null si
@@ -1004,6 +1277,20 @@ export function recalculerLesPages(db, modifications) {
     const derive = (page.resume ?? null) === resumeDeDon(l?.avant ?? l?.inseree ?? don);
     ecrire(page, { corps_md: corpsDeDon(don), ...(derive ? { resume: resumeDeDon(don) } : {}) });
   }
+  // `donnees` des fiches de dons (D11, colonne dérivée) : tous les dons de chaque classe touchée, une création ou une suppression changeant ses voisins
+  // (choix exclusifs, nature, rang) ; une fiche de don dont seule une colonne dérivée a été notée mène à sa classe par sa ligne de capacite
+  const classesDesDons = new Set(classes.keys());
+  for (const id of [...dons.keys(), ...lignes.filter((l) => l.table === 'page').map((l) => String(l.cle.id))]) {
+    if (!id.startsWith('capacites/')) continue;
+    const don = lireLigne(db, 'capacite', { id });
+    if (don) classesDesDons.add(don.classe_id);
+  }
+  for (const classeId of classesDesDons) {
+    for (const [id, donnees] of donneesDesDons(db, classeId)) {
+      const page = pageDe(id);
+      if (page) ecrire(page, { donnees });
+    }
+  }
   for (const id of metiers) {
     const metier = lireLigne(db, 'metier', { id });
     const page = metier && pageDe(id);
@@ -1083,24 +1370,26 @@ function modifier(ctx, op) {
 function creer(ctx, op) {
   const entite = ENTITES[op.entite];
   if (!entite) throw refus(`entité « ${op.entite} » : pas de création depuis le site`);
+  const titre = entite.nouveau ?? `Nouveau ${entite.libelle}`;
   const brutes = op.valeurs ?? {};
-  if (typeof brutes !== 'object' || Array.isArray(brutes)) throw refus(`Nouveau ${entite.libelle} : valeurs attendues`);
+  if (typeof brutes !== 'object' || Array.isArray(brutes)) throw refus(`${titre} : valeurs attendues`);
   const valeurs = {};
   for (const [c, brute] of Object.entries(brutes)) {
     const champ = entite.champs[c];
-    if (!champ) throw refus(`Nouveau ${entite.libelle} : le champ « ${c} » ne se donne pas à la création`);
+    if (!champ) throw refus(`${titre} : le champ « ${c} » ne se donne pas à la création`);
     try {
       valeurs[c] = valeurDuChamp(champ, brute);
     } catch (e) {
-      if (e instanceof ErreurValeur) throw refus(`Nouveau ${entite.libelle} : ${e.message}`);
+      if (e instanceof ErreurValeur) throw refus(`${titre} : ${e.message}`);
       throw e;
     }
   }
   for (const [c, champ] of Object.entries(entite.champs)) {
-    if (champ.requis && (valeurs[c] === undefined || valeurs[c] === null)) throw refus(`Nouveau ${entite.libelle} : « ${champ.libelle} » obligatoire`);
+    if (champ.requis && (valeurs[c] === undefined || valeurs[c] === null)) throw refus(`${titre} : « ${champ.libelle} » obligatoire`);
   }
   const r = DOMAINES[entite.table].creer(ctx, valeurs, op);
-  ctx.crees.push({ entite: op.entite, id: r.id });
+  // `operation` : la place de l'opération dans le lot, que les références « @i » des opérations suivantes désignent (reference)
+  ctx.crees.push({ entite: op.entite, id: r.id, operation: ctx.operation });
   return r.resume;
 }
 
@@ -1119,7 +1408,7 @@ const OPERATIONS = { modifier, creer, supprimer, relations, magies_innees: magie
  * @param {{ page?: string, operations: object[] }} corps
  * @param {{ instant?: string, id?: string, auteurId?: string | null }} [o] instant et identifiant du lot : par défaut ceux de nouveauLot (l'identifiant
  *   s'ordonne comme l'enregistrement, ce qui fixe l'ordre de rejeu de deux lots de la même seconde)
- * @returns {{ lot: string | null, modifications: number, crees: { entite: string, id: string }[], lignes: { table: string, cle: object, ligne: object | null }[] }}
+ * @returns {{ lot: string | null, modifications: number, crees: { entite: string, id: string, operation: number }[], lignes: { table: string, cle: object, ligne: object | null }[] }}
  */
 export function enregistrer(db, corps, { instant, id, auteurId = null } = {}) {
   if (instant === undefined || id === undefined) {
@@ -1147,6 +1436,7 @@ export function enregistrer(db, corps, { instant, id, auteurId = null } = {}) {
     const ctx = { db, w, instant, crees: [] };
     const resumes = [];
     corps.operations.forEach((op, i) => {
+      ctx.operation = i;
       const faire = OPERATIONS[op?.op];
       if (!faire) throw refus(`operations[${i}] : opération inconnue « ${op?.op} »`);
       try {
@@ -1234,5 +1524,42 @@ export function donneesDeRace(db, raceId) {
       echelle: db.prepare('SELECT id, libelle, ordre FROM echelle_relation ORDER BY ordre').all(),
     },
     races: db.prepare('SELECT id, nom FROM race').all(),
+  };
+}
+
+/**
+ * L'état vivant d'une classe pour sa page en mode modification (D11 : ajouter ou supprimer une spécialité ou un don) : ses spécialités et ses dons
+ * (toutes les colonnes), les choix (v_capacite_exclusive), les types de don du guide, le bonus d'armure magique d'une classe magique, et les fiches de
+ * personnage qui citent chaque spécialité ou don ({ [id]: [noms] } : une ligne citée ne se supprime pas). La page en tire son plateau de dons par le
+ * même assemblage que le build (lib/classe-assemblage.mjs) et ce qu'elle propose (lib/dons-edition.mjs#permissions).
+ */
+export function donneesDeClasse(db, classeId) {
+  const classe = typeof classeId === 'string' && classeId ? lireLigne(db, 'classe', { id: classeId }) : null;
+  if (!classe) throw new ErreurEdition(404, 'Classe introuvable.');
+  const { specialites, dons } = lignesDesDons(db, classe.id);
+  const fiches = {};
+  const vues = new Set();
+  for (const r of db.prepare(`
+    SELECT pc.capacite_id AS id, p.id AS personnage, p.nom FROM personnage_capacite pc JOIN personnage p ON p.id = pc.personnage_id
+      JOIN capacite k ON k.id = pc.capacite_id WHERE k.classe_id = ?
+    UNION ALL
+    SELECT pc.specialite_id AS id, p.id AS personnage, p.nom FROM personnage_classe pc JOIN personnage p ON p.id = pc.personnage_id
+      WHERE pc.classe_id = ? AND pc.specialite_id IS NOT NULL
+    ORDER BY nom COLLATE NOCASE, personnage`).all(classe.id, classe.id)) {
+    if (vues.has(`${r.id}\u0000${r.personnage}`)) continue;
+    vues.add(`${r.id}\u0000${r.personnage}`);
+    (fiches[r.id] ??= []).push(r.nom);
+  }
+  return {
+    classe: { id: classe.id, nom: classe.nom, categorie_id: classe.categorie_id },
+    categorie: lireLigne(db, 'categorie_classe', { id: classe.categorie_id }),
+    specialites,
+    dons,
+    exclusions: db.prepare(
+      'SELECT e.capacite_id, e.autre_id FROM v_capacite_exclusive e JOIN capacite k ON k.id = e.capacite_id WHERE k.classe_id = ? ORDER BY e.capacite_id, e.autre_id',
+    ).all(classe.id),
+    typesDon: db.prepare('SELECT id, nom, definition FROM type_don ORDER BY ordre').all(),
+    amMagique: db.prepare('SELECT am_base FROM categorie_classe WHERE am_base IS NOT NULL').all().map((c) => c.am_base)[0] ?? null,
+    fiches,
   };
 }
