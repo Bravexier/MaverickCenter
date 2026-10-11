@@ -414,8 +414,22 @@ export function maitriseDArme(regles) {
 }
 
 /**
+ * Familles d'armes qui ont une ligne de maîtrise (arme_famille.maitrisable) : toutes sauf ARME DE MONSTRES, des armes exclusives aux monstres (décision R45,
+ * règle maitrise_arme_exclue de v_personnage_controle).
+ */
+export function famillesMaitrisables(regles) {
+  return regles.familles_armes.filter((f) => f.maitrisable);
+}
+
+/** Les maîtrises de la fiche sur une famille qui en a (famillesMaitrisables) : une maîtrise sur ARME DE MONSTRES n'est ni montrée, ni comptée, ni enregistrée. */
+export function maitrisesValables(regles, fiche) {
+  const familles = new Set(famillesMaitrisables(regles).map((f) => f.id));
+  return (fiche.maitrises_armes ?? []).filter((l) => familles.has(l.arme_famille_id));
+}
+
+/**
  * Dés d'une famille d'armes pour un nombre de dés (colonne « Dés » des maîtrises, demande du propriétaire) : 'D10' et 3 → '3D10' ; chaque option d'un
- * dé au choix (Pugilat : 'D6/D8/D10', selon la Force) → '3D6/3D8/3D10' ; sans dé écrit (Arme de monstres : « Se référer à la catégorie d'arme ») → '3 dés'.
+ * dé au choix (Pugilat : 'D6/D8/D10', selon la Force) → '3D6/3D8/3D10' ; sans dé écrit → '3 dés'.
  */
 export function notationDesDes(de, nombre) {
   if (!de) return `${nombre} dé${nombre > 1 ? 's' : ''}`;
@@ -475,7 +489,8 @@ export function donsDeRace(regles, fiche) {
 /**
  * Quota de maîtrise d'arme (décision R32 : « le cota max de maîtrise (déterminé par les classes et leurs dons choisis) ») : les maîtrises de chaque classe
  * prise (classe_maitrise_arme : « 1 maîtrise Épée », « 2 maîtrises à répartir… ») et les points de maîtrise des dons acquis (donsAcquis ; texte du don :
- * « +2 points de maîtrise à répartir »). `utilises` : les points de maîtrise répartis sur la fiche (maitriseDArme). { total, utilises, sources: [{ nom, points }] }.
+ * « +2 points de maîtrise à répartir »). `utilises` : les points de maîtrise répartis sur la fiche (maitriseDArme ; maitrisesValables : jamais ceux d'ARME DE
+ * MONSTRES, décision R45). { total, utilises, sources: [{ nom, points }] }.
  */
 export function quotaDeMaitrise(regles, fiche) {
   const sources = [];
@@ -487,7 +502,7 @@ export function quotaDeMaitrise(regles, fiche) {
   const m = maitriseDArme(regles);
   return {
     total: sources.reduce((s, x) => s + x.points, 0),
-    utilises: (fiche.maitrises_armes ?? []).reduce((s, l) => s + m.pointsDe(entier(l.des)), 0),
+    utilises: maitrisesValables(regles, fiche).reduce((s, l) => s + m.pointsDe(entier(l.des)), 0),
     sources,
   };
 }

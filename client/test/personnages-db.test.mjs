@@ -424,6 +424,20 @@ test('décision R28 : la Lamia n’a qu’une magie, pas de magie acquise (« Un
   assert.deepEqual(controle('r28-humain'), [], 'les autres races gardent leur magie acquise');
 });
 
+test('décision R45 : pas de maîtrise d’arme sur ARME DE MONSTRES (des armes exclusives aux monstres), les autres familles en gardent une', () => {
+  assert.deepEqual(db.prepare('SELECT id FROM arme_famille WHERE maitrisable = 0').all().map((r) => r.id), ['arme-de-monstres']);
+  assert.match(db.prepare("SELECT libelle_brut FROM arme_famille WHERE id = 'arme-de-monstres'").get().libelle_brut, /^ARME DE MONSTRES/);
+  assert.ok(db.prepare("SELECT count(*) AS n FROM arme WHERE famille_id = 'arme-de-monstres'").get().n > 0, 'ses armes restent dans la base');
+  personnageValide('r45-monstres');
+  inserer('personnage_maitrise_arme', { personnage_id: 'r45-monstres', arme_famille_id: 'arme-de-monstres', des: 2 });
+  assert.deepEqual(controle('r45-monstres'), [{ regle: 'maitrise_arme_exclue', detail: 'arme-de-monstres' }]);
+  personnageValide('r45-epees');
+  for (const f of db.prepare('SELECT id FROM arme_famille WHERE maitrisable = 1').all()) {
+    inserer('personnage_maitrise_arme', { personnage_id: 'r45-epees', arme_famille_id: f.id, des: 2 });
+  }
+  assert.deepEqual(controle('r45-epees'), [], 'une maîtrise sur chacune des autres familles');
+});
+
 test('décision R19 : jusqu’à deux croix par caractéristique, la règle du guide et les malus de la fiche', () => {
   personnageValide('croix');
   db.prepare("UPDATE personnage_caracteristique SET croix = 2 WHERE personnage_id = 'croix' AND caracteristique_id = 'force'").run();

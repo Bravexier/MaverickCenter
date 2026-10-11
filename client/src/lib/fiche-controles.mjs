@@ -39,6 +39,7 @@ export const LIBELLES_DES_CONTROLES = Object.freeze({
   sort_nm_max: 'NM de niveau au-dessus du maximum (niveau − 1)',
   sorts_nm_total: 'Plus de NM de niveau que ceux gagnés (les autres viennent d’un livre ou du MJ)',
   bouclier_quantite: 'Matériaux du bouclier au-delà de sa classe',
+  maitrise_arme_exclue: 'Maîtrise sur des armes de monstres (pas de maîtrise)',
   amelioration_cible: 'Amélioration d’un autre genre d’objet',
   accessoire_valeur: 'Valeur d’accessoire hors de la fourchette de son effet',
 });

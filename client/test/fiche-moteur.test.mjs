@@ -1,6 +1,6 @@
 // Moteur de la fiche (lib/fiche-moteur.mjs) sur les vraies règles (lib/fiche-regles.mjs, la base construite) : chaque calcul comparé à sa source —
 // les vues de la base (v_personnage_niveau, v_personnage_controle, par le service sur une base vivante temporaire), les personnages fil rouge du
-// guide (lib/guide-fil-rouge.mjs) et les décisions du propriétaire (R2, R3, R6, R7, R15, R16, R19, R20, R23, R24, R25, R26, R27, R28, R32, R33, R34, R35, R37, R38, R39, R41) ; les résistances, contre les tables de la base (magie_resistance, resistance_palier).
+// guide (lib/guide-fil-rouge.mjs) et les décisions du propriétaire (R2, R3, R6, R7, R15, R16, R19, R20, R23, R24, R25, R26, R27, R28, R32, R33, R34, R35, R37, R38, R39, R41, R45) ; les résistances, contre les tables de la base (magie_resistance, resistance_palier).
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -12,7 +12,7 @@ import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import {
   ajusterValeurDuMoment, alignementDe, artisanatDe, attributsDe, bonusDuMetier, borner, choisirObjetDeMetier, choixDeMetierValables, inventaireSelonLeMetier,
-  objetChoisi, objetDInventaire, objetsDuMetier, deDeLaFamille, donsAcquis, donsDeRace, quotaDeMaitrise, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, magieAcquiseValable, nmDuSort,
+  objetChoisi, objetDInventaire, objetsDuMetier, deDeLaFamille, donsAcquis, donsDeRace, famillesMaitrisables, maitrisesValables, quotaDeMaitrise, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, magieAcquiseValable, nmDuSort,
   progressionXp, classeMagique, classesPermises, classesSelonLaMagieInnee,
   competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, magiesInneesPermises, maitriseDesSorts, niveauGlobal,
   maitriseDArme, niveauxDeClasse, notationDesDes, npmMax, progressionAttendue, puissanceMagique, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, sortsPossibles, ecrireValeurDuMoment, valeursDuMoment, xpDuNiveauSuivant,
@@ -301,6 +301,18 @@ test('maîtrise d’arme : 1 dé sans maîtrise, un de plus par point, 4 points 
   assert.deepEqual(controles, []);
   assert.deepEqual(personnage.maitrises_armes, [{ arme_famille_id: 'epees', des: 5 }], '4 points : 5 dés');
   assert.throws(() => enregistrerFiche(vivante, avec(m.pointsMax + 1)), (e) => e.statut === 400 && /maitrises_armes\[0\] : valeur hors des bornes/.test(e.details.problemes.join()));
+});
+
+test('décision R45 : pas de ligne de maîtrise pour ARME DE MONSTRES (des armes exclusives aux monstres) ; une maîtrise déjà posée n’est ni comptée ni enregistrée', () => {
+  const ids = (familles) => familles.map((f) => f.id);
+  assert.deepEqual(ids(famillesMaitrisables(regles)), ids(regles.familles_armes.filter((f) => f.id !== 'arme-de-monstres')), 'toutes les autres, dans leur ordre');
+  assert.ok(regles.familles_armes.some((f) => f.id === 'arme-de-monstres'), 'la famille reste dans les règles : elle nomme ses armes dans l’équipement');
+  const fiche = ficheConforme({ maitrises_armes: [{ arme_famille_id: 'epees', des: 3 }, { arme_famille_id: 'arme-de-monstres', des: 5 }] });
+  assert.deepEqual(maitrisesValables(regles, fiche), [{ arme_famille_id: 'epees', des: 3 }]);
+  assert.equal(quotaDeMaitrise(regles, fiche).utilises, 2, 'les 4 points sur ARME DE MONSTRES ne comptent pas');
+  // la vue de la base, par le service : la règle maitrise_arme_exclue
+  assert.deepEqual(enregistrerFiche(vivante, fiche).controles, [{ regle: 'maitrise_arme_exclue', detail: 'arme-de-monstres' }]);
+  assert.deepEqual(enregistrerFiche(vivante, { ...fiche, maitrises_armes: maitrisesValables(regles, fiche) }).controles, []);
 });
 
 test('magie acquise : même magie, incompatibles, mono-magie (R15) sauf Corruption de l’Elfe Noir Charbon et du Felfe Noir (R20)', () => {

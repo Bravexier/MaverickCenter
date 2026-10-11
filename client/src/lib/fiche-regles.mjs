@@ -230,9 +230,10 @@ export function chargerReglesDeFiche(db) {
   // Équipement : les catalogues de la base, avec ce qu'il faut pour choisir (nom, famille, cible d'une amélioration, AP/AM indiqués).
   const nomDeRessource = (id) => db.prepare('SELECT nom FROM ressource WHERE id = ?').get(id)?.nom ?? id;
   const equipement = {
-    // dé de la famille, et ses paliers selon la Force quand sa note les écrit (Pugilat : « D6 1-2 Force, D8 3-4 Force, D10 5 Force »)
-    familles_armes: lignes(db, 'SELECT id, nom, de_brut, note_brut FROM arme_famille ORDER BY ordre')
-      .map((f) => ({ id: f.id, nom: f.nom, de: f.de_brut, de_selon_force: desSelonLaForce(f.note_brut) })),
+    // dé de la famille, et ses paliers selon la Force quand sa note les écrit (Pugilat : « D6 1-2 Force, D8 3-4 Force, D10 5 Force ») ; `maitrisable` :
+    // la famille a sa ligne dans les maîtrises (pas ARME DE MONSTRES, décision R45), toutes nomment les armes de l'équipement
+    familles_armes: lignes(db, 'SELECT id, nom, de_brut, note_brut, maitrisable FROM arme_famille ORDER BY ordre')
+      .map((f) => ({ id: f.id, nom: f.nom, de: f.de_brut, de_selon_force: desSelonLaForce(f.note_brut), maitrisable: f.maitrisable === 1 })),
     armes: lignes(db, 'SELECT id, nom, famille_id, mains FROM arme ORDER BY famille_id, ordre'),
     materiaux_armes: lignes(db, 'SELECT ressource_id FROM materiau_arme ORDER BY ordre').map((m) => ({ id: m.ressource_id, nom: nomDeRessource(m.ressource_id) })),
     ameliorations: lignes(db, 'SELECT id, cible, niveau, effet_brut FROM amelioration_equipement ORDER BY cible, niveau')

@@ -8,8 +8,8 @@ import { valeurAuNm } from '../lib/sort-maitrise.mjs';
 import {
   ajusterValeurDuMoment, alignementDe, artisanatDe, attributsDe, bonusDuMetier, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
   choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsAcquis, donsDeRace, donsValables,
-  emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
-  magiesInneesPermises, maitriseDArme, maitriseDesSorts, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionAttendue, progressionXp,
+  emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
+  magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionAttendue, progressionXp,
   quotaDeMaitrise, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
 } from '../lib/fiche-moteur.mjs';
 
@@ -533,7 +533,8 @@ function construireMetier() {
 /**
  * Maîtrises d'armes, dans leur bloc (demande du propriétaire). La base garde le nombre de dés (1 sans maîtrise, 5 au plus) ; un curseur étroit de
  * points de maîtrise (4 au plus), un dé de plus chacun, et les dés à côté ; le Pugilat montre le seul dé de la Force du personnage (deDeLaFamille). Dans
- * le coin du bloc, les points répartis sur le quota des classes et de leurs dons (quotaDeMaitrise, décision R32).
+ * le coin du bloc, les points répartis sur le quota des classes et de leurs dons (quotaDeMaitrise, décision R32). Pas de ligne pour ARME DE MONSTRES,
+ * des armes exclusives aux monstres (famillesMaitrisables, décision R45).
  */
 function construireMaitrises() {
   const maitrise = maitriseDArme(regles);
@@ -543,7 +544,7 @@ function construireMaitrises() {
   badge.title = quota.sources.length
     ? `Points de maîtrise répartis / quota des classes et de leurs dons : ${quota.sources.map((x) => `${x.nom} ${x.points > 0 ? '+' : ''}${x.points}`).join(' · ')}`
     : 'Quota de maîtrise : choisissez une classe (ses maîtrises et celles de ses dons)';
-  reconstruire($('maitrises'), 'fixe', () => regles.familles_armes.map((f) => {
+  reconstruire($('maitrises'), 'fixe', () => famillesMaitrisables(regles).map((f) => {
     const curseur = el('input', {
       type: 'range', min: '0', max: String(maitrise.pointsMax), step: '1', class: 'curseur', 'aria-label': `Maîtrise : ${f.nom} (points)`,
       title: `De 0 à ${maitrise.pointsMax} points : ${maitrise.desSansMaitrise} dé sans maîtrise, un de plus par point`,
@@ -1205,13 +1206,14 @@ function rafraichir() {
 }
 
 // ------------------------------------------------------------------ enregistrement, chargement
-/** La fiche à envoyer : listes nettoyées (lignes vides retirées, rangs renumérotés). */
+/** La fiche à envoyer : listes nettoyées (lignes vides retirées, rangs renumérotés, pas de maîtrise sur ARME DE MONSTRES : décision R45). */
 function aEnvoyer() {
   const f = structuredClone(fiche);
   for (const c of COLONNES_DU_SERVICE) delete f[c];
   delete f[CHAMP_VERSION];
   f.caracteristiques = (f.caracteristiques ?? []).filter((c) => c.base !== null && c.base !== undefined);
   f.competences = (f.competences ?? []).filter((c) => c.naturel || c.acquis);
+  f.maitrises_armes = maitrisesValables(regles, f);
   f.sorts = (f.sorts ?? []).map((s, i) => ({ ...s, rang: i + 1 }));
   f.bouclier_materiaux = (f.bouclier_materiaux ?? []).filter((m) => m.materiau_id).map((m, i) => ({ ...m, rang: i + 1 }));
   f.inventaire = (f.inventaire ?? []).filter((o) => o.nom && o.nom.trim()).map((o, i) => ({ ...o, nom: o.nom.trim(), rang: i + 1 }));
