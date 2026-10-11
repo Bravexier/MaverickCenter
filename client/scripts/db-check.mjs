@@ -128,7 +128,8 @@ for (const c of corrections.filter((x) => x.champ === 'v')) {
 // Remarques : une note de cellule d'une entité dont la table a une colonne `remarque` figure dans la remarque que l'import a écrite (texte sans espaces de bordure). Tant que les
 // importeurs écrivent les deux, la remarque ne peut pas perdre une note ; la table `note_cellule` garde la cellule d'origine et la nature (note, commentaire résolu).
 // Le site de dev est la source des données qu'il modifie (décision du propriétaire) : la remarque comparée est celle d'avant ses modifications (historique_modification,
-// lib/historique-site.mjs#valeurDImport), et une ligne qu'il a créée ou supprimée est ignorée.
+// lib/historique-site.mjs#valeurDImport) ou, pour une note que le site tient d'accord avec sa remarque (dons du Médusain, serveur/edition.mjs : races_onglet.py
+// --verifier relit la note dans la page), la remarque actuelle ; une ligne qu'il a créée ou supprimée est ignorée.
 {
   const { historiqueSite } = await import(pathToFileURL(`${LIB}/historique-site.mjs`).href);
   const historique = historiqueSite(db);
@@ -142,8 +143,8 @@ for (const c of corrections.filter((x) => x.champ === 'v')) {
     const cleLigne = { [cle[0].name]: ligne ? ligne.id : n.entite_id };
     if (historique.creee(n.entite_table, cleLigne) || historique.supprimee(n.entite_table, cleLigne)) { ignorees += 1; continue; }
     verifiees += 1;
-    const remarque = ligne ? historique.valeurDImport(n.entite_table, cleLigne, 'remarque', ligne.remarque) : undefined;
-    if (typeof remarque !== 'string' || !remarque.includes(n.texte.trim())) problemes.push(`remarque : la note ${n.entite_table}:${n.entite_id} (${n.cellule ?? 'cellule inconnue'}) ne figure pas dans la remarque de sa ligne`);
+    const remarques = ligne ? [historique.valeurDImport(n.entite_table, cleLigne, 'remarque', ligne.remarque), ligne.remarque] : [];
+    if (!remarques.some((r) => typeof r === 'string' && r.includes(n.texte.trim()))) problemes.push(`remarque : la note ${n.entite_table}:${n.entite_id} (${n.cellule ?? 'cellule inconnue'}) ne figure pas dans la remarque de sa ligne`);
   }
   bilan.notes_dans_remarque = verifiees;
   if (ignorees) bilan.notes_lignes_du_site = ignorees;

@@ -10,7 +10,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
-import { echapperMarkdown } from '../src/lib/metier-champs.mjs';
+import { mdTexte } from '../src/lib/corps-races.mjs';
 import { splitFrontmatter } from '../src/lib/wikilinks.mjs';
 
 const dir = fileURLToPath(new URL('../src/content/wiki/races', import.meta.url));
@@ -31,6 +31,8 @@ const races = toutes.filter((r) => !creee(r)).map((r) => {
 const race = (slug) => races.find((r) => r.slug === slug);
 const onglet = (slug) => db.prepare('SELECT * FROM race_onglet WHERE race_id = ?').get(`races/${slug}`);
 const ongletDImport = (slug, colonne) => historique.valeurDImport('race_onglet', { race_id: `races/${slug}` }, colonne);
+/** Texte échappé comme l'importeur des races (tools/sheets/races.py#md_text, repris par lib/corps-races.mjs). */
+const texteDeRace = (texte) => mdTexte(texte).join('\n');
 const titles = (body) => [...body.matchAll(/^## (.+?)\s*$/gm)].map((m) => m[1]);
 const section = (body, title) => body.split(new RegExp(`^## ${title.replace(/[()]/g, '\\$&')}\\s*$`, 'm'))[1]?.split(/^## /m)[0] ?? '';
 const tableRows = (text) => text.split('\n').filter((l) => l.startsWith('|')).map((l) => l.slice(1, -1).split(' | ').map((c) => c.trim()));
@@ -82,11 +84,11 @@ test('Avantage(s), Inconvénient(s), don de base et capacité Mode Hyper sont ce
   const modeHyper = db.prepare("SELECT nom, effet FROM mode_hyper_effet WHERE version = 'onglet_race' AND race_id = ? ORDER BY rang");
   for (const r of toutes) {
     const o = onglet(r.slug);
-    assert.equal(section(r.body, 'Don de base').trim(), echapperMarkdown(o.don_base.trim()), `${r.slug} : don de base`);
+    assert.equal(section(r.body, 'Don de base').trim(), texteDeRace(o.don_base.trim()), `${r.slug} : don de base`);
     assert.equal(section(r.body, 'Avantage(s) et inconvénient(s)').trim(),
-      `**Avantage(s)** : ${echapperMarkdown(o.avantages)}\n\n**Inconvénient(s)** : ${echapperMarkdown(o.inconvenients)}`, `${r.slug} : avantages et inconvénients`);
+      `**Avantage(s)** : ${texteDeRace(o.avantages)}\n\n**Inconvénient(s)** : ${texteDeRace(o.inconvenients)}`, `${r.slug} : avantages et inconvénients`);
     assert.equal(section(r.body, 'Capacité Mode Hyper').trim(),
-      modeHyper.all(`races/${r.slug}`).map((m) => (m.nom ? `**${m.nom}** : ${echapperMarkdown(m.effet)}` : echapperMarkdown(m.effet))).join('\n\n'), `${r.slug} : Mode Hyper`);
+      modeHyper.all(`races/${r.slug}`).map((m) => (m.nom ? `**${m.nom}** : ${texteDeRace(m.effet)}` : texteDeRace(m.effet))).join('\n\n'), `${r.slug} : Mode Hyper`);
   }
   // à l'import (onglets du classeur « Les races »)
   assert.match(ongletDImport('nain', 'avantages'), /^Les armures lourdes ne les ralentissent pas, accès à toutes les classes\./);
