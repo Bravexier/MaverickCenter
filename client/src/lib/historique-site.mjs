@@ -14,6 +14,7 @@
 //                                              le site ; sans historique, la valeur actuelle (lue dans la base si elle n'est pas donnée)
 //   h.lignesDImport('classe', lignes?)         les lignes d'avant toute édition : insérées retirées, supprimées remises, valeurs « avant » rétablies
 //   h.effectifDImport('capacite')              le nombre de ces lignes
+//   h.lignesRemaniees('capacite', ['nature'])  les lignes créées ou supprimées par le site, ou dont il a réécrit ces colonnes
 //
 // Clé d'une ligne : l'objet des colonnes de clé primaire, dans l'ordre de la clé (comme cleDe de serveur/edition-journal.mjs, qui écrit le journal,
 // et comme `cle` des registres des migrations 0005 et 0006). Ordre de lecture : (fait_le, lot_id, rang).
@@ -172,6 +173,15 @@ export function historiqueSite(db) {
   };
   /** Le nombre de lignes de la table à l'import (count − lignes créées par le site + lignes importées qu'il a supprimées). */
   const effectifDImport = (table) => lignesDImport(table).length;
+  /**
+   * Les lignes que le site a créées ou supprimées, ou dont il a réécrit l'une de ces `colonnes` (aucune par défaut) : chacune telle que le site l'a
+   * vue en dernier (sa clé, puis les valeurs après une insertion ou une modification, avant une suppression). Sert à reconnaître les entités remaniées par le site
+   * (une classe dont un don a été ajouté ou retiré), dont les formes de l'import ne valent plus.
+   */
+  const lignesRemaniees = (table, colonnes = []) =>
+    [...(parTable.get(table)?.values() ?? [])]
+      .filter((ops) => ops.some((o) => o.operation !== 'modifier' || colonnes.some((c) => c in o.apres)))
+      .map((ops) => ops.reduce((l, o) => ({ ...l, ...(o.avant ?? {}), ...(o.apres ?? {}) }), { ...ops[0].cle }));
 
   return {
     /** Toutes les modifications, dans l'ordre. */
@@ -191,5 +201,6 @@ export function historiqueSite(db) {
     ligneDImport,
     lignesDImport,
     effectifDImport,
+    lignesRemaniees,
   };
 }

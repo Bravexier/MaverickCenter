@@ -22,6 +22,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 
 const script = fileURLToPath(new URL('../../tools/sheets/classes.py', import.meta.url));
 const wiki = fileURLToPath(new URL('../src/content/wiki', import.meta.url));
@@ -53,6 +55,13 @@ const capacites = readdirSync(dossierCapacites)
   .filter((f) => f.endsWith('.md'))
   .map((f) => ({ slug: f.slice(0, -3), texte: readFileSync(join(dossierCapacites, f), 'utf8') }))
   .filter((p) => p.texte.slice(0, 4000).includes(CLASSEUR));
+// Le site de dev est la source des dons qu'il modifie (décision du propriétaire ; D11 : il en crée et en supprime) : les notes et les fiches de
+// l'import se comptent sur l'import (historique_modification) ; une fiche que le site a supprimée est sautée, sa place (rang, spécialité) se lit
+// telle que l'import l'a écrite (le rang d'un don reçu sans choix suit les dons ajoutés au-dessus de lui).
+const historique = historiqueSite(ouvrirBase({ sansExemples: false }));
+const supprimee = (slug) => historique.supprimee('page', { id: `capacites/${slug}` });
+const donneesDImport = (slug) => JSON.parse(historique.valeurDImport('page', { id: `capacites/${slug}` }, 'donnees') ?? 'null');
+const supprimeesDImport = historique.lignesDImport('page').filter((p) => p.type === 'capacites' && supprimee(p.slug)).map((p) => p.slug);
 const page = (slug) => {
   const trouvee = capacites.find((p) => p.slug === slug);
   assert.ok(trouvee, `page capacites/${slug} absente`);
@@ -207,11 +216,13 @@ const NOTES = [
 ];
 
 test('pages réelles : 660 fiches de capacités du classeur, 43 notes rendues au total, une par fiche, aucune ailleurs', () => {
-  assert.equal(capacites.length, 660);
+  // à l'import : 660 fiches et 43 notes ; aujourd'hui, sans les fiches que le site a supprimées
+  assert.equal(capacites.length + supprimeesDImport.length, 660);
   assert.equal(NOTES.length, 43);
+  const presentes = NOTES.filter(([, , slug]) => !supprimee(slug));
   const avecNote = capacites.filter((p) => nbNotes(p.texte) > 0);
-  assert.equal(capacites.reduce((somme, p) => somme + nbNotes(p.texte), 0), 43);
-  assert.deepEqual(avecNote.map((p) => [p.slug, nbNotes(p.texte)]).sort(), NOTES.map(([, , slug]) => [slug, 1]).sort());
+  assert.equal(capacites.reduce((somme, p) => somme + nbNotes(p.texte), 0), presentes.length);
+  assert.deepEqual(avecNote.map((p) => [p.slug, nbNotes(p.texte)]).sort(), presentes.map(([, , slug]) => [slug, 1]).sort());
   // ni les pages de classes ni le glossaire ne reçoivent de note de cellule
   const classes = readdirSync(join(wiki, 'classes')).filter((f) => f.endsWith('.md'));
   assert.ok(classes.length >= 39);
@@ -220,7 +231,7 @@ test('pages réelles : 660 fiches de capacités du classeur, 43 notes rendues au
 });
 
 test('pages réelles : chaque note est sur la fiche de la capacité dont elle commente le bloc (ligne de la cellule « Lvl N » au-dessus)', () => {
-  for (const [onglet, cellule, slug] of NOTES) {
+  for (const [onglet, cellule, slug] of NOTES.filter(([, , s]) => !supprimee(s))) {
     const p = page(slug);
     const { r } = adresse(cellule);
     assert.equal(Number(champ(p, 'ligne')), r - 1, `${onglet} ${cellule} -> ${slug} : ligne ${champ(p, 'ligne')}`);
@@ -230,10 +241,12 @@ test('pages réelles : chaque note est sur la fiche de la capacité dont elle co
 });
 
 for (const [onglet, cellule, slug, rang, specialite, source, rendu] of NOTES) {
-  test(`pages réelles : ${onglet} ${cellule} -> « ${slug} », texte de la note intégral`, () => {
+  test(`pages réelles : ${onglet} ${cellule} -> « ${slug} », texte de la note intégral`, { skip: supprimee(slug) && 'fiche supprimée par le site de dev' }, () => {
     const p = page(slug);
-    assert.equal(Number(champ(p, 'rang')), rang);
-    assert.equal(champ(p, 'specialite'), specialite);
+    // sa place telle que l'import l'a écrite (le site peut ajouter un don reçu sans choix au-dessus, renommer une spécialité)
+    const d = donneesDImport(slug);
+    assert.equal(d.rang, rang);
+    assert.equal(d.specialite === undefined ? undefined : JSON.stringify(d.specialite), specialite);
     // la note termine la page, juste après l'effet, une seule fois, telle que rendue
     assert.ok(corps(p).endsWith(`\n\n${rendu}\n`), `${slug} : la page ne se termine pas par :\n${rendu}\n---\n${corps(p)}`);
     assert.equal(corps(p).split(rendu).length - 1, 1);
@@ -243,19 +256,22 @@ for (const [onglet, cellule, slug, rang, specialite, source, rendu] of NOTES) {
 }
 
 test('pages réelles : deux notes au texte identique dans deux classes (Orios, Minotaure) ou sur deux cellules voisines (Flagelleur) : une fois par page', () => {
-  for (const slug of ['orios-gigantisme', 'minotaure-gigantisme', 'flagelleur-puni-moi', 'flagelleur-plus-fort']) assert.equal(nbNotes(page(slug)), 1, slug);
+  for (const slug of ['orios-gigantisme', 'minotaure-gigantisme', 'flagelleur-puni-moi', 'flagelleur-plus-fort'].filter((s) => !supprimee(s))) assert.equal(nbNotes(page(slug)), 1, slug);
   // la note de Mage A44 contient une phrase qui est l'effet de X44 : chaque fiche garde la note de SA cellule, pas celle de la voisine
   const phrase = "Peut lancer deux sorts de soin ou/et d'amplification";
-  assert.equal(corps(page('mage-toujours-plus')).split(phrase).length - 1, 1, 'dans la note de A44 (son effet parle des sorts d’attaque)');
-  assert.equal(corps(page('mage-deux-fois-plus')).split(phrase).length - 1, 1, 'dans l’effet de X44 seulement, sa note ne la répète pas');
+  if (!supprimee('mage-toujours-plus')) assert.equal(corps(page('mage-toujours-plus')).split(phrase).length - 1, 1, 'dans la note de A44 (son effet parle des sorts d’attaque)');
+  if (!supprimee('mage-deux-fois-plus')) assert.equal(corps(page('mage-deux-fois-plus')).split(phrase).length - 1, 1, 'dans l’effet de X44 seulement, sa note ne la répète pas');
 });
 
 // Facultatif (le vrai dump n'est pas dans le dépôt) :
 //   CLASSES_DUMP=<classes-v7.corrige.json> [CLASSES_XLSX=<classeur.xlsx>] node --test test/classes-notes.test.mjs
 // Avec CLASSES_XLSX, les 43 notes du dump sont aussi recoupées avec celles du classeur (adresse par adresse).
+// Le site de dev est la source : dès qu'il a créé ou supprimé un don ou une spécialité (D11), les pages ne sont plus celles du dump, la vérification se saute.
 const dumpReel = process.env.CLASSES_DUMP;
+const remanieParLeSite = historique.lignesRemaniees('capacite').length + historique.lignesRemaniees('specialite').length > 0
+  && 'le site de dev a créé ou supprimé des dons ou des spécialités : les pages ne sont plus celles du dump (le site est la source)';
 test('classes.py --verifier : les pages du dépôt sont celles que le vrai dump produit, les 43 notes retrouvées (CLASSES_DUMP)', {
-  skip: sansPython || (!dumpReel && 'CLASSES_DUMP non défini (dump hors dépôt)'),
+  skip: sansPython || (!dumpReel && 'CLASSES_DUMP non défini (dump hors dépôt)') || remanieParLeSite,
 }, () => {
   const options = process.env.CLASSES_XLSX ? ['--xlsx', process.env.CLASSES_XLSX] : [];
   const r = spawnSync('python3', ['-I', script, '--dump', dumpReel, ...options, '--out', wiki, '--verifier'], { encoding: 'utf8' });

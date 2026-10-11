@@ -768,7 +768,8 @@ export function donsAChoisir(regles, fiche) {
 
 /**
  * Dons choisis qui restent valables après un changement de classe ou de spécialité : ceux d'une classe de la fiche, et de sa spécialité choisie quand ils
- * en dépendent (règle capacite_hors_classe de v_personnage_controle). Un don que les règles ne rangent dans aucun choix est gardé tel quel.
+ * en dépendent (règle capacite_hors_classe de v_personnage_controle). Un don que les règles ne rangent dans aucun choix est écarté : supprimé depuis le
+ * site de dev, ou devenu reçu d'office (un don seul sur sa ligne n'est ni proposé ni enregistré ; D11).
  */
 export function donsValables(regles, fiche) {
   const origine = new Map();
@@ -777,6 +778,6 @@ export function donsValables(regles, fiche) {
   }
   return (fiche.capacites ?? []).filter((d) => {
     const o = origine.get(d.capacite_id);
-    return !o || (fiche.classes ?? []).some((c) => c.classe_id === o.classe_id && (o.specialite_id === null || o.specialite_id === c.specialite_id));
+    return Boolean(o) && (fiche.classes ?? []).some((c) => c.classe_id === o.classe_id && (o.specialite_id === null || o.specialite_id === c.specialite_id));
   });
 }

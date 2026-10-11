@@ -3,13 +3,16 @@
 //   - la base réelle : 39 classes, chaque don placé une fois et une seule, les choix sont ceux de la vue v_capacite_exclusive (la disposition
 //     de l'onglet), exemples du propriétaire (Barde, Archimage), rien ne vient d'un tableau Markdown.
 // Le site de dev est la source des classes et des dons qu'il modifie (décision du propriétaire) : les effectifs et les valeurs citées de l'import se lisent
-// dans historique_modification (lib/historique-site.mjs) ; une classe qu'il a créée n'a pas encore de don (l'édition n'en crée pas) : « à compléter ».
+// dans historique_modification (lib/historique-site.mjs) : les formes et les exemples de l'onglet se contrôlent sur les lignes de l'import (assemblées comme
+// la page : lib/classe-assemblage.mjs), l'état courant d'une classe que le site a remaniée (D11 : spécialités et dons créés ou supprimés) par des invariants.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ditClasseMagique } from '../src/lib/classe-magique.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { chargerClasses } from '../src/lib/classes-db.mjs';
+import { assemblerClasse } from '../src/lib/classe-assemblage.mjs';
+import { alternativesDe } from '../src/lib/dons-edition.mjs';
 import { donsDuPlateau, entreeAnnexe, groupesDeChoix, nomsSeRepondent, plateauDeDons, typeDeDon } from '../src/lib/classe-dons.mjs';
 
 const don = (id, nature, ligne, rang, extra = {}) => ({ id, nature, ligne, rang, niveau: 10, specialiteId: null, alternatives: [], ...extra });
@@ -97,6 +100,19 @@ const classe = (slug) => classes.get(`classes/${slug}`);
 const nomDImport = (d) => historique.valeurDImport('capacite', { id: d.id }, 'nom', d.nom);
 const noms = (dons) => dons.map(nomDImport);
 const nomDeSpecialite = (s) => historique.valeurDImport('specialite', { id: s.id }, 'nom', s.nom);
+// les lignes de l'import (supprimées par le site remises, créées retirées) et le plateau qu'elles donnent, choix d'après la règle de la vue
+const specialitesImport = historique.lignesDImport('specialite');
+const donsImport = historique.lignesDImport('capacite');
+function classeDImport(id) {
+  const dons = donsImport.filter((k) => k.classe_id === id);
+  return assemblerClasse({ specialites: specialitesImport.filter((s) => s.classe_id === id), dons, exclusions: new Map(dons.map((d) => [d.id, alternativesDe(d, dons)])), typesDon });
+}
+// les classes dont le site a créé ou supprimé une spécialité ou un don, ou changé la nature, la ligne ou la spécialité d'un don
+const classeDeLaLigne = (table, l) => l.classe_id ?? historique.ligneDImport(table, { id: l.id })?.classe_id;
+const classesRemaniees = new Set([
+  ...historique.lignesRemaniees('capacite', ['nature', 'ligne', 'specialite_id']).map((l) => classeDeLaLigne('capacite', l)),
+  ...historique.lignesRemaniees('specialite').map((l) => classeDeLaLigne('specialite', l)),
+].filter(Boolean));
 
 test('39 classes (à l’import), dans l’ordre du Sommaire ; 660 dons ; les quatre types de don du guide', () => {
   assert.equal(classes.size, compte('classe'));
@@ -136,29 +152,42 @@ test('les choix affichés sont exactement ceux de la vue v_capacite_exclusive (l
   assert.deepEqual([...affiches].sort(), [...vue].sort());
 });
 
+/** La forme de l'onglet d'une classe (sauf l'Archimage) : deux dons reçus sans choix en haut (niveaux 1 et 5), les deux spécialités, un don au niveau 20. */
+function formeDeLOnglet(c) {
+  assert.deepEqual(c.plateau.map((e) => e.forme), ['don', 'don', 'specialites', 'don'], c.id);
+  assert.deepEqual(c.plateau.filter((e) => e.forme === 'don').map((e) => e.niveau), [1, 5, 20], c.id);
+  const [s] = c.plateau.filter((e) => e.forme === 'specialites');
+  assert.equal(s.specialites.length, 2, c.id);
+  for (const col of s.specialites) {
+    assert.ok(col.cartouche, `${c.id} : cartouche de ${col.specialite.nom}`);
+    assert.deepEqual(col.choix.map((g) => [g.niveau, g.options.length]), [[10, 2], [15, 2], [20, 2]], `${c.id} : ${col.specialite.nom}`);
+  }
+}
+
 test('38 classes (toutes sauf l’Archimage) : deux dons reçus sans choix en haut (niveaux 1 et 5), les deux spécialités, un don au niveau 20 en bas', (t) => {
-  assert.equal(historique.lignesDImport('classe').filter((c) => c.id !== 'classes/archimage').length, 38, 'à l’import');
+  const importees = historique.lignesDImport('classe').filter((c) => c.id !== 'classes/archimage');
+  assert.equal(importees.length, 38, 'à l’import');
+  for (const c of importees) formeDeLOnglet({ id: c.id, ...classeDImport(c.id) });
   for (const c of classes.values()) {
     if (c.id === 'classes/archimage') continue;
     if (!c.dons.length) {
-      // une classe créée depuis le site n'a pas encore de don (l'édition n'en crée pas) ; une classe importée en a toujours
-      assert.ok(historique.creee('classe', { id: c.id }), `${c.id} : classe importée sans don`);
-      t.diagnostic(`${c.id} : créée depuis le site, sans don (à compléter)`);
+      // une classe créée depuis le site n'a pas forcément de don ; une classe importée en a toujours, sauf si le site les a retirés
+      assert.ok(historique.creee('classe', { id: c.id }) || classesRemaniees.has(c.id), `${c.id} : classe importée sans don`);
+      t.diagnostic(`${c.id} : sans don (à compléter)`);
       continue;
     }
-    assert.deepEqual(c.plateau.map((e) => e.forme), ['don', 'don', 'specialites', 'don'], c.id);
-    assert.deepEqual(c.plateau.filter((e) => e.forme === 'don').map((e) => e.niveau), [1, 5, 20], c.id);
-    const [s] = c.plateau.filter((e) => e.forme === 'specialites');
-    assert.equal(s.specialites.length, 2, c.id);
-    for (const col of s.specialites) {
-      assert.ok(col.cartouche, `${c.id} : cartouche de ${col.specialite.nom}`);
-      assert.deepEqual(col.choix.map((g) => [g.niveau, g.options.length]), [[10, 2], [15, 2], [20, 2]], `${c.id} : ${col.specialite.nom}`);
+    // une classe que le site a remaniée (D11) : les invariants des autres tests (chaque don placé une fois, choix de la vue) suffisent
+    if (classesRemaniees.has(c.id) || historique.creee('classe', { id: c.id })) {
+      t.diagnostic(`${c.id} : remaniée sur le site`);
+      continue;
     }
+    formeDeLOnglet(c);
   }
 });
 
+// les exemples du propriétaire : le plateau de l'import (le site peut ajouter ou retirer des dons)
 test('exemple du propriétaire (Barde) : Danseur ou Ménestrel ; Nouvel accord ou Écho, Ballade guerrière ou Amplification, Exaltation ou Touérk !', () => {
-  const barde = classe('barde');
+  const barde = classeDImport('classes/barde');
   const [avant1, avant5, specialites, apres] = barde.plateau;
   assert.equal(nomDImport(avant1.don), 'Prestation');
   assert.equal(nomDImport(avant5.don), 'Son perturbant');
@@ -170,14 +199,14 @@ test('exemple du propriétaire (Barde) : Danseur ou Ménestrel ; Nouvel accord o
   const nouvel = menestrel.choix[0].options[0];
   assert.equal(nouvel.ancre, 'don-barde-nouvel-accord');
   assert.equal(typeDeDon(historique.valeurDImport('capacite', { id: nouvel.id }, 'type_brut')).precision, '1 fois/Combat', 'à l’import');
-  if (!historique.modifiee('capacite', { id: nouvel.id }, 'type_brut')) {
+  if (classe('barde').dons.some((d) => d.id === nouvel.id) && !historique.modifiee('capacite', { id: nouvel.id }, 'type_brut')) {
     assert.deepEqual(nouvel.type, { id: 'actif', libelle: 'Actif', definition: typesDon.find((t) => t.id === 'actif').definition });
     assert.equal(nouvel.precision, '1 fois/Combat');
   }
 });
 
 test('exemple du propriétaire (Archimage) : pas de spécialité, Élémentaliste ou Occultiste puis un choix parmi trois à chaque palier, Semi-complet en plus', () => {
-  const a = classe('archimage');
+  const a = classeDImport('classes/archimage');
   assert.deepEqual(a.plateau.map((e) => e.forme), ['don', 'don', 'choix', 'choix', 'choix', 'choix', 'don']);
   const choix = a.plateau.filter((e) => e.forme === 'choix');
   assert.deepEqual(noms(choix[0].options), ['Élémentaliste', 'Occultiste']);

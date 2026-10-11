@@ -3,8 +3,8 @@
 // (components/classes/ClassePage.astro) n'interprète aucun Markdown : il affiche ces lignes. Les « capacités » de la table `capacite` sont les DONS
 // de la classe (leur nom dans le jeu) ; leur disposition, choix compris, est celle de l'onglet (lib/classe-dons.mjs).
 // Node seulement (la base est ouverte par lib/donnees.mjs au build). Une requête par table, puis assemblage en mémoire.
-import { ditClasseMagique } from './classe-magique.mjs';
-import { entreeAnnexe, plateauDeDons, typeDeDon } from './classe-dons.mjs';
+import { assemblerClasse } from './classe-assemblage.mjs';
+import { entreeAnnexe } from './classe-dons.mjs';
 import { blocsDeTexte } from './sort-format.mjs';
 
 const apres = (id, separateur) => id.slice(id.indexOf(separateur) + separateur.length);
@@ -36,10 +36,10 @@ export function chargerClasses(db) {
   // le bonus d'armure magique d'une classe magique (Sommaire : « Octroie 4 AM de base par classe magique »)
   const amMagique = all('SELECT am_base FROM categorie_classe WHERE am_base IS NOT NULL').map((c) => c.am_base)[0] ?? null;
   const typesDon = all('SELECT id, nom, definition FROM type_don ORDER BY ordre');
-  const typesParId = new Map(typesDon.map((t) => [t.id, t]));
   const specialites = regrouper(all('SELECT * FROM specialite ORDER BY classe_id, rang'), 'classe_id');
   const capacites = regrouper(all('SELECT * FROM capacite ORDER BY classe_id, ligne, rang, id'), 'classe_id');
-  const exclusions = regrouper(all('SELECT capacite_id, autre_id FROM v_capacite_exclusive ORDER BY capacite_id, autre_id'), 'capacite_id');
+  const alternatives = new Map([...regrouper(all('SELECT capacite_id, autre_id FROM v_capacite_exclusive ORDER BY capacite_id, autre_id'), 'capacite_id')]
+    .map(([id, rows]) => [id, rows.map((e) => e.autre_id)]));
   const armes = regrouper(all('SELECT classe_id, brut FROM classe_maitrise_arme ORDER BY classe_id, rang'), 'classe_id');
   const armures = regrouper(all('SELECT classe_id, brut FROM classe_maitrise_armure ORDER BY classe_id, rang'), 'classe_id');
   const objets = regrouper(
@@ -63,41 +63,10 @@ export function chargerClasses(db) {
   const classes = new Map();
   for (const c of all('SELECT * FROM classe ORDER BY ordre')) {
     const categorie = categories.get(c.categorie_id);
-    const dons = (capacites.get(c.id) ?? []).map((k) => {
-      const type = typeDeDon(k.type_brut);
-      const connu = k.type ? typesParId.get(k.type) : undefined;
-      const slug = apres(k.id, '/');
-      return {
-        id: k.id,
-        slug,
-        ancre: `don-${slug}`,
-        nom: k.nom,
-        niveau: k.niveau,
-        nature: k.nature,
-        ligne: k.ligne,
-        rang: k.rang,
-        specialiteId: k.specialite_id,
-        // type : le nom du guide quand le premier mot est l'un des quatre types (« pAsSiF » s'affiche « Passif »), sinon le mot tel qu'écrit (« Variable »)
-        type: k.type ? { id: k.type, libelle: connu?.nom ?? type.mot, definition: connu?.definition ?? null } : null,
-        precision: type.precision,
-        typeBrut: k.type_brut,
-        effet: blocsDeTexte(k.effet),
-        remarque: blocsDeTexte(k.remarque),
-        alternatives: (exclusions.get(k.id) ?? []).map((e) => e.autre_id),
-        // cartouche de spécialité qui dit « considérer comme classe magique » (classes raciales : +4 AM avec cette spécialité)
-        classeMagique: k.nature === 'specialite' && ditClasseMagique(k.effet),
-      };
+    // dons, spécialités et plateau : l'assemblage partagé avec l'éditeur de la page (lib/classe-assemblage.mjs, D11)
+    const { dons, specialites: specs, plateau } = assemblerClasse({
+      specialites: specialites.get(c.id) ?? [], dons: capacites.get(c.id) ?? [], exclusions: alternatives, typesDon,
     });
-    const specs = (specialites.get(c.id) ?? []).map((s) => ({
-      id: s.id,
-      slug: apres(s.id, '#specialite:'),
-      ancre: `specialite-${apres(s.id, '#specialite:')}`,
-      rang: s.rang,
-      nom: s.nom,
-      descriptionTitre: s.description_titre,
-      description: blocsDeTexte(s.description),
-      remarque: blocsDeTexte(s.remarque),
-    }));
     const race = c.categorie_id === 'classe-hybride-animal' ? (races.get(c.nom_cle) ?? null) : null;
     classes.set(c.id, {
       id: c.id,
@@ -126,7 +95,7 @@ export function chargerClasses(db) {
       remarque: blocsDeTexte(c.remarque),
       specialites: specs,
       dons,
-      plateau: plateauDeDons(dons, specs),
+      plateau,
       annexe: (annexes.get(c.id) ?? []).map((a) => ({
         rang: a.rang,
         libelle: a.libelle,

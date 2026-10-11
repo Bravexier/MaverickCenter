@@ -226,16 +226,26 @@ test('progression : un gain par niveau, 15 points d’attributs exactement, le d
   ]);
 });
 
-test('classes, spécialités et dons : 2e classe selon R2, spécialité au niveau de classe 10, dons de la classe et jamais deux options exclusives', () => {
+test('classes, spécialités et dons : 2e classe selon R2, spécialité au niveau de classe 10, dons de la classe et jamais deux options exclusives', (t) => {
   personnageValide('classe-1', { xp: 17050 });   // niveau 11 en mono-classe : classe 2 au niveau 2
   assert.ok(regles('classe-1').includes('classe_2_manquante'));
 
+  // deux dons au choix d'une spécialité du Guerrier et un don de l'autre (Affûté, Expert Mordhau, Bien équipé ! à l'import) : lus dans la base, le site
+  // de dev pouvant créer ou supprimer des spécialités et des dons (D11)
+  const specialites = db.prepare("SELECT id FROM specialite WHERE classe_id = 'classes/guerrier' ORDER BY rang").all().map((s) => s.id);
+  const paire = specialites.length === 2 && db.prepare(`SELECT e.capacite_id AS a, e.autre_id AS b FROM v_capacite_exclusive e JOIN capacite k ON k.id = e.capacite_id
+    WHERE k.specialite_id = ? AND k.nature = 'choix' ORDER BY k.ligne, k.rang LIMIT 1`).get(specialites[0]);
+  const donDeLAutre = specialites.length === 2 && db.prepare("SELECT id FROM capacite WHERE specialite_id = ? AND nature = 'choix' ORDER BY ligne, rang LIMIT 1").get(specialites[1]);
+  if (!paire || !donDeLAutre) {
+    t.diagnostic('Guerrier remanié sur le site de dev : pas de choix d’au moins deux dons dans ses deux spécialités, contrôle des dons sauté');
+    return;
+  }
   personnageValide('classe-2');
   inserer('personnage_classe', { personnage_id: 'classe-2', rang: 2, classe_id: 'classes/archer' });
-  db.prepare("UPDATE personnage_classe SET specialite_id = 'classes/guerrier#specialite:epeiste' WHERE personnage_id = 'classe-2' AND rang = 1").run();
-  inserer('personnage_capacite', { personnage_id: 'classe-2', capacite_id: 'capacites/guerrier-affute' });
-  inserer('personnage_capacite', { personnage_id: 'classe-2', capacite_id: 'capacites/guerrier-expert-mordhau' });
-  inserer('personnage_capacite', { personnage_id: 'classe-2', capacite_id: 'capacites/guerrier-bien-equipe' });   // spécialité Maître d'arme
+  db.prepare('UPDATE personnage_classe SET specialite_id = ? WHERE personnage_id = ? AND rang = 1').run(specialites[0], 'classe-2');
+  inserer('personnage_capacite', { personnage_id: 'classe-2', capacite_id: paire.a });
+  inserer('personnage_capacite', { personnage_id: 'classe-2', capacite_id: paire.b });
+  inserer('personnage_capacite', { personnage_id: 'classe-2', capacite_id: donDeLAutre.id });   // l'autre spécialité
   assert.deepEqual(regles('classe-2'), ['capacite_hors_classe', 'capacites_exclusives', 'classe_2_en_trop', 'specialite_trop_tot']);
 
   assert.throws(() => db.prepare("UPDATE personnage_classe SET specialite_id = 'classes/archer#specialite:x' WHERE personnage_id = 'classe-2' AND rang = 1").run(), /FOREIGN KEY/);
