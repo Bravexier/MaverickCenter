@@ -227,3 +227,12 @@ test('Markdown de la PR : ~~ancien~~ → **nouveau**, 🟢 / 🔴, marqueur [V: 
   assert.ok(coupe.length <= 5000);
   assert.match(coupe, /liste coupée/);
 });
+
+test('métiers : une caractéristique d’artisanat changée (décision R34) se lit par son nom, pas par son identifiant', () => {
+  const caracteristique = [{ id: 'force', nom: 'Force' }, { id: 'agilite', nom: 'Agilité' }, { id: 'volonte', nom: 'Volonté' }];
+  const metier = { id: 'metiers/forgeron', nom: 'Forgeron', artisanat_texte: 'Des armes', test_carac_1_id: 'force', test_carac_2_id: 'volonte' };
+  const ref = { tables: { metier: [metier], caracteristique } };
+  const dev = { tables: { metier: [{ ...metier, test_carac_2_id: 'agilite' }], caracteristique } };
+  const lignes = comparerBases(ref, dev).filter((l) => l.table_nom === 'metier');
+  assert.deepEqual(lignes.map((l) => [l.champ, l.avant, l.apres, l.sens]), [['Caractéristique d’artisanat 2', 'Volonté', 'Agilité', 'neutre']]);
+});

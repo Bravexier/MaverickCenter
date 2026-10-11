@@ -32,7 +32,7 @@ const CONSTANTES = [
   'caracteristique.base_min', 'caracteristique.base_max', 'caracteristique.bonus_magie_innee', 'competence.base_par_point_caracteristique',
   'competence.acquis_max_par_point_caracteristique', 'competence.croix_1_malus', 'competence.croix_2_malus', 'classe.mono_niveau_max',
   'classe.mono_niveaux_par_niveau_global', 'classe.mode_verrou_xp', 'sort.nm_ecart_niveau_global', 'barriere.diviseur_chakra',
-  'maitrise_arme.des_sans_maitrise', 'maitrise_arme.des_max', 'sort.nm_max', 'alignement.ecart_axe',
+  'maitrise_arme.des_sans_maitrise', 'maitrise_arme.des_max', 'sort.nm_max', 'alignement.ecart_axe', 'metier.artisanat_par_point_caracteristique',
 ];
 
 /** @param {import('node:sqlite').DatabaseSync} db */
@@ -99,7 +99,23 @@ export function chargerReglesDeFiche(db) {
     }));
 
   const dieux = lignes(db, 'SELECT id, nom FROM dieu ORDER BY ordre_choix IS NULL, ordre_choix, nom');
-  const metiers = lignes(db, 'SELECT id, nom FROM metier ORDER BY nom COLLATE NOCASE');
+  // Métiers : bonus par rang, chacun vers une compétence (son Acquis) ou l'initiative, un rang à plusieurs compétences étant un choix (décision R33) ;
+  // artisanat et ses deux caractéristiques (R34) ; objets de départ par rang, les options d'un choix ensemble (R35)
+  const bonusDesMetiers = parCle(lignes(db, 'SELECT metier_id, rang, texte, valeur, unite, competence_id, attribut FROM metier_bonus ORDER BY metier_id, rang, option'), 'metier_id');
+  const objetsDesMetiers = parCle(lignes(db, 'SELECT metier_id, rang, texte FROM metier_objet_depart ORDER BY metier_id, rang, option'), 'metier_id');
+  const parRang = (rows, creer, ajouter) => {
+    const rangs = [];
+    for (const r of rows ?? []) ajouter((rangs[r.rang - 1] ??= creer(r)), r);
+    return rangs.filter(Boolean);
+  };
+  const metiers = lignes(db, 'SELECT id, nom, artisanat_texte, test_carac_1_id, test_carac_2_id FROM metier ORDER BY nom COLLATE NOCASE')
+    .map((m) => ({
+      id: m.id, nom: m.nom,
+      bonus: parRang(bonusDesMetiers.get(m.id), (r) => ({ rang: r.rang, texte: r.texte, valeur: r.valeur, unite: r.unite, options: [] }),
+        (rang, r) => rang.options.push({ competence_id: r.competence_id, attribut: r.attribut })),
+      artisanat: m.artisanat_texte ? { texte: m.artisanat_texte, caracteristiques: m.test_carac_1_id ? [m.test_carac_1_id, m.test_carac_2_id] : [] } : null,
+      objets: parRang(objetsDesMetiers.get(m.id), (r) => ({ rang: r.rang, options: [] }), (rang, r) => rang.options.push(r.texte)),
+    }));
 
   // Classes : apport de départ, catégorie et couleur de /classes/ ; classe magique par sa catégorie ou l'Archimage (R6), spécialité magique quand
   // son don de niveau 10 dit « considérer comme classe magique » (R7) ; dons à choix rangés en groupes (v_capacite_exclusive, comme la page de la classe) ;

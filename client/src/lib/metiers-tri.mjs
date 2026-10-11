@@ -11,6 +11,7 @@ export const COLONNES_METIERS = [
   { cle: 'nom', libelle: 'Nom' },
   { cle: 'bonus', libelle: 'Bonus' },
   { cle: 'artisanat', libelle: 'Artisanat' },
+  { cle: 'caracteristiques', libelle: 'Caractéristiques' },
   { cle: 'equipement', libelle: 'Équipement supplémentaire' },
 ];
 const CLES = COLONNES_METIERS.map((c) => c.cle);
@@ -27,7 +28,7 @@ export function correspond(texte, filtre) {
 }
 
 /**
- * Lignes visibles et dans l'ordre : `lignes` = [{ id, cellules: { nom, bonus, artisanat, equipement } }] (texte affiché), `etat` = { tri, sens, filtres }.
+ * Lignes visibles et dans l'ordre : `lignes` = [{ id, cellules: { nom, bonus, artisanat, caracteristiques, equipement } }] (texte affiché), `etat` = { tri, sens, filtres }.
  * Sans tri : l'ordre reçu (alphabétique). Égalité : ordre du nom.
  */
 export function filtrerEtTrier(lignes, { tri = null, sens = 'asc', filtres = {} } = {}) {

@@ -18,7 +18,7 @@ db.exec('PRAGMA foreign_keys = ON');
 
 const TABLES = [
   'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
-  'personnage_progression', 'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure',
+  'personnage_metier_bonus', 'personnage_progression', 'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure',
   'personnage_bouclier_materiau', 'personnage_accessoire', 'personnage_inventaire', 'groupe', 'groupe_membre',
 ];
 const INSTANT = '2026-10-09T12:00:00Z';
@@ -58,7 +58,7 @@ function personnageValide(id, surcharge = {}) {
   for (const c of ['arc', 'arme-lourde', 'athletisme', 'parade', 'stabilite']) inserer('personnage_competence', { personnage_id: id, competence_id: c, naturel: 20, acquis: 0 });
 }
 
-test('les 18 tables des fiches et des groupes existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
+test('les 19 tables des fiches et des groupes existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
   for (const t of TABLES) {
     assert.equal(LIGNES_AU_DEPART[t], 0, t);
     const lignes = readFileSync(join(racine, 'data', 'rows', `${t}.sql`), 'utf8').trim().split('\n');
@@ -148,6 +148,37 @@ test('caractéristiques et compétences : bornes, totaux exacts (décision R3), 
     { regle: 'competence_naturel_max', detail: 'arc = 25' },
     { regle: 'competences_total', detail: '105 / 100' },
   ]);
+});
+
+test('métier (décision R33) : bonus d’acquis et d’initiative, rang à choix à choisir parmi ses options, acquis plafonné bonus du métier compris', () => {
+  const bonus = (id) => db.prepare('SELECT rang, competence_id, attribut, valeur FROM v_personnage_metier_bonus WHERE personnage_id = ? ORDER BY rang').all(id).map((r) => ({ ...r }));
+  // un métier dont un rang est « +N INI » et un autre un choix entre deux compétences (le Coursier à l'import), lu dans la base
+  const metier = db.prepare(`SELECT b.metier_id FROM metier_bonus b WHERE b.attribut = 'initiative'
+    AND EXISTS (SELECT 1 FROM metier_bonus c WHERE c.metier_id = b.metier_id AND c.option = 2 AND c.competence_id IS NOT NULL) ORDER BY b.metier_id LIMIT 1`).get().metier_id;
+  const ini = db.prepare("SELECT rang, valeur FROM metier_bonus WHERE metier_id = ? AND attribut = 'initiative'").get(metier);
+  const choix = db.prepare('SELECT rang, competence_id, valeur FROM metier_bonus WHERE metier_id = ? AND option = 2 AND competence_id IS NOT NULL').get(metier);
+  personnageValide('metier-1', { metier_id: metier });
+  assert.deepEqual(bonus('metier-1').filter((b) => b.attribut), [{ rang: ini.rang, competence_id: null, attribut: 'initiative', valeur: ini.valeur }]);
+  assert.ok(!bonus('metier-1').some((b) => b.rang === choix.rang), 'rang à choix : rien tant qu’il n’est pas choisi');
+  assert.ok(regles('metier-1').includes('metier_bonus_manquant'), 'fiche validée : le choix manque');
+  inserer('personnage_metier_bonus', { personnage_id: 'metier-1', rang: choix.rang, competence_id: choix.competence_id });
+  assert.ok(bonus('metier-1').some((b) => b.rang === choix.rang && b.competence_id === choix.competence_id && b.valeur === choix.valeur));
+  assert.ok(!regles('metier-1').includes('metier_bonus_manquant'));
+  db.prepare("UPDATE personnage_metier_bonus SET competence_id = 'medecine' WHERE personnage_id = 'metier-1'").run();
+  assert.deepEqual(controle('metier-1').filter((c) => c.regle.startsWith('metier_')), [{ regle: 'metier_bonus_hors_choix', detail: 'medecine' }], 'une autre compétence');
+  db.prepare("UPDATE personnage SET metier_id = NULL WHERE id = 'metier-1'").run();
+  assert.deepEqual(regles('metier-1'), ['metier_bonus_hors_choix'], 'sans métier, le choix noté est en trop');
+  assert.deepEqual(bonus('metier-1'), []);
+
+  // l'acquis compte le bonus du métier : un métier qui donne +N à une compétence d'Intelligence, avec 2 en Intelligence (plafond 10)
+  const savant = db.prepare(`SELECT b.metier_id, b.competence_id, b.valeur FROM metier_bonus b JOIN competence c ON c.id = b.competence_id
+    WHERE c.caracteristique_id = 'intelligence' AND (SELECT count(*) FROM metier_bonus o WHERE o.metier_id = b.metier_id AND o.rang = b.rang) = 1
+    ORDER BY b.valeur DESC, b.metier_id LIMIT 1`).get();
+  personnageValide('metier-2', { metier_id: savant.metier_id });
+  inserer('personnage_competence', { personnage_id: 'metier-2', competence_id: savant.competence_id, naturel: 0, acquis: 10 - savant.valeur });
+  assert.ok(!regles('metier-2').includes('competence_acquis_max'), 'au plafond : permis');
+  db.prepare('UPDATE personnage_competence SET acquis = acquis + 1 WHERE personnage_id = ? AND competence_id = ?').run('metier-2', savant.competence_id);
+  assert.deepEqual(controle('metier-2').filter((c) => c.regle === 'competence_acquis_max'), [{ regle: 'competence_acquis_max', detail: `${savant.competence_id} = 11` }]);
 });
 
 test('progression : un gain par niveau, 15 points d’attributs exactement, le dé aux niveaux 5, 10, 15 et 20 seulement', () => {

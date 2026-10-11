@@ -1,6 +1,6 @@
 // Moteur de la fiche (lib/fiche-moteur.mjs) sur les vraies règles (lib/fiche-regles.mjs, la base construite) : chaque calcul comparé à sa source —
 // les vues de la base (v_personnage_niveau, v_personnage_controle, par le service sur une base vivante temporaire), les personnages fil rouge du
-// guide (lib/guide-fil-rouge.mjs) et les décisions du propriétaire (R2, R3, R6, R7, R15, R16, R19, R20, R23, R24, R25, R26, R27, R28, R32).
+// guide (lib/guide-fil-rouge.mjs) et les décisions du propriétaire (R2, R3, R6, R7, R15, R16, R19, R20, R23, R24, R25, R26, R27, R28, R32, R33, R34, R35).
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -11,7 +11,8 @@ import { enregistrerFiche } from '../serveur/fiches.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import {
-  ajusterValeurDuMoment, alignementDe, attributsDe, borner, deDeLaFamille, quotaDeMaitrise, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, magieAcquiseValable, nmDuSort,
+  ajusterValeurDuMoment, alignementDe, artisanatDe, attributsDe, bonusDuMetier, borner, choisirObjetDeMetier, choixDeMetierValables, inventaireSelonLeMetier,
+  objetChoisi, objetDInventaire, objetsDuMetier, deDeLaFamille, quotaDeMaitrise, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, magieAcquiseValable, nmDuSort,
   progressionXp, classeMagique, classesPermises, classesSelonLaMagieInnee,
   competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, magiesInneesPermises, maitriseDesSorts, niveauGlobal,
   maitriseDArme, niveauxDeClasse, notationDesDes, npmMax, progressionAttendue, puissanceMagique, refusClasse, refusMagieAcquise, sortsParNpm, sortsPossibles, ecrireValeurDuMoment, valeursDuMoment, xpDuNiveauSuivant,
@@ -575,4 +576,106 @@ test('boutons + et − des valeurs du moment (demande du propriétaire) : la val
   assert.deepEqual(ajusterValeurDuMoment(regles, fiche, 'corruption', 3), { corruption: 3, chakra_actuel: a.chakra - 3 }, 'la corruption prend la place du chakra');
   assert.deepEqual(ajusterValeurDuMoment(regles, { ...fiche, corruption: 3, chakra_actuel: a.chakra - 3 }, 'chakra_actuel', 10), { chakra_actuel: a.chakra - 3 });
   assert.deepEqual(ajusterValeurDuMoment(regles, fiche, 'barre4_actuelle', 1), {}, 'pas de 4ᵉ barre sans Sang ni Nécromancie');
+});
+
+test('décision R33 : le métier donne son bonus en acquis (rang à choix : la compétence choisie) et « +X INI » à l’initiative ; même chose que v_personnage_metier_bonus', () => {
+  for (const metier of regles.metiers) {
+    // chaque rang à choix reçoit sa première compétence
+    const metier_bonus = metier.bonus.filter((b) => b.options.filter((o) => o.competence_id).length > 1).map((b) => ({ rang: b.rang, competence_id: b.options.find((o) => o.competence_id).competence_id }));
+    const fiche = { ...ficheVide(`métier ${metier.nom}`), metier_id: metier.id, metier_bonus };
+    const { personnage } = enregistrerFiche(vivante, fiche);
+    const vue = vivante.prepare('SELECT competence_id, attribut, valeur FROM v_personnage_metier_bonus WHERE personnage_id = ?').all(personnage.id);
+    const parCompetence = {};
+    for (const v of vue.filter((x) => x.competence_id)) parCompetence[v.competence_id] = (parCompetence[v.competence_id] ?? 0) + v.valeur;
+    const b = bonusDuMetier(regles, fiche);
+    assert.deepEqual(b.parCompetence, parCompetence, metier.id);
+    assert.equal(b.initiative, vue.filter((x) => x.attribut === 'initiative').reduce((t, x) => t + x.valeur, 0), metier.id);
+    assert.equal(attributsDe(regles, fiche).initiativeMetier, b.initiative, metier.id);
+  }
+  // sans choix fait, un rang à choix ne donne rien ; une compétence qui n'est pas une option ne compte pas et part au changement de métier
+  const aChoix = regles.metiers.find((m) => m.bonus.some((b) => b.options.filter((o) => o.competence_id).length > 1));
+  const rang = aChoix.bonus.find((b) => b.options.filter((o) => o.competence_id).length > 1);
+  const sans = bonusDuMetier(regles, { metier_id: aChoix.id });
+  assert.equal(sans.rangs.find((r) => r.rang === rang.rang).retenue, null);
+  assert.equal(sans.rangs.find((r) => r.rang === rang.rang).aChoisir, true);
+  const horsChoix = { metier_id: aChoix.id, metier_bonus: [{ rang: rang.rang, competence_id: 'medecine' }, { rang: rang.rang + 50, competence_id: rang.options[0].competence_id }] };
+  assert.equal(bonusDuMetier(regles, horsChoix).rangs.find((r) => r.rang === rang.rang).retenue, null);
+  assert.deepEqual(choixDeMetierValables(regles, horsChoix), []);
+  const bon = { metier_id: aChoix.id, metier_bonus: [{ rang: rang.rang, competence_id: rang.options[1].competence_id }] };
+  assert.deepEqual(choixDeMetierValables(regles, bon), bon.metier_bonus);
+  assert.deepEqual(choixDeMetierValables(regles, { ...bon, metier_id: null }), []);
+});
+
+test('décision R33 : le bonus du métier compte dans l’acquis — score, plafond de 5 par point de base, curseur réduit d’autant ; initiative 1D20 + Agilité + métier', () => {
+  const metier = regles.metiers.find((m) => m.bonus.some((b) => b.options.length === 1 && b.options[0].competence_id));
+  const rang = metier.bonus.find((b) => b.options.length === 1 && b.options[0].competence_id);
+  const id = rang.options[0].competence_id;
+  const sans = competencesDe(regles, ficheConforme()).find((c) => c.id === id);
+  const avec = competencesDe(regles, ficheConforme({ metier_id: metier.id })).find((c) => c.id === id);
+  const total = metier.bonus.filter((b) => b.options.length === 1 && b.options[0].competence_id === id).reduce((t, b) => t + b.valeur, 0);
+  assert.equal(avec.metier, total);
+  assert.equal(avec.score, sans.score + total);
+  assert.equal(avec.plafondAcquis, sans.plafondAcquis);
+  assert.equal(avec.maxAcquis, Math.max(0, sans.maxAcquis - total));
+  assert.equal(sans.metier, 0);
+  // initiative : un métier « +N INI » s'ajoute au bonus de l'Agilité
+  const coureur = regles.metiers.find((m) => m.bonus.some((b) => b.options.some((o) => o.attribut === 'initiative')));
+  const n = coureur.bonus.find((b) => b.options.some((o) => o.attribut === 'initiative')).valeur;
+  const base = attributsDe(regles, ficheConforme());
+  const plus = attributsDe(regles, ficheConforme({ metier_id: coureur.id }));
+  assert.equal(plus.initiativeBonus, base.initiativeBonus + n);
+  assert.equal(base.initiativeBonus, base.initiative?.bonus ?? 0);
+});
+
+test('décision R34 : compétence d’artisanat = 10 × chacune des deux caractéristiques du métier (exemples du propriétaire : sculpteur 50 %, joaillier 90 %)', () => {
+  const essai = (caracteristiques) => ({ id: 'metiers/essai', nom: 'Essai', bonus: [], objets: [], artisanat: { texte: 'Fabrique', caracteristiques } });
+  const r = { ...regles, metiers: [essai(['force', 'intelligence']), { ...essai(['perception', 'intelligence']), id: 'metiers/essai-2' }, { ...essai([]), id: 'metiers/essai-3' }] };
+  const bases = (b) => Object.entries({ force: 1, volonte: 1, intelligence: 1, perception: 1, social: 1, agilite: 1, ...b }).map(([caracteristique_id, base]) => ({ caracteristique_id, base, croix: 0 }));
+  // « un Sculpteur avec 3 de force et 2 en intelligence a une compétence de 3*10 + 2*10 = 50% »
+  assert.equal(artisanatDe(r, { metier_id: 'metiers/essai', caracteristiques: bases({ force: 3, intelligence: 2 }) }).score, 50);
+  // « joalier avec 5 en intelligence et 4 en perception a 5*10 + 4*10 = 90% »
+  assert.equal(artisanatDe(r, { metier_id: 'metiers/essai-2', caracteristiques: bases({ intelligence: 5, perception: 4 }) }).score, 90);
+  // la valeur de la caractéristique compte le +1 de la magie innée, comme le score d'une compétence
+  const magieDeForce = regles.magies.find((m) => m.caracteristique_id === 'force');
+  assert.equal(artisanatDe(r, { metier_id: 'metiers/essai', magie_innee_id: magieDeForce.id, caracteristiques: bases({ force: 3, intelligence: 2 }) }).score, 60);
+  assert.equal(artisanatDe(r, { metier_id: 'metiers/essai-3', caracteristiques: bases({}) }).score, null, 'sans ses deux caractéristiques');
+  assert.equal(artisanatDe(r, { metier_id: null }), null);
+  assert.equal(regles.constantes['metier.artisanat_par_point_caracteristique'], 10);
+  // dans la base : chaque métier qui fabrique avec un test a ses deux caractéristiques (le Peintre « PERCEPTION x2 » : deux fois la Perception)
+  for (const m of regles.metiers.filter((x) => x.artisanat?.caracteristiques.length)) assert.equal(m.artisanat.caracteristiques.length, 2, m.id);
+});
+
+test('décision R35 : les objets de départ du métier entrent dans l’inventaire quand on le choisit, sortent quand on en change ; un objet à choisir se choisit', () => {
+  assert.deepEqual(objetDInventaire('Crochet (x3)'), { nom: 'Crochet', quantite: 3 });
+  assert.deepEqual(objetDInventaire('Faux en fer (Arme)'), { nom: 'Faux en fer (Arme)', quantite: 1 });
+  const r = {
+    ...regles,
+    metiers: [
+      { id: 'metiers/a', nom: 'A', bonus: [], artisanat: null, objets: [{ rang: 1, options: ['Corde'] }, { rang: 2, options: ['Pelle', 'Faux'] }, { rang: 3, options: ['Crochet (x3)'] }] },
+      { id: 'metiers/b', nom: 'B', bonus: [], artisanat: null, objets: [{ rang: 1, options: ['Marteau'] }] },
+    ],
+  };
+  assert.deepEqual(objetsDuMetier(r, 'metiers/a')[2].options, [{ texte: 'Crochet (x3)', nom: 'Crochet', quantite: 3 }]);
+  const depart = [{ rang: 1, nom: 'Pain', quantite: 2, ressource_id: null }];
+  let fiche = { metier_id: 'metiers/a', inventaire: depart };
+  fiche.inventaire = inventaireSelonLeMetier(r, fiche, null);
+  assert.deepEqual(fiche.inventaire.map((o) => [o.rang, o.nom, o.quantite]), [[1, 'Pain', 2], [2, 'Corde', 1], [3, 'Crochet', 3]], 'le choix attend');
+  assert.equal(objetChoisi(fiche, objetsDuMetier(r, 'metiers/a')[1]), -1);
+  fiche.inventaire = choisirObjetDeMetier(r, fiche, 2, 1);
+  assert.equal(objetChoisi(fiche, objetsDuMetier(r, 'metiers/a')[1]), 1);
+  fiche.inventaire = choisirObjetDeMetier(r, fiche, 2, 0);
+  assert.deepEqual(fiche.inventaire.map((o) => o.nom), ['Pain', 'Corde', 'Crochet', 'Pelle'], 'l’autre option part');
+  // un objet renommé (ou dont la quantité a changé) reste au joueur quand il change de métier
+  fiche.inventaire = fiche.inventaire.map((o) => (o.nom === 'Crochet' ? { ...o, quantite: 2 } : o));
+  fiche = { ...fiche, metier_id: 'metiers/b' };
+  fiche.inventaire = inventaireSelonLeMetier(r, fiche, 'metiers/a');
+  assert.deepEqual(fiche.inventaire.map((o) => [o.rang, o.nom, o.quantite]), [[1, 'Pain', 2], [2, 'Crochet', 2], [3, 'Marteau', 1]]);
+  fiche = { ...fiche, metier_id: null };
+  assert.deepEqual(inventaireSelonLeMetier(r, fiche, 'metiers/b').map((o) => o.nom), ['Pain', 'Crochet']);
+  // un objet au nom d'une ressource du catalogue y est rattaché, comme une saisie de l'inventaire
+  const ressource = regles.ressources[0];
+  const r2 = { ...regles, metiers: [{ id: 'metiers/c', nom: 'C', bonus: [], artisanat: null, objets: [{ rang: 1, options: [ressource.nom] }] }] };
+  assert.equal(inventaireSelonLeMetier(r2, { metier_id: 'metiers/c', inventaire: [] }, null)[0].ressource_id, ressource.id);
+  // dans la base : les objets de chaque métier redonnent son équipement
+  for (const m of regles.metiers) assert.ok(m.objets.every((o) => o.options.length >= 1 && o.options.every((t) => t.trim())), m.id);
 });

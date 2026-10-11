@@ -14,7 +14,8 @@ import { lireAttributEd } from '../src/lib/edition-modele.mjs';
 import { CONTEXTE_PASTILLE, echapperHtml, htmlDeBlocs, rendreChamp, RENDUS } from '../src/lib/edition-rendu.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
-const competences = db.prepare('SELECT nom FROM competence').all().map((c) => c.nom);
+const competences = db.prepare('SELECT id, nom, caracteristique_id, ordre FROM competence ORDER BY ordre').all().map((c) => ({ ...c }));
+const caracteristiques = db.prepare('SELECT id, nom FROM caracteristique ORDER BY ordre').all().map((c) => ({ ...c }));
 const objets = db.prepare('SELECT id, nom, nom_cle, description FROM objet_depart').all();
 const typesDon = db.prepare('SELECT id, nom, definition FROM type_don ORDER BY ordre').all();
 
@@ -36,22 +37,21 @@ test('blocs d’un texte long : paragraphes, puces, intertitres « ▸ », adres
   assert.equal(htmlDeBlocs(null), '');
 });
 
-test('métiers : bonus par rang, artisanat avec son test, « Rien » = tiret, avantage « … » masqué', () => {
-  assert.equal(RENDUS['metier-bonus']('+3% Esquive, +2% Athlétisme OU Équilibre', {}, { competences }), '<div>+3% Esquive</div><div>+2% Athlétisme OU Équilibre</div>');
-  assert.match(RENDUS['metier-artisanat'](null, { peut_fabriquer: 0 }), /class="vide"/);
-  assert.equal(RENDUS['metier-artisanat'](null, { peut_fabriquer: 1, artisanat_texte: 'Golems', test_brut: 'FORCE  + INTELLIGENCE' }),
-    'Golems <span class="metier__test" title="Caractéristiques à combiner pour fabriquer">FORCE + INTELLIGENCE</span>');
-  assert.match(RENDUS['metier-equipement']('Rien'), /class="vide"/);
+test('métiers : bonus liés en pastilles (R33), texte libre gardé, artisanat, caractéristiques (R34), objets de départ (R35), « Rien » = tiret', () => {
+  const ctx = { competences, caracteristiques, objets };
+  const bonus = RENDUS['metier-bonus']('+1 INI, +2% Athlétisme OU Équilibre, +1 Vitesse au sol pour le sprint', {}, ctx);
+  assert.match(bonus, /^<div class="metier-bonus"><span class="metier-bonus__valeur">\+1<\/span> <span class="metier-cible metier-cible--attribut"[^>]*>Initiative<\/span><\/div>/);
+  assert.match(bonus, /<span class="metier-bonus__valeur">\+2%<\/span> <span class="metier-cible" style="--c: #ff6666; [^"]*" title="Acquis de Athlétisme \(Force\)">Athlétisme<\/span> <span class="metier-bonus__ou">ou<\/span> <span class="metier-cible" style="--c: #99ff66;/);
+  assert.match(bonus, /<div class="metier-bonus metier-bonus--texte" title="[^"]*">\+1 Vitesse au sol pour le sprint<\/div>$/);
+  assert.equal(RENDUS['metier-bonus']('', {}, ctx), '');
+  assert.match(RENDUS['metier-artisanat'](null, {}), /class="vide"/);
+  assert.equal(RENDUS['metier-artisanat']('Golems <3', {}), 'Golems &lt;3');
+  assert.match(RENDUS['metier-carac']('volonte', {}, ctx), /^<span class="metier-carac" style="--c: #ff99ff; [^"]*" title="10 × Volonté">Volonté<\/span>$/);
+  assert.equal(RENDUS['metier-carac'](null, {}, ctx), '');
+  assert.match(RENDUS['metier-equipement']('Rien', {}, ctx), /class="vide"/);
+  const equipement = RENDUS['metier-equipement']('Corde, Pelle OU Faux', {}, ctx);
+  assert.equal(equipement, '<ul class="metier-objets"><li><span class="metier-objet">Corde</span></li><li class="metier-objets__choix"><span class="metier-objet">Pelle</span> <span class="metier-objets__ou">ou</span> <span class="metier-objet">Faux</span></li></ul>');
   assert.equal(RENDUS['metier-avantage']('…'), '');
-});
-
-test('classes et dons : listes à tirets, inventaire (« OU » = un emplacement à deux options), type de don et sa précision', () => {
-  assert.equal(RENDUS.liste('- Légère\n- Bouclier classe 1'), '<li>Légère</li><li>Bouclier classe 1</li>');
-  assert.match(RENDUS.inventaire('P fiole rouge', {}, { objets }), /^<li><span class="bulle-zone"><button type="button" class="objet" data-bulle="objet-ed-\d+"/, 'objet du glossaire : son infobulle');
-  assert.equal(RENDUS.inventaire('Torche OU Bandage, Corde'),
-    '<li class="inventaire__choix"><span class="objet objet--seul">Torche</span><span class="inventaire__ou">ou</span><span class="objet objet--seul">Bandage</span></li><li><span class="objet objet--seul">Corde</span></li>');
-  assert.match(RENDUS['don-type']('Actif (2 fois/Combat)'), /^<span class="don-type" data-type="actif">Actif<\/span><span class="don__precision">/);
-  assert.equal(RENDUS['don-type'](null), '');
 });
 
 // --- Contre le site construit ------------------------------------------------------------------------------------------------------------------
@@ -139,12 +139,12 @@ test('site construit : chaque champ [data-ed] des métiers, des magies, des race
       const attendu = normal(cible.children);
       // les pastilles d'état que la page montre dans le champ, comme le script les relève (src/scripts/edition/editeur.mjs#rendreElement)
       const pastilles = zones(cible).map((z) => ({ forme: texteDe(trouver(z, 'chip--etat')), avant: texteAvant(cible, z), html: toHtml(z) }));
-      const obtenu = fragment(rendreChamp(rendu, ligne[info.colonne], ligne, { competences, objets, typesDon, pastilles }));
+      const obtenu = fragment(rendreChamp(rendu, ligne[info.colonne], ligne, { competences, caracteristiques, objets, typesDon, pastilles }));
       assert.equal(obtenu, attendu, `${p} : ${info.table} ${JSON.stringify(info.cle)} ${info.colonne} (rendu ${rendu})`);
       parRendu.set(rendu, (parRendu.get(rendu) ?? 0) + 1);
     }
   }
-  for (const r of ['texte', 'blocs', 'metier-bonus', 'metier-artisanat', 'metier-equipement', 'metier-avantage', 'sort-type', 'sort-cout', 'sort-portee', 'sort-zone', 'sort-dsb', 'liste', 'inventaire', 'don-type']) {
+  for (const r of ['texte', 'blocs', 'metier-bonus', 'metier-artisanat', 'metier-carac', 'metier-equipement', 'metier-avantage', 'sort-type', 'sort-cout', 'sort-portee', 'sort-zone', 'sort-dsb', 'liste', 'inventaire', 'don-type']) {
     assert.ok(parRendu.get(r) > 0, `rendu ${r} vérifié au moins une fois`);
   }
 });

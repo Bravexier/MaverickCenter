@@ -1,5 +1,6 @@
-// Page des métiers CONSTRUITE (client/dist/metiers/index.html) : un long tableau (Nom, Bonus, Artisanat, Équipement supplémentaire), une ligne par métier,
-// la description sous la ligne ; plus de page par métier, et tout lien du site vers un métier mène à sa ligne (lib/metiers.mjs).
+// Page des métiers CONSTRUITE (client/dist/metiers/index.html) : un long tableau (Nom, Bonus, Artisanat, Caractéristiques, Équipement supplémentaire), une
+// ligne par métier, la description sous la ligne ; plus de page par métier, et tout lien du site vers un métier mène à sa ligne (lib/metiers.mjs). Bonus liés
+// aux compétences et à l'initiative, artisanat en texte + deux caractéristiques, objets de départ : décisions R33 à R35.
 // Ce test lit le site construit : il ne tourne qu'après `npm run build` (la CI l'exécute juste après) et se saute sinon.
 //   node --test test/metiers-html.test.mjs
 import assert from 'node:assert/strict';
@@ -20,11 +21,23 @@ const lignes = [...main.matchAll(/<tbody class="metier" id="(metier-[^"]+)"/g)].
 const pagesHtml = (d) =>
   readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? pagesHtml(join(d, e.name)) : e.name.endsWith('.html') ? [join(d, e.name)] : []));
 
-test('un tableau de 72 métiers, aux quatre colonnes demandées, une ancre unique par ligne', options, () => {
-  assert.equal(lignes.length, 72);
+test('un tableau des métiers de la base, aux cinq colonnes demandées, une ancre unique par ligne', options, () => {
+  assert.equal(lignes.length, (main.match(/<tbody class="metier"/g) ?? []).length);
+  assert.ok(lignes.length >= 70, `${lignes.length} métiers`);
   assert.equal(new Set(ids).size, ids.length, 'identifiant en double');
   const entetes = [...main.slice(main.indexOf('<thead'), main.indexOf('</thead>')).matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map((m) => m[1]);
-  assert.deepEqual(entetes, ['Nom', 'Bonus', 'Artisanat', 'Équipement supplémentaire']);
+  assert.deepEqual(entetes, ['Nom', 'Bonus', 'Artisanat', 'Caractéristiques', 'Équipement supplémentaire']);
+  assert.equal((main.match(/<td colspan="5">/g) ?? []).length, lignes.length, 'la description s’étend sur les cinq colonnes');
+});
+
+test('bonus en pastilles de compétence (couleur de la caractéristique) ou d’initiative ; artisanat et caractéristiques à part ; objets de départ en liste', options, () => {
+  assert.ok((main.match(/class="metier-cible" style="--c: #/g) ?? []).length > 100, 'des compétences liées, chacune dans sa couleur');
+  assert.match(main, /class="metier-cible metier-cible--attribut"[^>]*>Initiative</);
+  assert.match(main, /class="metier-bonus metier-bonus--texte"/, 'un bonus en texte libre reste écrit tel quel');
+  assert.ok((main.match(/class="metier-carac" style="--c: #/g) ?? []).length >= 2 * 24, 'deux caractéristiques par métier qui fabrique');
+  assert.match(main, /<ul class="metier-objets"><li>/);
+  assert.match(main, /<li class="metier-objets__choix">/, 'un objet de départ à choisir');
+  assert.doesNotMatch(main, /class="metier__test"/, 'plus de test entre crochets dans la cellule d’artisanat');
 });
 
 test('chaque ligne ouvre sa description juste en dessous ; les aria-* mènent à un élément de la page', options, () => {
@@ -34,7 +47,8 @@ test('chaque ligne ouvre sa description juste en dessous ; les aria-* mènent à
   // la description du Forgeron est dans son panneau, sous sa ligne
   const forgeron = main.slice(main.indexOf('id="metier-forgeron"'), main.indexOf('</tbody>', main.indexOf('id="metier-forgeron"')));
   assert.match(forgeron, /Le forgeron transforme métal brut en armes/);
-  assert.match(forgeron, /FORCE \+ VOLONTÉ/);
+  assert.match(forgeron, /title="10 × Force">Force<\/span>/);
+  assert.match(forgeron, /title="10 × Volonté">Volonté<\/span>/);
 });
 
 test('plus de page par métier : seule la page des règles reste à côté du tableau', options, () => {

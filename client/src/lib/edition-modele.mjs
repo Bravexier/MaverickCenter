@@ -20,8 +20,13 @@ export const TABLES = {
     colonnes: {
       nom: { type: 'ligne', libelle: 'Nom', requis: true },
       description: { type: 'texte', libelle: 'Description', vide: '' },
+      // bonus : « +3% Esquive, +2% Parade OU Esquive » ; un nom de compétence la lie (son Acquis), « +N INI » l'initiative (décision R33)
       bonus_brut: { type: 'ligne', libelle: 'Bonus', vide: '' },
-      artisanat_brut: { type: 'ligne', libelle: 'Artisanat', vide: 'Rien' },
+      // artisanat (décision R34) : un texte libre et deux caractéristiques (vide : rien à fabriquer) ; « Artisanat possible » en est recalculé
+      artisanat_texte: { type: 'ligne', libelle: 'Artisanat' },
+      test_carac_1_id: { type: 'choix', libelle: 'Caractéristique d’artisanat 1', liste: 'caracteristiquesDArtisanat' },
+      test_carac_2_id: { type: 'choix', libelle: 'Caractéristique d’artisanat 2', liste: 'caracteristiquesDArtisanat' },
+      // objets de départ (décision R35) : « , » entre deux objets, « OU » entre les options d'un choix
       equipement_brut: { type: 'ligne', libelle: 'Équipement supplémentaire', vide: 'Rien' },
       avantage_brut: { type: 'texte', libelle: 'Avantage possible' },
       remarque: { type: 'texte', libelle: 'Remarque' },
@@ -170,7 +175,7 @@ export const ENTITES = {
   metier: {
     table: 'metier',
     libelle: 'métier',
-    champs: champsDe('metier', ['nom', 'description', 'bonus_brut', 'artisanat_brut', 'equipement_brut', 'avantage_brut']),
+    champs: champsDe('metier', ['nom', 'description', 'bonus_brut', 'artisanat_texte', 'test_carac_1_id', 'test_carac_2_id', 'equipement_brut', 'avantage_brut']),
     suppression: true,
   },
   race: {

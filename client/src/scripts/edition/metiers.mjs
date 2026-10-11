@@ -23,11 +23,15 @@ function nouvelleLigne(id) {
     <tr class="metier__main">
       <th scope="row" class="metier__nom" data-ed="${ed('nom')}" data-ed-cible=".metier__choisir" data-colonne="nom"><button type="button" class="metier__choisir" aria-expanded="false" aria-controls="detail-${ancre}"></button></th>
       <td data-label="Bonus" class="metier__bonus" data-ed="${ed('bonus_brut')}" data-ed-rendu="metier-bonus" data-colonne="bonus"></td>
-      <td data-label="Artisanat" class="metier__artisanat" data-ed="${ed('artisanat_brut')}" data-ed-rendu="metier-artisanat" data-colonne="artisanat"></td>
+      <td data-label="Artisanat" class="metier__artisanat" data-ed="${ed('artisanat_texte')}" data-ed-rendu="metier-artisanat" data-colonne="artisanat"></td>
+      <td data-label="Caractéristiques" class="metier__caracs" data-colonne="caracteristiques" title="Compétence d’artisanat : 10 × chacune des deux caractéristiques">
+        <span class="metier__carac" data-ed="${ed('test_carac_1_id')}" data-ed-rendu="metier-carac"></span>
+        <span class="metier__carac" data-ed="${ed('test_carac_2_id')}" data-ed-rendu="metier-carac"></span>
+      </td>
       <td data-label="Équipement supplémentaire" class="metier__equipement" data-ed="${ed('equipement_brut')}" data-ed-rendu="metier-equipement" data-colonne="equipement"></td>
     </tr>
     <tr class="metier__detail" id="detail-${ancre}" hidden>
-      <td colspan="4">
+      <td colspan="5">
         <div class="metier-detail" role="region" aria-labelledby="detail-${ancre}-titre">
           <header class="metier-detail__tete">
             <h2 id="detail-${ancre}-titre" data-ed-lecture="${ed('nom')}"></h2>
@@ -74,8 +78,12 @@ function boutonSupprimer(tbody) {
   cellule.append(bouton);
 }
 
-const champsDeCreation = () =>
-  Object.entries(ENTITES.metier.champs).map(([c, champ]) => ({ nom: c, libelle: champ.libelle, type: champ.type, requis: champ.requis, valeur: champ.vide === 'Rien' ? 'Rien' : '' }));
+/** Champs du formulaire « Nouveau métier » ; un champ « choix » (caractéristiques de l'artisanat) prend sa liste du service (ed.listes). */
+const champsDeCreation = (ed) =>
+  Object.entries(ENTITES.metier.champs).map(([c, champ]) => ({
+    nom: c, libelle: champ.libelle, type: champ.type, requis: champ.requis, valeur: champ.vide === 'Rien' ? 'Rien' : '',
+    ...(champ.type === 'choix' ? { choix: champ.choix ?? ed.listes?.[champ.liste] ?? [] } : {}),
+  }));
 
 export const metiers = {
   nom: 'metiers',
@@ -114,7 +122,7 @@ export const metiers = {
       ed.formulaire({
         titre: 'Nouveau métier',
         aide: 'Le métier est créé tout de suite dans la base du site de dev ; ses autres champs se modifient ensuite dans le tableau.',
-        champs: champsDeCreation(),
+        champs: champsDeCreation(ed),
         valider: async (valeurs) => {
           const r = await ed.appel('POST', 'edition/', { page: ed.page, operations: [{ op: 'creer', entite: 'metier', valeurs }] });
           const metier = r.lignes.find((l) => l.table === 'metier' && l.ligne)?.ligne;

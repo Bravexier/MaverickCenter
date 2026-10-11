@@ -9,6 +9,7 @@ export const PARTIES_DE_FICHE = Object.freeze({
   classes: 'personnage_classe',
   caracteristiques: 'personnage_caracteristique',
   competences: 'personnage_competence',
+  metier_bonus: 'personnage_metier_bonus',
   progression: 'personnage_progression',
   capacites: 'personnage_capacite',
   sorts: 'personnage_sort',

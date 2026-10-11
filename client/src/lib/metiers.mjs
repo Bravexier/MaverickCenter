@@ -1,5 +1,6 @@
-// Métiers : pas de page par métier (demande du propriétaire). /metiers/ est un long tableau (Nom, Bonus, Artisanat, Équipement supplémentaire),
-// une ligne par métier de la table `metier`, à la manière des tableaux de sorts ; la description du métier (et son avantage possible) s'ouvre sous sa ligne.
+// Métiers : pas de page par métier (demande du propriétaire). /metiers/ est un long tableau (Nom, Bonus, Artisanat, Caractéristiques, Équipement
+// supplémentaire), une ligne par métier de la table `metier`, à la manière des tableaux de sorts ; la description du métier (et son avantage possible)
+// s'ouvre sous sa ligne. Bonus liés aux compétences et à l'initiative, artisanat en texte + deux caractéristiques, objets de départ : décisions R33 à R35.
 // Les pages `metiers/<slug>` restent dans la base et dans les `.md` fabriqués (recherche, mots-clés, `[[liens]]`), mais tout lien vers un métier
 // mène à sa ligne : /metiers/#metier-forgeron. « Règles des métiers », du même type mais sans ligne dans `metier`, garde sa page.
 // Sans dépendance (sauf lib/guide.mjs, pur lui aussi) : importé par wikilinks.mjs (au démarrage d'Astro), par wiki.ts et par les tests ; `chargerMetiers` reçoit la base ouverte par lib/donnees.mjs.
@@ -29,35 +30,55 @@ export function cheminDePage(id) {
   return ancre ? `${chemin}#${ancre}` : chemin;
 }
 
-const RIEN = 'Rien';
 const espaces = (texte) => texte.replace(/\s+/g, ' ').trim();
 
 /**
  * Les métiers de la base, dans l'ordre alphabétique (nom_cle : sans accents ni casse), prêts pour le tableau :
- *   bonus      : un élément par rang de `metier_bonus` (« +3% Esquive », « +2% Athlétisme OU Équilibre ») ; joints par « , » ils redonnent `bonus_brut` ;
- *   artisanat  : null si « Rien » ; sinon { texte, test } (test = contenu du crochet, « FORCE + VOLONTÉ », ou null) ;
- *   equipement : null si « Rien » ;
+ *   ligne      : la ligne de la table `metier` (les cellules du tableau sont les rendus de lib/edition-rendu.mjs, les mêmes que le mode modification) ;
+ *   bonus      : un élément par rang de `metier_bonus` : { texte, valeur, unite, options: [{ competence_id, attribut }] } ; leurs textes joints par « , »
+ *                redonnent `bonus_brut` ; un rang est lié quand chaque option vise une compétence ou l'initiative (décision R33) ;
+ *   artisanat  : null si rien à fabriquer ; sinon { texte, test, caracteristiques: [id, id] | [] } (test : le crochet de la source, doubles espaces réduits) ;
+ *   objets     : les objets de départ (`metier_objet_depart`, décision R35), un élément par rang : [texte des options] ;
  *   avantage   : null s'il est vide ou réduit à « … » (la source n'y donne aucun exemple).
- * Aucun texte n'est réécrit (seuls les doubles espaces du crochet sont réduits à l'affichage).
+ * Aucun texte n'est réécrit.
  */
 export function chargerMetiers(db) {
   const bonus = new Map();
-  for (const b of db.prepare('SELECT metier_id, rang, texte FROM metier_bonus ORDER BY metier_id, rang, option').all()) {
+  for (const b of db.prepare('SELECT metier_id, rang, texte, valeur, unite, competence_id, attribut FROM metier_bonus ORDER BY metier_id, rang, option').all()) {
     const rangs = bonus.get(b.metier_id) ?? bonus.set(b.metier_id, []).get(b.metier_id);
-    rangs[b.rang - 1] ??= b.texte; // les options d'un même rang portent le même texte (« Parade OU Esquive »)
+    const rang = (rangs[b.rang - 1] ??= { texte: b.texte, valeur: b.valeur, unite: b.unite, options: [] }); // les options d'un rang portent le même texte
+    rang.options.push({ competence_id: b.competence_id, attribut: b.attribut });
+  }
+  const objets = new Map();
+  for (const o of db.prepare('SELECT metier_id, rang, texte FROM metier_objet_depart ORDER BY metier_id, rang, option').all()) {
+    const rangs = objets.get(o.metier_id) ?? objets.set(o.metier_id, []).get(o.metier_id);
+    (rangs[o.rang - 1] ??= []).push(o.texte);
   }
   return db
-    .prepare('SELECT id, nom, description, bonus_brut, peut_fabriquer, artisanat_texte, test_brut, equipement_brut, avantage_brut, remarque FROM metier ORDER BY nom_cle')
+    .prepare('SELECT * FROM metier ORDER BY nom_cle')
     .all()
     .map((m) => ({
       id: m.id,
       ancre: ancreDeMetier(m.id),
       nom: m.nom,
       description: m.description,
-      bonus: (bonus.get(m.id) ?? [m.bonus_brut]).filter(Boolean),
-      artisanat: m.peut_fabriquer ? { texte: m.artisanat_texte, test: m.test_brut ? espaces(m.test_brut) : null } : null,
-      equipement: m.equipement_brut === RIEN ? null : m.equipement_brut,
+      ligne: { ...m },
+      bonus: (bonus.get(m.id) ?? []).filter(Boolean),
+      artisanat: m.peut_fabriquer
+        ? { texte: m.artisanat_texte, test: m.test_brut ? espaces(m.test_brut) : null, caracteristiques: m.test_carac_1_id ? [m.test_carac_1_id, m.test_carac_2_id] : [] }
+        : null,
+      objets: (objets.get(m.id) ?? []).filter(Boolean),
       avantage: m.avantage_brut && m.avantage_brut.trim() !== '…' ? m.avantage_brut : null,
       remarque: m.remarque || null,
     }));
 }
+
+/**
+ * Ce que les rendus des cellules (lib/edition-rendu.mjs) lisent dans la base, comme les listes du service en mode modification (serveur/edition.mjs#listes) :
+ * les compétences (nom, caractéristique : couleur de la pastille), les caractéristiques, le glossaire des objets de départ.
+ */
+export const contexteDesMetiers = (db) => ({
+  competences: db.prepare('SELECT id, nom, caracteristique_id, ordre FROM competence ORDER BY ordre').all().map((c) => ({ ...c })),
+  caracteristiques: db.prepare('SELECT id, nom FROM caracteristique ORDER BY ordre').all().map((c) => ({ ...c })),
+  objets: db.prepare('SELECT id, nom, nom_cle, description FROM objet_depart ORDER BY id').all().map((o) => ({ ...o })),
+});

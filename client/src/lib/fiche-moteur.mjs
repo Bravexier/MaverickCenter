@@ -223,27 +223,128 @@ export function budgetCaracteristiques(regles, fiche) {
 }
 
 /**
- * Les trente compétences : naturel et acquis saisis, plafonds (naturel : seuil du niveau ; acquis : 5 par point de caractéristique de base) et
- * score (guide, « Réussir une action » : 10 × la caractéristique + naturel + acquis ; une croix −20 %, deux croix : inutilisable, décision R19).
+ * Bonus du métier de la fiche (décision R33 : « saisir un métier donnera automatiquement en aquis pour la compétence choisie. En cas de choix c'est à
+ * saisir dans la fiche de personnage. +X INI donne le bonus à l'initiative. »), comme v_personnage_metier_bonus : un rang à une seule option compte
+ * quand elle vise une compétence ou l'initiative ; un rang à plusieurs compétences (« +3% Diplomatie OU Intimidation ») est un choix, et seule la
+ * compétence retenue (fiche.metier_bonus) compte ; un rang en texte libre ne compte pas. { metier, rangs: [{ …rang, aChoisir, retenue }],
+ * parCompetence: { competence_id: valeur }, initiative }.
+ */
+export function bonusDuMetier(regles, fiche) {
+  const metier = trouver(regles.metiers, fiche.metier_id);
+  const choisies = new Map((fiche.metier_bonus ?? []).map((c) => [entier(c.rang), c.competence_id]));
+  const parCompetence = {};
+  let initiative = 0;
+  const rangs = (metier?.bonus ?? []).map((b) => {
+    const aChoisir = b.options.filter((o) => o.competence_id).length > 1;
+    const retenue = b.options.length === 1
+      ? (b.options[0].competence_id || b.options[0].attribut ? b.options[0] : null)
+      : b.options.find((o) => o.competence_id && o.competence_id === choisies.get(b.rang)) ?? null;
+    if (retenue?.competence_id) parCompetence[retenue.competence_id] = (parCompetence[retenue.competence_id] ?? 0) + entier(b.valeur);
+    if (retenue?.attribut === 'initiative') initiative += entier(b.valeur);
+    return { ...b, aChoisir, retenue };
+  });
+  return { metier, rangs, parCompetence, initiative };
+}
+
+/**
+ * Bonus de métier choisis qui restent valables après un changement de métier (règle metier_bonus_hors_choix de v_personnage_controle) : ceux d'un rang à
+ * choix du métier de la fiche, dont la compétence est une de ses options. Rend une nouvelle liste ; la fiche n'est pas modifiée.
+ */
+export function choixDeMetierValables(regles, fiche) {
+  const metier = trouver(regles.metiers, fiche.metier_id);
+  return (fiche.metier_bonus ?? []).filter((c) => {
+    const rang = metier?.bonus.find((b) => b.rang === entier(c.rang));
+    return Boolean(rang) && rang.options.length > 1 && rang.options.some((o) => o.competence_id && o.competence_id === c.competence_id);
+  });
+}
+
+/**
+ * Les trente compétences : naturel et acquis saisis, bonus du métier (bonusDuMetier : de l'Acquis, décision R33), plafonds (naturel : seuil du niveau ;
+ * acquis : 5 par point de caractéristique de base, bonus du métier compris : `plafondAcquis` ; `maxAcquis` = ce qu'il en reste pour la saisie) et score
+ * (guide, « Réussir une action » : 10 × la caractéristique + naturel + acquis ; une croix −20 %, deux croix : inutilisable, décision R19).
  */
 export function competencesDe(regles, fiche) {
   const niveau = niveauGlobal(regles, fiche.xp);
   const caracs = new Map(caracteristiquesDe(regles, fiche).map((c) => [c.id, c]));
   const parId = new Map((fiche.competences ?? []).map((c) => [c.competence_id, c]));
   const maxNaturel = ligneDeNiveau(regles, niveau).competence_naturel_max;
+  const { parCompetence } = bonusDuMetier(regles, fiche);
   return regles.competences.map((k) => {
     const saisie = parId.get(k.id);
     const carac = caracs.get(k.caracteristique_id);
     const naturel = saisie ? entier(saisie.naturel) : 0;
     const acquis = saisie ? entier(saisie.acquis) : 0;
+    const metier = parCompetence[k.id] ?? 0;
     const utilisable = carac.croix < 2;
     const malus = carac.croix === 1 ? constante(regles, 'competence.croix_1_malus') : 0;
+    const plafondAcquis = (carac.base ?? 0) * constante(regles, 'competence.acquis_max_par_point_caracteristique');
     return {
-      id: k.id, nom: k.nom, caracteristique_id: k.caracteristique_id, naturel, acquis, maxNaturel,
-      maxAcquis: (carac.base ?? 0) * constante(regles, 'competence.acquis_max_par_point_caracteristique'),
-      score: utilisable ? carac.valeur * constante(regles, 'competence.base_par_point_caracteristique') + naturel + acquis + malus : null,
+      id: k.id, nom: k.nom, caracteristique_id: k.caracteristique_id, naturel, acquis, metier, maxNaturel, plafondAcquis,
+      maxAcquis: Math.max(0, plafondAcquis - metier),
+      score: utilisable ? carac.valeur * constante(regles, 'competence.base_par_point_caracteristique') + naturel + acquis + metier + malus : null,
     };
   });
+}
+
+/**
+ * Compétence d'artisanat du métier de la fiche (décision R34 : « une case caractéristiques qui assigne sa compétence d'artisanat comme étant l'ensemble de
+ * ses 2 caractéristiques », « un Sculpteur avec 3 de force et 2 en intelligence a une compétence de 3*10 + 2*10 = 50% ») : 10 × chacune des deux
+ * caractéristiques du métier (constante metier.artisanat_par_point_caracteristique), avec leur valeur (le +1 de la magie innée compris, comme le score
+ * d'une compétence). null sans métier ou sans artisanat ; `score` null quand le métier n'a pas ses deux caractéristiques.
+ */
+export function artisanatDe(regles, fiche) {
+  const metier = trouver(regles.metiers, fiche.metier_id);
+  if (!metier?.artisanat) return null;
+  const caracs = caracteristiquesDe(regles, fiche);
+  const par = constante(regles, 'metier.artisanat_par_point_caracteristique');
+  const parts = metier.artisanat.caracteristiques.map((id) => caracs.find((c) => c.id === id)).filter(Boolean)
+    .map((c) => ({ id: c.id, nom: c.nom, valeur: c.valeur, points: c.valeur * par }));
+  return { texte: metier.artisanat.texte, caracteristiques: parts, score: parts.length === 2 ? parts[0].points + parts[1].points : null };
+}
+
+/** Un objet de départ tel qu'écrit, pour l'inventaire : « Crochet (x3) » → { nom: 'Crochet', quantite: 3 } ; sans « (xN) », une unité. */
+export function objetDInventaire(texte) {
+  const brut = String(texte ?? '').trim();
+  const m = /^(.*?)\s*\(x(\d+)\)$/i.exec(brut);
+  return m && m[1] ? { nom: m[1], quantite: Number(m[2]) } : { nom: brut, quantite: 1 };
+}
+
+/** Objets de départ d'un métier (décision R35), par rang : [{ rang, options: [{ texte, nom, quantite }] }] ; plusieurs options = un choix. */
+export function objetsDuMetier(regles, metierId) {
+  return (trouver(regles.metiers, metierId)?.objets ?? []).map((r) => ({ rang: r.rang, options: r.options.map((t) => ({ texte: t, ...objetDInventaire(t) })) }));
+}
+
+const ligneDInventaire = (regles, objet) => ({ nom: objet.nom, quantite: objet.quantite, ressource_id: (regles.ressources ?? []).find((r) => r.nom === objet.nom)?.id ?? null });
+const memeObjet = (ligne, objet) => String(ligne.nom ?? '').trim() === objet.nom && entier(ligne.quantite) === objet.quantite;
+const renumeroter = (inventaire) => inventaire.map((o, i) => ({ ...o, rang: i + 1 }));
+
+/**
+ * L'inventaire après un changement de métier (décision R35 : « équipement supplémentaire ajoute un "objet de départ" à la création du personnage ») :
+ * les objets de départ de l'ancien métier encore là tels quels (même nom, même quantité) sont retirés, ceux du nouveau ajoutés ; un objet à choisir
+ * (« Pelle OU faucille ») attend le choix (choisirObjetDeMetier). Rend une nouvelle liste ; la fiche n'est pas modifiée.
+ */
+export function inventaireSelonLeMetier(regles, fiche, ancienMetierId) {
+  const inventaire = [...(fiche.inventaire ?? [])];
+  for (const r of objetsDuMetier(regles, ancienMetierId)) {
+    for (const o of r.options) {
+      const i = inventaire.findIndex((l) => memeObjet(l, o));
+      if (i >= 0) inventaire.splice(i, 1);
+    }
+  }
+  for (const r of objetsDuMetier(regles, fiche.metier_id)) if (r.options.length === 1) inventaire.push(ligneDInventaire(regles, r.options[0]));
+  return renumeroter(inventaire);
+}
+
+/** L'option d'un objet à choisir que l'inventaire contient (index dans r.options), ou -1. */
+export const objetChoisi = (fiche, rangDObjet) => rangDObjet.options.findIndex((o) => (fiche.inventaire ?? []).some((l) => memeObjet(l, o)));
+
+/** L'inventaire où l'objet à choisir `rang` du métier de la fiche est l'option `index` : les autres options de ce rang en sont retirées. */
+export function choisirObjetDeMetier(regles, fiche, rang, index) {
+  const r = objetsDuMetier(regles, fiche.metier_id).find((x) => x.rang === rang);
+  if (!r || !r.options[index]) return renumeroter([...(fiche.inventaire ?? [])]);
+  const inventaire = (fiche.inventaire ?? []).filter((l) => !r.options.some((o, j) => j !== index && memeObjet(l, o)));
+  if (!inventaire.some((l) => memeObjet(l, r.options[index]))) inventaire.push(ligneDInventaire(regles, r.options[index]));
+  return renumeroter(inventaire);
 }
 
 /** Total des points naturels et budget cumulé exact du niveau (v_niveau.points_competences_cumul, décision R3). */
@@ -369,7 +470,8 @@ function gainsDeProgression(fiche) {
  *   chakra   = classes + race + magie innée + magie acquise + ethnie + accessoires « Chakra » + gains de niveau
  *   barrière = chakra ÷ 2 (arrondi à l'inférieur) + classes + race + ethnie + accessoires « Barrière »
  * Vitesse de la race et de l'ethnie ; armure de base : AP/AM de la race et de l'ethnie, AM de chaque classe magique (guide, étape 6) ; initiative :
- * 1D20 + le bonus de l'Agilité (table initiative_agilite) ; 4ᵉ barre (Sang, Âme) de la magie qui en a une ; Corruption au plus le chakra.
+ * 1D20 + le bonus de l'Agilité (table initiative_agilite) + le bonus d'initiative du métier (« +X INI », décision R33) : `initiativeBonus` ; 4ᵉ barre
+ * (Sang, Âme) de la magie qui en a une ; Corruption au plus le chakra.
  */
 export function attributsDe(regles, fiche) {
   const race = trouver(regles.races, fiche.race_id);
@@ -390,6 +492,7 @@ export function attributsDe(regles, fiche) {
   };
   const agilite = caracteristiquesDe(regles, fiche).find((c) => c.id === 'agilite');
   const initiative = regles.initiative.find((i) => i.agilite === agilite?.valeur) ?? null;
+  const initiativeMetier = bonusDuMetier(regles, fiche).initiative;
   const barre4 = magies.find((m) => m.barre4)?.barre4 ?? null;
   return {
     sante: total(detail.sante),
@@ -401,6 +504,8 @@ export function attributsDe(regles, fiche) {
     ap: (race?.ap ?? 0) + (ethnie?.ap ?? 0),
     am: (race?.am ?? 0) + (ethnie?.am ?? 0) + classes.filter((c) => c.magique).length * regles.am_classe_magique,
     initiative,
+    initiativeMetier,
+    initiativeBonus: (initiative?.bonus ?? 0) + initiativeMetier,
     quatriemeBarre: barre4 && { ressource: barre4.ressource === 'ame' ? 'Âme' : 'Sang', max: barre4.max },
     corruptionMax: chakra,
   };
