@@ -137,12 +137,16 @@ test('peuple créé (avec une race, ou seul) : il a sa case diagonale « Même p
 });
 
 test('lots de la même seconde : identifiants qui s’ordonnent comme leur enregistrement ; rejoués dans cet ordre sur des règles neuves', () => {
-  const date = new Date('2026-10-11T09:30:12.345Z');
+  // une seconde plus tard que tout lot déjà fait dans ce processus (nouveauLot ne redescend jamais : une date fixe échouerait une fois passée)
+  const seconde = Math.ceil((Date.now() + 86_400_000) / 1000) * 1000;
+  const date = new Date(seconde + 345);
   const ids = Array.from({ length: 5 }, () => nouveauLot(date));
-  assert.ok(ids.every((l) => l.instant === '2026-10-11T09:30:12Z'), 'instant à la seconde (CHECK de modification_lot.fait_le)');
+  const attendu = new Date(seconde).toISOString().replace(/\.\d{3}Z$/, 'Z');
+  assert.ok(ids.every((l) => l.instant === attendu), 'instant à la seconde (CHECK de modification_lot.fait_le)');
+  assert.ok(ids.every((l) => l.id.startsWith(new Date(seconde + 345).toISOString())), 'identifiant : l’instant à la milliseconde');
   assert.deepEqual(ids.map((l) => l.id), [...ids.map((l) => l.id)].sort(), 'triés comme créés');
   assert.equal(new Set(ids.map((l) => l.id)).size, 5);
-  assert.ok(nouveauLot(new Date('2026-10-11T09:30:12.000Z')).id > ids[4].id, 'une horloge qui recule ne fait pas passer un lot avant les précédents');
+  assert.ok(nouveauLot(new Date(seconde)).id > ids[4].id, 'une horloge qui recule ne fait pas passer un lot avant les précédents');
 
   // trente lots dans la même seconde, chacun réécrit le même champ : seul l'ordre d'enregistrement donne la bonne valeur finale
   const source = vivante('db-source');
