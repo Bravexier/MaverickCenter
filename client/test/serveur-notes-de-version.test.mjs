@@ -16,6 +16,7 @@ import {
   actualiserLancement, CONFIRMATION, creerGithub, DUREE_MAX_RUN, INTERVALLE_SUIVI, libererLot, lireLancement, lireLot, WORKFLOW,
 } from '../serveur/notes-de-version.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { versionLibre } from './aide-mise-a-jour.mjs';
 
 const racine = mkdtempSync(join(tmpdir(), 'maverick-notes-'));
 after(() => rmSync(racine, { recursive: true, force: true }));
@@ -309,15 +310,17 @@ test('la note livrée arrive dans les règles : lancement terminé, brouillon vi
   const l = lireLancement(dossier);
   assert.equal(l.etat, 'erreur');
   assert.ok(appel('GET', '/api/mise-a-jour/').corps.brouillon.lot, 'lot encore figé');
-  // ce que fait la nouvelle version du site : la note de version porte le lot (scripts/mise-a-jour-regles.mjs)
-  db.prepare("INSERT INTO note_version (version, publiee_le, depuis, texte, lot, exemple) VALUES ('0.2', '2026-10-11', '0.1', NULL, ?, 0)").run(l.lot);
+  // ce que fait la nouvelle version du site : la note de version porte le lot (scripts/mise-a-jour-regles.mjs) ; sa version, lue, n'est pas déjà
+  // dans data/rows (pendant une mise à jour, il porte la note en attente de livraison)
+  const version = versionLibre(db);
+  db.prepare("INSERT INTO note_version (version, publiee_le, depuis, texte, lot, exemple) VALUES (?, '2026-10-11', '0.1', NULL, ?, 0)").run(version, l.lot);
   // arrivée dans les règles de dev = fusionnée dans dev, pas encore livrée sur master (la référence est en 0.1)
   let actuel = actualiserLancement(db, dossier, { reference: { version: '0.1.0' } });
-  assert.deepEqual([actuel.etat, actuel.version_livree], ['fusionne', '0.2']);
+  assert.deepEqual([actuel.etat, actuel.version_livree], ['fusionne', version]);
   assert.equal(appel('POST', '/api/mise-a-jour/liberer/', { lot: l.lot }).statut, 409, 'dans dev : ne s’annule plus');
   // livrée : la référence (master) porte la version de sa note
-  actuel = actualiserLancement(db, dossier, { reference: { version: '0.2.0' } });
-  assert.deepEqual([actuel.etat, actuel.version_livree], ['termine', '0.2']);
+  actuel = actualiserLancement(db, dossier, { reference: { version: `${version}.0` } });
+  assert.deepEqual([actuel.etat, actuel.version_livree], ['termine', version]);
   assert.equal(appel('POST', '/api/mise-a-jour/liberer/', { lot: l.lot }).statut, 409, 'livré : rien à annuler');
   viderBrouillonLivre(db);
   const n = appel('GET', '/api/mise-a-jour/').corps;

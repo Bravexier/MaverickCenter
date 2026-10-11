@@ -6,6 +6,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { TABLES_DES_NOTES } from '../src/lib/notes-de-version.mjs';
 
 const racine = (chemin) => fileURLToPath(new URL(`../../${chemin}`, import.meta.url));
 const lire = (chemin) => readFileSync(racine(chemin), 'utf8');
@@ -19,7 +20,10 @@ test('registre : les deux classeurs retirés sont des copies connues', () => {
 });
 
 test('base : aucune colonne de texte ne cite plus « Familiers » ni « Prototype » (copie ou original)', () => {
-  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND sql NOT LIKE 'CREATE VIRTUAL%'").all();
+  // hors section 15 (notes de version, historique des modifications du site) : des traces, qui citent la production d'avant la livraison (master
+  // peut précéder la migration 0019) et les valeurs au moment de chaque modification (lib/notes-de-version.mjs#TABLES_DES_NOTES)
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND sql NOT LIKE 'CREATE VIRTUAL%'").all()
+    .filter(({ name }) => !TABLES_DES_NOTES.includes(name));
   for (const { name } of tables) {
     for (const { name: col } of db.prepare('SELECT name FROM pragma_table_info(?) WHERE type = ?').all(name, 'TEXT')) {
       for (const id of ids) assert.equal(db.prepare(`SELECT count(*) AS n FROM "${name}" WHERE instr("${col}", ?) > 0`).get(id).n, 0, `${name}.${col} cite ${id}`);

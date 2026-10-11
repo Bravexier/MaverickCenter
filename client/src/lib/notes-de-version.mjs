@@ -20,6 +20,16 @@ export const DOMAINES = [
   { id: 'guide', titre: 'Guide' },
 ];
 
+/**
+ * Tables de la section 15 de data/schema.sql : les notes de version et l'historique des modifications du site, écrites par chaque mise à jour
+ * (scripts/mise-a-jour-regles.mjs). Ce sont des TRACES : note_version_ligne cite la production telle qu'elle était avant la livraison (`avant`,
+ * et le nom d'une entité retirée), historique_modification les valeurs au moment de chaque modification, note_version le champ libre des admins.
+ * Elles peuvent donc écrire une graphie, un nom ou un identifiant que les migrations ont corrigés depuis (master peut être bien plus ancien que
+ * dev) : les contrôles qui balaient tout le texte de la base pour vérifier qu'une ancienne forme n'est pas revenue les sautent — le texte des
+ * règles qu'elles citent est contrôlé dans sa propre table.
+ */
+export const TABLES_DES_NOTES = Object.freeze(['note_version', 'note_version_ligne', 'historique_modification']);
+
 /** Tables que les appelants doivent lire dans chaque base (celles qui manquent dans une base sont simplement absentes). */
 export const TABLES_LUES = [
   'sort', 'magie', 'magie_role', 'mode_hyper_effet', 'classe', 'categorie_classe', 'specialite', 'capacite', 'race', 'race_onglet', 'race_don',

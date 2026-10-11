@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { TABLES_DES_NOTES } from '../src/lib/notes-de-version.mjs';
 
 const racine = (chemin) => fileURLToPath(new URL(`../../${chemin}`, import.meta.url));
 const lire = (chemin) => readFileSync(racine(chemin), 'utf8');
@@ -29,7 +30,11 @@ test('registre : chaque copie a son identifiant d’origine et le nouveau, tous 
 });
 
 test('base : aucune colonne de texte ne cite plus un identifiant d’origine', () => {
-  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND sql NOT LIKE 'CREATE VIRTUAL%'").all();
+  // section 15 (notes de version, historique des modifications du site) sautée : des traces, qui citent la production d'avant la livraison (master
+  // peut précéder la migration 0014) et les valeurs au moment de chaque modification (lib/notes-de-version.mjs#TABLES_DES_NOTES) ; les sources
+  // qu'elles citent sont contrôlées ici dans leurs propres tables
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND sql NOT LIKE 'CREATE VIRTUAL%'").all()
+    .filter(({ name }) => !TABLES_DES_NOTES.includes(name));
   let colonnes = 0;
   for (const { name } of tables) {
     for (const { name: col } of db.prepare('SELECT name FROM pragma_table_info(?) WHERE type = ?').all(name, 'TEXT')) {

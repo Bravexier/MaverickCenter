@@ -21,6 +21,7 @@ import {
   LANCEMENTS_PAR_JOUR, libererLot, lireLancement, lireLot, occupe,
 } from '../serveur/notes-de-version.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { versionLibre } from './aide-mise-a-jour.mjs';
 
 const racine = mkdtempSync(join(tmpdir(), 'maverick-etats-'));
 after(() => rmSync(racine, { recursive: true, force: true }));
@@ -41,6 +42,15 @@ const T0 = Date.parse('2026-10-11T10:00:00Z');
 const figer = (db, dossier, options = {}) => figerLot(db, dossier, {
   versionDev: '0.1.76', versionCible: '0.2', instant: instantDe(T0), confirmation: CONFIRMATION, adresse: ADRESSE, limites: SANS_LIMITE, ...options,
 });
+/**
+ * La note de version d'un lot arrivée dans les règles (ce que fait la nouvelle version du site : scripts/mise-a-jour-regles.mjs), à une version que
+ * data/rows ne porte pas déjà (pendant une mise à jour, il en porte une en attente de livraison) et au-delà de la référence (0.1.25) : non livrée.
+ */
+const noteArrivee = (db, lot, texte = null) => {
+  const version = versionLibre(db);
+  db.prepare("INSERT INTO note_version (version, publiee_le, depuis, texte, lot, exemple) VALUES (?, '2026-10-11', '0.1', ?, ?, 0)").run(version, texte, lot);
+  return version;
+};
 /** Pose l'état du lancement comme le ferait le suivi (pour amener un lancement dans un état donné). */
 const ecrireEtat = (dossier, changement) => {
   const l = lireLancement(dossier);
@@ -94,7 +104,7 @@ test('« termine » seulement sur un run réussi ou la référence ; dans dev = 
   assert.equal(estLiberable(lireLancement(dossier), instantDe(T0 + 60_000)), false, 'dans dev : ne s’annule plus');
   assert.throws(() => figer(db, dossier, { instant: instantDe(T0 + 60_000) }), /en cours de livraison/);
   // la note arrive dans les règles (le site de dev a reçu la version de dev) : l'état ne passe PAS à « termine »
-  db.prepare("INSERT INTO note_version (version, publiee_le, depuis, texte, lot, exemple) VALUES ('0.2', '2026-10-11', '0.1', 'Texte A', ?, 0)").run(l.lot);
+  noteArrivee(db, l.lot, 'Texte A');
   assert.equal(actualiserLancement(db, dossier, { reference: { version: '0.1.25' } }).etat, 'fusionne');
   // la livraison dev → master échoue
   run = { ...run, status: 'completed', conclusion: 'failure' };
@@ -126,7 +136,7 @@ test('un run qui échoue AVANT dev : « echec », annulable ; la note arrivée e
   await github.declencher();
   assert.equal((await github.suivre({ maintenant: T0 + INTERVALLE_SUIVI })).etat, 'echec');
   assert.equal(estLiberable(lireLancement(dossier), instantDe(T0)), true);
-  db.prepare("INSERT INTO note_version (version, publiee_le, depuis, texte, lot, exemple) VALUES ('0.2', '2026-10-11', '0.1', NULL, ?, 0)").run(l.lot);
+  noteArrivee(db, l.lot);
   assert.equal(actualiserLancement(db, dossier, { reference: { version: '0.1.25' } }).etat, 'echec_livraison');
   db.close();
 });
@@ -199,7 +209,7 @@ test('lancement annulé dont le lot entre quand même dans dev : « fusionne »,
   const l = figer(db, dossier);
   libererLot(db, dossier, { instant: instantDe(T0), lot: l.lot });
   assert.equal(db.prepare('SELECT texte FROM note_version_brouillon').get().texte, 'Texte A');
-  db.prepare("INSERT INTO note_version (version, publiee_le, depuis, texte, lot, exemple) VALUES ('0.2', '2026-10-11', '0.1', 'Texte A', ?, 0)").run(l.lot);
+  noteArrivee(db, l.lot, 'Texte A');
   assert.equal(actualiserLancement(db, dossier, { reference: { version: '0.1.25' } }).etat, 'fusionne');
   assert.equal(db.prepare('SELECT count(*) AS n FROM note_version_brouillon').get().n, 0, 'le texte déjà publié ne repart pas dans la note suivante');
   db.close();
@@ -234,12 +244,14 @@ test('après une livraison, le journal livré est intégré : aller-retour, sais
   copyFileSync(regles, nouvelles);
   const r = new DatabaseSync(nouvelles);
   r.prepare("UPDATE metier SET bonus_brut = '+2% Deux' WHERE id = 'metiers/acrobate'").run();
-  r.prepare("INSERT INTO note_version (version, publiee_le, depuis, texte, lot, exemple) VALUES ('0.9', '2026-10-11', '0.8', NULL, 'lot-livraison', 0)").run();
+  // une version que ces règles (tirées de data/rows) ne portent pas encore
+  const livree = versionLibre(r);
+  r.prepare("INSERT INTO note_version (version, publiee_le, depuis, texte, lot, exemple) VALUES (?, '2026-10-11', NULL, NULL, 'lot-livraison', 0)").run(livree);
   const historique = r.prepare(`INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres)
-    VALUES (?, ?, ?, ?, '0.9', ?, ?, ?, ?, ?)`);
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
   for (const l of journal.lots) {
     for (const m of l.modifications) {
-      historique.run(l.id, m.rang, l.fait_le, l.resume, m.table, JSON.stringify(m.cle), m.operation,
+      historique.run(l.id, m.rang, l.fait_le, l.resume, livree, m.table, JSON.stringify(m.cle), m.operation,
         m.avant === null ? null : JSON.stringify(m.avant), m.apres === null ? null : JSON.stringify(m.apres));
     }
   }

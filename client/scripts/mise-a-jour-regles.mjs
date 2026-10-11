@@ -22,13 +22,13 @@ import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, ORDRE_DE_REJEU, TABLES_INTERDITES } from '../serveur/edition-journal.mjs';
 import { lireTables } from '../serveur/notes-de-version.mjs';
 import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
-import { bilan, comparerBases, versionCourte, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
+import { bilan, comparerBases, TABLES_DES_NOTES, versionCourte, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
 import { markdownDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
 
 const CLIENT = fileURLToPath(new URL('../', import.meta.url));
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
-/** Tables de la note de version, que la mise à jour écrit toujours. */
-export const TABLES_DE_LA_NOTE = ['note_version', 'note_version_ligne', 'historique_modification'];
+/** Tables de la note de version, que la mise à jour écrit toujours (section 15 de data/schema.sql). */
+export const TABLES_DE_LA_NOTE = TABLES_DES_NOTES;
 
 export class ErreurMiseAJour extends Error {
   constructor(code, message, details = {}) {
@@ -77,6 +77,22 @@ const auMoins = (a, b) => {
   return x1 > x2 || (x1 === x2 && y1 >= y2);
 };
 
+/**
+ * Les notes de version de la base `db` (ouverte, ou le chemin de son fichier) qu'aucune livraison n'a apportées à la production (`versionProduction` :
+ * la version de master, X.Y.Z), hors celle du lot `lot` : une mise à jour ne les écrase jamais (code 7). Rend [{ version, lot }]. Lu aussi par
+ * scripts/mise-a-jour-simulation.mjs (CI) et par les tests qui appliquent un lot à une copie de data/rows.
+ */
+export function notesEnAttente(db, { versionProduction = null, lot = null } = {}) {
+  const base = typeof db === 'string' ? new DatabaseSync(db, { readOnly: true }) : db;
+  try {
+    return base.prepare('SELECT version, lot FROM note_version WHERE exemple = 0 AND lot IS NOT NULL AND (? IS NULL OR lot <> ?)').all(lot, lot)
+      .map((n) => ({ version: n.version, lot: n.lot }))
+      .filter((n) => !(versionProduction && auMoins(versionProduction, n.version)));
+  } finally {
+    if (base !== db) base.close();
+  }
+}
+
 const lireDossier = (dossier) => Object.fromEntries(readdirSync(dossier).map((f) => [f, readFileSync(join(dossier, f), 'utf8')]));
 
 /**
@@ -103,8 +119,7 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
     let dejaLivres = [];
     try {
       // une note de version d'un autre lot, dans dev mais pas encore sur master (sa livraison a échoué) : on ne l'écrase jamais
-      const enAttenteDeLivraison = db.prepare('SELECT version, lot FROM note_version WHERE exemple = 0 AND lot IS NOT NULL AND lot <> ?').all(lot.id)
-        .filter((n) => !(ref.version && auMoins(ref.version, n.version)));
+      const enAttenteDeLivraison = notesEnAttente(db, { versionProduction: ref.version, lot: lot.id });
       if (enAttenteDeLivraison.length) {
         const n = enAttenteDeLivraison[0];
         throw new ErreurMiseAJour(7, `la V${n.version} du lot ${n.lot} est dans dev mais pas encore livrée sur master : relancez le run de ce lot (« Re-run all jobs » : il reprend à la livraison) ou livrez dev → master, puis relancez cette mise à jour`, { lot: n.lot, version: n.version });
