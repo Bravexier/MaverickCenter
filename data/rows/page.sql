@@ -4775,8 +4775,6 @@ Cette classe utilise "Concentration" pour lancer ses sortilèges au lieu de "Mag
 Un potentiel illimité ne peut pas avoir cette classe.  
 Cette classe commence avec un gros familier.
 
-*Lien hypertexte attaché à la cellule Z3 dans le classeur d''origine :* <https://docs.google.com/spreadsheets/u/0/d/1Xhj8DINY6NlufeHSUnB_mHYyPXEvSBOno32wWZXOEBk/edit>
-
 ## Don de départ
 
 | Santé | Chakra | Barrière |
@@ -18368,10 +18366,6 @@ Les petits familiers sont des créatures de taille correcte, parfois plus grosse
 ## Gros familier
 
 Les gros familiers sont des entités puissantes capables d’intervenir activement en combat. Contrairement aux petits familiers, ils possèdent leur propre fiche de personnage, avec des caractéristiques, des capacités et parfois même une forme d’autonomie tactique. Ils peuvent attaquer, défendre ou soutenir leur maître selon leur nature et leur lien magique. Leur présence sur le champ de bataille représente un atout majeur, mais implique souvent des contraintes, qu’elles soient magiques ou matérielles.
-
-Ici pour les fiches : Familiers
-
-*Lien hypertexte attaché à la cellule U3 dans le classeur d''origine :* <https://docs.google.com/spreadsheets/d/1Xhj8DINY6NlufeHSUnB_mHYyPXEvSBOno32wWZXOEBk/edit?usp=sharing>
 
 | Nom | Description |
 | --- | --- |

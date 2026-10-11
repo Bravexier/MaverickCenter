@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 18 : 162 tables, 2 tables de recherche plein texte (FTS5) et 34 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 19 : 162 tables, 2 tables de recherche plein texte (FTS5) et 34 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -810,7 +810,7 @@ CLASSE : une ligne par onglet de classe (39)
 | `arme_depart` | TEXT | non |  | « Arme de départ » : G7 (« Arme en acier selon la maîtrise ») |
 | `armure_depart` | TEXT | non |  | « Armure de départ » : G11 |
 | `chose_a_savoir` | TEXT | non |  | bloc « CHOSE A SAVOIR » (colonne Z) : note libre de règle ; NULL = bloc absent OU intitulé sans texte (Bimane) |
-| `chose_a_savoir_lien` | TEXT | non |  | hyperlien externe attaché à la cellule du texte (Mage Bleu!Z3 : classeur des familiers) ; NULL = aucun |
+| `chose_a_savoir_lien` | TEXT | non |  | hyperlien externe attaché à la cellule du texte ; NULL = aucun (le seul, Mage Bleu!Z3 vers le classeur des familiers, est retiré par la migration 0019 : demande du propriétaire) |
 | `description_titre` | TEXT | non |  | titre du texte de présentation de la classe (AM1) : « Description Guerrier » |
 | `description` | TEXT | non |  | texte de présentation (AM2). NULL : Anansi, Goleois (titre sans texte), Grenadier (pas de zone de description) |
 | `origine` | TEXT | oui | → famille.id |  |

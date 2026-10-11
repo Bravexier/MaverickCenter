@@ -78,7 +78,9 @@ l'identifiant Google, est réécrite avec ses renvois `page_source`, ainsi que l
 pour l'Archimage d'après son « CHOSE A SAVOIR » ; règles `classe_reservee` et `classe_imposee` de `v_personnage_controle`), `0016-maitrise-arme.sql`
 (données : constantes `maitrise_arme.des_sans_maitrise` (1 dé, guide) et `maitrise_arme.des_max` (5 dés, liste « 1d » à « 5d » de la fiche auto) : 4 points de maîtrise au plus),
 `0017-edition.sql` (structure : journal des modifications faites depuis le site de dev, section 14, tables vides dans `data/rows`), `0018-nm-excedentaires.sql`
-(structure, décision R24 : la règle `sorts_nm_total` quitte `v_personnage_controle`, plus de NM que ceux gagnés est permis).
+(structure, décision R24 : la règle `sorts_nm_total` quitte `v_personnage_controle`, plus de NM que ceux gagnés est permis),
+`0019-liens-familiers-prototype.sql` (données, demande du propriétaire : plus aucun lien vers les classeurs « Familiers » et « Prototype » ; l'hyperlien « CHOSE A SAVOIR » du Mage Bleu,
+`classe.chose_a_savoir_lien` et sa ligne dans la page, et celui de la page `ressources/familiers` avec la phrase qui le portait sont retirés ; la page `/archives/` ne montre plus ces classeurs).
 
 ## La colonne `remarque`
 

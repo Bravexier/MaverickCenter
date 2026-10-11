@@ -390,6 +390,23 @@ test('divers-craft.py : build_tour écrit le commentaire d’une case du premier
   );
 });
 
+test('divers-craft.py : build_familiers retire la phrase de U3 qui menait au classeur « Familiers », sans son lien (migration 0019)', { skip: sansPython }, () => {
+  const cells = [
+    { r: 1, c: 1, v: 'Petit familier' }, { r: 1, c: 21, v: 'Gros familier' }, { r: 1, c: 41, v: 'Monture' },
+    { r: 3, c: 21, v: 'Les gros familiers sont des entités puissantes.\n\nIci pour les fiches : Familiers' },
+    { r: 10, c: 1, v: 'Nom' }, { r: 10, c: 6, v: 'Effet' }, { r: 10, c: 12, v: 'Description' },
+    { r: 10, c: 21, v: 'Nom' }, { r: 10, c: 26, v: 'Description' }, { r: 10, c: 41, v: 'Nom' }, { r: 10, c: 46, v: 'Description' },
+    { r: 11, c: 21, v: 'Bouleguerre' }, { r: 11, c: 26, v: 'Un chien.' },
+  ];
+  const code = 'sh = ext.Sheet(req["raw"])\np = ext.build_familiers(sh)\nresult = "\\n".join(p["body"])';
+  const { ok } = appel(diversCraft, code, { raw: feuille('Familiers', cells) });
+  assert.ok(ok.includes('## Gros familier\n\nLes gros familiers sont des entités puissantes.\n\n| Nom | Description |'), ok);
+  assert.doesNotMatch(ok, /Ici pour les fiches|Lien hypertexte|docs\.google\.com/);
+  cells[3].v = 'Les gros familiers sont des entités puissantes.';
+  const { erreur } = appel(diversCraft, code, { raw: feuille('Familiers', cells) });
+  assert.match(erreur, /U3 ne finit plus par « Ici pour les fiches : Familiers »/);
+});
+
 // --- main() : refus avant toute écriture ------------------------------------------------------------------------------------------
 
 const ONGLETS_EQUIPEMENT = ['Équipement inventaire', 'Armes', 'Armures', 'Bouclier', 'Bâton magique', 'LivreParchemin', 'Accessoires', 'Pièces élémentaires'];

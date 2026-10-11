@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 18;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 19;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -1033,7 +1033,8 @@ CREATE TABLE classe (
   arme_depart        TEXT,                       -- « Arme de départ » : G7 (« Arme en acier selon la maîtrise »)
   armure_depart      TEXT,                       -- « Armure de départ » : G11
   chose_a_savoir     TEXT,                       -- bloc « CHOSE A SAVOIR » (colonne Z) : note libre de règle ; NULL = bloc absent OU intitulé sans texte (Bimane)
-  chose_a_savoir_lien TEXT,                      -- hyperlien externe attaché à la cellule du texte (Mage Bleu!Z3 : classeur des familiers) ; NULL = aucun
+  chose_a_savoir_lien TEXT,                      -- hyperlien externe attaché à la cellule du texte ; NULL = aucun (le seul, Mage Bleu!Z3 vers le classeur des
+                                                 -- familiers, est retiré par la migration 0019 : demande du propriétaire)
   description_titre  TEXT,                       -- titre du texte de présentation de la classe (AM1) : « Description Guerrier »
   description       TEXT,                        -- texte de présentation (AM2). NULL : Anansi, Goleois (titre sans texte), Grenadier (pas de zone de description)
   origine            TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'classes'),

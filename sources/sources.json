@@ -1,5 +1,5 @@
 {
-  "$comment": "Manifeste des sources de Maverick JDR. 'type' = dossier de client/src/content/wiki/ (null = à classer après lecture du contenu). Les documents Google pointent sur les copies du Drive du propriétaire (dossier « Maverick JDR », 2026-10-10 ; registre data/migrations/0014-sources-copies-drive.json) ; 'original' garde l'URL fournie par le MJ (document de l'ancien mainteneur). Le doublon 1vn5Tq11… (cité deux fois) n'apparaît qu'une fois.",
+  "$comment": "Manifeste des sources de Maverick JDR. 'type' = dossier de client/src/content/wiki/ (null = à classer après lecture du contenu). Les documents Google pointent sur les copies du Drive du propriétaire (dossier « Maverick JDR », 2026-10-10 ; registre data/migrations/0014-sources-copies-drive.json) ; 'original' garde l'URL fournie par le MJ (document de l'ancien mainteneur). Le doublon 1vn5Tq11… (« Bestiaire 2.0 », cité deux fois) n'apparaît qu'une fois ; lui et « CODEX Maverick » restent sur l'original (pas de copie).",
   "discord": {
     "guildId": "374464159254839298",
     "invite": "https://discord.gg/GMGBnjzfMk",
@@ -53,9 +53,9 @@
       "id": "1CwDqDKurMOdqig3ozX4NQETbBW9sggsxEqM1WfbOG5M",
       "kind": "doc",
       "type": null,
-      "title": null,
+      "title": "CODEX Maverick",
       "url": "https://docs.google.com/document/d/1CwDqDKurMOdqig3ozX4NQETbBW9sggsxEqM1WfbOG5M/edit?tab=t.0#heading=h.2h6bnqhu7awm",
-      "note": "Non copié : introuvable dans le Drive du propriétaire (ni partagé avec lui, ni accessible par recherche) le 2026-10-10 ; l'URL est celle de l'original."
+      "note": "Non copié : le Drive du propriétaire ne l'atteint pas (ni partagé avec lui, ni accessible par recherche, 2026-10-10). L'URL est celle de l'original, qui s'ouvre avec son lien (titre relevé le 2026-10-11)."
     },
     {
       "id": "150Q6SJi4ft0oROtwT6snMAZUdWMVtkblxwYY9TqxV4Q",
@@ -110,9 +110,9 @@
       "id": "1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8",
       "kind": "doc",
       "type": null,
-      "title": null,
+      "title": "Bestiaire 2.0",
       "url": "https://docs.google.com/document/d/1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8/edit?usp=sharing",
-      "note": "Non copié : introuvable dans le Drive du propriétaire (ni partagé avec lui, ni accessible par recherche) le 2026-10-10 ; l'URL est celle de l'original."
+      "note": "Non copié : le Drive du propriétaire ne l'atteint pas (ni partagé avec lui, ni accessible par recherche, 2026-10-10). L'URL est celle de l'original, qui s'ouvre avec son lien (titre relevé le 2026-10-11)."
     },
     {
       "id": "1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw",

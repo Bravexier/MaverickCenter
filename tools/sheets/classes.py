@@ -191,11 +191,10 @@ classeur n'est lu : les notes ne sont pas recoupées (avertissement sur la sorti
 Hyperliens de cellule : le dump ne les contient pas ; ils sont lus directement dans le .xlsx d'origine (zipfile + xml, sans openpyxl),
 qui ne sert par ailleurs qu'au recoupement des notes (ci-dessus). L'option --xlsx donne le chemin du classeur ; à défaut le script le
 cherche à côté du dump (<dossier du dump>/../sheets/<fileId>/classeur.xlsx). Introuvable ou illisible : erreur, sauf --sans-liens
-(exclusive de --xlsx ; elle écarte les hyperliens ET le recoupement : la page de Mage Bleu perd alors la ligne « Lien hypertexte… »,
-à n'utiliser que sur un classeur de test). Les hyperliens externes de cellule
-(Mage Bleu!Z3, « CHOSE A SAVOIR », vers le classeur des familiers) sont rendus sous le texte de leur cellule :
-« Lien hypertexte attaché à la cellule Z3 dans le classeur d'origine : <url> » (même formule que ressources/familiers) ; un
-hyperlien externe qui ne tombe sur aucun bloc connu arrête le script. Les 39 hyperliens internes du Sommaire (un par
+(exclusive de --xlsx ; elle écarte les hyperliens ET le recoupement, à n'utiliser que sur un classeur de test). Les hyperliens externes de cellule sont rendus sous le texte de leur cellule :
+« Lien hypertexte attaché à la cellule P5 dans le classeur d'origine : <url> » ; un hyperlien externe qui ne tombe sur aucun
+bloc connu arrête le script. Celui de Mage Bleu!Z3 (« CHOSE A SAVOIR », vers le classeur « Familiers ») n'est pas publié :
+le site ne cite plus ce classeur (demande du propriétaire, migration 0019 ; constante LINKS_REMOVED). Les 39 hyperliens internes du Sommaire (un par
 classe, vers son onglet) sont de la navigation propre au classeur : non publiés ; un hyperlien interne hors du Sommaire
 arrête le script. (Si xlsx_to_json.py recopie un jour les hyperliens dans le dump, --xlsx deviendra inutile.)
 
@@ -614,6 +613,9 @@ def crosscheck_notes(sheets, source):
 
 NOTE_LABEL = "Note de cellule : "          # début de chaque note dans le corps d'une fiche de capacité
 LINK_LINE_START = "*Lien hypertexte attaché à la cellule "
+# Hyperliens externes de cellule non publiés : {(onglet, référence)}. Mage Bleu!Z3 mène au classeur « Familiers », que le site ne cite plus
+# (demande du propriétaire, migration 0019).
+LINKS_REMOVED = {("Mage Bleu", "Z3")}
 COVERAGE_PREFIX = "contrôle de couverture des notes de cellule : "
 
 
@@ -886,6 +888,8 @@ def attach_links(sh, page, links):
         abilities += b["abilities"]
     by_pos = {a["desc_pos"]: a for a in abilities}
     for ref in sorted(links, key=split_ref):
+        if (sh.name, ref) in LINKS_REMOVED:
+            continue
         pos = sh.top_left(*split_ref(ref))
         if page["know_pos"] is not None and pos == page["know_pos"]:
             page["know_links"].append((ref, links[ref]))
