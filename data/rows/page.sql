@@ -7284,27 +7284,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 Le guide pour MJ détaille la formule et ses exemples : [[Formule des dégâts]].
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-documents-des-regles', 'guide', 'les-documents-des-regles', 'Les documents des règles', 'les-documents-des-regles', 'Où trouver chaque règle : les documents d’origine du MJ, les rubriques du site qui les reprennent et les pages détaillées du guide.', '{"chapitre": 24, "partie": "plus-loin"}', 'Les règles de Maverick viennent de plusieurs documents du MJ, des Google Docs et des Google Sheets partagés sur le Discord. Ce site les rassemble ; voici où trouver chaque partie.
-
-## Les documents d’origine
-
-| Document | Ce qu’on y trouve | Sur le site |
-| --- | --- | --- |
-| Créer sa fiche de personnage (Doc) | la fiche de personnage, bloc par bloc | les pages « Fiche de personnage » ci-dessous |
-| Règle du jeu / Guide pour MJ (Doc) | le combat, les postures, les situations avancées, les conseils au MJ, les donjons, l’alignement | les pages du guide pour MJ ci-dessous |
-| Les races (Sheet) | une fiche par race : histoire, santé et chakra de départ, avantages et inconvénients, dons, magies innées, relations entre les peuples | [Races](/races/) |
-| Magie Maverick V8 (Sheet) | les 15 magies et leurs sorts, les résistances, les altérations d’état, la météo | [Magies](/magies/) |
-| Classe Maverick V7 (Sheet) | les classes, leurs spécialités, leurs dons et leur équipement de départ | [Classes](/classes/) et [Dons de classe](/capacites/) |
-| MÉTIER (Doc) | les métiers et leurs bonus | [Métiers](/metiers/) |
-| Ressources et Craft (Sheet), Alchimie (Doc) | les armes, armures, boucliers, accessoires, l’artisanat et l’alchimie | rubrique Inventaire : [Armes](/ressources/armes/), [Armures](/ressources/armures/), [Accessoires](/ressources/accessoires/)… ; [Alchimie](/ressources/alchimie/) |
-| Invocation (Sheet) | les créatures et les invocations | [Bestiaire](/bestiaire/) |
-| Mode hyper et co (Sheet) | les effets du Mode Hyper et du Mode Super | [[Liste des effets mode hyper]], [[Liste des effets mode super]] |
-
-Les liens vers ces documents (et l’ancien wiki du jeu) sont réunis dans les [Archives](/archives/). Toutes les données sont aussi consultables, table par table, dans la [base de données](/donnees/).
-
-## Les pages détaillées du guide
-
-Les règles de la fiche, du combat et les conseils au MJ, transcrits des documents d’origine :
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-documents-des-regles', 'guide', 'les-documents-des-regles', 'Les documents des règles', 'les-documents-des-regles', 'Où trouver chaque règle : les documents d’origine du MJ, les rubriques du site qui les reprennent et les pages détaillées du guide.', '{"chapitre": 24, "partie": "plus-loin"}', 'Cette partie sera bientôt migrée dans la partie Archives.
 
 <!-- guide:documents -->
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
@@ -8573,8 +8553,8 @@ Un métier se choisit à la création du personnage ou plus tard, au fil de l’
 - un **avantage** sur un jet de compétence, quand le métier s’applique (un mineur s’oriente mieux dans une grotte) ;
 - des **points d’acquis** : 6 % en tout, pas plus de 3 % dans une même compétence (jusqu’à 9 % si le métier ne donne rien d’autre) ;
 - des **objets** en plus dans l’inventaire, voire une arme ;
-- parfois un bonus d’**attribut** (un coursier gagne +1 en initiative) ;
-- l’**artisanat** : seul le bon métier permet de fabriquer un objet (une épée pour le forgeron, une potion pour l’alchimiste). La réussite dépend de deux caractéristiques réunies.
+- parfois un bonus d’**attribut** ;
+- l’**artisanat** : seul le bon métier permet de fabriquer un objet. La réussite dépend de deux caractéristiques réunies.
 
 Les bonus d’un métier évitent autant que possible le combat. Tous les métiers sont dans le [tableau des métiers](/metiers/), et leurs règles dans [[Règles des métiers]].
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
