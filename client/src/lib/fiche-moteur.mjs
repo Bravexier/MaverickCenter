@@ -261,7 +261,8 @@ export function choixDeMetierValables(regles, fiche) {
 
 /**
  * Les trente compétences : naturel et acquis saisis, bonus du métier (bonusDuMetier : de l'Acquis, décision R33), plafonds (naturel : seuil du niveau ;
- * acquis : 5 par point de caractéristique de base, `plafondAcquis`) et score (guide, « Réussir une action » : 10 × la caractéristique + naturel + acquis ;
+ * acquis : 5 par point de la caractéristique totale, le +1 de la magie innée compris — décision R41 : « 5 en volonté donnerait un max de 25 aquis » —,
+ * `plafondAcquis` ; v_personnage_controle, competence_acquis_max) et score (guide, « Réussir une action » : 10 × la caractéristique + naturel + acquis ;
  * une croix −20 %, deux croix : inutilisable, décision R19). Le plafond prévaut sur le bonus du métier (décision R38 : « Le plafond prévaut sur le
  * bonus ») : `metier` = le bonus rogné au plafond (`metierBrut` avant), compté dans le score ; `maxAcquis` = ce qu'il laisse pour la saisie.
  */
@@ -278,7 +279,7 @@ export function competencesDe(regles, fiche) {
     const acquis = saisie ? entier(saisie.acquis) : 0;
     const utilisable = carac.croix < 2;
     const malus = carac.croix === 1 ? constante(regles, 'competence.croix_1_malus') : 0;
-    const plafondAcquis = (carac.base ?? 0) * constante(regles, 'competence.acquis_max_par_point_caracteristique');
+    const plafondAcquis = (carac.base === null ? 0 : carac.valeur) * constante(regles, 'competence.acquis_max_par_point_caracteristique');
     const metierBrut = parCompetence[k.id] ?? 0;
     const metier = Math.min(metierBrut, plafondAcquis);
     return {
@@ -434,23 +435,54 @@ export function deDeLaFamille(regles, fiche, famille) {
 }
 
 /**
+ * Dons de classe débloqués (rappel sous les sorts, demande du propriétaire), classe par classe : ceux de la classe et de la spécialité choisie jusqu'au
+ * niveau de classe atteint (dons de classe, et le don de la spécialité au niveau 10), et les dons à choix choisis. Une classe pas encore prise (niveau 0 :
+ * la seconde d'un mono-classe avant le niveau global 11, décision R2) n'en donne pas. [{ rang, classe, niveau, dons }].
+ */
+export function donsAcquis(regles, fiche) {
+  const choisis = new Set((fiche.capacites ?? []).map((c) => c.capacite_id));
+  return classesDe(regles, fiche)
+    .filter((c) => c.classe && c.niveau >= 1)
+    .map((c) => ({
+      rang: c.rang,
+      classe: c.classe,
+      niveau: c.niveau,
+      dons: (c.classe.dons ?? []).filter((d) => d.niveau <= c.niveau
+        && (!d.specialite_id || d.specialite_id === c.choix.specialite_id)
+        && (d.nature !== 'choix' || choisis.has(d.id))),
+    }));
+}
+
+/**
+ * Dons de la race du personnage (rappel sous les sorts, demande du propriétaire) : le don de base de l'onglet (Méditation, Repos…), le don de son ethnie
+ * (race_don : un don par ethnie, ou un seul pour la race) et la ligne de son ethnie dans le tableau de dons de la race (Drakos : « Écaille draconique »
+ * selon la magie innée ; Mort-vivant : selon la mort). `ethnieAChoisir` : la race a des dons par ethnie et l'ethnie n'est pas choisie.
+ */
+export function donsDeRace(regles, fiche) {
+  const race = trouver(regles.races, fiche.race_id);
+  if (!race) return { base: null, dons: [], tableau: null, ethnieAChoisir: false };
+  const pourLEthnie = (d) => d.forme === 'unique' || (Boolean(d.ethnie_id) && d.ethnie_id === fiche.ethnie_id);
+  const ligne = race.dons_tableau?.lignes.find((l) => l.ethnie_id && l.ethnie_id === fiche.ethnie_id) ?? null;
+  const parEthnie = (race.dons ?? []).some((d) => d.forme === 'ethnie') || (race.dons_tableau?.lignes ?? []).some((l) => l.ethnie_id);
+  return {
+    base: race.don_base ?? null,
+    dons: (race.dons ?? []).filter(pourLEthnie),
+    tableau: ligne && { titre: race.dons_tableau.titre, cellules: ligne.cellules },
+    ethnieAChoisir: parEthnie && !fiche.ethnie_id,
+  };
+}
+
+/**
  * Quota de maîtrise d'arme (décision R32 : « le cota max de maîtrise (déterminé par les classes et leurs dons choisis) ») : les maîtrises de chaque classe
- * prise (classe_maitrise_arme : « 1 maîtrise Épée », « 2 maîtrises à répartir… ») et les points de maîtrise des dons acquis (texte du don : « +2 points
- * de maîtrise à répartir ») — dons de la classe et de la spécialité choisie jusqu'au niveau de classe, dons à choix choisis. `utilises` : les points de
- * maîtrise répartis sur la fiche (maitriseDArme). { total, utilises, sources: [{ nom, points }] }.
+ * prise (classe_maitrise_arme : « 1 maîtrise Épée », « 2 maîtrises à répartir… ») et les points de maîtrise des dons acquis (donsAcquis ; texte du don :
+ * « +2 points de maîtrise à répartir »). `utilises` : les points de maîtrise répartis sur la fiche (maitriseDArme). { total, utilises, sources: [{ nom, points }] }.
  */
 export function quotaDeMaitrise(regles, fiche) {
-  const choisis = new Set((fiche.capacites ?? []).map((c) => c.capacite_id));
   const sources = [];
-  for (const c of classesDe(regles, fiche)) {
-    if (!c.classe || c.niveau < 1) continue;
+  for (const c of donsAcquis(regles, fiche)) {
     const deLaClasse = (c.classe.maitrises ?? []).reduce((s, m) => s + m.nombre, 0);
     if (deLaClasse) sources.push({ nom: c.classe.nom, points: deLaClasse });
-    for (const d of c.classe.dons_maitrise ?? []) {
-      if (d.niveau > c.niveau || (d.specialite_id && d.specialite_id !== c.choix.specialite_id)) continue;
-      if (d.nature === 'choix' && !choisis.has(d.id)) continue;
-      sources.push({ nom: d.nom, points: d.points });
-    }
+    for (const d of c.dons) if (d.points_maitrise) sources.push({ nom: d.nom, points: d.points_maitrise });
   }
   const m = maitriseDArme(regles);
   return {

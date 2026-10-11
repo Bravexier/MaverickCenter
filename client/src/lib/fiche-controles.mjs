@@ -20,7 +20,7 @@ export const LIBELLES_DES_CONTROLES = Object.freeze({
   caracteristiques_total: 'Total des caractéristiques différent de celui du niveau',
   competence_naturel_max: 'Points naturels au-dessus du maximum du niveau',
   competences_total: 'Total des points naturels différent de celui du niveau',
-  competence_acquis_max: 'Points acquis (bonus du métier compris) au-dessus de 5 par point de caractéristique',
+  competence_acquis_max: 'Points acquis (bonus du métier compris) au-dessus de 5 par point de caractéristique (magie innée comprise)',
   metier_bonus_hors_choix: 'Bonus de métier choisi qui n’est pas une option du métier',
   metier_bonus_manquant: 'Bonus de métier à choisir',
   progression_niveau_non_atteint: 'Gain d’un niveau pas encore atteint',

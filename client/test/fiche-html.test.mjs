@@ -64,8 +64,16 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   assert.ok(!bloc('caracteristiques').includes('id="maitrises"'), 'les maîtrises ont quitté les caractéristiques');
   const progression = bloc('progression');
   for (const id of ['xp-bloc', 'xp-niveau', 'xp-jauge', 'xp-plus', 'xp-ajout']) assert.match(progression, new RegExp(`id="${id}"`), `progression : ${id}`);
+  assert.match(progression, /<div id="progression" class="gains"><\/div>/, 'gains de niveau compacts');
   const attributs = bloc('attributs');
-  assert.match(attributs, /<div id="attributs-barres" class="attributs"><\/div>\s*<div id="attributs-autres" class="attributs"><\/div>/, 'valeurs du moment et maximums fusionnés');
+  assert.match(attributs, /<div id="attributs-barres" class="attributs"><\/div>/, 'valeurs du moment et maximums fusionnés');
+  assert.match(attributs, /<ul id="attributs-pastilles" class="fiche-resume attributs-pastilles"/, 'initiative, vitesse et nage en pastilles');
+  assert.match(attributs, /<div id="attributs-corruption" class="attributs-corruption"><\/div>/);
+  assert.match(attributs, /<div id="postures" class="postures__choix" role="group" aria-labelledby="titre-postures"><\/div>/, 'le sélecteur des six postures');
+  assert.ok(!attributs.includes('fiche-aide'), 'plus de texte de calcul');
+  const sorts = bloc('sorts');
+  assert.ok(sorts.indexOf('id="dons-race"') > sorts.indexOf('id="sorts"') && sorts.indexOf('id="dons-classes"') > sorts.indexOf('id="dons-race"'),
+    'sous les sorts : les dons de la race, puis ceux des classes');
   assert.ok(!html.includes('id="jauges"'), 'plus de bloc à part pour les valeurs du moment');
   for (const id of ['metier_id', 'alignement_loyal', 'bourse_pp']) assert.ok(!attributs.includes(`data-champ="${id}"`), `${id} hors des attributs`);
   const jeu = bloc('jeu');

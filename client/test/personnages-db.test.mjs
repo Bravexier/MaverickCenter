@@ -191,6 +191,21 @@ test('métier (décisions R33, R38) : bonus d’acquis et d’initiative, rang �
   db.prepare("UPDATE metier_bonus SET valeur = ? WHERE metier_id = ? AND competence_id = ?").run(savant.valeur, savant.metier_id, savant.competence_id);
 });
 
+test('décision R41 : l’acquis au plus 5 par point de la caractéristique totale, le +1 de la magie innée compris (fixé par la magie ou choisi)', () => {
+  const social = db.prepare("SELECT id FROM competence WHERE caracteristique_id = 'social' ORDER BY ordre LIMIT 1").get().id;
+  personnageValide('r41-1');   // Feu inné : +1 Social ; Social 2 + 1 = 3, au plus 15 d'acquis
+  inserer('personnage_competence', { personnage_id: 'r41-1', competence_id: social, naturel: 0, acquis: 15 });
+  assert.deepEqual(controle('r41-1'), []);
+  db.prepare('UPDATE personnage_competence SET acquis = 16 WHERE personnage_id = ? AND competence_id = ?').run('r41-1', social);
+  assert.deepEqual(controle('r41-1'), [{ regle: 'competence_acquis_max', detail: `${social} = 16` }]);
+  // le Potentiel Illimité laisse le point au choix (caracteristique_magie_id) : Volonté 2 + 1, au plus 15
+  personnageValide('r41-2', { magie_innee_id: 'magies/potentiel-illimite', caracteristique_magie_id: 'volonte' });
+  db.prepare("UPDATE personnage_classe SET classe_id = 'classes/archimage' WHERE personnage_id = 'r41-2'").run();
+  inserer('personnage_competence', { personnage_id: 'r41-2', competence_id: 'calme', naturel: 0, acquis: 15 });
+  inserer('personnage_competence', { personnage_id: 'r41-2', competence_id: social, naturel: 0, acquis: 11 });
+  assert.deepEqual(controle('r41-2'), [{ regle: 'competence_acquis_max', detail: `${social} = 11` }], 'Social 2 sans bonus : au plus 10');
+});
+
 test('progression : un gain par niveau, 15 points d’attributs exactement, le dé aux niveaux 5, 10, 15 et 20 seulement', () => {
   personnageValide('prog', { xp: 1650 });   // niveau 5
   db.prepare("DELETE FROM personnage_competence WHERE personnage_id = 'prog'").run();

@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 25 : 168 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 27 : 168 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -2954,6 +2954,7 @@ Une fiche de personnage : le haut de l'onglet Personnage (identité, magies, ali
 | `evenements` | TEXT | non |  | « ÉVÉNEMENTS » (B71) |
 | `cree_le` | TEXT | oui |  |  |
 | `modifie_le` | TEXT | oui |  |  |
+| `posture_id` | TEXT | non | → posture.id | posture du moment (sélecteur des 6 postures de la page /fiche/, demande du propriétaire ; migration 0027) ; NULL = aucune choisie |
 
 ### `personnage_partage`
 

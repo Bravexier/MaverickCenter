@@ -3,13 +3,13 @@
 // décisions R6 et R7 (corrections de la fiche auto, docs/fiche-auto.md, point 4).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { couleurDeCaracteristique } from '../src/lib/caracteristiques-postures.mjs';
+import { couleurDeCaracteristique, couleurDePosture } from '../src/lib/caracteristiques-postures.mjs';
 import { CLASS_COLORS } from '../src/lib/class-groups.mjs';
 import { ditClasseMagique } from '../src/lib/classe-magique.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
-import { desSelonLaForce } from '../src/lib/maitrise-arme.mjs';
+import { desSelonLaForce, pointsDeMaitriseDArme } from '../src/lib/maitrise-arme.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS } from '../src/lib/race-kinds.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
@@ -46,9 +46,15 @@ test('maîtrises d’armes (décision R32) : celles de chaque classe (classe_mai
     parClasse.set(r.classe_id, [...(parClasse.get(r.classe_id) ?? []), { brut: r.brut, nombre: r.nombre }]);
   }
   for (const c of regles.classes) assert.deepEqual(c.maitrises, parClasse.get(c.id) ?? [], c.id);
-  const capacites = new Map(db.prepare('SELECT id, classe_id FROM capacite').all().map((r) => [r.id, r.classe_id]));
-  for (const c of regles.classes) for (const d of c.dons_maitrise) assert.equal(capacites.get(d.id), c.id, `${d.id} : un don de ${c.id}`);
-  assert.ok(regles.classes.some((c) => c.dons_maitrise.length), 'des dons donnent des points de maîtrise');
+  const capacites = new Map(db.prepare('SELECT id, classe_id, effet FROM capacite').all().map((r) => [r.id, r]));
+  assert.equal(regles.classes.reduce((n, c) => n + c.dons.length, 0), capacites.size, 'chaque don, une fois');
+  for (const c of regles.classes) {
+    for (const d of c.dons) {
+      assert.equal(capacites.get(d.id).classe_id, c.id, `${d.id} : un don de ${c.id}`);
+      assert.equal(d.points_maitrise, pointsDeMaitriseDArme(capacites.get(d.id).effet), d.id);
+    }
+  }
+  assert.ok(regles.classes.some((c) => c.dons.some((d) => d.points_maitrise)), 'des dons donnent des points de maîtrise');
   const notes = new Map(db.prepare('SELECT id, note_brut FROM arme_famille').all().map((r) => [r.id, r.note_brut]));
   for (const f of regles.familles_armes) assert.deepEqual(f.de_selon_force, desSelonLaForce(notes.get(f.id)), `${f.id} : les paliers de sa note`);
   assert.equal(regles.constantes['alignement.ecart_axe'], 5);
@@ -151,4 +157,23 @@ test('métiers (décisions R33 à R35) : bonus par rang avec leur compétence ou
     if (m.artisanat?.caracteristiques.length) assert.ok(m.artisanat.caracteristiques.every((c) => regles.caracteristiques.some((k) => k.id === c)), m.id);
   }
   assert.ok(regles.metiers.some((m) => m.bonus.some((b) => b.options.some((o) => o.attribut === 'initiative'))), '« +X INI » vers l’initiative');
+});
+
+test('postures (sélecteur de la page, demande du propriétaire) : les six de la base dans leur ordre, leur couleur, leurs effets du tableau de la fiche', () => {
+  assert.deepEqual(regles.postures.map((p) => p.id), db.prepare('SELECT id FROM posture ORDER BY ordre').all().map((r) => r.id));
+  for (const p of regles.postures) {
+    assert.equal(p.couleur, couleurDePosture(p.id));
+    assert.deepEqual(p.effets, db.prepare("SELECT texte FROM posture_effet WHERE posture_id = ? AND version = 'fiche' ORDER BY rang").all(p.id).map((r) => r.texte));
+  }
+  assert.match(db.prepare("SELECT sql FROM sqlite_master WHERE name = 'personnage'").get().sql, /posture_id\s+TEXT\s+REFERENCES posture\(id\)/, 'la fiche garde sa posture (migration 0027)');
+});
+
+test('sorts : coût, portée, D/S/B, effets et remarque tels qu’écrits, avec leurs expressions de NM de ces colonnes (sort_bonus_maitrise)', () => {
+  const ligne = (id) => db.prepare('SELECT cout_brut, portee_brut, dsb_brut, effets, remarque FROM sort WHERE id = ?').get(id);
+  for (const s of regles.sorts) {
+    const l = ligne(s.id);
+    assert.deepEqual([s.cout, s.portee, s.dsb, s.effets, s.remarque], [l.cout_brut, l.portee_brut, l.dsb_brut, l.effets, l.remarque], s.id);
+    const attendus = db.prepare("SELECT champ, texte_brut FROM sort_bonus_maitrise WHERE sort_id = ? AND champ IN ('cout', 'portee', 'dsb', 'effets') ORDER BY champ, rang").all(s.id);
+    assert.deepEqual(s.bonus.map((b) => [b.champ, b.texteBrut]), attendus.map((b) => [b.champ, b.texte_brut]), s.id);
+  }
 });

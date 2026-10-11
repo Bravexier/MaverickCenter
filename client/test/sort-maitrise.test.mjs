@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { segments } from '../src/lib/sort-format.mjs';
-import { applications, bonusAuNm, lignesDeBonus, LIBELLES_CHAMP_NM, marquerBonus, NM_MAX, ORDRE_CHAMPS_NM, sansBonus, texteDeBonus } from '../src/lib/sort-maitrise.mjs';
+import { applications, bonusAuNm, lignesDeBonus, LIBELLES_CHAMP_NM, marquerBonus, NM_MAX, ORDRE_CHAMPS_NM, sansBonus, texteDeBonus, valeurAuNm } from '../src/lib/sort-maitrise.mjs';
 
 const parNm = (champ, texteBrut, pasNm = 1, extra = {}) => ({ champ, nature: 'par_nm', texteBrut, contexte: texteBrut, pasNm, seuilNm: null, ...extra });
 const palier = (champ, texteBrut, seuilNm = 3, extra = {}) => ({ champ, nature: 'palier', texteBrut, contexte: texteBrut, pasNm: null, seuilNm, ...extra });
@@ -81,4 +81,43 @@ test('marquerBonus : l’expression d’un bonus de la colonne, entre parenthès
 test('colonnes : chaque colonne où un bonus peut être écrit a son libellé, dans l’ordre de lecture du tableau', () => {
   assert.deepEqual(ORDRE_CHAMPS_NM, ['type', 'cout', 'portee', 'zone', 'dsb', 'effets', 'remarque']);
   assert.deepEqual(Object.keys(LIBELLES_CHAMP_NM), ORDRE_CHAMPS_NM);
+});
+
+test('valeur à N NM (fiche de personnage, demande du propriétaire) : le bonus ajouté au terme qui le précède, sinon écrit appliqué ; un palier « 3NM = » au seuil', () => {
+  const inc = (champ, texteBrut, incrementBrut, pasNm = 1) => parNm(champ, texteBrut, pasNm, { incrementBrut });
+  const a = (brut, bonus, nm) => valeurAuNm(brut, [bonus], bonus.champ, nm);
+  // un nombre : la somme
+  assert.deepEqual([0, 1, 2, 3].map((nm) => a('45 (-5/NM)', inc('cout', '-5/NM', '-5'), nm)), ['45', '40', '35', '30']);
+  assert.equal(a('10 (–1/NM) + 2 âmes', inc('cout', '–1/NM', '–1'), 2), '8 + 2 âmes', 'tiret long, et ce qui suit reste');
+  assert.equal(a('20Km (+20/NM)', inc('portee', '+20/NM', '+20'), 2), '60Km', 'unité collée');
+  assert.equal(a('+4AM (+2AM/NM)', inc('dsb', '+2AM/NM', '+2AM'), 2), '+8AM', 'signe et unité gardés');
+  assert.equal(a('-6 dégâts magiques (-2/NM)', inc('dsb', '-2/NM', '-2'), 2), '-10 dégâts magiques');
+  // des dés : du même dé, le nombre de dés ; un autre dé ou un fixe, ajouté
+  assert.equal(a('2d6 dégâts (+1d6/NM)', inc('dsb', '+1d6/NM', '+1d6'), 2), '4d6 dégâts');
+  assert.equal(a('2d6 cr (+1d/NM)', inc('dsb', '+1d/NM', '+1d'), 1), '3d6 cr', '« +1d » : un dé de plus du même type');
+  assert.equal(a('Vole 4d10 (+1d/3NM) chakra', inc('dsb', '+1d/3NM', '+1d', 3), 2), 'Vole 4d10 chakra', 'pas avant 3 NM');
+  assert.equal(a('Vole 4d10 (+1d/3NM) chakra', inc('dsb', '+1d/3NM', '+1d', 3), 3), 'Vole 5d10 chakra');
+  assert.equal(a('3d6 dégâts (+1d4/NM)', inc('dsb', '+1d4/NM', '+1d4'), 2), '3d6 + 2d4 dégâts');
+  assert.equal(a('5d6 dégâts (+3/NM)', inc('dsb', '+3/NM', '+3'), 2), '5d6 + 6 dégâts');
+  assert.equal(a('10d6 + 80 (+10/NM) dégâts', inc('dsb', '+10/NM', '+10'), 2), '10d6 + 100 dégâts', 'le fixe d’un calcul, écriture gardée');
+  // pas sûr : le bonus appliqué à la place de son expression ; illisible : tel qu'écrit
+  assert.equal(a('Invoque 1 ou 2 clones (+1/NM) passifs.', inc('effets', '+1/NM', '+1'), 2), 'Invoque 1 ou 2 clones (+2) passifs.');
+  assert.equal(a('Malus de 25% pour 1 tour (-10%/NM)', inc('effets', '-10%/NM', '-10%'), 2), 'Malus de 25% pour 1 tour (-20%)');
+  assert.equal(a('pendant 1 tour (+1 tour/NM).', inc('effets', '+1 tour/NM', '+1 tour'), 2), 'pendant 1 tour (+2 tours).');
+  assert.equal(a('X sang x3 dégâts (x4/3NM)', inc('dsb', 'x4/3NM', 'x4', 3), 3), 'X sang x3 dégâts (x4/3NM)');
+  assert.equal(a('Dure 2 tours (+1/NM)\nSi CR : recule.', inc('effets', '+1/NM', '+1'), 0), 'Dure 2 tours\nSi CR : recule.', 'à 0 NM, l’expression part');
+  // hors parenthèses : sa valeur
+  assert.equal(a('Augmente la réussite critique de 1%/NM.', inc('effets', '1%/NM', '1%'), 2), 'Augmente la réussite critique de 2%.');
+  // palier « 3NM = » : l'effet seul au seuil, rien avant ; un autre palier reste tel qu'écrit
+  const p3 = palier('effets', '3NM = La grenade colle la cible');
+  assert.equal(a('Explose dans 1 tour. (3NM = La grenade colle la cible)', p3, 2), 'Explose dans 1 tour.');
+  assert.equal(a('Explose dans 1 tour. (3NM = La grenade colle la cible)', p3, 3), 'Explose dans 1 tour. (La grenade colle la cible)');
+  const libre = palier('effets', '3NM = Sur un coup critique, gel 1');
+  assert.equal(a('Une simple attaque. 3NM = Sur un coup critique, gel 1.', libre, 0), 'Une simple attaque.');
+  assert.equal(a('Une simple attaque. 3NM = Sur un coup critique, gel 1.', libre, 3), 'Une simple attaque. Sur un coup critique, gel 1.');
+  assert.equal(a('Vampirise 25%. (50% au niveau 3 de maîtrise)', palier('effets', 'au niveau 3 de maîtrise'), 3), 'Vampirise 25%. (50% au niveau 3 de maîtrise)');
+  // sans bonus, ou NM hors bornes
+  assert.equal(valeurAuNm('5', [], 'portee', 2), '5');
+  assert.equal(valeurAuNm(null, [], 'dsb', 1), null);
+  assert.equal(a('5 (+1/NM)', inc('portee', '+1/NM', '+1'), 9), '8', 'au plus 3 NM');
 });
