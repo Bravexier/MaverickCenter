@@ -274,8 +274,8 @@ try:
 except RO.Arret as e:
     print(json.dumps({'arret': str(e)}, ensure_ascii=False))
     sys.exit(0)
-# note_cellule n'est qu'une trace de l'import (CLAUDE.md : jamais lue) : la remarque d'un don modifiée ne la change pas
-print(json.dumps({'ecarts': RO.verifier(db, {k: v for k, v in t.items() if k != 'note_cellule'})}, ensure_ascii=False))
+# le même contrôle que la CI (test/races-onglet.test.mjs), note_cellule comprise : le service la tient d'accord avec la remarque du don
+print(json.dumps({'ecarts': RO.verifier(db, t)}, ensure_ascii=False))
 `;
 
 function relire(modifications, { recalculer = true } = {}) {
@@ -302,7 +302,8 @@ function relire(modifications, { recalculer = true } = {}) {
 }
 
 // renommer une ethnie ou un don unique change l'id que races_onglet.py en tire (race#don:<normalize(nom)>), alors que l'id d'une ligne ne change jamais :
-// les renommages ci-dessous gardent la même clé ; une note de cellule n'est relue que sur les trois cases connues du Médusain (CELLULES_NOTES)
+// les renommages ci-dessous gardent la même clé ; une note de cellule n'est relue que sur les trois cases connues du Médusain (CELLULES_NOTES, par le
+// rang du don : son étiquette peut changer de graphie) et sa trace (note_cellule) suit la remarque, comme le service l'écrit (serveur/edition.mjs)
 const c = (table, colonne, v) => valeurCanonique(table, colonne, v);
 const MODIFICATIONS = [
   { race: 'races/nain', table: 'race_onglet', cle: { race_id: 'races/nain' }, valeurs: {
@@ -313,7 +314,9 @@ const MODIFICATIONS = [
   } },
   { race: 'races/nain', table: 'race_don', cle: { id: 'races/nain#don:londolor-est' }, valeurs: { etiquette: 'Londolor-Est', texte: 'Un seul paragraphe.' } },
   { race: 'races/nain', table: 'mode_hyper_effet', cle: { race_id: 'races/nain', version: 'onglet_race' }, valeurs: { nom: 'Petit & costaud', effet: 'Effet\nsur deux lignes.' } },
-  { race: 'races/medusain', table: 'race_don', cle: { id: 'races/medusain#don:eau-en-innee' }, valeurs: { remarque: 'Jet de vigueur, puis rien.' } },
+  { race: 'races/medusain', sql: `UPDATE race_don SET remarque = 'Jet de vigueur, puis rien.' WHERE id = 'races/medusain#don:eau-en-innee';
+    UPDATE note_cellule SET texte = 'Jet de vigueur, puis rien.' WHERE entite_table = 'race_don' AND entite_id = 'races/medusain#don:eau-en-innee'` },
+  { race: 'races/medusain', table: 'race_don', cle: { id: 'races/medusain#don:foudre-en-innee' }, valeurs: { etiquette: 'FOUDRE EN INNÉE' } },
   { race: 'races/elfe-noir', table: 'race_don', cle: { id: 'races/elfe-noir#don:elfe-charbon' }, valeurs: { nom: 'Sang très corrompu', texte: '- Premier.\n- Second.' } },
   { race: 'races/majin', table: 'race_don', cle: { id: 'races/majin#don:renfermement' }, valeurs: { nom: 'RENFERMEMENT', texte: 'Texte du don.\n\nSuite.' } },
   { race: 'races/drakos', table: 'race_don_tableau_colonne', cle: { race_id: 'races/drakos', rang: 3 }, valeurs: { libelle: 'Compétence\nbonus' } },
@@ -328,5 +331,7 @@ test('races_onglet.py relit dans les corps recalculés exactement les tables mod
   assert.deepEqual(relire(MODIFICATIONS), { ecarts: [] });
   // témoin : les mêmes modifications sans recalculer les corps, races_onglet.py y voit les anciennes valeurs
   const temoin = relire(MODIFICATIONS, { recalculer: false });
-  assert.deepEqual(temoin.ecarts.map((e) => e.split(' : ')[0]).sort(), ['mode_hyper_effet', 'race_don', 'race_don_tableau_cellule', 'race_don_tableau_colonne', 'race_magie_onglet', 'race_onglet']);
+  assert.deepEqual(temoin.ecarts.map((e) => e.split(' : ')[0]).sort(), [
+    'mode_hyper_effet', 'note_cellule', 'race_don', 'race_don_tableau_cellule', 'race_don_tableau_colonne', 'race_magie_onglet', 'race_onglet',
+  ]);
 });

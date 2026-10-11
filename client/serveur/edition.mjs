@@ -19,7 +19,9 @@ import { pageDuMetier, resumeDuMetier } from '../src/lib/corps-metiers.mjs';
 import {
   COLONNES_DE_SORT, ErreurCorpsMagie, PAGE_DE_LA_LIGNE, corpsAvecTitreRenomme, corpsDeMagieApres, resumeDeMagieApres,
 } from '../src/lib/corps-magies.mjs';
-import { corpsDeRace, corpsDeRaceCreee, etatAvecLigne, etatDeRace, raceConcernee, valeurCanonique } from '../src/lib/corps-races.mjs';
+import {
+  celluleDeNoteDuDon, corpsDeRace, corpsDeRaceCreee, etatAvecLigne, etatDeRace, raceConcernee, valeurCanonique,
+} from '../src/lib/corps-races.mjs';
 import {
   changementsDePageDeClasse, changementsDePageDeDon, choseASavoirSansTexte, corpsDeClasse, corpsDeDon, resumeDeClasse, resumeDeDon,
 } from '../src/lib/corps-classes.mjs';
@@ -264,6 +266,11 @@ const MAGIE_ROLE = {
  * race ; les autres versions (fiche, classeur des modes, masque) ne sont citées par aucun corps.
  */
 const MODE_HYPER_EFFET = {
+  colonnes(_ctx, ligne) {
+    // l'onglet d'une race écrit « **Nom** : effet » ; un effet seul ne se relit pas (tools/db/races_onglet.py)
+    if (ligne.version === 'onglet_race' && !ligne.nom) throw nonRelisible('Capacité Mode Hyper : le nom est obligatoire pour une race');
+    return {};
+  },
   deriver(ctx, avant, apres) {
     if (apres.version === 'onglet_magie') suivreCorpsDeMagie(ctx, 'mode_hyper_effet', avant, apres);
     else if (apres.version === 'onglet_race') suivreCorpsDeRace(ctx, apres.race_id, { table: 'mode_hyper_effet', avant });
@@ -380,7 +387,66 @@ function suivreCorpsDeRace(ctx, raceId, { table = null, avant = null } = {}) {
 }
 
 /** Les tables de l'onglet d'une race : chaque modification réécrit le corps de la page de la race. */
-const tableDeLOnglet = (table) => ({ deriver: (ctx, avant, apres) => suivreCorpsDeRace(ctx, apres.race_id, { table, avant }) });
+const tableDeLOnglet = (table, autres = {}) => ({ deriver: (ctx, avant, apres) => suivreCorpsDeRace(ctx, apres.race_id, { table, avant }), ...autres });
+
+/**
+ * Refus d'une valeur que le corps de la race écrirait sous une forme que tools/db/races_onglet.py --verifier ne sait pas relire (limites en tête de
+ * lib/corps-races.mjs) : rapatriée, elle ferait échouer la CI. Refusée tant que le propriétaire n'a pas tranché.
+ */
+const nonRelisible = (message) =>
+  new ErreurEdition(422, `${message} : la page de la race ne saurait pas l’écrire sous une forme que tools/db/races_onglet.py relit ; rien n’est enregistré.`);
+
+const RACE_ONGLET = tableDeLOnglet('race_onglet', {
+  colonnes(ctx, ligne) {
+    // un titre au-dessus du tableau en panneaux d'une race qui a aussi un don unique (Mort-vivant)
+    if (ligne.dons_tableau_titre !== null && ligne.dons_tableau_titre !== lireLigne(ctx.db, 'race_onglet', { race_id: ligne.race_id }).dons_tableau_titre
+      && ctx.db.prepare("SELECT 1 FROM race_don WHERE race_id = ? AND forme = 'unique'").get(ligne.race_id)
+      && ctx.db.prepare('SELECT 1 FROM race_don_tableau_colonne WHERE race_id = ?').get(ligne.race_id)) {
+      throw nonRelisible('Titre du tableau des dons : cette race a aussi un don unique');
+    }
+    return {};
+  },
+});
+
+/** La note de cellule d'un don (trace de la note du classeur, que races_onglet.py relit dans le corps : texte = remarque) suit sa remarque. */
+function suivreNoteDuDon(ctx, avant, apres) {
+  if ((avant.remarque ?? null) === (apres.remarque ?? null)) return;
+  const { db, w } = ctx;
+  const notes = db.prepare("SELECT * FROM note_cellule WHERE entite_table = 'race_don' AND entite_id = ? ORDER BY rang").all(apres.id);
+  notes.forEach((n, i) => {
+    if (apres.remarque === null || i > 0) w.supprimer('note_cellule', cleDe(db, 'note_cellule', n));
+    else w.modifier('note_cellule', cleDe(db, 'note_cellule', n), { texte: apres.remarque });
+  });
+  if (apres.remarque !== null && !notes.length) {
+    w.inserer('note_cellule', {
+      entite_table: 'race_don', entite_id: apres.id, rang: 1, champ: 'texte', cellule: celluleDeNoteDuDon(apres), nature: 'note', repond_a: null,
+      texte: apres.remarque, origine: 'races', source_ref: apres.source_ref,
+    });
+  }
+}
+
+const RACE_DON = tableDeLOnglet('race_don', {
+  colonnes(ctx, ligne) {
+    const avant = lireLigne(ctx.db, 'race_don', { id: ligne.id });
+    // l'identifiant du don est tiré de son étiquette (ethnie) ou de son nom (don unique) : races_onglet.py le recalcule (race_don.slug)
+    const titre = ligne.forme === 'ethnie' ? 'etiquette' : 'nom';
+    if (normalize(ligne[titre] ?? '') !== normalize(avant[titre] ?? '')) {
+      throw nonRelisible(`${TABLES.race_don.colonnes[titre].libelle} « ${ligne[titre] ?? ''} » : l’identifiant du don (${avant.slug}) en est tiré, seule la graphie peut changer (majuscules, accents, espaces)`);
+    }
+    if (ligne.forme === 'ethnie' && ligne.nom !== null && avant.nom === null
+      && !lireLigne(ctx.db, 'race_onglet', { race_id: ligne.race_id }).dons_rubrique_nom) {
+      throw nonRelisible('Nom du don : l’onglet de cette race n’a pas de rubrique « Nom »');
+    }
+    if (ligne.remarque !== null && ligne.remarque !== avant.remarque && !celluleDeNoteDuDon(ligne)) {
+      throw nonRelisible('Remarque : seul un don dont l’onglet porte une note de cellule (Médusain) en a une');
+    }
+    return {};
+  },
+  deriver(ctx, avant, apres) {
+    suivreNoteDuDon(ctx, avant, apres);
+    suivreCorpsDeRace(ctx, apres.race_id, { table: 'race_don', avant });
+  },
+});
 
 /**
  * Forme enregistrée d'une valeur des tables de l'onglet d'une race : celle que tools/db/races_onglet.py relit dans le corps (lib/corps-races.mjs
@@ -716,8 +782,8 @@ function apercuDe(op, corps) {
 
 /** Ce que l'édition sait faire, table par table : colonnes recalculées dans la ligne, dérivations ailleurs, création, suppression. */
 const DOMAINES = {
-  metier: METIER, magie: MAGIE, magie_role: MAGIE_ROLE, mode_hyper_effet: MODE_HYPER_EFFET, sort: SORT, race: RACE, race_onglet: tableDeLOnglet('race_onglet'),
-  race_don: tableDeLOnglet('race_don'), race_don_tableau_colonne: tableDeLOnglet('race_don_tableau_colonne'),
+  metier: METIER, magie: MAGIE, magie_role: MAGIE_ROLE, mode_hyper_effet: MODE_HYPER_EFFET, sort: SORT, race: RACE, race_onglet: RACE_ONGLET,
+  race_don: RACE_DON, race_don_tableau_colonne: tableDeLOnglet('race_don_tableau_colonne'),
   race_don_tableau_cellule: tableDeLOnglet('race_don_tableau_cellule'), peuple: PEUPLE, classe: CLASSE, specialite: SPECIALITE, capacite: CAPACITE, page: PAGE,
 };
 

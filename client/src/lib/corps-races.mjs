@@ -30,14 +30,17 @@
 // aucune section de la fiche (corpsDeRaceCreee).
 //
 // Une valeur s'enregistre sous sa forme canonique (valeurCanonique) : c'est la seule que races_onglet.py relit telle quelle. LIMITES de la forme de
-// l'importeur (le corps est écrit comme il l'écrirait, mais races_onglet.py ne peut pas en relire la table, quel que soit le corps) :
+// l'importeur (le corps est écrit comme il l'écrirait, mais races_onglet.py ne peut pas en relire la table, quel que soit le corps) ; le service les
+// refuse (422, serveur/edition.mjs#nonRelisible) tant que le propriétaire n'a pas tranché :
 //   - la remarque d'un don unique n'a pas de place dans la page (l'importeur ne rend une note que sous le don d'une ethnie) : elle n'est pas écrite ;
 //   - un titre de tableau en panneaux sur une race qui a aussi un don unique (Mort-vivant), un nom de capacité Mode Hyper vidé (l'effet reste seul), un
 //     nom de don posé sur une ethnie dont l'onglet n'a pas de rubrique « Nom » (libellé « Nom ») : races_onglet.py s'arrête sur ces formes ;
-//   - races_onglet.py ne relit une note de cellule que sur les trois cases connues du Médusain (CELLULES_NOTES) et tire l'id d'un don du nom de son
-//     ethnie ou du don (race#don:<normalize(nom)>), alors que l'id d'une ligne ne change jamais : une remarque posée ailleurs l'arrête, un renommage qui
-//     change cette clé le fait diverger (race_don, page_entite) ;
-//   - race_magie_onglet est tirée par races_onglet.py des magies que cite « Inconvénient(s) » : modifier l'une sans l'autre les fait diverger (D10).
+//   - races_onglet.py ne relit une note de cellule que sur les trois dons du Médusain (CELLULES_NOTES, par leur rang ; celluleDeNoteDuDon) et tire l'id
+//     d'un don du nom de son ethnie ou du don (race#don:<normalize(nom)>), alors que l'id d'une ligne ne change jamais : une remarque posée ailleurs
+//     l'arrête, un renommage qui change cette clé le fait diverger (race_don, page_entite) ; un changement de graphie (même clé) se relit, et la note
+//     de cellule (note_cellule) d'un don du Médusain suit sa remarque ;
+//   - race_magie_onglet est tirée par races_onglet.py des magies que cite « Inconvénient(s) » : modifier l'une sans l'autre les fait diverger (D10, à
+//     trancher : pas de refus).
 //
 // Fonctions pures, sans dépendance (aucun accès à la base : les lignes sont passées par l'appelant, voir etatDeRace).
 
@@ -536,6 +539,13 @@ export function corpsDeRaceCreee(etat) {
   if (etat.race_magie?.length) L.push(...section(SEC.magies, nombreEtListe(magiesInneesDeRace(etat), etat.race_magie.length)));
   return `${sansBordsVides(L).join('\n')}\n`;
 }
+
+/**
+ * La cellule du classeur qui porte la note d'un don (« O30 »), d'après sa provenance (« Les races › Médusain › O30 », tools/db/races_onglet.py) : seul
+ * un don d'ethnie dont l'onglet a une note de cellule en a une (les trois du Médusain) ; null sinon. Une remarque n'a de place dans la page (« Note de la
+ * cellule « Don » ») que sur un tel don : ailleurs, races_onglet.py ne saurait pas la relire.
+ */
+export const celluleDeNoteDuDon = (don) => (don?.forme === 'ethnie' ? /› ([A-Z]{1,3}[0-9]+)$/.exec(String(don.source_ref ?? ''))?.[1] ?? null : null);
 
 /** Le résumé de la page d'une race : sa phrase de présentation (première feuille du classeur « Les races »), telle quelle. */
 export const resumeDeRace = (etat) => une(etat.race)?.presentation ?? null;

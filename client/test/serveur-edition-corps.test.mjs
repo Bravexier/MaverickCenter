@@ -131,6 +131,27 @@ lot([
   { op: 'modifier', table: 'race_onglet', cle: { race_id: raceCreee }, valeurs: { histoire: 'Histoire zorglubcreee de la race.', sante_depart: 12 } },
   { op: 'modifier', table: 'classe', cle: { id: classeCreee }, valeurs: { description: 'Une classe zorglubclassecreee. Elle lance des sorts.' } },
 ], `${raceCreee}/`);
+// Médusain : les trois dons dont l'onglet porte une note de cellule (O30, O34, O38) ; remarque modifiée, étiquette changée de graphie, remarque
+// vidée puis remise (sa note de cellule revient sur la case du don)
+const MEDUSAIN = { eau: 'races/medusain#don:eau-en-innee', foudre: 'races/medusain#don:foudre-en-innee', lumiere: 'races/medusain#don:lumiere-en-innee' };
+lot([
+  { op: 'modifier', table: 'race_don', cle: { id: MEDUSAIN.eau }, valeurs: { remarque: 'Jet de vigueur zorglubnote au tour suivant.' } },
+  { op: 'modifier', table: 'race_don', cle: { id: MEDUSAIN.foudre }, valeurs: { etiquette: 'FOUDRE EN INNÉE' } },
+  { op: 'modifier', table: 'race_don', cle: { id: MEDUSAIN.lumiere }, valeurs: { remarque: null } },
+], 'races/medusain/');
+lot([{ op: 'modifier', table: 'race_don', cle: { id: MEDUSAIN.lumiere }, valeurs: { remarque: 'Remarque zorglubrevenue.' } }], 'races/medusain/');
+// formes que races_onglet.py ne sait pas relire dans le corps : refusées (422), rien n'est écrit
+const donAnansi = lire("SELECT id FROM race_don WHERE race_id = 'races/anansi' AND forme = 'ethnie' ORDER BY rang").id;
+const donUnique = lire("SELECT id FROM race_don WHERE forme = 'unique' ORDER BY id").id;
+const refus = [
+  { op: 'modifier', table: 'race_don', cle: { id: MEDUSAIN.eau }, valeurs: { etiquette: 'Eau en inné' } },
+  { op: 'modifier', table: 'race_don', cle: { id: donUnique }, valeurs: { nom: 'Autre nom zorglub' } },
+  { op: 'modifier', table: 'race_don', cle: { id: donAnansi }, valeurs: { remarque: 'Une remarque.' } },
+  { op: 'modifier', table: 'race_don', cle: { id: donUnique }, valeurs: { remarque: 'Une remarque.' } },
+  { op: 'modifier', table: 'race_don', cle: { id: donAnansi }, valeurs: { nom: 'Un nom' } },
+  { op: 'modifier', table: 'race_onglet', cle: { race_id: 'races/mort-vivant' }, valeurs: { dons_tableau_titre: 'Un titre' } },
+  { op: 'modifier', table: 'mode_hyper_effet', cle: { id: avant.hyperElfe.id }, valeurs: { nom: null } },
+].map((op) => traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' }, corps: JSON.stringify({ page: 'essai/', operations: [op] }) }, service));
 
 const journal = journalExporte(vivante);
 vivante.close();
@@ -168,7 +189,7 @@ const casesDe = (l) => l.slice(2, -2).split(/(?<!\\)\|/).map((c) => c.trim());
 const debut = (texte) => texte.split('\n')[0].slice(0, 40);
 
 test('le journal rapatrié s’applique sur la copie de data/rows ; chaque page réécrite y est une modification de la table page', () => {
-  assert.equal(nombreDeLots, 9);
+  assert.equal(nombreDeLots, 11);
   assert.equal(journal.lots.length, nombreDeLots);
   assert.equal(application.ecrit, true, JSON.stringify(application.conflits));
   assert.deepEqual(application.conflits, []);
@@ -208,6 +229,25 @@ test('magie : présentation (et résumé), description physique, rôle, Mode Hyp
     assert.ok(corps(e.creature_id).split('\n').includes(`## Effet "${nouveau.manteau}"`), e.creature_id);
     assert.ok(!corps(e.creature_id).includes('## Effet "Manteau noir"'), e.creature_id);
   }
+});
+
+test('Médusain : la note de cellule d’un don suit sa remarque (modifiée, vidée puis remise sur sa case) ; une étiquette change de graphie', () => {
+  const notes = Object.fromEntries(lignes("SELECT entite_id, cellule, texte FROM note_cellule WHERE entite_table = 'race_don'").map((n) => [n.entite_id, n]));
+  assert.deepEqual(notes[MEDUSAIN.eau], { entite_id: MEDUSAIN.eau, cellule: 'O30', texte: 'Jet de vigueur zorglubnote au tour suivant.' });
+  assert.equal(notes[MEDUSAIN.foudre].cellule, 'O34');
+  assert.deepEqual(notes[MEDUSAIN.lumiere], { entite_id: MEDUSAIN.lumiere, cellule: 'O38', texte: 'Remarque zorglubrevenue.' });
+  for (const [id, n] of Object.entries(notes)) assert.equal(ligne('SELECT remarque FROM race_don WHERE id = ?', id).remarque, n.texte, id);
+  const c = section(corps('races/medusain'), 'Ethnies et dons raciaux');
+  assert.ok(c.includes('Jet de vigueur zorglubnote au tour suivant.') && c.includes('Remarque zorglubrevenue.'));
+  assert.ok(c.split('\n').includes('### FOUDRE EN INNÉE'));
+});
+
+test('formes que races_onglet.py ne relit pas : identifiant d’un don changé, remarque sans note de cellule, nom sans rubrique, titre du tableau du Mort-vivant, Mode Hyper sans nom : 422, rien n’est écrit', () => {
+  for (const r of refus) {
+    assert.equal(r.statut, 422, JSON.stringify(r.corps));
+    assert.match(r.corps.erreur, /races_onglet\.py/);
+  }
+  assert.equal(journal.lots.length, nombreDeLots, 'aucun lot pour les refus');
 });
 
 test('race : histoire, santé, avantages, don de base, case du tableau, magies innées, don racial, Mode Hyper (les citations de la fiche restent)', () => {

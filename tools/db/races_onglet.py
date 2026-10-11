@@ -51,12 +51,13 @@ ORIGINE = 'races'
 PROVENANCE_DU_SITE = 'Site de dev › '   # race.source_ref d'une race créée depuis le site de dev (voir l'en-tête)
 STAT_LABELS = R.STAT_LABELS            # Santé de départ, Chakra de départ, Barrière bonus, Vitesse Sol/Nage
 FICHE_LABEL = 'Fiche de personnage V15.2.2'
-# Notes de cellule de l'onglet (les seules : tools/sheets/races.py, « NOTES DE CELLULE ») : ethnie -> cellule. Les trois dons du Médusain, dans l'ordre
-# des lignes de l'onglet (O30, O34, O38).
+# Notes de cellule de l'onglet (les seules : tools/sheets/races.py, « NOTES DE CELLULE ») : (race, rang du don) -> cellule. Les trois dons du Médusain
+# (« Eau en innée », « Foudre en innée », « Lumière en innée »), dans l'ordre des lignes de l'onglet (O30, O34, O38). Repérés par leur rang et non par
+# leur étiquette : le site de dev peut en changer la graphie (client/serveur/edition.mjs refuse seulement ce qui changerait l'identifiant du don).
 CELLULES_NOTES = {
-    ('races/medusain', 'Eau en innée'): 'O30',
-    ('races/medusain', 'Foudre en innée'): 'O34',
-    ('races/medusain', 'Lumière en innée'): 'O38',
+    ('races/medusain', 1): 'O30',
+    ('races/medusain', 2): 'O34',
+    ('races/medusain', 3): 'O38',
 }
 
 
@@ -468,8 +469,7 @@ def lignes(extraction):
             source_ref=ref('A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)')))
         for rang, d in enumerate(v['dons'], 1):
             did = '%s#don:%s' % (rid, d['slug'])
-            cle = (rid, d['etiquette'])
-            cellule = CELLULES_NOTES.get(cle)
+            cellule = CELLULES_NOTES.get((rid, rang)) if d['forme'] == 'ethnie' else None
             if d['notes'] and (set(d['notes']) != {'texte'} or not cellule):
                 raise Arret('%s : note de cellule sans cellule connue (%r)' % (did, d['notes']))
             t['race_don'].append(dict(

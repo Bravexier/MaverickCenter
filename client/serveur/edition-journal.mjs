@@ -229,7 +229,12 @@ function rejouerUne(db, m, derivee, suivantes = []) {
   }
   if (m.operation === 'supprimer') {
     if (!ligne) return 'integree';
-    if (!correspond(ligne, sansDerivees(avant))) return 'la ligne a changé dans les règles depuis sa suppression';
+    if (!correspond(ligne, sansDerivees(avant))) {
+      // supprimée puis recréée par le journal : la ligne des règles est déjà la nouvelle
+      const recreee = suivantes.find((s) => s.operation === 'inserer');
+      if (recreee && Object.entries(sansDerivees(recreee.apres)).every(([c, v]) => deja(c, v))) return 'integree';
+      return 'la ligne a changé dans les règles depuis sa suppression';
+    }
     supprimerBrut(db, m.table_nom, cle);
     return 'applique';
   }

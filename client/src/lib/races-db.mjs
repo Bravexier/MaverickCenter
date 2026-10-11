@@ -4,6 +4,7 @@
 // ses écarts ne sont pas affichés. Seule la matrice des magies innées de la fiche sert encore, quand l'onglet ne les limite pas lui-même (R8, R11 :
 // race_magie_onglet prime). Les classes accessibles (race_classe) ne sont pas affichées (demande du propriétaire) : seule la classe raciale l'est.
 // Node seulement (la base est ouverte par lib/donnees.mjs au build). Une requête par table, puis assemblage en mémoire.
+import { celluleDeNoteDuDon } from './corps-races.mjs';
 import { HYBRIDES_SANS_CLASSE_RACIALE, TAG_RACE_HYBRIDE } from './race-kinds.mjs';
 import { blocsDeTexte } from './sort-format.mjs';
 
@@ -88,6 +89,9 @@ export function chargerRaces(db) {
         nom: d.nom,
         texte: blocsDeTexte(d.texte),
         remarque: d.remarque,
+        // mode modification : une remarque n'a de place dans la page de la race (et ne se relit, tools/db/races_onglet.py) que sur un don dont
+        // l'onglet porte une note de cellule (les trois du Médusain) ; ailleurs, le service la refuse
+        remarqueModifiable: celluleDeNoteDuDon(d) !== null,
       })),
       tableau:
         colonnesTableau.length > 0

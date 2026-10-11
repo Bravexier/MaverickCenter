@@ -121,7 +121,10 @@ Le **corps des pages typées** (et leur résumé), qui sert à la recherche (`pa
 depuis les tables à chaque modification, avec le rendu de leur importeur : morceaux d'une page de magie (`lib/corps-magies.mjs` : présentation, rôles,
 Mode Hyper, ligne, notes et texte d'un sort), sections de l'onglet d'une race et listes des classes et magies accessibles (`lib/corps-races.mjs` ; les
 citations de la fiche V15.2.2 restent), page entière d'une classe ou d'un don (`lib/corps-classes.mjs`), champs d'un métier (`lib/corps-metiers.mjs`) ;
-une valeur de l'onglet d'une race s'enregistre sous la forme que `races_onglet.py` relit. Une race ou une classe créée reçoit d'emblée le rendu de ses
+une valeur de l'onglet d'une race s'enregistre sous la forme que `races_onglet.py` relit, et une forme qu'il ne saurait pas relire est refusée
+(`422` : identifiant d'un don changé — seule la graphie de son étiquette ou de son nom peut changer —, remarque d'un don sans note de cellule dans
+l'onglet, nom de don sans rubrique « Nom », titre du tableau du Mort-vivant, Mode Hyper sans nom) ; la note de cellule d'un don du Médusain
+(`note_cellule`) suit sa remarque. Une race ou une classe créée reçoit d'emblée le rendu de ses
 tables ; une race créée n'a pas d'onglet dans le classeur (ni source, ni Mode Hyper) : `races_onglet.py --verifier` ne relit que les races importées
 (`serveur-edition-corps` vérifie le tout de bout en bout, journal rapatrié sur une copie de `data/rows`).
 

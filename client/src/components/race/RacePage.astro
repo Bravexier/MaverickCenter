@@ -158,16 +158,24 @@ const nav = [
               <article class="race-don" id={`don-${d.slug}`}>
                 {d.forme === 'ethnie' && race.rubriques && <p class="race-don__rubrique">{race.rubriques.etiquette}</p>}
                 <h3 data-ed={edDon(d.id, d.forme === 'ethnie' ? 'etiquette' : 'nom')}>{titreDon(d)}</h3>
-                {d.forme === 'ethnie' && <p class="race-don__nom" data-ed={edDon(d.id, 'nom')} data-ed-cadre hidden={!d.nom}>{d.nom}</p>}
+                {d.forme === 'ethnie' && (race.rubriques?.nom || d.nom ? (
+                  <p class="race-don__nom" data-ed={edDon(d.id, 'nom')} data-ed-cadre hidden={!d.nom}>{d.nom}</p>
+                ) : null)}
                 <div class="race-prose" data-ed={edDon(d.id, 'texte')} data-ed-rendu="blocs"><Texte blocs={d.texte} /></div>
-                <p class="race-don__remarque" data-ed-cadre hidden={!d.remarque}><strong>Remarque</strong> <span data-ed={edDon(d.id, 'remarque')}>{d.remarque}</span></p>
+                {d.remarqueModifiable ? (
+                  <p class="race-don__remarque" data-ed-cadre hidden={!d.remarque}><strong>Remarque</strong> <span data-ed={edDon(d.id, 'remarque')}>{d.remarque}</span></p>
+                ) : (
+                  d.remarque && <p class="race-don__remarque"><strong>Remarque</strong> <span>{d.remarque}</span></p>
+                )}
               </article>
             ))}
           </div>
         )}
         {race.tableau && (
           <div class="race-tableau">
-            <h3 data-ed={edOnglet('dons_tableau_titre')} data-ed-cadre hidden={!race.tableau.titre}>{race.tableau.titre}</h3>
+            {race.tableau.titre || !race.dons.some((d) => d.forme === 'unique') ? (
+              <h3 data-ed={edOnglet('dons_tableau_titre')} data-ed-cadre hidden={!race.tableau.titre}>{race.tableau.titre}</h3>
+            ) : null}
             <div class="race-tableau__defile">
               <table class="race-table">
                 <thead>
