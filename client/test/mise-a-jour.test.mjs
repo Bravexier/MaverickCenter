@@ -38,7 +38,8 @@ function site(label, pages = 5, extra = {}) {
 /** Une livraison avec son installateur ; `abime` corrompt l'archive, `sansInstallateur` simule une construction en cours. */
 function livraison(tag, { label = tag, pages, extra, abime = false, sansInstallateur = false } = {}) {
   const mode = tag.includes('-test') ? 'test' : 'prod';
-  const version = tag.match(/^v(\d+\.\d+\.\d+)/)[1];
+  const [, x, y, z = '0'] = tag.match(/^[vV](\d+)\.(\d+)(?:\.(\d+))?/); // V1.2 : production, version 1.2.0 (tools/flux-git/regles.mjs)
+  const version = `${x}.${y}.${z}`;
   let octets = null;
   if (!sansInstallateur) {
     octets = readFileSync(fabriquer({ mode, tag, version, sha: 'c'.repeat(40), site: site(label, pages, extra), sortie: join(root, 'sortie') }).fichier);
@@ -169,6 +170,20 @@ test('production : un hotfix (même version, nouvelle étiquette) est installé 
   assert.equal(n.tag(), 'v1.2.0-hotfix.1');
   assert.equal(n.read('site/index.html'), '<h1>accueil v2</h1>');
   assert.ok(!n.has('site/wiki/p3/index.html'));
+});
+
+test('étiquettes du bot (tools/flux-git) : production VX.Y et VX.Y-hotfix.N, test VX.Y.Z-test', { skip }, async () => {
+  publier(livraison('V1.2-hotfix.1', { label: 'correctif' }), livraison('V1.2.4-test', { label: 'test' }), livraison('V1.2'));
+  const n = nas('etiquettes-v');
+  const prod = await n.run();
+  assert.equal(prod.code, 0, prod.out);
+  assert.equal(n.tag(), 'V1.2-hotfix.1');
+  assert.equal(n.read('site/index.html'), '<h1>accueil correctif</h1>');
+  assert.match(n.read('VERSION'), /^version=1\.2\.0$/m);
+  const t = nas('etiquettes-v-test', { mode: 'test', env: { SANS_BASE_PROD: '1' } });
+  const test_ = await t.run();
+  assert.equal(test_.code, 0, test_.out);
+  assert.equal(t.tag(), 'V1.2.4-test');
 });
 
 test('test : la livraison « -test » la plus récente, avec copie de la base de la production', { skip }, async () => {

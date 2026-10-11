@@ -51,6 +51,16 @@ la tient après chaque fusion ; **personne ne la change à la main**.
 Exemple : `master` et `dev` en `0.1.25` ; deux features → `dev` `0.1.27` ; livraison → les deux en `0.2.0` ; une feature → `dev` `0.2.1` ;
 un hotfix → `master` reste `0.2.0`, `dev` reçoit le correctif et passe en `0.2.2` ; livraison `[V: X+1]` → les deux en `1.0.0`.
 
+**Chaque nouvelle version est étiquetée** (tag Git, demande du propriétaire : retrouver une version sans passer par le numéro de commit). Le bot pose
+l'étiquette sur le commit qui porte la version, dans la même poussée que lui : **`VX.Y.Z` sur `dev`** (`V0.1.75`), **`VX.Y` sur `master`**
+(`V0.2` : `master` ne change de version qu'à une livraison, toujours en `X.Y.0`). Un hotfix ne change pas la version de `master`, donc pas
+d'étiquette de version sur `master` (seulement celle de son installateur à partir de la 0.2.0, ci-dessous) ; `dev`, elle, reçoit la sienne.
+Après une livraison où `dev` rejoint `master` en avance rapide, le même commit porte `VX.Y` et `VX.Y.0`. Une étiquette déjà posée ailleurs (à la main)
+n'est jamais déplacée : le bot le signale dans son résumé et continue. Retrouver une version : `git fetch --tags origin`, puis
+`git switch --detach V0.1.75`, `git log V0.2..V0.2.3`, ou la page *Tags* de GitHub. Toutes les étiquettes commencent par un **`V` majuscule**,
+installateurs compris : deux étiquettes qui ne diffèrent que par la casse (`V0.2.0` et `v0.2.0`) se confondent dans un clone Windows ou macOS.
+Les versions d'avant cette règle n'ont pas d'étiquette : leurs commits « chore: version v0.1.N » restent le repère.
+
 Après une livraison, `dev` rejoint `master` (avance rapide, ou fusion si `dev` a bougé entre-temps). Après un hotfix, `master` est refusionnée dans `dev`.
 Si cette refusion est en conflit (le hotfix et `dev` ont modifié les mêmes lignes), le bot ne touche pas `dev` et le signale (son passage finit en
 rouge, l'installateur de production du hotfix est quand même publié à partir de la 0.2.0) ; la refusion se fait alors par une `feature/<nom>` créée
@@ -95,9 +105,9 @@ sur l'hôte, sans téléchargement ni jeton. Il est publié comme *release* GitH
 
 | Fusion dans | Installateur | Étiquette (release) |
 | --- | --- | --- |
-| `dev` (feature, ou refusion après livraison ou hotfix) | **test** | `vX.Y.Z-test` (pré-version) |
-| `master` (livraison) | **normal** (production) | `vX.Y.Z` |
-| `master` (hotfix : même version) | **normal** (production) | `vX.Y.Z-hotfix.N` |
+| `dev` (feature, ou refusion après livraison ou hotfix) | **test** | `VX.Y.Z-test` (pré-version), à côté de l'étiquette de version `VX.Y.Z` |
+| `master` (livraison) | **normal** (production) | `VX.Y` : l'étiquette de version de `master` elle-même |
+| `master` (hotfix : même version) | **normal** (production) | `VX.Y-hotfix.N` |
 
 - **Serveur de test** (`maverick-center-test`, port 8081, bandeau « Serveur de test » sur chaque page, `[TEST]` dans le titre de l'onglet).
   À chaque installation, **sa base est remplacée par une copie de celle du serveur normal prise à cet instant** (dossier `db/` de l'instance de
@@ -110,7 +120,7 @@ quitter le serveur. La base vivante (`db/`) est celle du service des personnages
 utilisateurs et leurs fiches ; la base des règles du site (`/donnees/`), elle, est reconstruite
 depuis `data/rows` à chaque version.
 
-**Le premier jour hébergé (0.2.0)** : sur l'hôte, lancer l'installateur `v0.2.0` (serveur normal), puis `v0.2.0-test` (serveur de test, qui copie sa base) ;
+**Le premier jour hébergé (0.2.0)** : sur l'hôte, lancer l'installateur `V0.2` (serveur normal), puis `V0.2.0-test` (serveur de test, qui copie sa base) ;
 la mise à jour automatique de chaque instance est `mise-a-jour.sh`. Le NAS n'est pas touché (sa branche `site` cesse simplement d'avancer).
 Détails : [`deploy/installateur/README.md`](../deploy/installateur/README.md). Republier une branche sans changer sa version :
 *Actions → Version et livraison → Run workflow* (le site avant la 0.2.0, une étiquette `…-rebuild.N` ensuite).

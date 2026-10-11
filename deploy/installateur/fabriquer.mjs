@@ -24,7 +24,7 @@ export const FICHIERS_LIVRES = {
 
 const FORMATS = {
   mode: /^(prod|test)$/,
-  tag: /^v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/,
+  tag: /^[vV]\d+\.\d+(\.\d+)?(-[0-9A-Za-z.-]+)?$/, // V0.2 (production), V0.2.3-test, V0.2-hotfix.1… (tools/flux-git/regles.mjs)
   version: /^\d+\.\d+\.\d+$/,
   sha: /^([0-9a-f]{7,40}|local)$/,
 };
