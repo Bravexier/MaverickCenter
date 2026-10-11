@@ -38,8 +38,8 @@ d'une source ou d'une décision de [`decisions-regles.md`](decisions-regles.md) 
 | E4 | Générateur d'accessoires magiques | A · V0.4 | E3 pour les accessoires | tables de tirage `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet` ; `personnage_accessoire` |
 | E5 | Chronologie | B · V0.5 | sources du lore | entrée « bientôt » du menu Codex |
 | E6 | Carte interactive et lieux | B · V0.5 | image de la carte, sources | type `cartes` (aucune page), entrée « bientôt » du menu Codex |
-| E7 | Connexion par Discord seulement, droits selon les rôles Discord | C · V0.6 (essai), V1.0 | application Discord du propriétaire | tables `utilisateur`, `utilisateur_role` ; « Authentification » plus bas |
-| E8 | Fiches de personnage assignées à un compte | C · V1.0 | E7 | `personnage.proprietaire_id`, `personnage_partage`, `v_personnage_visible` |
+| E7 | Connexion par Discord seulement, droits selon les rôles Discord | C · V0.6, éprouvée avant la V1.0 | application Discord du propriétaire | tables `utilisateur`, `utilisateur_role` ; « Authentification » plus bas |
+| E8 | Fiches de personnage assignées à un compte | C · V0.6 | E7 | `personnage.proprietaire_id`, `personnage_partage`, `v_personnage_visible` |
 | E9 | Groupes (OS, HC, Campagne) et planning des parties | D · V1.2 | E7, E8 | `groupe`, `groupe_membre`, `v_groupe_controle` ; entrée « bientôt » du menu Personnages |
 | E10 | Bot Discord : lien site ↔ serveur, notifications | A · V0.3 (annonces), D · V1.3 | E7 pour les notifications ciblées | — |
 | E11 | Boîte à idées, tickets, rapports de bugs | D · V1.1 | E7 | entrée « bientôt » du menu Outils |
@@ -49,8 +49,9 @@ Jalons proposés :
 
 - **A — avant la 1.0, sans comptes** : ce qui se fait avec la base actuelle et le mot de passe partagé d'aujourd'hui.
 - **B — le Codex** : avant la 1.0 aussi, mais suspendu au rapatriement des sources (salons Discord du lore et des cartes, « CODEX Maverick », « Bestiaire 2.0 »).
-- **C — la 1.0** : la connexion par Discord, développée et essayée sur le serveur de test en 0.x ; le passage en 1.0 (ouverture à tout le Discord) reste le
-  signal du propriétaire ([`flux-git.md`](flux-git.md)).
+- **C — la 1.0** : la connexion par Discord arrive dans la **dernière version 0.x** (V0.6 visée), qui reste en service le temps d'en corriger les bugs ;
+  la **V1.0.0** vient quand la connexion est éprouvée et testée et l'ouvre à tout le Discord (précision du propriétaire, 2026-10-11). Le passage en 1.0
+  reste son signal ([`flux-git.md`](flux-git.md)). Les fiches liées au compte (E8) sont proposées dans la même V0.6, pour être éprouvées avec la connexion.
 - **D — la communauté** : ce que les comptes rendent possible.
 - **E — la mesure** : quand il y a assez de fiches réelles ; puis la simulation de combats (étape 3).
 
@@ -63,8 +64,8 @@ propriétaire.
 | V0.3 | Galerie humaine / IA (E1), page du Bestiaire des invocations (E2), annonce des versions sur Discord par webhook (E10) |
 | V0.4 | Refonte de l'équipement et effets dans la fiche (E3), générateur d'accessoires magiques (E4) |
 | V0.5 | Codex, selon l'arrivée des sources : chronologie (E5), carte et lieux (E6), monstres du « Bestiaire 2.0 » (E2) |
-| V0.6 | Connexion par Discord à l'essai, MJ et administrateurs (E7) |
-| V1.0 | Ouverture à tout le Discord : connexion par Discord, droits selon les rôles (E7), fiches de chaque compte (E8) |
+| V0.6 | Connexion par Discord, droits selon les rôles (E7), fiches liées au compte (E8) ; dernière version 0.x, le temps de corriger les bugs |
+| V1.0 | La connexion par Discord est éprouvée et testée : ouverture à tout le Discord |
 | V1.1 | Boîte à idées, tickets et rapports de bugs (E11) |
 | V1.2 | Groupes OS / HC / Campagne et planning des parties (E9) |
 | V1.3 | Bot Discord : notifications ciblées, rappels de parties, rôles synchronisés (E10) |
@@ -83,7 +84,7 @@ flowchart LR
   subgraph B["B — Codex"]
     E5[E5 Chronologie] -.- E6[E6 Carte et lieux]
   end
-  subgraph C["C — 1.0"]
+  subgraph C["C — V0.6 puis 1.0"]
     E7[E7 Connexion Discord] --> E8[E8 Fiches des comptes]
   end
   subgraph D["D — communauté"]
@@ -155,7 +156,7 @@ flowchart LR
 - **Choix technique au prototype** : une bibliothèque de carte embarquée (Leaflet en coordonnées simples, sans fond de carte en ligne) ou un SVG maison ;
   elle doit passer dans la version portable (rien d'externe).
 
-### E7 — Connexion par Discord seulement, droits selon les rôles Discord (jalon C : la 1.0)
+### E7 — Connexion par Discord seulement, droits selon les rôles Discord (jalon C : V0.6, éprouvée avant la 1.0)
 
 La connexion est décidée plus bas (« Authentification : Discord ») ; cette liste y ajoute :
 
@@ -166,7 +167,7 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
 - **Ce que les droits ouvrent** : l'édition des règles et le bouton « Effectuer la mise à jour » (sans protection aujourd'hui, décision du propriétaire)
   passent aux rôles `editeur` et `admin` ; l'auteur de chaque modification est inscrit à l'historique ; la relecture `brouillon / validé` devient possible.
 
-### E8 — Fiches de personnage assignées à un compte (jalon C)
+### E8 — Fiches de personnage assignées à un compte (jalon C : V0.6)
 
 - **Déjà là** : tout le modèle (fiche de joueur ou prétiré, propriétaire, visibilité privée / MJ / tous, partage à des utilisateurs désignés,
   `v_personnage_visible`), voir « Fiches de personnages » plus bas.
@@ -262,7 +263,7 @@ au moment de la bascule, la base est la référence. Le registre `tools/sheets/c
 - **Un site statique ne suffit plus pour l'édition ni pour la simulation** : il faudra un service (API + authentification, rôles lecteur / éditeur) ; le site
   de lecture peut rester statique ou devenir rendu côté serveur selon l'hébergement choisi. Premier pas, préparé avant la 1.0 (demande du propriétaire) :
   le **mode client / serveur** ([`serveur.md`](serveur.md)) — un service Node sans dépendance (`client/serveur/`), livré avec le site et servi par nginx sous
-  `/api/`, qui enregistre les prétirés dans la base vivante (`db/`) ; l'authentification s'y ajoutera à la 1.0.
+  `/api/`, qui enregistre les prétirés dans la base vivante (`db/`) ; l'authentification s'y ajoutera dans la dernière version 0.x, avant la 1.0.
 
 ## Authentification : Discord (décision du propriétaire du projet)
 
@@ -276,8 +277,9 @@ Toute la communauté est sur Discord : la connexion se fait par « Se connecter 
   CSRF pour les modifications) ; le serveur web protège aussi les pages statiques en lui demandant si la session est valide (`auth_request` avec nginx). L'adresse de
   retour de la connexion dépend de l'adresse publique du site (HTTPS) : elle se configure par variable d'environnement et se change dans le portail développeur Discord
   quand l'hébergement migre.
-- **Quand** : avec la **version 1.0** (décision du propriétaire), qui ouvre aussi le serveur normal (usage réel) et le serveur de test, ce dernier
-  recevant à chaque installation une copie de la base du serveur normal (voir `flux-git.md`). Le mot de passe partagé d'aujourd'hui reste d'ici là.
+- **Quand** : dans la dernière version 0.x (V0.6 visée), qui reste en service le temps d'en corriger les bugs ; la **version 1.0** vient quand la connexion
+  est éprouvée et testée, et l'ouvre à tout le Discord (décision du propriétaire, précisée le 2026-10-11 ; « Prochaines évolutions », E7). Les serveurs normal
+  et de test existent dès la 0.2.0 (voir `flux-git.md`). Le mot de passe partagé d'aujourd'hui reste d'ici là.
   La table des utilisateurs et les colonnes « modifié par » de l'historique se prévoient dès la conception de la base.
 - **À faire par le propriétaire le moment venu** : créer l'application dans le portail développeur Discord et fournir son identifiant et son secret comme secrets de
   l'environnement (jamais dans le dépôt). Aucun jeton personnel Discord n'est utilisé.
@@ -286,7 +288,7 @@ Toute la communauté est sur Discord : la connexion se fait par « Se connecter 
 
 Les tables sont prêtes dans la base (section 13 de `data/schema.sql`, détail dans `character-generator.md`, « Fiches dans la base »). Les **prétirés**
 s'enregistrent dès avant la 1.0 par le service des personnages ([`serveur.md`](serveur.md)) ; les fiches de joueur, le partage et les groupes supposent
-la connexion Discord (1.0).
+la connexion Discord (dernière version 0.x, puis 1.0).
 
 - **Deux sortes de fiches** : celles qu'un joueur crée pour son propre personnage, et les **prétirés**, qui ne sont à personne et que tout le monde voit.
 - Une fiche de joueur n'est **visible que de lui seul (et des administrateurs)**. Il peut l'ouvrir à **un ou plusieurs utilisateurs désignés**, à **tous les MJ**
