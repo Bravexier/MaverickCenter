@@ -34,6 +34,44 @@ jobs:
       # Version portable (liens relatifs, CSS/JS inline) : elle échoue si le script d'une page importe un autre module.
       - run: node ../tools/build-artifact.mjs --out "$RUNNER_TEMP/artifact"
 
+  # « Simulation de mise à jour » sur chaque PR (le run 38151792080 du 2026-10-11 a échoué) : ce que fait le job preparer de mise-a-jour.yml —
+  # un lot appliqué à data/rows par scripts/mise-a-jour-regles.mjs (production : origin/master), puis ses contrôles (CONTROLES de
+  # scripts/mise-a-jour-github.mjs : db:build, db:check et tout le job client ci-dessus), rien ne devant changer ensuite —, avec un lot
+  # synthétique : scripts/mise-a-jour-simulation.mjs fait faire de vraies modifications au service du site de dev (guide, métier, sort, dons) et
+  # fige le lot comme la page Mise à jour. Une PR qui rendrait la mise à jour impossible (un test qui suppose qu'aucune note de version n'attend
+  # sa livraison, un balayage de la base qui lit les traces de la note, une page construite qui suppose les notes d'exemple…) est rouge ici.
+  # Quand data/rows porte déjà une note en attente (PR de mise à jour, dev avant la livraison), aucun lot n'est écrit : data/rows est contrôlé tel
+  # quel. Installation identique au job client (test/mise-a-jour-simulation.test.mjs épingle le job et ses contrôles).
+  simulation-de-mise-a-jour:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      # Page « Mise à jour » du site de dev : la base de la production (master) est construite à côté de celle du site (scripts/db-reference.mjs).
+      - run: git fetch --no-tags --depth=1 origin +refs/heads/master:refs/remotes/origin/master
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      - run: node scripts/mise-a-jour-simulation.mjs --lot "$RUNNER_TEMP/lot.json" --reference origin/master
+      - run: if [ -f "$RUNNER_TEMP/lot.json" ]; then node scripts/mise-a-jour-regles.mjs --lot "$RUNNER_TEMP/lot.json" --reference origin/master --resume "$RUNNER_TEMP/resume.json"; fi
+      # Comme le job preparer : ce qui est contrôlé est ce qui serait commité (indexé avant les contrôles, aucun fichier changé par eux).
+      - run: git add --all -- ../data/rows
+      - run: npm run db:build
+      - run: npm run db:check
+      - run: npm test
+      - run: npm run build
+      - run: node --test test/magies-html.test.mjs test/races-html.test.mjs test/classes-html.test.mjs test/metiers-html.test.mjs test/guide-html.test.mjs test/site-html.test.mjs test/fiche-html.test.mjs test/edition-rendu.test.mjs test/classe-dons-rendu.test.mjs
+      - run: HIDE_EXAMPLES=1 SITE_MODE=test SITE_TAG=v0.0.0-test npm run build
+      - run: grep -q 'class="bandeau-test"' dist/index.html
+      - run: sh "$(node ../deploy/installateur/fabriquer.mjs --mode test --site dist --tag v0.0.0-test --version 0.0.0 --sha local --sortie "$RUNNER_TEMP/installateur")" --verifier
+      - run: node ../tools/build-artifact.mjs --out "$RUNNER_TEMP/artifact"
+      - run: git diff --exit-code --stat && test -z "$(git ls-files --others --exclude-standard)"
+
   character-service:
     runs-on: ubuntu-latest
     defaults:
