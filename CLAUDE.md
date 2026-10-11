@@ -13,7 +13,7 @@ la citer depuis une source (`sources:` dans le frontmatter) ou la laisser absent
 
 ## Décisions du propriétaire
 
-`docs/decisions-regles.md` : les choix tranchés quand les sources se contredisent (27 races, mono-classe, budgets exacts, Calme, Mode Hyper +15/+7, Archimage magique, sens des relations entre peuples, onglet de race source, Drassah'thac hybride, Corruption et Potentiel Illimité mono-magie, puissance magique 5 au niveau 16, 2 santé pour 1 chakra manquant, croix des caractéristiques, Corruption acquise des Elfes noirs Charbon et Felfes noirs, déesse de la Corruption « Eaunoire », Corruption innée de la Lamia, Archimage réservée au Potentiel Illimité qui l'impose, NM excédentaires donnés par le MJ…).
+`docs/decisions-regles.md` : les choix tranchés quand les sources se contredisent (27 races, mono-classe, budgets exacts, Calme, Mode Hyper +15/+7, Archimage magique, sens des relations entre peuples, onglet de race source, Drassah'thac hybride, Corruption et Potentiel Illimité mono-magie, puissance magique 5 au niveau 16, 2 santé pour 1 chakra manquant, croix des caractéristiques, Corruption acquise des Elfes noirs Charbon et Felfes noirs, déesse de la Corruption « Eaunoire », Corruption innée de la Lamia, Archimage réservée au Potentiel Illimité qui l'impose, Mage Bleu fermé au Potentiel Illimité, NM de livre ou du MJ et 3 NM au plus sur un sort, pas d'emplacement de sort en plus…).
 Les suivre ; ne jamais en déduire d'autres.
 
 ## Vision à long terme
@@ -194,10 +194,12 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   foi sont ceux de `v_personnage_controle` (rendus par le service) ; toute règle ajoutée à la vue doit avoir son libellé dans `lib/fiche-controles.mjs`
   (`test/fiche-controles.test.mjs`). Avant la 1.0 la fiche ne crée que des prétirés. Une colonne ajoutée à la section 13 apparaît dans le JSON d'une fiche
   sans rien changer au service ; la page, elle, doit lui donner un champ. L'Archimage n'est ouverte qu'au Potentiel Illimité inné, qui l'impose en classe 1 et l'y verrouille
-  (décision R23 : colonne `classe.magie_innee_id`, migration `0015-archimage-potentiel-illimite`, règles `classe_reservee` / `classe_imposee`, `classesSelonLaMagieInnee`) ;
+  (décision R23 : colonne `classe.magie_innee_id`, migration `0015-archimage-potentiel-illimite`, règles `classe_reservee` / `classe_imposee`, `classesSelonLaMagieInnee`) ; le Mage Bleu lui est fermé
+  (décision R25 : `classe.magie_innee_exclue_id`, migration `0020-mage-bleu-potentiel-illimite`, règle `classe_exclue`) ;
   un don à choix d'une classe ou d'une spécialité retirée part avec elle (`donsValables`). Page compacte (demandes du propriétaire) : choix en menus déroulants
   (`<details class="choix">`), caractéristiques (1 par défaut, jamais vides : `caracteristiquesCompletes`) et naturel des compétences en curseurs, tableau des sorts
-  à une liste par emplacement (`lignesDeSorts`), NM en plus de ceux gagnés permis (R24), jauge d'XP dans l'en-tête (`progressionXp`), pas de lien vers le guide ;
+  à une liste par emplacement sans emplacement en plus (`lignesDeSorts`, R27), NM par origine — niveau, livre (un par sort), MJ — et 3 au plus sur un sort (R24, R26 :
+  `personnage_sort.nm_livre`, `nm_cadeau`, migration `0021-nm-plafond`), acquis des compétences en curseur aussi, jauge d'XP dans l'en-tête (`progressionXp`), pas de lien vers le guide ;
   une fiche se supprime (`DELETE /api/personnages/<id>/` avec sa version).
 - **Fiches de personnages** (section 13 de `data/schema.sql`, migration `0011-personnages`) : les tables gardent les **choix** du joueur (race, ethnie, magies, classes, caractéristiques de base et croix (R19), points de compétences,
   gains de niveau, dons à choix, sorts et NM, équipement), cellule de la fiche auto V15.2.2 citée en commentaire ; **rien de ce que la fiche calcule n'est stocké** (niveaux, santé, totaux…).

@@ -31,7 +31,7 @@ const CONSTANTES = [
   'caracteristique.base_min', 'caracteristique.base_max', 'caracteristique.bonus_magie_innee', 'competence.base_par_point_caracteristique',
   'competence.acquis_max_par_point_caracteristique', 'competence.croix_1_malus', 'competence.croix_2_malus', 'classe.mono_niveau_max',
   'classe.mono_niveaux_par_niveau_global', 'classe.mode_verrou_xp', 'sort.nm_ecart_niveau_global', 'barriere.diviseur_chakra',
-  'maitrise_arme.des_sans_maitrise', 'maitrise_arme.des_max',
+  'maitrise_arme.des_sans_maitrise', 'maitrise_arme.des_max', 'sort.nm_max',
 ];
 
 /** @param {import('node:sqlite').DatabaseSync} db */
@@ -102,14 +102,15 @@ export function chargerReglesDeFiche(db) {
 
   // Classes : apport de départ, catégorie et couleur de /classes/ ; classe magique par sa catégorie ou l'Archimage (R6), spécialité magique quand
   // son don de niveau 10 dit « considérer comme classe magique » (R7) ; dons à choix rangés en groupes (v_capacite_exclusive, comme la page de la classe) ;
-  // magie innée qui réserve et impose la classe (classe.magie_innee_id : l'Archimage et le Potentiel Illimité, décision R23).
+  // magie innée qui réserve et impose la classe (classe.magie_innee_id : l'Archimage et le Potentiel Illimité, décision R23), ou qui la ferme
+  // (classe.magie_innee_exclue_id : le Mage Bleu et le Potentiel Illimité, décision R25).
   const amMagique = db.prepare("SELECT am_base FROM categorie_classe WHERE id = 'classe-magique'").get()?.am_base;
   if (!amMagique) throw new Error('categorie_classe « classe-magique » : am_base absent');
   const alternatives = parCle(lignes(db, 'SELECT capacite_id, autre_id FROM v_capacite_exclusive'), 'capacite_id', (r) => r.autre_id);
   const capacites = parCle(lignes(db, 'SELECT id, classe_id, specialite_id, niveau, nature, ligne, rang, nom, type, effet FROM capacite'), 'classe_id');
   const specialites = parCle(lignes(db, 'SELECT id, classe_id, rang, nom FROM specialite ORDER BY classe_id, rang'), 'classe_id');
   const classes = lignes(db, `
-    SELECT c.id, c.nom, c.sante_depart, c.chakra_depart, c.barriere_depart, c.categorie_id, c.magie_innee_id, k.libelle AS categorie, k.am_base
+    SELECT c.id, c.nom, c.sante_depart, c.chakra_depart, c.barriere_depart, c.categorie_id, c.magie_innee_id, c.magie_innee_exclue_id, k.libelle AS categorie, k.am_base
     FROM classe c JOIN categorie_classe k ON k.id = c.categorie_id ORDER BY c.ordre`)
     .map((c) => {
       const dons = capacites.get(c.id) ?? [];
@@ -128,7 +129,7 @@ export function chargerReglesDeFiche(db) {
         groupe: (({ key, label }) => ({ key, label, ordre: CLASS_GROUPS.findIndex((g) => g.key === key) }))(classCategory(entree) ?? { key: 'speciales', label: 'Spéciales' }),
         magique: (c.am_base ?? 0) > 0 || c.id === 'classes/archimage',
         sante: c.sante_depart, chakra: c.chakra_depart, barriere: c.barriere_depart,
-        magie_innee_id: c.magie_innee_id,
+        magie_innee_id: c.magie_innee_id, magie_innee_exclue_id: c.magie_innee_exclue_id,
         specialites: specialitesDeLaClasse,
         choix: [null, ...specialitesDeLaClasse.map((s) => s.id)].flatMap(parSpecialite).sort((a, b) => a.niveau - b.niveau),
       };

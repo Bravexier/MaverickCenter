@@ -187,20 +187,26 @@ test('classes, spécialités et dons : 2e classe selon R2, spécialité au nivea
   assert.throws(() => db.prepare('UPDATE personnage_classe SET specialite_id = ? WHERE personnage_id = ? AND rang = 1').run(autre, 'classe-2'), /FOREIGN KEY/, 'une spécialité d’une autre classe');
 });
 
-test('sorts : de la magie du personnage, NM au plus niveau global − 1 ; plus de NM que ceux gagnés est permis (donnés par le MJ, décision R24)', () => {
+test('sorts : de la magie du personnage ; NM de niveau au plus niveau global − 1 et au plus ceux gagnés, ceux d’un livre ou du MJ en plus, 3 au plus sur un sort (R24, R26)', () => {
   personnageValide('sorts', { xp: 550 });   // niveau 3 : 2 NM gagnés, NM max 2
   db.prepare("UPDATE personnage_competence SET naturel = 20 WHERE personnage_id = 'sorts'").run();
   for (const c of ['calme', 'concentration']) inserer('personnage_competence', { personnage_id: 'sorts', competence_id: c, naturel: 20, acquis: 0 });   // 100 + 20 + 20
   for (const n of [2, 3]) inserer('personnage_progression', { personnage_id: 'sorts', niveau: n, points_sante: 15, points_chakra: 0 });
   inserer('personnage_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:boule-de-feu', rang: 1, niveau_maitrise: 2 });
   assert.deepEqual(controle('sorts'), []);
-  inserer('personnage_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:cauterisation', rang: 2, niveau_maitrise: 2 });
-  assert.deepEqual(controle('sorts'), [], '4 NM pour 2 gagnés : les 2 en plus viennent du MJ (R24)');
+  inserer('personnage_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:cauterisation', rang: 2, niveau_maitrise: 2, nm_livre: 1, nm_cadeau: 1 });
+  assert.deepEqual(controle('sorts'), [], '4 NM pour 2 gagnés : les 2 en plus viennent d’un livre et du MJ (R24, R26)');
+  db.prepare("UPDATE personnage_sort SET nm_livre = 0 WHERE personnage_id = 'sorts' AND rang = 2").run();
+  assert.deepEqual(controle('sorts'), [{ regle: 'sorts_nm_total', detail: '3 / 2' }], 'un NM en plus non offert : de niveau, au-delà de ceux gagnés');
+  db.prepare("UPDATE personnage_sort SET niveau_maitrise = 4, nm_livre = 1, nm_cadeau = 3 WHERE personnage_id = 'sorts' AND rang = 2").run();
+  assert.deepEqual(controle('sorts'), [{ regle: 'sort_nm_plafond', detail: 'magies/magie-du-feu#sort:cauterisation = 4' }], 'jamais plus de 3 NM sur un sort');
+  assert.throws(() => db.prepare("UPDATE personnage_sort SET nm_livre = 2 WHERE personnage_id = 'sorts' AND rang = 2").run(), /CHECK/, 'un seul NM de livre par sort');
+  assert.throws(() => db.prepare("UPDATE personnage_sort SET niveau_maitrise = 1 WHERE personnage_id = 'sorts' AND rang = 2").run(), /CHECK/, 'les NM offerts font partie du NM du sort');
   db.prepare("DELETE FROM personnage_sort WHERE personnage_id = 'sorts' AND rang = 2").run();
   inserer('personnage_sort', { personnage_id: 'sorts', sort_id: 'magies/magie-du-feu#sort:cauterisation', rang: 2, niveau_maitrise: 3 });
   const glace = db.prepare("SELECT id FROM sort WHERE magie_id = 'magies/magie-de-la-glace' AND niveau = 1 LIMIT 1").get().id;
   inserer('personnage_sort', { personnage_id: 'sorts', sort_id: glace, rang: 3, niveau_maitrise: 0 });
-  assert.deepEqual(regles('sorts'), ['sort_hors_magie', 'sort_nm_max']);
+  assert.deepEqual(regles('sorts'), ['sort_hors_magie', 'sort_nm_max', 'sorts_nm_total']);
 });
 
 test('équipement : matériaux du bouclier au plus sa classe, améliorations du bon genre, valeur d’accessoire dans la fourchette', () => {
@@ -321,6 +327,22 @@ test('décision R23 : l’Archimage est réservée au Potentiel Illimité inné,
     alignement_loyal: 0, alignement_chaotique: 0, alignement_bon: 0, alignement_mauvais: 0, bourse_pp: 0, bourse_ro: 0, bourse_rf: 0, ambidextrie: 0, cree_le: INSTANT, modifie_le: INSTANT,
   });
   assert.deepEqual(controle('r23-brouillon'), []);
+});
+
+test('décision R25 : le Mage Bleu est fermé au Potentiel Illimité, à tous les rangs (« Chose à savoir » du Mage Bleu)', () => {
+  assert.deepEqual(db.prepare('SELECT id, magie_innee_exclue_id FROM classe WHERE magie_innee_exclue_id IS NOT NULL').all().map((r) => ({ ...r })),
+    [{ id: 'classes/mage-bleu', magie_innee_exclue_id: 'magies/potentiel-illimite' }]);
+  assert.match(db.prepare("SELECT chose_a_savoir FROM classe WHERE id = 'classes/mage-bleu'").get().chose_a_savoir, /Un potentiel illimité ne peut pas avoir cette classe\./);
+  const pi = { magie_innee_id: 'magies/potentiel-illimite', caracteristique_magie_id: 'force', mode_classe: 'bi' };
+  personnageValide('r25-pi', pi);
+  db.prepare("UPDATE personnage_classe SET classe_id = 'classes/archimage' WHERE personnage_id = 'r25-pi'").run();
+  inserer('personnage_classe', { personnage_id: 'r25-pi', rang: 2, classe_id: 'classes/mage-bleu' });
+  assert.deepEqual(controle('r25-pi'), [{ regle: 'classe_exclue', detail: 'classes/mage-bleu' }]);
+  db.prepare("UPDATE personnage_classe SET classe_id = 'classes/mage' WHERE personnage_id = 'r25-pi' AND rang = 2").run();
+  assert.deepEqual(controle('r25-pi'), [], 'toute autre seconde classe');
+  personnageValide('r25-feu');
+  db.prepare("UPDATE personnage_classe SET classe_id = 'classes/mage-bleu' WHERE personnage_id = 'r25-feu'").run();
+  assert.deepEqual(controle('r25-feu'), [], 'sans Potentiel Illimité, le Mage Bleu reste ouvert');
 });
 
 test('décision R19 : jusqu’à deux croix par caractéristique, la règle du guide et les malus de la fiche', () => {

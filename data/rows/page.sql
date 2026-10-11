@@ -7108,6 +7108,8 @@ Un NM s’obtient de trois façons :
 - **par lecture** d’un livre de sort ;
 - **en cadeau du MJ**.
 
+Un sort a au plus **3 NM**, quelle que soit leur origine : un livre n’en donne qu’un par sort, lié à ce sort, et un cadeau du MJ ne dépasse jamais ce plafond.
+
 ## Résistances et faiblesses
 
 Les dégâts d’un sort comptent double contre une cible vulnérable à sa magie, et moitié moins contre une cible qui y résiste (voir [Les dégâts](/guide/les-degats/)). La posture **Vigilance** permet de repérer une résistance ou une vulnérabilité d’un ennemi.

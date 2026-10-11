@@ -70,6 +70,8 @@ test('classes : couleurs de /classes/ ; magiques = catégorie Magique et Archima
   assert.deepEqual(specialites.filter((c) => c.couleur !== CLASS_COLORS.raciales).map((c) => c.id), ['classes/flagelleur']);
   // Classe réservée à une magie innée, qui l'impose (classe.magie_innee_id, décision R23) : l'Archimage et le Potentiel Illimité, seulement
   assert.deepEqual(regles.classes.filter((c) => c.magie_innee_id !== null).map((c) => [c.id, c.magie_innee_id]), [['classes/archimage', 'magies/potentiel-illimite']]);
+  // et celle qu'une magie innée ferme (classe.magie_innee_exclue_id, décision R25) : le Mage Bleu et le Potentiel Illimité, seulement
+  assert.deepEqual(regles.classes.filter((c) => c.magie_innee_exclue_id !== null).map((c) => [c.id, c.magie_innee_exclue_id]), [['classes/mage-bleu', 'magies/potentiel-illimite']]);
 });
 
 test('dons à choix : chaque don « choix » qui a une alternative est dans un seul groupe de sa classe, avec toutes ses alternatives', () => {

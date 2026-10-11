@@ -64,8 +64,9 @@ export function classeImposee(regles, fiche) {
 
 /**
  * Pourquoi une classe ne peut pas être la classe `rang` de cette fiche (null : elle le peut) : classe que la race ne permet pas (R8), classe réservée à
- * une autre magie innée, autre classe que celle qu'impose la magie innée en classe 1 (décision R23 : l'Archimage n'est ouverte qu'au Potentiel
- * Illimité, qui l'impose), classe déjà prise à l'autre rang. Mêmes règles que v_personnage_controle (classe_inaccessible, classe_reservee, classe_imposee).
+ * une autre magie innée, classe que ferme la magie innée (décision R25 : pas de Mage Bleu pour un Potentiel Illimité), autre classe que celle qu'impose la
+ * magie innée en classe 1 (décision R23 : l'Archimage n'est ouverte qu'au Potentiel Illimité, qui l'impose), classe déjà prise à l'autre rang. Mêmes
+ * règles que v_personnage_controle (classe_inaccessible, classe_reservee, classe_exclue, classe_imposee).
  */
 export function refusClasse(regles, fiche, classeId, rang) {
   const classe = trouver(regles.classes, classeId);
@@ -74,6 +75,9 @@ export function refusClasse(regles, fiche, classeId, rang) {
   if (classe.magie_innee_id && classe.magie_innee_id !== fiche.magie_innee_id) {
     return `réservée à la magie innée ${trouver(regles.magies, classe.magie_innee_id)?.nom ?? classe.magie_innee_id}`;
   }
+  if (classe.magie_innee_exclue_id && classe.magie_innee_exclue_id === fiche.magie_innee_id) {
+    return `fermée à la magie innée ${trouver(regles.magies, fiche.magie_innee_id)?.nom ?? fiche.magie_innee_id}`;
+  }
   const imposee = classeImposee(regles, fiche);
   if (rang === 1 && imposee && imposee.id !== classe.id) return `la magie innée ${trouver(regles.magies, fiche.magie_innee_id)?.nom} impose ${imposee.nom}`;
   if ((fiche.classes ?? []).some((c) => c.rang !== rang && c.classe_id === classe.id)) return 'déjà l’autre classe';
@@ -81,13 +85,15 @@ export function refusClasse(regles, fiche, classeId, rang) {
 }
 
 /**
- * Classes de la fiche une fois la magie innée choisie (décision R23) : une classe réservée à une autre magie innée est retirée, et la classe qu'impose
- * la magie innée devient la classe 1, à la place de celle qui y était (spécialité à choisir). Rend une nouvelle liste ; la fiche n'est pas modifiée.
+ * Classes de la fiche une fois la magie innée choisie (décisions R23, R25) : une classe réservée à une autre magie innée, ou que la magie innée ferme,
+ * est retirée, et la classe qu'impose la magie innée devient la classe 1, à la place de celle qui y était (spécialité à choisir). Rend une nouvelle
+ * liste ; la fiche n'est pas modifiée.
  */
 export function classesSelonLaMagieInnee(regles, fiche) {
   const classes = (fiche.classes ?? []).filter((c) => {
-    const reservee = trouver(regles.classes, c.classe_id)?.magie_innee_id;
-    return !reservee || reservee === fiche.magie_innee_id;
+    const classe = trouver(regles.classes, c.classe_id);
+    if (classe?.magie_innee_exclue_id && classe.magie_innee_exclue_id === fiche.magie_innee_id) return false;
+    return !classe?.magie_innee_id || classe.magie_innee_id === fiche.magie_innee_id;
   });
   const imposee = classeImposee(regles, fiche);
   if (!imposee || classes.some((c) => c.rang === 1 && c.classe_id === imposee.id)) return classes;
@@ -335,37 +341,52 @@ export function sortsPossibles(regles, fiche) {
   return regles.sorts.filter((s) => (toutes || magies.has(s.magie_id)) && s.niveau <= max);
 }
 
-/** Niveau de maîtrise : au plus niveau global − 1 par sort (BDD!BB6), et au plus les NM gagnés en tout (v_niveau.niveaux_maitrise_cumul). */
+/**
+ * Niveaux de maîtrise (NM) des sorts (décisions R24, R26). Un NM vient d'un niveau, d'un livre de sort (un seul par sort, `nm_livre`) ou d'un cadeau du MJ
+ * (`nm_cadeau`) ; `niveau_maitrise` les compte tous. Un sort a au plus `plafond` NM (3), toutes origines comprises ; ses NM de niveau au plus `maxParSort`
+ * (niveau global − 1, BDD!BB6) ; les NM de niveau répartis (`deNiveau`) au plus ceux gagnés (`disponibles`, v_niveau.niveaux_maitrise_cumul) ;
+ * ceux d'un livre ou du MJ (`offerts`) s'y ajoutent.
+ */
 export function maitriseDesSorts(regles, fiche) {
   const niveau = niveauGlobal(regles, fiche.xp);
+  const sorts = fiche.sorts ?? [];
+  const total = sorts.reduce((s, x) => s + entier(x.niveau_maitrise), 0);
+  const offerts = sorts.reduce((s, x) => s + entier(x.nm_livre) + entier(x.nm_cadeau), 0);
   return {
+    plafond: constante(regles, 'sort.nm_max'),
     maxParSort: Math.max(0, niveau - constante(regles, 'sort.nm_ecart_niveau_global')),
-    total: (fiche.sorts ?? []).reduce((s, x) => s + entier(x.niveau_maitrise), 0),
+    total,
+    deNiveau: total - offerts,
+    offerts,
     disponibles: ligneDeNiveau(regles, niveau).niveaux_maitrise_cumul,
   };
 }
 
-/** NM au-delà de ceux gagnés : permis, donnés par le MJ (décision R24) ; la page les compte à part. */
-export function nmExcedentaires(regles, fiche) {
-  const nm = maitriseDesSorts(regles, fiche);
-  return Math.max(0, nm.total - nm.disponibles);
+/** NM d'un sort de la fiche, par origine : de niveau, d'un livre (0 ou 1), du MJ, et en tout. */
+export function nmDuSort(ligne) {
+  const livre = entier(ligne?.nm_livre);
+  const cadeau = entier(ligne?.nm_cadeau);
+  const total = entier(ligne?.niveau_maitrise);
+  return { total, livre, cadeau, deNiveau: total - livre - cadeau };
 }
 
 /**
- * Tableau des sorts de la page (demande du propriétaire) : une ligne par emplacement, ou par sort choisi s'il y en a plus. Chaque ligne propose les
- * sorts possibles (sortsPossibles : magies du personnage, NPM accessible) moins ceux déjà pris sur les autres lignes ; le sort de la ligne y reste,
- * même s'il n'est plus possible (`horsDesRegles`), pour qu'on le voie et qu'on le change.
+ * Tableau des sorts de la page (demande du propriétaire) : une ligne par emplacement. Chaque ligne propose les sorts possibles (sortsPossibles : magies du
+ * personnage, NPM accessible) moins ceux déjà pris sur les autres lignes ; le sort de la ligne y reste, même s'il n'est plus possible (`horsDesRegles`),
+ * pour qu'on le voie et qu'on le change. Il n'y a pas d'emplacement en plus (décision R27) : un sort au-delà des emplacements (XP baissée, magie retirée)
+ * a sa ligne `enTrop`, à retirer.
  */
 export function lignesDeSorts(regles, fiche) {
   const choisis = fiche.sorts ?? [];
   const possibles = sortsPossibles(regles, fiche);
-  const nombre = Math.max(emplacementsDeSorts(regles, fiche).total, choisis.length);
+  const emplacements = emplacementsDeSorts(regles, fiche).total;
+  const nombre = Math.max(emplacements, choisis.length);
   return Array.from({ length: nombre }, (_, i) => {
     const ligne = choisis[i] ?? null;
     const autres = new Set(choisis.filter((_, j) => j !== i).map((s) => s.sort_id));
     const choix = possibles.filter((s) => !autres.has(s.id));
     const actuel = ligne ? trouver(regles.sorts, ligne.sort_id) : null;
-    return { index: i, ligne, sort: actuel, choix, horsDesRegles: Boolean(ligne) && !choix.some((s) => s.id === ligne.sort_id) };
+    return { index: i, ligne, sort: actuel, choix, horsDesRegles: Boolean(ligne) && !choix.some((s) => s.id === ligne.sort_id), enTrop: i >= emplacements };
   });
 }
 
