@@ -57,8 +57,8 @@ jobs:
           cache: npm
           cache-dependency-path: client/package-lock.json
       - run: npm ci
-      - run: node scripts/mise-a-jour-simulation.mjs --lot "$RUNNER_TEMP/lot.json" --reference origin/master
-      - run: if [ -f "$RUNNER_TEMP/lot.json" ]; then node scripts/mise-a-jour-regles.mjs --lot "$RUNNER_TEMP/lot.json" --reference origin/master --resume "$RUNNER_TEMP/resume.json"; fi
+      - run: node --no-warnings scripts/mise-a-jour-simulation.mjs --lot "$RUNNER_TEMP/lot.json" --reference origin/master
+      - run: if [ -f "$RUNNER_TEMP/lot.json" ]; then node --no-warnings scripts/mise-a-jour-regles.mjs --lot "$RUNNER_TEMP/lot.json" --reference origin/master --resume "$RUNNER_TEMP/resume.json"; fi
       # Comme le job preparer : ce qui est contrôlé est ce qui serait commité (indexé avant les contrôles, aucun fichier changé par eux).
       - run: git add --all -- ../data/rows
       - run: npm run db:build

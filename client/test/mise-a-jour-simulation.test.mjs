@@ -171,8 +171,8 @@ test('ci.yml : le job simulation-de-mise-a-jour, parallèle au job client et ins
   assert.deepEqual(installation(job), installation(jobs.client), 'même installation que le job client (master récupéré : la production)');
   const commandes = job.steps.slice(installation(job).length).map((s) => s.run.trim());
   const [fabrication, application, indexation, ...controles] = commandes;
-  assert.equal(fabrication, 'node scripts/mise-a-jour-simulation.mjs --lot "$RUNNER_TEMP/lot.json" --reference origin/master');
-  assert.match(application, /node scripts\/mise-a-jour-regles\.mjs --lot "\$RUNNER_TEMP\/lot\.json" --reference origin\/master/, 'même script et même production que le job preparer');
+  assert.equal(fabrication, 'node --no-warnings scripts/mise-a-jour-simulation.mjs --lot "$RUNNER_TEMP/lot.json" --reference origin/master');
+  assert.match(application, /node --no-warnings scripts\/mise-a-jour-regles\.mjs --lot "\$RUNNER_TEMP\/lot\.json" --reference origin\/master/, 'même script et même production que le job preparer');
   assert.match(application, /^if \[ -f "\$RUNNER_TEMP\/lot\.json" \]; then /, 'sauté quand aucun lot n’est écrit (note déjà en attente)');
   assert.equal(indexation, 'git add --all -- ../data/rows');
   // exactement les contrôles du job preparer (scripts/mise-a-jour-github.mjs#CONTROLES : db:build, db:check, tout le job client), puis : aucun
