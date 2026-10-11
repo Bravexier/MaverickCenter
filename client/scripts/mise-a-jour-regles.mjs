@@ -85,7 +85,7 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
         .filter((n) => !(ref.version && auMoins(ref.version, n.version)));
       if (enAttenteDeLivraison.length) {
         const n = enAttenteDeLivraison[0];
-        throw new ErreurMiseAJour(7, `la V${n.version} du lot ${n.lot} est dans dev mais pas encore livrée sur master : relancez le run de ce lot (Re-run, il reprend à la livraison) ou livrez dev → master, puis relancez cette mise à jour`, { lot: n.lot, version: n.version });
+        throw new ErreurMiseAJour(7, `la V${n.version} du lot ${n.lot} est dans dev mais pas encore livrée sur master : relancez le run de ce lot (« Re-run all jobs » : il reprend à la livraison) ou livrez dev → master, puis relancez cette mise à jour`, { lot: n.lot, version: n.version });
       }
       // lots déjà livrés (mise à jour précédente ou rapatriement) : écartés en entier
       const livres = new Set(db.prepare('SELECT DISTINCT lot_id FROM historique_modification').all().map((h) => h.lot_id));

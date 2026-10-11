@@ -233,7 +233,7 @@ export function figerLot(db, dossier, { versionDev, versionCible, instant, confi
   const precedent = lireLancement(dossier);
   if (occupe(precedent, instant)) {
     const message = precedent.etat === 'echec_livraison'
-      ? 'La mise à jour précédente est dans dev mais pas livrée sur master : relancez son run sur GitHub (Re-run, il reprend à la livraison) ou fusionnez sa PR de livraison, avant une nouvelle mise à jour.'
+      ? 'La mise à jour précédente est dans dev mais pas livrée sur master : relancez son run sur GitHub (« Re-run all jobs » : il reprend à la livraison) ou fusionnez sa PR de livraison, avant une nouvelle mise à jour.'
       : precedent.etat === 'fusionne' ? 'La mise à jour précédente est en cours de livraison sur master : attendez qu’elle se termine.' : 'Une mise à jour est déjà en cours.';
     throw new ErreurNotes(409, message, { lancement: precedent });
   }
@@ -289,7 +289,7 @@ export function libererLot(db, dossier, { instant, lot, annulerRun = null }) {
   }
   if (!estLiberable(l, instant)) {
     const message = l.etat === 'echec_livraison'
-      ? 'Ce lot est déjà dans dev : il ne s’annule plus. Relancez son run sur GitHub (Re-run) ou fusionnez sa PR de livraison.'
+      ? 'Ce lot est déjà dans dev : il ne s’annule plus. Relancez son run sur GitHub (« Re-run all jobs » : il reprend à la livraison) ou fusionnez sa PR de livraison.'
       : l.etat === 'termine' ? 'Cette mise à jour a été livrée : le texte redeviendra modifiable quand la nouvelle version arrivera sur ce site.'
         : enCours(l) ? 'La mise à jour est en cours sur GitHub : attendez qu’elle se termine.' : 'Rien à annuler.';
     throw new ErreurNotes(409, message, { lancement: l });

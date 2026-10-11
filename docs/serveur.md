@@ -233,7 +233,7 @@ note dans les règles est vidé. Le serveur normal reçoit la nouvelle note avec
 **États du lancement** (`db/mise-a-jour/etat.json`, `serveur/notes-de-version.mjs`) : `envoi` → `lance` → `en_cours` → `fusionne` (le lot est
 dans dev : étape « Fusion dans dev » du job `livrer` réussie, ou sa note arrivée dans les règles) → `termine` (run réussi, ou la référence
 — master — porte la version de sa note : jamais par la seule arrivée de la note dans dev). Un échec **avant** dev donne `echec` (annulable) ;
-**après**, `echec_livraison` : le lot est dans dev, il ne s'annule plus, on relance son run (« Re-run » : il reprend à la livraison) ou on
+**après**, `echec_livraison` : le lot est dans dev, il ne s'annule plus, on relance son run (« Re-run all jobs » : il reprend à la livraison) ou on
 fusionne sa PR de livraison, et une nouvelle mise à jour attend (le script de rejeu refuse aussi, code 7, d'écraser la note d'un autre lot
 pas encore livrée). Sans jeton : `manuel`. Annulé : `annule`. Simulation : `simulation_reussie` / `simulation_echouee`. Garanties :
 - seul le lot du lancement actuel, toujours en jeu, est servi au workflow (`lireLot`) : un lot annulé, remplacé ou de simulation finie répond

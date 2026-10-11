@@ -35,11 +35,11 @@ const ETATS = {
   fusionne: 'Les modifications sont fusionnées dans dev ; la livraison dev → master est en cours.',
   termine: 'Mise à jour terminée : fusionnée dans dev puis livrée sur master. Le site de dev se met à jour de lui-même ; le texte redevient modifiable quand la nouvelle version y arrive.',
   echec: 'La mise à jour a échoué sur GitHub avant d’entrer dans dev : rien n’a été fusionné. Le journal du workflow dit pourquoi ; vous pouvez annuler ce lancement.',
-  echec_livraison: 'Les modifications sont dans dev, mais la livraison dev → master a échoué. Relancez le run sur GitHub (« Re-run » : il reprend à la livraison) ou fusionnez la PR de livraison à la main. Une nouvelle mise à jour attend que celle-ci soit livrée.',
+  echec_livraison: 'Les modifications sont dans dev, mais la livraison dev → master a échoué. Relancez le run sur GitHub (« Re-run all jobs » : il reprend à la livraison) ou fusionnez la PR de livraison à la main. Une nouvelle mise à jour attend que celle-ci soit livrée.',
   erreur: 'Le workflow n’a pas pu être déclenché.',
   manuel: 'Aucun jeton GitHub sur ce serveur : lancez le workflow à la main avec les valeurs ci-dessous.',
   annule: 'Lancement annulé : le texte redevient modifiable.',
-  simulation_reussie: 'Simulation réussie : le lot s’applique sur dev, seules les tables prévues changent, db:check et tous les tests passent. Rien n’a été poussé ; la vraie mise à jour peut être lancée.',
+  simulation_reussie: 'Simulation réussie : le lot s’applique sur dev, seules les tables prévues changent, db:check, tous les tests et la construction du site passent, et le jeton du dépôt peut pousser. Rien n’a été poussé ; la vraie mise à jour peut être lancée (seuls les droits d’ouvrir et de fusionner une PR n’ont pas pu être essayés sans effet).',
   simulation_echouee: 'La simulation a échoué : le journal du workflow dit pourquoi. Rien n’a été poussé ; le texte redevient modifiable.',
 };
 /** États où le run peut encore avancer : la page suit (une relance d'un échec de livraison aussi). */
@@ -156,7 +156,9 @@ function confirmer({ simulation }) {
     ? `<form method="dialog">
     <h2>Simulation de mise à jour V${echapper(donnees.version_cible)}</h2>
     <p>GitHub fait tout le travail de la mise à jour (${modifications}) : branche à jour de dev, modifications rejouées, note de version écrite,
-    contrôle des tables, <code>db:check</code> et tous les tests. Puis il s’arrête : <strong>rien n’est poussé</strong>, ni PR, ni fusion, ni livraison.</p>
+    contrôle des tables, <code>db:check</code>, tous les tests, la construction du site (et sa version de test, l’installateur, la version
+    portable), puis un essai de poussée avec le jeton du dépôt. Il s’arrête là : <strong>rien n’est poussé</strong>, ni PR, ni fusion, ni livraison.
+    Seuls les droits d’ouvrir et de fusionner une PR ne peuvent pas être essayés sans effet.</p>
     <p class="nv-message nv-message--erreur" data-erreur hidden></p>
     <div class="nv-dev__actions"><button type="button" value="annuler">Annuler</button><button type="submit" class="nv-principal">Lancer la simulation</button></div>
   </form>`
