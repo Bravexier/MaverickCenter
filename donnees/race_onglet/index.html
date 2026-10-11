@@ -1,0 +1,652 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="▸ CONTENU DE L'ONGLET DE LA RACE : classeur « Les races », un onglet par race (migration 0007). Décision R13 du propriétaire : l'onglet est la SOURCE ; la fiche V15.2.2 (tables race, ethnie, race_restriction_carac…) en est un dérivé fait à la main, pas toujours à jour, dont les écarts ne sont plus affichés. Les pages de race du site sont rendues depuis ces tables (lib/races-db.mjs). Textes tels qu'écrits : paragraphes séparés par une ligne vide, retours à la ligne et puces « - » conservés ; un nombre n'est typé que s'il est écrit en chiffres. Lignes tirées des pages races/<slug> par tools/db/races_onglet.py (preuve : chaque section se réécrit à l'identique avec le code de tools/sheets/races.py, l'importeur qui a lu les onglets). RACE_ONGLET : une ligne par race."><link rel="icon" type="image/png" sizes="32x32" href="/favicon.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><title>Données : race_onglet — Maverick Center</title><link rel="stylesheet" href="/_astro/Base.C8jCj17B.css"></head><body><header class="site-header"><div class="site-header__inner"><a class="brand" href="/"><img src="/logo.webp" alt="Maverick Center" width="319" height="320"></a><div class="site-header__menu"><nav class="site-nav" aria-label="Navigation principale"><ul class="site-nav__groups"><li><button type="button" class="nav-group__toggle" data-group="regles" aria-pressed="false">Règles</button></li><li><button type="button" class="nav-group__toggle" data-group="personnages" aria-pressed="false">Personnages</button></li><li><button type="button" class="nav-group__toggle" data-group="inventaire" aria-pressed="false">Inventaire</button></li><li><button type="button" class="nav-group__toggle" data-group="codex" aria-pressed="false">Codex</button></li><li><button type="button" class="nav-group__toggle" data-group="outils" aria-pressed="true" aria-current="true">Outils</button></li></ul><ul class="site-nav__items" data-group="regles" hidden><li><a href="/guide/">Guide</a></li><li><a href="/races/">Races</a></li><li><a href="/magies/">Magies</a></li><li><a href="/classes/">Classes</a></li><li><a href="/metiers/">Métiers</a></li></ul><ul class="site-nav__items" data-group="personnages" hidden><li><a href="/fiche/">Fiche de personnage</a></li><li><a href="/personnages/">Listes</a></li><li><span class="nav-soon">Groupes <small>(bientôt)</small></span></li><li><span class="nav-soon">Chroniques <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="inventaire" hidden><li><a href="/ressources/armes/">Armes</a></li><li><a href="/ressources/armures/">Armures</a></li><li><a href="/ressources/accessoires/">Accessoires</a></li><li><span class="nav-soon">Objets à la ceinture <small>(bientôt)</small></span></li><li><a href="/ressources/livre-parchemin/">Livres &amp; Parchemins</a></li><li><a href="/ressources/pieces-elementaires/">Pièces élémentaires</a></li></ul><ul class="site-nav__items" data-group="codex" hidden><li><span class="nav-soon">Chronologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Carte &amp; lieux <small>(bientôt)</small></span></li><li><span class="nav-soon">Mythologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Bestiaire <small>(bientôt)</small></span></li><li><span class="nav-soon">Factions <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="outils"><li><span class="nav-soon">Statistiques <small>(bientôt)</small></span></li><li><a href="/mise-a-jour/">Mise à jour</a></li><li><span class="nav-soon">Boîte à idée <small>(bientôt)</small></span></li><li><a href="/galeries/">Galeries</a></li><li><a href="/recherche/">Recherche</a></li><li><a href="/archives/">Archives</a></li></ul></nav></div></div></header><main><p class="donnees-fil"><a href="/donnees/">Données</a> › <code>race_onglet</code></p><h1><code>race_onglet</code></h1><p class="donnees-role">▸ CONTENU DE L&#39;ONGLET DE LA RACE : classeur « Les races », un onglet par race (migration 0007). Décision R13 du propriétaire : l&#39;onglet est la SOURCE ; la fiche V15.2.2 (tables race, ethnie, race_restriction_carac…) en est un dérivé fait à la main, pas toujours à jour, dont les écarts ne sont plus affichés. Les pages de race du site sont rendues depuis ces tables (lib/races-db.mjs). Textes tels qu&#39;écrits : paragraphes séparés par une ligne vide, retours à la ligne et puces « - » conservés ; un nombre n&#39;est typé que s&#39;il est écrit en chiffres. Lignes tirées des pages races/&lt;slug&gt; par tools/db/races_onglet.py (preuve : chaque section se réécrit à l&#39;identique avec le code de tools/sheets/races.py, l&#39;importeur qui a lu les onglets). RACE_ONGLET : une ligne par race.</p><details class="donnees-colonnes"><summary>19 colonnes</summary><table><thead><tr><th>Colonne</th><th>Type</th><th>Clé</th><th>Description</th></tr></thead><tbody><tr><td><code>race_id</code></td><td>TEXT</td><td>clé primaire, → <a href="/donnees/race/"><code>race</code></a></td><td></td></tr><tr><td><code>onglet</code></td><td>TEXT</td><td></td><td>nom de l&#39;onglet : « Elfe Noir », « Namazus »</td></tr><tr><td><code>description_generale</code></td><td>TEXT</td><td></td><td>description générale (A4)</td></tr><tr><td><code>histoire</code></td><td>TEXT</td><td></td><td>« HISTOIRE » (AK3)</td></tr><tr><td><code>description</code></td><td>TEXT</td><td></td><td>« DESCRIPTION » (AK30) : physique et culture, un bloc pour toute la race</td></tr><tr><td><code>sante_depart</code></td><td>INTEGER</td><td></td><td>« Santé de départ »</td></tr><tr><td><code>chakra_depart</code></td><td>INTEGER</td><td></td><td>« Chakra de départ »</td></tr><tr><td><code>barriere_bonus</code></td><td>INTEGER</td><td></td><td>« Barrière bonus »</td></tr><tr><td><code>vitesse_sol</code></td><td>INTEGER</td><td></td><td>« Vitesse Sol/Nage » : première valeur</td></tr><tr><td><code>vitesse_nage</code></td><td>INTEGER</td><td></td><td>« Vitesse Sol/Nage » : seconde valeur</td></tr><tr><td><code>avantages</code></td><td>TEXT</td><td></td><td>« Avantage(s) »</td></tr><tr><td><code>inconvenients</code></td><td>TEXT</td><td></td><td>« Inconvénient(s) »</td></tr><tr><td><code>don_base</code></td><td>TEXT</td><td></td><td>« Don B (Base) »</td></tr><tr><td><code>dons_rubrique</code></td><td>TEXT</td><td></td><td>1re colonne : ce qui distingue l&#39;ethnie</td></tr><tr><td><code>dons_rubrique_nom</code></td><td>TEXT</td><td></td><td>colonne du nom du don (« Nom ») ; NULL si absente</td></tr><tr><td><code>dons_rubrique_don</code></td><td>TEXT</td><td></td><td>colonne du don (« Don »)</td></tr><tr><td><code>dons_tableau_titre</code></td><td>TEXT</td><td></td><td>nom écrit sur le tableau en panneaux (Drakos : « Écaille draconique »)</td></tr><tr><td><code>origine</code></td><td>TEXT</td><td></td><td></td></tr><tr><td><code>source_ref</code></td><td>TEXT</td><td></td><td></td></tr></tbody></table></details><p class="donnees-filtre"><label>Filtrer les lignes <input type="search" id="filtre" autocomplete="off"></label><span id="compte" aria-live="polite">27 lignes</span><span class="donnees-aide">Cliquer sur un titre de colonne pour trier.</span></p><div class="donnees-wrap"><table class="donnees" id="donnees"><thead><tr><th title="TEXT">race_id</th><th title="nom de l'onglet : « Elfe Noir », « Namazus »">onglet</th><th title="description générale (A4)">description_generale</th><th title="« HISTOIRE » (AK3)">histoire</th><th title="« DESCRIPTION » (AK30) : physique et culture, un bloc pour toute la race">description</th><th title="« Santé de départ »">sante_depart</th><th title="« Chakra de départ »">chakra_depart</th><th title="« Barrière bonus »">barriere_bonus</th><th title="« Vitesse Sol/Nage » : première valeur">vitesse_sol</th><th title="« Vitesse Sol/Nage » : seconde valeur">vitesse_nage</th><th title="« Avantage(s) »">avantages</th><th title="« Inconvénient(s) »">inconvenients</th><th title="« Don B (Base) »">don_base</th><th title="1re colonne : ce qui distingue l'ethnie">dons_rubrique</th><th title="colonne du nom du don (« Nom ») ; NULL si absente">dons_rubrique_nom</th><th title="colonne du don (« Don »)">dons_rubrique_don</th><th title="nom écrit sur le tableau en panneaux (Drakos : « Écaille draconique »)">dons_tableau_titre</th><th title="TEXT">origine</th><th title="TEXT">source_ref</th></tr></thead><tbody><tr id="r-races_2f_anansi"><td><a href="/donnees/race/#r-races_2f_anansi">races/anansi</a></td><td>Anansi</td><td>Une race mêlant araignée et humain, c&#39;est une race majoritairement femelle. C&#39;est une race qui use bien de son agilité au combat, les plus expérimentés dans leur art unique peuvent utiliser leurs pattes d&#39;araignée comme des armes.
+
+Les Anansis sont reliées à la magie de l&#39;Arcane, la magie de la Nécromancie et la magie de l&#39;Ombre.
+
+Apparu avec tous les autres hybrides animaux dans les ans -400 à -350.</td><td>Cette race, longtemps restée discrète, a commencé à investir les villes humaines afin d’y établir des commerces de textile, notamment grâce à leur soie, réputée pour sa qualité exceptionnelle.
+Selon certaines rumeurs douteuses, ils seraient à l’origine un petit village dont les habitants avaient pour hobby la couture et l’élevage d’araignées afin de récolter leur soie. Cependant, une malédiction aurait frappé le village, fusionnant tous ses habitants avec leurs animaux d’élevage. Ce phénomène provoqua une grande panique pendant plusieurs années, mais avec le temps, les Anansis se regroupèrent en tribus et réussirent à prospérer lentement mais sûrement.
+
+Il existe 4 types de peuple d&#39;Anansi dans le monde :
+
+- Les urbains : Bien qu&#39;elles soient assez intimidantes dû aux pattes d&#39;araignées, elles suscitent la curiosité des autres. Elles sont de très bonnes tisseuses et couturières, on les retrouve très souvent dans les métiers qui concernent le textile.
+
+- Les tribus de l&#39;Arcane : Nommées les &quot;Couturières blanches&quot;, comme les Anansi est la seule race à avoir eu les faveurs de la grande déesse de la Magie, un culte autour d&#39;elle s&#39;est créé avec un peuple qui affectionne tout particulièrement les tatouages ainsi que les beaux vêtements dans le style de la déesse de l&#39;Arcane. Leur talent pour la couture est inégalé. Reconnaissables à leurs pattes de couleur argentée avec des taches blanches.
+
+- Les tribus de la Nécromancie : Bénies par la grâce d’Evravonie, elles sont également nommées &quot;Tisseuses de Vie et de Mort&quot;. Reconnaissables à leurs pattes de couleur vert foncé et aux petites excroissances osseuses harmonieusement disposées sur leur corps, elles sont sans doute la race la plus zélée à la déesse de la Mort. Une rumeur prétend d’ailleurs qu’elles croient que la déesse elle-même posséderait une forme semi-araignée, à leur image. Elles occupent une place particulière au sein de la Chapelle des Os, où elles sont celles qui produisent le tissu utilisé pour les tenues utilisées pour les rites funéraires.
+
+- Les tribus de l&#39;Ombre : Nommés &quot;Veuve noire&quot; ou &quot;Veuf sombre&quot; et reconnaissables par leurs pattes d&#39;une couleur mauve avec des petites taches noires, il s&#39;agit de la tribu d&#39;Anansi qui contient le plus de représentants mâles (sans pour autant dépasser les femelles), de nature mauvais, ces Anansis sont des chasseurs nés qui sont capables d&#39;exploiter totalement leur agilité et leur discrétion naturelle pour assassiner leurs adversaires sans aucune difficulté. Les tribus peuvent être comparées à des &quot;guides d&#39;assassins&quot;, n&#39;hésitant pas à offrir leur servir pour l&#39;assassinat. Ces Anansi sont particulièrement adorateurs de l&#39;aspect intrigue du Dieu de l&#39;Ombre.</td><td>Les Anansis sont des humanoïdes-araignées, possèdent un corps humain, avec des jambes humaines mais avec des pattes d&#39;araignées dans le dos.
+
+Au-delà de ça, ils sont assez différents selon le sexe, voici les descriptions :
+
+Femelle
+
+Elles sont majoritaires dans leur race, elles sont de grandes humanoïdes entre 2m00 à 2m25 en moyenne, malgré leur grande taille, elles sont assez légères, une moyenne de 80 kg. Elles possèdent des sortes de petites marques en dessous des yeux qui font penser à une autre paire d&#39;yeux. Elles ont deux paires de pattes d&#39;araignées longues et fines comme des lances, ces dernières partent du dos. Leurs cheveux sont longs et lisses.
+
+Mâle
+
+Minoritaires au sein de leur race, les mâles sont bien plus petits que les femelles, mesurant en moyenne entre 1m55 et 1m70. Malgré leur taille réduite, leur poids reste équivalent à celui des femelles. Comme elles, ils possèdent de petites marques sous les yeux, évoquant une seconde paire de pupilles. Leurs deux paires de pattes d’araignée rappellent davantage celles des mygales : plus épaisses, moins longues et couvertes d&#39;une pilosité plutôt abondante. De manière générale, les mâles ont une pilosité plus marquée que la moyenne, avec des cheveux naturellement plus ébouriffés, bien qu’ils ne développent pas une barbe aussi fournie que les nains.
+
+D&#39;une manière générale, les mâles sont plus petits mais trapus et les femelles plus grandes et fines. Les femelles placent une grande importance à leur taille, c&#39;est une source de fierté chez elles.
+
+Les femelles affectionnent les beaux vêtements et les robes, elles ont un besoin d&#39;être raffinées dans leur tenue et leur posture. Les mâles n&#39;ont pas ces préoccupations, ces derniers préfèrent les vêtements pratiques.
+
+La couleur des yeux majoritaire chez les Anansis sont : Argenté, Vert foncé et Mauve
+
+Culture : Colombie</td><td>12</td><td>8</td><td>0</td><td>4</td><td>3</td><td>Classe possible : Anansi.</td><td>Magie Arcane, Ombre et Nécromancie en innée.</td><td>Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).</td><td>Magie innée</td><td class="nul"></td><td>Don</td><td class="nul"></td><td>races</td><td>Les races › Anansi › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_drakos"><td><a href="/donnees/race/#r-races_2f_drakos">races/drakos</a></td><td>Drakos</td><td>Un sang-mêlé de Dragon et d&#39;Humain, il est impossible d&#39;expliquer comment ce mélange est possible. Les Drakos sont de bons combattants au corps-à-corps et de bons mages, ils possèdent la polyvalence des humains pour la magie. Leur sang partiellement dragon leur permet de vivre jusqu&#39;à 150 ans.
+
+Le premier drakos est apparu en l&#39;an 100, c&#39;était un Drakos de la terre issu d&#39;une relation entre un Dragon de la terre et une humaine.</td><td>Bien que peu nombreux si on les compare avec les Humains ou les Elfes, les Drakos ne possèdent pas de ville ou de pays consacrée à un culte du Drakos, les Drakos sont des nomades qui vont ici et là, offrant leurs services au plus offrants.
+
+Les Drakos issus du mélange Dragon/Humain ne connaissent pas le principe de Fratrie, car lors de l&#39;accouchement, la mère (Humaine ou Dragonne) ne survivra pas à l&#39;accouchement. Quand une humaine/dragonne est enceinte d&#39;un hybride, elle sait déjà que sa vie s&#39;arrêtera quand elle l&#39;aura mis au monde. Ce sont souvent les Dragonnes qui mettent au monde, car un Dragon peut vivre très longtemps, mais est aussi condamné à sombrer dans la folie due à la puissance qui ne fait que grandir au fur et à mesure de l&#39;âge.
+
+Chaque Drakos issu du mélange possède un deuxième nom de famille qui est entre le prénom et le nom de famille et celui-ci est &quot;Dragoon&quot;, un héritage des Dragons et une façon pour eux de les reconnaître comme leurs dignes héritiers, même si cette vision est encore discutée au sein des Dragons.
+
+Cela dit, les Drakos qui se reproduisent entre eux ou avec des humains n&#39;ont pas de problème avec la mort en couches et peuvent avoir plusieurs enfants comme les humains.</td><td>Un Drakos adulte mesure en moyenne entre 1m80 et 2m10, ils sont très grands de manière naturelle, que ce soit chez les mâles ou les femelles.
+
+Le poids moyen d&#39;un Drakos est de 110kg pour les mâles et 90kg pour les femelles, ce sont les écailles qui les rendent aussi lourds.
+
+La plupart des drakos ont des yeux dont la couleur est liée à leur magie innée, mais certains peuvent avoir des couleurs de yeux comme les humains, les 3 couleurs qu&#39;on retrouve le plus sont : Vert, Bleu et Marron.
+
+Ils possèdent des écailles sur tout le corps, mais pas sur la tête entière, les écailles s&#39;arrêtent au niveau des joues. La couleur des écailles dépend de la magie innée du Drakos.
+
+Leurs oreilles peuvent être soit humaines, soit draconiques, ça dépend des individus.
+
+Ils ont une queue, des pattes de dragon à la place des pieds, des griffes combinées aux doigts.
+
+Les cornes des Drakos varient selon la magie, mais d&#39;une manière générale, les femelles possèdent des cornes un peu plus fines que les mâles. (à magie égale)
+
+Les Drakos possèdent des ailes qui se développent et peuvent être utilisées au bout d&#39;un moment, c&#39;est le dernier attribut draconique que les Drakos développent lorsqu&#39;ils arrivent à maturité, bien que ces ailes ne puissent pas être utilisées pour voler comme un oiseau, mais plus planer et faire des grands sauts.
+
+*Note : Les Drakos de la Terre sont totalement dépourvus d&#39;ailes, mais possèdent une masse musculaire plus importante, une queue bien plus épaisse et puissante. Les Drakos du Vent possèdent deux paires d&#39;ailes dans le dos, ce qui leur permet de pouvoir naturellement voler contrairement aux autres.
+
+Culture : Variable selon la zone de départ</td><td>13</td><td>10</td><td>0</td><td>4</td><td>3</td><td>Accès à toutes les classes, accès à toutes les magies, peut planer avec ses ailes</td><td>La magie innée va déterminer la couleur des écailles draconiques et des particularités du don racial.</td><td>Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).</td><td class="nul"></td><td class="nul"></td><td class="nul"></td><td>Écaille draconique</td><td>races</td><td>Les races › Drakos › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_drassahthac"><td><a href="/donnees/race/#r-races_2f_drassahthac">races/drassahthac</a></td><td>Drassah&#39;thac</td><td>Race hybride entre humain et félin, ils viennent de la Déesse de la Chance, Drassah. Il en existe 5 types, Gouttière, Lynx, Tigre, Lion et Léopard.
+
+Ce sont des combattants étranges qui sont capables d&#39;utiliser la Chance pour influencer leurs attaques. Ce sont des joueurs qui jouent tout le temps avec le hasard. Comment reconnaître un Drassah&#39;thac en bonne santé ? Il parie tout le temps.
+
+Ce sont les premiers hybrides animaux à être apparus et ceux en l&#39;an -450.</td><td>Ce sont les premiers hybrides animaux à avoir existé, ils sont arrivés peu après les humains, elfes et nains. Les Drassah&#39;thac contrairement aux autres hybrides animaux qui vont suivre, ils ont accès à toutes les magies.
+
+Les Drassah&#39;thac ont un conflit millénaire avec les Elfes Forestiers pour des raisons qui ont été oubliées au fur et à mesure du temps, se déclarant la guerre par principe, sinon avec les autres races, les relations sont au beau fixe.</td><td>Les Drassah&#39;thac sont très proches des humains anatomiquement parlant, à la taille adulte, ils mesurent en moyenne entre 1m60 et 1m90.
+
+Le poids moyen d&#39;un Drassah&#39;thac est de 60kg, il peut varier selon la forme de félin choisie.
+
+Ils possèdent les oreilles de félin, la fourrure d&#39;un félin qui varie de couleur selon l&#39;habitat naturel, fourrure qui est présente sur le dos, les bras, les jambes, les cheveux sont généralement plus longs.
+
+Les Drassah&#39;thac possèdent 5 variantes de leur race :
+
+- Ceux de l&#39;est (culture Asie) possèdent des attributs de tigre. Plus massifs avec un caractère assez bouillant pour la plupart.
+
+- Ceux de l&#39;ouest (culture Afrique) sont de féroces guerriers avec un sens de l&#39;honneur assez poussé, ils sont très appréciés pour leur côté bon vivant et fêtard.
+
+- Ceux du nord (culture Nordique) ressemblent fort à des lynx. Plus petits, mais leur fourrure est parfaitement adaptée aux grands froids, mais aussi aux grosses chaleurs, un véritable isolant thermique qui leur permet de mieux résister à certaines altérations d&#39;états.
+
+- Surnommés les &quot;grands coureurs&quot; ceux du sud (culture Afrique) sont typés léopard et ont tendance à être de meilleurs coureurs que leurs homologues des autres régions (à pas grand-chose).
+
+- Ceux du centre (culture Européenne) sont à poils courts et combinent un peu tout ce qu&#39;on peut retrouver chez les autres variantes, ils sont généralement un peu plus petits.</td><td>9</td><td>9</td><td>0</td><td>5</td><td>5</td><td>Accès à toutes les magies, accès à toutes les classes.</td><td>Aucun.</td><td>Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).</td><td>Type</td><td>Nom</td><td>Don</td><td class="nul"></td><td>races</td><td>Les races › Drassah&#39;thac › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_elfe-argente"><td><a href="/donnees/race/#r-races_2f_elfe-argente">races/elfe-argente</a></td><td>Elfe Argenté</td><td>Les descendants les plus proches des Elfes Dorés, ce sont les êtres qui sont le plus reliés à la magie.
+
+Il s&#39;agit d&#39;humanoïdes qui ont un excellent taux de Chakra et font partie des meilleurs mages de Maverick, au détriment de la force physique.
+
+Cette race est apparue pour la première fois en l&#39;an -100, après un &quot;accident&quot;.</td><td>Tout comme les forestiers et les noirs, ils ont été des esclaves des dorés. Leur origine reste encore assez inconnue, mais on parle d&#39;une expérience qui aura mal tourné qui a changé une partie des elfes dorés en elfe argenté. Malgré leur statut d&#39;esclave, les elfes argentés devenaient très nombreux et ont pu réussir à créer une mutinerie avec l&#39;aide des elfes noirs et forestiers. Après une guerre fratricide, les elfes argentés ont réussi à libérer leur chaîne et celle des autres.
+
+Malgré cet événement, les 3 elfes se détestent surtout qu&#39;au fur et à mesure du temps, les argentés ont commencé à penser comme les dorés et à devenir des suprémacistes. Une partie des argentés se sont rebellés contre cette tendance suprémaciste, mais garde la mauvaise réputation de leur race proche des elfes dorés.</td><td>Un elfe argenté adulte mesure en moyenne 1,85 mètre, ce qui en fait les elfes les plus grands en moyenne. Leur poids moyen se situe autour de 75 kg.
+
+Comme tous les elfes, ils possèdent des oreilles pointues. Celles des elfes argentés sont particulièrement longues, similaires à celles des elfes dorés. Chez les femelles, elles sont dressées, tandis que chez les mâles, elles sont légèrement tombantes. Hormis cela, les différences entre les deux sexes restent classiques et concernent principalement les cheveux, la forme du visage ou encore la morphologie.
+
+Les elfes argentés présentent trois couleurs d’yeux principales : beige, argent et bleu. Leur peau ainsi que leurs cheveux sont naturellement d’une teinte argentée pâle, caractéristique de leur lignée.
+
+Les variations de couleur sont extrêmement rares chez les individus de sang pur. Lorsqu’un elfe argenté possède des yeux ou des cheveux d’une autre couleur, cela indique généralement un métissage avec une autre race.
+
+Culture : Rome antique/Grèce antique</td><td>3</td><td>14</td><td>0</td><td>5</td><td>4</td><td>Accès à toutes les magies</td><td>La Force a un maximum de 2, l&#39;Intelligence est au minimum à 3.</td><td>Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).</td><td>Condition d&#39;origine</td><td class="nul"></td><td>Don</td><td class="nul"></td><td>races</td><td>Les races › Elfe Argenté › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_elfe-dore"><td><a href="/donnees/race/#r-races_2f_elfe-dore">races/elfe-dore</a></td><td>Elfe Doré</td><td>Les elfes dorés comptent parmi les premières races à avoir foulé les terres de Maverick, aux côtés des Humains et des Nains. Leur arrivée ne s’est toutefois pas faite sans violence, marquant les débuts d’une cohabitation difficile entre les peuples.
+
+Ils se distinguent par une peau beige lumineuse, tirant presque vers le doré. Grands et élancés, ils possèdent une affinité exceptionnelle avec la magie, faisant d’eux les plus puissants utilisateurs de leur époque.
+
+Aujourd’hui, cette race est considérée comme **éteinte**, et son utilisation est donc soumise à des conditions strictes pour les joueurs. Malgré cela, elle demeure l’une des trois races fondatrices du monde, aux côtés des Humains et des Nains.</td><td>Cette race est apparue en même temps que les Humains et les Nains, chacun avait leur portion de territoire et personne ne venait empiéter sur l&#39;autre. Mais une idéologie suprématiste est venue s&#39;ancrer profondément chez les elfes dorés, cette idée que la magie est à la base de tout et vu qu&#39;ils la maîtrisent le mieux, donc ils sont un peuple élu des dieux et doivent dominer les autres races qui sont inférieures. Nombreux sont les conflits entre les différentes races, les nombreux coups dans le dos qu&#39;ont fait les elfes dorés pour que les uns et autres s&#39;entre-déchirent pour mieux affaiblir les proies et les attaquer dans le dos par la suite, tels des vautours.
+
+Cette race a donné naissance à 3 branches de lui-même, les Elfes Forestiers, les Elfes Noirs et les Elfes Argentés, ces derniers étaient les plus proches de leur capacité magique alors que les autres étaient bien plus physiques et endurants. Malgré leur cousinage, les elfes dorés n&#39;ont pas hésité une seule seconde à réduire en esclavage les 3 elfes. Et dans l&#39;ombre, une grosse rébellion s&#39;organisa pour combattre l&#39;oppresseur ... L&#39;origine de ces elfes ? Les forestiers, c&#39;est une évolution naturelle, les elfes noirs étaient des condamnés à mort (voir les elfes noirs pour en savoir plus) et les argentés seraient issus d&#39;un accident, mais qui est toujours un secret aujourd&#39;hui.
+
+En l&#39;An 50, un elfe argenté du nom de Notox Casus organisait une mutinerie, il a failli être tué, mais a pu continuer malgré tout son organisation et c&#39;est en l&#39;an 215 que les elfes dorés furent tous bannis par le Héros Argenté, ce même Notox Casus.
+
+Les joueurs qui souhaitent jouer un Elfe Doré, vous devez être dans la période -450 à 200. Sinon ce n&#39;est pas possible.</td><td>Un elfe doré mesure en moyenne 1m80, pour un poids moyen de 70kg, ils sont plutôt maigrichons, mais possèdent d&#39;énormes pouvoirs magiques, ça explique le fait qu&#39;il possède naturellement des veines couleur blanche à certains endroits.
+
+Les 3 couleurs principales de yeux pour les elfes dorés sont : Doré, Argent et Rouge.
+
+Ils possèdent des oreilles identiques à celles des elfes argentés. Elles sont dressées pour les mâles et un peu tombantes pour les femelles.
+
+Culture : Grèce antique</td><td>4</td><td>13</td><td>3</td><td>5</td><td>4</td><td>Accès à toutes les magies.</td><td>Aucun.</td><td>Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).</td><td class="nul"></td><td class="nul"></td><td class="nul"></td><td class="nul"></td><td>races</td><td>Les races › Elfe Doré › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_elfe-forestier"><td><a href="/donnees/race/#r-races_2f_elfe-forestier">races/elfe-forestier</a></td><td>Elfe forestier</td><td>L&#39;une des races descendantes des Elfes Dorés, c&#39;est une race qui est naturellement avantagée avec la magie.
+
+Les elfes forestiers sont de bons combattants d&#39;agilité et aussi de bons mages.
+
+Cette race est apparue pour la première fois en l&#39;an -50, c&#39;est une lente évolution des elfes dorés dans le milieu forestier.</td><td>L&#39;une des branches qu&#39;ont engendrées les Elfes Dorés, il s&#39;agit d&#39;Elfes dorés qui ont lentement évolué dans les milieux forestiers, d&#39;où le nom d&#39;Elfes Forestiers. Ils ont été pendant un temps esclaves de leurs ancêtres quand l&#39;empire doré existait, le jour où les elfes dorés ont disparu, les forestiers ont gagné leur liberté et ont conquis les forêts.
+
+Ce sont des populations assez ouvertes avec les autres races, notamment les humains avec qui ils ont établi énormément de routes commerciales.</td><td>Les elfes forestiers ressemblent beaucoup aux humains d&#39;une manière globale, mais possèdent quelques différences : une pilosité beaucoup moins marquée, des cheveux plus lisses et des oreilles pointues un peu plus longues que celles des humains.
+
+Les sexes possèdent leurs petites caractéristiques :
+
+Mâle
+
+Les mâles peuvent avoir une légère barbe, mais cela reste plutôt rare. Ils ont un peu plus de muscles, mais la différence est minime, car c&#39;est une race élancée à la base. Leurs oreilles sont plus abaissées que celles des femelles. Ils sont très légèrement plus grands que les femelles.
+
+Femelle
+
+Les femelles sont dépourvues de pilosité, à l&#39;exception de leurs cheveux, qui sont un signe de prestige et de fierté chez elles. Leurs oreilles sont plus dressées que celles des mâles.
+
+D&#39;une manière générale, les femelles et les mâles ont peu de différence physique contrairement aux humains où c&#39;est bien plus marqué.
+
+Les 3 couleurs principales de yeux pour les elfes forestiers sont : Vert, Doré, Marron
+
+La couleur de la peau ne varie pas énormément étant donné que les elfes restent dans les forêts, il garde un ton assez clair avec la même couleur de base que les humains, bien que leurs tons ne changent pas de manière aussi poussée que les humains.
+
+Culture : Rome antique</td><td>7</td><td>13</td><td>0</td><td>5</td><td>5</td><td>Accès à toutes les classes, accès à toutes les magies.</td><td>La Force à un maximum de 3, l&#39;Agilité à un minimum de 3.</td><td>Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).</td><td>Condition d&#39;origine</td><td class="nul"></td><td>Don</td><td class="nul"></td><td>races</td><td>Les races › Elfe forestier › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_elfe-noir"><td><a href="/donnees/race/#r-races_2f_elfe-noir">races/elfe-noir</a></td><td>Elfe Noir</td><td>L&#39;une des races descendantes des Elfes Dorés, ce sont des elfes soit à la peau noire comme le charbon ou blanche comme le sel. Ce sont de bons combattants d&#39;une manière générale.
+
+Ces Elfes sont de profonds esclavagistes et l&#39;esclavage fait partie de leur culture, ils ont des coutumes, une façon de vivre et un style vestimentaire qui est celle des Romains. Bien que leur tendance esclavagiste diminue avec le temps.
+
+Cette race est apparue pour la première fois en l&#39;an 12, après une fuite possible grâce à Eaunoire.</td><td>Les Elfes Charbon, reconnaissables à leur peau noire profonde, sont issus d’elfes dorés corrompus. Cette corruption est à l’origine de leur apparence si particulière. Toutefois, certains d’entre eux sont parvenus à se libérer de cette influence, devenant ainsi des elfes à la peau blanche immaculée, comparée au sel. Ces derniers sont appelés Elfes Salés.
+
+Les Elfes Charbon considèrent ces individus comme des hérésies vivantes et des traîtres, indignes de leur condition, et cherchent activement à les éliminer.
+
+Comme les Elfes Forestiers et les Elfes Argentés à leurs débuts, les Elfes Charbon furent réduits en esclavage par les elfes dorés. Dans la région de Rase, ils étaient notamment contraints d’extraire pierre et minerais dans des conditions extrêmes.
+
+À l’origine, les Elfes Charbon étaient des elfes dorés condamnés à mort pour trahison, déshonneur ou crimes graves. Leur sentence consistait à être exposés à une corruption létale, jusqu’à ce que mort s’ensuive.
+
+Cependant, un être supérieur intervint et en sauva une partie en échange de leur service : Eaunoire, premier ambassadeur déchu de l’Eau.
+
+Les Elfes Salés, parfois appelés elfes noirs albinos, sont d’anciens Elfes Charbon ayant été purifiés de cette corruption. Leur peau devient alors blanche, presque irréelle. Malgré cette libération, leur existence demeure tragique : ils sont mal vus par les Elfes Charbon, qui les considèrent comme des traîtres, et continuent bien souvent de vivre sous une épée de Damoclès.</td><td>Un elfe noir adulte mesure en moyenne entre 1m60 et 1m90. Ils sont moins grands en moyenne que leurs homologues forestiers.
+
+Le poids moyen d&#39;un elfe noir est de 65kg. Ils sont un peu plus lourds que leurs homologues forestiers.
+
+Au-delà de leur couleur de peau, la grosse différence par rapport aux autres races d&#39;elfes, c’est leurs oreilles qui sont un peu plus longues que celles des forestiers, mais plus courtes que celles des elfes argentés, elles sont également comme dentelées sur la base, ce qui rappelle une scie.
+
+Les 3 couleurs principales de yeux pour les elfes noirs sont : Rouge, Mauve et Gris.
+
+Leurs cheveux sont en majorité de couleur blanche, mais il existe des cas d&#39;elfe noir aux cheveux parfaitement noirs, ils sont à peu près 10%.
+
+Culture : Rome antique</td><td>8</td><td>12</td><td>0</td><td>5</td><td>5</td><td>Accès à toutes les classes, accès à toutes les magies, avantages sur le jet pour esquiver un état de poison.</td><td>Aucun</td><td>Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).</td><td>Type</td><td>Nom</td><td>Don</td><td class="nul"></td><td>races</td><td>Les races › Elfe Noir › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_farfadet"><td><a href="/donnees/race/#r-races_2f_farfadet">races/farfadet</a></td><td>Farfadet</td><td>Une race d&#39;humanoïde possédant de grandes ailes de papillon qui peuvent varier selon leur environnement.
+
+Ils ont un grand potentiel en ce qui concerne la magie, ayant accès à toutes les magies possibles y compris le potentiel illimité.
+
+Ils sont arrivés peu après les humains, les elfes dorés et les nains, mais sont toujours restés cachés.</td><td>Les farfadets sont apparus quelque temps après les trois premières races de Maverick, et furent les premiers à explorer les cieux du monde.
+
+Les farfadets sont extrêmement rares, du moins hors de leurs territoires. Ils sont une race assez secrète, souvent cachée dans les forêts, vivant dans la cime des arbres. Même s&#39;ils sont discrets, ils restent tout de même très courtois avec les autres races lorsque celles-ci s&#39;aventurent sur leur territoire. Mais en réalité, il faut observer du côté des îles flottantes de Maverick où se trouvent leurs plus grosses villes, leurs ailes qui leur permettent de voler leur ont permis de conquérir les cieux.</td><td>Les farfadets mesurent en moyenne entre 1m30 et 1m60, même si certaines magies comme le sang ou la terre peuvent influencer leur taille. Ils ne possèdent que peu de pilosité sur le corps. De longues oreilles pointues. Bien qu’ils soient plus petits que les felfes leurs ailes sont plus grandes et plus fortes ce qui leur permet de voler comme bon leur semble. Ils aiment les vêtements légers et ont un faible pour les bijoux de tête tels que les broches, les tiares ou les couronnes par exemple.
+
+Ils pèsent en moyenne 50 kg, et leur musculature n’est pas très développée, cela peut changer suivant les magies.
+
+Les 3 couleurs principales des yeux pour les farfadets sont : vert, or et bleu.
+
+Les farfadets amazones vivent dans les forêts xériques et tropicales, leur peau est légèrement halée et ils possèdent des ailes de cigales.
+
+Les farfadets maritimes vivent dans les forêts proches des mers et océans, ils possèdent des ailes de libellules.
+
+Les farfadets médians sont les plus communs, ils vivent dans les forêts sempervirentes et décidues, ils possèdent des ailes de papillons.
+
+Les farfadets alpins vivent dans les forêts denses de conifères et de feuillus, ils possèdent des ailes d’hétérocères.
+
+Culture: Florale</td><td>4</td><td>14</td><td>2</td><td>4</td><td>2</td><td>Accès à toutes les magies, peut voler.</td><td>La Force à un maximum de 3.</td><td>Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).</td><td>Condition d&#39;origine</td><td class="nul"></td><td>Don</td><td class="nul"></td><td>races</td><td>Les races › Farfadet › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_felfe"><td><a href="/donnees/race/#r-races_2f_felfe">races/felfe</a></td><td>Felfe</td><td>Un hybride entre Elfe et Grande fée, leur apparence peut grandement varier selon les parents, mais tous sont gracieux et agiles, mais également de santé fragile.
+
+Ils sont apparus en l&#39;an 80, une belle union taboue entre une grande fée et un elfe argenté.</td><td>L’origine des felfes demeure incertaine, et nul ne sait avec certitude qui fut le premier de leur espèce. Selon une légende ancienne, leur naissance remonterait à l’union secrète entre le dirigeant des Elfes Argentés de l’époque et la grande reine des Farfadets. De cette relation serait née la première felfe : une femelle à la peau argentée.
+
+Les deux autres variantes seraient apparues plus tard, issues d’unions similaires entre elfes et farfadets, donnant naissance à une descendance hybride aux caractéristiques variées.
+
+Les felfes sont aujourd’hui présents à travers tout le monde. Ils ne possèdent pas de nation propre, vivant au sein des sociétés elfiques ou farfadet, où ils sont généralement acceptés comme des membres à part entière.</td><td>Un Felfe adulte mesure en moyenne entre 1m40 et 1m70, c&#39;est une race qui est petite en taille en plus d&#39;être assez frêle.
+
+Le poids moyen d&#39;un Felfe est de 50kg, ce sont des créatures humanoïdes plutôt légères.
+
+Ils possèdent des ailes des fées (ailes de papillons) qui ne leur permettent pas de voler (sauf en mode hyper). Il existe 3 variantes de felfes qui ont leur petite subtilité au niveau de l&#39;apparence :
+
+- Les felfes forestiers possèdent une peau beige, une carrure plutôt élancée ainsi que les oreilles des elfes forestiers, la couleur de cheveux principale est le blond ainsi que ses différents tons. Les couleurs d&#39;yeux principales sont : Vert, Doré, Marron.
+
+- Les felfes noirs ont la peau noire, une carrure un peu plus équilibrée ainsi que les oreilles des elfes noirs, la couleur de cheveux principale est le gris dans les tons foncés. Les couleurs d&#39;yeux principales sont : Rouge, Mauve et Gris. Une légende parle de l&#39;existence de felfes noirs à la peau blanche comme les salés, mais ça n&#39;a jamais été prouvé officiellement, la raison officielle est qu&#39;ils sont tellement rares qu&#39;on les considère comme inexistants.
+
+- Les felfes argentés ont la peau argentée, une carrure très frêle ainsi que les oreilles des elfes argentés, la couleur de cheveux principale est le gris dans les tons clairs. Les couleurs d&#39;yeux principales sont : Beige, Argent et Bleu.
+
+Culture : Rome antique</td><td>2</td><td>13</td><td>5</td><td>5</td><td>3</td><td>Accès à toutes les magies.</td><td>La Force à un maximum de 2.</td><td>Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).</td><td>Type</td><td>Nom</td><td>Don</td><td class="nul"></td><td>races</td><td>Les races › Felfe › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_fenrir"><td><a href="/donnees/race/#r-races_2f_fenrir">races/fenrir</a></td><td>Fenrir</td><td>Race Hybride entre Humain et Loup.
+
+Cette race est très belliqueuse pour la plupart quand il s&#39;agit de territoire ou de terrain de chasse, énormément de conflits avec les Kitsunes et les Namazu notamment.
+
+Apparu avec tous les autres hybrides animaux dans les ans -400 à -350.</td><td>Ce sont les troisièmes hybrides animaux à être apparus sur Maverick. Selon la légende, les Fenrirs sont une création du Dieu de la Foudre, Volt. Dans des temps immémoriaux, les humains vivaient eux aussi en tribus et les braves loups cherchaient refuge lors des plus terribles hivers. Au départ méfiants, les humains ont accueilli les canidés dans leurs villages. Au fil des siècles, ils sont devenus dociles et devinrent ce que l&#39;on appelle aujourd&#39;hui des chiens. Mais pas tous les loups ne s&#39;étaient soumis aux humains, certains ont choisi de rester en meutes, de rester sauvages, d&#39;autres étaient envieux mais hésitants. Ils souhaitaient vivre la vie des paisibles chiens, sans renoncer à leur vie sauvage, et c&#39;est là que le dieu de la Foudre tenta l&#39;expérience : il métamorphosa plusieurs couples de ces loups admiratifs en ce que l&#39;on appelle aujourd&#39;hui des Fenrirs. On ignore bien évidemment quelles furent les intentions de Volt, mais ainsi soit-il. Les Fenrirs sont nés en -400 et sont maintenant ceux qui vivent en tribus.
+
+Évidemment comme tous les hybrides animaux, les Fenrirs sont divisés en plusieurs catégories de sociétés :
+
+- Les Urbains : Des travailleurs acharnés, mais aussi des gros buveurs et de bons bagarreurs. Ils vivent très souvent en petites communautés de Fenrir au regard de leur magie innée. Dans la plupart des villes, ils possèdent souvent un petit quartier rien qu&#39;à eux, sans rester solitaires, loin de là ! Ils aiment aider leurs prochains, certains pensent que cela fait partie de leur nature. Excepté les Drassah&#39;thac et Kitsunes, trop souvent malhonnêtes envers eux et manquant de sens de l&#39;honneur selon leur dire.
+
+- Les Fenrirs Glace : De fervents défenseurs de Celsius. Ils prient l&#39;Impératrice des glaces, celle qui a sauvé les demi-canidés des hivers polaires. Ils priorisent le combat à mains nues auquel leurs griffes aiguisées sont bien sûr au programme. On pourrait les penser froids et distants, mais ce sont les plus chaleureux et soudés entre eux. Étant très proches de leur déesse, ils sont également adeptes de la magie, mais à leur manière. En effet, les enchanteurs gravent leurs armures, armes et accessoires de symboles cunéiformes appelés runes. Ce n’est en revanche pas des incantations ésotériques, mais un simple alphabet.
+
+- Les Fenrirs Foudre : Les premiers Fenrir à voir le jour. Fils et filles de Volt, ce sont des explorateurs accomplis, mais un peu trop pressés sur les bords. Ils adorent découvrir le monde qui les entoure et inventer de nouvelles technologies. Certains d&#39;entre eux partent se former auprès des nains, à qui leur dieu a tant offert et récompensé. Ils furent les premiers à trouver un intérêt plus poussé au cuivre et à ses alliages. Leurs forgerons sont donc tout naturellement spécialisés à la fabrication d&#39;équipements de ces métaux. Nomades et rarement unis sous une même tribu, on retrouve ces dernières principalement à Mrode, les nomades voyagent un peu partout dans le monde.
+
+- Les Fenrirs Ombre : De véritables loups solitaires, mais aussi de grands chasseurs nocturnes. C&#39;est en partie à eux qu&#39;on doit les multiples guerres de territoires contre les Orios, car partager un terrain de chasse est inconcevable dans cette tribu. Les gourous de l&#39;Ombre prient la Lune et son prince : Umbro, auquel ils célèbrent chaque nouvelle lune, symbole de changement. Ce sont de brillants astronomes qui ne se limitent pas qu&#39;à l&#39;étude de la lune. On retrouve leurs tribus en hauteur, près des flancs de montagne et des plateaux. Ils installent leur campement dans les plus sombres grottes.</td><td>Les Fenrirs sont très proches des humains anatomiquement parlant, à la taille adulte, ils mesurent en moyenne entre 1m60 et 1m90. Ils possèdent les oreilles de loup, la fourrure d&#39;un loup qui varie de couleur selon l&#39;habitat naturel, fourrure qui est présente sur le dos, les bras, les jambes, les cheveux sont généralement plus longs.
+
+Mâle
+
+Les mâles sont un peu plus costauds physiquement parlant que les femelles, ils ont plus de fourrures au niveau du corps.
+
+Femelle
+
+Les femelles sont moins épaisses, mais possèdent plus de fourrure au niveau des membres, notamment les jambes.
+
+D&#39;une manière globale, les deux sexes n’ont quasiment aucun écart de taille, juste le poids un peu plus élevé des mâles dû à leur physique un peu plus grand (70kg en moyenne).
+
+Les 3 couleurs principales de yeux pour les Fenrir sont : Turquoise, Jaune, Mauve.
+
+Culture : Viking</td><td>13</td><td>7</td><td>0</td><td>5</td><td>4</td><td>La Perception est obligatoirement à 2 minimum, Classe possible : Fenrir.</td><td>Magie Glace, Ombre et Foudre en innée.</td><td>Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).</td><td>Magie innée</td><td class="nul"></td><td>Don</td><td class="nul"></td><td>races</td><td>Les races › Fenrir › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_goleois"><td><a href="/donnees/race/#r-races_2f_goleois">races/goleois</a></td><td>Goleois</td><td>Race hybride entre humain et poulet.
+
+C&#39;est une race physiquement avantagée par rapport aux autres. Les Goleois sont reliés à la magie de la Glace, du Sang et de la Lumière.
+
+Apparu avec tous les autres hybrides animaux dans les ans -400 à -350.</td><td>Cette race, a commencé à investir les villes humaines notamment remarqué pour leur force physique plutôt grande qui pourrait être comparée sans trop de soucis à celle des Orios et Minotaures. Leur origine est assez inconnue mais on parlerait d&#39;une secte d&#39;humains qui aura subi une terrible malédiction mais dans leur malheur, ils ont réussi à transformer cette dernière en force et se sont transformés en les êtres que nous connaissons aujourd&#39;hui.
+
+Il existe 4 types de peuple de Goleois dans le monde :
+
+- Les urbains : Les Goleois urbains sont ceux qui ont choisi de s’installer durablement dans les cités humaines. Leur force physique impressionnante en fait des travailleurs très recherchés : les mâles excellent dans les métiers demandant puissance et endurance, comme la construction, le transport ou la sécurité. Les femelles, réputées pour leur calme et leur instinct protecteur, s’orientent souvent vers les professions liées à l’enfance, aux soins ou aux petits élevages urbains.
+
+- Les tribus de la Glace : Les Goleois de Glace se distinguent par un plumage pâle, souvent d’un blanc immaculé, qui tranche avec leur silhouette vigoureuse. On les retrouve principalement dans les régions froides, où leur lien naturel avec la magie de la Glace se manifeste pleinement. Profondément dévoués à Celsius, ils consacrent une grande partie de leur vie à la pratique d’arts martiaux stricts et exigeants. Bien que les étrangers les qualifient volontiers de « barbares », ces Goleois sont en réalité des individus disciplinés, respectueux et organisés, rappelant dans leurs traditions l’ordre et la rigueur du Temple de la Glace.
+
+- Les tribus du Sang : Les Goleois de Sang sont réputés pour être les plus massifs, les plus robustes et les plus imprévisibles de leur espèce le tout avec un plumage sombre. Leur culture tribale repose presque entièrement sur la force brute : chaque interaction, chaque décision, chaque ascension sociale se gagne par l’épreuve du combat. Ils recherchent constamment l’affrontement, et défient régulièrement les tribus Marcass et Orios, qui acceptent volontiers ces duels rituels. Dévoués au dieu de la Force, ils vénèrent la puissance physique comme une vertu sacrée. Dans ces tribus, ceux qui ne parviennent pas à démontrer une force suffisante sont souvent persécutés ou relégués, car faiblesse et honneur ne peuvent y coexister.
+
+- Les tribus de la Lumière : Les Goleois de la Lumière se reconnaissent par leur plumage mêlant clair et sombre. Un trait mystérieux marque leurs tribus : les femelles y sont nettement plus nombreuses que les mâles, sans que personne ne comprenne réellement pourquoi. Qu’ils soient hommes ou femmes, tous partagent un profond sens du soin, de la compassion et de la retenue. Dévoués à la magie de la Lumière, ils privilégient le soutien, la guérison et la médiation, et ne lèvent jamais la main sans raison valable. Leur sagesse et leur douceur contrastent fortement avec la réputation turbulente des autres lignées goleoises, faisant d’eux des médiateurs naturels dans les conflits entre tribus.</td><td>Les Goleois sont une race hybride mêlant traits humains et caractéristiques aviaires proches du coq. Leur silhouette est globalement humanoïde, mais marquée par une morphologie puissante et des éléments clairement inspirés de la volaille. Les Goleois possèdent un torse et des bras humains, mais particulièrement développés : leur musculature est dense, compacte, taillée pour la puissance et l’explosivité.
+Leurs jambes sont entièrement aviaires à partir du genou. Elles se terminent par des pattes de poule massives, écailleuses, équipées de griffes épaisses et redoutables.
+Une large partie de leur corps est recouverte partiellement de plumage, dont la densité varie selon les individus et les lignées. Sur les bras : des plumes longues et souples encadrent l’arrière des biceps et des avant-bras. Cheveux : Comme pour les Rokh et Olwman, ils ont des poils et plumes entremêlés. Queue : une longue queue plumée, lourde et expressive, descend dans le dos. Elle est plus large, plus brillante et plus volumineuse chez les mâles.
+
+Mâle
+
+Les mâles sont plus massifs, possèdent une queue bien plus grande et ont un plumage légèrement plus sombre. La chevelure forme naturellement une crête dressée, souvent vive en couleur, rappelant celle d’un coq.
+
+Femelle
+
+Les femelles sont moins massives, possèdent une queue plus courte mais qui reste bien garnie et ont un plumage légèrement plus clair. Les cheveux sont plus doux et plus longs, retombant dans le dos. Leur crête est discrète, parfois seulement suggérée par des plumes plus rigides au sommet du crâne.
+
+Les 3 couleurs principales de yeux pour les goleois sont : Cyan, Bordeaux, Beige.
+
+Culture : France</td><td>15</td><td>5</td><td>0</td><td>6</td><td>3</td><td>Classe possible : Goleois, Les pieds font des dégâts d&#39;estoc</td><td>Magie de Glace, Lumière et Sang en innée, ne peut pas voler</td><td>Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).</td><td>Type</td><td>Nom</td><td>Don</td><td class="nul"></td><td>races</td><td>Les races › Goleois › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_hujin"><td><a href="/donnees/race/#r-races_2f_hujin">races/hujin</a></td><td>Hujin</td><td>Issus de l&#39;union interdite entre Humain et Majin, les Hujins sont le fruit d&#39;une potentielle entente entre l&#39;Empire Humain et l&#39;Empire Majin.
+
+Les Hujins possèdent un corps remarquablement élastique, ce qui leur permet de taper plus loin. Ils sont bons dans tous les domaines.
+
+Le premier Hujin est arrivé en l&#39;an 40, une belle histoire d&#39;amour entre une majin et un humain qui a fini dans le sang.</td><td>Le premier Hujin est né sur le sol de Maverick d&#39;un père Humain et d&#39;une mère Majin, il s&#39;est vite remarqué par les scientifiques de Maverick qui ne savaient pas ce qu&#39;il était. Il s&#39;est fait d&#39;abord maltraiter par les Elfes Argentés et Noirs, jusqu&#39;à se faire récupérer par les Humains, et là tout se déroulait bien mieux.
+
+Suite à tout ça, les Hujins ont été reconnus comme race hybride stable par la plupart des races.</td><td>Un Hujin adulte mesure en moyenne entre 1m50 et 1m90.
+
+Le poids moyen d&#39;un Hujin est de 70kg.
+
+Étant une race hybride, ils ont 6 couleurs principales pour les yeux qui sont : Noir, Doré, Rouge, Marron, Vert et Bleu.
+
+La peau des Hujins possède les mêmes propriétés que la peau des humains. Une peau qui va changer de ton selon l’ensoleillement de l&#39;habitat, bien qu&#39;aujourd&#39;hui, il n&#39;y ait pas de Hujin presque pâle ou bien presque sombre recensés.
+
+Ils ont aussi quelques détails de Majin, notamment la queue (qui peut ne pas être là), une base de corne et à certains endroits vitaux, il y a quelques écailles.
+
+Culture : Japon féodale/Humaine</td><td>10</td><td>10</td><td>0</td><td>4</td><td>4</td><td>Accès à toutes les classes, accès à toutes les magies.</td><td>Aucun.</td><td>Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).</td><td class="nul"></td><td class="nul"></td><td class="nul"></td><td class="nul"></td><td>races</td><td>Les races › Hujin › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_humain"><td><a href="/donnees/race/#r-races_2f_humain">races/humain</a></td><td>Humain</td><td>Race majoritaire dans le monde de Maverick, une légende dirait que ce sont les premiers êtres humanoïdes à être apparus sur cette terre.
+
+Les humains ont un grand potentiel d&#39;adaptation, ce qui leur permet de maîtriser toutes les magies et classes, ce sont également eux qui ont les plus gros changements physiques quand ils deviennent de plus en plus puissants.
+
+Cette race fait partie des 3 premières à être arrivées dans le monde avec les Nains et les Elfes Dorés.</td><td>Race majoritaire dans le monde de Maverick, une légende dirait que ce sont les premiers êtres humanoïdes à être apparus sur cette terre.
+
+Les humains ont un grand potentiel d&#39;adaptation, ce qui leur permet de maîtriser toutes les magies et classes, ce sont également eux qui ont les plus gros changements physiques quand ils deviennent de plus en plus puissants.</td><td>Un humain adulte mesure en moyenne entre 1m50 et 1m90. À noter que certaines magies, notamment celles du Sang et de la Terre peuvent influencer la taille moyenne des individus.
+
+Entre les sexes, les différences sont marquées, notamment au niveau de la taille et de la corpulence. D&#39;une manière générale, les mâles sont un peu plus grands et possèdent 10 % de muscles en plus, tandis que les femelles sont bien plus souples. Pour le poids, on a une moyenne de 70kg, ce dernier varie beaucoup selon plein de critères comme la taille, mais aussi la magie.
+
+Les 3 couleurs principales de yeux pour les humains sont : Vert, Bleu et Marron.
+
+La couleur de la peau possède une grande variété de tons mais provient d&#39;une seule couleur, elle varie selon les zones géographiques et selon l&#39;intensité de la lumière du soleil. Plus le soleil est puissant, plus la peau sera sombre, plus le soleil sera faible, plus la peau sera claire. Mais la peau varie aussi selon la magie de l&#39;utilisateur, plus le niveau de puissance est élevé, plus la peau va varier.
+
+- Les humains centraux sont ceux qui se trouvent dans les zones tempérées comme Erisia, ils sont adaptés à toutes les saisons et encaissent moins d&#39;effet négatif que les autres, mais de manière plus globale.
+
+- Les humains désertiques sont des humains à la peau sombre soumis aux aléas et aux caprices du désert, ce qui les rend parfaitement adaptés aux météos Soleil, Canicule, mais aussi à la terrible tempête de sable. Ils ne sont pas ralentis non plus quand le sol devient du sable.
+
+- Les humains tropicaux à la peau sont soumis aux plus grandes pluies et tempêtes qui existent de manière naturelle, ils savent parfaitement comment gérer la pluie ainsi que le vent ce qui les rend totalement immunisés à leurs effets négatifs. Ils ne sont pas ralentis par les sols boueux.
+
+- Les humains de la toundra à la peau très blanche sont parfaitement adaptés à la colère de la neige et du manque de soleil, ils sont totalement immunisés à la neige, mais aussi des brouillards naturels. Ils ne craignent pas les terrains neigeux.
+
+Culture : Variable selon la zone de départ</td><td>10</td><td>10</td><td>0</td><td>4</td><td>4</td><td>Accès à toutes les classes, accès à toutes les magies.</td><td>Aucun.</td><td>Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).</td><td>Type</td><td>Nom</td><td>Don</td><td class="nul"></td><td>races</td><td>Les races › Humain › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_jackalope"><td><a href="/donnees/race/#r-races_2f_jackalope">races/jackalope</a></td><td>Jackalope</td><td>Une race hybride entre humains et lapin, cette race a pour origine le Dieu-artiste de la Débauche Bauc.
+
+Les Jackalopes sont reliés à la magie de la Terre, à la magie de la Foudre et à la magie du Vide.
+
+Apparu avec tous les autres hybrides animaux dans les ans -400 à -350.</td><td>Race humain lapin à l&#39;origine du Dieu de la débauche, Bauc. Après l&#39;arrivée des Satyres, Bauc voulait un peuple qui représente bien mieux sa passion pour l&#39;art, les Jackalopes sont nés avec un talent naturel pour l&#39;art.
+
+Malheureusement cette race possède une santé fragile ainsi qu&#39;une durée de vie de 50 ans, ils vivent et vieillissent deux fois plus rapidement qu&#39;un humain normal. Ce talent naturel et cette inspiration plus poussée intéressent énormément le Gardien du Savoir, Mora qui les a bénis de la magie du Vide, une partie des jackalopes semblent croire que Mora est leur créateur et lui voue un culte qui s&#39;approche du zélotisme.
+
+Les Jackalopes sont divisés en 3 catégories :
+
+- Les Urbains : Ils ont abandonné définitivement leurs camarades tribaux pour aller exercer leurs différents arts dans les villages et villes. Ils sont appréciés pour ça justement.
+
+- Les Jackalopes Terre et Foudre : Conscients de leur lien avec le Dieu de la débauche, ils exploitent leur art pour rendre hommage à leur créateur.
+
+- Les Jackalopes Vide : Ceux qui ont renié Bauc pour Mora, ils sont particulièrement zélotes envers lui et offrent leur talent pour faire de nombreux dons pour le Dieu du Savoir, notamment en réalisant des livres de savoir.</td><td>Cette race est aussi grande que les humains et légèrement plus légère.
+
+Ils possèdent des jambes taillées pour la course et le saut comme des vrais lapins, la queue du lapin, de grandes oreilles très sensibles, un petit nez, des vibrisses au niveau des joues, un corps plutôt fin.
+
+Grâce à leur physique très élancé, ils sont capables de sauter haut mais aussi loin. Ils sont également très rapides.
+
+Culture :</td><td>5</td><td>12</td><td>3</td><td>6</td><td>2</td><td>Classe possible : Jackalope.</td><td>Magie Terre, Foudre ou Vide en innée, la Volonté a un maximum de 3.</td><td>Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).</td><td>Magie innée</td><td class="nul"></td><td>Don</td><td class="nul"></td><td>races</td><td>Les races › Jackalope › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_kitsune"><td><a href="/donnees/race/#r-races_2f_kitsune">races/kitsune</a></td><td>Kitsune</td><td>Une race hybride entre humains et renard, le point de départ de la race est une abomination d&#39;humain/renard. Mais un jour, les dieux finirent par éprouver de la pitié pour ces êtres. Ils leur accordèrent alors la capacité de s’adapter, leur permettant de retrouver une apparence majoritairement humaine, tout en conservant certains attributs de renard.
+
+Les Kitsunes sont réputés pour leur grande agilité au combat, ainsi que pour leur grâce naturelle. Très attachés à leur apparence, ils font souvent preuve de fierté, voire d’un certain orgueil.
+Apparu avec tous les autres animaux hybrides dans les ans -400 à -350.</td><td>Nous parlons d&#39;une époque où les kitsunes un culte d&#39;humains ayant subi une malédiction d&#39;origine encore inconnue, les transformant en une abomination d&#39;humain/renard. Mais un jour, les dieux ont eu pitié des kitsunes et les ont permis de s&#39;adapter et de récupérer leur apparence humaine. Le premier d&#39;entre eux nommé &quot;le Grand Druide&quot; aurait vu 3 dieux dans une vision, Séraphin, Aurora et Eoline. Persuadés, que c&#39;est un signe divin, les kitsunes vouent un culte envers ces 3 dieux qui sont considérés comme les créateurs des kitsunes tels qu&#39;on les connaît aujourd&#39;hui.
+
+Comme pour les autres hybrides animales, il existe 2 types de kitsunes :
+
+- Les Urbains : Comme pour les autres hybrides animales qui ne sont pas dans des tribus, ce sont les plus ouverts d&#39;esprit et les plus propres sur eux, même s’ils ont gardé ce côté arrogant et orgueilleux qui fait le caractère de cette race.
+
+- Les Tribaux : Les Kitsunes tribaux quant à eux ont les poils beaucoup moins lisses et ont un tempérament plus isolationniste, pour eux, ils sont le centre du monde et les autres créatures sont d&#39;étranges êtres incompréhensibles aussi bien de la langue que du physique, les Kitsunes urbains eux sont perçus comme des Hérétiques et ennemis des 3 dieux.
+
+Les Kitsunes tribaux élisent également leur chef selon les 3 représentants sacrés des Dieux que sont l&#39;Archidiacre de la Lumière, Émissaire du Feu et Pontife du Vent. Une fois rassemblés lors du Rituel de la Lune, les 3 représentants de par leur droit divin vont désigner le nouveau chef. Ils sont sous la doctrine du mandat céleste.</td><td>Les Kitsunes sont très proches des humains anatomiquement parlant, à la taille adulte, ils mesurent en moyenne 1m65. Ils possèdent les oreilles de renard, la fourrure d&#39;un renard qui varie de couleur selon l&#39;habitat naturel, fourrure qui est présente sur le dos, les bras, les jambes, les cheveux sont généralement plus longs. Ils ont la queue de renard très épaisse.
+
+Mâle
+
+Les mâles sont un peu plus costauds physiquement parlant que les femelles, ils ont plus de fourrures au niveau du corps.
+
+Femelle
+
+Les femelles sont moins épaisses, mais possèdent plus de fourrure au niveau des membres, notamment les jambes.
+
+D&#39;une manière globale, les deux sexes n’ont quasiment aucun écart de taille, juste le poids un peu plus élevé des mâles dû à leur physique un peu plus grand (65kg en moyenne).
+
+Les 3 couleurs principales de yeux pour les kitsunes sont : Beige, Rouge, Vert.
+
+Culture : Chine</td><td>8</td><td>12</td><td>0</td><td>5</td><td>3</td><td>L&#39;Agilité est obligatoirement à 2 minimum, Classe possible : Kitsune.</td><td>Magie Feu, Vent ou Lumière en innée.</td><td>Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).</td><td>Magie innée</td><td class="nul"></td><td>Don</td><td class="nul"></td><td>races</td><td>Les races › Kitsune › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_lamia"><td><a href="/donnees/race/#r-races_2f_lamia">races/lamia</a></td><td>Lamia</td><td>Race hybride entre humaine et serpent, cette race exclusivement femelle a des origines toujours inconnues aujourd&#39;hui. Majoritairement pacifique, ça ne les empêche d&#39;être parfois belliqueuses quand il faut.
+
+Cette race extraplanaire est apparue la première fois en l&#39;an 51.
+
+Cette race n&#39;est pas une hybride animale, c&#39;est autre chose encore.</td><td>Elles sont arrivées grâce à une faille temporelle, depuis elles ont su se trouver un territoire et s&#39;adapter à leur nouvel environnement. Elles sont divisées en 8 clans dénommés &quot;Maison&quot; avec chacune leur particularité, leur spécialité et leur dirigeante.
+
+- Maison ICHETACA | Nom dirigeante : Flaminia | Magie : Feu | Économie : Culture d&#39;épices | Domaine JO : Lutte, Mordhau, Blob-Ball
+
+- Maison ATL | Nom dirigeante : Necahual | Magie : Eau | Économie : Eau gazeuse, pêche | Domaine JO : Natation, Volley, Rame
+
+- Maison IHUICATI | Nom dirigeante : Zeltzin | Magie : Vent | Économie : ??? | Domaine JO : Tir à l&#39;arc, Javelot
+
+- Maison TLALLI | Nom dirigeante : Ambre | Magie : Terre | Économie : Pierres précieuses, Minage, l&#39;ambre | Domaine JO : Haltérophilie, Marathon, Pugilat
+
+- Maison TLALOC | Nom dirigeante : Wattson | Magie : Foudre | Économie : Forge | Domaine JO : Courses, Attire-Foudre
+
+- Maison XIHUTI | Nom dirigeante : Skadi | Magie : Glace | Économie : Chasse, Bois | Domaine JO : Gluse, bataille de boules de neige, Balace
+
+- Maison CITLALI | Nom dirigeante : Lux | Magie : Lumière | Économie : Hôpital | Domaine JO : Tir, Fer à cheval, jeu du miroir
+
+- Maison MEZTLI | Nom dirigeante : Sophia | Magie : Ombre | Économie : Casino | Domaine JO : Poker, les 6 dés 6, jeu de miroir
+
+Comme vous pouvez le constater, les jeux olympiques ont été créés par les lamias à la base pour régler les conflits internes à la race mais ils se sont progressivement ouverts à toutes les races et ainsi organisé une gigantesque fête qui dure 3 mois et ceux tout 5 ans. Les Jo spécifiques à la race peuvent se faire n&#39;importe quand alors que les JO ouverts c&#39;est tous les 5 ans.</td><td>Complètement humaines de la tête jusqu&#39;en dessous du nombril et totalement faites de serpent jusqu&#39;au bout de la queue, les lamias sont des créatures à sang froid et doivent être particulièrement attentives sur leur température corporelle pour être toujours en pleine forme. Elles sont très sensibles aux changements de température.
+
+La partie dorsale de la queue est couverte par des plumes aux couleurs vives (qui changent selon la magie) et la partie ventrale est composée d&#39;écaille sombre, leur visage ont des traits typiquement asiatiques, selon les individus écailles et plumes peuvent être présentes sur les bras, la base du cou voire même le dos.
+
+Étant donné leur nature divine selon leurs écrits les plus vieux, cette race ne peut pas changer d&#39;apparence à cause de défaut génétique (Pas de plume, pas d&#39;écaille, défaut visage, manque un bras, etc...), c&#39;est littéralement impossible.
+
+Culture : Aztèque</td><td>12</td><td>8</td><td>0</td><td>4</td><td>4</td><td>Vision thermique, peut porter une armure légère même si la classe l&#39;interdit.</td><td>Sang Froid, Une seule magie autorisé.</td><td>Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).</td><td class="nul"></td><td class="nul"></td><td class="nul"></td><td class="nul"></td><td>races</td><td>Les races › Lamia › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_majin"><td><a href="/donnees/race/#r-races_2f_majin">races/majin</a></td><td>Majin</td><td>Les Majins, sont des humanoïdes qui ressemblent énormément aux Humains, avec une peau plus rosée, un peu plus écailleuse, des cornes ainsi qu&#39;une fine queue. Cette race a pour origine dans ce que l&#39;on nomme la dimension &quot;Enfer&quot; ou bien Kcirevam.
+
+Ils ont la particularité de n&#39;être pas très solides, mais de refermer leurs blessures en un temps record, en plus d&#39;avoir les mêmes avantages que les humains concernant les classes et les magies.
+
+Cette race est arrivée dans leur monde d&#39;origine en -39.</td><td>C&#39;est une race plutôt jeune si on les compare avec les Humains, les Majins sont proches des humains fondamentalement parlant, car leur créatrice est une humaine à la base, Emanon, prétendante du trône de l&#39;Ambassadeur de l&#39;Absolu.
+
+La race n&#39;a pas eu beaucoup d’événements notables, en plus du fait qu&#39;on ne sait pas trop ce qui s&#39;est passé chez eux.
+
+Les Majins ont réussi à créer un premier grand portail en l&#39;an 450 en direction de Maverick et ainsi fut connue la première grande immigration des Majins vers les contrées humaines.</td><td>Un majin adulte mesure en moyenne entre 1m50 et 1m90. À noter que certaines magies, notamment celles du Sang et de la Terre peuvent influencer la taille moyenne des individus.
+
+D&#39;une manière générale, les mâles sont un peu plus grands et possèdent 10 % de muscles en plus, tandis que les femelles sont bien plus souples. Pour le poids, on a une moyenne de 70kg, ce dernier varie beaucoup selon plein de critères comme la taille, mais aussi la magie.
+
+Les 3 couleurs principales de yeux pour les majins sont : Noir, Doré, Rouge
+
+La couleur de peau possède de grandes variations, tout comme les humains, mais la couleur de base n&#39;est pas la même, c&#39;est une couleur assez rosée. Leur corps est également plus élastique que celui des autres.
+
+Possédant des cornes au niveau du front, ces cornes font en moyenne 15cm de haut. Chez les mâles, elles sont bien plus dressées que celles des femelles.
+
+Possède une queue dont le bout varie selon le sexe du Majin, une pointe de flèche pour les mâles, une pointe de flèche dont les bords sont plus arrondis pour les femelles.
+
+Culture : Japon féodal</td><td>8</td><td>10</td><td>0</td><td>4</td><td>4</td><td>Accès à toutes les classes, accès à toutes les magies.</td><td>La Volonté a un maximum de 3.</td><td>Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).</td><td class="nul"></td><td class="nul"></td><td class="nul"></td><td class="nul"></td><td>races</td><td>Les races › Majin › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_marcass"><td><a href="/donnees/race/#r-races_2f_marcass">races/marcass</a></td><td>Marcass</td><td>Une race hybride entre humains et cochon, cette race a une origine qui a été perdue depuis fort longtemps, elle a un passé d&#39;esclave.
+
+Cette race bien portante et aux attributs de cochon possède une bonne force physique et est la seule race hybride animale à avoir un lien avec Evravonie, la déesse de la mort.
+
+Apparu avec tous les autres hybrides animaux dans les ans -400 à -350.</td><td>Race humanoïde à l’apparence porcine et à l’origine mystérieuse, les Marcass ont longtemps été réduits en esclavage total par les Elfes Dorés.
+
+Utilisés comme chair à canon, ils étaient envoyés en masse sur les champs de bataille, sous le prétexte que mourir au combat leur garantirait le salut dans l’au-delà. Sacrifiés par groupes entiers pour une cause qui n’était pas la leur, ils furent presque entièrement anéantis.
+
+Un seul survécut…
+
+Combat après combat, témoin impuissant de la mort de ses frères et sœurs, Grutard se forgea une réputation. À chaque victoire, sa légende grandissait, tout comme sa haine envers les Elfes Dorés. Lorsqu’il devint trop dangereux pour ses maîtres, ces derniers tentèrent de l’éliminer.
+
+Mais au cœur de l’effondrement de l’Empire doré, Grutard osa les défier… et survécut.
+
+Son acte de rébellion inspira d’autres Marcass. Ensemble, ils parvinrent à fuir leurs tortionnaires, trouvant refuge dans le désert doré.
+
+Marqués par leur histoire, les Marcass ont développé un sens de la communauté extrêmement fort. Malgré la présence de trois grandes affinités magiques en leur sein, ils ne se divisent pas en tribus et restent unis. Leur faible nombre — conséquence du contrôle imposé autrefois par les Elfes Dorés — renforce encore cette cohésion.
+
+Aujourd’hui, les Marcass sont dispersés à travers le monde. Ils se sont intégrés dans diverses sociétés, notamment en milieu urbain, où on les retrouve fréquemment dans les tavernes, les cuisines, le mercenariat ou encore la sécurité.</td><td>Ils sont un peu plus grands que les humains, ils ont un gros ventre gras dû à leur génétique, des oreilles tombantes de cochon, un nez relevé qui fait fort penser à un groin, une queue en tire-bouchon, un visage rond, des canines inférieures proéminentes, une très légère fourrure, une peau claire (bronzé pour ceux du feu), les pieds sont des sabots.
+
+Les Marcass ont une taille moyenne de 1m80.
+
+Ils ont une force physique plus que correcte sans pour autant égaler la force physique des Orios ou des Minotaures, ils restent plus forts que des humains ou des fenrirs.
+
+Les mâles possèdent peu de cheveux mais beaucoup de barbe.
+
+Culture : Mongole</td><td>12</td><td>3</td><td>5</td><td>4</td><td>4</td><td>Barrière bonus, Classe possible : Marcass.</td><td>Taux de Chakra bas, magie Terre, Feu ou Nécromancie en innée, la Force a un minimum de 2.</td><td>Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).</td><td>Magie innée</td><td class="nul"></td><td>Don</td><td class="nul"></td><td>races</td><td>Les races › Marcass › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_medusain"><td><a href="/donnees/race/#r-races_2f_medusain">races/medusain</a></td><td>Médusain</td><td>Race Hybride entre Humain et Méduse
+
+Cette race aquatique particulière est reliée à la magie de l&#39;Eau, de la Foudre et de la Lumière.
+
+Apparu avec tous les autres hybrides animaux dans les ans -400 à -350.</td><td>Au tout début, les Médusains n’étaient autres que des humains nomades voyageant dans tout Maverick pour parler de leurs histoires et partager avec d’autres peuples leur foi envers leurs trois divinités : Océane la déesse de l’eau, Volt le dieu de la foudre et Aurora la déesse de la lumière. Hélas lors de l’un de leurs voyages, ils se mirent à dos Séraphe dieu de la guerre ; la raison de cette colère est aujourd’hui encore totalement inconnue de tous, sauf des chefs spirituels de chacune des quatre sociétés médusaines : Les urbains, les Médusains de la foudre, les Médusains de la lumière et les Médusains de l’eau.
+
+Face à cette colère, les nomades furent presque totalement éradiqués des terres de Maverick. Océane, face à cette violence et aux appels à l’aide de son peuple, décida d’intervenir : elle transforma les survivants en mi-homme mi-méduse et leur donna refuge dans ses océans, notamment dans une ville sous-marine se situant dans les Eaux froides.
+
+- Les urbains : Allant de la sagesse, au soin et à l’invention, on les retrouve souvent dans l&#39;humanitaire, toujours prêts à aider et soutenir les plus démunis. Ils agissent toujours avec bonté et attention envers les autres peuples, très protecteurs avec leur semblable.
+
+- Les tribus de l’eau : Des protecteurs nés ayant toujours de bonnes intentions. Quand il s&#39;agit de porter assistance aux plus démunis ou de défendre la veuve et l&#39;orphelin, ce sont les premiers sur le coup. Ce sont des tribus qui préfèrent rester loin des conflits et choisissant plutôt de partager leur savoir et aider leur prochain. Ils sont sous la protection de leur chef spirituel qui est reconnu pour sa sagesse.
+
+- Les tribus de la foudre : Souvent connus sous le nom de « scientifique foudroyant », les Médusains de la foudre sont pour la majorité des scientifiques qui ne cessent de chercher des réponses à travers les yeux de leurs créations. Ces tribus sont sous la protection de leur chef spirituel qui est choisi selon le résultat d’une épreuve mettant en scène leur intellect qui se déroule tous les six ans.
+
+- Les tribus de la lumière : Souvent présents en tant que médecin ou infirmiers, ils sont très volontaires et aiment soigner ceux dans le besoin ; il sont n&#39;est donc pas rare de les retrouver sur les terrains de conflit pour soigner les blessés. Ces tribus choisissent leur chef spirituel selon sa puissance.
+
+Les Médusains sont un peuple plutôt discret, qui évitent en général de se retrouver en conflit avec d’autres races.</td><td>Les Médusains sont très proches des humains anatomiquement parlant, à la taille adulte, un Médusain moyen mesure entre 1m60 et 1m90.
+
+Le poids moyen d&#39;un médusain est de 60kg, ils sont assez chétifs mais ça les empêche pas de garder une certaine souplesse.
+
+Cette race est assez particulière au niveau de son apparence, les cheveux sont totalement absents et à la place, ils arborent un chapeau de méduse accompagné de nombreux tentacules qui pendent. Elle possède le contrôle de ces tentacules et peuvent avoir des effets négatifs contre des potentielles menaces. Le &quot;chapeau&quot; est fait en gélatine et peut se régénérer très rapidement, formant un casque naturel. Au-delà de ça elle possède des sortes de boules de gélatine qui font comme un gros collier au niveau du buste et autour du cou. Elle est particulièrement fragile à cause d&#39;une peau qui est bien plus fine qu&#39;une peau humaine.
+
+Culture : Australie</td><td>3</td><td>10</td><td>7</td><td>4</td><td>8</td><td>Classe possible : Médusain.</td><td>Magie Eau, Lumière et Foudre en innée, la Force a un maximum de 3.</td><td>Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).</td><td>Magie innée</td><td class="nul"></td><td>Don</td><td class="nul"></td><td>races</td><td>Les races › Médusain › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_minotaure"><td><a href="/donnees/race/#r-races_2f_minotaure">races/minotaure</a></td><td>Minotaure</td><td>Une race hybride entre humains et bovin, cette race a une origine alchimique à la base.
+
+Les Minotaures sont reliés à la magie du Sang, à la magie de l&#39;Ombre ou à la magie de la Terre.
+
+Apparu en l&#39;an -50, contrairement aux autres hybrides animales, c&#39;est une création alchimique.</td><td>Créés par les Elfes Dorés afin de servir d’esclaves pour les travaux manuels, les Minotaures ont longtemps vécu sous la domination de leurs créateurs. Ils parvinrent un temps à fuir, mais furent rapidement capturés et de nouveau réduits en esclavage, cette fois par les Elfes Charbon.
+
+Ce n’est qu’à la suite d’une guerre de territoire entre les Nains et les Elfes Charbon que leur destin changea. Les Nains libérèrent les Minotaures de leurs chaînes et leur offrirent refuge. Depuis lors, les deux peuples cohabitent étroitement : les Minotaures apportent leur force de travail dans les mines et les galeries, tandis que les Nains cherchent à améliorer leurs conditions de vie.
+
+L’un des plus grands accomplissements de cette alliance fut atteint en l’an 360, lorsque les Nains parvinrent à résoudre un problème majeur : l’absence de reproduction naturelle chez les Minotaures. Jusqu’alors dépendants de procédés alchimiques, ils purent enfin voir apparaître les premières femelles de leur espèce. Dès lors, la race minotaure devint autonome et capable de se reproduire naturellement. Les relations entre Nains et Minotaures sont depuis restées solides et bienveillantes.
+
+Les Minotaures, tout comme les Orios, sont considérés comme des races bénies par le dieu de la Force, en raison de leur puissance physique exceptionnelle. Il n’est pas rare de voir ces deux peuples s’affronter lors de compétitions amicales visant à déterminer « le plus fort », notamment lors des épreuves de force pure des Jeux lamias.
+
+Contrairement à d’autres races, les Minotaures ne possèdent pas de tribus barbares qui leur sont propres. Ils s’intègrent généralement au sein des tribus d’autres peuples, en particulier celles des Orios, avec lesquelles ils entretiennent des liens étroits.</td><td>Les Minotaures sont d’imposants humanoïdes, comparables en taille aux Orios. Leur anatomie mêle traits humanoïdes et caractéristiques bovines : ils possèdent des sabots, des pattes puissantes, ainsi que des cornes particulièrement solides, parfaitement adaptées au combat. Chez les mâles, ces cornes sont généralement plus grandes et plus développées que chez les femelles.
+
+Leur corps est massif et musclé, conçu pour la force et l’endurance. Un poil court recouvre une grande partie de leur corps, notamment le dos, une portion du torse, les bras et les pattes.
+
+Les femelles, apparues plus tard dans l’histoire de la race, présentent des caractéristiques physiques distinctives. Leur morphologie est adaptée à leurs attributs mammaires plus massifs en moyenne par rapport aux autres races et une structure dorsale renforcée, leur permettant de supporter ce poids sans entraver leur mobilité.
+
+Culture : Allemagne</td><td>20</td><td>1</td><td>0</td><td>5</td><td>3</td><td>Les cornes et sabots sont des armes naturelles de frappe et d&#39;estoc, Classe possible : Minotaure.</td><td>La Force est obligatoirement à 3 minimum, Magie Sang, Ombre ou Terre en innée.</td><td>Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).</td><td>Magie innée</td><td class="nul"></td><td>Don</td><td class="nul"></td><td>races</td><td>Les races › Minotaure › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_mort-vivant"><td><a href="/donnees/race/#r-races_2f_mort-vivant">races/mort-vivant</a></td><td>Mort-vivant</td><td>Une race particulière et rare qui s&#39;est relevée de sa tombe pour accomplir ses objectifs les plus profonds. Contrairement aux Non-Morts (qui sont basiquement des monstres limités intellectuellement), les morts-vivants sont des personnes mortes assez récemment, mais, leur volonté de vivre ou leur objectif était si fort qu&#39;Evravonie en personne leur donna une seconde chance et renvoya leur âme dans leur corps de mort. Ce cas de figure n&#39;est possible que quand la personne est morte &quot;trop tôt&quot;, si la personne est morte de vieillesse, cette résurrection est impossible &quot;naturellement.&quot;
+
+Cette race existe depuis que les autres races existent, on ne connaît pas l&#39;identité du premier mort-vivant.</td><td>Les Morts-Vivants sont loin d&#39;être nouveaux, ils existent depuis l&#39;apparition de la magie et de l&#39;influence d&#39;Evravonie. Seulement, de par leur nature de cadavre ambulant, ils sont rejetés de la plupart des sociétés, il est assez rare qu&#39;un peuple accepte que de telles créatures se promènent dans les rues. Les morts-vivants pour la plupart se cachent dans les bas-fonds des villes ou bien cachent leur apparence morte par le déguisement.
+
+Chaque mort-vivant possède la conscience, la morale et la magie innée qu&#39;il avait quand il était vivant. (Faites bien attention de respecter ça quand vous faites un lore poussé avec votre personnage, car votre vivant avait une magie innée et sa version mort-vivant a forcément la même. Et quand vous déterminez une magie innée à votre mort-vivant et que vous déclarez une race de vivant, vérifiez bien que l&#39;ancienne race est compatible avec votre magie innée de mort-vivant)
+
+Le temps de vie d&#39;un mort-vivant est très élevé, il avoisine les 300 ans, on considère une naissance de mort-vivant au moment où il se relève de sa tombe, en revanche ... Il ne bouge pas physiquement parlant, il garde son apparence, tant bien entendu qu&#39;il mange suffisamment. Oui, les morts-vivants mangent en moyenne 3 fois plus que les autres races, sauter des repas pour eux, c&#39;est prendre le risque que leur peau se détériore plus rapidement.</td><td>C&#39;est aussi diversifié que les races, au dépend de ce qu&#39;était la personne morte, son physique va varier, mais tout en perdant les attributs qui faisaient de lui son vivant.
+
+Exemples :
+
+- Un Ancien Elfe sera plus leste et élancé, mais perdra ses oreilles et une partie de sa chevelure.
+- Un Ancien Orios sera plus massif et grand, mais perdra sa queue, ses oreilles et sa fourrure.
+- Un Ancien Drakos sera plus grand et aura encore sa queue, mais perdra ses ailes et toutes ses écailles.
+- Une Ancienne Lamia aura encore son corps de serpent, mais va perdre 80% de ses écailles et plumes (les écailles restantes ne protègent pas)
+
+Tous les avantages qu&#39;ils avaient en étant vivants ne sont plus, il en garde des vestiges
+
+Cela dit les morts-vivants ont des traits exclusifs à eux :
+
+- La peau plus grise ou décolorée.
+- Le blanc de l&#39;œil qui devient rouge (dans le cas d&#39;un utilisateur du vide, c&#39;est son iris qui devient parfaitement rouge)
+
+Culture : Variable selon la race quand il était vivant</td><td>12</td><td>10</td><td>0</td><td>4</td><td>4</td><td>Accès à toutes les classes, accès à toutes les magies, un sommeil complet régénère complètement la santé en plus de la barrière.</td><td>La Volonté est obligatoirement à 4, le Social est obligatoirement à 1, les Soins de la Lumière infligent des dégâts, doit énormément manger (3 fois plus qu&#39;un vivant) , les fioles rouges, mauves et oranges infligent des dégâts.</td><td>Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).</td><td class="nul"></td><td class="nul"></td><td class="nul"></td><td class="nul"></td><td>races</td><td>Les races › Mort-vivant › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_nain"><td><a href="/donnees/race/#r-races_2f_nain">races/nain</a></td><td>Nain</td><td>Une race humanoïde dont la particularité est d&#39;être petite en taille par rapport aux Humains ou Elfes Forestiers.
+
+Ce sont d&#39;excellents combattants au corps-à-corps, le tout avec un capital de santé plus élevé que la moyenne en dépit d&#39;un capital de chakra bien plus faible et d&#39;une limitation des magies qui leur sont possibles d&#39;avoir de manière innée.
+
+Cette race fait partie des 3 premières à être arrivées dans le monde avec les Humains et les Elfes Dorés.</td><td>Arrivés peu après les Humains et les Elfes Dorés, les Nains ont rapidement trouvé leur place au sein des montagnes et des cavernes. Leur petite taille, particulièrement adaptée à l’exploration d’espaces étroits, leur a permis de s’y installer efficacement. Cela ne les a toutefois jamais empêchés de voir les choses en grand, fondant d’immenses cités creusées à même la roche.
+
+Marchands, forgerons, joailliers et mineurs par nature, quand on voit un nain, c&#39;est le terme &quot;d&#39;artisan&quot; qui vient à l&#39;esprit.
+
+Ce sont également les Nains qui, en l’an 280, libérèrent les Minotaures de la tyrannie des Elfes Charbon. Malgré cet acte, les relations entre les deux peuples ne se sont jamais véritablement apaisées.</td><td>Un Nain adulte mesure en moyenne entre 1m00 et 1m40, ce sont les humanoïdes les plus petits. Il possède une pilosité très développée notamment chez les mâles, les femelles ne possèdent pas de barbe, bien que parfois un petit duvet pousse sur ces dernières.
+
+Le poids moyen d&#39;un nain est de 80kg, malgré leur taille, ils sont trapus et costauds.
+
+Les 3 couleurs principales de yeux pour les nains sont : Marron, Vert, Jaune.
+
+La couleur de la peau est de couleur claire et ne varie pas beaucoup entre les individus.
+
+Le point d&#39;origine des Nains sont les montagnes de Londolor situé dans Erisia, ce qui a conduit à la naissance de 3 ethnies de nains : Ouest, Est et Centre
+
+- Ceux de l&#39;Ouest sont de formidables artisans qui disposent d&#39;un physique plus musclé avec une peau un peu plus sombre, sûrement dû à l&#39;exposition quasiment permanente des forges et autres mines.
+
+- Ceux de l&#39;Est sont des commerçants dans l&#39;âme et disposent d&#39;un physique plus gras avec une peau plus claire.
+
+- Ceux du centre ont un physique un peu plus maigre que ceux de l&#39;ouest avec une peau qui tourne un peu vers le gris. Les dangers de la Ligne de partage ont amélioré leur résistance.
+
+Culture : Allemagne</td><td>16</td><td>4</td><td>0</td><td>3</td><td>3</td><td>Les armures lourdes ne les ralentissent pas, accès à toutes les classes.</td><td>Magie du Feu, Terre, Foudre, Arcane, Potentiel illimité en inné uniquement.</td><td>Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 chakra (jet de calme en stress)).</td><td>Condition d&#39;origine</td><td class="nul"></td><td>Don</td><td class="nul"></td><td>races</td><td>Les races › Nain › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_namazu"><td><a href="/donnees/race/#r-races_2f_namazu">races/namazu</a></td><td>Namazus</td><td>Une race hybride entre humain et requin, ces êtres sont de nature aventurière, ils écument les 7 mers à la recherche de gloire, de trésor et de frisson. Ce sont d&#39;excellents combattants qui aiment se battre tout comme les Orios, il n&#39;est pas rare de voir des Namazu dans des équipages de pirates ou de marins, voire même de les commander.
+
+Apparu avec tous les autres hybrides animaux dans les ans -400 à -350.</td><td>C&#39;est une race qui existe suite à une malédiction comme la plupart des hybrides animales, les membres d&#39;une secte d&#39;adorateurs d&#39;Océane se sont fait maudire par Anna la Déesse de la Fortune pour des raisons encore obscures, ces derniers sont devenus des monstres mi-humains mi-requins, assoiffés de sang et totalement aveugles. Océane leur a permis de conserver une formes humaines hybrides requins, ce qui leur permet d&#39;être les plus à l&#39;aise dans l&#39;eau, Brock a calmé leur soif de sang et Umbro leur a redonné la vue qu&#39;ils avaient perdue. Suite à ça, on retrouve plusieurs sociétés de Namazu :
+
+- Les Urbains : Les Namazus qui sont nés dans les grandes villes ou alors ceux qui ont rejeter des tribus, on les retrouve bien entendu en majorité dans les villes portuaires et dans des métiers qui ont un rapport avec l&#39;eau. Étonnamment, beaucoup travaillent dans des moulins à eau, loin des côtes.
+
+- Les Tribus du Sang : Ceux qui vouent un culte à Brock sont les les tribus du sang, ce sont de féroces guerriers et de redoutables pillards, ils aiment le combat mais ne sont pas forcément réputés pour leur loyauté au combat comme pourraient l&#39;être les Orios et les Minotaures. Ce sont des pirates cruels et particulièrement brutaux. Piller les corps après chaque combat est leur second passe-temps favori, ils sont responsables de la plupart des bateaux disparus en haute mer puisqu&#39;ils coulent systématiquement les navires qu&#39;ils viennent de nettoyer du sang de leurs ennemis.
+
+- Les Tribus de l&#39;Ombre : Des pirates particulièrement vicieux car ils sont réputés pour être des assassins particulièrement rusés et très bons tireurs à l&#39;arme à feu. Ils ne sont pas aussi belliqueux que leurs homologues du sang, ils sont bien plus intéressés par les trésors qu&#39;ils peuvent trouver en arpentant les 7 mers ou en volant discrètement les navires qui ne sont pas les leurs. D&#39;ailleurs... telles des hyènes, ça arrive assez souvent qu&#39;ils volent le butin des tribus du sang après leur combat.
+
+- Les Tribus de l&#39;Eau : Contrairement à ce qu&#39;on pourrait croire, la plupart des tribus namazus de l&#39;eau sont des pacifiques et de grands explorateurs des mers, ils sont connus pour avoir de très bons outils pour cartographier les océans ainsi que les profondeurs. Mais ils ne sont pas à sous-estimer, ils sont très zélotes et fidèles envers Océane qu&#39;ils considèrent comme la créatrice des Namazus. Chacune de leurs actions est toujours bénie au nom d&#39;Océane, la fille des eaux. Donc gare à celui qui manquera de respect à Océane, des formidables guerriers marins seront à ses trousses.</td><td>Les Namazus sont des humains avec des attributs de requins, ils possèdent une nageoire dorsale, des branchies, des oreilles en formes de nageoires ainsi qu&#39;une peau un peu écailleuse par endroit. Ils sont assez maigres pour la plupart, sauf bien entendu ceux du sang qui ont un physique bien plus épais.
+
+Il n&#39;y pas de différence notable entre les sexes, on retrouve juste les mêmes différences que chez les humains (cheveux, morphologie, etc...)
+
+La taille moyenne d&#39;un namazu est de 1m70
+
+Le poids moyen d&#39;un Namazu est de 65kg.
+
+Les 3 couleurs principales de yeux pour les namazus sont : Bordeaux, Mauve, Eau.
+
+Culture : Espagne</td><td>12</td><td>8</td><td>0</td><td>4</td><td>8</td><td>Armure naturelle de 3AP, Classe possible : Namazus.</td><td>Magie Eau, Ombre ou Sang en innée.</td><td>Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).</td><td>Magie innée</td><td class="nul"></td><td>Don</td><td class="nul"></td><td>races</td><td>Les races › Namazus › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_olwman"><td><a href="/donnees/race/#r-races_2f_olwman">races/olwman</a></td><td>Olwman</td><td>Une race hybride entre humain et hibou, ce sont des créatures qui affectionnent les endroits perchés mais aussi les tours dans les montagnes, là où ils peuvent se consacrer au savoir et à la connaissance.
+
+C&#39;est une race pour la plupart pacifique qui joue souvent le rôle de coursier de nuit, mais cette race avait déjà eu des soucis avec d&#39;autres races hybrides, notamment les Namazu ainsi que les Rokhs, guerre de territoire et de chasse.
+
+Apparu avec tous les autres hybrides animaux dans les ans -400 à -350.</td><td>Les Origines de cette race sont très mystérieuses, on parle d&#39;Umbro mais aussi de Notix dans leurs origines étant donné qu&#39;ils peuvent posséder cette magie de manière innée, mais aussi pour leur côté très raffiné et aussi leur soif de savoir.
+
+Tribus ou bien urbains, les olwmans possèdent tous une doctrine qu&#39;ils s&#39;efforcent de respecter à la lettre : &quot;Respecte tes aînés peu importe leur race mais encore plus si cet aîné sait plus de choses que toi&quot;. En effet, les olwman sont naturellement attirés par la connaissance et le savoir et ont bâti leur culture autour de ça. Dans les tribus d&#39;olwmans, le chef de la colonie est toujours un olwman très âgé qui sait beaucoup de choses, car chez les olwman, être âgé signifie être plus sage et intelligent, ce n&#39;est pas un hasard d&#39;ailleurs que la majorité des chefs de tribus sont des olwman qui sont innés de la magie de l&#39;Espace/Temps, vu qu&#39;ils peuvent vivre plus longtemps grâce à cette magie, donc ils sont portés en respect par les Olwmans. Au-delà de ça, ils ont des manières raffinées, des saveurs raffinées ils aiment bien la bonne nourriture, qui font un peu penser à comment se comporte le Dieu de l&#39;Ombre Umbro.</td><td>C&#39;est une race assez petite pour la plupart des individus, pas plus de 1m60 en moyenne, ils sont également très légers avec un petit 50kg en moyenne, leur anatomie particulière et le fait qu&#39;ils sont capables de voler avec leurs propres ailes font que cette race se doit d&#39;être légère en poids. Comme dit précédemment, les Olwmans sont tous capables de voler car leurs ailes sont aussi leurs bras, leurs mains font grandement penser à des serres et ils possèdent des plumes presque partout sur leur corps (cheveux, bras, dos, un peu sur les jambes). Leurs pieds sont des serres très acérées qui peuvent utilisé comme des pieds pour marcher. Comme tous les hybrides animaux, ils ont la tête humaine. Comme ce sont des demi-hiboux, ils possèdent des aigrettes à la place des sourcils.
+
+Le plumage des olwmans est sombre (noir, marron, etc...)
+
+Mâle
+
+Femelle
+
+Les 3 couleurs principales de yeux pour les olwmans sont : Rose, Mauve, Vert.
+
+Culture : Angleterre</td><td>8</td><td>12</td><td>0</td><td>6</td><td>0</td><td>Peut voler, Classe possible : Olwman.</td><td>Magie Vent, Ombre et Temps/Espace en innée, ne peut pas nager.</td><td>Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).</td><td>Magie innée</td><td class="nul"></td><td>Don</td><td class="nul"></td><td>races</td><td>Les races › Olwman › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_orios"><td><a href="/donnees/race/#r-races_2f_orios">races/orios</a></td><td>Orios</td><td>Race hybride entre humain et ours, l&#39;origine de cette race est assez obscure.
+
+Ce sont des puissants combattants qui aiment se battre même si la plupart des Orios sont plutôt pacifiques au niveau des relations entre les différentes races. Les Orios sont reliés à la magie de la Terre, la magie de l&#39;Eau et la magie du Sang.
+
+Cette race est arrivée en -430, peu de temps après les premiers humains.</td><td>Ce sont les deuxièmes hybrides animaux à être apparus sur Maverick. Des rumeurs disent que les Orios sont une création du Dieu de la Force, Brock. D&#39;autres parlent d&#39;une secte vénérant ce même dieu, le dieu aurait accordé sa bénédiction sur la secte entière et les aurait changés en Orios. Ce sont les plus crédibles car les Orios font partie des races qui possèdent la plus grande force naturelle qui existe, seuls les minotaures peuvent les égaler.
+
+Évidemment, comme tous les hybrides animaux, les Orios sont divisés en plusieurs catégories de sociétés :
+
+- Les Urbains : De véritables forces de la nature, on les retrouve dans globalement tous les métiers qui demandent une paire de gros bras et sont appréciés pour leur talent pour travailler le bois, la menuiserie, la taille de pierre, le déménagement, la logistique, maçonnerie, etc ... Bref, on les retrouve un peu partout là où la force est utile.
+
+- Les Orios Sang : Grands guerriers honorables pour certains, redoutables barbares pour d&#39;autres, les Orios qui vénèrent celui qu&#39;ils appellent &quot;Père Ours&quot; sont de puissants guerriers où la force prime, bien entendu dans leur société, le plus fort dirige et doit en permanence imposer sa force envers ceux qui souhaitent prendre sa place. Bien qu&#39;ils aient l&#39;air très effrayants avec leur physique particulièrement développé, ils ne sont pas aussi brutaux que ça pour la plupart. On les retrouve principalement dans les plaines.
+
+- Les Orios Terre : Surnommés les Ouvriers de Dimitri, les Orios de la Terre sont un peuple de puissants orios qui entretiennent les forêts ou les grands plateaux où la pierre abonde, ils sont parfaitement capables de se défendre, car ils sont bien plus ingénieux que leur homologue du Sang. Le chef des tribus de la terre est désigné selon son expérience dans les travaux manuels comme la maçonnerie, la taille de pierre ou la menuiserie, cela dépend des tribus. On les retrouve principalement au cœur des forêts et surplombant les plateaux rocheux.
+
+- Les Orios Eau : Pierre précieuse et poissons, voilà ce qui définit les tribus d&#39;Orios de l&#39;eau, ce sont des joailliers qui recherchent de belles pierres précieuses dans les rivières, fleuves, torrents, ruisseaux, etc ... Et au-delà de ça, ils sont d&#39;excellents pêcheurs, que ce soit avec l&#39;outil ou à la main. Ce sont des pacifiques qui accueillent avec plaisir les étrangers dans leur clan tant qu&#39;ils ne sont pas menaçants. Ce sont de redoutables guerriers malgré tout, pas autant que leur homologue de la terre ou du sang, mais ils n&#39;hésiteront pas à défendre leur clan ou la parole de leur mère à tous, Océane. On les retrouve près des points d&#39;eau douce.</td><td>Les Orios sont comme les humains, mais en plus grand, en moyenne un Orios adulte mesure en moyenne 1m80 et avec les bonnes magies, ça peut grimper à 2m30, même si ça reste rare. Il possède les oreilles d&#39;ours, la fourrure d&#39;un ours qui varie de couleur selon l&#39;habitat naturel, fourrure qui est présente sur le dos, les bras, les jambes, les cheveux sont généralement plus longs, sourcils plus épais en général.
+
+Mâle
+
+Les mâles ont beaucoup de fourrure, notamment au niveau du dos et des bras. Ils sont naturellement très musclés et possèdent 15 % de muscles en plus par rapport aux femelles. Le poids moyen d&#39;un mâle adulte est de 100 kg. Leur barbe reste assez développée, mais pas autant qu&#39;on pourrait le croire. Les magies de Terre et de Sang les marquent énormément, se manifestant par davantage de plaques de terre ou de veines saillantes par rapport aux autres races.
+
+Femelle
+
+Les femelles sont moins musclées que les mâles, mais elles restent plus puissantes physiquement que de nombreux mâles d&#39;autres races. Leurs oreilles sont légèrement plus petites, leur pilosité moins importante, mais elles possèdent plus de fourrure au niveau du ventre et des jambes. Elles ont également une poitrine légèrement plus volumineuse que celle des humaines.
+
+Les 3 couleurs principales de yeux pour les orios sont : Marron, Bordeaux, Bleu.
+
+Culture : Canada</td><td>20</td><td>1</td><td>0</td><td>4</td><td>5</td><td>Les griffes sont des armes naturelles de taille, Classe possible : Orios.</td><td>Magie Terre, Eau et Sang en innée, l&#39;Agilité a 3 maximum, La Force est obligatoirement à 3 minimum.</td><td>Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).</td><td>Magie innée</td><td class="nul"></td><td>Don</td><td class="nul"></td><td>races</td><td>Les races › Orios › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_rokh"><td><a href="/donnees/race/#r-races_2f_rokh">races/rokh</a></td><td>Rokh</td><td>Une race hybride entre humain et aigle, ce sont des créatures qui vivent en petite communauté dans les montagnes perchées, là où c&#39;est accessible pour les créatures ailées. Ils sont très reliés à la foudre et sont même capables d’appeler cette magie en cas de besoin, certaines théories disent que cette race a pour origine Volt, le dieu de la Foudre.
+
+C&#39;est une race pour la plupart pacifique qui joue souvent le rôle de coursier.
+
+Apparu avec tous les autres animaux hybrides autres dans les ans -400 à -350..</td><td>Selon la légende, cette race fut créée par le Dieu de la Foudre Volt, d&#39;où leur affinité particulière avec la foudre et le fait qu&#39;il est le plus souvent prié par rapport aux deux autres dieux des Rokh que sont Aurora et Eoline. Rien de sûr et peu importe, les Rokhs existent et ne comptent pas s&#39;éteindre de sitôt. Cette race possède une culture Amérindienne et affectionne tout ce qui est peinture corporelle et tatouages.
+
+Il existe deux types de Rokh dans le monde :
+
+- Les Rokhs Tribaux, ce sont des Rokhs qui s&#39;organisent en tribu un peu partout dans le monde, c&#39;est assez simple, mais les dirigeants sont un cercle de 5 individus dominé par un Chef, on reconnaît facilement les grades grâce à des tatouages en forme de trait sur le front, le dirigeant de la tribu en possède 5 et les différents membres du cercle en possèdent 4. Dans les tribus, chaque membre possède des traits sur le front, chacun a une symbolique : 1 trait = Naissance, 2 traits = Adulte, 3 traits = Parent et Marié(e), 4 traits = Membre du Cercle, 5 traits = Guide de la colonie. Les tribus ne se mélangent pas trop avec les autres tribus ou bien les urbains, mais les rencontres entre aventuriers et locaux sont assez fréquentes et permettent des échanges de savoir.
+
+- Les Rokhs Urbains, ce sont des Rokhs qui vivent tout simplement hors des tribus, ils gardent des bases de leur culture rokh, mais c&#39;est juste une base. Ils sont généralement les coursiers de la journée et gèrent les transports aériens, avec des ailes c&#39;est plus simple.
+
+Ils ont beau être différents, pourtant les deux types de Rokhs ont gardé une tradition qu&#39;ils partagent avec les Olwmans, c&#39;est que la ponte des œufs doit se faire toujours sur le sommet de volcan endormi de l&#39;Île Œuf qui selon des rumeurs le point d&#39;origine des premiers Rokhs et Olwmans.
+
+Eh oui ! Les Rokhs pondent des œufs pour donner naissance, la première moitié du temps, le bébé est dans le ventre de sa mère et la seconde moitié, la mère va pondre l&#39;œuf qui contient le futur enfant. Malgré la résistance de l&#39;œuf, la prudence est de mise, car il suffit d&#39;une cassure pour que l&#39;enfant meure à cause de maladie ou d&#39;infection.</td><td>C&#39;est une race assez petite pour la plupart des individus, pas plus de 1m60 en moyenne, ils sont également très légers avec un petit 60kg en moyenne, leur anatomie particulière et le fait qu&#39;ils sont capables de voler avec leurs propres ailes font que cette race se doit d&#39;être légère en poids.
+
+Il y a une petite différence entre les sexes au-delà des éléments communs aux humains : Les femelles sont plus grandes en taille que les mâles.
+
+Comme dit précédemment, les Rokhs sont tous capables de voler car leurs ailes sont aussi leurs bras, leurs mains font grandement penser à des serres et ils possèdent des plumes presque partout sur leur corps (cheveux, bras, dos, un peu sur les jambes). Leurs pieds sont des serres très acérées qui peuvent utilisé comme des pieds pour marcher. Comme tous les hybrides animaux, ils ont la tête humaine.
+
+Le plumage des rokhs est clair (blanc, marron, etc...)
+
+Les 3 couleurs principales de yeux pour les rokh sont : Vert, Jaune, Beige.
+
+Culture : Amérindien</td><td>9</td><td>11</td><td>0</td><td>6</td><td>0</td><td>Peut voler naturellement, Classe possible : Rokh.</td><td>Magie Vent, Foudre ou Lumière en innée, ne peut pas nager.</td><td>Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).</td><td>Magie innée</td><td class="nul"></td><td>Don</td><td class="nul"></td><td>races</td><td>Les races › Rokh › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr><tr id="r-races_2f_satyre"><td><a href="/donnees/race/#r-races_2f_satyre">races/satyre</a></td><td>Satyre</td><td>Une race hybride entre humains et bélier (brebis pour les femelles), cette race a pour origine le Dieu de la Débauche Bauc qui est lui-même un Satyre.
+
+Apparu avec tous les autres hybrides animaux dans les ans -400 à -350.</td><td>La cinquième race hybride animale est née d’une manière particulièrement atypique. À l’origine, le premier satyre ne fut nul autre que Bauc, dieu de la débauche et des arts.
+
+Lorsque vint le temps de créer les premiers ambassadeurs — les fils et filles des dieux — Bauc façonna un être à son image : charismatique, séduisant et animé des mêmes passions que lui. « Tu es ma plus grande sculpture », déclara-t-il. Cet être, nommé Soleil, aspirait à suivre les traces de son créateur : « Je ferai comme mon créateur : je sculpterai, mais à la manière des mortels. »
+
+Soleil se rendit alors dans la plus grande maison de plaisirs du monde mortel. Cinquante femmes s’y présentèrent, et toutes furent touchées par la grâce de l’ambassadeur de la débauche. Elles partageaient trois affinités magiques : le Feu, la Foudre et la Terre. Bien que la magie innée du demi-dieu demeure inconnue, de ces unions naquirent les premiers satyres.
+
+Depuis lors, les satyres perpétuent l’héritage de leur origine : ils incarnent la débauche et les plaisirs, apportant légèreté et insouciance dans le monde des mortels.
+
+Bien que liés à trois magies innées distinctes, les satyres ne se structurent pas en grands peuples tribaux, contrairement à la plupart des hybrides animaux. En raison des circonstances de leur naissance, ils sont aujourd’hui majoritairement urbains.
+
+Un aspect particulièrement intéressant de cette race réside dans la présence de deux grandes philosophies de vie, aux comportements radicalement opposés : d’un côté, certains satyres embrassent pleinement leur héritage et vivent dans la débauche et le libertinage, fidèles à l’essence même de leur origine divine. De l’autre, certains adoptent une voie totalement opposée. Ils font preuve d’une fidélité inébranlable envers la personne qu’ils ont choisie, développant des liens profonds et exclusifs, presque sacrés.
+
+Ces deux visions coexistent au sein de la race, sans qu’aucune ne soit considérée comme dominante, reflétant ainsi la dualité inhérente à leur nature.</td><td>Le poids moyen d&#39;un Satyre est de 70kg.
+
+Les satyres sont des humanoïdes de taille similaires aux humains. Deux cornes de chèvres ornent leur crâne, une laine douce et soyeuse parcourt en partie leur corps : leur cou, leur poitrine, le haut de leur dos, leurs bras et leurs jambes sont concernés, le reste est de peau. La laine sur leur poitrine forme d&#39;ailleurs un motif de coeur, chez les femelles, cette laine forme également une brassière au niveau des seins. Leurs pieds sont des sabots, ils sont également plantigrades.
+
+Les 3 couleurs principales de yeux pour les satyres sont : Marron, Jaune, Rouge.
+
+Culture : Italie</td><td>11</td><td>9</td><td>0</td><td>5</td><td>4</td><td>Classe possible : Satyre.</td><td>Magie Terre, Foudre ou Feu en innée.</td><td>Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et chakra (jet de calme en stress)).</td><td>Magie innée</td><td class="nul"></td><td>Don</td><td class="nul"></td><td>races</td><td>Les races › Satyre › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)</td></tr></tbody></table></div><script>
+    (() => {
+      const table = document.getElementById('donnees');
+      const champ = document.getElementById('filtre');
+      const compte = document.getElementById('compte');
+      if (!table || !champ) return;
+      const corps = table.tBodies[0];
+      const lignes = [...corps.rows];
+      const decalage = table.tHead.rows[0].cells[0].textContent === 'Page' ? 1 : 0;
+      const plier = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+      const textes = lignes.map((tr) => plier([...tr.cells].slice(decalage).map((c) => c.textContent).join(' ')));
+      const maj = () => {
+        const q = plier(champ.value.trim());
+        let n = 0;
+        lignes.forEach((tr, i) => { const ok = !q || textes[i].includes(q); tr.hidden = !ok; if (ok) n += 1; });
+        compte.textContent = `${n.toLocaleString('fr-FR')} / ${lignes.length.toLocaleString('fr-FR')} lignes`;
+      };
+      champ.addEventListener('input', maj);
+      table.tHead.addEventListener('click', (e) => {
+        const th = e.target.closest('th');
+        if (!th || th.cellIndex < decalage) return;
+        const i = th.cellIndex;
+        const sens = th.dataset.sens === 'asc' ? 'desc' : 'asc';
+        table.tHead.querySelectorAll('th').forEach((x) => { delete x.dataset.sens; });
+        th.dataset.sens = sens;
+        const val = (tr) => tr.cells[i].textContent.trim();
+        const nombres = lignes.every((tr) => val(tr) === '' || !Number.isNaN(Number(val(tr))));
+        lignes.sort((a, b) => {
+          const x = val(a);
+          const y = val(b);
+          let c;
+          if (nombres) c = x === y ? 0 : x === '' ? -1 : y === '' ? 1 : Number(x) - Number(y);
+          else c = x.localeCompare(y, 'fr', { numeric: true });
+          return sens === 'asc' ? c : -c;
+        });
+        lignes.forEach((tr) => corps.appendChild(tr));
+      });
+    })();
+  </script></main><footer class="site-footer"><span>Projet de fan pour Maverick JDR — contenu issu du Discord et des Google Docs du MJ.</span><span class="site-footer__version">V0.1.94</span></footer><script>
+      (function () {
+        var toggles = document.querySelectorAll('.nav-group__toggle');
+        var rows = document.querySelectorAll('.site-nav__items');
+        toggles.forEach(function (t) {
+          t.addEventListener('click', function () {
+            toggles.forEach(function (o) { o.setAttribute('aria-pressed', o === t ? 'true' : 'false'); });
+            rows.forEach(function (r) { r.hidden = r.getAttribute('data-group') !== t.getAttribute('data-group'); });
+          });
+        });
+      })();
+    </script></body></html>

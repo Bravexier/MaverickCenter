@@ -1,0 +1,84 @@
+// Races « pures » et races « hybrides ». Fonctions pures.
+//
+// Une race hybride est une race qui a accès à sa propre classe raciale (une classe « Hybride Animal » du classeur des
+// classes, qui porte le nom de la race : la classe « Orios », classes/orios, pour la race Orios) ; les autres races sont pures. La
+// distinction ne se déduit pas du texte des pages : elle suit l'existence de la page de la classe raciale, sauf pour les
+// races de HYBRIDES_SANS_CLASSE_RACIALE (décision R14 du propriétaire) et de celles qu'on a créées hybrides depuis le site de dev avant de leur
+// donner leur classe raciale (mot-clé « race hybride », TAG_RACE_HYBRIDE). Que les races hybrides à classe raciale aient 3 magies innées est un
+// constat de l'import, pas une règle (décision R30) : test/races-magies-content.test.mjs le garde comme effectif de l'import.
+import { normalize } from './text.mjs';
+
+const isRacialClass = (entry) => entry.id.startsWith('classes/') && (entry.data.tags ?? []).some((t) => normalize(t) === 'hybride-animal');
+const baseName = (title) => normalize(title);
+
+/**
+ * Races hybrides qui n'ont pas de classe raciale. Décision R14 du propriétaire : « Le drassah'thac est considéré comme
+ * race hybride, c'est la seule race hybride à avoir toutes les magies. »
+ */
+export const HYBRIDES_SANS_CLASSE_RACIALE = new Set(['races/drassahthac']);
+
+/**
+ * Ordre d'affichage des races, races pures puis hybrides (demande du propriétaire, liste de /races/). Ce n'est pas
+ * l'ordre de l'onglet « Race » de la fiche (race.ordre dans la base). Une race absente de la liste vient après, par titre.
+ */
+export const ORDRE_DES_RACES = [
+  // pures
+  'humain', 'nain', 'elfe-forestier', 'elfe-dore', 'elfe-argente', 'elfe-noir', 'farfadet', 'felfe', 'majin', 'hujin', 'drakos', 'lamia', 'mort-vivant',
+  // hybrides
+  'drassahthac', 'orios', 'fenrir', 'kitsune', 'olwman', 'rokh', 'namazu', 'minotaure', 'satyre', 'medusain', 'jackalope', 'marcass', 'anansi', 'goleois',
+].map((slug) => `races/${slug}`);
+
+/** Page de la classe raciale d'une race, ou null si la race n'en a pas. */
+export function racialClassOf(entries, race) {
+  const name = normalize(race.data.title);
+  return entries.find((e) => isRacialClass(e) && baseName(e.data.title) === name) ?? null;
+}
+
+/** Page de la race à laquelle appartient une classe raciale, ou null si la classe n'est la classe d'aucune race. */
+export function raceOfClass(entries, cls) {
+  if (!isRacialClass(cls)) return null;
+  const name = baseName(cls.data.title);
+  return entries.find((e) => e.id.startsWith('races/') && normalize(e.data.title) === name) ?? null;
+}
+
+/**
+ * Mot-clé (normalisé) d'une race hybride créée depuis le site de dev avant sa classe raciale (lib/edition-modele.mjs#MOT_CLE_RACE_HYBRIDE, demande du
+ * propriétaire : « à la création d'une classe raciale, on doit sélectionner une race hybride qui n'en a pas déjà »).
+ */
+export const TAG_RACE_HYBRIDE = 'race-hybride';
+const marqueeHybride = (race) => (race.data?.tags ?? []).some((t) => normalize(t) === TAG_RACE_HYBRIDE);
+
+/** @returns {'hybride' | 'pure'} */
+export const raceKind = (entries, race) =>
+  HYBRIDES_SANS_CLASSE_RACIALE.has(race.id) || marqueeHybride(race) || racialClassOf(entries, race) ? 'hybride' : 'pure';
+
+/** Couleur des races pures et des races hybrides : celle de la liste /races/ et du bandeau des pages de race (repère visuel sans valeur de règle). */
+export const RACE_COLORS = { pure: '#2f6a6a', hybride: '#8a5a1c' };
+
+export const RACE_GROUPS = [
+  { key: 'pures', kind: 'pure', label: 'Races pures' },
+  { key: 'hybrides', kind: 'hybride', label: 'Races hybrides' },
+];
+
+const rang = (race) => {
+  const i = ORDRE_DES_RACES.indexOf(race.id);
+  return i < 0 ? ORDRE_DES_RACES.length : i;
+};
+const byOrdre = (a, b) => rang(a) - rang(b) || a.data.title.localeCompare(b.data.title, 'fr');
+
+/** Races dans l'ordre de la liste /races/ (ORDRE_DES_RACES, pures puis hybrides) ; une race absente de la liste vient après, par titre. */
+export const dansLOrdreDesRaces = (races) => [...races].sort(byOrdre);
+
+/**
+ * Range les races en groupes (pures puis hybrides, chacun avec sa couleur), chacun dans l'ordre de ORDRE_DES_RACES ; un groupe vide est omis.
+ * `entries` contient les pages de races ET de classes (les classes servent à reconnaître les hybrides).
+ */
+export function groupRaces(entries) {
+  const races = entries.filter((e) => e.id.startsWith('races/'));
+  return RACE_GROUPS.map((g) => ({
+    key: g.key,
+    label: g.label,
+    couleur: RACE_COLORS[g.kind],
+    entries: races.filter((r) => raceKind(entries, r) === g.kind).sort(byOrdre),
+  })).filter((g) => g.entries.length > 0);
+}

@@ -1,0 +1,629 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Créer et modifier un personnage prétiré, étape par étape, avec les règles de Maverick"><link rel="icon" type="image/png" sizes="32x32" href="/favicon.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><title>Fiche de personnage — Maverick Center</title><link rel="stylesheet" href="/_astro/Base.C8jCj17B.css"></head><body><header class="site-header"><div class="site-header__inner"><a class="brand" href="/"><img src="/logo.webp" alt="Maverick Center" width="319" height="320"></a><div class="site-header__menu"><nav class="site-nav" aria-label="Navigation principale"><ul class="site-nav__groups"><li><button type="button" class="nav-group__toggle" data-group="regles" aria-pressed="false">Règles</button></li><li><button type="button" class="nav-group__toggle" data-group="personnages" aria-pressed="true" aria-current="true">Personnages</button></li><li><button type="button" class="nav-group__toggle" data-group="inventaire" aria-pressed="false">Inventaire</button></li><li><button type="button" class="nav-group__toggle" data-group="codex" aria-pressed="false">Codex</button></li><li><button type="button" class="nav-group__toggle" data-group="outils" aria-pressed="false">Outils</button></li></ul><ul class="site-nav__items" data-group="regles" hidden><li><a href="/guide/">Guide</a></li><li><a href="/races/">Races</a></li><li><a href="/magies/">Magies</a></li><li><a href="/classes/">Classes</a></li><li><a href="/metiers/">Métiers</a></li></ul><ul class="site-nav__items" data-group="personnages"><li><a href="/fiche/" aria-current="page">Fiche de personnage</a></li><li><a href="/personnages/">Listes</a></li><li><span class="nav-soon">Groupes <small>(bientôt)</small></span></li><li><span class="nav-soon">Chroniques <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="inventaire" hidden><li><a href="/ressources/armes/">Armes</a></li><li><a href="/ressources/armures/">Armures</a></li><li><a href="/ressources/accessoires/">Accessoires</a></li><li><span class="nav-soon">Objets à la ceinture <small>(bientôt)</small></span></li><li><a href="/ressources/livre-parchemin/">Livres &amp; Parchemins</a></li><li><a href="/ressources/pieces-elementaires/">Pièces élémentaires</a></li></ul><ul class="site-nav__items" data-group="codex" hidden><li><span class="nav-soon">Chronologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Carte &amp; lieux <small>(bientôt)</small></span></li><li><span class="nav-soon">Mythologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Bestiaire <small>(bientôt)</small></span></li><li><span class="nav-soon">Factions <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="outils" hidden><li><span class="nav-soon">Statistiques <small>(bientôt)</small></span></li><li><a href="/mise-a-jour/">Mise à jour</a></li><li><span class="nav-soon">Boîte à idée <small>(bientôt)</small></span></li><li><a href="/galeries/">Galeries</a></li><li><a href="/recherche/">Recherche</a></li><li><a href="/archives/">Archives</a></li></ul></nav></div></div></header><main><style>/* Chargé uniquement depuis pages/fiche/index.astro (?raw) : la fiche de personnage (création et modification d'un prétiré).
+   Un bloc par étape du guide (« Créer son personnage », puis progresser et jouer), teinté de la couleur de sa partie (lib/guide.mjs#PARTIES, --etape),
+   sans numéro ; les blocs côte à côte en rangées sur un écran large (demandes du propriétaire) ; races, magies et classes en PASTILLES comme sur
+   /races/, /magies/ et /classes/ (pilule bordée et teintée de la couleur, point de couleur, nom en gras), la choisie pleine, celles que les règles
+   ferment grisées et barrées.
+   Compacte (demande du propriétaire : « c'est TROP GROS ») : texte et marges réduits, choix dans des menus déroulants, curseurs. */
+/* les rangées de blocs ont besoin de place : la fiche prend plus que la largeur des autres pages */
+main:has(> .fiche) { max-width: 100rem; }
+.fiche {
+  --vert: #2e7d4f;
+  display: grid;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+/* l'attribut hidden l'emporte sur les display des blocs (un champ caché par le script reste caché) */
+.fiche [hidden] { display: none !important; }
+.fiche input:not([type='range'], [type='checkbox'], [type='radio']), .fiche select, .fiche textarea, .fiche button { padding: 0.22rem 0.45rem; font-size: 0.85rem; }
+
+/* ----------------------------------------------------------------- en-tête : titre */
+.fiche-entete { display: grid; gap: 0.1rem; }
+.fiche-entete h1 { margin: 0; font-size: clamp(1.25rem, 3vw, 1.6rem); line-height: 1.15; }
+.fiche-surtitre { margin: 0; color: var(--vert); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.fiche-surtitre a { color: inherit; }
+
+/* jauge d'XP, en tête du bloc de progression (demande du propriétaire) */
+.xp { display: grid; gap: 0.25rem; }
+.xp__ligne { display: flex; align-items: center; gap: 0.4rem; }
+.xp__niveau { margin-right: auto; color: var(--vert); }
+.fiche .xp__ligne input { width: 6.5rem; text-align: right; font-variant-numeric: tabular-nums; }
+.xp__objectif { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fiche .xp__plus { width: 1.8rem; padding: 0.1rem 0; font-weight: 700; color: #fff; background: var(--vert); border-color: var(--vert); border-radius: 999px; }
+.xp__jauge { height: 0.5rem; overflow: hidden; border: 1px solid color-mix(in srgb, var(--vert) 45%, var(--border)); border-radius: 999px; background: color-mix(in srgb, var(--vert) 8%, var(--surface)); }
+.xp__rempli { display: block; width: 0; height: 100%; background: var(--vert); transition: width 200ms ease; }
+.xp__ajout { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
+.xp__ajout label { display: flex; align-items: center; gap: 0.35rem; color: var(--muted); }
+.fiche .xp__ajout input { width: 5.5rem; }
+
+/* ----------------------------------------------------------------- barre d'enregistrement */
+.fiche-barre {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.6rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--text) 9%, transparent);
+}
+.fiche-barre label { display: flex; align-items: center; gap: 0.35rem; font-size: 0.85rem; }
+.fiche .fiche-barre__principal { font-weight: 700; color: #fff; background: var(--vert); border-color: var(--vert); padding-inline: 0.9rem; }
+.fiche-barre__principal:hover:not(:disabled) { filter: brightness(1.1); }
+.fiche .fiche-barre__danger { color: var(--danger); background: none; border-color: color-mix(in srgb, var(--danger) 50%, var(--border)); }
+.fiche .fiche-barre__danger:hover { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, var(--surface)); }
+.fiche-bouton-fichier span {
+  display: inline-block;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  cursor: pointer;
+}
+.fiche-bouton-fichier span:hover, .fiche-bouton-fichier span:focus-visible { border-color: var(--accent); }
+.fiche-barre > button:not(.fiche-barre__principal), .fiche-bouton-fichier span { padding: 0.2rem 0.55rem; font-size: 0.8rem; }
+.fiche-message { flex: 1 1 12rem; margin: 0; font-size: 0.85rem; }
+.fiche-message:empty { display: none; }
+.fiche-message[data-ton='ok'] { color: var(--good); }
+.fiche-message[data-ton='erreur'] { color: var(--danger); }
+.fiche-message[data-ton='attente'] { color: var(--muted); }
+.fiche-niveau-badge {
+  padding: 0.05rem 0.6rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--vert) 14%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--vert) 50%, var(--border));
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* sommaire des blocs : une pastille par bloc, point dans la couleur de sa partie (sans numéro) */
+.fiche-etapes { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0; padding: 0; list-style: none; }
+.fiche-etapes a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.1rem 0.6rem 0.1rem 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--cadre) 45%, var(--border));
+  border-radius: 999px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--cadre) 10%, var(--surface)), color-mix(in srgb, var(--cadre-2) 10%, var(--surface)));
+  color: var(--text);
+  font-size: 0.78rem;
+  text-decoration: none;
+}
+.fiche-etapes a:hover { border-color: var(--cadre-trait); }
+.fiche-etapes a::before {
+  content: '';
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1px solid var(--cadre-trait);
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--cadre) 50%, var(--cadre-2) 50%);
+}
+
+/* cadres des blocs (bordure, bandeau du titre) et sommaire : la couleur de la magie innée, en dégradé vers celle de la magie acquise (demande du
+   propriétaire ; --magie-1 et --magie-2 posées par le script) ; sans magie innée, celle de la partie du guide (--etape). Seuls les cadres changent :
+   caractéristiques, attributs, pastilles et curseurs gardent leurs couleurs. --cadre-trait : la couleur mêlée d'un peu de texte, pour qu'un trait
+   blanc (Vide) ou noir (Corruption) reste visible. */
+.fiche-etape, .fiche-etapes a {
+  --cadre: var(--etape);
+  --cadre-2: var(--cadre);
+  --cadre-trait: color-mix(in srgb, var(--cadre) 80%, var(--text));
+  --cadre-trait-2: color-mix(in srgb, var(--cadre-2) 80%, var(--text));
+}
+.fiche[data-magie] :is(.fiche-etape, .fiche-etapes a) { --cadre: var(--magie-1); --cadre-2: var(--magie-2, var(--magie-1)); }
+
+/* rangées de blocs (demande du propriétaire) : 1-2-3, attributs-progression, caractéristiques-sorts, maîtrises, équipement-notes. position : le
+   panneau d'un menu déroulant s'étend sur toute la rangée, par-dessus les blocs voisins */
+.fiche-rangee { position: relative; display: grid; gap: 0.75rem; }
+@media (min-width: 48rem) {
+  .fiche-rangee--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 58rem) {
+  .fiche-rangee--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fiche-rangee--large { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+}
+@media (min-width: 72rem) {
+  .fiche-rangee--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ----------------------------------------------------------------- étapes */
+.fiche-etape {
+  --etape-doux: color-mix(in srgb, var(--etape) 9%, var(--surface));
+  --etape-ligne: color-mix(in srgb, var(--etape) 40%, var(--border));
+  scroll-margin-top: 3.5rem;
+  /* bordure en dégradé, coins arrondis : le dégradé peint sous la bordure transparente, la surface par-dessus le reste */
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius) + 3px);
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(90deg, color-mix(in srgb, var(--cadre-trait) 50%, var(--border)), color-mix(in srgb, var(--cadre-trait-2) 50%, var(--border))) border-box;
+}
+.fiche-etape > h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.35rem 0.7rem;
+  border-radius: calc(var(--radius) + 2px) calc(var(--radius) + 2px) 0 0;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--cadre) 16%, var(--surface)), color-mix(in srgb, var(--cadre-2) 16%, var(--surface)));
+  border-bottom: 2px solid var(--cadre-trait);
+  border-image: linear-gradient(90deg, var(--cadre-trait), var(--cadre-trait-2)) 1;
+  font-size: 0.98rem;
+}
+/* un compteur dans le coin du bloc (quota de maîtrise, décision R32) */
+.fiche-etape--coin { position: relative; }
+.fiche-etape--coin > h2 { padding-right: 11rem; }
+.fiche-etape__coin { position: absolute; top: 0.35rem; right: 0.7rem; background: var(--surface); }
+.fiche-etape__corps { display: grid; align-content: start; gap: 0.65rem; padding: 0.6rem 0.75rem 0.75rem; }
+.fiche-etape h3 { margin: 0 0 0.3rem; font-size: 0.9rem; color: color-mix(in srgb, var(--etape) 65%, var(--text)); }
+.fiche-aide { margin: 0; color: var(--muted); font-size: 0.82rem; }
+.fiche-aide a { color: inherit; }
+
+/* champs */
+.fiche-champs { display: grid; gap: 0.5rem 0.75rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr)); }
+.fiche-champ { display: grid; gap: 0.15rem; font-size: 0.85rem; }
+.fiche-champ > span { color: var(--muted); font-size: 0.78rem; }
+.fiche-champ input, .fiche-champ select, .fiche-champ textarea { width: 100%; }
+.fiche-champ--large { grid-column: 1 / -1; }
+.fiche-champ--ligne { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.fiche-champ textarea { min-height: 4.5rem; resize: vertical; }
+.fiche-coche { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; }
+.fiche input[type='number'] { max-width: 6.5rem; }
+.fiche input[aria-invalid='true'], .fiche select[aria-invalid='true'] { border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger); }
+
+/* ----------------------------------------------------------------- menus déroulants des choix (demande du propriétaire, pour gagner de la place) */
+.choix-grille { display: grid; gap: 0.45rem 0.75rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); align-items: start; }
+.choix > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.1rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--etape-ligne);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  list-style: none;
+}
+.choix > summary::-webkit-details-marker { display: none; }
+.choix > summary::after { content: '▾'; margin-left: auto; color: var(--muted); }
+.choix[open] > summary { border-color: var(--etape); box-shadow: 0 0 0 1px var(--etape); }
+.choix[open] > summary::after { content: '▴'; }
+.choix > summary:hover, .choix > summary:focus-visible { border-color: var(--etape); outline: none; }
+.choix__etiquette { flex: none; color: var(--muted); font-size: 0.78rem; }
+.choix__valeur { display: flex; flex-wrap: wrap; gap: 0.3rem; min-width: 0; }
+.choix__pastille {
+  --c: var(--etape);
+  padding: 0.05rem 0.6rem;
+  border-radius: 999px;
+  background: var(--c);
+  color: var(--texte-sur-c, #fff);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+.choix__pastille[data-refus] { outline: 2px dashed var(--danger); outline-offset: 1px; }
+.choix__verrou { font-weight: normal; opacity: 0.9; }
+.choix__vide { color: var(--muted); font-style: italic; }
+.choix__panneau {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  max-height: min(70vh, 34rem);
+  overflow: auto;
+  margin-top: 0.3rem;
+  padding: 0.6rem;
+  border: 1px solid var(--etape);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+/* ----------------------------------------------------------------- pastilles (dans les menus, et les deux modes de classe) */
+.pastilles { display: grid; gap: 0.35rem 0.45rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 8.5rem), 1fr)); margin: 0; padding: 0; list-style: none; }
+.pastilles--etroites { display: flex; flex-wrap: wrap; }
+.pastilles--etroites .pastille { width: auto; padding-inline: 0.8rem; }
+/* classes : les cinq colonnes de /classes/ côte à côte, pastilles plus serrées */
+.groupes-pastilles.groupes-pastilles--classes { grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr)); gap: 0.6rem; }
+.groupes-pastilles--classes .pastilles { grid-template-columns: 1fr; gap: 0.3rem; }
+.groupes-pastilles--classes .pastille { min-height: 1.75rem; font-size: 0.8rem; padding-block: 0.15rem; }
+.groupe-pastilles { --c: var(--etape); display: grid; gap: 0.35rem; }
+.groupe-pastilles > h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding-bottom: 0.2rem;
+  border-bottom: 2px solid var(--c);
+  color: color-mix(in srgb, var(--c) 60%, var(--text));
+  font-size: 0.82rem;
+}
+.groupes-pastilles { display: grid; gap: 0.6rem 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); align-items: start; }
+.pastille {
+  --c: var(--etape);
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 1.9rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--c) 68%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c) 10%, var(--surface));
+  box-shadow: 0 1px 5px color-mix(in srgb, var(--text) 8%, transparent);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+.pastille__point {
+  flex: 0 0 0.55rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--text) 28%, var(--c));
+  border-radius: 50%;
+  background: var(--c);
+}
+.pastille:hover:not(:disabled), .pastille:focus-visible {
+  outline: 2px solid var(--c);
+  outline-offset: 2px;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--c) 25%, transparent);
+}
+.pastille[aria-pressed='true'] {
+  background: var(--c);
+  border-color: var(--c);
+  color: var(--texte-sur-c, #fff);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--c) 40%, transparent);
+}
+.pastille[aria-pressed='true'] .pastille__point { background: var(--surface); border-color: var(--surface); }
+.pastille:disabled { opacity: 0.4; box-shadow: none; text-decoration: line-through; cursor: not-allowed; }
+/* choisie alors que les règles la ferment (race changée, fiche importée) : reste cliquable pour la retirer, cerclée de rouge */
+.pastille[data-refus] { outline: 2px dashed var(--danger); outline-offset: 2px; }
+/* imposée par les règles (l'Archimage du Potentiel Illimité, décision R23) : ne se retire pas */
+.pastille[data-verrou] { cursor: not-allowed; }
+.pastille[data-verrou]:hover { transform: none; }
+.pastille small { font-weight: normal; opacity: 0.85; }
+
+/* fiche résumé d'un choix (race, magie, classe) */
+.fiche-resume { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0; padding: 0; list-style: none; font-size: 0.8rem; }
+.fiche-resume li {
+  padding: 0.05rem 0.5rem;
+  border: 1px solid var(--etape-ligne);
+  border-radius: 999px;
+  background: var(--etape-doux);
+}
+.fiche-resume strong { color: color-mix(in srgb, var(--etape) 65%, var(--text)); }
+/* ce que donne le métier (décisions R33 à R35) : un rang à choix ou un objet à choisir montre ses options en pastilles, sur toute la largeur */
+#metier-bloc[hidden] { display: none; }
+.metier-fiche { margin-top: 0.4rem; }
+.metier-fiche li.metier-fiche__choix { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; border-radius: 10px; }
+.metier-fiche li.metier-fiche__artisanat { flex-basis: 100%; border-radius: 10px; }
+.metier-fiche li[hidden] { display: none; }
+.metier-fiche .pastilles { margin: 0; }
+.metier-fiche .pastilles li { padding: 0; border: 0; background: none; }
+
+/* ----------------------------------------------------------------- compteurs de budget */
+.budget {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.05rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.budget[data-etat='ok'] { border-color: color-mix(in srgb, var(--good) 60%, var(--border)); color: var(--good); }
+.budget[data-etat='manque'] { border-color: color-mix(in srgb, #b45309 60%, var(--border)); color: #b45309; }
+.budget[data-etat='trop'] { border-color: var(--danger); color: var(--danger); }
+/* NM donnés par le MJ en plus de ceux gagnés : permis (décision R24), signalés sans alarme */
+.budget[data-etat='info'] { border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); color: var(--accent); }
+.fiche-entete-bloc { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.4rem; }
+.fiche-budgets { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; }
+
+/* ----------------------------------------------------------------- curseurs (caractéristiques, compétences : demande du propriétaire) */
+.curseur { width: 100%; min-width: 4rem; margin: 0; accent-color: var(--c, var(--etape)); }
+.curseur-cellule { display: flex; align-items: center; gap: 0.35rem; }
+.curseur__valeur { min-width: 1.6rem; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.curseur__valeur[data-hors] { color: var(--danger); }
+/* clic droit (ou Entrée) sur un curseur : une case de saisie prend sa place, le nombre est ramené entre ses bornes */
+.fiche .curseur-saisie { width: 100%; min-width: 3.5rem; padding: 0.05rem 0.3rem; font-variant-numeric: tabular-nums; }
+.des { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* maîtrises d'armes, dans leur bloc (demande du propriétaire) : une ligne par famille, curseur étroit, les dés à côté ; plusieurs colonnes */
+.maitrises { display: grid; gap: 0.1rem 1.5rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); margin: 0; padding: 0; list-style: none; }
+.maitrise { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(3rem, auto); align-items: center; gap: 0.5rem; padding: 0.15rem 0; border-bottom: 1px solid var(--border); font-size: 0.84rem; }
+.maitrise__nom { overflow-wrap: break-word; }
+.maitrise .curseur { width: 6.5rem; min-width: 0; }
+.maitrise .des { text-align: right; }
+
+/* alignement (demande du propriétaire) : les quatre scores serrés, l'alignement qui en résulte à côté */
+.alignement { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.7rem; margin: 0; padding: 0.25rem 0.55rem 0.4rem; border: 1px solid var(--etape-ligne); border-radius: var(--radius); }
+.alignement legend { padding: 0 0.3rem; color: var(--muted); font-size: 0.78rem; }
+.alignement__axe { display: inline-flex; gap: 0.25rem; }
+.alignement__axe label { display: inline-flex; align-items: center; gap: 0.15rem; color: var(--muted); font-size: 0.78rem; font-weight: 700; }
+.fiche .alignement input { width: 3.3rem; padding-inline: 0.3rem; text-align: right; font-variant-numeric: tabular-nums; }
+.alignement__resultat {
+  margin-left: auto;
+  padding: 0.05rem 0.7rem;
+  border-radius: 999px;
+  background: var(--etape);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ----------------------------------------------------------------- tableaux de saisie */
+.fiche-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+.fiche-table th, .fiche-table td { padding: 0.18rem 0.35rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+.fiche-table th { color: var(--muted); font-weight: normal; font-size: 0.76rem; }
+.fiche-table td.nombre, .fiche-table th.nombre { text-align: right; font-variant-numeric: tabular-nums; }
+.fiche-table input[type='number'] { width: 4.5rem; }
+.fiche-table select { width: 100%; min-width: 0; }
+.fiche-table--fixe { table-layout: fixed; }
+.fiche-table--fixe th:first-child, .fiche-table--fixe td:first-child { width: 7rem; }
+.fiche-table--fixe .etroite { width: 5rem; }
+.fiche-table--sorts td:nth-child(2) { width: 30%; }
+.fiche-table--sorts td.sort-valeur { font-size: 0.8rem; }
+/* l'effet secondaire d'un sort, sur sa propre ligne sous le sort (demande du propriétaire) */
+.fiche-table--sorts tr.avec-effet td { border-bottom: 0; }
+.fiche-table--sorts tr.sort-effet td { padding-top: 0; color: var(--muted); font-size: 0.76rem; line-height: 1.3; white-space: pre-line; }
+/* la remarque d'un sort : une étoile, son texte en infobulle (demande du propriétaire ; l'infobulle du navigateur, que le cadre défilant ne coupe pas) */
+.sort-choix { display: flex; min-width: 9rem; align-items: center; gap: 0.3rem; }
+.sort-choix select { flex: 1; min-width: 0; }
+.sort-remarque { flex: none; color: #c99a06; font-size: 0.95rem; line-height: 1; cursor: help; }
+.sort-remarque:focus-visible { outline: 2px solid var(--etape); outline-offset: 2px; border-radius: 3px; }
+/* liste d'un emplacement : un groupe par NPM, chaque sort sur la couleur de sa magie (demande du propriétaire) ; fermée, la couleur du sort choisi */
+.fiche .fiche-table--sorts select[data-couleur] { background-color: var(--c); color: var(--texte-sur-c, #fff); font-weight: 600; }
+.fiche-table--sorts optgroup, .fiche-table--sorts option.option-vide { background-color: var(--surface); color: var(--text); font-weight: normal; }
+.fiche-table--sorts optgroup { color: var(--muted); font-style: normal; }
+/* un sort au-delà des emplacements (XP baissée, magie retirée) : pas d'emplacement en plus (décision R27), à retirer */
+.fiche-table--sorts tr.en-trop td { background: color-mix(in srgb, var(--danger) 8%, var(--surface)); }
+/* NM d'un sort par origine : niveau · livre · MJ = total (3 au plus, décision R26) */
+.nm-origines { white-space: nowrap; }
+.nm-origines > * { vertical-align: middle; }
+.fiche .nm-origines input[type='number'] { width: 3.2rem; padding-inline: 0.3rem; }
+.nm-livre { display: inline-flex; align-items: center; gap: 0.15rem; margin-inline: 0.35rem; color: var(--muted); font-size: 0.78rem; }
+/* gains de niveau, compacts (demande du propriétaire) : une petite carte par niveau, plusieurs par ligne ; santé bordée de rouge, chakra de bleu */
+.gains { display: grid; gap: 0.3rem 0.45rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 12.5rem), 1fr)); align-items: start; }
+.gain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--etape-ligne);
+  border-radius: var(--radius);
+  background: var(--etape-doux);
+  font-size: 0.8rem;
+}
+.gain__niveau { min-width: 2.7rem; font-weight: 700; color: color-mix(in srgb, var(--etape) 65%, var(--text)); white-space: nowrap; }
+.fiche .gain input[type='number'] { width: 3.1rem; padding-inline: 0.25rem; text-align: right; font-variant-numeric: tabular-nums; }
+.fiche .gain .gain__sante { border-color: #c62828; }
+.fiche .gain .gain__chakra { border-color: #1e5bb8; }
+.gain__total { margin-left: auto; color: var(--good); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gain__total[data-hors] { color: var(--danger); }
+.gain__de { display: flex; flex: 1 1 100%; gap: 0.25rem; }
+.fiche .gain__de select { flex: 1; min-width: 0; padding-inline: 0.25rem; }
+.fiche-defile { overflow-x: auto; }
+
+/* caractéristiques : six cartes sur une seule ligne (demande du propriétaire ; trois par ligne sur un petit écran), chacune dans sa couleur (--c,
+   --c-texte posées par le script : lib/caracteristiques-postures.mjs, demande du propriétaire). Couleurs claires : le nom est un aplat au texte foncé,
+   bordé de --text pour qu'un gris clair (Social) reste visible sur la feuille ; trop long pour la carte, il se termine par « … » (son nom en infobulle). */
+.caracs { display: grid; gap: 0.35rem; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.carac {
+  --c: var(--etape);
+  display: grid;
+  gap: 0.15rem;
+  justify-items: center;
+  min-width: 0;
+  padding: 0.35rem 0.3rem;
+  border: 1px solid color-mix(in srgb, var(--c) 60%, var(--border));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--c) 12%, var(--surface));
+  text-align: center;
+}
+.carac__nom {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0 0.4rem;
+  border: 1px solid color-mix(in srgb, var(--text) 25%, var(--c));
+  border-radius: 999px;
+  background: var(--c);
+  color: var(--c-texte, #fff);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.carac__valeur { font-size: 1.3rem; font-weight: 700; line-height: 1; color: color-mix(in srgb, var(--c) 35%, var(--text)); }
+.carac__valeur[data-hors] { color: var(--danger); }
+.carac__bonus { font-size: 0.66rem; line-height: 1.2; color: var(--muted); }
+.carac .curseur { min-width: 0; }
+/* les deux croix (R19) : deux cases à cocher, comme sur la feuille */
+.croix { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--muted); font-size: 0.7rem; }
+.croix__case { margin: 0; accent-color: var(--danger); }
+@media (max-width: 40rem) {
+  .caracs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* compétences : six blocs de cinq, chacun dans la couleur de sa caractéristique (en-tête en aplat, lignes à peine teintées) */
+.competences { display: grid; gap: 0.55rem 0.9rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); align-items: start; }
+.competences__groupe {
+  --c: var(--etape);
+  border: 1px solid color-mix(in srgb, var(--c) 60%, var(--border));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--c) 7%, var(--surface));
+  overflow: hidden;
+}
+.competences__groupe thead th { background: var(--c); color: var(--c-texte, #fff); }
+.competences__groupe thead th:first-child { font-size: 0.82rem; font-weight: 700; }
+.competences__groupe tbody tr:last-child td { border-bottom: 0; }
+.competences .fiche-table td:first-child { width: 30%; }
+.competences .fiche-table td.curseur-td { width: 30%; }
+.score { font-weight: 700; white-space: nowrap; }
+.score[data-hors] { color: var(--danger); }
+
+/* ----------------------------------------------------------------- attributs et valeurs du moment, fusionnés (demande du propriétaire)
+   Une carte par attribut, bordée à gauche de sa couleur : santé rouge, barrière jaune, chakra bleu, corruption noire (demande du propriétaire). Une valeur
+   du moment : « actuelle / maximum », un curseur entre − et +, qui ouvrent la case du nombre à retirer ou à ajouter. */
+.attributs { display: grid; gap: 0.45rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); }
+.attribut {
+  --a: var(--etape);
+  --a-trait: color-mix(in srgb, var(--a) 60%, var(--border));
+  --a-nom: color-mix(in srgb, var(--a) 55%, var(--text));
+  display: grid;
+  align-content: start;
+  gap: 0.15rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--a) 45%, var(--border));
+  border-left: 4px solid var(--a);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--a) 7%, var(--surface));
+}
+.attribut__tete { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 0.5rem; }
+.attribut__nom { color: var(--a-nom); font-size: 0.78rem; font-weight: 700; }
+.attribut__valeur { font-size: 1.15rem; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.attribut__valeur[data-hors] { color: var(--danger); }
+.attribut__curseur { display: flex; align-items: center; gap: 0.3rem; }
+.attribut .curseur { min-width: 3rem; accent-color: var(--a); }
+.fiche .ajuster {
+  flex: none;
+  width: 1.45rem;
+  height: 1.45rem;
+  padding: 0;
+  border: 1px solid var(--a-trait);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 700;
+  line-height: 1;
+}
+.fiche .ajuster:hover, .fiche .ajuster[aria-expanded='true'] { border-color: var(--a); background: color-mix(in srgb, var(--a) 18%, var(--surface)); }
+.ajout { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; }
+.ajout label { display: flex; align-items: center; gap: 0.25rem; color: var(--muted); font-size: 0.78rem; }
+.fiche .ajout input { width: 3.6rem; }
+.fiche .ajout button { padding: 0.1rem 0.45rem; font-size: 0.78rem; }
+.fiche .ajout .retirer { padding-inline: 0.3rem; }
+.attribut[data-a='sante'] { --a: #c62828; }
+.attribut[data-a='barriere'] { --a: #e0b000; }
+.attribut[data-a='chakra'] { --a: #1e5bb8; }
+.attribut[data-a='corruption'] { --a: #111; }
+.attribut[data-a='barre4'] { --a: #8a1c1c; }
+/* initiative, vitesse et nage : de simples pastilles (demande du propriétaire), à côté de la corruption */
+.attributs-bas { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.45rem; }
+.attributs-pastilles { flex: 1 1 14rem; align-content: center; }
+.attributs-corruption { flex: 0 1 15rem; display: grid; }
+/* les six postures (demande du propriétaire) : une pastille chacune, dans sa couleur ; la choisie pleine, ses effets dessous */
+.postures { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; }
+.postures__titre { color: var(--muted); font-size: 0.78rem; }
+.postures__choix { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.fiche .posture {
+  padding: 0.05rem 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--c) 70%, var(--text));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c) 18%, var(--surface));
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.fiche .posture[aria-pressed='true'] { background: var(--c); color: var(--c-texte); box-shadow: 0 1px 6px color-mix(in srgb, var(--c) 45%, transparent); }
+.postures__effets { flex: 1 1 100%; margin: 0; color: var(--muted); font-size: 0.76rem; }
+/* la corruption reste noire en mode sombre : son nom et ses boutons prennent alors la couleur du texte pour rester lisibles */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .attribut[data-a='corruption'] { --a-trait: var(--muted); --a-nom: var(--text); }
+}
+:root[data-theme='dark'] .attribut[data-a='corruption'] { --a-trait: var(--muted); --a-nom: var(--text); }
+
+/* listes ajoutables (sac…) */
+.fiche-ligne-ajout { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+.fiche .retirer { padding: 0.1rem 0.4rem; background: none; color: var(--danger); border-color: transparent; }
+.retirer:hover { border-color: var(--danger) !important; }
+
+/* dons à choix */
+/* rappel des dons sous les sorts (demande du propriétaire) : don de base et don de race, puis les dons débloqués de chaque classe */
+.dons-liste { display: grid; gap: 0.3rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); margin: 0; padding: 0; list-style: none; }
+.don { display: grid; gap: 0.1rem; align-content: start; padding: 0.25rem 0.45rem; border: 1px solid var(--etape-ligne); border-left: 3px solid var(--c, var(--etape)); border-radius: var(--radius); background: var(--etape-doux); font-size: 0.8rem; }
+.don__tete { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.4rem; }
+.don__niveau { color: var(--muted); font-size: 0.72rem; white-space: nowrap; }
+.don__type { margin-left: auto; padding: 0 0.4rem; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font-size: 0.68rem; }
+.don__type:not([data-type='passif']) { border-color: color-mix(in srgb, var(--c, var(--etape)) 60%, var(--border)); color: var(--text); font-weight: 700; }
+.don__texte { color: var(--muted); font-size: 0.76rem; line-height: 1.3; white-space: pre-line; }
+.dons-classes { display: grid; gap: 0.5rem; }
+.dons-classe > h4 { margin: 0 0 0.25rem; padding-bottom: 0.15rem; border-bottom: 2px solid var(--c); font-size: 0.82rem; }
+
+.dons-groupe { display: grid; gap: 0.25rem; padding: 0.4rem 0.6rem; border: 1px solid var(--etape-ligne); border-radius: var(--radius); }
+.dons-groupe legend { padding: 0 0.3rem; font-size: 0.8rem; color: var(--muted); }
+.dons-options { display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; }
+.dons-options label { display: flex; align-items: center; gap: 0.3rem; }
+
+/* équipement */
+.equipement { display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr)); }
+.objet { display: grid; gap: 0.4rem; padding: 0.5rem 0.6rem; border: 1px solid var(--etape-ligne); border-radius: var(--radius); background: var(--etape-doux); }
+.objet h4 { margin: 0; font-size: 0.88rem; }
+.objet .fiche-champs { grid-template-columns: 1fr; gap: 0.35rem; }
+.objet .fiche-champs--paire { grid-template-columns: minmax(0, 1fr) 5.5rem; align-items: end; }
+
+/* contrôles de la base */
+.controles { margin: 0; padding-left: 1.1rem; font-size: 0.85rem; }
+.controles li { margin: 0.1rem 0; }
+.controles[data-vide] { list-style: none; padding: 0; color: var(--good); }
+
+@media (max-width: 40rem) {
+  .fiche-etape__corps { padding: 0.5rem; }
+  .fiche-barre { position: static; }
+  .maitrise .curseur { width: 5rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pastille, .xp__rempli { transition: none; }
+}
+@media print {
+  .site-header, .site-footer, .fiche-barre, .fiche-etapes, .fiche-ligne-ajout, .retirer, .fiche-indisponible, .fiche-retraits, .xp__plus, .xp__ajout, .ajuster, .ajout { display: none !important; }
+  .fiche-etape { break-inside: avoid-page; }
+  .choix > summary::after { content: none; }
+  .choix__panneau { display: none; }
+}
+
+/* résistances et faiblesses (bloc des magies, sur le modèle du tableau de la fiche auto) : un palier par ligne, son effet en petit ; les magies dans leur
+   couleur, les altérations d'état cerclées de la couleur de leur magie ; un trait vert pour les résistances, rouge pour les faiblesses */
+.resistances { margin-top: 0.6rem; }
+.resistances__table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.resistances__table th, .resistances__table td { padding: 0.2rem 0.35rem; border-top: 1px solid var(--etape-ligne); vertical-align: middle; text-align: left; }
+.resistances__table th { width: 8.5rem; font-weight: 600; border-left: 3px solid var(--r, var(--etape-ligne)); line-height: 1.15; }
+.resistances__table th small { display: block; font-weight: normal; color: var(--muted); font-size: 0.72rem; }
+.resistances__table tr[data-palier='immunite'] { --r: #1b5e20; }
+.resistances__table tr[data-palier='grande_resistance'] { --r: #2e7d32; }
+.resistances__table tr[data-palier='resistance'] { --r: #66bb6a; }
+.resistances__table tr[data-palier='vulnerabilite'] { --r: #ef9a9a; }
+.resistances__table tr[data-palier='grande_vulnerabilite'] { --r: #e53935; }
+.resistances__table tr[data-palier='sensibilite'] { --r: #8e0000; }
+.resistances__cibles { display: flex; flex-wrap: wrap; gap: 0.25rem; margin: 0; padding: 0; list-style: none; }
+.resistance { padding: 0 0.45rem; border: 1.5px solid var(--c, var(--border)); border-radius: 999px; font-size: 0.75rem; line-height: 1.5; cursor: help; }
+.resistance--magie { background: var(--c, var(--etape-doux)); color: var(--c-texte, var(--text)); }
+.resistance--etat { background: var(--surface); color: var(--text); }
+.resistances__vide { color: var(--muted); }
+#resistances-choix { margin: 0.3rem 0 0; }
+#resistances-choix[hidden] { display: none; }
+</style><div class="fiche" id="fiche" data-regles="/fiche/regles.json" data-api="/api/" data-personnages="/personnages/" data-fiche="/fiche/"><header class="fiche-entete"><p class="fiche-surtitre">Fiche de personnage · prétiré · <a href="/personnages/">tous les personnages</a></p><h1 id="fiche-titre">Nouveau prétiré</h1></header><div class="fiche-barre" role="toolbar" aria-label="Enregistrement"><span class="fiche-niveau-badge" id="fiche-niveau">Niveau 1</span><label>Statut<select id="fiche-statut" data-champ="statut"><option value="brouillon">Brouillon</option><option value="valide">Validé</option><option value="archive">Archivé</option></select></label><button type="button" class="fiche-barre__principal" id="fiche-enregistrer" disabled>Enregistrer</button><p class="fiche-message" id="fiche-message" role="status" aria-live="polite"></p><button type="button" id="fiche-nouvelle">Nouveau</button><button type="button" id="fiche-exporter">Exporter</button><label class="fiche-bouton-fichier"><input type="file" id="fiche-importer" accept="application/json,.json" hidden><span role="button" tabindex="0">Importer</span></label><button type="button" id="fiche-imprimer">Imprimer</button><button type="button" class="fiche-barre__danger" id="fiche-supprimer" hidden>Supprimer</button></div><p class="banner fiche-indisponible" id="fiche-indisponible" hidden></p><p class="banner fiche-retraits" id="fiche-retraits" role="status" hidden></p><noscript><p class="banner">Cette page a besoin de JavaScript pour construire la fiche et l’enregistrer.</p></noscript><ul class="fiche-etapes" aria-label="Parties de la fiche"><li><a href="#etape-identite" style="--etape: #2e7d4f">Identité</a></li><li><a href="#etape-magies" style="--etape: #2e7d4f">Magies</a></li><li><a href="#etape-classes" style="--etape: #2e7d4f">Classes</a></li><li><a href="#etape-attributs" style="--etape: #2e7d4f">Attributs</a></li><li><a href="#etape-progression" style="--etape: #6a4a9c">Progression</a></li><li><a href="#etape-caracteristiques" style="--etape: #2e7d4f">Caractéristiques</a></li><li><a href="#etape-sorts" style="--etape: #2e7d4f">Sorts et dons</a></li><li><a href="#etape-maitrises" style="--etape: #2e7d4f">Maîtrises</a></li><li><a href="#etape-equipement" style="--etape: #b03030">Équipement</a></li><li><a href="#etape-jeu" style="--etape: #b03030">Notes</a></li><li><a href="#etape-controles" style="--etape: #5a6470">Contrôle</a></li></ul><div class="fiche-rangee fiche-rangee--3"><section class="fiche-etape" id="etape-identite" style="--etape: #2e7d4f" aria-labelledby="titre-identite"><h2 id="titre-identite">Identité, race, métier, alignement</h2><div class="fiche-etape__corps"><div class="fiche-champs"><label class="fiche-champ"><span>Nom</span><input data-champ="nom" required maxlength="120" autocomplete="off"></label><label class="fiche-champ"><span>Surnom</span><input data-champ="surnom" maxlength="120" autocomplete="off"></label><label class="fiche-champ"><span>Lieu d’origine</span><input data-champ="lieu_origine" maxlength="120" autocomplete="off"></label><label class="fiche-champ"><span>Métier</span><select data-champ="metier_id" id="metiers"><option value="">Sans métier</option></select></label></div><div id="metier-bloc" hidden></div><div class="choix-grille"><details class="choix" id="choix-race"><summary><span class="choix__etiquette">Race</span><span class="choix__valeur" id="valeur-race"></span></summary><div class="choix__panneau"><div id="races" class="groupes-pastilles"></div></div></details><details class="choix" id="choix-ethnie" hidden><summary><span class="choix__etiquette">Ethnie</span><span class="choix__valeur" id="valeur-ethnie"></span></summary><div class="choix__panneau"><ul id="ethnies" class="pastilles"></ul></div></details></div><ul id="race-resume" class="fiche-resume" aria-label="Ce que donne la race"></ul><fieldset class="alignement"><legend>Alignement</legend><span class="alignement__axe"><label title="Loyal"><span aria-hidden="true">L</span><input type="number" min="0" step="1" data-champ="alignement_loyal" data-entier aria-label="Loyal"></label><label title="Chaotique"><span aria-hidden="true">C</span><input type="number" min="0" step="1" data-champ="alignement_chaotique" data-entier aria-label="Chaotique"></label></span><span class="alignement__axe"><label title="Bon"><span aria-hidden="true">B</span><input type="number" min="0" step="1" data-champ="alignement_bon" data-entier aria-label="Bon"></label><label title="Mauvais"><span aria-hidden="true">M</span><input type="number" min="0" step="1" data-champ="alignement_mauvais" data-entier aria-label="Mauvais"></label></span><output class="alignement__resultat" id="alignement-resultat" aria-live="polite">Neutre</output></fieldset></div></section><section class="fiche-etape" id="etape-magies" style="--etape: #2e7d4f" aria-labelledby="titre-magies"><h2 id="titre-magies">Magies</h2><div class="fiche-etape__corps"><div class="choix-grille"><details class="choix" id="choix-magie-innee"><summary><span class="choix__etiquette">Magie innée</span><span class="choix__valeur" id="valeur-magie-innee"></span></summary><div class="choix__panneau"><ul id="magies-innees" class="pastilles"></ul></div></details><details class="choix" id="choix-magie-acquise"><summary><span class="choix__etiquette">Magie acquise</span><span class="choix__valeur" id="valeur-magie-acquise"></span></summary><div class="choix__panneau"><ul id="magies-acquises" class="pastilles"></ul></div></details></div><div class="fiche-champs"><label class="fiche-champ" id="bloc-carac-magie" hidden><span>+1 de la magie innée sur</span><select data-champ="caracteristique_magie_id" id="carac-magie"></select></label><p class="fiche-champ"><span>Dieu inné</span><strong id="dieu-inne">—</strong></p><label class="fiche-champ"><span>Dieu choisi</span><select data-champ="dieu_choisi_id" id="dieux"><option value="">—</option></select></label></div><ul id="magie-resume" class="fiche-resume" aria-label="Ce que donnent les magies"></ul><div class="resistances"><h3 id="titre-resistances">Résistances et faiblesses</h3><table class="resistances__table" aria-labelledby="titre-resistances"><tbody id="resistances"></tbody></table><p class="fiche-aide" id="resistances-choix" hidden></p></div></div></section><section class="fiche-etape" id="etape-classes" style="--etape: #2e7d4f" aria-labelledby="titre-classes"><h2 id="titre-classes">Classes</h2><div class="fiche-etape__corps"><div class="fiche-champ fiche-champ--ligne"><span>Une ou deux classes</span><ul id="modes" class="pastilles pastilles--etroites"></ul></div><p class="fiche-aide" id="classe-imposee" hidden></p><div class="choix-grille choix-grille--classes"><details class="choix" id="choix-classe-1"><summary><span class="choix__etiquette" id="titre-classe-1">Classe</span><span class="choix__valeur" id="valeur-classe-1"></span></summary><div class="choix__panneau"><div id="classe-1" class="groupes-pastilles groupes-pastilles--classes"></div></div></details><details class="choix" id="choix-specialite-1" hidden><summary><span class="choix__etiquette" id="titre-specialite-1">Spécialité</span><span class="choix__valeur" id="valeur-specialite-1"></span></summary><div class="choix__panneau"><ul id="specialite-1" class="pastilles"></ul></div></details><details class="choix" id="choix-classe-2" hidden><summary><span class="choix__etiquette" id="titre-classe-2">Seconde classe</span><span class="choix__valeur" id="valeur-classe-2"></span></summary><div class="choix__panneau"><div id="classe-2" class="groupes-pastilles groupes-pastilles--classes"></div></div></details><details class="choix" id="choix-specialite-2" hidden><summary><span class="choix__etiquette" id="titre-specialite-2">Spécialité</span><span class="choix__valeur" id="valeur-specialite-2"></span></summary><div class="choix__panneau"><ul id="specialite-2" class="pastilles"></ul></div></details></div></div></section></div><div class="fiche-rangee fiche-rangee--2"><section class="fiche-etape" id="etape-attributs" style="--etape: #2e7d4f" aria-labelledby="titre-attributs"><h2 id="titre-attributs">Attributs et valeurs du moment</h2><div class="fiche-etape__corps"><div id="attributs-barres" class="attributs"></div><div class="attributs-bas"><ul id="attributs-pastilles" class="fiche-resume attributs-pastilles" aria-label="Initiative et vitesses"></ul><div id="attributs-corruption" class="attributs-corruption"></div></div><div class="postures"><span class="postures__titre" id="titre-postures">Posture</span><div id="postures" class="postures__choix" role="group" aria-labelledby="titre-postures"></div><p id="posture-effets" class="postures__effets" aria-live="polite"></p></div></div></section><section class="fiche-etape" id="etape-progression" style="--etape: #6a4a9c" aria-labelledby="titre-progression"><h2 id="titre-progression">Niveau, gains de niveau et dons</h2><div class="fiche-etape__corps"><div class="xp" id="xp-bloc"><div class="xp__ligne"><strong class="xp__niveau" id="xp-niveau">Niveau 1</strong><input type="number" min="0" step="1" data-champ="xp" data-entier id="xp" aria-label="Expérience (XP)"><span class="xp__objectif" id="xp-objectif"></span><button type="button" class="xp__plus" id="xp-plus" aria-expanded="false" aria-controls="xp-ajout" title="Ajouter de l’XP" aria-label="Ajouter de l’XP">+</button></div><div class="xp__jauge" id="xp-jauge" role="progressbar" aria-label="Expérience vers le niveau suivant"><span class="xp__rempli" id="xp-rempli"></span></div><form class="xp__ajout" id="xp-ajout" hidden><label>XP gagnée <input type="number" min="1" step="1" id="xp-gain"></label><button type="submit">Ajouter</button><button type="button" id="xp-annuler">Annuler</button></form></div><div><h3>Gains de niveau</h3><p class="fiche-aide" id="progression-aide"></p><div id="progression" class="gains"></div></div><div><h3>Dons de classe à choisir</h3><div id="dons" class="fiche-etape__dons"></div></div></div></section></div><div class="fiche-rangee fiche-rangee--2"><section class="fiche-etape" id="etape-caracteristiques" style="--etape: #2e7d4f" aria-labelledby="titre-caracteristiques"><h2 id="titre-caracteristiques">Caractéristiques et compétences</h2><div class="fiche-etape__corps"><p class="fiche-aide">Clic droit sur un curseur (ou Entrée) : saisir le nombre ; il est ramené entre le minimum et le maximum.</p><div class="fiche-entete-bloc"><h3>Caractéristiques</h3><span class="budget" id="budget-caracs"></span></div><div id="caracs" class="caracs"></div><div class="fiche-entete-bloc"><h3>Compétences</h3><span class="budget" id="budget-competences"></span></div><p class="fiche-aide">Score = 10 × la caractéristique + naturel + acquis. Une croix : −20 % ; deux croix : inutilisable.</p><div id="competences" class="competences"></div></div></section><section class="fiche-etape" id="etape-sorts" style="--etape: #2e7d4f" aria-labelledby="titre-sorts"><h2 id="titre-sorts">Sorts et dons</h2><div class="fiche-etape__corps"><div class="fiche-entete-bloc"><p class="fiche-aide" id="emplacements-detail"></p><span class="fiche-budgets"><span class="budget" id="budget-sorts"></span><span class="budget" id="budget-nm"></span></span></div><div class="fiche-defile"><table class="fiche-table fiche-table--sorts" id="sorts"></table></div><div><h3>Dons raciaux</h3><ul id="dons-race" class="dons-liste" aria-label="Dons de la race"></ul></div><div><h3>Dons de classe débloqués</h3><div id="dons-classes" class="dons-classes"></div></div></div></section></div><div class="fiche-rangee"><section class="fiche-etape fiche-etape--coin" id="etape-maitrises" style="--etape: #2e7d4f" aria-labelledby="titre-maitrises"><h2 id="titre-maitrises">Maîtrises d’armes</h2><span class="budget fiche-etape__coin" id="budget-maitrises"></span><div class="fiche-etape__corps"><ul id="maitrises" class="maitrises" aria-label="Maîtrise de chaque famille d’armes"></ul><label class="fiche-coche"><input type="checkbox" data-champ="ambidextrie"> Ambidextrie</label></div></section></div><div class="fiche-rangee fiche-rangee--large"><section class="fiche-etape" id="etape-equipement" style="--etape: #b03030" aria-labelledby="titre-equipement"><h2 id="titre-equipement">Équipement et bourse</h2><div class="fiche-etape__corps"><div><h3>Armes</h3><div id="armes" class="equipement"></div></div><div><h3>Armure</h3><div class="fiche-defile"><table class="fiche-table fiche-table--fixe" id="armures"></table></div></div><div><h3>Bouclier</h3><div id="bouclier" class="equipement"></div></div><div><h3>Accessoires</h3><div class="fiche-defile"><table class="fiche-table fiche-table--fixe" id="accessoires"></table></div></div><div><h3>Inventaire</h3><div class="fiche-defile"><table class="fiche-table" id="inventaire"></table></div><div class="fiche-ligne-ajout"><button type="button" id="bouton-ajout-objet">Ajouter un objet</button></div></div><div><h3>Bourse</h3><div class="fiche-champs"><label class="fiche-champ"><span>Pièces précieuses</span><input type="number" min="0" step="1" data-champ="bourse_pp" data-entier></label><label class="fiche-champ"><span>Or</span><input type="number" min="0" step="1" data-champ="bourse_ro" data-entier></label><label class="fiche-champ"><span>Fer</span><input type="number" min="0" step="1" data-champ="bourse_rf" data-entier></label></div></div></div></section><section class="fiche-etape" id="etape-jeu" style="--etape: #b03030" aria-labelledby="titre-jeu"><h2 id="titre-jeu">Notes et événements</h2><div class="fiche-etape__corps"><label class="fiche-champ fiche-champ--large"><span>Notes</span><textarea data-champ="notes" rows="8"></textarea></label><label class="fiche-champ fiche-champ--large"><span>Événements</span><textarea data-champ="evenements" rows="6"></textarea></label></div></section></div><section class="fiche-etape" id="etape-controles" style="--etape: #5a6470" aria-labelledby="titre-controles"><h2 id="titre-controles">Contrôle des règles</h2><div class="fiche-etape__corps"><p class="fiche-aide">Ce que la base sait contrôler, vérifié à chaque enregistrement. Un brouillon peut enfreindre des règles ; une fiche ne passe « validée » que sans aucune.</p><ul class="controles" id="controles"><li>La fiche n’a pas encore été enregistrée.</li></ul></div></section></div></main><footer class="site-footer"><span>Projet de fan pour Maverick JDR — contenu issu du Discord et des Google Docs du MJ.</span><span class="site-footer__version">V0.1.94</span></footer><script>
+      (function () {
+        var toggles = document.querySelectorAll('.nav-group__toggle');
+        var rows = document.querySelectorAll('.site-nav__items');
+        toggles.forEach(function (t) {
+          t.addEventListener('click', function () {
+            toggles.forEach(function (o) { o.setAttribute('aria-pressed', o === t ? 'true' : 'false'); });
+            rows.forEach(function (r) { r.hidden = r.getAttribute('data-group') !== t.getAttribute('data-group'); });
+          });
+        });
+      })();
+    </script></body></html><script type="module" src="/_astro/index.astro_astro_type_script_index_0_lang.Cqr0z-1p.js"></script>

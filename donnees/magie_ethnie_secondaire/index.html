@@ -1,0 +1,50 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Ethnies pour lesquelles une magie secondaire reste possible malgré les incompatibilités (fiche `Magie!U5`, colonne « Magie secondaire si Race » : « Elfe Noir Charbon, Elfe Noir Salé, Felfe Noir » pour Corruption). `ethnie_brut` est le nom écrit ; `ethnie_id` l'ethnie rapprochée (les noms de la source se résolvent exactement : « Felfe Noir » = races/felfe#ethnie:felfe-noir). L'Elfe Noir Salé de la cellule est une erreur (décision R15 du propriétaire, comme le dit la phrase de l'onglet : « Seuls les Elfes noirs (Charbon) et les Felfes noirs ») : sa ligne est retirée par la migration 0010."><link rel="icon" type="image/png" sizes="32x32" href="/favicon.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><title>Données : magie_ethnie_secondaire — Maverick Center</title><link rel="stylesheet" href="/_astro/Base.C8jCj17B.css"></head><body><header class="site-header"><div class="site-header__inner"><a class="brand" href="/"><img src="/logo.webp" alt="Maverick Center" width="319" height="320"></a><div class="site-header__menu"><nav class="site-nav" aria-label="Navigation principale"><ul class="site-nav__groups"><li><button type="button" class="nav-group__toggle" data-group="regles" aria-pressed="false">Règles</button></li><li><button type="button" class="nav-group__toggle" data-group="personnages" aria-pressed="false">Personnages</button></li><li><button type="button" class="nav-group__toggle" data-group="inventaire" aria-pressed="false">Inventaire</button></li><li><button type="button" class="nav-group__toggle" data-group="codex" aria-pressed="false">Codex</button></li><li><button type="button" class="nav-group__toggle" data-group="outils" aria-pressed="true" aria-current="true">Outils</button></li></ul><ul class="site-nav__items" data-group="regles" hidden><li><a href="/guide/">Guide</a></li><li><a href="/races/">Races</a></li><li><a href="/magies/">Magies</a></li><li><a href="/classes/">Classes</a></li><li><a href="/metiers/">Métiers</a></li></ul><ul class="site-nav__items" data-group="personnages" hidden><li><a href="/fiche/">Fiche de personnage</a></li><li><a href="/personnages/">Listes</a></li><li><span class="nav-soon">Groupes <small>(bientôt)</small></span></li><li><span class="nav-soon">Chroniques <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="inventaire" hidden><li><a href="/ressources/armes/">Armes</a></li><li><a href="/ressources/armures/">Armures</a></li><li><a href="/ressources/accessoires/">Accessoires</a></li><li><span class="nav-soon">Objets à la ceinture <small>(bientôt)</small></span></li><li><a href="/ressources/livre-parchemin/">Livres &amp; Parchemins</a></li><li><a href="/ressources/pieces-elementaires/">Pièces élémentaires</a></li></ul><ul class="site-nav__items" data-group="codex" hidden><li><span class="nav-soon">Chronologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Carte &amp; lieux <small>(bientôt)</small></span></li><li><span class="nav-soon">Mythologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Bestiaire <small>(bientôt)</small></span></li><li><span class="nav-soon">Factions <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="outils"><li><span class="nav-soon">Statistiques <small>(bientôt)</small></span></li><li><a href="/mise-a-jour/">Mise à jour</a></li><li><span class="nav-soon">Boîte à idée <small>(bientôt)</small></span></li><li><a href="/galeries/">Galeries</a></li><li><a href="/recherche/">Recherche</a></li><li><a href="/archives/">Archives</a></li></ul></nav></div></div></header><main><p class="donnees-fil"><a href="/donnees/">Données</a> › <code>magie_ethnie_secondaire</code></p><h1><code>magie_ethnie_secondaire</code></h1><p class="donnees-role">Ethnies pour lesquelles une magie secondaire reste possible malgré les incompatibilités (fiche `Magie!U5`, colonne « Magie secondaire si Race » : « Elfe Noir Charbon, Elfe Noir Salé, Felfe Noir » pour Corruption). `ethnie_brut` est le nom écrit ; `ethnie_id` l&#39;ethnie rapprochée (les noms de la source se résolvent exactement : « Felfe Noir » = races/felfe#ethnie:felfe-noir). L&#39;Elfe Noir Salé de la cellule est une erreur (décision R15 du propriétaire, comme le dit la phrase de l&#39;onglet : « Seuls les Elfes noirs (Charbon) et les Felfes noirs ») : sa ligne est retirée par la migration 0010.</p><details class="donnees-colonnes"><summary>6 colonnes</summary><table><thead><tr><th>Colonne</th><th>Type</th><th>Clé</th><th>Description</th></tr></thead><tbody><tr><td><code>magie_id</code></td><td>TEXT</td><td>clé primaire, → <a href="/donnees/magie/"><code>magie</code></a></td><td></td></tr><tr><td><code>rang</code></td><td>INTEGER</td><td>clé primaire</td><td></td></tr><tr><td><code>ethnie_id</code></td><td>TEXT</td><td>→ <a href="/donnees/ethnie/"><code>ethnie</code></a></td><td>ethnie de la table `ethnie` (domaine races)</td></tr><tr><td><code>ethnie_brut</code></td><td>TEXT</td><td></td><td>nom écrit dans la cellule</td></tr><tr><td><code>origine</code></td><td>TEXT</td><td></td><td></td></tr><tr><td><code>source_ref</code></td><td>TEXT</td><td></td><td></td></tr></tbody></table></details><p class="donnees-filtre"><label>Filtrer les lignes <input type="search" id="filtre" autocomplete="off"></label><span id="compte" aria-live="polite">2 lignes</span><span class="donnees-aide">Cliquer sur un titre de colonne pour trier.</span></p><div class="donnees-wrap"><table class="donnees" id="donnees"><thead><tr><th title="TEXT">magie_id</th><th title="INTEGER">rang</th><th title="ethnie de la table `ethnie` (domaine races)">ethnie_id</th><th title="nom écrit dans la cellule">ethnie_brut</th><th title="TEXT">origine</th><th title="TEXT">source_ref</th></tr></thead><tbody><tr id="r-magies_2f_magie-de-la-corruption.1"><td><a href="/donnees/magie/#r-magies_2f_magie-de-la-corruption">magies/magie-de-la-corruption</a></td><td>1</td><td><a href="/donnees/ethnie/#r-races_2f_elfe-noir_23_ethnie_3a_elfe-noir-charbon">races/elfe-noir#ethnie:elfe-noir-charbon</a></td><td>Elfe Noir Charbon</td><td>magies</td><td>Fiche auto V15.2.2 › Magie › U5</td></tr><tr id="r-magies_2f_magie-de-la-corruption.2"><td><a href="/donnees/magie/#r-magies_2f_magie-de-la-corruption">magies/magie-de-la-corruption</a></td><td>2</td><td><a href="/donnees/ethnie/#r-races_2f_felfe_23_ethnie_3a_felfe-noir">races/felfe#ethnie:felfe-noir</a></td><td>Felfe Noir</td><td>magies</td><td>Fiche auto V15.2.2 › Magie › U5</td></tr></tbody></table></div><script>
+    (() => {
+      const table = document.getElementById('donnees');
+      const champ = document.getElementById('filtre');
+      const compte = document.getElementById('compte');
+      if (!table || !champ) return;
+      const corps = table.tBodies[0];
+      const lignes = [...corps.rows];
+      const decalage = table.tHead.rows[0].cells[0].textContent === 'Page' ? 1 : 0;
+      const plier = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+      const textes = lignes.map((tr) => plier([...tr.cells].slice(decalage).map((c) => c.textContent).join(' ')));
+      const maj = () => {
+        const q = plier(champ.value.trim());
+        let n = 0;
+        lignes.forEach((tr, i) => { const ok = !q || textes[i].includes(q); tr.hidden = !ok; if (ok) n += 1; });
+        compte.textContent = `${n.toLocaleString('fr-FR')} / ${lignes.length.toLocaleString('fr-FR')} lignes`;
+      };
+      champ.addEventListener('input', maj);
+      table.tHead.addEventListener('click', (e) => {
+        const th = e.target.closest('th');
+        if (!th || th.cellIndex < decalage) return;
+        const i = th.cellIndex;
+        const sens = th.dataset.sens === 'asc' ? 'desc' : 'asc';
+        table.tHead.querySelectorAll('th').forEach((x) => { delete x.dataset.sens; });
+        th.dataset.sens = sens;
+        const val = (tr) => tr.cells[i].textContent.trim();
+        const nombres = lignes.every((tr) => val(tr) === '' || !Number.isNaN(Number(val(tr))));
+        lignes.sort((a, b) => {
+          const x = val(a);
+          const y = val(b);
+          let c;
+          if (nombres) c = x === y ? 0 : x === '' ? -1 : y === '' ? 1 : Number(x) - Number(y);
+          else c = x.localeCompare(y, 'fr', { numeric: true });
+          return sens === 'asc' ? c : -c;
+        });
+        lignes.forEach((tr) => corps.appendChild(tr));
+      });
+    })();
+  </script></main><footer class="site-footer"><span>Projet de fan pour Maverick JDR — contenu issu du Discord et des Google Docs du MJ.</span><span class="site-footer__version">V0.1.94</span></footer><script>
+      (function () {
+        var toggles = document.querySelectorAll('.nav-group__toggle');
+        var rows = document.querySelectorAll('.site-nav__items');
+        toggles.forEach(function (t) {
+          t.addEventListener('click', function () {
+            toggles.forEach(function (o) { o.setAttribute('aria-pressed', o === t ? 'true' : 'false'); });
+            rows.forEach(function (r) { r.hidden = r.getAttribute('data-group') !== t.getAttribute('data-group'); });
+          });
+        });
+      })();
+    </script></body></html>

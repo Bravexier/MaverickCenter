@@ -1,0 +1,98 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Textes d'explication du classeur « Mode hyper et co » (Mode Hyper!AA1, AA14, AA30 ; Mode Super!AI1) : cellule entière, telle quelle. Les chiffres qu'ils contiennent (niveau 2, 10 %, durée = niveau ÷ 2…) sont aussi dans regle_constante."><link rel="icon" type="image/png" sizes="32x32" href="/favicon.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><title>Données : mode_texte — Maverick Center</title><link rel="stylesheet" href="/_astro/Base.C8jCj17B.css"></head><body><header class="site-header"><div class="site-header__inner"><a class="brand" href="/"><img src="/logo.webp" alt="Maverick Center" width="319" height="320"></a><div class="site-header__menu"><nav class="site-nav" aria-label="Navigation principale"><ul class="site-nav__groups"><li><button type="button" class="nav-group__toggle" data-group="regles" aria-pressed="false">Règles</button></li><li><button type="button" class="nav-group__toggle" data-group="personnages" aria-pressed="false">Personnages</button></li><li><button type="button" class="nav-group__toggle" data-group="inventaire" aria-pressed="false">Inventaire</button></li><li><button type="button" class="nav-group__toggle" data-group="codex" aria-pressed="false">Codex</button></li><li><button type="button" class="nav-group__toggle" data-group="outils" aria-pressed="true" aria-current="true">Outils</button></li></ul><ul class="site-nav__items" data-group="regles" hidden><li><a href="/guide/">Guide</a></li><li><a href="/races/">Races</a></li><li><a href="/magies/">Magies</a></li><li><a href="/classes/">Classes</a></li><li><a href="/metiers/">Métiers</a></li></ul><ul class="site-nav__items" data-group="personnages" hidden><li><a href="/fiche/">Fiche de personnage</a></li><li><a href="/personnages/">Listes</a></li><li><span class="nav-soon">Groupes <small>(bientôt)</small></span></li><li><span class="nav-soon">Chroniques <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="inventaire" hidden><li><a href="/ressources/armes/">Armes</a></li><li><a href="/ressources/armures/">Armures</a></li><li><a href="/ressources/accessoires/">Accessoires</a></li><li><span class="nav-soon">Objets à la ceinture <small>(bientôt)</small></span></li><li><a href="/ressources/livre-parchemin/">Livres &amp; Parchemins</a></li><li><a href="/ressources/pieces-elementaires/">Pièces élémentaires</a></li></ul><ul class="site-nav__items" data-group="codex" hidden><li><span class="nav-soon">Chronologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Carte &amp; lieux <small>(bientôt)</small></span></li><li><span class="nav-soon">Mythologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Bestiaire <small>(bientôt)</small></span></li><li><span class="nav-soon">Factions <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="outils"><li><span class="nav-soon">Statistiques <small>(bientôt)</small></span></li><li><a href="/mise-a-jour/">Mise à jour</a></li><li><span class="nav-soon">Boîte à idée <small>(bientôt)</small></span></li><li><a href="/galeries/">Galeries</a></li><li><a href="/recherche/">Recherche</a></li><li><a href="/archives/">Archives</a></li></ul></nav></div></div></header><main><p class="donnees-fil"><a href="/donnees/">Données</a> › <code>mode_texte</code></p><h1><code>mode_texte</code></h1><p class="donnees-role">Textes d&#39;explication du classeur « Mode hyper et co » (Mode Hyper!AA1, AA14, AA30 ; Mode Super!AI1) : cellule entière, telle quelle. Les chiffres qu&#39;ils contiennent (niveau 2, 10 %, durée = niveau ÷ 2…) sont aussi dans regle_constante.</p><details class="donnees-colonnes"><summary>9 colonnes</summary><table><thead><tr><th>Colonne</th><th>Type</th><th>Clé</th><th>Description</th></tr></thead><tbody><tr><td><code>id</code></td><td>TEXT</td><td>clé primaire</td><td>&#39;&lt;page&gt;#texte:&lt;normalize(intitule)&gt;&#39; (db:check recalcule la fin)</td></tr><tr><td><code>mode</code></td><td>TEXT</td><td></td><td></td></tr><tr><td><code>rang</code></td><td>INTEGER</td><td></td><td></td></tr><tr><td><code>intitule</code></td><td>TEXT</td><td></td><td>première ligne de la cellule : « Au delà des limites »</td></tr><tr><td><code>texte</code></td><td>TEXT</td><td></td><td>cellule entière</td></tr><tr><td><code>page_id</code></td><td>TEXT</td><td>→ <a href="/donnees/page/"><code>page</code></a></td><td></td></tr><tr><td><code>origine</code></td><td>TEXT</td><td></td><td></td></tr><tr><td><code>source_ref</code></td><td>TEXT</td><td></td><td></td></tr><tr><td><code>remarque</code></td><td>TEXT</td><td></td><td>remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne</td></tr></tbody></table></details><p class="donnees-filtre"><label>Filtrer les lignes <input type="search" id="filtre" autocomplete="off"></label><span id="compte" aria-live="polite">4 lignes</span><span class="donnees-aide">Cliquer sur un titre de colonne pour trier.</span></p><div class="donnees-wrap"><table class="donnees" id="donnees"><thead><tr><th title="Page du wiki">Page</th><th title="'<page>#texte:<normalize(intitule)>' (db:check recalcule la fin)">id</th><th title="TEXT">mode</th><th title="INTEGER">rang</th><th title="première ligne de la cellule : « Au delà des limites »">intitule</th><th title="cellule entière">texte</th><th title="TEXT">page_id</th><th title="TEXT">origine</th><th title="TEXT">source_ref</th><th title="remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne">remarque</th></tr></thead><tbody><tr id="r-guide_2f_liste-des-effets-mode-hyper_23_texte_3a_au-dela-des-limites"><td><a href="/guide/liste-des-effets-mode-hyper/" title="Page du wiki">↗</a></td><td>guide/liste-des-effets-mode-hyper#texte:au-dela-des-limites</td><td>hyper</td><td>2</td><td>Au-delà des limites</td><td>Au-delà des limites
+Il est bien entendu possible de conserver son mode hyper même si la réserve de chakra est épuisée ou bien les tours passés, mais cela aura des conséquences sur le corps et l&#39;esprit.
+
+Maintenir le mode hyper au-delà des limites aura pour conséquence une fois le mode hyper relâché :
+
+- 1 tour supplémentaire : Brise les résistances magiques pendant 24h.
+- 2 tours supplémentaires : Accentue les vulnérabilités pendant 24h. (donne 2 faiblesses aléatoires pour les magies d&#39;Arcane, Corruption et Potentiel illimité)
+- 3 tours supplémentaires : 3 croix caractéristiques aléatoires pendant 24h.
+- 4 tours supplémentaires : Tombe dans le coma avec perte complète de la santé.
+- 5 tours supplémentaires : Mode hyper désactivé, 50% de chance de mourir.
+
+Le Mode Hyper ne peut être enclenché qu&#39;une fois toutes les semaines dans le jeu, et qu&#39;une seule créature sur le terrain ne peut activer son mode hyper pendant 1 combat, il existe des exceptions :
+
+- Les zones où le chakra est tellement présent que le simple fait de respirer permet de récupérer la totalité de son chakra, ici tout le monde peut activer son mode hyper et cela sans consommer le chakra, mais la limite des 10 tours, elle, reste présente.
+- Un objet magique qui permet d&#39;activer son mode hyper en même temps que quelqu&#39;un d&#39;autre.
+- Autorisation du MJ selon la situation.</td><td><a href="/donnees/page/#r-guide_2f_liste-des-effets-mode-hyper">guide/liste-des-effets-mode-hyper</a></td><td>annexes</td><td>Mode hyper et co › Mode Hyper › AA14:BL28</td><td class="nul"></td></tr><tr id="r-guide_2f_liste-des-effets-mode-hyper_23_texte_3a_mode-hyper-100"><td><a href="/guide/liste-des-effets-mode-hyper/" title="Page du wiki">↗</a></td><td>guide/liste-des-effets-mode-hyper#texte:mode-hyper-100</td><td>hyper</td><td>3</td><td>Mode Hyper 100%</td><td>Mode Hyper 100%
+Il s&#39;agit d&#39;un état plus puissant du Mode Hyper de base, dans cet état, le lanceur se concentre pour renfermer l&#39;aura de chakra qui déferle en mode Hyper. Une fois scellée à l&#39;intérieur de son corps, la puissance du lanceur est à son paroxysme.
+
+L&#39;appellation &quot;100%&quot; vient du fait que le lanceur est à pleine puissance tant que l&#39;aura est enfouie en lui, ainsi de nouveaux bonus s&#39;offrent à lui en 100% :
+
+- Le Chakra ne s&#39;évapore plus.
+- Toutes les postures sont activées et ne possèdent plus d&#39;inconvénients.
+- Tous les sorts peuvent être surchargés (leur donnant 1d de dégâts en plus)
+- Toutes les attaques physiques et magiques infligent +10 dégâts en plus du mode hyper d&#39;avant.
+
+En revanche, l&#39;état 100% ne peut pas être conservé éternellement, il ne dure que 3 tours et après le lanceur revient dans le Mode Hyper normal, consommant au passage 75% de son Chakra Max (Prudence, si vous n&#39;avez pas 75% de Chakra courant en réserve, le manque sera pris dans les PV).
+
+Le Mode Hyper 100% n&#39;est disponible qu&#39;au niveau 10 de personnage.</td><td><a href="/donnees/page/#r-guide_2f_liste-des-effets-mode-hyper">guide/liste-des-effets-mode-hyper</a></td><td>annexes</td><td>Mode hyper et co › Mode Hyper › AA30:BL43</td><td class="nul"></td></tr><tr id="r-guide_2f_liste-des-effets-mode-hyper_23_texte_3a_ne-plus-faire-quun-avec-soi-meme"><td><a href="/guide/liste-des-effets-mode-hyper/" title="Page du wiki">↗</a></td><td>guide/liste-des-effets-mode-hyper#texte:ne-plus-faire-quun-avec-soi-meme</td><td>hyper</td><td>1</td><td>&quot;Ne plus faire qu&#39;un avec soi-même&quot;</td><td>&quot;Ne plus faire qu&#39;un avec soi-même&quot;
+
+Qu&#39;est-ce que c&#39;est ?
+Le Mode Hyper est un état de surpuissance qui se débloque au niveau 2 de personnage.
+
+Il s&#39;agit d&#39;un état où le personnage libère sa puissance cachée en lui, sa magie ne fait plus qu&#39;un avec lui, l&#39;aura magique déferle et ses attributs physiques changent énormément vu que sa magie l&#39;envahit.
+
+Activer le mode hyper ne demande aucun jet de dés et est considéré comme un Instant Cast.
+
+Fonctionnement
+Pendant le mode hyper, le chakra est utilisé comme carburant pour le mode hyper, il est consommé à raison de 10% du Chakra max par tour. Cependant, il est impossible de consommer une fiole bleue (ou équivalent qui redonnerait du chakra), de faire une méditation ou bien de se reposer. Le chakra ne peut pas être régénéré pendant le mode hyper. Le mode hyper peut durer au maximum un nombre de tours équivalent au niveau global divisé par 2, même s&#39;il reste du chakra en réserve. Le mode hyper est très épuisant pour le corps et l&#39;esprit.
+Il est utilisé à raison de 1 fois toutes les semaines vu qu&#39;on parle d&#39;un état qui épuise très rapidement le corps.</td><td><a href="/donnees/page/#r-guide_2f_liste-des-effets-mode-hyper">guide/liste-des-effets-mode-hyper</a></td><td>annexes</td><td>Mode hyper et co › Mode Hyper › AA1:BL12</td><td class="nul"></td></tr><tr id="r-guide_2f_liste-des-effets-mode-super_23_texte_3a_ne-faire-plus-quun-avec-son-objet"><td><a href="/guide/liste-des-effets-mode-super/" title="Page du wiki">↗</a></td><td>guide/liste-des-effets-mode-super#texte:ne-faire-plus-quun-avec-son-objet</td><td>super</td><td>1</td><td>&quot;Ne faire plus qu&#39;un avec son objet&quot;</td><td>&quot;Ne faire plus qu&#39;un avec son objet&quot;
+
+Qu&#39;est-ce que c&#39;est ?
+C&#39;est un équivalent du mode hyper mais en moins puissant. Au lieu de faire une symbiose avec soi-même, c&#39;est une symbiose avec un objet légendaire ou enchanté comme une arme, une armure, ou autre. Comme pour le mode hyper, l&#39;aura magique se déferle et les attributs magiques changent dû à la magie mais aussi dû à l&#39;arme et à son &quot;concept&quot;.
+
+Il est nécessaire au porteur de l&#39;arme de réussir à attendre une parfaite harmonie avec son objet pour ne faire plus qu&#39;un avec ce dernier. Les maîtres du jeu seront seuls juges de ça.
+
+Tout comme le mode hyper, le mode super est limité dans le temps, au maximum un nombre de tours équivalent au niveau global divisé par 2. Contrairement au mode hyper, il n&#39;y a pas de possibilité d&#39;aller au-delà des limites mais il est possible d&#39;activer le mode super malgré que quelqu&#39;un utilise son mode hyper ou super. Il est nécessaire d&#39;attendre 1 semaine pour que le mode super soit de nouveau disponible (comme pour le mode hyper) et il est possible d&#39;utiliser le mode hyper et super dans le même combat, pas en même temps.
+
+Bonus du Mode Super
+Le mode super donne des bonus non négligeables au combat, il donne un bonus de +10 aux dégâts physiques ainsi qu&#39;un effet actif et passif selon l&#39;objet avec lequel vous entrez en symbiose.</td><td><a href="/donnees/page/#r-guide_2f_liste-des-effets-mode-super">guide/liste-des-effets-mode-super</a></td><td>annexes</td><td>Mode hyper et co › Mode Super › AI1:BL19</td><td class="nul"></td></tr></tbody></table></div><script>
+    (() => {
+      const table = document.getElementById('donnees');
+      const champ = document.getElementById('filtre');
+      const compte = document.getElementById('compte');
+      if (!table || !champ) return;
+      const corps = table.tBodies[0];
+      const lignes = [...corps.rows];
+      const decalage = table.tHead.rows[0].cells[0].textContent === 'Page' ? 1 : 0;
+      const plier = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+      const textes = lignes.map((tr) => plier([...tr.cells].slice(decalage).map((c) => c.textContent).join(' ')));
+      const maj = () => {
+        const q = plier(champ.value.trim());
+        let n = 0;
+        lignes.forEach((tr, i) => { const ok = !q || textes[i].includes(q); tr.hidden = !ok; if (ok) n += 1; });
+        compte.textContent = `${n.toLocaleString('fr-FR')} / ${lignes.length.toLocaleString('fr-FR')} lignes`;
+      };
+      champ.addEventListener('input', maj);
+      table.tHead.addEventListener('click', (e) => {
+        const th = e.target.closest('th');
+        if (!th || th.cellIndex < decalage) return;
+        const i = th.cellIndex;
+        const sens = th.dataset.sens === 'asc' ? 'desc' : 'asc';
+        table.tHead.querySelectorAll('th').forEach((x) => { delete x.dataset.sens; });
+        th.dataset.sens = sens;
+        const val = (tr) => tr.cells[i].textContent.trim();
+        const nombres = lignes.every((tr) => val(tr) === '' || !Number.isNaN(Number(val(tr))));
+        lignes.sort((a, b) => {
+          const x = val(a);
+          const y = val(b);
+          let c;
+          if (nombres) c = x === y ? 0 : x === '' ? -1 : y === '' ? 1 : Number(x) - Number(y);
+          else c = x.localeCompare(y, 'fr', { numeric: true });
+          return sens === 'asc' ? c : -c;
+        });
+        lignes.forEach((tr) => corps.appendChild(tr));
+      });
+    })();
+  </script></main><footer class="site-footer"><span>Projet de fan pour Maverick JDR — contenu issu du Discord et des Google Docs du MJ.</span><span class="site-footer__version">V0.1.94</span></footer><script>
+      (function () {
+        var toggles = document.querySelectorAll('.nav-group__toggle');
+        var rows = document.querySelectorAll('.site-nav__items');
+        toggles.forEach(function (t) {
+          t.addEventListener('click', function () {
+            toggles.forEach(function (o) { o.setAttribute('aria-pressed', o === t ? 'true' : 'false'); });
+            rows.forEach(function (r) { r.hidden = r.getAttribute('data-group') !== t.getAttribute('data-group'); });
+          });
+        });
+      })();
+    </script></body></html>

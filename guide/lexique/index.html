@@ -1,0 +1,555 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Les mots et abréviations du jeu, de « Acquis » à « XP »."><link rel="icon" type="image/png" sizes="32x32" href="/favicon.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><title>Lexique — Maverick Center</title><link rel="stylesheet" href="/_astro/Base.C8jCj17B.css"></head><body><header class="site-header"><div class="site-header__inner"><a class="brand" href="/"><img src="/logo.webp" alt="Maverick Center" width="319" height="320"></a><div class="site-header__menu"><nav class="site-nav" aria-label="Navigation principale"><ul class="site-nav__groups"><li><button type="button" class="nav-group__toggle" data-group="regles" aria-pressed="true" aria-current="true">Règles</button></li><li><button type="button" class="nav-group__toggle" data-group="personnages" aria-pressed="false">Personnages</button></li><li><button type="button" class="nav-group__toggle" data-group="inventaire" aria-pressed="false">Inventaire</button></li><li><button type="button" class="nav-group__toggle" data-group="codex" aria-pressed="false">Codex</button></li><li><button type="button" class="nav-group__toggle" data-group="outils" aria-pressed="false">Outils</button></li></ul><ul class="site-nav__items" data-group="regles"><li><a href="/guide/">Guide</a></li><li><a href="/races/">Races</a></li><li><a href="/magies/">Magies</a></li><li><a href="/classes/">Classes</a></li><li><a href="/metiers/">Métiers</a></li></ul><ul class="site-nav__items" data-group="personnages" hidden><li><a href="/fiche/">Fiche de personnage</a></li><li><a href="/personnages/">Listes</a></li><li><span class="nav-soon">Groupes <small>(bientôt)</small></span></li><li><span class="nav-soon">Chroniques <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="inventaire" hidden><li><a href="/ressources/armes/">Armes</a></li><li><a href="/ressources/armures/">Armures</a></li><li><a href="/ressources/accessoires/">Accessoires</a></li><li><span class="nav-soon">Objets à la ceinture <small>(bientôt)</small></span></li><li><a href="/ressources/livre-parchemin/">Livres &amp; Parchemins</a></li><li><a href="/ressources/pieces-elementaires/">Pièces élémentaires</a></li></ul><ul class="site-nav__items" data-group="codex" hidden><li><span class="nav-soon">Chronologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Carte &amp; lieux <small>(bientôt)</small></span></li><li><span class="nav-soon">Mythologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Bestiaire <small>(bientôt)</small></span></li><li><span class="nav-soon">Factions <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="outils" hidden><li><span class="nav-soon">Statistiques <small>(bientôt)</small></span></li><li><a href="/mise-a-jour/">Mise à jour</a></li><li><span class="nav-soon">Boîte à idée <small>(bientôt)</small></span></li><li><a href="/galeries/">Galeries</a></li><li><a href="/recherche/">Recherche</a></li><li><a href="/archives/">Archives</a></li></ul></nav></div></div></header><main><style>/* Chargé uniquement depuis components/guide/GuideChapitre.astro (?raw) : les chapitres du guide du joueur (/guide/ et /guide/<chapitre>/).
+   Une page de livre (le texte sur une feuille) sur toute la largeur du site ; deux flèches rondes passent PAR-DESSUS ses bords, en bas de l'écran
+   (Précédent à gauche, Suivant à droite, grisées aux bords), et s'effacent quand les liens du bas arrivent à l'écran (demande du propriétaire : les
+   flèches ne doivent pas prendre de place à la page). En bas, les chapitres voisins et la pagination (un numéro par chapitre, titre en infobulle).
+   Sur un écran étroit, les flèches disparaissent : le glissement du doigt et les liens du bas en tiennent lieu. Les blocs tirés de la base
+   (GuideBloc.astro) ont leurs styles plus bas. */
+/* Couleur de la partie (lib/guide.mjs#PARTIES), posée par `--couleur-partie` sur la page et sur chaque groupe de la pagination et du sommaire :
+   --guide pour les aplats (texte blanc dessus), --guide-texte pour un texte coloré sur la feuille (éclairci en thème sombre). */
+.guide,
+.guide-pagination__partie,
+.guide-sommaire__partie {
+  --guide: var(--couleur-partie, var(--accent));
+  --guide-texte: var(--guide);
+  --guide-soft: color-mix(in srgb, var(--guide) 12%, var(--surface));
+  --guide-line: color-mix(in srgb, var(--guide) 40%, var(--border));
+  /* infobulles (styles/magie/tooltips.css) : mêmes variables que les pages de magie */
+  --mag: var(--guide);
+  --mag-soft: var(--guide-soft);
+  --mag-line: var(--guide-line);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) :is(.guide, .guide-pagination__partie, .guide-sommaire__partie) { --guide-texte: color-mix(in srgb, var(--guide) 45%, #fff); }
+}
+:root[data-theme="dark"] :is(.guide, .guide-pagination__partie, .guide-sommaire__partie) { --guide-texte: color-mix(in srgb, var(--guide) 45%, #fff); }
+.guide { margin-top: 0.5rem; }
+/* Un glissement horizontal du doigt tourne la page (script de GuideChapitre.astro) : le navigateur ne doit pas en faire, en plus, un retour ou une avance
+   dans l'historique (Chrome sur écran tactile). Les gestes du système depuis le bord de l'écran (retour arrière d'Android, de Safari) restent actifs. */
+html { overscroll-behavior-x: none; }
+/* La page suit le doigt qui glisse (décalage borné à 64 px) : sans ce clip, elle élargirait l'écran, qui défilerait de côté. `clip` ne crée pas de zone
+   de défilement (les flèches restent collantes) ; la marge intérieure de <main> (1rem) laisse voir le débord des flèches et les contours de focus. */
+main { overflow-x: clip; }
+.guide-partie {
+  display: inline-block;
+  margin-right: 0.5rem;
+  padding: 0.05rem 0.55rem;
+  border-radius: 999px;
+  background: var(--guide);
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.guide-invisible {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* La page et les deux flèches dans la même case de grille : la page en donne la hauteur, les flèches passent par-dessus ses bords. */
+.guide-cadre {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.guide-cadre > * { grid-area: 1 / 1; }
+
+/* Les flèches : rondes, à cheval sur le bord de la page, collées en bas de l'écran pendant la lecture (sticky en bas de la case : au bout de la page,
+   elles s'arrêtent à son pied). Le script de GuideChapitre.astro les efface (data-bas-visible) dès que les liens du bas arrivent à l'écran. */
+.guide-fleche {
+  position: sticky;
+  bottom: 1.5rem;
+  z-index: 1;
+  align-self: end;
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border: 2px solid var(--guide-line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--guide-texte);
+  font-size: 2rem;
+  line-height: 1;
+  text-decoration: none;
+  box-shadow: 0 3px 12px rgb(0 0 0 / 0.18);
+  transition: background-color 0.15s, color 0.15s, transform 0.15s, opacity 0.2s, visibility 0.2s;
+}
+.guide-fleche--precedent { justify-self: start; margin-left: -0.5rem; }
+.guide-fleche--suivant { justify-self: end; margin-right: -0.5rem; }
+.guide[data-bas-visible] .guide-fleche { opacity: 0; visibility: hidden; }
+.guide-fleche > span[aria-hidden] { margin-top: -0.2rem; }
+a.guide-fleche:hover,
+a.guide-fleche:focus-visible { background: var(--guide); border-color: var(--guide); color: #fff; }
+a.guide-fleche--precedent:hover { transform: translateX(-2px); }
+a.guide-fleche--suivant:hover { transform: translateX(2px); }
+a.guide-fleche:focus-visible { outline: 2px solid var(--guide); outline-offset: 3px; }
+/* Grisée (premier ou dernier chapitre) : fond plein quand même, elle passe par-dessus le texte. */
+.guide-fleche[aria-disabled='true'] { border-color: var(--border); color: var(--border); box-shadow: none; cursor: not-allowed; }
+
+/* La page : une feuille, le texte en colonne de lecture. */
+.guide-page {
+  min-width: 0;
+  padding: 1.5rem clamp(1rem, 4vw, 2.75rem) 2rem;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) * 1.5);
+  background: var(--surface);
+  box-shadow: 0 1px 0 var(--border), 0 10px 30px rgb(0 0 0 / 0.05);
+}
+.guide-numero {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.guide-page h1 {
+  margin: 0.2rem 0 1.25rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 3px solid var(--guide);
+  font-size: clamp(1.6rem, 4vw, 2.1rem);
+}
+.guide-texte h2 { margin-top: 2.2rem; color: var(--guide-texte); }
+.guide-texte h3 { margin-top: 1.6rem; }
+.guide-texte blockquote {
+  margin: 1rem 0;
+  padding: 0.6rem 1rem;
+  border-left: 4px solid var(--guide);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--guide-soft);
+}
+.guide-texte blockquote p { margin: 0.3rem 0; }
+.guide-texte table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto; margin: 1rem 0; }
+.guide-texte th, .guide-texte td { border: 1px solid var(--border); padding: 0.35rem 0.65rem; vertical-align: top; }
+.guide-texte thead th { background: var(--guide-soft); text-align: left; }
+.guide-texte li + li { margin-top: 0.2rem; }
+.guide-texte code { font-size: 0.92em; }
+
+/* En bas : les chapitres voisins, puis la pagination. */
+.guide-bas {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.guide-voisins {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.guide-voisin {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+.guide-voisin--suivant { text-align: right; }
+.guide-voisin__sens { color: var(--muted); font-size: 0.85rem; }
+.guide-voisin__titre { color: var(--guide-texte); font-weight: 700; }
+a.guide-voisin:hover, a.guide-voisin:focus-visible { border-color: var(--guide); box-shadow: inset 0 0 0 1px var(--guide); }
+.guide-voisin[aria-disabled='true'] { border-style: dashed; background: transparent; }
+.guide-voisin[aria-disabled='true'] .guide-voisin__sens { color: var(--border); }
+
+.guide-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* un groupe par partie : son nom au-dessus de ses numéros, souligné de sa couleur */
+.guide-pagination__partie { display: grid; justify-items: center; gap: 0.3rem; }
+.guide-pagination__titre {
+  padding: 0 0.3rem 0.1rem;
+  border-bottom: 2px solid var(--guide);
+  color: var(--guide-texte);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.guide-pagination__numeros { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.35rem; margin: 0; padding: 0; list-style: none; }
+.guide-pagination .bulle-zone { display: block; }
+.guide-pagination__numero {
+  display: grid;
+  place-items: center;
+  min-width: 2.3rem;
+  height: 2.3rem;
+  padding: 0 0.4rem;
+  border: 1px solid var(--guide-line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--guide-texte);
+  font-weight: 700;
+  text-decoration: none;
+}
+.guide-pagination__numero:hover,
+.guide-pagination__numero[data-ouverte] { background: var(--guide-soft); }
+.guide-pagination__numero:focus-visible { outline: 2px solid var(--guide); outline-offset: 2px; }
+.guide-pagination__numero[aria-current='page'] { border-color: var(--guide); background: var(--guide); color: #fff; }
+
+@media (max-width: 52rem) {
+  .guide-fleche { display: none; }
+}
+@media (max-width: 30rem) {
+  .guide-voisins { grid-template-columns: 1fr; }
+  .guide-voisin--suivant { text-align: left; }
+}
+
+/* ---- Blocs tirés de la base (components/guide/GuideBloc.astro) ---- */
+.guide-defile { max-width: 100%; margin: 1rem 0 1.25rem; overflow-x: auto; }
+.guide-defile:focus-visible { outline: 2px solid var(--guide); outline-offset: 2px; }
+.guide-table { border-collapse: collapse; font-size: 0.92rem; }
+.guide-table th, .guide-table td { padding: 0.4rem 0.65rem; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+.guide-table thead th { background: var(--guide-soft); }
+.guide-table tbody th { white-space: nowrap; }
+.guide-table--niveaux { width: 100%; }
+.guide-table--niveaux thead th { font-size: 0.82rem; line-height: 1.3; }
+.guide-table--niveaux tbody th { text-align: center; color: var(--guide-texte); }
+.guide-table--niveaux tbody tr:nth-child(5n) { border-bottom: 3px solid var(--guide-line); }
+.guide-table--compacte td, .guide-table--compacte th { text-align: center; }
+.guide-table td.guide-nombre { text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.guide-gains { margin: 0; padding-left: 1rem; font-size: 0.88rem; }
+.guide-rate td { color: var(--danger); font-weight: 600; }
+.guide-note { margin: 0.35rem 0 0; color: var(--muted); font-size: 0.85rem; }
+.guide-lettre { color: var(--muted); font-weight: 400; font-size: 0.9em; }
+
+/* Sommaire (chapitre 1) : les parties l'une sous l'autre, chacune dans sa couleur, une carte par chapitre. */
+.guide-sommaire { margin: 1rem 0 0.5rem; }
+.guide-sommaire__partie + .guide-sommaire__partie { margin-top: 1.1rem; }
+.guide-sommaire__titre-partie {
+  margin: 0 0 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 2px solid var(--guide);
+  color: var(--guide-texte);
+  font-size: 1.05rem;
+}
+.guide-sommaire__liste {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.guide-sommaire__liste li {
+  display: grid;
+  gap: 0.3rem;
+  align-content: start;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--guide);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+.guide-sommaire__lien { display: flex; align-items: baseline; gap: 0.55rem; color: var(--guide-texte); font-weight: 700; text-decoration: none; }
+.guide-sommaire__lien:hover .guide-sommaire__titre { text-decoration: underline; }
+.guide-sommaire__numero {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  background: var(--guide);
+  color: #fff;
+  font-size: 0.9rem;
+}
+.guide-sommaire__resume { color: var(--muted); font-size: 0.9rem; line-height: 1.45; }
+
+/* Les 15 magies (chapitre 2) et le tableau de ce qu'elles donnent (chapitre 3) : pastille de la couleur de la magie. */
+.guide-magies {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 10.5rem), 1fr));
+  gap: 0.6rem;
+  margin: 1rem 0 1.25rem;
+  padding: 0;
+  list-style: none;
+}
+.guide-magies li { display: grid; justify-items: start; gap: 0.15rem; }
+.guide-magie {
+  --c: var(--couleur-magie, var(--guide));
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.75rem 0.3rem 0.5rem;
+  /* bord et point mêlés de gris : une magie claire (Vide, Lumière) reste visible sur la feuille */
+  border: 2px solid color-mix(in srgb, var(--c) 65%, var(--muted));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c) 12%, var(--surface));
+  color: var(--text);
+  font-weight: 700;
+  text-decoration: none;
+}
+.guide-magie:hover, .guide-magie:focus-visible { background: color-mix(in srgb, var(--c) 24%, var(--surface)); }
+.guide-magie__point { width: 0.75rem; height: 0.75rem; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 55%, var(--muted)); flex: none; }
+.guide-magie__dieu { padding-left: 0.6rem; color: var(--muted); font-size: 0.85rem; }
+.guide-magie--ligne { padding: 0.1rem 0.6rem 0.1rem 0.4rem; border-width: 1px; font-size: 0.92rem; }
+
+/* Caractéristiques (et leurs compétences) et postures : chacune dans sa couleur (lib/caracteristiques-postures.mjs, demande du propriétaire), --c et
+   --c-texte posées sur l'élément ou son cadre par GuideBloc.astro. Couleurs claires : aplat au texte foncé, bordé de --text pour qu'un gris clair
+   (Social, Neutre) reste visible sur la feuille. */
+.guide-carac {
+  display: inline-block;
+  padding: 0 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--text) 25%, var(--c));
+  border-radius: 999px;
+  background: var(--c);
+  color: var(--c-texte);
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+/* Compétences (chapitre 3) : un cadre par caractéristique, dans sa couleur. */
+.guide-competences {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0 1.25rem;
+}
+.guide-competences__groupe {
+  --c: var(--guide);
+  padding: 0.6rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--c) 55%, var(--border));
+  border-top: 4px solid var(--c);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--c) 8%, var(--bg));
+}
+.guide-competences__groupe h4 { margin: 0 0 0.4rem; }
+.guide-competences__groupe ul { margin: 0; padding-left: 1.1rem; font-size: 0.9rem; line-height: 1.45; }
+.guide-competences__groupe li + li { margin-top: 0.25rem; }
+
+/* Types de don (chapitre 5). */
+.guide-definitions { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; margin: 1rem 0; }
+.guide-definitions dt { font-weight: 700; color: var(--guide-texte); }
+.guide-definitions dd { margin: 0; }
+@media (max-width: 30rem) {
+  .guide-definitions { grid-template-columns: 1fr; }
+  .guide-definitions dd { margin-bottom: 0.4rem; }
+}
+
+/* Postures (page « Les postures ») : les six colonnes du tableau de la fiche, trois par rangée sur un écran large ; chacune dans sa couleur. */
+.guide-postures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 0.6rem;
+  margin: 1rem 0 1.25rem;
+}
+.guide-posture {
+  --c: var(--guide);
+  border: 1px solid color-mix(in srgb, var(--c) 55%, var(--border));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--c) 8%, var(--bg));
+  overflow: hidden;
+}
+.guide-posture h3 { margin: 0; font-size: 1rem; }
+.guide-posture__nom {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 20%, var(--c));
+  background: var(--c);
+  color: var(--c-texte, #fff);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: help;
+}
+.guide-posture__nom:focus-visible { outline: 2px solid var(--text); outline-offset: -4px; }
+.guide-posture ul { margin: 0; padding: 0.5rem 0.6rem 0.6rem 1.5rem; font-size: 0.88rem; line-height: 1.4; }
+.guide-posture li + li { margin-top: 0.3rem; }
+
+/* Pages de référence (dernier chapitre), par document source. */
+.guide-references {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.guide-references__groupe { padding: 0.6rem 0.9rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
+.guide-references__groupe h3 { margin: 0 0 0.4rem; font-size: 1rem; }
+.guide-references__groupe ul { margin: 0; padding-left: 1.1rem; font-size: 0.92rem; }
+
+/* Les personnages fil rouge (partie « Créer son personnage ») : une carte par personnage, côte à côte. */
+.guide-fil-rouge {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: 0.6rem;
+  margin: 1rem 0 1.25rem;
+}
+.guide-fil-rouge__perso { padding: 0.6rem 0.8rem 0.7rem; border: 1px solid var(--guide-line); border-top: 4px solid var(--guide); border-radius: var(--radius); background: var(--guide-soft); }
+.guide-fil-rouge__nom { margin: 0 0 0.4rem; color: var(--guide-texte); font-size: 1rem; }
+.guide-fil-rouge dl { display: grid; gap: 0.1rem; margin: 0; font-size: 0.86rem; line-height: 1.4; }
+.guide-fil-rouge dt { margin-top: 0.3rem; color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
+.guide-fil-rouge dd { margin: 0; }
+.guide-fil-rouge dd ul { margin: 0; padding-left: 1rem; }
+
+/* Infobulles (components/Bulles.astro) et pastilles d'état */
+.bulle-zone { display: inline; }
+.info { --info: color-mix(in srgb, var(--mag) 55%, var(--text)); display: inline-flex; align-items: center; justify-content: center; width: 1.35rem; height: 1.35rem; padding: 0; border-radius: 50%; border: 1px solid var(--info); background: var(--mag-soft); color: var(--info); font: italic 700 0.8rem/1 Georgia, serif; cursor: help; }
+.info:hover, .info[data-ouverte] { background: var(--info); color: var(--surface); }
+.info:focus-visible, .chip--etat:focus-visible { outline: 2px solid var(--mag); outline-offset: 2px; }
+.chip--etat { padding: 0 0.5rem; font-size: 0.88em; line-height: 1.45; margin: 0 0.05em; }
+.bulle { z-index: 60; width: max-content; max-width: min(22rem, calc(100vw - 1rem)); padding: 0.55rem 0.8rem; border: 1px solid var(--mag-line); border-radius: 8px; background: var(--surface); color: var(--text);
+  box-shadow: 0 6px 22px rgb(0 0 0 / 0.2); font-weight: 400; font-size: 0.82rem; line-height: 1.4; letter-spacing: 0; text-transform: none; text-align: left; white-space: pre-line; overflow-y: auto; }
+.bulle[hidden] { display: none; }
+.bulle--large { max-width: min(26rem, calc(100vw - 1rem)); }
+.bulle__titre { display: block; font-size: 0.9rem; }
+.bulle__sous { display: block; margin-bottom: 0.25rem; color: var(--muted); font-size: 0.74rem; }
+.bulle__texte { display: block; margin-top: 0.2rem; }
+.bulle__stades { display: grid; margin: 0.2rem 0 0; gap: 0.25rem; }
+.bulle__stade { display: grid; grid-template-columns: 4.4rem 1fr; gap: 0.5rem; padding: 0.1rem 0.3rem; border-radius: 4px; }
+.bulle__stade-nom { color: var(--muted); }
+.bulle__stade.is-actif { background: var(--mag-soft); font-weight: 600; }
+.bulle__stade.is-actif .bulle__stade-nom { color: var(--text); }
+.regles-texte { margin: 0.4rem 0; }
+.regles-texte summary { cursor: pointer; font-weight: 600; }</style><div class="guide" data-guide style="--couleur-partie: #5a6470"><div class="guide-cadre"><a class="guide-fleche guide-fleche--precedent" href="/guide/aide-memoire/" rel="prev" title="Chapitre 22 : Aide-mémoire" data-guide-precedent><span aria-hidden="true">‹</span><span class="guide-invisible">Précédent : Chapitre 22 : Aide-mémoire</span></a><article class="guide-page" aria-labelledby="guide-titre" data-ed-corps="guide/lexique"><p class="guide-numero"><span class="guide-partie">Pour aller plus loin</span> Guide du joueur · chapitre 23 sur 24</p><h1 id="guide-titre" data-ed="[&quot;page&quot;,{&quot;id&quot;:&quot;guide/lexique&quot;},&quot;titre&quot;]">Lexique</h1><div class="guide-texte" data-ed-morceau><ul>
+<li><strong>Acquis</strong> : les points d’une compétence gagnés par l’entraînement, la race, la classe, les dons ou l’équipement.</li>
+<li><strong>AM</strong> (armure magique) : ce qui retire des points aux dégâts des sorts.</li>
+<li><strong>AP</strong> (armure physique) : ce qui retire des points aux dégâts des armes.</li>
+<li><strong>Âme / Sang</strong> : la « 4ᵉ barre » des utilisateurs de la nécromancie et de la magie du sang, que dépensent certains de leurs sorts.</li>
+<li><strong>Attributs</strong> : santé, chakra, barrière, corruption, vitesse, initiative…</li>
+<li><strong>Barrière</strong> : une seconde peau magique, sorte de santé magique ; elle vaut la moitié du chakra.</li>
+<li><strong>Battlemap</strong> : la carte quadrillée sur laquelle se joue un combat.</li>
+<li><strong>Caractéristiques</strong> : Force, Volonté, Intelligence, Perception, Social et Agilité.</li>
+<li><strong>Chakra</strong> : les points de magie, que dépensent les sorts ; à court de chakra, on paie 2 points de santé par point manquant.</li>
+<li><strong>Classe magique</strong> : une classe qui donne +4 AM et un emplacement de sort.</li>
+<li><strong>Compétence</strong> : un savoir-faire (Diplomatie, Esquive, Magie…), lié à une caractéristique.</li>
+<li><strong>Corruption</strong> : un poison du chakra, qui en prend la place.</li>
+<li><strong>D100, D20, d6…</strong> : un dé à 100, 20, 6… faces. « 2d6+2 » : deux dés à six faces, plus 2.</li>
+<li><strong>Défense partielle</strong> : une parade ou une esquive réussie, mais moins bonne que l’attaque ; les dégâts sont divisés par 2.</li>
+<li><strong>Dieu inné</strong> : la divinité de la magie innée du personnage.</li>
+<li><strong>Don</strong> : une capacité particulière, de type passif, actif, action ou réaction.</li>
+<li><strong>Échec critique</strong> : un résultat de 96 à 100 au D100.</li>
+<li><strong>Emplacement de sort</strong> : la place d’un sort connu sur la fiche.</li>
+<li><strong>Ethnie</strong> : une variante d’une race (Felfe forestier, Orios de Sang…).</li>
+<li><strong>IC</strong> (<em>Instant Cast</em>), ou action rapide : une action qui ne prend pas l’action du tour ; trois au plus par tour.</li>
+<li><strong>Initiative</strong> : ce qui fixe l’ordre de jeu en combat (1D20 + un bonus d’Agilité).</li>
+<li><strong>Magie acquise</strong> : une seconde magie, facultative.</li>
+<li><strong>Magie innée</strong> : la magie de naissance, héritée de l’un des parents.</li>
+<li><strong>Maîtrise d’arme</strong> : le savoir-faire avec une catégorie d’arme ; chaque point ajoute un dé de dégâts.</li>
+<li><strong>MJ</strong> : le maître du jeu.</li>
+<li><strong>Mode Hyper</strong> : un état de surpuissance, ouvert au niveau 2.</li>
+<li><strong>Naturel</strong> (Nat.) : les points de compétence que l’on répartit soi-même.</li>
+<li><strong>NM</strong> (niveau de maîtrise) : ce qui renforce un sort.</li>
+<li><strong>NPM</strong> (niveau de puissance magique) : le palier d’un sort, de 1 à 5.</li>
+<li><strong>Parade</strong> / <strong>Esquive</strong> : bloquer un coup / l’éviter.</li>
+<li><strong>PJ</strong> : un personnage joueur. <strong>PNJ</strong> : un personnage non joueur, joué par le MJ.</li>
+<li><strong>Posture</strong> : l’attitude de combat choisie au début de chaque tour.</li>
+<li><strong>Puissance magique</strong> : le niveau de magie du personnage, de 1 à 5 ; elle ouvre les paliers de sorts.</li>
+<li><strong>Race pure</strong> / <strong>race hybride</strong> : les deux familles de races ; une race hybride a sa classe raciale.</li>
+<li><strong>Réussite critique</strong> : un résultat de 1 à 5 au D100.</li>
+<li><strong>Spécialité</strong> : l’embranchement d’une classe, choisi à son niveau 10.</li>
+<li><strong>Tour de charge</strong> : le tour passé à préparer un sort de niveau 5.</li>
+<li><strong>Vitesse</strong> : le nombre de cases parcourues en un tour.</li>
+<li><strong>XP</strong> : les points d’expérience, qui font monter le niveau global.</li>
+</ul></div></article><a class="guide-fleche guide-fleche--suivant" href="/guide/les-documents-des-regles/" rel="next" title="Chapitre 24 : Les documents des règles" data-guide-suivant><span aria-hidden="true">›</span><span class="guide-invisible">Suivant : Chapitre 24 : Les documents des règles</span></a></div><nav class="guide-bas" aria-label="Chapitres du guide"><div class="guide-voisins"><a class="guide-voisin guide-voisin--precedent" href="/guide/aide-memoire/" rel="prev"><span class="guide-voisin__sens">‹ Précédent</span><span class="guide-voisin__titre">Aide-mémoire</span></a><a class="guide-voisin guide-voisin--suivant" href="/guide/les-documents-des-regles/" rel="next"><span class="guide-voisin__sens">Suivant ›</span><span class="guide-voisin__titre">Les documents des règles</span></a></div><ol class="guide-pagination"><li class="guide-pagination__partie" style="--couleur-partie: #2a6f97"><span class="guide-pagination__titre">Découvrir</span><ol class="guide-pagination__numeros"><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/" aria-label="Chapitre 1 : Bienvenue dans Maverick" data-bulle="guide-chapitre-573" title="Chapitre 1 : Bienvenue dans Maverick">1</a><span class="bulle" role="tooltip" id="guide-chapitre-573" hidden><span class="bulle__sous">Découvrir · chapitre 1</span><span class="bulle__titre">Bienvenue dans Maverick</span></span></span></li><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/le-jeu-de-role/" aria-label="Chapitre 2 : Le jeu de rôle, comment ça marche ?" data-bulle="guide-chapitre-574" title="Chapitre 2 : Le jeu de rôle, comment ça marche ?">2</a><span class="bulle" role="tooltip" id="guide-chapitre-574" hidden><span class="bulle__sous">Découvrir · chapitre 2</span><span class="bulle__titre">Le jeu de rôle, comment ça marche ?</span></span></span></li><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/l-univers/" aria-label="Chapitre 3 : L’univers" data-bulle="guide-chapitre-575" title="Chapitre 3 : L’univers">3</a><span class="bulle" role="tooltip" id="guide-chapitre-575" hidden><span class="bulle__sous">Découvrir · chapitre 3</span><span class="bulle__titre">L’univers</span></span></span></li><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/reussir-une-action/" aria-label="Chapitre 4 : Réussir une action" data-bulle="guide-chapitre-576" title="Chapitre 4 : Réussir une action">4</a><span class="bulle" role="tooltip" id="guide-chapitre-576" hidden><span class="bulle__sous">Découvrir · chapitre 4</span><span class="bulle__titre">Réussir une action</span></span></span></li></ol></li><li class="guide-pagination__partie" style="--couleur-partie: #2e7d4f"><span class="guide-pagination__titre">Créer son personnage</span><ol class="guide-pagination__numeros"><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/creer-son-personnage/" aria-label="Chapitre 5 : Créer son personnage" data-bulle="guide-chapitre-577" title="Chapitre 5 : Créer son personnage">5</a><span class="bulle" role="tooltip" id="guide-chapitre-577" hidden><span class="bulle__sous">Créer son personnage · chapitre 5</span><span class="bulle__titre">Créer son personnage</span></span></span></li><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/choisir-sa-race/" aria-label="Chapitre 6 : Étape 1 : imaginer son personnage et choisir sa race" data-bulle="guide-chapitre-578" title="Chapitre 6 : Étape 1 : imaginer son personnage et choisir sa race">6</a><span class="bulle" role="tooltip" id="guide-chapitre-578" hidden><span class="bulle__sous">Créer son personnage · chapitre 6</span><span class="bulle__titre">Étape 1 : imaginer son personnage et choisir sa race</span></span></span></li><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/choisir-ses-magies/" aria-label="Chapitre 7 : Étape 2 : choisir ses magies" data-bulle="guide-chapitre-579" title="Chapitre 7 : Étape 2 : choisir ses magies">7</a><span class="bulle" role="tooltip" id="guide-chapitre-579" hidden><span class="bulle__sous">Créer son personnage · chapitre 7</span><span class="bulle__titre">Étape 2 : choisir ses magies</span></span></span></li><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/choisir-sa-classe/" aria-label="Chapitre 8 : Étape 3 : choisir sa classe" data-bulle="guide-chapitre-580" title="Chapitre 8 : Étape 3 : choisir sa classe">8</a><span class="bulle" role="tooltip" id="guide-chapitre-580" hidden><span class="bulle__sous">Créer son personnage · chapitre 8</span><span class="bulle__titre">Étape 3 : choisir sa classe</span></span></span></li><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/caracteristiques-et-competences/" aria-label="Chapitre 9 : Étape 4 : caractéristiques et compétences" data-bulle="guide-chapitre-581" title="Chapitre 9 : Étape 4 : caractéristiques et compétences">9</a><span class="bulle" role="tooltip" id="guide-chapitre-581" hidden><span class="bulle__sous">Créer son personnage · chapitre 9</span><span class="bulle__titre">Étape 4 : caractéristiques et compétences</span></span></span></li><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/premiers-sorts/" aria-label="Chapitre 10 : Étape 5 : ses premiers sorts" data-bulle="guide-chapitre-582" title="Chapitre 10 : Étape 5 : ses premiers sorts">10</a><span class="bulle" role="tooltip" id="guide-chapitre-582" hidden><span class="bulle__sous">Créer son personnage · chapitre 10</span><span class="bulle__titre">Étape 5 : ses premiers sorts</span></span></span></li><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/finaliser-son-personnage/" aria-label="Chapitre 11 : Étape 6 : finaliser son personnage" data-bulle="guide-chapitre-583" title="Chapitre 11 : Étape 6 : finaliser son personnage">11</a><span class="bulle" role="tooltip" id="guide-chapitre-583" hidden><span class="bulle__sous">Créer son personnage · chapitre 11</span><span class="bulle__titre">Étape 6 : finaliser son personnage</span></span></span></li></ol></li><li class="guide-pagination__partie" style="--couleur-partie: #b03030"><span class="guide-pagination__titre">Jouer</span><ol class="guide-pagination__numeros"><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/le-tour-de-jeu/" aria-label="Chapitre 12 : Le tour de jeu" data-bulle="guide-chapitre-584" title="Chapitre 12 : Le tour de jeu">12</a><span class="bulle" role="tooltip" id="guide-chapitre-584" hidden><span class="bulle__sous">Jouer · chapitre 12</span><span class="bulle__titre">Le tour de jeu</span></span></span></li><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/attaquer-et-se-defendre/" aria-label="Chapitre 13 : Attaquer et se défendre" data-bulle="guide-chapitre-585" title="Chapitre 13 : Attaquer et se défendre">13</a><span class="bulle" role="tooltip" id="guide-chapitre-585" hidden><span class="bulle__sous">Jouer · chapitre 13</span><span class="bulle__titre">Attaquer et se défendre</span></span></span></li><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/l-equipement/" aria-label="Chapitre 14 : L’équipement" data-bulle="guide-chapitre-586" title="Chapitre 14 : L’équipement">14</a><span class="bulle" role="tooltip" id="guide-chapitre-586" hidden><span class="bulle__sous">Jouer · chapitre 14</span><span class="bulle__titre">L’équipement</span></span></span></li><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/les-degats/" aria-label="Chapitre 15 : Les dégâts" data-bulle="guide-chapitre-587" title="Chapitre 15 : Les dégâts">15</a><span class="bulle" role="tooltip" id="guide-chapitre-587" hidden><span class="bulle__sous">Jouer · chapitre 15</span><span class="bulle__titre">Les dégâts</span></span></span></li><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/les-postures/" aria-label="Chapitre 16 : Les postures" data-bulle="guide-chapitre-588" title="Chapitre 16 : Les postures">16</a><span class="bulle" role="tooltip" id="guide-chapitre-588" hidden><span class="bulle__sous">Jouer · chapitre 16</span><span class="bulle__titre">Les postures</span></span></span></li><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/la-magie-en-jeu/" aria-label="Chapitre 17 : La magie en jeu" data-bulle="guide-chapitre-589" title="Chapitre 17 : La magie en jeu">17</a><span class="bulle" role="tooltip" id="guide-chapitre-589" hidden><span class="bulle__sous">Jouer · chapitre 17</span><span class="bulle__titre">La magie en jeu</span></span></span></li><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/blessures-et-etats/" aria-label="Chapitre 18 : Blessures et états" data-bulle="guide-chapitre-590" title="Chapitre 18 : Blessures et états">18</a><span class="bulle" role="tooltip" id="guide-chapitre-590" hidden><span class="bulle__sous">Jouer · chapitre 18</span><span class="bulle__titre">Blessures et états</span></span></span></li></ol></li><li class="guide-pagination__partie" style="--couleur-partie: #6a4a9c"><span class="guide-pagination__titre">Progresser</span><ol class="guide-pagination__numeros"><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/la-montee-de-niveau/" aria-label="Chapitre 19 : La montée de niveau" data-bulle="guide-chapitre-591" title="Chapitre 19 : La montée de niveau">19</a><span class="bulle" role="tooltip" id="guide-chapitre-591" hidden><span class="bulle__sous">Progresser · chapitre 19</span><span class="bulle__titre">La montée de niveau</span></span></span></li><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/le-mode-hyper/" aria-label="Chapitre 20 : Le Mode Hyper et le Mode Super" data-bulle="guide-chapitre-592" title="Chapitre 20 : Le Mode Hyper et le Mode Super">20</a><span class="bulle" role="tooltip" id="guide-chapitre-592" hidden><span class="bulle__sous">Progresser · chapitre 20</span><span class="bulle__titre">Le Mode Hyper et le Mode Super</span></span></span></li><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/s-entrainer-et-exercer-un-metier/" aria-label="Chapitre 21 : S’entraîner et exercer un métier" data-bulle="guide-chapitre-593" title="Chapitre 21 : S’entraîner et exercer un métier">21</a><span class="bulle" role="tooltip" id="guide-chapitre-593" hidden><span class="bulle__sous">Progresser · chapitre 21</span><span class="bulle__titre">S’entraîner et exercer un métier</span></span></span></li></ol></li><li class="guide-pagination__partie" style="--couleur-partie: #5a6470"><span class="guide-pagination__titre">Pour aller plus loin</span><ol class="guide-pagination__numeros"><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/aide-memoire/" aria-label="Chapitre 22 : Aide-mémoire" data-bulle="guide-chapitre-594" title="Chapitre 22 : Aide-mémoire">22</a><span class="bulle" role="tooltip" id="guide-chapitre-594" hidden><span class="bulle__sous">Pour aller plus loin · chapitre 22</span><span class="bulle__titre">Aide-mémoire</span></span></span></li><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/lexique/" aria-current="page" aria-label="Chapitre 23 : Lexique" data-bulle="guide-chapitre-595" title="Chapitre 23 : Lexique">23</a><span class="bulle" role="tooltip" id="guide-chapitre-595" hidden><span class="bulle__sous">Pour aller plus loin · chapitre 23</span><span class="bulle__titre">Lexique</span></span></span></li><li><span class="bulle-zone"><a class="guide-pagination__numero" href="/guide/les-documents-des-regles/" aria-label="Chapitre 24 : Les documents des règles" data-bulle="guide-chapitre-596" title="Chapitre 24 : Les documents des règles">24</a><span class="bulle" role="tooltip" id="guide-chapitre-596" hidden><span class="bulle__sous">Pour aller plus loin · chapitre 24</span><span class="bulle__titre">Les documents des règles</span></span></span></li></ol></li></ol></nav></div><script type="module">var e=null,t,n=matchMedia(`(hover: none)`),r=8;for(let e of document.querySelectorAll(`[data-bulle][title]`))e.removeAttribute(`title`);var i=(e,t,n)=>Math.max(t,Math.min(e,Math.max(t,n)));function a(){window.clearTimeout(t),e&&=(e.bulle.hidden=!0,e.bulle.removeAttribute(`style`),e.cible.removeAttribute(`data-ouverte`),null)}function o(){if(!e)return;let{cible:t,bulle:n}=e,o=document.documentElement.clientWidth,s=document.documentElement.clientHeight,c=t.getBoundingClientRect();if(c.bottom<0||c.top>s)return a();n.style.maxHeight=`${s-16}px`;let l=n.getBoundingClientRect(),u=s-c.bottom-6-r,d=c.top-6-r,f=l.height<=u||u>=d;n.style.left=`${i(c.left,r,o-l.width-r)}px`,n.style.top=`${i(f?c.bottom+6:c.top-6-l.height,r,s-l.height-r)}px`}function s(n){window.clearTimeout(t);let r=document.getElementById(n.dataset.bulle??``);r&&(e&&e.bulle===r||(a(),r.hidden=!1,r.style.position=`fixed`,r.style.visibility=`hidden`,n.setAttribute(`data-ouverte`,``),e={cible:n,bulle:r},o(),r.style.visibility=``))}var c=e=>e.target instanceof Element?e.target.closest(`[data-bulle]`):null,l=t=>t instanceof Element&&e!==null&&e.bulle.contains(t),u=()=>{window.clearTimeout(t),t=window.setTimeout(a,150)};document.addEventListener(`mouseover`,e=>{if(n.matches)return;let r=c(e);r?s(r):l(e.target)&&window.clearTimeout(t)}),document.addEventListener(`mouseout`,t=>{if(n.matches||!e)return;let r=c(t),i=t.relatedTarget;(r&&!r.contains(i)&&!l(i)||l(t.target)&&!e.bulle.contains(i)&&!e.cible.contains(i))&&u()}),document.addEventListener(`focusin`,e=>{let t=c(e);t&&t.matches(`:focus-visible`)&&s(t)}),document.addEventListener(`focusout`,e=>{c(e)&&a()}),document.addEventListener(`click`,t=>{let r=c(t);if(!l(t.target)){if(!r)return a();n.matches?e?.cible===r?r.tagName===`BUTTON`&&a():(r.tagName===`A`&&t.preventDefault(),s(r)):r.tagName===`BUTTON`&&s(r)}}),document.addEventListener(`keydown`,t=>{t.key===`Escape`&&e&&(a(),t.stopPropagation())},!0);var d=0,f=()=>{cancelAnimationFrame(d),d=requestAnimationFrame(o)};window.addEventListener(`scroll`,f,{passive:!0}),window.addEventListener(`resize`,f);</script><script>
+  // ← et → : chapitre précédent ou suivant, sauf pendant une saisie ou avec une touche de modification (défilement d'un tableau, raccourcis du navigateur).
+  document.addEventListener('keydown', function (e) {
+    var sens = { ArrowLeft: '[data-guide-precedent]', ArrowRight: '[data-guide-suivant]' }[e.key];
+    if (!sens || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    var cible = e.target;
+    if (cible && cible.closest && cible.closest('input, textarea, select, [contenteditable], .guide-defile')) return;
+    var lien = document.querySelector(sens);
+    if (lien) location.href = lien.href;
+  });
+
+  // Écran tactile : glisser le doigt vers la gauche tourne la page (chapitre suivant), vers la droite revient au précédent (demande du propriétaire).
+  // Le geste doit être franchement horizontal (au moins 2 fois plus large que haut, et 60 px ou le quart de l'écran), d'un seul doigt ; il ne compte
+  // pas sur un tableau qui défile, dans un champ, pendant une sélection de texte, sur une page zoomée (le doigt la déplace) ni au bord de l'écran
+  // (gestes du système, comme le retour arrière). La page suit un peu le doigt pour montrer que le geste est compris, sauf mouvement réduit.
+  (function () {
+    var page = document.querySelector('.guide-page');
+    if (!page) return;
+    var calme = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var depart = null;
+    function voisin(dx) {
+      return document.querySelector(dx < 0 ? '[data-guide-suivant]' : '[data-guide-precedent]');
+    }
+    function selection() {
+      return window.getSelection && String(window.getSelection()) !== '';
+    }
+    // Décalage borné à 64 px : au-delà de la marge de <main>, la page est coupée (overflow-x: clip, styles/guide/guide.css), l'écran ne défile pas de côté.
+    function decaler(x, transition, opacite) {
+      if (calme) return;
+      x = Math.max(-64, Math.min(64, x));
+      page.style.transition = transition;
+      page.style.transform = x ? 'translateX(' + x + 'px)' : '';
+      page.style.opacity = opacite || '';
+    }
+    document.addEventListener('touchstart', function (e) {
+      depart = null;
+      var t = e.touches[0];
+      var cible = e.target;
+      if (e.touches.length !== 1 || !cible.closest || !cible.closest('[data-guide]') || selection()) return;
+      if (cible.closest('input, textarea, select, [contenteditable], .guide-defile')) return;
+      if (window.visualViewport && visualViewport.scale > 1.01) return;
+      if (t.clientX < 24 || t.clientX > window.innerWidth - 24) return;
+      depart = { x: t.clientX, y: t.clientY, horizontal: null };
+    }, { passive: true });
+    document.addEventListener('touchmove', function (e) {
+      if (!depart) return;
+      if (e.touches.length !== 1) {
+        depart = null;
+        decaler(0, 'transform 0.2s ease');
+        return;
+      }
+      var dx = e.touches[0].clientX - depart.x;
+      var dy = e.touches[0].clientY - depart.y;
+      if (depart.horizontal === null && Math.abs(dx) + Math.abs(dy) > 12) depart.horizontal = Math.abs(dx) > 2 * Math.abs(dy);
+      if (depart.horizontal) decaler(dx * (voisin(dx) ? 0.35 : 0.1), 'none');
+    }, { passive: true });
+    document.addEventListener('touchend', function (e) {
+      if (!depart) return;
+      var t = e.changedTouches[0];
+      var dx = t.clientX - depart.x;
+      var dy = t.clientY - depart.y;
+      var lien = voisin(dx);
+      var tourne = depart.horizontal && lien && Math.abs(dx) >= Math.max(60, window.innerWidth / 4) && Math.abs(dx) > 2 * Math.abs(dy) && !selection();
+      depart = null;
+      if (!tourne) {
+        decaler(0, 'transform 0.2s ease');
+        return;
+      }
+      decaler(dx < 0 ? -64 : 64, 'transform 0.15s ease, opacity 0.15s ease', '0.4');
+      location.href = lien.href;
+    }, { passive: true });
+    document.addEventListener('touchcancel', function () {
+      if (depart) decaler(0, 'transform 0.2s ease');
+      depart = null;
+    }, { passive: true });
+    // Retour arrière : la page restaurée par le navigateur ne doit pas rester décalée.
+    window.addEventListener('pageshow', function () {
+      decaler(0, '');
+    });
+  })();
+
+  // Les flèches de côté (collées en bas de l'écran) s'effacent dès que les liens du bas (Précédent / Suivant, avec le titre du chapitre) arrivent à
+  // l'écran : ils font le même travail, et les flèches ne doivent pas venir se poser à côté (demande du propriétaire). Sans JavaScript, elles s'arrêtent
+  // au pied de la page.
+  (function () {
+    var guide = document.querySelector('[data-guide]');
+    var bas = document.querySelector('.guide-voisins');
+    if (!guide || !bas || !('IntersectionObserver' in window)) return;
+    new IntersectionObserver(function (entrees) {
+      guide.toggleAttribute('data-bas-visible', entrees[entrees.length - 1].isIntersecting);
+    }).observe(bas);
+  })();
+</script></main><footer class="site-footer"><span>Projet de fan pour Maverick JDR — contenu issu du Discord et des Google Docs du MJ.</span><span class="site-footer__version">V0.1.94</span></footer><div data-edition data-api="/api/" data-page="guide/lexique" data-base="/" hidden></div><script type="module" src="/_astro/Edition.astro_astro_type_script_index_0_lang.CvTRjdlz.js"></script><script>
+      (function () {
+        var toggles = document.querySelectorAll('.nav-group__toggle');
+        var rows = document.querySelectorAll('.site-nav__items');
+        toggles.forEach(function (t) {
+          t.addEventListener('click', function () {
+            toggles.forEach(function (o) { o.setAttribute('aria-pressed', o === t ? 'true' : 'false'); });
+            rows.forEach(function (r) { r.hidden = r.getAttribute('data-group') !== t.getAttribute('data-group'); });
+          });
+        });
+      })();
+    </script></body></html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Capacités écrites à l'identique (nom, type, effet, note de cellule) à plusieurs endroits : une ligne par contenu."><link rel="icon" type="image/png" sizes="32x32" href="/favicon.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><title>Données : v_capacite_partagee — Maverick Center</title><link rel="stylesheet" href="/_astro/Base.C8jCj17B.css"></head><body><header class="site-header"><div class="site-header__inner"><a class="brand" href="/"><img src="/logo.webp" alt="Maverick Center" width="319" height="320"></a><div class="site-header__menu"><nav class="site-nav" aria-label="Navigation principale"><ul class="site-nav__groups"><li><button type="button" class="nav-group__toggle" data-group="regles" aria-pressed="false">Règles</button></li><li><button type="button" class="nav-group__toggle" data-group="personnages" aria-pressed="false">Personnages</button></li><li><button type="button" class="nav-group__toggle" data-group="inventaire" aria-pressed="false">Inventaire</button></li><li><button type="button" class="nav-group__toggle" data-group="codex" aria-pressed="false">Codex</button></li><li><button type="button" class="nav-group__toggle" data-group="outils" aria-pressed="true" aria-current="true">Outils</button></li></ul><ul class="site-nav__items" data-group="regles" hidden><li><a href="/guide/">Guide</a></li><li><a href="/races/">Races</a></li><li><a href="/magies/">Magies</a></li><li><a href="/classes/">Classes</a></li><li><a href="/metiers/">Métiers</a></li></ul><ul class="site-nav__items" data-group="personnages" hidden><li><a href="/fiche/">Fiche de personnage</a></li><li><a href="/personnages/">Listes</a></li><li><span class="nav-soon">Groupes <small>(bientôt)</small></span></li><li><span class="nav-soon">Chroniques <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="inventaire" hidden><li><a href="/ressources/armes/">Armes</a></li><li><a href="/ressources/armures/">Armures</a></li><li><a href="/ressources/accessoires/">Accessoires</a></li><li><span class="nav-soon">Objets à la ceinture <small>(bientôt)</small></span></li><li><a href="/ressources/livre-parchemin/">Livres &amp; Parchemins</a></li><li><a href="/ressources/pieces-elementaires/">Pièces élémentaires</a></li></ul><ul class="site-nav__items" data-group="codex" hidden><li><span class="nav-soon">Chronologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Carte &amp; lieux <small>(bientôt)</small></span></li><li><span class="nav-soon">Mythologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Bestiaire <small>(bientôt)</small></span></li><li><span class="nav-soon">Factions <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="outils"><li><span class="nav-soon">Statistiques <small>(bientôt)</small></span></li><li><a href="/mise-a-jour/">Mise à jour</a></li><li><span class="nav-soon">Boîte à idée <small>(bientôt)</small></span></li><li><a href="/galeries/">Galeries</a></li><li><a href="/recherche/">Recherche</a></li><li><a href="/archives/">Archives</a></li></ul></nav></div></div></header><main><p class="donnees-fil"><a href="/donnees/">Données</a> › <code>v_capacite_partagee</code></p><h1><code>v_capacite_partagee</code></h1><p class="donnees-role">Vue : calculée à partir d’autres tables, toujours à jour. Capacités écrites à l&#39;identique (nom, type, effet, note de cellule) à plusieurs endroits : une ligne par contenu.</p><details class="donnees-colonnes"><summary>5 colonnes</summary><table><thead><tr><th>Colonne</th><th>Type</th><th>Clé</th><th>Description</th></tr></thead><tbody><tr><td><code>nom</code></td><td>TEXT</td><td></td><td></td></tr><tr><td><code>type_brut</code></td><td></td><td></td><td></td></tr><tr><td><code>effet</code></td><td></td><td></td><td></td></tr><tr><td><code>nb_emplacements</code></td><td></td><td></td><td></td></tr><tr><td><code>premiere_id</code></td><td></td><td></td><td></td></tr></tbody></table></details><p class="donnees-filtre"><label>Filtrer les lignes <input type="search" id="filtre" autocomplete="off"></label><span id="compte" aria-live="polite">5 lignes</span><span class="donnees-aide">Cliquer sur un titre de colonne pour trier.</span></p><div class="donnees-wrap"><table class="donnees" id="donnees"><thead><tr><th title="TEXT">nom</th><th title>type_brut</th><th title>effet</th><th title>nb_emplacements</th><th title>premiere_id</th></tr></thead><tbody><tr><td>Contre-attaque</td><td>Réaction (1 fois/combat)</td><td>Permet de contre-attaquer une attaque durant le combat</td><td>2</td><td>capacites/guerrier-contre-attaque</td></tr><tr><td>Gigantisme</td><td>Passif</td><td>Permet d&#39;utiliser certaines armes à une main au lieu de deux (voir remarque)</td><td>2</td><td>capacites/minotaure-gigantisme</td></tr><tr><td>Glissade</td><td>Passif</td><td>+2 Vitesse quand il pleut.</td><td>2</td><td>capacites/namazu-glissade</td></tr><tr><td>Rage</td><td>Actif (X tour/combat)</td><td>Active un pouvoir de rage qui augmente de +3 les dégâts et de +2 les dégâts subis pendant 3 tours + 1 tour tous les 5 niveaux de la classe</td><td>2</td><td>capacites/goleois-rage</td></tr><tr><td>Sang contrôlé</td><td>Passif</td><td>Immunité au saignement.</td><td>2</td><td>capacites/minotaure-sang-controle</td></tr></tbody></table></div><script>
+    (() => {
+      const table = document.getElementById('donnees');
+      const champ = document.getElementById('filtre');
+      const compte = document.getElementById('compte');
+      if (!table || !champ) return;
+      const corps = table.tBodies[0];
+      const lignes = [...corps.rows];
+      const decalage = table.tHead.rows[0].cells[0].textContent === 'Page' ? 1 : 0;
+      const plier = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+      const textes = lignes.map((tr) => plier([...tr.cells].slice(decalage).map((c) => c.textContent).join(' ')));
+      const maj = () => {
+        const q = plier(champ.value.trim());
+        let n = 0;
+        lignes.forEach((tr, i) => { const ok = !q || textes[i].includes(q); tr.hidden = !ok; if (ok) n += 1; });
+        compte.textContent = `${n.toLocaleString('fr-FR')} / ${lignes.length.toLocaleString('fr-FR')} lignes`;
+      };
+      champ.addEventListener('input', maj);
+      table.tHead.addEventListener('click', (e) => {
+        const th = e.target.closest('th');
+        if (!th || th.cellIndex < decalage) return;
+        const i = th.cellIndex;
+        const sens = th.dataset.sens === 'asc' ? 'desc' : 'asc';
+        table.tHead.querySelectorAll('th').forEach((x) => { delete x.dataset.sens; });
+        th.dataset.sens = sens;
+        const val = (tr) => tr.cells[i].textContent.trim();
+        const nombres = lignes.every((tr) => val(tr) === '' || !Number.isNaN(Number(val(tr))));
+        lignes.sort((a, b) => {
+          const x = val(a);
+          const y = val(b);
+          let c;
+          if (nombres) c = x === y ? 0 : x === '' ? -1 : y === '' ? 1 : Number(x) - Number(y);
+          else c = x.localeCompare(y, 'fr', { numeric: true });
+          return sens === 'asc' ? c : -c;
+        });
+        lignes.forEach((tr) => corps.appendChild(tr));
+      });
+    })();
+  </script></main><footer class="site-footer"><span>Projet de fan pour Maverick JDR — contenu issu du Discord et des Google Docs du MJ.</span><span class="site-footer__version">V0.1.94</span></footer><script>
+      (function () {
+        var toggles = document.querySelectorAll('.nav-group__toggle');
+        var rows = document.querySelectorAll('.site-nav__items');
+        toggles.forEach(function (t) {
+          t.addEventListener('click', function () {
+            toggles.forEach(function (o) { o.setAttribute('aria-pressed', o === t ? 'true' : 'false'); });
+            rows.forEach(function (r) { r.hidden = r.getAttribute('data-group') !== t.getAttribute('data-group'); });
+          });
+        });
+      })();
+    </script></body></html>

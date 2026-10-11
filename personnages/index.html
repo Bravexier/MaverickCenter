@@ -1,0 +1,84 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Rechercher les personnages prétirés : filtres et tri par colonne"><link rel="icon" type="image/png" sizes="32x32" href="/favicon.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><title>Personnages — Maverick Center</title><link rel="stylesheet" href="/_astro/Base.C8jCj17B.css"></head><body><header class="site-header"><div class="site-header__inner"><a class="brand" href="/"><img src="/logo.webp" alt="Maverick Center" width="319" height="320"></a><div class="site-header__menu"><nav class="site-nav" aria-label="Navigation principale"><ul class="site-nav__groups"><li><button type="button" class="nav-group__toggle" data-group="regles" aria-pressed="false">Règles</button></li><li><button type="button" class="nav-group__toggle" data-group="personnages" aria-pressed="true" aria-current="true">Personnages</button></li><li><button type="button" class="nav-group__toggle" data-group="inventaire" aria-pressed="false">Inventaire</button></li><li><button type="button" class="nav-group__toggle" data-group="codex" aria-pressed="false">Codex</button></li><li><button type="button" class="nav-group__toggle" data-group="outils" aria-pressed="false">Outils</button></li></ul><ul class="site-nav__items" data-group="regles" hidden><li><a href="/guide/">Guide</a></li><li><a href="/races/">Races</a></li><li><a href="/magies/">Magies</a></li><li><a href="/classes/">Classes</a></li><li><a href="/metiers/">Métiers</a></li></ul><ul class="site-nav__items" data-group="personnages"><li><a href="/fiche/">Fiche de personnage</a></li><li><a href="/personnages/" aria-current="page">Listes</a></li><li><span class="nav-soon">Groupes <small>(bientôt)</small></span></li><li><span class="nav-soon">Chroniques <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="inventaire" hidden><li><a href="/ressources/armes/">Armes</a></li><li><a href="/ressources/armures/">Armures</a></li><li><a href="/ressources/accessoires/">Accessoires</a></li><li><span class="nav-soon">Objets à la ceinture <small>(bientôt)</small></span></li><li><a href="/ressources/livre-parchemin/">Livres &amp; Parchemins</a></li><li><a href="/ressources/pieces-elementaires/">Pièces élémentaires</a></li></ul><ul class="site-nav__items" data-group="codex" hidden><li><span class="nav-soon">Chronologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Carte &amp; lieux <small>(bientôt)</small></span></li><li><span class="nav-soon">Mythologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Bestiaire <small>(bientôt)</small></span></li><li><span class="nav-soon">Factions <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="outils" hidden><li><span class="nav-soon">Statistiques <small>(bientôt)</small></span></li><li><a href="/mise-a-jour/">Mise à jour</a></li><li><span class="nav-soon">Boîte à idée <small>(bientôt)</small></span></li><li><a href="/galeries/">Galeries</a></li><li><a href="/recherche/">Recherche</a></li><li><a href="/archives/">Archives</a></li></ul></nav></div></div></header><main><style>/* Chargé uniquement depuis pages/personnages.astro (?raw) : la recherche des personnages. Filtres en tête, tableau dont chaque colonne se trie
+   (bouton dans l'en-tête, flèche du sens), nom en lien vers la fiche, statut et règles à revoir en pastilles. Couleurs de la partie « Créer son
+   personnage » du guide, comme la fiche. */
+.personnages { --vert: #2e7d4f; display: grid; gap: 1rem; }
+.personnages-entete { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 0.75rem; }
+.personnages-entete h1 { margin: 0; }
+.personnages-entete p { margin: 0.25rem 0 0; color: var(--muted); }
+.personnages-nouveau {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  background: var(--vert);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--vert) 35%, transparent);
+}
+.personnages-nouveau:hover { filter: brightness(1.1); }
+.personnages-filtres {
+  display: grid;
+  gap: 0.6rem 0.8rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr));
+  padding: 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--vert) 40%, var(--border));
+  border-radius: calc(var(--radius) + 4px);
+  background: color-mix(in srgb, var(--vert) 6%, var(--surface));
+}
+.personnages-filtres label { display: grid; gap: 0.2rem; font-size: 0.85rem; color: var(--muted); }
+.personnages-filtres input, .personnages-filtres select { width: 100%; color: var(--text); }
+.personnages-filtres .large { grid-column: span 2; }
+.personnages-filtres .niveaux { display: flex; gap: 0.4rem; }
+.personnages-filtres .actions { display: flex; align-items: end; }
+.personnages-compte { margin: 0; color: var(--muted); }
+
+.personnages-tableau { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.personnages-tableau table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.personnages-tableau th, .personnages-tableau td { padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.personnages-tableau td.nombre, .personnages-tableau td:first-child { white-space: nowrap; }
+.personnages-tableau td.long { min-width: 8rem; }
+.personnages-tableau th { position: sticky; top: 0; background: color-mix(in srgb, var(--vert) 10%, var(--surface)); padding: 0; }
+.personnages-tableau th button {
+  white-space: nowrap;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+  padding: 0.5rem 0.45rem;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--text);
+  font-weight: 700;
+  text-align: left;
+}
+.personnages-tableau th button:hover, .personnages-tableau th button:focus-visible { background: color-mix(in srgb, var(--vert) 18%, var(--surface)); }
+.personnages-tableau th .fleche { color: var(--muted); font-size: 0.75rem; }
+.personnages-tableau th[aria-sort] .fleche { color: var(--vert); }
+.personnages-tableau th.nombre button { justify-content: flex-end; flex-direction: row-reverse; }
+.personnages-tableau td.nombre { text-align: right; font-variant-numeric: tabular-nums; }
+.personnages-tableau tbody tr:hover { background: color-mix(in srgb, var(--vert) 5%, var(--surface)); }
+.personnages-tableau a { font-weight: 700; }
+.personnages-vide { padding: 1rem; color: var(--muted); }
+
+.statut { display: inline-block; padding: 0.05rem 0.55rem; border-radius: 999px; font-size: 0.78rem; font-weight: 700; border: 1px solid var(--border); }
+.statut[data-statut='valide'] { color: var(--good); border-color: color-mix(in srgb, var(--good) 55%, var(--border)); background: color-mix(in srgb, var(--good) 10%, var(--surface)); }
+.statut[data-statut='brouillon'] { color: #b45309; border-color: color-mix(in srgb, #b45309 50%, var(--border)); background: color-mix(in srgb, #b45309 8%, var(--surface)); }
+.statut[data-statut='archive'] { color: var(--muted); }
+.regles-a-revoir { font-weight: 700; color: var(--danger); }
+.regles-a-revoir[data-zero] { color: var(--good); font-weight: normal; }
+</style><div class="personnages" id="personnages" data-api="/api/" data-fiche="/fiche/"><div class="personnages-entete"><div><h1>Personnages</h1><p>Les prétirés : des personnages qui ne sont à personne et que tout le monde voit. Cliquez sur un en-tête pour trier.</p></div><a class="personnages-nouveau" href="/fiche/">+ Nouveau prétiré</a></div><form class="personnages-filtres" id="filtres" role="search" aria-label="Filtres"><label class="large">Nom, surnom ou origine<input type="search" name="texte" autocomplete="off" placeholder="Rechercher…"></label><label>Statut<select name="statut"><option value="">Tous sauf archivés</option><option value="brouillon">Brouillon</option><option value="valide">Validé</option><option value="archive">Archivé</option><option value="tous">Tous</option></select></label><label>Race<select name="race"><option value="">Toutes</option></select></label><label>Magie<select name="magie"><option value="">Toutes</option></select></label><label>Classe<select name="classe"><option value="">Toutes</option></select></label><label>Niveau<span class="niveaux"><input type="number" name="niveauMin" min="1" max="20" placeholder="de" aria-label="Niveau minimum"><input type="number" name="niveauMax" min="1" max="20" placeholder="à" aria-label="Niveau maximum"></span></label><label>Règles à revoir<select name="regles"><option value="">Peu importe</option><option value="sans">Aucune</option><option value="avec">Au moins une</option></select></label><span class="actions"><button type="reset" id="effacer">Effacer les filtres</button></span></form><p class="personnages-compte" id="compte" aria-live="polite">Chargement…</p><p class="banner" id="indisponible" hidden></p><noscript><p class="banner">Cette page a besoin de JavaScript pour interroger le service des personnages.</p></noscript><div class="personnages-tableau"><table><thead><tr><th scope="col" data-cle="nom"><button type="button">Nom<span class="fleche" aria-hidden="true">↕</span></button></th><th scope="col" data-cle="statut"><button type="button">Statut<span class="fleche" aria-hidden="true">↕</span></button></th><th scope="col" data-cle="race"><button type="button">Race<span class="fleche" aria-hidden="true">↕</span></button></th><th scope="col" data-cle="magies"><button type="button">Magies<span class="fleche" aria-hidden="true">↕</span></button></th><th scope="col" data-cle="classes"><button type="button">Classes<span class="fleche" aria-hidden="true">↕</span></button></th><th scope="col" data-cle="niveau" class="nombre"><button type="button">Niveau<span class="fleche" aria-hidden="true">↕</span></button></th><th scope="col" data-cle="metier"><button type="button">Métier<span class="fleche" aria-hidden="true">↕</span></button></th><th scope="col" data-cle="anomalies" class="nombre"><button type="button">À revoir<span class="fleche" aria-hidden="true">↕</span></button></th><th scope="col" data-cle="modifie_le"><button type="button">Modifié<span class="fleche" aria-hidden="true">↕</span></button></th></tr></thead><tbody id="lignes"></tbody></table></div></div></main><footer class="site-footer"><span>Projet de fan pour Maverick JDR — contenu issu du Discord et des Google Docs du MJ.</span><span class="site-footer__version">V0.1.94</span></footer><script>
+      (function () {
+        var toggles = document.querySelectorAll('.nav-group__toggle');
+        var rows = document.querySelectorAll('.site-nav__items');
+        toggles.forEach(function (t) {
+          t.addEventListener('click', function () {
+            toggles.forEach(function (o) { o.setAttribute('aria-pressed', o === t ? 'true' : 'false'); });
+            rows.forEach(function (r) { r.hidden = r.getAttribute('data-group') !== t.getAttribute('data-group'); });
+          });
+        });
+      })();
+    </script></body></html><script type="module" src="/_astro/personnages.astro_astro_type_script_index_0_lang.CBqCdV4x.js"></script>

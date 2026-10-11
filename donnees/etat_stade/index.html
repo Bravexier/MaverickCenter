@@ -1,0 +1,171 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Effet d'une altération par stade (colonnes « Stade 1 », « Stade 2 », « Stade 3 »). Pour 6 altérations la source fusionne les trois colonnes en une seule cellule : une ligne, stade NULL (la source ne distingue pas de stade). Texte tel que dans la cellule."><link rel="icon" type="image/png" sizes="32x32" href="/favicon.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><title>Données : etat_stade — Maverick Center</title><link rel="stylesheet" href="/_astro/Base.C8jCj17B.css"></head><body><header class="site-header"><div class="site-header__inner"><a class="brand" href="/"><img src="/logo.webp" alt="Maverick Center" width="319" height="320"></a><div class="site-header__menu"><nav class="site-nav" aria-label="Navigation principale"><ul class="site-nav__groups"><li><button type="button" class="nav-group__toggle" data-group="regles" aria-pressed="false">Règles</button></li><li><button type="button" class="nav-group__toggle" data-group="personnages" aria-pressed="false">Personnages</button></li><li><button type="button" class="nav-group__toggle" data-group="inventaire" aria-pressed="false">Inventaire</button></li><li><button type="button" class="nav-group__toggle" data-group="codex" aria-pressed="false">Codex</button></li><li><button type="button" class="nav-group__toggle" data-group="outils" aria-pressed="true" aria-current="true">Outils</button></li></ul><ul class="site-nav__items" data-group="regles" hidden><li><a href="/guide/">Guide</a></li><li><a href="/races/">Races</a></li><li><a href="/magies/">Magies</a></li><li><a href="/classes/">Classes</a></li><li><a href="/metiers/">Métiers</a></li></ul><ul class="site-nav__items" data-group="personnages" hidden><li><a href="/fiche/">Fiche de personnage</a></li><li><a href="/personnages/">Listes</a></li><li><span class="nav-soon">Groupes <small>(bientôt)</small></span></li><li><span class="nav-soon">Chroniques <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="inventaire" hidden><li><a href="/ressources/armes/">Armes</a></li><li><a href="/ressources/armures/">Armures</a></li><li><a href="/ressources/accessoires/">Accessoires</a></li><li><span class="nav-soon">Objets à la ceinture <small>(bientôt)</small></span></li><li><a href="/ressources/livre-parchemin/">Livres &amp; Parchemins</a></li><li><a href="/ressources/pieces-elementaires/">Pièces élémentaires</a></li></ul><ul class="site-nav__items" data-group="codex" hidden><li><span class="nav-soon">Chronologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Carte &amp; lieux <small>(bientôt)</small></span></li><li><span class="nav-soon">Mythologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Bestiaire <small>(bientôt)</small></span></li><li><span class="nav-soon">Factions <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="outils"><li><span class="nav-soon">Statistiques <small>(bientôt)</small></span></li><li><a href="/mise-a-jour/">Mise à jour</a></li><li><span class="nav-soon">Boîte à idée <small>(bientôt)</small></span></li><li><a href="/galeries/">Galeries</a></li><li><a href="/recherche/">Recherche</a></li><li><a href="/archives/">Archives</a></li></ul></nav></div></div></header><main><p class="donnees-fil"><a href="/donnees/">Données</a> › <code>etat_stade</code></p><h1><code>etat_stade</code></h1><p class="donnees-role">Effet d&#39;une altération par stade (colonnes « Stade 1 », « Stade 2 », « Stade 3 »). Pour 6 altérations la source fusionne les trois colonnes en une seule cellule : une ligne, stade NULL (la source ne distingue pas de stade). Texte tel que dans la cellule.</p><details class="donnees-colonnes"><summary>6 colonnes</summary><table><thead><tr><th>Colonne</th><th>Type</th><th>Clé</th><th>Description</th></tr></thead><tbody><tr><td><code>etat_id</code></td><td>TEXT</td><td>clé primaire, → <a href="/donnees/etat/"><code>etat</code></a></td><td></td></tr><tr><td><code>rang</code></td><td>INTEGER</td><td>clé primaire</td><td></td></tr><tr><td><code>stade</code></td><td>INTEGER</td><td></td><td>NULL = cellule fusionnée sur les trois stades</td></tr><tr><td><code>effet</code></td><td>TEXT</td><td></td><td></td></tr><tr><td><code>origine</code></td><td>TEXT</td><td></td><td></td></tr><tr><td><code>source_ref</code></td><td>TEXT</td><td></td><td></td></tr></tbody></table></details><p class="donnees-filtre"><label>Filtrer les lignes <input type="search" id="filtre" autocomplete="off"></label><span id="compte" aria-live="polite">48 lignes</span><span class="donnees-aide">Cliquer sur un titre de colonne pour trier.</span></p><div class="donnees-wrap"><table class="donnees" id="donnees"><thead><tr><th title="TEXT">etat_id</th><th title="INTEGER">rang</th><th title="NULL = cellule fusionnée sur les trois stades">stade</th><th title="TEXT">effet</th><th title="TEXT">origine</th><th title="TEXT">source_ref</th></tr></thead><tbody><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_aggripe.1"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_aggripe">guide/liste-des-alterations-d-etat#etat:aggripe</a></td><td>1</td><td class="nul"></td><td>Impossible de bouger.
+Un jet d&#39;Athlétisme/Équilibre est nécessaire pour sortir de l&#39;entrave.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › M68:AP72</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_aveuglement.1"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_aveuglement">guide/liste-des-alterations-d-etat#etat:aveuglement</a></td><td>1</td><td>1</td><td>-20% pour tout test qui demande de toucher une cible pendant 2 tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › M3:V7</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_aveuglement.2"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_aveuglement">guide/liste-des-alterations-d-etat#etat:aveuglement</a></td><td>2</td><td>2</td><td>-50% pour tout test qui demande de toucher une cible pendant 2 tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › W3:AF7</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_aveuglement.3"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_aveuglement">guide/liste-des-alterations-d-etat#etat:aveuglement</a></td><td>3</td><td>3</td><td>-100% pour tout test qui demande de toucher une cible pendant 2 tours.
+
+Les dégâts de sorts qui sont liés à la vision ne font aucun dégât.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › AG3:AP7</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_brulure.1"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_brulure">guide/liste-des-alterations-d-etat#etat:brulure</a></td><td>1</td><td>1</td><td>Inflige 10% de la santé Max 
+pendant 3 Tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › M8:V12</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_brulure.2"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_brulure">guide/liste-des-alterations-d-etat#etat:brulure</a></td><td>2</td><td>2</td><td>Inflige 10% de la santé Max
+pendant 4 Tours</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › W8:AF12</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_brulure.3"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_brulure">guide/liste-des-alterations-d-etat#etat:brulure</a></td><td>3</td><td>3</td><td>Inflige 10% de la santé Max
+pendant 5 Tours.
+Les dégâts des attaques physiques
+de la victime sont divisés par 2</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › AG8:AP12</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_coma.1"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_coma">guide/liste-des-alterations-d-etat#etat:coma</a></td><td>1</td><td>1</td><td>Le personnage est inconscient et doit faire 3 jets de survie s&#39;il ne veut pas mourir.
+Une réussite et le personnage est stabilisé, 3 échecs et c&#39;est la MORT !</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › M73:V77</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_coma.2"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_coma">guide/liste-des-alterations-d-etat#etat:coma</a></td><td>2</td><td>2</td><td>Si le personnage a atteint son négatif maximal (le négatif égal à ses pv max) il n&#39;aura qu&#39;un SEUL et UNIQUE jet de survie. S&#39;il est raté c&#39;est la MORT !</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › W73:AF77</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_coma.3"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_coma">guide/liste-des-alterations-d-etat#etat:coma</a></td><td>3</td><td>3</td><td>Si le personnage a atteint son double négatif maximal, il est MORT.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › AG73:AP77</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_confusion.1"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_confusion">guide/liste-des-alterations-d-etat#etat:confusion</a></td><td>1</td><td>1</td><td>Lance 1d100 pour voir le comportement 
+01-70 : Agit normalement.
+71-80 : Passe son Tour
+81-90 : Se frappe tout seul.
+91-100 : Attaque la cible la plus proche
+(Allié comme ennemi) 
+Dure 3 Tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › M13:V17</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_confusion.2"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_confusion">guide/liste-des-alterations-d-etat#etat:confusion</a></td><td>2</td><td>2</td><td>Lance 1d100 pour voir le comportement 
+01-50 : Agit normalement.
+51-60 : Passe son Tour
+61-80 : Se frappe tout seul.
+81-100 : Attaque la cible la plus proche
+(Allié comme ennemi) 
+Dure 3 Tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › W13:AF17</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_confusion.3"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_confusion">guide/liste-des-alterations-d-etat#etat:confusion</a></td><td>3</td><td>3</td><td>Lance 1d100 pour voir le comportement 
+01-20 : Agit normalement.
+21-40 : Passe son Tour
+41-60 : Se frappe tout seul.
+61-100 : Attaque la cible la plus proche
+(Allié comme ennemi) 
+Dure 3 Tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › AG13:AP17</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_couardise.1"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_couardise">guide/liste-des-alterations-d-etat#etat:couardise</a></td><td>1</td><td class="nul"></td><td>Impossible d&#39;attaquer une cible qui a plus de santé. Force un jet de fermeté ou de calme à chaque tentative d&#39;attaque ou d&#39;entrave directe sur l&#39;adversaire.
+Dure 4 tours.
+(Les boss et mini boss ne peuvent pas l&#39;infliger)</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › M78:AP82</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_enchevetre.1"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_enchevetre">guide/liste-des-alterations-d-etat#etat:enchevetre</a></td><td>1</td><td class="nul"></td><td>Ne peut pas se déplacer et l&#39;assaillant non plus.
+Les attaques physiques ont les dégâts divisés par 2.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › M83:AP87</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_enrage.1"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_enrage">guide/liste-des-alterations-d-etat#etat:enrage</a></td><td>1</td><td>1</td><td>- La victime a un bonus de +3 dégâts.
+-Malus de 10% pour toucher.
+-Attaque la cible vivante la plus proche (alliée comme ennemie).
+-Jet de fermeté pour retirer l&#39;effet.
+-S&#39;arrête au bout de 4 Tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › M18:V22</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_enrage.2"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_enrage">guide/liste-des-alterations-d-etat#etat:enrage</a></td><td>2</td><td>2</td><td>- La victime a un bonus de +6 dégâts.
+-Malus de 15% pour toucher.
+-Attaque la cible vivante la plus proche (alliée comme ennemie).
+-Jet de fermeté pour retirer l&#39;effet.
+-S&#39;arrête au bout de 4 Tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › W18:AF22</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_enrage.3"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_enrage">guide/liste-des-alterations-d-etat#etat:enrage</a></td><td>3</td><td>3</td><td>- La victime a un bonus de +10 dégâts.
+-Malus de 20% pour toucher.
+-Attaque la cible vivante la plus proche (alliée comme ennemie).
+-Jet de fermeté pour retirer l&#39;effet.
+-S&#39;arrête au bout de 4 Tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › AG18:AP22</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_etourdi.1"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_etourdi">guide/liste-des-alterations-d-etat#etat:etourdi</a></td><td>1</td><td class="nul"></td><td>Impossible de faire le déplacement ET l&#39;action dans le même tour. Les IC deviennent des actions.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › M88:AP92</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_fatigue.1"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_fatigue">guide/liste-des-alterations-d-etat#etat:fatigue</a></td><td>1</td><td>1</td><td>-Impossible de Sprint.
+- Malus de 5 à tous les dégâts.
+
+Dure jusqu&#39;au prochain Repos.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › M23:V27</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_fatigue.2"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_fatigue">guide/liste-des-alterations-d-etat#etat:fatigue</a></td><td>2</td><td>2</td><td>-Impossible de Sprint.
+- Croix en Force et en Agilité.
+- Malus de 10 à tous les dégâts.
+
+Dure jusqu&#39;au prochain Repos.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › W23:AF27</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_fatigue.3"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_fatigue">guide/liste-des-alterations-d-etat#etat:fatigue</a></td><td>3</td><td>3</td><td>-Impossible de Sprint.
+- Croix à toutes les Caractéristiques.
+- Malus de 15 à tous les dégâts.
+
+Dure jusqu&#39;au prochain Repos.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › AG23:AP27</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_folle-de-guerre.1"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_folle-de-guerre">guide/liste-des-alterations-d-etat#etat:folle-de-guerre</a></td><td>1</td><td class="nul"></td><td>- Impossible d&#39;attendre, doit avancer vers l&#39;ennemi.
+- Insensible à tout contrôle mental ou à la peur.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › M93:AP97</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_gel.1"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_gel">guide/liste-des-alterations-d-etat#etat:gel</a></td><td>1</td><td>1</td><td>- Vitesse -1
+-Inflige 5% de la santé max.
+
+Dure 3 Tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › M28:V32</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_gel.2"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_gel">guide/liste-des-alterations-d-etat#etat:gel</a></td><td>2</td><td>2</td><td>-Vitesse -1.
+- Inflige 10% de la santé Max.
+- Les dégâts des attaques magiques de la cible sont divisés par 2.
+Dure 3 Tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › W28:AF32</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_gel.3"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_gel">guide/liste-des-alterations-d-etat#etat:gel</a></td><td>3</td><td>3</td><td>-Vitesse -1.
+- Inflige 15% de la santé Max.
+- Les dégâts des attaques magiques de la cible sont divisés par 2.
+Dure 3 Tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › AG28:AP32</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_paralysie.1"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_paralysie">guide/liste-des-alterations-d-etat#etat:paralysie</a></td><td>1</td><td>1</td><td>- Un jet de Vigueur est nécessaire
+pour ne pas perdre 1 Tour.
+
+Dure 2 Tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › M33:V37</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_paralysie.2"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_paralysie">guide/liste-des-alterations-d-etat#etat:paralysie</a></td><td>2</td><td>2</td><td>- Un jet de Vigueur est nécessaire
+pour ne pas perdre 1 Tour.
+- Vitesse divisée par 2.
+
+Dure 3 Tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › W33:AF37</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_paralysie.3"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_paralysie">guide/liste-des-alterations-d-etat#etat:paralysie</a></td><td>3</td><td>3</td><td>- Un jet de Vigueur est nécessaire pour ne pas perdre 1 Tour.
+-  Vitesse divisée par 2.
+- Le résultat d&#39;initiative sera toujours 01.
+Dure 4 Tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › AG33:AP37</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_petrifie.1"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_petrifie">guide/liste-des-alterations-d-etat#etat:petrifie</a></td><td>1</td><td>1</td><td>- Croix à l&#39;Agilité
+-Vitesse divisée par 2
+
+Dure 3 Tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › M43:V47</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_petrifie.2"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_petrifie">guide/liste-des-alterations-d-etat#etat:petrifie</a></td><td>2</td><td>2</td><td>- Impossibilité de bouger
+-Ne peut utiliser que des sorts.
+
+Dure 3 Tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › W43:AF47</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_petrifie.3"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_petrifie">guide/liste-des-alterations-d-etat#etat:petrifie</a></td><td>3</td><td>3</td><td>- Impossibilité de bouger  et 
+d&#39;attaquer.
+
+- Dure 3 Tours</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › AG43:AP47</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_peur.1"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_peur">guide/liste-des-alterations-d-etat#etat:peur</a></td><td>1</td><td>1</td><td>- Malus de 10% à tous les jets
+(hors jet de calme)
+
+Dure tant qu&#39;un jet de Calme n&#39;a
+pas été réussi.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › M38:V42</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_peur.2"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_peur">guide/liste-des-alterations-d-etat#etat:peur</a></td><td>2</td><td>2</td><td>- Malus de 20% à tous les jets
+(hors jet de calme)
+
+Dure tant qu&#39;un jet de Calme n&#39;a
+pas été réussi.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › W38:AF42</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_peur.3"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_peur">guide/liste-des-alterations-d-etat#etat:peur</a></td><td>3</td><td>3</td><td>- Malus de 25% à tous les jets
+(hors jet de calme)
+
+Dure tant qu&#39;un jet de Calme n&#39;a
+pas été réussi.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › AG38:AP42</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_poison.1"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_poison">guide/liste-des-alterations-d-etat#etat:poison</a></td><td>1</td><td>1</td><td>- Inflige 10% de la santé Max.
+
+Dure 3 Tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › M48:V52</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_poison.2"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_poison">guide/liste-des-alterations-d-etat#etat:poison</a></td><td>2</td><td>2</td><td>- Inflige 15% de la santé Max.
+
+Dure 3 Tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › W48:AF52</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_poison.3"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_poison">guide/liste-des-alterations-d-etat#etat:poison</a></td><td>3</td><td>3</td><td>- Inflige 20% de la santé Max.
+
+Dure 3 Tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › AG48:AP52</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_saignement.1"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_saignement">guide/liste-des-alterations-d-etat#etat:saignement</a></td><td>1</td><td>1</td><td>- Inflige 5% de la santé Max
+jusqu&#39;au prochain bandage
+étanche.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › M53:V57</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_saignement.2"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_saignement">guide/liste-des-alterations-d-etat#etat:saignement</a></td><td>2</td><td>2</td><td>- Inflige 10% de la santé Max
+jusqu&#39;au prochain bandage
+étanche.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › W53:AF57</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_saignement.3"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_saignement">guide/liste-des-alterations-d-etat#etat:saignement</a></td><td>3</td><td>3</td><td>- Inflige 10% de la santé Max
+jusqu&#39;au prochain bandage
+étanche.
+- Croix à la Volonté.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › AG53:AP57</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_sans-defense.1"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_sans-defense">guide/liste-des-alterations-d-etat#etat:sans-defense</a></td><td>1</td><td class="nul"></td><td>Impossible de se défendre et demande un tour complet pour le retirer.
+Les coups portés sur lui seront automatiquement des coups critiques.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › M98:AP102</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_surcharge-magique.1"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_surcharge-magique">guide/liste-des-alterations-d-etat#etat:surcharge-magique</a></td><td>1</td><td>1</td><td>-  Consomme  5% de la Barrière Max 
+et du Chakra Max (3 Tours)
+
+- Armure magique divisée par 2.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › M58:V62</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_surcharge-magique.2"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_surcharge-magique">guide/liste-des-alterations-d-etat#etat:surcharge-magique</a></td><td>2</td><td>2</td><td>- Consomme 10% de la Barrière Max 
+et du Chakra Max (3 Tours)
+
+- Armure magique divisée par 3.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › W58:AF62</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_surcharge-magique.3"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_surcharge-magique">guide/liste-des-alterations-d-etat#etat:surcharge-magique</a></td><td>3</td><td>3</td><td>- Consomme 15% de la Barrière Max
+et du Chakra Max (3 Tours)
+
+- Armure Magique divisée par 4.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › AG58:AP62</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_surdite.1"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_surdite">guide/liste-des-alterations-d-etat#etat:surdite</a></td><td>1</td><td>1</td><td>- Malus de 15% aux compétences : Athlétisme, Équilibre, Stabilité, Réflexe, Distinction, Orientation.
+- Dure 3 Tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › M63:V67</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_surdite.2"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_surdite">guide/liste-des-alterations-d-etat#etat:surdite</a></td><td>2</td><td>2</td><td>- Malus de 20% aux compétences : Athlétisme, Équilibre, Stabilité, Réflexe, Distinction, Orientation.
+- Dure 3 Tours.</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › W63:AF67</td></tr><tr id="r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_surdite.3"><td><a href="/donnees/etat/#r-guide_2f_liste-des-alterations-d-etat_23_etat_3a_surdite">guide/liste-des-alterations-d-etat#etat:surdite</a></td><td>3</td><td>3</td><td>- Malus de 30% aux compétences : Athlétisme, Équilibre, Stabilité, Réflexe, Distinction, Orientation.
+- Dure 3 Tours.
+Les dégâts sonores ne fonctionnent plus sur la victime</td><td>annexes</td><td>Magie Maverick V8 › Altération détats › AG63:AP67</td></tr></tbody></table></div><script>
+    (() => {
+      const table = document.getElementById('donnees');
+      const champ = document.getElementById('filtre');
+      const compte = document.getElementById('compte');
+      if (!table || !champ) return;
+      const corps = table.tBodies[0];
+      const lignes = [...corps.rows];
+      const decalage = table.tHead.rows[0].cells[0].textContent === 'Page' ? 1 : 0;
+      const plier = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+      const textes = lignes.map((tr) => plier([...tr.cells].slice(decalage).map((c) => c.textContent).join(' ')));
+      const maj = () => {
+        const q = plier(champ.value.trim());
+        let n = 0;
+        lignes.forEach((tr, i) => { const ok = !q || textes[i].includes(q); tr.hidden = !ok; if (ok) n += 1; });
+        compte.textContent = `${n.toLocaleString('fr-FR')} / ${lignes.length.toLocaleString('fr-FR')} lignes`;
+      };
+      champ.addEventListener('input', maj);
+      table.tHead.addEventListener('click', (e) => {
+        const th = e.target.closest('th');
+        if (!th || th.cellIndex < decalage) return;
+        const i = th.cellIndex;
+        const sens = th.dataset.sens === 'asc' ? 'desc' : 'asc';
+        table.tHead.querySelectorAll('th').forEach((x) => { delete x.dataset.sens; });
+        th.dataset.sens = sens;
+        const val = (tr) => tr.cells[i].textContent.trim();
+        const nombres = lignes.every((tr) => val(tr) === '' || !Number.isNaN(Number(val(tr))));
+        lignes.sort((a, b) => {
+          const x = val(a);
+          const y = val(b);
+          let c;
+          if (nombres) c = x === y ? 0 : x === '' ? -1 : y === '' ? 1 : Number(x) - Number(y);
+          else c = x.localeCompare(y, 'fr', { numeric: true });
+          return sens === 'asc' ? c : -c;
+        });
+        lignes.forEach((tr) => corps.appendChild(tr));
+      });
+    })();
+  </script></main><footer class="site-footer"><span>Projet de fan pour Maverick JDR — contenu issu du Discord et des Google Docs du MJ.</span><span class="site-footer__version">V0.1.94</span></footer><script>
+      (function () {
+        var toggles = document.querySelectorAll('.nav-group__toggle');
+        var rows = document.querySelectorAll('.site-nav__items');
+        toggles.forEach(function (t) {
+          t.addEventListener('click', function () {
+            toggles.forEach(function (o) { o.setAttribute('aria-pressed', o === t ? 'true' : 'false'); });
+            rows.forEach(function (r) { r.hidden = r.getAttribute('data-group') !== t.getAttribute('data-group'); });
+          });
+        });
+      })();
+    </script></body></html>

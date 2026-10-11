@@ -1,0 +1,50 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Table famille de la base de données"><link rel="icon" type="image/png" sizes="32x32" href="/favicon.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><title>Données : famille — Maverick Center</title><link rel="stylesheet" href="/_astro/Base.C8jCj17B.css"></head><body><header class="site-header"><div class="site-header__inner"><a class="brand" href="/"><img src="/logo.webp" alt="Maverick Center" width="319" height="320"></a><div class="site-header__menu"><nav class="site-nav" aria-label="Navigation principale"><ul class="site-nav__groups"><li><button type="button" class="nav-group__toggle" data-group="regles" aria-pressed="false">Règles</button></li><li><button type="button" class="nav-group__toggle" data-group="personnages" aria-pressed="false">Personnages</button></li><li><button type="button" class="nav-group__toggle" data-group="inventaire" aria-pressed="false">Inventaire</button></li><li><button type="button" class="nav-group__toggle" data-group="codex" aria-pressed="false">Codex</button></li><li><button type="button" class="nav-group__toggle" data-group="outils" aria-pressed="true" aria-current="true">Outils</button></li></ul><ul class="site-nav__items" data-group="regles" hidden><li><a href="/guide/">Guide</a></li><li><a href="/races/">Races</a></li><li><a href="/magies/">Magies</a></li><li><a href="/classes/">Classes</a></li><li><a href="/metiers/">Métiers</a></li></ul><ul class="site-nav__items" data-group="personnages" hidden><li><a href="/fiche/">Fiche de personnage</a></li><li><a href="/personnages/">Listes</a></li><li><span class="nav-soon">Groupes <small>(bientôt)</small></span></li><li><span class="nav-soon">Chroniques <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="inventaire" hidden><li><a href="/ressources/armes/">Armes</a></li><li><a href="/ressources/armures/">Armures</a></li><li><a href="/ressources/accessoires/">Accessoires</a></li><li><span class="nav-soon">Objets à la ceinture <small>(bientôt)</small></span></li><li><a href="/ressources/livre-parchemin/">Livres &amp; Parchemins</a></li><li><a href="/ressources/pieces-elementaires/">Pièces élémentaires</a></li></ul><ul class="site-nav__items" data-group="codex" hidden><li><span class="nav-soon">Chronologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Carte &amp; lieux <small>(bientôt)</small></span></li><li><span class="nav-soon">Mythologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Bestiaire <small>(bientôt)</small></span></li><li><span class="nav-soon">Factions <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="outils"><li><span class="nav-soon">Statistiques <small>(bientôt)</small></span></li><li><a href="/mise-a-jour/">Mise à jour</a></li><li><span class="nav-soon">Boîte à idée <small>(bientôt)</small></span></li><li><a href="/galeries/">Galeries</a></li><li><a href="/recherche/">Recherche</a></li><li><a href="/archives/">Archives</a></li></ul></nav></div></div></header><main><p class="donnees-fil"><a href="/donnees/">Données</a> › <code>famille</code></p><h1><code>famille</code></h1><p class="donnees-role"></p><details class="donnees-colonnes"><summary>5 colonnes</summary><table><thead><tr><th>Colonne</th><th>Type</th><th>Clé</th><th>Description</th></tr></thead><tbody><tr><td><code>id</code></td><td>TEXT</td><td>clé primaire</td><td>&#39;magies&#39;, &#39;classes&#39;, &#39;docs&#39;, &#39;docs_typees&#39;…</td></tr><tr><td><code>libelle</code></td><td>TEXT</td><td></td><td></td></tr><tr><td><code>importeur</code></td><td>TEXT</td><td></td><td>script qui écrit la famille (tools/…) ; NULL = saisie directe (docs, exemple)</td></tr><tr><td><code>sources</code></td><td>TEXT</td><td></td><td>classeurs / Docs d&#39;origine, en clair</td></tr><tr><td><code>ordre</code></td><td>INTEGER</td><td></td><td>rang de livraison des importeurs (design.md §11). PAS un ordre de dépendance : fiche, annexes, magies, classes et races se citent mutuellement (noyau des règles) et se réimportent ENSEMBLE (design.md §4.2)</td></tr></tbody></table></details><p class="donnees-filtre"><label>Filtrer les lignes <input type="search" id="filtre" autocomplete="off"></label><span id="compte" aria-live="polite">11 lignes</span><span class="donnees-aide">Cliquer sur un titre de colonne pour trier.</span></p><div class="donnees-wrap"><table class="donnees" id="donnees"><thead><tr><th title="'magies', 'classes', 'docs', 'docs_typees'…">id</th><th title="TEXT">libelle</th><th title="script qui écrit la famille (tools/…) ; NULL = saisie directe (docs, exemple)">importeur</th><th title="classeurs / Docs d'origine, en clair">sources</th><th title="rang de livraison des importeurs (design.md §11). PAS un ordre de dépendance : fiche, annexes, magies, classes et races se citent mutuellement (noyau des règles) et se réimportent ENSEMBLE (design.md §4.2)">ordre</th></tr></thead><tbody><tr id="r-annexes"><td>annexes</td><td>Annexes des magies : états, météo, modes</td><td>tools/sheets/annexes-magie.py</td><td>Magie Maverick V8 (Altération détats, Météo, Statistiques, Mode Hyper (Magie)) ; Mode hyper et co</td><td>3</td></tr><tr id="r-bestiaire"><td>bestiaire</td><td>Bestiaire : invocations et créatures</td><td>tools/sheets/invocations.py</td><td>Invocation</td><td>7</td></tr><tr id="r-classes"><td>classes</td><td>Classes, spécialités, capacités</td><td>tools/sheets/classes.py</td><td>Classe Maverick V7</td><td>5</td></tr><tr id="r-craft"><td>craft</td><td>Divers du craft : familiers, maison, machines, maladies</td><td>tools/sheets/divers-craft.py</td><td>Ressources et Craft</td><td>9</td></tr><tr id="r-docs"><td>docs</td><td>Pages transcrites des Google Docs</td><td class="nul"></td><td>Google Docs : Règle du jeu / Guide pour MJ, Créer sa fiche, Alchimie, MÉTIER</td><td>1</td></tr><tr id="r-docs_5f_typees"><td>docs_typees</td><td>Lignes typées extraites du Markdown des pages docs (Alchimie, MÉTIER)</td><td>tools/db/docs_typees.py (à écrire)</td><td>page.corps_md des pages docs (Google Docs « Alchimie », « MÉTIER ») : elles ne viennent d&#39;aucun dump JSON</td><td>10</td></tr><tr id="r-equipement"><td>equipement</td><td>Équipement et ressources</td><td>tools/sheets/equipement.py</td><td>Ressources et Craft ; Fiche auto V15.2.2 (BDD, Armes)</td><td>8</td></tr><tr id="r-exemple"><td>exemple</td><td>Pages d&#39;exemple (fixtures de démonstration, status: example)</td><td class="nul"></td><td>aucune : saisies pour la démonstration</td><td>11</td></tr><tr id="r-fiche"><td>fiche</td><td>Règles de la fiche de personnage</td><td>tools/sheets/regles-fiche.py (à écrire)</td><td>Fiche personnage Maverick Auto V15.2.2 + pages du Doc de la fiche</td><td>2</td></tr><tr id="r-magies"><td>magies</td><td>Magies et sorts</td><td>tools/sheets/magies.py</td><td>Magie Maverick V8 ; Fiche auto V15.2.2 (onglet Magie)</td><td>4</td></tr><tr id="r-races"><td>races</td><td>Races, ethnies, accessibilités</td><td>tools/sheets/races.py</td><td>Les races ; Fiche auto V15.2.2 (Race, Bonus Race, Accessibilité de Classe / Magie)</td><td>6</td></tr></tbody></table></div><script>
+    (() => {
+      const table = document.getElementById('donnees');
+      const champ = document.getElementById('filtre');
+      const compte = document.getElementById('compte');
+      if (!table || !champ) return;
+      const corps = table.tBodies[0];
+      const lignes = [...corps.rows];
+      const decalage = table.tHead.rows[0].cells[0].textContent === 'Page' ? 1 : 0;
+      const plier = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+      const textes = lignes.map((tr) => plier([...tr.cells].slice(decalage).map((c) => c.textContent).join(' ')));
+      const maj = () => {
+        const q = plier(champ.value.trim());
+        let n = 0;
+        lignes.forEach((tr, i) => { const ok = !q || textes[i].includes(q); tr.hidden = !ok; if (ok) n += 1; });
+        compte.textContent = `${n.toLocaleString('fr-FR')} / ${lignes.length.toLocaleString('fr-FR')} lignes`;
+      };
+      champ.addEventListener('input', maj);
+      table.tHead.addEventListener('click', (e) => {
+        const th = e.target.closest('th');
+        if (!th || th.cellIndex < decalage) return;
+        const i = th.cellIndex;
+        const sens = th.dataset.sens === 'asc' ? 'desc' : 'asc';
+        table.tHead.querySelectorAll('th').forEach((x) => { delete x.dataset.sens; });
+        th.dataset.sens = sens;
+        const val = (tr) => tr.cells[i].textContent.trim();
+        const nombres = lignes.every((tr) => val(tr) === '' || !Number.isNaN(Number(val(tr))));
+        lignes.sort((a, b) => {
+          const x = val(a);
+          const y = val(b);
+          let c;
+          if (nombres) c = x === y ? 0 : x === '' ? -1 : y === '' ? 1 : Number(x) - Number(y);
+          else c = x.localeCompare(y, 'fr', { numeric: true });
+          return sens === 'asc' ? c : -c;
+        });
+        lignes.forEach((tr) => corps.appendChild(tr));
+      });
+    })();
+  </script></main><footer class="site-footer"><span>Projet de fan pour Maverick JDR — contenu issu du Discord et des Google Docs du MJ.</span><span class="site-footer__version">V0.1.94</span></footer><script>
+      (function () {
+        var toggles = document.querySelectorAll('.nav-group__toggle');
+        var rows = document.querySelectorAll('.site-nav__items');
+        toggles.forEach(function (t) {
+          t.addEventListener('click', function () {
+            toggles.forEach(function (o) { o.setAttribute('aria-pressed', o === t ? 'true' : 'false'); });
+            rows.forEach(function (r) { r.hidden = r.getAttribute('data-group') !== t.getAttribute('data-group'); });
+          });
+        });
+      })();
+    </script></body></html>

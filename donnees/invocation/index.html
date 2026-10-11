@@ -1,0 +1,95 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="INVOCATION : une ligne par onglet du classeur (3) Une « invocation » est un TYPE de créatures qu'un sort permet d'invoquer : golems (Appel aux golems), non-morts (Animation des morts), marionettes d'ombre (Marionette de lombre)."><link rel="icon" type="image/png" sizes="32x32" href="/favicon.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><title>Données : invocation — Maverick Center</title><link rel="stylesheet" href="/_astro/Base.C8jCj17B.css"></head><body><header class="site-header"><div class="site-header__inner"><a class="brand" href="/"><img src="/logo.webp" alt="Maverick Center" width="319" height="320"></a><div class="site-header__menu"><nav class="site-nav" aria-label="Navigation principale"><ul class="site-nav__groups"><li><button type="button" class="nav-group__toggle" data-group="regles" aria-pressed="false">Règles</button></li><li><button type="button" class="nav-group__toggle" data-group="personnages" aria-pressed="false">Personnages</button></li><li><button type="button" class="nav-group__toggle" data-group="inventaire" aria-pressed="false">Inventaire</button></li><li><button type="button" class="nav-group__toggle" data-group="codex" aria-pressed="false">Codex</button></li><li><button type="button" class="nav-group__toggle" data-group="outils" aria-pressed="true" aria-current="true">Outils</button></li></ul><ul class="site-nav__items" data-group="regles" hidden><li><a href="/guide/">Guide</a></li><li><a href="/races/">Races</a></li><li><a href="/magies/">Magies</a></li><li><a href="/classes/">Classes</a></li><li><a href="/metiers/">Métiers</a></li></ul><ul class="site-nav__items" data-group="personnages" hidden><li><a href="/fiche/">Fiche de personnage</a></li><li><a href="/personnages/">Listes</a></li><li><span class="nav-soon">Groupes <small>(bientôt)</small></span></li><li><span class="nav-soon">Chroniques <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="inventaire" hidden><li><a href="/ressources/armes/">Armes</a></li><li><a href="/ressources/armures/">Armures</a></li><li><a href="/ressources/accessoires/">Accessoires</a></li><li><span class="nav-soon">Objets à la ceinture <small>(bientôt)</small></span></li><li><a href="/ressources/livre-parchemin/">Livres &amp; Parchemins</a></li><li><a href="/ressources/pieces-elementaires/">Pièces élémentaires</a></li></ul><ul class="site-nav__items" data-group="codex" hidden><li><span class="nav-soon">Chronologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Carte &amp; lieux <small>(bientôt)</small></span></li><li><span class="nav-soon">Mythologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Bestiaire <small>(bientôt)</small></span></li><li><span class="nav-soon">Factions <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="outils"><li><span class="nav-soon">Statistiques <small>(bientôt)</small></span></li><li><a href="/mise-a-jour/">Mise à jour</a></li><li><span class="nav-soon">Boîte à idée <small>(bientôt)</small></span></li><li><a href="/galeries/">Galeries</a></li><li><a href="/recherche/">Recherche</a></li><li><a href="/archives/">Archives</a></li></ul></nav></div></div></header><main><p class="donnees-fil"><a href="/donnees/">Données</a> › <code>invocation</code></p><h1><code>invocation</code></h1><p class="donnees-role">INVOCATION : une ligne par onglet du classeur (3) Une « invocation » est un TYPE de créatures qu&#39;un sort permet d&#39;invoquer : golems (Appel aux golems), non-morts (Animation des morts), marionettes d&#39;ombre (Marionette de lombre).</p><details class="donnees-colonnes"><summary>12 colonnes</summary><table><thead><tr><th>Colonne</th><th>Type</th><th>Clé</th><th>Description</th></tr></thead><tbody><tr><td><code>id</code></td><td>TEXT</td><td>clé primaire, → <a href="/donnees/page/"><code>page</code></a></td><td>= id de la page d&#39;introduction de l&#39;onglet</td></tr><tr><td><code>nom</code></td><td>TEXT</td><td></td><td>nom de l&#39;onglet = titre de la page : &#39;Appel aux golems&#39;, « Marionnette de l&#39;ombre » (onglet « Marionette de lombre », nom corrigé par 0006)</td></tr><tr><td><code>nom_cle</code></td><td>TEXT</td><td></td><td>normalize(nom)</td></tr><tr><td><code>ordre</code></td><td>INTEGER</td><td></td><td>rang de l&#39;onglet dans le classeur</td></tr><tr><td><code>bandeau</code></td><td>TEXT</td><td></td><td>bandeau de l&#39;onglet (AJ1, AP1, Z1) : &#39;INVOCATION GOLEM&#39;, &#39;INVOCATION NON-MORT&#39;</td></tr><tr><td><code>genre</code></td><td>TEXT</td><td></td><td></td></tr><tr><td><code>sort_id</code></td><td>TEXT</td><td>→ <a href="/donnees/sort/"><code>sort</code></a></td><td></td></tr><tr><td><code>texte_general</code></td><td>TEXT</td><td></td><td>texte général de l&#39;onglet (AJ3, AP3, Z3), tel qu&#39;écrit, paragraphes séparés par une ligne vide</td></tr><tr><td><code>tableau_titre</code></td><td>TEXT</td><td></td><td>titre du tableau posé à droite des cartes (AP40 de « Animation des morts » : « TABLEAU &quot;AMELIORATION CADAVERIQUE&quot; »), NULL = aucun. Le CONTENU de ce tableau (13 lignes) est la table amelioration_cadaverique du domaine magies : le même tableau figure dans les deux classeurs (identité vérifiée à l&#39;import) ; une seule copie, pas de doublon ici.</td></tr><tr><td><code>origine</code></td><td>TEXT</td><td></td><td></td></tr><tr><td><code>source_ref</code></td><td>TEXT</td><td></td><td></td></tr><tr><td><code>remarque</code></td><td>TEXT</td><td></td><td>remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne</td></tr></tbody></table></details><p class="donnees-filtre"><label>Filtrer les lignes <input type="search" id="filtre" autocomplete="off"></label><span id="compte" aria-live="polite">3 lignes</span><span class="donnees-aide">Cliquer sur un titre de colonne pour trier.</span></p><div class="donnees-wrap"><table class="donnees" id="donnees"><thead><tr><th title="Page du wiki">Page</th><th title="= id de la page d'introduction de l'onglet">id</th><th title="nom de l'onglet = titre de la page : 'Appel aux golems', « Marionnette de l'ombre » (onglet « Marionette de lombre », nom corrigé par 0006)">nom</th><th title="normalize(nom)">nom_cle</th><th title="rang de l'onglet dans le classeur">ordre</th><th title="bandeau de l'onglet (AJ1, AP1, Z1) : 'INVOCATION GOLEM', 'INVOCATION NON-MORT'">bandeau</th><th title="TEXT">genre</th><th title="TEXT">sort_id</th><th title="texte général de l'onglet (AJ3, AP3, Z3), tel qu'écrit, paragraphes séparés par une ligne vide">texte_general</th><th title="titre du tableau posé à droite des cartes (AP40 de « Animation des morts » : « TABLEAU &quot;AMELIORATION CADAVERIQUE&quot; »), NULL = aucun. Le CONTENU de ce tableau (13 lignes) est la table amelioration_cadaverique du domaine magies : le même tableau figure dans les deux classeurs (identité vérifiée à l'import) ; une seule copie, pas de doublon ici.">tableau_titre</th><th title="TEXT">origine</th><th title="TEXT">source_ref</th><th title="remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne">remarque</th></tr></thead><tbody><tr id="r-bestiaire_2f_animation-des-morts"><td><a href="/bestiaire/animation-des-morts/" title="Page du wiki">↗</a></td><td><a href="/donnees/page/#r-bestiaire_2f_animation-des-morts">bestiaire/animation-des-morts</a></td><td>Animation des morts</td><td>animation-des-morts</td><td>2</td><td>INVOCATION NON-MORT</td><td>non-mort</td><td><a href="/donnees/sort/#r-magies_2f_magie-de-la-necromancie_23_sort_3a_animation-de-mort">magies/magie-de-la-necromancie#sort:animation-de-mort</a></td><td>Il n&#39;est possible d’avoir qu’une seule invocation à la fois en combat et par personnage (sauf le mode hyper de la nécromancie qui permet d&#39;en avoir un deuxième). L&#39;invocation reste pour une durée limitée sur le terrain avant de disparaître, les invocations n&#39;ont pas de prérequis en termes d&#39;environnement ou de matière, ils sont créés magiquement.
+
+N’importe qui peut vous aider pour créer une invocation double magie, et ça ne lui consomme pas son tour et ne lui demande pas de jet mais 1 IC (si jamais il en avait encore quand il a fini son tour). Seule exception : le potentiel illimité ne peut pas faire d&#39;invocation double élément tout seul, il lui faut de l&#39;aide extérieure et il ne peut pas aider à faire une invocation double élément vu qu&#39;il ne possède pas la bonne magie.
+
+Chaque invocation possède des statistiques et des données qui varient selon la puissance mise dans l&#39;invocation. Avoir le bon niveau de puissance magique permet d&#39;avoir des invocations plus puissantes mais plus chères en coût. Bien entendu, seuls les utilisateurs d&#39;une seule magie peuvent invoquer les créatures NPM 5.
+
+Les invocations sont systématiquement en neutre (sauf contre-indication) et ne peuvent pas changer de posture.
+
+Le principe est strictement le même que pour le sort « Appel aux golems », les non-morts invoqués seront différents si jamais un allié vient vous aider dans votre tâche.
+
+
+▸ Toutes ces créatures ont ceci en capacité commune
+
+- Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
+
+- Élémentaire. Chaque créature possède la/les résistances magiques ainsi que la/les vulnérabilités magiques de son élément (sauf capacité lui donnant autre chose). [Exemple. Celui du feu est résistant au Feu, Terre et Glace mais est vulnérable au Vent et à l&#39;Eau]. Chaque attaque physique de leur part est une attaque élémentaire.
+
+▸ Invoquer une créature double-magie
+
+Pour pouvoir invoquer un non-mort double-magie, il faut posséder une seconde magie ou alors être à proximité d’un allié qui peut en échange d’un IC, infuser sa magie.</td><td>TABLEAU &quot;AMÉLIORATION CADAVÉRIQUE&quot;</td><td>bestiaire</td><td>Invocation › Animation des morts › AP1:BE2; AP3:BE38; AP40:BU40</td><td class="nul"></td></tr><tr id="r-bestiaire_2f_appel-aux-golems"><td><a href="/bestiaire/appel-aux-golems/" title="Page du wiki">↗</a></td><td><a href="/donnees/page/#r-bestiaire_2f_appel-aux-golems">bestiaire/appel-aux-golems</a></td><td>Appel aux golems</td><td>appel-aux-golems</td><td>1</td><td>INVOCATION GOLEM</td><td>golem</td><td><a href="/donnees/sort/#r-magies_2f_magie-de-la-terre_23_sort_3a_appel-aux-golems">magies/magie-de-la-terre#sort:appel-aux-golems</a></td><td>Il n&#39;est possible d’avoir qu’une seule invocation à la fois en combat et par personnage (sauf le mode hyper de la nécromancie qui permet d&#39;en avoir un deuxième). L&#39;invocation reste pour une durée limitée sur le terrain avant de disparaître, les invocations n&#39;ont pas de prérequis en termes d&#39;environnement ou de matière, ils sont créés magiquement.
+
+N’importe qui peut vous aider pour créer une invocation double magie, et ça ne lui consomme pas son tour et ne lui demande pas de jet mais 1 IC (si jamais il en avait encore quand il a fini son tour). Seule exception : le potentiel illimité ne peut pas faire d&#39;invocation double élément tout seul, il lui faut de l&#39;aide extérieure et il ne peut pas aider à faire une invocation double élément vu qu&#39;il ne possède pas la bonne magie.
+
+Chaque invocation possède des statistiques et des données qui varient selon la puissance mise dans l&#39;invocation. Avoir le bon niveau de puissance magique permet d&#39;avoir des invocations plus puissantes mais plus chères en coût. Bien entendu, seuls les utilisateurs d&#39;une seule magie peuvent invoquer les créatures NPM 5.
+
+Les invocations sont systématiquement en neutre et ne peuvent pas changer de posture.
+
+Il existe plusieurs versions de golems invocables, ça varie selon les magies de l&#39;utilisateur de la Terre ou bien de l&#39;aide d&#39;un allié. Car en effet, un allié peut très bien influer sa propre magie dans votre sort &quot;Appel aux golems&quot;.
+
+
+▸ Toutes ces créatures ont ceci en capacité commune
+
+- Inerte. Boost la volonté à 10, ce qui permet d&#39;être immunisé au jet de volonté.
+
+- Élémentaire. Chaque créature possède la/les résistances magiques ainsi que la/les vulnérabilités magiques de son élément. [Exemple. Celui du feu est résistant au Feu, Terre et Glace mais est vulnérable au Vent et à l&#39;Eau]. Chaque attaque physique de leur part est une attaque élémentaire. (Le Golem d&#39;Argile ne possède pas cette capacité)
+
+
+▸ Invoquer une créature double-magie
+
+Pour pouvoir invoquer un golem double-magie, il faut posséder une seconde magie ou alors être à proximité d’un allié qui peut en échange d’un IC, infuser sa magie.</td><td class="nul"></td><td>bestiaire</td><td>Invocation › Appel aux golems › AJ1:AY2; AJ3:AY38</td><td class="nul"></td></tr><tr id="r-bestiaire_2f_marionette-de-lombre"><td><a href="/bestiaire/marionette-de-lombre/" title="Page du wiki">↗</a></td><td><a href="/donnees/page/#r-bestiaire_2f_marionette-de-lombre">bestiaire/marionette-de-lombre</a></td><td>Marionnette de l&#39;ombre</td><td>marionnette-de-lombre</td><td>3</td><td>INVOCATION MARIONNETTE</td><td>marionette</td><td><a href="/donnees/sort/#r-magies_2f_magie-de-lombre_23_sort_3a_marionnette-de-lombre">magies/magie-de-lombre#sort:marionnette-de-lombre</a></td><td>Il n&#39;est possible d’avoir qu’une seule invocation à la fois en combat et par personnage (sauf le mode hyper de la nécromancie qui permet d&#39;en avoir un deuxième). L&#39;invocation reste pour une durée limitée sur le terrain avant de disparaître, les invocations n&#39;ont pas de prérequis en termes d&#39;environnement ou de matière, ils sont créés magiquement.
+
+Chaque invocation possède des statistiques et des données qui varient selon la puissance mise dans l&#39;invocation. Avoir le bon niveau de puissance magique permet d&#39;avoir des invocations plus puissantes mais plus chères en coût. Bien entendu, seuls les utilisateurs d&#39;une seule magie peuvent invoquer les créatures NPM 5.
+
+Les invocations sont systématiquement en neutre et ne peuvent pas changer de posture.
+
+Cette invocation demande de la barrière pour être invoquée, elle va piocher dans la barrière courante du lanceur, ce qui fait qu&#39;il n&#39;est pas obligatoire d&#39;avoir beaucoup de barrière pour invoquer mais il en faut quand même un minimum. Quoi qu&#39;il arrive, il prendra 1 minimum, même si le lanceur en possède que 1.</td><td class="nul"></td><td>bestiaire</td><td>Invocation › Marionette de lombre › Z1:AO2; Z3:AO38</td><td class="nul"></td></tr></tbody></table></div><script>
+    (() => {
+      const table = document.getElementById('donnees');
+      const champ = document.getElementById('filtre');
+      const compte = document.getElementById('compte');
+      if (!table || !champ) return;
+      const corps = table.tBodies[0];
+      const lignes = [...corps.rows];
+      const decalage = table.tHead.rows[0].cells[0].textContent === 'Page' ? 1 : 0;
+      const plier = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+      const textes = lignes.map((tr) => plier([...tr.cells].slice(decalage).map((c) => c.textContent).join(' ')));
+      const maj = () => {
+        const q = plier(champ.value.trim());
+        let n = 0;
+        lignes.forEach((tr, i) => { const ok = !q || textes[i].includes(q); tr.hidden = !ok; if (ok) n += 1; });
+        compte.textContent = `${n.toLocaleString('fr-FR')} / ${lignes.length.toLocaleString('fr-FR')} lignes`;
+      };
+      champ.addEventListener('input', maj);
+      table.tHead.addEventListener('click', (e) => {
+        const th = e.target.closest('th');
+        if (!th || th.cellIndex < decalage) return;
+        const i = th.cellIndex;
+        const sens = th.dataset.sens === 'asc' ? 'desc' : 'asc';
+        table.tHead.querySelectorAll('th').forEach((x) => { delete x.dataset.sens; });
+        th.dataset.sens = sens;
+        const val = (tr) => tr.cells[i].textContent.trim();
+        const nombres = lignes.every((tr) => val(tr) === '' || !Number.isNaN(Number(val(tr))));
+        lignes.sort((a, b) => {
+          const x = val(a);
+          const y = val(b);
+          let c;
+          if (nombres) c = x === y ? 0 : x === '' ? -1 : y === '' ? 1 : Number(x) - Number(y);
+          else c = x.localeCompare(y, 'fr', { numeric: true });
+          return sens === 'asc' ? c : -c;
+        });
+        lignes.forEach((tr) => corps.appendChild(tr));
+      });
+    })();
+  </script></main><footer class="site-footer"><span>Projet de fan pour Maverick JDR — contenu issu du Discord et des Google Docs du MJ.</span><span class="site-footer__version">V0.1.94</span></footer><script>
+      (function () {
+        var toggles = document.querySelectorAll('.nav-group__toggle');
+        var rows = document.querySelectorAll('.site-nav__items');
+        toggles.forEach(function (t) {
+          t.addEventListener('click', function () {
+            toggles.forEach(function (o) { o.setAttribute('aria-pressed', o === t ? 'true' : 'false'); });
+            rows.forEach(function (r) { r.hidden = r.getAttribute('data-group') !== t.getAttribute('data-group'); });
+          });
+        });
+      })();
+    </script></body></html>

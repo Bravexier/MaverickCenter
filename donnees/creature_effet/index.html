@@ -1,0 +1,59 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="AUTRES BLOCS DE LA CARTE Panneau « Effet &quot;Manteau noir&quot; » de la carte des marionettes (S12 / S13 : libellé puis texte) : les bonus que procure la créature quand on la sacrifie avec le sort « Manteau noir » (domaine magies : « Permet de sacrifier l'invocation de l'ombre pour avoir des bonus pendant 3 tours (voir invocation) »). sort_id = le sort de la magie de l'invocation dont le nom est celui des guillemets."><link rel="icon" type="image/png" sizes="32x32" href="/favicon.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><title>Données : creature_effet — Maverick Center</title><link rel="stylesheet" href="/_astro/Base.C8jCj17B.css"></head><body><header class="site-header"><div class="site-header__inner"><a class="brand" href="/"><img src="/logo.webp" alt="Maverick Center" width="319" height="320"></a><div class="site-header__menu"><nav class="site-nav" aria-label="Navigation principale"><ul class="site-nav__groups"><li><button type="button" class="nav-group__toggle" data-group="regles" aria-pressed="false">Règles</button></li><li><button type="button" class="nav-group__toggle" data-group="personnages" aria-pressed="false">Personnages</button></li><li><button type="button" class="nav-group__toggle" data-group="inventaire" aria-pressed="false">Inventaire</button></li><li><button type="button" class="nav-group__toggle" data-group="codex" aria-pressed="false">Codex</button></li><li><button type="button" class="nav-group__toggle" data-group="outils" aria-pressed="true" aria-current="true">Outils</button></li></ul><ul class="site-nav__items" data-group="regles" hidden><li><a href="/guide/">Guide</a></li><li><a href="/races/">Races</a></li><li><a href="/magies/">Magies</a></li><li><a href="/classes/">Classes</a></li><li><a href="/metiers/">Métiers</a></li></ul><ul class="site-nav__items" data-group="personnages" hidden><li><a href="/fiche/">Fiche de personnage</a></li><li><a href="/personnages/">Listes</a></li><li><span class="nav-soon">Groupes <small>(bientôt)</small></span></li><li><span class="nav-soon">Chroniques <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="inventaire" hidden><li><a href="/ressources/armes/">Armes</a></li><li><a href="/ressources/armures/">Armures</a></li><li><a href="/ressources/accessoires/">Accessoires</a></li><li><span class="nav-soon">Objets à la ceinture <small>(bientôt)</small></span></li><li><a href="/ressources/livre-parchemin/">Livres &amp; Parchemins</a></li><li><a href="/ressources/pieces-elementaires/">Pièces élémentaires</a></li></ul><ul class="site-nav__items" data-group="codex" hidden><li><span class="nav-soon">Chronologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Carte &amp; lieux <small>(bientôt)</small></span></li><li><span class="nav-soon">Mythologie <small>(bientôt)</small></span></li><li><span class="nav-soon">Bestiaire <small>(bientôt)</small></span></li><li><span class="nav-soon">Factions <small>(bientôt)</small></span></li></ul><ul class="site-nav__items" data-group="outils"><li><span class="nav-soon">Statistiques <small>(bientôt)</small></span></li><li><a href="/mise-a-jour/">Mise à jour</a></li><li><span class="nav-soon">Boîte à idée <small>(bientôt)</small></span></li><li><a href="/galeries/">Galeries</a></li><li><a href="/recherche/">Recherche</a></li><li><a href="/archives/">Archives</a></li></ul></nav></div></div></header><main><p class="donnees-fil"><a href="/donnees/">Données</a> › <code>creature_effet</code></p><h1><code>creature_effet</code></h1><p class="donnees-role">AUTRES BLOCS DE LA CARTE Panneau « Effet &quot;Manteau noir&quot; » de la carte des marionettes (S12 / S13 : libellé puis texte) : les bonus que procure la créature quand on la sacrifie avec le sort « Manteau noir » (domaine magies : « Permet de sacrifier l&#39;invocation de l&#39;ombre pour avoir des bonus pendant 3 tours (voir invocation) »). sort_id = le sort de la magie de l&#39;invocation dont le nom est celui des guillemets.</p><details class="donnees-colonnes"><summary>8 colonnes</summary><table><thead><tr><th>Colonne</th><th>Type</th><th>Clé</th><th>Description</th></tr></thead><tbody><tr><td><code>creature_id</code></td><td>TEXT</td><td>clé primaire, → <a href="/donnees/creature/"><code>creature</code></a></td><td></td></tr><tr><td><code>rang</code></td><td>INTEGER</td><td>clé primaire</td><td></td></tr><tr><td><code>libelle</code></td><td>TEXT</td><td></td><td>« Effet &quot;Manteau noir&quot; » tel qu&#39;écrit</td></tr><tr><td><code>nom</code></td><td>TEXT</td><td></td><td>ce qui est entre guillemets : « Manteau noir »</td></tr><tr><td><code>sort_id</code></td><td>TEXT</td><td>→ <a href="/donnees/sort/"><code>sort</code></a></td><td>le sort de ce nom dans la magie du sort d&#39;invocation ; NULL si introuvable</td></tr><tr><td><code>texte</code></td><td>TEXT</td><td></td><td>« - +2 dégâts\n- Chaque attaque qui touche… »</td></tr><tr><td><code>origine</code></td><td>TEXT</td><td></td><td></td></tr><tr><td><code>source_ref</code></td><td>TEXT</td><td></td><td></td></tr></tbody></table></details><p class="donnees-filtre"><label>Filtrer les lignes <input type="search" id="filtre" autocomplete="off"></label><span id="compte" aria-live="polite">5 lignes</span><span class="donnees-aide">Cliquer sur un titre de colonne pour trier.</span></p><div class="donnees-wrap"><table class="donnees" id="donnees"><thead><tr><th title="TEXT">creature_id</th><th title="INTEGER">rang</th><th title="« Effet &quot;Manteau noir&quot; » tel qu'écrit">libelle</th><th title="ce qui est entre guillemets : « Manteau noir »">nom</th><th title="le sort de ce nom dans la magie du sort d'invocation ; NULL si introuvable">sort_id</th><th title="« - +2 dégâts\n- Chaque attaque qui touche… »">texte</th><th title="TEXT">origine</th><th title="TEXT">source_ref</th></tr></thead><tbody><tr id="r-bestiaire_2f_bete-de-lombre.1"><td><a href="/donnees/creature/#r-bestiaire_2f_bete-de-lombre">bestiaire/bete-de-lombre</a></td><td>1</td><td>Effet &quot;Manteau noir&quot;</td><td>Manteau noir</td><td><a href="/donnees/sort/#r-magies_2f_magie-de-lombre_23_sort_3a_manteau-noir">magies/magie-de-lombre#sort:manteau-noir</a></td><td>- +10 dégâts
+- +1 Vitesse
+- Récupère 10% de santé la nuit ou dans l&#39;ombre
+- Les attaques ignorent 3AP ou 3AM
+- Confusion 1 sur le lanceur
+- Folie de guerre sur le lanceur</td><td>bestiaire</td><td>Invocation › Marionette de lombre › S128:X128; S129:X135</td></tr><tr id="r-bestiaire_2f_double-sombre.1"><td><a href="/donnees/creature/#r-bestiaire_2f_double-sombre">bestiaire/double-sombre</a></td><td>1</td><td>Effet &quot;Manteau noir&quot;</td><td>Manteau noir</td><td><a href="/donnees/sort/#r-magies_2f_magie-de-lombre_23_sort_3a_manteau-noir">magies/magie-de-lombre#sort:manteau-noir</a></td><td>- +6 dégâts
+- Donne un bonus de 1d4 d&#39;attaques sournoises (même si le lanceur n&#39;a pas les attaques sournoises)</td><td>bestiaire</td><td>Invocation › Marionette de lombre › S70:X70; S71:X77</td></tr><tr id="r-bestiaire_2f_executeur-lunaire.1"><td><a href="/donnees/creature/#r-bestiaire_2f_executeur-lunaire">bestiaire/executeur-lunaire</a></td><td>1</td><td>Effet &quot;Manteau noir&quot;</td><td>Manteau noir</td><td><a href="/donnees/sort/#r-magies_2f_magie-de-lombre_23_sort_3a_manteau-noir">magies/magie-de-lombre#sort:manteau-noir</a></td><td>- +8 dégâts
+- Tous les sorts de l&#39;ombre volent 2d6 chakra</td><td>bestiaire</td><td>Invocation › Marionette de lombre › S99:X99; S100:X106</td></tr><tr id="r-bestiaire_2f_ombre-rampante.1"><td><a href="/donnees/creature/#r-bestiaire_2f_ombre-rampante">bestiaire/ombre-rampante</a></td><td>1</td><td>Effet &quot;Manteau noir&quot;</td><td>Manteau noir</td><td><a href="/donnees/sort/#r-magies_2f_magie-de-lombre_23_sort_3a_manteau-noir">magies/magie-de-lombre#sort:manteau-noir</a></td><td>- +2 dégâts
+- Chaque attaque qui touche va imposer un malus de 5% au prochain jet de la cible.</td><td>bestiaire</td><td>Invocation › Marionette de lombre › S12:X12; S13:X19</td></tr><tr id="r-bestiaire_2f_sihouetteur-obscur.1"><td><a href="/donnees/creature/#r-bestiaire_2f_sihouetteur-obscur">bestiaire/sihouetteur-obscur</a></td><td>1</td><td>Effet &quot;Manteau noir&quot;</td><td>Manteau noir</td><td><a href="/donnees/sort/#r-magies_2f_magie-de-lombre_23_sort_3a_manteau-noir">magies/magie-de-lombre#sort:manteau-noir</a></td><td>- +4 dégâts
+- Permet d&#39;avoir un avantage quand il faut être discret</td><td>bestiaire</td><td>Invocation › Marionette de lombre › S41:X41; S42:X48</td></tr></tbody></table></div><script>
+    (() => {
+      const table = document.getElementById('donnees');
+      const champ = document.getElementById('filtre');
+      const compte = document.getElementById('compte');
+      if (!table || !champ) return;
+      const corps = table.tBodies[0];
+      const lignes = [...corps.rows];
+      const decalage = table.tHead.rows[0].cells[0].textContent === 'Page' ? 1 : 0;
+      const plier = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+      const textes = lignes.map((tr) => plier([...tr.cells].slice(decalage).map((c) => c.textContent).join(' ')));
+      const maj = () => {
+        const q = plier(champ.value.trim());
+        let n = 0;
+        lignes.forEach((tr, i) => { const ok = !q || textes[i].includes(q); tr.hidden = !ok; if (ok) n += 1; });
+        compte.textContent = `${n.toLocaleString('fr-FR')} / ${lignes.length.toLocaleString('fr-FR')} lignes`;
+      };
+      champ.addEventListener('input', maj);
+      table.tHead.addEventListener('click', (e) => {
+        const th = e.target.closest('th');
+        if (!th || th.cellIndex < decalage) return;
+        const i = th.cellIndex;
+        const sens = th.dataset.sens === 'asc' ? 'desc' : 'asc';
+        table.tHead.querySelectorAll('th').forEach((x) => { delete x.dataset.sens; });
+        th.dataset.sens = sens;
+        const val = (tr) => tr.cells[i].textContent.trim();
+        const nombres = lignes.every((tr) => val(tr) === '' || !Number.isNaN(Number(val(tr))));
+        lignes.sort((a, b) => {
+          const x = val(a);
+          const y = val(b);
+          let c;
+          if (nombres) c = x === y ? 0 : x === '' ? -1 : y === '' ? 1 : Number(x) - Number(y);
+          else c = x.localeCompare(y, 'fr', { numeric: true });
+          return sens === 'asc' ? c : -c;
+        });
+        lignes.forEach((tr) => corps.appendChild(tr));
+      });
+    })();
+  </script></main><footer class="site-footer"><span>Projet de fan pour Maverick JDR — contenu issu du Discord et des Google Docs du MJ.</span><span class="site-footer__version">V0.1.94</span></footer><script>
+      (function () {
+        var toggles = document.querySelectorAll('.nav-group__toggle');
+        var rows = document.querySelectorAll('.site-nav__items');
+        toggles.forEach(function (t) {
+          t.addEventListener('click', function () {
+            toggles.forEach(function (o) { o.setAttribute('aria-pressed', o === t ? 'true' : 'false'); });
+            rows.forEach(function (r) { r.hidden = r.getAttribute('data-group') !== t.getAttribute('data-group'); });
+          });
+        });
+      })();
+    </script></body></html>
