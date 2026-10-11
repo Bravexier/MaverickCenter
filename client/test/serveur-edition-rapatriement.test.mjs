@@ -160,7 +160,8 @@ test('mise à jour des règles (Effectuer la mise à jour) : les lots de la mêm
   assert.ok(r.fichiers.includes('metier.sql'), r.fichiers.join(', '));
   const db = construire(rows, 'mise-a-jour');
   assert.equal(db.prepare("SELECT bonus_brut FROM metier WHERE id = 'metiers/forgeron'").get().bonus_brut, bonus.at(-1));
-  const historique = db.prepare("SELECT apres FROM historique_modification WHERE table_nom = 'metier' ORDER BY fait_le, lot_id, rang").all().map((h) => JSON.parse(h.apres).bonus_brut);
+  // les modifications de cette mise à jour (version 0.2) : data/rows peut déjà en historiser d'autres (rapatriées ou livrées avant)
+  const historique = db.prepare("SELECT apres FROM historique_modification WHERE table_nom = 'metier' AND version = '0.2' ORDER BY fait_le, lot_id, rang").all().map((h) => JSON.parse(h.apres).bonus_brut);
   assert.deepEqual(historique, bonus);
   db.close();
   // la copie n'a jamais touché data/rows

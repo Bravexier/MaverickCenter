@@ -123,10 +123,11 @@ test('rejoué sur des règles qui ont changé la page autrement : le lot passe (
 
 test('lot noté avant que l’édition ne suive le corps (aucune modification de page) : le rejeu refait le corps de ses pages', () => {
   const db = base();
-  const boule = db.prepare('SELECT id, ordre FROM sort WHERE magie_id = ? ORDER BY ordre LIMIT 1').get(FEU);
+  const boule = db.prepare('SELECT id, ordre, cout_brut FROM sort WHERE magie_id = ? ORDER BY ordre LIMIT 1').get(FEU);
   db.close();
+  const cout = boule.cout_brut === '9' ? '8' : '9'; // une valeur que la base n'a pas déjà
   const journal = journalDe([[
-    { op: 'modifier', table: 'sort', cle: { id: boule.id }, valeurs: { cout_brut: '9' } },
+    { op: 'modifier', table: 'sort', cle: { id: boule.id }, valeurs: { cout_brut: cout } },
     { op: 'modifier', table: 'race_onglet', cle: { race_id: HUMAIN }, valeurs: { histoire: 'Histoire notée avant D4.' } },
   ]]);
   for (const l of journal.lots) l.modifications = l.modifications.filter((m) => m.table !== 'page');
@@ -134,7 +135,7 @@ test('lot noté avant que l’édition ne suive le corps (aucune modification de
   const r = rejouerSur(cible, journal);
   assert.deepEqual(r.conflits, []);
   assert.deepEqual([...r.pages].sort(), [FEU, HUMAIN]);
-  assert.equal(morceauxDuCorpsDeMagie(corps(cible, FEU)).sorts[boule.ordre - 1][3], '9');
+  assert.equal(morceauxDuCorpsDeMagie(corps(cible, FEU)).sorts[boule.ordre - 1][3], cout);
   assert.ok(corps(cible, HUMAIN).includes('Histoire notée avant D4.'));
   assert.ok(raceAJour(cible, HUMAIN));
   cible.close();
