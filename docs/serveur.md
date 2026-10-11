@@ -182,23 +182,47 @@ bouton restent verrouillés tant que le lot n'est pas livré ou annulé. Puis il
 (`workflow_dispatch` : lot, empreinte, adresse ; jeton du serveur limité à la permission *Actions*), dont il suit le run (état dans
 `db/mise-a-jour/etat.json`, gardé si le service redémarre). Sans jeton, la page donne les trois valeurs pour lancer le workflow à la main.
 
-**« Simulation de mise à jour »** (bouton à côté, confirmation simple) : le même lot, le même workflow avec l'entrée `essai` cochée. GitHub fait
-tout le travail (branche à jour de `dev`, lot rejoué, note de version écrite, liste des tables contrôlée, `db:check`, `npm test`) puis s'arrête
-**sans rien pousser** : ni PR, ni fusion, ni livraison. À la fin (réussie ou non), le lot est libéré et le texte redevient modifiable
-(`simulation_reussie` / `simulation_echouee`). À faire avant la première vraie mise à jour, qui fera la livraison 0.2.0.
+**« Simulation de mise à jour »** (bouton à côté, confirmation simple) : le même processus, avec un lot qui le dit (`simulation: true`, couvert
+par l'empreinte ; absent d'un lot plus ancien = vraie mise à jour) et l'entrée `essai` cochée ; le workflow refuse, sans rien faire, un lot
+dont le mode ne correspond pas à l'entrée (dans les deux sens : une case « Simulation » oubliée ne fait jamais de vraie livraison). Le job
+`preparer` fait tout le travail, exactement comme pour une vraie mise à jour (branche à jour de `dev`, lot rejoué, note de version écrite,
+liste des tables contrôlée, `db:build`, `db:check`, puis tout le job `client` de la CI : `npm test`, build, tests du site construit, build de
+test, installateur, version portable) ; le job `livrer` vérifie sans effet de bord l'artefact (lot, commit, fichiers), son application sur le
+`dev` à jour et le jeton (`git push --dry-run` authentifié : l'écriture sur *Contents* ; lecture des PR). **Rien n'est poussé** : ni PR, ni
+fusion, ni livraison. Ce qu'une simulation ne peut pas vérifier sans effet de bord : les droits *Pull requests* et *Workflows* en écriture du
+jeton (le résumé du run le dit). À la fin (réussie ou non), le lot est libéré et le texte redevient modifiable (`simulation_reussie` /
+`simulation_echouee`). À faire avant la première vraie mise à jour, qui fera la livraison 0.2.0.
 
-Le workflow (`client/scripts/mise-a-jour-github.mjs`, avec le jeton `MISE_A_JOUR_TOKEN` du dépôt) :
+Le workflow (`client/scripts/mise-a-jour-github.mjs`, une phase par invocation : `--phase preparer | dev | master`) a deux jobs, aux noms fixes :
 
-1. télécharge le lot et vérifie son empreinte ;
-2. part de `dev` sur `feature/mise-a-jour-regles-<date>`, y applique le lot (`client/scripts/mise-a-jour-regles.mjs`) : base reconstruite
-   depuis `data/rows`, journal rejoué (**un conflit arrête tout**), note de version écrite (version X.Y de la prochaine livraison, d'après la même
-   règle que le bot ; les notes d'exemple retirées), journal versé dans `historique_modification`, puis `data/rows` réécrit par l'exporteur — dans
-   une copie d'abord : **seuls les fichiers des tables que le journal a touchées et ceux des notes de version peuvent changer** (demande du
-   propriétaire), sinon rien n'est écrit ; `db:check` et `npm test` ;
-3. ouvre la PR vers `dev`, attend la CI verte et la fusionne (commit de fusion) ; si `dev` a bougé entre-temps, le lot est rejoué sur le
-   nouveau `dev` ;
-4. attend le commit de version du bot, puis ouvre la PR de **livraison `dev` → `master`** (la note de version en corps, jamais `[V: X+1]`),
-   attend sa CI et la fusionne : `livraison.yml` fait la version X.Y.0, les étiquettes et les installateurs.
+1. **`preparer`**, sans aucun secret (`npm ci`, `npm test` et le code du dépôt y tournent ; seul le jeton du workflow, en lecture, y sert à
+   `actions/checkout`, qui ne le garde pas) : télécharge le lot et vérifie son empreinte et son mode ; refuse si une **autre mise à jour est dans
+   `dev` sans être sur `master`** (commit « Lot : … » d'un autre lot, ou code 7 de `mise-a-jour-regles.mjs` : sa note de la même version X.Y serait
+   remplacée ; relancer le run de cette mise à jour-là, qui reprend à la livraison, ou livrer `dev` → `master` à la main) ; part de `dev` et y
+   applique le lot (`client/scripts/mise-a-jour-regles.mjs`) : base reconstruite depuis `data/rows`, journal rejoué (**un conflit arrête tout**),
+   note de version écrite (version X.Y de la prochaine livraison, d'après la même règle que le bot ; les notes d'exemple retirées), journal versé
+   dans `historique_modification`, puis `data/rows` réécrit par l'exporteur — dans une copie d'abord : **seuls les fichiers des tables que le
+   journal a touchées et ceux des notes de version peuvent changer** (demande du propriétaire), sinon rien n'est écrit ; puis `db:build`,
+   `db:check` et tout le job `client` de la CI, sans qu'aucun fichier ne change ; enfin un commit local, publié dans l'artefact `preparation`
+   (le lot tel que servi, le commit en *git bundle* sur la base `origin/dev`, le résumé) ;
+2. **`livrer`**, seul job à recevoir le jeton `MISE_A_JOUR_TOKEN` (*Contents*, *Pull requests*, *Workflows* en écriture), où ne tournent ni npm
+   ni `node_modules` (les actions officielles, git et le script, qui n'importe que `node:` et `tools/flux-git/regles.mjs`) : il revérifie
+   l'artefact avec git — le lot a l'empreinte de l'**entrée** du workflow, un seul commit sur la base annoncée, fichiers ⊆
+   `data/rows/<tables du lot et de la note de version>.sql` (fichiers ordinaires), message attendu —, puis deux étapes, dont le service peut lire
+   l'état :
+   - **« Fusion dans dev »** : le commit posé sur le `dev` à jour, tel quel, ou rejoué par un rebase textuel si `dev` a bougé (`data/rows` a une
+     ligne par ligne de table : un conflit textuel est la même ligne, ou sa voisine, changée des deux côtés : échec net, rien n'est poussé,
+     relancer la mise à jour ; un rebase propre est sûr, la CI de la PR refaisant tous les contrôles) ; poussée sans hooks de
+     `feature/mise-a-jour-regles-<date>`, PR vers `dev` (la branche est supprimée si l'ouverture échoue), CI verte attendue, fusion par commit
+     de fusion ; si `dev` bouge pendant l'attente, PR fermée et commit rejoué sur le nouveau `dev` (3 essais). Un lot déjà dans `dev` (relance)
+     termine l'étape sans rien refaire ;
+   - **« Livraison vers master »** (elle repart du lot trouvé dans `dev`) : le commit de version du bot attendu, puis la PR de **livraison `dev`
+     → `master`**, attend sa CI et la fusionne : `livraison.yml` fait la version X.Y.0, les étiquettes et les installateurs.
+
+Le corps des deux PR est la note de version, jamais `[V: X+1]`, références GitHub (`#n`, `GH-n`, `propriétaire/dépôt#n`, adresses
+…/issues/n et …/pull/n) et `@mentions` neutralisées par une espace sans chasse : une PR ouverte et fusionnée au nom du propriétaire ne ferme
+aucun ticket et ne notifie personne. Relancer le run (*Re-run*) reprend où il s'est arrêté : un lot déjà dans `dev` passe directement à la
+livraison, un lot déjà livré ne fait rien.
 
 Quand la nouvelle version arrive sur le site de dev, la base vivante est refaite : les modifications déjà livrées (leur lot est dans
 `historique_modification` des nouvelles règles) sont **« intégrées » avant tout rejeu** (`integrerLivrees`) — rejouées d'après leurs valeurs,
@@ -253,10 +277,10 @@ qui renomme une colonne doit aussi renommer ses clés dans `avant` / `apres` de 
 | `GET /api/mise-a-jour/lots/<lot>/` | Le lot figé, octet pour octet (le workflow le télécharge et vérifie son empreinte) |
 
 **Mise en place** (une fois) : le secret `MISE_A_JOUR_TOKEN` du dépôt (jeton fine-grained d'un administrateur, ce dépôt seulement : *Contents*,
-*Pull requests* et *Workflows* en écriture ; le jeton d'un workflow ne déclenche ni la CI ni `livraison.yml`) et, sur le serveur de test, le
-fichier `secrets/github-actions-token` (jeton fine-grained, ce dépôt seulement : *Actions* en écriture), pas à pas dans
-[`deploy/vps/README.md`](../deploy/vps/README.md). Chaque mise à jour consomme environ trois passages de la CI (PR, livraison, publication)
-en minutes GitHub Actions.
+*Pull requests* et *Workflows* en écriture ; le jeton d'un workflow ne déclenche ni la CI ni `livraison.yml` ; seul le job `livrer` le reçoit)
+et, sur le serveur de test, le fichier `secrets/github-actions-token` (jeton fine-grained, ce dépôt seulement : *Actions* en écriture), pas à
+pas dans [`deploy/vps/README.md`](../deploy/vps/README.md). Chaque mise à jour consomme environ quatre passages de la CI (préparation, PR,
+livraison, publication) en minutes GitHub Actions ; une simulation, un seul (la préparation).
 
 ## Hébergement
 
