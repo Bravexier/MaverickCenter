@@ -196,7 +196,8 @@ un lot refusé annule aussi les retraits. Chaque fiche touchée reçoit **une li
 texte du joueur reste intact ; `lib/fiche-format.mjs#ligneDeRetrait`) :
 `[11/10/2026] Retrait (règles modifiées) : le don « Botte secrète » (classe Bretteur des dunes, spécialité LAME COURBE, niveau 20) n’existe plus dans
 les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.` (une spécialité nomme les dons choisis qui partent avec elle ; un sort,
-sa magie, son NPM et les NM de la fiche ; une ligne par élément, dans l'ordre métier, spécialité, don, sort) ; `modifie_le` prend l'instant du lot, et
+sa magie, son NPM et les NM de la fiche ; une ligne par élément, dans l'ordre métier, spécialité, don, sort ; à la reconstruction, l'élément
+retiré garde le nom des règles d'avant, sa classe, sa spécialité ou sa magie prend celui des nouvelles règles quand elle y est encore) ; `modifie_le` prend l'instant du lot, et
 la version de la fiche change (une fiche ouverte ailleurs reçoit `409` avec la fiche à jour ; la page `/fiche/` dit alors combien d'éléments ont été
 retirés, et une bannière résume les lignes de retrait de ses notes tant qu'elles y sont). La réponse du lot porte **`fiches`** :
 `[{ fiche, retraits: [descriptions] }]` (le nom d'un prétiré, « fiche de joueur n° k » pour une fiche de joueur : k est son rang parmi toutes les

@@ -133,56 +133,39 @@ export function retirerDesFiches(db, { metiers = [], specialites = [], capacites
   return appliquer(db, aRetirer, acc);
 }
 
-/** Colonnes et existence des tables d'un schéma attaché (l'ancienne base peut avoir un schéma plus ancien : ce qui manque se lit NULL). */
-function lecteur(db, schema) {
-  const cache = new Map();
-  const colonnes = (table) => {
-    if (!cache.has(table)) cache.set(table, new Set(db.prepare(`PRAGMA "${schema}".table_info("${table}")`).all().map((c) => c.name)));
-    return cache.get(table);
-  };
-  return {
-    /** « alias."colonne" », ou NULL si la table ou la colonne manque. */
-    col: (alias, table, colonne) => (colonnes(table).has(colonne) ? `${alias}."${colonne}"` : 'NULL'),
-    /** « LEFT JOIN schema.table alias ON … », ou rien si la table manque (ses colonnes se lisent alors NULL par col). */
-    joindre: (table, alias, sur) => (colonnes(table).size ? `LEFT JOIN "${schema}"."${table}" ${alias} ON ${sur}` : ''),
-  };
-}
-
 /**
  * Reconstruction de la base vivante (base-vivante.mjs#transferer, l'ancienne base attachée sous `ancienne`, clés étrangères coupées) : retire de `main`
  * les lignes de fiche dont le métier, la spécialité (couple spécialité, classe), le don ou le sort manque dans les nouvelles règles. Une spécialité ou un
  * don dont la classe a disparu, un sort dont la magie a disparu (classe et magie lues dans l'ancienne base) ne sont pas touchés : la classe ou la magie
  * disparue bloque la reconstruction (hors R33), par la clé de la fiche restée rompue. Les noms se lisent dans l'ancienne base (celui de la classe,
- * de la spécialité d'un don et de la magie d'un sort dans les nouvelles règles quand elles l'ont encore) ; à défaut, l'identifiant. Un don choisi qui
- * dépendait d'une spécialité retirée à la même fiche est nommé sur la ligne de celle-ci.
+ * de la spécialité d'un don et de la magie d'un sort dans les nouvelles règles quand elles l'ont encore : un renommage livré en même temps l'emporte) ;
+ * à défaut, l'identifiant. Les colonnes lues dans l'ancienne base (nom, classe_id, specialite_id, niveau, magie_id) existent dans toute base vivante
+ * (schéma de la migration 0011, qui crée les fiches). Un don choisi qui dépendait d'une spécialité retirée à la même fiche est nommé sur la ligne de
+ * celle-ci.
  * @param {import('node:sqlite').DatabaseSync} db
  * @param {Map} acc nouveauxRetraitsDeFiches()
  */
 export function retirerLesManquants(db, acc = nouveauxRetraitsDeFiches()) {
-  const A = lecteur(db, 'ancienne');
   const aRetirer = [];
   // spécialités : la classe existe encore, le couple (spécialité, classe) n'existe plus
-  const specialites = db.prepare(`SELECT ${champsDeFiche}, pc.rang, pc.specialite_id AS id, pc.classe_id, ${A.col('a', 'specialite', 'nom')} AS nom,
-      coalesce(mc.nom, ${A.col('ac', 'classe', 'nom')}) AS classe
+  const specialites = db.prepare(`SELECT ${champsDeFiche}, pc.rang, pc.specialite_id AS id, pc.classe_id, a.nom AS nom, coalesce(mc.nom, ac.nom) AS classe
     FROM main.personnage_classe pc JOIN main.personnage p ON p.id = pc.personnage_id
-    ${A.joindre('specialite', 'a', 'a.id = pc.specialite_id')}
+    LEFT JOIN ancienne.specialite a ON a.id = pc.specialite_id
     LEFT JOIN main.classe mc ON mc.id = pc.classe_id
-    ${A.joindre('classe', 'ac', 'ac.id = pc.classe_id')}
+    LEFT JOIN ancienne.classe ac ON ac.id = pc.classe_id
     WHERE pc.specialite_id IS NOT NULL AND EXISTS (SELECT 1 FROM main.classe c WHERE c.id = pc.classe_id)
       AND NOT EXISTS (SELECT 1 FROM main.specialite s WHERE s.id = pc.specialite_id AND s.classe_id = pc.classe_id)
     ORDER BY p.id, pc.rang`).all();
-  // dons : absents des nouvelles règles
-  const specialiteDuDon = A.col('a', 'capacite', 'specialite_id');
-  const classeDuDon = A.col('a', 'capacite', 'classe_id');
-  const dons = db.prepare(`SELECT ${champsDeFiche}, pc.capacite_id AS id, ${A.col('a', 'capacite', 'nom')} AS nom, ${A.col('a', 'capacite', 'niveau')} AS niveau,
-      ${specialiteDuDon} AS specialite_id, coalesce(mc.nom, ${A.col('ac', 'classe', 'nom')}) AS classe, coalesce(ms.nom, ${A.col('asp', 'specialite', 'nom')}) AS specialite
+  // dons : absents des nouvelles règles, leur classe présente
+  const dons = db.prepare(`SELECT ${champsDeFiche}, pc.capacite_id AS id, a.nom AS nom, a.niveau AS niveau, a.specialite_id AS specialite_id, coalesce(mc.nom, ac.nom) AS classe,
+      coalesce(ms.nom, asp.nom) AS specialite
     FROM main.personnage_capacite pc JOIN main.personnage p ON p.id = pc.personnage_id
-    ${A.joindre('capacite', 'a', 'a.id = pc.capacite_id')}
-    LEFT JOIN main.classe mc ON mc.id = ${classeDuDon}
-    ${A.joindre('classe', 'ac', `ac.id = ${classeDuDon}`)}
-    LEFT JOIN main.specialite ms ON ms.id = ${specialiteDuDon}
-    ${A.joindre('specialite', 'asp', `asp.id = ${specialiteDuDon}`)}
-    WHERE NOT EXISTS (SELECT 1 FROM main.capacite k WHERE k.id = pc.capacite_id) AND EXISTS (SELECT 1 FROM main.classe c WHERE c.id = ${classeDuDon})
+    LEFT JOIN ancienne.capacite a ON a.id = pc.capacite_id
+    LEFT JOIN main.classe mc ON mc.id = a.classe_id
+    LEFT JOIN ancienne.classe ac ON ac.id = a.classe_id
+    LEFT JOIN main.specialite ms ON ms.id = a.specialite_id
+    LEFT JOIN ancienne.specialite asp ON asp.id = a.specialite_id
+    WHERE NOT EXISTS (SELECT 1 FROM main.capacite k WHERE k.id = pc.capacite_id) AND EXISTS (SELECT 1 FROM main.classe c WHERE c.id = a.classe_id)
     ORDER BY p.id, pc.capacite_id`).all();
   const regroupes = new Set();
   for (const s of specialites) {
@@ -195,22 +178,21 @@ export function retirerLesManquants(db, acc = nouveauxRetraitsDeFiches()) {
     aRetirer.push({ ...k, vise: 'capacite', cle: [k.personnage, k.id], descripteur: regroupes.has(`${k.personnage}\u0000${k.id}`) ? null
       : { nature: 'capacite', id: k.id, nom: k.nom ?? null, classe: k.classe ?? null, specialite: k.specialite ?? null, niveau: k.niveau ?? null } });
   }
-  // sorts : absents des nouvelles règles
-  const magieDuSort = A.col('a', 'sort', 'magie_id');
-  for (const s of db.prepare(`SELECT ${champsDeFiche}, ps.sort_id AS id, ps.niveau_maitrise, ps.nm_livre, ps.nm_cadeau, ${A.col('a', 'sort', 'nom')} AS nom,
-      ${A.col('a', 'sort', 'niveau')} AS npm, coalesce(mm.nom, ${A.col('am', 'magie', 'nom')}) AS magie
+  // sorts : absents des nouvelles règles, leur magie présente
+  for (const s of db.prepare(`SELECT ${champsDeFiche}, ps.sort_id AS id, ps.niveau_maitrise, ps.nm_livre, ps.nm_cadeau, a.nom AS nom, a.niveau AS npm,
+      coalesce(mm.nom, am.nom) AS magie
     FROM main.personnage_sort ps JOIN main.personnage p ON p.id = ps.personnage_id
-    ${A.joindre('sort', 'a', 'a.id = ps.sort_id')}
-    LEFT JOIN main.magie mm ON mm.id = ${magieDuSort}
-    ${A.joindre('magie', 'am', `am.id = ${magieDuSort}`)}
-    WHERE NOT EXISTS (SELECT 1 FROM main.sort x WHERE x.id = ps.sort_id) AND EXISTS (SELECT 1 FROM main.magie m WHERE m.id = ${magieDuSort})
+    LEFT JOIN ancienne.sort a ON a.id = ps.sort_id
+    LEFT JOIN main.magie mm ON mm.id = a.magie_id
+    LEFT JOIN ancienne.magie am ON am.id = a.magie_id
+    WHERE NOT EXISTS (SELECT 1 FROM main.sort x WHERE x.id = ps.sort_id) AND EXISTS (SELECT 1 FROM main.magie m WHERE m.id = a.magie_id)
     ORDER BY p.id, ps.rang`).all()) {
     aRetirer.push({ ...s, vise: 'sort', cle: [s.personnage, s.id], descripteur: { nature: 'sort', id: s.id, nom: s.nom ?? null, magie: s.magie ?? null, npm: s.npm ?? null,
       nm: s.niveau_maitrise ?? null, nm_livre: s.nm_livre ?? null, nm_cadeau: s.nm_cadeau ?? null } });
   }
   // métiers : absents des nouvelles règles
-  for (const m of db.prepare(`SELECT ${champsDeFiche}, p.metier_id AS id, ${A.col('a', 'metier', 'nom')} AS nom
-    FROM main.personnage p ${A.joindre('metier', 'a', 'a.id = p.metier_id')}
+  for (const m of db.prepare(`SELECT ${champsDeFiche}, p.metier_id AS id, a.nom AS nom
+    FROM main.personnage p LEFT JOIN ancienne.metier a ON a.id = p.metier_id
     WHERE p.metier_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM main.metier x WHERE x.id = p.metier_id)
     ORDER BY p.id`).all()) {
     aRetirer.push({ ...m, vise: 'metier', cle: [m.personnage], descripteur: { nature: 'metier', id: m.id, nom: m.nom ?? null } });

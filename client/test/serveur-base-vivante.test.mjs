@@ -422,6 +422,39 @@ test('R33 — un métier, un sort, un don ou une spécialité renommé : la fich
   assert.equal('retraits' in lireEtat(dossier), false);
 });
 
+test('R33 — une livraison qui renomme la classe, la spécialité et la magie et supprime un don, une spécialité et un sort : la note cite les nouveaux noms', () => {
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: REGLES, dossier });
+  remplir(chemin);
+  const { spec, don } = avecSpecialite(chemin); // p1 : la première spécialité du Guerrier et un de ses dons à choix
+  const autre = valeur(REGLES, "SELECT id, nom FROM specialite WHERE classe_id = 'classes/guerrier' AND id <> ? ORDER BY rang LIMIT 1", spec.id);
+  assert.ok(autre, 'le Guerrier a une seconde spécialité');
+  const vivante = new DatabaseSync(chemin);
+  pretire(vivante, 'p-renomme', { classe: 'classes/guerrier', specialite: autre.id });
+  vivante.close();
+  const niveau = valeur(REGLES, 'SELECT niveau FROM capacite WHERE id = ?', don.id).niveau;
+  const sort = valeur(REGLES, 'SELECT nom, niveau FROM sort WHERE id = ?', UN_SORT_DE_FEU);
+  const q = (t) => `'${t.replaceAll("'", "''")}'`;
+  const noms = { classe: 'Guerrier renommé R33', specialite: 'SPÉCIALITÉ RENOMMÉE R33', magie: 'Feu renommé R33' };
+  const livraison = regles(`UPDATE classe SET nom = ${q(noms.classe)} WHERE id = 'classes/guerrier';
+    UPDATE specialite SET nom = ${q(noms.specialite)} WHERE id = ${q(spec.id)};
+    UPDATE magie SET nom = ${q(noms.magie)} WHERE id = 'magies/magie-du-feu';
+    DELETE FROM capacite WHERE id = ${q(don.id)};
+    DELETE FROM capacite WHERE specialite_id = ${q(autre.id)}; DELETE FROM specialite WHERE id = ${q(autre.id)};
+    DELETE FROM sort WHERE id = ${q(UN_SORT_DE_FEU)}`);
+  const r = preparerBaseVivante({ regles: livraison, dossier, instant: new Date('2026-10-11T08:30:00Z') });
+  assert.equal(r.refaite, true);
+  // le nom de la classe, de la spécialité d'un don et de la magie d'un sort : celui des nouvelles règles ; le nom de l'élément retiré : celui d'avant
+  assert.deepEqual(r.fiches, [
+    { fiche: 'Aldric', retraits: [
+      `le don « ${don.nom} » (classe ${noms.classe}, spécialité ${noms.specialite}, niveau ${niveau})`,
+      `le sort « ${sort.nom} » (magie ${noms.magie}, NPM ${sort.niveau})`,
+    ] },
+    { fiche: 'Prétiré p-renomme', retraits: [`la spécialité « ${autre.nom} » (classe ${noms.classe})`] },
+  ]);
+  assert.equal(valeur(chemin, "SELECT specialite_id FROM personnage_classe WHERE personnage_id = 'p1'").specialite_id, spec.id, 'la spécialité renommée reste');
+});
+
 test('R33 — un don retiré d’un prétiré sur le site de dev, puis la base refaite par une livraison sans rapport : la note reste seule (pas de double note)', () => {
   const dossier = nouveau('db');
   const { chemin } = preparerBaseVivante({ regles: REGLES, dossier });
