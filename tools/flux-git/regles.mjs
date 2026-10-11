@@ -185,28 +185,30 @@ export function etiquetteDeVersion(branche, version) {
 }
 
 /**
- * Étiquette (tag Git) d'une livraison, unique parmi `existantes` :
+ * Étiquette (tag Git) d'une livraison, unique parmi `existantes` : l'étiquette de version de la branche elle-même (décision du
+ * propriétaire, 2026-10-11 : deux serveurs, deux formes d'étiquette, pas de suffixe « -test »).
  *   prod : VX.Y, l'étiquette de version de master (une livraison dev → master publie sa production sous le nom de sa version),
  *          puis VX.Y-hotfix.N (un hotfix ne change pas la version de master)
- *   test : VX.Y.Z-test, à côté de l'étiquette de version VX.Y.Z de dev
+ *   test : VX.Y.Z, l'étiquette de version de dev (chaque fusion dans dev change sa version)
  * `motif` : suffixe quand l'étiquette de base existe déjà (`hotfix` pour un correctif, `rebuild` pour une régénération manuelle).
  */
 export function etiquette({ mode, version, existantes = [], motif }) {
   lireVersion(version);
   if (mode !== 'prod' && mode !== 'test') throw new Error(`mode inconnu « ${mode} » (prod ou test)`);
   const deja = new Set(existantes);
-  const base = mode === 'prod' ? etiquetteDeVersion(MASTER, version) : `${etiquetteDeVersion(DEV, version)}-test`;
+  const base = etiquetteDeVersion(mode === 'prod' ? MASTER : DEV, version);
   if (!deja.has(base)) return base;
   const suffixe = motif ?? (mode === 'prod' ? 'hotfix' : 'rebuild');
   for (let n = 1; ; n += 1) if (!deja.has(`${base}-${suffixe}.${n}`)) return `${base}-${suffixe}.${n}`;
 }
 
 /**
- * Mode d'une étiquette de livraison : `test` (VX.Y.Z-test…), `prod` (VX.Y, VX.Y-hotfix.N, VX.Y-rebuild.N), null pour toute autre
- * (dont l'étiquette de version de dev, VX.Y.Z, qui n'a pas d'installateur à elle).
+ * Mode d'une étiquette de livraison, d'après sa forme : `test` (VX.Y.Z, VX.Y.Z-rebuild.N : la version complète de dev), `prod` (VX.Y,
+ * VX.Y-hotfix.N, VX.Y-rebuild.N), null pour toute autre (dont V0.2.0-test, seule livraison de test d'avant cette règle).
+ * Une étiquette VX.Y.Z d'avant la 0.2.1 est une étiquette de version sans installateur.
  */
 export function modeDeEtiquette(tag) {
-  if (/^V\d+\.\d+\.\d+-test(?:-|$)/.test(tag)) return 'test';
+  if (/^V\d+\.\d+\.\d+(?:-rebuild\.\d+)?$/.test(tag)) return 'test';
   if (/^V\d+\.\d+(?:-(?:hotfix|rebuild)\.\d+)?$/.test(tag)) return 'prod';
   return null;
 }

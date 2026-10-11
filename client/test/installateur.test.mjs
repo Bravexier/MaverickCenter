@@ -27,8 +27,9 @@ function site(label, pages = 5, extra = {}) {
   }
   return d;
 }
+/** Étiquette par défaut : la forme des livraisons (tools/flux-git/regles.mjs), vX.Y en production, la version complète vX.Y.Z en test. */
 function installateur({ mode = 'prod', label = 'v1', tag, version = '0.2.0', pages, extra } = {}) {
-  return fabriquer({ mode, site: site(label, pages, extra), tag: tag ?? (mode === 'prod' ? `v${version}` : `v${version}-test`), version, sha: 'a'.repeat(40), sortie: join(racine, 'sortie') });
+  return fabriquer({ mode, site: site(label, pages, extra), tag: tag ?? (mode === 'prod' ? `v${version.replace(/\.\d+$/, '')}` : `v${version}`), version, sha: 'a'.repeat(40), sortie: join(racine, 'sortie') });
 }
 function lancer(fichier, args = [], env = {}) {
   const r = spawnSync('sh', [fichier, ...args], { cwd: racine, encoding: 'utf8', env: { PATH: process.env.PATH, ...env } });
@@ -40,12 +41,12 @@ const champs = (d) => Object.fromEntries(lire(d, 'VERSION').trim().split('\n').m
 
 test('fabrication : un seul fichier, paramètres remplis, archive contrôlée par --verifier', { skip }, () => {
   const i = installateur({ pages: 7 });
-  assert.match(i.fichier, /maverick-center-v0\.2\.0-install\.sh$/);
+  assert.match(i.fichier, /maverick-center-v0\.2-install\.sh$/);
   assert.equal(i.PAGES, '8');
   const texte = readFileSync(i.fichier, 'latin1');
   const script = texte.slice(0, texte.indexOf('\n__ARCHIVE__\n')); // l'archive compressée peut contenir n'importe quels octets
   assert.ok(!script.includes('@@'), 'aucun paramètre non rempli');
-  assert.match(texte, /^TAG='v0\.2\.0'$/m);
+  assert.match(texte, /^TAG='v0\.2'$/m);
   const v = lancer(i.fichier, ['--verifier']);
   assert.equal(v.code, 0, v.out);
   assert.match(v.out, /archive intègre, 8 pages/);
@@ -64,20 +65,24 @@ test('fabrication : un seul fichier, paramètres remplis, archive contrôlée pa
 test('paramètres refusés : étiquette de test en production et inversement, version invalide', () => {
   const s = site('x');
   const base = { site: s, version: '0.2.0', sha: 'b'.repeat(40), sortie: join(racine, 'sortie') };
-  assert.throws(() => fabriquer({ ...base, mode: 'prod', tag: 'v0.2.0-test' }), /étiquette de production/);
-  assert.throws(() => fabriquer({ ...base, mode: 'test', tag: 'v0.2.0-test', sha: '$(id)' }), /--sha invalide/);
+  assert.throws(() => fabriquer({ ...base, mode: 'prod', tag: 'v0.2.0' }), /étiquette de production/);
+  assert.throws(() => fabriquer({ ...base, mode: 'test', tag: 'v0.2.0', sha: '$(id)' }), /--sha invalide/);
   const cli = (args) => spawnSync('node', [new URL('../../deploy/installateur/fabriquer.mjs', import.meta.url).pathname, ...args], { encoding: 'utf8' });
-  const ok = ['--mode', 'test', '--site', s, '--tag', 'v0.2.0-test', '--version', '0.2.0', '--sha', 'local', '--sortie', join(racine, 'sortie')];
+  const ok = ['--mode', 'test', '--site', s, '--tag', 'v0.2.0', '--version', '0.2.0', '--sha', 'local', '--sortie', join(racine, 'sortie')];
+  const avecTag = (tag) => ok.map((a) => (a === 'v0.2.0' ? tag : a));
   assert.equal(cli(ok).status, 0);
   assert.match(cli(['--mode', 'prod', ...ok.slice(2)]).stderr, /étiquette de production/);
-  assert.match(cli(ok.map((a) => (a === 'v0.2.0-test' ? 'v0.2.0' : a))).stderr, /étiquette de test/);
+  assert.match(cli(avecTag('v0.2')).stderr, /étiquette de test/);
+  assert.match(cli(avecTag('v0.2-hotfix.1')).stderr, /étiquette de test/);
   assert.match(cli(ok.map((a) => (a === '0.2.0' ? '0.2' : a))).stderr, /--version invalide/);
-  assert.match(cli(ok.map((a) => (a === 'v0.2.0-test' ? 'v0.2.0-test;rm' : a))).stderr, /--tag invalide/);
-  // Étiquettes du bot (tools/flux-git/regles.mjs) : production VX.Y (l'étiquette de version de master), test VX.Y.Z-test.
-  assert.equal(cli(['--mode', 'prod', ...ok.slice(2).map((a) => (a === 'v0.2.0-test' ? 'V0.2' : a))]).status, 0);
-  assert.equal(cli(['--mode', 'prod', ...ok.slice(2).map((a) => (a === 'v0.2.0-test' ? 'V0.2-hotfix.1' : a))]).status, 0);
-  assert.equal(cli(ok.map((a) => (a === 'v0.2.0-test' ? 'V0.2.3-test' : a))).status, 0);
-  assert.match(cli(ok.map((a) => (a === 'v0.2.0-test' ? 'V0.2;rm' : a))).stderr, /--tag invalide/);
+  assert.match(cli(avecTag('v0.2.0;rm')).stderr, /--tag invalide/);
+  // Étiquettes du bot (tools/flux-git/regles.mjs) : production VX.Y (l'étiquette de version de master), test VX.Y.Z (celle de dev).
+  assert.equal(cli(['--mode', 'prod', ...avecTag('V0.2').slice(2)]).status, 0);
+  assert.equal(cli(['--mode', 'prod', ...avecTag('V0.2-hotfix.1').slice(2)]).status, 0);
+  assert.equal(cli(avecTag('V0.2.3')).status, 0);
+  assert.equal(cli(avecTag('V0.2.3-rebuild.1')).status, 0);
+  assert.equal(cli(avecTag('v0.0.0-test')).status, 0, 'étiquette factice de la CI (ci.yml) : version complète, donc de test');
+  assert.match(cli(avecTag('V0.2;rm')).stderr, /--tag invalide/);
 });
 
 for (const rsync of ['auto', '0']) {
@@ -86,7 +91,7 @@ for (const rsync of ['auto', '0']) {
     const r1 = lancer(installateur({ label: 'v1' }).fichier, ['--dossier', prod], { USE_RSYNC: rsync });
     assert.equal(r1.code, 0, r1.out);
     assert.equal(lire(prod, 'site/index.html'), '<h1>accueil v1</h1>');
-    assert.deepEqual({ tag: champs(prod).tag, mode: champs(prod).mode, version: champs(prod).version }, { tag: 'v0.2.0', mode: 'prod', version: '0.2.0' });
+    assert.deepEqual({ tag: champs(prod).tag, mode: champs(prod).mode, version: champs(prod).version }, { tag: 'v0.2', mode: 'prod', version: '0.2.0' });
     assert.match(lire(prod, '.env'), /MAVERICK_PORT=8080/);
     assert.match(lire(prod, '.env'), /MAVERICK_CONTENEUR=maverick-center$/m);
     assert.doesNotMatch(lire(prod, '.env'), /MAVERICK_EDITION/, 'jamais d’édition sur le serveur normal');
@@ -100,12 +105,12 @@ for (const rsync of ['auto', '0']) {
     writeFileSync(join(prod, '.env'), 'MAVERICK_PORT=9000\n');
     writeFileSync(join(prod, 'docker-compose.yml'), 'services: {} # personnalisé\n');
 
-    const r2 = lancer(installateur({ label: 'v2', tag: 'v0.2.0-hotfix.1', pages: 3, extra: { 'nouvelle/index.html': 'n' } }).fichier, ['--dossier', prod], { USE_RSYNC: rsync });
+    const r2 = lancer(installateur({ label: 'v2', tag: 'v0.2-hotfix.1', pages: 3, extra: { 'nouvelle/index.html': 'n' } }).fichier, ['--dossier', prod], { USE_RSYNC: rsync });
     assert.equal(r2.code, 0, r2.out);
     assert.equal(lire(prod, 'site/index.html'), '<h1>accueil v2</h1>');
     assert.ok(existsSync(join(prod, 'site/nouvelle/index.html')));
     assert.ok(!existsSync(join(prod, 'site/wiki/p4/index.html')), 'une page retirée disparaît');
-    assert.equal(champs(prod).tag, 'v0.2.0-hotfix.1');
+    assert.equal(champs(prod).tag, 'v0.2-hotfix.1');
     assert.equal(lire(prod, 'db', 'vivante.db'), 'données réelles');
     assert.equal(lire(prod, '.htpasswd'), 'invite:xyz\n');
     assert.equal(lire(prod, '.env'), 'MAVERICK_PORT=9000\n');
@@ -113,7 +118,7 @@ for (const rsync of ['auto', '0']) {
     assert.match(lire(prod, 'docker-compose.yml.nouveau'), /MAVERICK_PORT/);
     assert.match(r2.out, /docker-compose\.yml a été modifié sur place/);
     assert.doesNotMatch(r2.out, /Première installation/);
-    assert.match(lire(prod, 'installation.log'), /Installé : v0\.2\.0-hotfix\.1/);
+    assert.match(lire(prod, 'installation.log'), /Installé : v0\.2-hotfix\.1/);
     assert.ok(!readdirSync(prod).some((f) => f.startsWith('.installation')), 'ni dossier de travail ni verrou restants');
   });
 }
@@ -144,7 +149,7 @@ test('test : la base est une copie de celle de la production à l\'instant de l\
   assert.equal(lire(test_, 'db', 'pieces', 'carte.txt'), 'carte');
   const trace = lire(test_, 'db', '.copie-de-la-production');
   assert.match(trace, new RegExp(`source=${join(prod, 'db').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
-  assert.match(trace, /version_prod=v0\.2\.0/);
+  assert.match(trace, /^version_prod=v0\.2$/m);
 
   const verifierProd = new DatabaseSync(join(prod, 'db', 'maverick.db'));
   assert.equal(verifierProd.prepare('SELECT count(*) AS n FROM fiche').get().n, 2, '…ne revient jamais en production');
