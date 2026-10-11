@@ -1,8 +1,11 @@
 /* Chargé uniquement depuis pages/fiche/index.astro (?raw) : la fiche de personnage (création et modification d'un prétiré).
-   Une section par étape du guide (« Créer son personnage », puis progresser et jouer), numérotée et teintée de la couleur de sa partie
-   (lib/guide.mjs#PARTIES, --etape) ; races, magies et classes en PASTILLES comme sur /races/, /magies/ et /classes/ (pilule bordée et teintée de la
-   couleur, point de couleur, nom en gras), la choisie pleine, celles que les règles ferment grisées et barrées.
+   Un bloc par étape du guide (« Créer son personnage », puis progresser et jouer), teinté de la couleur de sa partie (lib/guide.mjs#PARTIES, --etape),
+   sans numéro ; les blocs côte à côte en rangées sur un écran large (demandes du propriétaire) ; races, magies et classes en PASTILLES comme sur
+   /races/, /magies/ et /classes/ (pilule bordée et teintée de la couleur, point de couleur, nom en gras), la choisie pleine, celles que les règles
+   ferment grisées et barrées.
    Compacte (demande du propriétaire : « c'est TROP GROS ») : texte et marges réduits, choix dans des menus déroulants, curseurs. */
+/* les rangées de blocs ont besoin de place : la fiche prend plus que la largeur des autres pages */
+main:has(> .fiche) { max-width: 100rem; }
 .fiche {
   --vert: #2e7d4f;
   display: grid;
@@ -13,12 +16,14 @@
 .fiche [hidden] { display: none !important; }
 .fiche input:not([type='range'], [type='checkbox'], [type='radio']), .fiche select, .fiche textarea, .fiche button { padding: 0.22rem 0.45rem; font-size: 0.85rem; }
 
-/* ----------------------------------------------------------------- en-tête : titre et jauge d'XP */
-.fiche-entete { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 0.5rem 1.5rem; }
+/* ----------------------------------------------------------------- en-tête : titre */
+.fiche-entete { display: grid; gap: 0.1rem; }
 .fiche-entete h1 { margin: 0; font-size: clamp(1.25rem, 3vw, 1.6rem); line-height: 1.15; }
 .fiche-surtitre { margin: 0; color: var(--vert); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .fiche-surtitre a { color: inherit; }
-.xp { display: grid; gap: 0.25rem; min-width: min(100%, 19rem); }
+
+/* jauge d'XP, en tête du bloc de progression (demande du propriétaire) */
+.xp { display: grid; gap: 0.25rem; }
 .xp__ligne { display: flex; align-items: center; gap: 0.4rem; }
 .xp__niveau { margin-right: auto; color: var(--vert); }
 .fiche .xp__ligne input { width: 6.5rem; text-align: right; font-variant-numeric: tabular-nums; }
@@ -74,13 +79,13 @@
   font-weight: 700;
 }
 
-/* sommaire des étapes */
+/* sommaire des blocs : une pastille par bloc, point dans la couleur de sa partie (sans numéro) */
 .fiche-etapes { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0; padding: 0; list-style: none; }
 .fiche-etapes a {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.1rem 0.55rem 0.1rem 0.15rem;
+  gap: 0.35rem;
+  padding: 0.1rem 0.6rem 0.1rem 0.45rem;
   border: 1px solid color-mix(in srgb, var(--etape) 45%, var(--border));
   border-radius: 999px;
   background: color-mix(in srgb, var(--etape) 8%, var(--surface));
@@ -89,16 +94,20 @@
   text-decoration: none;
 }
 .fiche-etapes a:hover { border-color: var(--etape); }
-.fiche-etapes .num {
-  display: inline-grid;
-  place-items: center;
-  min-width: 1.2rem;
-  height: 1.2rem;
-  border-radius: 999px;
-  background: var(--etape);
-  color: #fff;
-  font-size: 0.68rem;
-  font-weight: 700;
+.fiche-etapes a::before { content: ''; flex: none; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--etape); }
+
+/* rangées de blocs (demande du propriétaire) : 1-2-3, attributs-progression, caractéristiques-sorts, maîtrises, équipement-notes. position : le
+   panneau d'un menu déroulant s'étend sur toute la rangée, par-dessus les blocs voisins */
+.fiche-rangee { position: relative; display: grid; gap: 0.75rem; }
+@media (min-width: 48rem) {
+  .fiche-rangee--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 58rem) {
+  .fiche-rangee--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fiche-rangee--large { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+}
+@media (min-width: 72rem) {
+  .fiche-rangee--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 /* ----------------------------------------------------------------- étapes */
@@ -121,19 +130,11 @@
   border-bottom: 2px solid var(--etape);
   font-size: 0.98rem;
 }
-.fiche-etape > h2 .num {
-  display: inline-grid;
-  place-items: center;
-  flex: none;
-  width: 1.45rem;
-  height: 1.45rem;
-  border-radius: 50%;
-  background: var(--etape);
-  color: #fff;
-  font-size: 0.78rem;
-}
-/* position: le panneau d'un menu déroulant s'étend sur toute la largeur de l'étape */
-.fiche-etape__corps { position: relative; display: grid; gap: 0.65rem; padding: 0.6rem 0.75rem 0.75rem; }
+/* un compteur dans le coin du bloc (quota de maîtrise, décision R32) */
+.fiche-etape--coin { position: relative; }
+.fiche-etape--coin > h2 { padding-right: 11rem; }
+.fiche-etape__coin { position: absolute; top: 0.35rem; right: 0.7rem; background: var(--surface); }
+.fiche-etape__corps { display: grid; align-content: start; gap: 0.65rem; padding: 0.6rem 0.75rem 0.75rem; }
 .fiche-etape h3 { margin: 0 0 0.3rem; font-size: 0.9rem; color: color-mix(in srgb, var(--etape) 65%, var(--text)); }
 .fiche-aide { margin: 0; color: var(--muted); font-size: 0.82rem; }
 .fiche-aide a { color: inherit; }
@@ -186,8 +187,8 @@
 .choix__panneau {
   position: absolute;
   z-index: 2;
-  left: 0.75rem;
-  right: 0.75rem;
+  left: 0;
+  right: 0;
   max-height: min(70vh, 34rem);
   overflow: auto;
   margin-top: 0.3rem;
@@ -306,7 +307,30 @@
 /* clic droit (ou Entrée) sur un curseur : une case de saisie prend sa place, le nombre est ramené entre ses bornes */
 .fiche .curseur-saisie { width: 100%; min-width: 3.5rem; padding: 0.05rem 0.3rem; font-variant-numeric: tabular-nums; }
 .des { font-variant-numeric: tabular-nums; white-space: nowrap; }
-#maitrises td.curseur-td { width: 55%; }
+
+/* maîtrises d'armes, dans leur bloc (demande du propriétaire) : une ligne par famille, curseur étroit, les dés à côté ; plusieurs colonnes */
+.maitrises { display: grid; gap: 0.1rem 1.5rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); margin: 0; padding: 0; list-style: none; }
+.maitrise { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(3rem, auto); align-items: center; gap: 0.5rem; padding: 0.15rem 0; border-bottom: 1px solid var(--border); font-size: 0.84rem; }
+.maitrise__nom { overflow-wrap: break-word; }
+.maitrise .curseur { width: 6.5rem; min-width: 0; }
+.maitrise .des { text-align: right; }
+
+/* alignement (demande du propriétaire) : les quatre scores serrés, l'alignement qui en résulte à côté */
+.alignement { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.7rem; margin: 0; padding: 0.25rem 0.55rem 0.4rem; border: 1px solid var(--etape-ligne); border-radius: var(--radius); }
+.alignement legend { padding: 0 0.3rem; color: var(--muted); font-size: 0.78rem; }
+.alignement__axe { display: inline-flex; gap: 0.25rem; }
+.alignement__axe label { display: inline-flex; align-items: center; gap: 0.15rem; color: var(--muted); font-size: 0.78rem; font-weight: 700; }
+.fiche .alignement input { width: 3.3rem; padding-inline: 0.3rem; text-align: right; font-variant-numeric: tabular-nums; }
+.alignement__resultat {
+  margin-left: auto;
+  padding: 0.05rem 0.7rem;
+  border-radius: 999px;
+  background: var(--etape);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
 
 /* ----------------------------------------------------------------- tableaux de saisie */
 .fiche-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
@@ -378,48 +402,58 @@
 .score { font-weight: 700; white-space: nowrap; }
 .score[data-hors] { color: var(--danger); }
 
-/* ----------------------------------------------------------------- attributs calculés */
-.attributs { display: grid; gap: 0.45rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 8rem), 1fr)); }
+/* ----------------------------------------------------------------- attributs et valeurs du moment, fusionnés (demande du propriétaire)
+   Une carte par attribut, bordée à gauche de sa couleur : santé rouge, barrière jaune, chakra bleu, corruption noire (demande du propriétaire). Une valeur
+   du moment : « actuelle / maximum », un curseur entre − et +, qui ouvrent la case du nombre à retirer ou à ajouter. */
+.attributs { display: grid; gap: 0.45rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); }
 .attribut {
   --a: var(--etape);
+  --a-trait: color-mix(in srgb, var(--a) 60%, var(--border));
+  --a-nom: color-mix(in srgb, var(--a) 55%, var(--text));
   display: grid;
-  gap: 0.1rem;
+  align-content: start;
+  gap: 0.15rem;
   padding: 0.35rem 0.5rem;
   border: 1px solid color-mix(in srgb, var(--a) 45%, var(--border));
   border-left: 4px solid var(--a);
   border-radius: var(--radius);
   background: color-mix(in srgb, var(--a) 7%, var(--surface));
 }
-.attribut__nom { color: var(--muted); font-size: 0.74rem; }
-.attribut__valeur { font-size: 1.2rem; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.attribut__tete { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 0.5rem; }
+.attribut__nom { color: var(--a-nom); font-size: 0.78rem; font-weight: 700; }
+.attribut__valeur { font-size: 1.15rem; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.attribut__valeur[data-hors] { color: var(--danger); }
 .attribut__detail { color: var(--muted); font-size: 0.68rem; line-height: 1.25; }
-.attribut[data-a='sante'] { --a: #c62828; }
-.attribut[data-a='chakra'] { --a: #1e5bb8; }
-.attribut[data-a='barriere'] { --a: #7b3fa6; }
-
-/* valeurs du moment : un curseur par jauge, de 0 au maximum (la corruption borne le chakra actuel) */
-.jauges { display: grid; gap: 0.45rem 0.9rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr)); }
-.jauge {
-  --a: var(--etape);
-  display: grid;
-  gap: 0.15rem;
-  padding: 0.35rem 0.55rem;
-  border: 1px solid color-mix(in srgb, var(--a) 45%, var(--border));
-  border-left: 4px solid var(--a);
-  border-radius: var(--radius);
-  background: color-mix(in srgb, var(--a) 7%, var(--surface));
+.attribut__curseur { display: flex; align-items: center; gap: 0.3rem; }
+.attribut .curseur { min-width: 3rem; accent-color: var(--a); }
+.fiche .ajuster {
+  flex: none;
+  width: 1.45rem;
+  height: 1.45rem;
+  padding: 0;
+  border: 1px solid var(--a-trait);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 700;
+  line-height: 1;
 }
-.jauge .curseur { accent-color: var(--a); }
-.jauge__tete { display: flex; justify-content: space-between; gap: 0.5rem; align-items: baseline; }
-.jauge__nom { color: var(--muted); font-size: 0.78rem; }
-.jauge__valeur { font-weight: 700; font-variant-numeric: tabular-nums; }
-.jauge__valeur[data-hors] { color: var(--danger); }
-.jauge__detail { min-height: 0.9rem; color: var(--muted); font-size: 0.68rem; }
-.jauge[data-a='sante_actuelle'] { --a: #c62828; }
-.jauge[data-a='chakra_actuel'] { --a: #1e5bb8; }
-.jauge[data-a='barriere_actuelle'] { --a: #7b3fa6; }
-.jauge[data-a='corruption'] { --a: #3d3d3d; }
-.jauge[data-a='barre4_actuelle'] { --a: #8a1c1c; }
+.fiche .ajuster:hover, .fiche .ajuster[aria-expanded='true'] { border-color: var(--a); background: color-mix(in srgb, var(--a) 18%, var(--surface)); }
+.ajout { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; }
+.ajout label { display: flex; align-items: center; gap: 0.25rem; color: var(--muted); font-size: 0.78rem; }
+.fiche .ajout input { width: 3.6rem; }
+.fiche .ajout button { padding: 0.1rem 0.45rem; font-size: 0.78rem; }
+.fiche .ajout .retirer { padding-inline: 0.3rem; }
+.attribut[data-a='sante'] { --a: #c62828; }
+.attribut[data-a='barriere'] { --a: #e0b000; }
+.attribut[data-a='chakra'] { --a: #1e5bb8; }
+.attribut[data-a='corruption'] { --a: #111; }
+.attribut[data-a='barre4'] { --a: #8a1c1c; }
+/* la corruption reste noire en mode sombre : son nom et ses boutons prennent alors la couleur du texte pour rester lisibles */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .attribut[data-a='corruption'] { --a-trait: var(--muted); --a-nom: var(--text); }
+}
+:root[data-theme='dark'] .attribut[data-a='corruption'] { --a-trait: var(--muted); --a-nom: var(--text); }
 
 /* listes ajoutables (sac…) */
 .fiche-ligne-ajout { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
@@ -446,15 +480,14 @@
 
 @media (max-width: 40rem) {
   .fiche-etape__corps { padding: 0.5rem; }
-  .choix__panneau { left: 0.5rem; right: 0.5rem; }
   .fiche-barre { position: static; }
-  .xp { width: 100%; }
+  .maitrise .curseur { width: 5rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pastille, .xp__rempli { transition: none; }
 }
 @media print {
-  .site-header, .site-footer, .fiche-barre, .fiche-etapes, .fiche-ligne-ajout, .retirer, .fiche-indisponible, .xp__plus, .xp__ajout { display: none !important; }
+  .site-header, .site-footer, .fiche-barre, .fiche-etapes, .fiche-ligne-ajout, .retirer, .fiche-indisponible, .xp__plus, .xp__ajout, .ajuster, .ajout { display: none !important; }
   .fiche-etape { break-inside: avoid-page; }
   .choix > summary::after { content: none; }
   .choix__panneau { display: none; }

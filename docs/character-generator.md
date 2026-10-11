@@ -12,31 +12,50 @@ L'ancienne adresse `/generateur/` mène à `/fiche/` (page 404, `lib/nav.mjs#nou
 
 ## La page `/fiche/`
 
-La fiche se remplit dans l'ordre du guide (« Créer son personnage »), une section par étape, numérotée et teintée de la couleur de sa partie du
-guide : 1 race et ethnie, 2 magies et dieux, 3 classe(s) et spécialités, 4 caractéristiques, compétences et maîtrises d'armes,
-5 sorts, 6 attributs, alignement, bourse, métier ; puis 7 gains de niveau et dons à choisir, 8 équipement (armes, armure, bouclier, accessoires,
-inventaire), 9 état en jeu, notes, événements, et le contrôle des règles. **Compacte** (demandes du propriétaire) : pas de lien vers le guide ;
+La fiche suit les étapes du guide (« Créer son personnage »), un bloc par étape, teinté de la couleur de sa partie du guide, **sans numéro**, et les blocs
+sont disposés **en rangées** (demandes du propriétaire ; l'un sous l'autre sur un écran étroit) : identité (nom, surnom, origine, **métier**, race et ethnie,
+**alignement**) · magies et dieux · classe(s) et spécialités ; attributs et valeurs du moment · niveau (jauge d'XP), gains de niveau et dons à choisir ;
+caractéristiques et compétences · sorts ; **maîtrises d'armes** (et ambidextrie) ; équipement (armes, armure, bouclier, accessoires, inventaire, puis la
+**bourse**) · notes et événements ; puis le contrôle des règles, sur toute la largeur. La page prend plus de largeur que les autres (100rem au plus) pour
+ces rangées. Le panneau d'un menu déroulant s'étend sur toute sa rangée. **Compacte** (demandes du propriétaire) : pas de lien vers le guide ;
 race, ethnie, magies innée et acquise, classes et spécialités sont des **menus déroulants** (`<details class="choix">` : fermé, le choix fait ; ouvert, les
 **pastilles** dans les couleurs de `/races/`, `/magies/`, `/classes/`, celles que les règles ferment grisées ; un choix, un clic ailleurs ou Échap le
 referme) ; les caractéristiques sont des **curseurs** bornés par la race, à 1 (le minimum) par défaut, jamais vides (`caracteristiquesCompletes`), et le
-naturel et l'acquis des compétences des curseurs (naturel : jusqu'au maximum du niveau ; acquis : 5 par point de caractéristique de base), comme les
-**maîtrises d'armes** (0 à 4 points, les dés dans la colonne « Dés » : `notationDesDes`) et les **valeurs du moment** (santé, chakra, barrière, corruption,
-4ᵉ barre ; de 0 au maximum, au maximum tant qu'on n'y touche pas, la corruption à 0 ; le chakra actuel au plus chakra − corruption, sauf avec la magie de la
-Corruption, et la corruption qui monte emporte le chakra actuel, celle qui baisse ne le rend pas : `valeursDuMoment`, `ecrireValeurDuMoment`, guide
-« Fiche de personnage : Attributs »). Un **clic droit** sur un curseur (ou Entrée) le remplace par une case de saisie : le nombre tapé est ramené au
-maximum au-dessus, au minimum en dessous (`borner`) ; Échap abandonne ; les **sorts**
-sont un tableau d'une ligne par emplacement, sans emplacement en plus (décision R27), chacune avec la liste des sorts possibles moins ceux des autres lignes
-(`lignesDeSorts`), groupée par NPM, le nom seul, chaque sort sur la couleur de sa magie comme sur les pages de magie, la liste fermée dans celle du sort choisi
-(`sortsParNpm`, demande du propriétaire) ; les **NM** d'un sort se notent par origine (de niveau, d'un livre — un par sort —, du MJ), 3 au plus sur un sort (décisions R24, R26). L'en-tête porte
-la **jauge d'XP** (`progressionXp`) : l'XP se modifie dans son champ ou s'ajoute avec le bouton +, le niveau suit. Une fiche enregistrée se **supprime**
-(bouton « Supprimer », après confirmation ; retour à la liste des personnages). Chaque caractéristique, et le tableau de ses compétences, a sa couleur
+naturel et l'acquis des compétences des curseurs (naturel : jusqu'au maximum du niveau ; acquis : 5 par point de caractéristique de base). Un **clic droit**
+sur un curseur (ou Entrée) le remplace par une case de saisie : le nombre tapé est ramené au maximum au-dessus, au minimum en dessous (`borner`) ; Échap
+abandonne.
+
+- **Alignement** : les quatre scores (L, C, B, M) serrés, axe Loi/Chaos puis axe Bien/Mal, et l'alignement qui en résulte à côté (`alignementDe`) : sur
+  chaque axe, 5 points d'écart ou plus donnent la tendance, en dessous le personnage est Neutre (guide « Alignement », constante `alignement.ecart_axe`) ;
+  les neuf noms sont ceux du guide « Les neuf alignements » (« Neutre » sur les deux axes, que la fiche auto écrit « Neutre Pur »).
+- **Attributs et valeurs du moment**, fusionnés : une carte par attribut, santé · barrière · chakra (· Âme ou Sang, la 4ᵉ barre de la Nécromancie ou du
+  Sang) sur une ligne, initiative · vitesse · corruption (· armure de base) sur la suivante ; santé **rouge**, barrière **jaune**, chakra **bleu**, corruption
+  **noire**. Une valeur du moment s'affiche « actuelle / maximum » avec le détail du maximum, un curseur de 0 au maximum (au maximum tant qu'on n'y touche
+  pas, la corruption à 0 ; le chakra actuel au plus chakra − corruption, sauf avec la magie de la Corruption, et la corruption qui monte emporte le chakra
+  actuel, celle qui baisse ne le rend pas : `valeursDuMoment`, `ecrireValeurDuMoment`, guide « Fiche de personnage : Attributs »), et deux boutons **−** et
+  **+** qui ouvrent une case où saisir le nombre à retirer ou à ajouter (`ajusterValeurDuMoment`, borné comme le curseur ; Entrée ou OK l'applique, Échap
+  abandonne).
+- **Maîtrises d'armes** : un curseur étroit par famille (0 à 4 points), les dés à côté (`notationDesDes`) ; le **Pugilat** montre le seul dé de la Force du
+  personnage, +1 de la magie innée compris (`deDeLaFamille` : « D6 1-2 Force, D8 3-4 Force, D10 5 Force », note de la famille, lue par
+  `lib/maitrise-arme.mjs#desSelonLaForce`) ; dans le coin du bloc, les points répartis sur le **quota** des classes et de leurs dons (décision R32,
+  `quotaDeMaitrise` ; sources en infobulle).
+- **Sorts** : un tableau d'une ligne par emplacement, sans emplacement en plus (décision R27), chacune avec la liste des sorts possibles moins ceux des autres
+  lignes (`lignesDeSorts`), groupée par NPM, le nom seul, chaque sort sur la couleur de sa magie comme sur les pages de magie, la liste fermée dans celle du
+  sort choisi (`sortsParNpm`, demande du propriétaire) ; les **NM** d'un sort se notent par origine (de niveau, d'un livre — un par sort —, du MJ), 3 au plus
+  sur un sort (décisions R24, R26).
+- **Niveau** : la **jauge d'XP** (`progressionXp`) ouvre le bloc de progression : l'XP se modifie dans son champ ou s'ajoute avec le bouton +, le niveau
+  suit (rappelé dans la barre d'enregistrement).
+
+Une fiche enregistrée se **supprime** (bouton « Supprimer », après confirmation ; retour à la liste des personnages). Chaque caractéristique, et le tableau de ses compétences, a sa couleur
 (demande du propriétaire, `lib/caracteristiques-postures.mjs`, transmise par `regles.json` : `couleur` et `texte` de chaque caractéristique). Le **Potentiel Illimité** en magie innée met l'Archimage en classe 1
 et l'y **verrouille** (les autres classes 1 sont grisées, la pastille de l'Archimage ne se retire pas) ; sans lui, l'Archimage est grisée à tous les rangs,
 et quitter le Potentiel Illimité la retire (décision R23) ; le Mage Bleu lui est fermé, à tous les rangs (décision R25), toute autre seconde classe reste permise. Les dons à choix d'une classe ou d'une spécialité retirée partent avec elle. Tout ce que la base
 garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
 
 - **Règles** : `/fiche/regles.json`, tiré de la base au build par `lib/fiche-regles.mjs` (races et leurs bornes, ethnies, magies, dieux, métiers, classes,
-  spécialités, dons à choix groupés comme sur la page de chaque classe, sorts, tables de niveau, constantes, catalogues d'équipement), rien de recalculé.
+  spécialités, dons à choix groupés comme sur la page de chaque classe, maîtrises d'armes des classes et points de maîtrise de leurs dons, sorts, tables
+  de niveau, constantes, catalogues d'équipement et paliers du dé selon la Force), rien de recalculé : les seuls textes lus le sont par
+  `lib/maitrise-arme.mjs` (points de maîtrise d'un don, paliers du Pugilat ; `test/maitrise-arme.test.mjs` le rejoue sur toute la base).
 - **Calculs pendant la saisie** : `lib/fiche-moteur.mjs`, fonctions pures (testées par `test/fiche-moteur.test.mjs`, contre les vues de la base et les
   personnages fil rouge du guide) : niveau global et niveaux de classe (R2) ; classes et magies innées que la race permet (R8, R11), classe réservée à une
   magie innée et imposée par elle (`classe.magie_innee_id` : l'Archimage et le Potentiel Illimité, R23), ethnies et ethnie sans choix posée d'office
@@ -44,7 +63,9 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   magie acquise refusée et pourquoi (race à une seule magie R28, incompatibilité, mono-magie R15, exceptions R20) et retirée d'office quand un changement de race
   ou de magie innée la ferme (`magieAcquiseValable`, demande du propriétaire) ; caractéristiques (+1 de la magie innée, bornes de la race) et budget exact (R3) ;
   scores de compétences (10 × caractéristique + naturel + acquis, croix R19), plafonds et budget ; gains de niveau attendus ; classe magique (R6, R7) ;
-  attributs comme la fiche automatique (santé, chakra, barrière, vitesse, armure de base, initiative, 4ᵉ barre, Corruption) ; emplacements de sorts
+  attributs comme la fiche automatique (santé, chakra, barrière, vitesse, armure de base, initiative, 4ᵉ barre, Corruption) et valeurs du moment
+  (`valeursDuMoment`, `ajusterValeurDuMoment`) ; alignement (`alignementDe`) ; dé d'une famille d'armes selon la Force (`deDeLaFamille`) et quota de
+  maîtrise (`quotaDeMaitrise`, R32) ; emplacements de sorts
   (conditions × puissance magique, R16), sorts possibles, NM ; dons à choisir selon la classe, la spécialité et le niveau de classe.
 - **Contrôle** : à chaque enregistrement, le service rend les règles de `v_personnage_controle` que la fiche enfreint, affichées en français
   (`lib/fiche-controles.mjs`) ; une fiche ne passe « validée » que sans aucune. Ce que la base ne contrôle pas encore (bonus d'équipement, nombre de
