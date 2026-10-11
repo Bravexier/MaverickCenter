@@ -1,8 +1,10 @@
 // Champs d'un métier (lib/metier-champs.mjs) : les découpages que l'édition du site de dev applique quand un champ change doivent redonner, sur les
-// 72 métiers de la base, exactement les lignes en place (metier_bonus, colonnes d'artisanat, metier_recette_famille, résumé et corps de la page).
+// métiers de la base (72 à l'import ; le site de dev, source des données qu'il modifie, peut en créer ou en supprimer), exactement les lignes en place
+// (metier_bonus, colonnes d'artisanat, metier_recette_famille, résumé et corps de la page).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import {
   CHAMPS_DU_CORPS, corpsDeMetier, decouperArtisanat, decouperBonus, echapperMarkdown, famillesDeRecette, remplacerChampDuCorps, resumeDeDescription,
 } from '../src/lib/metier-champs.mjs';
@@ -12,7 +14,10 @@ const metiers = db.prepare('SELECT m.*, p.resume, p.corps_md FROM metier m JOIN 
 const competences = db.prepare('SELECT nom FROM competence').all().map((c) => c.nom);
 const caracteristiques = db.prepare('SELECT id, nom FROM caracteristique').all();
 
-test('72 métiers relus', () => assert.equal(metiers.length, 72));
+test('72 métiers à l’import ; tous ceux de la base sont relus (chacun a sa page)', () => {
+  assert.equal(historiqueSite(db).effectifDImport('metier'), 72);
+  assert.equal(metiers.length, db.prepare('SELECT count(*) AS n FROM metier').get().n);
+});
 
 test('bonus : le découpage redonne metier_bonus ligne pour ligne (rangs, options, valeurs typées)', () => {
   const enPlace = db.prepare('SELECT rang, option, texte, valeur, unite, cible, cible_cle FROM metier_bonus WHERE metier_id = ? ORDER BY rang, option');

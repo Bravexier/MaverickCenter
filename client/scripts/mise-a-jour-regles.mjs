@@ -1,7 +1,9 @@
 // Applique à data/rows un lot figé par « Effectuer la mise à jour » (page /mise-a-jour/ du site de dev ; serveur/notes-de-version.mjs#figerLot) :
 //   node scripts/mise-a-jour-regles.mjs --lot <lot.json> [--reference origin/master] [--date AAAA-MM-JJ] [--resume <resume.json>] [--rows <dossier>]
 // Lancé par le workflow .github/workflows/mise-a-jour.yml (scripts/mise-a-jour-github.mjs), sur une branche feature/… partie de dev :
-//   1. une base est reconstruite depuis data/rows, le journal du lot y est rejoué (serveur/edition-journal.mjs#rejouer) : un conflit arrête tout ;
+//   1. une base est reconstruite depuis data/rows, le journal du lot y est rejoué (serveur/edition.mjs#rejouerLeJournal : le corps des pages
+//      typées est refait depuis les tables rejouées) : un conflit arrête tout, comme du HTML brut ou un lien non sûr ajouté au Markdown d'une
+//      page, dans le lot ou après le rejeu (lib/markdown-sur.mjs) ;
 //   2. la note de version est calculée : la production (master, scripts/db-reference.mjs) comparée à cette base (lib/notes-de-version.mjs) ;
 //   3. elle est écrite (note_version, note_version_ligne : version X.Y de la prochaine livraison, champ libre du lot), les notes d'exemple (lorem
 //      ipsum) sont retirées, le journal du lot passe dans historique_modification, les tables du journal sont vidées ;
@@ -16,8 +18,10 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { construireReference } from './db-reference.mjs';
 import { TABLES_FICHES } from '../serveur/base-vivante.mjs';
-import { chargerJournal, rejouer, TABLES_INTERDITES } from '../serveur/edition-journal.mjs';
+import { rejouerLeJournal } from '../serveur/edition.mjs';
+import { chargerJournal, ORDRE_DE_REJEU, TABLES_INTERDITES } from '../serveur/edition-journal.mjs';
 import { lireTables } from '../serveur/notes-de-version.mjs';
+import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
 import { bilan, comparerBases, versionCourte, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
 import { markdownDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
 
@@ -45,13 +49,42 @@ export function verifierLot(lot) {
   const touchees = [...new Set(lot.journal.lots.flatMap((l) => (l.modifications ?? []).map((m) => m.table)))];
   const horsRegles = touchees.filter((t) => typeof t !== 'string' || interdites.has(t));
   if (horsRegles.length) throw new ErreurMiseAJour(2, `lot : tables hors des règles (${horsRegles.join(', ')}) : refusé`);
+  // ni HTML brut ni lien non sûr ajouté au Markdown d'une page (le service le refuse déjà : lib/markdown-sur.mjs) ; le lot vient du site de dev
+  for (const l of lot.journal.lots) {
+    for (const m of l.modifications ?? []) {
+      if (m.table !== 'page' || typeof m.apres?.corps_md !== 'string') continue;
+      const ajoutes = fragmentsAjoutes(typeof m.avant?.corps_md === 'string' ? m.avant.corps_md : '', m.apres.corps_md);
+      if (ajoutes.length) throw new ErreurMiseAJour(2, `lot : page ${m.cle?.id ?? JSON.stringify(m.cle)} : ${messageDeRefus(ajoutes)}`);
+    }
+  }
 }
+
+/** La première page dont le corps a gagné du HTML brut ou un lien non sûr depuis `corpsAvant` (Map id → corps_md) : { id, fragments } ; sinon null. */
+export function pageNonSure(db, corpsAvant) {
+  for (const p of db.prepare('SELECT id, corps_md FROM page ORDER BY id').all()) {
+    if (corpsAvant.get(p.id) === p.corps_md) continue;
+    const fragments = fragmentsAjoutes(corpsAvant.get(p.id) ?? '', p.corps_md);
+    if (fragments.length) return { id: p.id, fragments };
+  }
+  return null;
+}
+
+const versionNumerique = (v) => String(v ?? '').split('.').slice(0, 2).map((n) => Number.parseInt(n, 10) || 0);
+/** La version `a` (X.Y ou X.Y.Z) est-elle au moins `b` (X.Y) ? (une note de version X.Y est livrée quand master est en X.Y ou plus) */
+const auMoins = (a, b) => {
+  const [x1, y1] = versionNumerique(a);
+  const [x2, y2] = versionNumerique(b);
+  return x1 > x2 || (x1 === x2 && y1 >= y2);
+};
 
 const lireDossier = (dossier) => Object.fromEntries(readdirSync(dossier).map((f) => [f, readFileSync(join(dossier, f), 'utf8')]));
 
 /**
  * Applique le lot. `rows` : data/rows à réécrire ; `reference` : la révision git de la production ; `versionDev` : la version de dev (package.json).
- * Lève ErreurMiseAJour (code 3 : conflit, 4 : table hors liste, 5 : clés étrangères, 2 : lot illisible).
+ * Lève ErreurMiseAJour (code 3 : conflit, 4 : table hors liste, 5 : clés étrangères, 2 : lot illisible, 6 : production introuvable, 7 : une note de
+ * version d'un AUTRE lot est dans dev sans être livrée sur master — elle ne doit jamais être écrasée : livrer d'abord ce lot).
+ * Les lots du journal déjà livrés (présents dans historique_modification de dev) sont écartés du rejeu : rejoués d'après leurs valeurs, ils
+ * remettraient une valeur annulée depuis (A → B → A) ; rendus dans `deja_livres`.
  */
 export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), reference = 'origin/master', date, versionDev } = {}) {
   verifierLot(lot);
@@ -67,16 +100,36 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
     const db = new DatabaseSync(chemin);
     let lignes;
     let touchees;
+    let dejaLivres = [];
     try {
+      // une note de version d'un autre lot, dans dev mais pas encore sur master (sa livraison a échoué) : on ne l'écrase jamais
+      const enAttenteDeLivraison = db.prepare('SELECT version, lot FROM note_version WHERE exemple = 0 AND lot IS NOT NULL AND lot <> ?').all(lot.id)
+        .filter((n) => !(ref.version && auMoins(ref.version, n.version)));
+      if (enAttenteDeLivraison.length) {
+        const n = enAttenteDeLivraison[0];
+        throw new ErreurMiseAJour(7, `la V${n.version} du lot ${n.lot} est dans dev mais pas encore livrée sur master : relancez le run de ce lot (« Re-run all jobs » : il reprend à la livraison) ou livrez dev → master, puis relancez cette mise à jour`, { lot: n.lot, version: n.version });
+      }
+      // lots déjà livrés (mise à jour précédente ou rapatriement) : écartés en entier
+      const livres = new Set(db.prepare('SELECT DISTINCT lot_id FROM historique_modification').all().map((h) => h.lot_id));
+      dejaLivres = lot.journal.lots.filter((l) => livres.has(l.id)).map((l) => l.id);
+      const journal = { ...lot.journal, lots: lot.journal.lots.filter((l) => !livres.has(l.id)) };
+      const corpsAvant = new Map(db.prepare('SELECT id, corps_md FROM page').all().map((p) => [p.id, p.corps_md]));
       db.exec('PRAGMA foreign_keys = OFF'); // rejouer contrôle les clés étrangères lot par lot ; contrôle complet à la fin
       db.exec('BEGIN');
-      chargerJournal(db, lot.journal);
-      const rejeu = rejouer(db);
+      chargerJournal(db, journal);
+      const recalcul = {}; // corps des pages typées refaits depuis les tables rejouées (serveur/edition.mjs#rejouerLeJournal)
+      const rejeu = rejouerLeJournal(db, recalcul);
       const conflits = db.prepare(`SELECT l.id AS lot, l.resume, m.detail FROM modification m JOIN modification_lot l ON l.id = m.lot_id
-        WHERE m.etat = 'conflit' GROUP BY l.id ORDER BY l.fait_le`).all().map((c) => ({ ...c }));
+        WHERE m.etat = 'conflit' GROUP BY l.id ORDER BY l.fait_le, l.id`).all().map((c) => ({ ...c }));
       if (conflits.length) {
         db.exec('ROLLBACK');
         throw new ErreurMiseAJour(3, `${conflits.length} lot(s) en conflit avec dev : ${conflits.map((c) => `« ${c.resume} » (${c.detail})`).join(' ; ')}`, { conflits, rejeu });
+      }
+      // le corps de chaque page changée par le rejeu (texte du guide, ou refait depuis les tables) : ni HTML brut ni lien non sûr ajouté
+      const nonSure = pageNonSure(db, corpsAvant);
+      if (nonSure) {
+        db.exec('ROLLBACK');
+        throw new ErreurMiseAJour(2, `lot : page ${nonSure.id} après le rejeu : ${messageDeRefus(nonSure.fragments)}`);
       }
       const production = new DatabaseSync(ref.chemin, { readOnly: true });
       try {
@@ -86,10 +139,12 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
       }
       // tout le journal sans conflit : réécrit par le rejeu (resté « en_attente ») ou déjà dans les règles (« integree »)
       const historique = db.prepare(`SELECT m.*, l.fait_le, l.resume FROM modification m JOIN modification_lot l ON l.id = m.lot_id
-        WHERE m.etat <> 'conflit' ORDER BY l.fait_le, l.id, m.rang`).all();
+        WHERE m.etat <> 'conflit' ORDER BY ${ORDRE_DE_REJEU}`).all();
       touchees = new Set(historique.map((m) => m.table_nom));
-      // notes d'exemple (lorem ipsum) retirées par la première vraie mise à jour ; une note de la même version (relance) est refaite
-      const remplacees = db.prepare('SELECT version FROM note_version WHERE exemple = 1 OR version = ?').all(version).map((n) => n.version);
+      if (recalcul.pages.length) touchees.add('page');
+      // notes d'exemple (lorem ipsum) retirées par la première vraie mise à jour ; la note de ce même lot (relance) est refaite — celle d'un autre
+      // lot à la même version n'existe pas ici (refusé plus haut : code 7)
+      const remplacees = db.prepare('SELECT version FROM note_version WHERE exemple = 1 OR (version = ? AND lot = ?)').all(version, lot.id).map((n) => n.version);
       for (const v of remplacees) {
         db.prepare('DELETE FROM note_version_ligne WHERE version = ?').run(v);
         db.prepare('DELETE FROM historique_modification WHERE version = ?').run(v);
@@ -132,7 +187,7 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
       else writeFileSync(join(rows, f), apres[f]);
     }
     const note = { version, depuis, texte: lot.texte?.trim() || null, publiee_le: date };
-    return { version, depuis, lignes: lignes.length, bilan: bilan(lignes), fichiers, markdown: markdownDeLaNote(note, lignes), conflits: [] };
+    return { version, depuis, lignes: lignes.length, bilan: bilan(lignes), fichiers, markdown: markdownDeLaNote(note, lignes), conflits: [], deja_livres: dejaLivres };
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }

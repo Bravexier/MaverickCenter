@@ -205,12 +205,28 @@ export function bonusDeMaitrise(champ, texteCase) {
   });
 }
 
-/** La phrase (ligne, ou morceau entre deux points) qui contient l'expression ; l'expression elle-même si elle n'y est pas retrouvée. */
+/**
+ * La phrase (ligne, ou morceau entre deux points) qui contient l'expression ; l'expression elle-même si elle n'y est pas retrouvée. Une phrase qui
+ * n'est qu'un groupe entre parenthèses se lit comme l'import l'a lue : quand le groupe n'est que l'expression, sans « = » (« (+2/NM) », « (3NM
+ * permet de le faire sur 2 alliés) »), la phrase qui le précède sur la même ligne et le groupe (« Réduit de 5 l'initiative… pour le prochain tour.
+ * (+2/NM) ») ; sinon le groupe dit lui-même ce qu'il fait (« (3NM = Pas de dégâts alliés) », « (Ignore l'esquive… au niveau 3 de maîtrise) ») : le
+ * groupe sans ses parenthèses.
+ */
 function contexteDe(texte, debut, expression) {
-  for (const p of phrases(texte)) {
+  const lesPhrases = phrases(texte);
+  for (const [i, p] of lesPhrases.entries()) {
     if (debut >= p.debut && debut < p.debut + p.texte.length) {
       const phrase = sansPoint(p.texte.trim());
-      if (phrase.includes(expression)) return phrase;
+      if (!phrase.includes(expression)) break;
+      const groupe = /^\(([^()]*)\)$/.exec(phrase);
+      if (!groupe) return phrase;
+      const interieur = groupe[1].trim();
+      const precedente = lesPhrases[i - 1];
+      if (interieur === expression && !interieur.includes('=')) {
+        if (precedente && !texte.slice(precedente.debut, p.debut).includes('\n')) return sansPoint(texte.slice(precedente.debut, p.debut + p.texte.length).trim());
+        return phrase;
+      }
+      return interieur.includes(expression) ? interieur : phrase;
     }
   }
   return expression;

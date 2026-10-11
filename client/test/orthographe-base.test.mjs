@@ -1,12 +1,15 @@
 // Migration de données 0005-orthographe-base : passe complète d'orthographe sur toute la base (décision R10), après 0003 (sorts et magies).
 // Le registre `data/migrations/0005-orthographe-base.json` (table, clé, colonne, avant, après, nature, raison, source) est la trace de chaque correction ;
 // ces tests vérifient qu'elle n'a changé qu'une graphie : ni chiffre, ni signe, ni dé, ni identifiant, ni clé de nom, ni adresse, ni lien, ni citation de la fiche,
-// que chaque correction est bien dans la base et que les fautes relevées ne sont pas revenues.
+// que chaque correction est bien dans la base et que les fautes relevées ne sont pas revenues. Le site de dev est la source des données qu'il modifie
+// (décision du propriétaire) : une correction se lit dans la cellule telle que les migrations l'ont laissée (historique_modification,
+// lib/historique-site.mjs) ; les fautes relevées, elles, ne doivent revenir nulle part, état courant compris.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { normalize } from '../src/lib/text.mjs';
 
 const racine = trouverRacine();
@@ -15,6 +18,7 @@ const registre = JSON.parse(readFileSync(join(dossier, '0005-orthographe-base.js
 const sql = readFileSync(join(dossier, '0005-orthographe-base.sql'), 'utf8');
 const corrections = registre.corrections;
 const db = ouvrirBase({ sansExemples: false });
+const historique = historiqueSite(db);
 // 0006 (noms à trancher) a corrigé ensuite des noms dans certaines de ces cellules : on y lit le texte de 0005 en défaisant ces renommages
 const noms0006 = JSON.parse(readFileSync(join(dossier, '0006-orthographe-noms.json'), 'utf8')).corrections;
 const avant0006 = (c, texte) => noms0006.filter((n) => n.table === c.table && n.col === c.col && JSON.stringify(n.cle) === JSON.stringify(c.cle))
@@ -31,13 +35,15 @@ const regle = (s) => (s.match(REGLE) ?? []).join('');
 const mots = (s) => s.split(/[\s’'«»"“”,;:.!?()-]+/).filter(Boolean).length;
 const lettres = (s) => s.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '').length;
 
-/** Valeur actuelle d'une cellule du registre (`donnees.<clé>` : une valeur du JSON de frontmatter de la page). */
+/**
+ * Valeur d'une cellule du registre (`donnees.<clé>` : une valeur du JSON de frontmatter de la page), telle que les migrations l'ont laissée : avant les
+ * modifications du site de dev (une ligne qu'il a supprimée se lit dans l'historique).
+ */
 function valeur(c) {
   const col = c.col.startsWith('donnees.') ? 'donnees' : c.col;
-  const ou = Object.keys(c.cle).map((k) => `"${k}" = ?`).join(' AND ');
-  const ligne = db.prepare(`SELECT "${col}" AS v FROM "${c.table}" WHERE ${ou}`).get(...Object.values(c.cle));
-  if (!ligne) return undefined;
-  return c.col.startsWith('donnees.') ? JSON.parse(ligne.v)[c.col.slice(8)] : ligne.v;
+  const v = historique.valeurDImport(c.table, c.cle, col);
+  if (v === undefined || v === null) return undefined;
+  return c.col.startsWith('donnees.') ? JSON.parse(v)[c.col.slice(8)] : v;
 }
 
 test('registre : corrections décrites, de nature connue, qui changent bien le texte, hors des tables de trace et de clés', () => {
@@ -89,7 +95,7 @@ test('migration SQL : une ligne de commentaire par entrée du registre, et seule
 });
 
 test('citations de la fiche « telles quelles » : les tableaux d’écarts des races gardent le texte de la fiche, fautes comprises', () => {
-  const elfeNoir = db.prepare("SELECT corps_md FROM page WHERE id = 'races/elfe-noir'").get().corps_md;
+  const elfeNoir = historique.valeurDImport('page', { id: 'races/elfe-noir' }, 'corps_md'); // tel que l'import et les migrations l'ont écrit
   const ligne = elfeNoir.split('\n').find((l) => l.startsWith('| Don de l\'ethnie « Elfe Salé »'));
   const [, , onglet, fiche] = ligne.split(/(?<!\\)\|/).map((s) => s.trim());
   assert.match(onglet, /à tous les tests d'artisanat/, 'colonne de l’onglet (retenue) corrigée');

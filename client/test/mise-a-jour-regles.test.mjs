@@ -4,7 +4,7 @@
 // La production est ici HEAD (scripts/db-reference.mjs : git archive), pour ne pas dépendre de origin/master dans un clone de test.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -15,17 +15,24 @@ import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { versionDeLivraison } from '../src/lib/notes-de-version.mjs';
 
 const ROWS = fileURLToPath(new URL('../../data/rows/', import.meta.url));
+// les versions, comme dans le workflow : celle de dev (package.json) et celle de la production (ici HEAD) ; jamais écrites en dur, pour que le test
+// reste vrai après les vraies livraisons (une note de version réelle peut déjà être dans data/rows)
+const VERSION_DEV = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+const VERSION_HEAD = JSON.parse(spawnSync('git', ['show', 'HEAD:client/package.json'], { encoding: 'utf8' }).stdout).version;
+const ATTENDUE = versionDeLivraison(VERSION_DEV, VERSION_HEAD);
 const racine = mkdtempSync(join(tmpdir(), 'maverick-maj-'));
 after(() => rmSync(racine, { recursive: true, force: true }));
 
-// un journal réel : une modification faite par le service du site de dev
+// un journal réel : une modification faite par le service du site de dev (un bonus différent de celui en place : le site a pu le changer déjà)
 const { chemin } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') });
 const db = ouvrirBaseVivante(chemin);
+const BONUS = db.prepare("SELECT bonus_brut FROM metier WHERE id = 'metiers/forgeron'").get().bonus_brut === '+4% Arme lourde' ? '+5% Arme lourde' : '+4% Arme lourde';
 const r = traiter({
   methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' },
-  corps: JSON.stringify({ page: 'metiers/', operations: [{ op: 'modifier', table: 'metier', cle: { id: 'metiers/forgeron' }, valeurs: { bonus_brut: '+4% Arme lourde' } }] }),
+  corps: JSON.stringify({ page: 'metiers/', operations: [{ op: 'modifier', table: 'metier', cle: { id: 'metiers/forgeron' }, valeurs: { bonus_brut: BONUS } }] }),
 }, { base: () => db, etat: () => ({}), edition: true });
 assert.equal(r.statut, 200, JSON.stringify(r.corps));
 const journal = journalExporte(db);
@@ -66,47 +73,58 @@ test('verifierLot : format, identifiant, journal, texte', () => {
 
 test('le lot appliqué : la note écrite, le journal historisé, seuls les fichiers permis changent', () => {
   const rows = copie('rows-ok');
-  const res = appliquerMiseAJour(lot(), { rows, reference: 'HEAD', date: '2026-10-11', versionDev: '0.1.76' });
-  assert.equal(res.version, '0.2');
+  const notesAvant = baseDe(rows)(`SELECT version, publiee_le, texte, lot, exemple FROM note_version WHERE exemple = 0 AND version <> '${ATTENDUE}' ORDER BY version`);
+  const res = appliquerMiseAJour(lot(), { rows, reference: 'HEAD', date: '2026-10-11', versionDev: VERSION_DEV });
+  assert.equal(res.version, ATTENDUE);
   assert.ok(res.fichiers.includes('metier.sql'), res.fichiers.join(', '));
   for (const f of ['note_version.sql', 'note_version_ligne.sql', 'historique_modification.sql']) assert.ok(res.fichiers.includes(f), f);
   const touchees = new Set(journal.lots.flatMap((l) => l.modifications.map((m) => `${m.table}.sql`)));
   const permis = new Set([...touchees, ...TABLES_DE_LA_NOTE.map((t) => `${t}.sql`)]);
   assert.deepEqual(res.fichiers.filter((f) => !permis.has(f)), []);
-  assert.match(res.markdown, /^## Version 0\.2/m);
+  assert.ok(res.markdown.startsWith(`## Version ${ATTENDUE}`), res.markdown.slice(0, 80));
   assert.match(res.markdown, /Le forgeron \*\*gagne\*\* en force\./);
-  assert.match(readFileSync(join(rows, 'metier.sql'), 'utf8'), /\+4% Arme lourde/);
+  assert.ok(readFileSync(join(rows, 'metier.sql'), 'utf8').includes(`'${BONUS}'`));
   // la base reconstruite depuis les lignes écrites
   const lire = baseDe(rows);
   const notes = lire('SELECT version, publiee_le, texte, lot, exemple FROM note_version ORDER BY version');
-  assert.deepEqual(notes, [{ version: '0.2', publiee_le: '2026-10-11', texte: 'Le forgeron **gagne** en force.', lot: lot().id, exemple: 0 }],
-    'les notes d’exemple (lorem ipsum) sont retirées');
+  const nouvelle = { version: ATTENDUE, publiee_le: '2026-10-11', texte: 'Le forgeron **gagne** en force.', lot: lot().id, exemple: 0 };
+  assert.deepEqual(notes.filter((n) => n.version === ATTENDUE), [nouvelle]);
+  assert.ok(notes.every((n) => n.exemple === 0), 'les notes d’exemple (lorem ipsum) sont retirées');
+  assert.deepEqual(notes.filter((n) => n.version !== ATTENDUE), notesAvant, 'les vraies notes déjà livrées restent');
   const forgeron = lire("SELECT champ, avant, apres FROM note_version_ligne WHERE table_nom = 'metier' AND entite = 'Forgeron'");
-  assert.ok(forgeron.some((l) => l.champ === 'Bonus' && l.apres === '+4% Arme lourde'), JSON.stringify(forgeron));
-  const historique = lire('SELECT lot_id, table_nom, version FROM historique_modification');
+  assert.ok(forgeron.some((l) => l.champ === 'Bonus' && l.apres === BONUS), JSON.stringify(forgeron));
+  // les lignes du journal du lot (l'historique peut déjà contenir des modifications livrées ou rapatriées avant)
+  const lots = journal.lots.map((l) => `'${l.id}'`).join(', ');
+  const historique = lire(`SELECT lot_id, table_nom, version FROM historique_modification WHERE lot_id IN (${lots})`);
   assert.equal(historique.length, journal.lots.reduce((n, l) => n + l.modifications.length, 0));
-  assert.ok(historique.every((h) => h.version === '0.2'));
+  assert.ok(historique.every((h) => h.version === ATTENDUE));
   assert.deepEqual(lire('SELECT count(*) AS n FROM modification UNION ALL SELECT count(*) FROM modification_lot UNION ALL SELECT count(*) FROM note_version_brouillon').map((x) => x.n), [0, 0, 0]);
   // relancé pour la même version : la note est refaite, pas doublée
-  const encore = appliquerMiseAJour({ ...lot('Texte corrigé.'), journal: { format: 'maverick-edition/1', lots: [] } }, { rows, reference: 'HEAD', date: '2026-10-12', versionDev: '0.1.77' });
-  assert.equal(encore.version, '0.2');
+  const encore = appliquerMiseAJour({ ...lot('Texte corrigé.'), journal: { format: 'maverick-edition/1', lots: [] } }, { rows, reference: 'HEAD', date: '2026-10-12', versionDev: VERSION_DEV });
+  assert.equal(encore.version, ATTENDUE);
   assert.match(readFileSync(join(rows, 'note_version.sql'), 'utf8'), /Texte corrigé\./);
   assert.doesNotMatch(readFileSync(join(rows, 'note_version.sql'), 'utf8'), /gagne/);
 });
 
 test('conflit avec dev : rien n’est écrit (code 3)', () => {
   const rows = copie('rows-conflit');
-  // dev a changé le même champ autrement depuis que le site l'a modifié
+  // dev a changé le même champ autrement depuis que le site l'a modifié (base reconstruite, ligne modifiée, réexportée par l'exporteur des importeurs :
+  // sans dépendre du texte en place)
   const fichier = join(rows, 'metier.sql');
   const avant = readFileSync(fichier, 'utf8');
-  const modifie = avant.replace(/'\+3% Arme lourde OU Arme légère'/, "'+5% Arme lourde'");
-  assert.notEqual(modifie, avant, 'le bonus du forgeron est dans metier.sql');
-  writeFileSync(fichier, modifie);
+  baseDe(rows);
+  const base = new DatabaseSync(join(racine, 'relue.db'));
+  base.prepare("UPDATE metier SET bonus_brut = bonus_brut || ' (autre)' WHERE id = 'metiers/forgeron'").run();
+  base.close();
+  const exp = spawnSync('python3', ['-I', fileURLToPath(new URL('../../tools/db/exporter.py', import.meta.url)), join(racine, 'relue.db'), '--rows', rows], { encoding: 'utf8' });
+  assert.equal(exp.status, 0, exp.stderr);
+  assert.notEqual(readFileSync(fichier, 'utf8'), avant, 'le bonus du forgeron a changé dans metier.sql');
   const instantane = readFileSync(fichier, 'utf8');
-  assert.throws(() => appliquerMiseAJour(lot(), { rows, reference: 'HEAD', date: '2026-10-11', versionDev: '0.1.76' }),
+  const notes = readFileSync(join(rows, 'note_version.sql'), 'utf8');
+  assert.throws(() => appliquerMiseAJour(lot(), { rows, reference: 'HEAD', date: '2026-10-11', versionDev: VERSION_DEV }),
     (e) => e instanceof ErreurMiseAJour && e.code === 3 && e.details.conflits.length >= 1);
   assert.equal(readFileSync(fichier, 'utf8'), instantane);
-  assert.doesNotMatch(readFileSync(join(rows, 'note_version.sql'), 'utf8'), /'0\.2'/);
+  assert.equal(readFileSync(join(rows, 'note_version.sql'), 'utf8'), notes, 'aucune note écrite');
 });
 
 test('une autre table changerait : rien n’est écrit (code 4)', () => {
@@ -115,8 +133,43 @@ test('une autre table changerait : rien n’est écrit (code 4)', () => {
   const fichier = join(rows, 'competence.sql');
   appendFileSync(fichier, '\n\n');
   const avant = readFileSync(fichier, 'utf8');
-  assert.throws(() => appliquerMiseAJour(lot(), { rows, reference: 'HEAD', date: '2026-10-11', versionDev: '0.1.76' }),
+  const metiers = readFileSync(join(rows, 'metier.sql'), 'utf8');
+  assert.throws(() => appliquerMiseAJour(lot(), { rows, reference: 'HEAD', date: '2026-10-11', versionDev: VERSION_DEV }),
     (e) => e instanceof ErreurMiseAJour && e.code === 4 && e.details.horsListe.includes('competence.sql'));
   assert.equal(readFileSync(fichier, 'utf8'), avant);
-  assert.doesNotMatch(readFileSync(join(rows, 'metier.sql'), 'utf8'), /\+4% Arme lourde/);
+  assert.equal(readFileSync(join(rows, 'metier.sql'), 'utf8'), metiers);
+  assert.ok(!metiers.includes(`'${BONUS}'`));
+});
+
+/** Une copie de data/rows modifiée par une requête SQL (base reconstruite, requête, réexport par l'exporteur des importeurs). */
+function copieModifiee(nom, sql) {
+  const rows = copie(nom);
+  baseDe(rows);
+  const base = new DatabaseSync(join(racine, 'relue.db'));
+  base.exec(sql);
+  base.close();
+  const exp = spawnSync('python3', ['-I', fileURLToPath(new URL('../../tools/db/exporter.py', import.meta.url)), join(racine, 'relue.db'), '--rows', rows], { encoding: 'utf8' });
+  assert.equal(exp.status, 0, exp.stderr);
+  return rows;
+}
+
+test('une note d’un autre lot est dans dev sans être livrée : refus (code 7), jamais écrasée, rien n’est écrit', () => {
+  // une version au-delà de la production : sa livraison dev → master n'a pas eu lieu
+  const rows = copieModifiee('rows-code-7', "INSERT INTO note_version (version, publiee_le, depuis, texte, lot, exemple) VALUES ('98.0', '2026-10-01', '97.9', 'Texte du lot L1', 'lot-l1', 0)");
+  const avant = readFileSync(join(rows, 'note_version.sql'), 'utf8');
+  assert.throws(() => appliquerMiseAJour(lot(), { rows, reference: 'HEAD', date: '2026-10-11', versionDev: VERSION_DEV }),
+    (e) => e instanceof ErreurMiseAJour && e.code === 7 && e.details.lot === 'lot-l1' && /pas encore livrée sur master/.test(e.message));
+  assert.equal(readFileSync(join(rows, 'note_version.sql'), 'utf8'), avant);
+  assert.doesNotMatch(readFileSync(join(rows, 'metier.sql'), 'utf8'), new RegExp(`'${BONUS.replace(/[+%]/g, '\\$&')}'`));
+});
+
+test('les lots du journal déjà livrés (dans historique_modification) sont écartés : leur valeur n’est pas réappliquée', () => {
+  const premier = journal.lots[0];
+  const rows = copieModifiee('rows-deja-livre', `INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres)
+    VALUES ('${premier.id}', 1, '${premier.fait_le}', 'livré avant', NULL, 'metier', '{"id":"metiers/forgeron"}', 'modifier', '{"bonus_brut":"a"}', '{"bonus_brut":"b"}')`);
+  const res = appliquerMiseAJour(lot(), { rows, reference: 'HEAD', date: '2026-10-11', versionDev: VERSION_DEV });
+  assert.deepEqual(res.deja_livres, [premier.id]);
+  assert.ok(!readFileSync(join(rows, 'metier.sql'), 'utf8').includes(`'${BONUS}'`), 'la modification déjà livrée n’est pas rejouée');
+  const lire = baseDe(rows);
+  assert.equal(lire(`SELECT count(*) AS n FROM historique_modification WHERE lot_id = '${premier.id}'`)[0].n, 1, 'pas doublée');
 });

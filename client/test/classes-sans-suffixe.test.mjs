@@ -4,6 +4,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { HYBRIDES_SANS_CLASSE_RACIALE } from '../src/lib/race-kinds.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 
@@ -19,17 +21,23 @@ test('aucune colonne de texte d’aucune table ne contient « (classe) »', () =
   assert.deepEqual(trouves, []);
 });
 
-test('les 13 classes raciales : titre de la page = nom de la classe = titre de la page de la race', () => {
+test('les classes raciales (13 à l’import) : titre de la page = nom de la classe = titre de la page de la race', () => {
   const lignes = db
     .prepare(
       `SELECT c.id, c.nom, p.titre, p.titre_cle, r.titre AS titre_race FROM classe c JOIN page p ON p.id = c.id
        LEFT JOIN page r ON r.id = 'races/' || c.nom_cle WHERE c.categorie_id = 'classe-hybride-animal' ORDER BY c.id`,
     )
     .all();
-  assert.equal(lignes.length, 13);
+  // 13 à l'import (le site de dev peut créer la classe raciale d'une race hybride : lib/historique-site.mjs)
+  assert.equal(historiqueSite(db).lignesDImport('classe').filter((c) => c.categorie_id === 'classe-hybride-animal').length, 13);
   for (const l of lignes) {
     assert.equal(l.titre, l.nom, l.id);
     assert.equal(l.titre_cle, l.id.slice('classes/'.length), l.id);
     assert.ok(l.titre_race, `${l.id} : la race du même nom existe`);
   }
+  // une race a au plus une classe raciale, de son nom ; le Drassah'thac, hybride sans classe raciale (décision R14), aucune
+  const parRace = new Map();
+  for (const l of lignes) parRace.set(`races/${l.titre_cle}`, (parRace.get(`races/${l.titre_cle}`) ?? 0) + 1);
+  for (const [race, n] of parRace) assert.equal(n, 1, `${race} : ${n} classes raciales`);
+  for (const race of HYBRIDES_SANS_CLASSE_RACIALE) assert.ok(!parRace.has(race), race);
 });

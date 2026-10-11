@@ -8,6 +8,7 @@
 //   - lignesEnAttente: l'état net des lignes modifiées (ce que les pages statiques doivent montrer à la place de leur contenu construit) ;
 //   - journalExporte : le journal à rapatrier dans data/rows (`npm run db:appliquer-edition`).
 // Node seulement (node:sqlite), sans dépendance ; partagé par le service et par client/scripts/db-appliquer-edition.mjs.
+import { randomUUID } from 'node:crypto';
 
 /** Tables du journal lui-même et des fiches : jamais modifiées par l'édition (les fiches ont leur API). */
 export const TABLES_INTERDITES = new Set(['modification_lot', 'modification', 'note_version_brouillon', 'note_version', 'note_version_ligne', 'historique_modification']);
@@ -17,6 +18,28 @@ export class ErreurJournal extends Error {
     super(message);
     this.name = 'ErreurJournal';
   }
+}
+
+/**
+ * Ordre de rejeu (requêtes sur modification m JOIN modification_lot l) : les lots par instant, puis par identifiant, les modifications d'un lot par
+ * rang. `fait_le` est à la seconde (CHECK de la table) : deux lots de la même seconde se départagent par leur identifiant, qui s'ordonne comme
+ * leur enregistrement (nouveauLot). Le service (rejouer, lignesEnAttente, journalExporte), db:appliquer-edition (par rejouer) et la mise à jour des
+ * règles (scripts/mise-a-jour-regles.mjs) trient ainsi.
+ */
+export const ORDRE_DE_REJEU = 'l.fait_le, l.id, m.rang';
+
+let dernierLot = { ms: -Infinity, n: 0 };
+/**
+ * Instant (à la seconde, format des colonnes `*_le`) et identifiant d'un nouveau lot. L'identifiant commence par l'instant à la milliseconde, puis
+ * un compteur (lots de la même milliseconde), puis un uuid : « 2026-10-11T09:30:12.345Z-000000-<uuid> ». Trier par (fait_le, id) redonne l'ordre
+ * d'enregistrement, même dans une seule seconde (une horloge qui recule n'y change rien : l'instant ne redescend pas).
+ * @returns {{ instant: string, id: string }}
+ */
+export function nouveauLot(date = new Date()) {
+  const ms = Math.max(date.getTime(), dernierLot.ms);
+  dernierLot = ms === dernierLot.ms ? { ms, n: dernierLot.n + 1 } : { ms, n: 0 };
+  const iso = new Date(ms).toISOString();
+  return { instant: iso.replace(/\.\d{3}Z$/, 'Z'), id: `${iso}-${String(dernierLot.n).padStart(6, '0')}-${randomUUID()}` };
 }
 
 const infos = new WeakMap(); // db -> Map(table -> { colonnes, cle })
@@ -180,57 +203,96 @@ export function tablesQuiCitent(db, table) {
 const correspond = (ligne, valeurs) => Object.entries(valeurs).every(([c, v]) => egal(ligne[c], v));
 
 /**
- * Rejoue une modification en attente sur la base (règles neuves) : rend 'applique' (réécrite), 'integree' (déjà là) ou un message de conflit.
+ * Rejoue une modification en attente sur la base (règles neuves) : rend 'applique' (réécrite), 'integree' (déjà là), 'derivee' (elle ne note que des
+ * colonnes dérivées, voir rejouer) ou un message de conflit. Les colonnes dérivées (`derivee(table, cle, colonne)`) ne sont ni comparées ni écrites.
+ * `suivantes` : les modifications en attente plus récentes de la même ligne ({ operation, apres }) ; une colonne qui vaut déjà ce que l'une d'elles y
+ * écrit est « déjà là » (règles qui contiennent une partie du journal, ou tout : le site de dev après la livraison de ses propres modifications).
  * Lève une erreur SQLite si l'écriture est refusée (contrainte) : l'appelant en fait un conflit.
  */
-function rejouerUne(db, m) {
+function rejouerUne(db, m, derivee, suivantes = []) {
   const cle = JSON.parse(m.cle);
   const avant = m.avant === null ? null : JSON.parse(m.avant);
   const apres = m.apres === null ? null : JSON.parse(m.apres);
   structure(db, m.table_nom); // table disparue : erreur
+  const sansDerivees = (valeurs) => Object.fromEntries(Object.entries(valeurs).filter(([c]) => !derivee(m.table_nom, cle, c)));
   const ligne = lireLigne(db, m.table_nom, cle);
+  /** La colonne vaut déjà `valeur`, ou ce qu'une modification plus récente de la ligne y écrit. */
+  const deja = (c, valeur) => egal(ligne[c], valeur) || suivantes.some((s) => s.apres && c in s.apres && egal(ligne[c], s.apres[c]));
+  const supprimeePlusTard = suivantes.some((s) => s.operation === 'supprimer');
   if (m.operation === 'inserer') {
     if (!ligne) {
+      if (supprimeePlusTard) return 'integree'; // créée puis supprimée par le journal : rien à rejouer (ses modifications non plus)
       insererBrut(db, m.table_nom, apres);
       return 'applique';
     }
-    return correspond(ligne, apres) ? 'integree' : 'la ligne existe déjà dans les règles, avec d’autres valeurs';
+    return Object.entries(sansDerivees(apres)).every(([c, v]) => deja(c, v)) ? 'integree' : 'la ligne existe déjà dans les règles, avec d’autres valeurs';
   }
   if (m.operation === 'supprimer') {
     if (!ligne) return 'integree';
-    if (!correspond(ligne, avant)) return 'la ligne a changé dans les règles depuis sa suppression';
+    if (!correspond(ligne, sansDerivees(avant))) {
+      // supprimée puis recréée par le journal : la ligne des règles est déjà la nouvelle
+      const recreee = suivantes.find((s) => s.operation === 'inserer');
+      if (recreee && Object.entries(sansDerivees(recreee.apres)).every(([c, v]) => deja(c, v))) return 'integree';
+      return 'la ligne a changé dans les règles depuis sa suppression';
+    }
     supprimerBrut(db, m.table_nom, cle);
     return 'applique';
   }
-  if (!ligne) return 'la ligne n’existe plus dans les règles';
-  if (correspond(ligne, apres)) return 'integree';
-  if (!correspond(ligne, avant)) {
-    const changees = Object.keys(avant).filter((c) => !egal(ligne[c], avant[c]));
-    return `les règles ont changé ${changees.join(', ')} autrement`;
-  }
-  modifierBrut(db, m.table_nom, cle, apres);
+  const voulues = sansDerivees(apres);
+  if (!Object.keys(voulues).length) return 'derivee';
+  if (!ligne) return supprimeePlusTard ? 'integree' : 'la ligne n’existe plus dans les règles';
+  const aEcrire = Object.keys(voulues).filter((c) => !deja(c, voulues[c]));
+  if (!aEcrire.length) return 'integree';
+  const changees = aEcrire.filter((c) => !egal(ligne[c], avant[c]));
+  if (changees.length) return `les règles ont changé ${changees.join(', ')} autrement`;
+  modifierBrut(db, m.table_nom, cle, sous(voulues, aEcrire));
   return 'applique';
 }
 
+/** Une modification du journal telle que la reçoit `applique` (rejouer) : valeurs décodées. */
+const decodee = (m) => ({
+  lot: m.lot_id, rang: m.rang, table: m.table_nom, cle: JSON.parse(m.cle), operation: m.operation,
+  avant: m.avant === null ? null : JSON.parse(m.avant), apres: m.apres === null ? null : JSON.parse(m.apres),
+});
+
 /**
- * Rejoue toutes les modifications en attente, lot par lot dans l'ordre (fait_le, puis id), chaque lot d'un bloc : si l'une de ses modifications est en
+ * Rejoue toutes les modifications en attente, lot par lot dans l'ordre (ORDRE_DE_REJEU), chaque lot d'un bloc : si l'une de ses modifications est en
  * conflit (ou rompt une clé étrangère des tables touchées), le lot entier est annulé et ses modifications en attente passent « conflit ».
  * À appeler dans une transaction (l'appelant valide) ; les clés étrangères peuvent être suspendues (contrôle explicite par lot).
+ * Une colonne qui vaut déjà ce qu'une modification en attente plus récente de la même ligne y écrit est « déjà là » : le journal rejoué sur des
+ * règles qui en contiennent une partie ou le tout (deux lots qui modifient la même colonne, une ligne créée puis modifiée) n'est pas en conflit.
+ *
+ * Colonnes dérivées (`derivee(table, cle, colonne)` vrai ; aucune par défaut) : des valeurs que l'édition a calculées depuis d'autres lignes (le corps
+ * des pages typées : serveur/edition.mjs#colonneDerivee). Notées comme une valeur figée, elles mettraient en conflit tout lot rejoué sur des règles
+ * qui ont changé la page autrement (une autre modification de la même page, une livraison, une création insérée puis modifiée dans le même lot) :
+ * elles ne sont ni comparées ni écrites, et l'appelant les refait depuis les lignes rejouées (serveur/edition.mjs#rejouerLeJournal). Une
+ * modification qui ne note que des colonnes dérivées suit son lot : « intégrée » quand toutes ses autres modifications le sont, en attente sinon.
+ * `applique(m)` est appelée, une fois un lot écrit, pour chacune de ses modifications réappliquées (dérivées comprises), décodée : { lot, rang,
+ * table, cle, operation, avant, apres }.
+ * @param {{ derivee?: (table: string, cle: object, colonne: string) => boolean, applique?: (m: object) => void }} [options]
  * @returns {{ appliquees: number, integrees: number, conflits: number, lots: number }}
  */
-export function rejouer(db) {
+export function rejouer(db, { derivee = () => false, applique = null } = {}) {
   const bilan = { appliquees: 0, integrees: 0, conflits: 0, lots: 0 };
   const enAttente = db
     .prepare(
       `SELECT m.* FROM modification m JOIN modification_lot l ON l.id = m.lot_id
-       WHERE m.etat = 'en_attente' ORDER BY l.fait_le, l.id, m.rang`,
+       WHERE m.etat = 'en_attente' ORDER BY ${ORDRE_DE_REJEU}`,
     )
     .all();
   const parLot = new Map();
+  const parLigne = new Map(); // ligne (table, clé) -> ses modifications en attente, dans l'ordre : { operation, apres }
+  const ligneDe = (m) => `${m.table_nom}\u0000${m.cle}`;
   for (const m of enAttente) {
     if (!parLot.has(m.lot_id)) parLot.set(m.lot_id, []);
     parLot.get(m.lot_id).push(m);
+    if (!parLigne.has(ligneDe(m))) parLigne.set(ligneDe(m), []);
+    parLigne.get(ligneDe(m)).push({ m, operation: m.operation, apres: m.apres === null ? null : JSON.parse(m.apres) });
   }
+  const suivantesDe = (m) => {
+    const toutes = parLigne.get(ligneDe(m));
+    return toutes.slice(toutes.findIndex((s) => s.m === m) + 1);
+  };
   const marquer = db.prepare('UPDATE modification SET etat = ?, detail = ? WHERE lot_id = ? AND rang = ?');
   for (const [lot, modifications] of parLot) {
     bilan.lots += 1;
@@ -240,12 +302,12 @@ export function rejouer(db) {
     for (const m of modifications) {
       let r;
       try {
-        r = rejouerUne(db, m);
+        r = rejouerUne(db, m, derivee, suivantesDe(m));
       } catch (e) {
         r = `écriture refusée : ${e.message}`;
       }
       resultats.push(r);
-      if (r !== 'applique' && r !== 'integree') {
+      if (r !== 'applique' && r !== 'integree' && r !== 'derivee') {
         conflit = `${m.table_nom} ${m.cle} : ${r}`;
         break;
       }
@@ -273,11 +335,17 @@ export function rejouer(db) {
       continue;
     }
     db.exec('RELEASE rejeu_lot');
+    const autres = resultats.filter((r) => r !== 'derivee');
+    const derivees = autres.some((r) => r !== 'integree') ? 'applique' : 'integree';
     modifications.forEach((m, i) => {
-      if (resultats[i] === 'integree') {
+      const r = resultats[i] === 'derivee' ? derivees : resultats[i];
+      if (r === 'integree') {
         marquer.run('integree', null, m.lot_id, m.rang);
         bilan.integrees += 1;
-      } else bilan.appliquees += 1;
+      } else {
+        bilan.appliquees += 1;
+        applique?.(decodee(m));
+      }
     });
   }
   return bilan;
@@ -295,7 +363,7 @@ export function lignesEnAttente(db, { tables } = {}) {
   const toutes = db
     .prepare(
       `SELECT m.table_nom, m.cle, m.operation, m.apres, m.apercu FROM modification m JOIN modification_lot l ON l.id = m.lot_id
-       WHERE m.etat = 'en_attente' ORDER BY l.fait_le, l.id, m.rang`,
+       WHERE m.etat = 'en_attente' ORDER BY ${ORDRE_DE_REJEU}`,
     )
     .all();
   for (const m of toutes) {
@@ -309,7 +377,7 @@ export function lignesEnAttente(db, { tables } = {}) {
 
 /** Le journal, lots et modifications, pour le rapatrier dans data/rows (format « maverick-edition/1 »). */
 export function journalExporte(db, { etats = ['en_attente'] } = {}) {
-  const lots = db.prepare('SELECT * FROM modification_lot ORDER BY fait_le, id').all();
+  const lots = db.prepare('SELECT * FROM modification_lot l ORDER BY l.fait_le, l.id').all();
   const mods = db.prepare('SELECT * FROM modification ORDER BY lot_id, rang').all();
   const parLot = new Map(lots.map((l) => [l.id, { ...l, modifications: [] }]));
   for (const m of mods) {

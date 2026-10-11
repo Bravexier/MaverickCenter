@@ -1,6 +1,8 @@
 // Édition des races depuis le site de dev (client/serveur/edition.mjs) : onglet de la race, dons, tableau en panneaux ; création d'une race (pure ou
 // hybride, avec sa ligne dans les matrices de la fiche et son peuple) ; magies innées (la liste de l'onglet prime, sinon la matrice : R11, R8) ;
 // relations entre peuples (sens R12 : la case (A, B) dit comment A voit B).
+// La base vivante part des règles de data/rows, où le site de dev a pu créer des races : les données d'essai ont des noms absents de la base, et les
+// effectifs attendus (ordre, matrices) sont lus avant d'écrire.
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -13,6 +15,7 @@ import { cheminBase } from '../src/lib/donnees.mjs';
 import { chargerRaces } from '../src/lib/races-db.mjs';
 import { relationsDeRace } from '../src/lib/race-relations.mjs';
 import { raceKind } from '../src/lib/race-kinds.mjs';
+import { normalize } from '../src/lib/text.mjs';
 
 const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-races-'));
 after(() => rmSync(racine, { recursive: true, force: true }));
@@ -24,6 +27,17 @@ const enregistrer = (operations) =>
 const ligne = (sql, ...p) => db.prepare(sql).get(...p);
 const lignes = (sql, ...p) => db.prepare(sql).all(...p);
 const peuple = (slug) => `lore/relations-entre-les-races#peuple:${slug}`;
+/** Un nom de race (et de peuple) que la base n'a pas encore : `nom`, ou `nom 2`, `nom 3`… */
+const nomLibre = (nom) => {
+  const pris = (n) => ligne('SELECT 1 FROM race WHERE nom = ? OR id = ? UNION ALL SELECT 1 FROM page WHERE id = ? UNION ALL SELECT 1 FROM peuple WHERE nom = ? OR id = ?',
+    n, `races/${normalize(n)}`, `races/${normalize(n)}`, n, peuple(normalize(n)));
+  let n = nom;
+  for (let i = 2; pris(n); i += 1) n = `${nom} ${i}`;
+  return n;
+};
+const LYCAN = nomLibre('Lycan');
+const ID_LYCAN = `races/${normalize(LYCAN)}`;
+const PEUPLE_LYCAN = peuple(normalize(LYCAN));
 
 test('onglet de la race : textes et valeurs de départ ; présentation reprise comme résumé de la page', () => {
   const r = enregistrer([
@@ -52,30 +66,31 @@ test('dons, tableau en panneaux, mode Hyper : chaque case', () => {
 });
 
 test('créer une race hybride : page (mot-clé « race hybride »), race, onglet à compléter, matrices de la fiche, peuple ; rangée parmi les hybrides', () => {
-  const r = enregistrer([{ op: 'creer', entite: 'race', valeurs: { nom: 'Lycan', nature: 'hybride', presentation: 'Les loups-garous.' } }]);
+  const ordre = ligne('SELECT max(ordre) AS m FROM race').m + 1;
+  const r = enregistrer([{ op: 'creer', entite: 'race', valeurs: { nom: LYCAN, nature: 'hybride', presentation: 'Les loups-garous.' } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
-  assert.deepEqual(r.corps.crees, [{ entite: 'race', id: 'races/lycan' }]);
-  const race = ligne("SELECT * FROM race WHERE id = 'races/lycan'");
-  assert.equal(race.ordre, 28);
-  assert.equal(ligne("SELECT histoire FROM race_onglet WHERE race_id = 'races/lycan'").histoire, A_COMPLETER);
-  assert.equal(ligne("SELECT description_generale FROM race_onglet WHERE race_id = 'races/lycan'").description_generale, 'Les loups-garous.');
-  assert.deepEqual(lignes("SELECT libelle FROM page_tag WHERE page_id = 'races/lycan' ORDER BY ordre").map((t) => t.libelle), ['race', 'race hybride']);
-  assert.equal(ligne("SELECT count(*) AS n FROM race_magie WHERE race_id = 'races/lycan' AND accessible = 0").n, 15);
-  assert.equal(ligne("SELECT count(*) AS n FROM race_classe WHERE race_id = 'races/lycan'").n, ligne('SELECT count(*) AS n FROM classe').n);
-  assert.equal(ligne('SELECT race_id FROM peuple WHERE id = ?', peuple('lycan')).race_id, 'races/lycan');
+  assert.deepEqual(r.corps.crees, [{ entite: 'race', id: ID_LYCAN }]);
+  const race = ligne('SELECT * FROM race WHERE id = ?', ID_LYCAN);
+  assert.equal(race.ordre, ordre, 'à la suite des races de la base');
+  assert.equal(ligne('SELECT histoire FROM race_onglet WHERE race_id = ?', ID_LYCAN).histoire, A_COMPLETER);
+  assert.equal(ligne('SELECT description_generale FROM race_onglet WHERE race_id = ?', ID_LYCAN).description_generale, 'Les loups-garous.');
+  assert.deepEqual(lignes('SELECT libelle FROM page_tag WHERE page_id = ? ORDER BY ordre', ID_LYCAN).map((t) => t.libelle), ['race', 'race hybride']);
+  assert.equal(ligne('SELECT count(*) AS n FROM race_magie WHERE race_id = ? AND accessible = 0', ID_LYCAN).n, ligne('SELECT count(*) AS n FROM magie').n);
+  assert.equal(ligne('SELECT count(*) AS n FROM race_classe WHERE race_id = ?', ID_LYCAN).n, ligne('SELECT count(*) AS n FROM classe').n);
+  assert.equal(ligne('SELECT race_id FROM peuple WHERE id = ?', PEUPLE_LYCAN).race_id, ID_LYCAN);
   const races = chargerRaces(db);
-  assert.equal(races.races.get('races/lycan').hybride, true, 'lib/races-db.mjs');
-  const entree = { id: 'races/lycan', data: { title: 'Lycan', tags: ['race', 'race hybride'] } };
+  assert.equal(races.races.get(ID_LYCAN).hybride, true, 'lib/races-db.mjs');
+  const entree = { id: ID_LYCAN, data: { title: LYCAN, tags: ['race', 'race hybride'] } };
   assert.equal(raceKind([entree], entree), 'hybride', 'lib/race-kinds.mjs');
-  assert.equal(enregistrer([{ op: 'creer', entite: 'race', valeurs: { nom: 'Lycan', nature: 'pure' } }]).statut, 409);
+  assert.equal(enregistrer([{ op: 'creer', entite: 'race', valeurs: { nom: LYCAN, nature: 'pure' } }]).statut, 409);
   assert.equal(enregistrer([{ op: 'creer', entite: 'race', valeurs: { nom: 'Autre', nature: 'mixte' } }]).statut, 400);
 });
 
 test('magies innées : la matrice de la fiche (R8), ou la liste de l’onglet quand elle existe (R11 : le Nain) ; la liste de la page suit', () => {
-  const r = enregistrer([{ op: 'magies_innees', race: 'races/lycan', magies: ['magies/magie-du-feu', 'magies/magie-de-lombre'] }]);
+  const r = enregistrer([{ op: 'magies_innees', race: ID_LYCAN, magies: ['magies/magie-du-feu', 'magies/magie-de-lombre'] }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
-  assert.deepEqual(lignes("SELECT magie_id FROM race_magie WHERE race_id = 'races/lycan' AND accessible = 1 ORDER BY ordre").map((m) => m.magie_id), ['magies/magie-du-feu', 'magies/magie-de-lombre']);
-  assert.deepEqual(JSON.parse(ligne("SELECT donnees FROM page WHERE id = 'races/lycan'").donnees).magies_innees, ['Feu', 'Ombre']);
+  assert.deepEqual(lignes('SELECT magie_id FROM race_magie WHERE race_id = ? AND accessible = 1 ORDER BY ordre', ID_LYCAN).map((m) => m.magie_id), ['magies/magie-du-feu', 'magies/magie-de-lombre']);
+  assert.deepEqual(JSON.parse(ligne('SELECT donnees FROM page WHERE id = ?', ID_LYCAN).donnees).magies_innees, ['Feu', 'Ombre']);
   const nain = enregistrer([{ op: 'magies_innees', race: 'races/nain', magies: ['magies/magie-du-feu'] }]);
   assert.equal(nain.statut, 200, JSON.stringify(nain.corps));
   assert.deepEqual(lignes("SELECT magie_id FROM race_magie_onglet WHERE race_id = 'races/nain'").map((m) => m.magie_id), ['magies/magie-du-feu']);
@@ -84,35 +99,47 @@ test('magies innées : la matrice de la fiche (R8), ou la liste de l’onglet qu
 
 test('relations entre peuples : placer une race dans un niveau (case créée ou changée), retirer une case ; le tableau de la race suit', () => {
   const r = enregistrer([{ op: 'relations', cases: [
-    { voit: peuple('lycan'), vu: peuple('humain-central'), echelle: 'haine' },
-    { voit: peuple('humain-central'), vu: peuple('lycan'), echelle: 'evitee' },
+    { voit: PEUPLE_LYCAN, vu: peuple('humain-central'), echelle: 'haine' },
+    { voit: peuple('humain-central'), vu: PEUPLE_LYCAN, echelle: 'evitee' },
   ] }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   const rel = chargerRaces(db).relations;
-  const lycan = relationsDeRace(rel, 'races/lycan');
+  const lycan = relationsDeRace(rel, ID_LYCAN);
   assert.deepEqual(lycan.voit[0].niveaux.map((n) => [n.echelle.id, n.cibles.map((c) => c.peuples.map((p) => p.nom).join('+'))]), [['haine', ['Humain Central']]]);
   assert.equal(lycan.vu[0].niveaux[0].echelle.id, 'evitee');
-  assert.equal(enregistrer([{ op: 'relations', cases: [{ voit: peuple('lycan'), vu: peuple('humain-central'), echelle: 'alliee' }] }]).statut, 200);
-  assert.equal(ligne('SELECT echelle_id FROM relation_peuple WHERE ligne_peuple_id = ? AND colonne_peuple_id = ?', peuple('lycan'), peuple('humain-central')).echelle_id, 'alliee');
-  assert.equal(enregistrer([{ op: 'relations', cases: [{ voit: peuple('lycan'), vu: peuple('humain-central'), echelle: null }] }]).statut, 200);
-  assert.equal(ligne('SELECT count(*) AS n FROM relation_peuple WHERE ligne_peuple_id = ?', peuple('lycan')).n, 0);
-  for (const cas of [[{ voit: peuple('lycan'), vu: peuple('lycan'), echelle: 'neutre' }], [{ voit: peuple('x'), vu: peuple('lycan'), echelle: 'neutre' }], [{ voit: peuple('lycan'), vu: peuple('humain-central'), echelle: 'amour' }]]) {
+  assert.equal(enregistrer([{ op: 'relations', cases: [{ voit: PEUPLE_LYCAN, vu: peuple('humain-central'), echelle: 'alliee' }] }]).statut, 200);
+  assert.equal(ligne('SELECT echelle_id FROM relation_peuple WHERE ligne_peuple_id = ? AND colonne_peuple_id = ?', PEUPLE_LYCAN, peuple('humain-central')).echelle_id, 'alliee');
+  assert.equal(enregistrer([{ op: 'relations', cases: [{ voit: PEUPLE_LYCAN, vu: peuple('humain-central'), echelle: null }] }]).statut, 200);
+  // plus aucun regard vers un autre peuple (la case « Même peuple » de la diagonale n'est pas une relation entre races)
+  assert.equal(ligne('SELECT count(*) AS n FROM relation_peuple WHERE ligne_peuple_id = ? AND colonne_peuple_id <> ligne_peuple_id', PEUPLE_LYCAN).n, 0);
+  for (const cas of [[{ voit: PEUPLE_LYCAN, vu: PEUPLE_LYCAN, echelle: 'neutre' }], [{ voit: peuple('x'), vu: PEUPLE_LYCAN, echelle: 'neutre' }], [{ voit: PEUPLE_LYCAN, vu: peuple('humain-central'), echelle: 'amour' }]]) {
     assert.equal(enregistrer([{ op: 'relations', cases: cas }]).statut, 400, JSON.stringify(cas));
   }
 });
 
-test('peuple ajouté à une race qui n’en a pas (Anansi) : sa race peut avoir des relations', () => {
-  const r = enregistrer([{ op: 'creer', entite: 'peuple', valeurs: { nom: 'Anansi', race_id: 'races/anansi' } }]);
+test('peuple ajouté à une race qui n’en a pas (à l’import : Anansi, Farfadet, Goleois) : sa race peut avoir des relations', () => {
+  // une race sans peuple, prise dans la base (le site a pu en donner un à l'Anansi) ; s'il n'y en a plus, une race minimale dans cette copie
+  let sans = ligne('SELECT id, nom FROM race r WHERE NOT EXISTS (SELECT 1 FROM peuple p WHERE p.race_id = r.id) ORDER BY id = ? DESC, id LIMIT 1', 'races/anansi');
+  if (!sans) {
+    assert.equal(enregistrer([{ op: 'creer', entite: 'race', valeurs: { nom: nomLibre('Race sans peuple'), nature: 'pure' } }]).statut, 200);
+    sans = ligne('SELECT r.id, r.nom FROM race r WHERE r.ordre = (SELECT max(ordre) FROM race)');
+    const siens = 'SELECT id FROM peuple WHERE race_id = ?';
+    db.prepare(`DELETE FROM relation_peuple WHERE ligne_peuple_id IN (${siens}) OR colonne_peuple_id IN (${siens})`).run(sans.id, sans.id);
+    db.prepare(`DELETE FROM page_entite WHERE entite_table = 'peuple' AND entite_id IN (${siens})`).run(sans.id);
+    db.prepare('DELETE FROM peuple WHERE race_id = ?').run(sans.id);
+  }
+  const nom = nomLibre(sans.nom);
+  const r = enregistrer([{ op: 'creer', entite: 'peuple', valeurs: { nom, race_id: sans.id } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
-  assert.equal(ligne("SELECT principale FROM page_entite WHERE entite_table = 'peuple' AND entite_id = ?", peuple('anansi')).principale, 0);
+  assert.equal(ligne("SELECT principale FROM page_entite WHERE entite_table = 'peuple' AND entite_id = ?", peuple(normalize(nom))).principale, 0);
   assert.equal(enregistrer([{ op: 'creer', entite: 'peuple', valeurs: { nom: 'X', race_id: 'races/absente' } }]).statut, 400);
 });
 
 test('état vivant d’une race (POST /api/edition/race/) : magies innées et relations', () => {
-  const r = traiter({ methode: 'POST', chemin: '/api/edition/race/', entetes: { 'content-type': 'application/json' }, corps: JSON.stringify({ race: 'races/lycan' }) }, service);
+  const r = traiter({ methode: 'POST', chemin: '/api/edition/race/', entetes: { 'content-type': 'application/json' }, corps: JSON.stringify({ race: ID_LYCAN }) }, service);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   assert.deepEqual(r.corps.magiesInnees, { source: 'matrice', ids: ['magies/magie-du-feu', 'magies/magie-de-lombre'] });
-  assert.ok(r.corps.relations.peuples.some((p) => p.raceId === 'races/lycan'));
+  assert.ok(r.corps.relations.peuples.some((p) => p.raceId === ID_LYCAN));
   const nain = traiter({ methode: 'POST', chemin: '/api/edition/race/', entetes: { 'content-type': 'application/json' }, corps: JSON.stringify({ race: 'races/nain' }) }, service);
   assert.equal(nain.corps.magiesInnees.source, 'onglet');
   assert.equal(traiter({ methode: 'POST', chemin: '/api/edition/race/', entetes: { 'content-type': 'application/json' }, corps: JSON.stringify({ race: 'races/x' }) }, service).statut, 404);

@@ -5,12 +5,15 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { couleurDeCaracteristique } from '../src/lib/caracteristiques-postures.mjs';
 import { CLASS_COLORS } from '../src/lib/class-groups.mjs';
+import { ditClasseMagique } from '../src/lib/classe-magique.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS } from '../src/lib/race-kinds.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const regles = chargerReglesDeFiche(db);
+const historique = historiqueSite(db); // ce que le site de dev a changé depuis l'import (lib/historique-site.mjs)
 const compte = (table) => db.prepare(`SELECT count(*) AS n FROM ${table}`).get().n;
 
 test('tout est sérialisable et chaque liste a toutes les lignes de sa table', () => {
@@ -29,7 +32,8 @@ test('maîtrise d’arme : 1 dé sans maîtrise (guide, cité mot pour mot), 5 d
   assert.equal(regles.constantes['maitrise_arme.des_sans_maitrise'], 1);
   assert.equal(regles.constantes['maitrise_arme.des_max'], 5);
   const guide = db.prepare("SELECT texte, page_id FROM regle_constante WHERE id = 'maitrise_arme.des_sans_maitrise'").get();
-  assert.ok(db.prepare('SELECT corps_md FROM page WHERE id = ?').get(guide.page_id).corps_md.includes(guide.texte), guide.texte);
+  // citée dans le texte du guide tel que l'import l'a écrit (le site de dev peut le réécrire depuis)
+  assert.ok(historique.valeurDImport('page', { id: guide.page_id }, 'corps_md').includes(guide.texte), guide.texte);
   assert.equal(db.prepare("SELECT texte FROM regle_constante WHERE id = 'maitrise_arme.des_max'").get().texte, '1d, 2d, 3d, 4d, 5d');
   assert.match(db.prepare("SELECT sql FROM sqlite_master WHERE name = 'personnage_maitrise_arme'").get().sql, /CHECK \(des BETWEEN 1 AND 5\)/,
     'la base garde des dés, de 1 à 5');
@@ -42,7 +46,10 @@ test('caractéristiques : l’ordre de la fiche et leur couleur (demande du prop
 });
 
 test('races : l’ordre et les couleurs de /races/, valeurs de l’onglet de la race (R13), bornes des six caractéristiques', () => {
-  assert.deepEqual(regles.races.map((r) => r.id), ORDRE_DES_RACES);
+  // les races de la liste du propriétaire dans son ordre, puis celles créées depuis le site, par nom (lib/race-kinds.mjs#dansLOrdreDesRaces)
+  assert.deepEqual(regles.races.slice(0, ORDRE_DES_RACES.length).map((r) => r.id), ORDRE_DES_RACES);
+  const autres = regles.races.slice(ORDRE_DES_RACES.length).map((r) => r.nom);
+  assert.deepEqual(autres, [...autres].sort((a, b) => a.localeCompare(b, 'fr')));
   for (const r of regles.races) {
     assert.equal(r.couleur, RACE_COLORS[r.nature], r.id);
     assert.equal(Object.keys(r.bornes).length, 6, r.id);
@@ -63,11 +70,20 @@ test('classes : couleurs de /classes/ ; magiques = catégorie Magique et Archima
   assert.deepEqual([...new Set([...regles.classes].sort((a, b) => a.groupe.ordre - b.groupe.ordre).map((c) => c.groupe.label))], ['Physiques Mêlée', 'Physiques Distance', 'Magiques', 'Raciales', 'Spéciales']);
   assert.deepEqual([...new Set(regles.classes.map((c) => c.groupe.key))].sort(), Object.keys(CLASS_COLORS).sort(), 'les cinq colonnes de /classes/');
   for (const c of regles.classes) assert.equal(c.couleur, CLASS_COLORS[c.groupe.key], c.id);
-  assert.deepEqual(regles.classes.filter((c) => c.magique).map((c) => c.nom).sort(),
+  // R6 : magiques = catégorie Magique (la seule qui donne de l'AM) et Archimage ; à l'import, ces neuf classes
+  assert.deepEqual(db.prepare('SELECT id FROM categorie_classe WHERE am_base > 0').all().map((k) => k.id), ['classe-magique']);
+  const magiquesR6 = (classes) => classes.filter((c) => c.categorie_id === 'classe-magique' || c.id === 'classes/archimage').map((c) => c.nom).sort();
+  assert.deepEqual(regles.classes.filter((c) => c.magique).map((c) => c.nom).sort(), magiquesR6(db.prepare('SELECT id, nom, categorie_id FROM classe').all()));
+  assert.deepEqual(magiquesR6(historique.lignesDImport('classe')),
     ['Archimage', 'Barde', 'Clerc', 'Maclier', 'Mage', 'Mage Bleu', 'Mage Rouge', 'Mage Vert', 'Ocultomancien']);
-  const specialites = regles.classes.flatMap((c) => c.specialites.filter((s) => s.magique).map(() => c));
-  assert.equal(specialites.length, 14);
-  assert.deepEqual(specialites.filter((c) => c.couleur !== CLASS_COLORS.raciales).map((c) => c.id), ['classes/flagelleur']);
+  // R7 : une spécialité est magique quand le don de son cartouche le dit ; à l'import, 14 spécialités : celles des 13 classes raciales et du Flagelleur
+  const cartouche = db.prepare("SELECT effet FROM capacite WHERE specialite_id = ? AND nature = 'specialite'");
+  for (const c of regles.classes) for (const s of c.specialites) assert.equal(s.magique, ditClasseMagique(cartouche.get(s.id)?.effet), s.id);
+  const classesDImport = new Map(historique.lignesDImport('classe').map((c) => [c.id, c]));
+  const cartouchesMagiques = historique.lignesDImport('capacite').filter((k) => k.nature === 'specialite' && ditClasseMagique(k.effet));
+  assert.equal(cartouchesMagiques.length, 14);
+  assert.deepEqual(cartouchesMagiques.map((k) => classesDImport.get(k.classe_id)).filter((c) => c.categorie_id !== 'classe-hybride-animal').map((c) => c.id),
+    ['classes/flagelleur']);
   // Classe réservée à une magie innée, qui l'impose (classe.magie_innee_id, décision R23) : l'Archimage et le Potentiel Illimité, seulement
   assert.deepEqual(regles.classes.filter((c) => c.magie_innee_id !== null).map((c) => [c.id, c.magie_innee_id]), [['classes/archimage', 'magies/potentiel-illimite']]);
   // et celle qu'une magie innée ferme (classe.magie_innee_exclue_id, décision R25) : le Mage Bleu et le Potentiel Illimité, seulement

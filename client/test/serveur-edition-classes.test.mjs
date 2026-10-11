@@ -1,6 +1,8 @@
 // Édition des classes depuis le site de dev (client/serveur/edition.mjs) : don de départ, présentation, maîtrises et inventaire (tables de détail
 // recalculées : lib/classe-champs.mjs), spécialités et dons (leur fiche suit) ; création d'une classe dans une catégorie, et d'une classe raciale pour
 // une race hybride qui n'en a pas (demande du propriétaire).
+// La base vivante part des règles de data/rows, où le site de dev a pu créer ou renommer : les données d'essai ont des noms absents de la base, et
+// l'état attendu (ordre, races hybrides sans classe raciale) est lu avant d'écrire.
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -12,6 +14,7 @@ import { racesHybridesSansClasse } from '../serveur/edition.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { chargerRaces } from '../src/lib/races-db.mjs';
 import { groupClasses } from '../src/lib/class-groups.mjs';
+import { normalize } from '../src/lib/text.mjs';
 
 const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-classes-'));
 after(() => rmSync(racine, { recursive: true, force: true }));
@@ -22,6 +25,14 @@ const appel = (methode, chemin_, corps) => traiter({ methode, chemin: chemin_, e
 const enregistrer = (operations) => appel('POST', '/api/edition/', { page: 'classes/x', operations });
 const ligne = (sql, ...p) => db.prepare(sql).get(...p);
 const lignes = (sql, ...p) => db.prepare(sql).all(...p);
+/** Un nom que la base n'a pas encore pour une entité (`table`, pages `<type>/<slug>`) : `nom`, ou `nom 2`, `nom 3`… */
+const nomLibre = (nom, table, type) => {
+  const pris = (n) => ligne(`SELECT 1 FROM "${table}" WHERE nom = ? OR id = ? UNION ALL SELECT 1 FROM page WHERE id = ?`, n, `${type}/${normalize(n)}`, `${type}/${normalize(n)}`)
+    ?? (table === 'race' ? ligne('SELECT 1 FROM peuple WHERE nom = ? OR nom_cle = ?', n, normalize(n)) : null);
+  let n = nom;
+  for (let i = 2; pris(n); i += 1) n = `${nom} ${i}`;
+  return n;
+};
 
 test('classe : don de départ, maîtrises (tables de détail et bouclier_classe_max), inventaire (objets du glossaire)', () => {
   const r = enregistrer([{ op: 'modifier', table: 'classe', cle: { id: 'classes/guerrier' }, valeurs: {
@@ -38,11 +49,13 @@ test('classe : don de départ, maîtrises (tables de détail et bouclier_classe_
 });
 
 test('spécialité renommée : clé du nom, fiches de ses dons (spécialité citée, mot-clé)', () => {
-  const s = ligne("SELECT id, nom FROM specialite WHERE classe_id = 'classes/anansi' AND nom = 'CEMIES'");
-  const r = enregistrer([{ op: 'modifier', table: 'specialite', cle: { id: s.id }, valeurs: { nom: 'CÉMIES' } }]);
+  // la spécialité du don « Anti-corps » de l'Anansi (CEMIES à l'import), quel que soit son nom aujourd'hui
+  const s = ligne("SELECT s.id, s.nom FROM specialite s JOIN capacite k ON k.specialite_id = s.id WHERE k.id = 'capacites/anansi-anti-corps'");
+  const nouveau = s.nom === 'CEMIES' ? 'CÉMIES' : `${s.nom} BIS`;
+  const r = enregistrer([{ op: 'modifier', table: 'specialite', cle: { id: s.id }, valeurs: { nom: nouveau } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
-  assert.equal(ligne('SELECT nom_cle FROM specialite WHERE id = ?', s.id).nom_cle, 'cemies');
-  assert.equal(JSON.parse(ligne("SELECT donnees FROM page WHERE id = 'capacites/anansi-anti-corps'").donnees).specialite, 'CÉMIES');
+  assert.equal(ligne('SELECT nom_cle FROM specialite WHERE id = ?', s.id).nom_cle, normalize(nouveau));
+  assert.equal(JSON.parse(ligne("SELECT donnees FROM page WHERE id = 'capacites/anansi-anti-corps'").donnees).specialite, nouveau);
 });
 
 test('don modifié : type et limite recalculés ; sa fiche suit (titre « Nom (Classe) », résumé, corps, type)', () => {
@@ -55,20 +68,23 @@ test('don modifié : type et limite recalculés ; sa fiche suit (titre « Nom (C
   const page = ligne("SELECT titre, resume, corps_md, donnees FROM page WHERE id = 'capacites/anansi-anti-corps'");
   assert.equal(page.titre, 'Anticorps puissants (Anansi)');
   assert.equal(page.resume, 'Immunisé aux poisons.');
-  assert.equal(page.corps_md, 'Immunisé aux poisons.\nEt aux fioles.\n');
+  assert.equal(page.corps_md, 'Immunisé aux poisons.  \nEt aux fioles.\n', 'le rendu de l’importeur : retour à la ligne forcé (lib/corps-classes.mjs#corpsDeDon)');
   assert.equal(JSON.parse(page.donnees).type_capacite, 'Actif (2 fois/combat)');
 });
 
 test('créer une classe dans une catégorie : page (mot-clé de la catégorie : rangée dans sa colonne), colonne de la matrice de la fiche', () => {
-  const r = enregistrer([{ op: 'creer', entite: 'classe', valeurs: { categorie_id: 'classe-magique', nom: 'Sorcier des marais', sante_depart: '6' } }]);
+  const nom = nomLibre('Sorcier des marais', 'classe', 'classes');
+  const id = `classes/${normalize(nom)}`;
+  const ordre = ligne('SELECT max(ordre) AS m FROM classe').m + 1;
+  const r = enregistrer([{ op: 'creer', entite: 'classe', valeurs: { categorie_id: 'classe-magique', nom, sante_depart: '6' } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
-  const c = ligne("SELECT * FROM classe WHERE id = 'classes/sorcier-des-marais'");
-  assert.deepEqual([c.categorie_id, c.sante_depart, c.ordre], ['classe-magique', 6, 40]);
-  const tags = lignes("SELECT libelle FROM page_tag WHERE page_id = 'classes/sorcier-des-marais' ORDER BY ordre").map((t) => t.libelle);
+  const c = ligne('SELECT * FROM classe WHERE id = ?', id);
+  assert.deepEqual([c.categorie_id, c.sante_depart, c.ordre], ['classe-magique', 6, ordre], 'à la suite des classes de la base');
+  const tags = lignes('SELECT libelle FROM page_tag WHERE page_id = ? ORDER BY ordre', id).map((t) => t.libelle);
   assert.deepEqual(tags, ['classe', 'magique']);
-  const groupe = groupClasses([{ id: 'classes/sorcier-des-marais', data: { title: 'Sorcier des marais', tags } }])[0];
+  const groupe = groupClasses([{ id, data: { title: nom, tags } }])[0];
   assert.equal(groupe.key, 'magiques');
-  assert.equal(ligne("SELECT count(*) AS n FROM race_classe WHERE classe_id = 'classes/sorcier-des-marais' AND accessible = 0").n, ligne('SELECT count(*) AS n FROM race').n);
+  assert.equal(ligne('SELECT count(*) AS n FROM race_classe WHERE classe_id = ? AND accessible = 0', id).n, ligne('SELECT count(*) AS n FROM race').n);
   for (const [valeurs, motif] of [
     [{ categorie_id: 'inconnue', nom: 'X' }, /catégorie inconnue/],
     [{ categorie_id: 'classe-magique' }, /Nom/],
@@ -81,22 +97,28 @@ test('créer une classe dans une catégorie : page (mot-clé de la catégorie : 
 });
 
 test('classe raciale : seulement pour une race hybride sans classe raciale ; elle prend le nom de la race et lui est seule accessible', () => {
-  assert.deepEqual(racesHybridesSansClasse(db).map((r) => r.id), ['races/drassahthac'], 'aujourd’hui : le Drassah’thac (R14)');
-  assert.equal(enregistrer([{ op: 'creer', entite: 'race', valeurs: { nom: 'Lycan', nature: 'hybride' } }]).statut, 200);
-  assert.equal(enregistrer([{ op: 'creer', entite: 'race', valeurs: { nom: 'Gnome', nature: 'pure' } }]).statut, 200);
+  // à l'import : le Drassah'thac seul (R14) ; le site a pu créer d'autres races hybrides, encore sans classe raciale
+  const avant = racesHybridesSansClasse(db).map((r) => r.id);
+  assert.ok(avant.includes('races/drassahthac'), 'le Drassah’thac (R14)');
+  const lycan = nomLibre('Lycan', 'race', 'races');
+  const gnome = nomLibre('Gnome', 'race', 'races');
+  const [idLycan, idGnome] = [lycan, gnome].map((n) => `races/${normalize(n)}`);
+  assert.equal(enregistrer([{ op: 'creer', entite: 'race', valeurs: { nom: lycan, nature: 'hybride' } }]).statut, 200);
+  assert.equal(enregistrer([{ op: 'creer', entite: 'race', valeurs: { nom: gnome, nature: 'pure' } }]).statut, 200);
   const listes = appel('GET', '/api/edition/listes/').corps;
-  assert.deepEqual(listes.racesSansClasse.map((r) => r.valeur), ['races/drassahthac', 'races/lycan']);
+  assert.deepEqual(listes.racesSansClasse.map((r) => r.valeur).sort(), [...avant, idLycan].sort());
   assert.ok(listes.categories.some((c) => c.valeur === 'classe-hybride-animal'));
-  for (const race of ['races/gnome', 'races/orios', 'races/humain']) {
+  for (const race of [idGnome, 'races/orios', 'races/humain']) {
     const refus = enregistrer([{ op: 'creer', entite: 'classe', valeurs: { categorie_id: 'classe-hybride-animal', race_id: race } }]);
     assert.equal(refus.statut, 400, race);
     assert.match(refus.corps.erreur, /race hybride qui n’a pas encore de classe raciale/);
   }
-  const r = enregistrer([{ op: 'creer', entite: 'classe', valeurs: { categorie_id: 'classe-hybride-animal', race_id: 'races/lycan', nom: 'ignoré' } }]);
+  const r = enregistrer([{ op: 'creer', entite: 'classe', valeurs: { categorie_id: 'classe-hybride-animal', race_id: idLycan, nom: 'ignoré' } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
-  assert.deepEqual(r.corps.crees, [{ entite: 'classe', id: 'classes/lycan' }]);
-  assert.equal(ligne("SELECT nom FROM classe WHERE id = 'classes/lycan'").nom, 'Lycan');
-  assert.deepEqual(lignes("SELECT race_id FROM race_classe WHERE classe_id = 'classes/lycan' AND accessible = 1").map((l) => l.race_id), ['races/lycan']);
-  assert.deepEqual(chargerRaces(db).races.get('races/lycan').classeRaciale, { id: 'classes/lycan', nom: 'Lycan' }, 'la page de la race la cite');
-  assert.deepEqual(racesHybridesSansClasse(db).map((r) => r.id), ['races/drassahthac']);
+  const idClasse = `classes/${normalize(lycan)}`;
+  assert.deepEqual(r.corps.crees, [{ entite: 'classe', id: idClasse }]);
+  assert.equal(ligne('SELECT nom FROM classe WHERE id = ?', idClasse).nom, lycan);
+  assert.deepEqual(lignes('SELECT race_id FROM race_classe WHERE classe_id = ? AND accessible = 1', idClasse).map((l) => l.race_id), [idLycan]);
+  assert.deepEqual(chargerRaces(db).races.get(idLycan).classeRaciale, { id: idClasse, nom: lycan }, 'la page de la race la cite');
+  assert.deepEqual(racesHybridesSansClasse(db).map((r) => r.id).sort(), [...avant].sort());
 });

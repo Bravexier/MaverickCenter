@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { chargerRaces } from '../src/lib/races-db.mjs';
 import { nomCourtDePeuple, relationsDeRace, tonalite } from '../src/lib/race-relations.mjs';
 
@@ -100,17 +101,42 @@ test('tonalité autour de « Neutre » ; nom court d’un peuple dans sa race', 
   assert.equal(nomCourtDePeuple('Autre Chose', 'Humain'), 'Autre Chose');
 });
 
-// Données réelles (matrice « Relation entre les races » de la base)
-const { relations } = chargerRaces(ouvrirBase({ sansExemples: false }));
+// Données réelles (matrice « Relation entre les races » de la base). Le site de dev est la source des peuples et des relations qu'il modifie (décision du
+// propriétaire) : la matrice de l'import se lit dans historique_modification (lib/historique-site.mjs), l'état courant est contrôlé par sa cohérence.
+const db = ouvrirBase({ sansExemples: false });
+const { relations } = chargerRaces(db);
+const historique = historiqueSite(db);
+const peuplesDeRace = (raceId) => new Set([...historique.lignesDImport('peuple'), ...relations.peuples.map((p) => ({ id: p.id, race_id: p.raceId }))]
+  .filter((p) => p.race_id === raceId).map((p) => p.id));
+/** Ni les peuples d'une race ni une case où l'un d'eux voit ou est vu n'ont été touchés par le site : ses exemples de l'import valent encore. */
+const relationsIntactes = (raceId) => {
+  const siens = peuplesDeRace(raceId);
+  return ![...siens].some((id) => historique.touchee('peuple', { id }))
+    && !historique.lignesTouchees('relation_peuple').some((c) => siens.has(c.ligne_peuple_id) || siens.has(c.colonne_peuple_id));
+};
 
-test('base : 69 peuples, 69 x 69 regards, 24 races présentes ; Anansi, Farfadet et Goleois n’ont pas de relations', () => {
-  assert.equal(relations.peuples.length, 69);
-  assert.equal(relations.regards.length, 69 * 69);
-  assert.equal(new Set(relations.peuples.map((p) => p.raceId)).size, 24);
-  for (const slug of ['anansi', 'farfadet', 'goleois']) assert.equal(relationsDeRace(relations, `races/${slug}`).peuples.length, 0, slug);
+test('base : 69 peuples, 69 x 69 regards, 24 races présentes à l’import ; chaque peuple se voit « Même peuple » ; une race sans peuple (Anansi, Farfadet, Goleois) n’a pas de relations', () => {
+  // à l'import
+  const peuplesImport = historique.lignesDImport('peuple');
+  assert.equal(peuplesImport.length, 69);
+  assert.equal(historique.effectifDImport('relation_peuple'), 69 * 69);
+  const racesImport = new Set(peuplesImport.map((p) => p.race_id));
+  assert.equal(racesImport.size, 24);
+  for (const slug of ['anansi', 'farfadet', 'goleois']) assert.ok(!racesImport.has(`races/${slug}`), slug);
+  // aujourd'hui : chaque regard vise deux peuples existants, chaque peuple a sa case « Même peuple », une race sans peuple n'a pas de relations
+  assert.equal(relations.peuples.length, db.prepare('SELECT count(*) AS n FROM peuple').get().n);
+  const ids = new Set(relations.peuples.map((p) => p.id));
+  for (const r of relations.regards) assert.ok(ids.has(r.peupleId) && ids.has(r.vuPeupleId), `${r.peupleId} → ${r.vuPeupleId}`);
+  const diagonale = new Map(relations.regards.filter((r) => r.peupleId === r.vuPeupleId).map((r) => [r.peupleId, r.echelleId]));
+  for (const p of relations.peuples) assert.equal(diagonale.get(p.id), 'meme-peuple', `${p.nom} : case « Même peuple »`);
+  const avecPeuple = new Set(relations.peuples.map((p) => p.raceId));
+  for (const { id } of db.prepare('SELECT id FROM race').all()) {
+    if (!avecPeuple.has(id)) assert.equal(relationsDeRace(relations, id).peuples.length, 0, id);
+  }
 });
 
-test('Elfe noir : Charbon et Salé ne voient pas les autres pareil, ils ne sont pas regroupés ; Charbon voit Salé « Ennemie », Salé voit Charbon « Haine »', () => {
+test('Elfe noir : Charbon et Salé ne voient pas les autres pareil, ils ne sont pas regroupés ; Charbon voit Salé « Ennemie », Salé voit Charbon « Haine »', (t) => {
+  if (!relationsIntactes('races/elfe-noir')) return t.skip('relations de l’Elfe noir modifiées depuis le site');
   const r = relationsDeRace(relations, 'races/elfe-noir');
   assert.deepEqual(r.peuples.map((p) => p.nom), ['Elfe Noir Charbon', 'Elfe Noir Salé']);
   assert.deepEqual(r.voit.map((b) => b.peuples.map((p) => p.nom)), [['Elfe Noir Charbon'], ['Elfe Noir Salé']]);
@@ -120,20 +146,31 @@ test('Elfe noir : Charbon et Salé ne voient pas les autres pareil, ils ne sont 
   assert.equal(r.interne.cases.get(sale).get(charbon).libelle, 'Haine');
 });
 
-test('Mort-vivant (R12) : il évite 62 peuples, tous les autres le voient « Neutre » (sauf un allié)', () => {
+test('Mort-vivant (R12) : il évite 62 peuples, tous les autres le voient « Neutre » (sauf un allié)', (t) => {
+  if (!relationsIntactes('races/mort-vivant')) return t.skip('relations du Mort-vivant modifiées depuis le site');
   const r = relationsDeRace(relations, 'races/mort-vivant');
   const compte = (bloc, niveau) => bloc.niveaux.find((n) => n.echelle.id === niveau)?.cibles.reduce((t, c) => t + c.peuples.length, 0) ?? 0;
   assert.equal(compte(r.voit[0], 'evitee'), 62);
   assert.equal(compte(r.vu[0], 'neutre'), 67);
 });
 
-test('toute relation est citée une fois par bloc : un bloc couvre les 69 peuples moins ceux de la race', () => {
+test('toute relation est citée une fois par bloc : un bloc cite exactement les peuples des autres races avec qui la case existe (tous à l’import)', () => {
+  const cases = new Set(relations.regards.map((r) => `${r.peupleId}|${r.vuPeupleId}`));
   for (const raceId of new Set(relations.peuples.map((p) => p.raceId))) {
     const r = relationsDeRace(relations, raceId);
-    for (const bloc of [...r.voit, ...r.vu]) {
-      const vus = bloc.niveaux.flatMap((n) => n.cibles.flatMap((c) => c.peuples.map((p) => p.id)));
-      assert.equal(vus.length, 69 - r.peuples.length, raceId);
-      assert.equal(new Set(vus).size, vus.length, `${raceId} : un peuple cité deux fois`);
+    const autres = relations.peuples.filter((p) => p.raceId !== raceId).map((p) => p.id);
+    for (const [sens, blocs] of [['voit', r.voit], ['vu', r.vu]]) {
+      for (const bloc of blocs) {
+        const vus = bloc.niveaux.flatMap((n) => n.cibles.flatMap((c) => c.peuples.map((p) => p.id)));
+        assert.equal(new Set(vus).size, vus.length, `${raceId} : un peuple cité deux fois`);
+        const ref = bloc.peuples[0].id;
+        const attendus = autres.filter((a) => cases.has(sens === 'voit' ? `${ref}|${a}` : `${a}|${ref}`));
+        assert.deepEqual([...vus].sort(), attendus.sort(), `${raceId} (${sens})`);
+      }
     }
   }
+  // à l'import, la matrice est complète : chaque bloc couvre les 69 peuples moins ceux de la race
+  const peuplesImport = historique.lignesDImport('peuple');
+  const casesImport = new Set(historique.lignesDImport('relation_peuple').map((c) => `${c.ligne_peuple_id}|${c.colonne_peuple_id}`));
+  for (const a of peuplesImport) for (const b of peuplesImport) assert.ok(casesImport.has(`${a.id}|${b.id}`), `${a.id} → ${b.id}`);
 });

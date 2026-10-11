@@ -1,17 +1,11 @@
 // Champs d'un métier et ce que la base en tire (tables metier, metier_bonus, metier_recette_famille, page du métier) : les mêmes découpages que
 // l'importeur du Google Doc « MÉTIER », réécrits ici pour l'édition depuis le site de dev (client/serveur/edition.mjs). Un test les rejoue sur les
 // 72 métiers de la base : ils doivent redonner exactement les lignes en place (test/metier-champs.test.mjs).
-// Fonctions pures, sans dépendance (sauf text.mjs) : partagées par le service et par les pages.
+// Le corps de la page (champs « **Libellé :** valeur ») est fabriqué par lib/corps-metiers.mjs : ses fonctions sont réexportées ici.
+// Fonctions pures, sans dépendance (sauf text.mjs et corps-metiers.mjs) : partagées par le service et par les pages.
 import { normalize } from './text.mjs';
 
-/** Libellés des champs dans la page du métier (un champ par ligne « **Libellé :** valeur »), dans l'ordre de la page. */
-export const CHAMPS_DU_CORPS = [
-  { colonne: 'description', libelle: 'Description du métier' },
-  { colonne: 'bonus_brut', libelle: 'Bonus' },
-  { colonne: 'artisanat_brut', libelle: 'Artisanat possible' },
-  { colonne: 'equipement_brut', libelle: 'Équipement supplémentaire possible' },
-  { colonne: 'avantage_brut', libelle: 'Avantage possible' },
-];
+export { CHAMPS_DU_CORPS, corpsDeMetier, echapperMarkdown, remplacerChampDuCorps } from './corps-metiers.mjs';
 
 /** Valeur d'un champ « rien » (Artisanat, Équipement) : écrite telle quelle dans la source. */
 export const RIEN = 'Rien';
@@ -92,21 +86,3 @@ export function resumeDeDescription(description) {
   const m = /^(.+?[.!?…])\s/s.exec(texte);
   return m ? m[1] : texte;
 }
-
-/** Échappe un texte pour une ligne de Markdown : rien de ce qui est écrit ne devient un lien, une mise en forme ou une balise. */
-export const echapperMarkdown = (texte) => String(texte ?? '').replace(/([\\[\]*_`<>])/g, '\\$1');
-
-/**
- * Remplace la valeur d'un champ « **Libellé :** valeur » dans le corps d'une page (les autres lignes, liens [[…]] compris, ne bougent pas) ; un champ
- * absent est ajouté à la fin. `valeur` null ou vide : « **Libellé :** » sans valeur (comme « Avantage possible » de l'Artisan).
- */
-export function remplacerChampDuCorps(corps, libelle, valeur) {
-  const ligne = `**${libelle} :**${valeur ? ` ${echapperMarkdown(valeur)}` : ''}`;
-  const motif = new RegExp(`^\\*\\*${libelle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} :\\*\\*.*$`, 'm');
-  if (motif.test(corps)) return corps.replace(motif, () => ligne);
-  return `${corps.replace(/\s*$/, '')}\n\n${ligne}\n`;
-}
-
-/** Le corps de la page d'un métier créé depuis le site : ses cinq champs, dans l'ordre de la page. */
-export const corpsDeMetier = (metier) =>
-  `${CHAMPS_DU_CORPS.map((c) => `**${c.libelle} :**${metier[c.colonne] ? ` ${echapperMarkdown(metier[c.colonne])}` : ''}`).join('\n\n')}\n`;

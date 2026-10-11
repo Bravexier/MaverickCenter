@@ -158,7 +158,8 @@ branche **`site`** ([`docs/flux-git.md`](../../docs/flux-git.md)). Le serveur de
    - **dans GitHub** (une fois pour le dépôt) : *Settings → Developer settings → Fine-grained tokens*, un jeton d'un administrateur du dépôt,
      dépôt `MaverickCenter` seulement, permissions *Contents*, *Pull requests* et *Workflows* en lecture et écriture ; l'enregistrer dans le
      dépôt, *Settings → Secrets and variables → Actions → New repository secret*, sous le nom **`MISE_A_JOUR_TOKEN`**. C'est lui qui pousse la
-     branche, ouvre et fusionne les deux PR (le jeton d'un workflow ne déclencherait ni la CI ni la livraison) ;
+     branche, ouvre et fusionne les deux PR (le jeton d'un workflow ne déclencherait ni la CI ni la livraison) ; seul le job `livrer` du
+     workflow le reçoit, sans npm ni dépendance (le job `preparer`, qui lance les tests, n'a aucun secret) ;
    - **sur le serveur** : un second jeton fine-grained, dépôt `MaverickCenter` seulement, permission *Actions* en lecture et écriture (rien
      d'autre : il ne fait que lancer et suivre le workflow). Depuis votre ordinateur, lancer la commande, coller le jeton, puis Entrée :
 
@@ -167,8 +168,12 @@ branche **`site`** ([`docs/flux-git.md`](../../docs/flux-git.md)). Le serveur de
    ```
 
    Le service relit le fichier à chaque lancement : rien à redémarrer. Sans ce fichier, la page donne les valeurs pour lancer le workflow à la
-   main (*Actions → Mise à jour des règles → Run workflow*, branche `dev`). Attention : la **première** mise à jour fait la livraison 0.2.0
-   (« Le jour de la 0.2.0 » ci-dessous).
+   main (*Actions → Mise à jour des règles → Run workflow*, branche `dev`, case « essai » cochée pour une simulation, décochée sinon : le
+   workflow refuse un lot figé pour l'autre mode). Attention : la **première** mise à jour fait la livraison 0.2.0 (« Le jour de la 0.2.0 »
+   ci-dessous) ; lancer d'abord une **« Simulation de mise à jour »** (bouton à côté) : sur GitHub, le lot est rejoué sur `dev` et passe tous
+   les contrôles de la CI, puis le job `livrer` vérifie le commit, son application sur `dev` et le jeton (écriture par un `git push --dry-run`,
+   lecture des PR) ; rien n'est poussé. Seuls les droits *Pull requests* et *Workflows* en écriture du jeton ne peuvent pas se vérifier sans
+   effet de bord (le résumé du run le rappelle).
 
 Ce qui diffère d'un serveur installé à partir de la 0.2.0 :
 

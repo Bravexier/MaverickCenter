@@ -4,7 +4,7 @@
 // GitHub), l'annulation, et le lancement terminé quand sa note arrive dans les règles.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { copyFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -13,7 +13,7 @@ import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante, viderBrouillonLivre } from '../serveur/base-vivante.mjs';
 import { demarrerService } from '../serveur/service.mjs';
 import {
-  actualiserLancement, CONFIRMATION, creerGithub, INTERVALLE_SUIVI, lireLancement, lireLot, WORKFLOW,
+  actualiserLancement, CONFIRMATION, creerGithub, DUREE_MAX_RUN, INTERVALLE_SUIVI, libererLot, lireLancement, lireLot, WORKFLOW,
 } from '../serveur/notes-de-version.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 
@@ -41,6 +41,7 @@ const journal = [];
 const service = {
   base: () => db, etat: () => ({ service: 'essai', version: '0.1.76' }), journal: (l) => journal.push(l), edition: true,
   dossier, reference, depot: 'Bravexier/MaverickCenter', adresse: 'https://dev.exemple.org', github: null,
+  limites: { delai: 0, parJour: Infinity }, // la fréquence des lancements a son propre test (serveur-mise-a-jour-etats)
 };
 const JSON_ = { 'content-type': 'application/json' };
 const appel = (methode, chemin_, corps, s = service, entetes = JSON_) =>
@@ -173,7 +174,7 @@ test('GitHub : déclenchement du workflow sur dev, suivi du run, échec, refus d
   assert.equal(d.url, `https://api.github.com/repos/Bravexier/MaverickCenter/actions/workflows/${WORKFLOW}/dispatches`);
   assert.equal(d.methode, 'POST');
   assert.equal(d.auth, 'Bearer jeton-actions');
-  assert.deepEqual(d.corps, { ref: 'dev', inputs: { lot: lance.lot, empreinte: lance.empreinte, adresse: lance.adresse }, return_run_details: true });
+  assert.deepEqual(d.corps, { ref: 'dev', inputs: { lot: lance.lot, empreinte: lance.empreinte, adresse: lance.adresse, essai: 'false' }, return_run_details: true });
   assert.equal(appel('POST', '/api/mise-a-jour/liberer/', {}, s).statut, 409, 'pas d’annulation pendant le run');
   // suivi : en cours, puis échec (au plus une interrogation par INTERVALLE_SUIVI)
   const t0 = 1_000_000_000_000;
@@ -192,15 +193,132 @@ test('GitHub : déclenchement du workflow sur dev, suivi du run, échec, refus d
   assert.match(lireLancement(dossier).erreur, /401 : Bad credentials/);
 });
 
+test('annulé pendant l’envoi à GitHub : le run parti quand même est annulé, l’état reste « annulé », le texte reste libre', async () => {
+  appel('POST', '/api/mise-a-jour/liberer/', {});
+  let repondre;
+  const appels = [];
+  const fauxFetch = (url, options = {}) => {
+    appels.push({ url, methode: options.method ?? 'GET' });
+    if (url.endsWith('/dispatches')) return new Promise((ok) => { repondre = () => ok(new Response(JSON.stringify({ workflow_run_id: 11, html_url: 'u' }), { status: 200 })); });
+    if (url.endsWith('/actions/runs/11/cancel')) return Promise.resolve(new Response('', { status: 202 }));
+    return Promise.resolve(new Response('?', { status: 404 }));
+  };
+  const github = creerGithub({ dossier, depot: 'Bravexier/MaverickCenter', lireJeton: () => 'j', fetch: fauxFetch, journal: () => {} });
+  const s = { ...service, github };
+  assert.equal(appel('POST', '/api/mise-a-jour/lancer/', { confirmation: CONFIRMATION }, s).corps.lancement.etat, 'envoi');
+  for (let i = 0; i < 50 && !repondre; i++) await new Promise((ok) => setTimeout(ok, 5));
+  assert.equal(appel('POST', '/api/mise-a-jour/liberer/', {}, s).corps.lancement.etat, 'annule', 'annulable tant qu’il est en envoi');
+  repondre();
+  for (let i = 0; i < 50 && !appels.some((a) => a.url.endsWith('/cancel')); i++) await new Promise((ok) => setTimeout(ok, 10));
+  await new Promise((ok) => setTimeout(ok, 20));
+  const l = lireLancement(dossier);
+  assert.equal(l.etat, 'annule', 'jamais réécrit en « lancé »');
+  assert.equal(l.run.id, 11);
+  assert.equal(l.erreur, null);
+  assert.deepEqual(appels.filter((a) => a.url.endsWith('/cancel')).map((a) => a.methode), ['POST']);
+  assert.equal(appel('GET', '/api/mise-a-jour/', undefined, s).corps.brouillon.lot, null);
+});
+
+test('sans identifiant de run rendu par GitHub : le run est retrouvé par son nom (lot) ; sans nouvelles au-delà de 3 h, annulable', async () => {
+  appel('POST', '/api/mise-a-jour/liberer/', {});
+  // le nom de chaque run porte le lot (run-name du workflow)
+  const yml = readFileSync(new URL('../../.github/workflows/mise-a-jour.yml', import.meta.url), 'utf8');
+  assert.match(yml, /^run-name: .*\$\{\{ inputs\.lot \}\}/m);
+  let runs = [];
+  const fauxFetch = async (url) => {
+    if (url.endsWith('/dispatches')) return new Response(null, { status: 204 }); // ancien comportement : aucun détail
+    if (url.includes(`/actions/workflows/${WORKFLOW}/runs?`)) return new Response(JSON.stringify({ workflow_runs: runs }), { status: 200 });
+    return new Response('?', { status: 404 });
+  };
+  const github = creerGithub({ dossier, depot: 'Bravexier/MaverickCenter', lireJeton: () => 'j', fetch: fauxFetch, journal: () => {} });
+  const s = { ...service, github };
+  appel('POST', '/api/mise-a-jour/lancer/', { confirmation: CONFIRMATION, simulation: true }, s);
+  for (let i = 0; i < 50 && lireLancement(dossier).etat === 'envoi'; i++) await new Promise((ok) => setTimeout(ok, 10));
+  const l = lireLancement(dossier);
+  assert.deepEqual([l.etat, l.run], ['lance', null]);
+  // pas encore visible : on attend, sans erreur
+  assert.equal((await github.suivre({ maintenant: 4_000_000_000_000 })).etat, 'lance');
+  runs = [{ id: 1, display_title: 'Mise à jour des règles — lot autre-lot', status: 'completed', conclusion: 'success' },
+    { id: 77, display_title: `Mise à jour des règles — lot ${l.lot} (simulation)`, status: 'in_progress', conclusion: null, html_url: 'https://github.com/x/runs/77' }];
+  const suivi = await github.suivre({ maintenant: 4_000_000_000_000 + INTERVALLE_SUIVI });
+  assert.equal(suivi.etat, 'en_cours');
+  assert.deepEqual([suivi.run.id, suivi.run.url], [77, 'https://github.com/x/runs/77']);
+  // toujours en cours : pas annulable… sauf sans nouvelles au-delà de la durée maximale d'un run
+  assert.equal(appel('POST', '/api/mise-a-jour/liberer/', {}, s).statut, 409);
+  const plusTard = new Date(Date.parse(suivi.lance_le) + DUREE_MAX_RUN + 60_000).toISOString().replace(/\.\d{3}Z$/, 'Z');
+  assert.equal(libererLot(db, dossier, { instant: plusTard }).etat, 'annule');
+  assert.equal(appel('GET', '/api/mise-a-jour/', undefined, s).corps.brouillon.lot, null);
+});
+
+test('simulation de mise à jour : le workflow reçoit essai=true ; finie (réussie ou non), le lot est libéré, rien n’est livré', async () => {
+  const precedent = lireLancement(dossier);
+  appel('POST', '/api/mise-a-jour/liberer/', {}); // l'état laissé par le test précédent (erreur) : le texte redevient modifiable
+  const appels = [];
+  let run = { status: 'in_progress', conclusion: null, html_url: 'https://github.com/x/runs/9' };
+  const fauxFetch = async (url, options = {}) => {
+    appels.push({ url, corps: options.body ? JSON.parse(options.body) : null });
+    if (url.endsWith('/dispatches')) return new Response(JSON.stringify({ workflow_run_id: 9, html_url: run.html_url }), { status: 200 });
+    if (url.endsWith('/actions/runs/9')) return new Response(JSON.stringify(run), { status: 200 });
+    return new Response('?', { status: 404 });
+  };
+  const github = creerGithub({ dossier, depot: 'Bravexier/MaverickCenter', lireJeton: () => 'j', fetch: fauxFetch });
+  const s = { ...service, github };
+  assert.equal(appel('POST', '/api/mise-a-jour/lancer/', { confirmation: CONFIRMATION, simulation: 'oui' }).corps.lancement.simulation, false,
+    'seul true demande une simulation');
+  appel('POST', '/api/mise-a-jour/liberer/', {});
+  // une vraie mise à jour : essai=false (son run échoue tout de suite pour libérer la place)
+  run = { ...run, status: 'completed', conclusion: 'failure' };
+  appel('POST', '/api/mise-a-jour/lancer/', { confirmation: CONFIRMATION }, s);
+  for (let i = 0; i < 50 && lireLancement(dossier).etat === 'envoi'; i++) await new Promise((ok) => setTimeout(ok, 10));
+  await github.suivre({ maintenant: 1_000_000_000_000 });
+  assert.equal(lireLancement(dossier).etat, 'echec');
+  appel('POST', '/api/mise-a-jour/liberer/', {}, s);
+  run = { status: 'in_progress', conclusion: null, html_url: run.html_url };
+  const r = appel('POST', '/api/mise-a-jour/lancer/', { confirmation: CONFIRMATION, simulation: true }, s);
+  assert.equal(r.statut, 202, JSON.stringify(r.corps));
+  assert.equal(r.corps.lancement.simulation, true);
+  for (let i = 0; i < 50 && lireLancement(dossier).etat === 'envoi'; i++) await new Promise((ok) => setTimeout(ok, 10));
+  assert.equal(appels.filter((a) => a.url.endsWith('/dispatches')).at(-1).corps.inputs.essai, 'true');
+  assert.equal(appels.filter((a) => a.url.endsWith('/dispatches')).at(-2).corps.inputs.essai, 'false', 'une vraie mise à jour : essai=false');
+  assert.ok(appel('GET', '/api/mise-a-jour/', undefined, s).corps.brouillon.lot, 'pendant la simulation, le texte est figé');
+  assert.equal(appel('POST', '/api/mise-a-jour/lancer/', { confirmation: CONFIRMATION }, s).statut, 409, 'pas de second lancement pendant la simulation');
+  // fin réussie : le lot est libéré, l'état dit « simulation réussie »
+  run = { ...run, status: 'completed', conclusion: 'success' };
+  await github.suivre({ maintenant: 2_000_000_000_000 });
+  assert.equal(lireLancement(dossier).etat, 'termine');
+  const n = appel('GET', '/api/mise-a-jour/', undefined, s).corps;
+  assert.equal(n.lancement.etat, 'simulation_reussie');
+  assert.equal(n.brouillon.lot, null, 'le texte redevient modifiable');
+  // une seconde simulation qui échoue : libérée aussi
+  appel('POST', '/api/mise-a-jour/lancer/', { confirmation: CONFIRMATION, simulation: true }, s);
+  for (let i = 0; i < 50 && lireLancement(dossier).etat === 'envoi'; i++) await new Promise((ok) => setTimeout(ok, 10));
+  run = { ...run, status: 'completed', conclusion: 'failure' };
+  await github.suivre({ maintenant: 3_000_000_000_000 });
+  const m = appel('GET', '/api/mise-a-jour/lancement/', undefined, s).corps;
+  assert.equal(m.lancement.etat, 'simulation_echouee');
+  assert.equal(appel('GET', '/api/mise-a-jour/', undefined, s).corps.brouillon.lot, null);
+  // une simulation réussie ne bloque pas une vraie mise à jour (qui, elle, reste verrouillée jusqu'à sa livraison)
+  const vraie = appel('POST', '/api/mise-a-jour/lancer/', { confirmation: CONFIRMATION }, { ...service, github: null });
+  assert.equal(vraie.statut, 202);
+  assert.equal(vraie.corps.lancement.simulation, false);
+  // remet l'état d'erreur attendu par le test suivant (un lancement figé dont la note arrivera dans les règles)
+  writeFileSync(join(dossier, 'mise-a-jour', 'etat.json'), `${JSON.stringify({ ...lireLancement(dossier), etat: 'erreur', erreur: precedent?.erreur ?? 'x' }, null, 2)}\n`);
+});
+
 test('la note livrée arrive dans les règles : lancement terminé, brouillon vidé (base vivante refaite)', () => {
   const l = lireLancement(dossier);
   assert.equal(l.etat, 'erreur');
   assert.ok(appel('GET', '/api/mise-a-jour/').corps.brouillon.lot, 'lot encore figé');
   // ce que fait la nouvelle version du site : la note de version porte le lot (scripts/mise-a-jour-regles.mjs)
   db.prepare("INSERT INTO note_version (version, publiee_le, depuis, texte, lot, exemple) VALUES ('0.2', '2026-10-11', '0.1', NULL, ?, 0)").run(l.lot);
-  const actuel = actualiserLancement(db, dossier);
+  // arrivée dans les règles de dev = fusionnée dans dev, pas encore livrée sur master (la référence est en 0.1)
+  let actuel = actualiserLancement(db, dossier, { reference: { version: '0.1.0' } });
+  assert.deepEqual([actuel.etat, actuel.version_livree], ['fusionne', '0.2']);
+  assert.equal(appel('POST', '/api/mise-a-jour/liberer/', { lot: l.lot }).statut, 409, 'dans dev : ne s’annule plus');
+  // livrée : la référence (master) porte la version de sa note
+  actuel = actualiserLancement(db, dossier, { reference: { version: '0.2.0' } });
   assert.deepEqual([actuel.etat, actuel.version_livree], ['termine', '0.2']);
-  assert.equal(appel('POST', '/api/mise-a-jour/liberer/', {}).statut, 409, 'livré : rien à annuler');
+  assert.equal(appel('POST', '/api/mise-a-jour/liberer/', { lot: l.lot }).statut, 409, 'livré : rien à annuler');
   viderBrouillonLivre(db);
   const n = appel('GET', '/api/mise-a-jour/').corps;
   assert.equal(n.brouillon.lot, null);

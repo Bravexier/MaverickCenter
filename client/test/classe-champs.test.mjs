@@ -1,8 +1,9 @@
 // Champs d'une classe et d'un don (lib/classe-champs.mjs) : les découpages que l'édition du site de dev applique quand un champ change doivent
-// redonner, sur les 39 classes et les 660 dons de la base, exactement les lignes en place.
+// redonner, sur toutes les classes et tous les dons de la base (39 et 660 à l'import), exactement les lignes en place.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import {
   analyserTypeDeDon, bouclierMax, decouperInventaire, decouperMaitriseArme, decouperMaitriseArmure, MOT_CLE_DE_CATEGORIE,
 } from '../src/lib/classe-champs.mjs';
@@ -12,9 +13,10 @@ const classes = db.prepare('SELECT * FROM classe ORDER BY id').all();
 const objets = db.prepare('SELECT id, nom_cle FROM objet_depart').all();
 const sans = (l, ...colonnes) => l.map((x) => Object.fromEntries(Object.entries(x).filter(([c]) => !colonnes.includes(c))));
 
-test('39 classes, 660 dons', () => {
-  assert.equal(classes.length, 39);
-  assert.equal(db.prepare('SELECT count(*) AS n FROM capacite').get().n, 660);
+test('39 classes, 660 dons à l’import (le site peut en créer : les contrôles suivants portent sur toutes les lignes en place)', () => {
+  const historique = historiqueSite(db);
+  assert.equal(historique.effectifDImport('classe'), 39);
+  assert.equal(historique.effectifDImport('capacite'), 660);
 });
 
 test('maîtrise des armes : classe_maitrise_arme ligne pour ligne', () => {

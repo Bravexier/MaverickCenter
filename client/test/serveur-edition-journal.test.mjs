@@ -155,6 +155,40 @@ test('livraison qui contredit une modification : le lot entier passe « conflit 
   assert.match(conflits[0].detail, /metiers\/forgeron.*description/);
 });
 
+test('journal rejoué sur des règles qui le contiennent déjà : deux lots sur la même colonne, une ligne créée, modifiée puis supprimée, une autre supprimée puis recréée : « intégré »', () => {
+  const { chemin } = vivante();
+  const BONUS = { metier_id: FORGERON.id, rang: 9, option: 1 };
+  lot(chemin, 'L1', (w) => w.modifier('metier', FORGERON, { description: 'D1' }));
+  lot(chemin, 'L2', (w) => w.modifier('metier', FORGERON, { description: 'D2', equipement_brut: 'Enclume' }), '2026-10-10T12:01:00Z');
+  lot(chemin, 'L3', (w) => w.inserer('metier_bonus', { ...BONUS, texte: 'X', valeur: null, unite: null, cible: null, cible_cle: null, origine: 'docs_typees', source_ref: 'Site de dev' }), '2026-10-10T12:02:00Z');
+  lot(chemin, 'L4', (w) => w.modifier('metier_bonus', BONUS, { texte: 'Y' }), '2026-10-10T12:03:00Z');
+  lot(chemin, 'L5', (w) => w.modifier('metier_bonus', BONUS, { texte: 'Z' }), '2026-10-10T12:04:00Z');
+  lot(chemin, 'L6', (w) => w.supprimer('metier_bonus', BONUS), '2026-10-10T12:05:00Z');
+  // une ligne des règles supprimée puis recréée autrement
+  const RANG1 = { metier_id: FORGERON.id, rang: 1, option: 2 };
+  const ancienne = lot(chemin, 'L7', (w) => w.supprimer('metier_bonus', RANG1), '2026-10-10T12:06:00Z');
+  assert.equal(ancienne.nombre, 1);
+  lot(chemin, 'L8', (w) => w.inserer('metier_bonus', { ...RANG1, texte: 'Recréée', valeur: null, unite: null, cible: null, cible_cle: null, origine: 'docs_typees', source_ref: 'Site de dev' }), '2026-10-10T12:07:00Z');
+  const source = new DatabaseSync(chemin, { readOnly: true });
+  const journal = journalExporte(source);
+  source.close();
+  // les règles livrées : le journal y a été rejoué puis vidé (data/rows après db:appliquer-edition)
+  const livree = new DatabaseSync(regles());
+  livree.exec('BEGIN');
+  chargerJournal(livree, journal);
+  // la ligne créée puis supprimée par le journal n'a rien à rejouer : ses quatre modifications sont « intégrées »
+  assert.deepEqual(rejouer(livree), { appliquees: 4, integrees: 4, conflits: 0, lots: 8 });
+  assert.equal(livree.prepare('SELECT count(*) AS n FROM metier_bonus WHERE metier_id = ? AND rang = 9').get(FORGERON.id).n, 0);
+  livree.exec('DELETE FROM modification; DELETE FROM modification_lot');
+  livree.exec('COMMIT');
+  livree.exec('BEGIN');
+  chargerJournal(livree, journal);
+  assert.deepEqual(rejouer(livree), { appliquees: 0, integrees: 8, conflits: 0, lots: 8 });
+  livree.exec('COMMIT');
+  assert.deepEqual({ ...livree.prepare('SELECT description, equipement_brut FROM metier WHERE id = ?').get(FORGERON.id) }, { description: 'D2', equipement_brut: 'Enclume' });
+  livree.close();
+});
+
 test('rejouer : une insertion dont le parent a disparu des règles rompt une clé étrangère : conflit', () => {
   const { chemin } = vivante();
   lot(chemin, 'L1', (w) =>

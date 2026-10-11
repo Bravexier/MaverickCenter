@@ -3,11 +3,11 @@
 //   node scripts/autolink.mjs            aperçu : n'écrit rien, affiche statistiques et exemples
 //   node scripts/autolink.mjs --write    applique les liens dans src/content/wiki/**/*.md
 //   --verbose                            liste tous les liens proposés ; --max <n> : limite par page (25 par défaut)
-// Idempotent. Ne modifie jamais le frontmatter ; ignore les pages `status: example`.
+// Idempotent. Ne modifie jamais le frontmatter ; ignore les pages `status: example` et celles que l’édition refait depuis les tables (TYPES_SANS_MAILLAGE).
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { autolink, buildTerms } from '../src/lib/autolink.mjs';
+import { aMailler, autolink, buildTerms } from '../src/lib/autolink.mjs';
 import { scanContent } from '../src/lib/wikilinks.mjs';
 
 const contentDir = fileURLToPath(new URL('../src/content/wiki', import.meta.url));
@@ -29,7 +29,8 @@ const samples = [];
 let changedFiles = 0;
 let totalLinks = 0;
 
-for (const page of pages) {
+// les pages rendues depuis les tables (races, classes, dons, magies : TYPES_SANS_MAILLAGE) ne reçoivent pas de liens ; elles en restent des cibles
+for (const page of pages.filter(aMailler)) {
   const file = join(contentDir, page.type, `${page.slug}.md`);
   const raw = readFileSync(file, 'utf8');
   const match = raw.match(/^(---\r?\n[\s\S]*?\r?\n---\r?\n?)([\s\S]*)$/);

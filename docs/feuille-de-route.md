@@ -15,7 +15,7 @@ n'est encore réalisé au-delà de la première étape.
    `npm run db:appliquer-edition` (`docs/serveur.md`, « Édition »). **Deuxième pas** (2026-10) : la page « Mise à jour » liste ce que la dev change
    par rapport à la production, en note de version historisée, et son bouton apporte les modifications du site dans `data/rows` puis livre en
    production (`docs/serveur.md`, « Mise à jour ») ; le propriétaire a décidé que **le site devient la source** des données qu'il modifie (les
-   modifications versées dans `historique_modification`). Relecture (`brouillon / validé`), auteur (connexion Discord) et accès restreint au bouton restent à faire.
+   modifications versées dans `historique_modification`, que les tests relisent pour ne plus épingler ce que le site a changé : `client/src/lib/historique-site.mjs`). Relecture (`brouillon / validé`), auteur (connexion Discord) et accès restreint au bouton restent à faire.
 3. **Simulation de combats** (à long terme) : jouer des combats pour juger l'équilibrage des sorts, des classes et des races.
 
 ## Orthographe : relecture complète à la conversion en SQL

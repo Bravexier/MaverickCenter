@@ -2,9 +2,13 @@
 //   - fonctions pures sur des dons synthétiques : type et précision, groupes de choix, étages du plateau, lignes du tableau du Mage Bleu ;
 //   - la base réelle : 39 classes, chaque don placé une fois et une seule, les choix sont ceux de la vue v_capacite_exclusive (la disposition
 //     de l'onglet), exemples du propriétaire (Barde, Archimage), rien ne vient d'un tableau Markdown.
+// Le site de dev est la source des classes et des dons qu'il modifie (décision du propriétaire) : les effectifs et les valeurs citées de l'import se lisent
+// dans historique_modification (lib/historique-site.mjs) ; une classe qu'il a créée n'a pas encore de don (l'édition n'en crée pas) : « à compléter ».
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { ditClasseMagique } from '../src/lib/classe-magique.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { chargerClasses } from '../src/lib/classes-db.mjs';
 import { donsDuPlateau, entreeAnnexe, groupesDeChoix, nomsSeRepondent, plateauDeDons, typeDeDon } from '../src/lib/classe-dons.mjs';
 
@@ -86,14 +90,21 @@ test('nomsSeRepondent : deux noms coupés qui se complètent', () => {
 
 const db = ouvrirBase({ sansExemples: false });
 const { classes, typesDon } = chargerClasses(db);
+const historique = historiqueSite(db);
+const compte = (table) => db.prepare(`SELECT count(*) AS n FROM ${table}`).get().n;
 const classe = (slug) => classes.get(`classes/${slug}`);
-const noms = (dons) => dons.map((d) => d.nom);
+// les noms des exemples du propriétaire sont ceux de l'import (le site de dev peut renommer un don ou une spécialité) : on contrôle la disposition
+const nomDImport = (d) => historique.valeurDImport('capacite', { id: d.id }, 'nom', d.nom);
+const noms = (dons) => dons.map(nomDImport);
+const nomDeSpecialite = (s) => historique.valeurDImport('specialite', { id: s.id }, 'nom', s.nom);
 
-test('39 classes, dans l’ordre du Sommaire ; 660 dons ; les quatre types de don du guide', () => {
-  assert.equal(classes.size, 39);
+test('39 classes (à l’import), dans l’ordre du Sommaire ; 660 dons ; les quatre types de don du guide', () => {
+  assert.equal(classes.size, compte('classe'));
+  assert.equal(historique.effectifDImport('classe'), 39);
   const ordres = [...classes.values()].map((c) => c.ordre);
   assert.deepEqual(ordres, [...ordres].sort((a, b) => a - b));
-  assert.equal([...classes.values()].reduce((n, c) => n + c.dons.length, 0), 660);
+  assert.equal([...classes.values()].reduce((n, c) => n + c.dons.length, 0), compte('capacite'));
+  assert.equal(historique.effectifDImport('capacite'), 660);
   assert.deepEqual(typesDon.map((t) => t.nom), ['Passif', 'Actif', 'Action', 'Réaction']);
 });
 
@@ -125,9 +136,16 @@ test('les choix affichés sont exactement ceux de la vue v_capacite_exclusive (l
   assert.deepEqual([...affiches].sort(), [...vue].sort());
 });
 
-test('38 classes : deux dons reçus sans choix en haut (niveaux 1 et 5), les deux spécialités, un don au niveau 20 en bas', () => {
+test('38 classes (toutes sauf l’Archimage) : deux dons reçus sans choix en haut (niveaux 1 et 5), les deux spécialités, un don au niveau 20 en bas', (t) => {
+  assert.equal(historique.lignesDImport('classe').filter((c) => c.id !== 'classes/archimage').length, 38, 'à l’import');
   for (const c of classes.values()) {
     if (c.id === 'classes/archimage') continue;
+    if (!c.dons.length) {
+      // une classe créée depuis le site n'a pas encore de don (l'édition n'en crée pas) ; une classe importée en a toujours
+      assert.ok(historique.creee('classe', { id: c.id }), `${c.id} : classe importée sans don`);
+      t.diagnostic(`${c.id} : créée depuis le site, sans don (à compléter)`);
+      continue;
+    }
     assert.deepEqual(c.plateau.map((e) => e.forme), ['don', 'don', 'specialites', 'don'], c.id);
     assert.deepEqual(c.plateau.filter((e) => e.forme === 'don').map((e) => e.niveau), [1, 5, 20], c.id);
     const [s] = c.plateau.filter((e) => e.forme === 'specialites');
@@ -142,17 +160,20 @@ test('38 classes : deux dons reçus sans choix en haut (niveaux 1 et 5), les deu
 test('exemple du propriétaire (Barde) : Danseur ou Ménestrel ; Nouvel accord ou Écho, Ballade guerrière ou Amplification, Exaltation ou Touérk !', () => {
   const barde = classe('barde');
   const [avant1, avant5, specialites, apres] = barde.plateau;
-  assert.equal(avant1.don.nom, 'Prestation');
-  assert.equal(avant5.don.nom, 'Son perturbant');
-  assert.equal(apres.don.nom, 'Chant double');
+  assert.equal(nomDImport(avant1.don), 'Prestation');
+  assert.equal(nomDImport(avant5.don), 'Son perturbant');
+  assert.equal(nomDImport(apres.don), 'Chant double');
   const [danseur, menestrel] = specialites.specialites;
-  assert.deepEqual([danseur.specialite.nom, menestrel.specialite.nom], ['DANSEUR', 'MÉNESTREL']);
+  assert.deepEqual([nomDeSpecialite(danseur.specialite), nomDeSpecialite(menestrel.specialite)], ['DANSEUR', 'MÉNESTREL']);
   assert.deepEqual(menestrel.choix.map((g) => noms(g.options)), [['Nouvel accord', 'Écho'], ['Ballade guerrière', 'Amplification'], ['Exaltation', 'Touérk !']]);
   assert.deepEqual(danseur.choix.map((g) => noms(g.options)), [['Perroquet', 'Contournement'], ['Shrapnel', 'Marche lunaire'], ['À bas les Badauds', 'Bain de foule']]);
   const nouvel = menestrel.choix[0].options[0];
   assert.equal(nouvel.ancre, 'don-barde-nouvel-accord');
-  assert.deepEqual(nouvel.type, { id: 'actif', libelle: 'Actif', definition: typesDon.find((t) => t.id === 'actif').definition });
-  assert.equal(nouvel.precision, '1 fois/Combat');
+  assert.equal(typeDeDon(historique.valeurDImport('capacite', { id: nouvel.id }, 'type_brut')).precision, '1 fois/Combat', 'à l’import');
+  if (!historique.modifiee('capacite', { id: nouvel.id }, 'type_brut')) {
+    assert.deepEqual(nouvel.type, { id: 'actif', libelle: 'Actif', definition: typesDon.find((t) => t.id === 'actif').definition });
+    assert.equal(nouvel.precision, '1 fois/Combat');
+  }
 });
 
 test('exemple du propriétaire (Archimage) : pas de spécialité, Élémentaliste ou Occultiste puis un choix parmi trois à chaque palier, Semi-complet en plus', () => {
@@ -161,35 +182,52 @@ test('exemple du propriétaire (Archimage) : pas de spécialité, Élémentalist
   const choix = a.plateau.filter((e) => e.forme === 'choix');
   assert.deepEqual(noms(choix[0].options), ['Élémentaliste', 'Occultiste']);
   assert.deepEqual(choix.map((g) => [g.niveau, g.options.length]), [[10, 2], [10, 3], [15, 3], [20, 3]]);
-  assert.equal(a.plateau.at(-1).don.nom, 'Semi-complet');
+  assert.equal(nomDImport(a.plateau.at(-1).don), 'Semi-complet');
 });
 
 test('types : le nom du guide pour les quatre types (« pAsSiF » s’affiche « Passif »), « Variable » tel qu’écrit', () => {
   const tous = [...classes.values()].flatMap((c) => c.dons);
   const superHache = tous.find((d) => d.id === 'capacites/marcass-super-hache');
-  assert.equal(superHache.typeBrut, 'pAsSiF');
-  assert.equal(superHache.type.libelle, 'Passif');
+  assert.equal(historique.valeurDImport('capacite', { id: superHache.id }, 'type_brut'), 'pAsSiF', 'à l’import');
+  if (!historique.modifiee('capacite', { id: superHache.id }, 'type_brut')) {
+    assert.equal(superHache.typeBrut, 'pAsSiF');
+    assert.equal(superHache.type.libelle, 'Passif');
+  }
   assert.ok(tous.filter((d) => d.type?.id === 'variable').every((d) => d.type.libelle === 'Variable' && d.type.definition === null));
   assert.ok(tous.every((d) => d.type !== null), 'chaque don a un type');
 });
 
 test('classe magique par sa spécialité : le don de spécialité le dit (classes raciales, Flagelleur), jamais celui d’une classe magique par catégorie', () => {
-  const parSpecialite = [...classes.values()].filter((c) => c.dons.some((d) => d.classeMagique)).map((c) => c.slug).sort();
+  // la page suit le texte du don de spécialité tel qu'il est dans la base
+  const effet = new Map(db.prepare('SELECT id, nature, effet FROM capacite').all().map((k) => [k.id, k]));
+  for (const c of classes.values()) {
+    for (const d of c.dons) assert.equal(d.classeMagique, d.nature === 'specialite' && ditClasseMagique(effet.get(d.id).effet), d.id);
+  }
+  // à l'import : 14 classes (les 13 classes raciales et le Flagelleur), le Chaman pour l'Orios, aucune classe magique par catégorie
+  const categorie = new Map(historique.lignesDImport('classe').map((c) => [c.id, c.categorie_id]));
+  const dons = historique.lignesDImport('capacite').filter((k) => k.nature === 'specialite' && ditClasseMagique(k.effet));
+  const parSpecialite = [...new Set(dons.map((k) => k.classe_id))].sort();
   assert.equal(parSpecialite.length, 14);
-  assert.ok(parSpecialite.includes('flagelleur') && parSpecialite.includes('orios'));
-  assert.equal(classe('orios').dons.find((d) => d.classeMagique).nom, 'Chaman');
-  for (const c of classes.values()) if (c.categorie.id === 'classe-magique') assert.ok(!c.dons.some((d) => d.classeMagique), c.id);
+  assert.ok(parSpecialite.includes('classes/flagelleur') && parSpecialite.includes('classes/orios'));
+  assert.deepEqual(dons.filter((k) => k.classe_id === 'classes/orios').map((k) => k.nom), ['Chaman']);
+  assert.deepEqual(dons.filter((k) => categorie.get(k.classe_id) === 'classe-magique').map((k) => k.id), []);
   assert.equal(classe('barde').amMagique, 4);
 });
 
 test('départ, inventaire, tableau du Mage Bleu, race d’une classe raciale : lus dans les tables', () => {
   const barde = classe('barde');
-  assert.deepEqual(barde.depart.map((d) => d.valeur), [2, 6, 2]);
-  assert.deepEqual(barde.maitriseArmure, ['Légère', 'Bouclier classe 1 à 2']);
+  const ligneBarde = db.prepare("SELECT sante_depart, chakra_depart, barriere_depart FROM classe WHERE id = 'classes/barde'").get();
+  assert.deepEqual(barde.depart.map((d) => d.valeur), [ligneBarde.sante_depart, ligneBarde.chakra_depart, ligneBarde.barriere_depart]);
+  const dImport = (id, colonne) => historique.valeurDImport('classe', { id }, colonne);
+  const intact = (id, colonne) => !historique.modifiee('classe', { id }, colonne);
+  assert.deepEqual(['sante_depart', 'chakra_depart', 'barriere_depart'].map((c) => dImport('classes/barde', c)), [2, 6, 2], 'à l’import');
+  if (intact('classes/barde', 'maitrise_armure')) assert.deepEqual(barde.maitriseArmure, ['Légère', 'Bouclier classe 1 à 2']);
   const mageBleu = classe('mage-bleu');
-  const kdr = mageBleu.inventaire.find((options) => options.length === 2);
-  assert.deepEqual(kdr.map((o) => o.texte), ['KDR Arme', 'carquois N'], '« A OU B » : deux options du même emplacement');
-  assert.ok(kdr.every((o) => o.description), 'objets du glossaire : description pour l’infobulle');
+  if (intact('classes/mage-bleu', 'inventaire_depart')) {
+    const kdr = mageBleu.inventaire.find((options) => options.length === 2);
+    assert.deepEqual(kdr.map((o) => o.texte), ['KDR Arme', 'carquois N'], '« A OU B » : deux options du même emplacement');
+    assert.ok(kdr.every((o) => o.description), 'objets du glossaire : description pour l’infobulle');
+  }
   assert.equal(mageBleu.annexe.length, 14);
   assert.ok(mageBleu.annexe.every((a) => a.magie), 'chaque libellé est une magie');
   for (const a of mageBleu.annexe) for (const e of a.entrees) assert.ok(e.type && e.nom, `${a.libelle} : ${e.texte}`);
