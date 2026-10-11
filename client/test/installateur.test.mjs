@@ -73,6 +73,11 @@ test('paramètres refusés : étiquette de test en production et inversement, ve
   assert.match(cli(ok.map((a) => (a === 'v0.2.0-test' ? 'v0.2.0' : a))).stderr, /étiquette de test/);
   assert.match(cli(ok.map((a) => (a === '0.2.0' ? '0.2' : a))).stderr, /--version invalide/);
   assert.match(cli(ok.map((a) => (a === 'v0.2.0-test' ? 'v0.2.0-test;rm' : a))).stderr, /--tag invalide/);
+  // Étiquettes du bot (tools/flux-git/regles.mjs) : production VX.Y (l'étiquette de version de master), test VX.Y.Z-test.
+  assert.equal(cli(['--mode', 'prod', ...ok.slice(2).map((a) => (a === 'v0.2.0-test' ? 'V0.2' : a))]).status, 0);
+  assert.equal(cli(['--mode', 'prod', ...ok.slice(2).map((a) => (a === 'v0.2.0-test' ? 'V0.2-hotfix.1' : a))]).status, 0);
+  assert.equal(cli(ok.map((a) => (a === 'v0.2.0-test' ? 'V0.2.3-test' : a))).status, 0);
+  assert.match(cli(ok.map((a) => (a === 'v0.2.0-test' ? 'V0.2;rm' : a))).stderr, /--tag invalide/);
 });
 
 for (const rsync of ['auto', '0']) {

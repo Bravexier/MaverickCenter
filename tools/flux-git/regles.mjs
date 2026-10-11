@@ -11,6 +11,7 @@
 //   feature → dev     dev : X.Y.Z+1                    master inchangée
 //   dev → master      dev et master : X.Y+1.0          ou X+1.0.0 si la PR porte [V: X+1]
 //   hotfix → master   master inchangée ; master est refusionnée dans dev, puis dev : X.Y.Z+1
+// Chaque nouvelle version est étiquetée (tag Git) sur le commit qui la porte : VX.Y.Z sur dev, VX.Y sur master (etiquetteDeVersion).
 //
 // Ce qui est livré dépend de la version (PREMIERE_VERSION_HEBERGEE, décision du propriétaire ; la 1.0, elle, reste son signal d'ouverture à tout le Discord) :
 //   avant la 0.2.0    un seul site, reconstruit depuis dev après chaque fusion (branche « site », fonctionnement d'avant le flux)
@@ -171,24 +172,43 @@ export function planifier({ type, versionMaster, versionDev, majeure = false }) 
 }
 
 /**
+ * Étiquette de version (demande du propriétaire : retrouver une version sans passer par le numéro de commit), posée par le bot sur le
+ * commit qui porte la nouvelle version d'une branche : VX.Y.Z sur dev, VX.Y sur master (master ne change de version qu'à une livraison,
+ * toujours en X.Y.0). Toutes les étiquettes commencent par « V » majuscule, installateurs compris : deux étiquettes qui ne diffèrent que
+ * par la casse (V0.2.0 et v0.2.0) se confondent dans un clone Windows ou macOS.
+ */
+export function etiquetteDeVersion(branche, version) {
+  const [x, y, z] = lireVersion(version);
+  if (branche === DEV) return `V${x}.${y}.${z}`;
+  if (branche === MASTER) return `V${x}.${y}`;
+  throw new Error(`branche versionnée : master ou dev (reçu « ${branche} »)`);
+}
+
+/**
  * Étiquette (tag Git) d'une livraison, unique parmi `existantes` :
- *   prod : vX.Y.Z, puis vX.Y.Z-hotfix.N (un hotfix ne change pas la version de master)
- *   test : vX.Y.Z-test
+ *   prod : VX.Y, l'étiquette de version de master (une livraison dev → master publie sa production sous le nom de sa version),
+ *          puis VX.Y-hotfix.N (un hotfix ne change pas la version de master)
+ *   test : VX.Y.Z-test, à côté de l'étiquette de version VX.Y.Z de dev
  * `motif` : suffixe quand l'étiquette de base existe déjà (`hotfix` pour un correctif, `rebuild` pour une régénération manuelle).
  */
 export function etiquette({ mode, version, existantes = [], motif }) {
   lireVersion(version);
   if (mode !== 'prod' && mode !== 'test') throw new Error(`mode inconnu « ${mode} » (prod ou test)`);
   const deja = new Set(existantes);
-  const base = mode === 'prod' ? `v${version}` : `v${version}-test`;
+  const base = mode === 'prod' ? etiquetteDeVersion(MASTER, version) : `${etiquetteDeVersion(DEV, version)}-test`;
   if (!deja.has(base)) return base;
   const suffixe = motif ?? (mode === 'prod' ? 'hotfix' : 'rebuild');
   for (let n = 1; ; n += 1) if (!deja.has(`${base}-${suffixe}.${n}`)) return `${base}-${suffixe}.${n}`;
 }
 
-/** Mode d'une étiquette de livraison (les installateurs de test portent « -test »). */
+/**
+ * Mode d'une étiquette de livraison : `test` (VX.Y.Z-test…), `prod` (VX.Y, VX.Y-hotfix.N, VX.Y-rebuild.N), null pour toute autre
+ * (dont l'étiquette de version de dev, VX.Y.Z, qui n'a pas d'installateur à elle).
+ */
 export function modeDeEtiquette(tag) {
-  return /^v\d+\.\d+\.\d+-test(?:-|$)/.test(tag) ? 'test' : 'prod';
+  if (/^V\d+\.\d+\.\d+-test(?:-|$)/.test(tag)) return 'test';
+  if (/^V\d+\.\d+(?:-(?:hotfix|rebuild)\.\d+)?$/.test(tag)) return 'prod';
+  return null;
 }
 
 /**

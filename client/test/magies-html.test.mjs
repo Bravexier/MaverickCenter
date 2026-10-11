@@ -54,7 +54,7 @@ test('index des magies : 15 noms courts, sans infobulle (demande du propriétair
   assert.ok(!indexMagies.includes('data-tooltip'));
   assert.ok(!/magies-orbite__noeud[^{]*::after/.test(indexMagies));
   assert.equal([...indexMagies.matchAll(/class="magies-orbite__lien /g)].length, 4);
-  assert.ok(indexMagies.includes(`<span class="site-footer__version">v${version}</span>`));
+  assert.ok(indexMagies.includes(`<span class="site-footer__version">V${version}</span>`), 'pied de page : l\'étiquette de version (tools/flux-git)');
   assert.ok(!indexMagies.includes('Écoles, sorts et règles de magie.'));
 });
 

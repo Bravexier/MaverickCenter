@@ -1,10 +1,10 @@
 // Mode de la construction du site, lu au build (voir docs/flux-git.md) :
 //   SITE_MODE=test  serveur de test (installateur fabriqué après chaque fusion dans dev) : bandeau, titre d'onglet et pied de page marqués ;
-//   SITE_TAG        étiquette de la livraison (v0.2.3-test, v0.2.0-hotfix.1…) ; sans elle, la version de package.json.
+//   SITE_TAG        étiquette de la livraison (V0.2, V0.2.3-test, V0.2-hotfix.1…) ; sans elle, l'étiquette de version de dev (VX.Y.Z).
 // Sans dépendance : importable partout.
 
 /** @param {Record<string, string | undefined>} env @param {string} version */
 export function modeDuSite(env, version) {
   const test = env.SITE_MODE === 'test';
-  return { test, etiquette: env.SITE_TAG || `v${version}` };
+  return { test, etiquette: env.SITE_TAG || `V${version}` };
 }

@@ -13,7 +13,7 @@ Prérequis sur l'hôte : un hôte Docker (Linux), `sh`, `tar`, `gzip`, et `sha25
 
 | | Serveur normal (production) | Serveur de test |
 | --- | --- | --- |
-| Installateur | `maverick-center-vX.Y.Z-install.sh` (fusion dans `master`) | `maverick-center-vX.Y.Z-test-install.sh` (fusion dans `dev`) |
+| Installateur | `maverick-center-VX.Y-install.sh` (fusion dans `master` ; `VX.Y-hotfix.N` après un hotfix) | `maverick-center-VX.Y.Z-test-install.sh` (fusion dans `dev`) |
 | Dossier conseillé | `/srv/maverick-center` | `/srv/maverick-center-test` (à côté du serveur normal) |
 | Adresse | `http://<hôte>:8080` | `http://<hôte>:8081`, bandeau « Serveur de test » sur chaque page |
 | Base vivante `db/` | jamais touchée par une installation | **son contenu est remplacé à chaque installation par une copie de celle du serveur normal, prise à cet instant** (le dossier reste : il est monté dans le conteneur du service, qui rouvre la base). **Sauf** si le `.env` de l'instance contient `MAVERICK_BASE_TEST=conservee` : la copie n'est faite qu'à la première installation (`db/` vide), puis `db/` n'est plus touché, pour que les modifications faites en test durent ([`deploy/vps/`](../vps/README.md) pose ce réglage) |
@@ -28,8 +28,8 @@ installé), `installation.log`. Un installateur de test refuse un dossier de pro
 1. Téléchargez l'installateur depuis la *release* GitHub de la version et copiez-le sur l'hôte.
 2. Lancez-le (en `root` ou avec un compte qui peut écrire dans le dossier) :
    ```bash
-   sh maverick-center-v1.2.0-install.sh --dossier /srv/maverick-center              # serveur normal
-   sh maverick-center-v1.2.3-test-install.sh --dossier /srv/maverick-center-test    # test : copie la base du serveur normal voisin
+   sh maverick-center-V1.2-install.sh --dossier /srv/maverick-center                # serveur normal
+   sh maverick-center-V1.2.3-test-install.sh --dossier /srv/maverick-center-test    # test : copie la base du serveur normal voisin
    ```
    Options : `--verifier` (contrôle l'archive et s'arrête), `--dossier-prod <dossier>` (test : serveur normal ailleurs que dans le dossier voisin
    `maverick-center`), `--sans-base-prod` (test sans serveur normal : base vide).

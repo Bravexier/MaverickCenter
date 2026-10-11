@@ -73,13 +73,13 @@ chaque instance ; rien n'est affiché. Relancer le script les conserve (`--regen
 > qui remplace les étapes 5 et 6 pour le serveur de test.
 
 1. Dans GitHub, page **Releases** du dépôt (privé : connexion nécessaire), télécharger les deux fichiers de la dernière version :
-   `maverick-center-vX.Y.Z-install.sh` (normal) et `maverick-center-vX.Y.Z-test-install.sh` (test).
+   `maverick-center-VX.Y-install.sh` (normal) et `maverick-center-VX.Y.Z-test-install.sh` (test).
 2. Les copier sur le serveur : `scp -i .ssh\maverick_key maverick-center-*-install.sh ubuntu@<IP>:~/`
 3. Sur le serveur, **le normal d'abord** (le test en copie la base) :
 
 ```
-sudo sh ~/maverick-center-vX.Y.Z-install.sh --dossier /srv/maverick-center
-sudo sh ~/maverick-center-vX.Y.Z-test-install.sh --dossier /srv/maverick-center-test
+sudo sh ~/maverick-center-VX.Y-install.sh --dossier /srv/maverick-center
+sudo sh ~/maverick-center-VX.Y.Z-test-install.sh --dossier /srv/maverick-center-test
 cd /srv/maverick-center && sudo docker compose up -d
 cd /srv/maverick-center-test && sudo docker compose up -d
 ```

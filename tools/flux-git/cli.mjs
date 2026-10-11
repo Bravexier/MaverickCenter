@@ -7,8 +7,9 @@
 //   node tools/flux-git/cli.mjs verifier-pr --base <cible> --head <source> --sha <commit> [--depot-source <o/r> --depot <o/r>]
 //       une PR : source permise pour la cible, bon point de départ, version non modifiée à la main (code 1 sinon)
 //   node tools/flux-git/cli.mjs appliquer --base <cible> --head <source> [--pr <n>] [--texte-fichier <f>]... [--pousser]
-//       après une fusion : incréments de version, refusion de master dans dev, puis ce qu'il faut publier (regles.mjs, livrableDe) :
-//       avant la 0.2.0 le site (branche « site », depuis dev), à partir de la 0.2.0 les installateurs (étiquettes posées ici)
+//       après une fusion : incréments de version, refusion de master dans dev, étiquette de chaque nouvelle version (VX.Y.Z sur dev,
+//       VX.Y sur master), puis ce qu'il faut publier (regles.mjs, livrableDe) : avant la 0.2.0 le site (branche « site », depuis dev),
+//       à partir de la 0.2.0 les installateurs (étiquettes posées ici)
 //   node tools/flux-git/cli.mjs balayer [--pousser]
 //       toutes les branches du dépôt, depuis la branche par défaut (une branche créée depuis un vieux commit échappe à la garde de
 //       création, lue dans ce commit) : nom interdit et déjà fusionnée → supprimée ; nom interdit avec du travail non fusionné, ou
@@ -29,8 +30,8 @@ import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  DEV, FAMILLES, MASTER, brancheASupprimer, familleDe, demandeMajeure, etiquette, livrableDe, modeDeEtiquette, planifier, poserVersionJson, typeDeFusion,
-  verifierCreation, verifierPR,
+  DEV, FAMILLES, MASTER, brancheASupprimer, familleDe, demandeMajeure, etiquette, etiquetteDeVersion, livrableDe, modeDeEtiquette, planifier, poserVersionJson,
+  typeDeFusion, verifierCreation, verifierPR,
 } from './regles.mjs';
 
 /** Les fichiers qui portent la version (le pied de page du site lit client/package.json). */
@@ -231,8 +232,11 @@ function synchroniser(source, message) {
 }
 
 function etiquettesExistantes() {
-  return sortie(['tag', '--list', 'v*']).split('\n').filter(Boolean);
+  return sortie(['tag', '--list']).split('\n').filter(Boolean);
 }
+
+/** Commit d'une étiquette déjà posée (lue après le fetch des étiquettes), ou '' si elle n'existe pas. */
+const commitDeEtiquette = (tag) => git(['rev-parse', '--verify', '--quiet', `refs/tags/${tag}^{commit}`], { ok: [0, 1] }).sortie;
 
 function pousser(distant, refs) {
   git(['push', '--quiet', '--atomic', distant, ...refs]);
@@ -302,7 +306,7 @@ function appliquer({ base, head, pr, textes, distant, envoyer, tentatives = 10 }
         prodDuHotfix = null;
       }
     }
-    const partiel = (message) => ({ type, majeure, journal, livraisons: prodDuHotfix ? [prodDuHotfix] : [], poussee: Boolean(envoyer), erreur: message });
+    const partiel = (message) => ({ type, majeure, journal, livraisons: prodDuHotfix ? [prodDuHotfix] : [], etiquettes: [], poussee: Boolean(envoyer), erreur: message });
 
     if (plan.master) {
       git(['checkout', '--quiet', '-B', MASTER, avant.master]);
@@ -339,15 +343,32 @@ function appliquer({ base, head, pr, textes, distant, envoyer, tentatives = 10 }
     });
     if (prodDuHotfix) livraisons.unshift(prodDuHotfix);
 
+    // Étiquettes de version (demande du propriétaire) : le commit qui porte la nouvelle version de chaque branche (VX.Y.Z sur dev,
+    // VX.Y sur master). Une étiquette déjà posée ailleurs n'est pas déplacée : signalée, elle n'empêche ni la version ni la publication.
+    const etiquettes = [];
+    for (const [branche, nouvelle] of [[MASTER, plan.master?.version], [DEV, plan.dev.version]]) {
+      if (!nouvelle) continue;
+      const tag = etiquetteDeVersion(branche, nouvelle);
+      const deja = commitDeEtiquette(tag);
+      if (deja && deja !== apres[branche]) journal.push(`${branche} : étiquette ${tag} déjà posée sur ${deja.slice(0, 7)}, laissée telle quelle`);
+      else if (!deja) etiquettes.push({ branche, version: nouvelle, tag, sha: apres[branche] });
+    }
+
     const refs = [];
     if (apres.master !== avant.master) refs.push(`${apres.master}:refs/heads/${MASTER}`);
     if (apres.dev !== avant.dev) refs.push(`${apres.dev}:refs/heads/${DEV}`);
-    for (const l of livraisons) if (l.tag && l !== prodDuHotfix) refs.push(`${l.sha}:refs/tags/${l.tag}`);
+    // Une étiquette par nom : l'installateur de production d'une livraison porte l'étiquette de version de master (même nom, même commit).
+    const aPoser = new Map();
+    for (const { tag, sha } of [...livraisons.filter((l) => l.tag && l !== prodDuHotfix), ...etiquettes]) {
+      if (aPoser.has(tag) && aPoser.get(tag) !== sha) throw new Error(`étiquette ${tag} demandée sur deux commits (${aPoser.get(tag).slice(0, 7)}, ${sha.slice(0, 7)})`);
+      aPoser.set(tag, sha);
+    }
+    for (const [tag, sha] of aPoser) refs.push(`${sha}:refs/tags/${tag}`);
     const aSupprimer = brancheASupprimer({ base, head });
-    if (!envoyer) return { type, majeure, journal, livraisons, poussee: false, aSupprimer };
+    if (!envoyer) return { type, majeure, journal, livraisons, etiquettes, poussee: false, aSupprimer };
     try {
       pousser(distant, refs);
-      return { type, majeure, journal, livraisons, poussee: true, aSupprimer };
+      return { type, majeure, journal, livraisons, etiquettes, poussee: true, aSupprimer };
     } catch (e) {
       if (essai === tentatives && type === 'hotfix') return partiel(`refusion de master dans dev impossible à pousser : ${e.message}${indiceJeton(e.message)}`);
       reessayer(new Error(`${e.message}${indiceJeton(e.message)}`));
@@ -365,7 +386,7 @@ function regenerer({ branche, distant, envoyer }) {
   if (!mode) throw new Refus(`master est en v${version} : avant la 0.2.0, master n'a pas de serveur, rien à publier (le site suit dev)`);
   const tag = mode === 'site' ? null : etiquette({ mode, version, existantes: etiquettesExistantes(), motif: 'rebuild' });
   if (envoyer && tag) pousser(distant, [`${sha}:refs/tags/${tag}`]);
-  return { type: 'regeneration', journal: [], livraisons: [{ mode, branche, sha, version, tag, type: 'regeneration' }], poussee: Boolean(envoyer) };
+  return { type: 'regeneration', journal: [], livraisons: [{ mode, branche, sha, version, tag, type: 'regeneration' }], etiquettes: [], poussee: Boolean(envoyer) };
 }
 
 function options(argv) {
@@ -427,6 +448,7 @@ try {
     }
     if (process.env.GITHUB_STEP_SUMMARY) {
       const lignes = [`### ${r.type}${r.majeure ? ' (majeure)' : ''}`, '', ...r.journal.map((j) => `- ${j}`),
+        ...r.etiquettes.map((e) => `- étiquette de version \`${e.tag}\` sur ${e.branche} (${e.sha.slice(0, 7)})`),
         ...installateurs.map((l) => `- installateur ${l.mode} : \`${l.tag}\` (${l.branche} ${l.sha.slice(0, 7)})`),
         ...(site ? [`- site (avant la 0.2.0) : branche \`site\` reconstruite depuis dev ${site.sha.slice(0, 7)} (v${site.version})`] : []),
         ...(r.erreur ? [`- **à faire** : ${r.erreur}`] : [])];
