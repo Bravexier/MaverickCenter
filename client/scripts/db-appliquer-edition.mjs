@@ -4,10 +4,13 @@
 //   1. une base est reconstruite depuis data/rows (scripts/db-build.mjs, dans un dossier temporaire) ;
 //   2. le journal y est chargé puis rejoué, lot par lot, exactement comme le service le rejoue sur des règles neuves (serveur/edition-journal.mjs#rejouer) :
 //      une modification déjà présente est « intégrée », un lot dont une modification contredit data/rows est en conflit (le lot entier est écarté) ;
-//   3. s'il y a un conflit, rien n'est écrit (sauf --ignorer-conflits : les autres lots le sont) ; sinon les tables du journal sont vidées (elles restent
-//      vides dans data/rows) et data/rows est réécrit par l'exporteur des importeurs (tools/db/exporter.py : même format, octet pour octet).
-// Ensuite : `npm run db:build && npm run db:check`, puis `npm test` (les tests qui épinglent les données importées — effectifs, fidélité des pages de
-// race à leur onglet — disent ce que les modifications ont changé) et un commit de data/rows. Le service, lui, verra ces modifications « intégrées ».
+//   3. s'il y a un conflit, rien n'est écrit (sauf --ignorer-conflits : les autres lots le sont) ; sinon les modifications rejouées (réappliquées ou
+//      déjà présentes, « intégrées ») sont versées dans historique_modification, version NULL (rapatriées à la main ; un lot qui y est déjà n'est pas
+//      repris), les tables du journal sont vidées (elles restent vides dans data/rows) et data/rows est réécrit par l'exporteur des importeurs
+//      (tools/db/exporter.py : même format, octet pour octet).
+// Ensuite : `npm run db:build && npm run db:check`, puis `npm test` et un commit de data/rows. Le site est la source des données qu'il modifie
+// (décision du propriétaire) : les tests qui épinglent l'import (effectifs, textes cités) le lisent dans historique_modification
+// (src/lib/historique-site.mjs) et contrôlent la cohérence de l'état courant. Le service, lui, verra ces modifications « intégrées ».
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -20,7 +23,25 @@ const CLIENT = fileURLToPath(new URL('../', import.meta.url));
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 
 /**
- * Applique un journal (« maverick-edition/1 ») à un dossier de lignes. Rend { bilan, conflits: [{ lot, resume, detail }] (un par lot), ecrit } ; lève une erreur si la
+ * Verse dans historique_modification les modifications du journal qui ne sont pas en conflit (réécrites par le rejeu ou déjà dans les règles), dans
+ * l'ordre du rejeu, avec version NULL (rapatriées à la main : aucune note de version ne les a livrées). Un lot déjà dans l'historique (journal
+ * appliqué deux fois, ou livré par « Effectuer la mise à jour ») n'est pas repris. Rend le nombre de lignes versées.
+ */
+export function historiser(db) {
+  const modifications = db
+    .prepare(
+      `SELECT m.lot_id, m.rang, l.fait_le, l.resume, m.table_nom, m.cle, m.operation, m.avant, m.apres FROM modification m JOIN modification_lot l ON l.id = m.lot_id
+       WHERE m.etat <> 'conflit' AND NOT EXISTS (SELECT 1 FROM historique_modification h WHERE h.lot_id = m.lot_id) ORDER BY l.fait_le, l.id, m.rang`,
+    )
+    .all();
+  const inserer = db.prepare(`INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres)
+    VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)`);
+  for (const m of modifications) inserer.run(m.lot_id, m.rang, m.fait_le, m.resume, m.table_nom, m.cle, m.operation, m.avant, m.apres);
+  return modifications.length;
+}
+
+/**
+ * Applique un journal (« maverick-edition/1 ») à un dossier de lignes. Rend { bilan, conflits: [{ lot, resume, detail }] (un par lot), ecrit, historisees } ; lève une erreur si la
  * base ne se reconstruit pas ou si l'export échoue.
  */
 export function appliquerJournal(journal, { rows = join(RACINE, 'data', 'rows'), ignorerConflits = false } = {}) {
@@ -32,6 +53,7 @@ export function appliquerJournal(journal, { rows = join(RACINE, 'data', 'rows'),
     const db = new DatabaseSync(chemin);
     let bilan;
     let conflits;
+    let historisees = 0;
     try {
       db.exec('PRAGMA foreign_keys = OFF'); // rejouer contrôle les clés étrangères lot par lot
       db.exec('BEGIN');
@@ -46,8 +68,9 @@ export function appliquerJournal(journal, { rows = join(RACINE, 'data', 'rows'),
         .map((c) => ({ ...c }));
       if (conflits.length && !ignorerConflits) {
         db.exec('ROLLBACK');
-        return { bilan, conflits, ecrit: false };
+        return { bilan, conflits, ecrit: false, historisees: 0 };
       }
+      historisees = historiser(db);
       db.exec('DELETE FROM modification; DELETE FROM modification_lot');
       db.exec('COMMIT');
     } finally {
@@ -55,7 +78,7 @@ export function appliquerJournal(journal, { rows = join(RACINE, 'data', 'rows'),
     }
     const exp = spawnSync('python3', ['-I', join(RACINE, 'tools', 'db', 'exporter.py'), chemin, '--rows', rows], { encoding: 'utf8' });
     if (exp.status !== 0) throw new Error(`export refusé : ${exp.stderr || exp.stdout}`);
-    return { bilan, conflits, ecrit: true };
+    return { bilan, conflits, ecrit: true, historisees };
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
@@ -77,14 +100,14 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     process.exit(2);
   }
   try {
-    const { bilan, conflits, ecrit } = appliquerJournal(journal, { rows, ignorerConflits: args.includes('--ignorer-conflits') });
+    const { bilan, conflits, ecrit, historisees } = appliquerJournal(journal, { rows, ignorerConflits: args.includes('--ignorer-conflits') });
     console.log(`${bilan.lots} lot(s) : ${bilan.appliquees} modification(s) appliquée(s), ${bilan.integrees} déjà présente(s), ${bilan.conflits} en conflit`);
     for (const c of conflits) console.log(`  conflit — lot ${c.lot} (« ${c.resume} ») : ${c.detail}`);
     if (!ecrit) {
       console.error('Rien n’a été écrit : réglez les conflits (ou relancez avec --ignorer-conflits pour écrire les autres lots).');
       process.exit(1);
     }
-    console.log('data/rows réécrit. Ensuite : npm run db:build && npm run db:check, npm test, puis commit de data/rows.');
+    console.log(`data/rows réécrit (${historisees} modification(s) versée(s) dans historique_modification). Ensuite : npm run db:build && npm run db:check, npm test, puis commit de data/rows.`);
   } catch (e) {
     console.error(e.message);
     process.exit(1);
