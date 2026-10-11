@@ -146,6 +146,8 @@ const ARCHIMAGE = {
     { id: 'capacites/archimage-elementaliste', classe_id: 'classes/archimage', specialite_id: null, niveau: 10, nature: 'choix', ligne: 18, rang: 1, nom: 'Élémentaliste', nom_cle: 'elementaliste' },
     { id: 'capacites/archimage-occultiste', classe_id: 'classes/archimage', specialite_id: null, niveau: 10, nature: 'choix', ligne: 18, rang: 2, nom: 'Occultiste', nom_cle: 'occultiste' },
     { id: 'capacites/archimage-grimoire', classe_id: 'classes/archimage', specialite_id: null, niveau: 5, nature: 'classe', ligne: 11, rang: 1, nom: 'Grimoire', nom_cle: 'grimoire' },
+    { id: 'capacites/archimage-creation-vivante', classe_id: 'classes/archimage', specialite_id: null, niveau: 10, nature: 'choix', ligne: 25, rang: 1, nom: 'Création vivante', nom_cle: 'creation-vivante' },
+    { id: 'capacites/archimage-tempus-figus', classe_id: 'classes/archimage', specialite_id: null, niveau: 10, nature: 'choix', ligne: 25, rang: 2, nom: 'Tempus figus', nom_cle: 'tempus-figus' },
   ],
   fiches: {},
 };
@@ -165,7 +167,10 @@ test('permissions : maximum de spécialités, Archimage, cartouche, don miroir, 
   assert.equal(archimage.peutAjouterSpecialite, false, 'spécialités sans don de spécialité');
   assert.equal(archimage.specialites['classes/archimage#specialite:occultiste'].supprimable, false);
   assert.equal(archimage.dons['capacites/archimage-occultiste'].supprimable, false, 'don miroir');
-  assert.equal(archimage.dons['capacites/archimage-occultiste'].peutRecevoirOption, true, 'un palier reçoit une option');
+  for (const id of ['capacites/archimage-elementaliste', 'capacites/archimage-occultiste']) {
+    assert.equal(archimage.dons[id].peutRecevoirOption, false, `${id} : le choix miroir donne les spécialités à la fiche, une option y serait une troisième spécialité`);
+  }
+  assert.equal(archimage.dons['capacites/archimage-tempus-figus'].peutRecevoirOption, true, 'un autre palier reçoit une option');
   assert.equal(archimage.dons['capacites/archimage-grimoire'].supprimable, true);
 });
 

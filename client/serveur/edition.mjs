@@ -69,8 +69,12 @@ export function messageSqlite(e) {
   if ((r = /NOT NULL constraint failed: (.+)$/.exec(m))) return `valeur obligatoire (${r[1]})`;
   if (/FOREIGN KEY constraint failed/.test(m)) return 'référence inconnue, ou ligne encore citée ailleurs (clé étrangère)';
   if ((r = /CHECK constraint failed: (.+)$/.exec(m))) return `valeur refusée par une règle de la base (${r[1].slice(0, 160)})`;
+  if ((r = /cannot store (\S+) value in (\S+) column (.+)$/.exec(m))) return `valeur d’un type que la colonne refuse (${r[3]} : ${r[2]} attendu)`;
   return m;
 }
+
+/** Erreur SQLite d'une valeur refusée par la base (contrainte, ou type d'une table STRICT) : traduite en refus 422 par messageSqlite. */
+const refuseeParLaBase = (e) => /constraint failed|cannot store \S+ value in \S+ column/.test(String(e?.message));
 
 /** Provenance écrite sur les lignes créées depuis le site (la date suffit : le journal garde le détail du lot). */
 export const provenance = (instant) => `Site de dev › édition du ${instant.slice(0, 10)}`;
@@ -824,15 +828,34 @@ const titrePris = (db, cle) => Boolean(db.prepare('SELECT 1 FROM cle_page WHERE 
 /** Id de spécialité pris : ligne existante (une spécialité renommée garde son id), ou employé par l'historique ou le journal (supprimée). */
 const specialitePrise = (db, id) => Boolean(lireLigne(db, 'specialite', { id }) || idDejaEmploye(db, ['specialite'], id));
 
-/** Les noms des fiches de personnage qui ont l'un de ces dons ou cette spécialité (une fois chacune), dans l'ordre alphabétique. */
+/**
+ * Le libellé d'une fiche de personnage que l'édition peut montrer : le nom d'un prétiré (visible par tous), « fiche de joueur n° k » pour une fiche de
+ * joueur (son nom n'est montré qu'à ceux qui peuvent la lire : v_personnage_visible ; le service ne la liste ni ne la lit, serveur/fiches.mjs). `numeros` :
+ * Map(id de fiche → k), partagée par tous les libellés d'une même réponse (une fiche citée deux fois garde le même libellé).
+ */
+function libelleDeFiche(r, numeros) {
+  if (r.nature === 'pretire') return r.nom;
+  if (!numeros.has(r.personnage)) numeros.set(r.personnage, numeros.size + 1);
+  return `fiche de joueur n° ${numeros.get(r.personnage)}`;
+}
+const anonymes = (a) => a.startsWith('fiche de joueur n° ');
+/** Ordre des libellés : les prétirés dans l'ordre alphabétique, puis les fiches de joueur. */
+const ordreDesLibelles = (a, b) => anonymes(a) - anonymes(b) || a.localeCompare(b, 'fr', { numeric: true });
+
+/**
+ * Les fiches de personnage qui ont l'un de ces dons ou cette spécialité, une fois chacune : leurs libellés (libelleDeFiche : le nom d'un prétiré, une
+ * fiche de joueur sans son nom). Toute fiche compte, quelle que soit sa nature : une ligne citée ne se supprime pas.
+ */
 export function fichesQuiCitent(db, { capacites = [], specialite = null }) {
   const vues = new Map();
   const ajouter = (rows) => {
-    for (const r of rows) vues.set(r.id, r.nom);
+    for (const r of rows) vues.set(r.personnage, r);
   };
-  for (const k of capacites) ajouter(db.prepare('SELECT p.id, p.nom FROM personnage_capacite pc JOIN personnage p ON p.id = pc.personnage_id WHERE pc.capacite_id = ?').all(k));
-  if (specialite) ajouter(db.prepare('SELECT p.id, p.nom FROM personnage_classe pc JOIN personnage p ON p.id = pc.personnage_id WHERE pc.specialite_id = ?').all(specialite));
-  return [...vues.values()].sort((a, b) => a.localeCompare(b, 'fr'));
+  const champs = 'p.id AS personnage, p.nom, p.nature';
+  for (const k of capacites) ajouter(db.prepare(`SELECT ${champs} FROM personnage_capacite pc JOIN personnage p ON p.id = pc.personnage_id WHERE pc.capacite_id = ?`).all(k));
+  if (specialite) ajouter(db.prepare(`SELECT ${champs} FROM personnage_classe pc JOIN personnage p ON p.id = pc.personnage_id WHERE pc.specialite_id = ?`).all(specialite));
+  const numeros = new Map();
+  return [...vues.values()].map((r) => libelleDeFiche(r, numeros)).sort(ordreDesLibelles);
 }
 
 /** Une ligne du même lot : un id, ou « @i » = la ligne de cette entité créée par l'opération i (ctx.crees) ; refus 400 sinon. */
@@ -870,12 +893,24 @@ function libelleDeClasseDesDons(db, classe) {
 }
 
 /**
+ * Colonnes tirées du type d'un don (lib/classe-champs.mjs#analyserTypeDeDon) ; refus 400 quand le nombre de la limite (« N fois/combat ») n'est pas un
+ * entier que la colonne INTEGER garde tel quel (99999999999999999999 deviendrait un REAL, que la table STRICT refuse).
+ */
+function colonnesDuTypeDeDon(typeBrut) {
+  const colonnes = analyserTypeDeDon(typeBrut);
+  if (colonnes.limite_nombre !== null && !Number.isSafeInteger(colonnes.limite_nombre)) {
+    throw refus(`Type « ${typeBrut} » : le nombre de la limite est trop grand`);
+  }
+  return colonnes;
+}
+
+/**
  * Insère un don à une place déjà choisie : sa fiche (capacites/<slug> : titre, résumé, corps, donnees, mots-clés, une source « Site de dev › … »), sa ligne
  * de capacite, son page_entite. Identifiant et titre tirés une fois du nom (lib/dons-edition.mjs), jamais recalculés ensuite. Rend la ligne.
  */
 function creerDon(ctx, { classe, specialite = null, niveau, nature, ligne, rang, nom, typeBrut, effet = null }) {
   const { db, w, instant } = ctx;
-  const colonnes = analyserTypeDeDon(typeBrut);
+  const colonnes = colonnesDuTypeDeDon(typeBrut);
   if (!colonnes.type) throw refus(`Type « ${typeBrut} » : le premier mot doit être Passif, Actif, Action, Réaction ou Variable`);
   const id = idDeDon({ slugClasse: slugDeClasse(classe.id), nom, niveau, rang }, (x) => idDeDonPris(db, x));
   const titre = titreDeDon({ nom, classeNom: classe.nom, niveau }, (cle) => titrePris(db, cle));
@@ -975,7 +1010,7 @@ const SPECIALITE = {
 
 const CAPACITE = {
   colonnes(_ctx, ligne) {
-    return ligne.type_brut ? analyserTypeDeDon(ligne.type_brut) : { type: null, limite_nombre: null, limite_periode: null };
+    return ligne.type_brut ? colonnesDuTypeDeDon(ligne.type_brut) : { type: null, limite_nombre: null, limite_periode: null };
   },
   deriver(ctx, avant, apres) {
     const classe = lireLigne(ctx.db, 'classe', { id: apres.classe_id });
@@ -1008,6 +1043,12 @@ const CAPACITE = {
         throw refus('Nouveau don : la spécialité donnée n’est pas celle du don dont il devient une option');
       }
       if (voisin.nature === 'specialite') throw refus('Un don de spécialité ne reçoit pas d’option : ajoutez une spécialité.');
+      // le choix Élémentaliste / Occultiste de l'Archimage : la fiche y lit les spécialités de la classe (specialitesFigees), une option y ajouterait une
+      // troisième « spécialité » sans ligne specialite (l'inverse, en retirer une, est déjà refusé : estMiroir)
+      const groupe = groupeDe(voisin, dons);
+      if (groupe.some((d) => estMiroir(db, d))) {
+        throw new ErreurEdition(409, `Le choix ${groupe.map((d) => d.nom).join(' / ')} donne les spécialités de la classe ${classe.nom} à la fiche de personnage : il ne reçoit pas d’option ici.`);
+      }
       // l'emplacement (classe, ligne, spécialité) : le rang suivant, toutes natures confondues (index unique capacite_emplacement)
       const emplacement = dons.filter((d) => d.ligne === voisin.ligne && (d.specialite_id ?? '') === (voisin.specialite_id ?? ''));
       place = {
@@ -1368,6 +1409,9 @@ function modifier(ctx, op) {
   return `${TABLES[table].libelle} ${avant.nom ?? avant.titre ?? JSON.stringify(op.cle)} : ${Object.keys(valeurs).map((c) => TABLES[table].colonnes[c].libelle).join(', ')}`;
 }
 
+/** Créations dont le refus commence par le nom saisi : une page en envoie plusieurs dans un lot (la file de la page d'une classe, D11). */
+const NOMMER_LE_REFUS = new Set(['specialite', 'capacite']);
+
 function creer(ctx, op) {
   const entite = ENTITES[op.entite];
   if (!entite) throw refus(`entité « ${op.entite} » : pas de création depuis le site`);
@@ -1388,7 +1432,14 @@ function creer(ctx, op) {
   for (const [c, champ] of Object.entries(entite.champs)) {
     if (champ.requis && (valeurs[c] === undefined || valeurs[c] === null)) throw refus(`${titre} : « ${champ.libelle} » obligatoire`);
   }
-  const r = DOMAINES[entite.table].creer(ctx, valeurs, op);
+  let r;
+  try {
+    r = DOMAINES[entite.table].creer(ctx, valeurs, op);
+  } catch (e) {
+    // spécialité, don : plusieurs créations du même lot (la file de la page) ; le refus nomme celle qui le cause
+    if (e instanceof ErreurEdition && NOMMER_LE_REFUS.has(entite.table) && valeurs.nom) throw new ErreurEdition(e.statut, `« ${valeurs.nom} » : ${e.message}`, e.details);
+    throw e;
+  }
   // `operation` : la place de l'opération dans le lot, que les références « @i » des opérations suivantes désignent (reference)
   ctx.crees.push({ entite: op.entite, id: r.id, operation: ctx.operation });
   return r.resume;
@@ -1445,7 +1496,7 @@ export function enregistrer(db, corps, { instant, id, auteurId = null } = {}) {
       } catch (e) {
         if (e instanceof ErreurEdition) throw new ErreurEdition(e.statut, `operations[${i}] : ${e.message}`, e.details);
         if (e instanceof ErreurJournal) throw refus(`operations[${i}] : ${e.message}`);
-        if (/constraint failed/.test(String(e?.message))) throw new ErreurEdition(422, `operations[${i}] : ${messageSqlite(e)}`);
+        if (refuseeParLaBase(e)) throw new ErreurEdition(422, `operations[${i}] : ${messageSqlite(e)}`);
         throw e;
       }
     });
@@ -1531,7 +1582,8 @@ export function donneesDeRace(db, raceId) {
 /**
  * L'état vivant d'une classe pour sa page en mode modification (D11 : ajouter ou supprimer une spécialité ou un don) : ses spécialités et ses dons
  * (toutes les colonnes), les choix (v_capacite_exclusive), les types de don du guide, le bonus d'armure magique d'une classe magique, et les fiches de
- * personnage qui citent chaque spécialité ou don ({ [id]: [noms] } : une ligne citée ne se supprime pas). La page en tire son plateau de dons par le
+ * personnage qui citent chaque spécialité ou don ({ [id]: [libellés] } : une ligne citée ne se supprime pas ; le nom d'un prétiré, une fiche de joueur
+ * sans son nom : libelleDeFiche). La page en tire son plateau de dons par le
  * même assemblage que le build (lib/classe-assemblage.mjs) et ce qu'elle propose (lib/dons-edition.mjs#permissions).
  */
 export function donneesDeClasse(db, classeId) {
@@ -1540,16 +1592,17 @@ export function donneesDeClasse(db, classeId) {
   const { specialites, dons } = lignesDesDons(db, classe.id);
   const fiches = {};
   const vues = new Set();
+  const numeros = new Map(); // fiches de joueur : un numéro par fiche, le même pour toute la réponse (permissions réunit spécialité et dons)
   for (const r of db.prepare(`
-    SELECT pc.capacite_id AS id, p.id AS personnage, p.nom FROM personnage_capacite pc JOIN personnage p ON p.id = pc.personnage_id
-      JOIN capacite k ON k.id = pc.capacite_id WHERE k.classe_id = ?
+    SELECT pc.capacite_id AS id, p.id AS personnage, p.nom, p.nature, p.nature = 'pretire' AS pretire FROM personnage_capacite pc
+      JOIN personnage p ON p.id = pc.personnage_id JOIN capacite k ON k.id = pc.capacite_id WHERE k.classe_id = ?
     UNION ALL
-    SELECT pc.specialite_id AS id, p.id AS personnage, p.nom FROM personnage_classe pc JOIN personnage p ON p.id = pc.personnage_id
-      WHERE pc.classe_id = ? AND pc.specialite_id IS NOT NULL
-    ORDER BY nom COLLATE NOCASE, personnage`).all(classe.id, classe.id)) {
+    SELECT pc.specialite_id AS id, p.id AS personnage, p.nom, p.nature, p.nature = 'pretire' AS pretire FROM personnage_classe pc
+      JOIN personnage p ON p.id = pc.personnage_id WHERE pc.classe_id = ? AND pc.specialite_id IS NOT NULL
+    ORDER BY pretire DESC, nom COLLATE NOCASE, personnage`).all(classe.id, classe.id)) {
     if (vues.has(`${r.id}\u0000${r.personnage}`)) continue;
     vues.add(`${r.id}\u0000${r.personnage}`);
-    (fiches[r.id] ??= []).push(r.nom);
+    (fiches[r.id] ??= []).push(libelleDeFiche(r, numeros));
   }
   return {
     classe: { id: classe.id, nom: classe.nom, categorie_id: classe.categorie_id },

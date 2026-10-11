@@ -285,7 +285,13 @@ test('D11 — Archimage : une option de plus à un palier ; un nouveau palier se
   assert.equal(n.statut, 200, JSON.stringify(n.corps));
   assert.deepEqual({ ...ligne('SELECT nature, ligne FROM capacite WHERE id = ?', n.corps.crees[0].id) }, { nature: 'classe', ligne: attendue });
   assert.ok(!alternativesDe(donDe(n.corps.crees[0].id), lignes("SELECT * FROM capacite WHERE classe_id = 'classes/archimage'")).length);
-  // ses spécialités ne se créent ni ne se suppriment, ses dons miroirs ne se suppriment pas
+  // ses spécialités ne se créent ni ne se suppriment, ses dons miroirs ne se suppriment pas, et leur choix ne reçoit pas d'option (une troisième
+  // « spécialité » pour la fiche, sans ligne specialite)
+  const option = creerDon({ classe_id: 'classes/archimage', avec: 'capacites/archimage-occultiste', nom: nomDeDonLibre('Troisième voie', 'Archimage'), type: 'Passif' });
+  assert.equal(option.statut, 409, JSON.stringify(option.corps));
+  assert.match(option.corps.erreur, /Le choix Élémentaliste \/ Occultiste donne les spécialités de la classe Archimage à la fiche de personnage : il ne reçoit pas d’option ici/);
+  assert.deepEqual(lignes("SELECT id FROM capacite WHERE classe_id = 'classes/archimage' AND ligne = ?", donDe('capacites/archimage-occultiste').ligne).map((k) => k.id),
+    ['capacites/archimage-elementaliste', 'capacites/archimage-occultiste'], 'rien d’écrit');
   const miroir = supprimer('capacite', 'capacites/archimage-elementaliste');
   assert.equal(miroir.statut, 409);
   assert.match(miroir.corps.erreur, /« Élémentaliste » est aussi une spécialité de la classe Archimage pour la fiche de personnage : il ne se supprime pas d’ici/);
@@ -318,7 +324,8 @@ test('D11 — refus de don : classe, spécialité, niveau, place, type, titre pr
     [{ classe_id: 'classes/archimage', specialite_id: 'classes/archimage#specialite:elementaliste', niveau: '15', nom: 'X', type: 'Passif' }, /n’a pas de don de spécialité \(niveau 10\)/],
     [{ classe_id: C1.id, niveau: '7', nom: 'X', type: 'Passif' }, /Nouveau don : « Niveau de classe » : valeur hors de la liste/],
     [{ classe_id: C1.id, nom: 'X', type: 'Passif' }, /« Niveau de classe » obligatoire/],
-    [{ classe_id: C1.id, specialite_id: C1.spec1, niveau: '5', nom: 'X', type: 'Passif' }, /Un don de spécialité commence au niveau 10, quand la spécialité est choisie/],
+    [{ classe_id: C1.id, specialite_id: C1.spec1, niveau: '5', nom: 'X', type: 'Passif' }, /« X » : Un don de spécialité commence au niveau 10, quand la spécialité est choisie/],
+    [{ classe_id: C1.id, niveau: '5', nom: 'X', type: 'Actif', precision: '99999999999999999999 fois/combat' }, /« X » : Type « Actif \(99999999999999999999 fois\/combat\) » : le nombre de la limite est trop grand/],
     [{ classe_id: C1.id, avec: 'capacites/inconnu', nom: 'X', type: 'Passif' }, /don inconnu/],
     [{ classe_id: C1.id, avec: 'capacites/guerrier-contact', nom: 'X', type: 'Passif' }, /ce don n’est pas de la classe/],
     [{ classe_id: C1.id, avec: C1.cartouche1, nom: 'X', type: 'Passif' }, /Un don de spécialité ne reçoit pas d’option : ajoutez une spécialité/],
@@ -332,6 +339,15 @@ test('D11 — refus de don : classe, spécialité, niveau, place, type, titre pr
     assert.match(r.corps.erreur, motif);
   }
   assert.equal(ligne('SELECT count(*) AS n FROM capacite').n, avant, 'rien d’écrit');
+  // une limite trop grande : refus 400 en français (et non une erreur SQLite : colonne INTEGER d'une table STRICT), à la création d'une spécialité comme à
+  // la modification du type d'un don
+  const sp = creerSpecialite(nouvelleClasse('Classe aux limites').id, 'X', { don_precision: '99999999999999999999 fois/combat' });
+  assert.equal(sp.statut, 400, JSON.stringify(sp.corps));
+  assert.match(sp.corps.erreur, /« X » : Type « Passif \(99999999999999999999 fois\/combat\) » : le nombre de la limite est trop grand/);
+  const m = enregistrer([{ op: 'modifier', table: 'capacite', cle: { id: C1.fente }, valeurs: { type_brut: 'Actif (99999999999999999999 fois/combat)' } }]);
+  assert.equal(m.statut, 400, JSON.stringify(m.corps));
+  assert.match(m.corps.erreur, /le nombre de la limite est trop grand/);
+  assert.equal(donDe(C1.fente).type_brut, 'Actif (2 fois/combat)');
   // homonymes : l'id prend -<niveau>, le titre « , niveau N » ; une troisième fois, le titre n'a plus de forme libre
   const un = creerDon({ classe_id: C1.id, niveau: '15', nom: 'Doublon', type: 'Passif' });
   const deux = creerDon({ classe_id: C1.id, niveau: '15', nom: 'Doublon', type: 'Passif' });
@@ -406,6 +422,28 @@ test('D11 — refus de suppression : don choisi par un prétiré (409 qui nomme 
   const s = supprimer('specialite', C1.spec1);
   assert.equal(s.statut, 409);
   assert.match(s.corps.erreur, /La spécialité LAME COURBE \(ou l’un de ses dons\) est choisie dans 1 fiche\(s\) : Fiche témoin D11/);
+  // une fiche de JOUEUR (écrite comme le fera la 1.0 : le service ne la liste ni ne la lit) compte, mais son nom ne sort pas par l'édition
+  db.prepare("INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES ('utilisateur-d11', 'Joueur D11', '2026-10-11T00:00:00Z')").run();
+  const joueur = { ...ligne('SELECT * FROM personnage WHERE id = ?', p.corps.personnage.id), id: 'fiche-joueur-d11', nature: 'joueur', proprietaire_id: 'utilisateur-d11', visibilite: 'privee', nom: 'Secret du joueur' };
+  db.prepare(`INSERT INTO personnage (${Object.keys(joueur).map((c) => `"${c}"`).join(', ')}) VALUES (${Object.keys(joueur).map(() => '?').join(', ')})`).run(...Object.values(joueur));
+  db.prepare('INSERT INTO personnage_classe (personnage_id, rang, classe_id, specialite_id) VALUES (?, 1, ?, ?)').run(joueur.id, C1.id, C1.spec1);
+  db.prepare('INSERT INTO personnage_capacite (personnage_id, capacite_id) VALUES (?, ?)').run(joueur.id, C1.paire[1]);
+  try {
+    assert.equal(appel('GET', `/api/personnages/${joueur.id}/`).statut, 404, 'le service ne lit pas une fiche de joueur');
+    const d = supprimer('capacite', C1.paire[1]);
+    assert.equal(d.statut, 409, JSON.stringify(d.corps));
+    assert.match(d.corps.erreur, /« Garde haute » est choisi dans 1 fiche\(s\) : fiche de joueur n° 1\./);
+    const sp = supprimer('specialite', C1.spec1);
+    assert.equal(sp.statut, 409);
+    assert.match(sp.corps.erreur, /est choisie dans 2 fiche\(s\) : Fiche témoin D11, fiche de joueur n° 1\./);
+    const vu = appel('POST', '/api/edition/classe/', { classe: C1.id }).corps;
+    assert.deepEqual(vu.fiches[C1.paire[1]], ['fiche de joueur n° 1']);
+    assert.deepEqual(vu.fiches[C1.spec1], ['Fiche témoin D11', 'fiche de joueur n° 1']);
+    for (const r of [d, sp, { corps: vu }]) assert.ok(!JSON.stringify(r.corps).includes('Secret du joueur'), 'le nom d’une fiche de joueur ne sort pas');
+  } finally {
+    db.prepare('DELETE FROM personnage WHERE id = ?').run(joueur.id);
+    db.prepare("DELETE FROM utilisateur WHERE id = 'utilisateur-d11'").run();
+  }
 });
 
 test('D11 — supprimer une spécialité : elle emporte son don de spécialité et ses dons ; la bannière part ; une nouvelle du même nom prend -2', () => {

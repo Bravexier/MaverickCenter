@@ -162,7 +162,8 @@ export const listeDeFiches = (noms) => `${noms.slice(0, 5).join(', ')}${noms.len
  *   peutAjouterSpecialite : moins de SPECIALITES_MAX spécialités, et aucune sans don de spécialité (Archimage : la fiche lit ses spécialités dans ses dons
  *                           de niveau 10) ;
  *   specialites[id]       : { supprimable (elle a son don de spécialité), fiches (qui ont la spécialité ou l'un de ses dons) } ;
- *   dons[id]              : { supprimable (ni don de spécialité, ni don « miroir » d'une spécialité sans don de spécialité), peutRecevoirOption, fiches }.
+ *   dons[id]              : { supprimable (ni don de spécialité, ni don « miroir » d'une spécialité sans don de spécialité), peutRecevoirOption (ni don de
+ *                           spécialité, ni choix qui contient un miroir : une option y serait une spécialité de plus pour la fiche), fiches }.
  */
 export function permissions(etat) {
   const specialites = etat.specialites ?? [];
@@ -181,9 +182,12 @@ export function permissions(etat) {
     for (const d of dons) if (d.specialite_id === s.id) for (const n of fiches[d.id] ?? []) noms.add(n);
     resultat.specialites[s.id] = { supprimable: Boolean(cartoucheDe(s)), fiches: [...noms].sort((a, b) => a.localeCompare(b, 'fr')) };
   }
+  const estMiroir = (d) => d.nature !== 'specialite' && !d.specialite_id && miroirs.has(d.nom_cle);
   for (const d of dons) {
-    const miroir = d.nature !== 'specialite' && !d.specialite_id && miroirs.has(d.nom_cle);
-    resultat.dons[d.id] = { supprimable: d.nature !== 'specialite' && !miroir, peutRecevoirOption: d.nature !== 'specialite', miroir, fiches: fiches[d.id] ?? [] };
+    const miroir = estMiroir(d);
+    // un choix qui contient un miroir (Élémentaliste / Occultiste de l'Archimage) ne reçoit pas d'option : ce serait une troisième spécialité pour la fiche
+    const choixMiroir = groupeDe(d, dons).some(estMiroir);
+    resultat.dons[d.id] = { supprimable: d.nature !== 'specialite' && !miroir, peutRecevoirOption: d.nature !== 'specialite' && !choixMiroir, miroir, fiches: fiches[d.id] ?? [] };
   }
   return resultat;
 }
