@@ -115,7 +115,15 @@ Ce qui suit aussi, pour que les outils du dépôt acceptent les modifications ra
 champs structurés d'une page (`page.donnees`) s'écrivent comme `json.dumps` des importeurs (`lib/json-python.mjs`) ; les magies innées d'une race à
 liste d'onglet gardent l'ordre de l'onglet (une magie ajoutée va à la fin) ; les altérations d'état d'un sort (`sort_etat`) sont relues dans les cases
 modifiées (`lib/sort-etats.mjs`, la règle de l'importeur, qui redonne les lignes des 322 sorts) ; un sort renommé l'est aussi dans les panneaux
-« Effet "…" » des créatures (`creature_effet`) ; un peuple créé a sa case diagonale « Même peuple ».
+« Effet "…" » des créatures (`creature_effet`) et le titre de ce panneau dans leur page ; un peuple créé a sa case diagonale « Même peuple ».
+
+Le **corps des pages typées** (et leur résumé), qui sert à la recherche (`page_fts`), aux `[[liens]]` et à `races_onglet.py --verifier`, est refait
+depuis les tables à chaque modification, avec le rendu de leur importeur : morceaux d'une page de magie (`lib/corps-magies.mjs` : présentation, rôles,
+Mode Hyper, ligne, notes et texte d'un sort), sections de l'onglet d'une race et listes des classes et magies accessibles (`lib/corps-races.mjs` ; les
+citations de la fiche V15.2.2 restent), page entière d'une classe ou d'un don (`lib/corps-classes.mjs`), champs d'un métier (`lib/corps-metiers.mjs`) ;
+une valeur de l'onglet d'une race s'enregistre sous la forme que `races_onglet.py` relit. Une race ou une classe créée reçoit d'emblée le rendu de ses
+tables ; une race créée n'a pas d'onglet dans le classeur (ni source, ni Mode Hyper) : `races_onglet.py --verifier` ne relit que les races importées
+(`serveur-edition-corps` vérifie le tout de bout en bout, journal rapatrié sur une copie de `data/rows`).
 
 **Le journal** (section 14 de `data/schema.sql` : `modification_lot`, `modification`) : le service écrit chaque ligne touchée (avant, après) dans la
 même transaction que la modification (`serveur/edition-journal.mjs`). Une saisie envoie la valeur qu'elle a lue (`avant`) : si la base a changé

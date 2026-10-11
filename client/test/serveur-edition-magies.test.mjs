@@ -88,3 +88,18 @@ test('magie : présentation, caractéristique bonus (reconnue ou non), rôles, 4
   assert.match(modifier('magie_role', { magie_id: feu.id, rang: 1 }, { role_brut: 'MAGIE' }).corps.erreur, /Rôle « MAGIE »/);
   assert.equal(modifier('magie_resistance', { magie_id: feu.id }, { cible_brut: 'x' }).statut, 400, 'relations entre magies : pas modifiables');
 });
+
+test('corps d’une page de magie qui n’a pas la forme de l’importeur : le lot est refusé (500), rien n’est écrit, plutôt qu’un corps en retard', () => {
+  const vent = 'magies/magie-du-vent';
+  const sort = ligne('SELECT id, cout_brut FROM sort WHERE magie_id = ? ORDER BY ordre LIMIT 1', vent);
+  const corps = ligne('SELECT corps_md FROM page WHERE id = ?', vent).corps_md;
+  db.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run('Un corps écrit à la main, sans tableau des sorts.\n', vent);
+  try {
+    const r = modifier('sort', { id: sort.id }, { cout_brut: '99' });
+    assert.equal(r.statut, 500, JSON.stringify(r.corps));
+    assert.match(r.corps.erreur, /magies\/magie-du-vent : corps illisible/);
+    assert.equal(ligne('SELECT cout_brut FROM sort WHERE id = ?', sort.id).cout_brut, sort.cout_brut, 'lot annulé');
+  } finally {
+    db.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(corps, vent);
+  }
+});

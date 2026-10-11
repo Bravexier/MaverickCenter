@@ -68,7 +68,7 @@ test('don modifié : type et limite recalculés ; sa fiche suit (titre « Nom (C
   const page = ligne("SELECT titre, resume, corps_md, donnees FROM page WHERE id = 'capacites/anansi-anti-corps'");
   assert.equal(page.titre, 'Anticorps puissants (Anansi)');
   assert.equal(page.resume, 'Immunisé aux poisons.');
-  assert.equal(page.corps_md, 'Immunisé aux poisons.\nEt aux fioles.\n');
+  assert.equal(page.corps_md, 'Immunisé aux poisons.  \nEt aux fioles.\n', 'le rendu de l’importeur : retour à la ligne forcé (lib/corps-classes.mjs#corpsDeDon)');
   assert.equal(JSON.parse(page.donnees).type_capacite, 'Actif (2 fois/combat)');
 });
 

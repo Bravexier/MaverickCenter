@@ -2,7 +2,7 @@
 """Contenu de l'onglet de chaque race (classeur « Les races ») : des pages de races vers les tables typées (migration 0007-races-onglet).
 
     python3 -I tools/db/races_onglet.py --ecrire [--schema-ancien <fichier>]   # (ré)écrit data/migrations/0007-races-onglet.sql depuis les pages de data/rows
-    python3 -I tools/db/races_onglet.py --verifier    # data/rows (déjà migré) contient exactement ce que l'extraction donne : code 1 sinon
+    python3 -I tools/db/races_onglet.py --verifier [--rows <dossier>]   # data/rows (déjà migré ; ou une copie) contient exactement ce que l'extraction donne : code 1 sinon
 
 Bibliothèque standard uniquement. Les onglets de race n'ont été lus que par tools/sheets/races.py, qui en a écrit les pages `races/<slug>` (corps_md,
 corrigé depuis par les migrations 0005 et 0006) ; aucun dump n'est dans le dépôt. Ce script relit donc ces pages, section par section, et en tire les valeurs de
@@ -21,8 +21,10 @@ mêmes qui l'ont écrite (tools/sheets/races.py : md_text, labeled, render_ethni
 s'arrête sans rien écrire. Les sections tirées de la fiche (AP, AM, « Divers », restrictions, sous-races, matrices, écarts) ne sont pas relues : leurs
 valeurs sont déjà dans les tables race, ethnie, race_classe, race_magie.
 
-Une race créée depuis le site de dev (race_onglet.source_ref « Site de dev › … », serveur/edition.mjs) n'a pas d'onglet dans le classeur : ni extraite, ni
-vérifiée (le site est la source des données qu'il crée, décision du propriétaire).
+Une race créée depuis le site de dev (provenance « Site de dev › … », que seul le service écrit : client/serveur/edition.mjs#provenance) n'a pas d'onglet
+dans le classeur : ni source « onglet » dans ses sources, ni rang dans l'index, ni capacité Mode Hyper. Elle n'est ni extraite ni comparée ici ; son corps
+est le rendu de ses seules tables (client/src/lib/corps-races.mjs#corpsDeRaceCreee), contrôlé par client/test/serveur-edition-corps.test.mjs. Les races
+importées restent contrôlées en entier, et une race du classeur ne peut pas passer pour créée : sa provenance n'est pas modifiable depuis le site.
 """
 import importlib.util
 import os
@@ -46,6 +48,7 @@ _spec.loader.exec_module(R)
 
 CLASSEUR = 'Les races'
 ORIGINE = 'races'
+PROVENANCE_DU_SITE = 'Site de dev › '   # race.source_ref d'une race créée depuis le site de dev (voir l'en-tête)
 STAT_LABELS = R.STAT_LABELS            # Santé de départ, Chakra de départ, Barrière bonus, Vitesse Sol/Nage
 FICHE_LABEL = 'Fiche de personnage V15.2.2'
 # Notes de cellule de l'onglet (les seules : tools/sheets/races.py, « NOTES DE CELLULE ») : ethnie -> cellule. Les trois dons du Médusain, dans l'ordre
@@ -402,20 +405,9 @@ def base(rows=ROWS, schema_ancien=None):
         os.unlink(tmp.name)
 
 
-SITE_DE_DEV = 'Site de dev › '
-
-
-def races_du_site(db):
-    """Races créées depuis le site de dev : leur onglet (race_onglet) cite le site, pas le classeur."""
-    if not db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'race_onglet'").fetchone():
-        return set()
-    return {r[0] for r in db.execute('SELECT race_id FROM race_onglet WHERE substr(source_ref, 1, ?) = ?', (len(SITE_DE_DEV), SITE_DE_DEV))}
-
-
 def extraire(db):
-    du_site = races_du_site(db)
-    races = [r for r in db.execute("SELECT r.id, r.nom, r.source_ref, p.corps_md FROM race r JOIN page p ON p.id = r.id ORDER BY r.id").fetchall()
-             if r[0] not in du_site]
+    races = [r for r in db.execute("SELECT r.id, r.nom, r.source_ref, p.corps_md FROM race r JOIN page p ON p.id = r.id ORDER BY r.id")
+             if not r[2].startswith(PROVENANCE_DU_SITE)]
     onglets = {}
     for page_id, texte in db.execute(
             "SELECT ps.page_id, s.texte FROM page_source ps JOIN source s ON s.id = ps.source_id WHERE ps.page_id LIKE 'races/%'"):
@@ -645,18 +637,18 @@ def migration_sql(t):
 
 
 def verifier(db, t):
-    """Les tables de la base (déjà migrée) contiennent exactement les lignes de l'extraction."""
+    """Les tables de la base (déjà migrée) contiennent exactement les lignes de l'extraction (hors races créées depuis le site : voir l'en-tête)."""
     ecarts = []
     filtres = {'mode_hyper_effet': "version = 'onglet_race'", 'page_entite': "entite_table = 'race_don'", 'note_cellule': "entite_table = 'race_don'"}
-    du_site = races_du_site(db)
-    # la race d'une ligne : race_id, ou la page d'un don (page_entite), ou le préfixe de l'id du don (note_cellule)
-    race_de = {'page_entite': lambda r: r['page_id'], 'note_cellule': lambda r: r['entite_id'].split('#')[0]}
+    creees = {rid for rid, ref in db.execute('SELECT id, source_ref FROM race') if ref.startswith(PROVENANCE_DU_SITE)}
+    # la race d'une ligne : race_id, ou la page (page_entite), ou l'entité « races/<slug>#don:… » (note_cellule)
+    race_de = {'page_entite': 'page_id', 'note_cellule': 'entite_id'}
     for table, attendues in t.items():
         cols = T.colonnes(db, table)
         where = filtres.get(table, '1')
-        race = race_de.get(table, lambda r: r.get('race_id'))
+        i = cols.index(race_de.get(table, 'race_id'))
         presentes = sorted(tuple(r) for r in db.execute('SELECT %s FROM "%s" WHERE %s' % (', '.join('"%s"' % c for c in cols), table, where))
-                           if race(dict(zip(cols, r))) not in du_site)
+                           if r[i].split('#')[0] not in creees)
         voulues = sorted(tuple(r[c] for c in cols) for r in attendues)
         if presentes != voulues:
             ecarts.append('%s : %d ligne(s) en base, %d attendue(s), %d différente(s)' % (
@@ -667,10 +659,13 @@ def verifier(db, t):
 def main(argv):
     ancien = argv[argv.index('--schema-ancien') + 1] if '--schema-ancien' in argv[:-1] else None
     argv = [a for a in argv if a not in ('--schema-ancien', ancien)]
-    if argv not in (['--ecrire'], ['--verifier']):
-        sys.exit('usage : races_onglet.py --ecrire [--schema-ancien <fichier>] | --verifier')
+    rows = os.path.abspath(argv[argv.index('--rows') + 1]) if '--rows' in argv[:-1] else None
+    argv = [a for a in argv if a != '--rows' and (rows is None or os.path.abspath(a) != rows)]
+    if argv not in (['--ecrire'], ['--verifier']) or (rows and argv != ['--verifier']):
+        sys.exit('usage : races_onglet.py --ecrire [--schema-ancien <fichier>] | --verifier [--rows <dossier>]')
+    rows = rows or ROWS
     try:
-        db = base(schema_ancien=ancien)
+        db = base(rows=rows, schema_ancien=ancien)
         t = lignes(extraire(db))
     except Arret as e:
         print('arrêt : %s' % e)
@@ -680,7 +675,7 @@ def main(argv):
             fh.write(migration_sql(t))
         print('%s écrite : %s' % (os.path.relpath(MIGRATION, RACINE), ', '.join('%s %d' % (k, len(v)) for k, v in t.items())))
         return 0
-    if T.version_rows(ROWS) != T.version_schema():
+    if T.version_rows(rows) != T.version_schema():
         print('data/rows n\'est pas à la version du schéma : migrer d\'abord (npm run db:migrate)')
         return 1
     ecarts = verifier(db, t)

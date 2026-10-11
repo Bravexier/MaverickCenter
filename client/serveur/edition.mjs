@@ -1,7 +1,9 @@
 // Édition des règles depuis le site de dev (demande du propriétaire ; docs/serveur.md, « Édition ») : une requête = un lot de modifications, appliqué
 // d'un bloc dans la base vivante et noté au journal (serveur/edition-journal.mjs). Les colonnes modifiables sont celles du modèle partagé avec les pages
 // (src/lib/edition-modele.mjs) ; tout ce qui en dépend dans la base est recalculé ici (colonnes `X_cle`, colonnes typées tirées du brut, tables de
-// détail, page du wiki), avec les mêmes découpages que les importeurs (src/lib/metier-champs.mjs…, testés sur les lignes en place).
+// détail, page du wiki), avec les mêmes découpages que les importeurs (src/lib/metier-champs.mjs…, testés sur les lignes en place). Le corps et le
+// résumé des pages typées (recherche, [[liens]], tools/db/races_onglet.py) suivent leurs tables : lib/corps-magies.mjs, corps-races.mjs,
+// corps-classes.mjs, corps-metiers.mjs (rendus des importeurs, rejoués sur toute la base par leurs tests) ; une page réécrite est notée au journal.
 //
 // Opérations d'un lot (corps de POST /api/edition/) :
 //   { op: 'modifier',  table, cle: { … }, valeurs: { colonne: valeur }, avant?: { colonne: valeur lue } }   avant : refus 409 si la base a changé depuis
@@ -12,9 +14,13 @@
 //   { op: 'magies_innees', race, magies: [ids] }                                                             magies innées d'une race
 // Node seulement (node:sqlite), sans dépendance.
 import { ENTITES, ErreurValeur, MOT_CLE_RACE_HYBRIDE, TABLES, valeurDuChamp } from '../src/lib/edition-modele.mjs';
+import { RIEN, corpsDeMetier, decouperArtisanat, decouperBonus, famillesDeRecette } from '../src/lib/metier-champs.mjs';
+import { pageDuMetier, resumeDuMetier } from '../src/lib/corps-metiers.mjs';
 import {
-  CHAMPS_DU_CORPS, RIEN, corpsDeMetier, decouperArtisanat, decouperBonus, famillesDeRecette, remplacerChampDuCorps, resumeDeDescription,
-} from '../src/lib/metier-champs.mjs';
+  COLONNES_DE_SORT, ErreurCorpsMagie, PAGE_DE_LA_LIGNE, corpsAvecTitreRenomme, corpsDeMagieApres, resumeDeMagieApres,
+} from '../src/lib/corps-magies.mjs';
+import { corpsDeRace, corpsDeRaceCreee, etatAvecLigne, etatDeRace, valeurCanonique } from '../src/lib/corps-races.mjs';
+import { changementsDePageDeClasse, changementsDePageDeDon, corpsDeClasse, resumeDeClasse } from '../src/lib/corps-classes.mjs';
 import { analyserCout, analyserPortee, analyserType, analyserZone, bonusDeMaitrise, COLONNES_NM, TYPES_DE_SORT } from '../src/lib/sort-analyse.mjs';
 import { ORDRE_CHAMPS_NM, texteDeBonus } from '../src/lib/sort-maitrise.mjs';
 import { CHAMPS_DES_ETATS, etatsDuTexte, formesDesEtats } from '../src/lib/sort-etats.mjs';
@@ -94,6 +100,11 @@ function synchroniser(ctx, table, filtre, lignes, communes = {}) {
 /** Provenance des lignes de détail d'une entité : celle de la ligne principale, son dernier segment remplacé (« … › Bonus »). */
 const provenanceDeDetail = (sourceRef, segment) => `${String(sourceRef).replace(/ › [^›]*$/, '')} › ${segment}`;
 
+/** Écrit dans une page les colonnes qu'un rendu a recalculées ({ corps_md?, resume? } ; rien si l'objet est vide) : une modification du journal. */
+function ecrirePage(ctx, pageId, changes) {
+  if (Object.keys(changes).length && lireLigne(ctx.db, 'page', { id: pageId })) ctx.w.modifier('page', { id: pageId }, changes);
+}
+
 /** Supprime une page du wiki et ce qui la décrit (alias, mots-clés, sources, entités rattachées), chaque ligne notée au journal. */
 function supprimerPage(ctx, pageId) {
   const { db, w } = ctx;
@@ -155,9 +166,10 @@ function deriverMetier(ctx, avant, apres) {
       { origine: 'docs_typees', source_ref: provenanceDeDetail(apres.source_ref, 'Artisanat possible') });
   }
   if (!page) return;
-  let corps = page.corps_md;
-  for (const c of CHAMPS_DU_CORPS) if (apres[c.colonne] !== avant?.[c.colonne]) corps = remplacerChampDuCorps(corps, c.libelle, apres[c.colonne]);
-  w.modifier('page', { id }, { titre: apres.nom, titre_cle: normalize(apres.nom), resume: resumeDeDescription(apres.description) || null, corps_md: corps });
+  // corps : seuls les champs des colonnes modifiées sont réécrits, en entier (paragraphes compris), leurs [[liens]] gardés tant que leur texte reste
+  // écrit ; résumé : première phrase du premier paragraphe de la description (lib/corps-metiers.mjs)
+  const { corps_md: corps, resume } = pageDuMetier(page.corps_md, avant, apres);
+  w.modifier('page', { id }, { titre: apres.nom, titre_cle: normalize(apres.nom), resume, corps_md: corps });
 }
 
 const METIER = {
@@ -168,7 +180,7 @@ const METIER = {
     const { db, w, instant } = ctx;
     const ligne = { ...valeurs, artisanat_brut: valeurs.artisanat_brut ?? RIEN, equipement_brut: valeurs.equipement_brut ?? RIEN };
     const slug = normalize(ligne.nom);
-    const id = creerPage(ctx, { type: 'metiers', slug, titre: ligne.nom, resume: resumeDeDescription(ligne.description) || null, corps: corpsDeMetier(ligne), tags: ['métier'] });
+    const id = creerPage(ctx, { type: 'metiers', slug, titre: ligne.nom, resume: resumeDuMetier(ligne.description) || null, corps: corpsDeMetier(ligne), tags: ['métier'] });
     const metier = w.inserer('metier', {
       id, nom: ligne.nom, nom_cle: slug, description: ligne.description ?? '', bonus_brut: ligne.bonus_brut ?? '', artisanat_brut: ligne.artisanat_brut,
       ...colonnesArtisanat(db, ligne.artisanat_brut), equipement_brut: ligne.equipement_brut, avantage_brut: ligne.avantage_brut ?? null,
@@ -213,7 +225,27 @@ const MAGIE = {
     }
     return sortie;
   },
+  deriver: (ctx, avant, apres) => suivreCorpsDeMagie(ctx, 'magie', avant, apres),
 };
+
+/**
+ * Le corps de la page d'une magie (et son résumé, première phrase de la présentation) après la modification d'une ligne de magie, magie_role,
+ * mode_hyper_effet (version onglet_magie) ou sort : seuls les morceaux qui dérivent de cette ligne sont réécrits (lib/corps-magies.mjs). Un corps
+ * qui n'a pas la forme de l'importeur (morceau introuvable, jamais le cas des 15 pages de la base) refuse le lot plutôt que de rester en retard.
+ */
+function suivreCorpsDeMagie(ctx, table, avant, apres) {
+  const id = PAGE_DE_LA_LIGNE[table](apres);
+  const page = lireLigne(ctx.db, 'page', { id });
+  if (!page) return;
+  let corps;
+  try {
+    corps = corpsDeMagieApres(page.corps_md, table, avant, apres);
+  } catch (e) {
+    if (e instanceof ErreurCorpsMagie) throw new ErreurEdition(500, `Page ${id} : corps illisible (${e.message}) ; rien n’est enregistré.`);
+    throw e;
+  }
+  ecrirePage(ctx, id, { corps_md: corps, ...(table === 'magie' ? { resume: resumeDeMagieApres(page.resume, avant, apres) } : {}) });
+}
 
 const ROLES = { degats: 'degats', renforcement: 'renforcement', soin: 'soin', entrave: 'entrave', placement: 'placement', invocation: 'invocation' };
 const MAGIE_ROLE = {
@@ -221,6 +253,18 @@ const MAGIE_ROLE = {
     const role = ROLES[normalize(ligne.role_brut)];
     if (!role) throw refus(`Rôle « ${ligne.role_brut} » : un de ${Object.keys(ROLES).map((r) => r.toUpperCase()).join(', ')}`);
     return { role };
+  },
+  deriver: (ctx, avant, apres) => suivreCorpsDeMagie(ctx, 'magie_role', avant, apres),
+};
+
+/**
+ * Capacité Mode Hyper : celle de l'onglet d'une magie est écrite dans le corps de la page de la magie, celle de l'onglet d'une race dans celui de la
+ * race ; les autres versions (fiche, classeur des modes, masque) ne sont citées par aucun corps.
+ */
+const MODE_HYPER_EFFET = {
+  deriver(ctx, avant, apres) {
+    if (apres.version === 'onglet_magie') suivreCorpsDeMagie(ctx, 'mode_hyper_effet', avant, apres);
+    else if (apres.version === 'onglet_race') suivreCorpsDeRace(ctx, apres.race_id, { table: 'mode_hyper_effet', avant });
   },
 };
 
@@ -272,10 +316,11 @@ function deriverNomDuSort(ctx, avant, apres) {
   const { db, w } = ctx;
   for (const e of db.prepare('SELECT * FROM creature_effet WHERE sort_id = ?').all(apres.id)) {
     const cite = `"${e.nom}"`;
-    w.modifier('creature_effet', cleDe(db, 'creature_effet', e), {
-      nom: apres.nom,
-      ...(e.libelle.includes(cite) ? { libelle: e.libelle.replace(cite, `"${apres.nom}"`) } : {}),
-    });
+    const libelle = e.libelle.includes(cite) ? e.libelle.replace(cite, `"${apres.nom}"`) : e.libelle;
+    w.modifier('creature_effet', cleDe(db, 'creature_effet', e), { nom: apres.nom, libelle });
+    // la page de la créature titre le panneau « ## Effet "Nom" » (lib/corps-magies.mjs#corpsAvecTitreRenomme)
+    const page = lireLigne(db, 'page', { id: e.creature_id });
+    if (page && libelle !== e.libelle) ecrirePage(ctx, page.id, { corps_md: corpsAvecTitreRenomme(page.corps_md, e.libelle, libelle) });
   }
 }
 
@@ -295,6 +340,8 @@ const SORT = {
   },
   deriver(ctx, avant, apres) {
     deriverNomDuSort(ctx, avant, apres);
+    // sa ligne du tableau des sorts, ses notes et son texte de niveau 5 dans le corps de la page de sa magie
+    if (COLONNES_DE_SORT.some((c) => (apres[c] ?? null) !== (avant[c] ?? null))) suivreCorpsDeMagie(ctx, 'sort', avant, apres);
     if (apres.type_brut !== avant.type_brut) {
       const type = analyserType(apres.type_brut);
       synchroniser(ctx, 'sort_type', { sort_id: apres.id }, type.types.map((t, i) => ({ rang: i + 1, ...t })), { origine: 'magies', source_ref: apres.source_ref });
@@ -318,12 +365,37 @@ const PAGE_DES_RELATIONS = 'lore/relations-entre-les-races';
 export const ECHELLE_MEME_PEUPLE = 'meme-peuple';
 const ordreSuivant = (db, table, colonne = 'ordre') => (db.prepare(`SELECT max("${colonne}") AS m FROM "${table}"`).get().m ?? 0) + 1;
 
+/**
+ * Le corps de la page d'une race recalculé depuis ses tables (lib/corps-races.mjs : sections de l'onglet, nombre et liste des classes et des magies
+ * accessibles, colonne « Onglet (retenu) » du tableau des écarts ; les citations de la fiche V15.2.2 restent telles quelles), après toute écriture
+ * de ce qu'il cite. `table` et `avant` : la ligne modifiée telle qu'elle était, pour retrouver dans le tableau des écarts une ethnie ou un don renommé.
+ */
+function suivreCorpsDeRace(ctx, raceId, { table = null, avant = null } = {}) {
+  const page = lireLigne(ctx.db, 'page', { id: raceId });
+  if (!page) return;
+  const etat = etatDeRace((sql, ...p) => ctx.db.prepare(sql).all(...p), raceId);
+  ecrirePage(ctx, raceId, { corps_md: corpsDeRace(page.corps_md, etat, table ? etatAvecLigne(etat, table, avant) : etat) });
+}
+
+/** Les tables de l'onglet d'une race : chaque modification réécrit le corps de la page de la race. */
+const tableDeLOnglet = (table) => ({ deriver: (ctx, avant, apres) => suivreCorpsDeRace(ctx, apres.race_id, { table, avant }) });
+
+/**
+ * Forme enregistrée d'une valeur des tables de l'onglet d'une race : celle que tools/db/races_onglet.py relit dans le corps (lib/corps-races.mjs
+ * #valeurCanonique : « a\n- b » s'enregistre « a\n\n- b »), pour que table et corps restent d'accord.
+ */
+function valeursCanoniques(table, ligne, valeurs) {
+  if (!table.startsWith('race_') && !(table === 'mode_hyper_effet' && ligne.version === 'onglet_race')) return valeurs;
+  return Object.fromEntries(Object.entries(valeurs).map(([c, v]) => [c, valeurCanonique(table, c, v)]));
+}
+
 const RACE = {
   deriver(ctx, avant, apres) {
-    // la phrase de présentation est aussi le résumé de la page de la race (quand ils étaient égaux)
+    // la phrase de présentation est aussi le résumé de la page de la race (quand ils étaient égaux) et la tête de son corps
     if (apres.presentation === avant.presentation) return;
     const page = lireLigne(ctx.db, 'page', { id: apres.id });
     if (page && (page.resume ?? null) === (avant.presentation ?? null)) ctx.w.modifier('page', { id: apres.id }, { resume: apres.presentation });
+    suivreCorpsDeRace(ctx, apres.id, { table: 'race', avant });
   },
   creer(ctx, valeurs) {
     const { db, w, instant } = ctx;
@@ -345,8 +417,8 @@ const RACE = {
     w.inserer('page_entite', { entite_table: 'race', entite_id: id, page_id: id, principale: 1, origine: 'races' });
     const onglet = db.prepare('SELECT 1 FROM race_onglet WHERE onglet = ?').get(valeurs.nom) ? `${valeurs.nom} (${slug})` : valeurs.nom;
     w.inserer('race_onglet', {
-      race_id: id, onglet, description_generale: valeurs.presentation ?? A_COMPLETER, histoire: A_COMPLETER, description: null, sante_depart: 0, chakra_depart: 0,
-      barriere_bonus: 0, vitesse_sol: 0, vitesse_nage: 0, avantages: A_COMPLETER, inconvenients: A_COMPLETER, don_base: A_COMPLETER, dons_rubrique: null,
+      race_id: id, onglet, description_generale: valeurCanonique('race_onglet', 'description_generale', valeurs.presentation ?? A_COMPLETER),
+      histoire: A_COMPLETER, description: null, sante_depart: 0, chakra_depart: 0, barriere_bonus: 0, vitesse_sol: 0, vitesse_nage: 0, avantages: A_COMPLETER, inconvenients: A_COMPLETER, don_base: A_COMPLETER, dons_rubrique: null,
       dons_rubrique_nom: null, dons_rubrique_don: null, dons_tableau_titre: null, origine: 'races', source_ref: source,
     });
     // matrices de la fiche : la race y a sa ligne, rien d'accessible tant que le propriétaire ne l'a pas décidé (magies innées : cases à cocher de sa page)
@@ -358,6 +430,8 @@ const RACE = {
       w.inserer('race_classe', { race_id: id, classe_id: c.id, ordre, accessible: 0, valeur_brut: '0', origine: 'races', source_ref: source });
     }
     creerPeuple(ctx, { nom: valeurs.nom, race_id: id });
+    // son corps, tiré de ses seules tables (aucune section de la fiche V15.2.2) : celui que corpsDeRace redonne à chaque modification
+    ecrirePage(ctx, id, { corps_md: corpsDeRaceCreee(etatDeRace((sql, ...p) => db.prepare(sql).all(...p), id)) });
     return { id, resume: `Race créée : ${valeurs.nom} (${hybride ? 'hybride' : 'pure'})` };
   },
 };
@@ -447,6 +521,7 @@ function magiesInnees(ctx, op) {
   if (page) {
     const donnees = page.donnees ? JSON.parse(page.donnees) : {};
     w.modifier('page', { id: race.id }, { donnees: jsonCommePython({ ...donnees, magies_innees: choisies.map((m) => m.nom) }) });
+    suivreCorpsDeRace(ctx, race.id); // « Magies accessibles » (nombre, liste) et la ligne « Magies innées » du tableau des écarts
   }
   return `Magies innées de ${race.nom} : ${choisies.map((m) => m.nom).join(', ') || 'aucune'}`;
 }
@@ -473,6 +548,27 @@ function suivrePage(ctx, pageId, champs) {
   if (Object.keys(changes).length) ctx.w.modifier('page', { id: pageId }, changes);
 }
 
+/** Les lignes dont la page d'une classe est faite (lib/corps-classes.mjs#corpsDeClasse : catégorie, spécialités, dons pour les bannières, annexe). */
+const lignesDeClasse = (db, classe) => ({
+  classe,
+  categorie: lireLigne(db, 'categorie_classe', { id: classe.categorie_id }),
+  specialites: db.prepare('SELECT * FROM specialite WHERE classe_id = ?').all(classe.id),
+  dons: db.prepare('SELECT specialite_id FROM capacite WHERE classe_id = ?').all(classe.id),
+  annexe: db.prepare('SELECT * FROM classe_annexe WHERE classe_id = ?').all(classe.id),
+});
+
+/**
+ * Le corps et le résumé de la page d'une classe après une modification de ses tables : `remplacer(lignes)` donne les lignes d'avant à partir de
+ * celles d'après (la ligne modifiée remise telle qu'elle était). Rien n'est écrit si le rendu ne change pas.
+ */
+function suivrePageDeClasse(ctx, classeId, remplacer) {
+  const classe = lireLigne(ctx.db, 'classe', { id: classeId });
+  const page = classe && lireLigne(ctx.db, 'page', { id: classeId });
+  if (!page) return;
+  const apres = lignesDeClasse(ctx.db, classe);
+  ecrirePage(ctx, classeId, changementsDePageDeClasse(page, remplacer(apres), apres));
+}
+
 /** Les races hybrides qui n'ont pas encore de classe raciale (demande du propriétaire : seule l'une d'elles peut recevoir une classe raciale). */
 export function racesHybridesSansClasse(db) {
   const raciales = new Set(db.prepare('SELECT nom_cle FROM classe WHERE categorie_id = ?').all(CATEGORIE_RACIALE).map((c) => c.nom_cle));
@@ -492,9 +588,8 @@ const CLASSE = {
     if (apres.maitrise_arme !== avant.maitrise_arme) detail('classe_maitrise_arme', decouperMaitriseArme(apres.maitrise_arme));
     if (apres.maitrise_armure !== avant.maitrise_armure) detail('classe_maitrise_armure', decouperMaitriseArmure(apres.maitrise_armure));
     if (apres.inventaire_depart !== avant.inventaire_depart) detail('classe_objet_depart', decouperInventaire(apres.inventaire_depart, db.prepare('SELECT id, nom_cle FROM objet_depart').all()));
-    if (apres.description !== avant.description) {
-      suivrePage(ctx, apres.id, { resume: [resumeDeDescription(avant.description) || null, resumeDeDescription(apres.description) || null] });
-    }
+    // corps (valeurs de départ, maîtrises, équipement, présentation, chose à savoir, remarque) et résumé (première phrase de la présentation)
+    suivrePageDeClasse(ctx, apres.id, (L) => ({ ...L, classe: avant }));
   },
   creer(ctx, valeurs) {
     const { db, w, instant } = ctx;
@@ -511,15 +606,19 @@ const CLASSE = {
     if (!nom) throw refus('Nouvelle classe : « Nom » obligatoire');
     if (db.prepare('SELECT 1 FROM classe WHERE nom = ?').get(nom)) throw new ErreurEdition(409, `La classe ${nom} existe déjà.`);
     const slug = race ? race.id.slice(race.id.indexOf('/') + 1) : normalize(nom);
-    const id = creerPage(ctx, { type: 'classes', slug, titre: nom, corps: `${A_COMPLETER}
-`, tags: ['classe', MOT_CLE_DE_CATEGORIE[categorie.id]] });
     const source = `${provenance(instant)} › ${nom}`;
-    w.inserer('classe', {
-      id, nom, nom_cle: slug, categorie_id: categorie.id, ordre: ordreSuivant(db, 'classe'), sante_depart: valeurs.sante_depart ?? 0,
+    const ligne = {
+      id: `classes/${slug}`, nom, nom_cle: slug, categorie_id: categorie.id, ordre: ordreSuivant(db, 'classe'), sante_depart: valeurs.sante_depart ?? 0,
       chakra_depart: valeurs.chakra_depart ?? 0, barriere_depart: valeurs.barriere_depart ?? 0, maitrise_arme: null, maitrise_armure: null,
       bouclier_classe_max: null, inventaire_depart: null, arme_depart: null, armure_depart: null, chose_a_savoir: null, chose_a_savoir_lien: null,
       description_titre: null, description: null, origine: 'classes', source_ref: source, remarque: null, magie_innee_id: null,
+    };
+    // sa page : le rendu de ses tables (catégorie, valeurs de départ ; ni spécialité ni don), celui que corpsDeClasse redonne à chaque modification
+    const id = creerPage(ctx, {
+      type: 'classes', slug, titre: nom, resume: resumeDeClasse(ligne), corps: corpsDeClasse({ classe: ligne, categorie }),
+      tags: ['classe', MOT_CLE_DE_CATEGORIE[categorie.id]],
     });
+    w.inserer('classe', ligne);
     w.inserer('page_entite', { entite_table: 'classe', entite_id: id, page_id: id, principale: 1, origine: 'classes' });
     // matrice « Accessibilité de Classe » de la fiche : une colonne de plus ; une classe raciale n'est accessible qu'à sa race (comme les 13 du classeur)
     const ordre = ordreSuivant(db, 'race_classe');
@@ -527,12 +626,16 @@ const CLASSE = {
       const accessible = race && r.id === race.id ? 1 : 0;
       w.inserer('race_classe', { race_id: r.id, classe_id: id, ordre, accessible, valeur_brut: String(accessible), origine: 'races', source_ref: source });
     }
+    // « Classes accessibles » de chaque race : une colonne de plus (« Nombre : N sur M »), la classe raciale dans la liste de sa race
+    for (const r of db.prepare('SELECT id FROM race').all()) suivreCorpsDeRace(ctx, r.id);
     return { id, resume: `Classe créée : ${nom} (${categorie.libelle}${race ? `, classe raciale de ${race.nom}` : ''})` };
   },
 };
 
 const SPECIALITE = {
   deriver(ctx, avant, apres) {
+    // la page de la classe écrit chaque spécialité qui a des dons (« ### NOM », sa description, sa remarque)
+    suivrePageDeClasse(ctx, apres.classe_id, (L) => ({ ...L, specialites: L.specialites.map((s) => (s.id === avant.id ? avant : s)) }));
     if (apres.nom === avant.nom) return;
     // les fiches de dons de la spécialité la citent par son nom (front matter `specialite`, mot-clé)
     for (const k of ctx.db.prepare('SELECT id FROM capacite WHERE specialite_id = ?').all(apres.id)) {
@@ -549,7 +652,6 @@ const SPECIALITE = {
   },
 };
 
-const premiereLigne = (texte) => String(texte ?? '').split('\n').map((l) => l.trim()).find(Boolean) ?? null;
 const CAPACITE = {
   colonnes(_ctx, ligne) {
     return ligne.type_brut ? analyserTypeDeDon(ligne.type_brut) : { type: null, limite_nombre: null, limite_periode: null };
@@ -558,12 +660,10 @@ const CAPACITE = {
     const classe = lireLigne(ctx.db, 'classe', { id: apres.classe_id });
     const page = lireLigne(ctx.db, 'page', { id: apres.id });
     if (!page) return;
-    // la fiche du don (page capacites/…) : titre « Nom (Classe) », résumé (première ligne de l'effet), corps (l'effet), type
-    suivrePage(ctx, apres.id, {
-      titre: [`${avant.nom} (${classe?.nom})`, `${apres.nom} (${classe?.nom})`],
-      resume: [premiereLigne(avant.effet), premiereLigne(apres.effet)],
-      corps_md: [`${avant.effet ?? ''}\n`, `${apres.effet ?? ''}\n`],
-    });
+    // la fiche du don (page capacites/…) : titre « Nom (Classe) », type ; corps (l'effet, puis « Note de cellule : » et la remarque) et résumé
+    // (capacity_summary de l'importeur) refaits depuis la ligne (lib/corps-classes.mjs)
+    suivrePage(ctx, apres.id, { titre: [`${avant.nom} (${classe?.nom})`, `${apres.nom} (${classe?.nom})`] });
+    ecrirePage(ctx, apres.id, changementsDePageDeDon(page, avant, apres));
     if (page.titre === avant.nom && apres.nom !== avant.nom) ctx.w.modifier('page', { id: apres.id }, { titre: apres.nom, titre_cle: normalize(apres.nom) });
     const donnees = page.donnees ? JSON.parse(page.donnees) : null;
     if (donnees && donnees.type_capacite === avant.type_brut && apres.type_brut !== avant.type_brut) {
@@ -614,8 +714,9 @@ function apercuDe(op, corps) {
 
 /** Ce que l'édition sait faire, table par table : colonnes recalculées dans la ligne, dérivations ailleurs, création, suppression. */
 const DOMAINES = {
-  metier: METIER, magie: MAGIE, magie_role: MAGIE_ROLE, sort: SORT, race: RACE, peuple: PEUPLE, classe: CLASSE, specialite: SPECIALITE, capacite: CAPACITE,
-  page: PAGE,
+  metier: METIER, magie: MAGIE, magie_role: MAGIE_ROLE, mode_hyper_effet: MODE_HYPER_EFFET, sort: SORT, race: RACE, race_onglet: tableDeLOnglet('race_onglet'),
+  race_don: tableDeLOnglet('race_don'), race_don_tableau_colonne: tableDeLOnglet('race_don_tableau_colonne'),
+  race_don_tableau_cellule: tableDeLOnglet('race_don_tableau_cellule'), peuple: PEUPLE, classe: CLASSE, specialite: SPECIALITE, capacite: CAPACITE, page: PAGE,
 };
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -652,9 +753,10 @@ function modifier(ctx, op) {
   const { table } = op;
   if (!TABLES[table]) throw refus(`table « ${table} » : pas modifiable depuis le site`);
   if (!op.cle || typeof op.cle !== 'object') throw refus(`${table} : clé attendue`);
-  const valeurs = valeursValidees(table, op.valeurs);
+  const validees = valeursValidees(table, op.valeurs);
   const avant = lireLigne(db, table, op.cle);
   if (!avant) throw new ErreurEdition(404, `${TABLES[table].libelle} introuvable : ${JSON.stringify(op.cle)}`);
+  const valeurs = valeursCanoniques(table, avant, validees);
   if (op.avant && typeof op.avant === 'object') {
     const changees = Object.keys(valeurs).filter((c) => c in op.avant && (op.avant[c] ?? null) !== (avant[c] ?? null));
     if (changees.length) {
