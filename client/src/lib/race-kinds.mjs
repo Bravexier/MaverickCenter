@@ -4,8 +4,8 @@
 // classes, qui porte le nom de la race : la classe « Orios », classes/orios, pour la race Orios) ; les autres races sont pures. La
 // distinction ne se déduit pas du texte des pages : elle suit l'existence de la page de la classe raciale, sauf pour les
 // races de HYBRIDES_SANS_CLASSE_RACIALE (décision R14 du propriétaire) et de celles qu'on a créées hybrides depuis le site de dev avant de leur
-// donner leur classe raciale (mot-clé « race hybride », TAG_RACE_HYBRIDE). Le fait que les races hybrides à classe raciale
-// n'aient que 3 magies innées est vérifié par un test sur le contenu réel (test/races-magies-content.test.mjs).
+// donner leur classe raciale (mot-clé « race hybride », TAG_RACE_HYBRIDE). Que les races hybrides à classe raciale aient 3 magies innées est un
+// constat de l'import, pas une règle (décision R30) : test/races-magies-content.test.mjs le garde comme effectif de l'import.
 import { normalize } from './text.mjs';
 
 const isRacialClass = (entry) => entry.id.startsWith('classes/') && (entry.data.tags ?? []).some((t) => normalize(t) === 'hybride-animal');

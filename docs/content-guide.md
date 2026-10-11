@@ -61,7 +61,7 @@ en clair dans `tools/sheets/races.py` (`RACE_DETAIL_OVERRIDES`), signalée dans 
 race pure (pas de classe raciale). Si le classeur de la fiche est corrigé, retirer l'exception : le script refuse une exception devenue redondante.
 
 **Races pures et hybrides** : une race est hybride quand elle a sa propre classe raciale (une classe « Hybride Animal » qui porte son nom,
-`lib/race-kinds.mjs`) ; les données confirment que ces 13 races ont exactement 3 magies innées. S'y ajoute le Drassah'thac, race hybride sans classe raciale
+`lib/race-kinds.mjs`) ; à l'import, ces 13 races ont exactement 3 magies innées (un constat, pas une règle : décision R30). S'y ajoute le Drassah'thac, race hybride sans classe raciale
 et aux 14 magies innées (décision R14, `HYBRIDES_SANS_CLASSE_RACIALE`). Les 13 races pures en ont 13 ou plus, sauf le Nain (5 magies innées d'après son onglet,
 voir l'exception ci-dessus).
 
