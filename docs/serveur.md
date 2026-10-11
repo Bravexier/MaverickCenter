@@ -364,6 +364,11 @@ pas encore livrée). Sans jeton : `manuel`. Annulé : `annule`. Simulation : `si
   brouillon, sans annuler le lot) ;
 - le lot dit s'il est une simulation (`simulation`, couvert par l'empreinte) : le workflow refuse un lot lancé dans l'autre mode.
 
+La page ne montre l'encart « Dernier lancement » / « Dernière simulation » que pour la **version en préparation** (demande du propriétaire :
+la livraison précédente, terminée, disparaît) ; un lancement d'une autre version reste affiché tant qu'il pèse sur la page — `occupe`, son lot
+tient le texte figé, ou ce lot, pas encore dans dev, s'annule encore (`liberable`) — pour qu'elle dise pourquoi (`lancementAffiche`,
+`lib/notes-de-version-rendu.mjs`, testé).
+
 **Le site est la source** des données qu'il modifie (décision du propriétaire) : toute modification rapatriée dans `data/rows` (par ce bouton,
 avec la version qui la livre, ou par `npm run db:appliquer-edition`, version vide) est gardée, ligne par ligne, dans `historique_modification`
 (lot, rang, date, table, clé, opération, avant, après). `client/src/lib/historique-site.mjs` le relit (`historiqueSite(db)`) : `creee`,

@@ -204,6 +204,9 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   (`notes-de-version-sens.mjs`, tout cas douteux reste neutre). `scripts/mise-a-jour-regles.mjs` refuse d'écrire un fichier de `data/rows` hors des tables du journal et de la
   note (`TABLES_DE_LA_NOTE`) : un fichier de `data/rows` qui n'est pas tel que l'exporteur l'écrit bloque donc une mise à jour. Pas de protection du bouton avant la connexion Discord
   (décision du propriétaire). La première mise à jour fait la livraison 0.2.0. Les notes `exemple = 1` (lorem ipsum, migration `0023`) sont retirées par la première vraie.
+  Demandes du propriétaire : la note de la V0.2 ne liste rien, son texte dit « Import initial depuis les sources historiques » (migration `0028`, `historique_modification` gardé) ;
+  l'encart « Dernier lancement » ne parle que de la version en préparation, sauf s'il pèse encore sur la page (`lancementAffiche`) ; le bandeau du site de dev
+  (`Base.astro`) dit « Serveur de dev. » et renvoie à cette page.
   Le job `preparer` lance `npm test` APRÈS avoir écrit la note du lot dans `data/rows` (pas encore sur master) : le job CI `simulation-de-mise-a-jour` (`ci.yml`) applique
   de même un lot synthétique (`scripts/mise-a-jour-simulation.mjs` : le service fait de vraies modifications et fige le lot) puis les mêmes contrôles (`CONTROLES`, épinglés par
   `test/mise-a-jour-simulation.test.mjs`) : run 38151792080, 14 tests l'ignoraient, et `site-html` supposait les notes d'exemple.

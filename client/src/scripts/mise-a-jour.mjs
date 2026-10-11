@@ -6,7 +6,7 @@
 // La page suit leur avancement ; une vraie mise à jour lancée, les deux sites passent en maintenance (serveur/maintenance.mjs) et cette page part
 // vers /maintenance/, qui y revient quand la nouvelle version est installée. Ailleurs (production, service absent) : rien ne change.
 // Ce script n'importe que le rendu commun (aucun autre script de page ne l'importe : la version portable refuse un module partagé).
-import { compter, echapper, htmlDeLaListe, htmlDuTexteLibre } from '../lib/notes-de-version-rendu.mjs';
+import { compter, echapper, htmlDeLaListe, htmlDuTexteLibre, lancementAffiche } from '../lib/notes-de-version-rendu.mjs';
 
 const racine = document.querySelector('[data-mise-a-jour]');
 const BUREAU = matchMedia('(min-width: 60rem) and (hover: hover) and (pointer: fine)');
@@ -99,7 +99,7 @@ function rendre() {
     <p class="nv-dev__bilan">${bilan}</p>
     <div class="nv-dev__note">${note}</div>
     ${bouton}
-    ${htmlDuLancement(d.lancement, d.github, d.liberable)}
+    ${htmlDuLancement(lancementAffiche(d), d.github, d.liberable)}
     <div class="nv-dev__liste">${d.lignes ? htmlDeLaListe(d.lignes, { niveau: 3, plafond: 25 }) : ''}</div>`;
   zone.hidden = false;
   brancher(zone);

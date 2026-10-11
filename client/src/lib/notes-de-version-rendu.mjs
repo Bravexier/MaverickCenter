@@ -206,11 +206,33 @@ export const dateLisible = (iso) => (iso ? DATE.format(new Date(`${iso}T00:00:00
 export function htmlDeLaNote(note, lignes, { niveau = 2 } = {}) {
   const exemple = note.exemple ? '<p class="nv-exemple" role="note">Donnée d’exemple (lorem ipsum) : elle disparaîtra à la première vraie mise à jour.</p>' : '';
   const depuis = note.depuis ? ` <span class="nv-depuis">depuis la V${echapper(note.depuis)}</span>` : '';
+  // une note sans liste mais avec un texte (la V0.2 : « Import initial depuis les sources historiques », migration 0028) : le texte dit tout,
+  // sans « Aucune modification des règles » en dessous
+  const liste = lignes.length || !note.texte ? htmlDeLaListe(lignes, { niveau: niveau + 1 }) : '';
   return `<article class="nv-note" id="v${echapper(note.version.replace('.', '-'))}">
     <h${niveau} class="nv-note__titre">Version ${echapper(note.version)} <span class="nv-date">${echapper(dateLisible(note.publiee_le))}</span>${depuis}</h${niveau}>
     ${exemple}${note.texte ? `<div class="nv-texte">${htmlDuTexteLibre(note.texte)}</div>` : ''}
-    ${htmlDeLaListe(lignes, { niveau: niveau + 1 })}
+    ${liste}
   </article>`;
+}
+
+/** États d'un lot entré dans dev ou livré : « libérer » n'y fait que vider le texte qu'il tient encore (serveur/notes-de-version.mjs#libererLot). */
+const LOT_DANS_DEV = ['fusionne', 'echec_livraison', 'termine'];
+
+/**
+ * Le dernier lancement à montrer dans la note en préparation (site de dev), ou null. Demande du propriétaire : l'encart « Dernier lancement » /
+ * « Dernière simulation » ne parle que de la version en préparation — un lancement d'une autre version (la livraison précédente, terminée) n'y
+ * apparaît plus. Il reste tant qu'il pèse sur la page, quelle que soit sa version : il bloque un nouveau lancement (`occupe`), tient le texte
+ * figé (`brouillon.lot`), ou son lot, toujours servi au workflow, peut être annulé (`liberable` hors lot déjà dans dev : un lot livré resté sans
+ * nouvelles 3 h est `liberable` pour toujours, et n'a plus rien à libérer une fois le texte rendu) ; sans lui, la page ne dirait plus pourquoi.
+ * @param {{ lancement?: { lot?: string, version_cible?: string, etat?: string } | null, version_cible?: string, occupe?: boolean, liberable?: boolean, brouillon?: { lot?: string | null } | null }} donnees réponse de GET /api/mise-a-jour/
+ */
+export function lancementAffiche({ lancement, version_cible: versionCible, occupe = false, liberable = false, brouillon = null }) {
+  if (!lancement) return null;
+  if (lancement.version_cible === versionCible) return lancement;
+  const tientLeTexte = Boolean(brouillon?.lot) && brouillon.lot === lancement.lot;
+  const annulable = liberable && !LOT_DANS_DEV.includes(lancement.etat);
+  return occupe || tientLeTexte || annulable ? lancement : null;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------

@@ -82,7 +82,7 @@ test('avant la 0.2.0 : le README pose le serveur de test depuis la branche « si
   const jeton = section.match(/^\s*(ssh -t .*\.github-token.*)$/m)[1];
   assert.match(jeton, /^ssh -t -i \S+ ubuntu@<IP> "sudo sh -c 'umask 077; stty -echo; head -n 1 > \S+\.github-token; stty echo; chmod 600 /, 'le jeton se colle sans s\'afficher, jamais en argument');
   assert.doesNotMatch(jeton.slice(jeton.indexOf('"') + 1, jeton.lastIndexOf('"')), /[$%"]/);
-  assert.match(section, /bandeau « Serveur de test »/);
+  assert.match(section, /bandeau « Serveur de dev »/);
   assert.match(section, /répond 502/);
 });
 

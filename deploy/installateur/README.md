@@ -15,7 +15,7 @@ Prérequis sur l'hôte : un hôte Docker (Linux), `sh`, `tar`, `gzip`, et `sha25
 | --- | --- | --- |
 | Installateur | `maverick-center-VX.Y-install.sh` (fusion dans `master` ; `VX.Y-hotfix.N` après un hotfix) | `maverick-center-VX.Y.Z-install.sh` (fusion dans `dev` : la version complète de `dev`, sans suffixe) |
 | Dossier conseillé | `/srv/maverick-center` | `/srv/maverick-center-test` (à côté du serveur normal) |
-| Adresse | `http://<hôte>:8080` | `http://<hôte>:8081`, bandeau « Serveur de test » sur chaque page |
+| Adresse | `http://<hôte>:8080` | `http://<hôte>:8081`, bandeau « Serveur de dev » sur chaque page |
 | Base vivante `db/` | jamais touchée par une installation | **son contenu est remplacé à chaque installation par une copie de celle du serveur normal, prise à cet instant** (le dossier reste : il est monté dans le conteneur du service, qui rouvre la base). **Sauf** si le `.env` de l'instance contient `MAVERICK_BASE_TEST=conservee` : la copie n'est faite qu'à la première installation (`db/` vide), puis `db/` n'est plus touché, pour que les modifications faites en test durent ([`deploy/vps/`](../vps/README.md) pose ce réglage) |
 
 Une instance = un dossier : `site/` (remplacé à chaque installation, avec le code du service des personnages, `site/_serveur/`), `db/` (base vivante
