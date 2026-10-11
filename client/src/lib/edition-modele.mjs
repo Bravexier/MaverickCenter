@@ -2,7 +2,7 @@
 // quelles tables une page peut modifier, avec leur type de champ, et comment une page désigne un champ (attribut `data-ed`). Le service n'accepte
 // que ces colonnes ; tout ce qui en dépend dans la base (colonnes typées, tables de détail, page du wiki) est recalculé par le service, jamais saisi.
 // Entités créables (ENTITES) : métier, race, classe, peuple, spécialité, don de classe ; supprimables : métier, spécialité, don de classe (retirés des
-// fiches de personnage qui les ont, avec une note datée : décision R33, annonceDesFiches).
+// fiches de personnage qui les ont, avec une note datée : décision R42, annonceDesFiches).
 // Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, pur lui aussi) : partagées par le service, les gabarits Astro et le
 // script des pages (src/scripts/edition.mjs).
 import { NIVEAUX_DE_DON, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
@@ -311,7 +311,7 @@ export const cleDeLigne = (table, cle) =>
 const FICHES_ANNONCEES = 5;
 
 /**
- * L'annonce, après un lot, des fiches de personnage dont il a retiré un élément supprimé (décision R33 ; réponse `fiches` de POST /api/edition/, au
+ * L'annonce, après un lot, des fiches de personnage dont il a retiré un élément supprimé (décision R42 ; réponse `fiches` de POST /api/edition/, au
  * format de serveur/fiches-retraits.mjs#noterLesRetraits : [{ fiche, retraits }]) : '' s'il n'y en a pas ; sinon
  * « Retiré de 2 fiches de personnage (une note datée le rappelle dans chacune) — Aldric : le don « X » (…) ; fiche de joueur n° 1 : le métier « Y ». »
  */

@@ -148,7 +148,7 @@ function traiterEdition(requete, service, action, reste, permis) {
     if (action === 'race') return json(200, donneesDeRace(db, valeur?.race));
     if (action === 'classe') return json(200, donneesDeClasse(db, valeur?.classe));
     const resultat = enregistrer(db, valeur);
-    // les fiches dont le lot a retiré un élément supprimé (R33) : un compte, jamais leurs noms (le journal du service n'est pas la réponse)
+    // les fiches dont le lot a retiré un élément supprimé (R42) : un compte, jamais leurs noms (le journal du service n'est pas la réponse)
     const adaptees = resultat.fiches?.length ? ` ; ${resultat.fiches.length} fiche(s) de personnage adaptée(s)` : '';
     if (resultat.lot) service.journal?.(`édition : lot ${resultat.lot} (${resultat.modifications} ligne(s)) depuis ${valeur.page ?? '?'}${adaptees}`);
     return json(200, resultat);

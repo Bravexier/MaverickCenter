@@ -29,7 +29,7 @@ test('/fiche/ : les étapes du guide dans la couleur de leur partie, les donnée
   assert.match(html, /<style>[^<]*\.fiche-etape/, 'feuille de style de la fiche insérée dans la page');
   assert.match(html, /<script type="module" src="\/_astro\/[^"]+\.js"><\/script>/);
   assert.match(html, /<button type="button" class="fiche-barre__principal" id="fiche-enregistrer" disabled>Enregistrer<\/button>/);
-  // les éléments que les règles ont retirés de la fiche (décision R33) : une bannière, remplie par le script d'après les notes, cachée à l'impression
+  // les éléments que les règles ont retirés de la fiche (décision R42) : une bannière, remplie par le script d'après les notes, cachée à l'impression
   assert.ok(html.includes('<p class="banner fiche-retraits" id="fiche-retraits" role="status" hidden></p>'), 'bannière des retraits');
   assert.ok(html.indexOf('id="fiche-retraits"') > html.indexOf('id="fiche-indisponible"'), 'sous la bannière du service');
   assert.match(html, /@media print\s*\{[^}]*\.fiche-retraits[^}]*display:\s*none/, 'masquée à l’impression');

@@ -255,7 +255,7 @@ test('serveur HTTP : état, création, corps trop gros ; surveillance : nouvelle
     const gros = await fetch(`${s.url}/api/personnages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: 'x'.repeat(1024 * 1024 + 10) }).catch((e) => e);
     if (!(gros instanceof Error)) assert.equal(gros.status, 413);
 
-    // Une livraison remplace la base des règles : la base vivante est refaite, Hugo reste ; son métier, supprimé, en est retiré avec une note (R33).
+    // Une livraison remplace la base des règles : la base vivante est refaite, Hugo reste ; son métier, supprimé, en est retiré avec une note (R42).
     const nouvelles = join(racine, 'regles-neuves.db');
     copyFileSync(REGLES, nouvelles);
     const m = new DatabaseSync(nouvelles, { enableForeignKeyConstraints: false });

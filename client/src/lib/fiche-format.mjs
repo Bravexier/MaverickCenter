@@ -3,7 +3,7 @@
 // liste d'objets (ses colonnes, sans `personnage_id`) rangée sous sa clé de PARTIES_DE_FICHE. Rien de ce qui se calcule n'y figure (niveaux,
 // santé, totaux…) : une fiche, ce sont les choix du joueur (docs/character-generator.md, « Fiches dans la base »).
 // Quand les règles suppriment un don, une spécialité, un sort ou un métier qu'une fiche utilise, l'élément en est retiré et une ligne datée le rappelle
-// à la fin de ses notes (décision R33 : serveur/fiches-retraits.mjs) ; le texte de cette ligne, et sa relecture par la page /fiche/, sont ici.
+// à la fin de ses notes (décision R42 : serveur/fiches-retraits.mjs) ; le texte de cette ligne, et sa relecture par la page /fiche/, sont ici.
 // Sans dépendance : importé par le service et par le navigateur.
 
 /**
@@ -65,7 +65,7 @@ export function ficheVide(nom = '') {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
-// Retraits (décision R33) : un don, une spécialité (avec les dons choisis qui en dépendent), un sort ou un métier que les règles suppriment est retiré
+// Retraits (décision R42) : un don, une spécialité (avec les dons choisis qui en dépendent), un sort ou un métier que les règles suppriment est retiré
 // des fiches qui l'utilisent, et une ligne datée par élément s'ajoute à la fin de `notes` (« NOTE », cellule BA53 de la fiche auto) : le joueur s'en
 // souvient et voit qu'il doit s'adapter à la nouvelle règle. Un élément seulement modifié (renommé…) reste dans la fiche : elle n'en garde que l'id.
 // ---------------------------------------------------------------------------------------------------------------------------------------------

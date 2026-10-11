@@ -1,4 +1,4 @@
-// Retraits des fiches (décision R33 ; client/serveur/fiches-retraits.mjs) : un don, une spécialité (avec ses dons choisis), un sort ou un métier que les
+// Retraits des fiches (décision R42 ; client/serveur/fiches-retraits.mjs) : un don, une spécialité (avec ses dons choisis), un sort ou un métier que les
 // règles suppriment est retiré des fiches qui l'utilisent, avec une ligne datée dans leurs notes ; les fiches ne passent jamais par le journal de
 // l'édition (serveur/edition-journal.mjs). Base vivante temporaire ; les données d'essai (classe, spécialité, dons, métier) sont créées ici sous des noms
 // absents de la base, le sort est lu dans la base.

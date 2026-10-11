@@ -11,11 +11,11 @@
 // type_brut…). Fonctions pures, sans dépendance (sauf text.mjs) : utilisables côté serveur et dans le navigateur.
 import { normalize } from './text.mjs';
 
-/** Niveaux de classe d'un nouveau don (décision R35 : « 1, 5, 10, 15 ou 20 », ceux du classeur). */
+/** Niveaux de classe d'un nouveau don (décision R44 : « 1, 5, 10, 15 ou 20 », ceux du classeur). */
 export const NIVEAUX_DE_DON = [1, 5, 10, 15, 20];
 /** Niveau du don de spécialité (cartouche) et premier niveau d'un don de spécialité : la spécialité se choisit au niveau 10 (specialite_trop_tot). */
 export const NIVEAU_DES_SPECIALITES = 10;
-/** Spécialités d'une classe au plus (décision R34 : deux, comme toutes les classes du classeur). */
+/** Spécialités d'une classe au plus (décision R43 : deux, comme toutes les classes du classeur). */
 export const SPECIALITES_MAX = 2;
 /** Mots du type d'un don proposés à la saisie : ceux que lib/classe-champs.mjs#analyserTypeDeDon reconnaît (capacite.type n'est jamais vide). */
 export const TYPES_DE_DON_SAISIE = ['Passif', 'Actif', 'Action', 'Réaction', 'Variable'].map((valeur) => ({ valeur, libelle: valeur }));
@@ -157,7 +157,7 @@ export const natureHorsSpecialite = (n) => (n >= 2 ? 'choix' : 'classe');
 export const listeDeFiches = (noms) => `${noms.slice(0, 5).join(', ')}${noms.length > 5 ? ` et ${noms.length - 5} autre(s)` : ''}`;
 
 /**
- * L'infobulle du « Supprimer » d'une ligne que des fiches citent (décision R33 : elle en sera retirée, une note datée le rappellera) : « choisi … retiré »
+ * L'infobulle du « Supprimer » d'une ligne que des fiches citent (décision R42 : elle en sera retirée, une note datée le rappellera) : « choisi … retiré »
  * pour un don, « choisie … retirée » pour une spécialité.
  */
 export const libelleDeRetrait = (fiches, { feminin = false } = {}) =>
@@ -216,7 +216,7 @@ const pluriel = (n, un, plusieurs) => (n > 1 ? plusieurs : un);
 /**
  * Les conséquences d'un lot à confirmer avant de l'enregistrer, en phrases : un don qui devient reçu sans choix, un don reçu d'office qui devient un choix,
  * une spécialité qui emporte ses dons ; puis, d'après `etat.fiches`, les fiches de personnage dont une spécialité ou un don supprimé sera retiré (décision
- * R33, une note datée dans chacune). `creations` : [{ entite, valeurs }] (file de la page ; `avec` peut être « @k », la k-ième création de la file) ;
+ * R42, une note datée dans chacune). `creations` : [{ entite, valeurs }] (file de la page ; `avec` peut être « @k », la k-ième création de la file) ;
  * `donsSupprimes`, `specialitesSupprimees` : ids.
  */
 export function consequences(etat, { creations = [], donsSupprimes = [], specialitesSupprimees = [] } = {}) {
@@ -260,7 +260,7 @@ export function consequences(etat, { creations = [], donsSupprimes = [], special
     if (!survivant.specialite_id) phrases.push(`${survivant.nom} deviendra un don reçu sans choix.`);
     else phrases.push(`${survivant.nom} restera seul sur sa ligne : la page le montrera seul et la fiche de personnage ne le proposera plus (un choix demande au moins deux dons).`);
   }
-  // fiches de personnage qui perdront une spécialité ou un don (R33) ; un don d'une spécialité supprimée part avec elle (phrase de la spécialité)
+  // fiches de personnage qui perdront une spécialité ou un don (R42) ; un don d'une spécialité supprimée part avec elle (phrase de la spécialité)
   const perms = permissions(etat);
   const rappel = (n) => `une note datée le rappellera${n > 1 ? ' dans chacune' : ''}`;
   for (const id of specialitesSupprimees) {

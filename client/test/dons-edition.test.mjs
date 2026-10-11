@@ -40,7 +40,7 @@ const SPECIALITES = [
   { id: MA, classe_id: C, rang: 2, nom: "MAÎTRE D'ARME", nom_cle: 'maitre-darme' },
 ];
 
-test('constantes : niveaux d’un don créé 1, 5, 10, 15 ou 20 (décision R35), spécialité au niveau 10, deux spécialités au plus (décision R34), les cinq mots de type reconnus', () => {
+test('constantes : niveaux d’un don créé 1, 5, 10, 15 ou 20 (décision R44), spécialité au niveau 10, deux spécialités au plus (décision R43), les cinq mots de type reconnus', () => {
   assert.deepEqual(NIVEAUX_DE_DON, [1, 5, 10, 15, 20]);
   assert.equal(NIVEAU_DES_SPECIALITES, 10);
   assert.equal(SPECIALITES_MAX, 2);
@@ -135,7 +135,7 @@ test('mots-clés d’une fiche de don, groupe d’un emplacement, nature hors sp
   assert.equal(natureHorsSpecialite(2), 'choix');
   assert.equal(listeDeFiches(['A', 'B']), 'A, B');
   assert.equal(listeDeFiches(['A', 'B', 'C', 'D', 'E', 'F', 'G']), 'A, B, C, D, E et 2 autre(s)');
-  assert.equal(libelleDeRetrait(['Aria']), 'choisi dans 1 fiche(s) : Aria — en sera retiré (une note datée le rappellera)', 'un don (R33)');
+  assert.equal(libelleDeRetrait(['Aria']), 'choisi dans 1 fiche(s) : Aria — en sera retiré (une note datée le rappellera)', 'un don (R42)');
   assert.equal(libelleDeRetrait(['Aria', 'Borin'], { feminin: true }), 'choisie dans 2 fiche(s) : Aria, Borin — en sera retirée (une note datée le rappellera)', 'une spécialité');
 });
 
@@ -204,7 +204,7 @@ test('consequences : don qui devient reçu sans choix, don reçu d’office qui 
     ['La spécialité ÉPÉISTE emporte son don de spécialité et ses 6 dons.']);
 });
 
-test('consequences (R33) : les fiches qui perdront une spécialité ou un don supprimé, une note datée dans chacune ; rien sans fiche', () => {
+test('consequences (R42) : les fiches qui perdront une spécialité ou un don supprimé, une note datée dans chacune ; rien sans fiche', () => {
   const fiches = { 'capacites/guerrier-affute': ['Aria', 'Borin'], [MA]: ['Cyd'], 'capacites/guerrier-contact': ['Dora'], 'capacites/guerrier-hyper-contact': ['Aria', 'Eli'] };
   const etat = { specialites: SPECIALITES, dons: GUERRIER, fiches };
   assert.deepEqual(consequences(etat, { specialitesSupprimees: [EP] }), [

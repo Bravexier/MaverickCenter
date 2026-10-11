@@ -187,9 +187,10 @@ supprimé par une livraison en est retirée, avec une note datée, quand la base
 **Fiches de personnage (R42)** (décision du propriétaire : « juste supprimer le don des fiches », « Même en dev il faut supprimer [le don] des
 fiches », « Il en va de même pour les sorts ou métiers supprimés » ; `serveur/fiches-retraits.mjs`). Supprimer depuis le site un don, une spécialité
 ou un métier qu'une fiche utilise le **retire de la fiche**, qui reste : la ligne `personnage_capacite` part, `personnage_classe.specialite_id`
-passe à `NULL` (la classe reste) avec les dons choisis de la spécialité, `personnage.metier_id` passe à `NULL` (un sort, que le site ne supprime pas
+passe à `NULL` (la classe reste) avec les dons choisis de la spécialité, `personnage.metier_id` passe à `NULL` avec les bonus « A OU B » que la fiche
+y avait choisis (`personnage_metier_bonus`) (un sort, que le site ne supprime pas
 encore, partirait de `personnage_sort` ; à la reconstruction, les quatre sont retirés, sauf un don, une spécialité ou un sort dont la classe ou la
-magie a disparu aussi : celle-ci reste un blocage, hors R33). Le retrait se fait **dans le même lot**, avant la suppression
+magie a disparu aussi : celle-ci reste un blocage, hors R42). Le retrait se fait **dans le même lot**, avant la suppression
 de la règle, **en SQL direct** : jamais au journal (`TABLES_INTERDITES` contient toute la section 13 : une écriture de fiche par le rédacteur du lot
 est refusée), donc jamais dans `data/rows` ni dans le résumé du lot (qui va dans l'historique et la note de version : ni nom ni compte de fiches) ;
 un lot refusé annule aussi les retraits. Chaque fiche touchée reçoit **une ligne datée par élément** à la fin de ses notes (« NOTE », BA53 ; le

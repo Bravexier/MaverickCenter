@@ -1,4 +1,4 @@
-// Fiches de personnage et règles supprimées (décision R33 ; docs/serveur.md, « Fiches de personnage (R33) ») : un don, une spécialité (avec les dons
+// Fiches de personnage et règles supprimées (décision R42 ; docs/serveur.md, « Fiches de personnage (R42) ») : un don, une spécialité (avec les dons
 // choisis qui en dépendent), un sort ou un métier que les règles suppriment est RETIRÉ des fiches qui l'utilisent — la fiche reste, seul l'élément part —
 // et une ligne datée par élément s'ajoute à la fin de ses notes (« NOTE », cellule BA53 ; texte : src/lib/fiche-format.mjs#ligneDeRetrait). Deux moments :
 //   - le site de dev supprime une ligne de règle (serveur/edition.mjs : métier, spécialité, don) : retirerDesFiches, AVANT la suppression de la règle
@@ -59,6 +59,7 @@ export const ordreDesLibelles = (a, b) => anonymes(a) - anonymes(b) || a.localeC
 export const nouveauxRetraitsDeFiches = () => new Map();
 
 const parNom = (a, b) => a.localeCompare(b, 'fr', { numeric: true });
+const aLaTable = (db, table) => !!db.prepare("SELECT 1 FROM main.sqlite_master WHERE type = 'table' AND name = ?").get(table);
 const champsDeFiche = 'p.id AS personnage, p.nom AS fiche, p.nature';
 
 /**
@@ -72,6 +73,8 @@ function appliquer(db, aRetirer, acc) {
     const ou = r.cle.map((c) => `"${c}" = ?`).join(' AND ');
     const sql = r.action === 'vider' ? `UPDATE main."${r.table}" SET "${r.colonne}" = NULL WHERE ${ou}` : `DELETE FROM main."${r.table}" WHERE ${ou}`;
     db.prepare(sql).run(...l.cle);
+    // le métier retiré emporte les bonus « A OU B » que la fiche y avait choisis (personnage_metier_bonus : rang dans metier_bonus de SON métier)
+    if (l.vise === 'metier' && aLaTable(db, 'personnage_metier_bonus')) db.prepare('DELETE FROM main.personnage_metier_bonus WHERE personnage_id = ?').run(l.personnage);
     if (!l.descripteur) continue;
     let e = acc.get(l.personnage);
     if (!e) acc.set(l.personnage, (e = { personnage: l.personnage, nom: l.fiche, nature: l.nature, retraits: [] }));
@@ -137,7 +140,7 @@ export function retirerDesFiches(db, { metiers = [], specialites = [], capacites
  * Reconstruction de la base vivante (base-vivante.mjs#transferer, l'ancienne base attachée sous `ancienne`, clés étrangères coupées) : retire de `main`
  * les lignes de fiche dont le métier, la spécialité (couple spécialité, classe), le don ou le sort manque dans les nouvelles règles. Une spécialité ou un
  * don dont la classe a disparu, un sort dont la magie a disparu (classe et magie lues dans l'ancienne base) ne sont pas touchés : la classe ou la magie
- * disparue bloque la reconstruction (hors R33), par la clé de la fiche restée rompue. Les noms se lisent dans l'ancienne base (celui de la classe,
+ * disparue bloque la reconstruction (hors R42), par la clé de la fiche restée rompue. Les noms se lisent dans l'ancienne base (celui de la classe,
  * de la spécialité d'un don et de la magie d'un sort dans les nouvelles règles quand elles l'ont encore : un renommage livré en même temps l'emporte) ;
  * à défaut, l'identifiant. Les colonnes lues dans l'ancienne base (nom, classe_id, specialite_id, niveau, magie_id) existent dans toute base vivante
  * (schéma de la migration 0011, qui crée les fiches). Un don choisi qui dépendait d'une spécialité retirée à la même fiche est nommé sur la ligne de

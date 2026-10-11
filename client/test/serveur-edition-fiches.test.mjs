@@ -1,4 +1,4 @@
-// Décision R33, point 3 (« Si par contre le don / sort / métier est juste modifié, il reste dans les fiches concernées (juste automatiquement mis à
+// Décision R42, point 3 (« Si par contre le don / sort / métier est juste modifié, il reste dans les fiches concernées (juste automatiquement mis à
 // jour) ») sur le site de dev : une fiche ne garde que des identifiants, qui ne changent jamais (migration 0006). Renommer le métier, la spécialité, le
 // don et le sort qu'un prétiré utilise ne touche pas la fiche (ni ligne, ni note, ni version : une fiche ouverte ailleurs s'enregistre sans 409) ; le
 // nouveau nom se lit dans les règles, sous le même identifiant. Base vivante neuve ; données d'essai sous des noms absents de la base.
@@ -34,7 +34,7 @@ const nomLibre = (nom, table, type = null) => {
   return n;
 };
 
-test('R33 — renommer le métier, la spécialité, le don et le sort d’un prétiré : la fiche garde ses identifiants, sa version, ses notes ; le nouveau nom se lit dans les règles', () => {
+test('R42 — renommer le métier, la spécialité, le don et le sort d’un prétiré : la fiche garde ses identifiants, sa version, ses notes ; le nouveau nom se lit dans les règles', () => {
   // données d'essai : un métier, une classe avec sa spécialité et une paire de dons au choix (créés ici) ; une magie et l'un de ses sorts de NPM 1 (lus)
   const metier = enregistrer([{ op: 'creer', entite: 'metier', valeurs: { nom: nomLibre('Métier à renommer', 'metier', 'metiers') } }]).crees[0].id;
   const classe = enregistrer([{ op: 'creer', entite: 'classe', valeurs: { categorie_id: 'classe-physique-corps-a-corps', nom: nomLibre('Classe à renommer', 'classe', 'classes') } }]).crees[0].id;

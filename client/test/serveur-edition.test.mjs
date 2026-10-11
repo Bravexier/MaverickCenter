@@ -69,7 +69,7 @@ test('modèle : valeurs normalisées, champ obligatoire, attribut data-ed lu et 
   assert.deepEqual(lireAttributEd(a), { table: 'metier', cle: { id: 'metiers/forgeron' }, colonne: 'bonus_brut', champ: lireAttributEd(a).champ });
   assert.equal(lireAttributEd(attributEd('metier', { id: 'x' }, 'source_ref')), null, 'colonne hors du modèle');
   assert.equal(messageSqlite(new Error('UNIQUE constraint failed: metier.nom')), 'valeur déjà utilisée ailleurs (metier.nom)');
-  // l'annonce des fiches dont un lot a retiré un élément supprimé (R33)
+  // l'annonce des fiches dont un lot a retiré un élément supprimé (R42)
   assert.equal(annonceDesFiches([]), '');
   assert.equal(annonceDesFiches(undefined), '');
   assert.equal(annonceDesFiches([{ fiche: 'Aldric', retraits: ['le don « X » (classe Guerrier, niveau 5)'] }]),
@@ -205,13 +205,15 @@ test('créer un métier : page (titre, résumé, corps, mot-clé), ligne metier,
   assert.equal(ligne('SELECT count(*) AS n FROM page_tag WHERE page_id = ?', id).n, 0);
 });
 
-test('R33 — supprimer un métier cité par une fiche : retiré de la fiche avec une note datée, le métier supprimé ; rien des fiches au journal', () => {
+test('R42 — supprimer un métier cité par une fiche : retiré de la fiche avec une note datée, le métier supprimé ; rien des fiches au journal', () => {
   // un métier créé ici (METIER_B, que lit le test suivant, reste en place)
   const id = creerMetier({ nom: 'Métier d’une fiche', description: 'Un métier d’essai.' });
   const nom = ligne('SELECT nom FROM metier WHERE id = ?', id).nom;
   db.prepare(`INSERT INTO personnage (id, nature, visibilite, statut, nom, mode_classe, xp, alignement_loyal, alignement_chaotique, alignement_bon, alignement_mauvais,
     bourse_pp, bourse_ro, bourse_rf, ambidextrie, cree_le, modifie_le, metier_id) VALUES ('p-ed', 'pretire', 'tous', 'brouillon', 'Essai', 'mono', 0, 0, 0, 0, 0, 0, 0, 0, 0,
     '2026-10-10T12:00:00Z', '2026-10-10T12:00:00Z', ?)`).run(id);
+  // le choix d'un bonus « A OU B » du métier (personnage_metier_bonus, rang dans metier_bonus) part avec lui
+  db.prepare("INSERT INTO personnage_metier_bonus (personnage_id, rang, competence_id) VALUES ('p-ed', 1, 'esquive')").run();
   const r = enregistrer([{ op: 'supprimer', entite: 'metier', cle: { id } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   const retrait = `le métier « ${nom} »`;
@@ -219,6 +221,7 @@ test('R33 — supprimer un métier cité par une fiche : retiré de la fiche ave
   assert.ok(!r.corps.lignes.some((l) => TABLES_FICHES.includes(l.table)), 'les fiches ne sont pas des lignes du lot');
   const p = ligne("SELECT metier_id, notes, modifie_le FROM personnage WHERE id = 'p-ed'");
   assert.equal(p.metier_id, null);
+  assert.equal(ligne("SELECT count(*) AS n FROM personnage_metier_bonus WHERE personnage_id = 'p-ed'").n, 0, 'les bonus choisis du métier retiré partent avec lui');
   assert.equal(p.notes, `[${jourDuRetrait(p.modifie_le)}] Retrait (règles modifiées) : ${retrait} n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.`);
   for (const t of ['metier', 'page']) assert.equal(ligne(`SELECT count(*) AS n FROM ${t} WHERE id = ?`, id).n, 0, t);
   const exporte = journalExporte(db).lots.flatMap((l) => l.modifications);

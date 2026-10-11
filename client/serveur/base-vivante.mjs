@@ -4,7 +4,7 @@
 // vivante est refaite : nouvelle copie des règles, puis les lignes des sections 13 et 14 y sont recopiées, colonne par colonne, et les modifications
 // en attente du journal sont rejouées sur les nouvelles règles (serveur/edition-journal.mjs). Un don, une spécialité (avec les dons choisis qui en
 // dépendent), un sort ou un métier que les nouvelles règles n'ont plus est retiré des fiches qui l'utilisent, avec une note datée dans chacune (décision
-// R33 : serveur/fiches-retraits.mjs ; la liste dans vivante.json, rendue par /api/etat). Toute autre ligne qui ne passe pas (une fiche cite une race, une
+// R42 : serveur/fiches-retraits.mjs ; la liste dans vivante.json, rendue par /api/etat). Toute autre ligne qui ne passe pas (une fiche cite une race, une
 // classe, une magie… disparue, une colonne remplie n'existe plus, une contrainte a changé) fait garder la base en place telle quelle, et l'erreur dit
 // pourquoi. Une base remplacée qui avait des lignes est d'abord archivée (db/archives/, les ARCHIVES_GARDEES dernières) : l'archive garde donc la base
 // d'avant les retraits.
@@ -59,7 +59,7 @@ export function signature(chemin) {
 
 /**
  * Contenu de vivante.json ({ regles, schema, refaite_le, retraits? }), null s'il est absent ou illisible. `retraits` : { le, fiches } de la dernière
- * reconstruction qui a retiré quelque chose des fiches (R33), gardé par les suivantes qui ne retirent rien ; absent s'il n'y en a jamais eu.
+ * reconstruction qui a retiré quelque chose des fiches (R42), gardé par les suivantes qui ne retirent rien ; absent s'il n'y en a jamais eu.
  */
 export function lireEtat(dossier) {
   try {
@@ -123,7 +123,7 @@ function verifierRegles(db) {
  * journal sur les nouvelles règles, avant le contrôle des fiches : une fiche peut citer une ligne créée par l'édition (une classe, une spécialité, un
  * don), y compris par un lot qui suit un autre lot touchant la même table. Le rejeu ne contrôle donc pas les clés étrangères des fiches lot par lot
  * (`horsControleParLot`) : elles le sont toutes ici, après le rejeu complet. Un don, une spécialité, un sort ou un métier que les nouvelles règles n'ont
- * plus est alors retiré des fiches, avec une note datée de `instant` (R33 ; jamais avant le rejeu : un lot suivant peut créer ce qu'une fiche cite) ; toute
+ * plus est alors retiré des fiches, avec une note datée de `instant` (R42 ; jamais avant le rejeu : un lot suivant peut créer ce qu'une fiche cite) ; toute
  * autre référence rompue est relevée avec son détail, et rien n'est écrit (ni retrait, ni note). Une modification que les nouvelles règles contredisent
  * n'empêche rien : elle passe « conflit ». Rend { rejeu (bilan du rejeu), fiches (les fiches adaptées : noterLesRetraits) }.
  * @param {string} instant ISO 8601 UTC à la seconde
@@ -165,7 +165,7 @@ function transferer(db, ancienne, instant) {
       if (!problemes.length) rejeu = rejouerLeJournal(db, {}, { horsControleParLot: TABLES_FICHES });
       // le brouillon de la note de version d'un lot que les nouvelles règles ont livré est vidé (son texte est dans note_version)
       if (!problemes.length) viderBrouillonLivre(db);
-      // R33 : un don, une spécialité, un sort ou un métier disparu est retiré des fiches (noms lus dans l'ancienne base, encore attachée), une note
+      // R42 : un don, une spécialité, un sort ou un métier disparu est retiré des fiches (noms lus dans l'ancienne base, encore attachée), une note
       // datée dans chacune ; ce qui reste rompu ensuite (race, classe, magie…) bloque, et l'annulation emporte aussi ces retraits
       if (!problemes.length) {
         const retraits = nouveauxRetraitsDeFiches();
@@ -240,7 +240,7 @@ function archiver(dossier, chemin, instant) {
 /**
  * Prépare la base vivante du dossier `dossier` pour la base des règles `regles` (celle que publie le site) : la crée au premier lancement, la
  * refait quand les règles ont changé, ne touche à rien sinon. Rend { chemin, refaite, archive, empreinte, schema, rejeu, fiches } (rejeu : bilan des
- * modifications du journal rejouées, null sans base précédente ; fiches : celles dont un élément disparu a été retiré, R33, [] sinon). En cas d'échec,
+ * modifications du journal rejouées, null sans base précédente ; fiches : celles dont un élément disparu a été retiré, R42, [] sinon). En cas d'échec,
  * lève une erreur (ErreurBaseVivante quand les fiches ne passent pas) et la base en place reste intacte.
  */
 export function preparerBaseVivante({ regles, dossier, instant = new Date() }) {
@@ -272,7 +272,7 @@ export function preparerBaseVivante({ regles, dossier, instant = new Date() }) {
     }
     if (existsSync(chemin)) archive = archiver(dossier, chemin, instant);
     renameSync(neuve, chemin);
-    // la dernière liste non vide des fiches adaptées (R33), datée, survit aux reconstructions qui ne retirent rien et au redémarrage du service
+    // la dernière liste non vide des fiches adaptées (R42), datée, survit aux reconstructions qui ne retirent rien et au redémarrage du service
     const retraits = fiches.length ? { le: iso, fiches } : etat?.retraits;
     ecrireEtat(dossier, { regles: empreinte, schema, refaite_le: iso, ...(retraits ? { retraits } : {}) });
     return { chemin, refaite: true, archive, empreinte, schema, rejeu, fiches };

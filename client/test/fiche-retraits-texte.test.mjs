@@ -1,4 +1,4 @@
-// Texte des retraits (décision R33 ; src/lib/fiche-format.mjs) : un don, une spécialité, un sort ou un métier que les règles suppriment est retiré des
+// Texte des retraits (décision R42 ; src/lib/fiche-format.mjs) : un don, une spécialité, un sort ou un métier que les règles suppriment est retiré des
 // fiches, et une ligne datée par élément s'ajoute à la fin des notes. Fonctions pures, partagées par le service (serveur/fiches-retraits.mjs) et la page
 // /fiche/ (bannière, message d'un conflit de version).
 import assert from 'node:assert/strict';

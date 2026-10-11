@@ -64,7 +64,7 @@ export function demarrer(racine, etatService) {
   document.body.append(annonce);
   let minuterie = null;
 
-  /** Un message ; genre 'info' (effacé au bout de 6 s), 'avis' (reste affiché : fiches de personnage adaptées, R33) ou 'erreur' (reste affiché). */
+  /** Un message ; genre 'info' (effacé au bout de 6 s), 'avis' (reste affiché : fiches de personnage adaptées, R42) ou 'erreur' (reste affiché). */
   function annoncer(message, genre = 'info') {
     clearTimeout(minuterie);
     annonce.className = `ed-annonce${genre === 'erreur' ? ' ed-annonce--erreur' : genre === 'avis' ? ' ed-annonce--avis' : ''}`;
@@ -312,7 +312,7 @@ export function demarrer(racine, etatService) {
       quitter(nouvelles);
       for (const l of r.lignes) appliquerLigne(l.table, l.cle, l.ligne);
       for (const x of actives()) x.apresEnregistrement?.(ed, r);
-      // les fiches de personnage dont le lot a retiré un élément supprimé (R33) : annoncées ici, par le code commun (le message d'une extension serait
+      // les fiches de personnage dont le lot a retiré un élément supprimé (R42) : annoncées ici, par le code commun (le message d'une extension serait
       // écrasé), et le message reste affiché
       const fiches = annonceDesFiches(r.fiches);
       const message = r.modifications ? `Enregistré : ${r.modifications} ligne${r.modifications > 1 ? 's' : ''} de la base modifiée${r.modifications > 1 ? 's' : ''}.` : 'Rien n’a changé dans la base.';

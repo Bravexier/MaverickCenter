@@ -6,7 +6,7 @@
 //   - en mode modification : « + Ajouter un don de classe », « + Ajouter un don à <SPÉCIALITÉ> », « + Ajouter une option » (sur un choix ou un don
 //     seul, jamais sur un don de spécialité), « + Ajouter une spécialité » (selon lib/dons-edition.mjs#permissions) ; « Supprimer » à bascule sur chaque
 //     don et chaque spécialité qui peuvent l'être ; quand des fiches de personnage les ont, l'infobulle les nomme (elles en seront retirées, une note
-//     datée le rappellera : décision R33) ;
+//     datée le rappellera : décision R42) ;
 //   - les créations sont mises en file (une carte « sera créé à l'enregistrement » chacune, à modifier ou retirer) et partent avec « Enregistrer », dans
 //     le même lot que les suppressions et les champs modifiés (lib/dons-edition.mjs#operationsDuLot : une création sur une ligne en file la cite « @i ») ;
 //     leurs conséquences (un don qui devient reçu sans choix, les fiches qui perdront une spécialité ou un don…) sont confirmées avant l'envoi.
@@ -317,7 +317,7 @@ function assurerSectionDons() {
   return section;
 }
 
-/** « Supprimer » à bascule ; quand des fiches de personnage ont la ligne, l'infobulle les nomme : elles la perdront (R33). */
+/** « Supprimer » à bascule ; quand des fiches de personnage ont la ligne, l'infobulle les nomme : elles la perdront (R42). */
 function bascule(element, ensemble, id, { libelle, fiches }) {
   const b = bouton('Supprimer', () => {
     const oui = !ensemble.has(id);

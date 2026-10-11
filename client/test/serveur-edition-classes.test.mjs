@@ -415,7 +415,7 @@ test('D11 — supprimer un don : note de cellule, fiche, mots-clés, sources, en
   clesIntactes();
 });
 
-/** Les modifications du journal sur une table des fiches de personnage : jamais (R33, les fiches s'écrivent hors du journal). */
+/** Les modifications du journal sur une table des fiches de personnage : jamais (R42, les fiches s'écrivent hors du journal). */
 const modificationsDeFiches = () => ligne('SELECT count(*) AS n FROM modification WHERE table_nom IN (SELECT value FROM json_each(?))', JSON.stringify(TABLES_FICHES)).n;
 const SUITE_DU_RETRAIT = ' n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.';
 /** Une fiche de JOUEUR écrite comme le fera la 1.0 (le service ne la liste ni ne la lit) : son nom ne doit jamais sortir par l'édition. */
@@ -434,7 +434,7 @@ const retirerFicheDeJoueur = (id) => {
   if (!ligne("SELECT 1 FROM personnage WHERE proprietaire_id = 'utilisateur-d11'")) db.prepare("DELETE FROM utilisateur WHERE id = 'utilisateur-d11'").run();
 };
 
-test('D11 / R33 — supprimer un don choisi : retiré du prétiré et de la fiche de joueur (anonyme), note datée, version changée ; refus restants', () => {
+test('D11 / R42 — supprimer un don choisi : retiré du prétiré et de la fiche de joueur (anonyme), note datée, version changée ; refus restants', () => {
   const p = appel('POST', '/api/personnages/', { ...ficheVide('Fiche témoin D11'), classes: [{ rang: 1, classe_id: C1.id, specialite_id: C1.spec1 }], capacites: [{ capacite_id: C1.paire[0] }] });
   assert.equal(p.statut, 201, JSON.stringify(p.corps));
   const { id, version: v0 } = p.corps.personnage;
@@ -483,7 +483,7 @@ test('D11 / R33 — supprimer un don choisi : retiré du prétiré et de la fich
   }
 });
 
-test('D11 / R33 — supprimer une spécialité : elle emporte son don de spécialité et ses dons, et part des fiches avec les dons choisis ; la bannière part ; une nouvelle du même nom prend -2', () => {
+test('D11 / R42 — supprimer une spécialité : elle emporte son don de spécialité et ses dons, et part des fiches avec les dons choisis ; la bannière part ; une nouvelle du même nom prend -2', () => {
   const op = creerDon({ classe_id: C1.id, specialite_id: C1.spec2, niveau: '15', nom: 'Volée', type: 'Action' });
   assert.equal(op.statut, 200, JSON.stringify(op.corps));
   const volee = op.corps.crees[0].id;
@@ -523,7 +523,7 @@ test('D11 / R33 — supprimer une spécialité : elle emporte son don de spécia
   clesIntactes();
 });
 
-test('R33 — « fiche de joueur n° k » : le même numéro pour la même fiche dans l’état de la page (infobulle, confirmation) et dans la réponse du lot', () => {
+test('R42 — « fiche de joueur n° k » : le même numéro pour la même fiche dans l’état de la page (infobulle, confirmation) et dans la réponse du lot', () => {
   // une classe à deux spécialités ; trois fiches de joueur qui la citent : la plus ancienne (n° 1) a l'autre spécialité et ne perd rien, les deux
   // suivantes (n° 2 et 3) ont la spécialité supprimée ; un prétiré l'a aussi
   const C = nouvelleClasse('Archer des numéros');
@@ -553,7 +553,7 @@ test('R33 — « fiche de joueur n° k » : le même numéro pour la même fiche
   }
 });
 
-test('R33 — un lot refusé n’écrit rien dans les fiches : retrait et note annulés avec la suppression', () => {
+test('R42 — un lot refusé n’écrit rien dans les fiches : retrait et note annulés avec la suppression', () => {
   const don = creerDon({ classe_id: C1.id, niveau: '1', nom: 'Don de la transaction', type: 'Passif' });
   assert.equal(don.statut, 200, JSON.stringify(don.corps));
   const k = don.corps.crees[0].id;

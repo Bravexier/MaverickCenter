@@ -1148,7 +1148,7 @@ function construireXp() {
 }
 
 /**
- * La bannière des éléments que les règles ont retirés de la fiche (décision R33), d'après les lignes datées de ses notes (lib/fiche-format.mjs) :
+ * La bannière des éléments que les règles ont retirés de la fiche (décision R42), d'après les lignes datées de ses notes (lib/fiche-format.mjs) :
  * recalculée à chaque saisie, elle part quand le joueur efface ces lignes.
  */
 function construireRetraits() {
@@ -1245,7 +1245,7 @@ async function enregistrer() {
       return;
     }
     if (reponse.status === 409 && donnees.personnage) {
-      // des éléments retirés par les règles depuis l'ouverture de la fiche (R33) : le dire, ils sont dans les notes de la fiche à jour
+      // des éléments retirés par les règles depuis l'ouverture de la fiche (R42) : le dire, ils sont dans les notes de la fiche à jour
       const n = nouveauxRetraits(fiche.notes, donnees.personnage.notes).length;
       const avertissement = n ? `Les règles ont changé : ${n} élément(s) retiré(s) de cette fiche depuis son ouverture (voir les notes après rechargement). ` : '';
       message(`${avertissement}${donnees.erreur} `, 'erreur');
