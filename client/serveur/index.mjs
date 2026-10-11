@@ -8,6 +8,8 @@
 //   MAVERICK_REFERENCE   base de production à laquelle la page « Mise à jour » compare la base dev (défaut : site/donnees/reference.db)
 //   MAVERICK_GITHUB_JETON_FICHIER  fichier du jeton GitHub (permission Actions seulement) qui déclenche le workflow de mise à jour
 //   MAVERICK_DEPOT       dépôt GitHub (défaut : Bravexier/MaverickCenter) ; MAVERICK_ADRESSE_PUBLIQUE : adresse du site de dev (https://…)
+//   MAVERICK_MAINTENANCE dossier partagé de l'annonce de maintenance pendant une mise à jour (serveur/maintenance.mjs), le même pour les deux
+//                        serveurs : le site de dev l'écrit, chacun la lit (défaut : aucun)
 import { fileURLToPath } from 'node:url';
 import { demarrerService } from './service.mjs';
 
@@ -23,6 +25,7 @@ const service = await demarrerService({
   jetonFichier: process.env.MAVERICK_GITHUB_JETON_FICHIER || null,
   depot: process.env.MAVERICK_DEPOT || 'Bravexier/MaverickCenter',
   adresse: process.env.MAVERICK_ADRESSE_PUBLIQUE || null,
+  maintenance: process.env.MAVERICK_MAINTENANCE || null,
   fichierVersion: ici('../version.json'),
 });
 

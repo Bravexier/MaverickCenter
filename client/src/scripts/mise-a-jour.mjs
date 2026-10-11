@@ -3,7 +3,8 @@
 // le service (GET /api/mise-a-jour/), le champ libre des admins et, sur ordinateur seulement (comme le mode modification), le bouton
 // « Effectuer la mise à jour » : après confirmation, le service fige le lot et déclenche le workflow GitHub (rebase sur dev, PR, fusion
 // automatique si tout est vert, puis livraison dev → master) ; « Simulation de mise à jour » : le même travail, arrêté avant de rien pousser.
-// La page suit leur avancement. Ailleurs (production, service absent) : rien ne change.
+// La page suit leur avancement ; une vraie mise à jour lancée, les deux sites passent en maintenance (serveur/maintenance.mjs) et cette page part
+// vers /maintenance/, qui y revient quand la nouvelle version est installée. Ailleurs (production, service absent) : rien ne change.
 // Ce script n'importe que le rendu commun (aucun autre script de page ne l'importe : la version portable refuse un module partagé).
 import { compter, echapper, htmlDeLaListe, htmlDuTexteLibre } from '../lib/notes-de-version-rendu.mjs';
 
@@ -166,6 +167,8 @@ function confirmer({ simulation }) {
     <h2>Effectuer la mise à jour V${echapper(donnees.version_cible)}</h2>
     <p>Les modifications du site de dev (${modifications}) et la note de version partent sur GitHub : une branche à jour de dev, une PR qui
     apporte la base modifiée, fusionnée automatiquement si les tests passent et qu’il n’y a aucun conflit, puis la <strong>livraison dev → master</strong> (production).</p>
+    <p>Pendant ce temps, <strong>les deux sites (production et dev) affichent « Maintenance en cours »</strong> ; chacun rouvre de lui-même dès que la
+    nouvelle version y est installée (ou si la mise à jour s’arrête avant).</p>
     <p>Pour confirmer, tapez <strong>${echapper(mot)}</strong> :</p>
     <input name="mot" autocomplete="off" required>
     <p class="nv-message nv-message--erreur" data-erreur hidden></p>
@@ -186,6 +189,10 @@ function confirmer({ simulation }) {
     try {
       await appel('POST', 'mise-a-jour/lancer/', { confirmation: saisi, simulation });
       dialogue.close();
+      if (!simulation && (await enMaintenance())) {
+        location.replace(`${racine.dataset.maintenance}?retour=${encodeURIComponent(location.pathname)}`);
+        return;
+      }
       await charger(); // le brouillon est maintenant figé (lot) : texte et boutons verrouillés jusqu'à la fin
     } catch (err) {
       erreur.textContent = err.message;
@@ -213,6 +220,15 @@ function suivre() {
       // service relancé (nouvelle version livrée) : on réessaiera
     }
   }, 15000);
+}
+
+/** Ce serveur est-il en maintenance (vraie mise à jour lancée) ? Sans jeton GitHub (lancement à la main), non : la page garde ses valeurs. */
+async function enMaintenance() {
+  try {
+    return (await appel('GET', 'maintenance/'))?.active === true;
+  } catch {
+    return false;
+  }
 }
 
 async function charger() {

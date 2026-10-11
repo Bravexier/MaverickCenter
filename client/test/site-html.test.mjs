@@ -3,9 +3,10 @@
 //   node --test test/site-html.test.mjs
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { trierVersions } from '../src/lib/notes-de-version.mjs';
 import { htmlDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
@@ -137,7 +138,7 @@ test('/mise-a-jour/ : la note de la dernière version, l’historique, la place 
   const html = lire('mise-a-jour/index.html');
   const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
   assert.match(main, /<h1>Mise à jour<\/h1>/);
-  assert.match(main, /<div class="mise-a-jour" data-mise-a-jour data-api="\/api\/" data-version="\d+\.\d+\.\d+">/);
+  assert.match(main, /<div class="mise-a-jour" data-mise-a-jour data-api="\/api\/" data-maintenance="\/maintenance\/" data-version="\d+\.\d+\.\d+">/);
   assert.match(main, /<section class="nv-dev" data-nv-dev hidden aria-live="polite"><\/section>/, 'note en préparation : remplie par le script sur le site de dev');
   // les notes de la base, lues et non supposées : les notes d'exemple (lorem ipsum) tant qu'aucune livraison n'a eu lieu, puis les vraies — la
   // première mise à jour retire les exemples, et pendant une mise à jour (job preparer) data/rows porte la note du lot, pas encore livrée
@@ -168,4 +169,58 @@ test('/mise-a-jour/ : la note de la dernière version, l’historique, la place 
     assert.match(ref.commit, /^[0-9a-f]{40}$/);
     assert.ok(existsSync(join(dist, 'donnees', 'reference.db')), 'base de la production (master)');
   }
+});
+
+test('maintenance pendant une mise à jour : chaque page (sauf /maintenance/) demande au service et part vers /maintenance/ ; sinon rien', options, async () => {
+  const pages = walk(dist).filter((f) => f.endsWith('.html')).map((f) => relative(dist, f).split('\\').join('/'));
+  const SCRIPT = /<script data-maintenance-api="([^"]+)" data-maintenance-page="([^"]+)">([\s\S]*?)<\/script>/;
+  assert.deepEqual(pages.filter((rel) => !SCRIPT.test(lire(rel))), ['maintenance/index.html'], 'toutes les pages, page 404 comprise');
+  const [, api, page, code] = lire('races/index.html').match(SCRIPT);
+  assert.deepEqual([api, page], ['/api/maintenance/', '/maintenance/']);
+  assert.ok(lire('races/index.html').indexOf(SCRIPT.exec(lire('races/index.html'))[0]) < lire('races/index.html').indexOf('</head>'), 'dans <head> : la question part tôt');
+  /** Exécute le script de la page dans un faux navigateur ; `reponse` : ce que rend fetch. */
+  const executer = async (reponse) => {
+    const vu = { appels: [], remplacements: [], attributs: {}, entete: { inert: false } };
+    vm.runInNewContext(code, {
+      document: {
+        currentScript: { getAttribute: (n) => ({ 'data-maintenance-api': api, 'data-maintenance-page': page })[n] },
+        hidden: false,
+        documentElement: { setAttribute: (n, v) => { vu.attributs[n] = v; } },
+        querySelector: (sel) => (sel === '.site-header__inner' ? vu.entete : null),
+        addEventListener: () => {},
+      },
+      location: { pathname: '/races/elfe/', search: '?a=1', hash: '#don', replace: (u) => vu.remplacements.push(u) },
+      fetch: async (url, o) => { vu.appels.push([url, o.cache]); return reponse(); },
+      setInterval: () => 0,
+      addEventListener: () => {},
+    });
+    await new Promise((ok) => setTimeout(ok, 20));
+    return vu;
+  };
+  const en = await executer(() => ({ ok: true, json: async () => ({ active: true, version_cible: '0.3', etape: 'preparation' }) }));
+  assert.deepEqual(en.appels, [['/api/maintenance/', 'no-store']]);
+  assert.deepEqual(en.remplacements, ['/maintenance/?retour=%2Fraces%2Felfe%2F%3Fa%3D1%23don'], 'retour à la même page, paramètres et ancre compris');
+  assert.equal(en.attributs['data-maintenance'], '', 'menus grisés tout de suite');
+  assert.equal(en.entete.inert, true);
+  for (const [nom, reponse] of [['pas en maintenance', () => ({ ok: true, json: async () => ({ active: false }) })],
+    ['service arrêté (502)', () => ({ ok: false, json: async () => ({}) })], ['site sans service', () => { throw new Error('réseau'); }],
+    ['réponse inattendue', () => ({ ok: true, json: async () => 'oui' })]]) {
+    const vu = await executer(reponse);
+    assert.deepEqual([vu.remplacements, vu.attributs, vu.entete.inert], [[], {}, false], nom);
+  }
+});
+
+test('/maintenance/ : « En travaux, merci de revenir dans quelques minutes », menus grisés et inertes, les étapes ; hors du menu', options, () => {
+  const html = lire('maintenance/index.html');
+  assert.match(html, /<title>Maintenance en cours — Maverick Center<\/title>/);
+  assert.match(html, /<header class="site-header site-header--maintenance"><div class="site-header__inner" inert>/, 'ni clic ni clavier dans l’en-tête');
+  assert.match(html, /<h1>Maintenance en cours<\/h1>/);
+  assert.match(html, /<p class="maintenance__message">En travaux, merci de revenir dans quelques minutes\.<\/p>/);
+  assert.deepEqual([...html.matchAll(/<li data-etape="([^"]+)">/g)].map((m) => m[1]), ['preparation', 'livraison', 'installation']);
+  assert.match(html, /data-maintenance data-api="\/api\/" data-accueil="\/"/);
+  assert.match(html, /<script type="module"/, 'le script qui ramène à la page quand c’est fini');
+  const css = readdirSync(join(dist, '_astro')).filter((f) => f.endsWith('.css')).map((f) => lire(`_astro/${f}`)).join('\n');
+  const grise = css.match(/\.site-header--maintenance \.site-nav,html\[data-maintenance\] \.site-nav\{([^}]*)\}/);
+  assert.ok(grise && /opacity:/.test(grise[1]) && /pointer-events:none/.test(grise[1]), 'menu grisé, sur la page de maintenance et sur une page qui y part');
+  assert.ok(!lire('index.html').includes('href="/maintenance/"'), 'pas dans le menu');
 });

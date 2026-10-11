@@ -22,6 +22,10 @@
 .nav-soon { color: var(--muted); font-style: italic; }
 .site-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem 1.5rem; color: var(--muted); font-size: 0.85rem; padding-block: 1.5rem; }
 .site-footer__version { white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* Maintenance pendant une mise à jour (demande du propriétaire) : sur /maintenance/ et sur une page qui y part, l'en-tête est inerte (attribut
+   `inert` : ni clic ni clavier) et tout le menu grisé. */
+.site-header--maintenance .site-nav, html[data-maintenance] .site-nav { opacity: 0.35; filter: grayscale(1); pointer-events: none; }
+.site-header--maintenance .brand, html[data-maintenance] .brand { pointer-events: none; }
 /* Serveur de test (SITE_MODE=test) : impossible à confondre avec la production. */
 .bandeau-test { margin: 0; padding: 0.4rem 1rem; text-align: center; background: #b45309; color: #fff; font-size: 0.9rem; }
 /* Écran plus étroit que le menu sur une ligne : le logo réduit sur la première ligne, le menu dessous sur toute la largeur. */

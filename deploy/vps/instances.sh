@@ -3,9 +3,10 @@
 #   sudo bash instances.sh [--domaine maverick-jdr.com] [--regenerer-acces]
 #
 # Ce que fait le script (sûr à relancer, il ne touche ni au site ni à db/) :
-#   /srv/maverick-center        serveur normal : .env (port 127.0.0.1:8080), .htpasswd
+#   /srv/maverick-center        serveur normal : .env (port 127.0.0.1:8080), .htpasswd, maintenance/ (annonce de maintenance des deux serveurs)
 #   /srv/maverick-center-test   serveur de test : .env (port 127.0.0.1:8081, MAVERICK_BASE_TEST=conservee, MAVERICK_EDITION=1,
-#                               MAVERICK_ADRESSE_PUBLIQUE=https://dev.<domaine>), .htpasswd, secrets/ (jeton de la page Mise à jour)
+#                               MAVERICK_ADRESSE_PUBLIQUE=https://dev.<domaine>, MAVERICK_DOSSIER_MAINTENANCE=<normal>/maintenance), .htpasswd,
+#                               secrets/ (jeton de la page Mise à jour)
 #   /etc/caddy/maverick.env     mot de passe interne de chaque instance (droits 600) ; /etc/caddy/Caddyfile : deploy/vps/Caddyfile
 # Le site lui-même est posé ensuite par les installateurs (deploy/installateur/, voir README.md de ce dossier).
 set -euo pipefail
@@ -62,6 +63,10 @@ poser "$TEST/.env" MAVERICK_EDITION 1
 poser "$TEST/.env" MAVERICK_ADRESSE_PUBLIQUE "https://dev.$DOMAINE"
 mkdir -p "$TEST/secrets"
 chmod 700 "$TEST/secrets"
+# Maintenance pendant une mise à jour (docs/serveur.md) : le service du serveur de test (qui lance la mise à jour) publie l'annonce dans le dossier
+# maintenance/ du serveur normal, que les deux montent (docker-compose.yml) ; chacun rouvre dès que la nouvelle version y tourne.
+mkdir -p "$NORMAL/maintenance"
+poser "$TEST/.env" MAVERICK_DOSSIER_MAINTENANCE "$NORMAL/maintenance"
 
 mkdir -p "$ETC_CADDY"
 if [ "$REGENERER" -eq 1 ] || [ ! -f "$ENV_CADDY" ] || [ ! -f "$NORMAL/.htpasswd" ] || [ ! -f "$TEST/.htpasswd" ]; then

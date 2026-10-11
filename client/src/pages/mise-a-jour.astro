@@ -26,7 +26,7 @@ const portable = process.env.INLINE_CSS === '1';
 <Base title="Mise à jour" description="Ce que chaque version du site a changé dans les règles : sorts, classes et dons, races, métiers">
   <style is:inline set:html={miseAJourCss}></style>
   <h1>Mise à jour</h1>
-  <div class="mise-a-jour" data-mise-a-jour data-api={url('api/')} data-version={packageInfo.version}>
+  <div class="mise-a-jour" data-mise-a-jour data-api={url('api/')} data-maintenance={url('maintenance/')} data-version={packageInfo.version}>
     <section class="nv-dev" data-nv-dev hidden aria-live="polite"></section>
     <section class="nv-production" data-nv-production>
       {

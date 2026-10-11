@@ -104,6 +104,29 @@ sudo crontab -e                                       # puis ajouter :
 Chaque fusion dans `dev` met à jour le serveur de test dans les 5 minutes, chaque livraison `dev` → `master` met à jour le serveur normal. La base du
 test n'est pas touchée par ces mises à jour ; celle du normal non plus. Un fichier `GELER` dans le dossier d'une instance suspend ses mises à jour.
 
+## 7. Maintenance pendant une mise à jour
+
+Pendant une vraie mise à jour (bouton « Effectuer la mise à jour » du site de dev, pas la simulation), **les deux sites affichent « Maintenance en
+cours »** et chacun rouvre de lui-même dès que sa nouvelle version y tourne ([`docs/serveur.md`](../../docs/serveur.md), « Maintenance pendant une
+mise à jour »). Le service du serveur de test écrit l'annonce dans `/srv/maverick-center/maintenance/`, que les deux instances montent
+(`docker-compose.yml`). À faire une fois, en copiant de nouveau ce dossier sur le serveur (étape 1) :
+
+```
+sudo bash ~/vps/instances.sh      # crée /srv/maverick-center/maintenance, pose MAVERICK_DOSSIER_MAINTENANCE dans le .env du test
+```
+
+puis, dans chaque dossier d'instance, **une fois que son installateur a posé le nouveau `docker-compose.yml`** (le test après la fusion dans `dev`
+qui apporte la maintenance, le normal après la livraison suivante ; l'installateur l'écrit dans `installation.log` : « docker-compose.yml mis à jour
+par cette livraison ») :
+
+```
+cd /srv/maverick-center-test && sudo docker compose up -d
+cd /srv/maverick-center && sudo docker compose up -d
+```
+
+Jusque-là, seul le site de dev se met en maintenance. Une maintenance qui ne finit pas (installateur bloqué, fichier `GELER`) : bouton **« Lever la
+maintenance (les deux sites) »** sur `https://dev.maverick-jdr.com/maintenance/` ; elle se lève d'elle-même 4 h après le lancement.
+
 ## Avant la 0.2.0 : le serveur de test suit la branche `site`
 
 Tant que `dev` est en 0.1.x, il n'y a ni installateur ni *release* : après chaque fusion dans `dev`, le bot publie le site construit sur la
@@ -214,5 +237,6 @@ sudo sqlite3 /srv/maverick-center/db/vivante.db ".backup /root/vivante-$(date +%
 | `caddy_legacy_user_removed` dans le journal de Caddy | Sans conséquence : le Caddy 2.6 des paquets Ubuntu ne sait plus demander de certificat de secours à ZeroSSL ; Let's Encrypt suffit |
 | 401 sur le site | Les mots de passe de Caddy et de l'instance ne concordent plus : `sudo bash ~/vps/instances.sh --regenerer-acces` puis `docker compose restart` dans les deux dossiers |
 | 502 | L'instance n'est pas lancée : `cd /srv/maverick-center && sudo docker compose up -d` (avant la 0.2.0, c'est la réponse attendue de `maverick-jdr.com` : le serveur normal n'existe pas encore) |
+| « Maintenance en cours » qui ne finit pas | `sudo tail /srv/maverick-center*/mise-a-jour.log` (l'installateur est-il arrivé ?) ; bouton « Lever la maintenance » sur `https://dev.maverick-jdr.com/maintenance/`, sinon elle se lève seule 4 h après le lancement |
 | Revenir à une version précédente | Voir [`deploy/installateur/README.md`](../installateur/README.md), « Revenir à une version précédente » (fichier `GELER`) |
 | Verrouillé hors du serveur | Console VNC d'Infomaniak (page du serveur) |

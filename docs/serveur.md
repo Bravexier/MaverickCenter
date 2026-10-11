@@ -21,6 +21,7 @@ le voit : `v_personnage_visible`). Une fiche de joueur n'est ni listée ni lisib
 | `client/serveur/api.mjs` | Routes : une requête lue → une réponse JSON, sans réseau (testé directement) |
 | `client/serveur/fiches.mjs` | Une fiche ↔ les lignes de la section 13 de `data/schema.sql` ; contrôles ; résumé pour la recherche |
 | `client/serveur/base-vivante.mjs` | Création et renouvellement de la base vivante, archives |
+| `client/serveur/maintenance.mjs` | « Maintenance en cours » pendant une vraie mise à jour : annonce, dossier partagé, état de ce serveur (ci-dessous) |
 | `client/src/lib/fiche-format.mjs` | Format d'échange d'une fiche, **partagé** avec les pages du site (sans dépendance) |
 | `client/serveur/dev.mjs` | `npm run serveur` (développement) — jamais livré |
 | `client/serveur/livraison.mjs` | Intégration Astro : copie le service dans `dist/_serveur/` à chaque build — jamais livré |
@@ -63,6 +64,7 @@ fiche réelle dans git ni dans `/donnees/maverick.db` (le service refuse une bas
 
 | Requête | Réponse |
 | --- | --- |
+| `GET /api/maintenance/` | `{ active }` : ce serveur est-il en maintenance (« Maintenance pendant une mise à jour », plus bas) ; en maintenance, aussi `version_cible`, `depuis`, `etape` (et, sur le site de dev, `lot`, `run`, `levable`). Répond sans la base |
 | `GET /api/etat/` | Version du service, état de la base vivante (`disponible`, `a_jour`, `erreur`, `regles`, `schema`, `refaite_le`, `retraits` : les fiches adaptées par la dernière reconstruction qui a retiré quelque chose, R42, ou `null` ; `pretires`) |
 | `GET /api/personnages/` | `{ personnages: [...] }` : résumé de chaque prétiré (nom, statut, race, ethnie, magies, dieu, métier, classes et spécialités, niveaux, nombre de règles enfreintes, dates) |
 | `POST /api/personnages/` | Crée un prétiré → `201`, `Location`, `{ personnage, controles, niveau }` |
@@ -428,6 +430,39 @@ et, sur le serveur de test, le fichier `secrets/github-actions-token` (jeton fin
 pas dans [`deploy/vps/README.md`](../deploy/vps/README.md). Chaque mise à jour consomme environ quatre passages de la CI (préparation, PR,
 livraison, publication) en minutes GitHub Actions ; une simulation, un seul (la préparation).
 
+## Maintenance pendant une mise à jour
+
+Demande du propriétaire : une mise à jour prend du temps (préparation, deux PR et leur CI, puis les installateurs : plusieurs dizaines de minutes). Dès que
+**« Effectuer la mise à jour »** est lancé (la vraie, pas la simulation), **les deux sites** — le site de dev et la production — passent en
+**« Maintenance en cours »** : chaque page part vers `/maintenance/` (« En travaux, merci de revenir dans quelques minutes »), où **tout le menu est
+grisé** et inerte. L'écran disparaît **dès que c'est terminé, pour chaque serveur indépendamment** : celui qui s'installe le premier rouvre le premier.
+
+| Où | Ce qui se passe |
+| --- | --- |
+| Service du site de dev | Il tient le lancement (`db/mise-a-jour/etat.json`) : une vraie mise à jour dans les états `envoi`, `lance`, `en_cours`, `fusionne` ou `termine` en fait une **annonce** (`annonceDuLancement` : lot, version cible X.Y, début, état), publiée dans le **dossier partagé** (`MAVERICK_MAINTENANCE`, fichier `annonce.json`) au lancement, à l'annulation, et à chaque tour de sa minuterie ; un lancement fini sans livraison (`echec`, `echec_livraison`, `erreur`, `annule`), une simulation ou un lancement à la main (`manuel` : la page « Mise à jour » doit rester ouverte pour en donner les valeurs) la retirent |
+| Service de la production | Il lit l'annonce dans le même dossier (monté dans les deux instances : le `maintenance/` du serveur normal) ; il n'écrit rien |
+| Chaque service | `GET /api/maintenance/` : en maintenance tant que **sa** version (celle qui tourne, `version.json` lu au démarrage) est plus ancienne que la version cible (`etatDeMaintenance`). Le serveur de test reçoit d'abord la version de dev qui porte le lot (0.2.Z+1 pour une livraison 0.3 : toujours en maintenance), puis la livraison (0.3.0, comme la production). La nouvelle version installée, le service redémarre et refait sa base vivante avant de répondre : ce serveur rouvre, l'autre reste en maintenance tant qu'il n'a pas la sienne |
+| Chaque page (`layouts/Base.astro`) | Un script en ligne, dans `<head>`, demande `/api/maintenance/` au chargement, au retour sur l'onglet et toutes les 30 s ; en maintenance, il grise le menu et part vers `/maintenance/?retour=<la page>`. Sans service (site statique seul) ou service arrêté, rien ne se passe. Ni sur `/maintenance/`, ni dans la version portable |
+| `/maintenance/` (`pages/maintenance.astro`, `scripts/maintenance.mjs`) | Redemande toutes les 3 s ; montre la version, l'heure du début et l'étape (préparation et contrôles, livraison, installation sur ce serveur) ; fini, ramène à la page d'où l'on venait (`lib/maintenance-retour.mjs` : une page de ce site seulement), sinon à l'accueil. Service injoignable (il redémarre) : il attend |
+| Page « Mise à jour » | Après une vraie mise à jour lancée (pas « manuel »), elle part tout de suite vers `/maintenance/` ; la confirmation le dit |
+
+Le site de dev **suit la mise à jour sans personne sur sa page** (ses pages renvoient vers `/maintenance/`) : sa minuterie (`MAVERICK_INTERVALLE`)
+relit le run GitHub (au plus toutes les 20 s, tant qu'il est dans les états suivis et sans nouvelles depuis moins de 3 h) et ce que disent les
+règles (`actualiserLancement` : note arrivée → `fusionne`, version livrée sur master → `termine`), puis republie l'annonce ; sans minuterie
+(`npm run serveur`), c'est l'interrogation de la page de maintenance qui le fait. Un « Re-run » d'une livraison échouée repasse le lancement
+`fusionne` : les deux sites se referment.
+
+**Garde-fous** : une annonce mal formée ne compte pas ; au-delà de **4 h après le lancement** (`DUREE_MAX_MAINTENANCE` : 3 h de run au plus, puis
+1 h pour les installateurs), plus rien n'est en maintenance, même si un installateur n'est jamais arrivé ; sur le site de dev, la page de
+maintenance a un bouton **« Lever la maintenance (les deux sites) »** (`POST /api/maintenance/lever/`, `{ lot }` : le lot affiché ; noté
+`maintenance_levee_le` dans le lancement, qui continue). Rien d'autre n'est bloqué : l'API reste ouverte (une fiche ouverte avant peut être enregistrée).
+
+**Mise en place** (une fois) : `docker-compose.yml` monte le dossier hôte `${MAVERICK_DOSSIER_MAINTENANCE:-./maintenance}` sur `/maintenance` ; sur
+le VPS, `deploy/vps/instances.sh` crée `/srv/maverick-center/maintenance` et pose `MAVERICK_DOSSIER_MAINTENANCE=/srv/maverick-center/maintenance`
+dans le `.env` du serveur de test ; puis `docker compose up -d` dans les deux dossiers ([`deploy/vps/README.md`](../deploy/vps/README.md)). Sans ce
+réglage, le site de dev se met en maintenance d'après son seul lancement et la production jamais. La production ne connaît la maintenance qu'à partir
+de la version qui apporte ce code sur master.
+
 ## Hébergement
 
 Deux conteneurs dans le même `docker-compose.yml` (NAS : [`deploy/`](../deploy/README.md) ; à partir de la 1.0 : les
@@ -441,7 +476,8 @@ Deux conteneurs dans le même `docker-compose.yml` (NAS : [`deploy/`](../deploy/
   `MAVERICK_INTERVALLE` (surveillance, 15 000 ms), `MAVERICK_EDITION` (`1` : édition des règles ouverte, serveur de test seulement) ; page
   « Mise à jour » du serveur de test : `MAVERICK_REFERENCE` (base de la production, `/site/donnees/reference.db`), `MAVERICK_ADRESSE_PUBLIQUE`
   (`https://dev.<domaine>`, sinon l'hôte de la requête), `MAVERICK_GITHUB_JETON_FICHIER` (`/secrets/github-actions-token`, dossier `secrets/` de
-  l'instance monté en lecture seule), `MAVERICK_DEPOT` (`Bravexier/MaverickCenter`).
+  l'instance monté en lecture seule), `MAVERICK_DEPOT` (`Bravexier/MaverickCenter`) ; les deux serveurs : `MAVERICK_MAINTENANCE` (`/maintenance`,
+  dossier partagé de l'annonce de maintenance, ci-dessus).
 
 **Mises à jour, sans rien relancer à la main** : le service surveille trois fichiers (un changement compte quand il a été vu deux fois de suite,
 pour ne pas agir au milieu d'une copie) :
@@ -466,9 +502,10 @@ Les tests (`npm test`) : `serveur-base-vivante` (création, reprise des fiches, 
 refus, conflit de versions, serveur HTTP réel et sa surveillance), `serveur-edition*` et `serveur-edition-journal` (édition : chaque domaine,
 journal, rejeu), `serveur-notes-de-version` (page Mise à jour : routes, lot figé, faux GitHub), `notes-de-version` et `notes-de-version-sens`
 (liste et couleurs), `mise-a-jour-regles` (lot appliqué à data/rows : conflit, liste blanche), `mise-a-jour-github` (le workflow),
-`mise-a-jour-simulation` (le lot synthétique de la CI, l'état « note en attente », le job `simulation-de-mise-a-jour`), `db-appliquer-edition` (rapatriement dans data/rows, versé dans l’historique), `historique-site` (ce que le site a changé, état d’import), `serveur-livraison` (modules livrés, service livré démarré tel quel,
+`mise-a-jour-simulation` (le lot synthétique de la CI, l'état « note en attente », le job `simulation-de-mise-a-jour`), `serveur-maintenance`
+(annonce, deux serveurs qui rouvrent chacun à sa version, fin sans livraison, levée, plafond, minuterie, adresse de retour), `db-appliquer-edition` (rapatriement dans data/rows, versé dans l’historique), `historique-site` (ce que le site a changé, état d’import), `serveur-livraison` (modules livrés, service livré démarré tel quel,
 `docker-compose.yml` et `nginx.conf` cohérents), `installateur` (contenu de `db/` remplacé, dossier gardé) ; `site-html` contrôle `dist/_serveur/`
-après le build.
+après le build, le script de maintenance de chaque page (exécuté dans un faux navigateur) et `/maintenance/`.
 
 ## Suite
 
