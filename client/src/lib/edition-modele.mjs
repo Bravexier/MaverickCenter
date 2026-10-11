@@ -153,8 +153,8 @@ export const TABLES = {
       texte_niveau5: { type: 'texte', libelle: 'Texte du sort (niveau 5)' },
     },
   },
-  // Pages du guide : titre et texte (Markdown réécrit par l'éditeur visuel, lib/markdown-edition.mjs) ; le service refuse toute autre page (celles des
-  // races, magies, classes et métiers suivent leurs tables)
+  // Pages du guide et du Codex (texteDePageModifiable) : titre et texte (Markdown réécrit par l'éditeur visuel, lib/markdown-edition.mjs) ; le service
+  // refuse toute autre page (celles des races, magies, classes et métiers suivent leurs tables)
   page: {
     libelle: 'Page',
     colonnes: {
@@ -163,6 +163,16 @@ export const TABLES = {
     },
   },
 };
+
+/** Première source des pages du Codex (tools/docs/codex.py, docs/codex.md). */
+export const SOURCE_DU_CODEX = 'Google Doc « CODEX Maverick »';
+/**
+ * Une page dont le titre et le texte se modifient (lignes `page` de TABLES) : une page du guide, ou une page du Codex (demande du propriétaire :
+ * « Exactement comme pour les pages des règles les pages du codex doivent pouvoir être modifiées aussi ») = type `lore` tiré du Google Doc « CODEX
+ * Maverick » (première source) ; pas la description des relations entre les peuples (lore aussi, mais tirée du classeur des races). Les autres pages
+ * suivent leurs tables.
+ */
+export const texteDePageModifiable = (type, premiereSource) => type === 'guide' || (type === 'lore' && premiereSource === SOURCE_DU_CODEX);
 
 /**
  * Entités qu'une page peut créer ou supprimer (`suppression`), avec les champs demandés à la création (`champs`, même format que les colonnes de

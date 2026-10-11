@@ -5,6 +5,7 @@ Usage (bibliothèque standard uniquement ; relançable, mêmes fichiers à l'ide
 
     python3 -I tools/docs/codex.py [--source <export.md>] [--out client/src/content/wiki]            écrit les pages
     python3 -I tools/docs/codex.py [--source <export.md>] [--out client/src/content/wiki] --verifier n'écrit rien, contrôle
+    (--historique <fichier> : l'historique des modifications du site, data/rows/historique_modification.sql par défaut)
 
 puis `npm run db:sync-pages` (depuis client/) : les pages sont de la famille `docs` (première source « Google Doc « … » »), elles entrent dans
 `data/rows` par `tools/db/pages_md.py sync`.
@@ -34,10 +35,13 @@ produit plus est signalée « orpheline »).
   (2) chaque titre non vide du document (vrai titre ou ligne en gras-italique seule) est un titre de page, un titre de section ou le texte d'une
       page (nom et sous-titre séparément) ; un renvoi « Voir “X” pour plus d'information » doit nommer X dans une page ;
   (3) les pages sur disque sont exactement celles que produit le découpage, à l'octet près.
+Une page que le site de dev a modifiée (titre, texte ou alias ; demande du propriétaire : « le site est la source » de ce qu'il modifie, docs/serveur.md,
+« Mise à jour ») est contrôlée dans son état d'import, relu dans data/rows/historique_modification.sql (pages_du_site) ; l'écriture ne la touche pas.
 """
 import json
 import os
 import re
+import sqlite3
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -52,6 +56,8 @@ SOURCE = os.path.join(RACINE, 'sources', 'raw', f'{DOC_ID}.md')
 OUT = os.path.join(RACINE, 'client', 'src', 'content', 'wiki')
 SOURCES = ['Google Doc « CODEX Maverick »', f'https://docs.google.com/document/d/{DOC_ID}/edit']
 TYPE = 'lore'
+SCHEMA = os.path.join(RACINE, 'data', 'schema.sql')
+HISTORIQUE = os.path.join(RACINE, 'data', 'rows', 'historique_modification.sql')
 
 # Mots-clés : une étiquette de navigation par partie (ce ne sont pas des faits du lore).
 PARTIES = {
@@ -471,7 +477,62 @@ def du_codex(chemin):
     return (data.get('sources') or [None])[0] == SOURCES[0]
 
 
-def ecrire(codex, out):
+def pages_du_site(historique=HISTORIQUE, schema=SCHEMA):
+    """Pages du Codex que le site de dev a modifiées (modifications rapatriées ou livrées : table historique_modification) -> slug -> leur état
+    d'import : 'titre' et 'corps' (corps_md) = la valeur « avant » de la première modification de la colonne (absents : jamais modifiés), 'alias'
+    = {'retires': textes que le site a ajoutés, 'remis': textes qu'il a supprimés}. Même lecture que client/src/lib/historique-site.mjs."""
+    if not os.path.exists(historique):
+        return {}
+    with open(schema, encoding='utf-8') as f:
+        table = re.search(r'CREATE TABLE historique_modification \([\s\S]*?\) STRICT;', f.read()).group(0)
+    db = sqlite3.connect(':memory:')
+    db.execute(table)
+    with open(historique, encoding='utf-8') as f:
+        db.executescript(f.read())
+    pages = {}
+    vues = set()
+    for table_nom, cle, operation, avant, apres in db.execute(
+            "SELECT table_nom, cle, operation, avant, apres FROM historique_modification WHERE table_nom IN ('page', 'alias') ORDER BY fait_le, lot_id, rang"):
+        cle = json.loads(cle)
+        page_id = cle.get('id') if table_nom == 'page' else cle.get('page_id')
+        if not str(page_id).startswith(f'{TYPE}/'):
+            continue
+        p = pages.setdefault(page_id[len(TYPE) + 1:], {'alias': {'retires': set(), 'remis': set()}})
+        avant, apres = json.loads(avant or 'null'), json.loads(apres or 'null')
+        if table_nom == 'page':
+            for colonne, nom in (('titre', 'titre'), ('corps_md', 'corps')):
+                if avant and colonne in avant and nom not in p:
+                    p[nom] = avant[colonne]
+            continue
+        k = json.dumps(cle, sort_keys=True)
+        if k in vues:                                    # seule la première modification d'un alias dit ce qu'il était à l'import
+            continue
+        vues.add(k)
+        if operation == 'inserer':
+            p['alias']['retires'].add(apres['texte'])
+        elif operation == 'supprimer':
+            p['alias']['remis'].add(avant['texte'])
+        elif avant.get('texte') != apres.get('texte'):
+            p['alias']['retires'].add(apres['texte'])
+            p['alias']['remis'].add(avant['texte'])
+    return pages
+
+
+def etat_d_import(texte, site):
+    """(frontmatter, corps) d'une page sur disque, ramenée à son état d'import (pages_du_site) ; les alias en liste triée."""
+    data, corps = pages_md.parse_frontmatter(texte)
+    data = dict(data)
+    if site:
+        if 'titre' in site:
+            data['title'] = site['titre']
+        if 'corps' in site:
+            corps = '\n' + site['corps']             # le fichier : en-tête, ligne vide, corps_md (tools/db/pages_md.py)
+        data['aliases'] = (set(data.get('aliases', [])) - site['alias']['retires']) | site['alias']['remis']
+    data['aliases'] = sorted(data.get('aliases', []))
+    return data, corps
+
+
+def ecrire(codex, out, site):
     dossier = os.path.join(out, TYPE)
     os.makedirs(dossier, exist_ok=True)
     for slug in codex.ordre:
@@ -481,6 +542,9 @@ def ecrire(codex, out):
     ecrites = 0
     for slug in codex.ordre:
         chemin = os.path.join(dossier, f'{slug}.md')
+        if slug in site and os.path.exists(chemin):
+            print(f'  gardée telle que le site de dev l\'a modifiée : {TYPE}/{slug} (--verifier dit si le document a changé depuis)')
+            continue
         texte = texte_de_page(codex.pages[slug])
         if os.path.exists(chemin) and open(chemin, encoding='utf-8').read() == texte:
             continue
@@ -500,8 +564,9 @@ def normaliser(texte):
     return re.sub(r'\s+', ' ', t).strip()
 
 
-def verifier(lignes, out):
-    """Contrôles indépendants du découpage (voir l'en-tête). -> liste des erreurs."""
+def verifier(lignes, out, site):
+    """Contrôles indépendants du découpage (voir l'en-tête), les pages modifiées par le site de dev dans leur état d'import. -> (erreurs, nombre
+    de pages, nombre de pages modifiées par le site)."""
     dossier = os.path.join(out, TYPE)
     pages = {}
     for nom in sorted(os.listdir(dossier)):
@@ -509,11 +574,11 @@ def verifier(lignes, out):
         if nom.endswith('.md') and du_codex(chemin):
             with open(chemin, encoding='utf-8') as f:
                 pages[nom[:-3]] = f.read()
+    a_l_import = {slug: etat_d_import(t, site.get(slug)) for slug, t in pages.items()}
     erreurs = []
-    tout = '\n'.join(normaliser(pages_md.parse_frontmatter(t)[1]) for t in pages.values())
+    tout = '\n'.join(normaliser(corps) for _, corps in a_l_import.values())
     titres = set()
-    for t in pages.values():
-        data, corps = pages_md.parse_frontmatter(t)
+    for data, corps in a_l_import.values():
         titres |= {normaliser(data['title'])} | {normaliser(a) for a in data.get('aliases', [])}
         titres |= {normaliser(m) for m in re.findall(r'^#{1,6} (.*)$', corps, flags=re.M)}
     absentes = 0
@@ -545,26 +610,30 @@ def verifier(lignes, out):
             erreurs.append(f'(3) page manquante sur disque : {TYPE}/{slug}')
         elif slug not in attendu.pages:
             erreurs.append(f'(3) page en trop sur disque : {TYPE}/{slug}')
+        elif slug in site:
+            if a_l_import[slug] != etat_d_import(texte_de_page(attendu.pages[slug]), None):
+                erreurs.append(f'(3) page modifiée par le site de dev, différente du découpage dans son état d\'import : {TYPE}/{slug}')
         elif pages[slug] != texte_de_page(attendu.pages[slug]):
             erreurs.append(f'(3) page différente du découpage : {TYPE}/{slug}')
-    return erreurs, len(pages)
+    return erreurs, len(pages), len(set(site) & set(pages))
 
 
 def main(argv):
     option = lambda nom, defaut: argv[argv.index(nom) + 1] if nom in argv else defaut  # noqa: E731
     source = option('--source', SOURCE)
     out = option('--out', OUT)
+    site = pages_du_site(option('--historique', HISTORIQUE))
     lignes = lire_lignes(source)
     if '--verifier' in argv:
-        erreurs, n = verifier(lignes, out)
+        erreurs, n, du_site = verifier(lignes, out, site)
         for e in erreurs:
             print(e)
         if erreurs:
             print(f'{len(erreurs)} écart(s) entre le CODEX et ses {n} pages')
             return 1
-        print(f'{n} pages du Codex conformes au document')
+        print(f'{n} pages du Codex conformes au document' + (f' ({du_site} modifiées depuis par le site de dev, contrôlées dans leur état d\'import)' if du_site else ''))
         return 0
-    ecrire(Codex(lignes).construire(), out)
+    ecrire(Codex(lignes).construire(), out, site)
     return 0
 
 

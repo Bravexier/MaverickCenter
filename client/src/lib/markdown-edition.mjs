@@ -156,13 +156,14 @@ function tableau(n, o) {
   return [ligne(tete.cases), separateur, ...corps.map((l) => ligne(l.cases))].join('\n');
 }
 
-function liste(n, o, profondeur) {
+/** `alterne` : la liste suit une liste de même sorte ; elle change de marque (« * » au lieu de « - », « 1) » au lieu de « 1. »), sinon le Markdown n'en ferait qu'une. */
+function liste(n, o, profondeur, alterne = false) {
   const ordonnee = n.nom === 'ol';
   let numero = Number(attribut(n, 'start') ?? 1) || 1;
   const items = (n.enfants ?? []).filter((c) => estElement(c) && c.nom === 'li');
   const lache = items.some((li) => (li.enfants ?? []).some((c) => estElement(c) && c.nom === 'p'));
   const sorties = items.map((li) => {
-    const marque = ordonnee ? `${numero++}. ` : '- ';
+    const marque = ordonnee ? `${numero++}${alterne ? ')' : '.'} ` : alterne ? '* ' : '- ';
     const retrait = ' '.repeat(marque.length);
     const corps = blocs(li.enfants ?? [], o, profondeur + 1, { serre: !lache }).replace(/^\n+/, '');
     const [premiere = '', ...suite] = corps.split('\n');
@@ -171,7 +172,7 @@ function liste(n, o, profondeur) {
   return sorties.join(lache ? '\n\n' : '\n');
 }
 
-function bloc(n, o, profondeur) {
+function bloc(n, o, profondeur, alterne = false) {
   switch (n.nom) {
     case 'h1':
     case 'h2':
@@ -182,7 +183,7 @@ function bloc(n, o, profondeur) {
       return `${'#'.repeat(Number(n.nom[1]))} ${sansSautsDeBord(enLigne(n.enfants ?? [], o).trim())}`;
     case 'ul':
     case 'ol':
-      return liste(n, o, profondeur);
+      return liste(n, o, profondeur, alterne);
     case 'blockquote':
       return blocs(n.enfants ?? [], o, profondeur).split('\n').map((l) => (l ? `> ${l}` : '>')).join('\n');
     case 'pre': {
@@ -208,10 +209,19 @@ function bloc(n, o, profondeur) {
 }
 
 function blocs(enfants, o, profondeur = 0, { serre = false } = {}) {
-  return morceaux(enfants)
-    .map((n) => bloc(n, o, profondeur))
-    .filter((t) => t.trim() !== '')
-    .join(serre ? '\n' : '\n\n');
+  const sorties = [];
+  let precedent = null;
+  let alterne = false;
+  for (const n of morceaux(enfants)) {
+    // deux listes de même sorte qui se suivent (« - » puis « * » dans une page du Codex) : la seconde prend l'autre marque
+    const suit = estElement(n) && (n.nom === 'ul' || n.nom === 'ol') && precedent?.nom === n.nom;
+    const t = bloc(n, o, profondeur, suit && !alterne);
+    if (t.trim() === '') continue;
+    sorties.push(t);
+    alterne = suit && !alterne;
+    precedent = n;
+  }
+  return sorties.join(serre ? '\n' : '\n\n');
 }
 
 /**

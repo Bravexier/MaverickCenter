@@ -15,7 +15,7 @@
 //   { op: 'relations', cases: [{ voit, vu, echelle }] }                                                     relations entre peuples (races)
 //   { op: 'magies_innees', race, magies: [ids] }                                                             magies innées d'une race
 // Node seulement (node:sqlite), sans dépendance.
-import { ENTITES, ErreurValeur, MOT_CLE_RACE_HYBRIDE, TABLES, valeurDuChamp } from '../src/lib/edition-modele.mjs';
+import { ENTITES, ErreurValeur, MOT_CLE_RACE_HYBRIDE, TABLES, texteDePageModifiable, valeurDuChamp } from '../src/lib/edition-modele.mjs';
 import {
   RIEN, artisanatBrut, corpsDeMetier, decouperBonus, decouperEquipement, famillesDeRecette, testDArtisanat,
 } from '../src/lib/metier-champs.mjs';
@@ -1086,15 +1086,21 @@ const CAPACITE = {
 };
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
-// Pages du guide (page : titre, corps Markdown ; alias)
+// Pages du guide et du Codex (page : titre, corps Markdown ; alias)
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
 /** Taille maximale de l'aperçu HTML d'une page (le corps du plus long chapitre rendu fait une centaine de kilo-octets). */
 export const APERCU_MAX = 2_000_000;
 
+const premiereSource = (db, pageId) =>
+  db.prepare('SELECT s.texte FROM page_source ps JOIN source s ON s.id = ps.source_id WHERE ps.page_id = ? ORDER BY ps.ordre LIMIT 1').get(pageId)?.texte ?? null;
+
 const PAGE = {
   colonnes(ctx, ligne) {
-    if (ligne.type !== 'guide') throw refus(`${ligne.id} : seules les pages du guide se modifient ici (les autres pages suivent leurs tables)`);
+    // le guide et le Codex (lib/edition-modele.mjs#texteDePageModifiable)
+    if (!texteDePageModifiable(ligne.type, premiereSource(ctx.db, ligne.id))) {
+      throw refus(`${ligne.id} : seules les pages du guide et du Codex se modifient ici (les autres pages suivent leurs tables)`);
+    }
     try {
       morceauxDuChapitre(ligne.corps_md); // un bloc inconnu (`<!-- guide:… -->`) arrêterait le build
     } catch (e) {
@@ -1141,7 +1147,7 @@ const DOMAINES = {
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
 /**
- * Colonnes dérivées du journal : le corps et le résumé des pages typées (tout sauf le guide, dont le corps est le texte modifié lui-même), et `donnees`
+ * Colonnes dérivées du journal : le corps et le résumé des pages typées (tout sauf le guide et le Codex, dont le corps est le texte modifié lui-même), et `donnees`
  * des fiches de dons (D11 : classe, spécialité, niveau, nature, rang, ligne, type, choix exclusifs, lib/dons-edition.mjs#donneesDeDon), que l'édition
  * tire des tables (ecrirePage, suivreDonneesDesDons). Le rejeu ne les compare pas et ne les écrit pas (edition-journal.mjs#rejouer) : rejouerLeJournal
  * les refait depuis les lignes rejouées. Les `donnees` des pages de race (magies innées) ne sont pas dérivées.
@@ -1149,7 +1155,7 @@ const DOMAINES = {
 export const colonneDerivee = (table, cle, colonne) => {
   if (table !== 'page') return false;
   const id = String(cle?.id ?? '');
-  if (colonne === 'corps_md' || colonne === 'resume') return !id.startsWith('guide/');
+  if (colonne === 'corps_md' || colonne === 'resume') return !id.startsWith('guide/') && !id.startsWith('lore/');
   return colonne === 'donnees' && id.startsWith('capacites/');
 };
 
