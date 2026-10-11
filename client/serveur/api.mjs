@@ -20,7 +20,8 @@
 //   POST /api/mise-a-jour/brouillon/    { texte, avant } → enregistre le champ libre des admins
 //   POST /api/mise-a-jour/lancer/       { confirmation, simulation? } → fige le lot et déclenche le workflow GitHub de mise à jour → 202
 //                                       (simulation : true = simulation de mise à jour, le workflow vérifie tout sans rien pousser)
-//   POST /api/mise-a-jour/liberer/      annule un lancement qui n'est pas parti (ou a échoué) : le brouillon redevient modifiable
+//   POST /api/mise-a-jour/liberer/      { lot } → annule ce lancement s'il n'est pas parti, a échoué avant dev, ou se lance à la main : le brouillon
+//                                       redevient modifiable, le lot n'est plus servi (et son run est annulé sur GitHub)
 //   GET  /api/mise-a-jour/lancement/    état du lancement (suivi du run GitHub)
 //   GET  /api/mise-a-jour/lots/<id>/    un lot figé, tel quel (le workflow le télécharge et vérifie son empreinte)
 // Les adresses finissent par « / », comme celles du site (en développement, Astro refuse une adresse sans « / » finale avant de la transmettre) ;
@@ -32,7 +33,7 @@
 import { ErreurEdition, donneesDeRace, enregistrer, listes, lireLignes, pagesDuWiki } from './edition.mjs';
 import { journalExporte, lignesEnAttente } from './edition-journal.mjs';
 import {
-  actualiserLancement, CONFIRMATION, enregistrerBrouillon, ErreurNotes, figerLot, libererLot, lireLot, noteEnPreparation,
+  actualiserLancement, CONFIRMATION, enregistrerBrouillon, ErreurNotes, estLiberable, figerLot, libererLot, lireLot, lireReference, noteEnPreparation, occupe,
 } from './notes-de-version.mjs';
 import { ErreurFiche, controlesDe, enregistrerFiche, lireFiche, listerFiches, niveauDe, supprimerFiche } from './fiches.mjs';
 import { CHAMP_VERSION } from '../src/lib/fiche-format.mjs';
@@ -170,8 +171,10 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
     if (reste.length !== 1) return erreur(404, 'Adresse inconnue.');
     const refus = permis('GET');
     if (refus) return refus;
+    if (!/^[0-9a-f-]{36}$/.test(reste[0])) return erreur(404, 'Lot introuvable.');
+    // seul le lot du lancement actuel, toujours en jeu, est servi : un lot annulé, remplacé ou de simulation finie ne peut plus être livré
     const lot = lireLot(service.dossier, reste[0]);
-    return lot === null ? erreur(404, 'Lot introuvable.') : { statut: 200, corps: null, brut: lot, entetes: {} };
+    return lot === null ? erreur(410, 'Lot introuvable, annulé ou remplacé : il ne peut plus être livré.') : { statut: 200, corps: null, brut: lot, entetes: {} };
   }
   if (reste.length || ![undefined, 'brouillon', 'lancer', 'liberer', 'lancement'].includes(action)) return erreur(404, 'Adresse inconnue.');
   const refus = action === undefined || action === 'lancement' ? permis('GET') : permis('POST');
@@ -180,25 +183,32 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
   if (!db) return erreur(503, 'La base n’est pas disponible pour le moment.', { etat: service.etat() });
   const versionDev = service.etat().version ?? null;
   const github = { configure: Boolean(service.github?.configure()), depot: service.depot ?? null };
+  const instant = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
   if (action === undefined || action === 'lancement') {
     service.github?.suivre().catch(() => {}); // en arrière-plan : la réponse suivante aura l'état à jour
-    const lancement = actualiserLancement(db, service.dossier);
-    if (action === 'lancement') return json(200, { lancement, github });
-    return json(200, { ...noteEnPreparation(db, { reference: service.reference, versionDev }), lancement, github, confirmation: CONFIRMATION });
+    const lancement = actualiserLancement(db, service.dossier, { reference: lireReference(service.reference) });
+    // mêmes règles que le service pour la page : annulable, et place occupée (un nouveau lancement serait refusé)
+    const regles = { liberable: estLiberable(lancement, instant), occupe: occupe(lancement, instant) };
+    if (action === 'lancement') return json(200, { lancement, ...regles, github });
+    return json(200, { ...noteEnPreparation(db, { reference: service.reference, versionDev }), lancement, ...regles, github, confirmation: CONFIRMATION });
   }
   const interdit = refusEcriture(requete.entetes ?? {});
   if (interdit) return interdit;
   const { valeur, refus: illisible } = lireCorps(requete.corps);
   if (illisible) return illisible;
-  const instant = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
   try {
     if (action === 'brouillon') return json(200, { brouillon: enregistrerBrouillon(db, valeur ?? {}, { instant }) });
-    if (action === 'liberer') return json(200, { lancement: libererLot(db, service.dossier, { instant }) });
+    if (action === 'liberer') {
+      // `lot` : le lancement que la page affiche (un onglet périmé n'annule pas le suivant) ; le run éventuel est annulé sur GitHub
+      const lancement = libererLot(db, service.dossier, { instant, lot: valeur?.lot, annulerRun: service.github?.annulerRun ?? null });
+      return json(200, { lancement, liberable: estLiberable(lancement, instant), occupe: occupe(lancement, instant) });
+    }
     const note = noteEnPreparation(db, { reference: service.reference, versionDev });
     // sans jeton GitHub sur ce serveur : le lot est figé quand même, la page dit comment lancer le workflow à la main
     const lancement = figerLot(db, service.dossier, {
       versionDev, versionCible: note.version_cible, instant, confirmation: valeur?.confirmation, adresse: adressePublique(service, requete.entetes ?? {}),
-      etat: github.configure ? 'envoi' : 'manuel', simulation: valeur?.simulation === true,
+      etat: github.configure ? 'envoi' : 'manuel', simulation: valeur?.simulation === true, aLivrer: note.lignes ? note.lignes.length : null,
+      ...(service.limites ? { limites: service.limites } : {}),
     });
     service.journal?.(`${lancement.simulation ? 'simulation de mise à jour' : 'mise à jour'} : lot ${lancement.lot} figé (${lancement.modifications} modification(s), V${note.version_cible})`);
     if (github.configure) service.github.declencher().catch(() => {});

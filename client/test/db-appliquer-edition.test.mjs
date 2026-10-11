@@ -124,3 +124,27 @@ test('conflit (data/rows a changé autrement depuis) : rien n’est écrit, sauf
     'seul le lot écrit est historisé');
   db.close();
 });
+
+test('un journal rapatrié une seconde fois ne remet jamais une valeur annulée (lots déjà dans l’historique : intégrés, pas rejoués)', () => {
+  // K1 : Forgeron A → B ; K2 (un seul enregistrement) : Forgeron B → A et Acrobate X → Y ; K3 : Acrobate Y → Z
+  const { chemin: c2 } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(tmp, 'db-k') });
+  const v = ouvrirBaseVivante(c2);
+  const valeur = (id) => v.prepare('SELECT bonus_brut FROM metier WHERE id = ?').get(id).bonus_brut;
+  const a = valeur('metiers/forgeron');
+  const modifier = (id, bonus_brut) => ({ op: 'modifier', table: 'metier', cle: { id }, valeurs: { bonus_brut } });
+  enregistrer(v, { page: 'metiers/', operations: [modifier('metiers/forgeron', '+7% Essai')] }, { instant: '2026-10-12T09:00:00Z', id: 'essai-k1' });
+  enregistrer(v, { page: 'metiers/', operations: [modifier('metiers/forgeron', a), modifier('metiers/acrobate', '+1% Y')] }, { instant: '2026-10-12T09:00:01Z', id: 'essai-k2' });
+  enregistrer(v, { page: 'metiers/', operations: [modifier('metiers/acrobate', '+2% Z')] }, { instant: '2026-10-12T09:00:02Z', id: 'essai-k3' });
+  const j = journalExporte(v);
+  v.close();
+  const rowsK = join(tmp, 'rows-k');
+  cpSync(join(RACINE, 'data', 'rows'), rowsK, { recursive: true }); // les lignes d'origine (celles de `rows` ont reçu le journal des tests précédents)
+  const premier = appliquerJournal(j, { rows: rowsK });
+  assert.equal(premier.ecrit, true, JSON.stringify(premier));
+  const apres = lire(rowsK);
+  const second = appliquerJournal(j, { rows: rowsK });
+  assert.deepEqual(lire(rowsK), apres, 'data/rows ne change plus');
+  assert.equal(second.conflits?.length ?? 0, 0, JSON.stringify(second.conflits));
+  assert.ok(apres['metier.sql'].includes(`'${a.replace(/'/g, "''")}'`), 'le Forgeron garde sa valeur A');
+  assert.ok(!apres['metier.sql'].includes("'+7% Essai'"), 'la valeur annulée (B) ne revient pas');
+});

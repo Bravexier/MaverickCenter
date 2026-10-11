@@ -17,6 +17,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
+import { integrerLivrees } from '../serveur/base-vivante.mjs';
 import { chargerJournal, rejouer } from '../serveur/edition-journal.mjs';
 
 const CLIENT = fileURLToPath(new URL('../', import.meta.url));
@@ -58,7 +59,11 @@ export function appliquerJournal(journal, { rows = join(RACINE, 'data', 'rows'),
       db.exec('PRAGMA foreign_keys = OFF'); // rejouer contrôle les clés étrangères lot par lot
       db.exec('BEGIN');
       chargerJournal(db, journal);
+      // les lots déjà rapatriés ou livrés (dans historique_modification) ne sont pas rejoués : d'après leurs valeurs, une suite qui revient sur
+      // elle-même (A → B, puis B → A avec une autre ligne qui a bougé depuis) remettrait une valeur annulée
+      const dejaLivrees = integrerLivrees(db);
       bilan = rejouer(db);
+      bilan.integrees += dejaLivrees;
       conflits = db
         .prepare(
           `SELECT l.id AS lot, l.resume, (SELECT detail FROM modification WHERE lot_id = l.id AND etat = 'conflit' ORDER BY rang LIMIT 1) AS detail

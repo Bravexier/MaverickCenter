@@ -147,6 +147,10 @@ function transferer(db, ancienne) {
           problemes.push(`${t} : ${e.message}`);
         }
       }
+      // les modifications déjà livrées (leur lot est dans historique_modification des nouvelles règles : mise à jour ou rapatriement) sont
+      // « intégrées » AVANT le rejeu : rejouées d'après leurs valeurs, un aller-retour (A → B → A) se réappliquerait et deux saisies du même
+      // champ passeraient « conflit » — et une valeur annulée par l'admin reviendrait sur le site, puis en production
+      if (!problemes.length) integrerLivrees(db);
       if (!problemes.length) rejeu = rejouer(db);
       // le brouillon de la note de version d'un lot que les nouvelles règles ont livré est vidé (son texte est dans note_version)
       if (!problemes.length) viderBrouillonLivre(db);
@@ -174,6 +178,17 @@ function transferer(db, ancienne) {
     db.exec('PRAGMA foreign_keys = ON');
   }
   return rejeu;
+}
+
+/**
+ * Marque « integree » toute modification du journal (en attente ou en conflit) que les règles ont déjà reçue : son (lot, rang) est dans
+ * historique_modification. Rend le nombre de modifications marquées.
+ */
+export function integrerLivrees(db) {
+  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'historique_modification'").get()) return 0;
+  return Number(db.prepare(`UPDATE modification SET etat = 'integree', detail = NULL
+    WHERE etat IN ('en_attente', 'conflit')
+      AND EXISTS (SELECT 1 FROM historique_modification h WHERE h.lot_id = modification.lot_id AND h.rang = modification.rang)`).run().changes);
 }
 
 /** Vide le brouillon de la note de version si les règles contiennent la note de version de son lot (livré par « Effectuer la mise à jour »). */

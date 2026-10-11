@@ -140,3 +140,36 @@ test('une autre table changerait : rien n’est écrit (code 4)', () => {
   assert.equal(readFileSync(join(rows, 'metier.sql'), 'utf8'), metiers);
   assert.ok(!metiers.includes(`'${BONUS}'`));
 });
+
+/** Une copie de data/rows modifiée par une requête SQL (base reconstruite, requête, réexport par l'exporteur des importeurs). */
+function copieModifiee(nom, sql) {
+  const rows = copie(nom);
+  baseDe(rows);
+  const base = new DatabaseSync(join(racine, 'relue.db'));
+  base.exec(sql);
+  base.close();
+  const exp = spawnSync('python3', ['-I', fileURLToPath(new URL('../../tools/db/exporter.py', import.meta.url)), join(racine, 'relue.db'), '--rows', rows], { encoding: 'utf8' });
+  assert.equal(exp.status, 0, exp.stderr);
+  return rows;
+}
+
+test('une note d’un autre lot est dans dev sans être livrée : refus (code 7), jamais écrasée, rien n’est écrit', () => {
+  // une version au-delà de la production : sa livraison dev → master n'a pas eu lieu
+  const rows = copieModifiee('rows-code-7', "INSERT INTO note_version (version, publiee_le, depuis, texte, lot, exemple) VALUES ('98.0', '2026-10-01', '97.9', 'Texte du lot L1', 'lot-l1', 0)");
+  const avant = readFileSync(join(rows, 'note_version.sql'), 'utf8');
+  assert.throws(() => appliquerMiseAJour(lot(), { rows, reference: 'HEAD', date: '2026-10-11', versionDev: VERSION_DEV }),
+    (e) => e instanceof ErreurMiseAJour && e.code === 7 && e.details.lot === 'lot-l1' && /pas encore livrée sur master/.test(e.message));
+  assert.equal(readFileSync(join(rows, 'note_version.sql'), 'utf8'), avant);
+  assert.doesNotMatch(readFileSync(join(rows, 'metier.sql'), 'utf8'), new RegExp(`'${BONUS.replace(/[+%]/g, '\\$&')}'`));
+});
+
+test('les lots du journal déjà livrés (dans historique_modification) sont écartés : leur valeur n’est pas réappliquée', () => {
+  const premier = journal.lots[0];
+  const rows = copieModifiee('rows-deja-livre', `INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres)
+    VALUES ('${premier.id}', 1, '${premier.fait_le}', 'livré avant', NULL, 'metier', '{"id":"metiers/forgeron"}', 'modifier', '{"bonus_brut":"a"}', '{"bonus_brut":"b"}')`);
+  const res = appliquerMiseAJour(lot(), { rows, reference: 'HEAD', date: '2026-10-11', versionDev: VERSION_DEV });
+  assert.deepEqual(res.deja_livres, [premier.id]);
+  assert.ok(!readFileSync(join(rows, 'metier.sql'), 'utf8').includes(`'${BONUS}'`), 'la modification déjà livrée n’est pas rejouée');
+  const lire = baseDe(rows);
+  assert.equal(lire(`SELECT count(*) AS n FROM historique_modification WHERE lot_id = '${premier.id}'`)[0].n, 1, 'pas doublée');
+});

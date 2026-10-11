@@ -41,6 +41,7 @@ const journal = [];
 const service = {
   base: () => db, etat: () => ({ service: 'essai', version: '0.1.76' }), journal: (l) => journal.push(l), edition: true,
   dossier, reference, depot: 'Bravexier/MaverickCenter', adresse: 'https://dev.exemple.org', github: null,
+  limites: { delai: 0, parJour: Infinity }, // la fréquence des lancements a son propre test (serveur-mise-a-jour-etats)
 };
 const JSON_ = { 'content-type': 'application/json' };
 const appel = (methode, chemin_, corps, s = service, entetes = JSON_) =>
@@ -310,9 +311,14 @@ test('la note livrée arrive dans les règles : lancement terminé, brouillon vi
   assert.ok(appel('GET', '/api/mise-a-jour/').corps.brouillon.lot, 'lot encore figé');
   // ce que fait la nouvelle version du site : la note de version porte le lot (scripts/mise-a-jour-regles.mjs)
   db.prepare("INSERT INTO note_version (version, publiee_le, depuis, texte, lot, exemple) VALUES ('0.2', '2026-10-11', '0.1', NULL, ?, 0)").run(l.lot);
-  const actuel = actualiserLancement(db, dossier);
+  // arrivée dans les règles de dev = fusionnée dans dev, pas encore livrée sur master (la référence est en 0.1)
+  let actuel = actualiserLancement(db, dossier, { reference: { version: '0.1.0' } });
+  assert.deepEqual([actuel.etat, actuel.version_livree], ['fusionne', '0.2']);
+  assert.equal(appel('POST', '/api/mise-a-jour/liberer/', { lot: l.lot }).statut, 409, 'dans dev : ne s’annule plus');
+  // livrée : la référence (master) porte la version de sa note
+  actuel = actualiserLancement(db, dossier, { reference: { version: '0.2.0' } });
   assert.deepEqual([actuel.etat, actuel.version_livree], ['termine', '0.2']);
-  assert.equal(appel('POST', '/api/mise-a-jour/liberer/', {}).statut, 409, 'livré : rien à annuler');
+  assert.equal(appel('POST', '/api/mise-a-jour/liberer/', { lot: l.lot }).statut, 409, 'livré : rien à annuler');
   viderBrouillonLivre(db);
   const n = appel('GET', '/api/mise-a-jour/').corps;
   assert.equal(n.brouillon.lot, null);

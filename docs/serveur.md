@@ -200,9 +200,28 @@ Le workflow (`client/scripts/mise-a-jour-github.mjs`, avec le jeton `MISE_A_JOUR
 4. attend le commit de version du bot, puis ouvre la PR de **livraison `dev` → `master`** (la note de version en corps, jamais `[V: X+1]`),
    attend sa CI et la fusionne : `livraison.yml` fait la version X.Y.0, les étiquettes et les installateurs.
 
-Quand la nouvelle version arrive sur le site de dev, la base vivante est refaite et le journal rejoué (les modifications sont « intégrées ») ; le
-brouillon dont le lot a sa note dans les règles est vidé et le lancement marqué terminé (`actualiserLancement`). Le serveur normal reçoit la
-nouvelle note avec la livraison.
+Quand la nouvelle version arrive sur le site de dev, la base vivante est refaite : les modifications déjà livrées (leur lot est dans
+`historique_modification` des nouvelles règles) sont **« intégrées » avant tout rejeu** (`integrerLivrees`) — rejouées d'après leurs valeurs,
+un aller-retour (A → B → A) se réappliquerait, deux saisies du même champ passeraient « conflit », et une valeur annulée par l'admin
+reviendrait ; `db:appliquer-edition` et le script de rejeu du workflow écartent de même les lots déjà livrés. Le brouillon dont le lot a sa
+note dans les règles est vidé. Le serveur normal reçoit la nouvelle note avec la livraison.
+
+**États du lancement** (`db/mise-a-jour/etat.json`, `serveur/notes-de-version.mjs`) : `envoi` → `lance` → `en_cours` → `fusionne` (le lot est
+dans dev : étape « Fusion dans dev » du job `livrer` réussie, ou sa note arrivée dans les règles) → `termine` (run réussi, ou la référence
+— master — porte la version de sa note : jamais par la seule arrivée de la note dans dev). Un échec **avant** dev donne `echec` (annulable) ;
+**après**, `echec_livraison` : le lot est dans dev, il ne s'annule plus, on relance son run (« Re-run » : il reprend à la livraison) ou on
+fusionne sa PR de livraison, et une nouvelle mise à jour attend (le script de rejeu refuse aussi, code 7, d'écraser la note d'un autre lot
+pas encore livrée). Sans jeton : `manuel`. Annulé : `annule`. Simulation : `simulation_reussie` / `simulation_echouee`. Garanties :
+- seul le lot du lancement actuel, toujours en jeu, est servi au workflow (`lireLot`) : un lot annulé, remplacé ou de simulation finie répond
+  `410`, si bien qu'un « Re-run » ou un lancement à la main ne peut pas le livrer ;
+- un suivi ou un déclenchement revenu en retard n'écrase jamais un état plus récent ni celui d'un autre lot (`modifierLancement`) ;
+  « Annuler » dit quel lot il vise (`{ lot }` : un onglet périmé reçoit `409`) ; les réponses portent `liberable` et `occupe`, les règles
+  du service, que la page applique telles quelles ;
+- au plus un lancement toutes les 2 minutes et 8 par 24 h (le bouton n'a pas d'authentification avant la connexion Discord) ; une vraie
+  mise à jour sans rien à livrer est refusée ;
+- au-delà de 3 h sans nouvelles (plus aucun run ne peut tourner), un lancement bloqué se libère (le texte d'un lot déjà dans dev quitte le
+  brouillon, sans annuler le lot) ;
+- le lot dit s'il est une simulation (`simulation`, couvert par l'empreinte) : le workflow refuse un lot lancé dans l'autre mode.
 
 **Le site est la source** des données qu'il modifie (décision du propriétaire) : toute modification rapatriée dans `data/rows` (par ce bouton,
 avec la version qui la livre, ou par `npm run db:appliquer-edition`, version vide) est gardée, ligne par ligne, dans `historique_modification`

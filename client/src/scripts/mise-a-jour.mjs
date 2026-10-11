@@ -32,20 +32,24 @@ const ETATS = {
   envoi: 'Lot figé, envoi à GitHub…',
   lance: 'Workflow déclenché sur GitHub : en attente de démarrage.',
   en_cours: 'Mise à jour en cours sur GitHub (PR vers dev, tests, fusion, puis livraison dev → master).',
-  termine: 'Mise à jour terminée : la PR a été fusionnée dans dev puis livrée sur master. Le site de dev se met à jour de lui-même ; le texte redevient modifiable quand la nouvelle version y arrive.',
-  echec: 'La mise à jour a échoué sur GitHub : rien n’a été fusionné de ce qui a échoué. Le journal du workflow dit pourquoi.',
+  fusionne: 'Les modifications sont fusionnées dans dev ; la livraison dev → master est en cours.',
+  termine: 'Mise à jour terminée : fusionnée dans dev puis livrée sur master. Le site de dev se met à jour de lui-même ; le texte redevient modifiable quand la nouvelle version y arrive.',
+  echec: 'La mise à jour a échoué sur GitHub avant d’entrer dans dev : rien n’a été fusionné. Le journal du workflow dit pourquoi ; vous pouvez annuler ce lancement.',
+  echec_livraison: 'Les modifications sont dans dev, mais la livraison dev → master a échoué. Relancez le run sur GitHub (« Re-run » : il reprend à la livraison) ou fusionnez la PR de livraison à la main. Une nouvelle mise à jour attend que celle-ci soit livrée.',
   erreur: 'Le workflow n’a pas pu être déclenché.',
   manuel: 'Aucun jeton GitHub sur ce serveur : lancez le workflow à la main avec les valeurs ci-dessous.',
   annule: 'Lancement annulé : le texte redevient modifiable.',
   simulation_reussie: 'Simulation réussie : le lot s’applique sur dev, seules les tables prévues changent, db:check et tous les tests passent. Rien n’a été poussé ; la vraie mise à jour peut être lancée.',
   simulation_echouee: 'La simulation a échoué : le journal du workflow dit pourquoi. Rien n’a été poussé ; le texte redevient modifiable.',
 };
-const EN_COURS = ['envoi', 'lance', 'en_cours'];
+/** États où le run peut encore avancer : la page suit (une relance d'un échec de livraison aussi). */
+const EN_COURS = ['envoi', 'lance', 'en_cours', 'fusionne'];
+const SUIVIS = [...EN_COURS, 'echec_livraison'];
 
 let donnees = null;
 let suivi = null;
 
-function htmlDuLancement(l, github, fige) {
+function htmlDuLancement(l, github, liberable) {
   if (!l) return '';
   const run = l.run?.url ? ` <a href="${echapper(l.run.url)}" rel="noopener noreferrer" target="_blank">Voir le workflow sur GitHub</a>` : '';
   const manuel = l.etat === 'manuel' || l.etat === 'erreur'
@@ -53,10 +57,11 @@ function htmlDuLancement(l, github, fige) {
        <ul><li>lot : <code>${echapper(l.lot)}</code></li><li>empreinte : <code>${echapper(l.empreinte)}</code></li><li>adresse : <code>${echapper(l.adresse)}</code></li>
        <li>case « Simulation » : ${l.simulation ? '<strong>cochée</strong>' : 'décochée'}</li></ul>`
     : '';
-  // resté « lancé » ou « en cours » plus longtemps qu'un run ne peut durer (3 h : timeout du workflow) : annulable aussi
-  const bloque = EN_COURS.includes(l.etat) && l.etat !== 'envoi' && l.lance_le && Date.now() - Date.parse(l.lance_le) > 3 * 3_600_000;
-  const liberer = fige && (['manuel', 'erreur', 'echec', 'envoi'].includes(l.etat) || bloque) && BUREAU.matches
-    ? `<button type="button" data-nv-liberer>${bloque ? 'Annuler ce lancement (sans nouvelles depuis plus de 3 h)' : 'Annuler ce lancement'}</button>` : '';
+  // le service dit si le lancement est annulable (mêmes règles des deux côtés : estLiberable) ; un lot dans dev ou livré, resté sans nouvelles plus
+  // de 3 h, libère seulement le texte
+  const tardif = ['fusionne', 'echec_livraison', 'termine', 'lance', 'en_cours'].includes(l.etat);
+  const liberer = liberable && BUREAU.matches
+    ? `<button type="button" data-nv-liberer data-lot="${echapper(l.lot)}">${tardif ? 'Libérer le texte (sans nouvelles depuis plus de 3 h)' : 'Annuler ce lancement'}</button>` : '';
   return `<div class="nv-lancement nv-lancement--${echapper(l.etat)}">
     <p class="nv-message"><strong>${l.simulation ? 'Dernière simulation' : 'Dernier lancement'}</strong> (V${echapper(l.version_cible ?? '?')}, ${echapper(l.lance_le ?? '')}) : ${echapper(ETATS[l.etat] ?? l.etat)}${run}</p>
     ${l.erreur ? `<p class="nv-message nv-message--erreur">${echapper(l.erreur)}</p>` : ''}${manuel}${liberer}</div>`;
@@ -68,7 +73,7 @@ function rendre() {
   const bureau = BUREAU.matches;
   // un lot figé (brouillon.lot) verrouille le texte et le bouton jusqu'à ce que la version livrée arrive sur ce site (ou que le lancement soit annulé)
   const verrouille = Boolean(d.brouillon?.lot);
-  const occupe = verrouille || EN_COURS.includes(d.lancement?.etat);
+  const occupe = verrouille || Boolean(d.occupe); // règle du service (occupe : lancement en cours ou en attente de livraison)
   const ref = d.reference;
   const versionProd = ref?.version ? `V${ref.version.split('.').slice(0, 2).join('.')}` : 'inconnue';
   const n = d.lignes ? compter(d.lignes) : null;
@@ -93,7 +98,7 @@ function rendre() {
     <p class="nv-dev__bilan">${bilan}</p>
     <div class="nv-dev__note">${note}</div>
     ${bouton}
-    ${htmlDuLancement(d.lancement, d.github, verrouille)}
+    ${htmlDuLancement(d.lancement, d.github, d.liberable)}
     <div class="nv-dev__liste">${d.lignes ? htmlDeLaListe(d.lignes, { niveau: 3, plafond: 25 }) : ''}</div>`;
   zone.hidden = false;
   brancher(zone);
@@ -119,9 +124,10 @@ function brancher(zone) {
   });
   zone.querySelector('[data-nv-lancer]')?.addEventListener('click', () => confirmer({ simulation: false }));
   zone.querySelector('[data-nv-simuler]')?.addEventListener('click', () => confirmer({ simulation: true }));
-  zone.querySelector('[data-nv-liberer]')?.addEventListener('click', async () => {
+  zone.querySelector('[data-nv-liberer]')?.addEventListener('click', async (e) => {
     try {
-      donnees.lancement = (await appel('POST', 'mise-a-jour/liberer/', {})).lancement;
+      // le lot affiché : si un autre lancement a eu lieu entre-temps (autre onglet), le service refuse (409) au lieu de l'annuler
+      await appel('POST', 'mise-a-jour/liberer/', { lot: e.currentTarget.dataset.lot });
       await charger();
     } catch (e) {
       alert(e.message);
@@ -193,9 +199,11 @@ function suivre() {
   suivi = setInterval(async () => {
     try {
       const r = await appel('GET', 'mise-a-jour/lancement/');
-      const change = JSON.stringify(r.lancement) !== JSON.stringify(donnees.lancement);
+      const change = JSON.stringify(r.lancement) !== JSON.stringify(donnees.lancement) || r.liberable !== donnees.liberable || r.occupe !== donnees.occupe;
       donnees.lancement = r.lancement;
-      if (!EN_COURS.includes(r.lancement?.etat)) {
+      donnees.liberable = r.liberable;
+      donnees.occupe = r.occupe;
+      if (!SUIVIS.includes(r.lancement?.etat)) {
         clearInterval(suivi);
         await charger(); // fini : le brouillon a pu être libéré (simulation, échec) ; tout est relu
       } else if (change) rendre();
@@ -208,7 +216,7 @@ function suivre() {
 async function charger() {
   donnees = await appel('GET', 'mise-a-jour/');
   rendre();
-  if (EN_COURS.includes(donnees.lancement?.etat)) suivre();
+  if (SUIVIS.includes(donnees.lancement?.etat)) suivre();
 }
 
 async function lancer() {

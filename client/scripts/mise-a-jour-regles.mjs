@@ -47,11 +47,22 @@ export function verifierLot(lot) {
   if (horsRegles.length) throw new ErreurMiseAJour(2, `lot : tables hors des règles (${horsRegles.join(', ')}) : refusé`);
 }
 
+const versionNumerique = (v) => String(v ?? '').split('.').slice(0, 2).map((n) => Number.parseInt(n, 10) || 0);
+/** La version `a` (X.Y ou X.Y.Z) est-elle au moins `b` (X.Y) ? (une note de version X.Y est livrée quand master est en X.Y ou plus) */
+const auMoins = (a, b) => {
+  const [x1, y1] = versionNumerique(a);
+  const [x2, y2] = versionNumerique(b);
+  return x1 > x2 || (x1 === x2 && y1 >= y2);
+};
+
 const lireDossier = (dossier) => Object.fromEntries(readdirSync(dossier).map((f) => [f, readFileSync(join(dossier, f), 'utf8')]));
 
 /**
  * Applique le lot. `rows` : data/rows à réécrire ; `reference` : la révision git de la production ; `versionDev` : la version de dev (package.json).
- * Lève ErreurMiseAJour (code 3 : conflit, 4 : table hors liste, 5 : clés étrangères, 2 : lot illisible).
+ * Lève ErreurMiseAJour (code 3 : conflit, 4 : table hors liste, 5 : clés étrangères, 2 : lot illisible, 6 : production introuvable, 7 : une note de
+ * version d'un AUTRE lot est dans dev sans être livrée sur master — elle ne doit jamais être écrasée : livrer d'abord ce lot).
+ * Les lots du journal déjà livrés (présents dans historique_modification de dev) sont écartés du rejeu : rejoués d'après leurs valeurs, ils
+ * remettraient une valeur annulée depuis (A → B → A) ; rendus dans `deja_livres`.
  */
 export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), reference = 'origin/master', date, versionDev } = {}) {
   verifierLot(lot);
@@ -67,10 +78,22 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
     const db = new DatabaseSync(chemin);
     let lignes;
     let touchees;
+    let dejaLivres = [];
     try {
+      // une note de version d'un autre lot, dans dev mais pas encore sur master (sa livraison a échoué) : on ne l'écrase jamais
+      const enAttenteDeLivraison = db.prepare('SELECT version, lot FROM note_version WHERE exemple = 0 AND lot IS NOT NULL AND lot <> ?').all(lot.id)
+        .filter((n) => !(ref.version && auMoins(ref.version, n.version)));
+      if (enAttenteDeLivraison.length) {
+        const n = enAttenteDeLivraison[0];
+        throw new ErreurMiseAJour(7, `la V${n.version} du lot ${n.lot} est dans dev mais pas encore livrée sur master : relancez le run de ce lot (Re-run, il reprend à la livraison) ou livrez dev → master, puis relancez cette mise à jour`, { lot: n.lot, version: n.version });
+      }
+      // lots déjà livrés (mise à jour précédente ou rapatriement) : écartés en entier
+      const livres = new Set(db.prepare('SELECT DISTINCT lot_id FROM historique_modification').all().map((h) => h.lot_id));
+      dejaLivres = lot.journal.lots.filter((l) => livres.has(l.id)).map((l) => l.id);
+      const journal = { ...lot.journal, lots: lot.journal.lots.filter((l) => !livres.has(l.id)) };
       db.exec('PRAGMA foreign_keys = OFF'); // rejouer contrôle les clés étrangères lot par lot ; contrôle complet à la fin
       db.exec('BEGIN');
-      chargerJournal(db, lot.journal);
+      chargerJournal(db, journal);
       const rejeu = rejouer(db);
       const conflits = db.prepare(`SELECT l.id AS lot, l.resume, m.detail FROM modification m JOIN modification_lot l ON l.id = m.lot_id
         WHERE m.etat = 'conflit' GROUP BY l.id ORDER BY l.fait_le, l.id`).all().map((c) => ({ ...c }));
@@ -88,8 +111,9 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
       const historique = db.prepare(`SELECT m.*, l.fait_le, l.resume FROM modification m JOIN modification_lot l ON l.id = m.lot_id
         WHERE m.etat <> 'conflit' ORDER BY ${ORDRE_DE_REJEU}`).all();
       touchees = new Set(historique.map((m) => m.table_nom));
-      // notes d'exemple (lorem ipsum) retirées par la première vraie mise à jour ; une note de la même version (relance) est refaite
-      const remplacees = db.prepare('SELECT version FROM note_version WHERE exemple = 1 OR version = ?').all(version).map((n) => n.version);
+      // notes d'exemple (lorem ipsum) retirées par la première vraie mise à jour ; la note de ce même lot (relance) est refaite — celle d'un autre
+      // lot à la même version n'existe pas ici (refusé plus haut : code 7)
+      const remplacees = db.prepare('SELECT version FROM note_version WHERE exemple = 1 OR (version = ? AND lot = ?)').all(version, lot.id).map((n) => n.version);
       for (const v of remplacees) {
         db.prepare('DELETE FROM note_version_ligne WHERE version = ?').run(v);
         db.prepare('DELETE FROM historique_modification WHERE version = ?').run(v);
@@ -132,7 +156,7 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
       else writeFileSync(join(rows, f), apres[f]);
     }
     const note = { version, depuis, texte: lot.texte?.trim() || null, publiee_le: date };
-    return { version, depuis, lignes: lignes.length, bilan: bilan(lignes), fichiers, markdown: markdownDeLaNote(note, lignes), conflits: [] };
+    return { version, depuis, lignes: lignes.length, bilan: bilan(lignes), fichiers, markdown: markdownDeLaNote(note, lignes), conflits: [], deja_livres: dejaLivres };
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
