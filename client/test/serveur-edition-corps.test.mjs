@@ -56,8 +56,11 @@ const MANTEAU = `${OMBRE}#sort:manteau-noir`;
 const DRAKOS = 'races/drakos';
 const ELFE_NOIR = 'races/elfe-noir';
 const GUERRIER = 'classes/guerrier';
-const MAITRE = `${GUERRIER}#specialite:maitre-darme`;
-const BRAVE = 'capacites/guerrier-brave';
+// une spécialité du Guerrier qui a sa bannière (MAÎTRE D'ARME à l'import) et un don reçu sans choix (Brave à l'import), lus dans l'état courant : le site
+// de dev a pu les supprimer (D11). Sans spécialité au Guerrier, la partie « spécialité renommée » est sautée.
+const MAITRE = lire(`SELECT s.id FROM specialite s WHERE s.classe_id = ? AND EXISTS (SELECT 1 FROM capacite k WHERE k.specialite_id = s.id AND k.nature = 'specialite')
+  ORDER BY s.id = ? DESC, s.rang LIMIT 1`, GUERRIER, `${GUERRIER}#specialite:maitre-darme`)?.id ?? null;
+const BRAVE = lire(`SELECT id FROM capacite WHERE nature = 'classe' ORDER BY classe_id = ? DESC, id = 'capacites/guerrier-brave' DESC, classe_id, ligne, id LIMIT 1`, GUERRIER).id;
 const HERBORISTE = 'metiers/herboriste';
 
 // valeurs d'avant (l'ancienne valeur ne doit plus être écrite)
@@ -71,7 +74,7 @@ const avant = {
   donElfe: { ...lire("SELECT id, etiquette, nom, texte FROM race_don WHERE race_id = ? AND forme = 'ethnie' ORDER BY rang LIMIT 1", ELFE_NOIR) },
   hyperElfe: { ...lire("SELECT id, nom, effet FROM mode_hyper_effet WHERE version = 'onglet_race' AND race_id = ?", ELFE_NOIR) },
   guerrier: { ...lire('SELECT sante_depart, chakra_depart, barriere_depart, maitrise_arme, description, description_titre FROM classe WHERE id = ?', GUERRIER) },
-  maitre: lire('SELECT nom FROM specialite WHERE id = ?', MAITRE).nom,
+  maitre: MAITRE ? lire('SELECT nom FROM specialite WHERE id = ?', MAITRE).nom : null,
   brave: { ...lire('SELECT effet, remarque FROM capacite WHERE id = ?', BRAVE) },
   herboriste: corpsVivant(HERBORISTE),
   vide: lire("SELECT id, nom FROM magie WHERE id = 'magies/magie-du-vide'"),
@@ -117,7 +120,7 @@ lot([
 ], `${ELFE_NOIR}/`);
 lot([
   { op: 'modifier', table: 'classe', cle: { id: GUERRIER }, valeurs: nouveau.guerrier },
-  { op: 'modifier', table: 'specialite', cle: { id: MAITRE }, valeurs: { nom: nouveau.maitre } },
+  ...(MAITRE ? [{ op: 'modifier', table: 'specialite', cle: { id: MAITRE }, valeurs: { nom: nouveau.maitre } }] : []),
   { op: 'modifier', table: 'capacite', cle: { id: BRAVE }, valeurs: nouveau.brave },
 ], `${GUERRIER}/`);
 lot([{ op: 'modifier', table: 'metier', cle: { id: HERBORISTE }, valeurs: { description: nouveau.herboristeLong } }], 'metiers/');
@@ -307,8 +310,10 @@ test('classe : santé, maîtrises, présentation (et résumé), spécialité ren
   assert.ok(section(c, avant.guerrier.description_titre).includes(g.description));
   assert.ok(!c.includes(debut(avant.guerrier.description)));
   assert.equal(ligne('SELECT resume FROM page WHERE id = ?', GUERRIER).resume, 'Le Guerrier zorglubclasse frappe fort.');
-  assert.ok(c.split('\n').includes(`### ${nouveau.maitre}`));
-  assert.ok(!c.split('\n').includes(`### ${avant.maitre}`));
+  if (MAITRE) {
+    assert.ok(c.split('\n').includes(`### ${nouveau.maitre}`));
+    assert.ok(!c.split('\n').includes(`### ${avant.maitre}`));
+  }
   assert.equal(corps(BRAVE), `${nouveau.brave.effet}\n\nNote de cellule : ${nouveau.brave.remarque}\n`);
   assert.equal(ligne('SELECT resume FROM page WHERE id = ?', BRAVE).resume, nouveau.brave.effet);
 });

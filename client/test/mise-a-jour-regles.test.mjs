@@ -16,6 +16,7 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { versionDeLivraison } from '../src/lib/notes-de-version.mjs';
+import { normalize } from '../src/lib/text.mjs';
 
 const ROWS = fileURLToPath(new URL('../../data/rows/', import.meta.url));
 // les versions, comme dans le workflow : celle de dev (package.json) et celle de la production (ici HEAD) ; jamais écrites en dur, pour que le test
@@ -178,9 +179,12 @@ test('un lot de dons (D11 : une option créée, un don à note supprimé) ne cha
   const v = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db-dons') }).chemin);
   const service = { base: () => v, etat: () => ({}), edition: true };
   const appel = (operations) => traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' }, corps: JSON.stringify({ page: 'classes/', operations }) }, service);
+  // un don reçu sans choix (« Hyper contact » du Guerrier à l'import), lu dans l'état courant : le site de dev a pu le supprimer (D11)
+  const recu = v.prepare("SELECT id, classe_id FROM capacite WHERE nature = 'classe' ORDER BY id = 'capacites/guerrier-hyper-contact' DESC, id LIMIT 1").get();
+  const classeDuRecu = v.prepare('SELECT nom FROM classe WHERE id = ?').get(recu.classe_id).nom;
   let nom = 'Contact final d’essai';
-  for (let i = 2; v.prepare('SELECT 1 FROM capacite WHERE classe_id = ? AND nom = ?').get('classes/guerrier', nom); i += 1) nom = `Contact final d’essai ${i}`;
-  const cree = appel([{ op: 'creer', entite: 'capacite', valeurs: { classe_id: 'classes/guerrier', avec: 'capacites/guerrier-hyper-contact', nom, type: 'Passif', effet: 'Un *effet* [entre] crochets.' } }]);
+  for (let i = 2; v.prepare('SELECT 1 FROM cle_page WHERE cle = ?').get(normalize(`${nom} (${classeDuRecu})`)); i += 1) nom = `Contact final d’essai ${i}`;
+  const cree = appel([{ op: 'creer', entite: 'capacite', valeurs: { classe_id: recu.classe_id, avec: recu.id, nom, type: 'Passif', effet: 'Un *effet* [entre] crochets.' } }]);
   assert.equal(cree.statut, 200, JSON.stringify(cree.corps));
   // un don à note de cellule dans un choix de deux d'une spécialité (lu avant d'écrire)
   const aNote = v.prepare(`SELECT k.id FROM capacite k JOIN note_cellule n ON n.entite_table = 'capacite' AND n.entite_id = k.id
@@ -200,5 +204,5 @@ test('un lot de dons (D11 : une option créée, un don à note supprimé) ne cha
   const dons = lire(`SELECT entite, nature, sens FROM note_version_ligne WHERE version = '${ATTENDUE}' AND table_nom = 'capacite' AND champ IS NULL ORDER BY rang`);
   assert.ok(dons.some((l) => l.nature === 'ajoute' && l.entite.endsWith(nom) && l.sens === 'neutre'), JSON.stringify(dons));
   assert.ok(dons.some((l) => l.nature === 'retire' && l.sens === 'neutre'), JSON.stringify(dons));
-  assert.equal(lire(`SELECT nature FROM capacite WHERE id = 'capacites/guerrier-hyper-contact'`)[0].nature, 'choix');
+  assert.equal(lire(`SELECT nature FROM capacite WHERE id = '${recu.id}'`)[0].nature, 'choix');
 });

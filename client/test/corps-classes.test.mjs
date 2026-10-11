@@ -240,12 +240,18 @@ test('spécialité : nom, description et remarque modifiés remplacent les ancie
       assert.ok(remarque.includes(`#### Remarque\n\n${blocDe(MARQUE)}`), s.id);
     }
   }
-  // l'exemple de la tâche : « ### MAÎTRE D'ARME » (à l'import) de la page du Guerrier, renommé : seule sa ligne change
-  const guerrier = lignesDe(classes.find((c) => c.id === 'classes/guerrier'));
-  const avant = page('classes/guerrier');
-  const maitre = guerrier.specialites.find((s) => s.id === 'classes/guerrier#specialite:maitre-darme');
-  const nouvelles = guerrier.specialites.map((s) => (s.id === maitre.id ? { ...s, nom: `${s.nom} TÉMOIN` } : s));
-  const changes = changementsDePageDeClasse(avant, guerrier, { ...guerrier, specialites: nouvelles });
+  // l'exemple de la tâche : « ### MAÎTRE D'ARME » (à l'import) de la page du Guerrier, renommé : seule sa ligne change. Le site de dev peut avoir
+  // supprimé cette spécialité (D11) : une autre bannière du Guerrier, sinon d'une autre classe, sert alors d'exemple
+  const exemple = [classes.find((c) => c.id === 'classes/guerrier'), ...classes].filter(Boolean).map((c) => {
+    const l = lignesDe(c);
+    const bannieres = specialitesDeLaPage(l.specialites, l.dons);
+    return { classe: c, lignes: l, specialite: bannieres.find((x) => x.id === 'classes/guerrier#specialite:maitre-darme') ?? bannieres[0] };
+  }).find((e) => e.specialite);
+  assert.ok(exemple, 'une classe a une spécialité en bannière');
+  const avant = page(exemple.classe.id);
+  const maitre = exemple.specialite;
+  const nouvelles = exemple.lignes.specialites.map((s) => (s.id === maitre.id ? { ...s, nom: `${s.nom} TÉMOIN` } : s));
+  const changes = changementsDePageDeClasse(avant, exemple.lignes, { ...exemple.lignes, specialites: nouvelles });
   assert.equal(changes.corps_md, avant.corps_md.replace(`### ${echapperLigne(maitre.nom)}\n`, `### ${echapperLigne(`${maitre.nom} TÉMOIN`)}\n`));
   assert.equal(changes.resume, undefined);
 });

@@ -216,9 +216,11 @@ test('exemple du propriétaire (Archimage) : pas de spécialité, Élémentalist
 
 test('types : le nom du guide pour les quatre types (« pAsSiF » s’affiche « Passif »), « Variable » tel qu’écrit', () => {
   const tous = [...classes.values()].flatMap((c) => c.dons);
-  const superHache = tous.find((d) => d.id === 'capacites/marcass-super-hache');
-  assert.equal(historique.valeurDImport('capacite', { id: superHache.id }, 'type_brut'), 'pAsSiF', 'à l’import');
-  if (!historique.modifiee('capacite', { id: superHache.id }, 'type_brut')) {
+  // « Super hache » du Marcass (pAsSiF à l'import) : le site de dev a pu le modifier ou le supprimer (D11)
+  const SUPER_HACHE = 'capacites/marcass-super-hache';
+  assert.equal(historique.valeurDImport('capacite', { id: SUPER_HACHE }, 'type_brut'), 'pAsSiF', 'à l’import');
+  const superHache = tous.find((d) => d.id === SUPER_HACHE);
+  if (superHache && !historique.modifiee('capacite', { id: SUPER_HACHE }, 'type_brut')) {
     assert.equal(superHache.typeBrut, 'pAsSiF');
     assert.equal(superHache.type.libelle, 'Passif');
   }

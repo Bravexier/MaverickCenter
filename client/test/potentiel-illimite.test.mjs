@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { chargerMagies } from '../src/lib/magies-db.mjs';
 import { magiesDuPotentiel, NPM_MAX_DU_POTENTIEL, POTENTIEL_ILLIMITE } from '../src/lib/potentiel-illimite.mjs';
 
@@ -48,7 +49,14 @@ test('NPM 4 : borne de l’Explication du Potentiel Illimité (NPM 3), relevée 
   const explication = db.prepare(`SELECT explication FROM magie WHERE id = ?`).get(POTENTIEL_ILLIMITE).explication;
   assert.match(explication, /niveau 3 de puissance magique maximum/);
   assert.match(explication, /Classe unique = Archimage/);
-  const don = db.prepare(`SELECT classe_id, niveau, effet FROM capacite WHERE id = 'capacites/archimage-semi-complet'`).get();
-  assert.deepEqual({ ...don }, { classe_id: 'classes/archimage', niveau: 20, effet: 'Permet d\'utiliser les sorts de lvl 4 de puissance.' });
+  // le don « Semi-complet » de l'Archimage à l'import (le site de dev a pu le modifier ou le supprimer : D11)
+  const historique = historiqueSite(db);
+  const cle = { id: 'capacites/archimage-semi-complet' };
+  assert.deepEqual(['classe_id', 'niveau', 'effet'].map((c) => historique.valeurDImport('capacite', cle, c)),
+    ['classes/archimage', 20, 'Permet d\'utiliser les sorts de lvl 4 de puissance.']);
+  // aujourd'hui : un don de niveau 20 de l'Archimage le dit encore, sinon la borne écrite dans le code est à revoir
+  const niveau20 = db.prepare("SELECT effet FROM capacite WHERE classe_id = 'classes/archimage' AND niveau = 20").all();
+  assert.ok(niveau20.some((d) => /\b(?:lvl|niveau) 4 de puissance/i.test(d.effet ?? '')),
+    `aucun don de niveau 20 de l’Archimage ne permet plus les sorts de niveau 4 de puissance : NPM_MAX_DU_POTENTIEL (${NPM_MAX_DU_POTENTIEL}, lib/potentiel-illimite.mjs) est à revoir`);
   assert.equal(NPM_MAX_DU_POTENTIEL, 4);
 });

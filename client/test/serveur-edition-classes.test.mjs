@@ -16,6 +16,7 @@ import { chargerRaces } from '../src/lib/races-db.mjs';
 import { groupClasses } from '../src/lib/class-groups.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { alternativesDe, placeNouvelleLigne } from '../src/lib/dons-edition.mjs';
+import { resumeDeDon } from '../src/lib/corps-classes.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 
@@ -51,25 +52,31 @@ test('classe : don de départ, maîtrises (tables de détail et bouclier_classe_
   assert.equal(enregistrer([{ op: 'modifier', table: 'classe', cle: { id: 'classes/guerrier' }, valeurs: { sante_depart: -1 } }]).statut, 400);
 });
 
+// Un don d'une spécialité (pas son don de spécialité), sans remarque, dont la fiche a le titre « Nom (Classe) » et le résumé tiré de l'effet : « Anti-corps »
+// de l'Anansi (spécialité CEMIES à l'import) s'il existe encore, sinon un autre (le site de dev a pu le supprimer, D11). Lu avant d'écrire.
+const DON = lignes(`SELECT k.*, c.nom AS classe_nom, p.titre, p.resume AS resume_page FROM capacite k JOIN classe c ON c.id = k.classe_id JOIN page p ON p.id = k.id
+  WHERE k.specialite_id IS NOT NULL AND k.nature <> 'specialite' AND k.remarque IS NULL AND p.titre = k.nom || ' (' || c.nom || ')'
+  ORDER BY k.id = 'capacites/anansi-anti-corps' DESC, k.id`).find((k) => k.resume_page === resumeDeDon(k));
+
 test('spécialité renommée : clé du nom, fiches de ses dons (spécialité citée, mot-clé)', () => {
-  // la spécialité du don « Anti-corps » de l'Anansi (CEMIES à l'import), quel que soit son nom aujourd'hui
-  const s = ligne("SELECT s.id, s.nom FROM specialite s JOIN capacite k ON k.specialite_id = s.id WHERE k.id = 'capacites/anansi-anti-corps'");
+  assert.ok(DON, 'un don de spécialité à fiche « Nom (Classe) »');
+  const s = ligne('SELECT id, nom FROM specialite WHERE id = ?', DON.specialite_id);
   const nouveau = s.nom === 'CEMIES' ? 'CÉMIES' : `${s.nom} BIS`;
   const r = enregistrer([{ op: 'modifier', table: 'specialite', cle: { id: s.id }, valeurs: { nom: nouveau } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   assert.equal(ligne('SELECT nom_cle FROM specialite WHERE id = ?', s.id).nom_cle, normalize(nouveau));
-  assert.equal(JSON.parse(ligne("SELECT donnees FROM page WHERE id = 'capacites/anansi-anti-corps'").donnees).specialite, nouveau);
+  assert.equal(JSON.parse(ligne('SELECT donnees FROM page WHERE id = ?', DON.id).donnees).specialite, nouveau);
 });
 
 test('don modifié : type et limite recalculés ; sa fiche suit (titre « Nom (Classe) », résumé, corps, type)', () => {
-  const r = enregistrer([{ op: 'modifier', table: 'capacite', cle: { id: 'capacites/anansi-anti-corps' }, valeurs: {
+  const r = enregistrer([{ op: 'modifier', table: 'capacite', cle: { id: DON.id }, valeurs: {
     nom: 'Anticorps puissants', type_brut: 'Actif (2 fois/combat)', effet: 'Immunisé aux poisons.\nEt aux fioles.',
   } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
-  assert.deepEqual({ ...ligne("SELECT nom_cle, type, limite_nombre, limite_periode FROM capacite WHERE id = 'capacites/anansi-anti-corps'") },
+  assert.deepEqual({ ...ligne('SELECT nom_cle, type, limite_nombre, limite_periode FROM capacite WHERE id = ?', DON.id) },
     { nom_cle: 'anticorps-puissants', type: 'actif', limite_nombre: 2, limite_periode: 'combat' });
-  const page = ligne("SELECT titre, resume, corps_md, donnees FROM page WHERE id = 'capacites/anansi-anti-corps'");
-  assert.equal(page.titre, 'Anticorps puissants (Anansi)');
+  const page = ligne('SELECT titre, resume, corps_md, donnees FROM page WHERE id = ?', DON.id);
+  assert.equal(page.titre, `Anticorps puissants (${DON.classe_nom})`);
   assert.equal(page.resume, 'Immunisé aux poisons.');
   assert.equal(page.corps_md, 'Immunisé aux poisons.  \nEt aux fioles.\n', 'le rendu de l’importeur : retour à la ligne forcé (lib/corps-classes.mjs#corpsDeDon)');
   assert.equal(JSON.parse(page.donnees).type_capacite, 'Actif (2 fois/combat)');
@@ -270,7 +277,9 @@ test('D11 — don de classe : niveau 5 reçu sans choix ; une option à côté e
 });
 
 test('D11 — Archimage : une option de plus à un palier ; un nouveau palier seul est reçu sans choix', () => {
-  const palier = donDe('capacites/archimage-creation-vivante');
+  // un palier de l'Archimage (Création vivante à l'import), hors du choix miroir Élémentaliste / Occultiste, lu dans l'état courant
+  const palier = ligne(`SELECT * FROM capacite WHERE classe_id = 'classes/archimage' AND nature = 'choix' AND specialite_id IS NULL
+    AND nom_cle NOT IN (SELECT nom_cle FROM specialite WHERE classe_id = 'classes/archimage') ORDER BY id = 'capacites/archimage-creation-vivante' DESC, ligne, rang LIMIT 1`);
   const groupe = lignes("SELECT * FROM capacite WHERE classe_id = 'classes/archimage' AND ligne = ? AND specialite_id IS NULL", palier.ligne);
   const nom = nomDeDonLibre('Transmutation d’essai', 'Archimage');
   const r = creerDon({ classe_id: 'classes/archimage', avec: palier.id, nom, type: 'Passif' });
@@ -289,7 +298,8 @@ test('D11 — Archimage : une option de plus à un palier ; un nouveau palier se
   // « spécialité » pour la fiche, sans ligne specialite)
   const option = creerDon({ classe_id: 'classes/archimage', avec: 'capacites/archimage-occultiste', nom: nomDeDonLibre('Troisième voie', 'Archimage'), type: 'Passif' });
   assert.equal(option.statut, 409, JSON.stringify(option.corps));
-  assert.match(option.corps.erreur, /Le choix Élémentaliste \/ Occultiste donne les spécialités de la classe Archimage à la fiche de personnage : il ne reçoit pas d’option ici/);
+  const miroirs = lignes("SELECT nom FROM capacite WHERE classe_id = 'classes/archimage' AND ligne = ? ORDER BY rang", donDe('capacites/archimage-occultiste').ligne).map((k) => k.nom);
+  assert.ok(option.corps.erreur.includes(`Le choix ${miroirs.join(' / ')} donne les spécialités de la classe Archimage à la fiche de personnage : il ne reçoit pas d’option ici`), option.corps.erreur);
   assert.deepEqual(lignes("SELECT id FROM capacite WHERE classe_id = 'classes/archimage' AND ligne = ?", donDe('capacites/archimage-occultiste').ligne).map((k) => k.id),
     ['capacites/archimage-elementaliste', 'capacites/archimage-occultiste'], 'rien d’écrit');
   const miroir = supprimer('capacite', 'capacites/archimage-elementaliste');
@@ -327,7 +337,7 @@ test('D11 — refus de don : classe, spécialité, niveau, place, type, titre pr
     [{ classe_id: C1.id, specialite_id: C1.spec1, niveau: '5', nom: 'X', type: 'Passif' }, /« X » : Un don de spécialité commence au niveau 10, quand la spécialité est choisie/],
     [{ classe_id: C1.id, niveau: '5', nom: 'X', type: 'Actif', precision: '99999999999999999999 fois/combat' }, /« X » : Type « Actif \(99999999999999999999 fois\/combat\) » : le nombre de la limite est trop grand/],
     [{ classe_id: C1.id, avec: 'capacites/inconnu', nom: 'X', type: 'Passif' }, /don inconnu/],
-    [{ classe_id: C1.id, avec: 'capacites/guerrier-contact', nom: 'X', type: 'Passif' }, /ce don n’est pas de la classe/],
+    [{ classe_id: C1.id, avec: ligne('SELECT id FROM capacite WHERE classe_id <> ? ORDER BY id LIMIT 1', C1.id).id, nom: 'X', type: 'Passif' }, /ce don n’est pas de la classe/],
     [{ classe_id: C1.id, avec: C1.cartouche1, nom: 'X', type: 'Passif' }, /Un don de spécialité ne reçoit pas d’option : ajoutez une spécialité/],
     [{ classe_id: C1.id, niveau: '1', nom: 'X' }, /Nouveau don : « Type » obligatoire/],
     [{ classe_id: C1.id, niveau: '1', nom: 'X', type: 'Bizarre' }, /« Type » : valeur hors de la liste/],
