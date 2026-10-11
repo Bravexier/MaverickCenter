@@ -191,7 +191,10 @@ bonus, objets de départ d'un équipement — sont refaits depuis les champs des
 ces tables parmi celles qu'elle a le droit d'écrire (`tablesCompletees`). Rejouée clés
 étrangères coupées (base vivante refaite, mise à jour des règles), une suppression applique d'abord les `ON DELETE CASCADE` du schéma (`lien`,
 `lien_candidat` : les `[[liens]]` d'une page supprimée), sans les noter, comme SQLite le fait dans la base vivante ; sinon supprimer une page qui a des
-liens mettait le lot en conflit (`serveur-base-vivante`).
+liens mettait le lot en conflit (`serveur-base-vivante`). Chaque lot contrôle les clés étrangères des tables qu'il touche et de celles qui les citent,
+**sauf celles des fiches** (`horsControleParLot` : la section 13, recopiée avant le rejeu) : une fiche peut citer un don, une spécialité ou une classe
+qu'un lot suivant crée, et mettait en conflit un lot antérieur sans rapport qui touchait la même table ; `transferer` contrôle toutes les fiches après le
+rejeu complet.
 
 **Rapatriement dans le dépôt** : le lien « N modifications à rapatrier » (à côté du crayon, `GET /api/edition/journal/`) télécharge le journal, puis
 

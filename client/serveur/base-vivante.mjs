@@ -116,7 +116,9 @@ function verifierRegles(db) {
 
 /**
  * Recopie dans `db` (la copie neuve des règles) les lignes des sections 13 et 14 de la base `ancienne`, puis rejoue les modifications en attente du
- * journal sur les nouvelles règles (avant le contrôle des fiches : une fiche peut citer une ligne créée par l'édition) ; rien n'est écrit si une seule
+ * journal sur les nouvelles règles, avant le contrôle des fiches : une fiche peut citer une ligne créée par l'édition (une classe, une spécialité, un
+ * don), y compris par un lot qui suit un autre lot touchant la même table. Le rejeu ne contrôle donc pas les clés étrangères des fiches lot par lot
+ * (`horsControleParLot`) : elles le sont toutes ici, après le rejeu complet, avec le détail de chaque référence rompue. Rien n'est écrit si une seule
  * ligne de fiche ne passe pas. Une modification que les nouvelles règles contredisent n'empêche rien : elle passe « conflit ». Rend le bilan du rejeu.
  */
 function transferer(db, ancienne) {
@@ -152,7 +154,7 @@ function transferer(db, ancienne) {
       // champ passeraient « conflit » — et une valeur annulée par l'admin reviendrait sur le site, puis en production
       if (!problemes.length) integrerLivrees(db);
       // le corps des pages typées que le journal touche est refait depuis les tables rejouées (serveur/edition.mjs#rejouerLeJournal)
-      if (!problemes.length) rejeu = rejouerLeJournal(db);
+      if (!problemes.length) rejeu = rejouerLeJournal(db, {}, { horsControleParLot: TABLES_FICHES });
       // le brouillon de la note de version d'un lot que les nouvelles règles ont livré est vidé (son texte est dans note_version)
       if (!problemes.length) viderBrouillonLivre(db);
       if (!problemes.length) {

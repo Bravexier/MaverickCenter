@@ -159,6 +159,70 @@ test('une page qui a des [[liens]] supprimée sur le site, puis la base refaite 
   db.close();
 });
 
+/** Un prétiré écrit directement dans la base vivante (comme le service), qui a la classe `classe` (spécialité `specialite`) et les dons `capacites`. */
+function pretire(db, id, { classe, specialite = null, capacites = [] }) {
+  const inserer = (t, l) => db.prepare(`INSERT INTO ${t} (${Object.keys(l).join(', ')}) VALUES (${Object.keys(l).map(() => '?').join(', ')})`).run(...Object.values(l));
+  inserer('personnage', { id, nature: 'pretire', nom: `Prétiré ${id}`, visibilite: 'tous', statut: 'brouillon', mode_classe: 'mono', xp: 0, alignement_loyal: 0,
+    alignement_chaotique: 0, alignement_bon: 0, alignement_mauvais: 0, bourse_pp: 0, bourse_ro: 0, bourse_rf: 0, ambidextrie: 0, cree_le: INSTANT, modifie_le: INSTANT });
+  inserer('personnage_classe', { personnage_id: id, rang: 1, classe_id: classe, specialite_id: specialite });
+  for (const c of capacites) inserer('personnage_capacite', { personnage_id: id, capacite_id: c });
+}
+
+test('rejeu : un lot sans rapport AVANT la création d’un don qu’un prétiré choisit n’est pas mis en conflit par la fiche (clés des fiches contrôlées après le rejeu)', () => {
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: REGLES, dossier });
+  const vivante = ouvrirBaseVivante(chemin);
+  // lot 1 : l'effet d'un don hors spécialité d'une autre classe que le Guerrier (lu dans l'état courant)
+  const don = vivante.prepare("SELECT id, effet FROM capacite WHERE classe_id <> 'classes/guerrier' AND nature = 'classe' ORDER BY id LIMIT 1").get();
+  const effet = `${don.effet ?? ''} (essai du rejeu)`.trim();
+  enregistrer(vivante, { page: 'classes/x', operations: [{ op: 'modifier', table: 'capacite', cle: { id: don.id }, valeurs: { effet } }] });
+  // lot 2 : deux dons au choix du Guerrier ; un prétiré prend le premier
+  const r = enregistrer(vivante, { page: 'classes/guerrier', operations: [
+    { op: 'creer', entite: 'capacite', valeurs: { classe_id: 'classes/guerrier', niveau: 5, nom: 'Essai rejeu un', type: 'Passif' } },
+    { op: 'creer', entite: 'capacite', valeurs: { classe_id: 'classes/guerrier', avec: '@0', nom: 'Essai rejeu deux', type: 'Passif' } },
+  ] });
+  const [un] = r.crees.map((c) => c.id);
+  pretire(vivante, 'p-rejeu', { classe: 'classes/guerrier', capacites: [un] });
+  vivante.close();
+
+  const res = preparerBaseVivante({ regles: regles(`UPDATE metier SET remarque = 'livraison sans rapport' WHERE id = '${UN_METIER}'`), dossier });
+  assert.equal(res.refaite, true);
+  assert.equal(res.rejeu.conflits, 0, JSON.stringify(res.rejeu));
+  assert.equal(valeur(chemin, 'SELECT effet FROM capacite WHERE id = ?', don.id).effet, effet, 'la modification du lot 1 est gardée');
+  assert.equal(valeur(chemin, 'SELECT count(*) AS n FROM personnage_capacite WHERE personnage_id = ? AND capacite_id = ?', 'p-rejeu', un).n, 1, 'la fiche est reprise');
+  const db = lecture(chemin);
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+  db.close();
+});
+
+test('rejeu : une spécialité remplacée (supprimée, puis une autre créée) et un prétiré qui prend la nouvelle : la base est refaite', () => {
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: REGLES, dossier });
+  const vivante = ouvrirBaseVivante(chemin);
+  // une spécialité du Guerrier qui a son don de spécialité (lue dans l'état courant : la dernière par rang)
+  const ancienne = vivante.prepare(`SELECT s.id FROM specialite s WHERE s.classe_id = 'classes/guerrier'
+    AND EXISTS (SELECT 1 FROM capacite k WHERE k.specialite_id = s.id AND k.nature = 'specialite') ORDER BY s.rang DESC LIMIT 1`).get();
+  assert.ok(ancienne, 'le Guerrier a une spécialité avec son don de spécialité');
+  enregistrer(vivante, { page: 'classes/guerrier', operations: [{ op: 'supprimer', entite: 'specialite', cle: { id: ancienne.id } }] });
+  const r = enregistrer(vivante, { page: 'classes/guerrier', operations: [
+    { op: 'creer', entite: 'specialite', valeurs: { classe_id: 'classes/guerrier', nom: 'Essai remplaçante', don_nom: 'Essai remplaçante', don_type: 'Passif' } },
+    { op: 'creer', entite: 'capacite', valeurs: { classe_id: 'classes/guerrier', specialite_id: '@0', niveau: 15, nom: 'Essai remplaçante un', type: 'Passif' } },
+    { op: 'creer', entite: 'capacite', valeurs: { classe_id: 'classes/guerrier', specialite_id: '@0', avec: '@1', nom: 'Essai remplaçante deux', type: 'Actif' } },
+  ] });
+  const [specialite, un] = r.crees.map((c) => c.id);
+  pretire(vivante, 'p-remplace', { classe: 'classes/guerrier', specialite, capacites: [un] });
+  vivante.close();
+
+  const res = preparerBaseVivante({ regles: regles(`UPDATE metier SET remarque = 'livraison sans rapport' WHERE id = '${UN_METIER}'`), dossier });
+  assert.equal(res.refaite, true);
+  assert.equal(res.rejeu.conflits, 0, JSON.stringify(res.rejeu));
+  assert.equal(valeur(chemin, 'SELECT count(*) AS n FROM specialite WHERE id = ?', ancienne.id).n, 0, 'l’ancienne spécialité reste supprimée');
+  assert.equal(valeur(chemin, 'SELECT specialite_id FROM personnage_classe WHERE personnage_id = ?', 'p-remplace').specialite_id, specialite);
+  const db = lecture(chemin);
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+  db.close();
+});
+
 test('une fiche qui cite une règle disparue : rien ne change, l’erreur nomme la colonne, la valeur et la table visée', () => {
   const dossier = nouveau('db');
   const { chemin } = preparerBaseVivante({ regles: REGLES, dossier });

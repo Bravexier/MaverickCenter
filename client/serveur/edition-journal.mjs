@@ -317,10 +317,15 @@ const decodee = (m) => ({
  * modification qui ne note que des colonnes dérivées suit son lot : « intégrée » quand toutes ses autres modifications le sont, en attente sinon.
  * `applique(m)` est appelée, une fois un lot écrit, pour chacune de ses modifications réappliquées (dérivées comprises), décodée : { lot, rang,
  * table, cle, operation, avant, apres }.
- * @param {{ derivee?: (table: string, cle: object, colonne: string) => boolean, applique?: (m: object) => void }} [options]
+ * `horsControleParLot` : des tables dont les clés étrangères ne sont pas contrôlées lot par lot. Ce sont les fiches de personnage (section 13), que la
+ * base vivante recopie AVANT le rejeu (base-vivante.mjs#transferer) : une fiche peut citer un don, une spécialité ou une classe qu'un lot SUIVANT crée,
+ * et le contrôle d'un lot antérieur qui touche la même table (capacite, specialite, classe) la verrait rompue et mettrait ce lot sans rapport en conflit.
+ * L'appelant les contrôle toutes après le rejeu complet.
+ * @param {{ derivee?: (table: string, cle: object, colonne: string) => boolean, applique?: (m: object) => void, horsControleParLot?: Iterable<string> }} [options]
  * @returns {{ appliquees: number, integrees: number, conflits: number, lots: number }}
  */
-export function rejouer(db, { derivee = () => false, applique = null } = {}) {
+export function rejouer(db, { derivee = () => false, applique = null, horsControleParLot = [] } = {}) {
+  const horsControle = new Set(horsControleParLot);
   const bilan = { appliquees: 0, integrees: 0, conflits: 0, lots: 0 };
   const enAttente = db
     .prepare(
@@ -364,8 +369,8 @@ export function rejouer(db, { derivee = () => false, applique = null } = {}) {
       // clés étrangères des tables touchées ET des tables qui les citent (une suppression peut rompre une référence ailleurs)
       const tables = new Set();
       for (const m of modifications) {
-        tables.add(m.table_nom);
-        for (const t of tablesQuiCitent(db, m.table_nom)) tables.add(t);
+        if (!horsControle.has(m.table_nom)) tables.add(m.table_nom);
+        for (const t of tablesQuiCitent(db, m.table_nom)) if (!horsControle.has(t)) tables.add(t);
       }
       for (const t of tables) {
         const rompue = db.prepare(`PRAGMA foreign_key_check("${t}")`).get();

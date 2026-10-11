@@ -1303,10 +1303,11 @@ export function recalculerLesPages(db, modifications) {
  * Rejoue les modifications en attente du journal (edition-journal.mjs#rejouer, colonnes dérivées : colonneDerivee), puis refait le corps des pages
  * qu'elles touchent (recalculerLesPages) et les liens de règle des métiers touchés (completerLesMetiers). À appeler dans une transaction, comme rejouer.
  * Rend le bilan du rejeu ; `sortie` reçoit { pages, illisibles } (pages réécrites) et `tablesCompletees` (tables des métiers ainsi complétées).
+ * `horsControleParLot` : passé à rejouer (les fiches, que base-vivante.mjs#transferer contrôle après le rejeu).
  */
-export function rejouerLeJournal(db, sortie = {}) {
+export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = {}) {
   const appliquees = [];
-  const bilan = rejouer(db, { derivee: colonneDerivee, applique: (m) => appliquees.push(m) });
+  const bilan = rejouer(db, { derivee: colonneDerivee, applique: (m) => appliquees.push(m), horsControleParLot });
   const metiers = new Set(appliquees.filter((m) => m.table === 'metier' || m.table === 'metier_bonus').map((m) => m.cle?.metier_id ?? m.cle?.id));
   Object.assign(sortie, recalculerLesPages(db, appliquees), { tablesCompletees: [...completerLesMetiers(db, metiers)] });
   return bilan;
