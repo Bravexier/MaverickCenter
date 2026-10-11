@@ -314,8 +314,14 @@
 .fiche-table--fixe { table-layout: fixed; }
 .fiche-table--fixe th:first-child, .fiche-table--fixe td:first-child { width: 7rem; }
 .fiche-table--fixe .etroite { width: 5rem; }
-.fiche-table--sorts td:nth-child(2) { width: 45%; }
-.fiche-table--sorts tr.en-plus td { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+.fiche-table--sorts td:nth-child(2) { width: 40%; }
+/* un sort au-delà des emplacements (XP baissée, magie retirée) : pas d'emplacement en plus (décision R27), à retirer */
+.fiche-table--sorts tr.en-trop td { background: color-mix(in srgb, var(--danger) 8%, var(--surface)); }
+/* NM d'un sort par origine : niveau · livre · MJ = total (3 au plus, décision R26) */
+.nm-origines { white-space: nowrap; }
+.nm-origines > * { vertical-align: middle; }
+.fiche .nm-origines input[type='number'] { width: 3.2rem; padding-inline: 0.3rem; }
+.nm-livre { display: inline-flex; align-items: center; gap: 0.15rem; margin-inline: 0.35rem; color: var(--muted); font-size: 0.78rem; }
 #progression select { width: auto; }
 .fiche-defile { overflow-x: auto; }
 
@@ -348,7 +354,7 @@
 .carac select { width: 100%; font-size: 0.76rem; }
 
 /* compétences : six blocs de cinq, chacun dans la couleur de sa caractéristique (en-tête en aplat, lignes à peine teintées) */
-.competences { display: grid; gap: 0.55rem 0.9rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); align-items: start; }
+.competences { display: grid; gap: 0.55rem 0.9rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); align-items: start; }
 .competences__groupe {
   --c: var(--etape);
   border: 1px solid color-mix(in srgb, var(--c) 60%, var(--border));
@@ -359,9 +365,8 @@
 .competences__groupe thead th { background: var(--c); color: var(--c-texte, #fff); }
 .competences__groupe thead th:first-child { font-size: 0.82rem; font-weight: 700; }
 .competences__groupe tbody tr:last-child td { border-bottom: 0; }
-.competences .fiche-table td:first-child { width: 34%; }
-.competences .fiche-table td.curseur-cellule { width: 40%; }
-.competences .fiche-table input[type='number'] { width: 3.2rem; padding-inline: 0.3rem; }
+.competences .fiche-table td:first-child { width: 30%; }
+.competences .fiche-table td.curseur-td { width: 30%; }
 .score { font-weight: 700; white-space: nowrap; }
 .score[data-hors] { color: var(--danger); }
 

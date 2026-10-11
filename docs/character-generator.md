@@ -19,8 +19,9 @@ inventaire), 9 état en jeu, notes, événements, et le contrôle des règles. *
 race, ethnie, magies innée et acquise, classes et spécialités sont des **menus déroulants** (`<details class="choix">` : fermé, le choix fait ; ouvert, les
 **pastilles** dans les couleurs de `/races/`, `/magies/`, `/classes/`, celles que les règles ferment grisées ; un choix, un clic ailleurs ou Échap le
 referme) ; les caractéristiques sont des **curseurs** bornés par la race, à 1 (le minimum) par défaut, jamais vides (`caracteristiquesCompletes`), et le
-naturel des compétences un curseur jusqu'au maximum du niveau ; les **sorts** sont un tableau d'une ligne par emplacement, chacune avec la liste des sorts
-possibles moins ceux des autres lignes (`lignesDeSorts`) ; les **NM** au-delà de ceux gagnés sont permis, comptés « du MJ » (décision R24). L'en-tête porte
+naturel et l'acquis des compétences des curseurs (naturel : jusqu'au maximum du niveau ; acquis : 5 par point de caractéristique de base) ; les **sorts**
+sont un tableau d'une ligne par emplacement, sans emplacement en plus (décision R27), chacune avec la liste des sorts possibles moins ceux des autres lignes
+(`lignesDeSorts`) ; les **NM** d'un sort se notent par origine (de niveau, d'un livre — un par sort —, du MJ), 3 au plus sur un sort (décisions R24, R26). L'en-tête porte
 la **jauge d'XP** (`progressionXp`) : l'XP se modifie dans son champ ou s'ajoute avec le bouton +, le niveau suit. Une fiche enregistrée se **supprime**
 (bouton « Supprimer », après confirmation ; retour à la liste des personnages). Chaque caractéristique, et le tableau de ses compétences, a sa couleur
 (demande du propriétaire, `lib/caracteristiques-postures.mjs`, transmise par `regles.json` : `couleur` et `texte` de chaque caractéristique). Le **Potentiel Illimité** en magie innée met l'Archimage en classe 1
@@ -102,7 +103,7 @@ depuis les règles de la base, si bien qu'une règle corrigée corrige toutes le
   mono-magie (R15 ; l'Elfe Noir Charbon et le Felfe Noir peuvent aussi acquérir la Corruption, R20), ethnie (de la race, liée à la magie innée quand elle en porte
   une), bornes et total exact des caractéristiques (R3), plafonds et total exact des compétences (R3), gains de niveau (points exacts, dé), 2ᵉ classe, spécialité
   avant le niveau de classe 10, dons hors classe ou exclusifs, sorts (magie du personnage, toutes pour le Potentiel Illimité ; NPM au plus la puissance magique
-  du niveau, la 5 au niveau 16 et sans magie acquise, R16 ; NM au plus niveau global − 1 ; plus de NM que ceux gagnés est permis, R24), matériaux du bouclier, améliorations, valeur d'un
+  du niveau, la 5 au niveau 16 et sans magie acquise, R16 ; 3 NM au plus sur un sort ; NM de niveau au plus niveau global − 1 sur un sort et au plus ceux gagnés, les autres d'un livre ou du MJ, R24, R26), matériaux du bouclier, améliorations, valeur d'un
   accessoire. Une fiche `valide` n'y a aucune ligne. Ce qui demande le moteur (bonus de classe, d'équipement et de race, nombre de sorts, plafond de NPM du
   Potentiel Illimité, résistances, valeurs dérivées) n'y est pas encore.
 

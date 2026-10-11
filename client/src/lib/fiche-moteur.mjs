@@ -341,37 +341,52 @@ export function sortsPossibles(regles, fiche) {
   return regles.sorts.filter((s) => (toutes || magies.has(s.magie_id)) && s.niveau <= max);
 }
 
-/** Niveau de maîtrise : au plus niveau global − 1 par sort (BDD!BB6), et au plus les NM gagnés en tout (v_niveau.niveaux_maitrise_cumul). */
+/**
+ * Niveaux de maîtrise (NM) des sorts (décisions R24, R26). Un NM vient d'un niveau, d'un livre de sort (un seul par sort, `nm_livre`) ou d'un cadeau du MJ
+ * (`nm_cadeau`) ; `niveau_maitrise` les compte tous. Un sort a au plus `plafond` NM (3), toutes origines comprises ; ses NM de niveau au plus `maxParSort`
+ * (niveau global − 1, BDD!BB6) ; les NM de niveau répartis (`deNiveau`) au plus ceux gagnés (`disponibles`, v_niveau.niveaux_maitrise_cumul) ;
+ * ceux d'un livre ou du MJ (`offerts`) s'y ajoutent.
+ */
 export function maitriseDesSorts(regles, fiche) {
   const niveau = niveauGlobal(regles, fiche.xp);
+  const sorts = fiche.sorts ?? [];
+  const total = sorts.reduce((s, x) => s + entier(x.niveau_maitrise), 0);
+  const offerts = sorts.reduce((s, x) => s + entier(x.nm_livre) + entier(x.nm_cadeau), 0);
   return {
+    plafond: constante(regles, 'sort.nm_max'),
     maxParSort: Math.max(0, niveau - constante(regles, 'sort.nm_ecart_niveau_global')),
-    total: (fiche.sorts ?? []).reduce((s, x) => s + entier(x.niveau_maitrise), 0),
+    total,
+    deNiveau: total - offerts,
+    offerts,
     disponibles: ligneDeNiveau(regles, niveau).niveaux_maitrise_cumul,
   };
 }
 
-/** NM au-delà de ceux gagnés : permis, donnés par le MJ (décision R24) ; la page les compte à part. */
-export function nmExcedentaires(regles, fiche) {
-  const nm = maitriseDesSorts(regles, fiche);
-  return Math.max(0, nm.total - nm.disponibles);
+/** NM d'un sort de la fiche, par origine : de niveau, d'un livre (0 ou 1), du MJ, et en tout. */
+export function nmDuSort(ligne) {
+  const livre = entier(ligne?.nm_livre);
+  const cadeau = entier(ligne?.nm_cadeau);
+  const total = entier(ligne?.niveau_maitrise);
+  return { total, livre, cadeau, deNiveau: total - livre - cadeau };
 }
 
 /**
- * Tableau des sorts de la page (demande du propriétaire) : une ligne par emplacement, ou par sort choisi s'il y en a plus. Chaque ligne propose les
- * sorts possibles (sortsPossibles : magies du personnage, NPM accessible) moins ceux déjà pris sur les autres lignes ; le sort de la ligne y reste,
- * même s'il n'est plus possible (`horsDesRegles`), pour qu'on le voie et qu'on le change.
+ * Tableau des sorts de la page (demande du propriétaire) : une ligne par emplacement. Chaque ligne propose les sorts possibles (sortsPossibles : magies du
+ * personnage, NPM accessible) moins ceux déjà pris sur les autres lignes ; le sort de la ligne y reste, même s'il n'est plus possible (`horsDesRegles`),
+ * pour qu'on le voie et qu'on le change. Il n'y a pas d'emplacement en plus (décision R27) : un sort au-delà des emplacements (XP baissée, magie retirée)
+ * a sa ligne `enTrop`, à retirer.
  */
 export function lignesDeSorts(regles, fiche) {
   const choisis = fiche.sorts ?? [];
   const possibles = sortsPossibles(regles, fiche);
-  const nombre = Math.max(emplacementsDeSorts(regles, fiche).total, choisis.length);
+  const emplacements = emplacementsDeSorts(regles, fiche).total;
+  const nombre = Math.max(emplacements, choisis.length);
   return Array.from({ length: nombre }, (_, i) => {
     const ligne = choisis[i] ?? null;
     const autres = new Set(choisis.filter((_, j) => j !== i).map((s) => s.sort_id));
     const choix = possibles.filter((s) => !autres.has(s.id));
     const actuel = ligne ? trouver(regles.sorts, ligne.sort_id) : null;
-    return { index: i, ligne, sort: actuel, choix, horsDesRegles: Boolean(ligne) && !choix.some((s) => s.id === ligne.sort_id) };
+    return { index: i, ligne, sort: actuel, choix, horsDesRegles: Boolean(ligne) && !choix.some((s) => s.id === ligne.sort_id), enTrop: i >= emplacements };
   });
 }
 

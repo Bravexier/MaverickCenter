@@ -1,6 +1,6 @@
 // Moteur de la fiche (lib/fiche-moteur.mjs) sur les vraies règles (lib/fiche-regles.mjs, la base construite) : chaque calcul comparé à sa source —
 // les vues de la base (v_personnage_niveau, v_personnage_controle, par le service sur une base vivante temporaire), les personnages fil rouge du
-// guide (lib/guide-fil-rouge.mjs) et les décisions du propriétaire (R2, R3, R6, R7, R15, R16, R19, R20, R23, R24).
+// guide (lib/guide-fil-rouge.mjs) et les décisions du propriétaire (R2, R3, R6, R7, R15, R16, R19, R20, R23, R24, R25, R26, R27).
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -11,7 +11,7 @@ import { enregistrerFiche } from '../serveur/fiches.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import {
-  attributsDe, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, nmExcedentaires,
+  attributsDe, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, nmDuSort,
   progressionXp, classeMagique, classesPermises, classesSelonLaMagieInnee,
   competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethniesDeLaRace, magiesInneesPermises, maitriseDesSorts, niveauGlobal,
   maitriseDArme, niveauxDeClasse, npmMax, progressionAttendue, puissanceMagique, refusClasse, refusMagieAcquise, sortsPossibles, xpDuNiveauSuivant,
@@ -312,10 +312,10 @@ test('sorts : puissance magique 5 au niveau 16 (R16), palier 5 fermé avec une m
   assert.ok(new Set(sortsPossibles(regles, pi).map((s) => s.magie_id)).size > 2, 'le Potentiel Illimité pioche dans toutes les magies');
   assert.ok(sortsPossibles(regles, pi).every((s) => s.niveau === 1));
   const nm = maitriseDesSorts(regles, { ...seize, sorts: [{ sort_id: 'x', rang: 1, niveau_maitrise: 3 }, { sort_id: 'y', rang: 2, niveau_maitrise: 2 }] });
-  assert.deepEqual(nm, { maxParSort: 15, total: 5, disponibles: regles.niveaux.find((n) => n.niveau === 16).niveaux_maitrise_cumul });
+  assert.deepEqual(nm, { plafond: 3, maxParSort: 15, total: 5, deNiveau: 5, offerts: 0, disponibles: regles.niveaux.find((n) => n.niveau === 16).niveaux_maitrise_cumul });
 });
 
-test('tableau des sorts : une ligne par emplacement (ou par sort choisi en plus), sorts possibles moins ceux des autres lignes ; un sort hors des règles reste visible', () => {
+test('tableau des sorts : une ligne par emplacement, sans emplacement en plus (R27) ; sorts possibles moins ceux des autres lignes ; un sort hors des règles reste visible', () => {
   const feu = { ...ficheVide(), magie_innee_id: 'magies/magie-du-feu', xp: 550 };
   const vides = lignesDeSorts(regles, feu);
   assert.equal(vides.length, emplacementsDeSorts(regles, feu).total);
@@ -329,21 +329,34 @@ test('tableau des sorts : une ligne par emplacement (ou par sort choisi en plus)
     assert.ok(!l.choix.some((x) => autres.includes(x.id)), `ligne ${l.index} : sans les sorts des autres lignes`);
     if (l.ligne) assert.ok(l.choix.some((x) => x.id === l.ligne.sort_id) && !l.horsDesRegles, `ligne ${l.index} : garde son sort`);
   }
+  assert.ok(vides.every((l) => !l.enTrop), 'pas d’emplacement en plus (R27) : une ligne par emplacement');
   const enPlus = { ...feu, sorts: Array.from({ length: vides.length + 1 }, (_, i) => ({ sort_id: vides[0].choix[i].id, rang: i + 1, niveau_maitrise: 0 })) };
-  assert.equal(lignesDeSorts(regles, enPlus).length, vides.length + 1, 'un sort au-delà des emplacements a sa ligne');
+  const lignesEnPlus = lignesDeSorts(regles, enPlus);
+  assert.equal(lignesEnPlus.length, vides.length + 1, 'un sort au-delà des emplacements (XP baissée) reste visible…');
+  assert.deepEqual(lignesEnPlus.map((l) => l.enTrop), [...vides.map(() => false), true], '… sur une ligne à retirer');
   const eau = { ...deux, magie_innee_id: 'magies/magie-de-leau' };
   const hors = lignesDeSorts(regles, eau)[0];
   assert.deepEqual([hors.horsDesRegles, hors.sort.id], [true, a.id], 'magie changée : le sort reste, signalé');
   assert.equal(lignesDeSorts(regles, ficheVide()).length, 0, 'sans magie, pas d’emplacement');
 });
 
-test('NM au-delà de ceux gagnés : permis (donnés par le MJ, décision R24), comptés à part ; la base ne les refuse plus', () => {
-  const fiche = ficheConforme({ xp: 550, sorts: [{ sort_id: 'magies/magie-du-feu#sort:boule-de-feu', rang: 1, niveau_maitrise: 2 }, { sort_id: 'magies/magie-du-feu#sort:cauterisation', rang: 2, niveau_maitrise: 2 }] });
-  const nm = maitriseDesSorts(regles, fiche);
-  assert.equal(nmExcedentaires(regles, fiche), nm.total - nm.disponibles);
-  assert.ok(nmExcedentaires(regles, fiche) > 0);
-  assert.equal(nmExcedentaires(regles, ficheConforme()), 0);
-  assert.ok(!enregistrerFiche(vivante, fiche).controles.some((c) => c.regle.startsWith('sort')), 'ni sorts_nm_total, ni NM par sort au-delà du niveau − 1');
+test('décision R26 : 3 NM au plus sur un sort ; NM de niveau au plus niveau − 1 et au plus ceux gagnés ; un NM de livre par sort et ceux du MJ en plus ; même chose que la base', () => {
+  // niveau 3 : 2 NM gagnés, 2 au plus de niveau sur un sort
+  const sort = (sort_id, rang, niveau, livre = 0, cadeau = 0) => ({ sort_id, rang, niveau_maitrise: niveau + livre + cadeau, nm_livre: livre, nm_cadeau: cadeau });
+  const fiche = (sorts) => ficheConforme({ xp: 550, sorts });
+  const enBase = (f) => enregistrerFiche(vivante, f).controles.filter((c) => c.regle.startsWith('sort')).map((c) => `${c.regle} ${c.detail}`);
+  const bdf = 'magies/magie-du-feu#sort:boule-de-feu';
+  const cau = 'magies/magie-du-feu#sort:cauterisation';
+  const juste = fiche([sort(bdf, 1, 2, 1), sort(cau, 2, 0, 0, 1)]);
+  assert.deepEqual(maitriseDesSorts(regles, juste), { plafond: 3, maxParSort: 2, total: 4, deNiveau: 2, offerts: 2, disponibles: 2 });
+  assert.deepEqual(nmDuSort(juste.sorts[0]), { total: 3, livre: 1, cadeau: 0, deNiveau: 2 });
+  assert.deepEqual(enBase(juste), [], '2 NM de niveau gagnés, un de livre et un du MJ en plus');
+  assert.deepEqual(enBase(fiche([sort(bdf, 1, 2, 1, 1)])), [`sort_nm_plafond ${bdf} = 4`], 'jamais plus de 3, même offerts');
+  assert.deepEqual(enBase(fiche([sort(bdf, 1, 3)])), [`sort_nm_max ${bdf} = 3`, `sorts_nm_total 3 / 2`], 'de niveau : au plus niveau − 1 et au plus ceux gagnés');
+  assert.deepEqual(enBase(fiche([sort(bdf, 1, 2), sort(cau, 2, 1)])), ['sorts_nm_total 3 / 2'], 'un NM en plus doit venir d’un livre ou du MJ');
+  assert.throws(() => enregistrerFiche(vivante, fiche([{ ...sort(bdf, 1, 0, 1), nm_livre: 2, niveau_maitrise: 2 }])), (e) => e.statut === 400, 'un seul NM de livre par sort');
+  assert.throws(() => enregistrerFiche(vivante, fiche([{ sort_id: bdf, rang: 1, niveau_maitrise: 0, nm_livre: 0, nm_cadeau: 1 }])), (e) => e.statut === 400, 'les NM offerts font partie du NM du sort');
+  assert.equal(regles.constantes['sort.nm_max'], 3);
 });
 
 test('progression attendue : 15 points par niveau à partir du 2, le dé aux niveaux 5, 10, 15 et 20', () => {

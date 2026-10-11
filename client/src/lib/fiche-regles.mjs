@@ -31,7 +31,7 @@ const CONSTANTES = [
   'caracteristique.base_min', 'caracteristique.base_max', 'caracteristique.bonus_magie_innee', 'competence.base_par_point_caracteristique',
   'competence.acquis_max_par_point_caracteristique', 'competence.croix_1_malus', 'competence.croix_2_malus', 'classe.mono_niveau_max',
   'classe.mono_niveaux_par_niveau_global', 'classe.mode_verrou_xp', 'sort.nm_ecart_niveau_global', 'barriere.diviseur_chakra',
-  'maitrise_arme.des_sans_maitrise', 'maitrise_arme.des_max',
+  'maitrise_arme.des_sans_maitrise', 'maitrise_arme.des_max', 'sort.nm_max',
 ];
 
 /** @param {import('node:sqlite').DatabaseSync} db */

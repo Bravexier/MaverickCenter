@@ -7,7 +7,7 @@ import { CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ficheVide } from 
 import {
   attributsDe, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, classesDe, classesSelonLaMagieInnee,
   competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethniesDeLaRace, lignesDeSorts, magiesInneesPermises, maitriseDArme,
-  maitriseDesSorts, niveauGlobal, nmExcedentaires, npmMax, progressionAttendue, progressionXp, refusClasse, refusMagieAcquise, trouver,
+  maitriseDesSorts, niveauGlobal, nmDuSort, npmMax, progressionAttendue, progressionXp, refusClasse, refusMagieAcquise, trouver,
 } from '../lib/fiche-moteur.mjs';
 
 const racine = document.getElementById('fiche');
@@ -364,7 +364,7 @@ function construireCaracteristiques() {
   // un tableau par caractéristique, dans sa couleur
   reconstruire($('competences'), 'fixe', () => regles.caracteristiques.map((k) => el('div', { class: 'competences__groupe', style: `--c: ${k.couleur}; --c-texte: ${k.texte}` },
     el('table', { class: 'fiche-table' },
-      el('thead', {}, el('tr', {}, el('th', {}, k.nom), el('th', {}, 'Naturel'), el('th', { class: 'nombre' }, 'Acquis'), el('th', { class: 'nombre' }, 'Score'))),
+      el('thead', {}, el('tr', {}, el('th', {}, k.nom), el('th', {}, 'Naturel'), el('th', {}, 'Acquis'), el('th', { class: 'nombre' }, 'Score'))),
       el('tbody', {}, regles.competences.filter((x) => x.caracteristique_id === k.id).map((comp) => {
         const ecrire = (cle, valeur) => {
           const l = ligne('competences', (x) => x.competence_id === comp.id, () => ({ competence_id: comp.id, naturel: 0, acquis: 0 }));
@@ -378,9 +378,10 @@ function construireCaracteristiques() {
         });
         const valeurNaturel = el('output', { class: 'curseur__valeur' });
         const acquis = el('input', {
-          type: 'number', min: '0', step: '1', 'aria-label': `${comp.nom} : points acquis`,
+          type: 'range', min: '0', step: '1', class: 'curseur', 'aria-label': `${comp.nom} : points acquis`,
           oninput: (ev) => ecrire('acquis', entier(ev.target.value)),
         });
+        const valeurAcquis = el('output', { class: 'curseur__valeur' });
         const score = el('span', { class: 'score' });
         synchro(() => {
           const c = calcul.competences.find((x) => x.id === comp.id);
@@ -389,14 +390,15 @@ function construireCaracteristiques() {
           valeurNaturel.textContent = String(c.naturel);
           valeurNaturel.toggleAttribute('data-hors', c.naturel > c.maxNaturel);
           naturel.title = `De 0 à ${c.maxNaturel} au niveau du personnage`;
-          if (document.activeElement !== acquis) poser(acquis, c.acquis || '');
           acquis.max = String(c.maxAcquis);
-          acquis.setAttribute('aria-invalid', c.acquis > c.maxAcquis ? 'true' : 'false');
-          acquis.title = `Au plus ${c.maxAcquis} (5 par point de caractéristique de base)`;
+          poser(acquis, c.acquis);
+          valeurAcquis.textContent = String(c.acquis);
+          valeurAcquis.toggleAttribute('data-hors', c.acquis > c.maxAcquis);
+          acquis.title = `De 0 à ${c.maxAcquis} : 5 par point de caractéristique de base (race, classe, dons, équipement, entraînement)`;
           score.textContent = c.score === null ? 'inutilisable' : `${c.score} %`;
         });
-        return el('tr', {}, el('td', {}, comp.nom), el('td', { class: 'curseur-cellule' }, naturel, valeurNaturel),
-          el('td', { class: 'nombre' }, acquis), el('td', { class: 'nombre' }, score));
+        return el('tr', {}, el('td', {}, comp.nom), el('td', { class: 'curseur-td' }, el('span', { class: 'curseur-cellule' }, naturel, valeurNaturel)),
+          el('td', { class: 'curseur-td' }, el('span', { class: 'curseur-cellule' }, acquis, valeurAcquis)), el('td', { class: 'nombre' }, score));
       }))))));
 
   // la base garde le nombre de dés (1 sans maîtrise, 5 au plus) ; on choisit des points de maîtrise (4 au plus), un dé de plus chacun
@@ -426,8 +428,9 @@ function construireCaracteristiques() {
 // ------------------------------------------------------------------ étape 5 : sorts
 /**
  * Tableau des sorts (demande du propriétaire) : une ligne par emplacement, chacune avec la liste des sorts possibles (magies du personnage, NPM
- * accessible) moins ceux des autres lignes (lignesDeSorts) ; vider la liste libère l'emplacement. Les NM au-delà de ceux gagnés sont permis : le MJ
- * peut en donner (décision R24) ; ils sont comptés à part.
+ * accessible) moins ceux des autres lignes (lignesDeSorts) ; vider la liste libère l'emplacement ; pas d'emplacement en plus (décision R27). Les NM d'un
+ * sort se notent par origine : de niveau (au plus niveau − 1 sur un sort, et en tout au plus ceux gagnés), d'un livre (un par sort), du MJ ; 3 au plus
+ * sur un sort (décisions R24, R26).
  */
 function construireSorts() {
   const emplacements = emplacementsDeSorts(regles, fiche);
@@ -437,16 +440,16 @@ function construireSorts() {
     ? `${emplacements.total} emplacement${emplacements.total > 1 ? 's' : ''} (${emplacements.conditions} condition${emplacements.conditions > 1 ? 's' : ''} × puissance ${emplacements.puissance}), sorts jusqu’au NPM ${max}, NM au plus ${nm.maxParSort} par sort.`
     : 'Pas encore d’emplacement de sort : choisissez une magie.';
   etatBudget($('budget-sorts'), (fiche.sorts ?? []).length, emplacements.total, 'Sorts', false);
-  const enPlus = nmExcedentaires(regles, fiche);
   const badge = $('budget-nm');
-  badge.textContent = `NM : ${nm.total} / ${nm.disponibles}${enPlus ? ` (+${enPlus} du MJ)` : ''}`;
-  badge.dataset.etat = enPlus ? 'info' : nm.total === nm.disponibles ? 'ok' : 'manque';
-  badge.title = enPlus ? 'Plus de NM que ceux gagnés : permis, donnés par le MJ (décision R24)' : 'NM répartis / NM gagnés';
+  etatBudget(badge, nm.deNiveau, nm.disponibles, 'NM de niveau');
+  if (nm.offerts) badge.textContent += ` · livre/MJ +${nm.offerts}`;
+  badge.title = `NM de niveau répartis / gagnés ; ceux d’un livre (un par sort) ou du MJ en plus ; ${nm.plafond} NM au plus sur un sort`;
 
   const lignes = lignesDeSorts(regles, fiche);
   const cle = JSON.stringify([lignes.length, (fiche.sorts ?? []).map((x) => x.sort_id), fiche.magie_innee_id, fiche.magie_acquise_id, max]);
   reconstruire($('sorts'), cle, () => [
-    el('thead', {}, el('tr', {}, el('th', { class: 'nombre' }, '#'), el('th', {}, 'Sort'), el('th', { class: 'nombre' }, 'NPM'), el('th', {}, 'Coût'), el('th', {}, 'Portée'), el('th', { class: 'nombre' }, 'NM'))),
+    el('thead', {}, el('tr', {}, el('th', { class: 'nombre' }, '#'), el('th', {}, 'Sort'), el('th', { class: 'nombre' }, 'NPM'), el('th', {}, 'Coût'), el('th', {}, 'Portée'),
+      el('th', { title: 'NM de niveau, d’un livre (un par sort), du MJ ; 3 au plus en tout' }, 'NM : niveau · livre · MJ'))),
     el('tbody', {}, lignes.length === 0
       ? el('tr', {}, el('td', { colspan: '6', class: 'muted' }, 'Aucun emplacement de sort.'))
       : lignes.map((l) => {
@@ -456,27 +459,45 @@ function construireSorts() {
           onchange: (ev) => {
             const choix = ev.target.value;
             if (!choix) fiche.sorts.splice(l.index, 1);
-            else if (fiche.sorts[l.index]) fiche.sorts[l.index] = { ...fiche.sorts[l.index], sort_id: choix, niveau_maitrise: 0 };
-            else fiche.sorts.push({ sort_id: choix, rang: fiche.sorts.length + 1, niveau_maitrise: 0 });
+            else if (fiche.sorts[l.index]) fiche.sorts[l.index] = { ...fiche.sorts[l.index], sort_id: choix, niveau_maitrise: 0, nm_livre: 0, nm_cadeau: 0 };
+            else fiche.sorts.push({ sort_id: choix, rang: fiche.sorts.length + 1, niveau_maitrise: 0, nm_livre: 0, nm_cadeau: 0 });
             changer();
           },
-        }, option('', l.choix.length ? '— libre —' : '— aucun sort possible —'),
-        magies.map((m) => el('optgroup', { label: m.nom }, l.choix.filter((x) => x.magie_id === m.id).map((x) => option(x.id, `${x.nom} (NPM ${x.niveau})`, x.id === l.ligne?.sort_id)))),
-        l.horsDesRegles ? el('optgroup', { label: 'Hors des magies ou du niveau' }, option(l.sort.id, l.sort.nom, true)) : null);
-        liste.setAttribute('aria-invalid', String(l.horsDesRegles));
-        const niveau = el('input', {
-          type: 'number', min: '0', step: '1', 'aria-label': `NM de l’emplacement ${l.index + 1}`, disabled: !l.ligne,
-          oninput: (ev) => { if (fiche.sorts[l.index]) { fiche.sorts[l.index].niveau_maitrise = entier(ev.target.value); changer(); } },
-        });
-        synchro(() => {
+        }, option('', l.enTrop ? '— retirer —' : l.choix.length ? '— libre —' : '— aucun sort possible —'),
+        l.enTrop ? null : magies.map((m) => el('optgroup', { label: m.nom }, l.choix.filter((x) => x.magie_id === m.id).map((x) => option(x.id, `${x.nom} (NPM ${x.niveau})`, x.id === l.ligne?.sort_id)))),
+        l.enTrop || l.horsDesRegles ? el('optgroup', { label: l.enTrop ? 'Au-delà des emplacements' : 'Hors des magies ou du niveau' }, option(l.sort.id, l.sort.nom, true)) : null);
+        liste.setAttribute('aria-invalid', String(l.horsDesRegles || l.enTrop));
+        // NM par origine : niveau_maitrise = niveau + livre + MJ
+        const ecrireNm = (origine, valeur) => {
           const x = fiche.sorts[l.index];
-          if (document.activeElement !== niveau) poser(niveau, x ? x.niveau_maitrise : '');
-          niveau.setAttribute('aria-invalid', x && x.niveau_maitrise > calcul.nm.maxParSort ? 'true' : 'false');
-          niveau.title = `Au plus ${calcul.nm.maxParSort} par sort (niveau − 1)`;
+          if (!x) return;
+          const nm = nmDuSort(x);
+          const parts = { deNiveau: nm.deNiveau, livre: nm.livre, cadeau: nm.cadeau, [origine]: valeur };
+          Object.assign(x, { niveau_maitrise: parts.deNiveau + parts.livre + parts.cadeau, nm_livre: parts.livre, nm_cadeau: parts.cadeau });
+          changer();
+        };
+        const deNiveau = el('input', { type: 'number', min: '0', step: '1', 'aria-label': `NM de niveau de l’emplacement ${l.index + 1}`, disabled: !l.ligne,
+          oninput: (ev) => ecrireNm('deNiveau', entier(ev.target.value)) });
+        const livre = el('input', { type: 'checkbox', 'aria-label': `NM d’un livre de sort, emplacement ${l.index + 1}`, title: 'NM d’un livre de sort (un par sort)', disabled: !l.ligne,
+          onchange: (ev) => ecrireNm('livre', ev.target.checked ? 1 : 0) });
+        const cadeau = el('input', { type: 'number', min: '0', step: '1', 'aria-label': `NM donnés par le MJ, emplacement ${l.index + 1}`, disabled: !l.ligne,
+          oninput: (ev) => ecrireNm('cadeau', entier(ev.target.value)) });
+        const total = el('output', { class: 'curseur__valeur' });
+        synchro(() => {
+          const nm = nmDuSort(fiche.sorts[l.index]);
+          if (document.activeElement !== deNiveau) poser(deNiveau, fiche.sorts[l.index] ? nm.deNiveau : '');
+          if (document.activeElement !== cadeau) poser(cadeau, fiche.sorts[l.index] ? nm.cadeau : '');
+          poser(livre, nm.livre);
+          deNiveau.setAttribute('aria-invalid', String(nm.deNiveau > calcul.nm.maxParSort));
+          deNiveau.title = `NM de niveau : au plus ${calcul.nm.maxParSort} sur un sort (niveau − 1)`;
+          total.textContent = `= ${nm.total}`;
+          total.toggleAttribute('data-hors', nm.total > calcul.nm.plafond);
+          total.title = `${nm.total} NM sur ce sort ; ${calcul.nm.plafond} au plus`;
         });
-        return el('tr', { class: l.index >= emplacements.total ? 'en-plus' : null, title: l.index >= emplacements.total ? 'Au-delà des emplacements' : null },
+        return el('tr', { class: l.enTrop ? 'en-trop' : null, title: l.enTrop ? 'Au-delà des emplacements du personnage : à retirer' : null },
           el('td', { class: 'nombre muted' }, String(l.index + 1)), el('td', {}, liste), el('td', { class: 'nombre' }, l.sort?.niveau ?? ''),
-          el('td', {}, l.sort?.cout ?? ''), el('td', {}, l.sort?.portee ?? ''), el('td', { class: 'nombre' }, niveau));
+          el('td', {}, l.sort?.cout ?? ''), el('td', {}, l.sort?.portee ?? ''),
+          el('td', { class: 'nm-origines' }, deNiveau, el('label', { class: 'nm-livre' }, livre, 'livre'), cadeau, total));
       })),
   ]);
 }
