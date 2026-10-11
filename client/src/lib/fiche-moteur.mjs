@@ -796,3 +796,172 @@ export function donsValables(regles, fiche) {
     return Boolean(o) && (fiche.classes ?? []).some((c) => c.classe_id === o.classe_id && (o.specialite_id === null || o.specialite_id === c.specialite_id));
   });
 }
+
+// ------------------------------------------------------------------ refonte de la fiche (demandes du propriétaire, 2026-10-11)
+
+/**
+ * Le don de base de la race (onglet de la race, race_onglet.don_base) sous son nom (demande du propriétaire : « Méditation » ou « Repos » plutôt que « Don
+ * de base ») : le texte avant la première parenthèse, et ses parenthèses de premier niveau jointes par « · » (« Méditation (Action 3 fois/jour) (Permet de
+ * récupérer 3d6 + 6 chakra (jet de calme en stress)). » → Méditation : « Action 3 fois/jour · Permet de récupérer 3d6 + 6 chakra (jet de calme en
+ * stress). »). Un texte d'une autre forme garde l'intitulé « Don de base » et reste tel quel.
+ */
+export function donDeBase(texte) {
+  const brut = String(texte ?? '').trim();
+  const i = brut.indexOf('(');
+  const nom = i > 0 ? brut.slice(0, i).trim() : '';
+  const groupes = [];
+  let profondeur = 0;
+  let debut = -1;
+  let reste = '';
+  for (let k = Math.max(i, 0); k < brut.length && i > 0; k += 1) {
+    const c = brut[k];
+    if (c === '(') {
+      if (profondeur === 0) debut = k + 1;
+      profondeur += 1;
+    } else if (c === ')') {
+      profondeur -= 1;
+      if (profondeur === 0) groupes.push(brut.slice(debut, k).trim());
+    } else if (profondeur === 0) reste += c;
+  }
+  if (!nom || profondeur !== 0 || !groupes.length || reste.replace(/[\s.]/g, '')) return { nom: 'Don de base', texte: brut || null };
+  return { nom, texte: `${groupes.join(' · ')}${reste.includes('.') ? '.' : ''}` };
+}
+
+/** Le niveau de classe où se choisit la spécialité : celui de son don de spécialité (le plus bas des dons `specialite` de la classe, 10). */
+export const niveauDeSpecialite = (classe) => Math.min(...(classe?.dons ?? []).filter((d) => d.nature === 'specialite').map((d) => d.niveau));
+
+/**
+ * Les choix qui restent à faire (demande du propriétaire : les mettre en évidence, le cadre « Choix » en tiroir tant qu'il en reste) : l'ethnie d'une race
+ * choisie qui en a, la spécialité d'une
+ * classe qui a atteint le niveau de son don de spécialité (le plus bas de ses dons `specialite`, 10), chaque groupe de dons à choisir encore sans choix
+ * (donsAChoisir), chaque bonus de métier à choisir (bonusDuMetier), chaque objet de départ à choisir (objetsDuMetier), et le +1 d'une magie innée qui laisse
+ * la caractéristique au choix. [{ nature, libelle, rang? }] ; vide quand tout est choisi.
+ */
+export function choixEnAttente(regles, fiche) {
+  const attente = [];
+  const race = trouver(regles.races, fiche.race_id);
+  if (race && !fiche.ethnie_id && ethniesDeLaRace(regles, race.id).length) attente.push({ nature: 'ethnie', libelle: `Ethnie : ${race.nom}` });
+  for (const c of classesDe(regles, fiche)) {
+    if (!c.classe || !c.classe.specialites.length) continue;
+    if (c.niveau >= niveauDeSpecialite(c.classe) && !c.choix?.specialite_id) attente.push({ nature: 'specialite', rang: c.rang, libelle: `Spécialité : ${c.classe.nom}` });
+  }
+  const choisis = new Set((fiche.capacites ?? []).map((d) => d.capacite_id));
+  for (const d of donsAChoisir(regles, fiche)) {
+    for (const g of d.groupes) {
+      if (!g.options.some((o) => choisis.has(o.id))) attente.push({ nature: 'don', rang: d.rang, libelle: `Don ${d.classe.nom} niv. ${g.niveau} : ${g.options.map((o) => o.nom).join(' ou ')}` });
+    }
+  }
+  for (const b of bonusDuMetier(regles, fiche).rangs) if (b.aChoisir && !b.retenue) attente.push({ nature: 'metier_bonus', libelle: `Métier : ${b.texte}` });
+  for (const r of objetsDuMetier(regles, fiche.metier_id)) {
+    if (r.options.length > 1 && objetChoisi(fiche, r) < 0) attente.push({ nature: 'metier_objet', libelle: `Objet de départ : ${r.options.map((o) => o.texte).join(' ou ')}` });
+  }
+  const innee = trouver(regles.magies, fiche.magie_innee_id);
+  if (innee && !innee.caracteristique_id && !fiche.caracteristique_magie_id) attente.push({ nature: 'carac_magie', libelle: `+1 de la magie innée (${innee.nom})` });
+  return attente;
+}
+
+const estADistance = (regles, arme) => (regles.ambidextrie?.types_a_distance ?? []).includes(arme?.type_id);
+
+/**
+ * Attaque à deux armes, une dans chaque main (décision R46, regles.ambidextrie) : −20 % à l'attaque de la main directrice (l'arme 1,
+ * « arme principale »), −40 % à celle de la main secondaire (l'arme 2) ; réduit de moitié pour une main qui tient une dague, et de moitié en étant de la classe
+ * Bimane, les deux se cumulant (« un bimane avec une épée et une dague aura −10 % et −10 % ; avec deux dagues −5 % et −10 % »). Puis les dons acquis qui
+ * l'écrivent en toutes lettres : « Réduit de 5% le malus de la deuxième arme » (Équilibré), « Le malus de l'ambidextrie est réduit de 10% pour les deux
+ * armes » (Équilibre) ; les autres dons qui en parlent (Directrice, Fausse Patte, Ravageur) sont rendus dans `aPreciser`, sans effet. null quand les deux
+ * emplacements ne tiennent pas deux armes de corps à corps. { bimane, mains: [{ main, rang, arme, malus, dague }], aPreciser: [nom] }.
+ */
+export function attaqueADeuxArmes(regles, fiche) {
+  const a = regles.ambidextrie;
+  const armes = [1, 2].map((rang) => trouver(regles.armes, (fiche.armes ?? []).find((x) => entier(x.rang) === rang)?.arme_id));
+  if (!a || armes.some((x) => !x || estADistance(regles, x))) return null;
+  const acquis = donsAcquis(regles, fiche);
+  const bimane = acquis.some((c) => c.classe.id === a.classe);
+  let reductionSecondaire = 0;
+  let reductionDeux = 0;
+  const aPreciser = [];
+  for (const d of acquis.flatMap((c) => c.dons)) {
+    const t = String(d.effet ?? '');
+    const seconde = /r[ée]duit de (\d+)\s?% le malus de la deuxi[èe]me arme/i.exec(t);
+    const deux = /malus de l['’]ambidextrie est r[ée]duit de (\d+)\s?% pour les deux armes/i.exec(t);
+    if (seconde) reductionSecondaire += Number(seconde[1]);
+    else if (deux) reductionDeux += Number(deux[1]);
+    else if (/ambidextr/i.test(t) && !/descendent respectivement/i.test(t)) aPreciser.push(d.nom);
+  }
+  const mains = [['directrice', a.malus_directrice, reductionDeux], ['secondaire', a.malus_secondaire, reductionDeux + reductionSecondaire]].map(([main, base, reduction], i) => {
+    const dague = armes[i].type_id === a.type_dague;
+    const malus = Math.max(0, base / (dague ? a.diviseur : 1) / (bimane ? a.diviseur : 1) - reduction);
+    return { main, rang: i + 1, arme: armes[i], malus, dague };
+  });
+  return { bimane, mains, aPreciser };
+}
+
+/**
+ * Les dégâts d'une arme (rang 1 ou 2), pour sa pastille (demande du propriétaire : « rajouter les bonus dus aux améliorations et potentiels passifs de
+ * classes ») : autant de dés que la maîtrise de sa famille en donne (maitriseDArme), le dé de l'arme (« D8 au lieu du D10 » de son effet, sinon celui de son
+ * type ; Pugilat : selon la Force, deDeLaFamille), plus les bonus qui se cumulent (page « Armes » : « tous les bonus se cumulent une fois l'arme forgée ») —
+ * celui de l'arme, de sa composition, de son amélioration, de son élément et de l'amélioration de l'élément (colonnes bonus_degats de la base) — et ceux des
+ * dons passifs acquis qui visent cette arme (lib/degats-texte.mjs : sa famille, ses types de dégâts, les armes de corps à corps ou toutes les armes ; une
+ * formule « 3+x […] x = +2 dégâts/6 niveaux » au niveau de la classe du don). Un bonus de don qui ne se compte pas (situation, au choix, armes visées non
+ * écrites…) est rendu dans `nonComptes`. null sans arme. { notation, nombre, de, total, texte, bonus: [{ nom, valeur }], nonComptes: [{ nom, valeur, raison }] }.
+ */
+export function degatsDArme(regles, fiche, rang) {
+  const ligne = (fiche.armes ?? []).find((x) => entier(x.rang) === rang);
+  const arme = trouver(regles.armes, ligne?.arme_id);
+  if (!arme) return null;
+  const famille = trouver(regles.familles_armes, arme.famille_id);
+  // une famille sans maîtrise (ARME DE MONSTRES, décision R45) garde le dé seul, même si une ancienne fiche en a posé une
+  const maitrise = famille?.maitrisable === false ? null : (fiche.maitrises_armes ?? []).find((x) => x.arme_famille_id === arme.famille_id);
+  const nombre = maitrise ? entier(maitrise.des) : maitriseDArme(regles).desSansMaitrise;
+  const de = arme.de ?? deDeLaFamille(regles, fiche, famille).de;
+  const bonus = [];
+  const ajouter = (nom, valeur) => { if (valeur) bonus.push({ nom, valeur }); };
+  ajouter(arme.nom, arme.bonus_degats);
+  const materiau = trouver(regles.materiaux_armes, ligne.materiau_id);
+  ajouter(materiau && `Composition : ${materiau.nom}`, materiau?.bonus_degats);
+  const amelioration = trouver(regles.ameliorations, ligne.amelioration_id);
+  ajouter(amelioration && `Amélioration niveau ${amelioration.niveau}`, amelioration?.bonus_degats);
+  const element = trouver(regles.armes_elementaires, ligne.arme_elementaire_id);
+  ajouter(element && `Élément : ${element.nom}`, element?.bonus_degats);
+  const ameliorationElement = trouver(regles.ameliorations, ligne.amelioration_elementaire_id);
+  ajouter(ameliorationElement && `Amélioration de l’élément niveau ${ameliorationElement.niveau}`, ameliorationElement?.bonus_degats);
+  const nonComptes = [];
+  for (const c of donsAcquis(regles, fiche)) {
+    for (const d of c.dons) {
+      const b = d.degats;
+      if (!b) continue;
+      const valeur = 'valeur' in b ? b.valeur : b.base + b.pas * Math.floor(c.niveau / b.niveaux);
+      const nom = `${d.nom} (${c.classe.nom})`;
+      if (b.raison) {
+        nonComptes.push({ nom, valeur, raison: b.raison });
+        continue;
+      }
+      const p = b.portee;
+      const vise = p.toutes || (p.cac && !estADistance(regles, arme)) || (p.types ?? []).some((t) => arme.types_degats?.includes(t))
+        || ((p.familles ?? []).includes(arme.famille_id) && (!p.mains || arme.mains === p.mains));
+      if (vise) ajouter(nom, valeur);
+      else if ((p.familles ?? []).includes(arme.famille_id) && p.mains && !arme.mains) nonComptes.push({ nom, valeur, raison: 'mains' });
+    }
+  }
+  const notation = notationDesDes(de, nombre);
+  const total = bonus.reduce((s, b) => s + b.valeur, 0);
+  return { notation, nombre, de, total, texte: total ? `${notation}+${total}` : notation, bonus, nonComptes };
+}
+
+/**
+ * Le Mode Hyper et le Mode Hyper 100 % du personnage (demande du propriétaire : leurs cases à côté des postures, une fois débloqués) : débloqués au niveau
+ * global qu'écrit la page « Liste des effets mode hyper » (2 et 10) ; les effets de base de la fiche (décision R5), l'effet de chaque magie du personnage
+ * (« Mono-Magie » ou « Bi-magie » selon qu'il en a une ou deux) et celui de sa race (décision R13) ; ceux du Mode Hyper 100 %. null sans ces règles.
+ */
+export function modeHyperDe(regles, fiche) {
+  const h = regles.mode_hyper;
+  if (!h) return null;
+  const niveau = niveauGlobal(regles, fiche.xp);
+  const variante = fiche.magie_acquise_id ? 'bi' : 'mono';
+  const magies = [fiche.magie_innee_id, fiche.magie_acquise_id].filter(Boolean)
+    .map((id) => ({ magie: trouver(regles.magies, id), effet: h.magies[id]?.[variante] ?? h.magies[id]?.mono_et_bi ?? null }))
+    .filter((x) => x.magie && x.effet);
+  return {
+    debloque: niveau >= h.niveau, niveau: h.niveau, effets: h.effets, magies, race: (fiche.race_id && h.races[fiche.race_id]) || null,
+    cent: { debloque: niveau >= h.cent.niveau, niveau: h.cent.niveau, effets: h.cent.effets, suite: h.cent.suite },
+  };
+}

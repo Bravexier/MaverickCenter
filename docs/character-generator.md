@@ -12,20 +12,55 @@ L'ancienne adresse `/generateur/` mène à `/fiche/` (page 404, `lib/nav.mjs#nou
 
 ## La page `/fiche/`
 
-La fiche suit les étapes du guide (« Créer son personnage »), un bloc par étape, teinté de la couleur de sa partie du guide, **sans numéro**, et les blocs
-sont disposés **en rangées** (demandes du propriétaire ; l'un sous l'autre sur un écran étroit) : identité (nom, surnom, origine, **métier**, race et ethnie,
-**alignement**) · magies et dieux · classe(s) et spécialités ; attributs et valeurs du moment · niveau (jauge d'XP), gains de niveau et dons à choisir ;
-caractéristiques et compétences · sorts et rappel des dons ; **maîtrises d'armes** (et ambidextrie) ; équipement (armes, armure, bouclier, accessoires, inventaire, puis la
-**bourse**) · notes et événements ; puis le contrôle des règles, sur toute la largeur. La page prend plus de largeur que les autres (100rem au plus) pour
-ces rangées. Le panneau d'un menu déroulant s'étend sur toute sa rangée. **Compacte** (demandes du propriétaire) : pas de lien vers le guide ;
+La fiche est rangée en **quatre zones** (demande du propriétaire, maquette validée le 2026-10-11), sans cadre, titre ni pastille visibles (les titres
+restent pour les lecteurs d'écran) ; chaque zone garde la couleur d'une partie du guide pour ses accents, et chaque bloc le cadre aux couleurs des magies :
+
+1. **Identité** : le **portrait** (le logo en attendant une image), le **nom** en grand, le **niveau** seul (dans un médaillon ; l'XP est dans la zone 4),
+   surnom, lieu d'origine et **alignement**, puis trois colonnes de menus : race, ethnie et **métier** (facultatif, sous l'ethnie) · magies innée et acquise,
+   dieux · case **« Bi-classé »**, classe(s) et spécialités.
+2. **À portée de main** : les attributs et valeurs du moment ; caractéristiques et compétences, à côté les **armes et maîtrises d'armes** et la **ceinture** ;
+   les sorts, à côté les **dons débloqués**.
+3. **Selon la situation** : les **postures** (et le Mode Hyper) sur toute la largeur ; l'armure et les accessoires, à côté l'initiative et les vitesses, les
+   résistances et faiblesses, le bouclier.
+4. **Paramètres et suivi**, en **onglets** (`components/Onglets.astro`) : Progression (jauge d'XP, gains de niveau) · Choix (ce que donne le métier et ses
+   choix, le +1 d'une magie au choix, la spécialité, les dons de classe à choisir, ce que donnent la race et les magies) · Inventaire (sac, bourse) · Notes et
+   événements · Contrôle. L'onglet « Choix » compte les choix qui restent, l'onglet « Contrôle » les règles à revoir ; sans JavaScript et à l'impression,
+   les panneaux se suivent.
+
+La page prend plus de largeur que les autres (100rem au plus) ; sur un écran étroit, les blocs passent l'un sous l'autre. Le panneau d'un menu déroulant
+s'étend sur toute sa rangée de menus. **Compacte** (demandes du propriétaire) : pas de lien vers le guide ;
 race, ethnie, magies innée et acquise, classes et spécialités sont des **menus déroulants** (`<details class="choix">` : fermé, le choix fait ; ouvert, les
 **pastilles** dans les couleurs de `/races/`, `/magies/`, `/classes/`, celles que les règles ferment grisées ; un choix, un clic ailleurs ou Échap le
-referme) ; les caractéristiques sont des **curseurs** bornés par la race, à 1 (le minimum) par défaut, jamais vides (`caracteristiquesCompletes`), et le
+referme ; l'explication d'une classe imposée est en infobulle sur sa pastille « · imposée ») ; les caractéristiques sont des **curseurs** bornés par la race, à 1 (le minimum) par défaut, jamais vides (`caracteristiquesCompletes`), et le
 naturel et l'acquis des compétences des curseurs (naturel : jusqu'au maximum du niveau ; acquis : 5 par point de caractéristique de base). Un **clic droit**
 sur un curseur (ou Entrée) le remplace par une case de saisie : le nombre tapé est ramené au maximum au-dessus, au minimum en dessous (`borner`) ; Échap
 abandonne.
 
-- **Métier** (décisions R33 à R40) : sous la liste des métiers, ce que donne le métier choisi (`bonusDuMetier`, `artisanatDe`, `objetsDuMetier`) — ses
+- **Portrait** (migration `0031-fiche-zones`) : « Choisir une image » ouvre le **recadrage** (un cadre carré où l'image se déplace au doigt, à la souris ou aux
+  flèches ; un curseur ou la molette zoome de 1 à 4) ; la fiche garde l'image, réduite à 600 000 pixels et sous 700 000 caractères en data URL
+  (`personnage.portrait`), et son cadrage (`portrait_x`, `portrait_y`, `portrait_zoom`) : « Recadrer » rouvre l'image d'origine, « ✕ » revient au logo.
+- **Ceinture** (guide « Fiche de personnage : Accessoires et Ceinture », migration `0031-fiche-zones`) : ses **3 emplacements** d'objets rapides, chacun un
+  objet (au catalogue des ressources ou non) et sa quantité (`personnage_ceinture`, rang 1 à 3).
+- **Choix à faire** (`choixEnAttente`) : l'ethnie d'une race choisie, la spécialité d'une classe au niveau de son don de spécialité, chaque groupe de dons à
+  choisir, chaque bonus ou objet de départ du métier à choisir, le +1 d'une magie qui le laisse au choix. Leur champ est **surligné** (ambre, `data-a-choisir`),
+  et tant qu'il en reste le panneau « Choix » sort en **tiroir** en bas de l'écran, par-dessus la fiche, avec la liste de ce qui manque ; il ne se range que
+  quand la zone 4 est à l'écran ; « Réduire » le replie sur sa poignée (le survol le rouvre), « Aller aux choix » y descend. La spécialité s'y choisit aussi
+  (demande du propriétaire : « le doubler dans le menu de choix »).
+- **Dégâts des armes** (`degatsDArme`) : une pastille « XDY+Z » par arme — les dés de la maîtrise de sa famille, le dé de l'arme (son effet, sinon son type ;
+  le Pugilat selon la Force), plus les bonus qui se cumulent (page « Armes ») : l'arme, sa composition, son amélioration, son élément et l'amélioration de
+  l'élément, et les **dons passifs acquis** dont le texte dit quelles armes ils visent (`lib/degats-texte.mjs` : famille, type de dégâts, armes de corps à corps,
+  toutes les armes ; formule « 3+x […] x = +2 dégâts/6 niveaux » au niveau de la classe). Le détail est en infobulle, avec les bonus de dons qui ne se
+  comptent pas (situation, au choix, deux armes, bouclier, armes visées non écrites : « augmente les dégâts de 3 » de Tir renforcé, par exemple).
+- **Attaque à deux armes** (décision R46, `attaqueADeuxArmes`) : avec deux armes de mêlée, une **étoile** à côté des dégâts de chaque arme donne son malus en
+  infobulle (« −10 % si ambidextre ») : −20 % main directrice (l'arme 1), −40 % main secondaire, moitié pour la main qui tient une dague, moitié pour un
+  Bimane, cumulables ; Équilibré et Équilibre s'en retranchent (texte des dons), Directrice, Fausse Patte et Ravageur sont signalés. Plus de case « Ambidextrie ».
+- **Postures et Mode Hyper** : une **case par posture**, ses effets toujours lisibles, **avantages en vert, inconvénients en rouge** (décision R47,
+  `posture_effet.inconvenient`), sur deux lignes : Offensif, Neutre, Défensif, puis Focus, Vigilance, Symbiose (`regles.ordre_postures`) ; un clic choisit la
+  posture du moment. À droite, une fois débloqués (`modeHyperDe` : niveaux 2 et 10, page « Liste des effets mode hyper »), les cases du **Mode Hyper** (effets
+  de base de la fiche, décision R5 ; effet de la magie, « Mono-Magie » ou « Bi-magie » ; effet de la race, R13) et du **Mode Hyper 100 %**, pour lecture.
+- **Méditation ou Repos** : le don de base de la race s'affiche sous son nom (`donDeBase`), en tête des dons raciaux.
+- **Compétences** : six blocs sur deux colonnes remplies de haut en bas, comme la fiche auto : Force, Volonté, Intelligence ; Perception, Social, Agilité.
+- **Métier** (décisions R33 à R40) : dans l'onglet « Choix », ce que donne le métier choisi (`bonusDuMetier`, `artisanatDe`, `objetsDuMetier`) — ses
   bonus, chacun **en Acquis** de sa compétence ou à un attribut : l'**initiative** (« +1 INI »), la **vitesse** ou la **vitesse de nage** (R37) ; un rang à plusieurs compétences (« +3% Diplomatie OU Intimidation »,
   « une compétence sociale au choix ») **se choisit ici** en pastilles (`personnage_metier_bonus`) ; un bonus en texte libre est rappelé sans effet. Sa
   **compétence d'artisanat** : 10 × chacune de ses deux caractéristiques, avec leur valeur (« Force 3 × 10 + Intelligence 2 × 10 = 50 % ») ; une croix sur
@@ -39,15 +74,15 @@ abandonne.
   chaque axe, 5 points d'écart ou plus donnent la tendance, en dessous le personnage est Neutre (guide « Alignement », constante `alignement.ecart_axe`) ;
   les neuf noms sont ceux du guide « Les neuf alignements » (« Neutre » sur les deux axes, que la fiche auto écrit « Neutre Pur »).
 - **Attributs et valeurs du moment**, fusionnés : une carte par attribut, santé · barrière · chakra (· Âme ou Sang, la 4ᵉ barre de la Nécromancie ou du
-  Sang) sur une ligne ; initiative, vitesse et vitesse de nage en **simples pastilles**, à côté de la carte de la corruption ; santé **rouge**, barrière **jaune**,
+  Sang), puis la corruption, sur une ligne ; initiative, vitesse et vitesse de nage en **tuiles** (zone 3) ; santé **rouge**, barrière **jaune**,
   chakra **bleu**, corruption **noire** ; pas d'armure de base (les AP/AM viendront avec l'armure portée). Pas de texte de calcul (demande du propriétaire) : le
   détail d'un maximum est en infobulle sur sa valeur. Une valeur du moment s'affiche « actuelle / maximum », un curseur de 0 au maximum (au maximum tant qu'on n'y touche
   pas, la corruption à 0 ; le chakra actuel au plus chakra − corruption, sauf avec la magie de la Corruption, et la corruption qui monte emporte le chakra
   actuel, celle qui baisse ne le rend pas : `valeursDuMoment`, `ecrireValeurDuMoment`, guide « Fiche de personnage : Attributs »), et deux boutons **−** et
   **+** qui ouvrent une case où saisir le nombre à retirer ou à ajouter (`ajusterValeurDuMoment`, borné comme le curseur ; Entrée ou OK l'applique, Échap
-  abandonne). Dessous, le **sélecteur des six postures** (table `posture`, dans leurs couleurs ; leurs effets du tableau de la fiche en infobulle et sous le
-  sélecteur ; un second clic retire la posture) : la fiche garde la posture du moment (`personnage.posture_id`, migration `0027-posture-du-moment`).
-- **Résistances et faiblesses**, dans le bloc des magies (demande du propriétaire, sur le modèle du tableau « Résistance / Faiblesse (Magie et Altération
+  abandonne). La posture du moment se choisit dans les cases des postures (zone 3 ; un second clic la retire) : la fiche la garde (`personnage.posture_id`,
+  migration `0027-posture-du-moment`).
+- **Résistances et faiblesses**, dans la zone 3 (demande du propriétaire, sur le modèle du tableau « Résistance / Faiblesse (Magie et Altération
   d'état) » de la fiche auto, `Personnage!BA2:BI12`) : les six paliers (`resistance_palier` : immunité, grande résistance, résistance, vulnérabilité, grande
   vulnérabilité, sensibilité, avec leur effet sur les dégâts), chacun avec ses magies, dans leur couleur, puis ses altérations d'état, cerclées de la couleur
   de leur magie ; le détail des crans en infobulle (`resistancesDe`). Une cible additionne ses crans (guide « Créer sa fiche », Tableau Résistances/Faiblesses :
@@ -70,12 +105,12 @@ abandonne.
   sur un sort (décisions R24, R26). Colonnes (demandes du propriétaire) : coût, portée et **dégâts/soins/barrière**, à la **valeur du NM du sort** plutôt que
   « (+1/NM) » (`lib/sort-maitrise.mjs#valeurAuNm` : voir `content-guide.md`, « Niveaux de maîtrise ») ; pas de colonne NPM ; l'**effet secondaire** sur sa
   propre ligne, sous le sort (au NM aussi) ; une **étoile** quand le sort a une remarque, son texte en infobulle.
-- **Rappel des dons**, sous les sorts : les **dons raciaux** — le don de base d'abord, puis le don de l'ethnie (`race_don`) et la ligne de l'ethnie dans le
+- **Dons débloqués**, à côté des sorts : les **dons raciaux** — le don de base d'abord, puis le don de l'ethnie (`race_don`) et la ligne de l'ethnie dans le
   tableau de dons de la race (Drakos, Mort-vivant) : `donsDeRace` — puis les **dons de classe débloqués**, classe par classe : dons de la classe et de la
   spécialité choisie jusqu'au niveau de classe, dons à choix choisis (`donsAcquis`), avec leur niveau et leur type (passif, actif, action, réaction).
 - **Gains de niveau** : une petite carte par niveau (santé en rouge, chakra en bleu, total ; aux niveaux qui en donnent un, le dé bonus), plusieurs par ligne ;
   le dé n'est décrit qu'une fois, au-dessus.
-- **Couleurs des cadres** : la bordure et le bandeau du titre de chaque bloc, et le sommaire, prennent la couleur de la magie innée, en dégradé vers celle de
+- **Couleurs des cadres** : la bordure et le bandeau du titre de chaque bloc, le portrait et le médaillon du niveau prennent la couleur de la magie innée, en dégradé vers celle de
   la magie acquise (demande du propriétaire) ; sans magie innée, celle de la partie du guide. Seuls les cadres changent : caractéristiques, attributs,
   pastilles et curseurs gardent leurs couleurs.
 - **Niveau** : la **jauge d'XP** (`progressionXp`) ouvre le bloc de progression : l'XP se modifie dans son champ ou s'ajoute avec le bouton +, le niveau
@@ -164,7 +199,7 @@ bloquée), ni un don, une spécialité ou un sort qui en relève. Une fiche « v
 | Table | Contenu (cellules de la fiche) |
 | --- | --- |
 | `utilisateur`, `utilisateur_role` | Personne connectée (identifiant Discord, nom d'affichage) et ses rôles : connexion Discord prévue à la 1.0 (`feuille-de-route.md`) |
-| `personnage` | Nature (joueur ou prétiré), propriétaire, visibilité ; identité (F1, P1, F3), race (I2), ethnie (C40), magies innée et acquise (S2, S3), point de caractéristique d'une magie « au choix » (Potentiel Illimité), dieu choisi (S5), métier (C41), mode mono/bi-classe (BDD!K26), XP (S11), scores d'alignement L/C/B/M (L5:O5), bourse PP/RO/RF (I6, N6, T6), ambidextrie (AU8), classe de bouclier (AA26), valeurs courantes (santé, chakra, barrière, corruption, 4ᵉ barre), notes et événements, statut `brouillon` / `valide` / `archive` |
+| `personnage` | Nature (joueur ou prétiré), propriétaire, visibilité ; identité (F1, P1, F3), race (I2), ethnie (C40), magies innée et acquise (S2, S3), point de caractéristique d'une magie « au choix » (Potentiel Illimité), dieu choisi (S5), métier (C41), mode mono/bi-classe (BDD!K26), XP (S11), scores d'alignement L/C/B/M (L5:O5), bourse PP/RO/RF (I6, N6, T6), ambidextrie (AU8), classe de bouclier (AA26), valeurs courantes (santé, chakra, barrière, corruption, 4ᵉ barre), notes et événements, statut `brouillon` / `valide` / `archive` ; **portrait** et son cadrage (demande du propriétaire, migration 0031) |
 | `personnage_partage` | Utilisateurs à qui le propriétaire montre sa fiche |
 | `personnage_classe` | Classes 1 et 2 (A9, A11) et leur spécialité (choisie au niveau de classe 10) |
 | `personnage_caracteristique` | Valeur de base des six caractéristiques (E18…U19) et leurs **croix** (cases H18, I18… ; 0 à 2, décision R19 : 1 croix = −20 % à tout test de la caractéristique, 2 = plus utilisable) |
@@ -175,6 +210,7 @@ bloquée), ni un don, une spécialité ou un sort qui en relève. Une fiche « v
 | `personnage_sort` | Sorts de la liste (AA55:AY74) et leur NM |
 | `personnage_maitrise_arme` | Dés de maîtrise par famille d'armes (AA2:AV7) : 1 dé sans maîtrise, un de plus par point de maîtrise, 5 au plus ; la page fait choisir des points (4 au plus, constantes `maitrise_arme.*` de `regle_constante`) ; jamais sur ARME DE MONSTRES (R45, règle `maitrise_arme_exclue`) |
 | `personnage_arme`, `personnage_armure`, `personnage_bouclier_materiau`, `personnage_accessoire`, `personnage_inventaire` | Équipement : catalogue de la base (arme, matériau, améliorations, pièces élémentaires, effets d'accessoire et valeur tirée, case « Malédiction ») et sac |
+| `personnage_ceinture` | Les 3 emplacements de la ceinture (guide « Fiche de personnage : Accessoires et Ceinture ») : objet et quantité ; demande du propriétaire, migration 0031 |
 | `groupe`, `groupe_membre` | Groupe de jeu (one-shot ou campagne), ses membres (MJ ou joueur) et la fiche que chacun y a inscrite |
 
 ### Les vues

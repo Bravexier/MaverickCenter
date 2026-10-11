@@ -4,9 +4,10 @@
 // Script de page (navigateur) : il n'importe que des modules purs que seule cette page utilise (la version portable refuse un module partagé).
 import { libelleDuControle } from '../lib/fiche-controles.mjs';
 import { CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ficheVide, nouveauxRetraits, resumeDesRetraits } from '../lib/fiche-format.mjs';
+import { RAISONS } from '../lib/degats-texte.mjs';
 import { valeurAuNm } from '../lib/sort-maitrise.mjs';
 import {
-  ajusterValeurDuMoment, alignementDe, artisanatDe, attributsDe, bonusDuMetier, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
+  ajusterValeurDuMoment, alignementDe, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
   choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsAcquis, donsDeRace, donsValables,
   emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionAttendue, progressionXp,
@@ -195,6 +196,7 @@ function construireRaces() {
   const imposee = ethnieImposee(regles, fiche);
   const pourquoi = () => (ethniesDeLaRace(regles, fiche.race_id).length === 1 ? 'seule ethnie de la race' : 'seule ethnie de la magie innée');
   afficherChoix('race', [race && { nom: race.nom, couleur: race.couleur }]);
+  $('choix-ethnie').toggleAttribute('data-a-choisir', aChoisir('ethnie'));
   afficherChoix('ethnie', [ethnie && {
     nom: ethnie.nom, couleur: race?.couleur ?? '#8a7a66',
     refus: ethnie.race_id !== fiche.race_id ? 'ethnie d’une autre race' : ethnieCompatible(ethnie, fiche.magie_innee_id) ? null : 'liée à une autre magie innée',
@@ -247,6 +249,7 @@ function construireMagies() {
   })));
   const innee = trouver(regles.magies, fiche.magie_innee_id);
   $('bloc-carac-magie').hidden = !innee || Boolean(innee.caracteristique_id);
+  $('bloc-carac-magie').toggleAttribute('data-a-choisir', aChoisir('carac_magie'));
   const acquiseChoisie = trouver(regles.magies, fiche.magie_acquise_id);
   afficherChoix('magie-innee', [innee && {
     nom: innee.nom, couleur: innee.couleur, texte: innee.texte,
@@ -300,13 +303,8 @@ function construireResistances() {
 
 // ------------------------------------------------------------------ classes
 function construireClasses() {
-  reconstruire($('modes'), 'fixe', () => [['mono', 'Une classe'], ['bi', 'Deux classes']].map(([mode, texte]) => pastille({
-    texte, couleur: '#2e7d4f', choisie: () => fiche.mode_classe === mode,
-    surClic: () => {
-      fiche.mode_classe = mode;
-      changer();
-    },
-  })));
+  // une case « Bi-classé » (demande du propriétaire) : cochée, deux classes au niveau global ; décochée, une seule (la seconde au niveau 11, R2)
+  poser($('bi-classe'), fiche.mode_classe === 'bi');
   const groupes = [];
   for (const k of regles.classes) {
     let g = groupes.find((x) => x.key === k.groupe.key);
@@ -316,8 +314,8 @@ function construireClasses() {
   groupes.sort((a, b) => a.ordre - b.ordre);
   const imposee = classeImposee(regles, fiche);
   const magieImposante = imposee && trouver(regles.magies, imposee.magie_innee_id);
-  $('classe-imposee').hidden = !imposee;
-  $('classe-imposee').textContent = imposee ? `Classe imposée par la magie innée ${magieImposante.nom} : ${imposee.nom}, qui lui est réservée.` : '';
+  // l'explication d'une classe imposée : en infobulle sur sa pastille « · imposée » (demande du propriétaire), pas en texte sous les classes
+  const pourquoiImposee = (classe) => `Classe imposée par la magie innée ${trouver(regles.magies, classe.magie_innee_id)?.nom ?? ''} : ${classe.nom}, qui lui est réservée.`;
   for (const c of calcul.classes) {
     const rang = c.rang;
     $(`choix-classe-${rang}`).hidden = rang === 2 && c.niveau === 0 && !c.choix;
@@ -326,17 +324,19 @@ function construireClasses() {
     const choixDe = (r) => calcul.classes.find((x) => x.rang === r)?.choix ?? null;
     afficherChoix(`classe-${rang}`, [c.classe && {
       nom: c.classe.nom, couleur: c.classe.couleur, refus: refusClasse(regles, fiche, c.classe.id, rang),
-      verrou: rang === 1 && imposee?.id === c.classe.id ? `imposée par la magie innée ${magieImposante.nom}` : null,
+      verrou: rang === 1 && imposee?.id === c.classe.id && magieImposante ? pourquoiImposee(imposee) : null,
     }]);
     const specialite = c.classe?.specialites.find((s) => s.id === c.choix?.specialite_id);
     $(`choix-specialite-${rang}`).hidden = !c.classe?.specialites.length || $(`choix-classe-${rang}`).hidden;
     afficherChoix(`specialite-${rang}`, [specialite && {
       nom: specialite.nom, couleur: c.classe.couleur, refus: c.niveau < 10 ? 'au niveau de classe 10' : null,
     }], c.niveau >= 10 ? 'À choisir' : 'Au niveau de classe 10');
+    // un choix qui reste à faire est surligné (demande du propriétaire : « mettre en surbrillance le champ à saisir »)
+    $(`choix-specialite-${rang}`).toggleAttribute('data-a-choisir', aChoisir('specialite', rang));
     reconstruire($(`classe-${rang}`), 'fixe', () => groupes.map((g) => groupe(g.label, g.couleur, g.classes.map((k) => pastille({
       texte: k.nom, couleur: k.couleur, choisie: () => choixDe(rang)?.classe_id === k.id,
       refus: () => refusClasse(regles, fiche, k.id, rang),
-      verrou: () => (rang === 1 && classeImposee(regles, fiche)?.id === k.id ? `imposée par la magie innée ${trouver(regles.magies, fiche.magie_innee_id).nom}` : null),
+      verrou: () => (rang === 1 && classeImposee(regles, fiche)?.id === k.id ? pourquoiImposee(k) : null),
       surClic: () => {
         const deja = choixDe(rang)?.classe_id === k.id;
         retirer('classes', (l) => l.rang === rang);
@@ -474,8 +474,10 @@ function changerDeMetier(nouveau) {
 
 function construireMetier() {
   const bloc = $('metier-bloc');
-  bloc.hidden = !trouver(regles.metiers, fiche.metier_id);
-  reconstruire(bloc, `${fiche.metier_id}`, () => {
+  const choisi = trouver(regles.metiers, fiche.metier_id);
+  bloc.hidden = !choisi;
+  $('metier-titre').textContent = choisi ? `Métier : ${choisi.nom}` : 'Métier';
+  reconstruire($('metier-detail'), `${fiche.metier_id}`, () => {
     const { metier, rangs } = bonusDuMetier(regles, fiche);
     if (!metier) return [];
     const competence = (id) => trouver(regles.competences, id);
@@ -485,7 +487,7 @@ function construireMetier() {
     const nomDeCible = (o) => ATTRIBUTS[o.attribut] ?? competence(o.competence_id)?.nom ?? o.competence_id;
     const lignesDeBonus = rangs.map((b) => {
       if (b.aChoisir) {
-        return el('li', { class: 'metier-fiche__choix' }, el('strong', {}, `${valeur(b)} au choix `),
+        const li = el('li', { class: 'metier-fiche__choix' }, el('strong', {}, `${valeur(b)} au choix `),
           el('ul', { class: 'pastilles pastilles--etroites' }, b.options.filter((o) => o.competence_id).map((o) => {
             const k = couleurDe(o.competence_id);
             return pastille({
@@ -499,6 +501,8 @@ function construireMetier() {
               },
             });
           })));
+        synchro(() => li.toggleAttribute('data-a-choisir', !(fiche.metier_bonus ?? []).some((c) => entier(c.rang) === b.rang)));
+        return li;
       }
       if (b.retenue) return el('li', {}, el('strong', {}, `${valeur(b)} `), nomDeCible(b.retenue), b.retenue.competence_id ? el('small', { class: 'muted' }, ' (acquis)') : null);
       return el('li', { class: 'muted', title: 'Texte libre : sans effet automatique sur la fiche' }, b.texte);
@@ -516,7 +520,8 @@ function construireMetier() {
     });
     const objets = objetsDuMetier(regles, metier.id).map((r) => (r.options.length === 1
       ? el('li', {}, el('strong', {}, 'Objet de départ '), r.options[0].texte)
-      : el('li', { class: 'metier-fiche__choix' }, el('strong', {}, 'Objet de départ au choix '),
+      : (() => {
+        const li = el('li', { class: 'metier-fiche__choix' }, el('strong', {}, 'Objet de départ au choix '),
         el('ul', { class: 'pastilles pastilles--etroites' }, r.options.map((o, i) => pastille({
           texte: o.texte, couleur: '#8a7a66', choisie: () => objetChoisi(fiche, r) === i,
           surClic: () => {
@@ -524,7 +529,10 @@ function construireMetier() {
             versionInventaire += 1;
             changer();
           },
-        }))))));
+        }))));
+        synchro(() => li.toggleAttribute('data-a-choisir', objetChoisi(fiche, r) < 0));
+        return li;
+      })()));
     return el('ul', { class: 'fiche-resume metier-fiche', 'aria-label': `Ce que donne le métier ${metier.nom}` }, lignesDeBonus, artisanat, objets);
   });
 }
@@ -697,7 +705,7 @@ function construireDons() {
   reconstruire($('dons-race'), cleRace, () => {
     if (!fiche.race_id) return el('li', { class: 'fiche-aide' }, 'Choisissez une race : ses dons apparaîtront ici.');
     return [
-      race.base ? elementDeDon({ nom: 'Don de base', texte: race.base }) : null,
+      race.base ? elementDeDon(donDeBase(race.base)) : null,   // « Méditation » ou « Repos » plutôt que « Don de base » (demande du propriétaire)
       race.dons.map((d) => elementDeDon({ nom: d.nom ?? d.etiquette, texte: d.texte })),
       race.tableau ? elementDeDon({ nom: race.tableau.titre ?? 'Selon l’ethnie', texte: race.tableau.cellules.map((c) => `${c.libelle.replace(/\n/g, ' / ')} : ${c.valeur}`).join('\n') }) : null,
       race.ethnieAChoisir ? el('li', { class: 'fiche-aide' }, 'Choisissez l’ethnie : son don apparaîtra ici.') : null,
@@ -827,23 +835,111 @@ function construireAttributs() {
 }
 
 /**
- * La posture du moment (demande du propriétaire : « un sélecteur des 6 postures ») : une pastille par posture, dans sa couleur
- * (lib/caracteristiques-postures.mjs, par regles.json), ses effets du tableau de la fiche en infobulle et sous le sélecteur ; un second clic la retire.
+ * Les six postures (demande du propriétaire), chacune dans sa case avec ses effets du tableau de la fiche, toujours lisibles, avantages en vert et
+ * inconvénients en rouge, sur deux lignes : un clic choisit la posture du moment (personnage.posture_id), un second la retire. À droite, une fois débloqués
+ * (modeHyperDe : niveaux 2 et 10), les cases du Mode Hyper (effets de base, de la magie et de la race) et du Mode Hyper 100 % (demande du propriétaire),
+ * pour lecture.
  */
 function construirePostures() {
-  reconstruire($('postures'), 'fixe', () => regles.postures.map((p) => {
+  const hyper = modeHyperDe(regles, fiche);
+  const cleHyper = JSON.stringify(hyper && [hyper.debloque, hyper.cent.debloque, hyper.magies.map((m) => m.effet), hyper.race?.nom]);
+  // dans l'ordre des cases de la fiche (regles.ordre_postures) ; chaque effet en vert (avantage) ou en rouge (inconvénient : `inconvenients`, par rang)
+  const ordre = (p) => (regles.ordre_postures ?? []).indexOf(p.id);
+  reconstruire($('postures'), 'fixe', () => [...regles.postures].sort((a, b) => ordre(a) - ordre(b)).map((p) => {
     const bouton = el('button', {
-      type: 'button', class: 'posture', style: `--c: ${p.couleur}; --c-texte: ${p.texte}`, 'aria-pressed': 'false', title: p.effets.join('\n'),
+      type: 'button', class: 'posture-carte', style: `--c: ${p.couleur}; --c-texte: ${p.texte}`, 'aria-pressed': 'false',
       onclick: () => {
         fiche.posture_id = fiche.posture_id === p.id ? null : p.id;
         changer();
       },
-    }, p.nom);
+    }, el('span', { class: 'posture-carte__nom' }, p.nom), el('ul', { class: 'posture-carte__effets' }, p.effets.map((e, i) => {
+      const inconvenient = (p.inconvenients ?? []).includes(i + 1);
+      return el('li', { class: inconvenient ? 'est-inconvenient' : 'est-avantage' }, el('span', { class: 'visuellement-cache' }, inconvenient ? 'Inconvénient : ' : 'Avantage : '), e);
+    })));
     synchro(() => bouton.setAttribute('aria-pressed', String(fiche.posture_id === p.id)));
     return bouton;
   }));
-  const choisie = trouver(regles.postures, fiche.posture_id);
-  $('posture-effets').textContent = choisie ? choisie.effets.join(' · ') : 'Aucune posture choisie.';
+  const cartesHyper = $('postures-hyper');
+  cartesHyper.hidden = !hyper?.debloque;
+  reconstruire(cartesHyper, cleHyper, () => [
+    hyper?.debloque ? el('div', { class: 'posture-carte posture-carte--hyper' },
+      el('span', { class: 'posture-carte__nom' }, 'Mode Hyper', el('small', {}, ` · dès le niveau ${hyper.niveau}`)),
+      el('ul', { class: 'posture-carte__effets' }, hyper.effets.map((e) => el('li', {}, e)),
+        hyper.magies.map((m) => el('li', { class: 'posture-carte__magie', style: `--m: ${m.magie.couleur}` }, el('strong', {}, `${m.magie.nom} : `), m.effet)),
+        hyper.race ? el('li', { class: 'posture-carte__race' }, el('strong', {}, `${hyper.race.nom ?? 'Race'} : `), hyper.race.effet) : null)) : null,
+    hyper?.cent.debloque ? el('div', { class: 'posture-carte posture-carte--hyper posture-carte--cent' },
+      el('span', { class: 'posture-carte__nom' }, 'Mode Hyper 100 %', el('small', {}, ` · dès le niveau ${hyper.cent.niveau}`)),
+      el('ul', { class: 'posture-carte__effets' }, hyper.cent.effets.map((e) => el('li', {}, e)),
+        hyper.cent.suite ? el('li', { class: 'posture-carte__suite' }, `${hyper.cent.suite.charAt(0).toUpperCase()}${hyper.cent.suite.slice(1)}`) : null)) : null,
+  ]);
+}
+
+// ------------------------------------------------------------------ les choix qui restent à faire, en tiroir (demande du propriétaire)
+/** Le choix `nature` (et de la classe `rang`) reste à faire (choixEnAttente, refait à chaque rafraîchissement) : son champ est surligné. */
+const aChoisir = (nature, rang = null) => (calcul?.attente ?? []).some((c) => c.nature === nature && (rang === null || c.rang === rang));
+
+/**
+ * La spécialité de chaque classe qui y a droit (niveau de son don de spécialité atteint), aussi choisie dans le cadre « Choix » (demande du propriétaire :
+ * « le doubler dans le menu de choix ») : les mêmes pastilles que le menu de l'identité, surlignées tant qu'elle n'est pas choisie.
+ */
+function construireChoixSpecialites() {
+  const classes = calcul.classes.filter((c) => c.classe?.specialites.length && c.niveau >= niveauDeSpecialite(c.classe));
+  const bloc = $('choix-specialites');
+  bloc.hidden = classes.length === 0;
+  reconstruire(bloc, JSON.stringify(classes.map((c) => [c.rang, c.classe.id])), () => classes.map((c) => {
+    const choixDe = () => calcul.classes.find((x) => x.rang === c.rang)?.choix;
+    const cadre = groupe(`Spécialité · ${c.classe.nom}`, c.classe.couleur, c.classe.specialites.map((s) => pastille({
+      texte: s.nom, couleur: c.classe.couleur, detail: s.magique ? 'classe magique' : null,
+      choisie: () => choixDe()?.specialite_id === s.id,
+      surClic: () => {
+        const l = ligneDe('classes', (x) => x.rang === c.rang);
+        if (!l) return;
+        l.specialite_id = l.specialite_id === s.id ? null : s.id;
+        fiche.capacites = donsValables(regles, fiche);
+        changer();
+      },
+    })));
+    synchro(() => cadre.toggleAttribute('data-a-choisir', aChoisir('specialite', c.rang)));
+    return cadre;
+  }));
+}
+
+/**
+ * Tant qu'il reste des choix à faire (choixEnAttente), le panneau « Choix » de la zone IV sort en tiroir en bas de l'écran, par-dessus la fiche, avec la
+ * liste de ce qui manque ; il ne se range que quand la zone IV est à l'écran (son onglet « Choix » compte alors ce qui manque). « Réduire » le replie sur sa
+ * poignée (le survol le rouvre), « Aller aux choix » descend à la zone IV et ouvre l'onglet.
+ */
+let zoneParametresVisible = false;
+let tiroirReduit = false;
+function construireChoixEnAttente() {
+  const attente = calcul?.attente ?? choixEnAttente(regles, fiche);
+  const panneau = $('etape-choix');
+  const compte = $('choix-compte');
+  compte.hidden = attente.length === 0;
+  compte.textContent = String(attente.length);
+  compte.title = attente.length ? `${attente.length} choix à faire` : '';
+  $('choix-tete').hidden = attente.length === 0;
+  $('choix-titre').textContent = attente.length > 1 ? `${attente.length} choix à faire` : 'Un choix à faire';
+  reconstruire($('choix-attente'), JSON.stringify(attente), () => attente.map((c) => el('li', { dataset: { nature: c.nature } },
+    c.nature === 'ethnie'
+      ? el('button', { type: 'button', class: 'tiroir__lien', title: 'Ouvrir le menu de l’ethnie', onclick: (ev) => { ev.stopPropagation(); ouvrirMenu('choix-ethnie'); } }, c.libelle)
+      : c.libelle)));
+  const tiroir = attente.length > 0 && !zoneParametresVisible;
+  panneau.classList.toggle('est-tiroir', tiroir);
+  panneau.toggleAttribute('data-reduit', tiroir && tiroirReduit);
+  $('choix-aller').hidden = !tiroir;
+  $('choix-reduire').hidden = !tiroir;
+  $('choix-reduire').textContent = tiroirReduit ? 'Déplier' : 'Réduire';
+  $('choix-reduire').setAttribute('aria-expanded', String(!tiroirReduit));
+}
+
+/** Ouvre un menu déroulant de la fiche (la spécialité d'une classe, depuis le tiroir des choix) et l'amène à l'écran. */
+function ouvrirMenu(id) {
+  const menu = $(id);
+  if (!menu || menu.hidden) return;
+  menu.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  menu.open = true;
+  menu.querySelector('summary')?.focus({ preventScroll: true });
 }
 
 // ------------------------------------------------------------------ saisie d'un curseur (demande du propriétaire)
@@ -960,11 +1056,17 @@ function construireProgression() {
             });
             return r;
           };
-          return el('fieldset', { class: 'dons-groupe' },
+          const cadre = el('fieldset', { class: 'dons-groupe' },
             el('legend', {}, `Niveau de classe ${g.niveau}${specialite ? ` · ${specialite.nom}` : ''} : un seul au choix`),
             el('div', { class: 'dons-options' },
               el('label', {}, radio(null), 'Pas encore choisi'),
               g.options.map((o) => el('label', {}, radio(o), o.nom, el('small', { class: 'muted' }, ` (${o.type})`)))));
+          // un groupe encore sans choix est surligné (demande du propriétaire)
+          synchro(() => {
+            const choisis = new Set((fiche.capacites ?? []).map((c) => c.capacite_id));
+            cadre.toggleAttribute('data-a-choisir', !g.options.some((o) => choisis.has(o.id)));
+          });
+          return cadre;
         })));
   });
 }
@@ -1004,17 +1106,47 @@ function construireEquipement() {
       details.push(select);
       return label;
     };
+    // les dégâts de l'arme, « XDY+Z » (degatsDArme, demande du propriétaire) : les dés de sa maîtrise et son dé, plus les bonus de l'équipement et des dons
+    // passifs qui la visent, le détail en infobulle (avec les bonus de dons qui ne se comptent pas) ; avec deux armes de mêlée, une étoile à côté dit le
+    // malus d'attaque de cette main (attaqueADeuxArmes, décision du propriétaire : « −10 % si ambidextre » ; l'arme 1 est l'arme principale)
+    const des = el('strong', { class: 'objet__des' });
+    const etoile = el('span', { class: 'objet__etoile', tabindex: '0', role: 'img' }, '★');
+    const resume = el('span', { class: 'objet__resume' });
     synchro(() => {
-      poser(effet, l()?.effet_en_plus ?? '');
-      for (const d of [effet, ...details]) d.disabled = !l();
+      const x = l();
+      poser(effet, x?.effet_en_plus ?? '');
+      for (const d of [effet, ...details]) d.disabled = !x;
+      const d = degatsDArme(regles, fiche, rang);
+      des.hidden = !d;
+      if (d) {
+        des.textContent = d.texte;
+        des.title = [
+          `${d.notation} : ${d.nombre} dé${d.nombre > 1 ? 's' : ''} (maîtrise) de ${d.de ?? '—'}`,
+          ...d.bonus.map((b) => `+${b.valeur} ${b.nom}`),
+          ...(d.nonComptes.length ? ['Non comptés :', ...d.nonComptes.map((n) => `+${n.valeur} ${n.nom} (${n.raison === 'mains' ? 'arme à une main non écrite' : RAISONS[n.raison]})`)] : []),
+        ].join('\n');
+      }
+      const deux = attaqueADeuxArmes(regles, fiche);
+      const main = deux?.mains[rang - 1];
+      etoile.hidden = !main;
+      if (main) {
+        const texte = `−${String(main.malus).replace('.', ',')} % si ambidextre`;
+        const pourquoi = [main.dague ? 'dague' : null, deux.bimane ? 'Bimane' : null].filter(Boolean);
+        etoile.title = `${texte} (main ${main.main}${pourquoi.length ? ` ; moitié : ${pourquoi.join(', ')}` : ''})${deux.aPreciser.length ? `\nÀ appliquer à la main : ${deux.aPreciser.join(', ')}` : ''}`;
+        etoile.setAttribute('aria-label', texte);
+      }
+      const choisis = [trouver(regles.materiaux_armes, x?.materiau_id)?.nom, x?.amelioration_id && 'amélioration', trouver(regles.armes_elementaires, x?.arme_elementaire_id)?.nom, x?.effet_en_plus && 'effet en plus'].filter(Boolean);
+      resume.textContent = choisis.length ? choisis.join(' · ') : 'composition, amélioration, élément…';
     });
-    return el('div', { class: 'objet' }, el('h4', {}, `Arme ${rang}`), el('div', { class: 'fiche-champs' },
-      el('label', { class: 'fiche-champ' }, el('span', {}, 'Arme'), selecteur(() => l()?.arme_id, optionsGroupees(regles.armes, (a) => familles.get(a.famille_id), (a) => a.nom), poserChamp('arme_id'), { vide: 'Aucune', etiquette: `Arme ${rang}` })),
+    // à portée de main (demande du propriétaire) : l'arme et ses dés ; composition, améliorations, élément et effet en plus repliés
+    return el('div', { class: 'objet' }, el('div', { class: 'objet__tete' }, el('h4', {}, `Arme ${rang}`), el('span', { class: 'objet__degats' }, des, etoile)),
+      el('label', { class: 'fiche-champ' }, el('span', { class: 'visuellement-cache' }, 'Arme'), selecteur(() => l()?.arme_id, optionsGroupees(regles.armes, (a) => familles.get(a.famille_id), (a) => a.nom), poserChamp('arme_id'), { vide: 'Aucune', etiquette: `Arme ${rang}` })),
+      el('details', { class: 'objet__details' }, el('summary', {}, resume), el('div', { class: 'fiche-champs' },
       champ('Composition', selecteur(() => l()?.materiau_id, regles.materiaux_armes.map((m) => option(m.id, m.nom)), poserChamp('materiau_id'), { etiquette: `Arme ${rang} : composition` })),
       champ('Amélioration', selecteur(() => l()?.amelioration_id, ameliorations('arme'), poserChamp('amelioration_id'), { etiquette: `Arme ${rang} : amélioration` })),
       champ('Élément', selecteur(() => l()?.arme_elementaire_id, regles.armes_elementaires.map((a) => option(a.id, a.nom)), poserChamp('arme_elementaire_id'), { etiquette: `Arme ${rang} : élément` })),
       champ('Amélioration de l’élément', selecteur(() => l()?.amelioration_elementaire_id, ameliorations('arme_elementaire'), poserChamp('amelioration_elementaire_id'), { etiquette: `Arme ${rang} : amélioration de l’élément` })),
-      el('label', { class: 'fiche-champ' }, el('span', {}, 'Effet en plus'), effet)));
+      el('label', { class: 'fiche-champ' }, el('span', {}, 'Effet en plus'), effet))));
   }));
 
   reconstruire($('armures'), 'fixe', () => [
@@ -1113,12 +1245,203 @@ function construireEquipement() {
   ]);
 }
 
+// ------------------------------------------------------------------ portrait et ceinture (demandes du propriétaire)
+/**
+ * Le portrait (le logo en attendant une image, recadrable une fois choisie : personnage.portrait et son cadrage, migration 0031) et les 3 emplacements
+ * de la ceinture (objets rapides, guide « Fiche de personnage : Accessoires et Ceinture » : personnage_ceinture), enregistrés avec la fiche.
+ */
+const PIXELS_MAX_PORTRAIT = 600_000;   // l'image gardée : 600 000 pixels au plus (assez pour recadrer)…
+const LONGUEUR_MAX_PORTRAIT = 690_000;   // … et sa data URL sous la limite de la base (700 000 caractères : data/schema.sql, personnage.portrait)
+const PLACES_DE_CEINTURE = 3;
+const COTE_VIGNETTE = 384;
+/** La vignette affichée (le carré cadré), refaite quand l'image ou son cadrage changent. */
+let vignette = { cle: null };
+
+const chargerImage = (source) => new Promise((ok, ko) => {
+  const i = new Image();
+  i.onload = () => ok(i);
+  i.onerror = ko;
+  i.src = source;
+});
+
+/** Le carré cadré d'une image (cadrage : centre x, y de 0 à 1, zoom de 1 à 4 ; le côté du carré est le petit côté de l'image divisé par le zoom). */
+async function dessinerVignette(source, { x, y, zoom }) {
+  const img = await chargerImage(source);
+  const cote = Math.min(img.naturalWidth, img.naturalHeight) / zoom;
+  const toile = el('canvas', { width: COTE_VIGNETTE, height: COTE_VIGNETTE });
+  toile.getContext('2d').drawImage(img, x * img.naturalWidth - cote / 2, y * img.naturalHeight - cote / 2, cote, cote, 0, 0, COTE_VIGNETTE, COTE_VIGNETTE);
+  return toile.toDataURL('image/jpeg', 0.9);
+}
+
+function construirePortrait() {
+  const figure = $('portrait');
+  const image = $('portrait-image');
+  const p = fiche.portrait;
+  figure.toggleAttribute('data-vide', !p);
+  image.alt = p ? `Portrait de ${fiche.nom || 'ce personnage'}` : 'Portrait du personnage (logo en attendant une image)';
+  $('portrait-choisir').textContent = p ? 'Changer' : 'Choisir une image';
+  $('portrait-recadrer').hidden = !p;
+  $('portrait-retirer').hidden = !p;
+  if (!p) {
+    vignette = { cle: null };
+    if (image.getAttribute('src') !== image.dataset.defaut) image.src = image.dataset.defaut;
+    return;
+  }
+  const cadrage = cadrageDuPortrait();
+  const cle = `${p.length}:${p.slice(-48)}:${cadrage.x}:${cadrage.y}:${cadrage.zoom}`;
+  if (vignette.cle === cle) return;
+  vignette = { cle };
+  dessinerVignette(p, cadrage).then((url) => { if (vignette.cle === cle) image.src = url; }).catch(() => { image.src = image.dataset.defaut; });
+}
+
+/** Le cadrage enregistré (centré, sans zoom quand la fiche n'en a pas). */
+const cadrageDuPortrait = () => ({ x: fiche.portrait_x ?? 0.5, y: fiche.portrait_y ?? 0.5, zoom: fiche.portrait_zoom ?? 1 });
+
+/**
+ * L'image choisie, ramenée à PIXELS_MAX_PORTRAIT pixels au plus, en data URL WebP (JPEG si le navigateur ne sait pas écrire le WebP), qualité puis taille
+ * baissées jusqu'à tenir sous LONGUEUR_MAX_PORTRAIT caractères.
+ */
+async function reduireImage(fichier) {
+  const url = URL.createObjectURL(fichier);
+  try {
+    const img = await chargerImage(url);
+    let echelle = Math.min(1, Math.sqrt(PIXELS_MAX_PORTRAIT / (img.naturalWidth * img.naturalHeight)));
+    for (let essai = 0; essai < 6; essai += 1, echelle *= 0.75) {
+      const toile = el('canvas', { width: Math.max(1, Math.round(img.naturalWidth * echelle)), height: Math.max(1, Math.round(img.naturalHeight * echelle)) });
+      toile.getContext('2d').drawImage(img, 0, 0, toile.width, toile.height);
+      for (const qualite of [0.85, 0.7, 0.55]) {
+        const webp = toile.toDataURL('image/webp', qualite);
+        const donnees = webp.startsWith('data:image/webp') ? webp : toile.toDataURL('image/jpeg', qualite);
+        if (donnees.length <= LONGUEUR_MAX_PORTRAIT) return donnees;
+      }
+    }
+    throw new Error('image trop lourde');
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/**
+ * Le recadrage : l'image couvre un cadre carré ; elle se déplace au doigt, à la souris ou aux flèches, le curseur ou la molette zoome (1 à 4). Le cadrage
+ * gardé est le centre du cadre dans l'image (x, y entre 0 et 1) et le zoom : l'image d'origine reste, on peut recadrer plus tard.
+ */
+function ouvrirRecadrage(source, cadrage = { x: 0.5, y: 0.5, zoom: 1 }) {
+  const dialogue = $('recadrage');
+  const vue = $('recadrage-vue');
+  const image = $('recadrage-image');
+  const zoom = $('recadrage-zoom');
+  const etat = { ...cadrage };
+  let largeur = 0;
+  let hauteur = 0;
+  const echelle = () => (vue.clientWidth / Math.min(largeur, hauteur)) * etat.zoom;
+  const borner01 = () => {
+    const s = echelle();
+    const demiX = vue.clientWidth / (2 * largeur * s);
+    const demiY = vue.clientWidth / (2 * hauteur * s);
+    etat.x = Math.min(1 - demiX, Math.max(demiX, etat.x));
+    etat.y = Math.min(1 - demiY, Math.max(demiY, etat.y));
+  };
+  const dessiner = () => {
+    if (!largeur) return;
+    borner01();
+    const s = echelle();
+    const v = vue.clientWidth;
+    image.style.transform = `translate(${v / 2 - etat.x * largeur * s}px, ${v / 2 - etat.y * hauteur * s}px) scale(${s})`;
+    zoom.value = String(etat.zoom);
+  };
+  image.onload = () => {
+    largeur = image.naturalWidth;
+    hauteur = image.naturalHeight;
+    dessiner();
+  };
+  image.src = source;
+  let glisse = null;
+  vue.onpointerdown = (ev) => {
+    glisse = { x: ev.clientX, y: ev.clientY };
+    vue.setPointerCapture(ev.pointerId);
+  };
+  vue.onpointermove = (ev) => {
+    if (!glisse || !largeur) return;
+    const s = echelle();
+    etat.x -= (ev.clientX - glisse.x) / (largeur * s);
+    etat.y -= (ev.clientY - glisse.y) / (hauteur * s);
+    glisse = { x: ev.clientX, y: ev.clientY };
+    dessiner();
+  };
+  vue.onpointerup = () => { glisse = null; };
+  vue.onpointercancel = vue.onpointerup;
+  vue.onwheel = (ev) => {
+    ev.preventDefault();
+    etat.zoom = Math.min(4, Math.max(1, etat.zoom * Math.exp(-ev.deltaY * 0.0015)));
+    dessiner();
+  };
+  vue.onkeydown = (ev) => {
+    const pas = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[ev.key];
+    if (!pas || !largeur) return;
+    ev.preventDefault();
+    const s = echelle();
+    etat.x += (pas[0] * 12) / (largeur * s);
+    etat.y += (pas[1] * 12) / (hauteur * s);
+    dessiner();
+  };
+  zoom.oninput = () => {
+    etat.zoom = Number(zoom.value);
+    dessiner();
+  };
+  $('recadrage-annuler').onclick = () => dialogue.close();
+  $('recadrage-formulaire').onsubmit = (ev) => {
+    ev.preventDefault();
+    if (!largeur) return;
+    const arrondi = (v) => Math.round(v * 10000) / 10000;
+    Object.assign(fiche, { portrait: source, portrait_x: arrondi(etat.x), portrait_y: arrondi(etat.y), portrait_zoom: arrondi(etat.zoom) });
+    dialogue.close();
+    changer();
+  };
+  dialogue.showModal();
+  vue.focus();
+  dessiner();
+}
+
+/** Les 3 emplacements de la ceinture : un objet (au catalogue des ressources ou non) et sa quantité (le nombre de flèches d'un carquois…). */
+function construireCeinture() {
+  reconstruire($('ceinture'), 'fixe', () => Array.from({ length: PLACES_DE_CEINTURE }, (_, i) => {
+    const rang = i + 1;
+    const l = () => ligneDe('ceinture', (x) => entier(x.rang) === rang);
+    const ecrire = (cle, valeur) => {
+      const x = ligne('ceinture', (y) => entier(y.rang) === rang, () => ({ rang, nom: '', quantite: 1, ressource_id: null }));
+      x[cle] = valeur;
+      if (cle === 'nom') x.ressource_id = regles.ressources.find((r) => r.nom === valeur)?.id ?? null;
+      if (!String(x.nom ?? '').trim()) retirer('ceinture', (y) => y === x);
+      changer();
+    };
+    const nom = el('input', { list: 'liste-ressources', 'aria-label': `Ceinture, emplacement ${rang} : objet`, placeholder: 'Libre', oninput: (ev) => ecrire('nom', ev.target.value) });
+    const quantite = el('input', { type: 'number', min: '1', step: '1', 'aria-label': `Ceinture, emplacement ${rang} : quantité`, title: 'Quantité (flèches d’un carquois…)', oninput: (ev) => ecrire('quantite', entier(ev.target.value, 1)) });
+    const vider = el('button', { type: 'button', class: 'retirer', 'aria-label': `Vider l’emplacement ${rang} de la ceinture`, title: 'Vider', onclick: () => { retirer('ceinture', (y) => entier(y.rang) === rang); changer(); } }, '✕');
+    const li = el('li', { class: 'ceinture__emplacement' }, el('span', { class: 'ceinture__numero', 'aria-hidden': 'true' }, String(rang)), nom, quantite, vider);
+    synchro(() => {
+      const x = l();
+      if (document.activeElement !== nom) poser(nom, x?.nom ?? '');
+      if (document.activeElement !== quantite) poser(quantite, x ? x.quantite : '');
+      quantite.disabled = !x;
+      vider.hidden = !x;
+      li.toggleAttribute('data-plein', Boolean(x));
+    });
+    return li;
+  }));
+}
+
 // ------------------------------------------------------------------ contrôles rendus par le service
 /** Un détail de contrôle (« classes/guerrier », « force = 5 », « a / b ») avec les noms des règles à la place des identifiants. */
 const avecNoms = (texte) => String(texte).split(/( \/ | : | = |« | »)/).map((x) => noms.get(x) ?? x).join('');
 
 function construireControles() {
   const liste = $('controles');
+  // l'onglet « Contrôle » de la zone IV compte les règles à revoir (vert quand il n'y en a aucune)
+  const compte = $('controles-compte');
+  compte.hidden = controles === null;
+  compte.textContent = controles === null ? '' : controles.length ? String(controles.length) : '✓';
+  compte.toggleAttribute('data-ok', controles !== null && controles.length === 0);
+  compte.title = controles === null ? '' : controles.length ? `${controles.length} règle${controles.length > 1 ? 's' : ''} à revoir` : 'Aucune règle enfreinte';
   if (controles === null) {
     delete liste.dataset.vide;
     liste.replaceChildren(el('li', {}, id ? 'Enregistrez pour revoir le contrôle.' : 'La fiche n’a pas encore été enregistrée.'));
@@ -1139,6 +1462,7 @@ function construireXp() {
   const p = progressionXp(regles, fiche.xp);
   $('xp-niveau').textContent = `Niveau ${p.niveau}`;
   $('fiche-niveau').textContent = `Niveau ${p.niveau}`;
+  $('identite-niveau').textContent = String(p.niveau);   // le niveau seul dans l'identité (demande du propriétaire)
   $('xp-objectif').textContent = p.suivant === null ? 'XP · niveau maximal' : `/ ${p.suivant} XP`;
   const jauge = $('xp-jauge');
   jauge.setAttribute('aria-valuemin', String(p.debut));
@@ -1172,6 +1496,7 @@ function rafraichir() {
     attributs: attributsDe(regles, fiche),
   };
   calcul.jauges = valeursDuMoment(regles, fiche, calcul.attributs);
+  calcul.attente = choixEnAttente(regles, fiche);
   for (const champ of racine.querySelectorAll('[data-champ]')) poser(champ, fiche[champ.dataset.champ]);
   // cadres des blocs dans la couleur de la magie innée, en dégradé vers celle de la magie acquise (demande du propriétaire ; fiche.css, « cadres »)
   const innee = trouver(regles.magies, fiche.magie_innee_id);
@@ -1189,6 +1514,7 @@ function rafraichir() {
   construireMagies();
   construireResistances();
   construireClasses();
+  construireChoixSpecialites();
   construireCaracteristiques();
   construireMaitrises();
   construireSorts();
@@ -1197,9 +1523,12 @@ function rafraichir() {
   construirePostures();
   construireProgression();
   construireEquipement();
+  construireCeinture();
+  construirePortrait();
   for (const liste of synchros.values()) for (const s of liste) s();
   construireControles();
   construireRetraits();
+  construireChoixEnAttente();
   $('fiche-enregistrer').disabled = !modifie && id !== null;
   $('fiche-supprimer').hidden = id === null;
   if (modifie) message(serviceJoignable ? 'Modifications non enregistrées.' : 'Service indisponible : exportez la fiche pour ne rien perdre.', 'attente');
@@ -1218,6 +1547,8 @@ function aEnvoyer() {
   f.bouclier_materiaux = (f.bouclier_materiaux ?? []).filter((m) => m.materiau_id).map((m, i) => ({ ...m, rang: i + 1 }));
   f.inventaire = (f.inventaire ?? []).filter((o) => o.nom && o.nom.trim()).map((o, i) => ({ ...o, nom: o.nom.trim(), rang: i + 1 }));
   f.accessoires = (f.accessoires ?? []).filter((a) => a.accessoire_effet_id || a.texte);
+  // la ceinture garde ses emplacements (rang 1 à 3) : seuls les emplacements vides partent
+  f.ceinture = (f.ceinture ?? []).filter((o) => o.nom && o.nom.trim()).map((o) => ({ ...o, nom: o.nom.trim() }));
   return f;
 }
 
@@ -1243,7 +1574,7 @@ async function enregistrer() {
     if (reponse.ok) {
       appliquer(donnees);
       history.replaceState(null, '', `?id=${encodeURIComponent(id)}`);
-      message(controles.length ? `Enregistré : ${controles.length} règle${controles.length > 1 ? 's' : ''} à revoir (en bas de la fiche).` : 'Enregistré ✓', 'ok');
+      message(controles.length ? `Enregistré : ${controles.length} règle${controles.length > 1 ? 's' : ''} à revoir (onglet « Contrôle »).` : 'Enregistré ✓', 'ok');
       return;
     }
     if (reponse.status === 409 && donnees.personnage) {
@@ -1461,6 +1792,46 @@ async function demarrer() {
       changer();
     }
     montrerAjoutXp(false);
+  });
+  // portrait : choisir une image ouvre le recadrage ; « Recadrer » rouvre l'image d'origine avec son cadrage
+  const fichierPortrait = $('portrait-fichier');
+  fichierPortrait.addEventListener('change', async () => {
+    const f = fichierPortrait.files?.[0];
+    fichierPortrait.value = '';
+    if (!f) return;
+    try {
+      ouvrirRecadrage(await reduireImage(f));
+    } catch {
+      message('Cette image n’a pas pu être lue (ou reste trop lourde une fois réduite).', 'erreur');
+    }
+  });
+  $('portrait-choisir').addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter' || ev.key === ' ') {
+      ev.preventDefault();
+      fichierPortrait.click();
+    }
+  });
+  $('portrait-recadrer').addEventListener('click', () => fiche.portrait && ouvrirRecadrage(fiche.portrait, cadrageDuPortrait()));
+  $('portrait-retirer').addEventListener('click', () => {
+    Object.assign(fiche, { portrait: null, portrait_x: null, portrait_y: null, portrait_zoom: null });
+    changer();
+  });
+  $('bi-classe').addEventListener('change', (ev) => {
+    fiche.mode_classe = ev.target.checked ? 'bi' : 'mono';
+    changer();
+  });
+  // le tiroir des choix : il se range quand la zone IV est à l'écran ; « Aller aux choix » y descend et ouvre l'onglet « Choix »
+  new IntersectionObserver(([entree]) => {
+    zoneParametresVisible = entree.isIntersecting;
+    construireChoixEnAttente();
+  }, { rootMargin: '0px 0px -15% 0px' }).observe(racine.querySelector('.parametres'));
+  $('choix-aller').addEventListener('click', () => {
+    $('onglet-choix').click();
+    $('zone-parametres').scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  });
+  $('choix-reduire').addEventListener('click', () => {
+    tiroirReduit = !tiroirReduit;
+    construireChoixEnAttente();
   });
   $('bouton-ajout-objet').addEventListener('click', () => {
     fiche.inventaire.push({ rang: fiche.inventaire.length + 1, nom: '', quantite: 1, ressource_id: null });
