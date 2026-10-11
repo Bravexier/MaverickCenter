@@ -20,6 +20,9 @@ puces « - » conservés) ; un nombre n'est typé que s'il est écrit en chiffre
 mêmes qui l'ont écrite (tools/sheets/races.py : md_text, labeled, render_ethnies…) et doit redonner la page caractère pour caractère ; sinon le script
 s'arrête sans rien écrire. Les sections tirées de la fiche (AP, AM, « Divers », restrictions, sous-races, matrices, écarts) ne sont pas relues : leurs
 valeurs sont déjà dans les tables race, ethnie, race_classe, race_magie.
+
+Une race créée depuis le site de dev (race_onglet.source_ref « Site de dev › … », serveur/edition.mjs) n'a pas d'onglet dans le classeur : ni extraite, ni
+vérifiée (le site est la source des données qu'il crée, décision du propriétaire).
 """
 import importlib.util
 import os
@@ -399,8 +402,20 @@ def base(rows=ROWS, schema_ancien=None):
         os.unlink(tmp.name)
 
 
+SITE_DE_DEV = 'Site de dev › '
+
+
+def races_du_site(db):
+    """Races créées depuis le site de dev : leur onglet (race_onglet) cite le site, pas le classeur."""
+    if not db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'race_onglet'").fetchone():
+        return set()
+    return {r[0] for r in db.execute('SELECT race_id FROM race_onglet WHERE substr(source_ref, 1, ?) = ?', (len(SITE_DE_DEV), SITE_DE_DEV))}
+
+
 def extraire(db):
-    races = db.execute("SELECT r.id, r.nom, r.source_ref, p.corps_md FROM race r JOIN page p ON p.id = r.id ORDER BY r.id").fetchall()
+    du_site = races_du_site(db)
+    races = [r for r in db.execute("SELECT r.id, r.nom, r.source_ref, p.corps_md FROM race r JOIN page p ON p.id = r.id ORDER BY r.id").fetchall()
+             if r[0] not in du_site]
     onglets = {}
     for page_id, texte in db.execute(
             "SELECT ps.page_id, s.texte FROM page_source ps JOIN source s ON s.id = ps.source_id WHERE ps.page_id LIKE 'races/%'"):
@@ -633,10 +648,15 @@ def verifier(db, t):
     """Les tables de la base (déjà migrée) contiennent exactement les lignes de l'extraction."""
     ecarts = []
     filtres = {'mode_hyper_effet': "version = 'onglet_race'", 'page_entite': "entite_table = 'race_don'", 'note_cellule': "entite_table = 'race_don'"}
+    du_site = races_du_site(db)
+    # la race d'une ligne : race_id, ou la page d'un don (page_entite), ou le préfixe de l'id du don (note_cellule)
+    race_de = {'page_entite': lambda r: r['page_id'], 'note_cellule': lambda r: r['entite_id'].split('#')[0]}
     for table, attendues in t.items():
         cols = T.colonnes(db, table)
         where = filtres.get(table, '1')
-        presentes = sorted(tuple(r) for r in db.execute('SELECT %s FROM "%s" WHERE %s' % (', '.join('"%s"' % c for c in cols), table, where)))
+        race = race_de.get(table, lambda r: r.get('race_id'))
+        presentes = sorted(tuple(r) for r in db.execute('SELECT %s FROM "%s" WHERE %s' % (', '.join('"%s"' % c for c in cols), table, where))
+                           if race(dict(zip(cols, r))) not in du_site)
         voulues = sorted(tuple(r[c] for c in cols) for r in attendues)
         if presentes != voulues:
             ecarts.append('%s : %d ligne(s) en base, %d attendue(s), %d différente(s)' % (
