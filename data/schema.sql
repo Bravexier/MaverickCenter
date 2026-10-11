@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 29;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 30;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -2219,7 +2219,9 @@ CREATE TABLE arme_famille (
   ordre         INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),   -- rang du bandeau de gauche à droite
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
-  remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  remarque TEXT,  -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  maitrisable   INTEGER NOT NULL CHECK (maitrisable IN (0, 1))   -- 1 = une maîtrise d'arme peut s'y mettre (personnage_maitrise_arme) ; 0 = ARME DE MONSTRES :
+                                                    -- des armes exclusives aux monstres, pas de maîtrise (décision R45 du propriétaire, migration 0030)
 ) STRICT;
 
 -- Types d'armes = table BDD!AD2:AF14 de la fiche automatique (13 types) : dé de dégâts et portée par défaut. C'est le « type » que la
@@ -3752,7 +3754,8 @@ CREATE TABLE personnage_sort (
 CREATE INDEX personnage_sort_sort ON personnage_sort (sort_id);
 
 -- « Maîtrise d'armes » (AA2:AV7) : nombre de dés (1d à 5d) par famille d'armes. Famille absente = pas de maîtrise (1d). Chaque point de maîtrise
--- ajoute un dé : 4 points au plus (regle_constante 'maitrise_arme.des_sans_maitrise' et 'maitrise_arme.des_max', migration 0016).
+-- ajoute un dé : 4 points au plus (regle_constante 'maitrise_arme.des_sans_maitrise' et 'maitrise_arme.des_max', migration 0016) ; jamais sur
+-- ARME DE MONSTRES (arme_famille.maitrisable = 0, décision R45 : règle 'maitrise_arme_exclue' de v_personnage_controle).
 CREATE TABLE personnage_maitrise_arme (
   personnage_id   TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
   arme_famille_id TEXT    NOT NULL REFERENCES arme_famille(id),
@@ -3895,7 +3898,7 @@ CREATE VIEW v_groupe_controle AS
   WHERE p.nature = 'joueur' AND p.proprietaire_id <> m.utilisateur_id;
 
 -- Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi.
--- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33) ; ce qui
+-- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45) ; ce qui
 -- demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Une fiche 'brouillon' peut
 -- avoir des lignes, une fiche 'valide' non (test).
 CREATE VIEW v_personnage_controle AS
@@ -4118,6 +4121,11 @@ CREATE VIEW v_personnage_controle AS
   LEFT JOIN bouclier_classe bc ON bc.id = p.bouclier_classe_id
   GROUP BY p.id
   HAVING SUM(m.quantite) > COALESCE(MAX(bc.classe), 0)
+  UNION ALL
+  -- Maîtrise d'arme : pas sur une famille qui n'en a pas (arme_famille.maitrisable = 0 : ARME DE MONSTRES, armes exclusives aux monstres, décision R45)
+  SELECT pm.personnage_id, 'maitrise_arme_exclue', pm.arme_famille_id
+  FROM personnage_maitrise_arme pm JOIN arme_famille f ON f.id = pm.arme_famille_id
+  WHERE f.maitrisable = 0
   UNION ALL
   -- Équipement : chaque amélioration vise le bon genre d'objet
   SELECT pa.personnage_id, 'amelioration_cible', pa.rang || ' : ' || ae.id
