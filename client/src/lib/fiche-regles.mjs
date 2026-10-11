@@ -5,7 +5,7 @@
 // Node seulement (la base est ouverte par lib/donnees.mjs).
 import { groupesDeChoix } from './classe-dons.mjs';
 import { ditClasseMagique } from './classe-magique.mjs';
-import { couleurDeCaracteristique } from './caracteristiques-postures.mjs';
+import { couleurDeCaracteristique, couleurDePosture } from './caracteristiques-postures.mjs';
 import { CLASS_GROUPS, classCategory, classColor } from './class-groups.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS, raceKind } from './race-kinds.mjs';
@@ -55,15 +55,34 @@ export function chargerReglesDeFiche(db) {
   const initiative = lignes(db, 'SELECT agilite, bonus, bonus_brut, note FROM initiative_agilite ORDER BY agilite');
 
   // Races : valeurs de départ de l'onglet de la race (décision R13), AP/AM de la race ; classes accessibles (matrice, R8) ; magies innées
-  // accessibles (liste de l'onglet quand elle existe, R11, sinon la matrice) ; bornes des caractéristiques.
+  // accessibles (liste de l'onglet quand elle existe, R11, sinon la matrice) ; bornes des caractéristiques ; dons de l'onglet (race_don, un par ethnie
+  // ou un seul) et son tableau de dons (race_don_tableau_* : une ligne par ethnie), pour le rappel des dons de la fiche (demande du propriétaire).
   const entrees = entreesDesPages(db);
   const accesClasses = parCle(lignes(db, 'SELECT race_id, classe_id FROM race_classe WHERE accessible = 1 ORDER BY race_id, ordre'), 'race_id', (r) => r.classe_id);
   const magiesOnglet = parCle(lignes(db, 'SELECT race_id, magie_id FROM race_magie_onglet ORDER BY race_id, rang'), 'race_id', (r) => r.magie_id);
   const magiesMatrice = parCle(lignes(db, 'SELECT race_id, magie_id FROM race_magie WHERE accessible = 1 ORDER BY race_id, ordre'), 'race_id', (r) => r.magie_id);
   const bornes = parCle(lignes(db, 'SELECT race_id, caracteristique_id, minimum, maximum FROM v_race_carac_borne'), 'race_id');
+  const donsDeRace = parCle(lignes(db, 'SELECT race_id, forme, etiquette, nom, texte, ethnie_id FROM race_don ORDER BY race_id, rang'), 'race_id',
+    (d) => ({ forme: d.forme, nom: d.nom, etiquette: d.etiquette, texte: d.texte, ethnie_id: d.ethnie_id }));
+  const colonnesDuTableau = parCle(lignes(db, 'SELECT race_id, rang, libelle FROM race_don_tableau_colonne ORDER BY race_id, rang'), 'race_id');
+  const cellulesDuTableau = parCle(lignes(db, 'SELECT race_id, ligne, colonne, valeur FROM race_don_tableau_cellule ORDER BY race_id, ligne, colonne'), 'race_id');
+  const tableauDeDons = (raceId, titre) => {
+    const colonnes = colonnesDuTableau.get(raceId);
+    if (!colonnes) return null;
+    const cellules = cellulesDuTableau.get(raceId) ?? [];
+    return {
+      titre,
+      lignes: lignes(db, 'SELECT rang, ethnie_id FROM race_don_tableau_ligne WHERE race_id = ? ORDER BY rang', raceId).map((l) => ({
+        ethnie_id: l.ethnie_id,
+        cellules: colonnes.map((c) => ({ libelle: c.libelle, valeur: cellules.find((x) => x.ligne === l.rang && x.colonne === c.rang)?.valeur ?? null }))
+          .filter((c) => c.valeur !== null),
+      })),
+    };
+  };
   const rangDeRace = (id) => (ORDRE_DES_RACES.includes(id) ? ORDRE_DES_RACES.indexOf(id) : ORDRE_DES_RACES.length);
   const races = lignes(db, `
-    SELECT r.id, r.nom, r.ap, r.am, r.mono_magie, o.sante_depart, o.chakra_depart, o.barriere_bonus, o.vitesse_sol, o.vitesse_nage, o.don_base
+    SELECT r.id, r.nom, r.ap, r.am, r.mono_magie, o.sante_depart, o.chakra_depart, o.barriere_bonus, o.vitesse_sol, o.vitesse_nage, o.don_base,
+           o.dons_tableau_titre
     FROM race r JOIN race_onglet o ON o.race_id = r.id`)
     .sort((a, b) => rangDeRace(a.id) - rangDeRace(b.id) || a.nom.localeCompare(b.nom, 'fr'))
     .map((r) => {
@@ -76,6 +95,8 @@ export function chargerReglesDeFiche(db) {
         classes: accesClasses.get(r.id) ?? [],
         magies: magiesOnglet.get(r.id) ?? magiesMatrice.get(r.id) ?? [],
         bornes: Object.fromEntries((bornes.get(r.id) ?? []).map((b) => [b.caracteristique_id, [b.minimum, b.maximum]])),
+        dons: donsDeRace.get(r.id) ?? [],
+        dons_tableau: tableauDeDons(r.id, r.dons_tableau_titre),
       };
     });
 
@@ -120,8 +141,9 @@ export function chargerReglesDeFiche(db) {
   // Classes : apport de départ, catégorie et couleur de /classes/ ; classe magique par sa catégorie ou l'Archimage (R6), spécialité magique quand
   // son don de niveau 10 dit « considérer comme classe magique » (R7) ; dons à choix rangés en groupes (v_capacite_exclusive, comme la page de la classe) ;
   // magie innée qui réserve et impose la classe (classe.magie_innee_id : l'Archimage et le Potentiel Illimité, décision R23), ou qui la ferme
-  // (classe.magie_innee_exclue_id : le Mage Bleu et le Potentiel Illimité, décision R25) ; maîtrises d'armes de la classe (classe_maitrise_arme) et
-  // points de maîtrise que donnent ses dons (texte du don, lib/maitrise-arme.mjs), pour le quota de maîtrise de la fiche (décision R32).
+  // (classe.magie_innee_exclue_id : le Mage Bleu et le Potentiel Illimité, décision R25) ; maîtrises d'armes de la classe (classe_maitrise_arme) ; ses
+  // dons, pour le rappel des dons débloqués (demande du propriétaire), avec les points de maîtrise que donne chacun (texte du don, lib/maitrise-arme.mjs),
+  // pour le quota de maîtrise de la fiche (décision R32).
   const amMagique = db.prepare("SELECT am_base FROM categorie_classe WHERE id = 'classe-magique'").get()?.am_base;
   if (!amMagique) throw new Error('categorie_classe « classe-magique » : am_base absent');
   const alternatives = parCle(lignes(db, 'SELECT capacite_id, autre_id FROM v_capacite_exclusive'), 'capacite_id', (r) => r.autre_id);
@@ -153,13 +175,28 @@ export function chargerReglesDeFiche(db) {
         specialites: specialitesDeLaClasse,
         choix: [null, ...specialitesDeLaClasse.map((s) => s.id)].flatMap(parSpecialite).sort((a, b) => a.niveau - b.niveau),
         maitrises: maitrises.get(c.id) ?? [],
-        dons_maitrise: dons.map((d) => ({ id: d.id, nom: d.nom, nature: d.nature, niveau: d.niveau, specialite_id: d.specialite_id, points: pointsDeMaitriseDArme(d.effet) }))
-          .filter((d) => d.points !== 0),
+        dons: [...dons].sort((a, b) => a.niveau - b.niveau || a.ligne - b.ligne || a.rang - b.rang).map((d) => ({
+          id: d.id, nom: d.nom, nature: d.nature, niveau: d.niveau, specialite_id: d.specialite_id, type: d.type, effet: d.effet,
+          points_maitrise: pointsDeMaitriseDArme(d.effet),
+        })),
       };
     });
 
-  const sorts = lignes(db, 'SELECT id, magie_id, nom, niveau, cout_brut, portee_brut FROM sort ORDER BY magie_id, niveau, ordre')
-    .map((s) => ({ id: s.id, magie_id: s.magie_id, nom: s.nom, niveau: s.niveau, cout: s.cout_brut, portee: s.portee_brut }));
+  // Sorts : coût, portée, dégâts/soins/barrière, effets et remarque tels qu'écrits, avec leurs expressions de NM (sort_bonus_maitrise) : la page les
+  // montre à la valeur du NM du sort (lib/sort-maitrise.mjs#valeurAuNm, demande du propriétaire).
+  const champsAuNm = new Set(['cout', 'portee', 'dsb', 'effets']);
+  const bonusDesSorts = parCle(lignes(db, 'SELECT sort_id, champ, nature, texte_brut, increment_brut, pas_nm, seuil_nm FROM sort_bonus_maitrise ORDER BY sort_id, champ, rang'),
+    'sort_id', (b) => ({ champ: b.champ, nature: b.nature, texteBrut: b.texte_brut, incrementBrut: b.increment_brut, pasNm: b.pas_nm, seuilNm: b.seuil_nm }));
+  const sorts = lignes(db, 'SELECT id, magie_id, nom, niveau, cout_brut, portee_brut, dsb_brut, effets, remarque FROM sort ORDER BY magie_id, niveau, ordre')
+    .map((s) => ({
+      id: s.id, magie_id: s.magie_id, nom: s.nom, niveau: s.niveau, cout: s.cout_brut, portee: s.portee_brut, dsb: s.dsb_brut, effets: s.effets, remarque: s.remarque,
+      bonus: (bonusDesSorts.get(s.id) ?? []).filter((b) => champsAuNm.has(b.champ)),
+    }));
+
+  // Postures (sélecteur de la page, demande du propriétaire) : les six, dans l'ordre de la page « Postures », leur couleur et leurs effets du tableau de la fiche.
+  const effetsDePosture = parCle(lignes(db, "SELECT posture_id, texte FROM posture_effet WHERE version = 'fiche' ORDER BY posture_id, rang"), 'posture_id', (r) => r.texte);
+  const postures = lignes(db, 'SELECT id, nom FROM posture ORDER BY ordre')
+    .map((p) => ({ id: p.id, nom: p.nom, couleur: couleurDePosture(p.id), texte: texteSurCouleur(couleurDePosture(p.id)), effets: effetsDePosture.get(p.id) ?? [] }));
 
   // Équipement : les catalogues de la base, avec ce qu'il faut pour choisir (nom, famille, cible d'une amélioration, AP/AM indiqués).
   const nomDeRessource = (id) => db.prepare('SELECT nom FROM ressource WHERE id = ?').get(id)?.nom ?? id;
@@ -182,5 +219,5 @@ export function chargerReglesDeFiche(db) {
     ressources: lignes(db, 'SELECT id, nom, genre FROM ressource ORDER BY nom COLLATE NOCASE'),
   };
 
-  return { constantes, am_classe_magique: amMagique, niveaux, caracteristiques, competences, initiative, races, ethnies, magies, dieux, metiers, classes, sorts, ...equipement };
+  return { constantes, am_classe_magique: amMagique, niveaux, caracteristiques, competences, initiative, races, ethnies, magies, dieux, metiers, classes, sorts, postures, ...equipement };
 }

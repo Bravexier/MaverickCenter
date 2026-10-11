@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 25;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 27;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -3422,6 +3422,8 @@ CREATE TABLE personnage (
   evenements            TEXT,                         -- « ÉVÉNEMENTS » (B71)
   cree_le               TEXT    NOT NULL CHECK (cree_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
   modifie_le            TEXT    NOT NULL CHECK (modifie_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z' AND modifie_le >= cree_le),
+  posture_id            TEXT    REFERENCES posture(id),   -- posture du moment (sélecteur des 6 postures de la page /fiche/, demande du propriétaire ;
+                                                    -- migration 0027) ; NULL = aucune choisie
   CHECK ((nature = 'pretire') = (proprietaire_id IS NULL)),   -- un prétiré n'est à personne ; la fiche d'un joueur a son propriétaire
   CHECK (nature = 'joueur' OR visibilite = 'tous'),           -- « Les prétirés sont visibles par tous »
   CHECK (magie_acquise_id IS NULL OR magie_acquise_id <> magie_innee_id),
@@ -3775,15 +3777,22 @@ CREATE VIEW v_personnage_controle AS
     AND COALESCE((SELECT SUM(pc.naturel) FROM personnage_competence pc WHERE pc.personnage_id = n.personnage_id), 0) <> v.points_competences_cumul
   UNION ALL
   -- (l'Acquis compte le bonus du métier, décision R33, mais le plafond prévaut sur lui, décision R38 : le bonus ne compte que jusqu'au plafond ;
-  -- seuls les points saisis au-delà de ce qu'il laisse sont une erreur)
-  SELECT pca.personnage_id, 'competence_acquis_max', co.id || ' = ' || (COALESCE(pco.acquis, 0) + MIN(COALESCE(mb.valeur, 0), pca.base * (SELECT r.valeur FROM regle_constante r WHERE r.id = 'competence.acquis_max_par_point_caracteristique')))
-  FROM personnage_caracteristique pca
-  JOIN competence co ON co.caracteristique_id = pca.caracteristique_id
-  LEFT JOIN personnage_competence pco ON pco.personnage_id = pca.personnage_id AND pco.competence_id = co.id
+  -- seuls les points saisis au-delà de ce qu'il laisse sont une erreur). Plafond : 5 par point de la caractéristique totale, le +1 de la magie innée
+  -- compris (sa caractéristique, ou celle que la fiche choisit quand la magie la laisse au choix), décision R41 : « 5 en volonté donnerait un max de
+  -- 25 aquis » (migration 0026)
+  SELECT pl.personnage_id, 'competence_acquis_max', co.id || ' = ' || (COALESCE(pco.acquis, 0) + MIN(COALESCE(mb.valeur, 0), pl.plafond))
+  FROM (SELECT pca.personnage_id, pca.caracteristique_id,
+               (pca.base + CASE WHEN mi.id IS NOT NULL AND pca.caracteristique_id = COALESCE(mi.caracteristique_id, p.caracteristique_magie_id)
+                                THEN (SELECT r.valeur FROM regle_constante r WHERE r.id = 'caracteristique.bonus_magie_innee') ELSE 0 END)
+               * (SELECT r.valeur FROM regle_constante r WHERE r.id = 'competence.acquis_max_par_point_caracteristique') AS plafond
+        FROM personnage_caracteristique pca
+        JOIN personnage p ON p.id = pca.personnage_id
+        LEFT JOIN magie mi ON mi.id = p.magie_innee_id) pl
+  JOIN competence co ON co.caracteristique_id = pl.caracteristique_id
+  LEFT JOIN personnage_competence pco ON pco.personnage_id = pl.personnage_id AND pco.competence_id = co.id
   LEFT JOIN (SELECT personnage_id, competence_id, SUM(valeur) AS valeur FROM v_personnage_metier_bonus WHERE competence_id IS NOT NULL
-             GROUP BY personnage_id, competence_id) mb ON mb.personnage_id = pca.personnage_id AND mb.competence_id = co.id
-  WHERE COALESCE(pco.acquis, 0) + MIN(COALESCE(mb.valeur, 0), pca.base * (SELECT r.valeur FROM regle_constante r WHERE r.id = 'competence.acquis_max_par_point_caracteristique'))
-        > pca.base * (SELECT r.valeur FROM regle_constante r WHERE r.id = 'competence.acquis_max_par_point_caracteristique')
+             GROUP BY personnage_id, competence_id) mb ON mb.personnage_id = pl.personnage_id AND mb.competence_id = co.id
+  WHERE COALESCE(pco.acquis, 0) + MIN(COALESCE(mb.valeur, 0), pl.plafond) > pl.plafond
   UNION ALL
   -- Métier (décision R33) : un bonus choisi est une compétence d'un rang à choix du métier de la fiche ; chaque rang à choix a le sien (sauf brouillon)
   SELECT c.personnage_id, 'metier_bonus_hors_choix', c.competence_id

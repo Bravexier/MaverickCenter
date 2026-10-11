@@ -84,6 +84,8 @@ pour l'Archimage d'après son « CHOSE A SAVOIR » ; règles `classe_reservee` e
 (structure et données, décision R25 : colonne `classe.magie_innee_exclue_id`, Potentiel Illimité pour le Mage Bleu d'après son « CHOSE A SAVOIR » ; règle `classe_exclue`),
 `0021-nm-plafond.sql` (structure et données, décision R26 : colonnes `personnage_sort.nm_livre` et `nm_cadeau`, constante `sort.nm_max` = 3 et sa phrase dans le guide ; règles `sort_nm_plafond`, `sort_nm_max` et `sorts_nm_total` sur les NM de niveau).
 `0022-lamia-une-seule-magie.sql` (structure et données, décision R28 : colonne `race.mono_magie`, à 1 pour la Lamia seule — « Une seule magie autorisé », inconvénients de son onglet —, table reconstruite comme `magie` en 0010 ; règle `race_mono_magie` de `v_personnage_controle`).
+`0026-acquis-caracteristique-totale.sql` (structure, décision R41 : la règle `competence_acquis_max` de `v_personnage_controle` compte la caractéristique totale, le +1 de la magie innée compris).
+`0027-posture-du-moment.sql` (structure, demande du propriétaire : colonne `personnage.posture_id`, la posture du moment, choisie parmi les six de `posture`).
 
 ## La colonne `remarque`
 

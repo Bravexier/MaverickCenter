@@ -15,7 +15,7 @@ L'ancienne adresse `/generateur/` mène à `/fiche/` (page 404, `lib/nav.mjs#nou
 La fiche suit les étapes du guide (« Créer son personnage »), un bloc par étape, teinté de la couleur de sa partie du guide, **sans numéro**, et les blocs
 sont disposés **en rangées** (demandes du propriétaire ; l'un sous l'autre sur un écran étroit) : identité (nom, surnom, origine, **métier**, race et ethnie,
 **alignement**) · magies et dieux · classe(s) et spécialités ; attributs et valeurs du moment · niveau (jauge d'XP), gains de niveau et dons à choisir ;
-caractéristiques et compétences · sorts ; **maîtrises d'armes** (et ambidextrie) ; équipement (armes, armure, bouclier, accessoires, inventaire, puis la
+caractéristiques et compétences · sorts et rappel des dons ; **maîtrises d'armes** (et ambidextrie) ; équipement (armes, armure, bouclier, accessoires, inventaire, puis la
 **bourse**) · notes et événements ; puis le contrôle des règles, sur toute la largeur. La page prend plus de largeur que les autres (100rem au plus) pour
 ces rangées. Le panneau d'un menu déroulant s'étend sur toute sa rangée. **Compacte** (demandes du propriétaire) : pas de lien vers le guide ;
 race, ethnie, magies innée et acquise, classes et spécialités sont des **menus déroulants** (`<details class="choix">` : fermé, le choix fait ; ouvert, les
@@ -39,12 +39,16 @@ abandonne.
   chaque axe, 5 points d'écart ou plus donnent la tendance, en dessous le personnage est Neutre (guide « Alignement », constante `alignement.ecart_axe`) ;
   les neuf noms sont ceux du guide « Les neuf alignements » (« Neutre » sur les deux axes, que la fiche auto écrit « Neutre Pur »).
 - **Attributs et valeurs du moment**, fusionnés : une carte par attribut, santé · barrière · chakra (· Âme ou Sang, la 4ᵉ barre de la Nécromancie ou du
-  Sang) sur une ligne, initiative · vitesse · corruption (· armure de base) sur la suivante ; santé **rouge**, barrière **jaune**, chakra **bleu**, corruption
-  **noire**. Une valeur du moment s'affiche « actuelle / maximum » avec le détail du maximum, un curseur de 0 au maximum (au maximum tant qu'on n'y touche
+  Sang) sur une ligne ; initiative, vitesse et vitesse de nage en **simples pastilles**, à côté de la carte de la corruption ; santé **rouge**, barrière **jaune**,
+  chakra **bleu**, corruption **noire** ; pas d'armure de base (les AP/AM viendront avec l'armure portée). Pas de texte de calcul (demande du propriétaire) : le
+  détail d'un maximum est en infobulle sur sa valeur. Une valeur du moment s'affiche « actuelle / maximum », un curseur de 0 au maximum (au maximum tant qu'on n'y touche
   pas, la corruption à 0 ; le chakra actuel au plus chakra − corruption, sauf avec la magie de la Corruption, et la corruption qui monte emporte le chakra
   actuel, celle qui baisse ne le rend pas : `valeursDuMoment`, `ecrireValeurDuMoment`, guide « Fiche de personnage : Attributs »), et deux boutons **−** et
   **+** qui ouvrent une case où saisir le nombre à retirer ou à ajouter (`ajusterValeurDuMoment`, borné comme le curseur ; Entrée ou OK l'applique, Échap
-  abandonne).
+  abandonne). Dessous, le **sélecteur des six postures** (table `posture`, dans leurs couleurs ; leurs effets du tableau de la fiche en infobulle et sous le
+  sélecteur ; un second clic retire la posture) : la fiche garde la posture du moment (`personnage.posture_id`, migration `0027-posture-du-moment`).
+- **Caractéristiques** : les six sur une seule ligne, chacune avec **deux cases de croix** (cochées = le nombre de croix, R19) ; à deux croix, le score des
+  compétences est « N/A ». L'acquis d'une compétence va jusqu'à 5 par point de la caractéristique **totale**, le +1 de la magie innée compris (décision R41).
 - **Maîtrises d'armes** : un curseur étroit par famille (0 à 4 points), les dés à côté (`notationDesDes`) ; le **Pugilat** montre le seul dé de la Force du
   personnage, +1 de la magie innée compris (`deDeLaFamille` : « D6 1-2 Force, D8 3-4 Force, D10 5 Force », note de la famille, lue par
   `lib/maitrise-arme.mjs#desSelonLaForce`) ; dans le coin du bloc, les points répartis sur le **quota** des classes et de leurs dons (décision R32,
@@ -52,7 +56,17 @@ abandonne.
 - **Sorts** : un tableau d'une ligne par emplacement, sans emplacement en plus (décision R27), chacune avec la liste des sorts possibles moins ceux des autres
   lignes (`lignesDeSorts`), groupée par NPM, le nom seul, chaque sort sur la couleur de sa magie comme sur les pages de magie, la liste fermée dans celle du
   sort choisi (`sortsParNpm`, demande du propriétaire) ; les **NM** d'un sort se notent par origine (de niveau, d'un livre — un par sort —, du MJ), 3 au plus
-  sur un sort (décisions R24, R26).
+  sur un sort (décisions R24, R26). Colonnes (demandes du propriétaire) : coût, portée et **dégâts/soins/barrière**, à la **valeur du NM du sort** plutôt que
+  « (+1/NM) » (`lib/sort-maitrise.mjs#valeurAuNm` : voir `content-guide.md`, « Niveaux de maîtrise ») ; pas de colonne NPM ; l'**effet secondaire** sur sa
+  propre ligne, sous le sort (au NM aussi) ; une **étoile** quand le sort a une remarque, son texte en infobulle.
+- **Rappel des dons**, sous les sorts : les **dons raciaux** — le don de base d'abord, puis le don de l'ethnie (`race_don`) et la ligne de l'ethnie dans le
+  tableau de dons de la race (Drakos, Mort-vivant) : `donsDeRace` — puis les **dons de classe débloqués**, classe par classe : dons de la classe et de la
+  spécialité choisie jusqu'au niveau de classe, dons à choix choisis (`donsAcquis`), avec leur niveau et leur type (passif, actif, action, réaction).
+- **Gains de niveau** : une petite carte par niveau (santé en rouge, chakra en bleu, total ; aux niveaux qui en donnent un, le dé bonus), plusieurs par ligne ;
+  le dé n'est décrit qu'une fois, au-dessus.
+- **Couleurs des cadres** : la bordure et le bandeau du titre de chaque bloc, et le sommaire, prennent la couleur de la magie innée, en dégradé vers celle de
+  la magie acquise (demande du propriétaire) ; sans magie innée, celle de la partie du guide. Seuls les cadres changent : caractéristiques, attributs,
+  pastilles et curseurs gardent leurs couleurs.
 - **Niveau** : la **jauge d'XP** (`progressionXp`) ouvre le bloc de progression : l'XP se modifie dans son champ ou s'ajoute avec le bouton +, le niveau
   suit (rappelé dans la barre d'enregistrement).
 
@@ -76,7 +90,8 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   attributs comme la fiche automatique (santé, chakra, barrière, vitesse, armure de base, initiative, 4ᵉ barre, Corruption) et valeurs du moment
   (`valeursDuMoment`, `ajusterValeurDuMoment`) ; alignement (`alignementDe`) ; dé d'une famille d'armes selon la Force (`deDeLaFamille`) et quota de
   maîtrise (`quotaDeMaitrise`, R32) ; emplacements de sorts
-  (conditions × puissance magique, R16), sorts possibles, NM ; dons à choisir selon la classe, la spécialité et le niveau de classe.
+  (conditions × puissance magique, R16), sorts possibles, NM ; dons à choisir selon la classe, la spécialité et le niveau de classe ; dons de classe
+  débloqués (`donsAcquis`) et dons de la race (`donsDeRace`).
 - **Contrôle** : à chaque enregistrement, le service rend les règles de `v_personnage_controle` que la fiche enfreint, affichées en français
   (`lib/fiche-controles.mjs`) ; une fiche ne passe « validée » que sans aucune. Ce que la base ne contrôle pas encore (bonus d'équipement, nombre de
   sorts par emplacement, plafond de NPM du Potentiel Illimité) n'est montré que comme compteur.

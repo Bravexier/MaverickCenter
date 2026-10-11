@@ -4,9 +4,10 @@
 // Script de page (navigateur) : il n'importe que des modules purs que seule cette page utilise (la version portable refuse un module partagé).
 import { libelleDuControle } from '../lib/fiche-controles.mjs';
 import { CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ficheVide } from '../lib/fiche-format.mjs';
+import { valeurAuNm } from '../lib/sort-maitrise.mjs';
 import {
   ajusterValeurDuMoment, alignementDe, artisanatDe, attributsDe, bonusDuMetier, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
-  choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsValables,
+  choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsAcquis, donsDeRace, donsValables,
   emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionAttendue, progressionXp,
   quotaDeMaitrise, refusClasse, refusMagieAcquise, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
@@ -213,9 +214,9 @@ function construireRaces() {
     ? [
       el('li', {}, el('strong', {}, 'Santé '), race.sante), el('li', {}, el('strong', {}, 'Chakra '), race.chakra),
       race.barriere ? el('li', {}, el('strong', {}, 'Barrière '), signe(race.barriere)) : null,
-      el('li', {}, el('strong', {}, 'Vitesse '), `${race.vitesse_sol} (nage ${race.vitesse_nage})`),
+      el('li', {}, el('strong', {}, 'Vitesse '), race.vitesse_sol), el('li', {}, el('strong', {}, 'Nage '), race.vitesse_nage),   // deux cases (demande du propriétaire)
       race.ap || race.am ? el('li', {}, el('strong', {}, 'Armure '), `${race.ap} AP / ${race.am} AM`) : null,
-      race.don_base ? el('li', {}, el('strong', {}, 'Don de base '), race.don_base) : null,
+      // le don de base est en tête des dons raciaux, sous les sorts (demande du propriétaire)
     ]
     : [el('li', {}, 'Choisissez une race : elle fixe la santé et le chakra de départ, la vitesse, les magies innées et les classes possibles.')]));
 }
@@ -354,13 +355,18 @@ function construireCaracteristiques() {
         changer();
       },
     });
-    const croix = el('select', {
-      'aria-label': `${k.nom} : croix`,
+    // les croix : deux cases à cocher (demande du propriétaire), comme sur la feuille ; cochées = le nombre de croix (R19). Cocher la seconde coche
+    // la première, décocher la première décoche la seconde.
+    const caseDeCroix = (n, titre) => el('input', {
+      type: 'checkbox', class: 'croix__case', 'aria-label': `${k.nom} : ${titre}`, title: titre,
       onchange: (ev) => {
-        ligne('caracteristiques', (x) => x.caracteristique_id === k.id, nouvelle).croix = entier(ev.target.value);
+        ligne('caracteristiques', (x) => x.caracteristique_id === k.id, nouvelle).croix = ev.target.checked ? n : n - 1;
         changer();
       },
-    }, option('0', 'Aucune croix'), option('1', '1 croix (−20 %)'), option('2', '2 croix (inutilisable)'));
+    });
+    const croix1 = caseDeCroix(1, '1ʳᵉ croix : −20 % aux compétences');
+    const croix2 = caseDeCroix(2, '2ᵉ croix : compétences inutilisables');
+    const croix = el('span', { class: 'croix', role: 'group', 'aria-label': `${k.nom} : croix` }, el('span', { class: 'croix__titre', 'aria-hidden': 'true' }, 'Croix'), croix1, croix2);
     const valeur = el('span', { class: 'carac__valeur' });
     const bonus = el('span', { class: 'carac__bonus' });
     synchro(() => {
@@ -370,12 +376,13 @@ function construireCaracteristiques() {
       poser(base, c.base ?? c.min);
       base.setAttribute('aria-invalid', c.base !== null && (c.base < c.min || c.base > c.max) ? 'true' : 'false');
       base.title = `De ${c.min} à ${c.max} pour cette race`;
-      poser(croix, String(c.croix));
+      poser(croix1, c.croix >= 1);
+      poser(croix2, c.croix >= 2);
       valeur.textContent = c.base === null ? '—' : String(c.valeur);
       valeur.toggleAttribute('data-hors', c.base !== null && (c.base < c.min || c.base > c.max));
       bonus.textContent = c.bonus ? `base ${c.base} +${c.bonus} (magie)` : `de ${c.min} à ${c.max}`;
     });
-    return el('div', { class: 'carac', style: `--c: ${k.couleur}; --c-texte: ${k.texte}` }, el('span', { class: 'carac__nom' }, k.nom), valeur, bonus, base, croix);
+    return el('div', { class: 'carac', style: `--c: ${k.couleur}; --c-texte: ${k.texte}` }, el('span', { class: 'carac__nom', title: k.nom }, k.nom), valeur, bonus, base, croix);
   }));
 
   const budgetC = budgetCompetences(regles, fiche);
@@ -416,8 +423,9 @@ function construireCaracteristiques() {
           valeurAcquis.toggleAttribute('data-hors', c.acquis + c.metier > c.plafondAcquis);
           // le plafond prévaut sur le bonus du métier (décision R38) : au-delà, il est rogné
           valeurAcquis.title = c.metier || c.metierBrut ? `${c.acquis} saisi(s) + ${c.metier} du métier${c.metierBrut > c.metier ? ` (${c.metierBrut}, rogné au plafond de ${c.plafondAcquis})` : ''}` : '';
-          acquis.title = `De 0 à ${c.maxAcquis} : 5 par point de caractéristique de base (race, classe, dons, équipement, entraînement)${c.metier ? `, moins les ${c.metier} du métier` : ''}`;
-          score.textContent = c.score === null ? 'inutilisable' : `${c.score} %`;
+          acquis.title = `De 0 à ${c.maxAcquis} : 5 par point de caractéristique, magie innée comprise (race, classe, dons, équipement, entraînement)${c.metier ? `, moins les ${c.metier} du métier` : ''}`;
+          score.textContent = c.score === null ? 'N/A' : `${c.score} %`;   // « N/A » plutôt qu'« inutilisable » (demande du propriétaire)
+          score.title = c.score === null ? 'Deux croix : compétence inutilisable' : '';
         });
         return el('tr', {}, el('td', {}, comp.nom), el('td', { class: 'curseur-td' }, el('span', { class: 'curseur-cellule' }, naturel, valeurNaturel)),
           el('td', { class: 'curseur-td' }, el('span', { class: 'curseur-cellule' }, acquis, valeurAcquis)), el('td', { class: 'nombre' }, score));
@@ -561,11 +569,12 @@ function construireSorts() {
   const lignes = lignesDeSorts(regles, fiche);
   const cle = JSON.stringify([lignes.length, (fiche.sorts ?? []).map((x) => x.sort_id), fiche.magie_innee_id, fiche.magie_acquise_id, max]);
   reconstruire($('sorts'), cle, () => [
-    el('thead', {}, el('tr', {}, el('th', { class: 'nombre' }, '#'), el('th', {}, 'Sort'), el('th', { class: 'nombre' }, 'NPM'), el('th', {}, 'Coût'), el('th', {}, 'Portée'),
+    el('thead', {}, el('tr', {}, el('th', { class: 'nombre' }, '#'), el('th', {}, 'Sort'), el('th', {}, 'Coût'), el('th', {}, 'Portée'),
+      el('th', { title: 'Dégâts, soins ou barrière' }, 'D/S/B'),
       el('th', { title: 'NM de niveau, d’un livre (un par sort), du MJ ; 3 au plus en tout' }, 'NM : niveau · livre · MJ'))),
     el('tbody', {}, lignes.length === 0
       ? el('tr', {}, el('td', { colspan: '6', class: 'muted' }, 'Aucun emplacement de sort.'))
-      : lignes.map((l) => {
+      : lignes.flatMap((l) => {
         // un groupe par NPM, le nom seul ; chaque sort sur la couleur de sa magie, comme sur les pages de magie (demande du propriétaire)
         const couleurDe = (s) => trouver(regles.magies, s?.magie_id);
         const optionDeSort = (s) => {
@@ -604,8 +613,21 @@ function construireSorts() {
         const cadeau = el('input', { type: 'number', min: '0', step: '1', 'aria-label': `NM donnés par le MJ, emplacement ${l.index + 1}`, disabled: !l.ligne,
           oninput: (ev) => ecrireNm('cadeau', entier(ev.target.value)) });
         const total = el('output', { class: 'curseur__valeur' });
+        // coût, portée, D/S/B et effet à la valeur du NM du sort, sans « (+1/NM) » (demande du propriétaire ; valeurAuNm)
+        const cout = el('td', { class: 'sort-valeur' });
+        const portee = el('td', { class: 'sort-valeur' });
+        const dsb = el('td', { class: 'sort-valeur' });
+        const effet = el('span', { class: 'sort-effet__texte' });
+        const remarque = l.sort?.remarque
+          ? el('span', { class: 'sort-remarque', tabindex: '0', role: 'img', 'aria-label': `Remarque : ${l.sort.remarque}`, title: l.sort.remarque }, '★')
+          : null;
         synchro(() => {
           const nm = nmDuSort(fiche.sorts[l.index]);
+          const auNm = (brut, champ) => (l.sort ? valeurAuNm(brut, l.sort.bonus ?? [], champ, nm.total) ?? '' : '');
+          cout.textContent = auNm(l.sort?.cout, 'cout');
+          portee.textContent = auNm(l.sort?.portee, 'portee');
+          dsb.textContent = auNm(l.sort?.dsb, 'dsb');
+          effet.textContent = auNm(l.sort?.effets, 'effets');
           if (document.activeElement !== deNiveau) poser(deNiveau, fiche.sorts[l.index] ? nm.deNiveau : '');
           if (document.activeElement !== cadeau) poser(cadeau, fiche.sorts[l.index] ? nm.cadeau : '');
           poser(livre, nm.livre);
@@ -615,12 +637,57 @@ function construireSorts() {
           total.toggleAttribute('data-hors', nm.total > calcul.nm.plafond);
           total.title = `${nm.total} NM sur ce sort ; ${calcul.nm.plafond} au plus`;
         });
-        return el('tr', { class: l.enTrop ? 'en-trop' : null, title: l.enTrop ? 'Au-delà des emplacements du personnage : à retirer' : null },
-          el('td', { class: 'nombre muted' }, String(l.index + 1)), el('td', {}, liste), el('td', { class: 'nombre' }, l.sort?.niveau ?? ''),
-          el('td', {}, l.sort?.cout ?? ''), el('td', {}, l.sort?.portee ?? ''),
-          el('td', { class: 'nm-origines' }, deNiveau, el('label', { class: 'nm-livre' }, livre, 'livre'), cadeau, total));
+        const classe = [l.enTrop ? 'en-trop' : null, l.sort?.effets ? 'avec-effet' : null].filter(Boolean).join(' ') || null;
+        return [
+          el('tr', { class: classe, title: l.enTrop ? 'Au-delà des emplacements du personnage : à retirer' : null },
+            el('td', { class: 'nombre muted' }, String(l.index + 1)), el('td', {}, el('span', { class: 'sort-choix' }, liste, remarque)),
+            cout, portee, dsb,
+            el('td', { class: 'nm-origines' }, deNiveau, el('label', { class: 'nm-livre' }, livre, 'livre'), cadeau, total)),
+          // l'effet secondaire du sort, sur sa propre ligne (demande du propriétaire)
+          l.sort?.effets ? el('tr', { class: `sort-effet${l.enTrop ? ' en-trop' : ''}` }, el('td', {}), el('td', { colspan: '5' }, effet)) : null,
+        ];
       })),
   ]);
+}
+
+// ------------------------------------------------------------------ rappel des dons
+const TYPES_DE_DON = { passif: 'Passif', actif: 'Actif', action: 'Action', reaction: 'Réaction', variable: 'Variable' };
+
+/** Un don de la liste : son niveau (s'il en a un), son nom, son type, et son texte. */
+function elementDeDon({ niveau = null, nom, type = null, texte }) {
+  return el('li', { class: 'don' },
+    el('span', { class: 'don__tete' },
+      niveau !== null ? el('span', { class: 'don__niveau' }, `Niv. ${niveau}`) : null,
+      el('strong', { class: 'don__nom' }, nom),
+      type ? el('span', { class: 'don__type', dataset: { type } }, TYPES_DE_DON[type] ?? type) : null),
+    texte ? el('span', { class: 'don__texte' }, texte) : null);
+}
+
+/**
+ * Sous les sorts, le rappel des dons (demande du propriétaire) : ceux de la race — le don de base d'abord (demande du propriétaire), puis le don de
+ * l'ethnie et la ligne de son ethnie dans le tableau de la race (donsDeRace) —, puis les dons de chaque classe débloqués au niveau atteint (donsAcquis).
+ */
+function construireDons() {
+  const race = donsDeRace(regles, fiche);
+  const cleRace = JSON.stringify([fiche.race_id, fiche.ethnie_id]);
+  reconstruire($('dons-race'), cleRace, () => {
+    if (!fiche.race_id) return el('li', { class: 'fiche-aide' }, 'Choisissez une race : ses dons apparaîtront ici.');
+    return [
+      race.base ? elementDeDon({ nom: 'Don de base', texte: race.base }) : null,
+      race.dons.map((d) => elementDeDon({ nom: d.nom ?? d.etiquette, texte: d.texte })),
+      race.tableau ? elementDeDon({ nom: race.tableau.titre ?? 'Selon l’ethnie', texte: race.tableau.cellules.map((c) => `${c.libelle.replace(/\n/g, ' / ')} : ${c.valeur}`).join('\n') }) : null,
+      race.ethnieAChoisir ? el('li', { class: 'fiche-aide' }, 'Choisissez l’ethnie : son don apparaîtra ici.') : null,
+    ];
+  });
+  const classes = donsAcquis(regles, fiche);
+  const cleClasses = JSON.stringify(classes.map((c) => [c.classe.id, c.niveau, c.dons.map((d) => d.id)]));
+  reconstruire($('dons-classes'), cleClasses, () => (classes.length === 0
+    ? el('p', { class: 'fiche-aide' }, 'Choisissez une classe : ses dons apparaîtront ici, niveau de classe par niveau de classe.')
+    : classes.map((c) => el('div', { class: 'dons-classe', style: `--c: ${c.classe.couleur}` },
+      el('h4', {}, `${c.classe.nom} · niveau ${c.niveau}`),
+      c.dons.length
+        ? el('ul', { class: 'dons-liste' }, c.dons.map((d) => elementDeDon({ niveau: d.niveau, nom: d.nom, type: d.type, texte: d.effet })))
+        : el('p', { class: 'fiche-aide' }, 'Pas encore de don à ce niveau de classe.')))));
 }
 
 // ------------------------------------------------------------------ attributs et valeurs du moment
@@ -632,10 +699,10 @@ const JAUGES = {
   barriere_actuelle: { a: 'barriere', nom: () => 'Barrière', detail: () => detailDe(calcul.attributs.detail.barriere) },
   chakra_actuel: {
     a: 'chakra', nom: () => 'Chakra',
-    detail: (j) => `${detailDe(calcul.attributs.detail.chakra)}${j.reduction ? ` ; ${j.chakra} − ${j.reduction} de corruption` : ''}`,
+    detail: (j) => `${detailDe(calcul.attributs.detail.chakra)}${j.reduction ? ` ; ${j.chakra} − ${j.reduction} de corruption (sauf magie de la Corruption)` : ''}`,
   },
   barre4_actuelle: { a: 'barre4', nom: () => calcul.attributs.quatriemeBarre?.ressource ?? '4ᵉ barre', detail: () => '4ᵉ barre, de la magie' },
-  corruption: { a: 'corruption', nom: () => 'Corruption', detail: () => 'au plus le chakra' },
+  corruption: { a: 'corruption', nom: () => 'Corruption', detail: () => 'Au plus le chakra ; elle en prend la place (sauf magie de la Corruption)' },
 };
 
 /**
@@ -694,7 +761,6 @@ function carteDeJauge(champ) {
   const plus = el('button', { type: 'button', class: 'ajuster', 'aria-expanded': 'false', onclick: () => ouvrir(1) }, '+');
   const nom = el('span', { class: 'attribut__nom' });
   const valeur = el('output', { class: 'attribut__valeur' });
-  const detail = el('span', { class: 'attribut__detail' });
   synchro(() => {
     const j = calcul.jauges.find((x) => x.champ === champ);
     const texte = def.nom();
@@ -709,45 +775,51 @@ function carteDeJauge(champ) {
     saisie.setAttribute('aria-label', `${texte} : nombre à ${sens > 0 ? 'ajouter' : 'retirer'}`);
     valeur.textContent = `${j.hors ? fiche[champ] : j.valeur} / ${j.max}`;
     valeur.toggleAttribute('data-hors', j.hors);
-    detail.textContent = def.detail(j);
+    valeur.title = def.detail(j);   // le calcul du maximum en infobulle seulement (« les textes de calcul sont inutiles », demande du propriétaire)
   });
   return el('div', { class: 'attribut attribut--jauge', dataset: { a: def.a } },
-    el('span', { class: 'attribut__tete' }, nom, valeur), el('span', { class: 'attribut__curseur' }, moins, curseur, plus), ajout, detail);
-}
-
-/** Un attribut sans valeur du moment (initiative, vitesse, armure de base) : `lire(attributs)` rend [valeur, détail]. */
-function carteFixe(cle, nom, lire) {
-  const valeur = el('span', { class: 'attribut__valeur' });
-  const detail = el('span', { class: 'attribut__detail' });
-  synchro(() => {
-    const [v, d] = lire(calcul.attributs);
-    valeur.textContent = String(v);
-    detail.textContent = d;
-  });
-  return el('div', { class: 'attribut', dataset: { a: cle } }, el('span', { class: 'attribut__tete' }, el('span', { class: 'attribut__nom' }, nom), valeur), detail);
+    el('span', { class: 'attribut__tete' }, nom, valeur), el('span', { class: 'attribut__curseur' }, moins, curseur, plus), ajout);
 }
 
 /**
- * Attributs et valeurs du moment, fusionnés (demande du propriétaire) : santé, barrière, chakra (et Âme ou Sang, la 4ᵉ barre de la Nécromancie ou du
- * Sang) sur la première ligne ; initiative, vitesse, corruption, puis l'armure de base, sur la seconde. Chaque carte dans la couleur de son attribut.
+ * Attributs et valeurs du moment, fusionnés (demandes du propriétaire) : santé, barrière, chakra (et Âme ou Sang, la 4ᵉ barre de la Nécromancie ou du
+ * Sang) en cartes, chacune dans la couleur de son attribut ; puis initiative, vitesse et vitesse de nage en simples pastilles, à côté de la corruption ;
+ * l'armure de base n'y est plus (les AP/AM viendront avec l'armure portée).
  */
 function construireAttributs() {
   const barres = ['sante_actuelle', 'barriere_actuelle', 'chakra_actuel', 'barre4_actuelle'].filter((c) => calcul.jauges.some((j) => j.champ === c));
   reconstruire($('attributs-barres'), barres.join(), () => barres.map(carteDeJauge));
-  reconstruire($('attributs-autres'), 'fixe', () => [
+  reconstruire($('attributs-corruption'), 'fixe', () => carteDeJauge('corruption'));
+  const a = calcul.attributs;
+  const pastilles = [
     // 1D20 + le bonus de l'Agilité + celui du métier (« +X INI », décision R33)
-    carteFixe('initiative', 'Initiative', (a) => [
-      a.initiative || a.initiativeMetier ? `1D20 ${a.initiativeBonus >= 0 ? '+' : '−'} ${Math.abs(a.initiativeBonus)}` : '1D20',
-      [a.initiative?.note ?? 'selon l’Agilité', a.initiativeMetier ? `${signe(a.initiativeMetier)} du métier` : null].filter(Boolean).join(' · '),
-    ]),
+    ['Initiative', a.initiative || a.initiativeMetier ? `1D20 ${a.initiativeBonus >= 0 ? '+' : '−'} ${Math.abs(a.initiativeBonus)}` : '1D20',
+      [a.initiative?.note ?? 'Selon l’Agilité', a.initiativeMetier ? `${signe(a.initiativeMetier)} du métier` : null].filter(Boolean).join(' · ')],
     // vitesse et vitesse de nage de la race, de l'ethnie et du métier (décision R37)
-    carteFixe('vitesse', 'Vitesse', (a) => [a.vitesseSol ?? '—', [
-      a.vitesseNage !== null ? `nage ${a.vitesseNage}` : 'selon la race',
-      a.vitesseMetier || a.vitesseNageMetier ? `métier ${[a.vitesseMetier && `${signe(a.vitesseMetier)}`, a.vitesseNageMetier && `${signe(a.vitesseNageMetier)} nage`].filter(Boolean).join(', ')}` : null,
-    ].filter(Boolean).join(' · ')]),
-    carteDeJauge('corruption'),
-    carteFixe('armure', 'Armure de base', (a) => [`${a.ap} / ${a.am}`, 'AP / AM, sans l’équipement']),
-  ]);
+    ['Vitesse', a.vitesseSol ?? '—', `Vitesse sur terre (race et ethnie${a.vitesseMetier ? `, ${signe(a.vitesseMetier)} du métier` : ''})`],
+    ['Nage', a.vitesseNage ?? '—', `Vitesse de nage (race et ethnie${a.vitesseNageMetier ? `, ${signe(a.vitesseNageMetier)} du métier` : ''})`],
+  ];
+  reconstruire($('attributs-pastilles'), JSON.stringify(pastilles), () => pastilles.map(([nom, valeur, titre]) => el('li', { title: titre }, el('strong', {}, `${nom} `), String(valeur))));
+}
+
+/**
+ * La posture du moment (demande du propriétaire : « un sélecteur des 6 postures ») : une pastille par posture, dans sa couleur
+ * (lib/caracteristiques-postures.mjs, par regles.json), ses effets du tableau de la fiche en infobulle et sous le sélecteur ; un second clic la retire.
+ */
+function construirePostures() {
+  reconstruire($('postures'), 'fixe', () => regles.postures.map((p) => {
+    const bouton = el('button', {
+      type: 'button', class: 'posture', style: `--c: ${p.couleur}; --c-texte: ${p.texte}`, 'aria-pressed': 'false', title: p.effets.join('\n'),
+      onclick: () => {
+        fiche.posture_id = fiche.posture_id === p.id ? null : p.id;
+        changer();
+      },
+    }, p.nom);
+    synchro(() => bouton.setAttribute('aria-pressed', String(fiche.posture_id === p.id)));
+    return bouton;
+  }));
+  const choisie = trouver(regles.postures, fiche.posture_id);
+  $('posture-effets').textContent = choisie ? choisie.effets.join(' · ') : 'Aucune posture choisie.';
 }
 
 // ------------------------------------------------------------------ saisie d'un curseur (demande du propriétaire)
@@ -791,46 +863,55 @@ function ouvrirSaisie(curseur) {
 }
 
 // ------------------------------------------------------------------ progression et dons à choix
+/**
+ * Gains de niveau, compacts (demande du propriétaire : « la liste des bonus est trop grande ») : une petite carte par niveau atteint, côte à côte —
+ * santé et chakra (15 points exactement), le total, et aux niveaux qui en donnent un, le dé bonus (sur quoi, et son résultat). Le dé n'est décrit
+ * qu'une fois, au-dessus (progressionAttendue : table niveau_global).
+ */
 function construireProgression() {
   const attendus = progressionAttendue(regles, calcul.niveau);
+  const des = [...new Set(attendus.filter((n) => n.de).map((n) => n.de))];
+  const niveauxDuDe = (de) => attendus.filter((n) => n.de === de).map((n) => n.niveau);
   $('progression-aide').textContent = attendus.length
-    ? `À chaque niveau à partir du 2 : ${attendus[0].points} points d’attributs à répartir entre la santé et le chakra (exactement), et un dé bonus aux niveaux qui en donnent un.`
+    ? `À chaque niveau à partir du 2 : ${attendus[0].points} points d’attributs à répartir entre la santé (case rouge) et le chakra (case bleue), exactement.${des.map((de) => ` Dé bonus au${niveauxDuDe(de).length > 1 ? 'x' : ''} niveau${niveauxDuDe(de).length > 1 ? 'x' : ''} ${niveauxDuDe(de).join(', ')} : ${de}.`).join('')}`
     : 'Les gains commencent au niveau 2.';
-  reconstruire($('progression'), `${calcul.niveau}`, () => (attendus.length === 0 ? [] : [
-    el('thead', {}, el('tr', {}, el('th', {}, 'Niveau'), el('th', { class: 'nombre' }, 'Santé'), el('th', { class: 'nombre' }, 'Chakra'), el('th', { class: 'nombre' }, 'Total'), el('th', {}, 'Dé bonus'))),
-    el('tbody', {}, attendus.map((n) => {
-      const trouverLigne = () => ligne('progression', (x) => x.niveau === n.niveau, () => ({ niveau: n.niveau, points_sante: 0, points_chakra: 0, de_choix: null, de_resultat: null }));
-      const champ = (cle) => el('input', { type: 'number', min: '0', step: '1', 'aria-label': `Niveau ${n.niveau} : ${cle === 'points_sante' ? 'santé' : 'chakra'}`, oninput: (ev) => { trouverLigne()[cle] = entier(ev.target.value); changer(); } });
-      const sante = champ('points_sante');
-      const chakra = champ('points_chakra');
-      const total = el('span', { class: 'score' });
-      const de = n.de ? el('select', {
-        'aria-label': `Niveau ${n.niveau} : dé bonus`,
-        onchange: (ev) => {
-          const l = trouverLigne();
-          l.de_choix = ev.target.value || null;
-          if (!l.de_choix) l.de_resultat = null;
-          changer();
-        },
-      }, option('', '—'), option('sante', 'Santé'), option('chakra', 'Chakra'), option('les_deux', 'Les deux')) : null;
-      const resultat = n.de ? el('input', { type: 'number', min: '1', step: '1', 'aria-label': `Niveau ${n.niveau} : résultat du dé`, oninput: (ev) => { trouverLigne().de_resultat = ev.target.value === '' ? null : entier(ev.target.value); changer(); } }) : null;
-      synchro(() => {
-        const l = ligneDe('progression', (x) => x.niveau === n.niveau);
-        poser(sante, l ? l.points_sante : '');
-        poser(chakra, l ? l.points_chakra : '');
-        const t = l ? entier(l.points_sante) + entier(l.points_chakra) : 0;
-        total.textContent = `${t} / ${n.points}`;
-        total.toggleAttribute('data-hors', t !== n.points);
-        if (de) poser(de, l?.de_choix ?? '');
-        if (resultat) {
-          poser(resultat, l?.de_resultat ?? '');
-          resultat.disabled = !l?.de_choix;
-        }
-      });
-      return el('tr', {}, el('td', {}, `Niveau ${n.niveau}`), el('td', { class: 'nombre' }, sante), el('td', { class: 'nombre' }, chakra), el('td', { class: 'nombre' }, total),
-        el('td', {}, n.de ? [el('span', { class: 'muted' }, `${n.de} `), de, ' ', resultat] : el('span', { class: 'muted' }, '—')));
-    })),
-  ]));
+  reconstruire($('progression'), `${calcul.niveau}`, () => attendus.map((n) => {
+    const trouverLigne = () => ligne('progression', (x) => x.niveau === n.niveau, () => ({ niveau: n.niveau, points_sante: 0, points_chakra: 0, de_choix: null, de_resultat: null }));
+    const champ = (cle, nom) => el('input', {
+      type: 'number', min: '0', step: '1', class: `gain__${cle === 'points_sante' ? 'sante' : 'chakra'}`, 'aria-label': `Niveau ${n.niveau} : ${nom}`, title: nom,
+      oninput: (ev) => { trouverLigne()[cle] = entier(ev.target.value); changer(); },
+    });
+    const sante = champ('points_sante', 'santé');
+    const chakra = champ('points_chakra', 'chakra');
+    const total = el('span', { class: 'gain__total' });
+    const de = n.de ? el('select', {
+      'aria-label': `Niveau ${n.niveau} : dé bonus (${n.de})`, title: n.de,
+      onchange: (ev) => {
+        const l = trouverLigne();
+        l.de_choix = ev.target.value || null;
+        if (!l.de_choix) l.de_resultat = null;
+        changer();
+      },
+    }, option('', 'Dé : —'), option('sante', 'Santé'), option('chakra', 'Chakra'), option('les_deux', 'Les deux')) : null;
+    const resultat = n.de ? el('input', { type: 'number', min: '1', step: '1', 'aria-label': `Niveau ${n.niveau} : résultat du dé`, title: 'Résultat du dé', oninput: (ev) => { trouverLigne().de_resultat = ev.target.value === '' ? null : entier(ev.target.value); changer(); } }) : null;
+    synchro(() => {
+      const l = ligneDe('progression', (x) => x.niveau === n.niveau);
+      poser(sante, l ? l.points_sante : '');
+      poser(chakra, l ? l.points_chakra : '');
+      const t = l ? entier(l.points_sante) + entier(l.points_chakra) : 0;
+      total.textContent = `${t}/${n.points}`;
+      total.toggleAttribute('data-hors', t !== n.points);
+      total.title = `${t} points répartis sur ${n.points}`;
+      if (de) poser(de, l?.de_choix ?? '');
+      if (resultat) {
+        poser(resultat, l?.de_resultat ?? '');
+        resultat.disabled = !l?.de_choix;
+      }
+    });
+    return el('div', { class: `gain${n.de ? ' gain--de' : ''}` },
+      el('span', { class: 'gain__niveau' }, `Niv. ${n.niveau}`), sante, chakra, total,
+      n.de ? el('span', { class: 'gain__de' }, de, resultat) : null);
+  }));
 
   const dons = donsAChoisir(regles, fiche);
   reconstruire($('dons'), JSON.stringify(dons.map((d) => [d.rang, d.classe.id, d.groupes.map((g) => g.options[0].id)])), () => {
@@ -1056,6 +1137,12 @@ function rafraichir() {
   };
   calcul.jauges = valeursDuMoment(regles, fiche, calcul.attributs);
   for (const champ of racine.querySelectorAll('[data-champ]')) poser(champ, fiche[champ.dataset.champ]);
+  // cadres des blocs dans la couleur de la magie innée, en dégradé vers celle de la magie acquise (demande du propriétaire ; fiche.css, « cadres »)
+  const innee = trouver(regles.magies, fiche.magie_innee_id);
+  const acquise = trouver(regles.magies, fiche.magie_acquise_id);
+  racine.toggleAttribute('data-magie', Boolean(innee));
+  racine.style.setProperty('--magie-1', innee?.couleur ?? '');
+  racine.style.setProperty('--magie-2', innee ? (acquise ?? innee).couleur : '');
   const titre = fiche.nom || (id ? 'Prétiré sans nom' : 'Nouveau prétiré');
   $('fiche-titre').textContent = titre;
   document.title = `${titre} — Fiche de personnage — Maverick Center`;
@@ -1068,7 +1155,9 @@ function rafraichir() {
   construireCaracteristiques();
   construireMaitrises();
   construireSorts();
+  construireDons();
   construireAttributs();
+  construirePostures();
   construireProgression();
   construireEquipement();
   for (const liste of synchros.values()) for (const s of liste) s();

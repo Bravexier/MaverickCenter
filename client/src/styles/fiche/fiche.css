@@ -86,15 +86,35 @@ main:has(> .fiche) { max-width: 100rem; }
   align-items: center;
   gap: 0.35rem;
   padding: 0.1rem 0.6rem 0.1rem 0.45rem;
-  border: 1px solid color-mix(in srgb, var(--etape) 45%, var(--border));
+  border: 1px solid color-mix(in srgb, var(--cadre) 45%, var(--border));
   border-radius: 999px;
-  background: color-mix(in srgb, var(--etape) 8%, var(--surface));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--cadre) 10%, var(--surface)), color-mix(in srgb, var(--cadre-2) 10%, var(--surface)));
   color: var(--text);
   font-size: 0.78rem;
   text-decoration: none;
 }
-.fiche-etapes a:hover { border-color: var(--etape); }
-.fiche-etapes a::before { content: ''; flex: none; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--etape); }
+.fiche-etapes a:hover { border-color: var(--cadre-trait); }
+.fiche-etapes a::before {
+  content: '';
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1px solid var(--cadre-trait);
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--cadre) 50%, var(--cadre-2) 50%);
+}
+
+/* cadres des blocs (bordure, bandeau du titre) et sommaire : la couleur de la magie innée, en dégradé vers celle de la magie acquise (demande du
+   propriétaire ; --magie-1 et --magie-2 posées par le script) ; sans magie innée, celle de la partie du guide (--etape). Seuls les cadres changent :
+   caractéristiques, attributs, pastilles et curseurs gardent leurs couleurs. --cadre-trait : la couleur mêlée d'un peu de texte, pour qu'un trait
+   blanc (Vide) ou noir (Corruption) reste visible. */
+.fiche-etape, .fiche-etapes a {
+  --cadre: var(--etape);
+  --cadre-2: var(--cadre);
+  --cadre-trait: color-mix(in srgb, var(--cadre) 80%, var(--text));
+  --cadre-trait-2: color-mix(in srgb, var(--cadre-2) 80%, var(--text));
+}
+.fiche[data-magie] :is(.fiche-etape, .fiche-etapes a) { --cadre: var(--magie-1); --cadre-2: var(--magie-2, var(--magie-1)); }
 
 /* rangées de blocs (demande du propriétaire) : 1-2-3, attributs-progression, caractéristiques-sorts, maîtrises, équipement-notes. position : le
    panneau d'un menu déroulant s'étend sur toute la rangée, par-dessus les blocs voisins */
@@ -115,9 +135,12 @@ main:has(> .fiche) { max-width: 100rem; }
   --etape-doux: color-mix(in srgb, var(--etape) 9%, var(--surface));
   --etape-ligne: color-mix(in srgb, var(--etape) 40%, var(--border));
   scroll-margin-top: 3.5rem;
-  border: 1px solid var(--etape-ligne);
+  /* bordure en dégradé, coins arrondis : le dégradé peint sous la bordure transparente, la surface par-dessus le reste */
+  border: 1px solid transparent;
   border-radius: calc(var(--radius) + 3px);
-  background: var(--surface);
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(90deg, color-mix(in srgb, var(--cadre-trait) 50%, var(--border)), color-mix(in srgb, var(--cadre-trait-2) 50%, var(--border))) border-box;
 }
 .fiche-etape > h2 {
   display: flex;
@@ -126,8 +149,9 @@ main:has(> .fiche) { max-width: 100rem; }
   margin: 0;
   padding: 0.35rem 0.7rem;
   border-radius: calc(var(--radius) + 2px) calc(var(--radius) + 2px) 0 0;
-  background: linear-gradient(90deg, var(--etape-doux), var(--surface));
-  border-bottom: 2px solid var(--etape);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--cadre) 16%, var(--surface)), color-mix(in srgb, var(--cadre-2) 16%, var(--surface)));
+  border-bottom: 2px solid var(--cadre-trait);
+  border-image: linear-gradient(90deg, var(--cadre-trait), var(--cadre-trait-2)) 1;
   font-size: 0.98rem;
 }
 /* un compteur dans le coin du bloc (quota de maîtrise, décision R32) */
@@ -350,7 +374,16 @@ main:has(> .fiche) { max-width: 100rem; }
 .fiche-table--fixe { table-layout: fixed; }
 .fiche-table--fixe th:first-child, .fiche-table--fixe td:first-child { width: 7rem; }
 .fiche-table--fixe .etroite { width: 5rem; }
-.fiche-table--sorts td:nth-child(2) { width: 40%; }
+.fiche-table--sorts td:nth-child(2) { width: 30%; }
+.fiche-table--sorts td.sort-valeur { font-size: 0.8rem; }
+/* l'effet secondaire d'un sort, sur sa propre ligne sous le sort (demande du propriétaire) */
+.fiche-table--sorts tr.avec-effet td { border-bottom: 0; }
+.fiche-table--sorts tr.sort-effet td { padding-top: 0; color: var(--muted); font-size: 0.76rem; line-height: 1.3; white-space: pre-line; }
+/* la remarque d'un sort : une étoile, son texte en infobulle (demande du propriétaire ; l'infobulle du navigateur, que le cadre défilant ne coupe pas) */
+.sort-choix { display: flex; min-width: 9rem; align-items: center; gap: 0.3rem; }
+.sort-choix select { flex: 1; min-width: 0; }
+.sort-remarque { flex: none; color: #c99a06; font-size: 0.95rem; line-height: 1; cursor: help; }
+.sort-remarque:focus-visible { outline: 2px solid var(--etape); outline-offset: 2px; border-radius: 3px; }
 /* liste d'un emplacement : un groupe par NPM, chaque sort sur la couleur de sa magie (demande du propriétaire) ; fermée, la couleur du sort choisi */
 .fiche .fiche-table--sorts select[data-couleur] { background-color: var(--c); color: var(--texte-sur-c, #fff); font-weight: 600; }
 .fiche-table--sorts optgroup, .fiche-table--sorts option.option-vide { background-color: var(--surface); color: var(--text); font-weight: normal; }
@@ -362,36 +395,68 @@ main:has(> .fiche) { max-width: 100rem; }
 .nm-origines > * { vertical-align: middle; }
 .fiche .nm-origines input[type='number'] { width: 3.2rem; padding-inline: 0.3rem; }
 .nm-livre { display: inline-flex; align-items: center; gap: 0.15rem; margin-inline: 0.35rem; color: var(--muted); font-size: 0.78rem; }
-#progression select { width: auto; }
+/* gains de niveau, compacts (demande du propriétaire) : une petite carte par niveau, plusieurs par ligne ; santé bordée de rouge, chakra de bleu */
+.gains { display: grid; gap: 0.3rem 0.45rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 12.5rem), 1fr)); align-items: start; }
+.gain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--etape-ligne);
+  border-radius: var(--radius);
+  background: var(--etape-doux);
+  font-size: 0.8rem;
+}
+.gain__niveau { min-width: 2.7rem; font-weight: 700; color: color-mix(in srgb, var(--etape) 65%, var(--text)); white-space: nowrap; }
+.fiche .gain input[type='number'] { width: 3.1rem; padding-inline: 0.25rem; text-align: right; font-variant-numeric: tabular-nums; }
+.fiche .gain .gain__sante { border-color: #c62828; }
+.fiche .gain .gain__chakra { border-color: #1e5bb8; }
+.gain__total { margin-left: auto; color: var(--good); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gain__total[data-hors] { color: var(--danger); }
+.gain__de { display: flex; flex: 1 1 100%; gap: 0.25rem; }
+.fiche .gain__de select { flex: 1; min-width: 0; padding-inline: 0.25rem; }
 .fiche-defile { overflow-x: auto; }
 
-/* caractéristiques : six cartes, chacune dans sa couleur (--c, --c-texte posées par le script : lib/caracteristiques-postures.mjs, demande du
-   propriétaire). Couleurs claires : le nom est un aplat au texte foncé, bordé de --text pour qu'un gris clair (Social) reste visible sur la feuille. */
-.caracs { display: grid; gap: 0.45rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 8rem), 1fr)); }
+/* caractéristiques : six cartes sur une seule ligne (demande du propriétaire ; trois par ligne sur un petit écran), chacune dans sa couleur (--c,
+   --c-texte posées par le script : lib/caracteristiques-postures.mjs, demande du propriétaire). Couleurs claires : le nom est un aplat au texte foncé,
+   bordé de --text pour qu'un gris clair (Social) reste visible sur la feuille ; trop long pour la carte, il se termine par « … » (son nom en infobulle). */
+.caracs { display: grid; gap: 0.35rem; grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .carac {
   --c: var(--etape);
   display: grid;
-  gap: 0.2rem;
+  gap: 0.15rem;
   justify-items: center;
-  padding: 0.4rem 0.5rem;
+  min-width: 0;
+  padding: 0.35rem 0.3rem;
   border: 1px solid color-mix(in srgb, var(--c) 60%, var(--border));
   border-radius: var(--radius);
   background: color-mix(in srgb, var(--c) 12%, var(--surface));
   text-align: center;
 }
 .carac__nom {
-  padding: 0 0.6rem;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0 0.4rem;
   border: 1px solid color-mix(in srgb, var(--text) 25%, var(--c));
   border-radius: 999px;
   background: var(--c);
   color: var(--c-texte, #fff);
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.carac__valeur { font-size: 1.35rem; font-weight: 700; line-height: 1; color: color-mix(in srgb, var(--c) 35%, var(--text)); }
+.carac__valeur { font-size: 1.3rem; font-weight: 700; line-height: 1; color: color-mix(in srgb, var(--c) 35%, var(--text)); }
 .carac__valeur[data-hors] { color: var(--danger); }
-.carac__bonus { font-size: 0.7rem; color: var(--muted); }
-.carac select { width: 100%; font-size: 0.76rem; }
+.carac__bonus { font-size: 0.66rem; line-height: 1.2; color: var(--muted); }
+.carac .curseur { min-width: 0; }
+/* les deux croix (R19) : deux cases à cocher, comme sur la feuille */
+.croix { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--muted); font-size: 0.7rem; }
+.croix__case { margin: 0; accent-color: var(--danger); }
+@media (max-width: 40rem) {
+  .caracs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 
 /* compétences : six blocs de cinq, chacun dans la couleur de sa caractéristique (en-tête en aplat, lignes à peine teintées) */
 .competences { display: grid; gap: 0.55rem 0.9rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); align-items: start; }
@@ -431,7 +496,6 @@ main:has(> .fiche) { max-width: 100rem; }
 .attribut__nom { color: var(--a-nom); font-size: 0.78rem; font-weight: 700; }
 .attribut__valeur { font-size: 1.15rem; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .attribut__valeur[data-hors] { color: var(--danger); }
-.attribut__detail { color: var(--muted); font-size: 0.68rem; line-height: 1.25; }
 .attribut__curseur { display: flex; align-items: center; gap: 0.3rem; }
 .attribut .curseur { min-width: 3rem; accent-color: var(--a); }
 .fiche .ajuster {
@@ -457,6 +521,25 @@ main:has(> .fiche) { max-width: 100rem; }
 .attribut[data-a='chakra'] { --a: #1e5bb8; }
 .attribut[data-a='corruption'] { --a: #111; }
 .attribut[data-a='barre4'] { --a: #8a1c1c; }
+/* initiative, vitesse et nage : de simples pastilles (demande du propriétaire), à côté de la corruption */
+.attributs-bas { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.45rem; }
+.attributs-pastilles { flex: 1 1 14rem; align-content: center; }
+.attributs-corruption { flex: 0 1 15rem; display: grid; }
+/* les six postures (demande du propriétaire) : une pastille chacune, dans sa couleur ; la choisie pleine, ses effets dessous */
+.postures { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; }
+.postures__titre { color: var(--muted); font-size: 0.78rem; }
+.postures__choix { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.fiche .posture {
+  padding: 0.05rem 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--c) 70%, var(--text));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c) 18%, var(--surface));
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.fiche .posture[aria-pressed='true'] { background: var(--c); color: var(--c-texte); box-shadow: 0 1px 6px color-mix(in srgb, var(--c) 45%, transparent); }
+.postures__effets { flex: 1 1 100%; margin: 0; color: var(--muted); font-size: 0.76rem; }
 /* la corruption reste noire en mode sombre : son nom et ses boutons prennent alors la couleur du texte pour rester lisibles */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .attribut[data-a='corruption'] { --a-trait: var(--muted); --a-nom: var(--text); }
@@ -469,6 +552,17 @@ main:has(> .fiche) { max-width: 100rem; }
 .retirer:hover { border-color: var(--danger) !important; }
 
 /* dons à choix */
+/* rappel des dons sous les sorts (demande du propriétaire) : don de base et don de race, puis les dons débloqués de chaque classe */
+.dons-liste { display: grid; gap: 0.3rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); margin: 0; padding: 0; list-style: none; }
+.don { display: grid; gap: 0.1rem; align-content: start; padding: 0.25rem 0.45rem; border: 1px solid var(--etape-ligne); border-left: 3px solid var(--c, var(--etape)); border-radius: var(--radius); background: var(--etape-doux); font-size: 0.8rem; }
+.don__tete { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.4rem; }
+.don__niveau { color: var(--muted); font-size: 0.72rem; white-space: nowrap; }
+.don__type { margin-left: auto; padding: 0 0.4rem; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font-size: 0.68rem; }
+.don__type:not([data-type='passif']) { border-color: color-mix(in srgb, var(--c, var(--etape)) 60%, var(--border)); color: var(--text); font-weight: 700; }
+.don__texte { color: var(--muted); font-size: 0.76rem; line-height: 1.3; white-space: pre-line; }
+.dons-classes { display: grid; gap: 0.5rem; }
+.dons-classe > h4 { margin: 0 0 0.25rem; padding-bottom: 0.15rem; border-bottom: 2px solid var(--c); font-size: 0.82rem; }
+
 .dons-groupe { display: grid; gap: 0.25rem; padding: 0.4rem 0.6rem; border: 1px solid var(--etape-ligne); border-radius: var(--radius); }
 .dons-groupe legend { padding: 0 0.3rem; font-size: 0.8rem; color: var(--muted); }
 .dons-options { display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; }

@@ -19,7 +19,7 @@ const ETAPES = [
   { id: 'attributs', titre: 'Attributs et valeurs du moment', court: 'Attributs', partie: 'creer' },
   { id: 'progression', titre: 'Niveau, gains de niveau et dons', court: 'Progression', partie: 'progresser' },
   { id: 'caracteristiques', titre: 'Caractéristiques et compétences', court: 'Caractéristiques', partie: 'creer' },
-  { id: 'sorts', titre: 'Sorts', court: 'Sorts', partie: 'creer' },
+  { id: 'sorts', titre: 'Sorts et dons', court: 'Sorts et dons', partie: 'creer' },
   { id: 'maitrises', titre: 'Maîtrises d’armes', court: 'Maîtrises', partie: 'creer' },
   { id: 'equipement', titre: 'Équipement et bourse', court: 'Équipement', partie: 'jouer' },
   { id: 'jeu', titre: 'Notes et événements', court: 'Notes', partie: 'jouer' },
@@ -139,10 +139,18 @@ const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
         <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
           <h2 id={`titre-${e.id}`}>{e.titre}</h2>
           <div class="fiche-etape__corps">
-            {/* demande du propriétaire : les valeurs du moment avec leur maximum ; santé, barrière, chakra (et Âme ou Sang), puis initiative, vitesse, corruption */}
+            {/* demandes du propriétaire : les valeurs du moment avec leur maximum (santé, barrière, chakra, et Âme ou Sang), sans texte de calcul (en
+                infobulle) ; initiative, vitesse et nage en simples pastilles, à côté de la corruption ; le sélecteur des six postures */}
             <div id="attributs-barres" class="attributs"></div>
-            <div id="attributs-autres" class="attributs"></div>
-            <p class="fiche-aide">Santé et chakra = classes + race + magies + ethnie + accessoires + gains de niveau ; barrière = la moitié du chakra + classes + race + ethnie + accessoires. Valeurs du moment : au maximum tant qu’on n’y touche pas, la corruption à 0 ; la corruption prend la place du chakra (sauf avec la magie de la Corruption). + et − : ajouter ou retirer un nombre.</p>
+            <div class="attributs-bas">
+              <ul id="attributs-pastilles" class="fiche-resume attributs-pastilles" aria-label="Initiative et vitesses"></ul>
+              <div id="attributs-corruption" class="attributs-corruption"></div>
+            </div>
+            <div class="postures">
+              <span class="postures__titre" id="titre-postures">Posture</span>
+              <div id="postures" class="postures__choix" role="group" aria-labelledby="titre-postures"></div>
+              <p id="posture-effets" class="postures__effets" aria-live="polite"></p>
+            </div>
           </div>
         </section>
       ))}
@@ -165,7 +173,7 @@ const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
                 <button type="button" id="xp-annuler">Annuler</button>
               </form>
             </div>
-            <div><h3>Gains de niveau</h3><p class="fiche-aide" id="progression-aide"></p><div class="fiche-defile"><table class="fiche-table" id="progression"></table></div></div>
+            <div><h3>Gains de niveau</h3><p class="fiche-aide" id="progression-aide"></p><div id="progression" class="gains"></div></div>
             <div><h3>Dons de classe à choisir</h3><div id="dons" class="fiche-etape__dons"></div></div>
           </div>
         </section>
@@ -193,6 +201,9 @@ const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
           <div class="fiche-etape__corps">
             <div class="fiche-entete-bloc"><p class="fiche-aide" id="emplacements-detail"></p><span class="fiche-budgets"><span class="budget" id="budget-sorts"></span><span class="budget" id="budget-nm"></span></span></div>
             <div class="fiche-defile"><table class="fiche-table fiche-table--sorts" id="sorts"></table></div>
+            {/* rappel des dons (demande du propriétaire) : ceux de la race (don de base d'abord), puis ceux des classes, débloqués au niveau atteint */}
+            <div><h3>Dons raciaux</h3><ul id="dons-race" class="dons-liste" aria-label="Dons de la race"></ul></div>
+            <div><h3>Dons de classe débloqués</h3><div id="dons-classes" class="dons-classes"></div></div>
           </div>
         </section>
       ))}

@@ -302,6 +302,12 @@ en chakra qui baisse, portée, zone, dégâts / soins / barrière, effet seconda
 - **`sort.bonus_maitrise`** : la colonne « Bonus Maîtrise » de la table des sorts, la recopie lisible de ces lignes (une ligne « Coût : -5/NM » par bonus), accord contrôlé par `test/maitrise-sorts.test.mjs`.
 - **`v_sort_bonus_au_nm`** et `lib/sort-maitrise.mjs` (`applications`, `bonusAuNm`) : ce qui s'applique à un niveau de maîtrise donné (0 à 3), pour que la fiche de personnage détermine un sort d'après ses NM : `par_nm` = NM / `pas_nm`
   fois, `palier` = 1 à partir de `seuil_nm`. La vue SQL et la fonction JavaScript disent la même chose (test d'accord sur les 322 sorts).
+- **Valeur à N NM** (`lib/sort-maitrise.mjs#valeurAuNm`, tableau des sorts de la fiche de personnage ; demande du propriétaire : la valeur calculée plutôt que
+  « (+1/NM) ») : un bonus par NM entre parenthèses s'ajoute au terme qui le précède dans sa phrase quand ce n'est qu'un calcul (« 45 (-5/NM) » à 2 NM → 35 ;
+  « 2d6 dégâts (+1d6/NM) » → 4d6 ; « 5d6 dégâts (+3/NM) » → 5d6 + 6 ; « 10d6 + 80 (+10/NM) » → 10d6 + 100) ; sinon il est écrit appliqué à la place de son
+  expression (« 1 ou 2 clones (+2) ») ; à 0 NM il disparaît (la valeur de base, comme `sansBonus`) ; un palier « 3NM = … » ne garde son effet qu'au seuil ;
+  toute autre écriture (« x4/3NM », « au niveau 3 de maîtrise ») reste telle qu'écrite. Les pages de magie, elles, montrent toujours l'expression en pastille.
+  `test/maitrise-sorts.test.mjs` le rejoue sur tous les sorts, de 0 à 3 NM.
 - **Mode et type séparés** : `sort_type` = le type (attaque, entrave, soin…), `sort_mode` = le mode de base (IC, imparable, inesquivable, `IC x 2`) et `sort.mode_brut` = le texte entre parenthèses de la colonne Type ; un mode qui dépend d'un NM
   (`IC pour 3 NM`, `IC x 2 si 3NM`, `IC x 1/NM`) est un bonus de maîtrise (`champ = 'type'`). `type_brut` reste la cellule telle qu'écrite.
 - Les corrections de ces données passent par une migration (`data/migrations/0004-bonus-maitrise.sql`, registre `.json` ligne par ligne) ; le registre est la trace de ce qui a été extrait de quelle cellule.

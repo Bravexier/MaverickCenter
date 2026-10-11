@@ -14,7 +14,7 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { chargerMagies } from '../src/lib/magies-db.mjs';
 import { bonusDeMaitrise, COLONNES_NM } from '../src/lib/sort-analyse.mjs';
 import { coutDeSort, valeurDeSort } from '../src/lib/sort-format.mjs';
-import { applications, marquerBonus, ORDRE_CHAMPS_NM, sansBonus, texteDeBonus } from '../src/lib/sort-maitrise.mjs';
+import { applications, marquerBonus, ORDRE_CHAMPS_NM, sansBonus, texteDeBonus, valeurAuNm } from '../src/lib/sort-maitrise.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const magies = chargerMagies(db);
@@ -234,4 +234,23 @@ test('migration 0004 : le registre JSON décrit exactement les lignes de la base
   const projete = (l) => noms0006.filter((c) => c.cle.sort_id === l.sort_id && c.cle.champ === l.champ && c.cle.rang === l.rang)
     .reduce((x, c) => ({ ...x, contexte: x.contexte.replaceAll(c.avant, c.apres) }), l);
   assert.deepEqual(registre.bonus.map(projete).map(cle).sort(), lignesImport.map(cle).sort());
+});
+
+test('valeur à N NM sur tous les sorts (fiche de personnage) : plus aucune expression « /NM » lisible, la valeur de base à 0 NM, jamais de case vidée', () => {
+  const lisible = (b) => /^[+\-–−]?\s*\d+(?:d\d*)?\s*(?:%|AM|AP|[a-zà-ÿ]+)?$/i.test(String(b.incrementBrut ?? '').trim());
+  for (const [id, s] of sorts) {
+    const bonus = bonusDe(id);
+    for (const champ of ['cout', 'portee', 'dsb', 'effets']) {
+      const brut = s[COLONNE[champ]];
+      if (!brut) continue;
+      for (const nm of [0, 1, 2, 3]) {
+        const valeur = valeurAuNm(brut, bonus, champ, nm);
+        assert.ok(valeur.trim().length > 0, `${id} ${champ} à ${nm} NM : case vidée`);
+        for (const b of bonus.filter((x) => x.champ === champ && x.nature === 'par_nm' && lisible(x))) {
+          assert.ok(!valeur.includes(b.texteBrut), `${id} ${champ} à ${nm} NM : « ${b.texteBrut} » reste dans « ${valeur} »`);
+        }
+      }
+      if (champ !== 'effets') assert.equal(valeurAuNm(brut, bonus, champ, 0), sansBonus(brut, bonus, champ), `${id} ${champ} : la valeur de base à 0 NM`);
+    }
+  }
 });

@@ -1,6 +1,6 @@
 // Moteur de la fiche (lib/fiche-moteur.mjs) sur les vraies règles (lib/fiche-regles.mjs, la base construite) : chaque calcul comparé à sa source —
 // les vues de la base (v_personnage_niveau, v_personnage_controle, par le service sur une base vivante temporaire), les personnages fil rouge du
-// guide (lib/guide-fil-rouge.mjs) et les décisions du propriétaire (R2, R3, R6, R7, R15, R16, R19, R20, R23, R24, R25, R26, R27, R28, R32, R33, R34, R35).
+// guide (lib/guide-fil-rouge.mjs) et les décisions du propriétaire (R2, R3, R6, R7, R15, R16, R19, R20, R23, R24, R25, R26, R27, R28, R32, R33, R34, R35, R37, R38, R39, R41).
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -12,7 +12,7 @@ import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import {
   ajusterValeurDuMoment, alignementDe, artisanatDe, attributsDe, bonusDuMetier, borner, choisirObjetDeMetier, choixDeMetierValables, inventaireSelonLeMetier,
-  objetChoisi, objetDInventaire, objetsDuMetier, deDeLaFamille, quotaDeMaitrise, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, magieAcquiseValable, nmDuSort,
+  objetChoisi, objetDInventaire, objetsDuMetier, deDeLaFamille, donsAcquis, donsDeRace, quotaDeMaitrise, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, magieAcquiseValable, nmDuSort,
   progressionXp, classeMagique, classesPermises, classesSelonLaMagieInnee,
   competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, magiesInneesPermises, maitriseDesSorts, niveauGlobal,
   maitriseDArme, niveauxDeClasse, notationDesDes, npmMax, progressionAttendue, puissanceMagique, refusClasse, refusMagieAcquise, sortsParNpm, sortsPossibles, ecrireValeurDuMoment, valeursDuMoment, xpDuNiveauSuivant,
@@ -113,7 +113,7 @@ test('caractéristiques : +1 de la magie innée sur sa caractéristique (ou cell
   assert.ok(sansRace.every((c) => c.base === null && c.min === 1 && c.max === 4));
 });
 
-test('compétences : score = 10 × caractéristique + naturel + acquis ; une croix −20, deux croix inutilisable (R19) ; acquis au plus 5 par point de base', () => {
+test('compétences : score = 10 × caractéristique + naturel + acquis ; une croix −20, deux croix inutilisable (R19) ; acquis au plus 5 par point, magie comprise (R41)', () => {
   const fiche = ficheConforme({
     competences: [{ competence_id: 'arme-lourde', naturel: 20, acquis: 5 }],
     caracteristiques: ficheConforme().caracteristiques.map((c) => (c.caracteristique_id === 'social' ? { ...c, croix: 1 } : c.caracteristique_id === 'agilite' ? { ...c, croix: 2 } : c)),
@@ -126,6 +126,20 @@ test('compétences : score = 10 × caractéristique + naturel + acquis ; une cro
   assert.equal(parId.get(social.id).score, 3 * 10 - 20, 'Social 2 + 1 (Feu) ; une croix');
   const agilite = regles.competences.find((c) => c.caracteristique_id === 'agilite');
   assert.equal(parId.get(agilite.id).score, null);
+  // décision R41 : la caractéristique totale, le +1 de la magie innée compris (Social 2 + 1 du Feu : 15) ; l'exemple du propriétaire, 5 en Volonté : 25
+  assert.equal(parId.get(social.id).maxAcquis, 15);
+  const volonte = regles.magies.find((m) => m.caracteristique_id === 'volonte');
+  assert.ok(volonte, 'une magie donne +1 en Volonté');
+  const cinq = ficheConforme({
+    magie_innee_id: volonte.id,
+    caracteristiques: ficheConforme().caracteristiques.map((c) => (c.caracteristique_id === 'volonte' ? { ...c, base: 4 } : c.caracteristique_id === 'force' ? { ...c, base: 2 } : c)),
+  });
+  assert.equal(competencesDe(regles, cinq).find((c) => c.id === 'calme').maxAcquis, 25);
+  // la base dit la même chose : 25 passe, 26 non
+  const { controles } = enregistrerFiche(vivante, { ...cinq, competences: [...cinq.competences, { competence_id: 'calme', naturel: 0, acquis: 25 }] });
+  assert.ok(!controles.some((c) => c.regle === 'competence_acquis_max'), JSON.stringify(controles));
+  const trop = enregistrerFiche(vivante, { ...cinq, competences: [...cinq.competences, { competence_id: 'calme', naturel: 0, acquis: 26 }] });
+  assert.deepEqual(trop.controles.filter((c) => c.regle === 'competence_acquis_max'), [{ regle: 'competence_acquis_max', detail: 'calme = 26' }]);
 });
 
 test('attributs des quatre personnages fil rouge : les mêmes que le guide (santé, chakra, barrière, vitesse, AP/AM, emplacements de sorts)', () => {
@@ -546,8 +560,8 @@ test('décision R32 : quota de maîtrise = maîtrises des classes prises + point
   // les points répartis sur la fiche
   assert.equal(quotaDeMaitrise(regles, ficheConforme({ maitrises_armes: [{ arme_famille_id: 'epees', des: 3 }, { arme_famille_id: 'dagues', des: 2 }] })).utilises, 3);
   // la spécialité au niveau de classe 10 : l'Épéiste (« 2 points de maîtrise à l'épée, 1 point de maîtrise à la dague, -1 point… »)
-  const epeiste = classe('classes/guerrier').dons_maitrise.find((d) => d.id === 'capacites/guerrier-epeiste');
-  assert.deepEqual({ nature: epeiste.nature, niveau: epeiste.niveau, points: epeiste.points }, { nature: 'specialite', niveau: 10, points: 2 });
+  const epeiste = classe('classes/guerrier').dons.find((d) => d.id === 'capacites/guerrier-epeiste');
+  assert.deepEqual({ nature: epeiste.nature, niveau: epeiste.niveau, points: epeiste.points_maitrise }, { nature: 'specialite', niveau: 10, points: 2 });
   const guerrier10 = (specialite_id) => ficheConforme({ xp: xp(5), classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id }] });
   assert.equal(quotaDeMaitrise(regles, guerrier10('classes/guerrier#specialite:epeiste')).total, deLaClasse('classes/guerrier') + 2);
   assert.equal(quotaDeMaitrise(regles, guerrier10(null)).total, deLaClasse('classes/guerrier'), 'sans spécialité');
@@ -563,7 +577,7 @@ test('décision R32 : quota de maîtrise = maîtrises des classes prises + point
   assert.equal(quotaDeMaitrise(regles, { ...archimage([{ capacite_id: 'capacites/archimage-elementaliste' }]), xp: xp(4) }).total, deLaClasse('classes/archimage'), 'pas avant son niveau');
   // chaque classe a ses maîtrises ; chaque don qui en donne est d'une classe, avec ses points
   assert.ok(regles.classes.every((c) => c.maitrises.length > 0 && c.maitrises.every((m) => m.nombre > 0 && m.brut)));
-  assert.ok(regles.classes.every((c) => c.dons_maitrise.every((d) => d.points > 0 && ['classe', 'specialite', 'choix'].includes(d.nature))));
+  assert.ok(regles.classes.every((c) => c.dons.every((d) => d.points_maitrise >= 0 && ['classe', 'specialite', 'choix'].includes(d.nature))));
 });
 
 test('boutons + et − des valeurs du moment (demande du propriétaire) : la valeur affichée plus ou moins le nombre saisi, bornée comme le curseur', () => {
@@ -736,4 +750,48 @@ test('décision R39 : une croix retire 20 à la compétence d’artisanat (comme
   const deux = artisanatDe(r, fiche({ intelligence: 2 }));
   assert.deepEqual([deux.score, deux.inutilisable], [null, true]);
   assert.equal(regles.constantes['competence.croix_1_malus'], -20);
+});
+
+test('dons de classe débloqués (demande du propriétaire) : de la classe et de la spécialité jusqu’au niveau de classe, dons à choix choisis seulement', () => {
+  const xp = (niveau) => regles.niveaux.find((n) => n.niveau === niveau).xp_min;
+  const guerrier = regles.classes.find((c) => c.id === 'classes/guerrier');
+  const ids = (fiche) => donsAcquis(regles, fiche).flatMap((c) => c.dons.map((d) => d.id));
+  // niveau global 1, mono-classe : niveau de classe 2, les dons de classe de niveau 1 et 2
+  assert.deepEqual(ids(ficheConforme()), guerrier.dons.filter((d) => d.nature === 'classe' && d.niveau <= 2 && !d.specialite_id).map((d) => d.id));
+  const epeiste = 'classes/guerrier#specialite:epeiste';
+  const dix = ficheConforme({ xp: xp(5), classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: epeiste }], capacites: [{ capacite_id: 'capacites/guerrier-duelliste' }] });
+  const acquis = ids(dix);
+  assert.ok(acquis.includes('capacites/guerrier-epeiste'), 'le don de la spécialité');
+  assert.ok(acquis.includes('capacites/guerrier-duelliste'), 'le don à choix choisi');
+  assert.ok(!acquis.includes('capacites/guerrier-coup-dur'), 'pas l’autre option du choix');
+  assert.ok(!acquis.includes('capacites/guerrier-maitre-darme'), 'pas l’autre spécialité');
+  assert.ok(donsAcquis(regles, dix)[0].dons.every((d) => d.niveau <= 10), 'rien au-delà du niveau de classe');
+  assert.deepEqual(donsAcquis(regles, ficheVide()), [], 'sans classe');
+  // la seconde classe d'un mono-classe n'en donne qu'une fois prise (niveau global 11, décision R2)
+  const deux = (niveau) => ficheConforme({ xp: xp(niveau), classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: null }, { rang: 2, classe_id: 'classes/mage', specialite_id: null }] });
+  assert.deepEqual(donsAcquis(regles, deux(10)).map((c) => c.rang), [1]);
+  assert.deepEqual(donsAcquis(regles, deux(11)).map((c) => c.rang), [1, 2]);
+});
+
+test('dons de la race (demande du propriétaire) : le don de base d’abord, le don de l’ethnie, la ligne de son ethnie dans le tableau de la race', () => {
+  const humain = regles.races.find((r) => r.id === 'races/humain');
+  const central = donsDeRace(regles, ficheConforme());
+  assert.equal(central.base, humain.don_base);
+  assert.ok(central.base, 'l’Humain a un don de base');
+  assert.deepEqual(central.dons, humain.dons.filter((d) => d.ethnie_id === 'races/humain#ethnie:humain-central'));
+  assert.equal(central.dons.length, 1);
+  assert.equal(central.ethnieAChoisir, false);
+  const sansEthnie = donsDeRace(regles, ficheConforme({ ethnie_id: null }));
+  assert.deepEqual([sansEthnie.dons, sansEthnie.ethnieAChoisir], [[], true], 'un don par ethnie : à choisir');
+  // un don unique vaut pour toute la race
+  const unique = regles.races.find((r) => r.dons.length === 1 && r.dons[0].forme === 'unique');
+  assert.ok(unique);
+  assert.equal(donsDeRace(regles, { ...ficheVide(), race_id: unique.id }).dons.length, 1);
+  // une race à tableau de dons : la ligne de son ethnie
+  const tableau = regles.races.find((r) => r.dons_tableau?.lignes.some((l) => l.ethnie_id));
+  assert.ok(tableau, 'une race a un tableau de dons par ethnie');
+  const ligne = tableau.dons_tableau.lignes.find((l) => l.ethnie_id);
+  const avecTableau = donsDeRace(regles, { ...ficheVide(), race_id: tableau.id, ethnie_id: ligne.ethnie_id });
+  assert.deepEqual(avecTableau.tableau, { titre: tableau.dons_tableau.titre, cellules: ligne.cellules });
+  assert.deepEqual(donsDeRace(regles, ficheVide()), { base: null, dons: [], tableau: null, ethnieAChoisir: false }, 'sans race');
 });
