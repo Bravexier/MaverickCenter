@@ -30,20 +30,20 @@ d'une source ou d'une décision de [`decisions-regles.md`](decisions-regles.md) 
 
 ### Vue d'ensemble
 
-| Id | Évolution | Jalon proposé | Dépend de | Ce qui existe déjà |
+| Id | Évolution | Jalon · version visée | Dépend de | Ce qui existe déjà |
 | --- | --- | --- | --- | --- |
-| E1 | Galerie : créations humaines / images d'IA | A | — | `/galeries/`, carrousel de l'accueil, `lib/galerie.mjs` (le logo seul) |
-| E2 | Page du Bestiaire | A, puis B | sources pour les monstres | 63 créatures d'invocation dans les tables `creature_*` (section 8), pages `bestiaire/…` rendues depuis leur Markdown |
-| E3 | Refonte de l'équipement et intégration à la fiche | A | ce que « refonte » change (question 4) | catalogues de la section 9, bloc équipement de `/fiche/`, tables `personnage_arme`, `personnage_armure`… |
-| E4 | Générateur d'accessoires magiques | A | E3 pour les accessoires | tables de tirage `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet` ; `personnage_accessoire` |
-| E5 | Chronologie | B | sources du lore | entrée « bientôt » du menu Codex |
-| E6 | Carte interactive et lieux | B | image de la carte, sources | type `cartes` (aucune page), entrée « bientôt » du menu Codex |
-| E7 | Connexion par Discord seulement, droits selon les rôles Discord | C (1.0) | application Discord du propriétaire | tables `utilisateur`, `utilisateur_role` ; « Authentification » plus bas |
-| E8 | Fiches de personnage assignées à un compte | C (1.0) | E7 | `personnage.proprietaire_id`, `personnage_partage`, `v_personnage_visible` |
-| E9 | Groupes (OS, HC, Campagne) et planning des parties | D | E7, E8 | `groupe`, `groupe_membre`, `v_groupe_controle` ; entrée « bientôt » du menu Personnages |
-| E10 | Bot Discord : lien site ↔ serveur, notifications | D (annonces dès A) | E7 pour les notifications ciblées | — |
-| E11 | Boîte à idées, tickets, rapports de bugs | D | E7 | entrée « bientôt » du menu Outils |
-| E12 | Statistiques | E (celles des règles dès A) | E8 et des fiches réelles | `v_personnage_niveau`, base vivante du service |
+| E1 | Galerie : créations humaines / images d'IA | A · V0.3 | — | `/galeries/`, carrousel de l'accueil, `lib/galerie.mjs` (le logo seul) |
+| E2 | Page du Bestiaire | A · V0.3, puis B · V0.5 | sources pour les monstres | 63 créatures d'invocation dans les tables `creature_*` (section 8), pages `bestiaire/…` rendues depuis leur Markdown |
+| E3 | Refonte de l'équipement et intégration à la fiche | A · V0.4 | ce que « refonte » change (question 4) | catalogues de la section 9, bloc équipement de `/fiche/`, tables `personnage_arme`, `personnage_armure`… |
+| E4 | Générateur d'accessoires magiques | A · V0.4 | E3 pour les accessoires | tables de tirage `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet` ; `personnage_accessoire` |
+| E5 | Chronologie | B · V0.5 | sources du lore | entrée « bientôt » du menu Codex |
+| E6 | Carte interactive et lieux | B · V0.5 | image de la carte, sources | type `cartes` (aucune page), entrée « bientôt » du menu Codex |
+| E7 | Connexion par Discord seulement, droits selon les rôles Discord | C · V0.6 (essai), V1.0 | application Discord du propriétaire | tables `utilisateur`, `utilisateur_role` ; « Authentification » plus bas |
+| E8 | Fiches de personnage assignées à un compte | C · V1.0 | E7 | `personnage.proprietaire_id`, `personnage_partage`, `v_personnage_visible` |
+| E9 | Groupes (OS, HC, Campagne) et planning des parties | D · V1.2 | E7, E8 | `groupe`, `groupe_membre`, `v_groupe_controle` ; entrée « bientôt » du menu Personnages |
+| E10 | Bot Discord : lien site ↔ serveur, notifications | A · V0.3 (annonces), D · V1.3 | E7 pour les notifications ciblées | — |
+| E11 | Boîte à idées, tickets, rapports de bugs | D · V1.1 | E7 | entrée « bientôt » du menu Outils |
+| E12 | Statistiques | E · V1.4 | E8 et des fiches réelles | `v_personnage_niveau`, base vivante du service |
 
 Jalons proposés :
 
@@ -53,6 +53,25 @@ Jalons proposés :
   signal du propriétaire ([`flux-git.md`](flux-git.md)).
 - **D — la communauté** : ce que les comptes rendent possible.
 - **E — la mesure** : quand il y a assez de fiches réelles ; puis la simulation de combats (étape 3).
+
+Versions visées (proposition, 2026-10-11, depuis la V0.2.0) : chaque livraison `dev` → `master` augmente le deuxième chiffre ([`flux-git.md`](flux-git.md)),
+donc **V0.3** est la prochaine livraison. Les numéros sont indicatifs : une livraison faite pour autre chose décale la suite, et la 1.0 reste le signal du
+propriétaire.
+
+| Version | Contenu visé |
+| --- | --- |
+| V0.3 | Galerie humaine / IA (E1), page du Bestiaire des invocations (E2), annonce des versions sur Discord par webhook (E10) |
+| V0.4 | Refonte de l'équipement et effets dans la fiche (E3), générateur d'accessoires magiques (E4) |
+| V0.5 | Codex, selon l'arrivée des sources : chronologie (E5), carte et lieux (E6), monstres du « Bestiaire 2.0 » (E2) |
+| V0.6 | Connexion par Discord à l'essai, MJ et administrateurs (E7) |
+| V1.0 | Ouverture à tout le Discord : connexion par Discord, droits selon les rôles (E7), fiches de chaque compte (E8) |
+| V1.1 | Boîte à idées, tickets et rapports de bugs (E11) |
+| V1.2 | Groupes OS / HC / Campagne et planning des parties (E9) |
+| V1.3 | Bot Discord : notifications ciblées, rappels de parties, rôles synchronisés (E10) |
+| V1.4 | Statistiques des fiches (E12) |
+| Ensuite | Remplacer Google Docs/Sheets (étape 2), simulation de combats (étape 3) |
+
+La frise pour les joueurs (une page par version, à partager sur le Discord) reprend ce tableau.
 
 ```mermaid
 flowchart LR
@@ -217,7 +236,7 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
    comptent-ils dans les statistiques ? Les images d'IA passent-elles dans le carrousel de l'accueil (E1) ?
 8. **Discord** : un groupe a-t-il son salon ou son rôle, créé par le bot ? Quels salons pour les annonces ? « Chroniques » (menu Personnages) sert-il aux
    comptes rendus des parties jouées (E9, E10) ?
-9. **Ordre** : les jalons A à E vous conviennent-ils ?
+9. **Ordre** : les jalons A à E et les versions visées vous conviennent-ils ?
 
 ## Orthographe : relecture complète à la conversion en SQL
 
