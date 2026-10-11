@@ -196,7 +196,10 @@ liens mettait le lot en conflit (`serveur-base-vivante`). Chaque lot contrôle l
 qu'un lot suivant crée, et mettait en conflit un lot antérieur sans rapport qui touchait la même table ; `transferer` contrôle toutes les fiches après le
 rejeu complet.
 
-**Rapatriement dans le dépôt** : le lien « N modifications à rapatrier » (à côté du crayon, `GET /api/edition/journal/`) télécharge le journal, puis
+**Rapatriement dans le dépôt** : le lien « N modifications à rapatrier » (à côté du crayon, `GET /api/edition/journal/`) télécharge le journal (les
+modifications en attente, et les « intégrées » des lots absents de `historique_modification` : un don créé puis supprimé avant que la base vivante soit
+refaite n'a rien à rejouer, mais son lot doit entrer dans l'historique, sans quoi son identifiant pourrait être repris ; `journalExporte`, comme le lot
+figé de « Effectuer la mise à jour »), puis
 
 ```bash
 cd client
@@ -218,7 +221,7 @@ une valeur que le site a changée.
 | `POST /api/edition/race/` | `{ race }` → magies innées et relations de la race dans la base vivante |
 | `POST /api/edition/classe/` | `{ classe }` → spécialités, dons, choix et fiches qui les citent, dans la base vivante (D11) |
 | `POST /api/edition/` | `{ page, operations: [...] }` → applique un lot d'un bloc (`modifier`, `creer`, `supprimer`, `relations`, `magies_innees` : `serveur/edition.mjs`) |
-| `GET /api/edition/journal/` | Le journal des modifications en attente (`maverick-edition/1`), en pièce jointe |
+| `GET /api/edition/journal/` | Le journal des modifications en attente, et des « intégrées » des lots que les règles n'ont pas encore reçus (`maverick-edition/1`), en pièce jointe |
 
 **Avant la 1.0, pas de comptes** : quiconque a le mot de passe du site de dev peut modifier les règles (le journal n'a pas d'auteur :
 `modification_lot.auteur_id` attend la connexion Discord). Mêmes protections d'écriture que les fiches (JSON, `Sec-Fetch-Site`).

@@ -428,13 +428,22 @@ export function lignesEnAttente(db, { tables } = {}) {
   return [...vues.values()].map((v) => ({ ...v, ligne: lireLigne(db, v.table, v.cle) }));
 }
 
-/** Le journal, lots et modifications, pour le rapatrier dans data/rows (format « maverick-edition/1 »). */
-export function journalExporte(db, { etats = ['en_attente'] } = {}) {
+/**
+ * Le journal, lots et modifications, pour le rapatrier dans data/rows (format « maverick-edition/1 » : GET /api/edition/journal/, lot figé de « Effectuer
+ * la mise à jour »). Par défaut : les modifications en attente, et les « intégrées » des lots que les règles n'ont pas encore reçus (absents de
+ * historique_modification). Une ligne créée puis supprimée par le journal passe « intégrée » quand la base vivante est refaite (rien à rejouer) : sans
+ * elles, son lot n'entrerait jamais dans l'historique des règles, et l'identifiant de la ligne pourrait être repris (règle de la migration 0006) ; le
+ * rapatriement les rejoue (encore « intégrées ») et les verse dans l'historique avec leur lot.
+ */
+export function journalExporte(db, { etats = ['en_attente', 'integree'] } = {}) {
   const lots = db.prepare('SELECT * FROM modification_lot l ORDER BY l.fait_le, l.id').all();
   const mods = db.prepare('SELECT * FROM modification ORDER BY lot_id, rang').all();
+  const historique = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'historique_modification'").get();
+  const livres = new Set(historique ? db.prepare('SELECT DISTINCT lot_id FROM historique_modification').all().map((h) => h.lot_id) : []);
   const parLot = new Map(lots.map((l) => [l.id, { ...l, modifications: [] }]));
   for (const m of mods) {
     if (!etats.includes(m.etat)) continue;
+    if (m.etat === 'integree' && livres.has(m.lot_id)) continue; // lot déjà dans les règles
     parLot.get(m.lot_id).modifications.push({
       rang: m.rang,
       table: m.table_nom,
