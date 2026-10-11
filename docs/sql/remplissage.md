@@ -80,7 +80,8 @@ pour l'Archimage d'après son « CHOSE A SAVOIR » ; règles `classe_reservee` e
 `0017-edition.sql` (structure : journal des modifications faites depuis le site de dev, section 14, tables vides dans `data/rows`), `0018-nm-excedentaires.sql`
 (structure, décision R24 : la règle `sorts_nm_total` quitte `v_personnage_controle`, plus de NM que ceux gagnés est permis),
 `0019-liens-familiers-prototype.sql` (données, demande du propriétaire : plus aucun lien vers les classeurs « Familiers » et « Prototype » ; l'hyperlien « CHOSE A SAVOIR » du Mage Bleu,
-`classe.chose_a_savoir_lien` et sa ligne dans la page, et celui de la page `ressources/familiers` avec la phrase qui le portait sont retirés ; la page `/archives/` ne montre plus ces classeurs).
+`classe.chose_a_savoir_lien` et sa ligne dans la page, et celui de la page `ressources/familiers` avec la phrase qui le portait sont retirés ; la page `/archives/` ne montre plus ces classeurs), `0020-mage-bleu-potentiel-illimite.sql`
+(structure et données, décision R25 : colonne `classe.magie_innee_exclue_id`, Potentiel Illimité pour le Mage Bleu d'après son « CHOSE A SAVOIR » ; règle `classe_exclue`).
 
 ## La colonne `remarque`
 

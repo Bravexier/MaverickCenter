@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 19 : 162 tables, 2 tables de recherche plein texte (FTS5) et 34 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 20 : 162 tables, 2 tables de recherche plein texte (FTS5) et 34 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -817,6 +817,7 @@ CLASSE : une ligne par onglet de classe (39)
 | `source_ref` | TEXT | oui |  | onglet + zones lues (départ, à savoir, description) + cellule du Sommaire |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 | `magie_innee_id` | TEXT | non | → magie.id, unique | magie innée qui RÉSERVE et IMPOSE la classe : sans elle on ne prend pas la classe, avec elle la classe est la classe 1. Archimage : Potentiel Illimité (« CHOSE A SAVOIR » de son onglet, décision R23, migration 0015) ; NULL pour les autres classes. Contrôlé par v_personnage_controle (classe_reservee, classe_imposee) |
+| `magie_innee_exclue_id` | TEXT | non | → magie.id | magie innée qui FERME la classe, à tous les rangs. Mage Bleu : Potentiel Illimité (« CHOSE A SAVOIR » de son onglet : « Un potentiel illimité ne peut pas avoir cette classe. », décision R25, migration 0020) ; NULL pour les autres. Contrôlé par v_personnage_controle (classe_exclue) |
 
 ### `specialite`
 
@@ -3152,7 +3153,7 @@ Contrôle des inscriptions dans les groupes : une ligne par anomalie (vide = con
 
 *vue*
 
-Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Une fiche 'brouillon' peut avoir des lignes, une fiche 'valide' non (test).
+Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Une fiche 'brouillon' peut avoir des lignes, une fiche 'valide' non (test).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

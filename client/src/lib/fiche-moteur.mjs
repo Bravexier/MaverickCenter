@@ -64,8 +64,9 @@ export function classeImposee(regles, fiche) {
 
 /**
  * Pourquoi une classe ne peut pas être la classe `rang` de cette fiche (null : elle le peut) : classe que la race ne permet pas (R8), classe réservée à
- * une autre magie innée, autre classe que celle qu'impose la magie innée en classe 1 (décision R23 : l'Archimage n'est ouverte qu'au Potentiel
- * Illimité, qui l'impose), classe déjà prise à l'autre rang. Mêmes règles que v_personnage_controle (classe_inaccessible, classe_reservee, classe_imposee).
+ * une autre magie innée, classe que ferme la magie innée (décision R25 : pas de Mage Bleu pour un Potentiel Illimité), autre classe que celle qu'impose la
+ * magie innée en classe 1 (décision R23 : l'Archimage n'est ouverte qu'au Potentiel Illimité, qui l'impose), classe déjà prise à l'autre rang. Mêmes
+ * règles que v_personnage_controle (classe_inaccessible, classe_reservee, classe_exclue, classe_imposee).
  */
 export function refusClasse(regles, fiche, classeId, rang) {
   const classe = trouver(regles.classes, classeId);
@@ -74,6 +75,9 @@ export function refusClasse(regles, fiche, classeId, rang) {
   if (classe.magie_innee_id && classe.magie_innee_id !== fiche.magie_innee_id) {
     return `réservée à la magie innée ${trouver(regles.magies, classe.magie_innee_id)?.nom ?? classe.magie_innee_id}`;
   }
+  if (classe.magie_innee_exclue_id && classe.magie_innee_exclue_id === fiche.magie_innee_id) {
+    return `fermée à la magie innée ${trouver(regles.magies, fiche.magie_innee_id)?.nom ?? fiche.magie_innee_id}`;
+  }
   const imposee = classeImposee(regles, fiche);
   if (rang === 1 && imposee && imposee.id !== classe.id) return `la magie innée ${trouver(regles.magies, fiche.magie_innee_id)?.nom} impose ${imposee.nom}`;
   if ((fiche.classes ?? []).some((c) => c.rang !== rang && c.classe_id === classe.id)) return 'déjà l’autre classe';
@@ -81,13 +85,15 @@ export function refusClasse(regles, fiche, classeId, rang) {
 }
 
 /**
- * Classes de la fiche une fois la magie innée choisie (décision R23) : une classe réservée à une autre magie innée est retirée, et la classe qu'impose
- * la magie innée devient la classe 1, à la place de celle qui y était (spécialité à choisir). Rend une nouvelle liste ; la fiche n'est pas modifiée.
+ * Classes de la fiche une fois la magie innée choisie (décisions R23, R25) : une classe réservée à une autre magie innée, ou que la magie innée ferme,
+ * est retirée, et la classe qu'impose la magie innée devient la classe 1, à la place de celle qui y était (spécialité à choisir). Rend une nouvelle
+ * liste ; la fiche n'est pas modifiée.
  */
 export function classesSelonLaMagieInnee(regles, fiche) {
   const classes = (fiche.classes ?? []).filter((c) => {
-    const reservee = trouver(regles.classes, c.classe_id)?.magie_innee_id;
-    return !reservee || reservee === fiche.magie_innee_id;
+    const classe = trouver(regles.classes, c.classe_id);
+    if (classe?.magie_innee_exclue_id && classe.magie_innee_exclue_id === fiche.magie_innee_id) return false;
+    return !classe?.magie_innee_id || classe.magie_innee_id === fiche.magie_innee_id;
   });
   const imposee = classeImposee(regles, fiche);
   if (!imposee || classes.some((c) => c.rang === 1 && c.classe_id === imposee.id)) return classes;

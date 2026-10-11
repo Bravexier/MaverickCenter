@@ -323,6 +323,22 @@ test('décision R23 : l’Archimage est réservée au Potentiel Illimité inné,
   assert.deepEqual(controle('r23-brouillon'), []);
 });
 
+test('décision R25 : le Mage Bleu est fermé au Potentiel Illimité, à tous les rangs (« Chose à savoir » du Mage Bleu)', () => {
+  assert.deepEqual(db.prepare('SELECT id, magie_innee_exclue_id FROM classe WHERE magie_innee_exclue_id IS NOT NULL').all().map((r) => ({ ...r })),
+    [{ id: 'classes/mage-bleu', magie_innee_exclue_id: 'magies/potentiel-illimite' }]);
+  assert.match(db.prepare("SELECT chose_a_savoir FROM classe WHERE id = 'classes/mage-bleu'").get().chose_a_savoir, /Un potentiel illimité ne peut pas avoir cette classe\./);
+  const pi = { magie_innee_id: 'magies/potentiel-illimite', caracteristique_magie_id: 'force', mode_classe: 'bi' };
+  personnageValide('r25-pi', pi);
+  db.prepare("UPDATE personnage_classe SET classe_id = 'classes/archimage' WHERE personnage_id = 'r25-pi'").run();
+  inserer('personnage_classe', { personnage_id: 'r25-pi', rang: 2, classe_id: 'classes/mage-bleu' });
+  assert.deepEqual(controle('r25-pi'), [{ regle: 'classe_exclue', detail: 'classes/mage-bleu' }]);
+  db.prepare("UPDATE personnage_classe SET classe_id = 'classes/mage' WHERE personnage_id = 'r25-pi' AND rang = 2").run();
+  assert.deepEqual(controle('r25-pi'), [], 'toute autre seconde classe');
+  personnageValide('r25-feu');
+  db.prepare("UPDATE personnage_classe SET classe_id = 'classes/mage-bleu' WHERE personnage_id = 'r25-feu'").run();
+  assert.deepEqual(controle('r25-feu'), [], 'sans Potentiel Illimité, le Mage Bleu reste ouvert');
+});
+
 test('décision R19 : jusqu’à deux croix par caractéristique, la règle du guide et les malus de la fiche', () => {
   personnageValide('croix');
   db.prepare("UPDATE personnage_caracteristique SET croix = 2 WHERE personnage_id = 'croix' AND caracteristique_id = 'force'").run();

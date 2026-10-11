@@ -228,6 +228,21 @@ test('décision R23 : l’Archimage seulement avec le Potentiel Illimité inné,
     ['classe_imposee classes/archimage'], 'en classe 1, pas en classe 2');
 });
 
+test('décision R25 : le Mage Bleu est fermé au Potentiel Illimité, à tous les rangs ; toute autre seconde classe reste permise', () => {
+  assert.deepEqual(regles.classes.filter((c) => c.magie_innee_exclue_id).map((c) => [c.id, c.magie_innee_exclue_id]), [['classes/mage-bleu', 'magies/potentiel-illimite']]);
+  const pi = ficheConforme({ magie_innee_id: 'magies/potentiel-illimite', caracteristique_magie_id: 'force', mode_classe: 'bi', classes: [{ rang: 1, classe_id: 'classes/archimage', specialite_id: null }] });
+  assert.equal(refusClasse(regles, pi, 'classes/mage-bleu', 2), 'fermée à la magie innée Potentiel Illimité');
+  const permises = regles.classes.filter((c) => !['classes/archimage', 'classes/mage-bleu'].includes(c.id) && classesPermises(regles, 'races/humain').has(c.id));
+  assert.ok(permises.length > 20 && permises.every((c) => refusClasse(regles, pi, c.id, 2) === null), 'toute autre classe en seconde classe');
+  assert.equal(refusClasse(regles, ficheConforme(), 'classes/mage-bleu', 1), null, 'sans Potentiel Illimité, le Mage Bleu reste ouvert');
+  // la base dit la même chose ; choisir le Potentiel Illimité retire le Mage Bleu
+  const avecMageBleu = { ...pi, classes: [...pi.classes, { rang: 2, classe_id: 'classes/mage-bleu', specialite_id: null }] };
+  assert.deepEqual(enregistrerFiche(vivante, avecMageBleu).controles.filter((c) => c.regle.startsWith('classe_')).map((c) => `${c.regle} ${c.detail}`), ['classe_exclue classes/mage-bleu']);
+  assert.deepEqual(enregistrerFiche(vivante, { ...pi, classes: [...pi.classes, { rang: 2, classe_id: 'classes/mage', specialite_id: null }] }).controles.filter((c) => c.regle.startsWith('classe_')), []);
+  const feu = ficheConforme({ mode_classe: 'bi', classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: null }, { rang: 2, classe_id: 'classes/mage-bleu', specialite_id: null }] });
+  assert.deepEqual(classesSelonLaMagieInnee(regles, { ...feu, magie_innee_id: 'magies/potentiel-illimite' }).map((c) => [c.rang, c.classe_id]), [[1, 'classes/archimage']]);
+});
+
 test('décision R23 : choisir le Potentiel Illimité met l’Archimage en classe 1, le quitter la retire ; les dons d’une classe partie s’en vont avec elle', () => {
   const imposee = { rang: 1, classe_id: 'classes/archimage', specialite_id: null };
   const mage = { rang: 1, classe_id: 'classes/mage', specialite_id: null };
