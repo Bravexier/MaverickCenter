@@ -138,9 +138,10 @@ npm run db:appliquer-edition -- ~/Téléchargements/journal-edition-AAAA-MM-JJ.j
 npm run db:build && npm run db:check && npm test                                    # puis commit de data/rows (PR vers dev)
 ```
 
-Une fois livrées, ces modifications reviennent « intégrées » sur le site de dev. Les tests qui épinglent les données importées (effectifs, fidélité
-des pages de race à leur onglet : `races_onglet.py --verifier`) disent alors ce qui a changé ; c'est au propriétaire de décider, au premier
-rapatriement, que le site devient la source de ces données (`docs/feuille-de-route.md`, étape 2).
+Les modifications rejouées (réappliquées ou déjà présentes) sont versées dans `historique_modification` avec `version` vide (rapatriées à la
+main ; un lot déjà dans l'historique n'est pas repris), puis les tables du journal sont vidées. Une fois livrées, ces modifications reviennent
+« intégrées » sur le site de dev. Le site est la source des données qu'il modifie (ci-dessous, « Mise à jour ») : les tests ne s'arrêtent plus sur
+une valeur que le site a changée.
 
 | Requête | Réponse |
 | --- | --- |
@@ -198,10 +199,25 @@ Quand la nouvelle version arrive sur le site de dev, la base vivante est refaite
 brouillon dont le lot a sa note dans les règles est vidé et le lancement marqué terminé (`actualiserLancement`). Le serveur normal reçoit la
 nouvelle note avec la livraison.
 
-**Le site devient la source** des données qu'il modifie (décision du propriétaire) : les modifications livrées sont gardées dans
-`historique_modification`. Prochaine étape : les tests qui épinglent des valeurs importées (effectifs, textes cités) liront la valeur d'import
-dans cet historique et contrôleront la cohérence de l'état courant ; d'ici là, une mise à jour qui les contredit s'arrête à `npm test`, sans
-rien fusionner.
+**Le site est la source** des données qu'il modifie (décision du propriétaire) : toute modification rapatriée dans `data/rows` (par ce bouton,
+avec la version qui la livre, ou par `npm run db:appliquer-edition`, version vide) est gardée, ligne par ligne, dans `historique_modification`
+(lot, rang, date, table, clé, opération, avant, après). `client/src/lib/historique-site.mjs` le relit (`historiqueSite(db)`) : `creee`,
+`supprimee`, `modifiee`, `touchee` disent ce que le site a fait d'une ligne ou d'une colonne ; `valeurDImport`, `ligneDImport`, `lignesDImport`
+et `effectifDImport` redonnent l'état d'avant toute édition (l'historique rejoué à l'envers ; clé = colonnes de la clé primaire, comme le
+journal). Les tests s'en servent ainsi :
+
+- un **pin d'import** (effectif d'une table, texte cité d'une cellule, liste du classeur, registre d'une migration) se lit sur l'état d'import :
+  il garde exactement ce que l'import ou la migration a produit, la valeur courante devient libre ;
+- l'**état courant** est contrôlé par des **invariants de cohérence** (une ligne par page, matrice complète, la page redit ses tables, la liste
+  des magies innées est celle des tables, nombre de lignes de `sort_bonus_maitrise` = découpage des cellules…) ; un exemple nommé (Boule de
+  feu, Forgeron…) n'est vérifié sur l'état courant que tant que le site n'a pas réécrit la colonne ;
+- une entité créée par le site sans tout ce que l'import donnait (classe sans don, race sans magie innée) est admise et signalée « à compléter » ;
+  une entité importée incomplète reste une erreur ;
+- les tests du service lisent l'état avant d'écrire (ordre = max + 1, races hybrides sans classe raciale) et prennent des noms absents de la base.
+
+`db:check` compare de même chaque note de cellule à la remarque d'import (`valeurDImport`) et ignore une ligne créée ou supprimée par le site ;
+`tools/db/races_onglet.py --verifier` ignore une race créée depuis le site (son onglet cite « Site de dev › … », pas le classeur). Une migration
+qui renomme une colonne doit aussi renommer ses clés dans `avant` / `apres` de `historique_modification`.
 
 | Requête | Réponse |
 | --- | --- |
@@ -255,7 +271,7 @@ npm run dev         # dans un autre terminal : le site, qui transmet /api/ au se
 Les tests (`npm test`) : `serveur-base-vivante` (création, reprise des fiches, refus sans perte, archives), `serveur-api` (chaque route, chaque
 refus, conflit de versions, serveur HTTP réel et sa surveillance), `serveur-edition*` et `serveur-edition-journal` (édition : chaque domaine,
 journal, rejeu), `serveur-notes-de-version` (page Mise à jour : routes, lot figé, faux GitHub), `notes-de-version` et `notes-de-version-sens`
-(liste et couleurs), `mise-a-jour-regles` (lot appliqué à data/rows : conflit, liste blanche), `mise-a-jour-github` (le workflow), `db-appliquer-edition` (rapatriement dans data/rows), `serveur-livraison` (modules livrés, service livré démarré tel quel,
+(liste et couleurs), `mise-a-jour-regles` (lot appliqué à data/rows : conflit, liste blanche), `mise-a-jour-github` (le workflow), `db-appliquer-edition` (rapatriement dans data/rows, versé dans l’historique), `historique-site` (ce que le site a changé, état d’import), `serveur-livraison` (modules livrés, service livré démarré tel quel,
 `docker-compose.yml` et `nginx.conf` cohérents), `installateur` (contenu de `db/` remplacé, dossier gardé) ; `site-html` contrôle `dist/_serveur/`
 après le build.
 
