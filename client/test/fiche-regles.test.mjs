@@ -9,6 +9,7 @@ import { ditClasseMagique } from '../src/lib/classe-magique.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { desSelonLaForce } from '../src/lib/maitrise-arme.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS } from '../src/lib/race-kinds.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
@@ -37,6 +38,20 @@ test('maîtrise d’arme : 1 dé sans maîtrise (guide, cité mot pour mot), 5 d
   assert.equal(db.prepare("SELECT texte FROM regle_constante WHERE id = 'maitrise_arme.des_max'").get().texte, '1d, 2d, 3d, 4d, 5d');
   assert.match(db.prepare("SELECT sql FROM sqlite_master WHERE name = 'personnage_maitrise_arme'").get().sql, /CHECK \(des BETWEEN 1 AND 5\)/,
     'la base garde des dés, de 1 à 5');
+});
+
+test('maîtrises d’armes (décision R32) : celles de chaque classe (classe_maitrise_arme), les points des dons, le dé du Pugilat selon la Force ; seuil d’alignement', () => {
+  const parClasse = new Map();
+  for (const r of db.prepare('SELECT classe_id, brut, nombre FROM classe_maitrise_arme WHERE nombre IS NOT NULL ORDER BY classe_id, rang').all()) {
+    parClasse.set(r.classe_id, [...(parClasse.get(r.classe_id) ?? []), { brut: r.brut, nombre: r.nombre }]);
+  }
+  for (const c of regles.classes) assert.deepEqual(c.maitrises, parClasse.get(c.id) ?? [], c.id);
+  const capacites = new Map(db.prepare('SELECT id, classe_id FROM capacite').all().map((r) => [r.id, r.classe_id]));
+  for (const c of regles.classes) for (const d of c.dons_maitrise) assert.equal(capacites.get(d.id), c.id, `${d.id} : un don de ${c.id}`);
+  assert.ok(regles.classes.some((c) => c.dons_maitrise.length), 'des dons donnent des points de maîtrise');
+  const notes = new Map(db.prepare('SELECT id, note_brut FROM arme_famille').all().map((r) => [r.id, r.note_brut]));
+  for (const f of regles.familles_armes) assert.deepEqual(f.de_selon_force, desSelonLaForce(notes.get(f.id)), `${f.id} : les paliers de sa note`);
+  assert.equal(regles.constantes['alignement.ecart_axe'], 5);
 });
 
 test('caractéristiques : l’ordre de la fiche et leur couleur (demande du propriétaire), que leurs compétences reprennent ; texte foncé sur ces couleurs claires', () => {

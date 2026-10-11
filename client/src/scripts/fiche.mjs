@@ -5,9 +5,10 @@
 import { libelleDuControle } from '../lib/fiche-controles.mjs';
 import { CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ficheVide } from '../lib/fiche-format.mjs';
 import {
-  attributsDe, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, classesDe, classesSelonLaMagieInnee,
-  competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, lignesDeSorts, magieAcquiseValable, notationDesDes, magiesInneesPermises, maitriseDArme,
-  maitriseDesSorts, niveauGlobal, nmDuSort, npmMax, progressionAttendue, progressionXp, refusClasse, refusMagieAcquise, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
+  ajusterValeurDuMoment, alignementDe, attributsDe, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, classesDe,
+  classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, lignesDeSorts,
+  magieAcquiseValable, notationDesDes, magiesInneesPermises, maitriseDArme, maitriseDesSorts, niveauGlobal, nmDuSort, npmMax, progressionAttendue, progressionXp,
+  quotaDeMaitrise, refusClasse, refusMagieAcquise, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
 } from '../lib/fiche-moteur.mjs';
 
 const racine = document.getElementById('fiche');
@@ -167,7 +168,7 @@ function groupe(titre, couleur, elements) {
     el('ul', { class: 'pastilles' }, elements));
 }
 
-// ------------------------------------------------------------------ étape 1 : race et ethnie
+// ------------------------------------------------------------------ identité : race, ethnie, alignement
 function construireRaces() {
   reconstruire($('races'), 'fixe', () => [['pure', 'Races pures'], ['hybride', 'Races hybrides']].map(([nature, titre]) => {
     const races = regles.races.filter((r) => r.nature === nature);
@@ -216,7 +217,15 @@ function construireRaces() {
     : [el('li', {}, 'Choisissez une race : elle fixe la santé et le chakra de départ, la vitesse, les magies innées et les classes possibles.')]));
 }
 
-// ------------------------------------------------------------------ étape 2 : magies et dieux
+/** L'alignement qui résulte des quatre scores, à côté d'eux (demande du propriétaire ; alignementDe : guide « Alignement »). */
+function construireAlignement() {
+  const a = alignementDe(regles, fiche);
+  const sortie = $('alignement-resultat');
+  sortie.textContent = a.nom;
+  sortie.title = `Loi/Chaos : ${a.loi} ; Bien/Mal : ${a.bien} (5 points d’écart sur un axe pour qu’une tendance l’emporte)`;
+}
+
+// ------------------------------------------------------------------ magies et dieux
 function construireMagies() {
   reconstruire($('magies-innees'), 'fixe', () => regles.magies.map((m) => pastille({
     texte: m.nom, couleur: m.couleur, texteSurCouleur: m.texte, choisie: () => fiche.magie_innee_id === m.id,
@@ -262,7 +271,7 @@ function construireMagies() {
     ].filter(Boolean).join(', '))));
 }
 
-// ------------------------------------------------------------------ étape 3 : classes
+// ------------------------------------------------------------------ classes
 function construireClasses() {
   reconstruire($('modes'), 'fixe', () => [['mono', 'Une classe'], ['bi', 'Deux classes']].map(([mode, texte]) => pastille({
     texte, couleur: '#2e7d4f', choisie: () => fiche.mode_classe === mode,
@@ -323,7 +332,7 @@ function construireClasses() {
   }
 }
 
-// ------------------------------------------------------------------ étape 4 : caractéristiques, compétences, maîtrises
+// ------------------------------------------------------------------ caractéristiques, compétences
 function etatBudget(badge, total, attendu, texte, exact = true) {
   badge.textContent = `${texte} : ${total} / ${attendu}`;
   badge.dataset.etat = total === attendu || (!exact && total < attendu) ? 'ok' : total < attendu ? 'manque' : 'trop';
@@ -407,38 +416,49 @@ function construireCaracteristiques() {
         return el('tr', {}, el('td', {}, comp.nom), el('td', { class: 'curseur-td' }, el('span', { class: 'curseur-cellule' }, naturel, valeurNaturel)),
           el('td', { class: 'curseur-td' }, el('span', { class: 'curseur-cellule' }, acquis, valeurAcquis)), el('td', { class: 'nombre' }, score));
       }))))));
-
-  // la base garde le nombre de dés (1 sans maîtrise, 5 au plus) ; un curseur de points de maîtrise (4 au plus), un dé de plus chacun, et les dés
-  // dans leur colonne (demande du propriétaire)
-  const maitrise = maitriseDArme(regles);
-  reconstruire($('maitrises'), 'fixe', () => [
-    el('thead', {}, el('tr', {}, el('th', {}, 'Famille d’armes'), el('th', {}, 'Maîtrise'), el('th', { class: 'nombre' }, 'Dés'))),
-    el('tbody', {}, regles.familles_armes.map((f) => {
-      const curseur = el('input', {
-        type: 'range', min: '0', max: String(maitrise.pointsMax), step: '1', class: 'curseur', 'aria-label': `Maîtrise : ${f.nom} (points)`,
-        title: `De 0 à ${maitrise.pointsMax} points : ${maitrise.desSansMaitrise} dé sans maîtrise, un de plus par point`,
-        oninput: (ev) => {
-          const points = entier(ev.target.value);
-          retirer('maitrises_armes', (x) => x.arme_famille_id === f.id);
-          if (points > 0) fiche.maitrises_armes.push({ arme_famille_id: f.id, des: maitrise.desDe(points) });
-          changer();
-        },
-      });
-      const points = el('output', { class: 'curseur__valeur' });
-      const des = el('strong', { class: 'des' });
-      synchro(() => {
-        const l = ligneDe('maitrises_armes', (x) => x.arme_famille_id === f.id);
-        const n = l ? maitrise.pointsDe(l.des) : 0;
-        poser(curseur, n);
-        points.textContent = String(n);
-        des.textContent = notationDesDes(f.de, l ? l.des : maitrise.desSansMaitrise);
-      });
-      return el('tr', {}, el('td', {}, f.nom), el('td', { class: 'curseur-td' }, el('span', { class: 'curseur-cellule' }, curseur, points)), el('td', { class: 'nombre' }, des));
-    })),
-  ]);
 }
 
-// ------------------------------------------------------------------ étape 5 : sorts
+// ------------------------------------------------------------------ maîtrises d'armes
+/**
+ * Maîtrises d'armes, dans leur bloc (demande du propriétaire). La base garde le nombre de dés (1 sans maîtrise, 5 au plus) ; un curseur étroit de
+ * points de maîtrise (4 au plus), un dé de plus chacun, et les dés à côté ; le Pugilat montre le seul dé de la Force du personnage (deDeLaFamille). Dans
+ * le coin du bloc, les points répartis sur le quota des classes et de leurs dons (quotaDeMaitrise, décision R32).
+ */
+function construireMaitrises() {
+  const maitrise = maitriseDArme(regles);
+  const quota = quotaDeMaitrise(regles, fiche);
+  const badge = $('budget-maitrises');
+  etatBudget(badge, quota.utilises, quota.total, 'Maîtrises');
+  badge.title = quota.sources.length
+    ? `Points de maîtrise répartis / quota des classes et de leurs dons : ${quota.sources.map((x) => `${x.nom} ${x.points > 0 ? '+' : ''}${x.points}`).join(' · ')}`
+    : 'Quota de maîtrise : choisissez une classe (ses maîtrises et celles de ses dons)';
+  reconstruire($('maitrises'), 'fixe', () => regles.familles_armes.map((f) => {
+    const curseur = el('input', {
+      type: 'range', min: '0', max: String(maitrise.pointsMax), step: '1', class: 'curseur', 'aria-label': `Maîtrise : ${f.nom} (points)`,
+      title: `De 0 à ${maitrise.pointsMax} points : ${maitrise.desSansMaitrise} dé sans maîtrise, un de plus par point`,
+      oninput: (ev) => {
+        const points = entier(ev.target.value);
+        retirer('maitrises_armes', (x) => x.arme_famille_id === f.id);
+        if (points > 0) fiche.maitrises_armes.push({ arme_famille_id: f.id, des: maitrise.desDe(points) });
+        changer();
+      },
+    });
+    const points = el('output', { class: 'curseur__valeur' });
+    const des = el('strong', { class: 'des' });
+    synchro(() => {
+      const l = ligneDe('maitrises_armes', (x) => x.arme_famille_id === f.id);
+      const n = l ? maitrise.pointsDe(l.des) : 0;
+      poser(curseur, n);
+      points.textContent = String(n);
+      const { de, force } = deDeLaFamille(regles, fiche, f);
+      des.textContent = notationDesDes(de, l ? l.des : maitrise.desSansMaitrise);
+      des.title = force === null ? '' : `${de} avec ${force} de Force (${f.de_selon_force.map((p) => `${p.de} pour ${p.min === p.max ? p.min : `${p.min} à ${p.max}`}`).join(', ')} de Force)`;
+    });
+    return el('li', { class: 'maitrise' }, el('span', { class: 'maitrise__nom' }, f.nom), el('span', { class: 'curseur-cellule' }, curseur, points), des);
+  }));
+}
+
+// ------------------------------------------------------------------ sorts
 /**
  * Tableau des sorts (demande du propriétaire) : une ligne par emplacement, chacune avec la liste des sorts possibles (magies du personnage, NPM
  * accessible) moins ceux des autres lignes (lignesDeSorts) ; vider la liste libère l'emplacement ; pas d'emplacement en plus (décision R27). Les NM d'un
@@ -523,52 +543,123 @@ function construireSorts() {
   ]);
 }
 
-// ------------------------------------------------------------------ étape 6 : attributs
+// ------------------------------------------------------------------ attributs et valeurs du moment
 const NOMS_DU_DETAIL = { classes: 'classes', race: 'race', magies: 'magies', ethnie: 'ethnie', accessoires: 'accessoires', niveaux: 'niveaux', chakra: '½ chakra' };
+const detailDe = (d) => Object.entries(d).filter(([, v]) => v).map(([k, v]) => `${NOMS_DU_DETAIL[k] ?? k} ${signe(v)}`).join(' · ') || '—';
+/** Carte d'une valeur du moment : son nom, la couleur de son attribut (data-a) et le détail de son maximum. */
+const JAUGES = {
+  sante_actuelle: { a: 'sante', nom: () => 'Santé', detail: () => detailDe(calcul.attributs.detail.sante) },
+  barriere_actuelle: { a: 'barriere', nom: () => 'Barrière', detail: () => detailDe(calcul.attributs.detail.barriere) },
+  chakra_actuel: {
+    a: 'chakra', nom: () => 'Chakra',
+    detail: (j) => `${detailDe(calcul.attributs.detail.chakra)}${j.reduction ? ` ; ${j.chakra} − ${j.reduction} de corruption` : ''}`,
+  },
+  barre4_actuelle: { a: 'barre4', nom: () => calcul.attributs.quatriemeBarre?.ressource ?? '4ᵉ barre', detail: () => '4ᵉ barre, de la magie' },
+  corruption: { a: 'corruption', nom: () => 'Corruption', detail: () => 'au plus le chakra' },
+};
 
-function construireAttributs() {
-  const a = calcul.attributs;
-  const detail = (d) => Object.entries(d).filter(([, v]) => v).map(([k, v]) => `${NOMS_DU_DETAIL[k] ?? k} ${signe(v)}`).join(' · ') || '—';
-  const cartes = [
-    ['sante', 'Santé', a.sante, detail(a.detail.sante)],
-    ['chakra', 'Chakra', a.chakra, detail(a.detail.chakra)],
-    ['barriere', 'Barrière', a.barriere, detail(a.detail.barriere)],
-    ['vitesse', 'Vitesse', a.vitesseSol ?? '—', a.vitesseNage !== null ? `nage ${a.vitesseNage}` : 'selon la race'],
-    ['armure', 'Armure de base', `${a.ap} / ${a.am}`, 'AP / AM, sans l’équipement'],
-    ['initiative', 'Initiative', a.initiative ? `1D20 ${a.initiative.bonus >= 0 ? '+' : '−'} ${Math.abs(a.initiative.bonus)}` : '1D20', a.initiative?.note ?? 'selon l’Agilité'],
-    ['corruption', 'Corruption max.', a.corruptionMax, 'autant que le chakra'],
-    ...(a.quatriemeBarre ? [['barre4', a.quatriemeBarre.ressource, a.quatriemeBarre.max, '4ᵉ barre, de la magie']] : []),
-  ];
-  reconstruire($('attributs'), JSON.stringify(cartes), () => cartes.map(([cle, nom, valeur, d]) => el('div', { class: 'attribut', dataset: { a: cle } },
-    el('span', { class: 'attribut__nom' }, nom), el('span', { class: 'attribut__valeur' }, valeur), el('span', { class: 'attribut__detail' }, d))));
+/**
+ * Une valeur du moment avec son maximum (demande du propriétaire) : curseur de 0 au maximum (valeursDuMoment), et deux boutons − et + qui ouvrent une
+ * case où saisir le nombre à retirer ou à ajouter (ajusterValeurDuMoment, borné comme le curseur) : Entrée ou OK l'applique, Échap abandonne.
+ */
+function carteDeJauge(champ) {
+  const def = JAUGES[champ];
+  const curseur = el('input', {
+    type: 'range', min: '0', step: '1', class: 'curseur', 'aria-label': `${def.nom()} du moment`,
+    oninput: (ev) => {
+      Object.assign(fiche, ecrireValeurDuMoment(regles, fiche, champ, ev.target.value));   // la corruption emporte le chakra actuel avec elle
+      changer();
+    },
+  });
+  let sens = 1;
+  const saisie = el('input', { type: 'number', min: '1', step: '1', inputmode: 'numeric', required: true });
+  const etiquette = el('span', {});
+  const fermer = (focus = false) => {
+    ajout.hidden = true;
+    saisie.value = '';
+    moins.setAttribute('aria-expanded', 'false');
+    plus.setAttribute('aria-expanded', 'false');
+    if (focus) (sens > 0 ? plus : moins).focus();
+  };
+  const ajout = el('form', {
+    class: 'ajout', hidden: true,
+    onsubmit: (ev) => {
+      ev.preventDefault();
+      const n = entier(saisie.value);
+      fermer(true);
+      if (n > 0) {
+        Object.assign(fiche, ajusterValeurDuMoment(regles, fiche, champ, sens * n));
+        changer();
+      }
+    },
+    onkeydown: (ev) => {
+      if (ev.key !== 'Escape') return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      fermer(true);
+    },
+  }, el('label', {}, etiquette, saisie), el('button', { type: 'submit' }, 'OK'),
+  el('button', { type: 'button', class: 'retirer', 'aria-label': 'Annuler', title: 'Annuler (Échap)', onclick: () => fermer(true) }, '✕'));
+  const ouvrir = (s) => {
+    if (!ajout.hidden && sens === s) return fermer(true);
+    sens = s;
+    etiquette.textContent = s > 0 ? 'Ajouter' : 'Retirer';
+    ajout.dataset.sens = s > 0 ? 'plus' : 'moins';
+    ajout.hidden = false;
+    moins.setAttribute('aria-expanded', String(s < 0));
+    plus.setAttribute('aria-expanded', String(s > 0));
+    saisie.focus();
+  };
+  const moins = el('button', { type: 'button', class: 'ajuster', 'aria-expanded': 'false', onclick: () => ouvrir(-1) }, '−');
+  const plus = el('button', { type: 'button', class: 'ajuster', 'aria-expanded': 'false', onclick: () => ouvrir(1) }, '+');
+  const nom = el('span', { class: 'attribut__nom' });
+  const valeur = el('output', { class: 'attribut__valeur' });
+  const detail = el('span', { class: 'attribut__detail' });
+  synchro(() => {
+    const j = calcul.jauges.find((x) => x.champ === champ);
+    const texte = def.nom();
+    nom.textContent = texte;
+    curseur.max = String(j.max);
+    poser(curseur, j.valeur);
+    curseur.setAttribute('aria-label', `${texte} du moment`);
+    moins.setAttribute('aria-label', `Retirer de : ${texte}`);
+    moins.title = `Retirer un nombre (${texte})`;
+    plus.setAttribute('aria-label', `Ajouter à : ${texte}`);
+    plus.title = `Ajouter un nombre (${texte})`;
+    saisie.setAttribute('aria-label', `${texte} : nombre à ${sens > 0 ? 'ajouter' : 'retirer'}`);
+    valeur.textContent = `${j.hors ? fiche[champ] : j.valeur} / ${j.max}`;
+    valeur.toggleAttribute('data-hors', j.hors);
+    detail.textContent = def.detail(j);
+  });
+  return el('div', { class: 'attribut attribut--jauge', dataset: { a: def.a } },
+    el('span', { class: 'attribut__tete' }, nom, valeur), el('span', { class: 'attribut__curseur' }, moins, curseur, plus), ajout, detail);
 }
 
-// ------------------------------------------------------------------ étape 9 : valeurs du moment
-/** Santé, chakra, barrière, corruption (et 4ᵉ barre) du moment : des curseurs de 0 au maximum (demande du propriétaire ; valeursDuMoment). */
-function construireJeu() {
-  const jauges = calcul.jauges;
-  reconstruire($('jauges'), jauges.map((j) => j.champ).join(), () => jauges.map(({ champ, nom }) => {
-    const curseur = el('input', {
-      type: 'range', min: '0', step: '1', class: 'curseur', 'aria-label': nom,
-      oninput: (ev) => {
-        Object.assign(fiche, ecrireValeurDuMoment(regles, fiche, champ, ev.target.value));   // la corruption emporte le chakra actuel avec elle
-        changer();
-      },
-    });
-    const valeur = el('output', { class: 'jauge__valeur' });
-    const detail = el('span', { class: 'jauge__detail' });
-    const titre = el('span', { class: 'jauge__nom' }, nom);
-    synchro(() => {
-      const j = calcul.jauges.find((x) => x.champ === champ);
-      titre.textContent = j.nom;
-      curseur.max = String(j.max);
-      poser(curseur, j.valeur);
-      valeur.textContent = `${j.hors ? fiche[champ] : j.valeur} / ${j.max}`;
-      valeur.toggleAttribute('data-hors', j.hors);
-      detail.textContent = j.reduction ? `${j.chakra} de chakra − ${j.reduction} de corruption` : champ === 'corruption' ? 'au plus le chakra' : '';
-    });
-    return el('div', { class: 'jauge', dataset: { a: champ } }, el('span', { class: 'jauge__tete' }, titre, valeur), curseur, detail);
-  }));
+/** Un attribut sans valeur du moment (initiative, vitesse, armure de base) : `lire(attributs)` rend [valeur, détail]. */
+function carteFixe(cle, nom, lire) {
+  const valeur = el('span', { class: 'attribut__valeur' });
+  const detail = el('span', { class: 'attribut__detail' });
+  synchro(() => {
+    const [v, d] = lire(calcul.attributs);
+    valeur.textContent = String(v);
+    detail.textContent = d;
+  });
+  return el('div', { class: 'attribut', dataset: { a: cle } }, el('span', { class: 'attribut__tete' }, el('span', { class: 'attribut__nom' }, nom), valeur), detail);
+}
+
+/**
+ * Attributs et valeurs du moment, fusionnés (demande du propriétaire) : santé, barrière, chakra (et Âme ou Sang, la 4ᵉ barre de la Nécromancie ou du
+ * Sang) sur la première ligne ; initiative, vitesse, corruption, puis l'armure de base, sur la seconde. Chaque carte dans la couleur de son attribut.
+ */
+function construireAttributs() {
+  const barres = ['sante_actuelle', 'barriere_actuelle', 'chakra_actuel', 'barre4_actuelle'].filter((c) => calcul.jauges.some((j) => j.champ === c));
+  reconstruire($('attributs-barres'), barres.join(), () => barres.map(carteDeJauge));
+  reconstruire($('attributs-autres'), 'fixe', () => [
+    carteFixe('initiative', 'Initiative', (a) => [a.initiative ? `1D20 ${a.initiative.bonus >= 0 ? '+' : '−'} ${Math.abs(a.initiative.bonus)}` : '1D20', a.initiative?.note ?? 'selon l’Agilité']),
+    carteFixe('vitesse', 'Vitesse', (a) => [a.vitesseSol ?? '—', a.vitesseNage !== null ? `nage ${a.vitesseNage}` : 'selon la race']),
+    carteDeJauge('corruption'),
+    carteFixe('armure', 'Armure de base', (a) => [`${a.ap} / ${a.am}`, 'AP / AM, sans l’équipement']),
+  ]);
 }
 
 // ------------------------------------------------------------------ saisie d'un curseur (demande du propriétaire)
@@ -611,7 +702,7 @@ function ouvrirSaisie(curseur) {
   saisie.select();
 }
 
-// ------------------------------------------------------------------ étape 7 : progression et dons à choix
+// ------------------------------------------------------------------ progression et dons à choix
 function construireProgression() {
   const attendus = progressionAttendue(regles, calcul.niveau);
   $('progression-aide').textContent = attendus.length
@@ -685,7 +776,7 @@ function construireProgression() {
   });
 }
 
-// ------------------------------------------------------------------ étape 8 : équipement
+// ------------------------------------------------------------------ équipement
 function selecteur(valeur, options, surChoix, { vide = '—', etiquette } = {}) {
   const s = el('select', { 'aria-label': etiquette, onchange: (ev) => surChoix(ev.target.value || null) }, option('', vide), options);
   synchro(() => poser(s, valeur() ?? ''));
@@ -850,7 +941,7 @@ function construireControles() {
 }
 
 // ------------------------------------------------------------------ rafraîchissement
-/** Jauge d'XP de l'en-tête (demande du propriétaire) : l'XP se modifie dans le champ, ou s'ajoute avec le bouton + ; le niveau suit. */
+/** Jauge d'XP, en tête du bloc de progression (demandes du propriétaire) : l'XP se modifie dans le champ, ou s'ajoute avec le bouton + ; le niveau suit. */
 function construireXp() {
   const p = progressionXp(regles, fiche.xp);
   $('xp-niveau').textContent = `Niveau ${p.niveau}`;
@@ -882,12 +973,13 @@ function rafraichir() {
   document.title = `${titre} — Fiche de personnage — Maverick Center`;
   construireXp();
   construireRaces();
+  construireAlignement();
   construireMagies();
   construireClasses();
   construireCaracteristiques();
+  construireMaitrises();
   construireSorts();
   construireAttributs();
-  construireJeu();
   construireProgression();
   construireEquipement();
   for (const liste of synchros.values()) for (const s of liste) s();

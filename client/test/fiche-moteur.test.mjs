@@ -1,6 +1,6 @@
 // Moteur de la fiche (lib/fiche-moteur.mjs) sur les vraies règles (lib/fiche-regles.mjs, la base construite) : chaque calcul comparé à sa source —
 // les vues de la base (v_personnage_niveau, v_personnage_controle, par le service sur une base vivante temporaire), les personnages fil rouge du
-// guide (lib/guide-fil-rouge.mjs) et les décisions du propriétaire (R2, R3, R6, R7, R15, R16, R19, R20, R23, R24, R25, R26, R27, R28).
+// guide (lib/guide-fil-rouge.mjs) et les décisions du propriétaire (R2, R3, R6, R7, R15, R16, R19, R20, R23, R24, R25, R26, R27, R28, R32).
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -11,13 +11,14 @@ import { enregistrerFiche } from '../serveur/fiches.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import {
-  attributsDe, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, magieAcquiseValable, nmDuSort,
+  ajusterValeurDuMoment, alignementDe, attributsDe, borner, deDeLaFamille, quotaDeMaitrise, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, magieAcquiseValable, nmDuSort,
   progressionXp, classeMagique, classesPermises, classesSelonLaMagieInnee,
   competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, magiesInneesPermises, maitriseDesSorts, niveauGlobal,
   maitriseDArme, niveauxDeClasse, notationDesDes, npmMax, progressionAttendue, puissanceMagique, refusClasse, refusMagieAcquise, sortsParNpm, sortsPossibles, ecrireValeurDuMoment, valeursDuMoment, xpDuNiveauSuivant,
 } from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { FIL_ROUGE, chargerFilRouge } from '../src/lib/guide-fil-rouge.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
@@ -493,4 +494,85 @@ test('liste d’un emplacement de sort (demande du propriétaire) : un groupe pa
   assert.deepEqual(feu.map((g) => g.npm), [1]);
   assert.ok(feu[0].sorts.length > 0 && feu[0].sorts.every((s) => s.magie_id === 'magies/magie-du-feu'));
   assert.ok(regles.magies.every((m) => /^#[0-9a-f]{6}$/i.test(m.couleur) && m.texte), 'chaque magie a sa couleur et son texte');
+});
+
+test('alignement (demande du propriétaire, guide « Alignement ») : 5 points d’écart sur un axe pour une tendance, Neutre en dessous ; les neuf noms du guide', () => {
+  const historique = historiqueSite(db);
+  // les phrases du guide telles que l'import les a écrites
+  assert.match(historique.valeurDImport('page', { id: 'guide/alignement' }, 'corps_md'),
+    /Pour chaque axe, une différence de 5 points ou plus entre les deux scores détermine la tendance dominante\. En dessous de 5 points de différence, le personnage est Neutre sur cet axe/);
+  assert.equal(regles.constantes['alignement.ecart_axe'], 5);
+  const nom = (loyal, chaotique, bon, mauvais) => alignementDe(regles, { ...ficheVide(), alignement_loyal: loyal, alignement_chaotique: chaotique, alignement_bon: bon, alignement_mauvais: mauvais }).nom;
+  assert.equal(nom(0, 0, 0, 0), 'Neutre');
+  assert.equal(nom(5, 0, 0, 0), 'Loyal Neutre');
+  assert.equal(nom(4, 0, 0, 0), 'Neutre', '4 points d’écart : Neutre');
+  assert.equal(nom(9, 5, 0, 0), 'Neutre');
+  assert.equal(nom(2, 7, 0, 0), 'Chaotique Neutre');
+  assert.equal(nom(3, 3, 8, 3), 'Neutre Bon');
+  assert.equal(nom(0, 6, 1, 7), 'Chaotique Mauvais');
+  assert.equal(nom(12, 1, 20, 2), 'Loyal Bon');
+  assert.deepEqual(alignementDe(regles, { alignement_loyal: '', alignement_chaotique: null }), { loi: 'Neutre', bien: 'Neutre', nom: 'Neutre' }, 'cases vides : 0');
+  // les neuf combinaisons sont les titres de la page « Les neuf alignements »
+  const titres = [...historique.valeurDImport('page', { id: 'guide/les-neuf-alignements' }, 'corps_md').matchAll(/^## (.+)$/gm)].map((m) => m[1].trim());
+  const combinaisons = new Set();
+  for (const [l, c] of [[5, 0], [0, 0], [0, 5]]) for (const [b, m] of [[5, 0], [0, 0], [0, 5]]) combinaisons.add(nom(l, c, b, m));
+  assert.deepEqual([...combinaisons].sort(), [...titres].sort());
+});
+
+test('dé de la famille d’armes : le Pugilat selon la Force (« D6 1-2 Force, D8 3-4 Force, D10 5 Force »), +1 de la magie innée compris ; les autres leur dé', () => {
+  const pugilat = regles.familles_armes.find((f) => f.id === 'pugilat');
+  assert.deepEqual(pugilat.de_selon_force, [{ de: 'D6', min: 1, max: 2 }, { de: 'D8', min: 3, max: 4 }, { de: 'D10', min: 5, max: 5 }]);
+  const avecForce = (base, magie = 'magies/magie-du-feu') => ficheConforme({
+    magie_innee_id: magie,
+    caracteristiques: ficheConforme().caracteristiques.map((c) => (c.caracteristique_id === 'force' ? { ...c, base } : c)),
+  });
+  assert.deepEqual([1, 2, 3, 4].map((f) => deDeLaFamille(regles, avecForce(f), pugilat)),
+    [{ de: 'D6', force: 1 }, { de: 'D6', force: 2 }, { de: 'D8', force: 3 }, { de: 'D8', force: 4 }]);
+  assert.deepEqual(deDeLaFamille(regles, avecForce(4, 'magies/magie-de-la-terre'), pugilat), { de: 'D10', force: 5 }, 'Terre innée : +1 Force');
+  assert.equal(notationDesDes(deDeLaFamille(regles, avecForce(3), pugilat).de, 2), '2D8');
+  for (const f of regles.familles_armes.filter((x) => !x.de_selon_force)) assert.deepEqual(deDeLaFamille(regles, ficheConforme(), f), { de: f.de, force: null }, f.id);
+});
+
+test('décision R32 : quota de maîtrise = maîtrises des classes prises + points des dons acquis (classe, spécialité au niveau, dons à choix choisis)', () => {
+  const classe = (id) => regles.classes.find((c) => c.id === id);
+  const deLaClasse = (id) => classe(id).maitrises.reduce((s, m) => s + m.nombre, 0);
+  const xp = (niveau) => regles.niveaux.find((n) => n.niveau === niveau).xp_min;
+  assert.ok(deLaClasse('classes/guerrier') > 0);
+  // niveau 1 : les maîtrises du Guerrier, rien de réparti
+  const debut = quotaDeMaitrise(regles, ficheConforme());
+  assert.deepEqual(debut, { total: deLaClasse('classes/guerrier'), utilises: 0, sources: [{ nom: 'Guerrier', points: deLaClasse('classes/guerrier') }] });
+  assert.deepEqual(quotaDeMaitrise(regles, ficheVide()), { total: 0, utilises: 0, sources: [] }, 'sans classe');
+  // les points répartis sur la fiche
+  assert.equal(quotaDeMaitrise(regles, ficheConforme({ maitrises_armes: [{ arme_famille_id: 'epees', des: 3 }, { arme_famille_id: 'dagues', des: 2 }] })).utilises, 3);
+  // la spécialité au niveau de classe 10 : l'Épéiste (« 2 points de maîtrise à l'épée, 1 point de maîtrise à la dague, -1 point… »)
+  const epeiste = classe('classes/guerrier').dons_maitrise.find((d) => d.id === 'capacites/guerrier-epeiste');
+  assert.deepEqual({ nature: epeiste.nature, niveau: epeiste.niveau, points: epeiste.points }, { nature: 'specialite', niveau: 10, points: 2 });
+  const guerrier10 = (specialite_id) => ficheConforme({ xp: xp(5), classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id }] });
+  assert.equal(quotaDeMaitrise(regles, guerrier10('classes/guerrier#specialite:epeiste')).total, deLaClasse('classes/guerrier') + 2);
+  assert.equal(quotaDeMaitrise(regles, guerrier10(null)).total, deLaClasse('classes/guerrier'), 'sans spécialité');
+  // deux classes : les maîtrises de chacune ; en mono-classe, la seconde ne compte qu'une fois prise (niveau global 11, décision R2)
+  const deux = [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: null }, { rang: 2, classe_id: 'classes/mage', specialite_id: null }];
+  assert.equal(quotaDeMaitrise(regles, ficheConforme({ mode_classe: 'bi', classes: deux })).total, deLaClasse('classes/guerrier') + deLaClasse('classes/mage'));
+  assert.equal(quotaDeMaitrise(regles, ficheConforme({ xp: xp(10), classes: deux })).total, deLaClasse('classes/guerrier'), 'mono-classe, niveau 10 : pas encore de seconde classe');
+  assert.equal(quotaDeMaitrise(regles, ficheConforme({ xp: xp(11), classes: deux })).total, deLaClasse('classes/guerrier') + deLaClasse('classes/mage'));
+  // un don à choix : seulement choisi (Archimage, niveau de classe 10 : « +1 point de maîtrise d'arme de contact »)
+  const archimage = (capacites) => ficheConforme({ xp: xp(5), magie_innee_id: 'magies/potentiel-illimite', classes: [{ rang: 1, classe_id: 'classes/archimage', specialite_id: null }], capacites });
+  assert.equal(quotaDeMaitrise(regles, archimage([])).total, deLaClasse('classes/archimage'));
+  assert.equal(quotaDeMaitrise(regles, archimage([{ capacite_id: 'capacites/archimage-elementaliste' }])).total, deLaClasse('classes/archimage') + 1);
+  assert.equal(quotaDeMaitrise(regles, { ...archimage([{ capacite_id: 'capacites/archimage-elementaliste' }]), xp: xp(4) }).total, deLaClasse('classes/archimage'), 'pas avant son niveau');
+  // chaque classe a ses maîtrises ; chaque don qui en donne est d'une classe, avec ses points
+  assert.ok(regles.classes.every((c) => c.maitrises.length > 0 && c.maitrises.every((m) => m.nombre > 0 && m.brut)));
+  assert.ok(regles.classes.every((c) => c.dons_maitrise.every((d) => d.points > 0 && ['classe', 'specialite', 'choix'].includes(d.nature))));
+});
+
+test('boutons + et − des valeurs du moment (demande du propriétaire) : la valeur affichée plus ou moins le nombre saisi, bornée comme le curseur', () => {
+  const fiche = ficheConforme();
+  const a = attributsDe(regles, fiche);
+  assert.deepEqual(ajusterValeurDuMoment(regles, fiche, 'sante_actuelle', -5), { sante_actuelle: a.sante - 5 }, 'santé pleine (vide = au maximum)');
+  assert.deepEqual(ajusterValeurDuMoment(regles, { ...fiche, sante_actuelle: 4 }, 'sante_actuelle', 3), { sante_actuelle: 7 });
+  assert.deepEqual(ajusterValeurDuMoment(regles, fiche, 'sante_actuelle', 100), { sante_actuelle: a.sante }, 'au plus le maximum');
+  assert.deepEqual(ajusterValeurDuMoment(regles, fiche, 'barriere_actuelle', -999), { barriere_actuelle: 0 }, 'au moins 0');
+  assert.deepEqual(ajusterValeurDuMoment(regles, fiche, 'corruption', 3), { corruption: 3, chakra_actuel: a.chakra - 3 }, 'la corruption prend la place du chakra');
+  assert.deepEqual(ajusterValeurDuMoment(regles, { ...fiche, corruption: 3, chakra_actuel: a.chakra - 3 }, 'chakra_actuel', 10), { chakra_actuel: a.chakra - 3 });
+  assert.deepEqual(ajusterValeurDuMoment(regles, fiche, 'barre4_actuelle', 1), {}, 'pas de 4ᵉ barre sans Sang ni Nécromancie');
 });

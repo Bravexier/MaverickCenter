@@ -49,6 +49,23 @@ export function progressionXp(regles, xp) {
 }
 
 /**
+ * Alignement (guide « Alignement » : « Pour chaque axe, une différence de 5 points ou plus entre les deux scores détermine la tendance dominante. En
+ * dessous de 5 points de différence, le personnage est Neutre sur cet axe ») : l'axe Loi/Chaos (Loyal, Chaotique ou Neutre) et l'axe Bien/Mal (Bon,
+ * Mauvais ou Neutre) ; leur combinaison est l'un des neuf alignements, nommés comme dans le guide « Les neuf alignements » (« Loyal Bon »… ; « Neutre »
+ * sur les deux axes, que la fiche auto V15.2.2, Personnage!I4, écrit « Neutre Pur »). Seuil : constante alignement.ecart_axe (5).
+ */
+export function alignementDe(regles, fiche) {
+  const ecart = constante(regles, 'alignement.ecart_axe');
+  const axe = (a, b, nomA, nomB) => {
+    const d = entier(fiche[a]) - entier(fiche[b]);
+    return d >= ecart ? nomA : -d >= ecart ? nomB : 'Neutre';
+  };
+  const loi = axe('alignement_loyal', 'alignement_chaotique', 'Loyal', 'Chaotique');
+  const bien = axe('alignement_bon', 'alignement_mauvais', 'Bon', 'Mauvais');
+  return { loi, bien, nom: loi === 'Neutre' && bien === 'Neutre' ? 'Neutre' : `${loi} ${bien}` };
+}
+
+/**
  * Niveaux de classe (décision R2, v_personnage_niveau) : mono-classe, la classe 1 gagne 2 niveaux par niveau global jusqu'à 20 et l'excédent va
  * à la classe 2 (prise au niveau global 11) ; bi-classe, chacune = niveau global.
  */
@@ -293,6 +310,45 @@ export function notationDesDes(de, nombre) {
   return de.split('/').map((d) => (/^D\d+$/i.test(d.trim()) ? `${nombre}${d.trim().toUpperCase()}` : d.trim())).join('/');
 }
 
+/**
+ * Le dé d'une famille d'armes pour ce personnage : celui de sa Force quand la famille en dépend (Pugilat : « D6 1-2 Force, D8 3-4 Force, D10 5 Force »,
+ * arme_famille.note_brut, `de_selon_force` des règles), sinon le dé de la famille. La Force compte le +1 de la magie innée (caracteristiquesDe) ; une Force
+ * qu'aucun palier n'écrit garde le dé de la famille tel qu'écrit. { de, force } (force : null quand le dé n'en dépend pas).
+ */
+export function deDeLaFamille(regles, fiche, famille) {
+  if (!famille?.de_selon_force) return { de: famille?.de ?? null, force: null };
+  const force = caracteristiquesDe(regles, fiche).find((c) => c.id === 'force')?.valeur ?? null;
+  const palier = famille.de_selon_force.find((p) => force >= p.min && force <= p.max);
+  return { de: palier?.de ?? famille.de, force };
+}
+
+/**
+ * Quota de maîtrise d'arme (décision R32 : « le cota max de maîtrise (déterminé par les classes et leurs dons choisis) ») : les maîtrises de chaque classe
+ * prise (classe_maitrise_arme : « 1 maîtrise Épée », « 2 maîtrises à répartir… ») et les points de maîtrise des dons acquis (texte du don : « +2 points
+ * de maîtrise à répartir ») — dons de la classe et de la spécialité choisie jusqu'au niveau de classe, dons à choix choisis. `utilises` : les points de
+ * maîtrise répartis sur la fiche (maitriseDArme). { total, utilises, sources: [{ nom, points }] }.
+ */
+export function quotaDeMaitrise(regles, fiche) {
+  const choisis = new Set((fiche.capacites ?? []).map((c) => c.capacite_id));
+  const sources = [];
+  for (const c of classesDe(regles, fiche)) {
+    if (!c.classe || c.niveau < 1) continue;
+    const deLaClasse = (c.classe.maitrises ?? []).reduce((s, m) => s + m.nombre, 0);
+    if (deLaClasse) sources.push({ nom: c.classe.nom, points: deLaClasse });
+    for (const d of c.classe.dons_maitrise ?? []) {
+      if (d.niveau > c.niveau || (d.specialite_id && d.specialite_id !== c.choix.specialite_id)) continue;
+      if (d.nature === 'choix' && !choisis.has(d.id)) continue;
+      sources.push({ nom: d.nom, points: d.points });
+    }
+  }
+  const m = maitriseDArme(regles);
+  return {
+    total: sources.reduce((s, x) => s + x.points, 0),
+    utilises: (fiche.maitrises_armes ?? []).reduce((s, l) => s + m.pointsDe(entier(l.des)), 0),
+    sources,
+  };
+}
+
 /** Points gagnés par la progression (personnage_progression) : santé, chakra, et le dé (sur l'un, l'autre ou les deux, « 1d4 pour les deux »). */
 function gainsDeProgression(fiche) {
   let sante = 0;
@@ -393,6 +449,16 @@ export function ecrireValeurDuMoment(regles, fiche, champ, valeur) {
   if (champ !== 'corruption') return ecrit;
   const chakra = valeursDuMoment(regles, { ...fiche, ...ecrit }).find((j) => j.champ === 'chakra_actuel');
   return { ...ecrit, chakra_actuel: Math.min(avant.find((j) => j.champ === 'chakra_actuel').valeur, chakra.max) };
+}
+
+/**
+ * Ce qu'écrivent les boutons + et − d'une valeur du moment (demande du propriétaire) : la valeur affichée plus `ecart` (négatif pour retirer), bornée
+ * comme le curseur (ecrireValeurDuMoment). { champ: valeur }.
+ */
+export function ajusterValeurDuMoment(regles, fiche, champ, ecart) {
+  const jauge = valeursDuMoment(regles, fiche).find((j) => j.champ === champ);
+  if (!jauge) return {};
+  return ecrireValeurDuMoment(regles, fiche, champ, jauge.valeur + entier(ecart));
 }
 
 /** Puissance magique du niveau (table niveau_global ; la 5 au niveau 16, décision R16). */
