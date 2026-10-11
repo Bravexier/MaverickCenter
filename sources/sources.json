@@ -1,5 +1,5 @@
 {
-  "$comment": "Manifeste des sources de Maverick JDR. 'type' = dossier de client/src/content/wiki/ (null = à classer après lecture du contenu). Les documents Google pointent sur les copies du Drive du propriétaire (dossier « Maverick JDR », 2026-10-10 ; registre data/migrations/0014-sources-copies-drive.json) ; 'original' garde l'URL fournie par le MJ (document de l'ancien mainteneur). Le doublon 1vn5Tq11… (« Bestiaire 2.0 », cité deux fois) n'apparaît qu'une fois et reste sur l'original (pas de copie) ; « CODEX Maverick », laissé sur l'original par la migration 0014, a été copié par le propriétaire le 2026-10-11 ('original' garde son adresse).",
+  "$comment": "Manifeste des sources de Maverick JDR. 'type' = dossier de client/src/content/wiki/ (null = à classer après lecture du contenu). Les documents Google pointent sur les copies du Drive du propriétaire (dossier « Maverick JDR », 2026-10-10 ; registre data/migrations/0014-sources-copies-drive.json) ; 'original' garde l'URL fournie par le MJ (document de l'ancien mainteneur). Le doublon 1vn5Tq11… (« Bestiaire 2.0 », cité deux fois) n'apparaît qu'une fois. « CODEX Maverick » et « Bestiaire 2.0 », laissés sur l'original par la migration 0014, ont été copiés par le propriétaire le 2026-10-11 ('original' garde leur adresse).",
   "discord": {
     "guildId": "374464159254839298",
     "invite": "https://discord.gg/GMGBnjzfMk",
@@ -108,12 +108,13 @@
       "original": "https://docs.google.com/spreadsheets/d/1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs/edit?gid=74362786#gid=74362786"
     },
     {
-      "id": "1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8",
+      "id": "1WWCmI4nwkBnLcvkEsQEd-Cd_P5rb22NDJllCTO5yhsE",
       "kind": "doc",
-      "type": null,
+      "type": "bestiaire",
       "title": "Bestiaire 2.0",
-      "url": "https://docs.google.com/document/d/1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8/edit?usp=sharing",
-      "note": "Non copié : le Drive du propriétaire ne l'atteint pas (ni partagé avec lui, ni accessible par recherche, 2026-10-10). L'URL est celle de l'original, qui s'ouvre avec son lien (titre relevé le 2026-10-11)."
+      "url": "https://docs.google.com/document/d/1WWCmI4nwkBnLcvkEsQEd-Cd_P5rb22NDJllCTO5yhsE/edit",
+      "original": "https://docs.google.com/document/d/1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8/edit?usp=sharing",
+      "note": "Copie du propriétaire (« Copie de Bestiaire 2.0 », 2026-10-11), exportée en texte dans sources/raw/bestiaire-2-0.txt ; tools/bestiaire/extraire.mjs en tire les tables des monstres (migration 0029-bestiaire-monstres)."
     },
     {
       "id": "1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw",

@@ -22,6 +22,7 @@ entre sources, trace des corrections orthographiques : voir [`structure.md`](str
 | --- | --- | --- |
 | Contenu des **pages** (titre, résumé, corps, mots-clés, sources) | `npm run db:sync-pages` depuis les `.md` fabriqués (modifiés à la main ou réécrits par un extracteur) | `client/test/db-donnees.test.mjs` échoue si `data/rows` n'est plus celui des `.md` |
 | **Lignes typées** (sorts, capacités, races, créatures, armes…) | ⚠️ lignes validées en séance, produites par des chargeurs de **prototype** qui lisaient les classeurs ; ils ne sont pas dans le dépôt | aucune : si un classeur change, ces lignes ne bougent pas tant que l'importeur de la famille n'est pas porté |
+| **Monstres du « Bestiaire 2.0 »** (tables `monstre_*`, famille `monstres`) | `tools/bestiaire/extraire.mjs` relit l'export texte du doc (`sources/raw/bestiaire-2-0.txt`) ; une nouvelle version du doc = un nouvel export puis une migration ([`../bestiaire.md`](../bestiaire.md)) | `client/test/bestiaire-extraction.test.mjs` échoue si la base n'est plus l'extraction de l'export |
 | **Ajout ou retrait d'une page** `docs` ou `exemple` | à la main : créer ou supprimer le `.md` puis `db:sync-pages` | idem |
 | **Ajout ou retrait d'une autre page** (magie, classe, race…) | importeur de sa famille (lots 4 à 10 de [`conception.md`](conception.md) §11) | `db:sync-pages` refuse et le dit |
 

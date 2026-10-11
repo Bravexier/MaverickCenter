@@ -1,0 +1,139 @@
+---
+// Page /bestiaire/ (demande du propriétaire, 2026-10-11) : deux catégories en onglets, les monstres du « Bestiaire 2.0 » et, à part, les créatures invoquées
+// (« elles ne fonctionnent pas tout à fait pareillement ») ; chacune son tableau, sa recherche et ses filtres (lib/bestiaire-filtres.mjs, script
+// src/scripts/bestiaire.mjs). Au-dessus du tableau des monstres, repliés : les règles des échelles de puissance et le glossaire du butin (introduction et fin
+// du doc). Les onglets : components/Onglets.astro (sans JavaScript, les deux catégories se suivent). CSS : styles/bestiaire/bestiaire.css (?raw).
+import Onglets from '../Onglets.astro';
+import TableauMonstres from './TableauMonstres.astro';
+import TableauInvocations from './TableauInvocations.astro';
+import bestiaireCss from '../../styles/bestiaire/bestiaire.css?raw';
+import type { chargerBestiaire } from '../../lib/bestiaire-db.mjs';
+
+interface Props {
+  bestiaire: ReturnType<typeof chargerBestiaire>;
+}
+const { bestiaire } = Astro.props;
+const { monstres, invocations } = bestiaire;
+const ONGLETS = [
+  { id: 'monstres', libelle: 'Monstres', detail: `${monstres.cartes} cartes · ${monstres.especes} espèces` },
+  { id: 'invoquees', libelle: 'Créatures invoquées', detail: `${invocations.lignes.length} créatures · appelées par un sort` },
+];
+const CATEGORIES_XP = [
+  ['ennemi_simple', 'Ennemi simple'],
+  ['mini_boss', 'Mini-boss'],
+  ['boss', 'Boss'],
+] as const;
+---
+
+<style is:inline set:html={bestiaireCss}></style>
+<Onglets />
+<div class="bestiaire" data-onglets="Catégories du bestiaire">
+  <nav class="bonglets" aria-label="Catégories du bestiaire">
+    {
+      ONGLETS.map((o, i) => (
+        <a class:list={['onglet', { 'is-active': i === 0 }]} id={`onglet-${o.id}`} href={`#${o.id}`}>
+          <span class="onglet__nom">{o.libelle}</span>
+          <span class="onglet__detail">{o.detail}</span>
+        </a>
+      ))
+    }
+  </nav>
+
+  <section class="bpanneau is-active" id="monstres" aria-labelledby="titre-monstres">
+    <h2 id="titre-monstres" class="bpanneau__titre">Monstres</h2>
+    <p class="bpanneau__intro">
+      D’après le Google Doc « Bestiaire 2.0 ». Chaque espèce a jusqu’à trois cartes (ennemi simple, mini-boss, boss), une échelle de puissance (EP) et, souvent, un
+      tableau de butin.
+    </p>
+    <div class="breperes">
+      <details class="brepere" id="echelles">
+        <summary>Échelles de puissance : règles de création des monstres</summary>
+        <div class="brepere__corps">
+          <p>Quelques règles qui marchent dans toutes les échelles de puissance :</p>
+          <ul>{monstres.regles.map((r) => <li>{r.texte}</li>)}</ul>
+          <div class="bbutin__defile">
+            <table class="bechelles">
+              <thead>
+                <tr>
+                  <th scope="col">EP</th>
+                  <th scope="col">Niveaux</th>
+                  <th scope="col">Règle carac/comp</th>
+                  <th scope="col">Dégâts moyens</th>
+                  <th scope="col">Attributs moyens</th>
+                  <th scope="col">Expérience reçue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {
+                  monstres.echelles.map((e) => (
+                    <tr>
+                      <th scope="row" class="nombre">EP {e.ep}</th>
+                      <td class="nombre">
+                        {e.niveau_min}-{e.niveau_max}
+                      </td>
+                      <td class="texte">{e.regle_brut}</td>
+                      <td class="texte">{e.degats_brut}</td>
+                      <td>
+                        <ul role="list" class="bechelles__cat">
+                          {CATEGORIES_XP.map(([k, v]) => (
+                            <li>
+                              {v} : <strong>{e[`attributs_${k}`] ?? '—'}</strong>
+                            </li>
+                          ))}
+                        </ul>
+                      </td>
+                      <td>
+                        <ul role="list" class="bechelles__cat">
+                          {CATEGORIES_XP.map(([k, v]) => (
+                            <li>
+                              {v} : <strong>{e[`xp_${k}`] ?? '—'}</strong>
+                            </li>
+                          ))}
+                        </ul>
+                      </td>
+                    </tr>
+                  ))
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+      <details class="brepere" id="glossaire-du-butin">
+        <summary>Glossaire du butin ({monstres.glossaire.length} objets)</summary>
+        <div class="brepere__corps">
+          <dl class="bglossaire">
+            {
+              monstres.glossaire.map((g) => (
+                <div id={`butin-${g.id}`}>
+                  <dt>{g.nom}</dt>
+                  <dd>{g.texte}</dd>
+                </div>
+              ))
+            }
+          </dl>
+        </div>
+      </details>
+    </div>
+    <TableauMonstres monstres={monstres} />
+  </section>
+
+  <section class="bpanneau" id="invoquees" aria-labelledby="titre-invoquees">
+    <h2 id="titre-invoquees" class="bpanneau__titre">Créatures invoquées</h2>
+    <p class="bpanneau__intro">
+      À part des monstres : elles ne fonctionnent pas tout à fait pareillement. D’après le classeur « Invocation » : golems et poupées, non-morts, marionnettes de
+      l’ombre.
+    </p>
+    <TableauInvocations invocations={invocations} />
+  </section>
+</div>
+
+<noscript>
+  <style>
+    .bestiaire .bligne__fiche[hidden] { display: table-row !important; }
+  </style>
+</noscript>
+
+<script>
+  import '../../scripts/bestiaire.mjs';
+</script>

@@ -12,9 +12,9 @@ propriétaire du projet en tient une version corrigée dans son Drive, avec des 
 
 Le registre `data/migrations/0014-sources-copies-drive.json` donne, pour chaque document, l'identifiant d'origine et celui de la copie.
 Deux documents du manifeste, « CODEX Maverick » (`1CwDqDKurMOdqig3ozX4NQETbBW9sggsxEqM1WfbOG5M`) et « Bestiaire 2.0 »
-(`1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8`), étaient hors de portée du Drive du propriétaire et n'ont pas été copiés : le site cite l'original,
-qui s'ouvre avec son lien. Le propriétaire a copié le « CODEX Maverick » le 2026-10-11 (`1tH-T9k-a3sADBtKWHxcuMcN94_VA8-Zo2BTzee9O7Tg`, manifeste et
-[`codex.md`](codex.md)) ; seul le « Bestiaire 2.0 » reste sur l'original. Le site ne renvoie plus aux classeurs « Familiers » et « Prototype » (migration `0019-liens-familiers-prototype`).
+(`1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8`), étaient hors de portée du Drive du propriétaire et n'ont pas été copiés par la migration. Le
+propriétaire les a copiés le 2026-10-11 : le « CODEX Maverick » (`1tH-T9k-a3sADBtKWHxcuMcN94_VA8-Zo2BTzee9O7Tg`, manifeste et [`codex.md`](codex.md)) et
+le « Bestiaire 2.0 » (`1WWCmI4nwkBnLcvkEsQEd-Cd_P5rb22NDJllCTO5yhsE`, [`bestiaire.md`](bestiaire.md)). Le site ne renvoie plus aux classeurs « Familiers » et « Prototype » (migration `0019-liens-familiers-prototype`).
 
 ## Comment la fiche lit les règles
 

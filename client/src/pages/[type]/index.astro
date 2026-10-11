@@ -7,6 +7,7 @@ import MagiesConstellation from '../../components/magie/MagiesConstellation.astr
 import TableauMagiesInnees from '../../components/magie/TableauMagiesInnees.astro';
 import TableauRelationsMagies from '../../components/magie/TableauRelationsMagies.astro';
 import MetiersTableau from '../../components/metier/MetiersTableau.astro';
+import Bestiaire from '../../components/bestiaire/Bestiaire.astro';
 import GuideChapitre from '../../components/guide/GuideChapitre.astro';
 import { TYPES, TYPE_KEYS } from '../../lib/types.mjs';
 import { groupClasses } from '../../lib/class-groups.mjs';
@@ -15,6 +16,7 @@ import { groupByClass } from '../../lib/capacites.mjs';
 import { loadMagies } from '../../lib/magies';
 import { ouvrirBase } from '../../lib/donnees.mjs';
 import { chargerMetiers, contexteDesMetiers, PAGE_DES_REGLES } from '../../lib/metiers.mjs';
+import { chargerBestiaire } from '../../lib/bestiaire-db.mjs';
 import { PREMIER_CHAPITRE } from '../../lib/guide.mjs';
 import { entryHref } from '../../lib/wiki';
 import { entriesOfType, loadWiki } from '../../lib/wiki';
@@ -46,6 +48,9 @@ const capaciteGroups = type === 'capacites' ? groupByClass(entries) : [];
 const metiers = type === 'metiers' ? chargerMetiers(ouvrirBase()) : [];
 const contexteMetiers = type === 'metiers' ? contexteDesMetiers(ouvrirBase()) : null;
 const pageDesRegles = type === 'metiers' ? list.find((e) => e.id === PAGE_DES_REGLES) : undefined;
+// Le bestiaire : les monstres du « Bestiaire 2.0 » et, à part, les créatures invoquées, chacun son grand tableau filtrable (lib/bestiaire-db.mjs,
+// components/bestiaire/) ; les pages `bestiaire/…` des créatures invoquées restent (lien depuis leur fiche).
+const bestiaire = type === 'bestiaire' ? chargerBestiaire(ouvrirBase()) : null;
 // Le guide : son premier chapitre (« Bienvenue »), une page de livre avec flèches et pagination (lib/guide.mjs, components/guide/GuideChapitre.astro) ;
 // les autres pages du type guide sont des pages de référence citées par les chapitres.
 const premierChapitre = type === 'guide' ? entries.find((e) => e.id === PREMIER_CHAPITRE) : undefined;
@@ -70,6 +75,8 @@ const capaciteDetail = (e: any) => [`Niveau ${e.data.niveau}`, e.data.specialite
           <TableauRelationsMagies entries={entries} />
         </section>
       </>
+    ) : bestiaire ? (
+      <Bestiaire bestiaire={bestiaire} />
     ) : metiers.length > 0 ? (
       <>
         {pageDesRegles && <p>Les règles générales sont sur la page <a href={entryHref(pageDesRegles)}>{pageDesRegles.data.title}</a>.</p>}
