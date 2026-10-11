@@ -40,7 +40,7 @@ const SPECIALITES = [
   { id: MA, classe_id: C, rang: 2, nom: "MAÎTRE D'ARME", nom_cle: 'maitre-darme' },
 ];
 
-test('constantes : niveaux du classeur, spécialité au niveau 10, deux spécialités, les cinq mots de type reconnus', () => {
+test('constantes : niveaux d’un don créé 1, 5, 10, 15 ou 20 (décision R35), spécialité au niveau 10, deux spécialités au plus (décision R34), les cinq mots de type reconnus', () => {
   assert.deepEqual(NIVEAUX_DE_DON, [1, 5, 10, 15, 20]);
   assert.equal(NIVEAU_DES_SPECIALITES, 10);
   assert.equal(SPECIALITES_MAX, 2);

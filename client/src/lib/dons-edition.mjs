@@ -11,11 +11,11 @@
 // type_brut…). Fonctions pures, sans dépendance (sauf text.mjs) : utilisables côté serveur et dans le navigateur.
 import { normalize } from './text.mjs';
 
-/** Niveaux de classe proposés pour un nouveau don (ceux du classeur), en attendant la réponse du propriétaire (question 2 de D11). */
+/** Niveaux de classe d'un nouveau don (décision R35 : « 1, 5, 10, 15 ou 20 », ceux du classeur). */
 export const NIVEAUX_DE_DON = [1, 5, 10, 15, 20];
 /** Niveau du don de spécialité (cartouche) et premier niveau d'un don de spécialité : la spécialité se choisit au niveau 10 (specialite_trop_tot). */
 export const NIVEAU_DES_SPECIALITES = 10;
-/** Spécialités d'une classe au plus (toutes les classes du classeur en ont deux), en attendant la réponse du propriétaire (question 1 de D11). */
+/** Spécialités d'une classe au plus (décision R34 : deux, comme toutes les classes du classeur). */
 export const SPECIALITES_MAX = 2;
 /** Mots du type d'un don proposés à la saisie : ceux que lib/classe-champs.mjs#analyserTypeDeDon reconnaît (capacite.type n'est jamais vide). */
 export const TYPES_DE_DON_SAISIE = ['Passif', 'Actif', 'Action', 'Réaction', 'Variable'].map((valeur) => ({ valeur, libelle: valeur }));

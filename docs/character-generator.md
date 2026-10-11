@@ -83,7 +83,7 @@ abandonne.
 Une fiche enregistrée se **supprime** (bouton « Supprimer », après confirmation ; retour à la liste des personnages). Chaque caractéristique, et le tableau de ses compétences, a sa couleur
 (demande du propriétaire, `lib/caracteristiques-postures.mjs`, transmise par `regles.json` : `couleur` et `texte` de chaque caractéristique). Le **Potentiel Illimité** en magie innée met l'Archimage en classe 1
 et l'y **verrouille** (les autres classes 1 sont grisées, la pastille de l'Archimage ne se retire pas) ; sans lui, l'Archimage est grisée à tous les rangs,
-et quitter le Potentiel Illimité la retire (décision R23) ; le Mage Bleu lui est fermé, à tous les rangs (décision R25), toute autre seconde classe reste permise. Les dons à choix d'une classe ou d'une spécialité retirée partent avec elle, comme un don qu'aucun choix des règles ne range (supprimé ou devenu reçu d'office sur le site de dev, D11). Tout ce que la base
+et quitter le Potentiel Illimité la retire (décision R23) ; le Mage Bleu lui est fermé, à tous les rangs (décision R25), toute autre seconde classe reste permise. Les dons à choix d'une classe ou d'une spécialité retirée partent avec elle, comme un don qu'aucun choix des règles ne range (supprimé ou devenu reçu d'office sur le site de dev, D11) ; un don, une spécialité, un sort ou un métier que les règles suppriment est retiré de la fiche par le service, avec sa note datée (R33, ci-dessous « Quand les règles changent »). Tout ce que la base
 garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
 
 - **Règles** : `/fiche/regles.json`, tiré de la base au build par `lib/fiche-regles.mjs` (races et leurs bornes, ethnies, magies, dieux, métiers, classes,
@@ -126,6 +126,22 @@ Les vraies fiches de personnages ont leurs tables dans la base (section 13 de `d
 
 **Principe : on stocke les choix, jamais les calculs.** Une fiche garde ce que le joueur décide ou tire aux dés ; tout ce que la fiche auto calcule se recalcule
 depuis les règles de la base, si bien qu'une règle corrigée corrige toutes les fiches.
+
+**Quand les règles changent (décision R33).** Une fiche ne garde que des **identifiants** de règles (race, classe, spécialité, don, sort, métier…), qui
+ne changent jamais, même quand on renomme (migration 0006) : un élément **renommé ou modifié** se lit sous son nouveau nom, sans toucher la fiche (ni
+ligne, ni note, ni version ; « Si par contre le don / sort / métier est juste modifié, il reste dans les fiches concernées (juste automatiquement mis à
+jour) »). Un **don, une spécialité (avec les dons choisis qui en dépendent), un sort ou un métier supprimé** — sur le site de dev, ou par une livraison
+qui refait la base vivante — est **retiré** des fiches qui l'utilisent (la fiche reste, la classe d'une spécialité retirée aussi) et une **ligne datée**
+par élément s'ajoute à la fin de ses notes (« NOTE », BA53), pour que le joueur s'en souvienne et s'adapte (« Le don supprimé peut subsister en tant que
+note dans la fiche ») :
+`[11/10/2026] Retrait (règles modifiées) : le don « Botte secrète » (classe Bretteur des dunes, spécialité LAME COURBE, niveau 20) n’existe plus dans
+les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.` (texte : `lib/fiche-format.mjs#ligneDeRetrait` ; retrait :
+`serveur/fiches-retraits.mjs`, voir `docs/serveur.md`, « Fiches de personnage (R33) »). La version de la fiche change : ouverte ailleurs, son prochain
+enregistrement reçoit `409` et la page dit combien d'éléments ont été retirés depuis son ouverture (« Recharger la fiche » garde le comportement
+habituel : les saisies non enregistrées sont perdues). Tant que ces lignes sont dans les notes, une **bannière** en haut de `/fiche/` les résume
+(« Règles modifiées : 1 élément retiré de cette fiche le 11/10/2026. », lien vers les notes ; `resumeDesRetraits`) ; elle part quand le joueur les
+efface, et ne s'imprime pas (les notes, si). Une race, une classe ou une magie disparue n'est pas retirée (non tranché : la reconstruction reste
+bloquée). Une fiche « validée » le reste après un retrait : aucun contrôle ne signale le manque.
 
 ### Joueurs, prétirés, groupes et visibilité (demande du propriétaire)
 
