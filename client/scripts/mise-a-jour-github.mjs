@@ -123,7 +123,7 @@ export const ACTION_LOT_EN_ATTENTE = 'Relancer le run de cette mise à jour-là 
   + 'dev → master à la main (« Create a merge commit »). Puis relancer celle-ci.';
 /** Codes de sortie de scripts/mise-a-jour-regles.mjs, et ce qu'il faut faire quand le code appelle une action. */
 export const CODES_REGLES = {
-  2: 'lot illisible',
+  2: 'lot illisible ou refusé (tables hors des règles, HTML brut ou lien non sûr)',
   3: 'conflit avec dev',
   4: 'un fichier hors des tables autorisées changerait',
   5: 'clés étrangères rompues',

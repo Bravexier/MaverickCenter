@@ -12,6 +12,7 @@ import { fromHtml } from 'hast-util-from-html';
 import { buildIndex, remarkWikilinks, scanContent, splitFrontmatter } from '../src/lib/wikilinks.mjs';
 import { remarkCouleursDeCase } from '../src/lib/markdown-couleurs.mjs';
 import { COULEURS_DE_CASE, decouperCorps, htmlSur, recomposerCorps, versMarkdown } from '../src/lib/markdown-edition.mjs';
+import { fragmentsAjoutes } from '../src/lib/markdown-sur.mjs';
 
 const dossier = fileURLToPath(new URL('../src/content/wiki/', import.meta.url));
 const index = buildIndex(scanContent(dossier));
@@ -51,6 +52,8 @@ test('aller-retour sur toutes les pages du guide : le Markdown réécrit d’apr
       const md = versMarkdown(enfants(html));
       assert.equal(normal(await rendre(md)), normal(html), `${page.id} :\n${md}`);
       assert.equal(await aller(md), md, `${page.id} : le Markdown réécrit est stable`);
+      // ni HTML brut ni lien non sûr ajouté : le service refuserait le texte (lib/markdown-sur.mjs)
+      assert.deepEqual(fragmentsAjoutes(m.texte, md), [], `${page.id} : fragments ajoutés par l’éditeur`);
       // l'aperçu assaini garde tout ce que le Markdown dit
       assert.equal(versMarkdown(enfants(htmlSur(enfants(html)))), md, `${page.id} : aperçu assaini`);
     }

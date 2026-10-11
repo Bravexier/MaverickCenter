@@ -35,6 +35,7 @@ import {
 import { HYBRIDES_SANS_CLASSE_RACIALE, TAG_RACE_HYBRIDE } from '../src/lib/race-kinds.mjs';
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { decouperCorps } from '../src/lib/markdown-edition.mjs';
+import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { ErreurJournal, cleDe, lireLigne, nouveauLot, ouvrirLot, rejouer, structure } from './edition-journal.mjs';
 
@@ -763,7 +764,11 @@ const PAGE = {
     } catch (e) {
       throw refus(e.message);
     }
-    const autre = lireLigne(ctx.db, 'page', { id: ligne.id }).titre !== ligne.titre
+    const avant = lireLigne(ctx.db, 'page', { id: ligne.id });
+    // ni HTML brut ni lien non sûr ajouté : le Markdown part tel quel dans la page construite, puis en production (lib/markdown-sur.mjs)
+    const ajoutes = fragmentsAjoutes(avant.corps_md, ligne.corps_md);
+    if (ajoutes.length) throw refus(`${ligne.id} : ${messageDeRefus(ajoutes)}`);
+    const autre = avant.titre !== ligne.titre
       && ctx.db.prepare('SELECT page_id FROM cle_page WHERE cle = ? AND page_id <> ?').get(normalize(ligne.titre), ligne.id);
     if (autre) throw new ErreurEdition(409, `Titre « ${ligne.titre} » : c’est déjà le nom de la page ${autre.page_id} (les [[liens]] deviendraient ambigus).`);
     return { corps_md: ligne.corps_md.endsWith('\n') ? ligne.corps_md : `${ligne.corps_md}\n` };

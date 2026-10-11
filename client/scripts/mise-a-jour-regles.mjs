@@ -2,7 +2,8 @@
 //   node scripts/mise-a-jour-regles.mjs --lot <lot.json> [--reference origin/master] [--date AAAA-MM-JJ] [--resume <resume.json>] [--rows <dossier>]
 // Lancé par le workflow .github/workflows/mise-a-jour.yml (scripts/mise-a-jour-github.mjs), sur une branche feature/… partie de dev :
 //   1. une base est reconstruite depuis data/rows, le journal du lot y est rejoué (serveur/edition.mjs#rejouerLeJournal : le corps des pages
-//      typées est refait depuis les tables rejouées) : un conflit arrête tout ;
+//      typées est refait depuis les tables rejouées) : un conflit arrête tout, comme du HTML brut ou un lien non sûr ajouté au Markdown d'une
+//      page, dans le lot ou après le rejeu (lib/markdown-sur.mjs) ;
 //   2. la note de version est calculée : la production (master, scripts/db-reference.mjs) comparée à cette base (lib/notes-de-version.mjs) ;
 //   3. elle est écrite (note_version, note_version_ligne : version X.Y de la prochaine livraison, champ libre du lot), les notes d'exemple (lorem
 //      ipsum) sont retirées, le journal du lot passe dans historique_modification, les tables du journal sont vidées ;
@@ -20,6 +21,7 @@ import { TABLES_FICHES } from '../serveur/base-vivante.mjs';
 import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, ORDRE_DE_REJEU, TABLES_INTERDITES } from '../serveur/edition-journal.mjs';
 import { lireTables } from '../serveur/notes-de-version.mjs';
+import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
 import { bilan, comparerBases, versionCourte, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
 import { markdownDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
 
@@ -47,6 +49,24 @@ export function verifierLot(lot) {
   const touchees = [...new Set(lot.journal.lots.flatMap((l) => (l.modifications ?? []).map((m) => m.table)))];
   const horsRegles = touchees.filter((t) => typeof t !== 'string' || interdites.has(t));
   if (horsRegles.length) throw new ErreurMiseAJour(2, `lot : tables hors des règles (${horsRegles.join(', ')}) : refusé`);
+  // ni HTML brut ni lien non sûr ajouté au Markdown d'une page (le service le refuse déjà : lib/markdown-sur.mjs) ; le lot vient du site de dev
+  for (const l of lot.journal.lots) {
+    for (const m of l.modifications ?? []) {
+      if (m.table !== 'page' || typeof m.apres?.corps_md !== 'string') continue;
+      const ajoutes = fragmentsAjoutes(typeof m.avant?.corps_md === 'string' ? m.avant.corps_md : '', m.apres.corps_md);
+      if (ajoutes.length) throw new ErreurMiseAJour(2, `lot : page ${m.cle?.id ?? JSON.stringify(m.cle)} : ${messageDeRefus(ajoutes)}`);
+    }
+  }
+}
+
+/** La première page dont le corps a gagné du HTML brut ou un lien non sûr depuis `corpsAvant` (Map id → corps_md) : { id, fragments } ; sinon null. */
+export function pageNonSure(db, corpsAvant) {
+  for (const p of db.prepare('SELECT id, corps_md FROM page ORDER BY id').all()) {
+    if (corpsAvant.get(p.id) === p.corps_md) continue;
+    const fragments = fragmentsAjoutes(corpsAvant.get(p.id) ?? '', p.corps_md);
+    if (fragments.length) return { id: p.id, fragments };
+  }
+  return null;
 }
 
 const versionNumerique = (v) => String(v ?? '').split('.').slice(0, 2).map((n) => Number.parseInt(n, 10) || 0);
@@ -93,6 +113,7 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
       const livres = new Set(db.prepare('SELECT DISTINCT lot_id FROM historique_modification').all().map((h) => h.lot_id));
       dejaLivres = lot.journal.lots.filter((l) => livres.has(l.id)).map((l) => l.id);
       const journal = { ...lot.journal, lots: lot.journal.lots.filter((l) => !livres.has(l.id)) };
+      const corpsAvant = new Map(db.prepare('SELECT id, corps_md FROM page').all().map((p) => [p.id, p.corps_md]));
       db.exec('PRAGMA foreign_keys = OFF'); // rejouer contrôle les clés étrangères lot par lot ; contrôle complet à la fin
       db.exec('BEGIN');
       chargerJournal(db, journal);
@@ -103,6 +124,12 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
       if (conflits.length) {
         db.exec('ROLLBACK');
         throw new ErreurMiseAJour(3, `${conflits.length} lot(s) en conflit avec dev : ${conflits.map((c) => `« ${c.resume} » (${c.detail})`).join(' ; ')}`, { conflits, rejeu });
+      }
+      // le corps de chaque page changée par le rejeu (texte du guide, ou refait depuis les tables) : ni HTML brut ni lien non sûr ajouté
+      const nonSure = pageNonSure(db, corpsAvant);
+      if (nonSure) {
+        db.exec('ROLLBACK');
+        throw new ErreurMiseAJour(2, `lot : page ${nonSure.id} après le rejeu : ${messageDeRefus(nonSure.fragments)}`);
       }
       const production = new DatabaseSync(ref.chemin, { readOnly: true });
       try {

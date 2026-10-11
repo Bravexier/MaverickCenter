@@ -182,7 +182,7 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   gabarit. Une colonne rendue modifiable : son entrée dans `TABLES`, ce qui en dépend recalculé dans `serveur/edition.mjs` (colonnes `X_cle`, typées, tables de détail, page du
   wiki) et un test `serveur-edition-*`. Les découpages (`metier-champs.mjs`, `sort-analyse.mjs`, `classe-champs.mjs`) refont ceux des importeurs : leurs tests les rejouent sur
   toute la base. Une table ajoutée à la section 14 va dans `TABLES_EDITION` (`base-vivante.mjs`) et dans `TABLES_INTERDITES` (`edition-journal.mjs`), comme celles de la section 15. `Edition.astro` n'est pas dans la version portable (`INLINE_CSS=1`).
-  Guide : `data-ed-morceau` = un morceau de texte visible du corps (`decouperCorps`) ; les liens du wiki portent `data-cible` (`wikilinks.mjs`) et la couleur d'une case
+  Guide : `data-ed-morceau` = un morceau de texte visible du corps (`decouperCorps`) ; ni HTML brut ni lien non sûr ajouté au Markdown d'une page (`lib/markdown-sur.mjs` : service, lot reçu et pages après le rejeu de la mise à jour) ; les liens du wiki portent `data-cible` (`wikilinks.mjs`) et la couleur d'une case
   s'écrit `{couleur:x}` (`markdown-couleurs.mjs`, plugin déclaré dans `astro.config.mjs` ET `lib/guide-rendu.ts`, qui doivent rester d'accord) ; `test/markdown-edition.test.mjs`
   rejoue l'aller-retour Markdown → HTML → Markdown sur toutes les pages du guide.
 - **Mise à jour** (`/mise-a-jour/`, `docs/serveur.md`, « Mise à jour ») : la **production** est la base de master (décision du propriétaire), construite par
