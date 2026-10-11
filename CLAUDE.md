@@ -207,7 +207,7 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   acquise que la race ou l'innée ferme part d'office (`magieAcquiseValable`) ;
   un don à choix d'une classe ou d'une spécialité retirée part avec elle (`donsValables`). Page compacte (demandes du propriétaire) : choix en menus déroulants
   (`<details class="choix">`), caractéristiques (1 par défaut, jamais vides : `caracteristiquesCompletes`) et naturel des compétences en curseurs, tableau des sorts
-  à une liste par emplacement sans emplacement en plus (`lignesDeSorts`, R27), NM par origine — niveau, livre (un par sort), MJ — et 3 au plus sur un sort (R24, R26 :
+  à une liste par emplacement sans emplacement en plus (`lignesDeSorts`, R27 ; groupée par NPM, chaque sort sur la couleur de sa magie : `sortsParNpm`), NM par origine — niveau, livre (un par sort), MJ — et 3 au plus sur un sort (R24, R26 :
   `personnage_sort.nm_livre`, `nm_cadeau`, migration `0021-nm-plafond`), acquis des compétences, maîtrises d'armes (dés dans leur colonne) et valeurs du moment
   en curseurs aussi (chakra actuel ≤ chakra − corruption hors magie de la Corruption : `valeursDuMoment`), clic droit ou Entrée sur un curseur = saisie bornée (`borner`), jauge d'XP dans l'en-tête (`progressionXp`), pas de lien vers le guide ;
   une fiche se supprime (`DELETE /api/personnages/<id>/` avec sa version).

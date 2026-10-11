@@ -26,7 +26,8 @@ Corruption, et la corruption qui monte emporte le chakra actuel, celle qui baiss
 « Fiche de personnage : Attributs »). Un **clic droit** sur un curseur (ou Entrée) le remplace par une case de saisie : le nombre tapé est ramené au
 maximum au-dessus, au minimum en dessous (`borner`) ; Échap abandonne ; les **sorts**
 sont un tableau d'une ligne par emplacement, sans emplacement en plus (décision R27), chacune avec la liste des sorts possibles moins ceux des autres lignes
-(`lignesDeSorts`) ; les **NM** d'un sort se notent par origine (de niveau, d'un livre — un par sort —, du MJ), 3 au plus sur un sort (décisions R24, R26). L'en-tête porte
+(`lignesDeSorts`), groupée par NPM, le nom seul, chaque sort sur la couleur de sa magie comme sur les pages de magie, la liste fermée dans celle du sort choisi
+(`sortsParNpm`, demande du propriétaire) ; les **NM** d'un sort se notent par origine (de niveau, d'un livre — un par sort —, du MJ), 3 au plus sur un sort (décisions R24, R26). L'en-tête porte
 la **jauge d'XP** (`progressionXp`) : l'XP se modifie dans son champ ou s'ajoute avec le bouton +, le niveau suit. Une fiche enregistrée se **supprime**
 (bouton « Supprimer », après confirmation ; retour à la liste des personnages). Chaque caractéristique, et le tableau de ses compétences, a sa couleur
 (demande du propriétaire, `lib/caracteristiques-postures.mjs`, transmise par `regles.json` : `couleur` et `texte` de chaque caractéristique). Le **Potentiel Illimité** en magie innée met l'Archimage en classe 1
