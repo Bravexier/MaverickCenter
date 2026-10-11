@@ -61,19 +61,17 @@ test('sources : une ligne par document cité, id dérivé du nouvel identifiant,
   assert.equal(renvois, 1069);
 });
 
-test('liens : « chose à savoir » du Mage Bleu vers la copie de « Familiers », les 9 ressources vers la copie du Doc « Alchimie »', () => {
-  const lien = db.prepare("SELECT chose_a_savoir_lien AS l FROM classe WHERE id = 'classes/mage-bleu'").get().l;
-  assert.ok(lien.includes(parTitre.get('Familiers').apres), lien);
+test('liens : les 9 ressources vers la copie du Doc « Alchimie » (le lien du Mage Bleu vers « Familiers » est retiré : migration 0019)', () => {
   assert.equal(db.prepare('SELECT count(*) AS n FROM ressource WHERE instr(description, ?) > 0').get(parTitre.get('Alchimie').apres).n, 9);
 });
 
-test('manifeste : chaque document copié pointe sur sa copie et garde l’URL d’origine ; les deux introuvables restent sur l’original', () => {
+test('manifeste : chaque document copié pointe sur sa copie et garde l’URL d’origine ; les deux non copiés restent sur l’original, avec leur titre', () => {
   const avant = new Map(registre.copies.map((c) => [c.avant, c]));
   const apres = new Map(registre.copies.map((c) => [c.apres, c]));
   const nonCopies = new Set(registre.non_copies.map((c) => c.id));
   for (const g of manifeste.google) {
     if (nonCopies.has(g.id)) {
-      assert.ok(g.url.includes(g.id) && g.note, g.id);
+      assert.ok(g.url.includes(g.id) && g.note && g.title, g.id);
       continue;
     }
     const c = apres.get(g.id);

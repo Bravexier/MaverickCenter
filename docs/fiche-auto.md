@@ -11,8 +11,9 @@ propriétaire du projet en tient une version corrigée dans son Drive, avec des 
 | `Maverick JDR/Anciennes fiches auto/` | Copies d'archive des fiches V15.0.5, V15.2.2 (celle que cite la base) et V1.1, non modifiées : elles lisent toujours les classeurs d'origine |
 
 Le registre `data/migrations/0014-sources-copies-drive.json` donne, pour chaque document, l'identifiant d'origine et celui de la copie.
-Deux documents du manifeste (`1CwDqDKurMOdqig3ozX4NQETbBW9sggsxEqM1WfbOG5M`, `1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8`) étaient introuvables
-depuis le compte du propriétaire et n'ont pas été copiés.
+Deux documents du manifeste, « CODEX Maverick » (`1CwDqDKurMOdqig3ozX4NQETbBW9sggsxEqM1WfbOG5M`) et « Bestiaire 2.0 »
+(`1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8`), étaient hors de portée du Drive du propriétaire et n'ont pas été copiés : le site cite l'original,
+qui s'ouvre avec son lien. Le site ne renvoie plus aux classeurs « Familiers » et « Prototype » (migration `0019-liens-familiers-prototype`).
 
 ## Comment la fiche lit les règles
 

@@ -70,10 +70,23 @@ test('/galeries/ : toutes les images ; /archives/ : les documents sources et l�
   const galeries = lire('galeries/index.html');
   assert.match(galeries, /<li id="image-logo"><figure><a href="\/logo\.webp"><img src="\/logo\.webp"/);
   const archives = lire('archives/index.html');
-  for (const titre of ['Classeurs et documents du jeu', 'Fiches de personnage automatiques', 'Documents introuvables', 'L’ancien wiki']) assert.ok(archives.includes(`>${titre}</h2>`), titre);
+  for (const titre of ['Classeurs et documents du jeu', 'Fiches de personnage automatiques', 'L’ancien wiki']) assert.ok(archives.includes(`>${titre}</h2>`), titre);
+  assert.ok(!archives.includes('Documents introuvables') && !archives.includes('sans titre'), 'chaque document a son titre');
   assert.match(archives, /<a href="https:\/\/docs\.google\.com\/spreadsheets\/d\/1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I\/edit[^"]*" rel="noopener noreferrer" target="_blank">Classe Maverick V7<\/a>/);
+  assert.match(archives, /<a href="https:\/\/docs\.google\.com\/document\/d\/1CwDqDKurMOdqig3ozX4NQETbBW9sggsxEqM1WfbOG5M\/edit[^"]*" rel="noopener noreferrer" target="_blank">CODEX Maverick<\/a>/);
+  assert.match(archives, /<a href="https:\/\/docs\.google\.com\/document\/d\/1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8\/edit[^"]*" rel="noopener noreferrer" target="_blank">Bestiaire 2\.0<\/a>/);
   assert.match(archives, /href="https:\/\/maverick-jdr\.fandom\.com\/fr\/wiki\/Progression"/);
   assert.ok(!archives.includes('payoumorfot'), 'pas d’adresse de courriel du registre');
+});
+
+test('aucun lien vers les classeurs « Familiers » et « Prototype » (demande du propriétaire, migration 0019)', options, () => {
+  const registre = JSON.parse(readFileSync(new URL('../../data/migrations/0014-sources-copies-drive.json', import.meta.url), 'utf8'));
+  const ids = registre.copies.filter((c) => ['Familiers', 'Prototype'].includes(c.titre)).flatMap((c) => [c.avant, c.apres]);
+  assert.equal(ids.length, 4);
+  const avecLien = walk(dist)
+    .filter((f) => f.endsWith('.html') || f.endsWith('.json'))
+    .filter((f) => ids.some((id) => readFileSync(f, 'utf8').includes(id)));
+  assert.deepEqual(avecLien, []);
 });
 
 test('/recherche/ : la recherche et tous les mots-clés ; plus de /tags/ (la page 404 y renvoie), la page d’un mot-clé ramène à la recherche', options, () => {

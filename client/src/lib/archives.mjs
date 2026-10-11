@@ -3,6 +3,8 @@
 // l'identifiant d'origine) et du manifeste sources/sources.json (adresse avec l'onglet, notes, ancien wiki). Le nombre de pages et les onglets viennent
 // des sources citées par les pages (tables `source` et `page_source` de la base) : un document est cité par son adresse (identifiant Google) ou par son
 // libellé (« Google Sheet « Les races », onglet « Elfe » ») ; le registre donne le titre de chaque identifiant, rien n'est apparié autrement.
+// Les documents que le registre n'a pas copiés (CODEX Maverick, Bestiaire 2.0) restent sur l'original, qui s'ouvre avec son lien : titre du manifeste.
+// Les classeurs « Familiers » et « Prototype » ne sont pas montrés (DOCUMENTS_RETIRES).
 // `documentsDesArchives` est pur ; `lireArchives` lit les fichiers et la base au build (node:fs : ne pas importer côté navigateur).
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -11,8 +13,16 @@ import { join } from 'node:path';
 export const RUBRIQUES = [
   { id: 'jeu', titre: 'Classeurs et documents du jeu' },
   { id: 'fiches', titre: 'Fiches de personnage automatiques' },
-  { id: 'introuvables', titre: 'Documents introuvables' },
 ];
+
+/**
+ * Documents que la page ne montre pas (demande du propriétaire : « Retire tout lien de "prototype" et "famillier" ») : identifiants de leur copie
+ * (registre de la migration 0014). La migration 0019-liens-familiers-prototype retire de la base les liens qui menaient au classeur « Familiers ».
+ */
+export const DOCUMENTS_RETIRES = new Set([
+  '1Xhj8DINY6NlufeHSUnB_mHYyPXEvSBOno32wWZXOEBk', // Familiers
+  '1lFmQtog0ndYBkrmTUGkWStWNA85W9J4gk5LGLbaULKQ', // Prototype
+]);
 
 /** Dossier du Drive du propriétaire → rubrique (le registre ne donne `dossier` qu'aux anciennes fiches auto). */
 const RUBRIQUE_DU_DOSSIER = { 'Anciennes fiches auto': 'fiches' };
@@ -27,14 +37,16 @@ export const libelleGenre = (genre) => (genre === 'doc' ? 'Google Doc' : 'Google
  * Les documents Google des archives, rubrique par rubrique : [{ rubrique, documents: [{ id, titre, genre, url, original, pages, onglets, note }] }].
  * - `registre` : le registre de la migration 0014 ({ copies, fiche_corrigee, non_copies }) ;
  * - `manifeste` : sources/sources.json (`google` : adresse avec onglet, adresse d'origine, note) ;
- * - `citations` : une ligne par source citée par une page, { page_id, google_id, genre, fichier, onglets (tableau ou null) }.
+ * - `citations` : une ligne par source citée par une page, { page_id, google_id, genre, fichier, onglets (tableau ou null) } ;
+ * - `retires` : identifiants des documents à ne pas montrer (par défaut DOCUMENTS_RETIRES).
  * `pages` : nombre de pages du site qui citent le document (par son identifiant, celui de la copie ou d'origine, ou par son titre) ;
  * `onglets` : les onglets cités, dans l'ordre alphabétique. Dans une rubrique, les documents les plus cités d'abord, puis par titre.
  */
-export function documentsDesArchives({ registre, manifeste, citations }) {
+export function documentsDesArchives({ registre, manifeste, citations, retires = DOCUMENTS_RETIRES }) {
   const duManifeste = new Map(manifeste.google.map((g) => [g.id, g]));
   const documents = [];
   const ajouter = (rubrique, { id, avant, titre, genre, note }) => {
+    if (retires.has(id)) return;
     const m = duManifeste.get(id);
     const ids = new Set([id, avant].filter(Boolean));
     const cites = citations.filter((c) => ids.has(c.google_id) || (titre && c.fichier === titre && c.genre === genre));
@@ -60,7 +72,7 @@ export function documentsDesArchives({ registre, manifeste, citations }) {
   }
   for (const n of registre.non_copies) {
     const m = duManifeste.get(n.id);
-    ajouter('introuvables', { id: n.id, titre: m?.title ?? null, genre: m?.kind ?? 'doc', note: 'Introuvable depuis le Drive du propriétaire : seule l’adresse d’origine reste.' });
+    ajouter('jeu', { id: n.id, titre: m?.title ?? null, genre: m?.kind ?? 'doc', note: 'Document d’origine : le propriétaire du projet n’en tient pas de copie.' });
   }
   return RUBRIQUES.map((rubrique) => ({
     rubrique,

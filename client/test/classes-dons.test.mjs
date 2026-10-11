@@ -195,5 +195,5 @@ test('départ, inventaire, tableau du Mage Bleu, race d’une classe raciale : l
   for (const a of mageBleu.annexe) for (const e of a.entrees) assert.ok(e.type && e.nom, `${a.libelle} : ${e.texte}`);
   assert.deepEqual(classe('orios').race, { id: 'races/orios', nom: 'Orios' });
   assert.equal(barde.race, null);
-  assert.ok(classe('mage-bleu').aSavoirLien.startsWith('https://'));
+  assert.equal(classe('mage-bleu').aSavoirLien, null, 'lien vers le classeur « Familiers » retiré (demande du propriétaire, migration 0019)');
 });
