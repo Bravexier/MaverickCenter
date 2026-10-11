@@ -1,5 +1,5 @@
 {
-  "$comment": "Manifeste des sources de Maverick JDR. 'type' = dossier de client/src/content/wiki/ (null = à classer après lecture du contenu). Les documents Google pointent sur les copies du Drive du propriétaire (dossier « Maverick JDR », 2026-10-10 ; registre data/migrations/0014-sources-copies-drive.json) ; 'original' garde l'URL fournie par le MJ (document de l'ancien mainteneur). Le doublon 1vn5Tq11… (« Bestiaire 2.0 », cité deux fois) n'apparaît qu'une fois ; lui et « CODEX Maverick » restent sur l'original (pas de copie).",
+  "$comment": "Manifeste des sources de Maverick JDR. 'type' = dossier de client/src/content/wiki/ (null = à classer après lecture du contenu). Les documents Google pointent sur les copies du Drive du propriétaire (dossier « Maverick JDR », 2026-10-10 ; registre data/migrations/0014-sources-copies-drive.json) ; 'original' garde l'URL fournie par le MJ (document de l'ancien mainteneur). Le doublon 1vn5Tq11… (« Bestiaire 2.0 », cité deux fois) n'apparaît qu'une fois et reste sur l'original (pas de copie) ; « CODEX Maverick », laissé sur l'original par la migration 0014, a été copié par le propriétaire le 2026-10-11 ('original' garde son adresse).",
   "discord": {
     "guildId": "374464159254839298",
     "invite": "https://discord.gg/GMGBnjzfMk",
@@ -50,12 +50,13 @@
   },
   "google": [
     {
-      "id": "1CwDqDKurMOdqig3ozX4NQETbBW9sggsxEqM1WfbOG5M",
+      "id": "1tH-T9k-a3sADBtKWHxcuMcN94_VA8-Zo2BTzee9O7Tg",
       "kind": "doc",
-      "type": null,
+      "type": "lore",
       "title": "CODEX Maverick",
-      "url": "https://docs.google.com/document/d/1CwDqDKurMOdqig3ozX4NQETbBW9sggsxEqM1WfbOG5M/edit?tab=t.0#heading=h.2h6bnqhu7awm",
-      "note": "Non copié : le Drive du propriétaire ne l'atteint pas (ni partagé avec lui, ni accessible par recherche, 2026-10-10). L'URL est celle de l'original, qui s'ouvre avec son lien (titre relevé le 2026-10-11)."
+      "url": "https://docs.google.com/document/d/1tH-T9k-a3sADBtKWHxcuMcN94_VA8-Zo2BTzee9O7Tg/edit",
+      "original": "https://docs.google.com/document/d/1CwDqDKurMOdqig3ozX4NQETbBW9sggsxEqM1WfbOG5M/edit?tab=t.0#heading=h.2h6bnqhu7awm",
+      "note": "Copié par le propriétaire le 2026-10-11, après la migration 0014 qui l'avait laissé sur l'original (fichier « Copie de CODEX Maverick » de son Drive). Export Markdown dans sources/raw/<id>.md (images dans sources/raw/<id>/), découpé en pages lore/ par tools/docs/codex.py : voir docs/codex.md."
     },
     {
       "id": "150Q6SJi4ft0oROtwT6snMAZUdWMVtkblxwYY9TqxV4Q",

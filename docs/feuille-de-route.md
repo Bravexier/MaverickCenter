@@ -48,7 +48,9 @@ d'une source ou d'une décision de [`decisions-regles.md`](decisions-regles.md) 
 Jalons proposés :
 
 - **A — avant la 1.0, sans comptes** : ce qui se fait avec la base actuelle et le mot de passe partagé d'aujourd'hui.
-- **B — le Codex** : avant la 1.0 aussi, mais suspendu au rapatriement des sources (salons Discord du lore et des cartes, « CODEX Maverick », « Bestiaire 2.0 »).
+- **B — le Codex** : avant la 1.0 aussi, mais suspendu au rapatriement des sources (salons Discord du lore et des cartes, « Bestiaire 2.0 ») ; le
+  « CODEX Maverick » est importé (2026-10-11, [`codex.md`](codex.md)) : une page `lore/` par divinité, temple ou guilde, civilisation et objet légendaire,
+  Codex › Mythologie et Codex › Factions mènent à leurs sommaires.
 - **C — la 1.0** : la connexion par Discord arrive dans la **dernière version 0.x** (V0.6 visée), qui reste en service le temps d'en corriger les bugs ;
   la **V1.0.0** vient quand la connexion est éprouvée et testée et l'ouvre à tout le Discord (précision du propriétaire, 2026-10-11). Le passage en 1.0
   reste son signal ([`flux-git.md`](flux-git.md)). Les fiches liées au compte (E8) sont proposées dans la même V0.6, pour être éprouvées avec la connexion.
@@ -143,8 +145,9 @@ flowchart LR
 
 ### E5 — Chronologie (jalon B)
 
-- **Prérequis** : la source. Le lore n'est presque pas importé (une page `lore/`) : le salon « lore-bestiaire-codex » (export local ou bot, voir
-  [`sources.md`](sources.md)) et le « CODEX Maverick » (non copié) se rapatrient d'abord.
+- **Prérequis** : la source. Le « CODEX Maverick » est importé (2026-10-11, [`codex.md`](codex.md)) : sa page « Les Impacts mineur et majeur » donne
+  les grands événements datés (An 20 à An 1138) et les pages des civilisations en citent d'autres (règnes des empereurs, fondations) ; le salon
+  « lore-bestiaire-codex » (export local ou bot, voir [`sources.md`](sources.md)) et le calendrier du monde restent à rapatrier.
 - **Ensuite** : une table d'événements (titre, date dans le calendrier du monde, texte, sources, liens vers lieux, races, dieux), une page `/chronologie/`
   en frise filtrable (époque, peuple, lieu), modifiable sur le site de dev ; entrée Codex › Chronologie.
 
@@ -238,6 +241,7 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
    autres rôles (MJ, éditeur, administrateur) se verront plus tard (E7).
 4. **Équipement** : une refonte visuelle et de l'intégration à la fiche, où il y a aujourd'hui des ratés ; les règles ne changent pas (E3).
 5. **Sources** (« Bestiaire 2.0 », « CODEX Maverick », salons du lore et des cartes, image de la carte, calendrier du monde) : à voir plus tard (E2, E5, E6).
+   Le « CODEX Maverick » est arrivé le 2026-10-11 (copie du propriétaire, [`codex.md`](codex.md)).
 
 ### Questions encore ouvertes
 

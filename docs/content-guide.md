@@ -351,6 +351,13 @@ magique »). Pour une classe raciale, c'est sa 2ᵉ spécialité, le pendant lan
 une classe magique : la fiche V15.2.2 (BDD!H40, I40, BB2) le range parmi elles pour ce bonus et le propriétaire du projet le confirme ; le Sommaire le classe « spéciale » parce que
 ses règles diffèrent de celles des autres classes (pas de spécialité, des groupes de choix par palier). La page de l'Archimage donne cette explication.
 
+## Codex (type `lore`) : le Google Doc « CODEX Maverick »
+
+Les pages du Codex (116) sont fabriquées par `tools/docs/codex.py` depuis l'export du document rangé dans `sources/raw/` : une page par section
+(divinité, temple ou guilde, nation ou région, objet légendaire), des pages de sommaire et `lore/codex` pour tout le document. Le texte est celui du
+document ; seules les corrections du registre `tools/docs/codex-corrections.json` s'y appliquent. Ne pas modifier ces pages à la main : un nouvel export
+les réécrit (`codex.py`, `--verifier`, `npm run db:sync-pages`). Détail, corrections et questions ouvertes : [`codex.md`](codex.md).
+
 ## Coquilles et fautes d'orthographe
 
 Les classeurs sources contiennent des coquilles ; elles se corrigent (demande du propriétaire du projet), **jamais dans la page** mais dans le

@@ -3,7 +3,8 @@
 // l'identifiant d'origine) et du manifeste sources/sources.json (adresse avec l'onglet, notes, ancien wiki). Le nombre de pages et les onglets viennent
 // des sources citées par les pages (tables `source` et `page_source` de la base) : un document est cité par son adresse (identifiant Google) ou par son
 // libellé (« Google Sheet « Les races », onglet « Elfe » ») ; le registre donne le titre de chaque identifiant, rien n'est apparié autrement.
-// Les documents que le registre n'a pas copiés (CODEX Maverick, Bestiaire 2.0) restent sur l'original, qui s'ouvre avec son lien : titre du manifeste.
+// Les documents que le registre n'a pas copiés (Bestiaire 2.0) restent sur l'original, qui s'ouvre avec son lien : titre du manifeste. Un document copié
+// après la migration (CODEX Maverick, 2026-10-11) est l'entrée du manifeste dont `original` cite son identifiant : sa copie, et l'original en second lien.
 // Les classeurs « Familiers » et « Prototype » ne sont pas montrés (DOCUMENTS_RETIRES).
 // `documentsDesArchives` est pur ; `lireArchives` lit les fichiers et la base au build (node:fs : ne pas importer côté navigateur).
 import { readFileSync } from 'node:fs';
@@ -35,7 +36,8 @@ export const libelleGenre = (genre) => (genre === 'doc' ? 'Google Doc' : 'Google
 
 /**
  * Les documents Google des archives, rubrique par rubrique : [{ rubrique, documents: [{ id, titre, genre, url, original, pages, onglets, note }] }].
- * - `registre` : le registre de la migration 0014 ({ copies, fiche_corrigee, non_copies }) ;
+ * - `registre` : le registre de la migration 0014 ({ copies, fiche_corrigee, non_copies }) ; un document non copié que le manifeste donne avec
+ *   une autre adresse et son `original` est une copie faite depuis : montré comme les copies du registre ;
  * - `manifeste` : sources/sources.json (`google` : adresse avec onglet, adresse d'origine, note) ;
  * - `citations` : une ligne par source citée par une page, { page_id, google_id, genre, fichier, onglets (tableau ou null) } ;
  * - `retires` : identifiants des documents à ne pas montrer (par défaut DOCUMENTS_RETIRES).
@@ -71,6 +73,11 @@ export function documentsDesArchives({ registre, manifeste, citations, retires =
     ajouter('fiches', { id: f.id, titre: f.titre, genre: f.genre, note: 'La fiche à copier pour jouer : la V1.1 corrigée par le propriétaire du projet.' });
   }
   for (const n of registre.non_copies) {
+    const copie = manifeste.google.find((g) => g.id !== n.id && g.original?.includes(`/d/${n.id}/`));
+    if (copie) {
+      ajouter('jeu', { id: copie.id, avant: n.id, titre: copie.title ?? null, genre: copie.kind ?? 'doc' });
+      continue;
+    }
     const m = duManifeste.get(n.id);
     ajouter('jeu', { id: n.id, titre: m?.title ?? null, genre: m?.kind ?? 'doc', note: 'Document d’origine : le propriétaire du projet n’en tient pas de copie.' });
   }
