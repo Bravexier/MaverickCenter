@@ -129,7 +129,7 @@ textarea.ed-saisie--ligne { resize: none; min-height: 0; }
 .ed-dialogue button { font: inherit; padding: 0.35rem 1rem; border-radius: 6px; cursor: pointer; }
 .ed-dialogue button[type='submit'] { color: #fff; background: var(--good); border: 0; font-weight: 700; }
 
-/* Annonces (enregistré, erreur) */
+/* Annonces (enregistré, fiches adaptées, erreur) */
 .ed-annonce {
   position: fixed;
   right: 1rem;
@@ -148,6 +148,8 @@ textarea.ed-saisie--ligne { resize: none; min-height: 0; }
 }
 .ed-annonce[hidden] { display: none; }
 .ed-annonce--erreur { border-left-color: var(--danger); }
+/* fiches de personnage adaptées par le lot (R33) : reste affiché, sans la couleur d'une erreur */
+.ed-annonce--avis { border-left-color: var(--accent); }
 .ed-annonce button { position: absolute; top: 0.35rem; right: 0.4rem; border: 0; background: none; color: var(--muted); font-size: 1.1rem; cursor: pointer; }
 
 /* Page d'une entité créée depuis le site, avant la prochaine version du site (page 404 du site de dev) */

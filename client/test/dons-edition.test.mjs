@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  alternativesDe, consequences, donneesDeDon, groupeDe, idDeDon, idDeSpecialite, libelleDeBlocage, listeDeFiches, motsClesDeDon, natureHorsSpecialite,
+  alternativesDe, consequences, donneesDeDon, groupeDe, idDeDon, idDeSpecialite, libelleDeRetrait, listeDeFiches, motsClesDeDon, natureHorsSpecialite,
   NIVEAU_DES_SPECIALITES, NIVEAUX_DE_DON, niveauxProposes, nomDuDonSuit, operationsDuLot, permissions, placeNouvelleLigne, SPECIALITES_MAX, titreDeDon, TYPES_DE_DON_SAISIE, typeBrutDeSaisie,
 } from '../src/lib/dons-edition.mjs';
 import { analyserTypeDeDon } from '../src/lib/classe-champs.mjs';
@@ -135,8 +135,8 @@ test('mots-clés d’une fiche de don, groupe d’un emplacement, nature hors sp
   assert.equal(natureHorsSpecialite(2), 'choix');
   assert.equal(listeDeFiches(['A', 'B']), 'A, B');
   assert.equal(listeDeFiches(['A', 'B', 'C', 'D', 'E', 'F', 'G']), 'A, B, C, D, E et 2 autre(s)');
-  assert.equal(libelleDeBlocage(['Aria']), 'choisi dans 1 fiche(s) : Aria', 'un don');
-  assert.equal(libelleDeBlocage(['Aria', 'Borin'], { feminin: true }), 'choisie dans 2 fiche(s) : Aria, Borin', 'une spécialité');
+  assert.equal(libelleDeRetrait(['Aria']), 'choisi dans 1 fiche(s) : Aria — en sera retiré (une note datée le rappellera)', 'un don (R33)');
+  assert.equal(libelleDeRetrait(['Aria', 'Borin'], { feminin: true }), 'choisie dans 2 fiche(s) : Aria, Borin — en sera retirée (une note datée le rappellera)', 'une spécialité');
 });
 
 test('formulaire d’un don : niveaux d’un don de spécialité (10 au moins) ; le nom du don de spécialité suit celui de la spécialité tant qu’on ne l’a pas changé', () => {
@@ -202,6 +202,25 @@ test('consequences : don qui devient reçu sans choix, don reçu d’office qui 
   assert.deepEqual(consequences(etat, { donsSupprimes: ['capacites/guerrier-coup-dur', 'capacites/guerrier-duelliste'] }), [], 'les deux partent');
   assert.deepEqual(consequences(etat, { donsSupprimes: ['capacites/guerrier-coup-dur'], specialitesSupprimees: [EP] }),
     ['La spécialité ÉPÉISTE emporte son don de spécialité et ses 6 dons.']);
+});
+
+test('consequences (R33) : les fiches qui perdront une spécialité ou un don supprimé, une note datée dans chacune ; rien sans fiche', () => {
+  const fiches = { 'capacites/guerrier-affute': ['Aria', 'Borin'], [MA]: ['Cyd'], 'capacites/guerrier-contact': ['Dora'], 'capacites/guerrier-hyper-contact': ['Aria', 'Eli'] };
+  const etat = { specialites: SPECIALITES, dons: GUERRIER, fiches };
+  assert.deepEqual(consequences(etat, { specialitesSupprimees: [EP] }), [
+    'La spécialité ÉPÉISTE emporte son don de spécialité et ses 6 dons.',
+    'La spécialité ÉPÉISTE (ou l’un de ses dons) sera retirée de 2 fiche(s) : Aria, Borin ; une note datée le rappellera dans chacune.',
+  ]);
+  assert.deepEqual(consequences(etat, { donsSupprimes: ['capacites/guerrier-contact'] }), ['« Contact » sera retiré de 1 fiche(s) : Dora ; une note datée le rappellera.']);
+  assert.deepEqual(consequences(etat, { donsSupprimes: ['capacites/guerrier-hyper-contact'] }),
+    ['« Hyper contact » sera retiré de 2 fiche(s) : Aria, Eli ; une note datée le rappellera dans chacune.']);
+  assert.deepEqual(consequences(etat, { donsSupprimes: ['capacites/guerrier-affute'], specialitesSupprimees: [EP] }), [
+    'La spécialité ÉPÉISTE emporte son don de spécialité et ses 6 dons.',
+    'La spécialité ÉPÉISTE (ou l’un de ses dons) sera retirée de 2 fiche(s) : Aria, Borin ; une note datée le rappellera dans chacune.',
+  ], 'un don d’une spécialité supprimée : seulement la phrase de la spécialité');
+  assert.deepEqual(consequences(etat, { donsSupprimes: ['capacites/guerrier-brave'] }), [], 'un don qu’aucune fiche n’a');
+  assert.deepEqual(consequences({ specialites: SPECIALITES, dons: GUERRIER }, { donsSupprimes: ['capacites/guerrier-contact'], specialitesSupprimees: [MA] }),
+    ['La spécialité MAÎTRE D\'ARME emporte son don de spécialité et ses 6 dons.'], 'sans fiches : rien de plus');
 });
 
 test('operationsDuLot : champs, suppressions de spécialités, créations (références « @i »), suppressions de dons ; refus d’une option sur une ligne supprimée', () => {

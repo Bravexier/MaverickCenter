@@ -5,15 +5,16 @@
 //     assemblage que le build : lib/classe-assemblage.mjs), puis rebranche ses onglets (évènement « onglets:brancher », components/Onglets.astro) ;
 //   - en mode modification : « + Ajouter un don de classe », « + Ajouter un don à <SPÉCIALITÉ> », « + Ajouter une option » (sur un choix ou un don
 //     seul, jamais sur un don de spécialité), « + Ajouter une spécialité » (selon lib/dons-edition.mjs#permissions) ; « Supprimer » à bascule sur chaque
-//     don et chaque spécialité qui peuvent l'être, désactivé quand une fiche de personnage les cite ;
+//     don et chaque spécialité qui peuvent l'être ; quand des fiches de personnage les ont, l'infobulle les nomme (elles en seront retirées, une note
+//     datée le rappellera : décision R33) ;
 //   - les créations sont mises en file (une carte « sera créé à l'enregistrement » chacune, à modifier ou retirer) et partent avec « Enregistrer », dans
 //     le même lot que les suppressions et les champs modifiés (lib/dons-edition.mjs#operationsDuLot : une création sur une ligne en file la cite « @i ») ;
-//     leurs conséquences (un don qui devient reçu sans choix…) sont confirmées avant l'envoi.
+//     leurs conséquences (un don qui devient reçu sans choix, les fiches qui perdront une spécialité ou un don…) sont confirmées avant l'envoi.
 import { assemblerClasse } from '../../lib/classe-assemblage.mjs';
 import {
   doitRedessiner, empreinteDeStructure, htmlDesDons, htmlDesSpecialites, htmlDuGroupeDeNavigation, htmlDuRepereMagique, lienDesSpecialites,
 } from '../../lib/classe-dons-rendu.mjs';
-import { consequences, libelleDeBlocage, niveauxProposes, nomDuDonSuit, operationsDuLot, permissions } from '../../lib/dons-edition.mjs';
+import { consequences, libelleDeRetrait, niveauxProposes, nomDuDonSuit, operationsDuLot, permissions } from '../../lib/dons-edition.mjs';
 import { ENTITES } from '../../lib/edition-modele.mjs';
 import { echapperHtml } from '../../lib/edition-rendu.mjs';
 
@@ -316,7 +317,7 @@ function assurerSectionDons() {
   return section;
 }
 
-/** « Supprimer » à bascule, désactivé (avec la raison) quand une fiche de personnage cite la ligne. */
+/** « Supprimer » à bascule ; quand des fiches de personnage ont la ligne, l'infobulle les nomme : elles la perdront (R33). */
 function bascule(element, ensemble, id, { libelle, fiches }) {
   const b = bouton('Supprimer', () => {
     const oui = !ensemble.has(id);
@@ -326,10 +327,9 @@ function bascule(element, ensemble, id, { libelle, fiches }) {
     b.textContent = oui ? 'Sera supprimé — annuler' : 'Supprimer';
     element.classList.toggle('ed-supprime', oui);
     ed_.marquerModifie();
-  }, { danger: true, titre: fiches.length ? libelleDeBlocage(fiches, { feminin: ensemble === specialitesSupprimees }) : libelle });
+  }, { danger: true, titre: fiches.length ? `${libelle} — ${libelleDeRetrait(fiches, { feminin: ensemble === specialitesSupprimees })}` : libelle });
   b.classList.add('ed-supprimer');
   b.setAttribute('aria-pressed', 'false');
-  if (fiches.length) b.disabled = true;
   return b;
 }
 let ed_ = null;

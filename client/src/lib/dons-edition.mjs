@@ -156,8 +156,12 @@ export const natureHorsSpecialite = (n) => (n >= 2 ? 'choix' : 'classe');
 /** Les noms des fiches qui citent une ligne, au plus cinq, puis « et N autre(s) ». */
 export const listeDeFiches = (noms) => `${noms.slice(0, 5).join(', ')}${noms.length > 5 ? ` et ${noms.length - 5} autre(s)` : ''}`;
 
-/** L'infobulle du « Supprimer » désactivé d'une ligne que des fiches citent : « choisi » pour un don, « choisie » pour une spécialité. */
-export const libelleDeBlocage = (fiches, { feminin = false } = {}) => `${feminin ? 'choisie' : 'choisi'} dans ${fiches.length} fiche(s) : ${listeDeFiches(fiches)}`;
+/**
+ * L'infobulle du « Supprimer » d'une ligne que des fiches citent (décision R33 : elle en sera retirée, une note datée le rappellera) : « choisi … retiré »
+ * pour un don, « choisie … retirée » pour une spécialité.
+ */
+export const libelleDeRetrait = (fiches, { feminin = false } = {}) =>
+  `${feminin ? 'choisie' : 'choisi'} dans ${fiches.length} fiche(s) : ${listeDeFiches(fiches)} — en sera ${feminin ? 'retirée' : 'retiré'} (une note datée le rappellera)`;
 
 /**
  * Les niveaux proposés pour un nouveau don (sa ligne) : ceux du classeur ; dans une spécialité, à partir du niveau où elle se choisit (le service refuse
@@ -211,7 +215,8 @@ const pluriel = (n, un, plusieurs) => (n > 1 ? plusieurs : un);
 
 /**
  * Les conséquences d'un lot à confirmer avant de l'enregistrer, en phrases : un don qui devient reçu sans choix, un don reçu d'office qui devient un choix,
- * une spécialité qui emporte ses dons. `creations` : [{ entite, valeurs }] (file de la page ; `avec` peut être « @k », la k-ième création de la file) ;
+ * une spécialité qui emporte ses dons ; puis, d'après `etat.fiches`, les fiches de personnage dont une spécialité ou un don supprimé sera retiré (décision
+ * R33, une note datée dans chacune). `creations` : [{ entite, valeurs }] (file de la page ; `avec` peut être « @k », la k-ième création de la file) ;
  * `donsSupprimes`, `specialitesSupprimees` : ids.
  */
 export function consequences(etat, { creations = [], donsSupprimes = [], specialitesSupprimees = [] } = {}) {
@@ -254,6 +259,21 @@ export function consequences(etat, { creations = [], donsSupprimes = [], special
     const survivant = restants[0];
     if (!survivant.specialite_id) phrases.push(`${survivant.nom} deviendra un don reçu sans choix.`);
     else phrases.push(`${survivant.nom} restera seul sur sa ligne : la page le montrera seul et la fiche de personnage ne le proposera plus (un choix demande au moins deux dons).`);
+  }
+  // fiches de personnage qui perdront une spécialité ou un don (R33) ; un don d'une spécialité supprimée part avec elle (phrase de la spécialité)
+  const perms = permissions(etat);
+  const rappel = (n) => `une note datée le rappellera${n > 1 ? ' dans chacune' : ''}`;
+  for (const id of specialitesSupprimees) {
+    const s = specialites.find((x) => x.id === id);
+    const fiches = perms.specialites[id]?.fiches ?? [];
+    if (!s || !fiches.length) continue;
+    phrases.push(`La spécialité ${s.nom} (ou l’un de ses dons) sera retirée de ${fiches.length} fiche(s) : ${listeDeFiches(fiches)} ; ${rappel(fiches.length)}.`);
+  }
+  for (const id of donsSupprimes) {
+    const don = dons.find((d) => d.id === id);
+    const fiches = perms.dons[id]?.fiches ?? [];
+    if (!don || specSupp.has(don.specialite_id) || !fiches.length) continue;
+    phrases.push(`« ${don.nom} » sera retiré de ${fiches.length} fiche(s) : ${listeDeFiches(fiches)} ; ${rappel(fiches.length)}.`);
   }
   return phrases;
 }

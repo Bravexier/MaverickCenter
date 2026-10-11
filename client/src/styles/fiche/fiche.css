@@ -589,7 +589,7 @@ main:has(> .fiche) { max-width: 100rem; }
   .pastille, .xp__rempli { transition: none; }
 }
 @media print {
-  .site-header, .site-footer, .fiche-barre, .fiche-etapes, .fiche-ligne-ajout, .retirer, .fiche-indisponible, .xp__plus, .xp__ajout, .ajuster, .ajout { display: none !important; }
+  .site-header, .site-footer, .fiche-barre, .fiche-etapes, .fiche-ligne-ajout, .retirer, .fiche-indisponible, .fiche-retraits, .xp__plus, .xp__ajout, .ajuster, .ajout { display: none !important; }
   .fiche-etape { break-inside: avoid-page; }
   .choix > summary::after { content: none; }
   .choix__panneau { display: none; }
