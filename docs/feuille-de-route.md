@@ -18,6 +18,207 @@ n'est encore réalisé au-delà de la première étape.
    modifications versées dans `historique_modification`, que les tests relisent pour ne plus épingler ce que le site a changé : `client/src/lib/historique-site.mjs`). Relecture (`brouillon / validé`), auteur (connexion Discord) et accès restreint au bouton restent à faire.
 3. **Simulation de combats** (à long terme) : jouer des combats pour juger l'équilibrage des sorts, des classes et des races.
 
+À côté de ces trois étapes, un axe **communauté de jeu** (comptes Discord, groupes, planning, bot, boîte à idées, statistiques) et l'achèvement du
+**Codex** et de l'**Inventaire** : voir « Prochaines évolutions » ci-dessous.
+
+## Prochaines évolutions (liste du propriétaire, 2026-10-11)
+
+Le propriétaire a donné ses prochaines évolutions « pêle-mêle » ; elles sont rangées ici par dépendances, avec un identifiant stable (**E1** à **E12**)
+pour s'y référer dans les PR et les décisions. **L'ordre des jalons est une proposition**, à valider par le propriétaire ; ce qui attend sa réponse est
+regroupé à la fin (« Questions au propriétaire »). Aucune règle du jeu ne se décide ici (valeurs d'objets, tirages, créatures, dates du lore…) : elle vient
+d'une source ou d'une décision de [`decisions-regles.md`](decisions-regles.md) (règle d'or).
+
+### Vue d'ensemble
+
+| Id | Évolution | Jalon proposé | Dépend de | Ce qui existe déjà |
+| --- | --- | --- | --- | --- |
+| E1 | Galerie : créations humaines / images d'IA | A | — | `/galeries/`, carrousel de l'accueil, `lib/galerie.mjs` (le logo seul) |
+| E2 | Page du Bestiaire | A, puis B | sources pour les monstres | 63 créatures d'invocation dans les tables `creature_*` (section 8), pages `bestiaire/…` rendues depuis leur Markdown |
+| E3 | Refonte de l'équipement et intégration à la fiche | A | ce que « refonte » change (question 4) | catalogues de la section 9, bloc équipement de `/fiche/`, tables `personnage_arme`, `personnage_armure`… |
+| E4 | Générateur d'accessoires magiques | A | E3 pour les accessoires | tables de tirage `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet` ; `personnage_accessoire` |
+| E5 | Chronologie | B | sources du lore | entrée « bientôt » du menu Codex |
+| E6 | Carte interactive et lieux | B | image de la carte, sources | type `cartes` (aucune page), entrée « bientôt » du menu Codex |
+| E7 | Connexion par Discord seulement, droits selon les rôles Discord | C (1.0) | application Discord du propriétaire | tables `utilisateur`, `utilisateur_role` ; « Authentification » plus bas |
+| E8 | Fiches de personnage assignées à un compte | C (1.0) | E7 | `personnage.proprietaire_id`, `personnage_partage`, `v_personnage_visible` |
+| E9 | Groupes (OS, HC, Campagne) et planning des parties | D | E7, E8 | `groupe`, `groupe_membre`, `v_groupe_controle` ; entrée « bientôt » du menu Personnages |
+| E10 | Bot Discord : lien site ↔ serveur, notifications | D (annonces dès A) | E7 pour les notifications ciblées | — |
+| E11 | Boîte à idées, tickets, rapports de bugs | D | E7 | entrée « bientôt » du menu Outils |
+| E12 | Statistiques | E (celles des règles dès A) | E8 et des fiches réelles | `v_personnage_niveau`, base vivante du service |
+
+Jalons proposés :
+
+- **A — avant la 1.0, sans comptes** : ce qui se fait avec la base actuelle et le mot de passe partagé d'aujourd'hui.
+- **B — le Codex** : avant la 1.0 aussi, mais suspendu au rapatriement des sources (salons Discord du lore et des cartes, « CODEX Maverick », « Bestiaire 2.0 »).
+- **C — la 1.0** : la connexion par Discord, développée et essayée sur le serveur de test en 0.x ; le passage en 1.0 (ouverture à tout le Discord) reste le
+  signal du propriétaire ([`flux-git.md`](flux-git.md)).
+- **D — la communauté** : ce que les comptes rendent possible.
+- **E — la mesure** : quand il y a assez de fiches réelles ; puis la simulation de combats (étape 3).
+
+```mermaid
+flowchart LR
+  subgraph A["A — sans comptes"]
+    E1[E1 Galerie]
+    E2[E2 Bestiaire]
+    E3[E3 Équipement] --> E4[E4 Accessoires magiques]
+  end
+  subgraph B["B — Codex"]
+    E5[E5 Chronologie] -.- E6[E6 Carte et lieux]
+  end
+  subgraph C["C — 1.0"]
+    E7[E7 Connexion Discord] --> E8[E8 Fiches des comptes]
+  end
+  subgraph D["D — communauté"]
+    E9[E9 Groupes et planning]
+    E10[E10 Bot Discord]
+    E11[E11 Boîte à idées]
+  end
+  S([Sources du lore]) --> E2 & E5 & E6
+  E8 --> E9 --> E10
+  E7 --> E10
+  E7 --> E11 --> E10
+  E8 --> E12[E12 Statistiques] --> SIM([Simulation de combats])
+  E2 -.-> SIM
+```
+
+### E1 — Galerie : distinguer créations humaines et images d'IA (jalon A)
+
+- **But** : chaque image dit clairement son origine, et aucune ne peut être publiée sans.
+- **Premier pas** : les entrées de `GALERIE` (`lib/galerie.mjs`) gagnent `origine` (`'humaine'` ou `'ia'`, obligatoire : `test/galerie.test.mjs` refuse
+  une entrée sans) et `auteur` (l'artiste, ou l'outil pour une image d'IA) ; une pastille sur chaque image de `/galeries/` et du carrousel de l'accueil
+  (« Création humaine » / « Image générée par IA ») et un filtre (toutes, humaines, IA) gardé dans l'adresse, comme sur `/personnages/`.
+- **Ensuite (après E7)** : les membres proposent des images (fichier, origine déclarée, auteur) qu'un administrateur valide ; les fichiers vivent dans le
+  dossier de données de l'instance (à côté de `db/`, jamais dans git) et une table de la base vivante les décrit (auteur, origine, statut proposée / publiée / refusée).
+
+### E2 — Page du Bestiaire (jalon A, puis B)
+
+- **Déjà là** : les 63 créatures des invocations (golems, poupées, non-morts, marionnettes) et leurs tables typées (`creature`, `creature_attaque`,
+  `creature_capacite`, résistances par `v_creature_resistance`…) ; aujourd'hui `/bestiaire/` est la liste générique des pages et le menu Codex › Bestiaire est « bientôt ».
+- **Premier pas** : une page `/bestiaire/` et des fiches de créature rendues depuis les tables, sur le modèle des magies, des races et des classes
+  (`lib/bestiaire-db.mjs`, `components/bestiaire/`, CSS inséré par le composant), créatures rangées par invocation et par magie, avec renvoi à la magie
+  qui les invoque ; mode modification sur le site de dev comme les autres pages typées ; entrée du menu.
+- **Ensuite** : les monstres hors invocation. Le « Bestiaire 2.0 » n'est pas copié dans le Drive du propriétaire (`sources/sources.json`) : rien n'en est
+  importé, et ses tables se conçoivent d'après lui, pas avant. Le bestiaire prépare la simulation (une créature est un adversaire).
+
+### E3 — Refonte de l'équipement et intégration à la fiche (jalon A)
+
+- **Déjà là** : les catalogues typés (section 9 : armes, armures, boucliers, matériaux, améliorations, pièces élémentaires, accessoires, gemmes, bâtons
+  magiques…) ; les pages de l'Inventaire, rendues depuis leur Markdown ; dans `/fiche/`, le bloc équipement (armes, armure, bouclier, accessoires,
+  inventaire, objets de départ du métier). Manquent ([`character-generator.md`](character-generator.md)) : les effets d'équipement dans les calculs (AP/AM
+  des pièces, bonus des améliorations, résistances des objets), et « Objets à la ceinture » (boucliers, bâtons magiques) est « bientôt ».
+- **Étapes proposées** : (1) les pages de l'Inventaire rendues depuis les tables (un tableau par catalogue, comme `/metiers/`), modifiables sur le site
+  de dev ; (2) « Objets à la ceinture » ; (3) dans la fiche, le choix dans le catalogue et les effets codés en données, un effet à la fois, chacun cité et
+  testé (`lib/fiche-moteur.mjs`) : un effet non codé reste affiché en texte et n'est pas compté ; (4) poids, prix et bourse, si les sources les donnent.
+- **Avant de commencer** : savoir ce que la refonte change (question 4).
+
+### E4 — Générateur d'accessoires magiques (jalon A, après E3 pour les accessoires)
+
+- **Déjà là** : la création d'un accessoire est un tirage écrit dans le classeur et rangé dans la base — emplacement (1d4, `accessoire_emplacement`),
+  propriété (1d100 en 8 plages, dont Malédiction de 96 à 100 : `accessoire_propriete`), effet selon la propriété (`accessoire_effet`, gemmes
+  `accessoire_effet_gemme`), montures (`accessoire_monture`) ; une fiche garde un accessoire avec sa valeur tirée et sa case « Malédiction » (`personnage_accessoire`).
+- **À faire** : un module pur `lib/generateur-accessoire.mjs` qui rejoue ces tables avec un tirage à graine (le même tirage se rejoue, comme prévu pour la
+  simulation) et montre chaque jet ; une page (Inventaire › Accessoires ou Outils) ; « Ajouter à la fiche » vers `personnage_accessoire`. Une ligne vide
+  de la source donne « ligne vide dans la source », jamais un effet inventé ; tests contre les tables.
+
+### E5 — Chronologie (jalon B)
+
+- **Prérequis** : la source. Le lore n'est presque pas importé (une page `lore/`) : le salon « lore-bestiaire-codex » (export local ou bot, voir
+  [`sources.md`](sources.md)) et le « CODEX Maverick » (non copié) se rapatrient d'abord.
+- **Ensuite** : une table d'événements (titre, date dans le calendrier du monde, texte, sources, liens vers lieux, races, dieux), une page `/chronologie/`
+  en frise filtrable (époque, peuple, lieu), modifiable sur le site de dev ; entrée Codex › Chronologie.
+
+### E6 — Carte interactive et lieux (jalon B)
+
+- **Prérequis** : l'image (ou les images) de la carte en haute définition et la liste des lieux avec leur description (salon « cartes », non importé).
+- **À faire** : une table des lieux (nom, nature — ville, région, donjon… —, position sur la carte, lieu parent, description, sources) ; une page
+  Codex › Carte & lieux : carte zoomable (tuiles fabriquées au build depuis l'image), un repère par lieu, sa fiche au clic, une page par lieu pour la
+  recherche et les `[[liens]]` ; liens avec la chronologie (E5), le bestiaire (où vit une créature) et le lieu d'origine des fiches ; un outil de placement
+  des repères sur le site de dev.
+- **Choix technique au prototype** : une bibliothèque de carte embarquée (Leaflet en coordonnées simples, sans fond de carte en ligne) ou un SVG maison ;
+  elle doit passer dans la version portable (rien d'externe).
+
+### E7 — Connexion par Discord seulement, droits selon les rôles Discord (jalon C : la 1.0)
+
+La connexion est décidée plus bas (« Authentification : Discord ») ; cette liste y ajoute :
+
+- **Discord uniquement** : ni adresse électronique ni mot de passe ; le mot de passe partagé du site disparaît.
+- **Droits selon les rôles du serveur Discord** : à chaque connexion, le service lit les rôles du membre (portée OAuth `guilds.members.read`) et en tire
+  ceux du site (`utilisateur_role`) par une correspondance de configuration (identifiant de rôle Discord → `mj`, `editeur`, `admin`) ; le bot (E10) les
+  tient à jour entre deux connexions et retire l'accès à qui quitte le serveur.
+- **Ce que les droits ouvrent** : l'édition des règles et le bouton « Effectuer la mise à jour » (sans protection aujourd'hui, décision du propriétaire)
+  passent aux rôles `editeur` et `admin` ; l'auteur de chaque modification est inscrit à l'historique ; la relecture `brouillon / validé` devient possible.
+
+### E8 — Fiches de personnage assignées à un compte (jalon C)
+
+- **Déjà là** : tout le modèle (fiche de joueur ou prétiré, propriétaire, visibilité privée / MJ / tous, partage à des utilisateurs désignés,
+  `v_personnage_visible`), voir « Fiches de personnages » plus bas.
+- **À faire** : le service ne lit que les fiches de `v_personnage_visible` et n'écrit que pour leur propriétaire (ou un administrateur) ; « Mes
+  personnages » dans le menu Personnages ; création d'une fiche à son nom ; réglage de la visibilité et du partage ; **assignation** par un administrateur
+  ou un MJ (donner à un joueur une copie d'un prétiré, qui reste prétiré, ou lui transférer une fiche existante) ; `/personnages/` ne liste que les fiches visibles.
+
+### E9 — Groupes (OS, HC, Campagne) et planning des parties (jalon D)
+
+- **Déjà là** : `groupe` (natures `one_shot` et `campagne`), `groupe_membre` (rôle MJ ou joueur, une fiche inscrite par groupe), la visibilité par groupe.
+- **Groupes** : création par un MJ, invitation des joueurs, inscription d'une fiche, page du groupe (membres, fiches inscrites, prochaines parties) ;
+  la nature « HC » s'ajoute par une migration quand son sens est donné (question 1).
+- **Planning** : nouvelles tables de la base vivante — partie (groupe, MJ, début, durée, lieu : vocal Discord ou table réelle, statut proposée / confirmée /
+  annulée / jouée), sondage de dates (créneaux proposés, réponses oui / peut-être / non), présence ; calendrier du groupe et de chaque utilisateur,
+  abonnement `.ics` (agenda du téléphone) ; rappels par le bot (E10). Instants en UTC dans la base, affichés à l'heure de Paris.
+
+### E10 — Bot Discord : lien entre le site et le serveur (jalon D ; annonces dès A)
+
+- **Notifications générales** (dans un salon) : version livrée et sa note (`/mise-a-jour/`), nouvelles pages, images de la galerie. Premier pas possible
+  dès le jalon A par un simple webhook de salon appelé à la livraison, sans bot ni comptes.
+- **Notifications ciblées** (après E7, en message privé ou dans le salon d'un groupe) : partie planifiée ou déplacée, rappel la veille, sondage de dates,
+  fiche partagée avec soi, inscription dans un groupe, réponse à un ticket ; chacun choisit ce qu'il reçoit.
+- **Autres usages** : synchroniser les rôles (E7) ; des commandes (consulter un sort, une fiche, les prochaines parties) ; lire en lecture seule les salons
+  du lore pour l'import (option « bot dédié » de [`sources.md`](sources.md), utile à E2, E5 et E6).
+- **Architecture proposée** : le service inscrit chaque événement dans une file (table de notifications de la base vivante : événement, destinataire,
+  texte, état, essais) que le bot vide ; le site ne dépend jamais du bot (Discord en panne : rien ne bloque). L'API REST de Discord suffit pour écrire, et
+  les commandes arrivent en HTTP signé Ed25519, vérifiable avec `node:crypto` : le bot peut rester sans paquet npm, comme le service. Son jeton est un
+  secret de l'instance, jamais dans le dépôt ; aucun jeton personnel. Salons et rôles par configuration.
+
+### E11 — Boîte à idées, tickets et rapports de bugs (jalon D)
+
+- **But** : un seul endroit (Outils › Boîte à idée) pour proposer une idée, signaler un bug du site ou une erreur de règle, poser une question.
+- **À faire** : tables de la base vivante — ticket (nature idée / bug / règle / question, titre, texte, page concernée, auteur, statut nouveau / accepté /
+  en cours / fait / refusé, réponse), commentaires, votes sur les idées ; un bouton « Signaler » sur chaque page (adresse préremplie) ; une vue de tri pour
+  les administrateurs ; notifications par le bot (E10).
+- **Suite d'un ticket** : un bug accepté peut devenir une *issue* GitHub (le dépôt est privé : le ticket garde le lien, les joueurs ne la voient pas) ; une
+  erreur de règle mène à une décision ([`decisions-regles.md`](decisions-regles.md)) ou à une modification sur le site de dev.
+
+### E12 — Statistiques (jalon E ; celles des règles dès A)
+
+- **Des fiches** (après E8, dans la base vivante) : popularité des races, des magies innées et acquises, des classes, des spécialités, des métiers et des
+  dieux ; niveau moyen et répartition des niveaux (`v_personnage_niveau`), en tout et par groupe ; calculées par le service, en agrégats seulement (aucune
+  fiche privée n'est montrée), page Outils › Statistiques.
+- **Des règles** (sans comptes, dès le jalon A) : nombre de sorts par magie et par NPM, classes accessibles par race…, tirés de la base au build.
+- **Ensuite** : les statistiques de la simulation de combats (étape 3).
+
+### Ce qui vaut pour chaque évolution
+
+- Une évolution = une ou plusieurs branches `feature/<nom>` vers `dev` ([`flux-git.md`](flux-git.md)), chacune avec ses tests (`client/test/`).
+- Tables STRICT et SQL portable. Ce que saisissent les membres (comptes, groupes, parties, tickets, notifications, images proposées) vit dans la **base
+  vivante** du service (`db/`), comme les fiches : jamais dans git ni dans `/donnees/maverick.db` ; une table nouvelle y est déclarée au service
+  (`TABLES_VIVANTES`, `client/serveur/base-vivante.mjs`) et interdite au journal de l'édition.
+- Le contenu du jeu (créatures, événements, lieux, effets d'objets, tirages) vient des sources ou d'une décision du propriétaire, jamais de la vraisemblance.
+- Logique pure et testée dans `client/src/lib/`, code du DOM dans `src/scripts/` ; rien de propre à l'hébergement hors de `deploy/`.
+
+### Questions au propriétaire
+
+1. **« HC »** : que recouvre-t-il, et en quoi diffère-t-il d'un one-shot ou d'une campagne (E9) ?
+2. **Connexion de secours** : « Authentification » prévoit un compte local de l'administrateur (sans `discord_id`) si Discord est indisponible, ce que
+   « Discord uniquement » écarte. Proposition : aucun mot de passe sur le site, mais une commande sur le serveur qui ouvre une session d'administrateur (E7).
+3. **Rôles Discord** : quels rôles du serveur donnent MJ, éditeur et administrateur ? Tout membre du serveur peut-il se connecter, ou un rôle « joueur » est-il exigé (E7) ?
+4. **Équipement** : la refonte change-t-elle les règles (nouvelles valeurs : décisions ou nouveau classeur) ou leur présentation et leur intégration à la fiche (E3) ?
+5. **Sources** : copier « Bestiaire 2.0 » et « CODEX Maverick » dans le dossier « Maverick JDR » ; exporter les salons du lore et des cartes ; fournir
+   l'image de la carte ; dire quelle source fixe le calendrier du monde (E2, E5, E6).
+6. **Fiches existantes** : les fiches Google des joueurs (V15.2.2) sont-elles importées automatiquement ou ressaisies dans `/fiche/` (E8) ?
+7. **Visibilité** : tickets (E11) et statistiques (E12) visibles de tous les membres, ou des administrateurs seulement ? Les prétirés et les brouillons
+   comptent-ils dans les statistiques ? Les images d'IA passent-elles dans le carrousel de l'accueil (E1) ?
+8. **Discord** : un groupe a-t-il son salon ou son rôle, créé par le bot ? Quels salons pour les annonces ? « Chroniques » (menu Personnages) sert-il aux
+   comptes rendus des parties jouées (E9, E10) ?
+9. **Ordre** : les jalons A à E vous conviennent-ils ?
+
 ## Orthographe : relecture complète à la conversion en SQL
 
 La relecture générale des coquilles et fautes des classeurs (décision R10 de `docs/decisions-regles.md`) se fait **dans la base**, domaine par domaine, par des migrations de données

@@ -22,6 +22,8 @@ Les suivre ; ne jamais en déduire d'autres.
 Le NAS est temporaire (migration à prévoir). Le site doit devenir une source rapide et navigable des règles et du lore, puis permettre de modifier sorts, dons,
 classes et races pour remplacer à terme Google Docs/Sheets, et enfin simuler des combats pour juger l'équilibrage. Voir `docs/feuille-de-route.md` : identifiants
 stables, SQL portable, modifications historisées, règles en données, moteur pur partagé, rien de spécifique au NAS hors de `deploy/`.
+Les prochaines évolutions voulues par le propriétaire (galerie humaine / IA, bestiaire, équipement, générateur d'accessoires, chronologie, carte, connexion
+Discord, fiches des comptes, groupes et planning, bot Discord, boîte à idées, statistiques) y sont numérotées **E1 à E12**, rangées en jalons proposés, avec les questions qui attendent sa réponse.
 
 ## Accès aux sources
 
