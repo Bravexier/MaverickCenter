@@ -22,7 +22,8 @@ test('tout est sérialisable et chaque liste a toutes les lignes de sa table', (
   const tables = { races: 'race', ethnies: 'ethnie', magies: 'magie', dieux: 'dieu', metiers: 'metier', classes: 'classe', sorts: 'sort', niveaux: 'niveau_global',
     caracteristiques: 'caracteristique', competences: 'competence', armes: 'arme', familles_armes: 'arme_famille', armures: 'armure', boucliers: 'bouclier_classe',
     accessoires: 'accessoire_effet', ressources: 'ressource', ameliorations: 'amelioration_equipement', armes_elementaires: 'arme_elementaire',
-    armures_elementaires: 'armure_elementaire', materiaux_armes: 'materiau_arme', materiaux_bouclier: 'materiau_bouclier' };
+    armures_elementaires: 'armure_elementaire', materiaux_armes: 'materiau_arme', materiaux_bouclier: 'materiau_bouclier', resistance_paliers: 'resistance_palier',
+    etats: 'etat' };
   for (const [cle, table] of Object.entries(tables)) assert.equal(regles[cle].length, compte(table), cle);
   assert.equal(regles.emplacements_armure.length, compte('armure_emplacement') - 1, 'le bouclier a sa propre ligne sur la fiche');
   assert.equal(regles.am_classe_magique, 4);
@@ -176,4 +177,20 @@ test('sorts : coût, portée, D/S/B, effets et remarque tels qu’écrits, avec 
     const attendus = db.prepare("SELECT champ, texte_brut FROM sort_bonus_maitrise WHERE sort_id = ? AND champ IN ('cout', 'portee', 'dsb', 'effets') ORDER BY champ, rang").all(s.id);
     assert.deepEqual(s.bonus.map((b) => [b.champ, b.texteBrut]), attendus.map((b) => [b.champ, b.texte_brut]), s.id);
   }
+});
+
+test('résistances (tableau « Résistance / Faiblesse » de la fiche) : les six paliers, les listes de chaque magie et l’altération qui lui est liée, ce que les dons écrivent', () => {
+  assert.deepEqual(regles.resistance_paliers.map((p) => p.id), db.prepare('SELECT id FROM resistance_palier ORDER BY ordre').all().map((r) => r.id));
+  assert.deepEqual(regles.etats.map((e) => e.id), db.prepare('SELECT id FROM etat ORDER BY ordre').all().map((r) => r.id));
+  assert.equal(regles.magies.reduce((n, m) => n + m.resistances.length, 0), compte('magie_resistance'));
+  for (const m of regles.magies) {
+    for (const r of m.resistances) assert.ok([1, -1].includes(r.crans) && (r.type === 'magie' ? regles.magies : regles.etats).some((x) => x.id === r.id), `${m.nom} : ${r.id}`);
+    const lie = db.prepare('SELECT etat_id FROM etat_magie WHERE magie_id = ?').get(m.id)?.etat_id ?? null;
+    assert.equal(m.etat_id, lie, m.nom);
+  }
+  // un don qui n'écrit rien de tel n'a pas de champ (regles.json reste léger)
+  const dons = [...regles.races.flatMap((r) => r.dons), ...regles.classes.flatMap((c) => c.dons)];
+  assert.ok(dons.some((d) => d.resistances?.effets.length) && dons.some((d) => d.resistances?.choix));
+  for (const d of dons.filter((x) => x.resistances)) assert.ok(d.resistances.effets.length || d.resistances.choix);
+  assert.ok(regles.races.find((r) => r.id === 'races/drakos').dons_tableau.lignes.every((l) => l.resistances), 'chaque ligne du Drakos : son cran, ou au choix');
 });

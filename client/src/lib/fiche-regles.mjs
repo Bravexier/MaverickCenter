@@ -9,6 +9,7 @@ import { couleurDeCaracteristique, couleurDePosture } from './caracteristiques-p
 import { CLASS_GROUPS, classCategory, classColor } from './class-groups.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS, raceKind } from './race-kinds.mjs';
+import { lecteurDeResistances } from './resistance-texte.mjs';
 import { couleurDeMagie, texteSurCouleur } from './sort-format.mjs';
 
 const lignes = (db, sql, ...params) => db.prepare(sql).all(...params).map((r) => ({ ...r }));
@@ -54,6 +55,21 @@ export function chargerReglesDeFiche(db) {
   const competences = lignes(db, 'SELECT id, nom, caracteristique_id FROM competence ORDER BY ordre');
   const initiative = lignes(db, 'SELECT agilite, bonus, bonus_brut, note FROM initiative_agilite ORDER BY agilite');
 
+  // Résistances (tableau « Résistance / Faiblesse » de la fiche auto V15.2.2, demande du propriétaire) : les six paliers (Personnage!BA2:BI12), les
+  // altérations d'état, et ce que les dons écrivent en toutes lettres (lib/resistance-texte.mjs) : les cibles sont les magies et les altérations, sous
+  // leur nom et sous les écritures que les importeurs leur ont rapprochées (magie_resistance, ethnie_resistance : « Gelé », « Pétrification »).
+  const resistance_paliers = lignes(db, 'SELECT id, libelle, valeur_min, valeur_max, effet_brut FROM resistance_palier ORDER BY ordre')
+    .map((p) => ({ id: p.id, libelle: p.libelle, min: p.valeur_min, max: p.valeur_max, effet: p.effet_brut }));
+  const etats = lignes(db, 'SELECT id, nom FROM etat ORDER BY ordre');
+  const lireResistances = lecteurDeResistances([
+    ...lignes(db, 'SELECT id, nom FROM magie').map((m) => ({ type: 'magie', id: m.id, nom: m.nom })),
+    ...etats.map((e) => ({ type: 'etat', id: e.id, nom: e.nom })),
+    ...lignes(db, `SELECT DISTINCT cible_type AS type, COALESCE(cible_magie_id, cible_etat_id) AS id, cible_brut AS nom FROM magie_resistance
+                   UNION SELECT DISTINCT cible_type, COALESCE(cible_magie_id, cible_etat_id), cible_brut FROM ethnie_resistance`),
+  ]);
+  /** `resistances` d'un don quand son texte en écrit (ou en laisse au choix) ; rien sinon, pour garder regles.json léger. */
+  const resistancesEcrites = (lecture) => (lecture.effets.length || lecture.choix ? { resistances: lecture } : {});
+
   // Races : valeurs de départ de l'onglet de la race (décision R13), AP/AM de la race ; classes accessibles (matrice, R8) ; magies innées
   // accessibles (liste de l'onglet quand elle existe, R11, sinon la matrice) ; bornes des caractéristiques ; dons de l'onglet (race_don, un par ethnie
   // ou un seul) et son tableau de dons (race_don_tableau_* : une ligne par ethnie), pour le rappel des dons de la fiche (demande du propriétaire).
@@ -63,7 +79,7 @@ export function chargerReglesDeFiche(db) {
   const magiesMatrice = parCle(lignes(db, 'SELECT race_id, magie_id FROM race_magie WHERE accessible = 1 ORDER BY race_id, ordre'), 'race_id', (r) => r.magie_id);
   const bornes = parCle(lignes(db, 'SELECT race_id, caracteristique_id, minimum, maximum FROM v_race_carac_borne'), 'race_id');
   const donsDeRace = parCle(lignes(db, 'SELECT race_id, forme, etiquette, nom, texte, ethnie_id FROM race_don ORDER BY race_id, rang'), 'race_id',
-    (d) => ({ forme: d.forme, nom: d.nom, etiquette: d.etiquette, texte: d.texte, ethnie_id: d.ethnie_id }));
+    (d) => ({ forme: d.forme, nom: d.nom, etiquette: d.etiquette, texte: d.texte, ethnie_id: d.ethnie_id, ...resistancesEcrites(lireResistances(d.texte)) }));
   const colonnesDuTableau = parCle(lignes(db, 'SELECT race_id, rang, libelle FROM race_don_tableau_colonne ORDER BY race_id, rang'), 'race_id');
   const cellulesDuTableau = parCle(lignes(db, 'SELECT race_id, ligne, colonne, valeur FROM race_don_tableau_cellule ORDER BY race_id, ligne, colonne'), 'race_id');
   const tableauDeDons = (raceId, titre) => {
@@ -72,11 +88,17 @@ export function chargerReglesDeFiche(db) {
     const cellules = cellulesDuTableau.get(raceId) ?? [];
     return {
       titre,
-      lignes: lignes(db, 'SELECT rang, ethnie_id FROM race_don_tableau_ligne WHERE race_id = ? ORDER BY rang', raceId).map((l) => ({
-        ethnie_id: l.ethnie_id,
-        cellules: colonnes.map((c) => ({ libelle: c.libelle, valeur: cellules.find((x) => x.ligne === l.rang && x.colonne === c.rang)?.valeur ?? null }))
-          .filter((c) => c.valeur !== null),
-      })),
+      lignes: lignes(db, 'SELECT rang, ethnie_id FROM race_don_tableau_ligne WHERE race_id = ? ORDER BY rang', raceId).map((l) => {
+        const cellulesDeLaLigne = colonnes.map((c) => ({ libelle: c.libelle, valeur: cellules.find((x) => x.ligne === l.rang && x.colonne === c.rang)?.valeur ?? null }))
+          .filter((c) => c.valeur !== null);
+        // la ligne de l'ethnie donne ce qu'écrivent ses cellules (« +1 cran de résistance » : Brûlure ; « Résistance à la magie du Sang »)
+        const lectures = cellulesDeLaLigne.map((c) => lireResistances(c.valeur, { colonne: c.libelle }));
+        return {
+          ethnie_id: l.ethnie_id,
+          cellules: cellulesDeLaLigne,
+          ...resistancesEcrites({ effets: lectures.flatMap((r) => r.effets), choix: lectures.some((r) => r.choix) }),
+        };
+      }),
     };
   };
   const rangDeRace = (id) => (ORDRE_DES_RACES.includes(id) ? ORDRE_DES_RACES.indexOf(id) : ORDRE_DES_RACES.length);
@@ -109,6 +131,12 @@ export function chargerReglesDeFiche(db) {
   const dieuxDeMagie = parCle(lignes(db, 'SELECT magie_id, dieu_id FROM magie_dieu ORDER BY magie_id, rang'), 'magie_id', (r) => r.dieu_id);
   const incompatibles = parCle(lignes(db, 'SELECT a, b FROM v_magie_incompatible'), 'a', (r) => r.b);
   const secondaires = parCle(lignes(db, 'SELECT magie_id, ethnie_id FROM magie_ethnie_secondaire WHERE ethnie_id IS NOT NULL'), 'magie_id', (r) => r.ethnie_id);
+  // Ses résistances et vulnérabilités : les listes de la page de la magie (magie_resistance, classeur V8), magies et altérations d'état, un cran
+  // chacune ; et l'altération qui lui est liée (etat_magie), à laquelle un don « … à la magie innée et son altération d'état » donne un cran.
+  const resistancesDeMagie = parCle(lignes(db, `SELECT magie_id, sens, cible_type, COALESCE(cible_magie_id, cible_etat_id) AS cible_id FROM magie_resistance
+                                                 ORDER BY magie_id, sens, cible_type, rang`), 'magie_id',
+    (r) => ({ type: r.cible_type, id: r.cible_id, crans: r.sens === 'resistance' ? 1 : -1 }));
+  const etatDeMagie = new Map(lignes(db, 'SELECT magie_id, etat_id FROM etat_magie').map((r) => [r.magie_id, r.etat_id]));
   const magies = lignes(db, `
     SELECT id, nom, caracteristique_id, caracteristique_brut, sante_offerte, chakra_offert, mono_magie, barre4_ressource, barre4_max FROM magie ORDER BY ordre`)
     .map((m) => ({
@@ -117,6 +145,7 @@ export function chargerReglesDeFiche(db) {
       sante: m.sante_offerte ?? 0, chakra: m.chakra_offert ?? 0, mono_magie: m.mono_magie === 1,
       barre4: m.barre4_ressource ? { ressource: m.barre4_ressource, max: m.barre4_max } : null,
       dieux: dieuxDeMagie.get(m.id) ?? [], incompatibles: incompatibles.get(m.id) ?? [], ethnies_secondaires: secondaires.get(m.id) ?? [],
+      resistances: resistancesDeMagie.get(m.id) ?? [], etat_id: etatDeMagie.get(m.id) ?? null,
     }));
 
   const dieux = lignes(db, 'SELECT id, nom FROM dieu ORDER BY ordre_choix IS NULL, ordre_choix, nom');
@@ -177,7 +206,7 @@ export function chargerReglesDeFiche(db) {
         maitrises: maitrises.get(c.id) ?? [],
         dons: [...dons].sort((a, b) => a.niveau - b.niveau || a.ligne - b.ligne || a.rang - b.rang).map((d) => ({
           id: d.id, nom: d.nom, nature: d.nature, niveau: d.niveau, specialite_id: d.specialite_id, type: d.type, effet: d.effet,
-          points_maitrise: pointsDeMaitriseDArme(d.effet),
+          points_maitrise: pointsDeMaitriseDArme(d.effet), ...resistancesEcrites(lireResistances(d.effet)),
         })),
       };
     });
@@ -219,5 +248,8 @@ export function chargerReglesDeFiche(db) {
     ressources: lignes(db, 'SELECT id, nom, genre FROM ressource ORDER BY nom COLLATE NOCASE'),
   };
 
-  return { constantes, am_classe_magique: amMagique, niveaux, caracteristiques, competences, initiative, races, ethnies, magies, dieux, metiers, classes, sorts, postures, ...equipement };
+  return {
+    constantes, am_classe_magique: amMagique, niveaux, caracteristiques, competences, initiative, races, ethnies, magies, dieux, metiers, classes, sorts, postures,
+    resistance_paliers, etats, ...equipement,
+  };
 }

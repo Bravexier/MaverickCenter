@@ -47,6 +47,16 @@ abandonne.
   **+** qui ouvrent une case où saisir le nombre à retirer ou à ajouter (`ajusterValeurDuMoment`, borné comme le curseur ; Entrée ou OK l'applique, Échap
   abandonne). Dessous, le **sélecteur des six postures** (table `posture`, dans leurs couleurs ; leurs effets du tableau de la fiche en infobulle et sous le
   sélecteur ; un second clic retire la posture) : la fiche garde la posture du moment (`personnage.posture_id`, migration `0027-posture-du-moment`).
+- **Résistances et faiblesses**, dans le bloc des magies (demande du propriétaire, sur le modèle du tableau « Résistance / Faiblesse (Magie et Altération
+  d'état) » de la fiche auto, `Personnage!BA2:BI12`) : les six paliers (`resistance_palier` : immunité, grande résistance, résistance, vulnérabilité, grande
+  vulnérabilité, sensibilité, avec leur effet sur les dégâts), chacun avec ses magies, dans leur couleur, puis ses altérations d'état, cerclées de la couleur
+  de leur magie ; le détail des crans en infobulle (`resistancesDe`). Une cible additionne ses crans (guide « Créer sa fiche », Tableau Résistances/Faiblesses :
+  deux résistances font une grande résistance) : ceux des listes de la magie innée et de la magie acquise (`magie_resistance`, les listes des pages de magie et
+  du guide : pour Arcane et Corruption, la fiche auto dit autre chose, question ouverte, `sql/a-valider.md` §2), et ceux que les dons écrivent
+  (`lib/resistance-texte.mjs` : dons de la race et de l'ethnie de l'onglet, R13 — « 1 cran de résistance en plus à la magie innée et son altération d'état »,
+  « Résistance à la magie du Sang », colonne « +1 cran de résistance » du Drakos —, dons de classe débloqués — « Augmente d'un cran la résistance à la magie
+  innée et à son altération d'état » du Clerc). Une immunité écrite (« Immunisé contre le poison » du Mort-Vivant) range la cible en immunité ; une résistance
+  au choix ou aléatoire (Drakos Orange, Anansi d'Arcane, Ocultomancien) n'est pas comptée et la fiche le signale sous le tableau. Pas encore : les objets.
 - **Caractéristiques** : les six sur une seule ligne, chacune avec **deux cases de croix** (cochées = le nombre de croix, R19) ; à deux croix, le score des
   compétences est « N/A ». L'acquis d'une compétence va jusqu'à 5 par point de la caractéristique **totale**, le +1 de la magie innée compris (décision R41).
 - **Maîtrises d'armes** : un curseur étroit par famille (0 à 4 points), les dés à côté (`notationDesDes`) ; le **Pugilat** montre le seul dé de la Force du
@@ -78,8 +88,10 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
 
 - **Règles** : `/fiche/regles.json`, tiré de la base au build par `lib/fiche-regles.mjs` (races et leurs bornes, ethnies, magies, dieux, métiers, classes,
   spécialités, dons à choix groupés comme sur la page de chaque classe, maîtrises d'armes des classes et points de maîtrise de leurs dons, sorts, tables
-  de niveau, constantes, catalogues d'équipement et paliers du dé selon la Force), rien de recalculé : les seuls textes lus le sont par
-  `lib/maitrise-arme.mjs` (points de maîtrise d'un don, paliers du Pugilat ; `test/maitrise-arme.test.mjs` le rejoue sur toute la base).
+  de niveau, constantes, catalogues d'équipement et paliers du dé selon la Force, paliers de résistance, altérations d'état, résistances de chaque magie),
+  rien de recalculé : les seuls textes lus le sont par `lib/maitrise-arme.mjs` (points de maîtrise d'un don, paliers du Pugilat ; `test/maitrise-arme.test.mjs`
+  le rejoue sur toute la base) et par `lib/resistance-texte.mjs` (crans et immunités d'un don ; `test/resistance-texte.test.mjs` le rejoue sur toute la base et
+  vérifie, sur les textes de l'import, l'accord des onglets avec les résistances des ethnies de la fiche auto, `ethnie_resistance`).
 - **Calculs pendant la saisie** : `lib/fiche-moteur.mjs`, fonctions pures (testées par `test/fiche-moteur.test.mjs`, contre les vues de la base et les
   personnages fil rouge du guide) : niveau global et niveaux de classe (R2) ; classes et magies innées que la race permet (R8, R11), classe réservée à une
   magie innée et imposée par elle (`classe.magie_innee_id` : l'Archimage et le Potentiel Illimité, R23), ethnies et ethnie sans choix posée d'office
@@ -91,7 +103,7 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   (`valeursDuMoment`, `ajusterValeurDuMoment`) ; alignement (`alignementDe`) ; dé d'une famille d'armes selon la Force (`deDeLaFamille`) et quota de
   maîtrise (`quotaDeMaitrise`, R32) ; emplacements de sorts
   (conditions × puissance magique, R16), sorts possibles, NM ; dons à choisir selon la classe, la spécialité et le niveau de classe ; dons de classe
-  débloqués (`donsAcquis`) et dons de la race (`donsDeRace`).
+  débloqués (`donsAcquis`) et dons de la race (`donsDeRace`) ; résistances et faiblesses (`resistancesDe`).
 - **Contrôle** : à chaque enregistrement, le service rend les règles de `v_personnage_controle` que la fiche enfreint, affichées en français
   (`lib/fiche-controles.mjs`) ; une fiche ne passe « validée » que sans aucune. Ce que la base ne contrôle pas encore (bonus d'équipement, nombre de
   sorts par emplacement, plafond de NPM du Potentiel Illimité) n'est montré que comme compteur.
@@ -163,12 +175,12 @@ depuis les règles de la base, si bien qu'une règle corrigée corrige toutes le
   avant le niveau de classe 10, dons hors classe ou exclusifs, sorts (magie du personnage, toutes pour le Potentiel Illimité ; NPM au plus la puissance magique
   du niveau, la 5 au niveau 16 et sans magie acquise, R16 ; 3 NM au plus sur un sort ; NM de niveau au plus niveau global − 1 sur un sort et au plus ceux gagnés, les autres d'un livre ou du MJ, R24, R26), matériaux du bouclier, améliorations, valeur d'un
   accessoire. Une fiche `valide` n'y a aucune ligne. Ce qui demande le moteur (bonus de classe, d'équipement et de race, nombre de sorts, plafond de NPM du
-  Potentiel Illimité, résistances, valeurs dérivées) n'y est pas encore.
+  Potentiel Illimité, résistances — calculées par le moteur, `resistancesDe` —, valeurs dérivées) n'y est pas encore.
 
 Les tables restent **vides dans `data/rows`** : les fiches réelles vivent dans la base vivante du service des personnages (`db/` de l'instance,
 [`serveur.md`](serveur.md) : les prétirés dès maintenant, les fiches de joueur à la 1.0), jamais dans git ni dans la base téléchargeable de `/donnees/`. `client/test/personnages-db.test.mjs` crée des fiches dans une copie de la base et vérifie chaque contrôle et chaque règle de
 visibilité.
 
 Le moteur pur (`lib/fiche-moteur.mjs`, ci-dessus) calcule déjà depuis ces choix le niveau, les budgets, les scores de compétences, les attributs et les
-emplacements de sorts ; restent à coder, sans les déduire, les effets d'équipement (AP/AM des pièces, bonus des améliorations), les résistances et ce qui
-sert à la simulation (`feuille-de-route.md`).
+emplacements de sorts et les résistances ; restent à coder, sans les déduire, les effets d'équipement (AP/AM des pièces, bonus des améliorations, résistances
+des objets) et ce qui sert à la simulation (`feuille-de-route.md`).

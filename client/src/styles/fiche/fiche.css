@@ -594,3 +594,24 @@ main:has(> .fiche) { max-width: 100rem; }
   .choix > summary::after { content: none; }
   .choix__panneau { display: none; }
 }
+
+/* résistances et faiblesses (bloc des magies, sur le modèle du tableau de la fiche auto) : un palier par ligne, son effet en petit ; les magies dans leur
+   couleur, les altérations d'état cerclées de la couleur de leur magie ; un trait vert pour les résistances, rouge pour les faiblesses */
+.resistances { margin-top: 0.6rem; }
+.resistances__table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.resistances__table th, .resistances__table td { padding: 0.2rem 0.35rem; border-top: 1px solid var(--etape-ligne); vertical-align: middle; text-align: left; }
+.resistances__table th { width: 8.5rem; font-weight: 600; border-left: 3px solid var(--r, var(--etape-ligne)); line-height: 1.15; }
+.resistances__table th small { display: block; font-weight: normal; color: var(--muted); font-size: 0.72rem; }
+.resistances__table tr[data-palier='immunite'] { --r: #1b5e20; }
+.resistances__table tr[data-palier='grande_resistance'] { --r: #2e7d32; }
+.resistances__table tr[data-palier='resistance'] { --r: #66bb6a; }
+.resistances__table tr[data-palier='vulnerabilite'] { --r: #ef9a9a; }
+.resistances__table tr[data-palier='grande_vulnerabilite'] { --r: #e53935; }
+.resistances__table tr[data-palier='sensibilite'] { --r: #8e0000; }
+.resistances__cibles { display: flex; flex-wrap: wrap; gap: 0.25rem; margin: 0; padding: 0; list-style: none; }
+.resistance { padding: 0 0.45rem; border: 1.5px solid var(--c, var(--border)); border-radius: 999px; font-size: 0.75rem; line-height: 1.5; cursor: help; }
+.resistance--magie { background: var(--c, var(--etape-doux)); color: var(--c-texte, var(--text)); }
+.resistance--etat { background: var(--surface); color: var(--text); }
+.resistances__vide { color: var(--muted); }
+#resistances-choix { margin: 0.3rem 0 0; }
+#resistances-choix[hidden] { display: none; }

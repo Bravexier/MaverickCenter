@@ -76,6 +76,10 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
     'sous les sorts : les dons de la race, puis ceux des classes');
   assert.ok(!html.includes('id="jauges"'), 'plus de bloc à part pour les valeurs du moment');
   for (const id of ['metier_id', 'alignement_loyal', 'bourse_pp']) assert.ok(!attributs.includes(`data-champ="${id}"`), `${id} hors des attributs`);
+  const magies = bloc('magies');
+  assert.ok(magies.indexOf('id="resistances"') > magies.indexOf('id="magie-resume"'), 'les résistances dans le bloc des magies, sous ce qu’elles donnent');
+  assert.match(magies, /<h3 id="titre-resistances">Résistances et faiblesses<\/h3>\s*<table class="resistances__table" aria-labelledby="titre-resistances"><tbody id="resistances"><\/tbody><\/table>/);
+  assert.match(magies, /<p class="fiche-aide" id="resistances-choix" hidden><\/p>/);
   const jeu = bloc('jeu');
   assert.match(jeu, /data-champ="notes"/);
   assert.match(jeu, /data-champ="evenements"/);
@@ -106,6 +110,8 @@ test('/fiche/regles.json : les règles de la base que lit la page', options, () 
   assert.equal(regles.niveaux.length, 20);
   assert.ok(regles.sorts.length > 300);
   assert.ok(regles.classes.every((c) => /^#[0-9a-f]{6}$/i.test(c.couleur) && Number.isInteger(c.groupe.ordre)));
+  assert.equal(regles.resistance_paliers.length, 6);
+  assert.ok(regles.magies.some((m) => m.resistances.length) && regles.etats.length > 0);
 });
 
 test('/personnages/ : filtres et tableau dont chaque colonne se trie (un bouton par en-tête)', options, () => {
