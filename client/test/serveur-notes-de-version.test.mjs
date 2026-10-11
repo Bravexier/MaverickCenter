@@ -4,7 +4,7 @@
 // GitHub), l'annulation, et le lancement terminé quand sa note arrive dans les règles.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { copyFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -13,7 +13,7 @@ import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante, viderBrouillonLivre } from '../serveur/base-vivante.mjs';
 import { demarrerService } from '../serveur/service.mjs';
 import {
-  actualiserLancement, CONFIRMATION, creerGithub, INTERVALLE_SUIVI, lireLancement, lireLot, WORKFLOW,
+  actualiserLancement, CONFIRMATION, creerGithub, DUREE_MAX_RUN, INTERVALLE_SUIVI, libererLot, lireLancement, lireLot, WORKFLOW,
 } from '../serveur/notes-de-version.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 
@@ -215,6 +215,37 @@ test('annulé pendant l’envoi à GitHub : le run parti quand même est annulé
   assert.equal(l.run.id, 11);
   assert.equal(l.erreur, null);
   assert.deepEqual(appels.filter((a) => a.url.endsWith('/cancel')).map((a) => a.methode), ['POST']);
+  assert.equal(appel('GET', '/api/mise-a-jour/', undefined, s).corps.brouillon.lot, null);
+});
+
+test('sans identifiant de run rendu par GitHub : le run est retrouvé par son nom (lot) ; sans nouvelles au-delà de 3 h, annulable', async () => {
+  appel('POST', '/api/mise-a-jour/liberer/', {});
+  // le nom de chaque run porte le lot (run-name du workflow)
+  const yml = readFileSync(new URL('../../.github/workflows/mise-a-jour.yml', import.meta.url), 'utf8');
+  assert.match(yml, /^run-name: .*\$\{\{ inputs\.lot \}\}/m);
+  let runs = [];
+  const fauxFetch = async (url) => {
+    if (url.endsWith('/dispatches')) return new Response(null, { status: 204 }); // ancien comportement : aucun détail
+    if (url.includes(`/actions/workflows/${WORKFLOW}/runs?`)) return new Response(JSON.stringify({ workflow_runs: runs }), { status: 200 });
+    return new Response('?', { status: 404 });
+  };
+  const github = creerGithub({ dossier, depot: 'Bravexier/MaverickCenter', lireJeton: () => 'j', fetch: fauxFetch, journal: () => {} });
+  const s = { ...service, github };
+  appel('POST', '/api/mise-a-jour/lancer/', { confirmation: CONFIRMATION, simulation: true }, s);
+  for (let i = 0; i < 50 && lireLancement(dossier).etat === 'envoi'; i++) await new Promise((ok) => setTimeout(ok, 10));
+  const l = lireLancement(dossier);
+  assert.deepEqual([l.etat, l.run], ['lance', null]);
+  // pas encore visible : on attend, sans erreur
+  assert.equal((await github.suivre({ maintenant: 4_000_000_000_000 })).etat, 'lance');
+  runs = [{ id: 1, display_title: 'Mise à jour des règles — lot autre-lot', status: 'completed', conclusion: 'success' },
+    { id: 77, display_title: `Mise à jour des règles — lot ${l.lot} (simulation)`, status: 'in_progress', conclusion: null, html_url: 'https://github.com/x/runs/77' }];
+  const suivi = await github.suivre({ maintenant: 4_000_000_000_000 + INTERVALLE_SUIVI });
+  assert.equal(suivi.etat, 'en_cours');
+  assert.deepEqual([suivi.run.id, suivi.run.url], [77, 'https://github.com/x/runs/77']);
+  // toujours en cours : pas annulable… sauf sans nouvelles au-delà de la durée maximale d'un run
+  assert.equal(appel('POST', '/api/mise-a-jour/liberer/', {}, s).statut, 409);
+  const plusTard = new Date(Date.parse(suivi.lance_le) + DUREE_MAX_RUN + 60_000).toISOString().replace(/\.\d{3}Z$/, 'Z');
+  assert.equal(libererLot(db, dossier, { instant: plusTard }).etat, 'annule');
   assert.equal(appel('GET', '/api/mise-a-jour/', undefined, s).corps.brouillon.lot, null);
 });
 

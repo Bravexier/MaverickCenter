@@ -24,6 +24,11 @@ export const CONFIRMATION = 'METTRE A JOUR';
 export const WORKFLOW = 'mise-a-jour.yml';
 /** Suivi du run GitHub : pas plus souvent que ça (limite de l'API). */
 export const INTERVALLE_SUIVI = 20_000;
+/**
+ * Au-delà, aucun run ne peut plus tourner (timeout-minutes: 120 du workflow, plus l'attente d'un runner) : un lancement resté « lancé » ou « en
+ * cours » sans nouvelles (run introuvable, suivi en panne) peut alors être annulé, sinon ses boutons resteraient verrouillés pour toujours.
+ */
+export const DUREE_MAX_RUN = 3 * 3_600_000;
 
 export class ErreurNotes extends Error {
   constructor(statut, message, details = {}) {
@@ -173,9 +178,14 @@ export function figerLot(db, dossier, { versionDev, versionCible, instant, confi
 }
 
 /** Annule un lancement qui n'a pas pu partir (ou qui a échoué) : le brouillon redevient modifiable. */
+/** Le lancement est-il resté sans nouvelles plus longtemps qu'un run ne peut durer ? */
+export const sansNouvelles = (l, instant) => Boolean(l?.lance_le) && Date.parse(instant) - Date.parse(l.lance_le) > DUREE_MAX_RUN;
+
 export function libererLot(db, dossier, { instant }) {
   const l = lireLancement(dossier);
-  if (enCours(l) && l.etat !== 'envoi') throw new ErreurNotes(409, 'La mise à jour est en cours sur GitHub : attendez qu’elle se termine.', { lancement: l });
+  if (enCours(l) && l.etat !== 'envoi' && !sansNouvelles(l, instant)) {
+    throw new ErreurNotes(409, 'La mise à jour est en cours sur GitHub : attendez qu’elle se termine.', { lancement: l });
+  }
   if (l?.etat === 'termine' && !l.simulation) throw new ErreurNotes(409, 'Cette mise à jour a été livrée : le texte redeviendra modifiable quand la nouvelle version arrivera sur ce site.', { lancement: l });
   db.prepare('UPDATE note_version_brouillon SET lot = NULL WHERE id = 1').run();
   if (l) ecrireLancement(dossier, { ...l, etat: 'annule', libere_le: instant });
@@ -262,15 +272,25 @@ export function creerGithub({ dossier, depot, lireJeton, fetch: f = globalThis.f
     /** Relit l'état du run (au plus une fois par INTERVALLE_SUIVI). */
     async suivre({ maintenant = Date.now() } = {}) {
       const l = lireLancement(dossier);
-      if (!l || !['lance', 'en_cours'].includes(l.etat) || !l.run?.id || maintenant - dernierSuivi < INTERVALLE_SUIVI) return l;
+      if (!l || !['lance', 'en_cours'].includes(l.etat) || maintenant - dernierSuivi < INTERVALLE_SUIVI) return l;
       dernierSuivi = maintenant;
       try {
-        const r = await api(`/actions/runs/${l.run.id}`);
-        if (r.status !== 200) throw new Error(`GitHub a répondu ${r.status}`);
-        const run = await r.json();
+        let run;
+        if (l.run?.id) {
+          const r = await api(`/actions/runs/${l.run.id}`);
+          if (r.status !== 200) throw new Error(`GitHub a répondu ${r.status}`);
+          run = await r.json();
+        } else {
+          // identifiant non rendu au déclenchement : le run est retrouvé par son nom, qui porte le lot (run-name du workflow)
+          const r = await api(`/actions/workflows/${WORKFLOW}/runs?event=workflow_dispatch&branch=dev&per_page=30`);
+          if (r.status !== 200) throw new Error(`GitHub a répondu ${r.status}`);
+          run = ((await r.json()).workflow_runs ?? []).find((x) => String(x.display_title ?? x.name ?? '').includes(l.lot));
+          if (!run) return ecrireLancement(dossier, { ...l, suivi_le: new Date(maintenant).toISOString() });
+        }
         const fini = run.status === 'completed';
         return ecrireLancement(dossier, {
-          ...l, suivi_le: new Date(maintenant).toISOString(), run: { ...l.run, statut: run.status, conclusion: run.conclusion ?? null, url: run.html_url ?? l.run.url },
+          ...l, suivi_le: new Date(maintenant).toISOString(), erreur: null,
+          run: { ...(l.run ?? {}), id: l.run?.id ?? run.id, statut: run.status, conclusion: run.conclusion ?? null, url: run.html_url ?? l.run?.url ?? null },
           etat: fini ? (run.conclusion === 'success' ? 'termine' : 'echec') : 'en_cours',
         });
       } catch (e) {

@@ -1,4 +1,7 @@
 name: Mise à jour des règles
+# Le nom de chaque run porte le lot : le service retrouve ainsi son run même si GitHub ne lui a pas rendu son identifiant au déclenchement
+# (client/serveur/notes-de-version.mjs#creerGithub, suivre).
+run-name: "Mise à jour des règles — lot ${{ inputs.lot }}${{ inputs.essai && ' (simulation)' || '' }}"
 
 # Page « Mise à jour » du site de dev (client/serveur/notes-de-version.mjs) : « Effectuer la mise à jour », après confirmation, fige un lot (journal
 # des modifications du site + champ libre), le sert à https://<site de dev>/api/mise-a-jour/lots/<lot>/ et déclenche ce workflow sur dev.

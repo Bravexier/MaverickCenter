@@ -53,7 +53,10 @@ function htmlDuLancement(l, github, fige) {
        <ul><li>lot : <code>${echapper(l.lot)}</code></li><li>empreinte : <code>${echapper(l.empreinte)}</code></li><li>adresse : <code>${echapper(l.adresse)}</code></li>
        <li>case « Simulation » : ${l.simulation ? '<strong>cochée</strong>' : 'décochée'}</li></ul>`
     : '';
-  const liberer = fige && ['manuel', 'erreur', 'echec', 'envoi'].includes(l.etat) && BUREAU.matches ? '<button type="button" data-nv-liberer>Annuler ce lancement</button>' : '';
+  // resté « lancé » ou « en cours » plus longtemps qu'un run ne peut durer (3 h : timeout du workflow) : annulable aussi
+  const bloque = EN_COURS.includes(l.etat) && l.etat !== 'envoi' && l.lance_le && Date.now() - Date.parse(l.lance_le) > 3 * 3_600_000;
+  const liberer = fige && (['manuel', 'erreur', 'echec', 'envoi'].includes(l.etat) || bloque) && BUREAU.matches
+    ? `<button type="button" data-nv-liberer>${bloque ? 'Annuler ce lancement (sans nouvelles depuis plus de 3 h)' : 'Annuler ce lancement'}</button>` : '';
   return `<div class="nv-lancement nv-lancement--${echapper(l.etat)}">
     <p class="nv-message"><strong>${l.simulation ? 'Dernière simulation' : 'Dernier lancement'}</strong> (V${echapper(l.version_cible ?? '?')}, ${echapper(l.lance_le ?? '')}) : ${echapper(ETATS[l.etat] ?? l.etat)}${run}</p>
     ${l.erreur ? `<p class="nv-message nv-message--erreur">${echapper(l.erreur)}</p>` : ''}${manuel}${liberer}</div>`;
