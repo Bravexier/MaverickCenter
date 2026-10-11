@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 28;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 29;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -1928,6 +1928,229 @@ CREATE TABLE creature_effet (
 ) STRICT, WITHOUT ROWID;
 
 CREATE INDEX creature_effet_sort ON creature_effet (sort_id) WHERE sort_id IS NOT NULL;
+
+-- ====================================================================================================================
+-- 8 bis. BESTIAIRE 2.0 : monstres, butin, échelles de puissance (famille « monstres »)
+-- Source : le Google Doc « Bestiaire 2.0 » (copie du propriétaire, sources/sources.json), exporté en texte dans sources/raw/bestiaire-2-0.txt et découpé
+-- par tools/bestiaire/extraire.mjs ; source_ref = « Bestiaire 2.0 › ligne(s) N » de cet export. Les créatures INVOQUÉES (section 8) sont à part :
+-- elles ne fonctionnent pas comme les monstres (demande du propriétaire, 2026-10-11).
+-- id d'une espèce = 'monstres/<normalize(nom)>' (« Golem de corail » est écrit deux fois dans le doc : la seconde est 'monstres/golem-de-corail-2') ;
+-- id d'une carte = '<id de l'espèce>#carte:<normalize(nom écrit sur la carte)>'. Pas de page du wiki par monstre (pas de clé vers `page`).
+-- ====================================================================================================================
+
+-- Règles générales de l'introduction (« Quelques règles qui marchent dans toutes les échelles de puissance »), dans l'ordre de la liste.
+CREATE TABLE monstre_regle (
+  rang       INTEGER NOT NULL PRIMARY KEY CHECK (rang >= 1),
+  texte      TEXT    NOT NULL CHECK (length(texte) > 0),
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0)
+) STRICT;
+
+-- Échelles de puissance (EP 1 à 10) : les deux tableaux de l'introduction. Cellules telles qu'écrites (*_brut) ; les nombres de « Ennemi simple : 35 /
+-- Mini boss : 70 / Boss : 140 » (attributs moyens à répartir, expérience reçue) sont repris par catégorie.
+CREATE TABLE monstre_echelle (
+  ep                      INTEGER NOT NULL PRIMARY KEY CHECK (ep BETWEEN 1 AND 10),
+  regle_brut              TEXT    NOT NULL,       -- cellule « Règle carac/comp » (points de carac à répartir, plafond, bonus de compétences)
+  degats_brut             TEXT    NOT NULL,       -- cellule « Dégâts moyen »
+  niveau_min              INTEGER NOT NULL CHECK (niveau_min >= 1),   -- « (Niveau 1-2) »
+  niveau_max              INTEGER NOT NULL CHECK (niveau_max >= niveau_min),
+  attributs_brut          TEXT    NOT NULL,       -- cellule « Attributs moyens »
+  xp_brut                 TEXT    NOT NULL,       -- cellule « Expérience reçu »
+  attributs_ennemi_simple INTEGER CHECK (attributs_ennemi_simple >= 0),
+  attributs_mini_boss     INTEGER CHECK (attributs_mini_boss >= 0),
+  attributs_boss          INTEGER CHECK (attributs_boss >= 0),
+  xp_ennemi_simple        INTEGER CHECK (xp_ennemi_simple >= 0),
+  xp_mini_boss            INTEGER CHECK (xp_mini_boss >= 0),
+  xp_boss                 INTEGER CHECK (xp_boss >= 0),
+  origine                 TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref              TEXT    NOT NULL CHECK (length(source_ref) > 0)
+) STRICT;
+
+-- Glossaire du butin (fin du doc, « GLOSSAIRE BUTIN ») : « Nom. Définition ».
+CREATE TABLE monstre_butin_objet (
+  id         TEXT    NOT NULL PRIMARY KEY CHECK (id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),   -- normalize(nom)
+  rang       INTEGER NOT NULL UNIQUE CHECK (rang >= 1),
+  nom        TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),
+  texte      TEXT    NOT NULL,
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0)
+) STRICT;
+
+-- ESPÈCE : un titre « Nom (EPx) » du doc, rangé sous sa lettre ; sa description, son lieu de rencontre, puis ses cartes (de 0 à 3 : ennemi simple,
+-- mini-boss, boss), les blocs qui suivent les cartes et le tableau du butin.
+CREATE TABLE monstre_espece (
+  id          TEXT    NOT NULL PRIMARY KEY,
+  nom         TEXT    NOT NULL CHECK (length(nom) > 0),          -- titre tel qu'écrit, sans « (EPx) »
+  nom_cle     TEXT    NOT NULL CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),
+  ordre       INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),        -- rang du titre dans le doc
+  lettre      TEXT    NOT NULL CHECK (length(lettre) = 1),       -- lettre de l'index sous laquelle le titre est rangé
+  ep_brut     TEXT    NOT NULL,                                  -- « EP2 », « EP1 - 10 », « EP3, 5, 7 »
+  ep_min      INTEGER CHECK (ep_min BETWEEN 1 AND 10),
+  ep_max      INTEGER CHECK (ep_max BETWEEN 1 AND 10),
+  description TEXT,                                              -- paragraphes avant « Lieu de rencontre », séparés par une ligne vide
+  lieu_brut   TEXT,                                              -- « Marais », « Mer, Océan, Lac, Plage » ; NULL = pas de ligne « Lieu de rencontre »
+  complement  TEXT,                                              -- texte entre le lieu de rencontre et la première carte (rare)
+  origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  CHECK (ep_min IS NULL OR ep_min <= ep_max)
+) STRICT;
+
+CREATE INDEX monstre_espece_nom ON monstre_espece (nom_cle);
+
+-- Lieux de rencontre : `lieu_brut` découpé aux virgules, tel qu'écrit (« Ruines », « ruines » et « Ruines brûlées » restent distincts).
+CREATE TABLE monstre_espece_lieu (
+  espece_id  TEXT    NOT NULL REFERENCES monstre_espece(id),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),
+  lieu       TEXT    NOT NULL CHECK (length(lieu) > 0),
+  lieu_cle   TEXT    NOT NULL CHECK (lieu_cle NOT GLOB '*[^a-z0-9-]*'),
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (espece_id, rang)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX monstre_espece_lieu_cle ON monstre_espece_lieu (lieu_cle);
+
+-- Blocs qui suivent les cartes d'une espèce, ouverts par un titre en capitales (aujourd'hui : les quinze tableaux du Presque-Ottar, un par magie).
+CREATE TABLE monstre_espece_bloc (
+  espece_id  TEXT    NOT NULL REFERENCES monstre_espece(id),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),
+  titre      TEXT    NOT NULL CHECK (length(titre) > 0),         -- « POTENTIEL ILLIMITÉ », « SANG »
+  texte      TEXT    NOT NULL,
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (espece_id, rang)
+) STRICT, WITHOUT ROWID;
+
+-- Butin d'une espèce : le tableau « Score (3d100) | Butin possible », une ligne par (tranche de score, catégorie) ; une cellule vide n'a pas de ligne.
+CREATE TABLE monstre_butin (
+  espece_id  TEXT    NOT NULL REFERENCES monstre_espece(id),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),                 -- rang de la tranche dans le tableau
+  categorie  TEXT    NOT NULL CHECK (categorie IN ('ennemi_simple', 'mini_boss', 'boss')),
+  score_min  INTEGER NOT NULL CHECK (score_min >= 3),
+  score_max  INTEGER NOT NULL CHECK (score_max <= 300 AND score_max >= score_min),
+  score_brut TEXT    NOT NULL,                                   -- « 3-15 »
+  texte      TEXT    NOT NULL CHECK (length(texte) > 0),         -- « Petite chitine x 2d8 », « RIEN ! »
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (espece_id, rang, categorie)
+) STRICT, WITHOUT ROWID;
+
+-- MONSTRE : une carte « NOM   Créature échelle N » ; « Type | Alignement | Catégorie » sur la ligne suivante.
+-- Valeurs typées seulement quand l'écriture est sans ambiguïté (sinon NULL ; la rubrique garde le texte) :
+--   sante / chakra / barriere : la ligne « Santé : 70  Chakra : 0  Barrière : 0 » (pas les valeurs « EP 1 : 20 … » d'une carte qui varie selon l'échelle) ;
+--   armure_physique / armure_magique : « 4 armure physique / 2 armure magique » ou « 4 AP / 2 AM » (PAS « 0 points d'armure / 8 résistance magique » :
+--     le rapprochement de ces mots avec l'armure physique et magique est une question au propriétaire, docs/bestiaire.md) ;
+--   vitesse_sol / vitesse_nage : « 4 cases sol / 4 cases nage ».
+CREATE TABLE monstre (
+  id              TEXT    NOT NULL PRIMARY KEY,
+  espece_id       TEXT    NOT NULL REFERENCES monstre_espece(id),
+  rang            INTEGER NOT NULL CHECK (rang >= 1),            -- rang de la carte dans l'espèce
+  nom             TEXT    NOT NULL CHECK (length(nom) > 0),      -- nom de la carte remis en minuscules (voir tools/bestiaire/extraire.mjs) : « Amblypyge de brai »
+  nom_brut        TEXT    NOT NULL CHECK (length(nom_brut) > 0), -- tel qu'écrit, en capitales : « AMBLYPYGE DE BRAI »
+  nom_cle         TEXT    NOT NULL CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),
+  echelle_brut    TEXT    NOT NULL,                              -- après « Créature échelle » : « 2 », « 1-10 »
+  ep_min          INTEGER CHECK (ep_min BETWEEN 1 AND 10),
+  ep_max          INTEGER CHECK (ep_max BETWEEN 1 AND 10),
+  type_brut       TEXT,                                          -- « Vermine », « Non-mort », « Mécanique »
+  alignement_brut TEXT,                                          -- « Neutre », « Chaotique Mauvais »
+  categorie_brut  TEXT    NOT NULL,                              -- « Ennemi simple », « Mini boss », « Mini-Boss », « Boss »
+  categorie       TEXT    NOT NULL CHECK (categorie IN ('ennemi_simple', 'mini_boss', 'boss')),
+  variable        INTEGER NOT NULL CHECK (variable IN (0, 1)),   -- 1 : « Ses stats varient selon son échelle de puissance. »
+  sante           INTEGER CHECK (sante >= 0),
+  chakra          INTEGER CHECK (chakra >= 0),
+  barriere        INTEGER CHECK (barriere >= 0),
+  armure_physique INTEGER CHECK (armure_physique >= 0),
+  armure_magique  INTEGER CHECK (armure_magique >= 0),
+  vitesse_sol     INTEGER CHECK (vitesse_sol >= 0),
+  vitesse_nage    INTEGER CHECK (vitesse_nage >= 0),
+  origine         TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref      TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  UNIQUE (espece_id, rang),
+  CHECK (ep_min IS NULL OR ep_min <= ep_max),
+  CHECK ((sante IS NULL) = (chakra IS NULL) AND (sante IS NULL) = (barriere IS NULL)),
+  CHECK ((armure_physique IS NULL) = (armure_magique IS NULL)),
+  CHECK ((vitesse_sol IS NULL) = (vitesse_nage IS NULL))
+) STRICT;
+
+CREATE INDEX monstre_par_espece ON monstre (espece_id);
+
+CREATE INDEX monstre_categorie ON monstre (categorie);
+
+CREATE INDEX monstre_ep ON monstre (ep_min, ep_max);
+
+-- Rubriques d'une carte, dans l'ordre du doc, TOUT leur texte (rien de la carte n'est perdu) : 'attributs' = la ligne « Santé : … Chakra : … Barrière : … »
+-- (ou « [EP3] Santé : 330 … ») ; 'sante' / 'chakra' / 'barriere' = les mêmes, par échelle, sous un titre seul ; les autres rubriques suivent leur titre
+-- (`titre` tel qu'écrit, NULL pour 'attributs' qui n'en a pas).
+CREATE TABLE monstre_rubrique (
+  monstre_id TEXT    NOT NULL REFERENCES monstre(id),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),
+  rubrique   TEXT    NOT NULL CHECK (rubrique IN ('attributs', 'sante', 'chakra', 'barriere', 'degats', 'defense', 'vitesse', 'caracteristiques', 'competences',
+                                                  'vulnerabilite', 'grande_vulnerabilite', 'resistance', 'grande_resistance', 'double_resistance', 'immunite',
+                                                  'reflexion', 'capacites', 'tactique')),
+  titre      TEXT,                                               -- « Vulnérabilité(s) Dégâts x2 », « Grande(s) Résistance(s) Dégâts ÷4 »
+  texte      TEXT    NOT NULL,                                   -- paragraphes séparés par une ligne vide ; '' = rubrique vide
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (monstre_id, rang)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX monstre_rubrique_rubrique ON monstre_rubrique (rubrique);
+
+-- F.P.V.S.I.A. d'une carte quand la rubrique est UNE ligne « F : 6 / P : 4 / V : 6 / S : 2 / I : 3 / A : 6 » (le sigle est écrit en clair sur la carte ;
+-- même ordre que creature_caracteristique). Une carte qui varie selon l'échelle n'a pas de ligne ici.
+CREATE TABLE monstre_caracteristique (
+  monstre_id         TEXT    NOT NULL REFERENCES monstre(id),
+  caracteristique_id TEXT    NOT NULL REFERENCES caracteristique(id),
+  rang               INTEGER NOT NULL CHECK (rang BETWEEN 1 AND 6),
+  valeur             INTEGER NOT NULL CHECK (valeur >= 0),
+  origine            TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref         TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (monstre_id, caracteristique_id),
+  UNIQUE (monstre_id, rang)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX monstre_caracteristique_valeur ON monstre_caracteristique (caracteristique_id, valeur);
+
+-- Attaques : les lignes « Nom - texte » (ou « Nom: texte ») de la rubrique Dégâts dont le texte porte un nombre (« Pince - 2d10 + 2 dégâts d’estoc »).
+CREATE TABLE monstre_attaque (
+  monstre_id TEXT    NOT NULL REFERENCES monstre(id),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),
+  nom        TEXT    NOT NULL CHECK (length(nom) > 0),
+  texte      TEXT    NOT NULL CHECK (length(texte) > 0),
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (monstre_id, rang)
+) STRICT, WITHOUT ROWID;
+
+-- Capacités : un paragraphe « [EP2] Nom. Texte » de la rubrique Capacité(s) ; un paragraphe sans nom (tableau, suite) continue la capacité précédente.
+CREATE TABLE monstre_capacite (
+  monstre_id TEXT    NOT NULL REFERENCES monstre(id),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),
+  prefixe    TEXT,                                               -- crochets et parenthèses avant le nom : « [EP2] », « [Gauche] », « (Neige) [EP3] »
+  ep_min     INTEGER CHECK (ep_min BETWEEN 1 AND 10),            -- N du premier « [EPN] » du préfixe
+  nom        TEXT    NOT NULL CHECK (length(nom) > 0),
+  texte      TEXT    NOT NULL,
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (monstre_id, rang)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX monstre_capacite_nom ON monstre_capacite (nom);
+
+-- Cibles des vulnérabilités, résistances, immunités et réflexions : la rubrique quand elle est UNE liste « Brûlure, Paralysie » de noms courts
+-- (« Varie selon la magie », un tableau ou plusieurs lignes : aucune ligne ici, la rubrique fait foi). `sens` = la rubrique d'où vient la cible.
+CREATE TABLE monstre_defense (
+  monstre_id TEXT    NOT NULL REFERENCES monstre(id),
+  sens       TEXT    NOT NULL CHECK (sens IN ('vulnerabilite', 'grande_vulnerabilite', 'resistance', 'grande_resistance', 'double_resistance', 'immunite', 'reflexion')),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),
+  cible      TEXT    NOT NULL CHECK (length(cible) > 0),         -- « Brûlure », « Terre », « Estoc »
+  cible_cle  TEXT    NOT NULL CHECK (cible_cle NOT GLOB '*[^a-z0-9-]*'),
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (monstre_id, sens, rang)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX monstre_defense_cible ON monstre_defense (cible_cle, sens);
 
 -- ====================================================================================================================
 -- 9. ÉQUIPEMENT, RESSOURCES, CRAFT, MÉTIERS (familles « equipement », « craft », « docs_typees »)

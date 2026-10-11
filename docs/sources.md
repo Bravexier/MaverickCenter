@@ -42,11 +42,11 @@ avec `"type": null` — **à classer** après lecture (renseigner `type` et `tit
 **Copies du propriétaire (2026-10-10).** L'ancien mainteneur des documents est parti : ils ont été copiés dans le Drive du propriétaire du projet
 (dossier « Maverick JDR »), et le manifeste, les extracteurs `tools/sheets/*.py` et la base (migration `0014-sources-copies-drive`, registre `.json`)
 citent désormais ces copies ; dans le manifeste, `original` garde l'URL d'origine. Une copie garde le titre et les identifiants d'onglets (`gid`)
-de l'original : les libellés « Google Sheet « … », onglet « … » » restent justes. Le document `1vn5Tq11…` (« Bestiaire 2.0 ») est hors de portée du
-Drive du propriétaire (ni partagé avec lui, ni trouvé par recherche) : il n'a pas été copié et reste sur l'original (`note`), qui s'ouvre avec son lien ;
-son titre est celui de la page Google (relevé le 2026-10-11). « CODEX Maverick » (`1CwDq…`), laissé lui aussi sur l'original par la migration, a été copié
-par le propriétaire le 2026-10-11 (`1tH-T9k…`, `original` garde l'adresse d'origine) : son export est dans `sources/raw/` et il fait les pages du Codex
-(voir [`codex.md`](codex.md)). Le site ne renvoie plus
+de l'original : les libellés « Google Sheet « … », onglet « … » » restent justes. Les documents `1CwDq…` (« CODEX Maverick ») et `1vn5Tq11…`
+(« Bestiaire 2.0 »), hors de portée du Drive du propriétaire lors de la migration, n'ont pas été copiés par elle ; le propriétaire les a copiés le 2026-10-11
+(`1tH-T9k…` et `1WWCm…`, hors registre ; `original` garde l'adresse d'origine). Le CODEX fait les pages du Codex (export dans `sources/raw/`, voir
+[`codex.md`](codex.md)) ; l'export texte du Bestiaire est dans `sources/raw/bestiaire-2-0.txt` (connecteur Google Drive d'une session cloud) et
+`tools/bestiaire/extraire.mjs` en tire les monstres (voir [`bestiaire.md`](bestiaire.md)). Le site ne renvoie plus
 aux classeurs « Familiers » et « Prototype » (demande du propriétaire, migration `0019-liens-familiers-prototype`) : leurs copies restent dans le Drive,
 mais ni la base ni la page des archives ne les citent. Pour que l'export et les liens du site marchent pour tous, les copies doivent être
 partagées comme les originaux (« tous les utilisateurs disposant du lien », lecture). La fiche auto corrigée (V1.2), qui lit ces copies : `docs/fiche-auto.md`.

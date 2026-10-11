@@ -3,8 +3,8 @@
 // l'identifiant d'origine) et du manifeste sources/sources.json (adresse avec l'onglet, notes, ancien wiki). Le nombre de pages et les onglets viennent
 // des sources citées par les pages (tables `source` et `page_source` de la base) : un document est cité par son adresse (identifiant Google) ou par son
 // libellé (« Google Sheet « Les races », onglet « Elfe » ») ; le registre donne le titre de chaque identifiant, rien n'est apparié autrement.
-// Les documents que le registre n'a pas copiés (Bestiaire 2.0) restent sur l'original, qui s'ouvre avec son lien : titre du manifeste. Un document copié
-// après la migration (CODEX Maverick, 2026-10-11) est l'entrée du manifeste dont `original` cite son identifiant : sa copie, et l'original en second lien.
+// Les documents que le registre n'a pas copiés restent sur l'original, qui s'ouvre avec son lien : titre du manifeste. Un document copié après la
+// migration (CODEX Maverick et Bestiaire 2.0, 2026-10-11) est l'entrée du manifeste dont `original` cite son identifiant : sa copie, et l'original en second lien.
 // Les classeurs « Familiers » et « Prototype » ne sont pas montrés (DOCUMENTS_RETIRES).
 // `documentsDesArchives` est pur ; `lireArchives` lit les fichiers et la base au build (node:fs : ne pas importer côté navigateur).
 import { readFileSync } from 'node:fs';

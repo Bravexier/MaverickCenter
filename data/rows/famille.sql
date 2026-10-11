@@ -9,4 +9,5 @@ INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('equipement
 INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('exemple', 'Pages d''exemple (fixtures de démonstration, status: example)', NULL, 'aucune : saisies pour la démonstration', 11);
 INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('fiche', 'Règles de la fiche de personnage', 'tools/sheets/regles-fiche.py (à écrire)', 'Fiche personnage Maverick Auto V15.2.2 + pages du Doc de la fiche', 2);
 INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('magies', 'Magies et sorts', 'tools/sheets/magies.py', 'Magie Maverick V8 ; Fiche auto V15.2.2 (onglet Magie)', 4);
+INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('monstres', 'Bestiaire 2.0 : monstres, butin, échelles de puissance', 'tools/bestiaire/extraire.mjs', 'Google Doc « Bestiaire 2.0 »', 12);
 INSERT INTO famille (id, libelle, importeur, sources, ordre) VALUES ('races', 'Races, ethnies, accessibilités', 'tools/sheets/races.py', 'Les races ; Fiche auto V15.2.2 (Race, Bonus Race, Accessibilité de Classe / Magie)', 6);

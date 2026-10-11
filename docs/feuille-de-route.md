@@ -33,7 +33,7 @@ d'une source ou d'une décision de [`decisions-regles.md`](decisions-regles.md) 
 | Id | Évolution | Jalon · version visée | Dépend de | Ce qui existe déjà |
 | --- | --- | --- | --- | --- |
 | E1 | Galerie : créations humaines / images d'IA | A · V0.3 | — | `/galeries/`, carrousel de l'accueil, `lib/galerie.mjs` (le logo seul) |
-| E2 | Page du Bestiaire | A · V0.3, puis B · V0.5 | sources pour les monstres | 63 créatures d'invocation dans les tables `creature_*` (section 8), pages `bestiaire/…` rendues depuis leur Markdown |
+| E2 | Page du Bestiaire | A · V0.3, puis B · V0.5 | réponses du propriétaire (`docs/bestiaire.md`) | **premier jet en place** (2026-10-11) : `/bestiaire/`, monstres du « Bestiaire 2.0 » (section 8 bis) et créatures invoquées à part, tableaux filtrables |
 | E3 | Refonte de l'équipement et intégration à la fiche | A · V0.4 | la liste des ratés de l'intégration | catalogues de la section 9, bloc équipement de `/fiche/`, tables `personnage_arme`, `personnage_armure`… |
 | E4 | Générateur d'accessoires magiques | A · V0.4 | E3 pour les accessoires | tables de tirage `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet` ; `personnage_accessoire` |
 | E5 | Chronologie | B · V0.5 | sources du lore | entrée « bientôt » du menu Codex |
@@ -48,9 +48,9 @@ d'une source ou d'une décision de [`decisions-regles.md`](decisions-regles.md) 
 Jalons proposés :
 
 - **A — avant la 1.0, sans comptes** : ce qui se fait avec la base actuelle et le mot de passe partagé d'aujourd'hui.
-- **B — le Codex** : avant la 1.0 aussi, mais suspendu au rapatriement des sources (salons Discord du lore et des cartes, « Bestiaire 2.0 ») ; le
+- **B — le Codex** : avant la 1.0 aussi, mais suspendu au rapatriement des sources (salons Discord du lore et des cartes) ; le
   « CODEX Maverick » est importé (2026-10-11, [`codex.md`](codex.md)) : une page `lore/` par divinité, temple ou guilde, civilisation et objet légendaire,
-  Codex › Mythologie et Codex › Factions mènent à leurs sommaires.
+  Codex › Mythologie et Codex › Factions mènent à leurs sommaires ; le « Bestiaire 2.0 » aussi (2026-10-11, [`bestiaire.md`](bestiaire.md)) : Codex › Bestiaire.
 - **C — la 1.0** : la connexion par Discord arrive dans la **dernière version 0.x** (V0.6 visée), qui reste en service le temps d'en corriger les bugs ;
   la **V1.0.0** vient quand la connexion est éprouvée et testée et l'ouvre à tout le Discord (précision du propriétaire, 2026-10-11). Le passage en 1.0
   reste son signal ([`flux-git.md`](flux-git.md)). Les fiches liées au compte (E8) sont proposées dans la même V0.6, pour être éprouvées avec la connexion.
@@ -113,13 +113,14 @@ flowchart LR
 
 ### E2 — Page du Bestiaire (jalon A, puis B)
 
-- **Déjà là** : les 63 créatures des invocations (golems, poupées, non-morts, marionnettes) et leurs tables typées (`creature`, `creature_attaque`,
-  `creature_capacite`, résistances par `v_creature_resistance`…) ; aujourd'hui `/bestiaire/` est la liste générique des pages et le menu Codex › Bestiaire est « bientôt ».
+- **Déjà là** (premier jet, 2026-10-11, `docs/bestiaire.md`) : `/bestiaire/` (menu Codex › Bestiaire) en deux onglets, chacun un grand tableau avec recherche,
+  filtres à cases et tri : les **monstres** du « Bestiaire 2.0 » (copie du propriétaire, migration `0029-bestiaire-monstres` : 144 espèces, 315 cartes, butin,
+  échelles de puissance, glossaire) et, à part, les 63 **créatures invoquées** (section 8). Les questions au propriétaire sont dans `docs/bestiaire.md`.
 - **Premier pas** : une page `/bestiaire/` et des fiches de créature rendues depuis les tables, sur le modèle des magies, des races et des classes
   (`lib/bestiaire-db.mjs`, `components/bestiaire/`, CSS inséré par le composant), créatures rangées par invocation et par magie, avec renvoi à la magie
   qui les invoque ; mode modification sur le site de dev comme les autres pages typées ; entrée du menu.
-- **Ensuite** : les monstres hors invocation. Le « Bestiaire 2.0 » n'est pas copié dans le Drive du propriétaire (`sources/sources.json`) : rien n'en est
-  importé, et ses tables se conçoivent d'après lui, pas avant. Le bestiaire prépare la simulation (une créature est un adversaire).
+- **Ensuite** : les ajustements du propriétaire sur ce premier jet ; le mode modification sur le site de dev ; une fiche par monstre si elle est voulue.
+  Le bestiaire prépare la simulation (une créature est un adversaire).
 
 ### E3 — Refonte de l'équipement et intégration à la fiche (jalon A)
 
@@ -240,8 +241,8 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
 3. **Statuts** : touriste si l'on n'est pas connecté ou pas membre du serveur Discord (lecture seule en surface), joueur si l'on en est membre ; les
    autres rôles (MJ, éditeur, administrateur) se verront plus tard (E7).
 4. **Équipement** : une refonte visuelle et de l'intégration à la fiche, où il y a aujourd'hui des ratés ; les règles ne changent pas (E3).
-5. **Sources** (« Bestiaire 2.0 », « CODEX Maverick », salons du lore et des cartes, image de la carte, calendrier du monde) : à voir plus tard (E2, E5, E6).
-   Le « CODEX Maverick » est arrivé le 2026-10-11 (copie du propriétaire, [`codex.md`](codex.md)).
+5. **Sources** (salons du lore et des cartes, image de la carte, calendrier du monde) : à voir plus tard (E5, E6). Le « CODEX Maverick » et le
+   « Bestiaire 2.0 » sont arrivés le 2026-10-11 (copies du propriétaire : [`codex.md`](codex.md), [`bestiaire.md`](bestiaire.md)).
 
 ### Questions encore ouvertes
 

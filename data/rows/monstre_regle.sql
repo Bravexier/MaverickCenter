@@ -1,0 +1,5 @@
+-- data/rows/monstre_regle.sql : export déterministe, une instruction par ligne, triée par (rang). NE PAS ÉDITER À LA MAIN.
+INSERT INTO monstre_regle (rang, texte, origine, source_ref) VALUES (1, 'Mettre 0 dans une carac est possible mais ils doit être justifié.', 'monstres', 'Bestiaire 2.0 › ligne 7');
+INSERT INTO monstre_regle (rang, texte, origine, source_ref) VALUES (2, 'Il est possible de mettre moins de caractéristiques sur un monstre si il y a une justification.', 'monstres', 'Bestiaire 2.0 › ligne 8');
+INSERT INTO monstre_regle (rang, texte, origine, source_ref) VALUES (3, 'D’une manière général : un ennemi simple gère un joueur, un mini boss gère 2 joueurs et un boss gère 4 joueurs.', 'monstres', 'Bestiaire 2.0 › ligne 9');
+INSERT INTO monstre_regle (rang, texte, origine, source_ref) VALUES (4, 'tout ce qui est dit ne sont que des recommandations et des moyennes, rien ne vous empêche de faire des ennemis un peu plus fort ou un peu plus faible selon le concept de votre monstre. Rester juste.', 'monstres', 'Bestiaire 2.0 › ligne 10');

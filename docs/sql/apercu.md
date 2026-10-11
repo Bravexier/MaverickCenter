@@ -1,6 +1,6 @@
 # Aperçu du schéma de la base
 
-> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 168 tables, 2 tables de recherche, 35 vues.
+> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 181 tables, 2 tables de recherche, 35 vues.
 > Ce qui reste à trancher sur le **contenu** (pas sur la forme) est dans [`a-valider.md`](a-valider.md).
 
 **Lecture des colonnes** : **gras** = clé primaire ; `→table` = clé étrangère vers cette table ; `?` = peut être absente (`NULL`, jamais une valeur inventée) ; `+provenance` = `origine` (famille d'import) et `source_ref` (classeur › onglet › plage). Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté.
@@ -163,6 +163,28 @@
 | `creature_capacite_sort` | Sorts cités par une capacité « Lanceur de sorts » (« avec les niveaux de maîtrises maximum : Boule de feu, Cautérisation ») ou « Sort supplémentaire » (« obtient de nouveaux sorts en plus des autres : … »). | **capacite_id**→creature_capacite, **rang**, sort_nom_brut, sort_id→sort?, +provenance |
 | `creature_capacite_resistance` | Résistances / vulnérabilités / immunités déclarées par le texte d'une capacité de la créature (« Fait de verre. | **capacite_id**→creature_capacite, **rang**, sens, sens_brut, cible_type, cible_magie_id→magie?, cible_etat_id→etat?, cible_degat?, cible_brut, extrait, +provenance |
 | `creature_effet` | AUTRES BLOCS DE LA CARTE Panneau « Effet "Manteau noir" » de la carte des marionettes (S12 / S13 : libellé puis texte) : les bonus que procure la créature quand on la sacrifie avec le sort « Manteau n | **creature_id**→creature, **rang**, libelle, nom, sort_id→sort?, texte, +provenance |
+
+## 8 bis. BESTIAIRE 2.0 : monstres, butin, échelles de puissance (famille « monstres »)
+
+**Relations dans cette section** : `monstre_attaque→monstre`, `monstre_butin→monstre_espece`, `monstre_capacite→monstre`, `monstre_caracteristique→monstre`, `monstre_defense→monstre`, `monstre_espece_bloc→monstre_espece`, `monstre_espece_lieu→monstre_espece`, `monstre_rubrique→monstre`, `monstre→monstre_espece`
+
+**Vers d'autres sections** : `monstre_caracteristique→caracteristique (§2)`
+
+| Table | Rôle | Colonnes |
+| --- | --- | --- |
+| `monstre_regle` | Règles générales de l'introduction (« Quelques règles qui marchent dans toutes les échelles de puissance »), dans l'ordre de la liste. | **rang**, texte, +provenance |
+| `monstre_echelle` | Échelles de puissance (EP 1 à 10) : les deux tableaux de l'introduction. | **ep**, regle_brut, degats_brut, niveau_min, niveau_max, attributs_brut, xp_brut, attributs_ennemi_simple?, attributs_mini_boss?, attributs_boss?, xp_ennemi_simple?, xp_mini_boss?, xp_boss?, +provenance |
+| `monstre_butin_objet` | Glossaire du butin (fin du doc, « GLOSSAIRE BUTIN ») : « Nom. | **id**, rang, nom, texte, +provenance |
+| `monstre_espece` | ESPÈCE : un titre « Nom (EPx) » du doc, rangé sous sa lettre ; sa description, son lieu de rencontre, puis ses cartes (de 0 à 3 : ennemi simple, mini-boss, boss), les blocs qui suivent les cartes et le tableau du butin. | **id**, nom, nom_cle, ordre, lettre, ep_brut, ep_min?, ep_max?, description?, lieu_brut?, complement?, +provenance |
+| `monstre_espece_lieu` | Lieux de rencontre : `lieu_brut` découpé aux virgules, tel qu'écrit (« Ruines », « ruines » et « Ruines brûlées » restent distincts). | **espece_id**→monstre_espece, **rang**, lieu, lieu_cle, +provenance |
+| `monstre_espece_bloc` | Blocs qui suivent les cartes d'une espèce, ouverts par un titre en capitales (aujourd'hui : les quinze tableaux du Presque-Ottar, un par magie). | **espece_id**→monstre_espece, **rang**, titre, texte, +provenance |
+| `monstre_butin` | Butin d'une espèce : le tableau « Score (3d100) \| Butin possible », une ligne par (tranche de score, catégorie) ; une cellule vide n'a pas de ligne. | **espece_id**→monstre_espece, **rang**, **categorie**, score_min, score_max, score_brut, texte, +provenance |
+| `monstre` | MONSTRE : une carte « NOM Créature échelle N » ; « Type \| Alignement \| Catégorie » sur la ligne suivante. | **id**, espece_id→monstre_espece, rang, nom, nom_brut, nom_cle, echelle_brut, ep_min?, ep_max?, type_brut?, alignement_brut?, categorie_brut, categorie, variable, sante?, chakra?, barriere?, armure_physique?, armure_magique?, vitesse_sol?, vitesse_nage?, +provenance |
+| `monstre_rubrique` | Rubriques d'une carte, dans l'ordre du doc, TOUT leur texte (rien de la carte n'est perdu) : 'attributs' = la ligne « Santé : … Chakra : … Barrière : … » (ou « [EP3] Santé : 330 … ») ; 'sante' / 'chak | **monstre_id**→monstre, **rang**, rubrique, titre?, texte, +provenance |
+| `monstre_caracteristique` | F.P.V.S.I.A. d'une carte quand la rubrique est UNE ligne « F : 6 / P : 4 / V : 6 / S : 2 / I : 3 / A : 6 » (le sigle est écrit en clair sur la carte ; même ordre que creature_caracteristique). | **monstre_id**→monstre, **caracteristique_id**→caracteristique, rang, valeur, +provenance |
+| `monstre_attaque` | Attaques : les lignes « Nom - texte » (ou « Nom: texte ») de la rubrique Dégâts dont le texte porte un nombre (« Pince - 2d10 + 2 dégâts d’estoc »). | **monstre_id**→monstre, **rang**, nom, texte, +provenance |
+| `monstre_capacite` | Capacités : un paragraphe « [EP2] Nom. | **monstre_id**→monstre, **rang**, prefixe?, ep_min?, nom, texte, +provenance |
+| `monstre_defense` | Cibles des vulnérabilités, résistances, immunités et réflexions : la rubrique quand elle est UNE liste « Brûlure, Paralysie » de noms courts (« Varie selon la magie », un tableau ou plusieurs lignes : | **monstre_id**→monstre, **sens**, **rang**, cible, cible_cle, +provenance |
 
 ## 9. ÉQUIPEMENT, RESSOURCES, CRAFT, MÉTIERS (familles « equipement », « craft », « docs_typees »)
 

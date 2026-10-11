@@ -66,9 +66,9 @@ test('sources : une ligne par document cité, id dérivé du nouvel identifiant,
   const ids = new Set(attendus.map((t) => `google-${parTitre.get(t).genre}:${parTitre.get(t).apres}`));
   assert.equal(historiqueSite(db).lignesDImport('page_source').filter((r) => ids.has(r.source_id)).length, 1069);
   // aujourd'hui : tout renvoi vers un document Google cite une copie du registre, l'un des deux documents non copiés par la migration ou la copie que
-  // le propriétaire en a faite depuis (manifeste : entrée dont `original` cite l'identifiant d'origine ; CODEX Maverick, 2026-10-11)
+  // le propriétaire en a faite depuis (manifeste : entrée dont `original` cite l'identifiant d'origine ; CODEX Maverick et Bestiaire 2.0, 2026-10-11)
   const copiesUlterieures = manifeste.google.filter((g) => registre.non_copies.some((n) => g.id !== n.id && g.original?.includes(`/d/${n.id}/`))).map((g) => g.id);
-  assert.deepEqual(copiesUlterieures, ['1tH-T9k-a3sADBtKWHxcuMcN94_VA8-Zo2BTzee9O7Tg'], 'CODEX Maverick');
+  assert.deepEqual(copiesUlterieures, ['1tH-T9k-a3sADBtKWHxcuMcN94_VA8-Zo2BTzee9O7Tg', '1WWCmI4nwkBnLcvkEsQEd-Cd_P5rb22NDJllCTO5yhsE'], 'CODEX Maverick, Bestiaire 2.0');
   const permis = new Set([...registre.copies.map((c) => c.apres), ...registre.non_copies.map((c) => c.id), ...copiesUlterieures]);
   for (const r of db.prepare('SELECT p.page_id, s.google_id FROM page_source p JOIN source s ON s.id = p.source_id WHERE s.google_id IS NOT NULL').all()) {
     assert.ok(permis.has(r.google_id), `${r.page_id} : ${r.google_id}`);

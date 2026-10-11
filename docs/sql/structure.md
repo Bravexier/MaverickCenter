@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 28 : 168 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 29 : 181 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -16,6 +16,7 @@
 - [6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)](#6-classes-spécialités-capacités-famille--classes) : `categorie_classe`, `classe`, `specialite`, `capacite`, `objet_depart`, `classe_objet_depart`, `classe_maitrise_armure`, `classe_maitrise_arme`, `classe_annexe`
 - [7. RACES, ETHNIES, ACCESSIBILITÉS (famille « races »)](#7-races-ethnies-accessibilités-famille--races) : `race`, `race_restriction_carac`, `ethnie`, `ethnie_resistance`, `race_classe`, `race_magie`, `race_onglet`, `race_don`, `race_don_tableau_colonne`, `race_don_tableau_ligne`, `race_don_tableau_cellule`, `race_magie_onglet`, `echelle_relation`, `peuple`, `relation_peuple`
 - [8. BESTIAIRE : invocations et créatures (famille « bestiaire »)](#8-bestiaire--invocations-et-créatures-famille--bestiaire) : `invocation`, `invocation_capacite_commune`, `invocation_resistance`, `invocation_bloc`, `invocation_bloc_magie`, `creature`, `creature_ressource`, `creature_caracteristique`, `creature_bonus_npm`, `creature_attaque`, `creature_attaque_type`, `creature_capacite`, `creature_capacite_sort`, `creature_capacite_resistance`, `creature_effet`
+- [8 bis. BESTIAIRE 2.0 : monstres, butin, échelles de puissance (famille « monstres »)](#8-bis-bestiaire-20--monstres-butin-échelles-de-puissance-famille--monstres) : `monstre_regle`, `monstre_echelle`, `monstre_butin_objet`, `monstre_espece`, `monstre_espece_lieu`, `monstre_espece_bloc`, `monstre_butin`, `monstre`, `monstre_rubrique`, `monstre_caracteristique`, `monstre_attaque`, `monstre_capacite`, `monstre_defense`
 - [9. ÉQUIPEMENT, RESSOURCES, CRAFT, MÉTIERS (familles « equipement », « craft », « docs_typees »)](#9-équipement-ressources-craft-métiers-familles--equipement---craft---docstypees) : `monnaie`, `constante_equipement`, `niveau_alchimie`, `affinite`, `arme_famille`, `arme_type`, `ressource`, `materiau_arme`, `materiau_armure`, `materiau_bouclier`, `gemme`, `bois`, `ingredient_alchimie`, `potion`, `potion_etat`, `kit_alchimie`, `fiole_verre`, `recette`, `recette_produit`, `recette_ingredient`, `baton_magique`, `metier`, `metier_bonus`, `metier_recette_famille`, `metier_objet_depart`, `arme`, `arme_degats`, `arme_prerequis`, `arme_elementaire`, `armure_emplacement`, `armure`, `armure_degats`, `armure_elementaire`, `armure_elementaire_effet`, `bouclier_classe`, `bouclier_poids`, `bouclier`, `amelioration_equipement`, `amelioration_total`, `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet`, `accessoire_effet_gemme`, `accessoire_monture`, `familier`, `familier_effet`, `batiment`, `machine_guerre`, `maladie`, `maladie_methode`
 - [10. TRANSVERSAL : notes de cellule et écarts entre sources](#10-transversal--notes-de-cellule-et-écarts-entre-sources) : `note_cellule`, `ecart_source`, `correction`
 - [11. TABLES DÉRIVÉES (jamais exportées dans data/rows/, recalculées par `npm run db:build`)](#11-tables-dérivées-jamais-exportées-dans-datarows-recalculées-par-npm-run-dbbuild) : `lien`, `lien_candidat`, `page_fts`, `entite_fts`
@@ -1448,6 +1449,215 @@ AUTRES BLOCS DE LA CARTE Panneau « Effet "Manteau noir" » de la carte des mari
 | `nom` | TEXT | oui |  | ce qui est entre guillemets : « Manteau noir » |
 | `sort_id` | TEXT | non | → sort.id | le sort de ce nom dans la magie du sort d'invocation ; NULL si introuvable |
 | `texte` | TEXT | oui |  | « - +2 dégâts\n- Chaque attaque qui touche… » |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
+## 8 bis. BESTIAIRE 2.0 : monstres, butin, échelles de puissance (famille « monstres »)
+
+### `monstre_regle`
+
+Règles générales de l'introduction (« Quelques règles qui marchent dans toutes les échelles de puissance »), dans l'ordre de la liste.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `rang` | INTEGER | oui | PK |  |
+| `texte` | TEXT | oui |  |  |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
+### `monstre_echelle`
+
+Échelles de puissance (EP 1 à 10) : les deux tableaux de l'introduction. Cellules telles qu'écrites (*_brut) ; les nombres de « Ennemi simple : 35 / Mini boss : 70 / Boss : 140 » (attributs moyens à répartir, expérience reçue) sont repris par catégorie.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `ep` | INTEGER | oui | PK |  |
+| `regle_brut` | TEXT | oui |  | cellule « Règle carac/comp » (points de carac à répartir, plafond, bonus de compétences) |
+| `degats_brut` | TEXT | oui |  | cellule « Dégâts moyen » |
+| `niveau_min` | INTEGER | oui |  | « (Niveau 1-2) » |
+| `niveau_max` | INTEGER | oui |  |  |
+| `attributs_brut` | TEXT | oui |  | cellule « Attributs moyens » |
+| `xp_brut` | TEXT | oui |  | cellule « Expérience reçu » |
+| `attributs_ennemi_simple` | INTEGER | non |  |  |
+| `attributs_mini_boss` | INTEGER | non |  |  |
+| `attributs_boss` | INTEGER | non |  |  |
+| `xp_ennemi_simple` | INTEGER | non |  |  |
+| `xp_mini_boss` | INTEGER | non |  |  |
+| `xp_boss` | INTEGER | non |  |  |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
+### `monstre_butin_objet`
+
+Glossaire du butin (fin du doc, « GLOSSAIRE BUTIN ») : « Nom. Définition ».
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | TEXT | oui | PK | normalize(nom) |
+| `rang` | INTEGER | oui | unique |  |
+| `nom` | TEXT | oui | unique |  |
+| `texte` | TEXT | oui |  |  |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
+### `monstre_espece`
+
+ESPÈCE : un titre « Nom (EPx) » du doc, rangé sous sa lettre ; sa description, son lieu de rencontre, puis ses cartes (de 0 à 3 : ennemi simple, mini-boss, boss), les blocs qui suivent les cartes et le tableau du butin.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | TEXT | oui | PK |  |
+| `nom` | TEXT | oui |  | titre tel qu'écrit, sans « (EPx) » |
+| `nom_cle` | TEXT | oui |  |  |
+| `ordre` | INTEGER | oui | unique | rang du titre dans le doc |
+| `lettre` | TEXT | oui |  | lettre de l'index sous laquelle le titre est rangé |
+| `ep_brut` | TEXT | oui |  | « EP2 », « EP1 - 10 », « EP3, 5, 7 » |
+| `ep_min` | INTEGER | non |  |  |
+| `ep_max` | INTEGER | non |  |  |
+| `description` | TEXT | non |  | paragraphes avant « Lieu de rencontre », séparés par une ligne vide |
+| `lieu_brut` | TEXT | non |  | « Marais », « Mer, Océan, Lac, Plage » ; NULL = pas de ligne « Lieu de rencontre » |
+| `complement` | TEXT | non |  | texte entre le lieu de rencontre et la première carte (rare) |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
+### `monstre_espece_lieu`
+
+Lieux de rencontre : `lieu_brut` découpé aux virgules, tel qu'écrit (« Ruines », « ruines » et « Ruines brûlées » restent distincts).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `espece_id` | TEXT | oui | PK 1, → monstre_espece.id |  |
+| `rang` | INTEGER | oui | PK 2 |  |
+| `lieu` | TEXT | oui |  |  |
+| `lieu_cle` | TEXT | oui |  |  |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
+### `monstre_espece_bloc`
+
+Blocs qui suivent les cartes d'une espèce, ouverts par un titre en capitales (aujourd'hui : les quinze tableaux du Presque-Ottar, un par magie).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `espece_id` | TEXT | oui | PK 1, → monstre_espece.id |  |
+| `rang` | INTEGER | oui | PK 2 |  |
+| `titre` | TEXT | oui |  | « POTENTIEL ILLIMITÉ », « SANG » |
+| `texte` | TEXT | oui |  |  |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
+### `monstre_butin`
+
+Butin d'une espèce : le tableau « Score (3d100) | Butin possible », une ligne par (tranche de score, catégorie) ; une cellule vide n'a pas de ligne.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `espece_id` | TEXT | oui | PK 1, → monstre_espece.id |  |
+| `rang` | INTEGER | oui | PK 2 | rang de la tranche dans le tableau |
+| `categorie` | TEXT | oui | PK 3 |  |
+| `score_min` | INTEGER | oui |  |  |
+| `score_max` | INTEGER | oui |  |  |
+| `score_brut` | TEXT | oui |  | « 3-15 » |
+| `texte` | TEXT | oui |  | « Petite chitine x 2d8 », « RIEN ! » |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
+### `monstre`
+
+MONSTRE : une carte « NOM Créature échelle N » ; « Type | Alignement | Catégorie » sur la ligne suivante. Valeurs typées seulement quand l'écriture est sans ambiguïté (sinon NULL ; la rubrique garde le texte) : sante / chakra / barriere : la ligne « Santé : 70 Chakra : 0 Barrière : 0 » (pas les valeurs « EP 1 : 20 … » d'une carte qui varie selon l'échelle) ; armure_physique / armure_magique : « 4 armure physique / 2 armure magique » ou « 4 AP / 2 AM » (PAS « 0 points d'armure / 8 résistance magique » : le rapprochement de ces mots avec l'armure physique et magique est une question au propriétaire, docs/bestiaire.md) ; vitesse_sol / vitesse_nage : « 4 cases sol / 4 cases nage ».
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | TEXT | oui | PK |  |
+| `espece_id` | TEXT | oui | → monstre_espece.id |  |
+| `rang` | INTEGER | oui |  | rang de la carte dans l'espèce |
+| `nom` | TEXT | oui |  | nom de la carte remis en minuscules (voir tools/bestiaire/extraire.mjs) : « Amblypyge de brai » |
+| `nom_brut` | TEXT | oui |  | tel qu'écrit, en capitales : « AMBLYPYGE DE BRAI » |
+| `nom_cle` | TEXT | oui |  |  |
+| `echelle_brut` | TEXT | oui |  | après « Créature échelle » : « 2 », « 1-10 » |
+| `ep_min` | INTEGER | non |  |  |
+| `ep_max` | INTEGER | non |  |  |
+| `type_brut` | TEXT | non |  | « Vermine », « Non-mort », « Mécanique » |
+| `alignement_brut` | TEXT | non |  | « Neutre », « Chaotique Mauvais » |
+| `categorie_brut` | TEXT | oui |  | « Ennemi simple », « Mini boss », « Mini-Boss », « Boss » |
+| `categorie` | TEXT | oui |  |  |
+| `variable` | INTEGER | oui |  | 1 : « Ses stats varient selon son échelle de puissance. » |
+| `sante` | INTEGER | non |  |  |
+| `chakra` | INTEGER | non |  |  |
+| `barriere` | INTEGER | non |  |  |
+| `armure_physique` | INTEGER | non |  |  |
+| `armure_magique` | INTEGER | non |  |  |
+| `vitesse_sol` | INTEGER | non |  |  |
+| `vitesse_nage` | INTEGER | non |  |  |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
+### `monstre_rubrique`
+
+Rubriques d'une carte, dans l'ordre du doc, TOUT leur texte (rien de la carte n'est perdu) : 'attributs' = la ligne « Santé : … Chakra : … Barrière : … » (ou « [EP3] Santé : 330 … ») ; 'sante' / 'chakra' / 'barriere' = les mêmes, par échelle, sous un titre seul ; les autres rubriques suivent leur titre (`titre` tel qu'écrit, NULL pour 'attributs' qui n'en a pas).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `monstre_id` | TEXT | oui | PK 1, → monstre.id |  |
+| `rang` | INTEGER | oui | PK 2 |  |
+| `rubrique` | TEXT | oui |  |  |
+| `titre` | TEXT | non |  | « Vulnérabilité(s) Dégâts x2 », « Grande(s) Résistance(s) Dégâts ÷4 » |
+| `texte` | TEXT | oui |  | paragraphes séparés par une ligne vide ; '' = rubrique vide |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
+### `monstre_caracteristique`
+
+F.P.V.S.I.A. d'une carte quand la rubrique est UNE ligne « F : 6 / P : 4 / V : 6 / S : 2 / I : 3 / A : 6 » (le sigle est écrit en clair sur la carte ; même ordre que creature_caracteristique). Une carte qui varie selon l'échelle n'a pas de ligne ici.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `monstre_id` | TEXT | oui | PK 1, → monstre.id |  |
+| `caracteristique_id` | TEXT | oui | PK 2, → caracteristique.id |  |
+| `rang` | INTEGER | oui |  |  |
+| `valeur` | INTEGER | oui |  |  |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
+### `monstre_attaque`
+
+Attaques : les lignes « Nom - texte » (ou « Nom: texte ») de la rubrique Dégâts dont le texte porte un nombre (« Pince - 2d10 + 2 dégâts d’estoc »).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `monstre_id` | TEXT | oui | PK 1, → monstre.id |  |
+| `rang` | INTEGER | oui | PK 2 |  |
+| `nom` | TEXT | oui |  |  |
+| `texte` | TEXT | oui |  |  |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
+### `monstre_capacite`
+
+Capacités : un paragraphe « [EP2] Nom. Texte » de la rubrique Capacité(s) ; un paragraphe sans nom (tableau, suite) continue la capacité précédente.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `monstre_id` | TEXT | oui | PK 1, → monstre.id |  |
+| `rang` | INTEGER | oui | PK 2 |  |
+| `prefixe` | TEXT | non |  | crochets et parenthèses avant le nom : « [EP2] », « [Gauche] », « (Neige) [EP3] » |
+| `ep_min` | INTEGER | non |  | N du premier « [EPN] » du préfixe |
+| `nom` | TEXT | oui |  |  |
+| `texte` | TEXT | oui |  |  |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
+### `monstre_defense`
+
+Cibles des vulnérabilités, résistances, immunités et réflexions : la rubrique quand elle est UNE liste « Brûlure, Paralysie » de noms courts (« Varie selon la magie », un tableau ou plusieurs lignes : aucune ligne ici, la rubrique fait foi). `sens` = la rubrique d'où vient la cible.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `monstre_id` | TEXT | oui | PK 1, → monstre.id |  |
+| `sens` | TEXT | oui | PK 2 |  |
+| `rang` | INTEGER | oui | PK 3 |  |
+| `cible` | TEXT | oui |  | « Brûlure », « Terre », « Estoc » |
+| `cible_cle` | TEXT | oui |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 

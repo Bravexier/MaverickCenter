@@ -68,20 +68,21 @@ test('ancien wiki : adresse et titre du manifeste, sans ses notes de développeu
 test('le vrai registre, le vrai manifeste et la base : chaque document une fois avec son titre, les classeurs du jeu cités par le site', () => {
   const { rubriques, ancienWiki: wiki } = lireArchives(ouvrirBase({ sansExemples: false }), trouverRacine());
   const documents = rubriques.flatMap((r) => r.documents);
-  assert.equal(documents.length, 15 - 2 + 1 + 2, '15 copies sans « Familiers » ni « Prototype », la fiche corrigée, les 2 documents laissés par la migration 0014');
+  assert.equal(documents.length, 15 - 2 + 1 + 2, '15 copies sans « Familiers » ni « Prototype », la fiche corrigée, les 2 documents laissés par la migration 0014 (copiés depuis)');
   assert.equal(new Set(documents.map((d) => d.id)).size, documents.length);
   for (const d of documents) assert.ok(d.titre, `${d.id} : sans titre`);
   assert.deepEqual(documents.filter((d) => ['Familiers', 'Prototype'].includes(d.titre)), [], 'demande du propriétaire');
   assert.equal(DOCUMENTS_RETIRES.size, 2);
-  const bestiaire = documents.find((x) => x.titre === 'Bestiaire 2.0');
-  assert.equal(bestiaire?.rubrique, 'jeu');
-  assert.equal(bestiaire.original, null, 'Bestiaire 2.0 : l’adresse est celle de l’original');
-  // CODEX Maverick : copié par le propriétaire le 2026-10-11, après la migration 0014 (sources/sources.json) ; ses pages du Codex le citent
+  // CODEX Maverick et Bestiaire 2.0 : copiés par le propriétaire le 2026-10-11, après la migration 0014 (sources/sources.json) ; les pages du Codex citent le premier
   const codex = documents.find((x) => x.titre === 'CODEX Maverick');
   assert.equal(codex?.rubrique, 'jeu');
   assert.equal(codex.id, '1tH-T9k-a3sADBtKWHxcuMcN94_VA8-Zo2BTzee9O7Tg');
   assert.match(codex.original, /\/d\/1CwDqDKurMOdqig3ozX4NQETbBW9sggsxEqM1WfbOG5M\//, 'l’original en second lien');
   assert.ok(codex.pages > 100, `CODEX Maverick : ${codex.pages} pages`);
+  const bestiaire = documents.find((x) => x.titre === 'Bestiaire 2.0');
+  assert.equal(bestiaire?.rubrique, 'jeu');
+  assert.equal(bestiaire.id, '1WWCmI4nwkBnLcvkEsQEd-Cd_P5rb22NDJllCTO5yhsE');
+  assert.match(bestiaire.original, /\/d\/1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8\//, 'l’original en second lien');
   for (const d of documents) assert.match(d.url, new RegExp(`^https://docs\\.google\\.com/(document|spreadsheets)/d/${d.id}/`), d.titre ?? d.id);
   const pages = Object.fromEntries(documents.map((d) => [d.titre, d.pages]));
   for (const titre of ['Classe Maverick V7', 'Les races', 'Magie Maverick V8', 'Invocation', 'Ressources et Craft', 'Mode hyper et co',

@@ -1,0 +1,248 @@
+---
+// Tableau des monstres du « Bestiaire 2.0 » (lib/bestiaire-db.mjs#chargerMonstres) : une ligne par carte (ennemi simple, mini-boss, boss) et une par espèce
+// sans carte ; un clic sur le nom ouvre sa fiche juste en dessous : l'espèce (description, lieu de rencontre), toute la carte telle qu'écrite (rubriques),
+// les tableaux qui suivent les cartes et le butin. Une valeur que la base n'a pas typée s'affiche telle qu'écrite (Défense, Vitesse) ; « varie » : la carte
+// donne ses valeurs par échelle de puissance (dans la fiche).
+import Filtres from './Filtres.astro';
+import { CATEGORIES, FPVSIA, type chargerMonstres } from '../../lib/bestiaire-db.mjs';
+import { couleurDeCaracteristique, styleDeCouleur } from '../../lib/caracteristiques-postures.mjs';
+
+interface Props {
+  monstres: ReturnType<typeof chargerMonstres>;
+}
+const { monstres } = Astro.props;
+const { lignes, facettes } = monstres;
+
+const COLONNES: { cle: string; libelle: string; titre?: string; tri?: boolean; classe?: string; style?: string }[] = [
+  { cle: 'nom', libelle: 'Nom', tri: true },
+  { cle: 'espece', libelle: 'Espèce', tri: true },
+  { cle: 'ep', libelle: 'EP', titre: 'Échelle de puissance', tri: true, classe: 'nombre' },
+  { cle: 'categorie', libelle: 'Catégorie', tri: true },
+  { cle: 'type', libelle: 'Type', tri: true },
+  { cle: 'alignement', libelle: 'Alignement', tri: true },
+  { cle: 'sante', libelle: 'Santé', tri: true, classe: 'nombre' },
+  { cle: 'chakra', libelle: 'Chakra', tri: true, classe: 'nombre' },
+  { cle: 'barriere', libelle: 'Barrière', tri: true, classe: 'nombre' },
+  { cle: 'defense', libelle: 'Défense', titre: 'Armure physique / armure magique (tri : armure physique)', tri: true },
+  { cle: 'vitesse', libelle: 'Vitesse', titre: 'Cases sol / cases nage (tri : sol)', tri: true },
+  ...FPVSIA.map((k) => ({ cle: k.id, libelle: k.sigle, titre: k.nom, tri: true, classe: 'nombre carac', style: styleDeCouleur(couleurDeCaracteristique(k.id)) })),
+  { cle: 'attaques', libelle: 'Attaques' },
+  { cle: 'capacites', libelle: 'Capacités' },
+  { cle: 'vulnerabilites', libelle: 'Vulnérabilités' },
+  { cle: 'resistances', libelle: 'Résistances' },
+  { cle: 'immunites', libelle: 'Immunités' },
+  { cle: 'lieux', libelle: 'Lieux' },
+];
+const SENS_TITRE: Record<string, string> = {
+  grande_vulnerabilite: 'Grande vulnérabilité',
+  grande_resistance: 'Grande résistance',
+  double_resistance: 'Double résistance',
+  reflexion: 'Réflexion (renvoi des dégâts/effets)',
+};
+const tris = COLONNES.filter((c) => c.tri).map((c) => c.cle);
+const varie = 'Ses stats varient selon son échelle de puissance (voir la fiche).';
+const valeur = (l: (typeof lignes)[number], cle: 'sante' | 'chakra' | 'barriere') => {
+  const c = l.carte;
+  if (!c) return null;
+  if (c[cle] !== null) return c[cle];
+  return c.variable || c.rubriques.some((r) => ['sante', 'chakra', 'barriere'].includes(r.rubrique) || /^\[?EP/.test(r.texte)) ? 'varie' : null;
+};
+const premiereLigne = (t: string) => t.split('\n')[0];
+---
+
+<section class="btableau" data-bestiaire-tableau data-prefixe="" data-facettes={JSON.stringify(facettes.map((f) => f.cle))} data-tris={JSON.stringify(tris)} data-singulier="ligne" data-pluriel="lignes" aria-label="Monstres">
+  <Filtres
+    id="monstres"
+    facettes={facettes}
+    recherche="Rechercher un monstre"
+    aide="Tous les mots, où qu’ils soient : nom, espèce, capacités, tactique, butin… Plusieurs valeurs d’un même filtre : l’une ou l’autre ; plusieurs filtres : tous à la fois."
+  />
+  <p class="btableau__aide muted">
+    {monstres.cartes} cartes de {monstres.especes} espèces, dans l’ordre du doc{lignes.length > monstres.cartes && ` ; les ${lignes.length - monstres.cartes} espèces sans carte ont une ligne à elles`}.{' '}
+    <span class="js-seul">Cliquez sur un nom pour ouvrir sa fiche ; cliquez sur un en-tête pour trier.</span>
+  </p>
+  <div class="btableau__defile" tabindex="0" role="region" aria-label="Tableau des monstres (défile)">
+    <table class="btable">
+      <thead>
+        <tr>
+          {
+            COLONNES.map((c) => (
+              <th scope="col" class={c.classe} style={c.style} title={c.titre} data-tri={c.tri ? c.cle : undefined} aria-sort={c.tri ? 'none' : undefined}>
+                {c.libelle}
+              </th>
+            ))
+          }
+        </tr>
+      </thead>
+      {
+        lignes.map((l, i) => {
+          const c = l.carte;
+          const fiche = `fiche-${l.ancre}`;
+          return (
+            <tbody class="bligne" id={l.ancre} data-ligne data-ordre={i} data-facettes={JSON.stringify(l.facettes)} data-tri={JSON.stringify(l.tri)}>
+              <tr class="bligne__principale">
+                <th scope="row" class="bligne__nom">
+                  <button type="button" class="bligne__ouvrir" aria-expanded="false" aria-controls={fiche}>
+                    {l.nom}
+                  </button>
+                </th>
+                <td class="bligne__espece"><span class="bcourt">{l.espece.nom}</span></td>
+                <td class="nombre">{c ? c.echelle : l.espece.ep.replace(/^EP\s*/, '')}</td>
+                <td>{c ? <span class={`bcat bcat--${c.categorie}`} title={c.categorieBrut}>{CATEGORIES[c.categorie as keyof typeof CATEGORIES]}</span> : <span class="vide" title="Pas de carte dans le doc">—</span>}</td>
+                <td>{c?.type ?? <span class="vide">—</span>}</td>
+                <td>{c?.alignement ?? <span class="vide">—</span>}</td>
+                {(['sante', 'chakra', 'barriere'] as const).map((k) => {
+                  const v = valeur(l, k);
+                  return <td class="nombre">{v === 'varie' ? <span class="varie" title={varie}>varie</span> : v ?? <span class="vide">—</span>}</td>;
+                })}
+                <td class="bligne__defense" title={c?.defense || undefined}>
+                  {c ? (c.armurePhysique !== null ? <span class="nombre">{c.armurePhysique} / {c.armureMagique}</span> : c.defense ? <span class="brut">{premiereLigne(c.defense)}</span> : <span class="vide">—</span>) : <span class="vide">—</span>}
+                </td>
+                <td class="bligne__vitesse" title={c?.vitesse || undefined}>
+                  {c ? (c.vitesseSol !== null ? <span class="nombre">{c.vitesseSol} / {c.vitesseNage}</span> : c.vitesse ? <span class="brut">{premiereLigne(c.vitesse)}</span> : <span class="vide">—</span>) : <span class="vide">—</span>}
+                </td>
+                {FPVSIA.map((k, n) => (
+                  <td class="nombre carac">{c?.fpvsia[n] ?? (c?.variable ? <span class="varie" title={varie}>·</span> : <span class="vide">—</span>)}</td>
+                ))}
+                <td class="bligne__liste">{c?.attaques.length ? <ul role="list">{c.attaques.map((a) => <li title={a.texte}>{a.nom}</li>)}</ul> : <span class="vide">—</span>}</td>
+                <td class="bligne__liste bligne__capacites">
+                  {c?.capacites.length ? (
+                    <ul role="list">
+                      {c.capacites.map((x) => (
+                        <li>
+                          {x.prefixe && <span class="prefixe">{x.prefixe}</span>} {x.nom}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <span class="vide">—</span>
+                  )}
+                </td>
+                {(['vulnerabilites', 'resistances', 'immunites'] as const).map((col) => (
+                  <td class="bligne__cibles">
+                    {c?.[col].length ? (
+                      <ul role="list">
+                        {c[col].map((x) => (
+                          <li class={`bcible bcible--${x.sens}`} title={SENS_TITRE[x.sens]}>
+                            {x.cible}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <span class="vide">—</span>
+                    )}
+                  </td>
+                ))}
+                <td class="bligne__lieux">{l.texteLieux ? <span class="bcourt">{l.texteLieux}</span> : <span class="vide">—</span>}</td>
+              </tr>
+              <tr class="bligne__fiche" id={fiche} hidden>
+                <td colspan={COLONNES.length}>
+                  <article class="bfiche" aria-labelledby={`${fiche}-titre`}>
+                    <header class="bfiche__tete">
+                      <h3 id={`${fiche}-titre`}>{l.nom}</h3>
+                      <p class="bfiche__sous-titre">
+                        {c ? (
+                          <>
+                            Créature échelle {c.echelle}
+                            {[c.type, c.alignement, c.categorieBrut].filter(Boolean).length > 0 && <> · {[c.type, c.alignement, c.categorieBrut].filter(Boolean).join(' | ')}</>}
+                          </>
+                        ) : (
+                          <>{l.espece.ep} · pas de carte de combat dans le doc</>
+                        )}
+                      </p>
+                      <button type="button" class="bfiche__fermer" aria-label={`Fermer la fiche de ${l.nom}`}>
+                        Fermer
+                      </button>
+                    </header>
+                    <div class="bfiche__corps">
+                      <section class="bfiche__espece" aria-label="L’espèce">
+                        <h4>
+                          {l.espece.nom} <span class="muted">({l.espece.ep})</span>
+                        </h4>
+                        {l.espece.description && <p class="texte">{l.espece.description}</p>}
+                        {l.espece.lieu && (
+                          <p>
+                            <strong>Lieu de rencontre :</strong> {l.espece.lieu}
+                          </p>
+                        )}
+                        {l.espece.complement && <p class="texte">{l.espece.complement}</p>}
+                      </section>
+                      {c && (
+                        <section class="bfiche__carte" aria-label="La carte">
+                          <h4>Carte</h4>
+                          {c.variable && <p class="varie-note">{varie.replace(' (voir la fiche)', '')}</p>}
+                          <dl class="brubriques">
+                            {c.rubriques.map((r) => (
+                              <div class={`brubrique brubrique--${r.rubrique}`}>
+                                <dt>{r.titre}</dt>
+                                <dd>
+                                  {r.rubrique === 'capacites' && c.capacites.length ? (
+                                    <ul class="bcapacites" role="list">
+                                      {c.capacites.map((x) => (
+                                        <li>
+                                          {x.prefixe && <span class="prefixe">{x.prefixe}</span>} <strong>{x.nom}.</strong> <span class="texte">{x.texte}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  ) : r.texte ? (
+                                    <span class="texte">{r.texte}</span>
+                                  ) : (
+                                    <span class="vide">—</span>
+                                  )}
+                                </dd>
+                              </div>
+                            ))}
+                          </dl>
+                        </section>
+                      )}
+                      {l.espece.blocs.length > 0 && (
+                        <section class="bfiche__blocs" aria-label="Compléments de l’espèce">
+                          {l.espece.blocs.map((b) => (
+                            <details class="bbloc">
+                              <summary>{b.titre}</summary>
+                              <p class="texte">{b.texte}</p>
+                            </details>
+                          ))}
+                        </section>
+                      )}
+                      {l.espece.butin.length > 0 && (
+                        <section class="bfiche__butin" aria-label="Butin">
+                          <h4>Butin <span class="muted">(score au 3d100)</span></h4>
+                          <div class="bbutin__defile">
+                            <table class="bbutin">
+                              <thead>
+                                <tr>
+                                  <th scope="col">Score</th>
+                                  {Object.entries(CATEGORIES).map(([k, v]) => (
+                                    <th scope="col" class={c?.categorie === k ? 'est-sienne' : undefined}>
+                                      {v}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {l.espece.butin.map((t) => (
+                                  <tr>
+                                    <th scope="row" class="nombre">{t.score}</th>
+                                    {(Object.keys(CATEGORIES) as (keyof typeof CATEGORIES)[]).map((k) => (
+                                      <td class={c?.categorie === k ? 'est-sienne' : undefined}>{t[k] ? <span class="texte">{t[k]}</span> : <span class="vide">—</span>}</td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </section>
+                      )}
+                    </div>
+                  </article>
+                </td>
+              </tr>
+            </tbody>
+          );
+        })
+      }
+    </table>
+  </div>
+  <p class="btableau__vide" data-aucune hidden>Aucun monstre ne correspond à ces critères.</p>
+</section>

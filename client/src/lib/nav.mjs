@@ -51,7 +51,7 @@ export const NAV = [
       { label: 'Chronologie' },
       { label: 'Carte & lieux' },
       { label: 'Mythologie', path: 'lore/les-divinites/' },
-      { label: 'Bestiaire' },
+      { label: 'Bestiaire', path: 'bestiaire/' },
       { label: 'Factions', path: 'lore/temples-cultes-guildes/' },
     ],
   },

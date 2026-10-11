@@ -14,11 +14,12 @@ const db = ouvrirBase({ sansExemples: false });
 const sections = lister(db);
 const objets = sections.flatMap((s) => s.objets);
 
-test('lireSchema : 16 sections, 168 tables, 35 vues, 2 tables de recherche ; descriptions et marques « dérivée »', () => {
+test('lireSchema : 17 sections (dont la 8 bis des monstres), 181 tables, 35 vues, 2 tables de recherche ; descriptions et marques « dérivée »', () => {
   const lues = lireSchema(schemaTexte).filter((s) => s.objets.length);
-  assert.equal(lues.length, 16);
+  assert.equal(lues.length, 17);
+  assert.ok(lues.some((s) => s.titre.startsWith('8 bis. BESTIAIRE 2.0')), 'section 8 bis (migration 0029)');
   const tous = lues.flatMap((s) => s.objets);
-  assert.equal(tous.filter((o) => o.genre === 'table').length, 168);
+  assert.equal(tous.filter((o) => o.genre === 'table').length, 181);
   assert.equal(tous.filter((o) => o.genre === 'vue').length, 35);
   assert.equal(tous.filter((o) => o.genre.startsWith('table de recherche')).length, 2);
   const page = tous.find((o) => o.nom === 'page');
@@ -28,7 +29,7 @@ test('lireSchema : 16 sections, 168 tables, 35 vues, 2 tables de recherche ; des
 });
 
 test('lister : toutes les tables et vues explorables (hors recherche plein texte), avec leur nombre de lignes', () => {
-  assert.equal(objets.length, 168 + 35);
+  assert.equal(objets.length, 181 + 35);
   assert.ok(!objets.some((o) => /_fts$/.test(o.nom)), 'les tables de recherche ne sont pas explorables');
   const n = (nom) => objets.find((o) => o.nom === nom).nbLignes;
   assert.equal(n('page'), readdirSync(join(racine, 'client', 'src', 'content', 'wiki')).reduce((s, t) => s + readdirSync(join(racine, 'client', 'src', 'content', 'wiki', t)).length, 0));

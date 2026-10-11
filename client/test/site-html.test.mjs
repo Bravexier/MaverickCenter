@@ -77,10 +77,11 @@ test('/galeries/ : toutes les images ; /archives/ : les documents sources et l�
   for (const titre of ['Classeurs et documents du jeu', 'Fiches de personnage automatiques', 'L’ancien wiki']) assert.ok(archives.includes(`>${titre}</h2>`), titre);
   assert.ok(!archives.includes('Documents introuvables') && !archives.includes('sans titre'), 'chaque document a son titre');
   assert.match(archives, /<a href="https:\/\/docs\.google\.com\/spreadsheets\/d\/1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I\/edit[^"]*" rel="noopener noreferrer" target="_blank">Classe Maverick V7<\/a>/);
-  // CODEX Maverick : la copie du propriétaire (2026-10-11), l'original en « Document d'origine »
+  // CODEX Maverick et Bestiaire 2.0 : les copies du propriétaire (2026-10-11), l'original en « Document d'origine »
   assert.match(archives, /<a href="https:\/\/docs\.google\.com\/document\/d\/1tH-T9k-a3sADBtKWHxcuMcN94_VA8-Zo2BTzee9O7Tg\/edit[^"]*" rel="noopener noreferrer" target="_blank">CODEX Maverick<\/a>/);
   assert.match(archives, /<a href="https:\/\/docs\.google\.com\/document\/d\/1CwDqDKurMOdqig3ozX4NQETbBW9sggsxEqM1WfbOG5M\/edit[^"]*" rel="noopener noreferrer" target="_blank">Document d’origine<\/a>/);
-  assert.match(archives, /<a href="https:\/\/docs\.google\.com\/document\/d\/1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8\/edit[^"]*" rel="noopener noreferrer" target="_blank">Bestiaire 2\.0<\/a>/);
+  assert.match(archives, /<a href="https:\/\/docs\.google\.com\/document\/d\/1WWCmI4nwkBnLcvkEsQEd-Cd_P5rb22NDJllCTO5yhsE\/edit[^"]*" rel="noopener noreferrer" target="_blank">Bestiaire 2\.0<\/a>/);
+  assert.match(archives, /<a href="https:\/\/docs\.google\.com\/document\/d\/1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8\/edit[^"]*" rel="noopener noreferrer" target="_blank">Document d’origine<\/a>/);
   assert.match(archives, /href="https:\/\/maverick-jdr\.fandom\.com\/fr\/wiki\/Progression"/);
   assert.ok(!archives.includes('payoumorfot'), 'pas d’adresse de courriel du registre');
 });

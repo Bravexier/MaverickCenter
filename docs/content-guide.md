@@ -222,6 +222,12 @@ et **tout lien vers un métier mène à sa ligne** (`[[Forgeron]]` → `/metiers
 le plugin des `[[liens]]`, l'index de recherche et l'onglet DB. Seule « Règles des métiers » (`PAGE_DES_REGLES`, sans ligne dans `metier`) garde sa page, citée au-dessus du tableau.
 `test/metiers.test.mjs` vérifie que les autres pages du type sont exactement les lignes de `metier` ; `test/metiers-html.test.mjs` contrôle le site construit (CI après le build).
 
+## Bestiaire (`/bestiaire/`) : deux tableaux filtrables
+
+Les monstres du Google Doc « Bestiaire 2.0 » et, à part, les créatures invoquées : un onglet et un grand tableau chacun, avec recherche, filtres à cases
+et tri, une fiche sous chaque ligne ; rendus depuis les tables (`lib/bestiaire-db.mjs`), jamais depuis un Markdown. Les monstres n'ont pas de page.
+La page, l'extraction du doc et les questions en attente : [`bestiaire.md`](bestiaire.md).
+
 ## Pages de classe : un gabarit commun, alimenté par la base
 
 Les 39 pages de `/classes/<classe>/` sont rendues comme les pages de magie et de race : `components/classes/ClassePage.astro` (avec `ClasseDons`, `ChoixDeDons`, `DonCarte`) affiche
