@@ -141,7 +141,7 @@ enregistrement reçoit `409` et la page dit combien d'éléments ont été retir
 habituel : les saisies non enregistrées sont perdues). Tant que ces lignes sont dans les notes, une **bannière** en haut de `/fiche/` les résume
 (« Règles modifiées : 1 élément retiré de cette fiche le 11/10/2026. », lien vers les notes ; `resumeDesRetraits`) ; elle part quand le joueur les
 efface, et ne s'imprime pas (les notes, si). Une race, une classe ou une magie disparue n'est pas retirée (non tranché : la reconstruction reste
-bloquée). Une fiche « validée » le reste après un retrait : aucun contrôle ne signale le manque.
+bloquée), ni un don, une spécialité ou un sort qui en relève. Une fiche « validée » le reste après un retrait : aucun contrôle ne signale le manque.
 
 ### Joueurs, prétirés, groupes et visibilité (demande du propriétaire)
 

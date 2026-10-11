@@ -48,7 +48,9 @@ est rejoué (site de dev, ci-dessous). Un **don, une spécialité (avec les dons
 règles n'ont plus est alors **retiré des fiches** qui l'utilisent, avec une note datée dans chacune (décision R42, « Fiches de personnage (R42) »
 ci-dessous) ; `/api/etat` en donne la liste (`base.retraits` : `{ le, fiches }`, la dernière liste non vide, datée, gardée dans `vivante.json` par les
 reconstructions qui ne retirent rien et au redémarrage). **Toute autre ligne qui ne passe pas** — une fiche cite une race, une classe, une magie… qui
-n'existe plus, une colonne remplie a disparu du schéma, une contrainte a changé — fait garder la base en place telle quelle (sans retrait ni note) :
+n'existe plus (y compris un don, une spécialité ou un sort dont la classe ou la magie a disparu : un sort d'une magie supprimée chez un Potentiel
+Illimité, un don d'une classe supprimée sur une fiche qui n'a pas la classe, qui ne sont pas retirés), une colonne remplie a disparu du schéma, une
+contrainte a changé — fait garder la base en place telle quelle (sans retrait ni note) :
 le service continue avec elle (règles d'avant) et `/api/etat` donne l'erreur, par exemple `personnage_classe.classe_id = « classes/x » absent de
 classe (1 ligne(s))`. Il faut alors une livraison qui règle le cas : migration de la section 13 (`data/migrations/`) ou correction des règles. La base
 remplacée est d'abord archivée (`db/archives/`) : l'archive garde donc la base d'avant les retraits.
@@ -186,7 +188,8 @@ supprimé par une livraison en est retirée, avec une note datée, quand la base
 fiches », « Il en va de même pour les sorts ou métiers supprimés » ; `serveur/fiches-retraits.mjs`). Supprimer depuis le site un don, une spécialité
 ou un métier qu'une fiche utilise le **retire de la fiche**, qui reste : la ligne `personnage_capacite` part, `personnage_classe.specialite_id`
 passe à `NULL` (la classe reste) avec les dons choisis de la spécialité, `personnage.metier_id` passe à `NULL` (un sort, que le site ne supprime pas
-encore, partirait de `personnage_sort` ; à la reconstruction, les quatre sont retirés). Le retrait se fait **dans le même lot**, avant la suppression
+encore, partirait de `personnage_sort` ; à la reconstruction, les quatre sont retirés, sauf un don, une spécialité ou un sort dont la classe ou la
+magie a disparu aussi : celle-ci reste un blocage, hors R33). Le retrait se fait **dans le même lot**, avant la suppression
 de la règle, **en SQL direct** : jamais au journal (`TABLES_INTERDITES` contient toute la section 13 : une écriture de fiche par le rédacteur du lot
 est refusée), donc jamais dans `data/rows` ni dans le résumé du lot (qui va dans l'historique et la note de version : ni nom ni compte de fiches) ;
 un lot refusé annule aussi les retraits. Chaque fiche touchée reçoit **une ligne datée par élément** à la fin de ses notes (« NOTE », BA53 ; le

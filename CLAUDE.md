@@ -246,7 +246,7 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   Décision R42 : un don, une spécialité (avec ses dons choisis), un sort ou un métier supprimé des règles est **retiré des fiches** (site de dev : dans le lot ; livraison : à la reconstruction
   de la base vivante, après le rejeu), avec une ligne datée par élément à la fin de `notes` (`lib/fiche-format.mjs#ligneDeRetrait`) ; un élément modifié ou renommé ne touche pas les fiches
   (elles n'ont que des identifiants). Ces écritures se font en SQL direct (`serveur/fiches-retraits.mjs`), **jamais par le rédacteur du journal `w`** (qui refuse la section 13) : rien des
-  fiches ne va au journal, dans `data/rows` ni dans le résumé d'un lot. Une race, une classe ou une magie disparue bloque toujours la reconstruction.
+  fiches ne va au journal, dans `data/rows` ni dans le résumé d'un lot. Une race, une classe ou une magie disparue bloque toujours la reconstruction, y compris par un don, une spécialité ou un sort qui en relève (non retiré).
 
 ## Conventions de travail
 

@@ -343,6 +343,52 @@ test('une fiche qui cite une classe disparue : rien ne change (même pas le retr
   assert.ok(!existsSync(join(dossier, DOSSIER_ARCHIVES)), 'rien archivé');
 });
 
+test('hors R33 — un sort d’une magie disparue (prétiré au Potentiel Illimité) ou un don d’une classe disparue (fiche sans la classe) : rien ne change, rien n’est retiré, l’erreur nomme la référence', () => {
+  // un don d'une autre classe que le Guerrier (lu dans la base) ; sa classe disparaîtra avec ses spécialités et ses dons
+  const don = valeur(REGLES, "SELECT id, classe_id FROM capacite WHERE classe_id <> 'classes/guerrier' AND nature = 'classe' ORDER BY id LIMIT 1");
+  const cas = [
+    {
+      // le Potentiel Illimité pioche ses sorts dans toutes les magies : la fiche est conforme ; la magie du Feu disparaît avec ses sorts
+      fiche: (db) => {
+        db.prepare("UPDATE personnage SET magie_innee_id = 'magies/potentiel-illimite' WHERE id = 'p-hors'").run();
+        db.prepare("INSERT INTO personnage_sort (personnage_id, sort_id, rang, niveau_maitrise) VALUES ('p-hors', ?, 1, 0)").run(UN_SORT_DE_FEU);
+      },
+      livraison: "DELETE FROM sort WHERE magie_id = 'magies/magie-du-feu'; DELETE FROM magie WHERE id = 'magies/magie-du-feu'",
+      probleme: `personnage_sort.sort_id = « ${UN_SORT_DE_FEU} » absent de sort (1 ligne(s))`,
+    },
+    {
+      // une fiche brouillon qui a le don sans avoir sa classe
+      fiche: (db) => db.prepare("INSERT INTO personnage_capacite (personnage_id, capacite_id) VALUES ('p-hors', ?)").run(don.id),
+      livraison: `DELETE FROM capacite WHERE classe_id = '${don.classe_id}'; DELETE FROM specialite WHERE classe_id = '${don.classe_id}';
+        DELETE FROM classe WHERE id = '${don.classe_id}'`,
+      probleme: `personnage_capacite.capacite_id = « ${don.id} » absent de capacite (1 ligne(s))`,
+    },
+  ];
+  for (const c of cas) {
+    const dossier = nouveau('db');
+    const { chemin } = preparerBaseVivante({ regles: REGLES, dossier });
+    const db = new DatabaseSync(chemin);
+    db.exec('PRAGMA foreign_keys = ON');
+    db.prepare(`INSERT INTO personnage (id, nature, nom, visibilite, statut, mode_classe, xp, alignement_loyal, alignement_chaotique, alignement_bon,
+      alignement_mauvais, bourse_pp, bourse_ro, bourse_rf, ambidextrie, notes, cree_le, modifie_le) VALUES ('p-hors', 'pretire', 'Témoin hors R33', 'tous', 'brouillon',
+      'mono', 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Note du joueur.', ?, ?)`).run(INSTANT, INSTANT);
+    c.fiche(db);
+    db.close();
+    const avant = lignesVivantes(chemin);
+    const inode = statSync(chemin).ino;
+    const etat = readFileSync(join(dossier, FICHIER_ETAT), 'utf8');
+    assert.throws(() => preparerBaseVivante({ regles: regles(c.livraison), dossier, instant: new Date('2026-10-11T08:30:00Z') }), (e) => {
+      assert.ok(e instanceof ErreurBaseVivante, e.message);
+      assert.deepEqual(e.problemes, [c.probleme]);
+      return true;
+    });
+    assert.equal(statSync(chemin).ino, inode, 'la base en place est gardée');
+    assert.deepEqual(lignesVivantes(chemin), avant, 'rien de retiré, aucune note');
+    assert.equal(valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p-hors'").notes, 'Note du joueur.');
+    assert.equal(readFileSync(join(dossier, FICHIER_ETAT), 'utf8'), etat, 'pas de liste de retraits');
+  }
+});
+
 test('R33 — un métier, un sort, un don ou une spécialité renommé : la fiche n’est pas touchée (ni note, ni version) et se lit sous le nouveau nom', () => {
   const dossier = nouveau('db');
   const { chemin } = preparerBaseVivante({ regles: REGLES, dossier });

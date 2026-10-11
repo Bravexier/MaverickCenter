@@ -7,7 +7,8 @@
 //     créer ce qu'une fiche cite) et avant le contrôle des clés, noms lus dans l'ancienne base attachée (`ancienne`).
 // Puis noterLesRetraits écrit les notes, une seule fois par fiche. Un élément seulement modifié (renommé…) ne touche pas les fiches : elles n'en gardent
 // que l'identifiant, qui ne change jamais (migration 0006). Une race, une classe ou une magie disparue n'est pas retirée ici (non tranché : la
-// reconstruction reste bloquée).
+// reconstruction reste bloquée), ni un don, une spécialité ou un sort dont la classe ou la magie a disparu (un sort d'une magie supprimée chez un
+// Potentiel Illimité, un don d'une classe supprimée sur une fiche qui n'a pas la classe) : sa clé reste rompue et bloque la reconstruction.
 // Les écritures dans les fiches se font en SQL direct, jamais par le rédacteur du journal (serveur/edition-journal.mjs#ouvrirLot, qui les refuse) : les
 // fiches ne vont ni au journal, ni dans data/rows. Elles restent dans la transaction de l'appelant (un lot refusé, une reconstruction bloquée les annulent).
 // Node seulement, sans dépendance : n'importe que le format des fiches (ni edition.mjs ni base-vivante.mjs, qui l'importent).
@@ -149,8 +150,9 @@ function lecteur(db, schema) {
 
 /**
  * Reconstruction de la base vivante (base-vivante.mjs#transferer, l'ancienne base attachée sous `ancienne`, clés étrangères coupées) : retire de `main`
- * les lignes de fiche dont le métier, la spécialité (couple spécialité, classe), le don ou le sort manque dans les nouvelles règles. Une spécialité dont la
- * classe a disparu n'est pas touchée : la classe disparue bloque la reconstruction (hors R33). Les noms se lisent dans l'ancienne base (celui de la classe,
+ * les lignes de fiche dont le métier, la spécialité (couple spécialité, classe), le don ou le sort manque dans les nouvelles règles. Une spécialité ou un
+ * don dont la classe a disparu, un sort dont la magie a disparu (classe et magie lues dans l'ancienne base) ne sont pas touchés : la classe ou la magie
+ * disparue bloque la reconstruction (hors R33), par la clé de la fiche restée rompue. Les noms se lisent dans l'ancienne base (celui de la classe,
  * de la spécialité d'un don et de la magie d'un sort dans les nouvelles règles quand elles l'ont encore) ; à défaut, l'identifiant. Un don choisi qui
  * dépendait d'une spécialité retirée à la même fiche est nommé sur la ligne de celle-ci.
  * @param {import('node:sqlite').DatabaseSync} db
@@ -180,7 +182,7 @@ export function retirerLesManquants(db, acc = nouveauxRetraitsDeFiches()) {
     ${A.joindre('classe', 'ac', `ac.id = ${classeDuDon}`)}
     LEFT JOIN main.specialite ms ON ms.id = ${specialiteDuDon}
     ${A.joindre('specialite', 'asp', `asp.id = ${specialiteDuDon}`)}
-    WHERE NOT EXISTS (SELECT 1 FROM main.capacite k WHERE k.id = pc.capacite_id)
+    WHERE NOT EXISTS (SELECT 1 FROM main.capacite k WHERE k.id = pc.capacite_id) AND EXISTS (SELECT 1 FROM main.classe c WHERE c.id = ${classeDuDon})
     ORDER BY p.id, pc.capacite_id`).all();
   const regroupes = new Set();
   for (const s of specialites) {
@@ -201,7 +203,7 @@ export function retirerLesManquants(db, acc = nouveauxRetraitsDeFiches()) {
     ${A.joindre('sort', 'a', 'a.id = ps.sort_id')}
     LEFT JOIN main.magie mm ON mm.id = ${magieDuSort}
     ${A.joindre('magie', 'am', `am.id = ${magieDuSort}`)}
-    WHERE NOT EXISTS (SELECT 1 FROM main.sort x WHERE x.id = ps.sort_id)
+    WHERE NOT EXISTS (SELECT 1 FROM main.sort x WHERE x.id = ps.sort_id) AND EXISTS (SELECT 1 FROM main.magie m WHERE m.id = ${magieDuSort})
     ORDER BY p.id, ps.rang`).all()) {
     aRetirer.push({ ...s, vise: 'sort', cle: [s.personnage, s.id], descripteur: { nature: 'sort', id: s.id, nom: s.nom ?? null, magie: s.magie ?? null, npm: s.npm ?? null,
       nm: s.niveau_maitrise ?? null, nm_livre: s.nm_livre ?? null, nm_cadeau: s.nm_cadeau ?? null } });
