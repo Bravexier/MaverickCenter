@@ -3,6 +3,7 @@
 Dépôt de projets autour de **Maverick JDR** (jeu de rôle high fantasy) :
 un **wiki** de pages interconnectées par mots-clés et un **générateur de fiche de personnage**.
 Interface et contenu en **français** ; identifiants de code, noms de fonctions et commits en anglais ou français, comme le code voisin.
+**Claude répond toujours en français** au propriétaire (demande du propriétaire) : messages, comptes rendus, questions et corps des PR, du début à la fin de chaque session, même quand le reste du contexte est en anglais.
 
 ## Règle d'or : ne jamais inventer de règles
 
