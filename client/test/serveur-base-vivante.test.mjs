@@ -1,6 +1,7 @@
 // Base vivante du service (client/serveur/base-vivante.mjs, docs/serveur.md) : copie de la base des règles publiée par le site, où le service
-// écrit les fiches (section 13 de data/schema.sql). Quand les règles changent, elle est refaite et ses lignes reprises ; si une seule ne passe
-// pas, rien ne change et l'erreur dit pourquoi. Tout se passe dans des dossiers temporaires, à partir de la base construite depuis data/rows.
+// écrit les fiches (section 13 de data/schema.sql). Quand les règles changent, elle est refaite et ses lignes reprises ; un don, une spécialité, un
+// sort ou un métier disparu est retiré des fiches avec une note datée (décision R33) ; si une autre ligne ne passe pas (race, classe, magie…, colonne,
+// contrainte), rien ne change et l'erreur dit pourquoi. Tout se passe dans des dossiers temporaires, à partir de la base construite depuis data/rows.
 import assert from 'node:assert/strict';
 import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -12,6 +13,7 @@ import {
   ouvrirBaseVivante, preparerBaseVivante,
 } from '../serveur/base-vivante.mjs';
 import { enregistrer } from '../serveur/edition.mjs';
+import { lireFiche, listerFiches } from '../serveur/fiches.mjs';
 import { cheminBase, trouverRacine } from '../src/lib/donnees.mjs';
 
 const racine = mkdtempSync(join(tmpdir(), 'maverick-vivante-'));
@@ -190,6 +192,9 @@ test('rejeu : un lot sans rapport AVANT la création d’un don qu’un prétir�
   assert.equal(res.rejeu.conflits, 0, JSON.stringify(res.rejeu));
   assert.equal(valeur(chemin, 'SELECT effet FROM capacite WHERE id = ?', don.id).effet, effet, 'la modification du lot 1 est gardée');
   assert.equal(valeur(chemin, 'SELECT count(*) AS n FROM personnage_capacite WHERE personnage_id = ? AND capacite_id = ?', 'p-rejeu', un).n, 1, 'la fiche est reprise');
+  // R33 : le retrait vient APRÈS le rejeu complet (le lot 2 crée le don que la fiche cite) : rien n'est retiré, aucune note
+  assert.deepEqual(res.fiches, []);
+  assert.deepEqual({ ...valeur(chemin, 'SELECT notes, modifie_le FROM personnage WHERE id = ?', 'p-rejeu') }, { notes: null, modifie_le: INSTANT });
   const db = lecture(chemin);
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
   db.close();
@@ -218,12 +223,105 @@ test('rejeu : une spécialité remplacée (supprimée, puis une autre créée) e
   assert.equal(res.rejeu.conflits, 0, JSON.stringify(res.rejeu));
   assert.equal(valeur(chemin, 'SELECT count(*) AS n FROM specialite WHERE id = ?', ancienne.id).n, 0, 'l’ancienne spécialité reste supprimée');
   assert.equal(valeur(chemin, 'SELECT specialite_id FROM personnage_classe WHERE personnage_id = ?', 'p-remplace').specialite_id, specialite);
+  assert.equal(valeur(chemin, 'SELECT count(*) AS n FROM personnage_capacite WHERE personnage_id = ? AND capacite_id = ?', 'p-remplace', un).n, 1);
+  assert.deepEqual(res.fiches, [], 'R33 : rien de retiré (la spécialité et le don sont créés par un lot rejoué avant le retrait)');
+  assert.deepEqual({ ...valeur(chemin, 'SELECT notes, modifie_le FROM personnage WHERE id = ?', 'p-remplace') }, { notes: null, modifie_le: INSTANT });
   const db = lecture(chemin);
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
   db.close();
 });
 
-test('une fiche qui cite une règle disparue : rien ne change, l’erreur nomme la colonne, la valeur et la table visée', () => {
+/** Un prétiré (p1, de remplir) qui a la première spécialité du Guerrier et un don à choix de cette spécialité, lus dans la base ; et ses notes. */
+function avecSpecialite(chemin, notes = null) {
+  const db = new DatabaseSync(chemin);
+  try {
+    const spec = db.prepare("SELECT id, nom FROM specialite WHERE classe_id = 'classes/guerrier' ORDER BY rang LIMIT 1").get();
+    const don = db.prepare("SELECT id, nom FROM capacite WHERE specialite_id = ? AND nature = 'choix' ORDER BY ligne, rang LIMIT 1").get(spec.id);
+    assert.ok(spec && don, 'le Guerrier a une spécialité avec un don à choix');
+    db.prepare("UPDATE personnage_classe SET specialite_id = ? WHERE personnage_id = 'p1'").run(spec.id);
+    db.prepare("INSERT INTO personnage_capacite (personnage_id, capacite_id) VALUES ('p1', ?)").run(don.id);
+    db.prepare("UPDATE personnage SET notes = ? WHERE id = 'p1'").run(notes);
+    return { spec: { ...spec }, don: { ...don } };
+  } finally {
+    db.close();
+  }
+}
+const versionDe = (chemin, id) => {
+  const db = lecture(chemin);
+  try {
+    return lireFiche(db, id).version;
+  } finally {
+    db.close();
+  }
+};
+const SUITE = ' n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.';
+
+test('R33 — une fiche qui cite un métier, un sort, une spécialité ou un don disparu : la base est refaite, l’élément retiré, une note datée', () => {
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: REGLES, dossier });
+  remplir(chemin);
+  const { spec, don } = avecSpecialite(chemin, 'Note du joueur.');
+  const ecrire = new DatabaseSync(chemin);
+  ecrire.prepare("UPDATE personnage SET metier_id = ? WHERE id = 'p2'").run(UN_METIER);
+  ecrire.close();
+  const avant = lignesVivantes(chemin);
+  const versionAvant = versionDe(chemin, 'p1');
+  // les noms des éléments retirés, lus dans les règles d'avant
+  const metier = valeur(REGLES, 'SELECT nom FROM metier WHERE id = ?', UN_METIER).nom;
+  const sort = valeur(REGLES, 'SELECT s.nom, s.niveau, m.nom AS magie FROM sort s JOIN magie m ON m.id = s.magie_id WHERE s.id = ?', UN_SORT_DE_FEU);
+  const guerrier = valeur(REGLES, "SELECT nom FROM classe WHERE id = 'classes/guerrier'").nom;
+
+  const livraison = regles(`DELETE FROM metier WHERE id = '${UN_METIER}'; DELETE FROM sort WHERE id = '${UN_SORT_DE_FEU}';
+    DELETE FROM capacite WHERE specialite_id = '${spec.id}'; DELETE FROM specialite WHERE id = '${spec.id}'`);
+  const r = preparerBaseVivante({ regles: livraison, dossier, instant: new Date('2026-10-11T08:30:00Z') });
+  assert.equal(r.refaite, true);
+  const retraits = {
+    metier: `le métier « ${metier} »`,
+    specialite: `la spécialité « ${spec.nom} » (classe ${guerrier}, avec le don choisi « ${don.nom} »)`,
+    sort: `le sort « ${sort.nom} » (magie ${sort.magie}, NPM ${sort.niveau})`,
+  };
+  const ligneDe = (d) => `[11/10/2026] Retrait (règles modifiées) : ${d}${SUITE}`;
+  assert.deepEqual(r.fiches, [
+    { fiche: 'Aldric', retraits: [retraits.metier, retraits.specialite, retraits.sort] },
+    { fiche: 'fiche de joueur n° 1', retraits: [retraits.metier] },
+  ]);
+  // les fiches : l'élément retiré, la ligne de classe gardée, une ligne de note par élément à la suite du texte du joueur
+  const db = lecture(chemin);
+  try {
+    assert.deepEqual(db.prepare("SELECT id, metier_id, notes, modifie_le FROM personnage ORDER BY id").all().map((l) => ({ ...l })), [
+      { id: 'p1', metier_id: null, notes: ['Note du joueur.', ...[retraits.metier, retraits.specialite, retraits.sort].map(ligneDe)].join('\n'), modifie_le: '2026-10-11T08:30:00Z' },
+      { id: 'p2', metier_id: null, notes: ligneDe(retraits.metier), modifie_le: '2026-10-11T08:30:00Z' },
+    ]);
+    assert.deepEqual(db.prepare("SELECT rang, classe_id, specialite_id FROM personnage_classe WHERE personnage_id = 'p1'").all().map((l) => ({ ...l })),
+      [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: null }]);
+    assert.equal(db.prepare('SELECT count(*) AS n FROM personnage_capacite').get().n, 0);
+    assert.equal(db.prepare("SELECT count(*) AS n FROM personnage_sort WHERE personnage_id = 'p1'").get().n, 0);
+    assert.equal(db.prepare("SELECT count(*) AS n FROM personnage_inventaire WHERE personnage_id = 'p1'").get().n, 1, 'le reste de la fiche est repris');
+    // les fiches ne citent plus rien d'absent (les règles de la livraison d'essai, elles, ont été coupées sans leurs lignes de détail)
+    for (const t of TABLES_FICHES) assert.deepEqual(db.prepare(`PRAGMA foreign_key_check("${t}")`).all(), [], t);
+  } finally {
+    db.close();
+  }
+  assert.notEqual(versionDe(chemin, 'p1'), versionAvant, 'la version de la fiche change (une fiche ouverte ailleurs reçoit 409)');
+  // la liste, dans vivante.json (/api/etat) ; le nom d'une fiche de joueur ne sort pas
+  assert.deepEqual(lireEtat(dossier).retraits, { le: '2026-10-11T08:30:00Z', fiches: r.fiches });
+  assert.ok(!JSON.stringify(r).includes('Brune'));
+  assert.ok(!readFileSync(join(dossier, FICHIER_ETAT), 'utf8').includes('Brune'));
+  // l'archive garde la base d'avant les retraits
+  assert.deepEqual(lignesVivantes(r.archive), avant);
+
+  // une livraison sans rapport : rien de plus retiré, pas de double note, la dernière liste gardée
+  const notes = valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p1'").notes;
+  const r2 = preparerBaseVivante({ regles: regles(`DELETE FROM metier WHERE id = '${UN_METIER}'; UPDATE race SET nom = 'Humain 2' WHERE id = 'races/humain'`), dossier,
+    instant: new Date('2026-10-12T08:30:00Z') });
+  assert.equal(r2.refaite, true);
+  assert.deepEqual(r2.fiches, []);
+  assert.equal(valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p1'").notes, notes);
+  assert.deepEqual(lireEtat(dossier).retraits, { le: '2026-10-11T08:30:00Z', fiches: r.fiches });
+  assert.equal(lireEtat(dossier).refaite_le, '2026-10-12T08:30:00Z');
+});
+
+test('une fiche qui cite une classe disparue : rien ne change (même pas le retrait d’un métier disparu), l’erreur nomme la colonne, la valeur et la table visée', () => {
   const dossier = nouveau('db');
   const { chemin } = preparerBaseVivante({ regles: REGLES, dossier });
   remplir(chemin);
@@ -231,29 +329,75 @@ test('une fiche qui cite une règle disparue : rien ne change, l’erreur nomme 
   const inode = statSync(chemin).ino;
   const etat = readFileSync(join(dossier, FICHIER_ETAT), 'utf8');
 
-  const sansMetier = regles(`DELETE FROM metier WHERE id = '${UN_METIER}'`);
-  assert.throws(() => preparerBaseVivante({ regles: sansMetier, dossier }), (e) => {
+  const livraison = regles(`DELETE FROM metier WHERE id = '${UN_METIER}'; DELETE FROM classe WHERE id = 'classes/guerrier'`);
+  assert.throws(() => preparerBaseVivante({ regles: livraison, dossier }), (e) => {
     assert.ok(e instanceof ErreurBaseVivante, e.message);
     assert.match(e.message, /gardée telle quelle/);
-    assert.deepEqual(e.problemes, [`personnage.metier_id = « ${UN_METIER} » absent de metier (1 ligne(s))`]);
+    assert.deepEqual(e.problemes, ['personnage_classe.classe_id = « classes/guerrier » absent de classe (1 ligne(s))'], 'le métier, lui, aurait été retiré');
     return true;
   });
   assert.equal(statSync(chemin).ino, inode);
-  assert.deepEqual(lignesVivantes(chemin), avant);
+  assert.deepEqual(lignesVivantes(chemin), avant, 'p1 garde son métier, sans note');
   assert.equal(readFileSync(join(dossier, FICHIER_ETAT), 'utf8'), etat);
   assert.deepEqual(sansArchives(dossier), [FICHIER_BASE, FICHIER_ETAT], 'copie provisoire supprimée');
   assert.ok(!existsSync(join(dossier, DOSSIER_ARCHIVES)), 'rien archivé');
+});
 
-  // Clé composée (spécialité, classe) : la spécialité choisie a disparu.
-  const db = new DatabaseSync(chemin);
-  const specialite = db.prepare("SELECT id FROM specialite WHERE classe_id = 'classes/guerrier' ORDER BY rang LIMIT 1").get().id;
-  db.prepare("UPDATE personnage_classe SET specialite_id = ? WHERE personnage_id = 'p1'").run(specialite);
-  db.close();
-  const sansSpecialite = regles(`DELETE FROM specialite WHERE id = '${specialite}'`);
-  assert.throws(() => preparerBaseVivante({ regles: sansSpecialite, dossier }), (e) => {
-    assert.deepEqual(e.problemes, [`personnage_classe.specialite_id+classe_id = « ${specialite} / classes/guerrier » absent de specialite (1 ligne(s))`]);
-    return true;
-  });
+test('R33 — un métier, un sort, un don ou une spécialité renommé : la fiche n’est pas touchée (ni note, ni version) et se lit sous le nouveau nom', () => {
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: REGLES, dossier });
+  remplir(chemin);
+  const { spec, don } = avecSpecialite(chemin);
+  const avant = lignesVivantes(chemin);
+  const versionAvant = versionDe(chemin, 'p1');
+  const libre = (table, nom) => {
+    let n = nom;
+    for (let i = 2; valeur(REGLES, `SELECT 1 AS x FROM "${table}" WHERE nom = ?`, n); i += 1) n = `${nom} ${i}`;
+    return n;
+  };
+  const noms = { metier: libre('metier', 'Métier renommé R33'), sort: libre('sort', 'Sort renommé R33'), capacite: libre('capacite', 'Don renommé R33'),
+    specialite: libre('specialite', 'SPÉCIALITÉ RENOMMÉE R33') };
+  const sql = [
+    ['metier', UN_METIER], ['sort', UN_SORT_DE_FEU], ['capacite', don.id], ['specialite', spec.id],
+  ].map(([t, id]) => `UPDATE ${t} SET nom = '${noms[t].replaceAll("'", "''")}' WHERE id = '${id.replaceAll("'", "''")}';`).join('\n');
+  const r = preparerBaseVivante({ regles: regles(sql), dossier, instant: new Date('2026-10-11T08:30:00Z') });
+  assert.equal(r.refaite, true);
+  assert.deepEqual(r.fiches, []);
+  assert.deepEqual(lignesVivantes(chemin), avant, 'notes et modifie_le compris');
+  assert.equal(versionDe(chemin, 'p1'), versionAvant);
+  const lu = lecture(chemin);
+  try {
+    const aldric = listerFiches(lu).find((f) => f.id === 'p1');
+    assert.equal(aldric.metier, noms.metier);
+    assert.equal(aldric.classes[0].specialite, noms.specialite);
+  } finally {
+    lu.close();
+  }
+  assert.equal('retraits' in lireEtat(dossier), false);
+});
+
+test('R33 — un don retiré d’un prétiré sur le site de dev, puis la base refaite par une livraison sans rapport : la note reste seule (pas de double note)', () => {
+  const dossier = nouveau('db');
+  const { chemin } = preparerBaseVivante({ regles: REGLES, dossier });
+  const vivante = ouvrirBaseVivante(chemin);
+  const r = enregistrer(vivante, { page: 'classes/guerrier', operations: [
+    { op: 'creer', entite: 'capacite', valeurs: { classe_id: 'classes/guerrier', niveau: 5, nom: 'Essai note unique un', type: 'Passif' } },
+    { op: 'creer', entite: 'capacite', valeurs: { classe_id: 'classes/guerrier', avec: '@0', nom: 'Essai note unique deux', type: 'Passif' } },
+  ] });
+  const [un] = r.crees.map((c) => c.id);
+  pretire(vivante, 'p-note', { classe: 'classes/guerrier', capacites: [un] });
+  const s = enregistrer(vivante, { page: 'classes/guerrier', operations: [{ op: 'supprimer', entite: 'capacite', cle: { id: un } }] });
+  assert.deepEqual(s.fiches.map((f) => f.fiche), ['Prétiré p-note']);
+  const notes = vivante.prepare("SELECT notes FROM personnage WHERE id = 'p-note'").get().notes;
+  assert.equal(notes.split('\n').length, 1);
+  vivante.close();
+
+  const res = preparerBaseVivante({ regles: regles(`UPDATE metier SET remarque = 'livraison sans rapport' WHERE id = '${UN_METIER}'`), dossier });
+  assert.equal(res.refaite, true);
+  assert.equal(res.rejeu.conflits, 0, JSON.stringify(res.rejeu));
+  assert.deepEqual(res.fiches, []);
+  assert.equal(valeur(chemin, "SELECT notes FROM personnage WHERE id = 'p-note'").notes, notes);
+  assert.equal(valeur(chemin, "SELECT count(*) AS n FROM personnage_capacite WHERE personnage_id = 'p-note'").n, 0);
 });
 
 test('schéma changé : une colonne remplie qui disparaît est refusée ; une colonne ajoutée ou une colonne vide retirée passent', () => {

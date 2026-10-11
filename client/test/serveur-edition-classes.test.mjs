@@ -18,7 +18,7 @@ import { normalize } from '../src/lib/text.mjs';
 import { alternativesDe, placeNouvelleLigne } from '../src/lib/dons-edition.mjs';
 import { resumeDeDon } from '../src/lib/corps-classes.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
-import { ficheVide } from '../src/lib/fiche-format.mjs';
+import { ficheVide, jourDuRetrait, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 
 const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-classes-'));
 after(() => rmSync(racine, { recursive: true, force: true }));
@@ -415,55 +415,102 @@ test('D11 — supprimer un don : note de cellule, fiche, mots-clés, sources, en
   clesIntactes();
 });
 
-test('D11 — refus de suppression : don choisi par un prétiré (409 qui nomme la fiche), don de spécialité, introuvable', () => {
+/** Les modifications du journal sur une table des fiches de personnage : jamais (R33, les fiches s'écrivent hors du journal). */
+const modificationsDeFiches = () => ligne('SELECT count(*) AS n FROM modification WHERE table_nom IN (SELECT value FROM json_each(?))', JSON.stringify(TABLES_FICHES)).n;
+const SUITE_DU_RETRAIT = ' n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.';
+/** Une fiche de JOUEUR écrite comme le fera la 1.0 (le service ne la liste ni ne la lit) : son nom ne doit jamais sortir par l'édition. */
+function ficheDeJoueur(id, { specialite = null, capacites = [] } = {}) {
+  if (!ligne("SELECT 1 FROM utilisateur WHERE id = 'utilisateur-d11'")) {
+    db.prepare("INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES ('utilisateur-d11', 'Joueur D11', '2026-10-11T00:00:00Z')").run();
+  }
+  db.prepare(`INSERT INTO personnage (id, nature, proprietaire_id, visibilite, statut, nom, mode_classe, xp, alignement_loyal, alignement_chaotique, alignement_bon,
+    alignement_mauvais, bourse_pp, bourse_ro, bourse_rf, ambidextrie, cree_le, modifie_le) VALUES (?, 'joueur', 'utilisateur-d11', 'privee', 'brouillon', 'Secret du joueur',
+    'mono', 0, 0, 0, 0, 0, 0, 0, 0, 0, '2026-10-11T00:00:00Z', '2026-10-11T00:00:00Z')`).run(id);
+  db.prepare('INSERT INTO personnage_classe (personnage_id, rang, classe_id, specialite_id) VALUES (?, 1, ?, ?)').run(id, C1.id, specialite);
+  for (const k of capacites) db.prepare('INSERT INTO personnage_capacite (personnage_id, capacite_id) VALUES (?, ?)').run(id, k);
+}
+const retirerFicheDeJoueur = (id) => {
+  db.prepare('DELETE FROM personnage WHERE id = ?').run(id);
+  if (!ligne("SELECT 1 FROM personnage WHERE proprietaire_id = 'utilisateur-d11'")) db.prepare("DELETE FROM utilisateur WHERE id = 'utilisateur-d11'").run();
+};
+
+test('D11 / R33 — supprimer un don choisi : retiré du prétiré et de la fiche de joueur (anonyme), note datée, version changée ; refus restants', () => {
   const p = appel('POST', '/api/personnages/', { ...ficheVide('Fiche témoin D11'), classes: [{ rang: 1, classe_id: C1.id, specialite_id: C1.spec1 }], capacites: [{ capacite_id: C1.paire[0] }] });
   assert.equal(p.statut, 201, JSON.stringify(p.corps));
-  const r = supprimer('capacite', C1.paire[0]);
-  assert.equal(r.statut, 409);
-  assert.match(r.corps.erreur, /« Botte secrète » est choisi dans 1 fiche\(s\) : Fiche témoin D11\. Retirez-le de ces fiches d’abord/);
-  const etat = appel('POST', '/api/edition/classe/', { classe: C1.id }).corps;
-  assert.deepEqual(etat.fiches[C1.paire[0]], ['Fiche témoin D11']);
-  assert.deepEqual(etat.fiches[C1.spec1], ['Fiche témoin D11']);
-  const c = supprimer('capacite', C1.cartouche1);
-  assert.equal(c.statut, 409);
-  assert.match(c.corps.erreur, /« Lame courbe » est le don de la spécialité LAME COURBE : supprimez la spécialité \(elle emporte ses dons\)/);
-  assert.equal(supprimer('capacite', 'capacites/inconnu-d11').statut, 404);
-  assert.equal(supprimer('specialite', `${C1.id}#specialite:inconnue`).statut, 404);
-  const s = supprimer('specialite', C1.spec1);
-  assert.equal(s.statut, 409);
-  assert.match(s.corps.erreur, /La spécialité LAME COURBE \(ou l’un de ses dons\) est choisie dans 1 fiche\(s\) : Fiche témoin D11/);
-  // une fiche de JOUEUR (écrite comme le fera la 1.0 : le service ne la liste ni ne la lit) compte, mais son nom ne sort pas par l'édition
-  db.prepare("INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES ('utilisateur-d11', 'Joueur D11', '2026-10-11T00:00:00Z')").run();
-  const joueur = { ...ligne('SELECT * FROM personnage WHERE id = ?', p.corps.personnage.id), id: 'fiche-joueur-d11', nature: 'joueur', proprietaire_id: 'utilisateur-d11', visibilite: 'privee', nom: 'Secret du joueur' };
-  db.prepare(`INSERT INTO personnage (${Object.keys(joueur).map((c) => `"${c}"`).join(', ')}) VALUES (${Object.keys(joueur).map(() => '?').join(', ')})`).run(...Object.values(joueur));
-  db.prepare('INSERT INTO personnage_classe (personnage_id, rang, classe_id, specialite_id) VALUES (?, 1, ?, ?)').run(joueur.id, C1.id, C1.spec1);
-  db.prepare('INSERT INTO personnage_capacite (personnage_id, capacite_id) VALUES (?, ?)').run(joueur.id, C1.paire[1]);
+  const { id, version: v0 } = p.corps.personnage;
+  ficheDeJoueur('fiche-joueur-d11', { specialite: C1.spec1, capacites: [C1.paire[1]] });
   try {
-    assert.equal(appel('GET', `/api/personnages/${joueur.id}/`).statut, 404, 'le service ne lit pas une fiche de joueur');
+    assert.equal(appel('GET', '/api/personnages/fiche-joueur-d11/').statut, 404, 'le service ne lit pas une fiche de joueur');
+    // la page de la classe sait qui perdra quoi (information pour la confirmation, plus un blocage)
+    const etat = appel('POST', '/api/edition/classe/', { classe: C1.id }).corps;
+    assert.deepEqual(etat.fiches[C1.paire[0]], ['Fiche témoin D11']);
+    assert.deepEqual(etat.fiches[C1.paire[1]], ['fiche de joueur n° 1']);
+    assert.deepEqual(etat.fiches[C1.spec1], ['Fiche témoin D11', 'fiche de joueur n° 1']);
+    assert.ok(!JSON.stringify(etat).includes('Secret du joueur'), 'le nom d’une fiche de joueur ne sort pas');
+
+    const r = supprimer('capacite', C1.paire[0]);
+    assert.equal(r.statut, 200, JSON.stringify(r.corps));
+    const botte = `le don « Botte secrète » (classe ${C1.nom}, spécialité LAME COURBE, niveau 20)`;
+    assert.deepEqual(r.corps.fiches, [{ fiche: 'Fiche témoin D11', retraits: [botte] }]);
+    const relue = appel('GET', `/api/personnages/${id}/`).corps.personnage;
+    assert.deepEqual(relue.capacites, []);
+    assert.deepEqual(relue.classes, [{ rang: 1, classe_id: C1.id, specialite_id: C1.spec1 }], 'la spécialité reste : seul le don part');
+    assert.notEqual(relue.version, v0, 'une fiche ouverte ailleurs le voit (409 à son prochain enregistrement)');
+    assert.equal(relue.notes, `[${jourDuRetrait(relue.modifie_le)}] Retrait (règles modifiées) : ${botte}${SUITE_DU_RETRAIT}`);
+    assert.ok(!dernierResume().includes('Fiche témoin'), 'le résumé du lot (historique, data/rows) ne nomme pas les fiches');
+    assert.equal(modificationsDeFiches(), 0, 'rien des fiches au journal');
+
     const d = supprimer('capacite', C1.paire[1]);
-    assert.equal(d.statut, 409, JSON.stringify(d.corps));
-    assert.match(d.corps.erreur, /« Garde haute » est choisi dans 1 fiche\(s\) : fiche de joueur n° 1\./);
-    const sp = supprimer('specialite', C1.spec1);
-    assert.equal(sp.statut, 409);
-    assert.match(sp.corps.erreur, /est choisie dans 2 fiche\(s\) : Fiche témoin D11, fiche de joueur n° 1\./);
-    const vu = appel('POST', '/api/edition/classe/', { classe: C1.id }).corps;
-    assert.deepEqual(vu.fiches[C1.paire[1]], ['fiche de joueur n° 1']);
-    assert.deepEqual(vu.fiches[C1.spec1], ['Fiche témoin D11', 'fiche de joueur n° 1']);
-    for (const r of [d, sp, { corps: vu }]) assert.ok(!JSON.stringify(r.corps).includes('Secret du joueur'), 'le nom d’une fiche de joueur ne sort pas');
+    assert.equal(d.statut, 200, JSON.stringify(d.corps));
+    const garde = `le don « Garde haute » (classe ${C1.nom}, spécialité LAME COURBE, niveau 20)`;
+    assert.deepEqual(d.corps.fiches, [{ fiche: 'fiche de joueur n° 1', retraits: [garde] }]);
+    assert.ok(!JSON.stringify(d.corps).includes('Secret du joueur'), 'le nom d’une fiche de joueur ne sort pas');
+    assert.deepEqual(lignes("SELECT * FROM personnage_capacite WHERE personnage_id = 'fiche-joueur-d11'"), []);
+    const notes = ligne("SELECT notes FROM personnage WHERE id = 'fiche-joueur-d11'").notes;
+    assert.equal(notes.split('\n').length, 1);
+    assert.match(notes, /^\[\d\d\/\d\d\/\d{4}\] Retrait \(règles modifiées\) : le don « Garde haute »/);
+    assert.equal(modificationsDeFiches(), 0);
+
+    // refus gardés : don de spécialité, don ou spécialité introuvable
+    const c = supprimer('capacite', C1.cartouche1);
+    assert.equal(c.statut, 409);
+    assert.match(c.corps.erreur, /« Lame courbe » est le don de la spécialité LAME COURBE : supprimez la spécialité \(elle emporte ses dons\)/);
+    assert.equal(supprimer('capacite', 'capacites/inconnu-d11').statut, 404);
+    assert.equal(supprimer('specialite', `${C1.id}#specialite:inconnue`).statut, 404);
+    clesIntactes();
   } finally {
-    db.prepare('DELETE FROM personnage WHERE id = ?').run(joueur.id);
-    db.prepare("DELETE FROM utilisateur WHERE id = 'utilisateur-d11'").run();
+    retirerFicheDeJoueur('fiche-joueur-d11');
   }
 });
 
-test('D11 — supprimer une spécialité : elle emporte son don de spécialité et ses dons ; la bannière part ; une nouvelle du même nom prend -2', () => {
+test('D11 / R33 — supprimer une spécialité : elle emporte son don de spécialité et ses dons, et part des fiches avec les dons choisis ; la bannière part ; une nouvelle du même nom prend -2', () => {
   const op = creerDon({ classe_id: C1.id, specialite_id: C1.spec2, niveau: '15', nom: 'Volée', type: 'Action' });
   assert.equal(op.statut, 200, JSON.stringify(op.corps));
+  const volee = op.corps.crees[0].id;
   const siens = lignes('SELECT id FROM capacite WHERE specialite_id = ?', C1.spec2).map((k) => k.id);
   assert.equal(siens.length, 2);
-  const r = supprimer('specialite', C1.spec2);
-  assert.equal(r.statut, 200, JSON.stringify(r.corps));
-  assert.equal(dernierResume(), `Spécialité supprimée : ARC LONG (${C1.nom}, 2 don(s))`);
+  // un prétiré qui a la spécialité et l'un de ses dons ; une fiche de joueur qui n'a que la spécialité
+  const p = appel('POST', '/api/personnages/', { ...ficheVide('Témoin spécialité D11'), classes: [{ rang: 1, classe_id: C1.id, specialite_id: C1.spec2 }], capacites: [{ capacite_id: volee }] });
+  assert.equal(p.statut, 201, JSON.stringify(p.corps));
+  ficheDeJoueur('fiche-joueur-spec-d11', { specialite: C1.spec2 });
+  try {
+    const r = supprimer('specialite', C1.spec2);
+    assert.equal(r.statut, 200, JSON.stringify(r.corps));
+    assert.equal(dernierResume(), `Spécialité supprimée : ARC LONG (${C1.nom}, 2 don(s))`, 'le résumé ne nomme ni ne compte les fiches');
+    assert.deepEqual(r.corps.fiches, [
+      { fiche: 'Témoin spécialité D11', retraits: [`la spécialité « ARC LONG » (classe ${C1.nom}, avec le don choisi « Volée »)`] },
+      { fiche: 'fiche de joueur n° 1', retraits: [`la spécialité « ARC LONG » (classe ${C1.nom})`] },
+    ]);
+    assert.ok(!JSON.stringify(r.corps).includes('Secret du joueur'));
+    for (const fiche of [p.corps.personnage.id, 'fiche-joueur-spec-d11']) {
+      assert.deepEqual(lignes('SELECT rang, classe_id, specialite_id FROM personnage_classe WHERE personnage_id = ?', fiche).map((l) => ({ ...l })), [{ rang: 1, classe_id: C1.id, specialite_id: null }], 'la classe reste');
+      assert.deepEqual(lignes('SELECT * FROM personnage_capacite WHERE personnage_id = ?', fiche), []);
+      assert.equal(ligne('SELECT notes FROM personnage WHERE id = ?', fiche).notes.split('\n').length, 1, 'une ligne de note par élément retiré');
+    }
+    assert.equal(modificationsDeFiches(), 0);
+  } finally {
+    retirerFicheDeJoueur('fiche-joueur-spec-d11');
+  }
   assert.equal(ligne('SELECT 1 FROM specialite WHERE id = ?', C1.spec2), undefined);
   assert.equal(ligne("SELECT 1 FROM page_entite WHERE entite_table = 'specialite' AND entite_id = ?", C1.spec2), undefined);
   for (const id of siens) assert.equal(ligne('SELECT 1 FROM page WHERE id = ?', id), undefined, id);
@@ -474,6 +521,25 @@ test('D11 — supprimer une spécialité : elle emporte son don de spécialité 
   assert.equal(re.statut, 200, JSON.stringify(re.corps));
   assert.equal(re.corps.crees[0].id, `${C1.spec2}-2`, 'l’id d’une spécialité supprimée n’est pas repris');
   clesIntactes();
+});
+
+test('R33 — un lot refusé n’écrit rien dans les fiches : retrait et note annulés avec la suppression', () => {
+  const don = creerDon({ classe_id: C1.id, niveau: '1', nom: 'Don de la transaction', type: 'Passif' });
+  assert.equal(don.statut, 200, JSON.stringify(don.corps));
+  const k = don.corps.crees[0].id;
+  const p = appel('POST', '/api/personnages/', { ...ficheVide('Témoin transaction D11'), notes: 'Mes notes.', classes: [{ rang: 1, classe_id: C1.id }], capacites: [{ capacite_id: k }] });
+  assert.equal(p.statut, 201, JSON.stringify(p.corps));
+  const avant = appel('GET', `/api/personnages/${p.corps.personnage.id}/`).corps.personnage;
+  const r = enregistrer([
+    { op: 'supprimer', entite: 'capacite', cle: { id: k } },
+    { op: 'creer', entite: 'capacite', valeurs: { classe_id: C1.id, niveau: '1', type: 'Passif', inconnu: 1 } },
+  ]);
+  assert.equal(r.statut, 400, JSON.stringify(r.corps));
+  const apres = appel('GET', `/api/personnages/${p.corps.personnage.id}/`).corps.personnage;
+  assert.deepEqual(apres.capacites, [{ capacite_id: k }]);
+  assert.equal(apres.notes, 'Mes notes.');
+  assert.equal(apres.version, avant.version);
+  assert.ok(donDe(k), 'le don est toujours là');
 });
 
 test('D11 — messages accordés : « Nouvelle spécialité », « Nouveau don »', () => {

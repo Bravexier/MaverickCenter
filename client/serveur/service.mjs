@@ -97,6 +97,10 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       const r = preparerBaseVivante({ regles, dossier });
       if (r.refaite) journal(`base vivante faite pour les règles ${r.empreinte.slice(0, 12)} (schéma ${r.schema})${r.archive ? ` ; l’ancienne est archivée : ${basename(r.archive)}` : ''}`);
       if (r.rejeu?.lots) journal(`journal des modifications rejoué : ${r.rejeu.appliquees} réappliquée(s), ${r.rejeu.integrees} déjà dans les règles, ${r.rejeu.conflits} en conflit`);
+      // R33 : un don, une spécialité, un sort ou un métier disparu des règles a été retiré de ces fiches (prétirés nommés, fiches de joueur anonymes)
+      if (r.fiches?.length) {
+        journal(`fiches adaptées aux nouvelles règles : ${r.fiches.length} (${r.fiches.map((f) => f.fiche).join(', ')}) ; une note datée le rappelle dans chacune`);
+      }
       etat.erreur = null;
     } catch (e) {
       etat.erreur = e.message;
@@ -139,6 +143,8 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
         regles: enregistre?.regles?.slice(0, 12) ?? null,
         schema: enregistre?.schema ?? null,
         refaite_le: enregistre?.refaite_le ?? null,
+        // les fiches adaptées par la dernière reconstruction qui a retiré quelque chose (R33) : { le, fiches: [{ fiche, retraits }] }
+        retraits: enregistre?.retraits ?? null,
         pretires: personnages,
       },
     };

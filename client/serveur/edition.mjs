@@ -10,7 +10,8 @@
 //                      apercu?: [html]  page du guide : son HTML dans l'éditeur, un élément par morceau de texte du corps (lignesEnAttente)
 //   { op: 'creer',     entite, valeurs: { … } }                                                            entite : clé de ENTITES ; une valeur « @i » d'un
 //                      don (specialite_id, avec) désigne la ligne créée par l'opération i du même lot (ctx.crees)
-//   { op: 'supprimer', entite, cle: { … } }                                                              entite : métier, spécialité, don
+//   { op: 'supprimer', entite, cle: { … } }                                                              entite : métier, spécialité, don ; retiré des
+//                      fiches de personnage qui l'ont, avec une note datée (décision R33 : serveur/fiches-retraits.mjs, réponse `fiches`)
 //   { op: 'relations', cases: [{ voit, vu, echelle }] }                                                     relations entre peuples (races)
 //   { op: 'magies_innees', race, magies: [ids] }                                                             magies innées d'une race
 // Node seulement (node:sqlite), sans dépendance.
@@ -40,11 +41,12 @@ import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { decouperCorps } from '../src/lib/markdown-edition.mjs';
 import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
 import {
-  donneesDeDon, groupeDe, idDeDon, idDeSpecialite, listeDeFiches, motsClesDeDon, natureHorsSpecialite, NIVEAU_DES_SPECIALITES, NIVEAUX_DE_DON,
+  donneesDeDon, groupeDe, idDeDon, idDeSpecialite, motsClesDeDon, natureHorsSpecialite, NIVEAU_DES_SPECIALITES, NIVEAUX_DE_DON,
   placeNouvelleLigne, slugDeClasse, SPECIALITES_MAX, titreDeDon, typeBrutDeSaisie,
 } from '../src/lib/dons-edition.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { ErreurJournal, cleDe, lireLigne, nouveauLot, ouvrirLot, rejouer, structure } from './edition-journal.mjs';
+import { libelleDeFiche, noterLesRetraits, nouveauxRetraitsDeFiches, retirerDesFiches } from './fiches-retraits.mjs';
 
 /** Nombre maximal d'opérations dans un lot (une page en envoie quelques dizaines). */
 export const OPERATIONS_MAX = 2000;
@@ -261,8 +263,8 @@ const METIER = {
     const { db, w } = ctx;
     const metier = lireLigne(db, 'metier', cle);
     if (!metier) throw new ErreurEdition(404, 'Métier introuvable.');
-    const fiches = db.prepare('SELECT count(*) AS n FROM personnage WHERE metier_id = ?').get(metier.id).n;
-    if (fiches) throw new ErreurEdition(409, `${metier.nom} est le métier de ${fiches} fiche(s) de personnage : changez-le d’abord.`);
+    // les fiches qui l'ont le perdent, avec une note datée (R33) : avant sa suppression (clés étrangères contrôlées, son nom encore lisible)
+    retirerDesFiches(db, { metiers: [metier.id] }, ctx.retraits);
     for (const t of ['metier_bonus', 'metier_objet_depart', 'metier_recette_famille']) synchroniser(ctx, t, { metier_id: metier.id }, []);
     w.supprimer('metier', { id: metier.id });
     supprimerPage(ctx, metier.id);
@@ -828,36 +830,6 @@ const titrePris = (db, cle) => Boolean(db.prepare('SELECT 1 FROM cle_page WHERE 
 /** Id de spécialité pris : ligne existante (une spécialité renommée garde son id), ou employé par l'historique ou le journal (supprimée). */
 const specialitePrise = (db, id) => Boolean(lireLigne(db, 'specialite', { id }) || idDejaEmploye(db, ['specialite'], id));
 
-/**
- * Le libellé d'une fiche de personnage que l'édition peut montrer : le nom d'un prétiré (visible par tous), « fiche de joueur n° k » pour une fiche de
- * joueur (son nom n'est montré qu'à ceux qui peuvent la lire : v_personnage_visible ; le service ne la liste ni ne la lit, serveur/fiches.mjs). `numeros` :
- * Map(id de fiche → k), partagée par tous les libellés d'une même réponse (une fiche citée deux fois garde le même libellé).
- */
-function libelleDeFiche(r, numeros) {
-  if (r.nature === 'pretire') return r.nom;
-  if (!numeros.has(r.personnage)) numeros.set(r.personnage, numeros.size + 1);
-  return `fiche de joueur n° ${numeros.get(r.personnage)}`;
-}
-const anonymes = (a) => a.startsWith('fiche de joueur n° ');
-/** Ordre des libellés : les prétirés dans l'ordre alphabétique, puis les fiches de joueur. */
-const ordreDesLibelles = (a, b) => anonymes(a) - anonymes(b) || a.localeCompare(b, 'fr', { numeric: true });
-
-/**
- * Les fiches de personnage qui ont l'un de ces dons ou cette spécialité, une fois chacune : leurs libellés (libelleDeFiche : le nom d'un prétiré, une
- * fiche de joueur sans son nom). Toute fiche compte, quelle que soit sa nature : une ligne citée ne se supprime pas.
- */
-export function fichesQuiCitent(db, { capacites = [], specialite = null }) {
-  const vues = new Map();
-  const ajouter = (rows) => {
-    for (const r of rows) vues.set(r.personnage, r);
-  };
-  const champs = 'p.id AS personnage, p.nom, p.nature';
-  for (const k of capacites) ajouter(db.prepare(`SELECT ${champs} FROM personnage_capacite pc JOIN personnage p ON p.id = pc.personnage_id WHERE pc.capacite_id = ?`).all(k));
-  if (specialite) ajouter(db.prepare(`SELECT ${champs} FROM personnage_classe pc JOIN personnage p ON p.id = pc.personnage_id WHERE pc.specialite_id = ?`).all(specialite));
-  const numeros = new Map();
-  return [...vues.values()].map((r) => libelleDeFiche(r, numeros)).sort(ordreDesLibelles);
-}
-
 /** Une ligne du même lot : un id, ou « @i » = la ligne de cette entité créée par l'opération i (ctx.crees) ; refus 400 sinon. */
 function reference(ctx, valeur, entite) {
   if (valeur === null || valeur === undefined || valeur === '') return null;
@@ -987,7 +959,10 @@ const SPECIALITE = {
     suivrePageDeClasse(ctx, classe.id, (L) => ({ ...L, specialites: L.specialites.filter((s) => s.id !== id), dons: L.dons.filter((d) => d.id !== cartouche.id) }));
     return { id, resume: `Spécialité créée : ${v.nom} (${classe.nom})` };
   },
-  /** Une spécialité et tous ses dons (son don de spécialité compris) ; refusée si une fiche a la spécialité ou l'un de ses dons. */
+  /**
+   * Une spécialité et tous ses dons (son don de spécialité compris) ; retirée des fiches qui l'ont, avec les dons choisis qui en dépendent (une note datée
+   * le rappelle dans chacune : décision R33).
+   */
   supprimer(ctx, cle) {
     const { db, w } = ctx;
     const s = typeof cle.id === 'string' ? lireLigne(db, 'specialite', { id: cle.id }) : null;
@@ -995,10 +970,7 @@ const SPECIALITE = {
     const classe = lireLigne(db, 'classe', { id: s.classe_id });
     const siens = db.prepare('SELECT * FROM capacite WHERE specialite_id = ? ORDER BY ligne, rang').all(s.id);
     if (!siens.some((d) => d.nature === 'specialite')) throw specialitesFigees(classe);
-    const fiches = fichesQuiCitent(db, { capacites: siens.map((d) => d.id), specialite: s.id });
-    if (fiches.length) {
-      throw new ErreurEdition(409, `La spécialité ${s.nom} (ou l’un de ses dons) est choisie dans ${fiches.length} fiche(s) : ${listeDeFiches(fiches)}. Retirez-la de ces fiches d’abord.`);
-    }
+    retirerDesFiches(db, { specialites: [s.id], capacites: siens.map((d) => d.id) }, ctx.retraits); // avant leur suppression (clés étrangères contrôlées)
     for (const d of siens) retirerDon(ctx, d);
     for (const l of db.prepare("SELECT * FROM page_entite WHERE entite_table = 'specialite' AND entite_id = ?").all(s.id)) w.supprimer('page_entite', cleDe(db, 'page_entite', l));
     w.supprimer('specialite', { id: s.id });
@@ -1082,8 +1054,9 @@ const CAPACITE = {
     return { id: don.id, resume: `Don créé : ${v.nom} (${classe.nom}, niveau ${place.niveau}${voisin ? `, au choix avec ${voisin.nom}` : ''})` };
   },
   /**
-   * Un don ; refusé pour un don de spécialité (on supprime la spécialité), un don miroir de l'Archimage, ou un don choisi dans une fiche. Hors spécialité,
-   * le don resté seul de son choix devient reçu sans choix ; dans une spécialité, il reste un choix sans alternative (la nature 'classe' n'y existe pas).
+   * Un don ; refusé pour un don de spécialité (on supprime la spécialité) ou un don miroir de l'Archimage. Il est retiré des fiches qui l'ont choisi, avec
+   * une note datée (décision R33). Hors spécialité, le don resté seul de son choix devient reçu sans choix ; dans une spécialité, il reste un choix sans
+   * alternative (la nature 'classe' n'y existe pas). Les fiches qui avaient choisi le survivant le gardent, sans note : c'est une modification (R33).
    */
   supprimer(ctx, cle) {
     const { db, w } = ctx;
@@ -1095,8 +1068,7 @@ const CAPACITE = {
       throw new ErreurEdition(409, `« ${don.nom} » est le don de la spécialité ${s?.nom ?? don.specialite_id} : supprimez la spécialité (elle emporte ses dons).`);
     }
     if (estMiroir(db, don)) throw new ErreurEdition(409, `« ${don.nom} » est aussi une spécialité de la classe ${classe.nom} pour la fiche de personnage : il ne se supprime pas d’ici.`);
-    const fiches = fichesQuiCitent(db, { capacites: [don.id] });
-    if (fiches.length) throw new ErreurEdition(409, `« ${don.nom} » est choisi dans ${fiches.length} fiche(s) : ${listeDeFiches(fiches)}. Retirez-le de ces fiches d’abord.`);
+    retirerDesFiches(db, { capacites: [don.id] }, ctx.retraits); // avant sa suppression (clés étrangères contrôlées, son nom encore lisible)
     const freres = groupeDe(don, db.prepare('SELECT * FROM capacite WHERE classe_id = ?').all(classe.id)).filter((d) => d.id !== don.id);
     retirerDon(ctx, don);
     let suite = '';
@@ -1460,7 +1432,9 @@ const OPERATIONS = { modifier, creer, supprimer, relations, magies_innees: magie
  * @param {{ page?: string, operations: object[] }} corps
  * @param {{ instant?: string, id?: string, auteurId?: string | null }} [o] instant et identifiant du lot : par défaut ceux de nouveauLot (l'identifiant
  *   s'ordonne comme l'enregistrement, ce qui fixe l'ordre de rejeu de deux lots de la même seconde)
- * @returns {{ lot: string | null, modifications: number, crees: { entite: string, id: string, operation: number }[], lignes: { table: string, cle: object, ligne: object | null }[] }}
+ * @returns {{ lot: string | null, modifications: number, crees: { entite: string, id: string, operation: number }[], lignes: { table: string, cle: object, ligne: object | null }[],
+ *   fiches: { fiche: string, retraits: string[] }[] }} `fiches` : les fiches de personnage dont le lot a retiré un élément supprimé (décision R33 ; le nom
+ *   d'un prétiré, « fiche de joueur n° k » sinon : serveur/fiches-retraits.mjs#noterLesRetraits), jamais dans `lignes` ni dans le résumé du lot
  */
 export function enregistrer(db, corps, { instant, id, auteurId = null } = {}) {
   if (instant === undefined || id === undefined) {
@@ -1485,7 +1459,8 @@ export function enregistrer(db, corps, { instant, id, auteurId = null } = {}) {
   };
   try {
     const w = ouvrirLot(db, { id, instant, pageId, auteurId });
-    const ctx = { db, w, instant, crees: [] };
+    // retraits : les fiches de personnage dont une suppression retire un élément (R33), notées une fois par fiche en fin de lot
+    const ctx = { db, w, instant, crees: [], retraits: nouveauxRetraitsDeFiches() };
     const resumes = [];
     corps.operations.forEach((op, i) => {
       ctx.operation = i;
@@ -1502,8 +1477,10 @@ export function enregistrer(db, corps, { instant, id, auteurId = null } = {}) {
     });
     if (!w.nombre) {
       annuler();
-      return { lot: null, modifications: 0, crees: [], lignes: [] };
+      return { lot: null, modifications: 0, crees: [], lignes: [], fiches: [] };
     }
+    // les notes des fiches touchées, dans la transaction du lot (SQL direct, hors du journal) : un refus plus haut les aurait annulées avec le reste
+    const fiches = noterLesRetraits(db, ctx.retraits, instant);
     w.terminer(resumes.join(' ; '));
     db.exec('COMMIT');
     ouverte = false;
@@ -1514,6 +1491,7 @@ export function enregistrer(db, corps, { instant, id, auteurId = null } = {}) {
       modifications: w.nombre,
       crees: ctx.crees,
       lignes: [...vues.values()].map((l) => ({ table: l.table, cle: l.cle, ligne: lireLigne(db, l.table, l.cle) })),
+      fiches,
     };
   } catch (e) {
     annuler();
@@ -1582,8 +1560,8 @@ export function donneesDeRace(db, raceId) {
 /**
  * L'état vivant d'une classe pour sa page en mode modification (D11 : ajouter ou supprimer une spécialité ou un don) : ses spécialités et ses dons
  * (toutes les colonnes), les choix (v_capacite_exclusive), les types de don du guide, le bonus d'armure magique d'une classe magique, et les fiches de
- * personnage qui citent chaque spécialité ou don ({ [id]: [libellés] } : une ligne citée ne se supprime pas ; le nom d'un prétiré, une fiche de joueur
- * sans son nom : libelleDeFiche). La page en tire son plateau de dons par le
+ * personnage qui citent chaque spécialité ou don ({ [id]: [libellés] } : celles dont la ligne sera retirée si on la supprime, une information pour la
+ * confirmation et plus un blocage, décision R33 ; le nom d'un prétiré, une fiche de joueur sans son nom : libelleDeFiche). La page en tire son plateau de dons par le
  * même assemblage que le build (lib/classe-assemblage.mjs) et ce qu'elle propose (lib/dons-edition.mjs#permissions).
  */
 export function donneesDeClasse(db, classeId) {

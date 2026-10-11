@@ -7,11 +7,18 @@
 //                      (celles que les règles contiennent déjà passent « integree », celles que les règles ont changées autrement « conflit ») ;
 //   - lignesEnAttente: l'état net des lignes modifiées (ce que les pages statiques doivent montrer à la place de leur contenu construit) ;
 //   - journalExporte : le journal à rapatrier dans data/rows (`npm run db:appliquer-edition`).
-// Node seulement (node:sqlite), sans dépendance ; partagé par le service et par client/scripts/db-appliquer-edition.mjs.
+// Node seulement (node:sqlite), sans dépendance (le format des fiches, src/lib/fiche-format.mjs, est un module pur) ; partagé par le service et par
+// client/scripts/db-appliquer-edition.mjs.
 import { randomUUID } from 'node:crypto';
+import { TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 
-/** Tables du journal lui-même et des fiches : jamais modifiées par l'édition (les fiches ont leur API). */
-export const TABLES_INTERDITES = new Set(['modification_lot', 'modification', 'note_version_brouillon', 'note_version', 'note_version_ligne', 'historique_modification']);
+/**
+ * Tables du journal lui-même, des notes de version et des fiches (section 13) : jamais modifiées par l'édition. Les fiches ont leur API ; quand une
+ * suppression de règle les touche (décision R33), serveur/fiches-retraits.mjs les écrit en SQL direct : rien d'elles ne va au journal ni dans data/rows.
+ */
+export const TABLES_INTERDITES = new Set([
+  'modification_lot', 'modification', 'note_version_brouillon', 'note_version', 'note_version_ligne', 'historique_modification', ...TABLES_FICHES,
+]);
 
 export class ErreurJournal extends Error {
   constructor(message) {
@@ -122,7 +129,7 @@ export function ouvrirLot(db, { id, instant, pageId = null, auteurId = null }) {
     "INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat, detail, apercu) VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente', NULL, ?)",
   );
   const interdire = (table) => {
-    if (TABLES_INTERDITES.has(table)) throw new ErreurJournal(`${table} : table du journal, jamais modifiée par l'édition`);
+    if (TABLES_INTERDITES.has(table)) throw new ErreurJournal(`${table} : table du journal ou des fiches, jamais modifiée par l'édition`);
   };
   const lignes = []; // { table, cle, operation } : ce que le lot a touché, dans l'ordre
   const note = (table, cle, operation, avant, apres, apercu = null) => {

@@ -1,7 +1,8 @@
 // Modèle de l'édition depuis le site de dev (demande du propriétaire ; client/serveur/edition.mjs, docs/serveur.md, « Édition ») : quelles colonnes de
 // quelles tables une page peut modifier, avec leur type de champ, et comment une page désigne un champ (attribut `data-ed`). Le service n'accepte
 // que ces colonnes ; tout ce qui en dépend dans la base (colonnes typées, tables de détail, page du wiki) est recalculé par le service, jamais saisi.
-// Entités créables (ENTITES) : métier, race, classe, peuple, spécialité, don de classe ; supprimables : métier, spécialité, don de classe.
+// Entités créables (ENTITES) : métier, race, classe, peuple, spécialité, don de classe ; supprimables : métier, spécialité, don de classe (retirés des
+// fiches de personnage qui les ont, avec une note datée : décision R33, annonceDesFiches).
 // Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, pur lui aussi) : partagées par le service, les gabarits Astro et le
 // script des pages (src/scripts/edition.mjs).
 import { NIVEAUX_DE_DON, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
@@ -305,3 +306,19 @@ export function lireAttributEd(texte) {
 /** Clé de regroupement d'une ligne (table + clé primaire), indépendante de l'ordre des colonnes de la clé. */
 export const cleDeLigne = (table, cle) =>
   `${table}\u0000${JSON.stringify(Object.entries(cle ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))}`;
+
+/** Fiches nommées une à une dans l'annonce d'un lot, au plus (les autres sont comptées). */
+const FICHES_ANNONCEES = 5;
+
+/**
+ * L'annonce, après un lot, des fiches de personnage dont il a retiré un élément supprimé (décision R33 ; réponse `fiches` de POST /api/edition/, au
+ * format de serveur/fiches-retraits.mjs#noterLesRetraits : [{ fiche, retraits }]) : '' s'il n'y en a pas ; sinon
+ * « Retiré de 2 fiches de personnage (une note datée le rappelle dans chacune) — Aldric : le don « X » (…) ; fiche de joueur n° 1 : le métier « Y ». »
+ */
+export function annonceDesFiches(fiches) {
+  if (!Array.isArray(fiches) || !fiches.length) return '';
+  const n = fiches.length;
+  const tete = n === 1 ? 'Retiré de 1 fiche de personnage (une note datée le rappelle)' : `Retiré de ${n} fiches de personnage (une note datée le rappelle dans chacune)`;
+  const detail = fiches.slice(0, FICHES_ANNONCEES).map((f) => `${f.fiche} : ${(f.retraits ?? []).join(', ')}`).join(' ; ');
+  return `${tete} — ${detail}${n > FICHES_ANNONCEES ? ` et ${n - FICHES_ANNONCEES} autre(s)` : ''}.`;
+}
