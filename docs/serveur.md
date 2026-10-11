@@ -140,7 +140,8 @@ type parmi les cinq mots que `analyserTypeDeDon` reconnaît, précision, effet, 
 - **place** : une option reprend la ligne, le niveau et la spécialité de son choix (rang suivant) ; sans option, une nouvelle ligne « à la fin de son
   niveau » (`placeNouvelleLigne` : entre la dernière ligne de niveau ≤ N et la première de niveau > N de sa portée, sur un numéro qu'aucun don de la
   classe n'emploie — un don n'entre jamais par hasard dans un choix ; vers le milieu de l'écart quand rien n'est en dessous) ; niveaux proposés : 1, 5,
-  10, 15, 20 (`NIVEAUX_DE_DON`), 10 au moins dans une spécialité (elle se choisit au niveau 10) ;
+  10, 15, 20 (`NIVEAUX_DE_DON`), 10 au moins dans une spécialité (elle se choisit au niveau 10 : le formulaire n'en propose pas d'autre,
+  `niveauxProposes`) ;
 - **nature** : « des dons côte à côte sont un choix, un don seul sur sa ligne est reçu sans choix » (docs/content-guide.md) : un don seul hors
   spécialité est `classe`, une option en fait un `choix` (le don reçu d'office aussi) ; supprimer l'avant-dernier d'un choix hors spécialité rend le
   survivant `classe` ; dans une spécialité, le survivant reste `choix` sans alternative (le schéma n'y admet pas `classe`) : la page le montre seul, la
@@ -152,9 +153,10 @@ type parmi les cinq mots que `analyserTypeDeDon` reconnaît, précision, effet, 
   `<classe>#specialite:<nom>`, puis `-2`…), puis figés et **jamais réutilisés** (un id de l'historique ou du journal compte comme pris) ; titre
   « Nom (Classe) », sinon « , niveau N », sinon `409` ;
 - **refus** : classe ou spécialité inconnue, spécialité d'une autre classe, niveau hors liste, don de spécialité avant le niveau 10, option d'un don de
-  spécialité ou d'une autre classe (`400`) ; plus de place, titre pris, troisième spécialité, et l'Archimage — ses spécialités sont lues dans ses
-  dons de niveau 10, ses deux dons « miroirs » (Élémentaliste, Occultiste) ne se suppriment pas — (`409`) ; une ligne qu'une fiche de personnage
-  cite (`409` qui nomme les fiches, cinq au plus).
+  spécialité ou d'une autre classe, nombre de la limite du type trop grand (`400`) ; plus de place, titre pris, troisième spécialité, et l'Archimage —
+  ses spécialités sont lues dans ses dons de niveau 10, ses deux dons « miroirs » (Élémentaliste, Occultiste) ne se suppriment pas et leur choix ne
+  reçoit pas d'option — (`409`) ; une ligne qu'une fiche de personnage cite (`409` qui nomme les prétirés, cinq au plus ; une fiche de joueur compte
+  sans son nom : « fiche de joueur n° k »). Le refus d'une création commence par le nom saisi (« « Botte » : … ») : il désigne la carte de la file.
 
 La fiche d'un don créé (`capacites/<slug>`) a pour seule source sa provenance, ses mots-clés (« capacité de classe », la classe telle que l'écrit un
 don frère, la spécialité), son corps et son résumé tirés de sa ligne ; ses champs structurés (`page.donnees` : classe, spécialité, niveau, nature,
@@ -162,9 +164,12 @@ rang, ligne, type, choix exclusifs) sont **une colonne dérivée** (`donneesDeDo
 chaque écriture et au rejeu pour tous les dons de la classe touchée : une livraison qui change un voisin (spécialité renommée, type) ne met plus une
 création en conflit. Une suppression retire, dans l'ordre des clés étrangères, les notes de cellule du don, sa ligne, puis sa fiche (mots-clés,
 sources, entités rattachées, source orpheline). `POST /api/edition/classe/` donne l'état vivant de la classe (spécialités, dons, choix, fiches qui
-les citent) : la page en tire ce qu'elle propose (`permissions`) et, quand des spécialités ou des dons ont changé depuis la construction, redessine
-ses dons, ses spécialités et sa navigation avec le HTML des gabarits (`lib/classe-dons-rendu.mjs` sur `lib/classe-assemblage.mjs`, comparés aux pages
-construites par `classe-dons-rendu.test.mjs`), puis rebranche ses onglets (évènement `onglets:brancher`). Limite : jusqu'à la construction suivante,
+les citent) : la page en tire ce qu'elle propose (`permissions`) et, quand la disposition a changé depuis la construction (l'empreinte
+`data-ed-structure` de la page diffère de celle de l'état vivant : `empreinteDeStructure`, `doitRedessiner` — une simple modification de champ est
+appliquée en place), redessine ses dons, ses spécialités, sa navigation (groupe « Dons par spécialité », liens « Spécialités » et « Dons ») et le
+repère « Classe magique » du bandeau avec le HTML des gabarits (`lib/classe-dons-rendu.mjs` sur `lib/classe-assemblage.mjs`, comparés aux pages
+construites par `classe-dons-rendu.test.mjs`), puis rebranche ses onglets (évènement `onglets:brancher`) : l'onglet ouvert le reste, et au
+chargement l'élément que vise l'adresse (`#don-…`) est ouvert et montré. Limite : jusqu'à la construction suivante,
 `/capacites/<slug>/` d'un don supprimé reste en ligne (l'adresse d'un don créé mène à son ancre sur la page de sa classe) et `/fiche/regles.json` ne
 change pas ; la fiche écarte un don qu'aucun choix des règles ne range (`donsValables`). En production, une fiche qui cite un don ou une spécialité
 supprimé fait garder l'ancienne base vivante (détail dans `/api/etat/`), comme pour un métier, en attendant la décision du propriétaire.

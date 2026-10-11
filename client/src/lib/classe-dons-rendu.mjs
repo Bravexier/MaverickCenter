@@ -4,6 +4,7 @@
 // à partir du même assemblage que le build (lib/classe-assemblage.mjs). Mêmes champs `data-ed` que les gabarits, ancres tirées des identifiants.
 // test/classe-dons-rendu.test.mjs compare ce rendu à celui des pages construites. Fonctions pures (chaînes HTML, tout texte échappé), sans navigateur.
 import { nomsSeRepondent } from './classe-dons.mjs';
+import { CLASSE_MAGIQUE_HORS_CATEGORIE } from './classe-magique.mjs';
 import { attributEd } from './edition-modele.mjs';
 import { echapperHtml, htmlDesBlocs, RENDUS } from './edition-rendu.mjs';
 
@@ -52,6 +53,12 @@ export function regleDesSpecialites(niveau, n) {
   return { badge: true, texte: `Niveau ${niveau} : une seule spécialité. Elle exclut les autres et tous leurs dons.` };
 }
 
+/**
+ * L'id du titre du panneau d'une spécialité : `titre-<ancre>`. Tous les panneaux ont des ids `specialite-<slug>` : un titre `<ancre>-titre` pouvait
+ * être le panneau d'une autre spécialité (« LAME » et « LAME TITRE » donnaient deux `specialite-lame-titre`).
+ */
+export const idDuTitre = (specialite) => `titre-${specialite.ancre}`;
+
 function htmlDesSpecialitesEnOnglets(etage, o) {
   const magique = (col, classe) => (col.cartouche?.classeMagique && o.amMagique !== null && o.amMagique !== undefined ? classe : '');
   const regle = regleDesSpecialites(etage.niveau, etage.specialites.length);
@@ -66,8 +73,8 @@ function htmlDesSpecialitesEnOnglets(etage, o) {
   }).join('');
   const panneaux = etage.specialites.map((col, i) => {
     const s = col.specialite;
-    return `<section class="specialite${i === 0 ? ' is-active' : ''}" id="${echapperHtml(s.ancre)}" aria-labelledby="${echapperHtml(s.ancre)}-titre">`
-      + `<h3 class="specialite__titre" id="${echapperHtml(s.ancre)}-titre"><span class="specialite__surtitre">Spécialité</span>`
+    return `<section class="specialite${i === 0 ? ' is-active' : ''}" id="${echapperHtml(s.ancre)}" aria-labelledby="${echapperHtml(idDuTitre(s))}">`
+      + `<h3 class="specialite__titre" id="${echapperHtml(idDuTitre(s))}"><span class="specialite__surtitre">Spécialité</span>`
       + `<span class="specialite__nom" data-ed="${ed('specialite', { id: s.id }, 'nom')}">${echapperHtml(s.nom)}</span>`
       + magique(col, `<span class="specialite__magique">Classe magique · +${o.amMagique} AM</span>`)
       + '</h3>'
@@ -108,7 +115,7 @@ export function htmlDesDons(classe, options = {}) {
  * spécialité qui ait des dons.
  */
 export function htmlDesSpecialites(classe) {
-  const colonnes = classe.plateau.flatMap((e) => (e.forme === 'specialites' ? e.specialites : []));
+  const colonnes = colonnesDeSpecialites(classe);
   if (!colonnes.length) return '';
   const montrees = colonnes.filter((c) => c.specialite.description.length || c.specialite.remarque.length);
   const s = (id, colonne) => ed('specialite', { id }, colonne);
@@ -130,9 +137,65 @@ export function htmlDesSpecialites(classe) {
     + '</section>';
 }
 
+/** Les colonnes du plateau : une par spécialité qui a des dons ({ specialite, cartouche, choix }). */
+export const colonnesDeSpecialites = (classe) => classe.plateau.flatMap((e) => (e.forme === 'specialites' ? e.specialites : []));
+
+/** Le lien « Spécialités » de la navigation de la page (ClassePage.astro) : quand une spécialité qui a des dons a une description. */
+export const lienDesSpecialites = (classe) => colonnesDeSpecialites(classe).some((c) => c.specialite.description.length > 0);
+
+/**
+ * Le repère « Classe magique » du bandeau de la page (ClassePage.astro) : `<li id="repere-magique">`, vide si la classe n'est pas magique (ou sans bonus
+ * d'armure magique). Magique par sa catégorie (`amBase` : categorie_classe.am_base) ou l'Archimage : « +N AM de base » (avec la note de la catégorie
+ * en infobulle) ; sinon par la spécialité dont le don dit « considérer comme classe magique » (classes raciales, Flagelleur) : « avec la spécialité … ».
+ * Le mode modification le redessine quand une spécialité est créée ou supprimée (src/scripts/edition/classes.mjs).
+ * @param {{ plateau: object[] }} classe assemblage (lib/classe-assemblage.mjs)
+ * @param {{ classeId: string, amBase?: number | null, amMagique?: number | null, note?: string | null }} o
+ */
+export function htmlDuRepereMagique(classe, { classeId, amBase = null, amMagique = null, note = null }) {
+  if (amMagique === null || amMagique === undefined) return '';
+  const magiques = colonnesDeSpecialites(classe).filter((c) => c.cartouche?.classeMagique);
+  if ((amBase !== null && amBase !== undefined) || classeId === CLASSE_MAGIQUE_HORS_CATEGORIE) {
+    return `<li id="repere-magique"${note ? ` title="${echapperHtml(note)}"` : ''}><strong>Classe magique</strong> +${amMagique} AM de base</li>`;
+  }
+  if (!magiques.length) return '';
+  const liens = magiques.map((c, i) => `${i > 0 ? ' ou ' : ''}<a href="#${echapperHtml(c.specialite.ancre)}">${echapperHtml(c.cartouche.nom)}</a>`).join('');
+  return `<li id="repere-magique"><strong>Classe magique</strong> avec la spécialité ${liens} : +${amMagique} AM de base</li>`;
+}
+
+/**
+ * Ce que le mode modification redessine d'une page de classe (dons, spécialités, navigation, repère « Classe magique ») tient dans une empreinte : la
+ * disposition des dons (étages, ancres, niveaux, choix), les spécialités (ancre, don de spécialité, son nom, « classe magique », description présente).
+ * La page construite la porte (`data-ed-structure` de ClassePage.astro) ; l'éditeur ne redessine que si celle de l'état vivant diffère : une simple
+ * modification de champ (effet, remarque, type…) ne change rien ici, elle est appliquée en place, et l'onglet ouvert reste ouvert.
+ * FNV-1a 32 bits du JSON de la structure (même résultat dans Node et le navigateur).
+ */
+export function empreinteDeStructure(classe) {
+  const etages = classe.plateau.map((e) => {
+    if (e.forme === 'don') return ['d', e.don.ancre, e.don.niveau];
+    if (e.forme === 'choix') return ['c', e.niveau, e.options.map((d) => d.ancre)];
+    return ['s', e.niveau, e.specialites.map((c) => [
+      c.specialite.ancre, c.cartouche?.ancre ?? null, c.cartouche?.nom ?? null, Boolean(c.cartouche?.classeMagique), c.specialite.description.length > 0,
+      c.choix.map((g) => [g.niveau, g.options.map((d) => d.ancre)]),
+    ])];
+  });
+  const texte = JSON.stringify([classe.dons.length, etages]);
+  let h = 0x811c9dc5;
+  for (let i = 0; i < texte.length; i += 1) {
+    h ^= texte.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, '0');
+}
+
+/**
+ * Le mode modification redessine-t-il la page ? Oui quand l'empreinte de l'état vivant (empreinteDeStructure) diffère de celle que la page montre
+ * (`construite` : son `data-ed-structure`, absent sur une page dessinée après la construction : une classe créée sur le site).
+ */
+export const doitRedessiner = (construite, classe) => !construite || construite !== empreinteDeStructure(classe);
+
 /** Les liens « Dons par spécialité » de la navigation de la page (ClassePage.astro). */
 export function htmlDuGroupeDeNavigation(classe) {
-  const colonnes = classe.plateau.flatMap((e) => (e.forme === 'specialites' ? e.specialites : []));
+  const colonnes = colonnesDeSpecialites(classe);
   if (!colonnes.length) return '';
   return `<span class="classe-nav__specialites" role="group" aria-label="Dons par spécialité">${colonnes
     .map((c) => `<a href="#${echapperHtml(c.specialite.ancre)}">${echapperHtml(c.cartouche?.nom ?? c.specialite.nom)}</a>`).join('')}</span>`;

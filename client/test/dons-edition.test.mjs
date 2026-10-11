@@ -3,8 +3,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  alternativesDe, consequences, donneesDeDon, groupeDe, idDeDon, idDeSpecialite, listeDeFiches, motsClesDeDon, natureHorsSpecialite, NIVEAU_DES_SPECIALITES,
-  NIVEAUX_DE_DON, operationsDuLot, permissions, placeNouvelleLigne, SPECIALITES_MAX, titreDeDon, TYPES_DE_DON_SAISIE, typeBrutDeSaisie,
+  alternativesDe, consequences, donneesDeDon, groupeDe, idDeDon, idDeSpecialite, libelleDeBlocage, listeDeFiches, motsClesDeDon, natureHorsSpecialite,
+  NIVEAU_DES_SPECIALITES, NIVEAUX_DE_DON, niveauxProposes, nomDuDonSuit, operationsDuLot, permissions, placeNouvelleLigne, SPECIALITES_MAX, titreDeDon, TYPES_DE_DON_SAISIE, typeBrutDeSaisie,
 } from '../src/lib/dons-edition.mjs';
 import { analyserTypeDeDon } from '../src/lib/classe-champs.mjs';
 import { ENTITES } from '../src/lib/edition-modele.mjs';
@@ -135,6 +135,20 @@ test('mots-clés d’une fiche de don, groupe d’un emplacement, nature hors sp
   assert.equal(natureHorsSpecialite(2), 'choix');
   assert.equal(listeDeFiches(['A', 'B']), 'A, B');
   assert.equal(listeDeFiches(['A', 'B', 'C', 'D', 'E', 'F', 'G']), 'A, B, C, D, E et 2 autre(s)');
+  assert.equal(libelleDeBlocage(['Aria']), 'choisi dans 1 fiche(s) : Aria', 'un don');
+  assert.equal(libelleDeBlocage(['Aria', 'Borin'], { feminin: true }), 'choisie dans 2 fiche(s) : Aria, Borin', 'une spécialité');
+});
+
+test('formulaire d’un don : niveaux d’un don de spécialité (10 au moins) ; le nom du don de spécialité suit celui de la spécialité tant qu’on ne l’a pas changé', () => {
+  assert.deepEqual(niveauxProposes(), NIVEAUX_DE_DON);
+  assert.deepEqual(niveauxProposes({ specialite: true }), NIVEAUX_DE_DON.filter((n) => n >= NIVEAU_DES_SPECIALITES));
+  assert.ok(!niveauxProposes({ specialite: true }).includes(5));
+  // saisie : « Voie du feu » (le don suit), puis le don « Flamme intérieure », puis « Voie du feux » : le don ne suit plus
+  assert.equal(nomDuDonSuit('', ''), true);
+  assert.equal(nomDuDonSuit('Voie du fe', 'Voie du fe'), true);
+  assert.equal(nomDuDonSuit('Flamme intérieure', 'Voie du feu'), false);
+  // rouvert pour « Modifier » (nom « Voie du feux », don « Flamme intérieure ») : corriger le nom ne touche pas au don
+  assert.equal(nomDuDonSuit('Flamme intérieure', 'Voie du feux'), false);
 });
 
 const ARCHIMAGE = {

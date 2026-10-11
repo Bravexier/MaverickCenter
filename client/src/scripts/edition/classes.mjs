@@ -10,8 +10,10 @@
 //     le même lot que les suppressions et les champs modifiés (lib/dons-edition.mjs#operationsDuLot : une création sur une ligne en file la cite « @i ») ;
 //     leurs conséquences (un don qui devient reçu sans choix…) sont confirmées avant l'envoi.
 import { assemblerClasse } from '../../lib/classe-assemblage.mjs';
-import { htmlDesDons, htmlDesSpecialites, htmlDuGroupeDeNavigation } from '../../lib/classe-dons-rendu.mjs';
-import { consequences, listeDeFiches, operationsDuLot, permissions } from '../../lib/dons-edition.mjs';
+import {
+  doitRedessiner, empreinteDeStructure, htmlDesDons, htmlDesSpecialites, htmlDuGroupeDeNavigation, htmlDuRepereMagique, lienDesSpecialites,
+} from '../../lib/classe-dons-rendu.mjs';
+import { consequences, libelleDeBlocage, niveauxProposes, nomDuDonSuit, operationsDuLot, permissions } from '../../lib/dons-edition.mjs';
 import { ENTITES } from '../../lib/edition-modele.mjs';
 import { echapperHtml } from '../../lib/edition-rendu.mjs';
 
@@ -55,15 +57,92 @@ function remplacer(id, html, avant) {
   return neuf;
 }
 
-/** Redessine dons, spécialités et navigation depuis l'état vivant (la page construite ne les montre plus tels qu'ils sont). */
-function redessiner(ed) {
+const elementDe = (html) => {
+  const gabarit = document.createElement('template');
+  gabarit.innerHTML = html;
+  return gabarit.content.firstElementChild;
+};
+
+/** Le repère « Classe magique » du bandeau, refait depuis l'état vivant (une spécialité magique créée ou supprimée). */
+function redessinerLeRepere(classe) {
+  const html = htmlDuRepereMagique(classe, { classeId: etat.classe.id, amBase: etat.categorie?.am_base ?? null, amMagique: etat.amMagique, note: etat.categorie?.note ?? null });
+  const enPlace = document.getElementById('repere-magique');
+  const hero = racine().querySelector('.classe-hero');
+  let liste = hero?.querySelector('.classe-hero__reperes') ?? null;
+  if (!html) {
+    enPlace?.remove();
+    if (liste && !liste.children.length) liste.remove();
+    return;
+  }
+  if (enPlace) {
+    enPlace.replaceWith(elementDe(html));
+    return;
+  }
+  if (!hero) return;
+  if (!liste) {
+    liste = document.createElement('ul');
+    liste.className = 'classe-hero__reperes';
+    const stats = hero.querySelector('.classe-stats');
+    if (stats) stats.after(liste);
+    else hero.append(liste);
+  }
+  liste.prepend(elementDe(html));
+}
+
+/** Un lien de la navigation de la page (« Spécialités », « Dons ») : ajouté à sa place s'il manque, retiré s'il n'a plus lieu d'être. */
+function lienDeNavigation(nav, href, libelle, montrer, suivants) {
+  const enPlace = nav.querySelector(`:scope > a[href="${href}"]`);
+  if (!montrer) {
+    enPlace?.remove();
+    return;
+  }
+  if (enPlace) return;
+  const a = document.createElement('a');
+  a.href = href;
+  a.textContent = libelle;
+  const suivant = [...suivants.map((h) => nav.querySelector(`:scope > a[href="${h}"]`)), nav.querySelector('.classe-nav__specialites')].find(Boolean);
+  if (suivant) suivant.before(a);
+  else nav.append(a);
+}
+
+/** Avant de brancher les onglets redessinés : ouvre celui du panneau `id` (au lieu du premier), s'il existe encore. */
+function rouvrirLePanneau(id) {
+  const onglet = id ? racine().querySelector(`.specialites[data-onglets] a.onglet[href="#${CSS.escape(id)}"]`) : null;
+  if (!onglet) return;
+  const groupe = onglet.closest('.specialites[data-onglets]');
+  for (const el of groupe.querySelectorAll('a.onglet, section.specialite')) el.classList.remove('is-active');
+  onglet.classList.add('is-active');
+  document.getElementById(id)?.classList.add('is-active');
+}
+
+/** L'adresse de la page désigne un élément redessiné (#don-…, #specialite-…) : son onglet s'ouvre (components/Onglets.astro) et la page y défile. */
+function suivreLAdresse() {
+  let id = '';
+  try {
+    id = decodeURIComponent(location.hash.slice(1));
+  } catch {
+    return;
+  }
+  const cible = id ? document.getElementById(id) : null;
+  if (!cible || !racine().contains(cible)) return;
+  window.dispatchEvent(new HashChangeEvent('hashchange'));
+  if (!cible.closest('section.specialite')) cible.scrollIntoView({ block: 'start' });
+}
+
+/**
+ * Redessine dons, spécialités, navigation et repère « Classe magique » depuis l'état vivant (la page construite ne les montre plus tels qu'ils sont). L'onglet
+ * de spécialité ouvert le reste ; `adresse` (au chargement) : l'élément que vise l'adresse est ouvert et montré, comme sur une page construite.
+ */
+function redessiner(ed, { adresse = false } = {}) {
   const classe = assemblee();
+  const ouvert = racine().querySelector('section.specialite.is-active')?.id ?? null;
   const options = {
     base: ed.base, typesDon: etat.typesDon, amMagique: etat.amMagique,
     hrefDuDon: (don) => (ancresConstruites?.has(don.ancre) ? `${ed.base}capacites/${don.slug}/` : `#${don.ancre}`),
   };
   remplacer('specialites', htmlDesSpecialites(classe), ['#depart', '#dons', '#annexe']);
   const dons = remplacer('dons', htmlDesDons(classe, options), ['#annexe']);
+  redessinerLeRepere(classe);
   const nav = racine().querySelector('.classe-nav');
   if (nav) {
     const groupe = htmlDuGroupeDeNavigation(classe);
@@ -72,29 +151,17 @@ function redessiner(ed) {
     gabarit.innerHTML = groupe;
     if (enPlace) enPlace.replaceWith(...gabarit.content.childNodes);
     else if (groupe) nav.append(...gabarit.content.childNodes);
-    if (dons && !nav.querySelector('a[href="#dons"]')) {
-      const a = document.createElement('a');
-      a.href = '#dons';
-      a.textContent = 'Dons';
-      const groupeEnPlace = nav.querySelector('.classe-nav__specialites');
-      if (groupeEnPlace) groupeEnPlace.before(a);
-      else nav.append(a);
-    }
+    lienDeNavigation(nav, '#specialites', 'Spécialités', lienDesSpecialites(classe), ['#depart', '#dons', '#annexe']);
+    lienDeNavigation(nav, '#dons', 'Dons', Boolean(dons), ['#annexe']);
   }
+  racine().dataset.edStructure = empreinteDeStructure(classe);
+  rouvrirLePanneau(ouvert);
   for (const g of racine().querySelectorAll('.specialites[data-onglets]')) g.dispatchEvent(new CustomEvent('onglets:brancher', { bubbles: true }));
+  if (adresse) suivreLAdresse();
 }
 
-/** Les lignes en attente touchent-elles les spécialités ou les dons de cette classe (une ligne supprimée : par son ancre sur la page) ? */
-function touchee(lignes) {
-  const classeId = classeDeLaPage();
-  return lignes.some((l) => {
-    if (l.table !== 'capacite' && l.table !== 'specialite') return false;
-    if (l.ligne) return l.ligne.classe_id === classeId;
-    const id = String(l.cle?.id ?? '');
-    const ancre = l.table === 'capacite' ? `don-${slugDe(id)}` : `specialite-${id.slice(id.indexOf('#specialite:') + 12)}`;
-    return id.startsWith(`${classeId}#`) || Boolean(document.getElementById(ancre));
-  });
-}
+/** La disposition vivante diffère-t-elle de celle que la page montre (lib/classe-dons-rendu.mjs#doitRedessiner : une modification de champ, non) ? */
+const structureChangee = () => doitRedessiner(racine()?.dataset.edStructure, assemblee());
 
 // --- Mode modification ---------------------------------------------------------------------------------------------------------------------------
 const OUTILS = 'ed-outils ed-outils-classe';
@@ -120,20 +187,29 @@ function boite(...boutons) {
   return div;
 }
 
-/** Les champs du formulaire d'une entité, sans ceux que donne le bouton (classe, spécialité, don « au choix avec »), valeurs déjà saisies reprises. */
-function champsDuFormulaire(entite, { sans = [], valeurs = {} } = {}) {
+/**
+ * Les champs du formulaire d'une entité, sans ceux que donne le bouton (classe, spécialité, don « au choix avec »), valeurs déjà saisies reprises ;
+ * `choix` : des listes propres au bouton (les niveaux d'un don de spécialité).
+ */
+function champsDuFormulaire(entite, { sans = [], valeurs = {}, choix = {} } = {}) {
   return Object.entries(ENTITES[entite].champs)
     .filter(([nom]) => !sans.includes(nom))
-    .map(([nom, c]) => ({ nom, libelle: c.libelle, type: c.type, requis: c.requis || (entite === 'capacite' && nom === 'niveau' && !sans.includes('niveau')), choix: c.choix, aide: c.aide, valeur: valeurs[nom] ?? '' }));
+    .map(([nom, c]) => ({
+      nom, libelle: c.libelle, type: c.type, requis: c.requis || (entite === 'capacite' && nom === 'niveau' && !sans.includes('niveau')), choix: choix[nom] ?? c.choix,
+      aide: c.aide, valeur: valeurs[nom] ?? '',
+    }));
 }
 
 /** Une création en file : son formulaire (nouvelle, ou modifiée : `index`). */
 function formulaire(ed, { entite, fixes, sans, libelle, aide, index = null }) {
   const valeurs = index === null ? {} : file[index].valeurs;
+  // un don de spécialité (sans option) : à partir du niveau où la spécialité se choisit
+  const choix = entite === 'capacite' && fixes.specialite_id && !fixes.avec
+    ? { niveau: niveauxProposes({ specialite: true }).map((n) => ({ valeur: String(n), libelle: `Niveau ${n}` })) } : {};
   const dialogue = ed.formulaire({
     titre: ENTITES[entite].nouveau,
     aide: `${aide} La création part avec « Enregistrer », dans le même lot que les autres modifications de la page.`.trim(),
-    champs: champsDuFormulaire(entite, { sans, valeurs }),
+    champs: champsDuFormulaire(entite, { sans, valeurs, choix }),
     bouton: index === null ? 'Ajouter' : 'Modifier',
     valider: (saisies) => {
       for (const [nom, c] of Object.entries(ENTITES[entite].champs)) {
@@ -149,13 +225,15 @@ function formulaire(ed, { entite, fixes, sans, libelle, aide, index = null }) {
       afficherLaFile(ed);
     },
   });
-  // le nom du don de spécialité reprend celui de la spécialité tant qu'on ne l'a pas changé
+  // le nom du don de spécialité reprend celui de la spécialité tant qu'on ne l'a pas changé (lib/dons-edition.mjs#nomDuDonSuit) ; rouvert pour « Modifier »,
+  // un nom de don personnalisé reste
   const nom = dialogue.querySelector('[name="nom"]');
   const donNom = dialogue.querySelector('[name="don_nom"]');
   if (nom && donNom) {
-    donNom.addEventListener('input', () => (donNom.dataset.touche = '1'));
+    let precedent = nom.value;
     nom.addEventListener('input', () => {
-      if (!donNom.dataset.touche) donNom.value = nom.value;
+      if (nomDuDonSuit(donNom.value, precedent)) donNom.value = nom.value;
+      precedent = nom.value;
     });
   }
 }
@@ -248,7 +326,7 @@ function bascule(element, ensemble, id, { libelle, fiches }) {
     b.textContent = oui ? 'Sera supprimé — annuler' : 'Supprimer';
     element.classList.toggle('ed-supprime', oui);
     ed_.marquerModifie();
-  }, { danger: true, titre: fiches.length ? `choisi dans ${fiches.length} fiche(s) : ${listeDeFiches(fiches)}` : libelle });
+  }, { danger: true, titre: fiches.length ? libelleDeBlocage(fiches, { feminin: ensemble === specialitesSupprimees }) : libelle });
   b.classList.add('ed-supprimer');
   b.setAttribute('aria-pressed', 'false');
   if (fiches.length) b.disabled = true;
@@ -310,7 +388,7 @@ export const classes = {
   nom: 'classes',
   actif: (doc) => Boolean(doc.querySelector('.classe[data-ed-classe]')),
 
-  async surcouche(ed, lignes) {
+  async surcouche(ed) {
     ancresConstruites = new Set([...document.querySelectorAll('.classe article.don[id^="don-"]')].map((a) => a.id));
     try {
       await charger(ed);
@@ -321,7 +399,7 @@ export const classes = {
       ed.annoncer(`État de la classe illisible : ${e.message}`, 'erreur');
       return;
     }
-    if (touchee(lignes)) redessiner(ed);
+    if (structureChangee()) redessiner(ed, { adresse: true });
   },
 
   debut(ed) {
@@ -348,7 +426,7 @@ export const classes = {
 
   async apresEnregistrement(ed) {
     await charger(ed);
-    redessiner(ed);
+    if (structureChangee()) redessiner(ed);
   },
 
   fin() {

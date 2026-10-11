@@ -156,6 +156,21 @@ export const natureHorsSpecialite = (n) => (n >= 2 ? 'choix' : 'classe');
 /** Les noms des fiches qui citent une ligne, au plus cinq, puis « et N autre(s) ». */
 export const listeDeFiches = (noms) => `${noms.slice(0, 5).join(', ')}${noms.length > 5 ? ` et ${noms.length - 5} autre(s)` : ''}`;
 
+/** L'infobulle du « Supprimer » désactivé d'une ligne que des fiches citent : « choisi » pour un don, « choisie » pour une spécialité. */
+export const libelleDeBlocage = (fiches, { feminin = false } = {}) => `${feminin ? 'choisie' : 'choisi'} dans ${fiches.length} fiche(s) : ${listeDeFiches(fiches)}`;
+
+/**
+ * Les niveaux proposés pour un nouveau don (sa ligne) : ceux du classeur ; dans une spécialité, à partir du niveau où elle se choisit (le service refuse
+ * un niveau plus bas : CAPACITE.creer).
+ */
+export const niveauxProposes = ({ specialite = false } = {}) => (specialite ? NIVEAUX_DE_DON.filter((n) => n >= NIVEAU_DES_SPECIALITES) : [...NIVEAUX_DE_DON]);
+
+/**
+ * Le nom du don de spécialité reprend celui de la spécialité tant qu'on ne l'a pas changé : vrai quand il est vide ou vaut encore l'ancien nom de la
+ * spécialité (un formulaire rouvert pour « Modifier » garde ainsi un nom de don personnalisé).
+ */
+export const nomDuDonSuit = (nomDuDon, ancienNom) => !nomDuDon || nomDuDon === ancienNom;
+
 /**
  * Ce que la page d'une classe propose en mode modification, d'après son état vivant (serveur/edition.mjs#donneesDeClasse : { specialites, dons,
  * fiches: { [id]: [noms] } }) :

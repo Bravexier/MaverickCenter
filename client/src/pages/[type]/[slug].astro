@@ -94,7 +94,7 @@ const texteModifiable = modifiable && typeOf(entry) === 'guide' && !chapitre;
     ) : race && races ? (
       <RacePage entry={entry} entries={entries} race={race} races={races} statusNote={statusNote} />
     ) : classe ? (
-      <ClassePage entry={entry} classe={classe} magique={isMagic} statusNote={statusNote} />
+      <ClassePage entry={entry} classe={classe} statusNote={statusNote} />
     ) : chapitre ? (
       <GuideChapitre entry={entry} entries={entries} />
     ) : (

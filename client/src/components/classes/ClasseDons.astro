@@ -4,7 +4,7 @@ import Onglets from '../Onglets.astro';
 import ChoixDeDons from './ChoixDeDons.astro';
 import DonCarte from './DonCarte.astro';
 import { attributEd } from '../../lib/edition-modele.mjs';
-import { regleDesSpecialites } from '../../lib/classe-dons-rendu.mjs';
+import { idDuTitre, regleDesSpecialites } from '../../lib/classe-dons-rendu.mjs';
 
 // Les dons d'une classe disposés comme l'onglet du classeur (lib/classe-dons.mjs#plateauDeDons), de haut en bas : les dons reçus sans choix
 // (colonne P), les spécialités (une seule au choix : elle exclut l'autre et tous ses dons), puis le don du niveau 20 ; pour l'Archimage, des groupes
@@ -69,8 +69,8 @@ const { classe } = Astro.props;
                 ))}
               </div>
               {etage.specialites.map((col, i) => (
-                <section class={`specialite${i === 0 ? ' is-active' : ''}`} id={col.specialite.ancre} aria-labelledby={`${col.specialite.ancre}-titre`}>
-                  <h3 class="specialite__titre" id={`${col.specialite.ancre}-titre`}>
+                <section class={`specialite${i === 0 ? ' is-active' : ''}`} id={col.specialite.ancre} aria-labelledby={idDuTitre(col.specialite)}>
+                  <h3 class="specialite__titre" id={idDuTitre(col.specialite)}>
                     <span class="specialite__surtitre">Spécialité</span>
                     <span class="specialite__nom" data-ed={attributEd('specialite', { id: col.specialite.id }, 'nom')}>{col.specialite.nom}</span>
                     {col.cartouche?.classeMagique && classe.amMagique !== null && (
