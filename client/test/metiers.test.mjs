@@ -3,12 +3,18 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { adresseDePage, ancreDeMetier, chargerMetiers, cheminDePage, estUnMetier, PAGE_DES_REGLES } from '../src/lib/metiers.mjs';
 import { buildIndex, entryUrl } from '../src/lib/wikilinks.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const metiers = chargerMetiers(db);
 const ligneBrute = new Map(db.prepare('SELECT * FROM metier').all().map((m) => [m.id, m]));
+// le site de dev est la source des métiers qu'il modifie (décision du propriétaire) : les exemples cités sont ceux de l'import (lib/historique-site.mjs),
+// vérifiés sur la page tant que le site n'a pas réécrit la colonne
+const historique = historiqueSite(db);
+const dImport = (id, colonne) => historique.valeurDImport('metier', { id }, colonne);
+const intact = (id, colonne) => !historique.modifiee('metier', { id }, colonne);
 
 test('un métier est une page du type metiers, sauf la page des règles', () => {
   assert.equal(estUnMetier('metiers/forgeron'), true);
@@ -41,8 +47,9 @@ test('les métiers sont exactement les lignes de la table metier ; la page des r
   assert.deepEqual(pages.filter(estUnMetier), [...ligneBrute.keys()].sort());
 });
 
-test('72 métiers, par ordre alphabétique, chacun avec son ancre unique et sa description', () => {
-  assert.equal(metiers.length, 72);
+test('72 métiers (à l’import), par ordre alphabétique, chacun avec son ancre unique et sa description', () => {
+  assert.equal(historique.effectifDImport('metier'), 72);
+  assert.equal(metiers.length, ligneBrute.size);
   const cles = metiers.map((m) => ligneBrute.get(m.id).nom_cle);
   assert.deepEqual(cles, [...cles].sort());
   assert.equal(new Set(metiers.map((m) => m.ancre)).size, metiers.length);
@@ -61,10 +68,14 @@ test('les colonnes redonnent les champs de la source, sans rien réécrire', () 
     assert.equal(m.equipement ?? 'Rien', brut.equipement_brut, `${m.id} : équipement`);
     assert.equal(m.description, brut.description);
   }
-  const forgeron = metiers.find((m) => m.id === 'metiers/forgeron');
-  assert.deepEqual(forgeron.artisanat, { texte: 'Peut faire des armes métalliques', test: 'FORCE + VOLONTÉ' });
-  assert.deepEqual(metiers.find((m) => m.id === 'metiers/coursier').bonus, ['+1 INI', '+2% Athlétisme OU Équilibre']);
-  assert.equal(metiers.find((m) => m.id === 'metiers/acrobate').equipement, null);
+  assert.equal(dImport('metiers/forgeron', 'artisanat_brut').replace(/\s+/g, ' '), 'Peut faire des armes métalliques [FORCE + VOLONTÉ]');
+  if (intact('metiers/forgeron', 'artisanat_brut')) {
+    assert.deepEqual(metiers.find((m) => m.id === 'metiers/forgeron').artisanat, { texte: 'Peut faire des armes métalliques', test: 'FORCE + VOLONTÉ' });
+  }
+  assert.equal(dImport('metiers/coursier', 'bonus_brut'), '+1 INI, +2% Athlétisme OU Équilibre');
+  if (intact('metiers/coursier', 'bonus_brut')) assert.deepEqual(metiers.find((m) => m.id === 'metiers/coursier').bonus, ['+1 INI', '+2% Athlétisme OU Équilibre']);
+  assert.equal(dImport('metiers/acrobate', 'equipement_brut'), 'Rien');
+  if (intact('metiers/acrobate', 'equipement_brut')) assert.equal(metiers.find((m) => m.id === 'metiers/acrobate').equipement, null);
 });
 
 test('avantage possible : gardé, sauf vide ou réduit à « … »', () => {
@@ -72,6 +83,8 @@ test('avantage possible : gardé, sauf vide ou réduit à « … »', () => {
     const brut = ligneBrute.get(m.id).avantage_brut;
     assert.equal(m.avantage, brut && brut.trim() !== '…' ? brut : null, m.id);
   }
-  assert.equal(metiers.find((m) => m.id === 'metiers/forgeron').avantage, 'Identifier une arme, …');
-  assert.equal(metiers.find((m) => m.id === 'metiers/assassin').avantage, null);
+  assert.equal(dImport('metiers/forgeron', 'avantage_brut'), 'Identifier une arme, …');
+  if (intact('metiers/forgeron', 'avantage_brut')) assert.equal(metiers.find((m) => m.id === 'metiers/forgeron').avantage, 'Identifier une arme, …');
+  assert.ok([null, '', '…'].includes(dImport('metiers/assassin', 'avantage_brut')?.trim() ?? null), 'à l’import : vide ou « … »');
+  if (intact('metiers/assassin', 'avantage_brut')) assert.equal(metiers.find((m) => m.id === 'metiers/assassin').avantage, null);
 });

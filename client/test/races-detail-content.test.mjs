@@ -2,18 +2,35 @@
 // (tools/sheets/races.py) : sections attendues, source de l'onglet, valeurs de départ de l'onglet, écarts avec la fiche.
 // L'onglet de la race PRIME sur la « Fiche personnage Maverick Auto V15.2.2 » (décision du propriétaire du projet) :
 // la page affiche l'onglet et liste dans « Écarts avec la fiche de personnage V15.2.2 » ce que la fiche dit de différent.
+// Le site de dev est la source des races qu'il modifie ou crée (décision du propriétaire) : ce que l'importeur a écrit se lit dans les pages telles que
+// l'import les a laissées (historique_modification, lib/historique-site.mjs) ; le corps de toute page de race doit redire ses tables (onglet de la race).
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { echapperMarkdown } from '../src/lib/metier-champs.mjs';
 import { splitFrontmatter } from '../src/lib/wikilinks.mjs';
 
 const dir = fileURLToPath(new URL('../src/content/wiki/races', import.meta.url));
-const races = readdirSync(dir)
+// toutes les pages de race d'aujourd'hui (créées depuis le site comprises)
+const toutes = readdirSync(dir)
   .filter((f) => f.endsWith('.md'))
   .map((f) => ({ slug: f.replace(/\.md$/, ''), ...splitFrontmatter(readFileSync(`${dir}/${f}`, 'utf8')) }))
   .filter((e) => e.data.status !== 'example');
+const db = ouvrirBase({ sansExemples: false });
+const historique = historiqueSite(db);
+const creee = (r) => historique.creee('page', { id: `races/${r.slug}` });
+// les pages de l'import, telles que l'importeur les a écrites (corps, champs structurés)
+const races = toutes.filter((r) => !creee(r)).map((r) => {
+  const id = `races/${r.slug}`;
+  if (!historique.touchee('page', { id })) return r;
+  return { ...r, body: historique.valeurDImport('page', { id }, 'corps_md'), data: { ...r.data, ...JSON.parse(historique.valeurDImport('page', { id }, 'donnees') ?? '{}') } };
+});
 const race = (slug) => races.find((r) => r.slug === slug);
+const onglet = (slug) => db.prepare('SELECT * FROM race_onglet WHERE race_id = ?').get(`races/${slug}`);
+const ongletDImport = (slug, colonne) => historique.valeurDImport('race_onglet', { race_id: `races/${slug}` }, colonne);
 const titles = (body) => [...body.matchAll(/^## (.+?)\s*$/gm)].map((m) => m[1]);
 const section = (body, title) => body.split(new RegExp(`^## ${title.replace(/[()]/g, '\\$&')}\\s*$`, 'm'))[1]?.split(/^## /m)[0] ?? '';
 const tableRows = (text) => text.split('\n').filter((l) => l.startsWith('|')).map((l) => l.slice(1, -1).split(' | ').map((c) => c.trim()));
@@ -22,6 +39,7 @@ const ORDRE = ['Présentation', 'Histoire', 'Description', 'Caractéristiques de
 
 test('les 27 races portent les sections de leur onglet, dans l’ordre, puis les matrices de la fiche', () => {
   assert.equal(races.length, 27);
+  assert.equal(historique.effectifDImport('race'), 27);
   for (const r of races) {
     const t = titles(r.body);
     const at = ORDRE.map((s) => t.indexOf(s));
@@ -32,32 +50,51 @@ test('les 27 races portent les sections de leur onglet, dans l’ordre, puis les
   }
 });
 
-test('chaque page cite l’onglet de sa race dans `sources`, et le Nain n’a plus de capture d’écran', () => {
+test('chaque page cite l’onglet de sa race dans `sources`, et le Nain n’a plus de capture d’écran ; une race créée depuis le site cite le site', () => {
   for (const r of races) {
     const onglet = r.data.sources.filter((s) => /^Google Sheet « Les races », onglet « (?!première feuille)/.test(s));
     assert.equal(onglet.length, 1, `${r.slug} : une entrée d'onglet attendue`);
   }
+  for (const r of toutes.filter(creee)) assert.ok((r.data.sources ?? []).some((s) => /^Site de dev › /.test(s)), `${r.slug} : provenance « Site de dev › … » attendue`);
   assert.ok(race('nain').data.sources.includes('Google Sheet « Les races », onglet « Nain »'));
   assert.ok(race('namazu').data.sources.includes('Google Sheet « Les races », onglet « Namazus »'), 'l’onglet « Namazus » est la race Namazu');
   assert.doesNotMatch(race('nain').data.sources.join(' '), /capture/i);
 });
 
 test('les valeurs de départ sont celles de l’onglet (Santé, Chakra, Barrière, Vitesse sol / nage), AP et AM restent celles de la fiche', () => {
+  // à l'import, dans l'onglet de la race
   const attendu = { humain: ['10', '10', '0', '4 / 4'], nain: ['16', '4', '0', '3 / 3'], drakos: ['13', '10', '0', '4 / 3'], olwman: ['8', '12', '0', '6 / 0'] };
-  for (const [slug, valeurs] of Object.entries(attendu)) {
-    const [entetes, , ligne] = tableRows(section(race(slug).body, 'Caractéristiques de départ'));
-    assert.deepEqual(entetes.slice(0, 4), ['Santé de départ', 'Chakra de départ', 'Barrière bonus', 'Vitesse Sol/Nage'], slug);
-    assert.deepEqual(ligne.slice(0, 4), valeurs, slug);
-    assert.deepEqual(entetes.slice(4), ['AP (fiche)', 'AM (fiche)'], slug);
+  const valeurs = (o) => [o('sante_depart'), o('chakra_depart'), o('barriere_bonus'), `${o('vitesse_sol')} / ${o('vitesse_nage')}`].map(String);
+  for (const [slug, v] of Object.entries(attendu)) assert.deepEqual(valeurs((c) => ongletDImport(slug, c)), v, slug);
+  // aujourd'hui : le tableau de chaque page redit l'onglet de sa race
+  for (const r of toutes) {
+    const [entetes, , ligne] = tableRows(section(r.body, 'Caractéristiques de départ'));
+    assert.ok(entetes && ligne, `${r.slug} : tableau des caractéristiques de départ absent`);
+    assert.deepEqual(entetes.slice(0, 4), ['Santé de départ', 'Chakra de départ', 'Barrière bonus', 'Vitesse Sol/Nage'], r.slug);
+    const o = onglet(r.slug);
+    assert.deepEqual(ligne.slice(0, 4), valeurs((c) => o[c]), r.slug);
+    assert.deepEqual(entetes.slice(4), ['AP (fiche)', 'AM (fiche)'], r.slug);
   }
 });
 
 test('Avantage(s), Inconvénient(s), don de base et capacité Mode Hyper sont ceux de l’onglet', () => {
-  const nain = race('nain').body;
-  assert.match(section(nain, 'Avantage(s) et inconvénient(s)'), /\*\*Avantage\(s\)\*\* : Les armures lourdes ne les ralentissent pas, accès à toutes les classes\./);
-  assert.match(section(nain, 'Avantage(s) et inconvénient(s)'), /\*\*Inconvénient\(s\)\*\* : Magie du Feu, Terre, Foudre, Arcane, Potentiel illimité en inné uniquement\./);
-  for (const r of races) assert.match(section(r.body, 'Don de base'), /^(?:Méditation|Repos) \(Action 3 fois\/jour\)/m, r.slug);
-  assert.match(section(race('humain').body, 'Capacité Mode Hyper'), /^\*\*Adrénaline\*\* : 1d de dégâts en plus/m);
+  // aujourd'hui : chaque page redit les tables de l'onglet de sa race (race_onglet, mode_hyper_effet version onglet_race), texte échappé comme l'importeur
+  const modeHyper = db.prepare("SELECT nom, effet FROM mode_hyper_effet WHERE version = 'onglet_race' AND race_id = ? ORDER BY rang");
+  for (const r of toutes) {
+    const o = onglet(r.slug);
+    assert.equal(section(r.body, 'Don de base').trim(), echapperMarkdown(o.don_base.trim()), `${r.slug} : don de base`);
+    assert.equal(section(r.body, 'Avantage(s) et inconvénient(s)').trim(),
+      `**Avantage(s)** : ${echapperMarkdown(o.avantages)}\n\n**Inconvénient(s)** : ${echapperMarkdown(o.inconvenients)}`, `${r.slug} : avantages et inconvénients`);
+    assert.equal(section(r.body, 'Capacité Mode Hyper').trim(),
+      modeHyper.all(`races/${r.slug}`).map((m) => (m.nom ? `**${m.nom}** : ${echapperMarkdown(m.effet)}` : echapperMarkdown(m.effet))).join('\n\n'), `${r.slug} : Mode Hyper`);
+  }
+  // à l'import (onglets du classeur « Les races »)
+  assert.match(ongletDImport('nain', 'avantages'), /^Les armures lourdes ne les ralentissent pas, accès à toutes les classes\./);
+  assert.match(ongletDImport('nain', 'inconvenients'), /^Magie du Feu, Terre, Foudre, Arcane, Potentiel illimité en inné uniquement\./);
+  for (const r of races) assert.match(ongletDImport(r.slug, 'don_base'), /^(?:Méditation|Repos) \(Action 3 fois\/jour\)/, r.slug);
+  const humain = { id: 'onglet_race:races/humain' };
+  assert.equal(historique.valeurDImport('mode_hyper_effet', humain, 'nom'), 'Adrénaline');
+  assert.match(historique.valeurDImport('mode_hyper_effet', humain, 'effet'), /^1d de dégâts en plus/);
 });
 
 test('chaque ethnie de l’onglet affiche la sous-race de la fiche qui lui correspond (« Londolor Ouest » = « Nain Ouest »)', () => {

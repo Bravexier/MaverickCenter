@@ -16,6 +16,10 @@ import {
 } from '../src/lib/guide-db.mjs';
 import { adresseDePage, cheminDePage } from '../src/lib/metiers.mjs';
 import { chargerFilRouge, FIL_ROUGE } from '../src/lib/guide-fil-rouge.mjs';
+import { ficheVide } from '../src/lib/fiche-format.mjs';
+import { attributsDe } from '../src/lib/fiche-moteur.mjs';
+import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { buildIndex, entryUrl, splitFrontmatter } from '../src/lib/wikilinks.mjs';
 
 const page = (id, chapitre, title = id, partie = 'decouvrir') => ({ id, data: { title, chapitre, partie, summary: `Résumé de ${title}` } });
@@ -133,6 +137,7 @@ test('le guide du site : chapitres numérotés sans trou, chacun avec un résum�
 });
 
 const db = ouvrirBase({ sansExemples: false });
+const historique = historiqueSite(db); // ce que le site de dev a changé depuis l'import (lib/historique-site.mjs)
 
 test('le tableau de la montée de niveau reprend les 20 niveaux du guide, gains ponctuels compris', () => {
   const niveaux = chargerNiveaux(db);
@@ -154,9 +159,15 @@ test('les blocs de règles relisent la base dans l’ordre de la fiche', () => {
   assert.ok(competences.every((c) => c.competences.length === 5));
   assert.ok(competences[1].competences.some((k) => k.nom === 'Calme'), 'Calme et non Prouesse (décision R4)');
   const magies = chargerMagiesDuGuide(db);
-  assert.equal(magies.length, 15);
-  assert.deepEqual(magies.find((m) => m.nom === 'Feu'), { id: 'magies/magie-du-feu', nom: 'Feu', caracteristique: 'Social', caracteristique_id: 'social', chakra: 5, sante: 0, dieux: ['Séraphin'] });
-  assert.equal(magies.find((m) => m.nom === 'Potentiel Illimité').caracteristique, 'au choix ou aléatoire');
+  assert.equal(magies.length, db.prepare('SELECT count(*) AS n FROM magie').get().n);
+  // ce que la base dit du Feu (le site de dev peut changer ce qu'il offre) ; à l'import, la fiche auto : Social, 5 chakra, 0 santé
+  const feu = db.prepare("SELECT m.chakra_offert, m.sante_offerte, m.caracteristique_id, c.nom FROM magie m LEFT JOIN caracteristique c ON c.id = m.caracteristique_id WHERE m.id = 'magies/magie-du-feu'").get();
+  assert.deepEqual(magies.find((m) => m.nom === 'Feu'),
+    { id: 'magies/magie-du-feu', nom: 'Feu', caracteristique: feu.nom, caracteristique_id: feu.caracteristique_id, chakra: feu.chakra_offert, sante: feu.sante_offerte, dieux: ['Séraphin'] });
+  assert.deepEqual(['caracteristique_id', 'chakra_offert', 'sante_offerte'].map((c) => historique.valeurDImport('magie', { id: 'magies/magie-du-feu' }, c)), ['social', 5, 0]);
+  if (!historique.touchee('magie', { id: 'magies/potentiel-illimite' }, 'caracteristique_brut')) {
+    assert.equal(magies.find((m) => m.nom === 'Potentiel Illimité').caracteristique, 'au choix ou aléatoire');
+  }
   assert.deepEqual(chargerInitiative(db).map((i) => i.bonus_brut), ['-2 initiative', '+0 initiative', '+2 initiative', '+4 initiative', '+6 initiative']);
   assert.deepEqual(chargerEntrainement(db).map((e) => e.rate), [false, false, false, false, false, true]);
   assert.deepEqual(chargerTypesDeDon(db).map((t) => t.nom), ['Passif', 'Actif', 'Action', 'Réaction']);
@@ -171,22 +182,44 @@ test('les personnages fil rouge : des choix permis par la base, et des attributs
     assert.ok(db.prepare('SELECT 1 FROM v_race_classe_accessible WHERE race_id = ? AND classe_id = ?').get(p.race, p.classe), `${p.id} : classe non accessible`);
     assert.equal(db.prepare('SELECT race_id FROM ethnie WHERE id = ?').get(p.ethnie)?.race_id, p.race, `${p.id} : ethnie d’une autre race`);
   }
+  // (a) le guide et la fiche disent la même chose : les attributs du moteur de la fiche (lib/fiche-moteur.mjs), calculés par un autre chemin
+  const regles = chargerReglesDeFiche(db);
+  for (const p of FIL_ROUGE) {
+    const g = fil.find((x) => x.id === p.id);
+    const a = attributsDe(regles, { ...ficheVide(p.id), race_id: p.race, ethnie_id: p.ethnie, magie_innee_id: p.magie, classes: [{ rang: 1, classe_id: p.classe, specialite_id: null }] });
+    assert.deepEqual([g.attributs.sante, g.attributs.chakra, g.attributs.barriere, g.attributs.am], [a.sante, a.chakra, a.barriere, a.am], p.id);
+  }
+  // (b) les chiffres de la fiche auto V15.2.2, tant que le site de dev (source des données qu'il modifie) n'a changé aucune des cellules en jeu
+  const intact = (id) => {
+    const p = FIL_ROUGE.find((x) => x.id === id);
+    return ![
+      ['race_onglet', { race_id: p.race }, ['sante_depart', 'chakra_depart', 'barriere_bonus']],
+      ['classe', { id: p.classe }, ['sante_depart', 'chakra_depart', 'barriere_depart']],
+      ['magie', { id: p.magie }, ['sante_offerte', 'chakra_offert', 'barre4_ressource', 'barre4_max']],
+      ['ethnie', { id: p.ethnie }, ['bonus_pv', 'bonus_chakra', 'bonus_barriere', 'bonus_am']],
+      ['race', { id: p.race }, ['am']],
+    ].some(([table, cle, colonnes]) => colonnes.some((c) => historique.touchee(table, cle, c)));
+  };
   const guerrier = fil.find((p) => p.id === 'guerrier');
-  // Orios (20 santé, 1 chakra) + Guerrier (9 santé, 0 chakra, 1 barrière) + Sang (10 santé, 0 chakra)
-  assert.deepEqual([guerrier.attributs.sante, guerrier.attributs.chakra, guerrier.attributs.barriere], [39, 1, 1]);
-  assert.deepEqual(guerrier.attributs.quatriemeBarre, { ressource: 'Sang', max: 10 });
+  if (intact('guerrier')) {
+    // Orios (20 santé, 1 chakra) + Guerrier (9 santé, 0 chakra, 1 barrière) + Sang (10 santé, 0 chakra)
+    assert.deepEqual([guerrier.attributs.sante, guerrier.attributs.chakra, guerrier.attributs.barriere], [39, 1, 1]);
+    assert.deepEqual(guerrier.attributs.quatriemeBarre, { ressource: 'Sang', max: 10 });
+  }
   const barde = fil.find((p) => p.id === 'barde');
   // Kitsune (8, 12) + Barde (2, 6, barrière 2) + Vent (0, 5) : chakra 23, barrière 11 + 2
-  assert.deepEqual([barde.attributs.sante, barde.attributs.chakra, barde.attributs.barriere, barde.attributs.am], [10, 23, 13, 4]);
+  if (intact('barde')) assert.deepEqual([barde.attributs.sante, barde.attributs.chakra, barde.attributs.barriere, barde.attributs.am], [10, 23, 13, 4]);
   assert.equal(barde.emplacements, 2, 'magie innée + classe magique, puissance 1');
   assert.equal(fil.find((p) => p.id === 'archer').emplacements, 1, 'archer : la magie innée seule');
   const mage = fil.find((p) => p.id === 'mage');
+  assert.deepEqual([mage.magie.nom, mage.emplacements], ['Feu', 2]);
   // Majin (8, 10) + Mage Rouge (0, 9, barrière 1) + Feu (0, 5) : chakra 24, barrière 12 + 1
-  assert.deepEqual([mage.magie.nom, mage.attributs.sante, mage.attributs.chakra, mage.attributs.barriere, mage.emplacements], ['Feu', 8, 24, 13, 2]);
+  if (intact('mage')) assert.deepEqual([mage.attributs.sante, mage.attributs.chakra, mage.attributs.barriere], [8, 24, 13]);
 });
 
 test('décisions R17 et R18 : l’exemple 2 des dégâts donne 18 ; à court de chakra, toujours 2 santé pour 1 chakra', () => {
-  const corps = (id) => pagesDuGuide.find((p) => p.id === id).body;
+  // le texte tel que l'import l'a écrit (corrigé selon les décisions) : le site de dev, source des données qu'il modifie, peut le réécrire depuis
+  const corps = (id) => historique.valeurDImport('page', { id }, 'corps_md', pagesDuGuide.find((p) => p.id === id).body);
   assert.match(corps('guide/formule-des-degats'), /total de 18\.5 dégâts[\s\S]*donc 18 dégâts[\s\S]*J'ai pris 18 points de dégâts/);
   assert.doesNotMatch(corps('guide/formule-des-degats'), /16\.5/);
   assert.match(corps('guide/les-degats'), /37 ÷ 2 = 18,5, arrondi à \*\*18 dégâts\*\*/);

@@ -1,31 +1,39 @@
 // La Lamia a accès à la Corruption en magie innée (décision R22 du propriétaire, migration data/migrations/0013-lamia-corruption.sql) : la case
 // Lamia × Corruption de la matrice « Accessibilité Magie » (E24), à 0 dans la fiche, est corrigée partout où la liste des magies innées est écrite.
+// Le site de dev est la source des magies innées qu'il modifie (décision du propriétaire) : ce que la migration a écrit se lit dans
+// historique_modification (lib/historique-site.mjs), l'état courant est contrôlé par sa cohérence.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { racesOfMagie } from '../src/lib/magie-relations.mjs';
 import { chargerRaces } from '../src/lib/races-db.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
+const historique = historiqueSite(db);
 const LAMIA = 'races/lamia';
 const CORRUPTION = 'magies/magie-de-la-corruption';
 const page = (id) => db.prepare('SELECT donnees, corps_md FROM page WHERE id = ?').get(id);
 const entree = (id) => ({ id, data: { title: id, ...JSON.parse(page(id).donnees ?? '{}') } });
 
 test('matrice : la case Lamia × Corruption vaut 1, la trace de la fiche est dans source_ref ; les autres cases ne changent pas', () => {
-  const r = db.prepare('SELECT accessible, valeur_brut, source_ref FROM race_magie WHERE race_id = ? AND magie_id = ?').get(LAMIA, CORRUPTION);
-  assert.deepEqual({ ...r }, { accessible: 1, valeur_brut: '1', source_ref: 'Fiche auto V15.2.2 › Accessibilité Magie › E24 (0 dans la fiche ; 1 : décision R22 du propriétaire)' });
-  assert.ok(db.prepare('SELECT 1 FROM v_race_magie_accessible WHERE race_id = ? AND magie_id = ?').get(LAMIA, CORRUPTION));
-  assert.deepEqual({ ...db.prepare('SELECT sum(accessible) AS un, count(*) AS n FROM race_magie').get() }, { un: 245, n: 405 });
-  assert.deepEqual(
-    db.prepare('SELECT magie_id FROM race_magie WHERE race_id = ? AND accessible = 0').all(LAMIA).map((x) => x.magie_id),
-    ['magies/potentiel-illimite'],
-    'la Lamia n’a toujours pas le Potentiel Illimité',
-  );
+  const cle = { race_id: LAMIA, magie_id: CORRUPTION };
+  const { accessible, valeur_brut, source_ref } = historique.ligneDImport('race_magie', cle);
+  assert.deepEqual({ accessible, valeur_brut, source_ref }, { accessible: 1, valeur_brut: '1', source_ref: 'Fiche auto V15.2.2 › Accessibilité Magie › E24 (0 dans la fiche ; 1 : décision R22 du propriétaire)' });
+  if (!historique.touchee('race_magie', cle)) assert.ok(db.prepare('SELECT 1 FROM v_race_magie_accessible WHERE race_id = ? AND magie_id = ?').get(LAMIA, CORRUPTION));
+  // la matrice est complète (une case par race et par magie) ; à l'import, 245 cases à 1 sur 405
+  const n = (table) => db.prepare(`SELECT count(*) AS n FROM ${table}`).get().n;
+  assert.equal(n('race_magie'), n('race') * n('magie'));
+  const matrice = historique.lignesDImport('race_magie');
+  assert.deepEqual({ un: matrice.filter((c) => c.accessible === 1).length, n: matrice.length }, { un: 245, n: 405 });
+  assert.deepEqual(matrice.filter((c) => c.race_id === LAMIA && c.accessible === 0).map((c) => c.magie_id), ['magies/potentiel-illimite'],
+    'la Lamia n’a toujours pas le Potentiel Illimité');
 });
 
 test('page de la Lamia : magies innées du front matter et section « Magies accessibles », la citation de la fiche reste telle quelle', () => {
-  const { donnees, corps_md } = page(LAMIA);
+  // tels que la migration les a écrits (le site de dev peut changer les magies innées de la Lamia depuis)
+  const donnees = historique.valeurDImport('page', { id: LAMIA }, 'donnees');
+  const corps_md = historique.valeurDImport('page', { id: LAMIA }, 'corps_md');
   assert.deepEqual(JSON.parse(donnees).magies_innees, ['Sang', 'Arcane', 'Corruption', 'Espace/Temps', 'Vide', 'Nécromancie', 'Feu', 'Eau', 'Glace', 'Terre', 'Vent', 'Foudre', 'Lumière', 'Ombre']);
   assert.ok(corps_md.includes('Nombre : 14 sur 15.'));
   assert.ok(corps_md.includes('Corruption : à 0 dans la matrice de la fiche, accessible d\'après le propriétaire du projet (décision R22).'));

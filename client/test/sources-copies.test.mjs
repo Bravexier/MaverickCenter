@@ -6,6 +6,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 
 const racine = (chemin) => fileURLToPath(new URL(`../../${chemin}`, import.meta.url));
 const lire = (chemin) => readFileSync(racine(chemin), 'utf8');
@@ -56,9 +57,14 @@ test('sources : une ligne par document cité, id dérivé du nouvel identifiant,
     assert.equal(l.texte, l.url);
     assert.ok(l.url.includes(`/d/${apres}/`), l.url);
   }
-  const renvois = db.prepare(`SELECT count(*) AS n FROM page_source WHERE source_id IN (${attendus.map(() => '?').join(', ')})`)
-    .get(...attendus.map((t) => `google-${parTitre.get(t).genre}:${parTitre.get(t).apres}`)).n;
-  assert.equal(renvois, 1069);
+  // les renvois des pages tels que la migration les a laissés (le site de dev, source des données qu'il modifie, peut créer ou supprimer une page)
+  const ids = new Set(attendus.map((t) => `google-${parTitre.get(t).genre}:${parTitre.get(t).apres}`));
+  assert.equal(historiqueSite(db).lignesDImport('page_source').filter((r) => ids.has(r.source_id)).length, 1069);
+  // aujourd'hui : tout renvoi vers un document Google cite une copie du registre ou l'un des deux documents non copiés
+  const permis = new Set([...registre.copies.map((c) => c.apres), ...registre.non_copies.map((c) => c.id)]);
+  for (const r of db.prepare('SELECT p.page_id, s.google_id FROM page_source p JOIN source s ON s.id = p.source_id WHERE s.google_id IS NOT NULL').all()) {
+    assert.ok(permis.has(r.google_id), `${r.page_id} : ${r.google_id}`);
+  }
 });
 
 test('liens : les 9 ressources vers la copie du Doc « Alchimie » (le lien du Mage Bleu vers « Familiers » est retiré : migration 0019)', () => {

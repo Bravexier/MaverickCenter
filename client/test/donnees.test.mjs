@@ -32,9 +32,9 @@ test('lister : toutes les tables et vues explorables (hors recherche plein texte
   assert.ok(!objets.some((o) => /_fts$/.test(o.nom)), 'les tables de recherche ne sont pas explorables');
   const n = (nom) => objets.find((o) => o.nom === nom).nbLignes;
   assert.equal(n('page'), readdirSync(join(racine, 'client', 'src', 'content', 'wiki')).reduce((s, t) => s + readdirSync(join(racine, 'client', 'src', 'content', 'wiki', t)).length, 0));
-  assert.equal(n('sort'), 322);
-  assert.equal(n('capacite'), 660);
-  assert.equal(n('race'), 27);
+  // le nombre affiché est celui de la base (les effectifs de l'import sont épinglés par db-donnees.test.mjs ; le site peut en créer)
+  for (const o of objets) assert.equal(o.nbLignes, db.prepare(`SELECT count(*) AS n FROM "${o.nom}"`).get().n, o.nom);
+  for (const t of ['sort', 'capacite', 'race']) assert.ok(n(t) > 0, `${t} est rempli`);
   assert.ok(n('lien') > 0, 'les tables dérivées (liens des pages) sont calculées');
   assert.ok(n('v_classe_capacite') > 0, 'les vues sont lisibles');
   assert.equal(new Set(objets.map((o) => o.nom)).size, objets.length, 'un nom de page par objet : pas de doublon');
