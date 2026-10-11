@@ -1,7 +1,12 @@
 // Modèle de l'édition depuis le site de dev (demande du propriétaire ; client/serveur/edition.mjs, docs/serveur.md, « Édition ») : quelles colonnes de
 // quelles tables une page peut modifier, avec leur type de champ, et comment une page désigne un champ (attribut `data-ed`). Le service n'accepte
 // que ces colonnes ; tout ce qui en dépend dans la base (colonnes typées, tables de détail, page du wiki) est recalculé par le service, jamais saisi.
-// Fonctions et constantes pures, sans dépendance : partagées par le service, les gabarits Astro et le script des pages (src/scripts/edition.mjs).
+// Entités créables (ENTITES) : métier, race, classe, peuple, spécialité, don de classe ; supprimables : métier, spécialité, don de classe.
+// Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, pur lui aussi) : partagées par le service, les gabarits Astro et le
+// script des pages (src/scripts/edition.mjs).
+import { NIVEAUX_DE_DON, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
+
+export { NIVEAUX_DE_DON, NIVEAU_DES_SPECIALITES, SPECIALITES_MAX, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
 
 /**
  * Types de champ :
@@ -159,8 +164,9 @@ export const TABLES = {
 };
 
 /**
- * Entités qu'une page peut créer ou supprimer, avec les champs demandés à la création (`champs`, même format que les colonnes de TABLES ; ce qui
- * n'est pas demandé prend sa valeur « vide » ou une valeur de départ visible, « À compléter. »).
+ * Entités qu'une page peut créer ou supprimer (`suppression`), avec les champs demandés à la création (`champs`, même format que les colonnes de
+ * TABLES ; ce qui n'est pas demandé prend sa valeur « vide » ou une valeur de départ visible, « À compléter. ») ; `nouveau` : le titre du formulaire
+ * et des messages (« Nouvelle spécialité »), par défaut « Nouveau <libellé> ».
  */
 const champsDe = (table, colonnes) => Object.fromEntries(colonnes.map((c) => [c, TABLES[table].colonnes[c]]));
 /** Nature d'une race (demande du propriétaire : une race hybride peut être créée avant sa classe raciale ; lib/race-kinds.mjs). */
@@ -207,6 +213,42 @@ export const ENTITES = {
     champs: {
       nom: { type: 'ligne', libelle: 'Nom du peuple', requis: true },
       race_id: { type: 'ligne', libelle: 'Race', requis: true },
+    },
+  },
+  // une spécialité d'une classe (D11) : créée avec son don de spécialité du niveau 10 (sans lui elle n'aurait ni colonne ni bannière) ; supprimée avec tous
+  // ses dons. `classe_id` est donné par le bouton de la page, contrôlé par le service.
+  specialite: {
+    table: 'specialite',
+    libelle: 'spécialité',
+    nouveau: 'Nouvelle spécialité',
+    suppression: true,
+    champs: {
+      classe_id: { type: 'ligne', libelle: 'Classe', requis: true },
+      nom: { type: 'ligne', libelle: 'Nom de la spécialité', requis: true },
+      description: { type: 'texte', libelle: 'Description' },
+      don_nom: { type: 'ligne', libelle: 'Nom du don de spécialité (niveau 10)', requis: true },
+      don_type: { type: 'choix', libelle: 'Type du don de spécialité', requis: true, choix: TYPES_DE_DON_SAISIE },
+      don_precision: { type: 'ligne', libelle: 'Précision du type (« 2 fois/combat »)' },
+      don_effet: { type: 'texte', libelle: 'Effet du don de spécialité', aide: 's’il dit « considérer comme classe magique », la spécialité donne +4 AM (R7)' },
+    },
+  },
+  // un don de classe (« capacité », D11) : sa place vient du bouton (classe, spécialité, ou le don `avec` dont il devient une option : même ligne, même
+  // niveau, même spécialité) ; sans `avec`, une nouvelle ligne à la fin de son niveau (lib/dons-edition.mjs#placeNouvelleLigne). `specialite_id` et
+  // `avec` acceptent « @i » : la spécialité ou le don créé par l'opération i du même lot.
+  capacite: {
+    table: 'capacite',
+    libelle: 'don',
+    nouveau: 'Nouveau don',
+    suppression: true,
+    champs: {
+      classe_id: { type: 'ligne', libelle: 'Classe', requis: true },
+      specialite_id: { type: 'ligne', libelle: 'Spécialité (vide : hors spécialité)' },
+      avec: { type: 'ligne', libelle: 'Au choix avec (vide : une nouvelle ligne)' },
+      niveau: { type: 'choix', libelle: 'Niveau de classe', choix: NIVEAUX_DE_DON.map((n) => ({ valeur: String(n), libelle: `Niveau ${n}` })) },
+      nom: { type: 'ligne', libelle: 'Nom du don', requis: true },
+      type: { type: 'choix', libelle: 'Type', requis: true, choix: TYPES_DE_DON_SAISIE },
+      precision: { type: 'ligne', libelle: 'Précision du type (« 2 fois/combat »)' },
+      effet: { type: 'texte', libelle: 'Effet' },
     },
   },
 };
