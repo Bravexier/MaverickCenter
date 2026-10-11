@@ -1,5 +1,5 @@
 // Édition des magies et des sorts depuis le site de dev (client/serveur/edition.mjs) : les colonnes typées, types, modes et bonus de NM suivent le texte
-// des cases (lib/sort-analyse.mjs) ; une seule colonne par ligne peut avoir un effet dû aux NM (règle de l'édition, demande du propriétaire) ;
+// des cases (lib/sort-analyse.mjs) ; une ligne peut avoir un effet dû aux NM dans plusieurs colonnes (demande du propriétaire) ;
 // la table des relations entre magies ne se modifie pas.
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -34,15 +34,12 @@ test('coût modifié : consommation de chakra, bonus de NM et colonne « Bonus M
   assert.deepEqual(lignes("SELECT texte_brut, increment_entier FROM sort_bonus_maitrise WHERE sort_id = ? AND champ = 'cout'", SEUL_COUT).map((b) => ({ ...b })), [{ texte_brut: '-4/NM', increment_entier: -4 }]);
 });
 
-test('règle : une seule colonne par ligne avec un effet dû aux NM ; rien n’est écrit sinon', () => {
-  const avant = ligne('SELECT dsb_brut FROM sort WHERE id = ?', SEUL_COUT).dsb_brut;
+test('plusieurs colonnes avec un effet dû aux NM sur une même ligne : permis (demande du propriétaire), chaque bonus est noté', () => {
   const r = modifier('sort', { id: SEUL_COUT }, { dsb_brut: '3d6 dégâts (+1d6/NM)' });
-  assert.equal(r.statut, 400);
-  assert.match(r.corps.erreur, /une seule colonne par ligne peut avoir un effet dû aux NM, ici Coût et D\/S\/B/);
-  assert.equal(r.corps.regle, 'une_colonne_nm');
-  assert.equal(ligne('SELECT dsb_brut FROM sort WHERE id = ?', SEUL_COUT).dsb_brut, avant);
-  // déplacer l'effet de NM du coût vers les dégâts, dans le même enregistrement : permis
-  const ok = modifier('sort', { id: SEUL_COUT }, { cout_brut: '40', dsb_brut: '3d6 dégâts (+1d6/NM)' });
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  assert.equal(ligne('SELECT bonus_maitrise FROM sort WHERE id = ?', SEUL_COUT).bonus_maitrise, 'Coût : -4/NM\nD/S/B : +1d6/NM');
+  assert.deepEqual(lignes('SELECT champ FROM sort_bonus_maitrise WHERE sort_id = ? ORDER BY champ', SEUL_COUT).map((b) => b.champ), ['cout', 'dsb']);
+  const ok = modifier('sort', { id: SEUL_COUT }, { cout_brut: '40' });
   assert.equal(ok.statut, 200, JSON.stringify(ok.corps));
   assert.equal(ligne('SELECT bonus_maitrise FROM sort WHERE id = ?', SEUL_COUT).bonus_maitrise, 'D/S/B : +1d6/NM');
   assert.equal(modifier('sort', { id: SEUL_COUT }, { dsb_brut: '/' }).statut, 200);

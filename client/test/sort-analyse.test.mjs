@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
-import { analyserCout, analyserPortee, analyserType, analyserZone, bonusDeMaitrise, colonnesAvecNM, COLONNES_NM } from '../src/lib/sort-analyse.mjs';
+import { analyserCout, analyserPortee, analyserType, analyserZone, bonusDeMaitrise, COLONNES_NM } from '../src/lib/sort-analyse.mjs';
 import { ORDRE_CHAMPS_NM, texteDeBonus } from '../src/lib/sort-maitrise.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
@@ -74,10 +74,4 @@ test('une case modifiée : nouvelles expressions reconnues ; la colonne « Bonus
   const lignes = bonusDeMaitrise('cout', '30 (-3/NM)').map((b) => ({ champ: b.champ, rang: b.rang, nature: b.nature, texteBrut: b.texte_brut, contexte: b.contexte }));
   assert.equal(texteDeBonus(lignes), 'Coût : -3/NM');
   assert.deepEqual(ORDRE_CHAMPS_NM, Object.keys(COLONNES_NM));
-});
-
-test('règle de l’édition : les colonnes qui ont un effet dû aux NM (33 sorts en ont deux aujourd’hui)', () => {
-  const plusieurs = sorts.filter((s) => colonnesAvecNM(s).length > 1);
-  assert.equal(plusieurs.length, 33);
-  assert.deepEqual(colonnesAvecNM({ type_brut: 'Attaque', cout_brut: '5 (-1/NM)', portee_brut: '3', zone_brut: '1', dsb_brut: null, effets: 'x', remarque: '3NM = y' }), ['cout', 'effets']);
 });

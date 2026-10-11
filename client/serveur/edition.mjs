@@ -17,7 +17,7 @@ import {
   CHAMPS_DU_CORPS, RIEN, corpsDeMetier, decouperArtisanat, decouperBonus, famillesDeRecette, remplacerChampDuCorps, resumeDeDescription,
 } from '../src/lib/metier-champs.mjs';
 import { analyserCout, analyserPortee, analyserType, analyserZone, bonusDeMaitrise, COLONNES_NM, TYPES_DE_SORT } from '../src/lib/sort-analyse.mjs';
-import { LIBELLES_CHAMP_NM, ORDRE_CHAMPS_NM, texteDeBonus } from '../src/lib/sort-maitrise.mjs';
+import { ORDRE_CHAMPS_NM, texteDeBonus } from '../src/lib/sort-maitrise.mjs';
 import {
   analyserTypeDeDon, bouclierMax, CATEGORIE_RACIALE, decouperInventaire, decouperMaitriseArme, decouperMaitriseArmure, MOT_CLE_DE_CATEGORIE,
 } from '../src/lib/classe-champs.mjs';
@@ -235,7 +235,6 @@ function deriverEtatsDuSort(ctx, sort, champs) {
   }
 }
 
-const libelleNM = (champ) => (champ === 'remarque' ? 'Effets' : LIBELLES_CHAMP_NM[champ]);
 
 const SORT = {
   colonnes(_ctx, ligne) {
@@ -259,15 +258,9 @@ const SORT = {
     }
     const champs = Object.entries(COLONNES_NM).filter(([, c]) => (apres[c] ?? null) !== (avant[c] ?? null)).map(([champ]) => champ);
     if (!champs.length) return;
-    const bonus = deriverBonusDuSort(ctx, apres, champs);
+    // une ligne peut avoir un effet dû aux NM dans plusieurs colonnes (demande du propriétaire : la règle d'une seule colonne est retirée)
+    deriverBonusDuSort(ctx, apres, champs);
     deriverEtatsDuSort(ctx, apres, champs.filter((c) => c !== 'portee' && c !== 'remarque'));
-    // Règle de l'édition (demande du propriétaire) : une seule colonne par ligne peut avoir un effet dû aux NM (effets et remarque : la case « Effets »)
-    const colonnes = [...new Set(bonus.map((b) => (b.champ === 'remarque' ? 'effets' : b.champ)))];
-    if (colonnes.length > 1) {
-      throw refus(`${apres.nom} : une seule colonne par ligne peut avoir un effet dû aux NM, ici ${colonnes.map(libelleNM).join(' et ')}. Retirez l’expression de NM (« (+1/NM) », « 3NM = … ») de l’une d’elles.`, {
-        regle: 'une_colonne_nm', sort: apres.id, colonnes,
-      });
-    }
   },
 };
 

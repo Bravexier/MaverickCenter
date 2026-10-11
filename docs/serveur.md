@@ -103,7 +103,7 @@ toutes les modifications de la page **d'un bloc** puis repasse en lecture ; déc
 | --- | --- |
 | Guide | Titre et texte : éditeur en place (paragraphes, titres, citations, listes, gras, italique, barré, liens vers une page du wiki ou une adresse, tableaux, lignes, colonnes et couleur des cases), réécrit en Markdown (`lib/markdown-edition.mjs`) ; les blocs tirés de la base restent à leur place ; un ancien titre devient un alias |
 | Races | Chaque case de l'onglet (présentation, histoire, valeurs de départ, avantages, dons et leur tableau, capacité Mode Hyper…), magies innées, relations entre peuples (déplacer ou ajouter une race ou une ethnie dans le tableau d'une race) ; créer une race (pure ou hybride) ou un peuple |
-| Magies | Présentation, description, explication, rôles, Mode Hyper ; chaque case de chaque sort (type, mode, NM et états recalculés : `lib/sort-analyse.mjs`). **Une seule colonne par ligne avec un effet de NM** : signalée en direct, refusée à l'enregistrement. La table des relations entre magies ne se modifie pas |
+| Magies | Présentation, description, explication, rôles, Mode Hyper ; chaque case de chaque sort (type, mode, NM et états recalculés : `lib/sort-analyse.mjs` ; une ligne peut avoir un effet de NM dans plusieurs colonnes). La table des relations entre magies ne se modifie pas |
 | Classes | Tous les champs (maîtrises, inventaire, spécialités, dons : tables de détail recalculées, `lib/classe-champs.mjs`) ; créer une classe dans une catégorie ; une classe raciale se crée pour une race hybride qui n'en a pas encore |
 | Métiers | Ajouter, modifier, supprimer (refusé si une fiche l'utilise) ; bonus et recettes recalculés (`lib/metier-champs.mjs`) ; filtres et tri par colonne |
 

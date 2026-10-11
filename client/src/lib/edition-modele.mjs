@@ -127,7 +127,7 @@ export const TABLES = {
       remarque: { type: 'texte', libelle: 'Remarque' },
     },
   },
-  // Sorts : chaque case du tableau et du détail. Une seule colonne par ligne peut avoir un effet dû aux NM (règle de l'édition, demande du propriétaire)
+  // Sorts : chaque case du tableau et du détail (une ligne peut avoir un effet dû aux NM dans plusieurs colonnes)
   sort: {
     libelle: 'Sort',
     colonnes: {
