@@ -7,7 +7,7 @@ import { CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ficheVide } from 
 import {
   attributsDe, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, classesDe, classesSelonLaMagieInnee,
   competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, lignesDeSorts, magieAcquiseValable, notationDesDes, magiesInneesPermises, maitriseDArme,
-  maitriseDesSorts, niveauGlobal, nmDuSort, npmMax, progressionAttendue, progressionXp, refusClasse, refusMagieAcquise, trouver, ecrireValeurDuMoment, valeursDuMoment,
+  maitriseDesSorts, niveauGlobal, nmDuSort, npmMax, progressionAttendue, progressionXp, refusClasse, refusMagieAcquise, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
 } from '../lib/fiche-moteur.mjs';
 
 const racine = document.getElementById('fiche');
@@ -450,7 +450,7 @@ function construireSorts() {
   const nm = calcul.nm;
   const max = npmMax(regles, fiche);
   $('emplacements-detail').textContent = emplacements.total
-    ? `${emplacements.total} emplacement${emplacements.total > 1 ? 's' : ''} (${emplacements.conditions} condition${emplacements.conditions > 1 ? 's' : ''} × puissance ${emplacements.puissance}), sorts jusqu’au NPM ${max}, NM au plus ${nm.maxParSort} par sort.`
+    ? `${emplacements.total} emplacement${emplacements.total > 1 ? 's' : ''} (${emplacements.conditions} condition${emplacements.conditions > 1 ? 's' : ''} × puissance ${emplacements.puissance}), sorts jusqu’au NPM ${max}, ${nm.plafond} NM au plus par sort (dont ${Math.min(nm.plafond, nm.maxParSort)} de niveau).`
     : 'Pas encore d’emplacement de sort : choisissez une magie.';
   etatBudget($('budget-sorts'), (fiche.sorts ?? []).length, emplacements.total, 'Sorts', false);
   const badge = $('budget-nm');
@@ -466,8 +466,16 @@ function construireSorts() {
     el('tbody', {}, lignes.length === 0
       ? el('tr', {}, el('td', { colspan: '6', class: 'muted' }, 'Aucun emplacement de sort.'))
       : lignes.map((l) => {
-        const magies = regles.magies.filter((m) => l.choix.some((x) => x.magie_id === m.id));
+        // un groupe par NPM, le nom seul ; chaque sort sur la couleur de sa magie, comme sur les pages de magie (demande du propriétaire)
+        const couleurDe = (s) => trouver(regles.magies, s?.magie_id);
+        const optionDeSort = (s) => {
+          const m = couleurDe(s);
+          return el('option', { value: s.id, selected: s.id === l.ligne?.sort_id, style: m ? `background-color: ${m.couleur}; color: ${m.texte}` : null, title: m?.nom }, s.nom);
+        };
+        const choisi = couleurDe(l.sort);
         const liste = el('select', {
+          style: choisi ? `--c: ${choisi.couleur}; --texte-sur-c: ${choisi.texte}` : null, dataset: choisi ? { couleur: '' } : {},
+          title: choisi ? `${l.sort.nom} (${choisi.nom}, NPM ${l.sort.niveau})` : null,
           'aria-label': `Sort de l’emplacement ${l.index + 1}`,
           onchange: (ev) => {
             const choix = ev.target.value;
@@ -476,9 +484,9 @@ function construireSorts() {
             else fiche.sorts.push({ sort_id: choix, rang: fiche.sorts.length + 1, niveau_maitrise: 0, nm_livre: 0, nm_cadeau: 0 });
             changer();
           },
-        }, option('', l.enTrop ? '— retirer —' : l.choix.length ? '— libre —' : '— aucun sort possible —'),
-        l.enTrop ? null : magies.map((m) => el('optgroup', { label: m.nom }, l.choix.filter((x) => x.magie_id === m.id).map((x) => option(x.id, `${x.nom} (NPM ${x.niveau})`, x.id === l.ligne?.sort_id)))),
-        l.enTrop || l.horsDesRegles ? el('optgroup', { label: l.enTrop ? 'Au-delà des emplacements' : 'Hors des magies ou du niveau' }, option(l.sort.id, l.sort.nom, true)) : null);
+        }, el('option', { value: '', class: 'option-vide' }, l.enTrop ? '— retirer —' : l.choix.length ? '— libre —' : '— aucun sort possible —'),
+        l.enTrop ? null : sortsParNpm(regles, l.choix).map((g) => el('optgroup', { label: `NPM ${g.npm}` }, g.sorts.map(optionDeSort))),
+        l.enTrop || l.horsDesRegles ? el('optgroup', { label: l.enTrop ? 'Au-delà des emplacements' : 'Hors des magies ou du niveau' }, optionDeSort(l.sort)) : null);
         liste.setAttribute('aria-invalid', String(l.horsDesRegles || l.enTrop));
         // NM par origine : niveau_maitrise = niveau + livre + MJ
         const ecrireNm = (origine, valeur) => {

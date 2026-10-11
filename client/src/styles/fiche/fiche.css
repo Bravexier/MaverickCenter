@@ -319,6 +319,10 @@
 .fiche-table--fixe th:first-child, .fiche-table--fixe td:first-child { width: 7rem; }
 .fiche-table--fixe .etroite { width: 5rem; }
 .fiche-table--sorts td:nth-child(2) { width: 40%; }
+/* liste d'un emplacement : un groupe par NPM, chaque sort sur la couleur de sa magie (demande du propriétaire) ; fermée, la couleur du sort choisi */
+.fiche .fiche-table--sorts select[data-couleur] { background-color: var(--c); color: var(--texte-sur-c, #fff); font-weight: 600; }
+.fiche-table--sorts optgroup, .fiche-table--sorts option.option-vide { background-color: var(--surface); color: var(--text); font-weight: normal; }
+.fiche-table--sorts optgroup { color: var(--muted); font-style: normal; }
 /* un sort au-delà des emplacements (XP baissée, magie retirée) : pas d'emplacement en plus (décision R27), à retirer */
 .fiche-table--sorts tr.en-trop td { background: color-mix(in srgb, var(--danger) 8%, var(--surface)); }
 /* NM d'un sort par origine : niveau · livre · MJ = total (3 au plus, décision R26) */

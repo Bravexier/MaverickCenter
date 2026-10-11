@@ -14,7 +14,7 @@ import {
   attributsDe, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, magieAcquiseValable, nmDuSort,
   progressionXp, classeMagique, classesPermises, classesSelonLaMagieInnee,
   competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, magiesInneesPermises, maitriseDesSorts, niveauGlobal,
-  maitriseDArme, niveauxDeClasse, notationDesDes, npmMax, progressionAttendue, puissanceMagique, refusClasse, refusMagieAcquise, sortsPossibles, ecrireValeurDuMoment, valeursDuMoment, xpDuNiveauSuivant,
+  maitriseDArme, niveauxDeClasse, notationDesDes, npmMax, progressionAttendue, puissanceMagique, refusClasse, refusMagieAcquise, sortsParNpm, sortsPossibles, ecrireValeurDuMoment, valeursDuMoment, xpDuNiveauSuivant,
 } from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { FIL_ROUGE, chargerFilRouge } from '../src/lib/guide-fil-rouge.mjs';
@@ -473,4 +473,24 @@ test('maîtrises d’armes : les dés dans leur colonne (demande du propriétair
     ['3D10', '3D6', '3D10', '3D10', '3D10', '3D6/3D8/3D10', '3D8', '3D6', '3D8', '3D12', '3D6', '3 dés']);
   assert.equal(notationDesDes('D10', 1), '1D10');
   assert.equal(notationDesDes(null, 1), '1 dé');
+});
+
+test('liste d’un emplacement de sort (demande du propriétaire) : un groupe par NPM, croissant ; dans un NPM, l’ordre des magies puis du classeur', () => {
+  const groupes = sortsParNpm(regles, regles.sorts);
+  const npms = groupes.map((g) => g.npm);
+  assert.deepEqual(npms, [...new Set(regles.sorts.map((s) => s.niveau))].sort((a, b) => a - b));
+  assert.equal(groupes.flatMap((g) => g.sorts).length, regles.sorts.length, 'chaque sort une fois');
+  const rang = (s) => regles.magies.findIndex((m) => m.id === s.magie_id);
+  for (const g of groupes) {
+    assert.ok(g.sorts.every((s) => s.niveau === g.npm), `NPM ${g.npm}`);
+    for (let i = 1; i < g.sorts.length; i += 1) {
+      const [a, b] = [g.sorts[i - 1], g.sorts[i]];
+      assert.ok(rang(a) < rang(b) || (rang(a) === rang(b) && regles.sorts.indexOf(a) < regles.sorts.indexOf(b)), `${a.id} avant ${b.id}`);
+    }
+  }
+  // au niveau 1, le Feu seul : son NPM 1, chaque sort sur la couleur du Feu
+  const feu = sortsParNpm(regles, sortsPossibles(regles, ficheConforme()));
+  assert.deepEqual(feu.map((g) => g.npm), [1]);
+  assert.ok(feu[0].sorts.length > 0 && feu[0].sorts.every((s) => s.magie_id === 'magies/magie-du-feu'));
+  assert.ok(regles.magies.every((m) => /^#[0-9a-f]{6}$/i.test(m.couleur) && m.texte), 'chaque magie a sa couleur et son texte');
 });

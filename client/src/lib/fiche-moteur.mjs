@@ -475,6 +475,17 @@ export function lignesDeSorts(regles, fiche) {
   });
 }
 
+/**
+ * La liste d'un emplacement de sort (demande du propriétaire) : les sorts possibles groupés par NPM, du plus bas au plus haut ; dans un NPM, dans l'ordre
+ * des magies (chacune a sa couleur) puis du classeur. [{ npm, sorts }].
+ */
+export function sortsParNpm(regles, sorts) {
+  const rang = new Map(regles.magies.map((m, i) => [m.id, i]));
+  const ordre = (s) => rang.get(s.magie_id) ?? regles.magies.length;
+  return [...new Set(sorts.map((s) => s.niveau))].sort((a, b) => a - b)
+    .map((npm) => ({ npm, sorts: sorts.filter((s) => s.niveau === npm).sort((a, b) => ordre(a) - ordre(b)) }));
+}
+
 /** Dons à choisir pour chaque classe : les groupes de sa classe et de sa spécialité choisie, jusqu'à son niveau de classe. */
 export function donsAChoisir(regles, fiche) {
   return classesDe(regles, fiche)
