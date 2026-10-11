@@ -71,7 +71,7 @@ propriétaire.
 | V1.4 | Statistiques des fiches (E12) |
 | Ensuite | Remplacer Google Docs/Sheets (étape 2), simulation de combats (étape 3) |
 
-La frise pour les joueurs (une page par version, à partager sur le Discord) reprend ce tableau.
+La frise pour les joueurs (une étape par version, à partager sur le Discord) reprend ce tableau.
 
 ```mermaid
 flowchart LR
