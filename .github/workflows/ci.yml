@@ -14,6 +14,8 @@ jobs:
         working-directory: client
     steps:
       - uses: actions/checkout@v4
+      # Page « Mise à jour » du site de dev : la base de la production (master) est construite à côté de celle du site (scripts/db-reference.mjs).
+      - run: git fetch --no-tags --depth=1 origin +refs/heads/master:refs/remotes/origin/master
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc

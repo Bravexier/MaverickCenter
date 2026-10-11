@@ -14,11 +14,11 @@ const db = ouvrirBase({ sansExemples: false });
 const sections = lister(db);
 const objets = sections.flatMap((s) => s.objets);
 
-test('lireSchema : 15 sections, 162 tables, 34 vues, 2 tables de recherche ; descriptions et marques « dérivée »', () => {
+test('lireSchema : 16 sections, 166 tables, 34 vues, 2 tables de recherche ; descriptions et marques « dérivée »', () => {
   const lues = lireSchema(schemaTexte).filter((s) => s.objets.length);
-  assert.equal(lues.length, 15);
+  assert.equal(lues.length, 16);
   const tous = lues.flatMap((s) => s.objets);
-  assert.equal(tous.filter((o) => o.genre === 'table').length, 162);
+  assert.equal(tous.filter((o) => o.genre === 'table').length, 166);
   assert.equal(tous.filter((o) => o.genre === 'vue').length, 34);
   assert.equal(tous.filter((o) => o.genre.startsWith('table de recherche')).length, 2);
   const page = tous.find((o) => o.nom === 'page');
@@ -28,7 +28,7 @@ test('lireSchema : 15 sections, 162 tables, 34 vues, 2 tables de recherche ; des
 });
 
 test('lister : toutes les tables et vues explorables (hors recherche plein texte), avec leur nombre de lignes', () => {
-  assert.equal(objets.length, 162 + 34);
+  assert.equal(objets.length, 166 + 34);
   assert.ok(!objets.some((o) => /_fts$/.test(o.nom)), 'les tables de recherche ne sont pas explorables');
   const n = (nom) => objets.find((o) => o.nom === nom).nbLignes;
   assert.equal(n('page'), readdirSync(join(racine, 'client', 'src', 'content', 'wiki')).reduce((s, t) => s + readdirSync(join(racine, 'client', 'src', 'content', 'wiki', t)).length, 0));

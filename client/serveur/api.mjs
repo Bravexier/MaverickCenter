@@ -15,6 +15,13 @@
 //   POST /api/edition/race/         { race } → magies innées et relations de la race, dans la base vivante
 //   POST /api/edition/              { page, operations } → applique un lot d'un bloc et le note au journal
 //   GET  /api/edition/journal/      le journal des modifications en attente, à rapatrier dans data/rows (npm run db:appliquer-edition)
+// Page « Mise à jour », sur le site de dev seulement (même garde) — serveur/notes-de-version.mjs :
+//   GET  /api/mise-a-jour/              la note en préparation : modifications production → dev (calculées), brouillon, état du lancement
+//   POST /api/mise-a-jour/brouillon/    { texte, avant } → enregistre le champ libre des admins
+//   POST /api/mise-a-jour/lancer/       { confirmation } → fige le lot et déclenche le workflow GitHub de mise à jour → 202
+//   POST /api/mise-a-jour/liberer/      annule un lancement qui n'est pas parti (ou a échoué) : le brouillon redevient modifiable
+//   GET  /api/mise-a-jour/lancement/    état du lancement (suivi du run GitHub)
+//   GET  /api/mise-a-jour/lots/<id>/    un lot figé, tel quel (le workflow le télécharge et vérifie son empreinte)
 // Les adresses finissent par « / », comme celles du site (en développement, Astro refuse une adresse sans « / » finale avant de la transmettre) ;
 // le service accepte aussi la forme sans « / ».
 //
@@ -23,6 +30,9 @@
 // script d'un autre site ne peut pas écrire à la place de quelqu'un de connecté.
 import { ErreurEdition, donneesDeRace, enregistrer, listes, lireLignes, pagesDuWiki } from './edition.mjs';
 import { journalExporte, lignesEnAttente } from './edition-journal.mjs';
+import {
+  actualiserLancement, CONFIRMATION, enregistrerBrouillon, ErreurNotes, figerLot, libererLot, lireLot, noteEnPreparation,
+} from './notes-de-version.mjs';
 import { ErreurFiche, controlesDe, enregistrerFiche, lireFiche, listerFiches, niveauDe, supprimerFiche } from './fiches.mjs';
 import { CHAMP_VERSION } from '../src/lib/fiche-format.mjs';
 
@@ -65,6 +75,7 @@ export function traiter(requete, service) {
 
   if (ressource === 'etat' && brut === undefined) return permis('GET') ?? json(200, service.etat());
   if (ressource === 'edition') return traiterEdition(requete, service, brut, reste, permis);
+  if (ressource === 'mise-a-jour') return traiterMiseAJour(requete, service, brut, reste, permis);
   if (ressource !== 'personnages' || reste.length) return erreur(404, 'Adresse inconnue.');
 
   let id = null;
@@ -137,6 +148,62 @@ function traiterEdition(requete, service, action, reste, permis) {
     return json(200, resultat);
   } catch (e) {
     if (e instanceof ErreurEdition) return erreur(e.statut, e.message, e.details);
+    throw e;
+  }
+}
+
+/** L'adresse publique du site (le workflow GitHub y télécharge le lot figé) : MAVERICK_ADRESSE_PUBLIQUE, sinon d'après la requête. */
+function adressePublique(service, entetes) {
+  if (service.adresse) return String(service.adresse).replace(/\/+$/, '');
+  const hote = String(entetes['x-forwarded-host'] ?? entetes.host ?? '').split(',')[0].trim();
+  if (!/^[a-z0-9.-]+(:\d+)?$/i.test(hote)) return null;
+  // derrière Caddy (TLS) puis nginx, la requête arrive en http : un hôte public se joint en https
+  const local = /^(localhost|127\.|\[::1\])/.test(hote);
+  return `${local ? String(entetes['x-forwarded-proto'] ?? 'http').split(',')[0].trim() : 'https'}://${hote}`;
+}
+
+/** Les routes /api/mise-a-jour/… (site de dev seulement). */
+function traiterMiseAJour(requete, service, action, reste, permis) {
+  if (!service.edition) return erreur(403, 'La page Mise à jour ne se prépare que sur le site de dev.');
+  if (action === 'lots') {
+    if (reste.length !== 1) return erreur(404, 'Adresse inconnue.');
+    const refus = permis('GET');
+    if (refus) return refus;
+    const lot = lireLot(service.dossier, reste[0]);
+    return lot === null ? erreur(404, 'Lot introuvable.') : { statut: 200, corps: null, brut: lot, entetes: {} };
+  }
+  if (reste.length || ![undefined, 'brouillon', 'lancer', 'liberer', 'lancement'].includes(action)) return erreur(404, 'Adresse inconnue.');
+  const refus = action === undefined || action === 'lancement' ? permis('GET') : permis('POST');
+  if (refus) return refus;
+  const db = service.base();
+  if (!db) return erreur(503, 'La base n’est pas disponible pour le moment.', { etat: service.etat() });
+  const versionDev = service.etat().version ?? null;
+  const github = { configure: Boolean(service.github?.configure()), depot: service.depot ?? null };
+  if (action === undefined || action === 'lancement') {
+    service.github?.suivre().catch(() => {}); // en arrière-plan : la réponse suivante aura l'état à jour
+    const lancement = actualiserLancement(db, service.dossier);
+    if (action === 'lancement') return json(200, { lancement, github });
+    return json(200, { ...noteEnPreparation(db, { reference: service.reference, versionDev }), lancement, github, confirmation: CONFIRMATION });
+  }
+  const interdit = refusEcriture(requete.entetes ?? {});
+  if (interdit) return interdit;
+  const { valeur, refus: illisible } = lireCorps(requete.corps);
+  if (illisible) return illisible;
+  const instant = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+  try {
+    if (action === 'brouillon') return json(200, { brouillon: enregistrerBrouillon(db, valeur ?? {}, { instant }) });
+    if (action === 'liberer') return json(200, { lancement: libererLot(db, service.dossier, { instant }) });
+    const note = noteEnPreparation(db, { reference: service.reference, versionDev });
+    // sans jeton GitHub sur ce serveur : le lot est figé quand même, la page dit comment lancer le workflow à la main
+    const lancement = figerLot(db, service.dossier, {
+      versionDev, versionCible: note.version_cible, instant, confirmation: valeur?.confirmation, adresse: adressePublique(service, requete.entetes ?? {}),
+      etat: github.configure ? 'envoi' : 'manuel',
+    });
+    service.journal?.(`mise à jour : lot ${lancement.lot} figé (${lancement.modifications} modification(s), V${note.version_cible})`);
+    if (github.configure) service.github.declencher().catch(() => {});
+    return json(202, { lancement, github });
+  } catch (e) {
+    if (e instanceof ErreurNotes) return erreur(e.statut, e.message, e.details);
     throw e;
   }
 }

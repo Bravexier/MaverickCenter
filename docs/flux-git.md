@@ -153,6 +153,12 @@ oublie la branche distante, `git branch -d feature/<nom>` supprime la copie loca
 L'option GitHub « Automatically delete head branches » n'est pas nécessaire (elle supprimerait aussi `dev` après une livraison si `dev` n'était ni
 protégée ni la branche par défaut).
 
+**Une mise à jour des règles depuis le site de dev** (page « Mise à jour », bouton « Effectuer la mise à jour » ; [`docs/serveur.md`](serveur.md),
+« Mise à jour ») : le workflow `mise-a-jour.yml` fait au nom du propriétaire du jeton `MISE_A_JOUR_TOKEN` ce qu'on ferait à la main — une branche
+`feature/mise-a-jour-regles-<date>` partie de `dev` avec les modifications du site et la note de version, sa PR vers `dev` fusionnée par commit de
+fusion quand la CI est verte (si `dev` a bougé, la branche est refaite sur le nouveau `dev`, jamais fusionnée avec lui), puis la PR de livraison
+`dev` → `master`, fusionnée de même (jamais `[V: X+1]`). Les bots font ensuite leur travail habituel (versions, étiquettes, installateurs).
+
 ## Mise en place (une seule fois, par le propriétaire)
 
 Déjà fait : `master` et `dev` existent (en `0.1.25`), `dev` est la branche par défaut, `main` et les anciennes branches de travail sont
@@ -177,7 +183,11 @@ supprimées. `develop` (ancienne tentative, entièrement fusionnée) sera suppri
    non conforme, ni version ni publication pour une fusion hors règles ; ils n'empêchent ni une fusion ni une poussée directe. Dans ce cas, **ne
    pas créer `BOT_TOKEN`** : le jeton par défaut des workflows suffit tant que les branches ne sont pas protégées.
 4. **Serveur** : rien sur le NAS (il suit toujours la branche `site`, avec sa propre installation). Dès la 0.2.0, voir « Le premier jour hébergé » ci-dessus.
-5. **Vérifier les bots** : après la première fusion d'une `feature/<nom>` dans `dev`, *Actions → Version et livraison* doit montrer les jobs
+5. **Mises à jour depuis le site de dev** : secret **`MISE_A_JOUR_TOKEN`** (jeton *fine-grained* d'un administrateur, ce dépôt seulement,
+   *Contents*, *Pull requests* et *Workflows* en lecture et écriture) ; le jeton par défaut ne suffit pas, car une PR qu'il ouvre ne lance pas la
+   CI et une fusion qu'il fait ne lance pas `livraison.yml`. Le serveur de test a son propre jeton, permission *Actions* seulement
+   ([`deploy/vps/README.md`](../deploy/vps/README.md), « Page Mise à jour »). Comme `BOT_TOKEN`, **il expire** : le renouveler avant.
+6. **Vérifier les bots** : après la première fusion d'une `feature/<nom>` dans `dev`, *Actions → Version et livraison* doit montrer les jobs
    `Version` (commit « chore: version v0.1.26 … » sur `dev`), `Site (avant la 1.0)` (branche `site` republiée) et `Supprimer la branche fusionnée`.
 
 ## Sessions Claude Code

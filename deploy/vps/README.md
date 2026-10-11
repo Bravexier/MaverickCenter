@@ -151,6 +151,25 @@ branche **`site`** ([`docs/flux-git.md`](../../docs/flux-git.md)). Le serveur de
 
    Le serveur normal n'a jamais ce réglage : ses pages ne se modifient pas.
 
+6. **Page Mise à jour** (bouton « Effectuer la mise à jour » ; [`docs/serveur.md`](../../docs/serveur.md), « Mise à jour ») : relancer
+   `instances.sh` et reprendre le `docker-compose.yml` comme au point 5 (ils posent `MAVERICK_ADRESSE_PUBLIQUE` et le dossier `secrets/`), puis
+   deux jetons, **jamais dans une conversation ni dans git** :
+
+   - **dans GitHub** (une fois pour le dépôt) : *Settings → Developer settings → Fine-grained tokens*, un jeton d'un administrateur du dépôt,
+     dépôt `MaverickCenter` seulement, permissions *Contents*, *Pull requests* et *Workflows* en lecture et écriture ; l'enregistrer dans le
+     dépôt, *Settings → Secrets and variables → Actions → New repository secret*, sous le nom **`MISE_A_JOUR_TOKEN`**. C'est lui qui pousse la
+     branche, ouvre et fusionne les deux PR (le jeton d'un workflow ne déclencherait ni la CI ni la livraison) ;
+   - **sur le serveur** : un second jeton fine-grained, dépôt `MaverickCenter` seulement, permission *Actions* en lecture et écriture (rien
+     d'autre : il ne fait que lancer et suivre le workflow). Depuis votre ordinateur, lancer la commande, coller le jeton, puis Entrée :
+
+   ```
+   ssh -t -i .ssh\maverick_key ubuntu@<IP> "sudo sh -c 'umask 077; stty -echo; head -n 1 > /srv/maverick-center-test/secrets/github-actions-token; stty echo; chmod 600 /srv/maverick-center-test/secrets/github-actions-token; echo; echo Jeton enregistre'"
+   ```
+
+   Le service relit le fichier à chaque lancement : rien à redémarrer. Sans ce fichier, la page donne les valeurs pour lancer le workflow à la
+   main (*Actions → Mise à jour des règles → Run workflow*, branche `dev`). Attention : la **première** mise à jour fait la livraison 0.2.0
+   (« Le jour de la 0.2.0 » ci-dessous).
+
 Ce qui diffère d'un serveur installé à partir de la 0.2.0 :
 
 - **Pas de bandeau « Serveur de test »** sur `https://dev.maverick-jdr.com` : la branche `site` est le site unique, construit sans le mode test.

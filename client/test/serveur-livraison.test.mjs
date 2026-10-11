@@ -21,9 +21,9 @@ const ENTREE_LIVREE = `/site/${DOSSIER_LIVRE}/${ENTREE}`;
 test('modules livrés : l’entrée, le service, le format des fiches et l’édition (modèle, découpages partagés avec les pages) ; ni le lanceur de développement, ni cette livraison, ni un paquet npm', () => {
   assert.deepEqual(modulesDuServeur(), [
     'serveur/api.mjs', 'serveur/base-vivante.mjs', 'serveur/edition-journal.mjs', 'serveur/edition.mjs', 'serveur/fiches.mjs', 'serveur/index.mjs',
-    'serveur/service.mjs', 'src/lib/classe-champs.mjs', 'src/lib/edition-modele.mjs', 'src/lib/fiche-format.mjs', 'src/lib/guide.mjs',
-    'src/lib/markdown-edition.mjs', 'src/lib/metier-champs.mjs', 'src/lib/race-kinds.mjs', 'src/lib/sort-analyse.mjs', 'src/lib/sort-maitrise.mjs',
-    'src/lib/text.mjs',
+    'serveur/notes-de-version.mjs', 'serveur/service.mjs', 'src/lib/classe-champs.mjs', 'src/lib/edition-modele.mjs', 'src/lib/fiche-format.mjs',
+    'src/lib/guide.mjs', 'src/lib/markdown-edition.mjs', 'src/lib/metier-champs.mjs', 'src/lib/notes-de-version-sens.mjs', 'src/lib/notes-de-version.mjs',
+    'src/lib/race-kinds.mjs', 'src/lib/sort-analyse.mjs', 'src/lib/sort-maitrise.mjs', 'src/lib/text.mjs',
   ]);
   const faux = join(racine, 'faux-client');
   mkdirSync(join(faux, 'serveur'), { recursive: true });
@@ -82,9 +82,13 @@ test('docker-compose.yml du NAS et des installateurs : un conteneur « serveur �
     assert.match(serveur.command.join(' '), new RegExp(`exec node --disable-warning=ExperimentalWarning ${ENTREE_LIVREE.replaceAll('.', '\\.')}$`), fichier);
     assert.match(serveur.command.join(' '), new RegExp(`until \\[ -f ${ENTREE_LIVREE.replaceAll('.', '\\.')} \\]`), `${fichier} : attend le site`);
     // édition des règles (docs/serveur.md, « Édition ») : réglée par le .env de l'instance (1 sur le serveur de test), jamais sur le NAS
-    const edition = fichier.includes('installateur') ? { MAVERICK_EDITION: '${MAVERICK_EDITION:-0}' } : {};
+    // page « Mise à jour » (docs/serveur.md) : adresse publique et jeton GitHub du serveur de test, dans un dossier secrets/ en lecture seule
+    const installateur = fichier.includes('installateur');
+    const edition = installateur
+      ? { MAVERICK_EDITION: '${MAVERICK_EDITION:-0}', MAVERICK_ADRESSE_PUBLIQUE: '${MAVERICK_ADRESSE_PUBLIQUE:-}', MAVERICK_GITHUB_JETON_FICHIER: '/secrets/github-actions-token' }
+      : {};
     assert.deepEqual(serveur.environment, { HOST: '0.0.0.0', PORT: '8787', MAVERICK_REGLES: '/site/donnees/maverick.db', MAVERICK_DB: '/db', ...edition }, fichier);
-    assert.deepEqual(serveur.volumes, ['./site:/site:ro', './db:/db'], fichier);
+    assert.deepEqual(serveur.volumes, ['./site:/site:ro', './db:/db', ...(installateur ? ['./secrets:/secrets:ro'] : [])], fichier);
     assert.ok(compose.services['maverick-center'].volumes.includes('./site:/usr/share/nginx/html:ro'), fichier);
   }
   assert.match(YAML.parse(lire('deploy/installateur/docker-compose.yml')).services.serveur.container_name, /^\$\{MAVERICK_CONTENEUR:-maverick-center\}-serveur$/,
@@ -112,7 +116,8 @@ test('développement et version portable : `npm run serveur`, /api/ transmis par
   const paquet = JSON.parse(readFileSync(join(CLIENT, 'package.json'), 'utf8'));
   assert.equal(paquet.scripts.serveur, 'node --disable-warning=ExperimentalWarning serveur/dev.mjs');
   const config = readFileSync(join(CLIENT, 'astro.config.mjs'), 'utf8');
-  assert.match(config, /integrations: \[integrationServeur\(\)\]/);
+  // le service livré avec le site, et la base de la production (page « Mise à jour » : scripts/db-reference.mjs) à côté de celle du site
+  assert.match(config, /integrations: \[integrationServeur\(\), integrationReference\(\)\]/);
   assert.match(config, /proxy: \{ \[`\$\{base\}api\/`\]: \{ target: service,/);
   assert.match(lire('tools/build-artifact.mjs'), /if \(rel\.startsWith\('_serveur\/'\)\) continue;/);
 });

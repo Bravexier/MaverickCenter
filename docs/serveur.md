@@ -144,6 +144,69 @@ rapatriement, que le site devient la source de ces données (`docs/feuille-de-ro
 **Avant la 1.0, pas de comptes** : quiconque a le mot de passe du site de dev peut modifier les règles (le journal n'a pas d'auteur :
 `modification_lot.auteur_id` attend la connexion Discord). Mêmes protections d'écriture que les fiches (JSON, `Sec-Fetch-Site`).
 
+## Mise à jour (site de dev)
+
+Demande du propriétaire : une page **Mise à jour** (menu Outils, `/mise-a-jour/`) à deux visages, comme l'édition.
+
+**Sur le serveur normal** (et partout sans service : version portable, site statique) : la page construite montre la **note de version** de la
+dernière livraison (`note_version`, `note_version_ligne`, section 15 de `data/schema.sql`), puis l'**historique** des précédentes. Une note est
+la liste des modifications des règles d'une version X.Y à la suivante (toutes les versions X.Y.Z de dev entre les deux), par domaine (sorts par
+magie, magies, classes et leurs dons, races, métiers, guide), l'ancienne valeur **barrée** mais lisible et la nouvelle à côté, en **vert**
+(amélioration) ou **rouge** (affaiblissement) d'après la décision R29 (`docs/decisions-regles.md`, `lib/notes-de-version-sens.mjs`), plus le
+champ libre des admins. Tant qu'aucune livraison n'a eu lieu, deux notes d'exemple (lorem ipsum, `exemple = 1`, migration `0023`) tiennent la place ;
+la première vraie mise à jour les retire.
+
+**Sur le site de dev** (`MAVERICK_EDITION=1`) : au-dessus, la note **en préparation**, calculée par le service à chaque visite
+(`GET /api/mise-a-jour/`) : la base de la **production** (référence : la base de master, construite au build à côté de celle du site,
+`site/donnees/reference.db` et `reference.json`, `scripts/db-reference.mjs`) comparée à la base vivante (règles de dev + modifications du site).
+Seuls les champs que le site modifie sont comparés (`lib/edition-modele.mjs#TABLES`) : le reste en est dérivé. Le **champ libre** (Markdown simple :
+paragraphes, listes, gras, italique, liens web) s'enregistre dans `note_version_brouillon` (section 14 : il suit la base vivante quand les
+règles changent ; `409` si quelqu'un l'a changé entre-temps).
+
+**« Effectuer la mise à jour »** (ordinateur seulement ; pas de protection avant la connexion Discord, décision du propriétaire) : après
+confirmation (taper `METTRE A JOUR`), le service **fige un lot** — le journal en attente (sans l'aperçu HTML du guide), le champ libre, les
+versions — dans `db/mise-a-jour/<lot>.json`, avec son empreinte SHA-256, et le sert tel quel à `/api/mise-a-jour/lots/<lot>/`. Le texte et le
+bouton restent verrouillés tant que le lot n'est pas livré ou annulé. Puis il déclenche le workflow GitHub **`mise-a-jour.yml`** sur `dev`
+(`workflow_dispatch` : lot, empreinte, adresse ; jeton du serveur limité à la permission *Actions*), dont il suit le run (état dans
+`db/mise-a-jour/etat.json`, gardé si le service redémarre). Sans jeton, la page donne les trois valeurs pour lancer le workflow à la main.
+
+Le workflow (`client/scripts/mise-a-jour-github.mjs`, avec le jeton `MISE_A_JOUR_TOKEN` du dépôt) :
+
+1. télécharge le lot et vérifie son empreinte ;
+2. part de `dev` sur `feature/mise-a-jour-regles-<date>`, y applique le lot (`client/scripts/mise-a-jour-regles.mjs`) : base reconstruite
+   depuis `data/rows`, journal rejoué (**un conflit arrête tout**), note de version écrite (version X.Y de la prochaine livraison, d'après la même
+   règle que le bot ; les notes d'exemple retirées), journal versé dans `historique_modification`, puis `data/rows` réécrit par l'exporteur — dans
+   une copie d'abord : **seuls les fichiers des tables que le journal a touchées et ceux des notes de version peuvent changer** (demande du
+   propriétaire), sinon rien n'est écrit ; `db:check` et `npm test` ;
+3. ouvre la PR vers `dev`, attend la CI verte et la fusionne (commit de fusion) ; si `dev` a bougé entre-temps, le lot est rejoué sur le
+   nouveau `dev` ;
+4. attend le commit de version du bot, puis ouvre la PR de **livraison `dev` → `master`** (la note de version en corps, jamais `[V: X+1]`),
+   attend sa CI et la fusionne : `livraison.yml` fait la version X.Y.0, les étiquettes et les installateurs.
+
+Quand la nouvelle version arrive sur le site de dev, la base vivante est refaite et le journal rejoué (les modifications sont « intégrées ») ; le
+brouillon dont le lot a sa note dans les règles est vidé et le lancement marqué terminé (`actualiserLancement`). Le serveur normal reçoit la
+nouvelle note avec la livraison.
+
+**Le site devient la source** des données qu'il modifie (décision du propriétaire) : les modifications livrées sont gardées dans
+`historique_modification`. Prochaine étape : les tests qui épinglent des valeurs importées (effectifs, textes cités) liront la valeur d'import
+dans cet historique et contrôleront la cohérence de l'état courant ; d'ici là, une mise à jour qui les contredit s'arrête à `npm test`, sans
+rien fusionner.
+
+| Requête | Réponse |
+| --- | --- |
+| `GET /api/mise-a-jour/` | La note en préparation : `reference`, `version_dev`, `version_cible`, `en_attente`, `lignes`, `bilan`, `brouillon`, `lancement`, `github`, `confirmation` |
+| `POST /api/mise-a-jour/brouillon/` | `{ texte, avant }` → le champ libre enregistré (`409` s'il a changé entre-temps ou si un lot est figé) |
+| `POST /api/mise-a-jour/lancer/` | `{ confirmation }` → fige le lot et déclenche le workflow → `202`, `{ lancement }` (`etat` : `envoi`, `lance`, `en_cours`, `termine`, `echec`, `erreur`, `manuel`, `annule`) |
+| `POST /api/mise-a-jour/liberer/` | Annule un lancement qui n'est pas parti, a échoué ou se lance à la main : le texte redevient modifiable |
+| `GET /api/mise-a-jour/lancement/` | L'état du lancement (le run GitHub est relu au plus toutes les 20 s) |
+| `GET /api/mise-a-jour/lots/<lot>/` | Le lot figé, octet pour octet (le workflow le télécharge et vérifie son empreinte) |
+
+**Mise en place** (une fois) : le secret `MISE_A_JOUR_TOKEN` du dépôt (jeton fine-grained d'un administrateur, ce dépôt seulement : *Contents*,
+*Pull requests* et *Workflows* en écriture ; le jeton d'un workflow ne déclenche ni la CI ni `livraison.yml`) et, sur le serveur de test, le
+fichier `secrets/github-actions-token` (jeton fine-grained, ce dépôt seulement : *Actions* en écriture), pas à pas dans
+[`deploy/vps/README.md`](../deploy/vps/README.md). Chaque mise à jour consomme environ trois passages de la CI (PR, livraison, publication)
+en minutes GitHub Actions.
+
 ## Hébergement
 
 Deux conteneurs dans le même `docker-compose.yml` (NAS : [`deploy/`](../deploy/README.md) ; à partir de la 1.0 : les
@@ -154,7 +217,10 @@ Deux conteneurs dans le même `docker-compose.yml` (NAS : [`deploy/`](../deploy/
   pendant que les pages de lecture restent servies.
 - **serveur** (`node:22-alpine`) exécute `site/_serveur/serveur/index.mjs` ; aucun port publié (seul nginx l'atteint). Variables :
   `MAVERICK_REGLES` (base des règles, `/site/donnees/maverick.db`), `MAVERICK_DB` (dossier de la base vivante, `/db`), `HOST`, `PORT` (8787),
-  `MAVERICK_INTERVALLE` (surveillance, 15 000 ms), `MAVERICK_EDITION` (`1` : édition des règles ouverte, serveur de test seulement).
+  `MAVERICK_INTERVALLE` (surveillance, 15 000 ms), `MAVERICK_EDITION` (`1` : édition des règles ouverte, serveur de test seulement) ; page
+  « Mise à jour » du serveur de test : `MAVERICK_REFERENCE` (base de la production, `/site/donnees/reference.db`), `MAVERICK_ADRESSE_PUBLIQUE`
+  (`https://dev.<domaine>`, sinon l'hôte de la requête), `MAVERICK_GITHUB_JETON_FICHIER` (`/secrets/github-actions-token`, dossier `secrets/` de
+  l'instance monté en lecture seule), `MAVERICK_DEPOT` (`Bravexier/MaverickCenter`).
 
 **Mises à jour, sans rien relancer à la main** : le service surveille trois fichiers (un changement compte quand il a été vu deux fois de suite,
 pour ne pas agir au milieu d'une copie) :
@@ -177,7 +243,8 @@ npm run dev         # dans un autre terminal : le site, qui transmet /api/ au se
 
 Les tests (`npm test`) : `serveur-base-vivante` (création, reprise des fiches, refus sans perte, archives), `serveur-api` (chaque route, chaque
 refus, conflit de versions, serveur HTTP réel et sa surveillance), `serveur-edition*` et `serveur-edition-journal` (édition : chaque domaine,
-journal, rejeu), `db-appliquer-edition` (rapatriement dans data/rows), `serveur-livraison` (modules livrés, service livré démarré tel quel,
+journal, rejeu), `serveur-notes-de-version` (page Mise à jour : routes, lot figé, faux GitHub), `notes-de-version` et `notes-de-version-sens`
+(liste et couleurs), `mise-a-jour-regles` (lot appliqué à data/rows : conflit, liste blanche), `mise-a-jour-github` (le workflow), `db-appliquer-edition` (rapatriement dans data/rows), `serveur-livraison` (modules livrés, service livré démarré tel quel,
 `docker-compose.yml` et `nginx.conf` cohérents), `installateur` (contenu de `db/` remplacé, dossier gardé) ; `site-html` contrôle `dist/_serveur/`
 après le build.
 

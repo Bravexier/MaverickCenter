@@ -54,7 +54,7 @@ export const NAV = [
     autres: ['pages/', 'tags/', 'donnees/'],
     items: [
       { label: 'Statistiques' },
-      { label: 'Mise à jour' },
+      { label: 'Mise à jour', path: 'mise-a-jour/' },
       { label: 'Boîte à idée' },
       { label: 'Galeries', path: 'galeries/' },
       { label: 'Recherche', path: 'recherche/' },

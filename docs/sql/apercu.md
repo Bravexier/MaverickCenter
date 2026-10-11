@@ -1,6 +1,6 @@
 # Aperçu du schéma de la base
 
-> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 162 tables, 2 tables de recherche, 34 vues.
+> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 166 tables, 2 tables de recherche, 34 vues.
 > Ce qui reste à trancher sur le **contenu** (pas sur la forme) est dans [`a-valider.md`](a-valider.md).
 
 **Lecture des colonnes** : **gras** = clé primaire ; `→table` = clé étrangère vers cette table ; `?` = peut être absente (`NULL`, jamais une valeur inventée) ; `+provenance` = `origine` (famille d'import) et `source_ref` (classeur › onglet › plage). Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté.
@@ -321,3 +321,14 @@
 | --- | --- | --- |
 | `modification_lot` | Un enregistrement fait depuis une page (le bouton de confirmation) : toutes ses modifications passent ou aucune. | **id**, fait_le, auteur_id→utilisateur?, page_id?, resume |
 | `modification` | Une ligne de table touchée par un lot. | **lot_id**→modification_lot, **rang**, table_nom, cle, operation, avant?, apres?, etat, detail?, apercu? |
+| `note_version_brouillon` | La note de version en préparation sur le site de dev (page /mise-a-jour/ : le champ libre que les admins remplissent, en plus de la liste calculée ; migration 0023). | **id**, texte?, modifie_le?, lot? |
+
+## 15. NOTES DE VERSION : ce que chaque version a changé dans les règles (page /mise-a-jour/), et l'historique des modifications faites sur le
+
+**Relations dans cette section** : `historique_modification→note_version`, `note_version_ligne→note_version`
+
+| Table | Rôle | Colonnes |
+| --- | --- | --- |
+| `note_version` | Une version livrée (dev → master) : « 0.2 » (X.Y : la production ne porte que deux chiffres), sa date, le champ libre des admins. | **version**, publiee_le, depuis?, texte?, lot?, exemple |
+| `note_version_ligne` | Une ligne de la liste calculée : une modification d'un champ d'une entité entre la production et la nouvelle version. | **version**→note_version, **rang**, domaine, groupe?, entite, champ?, nature, avant?, apres?, sens, parties?, table_nom?, cle?, colonne? |
+| `historique_modification` | Le journal du site de dev une fois livré (une ligne par ligne de table touchée, comme `modification`) : qui a changé quoi, quand, avant et après (docs/feuille-de-route.md : modifications historisées). | **lot_id**, **rang**, fait_le, resume, version→note_version?, table_nom, cle, operation, avant?, apres? |

@@ -215,3 +215,72 @@ function contexteDe(texte, debut, expression) {
   }
   return expression;
 }
+
+// --- Lectures des notes de version ---------------------------------------------------------------------------------------------------------------
+// Deux lectures de plus, pour la page « Mise à jour » (lib/notes-de-version-sens.mjs, décision R29) : elles ne remplissent aucune colonne de la base,
+// elles disent seulement si une case modifiée a augmenté ou baissé. Même principe que plus haut : elles lisent la valeur de base (sansExpressionsNM)
+// et une forme qui n'est pas reconnue n'est pas lue (lisible: false, ou null), jamais devinée.
+
+// Un terme : des dés « NdF » (« 7d6 », « 3D6 », « 1d » sans faces) ou un nombre (« 15 », « 20% »).
+const TERME_DSB = /^(?:(\d+)[dD](\d*)(?![\p{L}\d])|(\d+)(%?))/u;
+// La suite d'une case qui écrit plus d'un effet (« +5AP, +10AM », « 6 Initiative et +2 Vitesse », « 15 - 30 - 15 », « => ») ou un calcul non lu
+// (« 2 x 1d6 dégâts », « 10/3 dégâts », « dégâts 1d4 feu ») : l'effet commence par une lettre et n'écrit plus de dés.
+const QUEUE_COMPOSEE = /[+–=,;%]|(?:^|\s)-|-(?:\s|\d|$)|(?:^|\s)(?:et|ou)(?:\s|$)|\bx\d|^[^\p{L}]|^d\d|\d+d(?:\d|(?!\p{L}))/iu;
+
+/**
+ * Case « D/S/B » : la quantité qu'elle écrit, quand c'est une somme de dés et de nombres suivie d'un seul effet (« 7d6 + 15 dégâts », « 3D6 dégâts »,
+ * « +5 soin », « -6 dégâts magiques », « 20% de soin »). `des` et `fixe` sont écrits sans le signe de tête, `signe` le porte ; `queue` est la suite
+ * de la case (minuscules, espaces réduits, sans espace autour de « / », sans « de » de tête ni point final) ; `moyenne` = signe × (somme des dés,
+ * nombre × (faces + 1) / 2, + fixe), null si un dé n'a pas de faces (« 1d »). Une case qui ne commence pas par la quantité (« Soigne 6d6 »,
+ * « Variable », « X dégâts ») ou qui écrit plusieurs effets (« +5AP, +10AM », « => ») n'est pas lue : lisible: false.
+ * @returns {{ lisible: boolean, des: { nombre: number, faces: number | null }[], fixe: number, pourcent: boolean, signe: 1 | -1, queue: string | null,
+ *   moyenne: number | null }}
+ */
+export function analyserDegats(dsbBrut) {
+  const illisible = { lisible: false, des: [], fixe: 0, pourcent: false, signe: 1, queue: null, moyenne: null };
+  const base = sansExpressionsNM(dsbBrut).replace(/\s+/g, ' ').trim();
+  const tete = /^([+\-–])?\s*/.exec(base);
+  const signe = tete[1] === '-' || tete[1] === '–' ? -1 : 1;
+  let reste = base.slice(tete[0].length);
+  const des = [];
+  let fixe = 0;
+  let pourcent = false;
+  let termes = 0;
+  for (;;) {
+    const t = TERME_DSB.exec(reste);
+    if (!t) return illisible;
+    termes += 1;
+    if (t[1] !== undefined) des.push({ nombre: Number(t[1]), faces: t[2] ? Number(t[2]) : null });
+    else {
+      fixe += Number(t[3]);
+      if (t[4]) pourcent = true;
+    }
+    reste = reste.slice(t[0].length);
+    const plus = /^\s*\+\s*(?=\d)/.exec(reste);
+    if (!plus) break;
+    reste = reste.slice(plus[0].length);
+  }
+  if (pourcent && termes > 1) return illisible;
+  const queue = reste
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/\s*\/\s*/g, '/')
+    .trim()
+    .replace(/^(?:de\s+|d['’]\s*)/, '')
+    .replace(/[\s.!;:]+$/, '');
+  if (QUEUE_COMPOSEE.test(queue)) return illisible;
+  const sansFaces = des.some((d) => d.faces === null);
+  const moyenne = sansFaces ? null : signe * (des.reduce((somme, d) => somme + (d.nombre * (d.faces + 1)) / 2, 0) + fixe);
+  return { lisible: true, des, fixe, pourcent, signe, queue, moyenne };
+}
+
+/**
+ * Durée en tours qu'écrit une case (les effets d'un sort) : « Dure N tour(s) » ou « pendant N tour(s) », sans casse ni accents, hors expressions
+ * de NM entre parenthèses (« Dure 2 tours (+1/NM) » → 2). { tours: N } si la case écrit exactement une durée, null sinon (aucune, ou plusieurs).
+ * @returns {{ tours: number } | null}
+ */
+export function analyserDuree(texte) {
+  const base = sansExpressionsNM(texte).normalize('NFD').replace(/\p{Diacritic}/gu, '');
+  const durees = [...base.matchAll(/(?<![\p{L}\d])(?:dure|pendant)\s+(\d+)\s+tours?(?!\p{L})/giu)];
+  return durees.length === 1 ? { tours: Number(durees[0][1]) } : null;
+}

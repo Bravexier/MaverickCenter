@@ -11,6 +11,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { CORPS_MAX, traiter } from './api.mjs';
 import { FICHIER_BASE, lireEtat, ouvrirBaseVivante, preparerBaseVivante, signature } from './base-vivante.mjs';
+import { creerGithub } from './notes-de-version.mjs';
 
 /** Rend une fonction qui dit, pour chaque valeur observée, s'il faut agir : la valeur a changé et elle était déjà la même à l'observation précédente. */
 export function guetteur(initiale) {
@@ -51,19 +52,35 @@ const inode = (chemin) => {
  * @param {number} [o.intervalle] surveillance des fichiers en ms ; 0 = aucune
  * @param {string|null} [o.fichierVersion] version.json du service livré (null en développement)
  * @param {boolean} [o.edition] édition des règles ouverte (site de dev seulement : MAVERICK_EDITION=1)
+ * @param {string|null} [o.reference] page « Mise à jour » : la base de la production (site/donnees/reference.db)
+ * @param {string} [o.depot] dépôt GitHub du workflow de mise à jour
+ * @param {string|null} [o.adresse] adresse publique du site (https://dev.<domaine>) ; sinon l'hôte de la requête
+ * @param {string|null} [o.jetonFichier] fichier du jeton GitHub (permission Actions) ; sans lui, le workflow se lance à la main
+ * @param {string} [o.versionParDefaut] version annoncée sans version.json (développement : celle de package.json)
  * @param {(ligne: string) => void} [o.journal]
  * @param {() => void} [o.relancer] appelé après l'arrêt quand une nouvelle version du service est livrée
  */
 export async function demarrerService({ regles, dossier, hote = '127.0.0.1', port = 8787, intervalle = 15000, fichierVersion = null, edition = false,
+  reference = null, depot = 'Bravexier/MaverickCenter', adresse = null, jetonFichier = null, versionParDefaut = 'développement',
   journal = (ligne) => console.log(horodater(ligne)), relancer = () => process.exit(0) }) {
   const chemin = join(dossier, FICHIER_BASE);
   const version = (() => {
     try {
       return JSON.parse(readFileSync(fichierVersion, 'utf8'));
     } catch {
-      return { version: 'développement', empreinte: null };
+      return { version: versionParDefaut, empreinte: null };
     }
   })();
+  // page « Mise à jour » (site de dev) : le jeton GitHub du serveur, relu à chaque appel (fichier monté dans le conteneur, jamais dans site/)
+  const lireJeton = () => {
+    if (!jetonFichier) return null;
+    try {
+      return readFileSync(jetonFichier, 'utf8').trim() || null;
+    } catch {
+      return null;
+    }
+  };
+  const github = edition ? creerGithub({ dossier, depot, lireJeton, journal }) : null;
   const etat = { db: null, inode: null, erreur: null, demarre_le: maintenant() };
 
   function fermer() {
@@ -130,8 +147,8 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
   ouvrir();
 
   const serveur = createServer((req, res) => {
-    const envoyer = ({ statut, corps, entetes = {} }) => {
-      const texte = JSON.stringify(corps);
+    const envoyer = ({ statut, corps, brut, entetes = {} }) => {
+      const texte = brut ?? JSON.stringify(corps); // `brut` : un document servi tel quel (lot figé de la mise à jour, dont l'empreinte se vérifie)
       res.writeHead(statut, {
         'Content-Type': 'application/json; charset=utf-8',
         'Content-Length': Buffer.byteLength(texte),
@@ -160,9 +177,9 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       if (trop) return;
       let reponse;
       try {
-        const adresse = new URL(req.url ?? '/', 'http://service');
-        reponse = traiter({ methode: req.method ?? 'GET', chemin: adresse.pathname, entetes: req.headers, corps: Buffer.concat(morceaux).toString('utf8') },
-          { base: () => etat.db, etat: decrire, journal, edition: Boolean(edition) });
+        const url = new URL(req.url ?? '/', 'http://service');
+        reponse = traiter({ methode: req.method ?? 'GET', chemin: url.pathname, entetes: req.headers, corps: Buffer.concat(morceaux).toString('utf8') },
+          { base: () => etat.db, etat: decrire, journal, edition: Boolean(edition), dossier, reference, depot, adresse, github });
       } catch (e) {
         journal(`ERREUR ${req.method} ${req.url} : ${e.stack ?? e.message}`);
         reponse = { statut: 500, corps: { erreur: 'Erreur interne du service.' } };

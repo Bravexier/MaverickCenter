@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { buildIndex, remarkWikilinks, scanContent } from './src/lib/wikilinks.mjs';
 import { remarkCouleursDeCase } from './src/lib/markdown-couleurs.mjs';
 import { integrationServeur } from './serveur/livraison.mjs';
+import { integrationReference } from './scripts/db-reference.mjs';
 
 // Déploiement sous un sous-chemin (ex. GitHub Pages) : SITE_BASE=/MaverickCenter/ SITE_URL=https://…
 const base = process.env.SITE_BASE ?? '/';
@@ -26,7 +27,8 @@ export default defineConfig({
   site: process.env.SITE_URL,
   trailingSlash: 'always',
   // Le service est livré avec le site, dans dist/_serveur/ (serveur/livraison.mjs).
-  integrations: [integrationServeur()],
+  // La base de production (master), référence de la page « Mise à jour » du site de dev : dist/donnees/reference.db (scripts/db-reference.mjs).
+  integrations: [integrationServeur(), integrationReference()],
   vite: {
     // version portable : le chargeur du mode modification (components/edition/Edition.astro) devient un module vide (src/scripts/edition-absente.mjs)
     resolve: {

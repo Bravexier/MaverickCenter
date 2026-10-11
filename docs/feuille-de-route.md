@@ -12,7 +12,10 @@ n'est encore réalisé au-delà de la première étape.
    propriétaire du contenu ; avant cela, aucune édition n'est faite dans le site (les corrections passent par `tools/sheets/corrections.json`).
    **Premier pas** (demande du propriétaire, 2026-10) : sur le site de dev seulement, les pages du guide, des races, des magies, des classes et des
    métiers se modifient en place (crayon) ; chaque modification est notée au journal (avant / après) et se rapatrie dans `data/rows` par
-   `npm run db:appliquer-edition` (`docs/serveur.md`, « Édition »). Relecture (`brouillon / validé`), auteur et bascule restent à faire.
+   `npm run db:appliquer-edition` (`docs/serveur.md`, « Édition »). **Deuxième pas** (2026-10) : la page « Mise à jour » liste ce que la dev change
+   par rapport à la production, en note de version historisée, et son bouton apporte les modifications du site dans `data/rows` puis livre en
+   production (`docs/serveur.md`, « Mise à jour ») ; le propriétaire a décidé que **le site devient la source** des données qu'il modifie (les
+   modifications versées dans `historique_modification`). Relecture (`brouillon / validé`), auteur (connexion Discord) et accès restreint au bouton restent à faire.
 3. **Simulation de combats** (à long terme) : jouer des combats pour juger l'équilibrage des sorts, des classes et des races.
 
 ## Orthographe : relecture complète à la conversion en SQL

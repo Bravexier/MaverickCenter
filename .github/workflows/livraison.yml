@@ -117,6 +117,10 @@ jobs:
         with:
           ref: ${{ needs.version.outputs.site }}
 
+      # Page « Mise à jour » du site de dev : la base de la production (master, telle qu'elle est maintenant) à côté de celle du site
+      # (scripts/db-reference.mjs ; rien en mode prod).
+      - run: git fetch --no-tags --depth=1 origin +refs/heads/master:refs/remotes/origin/master
+
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -167,6 +171,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ matrix.livraison.sha }}
+
+      # Page « Mise à jour » du site de dev : la base de la production (master, telle qu'elle est maintenant) à côté de celle du site
+      # (scripts/db-reference.mjs ; rien en mode prod).
+      - run: git fetch --no-tags --depth=1 origin +refs/heads/master:refs/remotes/origin/master
 
       - uses: actions/setup-node@v4
         with:

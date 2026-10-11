@@ -1,0 +1,58 @@
+---
+import Base from '../layouts/Base.astro';
+import miseAJourCss from '../styles/mise-a-jour/mise-a-jour.css?raw';
+import packageInfo from '../../package.json';
+import { ouvrirBase } from '../lib/donnees.mjs';
+import { trierVersions } from '../lib/notes-de-version.mjs';
+import { dateLisible, htmlDeLaNote } from '../lib/notes-de-version-rendu.mjs';
+import { url } from '../lib/wiki';
+
+// Mise à jour (menu Outils ; demande du propriétaire). Deux visages, comme le mode modification :
+//   - production (par défaut, construit ici depuis la base : tables note_version et note_version_ligne) : la note de la dernière version livrée,
+//     puis l'historique de toutes ; c'est ce que voit le site sans service, la version portable, le serveur normal ;
+//   - site de dev (le service répond `edition: true`) : son script (scripts/mise-a-jour.mjs) ajoute au-dessus la note EN PRÉPARATION — les
+//     modifications de la production à la base dev, calculées par le service, le champ libre des admins et le bouton « Effectuer la mise à jour ».
+// Rendu commun : lib/notes-de-version-rendu.mjs ; CSS : styles/mise-a-jour/, inséré ici (?raw).
+const db = ouvrirBase();
+const notes = db.prepare('SELECT * FROM note_version').all();
+const lignes = db.prepare('SELECT * FROM note_version_ligne ORDER BY version, rang').all()
+  .map((l) => ({ ...l, parties: l.parties ? JSON.parse(l.parties) : null }));
+const ordre = trierVersions(notes.map((n) => n.version));
+const parVersion = (v) => lignes.filter((l) => l.version === v);
+const [derniere, ...anciennes] = ordre.map((v) => notes.find((n) => n.version === v));
+const portable = process.env.INLINE_CSS === '1';
+---
+
+<Base title="Mise à jour" description="Ce que chaque version du site a changé dans les règles : sorts, classes et dons, races, métiers">
+  <style is:inline set:html={miseAJourCss}></style>
+  <h1>Mise à jour</h1>
+  <div class="mise-a-jour" data-mise-a-jour data-api={url('api/')} data-version={packageInfo.version}>
+    <section class="nv-dev" data-nv-dev hidden aria-live="polite"></section>
+    <section class="nv-production" data-nv-production>
+      {
+        derniere ? (
+          <Fragment set:html={htmlDeLaNote(derniere, parVersion(derniere.version), { niveau: 2 })} />
+        ) : (
+          <p class="nv-aucune">Aucune version n’a encore été livrée.</p>
+        )
+      }
+      {
+        anciennes.length > 0 && (
+          <section class="nv-historique" aria-labelledby="nv-historique">
+            <h2 id="nv-historique">Historique</h2>
+            {anciennes.map((n) => (
+              <details class="nv-ancienne">
+                <summary>
+                  Version {n.version} <span class="nv-date">{dateLisible(n.publiee_le)}</span>
+                  {n.exemple === 1 && <span class="nv-badge nv-badge--exemple">exemple</span>}
+                </summary>
+                <Fragment set:html={htmlDeLaNote(n, parVersion(n.version), { niveau: 3 })} />
+              </details>
+            ))}
+          </section>
+        )
+      }
+    </section>
+  </div>
+  {!portable && <script>import '../scripts/mise-a-jour.mjs';</script>}
+</Base>

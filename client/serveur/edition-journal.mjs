@@ -10,7 +10,7 @@
 // Node seulement (node:sqlite), sans dépendance ; partagé par le service et par client/scripts/db-appliquer-edition.mjs.
 
 /** Tables du journal lui-même et des fiches : jamais modifiées par l'édition (les fiches ont leur API). */
-export const TABLES_INTERDITES = new Set(['modification_lot', 'modification']);
+export const TABLES_INTERDITES = new Set(['modification_lot', 'modification', 'note_version_brouillon', 'note_version', 'note_version_ligne', 'historique_modification']);
 
 export class ErreurJournal extends Error {
   constructor(message) {
