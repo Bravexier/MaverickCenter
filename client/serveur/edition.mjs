@@ -11,13 +11,14 @@
 //   { op: 'relations', cases: [{ voit, vu, echelle }] }                                                     relations entre peuples (races)
 //   { op: 'magies_innees', race, magies: [ids] }                                                             magies innées d'une race
 // Node seulement (node:sqlite), sans dépendance.
-import { randomUUID } from 'node:crypto';
 import { ENTITES, ErreurValeur, MOT_CLE_RACE_HYBRIDE, TABLES, valeurDuChamp } from '../src/lib/edition-modele.mjs';
 import {
   CHAMPS_DU_CORPS, RIEN, corpsDeMetier, decouperArtisanat, decouperBonus, famillesDeRecette, remplacerChampDuCorps, resumeDeDescription,
 } from '../src/lib/metier-champs.mjs';
 import { analyserCout, analyserPortee, analyserType, analyserZone, bonusDeMaitrise, COLONNES_NM, TYPES_DE_SORT } from '../src/lib/sort-analyse.mjs';
 import { ORDRE_CHAMPS_NM, texteDeBonus } from '../src/lib/sort-maitrise.mjs';
+import { CHAMPS_DES_ETATS, etatsDuTexte, formesDesEtats } from '../src/lib/sort-etats.mjs';
+import { jsonCommePython } from '../src/lib/json-python.mjs';
 import {
   analyserTypeDeDon, bouclierMax, CATEGORIE_RACIALE, decouperInventaire, decouperMaitriseArme, decouperMaitriseArmure, MOT_CLE_DE_CATEGORIE,
 } from '../src/lib/classe-champs.mjs';
@@ -25,7 +26,7 @@ import { HYBRIDES_SANS_CLASSE_RACIALE, TAG_RACE_HYBRIDE } from '../src/lib/race-
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { decouperCorps } from '../src/lib/markdown-edition.mjs';
 import { normalize } from '../src/lib/text.mjs';
-import { ErreurJournal, cleDe, lireLigne, ouvrirLot, structure } from './edition-journal.mjs';
+import { ErreurJournal, cleDe, lireLigne, nouveauLot, ouvrirLot, structure } from './edition-journal.mjs';
 
 /** Nombre maximal d'opérations dans un lot (une page en envoie quelques dizaines). */
 export const OPERATIONS_MAX = 2000;
@@ -53,11 +54,14 @@ export function messageSqlite(e) {
   return m;
 }
 
-/** Instant ISO 8601 en UTC, à la seconde (format des colonnes `*_le`). */
-export const instantDe = (date = new Date()) => date.toISOString().replace(/\.\d{3}Z$/, 'Z');
-
 /** Provenance écrite sur les lignes créées depuis le site (la date suffit : le journal garde le détail du lot). */
 export const provenance = (instant) => `Site de dev › édition du ${instant.slice(0, 10)}`;
+
+/**
+ * Famille (page.origine) d'une page créée depuis le site, par type : celle des pages du même type (une race comme les races importées…). La provenance
+ * « Site de dev › … » de sa première source la rattache à la même famille dans tools/db/pages_md.py#origine_migration (FAMILLE_DES_PAGES_DU_SITE).
+ */
+export const FAMILLE_DES_PAGES_DU_SITE = { metiers: 'docs', races: 'races', classes: 'classes' };
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // Outils communs aux dérivations
@@ -93,24 +97,39 @@ const provenanceDeDetail = (sourceRef, segment) => `${String(sourceRef).replace(
 /** Supprime une page du wiki et ce qui la décrit (alias, mots-clés, sources, entités rattachées), chaque ligne notée au journal. */
 function supprimerPage(ctx, pageId) {
   const { db, w } = ctx;
+  const sources = db.prepare('SELECT source_id FROM page_source WHERE page_id = ?').all(pageId).map((s) => s.source_id);
   for (const table of ['alias', 'page_tag', 'page_source']) {
     for (const l of db.prepare(`SELECT * FROM "${table}" WHERE page_id = ?`).all(pageId)) w.supprimer(table, cleDe(db, table, l));
   }
   for (const l of db.prepare('SELECT * FROM page_entite WHERE page_id = ?').all(pageId)) w.supprimer('page_entite', cleDe(db, 'page_entite', l));
   w.supprimer('page', { id: pageId });
+  // le dictionnaire des sources n'a pas d'orphelin (comme tools/db/pages_md.py sync)
+  for (const id of sources) if (!db.prepare('SELECT 1 FROM page_source WHERE source_id = ?').get(id)) w.supprimer('source', { id });
 }
 
-/** Une page neuve (type, slug, titre…) : refusée si l'id existe déjà. */
-function creerPage(ctx, { type, slug, titre, resume = null, donnees = null, corps, origine, tags = [] }) {
+/**
+ * Une page neuve (type, slug, titre…) : refusée si l'id existe déjà. Sa provenance est sa première (et seule) source, comme pour les pages importées
+ * (`sources:` du `.md`) : la source « Site de dev › édition du AAAA-MM-JJ » (table source, id comme tools/db/maverick.py#decouper_source), partagée
+ * par les pages créées le même jour.
+ */
+function creerPage(ctx, { type, slug, titre, resume = null, donnees = null, corps, tags = [] }) {
   const { db, w, instant } = ctx;
   if (!slug) throw refus(`« ${titre} » : le nom doit contenir au moins une lettre ou un chiffre`);
+  const origine = FAMILLE_DES_PAGES_DU_SITE[type];
+  if (!origine) throw refus(`pages ${type} : pas de création depuis le site`);
   const id = `${type}/${slug}`;
   if (lireLigne(db, 'page', { id })) throw new ErreurEdition(409, `La page ${id} existe déjà : choisissez un autre nom.`);
+  const texte = provenance(instant);
   w.inserer('page', {
-    id, type, slug, titre, titre_cle: normalize(titre), resume, donnees: donnees === null ? null : JSON.stringify(donnees), corps_md: corps, statut: 'draft',
-    origine, source_ref: provenance(instant),
+    id, type, slug, titre, titre_cle: normalize(titre), resume, donnees: donnees === null ? null : jsonCommePython(donnees), corps_md: corps, statut: 'draft',
+    origine, source_ref: texte,
   });
   tags.forEach((libelle, ordre) => w.inserer('page_tag', { page_id: id, ordre, tag_id: normalize(libelle), libelle }));
+  const source = `ref:${normalize(texte)}`;
+  if (!lireLigne(db, 'source', { id: source })) {
+    w.inserer('source', { id: source, nature: 'libelle', texte, url: null, genre: null, google_id: null, fichier: null, onglets: null });
+  }
+  w.inserer('page_source', { page_id: id, ordre: 0, source_id: source });
   return id;
 }
 
@@ -149,7 +168,7 @@ const METIER = {
     const { db, w, instant } = ctx;
     const ligne = { ...valeurs, artisanat_brut: valeurs.artisanat_brut ?? RIEN, equipement_brut: valeurs.equipement_brut ?? RIEN };
     const slug = normalize(ligne.nom);
-    const id = creerPage(ctx, { type: 'metiers', slug, titre: ligne.nom, resume: resumeDeDescription(ligne.description) || null, corps: corpsDeMetier(ligne), origine: 'docs', tags: ['métier'] });
+    const id = creerPage(ctx, { type: 'metiers', slug, titre: ligne.nom, resume: resumeDeDescription(ligne.description) || null, corps: corpsDeMetier(ligne), tags: ['métier'] });
     const metier = w.inserer('metier', {
       id, nom: ligne.nom, nom_cle: slug, description: ligne.description ?? '', bonus_brut: ligne.bonus_brut ?? '', artisanat_brut: ligne.artisanat_brut,
       ...colonnesArtisanat(db, ligne.artisanat_brut), equipement_brut: ligne.equipement_brut, avantage_brut: ligne.avantage_brut ?? null,
@@ -219,22 +238,46 @@ function deriverBonusDuSort(ctx, sort, champs) {
   return tous;
 }
 
-/** Écritures qui varient entre le texte d'un sort et l'extrait de sort_etat (guillemets, espaces insécables) : même règle que lib/sort-format.mjs. */
-const pourComparer = (texte) => String(texte ?? '').replace(/[«»“”]/g, '"').replace(/[\u00a0\u202f]/g, ' ');
-
 /**
- * sort_etat est un index tiré du texte, non exhaustif (data/schema.sql) : quand une case change, ses lignes dont l'extrait n'y est plus écrit sont
- * retirées ; aucune nouvelle n'est déduite (une altération d'état ajoutée au texte n'y figure pas tant que l'index n'est pas refait).
+ * sort_etat est un index tiré du texte (data/schema.sql ; règle de l'importeur : lib/sort-etats.mjs, rejouée sur les 322 sorts par
+ * test/sort-etats.test.mjs) : les cases modifiées sont relues, les lignes des autres cases restent telles quelles (deux sorts ont un extrait que les
+ * corrections d'espaces insécables de leur texte n'ont pas suivi), puis le rang de chaque altération (état, relation) est recompté dans l'ordre des
+ * cases.
  */
-function deriverEtatsDuSort(ctx, sort, champs) {
-  const { db, w } = ctx;
-  for (const l of db.prepare('SELECT * FROM sort_etat WHERE sort_id = ?').all(sort.id)) {
-    if (!champs.includes(l.champ)) continue;
-    const texte = pourComparer(sort[COLONNES_NM[l.champ]]);
-    if (!texte.includes(pourComparer(l.extrait))) w.supprimer('sort_etat', cleDe(db, 'sort_etat', l));
+function deriverEtatsDuSort(ctx, avant, apres) {
+  const { db } = ctx;
+  const changees = Object.entries(CHAMPS_DES_ETATS).filter(([, c]) => (apres[c] ?? null) !== (avant[c] ?? null)).map(([champ]) => champ);
+  if (!changees.length) return;
+  const formes = formesDesEtats(db.prepare('SELECT id, nom FROM etat').all());
+  const enPlace = db.prepare('SELECT * FROM sort_etat WHERE sort_id = ? ORDER BY rang').all(apres.id);
+  const vus = new Map();
+  const lignes = [];
+  for (const [champ, colonne] of Object.entries(CHAMPS_DES_ETATS)) {
+    const trouvees = changees.includes(champ) ? etatsDuTexte(apres[colonne], formes) : enPlace.filter((l) => l.champ === champ);
+    for (const e of trouvees) {
+      const cle = `${e.etat_id}|${e.relation}`;
+      vus.set(cle, (vus.get(cle) ?? 0) + 1);
+      lignes.push({ etat_id: e.etat_id, relation: e.relation, rang: vus.get(cle), stade: e.stade, champ, forme_trouvee: e.forme_trouvee, extrait: e.extrait });
+    }
   }
+  synchroniser(ctx, 'sort_etat', { sort_id: apres.id }, lignes, { origine: 'magies', source_ref: apres.source_ref });
 }
 
+/**
+ * Un sort renommé : les panneaux « Effet "…" » des créatures qui le citent (creature_effet.sort_id) prennent son nouveau nom, comme la migration
+ * 0006 l'a fait pour les noms corrigés (nom ; libellé quand il écrit l'ancien nom entre guillemets).
+ */
+function deriverNomDuSort(ctx, avant, apres) {
+  if (apres.nom === avant.nom) return;
+  const { db, w } = ctx;
+  for (const e of db.prepare('SELECT * FROM creature_effet WHERE sort_id = ?').all(apres.id)) {
+    const cite = `"${e.nom}"`;
+    w.modifier('creature_effet', cleDe(db, 'creature_effet', e), {
+      nom: apres.nom,
+      ...(e.libelle.includes(cite) ? { libelle: e.libelle.replace(cite, `"${apres.nom}"`) } : {}),
+    });
+  }
+}
 
 const SORT = {
   colonnes(_ctx, ligne) {
@@ -251,6 +294,7 @@ const SORT = {
     };
   },
   deriver(ctx, avant, apres) {
+    deriverNomDuSort(ctx, avant, apres);
     if (apres.type_brut !== avant.type_brut) {
       const type = analyserType(apres.type_brut);
       synchroniser(ctx, 'sort_type', { sort_id: apres.id }, type.types.map((t, i) => ({ rang: i + 1, ...t })), { origine: 'magies', source_ref: apres.source_ref });
@@ -260,7 +304,7 @@ const SORT = {
     if (!champs.length) return;
     // une ligne peut avoir un effet dû aux NM dans plusieurs colonnes (demande du propriétaire : la règle d'une seule colonne est retirée)
     deriverBonusDuSort(ctx, apres, champs);
-    deriverEtatsDuSort(ctx, apres, champs.filter((c) => c !== 'portee' && c !== 'remarque'));
+    deriverEtatsDuSort(ctx, avant, apres);
   },
 };
 
@@ -270,6 +314,8 @@ const SORT = {
 /** Valeur visible posée dans un champ obligatoire d'une entité créée depuis le site, en attendant le vrai texte (jamais une règle inventée). */
 export const A_COMPLETER = 'À compléter.';
 const PAGE_DES_RELATIONS = 'lore/relations-entre-les-races';
+/** Niveau de la case diagonale (un peuple face à lui-même) : « Même peuple » (echelle_relation). */
+export const ECHELLE_MEME_PEUPLE = 'meme-peuple';
 const ordreSuivant = (db, table, colonne = 'ordre') => (db.prepare(`SELECT max("${colonne}") AS m FROM "${table}"`).get().m ?? 0) + 1;
 
 const RACE = {
@@ -288,7 +334,7 @@ const RACE = {
       type: 'races', slug, titre: valeurs.nom, resume: valeurs.presentation ?? null, donnees: { magies_innees: [] },
       corps: valeurs.presentation ? `${valeurs.presentation}
 ` : `${A_COMPLETER}
-`, origine: 'races', tags: ['race', ...(hybride ? [MOT_CLE_RACE_HYBRIDE] : [])],
+`, tags: ['race', ...(hybride ? [MOT_CLE_RACE_HYBRIDE] : [])],
     });
     const source = `${provenance(instant)} › ${valeurs.nom}`;
     w.inserer('race', {
@@ -321,8 +367,11 @@ function creerPeuple(ctx, { nom, race_id: raceId }) {
   if (!lireLigne(db, 'race', { id: raceId })) throw refus(`Peuple : race inconnue (${raceId})`);
   const id = `${PAGE_DES_RELATIONS}#peuple:${normalize(nom)}`;
   if (lireLigne(db, 'peuple', { id }) || db.prepare('SELECT 1 FROM peuple WHERE nom = ?').get(nom)) throw new ErreurEdition(409, `Le peuple ${nom} existe déjà.`);
-  w.inserer('peuple', { id, nom, nom_cle: normalize(nom), ordre: ordreSuivant(db, 'peuple'), race_id: raceId, origine: 'races', source_ref: `${provenance(instant)} › ${nom}`, remarque: null });
+  const source = `${provenance(instant)} › ${nom}`;
+  w.inserer('peuple', { id, nom, nom_cle: normalize(nom), ordre: ordreSuivant(db, 'peuple'), race_id: raceId, origine: 'races', source_ref: source, remarque: null });
   w.inserer('page_entite', { entite_table: 'peuple', entite_id: id, page_id: PAGE_DES_RELATIONS, principale: 0, origine: 'races' });
+  // sa case diagonale de la matrice « Relation entre les races », comme chacun des 69 peuples de l'onglet (elle ne se modifie pas : `relations`)
+  w.inserer('relation_peuple', { ligne_peuple_id: id, colonne_peuple_id: id, echelle_id: ECHELLE_MEME_PEUPLE, origine: 'races', source_ref: source });
   return id;
 }
 
@@ -372,10 +421,20 @@ function magiesInnees(ctx, op) {
   const voulues = new Set(op.magies);
   for (const m of voulues) if (!magies.some((x) => x.id === m)) throw refus(`Magies innées : magie inconnue (${m})`);
   const choisies = magies.filter((m) => voulues.has(m.id));
-  const parOnglet = db.prepare('SELECT count(*) AS n FROM race_magie_onglet WHERE race_id = ?').get(race.id).n > 0;
-  if (parOnglet) {
-    synchroniser(ctx, 'race_magie_onglet', { race_id: race.id }, choisies.map((m, i) => ({ magie_id: m.id, rang: i + 1, nom_brut: m.nom })),
-      { origine: 'races', source_ref: `${provenance(instant)} › ${race.nom} › magies innées` });
+  const enPlace = db.prepare('SELECT * FROM race_magie_onglet WHERE race_id = ? ORDER BY rang').all(race.id);
+  if (enPlace.length) {
+    // la liste de l'onglet garde son ordre (celui où l'onglet cite les magies, pas celui des magies) : les magies conservées gardent leur rang, les
+    // retirées partent d'abord (UNIQUE (race_id, rang)), les nouvelles s'ajoutent à la fin dans l'ordre de la demande
+    for (const l of enPlace) if (!voulues.has(l.magie_id)) w.supprimer('race_magie_onglet', cleDe(db, 'race_magie_onglet', l));
+    let rang = Math.max(0, ...enPlace.filter((l) => voulues.has(l.magie_id)).map((l) => l.rang));
+    for (const id of voulues) {
+      if (enPlace.some((l) => l.magie_id === id)) continue;
+      rang += 1;
+      w.inserer('race_magie_onglet', {
+        race_id: race.id, magie_id: id, rang, nom_brut: magies.find((m) => m.id === id).nom, origine: 'races',
+        source_ref: `${provenance(instant)} › ${race.nom} › magies innées`,
+      });
+    }
   } else {
     for (const m of magies) {
       const cle = { race_id: race.id, magie_id: m.id };
@@ -387,7 +446,7 @@ function magiesInnees(ctx, op) {
   const page = lireLigne(db, 'page', { id: race.id });
   if (page) {
     const donnees = page.donnees ? JSON.parse(page.donnees) : {};
-    w.modifier('page', { id: race.id }, { donnees: JSON.stringify({ ...donnees, magies_innees: choisies.map((m) => m.nom) }) });
+    w.modifier('page', { id: race.id }, { donnees: jsonCommePython({ ...donnees, magies_innees: choisies.map((m) => m.nom) }) });
   }
   return `Magies innées de ${race.nom} : ${choisies.map((m) => m.nom).join(', ') || 'aucune'}`;
 }
@@ -453,7 +512,7 @@ const CLASSE = {
     if (db.prepare('SELECT 1 FROM classe WHERE nom = ?').get(nom)) throw new ErreurEdition(409, `La classe ${nom} existe déjà.`);
     const slug = race ? race.id.slice(race.id.indexOf('/') + 1) : normalize(nom);
     const id = creerPage(ctx, { type: 'classes', slug, titre: nom, corps: `${A_COMPLETER}
-`, origine: 'classes', tags: ['classe', MOT_CLE_DE_CATEGORIE[categorie.id]] });
+`, tags: ['classe', MOT_CLE_DE_CATEGORIE[categorie.id]] });
     const source = `${provenance(instant)} › ${nom}`;
     w.inserer('classe', {
       id, nom, nom_cle: slug, categorie_id: categorie.id, ordre: ordreSuivant(db, 'classe'), sante_depart: valeurs.sante_depart ?? 0,
@@ -480,7 +539,7 @@ const SPECIALITE = {
       const page = lireLigne(ctx.db, 'page', { id: k.id });
       if (!page) continue;
       const donnees = page.donnees ? JSON.parse(page.donnees) : {};
-      if (donnees.specialite === avant.nom) ctx.w.modifier('page', { id: k.id }, { donnees: JSON.stringify({ ...donnees, specialite: apres.nom }) });
+      if (donnees.specialite === avant.nom) ctx.w.modifier('page', { id: k.id }, { donnees: jsonCommePython({ ...donnees, specialite: apres.nom }) });
       for (const t of ctx.db.prepare('SELECT * FROM page_tag WHERE page_id = ? AND tag_id = ?').all(k.id, normalize(avant.nom))) {
         if (!ctx.db.prepare('SELECT 1 FROM page_tag WHERE page_id = ? AND tag_id = ?').get(k.id, normalize(apres.nom))) {
           ctx.w.modifier('page_tag', { page_id: k.id, ordre: t.ordre }, { tag_id: normalize(apres.nom), libelle: apres.nom.toLowerCase() });
@@ -508,7 +567,7 @@ const CAPACITE = {
     if (page.titre === avant.nom && apres.nom !== avant.nom) ctx.w.modifier('page', { id: apres.id }, { titre: apres.nom, titre_cle: normalize(apres.nom) });
     const donnees = page.donnees ? JSON.parse(page.donnees) : null;
     if (donnees && donnees.type_capacite === avant.type_brut && apres.type_brut !== avant.type_brut) {
-      ctx.w.modifier('page', { id: apres.id }, { donnees: JSON.stringify({ ...donnees, type_capacite: apres.type_brut }) });
+      ctx.w.modifier('page', { id: apres.id }, { donnees: jsonCommePython({ ...donnees, type_capacite: apres.type_brut }) });
     }
   },
 };
@@ -650,9 +709,16 @@ const OPERATIONS = { modifier, creer, supprimer, relations, magies_innees: magie
  * Applique un lot dans la base vivante, d'un bloc : tout passe ou rien n'est écrit (ErreurEdition : statut HTTP, message en français).
  * @param {import('node:sqlite').DatabaseSync} db base vivante (clés étrangères contrôlées)
  * @param {{ page?: string, operations: object[] }} corps
+ * @param {{ instant?: string, id?: string, auteurId?: string | null }} [o] instant et identifiant du lot : par défaut ceux de nouveauLot (l'identifiant
+ *   s'ordonne comme l'enregistrement, ce qui fixe l'ordre de rejeu de deux lots de la même seconde)
  * @returns {{ lot: string | null, modifications: number, crees: { entite: string, id: string }[], lignes: { table: string, cle: object, ligne: object | null }[] }}
  */
-export function enregistrer(db, corps, { instant = instantDe(), id = randomUUID(), auteurId = null } = {}) {
+export function enregistrer(db, corps, { instant, id, auteurId = null } = {}) {
+  if (instant === undefined || id === undefined) {
+    const lot = nouveauLot();
+    instant ??= lot.instant;
+    id ??= lot.id;
+  }
   if (!corps || typeof corps !== 'object' || !Array.isArray(corps.operations)) throw refus('Corps attendu : { page, operations: [...] }');
   if (!corps.operations.length) throw refus('Aucune modification à enregistrer.');
   if (corps.operations.length > OPERATIONS_MAX) throw refus(`Trop de modifications d’un coup (au plus ${OPERATIONS_MAX}).`);

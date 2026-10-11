@@ -95,7 +95,7 @@ test('relations entre peuples : placer une race dans un niveau (case créée ou 
   assert.equal(enregistrer([{ op: 'relations', cases: [{ voit: peuple('lycan'), vu: peuple('humain-central'), echelle: 'alliee' }] }]).statut, 200);
   assert.equal(ligne('SELECT echelle_id FROM relation_peuple WHERE ligne_peuple_id = ? AND colonne_peuple_id = ?', peuple('lycan'), peuple('humain-central')).echelle_id, 'alliee');
   assert.equal(enregistrer([{ op: 'relations', cases: [{ voit: peuple('lycan'), vu: peuple('humain-central'), echelle: null }] }]).statut, 200);
-  assert.equal(ligne('SELECT count(*) AS n FROM relation_peuple WHERE ligne_peuple_id = ?', peuple('lycan')).n, 0);
+  assert.equal(ligne('SELECT count(*) AS n FROM relation_peuple WHERE ligne_peuple_id = ? AND colonne_peuple_id <> ligne_peuple_id', peuple('lycan')).n, 0, 'reste sa case diagonale');
   for (const cas of [[{ voit: peuple('lycan'), vu: peuple('lycan'), echelle: 'neutre' }], [{ voit: peuple('x'), vu: peuple('lycan'), echelle: 'neutre' }], [{ voit: peuple('lycan'), vu: peuple('humain-central'), echelle: 'amour' }]]) {
     assert.equal(enregistrer([{ op: 'relations', cases: cas }]).statut, 400, JSON.stringify(cas));
   }

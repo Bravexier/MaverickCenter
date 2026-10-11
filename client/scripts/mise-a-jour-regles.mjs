@@ -16,7 +16,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { construireReference } from './db-reference.mjs';
 import { TABLES_FICHES } from '../serveur/base-vivante.mjs';
-import { chargerJournal, rejouer, TABLES_INTERDITES } from '../serveur/edition-journal.mjs';
+import { chargerJournal, ORDRE_DE_REJEU, rejouer, TABLES_INTERDITES } from '../serveur/edition-journal.mjs';
 import { lireTables } from '../serveur/notes-de-version.mjs';
 import { bilan, comparerBases, versionCourte, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
 import { markdownDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
@@ -73,7 +73,7 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
       chargerJournal(db, lot.journal);
       const rejeu = rejouer(db);
       const conflits = db.prepare(`SELECT l.id AS lot, l.resume, m.detail FROM modification m JOIN modification_lot l ON l.id = m.lot_id
-        WHERE m.etat = 'conflit' GROUP BY l.id ORDER BY l.fait_le`).all().map((c) => ({ ...c }));
+        WHERE m.etat = 'conflit' GROUP BY l.id ORDER BY l.fait_le, l.id`).all().map((c) => ({ ...c }));
       if (conflits.length) {
         db.exec('ROLLBACK');
         throw new ErreurMiseAJour(3, `${conflits.length} lot(s) en conflit avec dev : ${conflits.map((c) => `« ${c.resume} » (${c.detail})`).join(' ; ')}`, { conflits, rejeu });
@@ -86,7 +86,7 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
       }
       // tout le journal sans conflit : réécrit par le rejeu (resté « en_attente ») ou déjà dans les règles (« integree »)
       const historique = db.prepare(`SELECT m.*, l.fait_le, l.resume FROM modification m JOIN modification_lot l ON l.id = m.lot_id
-        WHERE m.etat <> 'conflit' ORDER BY l.fait_le, l.id, m.rang`).all();
+        WHERE m.etat <> 'conflit' ORDER BY ${ORDRE_DE_REJEU}`).all();
       touchees = new Set(historique.map((m) => m.table_nom));
       // notes d'exemple (lorem ipsum) retirées par la première vraie mise à jour ; une note de la même version (relance) est refaite
       const remplacees = db.prepare('SELECT version FROM note_version WHERE exemple = 1 OR version = ?').all(version).map((n) => n.version);

@@ -22,8 +22,8 @@ test('modules livrés : l’entrée, le service, le format des fiches et l’éd
   assert.deepEqual(modulesDuServeur(), [
     'serveur/api.mjs', 'serveur/base-vivante.mjs', 'serveur/edition-journal.mjs', 'serveur/edition.mjs', 'serveur/fiches.mjs', 'serveur/index.mjs',
     'serveur/notes-de-version.mjs', 'serveur/service.mjs', 'src/lib/classe-champs.mjs', 'src/lib/edition-modele.mjs', 'src/lib/fiche-format.mjs',
-    'src/lib/guide.mjs', 'src/lib/markdown-edition.mjs', 'src/lib/metier-champs.mjs', 'src/lib/notes-de-version-sens.mjs', 'src/lib/notes-de-version.mjs',
-    'src/lib/race-kinds.mjs', 'src/lib/sort-analyse.mjs', 'src/lib/sort-maitrise.mjs', 'src/lib/text.mjs',
+    'src/lib/guide.mjs', 'src/lib/json-python.mjs', 'src/lib/markdown-edition.mjs', 'src/lib/metier-champs.mjs', 'src/lib/notes-de-version-sens.mjs',
+    'src/lib/notes-de-version.mjs', 'src/lib/race-kinds.mjs', 'src/lib/sort-analyse.mjs', 'src/lib/sort-etats.mjs', 'src/lib/sort-maitrise.mjs', 'src/lib/text.mjs',
   ]);
   const faux = join(racine, 'faux-client');
   mkdirSync(join(faux, 'serveur'), { recursive: true });

@@ -8,6 +8,7 @@
 //   - lignesEnAttente: l'état net des lignes modifiées (ce que les pages statiques doivent montrer à la place de leur contenu construit) ;
 //   - journalExporte : le journal à rapatrier dans data/rows (`npm run db:appliquer-edition`).
 // Node seulement (node:sqlite), sans dépendance ; partagé par le service et par client/scripts/db-appliquer-edition.mjs.
+import { randomUUID } from 'node:crypto';
 
 /** Tables du journal lui-même et des fiches : jamais modifiées par l'édition (les fiches ont leur API). */
 export const TABLES_INTERDITES = new Set(['modification_lot', 'modification', 'note_version_brouillon', 'note_version', 'note_version_ligne', 'historique_modification']);
@@ -17,6 +18,28 @@ export class ErreurJournal extends Error {
     super(message);
     this.name = 'ErreurJournal';
   }
+}
+
+/**
+ * Ordre de rejeu (requêtes sur modification m JOIN modification_lot l) : les lots par instant, puis par identifiant, les modifications d'un lot par
+ * rang. `fait_le` est à la seconde (CHECK de la table) : deux lots de la même seconde se départagent par leur identifiant, qui s'ordonne comme
+ * leur enregistrement (nouveauLot). Le service (rejouer, lignesEnAttente, journalExporte), db:appliquer-edition (par rejouer) et la mise à jour des
+ * règles (scripts/mise-a-jour-regles.mjs) trient ainsi.
+ */
+export const ORDRE_DE_REJEU = 'l.fait_le, l.id, m.rang';
+
+let dernierLot = { ms: -Infinity, n: 0 };
+/**
+ * Instant (à la seconde, format des colonnes `*_le`) et identifiant d'un nouveau lot. L'identifiant commence par l'instant à la milliseconde, puis
+ * un compteur (lots de la même milliseconde), puis un uuid : « 2026-10-11T09:30:12.345Z-000000-<uuid> ». Trier par (fait_le, id) redonne l'ordre
+ * d'enregistrement, même dans une seule seconde (une horloge qui recule n'y change rien : l'instant ne redescend pas).
+ * @returns {{ instant: string, id: string }}
+ */
+export function nouveauLot(date = new Date()) {
+  const ms = Math.max(date.getTime(), dernierLot.ms);
+  dernierLot = ms === dernierLot.ms ? { ms, n: dernierLot.n + 1 } : { ms, n: 0 };
+  const iso = new Date(ms).toISOString();
+  return { instant: iso.replace(/\.\d{3}Z$/, 'Z'), id: `${iso}-${String(dernierLot.n).padStart(6, '0')}-${randomUUID()}` };
 }
 
 const infos = new WeakMap(); // db -> Map(table -> { colonnes, cle })
@@ -213,7 +236,7 @@ function rejouerUne(db, m) {
 }
 
 /**
- * Rejoue toutes les modifications en attente, lot par lot dans l'ordre (fait_le, puis id), chaque lot d'un bloc : si l'une de ses modifications est en
+ * Rejoue toutes les modifications en attente, lot par lot dans l'ordre (ORDRE_DE_REJEU), chaque lot d'un bloc : si l'une de ses modifications est en
  * conflit (ou rompt une clé étrangère des tables touchées), le lot entier est annulé et ses modifications en attente passent « conflit ».
  * À appeler dans une transaction (l'appelant valide) ; les clés étrangères peuvent être suspendues (contrôle explicite par lot).
  * @returns {{ appliquees: number, integrees: number, conflits: number, lots: number }}
@@ -223,7 +246,7 @@ export function rejouer(db) {
   const enAttente = db
     .prepare(
       `SELECT m.* FROM modification m JOIN modification_lot l ON l.id = m.lot_id
-       WHERE m.etat = 'en_attente' ORDER BY l.fait_le, l.id, m.rang`,
+       WHERE m.etat = 'en_attente' ORDER BY ${ORDRE_DE_REJEU}`,
     )
     .all();
   const parLot = new Map();
@@ -295,7 +318,7 @@ export function lignesEnAttente(db, { tables } = {}) {
   const toutes = db
     .prepare(
       `SELECT m.table_nom, m.cle, m.operation, m.apres, m.apercu FROM modification m JOIN modification_lot l ON l.id = m.lot_id
-       WHERE m.etat = 'en_attente' ORDER BY l.fait_le, l.id, m.rang`,
+       WHERE m.etat = 'en_attente' ORDER BY ${ORDRE_DE_REJEU}`,
     )
     .all();
   for (const m of toutes) {
@@ -309,7 +332,7 @@ export function lignesEnAttente(db, { tables } = {}) {
 
 /** Le journal, lots et modifications, pour le rapatrier dans data/rows (format « maverick-edition/1 »). */
 export function journalExporte(db, { etats = ['en_attente'] } = {}) {
-  const lots = db.prepare('SELECT * FROM modification_lot ORDER BY fait_le, id').all();
+  const lots = db.prepare('SELECT * FROM modification_lot l ORDER BY l.fait_le, l.id').all();
   const mods = db.prepare('SELECT * FROM modification ORDER BY lot_id, rang').all();
   const parLot = new Map(lots.map((l) => [l.id, { ...l, modifications: [] }]));
   for (const m of mods) {
