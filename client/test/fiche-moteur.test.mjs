@@ -1,6 +1,6 @@
 // Moteur de la fiche (lib/fiche-moteur.mjs) sur les vraies règles (lib/fiche-regles.mjs, la base construite) : chaque calcul comparé à sa source —
 // les vues de la base (v_personnage_niveau, v_personnage_controle, par le service sur une base vivante temporaire), les personnages fil rouge du
-// guide (lib/guide-fil-rouge.mjs) et les décisions du propriétaire (R2, R3, R6, R7, R15, R16, R19, R20, R23, R24, R25, R26, R27, R28, R32, R33, R34, R35, R37, R38, R39, R41).
+// guide (lib/guide-fil-rouge.mjs) et les décisions du propriétaire (R2, R3, R6, R7, R15, R16, R19, R20, R23, R24, R25, R26, R27, R28, R32, R33, R34, R35, R37, R38, R39, R41) ; les résistances, contre les tables de la base (magie_resistance, resistance_palier).
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -15,7 +15,7 @@ import {
   objetChoisi, objetDInventaire, objetsDuMetier, deDeLaFamille, donsAcquis, donsDeRace, quotaDeMaitrise, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, magieAcquiseValable, nmDuSort,
   progressionXp, classeMagique, classesPermises, classesSelonLaMagieInnee,
   competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, magiesInneesPermises, maitriseDesSorts, niveauGlobal,
-  maitriseDArme, niveauxDeClasse, notationDesDes, npmMax, progressionAttendue, puissanceMagique, refusClasse, refusMagieAcquise, sortsParNpm, sortsPossibles, ecrireValeurDuMoment, valeursDuMoment, xpDuNiveauSuivant,
+  maitriseDArme, niveauxDeClasse, notationDesDes, npmMax, progressionAttendue, puissanceMagique, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, sortsPossibles, ecrireValeurDuMoment, valeursDuMoment, xpDuNiveauSuivant,
 } from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { FIL_ROUGE, chargerFilRouge } from '../src/lib/guide-fil-rouge.mjs';
@@ -792,6 +792,68 @@ test('dons de la race (demande du propriétaire) : le don de base d’abord, le 
   assert.ok(tableau, 'une race a un tableau de dons par ethnie');
   const ligne = tableau.dons_tableau.lignes.find((l) => l.ethnie_id);
   const avecTableau = donsDeRace(regles, { ...ficheVide(), race_id: tableau.id, ethnie_id: ligne.ethnie_id });
-  assert.deepEqual(avecTableau.tableau, { titre: tableau.dons_tableau.titre, cellules: ligne.cellules });
+  assert.deepEqual(avecTableau.tableau, { titre: tableau.dons_tableau.titre, cellules: ligne.cellules, resistances: ligne.resistances ?? null });
   assert.deepEqual(donsDeRace(regles, ficheVide()), { base: null, dons: [], tableau: null, ethnieAChoisir: false }, 'sans race');
+});
+
+test('résistances (fiche auto Personnage!BA2:BI12) : les crans de la magie innée et de l’acquise s’additionnent, rangés dans les six paliers ; à 0, rien', () => {
+  // la base recalcule la même chose : somme des crans des deux listes (magie_resistance), palier de resistance_palier
+  const palierSql = db.prepare(`
+    SELECT r.cible, p.id AS palier FROM (
+      SELECT COALESCE(cible_magie_id, cible_etat_id) AS cible, SUM(CASE sens WHEN 'resistance' THEN 1 ELSE -1 END) AS v
+      FROM magie_resistance WHERE magie_id IN (?, ?) GROUP BY cible) r
+    JOIN resistance_palier p ON (p.valeur_min IS NULL OR r.v >= p.valeur_min) AND (p.valeur_max IS NULL OR r.v <= p.valeur_max)`);
+  let paires = 0;
+  for (const innee of regles.magies) {
+    for (const acquise of [null, ...regles.magies]) {
+      const fiche = ficheConforme({ magie_innee_id: innee.id, magie_acquise_id: acquise?.id ?? null });
+      if (acquise && refusMagieAcquise(regles, fiche, acquise.id)) continue;
+      paires += 1;
+      const calcul = resistancesDe(regles, fiche); // Humain central, Guerrier : ni don ni ethnie qui en donne
+      assert.deepEqual(calcul.paliers.map((p) => p.id), ['immunite', 'grande_resistance', 'resistance', 'vulnerabilite', 'grande_vulnerabilite', 'sensibilite']);
+      const lus = calcul.paliers.flatMap((p) => p.cibles.map((c) => `${c.id}>${p.id}`)).sort();
+      assert.deepEqual(lus, palierSql.all(innee.id, acquise?.id ?? innee.id).map((r) => `${r.cible}>${r.palier}`).sort(), `${innee.nom} + ${acquise?.nom ?? '—'}`);
+      for (const p of calcul.paliers) {
+        // les magies d'abord, puis les altérations, chacune dans l'ordre de la base
+        const types = p.cibles.map((c) => c.type);
+        assert.deepEqual(types, [...types].sort((a, b) => (a === b ? 0 : a === 'magie' ? -1 : 1)));
+        for (const c of p.cibles) assert.equal(c.crans, c.origines.reduce((t, o) => t + o.crans, 0), c.nom);
+      }
+      assert.deepEqual(calcul.auChoix, []);
+    }
+  }
+  assert.ok(paires > 100);
+  const feu = resistancesDe(regles, ficheConforme());
+  assert.deepEqual(feu.paliers.find((p) => p.id === 'resistance').cibles.map((c) => c.nom), ['Feu', 'Glace', 'Terre', 'Brûlure', 'Gel', 'Pétrifié'],
+    'la page de la magie du Feu : résiste au Feu, à la Glace, à la Terre et à leurs altérations');
+  assert.deepEqual(resistancesDe(regles, ficheVide()).paliers.flatMap((p) => p.cibles), [], 'fiche vide');
+});
+
+test('résistances des dons : ethnie hybride (sa magie innée et son altération), tableau du Drakos, Mort-Vivant (ligne du tableau, immunité de Trompe-mort), don de classe ; choix signalé', () => {
+  const palier = (calcul, nom) => calcul.paliers.find((p) => p.cibles.some((c) => c.nom === nom))?.id ?? null;
+  const cible = (calcul, nom) => calcul.paliers.flatMap((p) => p.cibles).find((c) => c.nom === nom);
+  // « 1 cran de résistance en plus à la magie innée et son altération d'état » : Glace 1 + 1, Gel 1 + 1
+  const fenrir = resistancesDe(regles, ficheConforme({ race_id: 'races/fenrir', ethnie_id: 'races/fenrir#ethnie:fenrir-de-glace', magie_innee_id: 'magies/magie-de-la-glace' }));
+  assert.deepEqual([palier(fenrir, 'Glace'), palier(fenrir, 'Gel')], ['grande_resistance', 'grande_resistance']);
+  assert.deepEqual(cible(fenrir, 'Gel').origines.map((o) => o.crans), [1, 1]);
+  // Mort-Vivant nécrotique : Nécromancie +1 (magie) +1 (ligne du tableau) +1 (Glace acquise) = 3, immunité ; Poison : immunisé (Trompe-mort)
+  const mort = resistancesDe(regles, ficheConforme({
+    race_id: 'races/mort-vivant', ethnie_id: 'races/mort-vivant#ethnie:mort-vivant-necrotique', magie_innee_id: 'magies/magie-de-la-necromancie', magie_acquise_id: 'magies/magie-de-la-glace',
+  }));
+  assert.deepEqual(mort.paliers.find((p) => p.id === 'immunite').cibles.map((c) => c.nom), ['Nécromancie', 'Poison']);
+  assert.equal(cible(mort, 'Nécromancie').crans, 3);
+  assert.ok(cible(mort, 'Poison').origines.some((o) => o.nom === 'Trompe-mort' && o.immunite));
+  // une immunité prévaut sur les crans : la Foudre est vulnérable au Poison
+  const foudre = resistancesDe(regles, ficheConforme({ race_id: 'races/mort-vivant', ethnie_id: 'races/mort-vivant#ethnie:mort-vivant-foudre', magie_innee_id: 'magies/magie-de-la-foudre' }));
+  assert.equal(cible(foudre, 'Poison').crans, -1);
+  assert.equal(palier(foudre, 'Poison'), 'immunite');
+  // Drakos Rouge : « +1 cran de résistance » Brûlure (Feu inné : 1 + 1) ; Drakos Orange : au choix, pas compté
+  const rouge = resistancesDe(regles, ficheConforme({ race_id: 'races/drakos', ethnie_id: 'races/drakos#ethnie:drakos-rouge' }));
+  assert.equal(cible(rouge, 'Brûlure').crans, 2);
+  const orange = resistancesDe(regles, ficheConforme({ race_id: 'races/drakos', ethnie_id: 'races/drakos#ethnie:drakos-orange', magie_innee_id: 'magies/potentiel-illimite' }));
+  assert.deepEqual([orange.paliers.flatMap((p) => p.cibles), orange.auChoix], [[], ['Écaille draconique']]);
+  // Clerc, don de classe de niveau 1 « Proche » : la magie innée (Feu) et la Brûlure gagnent un cran
+  const clerc = resistancesDe(regles, ficheConforme({ classes: [{ rang: 1, classe_id: 'classes/clerc', specialite_id: null }] }));
+  assert.deepEqual([cible(clerc, 'Feu').crans, cible(clerc, 'Brûlure').crans, cible(clerc, 'Glace').crans], [2, 2, 1]);
+  assert.ok(cible(clerc, 'Feu').origines.some((o) => o.nom === 'Proche (Clerc)'));
 });

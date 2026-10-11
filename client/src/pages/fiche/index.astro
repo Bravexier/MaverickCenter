@@ -113,6 +113,11 @@ const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
               <label class="fiche-champ"><span>Dieu choisi</span><select data-champ="dieu_choisi_id" id="dieux"><option value="">—</option></select></label>
             </div>
             <ul id="magie-resume" class="fiche-resume" aria-label="Ce que donnent les magies"></ul>
+            <div class="resistances">
+              <h3 id="titre-resistances">Résistances et faiblesses</h3>
+              <table class="resistances__table" aria-labelledby="titre-resistances"><tbody id="resistances"></tbody></table>
+              <p class="fiche-aide" id="resistances-choix" hidden></p>
+            </div>
           </div>
         </section>
       ))}

@@ -467,7 +467,7 @@ export function donsDeRace(regles, fiche) {
   return {
     base: race.don_base ?? null,
     dons: (race.dons ?? []).filter(pourLEthnie),
-    tableau: ligne && { titre: race.dons_tableau.titre, cellules: ligne.cellules },
+    tableau: ligne && { titre: race.dons_tableau.titre, cellules: ligne.cellules, resistances: ligne.resistances ?? null },
     ethnieAChoisir: parEthnie && !fiche.ethnie_id,
   };
 }
@@ -489,6 +489,59 @@ export function quotaDeMaitrise(regles, fiche) {
     total: sources.reduce((s, x) => s + x.points, 0),
     utilises: (fiche.maitrises_armes ?? []).reduce((s, l) => s + m.pointsDe(entier(l.des)), 0),
     sources,
+  };
+}
+
+/**
+ * Résistances et faiblesses du personnage (tableau « Résistance / Faiblesse (Magie et Altération d'état) » de la fiche auto V15.2.2, Personnage!BA2:BI12,
+ * demande du propriétaire) : pour chaque magie et chaque altération d'état, la somme de ses crans (guide « Créer sa fiche », Tableau Résistances/Faiblesses :
+ * « Deux vulnérabilités à la même magie entraînent une grande vulnérabilité et deux résistances à la même magie entraînent une grande résistance »),
+ * rangée dans l'un des six paliers de la fiche (resistance_palier : 3 et plus immunité, 2 grande résistance… −3 et moins sensibilité) ; à 0, rien.
+ * Les crans viennent de la magie innée et de la magie acquise (les listes de leur page, magie_resistance) et de ce que les dons écrivent
+ * (lib/resistance-texte.mjs ; race : don unique et don de l'ethnie, ligne de l'ethnie dans le tableau de dons ; classes : dons acquis). Une immunité
+ * écrite (« Immunisé contre le poison ») met la cible en immunité quels que soient ses crans ; une résistance au choix n'est pas comptée et `auChoix`
+ * nomme les dons qui en laissent une. Pas encore : les objets et l'équipement.
+ * { paliers: [{ id, libelle, effet, cibles: [{ type, id, nom, crans, immunite, origines: [{ nom, crans } | { nom, immunite }] }] }], auChoix: [nom] }
+ */
+export function resistancesDe(regles, fiche) {
+  const innee = trouver(regles.magies, fiche.magie_innee_id);
+  const acquise = trouver(regles.magies, fiche.magie_acquise_id);
+  const cibles = new Map();
+  const auChoix = [];
+  const compter = (effet, origine) => {
+    // « la magie innée et son altération d'état » : celles du personnage (etat_magie)
+    const type = effet.type === 'magie_innee' ? 'magie' : effet.type === 'etat_magie_innee' ? 'etat' : effet.type;
+    const id = effet.type === 'magie_innee' ? innee?.id : effet.type === 'etat_magie_innee' ? innee?.etat_id : effet.id;
+    if (!id) return;
+    const cle = `${type}:${id}`;
+    if (!cibles.has(cle)) cibles.set(cle, { type, id, crans: 0, immunite: false, origines: [] });
+    const c = cibles.get(cle);
+    if (effet.immunite) c.immunite = true;
+    else c.crans += effet.crans;
+    c.origines.push(effet.immunite ? { nom: origine, immunite: true } : { nom: origine, crans: effet.crans });
+  };
+  const lire = (resistances, origine) => {
+    for (const e of resistances?.effets ?? []) compter(e, origine);
+    if (resistances?.choix) auChoix.push(origine);
+  };
+  for (const [magie, role] of [[innee, 'magie innée'], [acquise, 'magie acquise']]) {
+    for (const e of magie?.resistances ?? []) compter(e, `${magie.nom} (${role})`);
+  }
+  const race = donsDeRace(regles, fiche);
+  const ethnie = trouver(regles.ethnies, fiche.ethnie_id)?.nom ?? trouver(regles.races, fiche.race_id)?.nom;
+  for (const d of race.dons) lire(d.resistances, d.nom ?? ethnie);
+  if (race.tableau) lire(race.tableau.resistances, race.tableau.titre ?? ethnie);
+  for (const c of donsAcquis(regles, fiche)) for (const d of c.dons) lire(d.resistances, `${d.nom} (${c.classe.nom})`);
+
+  const rang = (c) => (c.type === 'magie' ? regles.magies : regles.etats ?? []).findIndex((x) => x.id === c.id);
+  const rangees = [...cibles.values()]
+    .map((c) => ({ ...c, nom: trouver(c.type === 'magie' ? regles.magies : regles.etats ?? [], c.id)?.nom ?? c.id }))
+    .sort((a, b) => (a.type === b.type ? 0 : a.type === 'magie' ? -1 : 1) || rang(a) - rang(b));
+  const palierDe = (c) => (c.immunite ? 'immunite'
+    : (regles.resistance_paliers ?? []).find((p) => (p.min === null || c.crans >= p.min) && (p.max === null || c.crans <= p.max))?.id ?? null);
+  return {
+    paliers: (regles.resistance_paliers ?? []).map((p) => ({ id: p.id, libelle: p.libelle, effet: p.effet, cibles: rangees.filter((c) => palierDe(c) === p.id) })),
+    auChoix,
   };
 }
 

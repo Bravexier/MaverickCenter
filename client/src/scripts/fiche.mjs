@@ -10,7 +10,7 @@ import {
   choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsAcquis, donsDeRace, donsValables,
   emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionAttendue, progressionXp,
-  quotaDeMaitrise, refusClasse, refusMagieAcquise, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
+  quotaDeMaitrise, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
 } from '../lib/fiche-moteur.mjs';
 
 const racine = document.getElementById('fiche');
@@ -273,6 +273,29 @@ function construireMagies() {
       i === 0 && (m.caracteristique_id ? `+1 ${trouver(regles.caracteristiques, m.caracteristique_id).nom}` : `+1 au choix (${(m.caracteristique_brut ?? '').toLowerCase() || 'au choix'})`),
       m.chakra && `${signe(m.chakra)} chakra`, m.sante && `${signe(m.sante)} santé`, m.barre4 && `4ᵉ barre : ${m.barre4.ressource === 'ame' ? 'Âme' : 'Sang'} (${m.barre4.max})`,
     ].filter(Boolean).join(', '))));
+}
+
+/**
+ * Résistances et faiblesses (demande du propriétaire, sur le modèle du tableau « Résistance / Faiblesse » de la fiche auto) : les six paliers, chacun avec
+ * ses magies (dans leur couleur) puis ses altérations d'état (cerclées de la couleur de leur magie), le détail des crans en infobulle (resistancesDe) ;
+ * sous le tableau, les dons qui laissent une résistance au choix (pas comptée).
+ */
+function construireResistances() {
+  const { paliers, auChoix } = resistancesDe(regles, fiche);
+  const magieDeLEtat = new Map(regles.magies.filter((m) => m.etat_id).map((m) => [m.etat_id, m]));
+  const detail = (c) => `${c.nom} : ${c.origines.map((o) => (o.immunite ? `immunisé (${o.nom})` : `${o.nom} ${signe(o.crans)}`)).join(' · ')}`
+    + (c.immunite || c.origines.length < 2 ? '' : ` = ${signe(c.crans)}`);
+  reconstruire($('resistances'), JSON.stringify(paliers.map((p) => p.cibles.map(detail))), () => paliers.map((p) => el('tr', { dataset: { palier: p.id } },
+    el('th', { scope: 'row' }, p.libelle, el('small', {}, p.effet)),
+    el('td', {}, p.cibles.length
+      ? el('ul', { class: 'resistances__cibles' }, p.cibles.map((c) => {
+        const magie = c.type === 'magie' ? trouver(regles.magies, c.id) : magieDeLEtat.get(c.id);
+        return el('li', { class: `resistance resistance--${c.type}`, title: detail(c), style: magie && `--c: ${magie.couleur}; --c-texte: ${magie.texte}` }, c.nom);
+      }))
+      : el('span', { class: 'resistances__vide' }, '—')))));
+  const choix = $('resistances-choix');
+  choix.hidden = auChoix.length === 0;
+  choix.textContent = auChoix.length ? `Résistance laissée au choix, à noter à la main : ${auChoix.join(', ')}.` : '';
 }
 
 // ------------------------------------------------------------------ classes
@@ -1151,6 +1174,7 @@ function rafraichir() {
   construireAlignement();
   construireMetier();
   construireMagies();
+  construireResistances();
   construireClasses();
   construireCaracteristiques();
   construireMaitrises();
