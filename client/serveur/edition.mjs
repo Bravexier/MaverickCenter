@@ -334,8 +334,16 @@ function deriverNomDuSort(ctx, avant, apres) {
 }
 
 const SORT = {
-  colonnes(_ctx, ligne) {
+  colonnes(ctx, ligne) {
     if (ligne.texte_niveau5 !== null && ligne.niveau !== 5) throw refus('Le texte du sort n’existe que pour un sort de niveau 5.');
+    // le corps de la page de la magie retrouve les notes et le texte de niveau 5 d'un sort par son nom, sans casse, accents ni espaces en trop
+    // (lib/corps-magies.mjs) : un nom qui ne diffère d'un autre sort de la magie que par là confondrait les deux
+    if (ligne.nom !== lireLigne(ctx.db, 'sort', { id: ligne.id }).nom) {
+      // (le même nom exactement : refusé par la base, UNIQUE (magie_id, nom))
+      const autre = ctx.db.prepare('SELECT nom FROM sort WHERE magie_id = ? AND id <> ? AND nom <> ?').all(ligne.magie_id, ligne.id, ligne.nom)
+        .find((s) => normalize(s.nom) === normalize(ligne.nom));
+      if (autre) throw new ErreurEdition(409, `Nom « ${ligne.nom} » : c’est, à la casse, aux accents ou aux espaces près, le nom d’un autre sort de cette magie (« ${autre.nom} »).`);
+    }
     const type = analyserType(ligne.type_brut);
     if (type.inconnus.length) throw refus(`Type « ${type.inconnus.join(', ')} » inconnu : les types sont ${TYPES_DE_SORT.join(', ')} (séparés par « / », le mode entre parenthèses)`);
     if (!type.types.length) throw refus('Type : au moins un type de sort, avant les parenthèses du mode');

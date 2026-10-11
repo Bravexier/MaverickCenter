@@ -299,6 +299,25 @@ test('sort : une case modifiée ne change que sa ligne ; « / » pour D/S/B vide
   assert.match(type, /^\| 1\.0 \| Boule de feu \| Attaque\/ Entrave<br>\(Imparable\) \| 4\.0 \|/m);
 });
 
+test('sort : sa ligne est celle qui porte son nom, même quand le tableau ne suit plus l’ordre des sorts ; jamais la ligne d’un autre sort', () => {
+  const corps = corpsDe(FEU);
+  const [premier, second] = sorts.filter((s) => s.magie_id === FEU && s.ordre <= 2);
+  const lignes = corps.split('\n');
+  const i = lignes.findIndex((l) => casesDeLigne(l)?.[1] === celluleDeTableau(premier.nom));
+  assert.equal(casesDeLigne(lignes[i + 1])?.[1], celluleDeTableau(second.nom), 'les deux premières lignes du tableau');
+  [lignes[i], lignes[i + 1]] = [lignes[i + 1], lignes[i]];
+  const desordre = lignes.join('\n');
+  const apres = modifier(desordre, 'sort', premier, { cout_brut: '99' });
+  assert.deepEqual(lignesChangees(desordre, apres).map(([a, b]) => [casesDeLigne(a)[1], casesDeLigne(b)[1], casesDeLigne(b)[3]]), [
+    [celluleDeTableau(premier.nom), celluleDeTableau(premier.nom), '99'],
+  ], 'seule sa ligne (la deuxième) change');
+  // renommé : retrouvé par son ancien nom
+  assert.match(corpsDeMagieApres(desordre, 'sort', premier, { ...premier, nom: 'Nom tout neuf' }), /^\| [^|]+ \| Nom tout neuf \|/m);
+  // son nom nulle part (la ligne de son rang est celle d'un autre sort) : refus plutôt qu'écraser l'autre
+  const sansLui = desordre.split('\n').filter((l) => casesDeLigne(l)?.[1] !== celluleDeTableau(premier.nom)).join('\n');
+  assert.throws(() => modifier(sansLui, 'sort', premier, { cout_brut: '99' }), ErreurCorpsMagie);
+});
+
 test('sort renommé : la case, les libellés de ses notes et le titre de son texte de niveau 5 suivent ; rien de l’ancien nom ne reste', () => {
   const corps = corpsDe(FEU);
   const fer = sort(`${FEU}#sort:fer-brulant`);
@@ -387,7 +406,7 @@ test('modifications enchaînées puis annulées : le corps d’origine revient (
 
 test('erreurs : morceau introuvable, version Mode Hyper d’une race, table sans morceau', () => {
   const boule = sort(`${FEU}#sort:boule-de-feu`);
-  assert.throws(() => corpsDeMagieApres(corpsDe(FEU), 'sort', boule, { ...boule, ordre: 99 }), ErreurCorpsMagie);
+  assert.throws(() => corpsDeMagieApres(corpsDe(FEU), 'sort', null, { ...boule, nom: 'Sort absent du tableau', ordre: 99 }), ErreurCorpsMagie);
   assert.throws(() => corpsDeMagieApres('Texte sans tableau.\n', 'sort', boule, boule), ErreurCorpsMagie);
   const course = { ...hypers[0], version: 'onglet_race' };
   assert.throws(() => corpsDeMagieApres(corpsDe(FEU), 'mode_hyper_effet', course, course), /onglet_race/);

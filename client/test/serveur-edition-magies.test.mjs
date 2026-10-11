@@ -75,6 +75,22 @@ test('texte du sort de niveau 5 : refusé pour un autre niveau ; nom unique dans
   assert.equal(ligne('SELECT nom_cle FROM sort WHERE id = ?', niveau1.id).nom_cle, 'nouveau-nom-du-sort');
 });
 
+test('nom d’un autre sort de la magie à la casse, aux accents ou aux espaces près : refusé (409), le corps garde les notes et le texte de niveau 5 de l’autre', () => {
+  // l'autre sort a un texte de niveau 5 (titre comparé sans casse ni accents) ; un second a une remarque (libellés comparés espaces regroupés)
+  const cinq = ligne('SELECT id, magie_id, nom FROM sort WHERE texte_niveau5 IS NOT NULL ORDER BY magie_id, ordre LIMIT 1');
+  const note = ligne('SELECT id, magie_id, nom FROM sort WHERE remarque IS NOT NULL AND magie_id = ? ORDER BY ordre LIMIT 1', cinq.magie_id)
+    ?? ligne("SELECT id, magie_id, nom FROM sort WHERE remarque IS NOT NULL AND nom LIKE '% %' ORDER BY magie_id, ordre LIMIT 1");
+  for (const [autre, nom] of [[cinq, cinq.nom.toUpperCase()], [note, note.nom.replace(' ', '  ')], [cinq, cinq.nom.normalize('NFD').replace(/\p{M}/gu, '')]]) {
+    const victime = ligne('SELECT id FROM sort WHERE magie_id = ? AND id <> ? AND niveau < 5 AND remarque IS NULL ORDER BY ordre LIMIT 1', autre.magie_id, autre.id).id;
+    const corps = ligne('SELECT corps_md FROM page WHERE id = ?', autre.magie_id).corps_md;
+    const r = modifier('sort', { id: victime }, { nom });
+    if (nom === autre.nom) continue; // sans accent à retirer : le même nom, refusé par la base (ci-dessus)
+    assert.equal(r.statut, 409, `${nom} : ${JSON.stringify(r.corps)}`);
+    assert.match(r.corps.erreur, new RegExp(`« ${autre.nom} »`));
+    assert.equal(ligne('SELECT corps_md FROM page WHERE id = ?', autre.magie_id).corps_md, corps, 'rien n’est écrit');
+  }
+});
+
 test('magie : présentation, caractéristique bonus (reconnue ou non), rôles, 4ème barre réservée au Sang et à la Nécromancie', () => {
   const feu = { id: 'magies/magie-du-feu' };
   assert.equal(modifier('magie', feu, { description: 'Nouvelle présentation.\n\nDeux paragraphes.', caracteristique_brut: 'FORCE' }).statut, 200);

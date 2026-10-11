@@ -434,12 +434,25 @@ function tableauDesSorts(lignes) {
   return lignesDuTableau(lignes).map((i) => ({ indice: i, cases: casesDeLigne(lignes[i]) }));
 }
 
-function poserLigneDuSort(morceaux, sort) {
+/**
+ * La ligne du sort dans le tableau : celle de son rang (ordre), si elle porte son nom (ou celui d'avant un renommage) ; sinon la seule ligne qui le
+ * porte (un tableau qui ne suit plus l'ordre des sorts) ; aucune ou plusieurs : ErreurCorpsMagie (jamais la ligne d'un autre sort).
+ */
+function poserLigneDuSort(morceaux, sort, avant = null) {
   const s = section(morceaux, SECTIONS.sorts);
   if (!s) throw new ErreurCorpsMagie(`${sort.id} : pas de section « Sorts » dans le corps`);
   const lignes = contenu(s);
-  const ligne = tableauDesSorts(lignes)[sort.ordre - 1];
-  if (!ligne?.cases || ligne.cases.length !== 8) throw new ErreurCorpsMagie(`${sort.id} : ligne ${sort.ordre} du tableau des sorts introuvable`);
+  const tableau = tableauDesSorts(lignes);
+  const noms = [avant?.nom, sort.nom].filter(Boolean);
+  const sienne = (l) => l?.cases?.length === 8 && noms.some((n) => memeNom(l.cases[1], n));
+  let ligne = tableau[sort.ordre - 1];
+  if (!sienne(ligne)) {
+    const portent = tableau.filter(sienne);
+    if (portent.length !== 1) {
+      throw new ErreurCorpsMagie(`${sort.id} : ligne du sort « ${sort.nom} » introuvable dans le tableau des sorts (ligne ${sort.ordre} : « ${ligne?.cases?.[1] ?? '—'} »)`);
+    }
+    ligne = portent[0];
+  }
   const cases = [...ligne.cases];
   for (const [colonne, n] of Object.entries(CASES_DU_SORT)) {
     if (!(colonne in sort)) continue;
@@ -614,7 +627,7 @@ export function corpsDeMagieApres(corps, table, avant, apres) {
   else if (table === 'magie_role') poserRole(morceaux, apres);
   else if (table === 'mode_hyper_effet') poserModeHyper(morceaux, apres);
   else if (table === 'sort') {
-    poserLigneDuSort(morceaux, apres);
+    poserLigneDuSort(morceaux, apres, avant);
     if ('remarque' in apres) poserRemarqueDuSort(morceaux, avant, apres);
     if ('texte_niveau5' in apres) poserTexteDeNiveau5(morceaux, avant, apres);
   } else throw new ErreurCorpsMagie(`table ${table} : pas de morceau dans le corps d'une page de magie`);
