@@ -136,7 +136,12 @@ déjà présente dans les nouvelles règles passe « intégrée », un lot qui c
 réappliqué) ; `/api/etat/` compte les modifications `en_attente` et `conflit`, affichées à côté du crayon. L'ordre de rejeu (`ORDRE_DE_REJEU` :
 instant du lot, puis son identifiant, puis le rang) est le même pour le service, `db:appliquer-edition` et la mise à jour des règles ; l'instant
 est à la seconde, l'identifiant d'un lot commence par l'instant à la milliseconde et un compteur (`nouveauLot`) : deux lots de la même seconde
-se rejouent dans l'ordre où ils ont été enregistrés.
+se rejouent dans l'ordre où ils ont été enregistrés. Une colonne qui vaut déjà ce qu'une modification plus récente de la même ligne y écrit est
+« déjà là » (deux lots sur la même colonne, une ligne créée puis modifiée) ; une ligne créée puis supprimée par le journal n'a rien à rejouer. Le
+**corps et le résumé des pages typées** ne sont pas des valeurs figées du journal (`colonneDerivee`) : le rejeu ne les compare ni ne les écrit, puis
+`rejouerLeJournal` (`serveur/edition.mjs`) les refait depuis les tables rejouées, pour chaque page qu'elles touchent — dans la base vivante comme dans
+`db:appliquer-edition` et la mise à jour des règles. Un lot n'est donc jamais en conflit pour une page qu'une autre modification ou une livraison a
+réécrite, et un lot noté avant que l'édition ne suive le corps voit le corps de ses pages rattrapé (`serveur-edition-rejeu-corps`).
 
 **Rapatriement dans le dépôt** : le lien « N modifications à rapatrier » (à côté du crayon, `GET /api/edition/journal/`) télécharge le journal, puis
 

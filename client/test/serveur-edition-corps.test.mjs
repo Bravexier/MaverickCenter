@@ -5,7 +5,7 @@
 // passent ; la recherche (page_fts) trouve la nouvelle valeur et plus l'ancienne.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -139,6 +139,10 @@ vivante.close();
 const rows = join(tmp, 'rows');
 cpSync(ROWS, rows, { recursive: true });
 const application = appliquerJournal(journal, { rows });
+// les règles livrées contiennent maintenant le journal : le site de dev le rejoue (base-vivante#transferer), tout doit y être « intégré »
+const lireRows = () => Object.fromEntries(readdirSync(rows).map((f) => [f, readFileSync(join(rows, f), 'utf8')]));
+const rowsAppliquees = lireRows();
+const seconde = appliquerJournal(journal, { rows });
 const chemin = join(tmp, 'appliquee.db');
 const construction = [
   spawnSync(process.execPath, ['--no-warnings', join(RACINE, 'client', 'scripts', 'db-build.mjs'), '--out', chemin, '--rows', rows], { encoding: 'utf8' }),
@@ -173,6 +177,13 @@ test('le journal rapatrié s’applique sur la copie de data/rows ; chaque page 
   for (const id of [FEU, OMBRE, DRAKOS, ELFE_NOIR, GUERRIER, BRAVE, HERBORISTE, raceCreee, classeCreee, 'bestiaire/bete-de-lombre']) assert.ok(pagesModifiees.has(id), id);
   // une colonne de plus dans la matrice des classes : « Nombre : N sur M » de toutes les races
   for (const r of lignes('SELECT id FROM race')) assert.ok(pagesModifiees.has(r.id), r.id);
+});
+
+test('rejoué une seconde fois (règles livrées qui le contiennent) : tout est « intégré », aucun conflit, data/rows ne change plus', () => {
+  assert.deepEqual(seconde.conflits, []);
+  assert.equal(seconde.bilan.appliquees, 0, JSON.stringify(seconde.bilan));
+  assert.equal(seconde.bilan.integrees, journal.lots.reduce((n, l) => n + l.modifications.length, 0));
+  assert.deepEqual(lireRows(), rowsAppliquees);
 });
 
 test('magie : présentation (et résumé), description physique, rôle, Mode Hyper, ligne du sort (nom, coût, D/S/B) ; sort renommé dans les pages du bestiaire', () => {

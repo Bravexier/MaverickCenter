@@ -92,8 +92,9 @@ test('le journal rejoué réécrit data/rows : lignes modifiées et créées, hi
 test('une seconde fois : tout est déjà présent (« intégré ») et déjà dans l’historique, data/rows ne change plus', () => {
   const une = lire(rows);
   const r = appliquerJournal(journal, { rows });
+  assert.deepEqual(r.conflits, [], 'la race créée (page insérée puis réécrite dans le même lot) n’est pas un conflit');
   assert.equal(r.bilan.appliquees, 0);
-  assert.ok(r.bilan.integrees > 0);
+  assert.equal(r.bilan.integrees, journal.lots.reduce((n, l) => n + l.modifications.length, 0));
   assert.equal(r.historisees, 0, 'un lot déjà dans l’historique n’est pas repris');
   assert.deepEqual(lire(rows), une);
 });

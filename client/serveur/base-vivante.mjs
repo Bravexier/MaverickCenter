@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { rejouer } from './edition-journal.mjs';
+import { rejouerLeJournal } from './edition.mjs';
 
 /** Tables de la section 13 (« PERSONNAGES ») de data/schema.sql, chacune après celles qu'elle cite (test serveur-base-vivante). */
 export const TABLES_FICHES = Object.freeze([
@@ -151,7 +151,8 @@ function transferer(db, ancienne) {
       // « intégrées » AVANT le rejeu : rejouées d'après leurs valeurs, un aller-retour (A → B → A) se réappliquerait et deux saisies du même
       // champ passeraient « conflit » — et une valeur annulée par l'admin reviendrait sur le site, puis en production
       if (!problemes.length) integrerLivrees(db);
-      if (!problemes.length) rejeu = rejouer(db);
+      // le corps des pages typées que le journal touche est refait depuis les tables rejouées (serveur/edition.mjs#rejouerLeJournal)
+      if (!problemes.length) rejeu = rejouerLeJournal(db);
       // le brouillon de la note de version d'un lot que les nouvelles règles ont livré est vidé (son texte est dans note_version)
       if (!problemes.length) viderBrouillonLivre(db);
       if (!problemes.length) {

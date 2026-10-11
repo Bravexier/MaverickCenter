@@ -1,7 +1,8 @@
 // Applique à data/rows un lot figé par « Effectuer la mise à jour » (page /mise-a-jour/ du site de dev ; serveur/notes-de-version.mjs#figerLot) :
 //   node scripts/mise-a-jour-regles.mjs --lot <lot.json> [--reference origin/master] [--date AAAA-MM-JJ] [--resume <resume.json>] [--rows <dossier>]
 // Lancé par le workflow .github/workflows/mise-a-jour.yml (scripts/mise-a-jour-github.mjs), sur une branche feature/… partie de dev :
-//   1. une base est reconstruite depuis data/rows, le journal du lot y est rejoué (serveur/edition-journal.mjs#rejouer) : un conflit arrête tout ;
+//   1. une base est reconstruite depuis data/rows, le journal du lot y est rejoué (serveur/edition.mjs#rejouerLeJournal : le corps des pages
+//      typées est refait depuis les tables rejouées) : un conflit arrête tout ;
 //   2. la note de version est calculée : la production (master, scripts/db-reference.mjs) comparée à cette base (lib/notes-de-version.mjs) ;
 //   3. elle est écrite (note_version, note_version_ligne : version X.Y de la prochaine livraison, champ libre du lot), les notes d'exemple (lorem
 //      ipsum) sont retirées, le journal du lot passe dans historique_modification, les tables du journal sont vidées ;
@@ -16,7 +17,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { construireReference } from './db-reference.mjs';
 import { TABLES_FICHES } from '../serveur/base-vivante.mjs';
-import { chargerJournal, ORDRE_DE_REJEU, rejouer, TABLES_INTERDITES } from '../serveur/edition-journal.mjs';
+import { rejouerLeJournal } from '../serveur/edition.mjs';
+import { chargerJournal, ORDRE_DE_REJEU, TABLES_INTERDITES } from '../serveur/edition-journal.mjs';
 import { lireTables } from '../serveur/notes-de-version.mjs';
 import { bilan, comparerBases, versionCourte, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
 import { markdownDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
@@ -94,7 +96,8 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
       db.exec('PRAGMA foreign_keys = OFF'); // rejouer contrôle les clés étrangères lot par lot ; contrôle complet à la fin
       db.exec('BEGIN');
       chargerJournal(db, journal);
-      const rejeu = rejouer(db);
+      const recalcul = {}; // corps des pages typées refaits depuis les tables rejouées (serveur/edition.mjs#rejouerLeJournal)
+      const rejeu = rejouerLeJournal(db, recalcul);
       const conflits = db.prepare(`SELECT l.id AS lot, l.resume, m.detail FROM modification m JOIN modification_lot l ON l.id = m.lot_id
         WHERE m.etat = 'conflit' GROUP BY l.id ORDER BY l.fait_le, l.id`).all().map((c) => ({ ...c }));
       if (conflits.length) {
@@ -111,6 +114,7 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
       const historique = db.prepare(`SELECT m.*, l.fait_le, l.resume FROM modification m JOIN modification_lot l ON l.id = m.lot_id
         WHERE m.etat <> 'conflit' ORDER BY ${ORDRE_DE_REJEU}`).all();
       touchees = new Set(historique.map((m) => m.table_nom));
+      if (recalcul.pages.length) touchees.add('page');
       // notes d'exemple (lorem ipsum) retirées par la première vraie mise à jour ; la note de ce même lot (relance) est refaite — celle d'un autre
       // lot à la même version n'existe pas ici (refusé plus haut : code 7)
       const remplacees = db.prepare('SELECT version FROM note_version WHERE exemple = 1 OR (version = ? AND lot = ?)').all(version, lot.id).map((n) => n.version);

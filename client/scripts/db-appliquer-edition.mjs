@@ -2,8 +2,9 @@
 // faites sur le site de dev (docs/serveur.md, « Édition »). Le journal se télécharge depuis le site de dev (lien « N modifications à rapatrier » à côté
 // du crayon, GET /api/edition/journal/). Étapes :
 //   1. une base est reconstruite depuis data/rows (scripts/db-build.mjs, dans un dossier temporaire) ;
-//   2. le journal y est chargé puis rejoué, lot par lot, exactement comme le service le rejoue sur des règles neuves (serveur/edition-journal.mjs#rejouer) :
-//      une modification déjà présente est « intégrée », un lot dont une modification contredit data/rows est en conflit (le lot entier est écarté) ;
+//   2. le journal y est chargé puis rejoué, lot par lot, exactement comme le service le rejoue sur des règles neuves (serveur/edition.mjs#rejouerLeJournal) :
+//      une modification déjà présente est « intégrée », un lot dont une modification contredit data/rows est en conflit (le lot entier est écarté) ; le
+//      corps des pages typées n'est pas recopié du journal mais refait depuis les tables rejouées (lots notés avant que l'édition ne le suive compris) ;
 //   3. s'il y a un conflit, rien n'est écrit (sauf --ignorer-conflits : les autres lots le sont) ; sinon les modifications rejouées (réappliquées ou
 //      déjà présentes, « intégrées ») sont versées dans historique_modification, version NULL (rapatriées à la main ; un lot qui y est déjà n'est pas
 //      repris), les tables du journal sont vidées (elles restent vides dans data/rows) et data/rows est réécrit par l'exporteur des importeurs
@@ -18,7 +19,8 @@ import { join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { integrerLivrees } from '../serveur/base-vivante.mjs';
-import { chargerJournal, rejouer } from '../serveur/edition-journal.mjs';
+import { rejouerLeJournal } from '../serveur/edition.mjs';
+import { chargerJournal } from '../serveur/edition-journal.mjs';
 
 const CLIENT = fileURLToPath(new URL('../', import.meta.url));
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
@@ -62,7 +64,7 @@ export function appliquerJournal(journal, { rows = join(RACINE, 'data', 'rows'),
       // les lots déjà rapatriés ou livrés (dans historique_modification) ne sont pas rejoués : d'après leurs valeurs, une suite qui revient sur
       // elle-même (A → B, puis B → A avec une autre ligne qui a bougé depuis) remettrait une valeur annulée
       const dejaLivrees = integrerLivrees(db);
-      bilan = rejouer(db);
+      bilan = rejouerLeJournal(db); // corps des pages typées touchées refaits depuis les tables rejouées
       bilan.integrees += dejaLivrees;
       conflits = db
         .prepare(

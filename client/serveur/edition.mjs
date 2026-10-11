@@ -19,8 +19,10 @@ import { pageDuMetier, resumeDuMetier } from '../src/lib/corps-metiers.mjs';
 import {
   COLONNES_DE_SORT, ErreurCorpsMagie, PAGE_DE_LA_LIGNE, corpsAvecTitreRenomme, corpsDeMagieApres, resumeDeMagieApres,
 } from '../src/lib/corps-magies.mjs';
-import { corpsDeRace, corpsDeRaceCreee, etatAvecLigne, etatDeRace, valeurCanonique } from '../src/lib/corps-races.mjs';
-import { changementsDePageDeClasse, changementsDePageDeDon, corpsDeClasse, resumeDeClasse } from '../src/lib/corps-classes.mjs';
+import { corpsDeRace, corpsDeRaceCreee, etatAvecLigne, etatDeRace, raceConcernee, valeurCanonique } from '../src/lib/corps-races.mjs';
+import {
+  changementsDePageDeClasse, changementsDePageDeDon, choseASavoirSansTexte, corpsDeClasse, corpsDeDon, resumeDeClasse, resumeDeDon,
+} from '../src/lib/corps-classes.mjs';
 import { analyserCout, analyserPortee, analyserType, analyserZone, bonusDeMaitrise, COLONNES_NM, TYPES_DE_SORT } from '../src/lib/sort-analyse.mjs';
 import { ORDRE_CHAMPS_NM, texteDeBonus } from '../src/lib/sort-maitrise.mjs';
 import { CHAMPS_DES_ETATS, etatsDuTexte, formesDesEtats } from '../src/lib/sort-etats.mjs';
@@ -32,7 +34,7 @@ import { HYBRIDES_SANS_CLASSE_RACIALE, TAG_RACE_HYBRIDE } from '../src/lib/race-
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { decouperCorps } from '../src/lib/markdown-edition.mjs';
 import { normalize } from '../src/lib/text.mjs';
-import { ErreurJournal, cleDe, lireLigne, nouveauLot, ouvrirLot, structure } from './edition-journal.mjs';
+import { ErreurJournal, cleDe, lireLigne, nouveauLot, ouvrirLot, rejouer, structure } from './edition-journal.mjs';
 
 /** Nombre maximal d'opérations dans un lot (une page en envoie quelques dizaines). */
 export const OPERATIONS_MAX = 2000;
@@ -718,6 +720,177 @@ const DOMAINES = {
   race_don: tableDeLOnglet('race_don'), race_don_tableau_colonne: tableDeLOnglet('race_don_tableau_colonne'),
   race_don_tableau_cellule: tableDeLOnglet('race_don_tableau_cellule'), peuple: PEUPLE, classe: CLASSE, specialite: SPECIALITE, capacite: CAPACITE, page: PAGE,
 };
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Rejeu du journal (livraison : serveur/base-vivante.mjs ; rapatriement : scripts/db-appliquer-edition.mjs, scripts/mise-a-jour-regles.mjs)
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Colonnes dérivées du journal : le corps et le résumé des pages typées (tout sauf le guide, dont le corps est le texte modifié lui-même), que
+ * l'édition tire des tables (ecrirePage). Le rejeu ne les compare pas et ne les écrit pas (edition-journal.mjs#rejouer) : rejouerLeJournal les refait
+ * depuis les lignes rejouées.
+ */
+export const colonneDerivee = (table, cle, colonne) =>
+  table === 'page' && (colonne === 'corps_md' || colonne === 'resume') && !String(cle?.id ?? '').startsWith('guide/');
+
+/**
+ * Les lignes que des modifications rejouées ont touchées, chacune une fois : { table, cle, avant (telle que dans les règles avant le rejeu ; null si
+ * le journal l'a insérée), inseree (telle qu'insérée par le journal, sinon null), apres (telle que maintenant ; null si supprimée) }. Les modifications
+ * de page qui ne notent que des colonnes dérivées sont rendues à part (`pages` : ids).
+ */
+function lignesRejouees(db, modifications) {
+  const parLigne = new Map();
+  const pages = new Set();
+  for (const m of modifications) {
+    if (m.table === 'page' && m.operation === 'modifier' && Object.keys(m.apres).every((c) => colonneDerivee('page', m.cle, c))) {
+      pages.add(m.cle.id);
+      continue;
+    }
+    const k = `${m.table}\u0000${JSON.stringify(m.cle)}`;
+    if (!parLigne.has(k)) parLigne.set(k, { table: m.table, cle: m.cle, premiere: m, anciennes: {}, supprimee: null });
+    const e = parLigne.get(k);
+    if (m.operation === 'modifier') for (const [c, v] of Object.entries(m.avant)) if (!(c in e.anciennes)) e.anciennes[c] = v;
+    if (m.operation === 'supprimer') e.supprimee = m.avant;
+  }
+  const lignes = [...parLigne.values()].map((e) => {
+    const apres = lireLigne(db, e.table, e.cle);
+    const { operation, avant, apres: inseree } = e.premiere;
+    let ancienne = null;
+    if (operation === 'supprimer') ancienne = avant;
+    else if (operation === 'modifier') ancienne = { ...(apres ?? e.supprimee), ...e.anciennes };
+    return { table: e.table, cle: e.cle, avant: ancienne, inseree: operation === 'inserer' ? inseree : null, apres };
+  });
+  return { lignes, pages };
+}
+
+/**
+ * Refait depuis les tables le corps (et le résumé) des pages typées que des modifications rejouées touchent, avec les rendus que l'édition applique à
+ * chaque modification (lib/corps-*.mjs) : chaque page part du corps des règles (le rejeu n'en écrit aucun : colonneDerivee) et reçoit l'effet de toutes
+ * les lignes rejouées, ce qui rattrape aussi les lots notés avant que l'édition ne suive le corps (défaut D4). Les pages sont écrites sans être notées au
+ * journal (le même rejeu redonne le même corps : base vivante et data/rows restent d'accord). Rend { pages: ids écrits, illisibles: [{ page, raison }] }
+ * (un corps de magie sans la forme de l'importeur est laissé tel quel).
+ */
+export function recalculerLesPages(db, modifications) {
+  const { lignes, pages: marquees } = lignesRejouees(db, modifications);
+  const executer = (sql, ...p) => db.prepare(sql).all(...p);
+  const magies = new Map();
+  const races = new Map();
+  const classes = new Map();
+  const dons = new Map();
+  const metiers = new Set();
+  const titres = [];
+  const ajouter = (carte, id, ligne) => {
+    if (!id) return;
+    if (!carte.has(id)) carte.set(id, []);
+    if (ligne) carte.get(id).push(ligne);
+  };
+  const toutesLesRaces = () => db.prepare('SELECT id FROM race').all().map((r) => r.id);
+  for (const l of lignes) {
+    const ligne = l.apres ?? l.avant ?? l.inseree;
+    if (['magie', 'magie_role', 'sort'].includes(l.table) || (l.table === 'mode_hyper_effet' && ligne.version === 'onglet_magie')) {
+      ajouter(magies, PAGE_DE_LA_LIGNE[l.table](ligne), l);
+    }
+    if (l.table === 'classe') ajouter(classes, ligne.id, l);
+    if (l.table === 'specialite' || l.table === 'classe_annexe') ajouter(classes, ligne.classe_id, l);
+    if (l.table === 'capacite') {
+      ajouter(classes, ligne.classe_id, null); // bannières des spécialités (spécialités qui ont des dons)
+      dons.set(ligne.id, l);
+    }
+    if (l.table === 'metier') metiers.add(ligne.id);
+    if (l.table === 'creature_effet' && l.avant && l.apres && l.avant.libelle !== l.apres.libelle) titres.push(l);
+    const anciennes = l.avant ?? l.inseree;
+    const colonnes = anciennes && l.apres ? Object.keys(l.apres).filter((c) => (anciennes[c] ?? null) !== (l.apres[c] ?? null)) : null;
+    const race = raceConcernee(l.table, ligne, colonnes);
+    if (race === '*') for (const id of toutesLesRaces()) ajouter(races, id, null);
+    else ajouter(races, race, l);
+  }
+  for (const id of marquees) {
+    const type = id.slice(0, id.indexOf('/'));
+    if (type === 'races') ajouter(races, id, null);
+    else if (type === 'classes') ajouter(classes, id, null);
+    else if (type === 'capacites' && !dons.has(id)) dons.set(id, null);
+    else if (type === 'metiers') metiers.add(id);
+  }
+
+  const ecrites = [];
+  const illisibles = [];
+  const ecrire = (page, changes) => {
+    const cols = Object.keys(changes).filter((c) => (changes[c] ?? null) !== (page[c] ?? null));
+    if (!cols.length) return;
+    db.prepare(`UPDATE page SET ${cols.map((c) => `"${c}" = ?`).join(', ')} WHERE id = ?`).run(...cols.map((c) => changes[c] ?? null), page.id);
+    ecrites.push(page.id);
+  };
+  const pageDe = (id) => lireLigne(db, 'page', { id });
+
+  const ORDRE_DES_TABLES = ['magie', 'magie_role', 'mode_hyper_effet', 'sort'];
+  for (const [id, ls] of magies) {
+    const page = pageDe(id);
+    if (!page) continue;
+    let corps = page.corps_md;
+    let resume = page.resume;
+    try {
+      for (const l of [...ls].filter((x) => x.apres).sort((a, b) => ORDRE_DES_TABLES.indexOf(a.table) - ORDRE_DES_TABLES.indexOf(b.table))) {
+        const avant = l.avant ?? l.inseree;
+        corps = corpsDeMagieApres(corps, l.table, avant, l.apres);
+        if (l.table === 'magie') resume = resumeDeMagieApres(resume, avant, l.apres);
+      }
+    } catch (e) {
+      if (!(e instanceof ErreurCorpsMagie)) throw e;
+      illisibles.push({ page: id, raison: e.message });
+      continue;
+    }
+    ecrire(page, { corps_md: corps, resume });
+  }
+  for (const l of titres) {
+    const page = pageDe(l.apres.creature_id);
+    if (page) ecrire(page, { corps_md: corpsAvecTitreRenomme(page.corps_md, l.avant.libelle, l.apres.libelle) });
+  }
+  for (const [id, ls] of races) {
+    const page = pageDe(id);
+    if (!page || !lireLigne(db, 'race', { id })) continue;
+    const etat = etatDeRace(executer, id);
+    const etatAvant = ls.reduce((e, l) => etatAvecLigne(e, l.table, l.avant, l.apres ?? l.inseree), etat);
+    const changes = { corps_md: corpsDeRace(page.corps_md, etat, etatAvant) };
+    const race = ls.find((l) => l.table === 'race' && l.apres);
+    if (race && (page.resume ?? null) === ((race.avant ?? race.inseree)?.presentation ?? null)) changes.resume = race.apres.presentation;
+    ecrire(page, changes);
+  }
+  for (const [id, ls] of classes) {
+    const classe = lireLigne(db, 'classe', { id });
+    const page = classe && pageDe(id);
+    if (!page) continue;
+    const corps = corpsDeClasse(lignesDeClasse(db, classe), { choseASavoirSansTexte: choseASavoirSansTexte(page.corps_md) });
+    const ligne = ls.find((l) => l.table === 'classe');
+    const avant = ligne?.avant ?? ligne?.inseree ?? classe;
+    const derive = (page.resume ?? null) === resumeDeClasse(avant);
+    ecrire(page, { corps_md: corps, ...(derive ? { resume: resumeDeClasse(classe) } : {}) });
+  }
+  for (const [id, l] of dons) {
+    const don = lireLigne(db, 'capacite', { id });
+    const page = don && pageDe(id);
+    if (!page) continue;
+    const derive = (page.resume ?? null) === resumeDeDon(l?.avant ?? l?.inseree ?? don);
+    ecrire(page, { corps_md: corpsDeDon(don), ...(derive ? { resume: resumeDeDon(don) } : {}) });
+  }
+  for (const id of metiers) {
+    const metier = lireLigne(db, 'metier', { id });
+    const page = metier && pageDe(id);
+    if (page) ecrire(page, pageDuMetier(page.corps_md, null, metier));
+  }
+  return { pages: [...new Set(ecrites)], illisibles };
+}
+
+/**
+ * Rejoue les modifications en attente du journal (edition-journal.mjs#rejouer, colonnes dérivées : colonneDerivee), puis refait le corps des pages
+ * qu'elles touchent (recalculerLesPages). À appeler dans une transaction, comme rejouer. Rend le bilan du rejeu ; `sortie` reçoit { pages,
+ * illisibles } (pages réécrites).
+ */
+export function rejouerLeJournal(db, sortie = {}) {
+  const appliquees = [];
+  const bilan = rejouer(db, { derivee: colonneDerivee, applique: (m) => appliquees.push(m) });
+  Object.assign(sortie, recalculerLesPages(db, appliquees));
+  return bilan;
+}
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // Application d'un lot
