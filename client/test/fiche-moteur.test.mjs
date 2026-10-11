@@ -1,6 +1,6 @@
 // Moteur de la fiche (lib/fiche-moteur.mjs) sur les vraies règles (lib/fiche-regles.mjs, la base construite) : chaque calcul comparé à sa source —
 // les vues de la base (v_personnage_niveau, v_personnage_controle, par le service sur une base vivante temporaire), les personnages fil rouge du
-// guide (lib/guide-fil-rouge.mjs) et les décisions du propriétaire (R2, R3, R6, R7, R15, R16, R19, R20, R23, R24, R25, R26, R27).
+// guide (lib/guide-fil-rouge.mjs) et les décisions du propriétaire (R2, R3, R6, R7, R15, R16, R19, R20, R23, R24, R25, R26, R27, R28).
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -11,9 +11,9 @@ import { enregistrerFiche } from '../serveur/fiches.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import {
-  attributsDe, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, nmDuSort,
+  attributsDe, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, magieAcquiseValable, nmDuSort,
   progressionXp, classeMagique, classesPermises, classesSelonLaMagieInnee,
-  competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethniesDeLaRace, magiesInneesPermises, maitriseDesSorts, niveauGlobal,
+  competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, magiesInneesPermises, maitriseDesSorts, niveauGlobal,
   maitriseDArme, niveauxDeClasse, npmMax, progressionAttendue, puissanceMagique, refusClasse, refusMagieAcquise, sortsPossibles, xpDuNiveauSuivant,
 } from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
@@ -298,6 +298,50 @@ test('magie acquise : même magie, incompatibles, mono-magie (R15) sauf Corrupti
   assert.equal(refusMagieAcquise(regles, fiche('magies/magie-du-feu', 'races/felfe#ethnie:felfe-noir'), 'magies/magie-de-la-corruption'), null);
   assert.match(refusMagieAcquise(regles, fiche('magies/magie-du-feu', 'races/elfe-noir#ethnie:elfe-noir-sale'), 'magies/magie-de-la-corruption'), /mono-magie/);
   assert.match(refusMagieAcquise(regles, fiche('magies/magie-de-larcane', 'races/elfe-noir#ethnie:elfe-noir-charbon'), 'magies/magie-de-la-corruption'), /incompatible/, 'les incompatibilités restent');
+});
+
+test('décision R28 : la Lamia n’a qu’une magie ; toute magie acquise est refusée, et la base dit la même chose', () => {
+  assert.deepEqual(regles.races.filter((r) => r.mono_magie).map((r) => r.id), ['races/lamia']);
+  const lamia = ficheConforme({ race_id: 'races/lamia', ethnie_id: 'races/lamia#ethnie:lamia' });
+  const refus = regles.magies.filter((m) => m.id !== lamia.magie_innee_id).map((m) => refusMagieAcquise(regles, lamia, m.id));
+  assert.ok(refus.length === 14 && refus.every((r) => r === 'Lamia : une seule magie'), refus.join());
+  assert.equal(refusMagieAcquise(regles, ficheConforme(), 'magies/magie-de-leau'), null, 'un Humain garde sa magie acquise');
+  const avecEau = { ...lamia, magie_acquise_id: 'magies/magie-de-leau' };
+  assert.deepEqual(enregistrerFiche(vivante, avecEau).controles.filter((c) => c.regle === 'race_mono_magie').map((c) => c.detail), ['magies/magie-de-leau']);
+  assert.deepEqual(enregistrerFiche(vivante, lamia).controles.filter((c) => c.regle === 'race_mono_magie'), []);
+});
+
+test('magie acquise devenue impossible (demande du propriétaire) : elle part quand l’innée ou la race change, sinon elle reste', () => {
+  const fiche = (surcharge) => ({ ...ficheVide(), race_id: 'races/humain', magie_innee_id: 'magies/magie-du-feu', magie_acquise_id: 'magies/magie-de-larcane', ...surcharge });
+  assert.equal(magieAcquiseValable(regles, fiche()), 'magies/magie-de-larcane');
+  assert.equal(magieAcquiseValable(regles, fiche({ magie_innee_id: 'magies/magie-du-sang' })), null, 'Sang et Arcane incompatibles');
+  assert.equal(magieAcquiseValable(regles, fiche({ magie_innee_id: 'magies/magie-de-larcane' })), null, 'devenue l’innée');
+  assert.equal(magieAcquiseValable(regles, fiche({ magie_innee_id: 'magies/magie-de-la-corruption' })), null, 'innée mono-magie (R15)');
+  assert.equal(magieAcquiseValable(regles, fiche({ race_id: 'races/lamia', ethnie_id: 'races/lamia#ethnie:lamia' })), null, 'Lamia (R28)');
+  assert.equal(magieAcquiseValable(regles, fiche({ magie_acquise_id: null })), null);
+});
+
+test('ethnie sans choix (demande du propriétaire) : la seule de la race, ou la seule de la magie innée ; la base l’accepte', () => {
+  const fiche = (race_id, magie_innee_id = null) => ({ ...ficheVide(), race_id, magie_innee_id });
+  assert.equal(ethnieImposee(regles, fiche('races/lamia')), 'races/lamia#ethnie:lamia', 'race à une seule ethnie, même sans magie');
+  assert.equal(ethnieImposee(regles, fiche('races/humain', 'magies/magie-du-feu')), null, 'quatre ethnies au choix');
+  assert.equal(ethnieImposee(regles, fiche('races/goleois')), null, 'race hybride : rien avant la magie innée');
+  assert.equal(ethnieImposee(regles, fiche('races/goleois', 'magies/magie-de-la-glace')), 'races/goleois#ethnie:goleois-de-glace');
+  assert.equal(ethnieImposee(regles, fiche('races/drakos', 'magies/magie-du-feu')), 'races/drakos#ethnie:drakos-rouge');
+  assert.equal(ethnieImposee(regles, fiche(null)), null);
+  const seules = regles.races.filter((r) => ethniesDeLaRace(regles, r.id).length === 1).map((r) => r.id).sort();
+  assert.deepEqual(seules, ['races/elfe-dore', 'races/hujin', 'races/lamia', 'races/majin']);
+  // toute race, toute magie innée permise : l'ethnie posée est de la race, va avec la magie, et la base n'y trouve rien à redire
+  for (const r of regles.races) {
+    for (const m of magiesInneesPermises(regles, r.id)) {
+      const e = ethnieImposee(regles, fiche(r.id, m));
+      if (!e) continue;
+      const ethnie = regles.ethnies.find((x) => x.id === e);
+      assert.ok(ethnie.race_id === r.id && ethnieCompatible(ethnie, m), `${r.id} ${m}`);
+    }
+  }
+  const goleois = ficheConforme({ race_id: 'races/goleois', magie_innee_id: 'magies/magie-de-la-glace', ethnie_id: 'races/goleois#ethnie:goleois-de-glace' });
+  assert.deepEqual(enregistrerFiche(vivante, goleois).controles.filter((c) => c.regle.startsWith('ethnie_')), []);
 });
 
 test('sorts : puissance magique 5 au niveau 16 (R16), palier 5 fermé avec une magie acquise mais ses emplacements ouverts ; NM au plus niveau − 1', () => {

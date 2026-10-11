@@ -6,7 +6,7 @@ import { libelleDuControle } from '../lib/fiche-controles.mjs';
 import { CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ficheVide } from '../lib/fiche-format.mjs';
 import {
   attributsDe, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, classesDe, classesSelonLaMagieInnee,
-  competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethniesDeLaRace, lignesDeSorts, magiesInneesPermises, maitriseDArme,
+  competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, lignesDeSorts, magieAcquiseValable, magiesInneesPermises, maitriseDArme,
   maitriseDesSorts, niveauGlobal, nmDuSort, npmMax, progressionAttendue, progressionXp, refusClasse, refusMagieAcquise, trouver,
 } from '../lib/fiche-moteur.mjs';
 
@@ -176,6 +176,8 @@ function construireRaces() {
       surClic: () => {
         fiche.race_id = fiche.race_id === r.id ? null : r.id;
         if (fiche.ethnie_id && trouver(regles.ethnies, fiche.ethnie_id)?.race_id !== fiche.race_id) fiche.ethnie_id = null;
+        fiche.ethnie_id = ethnieImposee(regles, fiche) ?? fiche.ethnie_id;   // sans choix possible, l'ethnie se pose seule (demande du propriétaire)
+        fiche.magie_acquise_id = magieAcquiseValable(regles, fiche);   // la Lamia n'a qu'une magie (décision R28)
         fiche.caracteristiques = caracteristiquesCompletes(regles, fiche, { borner: true });   // curseurs dans les bornes de la nouvelle race
         changer();
       },
@@ -185,14 +187,18 @@ function construireRaces() {
   $('choix-ethnie').hidden = ethnies.length === 0;
   const race = trouver(regles.races, fiche.race_id);
   const ethnie = trouver(regles.ethnies, fiche.ethnie_id);
+  const imposee = ethnieImposee(regles, fiche);
+  const pourquoi = () => (ethniesDeLaRace(regles, fiche.race_id).length === 1 ? 'seule ethnie de la race' : 'seule ethnie de la magie innée');
   afficherChoix('race', [race && { nom: race.nom, couleur: race.couleur }]);
   afficherChoix('ethnie', [ethnie && {
     nom: ethnie.nom, couleur: race?.couleur ?? '#8a7a66',
     refus: ethnie.race_id !== fiche.race_id ? 'ethnie d’une autre race' : ethnieCompatible(ethnie, fiche.magie_innee_id) ? null : 'liée à une autre magie innée',
+    verrou: imposee === ethnie.id ? pourquoi() : null,
   }]);
   reconstruire($('ethnies'), `${fiche.race_id}`, () => ethnies.map((e) => pastille({
     texte: e.nom, couleur: race.couleur, choisie: () => fiche.ethnie_id === e.id,
     refus: () => (ethnieCompatible(e, fiche.magie_innee_id) ? null : `seulement avec la ${trouver(regles.magies, e.magie_id)?.nom ?? 'magie de l’ethnie'} innée`),
+    verrou: () => (ethnieImposee(regles, fiche) === e.id ? pourquoi() : null),
     detail: [e.sante && `${signe(e.sante)} santé`, e.chakra && `${signe(e.chakra)} chakra`, e.barriere && `${signe(e.barriere)} barrière`, e.vitesse && `${signe(e.vitesse)} vitesse`].filter(Boolean).join(', ') || null,
     surClic: () => {
       fiche.ethnie_id = fiche.ethnie_id === e.id ? null : e.id;
@@ -217,7 +223,8 @@ function construireMagies() {
     refus: () => (magiesInneesPermises(regles, fiche.race_id).has(m.id) ? null : 'magie que la race ne permet pas'),
     surClic: () => {
       fiche.magie_innee_id = fiche.magie_innee_id === m.id ? null : m.id;
-      if (fiche.magie_acquise_id === fiche.magie_innee_id) fiche.magie_acquise_id = null;
+      fiche.ethnie_id = ethnieImposee(regles, fiche) ?? fiche.ethnie_id;   // l'ethnie d'une race hybride suit sa magie innée
+      fiche.magie_acquise_id = magieAcquiseValable(regles, fiche);   // une acquise devenue incompatible disparaît (demande du propriétaire)
       if (!fiche.magie_innee_id || trouver(regles.magies, fiche.magie_innee_id).caracteristique_id) fiche.caracteristique_magie_id = null;
       // le Potentiel Illimité impose l'Archimage en classe 1, que nulle autre magie innée n'ouvre (décision R23)
       fiche.classes = classesSelonLaMagieInnee(regles, fiche);

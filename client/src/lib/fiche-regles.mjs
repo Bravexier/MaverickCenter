@@ -62,7 +62,7 @@ export function chargerReglesDeFiche(db) {
   const bornes = parCle(lignes(db, 'SELECT race_id, caracteristique_id, minimum, maximum FROM v_race_carac_borne'), 'race_id');
   const rangDeRace = (id) => (ORDRE_DES_RACES.includes(id) ? ORDRE_DES_RACES.indexOf(id) : ORDRE_DES_RACES.length);
   const races = lignes(db, `
-    SELECT r.id, r.nom, r.ap, r.am, o.sante_depart, o.chakra_depart, o.barriere_bonus, o.vitesse_sol, o.vitesse_nage, o.don_base
+    SELECT r.id, r.nom, r.ap, r.am, r.mono_magie, o.sante_depart, o.chakra_depart, o.barriere_bonus, o.vitesse_sol, o.vitesse_nage, o.don_base
     FROM race r JOIN race_onglet o ON o.race_id = r.id`)
     .sort((a, b) => rangDeRace(a.id) - rangDeRace(b.id) || a.nom.localeCompare(b.nom, 'fr'))
     .map((r) => {
@@ -71,7 +71,7 @@ export function chargerReglesDeFiche(db) {
       return {
         id: r.id, nom: r.nom, nature, couleur: RACE_COLORS[nature],
         sante: r.sante_depart, chakra: r.chakra_depart, barriere: r.barriere_bonus ?? 0, vitesse_sol: r.vitesse_sol, vitesse_nage: r.vitesse_nage,
-        ap: r.ap ?? 0, am: r.am ?? 0, don_base: r.don_base,
+        ap: r.ap ?? 0, am: r.am ?? 0, don_base: r.don_base, mono_magie: r.mono_magie === 1,
         classes: accesClasses.get(r.id) ?? [],
         magies: magiesOnglet.get(r.id) ?? magiesMatrice.get(r.id) ?? [],
         bornes: Object.fromEntries((bornes.get(r.id) ?? []).map((b) => [b.caracteristique_id, [b.minimum, b.maximum]])),
