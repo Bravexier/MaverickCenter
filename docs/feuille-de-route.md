@@ -34,13 +34,13 @@ d'une source ou d'une décision de [`decisions-regles.md`](decisions-regles.md) 
 | --- | --- | --- | --- | --- |
 | E1 | Galerie : créations humaines / images d'IA | A · V0.3 | — | `/galeries/`, carrousel de l'accueil, `lib/galerie.mjs` (le logo seul) |
 | E2 | Page du Bestiaire | A · V0.3, puis B · V0.5 | sources pour les monstres | 63 créatures d'invocation dans les tables `creature_*` (section 8), pages `bestiaire/…` rendues depuis leur Markdown |
-| E3 | Refonte de l'équipement et intégration à la fiche | A · V0.4 | ce que « refonte » change (question 4) | catalogues de la section 9, bloc équipement de `/fiche/`, tables `personnage_arme`, `personnage_armure`… |
+| E3 | Refonte de l'équipement et intégration à la fiche | A · V0.4 | la liste des ratés de l'intégration | catalogues de la section 9, bloc équipement de `/fiche/`, tables `personnage_arme`, `personnage_armure`… |
 | E4 | Générateur d'accessoires magiques | A · V0.4 | E3 pour les accessoires | tables de tirage `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet` ; `personnage_accessoire` |
 | E5 | Chronologie | B · V0.5 | sources du lore | entrée « bientôt » du menu Codex |
 | E6 | Carte interactive et lieux | B · V0.5 | image de la carte, sources | type `cartes` (aucune page), entrée « bientôt » du menu Codex |
-| E7 | Connexion par Discord seulement, droits selon les rôles Discord | C · V0.6, éprouvée avant la V1.0 | application Discord du propriétaire | tables `utilisateur`, `utilisateur_role` ; « Authentification » plus bas |
+| E7 | Connexion par Discord seulement : touriste ou joueur, puis rôles | C · V0.6, éprouvée avant la V1.0 | application Discord du propriétaire | tables `utilisateur`, `utilisateur_role` ; « Authentification » plus bas |
 | E8 | Fiches de personnage assignées à un compte | C · V0.6 | E7 | `personnage.proprietaire_id`, `personnage_partage`, `v_personnage_visible` |
-| E9 | Groupes (OS, HC, Campagne) et planning des parties | D · V1.2 | E7, E8 | `groupe`, `groupe_membre`, `v_groupe_controle` ; entrée « bientôt » du menu Personnages |
+| E9 | Groupes (OS, HC hors campagne, campagne) et planning des parties | D · V1.2 | E7, E8 | `groupe`, `groupe_membre`, `v_groupe_controle` ; entrée « bientôt » du menu Personnages |
 | E10 | Bot Discord : lien site ↔ serveur, notifications | A · V0.3 (annonces), D · V1.3 | E7 pour les notifications ciblées | — |
 | E11 | Boîte à idées, tickets, rapports de bugs | D · V1.1 | E7 | entrée « bientôt » du menu Outils |
 | E12 | Statistiques | E · V1.4 | E8 et des fiches réelles | `v_personnage_niveau`, base vivante du service |
@@ -62,12 +62,12 @@ propriétaire.
 | Version | Contenu visé |
 | --- | --- |
 | V0.3 | Galerie humaine / IA (E1), page du Bestiaire des invocations (E2), annonce des versions sur Discord par webhook (E10) |
-| V0.4 | Refonte de l'équipement et effets dans la fiche (E3), générateur d'accessoires magiques (E4) |
+| V0.4 | Refonte visuelle de l'équipement et de son intégration à la fiche (E3), générateur d'accessoires magiques (E4) |
 | V0.5 | Codex, selon l'arrivée des sources : chronologie (E5), carte et lieux (E6), monstres du « Bestiaire 2.0 » (E2) |
-| V0.6 | Connexion par Discord, droits selon les rôles (E7), fiches liées au compte (E8) ; dernière version 0.x, le temps de corriger les bugs |
+| V0.6 | Connexion par Discord : touriste sans connexion, joueur pour les membres du serveur (E7), fiches liées au compte (E8) ; dernière version 0.x, le temps de corriger les bugs |
 | V1.0 | La connexion par Discord est éprouvée et testée : ouverture à tout le Discord |
 | V1.1 | Boîte à idées, tickets et rapports de bugs (E11) |
-| V1.2 | Groupes OS / HC / Campagne et planning des parties (E9) |
+| V1.2 | Groupes one-shot (OS), hors campagne (HC) et campagne, planning des parties (E9) |
 | V1.3 | Bot Discord : notifications ciblées, rappels de parties, rôles synchronisés (E10) |
 | V1.4 | Statistiques des fiches (E12) |
 | Ensuite | Remplacer Google Docs/Sheets (étape 2), simulation de combats (étape 3) |
@@ -125,10 +125,12 @@ flowchart LR
   magiques…) ; les pages de l'Inventaire, rendues depuis leur Markdown ; dans `/fiche/`, le bloc équipement (armes, armure, bouclier, accessoires,
   inventaire, objets de départ du métier). Manquent ([`character-generator.md`](character-generator.md)) : les effets d'équipement dans les calculs (AP/AM
   des pièces, bonus des améliorations, résistances des objets), et « Objets à la ceinture » (boucliers, bâtons magiques) est « bientôt ».
-- **Étapes proposées** : (1) les pages de l'Inventaire rendues depuis les tables (un tableau par catalogue, comme `/metiers/`), modifiables sur le site
-  de dev ; (2) « Objets à la ceinture » ; (3) dans la fiche, le choix dans le catalogue et les effets codés en données, un effet à la fois, chacun cité et
-  testé (`lib/fiche-moteur.mjs`) : un effet non codé reste affiché en texte et n'est pas compté ; (4) poids, prix et bourse, si les sources les donnent.
-- **Avant de commencer** : savoir ce que la refonte change (question 4).
+- **Portée** (réponse du propriétaire, 2026-10-11) : une refonte **visuelle** et de l'**intégration à la fiche**, où il y a aujourd'hui des ratés ; les
+  règles de l'équipement ne changent pas.
+- **Étapes proposées** : (1) les pages de l'Inventaire refaites et rendues depuis les tables (un tableau par catalogue, comme `/metiers/`), modifiables sur
+  le site de dev ; (2) « Objets à la ceinture » ; (3) dans la fiche, les ratés corrigés un par un (chacun relevé avec le propriétaire, chacun son test), le
+  choix dans le catalogue et les effets codés en données, un effet à la fois, cité et testé (`lib/fiche-moteur.mjs`) : un effet non codé reste affiché en
+  texte et n'est pas compté ; (4) poids, prix et bourse, si les sources les donnent.
 
 ### E4 — Générateur d'accessoires magiques (jalon A, après E3 pour les accessoires)
 
@@ -156,15 +158,19 @@ flowchart LR
 - **Choix technique au prototype** : une bibliothèque de carte embarquée (Leaflet en coordonnées simples, sans fond de carte en ligne) ou un SVG maison ;
   elle doit passer dans la version portable (rien d'externe).
 
-### E7 — Connexion par Discord seulement, droits selon les rôles Discord (jalon C : V0.6, éprouvée avant la 1.0)
+### E7 — Connexion par Discord seulement : touriste ou joueur, puis rôles (jalon C : V0.6, éprouvée avant la 1.0)
 
 La connexion est décidée plus bas (« Authentification : Discord ») ; cette liste y ajoute :
 
 - **Discord uniquement** : ni adresse électronique ni mot de passe ; le mot de passe partagé du site disparaît.
-- **Droits selon les rôles du serveur Discord** : à chaque connexion, le service lit les rôles du membre (portée OAuth `guilds.members.read`) et en tire
-  ceux du site (`utilisateur_role`) par une correspondance de configuration (identifiant de rôle Discord → `mj`, `editeur`, `admin`) ; le bot (E10) les
-  tient à jour entre deux connexions et retire l'accès à qui quitte le serveur.
-- **Ce que les droits ouvrent** : l'édition des règles et le bouton « Effectuer la mise à jour » (sans protection aujourd'hui, décision du propriétaire)
+- **Deux statuts d'abord** (réponse du propriétaire, 2026-10-11) : **touriste** — pas connecté, ou connecté sans être membre du serveur Discord —, en
+  lecture seule « en surface » ; **joueur** — membre du serveur Discord. À chaque connexion, le service vérifie l'appartenance au serveur (portée OAuth
+  `guilds.members.read`) ; le bot (E10) la tient à jour entre deux connexions, et qui quitte le serveur redevient touriste.
+- **Rôles MJ, éditeur, administrateur** : plus tard (réponse du propriétaire), d'après des rôles Discord à choisir ; une correspondance de configuration
+  (identifiant de rôle Discord → `mj`, `editeur`, `admin`) en tirera `utilisateur_role`.
+- **Pas de connexion de secours** (réponse du propriétaire) : Discord en panne, le site reste ouvert en touriste, en lecture seule ; c'est le mode dégradé.
+  Le compte local que prévoyait la table `utilisateur` (`discord_id` NULL) n'a plus d'usage et se retire à la réalisation.
+- **Ce que les rôles ouvriront** : l'édition des règles et le bouton « Effectuer la mise à jour » (sans protection aujourd'hui, décision du propriétaire)
   passent aux rôles `editeur` et `admin` ; l'auteur de chaque modification est inscrit à l'historique ; la relecture `brouillon / validé` devient possible.
 
 ### E8 — Fiches de personnage assignées à un compte (jalon C : V0.6)
@@ -175,11 +181,12 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
   personnages » dans le menu Personnages ; création d'une fiche à son nom ; réglage de la visibilité et du partage ; **assignation** par un administrateur
   ou un MJ (donner à un joueur une copie d'un prétiré, qui reste prétiré, ou lui transférer une fiche existante) ; `/personnages/` ne liste que les fiches visibles.
 
-### E9 — Groupes (OS, HC, Campagne) et planning des parties (jalon D)
+### E9 — Groupes (OS, HC, campagne) et planning des parties (jalon D)
 
 - **Déjà là** : `groupe` (natures `one_shot` et `campagne`), `groupe_membre` (rôle MJ ou joueur, une fiche inscrite par groupe), la visibilité par groupe.
 - **Groupes** : création par un MJ, invitation des joueurs, inscription d'une fiche, page du groupe (membres, fiches inscrites, prochaines parties) ;
-  la nature « HC » s'ajoute par une migration quand son sens est donné (question 1).
+  trois natures : one-shot (OS), **hors campagne** (HC : plus court qu'une campagne, plus long qu'un one-shot, comme un chapitre indépendant ou un OAV ;
+  réponse du propriétaire, 2026-10-11) et campagne ; la nature `hors_campagne` s'ajoute à `groupe.nature` par une migration, avec E9.
 - **Planning** : nouvelles tables de la base vivante — partie (groupe, MJ, début, durée, lieu : vocal Discord ou table réelle, statut proposée / confirmée /
   annulée / jouée), sondage de dates (créneaux proposés, réponses oui / peut-être / non), présence ; calendrier du groupe et de chaque utilisateur,
   abonnement `.ics` (agenda du téléphone) ; rappels par le bot (E10). Instants en UTC dans la base, affichés à l'heure de Paris.
@@ -223,21 +230,25 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
 - Le contenu du jeu (créatures, événements, lieux, effets d'objets, tirages) vient des sources ou d'une décision du propriétaire, jamais de la vraisemblance.
 - Logique pure et testée dans `client/src/lib/`, code du DOM dans `src/scripts/` ; rien de propre à l'hébergement hors de `deploy/`.
 
-### Questions au propriétaire
+### Réponses du propriétaire (2026-10-11)
 
-1. **« HC »** : que recouvre-t-il, et en quoi diffère-t-il d'un one-shot ou d'une campagne (E9) ?
-2. **Connexion de secours** : « Authentification » prévoit un compte local de l'administrateur (sans `discord_id`) si Discord est indisponible, ce que
-   « Discord uniquement » écarte. Proposition : aucun mot de passe sur le site, mais une commande sur le serveur qui ouvre une session d'administrateur (E7).
-3. **Rôles Discord** : quels rôles du serveur donnent MJ, éditeur et administrateur ? Tout membre du serveur peut-il se connecter, ou un rôle « joueur » est-il exigé (E7) ?
-4. **Équipement** : la refonte change-t-elle les règles (nouvelles valeurs : décisions ou nouveau classeur) ou leur présentation et leur intégration à la fiche (E3) ?
-5. **Sources** : copier « Bestiaire 2.0 » et « CODEX Maverick » dans le dossier « Maverick JDR » ; exporter les salons du lore et des cartes ; fournir
-   l'image de la carte ; dire quelle source fixe le calendrier du monde (E2, E5, E6).
-6. **Fiches existantes** : les fiches Google des joueurs (V15.2.2) sont-elles importées automatiquement ou ressaisies dans `/fiche/` (E8) ?
-7. **Visibilité** : tickets (E11) et statistiques (E12) visibles de tous les membres, ou des administrateurs seulement ? Les prétirés et les brouillons
+1. **« HC »** = « hors campagne » : plus court qu'une campagne, plus long qu'un one-shot, comme un chapitre indépendant ou un OAV (E9).
+2. **Pas de connexion de secours** : si Discord est en panne, on est déjà en difficulté ; le mode dégradé est l'accès sans connexion, en lecture seule (E7).
+3. **Statuts** : touriste si l'on n'est pas connecté ou pas membre du serveur Discord (lecture seule en surface), joueur si l'on en est membre ; les
+   autres rôles (MJ, éditeur, administrateur) se verront plus tard (E7).
+4. **Équipement** : une refonte visuelle et de l'intégration à la fiche, où il y a aujourd'hui des ratés ; les règles ne changent pas (E3).
+5. **Sources** (« Bestiaire 2.0 », « CODEX Maverick », salons du lore et des cartes, image de la carte, calendrier du monde) : à voir plus tard (E2, E5, E6).
+
+### Questions encore ouvertes
+
+1. **Lecture « en surface »** : quelles pages un touriste voit-il, et lesquelles demandent d'être joueur (E7) ?
+2. **Ratés de l'équipement** : lesquels, dans la fiche (E3) ?
+3. **Fiches existantes** : les fiches Google des joueurs (V15.2.2) sont-elles importées automatiquement ou ressaisies dans `/fiche/` (E8) ?
+4. **Visibilité** : tickets (E11) et statistiques (E12) visibles de tous les membres, ou des administrateurs seulement ? Les prétirés et les brouillons
    comptent-ils dans les statistiques ? Les images d'IA passent-elles dans le carrousel de l'accueil (E1) ?
-8. **Discord** : un groupe a-t-il son salon ou son rôle, créé par le bot ? Quels salons pour les annonces ? « Chroniques » (menu Personnages) sert-il aux
+5. **Discord** : un groupe a-t-il son salon ou son rôle, créé par le bot ? Quels salons pour les annonces ? « Chroniques » (menu Personnages) sert-il aux
    comptes rendus des parties jouées (E9, E10) ?
-9. **Ordre** : les jalons A à E et les versions visées vous conviennent-ils ?
+6. **Ordre** : les jalons A à E et les versions visées vous conviennent-ils ?
 
 ## Orthographe : relecture complète à la conversion en SQL
 
@@ -271,10 +282,12 @@ Toute la communauté est sur Discord : la connexion se fait par « Se connecter 
 
 - **Ce qu'on garde** : l'identifiant Discord de l'utilisateur (immuable) et son nom d'affichage ; aucun mot de passe, aucun jeton Discord conservé au-delà de la connexion
   (le jeton ne sert qu'à lire l'identité et, au besoin, les rôles sur le serveur). Les modifications de contenu s'attribuent à cet identifiant (historique).
-- **Rôles** : lecteur (membre du serveur), MJ (le « groupe MJ » à qui un joueur peut ouvrir ses fiches), éditeur, administrateur ; un utilisateur peut en cumuler
-  plusieurs (table `utilisateur_role`) ; la correspondance rôle Discord → rôle du site est une configuration, pas du code. Quelqu'un qui quitte le serveur perd l'accès. Une connexion de secours locale reste prévue pour l'administrateur si Discord est indisponible.
+- **Statuts et rôles** : **touriste** (pas connecté, ou pas membre du serveur : lecture seule en surface), **joueur** (membre du serveur), puis MJ (le « groupe
+  MJ » à qui un joueur peut ouvrir ses fiches), éditeur, administrateur, d'après des rôles Discord choisis plus tard ; un utilisateur peut cumuler ces rôles
+  (table `utilisateur_role`) ; la correspondance rôle Discord → rôle du site est une configuration, pas du code. Quelqu'un qui quitte le serveur redevient
+  touriste. **Pas de connexion de secours** (décision du propriétaire, 2026-10-11) : Discord en panne, le site reste lisible en touriste (« Prochaines évolutions », E7).
 - **Ce que cela suppose** : un petit service (le site statique seul ne peut pas faire d'OAuth) qui gère la connexion et les sessions (cookie signé, HttpOnly, protection
-  CSRF pour les modifications) ; le serveur web protège aussi les pages statiques en lui demandant si la session est valide (`auth_request` avec nginx). L'adresse de
+  CSRF pour les modifications) ; le serveur web protège aussi les pages statiques réservées aux joueurs en lui demandant si la session est valide (`auth_request` avec nginx). L'adresse de
   retour de la connexion dépend de l'adresse publique du site (HTTPS) : elle se configure par variable d'environnement et se change dans le portail développeur Discord
   quand l'hébergement migre.
 - **Quand** : dans la dernière version 0.x (V0.6 visée), qui reste en service le temps d'en corriger les bugs ; la **version 1.0** vient quand la connexion
