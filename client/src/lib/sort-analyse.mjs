@@ -215,14 +215,3 @@ function contexteDe(texte, debut, expression) {
   }
   return expression;
 }
-
-/** Les colonnes d'un sort qui ont un effet dû aux NM (effets et remarque comptent pour une : la case « Effets »), dans l'ordre de lecture. */
-export function colonnesAvecNM(sort) {
-  const champs = [];
-  for (const [champ, colonne] of Object.entries(COLONNES_NM)) {
-    if (!bonusDeMaitrise(champ, sort[colonne]).length) continue;
-    const nom = champ === 'remarque' ? 'effets' : champ;
-    if (!champs.includes(nom)) champs.push(nom);
-  }
-  return champs;
-}
