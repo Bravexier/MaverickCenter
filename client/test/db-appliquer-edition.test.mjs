@@ -149,3 +149,43 @@ test('un journal rapatrié une seconde fois ne remet jamais une valeur annulée 
   assert.ok(apres['metier.sql'].includes(`'${a.replace(/'/g, "''")}'`), 'le Forgeron garde sa valeur A');
   assert.ok(!apres['metier.sql'].includes("'+7% Essai'"), 'la valeur annulée (B) ne revient pas');
 });
+
+test('un don créé puis supprimé avant que la base vivante soit refaite (lots « intégrés ») entre dans l’historique : son identifiant n’est pas repris', () => {
+  const dossier = join(tmp, 'db-f');
+  const { chemin: cf } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier });
+  let v = ouvrirBaseVivante(cf);
+  // un nom de don dont le titre « Nom (Guerrier) » est libre (le site a pu en créer)
+  let nom = 'Fugace d’essai';
+  for (let i = 2; v.prepare('SELECT 1 FROM cle_page WHERE cle = ?').get(normalize(`${nom} (Guerrier)`)); i += 1) nom = `Fugace d’essai ${i}`;
+  const creer = (o) => enregistrer(o, { page: 'classes/guerrier', operations: [{ op: 'creer', entite: 'capacite', valeurs: { classe_id: 'classes/guerrier', niveau: '20', nom, type: 'Passif' } }] });
+  const id = creer(v).crees[0].id;
+  enregistrer(v, { page: 'classes/guerrier', operations: [{ op: 'supprimer', entite: 'capacite', cle: { id } }] });
+  v.close();
+  // une livraison sans rapport : la base vivante est refaite, la paire créer / supprimer n'a rien à rejouer (« intégrée »)
+  const regles = join(tmp, 'regles-f.db');
+  cpSync(cheminBase({ sansExemples: false }), regles);
+  const r = new DatabaseSync(regles);
+  r.exec("UPDATE metier SET remarque = 'livraison sans rapport' WHERE id = 'metiers/forgeron'");
+  r.close();
+  assert.equal(preparerBaseVivante({ regles, dossier }).refaite, true);
+  v = ouvrirBaseVivante(cf);
+  const lots = v.prepare("SELECT DISTINCT lot_id FROM modification WHERE json_extract(cle, '$.id') = ?").all(id).map((m) => m.lot_id);
+  assert.equal(lots.length, 2);
+  assert.deepEqual(v.prepare(`SELECT DISTINCT etat FROM modification WHERE lot_id IN (${lots.map(() => '?').join(', ')})`).all(...lots).map((m) => m.etat), ['integree']);
+  const j = journalExporte(v);
+  v.close();
+  assert.deepEqual(lots.filter((l) => j.lots.some((x) => x.id === l)), lots, 'les deux lots sont dans le journal exporté');
+  const rowsF = join(tmp, 'rows-f');
+  cpSync(join(RACINE, 'data', 'rows'), rowsF, { recursive: true });
+  const res = appliquerJournal(j, { rows: rowsF });
+  assert.equal(res.ecrit, true, JSON.stringify(res));
+  assert.equal(res.conflits.length, 0);
+  const { db, sortie } = construire(rowsF);
+  assert.ok(db.prepare("SELECT count(*) AS n FROM historique_modification WHERE table_nom = 'capacite' AND json_extract(cle, '$.id') = ?").get(id).n > 0, 'le don est dans l’historique');
+  db.close();
+  // une base neuve tirée de ces règles : le même nom donne un autre identifiant
+  const neuve = ouvrirBaseVivante(preparerBaseVivante({ regles: sortie, dossier: join(tmp, 'db-f2') }).chemin);
+  const autre = creer(neuve).crees[0].id;
+  neuve.close();
+  assert.notEqual(autre, id, 'l’identifiant d’un don supprimé n’est jamais repris');
+});

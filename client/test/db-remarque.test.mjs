@@ -64,8 +64,10 @@ test('plusieurs notes sur une ligne : réunies dans l’ordre, séparées par un
 
 test('aucune note de cellule perdue : une remarque par entité qui a des notes, et chaque note (sans espaces de bordure) figure dans la remarque de sa ligne (à l’import)', () => {
   assert.deepEqual(tablesAvecNotes, ['accessoire_effet', 'arme', 'arme_elementaire', 'capacite', 'creature', 'maladie', 'race_don', 'sort']);
+  // les notes de l'import (D11 : le site supprime des dons, et leurs notes avec eux ; historique_modification les remet)
+  const notesDImport = historique.lignesDImport('note_cellule');
   for (const t of tablesAvecNotes) {
-    const attendues = db.prepare('SELECT count(DISTINCT entite_id) AS n FROM note_cellule WHERE entite_table = ?').get(t).n;
+    const attendues = new Set(notesDImport.filter((n) => n.entite_table === t).map((n) => n.entite_id)).size;
     assert.equal(historique.lignesDImport(t).filter((r) => r.remarque !== null).length, attendues, `${t} : lignes avec remarque`);
     for (const n of db.prepare('SELECT entite_id, cellule, texte FROM note_cellule WHERE entite_table = ?').all(t)) {
       assert.ok(!historique.creee(t, { id: n.entite_id }), `${t}:${n.entite_id} : une ligne créée par le site n’a pas de note de cellule`);

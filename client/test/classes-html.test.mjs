@@ -3,11 +3,16 @@
 // les spécialités en onglets.
 // Ce test lit le site construit : il ne tourne qu'après `npm run build` (la CI l'exécute juste après) et se saute sinon.
 //   node --test test/classes-html.test.mjs
+// Le site de dev crée et supprime des spécialités et des dons (D11) : les comptes se comparent aux lignes de la base, classe par classe (plateau de
+// lib/classes-db.mjs) ; les exemples de l'onglet (Barde, Orios) ne valent que pour une classe que le site n'a pas remaniée.
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { chargerClasses } from '../src/lib/classes-db.mjs';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 
 const dossier = fileURLToPath(new URL('../dist/classes/', import.meta.url));
 const present = existsSync(dossier);
@@ -23,9 +28,34 @@ const page = (slug) => pages.find((p) => p.slug === slug)?.html ?? '';
 const ids = (html) => [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
 const main = (html) => html.slice(html.indexOf('<main'), html.indexOf('</main>'));
 const compte = (html, motif) => (html.match(motif) ?? []).length;
+const db = ouvrirBase({ sansExemples: false });
+const { classes } = chargerClasses(db);
+const historique = historiqueSite(db);
+/** Une classe que le site n'a pas remaniée (aucun don ni spécialité créé ou supprimé, aucune nature changée). */
+const intacte = (slug) => {
+  const id = `classes/${slug}`;
+  const classeDe = (table, l) => l.classe_id ?? historique.ligneDImport(table, { id: l.id })?.classe_id;
+  return ![...historique.lignesRemaniees('capacite', ['nature', 'ligne', 'specialite_id']).map((l) => classeDe('capacite', l)),
+    ...historique.lignesRemaniees('specialite').map((l) => classeDe('specialite', l))].includes(id) && !historique.creee('classe', { id });
+};
+/** Ce que la page d'une classe doit montrer, d'après son plateau : dons, choix par taille, « ou », onglets, dons reçus sans choix. */
+function attendu(classe) {
+  const groupes = classe.plateau.flatMap((e) => (e.forme === 'choix' ? [e.options] : e.forme === 'specialites' ? e.specialites.flatMap((s) => s.choix.map((g) => g.options)) : []))
+    .filter((g) => g.length > 1);
+  const colonnes = classe.plateau.find((e) => e.forme === 'specialites')?.specialites ?? [];
+  return {
+    dons: classe.dons.length,
+    choix: groupes.reduce((m, g) => ({ ...m, [g.length]: (m[g.length] ?? 0) + 1 }), {}),
+    ou: groupes.reduce((n, g) => n + g.length - 1, 0),
+    onglets: colonnes.length,
+    seuls: classe.plateau.filter((e) => e.forme === 'don').length,
+  };
+}
 
-test('39 pages de classe rendues par le gabarit', options, () => {
-  assert.equal(pages.length, 39);
+test('une page de classe rendue par le gabarit par classe de la base (39 à l’import)', options, () => {
+  assert.equal(pages.length, classes.size);
+  assert.equal(historique.effectifDImport('classe'), 39);
+  for (const id of classes.keys()) assert.ok(page(id.slice('classes/'.length)), `${id} : page`);
 });
 
 test('chaque identifiant est unique ; les liens de la navigation et les aria-labelledby mènent à un élément de la page', options, () => {
@@ -51,38 +81,48 @@ test('retirés : tableaux Markdown, rendu Markdown, sources ; aucun tableau du t
 
 test('dons : un par don de la classe, chacun avec son ancre ; les choix sont encadrés avec « ou » entre les options', options, () => {
   for (const { slug, html } of pages) {
+    const a = attendu(classes.get(`classes/${slug}`));
     const n = compte(html, /<article class="don[ "]/g);
-    assert.equal(n, slug === 'archimage' ? 14 : 17, `${slug} : nombre de dons`);
+    assert.equal(n, a.dons, `${slug} : nombre de dons`);
     assert.equal(compte(html, /<article class="don[^"]*" id="don-/g), n, `${slug} : ancre de chaque don`);
-    assert.match(html, /<h2 id="dons-titre">Dons /, `${slug} : section « Dons »`);
+    if (n) assert.match(html, /<h2 id="dons-titre">Dons /, `${slug} : section « Dons »`);
+    for (const [taille, k] of Object.entries(a.choix)) assert.equal(compte(html, new RegExp(`class="choix choix--${taille}"`, 'g')), k, `${slug} : choix de ${taille}`);
+    assert.equal(compte(html, /class="choix choix--\d+"/g), Object.values(a.choix).reduce((x, y) => x + y, 0), `${slug} : choix encadrés`);
+    assert.equal(compte(html, /class="choix__ou"/g), a.ou, `${slug} : « ou » entre les options`);
+    assert.equal(compte(html, /class="onglets__ou"/g), Math.max(0, a.onglets - 1), `${slug} : « ou » entre les onglets des spécialités`);
+    assert.equal(compte(html, /class="etage etage--don"/g), a.seuls, `${slug} : dons reçus sans choix`);
   }
-  for (const { slug, html } of pages.filter((p) => p.slug !== 'archimage')) {
-    assert.equal(compte(html, /class="choix choix--2"/g), 6, `${slug} : 3 choix par spécialité`);
-    assert.equal(compte(html, /class="choix__ou"/g), 6, `${slug} : « ou » entre les deux options`);
-    assert.equal(compte(html, /class="onglets__ou"/g), 1, `${slug} : « ou » entre les onglets des spécialités`);
-    assert.equal(compte(html, /class="etage etage--don"/g), 3, `${slug} : dons reçus sans choix (niveaux 1, 5, 20)`);
+  // à l'import : 17 dons par classe (14 pour l'Archimage), 3 choix de deux par spécialité, 3 dons reçus sans choix ; l'Archimage 2, 3, 3, 3
+  const parClasse = new Map();
+  for (const k of historique.lignesDImport('capacite')) parClasse.set(k.classe_id, (parClasse.get(k.classe_id) ?? 0) + 1);
+  for (const [id, n] of parClasse) assert.equal(n, id === 'classes/archimage' ? 14 : 17, id);
+  if (intacte('archimage')) {
+    const archimage = page('archimage');
+    assert.equal(compte(archimage, /class="choix choix--2"/g), 1);
+    assert.equal(compte(archimage, /class="choix choix--3"/g), 3);
   }
-  const archimage = page('archimage');
-  assert.equal(compte(archimage, /class="choix choix--2"/g), 1);
-  assert.equal(compte(archimage, /class="choix choix--3"/g), 3);
-  assert.equal(compte(archimage, /class="specialite"/g), 0, 'Archimage : pas de spécialité');
+  assert.equal(compte(page('archimage'), /class="specialite"/g), 0, 'Archimage : pas de spécialité (le site ne lui en crée pas)');
 });
 
-test('spécialités en onglets : deux liens d’onglet (gauche puis droite) vers leurs panneaux, le premier ouvert ; chaque panneau garde son titre', options, () => {
-  for (const { slug, html } of pages.filter((p) => p.slug !== 'archimage')) {
+test('spécialités en onglets : un lien d’onglet par spécialité (gauche puis droite) vers son panneau, le premier ouvert ; chaque panneau garde son titre', options, () => {
+  for (const { slug, html } of pages) {
+    const n = attendu(classes.get(`classes/${slug}`)).onglets;
     const onglets = [...html.matchAll(/<a class="onglet( is-active)?" id="(onglet-[^"]+)" href="#(specialite-[^"]+)">/g)];
-    assert.equal(onglets.length, 2, `${slug} : deux onglets`);
-    assert.deepEqual(onglets.map((o) => Boolean(o[1])), [true, false], `${slug} : le premier onglet est ouvert`);
+    assert.equal(onglets.length, n, `${slug} : un onglet par spécialité`);
+    if (intacte(slug) && slug !== 'archimage') assert.equal(n, 2, `${slug} : deux spécialités (onglet de l’import)`);
+    if (!n) continue;
+    assert.deepEqual(onglets.map((o) => Boolean(o[1])), onglets.map((_, i) => i === 0), `${slug} : le premier onglet est ouvert`);
     const panneaux = [...html.matchAll(/<section class="specialite( is-active)?" id="(specialite-[^"]+)"/g)];
     assert.deepEqual(panneaux.map((p) => p[2]), onglets.map((o) => o[3]), `${slug} : un panneau par onglet, dans le même ordre`);
-    assert.deepEqual(panneaux.map((p) => Boolean(p[1])), [true, false], `${slug} : le premier panneau est ouvert`);
-    assert.equal(compte(html, /<h3 class="specialite__titre"/g), 2, `${slug} : titre de chaque panneau (sans JavaScript)`);
+    assert.deepEqual(panneaux.map((p) => Boolean(p[1])), onglets.map((_, i) => i === 0), `${slug} : le premier panneau est ouvert`);
+    assert.equal(compte(html, /<h3 class="specialite__titre"/g), n, `${slug} : titre de chaque panneau (sans JavaScript)`);
+    assert.match(html, new RegExp(`class="onglets onglets--${n}"`));
     assert.match(html, /data-onglets/);
   }
-  assert.match(page('barde'), /id="onglet-danseur" href="#specialite-danseur">\s*<span class="onglet__surtitre">Spécialité<\/span>\s*<span class="onglet__nom"[^>]*>DANSEUR<\/span>/);
+  if (intacte('barde')) assert.match(page('barde'), /id="onglet-danseur" href="#specialite-danseur">\s*<span class="onglet__surtitre">Spécialité<\/span>\s*<span class="onglet__nom"[^>]*>DANSEUR<\/span>/);
 });
 
-test('Barde : l’ordre de l’onglet (Prestation, Son perturbant, les spécialités, Chant double) et les paires du Ménestrel', options, () => {
+test('Barde : l’ordre de l’onglet (Prestation, Son perturbant, les spécialités, Chant double) et les paires du Ménestrel', { ...options, ...(present && !intacte('barde') ? { skip: 'Barde remanié sur le site de dev' } : {}) }, () => {
   const html = page('barde');
   const ordre = ['don-barde-prestation', 'don-barde-son-perturbant', 'specialite-danseur', 'specialite-menestrel', 'don-barde-chant-double'].map((id) => html.indexOf(`id="${id}"`));
   assert.ok(ordre.every((i, k) => i > 0 && (k === 0 || i > ordre[k - 1])), `ordre ${ordre}`);
@@ -96,10 +136,10 @@ test('bandeau : « Don de départ » en tuiles ; classe magique (+4 AM) par cat�
   for (const { slug, html } of pages) assert.equal(compte(html, /class="classe-stat[ "]/g), 3, `${slug} : santé, chakra, barrière de départ`);
   assert.match(page('barde'), /<strong>Classe magique<\/strong> \+4 AM de base/);
   assert.match(page('archimage'), /<strong>Classe magique<\/strong> \+4 AM de base/);
-  assert.match(page('orios'), /<strong>Classe magique<\/strong> avec la spécialité <a href="#specialite-chaman">Chaman<\/a>/);
+  if (intacte('orios')) assert.match(page('orios'), /<strong>Classe magique<\/strong> avec la spécialité <a href="#specialite-chaman">Chaman<\/a>/);
   assert.match(page('orios'), /<strong>Classe raciale<\/strong> de la race <a href="[^"]*\/races\/orios\/">Orios<\/a>/);
   assert.ok(!page('guerrier').includes('Classe magique'));
-  assert.match(page('orios'), /class="specialite__magique"[^>]*>\s*Classe magique · \+4 AM/);
+  if (intacte('orios')) assert.match(page('orios'), /class="specialite__magique"[^>]*>\s*Classe magique · \+4 AM/);
 });
 
 test('inventaire : infobulle de l’objet (glossaire) et « ou » entre deux options ; tableau du Mage Bleu par magie', options, () => {
@@ -113,6 +153,7 @@ test('inventaire : infobulle de l’objet (glossaire) et « ou » entre deux opt
 });
 
 test('fiche d’un don : « Don » dans le bandeau et lien vers le don sur la page de la classe', options, () => {
+  if (historique.supprimee('page', { id: 'capacites/barde-nouvel-accord' })) return; // supprimée par le site de dev
   const fiche = fileURLToPath(new URL('../dist/capacites/barde-nouvel-accord/index.html', import.meta.url));
   const html = readFileSync(fiche, 'utf8');
   assert.match(html, /<span class="badge">Don<\/span>/);

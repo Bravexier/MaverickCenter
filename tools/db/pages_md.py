@@ -107,7 +107,7 @@ CRAFT = {'familiers', 'maison', 'machine-de-guerresiege', 'fievre-des-marais', '
 # Pages créées depuis le site de dev (client/serveur/edition.mjs#creerPage, FAMILLE_DES_PAGES_DU_SITE) : provenance « Site de dev › édition du AAAA-MM-JJ »,
 # famille des pages de leur type.
 SITE_DE_DEV = 'Site de dev › '
-FAMILLE_DES_PAGES_DU_SITE = {'metiers': 'docs', 'races': 'races', 'classes': 'classes'}
+FAMILLE_DES_PAGES_DU_SITE = {'metiers': 'docs', 'races': 'races', 'classes': 'classes', 'capacites': 'classes'}
 
 
 def origine_migration(type_, slug, statut, sources):

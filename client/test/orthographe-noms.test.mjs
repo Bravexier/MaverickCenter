@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 
 const racine = trouverRacine();
 const dossier = join(racine, 'data', 'migrations');
@@ -15,6 +16,11 @@ const registre = JSON.parse(readFileSync(join(dossier, '0006-orthographe-noms.js
 const sql = readFileSync(join(dossier, '0006-orthographe-noms.sql'), 'utf8');
 const { corrections, cles } = registre;
 const db = ouvrirBase({ sansExemples: false });
+// le site de dev est la source de ce qu'il modifie : une ligne qu'il a supprimée (D11 : un don, une spécialité) n'a plus de nom à vérifier, une cellule
+// qu'il a réécrite (un nom changé, le corps d'une page refait depuis ses tables) dit ce qu'il a décidé : leurs entrées du registre sont sautées
+const historique = historiqueSite(db);
+const presente = (c) => !historique.supprimee(c.table, c.cle);
+const intacte = (c) => presente(c) && !historique.modifiee(c.table, c.cle, c.col);
 
 const NATURES = ['accent', 'casse', 'frappe', 'grammaire', 'harmonisation', 'orthographe', 'ponctuation', 'phrase'];
 // tables de trace ou de clés : jamais réécrites (mêmes que pour 0005)
@@ -48,7 +54,7 @@ test('registre : renommages décrits, de nature connue, hors des tables de trace
 });
 
 test('base : chaque renommage est fait (le nom corrigé est dans sa cellule)', () => {
-  for (const c of corrections) {
+  for (const c of corrections.filter(intacte)) {
     const l = ligne(c.table, c.cle);
     assert.ok(l, `${c.table} ${JSON.stringify(c.cle)} : ligne absente`);
     assert.ok(l[c.col].includes(c.apres), `${c.table} ${JSON.stringify(c.cle)} ${c.col} : « ${c.apres} » absent`);
@@ -57,7 +63,7 @@ test('base : chaque renommage est fait (le nom corrigé est dans sa cellule)', (
 
 test('clés de nom : recalculées (normalize du nom corrigé), identifiants inchangés', () => {
   assert.ok(cles.length > 100, `clés recalculées : ${cles.length}`);
-  for (const c of cles) {
+  for (const c of cles.filter(presente)) {
     const l = ligne(c.table, c.cle);
     assert.ok(l, `${c.table} ${JSON.stringify(c.cle)} : identifiant disparu`);
     const source = c.col.slice(0, -'_cle'.length);
@@ -68,7 +74,7 @@ test('clés de nom : recalculées (normalize du nom corrigé), identifiants inch
     if (IDS_GELES[c.table] && c.col === 'nom_cle') assert.ok(c.cle.id.includes(`${IDS_GELES[c.table]}${c.avant}`), `${c.cle.id} : l'id ne garde pas la clé d'origine « ${c.avant} »`);
   }
   // les pages renommées gardent leur id et leur slug (donc leur adresse)
-  for (const c of cles.filter((x) => x.table === 'page')) {
+  for (const c of cles.filter((x) => x.table === 'page' && presente(x))) {
     const p = ligne('page', c.cle);
     assert.equal(p.id, `${p.type}/${p.slug}`);
   }

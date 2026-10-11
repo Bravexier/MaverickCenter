@@ -68,8 +68,9 @@ test('la base contient les domaines : pages, magies et sorts, classes et capacit
   for (const id of ORDRE_DES_RACES) assert.ok(races.has(id), `décision R1 : ${id}`);
   for (const t of ['ressource', 'recette', 'arme', 'armure', 'metier', 'etat', 'peuple', 'note_cellule', 'ecart_source']) assert.ok(n(t) > 0, `${t} est rempli`);
   assert.equal(n('correction'), 1, 'la correction du Mercenaire est tracée');
-  // la correction orthographique est bien dans les lignes typées, l'ancien texte n'y est plus
-  assert.ok(db.prepare("SELECT 1 FROM classe WHERE nom LIKE '%Chasseur de primes%' OR id LIKE '%chasseur-de-primes%' LIMIT 1").get() || db.prepare("SELECT 1 FROM capacite WHERE id LIKE '%chasseur-de-primes%' LIMIT 1").get());
+  // la correction orthographique est bien dans les lignes typées, l'ancien texte n'y est plus (sauf si le site de dev a supprimé le don qui la portait :
+  // D11, db:check l'ignore alors)
+  if (!historique.supprimee('capacite', { id: 'capacites/mercenaire-chasseur-de-primes' })) assert.ok(db.prepare("SELECT 1 FROM classe WHERE nom LIKE '%Chasseur de primes%' OR id LIKE '%chasseur-de-primes%' LIMIT 1").get() || db.prepare("SELECT 1 FROM capacite WHERE id LIKE '%chasseur-de-primes%' LIMIT 1").get());
   assert.equal(db.prepare("SELECT count(*) AS n FROM capacite WHERE id LIKE '%chasseur-prime%'").get().n, 0);
   db.close();
 });

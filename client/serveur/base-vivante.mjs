@@ -2,22 +2,23 @@
 // construite depuis data/rows), dans laquelle le service écrit les fiches de personnages, les utilisateurs et les groupes (section 13 de
 // data/schema.sql) et, sur le site de dev, les modifications des règles et leur journal (section 14). Quand une livraison change les règles, la base
 // vivante est refaite : nouvelle copie des règles, puis les lignes des sections 13 et 14 y sont recopiées, colonne par colonne, et les modifications
-// en attente du journal sont rejouées sur les nouvelles règles (serveur/edition-journal.mjs). Rien ne se perd : si une ligne ne passe pas (une fiche cite une règle disparue, une colonne
-// remplie n'existe plus, une contrainte a changé), la base en place est gardée telle quelle et l'erreur dit pourquoi ; une base remplacée qui
-// avait des lignes est d'abord archivée (db/archives/, les ARCHIVES_GARDEES dernières).
+// en attente du journal sont rejouées sur les nouvelles règles (serveur/edition-journal.mjs). Un don, une spécialité (avec les dons choisis qui en
+// dépendent), un sort ou un métier que les nouvelles règles n'ont plus est retiré des fiches qui l'utilisent, avec une note datée dans chacune (décision
+// R42 : serveur/fiches-retraits.mjs ; la liste dans vivante.json, rendue par /api/etat). Toute autre ligne qui ne passe pas (une fiche cite une race, une
+// classe, une magie… disparue, une colonne remplie n'existe plus, une contrainte a changé) fait garder la base en place telle quelle, et l'erreur dit
+// pourquoi. Une base remplacée qui avait des lignes est d'abord archivée (db/archives/, les ARCHIVES_GARDEES dernières) : l'archive garde donc la base
+// d'avant les retraits.
 // Node seulement (node:sqlite), sans dépendance.
 import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 import { rejouerLeJournal } from './edition.mjs';
+import { noterLesRetraits, nouveauxRetraitsDeFiches, retirerLesManquants } from './fiches-retraits.mjs';
 
-/** Tables de la section 13 (« PERSONNAGES ») de data/schema.sql, chacune après celles qu'elle cite (test serveur-base-vivante). */
-export const TABLES_FICHES = Object.freeze([
-  'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
-  'personnage_metier_bonus', 'personnage_progression', 'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure',
-  'personnage_bouclier_materiau', 'personnage_accessoire', 'personnage_inventaire', 'groupe', 'groupe_membre',
-]);
+/** Tables de la section 13 (« PERSONNAGES ») de data/schema.sql : définies dans src/lib/fiche-format.mjs (le journal en tire ses tables interdites). */
+export { TABLES_FICHES };
 /**
  * Tables de la section 14 (« ÉDITION ») : le journal des modifications faites depuis le site de dev (serveur/edition-journal.mjs) et le brouillon de
  * la note de version (page /mise-a-jour/, serveur/notes-de-version.mjs).
@@ -56,7 +57,10 @@ export function signature(chemin) {
   }
 }
 
-/** Contenu de vivante.json ({ regles, schema, refaite_le }), null s'il est absent ou illisible. */
+/**
+ * Contenu de vivante.json ({ regles, schema, refaite_le, retraits? }), null s'il est absent ou illisible. `retraits` : { le, fiches } de la dernière
+ * reconstruction qui a retiré quelque chose des fiches (R42), gardé par les suivantes qui ne retirent rien ; absent s'il n'y en a jamais eu.
+ */
 export function lireEtat(dossier) {
   try {
     return JSON.parse(readFileSync(join(dossier, FICHIER_ETAT), 'utf8'));
@@ -116,11 +120,17 @@ function verifierRegles(db) {
 
 /**
  * Recopie dans `db` (la copie neuve des règles) les lignes des sections 13 et 14 de la base `ancienne`, puis rejoue les modifications en attente du
- * journal sur les nouvelles règles (avant le contrôle des fiches : une fiche peut citer une ligne créée par l'édition) ; rien n'est écrit si une seule
- * ligne de fiche ne passe pas. Une modification que les nouvelles règles contredisent n'empêche rien : elle passe « conflit ». Rend le bilan du rejeu.
+ * journal sur les nouvelles règles, avant le contrôle des fiches : une fiche peut citer une ligne créée par l'édition (une classe, une spécialité, un
+ * don), y compris par un lot qui suit un autre lot touchant la même table. Le rejeu ne contrôle donc pas les clés étrangères des fiches lot par lot
+ * (`horsControleParLot`) : elles le sont toutes ici, après le rejeu complet. Un don, une spécialité, un sort ou un métier que les nouvelles règles n'ont
+ * plus est alors retiré des fiches, avec une note datée de `instant` (R42 ; jamais avant le rejeu : un lot suivant peut créer ce qu'une fiche cite) ; toute
+ * autre référence rompue est relevée avec son détail, et rien n'est écrit (ni retrait, ni note). Une modification que les nouvelles règles contredisent
+ * n'empêche rien : elle passe « conflit ». Rend { rejeu (bilan du rejeu), fiches (les fiches adaptées : noterLesRetraits) }.
+ * @param {string} instant ISO 8601 UTC à la seconde
  */
-function transferer(db, ancienne) {
+function transferer(db, ancienne, instant) {
   let rejeu = null;
+  let fiches = [];
   const problemes = [];
   db.prepare('ATTACH DATABASE ? AS ancienne').run(ancienne);
   try {
@@ -152,9 +162,16 @@ function transferer(db, ancienne) {
       // champ passeraient « conflit » — et une valeur annulée par l'admin reviendrait sur le site, puis en production
       if (!problemes.length) integrerLivrees(db);
       // le corps des pages typées que le journal touche est refait depuis les tables rejouées (serveur/edition.mjs#rejouerLeJournal)
-      if (!problemes.length) rejeu = rejouerLeJournal(db);
+      if (!problemes.length) rejeu = rejouerLeJournal(db, {}, { horsControleParLot: TABLES_FICHES });
       // le brouillon de la note de version d'un lot que les nouvelles règles ont livré est vidé (son texte est dans note_version)
       if (!problemes.length) viderBrouillonLivre(db);
+      // R42 : un don, une spécialité, un sort ou un métier disparu est retiré des fiches (noms lus dans l'ancienne base, encore attachée), une note
+      // datée dans chacune ; ce qui reste rompu ensuite (race, classe, magie…) bloque, et l'annulation emporte aussi ces retraits
+      if (!problemes.length) {
+        const retraits = nouveauxRetraitsDeFiches();
+        retirerLesManquants(db, retraits);
+        fiches = noterLesRetraits(db, retraits, instant);
+      }
       if (!problemes.length) {
         for (const t of TABLES_VIVANTES) {
           for (const r of clesRompues(db, t)) problemes.push(`${t}.${r.colonnes.join('+')} = « ${r.valeur} » absent de ${r.parent} (${r.lignes} ligne(s))`);
@@ -178,7 +195,7 @@ function transferer(db, ancienne) {
     db.exec('DETACH DATABASE ancienne');
     db.exec('PRAGMA foreign_keys = ON');
   }
-  return rejeu;
+  return { rejeu, fiches };
 }
 
 /**
@@ -222,9 +239,9 @@ function archiver(dossier, chemin, instant) {
 
 /**
  * Prépare la base vivante du dossier `dossier` pour la base des règles `regles` (celle que publie le site) : la crée au premier lancement, la
- * refait quand les règles ont changé, ne touche à rien sinon. Rend { chemin, refaite, archive, empreinte, schema, rejeu } (rejeu : bilan des
- * modifications du journal rejouées, null sans base précédente). En cas d'échec, lève une
- * erreur (ErreurBaseVivante quand les fiches ne passent pas) et la base en place reste intacte.
+ * refait quand les règles ont changé, ne touche à rien sinon. Rend { chemin, refaite, archive, empreinte, schema, rejeu, fiches } (rejeu : bilan des
+ * modifications du journal rejouées, null sans base précédente ; fiches : celles dont un élément disparu a été retiré, R42, [] sinon). En cas d'échec,
+ * lève une erreur (ErreurBaseVivante quand les fiches ne passent pas) et la base en place reste intacte.
  */
 export function preparerBaseVivante({ regles, dossier, instant = new Date() }) {
   if (!existsSync(regles)) throw new ErreurBaseVivante(`base des règles introuvable : ${regles} (le site est-il installé ?)`);
@@ -232,7 +249,7 @@ export function preparerBaseVivante({ regles, dossier, instant = new Date() }) {
   const chemin = join(dossier, FICHIER_BASE);
   const etat = lireEtat(dossier);
   if (existsSync(chemin) && etat?.regles && etat.regles === empreinteFichier(regles)) {
-    return { chemin, refaite: false, archive: null, empreinte: etat.regles, schema: etat.schema ?? null };
+    return { chemin, refaite: false, archive: null, empreinte: etat.regles, schema: etat.schema ?? null, fiches: [] };
   }
 
   const neuve = join(dossier, `.${FICHIER_BASE}.${process.pid}.neuve`);
@@ -241,20 +258,24 @@ export function preparerBaseVivante({ regles, dossier, instant = new Date() }) {
   let archive = null;
   let schema;
   let rejeu = null;
+  let fiches = [];
+  const iso = instant.toISOString().replace(/\.\d{3}Z$/, 'Z'); // format des colonnes `*_le` : date des notes de retrait et de refaite_le
   try {
     const empreinte = empreinteFichier(neuve); // celle de la copie : les règles peuvent être remplacées pendant qu'on les copie
     const db = new DatabaseSync(neuve);
     try {
       verifierRegles(db);
-      if (existsSync(chemin)) rejeu = transferer(db, chemin);
+      if (existsSync(chemin)) ({ rejeu, fiches } = transferer(db, chemin, iso));
       schema = db.prepare('PRAGMA user_version').get().user_version;
     } finally {
       db.close();
     }
     if (existsSync(chemin)) archive = archiver(dossier, chemin, instant);
     renameSync(neuve, chemin);
-    ecrireEtat(dossier, { regles: empreinte, schema, refaite_le: instant.toISOString().replace(/\.\d{3}Z$/, 'Z') });
-    return { chemin, refaite: true, archive, empreinte, schema, rejeu };
+    // la dernière liste non vide des fiches adaptées (R42), datée, survit aux reconstructions qui ne retirent rien et au redémarrage du service
+    const retraits = fiches.length ? { le: iso, fiches } : etat?.retraits;
+    ecrireEtat(dossier, { regles: empreinte, schema, refaite_le: iso, ...(retraits ? { retraits } : {}) });
+    return { chemin, refaite: true, archive, empreinte, schema, rejeu, fiches };
   } catch (e) {
     rmSync(neuve, { force: true });
     throw e;

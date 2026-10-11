@@ -12,38 +12,42 @@ import Bulles from '../magie/Bulles.astro';
 import Texte from '../magie/Texte.astro';
 import ClasseDons from './ClasseDons.astro';
 import { attributEd } from '../../lib/edition-modele.mjs';
+import { empreinteDeStructure, htmlDuGroupeDeNavigation, htmlDuRepereMagique, lienDesSpecialites } from '../../lib/classe-dons-rendu.mjs';
 
 const classeCss = [classeBaseCss, classePageCss, classeDonsCss, magieTooltipsCss].join('\n');
 
 // Gabarit commun des pages de classe, sur le modèle des pages de magie et de race : bandeau (nom, catégorie du Sommaire, « Don de départ »),
 // présentation et « Chose à savoir », spécialités, équipement de départ, DONS disposés comme l'onglet (choix encadrés), tableau annexe de l'onglet.
-// Il affiche les lignes de la base (lib/classes-db.mjs) : pour changer une classe ou un don, on change la base. Aucun tableau Markdown, pas de source
-// citée. Seuls le titre, les alias et le statut viennent de la page du wiki ; le type magique (+4 AM) suit lib/classe-magique.mjs.
+// Il affiche les lignes de la base (lib/classes-db.mjs) : pour changer une classe ou un don, on change la base, depuis le site de dev (mode modification :
+// champs, spécialités et dons créés ou supprimés, src/scripts/edition/classes.mjs, qui redessine les dons et les spécialités avec le même HTML :
+// lib/classe-dons-rendu.mjs). Aucun tableau Markdown, pas de source citée. Seuls le titre, les alias et le statut viennent de la page du wiki ; le repère
+// « Classe magique » (+4 AM) se lit dans les tables (catégorie, Archimage, don de spécialité : lib/classe-dons-rendu.mjs#htmlDuRepereMagique).
 interface Props {
   entry: WikiEntry;
   classe: ClasseDb;
-  magique: boolean;
   statusNote?: string;
 }
-const { entry, classe, magique, statusNote } = Astro.props;
+const { entry, classe, statusNote } = Astro.props;
 
 // couleur de la catégorie de /classes/ (rouge, vert, bleu, violet, jaune), sur toute la page comme celle d'une magie
 const couleur = classColor(entry);
-const specialitesDecrites = classe.specialites.filter((s) => s.description.length > 0);
+// spécialités : celles qui ont des dons (une colonne du plateau ; les deux de l'Archimage n'en ont pas) ; un article caché tant qu'il n'a ni description
+// ni remarque, que le mode modification ouvre pour le remplir (D11 : une spécialité créée sur le site n'a d'abord que son nom)
 const colonnes = classe.plateau.flatMap((e) => (e.forme === 'specialites' ? e.specialites : []));
+const specialitesMontrees = colonnes.map((c) => c.specialite).filter((s) => s.description.length + s.remarque.length > 0);
 const aDepart = classe.maitriseArme.length + classe.maitriseArmure.length + classe.inventaire.length > 0 || Boolean(classe.armeDepart || classe.armureDepart);
 const pageObjets = 'ressources/objets-de-depart-des-classes';
 const nav = [
   { href: '#presentation', label: 'Présentation', show: classe.description.length > 0 },
   { href: '#a-savoir', label: 'À savoir', show: classe.aSavoir.length > 0 },
-  { href: '#specialites', label: 'Spécialités', show: specialitesDecrites.length > 0 },
+  { href: '#specialites', label: 'Spécialités', show: lienDesSpecialites(classe) },
   { href: '#depart', label: 'Départ', show: aDepart },
   { href: '#dons', label: 'Dons', show: classe.dons.length > 0 },
   { href: '#annexe', label: 'Tableau de l’onglet', show: classe.annexe.length > 0 },
 ].filter((n) => n.show);
-// « Classe magique » (+4 AM) : la classe elle-même (catégorie du Sommaire, Archimage), ou seulement avec la spécialité dont le don le dit (classes raciales, Flagelleur).
-const specialitesMagiques = colonnes.filter((c) => c.cartouche?.classeMagique);
-const magiqueEnSoi = magique && (classe.categorie?.amBase != null || specialitesMagiques.length === 0);
+// « Classe magique » (+4 AM) : la classe elle-même (catégorie du Sommaire, Archimage), ou seulement avec la spécialité dont le don le dit (classes raciales,
+// Flagelleur) ; même HTML que le mode modification redessine (lib/classe-dons-rendu.mjs#htmlDuRepereMagique), à partir des tables
+const repereMagique = htmlDuRepereMagique(classe, { classeId: classe.id, amBase: classe.categorie?.amBase ?? null, amMagique: classe.amMagique, note: classe.categorie?.note ?? null });
 const bulles = classe.inventaire.map((options) => options.map((o) => (o.description ? idBulle('objet') : null)));
 // Champs modifiables sur le site de dev (lib/edition-modele.mjs) ; un champ vide est rendu caché (`data-ed-cadre`) pour pouvoir être rempli.
 const ed = (colonne: string) => attributEd('classe', { id: classe.id }, colonne);
@@ -51,7 +55,7 @@ const edSpe = (id: string, colonne: string) => attributEd('specialite', { id }, 
 ---
 
 <style is:inline set:html={classeCss}></style>
-<div class="classe" style={`--couleur-classe: ${couleur}; --couleur-texte-classe: ${texteSurCouleur(couleur)}`}>
+<div class="classe" data-ed-classe={classe.id} data-ed-structure={empreinteDeStructure(classe)} style={`--couleur-classe: ${couleur}; --couleur-texte-classe: ${texteSurCouleur(couleur)}`}>
   <header class="classe-hero">
     <p class="classe-hero__surtitre">{classe.categorie?.libelle ?? 'Classe'}</p>
     <h1>{entry.data.title}</h1>
@@ -67,19 +71,9 @@ const edSpe = (id: string, colonne: string) => attributEd('specialite', { id }, 
       }
     </dl>
     {
-      (magique || classe.race) && (
+      (repereMagique || classe.race) && (
         <ul class="classe-hero__reperes">
-          {magique && classe.amMagique !== null && (magiqueEnSoi ? (
-            <li title={classe.categorie?.note ?? undefined}>
-              <strong>Classe magique</strong> +{classe.amMagique} AM de base
-            </li>
-          ) : (
-            <li>
-              <strong>Classe magique</strong> avec la spécialité {specialitesMagiques.map((c, i) => (
-                <>{i > 0 && ' ou '}<a href={`#${c.specialite.ancre}`}>{c.cartouche!.nom}</a></>
-              ))} : +{classe.amMagique} AM de base
-            </li>
-          ))}
+          <Fragment set:html={repereMagique} />
           {classe.race && (
             <li>
               <strong>Classe raciale</strong> de la race <a href={pageHref(classe.race.id)}>{classe.race.nom}</a>
@@ -96,11 +90,7 @@ const edSpe = (id: string, colonne: string) => attributEd('specialite', { id }, 
     nav.length > 1 && (
       <nav class="classe-nav no-print" aria-label="Sections de la page">
         {nav.map((n) => <a href={n.href}>{n.label}</a>)}
-        {colonnes.length > 0 && (
-          <span class="classe-nav__specialites" role="group" aria-label="Dons par spécialité">
-            {colonnes.map((c) => <a href={`#${c.specialite.ancre}`}>{c.cartouche?.nom ?? c.specialite.nom}</a>)}
-          </span>
-        )}
+        <Fragment set:html={htmlDuGroupeDeNavigation(classe)} />
       </nav>
     )
   }
@@ -129,21 +119,19 @@ const edSpe = (id: string, colonne: string) => attributEd('specialite', { id }, 
   }
 
   {
-    specialitesDecrites.length > 0 && (
-      <section class="classe-section" id="specialites" aria-labelledby="specialites-titre">
+    colonnes.length > 0 && (
+      <section class="classe-section" id="specialites" aria-labelledby="specialites-titre" data-ed-cadre=".classe-prose, .classe-remarque__texte" hidden={specialitesMontrees.length === 0}>
         <h2 id="specialites-titre">Spécialités</h2>
         <div class="classe-specialites">
-          {specialitesDecrites.map((s) => (
-            <article class="classe-specialite">
+          {colonnes.map(({ specialite: s }) => (
+            <article class="classe-specialite" data-ed-cadre=".classe-prose, .classe-remarque__texte" hidden={s.description.length + s.remarque.length === 0}>
               <h3 data-ed={edSpe(s.id, 'nom')}>{s.nom}</h3>
               <div class="classe-prose" data-ed={edSpe(s.id, 'description')} data-ed-rendu="blocs"><Texte blocs={s.description} /></div>
               <div class="classe-remarque" data-ed-cadre=".classe-remarque__texte" hidden={s.remarque.length === 0}>
                 <p class="classe-remarque__titre">Remarque</p>
                 <div class="classe-remarque__texte" data-ed={edSpe(s.id, 'remarque')} data-ed-rendu="blocs"><Texte blocs={s.remarque} /></div>
               </div>
-              {colonnes.some((c) => c.specialite.id === s.id) && (
-                <p class="classe-specialite__lien"><a href={`#${s.ancre}`}>Ses dons</a></p>
-              )}
+              <p class="classe-specialite__lien"><a href={`#${s.ancre}`}>Ses dons</a></p>
             </article>
           ))}
         </div>

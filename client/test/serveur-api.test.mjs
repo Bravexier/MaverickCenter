@@ -9,10 +9,10 @@ import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { TABLES_VIVANTES, ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
-import { LIGNES_MAX } from '../serveur/fiches.mjs';
+import { expliquer, LIGNES_MAX } from '../serveur/fiches.mjs';
 import { demarrerService, guetteur } from '../serveur/service.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
-import { COLONNES_DU_SERVICE, HORS_FICHE, PARTIES_DE_FICHE, ficheVide } from '../src/lib/fiche-format.mjs';
+import { COLONNES_DU_SERVICE, HORS_FICHE, PARTIES_DE_FICHE, ficheVide, jourDuRetrait } from '../src/lib/fiche-format.mjs';
 
 const racine = mkdtempSync(join(tmpdir(), 'maverick-api-'));
 after(() => rmSync(racine, { recursive: true, force: true }));
@@ -51,6 +51,15 @@ test('format : chaque table qui cite une fiche est une partie de la fiche ou exp
   }
   for (const c of colonnes.filter((x) => x.notnull && !COLONNES_DU_SERVICE.includes(x.name))) assert.ok(c.name in ficheVide(), `${c.name} : obligatoire, absent de ficheVide`);
   for (const c of COLONNES_DU_SERVICE) assert.ok(colonnes.some((x) => x.name === c), c);
+});
+
+test('un choix que les règles n’ont plus (don ou spécialité supprimé depuis le site de dev, D11) : message en français, rien n’est écrit', () => {
+  assert.equal(expliquer('FOREIGN KEY constraint failed'), 'un choix de la fiche (don, spécialité…) n’existe plus dans les règles : rechargez la page');
+  const avant = db.prepare('SELECT count(*) AS n FROM personnage').get().n;
+  const r = appel('POST', '/api/personnages', { ...ficheVide('Sans règle'), capacites: [{ capacite_id: 'capacites/don-supprime-d11' }] });
+  assert.equal(r.statut, 400);
+  assert.ok(r.corps.problemes.some((p) => /capacite_id.*n’existe pas dans les règles/.test(p)), JSON.stringify(r.corps));
+  assert.equal(db.prepare('SELECT count(*) AS n FROM personnage').get().n, avant);
 });
 
 test('création : un prétiré (à personne, visible de tous), brouillon par défaut ; lu, listé, avec son niveau et ses contrôles', () => {
@@ -234,7 +243,11 @@ test('serveur HTTP : état, création, corps trop gros ; surveillance : nouvelle
     let etat = await (await fetch(`${s.url}/api/etat`)).json();
     assert.deepEqual({ version: etat.version, code: etat.code, disponible: etat.base.disponible, a_jour: etat.base.a_jour, pretires: etat.base.pretires, schema: etat.base.schema },
       { version: '9.9.9', code: 'abcdef0123456789', disponible: true, a_jour: true, pretires: 0, schema: VERSION_DU_SCHEMA });
-    const reponse = await fetch(`${s.url}/api/personnages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nom: 'Hugo' }) });
+    // Hugo a un métier (lu dans les règles) que la livraison suivante supprimera
+    const lues = new DatabaseSync(REGLES, { readOnly: true });
+    const metier = { ...lues.prepare('SELECT id, nom FROM metier ORDER BY id LIMIT 1').get() };
+    lues.close();
+    const reponse = await fetch(`${s.url}/api/personnages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nom: 'Hugo', metier_id: metier.id }) });
     assert.equal(reponse.status, 201);
     assert.equal(reponse.headers.get('cache-control'), 'no-store');
     assert.match(reponse.headers.get('content-type'), /^application\/json/);
@@ -242,18 +255,25 @@ test('serveur HTTP : état, création, corps trop gros ; surveillance : nouvelle
     const gros = await fetch(`${s.url}/api/personnages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: 'x'.repeat(1024 * 1024 + 10) }).catch((e) => e);
     if (!(gros instanceof Error)) assert.equal(gros.status, 413);
 
-    // Une livraison remplace la base des règles : la base vivante est refaite, Hugo reste.
+    // Une livraison remplace la base des règles : la base vivante est refaite, Hugo reste ; son métier, supprimé, en est retiré avec une note (R42).
     const nouvelles = join(racine, 'regles-neuves.db');
     copyFileSync(REGLES, nouvelles);
-    const m = new DatabaseSync(nouvelles);
+    const m = new DatabaseSync(nouvelles, { enableForeignKeyConstraints: false });
     m.exec("UPDATE race SET nom = 'Humain bis' WHERE id = 'races/humain'");
+    m.prepare('DELETE FROM metier WHERE id = ?').run(metier.id);
     m.close();
     renameSync(nouvelles, regles);
     await attendre(() => lignes.some((l) => l.startsWith('base vivante faite') && l.includes('archivée')), lignes.join('\n'));
     etat = s.etat();
-    assert.equal(etat.base.a_jour, true);
+    assert.equal(etat.base.a_jour, true, etat.base.erreur);
     const liste = await (await fetch(`${s.url}/api/personnages`)).json();
     assert.deepEqual(liste.personnages.map((f) => f.nom), ['Hugo']);
+    assert.ok(lignes.some((l) => l.startsWith('fiches adaptées aux nouvelles règles : 1 (Hugo)')), lignes.join('\n'));
+    const retrait = `le métier « ${metier.nom} »`;
+    assert.deepEqual((await (await fetch(`${s.url}/api/etat`)).json()).base.retraits.fiches, [{ fiche: 'Hugo', retraits: [retrait] }]);
+    const adapte = (await (await fetch(`${s.url}/api/personnages/${hugo.id}/`)).json()).personnage;
+    assert.equal(adapte.metier_id, null);
+    assert.equal(adapte.notes, `[${jourDuRetrait(adapte.modifie_le)}] Retrait (règles modifiées) : ${retrait} n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.`);
 
     // L'installateur du serveur de test remplace la base vivante par une copie de la production : le service la rouvre.
     const production = join(racine, 'production.db');

@@ -13,6 +13,7 @@
 //   GET  /api/edition/listes/       listes des formulaires (compétences, catégories de classe, races hybrides…)
 //   GET  /api/edition/pages/        les pages du wiki (id, titre) : cibles d'un lien posé dans le texte du guide
 //   POST /api/edition/race/         { race } → magies innées et relations de la race, dans la base vivante
+//   POST /api/edition/classe/       { classe } → spécialités, dons, choix et fiches qui les citent (ajout et suppression depuis sa page)
 //   POST /api/edition/              { page, operations } → applique un lot d'un bloc et le note au journal
 //   GET  /api/edition/journal/      le journal des modifications en attente, à rapatrier dans data/rows (npm run db:appliquer-edition)
 // Page « Mise à jour », sur le site de dev seulement (même garde) — serveur/notes-de-version.mjs :
@@ -30,7 +31,7 @@
 // Avant la 1.0, pas de comptes : quiconque a le mot de passe du site (nginx) lit et écrit les prétirés. Les écritures exigent un corps JSON
 // (Content-Type: application/json) et refusent une requête qu'un navigateur dit venir d'un autre site (Sec-Fetch-Site) : un formulaire ou un
 // script d'un autre site ne peut pas écrire à la place de quelqu'un de connecté.
-import { ErreurEdition, donneesDeRace, enregistrer, listes, lireLignes, pagesDuWiki } from './edition.mjs';
+import { ErreurEdition, donneesDeClasse, donneesDeRace, enregistrer, listes, lireLignes, pagesDuWiki } from './edition.mjs';
 import { journalExporte, lignesEnAttente } from './edition-journal.mjs';
 import {
   actualiserLancement, CONFIRMATION, enregistrerBrouillon, ErreurNotes, estLiberable, figerLot, libererLot, lireLot, lireReference, noteEnPreparation, occupe,
@@ -125,8 +126,8 @@ export function traiter(requete, service) {
 /** Les routes /api/edition/… (site de dev seulement). */
 function traiterEdition(requete, service, action, reste, permis) {
   if (!service.edition) return erreur(403, 'L’édition des règles n’est ouverte que sur le site de dev.');
-  if (reste.length || !['en-attente', 'lignes', 'listes', 'pages', 'journal', 'race', undefined].includes(action)) return erreur(404, 'Adresse inconnue.');
-  const refus = action === undefined || action === 'lignes' || action === 'race' ? permis('POST') : permis('GET');
+  if (reste.length || !['en-attente', 'lignes', 'listes', 'pages', 'journal', 'race', 'classe', undefined].includes(action)) return erreur(404, 'Adresse inconnue.');
+  const refus = action === undefined || action === 'lignes' || action === 'race' || action === 'classe' ? permis('POST') : permis('GET');
   if (refus) return refus;
   const db = service.base();
   if (!db) return erreur(503, 'La base n’est pas disponible pour le moment.', { etat: service.etat() });
@@ -145,8 +146,11 @@ function traiterEdition(requete, service, action, reste, permis) {
   try {
     if (action === 'lignes') return json(200, { lignes: lireLignes(db, valeur?.lignes) });
     if (action === 'race') return json(200, donneesDeRace(db, valeur?.race));
+    if (action === 'classe') return json(200, donneesDeClasse(db, valeur?.classe));
     const resultat = enregistrer(db, valeur);
-    if (resultat.lot) service.journal?.(`édition : lot ${resultat.lot} (${resultat.modifications} ligne(s)) depuis ${valeur.page ?? '?'}`);
+    // les fiches dont le lot a retiré un élément supprimé (R42) : un compte, jamais leurs noms (le journal du service n'est pas la réponse)
+    const adaptees = resultat.fiches?.length ? ` ; ${resultat.fiches.length} fiche(s) de personnage adaptée(s)` : '';
+    if (resultat.lot) service.journal?.(`édition : lot ${resultat.lot} (${resultat.modifications} ligne(s)) depuis ${valeur.page ?? '?'}${adaptees}`);
     return json(200, resultat);
   } catch (e) {
     if (e instanceof ErreurEdition) return erreur(e.statut, e.message, e.details);

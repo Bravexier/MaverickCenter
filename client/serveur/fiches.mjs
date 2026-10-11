@@ -133,8 +133,8 @@ function valeurDeCellule(v, ou, problemes) {
   return null;
 }
 
-/** Message d'une contrainte de la base, en français. */
-function expliquer(message) {
+/** Message d’une contrainte de la base, en français (exporté pour les tests). */
+export function expliquer(message) {
   let m;
   if ((m = /^NOT NULL constraint failed: \w+\.(\w+)$/.exec(message))) return `« ${m[1]} » est obligatoire`;
   if ((m = /^CHECK constraint failed: (.+)$/.exec(message))) return `valeur hors des bornes (${m[1].trim()})`;
@@ -142,6 +142,8 @@ function expliquer(message) {
     const cols = m[1].split(',').map((c) => c.trim().replace(/^\w+\./, '')).filter((c) => c !== 'personnage_id');
     return `en double (${cols.join(', ')})`;
   }
+  // un choix que les règles n'ont plus (don ou spécialité supprimé depuis le site de dev, D11) : la page a été construite avant
+  if (/FOREIGN KEY constraint failed/.test(message)) return 'un choix de la fiche (don, spécialité…) n’existe plus dans les règles : rechargez la page';
   if ((m = /^cannot store (\w+) value in (\w+) column \w+\.(\w+)$/.exec(message))) {
     return `« ${m[3]} » : ${m[2] === 'INTEGER' ? 'un nombre entier' : m[2] === 'TEXT' ? 'un texte' : m[2]} est attendu`;
   }

@@ -64,7 +64,8 @@ function boutonSupprimer(tbody) {
   bouton.className = 'ed-outil ed-outil--danger ed-supprimer';
   bouton.textContent = 'Supprimer';
   bouton.setAttribute('aria-pressed', 'false');
-  bouton.title = 'Supprimer ce métier (à l’enregistrement)';
+  // R42 : les fiches qui l'ont le perdent, avec une note datée ; elles sont annoncées après l'enregistrement (editeur.mjs, annonceDesFiches)
+  bouton.title = 'Supprimer ce métier (à l’enregistrement) ; une fiche de personnage qui l’a le perdra, avec une note datée';
   bouton.addEventListener('click', (e) => {
     e.stopPropagation();
     const id = tbody.dataset.edMetier;

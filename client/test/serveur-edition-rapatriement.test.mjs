@@ -61,6 +61,9 @@ const crees = lot([
   { op: 'creer', entite: 'race', valeurs: { nom: noms.race, nature: 'hybride', presentation: 'Une race d’essai.' } },
   { op: 'creer', entite: 'classe', valeurs: { nom: noms.classe, categorie_id: 'classe-magique' } },
 ]).crees.map((c) => c.id);
+// un don créé dans la classe créée (D11) : sa fiche capacites/… est de la famille des classes, sa seule source est sa provenance
+crees.push(lot([{ op: 'creer', entite: 'capacite', valeurs: { classe_id: crees[2], niveau: '1', nom: 'Don d’essai', type: 'Passif', effet: 'Il essaie aussi.' } }]).crees[0].id);
+assert.ok(crees[3].startsWith('capacites/'));
 // un métier créé un autre jour puis supprimé : sa source (« Site de dev › édition du 2026-10-12 ») n'est plus citée, elle part avec lui
 const jetable = lot([{ op: 'creer', entite: 'metier', valeurs: { nom: noms.jetable } }], { instant: '2026-10-12T08:00:00Z' }).crees[0].id;
 lot([{ op: 'supprimer', entite: 'metier', cle: { id: jetable } }], { instant: '2026-10-12T08:00:01Z' });

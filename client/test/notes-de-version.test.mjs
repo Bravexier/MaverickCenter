@@ -157,6 +157,33 @@ test('comparerBases : capacité Mode Hyper (onglets seulement) et dons de classe
   ]);
 });
 
+test('comparerBases : un don ajouté, une spécialité retirée avec son don (D11) : listés, en neutre (R29 : une entité ajoutée ou retirée n’a pas de sens)', () => {
+  const ref = {
+    tables: {
+      categorie_classe: [{ id: 'magiques', libelle: 'Magiques', ordre: 3 }],
+      classe: [{ id: 'classes/mage-bleu', nom: 'Mage bleu', categorie_id: 'magiques', ordre: 1, sante_depart: 10 }],
+      specialite: [
+        { id: 'specialites/saphir', classe_id: 'classes/mage-bleu', nom: 'Mage saphir', rang: 1 },
+        { id: 'specialites/rubis', classe_id: 'classes/mage-bleu', nom: 'Mage rubis', rang: 2 },
+      ],
+      capacite: [
+        { id: 'capacites/conteste', classe_id: 'classes/mage-bleu', specialite_id: 'specialites/saphir', nom: 'Contesté !', niveau: 10, ligne: 22, rang: 1, type_brut: 'Passif', effet: 'a' },
+        { id: 'capacites/rubis', classe_id: 'classes/mage-bleu', specialite_id: 'specialites/rubis', nom: 'Rubis', niveau: 10, ligne: 22, rang: 1, type_brut: 'Passif', effet: 'b' },
+      ],
+    },
+  };
+  const dev = structuredClone(ref);
+  dev.tables.specialite.splice(1, 1);
+  dev.tables.capacite.splice(1, 1);
+  dev.tables.capacite.push({ id: 'capacites/eclat', classe_id: 'classes/mage-bleu', specialite_id: 'specialites/saphir', nom: 'Éclat', niveau: 15, ligne: 37, rang: 1, type_brut: 'Actif', effet: 'c' });
+  const lignes = comparerBases(ref, dev);
+  assert.deepEqual(lignes.map((l) => `${l.groupe} | ${l.entite} | ${l.nature} | ${l.sens}`), [
+    'Mage bleu | Spécialité Mage rubis | retire | neutre',
+    'Mage bleu | Don Mage rubis › Rubis | retire | neutre',
+    'Mage bleu | Don Mage saphir › Éclat | ajoute | neutre',
+  ], 'les dons dans l’ordre de la page (niveau, ligne)');
+});
+
 test('versionDeLivraison : la version que le bot donnera à la livraison dev → master (X.Y)', () => {
   const cas = [['0.1.76', '0.1.0'], ['0.1.76', null], ['0.2.5', '0.2.0'], ['1.4.2', '1.4.0'], ['0.9.3', '0.10.0'], ['0.1.3', '0.2.0']];
   for (const [dev, master] of cas) {

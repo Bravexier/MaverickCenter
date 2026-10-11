@@ -56,6 +56,8 @@ const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
     </div>
 
     <p class="banner fiche-indisponible" id="fiche-indisponible" hidden></p>
+    {/* éléments retirés par un changement de règles (décision R42) : d'après les lignes datées des notes (src/scripts/fiche.mjs#construireRetraits) */}
+    <p class="banner fiche-retraits" id="fiche-retraits" role="status" hidden></p>
     <noscript><p class="banner">Cette page a besoin de JavaScript pour construire la fiche et l’enregistrer.</p></noscript>
 
     <ul class="fiche-etapes" aria-label="Parties de la fiche">

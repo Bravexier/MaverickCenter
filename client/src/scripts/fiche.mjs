@@ -3,7 +3,7 @@
 // auprès du service des personnages (/api/personnages/, docs/serveur.md). Création et modification sur le même écran : /fiche/?id=<id>.
 // Script de page (navigateur) : il n'importe que des modules purs que seule cette page utilise (la version portable refuse un module partagé).
 import { libelleDuControle } from '../lib/fiche-controles.mjs';
-import { CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ficheVide } from '../lib/fiche-format.mjs';
+import { CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ficheVide, nouveauxRetraits, resumeDesRetraits } from '../lib/fiche-format.mjs';
 import { valeurAuNm } from '../lib/sort-maitrise.mjs';
 import {
   ajusterValeurDuMoment, alignementDe, artisanatDe, attributsDe, bonusDuMetier, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
@@ -1147,6 +1147,18 @@ function construireXp() {
   $('xp-rempli').style.width = `${Math.round(p.part * 1000) / 10}%`;
 }
 
+/**
+ * La bannière des éléments que les règles ont retirés de la fiche (décision R42), d'après les lignes datées de ses notes (lib/fiche-format.mjs) :
+ * recalculée à chaque saisie, elle part quand le joueur efface ces lignes.
+ */
+function construireRetraits() {
+  const banniere = $('fiche-retraits');
+  const r = resumeDesRetraits(fiche.notes);
+  banniere.hidden = !r;
+  banniere.replaceChildren();
+  if (r) banniere.append(`${r.texte} `, el('a', { href: '#etape-jeu' }, 'Voir les notes'));
+}
+
 function rafraichir() {
   // les six caractéristiques sont toujours là, au minimum de la race (1) tant qu'on ne les a pas montées (demande du propriétaire)
   fiche.caracteristiques = caracteristiquesCompletes(regles, fiche);
@@ -1186,6 +1198,7 @@ function rafraichir() {
   construireEquipement();
   for (const liste of synchros.values()) for (const s of liste) s();
   construireControles();
+  construireRetraits();
   $('fiche-enregistrer').disabled = !modifie && id !== null;
   $('fiche-supprimer').hidden = id === null;
   if (modifie) message(serviceJoignable ? 'Modifications non enregistrées.' : 'Service indisponible : exportez la fiche pour ne rien perdre.', 'attente');
@@ -1232,7 +1245,10 @@ async function enregistrer() {
       return;
     }
     if (reponse.status === 409 && donnees.personnage) {
-      message(`${donnees.erreur} `, 'erreur');
+      // des éléments retirés par les règles depuis l'ouverture de la fiche (R42) : le dire, ils sont dans les notes de la fiche à jour
+      const n = nouveauxRetraits(fiche.notes, donnees.personnage.notes).length;
+      const avertissement = n ? `Les règles ont changé : ${n} élément(s) retiré(s) de cette fiche depuis son ouverture (voir les notes après rechargement). ` : '';
+      message(`${avertissement}${donnees.erreur} `, 'erreur');
       $('fiche-message').append(el('button', { type: 'button', onclick: () => { appliquer({ personnage: donnees.personnage }); message('Fiche rechargée : les modifications non enregistrées sont perdues.', 'attente'); } }, 'Recharger la fiche'));
     } else if (reponse.status === 422) {
       controles = donnees.controles ?? [];

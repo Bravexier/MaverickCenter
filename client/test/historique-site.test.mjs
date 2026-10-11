@@ -118,6 +118,16 @@ test('lignesDImport et effectifDImport : l’état d’avant toute édition du s
   assert.deepEqual(h.lignesDImport('metier', lignes).map((l) => l.id), ['forgeron', 'sapeur', 'bousier'], 'sur les lignes données');
 });
 
+test('lignesRemaniees : créées ou supprimées par le site, ou ces colonnes réécrites ; chacune telle que le site l’a vue en dernier', () => {
+  const h = historiqueSite(scenario());
+  assert.deepEqual(h.lignesRemaniees('metier').map((l) => l.id).sort(), ['bousier', 'pecheur', 'sapeur'], 'créées ou supprimées (le pêcheur créé puis supprimé compris)');
+  assert.deepEqual(h.lignesRemaniees('metier', ['nom']).map((l) => l.id).sort(), ['bousier', 'mineur', 'pecheur', 'sapeur']);
+  assert.deepEqual(h.lignesRemaniees('metier', ['bonus']).find((l) => l.id === 'forgeron'), { id: 'forgeron', bonus: '+5', remarque: 'Note.' }, 'sa clé et les colonnes notées par le site');
+  assert.deepEqual(h.lignesRemaniees('metier').find((l) => l.id === 'bousier'), { id: 'bousier', nom: 'Bousier', bonus: '+2', remarque: 'Trace.' }, 'supprimée : la ligne d’avant');
+  assert.deepEqual(h.lignesRemaniees('race_magie').map((l) => `${l.race_id}/${l.magie_id}`), ['orios/eau', 'orios/ombre']);
+  assert.deepEqual(h.lignesRemaniees('inconnue'), []);
+});
+
 test('base sans modification, ou sans la table : l’import est l’état courant', () => {
   const db = base();
   inserer(db, 'metier', { id: 'forgeron', nom: 'Forgeron', bonus: '+3', remarque: null });

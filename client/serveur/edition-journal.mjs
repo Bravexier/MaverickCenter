@@ -7,11 +7,18 @@
 //                      (celles que les règles contiennent déjà passent « integree », celles que les règles ont changées autrement « conflit ») ;
 //   - lignesEnAttente: l'état net des lignes modifiées (ce que les pages statiques doivent montrer à la place de leur contenu construit) ;
 //   - journalExporte : le journal à rapatrier dans data/rows (`npm run db:appliquer-edition`).
-// Node seulement (node:sqlite), sans dépendance ; partagé par le service et par client/scripts/db-appliquer-edition.mjs.
+// Node seulement (node:sqlite), sans dépendance (le format des fiches, src/lib/fiche-format.mjs, est un module pur) ; partagé par le service et par
+// client/scripts/db-appliquer-edition.mjs.
 import { randomUUID } from 'node:crypto';
+import { TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 
-/** Tables du journal lui-même et des fiches : jamais modifiées par l'édition (les fiches ont leur API). */
-export const TABLES_INTERDITES = new Set(['modification_lot', 'modification', 'note_version_brouillon', 'note_version', 'note_version_ligne', 'historique_modification']);
+/**
+ * Tables du journal lui-même, des notes de version et des fiches (section 13) : jamais modifiées par l'édition. Les fiches ont leur API ; quand une
+ * suppression de règle les touche (décision R42), serveur/fiches-retraits.mjs les écrit en SQL direct : rien d'elles ne va au journal ni dans data/rows.
+ */
+export const TABLES_INTERDITES = new Set([
+  'modification_lot', 'modification', 'note_version_brouillon', 'note_version', 'note_version_ligne', 'historique_modification', ...TABLES_FICHES,
+]);
 
 export class ErreurJournal extends Error {
   constructor(message) {
@@ -122,7 +129,7 @@ export function ouvrirLot(db, { id, instant, pageId = null, auteurId = null }) {
     "INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat, detail, apercu) VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente', NULL, ?)",
   );
   const interdire = (table) => {
-    if (TABLES_INTERDITES.has(table)) throw new ErreurJournal(`${table} : table du journal, jamais modifiée par l'édition`);
+    if (TABLES_INTERDITES.has(table)) throw new ErreurJournal(`${table} : table du journal ou des fiches, jamais modifiée par l'édition`);
   };
   const lignes = []; // { table, cle, operation } : ce que le lot a touché, dans l'ordre
   const note = (table, cle, operation, avant, apres, apercu = null) => {
@@ -199,6 +206,53 @@ export function tablesQuiCitent(db, table) {
   return [...(carte.get(table) ?? [])];
 }
 
+const cascadesParBase = new WeakMap(); // db -> Map(table visée -> [{ enfant, de: [colonnes], vers: [colonnes] }])
+/** Les clés étrangères ON DELETE CASCADE qui visent `table` : la table qui cite, ses colonnes, les colonnes visées (la clé primaire si non dites). */
+function cascadesVers(db, table) {
+  let carte = cascadesParBase.get(db);
+  if (!carte) {
+    carte = new Map();
+    for (const { name } of db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all()) {
+      let liens = [];
+      try {
+        liens = db.prepare(`PRAGMA foreign_key_list("${name}")`).all();
+      } catch {
+        continue; // table virtuelle
+      }
+      const parId = new Map();
+      for (const f of liens) {
+        if (String(f.on_delete).toUpperCase() !== 'CASCADE') continue;
+        if (!parId.has(f.id)) parId.set(f.id, { enfant: name, parent: f.table, colonnes: [] });
+        parId.get(f.id).colonnes.push(f);
+      }
+      for (const { enfant, parent, colonnes } of parId.values()) {
+        colonnes.sort((a, b) => a.seq - b.seq);
+        const vers = colonnes.every((c) => c.to) ? colonnes.map((c) => c.to) : structure(db, parent).cle;
+        if (!carte.has(parent)) carte.set(parent, []);
+        carte.get(parent).push({ enfant, de: colonnes.map((c) => c.from), vers });
+      }
+    }
+    cascadesParBase.set(db, carte);
+  }
+  return carte.get(table) ?? [];
+}
+
+/**
+ * Applique les ON DELETE CASCADE du schéma avant de supprimer `ligne` de `table`, quand les clés étrangères sont coupées (PRAGMA foreign_keys = 0 :
+ * base vivante refaite par une livraison, mise à jour des règles) : SQLite ne les applique alors pas. Récursif ; les lignes ainsi retirées (les
+ * [[liens]] d'une page : lien, lien_candidat, tables dérivées) ne sont pas notées, comme les cascades de SQLite dans la base vivante.
+ */
+function supprimerLesCascades(db, table, ligne) {
+  for (const { enfant, de, vers } of cascadesVers(db, table)) {
+    const valeurs = vers.map((c) => ligne[c]);
+    if (valeurs.some((v) => v === null || v === undefined)) continue;
+    const ou = de.map((c) => `${guillemets(c)} = ?`).join(' AND ');
+    for (const e of db.prepare(`SELECT * FROM "${enfant}" WHERE ${ou}`).all(...valeurs)) supprimerLesCascades(db, enfant, e);
+    db.prepare(`DELETE FROM "${enfant}" WHERE ${ou}`).run(...valeurs);
+  }
+}
+const clesCoupees = (db) => Number(Object.values(db.prepare('PRAGMA foreign_keys').get() ?? {})[0] ?? 0) === 0;
+
 /** Compare une ligne de la base aux valeurs notées (colonnes de l'objet seulement). */
 const correspond = (ligne, valeurs) => Object.entries(valeurs).every(([c, v]) => egal(ligne[c], v));
 
@@ -235,6 +289,7 @@ function rejouerUne(db, m, derivee, suivantes = []) {
       if (recreee && Object.entries(sansDerivees(recreee.apres)).every(([c, v]) => deja(c, v))) return 'integree';
       return 'la ligne a changé dans les règles depuis sa suppression';
     }
+    if (clesCoupees(db)) supprimerLesCascades(db, m.table_nom, ligne);
     supprimerBrut(db, m.table_nom, cle);
     return 'applique';
   }
@@ -269,10 +324,15 @@ const decodee = (m) => ({
  * modification qui ne note que des colonnes dérivées suit son lot : « intégrée » quand toutes ses autres modifications le sont, en attente sinon.
  * `applique(m)` est appelée, une fois un lot écrit, pour chacune de ses modifications réappliquées (dérivées comprises), décodée : { lot, rang,
  * table, cle, operation, avant, apres }.
- * @param {{ derivee?: (table: string, cle: object, colonne: string) => boolean, applique?: (m: object) => void }} [options]
+ * `horsControleParLot` : des tables dont les clés étrangères ne sont pas contrôlées lot par lot. Ce sont les fiches de personnage (section 13), que la
+ * base vivante recopie AVANT le rejeu (base-vivante.mjs#transferer) : une fiche peut citer un don, une spécialité ou une classe qu'un lot SUIVANT crée,
+ * et le contrôle d'un lot antérieur qui touche la même table (capacite, specialite, classe) la verrait rompue et mettrait ce lot sans rapport en conflit.
+ * L'appelant les contrôle toutes après le rejeu complet.
+ * @param {{ derivee?: (table: string, cle: object, colonne: string) => boolean, applique?: (m: object) => void, horsControleParLot?: Iterable<string> }} [options]
  * @returns {{ appliquees: number, integrees: number, conflits: number, lots: number }}
  */
-export function rejouer(db, { derivee = () => false, applique = null } = {}) {
+export function rejouer(db, { derivee = () => false, applique = null, horsControleParLot = [] } = {}) {
+  const horsControle = new Set(horsControleParLot);
   const bilan = { appliquees: 0, integrees: 0, conflits: 0, lots: 0 };
   const enAttente = db
     .prepare(
@@ -316,8 +376,8 @@ export function rejouer(db, { derivee = () => false, applique = null } = {}) {
       // clés étrangères des tables touchées ET des tables qui les citent (une suppression peut rompre une référence ailleurs)
       const tables = new Set();
       for (const m of modifications) {
-        tables.add(m.table_nom);
-        for (const t of tablesQuiCitent(db, m.table_nom)) tables.add(t);
+        if (!horsControle.has(m.table_nom)) tables.add(m.table_nom);
+        for (const t of tablesQuiCitent(db, m.table_nom)) if (!horsControle.has(t)) tables.add(t);
       }
       for (const t of tables) {
         const rompue = db.prepare(`PRAGMA foreign_key_check("${t}")`).get();
@@ -375,13 +435,22 @@ export function lignesEnAttente(db, { tables } = {}) {
   return [...vues.values()].map((v) => ({ ...v, ligne: lireLigne(db, v.table, v.cle) }));
 }
 
-/** Le journal, lots et modifications, pour le rapatrier dans data/rows (format « maverick-edition/1 »). */
-export function journalExporte(db, { etats = ['en_attente'] } = {}) {
+/**
+ * Le journal, lots et modifications, pour le rapatrier dans data/rows (format « maverick-edition/1 » : GET /api/edition/journal/, lot figé de « Effectuer
+ * la mise à jour »). Par défaut : les modifications en attente, et les « intégrées » des lots que les règles n'ont pas encore reçus (absents de
+ * historique_modification). Une ligne créée puis supprimée par le journal passe « intégrée » quand la base vivante est refaite (rien à rejouer) : sans
+ * elles, son lot n'entrerait jamais dans l'historique des règles, et l'identifiant de la ligne pourrait être repris (règle de la migration 0006) ; le
+ * rapatriement les rejoue (encore « intégrées ») et les verse dans l'historique avec leur lot.
+ */
+export function journalExporte(db, { etats = ['en_attente', 'integree'] } = {}) {
   const lots = db.prepare('SELECT * FROM modification_lot l ORDER BY l.fait_le, l.id').all();
   const mods = db.prepare('SELECT * FROM modification ORDER BY lot_id, rang').all();
+  const historique = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'historique_modification'").get();
+  const livres = new Set(historique ? db.prepare('SELECT DISTINCT lot_id FROM historique_modification').all().map((h) => h.lot_id) : []);
   const parLot = new Map(lots.map((l) => [l.id, { ...l, modifications: [] }]));
   for (const m of mods) {
     if (!etats.includes(m.etat)) continue;
+    if (m.etat === 'integree' && livres.has(m.lot_id)) continue; // lot déjà dans les règles
     parLot.get(m.lot_id).modifications.push({
       rang: m.rang,
       table: m.table_nom,

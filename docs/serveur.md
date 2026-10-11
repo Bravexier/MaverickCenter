@@ -43,11 +43,17 @@ Pourquoi une copie des règles : les fiches citent les règles (race, classe, so
 `v_personnage_niveau`) les joignent ; tout doit être dans la même base SQLite.
 
 **Quand une livraison change les règles**, le service le voit (empreinte différente) et refait la base vivante : nouvelle copie des règles, puis
-toutes les lignes de la section 13 y sont recopiées colonne par colonne (une colonne ajoutée prend sa valeur par défaut). **Rien ne se perd** : si
-une seule ligne ne passe pas — une fiche cite une règle qui n'existe plus, une colonne remplie a disparu du schéma, une contrainte a changé — la
-base en place est gardée telle quelle, le service continue avec elle (règles d'avant) et `/api/etat` donne l'erreur, par exemple
-`personnage.metier_id = « metiers/x » absent de metier (1 ligne(s))`. Il faut alors une livraison qui règle le cas : migration de la section 13
-(`data/migrations/`) ou correction des règles. La base remplacée est d'abord archivée.
+toutes les lignes de la section 13 y sont recopiées colonne par colonne (une colonne ajoutée prend sa valeur par défaut), et le journal de l'édition
+est rejoué (site de dev, ci-dessous). Un **don, une spécialité (avec les dons choisis qui en dépendent), un sort ou un métier** que les nouvelles
+règles n'ont plus est alors **retiré des fiches** qui l'utilisent, avec une note datée dans chacune (décision R42, « Fiches de personnage (R42) »
+ci-dessous) ; `/api/etat` en donne la liste (`base.retraits` : `{ le, fiches }`, la dernière liste non vide, datée, gardée dans `vivante.json` par les
+reconstructions qui ne retirent rien et au redémarrage). **Toute autre ligne qui ne passe pas** — une fiche cite une race, une classe, une magie… qui
+n'existe plus (y compris un don, une spécialité ou un sort dont la classe ou la magie a disparu : un sort d'une magie supprimée chez un Potentiel
+Illimité, un don d'une classe supprimée sur une fiche qui n'a pas la classe, qui ne sont pas retirés), une colonne remplie a disparu du schéma, une
+contrainte a changé — fait garder la base en place telle quelle (sans retrait ni note) :
+le service continue avec elle (règles d'avant) et `/api/etat` donne l'erreur, par exemple `personnage_classe.classe_id = « classes/x » absent de
+classe (1 ligne(s))`. Il faut alors une livraison qui règle le cas : migration de la section 13 (`data/migrations/`) ou correction des règles. La base
+remplacée est d'abord archivée (`db/archives/`) : l'archive garde donc la base d'avant les retraits.
 
 **Sauvegarde** : `db/` est la seule donnée du serveur qui ne se reconstruit pas. La copier avec `sqlite3 db/vivante.db ".backup sauvegarde.db"`
 (cohérente même pendant une écriture), ou copier le dossier `db/` pendant que le conteneur « serveur » est arrêté. `data/rows` garde les tables de la section 13 **vides** : aucune
@@ -57,7 +63,7 @@ fiche réelle dans git ni dans `/donnees/maverick.db` (le service refuse une bas
 
 | Requête | Réponse |
 | --- | --- |
-| `GET /api/etat/` | Version du service, état de la base vivante (`disponible`, `a_jour`, `erreur`, `regles`, `schema`, `pretires`) |
+| `GET /api/etat/` | Version du service, état de la base vivante (`disponible`, `a_jour`, `erreur`, `regles`, `schema`, `refaite_le`, `retraits` : les fiches adaptées par la dernière reconstruction qui a retiré quelque chose, R42, ou `null` ; `pretires`) |
 | `GET /api/personnages/` | `{ personnages: [...] }` : résumé de chaque prétiré (nom, statut, race, ethnie, magies, dieu, métier, classes et spécialités, niveaux, nombre de règles enfreintes, dates) |
 | `POST /api/personnages/` | Crée un prétiré → `201`, `Location`, `{ personnage, controles, niveau }` |
 | `GET /api/personnages/<id>/` | `{ personnage, controles, niveau }` |
@@ -80,7 +86,9 @@ service (qui accepte les deux formes).
 - **Création** : les colonnes absentes prennent la valeur d'une fiche vide (`ficheVide` : brouillon, mono-classe, 0 XP, alignement, bourse et
   ambidextrie à zéro). Le service fixe l'identifiant (UUID), la nature (prétiré), le propriétaire (aucun), la visibilité (tous) et les dates.
 - **Modification** : `version` (celle de la fiche lue) est obligatoire ; si la fiche a changé depuis, rien n'est écrit et la réponse `409` rend la
-  fiche à jour. Une colonne absente garde sa valeur ; une liste présente remplace toute la liste, une liste absente ne change pas.
+  fiche à jour. Une colonne absente garde sa valeur ; une liste présente remplace toute la liste, une liste absente ne change pas. La version est
+  l'empreinte du contenu : une fiche dont une règle supprimée est retirée (R42 : liste, notes et date changent) change de version ; un élément
+  seulement renommé ne la change pas (la fiche n'a que des identifiants).
 - **Refus** (`400`, rien n'est écrit) : `{ erreur, problemes: [...] }`, un message par problème, en français (« caracteristiques[0] : valeur
   hors des bornes (base >= 1) », « « race_id » : « races/x » n'existe pas dans les règles (race) », champ inconnu…).
 - **Contrôles** : les règles de `v_personnage_controle` enfreintes sont rendues avec chaque fiche ; un brouillon peut en avoir, une fiche ne
@@ -106,8 +114,8 @@ toutes les modifications de la page **d'un bloc** puis repasse en lecture ; déc
 | Guide | Titre et texte : éditeur en place (paragraphes, titres, citations, listes, gras, italique, barré, liens vers une page du wiki ou une adresse, tableaux, lignes, colonnes et couleur des cases), réécrit en Markdown (`lib/markdown-edition.mjs`) ; les blocs tirés de la base restent à leur place ; un ancien titre devient un alias ; un texte qui ajoute du HTML brut ou un lien non sûr (autre que http(s), mailto ou une adresse du site) est refusé, par le service puis par la mise à jour (lot reçu et corps des pages après le rejeu : `lib/markdown-sur.mjs`) |
 | Races | Chaque case de l'onglet (présentation, histoire, valeurs de départ, avantages, dons et leur tableau, capacité Mode Hyper…), magies innées, relations entre peuples (déplacer ou ajouter une race ou une ethnie dans le tableau d'une race) ; créer une race (pure ou hybride) ou un peuple |
 | Magies | Présentation, description, explication, rôles, Mode Hyper ; chaque case de chaque sort (type, mode, NM et états recalculés : `lib/sort-analyse.mjs` ; une ligne peut avoir un effet de NM dans plusieurs colonnes). La table des relations entre magies ne se modifie pas |
-| Classes | Tous les champs (maîtrises, inventaire, spécialités, dons : tables de détail recalculées, `lib/classe-champs.mjs`) ; créer une classe dans une catégorie ; une classe raciale se crée pour une race hybride qui n'en a pas encore |
-| Métiers | Ajouter, modifier, supprimer (refusé si une fiche l'utilise) ; bonus (et leur compétence ou l'initiative, décision R33), objets de départ (R35) et recettes recalculés (`lib/metier-champs.mjs`) ; artisanat en trois champs, texte et deux listes de caractéristiques (R34 : « Artisanat possible » en est recalculé, une seule caractéristique est refusée, sans texte elles partent) ; corps de la page (`lib/corps-metiers.mjs` : un champ réécrit en entier, paragraphes compris, ses liens `[[…]]` gardés tant que leur texte reste écrit) ; filtres et tri par colonne |
+| Classes | Tous les champs (maîtrises, inventaire, spécialités, dons : tables de détail recalculées, `lib/classe-champs.mjs`) ; créer une classe dans une catégorie ; une classe raciale se crée pour une race hybride qui n'en a pas encore ; créer et supprimer une spécialité (avec son don de spécialité du niveau 10) ou un don (D11, ci-dessous) |
+| Métiers | Ajouter, modifier, supprimer (retiré des fiches qui l'ont, avec une note : R42) ; bonus (et leur compétence ou l'initiative, décision R33), objets de départ (R35) et recettes recalculés (`lib/metier-champs.mjs`) ; artisanat en trois champs, texte et deux listes de caractéristiques (R34 : « Artisanat possible » en est recalculé, une seule caractéristique est refusée, sans texte elles partent) ; corps de la page (`lib/corps-metiers.mjs` : un champ réécrit en entier, paragraphes compris, ses liens `[[…]]` gardés tant que leur texte reste écrit) ; filtres et tri par colonne |
 
 Ce qui suit aussi, pour que les outils du dépôt acceptent les modifications rapatriées (`serveur-edition-derivations`, `serveur-edition-rapatriement`,
 `sort-etats`) : une page créée (race, classe, métier) a pour seule source sa provenance « Site de dev › édition du AAAA-MM-JJ » (tables `source`,
@@ -128,6 +136,84 @@ l'onglet, nom de don sans rubrique « Nom », titre du tableau du Mort-vivant, M
 tables ; une race créée n'a pas d'onglet dans le classeur (ni source, ni Mode Hyper) : `races_onglet.py --verifier` ne relit que les races importées
 (`serveur-edition-corps` vérifie le tout de bout en bout, journal rapatrié sur une copie de `data/rows`).
 
+**Spécialités et dons créés ou supprimés** (D11, demande du propriétaire ; `lib/dons-edition.mjs`, `serveur/edition.mjs`, page : `src/scripts/edition/classes.mjs`).
+Sur la page d'une classe, en mode modification : « + Ajouter un don de classe (reçu sans choix) », « + Ajouter un don à <SPÉCIALITÉ> », « + Ajouter une
+option » (sur un choix ou un don seul), « + Ajouter une spécialité », et « Supprimer » à bascule sur chaque don et chaque spécialité qui peuvent l'être.
+Les créations sont **mises en file** (une carte « sera créé à l'enregistrement » chacune) et partent avec « Enregistrer », dans le même lot que les
+suppressions et les champs (ordre : champs, suppressions de spécialités, créations, suppressions de dons : `operationsDuLot`) ; une création sur une
+ligne en file la cite par « @i » (l'opération i du lot, `ctx.crees`). Les conséquences (« Duelliste deviendra un don reçu sans choix. », « Contact
+deviendra un choix… », « La spécialité ÉPÉISTE emporte… ») sont confirmées avant l'envoi. Rien n'est inventé : un don n'a que ce qu'on saisit (nom,
+type parmi les cinq mots que `analyserTypeDeDon` reconnaît, précision, effet, niveau) ; le reste applique des règles déjà écrites :
+
+- **place** : une option reprend la ligne, le niveau et la spécialité de son choix (rang suivant) ; sans option, une nouvelle ligne « à la fin de son
+  niveau » (`placeNouvelleLigne` : entre la dernière ligne de niveau ≤ N et la première de niveau > N de sa portée, sur un numéro qu'aucun don de la
+  classe n'emploie — un don n'entre jamais par hasard dans un choix ; vers le milieu de l'écart quand rien n'est en dessous) ; niveaux : 1, 5, 10, 15
+  ou 20 (décision R44, `NIVEAUX_DE_DON`), 10 au moins dans une spécialité (elle se choisit au niveau 10 : le formulaire n'en propose pas d'autre,
+  `niveauxProposes`) ;
+- **nature** : « des dons côte à côte sont un choix, un don seul sur sa ligne est reçu sans choix » (docs/content-guide.md) : un don seul hors
+  spécialité est `classe`, une option en fait un `choix` (le don reçu d'office aussi) ; supprimer l'avant-dernier d'un choix hors spécialité rend le
+  survivant `classe` ; dans une spécialité, le survivant reste `choix` sans alternative (le schéma n'y admet pas `classe`) : la page le montre seul, la
+  fiche ne le propose pas ;
+- **spécialité** : créée avec son don de spécialité (niveau 10, sur la ligne des autres dons de spécialité de la classe ; sans lui elle n'aurait ni
+  colonne ni bannière), au plus deux par classe (décision R43, `SPECIALITES_MAX`) ; supprimée avec tous ses dons ; supprimer son don de spécialité seul est refusé ;
+  +4 AM seulement si le texte de son don de spécialité le dit (R7) ;
+- **identifiants** : tirés une fois du nom saisi (`capacites/<classe>-<nom>`, puis `-<niveau>`, `-<niveau>-<rang>`, `-2`… ;
+  `<classe>#specialite:<nom>`, puis `-2`…), puis figés et **jamais réutilisés** (un id de l'historique ou du journal compte comme pris) ; titre
+  « Nom (Classe) », sinon « , niveau N », sinon `409` ;
+- **refus** : classe ou spécialité inconnue, spécialité d'une autre classe, niveau hors liste, don de spécialité avant le niveau 10, option d'un don de
+  spécialité ou d'une autre classe, nombre de la limite du type trop grand (`400`) ; plus de place, titre pris, troisième spécialité, et l'Archimage —
+  ses spécialités sont lues dans ses dons de niveau 10, ses deux dons « miroirs » (Élémentaliste, Occultiste) ne se suppriment pas et leur choix ne
+  reçoit pas d'option — (`409`). Le refus d'une création commence par le nom saisi (« « Botte » : … ») : il désigne la carte de la file. Une ligne
+  qu'une fiche de personnage cite n'est plus refusée : elle est retirée de la fiche (R42, ci-dessous).
+
+La fiche d'un don créé (`capacites/<slug>`) a pour seule source sa provenance, ses mots-clés (« capacité de classe », la classe telle que l'écrit un
+don frère, la spécialité), son corps et son résumé tirés de sa ligne ; ses champs structurés (`page.donnees` : classe, spécialité, niveau, nature,
+rang, ligne, type, choix exclusifs) sont **une colonne dérivée** (`donneesDeDon`, qui redonne les 660 fiches de l'import à l'octet près), refaite à
+chaque écriture et au rejeu pour tous les dons de la classe touchée : une livraison qui change un voisin (spécialité renommée, type) ne met plus une
+création en conflit. Une suppression retire, dans l'ordre des clés étrangères, les notes de cellule du don, sa ligne, puis sa fiche (mots-clés,
+sources, entités rattachées, source orpheline). `POST /api/edition/classe/` donne l'état vivant de la classe (spécialités, dons, choix, fiches qui
+les citent, qui en seront retirées) : la page en tire ce qu'elle propose (`permissions`) et, quand la disposition a changé depuis la construction (l'empreinte
+`data-ed-structure` de la page diffère de celle de l'état vivant : `empreinteDeStructure`, `doitRedessiner` — une simple modification de champ est
+appliquée en place), redessine ses dons, ses spécialités, sa navigation (groupe « Dons par spécialité », liens « Spécialités » et « Dons ») et le
+repère « Classe magique » du bandeau avec le HTML des gabarits (`lib/classe-dons-rendu.mjs` sur `lib/classe-assemblage.mjs`, comparés aux pages
+construites par `classe-dons-rendu.test.mjs`), puis rebranche ses onglets (évènement `onglets:brancher`) : l'onglet ouvert le reste, et au
+chargement l'élément que vise l'adresse (`#don-…`) est ouvert et montré. Limite : jusqu'à la construction suivante,
+`/capacites/<slug>/` d'un don supprimé reste en ligne (l'adresse d'un don créé mène à son ancre sur la page de sa classe) et `/fiche/regles.json` ne
+change pas : la page `/fiche/` propose encore un don, une spécialité ou un métier supprimé, et son envoi est refusé (`400`, problème nommé : la règle
+n'existe plus) ; un élément renommé y garde son ancien nom, alors que `/personnages/` montre déjà le nouveau ; la fiche écarte un don qu'aucun choix
+des règles ne range (`donsValables`). En production (et sur le serveur de test), une fiche qui cite un don, une spécialité, un sort ou un métier
+supprimé par une livraison en est retirée, avec une note datée, quand la base vivante est refaite (R42).
+
+**Fiches de personnage (R42)** (décision du propriétaire : « juste supprimer le don des fiches », « Même en dev il faut supprimer [le don] des
+fiches », « Il en va de même pour les sorts ou métiers supprimés » ; `serveur/fiches-retraits.mjs`). Supprimer depuis le site un don, une spécialité
+ou un métier qu'une fiche utilise le **retire de la fiche**, qui reste : la ligne `personnage_capacite` part, `personnage_classe.specialite_id`
+passe à `NULL` (la classe reste) avec les dons choisis de la spécialité, `personnage.metier_id` passe à `NULL` avec les bonus « A OU B » que la fiche
+y avait choisis (`personnage_metier_bonus`) (un sort, que le site ne supprime pas
+encore, partirait de `personnage_sort` ; à la reconstruction, les quatre sont retirés, sauf un don, une spécialité ou un sort dont la classe ou la
+magie a disparu aussi : celle-ci reste un blocage, hors R42). Le retrait se fait **dans le même lot**, avant la suppression
+de la règle, **en SQL direct** : jamais au journal (`TABLES_INTERDITES` contient toute la section 13 : une écriture de fiche par le rédacteur du lot
+est refusée), donc jamais dans `data/rows` ni dans le résumé du lot (qui va dans l'historique et la note de version : ni nom ni compte de fiches) ;
+un lot refusé annule aussi les retraits. Chaque fiche touchée reçoit **une ligne datée par élément** à la fin de ses notes (« NOTE », BA53 ; le
+texte du joueur reste intact ; `lib/fiche-format.mjs#ligneDeRetrait`) :
+`[11/10/2026] Retrait (règles modifiées) : le don « Botte secrète » (classe Bretteur des dunes, spécialité LAME COURBE, niveau 20) n’existe plus dans
+les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.` (une spécialité nomme les dons choisis qui partent avec elle ; un sort,
+sa magie, son NPM et les NM de la fiche ; une ligne par élément, dans l'ordre métier, spécialité, don, sort ; à la reconstruction, l'élément
+retiré garde le nom des règles d'avant, sa classe, sa spécialité ou sa magie prend celui des nouvelles règles quand elle y est encore) ; `modifie_le` prend l'instant du lot, et
+la version de la fiche change (une fiche ouverte ailleurs reçoit `409` avec la fiche à jour ; la page `/fiche/` dit alors combien d'éléments ont été
+retirés, et une bannière résume les lignes de retrait de ses notes tant qu'elles y sont). La réponse du lot porte **`fiches`** :
+`[{ fiche, retraits: [descriptions] }]` (le nom d'un prétiré, « fiche de joueur n° k » pour une fiche de joueur : k est son rang parmi toutes les
+fiches de joueur de la base par date de création, `numerosDesFichesDeJoueur`, donc **le même d'une réponse à l'autre** — infobulle et confirmation
+de la page d'une classe, réponse du lot, `/api/etat` — ; une fiche créée ensuite prend le numéro suivant, seule la suppression d'une fiche de joueur
+plus ancienne décale les suivantes), annoncée après l'enregistrement
+par le message commun de l'éditeur (`annonceDesFiches`, qui reste affiché) ; sur la page d'une classe, l'infobulle de « Supprimer » et la confirmation
+des conséquences nomment d'avance les fiches qui perdront la ligne (`libelleDeRetrait`, `consequences`). Une fiche « valide » le reste : aucun
+contrôle ne signale un manque, la note est le seul signal. Un élément **seulement modifié** (renommé, type, effet…) ne touche pas les fiches (ni
+ligne, ni note, ni version) : une fiche ne garde que des identifiants, qui ne changent jamais (migration 0006) ; le nouveau nom se lit dans les règles
+(`serveur-edition-fiches`). Une modification qui rend une fiche non conforme (don passé dans une autre spécialité) n'est pas un retrait :
+`v_personnage_controle` le signale. Limites : sur le site de dev, aucune archive n'est faite au moment de l'édition (la note est la seule trace) ; à
+la reconstruction, une création perdue par un lot en conflit est retirée des fiches avec la même note, et une suppression en conflit fait revenir la
+règle sans rendre l'élément à la fiche ; la date de la note est le jour UTC de l'instant (entre minuit et 2 h, heure de Paris, la veille).
+
 **Le journal** (section 14 de `data/schema.sql` : `modification_lot`, `modification`) : le service écrit chaque ligne touchée (avant, après) dans la
 même transaction que la modification (`serveur/edition-journal.mjs`). Une saisie envoie la valeur qu'elle a lue (`avant`) : si la base a changé
 depuis, `409` et rien n'est écrit. Les pages étant statiques, chacune demande au chargement les lignes modifiées depuis sa construction
@@ -141,15 +227,24 @@ instant du lot, puis son identifiant, puis le rang) est le même pour le service
 est à la seconde, l'identifiant d'un lot commence par l'instant à la milliseconde et un compteur (`nouveauLot`) : deux lots de la même seconde
 se rejouent dans l'ordre où ils ont été enregistrés. Une colonne qui vaut déjà ce qu'une modification plus récente de la même ligne y écrit est
 « déjà là » (deux lots sur la même colonne, une ligne créée puis modifiée) ; une ligne créée puis supprimée par le journal n'a rien à rejouer. Le
-**corps et le résumé des pages typées** ne sont pas des valeurs figées du journal (`colonneDerivee`) : le rejeu ne les compare ni ne les écrit, puis
+**corps et le résumé des pages typées**, et les champs structurés des fiches de dons, ne sont pas des valeurs figées du journal (`colonneDerivee`) : le rejeu ne les compare ni ne les écrit, puis
 `rejouerLeJournal` (`serveur/edition.mjs`) les refait depuis les tables rejouées, pour chaque page qu'elles touchent — dans la base vivante comme dans
 `db:appliquer-edition` et la mise à jour des règles. Un lot n'est donc jamais en conflit pour une page qu'une autre modification ou une livraison a
 réécrite, et un lot noté avant que l'édition ne suive le corps voit le corps de ses pages rattrapé (`serveur-edition-rejeu-corps`). De même, les
 **liens de règle des métiers** (décisions R33, R35) qu'un lot noté avant la migration `0024-metiers-fiche` n'écrivait pas — compétence ou initiative d'un
 bonus, objets de départ d'un équipement — sont refaits depuis les champs des métiers touchés (`completerLesMetiers`) ; la mise à jour des règles compte
-ces tables parmi celles qu'elle a le droit d'écrire (`tablesCompletees`).
+ces tables parmi celles qu'elle a le droit d'écrire (`tablesCompletees`). Rejouée clés
+étrangères coupées (base vivante refaite, mise à jour des règles), une suppression applique d'abord les `ON DELETE CASCADE` du schéma (`lien`,
+`lien_candidat` : les `[[liens]]` d'une page supprimée), sans les noter, comme SQLite le fait dans la base vivante ; sinon supprimer une page qui a des
+liens mettait le lot en conflit (`serveur-base-vivante`). Chaque lot contrôle les clés étrangères des tables qu'il touche et de celles qui les citent,
+**sauf celles des fiches** (`horsControleParLot` : la section 13, recopiée avant le rejeu) : une fiche peut citer un don, une spécialité ou une classe
+qu'un lot suivant crée, et mettait en conflit un lot antérieur sans rapport qui touchait la même table ; `transferer` retire ensuite des fiches les dons,
+spécialités, sorts et métiers disparus (R42 : jamais avant le rejeu complet, qui peut créer ce qu'une fiche cite), puis contrôle toutes les fiches.
 
-**Rapatriement dans le dépôt** : le lien « N modifications à rapatrier » (à côté du crayon, `GET /api/edition/journal/`) télécharge le journal, puis
+**Rapatriement dans le dépôt** : le lien « N modifications à rapatrier » (à côté du crayon, `GET /api/edition/journal/`) télécharge le journal (les
+modifications en attente, et les « intégrées » des lots absents de `historique_modification` : un don créé puis supprimé avant que la base vivante soit
+refaite n'a rien à rejouer, mais son lot doit entrer dans l'historique, sans quoi son identifiant pourrait être repris ; `journalExporte`, comme le lot
+figé de « Effectuer la mise à jour »), puis
 
 ```bash
 cd client
@@ -169,8 +264,9 @@ une valeur que le site a changée.
 | `GET /api/edition/listes/` | Listes des formulaires (compétences, catégories de classe, races hybrides sans classe raciale…) |
 | `GET /api/edition/pages/` | Les pages du wiki (`id`, `titre`) : cibles d'un lien posé dans le texte du guide |
 | `POST /api/edition/race/` | `{ race }` → magies innées et relations de la race dans la base vivante |
-| `POST /api/edition/` | `{ page, operations: [...] }` → applique un lot d'un bloc (`modifier`, `creer`, `supprimer`, `relations`, `magies_innees` : `serveur/edition.mjs`) |
-| `GET /api/edition/journal/` | Le journal des modifications en attente (`maverick-edition/1`), en pièce jointe |
+| `POST /api/edition/classe/` | `{ classe }` → spécialités, dons, choix et fiches qui les citent (qui en seront retirées), dans la base vivante (D11) |
+| `POST /api/edition/` | `{ page, operations: [...] }` → applique un lot d'un bloc (`modifier`, `creer`, `supprimer`, `relations`, `magies_innees` : `serveur/edition.mjs`) ; rend `{ lot, modifications, crees, lignes, fiches }` (`fiches` : les fiches de personnage dont le lot a retiré un élément, R42) |
+| `GET /api/edition/journal/` | Le journal des modifications en attente, et des « intégrées » des lots que les règles n'ont pas encore reçus (`maverick-edition/1`), en pièce jointe |
 
 **Avant la 1.0, pas de comptes** : quiconque a le mot de passe du site de dev peut modifier les règles (le journal n'a pas d'auteur :
 `modification_lot.auteur_id` attend la connexion Discord). Mêmes protections d'écriture que les fiches (JSON, `Sec-Fetch-Site`).

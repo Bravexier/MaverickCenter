@@ -16,6 +16,7 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { versionDeLivraison } from '../src/lib/notes-de-version.mjs';
+import { normalize } from '../src/lib/text.mjs';
 
 const ROWS = fileURLToPath(new URL('../../data/rows/', import.meta.url));
 // les versions, comme dans le workflow : celle de dev (package.json) et celle de la production (ici HEAD) ; jamais écrites en dur, pour que le test
@@ -172,4 +173,36 @@ test('les lots du journal déjà livrés (dans historique_modification) sont éc
   assert.ok(!readFileSync(join(rows, 'metier.sql'), 'utf8').includes(`'${BONUS}'`), 'la modification déjà livrée n’est pas rejouée');
   const lire = baseDe(rows);
   assert.equal(lire(`SELECT count(*) AS n FROM historique_modification WHERE lot_id = '${premier.id}'`)[0].n, 1, 'pas doublée');
+});
+
+test('un lot de dons (D11 : une option créée, un don à note supprimé) ne change que les fichiers des tables du journal et des notes ; la note les liste en neutre', () => {
+  const v = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db-dons') }).chemin);
+  const service = { base: () => v, etat: () => ({}), edition: true };
+  const appel = (operations) => traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' }, corps: JSON.stringify({ page: 'classes/', operations }) }, service);
+  // un don reçu sans choix (« Hyper contact » du Guerrier à l'import), lu dans l'état courant : le site de dev a pu le supprimer (D11)
+  const recu = v.prepare("SELECT id, classe_id FROM capacite WHERE nature = 'classe' ORDER BY id = 'capacites/guerrier-hyper-contact' DESC, id LIMIT 1").get();
+  const classeDuRecu = v.prepare('SELECT nom FROM classe WHERE id = ?').get(recu.classe_id).nom;
+  let nom = 'Contact final d’essai';
+  for (let i = 2; v.prepare('SELECT 1 FROM cle_page WHERE cle = ?').get(normalize(`${nom} (${classeDuRecu})`)); i += 1) nom = `Contact final d’essai ${i}`;
+  const cree = appel([{ op: 'creer', entite: 'capacite', valeurs: { classe_id: recu.classe_id, avec: recu.id, nom, type: 'Passif', effet: 'Un *effet* [entre] crochets.' } }]);
+  assert.equal(cree.statut, 200, JSON.stringify(cree.corps));
+  // un don à note de cellule dans un choix de deux d'une spécialité (lu avant d'écrire)
+  const aNote = v.prepare(`SELECT k.id FROM capacite k JOIN note_cellule n ON n.entite_table = 'capacite' AND n.entite_id = k.id
+    WHERE k.nature = 'choix' AND k.specialite_id IS NOT NULL ORDER BY k.id`).all().map((k) => k.id)
+    .find((id) => v.prepare('SELECT count(*) AS n FROM capacite a JOIN capacite b ON b.classe_id = a.classe_id AND b.ligne = a.ligne AND b.specialite_id = a.specialite_id AND b.nature = a.nature WHERE a.id = ?').get(id).n === 2);
+  assert.equal(appel([{ op: 'supprimer', entite: 'capacite', cle: { id: aNote } }]).statut, 200);
+  const journalDons = journalExporte(v);
+  v.close();
+  const touchees = new Set(journalDons.lots.flatMap((l) => l.modifications.map((m) => m.table)));
+  for (const t of touchees) assert.ok(['capacite', 'page', 'page_tag', 'page_source', 'page_entite', 'source', 'note_cellule'].includes(t), t);
+  const rows = copie('rows-dons');
+  const res = appliquerMiseAJour({ ...lot('Des dons.'), journal: journalDons }, { rows, reference: 'HEAD', date: '2026-10-11', versionDev: VERSION_DEV });
+  const permis = new Set([...[...touchees].map((t) => `${t}.sql`), ...TABLES_DE_LA_NOTE.map((t) => `${t}.sql`)]);
+  assert.deepEqual(res.fichiers.filter((f) => !permis.has(f)), []);
+  for (const f of ['capacite.sql', 'page.sql', 'note_cellule.sql']) assert.ok(res.fichiers.includes(f), f);
+  const lire = baseDe(rows);
+  const dons = lire(`SELECT entite, nature, sens FROM note_version_ligne WHERE version = '${ATTENDUE}' AND table_nom = 'capacite' AND champ IS NULL ORDER BY rang`);
+  assert.ok(dons.some((l) => l.nature === 'ajoute' && l.entite.endsWith(nom) && l.sens === 'neutre'), JSON.stringify(dons));
+  assert.ok(dons.some((l) => l.nature === 'retire' && l.sens === 'neutre'), JSON.stringify(dons));
+  assert.equal(lire(`SELECT nature FROM capacite WHERE id = '${recu.id}'`)[0].nature, 'choix');
 });

@@ -7,7 +7,7 @@
 // montre donc toujours l'état de la base du site de dev. Les extensions (src/scripts/edition/*.mjs) ajoutent ce qui est propre à une famille de pages :
 // lignes ajoutées ou supprimées, création d'une race ou d'une classe, relations entre peuples, règle des niveaux de maîtrise, éditeur du guide.
 import css from '../../styles/edition/edition.css?raw';
-import { cleDeLigne, lireAttributEd } from '../../lib/edition-modele.mjs';
+import { annonceDesFiches, cleDeLigne, lireAttributEd } from '../../lib/edition-modele.mjs';
 import { CONTEXTE_PASTILLE, rendreChamp } from '../../lib/edition-rendu.mjs';
 import { EXTENSIONS } from './extensions.mjs';
 
@@ -64,9 +64,10 @@ export function demarrer(racine, etatService) {
   document.body.append(annonce);
   let minuterie = null;
 
+  /** Un message ; genre 'info' (effacé au bout de 6 s), 'avis' (reste affiché : fiches de personnage adaptées, R42) ou 'erreur' (reste affiché). */
   function annoncer(message, genre = 'info') {
     clearTimeout(minuterie);
-    annonce.className = `ed-annonce${genre === 'erreur' ? ' ed-annonce--erreur' : ''}`;
+    annonce.className = `ed-annonce${genre === 'erreur' ? ' ed-annonce--erreur' : genre === 'avis' ? ' ed-annonce--avis' : ''}`;
     annonce.innerHTML = '';
     annonce.append(message);
     const fermer = document.createElement('button');
@@ -76,7 +77,7 @@ export function demarrer(racine, etatService) {
     fermer.addEventListener('click', () => (annonce.hidden = true));
     annonce.append(fermer);
     annonce.hidden = false;
-    if (genre !== 'erreur') minuterie = setTimeout(() => (annonce.hidden = true), 6000);
+    if (genre === 'info') minuterie = setTimeout(() => (annonce.hidden = true), 6000);
   }
 
   function afficherJournal(etat) {
@@ -311,7 +312,11 @@ export function demarrer(racine, etatService) {
       quitter(nouvelles);
       for (const l of r.lignes) appliquerLigne(l.table, l.cle, l.ligne);
       for (const x of actives()) x.apresEnregistrement?.(ed, r);
-      annoncer(r.modifications ? `Enregistré : ${r.modifications} ligne${r.modifications > 1 ? 's' : ''} de la base modifiée${r.modifications > 1 ? 's' : ''}.` : 'Rien n’a changé dans la base.');
+      // les fiches de personnage dont le lot a retiré un élément supprimé (R42) : annoncées ici, par le code commun (le message d'une extension serait
+      // écrasé), et le message reste affiché
+      const fiches = annonceDesFiches(r.fiches);
+      const message = r.modifications ? `Enregistré : ${r.modifications} ligne${r.modifications > 1 ? 's' : ''} de la base modifiée${r.modifications > 1 ? 's' : ''}.` : 'Rien n’a changé dans la base.';
+      annoncer(fiches ? `${message} ${fiches}` : message, fiches ? 'avis' : 'info');
       afficherJournal(await appel('GET', 'etat/').catch(() => null));
     } catch (e) {
       const conflit = e.statut === 409 && e.corps?.ligne ? '\nLa valeur actuelle a été remise dans la saisie : vérifiez-la puis enregistrez de nouveau.' : '';

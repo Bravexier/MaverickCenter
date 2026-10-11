@@ -69,7 +69,7 @@ test('créer une race hybride : page (mot-clé « race hybride »), race, onglet
   const ordre = ligne('SELECT max(ordre) AS m FROM race').m + 1;
   const r = enregistrer([{ op: 'creer', entite: 'race', valeurs: { nom: LYCAN, nature: 'hybride', presentation: 'Les loups-garous.' } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
-  assert.deepEqual(r.corps.crees, [{ entite: 'race', id: ID_LYCAN }]);
+  assert.deepEqual(r.corps.crees, [{ entite: 'race', id: ID_LYCAN, operation: 0 }]);
   const race = ligne('SELECT * FROM race WHERE id = ?', ID_LYCAN);
   assert.equal(race.ordre, ordre, 'à la suite des races de la base');
   assert.equal(ligne('SELECT histoire FROM race_onglet WHERE race_id = ?', ID_LYCAN).histoire, A_COMPLETER);

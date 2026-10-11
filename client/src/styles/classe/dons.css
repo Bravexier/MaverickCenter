@@ -55,6 +55,8 @@
    ClasseDons.astro), seul le panneau ouvert est visible et son titre devient l'onglet ; sans JavaScript, les deux panneaux se suivent avec leur titre. */
 .specialites { border: 2px dashed var(--cla-line); border-radius: 16px; padding: 0.6rem 0.7rem 0.8rem; background: var(--bg); }
 .onglets { position: relative; z-index: 1; display: flex; align-items: flex-end; justify-content: space-between; gap: 0.5rem; margin-bottom: -1px; }
+/* une seule spécialité (D11 : l'autre supprimée sur le site de dev) : son onglet à gauche, sans « ou » */
+.onglets--1 { justify-content: flex-start; }
 .onglets--2 { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
 .onglets--2 > .onglet:first-child { justify-self: start; }
 .onglets--2 > .onglet:last-child { justify-self: end; align-items: flex-end; text-align: right; }

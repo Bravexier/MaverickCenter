@@ -11,10 +11,12 @@ import { after, test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { messageSqlite } from '../serveur/edition.mjs';
+import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { decouperBonus } from '../src/lib/metier-champs.mjs';
 import { normalize } from '../src/lib/text.mjs';
-import { attributEd, lireAttributEd, valeurDuChamp } from '../src/lib/edition-modele.mjs';
+import { annonceDesFiches, attributEd, lireAttributEd, valeurDuChamp } from '../src/lib/edition-modele.mjs';
+import { jourDuRetrait, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 
 const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-'));
 after(() => rmSync(racine, { recursive: true, force: true }));
@@ -67,6 +69,15 @@ test('modèle : valeurs normalisées, champ obligatoire, attribut data-ed lu et 
   assert.deepEqual(lireAttributEd(a), { table: 'metier', cle: { id: 'metiers/forgeron' }, colonne: 'bonus_brut', champ: lireAttributEd(a).champ });
   assert.equal(lireAttributEd(attributEd('metier', { id: 'x' }, 'source_ref')), null, 'colonne hors du modèle');
   assert.equal(messageSqlite(new Error('UNIQUE constraint failed: metier.nom')), 'valeur déjà utilisée ailleurs (metier.nom)');
+  // l'annonce des fiches dont un lot a retiré un élément supprimé (R42)
+  assert.equal(annonceDesFiches([]), '');
+  assert.equal(annonceDesFiches(undefined), '');
+  assert.equal(annonceDesFiches([{ fiche: 'Aldric', retraits: ['le don « X » (classe Guerrier, niveau 5)'] }]),
+    'Retiré de 1 fiche de personnage (une note datée le rappelle) — Aldric : le don « X » (classe Guerrier, niveau 5).');
+  assert.equal(annonceDesFiches([{ fiche: 'Aldric', retraits: ['le don « X »', 'le métier « Y »'] }, { fiche: 'fiche de joueur n° 1', retraits: ['le métier « Y »'] }]),
+    'Retiré de 2 fiches de personnage (une note datée le rappelle dans chacune) — Aldric : le don « X », le métier « Y » ; fiche de joueur n° 1 : le métier « Y ».');
+  const sept = Array.from({ length: 7 }, (_, i) => ({ fiche: `F${i + 1}`, retraits: ['le métier « Y »'] }));
+  assert.equal(annonceDesFiches(sept), `Retiré de 7 fiches de personnage (une note datée le rappelle dans chacune) — ${sept.slice(0, 5).map((f) => `${f.fiche} : le métier « Y »`).join(' ; ')} et 2 autre(s).`);
 });
 
 test('modifier le bonus d’un métier : metier_bonus et la ligne « Bonus » de sa page suivent, le journal note chaque ligne', () => {
@@ -169,7 +180,7 @@ test('créer un métier : page (titre, résumé, corps, mot-clé), ligne metier,
   const id = `metiers/${slug}`;
   const r = enregistrer([{ op: 'creer', entite: 'metier', valeurs: { nom, description: 'Il souffle le verre. Avec patience.', bonus_brut: '+3% Calme, +2% Fermeté', artisanat_texte: '', equipement_brut: 'Canne' } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
-  assert.deepEqual(r.corps.crees, [{ entite: 'metier', id }]);
+  assert.deepEqual(r.corps.crees, [{ entite: 'metier', id, operation: 0 }]);
   const m = ligne('SELECT * FROM metier WHERE id = ?', id);
   assert.equal(m.artisanat_brut, 'Rien');
   assert.equal(m.peut_fabriquer, 0);
@@ -194,14 +205,30 @@ test('créer un métier : page (titre, résumé, corps, mot-clé), ligne metier,
   assert.equal(ligne('SELECT count(*) AS n FROM page_tag WHERE page_id = ?', id).n, 0);
 });
 
-test('supprimer un métier cité par une fiche : refusé, rien ne change', () => {
+test('R42 — supprimer un métier cité par une fiche : retiré de la fiche avec une note datée, le métier supprimé ; rien des fiches au journal', () => {
+  // un métier créé ici (METIER_B, que lit le test suivant, reste en place)
+  const id = creerMetier({ nom: 'Métier d’une fiche', description: 'Un métier d’essai.' });
+  const nom = ligne('SELECT nom FROM metier WHERE id = ?', id).nom;
   db.prepare(`INSERT INTO personnage (id, nature, visibilite, statut, nom, mode_classe, xp, alignement_loyal, alignement_chaotique, alignement_bon, alignement_mauvais,
     bourse_pp, bourse_ro, bourse_rf, ambidextrie, cree_le, modifie_le, metier_id) VALUES ('p-ed', 'pretire', 'tous', 'brouillon', 'Essai', 'mono', 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    '2026-10-10T12:00:00Z', '2026-10-10T12:00:00Z', ?)`).run(METIER_B.id);
-  const r = enregistrer([{ op: 'supprimer', entite: 'metier', cle: { id: METIER_B.id } }]);
-  assert.equal(r.statut, 409);
-  assert.match(r.corps.erreur, /1 fiche/);
-  assert.equal(ligne('SELECT count(*) AS n FROM metier WHERE id = ?', METIER_B.id).n, 1);
+    '2026-10-10T12:00:00Z', '2026-10-10T12:00:00Z', ?)`).run(id);
+  // le choix d'un bonus « A OU B » du métier (personnage_metier_bonus, rang dans metier_bonus) part avec lui
+  db.prepare("INSERT INTO personnage_metier_bonus (personnage_id, rang, competence_id) VALUES ('p-ed', 1, 'esquive')").run();
+  const r = enregistrer([{ op: 'supprimer', entite: 'metier', cle: { id } }]);
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  const retrait = `le métier « ${nom} »`;
+  assert.deepEqual(r.corps.fiches, [{ fiche: 'Essai', retraits: [retrait] }]);
+  assert.ok(!r.corps.lignes.some((l) => TABLES_FICHES.includes(l.table)), 'les fiches ne sont pas des lignes du lot');
+  const p = ligne("SELECT metier_id, notes, modifie_le FROM personnage WHERE id = 'p-ed'");
+  assert.equal(p.metier_id, null);
+  assert.equal(ligne("SELECT count(*) AS n FROM personnage_metier_bonus WHERE personnage_id = 'p-ed'").n, 0, 'les bonus choisis du métier retiré partent avec lui');
+  assert.equal(p.notes, `[${jourDuRetrait(p.modifie_le)}] Retrait (règles modifiées) : ${retrait} n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.`);
+  for (const t of ['metier', 'page']) assert.equal(ligne(`SELECT count(*) AS n FROM ${t} WHERE id = ?`, id).n, 0, t);
+  const exporte = journalExporte(db).lots.flatMap((l) => l.modifications);
+  assert.ok(exporte.length > 0);
+  assert.ok(!exporte.some((m) => TABLES_FICHES.includes(m.table)), 'rien des fiches dans le journal à rapatrier');
+  assert.match(journal.at(-1), /^édition : lot .+ ; 1 fiche\(s\) de personnage adaptée\(s\)$/);
+  assert.ok(!journal.at(-1).includes('Essai'), 'le journal du service compte les fiches sans les nommer');
 });
 
 test('lignes lues pour le mode modification, listes, journal à rapatrier', () => {

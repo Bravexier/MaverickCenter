@@ -8,11 +8,15 @@ import {
   changementsDePageDeClasse, changementsDePageDeDon, choseASavoirSansTexte, corpsDeClasse, corpsDeDon, echapperLigne, LIBELLE_DE_NOTE,
   lignesMarkdown, premierePhrase, resumeDeClasse, resumeDeDon, specialitesDeLaPage, TITRES_DE_CLASSE,
 } from '../src/lib/corps-classes.mjs';
+import { donneesDeDon } from '../src/lib/dons-edition.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { jsonCommePython } from '../src/lib/json-python.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const page = (id) => db.prepare('SELECT * FROM page WHERE id = ?').get(id);
 const classes = db.prepare('SELECT * FROM classe ORDER BY ordre').all();
 const dons = db.prepare('SELECT * FROM capacite ORDER BY id').all();
+const historique = historiqueSite(db);
 const PROVENANCE_DU_SITE = 'Site de dev › ';
 const A_COMPLETER = 'À compléter.\n';
 
@@ -62,6 +66,8 @@ test('« CHOSE À SAVOIR » sans texte (le Bimane à l’import) : chose_a_savoi
 
 test('spécialités de la page : les bannières ; les deux de l’Archimage (sans don) n’y sont pas', () => {
   const archimage = lignesDe(classes.find((c) => c.id === 'classes/archimage'));
+  // deux à l'import (historique du site) ; le site ne crée ni ne supprime les spécialités de l'Archimage (D11 : sans don de spécialité)
+  assert.equal(historique.lignesDImport('specialite').filter((s) => s.classe_id === 'classes/archimage').length, 2);
   assert.equal(archimage.specialites.length, 2);
   assert.deepEqual(specialitesDeLaPage(archimage.specialites, archimage.dons), []);
   assert.ok(!page('classes/archimage').corps_md.includes(`## ${TITRES_DE_CLASSE.sousClasses}`));
@@ -72,7 +78,9 @@ test('spécialités de la page : les bannières ; les deux de l’Archimage (san
 });
 
 test('dons : corps_md et resume des 660 fiches redonnés à l’octet près (effet, puis « Note de cellule : » et la remarque)', () => {
-  assert.ok(dons.length >= 660);
+  // 660 à l'import ; le site en crée et en supprime (D11) : une fiche par ligne de capacite, toujours
+  assert.equal(historique.effectifDImport('capacite'), 660);
+  assert.equal(dons.length, db.prepare('SELECT count(*) AS n FROM capacite').get().n);
   const ecarts = [];
   for (const d of dons) {
     const p = page(d.id);
@@ -88,6 +96,24 @@ test('dons : corps_md et resume des 660 fiches redonnés à l’octet près (eff
     assert.ok(corps.includes(`\n\n${LIBELLE_DE_NOTE}`) || corps.startsWith(LIBELLE_DE_NOTE), d.id);
   }
   assert.deepEqual(db.prepare("SELECT id FROM page WHERE type = 'capacites' AND id NOT IN (SELECT id FROM capacite)").all(), []);
+});
+
+test('dons : `donnees` de chaque fiche (classe, spécialité, niveau, nature, rang, ligne, type, choix exclusifs) redonné à l’octet près par les tables', () => {
+  // colonne dérivée depuis D11 (serveur/edition.mjs#colonneDerivee, recalculerLesPages) : lib/dons-edition.mjs#donneesDeDon, alternatives de v_capacite_exclusive
+  const specialites = db.prepare('SELECT * FROM specialite').all();
+  const alternatives = new Map();
+  for (const e of db.prepare('SELECT capacite_id, autre_id FROM v_capacite_exclusive').all()) {
+    if (!alternatives.has(e.capacite_id)) alternatives.set(e.capacite_id, []);
+    alternatives.get(e.capacite_id).push(e.autre_id);
+  }
+  const ecarts = [];
+  for (const d of dons) {
+    const attendu = jsonCommePython(donneesDeDon(d, {
+      specialites: specialites.filter((s) => s.classe_id === d.classe_id), donsDeLaClasse: dons.filter((x) => x.classe_id === d.classe_id), alternatives: alternatives.get(d.id) ?? [],
+    }));
+    if (attendu !== page(d.id).donnees) ecarts.push(`${d.id} : ${page(d.id).donnees} ≠ ${attendu}`);
+  }
+  assert.deepEqual(ecarts, []);
 });
 
 test('le corps d’une page de classe ne liste pas ses dons (une fiche par don)', () => {
@@ -214,12 +240,18 @@ test('spécialité : nom, description et remarque modifiés remplacent les ancie
       assert.ok(remarque.includes(`#### Remarque\n\n${blocDe(MARQUE)}`), s.id);
     }
   }
-  // l'exemple de la tâche : « ### MAÎTRE D'ARME » (à l'import) de la page du Guerrier, renommé : seule sa ligne change
-  const guerrier = lignesDe(classes.find((c) => c.id === 'classes/guerrier'));
-  const avant = page('classes/guerrier');
-  const maitre = guerrier.specialites.find((s) => s.id === 'classes/guerrier#specialite:maitre-darme');
-  const nouvelles = guerrier.specialites.map((s) => (s.id === maitre.id ? { ...s, nom: `${s.nom} TÉMOIN` } : s));
-  const changes = changementsDePageDeClasse(avant, guerrier, { ...guerrier, specialites: nouvelles });
+  // l'exemple de la tâche : « ### MAÎTRE D'ARME » (à l'import) de la page du Guerrier, renommé : seule sa ligne change. Le site de dev peut avoir
+  // supprimé cette spécialité (D11) : une autre bannière du Guerrier, sinon d'une autre classe, sert alors d'exemple
+  const exemple = [classes.find((c) => c.id === 'classes/guerrier'), ...classes].filter(Boolean).map((c) => {
+    const l = lignesDe(c);
+    const bannieres = specialitesDeLaPage(l.specialites, l.dons);
+    return { classe: c, lignes: l, specialite: bannieres.find((x) => x.id === 'classes/guerrier#specialite:maitre-darme') ?? bannieres[0] };
+  }).find((e) => e.specialite);
+  assert.ok(exemple, 'une classe a une spécialité en bannière');
+  const avant = page(exemple.classe.id);
+  const maitre = exemple.specialite;
+  const nouvelles = exemple.lignes.specialites.map((s) => (s.id === maitre.id ? { ...s, nom: `${s.nom} TÉMOIN` } : s));
+  const changes = changementsDePageDeClasse(avant, exemple.lignes, { ...exemple.lignes, specialites: nouvelles });
   assert.equal(changes.corps_md, avant.corps_md.replace(`### ${echapperLigne(maitre.nom)}\n`, `### ${echapperLigne(`${maitre.nom} TÉMOIN`)}\n`));
   assert.equal(changes.resume, undefined);
 });

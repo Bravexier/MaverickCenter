@@ -4,6 +4,7 @@ import Onglets from '../Onglets.astro';
 import ChoixDeDons from './ChoixDeDons.astro';
 import DonCarte from './DonCarte.astro';
 import { attributEd } from '../../lib/edition-modele.mjs';
+import { idDuTitre, regleDesSpecialites } from '../../lib/classe-dons-rendu.mjs';
 
 // Les dons d'une classe disposés comme l'onglet du classeur (lib/classe-dons.mjs#plateauDeDons), de haut en bas : les dons reçus sans choix
 // (colonne P), les spécialités (une seule au choix : elle exclut l'autre et tous ses dons), puis le don du niveau 20 ; pour l'Archimage, des groupes
@@ -11,7 +12,8 @@ import { attributEd } from '../../lib/edition-modele.mjs';
 // Spécialités en ONGLETS (demande du propriétaire) : le premier dans le coin gauche, le second dans le coin droit, comme les bannières A17 et X17 ;
 // l'onglet ouvert montre son cartouche puis ses choix sur toute la largeur. Sans JavaScript (et à l'impression), les onglets sont des liens et les deux
 // spécialités sont affichées l'une sous l'autre, chacune avec son titre. Une adresse ou un lien vers un don d'une spécialité ouvre son onglet
-// (script commun : components/Onglets.astro).
+// (script commun : components/Onglets.astro). Une classe qui n'a qu'une spécialité (D11 : l'autre supprimée sur le site) la montre sans « Au choix ».
+// Le même HTML est redessiné par le mode modification du site de dev (lib/classe-dons-rendu.mjs, test/classe-dons-rendu.test.mjs).
 interface Props {
   classe: ClasseDb;
 }
@@ -43,10 +45,8 @@ const { classe } = Astro.props;
           <li class="etage etage--specialites">
             <div class="specialites" data-onglets role="group" aria-labelledby="specialites-regle">
               <p class="specialites__tete" id="specialites-regle">
-                <span class="choix__badge">Au choix</span>
-                <span class="choix__regle">
-                  Niveau {etage.niveau} : une seule spécialité{etage.specialites.length === 2 ? ' sur les deux' : ''}. Elle exclut l’autre et tous ses dons.
-                </span>
+                {regleDesSpecialites(etage.niveau, etage.specialites.length).badge && <span class="choix__badge">Au choix</span>}
+                <span class="choix__regle">{regleDesSpecialites(etage.niveau, etage.specialites.length).texte}</span>
               </p>
               <div class={`onglets onglets--${etage.specialites.length}`}>
                 {etage.specialites.map((col, i) => (
@@ -69,8 +69,8 @@ const { classe } = Astro.props;
                 ))}
               </div>
               {etage.specialites.map((col, i) => (
-                <section class={`specialite${i === 0 ? ' is-active' : ''}`} id={col.specialite.ancre} aria-labelledby={`${col.specialite.ancre}-titre`}>
-                  <h3 class="specialite__titre" id={`${col.specialite.ancre}-titre`}>
+                <section class={`specialite${i === 0 ? ' is-active' : ''}`} id={col.specialite.ancre} aria-labelledby={idDuTitre(col.specialite)}>
+                  <h3 class="specialite__titre" id={idDuTitre(col.specialite)}>
                     <span class="specialite__surtitre">Spécialité</span>
                     <span class="specialite__nom" data-ed={attributEd('specialite', { id: col.specialite.id }, 'nom')}>{col.specialite.nom}</span>
                     {col.cartouche?.classeMagique && classe.amMagique !== null && (

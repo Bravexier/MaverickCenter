@@ -6,6 +6,8 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { COLONNES, FILTRES_PAR_DEFAUT } from '../src/lib/personnages-liste.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
@@ -27,6 +29,10 @@ test('/fiche/ : les étapes du guide dans la couleur de leur partie, les donnée
   assert.match(html, /<style>[^<]*\.fiche-etape/, 'feuille de style de la fiche insérée dans la page');
   assert.match(html, /<script type="module" src="\/_astro\/[^"]+\.js"><\/script>/);
   assert.match(html, /<button type="button" class="fiche-barre__principal" id="fiche-enregistrer" disabled>Enregistrer<\/button>/);
+  // les éléments que les règles ont retirés de la fiche (décision R42) : une bannière, remplie par le script d'après les notes, cachée à l'impression
+  assert.ok(html.includes('<p class="banner fiche-retraits" id="fiche-retraits" role="status" hidden></p>'), 'bannière des retraits');
+  assert.ok(html.indexOf('id="fiche-retraits"') > html.indexOf('id="fiche-indisponible"'), 'sous la bannière du service');
+  assert.match(html, /@media print\s*\{[^}]*\.fiche-retraits[^}]*display:\s*none/, 'masquée à l’impression');
 });
 
 test('/fiche/ disposée en rangées (demande du propriétaire) : 1-2-3, 6-7, 4-5, 10, 8-9, puis le contrôle ; aucun numéro de bloc', options, () => {
@@ -103,10 +109,19 @@ test('/fiche/ compacte (demandes du propriétaire) : pas de lien vers le guide, 
   assert.ok(!html.includes('id="ajout-sort"'), 'les sorts se choisissent dans le tableau, ligne par ligne');
 });
 
-test('/fiche/regles.json : les règles de la base que lit la page', options, () => {
+test('/fiche/regles.json : les règles de la base que lit la page (races et classes : celles de la base, 27 et 39 à l’import)', options, () => {
   const regles = JSON.parse(lire('fiche/regles.json'));
-  assert.equal(regles.races.length, 27);
-  assert.equal(regles.classes.length, 39);
+  // le site de dev crée des races et des classes : la page a celles de la base, l'effectif d'import se lit dans l'historique (R1 : 27 races)
+  const db = ouvrirBase({ sansExemples: false });
+  try {
+    const historique = historiqueSite(db);
+    assert.equal(regles.races.length, db.prepare('SELECT count(*) AS n FROM race').get().n);
+    assert.equal(historique.effectifDImport('race'), 27);
+    assert.equal(regles.classes.length, db.prepare('SELECT count(*) AS n FROM classe').get().n);
+    assert.equal(historique.effectifDImport('classe'), 39);
+  } finally {
+    db.close();
+  }
   assert.equal(regles.niveaux.length, 20);
   assert.ok(regles.sorts.length > 300);
   assert.ok(regles.classes.every((c) => /^#[0-9a-f]{6}$/i.test(c.couleur) && Number.isInteger(c.groupe.ordre)));
