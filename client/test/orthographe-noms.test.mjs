@@ -9,6 +9,7 @@ import { test } from 'node:test';
 import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { TABLES_DES_NOTES } from '../src/lib/notes-de-version.mjs';
 
 const racine = trouverRacine();
 const dossier = join(racine, 'data', 'migrations');
@@ -102,8 +103,12 @@ test('anciennes graphies disparues des textes (hors traces de la source et citat
     /Verrouille Visible/, /Résurrection Noir\b/, /Brume mental\b/, /Estoc hurlante/, /[Vv]ague de cadavre\b/, /Onde Confusion/, /Colonne tesla/, /\bPavoi\b/, /\bOnix\b/,
     /\bDiament\b/, /\bEmmeraude\b/, /\bGyspe\b/, /\b[Bb]revage\b/, /cyante/, /\bSouffre\b/, /\bJacklope\b/, /\bFrappeud\b/, /\bMithril\b/, /\bowlmans?\b/, /Drassah'Thac/,
     /\bkistunes?\b/, /\b[Pp]anacée (mineur|majeur|parfait)\b/, /\bArmure [^|\n<]{0,30} complet\b/, /[Pp]ara-tonnerre/, /\bVeilliessement\b/, /[Pp]urée de poix/, /\bRocks?\b/];
+  // section 15 (notes de version, historique des modifications du site) sautée : des traces, qui citent la production d'avant la livraison (master
+  // peut précéder cette migration : « Foudre argenté ») et les valeurs au moment de chaque modification (lib/notes-de-version.mjs#TABLES_DES_NOTES) ;
+  // le texte des règles qu'elles citent est contrôlé ici dans sa propre table
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE '%fts%' AND name NOT LIKE 'sqlite_%'").all()
-    .map((t) => t.name).filter((t) => !INTOUCHABLES.includes(t));
+    .map((t) => t.name).filter((t) => !INTOUCHABLES.includes(t) && !TABLES_DES_NOTES.includes(t));
+  assert.ok(tables.includes('page') && tables.includes('sort') && tables.length > 100, `${tables.length} tables balayées`);
   for (const t of tables) {
     const cols = db.prepare(`PRAGMA table_info("${t}")`).all()
       .filter((c) => c.type === 'TEXT' && !/(_id|^id|_cle|^cle|^slug|^source_ref|^origine|^onglet)$/.test(c.name) && !TRACES.includes(`${t}.${c.name}`));

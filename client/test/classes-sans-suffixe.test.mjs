@@ -5,12 +5,16 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { TABLES_DES_NOTES } from '../src/lib/notes-de-version.mjs';
 import { HYBRIDES_SANS_CLASSE_RACIALE } from '../src/lib/race-kinds.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 
 test('aucune colonne de texte d’aucune table ne contient « (classe) »', () => {
-  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT GLOB '*_fts*'").all().map((r) => r.name);
+  // hors section 15 (notes de version, historique des modifications du site) : des traces, qui citent la production d'avant la livraison (master
+  // peut précéder la migration 0009) et les valeurs au moment de chaque modification (lib/notes-de-version.mjs#TABLES_DES_NOTES)
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT GLOB '*_fts*'").all().map((r) => r.name)
+    .filter((t) => !TABLES_DES_NOTES.includes(t));
   const trouves = [];
   for (const t of tables) {
     for (const c of db.prepare(`PRAGMA table_info("${t}")`).all().filter((c) => /TEXT/i.test(c.type))) {

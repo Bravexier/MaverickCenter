@@ -6,8 +6,11 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { trierVersions } from '../src/lib/notes-de-version.mjs';
+import { htmlDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
 
-const dist = fileURLToPath(new URL('../dist/', import.meta.url));
+const dist =fileURLToPath(new URL('../dist/', import.meta.url));
 const present = existsSync(join(dist, 'index.html'));
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
 
@@ -136,13 +139,29 @@ test('/mise-a-jour/ : la note de la dernière version, l’historique, la place 
   assert.match(main, /<h1>Mise à jour<\/h1>/);
   assert.match(main, /<div class="mise-a-jour" data-mise-a-jour data-api="\/api\/" data-version="\d+\.\d+\.\d+">/);
   assert.match(main, /<section class="nv-dev" data-nv-dev hidden aria-live="polite"><\/section>/, 'note en préparation : remplie par le script sur le site de dev');
-  // notes d'exemple (lorem ipsum) tant qu'aucune livraison n'a eu lieu : la plus récente en premier, les autres dans l'historique
-  assert.match(main, /<article class="nv-note" id="v0-1">/);
-  assert.match(main, /class="nv-exemple" role="note"/);
-  assert.match(main, /<h2 id="nv-historique">Historique<\/h2>/);
-  assert.ok(main.indexOf('id="v0-1"') < main.indexOf('id="v0-0"'));
-  assert.match(main, /<span class="nv-sens nv-sens--amelioration" title="amélioration"><del>[^<]+<\/del> <span class="nv-fleche" aria-hidden="true">→<\/span> <ins>[^<]+<\/ins><\/span>/);
-  assert.match(main, /nv-sens--affaiblissement/);
+  // les notes de la base, lues et non supposées : les notes d'exemple (lorem ipsum) tant qu'aucune livraison n'a eu lieu, puis les vraies — la
+  // première mise à jour retire les exemples, et pendant une mise à jour (job preparer) data/rows porte la note du lot, pas encore livrée
+  const db = ouvrirBase();
+  const notes = db.prepare('SELECT * FROM note_version').all();
+  const lignesDe = (v) => db.prepare('SELECT * FROM note_version_ligne WHERE version = ? ORDER BY rang').all(v)
+    .map((l) => ({ ...l, parties: l.parties ? JSON.parse(l.parties) : null }));
+  const [derniere, ...anciennes] = trierVersions(notes.map((n) => n.version)).map((v) => notes.find((n) => n.version === v));
+  assert.ok(derniere, 'data/rows porte au moins une note (d’exemple ou livrée)');
+  // la plus récente en premier, telle que le rendu pur la donne ; les autres dans l'historique, de la plus récente à la plus ancienne
+  assert.ok(main.includes(htmlDeLaNote(derniere, lignesDe(derniere.version), { niveau: 2 })), `la note de la V${derniere.version}`);
+  assert.equal(main.indexOf('<article class="nv-note"'), main.indexOf(`<article class="nv-note" id="v${derniere.version.replace('.', '-')}">`));
+  assert.equal(main.includes('<h2 id="nv-historique">Historique</h2>'), anciennes.length > 0);
+  for (const n of anciennes) assert.ok(main.includes(htmlDeLaNote(n, lignesDe(n.version), { niveau: 3 })), `la V${n.version} dans l’historique`);
+  const positions = [derniere, ...anciennes].map((n) => main.indexOf(`id="v${n.version.replace('.', '-')}"`));
+  assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
+  assert.equal(/class="nv-exemple" role="note"/.test(main), notes.some((n) => n.exemple === 1), 'le bandeau « donnée d’exemple » sur les seules notes d’exemple');
+  const production = main.slice(main.indexOf('<section class="nv-production" data-nv-production>')); // sans la feuille de style insérée avant
+  assert.ok(production.length > 0 && production.length < main.length);
+  for (const sens of ['amelioration', 'affaiblissement']) {
+    const present = db.prepare(`SELECT 1 FROM note_version_ligne WHERE sens = ?
+      OR (parties IS NOT NULL AND EXISTS (SELECT 1 FROM json_each(parties) p WHERE json_extract(p.value, '$.sens') = ?))`).get(sens, sens);
+    assert.equal(production.includes(`nv-sens--${sens}`), present !== undefined, `couleur « ${sens} » si une ligne l’a`);
+  }
   assert.match(html, /<script type="module"[^>]*>|<script type="module" src="/, 'le script du site de dev');
   if (existsSync(join(dist, 'donnees', 'reference.json'))) {
     const ref = JSON.parse(lire('donnees/reference.json'));

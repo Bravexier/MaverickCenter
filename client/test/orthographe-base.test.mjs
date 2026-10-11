@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { TABLES_DES_NOTES } from '../src/lib/notes-de-version.mjs';
 import { normalize } from '../src/lib/text.mjs';
 
 const racine = trouverRacine();
@@ -105,8 +106,12 @@ test('citations de la fiche « telles quelles » : les tableaux d’écarts des 
 test('fautes relevées disparues des textes (rien n’est revenu)', () => {
   const fautes = [/\bdégats?\b/i, /Caractéritiques/, /\brésisantante/, /\bacc?eu?illir\b/, /\bparmis\b/, /\bpermision/, /\battauqe/, /\bArbalètrier/,
     /\bNécomancie\b/, /\bintermédaire/, /\bsuplementaire/, /\bnécéssaire/, /\bmagestueux/, /\btrébuchetavec/, /\bEchelle\b/, /\bect\b/, /\bAMELIORATION\b/];
+  // section 15 (notes de version, historique des modifications du site) sautée : des traces, qui citent la production d'avant la livraison (master
+  // peut précéder cette migration) et les valeurs au moment de chaque modification (lib/notes-de-version.mjs#TABLES_DES_NOTES) ; le texte des
+  // règles qu'elles citent est contrôlé ici dans sa propre table
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE '%fts%' AND name NOT LIKE 'sqlite_%'").all()
-    .map((t) => t.name).filter((t) => !INTOUCHABLES.includes(t));
+    .map((t) => t.name).filter((t) => !INTOUCHABLES.includes(t) && !TABLES_DES_NOTES.includes(t));
+  assert.ok(tables.includes('page') && tables.includes('sort') && tables.length > 100, `${tables.length} tables balayées`);
   for (const t of tables) {
     const cols = db.prepare(`PRAGMA table_info("${t}")`).all().filter((c) => c.type === 'TEXT' && !/(_id|^id|_cle|^cle|^slug|^source_ref|^origine)$/.test(c.name));
     for (const col of cols) {

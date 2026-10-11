@@ -3,9 +3,10 @@
 // tout texte échappé, champ libre réduit à un Markdown simple, marqueur [V: X+1] jamais repris). Le sens (couleur) a son propre fichier :
 // notes-de-version-sens.test.mjs.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { planifier } from '../../tools/flux-git/regles.mjs';
-import { bilan, comparerBases, DOMAINES, trierVersions, versionCourte, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
+import { bilan, comparerBases, DOMAINES, TABLES_DES_NOTES, trierVersions, versionCourte, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
 import {
   diffMots, echapper, htmlDeLaListe, htmlDeLaNote, htmlDuTexteLibre, markdownDeLaNote, neutraliserMarqueur,
 } from '../src/lib/notes-de-version-rendu.mjs';
@@ -262,4 +263,13 @@ test('métiers : une caractéristique d’artisanat changée (décision R34) se 
   const dev = { tables: { metier: [{ ...metier, test_carac_2_id: 'agilite' }], caracteristique } };
   const lignes = comparerBases(ref, dev).filter((l) => l.table_nom === 'metier');
   assert.deepEqual(lignes.map((l) => [l.champ, l.avant, l.apres, l.sens]), [['Caractéristique d’artisanat 2', 'Volonté', 'Agilité', 'neutre']]);
+});
+
+test('TABLES_DES_NOTES : exactement les tables de la section 15 de data/schema.sql (les traces que les balayages de la base sautent)', () => {
+  const schema = readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8');
+  const debut = schema.indexOf('-- 15. NOTES DE VERSION');
+  assert.ok(debut > 0, 'section 15 trouvée');
+  const suite = schema.slice(debut + 1).search(/^-- 1[6-9]\. /m);
+  const section = suite < 0 ? schema.slice(debut) : schema.slice(debut, debut + 1 + suite);
+  assert.deepEqual([...TABLES_DES_NOTES], [...section.matchAll(/^CREATE TABLE (\w+)/gm)].map((m) => m[1]));
 });

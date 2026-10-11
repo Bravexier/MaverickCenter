@@ -18,6 +18,7 @@ import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { jsonCommePython } from '../src/lib/json-python.mjs';
 import { emettrePage, lirePages } from '../src/lib/pages-db.mjs';
+import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const ROWS = join(RACINE, 'data', 'rows');
@@ -155,7 +156,8 @@ test('db:appliquer-edition puis db:pages-check et db:sync-pages : data/rows et l
 });
 
 test('mise à jour des règles (Effectuer la mise à jour) : les lots de la même seconde rejoués et historisés dans leur ordre', () => {
-  const rows = copie('mise-a-jour');
+  // data/rows sans note de version en attente de livraison (pendant une mise à jour, il en porte une : ce lot serait refusé, code 7)
+  const rows = copieSansNoteEnAttente(join(tmp, 'mise-a-jour', 'rows'), { versionProduction: versionALaRevision('HEAD') }).rows;
   const memes = { ...journal, lots: journal.lots.filter((l) => l.fait_le === memeSeconde) };
   assert.equal(memes.lots.length, bonus.length);
   const r = appliquerMiseAJour({ format: 'maverick-mise-a-jour/1', id: '11111111-2222-3333-4444-555555555555', cree_le: memeSeconde, version_dev: '0.1.76', version_cible: '0.2', texte: null, journal: memes },
@@ -163,8 +165,8 @@ test('mise à jour des règles (Effectuer la mise à jour) : les lots de la mêm
   assert.ok(r.fichiers.includes('metier.sql'), r.fichiers.join(', '));
   const db = construire(rows, 'mise-a-jour');
   assert.equal(db.prepare("SELECT bonus_brut FROM metier WHERE id = 'metiers/forgeron'").get().bonus_brut, bonus.at(-1));
-  // les modifications de cette mise à jour (version 0.2) : data/rows peut déjà en historiser d'autres (rapatriées ou livrées avant)
-  const historique = db.prepare("SELECT apres FROM historique_modification WHERE table_nom = 'metier' AND version = '0.2' ORDER BY fait_le, lot_id, rang").all().map((h) => JSON.parse(h.apres).bonus_brut);
+  // les modifications de cette mise à jour (sa version, lue : X.Y+1 de la production) : data/rows peut déjà en historiser d'autres (rapatriées ou livrées avant)
+  const historique = db.prepare("SELECT apres FROM historique_modification WHERE table_nom = 'metier' AND version = ? ORDER BY fait_le, lot_id, rang").all(r.version).map((h) => JSON.parse(h.apres).bonus_brut);
   assert.deepEqual(historique, bonus);
   db.close();
   // la copie n'a jamais touché data/rows

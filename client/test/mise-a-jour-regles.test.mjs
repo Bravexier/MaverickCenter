@@ -2,9 +2,12 @@
 // (un conflit arrête tout), la note de version est écrite (version X.Y de la prochaine livraison, champ libre, notes d'exemple retirées), le journal
 // passe dans historique_modification, et seuls les fichiers des tables touchées et des notes de version changent (demande du propriétaire).
 // La production est ici HEAD (scripts/db-reference.mjs : git archive), pour ne pas dépendre de origin/master dans un clone de test.
+// Les copies de data/rows sont prises sans les notes de version en attente de livraison (test/aide-mise-a-jour.mjs) : pendant une mise à jour
+// (job preparer, npm test après l'écriture de la note du lot) ou sur dev avant la livraison, data/rows en porte une, qui ferait refuser le lot de
+// ces tests (code 7) ; ce refus a son propre test, sur une note posée par le test.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -17,12 +20,12 @@ import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { versionDeLivraison } from '../src/lib/notes-de-version.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
 
-const ROWS = fileURLToPath(new URL('../../data/rows/', import.meta.url));
 // les versions, comme dans le workflow : celle de dev (package.json) et celle de la production (ici HEAD) ; jamais écrites en dur, pour que le test
 // reste vrai après les vraies livraisons (une note de version réelle peut déjà être dans data/rows)
 const VERSION_DEV = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
-const VERSION_HEAD = JSON.parse(spawnSync('git', ['show', 'HEAD:client/package.json'], { encoding: 'utf8' }).stdout).version;
+const VERSION_HEAD = versionALaRevision('HEAD');
 const ATTENDUE = versionDeLivraison(VERSION_DEV, VERSION_HEAD);
 const racine = mkdtempSync(join(tmpdir(), 'maverick-maj-'));
 after(() => rmSync(racine, { recursive: true, force: true }));
@@ -42,11 +45,8 @@ const lot = (texte = 'Le forgeron **gagne** en force.') => ({
   format: 'maverick-mise-a-jour/1', id: '11111111-2222-3333-4444-555555555555', cree_le: '2026-10-11T10:00:00Z', version_dev: '0.1.76',
   version_cible: '0.2', texte, journal,
 });
-const copie = (nom) => {
-  const d = join(racine, nom);
-  cpSync(ROWS, d, { recursive: true });
-  return d;
-};
+/** Une copie de data/rows sans note de version en attente de livraison sur la production (HEAD). */
+const copie = (nom) => copieSansNoteEnAttente(join(racine, nom), { versionProduction: VERSION_HEAD }).rows;
 /** La base reconstruite depuis des lignes : une fonction de lecture. */
 function baseDe(rows) {
   const chemin_ = join(racine, 'relue.db');
