@@ -233,21 +233,25 @@ pas de source citée ; le Markdown de la page ne sert plus qu'à la recherche et
   de cette spécialité qui le dit : classes raciales, Flagelleur ; `lib/classe-magique.mjs`), « Classe raciale » avec le lien vers la race.
 - **Couleur** (demande du propriétaire), sur toute la page comme celle d'une magie, d'après la catégorie de `/classes/` (`lib/class-groups.mjs#classColor`, testé) : rouge pour les
   physiques de mêlée, vert pour les physiques à distance, bleu pour les magiques, violet pour les raciales (hybrides), jaune pour les spéciales (Parleur compris). Repère visuel sans valeur de règle.
-- **Sections** : présentation et « Chose à savoir », descriptions des spécialités, « Au départ » (maîtrises, arme, armure, inventaire : chaque objet du glossaire a son infobulle, « A OU B »
+- **Sections** : présentation et « Chose à savoir », descriptions des spécialités (un article par spécialité qui a des dons, caché tant qu'il n'a ni description ni remarque :
+  le mode modification l'ouvre pour le remplir), « Au départ » (maîtrises, arme, armure, inventaire : chaque objet du glossaire a son infobulle, « A OU B »
   est un emplacement à deux options), **Dons**, tableau sans titre de l'onglet (Mage Bleu : une carte par magie).
 - **Dons** (les « capacités » des onglets ; demande du propriétaire : c'est leur nom) : disposés **comme l'onglet** (`lib/classe-dons.mjs#plateauDeDons`, testé dans
   `test/classes-dons.test.mjs`), de haut en bas : les dons reçus sans choix (colonne P : niveaux 1 et 5), les deux spécialités (une seule au choix : elle exclut l'autre et
   tous ses dons), et le don du niveau 20 en bas ; l'Archimage a des groupes de 2 ou 3 dons au choix. **Spécialités en onglets** (demande du propriétaire) : le premier dans le coin gauche,
   le second dans le coin droit (comme les bannières A17 et X17), une pastille « ou » entre eux ; l'onglet ouvert montre le cartouche de la spécialité puis ses trois choix sur toute la largeur.
   Motif « tabs » de l'ARIA (flèches, Début, Fin) posé par le script commun `components/Onglets.astro` ; une adresse ou un lien vers une spécialité ou un de ses dons (`#don-…`, la fiche du don) ouvre son onglet ;
-  sans JavaScript et à l'impression, les deux spécialités se suivent avec leur titre. **Chaque choix est encadré** (« Au choix · Niveau N : un seul des deux »), ses options **côte à côte**
+  sans JavaScript et à l'impression, les deux spécialités se suivent avec leur titre ; une classe qui n'a qu'une spécialité (l'autre supprimée sur le site de dev) la montre seule,
+  sans « Au choix » (« Niveau 10 : la spécialité de la classe. »). **Chaque choix est encadré** (« Au choix · Niveau N : un seul des deux »), ses options **côte à côte**
   (l'une sous l'autre sur un téléphone) avec une pastille « ou » entre elles ; les choix sont ceux de la vue `v_capacite_exclusive` (la disposition de l'onglet fait foi), le test
   vérifie qu'ils coïncident. Une carte de don : niveau, nom (lien vers la fiche), type (nom du guide, sa définition en infobulle native) et sa précision telle qu'écrite (« 2 fois/Combat »),
   effet, remarque du classeur. Ancre `#don-<slug>` : la fiche d'un don y renvoie.
 - Le CSS est dans `client/src/styles/classe/` (et `styles/magie/tooltips.css` pour les infobulles), injecté par `ClassePage.astro` (`?raw`) seulement. `test/classes-html.test.mjs` contrôle
   le site construit (la CI le lance après le build).
 
-**Pour changer une classe ou un don, on change la base** (une migration `data/migrations/NNNN-<nom>.sql`, voir `docs/sql/remplissage.md`) : modifier le `.md` fabriqué n'a plus d'effet sur la page.
+**Pour changer une classe ou un don, on change la base**, depuis le site de dev (mode modification : ses champs, et des spécialités et des dons créés ou supprimés,
+D11 ; `docs/serveur.md`, « Édition ») ou par une migration (`data/migrations/NNNN-<nom>.sql`, voir `docs/sql/remplissage.md`) : modifier le `.md` fabriqué n'a plus d'effet sur la page.
+Une page construite avant une création ou une suppression est redessinée par le mode modification avec le même HTML (`lib/classe-dons-rendu.mjs`, testé contre le site construit).
 
 ## Guide du joueur (`/guide/`) : des chapitres à lire dans l'ordre
 
@@ -331,7 +335,15 @@ une même ligne s'excluent ; les deux cartouches de spécialité sont sur une m�
 toutes ses capacités ; une capacité seule sur sa ligne est reçue sans choix. Exemple du Barde Ménestrel : Nouvel accord exclut Écho, Balade
 guerrière exclut Amplification, Exaltation exclut Touérk. L'Archimage n'a pas de spécialité mais des groupes de 2 ou 3 capacités au même
 niveau (Élémentaliste / Occultiste ; Création vivante / Tempus Figus / Obédience…). `checkSelection` contrôle un ensemble de capacités ;
-`test/capacites-content.test.mjs` rejoue ces exemples sur les vraies pages.
+`test/capacites-content.test.mjs` rejoue ces exemples sur les pages de l'import (le site de dev peut ajouter ou retirer des dons).
+
+**Dons et spécialités créés sur le site de dev** (D11, `docs/serveur.md`, « Édition ») : la fiche d'un don créé a pour seule source sa provenance
+« Site de dev › édition du AAAA-MM-JJ », ses mots-clés (« capacité de classe », la classe telle que l'écrivent ses frères, la spécialité), son corps et
+son résumé tirés de sa ligne ; ses champs structurés (`classe`, `specialite`, `niveau`, `nature`, `rang`, `ligne`, `type_capacite`,
+`choix_exclusif_avec`) sont **tirés des tables** (`lib/dons-edition.mjs#donneesDeDon`, qui redonne les 660 fiches de l'import à l'octet près) et refaits
+quand un voisin change : le `rang` d'un don reçu sans choix est sa place de haut en bas parmi ceux de sa classe, celui d'un cartouche le rang de sa
+spécialité. La même règle des choix décide de la nature : une option fait d'un don reçu d'office un choix ; le dernier don d'un choix hors spécialité
+redevient reçu sans choix ; dans une spécialité, il reste un choix sans alternative (la page le montre seul, la fiche ne le propose pas).
 
 **Bonus d'armure magique (+4 AM)** (`lib/classe-bonus.mjs`) : toute classe magique l'a (Sommaire : « Octroie 4 AM de base par classe
 magique »). Pour une classe raciale, c'est sa 2ᵉ spécialité, le pendant lanceur de sort : la capacité de spécialisation de niveau 10 y dit

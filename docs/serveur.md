@@ -106,7 +106,7 @@ toutes les modifications de la page **d'un bloc** puis repasse en lecture ; déc
 | Guide | Titre et texte : éditeur en place (paragraphes, titres, citations, listes, gras, italique, barré, liens vers une page du wiki ou une adresse, tableaux, lignes, colonnes et couleur des cases), réécrit en Markdown (`lib/markdown-edition.mjs`) ; les blocs tirés de la base restent à leur place ; un ancien titre devient un alias ; un texte qui ajoute du HTML brut ou un lien non sûr (autre que http(s), mailto ou une adresse du site) est refusé, par le service puis par la mise à jour (lot reçu et corps des pages après le rejeu : `lib/markdown-sur.mjs`) |
 | Races | Chaque case de l'onglet (présentation, histoire, valeurs de départ, avantages, dons et leur tableau, capacité Mode Hyper…), magies innées, relations entre peuples (déplacer ou ajouter une race ou une ethnie dans le tableau d'une race) ; créer une race (pure ou hybride) ou un peuple |
 | Magies | Présentation, description, explication, rôles, Mode Hyper ; chaque case de chaque sort (type, mode, NM et états recalculés : `lib/sort-analyse.mjs` ; une ligne peut avoir un effet de NM dans plusieurs colonnes). La table des relations entre magies ne se modifie pas |
-| Classes | Tous les champs (maîtrises, inventaire, spécialités, dons : tables de détail recalculées, `lib/classe-champs.mjs`) ; créer une classe dans une catégorie ; une classe raciale se crée pour une race hybride qui n'en a pas encore |
+| Classes | Tous les champs (maîtrises, inventaire, spécialités, dons : tables de détail recalculées, `lib/classe-champs.mjs`) ; créer une classe dans une catégorie ; une classe raciale se crée pour une race hybride qui n'en a pas encore ; créer et supprimer une spécialité (avec son don de spécialité du niveau 10) ou un don (D11, ci-dessous) |
 | Métiers | Ajouter, modifier, supprimer (refusé si une fiche l'utilise) ; bonus (et leur compétence ou l'initiative, décision R33), objets de départ (R35) et recettes recalculés (`lib/metier-champs.mjs`) ; artisanat en trois champs, texte et deux listes de caractéristiques (R34 : « Artisanat possible » en est recalculé, une seule caractéristique est refusée, sans texte elles partent) ; corps de la page (`lib/corps-metiers.mjs` : un champ réécrit en entier, paragraphes compris, ses liens `[[…]]` gardés tant que leur texte reste écrit) ; filtres et tri par colonne |
 
 Ce qui suit aussi, pour que les outils du dépôt acceptent les modifications rapatriées (`serveur-edition-derivations`, `serveur-edition-rapatriement`,
@@ -128,6 +128,47 @@ l'onglet, nom de don sans rubrique « Nom », titre du tableau du Mort-vivant, M
 tables ; une race créée n'a pas d'onglet dans le classeur (ni source, ni Mode Hyper) : `races_onglet.py --verifier` ne relit que les races importées
 (`serveur-edition-corps` vérifie le tout de bout en bout, journal rapatrié sur une copie de `data/rows`).
 
+**Spécialités et dons créés ou supprimés** (D11, demande du propriétaire ; `lib/dons-edition.mjs`, `serveur/edition.mjs`, page : `src/scripts/edition/classes.mjs`).
+Sur la page d'une classe, en mode modification : « + Ajouter un don de classe (reçu sans choix) », « + Ajouter un don à <SPÉCIALITÉ> », « + Ajouter une
+option » (sur un choix ou un don seul), « + Ajouter une spécialité », et « Supprimer » à bascule sur chaque don et chaque spécialité qui peuvent l'être.
+Les créations sont **mises en file** (une carte « sera créé à l'enregistrement » chacune) et partent avec « Enregistrer », dans le même lot que les
+suppressions et les champs (ordre : champs, suppressions de spécialités, créations, suppressions de dons : `operationsDuLot`) ; une création sur une
+ligne en file la cite par « @i » (l'opération i du lot, `ctx.crees`). Les conséquences (« Duelliste deviendra un don reçu sans choix. », « Contact
+deviendra un choix… », « La spécialité ÉPÉISTE emporte… ») sont confirmées avant l'envoi. Rien n'est inventé : un don n'a que ce qu'on saisit (nom,
+type parmi les cinq mots que `analyserTypeDeDon` reconnaît, précision, effet, niveau) ; le reste applique des règles déjà écrites :
+
+- **place** : une option reprend la ligne, le niveau et la spécialité de son choix (rang suivant) ; sans option, une nouvelle ligne « à la fin de son
+  niveau » (`placeNouvelleLigne` : entre la dernière ligne de niveau ≤ N et la première de niveau > N de sa portée, sur un numéro qu'aucun don de la
+  classe n'emploie — un don n'entre jamais par hasard dans un choix ; vers le milieu de l'écart quand rien n'est en dessous) ; niveaux proposés : 1, 5,
+  10, 15, 20 (`NIVEAUX_DE_DON`), 10 au moins dans une spécialité (elle se choisit au niveau 10) ;
+- **nature** : « des dons côte à côte sont un choix, un don seul sur sa ligne est reçu sans choix » (docs/content-guide.md) : un don seul hors
+  spécialité est `classe`, une option en fait un `choix` (le don reçu d'office aussi) ; supprimer l'avant-dernier d'un choix hors spécialité rend le
+  survivant `classe` ; dans une spécialité, le survivant reste `choix` sans alternative (le schéma n'y admet pas `classe`) : la page le montre seul, la
+  fiche ne le propose pas ;
+- **spécialité** : créée avec son don de spécialité (niveau 10, sur la ligne des autres dons de spécialité de la classe ; sans lui elle n'aurait ni
+  colonne ni bannière), au plus `SPECIALITES_MAX` (2) par classe ; supprimée avec tous ses dons ; supprimer son don de spécialité seul est refusé ;
+  +4 AM seulement si le texte de son don de spécialité le dit (R7) ;
+- **identifiants** : tirés une fois du nom saisi (`capacites/<classe>-<nom>`, puis `-<niveau>`, `-<niveau>-<rang>`, `-2`… ;
+  `<classe>#specialite:<nom>`, puis `-2`…), puis figés et **jamais réutilisés** (un id de l'historique ou du journal compte comme pris) ; titre
+  « Nom (Classe) », sinon « , niveau N », sinon `409` ;
+- **refus** : classe ou spécialité inconnue, spécialité d'une autre classe, niveau hors liste, don de spécialité avant le niveau 10, option d'un don de
+  spécialité ou d'une autre classe (`400`) ; plus de place, titre pris, troisième spécialité, et l'Archimage — ses spécialités sont lues dans ses
+  dons de niveau 10, ses deux dons « miroirs » (Élémentaliste, Occultiste) ne se suppriment pas — (`409`) ; une ligne qu'une fiche de personnage
+  cite (`409` qui nomme les fiches, cinq au plus).
+
+La fiche d'un don créé (`capacites/<slug>`) a pour seule source sa provenance, ses mots-clés (« capacité de classe », la classe telle que l'écrit un
+don frère, la spécialité), son corps et son résumé tirés de sa ligne ; ses champs structurés (`page.donnees` : classe, spécialité, niveau, nature,
+rang, ligne, type, choix exclusifs) sont **une colonne dérivée** (`donneesDeDon`, qui redonne les 660 fiches de l'import à l'octet près), refaite à
+chaque écriture et au rejeu pour tous les dons de la classe touchée : une livraison qui change un voisin (spécialité renommée, type) ne met plus une
+création en conflit. Une suppression retire, dans l'ordre des clés étrangères, les notes de cellule du don, sa ligne, puis sa fiche (mots-clés,
+sources, entités rattachées, source orpheline). `POST /api/edition/classe/` donne l'état vivant de la classe (spécialités, dons, choix, fiches qui
+les citent) : la page en tire ce qu'elle propose (`permissions`) et, quand des spécialités ou des dons ont changé depuis la construction, redessine
+ses dons, ses spécialités et sa navigation avec le HTML des gabarits (`lib/classe-dons-rendu.mjs` sur `lib/classe-assemblage.mjs`, comparés aux pages
+construites par `classe-dons-rendu.test.mjs`), puis rebranche ses onglets (évènement `onglets:brancher`). Limite : jusqu'à la construction suivante,
+`/capacites/<slug>/` d'un don supprimé reste en ligne (l'adresse d'un don créé mène à son ancre sur la page de sa classe) et `/fiche/regles.json` ne
+change pas ; la fiche écarte un don qu'aucun choix des règles ne range (`donsValables`). En production, une fiche qui cite un don ou une spécialité
+supprimé fait garder l'ancienne base vivante (détail dans `/api/etat/`), comme pour un métier, en attendant la décision du propriétaire.
+
 **Le journal** (section 14 de `data/schema.sql` : `modification_lot`, `modification`) : le service écrit chaque ligne touchée (avant, après) dans la
 même transaction que la modification (`serveur/edition-journal.mjs`). Une saisie envoie la valeur qu'elle a lue (`avant`) : si la base a changé
 depuis, `409` et rien n'est écrit. Les pages étant statiques, chacune demande au chargement les lignes modifiées depuis sa construction
@@ -141,13 +182,16 @@ instant du lot, puis son identifiant, puis le rang) est le même pour le service
 est à la seconde, l'identifiant d'un lot commence par l'instant à la milliseconde et un compteur (`nouveauLot`) : deux lots de la même seconde
 se rejouent dans l'ordre où ils ont été enregistrés. Une colonne qui vaut déjà ce qu'une modification plus récente de la même ligne y écrit est
 « déjà là » (deux lots sur la même colonne, une ligne créée puis modifiée) ; une ligne créée puis supprimée par le journal n'a rien à rejouer. Le
-**corps et le résumé des pages typées** ne sont pas des valeurs figées du journal (`colonneDerivee`) : le rejeu ne les compare ni ne les écrit, puis
+**corps et le résumé des pages typées**, et les champs structurés des fiches de dons, ne sont pas des valeurs figées du journal (`colonneDerivee`) : le rejeu ne les compare ni ne les écrit, puis
 `rejouerLeJournal` (`serveur/edition.mjs`) les refait depuis les tables rejouées, pour chaque page qu'elles touchent — dans la base vivante comme dans
 `db:appliquer-edition` et la mise à jour des règles. Un lot n'est donc jamais en conflit pour une page qu'une autre modification ou une livraison a
 réécrite, et un lot noté avant que l'édition ne suive le corps voit le corps de ses pages rattrapé (`serveur-edition-rejeu-corps`). De même, les
 **liens de règle des métiers** (décisions R33, R35) qu'un lot noté avant la migration `0024-metiers-fiche` n'écrivait pas — compétence ou initiative d'un
 bonus, objets de départ d'un équipement — sont refaits depuis les champs des métiers touchés (`completerLesMetiers`) ; la mise à jour des règles compte
-ces tables parmi celles qu'elle a le droit d'écrire (`tablesCompletees`).
+ces tables parmi celles qu'elle a le droit d'écrire (`tablesCompletees`). Rejouée clés
+étrangères coupées (base vivante refaite, mise à jour des règles), une suppression applique d'abord les `ON DELETE CASCADE` du schéma (`lien`,
+`lien_candidat` : les `[[liens]]` d'une page supprimée), sans les noter, comme SQLite le fait dans la base vivante ; sinon supprimer une page qui a des
+liens mettait le lot en conflit (`serveur-base-vivante`).
 
 **Rapatriement dans le dépôt** : le lien « N modifications à rapatrier » (à côté du crayon, `GET /api/edition/journal/`) télécharge le journal, puis
 
@@ -169,6 +213,7 @@ une valeur que le site a changée.
 | `GET /api/edition/listes/` | Listes des formulaires (compétences, catégories de classe, races hybrides sans classe raciale…) |
 | `GET /api/edition/pages/` | Les pages du wiki (`id`, `titre`) : cibles d'un lien posé dans le texte du guide |
 | `POST /api/edition/race/` | `{ race }` → magies innées et relations de la race dans la base vivante |
+| `POST /api/edition/classe/` | `{ classe }` → spécialités, dons, choix et fiches qui les citent, dans la base vivante (D11) |
 | `POST /api/edition/` | `{ page, operations: [...] }` → applique un lot d'un bloc (`modifier`, `creer`, `supprimer`, `relations`, `magies_innees` : `serveur/edition.mjs`) |
 | `GET /api/edition/journal/` | Le journal des modifications en attente (`maverick-edition/1`), en pièce jointe |
 
