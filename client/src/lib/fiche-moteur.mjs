@@ -11,6 +11,17 @@ const constante = (regles, id) => {
 export const trouver = (liste, id) => (id ? liste.find((x) => x.id === id) ?? null : null);
 const entier = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
+/**
+ * Nombre saisi à la main sur un curseur (clic droit : demande du propriétaire) : arrondi à l'entier, ramené au maximum s'il le dépasse et au minimum
+ * s'il est en dessous ; null quand la saisie n'est pas un nombre (rien ne change).
+ */
+export function borner(saisie, min, max) {
+  const texte = String(saisie ?? '').trim().replace(',', '.');
+  const n = texte === '' ? NaN : Number(texte);
+  if (!Number.isFinite(n)) return null;
+  return Math.min(max, Math.max(min, Math.round(n)));
+}
+
 /** Niveau global : le plus haut niveau dont l'XP minimale est atteinte (Personnage!W8 ; v_personnage_niveau). */
 export function niveauGlobal(regles, xp) {
   let niveau = regles.niveaux[0].niveau;
@@ -273,6 +284,15 @@ export function maitriseDArme(regles) {
   return { desSansMaitrise: sans, desMax: max, pointsMax: max - sans, desDe: (points) => sans + points, pointsDe: (des) => Math.max(0, des - sans) };
 }
 
+/**
+ * Dés d'une famille d'armes pour un nombre de dés (colonne « Dés » des maîtrises, demande du propriétaire) : 'D10' et 3 → '3D10' ; chaque option d'un
+ * dé au choix (Pugilat : 'D6/D8/D10', selon la Force) → '3D6/3D8/3D10' ; sans dé écrit (Arme de monstres : « Se référer à la catégorie d'arme ») → '3 dés'.
+ */
+export function notationDesDes(de, nombre) {
+  if (!de) return `${nombre} dé${nombre > 1 ? 's' : ''}`;
+  return de.split('/').map((d) => (/^D\d+$/i.test(d.trim()) ? `${nombre}${d.trim().toUpperCase()}` : d.trim())).join('/');
+}
+
 /** Points gagnés par la progression (personnage_progression) : santé, chakra, et le dé (sur l'un, l'autre ou les deux, « 1d4 pour les deux »). */
 function gainsDeProgression(fiche) {
   let sante = 0;
@@ -328,6 +348,51 @@ export function attributsDe(regles, fiche) {
     quatriemeBarre: barre4 && { ressource: barre4.ressource === 'ame' ? 'Âme' : 'Sang', max: barre4.max },
     corruptionMax: chakra,
   };
+}
+
+/** Qui utilise la magie de la Corruption n'a pas son chakra réduit par elle (guide « Fiche de personnage : Attributs », ci-dessous). */
+const MAGIE_DE_LA_CORRUPTION = 'magies/magie-de-la-corruption';
+
+/**
+ * Valeurs du moment (étape « En jeu », curseurs : demande du propriétaire), de 0 à leur maximum ; une valeur absente (NULL) est au maximum
+ * (data/schema.sql, « État en jeu »), sauf la corruption, à 0 (un personnage n'en a pas tant qu'il n'en a pas reçu). Maximums : santé, barrière et
+ * 4ᵉ barre des attributs ; corruption = chakra (guide « Étape 6 : finaliser son personnage » : « son maximum est celui du chakra ») ; chakra actuel = chakra −
+ * corruption (guide « Fiche de personnage : Attributs » : « Vous avez par exemple 25 de chakra maximum, si jamais vous avez 2 points de corruption, vous ne pourrez pas
+ * monter au-delà de 23/25 car la corruption prend la place »), sauf pour qui utilise la magie de la Corruption (même page : « Ceux qui utilisent la
+ * magie de la corruption ne sont pas concernés par cette règle » ; sa page : « la corruption n'empiète pas dans l'espace du chakra »).
+ * La santé s'arrête à 0 : « Quand sa santé tombe à 0 ou moins, le personnage est dans le coma » (guide « Blessures et états »).
+ * `hors` : la valeur enregistrée dépasse le maximum (le curseur, lui, s'arrête au maximum).
+ */
+export function valeursDuMoment(regles, fiche, attributs = attributsDe(regles, fiche)) {
+  const jauge = (champ, nom, max, vide = max) => {
+    const v = fiche[champ];
+    const enregistree = v === null || v === undefined || v === '' ? null : entier(v);
+    return { champ, nom, min: 0, max, valeur: enregistree === null ? vide : Math.min(max, Math.max(0, enregistree)), hors: enregistree !== null && (enregistree > max || enregistree < 0) };
+  };
+  const corruption = jauge('corruption', 'Corruption', attributs.corruptionMax, 0);
+  const exempte = [fiche.magie_innee_id, fiche.magie_acquise_id].includes(MAGIE_DE_LA_CORRUPTION);
+  const reduction = exempte ? 0 : corruption.valeur;
+  return [
+    jauge('sante_actuelle', 'Santé actuelle', attributs.sante),
+    { ...jauge('chakra_actuel', 'Chakra actuel', Math.max(0, attributs.chakra - reduction)), chakra: attributs.chakra, reduction },
+    jauge('barriere_actuelle', 'Barrière actuelle', attributs.barriere),
+    corruption,
+    ...(attributs.quatriemeBarre?.max != null ? [jauge('barre4_actuelle', `${attributs.quatriemeBarre.ressource} actuel`, attributs.quatriemeBarre.max)] : []),
+  ];
+}
+
+/**
+ * Ce qu'écrit un curseur des valeurs du moment : la valeur, bornée ; et, pour la corruption, le chakra actuel qu'elle laisse — celui d'avant, au plus
+ * le nouveau maximum (la corruption qui monte prend la place du chakra ; celle qui baisse ne rend pas de chakra). { champ: valeur }.
+ */
+export function ecrireValeurDuMoment(regles, fiche, champ, valeur) {
+  const avant = valeursDuMoment(regles, fiche);
+  const jauge = avant.find((j) => j.champ === champ);
+  if (!jauge) return {};
+  const ecrit = { [champ]: Math.min(jauge.max, Math.max(jauge.min, entier(valeur))) };
+  if (champ !== 'corruption') return ecrit;
+  const chakra = valeursDuMoment(regles, { ...fiche, ...ecrit }).find((j) => j.champ === 'chakra_actuel');
+  return { ...ecrit, chakra_actuel: Math.min(avant.find((j) => j.champ === 'chakra_actuel').valeur, chakra.max) };
 }
 
 /** Puissance magique du niveau (table niveau_global ; la 5 au niveau 16, décision R16). */

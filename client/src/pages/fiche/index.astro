@@ -131,6 +131,7 @@ const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
       <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
         <h2 id={`titre-${e.id}`}><span class="num">{e.num}</span>{e.titre}</h2>
         <div class="fiche-etape__corps">
+          <p class="fiche-aide">Clic droit sur un curseur (ou Entrée) : saisir le nombre ; il est ramené entre le minimum et le maximum.</p>
           <div class="fiche-entete-bloc"><h3>Caractéristiques</h3><span class="budget" id="budget-caracs"></span></div>
           <div id="caracs" class="caracs"></div>
           <div class="fiche-entete-bloc"><h3>Compétences</h3><span class="budget" id="budget-competences"></span></div>
@@ -204,14 +205,8 @@ const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
       <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
         <h2 id={`titre-${e.id}`}><span class="num">{e.num}</span>{e.titre}</h2>
         <div class="fiche-etape__corps">
-          <p class="fiche-aide">Valeurs du moment, en partie ; vides, elles sont au maximum.</p>
-          <div class="fiche-champs">
-            <label class="fiche-champ"><span>Santé actuelle</span><input type="number" step="1" data-champ="sante_actuelle" data-entier data-vide-null /></label>
-            <label class="fiche-champ"><span>Chakra actuel</span><input type="number" min="0" step="1" data-champ="chakra_actuel" data-entier data-vide-null /></label>
-            <label class="fiche-champ"><span>Barrière actuelle</span><input type="number" min="0" step="1" data-champ="barriere_actuelle" data-entier data-vide-null /></label>
-            <label class="fiche-champ"><span>Corruption</span><input type="number" min="0" step="1" data-champ="corruption" data-entier data-vide-null /></label>
-            <label class="fiche-champ" id="bloc-barre4" hidden><span id="titre-barre4">4ᵉ barre</span><input type="number" min="0" step="1" data-champ="barre4_actuelle" data-entier data-vide-null /></label>
-          </div>
+          <p class="fiche-aide">Valeurs du moment : au maximum tant qu’on n’y touche pas, la corruption à 0. La corruption prend la place du chakra (sauf avec la magie de la Corruption).</p>
+          <div id="jauges" class="jauges"></div>
           <label class="fiche-champ fiche-champ--large"><span>Notes</span><textarea data-champ="notes" rows="5"></textarea></label>
           <label class="fiche-champ fiche-champ--large"><span>Événements</span><textarea data-champ="evenements" rows="4"></textarea></label>
         </div>

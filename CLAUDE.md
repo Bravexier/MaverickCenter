@@ -201,7 +201,8 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   un don à choix d'une classe ou d'une spécialité retirée part avec elle (`donsValables`). Page compacte (demandes du propriétaire) : choix en menus déroulants
   (`<details class="choix">`), caractéristiques (1 par défaut, jamais vides : `caracteristiquesCompletes`) et naturel des compétences en curseurs, tableau des sorts
   à une liste par emplacement sans emplacement en plus (`lignesDeSorts`, R27), NM par origine — niveau, livre (un par sort), MJ — et 3 au plus sur un sort (R24, R26 :
-  `personnage_sort.nm_livre`, `nm_cadeau`, migration `0021-nm-plafond`), acquis des compétences en curseur aussi, jauge d'XP dans l'en-tête (`progressionXp`), pas de lien vers le guide ;
+  `personnage_sort.nm_livre`, `nm_cadeau`, migration `0021-nm-plafond`), acquis des compétences, maîtrises d'armes (dés dans leur colonne) et valeurs du moment
+  en curseurs aussi (chakra actuel ≤ chakra − corruption hors magie de la Corruption : `valeursDuMoment`), clic droit ou Entrée sur un curseur = saisie bornée (`borner`), jauge d'XP dans l'en-tête (`progressionXp`), pas de lien vers le guide ;
   une fiche se supprime (`DELETE /api/personnages/<id>/` avec sa version).
 - **Fiches de personnages** (section 13 de `data/schema.sql`, migration `0011-personnages`) : les tables gardent les **choix** du joueur (race, ethnie, magies, classes, caractéristiques de base et croix (R19), points de compétences,
   gains de niveau, dons à choix, sorts et NM, équipement), cellule de la fiche auto V15.2.2 citée en commentaire ; **rien de ce que la fiche calcule n'est stocké** (niveaux, santé, totaux…).

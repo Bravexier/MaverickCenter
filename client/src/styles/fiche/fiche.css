@@ -303,6 +303,10 @@
 .curseur-cellule { display: flex; align-items: center; gap: 0.35rem; }
 .curseur__valeur { min-width: 1.6rem; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
 .curseur__valeur[data-hors] { color: var(--danger); }
+/* clic droit (ou Entrée) sur un curseur : une case de saisie prend sa place, le nombre est ramené entre ses bornes */
+.fiche .curseur-saisie { width: 100%; min-width: 3.5rem; padding: 0.05rem 0.3rem; font-variant-numeric: tabular-nums; }
+.des { font-variant-numeric: tabular-nums; white-space: nowrap; }
+#maitrises td.curseur-td { width: 55%; }
 
 /* ----------------------------------------------------------------- tableaux de saisie */
 .fiche-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
@@ -388,6 +392,30 @@
 .attribut[data-a='sante'] { --a: #c62828; }
 .attribut[data-a='chakra'] { --a: #1e5bb8; }
 .attribut[data-a='barriere'] { --a: #7b3fa6; }
+
+/* valeurs du moment : un curseur par jauge, de 0 au maximum (la corruption borne le chakra actuel) */
+.jauges { display: grid; gap: 0.45rem 0.9rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr)); }
+.jauge {
+  --a: var(--etape);
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--a) 45%, var(--border));
+  border-left: 4px solid var(--a);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--a) 7%, var(--surface));
+}
+.jauge .curseur { accent-color: var(--a); }
+.jauge__tete { display: flex; justify-content: space-between; gap: 0.5rem; align-items: baseline; }
+.jauge__nom { color: var(--muted); font-size: 0.78rem; }
+.jauge__valeur { font-weight: 700; font-variant-numeric: tabular-nums; }
+.jauge__valeur[data-hors] { color: var(--danger); }
+.jauge__detail { min-height: 0.9rem; color: var(--muted); font-size: 0.68rem; }
+.jauge[data-a='sante_actuelle'] { --a: #c62828; }
+.jauge[data-a='chakra_actuel'] { --a: #1e5bb8; }
+.jauge[data-a='barriere_actuelle'] { --a: #7b3fa6; }
+.jauge[data-a='corruption'] { --a: #3d3d3d; }
+.jauge[data-a='barre4_actuelle'] { --a: #8a1c1c; }
 
 /* listes ajoutables (sac…) */
 .fiche-ligne-ajout { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
