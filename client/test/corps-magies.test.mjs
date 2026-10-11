@@ -16,7 +16,7 @@ import {
   decouperCorpsDeMagie, echapperLigne, ErreurCorpsMagie, lignesDEntree, lignesDeTexte, morceauxDuCorpsDeMagie, nomDeNote, nomPlie, PAGE_DE_LA_LIGNE, premierePhrase,
   resumeDeMagie, resumeDeMagieApres, SECTIONS,
 } from '../src/lib/corps-magies.mjs';
-import { TABLES } from '../src/lib/edition-modele.mjs';
+import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const tout = (sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
@@ -45,6 +45,8 @@ const FEU = 'magies/magie-du-feu';
 const PI = 'magies/potentiel-illimite';
 
 test('15 magies, 42 rôles, 29 variantes Mode Hyper (onglet de magie), 322 sorts : chaque ligne a sa page', () => {
+  // effectifs de l'import, que le site ne change pas : il ne crée ni ne supprime de magie, de rôle, de variante ni de sort (edition-modele#ENTITES)
+  for (const t of Object.keys(PAGE_DE_LA_LIGNE)) assert.ok(!Object.values(ENTITES).some((e) => e.table === t), `${t} : créé par le site`);
   assert.equal(magies.length, 15);
   assert.equal(roles.length, 42);
   assert.equal(hypers.length, 29);
@@ -84,6 +86,7 @@ test('invariant (toute la base) : remplacer avec les mêmes valeurs redonne le c
 test('lecture (toute la base) : chaque morceau du corps redit sa ligne', () => {
   let entrees = 0;
   let textes = 0;
+  let notesDesSorts = 0;
   for (const m of magies) {
     const lu = morceauxDuCorpsDeMagie(corpsDe(m.id));
     const siens = sorts.filter((s) => s.magie_id === m.id);
@@ -107,17 +110,22 @@ test('lecture (toute la base) : chaque morceau du corps redit sa ligne', () => {
     }
     for (const s of siens.filter((x) => x.texte_niveau5)) assert.ok(lu.niveau5.some((b) => nomPlie(b.titre) === nomPlie(s.nom)), s.id);
     textes += lu.niveau5.filter((b) => b.citation.length).length;
+    notesDesSorts += new Set(lu.notes.map((e) => e.sort)).size;
     // rôles et variantes Mode Hyper
     assert.deepEqual(lu.roles, roles.filter((r) => r.magie_id === m.id).map((r) => r.role_brut), m.id);
     assert.deepEqual(lu.hyper.map((h) => h.variante).sort(), hypers.filter((h) => h.magie_id === m.id).map((h) => h.variante_brut).sort(), m.id);
-    // Données : santé, chakra, caractéristique une fois chacune ; 4ème barre pour le Sang et la Nécromancie seulement
+    // Données : santé, chakra, caractéristique une fois chacune quand la magie en a une ; 4ème barre pour le Sang et la Nécromancie seulement
     const donnees = lu.donnees.map((d) => d.libelle);
-    for (const motif of [/^Santé offerte?$/, /^Chakra offert$/, /^Caractéristiques bonus$/]) assert.equal(donnees.filter((d) => motif.test(d)).length, 1, `${m.id} ${motif}`);
+    for (const [motif, colonne] of [[/^Santé offerte?$/, 'sante_offerte'], [/^Chakra offert$/, 'chakra_offert'], [/^Caractéristiques bonus$/, 'caracteristique_brut']]) {
+      assert.equal(donnees.filter((d) => motif.test(d)).length, m[colonne] === null || m[colonne] === '' ? 0 : 1, `${m.id} ${motif}`);
+    }
     assert.equal(donnees.includes('4ème barre'), m.barre4_texte !== null, m.id);
   }
-  assert.equal(entrees, 116, '85 notes et 31 fils (magies.py)');
-  assert.equal(textes, 17);
-  assert.equal(sorts.filter((s) => s.remarque).length, 97);
+  // effectifs tirés de la base (une remarque ajoutée ou retirée par le site les change) ; ceux de l'import (85 notes et 31 fils du classeur) sont
+  // épinglés contre la copie de contrôle par test/magies-notes.test.mjs
+  assert.equal(notesDesSorts, sorts.filter((s) => s.remarque).length, 'chaque sort à remarque a ses entrées');
+  assert.ok(entrees >= notesDesSorts);
+  assert.equal(textes, sorts.filter((s) => s.texte_niveau5).length);
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -190,27 +198,24 @@ test('aller-retour : chaque case de chaque sort, remarque et texte de niveau 5 (
       }
     }
   }
+  // Les exceptions attendues se lisent dans les corps (une modification du site en retire, aucune n'en ajoute : la forme de l'importeur que la base
+  // ne garde pas disparaît quand le site réécrit le morceau). À l'import : 4 titres seuls (Foudre : Fulguration, Manteau de volt, Orage violet ; Sang :
+  // Sacrifice), 5 noms (Orage violet et Météore Cramoisi, Pluie Chaude : casse du titre ; Amélioration<br>Cadavérique ; Corruption d'âme avec
+  // l'insécable du classeur), 618 cases de nombre « N.0 » (206, 202 et 210).
+  const morceaux = new Map(magies.map((m) => [m.id, morceauxDuCorpsDeMagie(corpsDe(m.id))]));
+  const titreDuSort = (s) => morceaux.get(s.magie_id).niveau5.find((b) => nomPlie(b.titre) === nomPlie(s.nom));
   // texte de niveau 5 ajouté puis retiré : le bloc entier part, y compris le titre seul que l'importeur gardait pour une cellule de texte vide
-  assert.deepEqual(exceptions.filter((e) => e.endsWith(' texte_niveau5')).map((e) => e.split(' ')[0]).sort(), [
-    'magies/magie-de-la-foudre#sort:fulguration',
-    'magies/magie-de-la-foudre#sort:manteau-de-volt',
-    'magies/magie-de-la-foudre#sort:orage-violet',
-    'magies/magie-du-sang#sort:sacrifice',
-  ]);
-  // renommer puis remettre le nom : seuls les écarts de forme que la base ne garde pas (retour à la ligne du nom, casse du titre du texte de niveau 5)
+  const titresSeuls = sorts.filter((s) => s.niveau === 5 && titreDuSort(s)?.citation.length === 0).map((s) => s.id);
+  assert.deepEqual(exceptions.filter((e) => e.endsWith(' texte_niveau5')).map((e) => e.split(' ')[0]).sort(), titresSeuls.sort());
+  // renommer puis remettre le nom : seuls les écarts de forme que la base ne garde pas (retour à la ligne ou insécable dans la case, casse du titre
+  // du texte de niveau 5)
+  const formeGardee = sorts.filter((s) => morceaux.get(s.magie_id).sorts[s.ordre - 1][1] !== celluleDeTableau(s.nom) || (titreDuSort(s) && titreDuSort(s).titre !== s.nom));
   const noms = exceptions.filter((e) => / nom : /.test(e)).map((e) => e.split(' ')[0]);
-  assert.deepEqual(noms.sort(), [
-    'magies/magie-de-la-foudre#sort:orage-violet', // titre « Orage violet » (casse du classeur), nom « Orage Violet »
-    'magies/magie-de-la-necromancie#sort:amelioration-cadaverique', // case « Amélioration<br>Cadavérique », nom « Amélioration Cadavérique »
-    'magies/magie-de-la-necromancie#sort:corruption-dame', // case avec l'espace insécable du classeur, nom avec une espace (identifiant)
-    'magies/magie-du-feu#sort:meteore-cramoisi', // titre « Météore Cramoisi »
-    'magies/magie-du-feu#sort:pluie-chaude', // titre « Pluie Chaude »
-  ]);
+  assert.deepEqual(noms.sort(), formeGardee.map((s) => s.id).sort());
   const nombres = exceptions.filter((e) => !/ nom : /.test(e) && !e.endsWith(' texte_niveau5'));
-  // les autres écarts sont exactement les cases de nombre « N.0 » des colonnes Coût, Portée et Zone (618 aujourd'hui : 206, 202 et 210)
-  const casesDeNombre = magies.flatMap((m) => morceauxDuCorpsDeMagie(corpsDe(m.id)).sorts.flatMap((c) => [c[3], c[4], c[5]])).filter((c) => /^\d+\.0$/.test(c));
-  assert.equal(nombres.length, casesDeNombre.length);
-  assert.deepEqual(['cout_brut', 'portee_brut', 'zone_brut'].map((c) => nombres.filter((e) => e.includes(` ${c} : `)).length), [206, 202, 210]);
+  // les autres écarts sont exactement les cases de nombre « N.0 » des colonnes Coût, Portée et Zone
+  const casesDeNombre = (k) => magies.flatMap((m) => morceaux.get(m.id).sorts.map((c) => c[3 + k])).filter((c) => /^\d+\.0$/.test(c)).length;
+  assert.deepEqual(['cout_brut', 'portee_brut', 'zone_brut'].map((c) => nombres.filter((e) => e.includes(` ${c} : `)).length), [0, 1, 2].map(casesDeNombre));
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -220,50 +225,57 @@ test('aller-retour : chaque case de chaque sort, remarque et texte de niveau 5 (
 test('magie : présentation (et résumé), description physique, explication ajoutée, bannière, remarque', () => {
   const feu = magie(FEU);
   const corps = corpsDe(FEU);
+  const sections = (c) => c.slice(c.indexOf('\n## ') + 1);
+  const banniereDe = (m) => (m.banniere ? `**${echapperLigne(m.banniere)}**\n\n` : '');
   const presentation = 'La magie du feu brûle tout. Seconde phrase.\n\nUn autre paragraphe.';
   const apres = modifier(corps, 'magie', feu, { description: presentation });
-  assert.ok(apres.startsWith('La magie du feu brûle tout. Seconde phrase.\n\nUn autre paragraphe.\n\n## Description physique\n'));
-  for (const p of feu.description.split('\n\n')) assert.ok(!apres.includes(p), 'ancien paragraphe parti');
-  assert.equal(apres.slice(apres.indexOf('## Description physique')), corps.slice(corps.indexOf('## Description physique')));
+  assert.ok(apres.startsWith(`${banniereDe(feu)}${presentation}\n\n## `));
+  for (const p of (feu.description ?? '').split('\n\n').filter(Boolean)) assert.ok(!apres.includes(p), 'ancien paragraphe parti');
+  assert.equal(sections(apres), sections(corps), 'les sections ne bougent pas');
   assert.equal(resumeDeMagieApres(pages.get(FEU).resume, feu, { ...feu, description: presentation }), 'La magie du feu brûle tout.');
   assert.equal(resumeDeMagieApres('Résumé écrit à la main.', feu, { ...feu, description: presentation }), 'Résumé écrit à la main.', 'résumé qui ne dérive pas');
 
   const physique = modifier(corps, 'magie', feu, { description_physique: 'Des yeux rouges.\nDes mains brûlées.' });
-  assert.match(physique, /## Description physique\n\nDes yeux rouges\. {2}\nDes mains brûlées\.\n\n## Données/);
-  assert.ok(!physique.includes(feu.description_physique));
+  assert.match(physique, /## Description physique\n\nDes yeux rouges\. {2}\nDes mains brûlées\.\n\n## /);
+  if (feu.description_physique) assert.ok(!physique.includes(feu.description_physique));
   assert.ok(!modifier(corps, 'magie', feu, { description_physique: null }).includes('## Description physique'));
 
-  const explication = modifier(corps, 'magie', feu, { explication: 'Une explication.' });
-  assert.match(explication, /\n## Description physique\n\n[^#]+\n\n## Explication\n\nUne explication\.\n\n## Données\n/);
+  const explication = modifier(modifier(corps, 'magie', feu, { explication: null }), 'magie', { ...feu, explication: null }, { explication: 'Une explication.' });
+  const titres = morceauxDuCorpsDeMagie(explication).titres;
+  assert.equal(titres[titres.indexOf(SECTIONS.explication) + 1], SECTIONS.donnees, 'avant « Données »');
+  if (titres.includes(SECTIONS.physique)) assert.equal(titres[titres.indexOf(SECTIONS.explication) - 1], SECTIONS.physique, 'après la description physique');
+  assert.match(explication, /\n## Explication\n\nUne explication\.\n\n## /);
 
-  const banniere = modifier(corps, 'magie', feu, { banniere: 'Attention *magie*' });
-  assert.ok(banniere.startsWith('**Attention \\*magie\\***\n\nLa magie du feu'));
-  const pi = magie(PI);
-  const sansBanniere = modifier(corpsDe(PI), 'magie', pi, { banniere: null });
-  assert.equal(sansBanniere, corpsDe(PI).replace('**MAGIE DIFFICILE À JOUER !!**\n\n', ''));
-  assert.ok(modifier(corpsDe(PI), 'magie', pi, { banniere: 'NOUVELLE BANNIÈRE' }).startsWith('**NOUVELLE BANNIÈRE**\n\nLe Potentiel'));
+  const sansBanniere = (m) => corpsDe(m.id).slice(banniereDe(m).length);
+  assert.equal(modifier(corps, 'magie', feu, { banniere: 'Attention *magie*' }), `**Attention \\*magie\\***\n\n${sansBanniere(feu)}`);
+  const pi = magie(PI); // à l'import : « MAGIE DIFFICILE À JOUER !! »
+  assert.equal(modifier(corpsDe(PI), 'magie', pi, { banniere: null }), sansBanniere(pi));
+  assert.equal(modifier(corpsDe(PI), 'magie', pi, { banniere: 'NOUVELLE BANNIÈRE' }), `**NOUVELLE BANNIÈRE**\n\n${sansBanniere(pi)}`);
 
-  const remarque = modifier(corps, 'magie', feu, { remarque: 'Remarque du MJ.' });
-  assert.ok(remarque.endsWith('- **C** : Par Cadeau du MJ\n\n## Remarque\n\nRemarque du MJ.\n'));
+  // remarque ajoutée à la fin de la page, puis changée
+  const sans = feu.remarque ? modifier(corps, 'magie', feu, { remarque: null }) : corps;
+  const remarque = modifier(sans, 'magie', { ...feu, remarque: null }, { remarque: 'Remarque du MJ.' });
+  assert.equal(remarque, `${sans.trimEnd()}\n\n## Remarque\n\nRemarque du MJ.\n`);
   assert.equal(modifier(remarque, 'magie', { ...feu, remarque: 'Remarque du MJ.' }, { remarque: 'Autre.' }), remarque.replace('Remarque du MJ.\n', 'Autre.\n'));
 });
 
 test('magie : santé, chakra, caractéristique et 4ème barre dans « Données » (libellé tel qu’écrit gardé)', () => {
   const feu = magie(FEU);
   const corps = corpsDe(FEU);
-  const apres = modifier(corps, 'magie', feu, { sante_offerte: 3, chakra_offert: 12, caracteristique_brut: 'FORCE' });
+  // les lignes telles que le corps les écrit (à l'import : « 0.0 », « 5.0 », « SOCIAL ») : seule la valeur change, le libellé reste
+  const ligne = (motif) => corps.split('\n').find((l) => motif.test(l));
+  const valeurs = { sante_offerte: (feu.sante_offerte ?? 0) + 3, chakra_offert: (feu.chakra_offert ?? 0) + 7, caracteristique_brut: feu.caracteristique_brut === 'FORCE' ? 'SOCIAL' : 'FORCE' };
+  const apres = modifier(corps, 'magie', feu, valeurs);
   assert.deepEqual(lignesChangees(corps, apres), [
-    ['- **Santé offerte** : 0.0', '- **Santé offerte** : 3'],
-    ['- **Chakra offert** : 5.0', '- **Chakra offert** : 12'],
-    ['- **Caractéristiques bonus** : SOCIAL', '- **Caractéristiques bonus** : FORCE'],
-  ]);
+    [/^- \*\*Santé offerte?\*\* : /, valeurs.sante_offerte], [/^- \*\*Chakra offert\*\* : /, valeurs.chakra_offert], [/^- \*\*Caractéristiques bonus\*\* : /, valeurs.caracteristique_brut],
+  ].map(([motif, v]) => [ligne(motif), ligne(motif).replace(/ : .*$/, ` : ${v}`)]));
   // la Nécromancie écrit « Santé offert » : le libellé reste
   const necro = magie('magies/magie-de-la-necromancie');
   assert.match(modifier(corpsDe(necro.id), 'magie', necro, { sante_offerte: 7 }), /^- \*\*Santé offert\*\* : 7$/m);
   // une valeur vidée retire la ligne ; remise, elle revient à sa place
   const vide = modifier(corps, 'magie', feu, { caracteristique_brut: null });
   assert.ok(!vide.includes('Caractéristiques bonus'));
-  assert.match(modifier(vide, 'magie', { ...feu, caracteristique_brut: null }, { caracteristique_brut: 'SOCIAL' }), /- \*\*Chakra offert\*\* : 5\.0\n- \*\*Caractéristiques bonus\*\* : SOCIAL\n- \*\*Résistance magique\*\*/);
+  assert.equal(modifier(vide, 'magie', { ...feu, caracteristique_brut: null }, { caracteristique_brut: feu.caracteristique_brut }), corps);
   // 4ème barre sur deux paragraphes : lignes suivantes en retrait de deux espaces
   const sang = magie('magies/magie-du-sang');
   const barre = modifier(corpsDe(sang.id), 'magie', sang, { barre4_texte: 'Maximum de 12 Sang.\nRégénère 2.\n\n- en combat' });
@@ -273,8 +285,8 @@ test('magie : santé, chakra, caractéristique et 4ème barre dans « Données �
 
 test('rôles et capacité Mode Hyper (tableau et liste)', () => {
   const role = roles.find((r) => r.magie_id === FEU && r.rang === 1);
-  const apres = modifier(corpsDe(FEU), 'magie_role', role, { role_brut: 'SOIN' });
-  assert.deepEqual(lignesChangees(corpsDe(FEU), apres), [['- DÉGÂTS', '- SOIN']]);
+  const apres = modifier(corpsDe(FEU), 'magie_role', role, { role_brut: 'SOIN TÉMOIN' });
+  assert.deepEqual(lignesChangees(corpsDe(FEU), apres), [[`- ${echapperLigne(role.role_brut)}`, '- SOIN TÉMOIN']]);
 
   const mono = hypers.find((h) => h.id === `onglet_magie:${FEU}:mono`);
   const hyper = modifier(corpsDe(FEU), 'mode_hyper_effet', mono, { effet: 'Nouvel effet | avec barre\nsur deux lignes' });
@@ -282,21 +294,21 @@ test('rôles et capacité Mode Hyper (tableau et liste)', () => {
 
   const complete = hypers.find((h) => h.magie_id === PI);
   const liste = modifier(corpsDe(PI), 'mode_hyper_effet', complete, { effet: 'Neutre.\nEt plus.' });
-  assert.ok(liste.endsWith('## Capacité Mode Hyper\n\n- **Forme Complète** : Neutre.  \n  Et plus.\n'));
+  assert.ok(liste.includes(`## Capacité Mode Hyper\n\n- **${echapperLigne(complete.variante_brut)}** : Neutre.  \n  Et plus.\n`));
   assert.ok(!liste.includes(complete.effet));
 });
 
 test('sort : une case modifiée ne change que sa ligne ; « / » pour D/S/B vide', () => {
+  // la ligne telle que le corps l'écrit aujourd'hui (valeurs de la base, nombres « N.0 » du classeur) ; seules les cases modifiées changent
   const boule = sort(`${FEU}#sort:boule-de-feu`);
   const corps = corpsDe(FEU);
-  const apres = modifier(corps, 'sort', boule, { cout_brut: '5 (-1/NM)', dsb_brut: null, effets: 'Brûle.' });
-  assert.deepEqual(lignesChangees(corps, apres), [[
-    '| 1.0 | Boule de feu | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de Feu. 3NM = Sur un coup critique, force le jet de vigueur pour ne pas prendre brûlure 1. |',
-    '| 1.0 | Boule de feu | Attaque | 5 (-1/NM) | 6.0 | 1.0 | / | Brûle. |',
-  ]]);
-  assert.ok(!apres.includes('Une simple attaque de Feu.'));
+  const cases = morceauxDuCorpsDeMagie(corps).sorts[boule.ordre - 1];
+  const ligne = (c) => `| ${c.join(' | ')} |`;
+  const apres = modifier(corps, 'sort', boule, { cout_brut: '5 (-1/NM) témoin', dsb_brut: null, effets: 'Brûle | témoin.' });
+  assert.deepEqual(lignesChangees(corps, apres), [[ligne(cases), ligne(cases.map((c, i) => ({ 3: '5 (-1/NM) témoin', 6: '/', 7: 'Brûle \\| témoin.' })[i] ?? c))]]);
+  assert.ok(!apres.includes(`| ${celluleDeTableau(boule.effets)} |`));
   const type = modifier(corps, 'sort', boule, { type_brut: 'Attaque/ Entrave\n(Imparable)' });
-  assert.match(type, /^\| 1\.0 \| Boule de feu \| Attaque\/ Entrave<br>\(Imparable\) \| 4\.0 \|/m);
+  assert.deepEqual(lignesChangees(corps, type), [[ligne(cases), ligne(cases.map((c, i) => (i === 2 ? 'Attaque/ Entrave<br>(Imparable)' : c)))]]);
 });
 
 test('sort : sa ligne est celle qui porte son nom, même quand le tableau ne suit plus l’ordre des sorts ; jamais la ligne d’un autre sort', () => {
@@ -318,76 +330,122 @@ test('sort : sa ligne est celle qui porte son nom, même quand le tableau ne sui
   assert.throws(() => modifier(sansLui, 'sort', premier, { cout_brut: '99' }), ErreurCorpsMagie);
 });
 
+// Les tests suivants partent du corps tel que la base l'écrit aujourd'hui (le site a pu le modifier) : les formes attendues (entrées de notes,
+// titres des textes de niveau 5) y sont lues, jamais recopiées de l'import.
+const entreesDe = (c) => morceauxDuCorpsDeMagie(c).notes;
+const niveau5De = (c) => morceauxDuCorpsDeMagie(c).niveau5;
+/** Les lignes d'un commentaire telles que l'entrée de note les cite (comment_lines de l'importeur). */
+const lignesCitees = (texte) => {
+  const l = String(texte).replace(/\r\n?/g, '\n').split('\n').map((x) => x.replace(/^[ \t]+|[ \t]+$/g, ''));
+  while (l.length && !l[0]) l.shift();
+  while (l.length && !l.at(-1)) l.pop();
+  return l;
+};
+
 test('sort renommé : la case, les libellés de ses notes et le titre de son texte de niveau 5 suivent ; rien de l’ancien nom ne reste', () => {
   const corps = corpsDe(FEU);
+  // Fer brûlant (à l'import : la case et deux entrées de notes, une note et un commentaire résolu)
   const fer = sort(`${FEU}#sort:fer-brulant`);
-  assert.equal(occurrences(corps, 'Fer brûlant'), 3, 'case + deux entrées de notes');
-  const apres = modifier(corps, 'sort', fer, { nom: 'Fer ardent' });
-  assert.equal(occurrences(apres, 'Fer brûlant'), 0);
-  assert.equal(occurrences(apres, 'Fer ardent'), 3);
-  assert.match(apres, /^\*\*Note de la cellule « Effets secondaires » du sort « Fer ardent »\*\* : Si coup critique/m);
-  assert.match(apres, /^\*\*Commentaire résolu de la cellule « Effets secondaires » du sort « Fer ardent »\*\* : Si 5 ou moins/m);
-  assert.equal(lignesChangees(corps, apres).length, 3);
+  const siennes = entreesDe(corps).filter((e) => e.sort === nomDeNote(fer.nom));
+  assert.equal(occurrences(corps, fer.nom), 1 + siennes.length, 'la case et ses entrées de notes');
+  const apres = modifier(corps, 'sort', fer, { nom: 'Fer témoin' });
+  assert.equal(occurrences(apres, fer.nom), 0);
+  assert.equal(occurrences(apres, 'Fer témoin'), 1 + siennes.length);
+  // les mêmes entrées, dans le même ordre, seul le nom du sort change dans leur libellé
+  const renommees = entreesDe(apres).filter((e) => e.sort === 'Fer témoin');
+  assert.deepEqual(renommees.map((e) => [e.libelle.replace(/« Fer témoin »$/, `« ${nomDeNote(fer.nom)} »`), e.lignes]), siennes.map((e) => [e.libelle, e.lignes]));
+  assert.equal(lignesChangees(corps, apres).length, 1 + siennes.length);
 
+  // Pluie chaude (à l'import : titre « Pluie Chaude » de son texte de niveau 5, casse du classeur)
   const pluie = sort(`${FEU}#sort:pluie-chaude`);
-  const renomme = modifier(corps, 'sort', pluie, { nom: 'Pluie ardente' });
-  assert.match(renomme, /^\| 5\.0 \| Pluie ardente \|/m);
-  assert.match(renomme, /^### Pluie ardente\n\n> Ô cieux/m);
-  assert.ok(!/^### Pluie Chaude$/m.test(renomme) && !/\| Pluie chaude \|/.test(renomme));
-  // un changement de casse seul garde le titre du classeur
-  assert.match(modifier(corps, 'sort', pluie, { nom: 'Pluie Chaude' }), /^### Pluie Chaude$/m);
+  const titre = niveau5De(corps).find((b) => nomPlie(b.titre) === nomPlie(pluie.nom));
+  const renomme = modifier(corps, 'sort', pluie, { nom: 'Pluie témoin' });
+  assert.equal(morceauxDuCorpsDeMagie(renomme).sorts[pluie.ordre - 1][1], 'Pluie témoin');
+  if (titre) assert.deepEqual(niveau5De(renomme).find((b) => b.titre === 'Pluie témoin')?.citation, titre.citation, 'le texte garde sa citation');
+  assert.ok(!niveau5De(renomme).some((b) => nomPlie(b.titre) === nomPlie(pluie.nom)) && !renomme.includes(`| ${celluleDeTableau(pluie.nom)} |`));
+  // un changement de casse seul garde le titre tel qu'il est écrit (celui du classeur)
+  if (titre) assert.ok(niveau5De(modifier(corps, 'sort', pluie, { nom: pluie.nom.toUpperCase() })).some((b) => b.titre === titre.titre));
 });
 
 test('sort : remarque modifiée, ajoutée, retirée (section des notes)', () => {
   const corps = corpsDe(FEU);
-  const fer = sort(`${FEU}#sort:fer-brulant`);
-  const rai = sort(`${FEU}#sort:rai-solaire`);
-  const boule = sort(`${FEU}#sort:boule-de-feu`);
-  // modifiée : les deux entrées du sort deviennent une seule ; aucun de leurs textes ne reste
-  const modifiee = modifier(corps, 'sort', fer, { remarque: 'Critique : brûlure 2.\n\nSur 5 ou moins : brûlure 1.' });
-  assert.match(modifiee, /## Notes et commentaires des sorts\n\n\*\*Remarque du sort « Fer brûlant »\*\*\n\nCritique : brûlure 2\.\n\nSur 5 ou moins : brûlure 1\.\n\n\*\*Note de la cellule « Effets secondaires » du sort « Rai solaire »\*\*/);
-  assert.ok(!modifiee.includes('Si coup critique avec une arme') && !modifiee.includes('Si 5 ou moins avec une arme'));
-  assert.equal(modifier(modifiee, 'sort', { ...fer, remarque: 'X' }, { ...fer, remarque: 'Critique : brûlure 2.\n\nSur 5 ou moins : brûlure 1.' }), modifiee, 'stable');
-  // la dernière entrée de la section modifiée : pas de ligne vide en trop
-  assert.match(modifier(corps, 'sort', rai, { remarque: 'R.' }), /brûlure au stade 1\n\n\*\*Remarque du sort « Rai solaire »\*\* : R\.\n\n## Textes des sorts de niveau 5/);
-  // ajoutée à un sort qui n'en avait pas : à sa place dans l'ordre des sorts (Boule de feu, 1er, avant Fer brûlant)
-  const ajoutee = modifier(corps, 'sort', boule, { remarque: 'Une remarque.' });
-  assert.match(ajoutee, /## Notes et commentaires des sorts\n\n\*\*Remarque du sort « Boule de feu »\*\* : Une remarque\.\n\n\*\*Note de la cellule « Effets secondaires » du sort « Fer brûlant »\*\*/);
-  const zenith = sort(`${FEU}#sort:zenith`);
-  assert.match(modifier(corps, 'sort', zenith, { remarque: 'Z' }), /du sort « Fer brûlant »\*\* : Si 5[^\n]*\n\n\*\*Remarque du sort « Zénith »\*\* : Z\n\n\*\*Note de la cellule « Effets secondaires » du sort « Rai solaire »/);
-  const derniere = modifier(corps, 'sort', sort(`${FEU}#sort:bucher-purifiant`), { remarque: 'B' });
-  assert.match(derniere, /de \+10 dégâts\.\n\n\*\*Remarque du sort « Bûcher purifiant »\*\* : B\n\n## Textes des sorts de niveau 5/);
-  // retirée : l'entrée part ; la dernière partie, la section aussi
-  const sansRai = modifier(corps, 'sort', rai, { remarque: null });
-  assert.ok(!sansRai.includes('Rai solaire »') && sansRai.includes('du sort « Fer brûlant »'));
-  assert.match(sansRai, /brûlure au stade 1\n\n## Textes des sorts de niveau 5/);
-  const aucune = modifier(sansRai, 'sort', fer, { remarque: null });
-  assert.ok(!aucune.includes(SECTIONS.notes));
-  assert.match(aucune, /\| Bûcher purifiant \|[^\n]*\n\n## Textes des sorts de niveau 5/);
-  // et revient, section recréée sous le tableau des sorts
-  assert.match(modifier(aucune, 'sort', { ...rai, remarque: null }, rai), /\| Bûcher purifiant \|[^\n]*\n\n## Notes et commentaires des sorts\n\n\*\*Remarque du sort « Rai solaire »\*\* : Peut prendre un tour de concentration pour donner un bonus de \+10 dégâts\.\n\n## Textes/);
+  const avant = entreesDe(corps);
+  const siens = sorts.filter((s) => s.magie_id === FEU);
+  const rang = (e) => siens.find((s) => nomDeNote(s.nom) === e.sort).ordre;
+  const autres = (c, s) => entreesDe(c).filter((e) => e.sort !== nomDeNote(s.nom));
+  const avecRemarque = siens.filter((s) => s.remarque);
+  const sansRemarque = siens.filter((s) => !s.remarque);
+  assert.ok(avecRemarque.length && sansRemarque.length >= 3);
+  // modifiée : les entrées du sort (Fer brûlant à l'import : deux) deviennent une seule, à la place de la première ; les autres ne bougent pas
+  const fer = sort(`${FEU}#sort:fer-brulant`).remarque ? sort(`${FEU}#sort:fer-brulant`) : avecRemarque[0];
+  const texte = 'Critique témoin : brûlure 2.\n\nSur 5 ou moins témoin : brûlure 1.';
+  const modifiee = modifier(corps, 'sort', fer, { remarque: texte });
+  const lues = entreesDe(modifiee);
+  assert.deepEqual(lues.filter((e) => e.sort === nomDeNote(fer.nom)).map((e) => [e.libelle, e.lignes]), [[`Remarque du sort « ${nomDeNote(fer.nom)} »`, texte.split('\n')]]);
+  assert.equal(lues.findIndex((e) => e.sort === nomDeNote(fer.nom)), avant.findIndex((e) => e.sort === nomDeNote(fer.nom)), 'à la place de la première');
+  assert.deepEqual(autres(modifiee, fer), autres(corps, fer));
+  assert.equal(modifier(modifiee, 'sort', { ...fer, remarque: 'X' }, { ...fer, remarque: texte }), modifiee, 'stable');
+  // ajoutée à un sort qui n'en avait pas (le premier, un du milieu, le dernier) : à sa place dans l'ordre des sorts, sans ligne vide en trop
+  for (const s of [sansRemarque[0], sansRemarque[Math.floor(sansRemarque.length / 2)], sansRemarque.at(-1)]) {
+    const ajoutee = modifier(corps, 'sort', s, { remarque: 'Une remarque témoin.' });
+    const e = entreesDe(ajoutee);
+    const k = e.findIndex((x) => x.sort === nomDeNote(s.nom));
+    assert.deepEqual([e[k].libelle, e[k].lignes], [`Remarque du sort « ${nomDeNote(s.nom)} »`, ['Une remarque témoin.']], s.id);
+    assert.deepEqual(e.filter((_, j) => j !== k), avant, `${s.id} : les autres entrées restent, dans leur ordre`);
+    assert.ok(e.slice(0, k).every((x) => rang(x) < s.ordre) && e.slice(k + 1).every((x) => rang(x) > s.ordre), `${s.id} : dans l'ordre des sorts`);
+    assert.ok(!ajoutee.includes('\n\n\n'), `${s.id} : ligne vide en trop`);
+  }
+  // retirées une à une : chaque entrée part, les autres restent ; la dernière partie, la section aussi
+  let c = corps;
+  for (const s of avecRemarque) {
+    const suivant = modifier(c, 'sort', s, { remarque: null });
+    assert.deepEqual(entreesDe(suivant), autres(c, s), s.id);
+    assert.ok(!suivant.includes('\n\n\n'), `${s.id} : ligne vide en trop`);
+    c = suivant;
+  }
+  assert.ok(!c.includes(SECTIONS.notes));
+  // et revient : section recréée sous le tableau des sorts
+  const s = avecRemarque[0];
+  const revenue = corpsDeMagieApres(c, 'sort', { ...s, remarque: null }, s);
+  const titres = morceauxDuCorpsDeMagie(revenue).titres;
+  assert.equal(titres[titres.indexOf(SECTIONS.sorts) + 1], SECTIONS.notes);
+  assert.deepEqual(entreesDe(revenue).map((e) => [e.libelle, e.lignes]), [[`Remarque du sort « ${nomDeNote(s.nom)} »`, lignesCitees(s.remarque)]]);
 });
 
 test('sort : texte de niveau 5 modifié, retiré, ajouté (bloc titré seul, section absente)', () => {
   const corps = corpsDe(FEU);
-  const pluie = sort(`${FEU}#sort:pluie-chaude`);
+  const blocs = niveau5De(corps);
+  const avecTexte = sorts.filter((s) => s.magie_id === FEU && s.texte_niveau5);
+  assert.ok(avecTexte.length >= 2);
+  // modifié (Pluie chaude à l'import) : le titre reste tel qu'il est écrit, la citation est remplacée, les autres blocs ne bougent pas
+  const pluie = sort(`${FEU}#sort:pluie-chaude`).texte_niveau5 ? sort(`${FEU}#sort:pluie-chaude`) : avecTexte[0];
   const modifie = modifier(corps, 'sort', pluie, { texte_niveau5: 'Ô flammes,\nvenez…\n\nPLUIE !' });
-  assert.match(modifie, /### Pluie Chaude\n\n> Ô flammes, {2}\n> venez…\n>\n> PLUIE !\n\n### Météore Cramoisi/);
-  assert.ok(!modifie.includes('Que les nuages se fissurent'));
-  const retire = modifier(corps, 'sort', sort(`${FEU}#sort:bucher-purifiant`), { texte_niveau5: null });
-  assert.ok(!retire.includes('### Bûcher purifiant') && !retire.includes('BÛCHER PURIFIANT'));
-  assert.match(retire, /> MÉTÉORE CRAMOISI !\n\n## Légende/);
-  // Foudre : titre seul (cellule vide du classeur) ; le texte s'y ajoute
-  const orage = sort('magies/magie-de-la-foudre#sort:orage-violet');
-  assert.match(modifier(corpsDe(orage.magie_id), 'sort', orage, { texte_niveau5: 'GRONDE !' }), /### Orage violet\n\n> GRONDE !\n\n### Fulguration\n/);
-  // Arcane : pas de section ; elle est créée avant la légende, le titre est le nom du sort
-  const drain = sort('magies/magie-de-larcane#sort:drain-denergie');
-  const cree = modifier(corpsDe(drain.magie_id), 'sort', drain, { texte_niveau5: 'DRAIN !' });
-  assert.match(cree, /\n\n## Textes des sorts de niveau 5\n\n### Drain d'énergie\n\n> DRAIN !\n\n## Légende\n/);
-  const planete = sort('magies/magie-de-larcane#sort:planete-chakratique');
-  const deux = modifier(cree, 'sort', planete, { texte_niveau5: 'PLANÈTE !' });
-  assert.match(deux, /### Drain d'énergie\n\n> DRAIN !\n\n### Planète Chakratique\n\n> PLANÈTE !\n\n## Légende/);
-  assert.equal(modifier(modifier(deux, 'sort', { ...planete, texte_niveau5: 'PLANÈTE !' }, planete), 'sort', { ...drain, texte_niveau5: 'DRAIN !' }, drain), corpsDe(drain.magie_id));
+  const apres = niveau5De(modifie);
+  const k = blocs.findIndex((b) => nomPlie(b.titre) === nomPlie(pluie.nom));
+  assert.deepEqual(apres[k], { titre: blocs[k].titre, citation: ['> Ô flammes,  ', '> venez…', '>', '> PLUIE !'] });
+  assert.deepEqual(apres.filter((_, j) => j !== k), blocs.filter((_, j) => j !== k));
+  // retiré (Bûcher purifiant à l'import, le dernier) : le bloc entier part, la section suivante suit le bloc précédent
+  const dernier = avecTexte.at(-1);
+  const retire = modifier(corps, 'sort', dernier, { texte_niveau5: null });
+  assert.deepEqual(niveau5De(retire), blocs.filter((b) => nomPlie(b.titre) !== nomPlie(dernier.nom)));
+  assert.ok(!retire.includes('\n\n\n'));
+  // titre seul (Foudre, à l'import : cellule de texte vide du classeur) : le texte s'y ajoute, sous le titre tel qu'il est écrit
+  const seul = sorts.map((s) => [s, niveau5De(corpsDe(s.magie_id)).find((b) => !b.citation.length && nomPlie(b.titre) === nomPlie(s.nom))]).find(([, b]) => b);
+  if (seul) {
+    const [s, b] = seul;
+    assert.ok(niveau5De(modifier(corpsDe(s.magie_id), 'sort', s, { texte_niveau5: 'GRONDE !' })).some((x) => x.titre === b.titre && x.citation.join() === '> GRONDE !'), s.id);
+  }
+  // une magie sans texte de niveau 5 (Arcane à l'import) : la section est créée avant la légende, les blocs dans l'ordre des sorts ; retirés, le corps revient
+  const sans = magies.find((m) => !morceauxDuCorpsDeMagie(corpsDe(m.id)).titres.includes(SECTIONS.niveau5) && sorts.filter((s) => s.magie_id === m.id && s.niveau === 5).length >= 2);
+  if (sans) {
+    const [a, b] = sorts.filter((s) => s.magie_id === sans.id && s.niveau === 5).slice(-2);
+    const un = modifier(corpsDe(sans.id), 'sort', b, { texte_niveau5: 'SECOND !' });
+    const deux = modifier(un, 'sort', a, { texte_niveau5: 'PREMIER !' });
+    const titres = morceauxDuCorpsDeMagie(deux).titres;
+    if (titres.includes(SECTIONS.legende)) assert.equal(titres[titres.indexOf(SECTIONS.legende) - 1], SECTIONS.niveau5);
+    assert.deepEqual(niveau5De(deux).map((x) => [x.titre, x.citation]), [[a.nom, ['> PREMIER !']], [b.nom, ['> SECOND !']]]);
+    assert.equal(modifier(modifier(deux, 'sort', { ...a, texte_niveau5: 'PREMIER !' }, { texte_niveau5: null }), 'sort', { ...b, texte_niveau5: 'SECOND !' }, { texte_niveau5: null }), corpsDe(sans.id));
+  }
 });
 
 test('modifications enchaînées puis annulées : le corps d’origine revient (textes)', () => {

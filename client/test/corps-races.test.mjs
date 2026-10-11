@@ -130,11 +130,14 @@ test('chaque colonne modifiable, sur chaque race : la valeur modifiée remplace 
 
 test('valeurs de départ : les quatre cases de l’onglet changent, AP et AM de la fiche restent ; le tableau des écarts suit l’onglet, jamais la fiche', () => {
   const avant = etats.get('races/drakos');
-  const apres = modifier(avant, 'race_onglet', { race_id: 'races/drakos' }, { sante_depart: 14, vitesse_nage: 2 });
+  const o = avant.race_onglet[0];
+  const [sante, nage] = [o.sante_depart + 1, o.vitesse_nage + 1];
+  const apres = modifier(avant, 'race_onglet', { race_id: 'races/drakos' }, { sante_depart: sante, vitesse_nage: nage });
   const c = corpsDeRace(corps.get('races/drakos'), apres, avant);
-  assert.match(sectionDe(c, 'Caractéristiques de départ'), /^\| 14 \| 10 \| 0 \| 4 \/ 2 \| 0\.0 \| 0\.0 \|$/m);
-  assert.match(c, /^\| Santé de départ<br>\(fiche : colonne « Santé »\) \| 14 \| 10\.0 \|$/m, 'la fiche reste citée telle quelle (10.0)');
-  assert.match(c, /^\| Chakra de départ<br>\(fiche : colonne « Chakra départ »\) \| 10 \| 13\.0 \|$/m);
+  // AP et AM de la fiche (« 0.0 ») restent ; les colonnes de la fiche du tableau des écarts aussi (santé « 10.0 », chakra « 13.0 » à l'import)
+  assert.match(sectionDe(c, 'Caractéristiques de départ'), new RegExp(`^\\| ${sante} \\| ${o.chakra_depart} \\| ${o.barriere_bonus} \\| ${o.vitesse_sol} / ${nage} \\| 0\\.0 \\| 0\\.0 \\|$`, 'm'));
+  assert.match(c, new RegExp(`^\\| Santé de départ<br>\\(fiche : colonne « Santé »\\) \\| ${sante} \\| 10\\.0 \\|$`, 'm'), 'la fiche reste citée telle quelle (10.0)');
+  assert.match(c, new RegExp(`^\\| Chakra de départ<br>\\(fiche : colonne « Chakra départ »\\) \\| ${o.chakra_depart} \\| 13\\.0 \\|$`, 'm'));
 });
 
 test('Nain : la liste suit l’onglet (exception gardée), le paragraphe d’écart et la ligne « Magies innées » des écarts suivent la liste et les inconvénients', () => {
@@ -151,20 +154,28 @@ test('Nain : la liste suit l’onglet (exception gardée), le paragraphe d’éc
 });
 
 test('magies innées d’une race sans liste d’onglet (matrice, R8) ; la note R22 de la Lamia reste sous sa liste ; une classe ajoutée compte dans la matrice des classes', () => {
+  // nombre et liste attendus : ceux de l'état modifié (à l'import, Humain sans l'Ombre : 14 sur 15 ; Lamia sans le Sang : 13 sur 15)
+  const liste = (etat) => {
+    const noms = magiesInneesDeRace(etat);
+    return `Nombre : ${noms.length} sur ${etat.race_magie.length}.\n\n${noms.map(escInline).join(', ')}\n`;
+  };
   const humain = etats.get('races/humain');
   const sansOmbre = modifier(humain, 'race_magie', { magie_id: 'magies/magie-de-lombre' }, { accessible: 0, valeur_brut: '0' });
   const c = corpsDeRace(corps.get('races/humain'), sansOmbre, humain);
-  assert.match(sectionDe(c, 'Magies accessibles'), /^Nombre : 14 sur 15\.\n\nPotentiel Illimité, Sang, Arcane, Corruption, Espace\/Temps, Vide, Nécromancie, Feu, Eau, Glace, Terre, Vent, Foudre, Lumière\n$/m);
+  assert.ok(!magiesInneesDeRace(sansOmbre).includes('Ombre'));
+  assert.ok(sectionDe(c, 'Magies accessibles').endsWith(`\n\n${liste(sansOmbre)}\n`));
   const lamia = etats.get('races/lamia');
-  const c2 = corpsDeRace(corps.get('races/lamia'), modifier(lamia, 'race_magie', { magie_id: 'magies/magie-du-sang' }, { accessible: 0, valeur_brut: '0' }), lamia);
-  assert.match(sectionDe(c2, 'Magies accessibles'), /^Nombre : 13 sur 15\.\n\nArcane, Corruption, [^\n]*\n\nCorruption : à 0 dans la matrice de la fiche, accessible d'après le propriétaire du projet \(décision R22\)\.\n/m);
+  const sansSang = modifier(lamia, 'race_magie', { magie_id: 'magies/magie-du-sang' }, { accessible: 0, valeur_brut: '0' });
+  const c2 = corpsDeRace(corps.get('races/lamia'), sansSang, lamia);
+  assert.ok(sectionDe(c2, 'Magies accessibles').includes(`\n\n${liste(sansSang)}\nCorruption : à 0 dans la matrice de la fiche, accessible d'après le propriétaire du projet (décision R22).\n`));
   // création d'une classe raciale (client/serveur/edition.mjs, CLASSE.creer) : une colonne de plus dans la matrice, accessible à sa race seulement
   const orios = etats.get('races/orios');
   const avecClasse = structuredClone(orios);
   avecClasse.classe.push({ id: 'classes/essai', nom: 'Essai' });
-  avecClasse.race_classe.push({ race_id: 'races/orios', classe_id: 'classes/essai', ordre: 40, accessible: 1, valeur_brut: '1' });
+  avecClasse.race_classe.push({ race_id: 'races/orios', classe_id: 'classes/essai', ordre: Math.max(...orios.race_classe.map((l) => l.ordre)) + 1, accessible: 1, valeur_brut: '1' });
   const c3 = corpsDeRace(corps.get('races/orios'), avecClasse, orios);
-  assert.match(sectionDe(c3, 'Classes accessibles'), /^Nombre : (\d+) sur 40\.\n\n.*, Essai\n$/m);
+  const accessibles = orios.race_classe.filter((l) => l.accessible === 1).length + 1;
+  assert.match(sectionDe(c3, 'Classes accessibles'), new RegExp(`^Nombre : ${accessibles} sur ${orios.race_classe.length + 1}\\.\\n\\n.*, Essai\\n$`, 'm'));
 });
 
 test('présentation, description, Mode Hyper et ethnies : section ajoutée, retirée ou réécrite ; une ethnie renommée l’est aussi dans le tableau des écarts', () => {
@@ -224,7 +235,7 @@ test('race créée depuis le site : corps complet tiré de ses seules tables, sa
   assert.deepEqual(titres(c), ['Présentation', 'Histoire', 'Caractéristiques de départ', 'Avantage(s) et inconvénient(s)', 'Don de base', 'Ethnies et dons raciaux', 'Classes accessibles', 'Magies accessibles']);
   assert.ok(c.startsWith('Une race de la lune.\n\n## Présentation\n\nUne race de la lune.\n\n## Histoire\n\nÀ compléter.\n'));
   assert.match(c, /^\| Santé de départ \| Chakra de départ \| Barrière bonus \| Vitesse Sol\/Nage \|\n\| --- \| --- \| --- \| --- \|\n\| 0 \| 0 \| 0 \| 0 \/ 0 \|$/m);
-  assert.match(c, /## Classes accessibles\n\nNombre : 0 sur 39\.\n\n## Magies accessibles\n\nNombre : 2 sur 15\.\n\nFeu, Ombre\n$/);
+  assert.ok(c.endsWith(`## Classes accessibles\n\nNombre : 0 sur ${etat.race_classe.length}.\n\n## Magies accessibles\n\nNombre : 2 sur ${etat.race_magie.length}.\n\nFeu, Ombre\n`));
   assert.doesNotMatch(c, /fiche/i);
   // une fois créé, le corps se recalcule à l'identique, et suit les modifications suivantes
   assert.equal(corpsDeRace(c, etat), c);

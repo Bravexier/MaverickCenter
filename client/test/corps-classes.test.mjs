@@ -50,13 +50,14 @@ test('classes : toute page classes/… a sa ligne de classe, sauf la page d’ex
   assert.deepEqual(sansLigne.filter((p) => p.statut !== 'example'), []);
 });
 
-test('« CHOSE À SAVOIR » sans texte : seul le Bimane (chose_a_savoir NULL), seule information que le corps garde seul', () => {
+test('« CHOSE À SAVOIR » sans texte (le Bimane à l’import) : chose_a_savoir NULL, seule information que le corps garde seul', () => {
   const sans = classes.filter((c) => choseASavoirSansTexte(page(c.id).corps_md));
-  assert.deepEqual(sans.map((c) => c.id), ['classes/bimane']);
-  assert.equal(sans[0].chose_a_savoir, null);
-  // sans l'option, le rendu perd le titre vide (et seulement lui)
-  const p = page('classes/bimane');
-  assert.equal(corpsDeClasse(lignesDe(sans[0])), p.corps_md.replace(`## ${TITRES_DE_CLASSE.choseASavoir}\n\n`, ''));
+  assert.ok(sans.every((c) => c.id === 'classes/bimane'), sans.map((c) => c.id).join(', '));
+  for (const c of sans) {
+    assert.equal(c.chose_a_savoir, null, c.id);
+    // sans l'option, le rendu perd le titre vide (et seulement lui)
+    assert.equal(corpsDeClasse(lignesDe(c)), page(c.id).corps_md.replace(`## ${TITRES_DE_CLASSE.choseASavoir}\n\n`, ''), c.id);
+  }
 });
 
 test('spécialités de la page : les bannières ; les deux de l’Archimage (sans don) n’y sont pas', () => {
@@ -130,52 +131,64 @@ test('classe : chaque texte modifié remplace l’ancien, partout, sur toutes le
   }
 });
 
+// Les tests qui suivent partent de la ligne telle qu'elle est dans la base (le site a pu la modifier) : les valeurs attendues en sont tirées.
+const nombre = (n) => (Number.isInteger(n) ? `${n}.0` : String(n));
+const ligneDeDepart = (c) => `| ${[c.sante_depart, c.chakra_depart, c.barriere_depart].map(nombre).join(' | ')} |`;
+
 test('classe : santé, chakra, barrière dans le tableau du don de départ', () => {
   const guerrier = lignesDe(classes.find((c) => c.id === 'classes/guerrier'));
   const avant = corpsDeClasse(guerrier);
-  assert.ok(avant.includes('| Santé | Chakra | Barrière |\n| --- | --- | --- |\n| 9.0 | 0.0 | 1.0 |\n'));
-  const apres = corpsDeClasse({ ...guerrier, classe: { ...guerrier.classe, sante_depart: 12, chakra_depart: 3, barriere_depart: 0 } });
-  assert.ok(apres.includes('| Santé | Chakra | Barrière |\n| --- | --- | --- |\n| 12.0 | 3.0 | 0.0 |\n'));
-  assert.ok(!apres.includes('| 9.0 | 0.0 | 1.0 |'));
-  assert.equal(apres.replace('| 12.0 | 3.0 | 0.0 |', '| 9.0 | 0.0 | 1.0 |'), avant);
+  assert.ok(avant.includes(`| Santé | Chakra | Barrière |\n| --- | --- | --- |\n${ligneDeDepart(guerrier.classe)}\n`));
+  const nouvelles = { sante_depart: guerrier.classe.sante_depart + 3, chakra_depart: guerrier.classe.chakra_depart + 3, barriere_depart: guerrier.classe.barriere_depart + 1 };
+  const apres = corpsDeClasse({ ...guerrier, classe: { ...guerrier.classe, ...nouvelles } });
+  assert.ok(apres.includes(`| Santé | Chakra | Barrière |\n| --- | --- | --- |\n${ligneDeDepart(nouvelles)}\n`));
+  assert.ok(!apres.includes(ligneDeDepart(guerrier.classe)));
+  assert.equal(apres.replace(ligneDeDepart(nouvelles), ligneDeDepart(guerrier.classe)), avant);
 });
 
-test('classe : présentation sur plusieurs paragraphes remplacée par une seule phrase, sans paragraphe orphelin ; résumé suivi', () => {
+test('classe : présentation (sur plusieurs paragraphes à l’import) remplacée par une seule phrase, sans paragraphe orphelin ; résumé suivi', () => {
   const guerrier = lignesDe(classes.find((c) => c.id === 'classes/guerrier'));
   const p = page('classes/guerrier');
-  const apres = { ...guerrier, classe: { ...guerrier.classe, description: 'Un guerrier. Il frappe fort.' } };
+  const apres = { ...guerrier, classe: { ...guerrier.classe, description: 'Un guerrier témoin. Il frappe fort.' } };
   const changes = changementsDePageDeClasse(p, guerrier, apres);
-  assert.ok(changes.corps_md.includes('## Description Guerrier\n\nUn guerrier. Il frappe fort.\n\n## Don de départ\n'));
-  assert.ok(!changes.corps_md.includes('Son entraînement'));
-  assert.ok(!changes.corps_md.includes('combattant aguerri'));
-  assert.equal(changes.resume, 'Un guerrier.');
+  const titre = guerrier.classe.description_titre ?? TITRES_DE_CLASSE.presentation;
+  assert.ok(changes.corps_md.includes(`## ${titre}\n\nUn guerrier témoin. Il frappe fort.\n\n## `));
+  for (const l of lignesMarkdown(guerrier.classe.description ?? '').filter((x) => x.trim().length > 20)) assert.ok(!changes.corps_md.includes(l.trim()), `reste : ${l}`);
+  assert.equal(changes.resume, 'Un guerrier témoin.');
   assert.equal(resumeDeClasse({ description: null }), null);
 });
 
 test('classe : « CHOSE À SAVOIR » ajouté, à sa place (après la présentation), puis retiré', () => {
-  const guerrier = lignesDe(classes.find((c) => c.id === 'classes/guerrier'));
-  const avec = corpsDeClasse({ ...guerrier, classe: { ...guerrier.classe, chose_a_savoir: 'Attention aux haches.' } });
-  assert.ok(avec.includes('lignes ennemies.\n\n## CHOSE À SAVOIR\n\nAttention aux haches.\n\n## Don de départ\n'));
-  assert.equal(corpsDeClasse(guerrier), page('classes/guerrier').corps_md);
-  // Bimane : le titre sans texte reçoit le texte, puis le perd avec lui (NULL = « bloc absent ou titre sans texte »)
-  const bimane = lignesDe(classes.find((c) => c.id === 'classes/bimane'));
-  const p = page('classes/bimane');
-  const ecrit = changementsDePageDeClasse(p, bimane, { ...bimane, classe: { ...bimane.classe, chose_a_savoir: 'Deux armes.' } });
-  assert.ok(ecrit.corps_md.includes('## CHOSE À SAVOIR\n\nDeux armes.\n\n## Don de départ\n'));
-  assert.equal(ecrit.corps_md.split('CHOSE À SAVOIR').length, 2);
-  const retire = changementsDePageDeClasse({ ...p, corps_md: ecrit.corps_md }, { ...bimane, classe: { ...bimane.classe, chose_a_savoir: 'Deux armes.' } }, bimane);
-  assert.ok(!retire.corps_md.includes('CHOSE À SAVOIR'));
-  assert.ok(!retire.corps_md.includes('Deux armes.'));
+  // une classe qui a une présentation et pas encore de « chose à savoir » (le Guerrier à l'import)
+  const classe = ['classes/guerrier', ...classes.map((c) => c.id)].map((id) => classes.find((c) => c.id === id))
+    .find((c) => c.description && !c.chose_a_savoir && !choseASavoirSansTexte(page(c.id).corps_md));
+  const lignes = lignesDe(classe);
+  const avec = corpsDeClasse({ ...lignes, classe: { ...classe, chose_a_savoir: 'Attention aux haches.' } });
+  assert.ok(avec.includes(`${blocDe(classe.description)}\n\n## CHOSE À SAVOIR\n\nAttention aux haches.\n\n## Don de départ\n`), classe.id);
+  assert.equal(corpsDeClasse(lignes), page(classe.id).corps_md);
+  // titre sans texte (le Bimane à l'import) : il reçoit le texte, puis le perd avec lui (NULL = « bloc absent ou titre sans texte »)
+  for (const c of classes.filter((x) => choseASavoirSansTexte(page(x.id).corps_md))) {
+    const l = lignesDe(c);
+    const p = page(c.id);
+    const ecrit = changementsDePageDeClasse(p, l, { ...l, classe: { ...c, chose_a_savoir: 'Deux armes.' } });
+    assert.ok(ecrit.corps_md.includes('## CHOSE À SAVOIR\n\nDeux armes.\n\n## Don de départ\n'), c.id);
+    assert.equal(ecrit.corps_md.split('CHOSE À SAVOIR').length, 2);
+    const retire = changementsDePageDeClasse({ ...p, corps_md: ecrit.corps_md }, { ...l, classe: { ...c, chose_a_savoir: 'Deux armes.' } }, l);
+    assert.ok(!retire.corps_md.includes('CHOSE À SAVOIR'));
+    assert.ok(!retire.corps_md.includes('Deux armes.'));
+  }
 });
 
 test('classe : une remarque ajoutée apparaît (« ## Remarque » en fin de page), retirée elle disparaît', () => {
-  const mage = lignesDe(classes.find((c) => c.id === 'classes/mage-bleu'));
-  const avant = page('classes/mage-bleu');
+  // une classe sans remarque (le Mage bleu à l'import)
+  const classe = ['classes/mage-bleu', ...classes.map((c) => c.id)].map((id) => classes.find((c) => c.id === id)).find((c) => !c.remarque);
+  const mage = lignesDe(classe);
+  const avant = page(classe.id);
   const avec = changementsDePageDeClasse(avant, mage, { ...mage, classe: { ...mage.classe, remarque: 'Voir le classeur des familiers.' } });
   assert.ok(avec.corps_md.endsWith('\n\n## Remarque\n\nVoir le classeur des familiers.\n'));
   assert.ok(avec.corps_md.startsWith(avant.corps_md.trimEnd()));
   assert.equal(changementsDePageDeClasse(avant, mage, mage).corps_md, undefined);
-  assert.equal(corpsDeClasse({ ...mage, classe: { ...mage.classe, remarque: null } }), avant.corps_md);
+  assert.equal(corpsDeClasse({ ...mage, classe: { ...mage.classe, remarque: null } }, optionsDe(avant)), avant.corps_md);
 });
 
 test('classe : présentation donnée à une classe sans titre de présentation (Grenadier) : titre « Présentation »', () => {
@@ -201,12 +214,13 @@ test('spécialité : nom, description et remarque modifiés remplacent les ancie
       assert.ok(remarque.includes(`#### Remarque\n\n${blocDe(MARQUE)}`), s.id);
     }
   }
-  // l'exemple de la tâche : « ### MAÎTRE D'ARME » de la page du Guerrier
+  // l'exemple de la tâche : « ### MAÎTRE D'ARME » (à l'import) de la page du Guerrier, renommé : seule sa ligne change
   const guerrier = lignesDe(classes.find((c) => c.id === 'classes/guerrier'));
   const avant = page('classes/guerrier');
-  const nouvelles = guerrier.specialites.map((s) => (s.nom === "MAÎTRE D'ARME" ? { ...s, nom: "MAÎTRE D'ARMES" } : s));
+  const maitre = guerrier.specialites.find((s) => s.id === 'classes/guerrier#specialite:maitre-darme');
+  const nouvelles = guerrier.specialites.map((s) => (s.id === maitre.id ? { ...s, nom: `${s.nom} TÉMOIN` } : s));
   const changes = changementsDePageDeClasse(avant, guerrier, { ...guerrier, specialites: nouvelles });
-  assert.equal(changes.corps_md, avant.corps_md.replace("### MAÎTRE D'ARME\n", "### MAÎTRE D'ARMES\n"));
+  assert.equal(changes.corps_md, avant.corps_md.replace(`### ${echapperLigne(maitre.nom)}\n`, `### ${echapperLigne(`${maitre.nom} TÉMOIN`)}\n`));
   assert.equal(changes.resume, undefined);
 });
 
@@ -234,11 +248,11 @@ test('don : une remarque ajoutée apparaît après l’effet, retirée elle disp
   const ajout = changementsDePageDeDon(p, d, { ...d, remarque: 'Ne se cumule pas.\n\nVoir le MJ.' });
   assert.deepEqual(ajout, { corps_md: `${p.corps_md.trimEnd()}\n\n${LIBELLE_DE_NOTE}Ne se cumule pas.\n\nVoir le MJ.\n` });
   assert.deepEqual(changementsDePageDeDon({ ...p, ...ajout }, { ...d, remarque: 'Ne se cumule pas.\n\nVoir le MJ.' }, d), { corps_md: p.corps_md });
-  // l'un des dons à note : la note change, l'ancienne ne reste nulle part
-  const note = dons.find((x) => x.id === 'capacites/bimane-frappe-fatiguante');
+  // l'un des dons à note (Frappe fatiguante du Bimane à l'import) : la note change, l'ancienne ne reste nulle part
+  const note = [dons.find((x) => x.id === 'capacites/bimane-frappe-fatiguante'), ...dons].find((x) => x?.remarque && x.effet);
   const change = changementsDePageDeDon(page(note.id), note, { ...note, remarque: 'Ne se cumule jamais.' });
   assert.ok(change.corps_md.endsWith(`\n\n${LIBELLE_DE_NOTE}Ne se cumule jamais.\n`));
-  assert.ok(!change.corps_md.includes('fatigue 2'));
+  for (const l of lignesMarkdown(note.remarque).filter((x) => x.trim())) assert.ok(!change.corps_md.includes(l.trim()), `${note.id} : reste « ${l} »`);
   assert.equal(change.resume, undefined);
   // effet : corps et résumé (première phrase, ou l'effet entier s'il est court et sur une ligne)
   const effet = changementsDePageDeDon(page(note.id), note, { ...note, effet: 'Frappe lourde. Puis repos.' });
