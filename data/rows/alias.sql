@@ -52,6 +52,12 @@ INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/utiliser-ce-wiki',
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/utiliser-ce-wiki', 1, 'Comment contribuer', 'comment-contribuer');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/vitesse-et-portee', 0, 'La Vitesse', 'la-vitesse');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/vitesse-et-portee', 1, 'La Portée', 'la-portee');
+INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('lore/academie-de-larcane', 0, 'Temple de l’Arcane', 'temple-de-larcane');
+INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('lore/chapelle-des-os', 0, 'Temple de la Nécromancie', 'temple-de-la-necromancie');
+INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('lore/confrerie-du-sang', 0, 'Temple du sang', 'temple-du-sang');
+INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('lore/eaunoire', 0, 'Eaunoir', 'eaunoir');
+INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('lore/temple-du-savoir', 0, 'Temple du Vide', 'temple-du-vide');
+INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('lore/temple-noir', 0, 'Temple de la Corruption', 'temple-de-la-corruption');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('magies/magie-de-la-necromancie', 0, 'Nécromancie', 'necromancie');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('magies/magie-de-lespace-temps', 0, 'Espace/Temps', 'espace-temps');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('magies/magie-de-lespace-temps', 1, 'Espace-Temps', 'espace-temps');

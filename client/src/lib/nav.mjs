@@ -46,7 +46,14 @@ export const NAV = [
     key: 'codex',
     label: 'Codex',
     autres: ['bestiaire/', 'lore/', 'cartes/'],
-    items: [{ label: 'Chronologie' }, { label: 'Carte & lieux' }, { label: 'Mythologie' }, { label: 'Bestiaire' }, { label: 'Factions' }],
+    // Mythologie et Factions : les sommaires des parties « Les Divinités » et « Temples/Cultes/Guildes » du Google Doc « CODEX Maverick » (docs/codex.md)
+    items: [
+      { label: 'Chronologie' },
+      { label: 'Carte & lieux' },
+      { label: 'Mythologie', path: 'lore/les-divinites/' },
+      { label: 'Bestiaire' },
+      { label: 'Factions', path: 'lore/temples-cultes-guildes/' },
+    ],
   },
   {
     key: 'outils',

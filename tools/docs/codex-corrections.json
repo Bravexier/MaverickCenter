@@ -1,0 +1,36 @@
+{
+  "$comment": "Corrections appliquées à l'export du Google Doc « CODEX Maverick » (sources/raw/1tH-T9k-a3sADBtKWHxcuMcN94_VA8-Zo2BTzee9O7Tg.md, qui reste tel quel) avant son découpage en pages par tools/docs/codex.py. Seulement ce qu'une décision du propriétaire ou une correction déjà faite dans toute la base impose (le Codex n'a pas encore eu sa relecture orthographique, décision R10) : chaque entrée donne le texte avant et après, le nombre d'occurrences attendu dans l'export (le script s'arrête s'il diffère) et sa raison. « mot » : le texte avant n'est remplacé que s'il n'est ni précédé ni suivi d'une lettre.",
+  "version": 1,
+  "document": "CODEX Maverick",
+  "corrections": [
+    {
+      "avant": "le Démon d’Eau Noire",
+      "apres": "Eaunoire",
+      "occurrences": 2,
+      "nature": "nom",
+      "raison": "Décision R21 (docs/decisions-regles.md) : la divinité de la Corruption ne s'appelle plus « Démon d'Eau Noire » mais « Eaunoire » ; comme la migration 0012 pour l'Elfe noir (« grâce au démon d'eau noire » → « grâce à Eaunoire »)."
+    },
+    {
+      "avant": "Eaunoir",
+      "apres": "Eaunoire",
+      "mot": true,
+      "occurrences": 18,
+      "nature": "nom",
+      "raison": "Décision R21 : « Eaunoire », en un seul mot ; le Codex écrit 18 fois « Eaunoir » (gardé en alias de la page) et 3 fois « Eaunoire ». Le Codex en parle au masculin (« le dieu déchu », « Dieu de la corruption »), R21 dit « la déesse » : non tranché, laissé tel quel (docs/codex.md)."
+    },
+    {
+      "avant": "orios, ect vivent",
+      "apres": "orios, etc. vivent",
+      "occurrences": 1,
+      "nature": "orthographe",
+      "raison": "Abréviation de « et cetera » : « etc. » ; même correction que la migration 0005 dans toute la base."
+    },
+    {
+      "avant": "une purée de poix",
+      "apres": "une purée de pois",
+      "occurrences": 1,
+      "nature": "orthographe",
+      "raison": "Expression « purée de pois » (brouillard épais) ; « poix » est la résine ; même correction que la migration 0006. Le nom de lieu « Les Brumes de Poix » n'est pas touché."
+    }
+  ]
+}
