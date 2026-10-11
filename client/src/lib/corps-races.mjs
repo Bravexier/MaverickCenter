@@ -72,6 +72,26 @@ export function etatDeRace(executer, raceId) {
   };
 }
 
+/** Clés primaires des tables de l'état d'une race. */
+const CLES_DE_L_ETAT = {
+  race: ['id'], race_onglet: ['race_id'], race_don: ['id'], ethnie: ['id'], race_don_tableau_colonne: ['race_id', 'rang'],
+  race_don_tableau_ligne: ['race_id', 'rang'], race_don_tableau_cellule: ['race_id', 'ligne', 'colonne'], mode_hyper_effet: ['id'],
+  race_magie: ['race_id', 'magie_id'], race_magie_onglet: ['race_id', 'magie_id'], race_classe: ['race_id', 'classe_id'], magie: ['id'], classe: ['id'],
+};
+
+/**
+ * L'état d'avant une modification, refait depuis celui d'après et la ligne d'avant (journal de l'édition : `avant` d'un `deriver`) : la ligne de même
+ * clé est remplacée par `avant` (ajoutée si elle n'existait plus, retirée si `avant` est null et que `apres` l'a insérée).
+ */
+export function etatAvecLigne(etat, table, avant, apres = null) {
+  const cles = CLES_DE_L_ETAT[table];
+  if (!cles || !(table in etat)) return etat;
+  const reference = avant ?? apres;
+  const meme = (l) => cles.every((k) => l[k] === reference[k]);
+  const lignes = (etat[table] ?? []).filter((l) => !meme(l));
+  return { ...etat, [table]: avant ? [...lignes, avant] : lignes };
+}
+
 /**
  * La race dont le corps dépend d'une ligne insérée, modifiée ou supprimée (une ligne du journal de l'édition : table, ligne avant ou après, colonnes
  * modifiées si on les connaît) : son id, '*' pour toutes les races (nom ou ordre d'une magie, nom d'une classe : les listes les citent), null sinon.

@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import {
-  celluleMd, corpsDeRace, corpsDeRaceCreee, escInline, etatDeRace, magiesInneesDeRace, mdTexte, raceConcernee, resumeDeRace, valeurCanonique,
+  celluleMd, corpsDeRace, corpsDeRaceCreee, escInline, etatAvecLigne, etatDeRace, magiesInneesDeRace, mdTexte, raceConcernee, resumeDeRace, valeurCanonique,
 } from '../src/lib/corps-races.mjs';
 import { cheminBase, ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { TABLES } from '../src/lib/edition-modele.mjs';
@@ -244,6 +244,20 @@ test('race concernée par une ligne du journal : celle de la ligne ; toutes pour
   assert.equal(raceConcernee('classe', { id: 'classes/guerrier' }), '*');
   assert.equal(raceConcernee('ethnie', { race_id: 'races/nain' }, ['bonus_pv']), null);
   assert.equal(raceConcernee('sort', { id: 'x' }), null);
+});
+
+test('état d’avant refait depuis celui d’après et la ligne d’avant du journal : il retrouve une ethnie renommée dans le tableau des écarts', () => {
+  const elfe = etats.get('races/elfe-noir');
+  const ligneAvant = elfe.race_don.find((d) => d.id === 'races/elfe-noir#don:elfe-charbon');
+  const apres = modifier(elfe, 'race_don', { id: ligneAvant.id }, { etiquette: 'Elfe Charbon des cendres' });
+  const avant = etatAvecLigne(apres, 'race_don', ligneAvant);
+  assert.equal(corpsDeRace(corps.get('races/elfe-noir'), apres, avant), corpsDeRace(corps.get('races/elfe-noir'), apres, elfe));
+  assert.doesNotMatch(corpsDeRace(corps.get('races/elfe-noir'), apres, avant), /« Elfe Charbon »/);
+  // une ligne insérée (avant null) est retirée ; une ligne supprimée (après null) revient
+  const ajout = { race_id: 'races/orios', classe_id: 'classes/essai', ordre: 40, accessible: 1, valeur_brut: '1' };
+  const avecClasse = { ...etats.get('races/orios'), race_classe: [...etats.get('races/orios').race_classe, ajout] };
+  assert.deepEqual(etatAvecLigne(avecClasse, 'race_classe', null, ajout).race_classe, etats.get('races/orios').race_classe);
+  assert.equal(etatAvecLigne(etats.get('races/orios'), 'race_classe', ajout).race_classe.length, etats.get('races/orios').race_classe.length + 1);
 });
 
 // --- relecture par tools/db/races_onglet.py : les tables modifiées se relisent dans les corps recalculés ------------------------------------------
