@@ -29,14 +29,26 @@ export const RETRAITS = Object.freeze([
 ]);
 
 /**
+ * Le numéro de chaque fiche de joueur, qui ne dépend pas de la réponse : Map(id de fiche → k), k = son rang parmi TOUTES les fiches de joueur de la base
+ * (`main`), par date de création puis identifiant. La même fiche porte donc le même numéro dans l'état de la page d'une classe (infobulle, confirmation),
+ * dans la réponse du lot et dans /api/etat ; une fiche créée plus tard prend le numéro suivant, et seule la suppression d'une fiche de joueur plus ancienne
+ * décale les suivantes.
+ * @param {import('node:sqlite').DatabaseSync} db
+ */
+export function numerosDesFichesDeJoueur(db) {
+  return new Map(db.prepare("SELECT id FROM main.personnage WHERE nature = 'joueur' ORDER BY cree_le, id").all().map((r, i) => [r.id, i + 1]));
+}
+
+/**
  * Le libellé d'une fiche de personnage que l'édition peut montrer : le nom d'un prétiré (visible par tous), « fiche de joueur n° k » pour une fiche de
  * joueur (son nom n'est montré qu'à ceux qui peuvent la lire : v_personnage_visible ; le service ne la liste ni ne la lit, serveur/fiches.mjs). `numeros` :
- * Map(id de fiche → k), partagée par tous les libellés d'une même réponse (une fiche citée deux fois garde le même libellé).
+ * numerosDesFichesDeJoueur(db), lu dans la base qui contient la fiche.
  */
 export function libelleDeFiche(r, numeros) {
   if (r.nature === 'pretire') return r.nom;
-  if (!numeros.has(r.personnage)) numeros.set(r.personnage, numeros.size + 1);
-  return `fiche de joueur n° ${numeros.get(r.personnage)}`;
+  const k = numeros.get(r.personnage);
+  if (k === undefined) throw new Error(`fiche de joueur « ${r.personnage} » absente des numéros (numerosDesFichesDeJoueur)`);
+  return `fiche de joueur n° ${k}`;
 }
 const anonymes = (a) => a.startsWith('fiche de joueur n° ');
 /** Ordre des libellés : les prétirés dans l'ordre alphabétique, puis les fiches de joueur. */
@@ -207,8 +219,8 @@ export function retirerLesManquants(db, acc = nouveauxRetraitsDeFiches()) {
 /**
  * Écrit, pour chaque fiche de `acc`, une ligne datée par élément retiré à la fin de ses notes (ordreDesRetraits, puis ligneDeRetrait) et modifie_le =
  * l'instant (cree_le si elle est plus récente : CHECK de la table) : une seule écriture par fiche, dont la version (empreinte du contenu,
- * serveur/fiches.mjs) change donc. Rend les fiches touchées, pour la réponse : [{ fiche: libellé (libelleDeFiche), retraits: [descriptions] }], dans
- * l'ordre des libellés (prétirés, puis fiches de joueur).
+ * serveur/fiches.mjs) change donc. Rend les fiches touchées, pour la réponse : [{ fiche: libellé (libelleDeFiche, numéros de numerosDesFichesDeJoueur),
+ * retraits: [descriptions] }], dans l'ordre des libellés (prétirés, puis fiches de joueur).
  * @param {import('node:sqlite').DatabaseSync} db
  * @param {Map} acc
  * @param {string} instant ISO 8601 UTC à la seconde (format des colonnes `*_le`)
@@ -216,7 +228,7 @@ export function retirerLesManquants(db, acc = nouveauxRetraitsDeFiches()) {
 export function noterLesRetraits(db, acc, instant) {
   if (!acc.size) return [];
   const ecrire = db.prepare('UPDATE main.personnage SET notes = ?, modifie_le = ? WHERE id = ?');
-  const numeros = new Map();
+  const numeros = numerosDesFichesDeJoueur(db); // ceux de la page d'une classe (donneesDeClasse) : une fiche garde son numéro d'une réponse à l'autre
   const fiches = [];
   for (const p of db.prepare(`SELECT id AS personnage, nom, nature, notes, cree_le FROM main.personnage WHERE id IN (SELECT value FROM json_each(?))
     ORDER BY nature = 'pretire' DESC, nom COLLATE NOCASE, id`).all(JSON.stringify([...acc.keys()]))) {

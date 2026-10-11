@@ -6,12 +6,13 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrer } from '../serveur/edition.mjs';
 import { ErreurJournal, ouvrirLot, TABLES_INTERDITES } from '../serveur/edition-journal.mjs';
 import {
-  libelleDeFiche, noterLesRetraits, nouveauxRetraitsDeFiches, ordreDesLibelles, RETRAITS, retirerDesFiches,
+  libelleDeFiche, noterLesRetraits, nouveauxRetraitsDeFiches, numerosDesFichesDeJoueur, ordreDesLibelles, RETRAITS, retirerDesFiches,
 } from '../serveur/fiches-retraits.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { jourDuRetrait, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
@@ -141,11 +142,26 @@ test('retirerDesFiches puis noterLesRetraits : éléments retirés, ligne de cla
   assert.deepEqual(noterLesRetraits(db, nouveauxRetraitsDeFiches(), INSTANT), [], 'rien à noter');
 });
 
-test('libelleDeFiche : une fiche de joueur garde son numéro dans une même réponse ; ordreDesLibelles : prétirés, puis fiches de joueur', () => {
-  const numeros = new Map();
-  assert.equal(libelleDeFiche({ personnage: 'a', nom: 'Secret', nature: 'joueur' }, numeros), 'fiche de joueur n° 1');
-  assert.equal(libelleDeFiche({ personnage: 'b', nom: 'Autre', nature: 'joueur' }, numeros), 'fiche de joueur n° 2');
-  assert.equal(libelleDeFiche({ personnage: 'a', nom: 'Secret', nature: 'joueur' }, numeros), 'fiche de joueur n° 1');
-  assert.equal(libelleDeFiche({ personnage: 'c', nom: 'Aldric', nature: 'pretire' }, numeros), 'Aldric');
+test('numerosDesFichesDeJoueur : toutes les fiches de joueur par date de création puis id (pas les prétirés) ; libelleDeFiche les lit ; ordreDesLibelles : prétirés, puis fiches de joueur', () => {
+  const m = new DatabaseSync(':memory:');
+  try {
+    m.exec('CREATE TABLE personnage (id TEXT PRIMARY KEY, nature TEXT NOT NULL, nom TEXT NOT NULL, cree_le TEXT NOT NULL)');
+    const fiche = (id, nature, creeLe) => m.prepare('INSERT INTO personnage (id, nature, nom, cree_le) VALUES (?, ?, ?, ?)').run(id, nature, `Secret ${id}`, creeLe);
+    fiche('n-z', 'joueur', '2026-10-01T00:00:00Z');
+    fiche('n-b', 'joueur', '2026-10-03T00:00:00Z');
+    fiche('n-a', 'joueur', '2026-10-03T00:00:00Z');
+    fiche('n-pretire', 'pretire', '2026-09-01T00:00:00Z');
+    const numeros = numerosDesFichesDeJoueur(m);
+    assert.deepEqual([...numeros], [['n-z', 1], ['n-a', 2], ['n-b', 3]]);
+    assert.equal(libelleDeFiche({ personnage: 'n-b', nom: 'Secret n-b', nature: 'joueur' }, numeros), 'fiche de joueur n° 3');
+    assert.equal(libelleDeFiche({ personnage: 'n-b', nom: 'Secret n-b', nature: 'joueur' }, numeros), 'fiche de joueur n° 3', 'lire ne change rien');
+    assert.equal(libelleDeFiche({ personnage: 'n-pretire', nom: 'Aldric', nature: 'pretire' }, numeros), 'Aldric');
+    assert.throws(() => libelleDeFiche({ personnage: 'inconnue', nom: 'X', nature: 'joueur' }, numeros), /absente des numéros/);
+    // une fiche créée plus tard prend le numéro suivant, sans décaler les autres
+    fiche('n-0', 'joueur', '2026-10-05T00:00:00Z');
+    assert.deepEqual([...numerosDesFichesDeJoueur(m)], [['n-z', 1], ['n-a', 2], ['n-b', 3], ['n-0', 4]]);
+  } finally {
+    m.close();
+  }
   assert.deepEqual(['fiche de joueur n° 10', 'Zora', 'fiche de joueur n° 2', 'aldric'].sort(ordreDesLibelles), ['aldric', 'Zora', 'fiche de joueur n° 2', 'fiche de joueur n° 10']);
 });

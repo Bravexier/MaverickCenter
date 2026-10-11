@@ -419,14 +419,14 @@ test('D11 — supprimer un don : note de cellule, fiche, mots-clés, sources, en
 const modificationsDeFiches = () => ligne('SELECT count(*) AS n FROM modification WHERE table_nom IN (SELECT value FROM json_each(?))', JSON.stringify(TABLES_FICHES)).n;
 const SUITE_DU_RETRAIT = ' n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.';
 /** Une fiche de JOUEUR écrite comme le fera la 1.0 (le service ne la liste ni ne la lit) : son nom ne doit jamais sortir par l'édition. */
-function ficheDeJoueur(id, { specialite = null, capacites = [] } = {}) {
+function ficheDeJoueur(id, { classe = C1.id, specialite = null, capacites = [], creeLe = '2026-10-11T00:00:00Z' } = {}) {
   if (!ligne("SELECT 1 FROM utilisateur WHERE id = 'utilisateur-d11'")) {
     db.prepare("INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES ('utilisateur-d11', 'Joueur D11', '2026-10-11T00:00:00Z')").run();
   }
   db.prepare(`INSERT INTO personnage (id, nature, proprietaire_id, visibilite, statut, nom, mode_classe, xp, alignement_loyal, alignement_chaotique, alignement_bon,
     alignement_mauvais, bourse_pp, bourse_ro, bourse_rf, ambidextrie, cree_le, modifie_le) VALUES (?, 'joueur', 'utilisateur-d11', 'privee', 'brouillon', 'Secret du joueur',
-    'mono', 0, 0, 0, 0, 0, 0, 0, 0, 0, '2026-10-11T00:00:00Z', '2026-10-11T00:00:00Z')`).run(id);
-  db.prepare('INSERT INTO personnage_classe (personnage_id, rang, classe_id, specialite_id) VALUES (?, 1, ?, ?)').run(id, C1.id, specialite);
+    'mono', 0, 0, 0, 0, 0, 0, 0, 0, 0, ?, ?)`).run(id, creeLe, creeLe);
+  db.prepare('INSERT INTO personnage_classe (personnage_id, rang, classe_id, specialite_id) VALUES (?, 1, ?, ?)').run(id, classe, specialite);
   for (const k of capacites) db.prepare('INSERT INTO personnage_capacite (personnage_id, capacite_id) VALUES (?, ?)').run(id, k);
 }
 const retirerFicheDeJoueur = (id) => {
@@ -521,6 +521,36 @@ test('D11 / R33 — supprimer une spécialité : elle emporte son don de spécia
   assert.equal(re.statut, 200, JSON.stringify(re.corps));
   assert.equal(re.corps.crees[0].id, `${C1.spec2}-2`, 'l’id d’une spécialité supprimée n’est pas repris');
   clesIntactes();
+});
+
+test('R33 — « fiche de joueur n° k » : le même numéro pour la même fiche dans l’état de la page (infobulle, confirmation) et dans la réponse du lot', () => {
+  // une classe à deux spécialités ; trois fiches de joueur qui la citent : la plus ancienne (n° 1) a l'autre spécialité et ne perd rien, les deux
+  // suivantes (n° 2 et 3) ont la spécialité supprimée ; un prétiré l'a aussi
+  const C = nouvelleClasse('Archer des numéros');
+  const garde = creerSpecialite(C.id, 'GARDÉE');
+  assert.equal(garde.statut, 200, JSON.stringify(garde.corps));
+  const perdue = creerSpecialite(C.id, 'PERDUE', { don_nom: 'Perdue' });
+  assert.equal(perdue.statut, 200, JSON.stringify(perdue.corps));
+  const [specGardee, specPerdue] = [garde, perdue].map((r) => r.corps.crees[0].id);
+  const p = appel('POST', '/api/personnages/', { ...ficheVide('Témoin des numéros'), classes: [{ rang: 1, classe_id: C.id, specialite_id: specPerdue }] });
+  assert.equal(p.statut, 201, JSON.stringify(p.corps));
+  ficheDeJoueur('fiche-joueur-numeros-a', { classe: C.id, specialite: specGardee, creeLe: '2026-10-01T00:00:00Z' });
+  ficheDeJoueur('fiche-joueur-numeros-b', { classe: C.id, specialite: specPerdue, creeLe: '2026-10-02T00:00:00Z' });
+  ficheDeJoueur('fiche-joueur-numeros-c', { classe: C.id, specialite: specPerdue, creeLe: '2026-10-03T00:00:00Z' });
+  try {
+    const etat = appel('POST', '/api/edition/classe/', { classe: C.id }).corps;
+    assert.deepEqual(etat.fiches[specGardee], ['fiche de joueur n° 1']);
+    assert.deepEqual(etat.fiches[specPerdue], ['Témoin des numéros', 'fiche de joueur n° 2', 'fiche de joueur n° 3']);
+    const r = supprimer('specialite', specPerdue);
+    assert.equal(r.statut, 200, JSON.stringify(r.corps));
+    assert.deepEqual(r.corps.fiches.map((f) => f.fiche), etat.fiches[specPerdue], 'l’annonce nomme les fiches comme la confirmation');
+    assert.ok(!JSON.stringify([etat, r.corps]).includes('Secret du joueur'), 'le nom d’une fiche de joueur ne sort pas');
+    // la fiche n° 1 n'a rien perdu ; la page, relue, la désigne toujours ainsi
+    assert.deepEqual(appel('POST', '/api/edition/classe/', { classe: C.id }).corps.fiches[specGardee], ['fiche de joueur n° 1']);
+    clesIntactes();
+  } finally {
+    for (const id of ['fiche-joueur-numeros-a', 'fiche-joueur-numeros-b', 'fiche-joueur-numeros-c']) retirerFicheDeJoueur(id);
+  }
 });
 
 test('R33 — un lot refusé n’écrit rien dans les fiches : retrait et note annulés avec la suppression', () => {

@@ -196,7 +196,10 @@ les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.` 
 sa magie, son NPM et les NM de la fiche ; une ligne par élément, dans l'ordre métier, spécialité, don, sort) ; `modifie_le` prend l'instant du lot, et
 la version de la fiche change (une fiche ouverte ailleurs reçoit `409` avec la fiche à jour ; la page `/fiche/` dit alors combien d'éléments ont été
 retirés, et une bannière résume les lignes de retrait de ses notes tant qu'elles y sont). La réponse du lot porte **`fiches`** :
-`[{ fiche, retraits: [descriptions] }]` (le nom d'un prétiré, « fiche de joueur n° k » pour une fiche de joueur), annoncée après l'enregistrement
+`[{ fiche, retraits: [descriptions] }]` (le nom d'un prétiré, « fiche de joueur n° k » pour une fiche de joueur : k est son rang parmi toutes les
+fiches de joueur de la base par date de création, `numerosDesFichesDeJoueur`, donc **le même d'une réponse à l'autre** — infobulle et confirmation
+de la page d'une classe, réponse du lot, `/api/etat` — ; une fiche créée ensuite prend le numéro suivant, seule la suppression d'une fiche de joueur
+plus ancienne décale les suivantes), annoncée après l'enregistrement
 par le message commun de l'éditeur (`annonceDesFiches`, qui reste affiché) ; sur la page d'une classe, l'infobulle de « Supprimer » et la confirmation
 des conséquences nomment d'avance les fiches qui perdront la ligne (`libelleDeRetrait`, `consequences`). Une fiche « valide » le reste : aucun
 contrôle ne signale un manque, la note est le seul signal. Un élément **seulement modifié** (renommé, type, effet…) ne touche pas les fiches (ni

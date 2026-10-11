@@ -46,7 +46,9 @@ import {
 } from '../src/lib/dons-edition.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { ErreurJournal, cleDe, lireLigne, nouveauLot, ouvrirLot, rejouer, structure } from './edition-journal.mjs';
-import { libelleDeFiche, noterLesRetraits, nouveauxRetraitsDeFiches, retirerDesFiches } from './fiches-retraits.mjs';
+import {
+  libelleDeFiche, noterLesRetraits, nouveauxRetraitsDeFiches, numerosDesFichesDeJoueur, ordreDesLibelles, retirerDesFiches,
+} from './fiches-retraits.mjs';
 
 /** Nombre maximal d'opérations dans un lot (une page en envoie quelques dizaines). */
 export const OPERATIONS_MAX = 2000;
@@ -1570,7 +1572,8 @@ export function donneesDeClasse(db, classeId) {
   const { specialites, dons } = lignesDesDons(db, classe.id);
   const fiches = {};
   const vues = new Set();
-  const numeros = new Map(); // fiches de joueur : un numéro par fiche, le même pour toute la réponse (permissions réunit spécialité et dons)
+  // fiches de joueur : le numéro de la fiche dans la base, le même dans cette réponse (permissions réunit spécialité et dons) et dans celle du lot
+  const numeros = numerosDesFichesDeJoueur(db);
   for (const r of db.prepare(`
     SELECT pc.capacite_id AS id, p.id AS personnage, p.nom, p.nature, p.nature = 'pretire' AS pretire FROM personnage_capacite pc
       JOIN personnage p ON p.id = pc.personnage_id JOIN capacite k ON k.id = pc.capacite_id WHERE k.classe_id = ?
@@ -1582,6 +1585,7 @@ export function donneesDeClasse(db, classeId) {
     vues.add(`${r.id}\u0000${r.personnage}`);
     (fiches[r.id] ??= []).push(libelleDeFiche(r, numeros));
   }
+  for (const liste of Object.values(fiches)) liste.sort(ordreDesLibelles); // l'ordre de la réponse du lot (noterLesRetraits)
   return {
     classe: { id: classe.id, nom: classe.nom, categorie_id: classe.categorie_id },
     categorie: lireLigne(db, 'categorie_classe', { id: classe.categorie_id }),
