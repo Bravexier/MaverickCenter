@@ -114,7 +114,8 @@ Deux serveurs, deux formes d'étiquette, sans suffixe (décision du propriétair
 n'y a pas de version « de test » à part) : trois nombres pour `dev`, deux pour `master`. `mise-a-jour.sh` reconnaît les livraisons de son
 serveur à cette forme. Seule la toute première livraison de test s'est appelée `V0.2.0-test`.
 
-- **Serveur de test** (`maverick-center-test`, port 8081, bandeau « Serveur de test » sur chaque page, `[TEST]` dans le titre de l'onglet).
+- **Serveur de test** (`maverick-center-test`, port 8081, bandeau « Serveur de dev » sur chaque page — il renvoie à la page « Mise à jour », qui
+  liste les modifications en cours —, `[TEST]` dans le titre de l'onglet).
   À chaque installation, **sa base est remplacée par une copie de celle du serveur normal prise à cet instant** (dossier `db/` de l'instance de
   production ; avec `sqlite3`, chaque base SQLite est copiée par `.backup`, donc cohérente même si la production écrit). Rien de ce qui est fait en
   test ne revient en production.

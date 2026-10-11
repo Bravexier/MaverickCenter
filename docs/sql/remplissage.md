@@ -86,6 +86,8 @@ pour l'Archimage d'après son « CHOSE A SAVOIR » ; règles `classe_reservee` e
 `0022-lamia-une-seule-magie.sql` (structure et données, décision R28 : colonne `race.mono_magie`, à 1 pour la Lamia seule — « Une seule magie autorisé », inconvénients de son onglet —, table reconstruite comme `magie` en 0010 ; règle `race_mono_magie` de `v_personnage_controle`).
 `0026-acquis-caracteristique-totale.sql` (structure, décision R41 : la règle `competence_acquis_max` de `v_personnage_controle` compte la caractéristique totale, le +1 de la magie innée compris).
 `0027-posture-du-moment.sql` (structure, demande du propriétaire : colonne `personnage.posture_id`, la posture du moment, choisie parmi les six de `posture`).
+`0028-note-0-2-import-initial.sql` (données, demande du propriétaire : la note de la V0.2 ne liste plus ses modifications — `note_version_ligne` de la V0.2 retirées — et son
+texte dit « Import initial depuis les sources historiques » au lieu de « Pour le moment en V0.2 » ; `historique_modification` reste).
 
 ## La colonne `remarque`
 

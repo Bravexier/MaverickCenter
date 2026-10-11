@@ -66,7 +66,15 @@ const site = modeDuSite(process.env, packageInfo.version);
     }
   </head>
   <body>
-    {site.test && <p class="bandeau-test" role="note"><strong>Serveur de test</strong> — {site.etiquette}, version en cours de développement : ce n’est pas le site de production.</p>}
+    {
+      /* Bandeau du serveur de dev (SITE_MODE=test ; demande du propriétaire) : il renvoie à la page « Mise à jour », qui y liste les modifications en
+         cours ; pas de lien sur la page de maintenance, inerte comme le menu. */
+      site.test && (
+        <p class="bandeau-test" role="note">
+          <strong>Serveur de dev.</strong> Consultez l’onglet {maintenance ? 'Mise à jour' : <a href={url('mise-a-jour/')}>Mise à jour</a>} pour lister les modifications en cours.
+        </p>
+      )
+    }
     <header class:list={['site-header', { 'site-header--maintenance': maintenance }]}>
       <div class="site-header__inner" inert={maintenance || undefined}>
         <a class="brand" href={url()}><img src={url('logo.webp')} alt="Maverick Center" width="319" height="320" /></a>

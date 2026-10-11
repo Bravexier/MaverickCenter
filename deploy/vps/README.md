@@ -84,7 +84,7 @@ cd /srv/maverick-center && sudo docker compose up -d
 cd /srv/maverick-center-test && sudo docker compose up -d
 ```
 
-Ouvrir `https://maverick-jdr.com` et `https://dev.maverick-jdr.com` (bandeau « Serveur de test »).
+Ouvrir `https://maverick-jdr.com` et `https://dev.maverick-jdr.com` (bandeau « Serveur de dev »).
 
 ## 6. Mises à jour automatiques
 
@@ -200,7 +200,7 @@ branche **`site`** ([`docs/flux-git.md`](../../docs/flux-git.md)). Le serveur de
 
 Ce qui diffère d'un serveur installé à partir de la 0.2.0 :
 
-- **Pas de bandeau « Serveur de test »** sur `https://dev.maverick-jdr.com` : la branche `site` est le site unique, construit sans le mode test.
+- **Pas de bandeau « Serveur de dev »** sur `https://dev.maverick-jdr.com` : la branche `site` est le site unique, construit sans le mode test.
   Le bandeau arrive avec l'installateur de test.
 - **`https://maverick-jdr.com` répond 502** tant que le serveur normal n'est pas installé (Caddy est prêt, l'instance n'existe pas encore) : c'est attendu.
 - `sudo docker ps` montre 2 conteneurs (`maverick-center-test` et `maverick-center-test-serveur`), pas 4.

@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import { planifier } from '../../tools/flux-git/regles.mjs';
 import { bilan, comparerBases, DOMAINES, TABLES_DES_NOTES, trierVersions, versionCourte, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
 import {
-  diffMots, echapper, htmlDeLaListe, htmlDeLaNote, htmlDuTexteLibre, markdownDeLaNote, neutraliserMarqueur,
+  diffMots, echapper, htmlDeLaListe, htmlDeLaNote, htmlDuTexteLibre, lancementAffiche, markdownDeLaNote, neutraliserMarqueur,
 } from '../src/lib/notes-de-version-rendu.mjs';
 
 const magies = [
@@ -215,6 +215,37 @@ test('rendu : ancienne valeur barrée, nouvelle à côté, couleur du sens ; tou
   assert.match(note, /Version 0\.1 <span class="nv-date">1 octobre 2026<\/span> <span class="nv-depuis">depuis la V0\.0<\/span>/);
   assert.match(note, /class="nv-exemple"/);
   assert.match(note, /<p>Bonjour <strong>à tous<\/strong><\/p>/);
+  // sans liste : « Aucune modification des règles » si la note n'a pas de texte ; avec un texte (V0.2, migration 0028), le texte seul
+  const vide = { version: '0.2', publiee_le: '2026-10-11', depuis: '0.1', texte: null, exemple: 0 };
+  assert.match(htmlDeLaNote(vide, []), /Aucune modification des règles\./);
+  const importInitial = htmlDeLaNote({ ...vide, texte: 'Import initial depuis les sources historiques.' }, []);
+  assert.match(importInitial, /<p>Import initial depuis les sources historiques\.<\/p>/);
+  assert.doesNotMatch(importInitial, /nv-aucune/);
+});
+
+test('lancementAffiche : l’encart « Dernier lancement » ne parle que de la version en préparation, sauf s’il pèse encore sur la page', () => {
+  const termine = { lot: 'a', version_cible: '0.2', etat: 'termine' };
+  // demande du propriétaire : la livraison précédente, terminée, ne s'affiche plus pendant la préparation de la suivante
+  assert.equal(lancementAffiche({ lancement: termine, version_cible: '0.3', occupe: false, liberable: false, brouillon: { lot: null } }), null);
+  assert.equal(lancementAffiche({ lancement: { ...termine, etat: 'simulation_reussie' }, version_cible: '0.3' }), null);
+  assert.equal(lancementAffiche({ lancement: null, version_cible: '0.3' }), null);
+  // la version en préparation : toujours montré (simulation, échec, terminé…)
+  for (const etat of ['simulation_reussie', 'simulation_echouee', 'echec', 'annule', 'termine', 'en_cours']) {
+    const l = { lot: 'b', version_cible: '0.3', etat };
+    assert.equal(lancementAffiche({ lancement: l, version_cible: '0.3' }), l, etat);
+  }
+  // une autre version, mais il bloque, tient le texte figé ou son lot s'annule encore : la page doit dire pourquoi
+  assert.equal(lancementAffiche({ lancement: termine, version_cible: '0.3', occupe: true }), termine);
+  assert.equal(lancementAffiche({ lancement: termine, version_cible: '0.3', brouillon: { lot: 'a' } }), termine);
+  assert.equal(lancementAffiche({ lancement: termine, version_cible: '0.3', brouillon: { lot: 'autre' } }), null);
+  for (const etat of ['envoi', 'manuel', 'erreur', 'echec', 'lance', 'en_cours']) {
+    const l = { lot: 'c', version_cible: '0.2', etat };
+    assert.equal(lancementAffiche({ lancement: l, version_cible: '0.3', liberable: true }), l, `${etat} annulable`);
+  }
+  // un lot déjà dans dev ou livré, resté sans nouvelles 3 h, est « liberable » pour toujours (estLiberable) : sans texte à rendre, il disparaît
+  for (const etat of ['fusionne', 'echec_livraison', 'termine']) {
+    assert.equal(lancementAffiche({ lancement: { ...termine, etat }, version_cible: '0.3', liberable: true, brouillon: { lot: null } }), null, etat);
+  }
 });
 
 test('rendu : un long texte montre ce qui a changé mot à mot', () => {
