@@ -13,14 +13,20 @@ export { CHAMPS_DU_CORPS, corpsDeMetier, echapperMarkdown, remplacerChampDuCorps
 export const RIEN = 'Rien';
 
 /**
- * Cibles typées d'un bonus « +N% Cible » ou « +N Cible » qui ne sont pas des compétences : l'initiative (« +1 INI », que la fiche ajoute à
- * l'initiative : décision R33) et « Vitesse nage », que l'importeur typait aussi (sans effet sur la fiche : le propriétaire n'en a rien dit). Toute
- * autre cible (« Vitesse au sol pour le sprint », « butin pour… ») laisse le fragment en texte (valeur NULL).
+ * Cibles typées d'un bonus « +N Cible » qui ne sont pas des compétences, par leur clé (normalize), et l'attribut de la fiche qu'elles augmentent
+ * (colonne metier_bonus.attribut) : l'initiative (« +1 INI », décision R33), la vitesse et la vitesse de nage (« +1 Vitesse au sol pour le sprint »,
+ * « +1 Vitesse nage », décision R37 : « Il y a une valeur de Vitesse, et une valeur vitesse de nage. Il faudrait bien les ajouter. ») ; « Vitesse »,
+ * « Vitesse au sol » et « Vitesse de nage » sont les noms de ces attributs sur la fiche. Toute autre cible (« butin pour… ») laisse le fragment en texte
+ * (valeur NULL).
  */
-export const ATTRIBUTS_TYPES = ['INI', 'Vitesse nage'];
-
-/** Attribut de la fiche que vise une cible typée (colonne metier_bonus.attribut), par sa clé : « INI » → 'initiative'. */
-export const ATTRIBUT_DE_CIBLE = { ini: 'initiative' };
+export const ATTRIBUT_DE_CIBLE = {
+  ini: 'initiative',
+  vitesse: 'vitesse',
+  'vitesse-au-sol': 'vitesse',
+  'vitesse-au-sol-pour-le-sprint': 'vitesse',
+  'vitesse-nage': 'vitesse_nage',
+  'vitesse-de-nage': 'vitesse_nage',
+};
 
 /** Liste de compétences reçue : des noms (« Esquive ») ou des lignes { id, nom, caracteristique_id?, ordre? } de la table competence. */
 const lignesDeCompetences = (competences) =>
@@ -30,7 +36,8 @@ const lignesDeCompetences = (competences) =>
  * Le champ « Bonus » découpé (table metier_bonus) : un rang par fragment séparé par « , » (quand le fragment suivant commence par un signe, ou que
  * le fragment en cours est un bonus typé ; sinon la virgule fait partie du texte : « armures cuir, peau, cellulose »), une option par « OU ».
  * `valeur`, `unite`, `cible` seulement pour « +N% Cible » / « +N Cible » dont la cible est connue ; le texte de chaque option est celui du rang.
- * Liens de règle (décision R33) : `competence_id` quand la cible est le nom d'une compétence (son Acquis), `attribut` 'initiative' pour « INI » ;
+ * Liens de règle (décisions R33, R37) : `competence_id` quand la cible est le nom d'une compétence (son Acquis), `attribut` pour l'initiative ou
+ * une vitesse (ATTRIBUT_DE_CIBLE) ;
  * « +N% dans une compétence sociale au choix » : une option par compétence de la caractéristique nommée (Social), dans l'ordre de la fiche.
  * @param {string} brut
  * @param {Iterable<string | { id: string, nom: string, caracteristique_id?: string, ordre?: number }>} competences la table competence (ou ses noms)
@@ -40,7 +47,7 @@ const lignesDeCompetences = (competences) =>
 export function decouperBonus(brut, competences) {
   const liste = lignesDeCompetences(competences);
   const parCle = new Map(liste.map((c) => [normalize(c.nom), c]));
-  const connues = new Set([...parCle.keys(), ...ATTRIBUTS_TYPES.map(normalize)]);
+  const connues = new Set([...parCle.keys(), ...Object.keys(ATTRIBUT_DE_CIBLE)]);
   const lien = (cle) => ({ competence_id: parCle.get(cle)?.id ?? null, attribut: ATTRIBUT_DE_CIBLE[cle] ?? null });
   const options = (fragment) => {
     // « +5% dans une compétence sociale au choix » : les compétences de la caractéristique dont l'adjectif est le nom (« sociale » → Social)

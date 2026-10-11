@@ -108,3 +108,19 @@ test('avantage possible : gardé, sauf vide ou réduit à « … »', () => {
   assert.ok([null, '', '…'].includes(dImport('metiers/assassin', 'avantage_brut')?.trim() ?? null), 'à l’import : vide ou « … »');
   if (intact('metiers/assassin', 'avantage_brut')) assert.equal(metiers.find((m) => m.id === 'metiers/assassin').avantage, null);
 });
+
+test('décisions R36 et R40 : « Survie » du Prostitué = +3 % Survie ; les équipements à choix donnent leurs options en entier', () => {
+  const metier = (id) => metiers.find((m) => m.id === id);
+  if (metier('metiers/prostitue') && intact('metiers/prostitue', 'bonus_brut')) {
+    assert.deepEqual(metier('metiers/prostitue').bonus.map((b) => [b.texte, b.options[0].competence_id]), [['+3% Manipulation', 'manipulation'], ['+3% Survie', 'survie']]);
+  }
+  for (const [id, options] of [
+    ['metiers/chasseur', ['Arc en acier (Arme)', 'Arbalète en acier (Arme)']],
+    ['metiers/gladiateur', ['Glaive lourd en acier (arme)', 'Glaive léger en acier (arme)']],
+    ['metiers/fossoyeur', ['Pelle en acier (arme)', 'Faucille en acier (arme)']],
+  ]) {
+    if (metier(id) && intact(id, 'equipement_brut')) assert.deepEqual(metier(id).objets, [options], id);
+  }
+  // aucun objet de départ ne garde un choix abrégé en minuscules (« Arc ou Arbalète… »)
+  for (const m of metiers) for (const o of m.objets.flat()) assert.doesNotMatch(o, / ou /, `${m.id} : ${o}`);
+});

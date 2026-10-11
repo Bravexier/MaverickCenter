@@ -414,7 +414,8 @@ function construireCaracteristiques() {
           // le bonus du métier est de l'Acquis (décision R33) : affiché à côté, compté dans le plafond et le score, jamais saisi
           valeurAcquis.textContent = c.metier ? `${c.acquis} +${c.metier}` : String(c.acquis);
           valeurAcquis.toggleAttribute('data-hors', c.acquis + c.metier > c.plafondAcquis);
-          valeurAcquis.title = c.metier ? `${c.acquis} saisi(s) + ${c.metier} du métier` : '';
+          // le plafond prévaut sur le bonus du métier (décision R38) : au-delà, il est rogné
+          valeurAcquis.title = c.metier || c.metierBrut ? `${c.acquis} saisi(s) + ${c.metier} du métier${c.metierBrut > c.metier ? ` (${c.metierBrut}, rogné au plafond de ${c.plafondAcquis})` : ''}` : '';
           acquis.title = `De 0 à ${c.maxAcquis} : 5 par point de caractéristique de base (race, classe, dons, équipement, entraînement)${c.metier ? `, moins les ${c.metier} du métier` : ''}`;
           score.textContent = c.score === null ? 'inutilisable' : `${c.score} %`;
         });
@@ -449,7 +450,8 @@ function construireMetier() {
     const competence = (id) => trouver(regles.competences, id);
     const couleurDe = (id) => trouver(regles.caracteristiques, competence(id)?.caracteristique_id);
     const valeur = (b) => `${signe(entier(b.valeur))}${b.unite ?? ''}`;
-    const nomDeCible = (o) => (o.attribut === 'initiative' ? 'à l’initiative' : competence(o.competence_id)?.nom ?? o.competence_id);
+    const ATTRIBUTS = { initiative: 'à l’initiative', vitesse: 'à la vitesse', vitesse_nage: 'à la vitesse de nage' };
+    const nomDeCible = (o) => ATTRIBUTS[o.attribut] ?? competence(o.competence_id)?.nom ?? o.competence_id;
     const lignesDeBonus = rangs.map((b) => {
       if (b.aChoisir) {
         return el('li', { class: 'metier-fiche__choix' }, el('strong', {}, `${valeur(b)} au choix `),
@@ -476,8 +478,10 @@ function construireMetier() {
       artisanat.hidden = !a;
       if (!a) return;
       const par = regles.constantes['metier.artisanat_par_point_caracteristique'];
-      const formule = a.caracteristiques.map((c) => `${c.nom} ${c.valeur} × ${par}`).join(' + ');
-      artisanat.replaceChildren(el('strong', {}, 'Artisanat '), a.texte, a.score === null ? '' : ` : ${formule} = `, a.score === null ? '' : el('strong', {}, `${a.score} %`));
+      // une croix retire 20, comme −2 à la caractéristique ; deux croix rendent la compétence inutilisable (décision R39)
+      const formule = a.caracteristiques.map((c) => `${c.nom} ${c.valeur} × ${par}${c.malus ? ` − ${-c.malus} (croix)` : ''}`).join(' + ');
+      const resultat = a.inutilisable ? el('strong', {}, 'inutilisable (deux croix)') : a.score === null ? '' : el('strong', {}, `${a.score} %`);
+      artisanat.replaceChildren(el('strong', {}, 'Artisanat '), a.texte, a.score === null && !a.inutilisable ? '' : ` : ${a.inutilisable ? '' : `${formule} = `}`, resultat);
     });
     const objets = objetsDuMetier(regles, metier.id).map((r) => (r.options.length === 1
       ? el('li', {}, el('strong', {}, 'Objet de départ '), r.options[0].texte)
@@ -736,7 +740,11 @@ function construireAttributs() {
       a.initiative || a.initiativeMetier ? `1D20 ${a.initiativeBonus >= 0 ? '+' : '−'} ${Math.abs(a.initiativeBonus)}` : '1D20',
       [a.initiative?.note ?? 'selon l’Agilité', a.initiativeMetier ? `${signe(a.initiativeMetier)} du métier` : null].filter(Boolean).join(' · '),
     ]),
-    carteFixe('vitesse', 'Vitesse', (a) => [a.vitesseSol ?? '—', a.vitesseNage !== null ? `nage ${a.vitesseNage}` : 'selon la race']),
+    // vitesse et vitesse de nage de la race, de l'ethnie et du métier (décision R37)
+    carteFixe('vitesse', 'Vitesse', (a) => [a.vitesseSol ?? '—', [
+      a.vitesseNage !== null ? `nage ${a.vitesseNage}` : 'selon la race',
+      a.vitesseMetier || a.vitesseNageMetier ? `métier ${[a.vitesseMetier && `${signe(a.vitesseMetier)}`, a.vitesseNageMetier && `${signe(a.vitesseNageMetier)} nage`].filter(Boolean).join(', ')}` : null,
+    ].filter(Boolean).join(' · ')]),
     carteDeJauge('corruption'),
     carteFixe('armure', 'Armure de base', (a) => [`${a.ap} / ${a.am}`, 'AP / AM, sans l’équipement']),
   ]);

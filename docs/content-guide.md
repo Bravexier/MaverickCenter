@@ -193,8 +193,8 @@ Sur un écran étroit, les colonnes passent à la ligne. Le fil d'Ariane d'une c
 
 Un seul **long tableau** (demande du propriétaire), à l'image des tableaux de sorts : une ligne par métier de la table `metier`, par ordre alphabétique, en cinq colonnes :
 - **Nom** ;
-- **Bonus** (décision R33) : un rang de `metier_bonus` par ligne ; chaque compétence que le bonus augmente (`competence_id` : son Acquis) est une **pastille dans la couleur
-  de sa caractéristique**, l'initiative (« +1 INI », `attribut`) une pastille neutre, les options d'un choix reliées par « ou » (le choix se fait dans la fiche) ; un bonus
+- **Bonus** (décisions R33, R37) : un rang de `metier_bonus` par ligne ; chaque compétence que le bonus augmente (`competence_id` : son Acquis) est une **pastille dans la couleur
+  de sa caractéristique**, un attribut (`attribut` : l'initiative « +1 INI », la vitesse, la vitesse de nage) une pastille neutre, les options d'un choix reliées par « ou » (le choix se fait dans la fiche) ; un bonus
   qui ne vise ni l'une ni l'autre (« +1AP donné par les armures… », « Peut avoir un faucon ») reste son texte, en italique : il n'a pas d'effet automatique sur la fiche ;
 - **Artisanat** (décision R34) : le texte libre de ce que le métier fabrique (« — » s'il ne fabrique rien) ;
 - **Caractéristiques** : les deux caractéristiques de la compétence d'artisanat (`test_carac_1_id`, `test_carac_2_id`), en pastilles ; la compétence vaut 10 × chacune

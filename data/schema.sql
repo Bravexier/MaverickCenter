@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 24;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 25;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -2307,9 +2307,10 @@ CREATE INDEX metier_peut_fabriquer ON metier (peut_fabriquer);
 -- Bonus d'un métier : le champ « Bonus » découpé sur les virgules suivies d'un signe (« +3% Esquive, +3% Réflexe » -> 2 rangs ;
 -- « Diplomatie OU Intimidation » -> 2 options du même rang). `valeur`/`unite`/`cible` ne sont renseignés que pour la forme
 -- « +N% Cible » ou « +N Cible » ; tout autre fragment garde son texte et valeur NULL. `cible_cle` = normalize(cible).
--- Lien de règle (décision R33) : `competence_id` quand la cible est une compétence de la fiche (le bonus s'ajoute à son Acquis), `attribut`
--- 'initiative' pour « +N INI » (le bonus s'ajoute à l'initiative) ; « +N% dans une compétence sociale au choix » donne une option par compétence
--- de la caractéristique Social. Un rang à plusieurs options liées est un choix, fait dans la fiche (personnage_metier_bonus).
+-- Lien de règle (décision R33) : `competence_id` quand la cible est une compétence de la fiche (le bonus s'ajoute à son Acquis, au plus jusqu'au
+-- plafond : décision R38), `attribut` pour un attribut de la fiche : 'initiative' (« +N INI »), 'vitesse' (« +1 Vitesse au sol pour le sprint ») et
+-- 'vitesse_nage' (« +1 Vitesse nage ») (décision R37) ; « +N% dans une compétence sociale au choix » donne une option par compétence de la
+-- caractéristique Social. Un rang à plusieurs options liées est un choix, fait dans la fiche (personnage_metier_bonus).
 CREATE TABLE metier_bonus (
   metier_id   TEXT    NOT NULL REFERENCES metier(id),
   rang        INTEGER NOT NULL CHECK (rang >= 1),
@@ -2322,7 +2323,7 @@ CREATE TABLE metier_bonus (
   origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),
   competence_id TEXT  REFERENCES competence(id),      -- compétence que le bonus augmente (Acquis), décision R33
-  attribut    TEXT    CHECK (attribut IN ('initiative')),   -- attribut que le bonus augmente : « +1 INI » -> 'initiative' (décision R33)
+  attribut    TEXT    CHECK (attribut IN ('initiative', 'vitesse', 'vitesse_nage')),   -- attribut que le bonus augmente (décisions R33, R37)
   PRIMARY KEY (metier_id, rang, option),
   CHECK ((valeur IS NULL) = (cible IS NULL)),
   CHECK (competence_id IS NULL OR attribut IS NULL),
@@ -3630,7 +3631,7 @@ CREATE VIEW v_personnage_niveau AS
 
 -- Bonus que le métier d'une fiche apporte (décision R33) : une ligne par rang lié de metier_bonus (compétence ou attribut) — l'option seule du rang,
 -- ou, quand le rang en propose plusieurs, celle que la fiche a choisie (personnage_metier_bonus). `valeur` s'ajoute à l'Acquis de la compétence
--- (`competence_id`) ou à l'initiative (`attribut` 'initiative').
+-- (`competence_id`, sans dépasser son plafond : décision R38) ou à l'attribut (`attribut` : initiative, vitesse, vitesse de nage ; R33, R37).
 CREATE VIEW v_personnage_metier_bonus AS
   SELECT p.id AS personnage_id, b.rang, b.competence_id, b.attribut, b.valeur
   FROM personnage p
@@ -3773,14 +3774,15 @@ CREATE VIEW v_personnage_controle AS
   WHERE p.statut <> 'brouillon'
     AND COALESCE((SELECT SUM(pc.naturel) FROM personnage_competence pc WHERE pc.personnage_id = n.personnage_id), 0) <> v.points_competences_cumul
   UNION ALL
-  -- (l'Acquis compte le bonus du métier, décision R33 : la page « Règles des métiers » dit ses bonus « d'acquis »)
-  SELECT pca.personnage_id, 'competence_acquis_max', co.id || ' = ' || (COALESCE(pco.acquis, 0) + COALESCE(mb.valeur, 0))
+  -- (l'Acquis compte le bonus du métier, décision R33, mais le plafond prévaut sur lui, décision R38 : le bonus ne compte que jusqu'au plafond ;
+  -- seuls les points saisis au-delà de ce qu'il laisse sont une erreur)
+  SELECT pca.personnage_id, 'competence_acquis_max', co.id || ' = ' || (COALESCE(pco.acquis, 0) + MIN(COALESCE(mb.valeur, 0), pca.base * (SELECT r.valeur FROM regle_constante r WHERE r.id = 'competence.acquis_max_par_point_caracteristique')))
   FROM personnage_caracteristique pca
   JOIN competence co ON co.caracteristique_id = pca.caracteristique_id
   LEFT JOIN personnage_competence pco ON pco.personnage_id = pca.personnage_id AND pco.competence_id = co.id
   LEFT JOIN (SELECT personnage_id, competence_id, SUM(valeur) AS valeur FROM v_personnage_metier_bonus WHERE competence_id IS NOT NULL
              GROUP BY personnage_id, competence_id) mb ON mb.personnage_id = pca.personnage_id AND mb.competence_id = co.id
-  WHERE COALESCE(pco.acquis, 0) + COALESCE(mb.valeur, 0)
+  WHERE COALESCE(pco.acquis, 0) + MIN(COALESCE(mb.valeur, 0), pca.base * (SELECT r.valeur FROM regle_constante r WHERE r.id = 'competence.acquis_max_par_point_caracteristique'))
         > pca.base * (SELECT r.valeur FROM regle_constante r WHERE r.id = 'competence.acquis_max_par_point_caracteristique')
   UNION ALL
   -- Métier (décision R33) : un bonus choisi est une compétence d'un rang à choix du métier de la fiche ; chaque rang à choix a le sien (sauf brouillon)

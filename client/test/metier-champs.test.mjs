@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import {
-  CHAMPS_DU_CORPS, artisanatBrut, caracteristiquesDuTest, corpsDeMetier, decouperArtisanat, decouperBonus, decouperEquipement, echapperMarkdown, famillesDeRecette,
+  ATTRIBUT_DE_CIBLE, CHAMPS_DU_CORPS, artisanatBrut, caracteristiquesDuTest, corpsDeMetier, decouperArtisanat, decouperBonus, decouperEquipement, echapperMarkdown, famillesDeRecette,
   remplacerChampDuCorps, resumeDeDescription, testDArtisanat,
 } from '../src/lib/metier-champs.mjs';
 
@@ -28,17 +28,20 @@ test('bonus : le découpage redonne metier_bonus ligne pour ligne (rangs, option
 
 test('bonus : la virgule d’un texte libre n’est pas un séparateur ; une cible inconnue n’est pas typée', () => {
   assert.deepEqual(decouperBonus('+2% Esquive, +1AP donné par les armures cuir, peau', competences).map((l) => l.texte), ['+2% Esquive', '+1AP donné par les armures cuir, peau']);
-  assert.equal(decouperBonus('+1 Vitesse au sol pour le sprint', competences)[0].valeur, null);
+  assert.equal(decouperBonus('+1 butin pour les ingrédients utiles en alchimie', competences)[0].valeur, null);
   assert.deepEqual(decouperBonus('+3% Parade OU Esquive', competences).map((l) => [l.option, l.cible, l.valeur, l.unite, l.competence_id]),
     [[1, 'Parade', 3, '%', 'parade'], [2, 'Esquive', 3, '%', 'esquive']]);
 });
 
-test('bonus : liens de règle (décision R33) — la compétence par son nom, « +N INI » vers l’initiative, « compétence sociale au choix » vers les 5 sociales', () => {
+test('bonus : liens de règle (décisions R33, R37) — la compétence par son nom, « +N INI » vers l’initiative, les vitesses, « compétence sociale au choix » vers les 5 sociales', () => {
   assert.deepEqual(decouperBonus('+1 INI', competences)[0],
     { rang: 1, option: 1, texte: '+1 INI', valeur: 1, unite: null, cible: 'INI', cible_cle: 'ini', competence_id: null, attribut: 'initiative' });
   assert.deepEqual(decouperBonus('+2% arme lourde', competences)[0].competence_id, 'arme-lourde', 'casse et accents ignorés');
-  // « Vitesse nage » reste typée (comme à l'import) mais ne vise rien : le propriétaire n'a nommé que l'initiative
-  assert.deepEqual(['competence_id', 'attribut'].map((c) => decouperBonus('+1 Vitesse nage', competences)[0][c]), [null, null]);
+  // vitesse et vitesse de nage (décision R37) : « Vitesse nage », « Vitesse au sol pour le sprint » et les noms de la fiche
+  assert.deepEqual(['competence_id', 'attribut', 'valeur'].map((c) => decouperBonus('+1 Vitesse nage', competences)[0][c]), [null, 'vitesse_nage', 1]);
+  assert.deepEqual(['attribut', 'valeur', 'cible'].map((c) => decouperBonus('+1 Vitesse au sol pour le sprint', competences)[0][c]), ['vitesse', 1, 'Vitesse au sol pour le sprint']);
+  assert.equal(decouperBonus('+2 Vitesse de nage', competences)[0].attribut, 'vitesse_nage');
+  assert.equal(decouperBonus('+1 Vitesse', competences)[0].attribut, 'vitesse');
   const sociales = competences.filter((c) => c.caracteristique_id === 'social').map((c) => c.id);
   assert.deepEqual(decouperBonus('+5% dans une compétence sociale au choix', competences).map((l) => [l.rang, l.competence_id, l.valeur]), sociales.map((id) => [1, id, 5]));
   assert.equal(decouperBonus('+5% dans une compétence magique au choix', competences)[0].valeur, null, 'caractéristique inconnue : texte libre');
@@ -46,7 +49,7 @@ test('bonus : liens de règle (décision R33) — la compétence par son nom, «
   const lignes = db.prepare('SELECT b.*, c.id AS par_nom FROM metier_bonus b LEFT JOIN competence c ON c.id = b.cible_cle').all();
   for (const l of lignes) {
     if (l.par_nom) assert.equal(l.competence_id, l.par_nom, `${l.metier_id} ${l.rang}.${l.option}`);
-    assert.equal(l.attribut, l.cible_cle === 'ini' ? 'initiative' : null, `${l.metier_id} ${l.rang}.${l.option}`);
+    assert.equal(l.attribut, ATTRIBUT_DE_CIBLE[l.cible_cle] ?? null, `${l.metier_id} ${l.rang}.${l.option}`);
   }
 });
 
