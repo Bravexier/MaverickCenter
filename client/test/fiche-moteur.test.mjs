@@ -433,10 +433,12 @@ test('dons à choisir : groupes de la classe et de la spécialité choisie, jusq
   const epeiste = guerrier.specialites.map((s) => s.id).find((id) => guerrier.choix.some((g) => g.specialite_id === id && g.niveau <= 18));
   if (!epeiste) t.diagnostic('Guerrier : aucune spécialité avec un choix avant le niveau 18 (remanié sur le site de dev)');
   const fiche = (xp, specialite_id = null) => ({ ...ficheVide(), xp, classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id }] });
-  assert.deepEqual(donsAChoisir(regles, fiche(0))[0].groupes, [], 'Guerrier niveau de classe 2 : aucun choix');
+  // niveau de classe 2 : les choix hors spécialité des niveaux 1 et 2 (aucun à l'import ; le site peut ajouter une option à un don reçu d'office)
+  assert.deepEqual(donsAChoisir(regles, fiche(0))[0].groupes, guerrier.choix.filter((g) => g.specialite_id === null && g.niveau <= 2), 'Guerrier niveau de classe 2');
   const dix = donsAChoisir(regles, fiche(8250, epeiste ?? null))[0];
   assert.equal(dix.classe.id, 'classes/guerrier');
-  if (epeiste) assert.ok(dix.groupes.length >= 1 && dix.groupes.every((g) => g.specialite_id === epeiste && g.niveau <= 18));
+  // ceux de sa spécialité (et les choix hors spécialité de la classe, s'il y en a), jusqu'à son niveau de classe
+  if (epeiste) assert.ok(dix.groupes.some((g) => g.specialite_id === epeiste) && dix.groupes.every((g) => [epeiste, null].includes(g.specialite_id) && g.niveau <= 18));
   const archimage = donsAChoisir(regles, { ...ficheVide(), xp: 11450, classes: [{ rang: 1, classe_id: 'classes/archimage' }] })[0];
   assert.ok(archimage.groupes.length >= 2 && archimage.groupes.every((g) => g.specialite_id === null));
 });

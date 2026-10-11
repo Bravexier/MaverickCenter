@@ -16,9 +16,11 @@ const registre = JSON.parse(readFileSync(join(dossier, '0006-orthographe-noms.js
 const sql = readFileSync(join(dossier, '0006-orthographe-noms.sql'), 'utf8');
 const { corrections, cles } = registre;
 const db = ouvrirBase({ sansExemples: false });
-// une ligne que le site de dev a supprimée (D11 : un don, une spécialité) n'a plus de nom à vérifier : son entrée du registre est sautée
+// le site de dev est la source de ce qu'il modifie : une ligne qu'il a supprimée (D11 : un don, une spécialité) n'a plus de nom à vérifier, une cellule
+// qu'il a réécrite (un nom changé, le corps d'une page refait depuis ses tables) dit ce qu'il a décidé : leurs entrées du registre sont sautées
 const historique = historiqueSite(db);
 const presente = (c) => !historique.supprimee(c.table, c.cle);
+const intacte = (c) => presente(c) && !historique.modifiee(c.table, c.cle, c.col);
 
 const NATURES = ['accent', 'casse', 'frappe', 'grammaire', 'harmonisation', 'orthographe', 'ponctuation', 'phrase'];
 // tables de trace ou de clés : jamais réécrites (mêmes que pour 0005)
@@ -52,7 +54,7 @@ test('registre : renommages décrits, de nature connue, hors des tables de trace
 });
 
 test('base : chaque renommage est fait (le nom corrigé est dans sa cellule)', () => {
-  for (const c of corrections.filter(presente)) {
+  for (const c of corrections.filter(intacte)) {
     const l = ligne(c.table, c.cle);
     assert.ok(l, `${c.table} ${JSON.stringify(c.cle)} : ligne absente`);
     assert.ok(l[c.col].includes(c.apres), `${c.table} ${JSON.stringify(c.cle)} ${c.col} : « ${c.apres} » absent`);

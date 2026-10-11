@@ -172,9 +172,16 @@ test('base vivante refaite par une livraison : un lot en attente noté sans sa p
 });
 
 // --- D11 : spécialités et dons créés et supprimés -----------------------------------------------------------------------------------------------
-const GUERRIER = 'classes/guerrier';
-const AFFUTE = 'capacites/guerrier-affute';
-const HYPER_CONTACT = 'capacites/guerrier-hyper-contact';
+// un don reçu sans choix et un don d'un choix de deux dans une spécialité (Hyper contact et Affûté du Guerrier à l'import), lus dans les règles : le
+// site de dev a pu en supprimer ou en ajouter
+const lues = new DatabaseSync(REGLES, { readOnly: true });
+const RECU = lues.prepare("SELECT id, classe_id FROM capacite WHERE nature = 'classe' ORDER BY id = 'capacites/guerrier-hyper-contact' DESC, id LIMIT 1").get();
+const AU_CHOIX = lues.prepare(`SELECT k.id, k.classe_id FROM capacite k WHERE k.nature = 'choix' AND k.specialite_id IS NOT NULL
+  AND (SELECT count(*) FROM capacite b WHERE b.classe_id = k.classe_id AND b.ligne = k.ligne AND b.specialite_id = k.specialite_id AND b.nature = 'choix') = 2
+  ORDER BY k.id = 'capacites/guerrier-affute' DESC, k.id LIMIT 1`).get();
+lues.close();
+const HYPER_CONTACT = RECU.id;
+const AFFUTE = AU_CHOIX.id;
 const donneesDe = (db) => Object.fromEntries(db.prepare("SELECT id, donnees FROM page WHERE type = 'capacites'").all().map((p) => [p.id, p.donnees]));
 const donneesDuDon = (db, id) => JSON.parse(db.prepare('SELECT donnees FROM page WHERE id = ?').get(id).donnees);
 
@@ -191,7 +198,7 @@ test('D11 — spécialités et dons créés puis supprimés, rejoués sur des r�
       { op: 'creer', entite: 'capacite', valeurs: { classe_id: id, specialite_id: '@0', avec: '@2', nom: 'Deux', type: 'Passif' } },
     ],
     [{ op: 'supprimer', entite: 'specialite', cle: { id: `${id}#specialite:seconde` } }],
-    [{ op: 'creer', entite: 'capacite', valeurs: { classe_id: GUERRIER, avec: HYPER_CONTACT, nom: option, type: 'Passif' } }],
+    [{ op: 'creer', entite: 'capacite', valeurs: { classe_id: RECU.classe_id, avec: HYPER_CONTACT, nom: option, type: 'Passif' } }],
     [{ op: 'supprimer', entite: 'capacite', cle: { id: `capacites/${normalize(nom)}-deux` } }],
   ]);
   const livree = reglesAvec(journal);
@@ -209,15 +216,15 @@ test('D11 — spécialités et dons créés puis supprimés, rejoués sur des r�
 test('D11 — une option rejouée sur des règles changées ailleurs (spécialité renommée, effet d’un voisin) : le lot passe, `donnees` des voisins recalculé', () => {
   const db = base();
   const affute = db.prepare('SELECT * FROM capacite WHERE id = ?').get(AFFUTE);
-  const voisin = db.prepare("SELECT id FROM capacite WHERE classe_id = ? AND ligne = ? AND specialite_id = ? AND nature = 'choix' AND id <> ?").get(GUERRIER, affute.ligne, affute.specialite_id, AFFUTE).id;
+  const voisin = db.prepare("SELECT id FROM capacite WHERE classe_id = ? AND ligne = ? AND specialite_id = ? AND nature = 'choix' AND id <> ?").get(affute.classe_id, affute.ligne, affute.specialite_id, AFFUTE).id;
   db.close();
   const option = nomLibre('Option', 'livraison');
-  const journal = journalDe([[{ op: 'creer', entite: 'capacite', valeurs: { classe_id: GUERRIER, avec: AFFUTE, nom: option, type: 'Passif' } }]]);
+  const journal = journalDe([[{ op: 'creer', entite: 'capacite', valeurs: { classe_id: AU_CHOIX.classe_id, avec: AFFUTE, nom: option, type: 'Passif' } }]]);
   const cree = journal.lots[0].modifications.find((m) => m.table === 'capacite' && m.operation === 'inserer').cle.id;
   // la livraison, comme le site l'aurait livrée : la spécialité renommée (et la fiche de ses dons), l'effet du voisin changé (et sa fiche)
   const livree = base(`
-    UPDATE specialite SET nom = 'ÉPÉISTE LIVRÉ', nom_cle = 'epeiste-livre' WHERE id = '${affute.specialite_id}';
-    UPDATE page SET donnees = json_set(donnees, '$.specialite', 'ÉPÉISTE LIVRÉ') WHERE id IN (SELECT id FROM capacite WHERE specialite_id = '${affute.specialite_id}');
+    UPDATE specialite SET nom = 'SPÉCIALITÉ LIVRÉE', nom_cle = 'specialite-livree' WHERE id = '${affute.specialite_id}';
+    UPDATE page SET donnees = json_set(donnees, '$.specialite', 'SPÉCIALITÉ LIVRÉE') WHERE id IN (SELECT id FROM capacite WHERE specialite_id = '${affute.specialite_id}');
     UPDATE capacite SET effet = 'Effet livré.' WHERE id = '${voisin}';
     UPDATE page SET corps_md = 'Effet livré.' || char(10), resume = 'Effet livré.' WHERE id = '${voisin}';`);
   const r = rejouerSur(livree, journal);
@@ -225,7 +232,7 @@ test('D11 — une option rejouée sur des règles changées ailleurs (spécialit
   assert.ok(livree.prepare('SELECT 1 FROM capacite WHERE id = ?').get(cree), 'l’option est créée');
   for (const id of [AFFUTE, voisin, cree]) {
     const d = donneesDuDon(livree, id);
-    assert.equal(d.specialite, 'ÉPÉISTE LIVRÉ', id);
+    assert.equal(d.specialite, 'SPÉCIALITÉ LIVRÉE', id);
     assert.deepEqual([...d.choix_exclusif_avec].sort(), [AFFUTE, voisin, cree].filter((x) => x !== id).sort(), id);
   }
   assert.equal(corps(livree, voisin), 'Effet livré.\n', 'l’effet de la livraison reste');
@@ -235,7 +242,7 @@ test('D11 — une option rejouée sur des règles changées ailleurs (spécialit
 
 test('D11 — le don « au choix avec » supprimé par la livraison : le lot est en conflit, la base reste intacte', () => {
   const option = nomLibre('Option', 'perdue');
-  const journal = journalDe([[{ op: 'creer', entite: 'capacite', valeurs: { classe_id: GUERRIER, avec: HYPER_CONTACT, nom: option, type: 'Passif' } }]]);
+  const journal = journalDe([[{ op: 'creer', entite: 'capacite', valeurs: { classe_id: RECU.classe_id, avec: HYPER_CONTACT, nom: option, type: 'Passif' } }]]);
   const H = HYPER_CONTACT;
   const livree = base(`
     DELETE FROM note_cellule WHERE entite_table = 'capacite' AND entite_id = '${H}';

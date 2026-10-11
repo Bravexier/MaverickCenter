@@ -32,7 +32,10 @@ const historique = historiqueSite(db);
 const versImport = (e) => {
   if (!historique.touchee('page', { id: e.id })) return e;
   const v = (colonne) => historique.valeurDImport('page', { id: e.id }, colonne);
-  return { ...e, body: v('corps_md'), data: { ...e.data, ...JSON.parse(v('donnees') ?? '{}'), title: v('titre') } };
+  // les champs structurés d'aujourd'hui (une alternative ajoutée par le site…) cèdent la place à ceux de l'import, clé par clé
+  const actuels = JSON.parse(db.prepare('SELECT donnees FROM page WHERE id = ?').get(e.id)?.donnees ?? '{}');
+  const autres = Object.fromEntries(Object.entries(e.data).filter(([k]) => !(k in actuels)));
+  return { ...e, body: v('corps_md'), data: { ...autres, ...JSON.parse(v('donnees') ?? '{}'), title: v('titre') } };
 };
 // les pages que le site a supprimées (D11 : un don, une spécialité et ses dons), telles que l'import les a écrites
 const tagsImport = historique.lignesDImport('page_tag');
