@@ -133,7 +133,7 @@ export function chargerMonstres(db) {
         carte: null,
         nom: e.nom,
         facettes: { ep: echellesDe(e.ep_min, e.ep_max), lieu: unique(lieuxDe.map((l) => l.cle)) },
-        tri: { nom: e.nom, espece: e.nom, ep: e.ep_min },
+        tri: { nom: e.nom, espece: e.nom, ep: e.ep_min, lieu: lieuxDe.map((x) => x.lieu).join(', ') || null },
       });
       continue;
     }
@@ -178,7 +178,7 @@ export function chargerMonstres(db) {
           attaques: (attaques.get(c.id) ?? []).map((a) => ({ nom: a.nom, texte: a.texte })),
           capacites: caps,
           ...colonnes,
-          rubriques: r.map((x) => ({ rubrique: x.rubrique, titre: x.titre ?? LIBELLES_RUBRIQUES[x.rubrique], texte: x.texte })),
+          rubriques: r.map((x) => ({ rang: x.rang, rubrique: x.rubrique, titre: x.titre ?? LIBELLES_RUBRIQUES[x.rubrique], texte: x.texte })),
         },
         facettes: {
           categorie: [c.categorie],
@@ -204,6 +204,7 @@ export function chargerMonstres(db) {
           defense: c.armure_physique,
           vitesse: c.vitesse_sol,
           ...Object.fromEntries(FPVSIA.map((k) => [k.id, fpvsia.get(k.id) ?? null])),
+          lieu: lieuxDe.map((x) => x.lieu).join(', ') || null,
         },
       });
     }

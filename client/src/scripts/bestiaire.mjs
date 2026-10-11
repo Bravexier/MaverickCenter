@@ -1,6 +1,7 @@
 // Script de /bestiaire/ (components/bestiaire/Bestiaire.astro) : pour chaque tableau `[data-bestiaire-tableau]`, la recherche, les filtres à cases
-// (plusieurs valeurs : l'une OU l'autre ; plusieurs filtres : tous), le tri par en-tête et les fiches qui s'ouvrent sous leur ligne. L'état de chaque
-// tableau tient dans l'adresse, sous son préfixe (lib/bestiaire-filtres.mjs) ; le lien d'une ligne (#monstre-…, #invoquee-…) ouvre sa fiche.
+// (plusieurs valeurs : l'une OU l'autre ; plusieurs filtres : tous), le tri par en-tête et la carte de la ligne choisie, à côté du tableau (sur un petit
+// écran, par-dessus la page). L'état de chaque tableau tient dans l'adresse, sous son préfixe (lib/bestiaire-filtres.mjs) ; le lien d'une ligne
+// (#monstre-…, #invoquee-…) ou de sa carte (#carte-…) ouvre la carte. La recherche porte aussi sur le texte de la carte.
 // Il n'importe qu'un module pur que seule cette page utilise (la version portable refuse un module partagé entre deux scripts).
 import { adresseAvecEtat, basculer, effectifs, etatDepuisAdresse, filtrerEtTrier, normaliser, triSuivant } from '../lib/bestiaire-filtres.mjs';
 
@@ -22,14 +23,20 @@ function brancher(section) {
   const aucune = section.querySelector('[data-aucune]');
   const recherche = formulaire.elements.namedItem('q');
   const entetes = [...table.querySelectorAll('thead th[data-tri]')];
-  const lignes = [...table.querySelectorAll('tbody[data-ligne]')].map((tbody) => ({
-    tbody,
-    id: tbody.id,
-    ordre: Number(tbody.dataset.ordre),
-    facettes: JSON.parse(tbody.dataset.facettes),
-    tri: JSON.parse(tbody.dataset.tri),
-    texteNormalise: normaliser(tbody.textContent),
-  }));
+  const corps = table.tBodies[0];
+  const zone = section.querySelector('[data-cartes]');
+  const lignes = [...corps.querySelectorAll('tr[data-ligne]')].map((tr) => {
+    const carte = document.getElementById(tr.dataset.carte);
+    return {
+      tr,
+      carte,
+      id: tr.id,
+      ordre: Number(tr.dataset.ordre),
+      facettes: JSON.parse(tr.dataset.facettes),
+      tri: JSON.parse(tr.dataset.tri),
+      texteNormalise: normaliser(`${tr.textContent} ${carte?.textContent ?? ''}`),
+    };
+  });
   const libelles = new Map(); // `${cle}\u0000${valeur}` -> libellé
   const facettes = [...formulaire.querySelectorAll('[data-facette]')].map((details) => {
     const cle = details.dataset.facette;
@@ -66,8 +73,8 @@ function brancher(section) {
   function appliquer(ecrireAdresse) {
     const visibles = filtrerEtTrier(lignes, etat);
     const gardees = new Set(visibles);
-    for (const l of lignes) l.tbody.hidden = !gardees.has(l);
-    for (const l of [...visibles, ...lignes.filter((x) => !gardees.has(x))]) table.append(l.tbody);
+    for (const l of lignes) l.tr.hidden = !gardees.has(l);
+    for (const l of [...visibles, ...lignes.filter((x) => !gardees.has(x))]) corps.append(l.tr);
     for (const th of entetes) th.setAttribute('aria-sort', etat.tri === th.dataset.tri ? (etat.sens === 'desc' ? 'descending' : 'ascending') : 'none');
     // filtres : cases, effectifs (parmi les lignes qui passent les AUTRES filtres), nombre de valeurs cochées
     for (const f of facettes) {
@@ -142,48 +149,53 @@ function brancher(section) {
     });
   }
 
-  // fiches : un clic sur le nom (ou la ligne) ouvre la fiche sous la ligne, une seule à la fois par tableau
-  const bouton = (l) => l.tbody.querySelector('.bligne__ouvrir');
-  const fiche = (l) => l.tbody.querySelector('.bligne__fiche');
+  // cartes : un clic sur une ligne (ou son nom) ouvre sa carte à côté du tableau, une seule à la fois par tableau
+  const lien = (l) => l.tr.querySelector('.bligne__ouvrir');
+  const ouverte = () => lignes.find((l) => l.tr.classList.contains('est-ouverte'));
   function fermer() {
-    for (const l of lignes) {
-      if (!l.tbody.classList.contains('est-ouverte')) continue;
-      const f = fiche(l);
-      const focus = f.contains(document.activeElement);
-      l.tbody.classList.remove('est-ouverte');
-      bouton(l).setAttribute('aria-expanded', 'false');
-      f.hidden = true;
-      if (focus) bouton(l).focus();
-    }
+    const l = ouverte();
+    if (!l) return;
+    const focus = l.carte.contains(document.activeElement);
+    l.tr.classList.remove('est-ouverte');
+    l.tr.removeAttribute('aria-current');
+    l.carte.classList.remove('est-ouverte');
+    zone.classList.remove('est-ouverte');
+    if (focus) lien(l).focus();
   }
   function ouvrir(l, defiler) {
     fermer();
-    l.tbody.classList.add('est-ouverte');
-    bouton(l).setAttribute('aria-expanded', 'true');
-    fiche(l).hidden = false;
-    // la ligne en haut du cadre, sous l'en-tête fixe (scroll-margin-top), sa fiche dessous
-    if (defiler) l.tbody.querySelector('.bligne__principale').scrollIntoView({ block: 'start', behavior: reduit() ? 'auto' : 'smooth' });
+    l.tr.classList.add('est-ouverte');
+    l.tr.setAttribute('aria-current', 'true');
+    l.carte.classList.add('est-ouverte');
+    zone.classList.add('est-ouverte');
+    zone.scrollTop = 0;
+    if (defiler) l.tr.scrollIntoView({ block: 'nearest', behavior: reduit() ? 'auto' : 'smooth' });
+    // sur un petit écran, la carte passe par-dessus la page : le focus y va (Échap ou « Fermer » la referme)
+    if (matchMedia('(max-width: 70rem)').matches) l.carte.querySelector('.bcarte__fermer')?.focus({ preventScroll: true });
     history.replaceState(null, '', `${location.pathname}${location.search}#${l.id}`);
   }
   function toutFermer() {
-    const ouverte = lignes.some((l) => l.tbody.classList.contains('est-ouverte'));
+    const l = ouverte();
     fermer();
-    if (ouverte && lignes.some((l) => `#${l.id}` === location.hash)) history.replaceState(null, '', location.pathname + location.search);
+    if (l && (location.hash === `#${l.id}` || location.hash === `#${l.carte.id}`)) history.replaceState(null, '', location.pathname + location.search);
   }
-  table.addEventListener('click', (e) => {
+  corps.addEventListener('click', (e) => {
     const cible = e.target;
-    const tbody = cible.closest('tbody[data-ligne]');
-    const l = tbody && lignes.find((x) => x.tbody === tbody);
+    const tr = cible.closest('tr[data-ligne]');
+    const l = tr && lignes.find((x) => x.tr === tr);
     if (!l) return;
-    if (cible.closest('.bfiche__fermer')) {
-      toutFermer();
-      bouton(l).focus();
-      return;
-    }
-    if (!cible.closest('.bligne__principale') || cible.closest('a, input, select, textarea')) return;
-    if (!cible.closest('button') && (getSelection()?.toString() ?? '') !== '') return;
-    if (l.tbody.classList.contains('est-ouverte')) toutFermer();
-    else ouvrir(l, true);
+    if (cible.closest('a') && !cible.closest('.bligne__ouvrir')) return;
+    if (!cible.closest('a') && (getSelection()?.toString() ?? '') !== '') return;
+    e.preventDefault();
+    if (l.tr.classList.contains('est-ouverte')) toutFermer();
+    else ouvrir(l, false);
+  });
+  zone.addEventListener('click', (e) => {
+    if (!e.target.closest('.bcarte__fermer')) return;
+    e.preventDefault();
+    const l = ouverte();
+    toutFermer();
+    if (l) lien(l).focus();
   });
   tableaux.push({ lignes, ouvrir, toutFermer, appliquer, formulaire, facettes });
   appliquer(false);
@@ -191,7 +203,7 @@ function brancher(section) {
 
 for (const section of document.querySelectorAll('[data-bestiaire-tableau]')) brancher(section);
 
-// adresse #monstre-… / #invoquee-… : ouvre cette fiche (l'onglet qui la contient est ouvert par components/Onglets.astro)
+// adresse #monstre-… / #invoquee-… (ou #carte-…) : ouvre cette carte (l'onglet qui la contient est ouvert par components/Onglets.astro)
 function depuisAdresse() {
   let id = '';
   try {
@@ -200,9 +212,9 @@ function depuisAdresse() {
     return;
   }
   for (const t of tableaux) {
-    const l = t.lignes.find((x) => x.id === id);
+    const l = t.lignes.find((x) => x.id === id || x.carte?.id === id);
     if (l) {
-      if (l.tbody.hidden) {
+      if (l.tr.hidden) {
         // ligne cachée par les filtres : on les retire pour la montrer
         t.formulaire.dispatchEvent(new Event('reset', { cancelable: true }));
       }

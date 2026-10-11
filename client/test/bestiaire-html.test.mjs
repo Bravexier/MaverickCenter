@@ -27,16 +27,19 @@ test('deux onglets : les monstres (ouverts au départ) et, à part, les créatur
   assert.ok(panneau('monstres').length > 0 && panneau('invoquees').length > 0);
 });
 
-test('une ligne par monstre ou créature, chacune avec sa fiche ; les identifiants sont uniques et les aria-controls mènent quelque part', options, () => {
+test('une ligne par monstre ou créature, chacune avec sa carte ; les identifiants sont uniques et les aria-controls mènent quelque part', options, () => {
   const { monstres, invocations } = chargerBestiaire(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }));
-  const lignes = (bloc) => [...bloc.matchAll(/<tbody class="bligne" id="([^"]+)" data-ligne/g)].map((m) => m[1]);
+  const lignes = (bloc) => [...bloc.matchAll(/<tr class="bligne" id="([^"]+)" data-ligne/g)].map((m) => m[1]);
   assert.deepEqual(lignes(panneau('monstres')), monstres.lignes.map((l) => l.ancre));
   assert.deepEqual(lignes(panneau('invoquees')), invocations.lignes.map((l) => l.ancre));
   const ids = [...main.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
   assert.equal(new Set(ids).size, ids.length, 'identifiants uniques');
   const connus = new Set(ids);
   for (const [, cible] of main.matchAll(/aria-(?:controls|labelledby|describedby)="([^"]+)"/g)) assert.ok(connus.has(cible), cible);
-  for (const ancre of lignes(main)) assert.ok(connus.has(`fiche-${ancre}`), `fiche de ${ancre}`);
+  for (const ancre of lignes(main)) {
+    assert.ok(connus.has(`carte-${ancre}`), `carte de ${ancre}`);
+    assert.ok(main.includes(`<a class="bligne__ouvrir" href="#carte-${ancre}" aria-controls="carte-${ancre}">`), `lien vers la carte de ${ancre}`);
+  }
   // liens internes vers une autre créature (même combinaison) : vers une ligne qui existe
   for (const [, cible] of main.matchAll(/href="#(invoquee-[^"]+)"/g)) assert.ok(connus.has(cible), cible);
 });
@@ -54,8 +57,21 @@ test('filtres : formulaire caché sans JavaScript, une case par valeur, le préf
   assert.match(panneau('invoquees'), /<input type="checkbox" name="magie" value="feu">/);
 });
 
-test('sans JavaScript, toutes les fiches s’affichent ; le script de la page est un seul fichier sans import', options, () => {
-  assert.match(html, /<noscript>\s*<style>[^<]*\.bestiaire \.bligne__fiche\[hidden\] \{ display: table-row !important; \}/);
+test('tableau réduit (demande du propriétaire) : six colonnes pour les monstres, trois pour les créatures invoquées ; la carte à côté, avec son portrait', options, () => {
+  const entetes = (bloc) => [...bloc.slice(bloc.indexOf('<table class="btable">'), bloc.indexOf('</thead>', bloc.indexOf('<table class="btable">'))).matchAll(/<th scope="col"[^>]*>\s*([^<]+?)\s*<\/th>/g)].map((m) => m[1]);
+  assert.deepEqual(entetes(panneau('monstres')), ['Nom', 'Espèce', 'EP', 'Catégorie', 'Type', 'Lieu']);
+  assert.deepEqual(entetes(panneau('invoquees')), ['Nom', 'Invocation', 'Magies']);
+  for (const id of ['monstres', 'invoquees']) {
+    const bloc = panneau(id);
+    assert.match(bloc, /<div class="bvue">[\s\S]*<aside class="bcartes" aria-label="[^"]+" data-cartes>/, `${id} : panneau des cartes à côté du tableau`);
+    const cartes = (bloc.match(/<article class="bcarte" /g) ?? []).length;
+    assert.equal(cartes, (bloc.match(/<tr class="bligne" /g) ?? []).length, `${id} : une carte par ligne`);
+    assert.equal((bloc.match(/<figure class="bcarte__portrait"><img src="\/logo\.webp" alt=""/g) ?? []).length, cartes, `${id} : portrait (le logo en attendant)`);
+  }
+});
+
+test('sans JavaScript, une carte s’affiche par son lien (:target) ; le script de la page est un seul fichier sans import', options, () => {
+  assert.match(html, /html:not\(\.js\) \.bcarte:target \{ display: block; \}/);
   const scripts = [...html.matchAll(/<script type="module" src="([^"]+)"/g)].map((m) => m[1]);
   assert.ok(scripts.length >= 1);
   for (const src of scripts) {

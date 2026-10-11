@@ -97,88 +97,110 @@ html.js .bpanneau__titre { position: absolute; width: 1px; height: 1px; overflow
 th[aria-sort="ascending"] .btri::after { content: '↑'; opacity: 1; }
 th[aria-sort="descending"] .btri::after { content: '↓'; opacity: 1; }
 .btri:focus-visible { outline: 2px solid var(--bes); outline-offset: 2px; border-radius: 3px; }
-.btable tbody.bligne[hidden] { display: none; }
-.bligne__principale > * { padding: 0.4rem 0.55rem; vertical-align: top; border-top: 1px solid var(--border); background: var(--surface); }
-.bligne__principale { cursor: pointer; scroll-margin-top: 2.6rem; }
-.bligne__principale:hover > * { background: var(--bes-soft); }
-.bligne.est-ouverte > .bligne__principale > * { background: var(--bes-soft); }
-.bligne__nom { position: sticky; left: 0; z-index: 2; text-align: left; min-width: 11rem; box-shadow: 1px 0 0 var(--border); }
+/* Lignes : six colonnes (monstres) ou trois (créatures invoquées) ; la ligne choisie est marquée, sa carte s'ouvre à côté */
+.btable tr.bligne[hidden] { display: none; }
+.bligne > * { padding: 0.4rem 0.6rem; vertical-align: top; border-top: 1px solid var(--border); background: var(--surface); }
+.bligne { cursor: pointer; scroll-margin-top: 2.6rem; }
+.bligne:hover > * { background: var(--bes-soft); }
+.bligne.est-ouverte > * { background: var(--bes-soft); }
+.bligne__nom { position: sticky; left: 0; z-index: 2; text-align: left; min-width: 10rem; box-shadow: 1px 0 0 var(--border); }
 .bligne.est-ouverte .bligne__nom { box-shadow: inset 4px 0 0 var(--bes), 1px 0 0 var(--border); }
-.bligne__ouvrir { all: unset; cursor: pointer; display: inline-block; max-width: 15rem; font-weight: 700; color: var(--text); line-height: 1.3; }
-.bligne__ouvrir::before { content: '▸'; display: inline-block; margin-right: 0.3rem; color: var(--bes); transition: transform 0.15s; }
-.bligne__ouvrir[aria-expanded="true"]::before { transform: rotate(90deg); }
+.bligne__ouvrir { color: var(--text); font-weight: 700; text-decoration: none; line-height: 1.3; }
+.bligne__ouvrir:hover { text-decoration: underline dotted; }
 .bligne__ouvrir:focus-visible { outline: 2px solid var(--bes); outline-offset: 2px; border-radius: 4px; }
 .btable td.nombre { text-align: right; white-space: nowrap; }
-.btable td.carac { text-align: center; min-width: 1.6rem; }
-.bligne__espece { min-width: 8rem; }
-.bligne__defense, .bligne__vitesse { white-space: nowrap; }
-/* Pas de max-width sur une cellule (Chrome décale alors les colonnes suivantes) : la largeur se borne sur son contenu. */
-.btable .brut { display: block; max-width: 14rem; white-space: normal; font-size: 0.8rem; color: var(--muted); }
-.btable .bcourt { display: block; max-width: 14rem; }
+.bligne__lieux { min-width: 8rem; }
 .varie { font-style: italic; color: var(--muted); cursor: help; }
-.bligne__liste ul, .bligne__cibles ul { margin: 0; padding: 0; list-style: none; }
-.bligne__liste { min-width: 9rem; }
-.bligne__liste > ul { max-width: 16rem; }
-.bligne__liste li + li { margin-top: 0.1rem; }
-.bligne__capacites { min-width: 12rem; }
-.bligne__lieux { min-width: 9rem; }
 .prefixe { font-size: 0.72rem; padding: 0 0.3rem; border-radius: 4px; background: var(--bes-soft); color: var(--muted); white-space: nowrap; }
-.bligne__cibles { min-width: 7rem; }
-.bligne__cibles > ul { max-width: 13rem; }
-.bligne__cibles ul { display: flex; flex-wrap: wrap; gap: 0.2rem; }
 .bcible { display: inline-block; padding: 0 0.4rem; border-radius: 999px; font-size: 0.78rem; line-height: 1.5; border: 1px solid var(--border); background: var(--bg); }
 .bcible--grande_vulnerabilite, .bcible--grande_resistance, .bcible--double_resistance { font-weight: 700; border-color: var(--bes-line); }
 .bcible--reflexion { font-style: italic; }
+.bcibles { display: flex; flex-wrap: wrap; gap: 0.25rem; }
 .bcat { display: inline-block; padding: 0 0.45rem; border-radius: 999px; font-size: 0.78rem; white-space: nowrap; border: 1px solid var(--border); }
 .bcat--mini_boss { border-color: var(--bes-line); background: var(--bes-soft); }
 .bcat--boss { background: var(--bes); border-color: var(--bes); color: var(--surface); font-weight: 700; }
 .bmagies { display: inline-flex; flex-wrap: wrap; gap: 0.2rem; align-items: center; }
 .bmagie { display: inline-block; padding: 0 0.45rem; border-radius: 999px; font-size: 0.78rem; background: var(--m); color: var(--m-texte); border: 1px solid color-mix(in srgb, var(--m) 70%, var(--text)); }
 
-/* Fiche, sous la ligne */
-.btable .bligne__fiche[hidden] { display: none; }
-.bligne__fiche > td { padding: 0; background: var(--bes-soft); border-top: 1px dashed var(--bes-line); }
-.bfiche { position: sticky; left: 0; box-sizing: border-box; width: min(100%, calc(100vw - 4rem)); max-width: 90rem; padding: 0.8rem 1.1rem 1rem; display: grid; gap: 0.6rem; font-size: 0.92rem; }
-.bfiche__tete { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem 0.9rem; }
-.bfiche__tete h3 { margin: 0; font-size: 1.1rem; }
-.bfiche__sous-titre { margin: 0; color: var(--muted); }
-.bfiche__fermer { display: none; margin-left: auto; font-size: 0.8rem; padding: 0.15rem 0.7rem; }
-html.js .bfiche__fermer { display: inline-block; }
-.bfiche__corps { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 0.8rem 1.6rem; align-items: start; }
-.bfiche h4 { margin: 0 0 0.35rem; font-size: 0.95rem; }
-.bfiche p { margin: 0 0 0.45rem; max-width: 60rem; }
-.bfiche__blocs, .bfiche__butin { grid-column: 1 / -1; }
-.brubriques { margin: 0; display: grid; gap: 0.35rem; }
-.brubrique { display: grid; grid-template-columns: minmax(8rem, 13rem) 1fr; gap: 0.6rem; }
-.brubrique dt { font-weight: 700; font-size: 0.82rem; color: var(--muted); }
+/* Le tableau à gauche, la carte à droite (panneau qui suit le défilement) ; sur un écran étroit, la carte passe par-dessus la page */
+.bvue { display: grid; grid-template-columns: minmax(0, 1fr) minmax(24rem, 36rem); gap: 1rem; align-items: start; }
+.bcartes { position: sticky; top: 0.75rem; max-height: calc(100vh - 1.5rem); overflow-y: auto; overscroll-behavior: contain; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 12px; }
+.bcartes__invite { margin: 0; padding: 2.5rem 1.5rem; text-align: center; color: var(--muted); }
+html.js .bcartes.est-ouverte .bcartes__invite { display: none; }
+.bcarte { display: none; }
+html:not(.js) .bcarte:target { display: block; }
+html.js .bcarte.est-ouverte { display: block; }
+html:not(.js) .bcartes { position: static; max-height: none; }
+
+/* La carte */
+.bcarte { padding: 0.9rem 1rem 1.1rem; font-size: 0.92rem; }
+.bcarte__tete { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "titres portrait" "fermer portrait"; gap: 0.3rem 0.9rem; align-items: start;
+  padding-bottom: 0.8rem; border-bottom: 2px solid var(--bes-line); }
+.bcarte__titres { grid-area: titres; min-width: 0; }
+.bcarte__tete h3 { margin: 0; font-size: 1.25rem; line-height: 1.2; }
+.bcarte__espece { margin: 0.15rem 0 0.4rem; color: var(--muted); }
+.bcarte__badges { margin: 0; display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.bbadge { display: inline-block; padding: 0 0.45rem; border-radius: 999px; font-size: 0.78rem; border: 1px solid var(--border); background: var(--bg); white-space: nowrap; }
+.bbadge--ep { border-style: dashed; }
+.bcarte__portrait { grid-area: portrait; margin: 0; width: 7.5rem; aspect-ratio: 1; display: grid; place-items: center; border: 1px dashed var(--bes-line);
+  border-radius: 12px; background: var(--bes-soft); position: relative; overflow: hidden; }
+.bcarte__portrait img { width: 70%; height: auto; opacity: 0.55; }
+.bcarte__portrait figcaption { position: absolute; bottom: 0.25rem; left: 0; right: 0; text-align: center; font-size: 0.68rem; color: var(--muted); }
+.bcarte__fermer { grid-area: fermer; justify-self: start; align-self: end; font-size: 0.8rem; padding: 0.15rem 0.7rem; border: 1px solid var(--border); border-radius: 999px;
+  color: var(--text); text-decoration: none; background: var(--bg); }
+.bcarte__fermer:hover { border-color: var(--bes); }
+html:not(.js) .bcarte__fermer { display: none; }
+.bcarte__section { padding-top: 0.8rem; }
+.bcarte__section + .bcarte__section { margin-top: 0.8rem; border-top: 1px solid var(--border); }
+.bcarte h4 { margin: 0 0 0.35rem; font-size: 0.98rem; }
+.bcarte p { margin: 0 0 0.45rem; }
+.bcarte__bonus { display: block; margin-top: 0.25rem; font-size: 0.8rem; }
+.brubriques { margin: 0; display: grid; gap: 0.5rem; }
+.brubrique { display: grid; gap: 0.15rem; }
+.brubrique dt { font-weight: 700; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
 .brubrique dd { margin: 0; }
 .brubrique dd ul { margin: 0; padding-left: 1.1rem; }
-.bcapacites { list-style: none; padding-left: 0 !important; display: grid; gap: 0.3rem; }
+.bstats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; }
+.bstat { display: grid; justify-items: center; padding: 0.35rem 0.3rem; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); }
+.bstat__nom { font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.bstat__val { font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.bstat--sante { border-color: color-mix(in srgb, #c62828 45%, var(--border)); }
+.bstat--chakra { border-color: color-mix(in srgb, #1565c0 45%, var(--border)); }
+.bstat--barriere { border-color: color-mix(in srgb, #f9a825 55%, var(--border)); }
+.bcaracs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.3rem; }
+.bcarac { display: grid; justify-items: center; padding: 0.2rem 0; border-radius: 8px; background: var(--c); color: var(--c-texte); }
+.bcarac__sigle { font-size: 0.7rem; font-weight: 700; }
+.bcarac__val { font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.bcapacites { list-style: none; padding-left: 0 !important; display: grid; gap: 0.35rem; }
 .bcapacites .commune { opacity: 0.85; }
 .varie-note { font-style: italic; color: var(--muted); }
 .bbloc { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin-bottom: 0.3rem; }
 .bbloc > summary { cursor: pointer; padding: 0.35rem 0.7rem; font-weight: 600; }
 .bbloc > p { padding: 0 0.7rem 0.5rem; }
 .bbutin__defile { overflow-x: auto; }
-.bbutin { border-collapse: collapse; font-size: 0.85rem; }
-.bbutin th, .bbutin td { border: 1px solid var(--border); padding: 0.25rem 0.5rem; text-align: left; vertical-align: top; background: var(--surface); }
+.bbutin { border-collapse: collapse; font-size: 0.82rem; width: 100%; }
+.bbutin th, .bbutin td { border: 1px solid var(--border); padding: 0.25rem 0.45rem; text-align: left; vertical-align: top; background: var(--surface); }
 .bbutin thead th { background: var(--bes-soft); }
 .bbutin .est-sienne { box-shadow: inset 0 0 0 2px var(--bes-line); }
 .bbutin thead th.est-sienne { background: var(--bes); color: var(--surface); }
 
-@media (max-width: 60rem) {
-  .bfiche__corps { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 70rem) {
+  .bvue { grid-template-columns: minmax(0, 1fr); }
+  html.js .bcartes { position: fixed; inset: 0; z-index: 60; max-height: none; border-radius: 0; border: 0; display: none; }
+  html.js .bcartes.est-ouverte { display: block; }
+  html.js .bcarte { max-width: 40rem; margin: 0 auto; }
 }
 
-@media (max-width: 44rem) {
+@media (max-width: 30rem) {
+  .bcarte__portrait { width: 5.5rem; }
   .bligne__nom { min-width: 8rem; }
-  .brubrique { grid-template-columns: 1fr; gap: 0.1rem; }
-  .bfiche { width: calc(100vw - 2.5rem); padding-inline: 0.7rem; }
 }
 
 @media print {
-  .bfiltres, .bfiche__fermer, .bonglets { display: none !important; }
+  .bfiltres, .bcarte__fermer, .bonglets, .bcartes__invite { display: none !important; }
   html.js .bpanneau:not(.is-active) { display: block; }
   .btableau__defile { max-height: none; overflow: visible; }
-  .btable .bligne__fiche[hidden] { display: table-row; }
+  .bvue { grid-template-columns: minmax(0, 1fr); }
+  .bcartes { position: static; max-height: none; overflow: visible; border: 0; }
 }

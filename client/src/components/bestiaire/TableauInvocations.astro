@@ -1,10 +1,10 @@
 ---
 // Tableau des créatures invoquées (lib/bestiaire-db.mjs#chargerInvocations) : à part des monstres (demande du propriétaire : elles ne fonctionnent pas tout à
-// fait pareillement : un sort les appelle, leurs valeurs suivent souvent le niveau de puissance magique, « /NPM »). Une ligne par créature, dans l'ordre des
-// onglets du classeur « Invocation » ; sa fiche s'ouvre dessous (texte tel qu'écrit), avec le lien vers le sort qui l'invoque et vers sa page.
+// fait pareillement : un sort les appelle, leurs valeurs suivent souvent le niveau de puissance magique, « /NPM »). Comme pour les monstres, peu de colonnes
+// (nom, invocation, magies) et la carte de la créature à côté (CarteInvoquee.astro), avec le lien vers le sort qui l'invoque et vers sa page.
 import Filtres from './Filtres.astro';
-import { FPVSIA, type chargerInvocations } from '../../lib/bestiaire-db.mjs';
-import { couleurDeCaracteristique, styleDeCouleur } from '../../lib/caracteristiques-postures.mjs';
+import CarteInvoquee from './CarteInvoquee.astro';
+import type { chargerInvocations } from '../../lib/bestiaire-db.mjs';
 import { couleurDeMagie, texteSurCouleurDeMagie } from '../../lib/sort-format.mjs';
 import { url } from '../../lib/wiki';
 
@@ -15,31 +15,20 @@ const { invocations } = Astro.props;
 const { lignes, facettes } = invocations;
 const P = 'i-'; // préfixe de l'état dans l'adresse (le tableau des monstres n'en a pas)
 
-const COLONNES: { cle: string; libelle: string; titre?: string; tri?: boolean; classe?: string; style?: string }[] = [
-  { cle: 'nom', libelle: 'Nom', tri: true },
-  { cle: 'invocation', libelle: 'Invocation', tri: true },
-  { cle: 'magies', libelle: 'Magies', titre: 'La marge du classeur : magie(s) de l’invocation, ou palier EP des marionnettes', tri: true },
-  { cle: 'sante', libelle: 'Santé', tri: true, classe: 'nombre' },
-  { cle: 'chakra', libelle: 'Chakra', tri: true, classe: 'nombre' },
-  { cle: 'barriere', libelle: 'Barrière', tri: true, classe: 'nombre' },
-  { cle: 'defense', libelle: 'Défense', titre: 'Tri : armure physique', tri: true },
-  { cle: 'vitesse', libelle: 'Vitesse', titre: 'Tri : cases sol', tri: true },
-  ...FPVSIA.map((k) => ({ cle: k.id, libelle: k.sigle, titre: k.nom, tri: true, classe: 'nombre carac', style: styleDeCouleur(couleurDeCaracteristique(k.id)) })),
-  { cle: 'attaques', libelle: 'Attaques' },
-  { cle: 'capacites', libelle: 'Capacités' },
-  { cle: 'defenses', libelle: 'Résistances, immunités…', titre: 'Écrites dans ses capacités et celles de son invocation (celles de sa magie : dans la fiche)' },
+const COLONNES: { cle: string; libelle: string; titre?: string }[] = [
+  { cle: 'nom', libelle: 'Nom' },
+  { cle: 'invocation', libelle: 'Invocation' },
+  { cle: 'magies', libelle: 'Magies', titre: 'La marge du classeur : magie(s) de l’invocation, ou palier EP des marionnettes' },
 ];
-const tris = COLONNES.filter((c) => c.tri).map((c) => c.cle);
 const pastille = (nom: string) => `--m: ${couleurDeMagie(nom)}; --m-texte: ${texteSurCouleurDeMagie(nom)}`;
-const lienDuSort = (i: (typeof lignes)[number]['invocation']) => (i.magieId && i.sortId ? `${url(`${i.magieId}/`)}#sort-${i.sortId.slice(i.sortId.indexOf('#sort:') + 6)}` : null);
 ---
 
-<section class="btableau" data-bestiaire-tableau data-prefixe={P} data-facettes={JSON.stringify(facettes.map((f) => f.cle))} data-tris={JSON.stringify(tris)} data-singulier="créature" data-pluriel="créatures" aria-label="Créatures invoquées">
+<section class="btableau" data-bestiaire-tableau data-prefixe={P} data-facettes={JSON.stringify(facettes.map((f) => f.cle))} data-tris={JSON.stringify(COLONNES.map((c) => c.cle))} data-singulier="créature" data-pluriel="créatures" aria-label="Créatures invoquées">
   <Filtres
     id="invoquees"
     facettes={facettes}
     recherche="Rechercher une créature invoquée"
-    aide="Tous les mots, où qu’ils soient : nom, magie, capacités, effets… Plusieurs valeurs d’un même filtre : l’une ou l’autre ; plusieurs filtres : tous à la fois."
+    aide="Tous les mots, où qu’ils soient, carte comprise : nom, magie, capacités, effets… Plusieurs valeurs d’un même filtre : l’une ou l’autre ; plusieurs filtres : tous à la fois."
   />
   <p class="btableau__aide muted">
     {lignes.length} créatures appelées par trois sorts :
@@ -51,204 +40,52 @@ const lienDuSort = (i: (typeof lignes)[number]['invocation']) => (i.magieId && i
           {i.magie && <span class="muted"> ({i.magie})</span>}
         </>
       ))
-    }. « /NPM » : par niveau de puissance magique. <span class="js-seul">Cliquez sur un nom pour ouvrir sa fiche.</span>
+    }. « /NPM » : par niveau de puissance magique. <span class="js-seul">Cliquez sur une ligne pour ouvrir sa carte.</span>
   </p>
-  <div class="btableau__defile" tabindex="0" role="region" aria-label="Tableau des créatures invoquées (défile)">
-    <table class="btable">
-      <thead>
-        <tr>
+  <div class="bvue">
+    <div class="btableau__defile" tabindex="0" role="region" aria-label="Tableau des créatures invoquées (défile)">
+      <table class="btable">
+        <thead>
+          <tr>
+            {
+              COLONNES.map((c) => (
+                <th scope="col" title={c.titre} data-tri={c.cle} aria-sort="none">
+                  {c.libelle}
+                </th>
+              ))
+            }
+          </tr>
+        </thead>
+        <tbody>
           {
-            COLONNES.map((c) => (
-              <th scope="col" class={c.classe} style={c.style} title={c.titre} data-tri={c.tri ? c.cle : undefined} aria-sort={c.tri ? 'none' : undefined}>
-                {c.libelle}
-              </th>
-            ))
-          }
-        </tr>
-      </thead>
-      {
-        lignes.map((l, i) => {
-          const fiche = `fiche-${l.ancre}`;
-          const sort = lienDuSort(l.invocation);
-          return (
-            <tbody class="bligne" id={l.ancre} data-ligne data-ordre={i} data-facettes={JSON.stringify(l.facettes)} data-tri={JSON.stringify(l.tri)}>
-              <tr class="bligne__principale">
+            lignes.map((l, i) => (
+              <tr class="bligne" id={l.ancre} data-ligne data-ordre={i} data-carte={`carte-${l.ancre}`} data-facettes={JSON.stringify(l.facettes)} data-tri={JSON.stringify(l.tri)}>
                 <th scope="row" class="bligne__nom">
-                  <button type="button" class="bligne__ouvrir" aria-expanded="false" aria-controls={fiche}>
+                  <a class="bligne__ouvrir" href={`#carte-${l.ancre}`} aria-controls={`carte-${l.ancre}`}>
                     {l.nom}
-                  </button>
+                  </a>
                 </th>
                 <td>{l.invocation.nom}</td>
                 <td class="bligne__magies">
-                  {l.magiesDuBloc.length ? (
-                    <span class="bmagies" title={l.bloc}>
-                      {l.magiesDuBloc.map((m) => (
-                        <span class="bmagie" style={pastille(m)}>{m}</span>
-                      ))}
-                      {/mono/i.test(l.bloc) && <span class="muted"> mono</span>}
-                    </span>
-                  ) : (
-                    <span class="bmagies">
-                      {l.magies.map((m) => (
-                        <span class="bmagie" style={pastille(m)}>{m}</span>
-                      ))}{' '}
-                      <span class="muted">{l.bloc}</span>
-                    </span>
-                  )}
-                </td>
-                <td class="nombre">{l.sante}</td>
-                <td class="nombre">{l.chakra ?? <span class="vide">—</span>}</td>
-                <td class="nombre">{l.barriere ?? <span class="vide">—</span>}</td>
-                <td>{l.defense ? <span class="brut">{l.defense}</span> : <span class="vide">—</span>}</td>
-                <td>{l.vitesse ? <span class="brut">{l.vitesse}</span> : <span class="vide">—</span>}</td>
-                {l.fpvsia.map((v) => (
-                  <td class="nombre carac">{v ?? <span class="vide">—</span>}</td>
-                ))}
-                <td class="bligne__liste">{l.attaques.length ? <ul role="list">{l.attaques.map((a) => <li title={a.brut}>{a.nom}</li>)}</ul> : <span class="vide">—</span>}</td>
-                <td class="bligne__liste bligne__capacites">
-                  {l.capacites.length ? (
-                    <ul role="list">
-                      {l.capacites.map((x) => (
-                        <li>
-                          {x.npm && <span class="prefixe">NPM {x.npm}</span>} {x.nom}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <span class="vide">—</span>
-                  )}
-                </td>
-                <td class="bligne__cibles">
-                  {l.defensesEcrites.length ? (
-                    <ul role="list">
-                      {l.defensesEcrites.map((x) => (
-                        <li class={`bcible bcible--${x.sens}`}>{x.libelle}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <span class="vide">—</span>
-                  )}
+                  <span class="bmagies" title={l.bloc}>
+                    {(l.magiesDuBloc.length ? l.magiesDuBloc : l.magies).map((m) => (
+                      <span class="bmagie" style={pastille(m)}>
+                        {m}
+                      </span>
+                    ))}
+                    {l.magiesDuBloc.length ? /mono/i.test(l.bloc) && <span class="muted"> mono</span> : <span class="muted"> {l.bloc}</span>}
+                  </span>
                 </td>
               </tr>
-              <tr class="bligne__fiche" id={fiche} hidden>
-                <td colspan={COLONNES.length}>
-                  <article class="bfiche" aria-labelledby={`${fiche}-titre`}>
-                    <header class="bfiche__tete">
-                      <h3 id={`${fiche}-titre`}>{l.nom}</h3>
-                      <p class="bfiche__sous-titre">
-                        {l.invocation.nom} · {l.bloc}
-                      </p>
-                      <button type="button" class="bfiche__fermer" aria-label={`Fermer la fiche de ${l.nom}`}>
-                        Fermer
-                      </button>
-                    </header>
-                    <div class="bfiche__corps">
-                      <section class="bfiche__espece" aria-label="Description et invocation">
-                        {l.description && <p class="texte">{l.description}</p>}
-                        <p>
-                          <strong>Invoquée par</strong> {sort ? <a href={sort}>{l.invocation.sortNom}</a> : l.invocation.sortNom}
-                          {l.invocation.magie && <> ({l.invocation.magie})</>}
-                          {l.cout && <> · coût : {l.cout}</>}
-                        </p>
-                        {l.memeBloc.length > 0 && (
-                          <p>
-                            <strong>Même combinaison :</strong>{' '}
-                            {l.memeBloc.map((m, k) => (
-                              <>
-                                {k > 0 && ', '}
-                                <a href={`#invoquee-${m.id.slice(m.id.indexOf('/') + 1)}`}>{m.nom}</a>
-                              </>
-                            ))}
-                          </p>
-                        )}
-                        <p>
-                          <a href={url(`${l.id}/`)}>Page de la créature</a>
-                        </p>
-                      </section>
-                      <section class="bfiche__carte" aria-label="La carte">
-                        <h4>Carte</h4>
-                        <dl class="brubriques">
-                          <div class="brubrique">
-                            <dt>Santé / Chakra / Barrière</dt>
-                            <dd>
-                              {l.sante} / {l.chakra ?? '—'} / {l.barriere ?? '—'}
-                            </dd>
-                          </div>
-                          {l.ressources.map((r) => (
-                            <div class="brubrique">
-                              <dt>{r.libelle}</dt>
-                              <dd>{r.brut}</dd>
-                            </div>
-                          ))}
-                          <div class="brubrique">
-                            <dt>Défense</dt>
-                            <dd>{l.defense ?? '—'}</dd>
-                          </div>
-                          <div class="brubrique">
-                            <dt>Vitesse</dt>
-                            <dd>{l.vitesse ?? '—'}</dd>
-                          </div>
-                          <div class="brubrique">
-                            <dt>F.P.V.S.I.A.</dt>
-                            <dd>
-                              {l.fpvsia.map((v) => v ?? '—').join(' / ')}
-                              {l.bonus.length > 0 && <span class="muted"> ({l.bonus.join(', ')})</span>}
-                            </dd>
-                          </div>
-                          <div class="brubrique">
-                            <dt>Dégâts</dt>
-                            <dd>{l.attaques.length ? <ul role="list">{l.attaques.map((a) => <li>{a.brut}</li>)}</ul> : '—'}</dd>
-                          </div>
-                          <div class="brubrique brubrique--capacites">
-                            <dt>Capacité(s)</dt>
-                            <dd>
-                              <ul class="bcapacites" role="list">
-                                {l.capacites.map((x) => (
-                                  <li>
-                                    {x.npm && <span class="prefixe">NPM {x.npm}</span>} {x.etiquette && <span class="prefixe">[{x.etiquette}]</span>} <strong>{x.nom}.</strong> <span class="texte">{x.texte}</span>
-                                  </li>
-                                ))}
-                                {l.communes.map((x) => (
-                                  <li class="commune">
-                                    <span class="prefixe" title={`Commune à toutes les créatures de « ${l.invocation.nom} »`}>commune</span> <strong>{x.nom}.</strong> <span class="texte">{x.texte}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </dd>
-                          </div>
-                          {l.effets.map((e) => (
-                            <div class="brubrique">
-                              <dt>{e.libelle}</dt>
-                              <dd class="texte">{e.texte}</dd>
-                            </div>
-                          ))}
-                          {l.defensesEcrites.length > 0 && (
-                            <div class="brubrique">
-                              <dt>Écrit dans les capacités</dt>
-                              <dd>{l.defensesEcrites.map((x) => x.libelle).join(' · ')}</dd>
-                            </div>
-                          )}
-                          {l.defensesParMagie.map((d) => (
-                            <div class="brubrique">
-                              <dt>Selon sa magie {d.magie} (« Élémentaire »)</dt>
-                              <dd>
-                                {d.resiste.length > 0 && <>Résiste à : {d.resiste.join(', ')}</>}
-                                {d.resiste.length > 0 && d.vulnerable.length > 0 && ' · '}
-                                {d.vulnerable.length > 0 && <>Vulnérable à : {d.vulnerable.join(', ')}</>}
-                              </dd>
-                            </div>
-                          ))}
-                        </dl>
-                      </section>
-                    </div>
-                  </article>
-                </td>
-              </tr>
-            </tbody>
-          );
-        })
-      }
-    </table>
+            ))
+          }
+        </tbody>
+      </table>
+      <p class="btableau__vide" data-aucune hidden>Aucune créature invoquée ne correspond à ces critères.</p>
+    </div>
+    <aside class="bcartes" aria-label="Carte de la créature choisie" data-cartes>
+      <p class="bcartes__invite js-seul">Choisissez une créature dans le tableau pour ouvrir sa carte.</p>
+      {lignes.map((l) => <CarteInvoquee ligne={l} />)}
+    </aside>
   </div>
-  <p class="btableau__vide" data-aucune hidden>Aucune créature invoquée ne correspond à ces critères.</p>
 </section>
