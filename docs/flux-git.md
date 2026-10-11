@@ -170,7 +170,7 @@ supprimées. `develop` (ancienne tentative, entièrement fusionnée) sera suppri
    (*Settings → Developer settings → Fine-grained tokens*), limité à ce dépôt, permissions *Contents : Read and write* **et** *Workflows : Read and
    write* (sans elle, une refusion qui touche `.github/workflows/` est refusée), et l'enregistrer comme secret **`BOT_TOKEN`** (*Settings → Secrets and
    variables → Actions*). Les poussées du bot se font alors au nom du propriétaire du jeton, qui doit être administrateur du dépôt (exemption des
-   règles). **Le jeton expire** : noter sa date et le renouveler avant (un jeton expiré arrête versions et publications, le NAS cesse d'être mis à
+   règles). **S'il a une date d'expiration**, la noter et le renouveler avant (un jeton expiré arrête versions et publications, le NAS cesse d'être mis à
    jour) ; supprimer le secret fait revenir au jeton par défaut.
 3. **Règles GitHub** : *Settings → Rules → Rulesets → New ruleset → Import a ruleset*, une fois pour chaque fichier de `.github/rulesets/` :
    `master.json`, `dev.json` (PR obligatoire, checks verts, ni suppression ni réécriture, fusion par commit de fusion ; exemption :
@@ -186,7 +186,7 @@ supprimées. `develop` (ancienne tentative, entièrement fusionnée) sera suppri
 5. **Mises à jour depuis le site de dev** : secret **`MISE_A_JOUR_TOKEN`** (jeton *fine-grained* d'un administrateur, ce dépôt seulement,
    *Contents*, *Pull requests* et *Workflows* en lecture et écriture) ; le jeton par défaut ne suffit pas, car une PR qu'il ouvre ne lance pas la
    CI et une fusion qu'il fait ne lance pas `livraison.yml`. Le serveur de test a son propre jeton, permission *Actions* seulement
-   ([`deploy/vps/README.md`](../deploy/vps/README.md), « Page Mise à jour »). Comme `BOT_TOKEN`, **il expire** : le renouveler avant.
+   ([`deploy/vps/README.md`](../deploy/vps/README.md), « Page Mise à jour »). Comme pour `BOT_TOKEN` : s'il a une date d'expiration, le renouveler avant ; sans date, le révoquer et le refaire au moindre doute (*Developer settings → Fine-grained tokens → Revoke*).
 6. **Vérifier les bots** : après la première fusion d'une `feature/<nom>` dans `dev`, *Actions → Version et livraison* doit montrer les jobs
    `Version` (commit « chore: version v0.1.26 … » sur `dev`), `Site (avant la 1.0)` (branche `site` republiée) et `Supprimer la branche fusionnée`.
 

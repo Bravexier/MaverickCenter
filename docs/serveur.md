@@ -182,6 +182,11 @@ bouton restent verrouillés tant que le lot n'est pas livré ou annulé. Puis il
 (`workflow_dispatch` : lot, empreinte, adresse ; jeton du serveur limité à la permission *Actions*), dont il suit le run (état dans
 `db/mise-a-jour/etat.json`, gardé si le service redémarre). Sans jeton, la page donne les trois valeurs pour lancer le workflow à la main.
 
+**« Simulation de mise à jour »** (bouton à côté, confirmation simple) : le même lot, le même workflow avec l'entrée `essai` cochée. GitHub fait
+tout le travail (branche à jour de `dev`, lot rejoué, note de version écrite, liste des tables contrôlée, `db:check`, `npm test`) puis s'arrête
+**sans rien pousser** : ni PR, ni fusion, ni livraison. À la fin (réussie ou non), le lot est libéré et le texte redevient modifiable
+(`simulation_reussie` / `simulation_echouee`). À faire avant la première vraie mise à jour, qui fera la livraison 0.2.0.
+
 Le workflow (`client/scripts/mise-a-jour-github.mjs`, avec le jeton `MISE_A_JOUR_TOKEN` du dépôt) :
 
 1. télécharge le lot et vérifie son empreinte ;
@@ -223,8 +228,8 @@ qui renomme une colonne doit aussi renommer ses clés dans `avant` / `apres` de 
 | --- | --- |
 | `GET /api/mise-a-jour/` | La note en préparation : `reference`, `version_dev`, `version_cible`, `en_attente`, `lignes`, `bilan`, `brouillon`, `lancement`, `github`, `confirmation` |
 | `POST /api/mise-a-jour/brouillon/` | `{ texte, avant }` → le champ libre enregistré (`409` s'il a changé entre-temps ou si un lot est figé) |
-| `POST /api/mise-a-jour/lancer/` | `{ confirmation }` → fige le lot et déclenche le workflow → `202`, `{ lancement }` (`etat` : `envoi`, `lance`, `en_cours`, `termine`, `echec`, `erreur`, `manuel`, `annule`) |
-| `POST /api/mise-a-jour/liberer/` | Annule un lancement qui n'est pas parti, a échoué ou se lance à la main : le texte redevient modifiable |
+| `POST /api/mise-a-jour/lancer/` | `{ confirmation, simulation? }` → fige le lot et déclenche le workflow (`simulation: true` : simulation de mise à jour, rien n'est poussé) → `202`, `{ lancement }` (`etat` : `envoi`, `lance`, `en_cours`, `termine`, `echec`, `erreur`, `manuel`, `annule`, `simulation_reussie`, `simulation_echouee`) |
+| `POST /api/mise-a-jour/liberer/` | Annule un lancement qui n'est pas parti, a échoué ou se lance à la main : le texte redevient modifiable (annulé pendant l'envoi : le run parti quand même est annulé sur GitHub) |
 | `GET /api/mise-a-jour/lancement/` | L'état du lancement (le run GitHub est relu au plus toutes les 20 s) |
 | `GET /api/mise-a-jour/lots/<lot>/` | Le lot figé, octet pour octet (le workflow le télécharge et vérifie son empreinte) |
 

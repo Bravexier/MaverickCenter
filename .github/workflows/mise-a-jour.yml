@@ -38,7 +38,7 @@ on:
         type: string
         required: true
       essai:
-        description: Essai à blanc (applique et contrôle le lot, sans rien pousser)
+        description: Simulation de mise à jour (applique et contrôle le lot, sans rien pousser ni fusionner)
         type: boolean
         default: false
 
@@ -143,6 +143,6 @@ jobs:
             if [ -z "$ETAPE" ] || [ "$ETAPE" = skipped ]; then
               echo "**Arrêt avant l'application du lot** (garde-fous, récupération du dépôt ou installation) : voir les étapes ci-dessus. Rien n'a été poussé."
             fi
-            if [ "$ESSAI" = true ]; then mode="essai à blanc"; else mode="mise à jour"; fi
+            if [ "$ESSAI" = true ]; then mode="simulation de mise à jour"; else mode="mise à jour"; fi
             echo "Résultat du workflow ($mode) : $ETAT. La page « Mise à jour » du site de dev affiche cet état."
           } >> "$GITHUB_STEP_SUMMARY"

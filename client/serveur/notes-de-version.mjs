@@ -146,7 +146,7 @@ export function lireLot(dossier, id) {
  * Fige le lot de la mise à jour : journal en attente (sans l'aperçu HTML des pages du guide, inutile à data/rows), champ libre, versions ; le range
  * dans db/mise-a-jour/<id>.json, marque le brouillon (il ne se modifie plus) et note l'état « envoi ». Rend l'état du lancement.
  */
-export function figerLot(db, dossier, { versionDev, versionCible, instant, confirmation, adresse, etat = 'envoi' }) {
+export function figerLot(db, dossier, { versionDev, versionCible, instant, confirmation, adresse, etat = 'envoi', simulation = false }) {
   if (confirmation !== CONFIRMATION) throw new ErreurNotes(400, `Confirmation attendue : tapez « ${CONFIRMATION} ».`);
   const precedent = lireLancement(dossier);
   if (enCours(precedent)) throw new ErreurNotes(409, 'Une mise à jour est déjà en cours.', { lancement: precedent });
@@ -168,7 +168,7 @@ export function figerLot(db, dossier, { versionDev, versionCible, instant, confi
   return ecrireLancement(dossier, {
     lot: id, empreinte: createHash('sha256').update(texte).digest('hex'), lance_le: instant, version_cible: versionCible,
     modifications: journal.lots.reduce((n, l) => n + l.modifications.length, 0), adresse: `${adresse}/api/mise-a-jour/lots/${id}/`,
-    etat, run: null, erreur: null, suivi_le: null,
+    etat, simulation: Boolean(simulation), run: null, erreur: null, suivi_le: null,
   });
 }
 
@@ -176,7 +176,7 @@ export function figerLot(db, dossier, { versionDev, versionCible, instant, confi
 export function libererLot(db, dossier, { instant }) {
   const l = lireLancement(dossier);
   if (enCours(l) && l.etat !== 'envoi') throw new ErreurNotes(409, 'La mise à jour est en cours sur GitHub : attendez qu’elle se termine.', { lancement: l });
-  if (l?.etat === 'termine') throw new ErreurNotes(409, 'Cette mise à jour a été livrée : le texte redeviendra modifiable quand la nouvelle version arrivera sur ce site.', { lancement: l });
+  if (l?.etat === 'termine' && !l.simulation) throw new ErreurNotes(409, 'Cette mise à jour a été livrée : le texte redeviendra modifiable quand la nouvelle version arrivera sur ce site.', { lancement: l });
   db.prepare('UPDATE note_version_brouillon SET lot = NULL WHERE id = 1').run();
   if (l) ecrireLancement(dossier, { ...l, etat: 'annule', libere_le: instant });
   return lireLancement(dossier);
@@ -188,10 +188,21 @@ export function libererLot(db, dossier, { instant }) {
  */
 export function actualiserLancement(db, dossier) {
   const l = lireLancement(dossier);
-  if (!l?.lot || l.etat === 'termine' || l.etat === 'annule') return l;
+  if (!l?.lot || l.etat === 'termine' || l.etat === 'annule') {
+    // simulation de mise à jour finie (réussie ou non) : rien n'a été poussé, le lot est libéré et le texte redevient modifiable
+    if (l?.simulation && l.etat === 'termine') return terminerSimulation(db, dossier, l, 'simulation_reussie');
+    return l;
+  }
+  if (l.simulation) return l.etat === 'echec' ? terminerSimulation(db, dossier, l, 'simulation_echouee') : l;
   const livree = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'note_version'").get()
     && db.prepare('SELECT version FROM note_version WHERE lot = ?').get(l.lot);
   return livree ? ecrireLancement(dossier, { ...l, etat: 'termine', version_livree: livree.version }) : l;
+}
+
+/** Une simulation de mise à jour terminée : son lot libère le brouillon (s'il le tient encore) et l'état dit l'issue. */
+function terminerSimulation(db, dossier, l, etat) {
+  db.prepare('UPDATE note_version_brouillon SET lot = NULL WHERE id = 1 AND lot = ?').run(l.lot);
+  return ecrireLancement(dossier, { ...l, etat });
 }
 
 /**
@@ -217,15 +228,35 @@ export function creerGithub({ dossier, depot, lireJeton, fetch: f = globalThis.f
       try {
         const r = await api(`/actions/workflows/${WORKFLOW}/dispatches`, {
           method: 'POST',
-          body: JSON.stringify({ ref: 'dev', inputs: { lot: l.lot, empreinte: l.empreinte, adresse: l.adresse }, return_run_details: true }),
+          // les entrées d'un workflow_dispatch sont des chaînes ; « essai » est l'entrée booléenne du workflow : la simulation de mise à jour,
+          // qui applique et contrôle le lot sans rien pousser
+          body: JSON.stringify({ ref: 'dev', inputs: { lot: l.lot, empreinte: l.empreinte, adresse: l.adresse, essai: l.simulation ? 'true' : 'false' }, return_run_details: true }),
         });
         if (r.status !== 200 && r.status !== 204) throw new Error(`GitHub a répondu ${r.status} : ${(await r.text()).slice(0, 300)}`);
         const details = r.status === 200 ? await r.json() : {};
-        journal(`mise à jour : workflow déclenché pour le lot ${l.lot}`);
-        return ecrireLancement(dossier, { ...lireLancement(dossier), etat: 'lance', run: details.workflow_run_id ? { id: details.workflow_run_id, url: details.html_url ?? null, statut: 'queued', conclusion: null } : null });
+        const run = details.workflow_run_id ? { id: details.workflow_run_id, url: details.html_url ?? null, statut: 'queued', conclusion: null } : null;
+        const actuel = lireLancement(dossier);
+        if (actuel?.lot !== l.lot) return actuel; // un autre lot a pris la place entre-temps : on n'écrase jamais son état
+        if (actuel.etat !== 'envoi') {
+          // annulé pendant l'envoi (« Annuler ce lancement ») : le run est parti quand même ; on l'annule sur GitHub
+          let annule = false;
+          if (run) {
+            try {
+              annule = [202, 204].includes((await api(`/actions/runs/${run.id}/cancel`, { method: 'POST' })).status);
+            } catch {
+              // réseau : le run tournera ; l'état le dit
+            }
+          }
+          journal(`mise à jour : lot ${l.lot} annulé pendant l'envoi ; run ${run?.id ?? '?'} ${annule ? 'annulé sur GitHub' : 'NON annulé (à annuler à la main)'}`);
+          return ecrireLancement(dossier, { ...actuel, run, erreur: annule ? null : 'Annulé pendant l’envoi, mais le run n’a pas pu être annulé sur GitHub : annulez-le à la main.' });
+        }
+        journal(`mise à jour${l.simulation ? ' (simulation)' : ''} : workflow déclenché pour le lot ${l.lot}`);
+        return ecrireLancement(dossier, { ...actuel, etat: 'lance', run });
       } catch (e) {
         journal(`ERREUR mise à jour : déclenchement du workflow : ${e.message}`);
-        return ecrireLancement(dossier, { ...lireLancement(dossier), etat: 'erreur', erreur: e.message });
+        const actuel = lireLancement(dossier);
+        if (actuel?.lot !== l.lot || actuel.etat !== 'envoi') return actuel;
+        return ecrireLancement(dossier, { ...actuel, etat: 'erreur', erreur: e.message });
       }
     },
     /** Relit l'état du run (au plus une fois par INTERVALLE_SUIVI). */

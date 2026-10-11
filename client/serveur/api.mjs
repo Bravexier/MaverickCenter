@@ -18,7 +18,8 @@
 // Page « Mise à jour », sur le site de dev seulement (même garde) — serveur/notes-de-version.mjs :
 //   GET  /api/mise-a-jour/              la note en préparation : modifications production → dev (calculées), brouillon, état du lancement
 //   POST /api/mise-a-jour/brouillon/    { texte, avant } → enregistre le champ libre des admins
-//   POST /api/mise-a-jour/lancer/       { confirmation } → fige le lot et déclenche le workflow GitHub de mise à jour → 202
+//   POST /api/mise-a-jour/lancer/       { confirmation, simulation? } → fige le lot et déclenche le workflow GitHub de mise à jour → 202
+//                                       (simulation : true = simulation de mise à jour, le workflow vérifie tout sans rien pousser)
 //   POST /api/mise-a-jour/liberer/      annule un lancement qui n'est pas parti (ou a échoué) : le brouillon redevient modifiable
 //   GET  /api/mise-a-jour/lancement/    état du lancement (suivi du run GitHub)
 //   GET  /api/mise-a-jour/lots/<id>/    un lot figé, tel quel (le workflow le télécharge et vérifie son empreinte)
@@ -197,9 +198,9 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
     // sans jeton GitHub sur ce serveur : le lot est figé quand même, la page dit comment lancer le workflow à la main
     const lancement = figerLot(db, service.dossier, {
       versionDev, versionCible: note.version_cible, instant, confirmation: valeur?.confirmation, adresse: adressePublique(service, requete.entetes ?? {}),
-      etat: github.configure ? 'envoi' : 'manuel',
+      etat: github.configure ? 'envoi' : 'manuel', simulation: valeur?.simulation === true,
     });
-    service.journal?.(`mise à jour : lot ${lancement.lot} figé (${lancement.modifications} modification(s), V${note.version_cible})`);
+    service.journal?.(`${lancement.simulation ? 'simulation de mise à jour' : 'mise à jour'} : lot ${lancement.lot} figé (${lancement.modifications} modification(s), V${note.version_cible})`);
     if (github.configure) service.github.declencher().catch(() => {});
     return json(202, { lancement, github });
   } catch (e) {

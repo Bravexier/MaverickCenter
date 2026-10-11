@@ -2,7 +2,8 @@
 // PRÉPARATION s'affiche au-dessus de la note de production — les modifications des règles de la production (master) à la base dev, calculées par
 // le service (GET /api/mise-a-jour/), le champ libre des admins et, sur ordinateur seulement (comme le mode modification), le bouton
 // « Effectuer la mise à jour » : après confirmation, le service fige le lot et déclenche le workflow GitHub (rebase sur dev, PR, fusion
-// automatique si tout est vert, puis livraison dev → master) ; la page suit son avancement. Ailleurs (production, service absent) : rien ne change.
+// automatique si tout est vert, puis livraison dev → master) ; « Simulation de mise à jour » : le même travail, arrêté avant de rien pousser.
+// La page suit leur avancement. Ailleurs (production, service absent) : rien ne change.
 // Ce script n'importe que le rendu commun (aucun autre script de page ne l'importe : la version portable refuse un module partagé).
 import { compter, echapper, htmlDeLaListe, htmlDuTexteLibre } from '../lib/notes-de-version-rendu.mjs';
 
@@ -36,7 +37,10 @@ const ETATS = {
   erreur: 'Le workflow n’a pas pu être déclenché.',
   manuel: 'Aucun jeton GitHub sur ce serveur : lancez le workflow à la main avec les valeurs ci-dessous.',
   annule: 'Lancement annulé : le texte redevient modifiable.',
+  simulation_reussie: 'Simulation réussie : le lot s’applique sur dev, seules les tables prévues changent, db:check et tous les tests passent. Rien n’a été poussé ; la vraie mise à jour peut être lancée.',
+  simulation_echouee: 'La simulation a échoué : le journal du workflow dit pourquoi. Rien n’a été poussé ; le texte redevient modifiable.',
 };
+const EN_COURS = ['envoi', 'lance', 'en_cours'];
 
 let donnees = null;
 let suivi = null;
@@ -46,11 +50,12 @@ function htmlDuLancement(l, github, fige) {
   const run = l.run?.url ? ` <a href="${echapper(l.run.url)}" rel="noopener noreferrer" target="_blank">Voir le workflow sur GitHub</a>` : '';
   const manuel = l.etat === 'manuel' || l.etat === 'erreur'
     ? `<p>Sur GitHub : <a href="https://github.com/${echapper(github?.depot ?? 'Bravexier/MaverickCenter')}/actions/workflows/mise-a-jour.yml" rel="noopener noreferrer" target="_blank">Actions › Mise à jour des règles › Run workflow</a> (branche dev), avec :</p>
-       <ul><li>lot : <code>${echapper(l.lot)}</code></li><li>empreinte : <code>${echapper(l.empreinte)}</code></li><li>adresse : <code>${echapper(l.adresse)}</code></li></ul>`
+       <ul><li>lot : <code>${echapper(l.lot)}</code></li><li>empreinte : <code>${echapper(l.empreinte)}</code></li><li>adresse : <code>${echapper(l.adresse)}</code></li>
+       <li>case « Simulation » : ${l.simulation ? '<strong>cochée</strong>' : 'décochée'}</li></ul>`
     : '';
   const liberer = fige && ['manuel', 'erreur', 'echec', 'envoi'].includes(l.etat) && BUREAU.matches ? '<button type="button" data-nv-liberer>Annuler ce lancement</button>' : '';
   return `<div class="nv-lancement nv-lancement--${echapper(l.etat)}">
-    <p class="nv-message"><strong>Dernier lancement</strong> (V${echapper(l.version_cible ?? '?')}, ${echapper(l.lance_le ?? '')}) : ${echapper(ETATS[l.etat] ?? l.etat)}${run}</p>
+    <p class="nv-message"><strong>${l.simulation ? 'Dernière simulation' : 'Dernier lancement'}</strong> (V${echapper(l.version_cible ?? '?')}, ${echapper(l.lance_le ?? '')}) : ${echapper(ETATS[l.etat] ?? l.etat)}${run}</p>
     ${l.erreur ? `<p class="nv-message nv-message--erreur">${echapper(l.erreur)}</p>` : ''}${manuel}${liberer}</div>`;
 }
 
@@ -60,7 +65,7 @@ function rendre() {
   const bureau = BUREAU.matches;
   // un lot figé (brouillon.lot) verrouille le texte et le bouton jusqu'à ce que la version livrée arrive sur ce site (ou que le lancement soit annulé)
   const verrouille = Boolean(d.brouillon?.lot);
-  const occupe = verrouille || ['envoi', 'lance', 'en_cours'].includes(d.lancement?.etat);
+  const occupe = verrouille || EN_COURS.includes(d.lancement?.etat);
   const ref = d.reference;
   const versionProd = ref?.version ? `V${ref.version.split('.').slice(0, 2).join('.')}` : 'inconnue';
   const n = d.lignes ? compter(d.lignes) : null;
@@ -77,7 +82,8 @@ function rendre() {
        <div class="nv-dev__apercu nv-texte" data-nv-apercu ${texte ? '' : 'hidden'}>${htmlDuTexteLibre(texte)}</div>`
     : texte ? `<div class="nv-texte">${htmlDuTexteLibre(texte)}</div>` : '';
   const bouton = bureau
-    ? `<div class="nv-dev__actions"><button type="button" class="nv-principal" data-nv-lancer ${occupe || !d.lignes ? 'disabled' : ''}>Effectuer la mise à jour</button>
+    ? `<div class="nv-dev__actions"><button type="button" data-nv-simuler ${occupe || !d.lignes ? 'disabled' : ''}>Simulation de mise à jour</button>
+       <button type="button" class="nv-principal" data-nv-lancer ${occupe || !d.lignes ? 'disabled' : ''}>Effectuer la mise à jour</button>
        <span class="nv-bascule"><label><input type="checkbox" data-nv-voir-prod> Voir la page de production</label></span></div>`
     : `<p class="nv-bascule">Le bouton « Effectuer la mise à jour » est sur la version ordinateur du site.</p>`;
   zone.innerHTML = `<h2>Mise à jour en préparation : V${echapper(d.version_cible ?? '?')}</h2>
@@ -108,7 +114,8 @@ function brancher(zone) {
       etatTexte.textContent = e.message;
     }
   });
-  zone.querySelector('[data-nv-lancer]')?.addEventListener('click', () => confirmer());
+  zone.querySelector('[data-nv-lancer]')?.addEventListener('click', () => confirmer({ simulation: false }));
+  zone.querySelector('[data-nv-simuler]')?.addEventListener('click', () => confirmer({ simulation: true }));
   zone.querySelector('[data-nv-liberer]')?.addEventListener('click', async () => {
     try {
       donnees.lancement = (await appel('POST', 'mise-a-jour/liberer/', {})).lancement;
@@ -124,17 +131,29 @@ function brancher(zone) {
   });
 }
 
-/** Confirmation : ce que fait le bouton, et le mot à taper. */
-function confirmer() {
+/**
+ * Confirmation. La vraie mise à jour : ce qu'elle fait, et le mot à taper. La simulation (rien n'est poussé) : une confirmation simple, le service
+ * recevant le même mot (il le demande à tout lancement).
+ */
+function confirmer({ simulation }) {
   const champ = racine.querySelector('[data-nv-texte]');
   if (champ && champ.value !== (donnees.brouillon?.texte ?? '') && !window.confirm('Le texte n’est pas enregistré : continuer sans lui ?')) return;
   const mot = donnees.confirmation;
   const n = donnees.en_attente ?? 0;
+  const modifications = `${n} ligne${n > 1 ? 's' : ''} de la base en attente`;
   const dialogue = document.createElement('dialog');
   dialogue.className = 'nv-dialogue';
-  dialogue.innerHTML = `<form method="dialog">
+  dialogue.innerHTML = simulation
+    ? `<form method="dialog">
+    <h2>Simulation de mise à jour V${echapper(donnees.version_cible)}</h2>
+    <p>GitHub fait tout le travail de la mise à jour (${modifications}) : branche à jour de dev, modifications rejouées, note de version écrite,
+    contrôle des tables, <code>db:check</code> et tous les tests. Puis il s’arrête : <strong>rien n’est poussé</strong>, ni PR, ni fusion, ni livraison.</p>
+    <p class="nv-message nv-message--erreur" data-erreur hidden></p>
+    <div class="nv-dev__actions"><button type="button" value="annuler">Annuler</button><button type="submit" class="nv-principal">Lancer la simulation</button></div>
+  </form>`
+    : `<form method="dialog">
     <h2>Effectuer la mise à jour V${echapper(donnees.version_cible)}</h2>
-    <p>Les modifications du site de dev (${n} ligne${n > 1 ? 's' : ''} de la base en attente) et la note de version partent sur GitHub : une branche à jour de dev, une PR qui
+    <p>Les modifications du site de dev (${modifications}) et la note de version partent sur GitHub : une branche à jour de dev, une PR qui
     apporte la base modifiée, fusionnée automatiquement si les tests passent et qu’il n’y a aucun conflit, puis la <strong>livraison dev → master</strong> (production).</p>
     <p>Pour confirmer, tapez <strong>${echapper(mot)}</strong> :</p>
     <input name="mot" autocomplete="off" required>
@@ -147,16 +166,16 @@ function confirmer() {
   dialogue.addEventListener('close', () => dialogue.remove());
   dialogue.querySelector('form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const saisi = dialogue.querySelector('input').value.trim();
+    const saisi = simulation ? mot : dialogue.querySelector('input').value.trim();
     if (saisi !== mot) {
       erreur.textContent = `Tapez exactement « ${mot} ».`;
       erreur.hidden = false;
       return;
     }
     try {
-      await appel('POST', 'mise-a-jour/lancer/', { confirmation: saisi });
+      await appel('POST', 'mise-a-jour/lancer/', { confirmation: saisi, simulation });
       dialogue.close();
-      await charger(); // le brouillon est maintenant figé (lot) : texte et bouton verrouillés
+      await charger(); // le brouillon est maintenant figé (lot) : texte et boutons verrouillés jusqu'à la fin
     } catch (err) {
       erreur.textContent = err.message;
       erreur.hidden = false;
@@ -173,8 +192,10 @@ function suivre() {
       const r = await appel('GET', 'mise-a-jour/lancement/');
       const change = JSON.stringify(r.lancement) !== JSON.stringify(donnees.lancement);
       donnees.lancement = r.lancement;
-      if (change) rendre();
-      if (!['envoi', 'lance', 'en_cours'].includes(r.lancement?.etat)) clearInterval(suivi);
+      if (!EN_COURS.includes(r.lancement?.etat)) {
+        clearInterval(suivi);
+        await charger(); // fini : le brouillon a pu être libéré (simulation, échec) ; tout est relu
+      } else if (change) rendre();
     } catch {
       // service relancé (nouvelle version livrée) : on réessaiera
     }
@@ -184,7 +205,7 @@ function suivre() {
 async function charger() {
   donnees = await appel('GET', 'mise-a-jour/');
   rendre();
-  if (['envoi', 'lance', 'en_cours'].includes(donnees.lancement?.etat)) suivre();
+  if (EN_COURS.includes(donnees.lancement?.etat)) suivre();
 }
 
 async function lancer() {

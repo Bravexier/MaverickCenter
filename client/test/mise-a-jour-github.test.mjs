@@ -353,7 +353,7 @@ describe('mettreAJour : refus avant toute poussée', () => {
     sansPoussee(m);
   });
 
-  test('un contrôle crée un fichier (non suivi) : échec, rien n\'est poussé, même en essai à blanc', async () => {
+  test('un contrôle crée un fichier (non suivi) : échec, rien n\'est poussé, même en simulation', async () => {
     for (const essai of [false, true]) {
       const m = monde({ codeNpm: (args, monde) => { if (args[1] === 'db:build') monde.nouveaux.push('data/rows/autre.sql'); return 0; } });
       await assert.rejects(m.lancer({ essai }), (e) => e.etape === 'controles' && /data\/rows\/autre\.sql/.test(e.message));
@@ -368,7 +368,7 @@ describe('mettreAJour : refus avant toute poussée', () => {
     sansPoussee(m);
   });
 
-  test('essai à blanc : lot appliqué et contrôlé, rien n\'est poussé ni ouvert', async () => {
+  test('simulation de mise à jour : lot appliqué et contrôlé, rien n\'est poussé ni ouvert', async () => {
     const m = monde();
     const r = await m.lancer({ essai: true });
     assert.equal(r.etat, 'essai');

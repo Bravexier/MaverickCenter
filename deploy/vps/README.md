@@ -168,7 +168,8 @@ branche **`site`** ([`docs/flux-git.md`](../../docs/flux-git.md)). Le serveur de
 
    Le service relit le fichier à chaque lancement : rien à redémarrer. Sans ce fichier, la page donne les valeurs pour lancer le workflow à la
    main (*Actions → Mise à jour des règles → Run workflow*, branche `dev`). Attention : la **première** mise à jour fait la livraison 0.2.0
-   (« Le jour de la 0.2.0 » ci-dessous).
+   (« Le jour de la 0.2.0 » ci-dessous) ; lancer d'abord une **« Simulation de mise à jour »** (bouton à côté) : tout est vérifié sur GitHub,
+   rien n'est poussé.
 
 Ce qui diffère d'un serveur installé à partir de la 0.2.0 :
 

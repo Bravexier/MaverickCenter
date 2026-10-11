@@ -9,7 +9,7 @@
 //   b. jusqu'à ESSAIS fois : feature/mise-a-jour-regles-<AAAAMMJJ-HHMM> depuis origin/dev ; scripts/mise-a-jour-regles.mjs rejoue le lot sur
 //      data/rows (conflit ou autre refus : arrêt, rien n'est poussé) ; double contrôle de la liste blanche (seuls data/rows/<table>.sql des
 //      tables du lot et de la note de version changent, et seulement ceux que mise-a-jour-regles annonce) ; contrôles rapides (db:build,
-//      db:check, npm test) ; essai à blanc : arrêt ici. Puis commit (github-actions[bot]), poussée, PR vers dev, attente des checks requis
+//      db:check, npm test) ; simulation de mise à jour (entrée « essai ») : arrêt ici. Puis commit (github-actions[bot]), poussée, PR vers dev, attente des checks requis
 //      VERTS sur le commit de tête (CHECKS_REQUIS), fusion par commit de fusion avec sha. Si dev a bougé (PR non fusionnable, 405, 409, ou dev
 //      n'est plus le point de départ de la branche) : PR fermée, branche supprimée, et le lot est rejoué sur le nouveau dev. C'est le « rebase » :
 //      un rejeu plutôt qu'un rebase textuel des .sql, et les contrôles portent ainsi exactement sur ce qui est fusionné ;
@@ -506,7 +506,7 @@ export async function livrerSurDev(ctx, { fichierLot, tables }) {
       throw echec('controles', `les contrôles ont changé des fichiers (${autres.join(', ')}) : rien n'est poussé.`);
     }
     if (ctx.essai) {
-      journal(`essai à blanc : V${version} prête sur ${branche}, contrôles verts ; arrêt avant le commit, rien n'est poussé.`);
+      journal(`simulation de mise à jour : V${version} prête sur ${branche}, contrôles verts ; arrêt avant le commit, rien n'est poussé.`);
       return { etat: 'essai', version, fichiers: modifies, markdown: resume.markdown, branche };
     }
 
@@ -791,7 +791,7 @@ async function main() {
     // Les formes encodées des jetons (en-têtes de git) sont masquées comme les secrets eux-mêmes.
     for (const j of [env.GH_TOKEN, env.GITHUB_TOKEN_LECTURE]) if (j) console.log(`::add-mask::${Buffer.from(`x-access-token:${j}`).toString('base64')}`);
   }
-  ecrire(`### Mise à jour des règles${essai ? ' (essai à blanc)' : ''}\n\n`);
+  ecrire(`### Mise à jour des règles${essai ? ' (simulation)' : ''}\n\n`);
   const temp = mkdtempSync(join(env.RUNNER_TEMP || tmpdir(), 'mise-a-jour-'));
   try {
     const r = await mettreAJour({
@@ -806,8 +806,8 @@ async function main() {
       livre: `**Terminé** : V${r.version} — PR #${r.prDev} fusionnée dans dev (v${r.versionDev}), puis PR de livraison #${r.prMaster} fusionnée dans master ; livraison.yml pose la version V${r.version}, ses étiquettes et la publication.`,
       rien: `**Rien à livrer** : le lot ne change aucune ligne de data/rows.`,
       essai: r.reprise
-        ? `**Essai à blanc** : le lot est déjà fusionné dans dev (PR #${r.pr}) ; un vrai passage ferait la livraison dev → master.`
-        : `**Essai à blanc réussi** : V${r.version}, ${r.fichiers?.length ?? 0} fichier(s) de data/rows, contrôles verts ; rien n'a été poussé.`,
+        ? `**Simulation de mise à jour** : le lot est déjà fusionné dans dev (PR #${r.pr}) ; un vrai passage ferait la livraison dev → master.`
+        : `**Simulation de mise à jour réussie** : V${r.version}, ${r.fichiers?.length ?? 0} fichier(s) de data/rows, contrôles verts ; rien n'a été poussé.`,
       'deja-livre': `**Déjà livré** : ce lot est sur master, rien n'a été fait.`,
     }[r.etat];
     console.log(fin.replace(/\*\*/g, ''));
