@@ -78,10 +78,11 @@ test('TABLES_VIVANTES : exactement les tables des sections 13 (fiches) puis 14 (
   const schema = readFileSync(join(trouverRacine(), 'data', 'schema.sql'), 'utf8');
   const debut13 = schema.indexOf('-- 13. PERSONNAGES');
   const debut14 = schema.indexOf('-- 14. ÉDITION');
-  assert.ok(debut13 > 0 && debut14 > debut13, 'sections 13 et 14 trouvées');
+  const debut15 = schema.indexOf('-- 15. NOTES DE VERSION');
+  assert.ok(debut13 > 0 && debut14 > debut13 && debut15 > debut14, 'sections 13, 14 et 15 trouvées');
   const tables = (texte) => [...texte.matchAll(/^CREATE TABLE (\w+)/gm)].map((m) => m[1]);
   assert.deepEqual(tables(schema.slice(debut13, debut14)), [...TABLES_FICHES]);
-  assert.deepEqual(tables(schema.slice(debut14)), [...TABLES_EDITION]);
+  assert.deepEqual(tables(schema.slice(debut14, debut15)), [...TABLES_EDITION]);
   assert.deepEqual([...TABLES_VIVANTES], [...TABLES_FICHES, ...TABLES_EDITION]);
   const db = lecture(REGLES);
   for (const [i, t] of TABLES_VIVANTES.entries()) {

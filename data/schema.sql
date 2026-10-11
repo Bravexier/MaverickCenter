@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 22;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 23;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -3886,3 +3886,78 @@ CREATE TABLE modification (
 ) STRICT;
 CREATE INDEX modification_etat ON modification (etat);
 CREATE INDEX modification_ligne ON modification (table_nom, cle);
+
+-- La note de version en préparation sur le site de dev (page /mise-a-jour/ : le champ libre que les admins remplissent, en plus de la liste
+-- calculée ; migration 0023). Une seule ligne. `lot` : le lot figé quand « Effectuer la mise à jour » est lancé (son texte part avec lui) ; la
+-- ligne est vidée quand une livraison apporte la note de version de ce lot (client/serveur/base-vivante.mjs).
+CREATE TABLE note_version_brouillon (
+  id          INTEGER NOT NULL PRIMARY KEY CHECK (id = 1),
+  texte       TEXT,                                                  -- Markdown ; NULL : rien d'écrit
+  modifie_le  TEXT    CHECK (modifie_le IS NULL OR modifie_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
+  lot         TEXT    CHECK (lot IS NULL OR length(lot) > 0)
+) STRICT;
+
+-- ====================================================================================================================
+-- 15. NOTES DE VERSION : ce que chaque version a changé dans les règles (page /mise-a-jour/), et l'historique des modifications faites sur le
+-- site de dev (migration 0023 ; demande du propriétaire). Écrites par le processus « Effectuer la mise à jour » (.github/workflows/mise-a-jour.yml,
+-- client/scripts/mise-a-jour-regles.mjs) dans la PR qui apporte les modifications du site, juste avant la livraison dev → master : la production
+-- montre la dernière note, et l'historique de toutes. Versionnées dans data/rows comme les règles (elles en font partie : le site les lit au build).
+-- ====================================================================================================================
+
+-- Une version livrée (dev → master) : « 0.2 » (X.Y : la production ne porte que deux chiffres), sa date, le champ libre des admins.
+CREATE TABLE note_version (
+  version     TEXT    NOT NULL PRIMARY KEY CHECK (version GLOB '[0-9]*.[0-9]*' AND version NOT GLOB '*[^0-9.]*' AND version NOT GLOB '*.*.*'),
+  publiee_le  TEXT    NOT NULL CHECK (publiee_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'),
+  depuis      TEXT    CHECK (depuis IS NULL OR (depuis GLOB '[0-9]*.[0-9]*' AND depuis NOT GLOB '*[^0-9.]*')),
+                                                                     -- version de production d'où part la liste (master avant la livraison)
+  texte       TEXT,                                                  -- champ libre des admins (Markdown) ; NULL : rien d'écrit
+  lot         TEXT    CHECK (lot IS NULL OR length(lot) > 0),        -- lot figé sur le site de dev qui l'a produite
+  exemple     INTEGER NOT NULL DEFAULT 0 CHECK (exemple IN (0, 1))   -- 1 : donnée de démonstration (lorem ipsum, demande du propriétaire tant qu'aucune
+                                                                     -- version n'a été livrée), retirée par la première vraie mise à jour
+) STRICT;
+
+-- Une ligne de la liste calculée : une modification d'un champ d'une entité entre la production et la nouvelle version. `domaine` range la ligne
+-- (sorts, magies, classes et leurs dons, races, métiers, guide), `groupe` et `entite` la nomment (« Lumière » › « Flash »), au nom qu'elle porte
+-- dans la nouvelle version (l'ancien pour une entité retirée). `sens` : la couleur (vert, rouge, gris) d'après les critères du propriétaire
+-- (client/src/lib/notes-de-version.mjs) ; `parties` : le détail quand une case se lit en morceaux (valeur de base, expression de NM), chacun avec son sens.
+-- `table_nom`, `cle`, `colonne` : la trace de la ligne de la base d'où elle vient.
+CREATE TABLE note_version_ligne (
+  version     TEXT    NOT NULL REFERENCES note_version(version) ON DELETE CASCADE,
+  rang        INTEGER NOT NULL CHECK (rang >= 1),                    -- ordre d'affichage
+  domaine     TEXT    NOT NULL CHECK (domaine IN ('sorts', 'magies', 'classes', 'races', 'metiers', 'guide')),
+  groupe      TEXT    CHECK (groupe IS NULL OR length(groupe) > 0),
+  entite      TEXT    NOT NULL CHECK (length(entite) > 0),
+  champ       TEXT    CHECK (champ IS NULL OR length(champ) > 0),    -- libellé de la colonne (« Coût ») ; NULL : l'entité entière (ajoutée, retirée)
+  nature      TEXT    NOT NULL CHECK (nature IN ('ajoute', 'retire', 'modifie')),
+  avant       TEXT,
+  apres       TEXT,
+  sens        TEXT    NOT NULL CHECK (sens IN ('amelioration', 'affaiblissement', 'neutre')),
+  parties     TEXT    CHECK (parties IS NULL OR (json_valid(parties) AND json_type(parties) = 'array')),
+  table_nom   TEXT    CHECK (table_nom IS NULL OR (length(table_nom) > 0 AND table_nom NOT GLOB '*[^a-z0-9_]*')),
+  cle         TEXT    CHECK (cle IS NULL OR (json_valid(cle) AND json_type(cle) = 'object')),
+  colonne     TEXT    CHECK (colonne IS NULL OR length(colonne) > 0),
+  PRIMARY KEY (version, rang),
+  CHECK (nature <> 'ajoute' OR avant IS NULL),                      -- ajouté : rien avant (l'entité, ou un champ qui n'existait pas)
+  CHECK (nature <> 'retire' OR apres IS NULL),                      -- retiré : rien après
+  CHECK (nature <> 'modifie' OR champ IS NOT NULL)                  -- modifié : un champ précis
+) STRICT;
+
+-- Le journal du site de dev une fois livré (une ligne par ligne de table touchée, comme `modification`) : qui a changé quoi, quand, avant et après
+-- (docs/feuille-de-route.md : modifications historisées). Les tests qui vérifient l'import (effectifs, textes cités, fidélité d'une page à son
+-- onglet) s'en servent pour ne plus contrôler ce que le site a modifié : le propriétaire a fait du site la source des règles.
+CREATE TABLE historique_modification (
+  lot_id      TEXT    NOT NULL CHECK (length(lot_id) > 0),
+  rang        INTEGER NOT NULL CHECK (rang >= 1),
+  fait_le     TEXT    NOT NULL CHECK (fait_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
+  resume      TEXT    NOT NULL CHECK (length(resume) > 0),          -- résumé du lot (modification_lot.resume)
+  version     TEXT    REFERENCES note_version(version),              -- version qui l'a livrée ; NULL : rapatriée à la main (npm run db:appliquer-edition)
+  table_nom   TEXT    NOT NULL CHECK (length(table_nom) > 0 AND table_nom NOT GLOB '*[^a-z0-9_]*'),
+  cle         TEXT    NOT NULL CHECK (json_valid(cle) AND json_type(cle) = 'object'),
+  operation   TEXT    NOT NULL CHECK (operation IN ('inserer', 'modifier', 'supprimer')),
+  avant       TEXT    CHECK (avant IS NULL OR (json_valid(avant) AND json_type(avant) = 'object')),
+  apres       TEXT    CHECK (apres IS NULL OR (json_valid(apres) AND json_type(apres) = 'object')),
+  PRIMARY KEY (lot_id, rang),
+  CHECK ((operation = 'inserer') = (avant IS NULL)),
+  CHECK ((operation = 'supprimer') = (apres IS NULL))
+) STRICT;
+CREATE INDEX historique_modification_ligne ON historique_modification (table_nom, cle);

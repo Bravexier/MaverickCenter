@@ -1,0 +1,122 @@
+// « Effectuer la mise à jour » côté GitHub : scripts/mise-a-jour-regles.mjs applique un lot figé à une copie de data/rows. Le journal est rejoué
+// (un conflit arrête tout), la note de version est écrite (version X.Y de la prochaine livraison, champ libre, notes d'exemple retirées), le journal
+// passe dans historique_modification, et seuls les fichiers des tables touchées et des notes de version changent (demande du propriétaire).
+// La production est ici HEAD (scripts/db-reference.mjs : git archive), pour ne pas dépendre de origin/master dans un clone de test.
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { appendFileSync, cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { after, test } from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { appliquerMiseAJour, ErreurMiseAJour, TABLES_DE_LA_NOTE, verifierLot } from '../scripts/mise-a-jour-regles.mjs';
+import { traiter } from '../serveur/api.mjs';
+import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
+import { journalExporte } from '../serveur/edition-journal.mjs';
+import { cheminBase } from '../src/lib/donnees.mjs';
+
+const ROWS = fileURLToPath(new URL('../../data/rows/', import.meta.url));
+const racine = mkdtempSync(join(tmpdir(), 'maverick-maj-'));
+after(() => rmSync(racine, { recursive: true, force: true }));
+
+// un journal réel : une modification faite par le service du site de dev
+const { chemin } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') });
+const db = ouvrirBaseVivante(chemin);
+const r = traiter({
+  methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' },
+  corps: JSON.stringify({ page: 'metiers/', operations: [{ op: 'modifier', table: 'metier', cle: { id: 'metiers/forgeron' }, valeurs: { bonus_brut: '+4% Arme lourde' } }] }),
+}, { base: () => db, etat: () => ({}), edition: true });
+assert.equal(r.statut, 200, JSON.stringify(r.corps));
+const journal = journalExporte(db);
+db.close();
+const lot = (texte = 'Le forgeron **gagne** en force.') => ({
+  format: 'maverick-mise-a-jour/1', id: '11111111-2222-3333-4444-555555555555', cree_le: '2026-10-11T10:00:00Z', version_dev: '0.1.76',
+  version_cible: '0.2', texte, journal,
+});
+const copie = (nom) => {
+  const d = join(racine, nom);
+  cpSync(ROWS, d, { recursive: true });
+  return d;
+};
+/** La base reconstruite depuis des lignes : une fonction de lecture. */
+function baseDe(rows) {
+  const chemin_ = join(racine, 'relue.db');
+  rmSync(chemin_, { force: true });
+  const b = spawnSync(process.execPath, ['--no-warnings', fileURLToPath(new URL('../scripts/db-build.mjs', import.meta.url)), '--out', chemin_, '--rows', rows], { encoding: 'utf8' });
+  assert.equal(b.status, 0, b.stderr);
+  return (sql) => {
+    const base = new DatabaseSync(chemin_, { readOnly: true });
+    try {
+      return base.prepare(sql).all().map((l) => ({ ...l }));
+    } finally {
+      base.close();
+    }
+  };
+}
+
+test('verifierLot : format, identifiant, journal, texte', () => {
+  assert.doesNotThrow(() => verifierLot(lot()));
+  const touche = (table) => ({ journal: { format: 'maverick-edition/1', lots: [{ id: 'l', fait_le: 'x', resume: 'r', modifications: [{ rang: 1, table, cle: {}, operation: 'modifier', avant: {}, apres: {} }] }] } });
+  for (const casse of [{ format: 'x' }, { id: '../x' }, { journal: { format: 'x', lots: [] } }, { texte: 3 }, touche('personnage'), touche('utilisateur_role'),
+    touche('note_version'), touche('modification')]) {
+    assert.throws(() => verifierLot({ ...lot(), ...casse }), (e) => e instanceof ErreurMiseAJour && e.code === 2, JSON.stringify(casse));
+  }
+});
+
+test('le lot appliqué : la note écrite, le journal historisé, seuls les fichiers permis changent', () => {
+  const rows = copie('rows-ok');
+  const res = appliquerMiseAJour(lot(), { rows, reference: 'HEAD', date: '2026-10-11', versionDev: '0.1.76' });
+  assert.equal(res.version, '0.2');
+  assert.ok(res.fichiers.includes('metier.sql'), res.fichiers.join(', '));
+  for (const f of ['note_version.sql', 'note_version_ligne.sql', 'historique_modification.sql']) assert.ok(res.fichiers.includes(f), f);
+  const touchees = new Set(journal.lots.flatMap((l) => l.modifications.map((m) => `${m.table}.sql`)));
+  const permis = new Set([...touchees, ...TABLES_DE_LA_NOTE.map((t) => `${t}.sql`)]);
+  assert.deepEqual(res.fichiers.filter((f) => !permis.has(f)), []);
+  assert.match(res.markdown, /^## Version 0\.2/m);
+  assert.match(res.markdown, /Le forgeron \*\*gagne\*\* en force\./);
+  assert.match(readFileSync(join(rows, 'metier.sql'), 'utf8'), /\+4% Arme lourde/);
+  // la base reconstruite depuis les lignes écrites
+  const lire = baseDe(rows);
+  const notes = lire('SELECT version, publiee_le, texte, lot, exemple FROM note_version ORDER BY version');
+  assert.deepEqual(notes, [{ version: '0.2', publiee_le: '2026-10-11', texte: 'Le forgeron **gagne** en force.', lot: lot().id, exemple: 0 }],
+    'les notes d’exemple (lorem ipsum) sont retirées');
+  const forgeron = lire("SELECT champ, avant, apres FROM note_version_ligne WHERE table_nom = 'metier' AND entite = 'Forgeron'");
+  assert.ok(forgeron.some((l) => l.champ === 'Bonus' && l.apres === '+4% Arme lourde'), JSON.stringify(forgeron));
+  const historique = lire('SELECT lot_id, table_nom, version FROM historique_modification');
+  assert.equal(historique.length, journal.lots.reduce((n, l) => n + l.modifications.length, 0));
+  assert.ok(historique.every((h) => h.version === '0.2'));
+  assert.deepEqual(lire('SELECT count(*) AS n FROM modification UNION ALL SELECT count(*) FROM modification_lot UNION ALL SELECT count(*) FROM note_version_brouillon').map((x) => x.n), [0, 0, 0]);
+  // relancé pour la même version : la note est refaite, pas doublée
+  const encore = appliquerMiseAJour({ ...lot('Texte corrigé.'), journal: { format: 'maverick-edition/1', lots: [] } }, { rows, reference: 'HEAD', date: '2026-10-12', versionDev: '0.1.77' });
+  assert.equal(encore.version, '0.2');
+  assert.match(readFileSync(join(rows, 'note_version.sql'), 'utf8'), /Texte corrigé\./);
+  assert.doesNotMatch(readFileSync(join(rows, 'note_version.sql'), 'utf8'), /gagne/);
+});
+
+test('conflit avec dev : rien n’est écrit (code 3)', () => {
+  const rows = copie('rows-conflit');
+  // dev a changé le même champ autrement depuis que le site l'a modifié
+  const fichier = join(rows, 'metier.sql');
+  const avant = readFileSync(fichier, 'utf8');
+  const modifie = avant.replace(/'\+3% Arme lourde OU Arme légère'/, "'+5% Arme lourde'");
+  assert.notEqual(modifie, avant, 'le bonus du forgeron est dans metier.sql');
+  writeFileSync(fichier, modifie);
+  const instantane = readFileSync(fichier, 'utf8');
+  assert.throws(() => appliquerMiseAJour(lot(), { rows, reference: 'HEAD', date: '2026-10-11', versionDev: '0.1.76' }),
+    (e) => e instanceof ErreurMiseAJour && e.code === 3 && e.details.conflits.length >= 1);
+  assert.equal(readFileSync(fichier, 'utf8'), instantane);
+  assert.doesNotMatch(readFileSync(join(rows, 'note_version.sql'), 'utf8'), /'0\.2'/);
+});
+
+test('une autre table changerait : rien n’est écrit (code 4)', () => {
+  const rows = copie('rows-hors-liste');
+  // une table que le lot ne touche pas, écrite autrement que l'exporteur : l'export la réécrirait
+  const fichier = join(rows, 'competence.sql');
+  appendFileSync(fichier, '\n\n');
+  const avant = readFileSync(fichier, 'utf8');
+  assert.throws(() => appliquerMiseAJour(lot(), { rows, reference: 'HEAD', date: '2026-10-11', versionDev: '0.1.76' }),
+    (e) => e instanceof ErreurMiseAJour && e.code === 4 && e.details.horsListe.includes('competence.sql'));
+  assert.equal(readFileSync(fichier, 'utf8'), avant);
+  assert.doesNotMatch(readFileSync(join(rows, 'metier.sql'), 'utf8'), /\+4% Arme lourde/);
+});

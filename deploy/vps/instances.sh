@@ -4,7 +4,8 @@
 #
 # Ce que fait le script (sûr à relancer, il ne touche ni au site ni à db/) :
 #   /srv/maverick-center        serveur normal : .env (port 127.0.0.1:8080), .htpasswd
-#   /srv/maverick-center-test   serveur de test : .env (port 127.0.0.1:8081, MAVERICK_BASE_TEST=conservee, MAVERICK_EDITION=1), .htpasswd
+#   /srv/maverick-center-test   serveur de test : .env (port 127.0.0.1:8081, MAVERICK_BASE_TEST=conservee, MAVERICK_EDITION=1,
+#                               MAVERICK_ADRESSE_PUBLIQUE=https://dev.<domaine>), .htpasswd, secrets/ (jeton de la page Mise à jour)
 #   /etc/caddy/maverick.env     mot de passe interne de chaque instance (droits 600) ; /etc/caddy/Caddyfile : deploy/vps/Caddyfile
 # Le site lui-même est posé ensuite par les installateurs (deploy/installateur/, voir README.md de ce dossier).
 set -euo pipefail
@@ -56,6 +57,11 @@ preparer "$TEST" maverick-center-test 8081
 poser "$TEST/.env" MAVERICK_BASE_TEST conservee
 # Serveur de test : les règles s'y modifient depuis les pages (crayon, docs/serveur.md, « Édition » ; demande du propriétaire : le site de dev seulement).
 poser "$TEST/.env" MAVERICK_EDITION 1
+# Serveur de test : page « Mise à jour » (docs/serveur.md) — l'adresse où le workflow GitHub télécharge le lot figé, et le dossier du jeton qui
+# déclenche ce workflow (secrets/github-actions-token, déposé à la main : README.md, « Page Mise à jour »).
+poser "$TEST/.env" MAVERICK_ADRESSE_PUBLIQUE "https://dev.$DOMAINE"
+mkdir -p "$TEST/secrets"
+chmod 700 "$TEST/secrets"
 
 mkdir -p "$ETC_CADDY"
 if [ "$REGENERER" -eq 1 ] || [ ! -f "$ENV_CADDY" ] || [ ! -f "$NORMAL/.htpasswd" ] || [ ! -f "$TEST/.htpasswd" ]; then

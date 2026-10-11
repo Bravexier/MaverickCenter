@@ -13,7 +13,7 @@ test('le menu a les rubriques et les entrées voulues par le propriétaire, dans
     'Personnages : Fiche de personnage, Listes, Groupes (bientôt), Chroniques (bientôt)',
     'Inventaire : Armes, Armures, Accessoires, Objets à la ceinture (bientôt), Livres & Parchemins, Pièces élémentaires',
     'Codex : Chronologie (bientôt), Carte & lieux (bientôt), Mythologie (bientôt), Bestiaire (bientôt), Factions (bientôt)',
-    'Outils : Statistiques (bientôt), Mise à jour (bientôt), Boîte à idée (bientôt), Galeries, Recherche, Archives',
+    'Outils : Statistiques (bientôt), Mise à jour, Boîte à idée (bientôt), Galeries, Recherche, Archives',
   ]);
   assert.deepEqual(NAV.find((g) => g.key === 'personnages').items.filter((i) => i.path).map((i) => i.path), ['fiche/', 'personnages/'], 'la fiche, puis la liste des personnages');
 });

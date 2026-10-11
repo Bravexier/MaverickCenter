@@ -1,0 +1,1 @@
+-- data/rows/note_version_brouillon.sql : export déterministe, une instruction par ligne, triée par (id). NE PAS ÉDITER À LA MAIN.

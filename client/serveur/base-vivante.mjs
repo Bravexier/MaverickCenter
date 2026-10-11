@@ -18,8 +18,11 @@ export const TABLES_FICHES = Object.freeze([
   'personnage_progression', 'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure',
   'personnage_bouclier_materiau', 'personnage_accessoire', 'personnage_inventaire', 'groupe', 'groupe_membre',
 ]);
-/** Tables de la section 14 (« ÉDITION ») : le journal des modifications faites depuis le site de dev (serveur/edition-journal.mjs). */
-export const TABLES_EDITION = Object.freeze(['modification_lot', 'modification']);
+/**
+ * Tables de la section 14 (« ÉDITION ») : le journal des modifications faites depuis le site de dev (serveur/edition-journal.mjs) et le brouillon de
+ * la note de version (page /mise-a-jour/, serveur/notes-de-version.mjs).
+ */
+export const TABLES_EDITION = Object.freeze(['modification_lot', 'modification', 'note_version_brouillon']);
 /** Ce que le service écrit et qui survit à un changement de règles : les fiches, puis le journal des modifications. */
 export const TABLES_VIVANTES = Object.freeze([...TABLES_FICHES, ...TABLES_EDITION]);
 
@@ -145,6 +148,8 @@ function transferer(db, ancienne) {
         }
       }
       if (!problemes.length) rejeu = rejouer(db);
+      // le brouillon de la note de version d'un lot que les nouvelles règles ont livré est vidé (son texte est dans note_version)
+      if (!problemes.length) viderBrouillonLivre(db);
       if (!problemes.length) {
         for (const t of TABLES_VIVANTES) {
           for (const r of clesRompues(db, t)) problemes.push(`${t}.${r.colonnes.join('+')} = « ${r.valeur} » absent de ${r.parent} (${r.lignes} ligne(s))`);
@@ -169,6 +174,12 @@ function transferer(db, ancienne) {
     db.exec('PRAGMA foreign_keys = ON');
   }
   return rejeu;
+}
+
+/** Vide le brouillon de la note de version si les règles contiennent la note de version de son lot (livré par « Effectuer la mise à jour »). */
+export function viderBrouillonLivre(db) {
+  const b = db.prepare('SELECT lot FROM note_version_brouillon WHERE id = 1').get();
+  if (b?.lot && db.prepare('SELECT 1 FROM note_version WHERE lot = ?').get(b.lot)) db.exec('DELETE FROM note_version_brouillon');
 }
 
 /** Nom d'archive horodaté (l'ordre alphabétique est l'ordre chronologique). */

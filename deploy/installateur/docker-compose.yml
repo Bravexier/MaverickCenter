@@ -29,6 +29,12 @@ services:
       MAVERICK_DB: /db
       # Édition des règles depuis le site (docs/serveur.md, « Édition ») : 1 sur le serveur de test seulement (.env de l'instance de test).
       MAVERICK_EDITION: ${MAVERICK_EDITION:-0}
+      # Page « Mise à jour » du serveur de test (docs/serveur.md, « Mise à jour ») : adresse publique du site (le workflow GitHub y télécharge le
+      # lot figé ; .env, posé par deploy/vps/instances.sh, sinon l'hôte de la requête) et jeton GitHub qui déclenche le workflow (permission
+      # Actions seulement), déposé dans secrets/ de l'instance : sans lui, la page dit comment lancer le workflow à la main.
+      MAVERICK_ADRESSE_PUBLIQUE: ${MAVERICK_ADRESSE_PUBLIQUE:-}
+      MAVERICK_GITHUB_JETON_FICHIER: /secrets/github-actions-token
     volumes:
       - ./site:/site:ro
       - ./db:/db
+      - ./secrets:/secrets:ro

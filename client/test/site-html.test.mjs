@@ -50,7 +50,7 @@ test('en-tête : plus de barre de recherche (une page à part, avec les mots-cl�
   assert.deepEqual([...entete.matchAll(/class="nav-group__toggle" data-group="([^"]+)"[^>]*>([^<]+)</g)].map((m) => `${m[1]} ${m[2].trim()}`),
     ['regles Règles', 'personnages Personnages', 'inventaire Inventaire', 'codex Codex', 'outils Outils']);
   const outils = entete.match(/<ul class="site-nav__items" data-group="outils"[^>]*>([\s\S]*?)<\/ul>/)[1];
-  assert.deepEqual([...outils.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`), ['Galeries /galeries/', 'Recherche /recherche/', 'Archives /archives/']);
+  assert.deepEqual([...outils.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`), ['Mise à jour /mise-a-jour/', 'Galeries /galeries/', 'Recherche /recherche/', 'Archives /archives/']);
   assert.match(lire('ressources/alchimie/index.html'), /data-group="inventaire" aria-pressed="true" aria-current="true"/, 'une ressource hors menu ouvre l’Inventaire');
 });
 
@@ -128,4 +128,25 @@ test('le service des personnages est livré avec le site, dans _serveur/ (mode c
   assert.deepEqual(info.modules, modulesDuServeur());
   assert.ok(existsSync(join(dist, DOSSIER_LIVRE, ENTREE)));
   assert.ok(existsSync(join(dist, 'donnees', 'maverick.db')), 'la base des règles qu’il recopie');
+});
+
+test('/mise-a-jour/ : la note de la dernière version, l’historique, la place de la note en préparation ; la base de la production à côté', options, () => {
+  const html = lire('mise-a-jour/index.html');
+  const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
+  assert.match(main, /<h1>Mise à jour<\/h1>/);
+  assert.match(main, /<div class="mise-a-jour" data-mise-a-jour data-api="\/api\/" data-version="\d+\.\d+\.\d+">/);
+  assert.match(main, /<section class="nv-dev" data-nv-dev hidden aria-live="polite"><\/section>/, 'note en préparation : remplie par le script sur le site de dev');
+  // notes d'exemple (lorem ipsum) tant qu'aucune livraison n'a eu lieu : la plus récente en premier, les autres dans l'historique
+  assert.match(main, /<article class="nv-note" id="v0-1">/);
+  assert.match(main, /class="nv-exemple" role="note"/);
+  assert.match(main, /<h2 id="nv-historique">Historique<\/h2>/);
+  assert.ok(main.indexOf('id="v0-1"') < main.indexOf('id="v0-0"'));
+  assert.match(main, /<span class="nv-sens nv-sens--amelioration" title="amélioration"><del>[^<]+<\/del> <span class="nv-fleche" aria-hidden="true">→<\/span> <ins>[^<]+<\/ins><\/span>/);
+  assert.match(main, /nv-sens--affaiblissement/);
+  assert.match(html, /<script type="module"[^>]*>|<script type="module" src="/, 'le script du site de dev');
+  if (existsSync(join(dist, 'donnees', 'reference.json'))) {
+    const ref = JSON.parse(lire('donnees/reference.json'));
+    assert.match(ref.commit, /^[0-9a-f]{40}$/);
+    assert.ok(existsSync(join(dist, 'donnees', 'reference.db')), 'base de la production (master)');
+  }
 });

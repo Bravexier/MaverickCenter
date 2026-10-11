@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 22 : 162 tables, 2 tables de recherche plein texte (FTS5) et 34 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 23 : 166 tables, 2 tables de recherche plein texte (FTS5) et 34 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -21,7 +21,8 @@
 - [11. TABLES DÉRIVÉES (jamais exportées dans data/rows/, recalculées par `npm run db:build`)](#11-tables-dérivées-jamais-exportées-dans-datarows-recalculées-par-npm-run-dbbuild) : `lien`, `lien_candidat`, `page_fts`, `entite_fts`
 - [12. VUES (toujours à jour : rien à recalculer)](#12-vues-toujours-à-jour--rien-à-recalculer) : `cle_page`, `lien_page`, `lien_a_creer`, `tag`, `v_magie_incompatible`, `v_sort_bonus_au_nm`, `v_race_carac_borne`, `v_race_classe_accessible`, `v_race_magie_accessible`, `v_regard_peuple`, `v_creature_magie`, `v_creature_resistance`, `v_creature_sort`, `v_creature_cout_invocation`, `v_creature_meme_bloc`, `v_arme`, `v_ingredient_possible`, `v_ressource_recette`, `v_metier_recette`, `v_potion`, `v_arme_composee`, `v_armure_piece`, `v_niveau`, `v_competence`, `v_resistance_magie_lectures`, `v_resistance_ecart`, `v_mode_hyper_lectures`, `v_classe_capacite`, `v_capacite_exclusive`, `v_capacite_partagee`
 - [13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-joueurs-et-prétirés-les-groupes-de-jeu-et-la-visibilité-saisie-jamais-importée--migration-0011) : `utilisateur`, `utilisateur_role`, `personnage`, `personnage_partage`, `personnage_classe`, `personnage_caracteristique`, `personnage_competence`, `personnage_progression`, `personnage_capacite`, `personnage_sort`, `personnage_maitrise_arme`, `personnage_arme`, `personnage_armure`, `personnage_bouclier_materiau`, `personnage_accessoire`, `personnage_inventaire`, `groupe`, `groupe_membre`, `v_personnage_niveau`, `v_personnage_visible`, `v_groupe_controle`, `v_personnage_controle`
-- [14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)](#14-édition--le-journal-des-modifications-faites-depuis-le-site-de-dev-saisie-jamais-importée--migration-0017) : `modification_lot`, `modification`
+- [14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)](#14-édition--le-journal-des-modifications-faites-depuis-le-site-de-dev-saisie-jamais-importée--migration-0017) : `modification_lot`, `modification`, `note_version_brouillon`
+- [15. NOTES DE VERSION : ce que chaque version a changé dans les règles (page /mise-a-jour/), et l'historique des modifications faites sur le](#15-notes-de-version--ce-que-chaque-version-a-changé-dans-les-règles-page-mise-a-jour-et-lhistorique-des-modifications-faites-sur-le) : `note_version`, `note_version_ligne`, `historique_modification`
 
 ## 0. FAMILLES D'IMPORT
 
@@ -3194,3 +3195,67 @@ Une ligne de table touchée par un lot. `cle` = la clé primaire de la ligne ({"
 | `etat` | TEXT | oui |  |  |
 | `detail` | TEXT | non |  | raison d'un conflit ; NULL sinon |
 | `apercu` | TEXT | non |  |  |
+
+### `note_version_brouillon`
+
+La note de version en préparation sur le site de dev (page /mise-a-jour/ : le champ libre que les admins remplissent, en plus de la liste calculée ; migration 0023). Une seule ligne. `lot` : le lot figé quand « Effectuer la mise à jour » est lancé (son texte part avec lui) ; la ligne est vidée quand une livraison apporte la note de version de ce lot (client/serveur/base-vivante.mjs).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | INTEGER | oui | PK |  |
+| `texte` | TEXT | non |  | Markdown ; NULL : rien d'écrit |
+| `modifie_le` | TEXT | non |  |  |
+| `lot` | TEXT | non |  |  |
+
+## 15. NOTES DE VERSION : ce que chaque version a changé dans les règles (page /mise-a-jour/), et l'historique des modifications faites sur le
+
+### `note_version`
+
+Une version livrée (dev → master) : « 0.2 » (X.Y : la production ne porte que deux chiffres), sa date, le champ libre des admins.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `version` | TEXT | oui | PK |  |
+| `publiee_le` | TEXT | oui |  |  |
+| `depuis` | TEXT | non |  |  |
+| `texte` | TEXT | non |  | champ libre des admins (Markdown) ; NULL : rien d'écrit |
+| `lot` | TEXT | non |  | lot figé sur le site de dev qui l'a produite |
+| `exemple` | INTEGER | oui |  | 1 : donnée de démonstration (lorem ipsum, demande du propriétaire tant qu'aucune version n'a été livrée), retirée par la première vraie mise à jour |
+
+### `note_version_ligne`
+
+Une ligne de la liste calculée : une modification d'un champ d'une entité entre la production et la nouvelle version. `domaine` range la ligne (sorts, magies, classes et leurs dons, races, métiers, guide), `groupe` et `entite` la nomment (« Lumière » › « Flash »), au nom qu'elle porte dans la nouvelle version (l'ancien pour une entité retirée). `sens` : la couleur (vert, rouge, gris) d'après les critères du propriétaire (client/src/lib/notes-de-version.mjs) ; `parties` : le détail quand une case se lit en morceaux (valeur de base, expression de NM), chacun avec son sens. `table_nom`, `cle`, `colonne` : la trace de la ligne de la base d'où elle vient.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `version` | TEXT | oui | PK 1, → note_version.version |  |
+| `rang` | INTEGER | oui | PK 2 | ordre d'affichage |
+| `domaine` | TEXT | oui |  |  |
+| `groupe` | TEXT | non |  |  |
+| `entite` | TEXT | oui |  |  |
+| `champ` | TEXT | non |  | libellé de la colonne (« Coût ») ; NULL : l'entité entière (ajoutée, retirée) |
+| `nature` | TEXT | oui |  |  |
+| `avant` | TEXT | non |  |  |
+| `apres` | TEXT | non |  |  |
+| `sens` | TEXT | oui |  |  |
+| `parties` | TEXT | non |  |  |
+| `table_nom` | TEXT | non |  |  |
+| `cle` | TEXT | non |  |  |
+| `colonne` | TEXT | non |  |  |
+
+### `historique_modification`
+
+Le journal du site de dev une fois livré (une ligne par ligne de table touchée, comme `modification`) : qui a changé quoi, quand, avant et après (docs/feuille-de-route.md : modifications historisées). Les tests qui vérifient l'import (effectifs, textes cités, fidélité d'une page à son onglet) s'en servent pour ne plus contrôler ce que le site a modifié : le propriétaire a fait du site la source des règles.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `lot_id` | TEXT | oui | PK 1 |  |
+| `rang` | INTEGER | oui | PK 2 |  |
+| `fait_le` | TEXT | oui |  |  |
+| `resume` | TEXT | oui |  | résumé du lot (modification_lot.resume) |
+| `version` | TEXT | non | → note_version.version | version qui l'a livrée ; NULL : rapatriée à la main (npm run db:appliquer-edition) |
+| `table_nom` | TEXT | oui |  |  |
+| `cle` | TEXT | oui |  |  |
+| `operation` | TEXT | oui |  |  |
+| `avant` | TEXT | non |  |  |
+| `apres` | TEXT | non |  |  |
