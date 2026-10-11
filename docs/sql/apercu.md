@@ -1,6 +1,6 @@
 # Aperçu du schéma de la base
 
-> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 136 tables, 2 tables de recherche, 29 vues.
+> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 168 tables, 2 tables de recherche, 35 vues.
 > Ce qui reste à trancher sur le **contenu** (pas sur la forme) est dans [`a-valider.md`](a-valider.md).
 
 **Lecture des colonnes** : **gras** = clé primaire ; `→table` = clé étrangère vers cette table ; `?` = peut être absente (`NULL`, jamais une valeur inventée) ; `+provenance` = `origine` (famille d'import) et `source_ref` (classeur › onglet › plage). Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté.
@@ -53,7 +53,7 @@
 
 | Table | Rôle | Colonnes |
 | --- | --- | --- |
-| `magie` | MAGIE : une ligne par onglet de magie (15 : Potentiel Illimité + 14 magies) | **id**→page, nom, nom_cle, onglet, ordre, banniere?, description?, description_physique?, explication?, sante_offerte?, chakra_offert?, caracteristique_id→caracteristique?, caracteristique_brut?, barre4_ressource?, barre4_texte?, barre4_max?, barre4_regen?, incompatibilite_note?, remarque?, +provenance |
+| `magie` | MAGIE : une ligne par onglet de magie (15 : Potentiel Illimité + 14 magies) | **id**→page, nom, nom_cle, onglet, ordre, banniere?, description?, description_physique?, explication?, sante_offerte?, chakra_offert?, caracteristique_id→caracteristique?, caracteristique_brut?, barre4_ressource?, barre4_texte?, barre4_max?, barre4_regen?, incompatibilite_note?, remarque?, mono_magie, +provenance |
 | `magie_role` | Rôles de la magie (bloc « ROLES » : trois cellules, de gauche à droite). | **magie_id**→magie, **rang**, role, role_brut, +provenance |
 | `magie_resistance` | Résistances et vulnérabilités de la magie (4 blocs de l'onglet : « Résistance magique », « Vulnérabilité magique », « Résistance altération d'état », « Vulnérabilité altération d'état » ; « Aucune » = aucune ligne). | **magie_id**→magie, **sens**, **cible_type**, **rang**, cible_magie_id→magie?, cible_etat_id→etat?, cible_brut, +provenance |
 | `magie_incompatibilite` | Magies qu'on ne peut pas combiner. | **magie_id**→magie, **autre_magie_id**→magie, +provenance |
@@ -90,7 +90,7 @@
 | `mode_texte` | Textes d'explication du classeur « Mode hyper et co » (Mode Hyper!AA1, AA14, AA30 ; Mode Super!AI1) : cellule entière, telle quelle. | **id**, mode, rang, intitule, texte, page_id→page, remarque?, +provenance |
 | `mode_hyper_depassement` | « Au delà des limites » (Mode Hyper!AA14) : conséquences d'un mode hyper maintenu N tours de plus, une fois relâché. | **tours**, tours_brut, effet, +provenance |
 | `mode_super_objet` | Mode super : objets légendaires ou enchantés (Mode Super!A3:T59). | **id**, nom, ordre, effet_passif?, effet_actif?, effets_brut, description?, remarque?, +provenance |
-| `mode_hyper_effet` | Effets du mode hyper. | **id**, version, portee, rang, libelle, magie_id→magie?, magie2_id→magie?, race_id→race?, variante?, variante_brut?, effet, commentaire?, remarque?, +provenance |
+| `mode_hyper_effet` | Effets du mode hyper. | **id**, version, portee, rang, libelle, magie_id→magie?, magie2_id→magie?, race_id→race?, variante?, variante_brut?, effet, commentaire?, remarque?, nom?, +provenance |
 
 ## 5. DIEUX
 
@@ -102,12 +102,12 @@
 
 **Relations dans cette section** : `capacite→classe`, `capacite→specialite`, `classe_annexe→classe`, `classe_maitrise_arme→classe`, `classe_maitrise_armure→classe`, `classe_objet_depart→classe`, `classe_objet_depart→objet_depart`, `classe→categorie_classe`, `specialite→classe`
 
-**Vers d'autres sections** : `capacite→page (§1)`, `classe_annexe→magie (§3)`, `classe→page (§1)`
+**Vers d'autres sections** : `capacite→page (§1)`, `classe_annexe→magie (§3)`, `classe→magie (§3)`, `classe→page (§1)`
 
 | Table | Rôle | Colonnes |
 | --- | --- | --- |
 | `categorie_classe` | CATÉGORIES DU SOMMAIRE Les six en-têtes de colonne du Sommaire (A1, C1, E1, G1, I1, K1) : « Classe Physique Corps à Corps », « Classe Physique Distance », « Classe Magique », « Classe Hybride », « Cla | **id**, libelle, ordre, note?, am_base?, +provenance |
-| `classe` | CLASSE : une ligne par onglet de classe (39) | **id**→page, nom, nom_cle, categorie_id→categorie_classe, ordre, sante_depart, chakra_depart, barriere_depart, maitrise_arme?, maitrise_armure?, bouclier_classe_max?, inventaire_depart?, arme_depart?, armure_depart?, chose_a_savoir?, chose_a_savoir_lien?, description_titre?, description?, remarque?, +provenance |
+| `classe` | CLASSE : une ligne par onglet de classe (39) | **id**→page, nom, nom_cle, categorie_id→categorie_classe, ordre, sante_depart, chakra_depart, barriere_depart, maitrise_arme?, maitrise_armure?, bouclier_classe_max?, inventaire_depart?, arme_depart?, armure_depart?, chose_a_savoir?, chose_a_savoir_lien?, description_titre?, description?, remarque?, magie_innee_id→magie?, magie_innee_exclue_id→magie?, +provenance |
 | `specialite` | SPÉCIALITÉ : deux par classe, choisies au niveau de classe 10 Onglet normal : bannières en majuscules de la ligne 17 (A17 = rang 1, X17 = rang 2) ; description = titre + texte dans la zone AM. | **id**, classe_id→classe, rang, nom, nom_cle, description_titre?, description?, remarque?, +provenance |
 | `capacite` | CAPACITÉ (aptitude) : une ligne par page `capacites/<slug>` (660). | **id**→page, classe_id→classe, specialite_id→specialite?, niveau, nature, ligne, rang, nom, nom_cle, type?, type_brut?, limite_nombre?, limite_periode?, effet?, remarque?, +provenance |
 | `objet_depart` | OBJETS DE DÉPART Glossaire « OBJETS DES INVENTAIRES DE DEPART » (Sommaire!A21, une grande cellule : un objet par paragraphe, « nom : description »). | **id**, nom, nom_cle, description, ordre, remarque?, +provenance |
@@ -118,18 +118,24 @@
 
 ## 7. RACES, ETHNIES, ACCESSIBILITÉS (famille « races »)
 
-**Relations dans cette section** : `ethnie_resistance→ethnie`, `ethnie→race`, `peuple→race`, `race_classe→race`, `race_magie→race`, `race_restriction_carac→race`, `relation_peuple→echelle_relation`, `relation_peuple→peuple`
+**Relations dans cette section** : `ethnie_resistance→ethnie`, `ethnie→race`, `peuple→race`, `race_classe→race`, `race_don_tableau_cellule→race_don_tableau_colonne`, `race_don_tableau_cellule→race_don_tableau_ligne`, `race_don_tableau_colonne→race_onglet`, `race_don_tableau_ligne→ethnie`, `race_don_tableau_ligne→race_onglet`, `race_don→ethnie`, `race_don→race_onglet`, `race_magie_onglet→race_onglet`, `race_magie→race`, `race_onglet→race`, `race_restriction_carac→race`, `relation_peuple→echelle_relation`, `relation_peuple→peuple`
 
-**Vers d'autres sections** : `ethnie_resistance→etat (§4)`, `ethnie_resistance→magie (§3)`, `ethnie→magie (§3)`, `race_classe→classe (§6)`, `race_magie→magie (§3)`, `race_restriction_carac→caracteristique (§2)`, `race→page (§1)`
+**Vers d'autres sections** : `ethnie_resistance→etat (§4)`, `ethnie_resistance→magie (§3)`, `ethnie→magie (§3)`, `race_classe→classe (§6)`, `race_magie_onglet→magie (§3)`, `race_magie→magie (§3)`, `race_restriction_carac→caracteristique (§2)`, `race→page (§1)`
 
 | Table | Rôle | Colonnes |
 | --- | --- | --- |
-| `race` | RACE : une ligne par race (27 dans les cinq onglets du classeur ; le guide dit « 23 disponibles », voir design.md §12) | **id**→page, nom, ordre, presentation?, sante?, chakra_depart?, barriere_bonus?, vitesse_terre?, vitesse_nage?, ap?, am?, divers?, don_base_brut?, don_base_nom?, don_base_type?, don_base_effets?, remarque?, +provenance |
+| `race` | RACE : une ligne par race (27 dans les cinq onglets du classeur ; le guide dit « 23 disponibles », voir design.md §12) | **id**→page, nom, ordre, presentation?, sante?, chakra_depart?, barriere_bonus?, vitesse_terre?, vitesse_nage?, ap?, am?, divers?, don_base_brut?, don_base_nom?, don_base_type?, don_base_effets?, remarque?, mono_magie, +provenance |
 | `race_restriction_carac` | RACE_RESTRICTION_CARAC : restrictions de caractéristique d'une race (onglet « Race », 6 paires de colonnes « < ou > » / « Restrictions <caractéristique> »). | **race_id**→race, **caracteristique_id**→caracteristique, operateur, valeur, +provenance |
 | `ethnie` | ETHNIE : une ligne par ligne de l'onglet « Bonus Race » (96) : sous-race, origine ou variété d'une race (« Elfe Noir Charbon », « Drakos Rouge », « Mort-Vivant Eau », « Orios de Terre »…). | **id**, race_id→race, slug, nom, ordre, libelle?, magie_id→magie?, descriptif?, race_brut, bonus_pv?, bonus_chakra?, bonus_barriere?, bonus_ap?, bonus_am?, bonus_vitesse?, remarque?, +provenance |
 | `ethnie_resistance` | Résistances d'une ethnie (col. | **ethnie_id**→ethnie, **rang**, cible_type, cible_magie_id→magie?, cible_etat_id→etat?, cible_brut, valeur, +provenance |
 | `race_classe` | RACE_CLASSE : matrice « Accessibilité de Classe » : 27 races x 39 classes = 1 053 lignes (712 à 1, 341 à 0). | **race_id**→race, **classe_id**→classe, ordre, accessible, valeur_brut, +provenance |
-| `race_magie` | RACE_MAGIE : matrice « Accessibilité Magie » : 27 races x 15 magies = 405 lignes (244 à 1, 161 à 0). | **race_id**→race, **magie_id**→magie, ordre, accessible, valeur_brut, +provenance |
+| `race_magie` | RACE_MAGIE : matrice « Accessibilité Magie » : 27 races x 15 magies = 405 lignes (245 à 1, 160 à 0). | **race_id**→race, **magie_id**→magie, ordre, accessible, valeur_brut, +provenance |
+| `race_onglet` | ▸ CONTENU DE L'ONGLET DE LA RACE : classeur « Les races », un onglet par race (migration 0007). | **race_id**→race, onglet, description_generale, histoire, description?, sante_depart, chakra_depart, barriere_bonus, vitesse_sol, vitesse_nage, avantages, inconvenients, don_base, dons_rubrique?, dons_rubrique_nom?, dons_rubrique_don?, dons_tableau_titre?, +provenance |
+| `race_don` | RACE_DON : dons raciaux de l'onglet, dans son ordre. | **id**, race_id→race_onglet, slug, rang, forme, etiquette?, nom?, texte, ethnie_id→ethnie?, remarque?, +provenance |
+| `race_don_tableau_colonne` | RACE_DON_TABLEAU_* : le tableau en panneaux du bloc « Don R (Race) » (Drakos : magie innée -> AP/AM, bonus de compétence, cran de résistance ; Mort-vivant : lieu de résurrection / raison de la mort -> | **race_id**→race_onglet, **rang**, libelle, +provenance |
+| `race_don_tableau_ligne` |  | **race_id**→race_onglet, **rang**, ethnie_id→ethnie?, +provenance |
+| `race_don_tableau_cellule` |  | **race_id**→race_don_tableau_ligne, **ligne**→race_don_tableau_ligne, **colonne**→race_don_tableau_colonne, valeur, +provenance |
+| `race_magie_onglet` | RACE_MAGIE_ONGLET : magies innées que l'onglet de la race limite explicitement (ligne « Inconvénient(s) » : « Magie du Feu, Terre, Foudre, Arcane, Potentiel illimité en inné uniquement »), dans l'ordre où il les cite. | **race_id**→race_onglet, **magie_id**→magie, rang, nom_brut, +provenance |
 | `echelle_relation` | ▸ RELATIONS ENTRE PEUPLES : classeur « Les races », onglet « Relation entre les races » (page lore/relations-entre-les-races). | **id**, libelle, ordre, remarque?, +provenance |
 | `peuple` | Un peuple = une étiquette de l'onglet (« Elfe Forestier Forêt », « Humain Central »…) : recopiée telle qu'écrite (coquilles comprises : « Supprémaciste »). | **id**, nom, nom_cle, ordre, race_id→race?, remarque?, +provenance |
 | `relation_peuple` |  | **ligne_peuple_id**→peuple, **colonne_peuple_id**→peuple, echelle_id→echelle_relation, +provenance |
@@ -160,9 +166,9 @@
 
 ## 9. ÉQUIPEMENT, RESSOURCES, CRAFT, MÉTIERS (familles « equipement », « craft », « docs_typees »)
 
-**Relations dans cette section** : `accessoire_effet_gemme→accessoire_effet`, `accessoire_effet_gemme→ressource`, `accessoire_effet→accessoire_propriete`, `accessoire_monture→ressource`, `arme_degats→arme`, `arme_elementaire→arme_type`, `arme_prerequis→arme`, `arme→arme_famille`, `arme→arme_type`, `armure_degats→armure`, `armure_elementaire_effet→armure_elementaire`, `armure→ressource`, `baton_magique→recette`, `bois→ressource`, `bouclier→bouclier_classe`, `bouclier→ressource`, `familier_effet→familier`, `gemme→ressource`, `ingredient_alchimie→affinite`, `ingredient_alchimie→ressource`, `kit_alchimie→niveau_alchimie`, `kit_alchimie→ressource`, `maladie_methode→maladie`, `materiau_arme→ressource`, `materiau_armure→ressource`, `materiau_bouclier→ressource`, `metier_bonus→metier`, `metier_recette_famille→metier`, `potion_etat→ressource`, `potion→niveau_alchimie`, `potion→ressource`, `recette_ingredient→affinite`, `recette_ingredient→recette`, `recette_ingredient→ressource`, `recette_produit→recette`, `recette_produit→ressource`
+**Relations dans cette section** : `accessoire_effet_gemme→accessoire_effet`, `accessoire_effet_gemme→ressource`, `accessoire_effet→accessoire_propriete`, `accessoire_monture→ressource`, `arme_degats→arme`, `arme_elementaire→arme_type`, `arme_prerequis→arme`, `arme→arme_famille`, `arme→arme_type`, `armure_degats→armure`, `armure_elementaire_effet→armure_elementaire`, `armure→ressource`, `baton_magique→recette`, `bois→ressource`, `bouclier→bouclier_classe`, `bouclier→ressource`, `familier_effet→familier`, `gemme→ressource`, `ingredient_alchimie→affinite`, `ingredient_alchimie→ressource`, `kit_alchimie→niveau_alchimie`, `kit_alchimie→ressource`, `maladie_methode→maladie`, `materiau_arme→ressource`, `materiau_armure→ressource`, `materiau_bouclier→ressource`, `metier_bonus→metier`, `metier_objet_depart→metier`, `metier_recette_famille→metier`, `potion_etat→ressource`, `potion→niveau_alchimie`, `potion→ressource`, `recette_ingredient→affinite`, `recette_ingredient→recette`, `recette_ingredient→ressource`, `recette_produit→recette`, `recette_produit→ressource`
 
-**Vers d'autres sections** : `accessoire_effet→caracteristique (§2)`, `amelioration_equipement→page (§1)`, `arme_elementaire→magie (§3)`, `arme_prerequis→caracteristique (§2)`, `armure_elementaire→magie (§3)`, `baton_magique→magie (§3)`, `bois→magie (§3)`, `constante_equipement→page (§1)`, `gemme→magie (§3)`, `metier→caracteristique (§2)`, `metier→page (§1)`, `potion_etat→etat (§4)`, `recette→caracteristique (§2)`, `recette→page (§1)`, `ressource→page (§1)`
+**Vers d'autres sections** : `accessoire_effet→caracteristique (§2)`, `amelioration_equipement→page (§1)`, `arme_elementaire→magie (§3)`, `arme_prerequis→caracteristique (§2)`, `armure_elementaire→magie (§3)`, `baton_magique→magie (§3)`, `bois→magie (§3)`, `constante_equipement→page (§1)`, `gemme→magie (§3)`, `metier_bonus→competence (§2)`, `metier_objet_depart→objet_depart (§6)`, `metier→caracteristique (§2)`, `metier→page (§1)`, `potion_etat→etat (§4)`, `recette→caracteristique (§2)`, `recette→page (§1)`, `ressource→page (§1)`
 
 | Table | Rôle | Colonnes |
 | --- | --- | --- |
@@ -188,8 +194,9 @@
 | `recette_ingredient` | Éléments d'une recette. | **recette_id**→recette, **rang**, **option**, texte, role?, emplacement?, quantite?, unite?, qualite?, ressource_id→ressource?, affinite_id→affinite?, +provenance |
 | `baton_magique` | Bâtons magiques (onglet Bâton magique › « Bonus passifs » : 14 magies x 3 niveaux). | **id**, magie_id→magie, niveau, bonus_brut, recette_id→recette, remarque?, +provenance |
 | `metier` | Métiers (Google Doc « MÉTIER » : une page par métier, 72). | **id**→page, nom, nom_cle, description, bonus_brut, artisanat_brut, peut_fabriquer, artisanat_texte?, test_brut?, test_carac_1_id→caracteristique?, test_carac_2_id→caracteristique?, equipement_brut, avantage_brut?, remarque?, +provenance |
-| `metier_bonus` | Bonus d'un métier : le champ « Bonus » découpé sur les virgules suivies d'un signe (« +3% Esquive, +3% Réflexe » -> 2 rangs ; « Diplomatie OU Intimidation » -> 2 options du même rang). | **metier_id**→metier, **rang**, **option**, texte, valeur?, unite?, cible?, cible_cle?, +provenance |
+| `metier_bonus` | Bonus d'un métier : le champ « Bonus » découpé sur les virgules suivies d'un signe (« +3% Esquive, +3% Réflexe » -> 2 rangs ; « Diplomatie OU Intimidation » -> 2 options du même rang). | **metier_id**→metier, **rang**, **option**, texte, valeur?, unite?, cible?, cible_cle?, competence_id→competence?, attribut?, +provenance |
 | `metier_recette_famille` | Familles de recettes qu'un métier dit pouvoir fabriquer : le champ « Artisanat possible » cite « fioles », « philtres », « remèdes », « huiles », « alchimie primitive ». | **metier_id**→metier, **famille**, mot_source, +provenance |
+| `metier_objet_depart` | Objets de départ d'un métier (décision R35 : l'« Équipement supplémentaire possible » s'ajoute à l'inventaire à la création du personnage) : le champ découpé comme l'inventaire de départ d'une classe | **metier_id**→metier, **rang**, **option**, texte, objet_depart_id→objet_depart?, +provenance |
 | `arme` | Une ligne par arme listée (161 : 147 + 14 armes de monstres). | **id**, famille_id→arme_famille, type_id→arme_type, nom, nom_cle, nom_brut, mains?, categorie_brut, competence_brut?, cout_brut?, cout_ro?, effet?, description?, de?, de_faces?, de_source?, portee_min?, portee_max?, bonus_degats?, ignore_ap?, recharge?, solidite_fixee?, solidite_delta?, provenance_mot?, provenance?, depart_possible, ordre, remarque?, +provenance |
 | `arme_degats` | Types de dégâts de l'arme : première clause « Dégâts taille/estoc » (ou « dégâts de frappe » des bombes) -> 1 ligne par type. | **arme_id**→arme, **type_degats**, +provenance |
 | `arme_prerequis` | Minimums de caractéristique cités par l'effet : « 4 de Force minimum », « 3 de Force et Agilité minimum », « 5 d'Agilité obligatoire ». | **arme_id**→arme, **caracteristique_id**→caracteristique, minimum, exigence?, texte, +provenance |
@@ -252,6 +259,7 @@
 | `v_race_carac_borne` *(vue)* | Bornes de saisie d'une caractéristique selon la race, telles que la fiche les calcule (BDD!K2:K24) : '>' est strict (« > 2 » = au moins 3), '<' est strict (« < 4 » = au plus 3), '=' fixe la valeur ; l |  |
 | `v_race_classe_accessible` *(vue)* | Vues « seulement les 1 » : évitent l'erreur classique d'oublier `accessible = 1` (les lignes à 0 existent aussi). |  |
 | `v_race_magie_accessible` *(vue)* |  |  |
+| `v_regard_peuple` *(vue)* | Regard d'un peuple sur un autre (décision R12 : la case (ligne A, colonne B) de « Relation entre les races » dit comment A voit B). |  |
 | `v_creature_magie` *(vue)* | Magies d'une créature : celles de la marge de son bloc (« Terre + Feu » -> Terre et Feu) ET celle du sort qui invoque son invocation (Terre pour tous les golems, Nécromancie pour les non-morts, Ombre |  |
 | `v_creature_resistance` *(vue)* | Résistances, vulnérabilités, immunités et sensibilités d'une créature, toutes provenances confondues (une ligne par fait) : provenance 'capacite' : écrit dans une capacité de la créature (creature_cap |  |
 | `v_creature_sort` *(vue)* | Sorts que peut lancer une créature (capacités « Lanceur de sorts » et « Sort supplémentaire »). |  |
@@ -272,3 +280,58 @@
 | `v_classe_capacite` *(vue)* | Une capacité par ligne avec sa classe et sa spécialité à plat : la vue à interroger pour « toutes les capacités d'une classe au niveau N ». |  |
 | `v_capacite_exclusive` *(vue)* | Choix exclusifs, lus dans la mise en page (règle du propriétaire, client/src/lib/capacites.mjs) : deux capacités sont des alternatives quand elles sont côte à côte sur la même ligne de l'onglet : deux |  |
 | `v_capacite_partagee` *(vue)* | Capacités écrites à l'identique (nom, type, effet, note de cellule) à plusieurs endroits : une ligne par contenu. |  |
+
+## 13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)
+
+**Relations dans cette section** : `groupe_membre→groupe`, `groupe_membre→personnage`, `groupe_membre→utilisateur`, `personnage_accessoire→personnage`, `personnage_arme→personnage`, `personnage_armure→personnage`, `personnage_bouclier_materiau→personnage`, `personnage_capacite→personnage`, `personnage_caracteristique→personnage`, `personnage_classe→personnage`, `personnage_competence→personnage`, `personnage_inventaire→personnage`, `personnage_maitrise_arme→personnage`, `personnage_metier_bonus→personnage`, `personnage_partage→personnage`, `personnage_partage→utilisateur`, `personnage_progression→personnage`, `personnage_sort→personnage`, `personnage→utilisateur`, `utilisateur_role→utilisateur`
+
+**Vers d'autres sections** : `personnage_accessoire→accessoire_effet (§9)`, `personnage_arme→amelioration_equipement (§9)`, `personnage_arme→arme (§9)`, `personnage_arme→arme_elementaire (§9)`, `personnage_arme→materiau_arme (§9)`, `personnage_armure→amelioration_equipement (§9)`, `personnage_armure→armure (§9)`, `personnage_armure→armure_elementaire (§9)`, `personnage_armure→armure_emplacement (§9)`, `personnage_bouclier_materiau→materiau_bouclier (§9)`, `personnage_capacite→capacite (§6)`, `personnage_caracteristique→caracteristique (§2)`, `personnage_classe→classe (§6)`, `personnage_classe→specialite (§6)`, `personnage_competence→competence (§2)`, `personnage_inventaire→ressource (§9)`, `personnage_maitrise_arme→arme_famille (§9)`, `personnage_metier_bonus→competence (§2)`, `personnage_progression→niveau_global (§2)`, `personnage_sort→sort (§3)`, `personnage→bouclier_classe (§9)`, `personnage→caracteristique (§2)`, `personnage→dieu (§5)`, `personnage→ethnie (§7)`, `personnage→magie (§3)`, `personnage→metier (§9)`, `personnage→posture (§2)`, `personnage→race (§7)`
+
+| Table | Rôle | Colonnes |
+| --- | --- | --- |
+| `utilisateur` | Personne qui se connecte au site. | **id**, discord_id?, nom_affichage, cree_le |
+| `utilisateur_role` | Rôles d'un utilisateur, cumulables (la correspondance rôle Discord -> rôle du site est une configuration, pas une donnée) : 'mj' = maître du jeu (le « groupe MJ » : cible de la visibilité 'mj' d'une f | **utilisateur_id**→utilisateur, **role** |
+| `personnage` | Une fiche de personnage : le haut de l'onglet Personnage (identité, magies, alignement, bourse, expérience) et les choix uniques. | **id**, nature, proprietaire_id→utilisateur?, visibilite, statut, nom, surnom?, lieu_origine?, race_id→race?, ethnie_id→ethnie?, magie_innee_id→magie?, magie_acquise_id→magie?, caracteristique_magie_id→caracteristique?, dieu_choisi_id→dieu?, metier_id→metier?, mode_classe, xp, alignement_loyal, alignement_chaotique, alignement_bon, alignement_mauvais, bourse_pp, bourse_ro, bourse_rf, ambidextrie, bouclier_classe_id→bouclier_classe?, sante_actuelle?, chakra_actuel?, barriere_actuelle?, corruption?, barre4_actuelle?, notes?, evenements?, cree_le, modifie_le, posture_id→posture? |
+| `personnage_partage` | Utilisateurs à qui le propriétaire montre sa fiche en plus de sa visibilité (« un utilisateur spécifique », plusieurs possibles). | **personnage_id**→personnage, **utilisateur_id**→utilisateur |
+| `personnage_classe` | Classes du personnage : « CLASSE » 1 (A9) et 2 (A11), chacune avec sa spécialité (I9, I11 : choisie au niveau de classe 10). | **personnage_id**→personnage, **rang**, classe_id→classe, specialite_id→specialite? |
+| `personnage_caracteristique` | Valeur de base de chaque caractéristique (E18, M18, U18, E19, M19, U19), choisie dans les bornes de la race (v_race_carac_borne) ; le total suit seuil_niveau 'caracteristiques_total' (décision R3 : exactement). | **personnage_id**→personnage, **caracteristique_id**→caracteristique, base, croix |
+| `personnage_competence` | Points de compétence : « Nat. | **personnage_id**→personnage, **competence_id**→competence, naturel, acquis |
+| `personnage_metier_bonus` | Bonus de métier choisis (décision R33 : « En cas de choix c'est à saisir dans la fiche de personnage ») : pour chaque rang de metier_bonus du métier de la fiche qui propose plusieurs compétences (« +3 | **personnage_id**→personnage, **rang**, competence_id→competence |
+| `personnage_progression` | Gains d'attributs à chaque niveau global à partir du 2 : les points d'attributs (niveau_global.points_attributs, 15) répartis entre santé et chakra (la fiche compte F14 + M14 : BDD!K40), et le dé bonu | **personnage_id**→personnage, **niveau**→niveau_global, points_sante, points_chakra, de_choix?, de_resultat? |
+| `personnage_capacite` | Dons de classe choisis (lignes « CLASSE 1 » / « CLASSE 2 », C43:L67) : seulement ceux qui demandent un CHOIX (v_capacite_exclusive : options d'une même ligne, une spécialité contre l'autre, paliers de l'Archimage). | **personnage_id**→personnage, **capacite_id**→capacite |
+| `personnage_sort` | « LISTE DE SORTS » (AA55:AY74) : sorts de la magie innée ou acquise, avec leur niveau de maîtrise (« NM », AY). | **personnage_id**→personnage, **sort_id**→sort, rang, niveau_maitrise, nm_livre, nm_cadeau |
+| `personnage_maitrise_arme` | « Maîtrise d'armes » (AA2:AV7) : nombre de dés (1d à 5d) par famille d'armes. | **personnage_id**→personnage, **arme_famille_id**→arme_famille, des |
+| `personnage_arme` | « ARMES » (AA9:AY18) : deux emplacements, chacun une arme du catalogue, sa composition (matériau), ses améliorations et son élément. | **personnage_id**→personnage, **rang**, arme_id→arme, materiau_id→materiau_arme?, amelioration_id→amelioration_equipement?, arme_elementaire_id→arme_elementaire?, amelioration_elementaire_id→amelioration_equipement?, effet_en_plus? |
+| `personnage_armure` | « ARMURE / DÉFENSE » (AA19:AX23) : une pièce par emplacement (armure complète, ou casque, torse, bras, jambes). | **personnage_id**→personnage, **emplacement_id**→armure_emplacement, armure_id→armure, amelioration_id→amelioration_equipement?, armure_elementaire_id→armure_elementaire?, amelioration_elementaire_id→amelioration_equipement? |
+| `personnage_bouclier_materiau` | Matériaux du bouclier (AF26, AJ26, AN26 et leurs quantités AH27, AL27, AP27) : au plus trois, la somme des quantités ne dépasse pas la classe du bouclier (validation de AL27 : « La somme des quantités | **personnage_id**→personnage, **rang**, materiau_id→materiau_bouclier, quantite |
+| `personnage_accessoire` | « ACCESSOIRES » (AA28:AY37) : Chef, Collier, Bracelet 1 et 2, Bague 1 et 2, Ceinture, Autre. | **personnage_id**→personnage, **emplacement**, nom?, accessoire_effet_id→accessoire_effet?, valeur?, texte?, maudit |
+| `personnage_inventaire` | « INVENTAIRE \| SAC » (AA39:AY…) : une ligne par objet ; `ressource_id` quand l'objet est au catalogue, sinon le nom seul. | **personnage_id**→personnage, **rang**, nom, quantite, ressource_id→ressource? |
+| `groupe` | Groupe de jeu : la table d'un one-shot (« OS ») ou d'une campagne. | **id**, nom, nature, cree_le |
+| `groupe_membre` | Membres d'un groupe et fiche inscrite (demande du propriétaire) : un joueur peut être dans plusieurs groupes et avoir plusieurs fiches, mais n'inscrit qu'UNE fiche par groupe : une ligne par (groupe, | **groupe_id**→groupe, **utilisateur_id**→utilisateur, role, personnage_id→personnage?, rejoint_le |
+| `v_personnage_niveau` *(vue)* | Niveau global et niveaux de classe d'un personnage. |  |
+| `v_personnage_metier_bonus` *(vue)* | Bonus que le métier d'une fiche apporte (décision R33) : une ligne par rang lié de metier_bonus (compétence ou attribut) — l'option seule du rang, ou, quand le rang en propose plusieurs, celle que la |  |
+| `v_personnage_visible` *(vue)* | Qui voit quelle fiche (demande du propriétaire) : une ligne par (fiche, utilisateur, motif) ; un utilisateur voit une fiche s'il a au moins une ligne. |  |
+| `v_groupe_controle` *(vue)* | Contrôle des inscriptions dans les groupes : une ligne par anomalie (vide = conforme). |  |
+| `v_personnage_controle` *(vue)* | Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). |  |
+
+## 14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)
+
+**Relations dans cette section** : `modification→modification_lot`
+
+**Vers d'autres sections** : `modification_lot→utilisateur (§13)`
+
+| Table | Rôle | Colonnes |
+| --- | --- | --- |
+| `modification_lot` | Un enregistrement fait depuis une page (le bouton de confirmation) : toutes ses modifications passent ou aucune. | **id**, fait_le, auteur_id→utilisateur?, page_id?, resume |
+| `modification` | Une ligne de table touchée par un lot. | **lot_id**→modification_lot, **rang**, table_nom, cle, operation, avant?, apres?, etat, detail?, apercu? |
+| `note_version_brouillon` | La note de version en préparation sur le site de dev (page /mise-a-jour/ : le champ libre que les admins remplissent, en plus de la liste calculée ; migration 0023). | **id**, texte?, modifie_le?, lot? |
+
+## 15. NOTES DE VERSION : ce que chaque version a changé dans les règles (page /mise-a-jour/), et l'historique des modifications faites sur le
+
+**Relations dans cette section** : `historique_modification→note_version`, `note_version_ligne→note_version`
+
+| Table | Rôle | Colonnes |
+| --- | --- | --- |
+| `note_version` | Une version livrée (dev → master) : « 0.2 » (X.Y : la production ne porte que deux chiffres), sa date, le champ libre des admins. | **version**, publiee_le, depuis?, texte?, lot?, exemple |
+| `note_version_ligne` | Une ligne de la liste calculée : une modification d'un champ d'une entité entre la production et la nouvelle version. | **version**→note_version, **rang**, domaine, groupe?, entite, champ?, nature, avant?, apres?, sens, parties?, table_nom?, cle?, colonne? |
+| `historique_modification` | Le journal du site de dev une fois livré (une ligne par ligne de table touchée, comme `modification`) : qui a changé quoi, quand, avant et après (docs/feuille-de-route.md : modifications historisées). | **lot_id**, **rang**, fait_le, resume, version→note_version?, table_nom, cle, operation, avant?, apres? |

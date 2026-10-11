@@ -1,0 +1,33 @@
+---
+import Base from '../layouts/Base.astro';
+import EntryList from '../components/EntryList.astro';
+import { TYPES } from '../lib/types.mjs';
+import { loadWiki, url } from '../lib/wiki';
+import { cheminDePage } from '../lib/metiers.mjs';
+
+const { entries, unresolved } = await loadWiki();
+---
+
+<Base title="Index du wiki">
+  <h1>Index du wiki</h1>
+  <p>
+    {
+      Object.entries(TYPES).map(([key, type]) => (
+        <a class="badge" href={url(`${key}/`)}>{type.label}</a>
+      ))
+    }
+  </p>
+  <EntryList entries={entries} />
+
+  {
+    unresolved.length > 0 && (
+      <>
+        <h2>Pages à créer</h2>
+        <p class="muted">Liens <code>[[…]]</code> qui ne pointent vers aucune page.</p>
+        <ul>
+          {unresolved.map((u) => <li><code>[[{u.target}]]</code> dans <a href={url(cheminDePage(u.from))}>{u.from}</a></li>)}
+        </ul>
+      </>
+    )
+  }
+</Base>

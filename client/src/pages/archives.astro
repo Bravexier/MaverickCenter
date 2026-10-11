@@ -1,0 +1,72 @@
+---
+import Base from '../layouts/Base.astro';
+import archivesCss from '../styles/archives/archives.css?raw';
+import { libelleGenre, lireArchives } from '../lib/archives.mjs';
+import { ouvrirBase, trouverRacine } from '../lib/donnees.mjs';
+import { url } from '../lib/wiki';
+
+// Archives (demande du propriétaire) : les Google Docs et Sheets et l'ancien wiki qui ont servi de source au site. Les documents : lib/archives.mjs
+// (registre de la migration 0014, manifeste sources/sources.json, sources citées par les pages dans la base). CSS : styles/archives/, inséré ici (?raw).
+const { rubriques, ancienWiki } = lireArchives(ouvrirBase(), trouverRacine());
+const pages = (n) => (n === 0 ? 'aucune page' : n === 1 ? '1 page' : `${n} pages`);
+---
+
+<Base title="Archives" description="Les Google Docs, Google Sheets et l’ancien wiki qui ont servi de source au site">
+  <style is:inline set:html={archivesCss}></style>
+  <h1>Archives</h1>
+  <p class="prose">
+    Les règles et le lore de ce site viennent de documents partagés sur le Discord « L’univers de Maverick » : des Google Docs, des Google Sheets
+    et l’ancien wiki du jeu. Les documents Google sont pour la plupart des copies tenues par le propriétaire du projet ; le document d’origine reste
+    indiqué quand il existe.
+  </p>
+
+  {
+    rubriques.map(({ rubrique, documents }) => (
+      <section class="archives-rubrique" aria-labelledby={`archives-${rubrique.id}`}>
+        <h2 id={`archives-${rubrique.id}`}>{rubrique.titre}</h2>
+        <ul class="archives-liste">
+          {documents.map((d) => (
+            <li class="archive" id={`document-${d.id}`}>
+              <p class="archive__titre">
+                <span class={`archive__genre archive__genre--${d.genre}`}>{libelleGenre(d.genre)}</span>
+                <a href={d.url} rel="noopener noreferrer" target="_blank">{d.titre ?? `${libelleGenre(d.genre)} sans titre`}</a>
+              </p>
+              <p class="archive__pages">Cité par {pages(d.pages)} du site</p>
+              {d.note && <p class="archive__note">{d.note}</p>}
+              {d.original && d.original !== d.url && (
+                <p class="archive__original"><a href={d.original} rel="noopener noreferrer" target="_blank">Document d’origine</a></p>
+              )}
+              {d.onglets.length > 0 && (
+                <details class="archive__onglets">
+                  <summary>{d.onglets.length === 1 ? '1 onglet repris' : `${d.onglets.length} onglets repris`}</summary>
+                  <ul>{d.onglets.map((o) => <li>{o}</li>)}</ul>
+                </details>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))
+  }
+
+  <section class="archives-rubrique" aria-labelledby="archives-ancien-wiki">
+    <h2 id="archives-ancien-wiki">L’ancien wiki</h2>
+    <p class="prose">
+      L’ancien wiki du jeu, sur Fandom, n’est plus à jour : le jeu a évolué depuis. Seul son tableau de progression fait encore foi, pour les budgets de points.
+    </p>
+    <ul class="archives-liste">
+      {
+        ancienWiki.map((w) => (
+          <li class="archive">
+            <p class="archive__titre">
+              <span class="archive__genre archive__genre--wiki">Fandom</span>
+              <a href={w.url} rel="noopener noreferrer" target="_blank">{w.titre}</a>
+            </p>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <p class="muted">Toutes les données du site sont aussi dans la <a href={url('donnees/')}>base de données</a>.</p>
+</Base>

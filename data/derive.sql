@@ -32,11 +32,16 @@ INSERT INTO entite_fts (entite_table, entite_id, nom, contexte, texte)
   SELECT 'objet_depart', o.id, o.nom, 'objet de départ', o.description FROM objet_depart o
   -- races
   UNION ALL
-  SELECT 'race', r.id, r.nom, 'race', trim(COALESCE(r.presentation, '') || ' ' || COALESCE(r.divers, '') || ' ' || COALESCE(r.don_base_effets, ''))
-    FROM race r
+  SELECT 'race', r.id, r.nom, 'race',
+         trim(COALESCE(r.presentation, '') || ' ' || COALESCE(o.description_generale, '') || ' ' || COALESCE(o.avantages, '') || ' ' ||
+              COALESCE(o.inconvenients, '') || ' ' || COALESCE(o.don_base, '') || ' ' || COALESCE(r.divers, '') || ' ' || COALESCE(r.don_base_effets, ''))
+    FROM race r LEFT JOIN race_onglet o ON o.race_id = r.id
   UNION ALL
   SELECT 'ethnie', e.id, e.nom, trim(r.nom || ' ' || COALESCE(e.libelle, '')), COALESCE(e.descriptif, '')
     FROM ethnie e JOIN race r ON r.id = e.race_id
+  UNION ALL
+  SELECT 'race_don', d.id, COALESCE(d.nom, d.etiquette), trim(r.nom || ' ' || COALESCE(d.etiquette, '')), trim(d.texte || ' ' || COALESCE(d.remarque, ''))
+    FROM race_don d JOIN race r ON r.id = d.race_id
   -- bestiaire
   UNION ALL
   SELECT 'invocation', i.id, i.nom, i.genre, COALESCE(i.texte_general, '') FROM invocation i

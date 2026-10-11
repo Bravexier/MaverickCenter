@@ -1,0 +1,278 @@
+---
+import Base from '../../layouts/Base.astro';
+import ficheCss from '../../styles/fiche/fiche.css?raw';
+import { PARTIES } from '../../lib/guide.mjs';
+import { url } from '../../lib/wiki';
+
+// Fiche de personnage (demande du propriétaire) : création et modification d'un PRÉTIRÉ sur le même écran (/fiche/, /fiche/?id=<id>), en suivant
+// les étapes du guide « Créer son personnage », puis la progression, l'équipement et les notes. Compacte (demandes du propriétaire) : les choix
+// (race, ethnie, magies, classes, spécialités) dans des menus déroulants, caractéristiques, compétences, maîtrises et valeurs du moment en curseurs. Blocs
+// disposés en rangées, sans numéro (demande du propriétaire) : identité, magies, classes ; attributs, progression ; caractéristiques, sorts ; maîtrises
+// d'armes ; équipement, notes ; puis le contrôle. Les règles viennent de la base (/fiche/regles.json, lib/fiche-regles.mjs), les calculs de
+// lib/fiche-moteur.mjs, l'enregistrement du service des personnages (/api/, docs/serveur.md). Le formulaire est construit par src/scripts/fiche.mjs.
+// CSS : styles/fiche/fiche.css, inséré ici (?raw).
+const couleur = Object.fromEntries(PARTIES.map((p) => [p.id, p.couleur]));
+const ETAPES = [
+  { id: 'identite', titre: 'Identité, race, métier, alignement', court: 'Identité', partie: 'creer' },
+  { id: 'magies', titre: 'Magies', court: 'Magies', partie: 'creer' },
+  { id: 'classes', titre: 'Classes', court: 'Classes', partie: 'creer' },
+  { id: 'attributs', titre: 'Attributs et valeurs du moment', court: 'Attributs', partie: 'creer' },
+  { id: 'progression', titre: 'Niveau, gains de niveau et dons', court: 'Progression', partie: 'progresser' },
+  { id: 'caracteristiques', titre: 'Caractéristiques et compétences', court: 'Caractéristiques', partie: 'creer' },
+  { id: 'sorts', titre: 'Sorts et dons', court: 'Sorts et dons', partie: 'creer' },
+  { id: 'maitrises', titre: 'Maîtrises d’armes', court: 'Maîtrises', partie: 'creer' },
+  { id: 'equipement', titre: 'Équipement et bourse', court: 'Équipement', partie: 'jouer' },
+  { id: 'jeu', titre: 'Notes et événements', court: 'Notes', partie: 'jouer' },
+  { id: 'controles', titre: 'Contrôle des règles', court: 'Contrôle', partie: 'plus-loin' },
+];
+const style = (partie: string) => `--etape: ${couleur[partie]}`;
+const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
+---
+
+<Base title="Fiche de personnage" description="Créer et modifier un personnage prétiré, étape par étape, avec les règles de Maverick">
+  <style is:inline set:html={ficheCss}></style>
+  <div class="fiche" id="fiche" data-regles={url('fiche/regles.json')} data-api={url('api/')} data-personnages={url('personnages/')} data-fiche={url('fiche/')}>
+    <header class="fiche-entete">
+      <p class="fiche-surtitre">Fiche de personnage · prétiré · <a href={url('personnages/')}>tous les personnages</a></p>
+      <h1 id="fiche-titre">Nouveau prétiré</h1>
+    </header>
+
+    <div class="fiche-barre" role="toolbar" aria-label="Enregistrement">
+      <span class="fiche-niveau-badge" id="fiche-niveau">Niveau 1</span>
+      <label>Statut
+        <select id="fiche-statut" data-champ="statut">
+          <option value="brouillon">Brouillon</option>
+          <option value="valide">Validé</option>
+          <option value="archive">Archivé</option>
+        </select>
+      </label>
+      <button type="button" class="fiche-barre__principal" id="fiche-enregistrer" disabled>Enregistrer</button>
+      <p class="fiche-message" id="fiche-message" role="status" aria-live="polite"></p>
+      <button type="button" id="fiche-nouvelle">Nouveau</button>
+      <button type="button" id="fiche-exporter">Exporter</button>
+      <label class="fiche-bouton-fichier"><input type="file" id="fiche-importer" accept="application/json,.json" hidden /><span role="button" tabindex="0">Importer</span></label>
+      <button type="button" id="fiche-imprimer">Imprimer</button>
+      <button type="button" class="fiche-barre__danger" id="fiche-supprimer" hidden>Supprimer</button>
+    </div>
+
+    <p class="banner fiche-indisponible" id="fiche-indisponible" hidden></p>
+    {/* éléments retirés par un changement de règles (décision R42) : d'après les lignes datées des notes (src/scripts/fiche.mjs#construireRetraits) */}
+    <p class="banner fiche-retraits" id="fiche-retraits" role="status" hidden></p>
+    <noscript><p class="banner">Cette page a besoin de JavaScript pour construire la fiche et l’enregistrer.</p></noscript>
+
+    <ul class="fiche-etapes" aria-label="Parties de la fiche">
+      {ETAPES.map((e) => <li><a href={`#etape-${e.id}`} style={style(e.partie)}>{e.court}</a></li>)}
+    </ul>
+
+    {/* rangées de blocs (demande du propriétaire) : côte à côte sur un écran large, l'un sous l'autre sinon ; le panneau d'un menu déroulant
+         s'étend sur toute la rangée */}
+    <div class="fiche-rangee fiche-rangee--3">
+      {[etape('identite')].map((e) => (
+        <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
+          <h2 id={`titre-${e.id}`}>{e.titre}</h2>
+          <div class="fiche-etape__corps">
+            <div class="fiche-champs">
+              <label class="fiche-champ"><span>Nom</span><input data-champ="nom" required maxlength="120" autocomplete="off" /></label>
+              <label class="fiche-champ"><span>Surnom</span><input data-champ="surnom" maxlength="120" autocomplete="off" /></label>
+              <label class="fiche-champ"><span>Lieu d’origine</span><input data-champ="lieu_origine" maxlength="120" autocomplete="off" /></label>
+              <label class="fiche-champ"><span>Métier</span><select data-champ="metier_id" id="metiers"><option value="">Sans métier</option></select></label>
+            </div>
+            {/* ce que donne le métier (décisions R33 à R35) : bonus d'acquis ou d'initiative (choix à faire ici), artisanat, objets de départ */}
+            <div id="metier-bloc" hidden></div>
+            <div class="choix-grille">
+              <details class="choix" id="choix-race"><summary><span class="choix__etiquette">Race</span><span class="choix__valeur" id="valeur-race"></span></summary><div class="choix__panneau"><div id="races" class="groupes-pastilles"></div></div></details>
+              <details class="choix" id="choix-ethnie" hidden><summary><span class="choix__etiquette">Ethnie</span><span class="choix__valeur" id="valeur-ethnie"></span></summary><div class="choix__panneau"><ul id="ethnies" class="pastilles"></ul></div></details>
+            </div>
+            <ul id="race-resume" class="fiche-resume" aria-label="Ce que donne la race"></ul>
+            {/* alignement (demande du propriétaire) : les quatre scores serrés, axe Loi/Chaos puis axe Bien/Mal, et l'alignement qui en résulte à côté */}
+            <fieldset class="alignement">
+              <legend>Alignement</legend>
+              <span class="alignement__axe">
+                <label title="Loyal"><span aria-hidden="true">L</span><input type="number" min="0" step="1" data-champ="alignement_loyal" data-entier aria-label="Loyal" /></label>
+                <label title="Chaotique"><span aria-hidden="true">C</span><input type="number" min="0" step="1" data-champ="alignement_chaotique" data-entier aria-label="Chaotique" /></label>
+              </span>
+              <span class="alignement__axe">
+                <label title="Bon"><span aria-hidden="true">B</span><input type="number" min="0" step="1" data-champ="alignement_bon" data-entier aria-label="Bon" /></label>
+                <label title="Mauvais"><span aria-hidden="true">M</span><input type="number" min="0" step="1" data-champ="alignement_mauvais" data-entier aria-label="Mauvais" /></label>
+              </span>
+              <output class="alignement__resultat" id="alignement-resultat" aria-live="polite">Neutre</output>
+            </fieldset>
+          </div>
+        </section>
+      ))}
+
+      {[etape('magies')].map((e) => (
+        <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
+          <h2 id={`titre-${e.id}`}>{e.titre}</h2>
+          <div class="fiche-etape__corps">
+            <div class="choix-grille">
+              <details class="choix" id="choix-magie-innee"><summary><span class="choix__etiquette">Magie innée</span><span class="choix__valeur" id="valeur-magie-innee"></span></summary><div class="choix__panneau"><ul id="magies-innees" class="pastilles"></ul></div></details>
+              <details class="choix" id="choix-magie-acquise"><summary><span class="choix__etiquette">Magie acquise</span><span class="choix__valeur" id="valeur-magie-acquise"></span></summary><div class="choix__panneau"><ul id="magies-acquises" class="pastilles"></ul></div></details>
+            </div>
+            <div class="fiche-champs">
+              <label class="fiche-champ" id="bloc-carac-magie" hidden><span>+1 de la magie innée sur</span><select data-champ="caracteristique_magie_id" id="carac-magie"></select></label>
+              <p class="fiche-champ"><span>Dieu inné</span><strong id="dieu-inne">—</strong></p>
+              <label class="fiche-champ"><span>Dieu choisi</span><select data-champ="dieu_choisi_id" id="dieux"><option value="">—</option></select></label>
+            </div>
+            <ul id="magie-resume" class="fiche-resume" aria-label="Ce que donnent les magies"></ul>
+            <div class="resistances">
+              <h3 id="titre-resistances">Résistances et faiblesses</h3>
+              <table class="resistances__table" aria-labelledby="titre-resistances"><tbody id="resistances"></tbody></table>
+              <p class="fiche-aide" id="resistances-choix" hidden></p>
+            </div>
+          </div>
+        </section>
+      ))}
+
+      {[etape('classes')].map((e) => (
+        <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
+          <h2 id={`titre-${e.id}`}>{e.titre}</h2>
+          <div class="fiche-etape__corps">
+            <div class="fiche-champ fiche-champ--ligne"><span>Une ou deux classes</span><ul id="modes" class="pastilles pastilles--etroites"></ul></div>
+            <p class="fiche-aide" id="classe-imposee" hidden></p>
+            <div class="choix-grille choix-grille--classes">
+              <details class="choix" id="choix-classe-1"><summary><span class="choix__etiquette" id="titre-classe-1">Classe</span><span class="choix__valeur" id="valeur-classe-1"></span></summary><div class="choix__panneau"><div id="classe-1" class="groupes-pastilles groupes-pastilles--classes"></div></div></details>
+              <details class="choix" id="choix-specialite-1" hidden><summary><span class="choix__etiquette" id="titre-specialite-1">Spécialité</span><span class="choix__valeur" id="valeur-specialite-1"></span></summary><div class="choix__panneau"><ul id="specialite-1" class="pastilles"></ul></div></details>
+              <details class="choix" id="choix-classe-2" hidden><summary><span class="choix__etiquette" id="titre-classe-2">Seconde classe</span><span class="choix__valeur" id="valeur-classe-2"></span></summary><div class="choix__panneau"><div id="classe-2" class="groupes-pastilles groupes-pastilles--classes"></div></div></details>
+              <details class="choix" id="choix-specialite-2" hidden><summary><span class="choix__etiquette" id="titre-specialite-2">Spécialité</span><span class="choix__valeur" id="valeur-specialite-2"></span></summary><div class="choix__panneau"><ul id="specialite-2" class="pastilles"></ul></div></details>
+            </div>
+          </div>
+        </section>
+      ))}
+    </div>
+
+    <div class="fiche-rangee fiche-rangee--2">
+      {[etape('attributs')].map((e) => (
+        <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
+          <h2 id={`titre-${e.id}`}>{e.titre}</h2>
+          <div class="fiche-etape__corps">
+            {/* demandes du propriétaire : les valeurs du moment avec leur maximum (santé, barrière, chakra, et Âme ou Sang), sans texte de calcul (en
+                infobulle) ; initiative, vitesse et nage en simples pastilles, à côté de la corruption ; le sélecteur des six postures */}
+            <div id="attributs-barres" class="attributs"></div>
+            <div class="attributs-bas">
+              <ul id="attributs-pastilles" class="fiche-resume attributs-pastilles" aria-label="Initiative et vitesses"></ul>
+              <div id="attributs-corruption" class="attributs-corruption"></div>
+            </div>
+            <div class="postures">
+              <span class="postures__titre" id="titre-postures">Posture</span>
+              <div id="postures" class="postures__choix" role="group" aria-labelledby="titre-postures"></div>
+              <p id="posture-effets" class="postures__effets" aria-live="polite"></p>
+            </div>
+          </div>
+        </section>
+      ))}
+
+      {[etape('progression')].map((e) => (
+        <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
+          <h2 id={`titre-${e.id}`}>{e.titre}</h2>
+          <div class="fiche-etape__corps">
+            <div class="xp" id="xp-bloc">
+              <div class="xp__ligne">
+                <strong class="xp__niveau" id="xp-niveau">Niveau 1</strong>
+                <input type="number" min="0" step="1" data-champ="xp" data-entier id="xp" aria-label="Expérience (XP)" />
+                <span class="xp__objectif" id="xp-objectif"></span>
+                <button type="button" class="xp__plus" id="xp-plus" aria-expanded="false" aria-controls="xp-ajout" title="Ajouter de l’XP" aria-label="Ajouter de l’XP">+</button>
+              </div>
+              <div class="xp__jauge" id="xp-jauge" role="progressbar" aria-label="Expérience vers le niveau suivant"><span class="xp__rempli" id="xp-rempli"></span></div>
+              <form class="xp__ajout" id="xp-ajout" hidden>
+                <label>XP gagnée <input type="number" min="1" step="1" id="xp-gain" /></label>
+                <button type="submit">Ajouter</button>
+                <button type="button" id="xp-annuler">Annuler</button>
+              </form>
+            </div>
+            <div><h3>Gains de niveau</h3><p class="fiche-aide" id="progression-aide"></p><div id="progression" class="gains"></div></div>
+            <div><h3>Dons de classe à choisir</h3><div id="dons" class="fiche-etape__dons"></div></div>
+          </div>
+        </section>
+      ))}
+    </div>
+
+    <div class="fiche-rangee fiche-rangee--2">
+      {[etape('caracteristiques')].map((e) => (
+        <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
+          <h2 id={`titre-${e.id}`}>{e.titre}</h2>
+          <div class="fiche-etape__corps">
+            <p class="fiche-aide">Clic droit sur un curseur (ou Entrée) : saisir le nombre ; il est ramené entre le minimum et le maximum.</p>
+            <div class="fiche-entete-bloc"><h3>Caractéristiques</h3><span class="budget" id="budget-caracs"></span></div>
+            <div id="caracs" class="caracs"></div>
+            <div class="fiche-entete-bloc"><h3>Compétences</h3><span class="budget" id="budget-competences"></span></div>
+            <p class="fiche-aide">Score = 10 × la caractéristique + naturel + acquis. Une croix : −20 % ; deux croix : inutilisable.</p>
+            <div id="competences" class="competences"></div>
+          </div>
+        </section>
+      ))}
+
+      {[etape('sorts')].map((e) => (
+        <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
+          <h2 id={`titre-${e.id}`}>{e.titre}</h2>
+          <div class="fiche-etape__corps">
+            <div class="fiche-entete-bloc"><p class="fiche-aide" id="emplacements-detail"></p><span class="fiche-budgets"><span class="budget" id="budget-sorts"></span><span class="budget" id="budget-nm"></span></span></div>
+            <div class="fiche-defile"><table class="fiche-table fiche-table--sorts" id="sorts"></table></div>
+            {/* rappel des dons (demande du propriétaire) : ceux de la race (don de base d'abord), puis ceux des classes, débloqués au niveau atteint */}
+            <div><h3>Dons raciaux</h3><ul id="dons-race" class="dons-liste" aria-label="Dons de la race"></ul></div>
+            <div><h3>Dons de classe débloqués</h3><div id="dons-classes" class="dons-classes"></div></div>
+          </div>
+        </section>
+      ))}
+    </div>
+
+    <div class="fiche-rangee">
+      {[etape('maitrises')].map((e) => (
+        <section class="fiche-etape fiche-etape--coin" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
+          <h2 id={`titre-${e.id}`}>{e.titre}</h2>
+          {/* quota de maîtrise (décision R32) : points répartis / points des classes et de leurs dons, dans le coin du bloc */}
+          <span class="budget fiche-etape__coin" id="budget-maitrises"></span>
+          <div class="fiche-etape__corps">
+            <ul id="maitrises" class="maitrises" aria-label="Maîtrise de chaque famille d’armes"></ul>
+            <label class="fiche-coche"><input type="checkbox" data-champ="ambidextrie" /> Ambidextrie</label>
+          </div>
+        </section>
+      ))}
+    </div>
+
+    <div class="fiche-rangee fiche-rangee--large">
+      {[etape('equipement')].map((e) => (
+        <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
+          <h2 id={`titre-${e.id}`}>{e.titre}</h2>
+          <div class="fiche-etape__corps">
+            <div><h3>Armes</h3><div id="armes" class="equipement"></div></div>
+            <div><h3>Armure</h3><div class="fiche-defile"><table class="fiche-table fiche-table--fixe" id="armures"></table></div></div>
+            <div><h3>Bouclier</h3><div id="bouclier" class="equipement"></div></div>
+            <div><h3>Accessoires</h3><div class="fiche-defile"><table class="fiche-table fiche-table--fixe" id="accessoires"></table></div></div>
+            <div><h3>Inventaire</h3><div class="fiche-defile"><table class="fiche-table" id="inventaire"></table></div>
+              <div class="fiche-ligne-ajout"><button type="button" id="bouton-ajout-objet">Ajouter un objet</button></div></div>
+            <div><h3>Bourse</h3><div class="fiche-champs">
+              <label class="fiche-champ"><span>Pièces précieuses</span><input type="number" min="0" step="1" data-champ="bourse_pp" data-entier /></label>
+              <label class="fiche-champ"><span>Or</span><input type="number" min="0" step="1" data-champ="bourse_ro" data-entier /></label>
+              <label class="fiche-champ"><span>Fer</span><input type="number" min="0" step="1" data-champ="bourse_rf" data-entier /></label>
+            </div></div>
+          </div>
+        </section>
+      ))}
+
+      {[etape('jeu')].map((e) => (
+        <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
+          <h2 id={`titre-${e.id}`}>{e.titre}</h2>
+          <div class="fiche-etape__corps">
+            <label class="fiche-champ fiche-champ--large"><span>Notes</span><textarea data-champ="notes" rows="8"></textarea></label>
+            <label class="fiche-champ fiche-champ--large"><span>Événements</span><textarea data-champ="evenements" rows="6"></textarea></label>
+          </div>
+        </section>
+      ))}
+    </div>
+
+    {[etape('controles')].map((e) => (
+      <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
+        <h2 id={`titre-${e.id}`}>{e.titre}</h2>
+        <div class="fiche-etape__corps">
+          <p class="fiche-aide">Ce que la base sait contrôler, vérifié à chaque enregistrement. Un brouillon peut enfreindre des règles ; une fiche ne passe « validée » que sans aucune.</p>
+          <ul class="controles" id="controles"><li>La fiche n’a pas encore été enregistrée.</li></ul>
+        </div>
+      </section>
+    ))}
+  </div>
+</Base>
+
+<script>
+  import '../../scripts/fiche.mjs';
+</script>

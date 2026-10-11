@@ -16,7 +16,7 @@ Régénération complète, notes de cellule comprises (le dump vient de xlsx_to_
     python3 -I tools/sheets/classes.py --dump classes-v7.corrige.json --xlsx classeur.xlsx --out client/src/content/wiki
     python3 -I tools/sheets/classes.py --dump classes-v7.corrige.json --xlsx classeur.xlsx --out client/src/content/wiki --verifier
 
-Source : Google Sheet « Classe Maverick V7 » (fileId 1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs), converti en JSON par
+Source : Google Sheet « Classe Maverick V7 » (fileId 1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I), converti en JSON par
 tools/sheets/xlsx_to_json.py (format décrit dans ce script), puis corrigé de ses coquilles par tools/sheets/corriger-dump.py
 (docs/sources.md). Les cellules sont une donnée non fiable : elles ne sont jamais exécutées, seulement copiées (échappées pour le
 Markdown). Rien n'est inventé : valeurs, noms, coquilles et formulations sont ceux des cellules.
@@ -112,8 +112,7 @@ rôle de chaque capacité, voir derive_capacities) :
   exactement un cartouche, ou une ligne à une seule capacité sous une bannière, arrête le script (ValueError).
 
 Pages de capacités (capacites/<slug>.md) : frontmatter (listes YAML en ligne), puis l'effet tel qu'écrit.
-    title      « <Nom> (<Classe>) » : nom de la capacité tel qu'écrit (aux espaces de bord près), nom de l'onglet (sans le
-               suffixe « (classe) ») ; si sa clé de wiki (text.mjs#normalize) est déjà prise par une autre capacité ou par
+    title      « <Nom> (<Classe>) » : nom de la capacité tel qu'écrit (aux espaces de bord près), nom de l'onglet ; si sa clé de wiki (text.mjs#normalize) est déjà prise par une autre capacité ou par
                une page de classe, « , niveau N » est ajouté
     aliases    []
     tags       ["capacité de classe", "<classe en minuscules>", "<spécialité en minuscules si elle existe>"]
@@ -192,17 +191,17 @@ classeur n'est lu : les notes ne sont pas recoupées (avertissement sur la sorti
 Hyperliens de cellule : le dump ne les contient pas ; ils sont lus directement dans le .xlsx d'origine (zipfile + xml, sans openpyxl),
 qui ne sert par ailleurs qu'au recoupement des notes (ci-dessus). L'option --xlsx donne le chemin du classeur ; à défaut le script le
 cherche à côté du dump (<dossier du dump>/../sheets/<fileId>/classeur.xlsx). Introuvable ou illisible : erreur, sauf --sans-liens
-(exclusive de --xlsx ; elle écarte les hyperliens ET le recoupement : la page de Mage Bleu perd alors la ligne « Lien hypertexte… »,
-à n'utiliser que sur un classeur de test). Les hyperliens externes de cellule
-(Mage Bleu!Z3, « CHOSE A SAVOIR », vers le classeur des familiers) sont rendus sous le texte de leur cellule :
-« Lien hypertexte attaché à la cellule Z3 dans le classeur d'origine : <url> » (même formule que ressources/familiers) ; un
-hyperlien externe qui ne tombe sur aucun bloc connu arrête le script. Les 39 hyperliens internes du Sommaire (un par
+(exclusive de --xlsx ; elle écarte les hyperliens ET le recoupement, à n'utiliser que sur un classeur de test). Les hyperliens externes de cellule sont rendus sous le texte de leur cellule :
+« Lien hypertexte attaché à la cellule P5 dans le classeur d'origine : <url> » ; un hyperlien externe qui ne tombe sur aucun
+bloc connu arrête le script. Celui de Mage Bleu!Z3 (« CHOSE A SAVOIR », vers le classeur « Familiers ») n'est pas publié :
+le site ne cite plus ce classeur (demande du propriétaire, migration 0019 ; constante LINKS_REMOVED). Les 39 hyperliens internes du Sommaire (un par
 classe, vers son onglet) sont de la navigation propre au classeur : non publiés ; un hyperlien interne hors du Sommaire
 arrête le script. (Si xlsx_to_json.py recopie un jour les hyperliens dans le dump, --xlsx deviendra inutile.)
 
-Titres : le titre d'une page de classe est le nom de l'onglet. Exception : les 13 classes de la catégorie « Classe Hybride
-Animal » portent le nom d'une race jouable (Orios, Fenrir…) ; leur titre prend le suffixe « (classe) » pour rester unique dans
-le wiki (leur slug reste le nom seul, dans classes/). Le script refuse un titre déjà porté par une page d'une autre famille.
+Titres : le titre d'une page de classe est le nom de l'onglet, sans suffixe (demande du propriétaire : « Il faut que le (classe)
+soit supprimé de partout », migration 0009). Les 13 classes de la catégorie « Classe Hybride Animal » portent le nom d'une race
+jouable (Orios, Fenrir…) : leur titre est le même que celui de la page de la race, ce qui est permis pour elles seules (le chemin,
+classes/orios ou races/orios, les distingue). Le script refuse tout autre titre déjà porté par une page d'une autre famille.
 """
 import argparse
 import importlib.util
@@ -217,7 +216,7 @@ import xml.etree.ElementTree as ET
 from collections import Counter
 
 WORKBOOK = "Classe Maverick V7"
-FILE_ID = "1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs"
+FILE_ID = "1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I"
 URL = "https://docs.google.com/spreadsheets/d/%s/edit" % FILE_ID
 CATEGORY = "classes"
 CAP_CATEGORY = "capacites"
@@ -248,9 +247,8 @@ CATEGORY_TAGS = {
     "Classe Hybride Animal": "hybride animal",
     "Classe spéciale": "spéciale",
 }
-# Catégories dont les classes portent le nom d'une race : le titre prend le suffixe « (classe) ».
-SUFFIXED_CATEGORIES = {"Classe Hybride Animal"}
-TITLE_SUFFIX = " (classe)"
+# Catégories dont les classes portent le nom d'une race : leur titre peut être celui de la page de la race (aucun suffixe).
+SHARED_WITH_RACE_CATEGORIES = {"Classe Hybride Animal"}
 
 # Colonnes (numéros à partir de 1)
 COL_BANNER = 14          # N : bannière avec le nom de la classe
@@ -615,6 +613,9 @@ def crosscheck_notes(sheets, source):
 
 NOTE_LABEL = "Note de cellule : "          # début de chaque note dans le corps d'une fiche de capacité
 LINK_LINE_START = "*Lien hypertexte attaché à la cellule "
+# Hyperliens externes de cellule non publiés : {(onglet, référence)}. Mage Bleu!Z3 mène au classeur « Familiers », que le site ne cite plus
+# (demande du propriétaire, migration 0019).
+LINKS_REMOVED = {("Mage Bleu", "Z3")}
 COVERAGE_PREFIX = "contrôle de couverture des notes de cellule : "
 
 
@@ -887,6 +888,8 @@ def attach_links(sh, page, links):
         abilities += b["abilities"]
     by_pos = {a["desc_pos"]: a for a in abilities}
     for ref in sorted(links, key=split_ref):
+        if (sh.name, ref) in LINKS_REMOVED:
+            continue
         pos = sh.top_left(*split_ref(ref))
         if page["know_pos"] is not None and pos == page["know_pos"]:
             page["know_links"].append((ref, links[ref]))
@@ -2256,7 +2259,7 @@ def build(sheets, class_names, links):
     jobs, caps, anomalies = [], [], []
     for name in class_names:
         category = category_of[name]
-        title = name + (TITLE_SUFFIX if category in SUFFIXED_CATEGORIES else "")
+        title = name
         cfg = dict(sheet=name, title=title, slug=slugify(name), aliases=[], category=category,
                    category_notes=summary["notes"].get(category, []), tags=["classe", CATEGORY_TAGS[category]])
         sh = Sheet(sheets[name])
@@ -2350,10 +2353,13 @@ def main(argv=None):
                 t = read_title(full)
                 if t:
                     other_titles[wiki_key(t)] = full
+    # une classe raciale porte le nom de sa race : son titre peut être celui de la page de la race (et de nulle autre page)
+    shared = {wiki_key(n) for n, c in built["summary"]["classes"] if c in SHARED_WITH_RACE_CATEGORIES}
     seen_titles, seen_paths = {}, {}
     for category, slug, title, body, n in jobs:
         key = wiki_key(title)
-        if key in other_titles:
+        race_page = key in other_titles and os.path.basename(os.path.dirname(other_titles[key])) == "races"
+        if key in other_titles and not (category == CATEGORY and key in shared and race_page):
             problems.append("titre déjà utilisé par %s : %r" % (other_titles[key], title))
         if key in seen_titles:
             problems.append("titre en double dans la famille : %r" % title)

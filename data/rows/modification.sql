@@ -1,0 +1,1 @@
+-- data/rows/modification.sql : export déterministe, une instruction par ligne, triée par (lot_id, rang). NE PAS ÉDITER À LA MAIN.

@@ -1,0 +1,232 @@
+---
+import guideCss from '../../styles/guide/guide.css?raw';
+import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
+import { chapitresDuGuide, morceauxDuChapitre, partiesDuGuide, voisins } from '../../lib/guide.mjs';
+import { rendreMarkdown } from '../../lib/guide-rendu';
+import { idBulle, pageHref } from '../../lib/magies';
+import { attributEd } from '../../lib/edition-modele.mjs';
+import type { WikiEntry } from '../../lib/wiki';
+import Bulles from '../magie/Bulles.astro';
+import GuideBloc from './GuideBloc.astro';
+
+// Un chapitre du guide (lib/guide.mjs) : une page à la fois, à lire dans l'ordre (demande du propriétaire). La page prend toute la largeur ; une
+// flèche de chaque côté (Précédent à gauche, Suivant à droite ; grisée au premier et au dernier chapitre) passe par-dessus son bord, en bas de l'écran,
+// et s'efface quand les liens du bas arrivent ; en bas, les mêmes liens avec le titre du chapitre voisin, puis la pagination : un numéro par chapitre, son titre en infobulle (components/magie/Bulles.astro ; sans JavaScript, `title`).
+// Les flèches du clavier (← →) et, sur écran tactile, un glissement du doigt vers la gauche ou la droite tournent les pages. Le texte est le Markdown de la page, coupé à ses blocs tirés de la base (GuideBloc).
+// Chaque partie du guide a sa couleur (lib/guide.mjs#PARTIES) : celle du chapitre colore la page, les numéros de la pagination sont regroupés par partie.
+interface Props {
+  entry: WikiEntry;
+  entries: WikiEntry[];
+}
+const { entry, entries } = Astro.props;
+
+const chapitres = chapitresDuGuide(entries);
+const { chapitre, precedent, suivant } = voisins(chapitres, entry.id);
+const morceaux = await Promise.all(
+  morceauxDuChapitre(entry.body ?? '').map(async (m) => ('bloc' in m ? m : { html: await rendreMarkdown(m.markdown, entry.id, entry.data.status) })),
+);
+const parties = partiesDuGuide(chapitres);
+const css = [guideCss, magieTooltipsCss].join('\n');
+const etiquette = (c: { numero: number; titre: string }) => `Chapitre ${c.numero} : ${c.titre}`;
+---
+
+<style is:inline set:html={css}></style>
+<div class="guide" data-guide style={`--couleur-partie: ${chapitre.partie.couleur}`}>
+  <div class="guide-cadre">
+    {
+      precedent ? (
+        <a class="guide-fleche guide-fleche--precedent" href={pageHref(precedent.id)} rel="prev" title={etiquette(precedent)} data-guide-precedent>
+          <span aria-hidden="true">‹</span>
+          <span class="guide-invisible">Précédent : {etiquette(precedent)}</span>
+        </a>
+      ) : (
+        <span class="guide-fleche guide-fleche--precedent" role="link" aria-disabled="true" title="Premier chapitre">
+          <span aria-hidden="true">‹</span>
+          <span class="guide-invisible">Précédent (premier chapitre)</span>
+        </span>
+      )
+    }
+
+    {/* data-ed, data-ed-corps, data-ed-morceau : titre et morceaux de texte modifiables sur le site de dev (src/scripts/edition/guide.mjs) */}
+    <article class="guide-page" aria-labelledby="guide-titre" data-ed-corps={entry.id}>
+      <p class="guide-numero"><span class="guide-partie">{chapitre.partie.titre}</span> Guide du joueur · chapitre {chapitre.numero} sur {chapitres.length}</p>
+      <h1 id="guide-titre" data-ed={attributEd('page', { id: entry.id }, 'titre')}>{chapitre.titre}</h1>
+      {
+        morceaux.map((m) =>
+          'bloc' in m ? <GuideBloc bloc={m.bloc} entry={entry} entries={entries} chapitres={chapitres} /> : <div class="guide-texte" data-ed-morceau set:html={m.html} />,
+        )
+      }
+    </article>
+
+    {
+      suivant ? (
+        <a class="guide-fleche guide-fleche--suivant" href={pageHref(suivant.id)} rel="next" title={etiquette(suivant)} data-guide-suivant>
+          <span aria-hidden="true">›</span>
+          <span class="guide-invisible">Suivant : {etiquette(suivant)}</span>
+        </a>
+      ) : (
+        <span class="guide-fleche guide-fleche--suivant" role="link" aria-disabled="true" title="Dernier chapitre">
+          <span aria-hidden="true">›</span>
+          <span class="guide-invisible">Suivant (dernier chapitre)</span>
+        </span>
+      )
+    }
+  </div>
+
+  <nav class="guide-bas" aria-label="Chapitres du guide">
+    <div class="guide-voisins">
+      {
+        precedent ? (
+          <a class="guide-voisin guide-voisin--precedent" href={pageHref(precedent.id)} rel="prev">
+            <span class="guide-voisin__sens">‹ Précédent</span>
+            <span class="guide-voisin__titre">{precedent.titre}</span>
+          </a>
+        ) : (
+          <span class="guide-voisin guide-voisin--precedent" aria-disabled="true">
+            <span class="guide-voisin__sens">‹ Précédent</span>
+          </span>
+        )
+      }
+      {
+        suivant ? (
+          <a class="guide-voisin guide-voisin--suivant" href={pageHref(suivant.id)} rel="next">
+            <span class="guide-voisin__sens">Suivant ›</span>
+            <span class="guide-voisin__titre">{suivant.titre}</span>
+          </a>
+        ) : (
+          <span class="guide-voisin guide-voisin--suivant" aria-disabled="true">
+            <span class="guide-voisin__sens">Suivant ›</span>
+          </span>
+        )
+      }
+    </div>
+    <ol class="guide-pagination">
+      {
+        parties.map(({ partie, chapitres: deLaPartie }) => (
+          <li class="guide-pagination__partie" style={`--couleur-partie: ${partie.couleur}`}>
+            <span class="guide-pagination__titre">{partie.titre}</span>
+            <ol class="guide-pagination__numeros">
+              {deLaPartie.map((c) => {
+                const id = idBulle('guide-chapitre');
+                return (
+                  <li>
+                    <span class="bulle-zone">
+                      <a
+                        class="guide-pagination__numero"
+                        href={pageHref(c.id)}
+                        aria-current={c.id === chapitre.id ? 'page' : undefined}
+                        aria-label={etiquette(c)}
+                        data-bulle={id}
+                        title={etiquette(c)}
+                      >
+                        {c.numero}
+                      </a>
+                      <span class="bulle" role="tooltip" id={id} hidden>
+                        <span class="bulle__sous">{partie.titre} · chapitre {c.numero}</span>
+                        <span class="bulle__titre">{c.titre}</span>
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </li>
+        ))
+      }
+    </ol>
+  </nav>
+</div>
+<Bulles />
+<script is:inline>
+  // ← et → : chapitre précédent ou suivant, sauf pendant une saisie ou avec une touche de modification (défilement d'un tableau, raccourcis du navigateur).
+  document.addEventListener('keydown', function (e) {
+    var sens = { ArrowLeft: '[data-guide-precedent]', ArrowRight: '[data-guide-suivant]' }[e.key];
+    if (!sens || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    var cible = e.target;
+    if (cible && cible.closest && cible.closest('input, textarea, select, [contenteditable], .guide-defile')) return;
+    var lien = document.querySelector(sens);
+    if (lien) location.href = lien.href;
+  });
+
+  // Écran tactile : glisser le doigt vers la gauche tourne la page (chapitre suivant), vers la droite revient au précédent (demande du propriétaire).
+  // Le geste doit être franchement horizontal (au moins 2 fois plus large que haut, et 60 px ou le quart de l'écran), d'un seul doigt ; il ne compte
+  // pas sur un tableau qui défile, dans un champ, pendant une sélection de texte, sur une page zoomée (le doigt la déplace) ni au bord de l'écran
+  // (gestes du système, comme le retour arrière). La page suit un peu le doigt pour montrer que le geste est compris, sauf mouvement réduit.
+  (function () {
+    var page = document.querySelector('.guide-page');
+    if (!page) return;
+    var calme = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var depart = null;
+    function voisin(dx) {
+      return document.querySelector(dx < 0 ? '[data-guide-suivant]' : '[data-guide-precedent]');
+    }
+    function selection() {
+      return window.getSelection && String(window.getSelection()) !== '';
+    }
+    // Décalage borné à 64 px : au-delà de la marge de <main>, la page est coupée (overflow-x: clip, styles/guide/guide.css), l'écran ne défile pas de côté.
+    function decaler(x, transition, opacite) {
+      if (calme) return;
+      x = Math.max(-64, Math.min(64, x));
+      page.style.transition = transition;
+      page.style.transform = x ? 'translateX(' + x + 'px)' : '';
+      page.style.opacity = opacite || '';
+    }
+    document.addEventListener('touchstart', function (e) {
+      depart = null;
+      var t = e.touches[0];
+      var cible = e.target;
+      if (e.touches.length !== 1 || !cible.closest || !cible.closest('[data-guide]') || selection()) return;
+      if (cible.closest('input, textarea, select, [contenteditable], .guide-defile')) return;
+      if (window.visualViewport && visualViewport.scale > 1.01) return;
+      if (t.clientX < 24 || t.clientX > window.innerWidth - 24) return;
+      depart = { x: t.clientX, y: t.clientY, horizontal: null };
+    }, { passive: true });
+    document.addEventListener('touchmove', function (e) {
+      if (!depart) return;
+      if (e.touches.length !== 1) {
+        depart = null;
+        decaler(0, 'transform 0.2s ease');
+        return;
+      }
+      var dx = e.touches[0].clientX - depart.x;
+      var dy = e.touches[0].clientY - depart.y;
+      if (depart.horizontal === null && Math.abs(dx) + Math.abs(dy) > 12) depart.horizontal = Math.abs(dx) > 2 * Math.abs(dy);
+      if (depart.horizontal) decaler(dx * (voisin(dx) ? 0.35 : 0.1), 'none');
+    }, { passive: true });
+    document.addEventListener('touchend', function (e) {
+      if (!depart) return;
+      var t = e.changedTouches[0];
+      var dx = t.clientX - depart.x;
+      var dy = t.clientY - depart.y;
+      var lien = voisin(dx);
+      var tourne = depart.horizontal && lien && Math.abs(dx) >= Math.max(60, window.innerWidth / 4) && Math.abs(dx) > 2 * Math.abs(dy) && !selection();
+      depart = null;
+      if (!tourne) {
+        decaler(0, 'transform 0.2s ease');
+        return;
+      }
+      decaler(dx < 0 ? -64 : 64, 'transform 0.15s ease, opacity 0.15s ease', '0.4');
+      location.href = lien.href;
+    }, { passive: true });
+    document.addEventListener('touchcancel', function () {
+      if (depart) decaler(0, 'transform 0.2s ease');
+      depart = null;
+    }, { passive: true });
+    // Retour arrière : la page restaurée par le navigateur ne doit pas rester décalée.
+    window.addEventListener('pageshow', function () {
+      decaler(0, '');
+    });
+  })();
+
+  // Les flèches de côté (collées en bas de l'écran) s'effacent dès que les liens du bas (Précédent / Suivant, avec le titre du chapitre) arrivent à
+  // l'écran : ils font le même travail, et les flèches ne doivent pas venir se poser à côté (demande du propriétaire). Sans JavaScript, elles s'arrêtent
+  // au pied de la page.
+  (function () {
+    var guide = document.querySelector('[data-guide]');
+    var bas = document.querySelector('.guide-voisins');
+    if (!guide || !bas || !('IntersectionObserver' in window)) return;
+    new IntersectionObserver(function (entrees) {
+      guide.toggleAttribute('data-bas-visible', entrees[entrees.length - 1].isIntersecting);
+    }).observe(bas);
+  })();
+</script>

@@ -1,0 +1,74 @@
+---
+import Base from '../layouts/Base.astro';
+import listeCss from '../styles/personnages/liste.css?raw';
+import { COLONNES, STATUTS } from '../lib/personnages-liste.mjs';
+import { url } from '../lib/wiki';
+
+// Recherche des personnages (demande du propriétaire) : tous les prétirés, avec des filtres, dans un tableau trié par la colonne choisie. Les données
+// viennent du service des personnages (GET /api/personnages/, docs/serveur.md) ; filtres et tri : lib/personnages-liste.mjs ; le reste :
+// src/scripts/personnages.mjs. CSS : styles/personnages/liste.css, inséré ici (?raw).
+---
+
+<Base title="Personnages" description="Rechercher les personnages prétirés : filtres et tri par colonne">
+  <style is:inline set:html={listeCss}></style>
+  <div class="personnages" id="personnages" data-api={url('api/')} data-fiche={url('fiche/')}>
+    <div class="personnages-entete">
+      <div>
+        <h1>Personnages</h1>
+        <p>Les prétirés : des personnages qui ne sont à personne et que tout le monde voit. Cliquez sur un en-tête pour trier.</p>
+      </div>
+      <a class="personnages-nouveau" href={url('fiche/')}>+ Nouveau prétiré</a>
+    </div>
+
+    <form class="personnages-filtres" id="filtres" role="search" aria-label="Filtres">
+      <label class="large">Nom, surnom ou origine<input type="search" name="texte" autocomplete="off" placeholder="Rechercher…" /></label>
+      <label>Statut
+        <select name="statut">
+          <option value="">Tous sauf archivés</option>
+          {Object.entries(STATUTS).map(([cle, nom]) => <option value={cle}>{nom}</option>)}
+          <option value="tous">Tous</option>
+        </select>
+      </label>
+      <label>Race<select name="race"><option value="">Toutes</option></select></label>
+      <label>Magie<select name="magie"><option value="">Toutes</option></select></label>
+      <label>Classe<select name="classe"><option value="">Toutes</option></select></label>
+      <label>Niveau
+        <span class="niveaux">
+          <input type="number" name="niveauMin" min="1" max="20" placeholder="de" aria-label="Niveau minimum" />
+          <input type="number" name="niveauMax" min="1" max="20" placeholder="à" aria-label="Niveau maximum" />
+        </span>
+      </label>
+      <label>Règles à revoir
+        <select name="regles">
+          <option value="">Peu importe</option>
+          <option value="sans">Aucune</option>
+          <option value="avec">Au moins une</option>
+        </select>
+      </label>
+      <span class="actions"><button type="reset" id="effacer">Effacer les filtres</button></span>
+    </form>
+
+    <p class="personnages-compte" id="compte" aria-live="polite">Chargement…</p>
+    <p class="banner" id="indisponible" hidden></p>
+    <noscript><p class="banner">Cette page a besoin de JavaScript pour interroger le service des personnages.</p></noscript>
+
+    <div class="personnages-tableau">
+      <table>
+        <thead>
+          <tr>
+            {COLONNES.map((c) => (
+              <th scope="col" data-cle={c.cle} class={c.nature === 'nombre' ? 'nombre' : undefined}>
+                <button type="button">{c.titre}<span class="fleche" aria-hidden="true">↕</span></button>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody id="lignes"></tbody>
+      </table>
+    </div>
+  </div>
+</Base>
+
+<script>
+  import '../scripts/personnages.mjs';
+</script>

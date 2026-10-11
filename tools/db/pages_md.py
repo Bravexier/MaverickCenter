@@ -104,6 +104,10 @@ def emit_frontmatter(p):
 
 EQUIPEMENT = {'equipement-inventaire', 'armes', 'armures', 'bouclier', 'baton-magique', 'livre-parchemin', 'accessoires', 'pieces-elementaires'}
 CRAFT = {'familiers', 'maison', 'machine-de-guerresiege', 'fievre-des-marais', 'maladie', 'fiche-de-tour'}
+# Pages créées depuis le site de dev (client/serveur/edition.mjs#creerPage, FAMILLE_DES_PAGES_DU_SITE) : provenance « Site de dev › édition du AAAA-MM-JJ »,
+# famille des pages de leur type.
+SITE_DE_DEV = 'Site de dev › '
+FAMILLE_DES_PAGES_DU_SITE = {'metiers': 'docs', 'races': 'races', 'classes': 'classes', 'capacites': 'classes'}
 
 
 def origine_migration(type_, slug, statut, sources):
@@ -113,6 +117,8 @@ def origine_migration(type_, slug, statut, sources):
     libelles = [s for s in sources if not s.startswith('http')]
     premier = libelles[0] if libelles else ''
     fichier = (T.decouper_source(premier)['fichier'] if premier else None) or ''
+    if premier.startswith(SITE_DE_DEV) and type_ in FAMILLE_DES_PAGES_DU_SITE:
+        return FAMILLE_DES_PAGES_DU_SITE[type_]
     if premier.startswith('Google Doc'):
         return 'docs'
     if fichier == 'Invocation':

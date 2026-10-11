@@ -12,8 +12,8 @@
 #
 # Une instance = un dossier :
 #   site/                le site statique (remplacé à chaque installation ; nginx le relit sans redémarrage)
-#   db/                  la base vivante de l'instance. Production : jamais touchée par une installation.
-#                        Test : remplacée à chaque installation par une copie, à cet instant, du db/ de la production.
+#   db/                  la base vivante de l'instance (le service des personnages y écrit). Production : jamais touchée par une installation.
+#                        Test : son contenu est remplacé à chaque installation par une copie, à cet instant, du db/ de la production.
 #   docker-compose.yml, nginx.conf   posés s'ils sont absents ; s'ils diffèrent, la version livrée est écrite à côté (.nouveau)
 #   .env                 port et nom du conteneur de l'instance (créé une fois, jamais écrasé)
 #   .htpasswd            mots de passe (jamais touché)
@@ -125,7 +125,7 @@ if ! mkdir "$VERROU" 2>/dev/null; then
 fi
 echo "$$" > "$VERROU/pid"
 TRAVAIL="$DOSSIER/.installation.$$"
-nettoyer() { rm -rf "$TRAVAIL" "$DOSSIER/.db.copie.$$" "$DOSSIER/.db.ancienne.$$" "$VERROU"; }
+nettoyer() { rm -rf "$TRAVAIL" "$DOSSIER/.db.copie.$$" "$VERROU"; }
 trap nettoyer EXIT
 trap 'exit 1' INT TERM HUP
 
@@ -138,8 +138,17 @@ PAGES=$(find "$TRAVAIL/site" -name index.html | wc -l | tr -d ' ')
 [ "$PAGES" -eq "$PAGES_ATTENDUES" ] || die "archive refusée : $PAGES pages au lieu de $PAGES_ATTENDUES (rien n'a été modifié)"
 
 # ---------------------------------------------------------------- base (avant le site : en cas d'échec, rien n'a changé)
+# Test seulement : MAVERICK_BASE_TEST=conservee dans le .env de l'instance. La base de test est alors copiée de la production à la première
+# installation seulement ; ensuite son db/ n'est plus touché (les modifications faites en test durent, jusqu'à ce qu'on retire la ligne).
+BASE_CONSERVEE=0
+if [ "$MODE" = test ] && [ -f "$DOSSIER/.env" ] && grep -q '^MAVERICK_BASE_TEST=conservee[[:space:]]*$' "$DOSSIER/.env" \
+  && [ -d "$DOSSIER/db" ] && find "$DOSSIER/db/" -mindepth 1 -maxdepth 1 | grep -q .; then
+  BASE_CONSERVEE=1
+fi
 if [ "$MODE" = prod ]; then
   mkdir -p "$DOSSIER/db"
+elif [ "$BASE_CONSERVEE" -eq 1 ]; then
+  log "Base de test conservée (MAVERICK_BASE_TEST=conservee dans $DOSSIER/.env) : $DOSSIER/db n'est pas touché."
 else
   COPIE="$DOSSIER/.db.copie.$$"
   mkdir "$COPIE"
@@ -183,9 +192,12 @@ else
     echo "source=$ORIGINE"
     if [ -n "$DOSSIER_PROD" ] && [ -f "$DOSSIER_PROD/VERSION" ]; then sed -n 's/^tag=/version_prod=/p' "$DOSSIER_PROD/VERSION"; fi
   } > "$COPIE/.copie-de-la-production"
-  if [ -d "$DOSSIER/db" ]; then mv "$DOSSIER/db" "$DOSSIER/.db.ancienne.$$"; fi
-  mv "$COPIE" "$DOSSIER/db"
-  rm -rf "$DOSSIER/.db.ancienne.$$"
+  # db/ est monté tel quel dans le conteneur du service (docker-compose.yml) : on garde le dossier et on remplace son contenu, comme pour
+  # site/ (un dossier remplacé laisserait le conteneur sur l'ancien, supprimé). Le service voit sa base remplacée et la rouvre.
+  mkdir -p "$DOSSIER/db"
+  find "$DOSSIER/db/" -mindepth 1 -maxdepth 1 -exec rm -rf {} \; || die "impossible de vider $DOSSIER/db"
+  find "$COPIE" -mindepth 1 -maxdepth 1 -exec mv {} "$DOSSIER/db/" \; || die "impossible de poser la copie dans $DOSSIER/db"
+  rmdir "$COPIE"
 fi
 
 # ---------------------------------------------------------------- site
@@ -230,6 +242,8 @@ if [ ! -f "$DOSSIER/.env" ]; then
     echo "# Réglages de cette instance, lus par docker compose. Créé à la première installation, jamais écrasé."
     echo "MAVERICK_CONTENEUR=$CONTENEUR"
     echo "MAVERICK_PORT=$PORT"
+    # serveur de test : les pages du guide, des races, des magies, des classes et des métiers s'y modifient (docs/serveur.md, « Édition »)
+    if [ "$MODE" = test ]; then echo "MAVERICK_EDITION=1"; fi
   } > "$DOSSIER/.env"
 fi
 

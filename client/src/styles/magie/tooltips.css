@@ -1,0 +1,20 @@
+/* Infobulles (components/Bulles.astro) et pastilles d'état */
+.bulle-zone { display: inline; }
+.info { --info: color-mix(in srgb, var(--mag) 55%, var(--text)); display: inline-flex; align-items: center; justify-content: center; width: 1.35rem; height: 1.35rem; padding: 0; border-radius: 50%; border: 1px solid var(--info); background: var(--mag-soft); color: var(--info); font: italic 700 0.8rem/1 Georgia, serif; cursor: help; }
+.info:hover, .info[data-ouverte] { background: var(--info); color: var(--surface); }
+.info:focus-visible, .chip--etat:focus-visible { outline: 2px solid var(--mag); outline-offset: 2px; }
+.chip--etat { padding: 0 0.5rem; font-size: 0.88em; line-height: 1.45; margin: 0 0.05em; }
+.bulle { z-index: 60; width: max-content; max-width: min(22rem, calc(100vw - 1rem)); padding: 0.55rem 0.8rem; border: 1px solid var(--mag-line); border-radius: 8px; background: var(--surface); color: var(--text);
+  box-shadow: 0 6px 22px rgb(0 0 0 / 0.2); font-weight: 400; font-size: 0.82rem; line-height: 1.4; letter-spacing: 0; text-transform: none; text-align: left; white-space: pre-line; overflow-y: auto; }
+.bulle[hidden] { display: none; }
+.bulle--large { max-width: min(26rem, calc(100vw - 1rem)); }
+.bulle__titre { display: block; font-size: 0.9rem; }
+.bulle__sous { display: block; margin-bottom: 0.25rem; color: var(--muted); font-size: 0.74rem; }
+.bulle__texte { display: block; margin-top: 0.2rem; }
+.bulle__stades { display: grid; margin: 0.2rem 0 0; gap: 0.25rem; }
+.bulle__stade { display: grid; grid-template-columns: 4.4rem 1fr; gap: 0.5rem; padding: 0.1rem 0.3rem; border-radius: 4px; }
+.bulle__stade-nom { color: var(--muted); }
+.bulle__stade.is-actif { background: var(--mag-soft); font-weight: 600; }
+.bulle__stade.is-actif .bulle__stade-nom { color: var(--text); }
+.regles-texte { margin: 0.4rem 0; }
+.regles-texte summary { cursor: pointer; font-weight: 600; }

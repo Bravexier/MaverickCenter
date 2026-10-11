@@ -1,0 +1,100 @@
+---
+import type { ClasseDb } from '../../lib/classes';
+import Onglets from '../Onglets.astro';
+import ChoixDeDons from './ChoixDeDons.astro';
+import DonCarte from './DonCarte.astro';
+import { attributEd } from '../../lib/edition-modele.mjs';
+import { idDuTitre, regleDesSpecialites } from '../../lib/classe-dons-rendu.mjs';
+
+// Les dons d'une classe disposés comme l'onglet du classeur (lib/classe-dons.mjs#plateauDeDons), de haut en bas : les dons reçus sans choix
+// (colonne P), les spécialités (une seule au choix : elle exclut l'autre et tous ses dons), puis le don du niveau 20 ; pour l'Archimage, des groupes
+// de 2 ou 3 dons au choix. Chaque choix est encadré (ChoixDeDons.astro), ses options côte à côte.
+// Spécialités en ONGLETS (demande du propriétaire) : le premier dans le coin gauche, le second dans le coin droit, comme les bannières A17 et X17 ;
+// l'onglet ouvert montre son cartouche puis ses choix sur toute la largeur. Sans JavaScript (et à l'impression), les onglets sont des liens et les deux
+// spécialités sont affichées l'une sous l'autre, chacune avec son titre. Une adresse ou un lien vers un don d'une spécialité ouvre son onglet
+// (script commun : components/Onglets.astro). Une classe qui n'a qu'une spécialité (D11 : l'autre supprimée sur le site) la montre sans « Au choix ».
+// Le même HTML est redessiné par le mode modification du site de dev (lib/classe-dons-rendu.mjs, test/classe-dons-rendu.test.mjs).
+interface Props {
+  classe: ClasseDb;
+}
+const { classe } = Astro.props;
+---
+
+<Onglets />
+
+<section class="classe-section" id="dons" aria-labelledby="dons-titre">
+  <h2 id="dons-titre">Dons <span class="count">{classe.dons.length}</span></h2>
+  <p class="muted dons-aide">
+    Disposés comme dans le classeur, du niveau 1 au niveau 20. Des dons côte à côte sur une même ligne sont un <strong>choix</strong> : un seul peut
+    être pris.
+  </p>
+
+  <ol class="plateau">
+    {
+      classe.plateau.map((etage) =>
+        etage.forme === 'don' ? (
+          <li class="etage etage--don">
+            <p class="etage__repere">Don de classe · reçu sans choix</p>
+            <DonCarte don={etage.don} titre="h3" />
+          </li>
+        ) : etage.forme === 'choix' ? (
+          <li class="etage etage--choix">
+            <ChoixDeDons niveau={etage.niveau} options={etage.options} titre="h3" />
+          </li>
+        ) : (
+          <li class="etage etage--specialites">
+            <div class="specialites" data-onglets role="group" aria-labelledby="specialites-regle">
+              <p class="specialites__tete" id="specialites-regle">
+                {regleDesSpecialites(etage.niveau, etage.specialites.length).badge && <span class="choix__badge">Au choix</span>}
+                <span class="choix__regle">{regleDesSpecialites(etage.niveau, etage.specialites.length).texte}</span>
+              </p>
+              <div class={`onglets onglets--${etage.specialites.length}`}>
+                {etage.specialites.map((col, i) => (
+                  <>
+                    {i > 0 && (
+                      <span class="onglets__ou" aria-hidden="true">
+                        <span>ou</span>
+                      </span>
+                    )}
+                    <a class={`onglet${i === 0 ? ' is-active' : ''}`} id={`onglet-${col.specialite.slug}`} href={`#${col.specialite.ancre}`}>
+                      <span class="onglet__surtitre">Spécialité</span>
+                      <span class="onglet__nom" data-ed-lecture={attributEd('specialite', { id: col.specialite.id }, 'nom')}>{col.specialite.nom}</span>
+                      {col.cartouche?.classeMagique && classe.amMagique !== null && (
+                        <span class="onglet__magique" title="Le don de cette spécialité la fait considérer comme classe magique">
+                          Classe magique · +{classe.amMagique} AM
+                        </span>
+                      )}
+                    </a>
+                  </>
+                ))}
+              </div>
+              {etage.specialites.map((col, i) => (
+                <section class={`specialite${i === 0 ? ' is-active' : ''}`} id={col.specialite.ancre} aria-labelledby={idDuTitre(col.specialite)}>
+                  <h3 class="specialite__titre" id={idDuTitre(col.specialite)}>
+                    <span class="specialite__surtitre">Spécialité</span>
+                    <span class="specialite__nom" data-ed={attributEd('specialite', { id: col.specialite.id }, 'nom')}>{col.specialite.nom}</span>
+                    {col.cartouche?.classeMagique && classe.amMagique !== null && (
+                      <span class="specialite__magique">Classe magique · +{classe.amMagique} AM</span>
+                    )}
+                  </h3>
+                  {col.cartouche && (
+                    <div class="specialite__cartouche">
+                      <DonCarte don={col.cartouche} cartouche />
+                    </div>
+                  )}
+                  {col.choix.map((g) =>
+                    g.options.length > 1 ? (
+                      <ChoixDeDons niveau={g.niveau} options={g.options} />
+                    ) : (
+                      <DonCarte don={g.options[0]} />
+                    ),
+                  )}
+                </section>
+              ))}
+            </div>
+          </li>
+        ),
+      )
+    }
+  </ol>
+</section>

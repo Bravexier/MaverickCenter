@@ -1,0 +1,65 @@
+:root {
+  color-scheme: light;
+  --bg: #f6f1e7;
+  --surface: #fffdf8;
+  --text: #2a2118;
+  --muted: #6d5f50;
+  --border: #d9ccb6;
+  --accent: #8a3b12;
+  --accent-soft: #f0dfcc;
+  --warn-bg: #fff3cd;
+  --warn-text: #5c4400;
+  --danger: #a12020;
+  --good: #2f6f47;
+  --radius: 8px;
+  --max: 64rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #17130f;
+    --surface: #211b15;
+    --text: #efe6d8;
+    --muted: #a99a86;
+    --border: #3a3027;
+    --accent: #e0a35e;
+    --accent-soft: #33281c;
+    --warn-bg: #3b3012;
+    --warn-text: #f0d98a;
+    --danger: #ef8a8a;
+    --good: #7fcf9b;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #17130f;
+  --surface: #211b15;
+  --text: #efe6d8;
+  --muted: #a99a86;
+  --border: #3a3027;
+  --accent: #e0a35e;
+  --accent-soft: #33281c;
+  --warn-bg: #3b3012;
+  --warn-text: #f0d98a;
+  --danger: #ef8a8a;
+  --good: #7fcf9b;
+}
+
+* { box-sizing: border-box; }
+
+/* Champ vide d'une page modifiable (mode modification du site de dev, components/edition/Edition.astro) : caché en lecture, quel que soit son affichage */
+[data-ed-cadre][hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 1rem/1.6 Georgia, 'Times New Roman', serif;
+}
+
+a { color: var(--accent); }
+h1, h2, h3 { line-height: 1.25; }
+main, .site-header__inner, .site-footer { max-width: var(--max); margin: 0 auto; padding: 0 1rem; }
+main { padding-block: 1.5rem 3rem; }

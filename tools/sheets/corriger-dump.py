@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Couche de corrections orthographiques des dumps de classeurs Google.
 
-Les classeurs sources (propriété d'un tiers) contiennent des coquilles et des fautes d'orthographe (« Chasseur prime » pour
+Les classeurs sources contiennent des coquilles et des fautes d'orthographe (« Chasseur prime » pour
 « Chasseur de primes »). Le propriétaire du projet demande de les corriger. Elles ne sont jamais corrigées « à la main » dans les pages
 générées (la prochaine importation les écraserait) mais dans le registre versionné `tools/sheets/corrections.json` : une ligne par
 correction, adressée à une cellule, qui dit ce qui change et pourquoi. Cet outil applique le registre à un dump AVANT les extracteurs

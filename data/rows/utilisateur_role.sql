@@ -1,0 +1,1 @@
+-- data/rows/utilisateur_role.sql : export déterministe, une instruction par ligne, triée par (utilisateur_id, role). NE PAS ÉDITER À LA MAIN.

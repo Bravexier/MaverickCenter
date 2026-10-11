@@ -1,0 +1,58 @@
+---
+import potentielCss from '../../styles/magie/potentiel.css?raw';
+import { couleurDeMagie, texteSurCouleurDeMagie } from '../../lib/sort-format.mjs';
+import { pageHref, type Magies, type MagieDb, type SortDb } from '../../lib/magies';
+import type { WikiEntry } from '../../lib/wiki';
+import Onglets from '../Onglets.astro';
+import SortsInteractifs from './SortsInteractifs.astro';
+import TableauNpm from './TableauNpm.astro';
+
+// Sorts du Potentiel Illimité : il pioche ses sorts dans les autres magies (lib/potentiel-illimite.mjs#magiesDuPotentiel). Une magie par onglet, dans
+// l'ordre du classeur et dans sa couleur ; chaque onglet reprend les tableaux de cette magie du NPM 1 au NPM 4, avec le même gabarit que sur sa page
+// (TableauNpm.astro). Les identifiants HTML y sont préfixés du nom court de la magie (`#sort-feu-boule-de-feu`, `#npm-feu-1`) : deux magies peuvent
+// avoir un sort du même nom. Onglets : components/Onglets.astro, comme les spécialités d'une classe ; une adresse `#sort-…` ouvre l'onglet et le sort.
+interface Props {
+  autres: { magie: MagieDb; groupes: { niveau: number; sorts: SortDb[] }[]; total: number }[];
+  magies: Magies;
+  entries: WikiEntry[];
+}
+const { autres, magies, entries } = Astro.props;
+const total = autres.reduce((n, a) => n + a.total, 0);
+const titreDe = (m: MagieDb) => entries.find((e) => e.id === m.id)?.data.title ?? m.nom;
+const couleurs = (m: MagieDb) => `--couleur-magie: ${couleurDeMagie(m.nom)}; --couleur-texte-magie: ${texteSurCouleurDeMagie(m.nom)}`;
+---
+
+<Onglets />
+<style is:inline set:html={potentielCss}></style>
+
+<section class="magie-section" id="sorts" aria-labelledby="sorts-titre">
+  <h2 id="sorts-titre">Sorts des autres magies <span class="count">{total}</span></h2>
+  <div class="autres-magies" data-onglets="Magies">
+    <div class="autres-magies__onglets">
+      {
+        autres.map(({ magie }, i) => (
+          <a class={`onglet autre-magie__onglet${i === 0 ? ' is-active' : ''}`} id={`onglet-${magie.cle}`} href={`#sorts-${magie.cle}`} style={couleurs(magie)}>
+            {magie.nom}
+          </a>
+        ))
+      }
+    </div>
+    {
+      autres.map(({ magie, groupes, total }, i) => (
+        <section
+          class={`autre-magie magie-teinte${i === 0 ? ' is-active' : ''}`}
+          id={`sorts-${magie.cle}`}
+          aria-labelledby={`sorts-${magie.cle}-titre`}
+          style={couleurs(magie)}
+        >
+          <h3 class="autre-magie__titre" id={`sorts-${magie.cle}-titre`}>
+            <a href={pageHref(magie.id)}>{titreDe(magie)}</a> <span class="count">{total}</span>
+          </h3>
+          {groupes.map((g) => <TableauNpm niveau={g.niveau} sorts={g.sorts} magies={magies} prefixe={`${magie.cle}-`} titre="h4" />)}
+        </section>
+      ))
+    }
+  </div>
+</section>
+
+<SortsInteractifs />

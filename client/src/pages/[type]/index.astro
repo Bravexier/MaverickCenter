@@ -1,0 +1,113 @@
+---
+import Base from '../../layouts/Base.astro';
+import EntryList from '../../components/EntryList.astro';
+import RacesPastilles from '../../components/race/RacesPastilles.astro';
+import ClassesPastilles from '../../components/classes/ClassesPastilles.astro';
+import MagiesConstellation from '../../components/magie/MagiesConstellation.astro';
+import TableauMagiesInnees from '../../components/magie/TableauMagiesInnees.astro';
+import TableauRelationsMagies from '../../components/magie/TableauRelationsMagies.astro';
+import MetiersTableau from '../../components/metier/MetiersTableau.astro';
+import GuideChapitre from '../../components/guide/GuideChapitre.astro';
+import { TYPES, TYPE_KEYS } from '../../lib/types.mjs';
+import { groupClasses } from '../../lib/class-groups.mjs';
+import { groupRaces } from '../../lib/race-kinds.mjs';
+import { groupByClass } from '../../lib/capacites.mjs';
+import { loadMagies } from '../../lib/magies';
+import { ouvrirBase } from '../../lib/donnees.mjs';
+import { chargerMetiers, contexteDesMetiers, PAGE_DES_REGLES } from '../../lib/metiers.mjs';
+import { PREMIER_CHAPITRE } from '../../lib/guide.mjs';
+import { entryHref } from '../../lib/wiki';
+import { entriesOfType, loadWiki } from '../../lib/wiki';
+
+export function getStaticPaths() {
+  return TYPE_KEYS.map((type) => ({ params: { type } }));
+}
+
+const { type } = Astro.params as { type: keyof typeof TYPES };
+const { entries } = await loadWiki();
+const list = entriesOfType(entries, type);
+// Les magies : la carte (MagiesConstellation), puis le tableau des relations entre magies.
+const dbMagies = type === 'magies' ? loadMagies() : null;
+const entriesById = new Map(list.map((entry) => [entry.id, entry]));
+const magiesIndex = dbMagies
+  ? [...dbMagies.magies.values()].flatMap((magie) => {
+      const entry = entriesById.get(magie.id);
+      return entry ? [{ entry, magie }] : [];
+    })
+  : [];
+// Les classes sont présentées en pastilles (sur le modèle de la carte des magies), une colonne par catégorie (voir lib/class-groups.mjs) ; les autres types en liste alphabétique.
+const classGroups = type === 'classes' ? groupClasses(list) : [];
+// Les races sont présentées en pastilles (sur le modèle de la carte des magies et des classes), pures à gauche et hybrides à droite, dans l'ordre du
+// propriétaire (lib/race-kinds.mjs), l'accroche en infobulle. Le tableau des magies innées de toutes les races est en bas de la page.
+const raceGroups = type === 'races' ? groupRaces(entries) : [];
+// Les dons de classe (pages `capacites/…`) sont rangés par classe (une fiche par don : plus de 600).
+const capaciteGroups = type === 'capacites' ? groupByClass(entries) : [];
+// Les métiers : un long tableau (lib/metiers.mjs, components/metier/MetiersTableau.astro), sans page par métier ; la page des règles est citée au-dessus.
+const metiers = type === 'metiers' ? chargerMetiers(ouvrirBase()) : [];
+const contexteMetiers = type === 'metiers' ? contexteDesMetiers(ouvrirBase()) : null;
+const pageDesRegles = type === 'metiers' ? list.find((e) => e.id === PAGE_DES_REGLES) : undefined;
+// Le guide : son premier chapitre (« Bienvenue »), une page de livre avec flèches et pagination (lib/guide.mjs, components/guide/GuideChapitre.astro) ;
+// les autres pages du type guide sont des pages de référence citées par les chapitres.
+const premierChapitre = type === 'guide' ? entries.find((e) => e.id === PREMIER_CHAPITRE) : undefined;
+const capaciteDetail = (e: any) => [`Niveau ${e.data.niveau}`, e.data.specialite, e.data.type_capacite].filter(Boolean).join(' · ');
+---
+
+<Base
+  title={premierChapitre ? `${TYPES[type].label} : ${premierChapitre.data.title}` : TYPES[type].label}
+  description={premierChapitre?.data.summary}
+  edition={premierChapitre ? premierChapitre.id : ['races', 'magies', 'classes', 'metiers'].includes(type) ? `${type}/` : undefined}
+>
+  {!premierChapitre && <h1>{TYPES[type].label}</h1>}
+  {type !== 'magies' && !premierChapitre && <p class="muted">{TYPES[type].blurb}</p>}
+  {
+    premierChapitre ? (
+      <GuideChapitre entry={premierChapitre} entries={entries} />
+    ) : type === 'magies' ? (
+      <>
+        <MagiesConstellation magies={magiesIndex} />
+        <section id="relations" aria-labelledby="relations-titre">
+          <h2 id="relations-titre">Relations entre magies</h2>
+          <TableauRelationsMagies entries={entries} />
+        </section>
+      </>
+    ) : metiers.length > 0 ? (
+      <>
+        {pageDesRegles && <p>Les règles générales sont sur la page <a href={entryHref(pageDesRegles)}>{pageDesRegles.data.title}</a>.</p>}
+        <MetiersTableau metiers={metiers} contexte={contexteMetiers!} />
+      </>
+    ) : classGroups.length > 0 ? (
+      <ClassesPastilles groups={classGroups} />
+    ) : capaciteGroups.length > 0 ? (
+      <>
+        <p class="muted">
+          Une fiche par don de classe. Les dons d'une même ligne dans l'onglet de la classe sont un choix : un seul peut être pris. La page de chaque classe les montre disposés comme l'onglet.
+        </p>
+        {capaciteGroups.map((group) => (
+          <section>
+            <h2>{group.classe ? <a href={entryHref(group.classe)}>{group.classe.data.title}</a> : 'Sans classe'} <span class="muted">({group.entries.length})</span></h2>
+            <ul class="entry-list">
+              {group.entries.map((e) => (
+                <li>
+                  <a href={entryHref(e)}>{e.data.title}</a> <span class="muted">{capaciteDetail(e)}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </>
+    ) : raceGroups.length > 0 ? (
+      <>
+        <RacesPastilles groups={raceGroups} />
+        <section id="magies-innees" aria-labelledby="magies-innees-titre">
+          <h2 id="magies-innees-titre">Magies innées par race</h2>
+          <p class="legend">Une pastille de la couleur de la magie : la race peut l’avoir en magie innée.</p>
+          <TableauMagiesInnees entries={entries} />
+        </section>
+      </>
+    ) : list.length ? (
+      <EntryList entries={list} showType={false} />
+    ) : (
+      <p>Aucune page pour l’instant dans cette catégorie.</p>
+    )
+  }
+</Base>

@@ -1,0 +1,39 @@
+/* Page du Potentiel Illimité : sorts des autres magies en onglets (components/magie/SortsDuPotentiel.astro, inséré en ?raw sur cette page seulement).
+   Les 14 onglets en grille, deux rangées de 7 à la largeur du site, plus de rangées sur un écran étroit (jamais de défilement horizontal), chacun avec
+   la pastille de sa magie ; l'onglet ouvert prend sa couleur. Le panneau est teinté de sa magie (.magie-teinte, base.css) : tableaux comme sur sa page.
+   Sans JavaScript (et à l'impression), les magies se suivent, chacune sous son titre. */
+.autres-magies__onglets { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.25rem, 1fr)); gap: 0.35rem; margin: 0.8rem 0 0; }
+.autre-magie__onglet {
+  display: flex; align-items: center; gap: 0.45rem; min-width: 0; padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text);
+  font-size: 0.88rem; font-weight: 600; line-height: 1.2; text-decoration: none; overflow-wrap: break-word;
+}
+.autre-magie__onglet::before {
+  content: ''; flex: none; width: 0.75rem; height: 0.75rem; border-radius: 50%;
+  background: var(--couleur-magie); box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 30%, transparent);
+}
+.autre-magie__onglet:hover { border-color: color-mix(in srgb, var(--couleur-magie) 60%, var(--border)); background: color-mix(in srgb, var(--couleur-magie) 10%, var(--surface)); }
+.autre-magie__onglet:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* onglet ouvert : fond de sa couleur et anneau mêlé au texte, visible même pour une couleur proche du fond (Vide en clair, Corruption en sombre) */
+html.js .autre-magie__onglet.is-active {
+  background: var(--couleur-magie); color: var(--couleur-texte-magie);
+  border-color: transparent; box-shadow: 0 0 0 2px color-mix(in srgb, var(--couleur-magie) 50%, var(--text));
+}
+html.js .autre-magie__onglet.is-active::before { box-shadow: 0 0 0 2px var(--couleur-texte-magie); }
+
+.autre-magie { margin-top: 1.2rem; scroll-margin-top: 1rem; }
+html.js .autre-magie:not(.is-active) { display: none; }
+.autre-magie__titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.6rem; margin: 0; padding-bottom: 0.4rem; font-size: 1.2rem; border-bottom: 3px solid var(--mag); }
+.autre-magie__titre a { color: var(--text); text-decoration: none; }
+.autre-magie__titre a:hover, .autre-magie__titre a:focus-visible { color: var(--mag-readable); text-decoration: underline; }
+.autre-magie__titre .count { font-size: 0.8rem; font-weight: normal; padding: 0.05rem 0.55rem; border-radius: 999px; background: var(--mag-soft); border: 1px solid var(--mag-line); color: var(--muted); }
+
+@media (max-width: 44rem) {
+  .autres-magies__onglets { grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr)); gap: 0.3rem; }
+  .autre-magie__onglet { gap: 0.35rem; padding: 0.4rem 0.45rem; font-size: 0.8rem; }
+  .autre-magie__onglet::before { width: 0.6rem; height: 0.6rem; }
+}
+@media print {
+  .autres-magies__onglets { display: none; }
+  html.js .autre-magie:not(.is-active) { display: block; }
+}

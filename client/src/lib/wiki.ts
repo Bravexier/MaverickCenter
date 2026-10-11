@@ -2,6 +2,7 @@ import { getCollection, type CollectionEntry } from 'astro:content';
 import { buildIndex, extractLinks, resolve } from './wikilinks.mjs';
 import { normalize } from './text.mjs';
 import { TYPES } from './types.mjs';
+import { cheminDePage } from './metiers.mjs';
 
 export type WikiEntry = CollectionEntry<'wiki'>;
 export type TypeKey = keyof typeof TYPES;
@@ -10,7 +11,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 /** URL absolue (avec le préfixe de déploiement) d'un chemin du site. */
 export const url = (path = '') => `${base}/${path.replace(/^\//, '')}`;
-export const entryHref = (entry: WikiEntry) => url(`wiki/${entry.id}/`);
+/** Lien vers une page du wiki ; pour un métier, sa ligne du tableau de /metiers/ (lib/metiers.mjs). */
+export const entryHref = (entry: WikiEntry) => url(cheminDePage(entry.id));
 export const typeOf = (entry: WikiEntry) => entry.id.split('/')[0] as TypeKey;
 export const slugOf = (entry: WikiEntry) => entry.id.split('/')[1];
 export const byTitle = (a: WikiEntry, b: WikiEntry) => a.data.title.localeCompare(b.data.title, 'fr');

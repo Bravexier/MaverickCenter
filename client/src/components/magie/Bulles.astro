@@ -1,0 +1,124 @@
+---
+// Infobulles des pages de magie (altérations d'état, règle spéciale d'un niveau) : un script, inclus une fois par MagiePage.
+// Un déclencheur porte `data-bulle="<id>"` ; sa bulle (`<span role="tooltip" id="<id>" hidden>`) s'affiche :
+//   - à la souris : au survol (et reste ouverte quand le pointeur passe sur la bulle : WCAG 1.4.13) ;
+//   - au clavier : au focus visible ; Échap ferme la bulle SEULE (le panneau du sort reste ouvert) ;
+//   - au toucher : un premier appui ouvre la bulle (sans suivre le lien d'une pastille d'état), un second suit le lien ; un appui ailleurs la ferme.
+// Elle est en position fixe près du déclencheur (le tableau des sorts défile et couperait une bulle absolue), bornée à l'écran, et suit le défilement.
+// Sans JavaScript : la bulle reste cachée et l'attribut `title` du déclencheur (texte simple) joue le rôle d'infobulle native.
+---
+
+<script>
+  let ouverte: { cible: HTMLElement; bulle: HTMLElement } | null = null;
+  let delai: number | undefined;
+  const tactile = matchMedia('(hover: none)');
+  const marge = 8;
+
+  // Avec JavaScript, la bulle riche remplace l'infobulle native : on retire `title` pour ne pas avoir les deux.
+  for (const c of document.querySelectorAll<HTMLElement>('[data-bulle][title]')) c.removeAttribute('title');
+
+  const borner = (v: number, min: number, max: number) => Math.max(min, Math.min(v, Math.max(min, max)));
+
+  function fermer() {
+    window.clearTimeout(delai);
+    if (!ouverte) return;
+    ouverte.bulle.hidden = true;
+    ouverte.bulle.removeAttribute('style');
+    ouverte.cible.removeAttribute('data-ouverte');
+    ouverte = null;
+  }
+
+  /** Place la bulle près de son déclencheur, du côté qui a le plus de place, sans sortir de l'écran (zone visible : sans la barre de défilement). */
+  function placer() {
+    if (!ouverte) return;
+    const { cible, bulle } = ouverte;
+    const largeur = document.documentElement.clientWidth;
+    const hauteur = document.documentElement.clientHeight;
+    const r = cible.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > hauteur) return fermer(); // le déclencheur est sorti de l'écran
+    bulle.style.maxHeight = `${hauteur - 2 * marge}px`;
+    const b = bulle.getBoundingClientRect();
+    const dessous = hauteur - r.bottom - 6 - marge;
+    const dessus = r.top - 6 - marge;
+    const enDessous = b.height <= dessous || dessous >= dessus;
+    bulle.style.left = `${borner(r.left, marge, largeur - b.width - marge)}px`;
+    bulle.style.top = `${borner(enDessous ? r.bottom + 6 : r.top - 6 - b.height, marge, hauteur - b.height - marge)}px`;
+  }
+
+  function ouvrir(cible: HTMLElement) {
+    window.clearTimeout(delai);
+    const bulle = document.getElementById(cible.dataset.bulle ?? '');
+    if (!bulle) return;
+    if (ouverte && ouverte.bulle === bulle) return;
+    fermer();
+    bulle.hidden = false;
+    bulle.style.position = 'fixed';
+    bulle.style.visibility = 'hidden';
+    cible.setAttribute('data-ouverte', '');
+    ouverte = { cible, bulle };
+    placer();
+    bulle.style.visibility = '';
+  }
+
+  const declencheur = (e: Event) => (e.target instanceof Element ? e.target.closest<HTMLElement>('[data-bulle]') : null);
+  const dansBulle = (n: EventTarget | null) => n instanceof Element && ouverte !== null && ouverte.bulle.contains(n);
+  /** Fermeture différée : le pointeur a le temps de passer du déclencheur à la bulle. */
+  const fermerBientot = () => {
+    window.clearTimeout(delai);
+    delai = window.setTimeout(fermer, 150);
+  };
+
+  document.addEventListener('mouseover', (e) => {
+    if (tactile.matches) return;
+    const c = declencheur(e);
+    if (c) ouvrir(c);
+    else if (dansBulle(e.target)) window.clearTimeout(delai);
+  });
+  document.addEventListener('mouseout', (e) => {
+    if (tactile.matches || !ouverte) return;
+    const c = declencheur(e);
+    const vers = e.relatedTarget as Node | null;
+    if (c && !c.contains(vers) && !dansBulle(vers)) fermerBientot();
+    else if (dansBulle(e.target) && !ouverte.bulle.contains(vers) && !ouverte.cible.contains(vers)) fermerBientot();
+  });
+  // Clavier : seulement le focus visible (un appui au toucher ou un clic de souris donne aussi le focus, mais ne doit pas ouvrir seul la bulle).
+  document.addEventListener('focusin', (e) => {
+    const c = declencheur(e);
+    if (c && c.matches(':focus-visible')) ouvrir(c);
+  });
+  document.addEventListener('focusout', (e) => {
+    if (declencheur(e)) fermer();
+  });
+  document.addEventListener('click', (e) => {
+    const c = declencheur(e);
+    if (dansBulle(e.target)) return;
+    if (!c) return fermer();
+    if (tactile.matches) {
+      // premier appui : la bulle ; une pastille d'état (un lien) ne suit son lien qu'au second appui, sur la même pastille
+      if (ouverte?.cible === c) {
+        if (c.tagName === 'BUTTON') fermer();
+      } else {
+        if (c.tagName === 'A') e.preventDefault();
+        ouvrir(c);
+      }
+    } else if (c.tagName === 'BUTTON') ouvrir(c);
+  });
+  // Échap ferme la bulle seule : on intercepte avant le gestionnaire du panneau du sort (SortsInteractifs), qui n'est pas prévenu quand une bulle était ouverte.
+  document.addEventListener(
+    'keydown',
+    (e) => {
+      if (e.key === 'Escape' && ouverte) {
+        fermer();
+        e.stopPropagation();
+      }
+    },
+    true,
+  );
+  let image = 0;
+  const replacer = () => {
+    cancelAnimationFrame(image);
+    image = requestAnimationFrame(placer);
+  };
+  window.addEventListener('scroll', replacer, { passive: true });
+  window.addEventListener('resize', replacer);
+</script>

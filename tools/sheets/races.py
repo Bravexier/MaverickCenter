@@ -14,6 +14,12 @@ par tools/sheets/xlsx_to_json.py ou sheets_api_to_json.py (format : voir ces scr
 fiable : elles ne sont jamais exécutées, seulement copiées (échappées pour le Markdown). Aucune valeur n'est calculée,
 corrigée ni complétée, à une exception près, explicite et signalée (RACE_DETAIL_OVERRIDES, voir plus bas).
 
+AFFICHAGE (migration 0007, décisions R12 et R13 de docs/decisions-regles.md) : le site ne rend plus le Markdown de ces pages. Les pages de race sont
+rendues depuis les tables de l'onglet (race_onglet, race_don, race_don_tableau_*, race_magie_onglet, mode_hyper_effet 'onglet_race'), tirées de ces
+pages par tools/db/races_onglet.py (preuve : chaque section se réécrit à l'identique avec les fonctions de ce script) ; les écarts avec la fiche
+n'y sont plus affichés (l'onglet est la source). Après une nouvelle importation, `python3 -I tools/db/races_onglet.py --verifier` signale que les
+tables ne sont plus celles des pages : il faut alors une migration qui les mette à jour.
+
 POLITIQUE DE PRIORITÉ (décision du propriétaire du projet) : l'onglet de la race du classeur « Les races » PRIME sur la
 « Fiche personnage Maverick Auto V15.2.2 » quand les deux divergent (la fiche est en retard : par exemple le Nain y a 15
 magies innées alors que son onglet en limite le nombre à 5, ou le Drakos y a Santé 10 / Chakra 13 alors que son onglet dit
@@ -51,9 +57,9 @@ confronté à la fiche, sans rien interpréter, chaque écart citant les deux c�
     soignent » du Mort-vivant ; une faute de frappe de la fiche, « particularité » pour « particularités » chez le Drakos,
     est aussi un écart : la comparaison est stricte).
 
-Sources (classeurs Google, propriété d'un tiers) :
+Sources (classeurs Google, copies du Drive du propriétaire, migration 0014) :
 
-  1. Google Sheet « Les races » (1KXO4Np9SnaOYopV1cUKsO-MPjNxgyJ39BEyDAai1Kg4), deux lectures :
+  1. Google Sheet « Les races » (150Q6SJi4ft0oROtwT6snMAZUdWMVtkblxwYY9TqxV4Q), deux lectures :
        * la PREMIÈRE FEUILLE (index) : une ligne par race, A = nom de la race, B = phrase de présentation. 27 lignes, sans
          en-tête. L'ordre de cette feuille donne l'ordre de traitement ; la phrase est le `summary` de la page ;
        * un ONGLET PAR RACE (27 onglets, lus onglet par onglet : le classeur entier, 34 Mo, dépasse la limite d'export).
@@ -91,7 +97,7 @@ Sources (classeurs Google, propriété d'un tiers) :
        « Sommaire » (si le dump le contient) = l'index, déjà lu. Les ILLUSTRATIONS des onglets (images) ne sont pas dans les
        dumps : elles ne sont pas importées.
 
-  2. Google Sheet « Fiche personnage Maverick Auto V15.2.2 » (1SvzNbdDVQyLE9cyp9U5USHBsxHpwxhtaWrFTu9CpLY4), onglets
+  2. Google Sheet « Fiche personnage Maverick Auto V15.2.2 » (1tDuJpoVVqMtRXBi0WKgH6lwzdQXVdNWPZVLFbdbFqY0), onglets
      MASQUÉS :
        * « Race » : une ligne par race (lignes 2 à 28, nom en A), en-têtes en ligne 1 (A1 vide) :
            B Santé, C Chakra départ, D Barrière bonus, E Vitesse sur terre, F Vitesse de Nage, G Divers, H AP, I AM,
@@ -224,10 +230,10 @@ STATUS = "draft"
 TAGS = ["race"]
 
 INDEX_TITLE = "Les races"
-INDEX_ID = "1KXO4Np9SnaOYopV1cUKsO-MPjNxgyJ39BEyDAai1Kg4"
+INDEX_ID = "150Q6SJi4ft0oROtwT6snMAZUdWMVtkblxwYY9TqxV4Q"
 INDEX_TAB = "première feuille"
 FICHE_TITLE = "Fiche personnage Maverick Auto V15.2.2"
-FICHE_ID = "1SvzNbdDVQyLE9cyp9U5USHBsxHpwxhtaWrFTu9CpLY4"
+FICHE_ID = "1tDuJpoVVqMtRXBi0WKgH6lwzdQXVdNWPZVLFbdbFqY0"
 TAB_RACE, TAB_BONUS, TAB_CLASS, TAB_MAGIE = "Race", "Bonus Race", "Accessibilité de Classe", "Accessibilité Magie"
 FICHE_TABS = (TAB_RACE, TAB_BONUS, TAB_CLASS, TAB_MAGIE)
 

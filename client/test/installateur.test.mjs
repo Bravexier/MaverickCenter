@@ -73,6 +73,11 @@ test('paramètres refusés : étiquette de test en production et inversement, ve
   assert.match(cli(ok.map((a) => (a === 'v0.2.0-test' ? 'v0.2.0' : a))).stderr, /étiquette de test/);
   assert.match(cli(ok.map((a) => (a === '0.2.0' ? '0.2' : a))).stderr, /--version invalide/);
   assert.match(cli(ok.map((a) => (a === 'v0.2.0-test' ? 'v0.2.0-test;rm' : a))).stderr, /--tag invalide/);
+  // Étiquettes du bot (tools/flux-git/regles.mjs) : production VX.Y (l'étiquette de version de master), test VX.Y.Z-test.
+  assert.equal(cli(['--mode', 'prod', ...ok.slice(2).map((a) => (a === 'v0.2.0-test' ? 'V0.2' : a))]).status, 0);
+  assert.equal(cli(['--mode', 'prod', ...ok.slice(2).map((a) => (a === 'v0.2.0-test' ? 'V0.2-hotfix.1' : a))]).status, 0);
+  assert.equal(cli(ok.map((a) => (a === 'v0.2.0-test' ? 'V0.2.3-test' : a))).status, 0);
+  assert.match(cli(ok.map((a) => (a === 'v0.2.0-test' ? 'V0.2;rm' : a))).stderr, /--tag invalide/);
 });
 
 for (const rsync of ['auto', '0']) {
@@ -84,8 +89,9 @@ for (const rsync of ['auto', '0']) {
     assert.deepEqual({ tag: champs(prod).tag, mode: champs(prod).mode, version: champs(prod).version }, { tag: 'v0.2.0', mode: 'prod', version: '0.2.0' });
     assert.match(lire(prod, '.env'), /MAVERICK_PORT=8080/);
     assert.match(lire(prod, '.env'), /MAVERICK_CONTENEUR=maverick-center$/m);
+    assert.doesNotMatch(lire(prod, '.env'), /MAVERICK_EDITION/, 'jamais d’édition sur le serveur normal');
     assert.ok(existsSync(join(prod, 'db')), 'dossier de la base vivante créé');
-    assert.ok(existsSync(join(prod, 'docker-compose.yml')) && existsSync(join(prod, 'nginx.conf')) && existsSync(join(prod, 'mise-a-jour.sh')) && !existsSync(join(prod, 'update-nas.sh')));
+    assert.ok(existsSync(join(prod, 'docker-compose.yml')) && existsSync(join(prod, 'nginx.conf')) && existsSync(join(prod, 'mise-a-jour.sh')) && !existsSync(join(prod, 'update-site.sh')));
     assert.match(r1.out, /Première installation/);
 
     // Ce que l'administrateur et l'usage réel ont posé : jamais touché par une mise à jour.
@@ -130,6 +136,7 @@ test('test : la base est une copie de celle de la production à l\'instant de l\
   assert.equal(champs(test_).mode, 'test');
   assert.match(lire(test_, '.env'), /MAVERICK_PORT=8081/);
   assert.match(lire(test_, '.env'), /MAVERICK_CONTENEUR=maverick-center-test/);
+  assert.match(lire(test_, '.env'), /^MAVERICK_EDITION=1$/m, 'édition des règles ouverte sur le serveur de test');
   const copie = new DatabaseSync(join(test_, 'db', 'maverick.db'));
   assert.deepEqual(copie.prepare('SELECT nom FROM fiche ORDER BY nom').all().map((l) => l.nom), ['Aldric', 'Brune']);
   copie.exec("INSERT INTO fiche VALUES ('Essai')"); // ce qu'on fait en test…
@@ -144,12 +151,56 @@ test('test : la base est une copie de celle de la production à l\'instant de l\
   verifierProd.exec("INSERT INTO fiche VALUES ('Cyrielle')");
   verifierProd.close();
 
-  // Nouvelle installation de test : nouvelle copie, les essais précédents disparaissent.
+  // Nouvelle installation de test : nouvelle copie, les essais précédents disparaissent. Le dossier db/ lui-même reste (même inode) : il est
+  // monté dans le conteneur du service, qui ne verrait pas un dossier remplacé ; seul son contenu change.
+  const dossierDb = statSync(join(test_, 'db')).ino;
+  writeFileSync(join(test_, 'db', 'essai-du-test.txt'), 'disparaît');
   const r2 = lancer(installateur({ mode: 'test', label: 'dev2', version: '0.2.4' }).fichier, ['--dossier', test_, '--dossier-prod', prod]);
   assert.equal(r2.code, 0, r2.out);
   const copie2 = new DatabaseSync(join(test_, 'db', 'maverick.db'));
   assert.deepEqual(copie2.prepare('SELECT nom FROM fiche ORDER BY nom').all().map((l) => l.nom), ['Aldric', 'Brune', 'Cyrielle']);
   copie2.close();
+  assert.equal(statSync(join(test_, 'db')).ino, dossierDb, 'db/ gardé, contenu remplacé');
+  assert.deepEqual(readdirSync(join(test_, 'db')).sort(), ['.copie-de-la-production', 'maverick.db', 'pieces']);
+  assert.ok(!readdirSync(test_).some((f) => f.startsWith('.db.')), 'aucun dossier provisoire restant');
+});
+
+test('test : MAVERICK_BASE_TEST=conservee copie la production à la première installation seulement, puis garde la base de test', { skip }, () => {
+  const parent = dossier('nas-conservee');
+  const prod = join(parent, 'maverick-center');
+  const test_ = join(parent, 'maverick-center-test');
+  assert.equal(lancer(installateur({ label: 'prod' }).fichier, ['--dossier', prod]).code, 0);
+  const base = new DatabaseSync(join(prod, 'db', 'maverick.db'));
+  base.exec("CREATE TABLE fiche (nom TEXT); INSERT INTO fiche VALUES ('Aldric');");
+  base.close();
+  // Le réglage est posé avant la première installation (deploy/vps/instances.sh) ; l'installateur ne réécrit jamais le .env.
+  mkdirSync(test_, { recursive: true });
+  const env = 'MAVERICK_CONTENEUR=maverick-center-test\nMAVERICK_PORT=127.0.0.1:8081\nMAVERICK_BASE_TEST=conservee\n';
+  writeFileSync(join(test_, '.env'), env);
+  const noms = (d) => {
+    const b = new DatabaseSync(join(d, 'db', 'maverick.db'));
+    try { return b.prepare('SELECT nom FROM fiche ORDER BY nom').all().map((l) => l.nom); } finally { b.close(); }
+  };
+
+  const r1 = lancer(installateur({ mode: 'test', label: 'dev', version: '0.2.1' }).fichier, ['--dossier', test_]);
+  assert.equal(r1.code, 0, r1.out);
+  assert.deepEqual(noms(test_), ['Aldric'], 'première installation : db/ vide, donc copie de la production');
+  const b = new DatabaseSync(join(test_, 'db', 'maverick.db'));
+  b.exec("INSERT INTO fiche VALUES ('Règle modifiée en dev')"); // ce qu'on fait en test…
+  b.close();
+  writeFileSync(join(test_, 'db', 'note.txt'), 'reste');
+  const p = new DatabaseSync(join(prod, 'db', 'maverick.db'));
+  p.exec("INSERT INTO fiche VALUES ('Brune')"); // …et ce que fait la production entre-temps
+  p.close();
+
+  const r2 = lancer(installateur({ mode: 'test', label: 'dev2', version: '0.2.2' }).fichier, ['--dossier', test_]);
+  assert.equal(r2.code, 0, r2.out);
+  assert.match(r2.out, /Base de test conservée/);
+  assert.deepEqual(noms(test_), ['Aldric', 'Règle modifiée en dev'], 'la base de test n\'est ni recopiée ni vidée');
+  assert.equal(lire(test_, 'db', 'note.txt'), 'reste');
+  assert.equal(lire(test_, 'site/index.html'), '<h1>accueil dev2</h1>', 'le site, lui, est mis à jour');
+  assert.equal(lire(test_, '.env'), env, '.env jamais écrasé');
+  assert.ok(!readdirSync(test_).some((f) => f.startsWith('.db.')), 'aucun dossier provisoire restant');
 });
 
 test('refus : mauvais mode d\'instance, production introuvable ou confondue avec le test', { skip }, () => {

@@ -1,0 +1,28 @@
+---
+import { racesOfMagie } from '../../lib/magie-relations.mjs';
+import { entryHref, type WikiEntry } from '../../lib/wiki';
+
+// Races qui peuvent avoir la magie en magie innée : une seule liste, dans l'ordre de /races/ (demande du propriétaire : ni séparation entre races pures
+// et hybrides, ni liste des races qui ne le peuvent pas, ni lien vers le tableau de /races/).
+interface Props {
+  entry: WikiEntry;
+  entries: WikiEntry[];
+}
+const { entry, entries } = Astro.props;
+const { avec, sans } = racesOfMagie(entries, entry);
+const total = avec.length + sans.length;
+---
+
+{
+  total > 0 && (
+    <section class="relations" id="races-disponibles" aria-labelledby="races-disponibles-titre">
+      <h2 id="races-disponibles-titre">Disponibilité par race</h2>
+      <p class="muted">Magie innée possible pour {avec.length} race{avec.length > 1 ? 's' : ''} sur {total}.</p>
+      {avec.length > 0 ? (
+        <ul class="chips">{avec.map((r) => <li><a class="chip" href={entryHref(r)}>{r.data.title}</a></li>)}</ul>
+      ) : (
+        <p>Aucune race ne peut l’avoir en magie innée.</p>
+      )}
+    </section>
+  )
+}

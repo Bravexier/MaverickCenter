@@ -1,0 +1,35 @@
+---
+import { etatHref, idBulle } from '../../lib/magies';
+import { infobulleDEtat } from '../../lib/sort-format.mjs';
+
+// Pastille d'une altération d'état, avec son infobulle (type, magie liée, effet de chaque stade). Le texte affiché est celui de la source
+// (« brûlure », « Gelé ») ; la bulle n'est faite que d'éléments « en ligne » (span) : la pastille est posée dans un paragraphe, où un bloc fermerait le <p>.
+// Le lien mène à la section de l'altération sur la page « Liste des altérations d'état ».
+interface Props {
+  etat: { id: string; nom: string; pageId: string; typeBrut: string; magiesLiees: { nom: string }[]; stades: { stade: number | null; effet: string }[] };
+  texte: string;
+  /** stade écrit dans le texte du sort (« brûlure 2 » → 2) : mis en avant dans l'infobulle */
+  stade?: number | null;
+  classe?: string;
+}
+const { etat, texte, stade = null, classe = '' } = Astro.props;
+const info = infobulleDEtat(etat, stade);
+const id = idBulle('etat');
+// texte simple pour l'infobulle native (sans JavaScript)
+const simple = [info.titre, ...info.sous, ...info.stades.map((s) => `${s.libelle} : ${s.effet}`)].join(' · ').replace(/\s*\n\s*/g, ' ');
+---
+
+<span class="bulle-zone"
+  ><a class={`chip chip--etat ${classe}`.trim()} href={etatHref(etat)} data-bulle={id} aria-describedby={id} title={simple}>{texte}</a
+  ><span class="bulle" role="tooltip" id={id} hidden
+    ><strong class="bulle__titre">{info.titre}</strong
+    ><span class="bulle__sous">{info.sous.join(' · ')}</span
+    >{info.stades.length > 0 && (
+      <span class="bulle__stades">
+        {info.stades.map((s) => (
+          <span class={`bulle__stade${s.actif ? ' is-actif' : ''}`}><span class="bulle__stade-nom">{s.libelle}</span><span>{s.effet}</span></span>
+        ))}
+      </span>
+    )}</span
+  ></span
+>

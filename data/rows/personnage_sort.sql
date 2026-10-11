@@ -1,0 +1,1 @@
+-- data/rows/personnage_sort.sql : export déterministe, une instruction par ligne, triée par (personnage_id, sort_id). NE PAS ÉDITER À LA MAIN.

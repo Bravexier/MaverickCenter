@@ -1,0 +1,27 @@
+---
+import type { Magies, SortDb } from '../../lib/magies';
+import SortsInteractifs from './SortsInteractifs.astro';
+import TableauNpm from './TableauNpm.astro';
+
+// Sorts d'une magie : un tableau par niveau de puissance magique (NPM), du plus faible au plus fort (TableauNpm.astro, le gabarit commun à toutes
+// les pages qui montrent des sorts). Sélectionner une ligne ouvre juste en dessous ses détails (SortDetail.astro) : effets (avec la remarque du
+// classeur et le texte du sort), règles propres.
+interface Props {
+  groupes: { niveau: number; sorts: SortDb[] }[];
+  magies: Magies;
+}
+const { groupes, magies } = Astro.props;
+const total = groupes.reduce((n, g) => n + g.sorts.length, 0);
+---
+
+<section class="magie-section" id="sorts" aria-labelledby="sorts-titre">
+  <h2 id="sorts-titre">Sorts <span class="count">{total}</span></h2>
+  <p class="muted sorts-aide">
+    Rangés par niveau de puissance magique (NPM).{' '}
+    <span class="js-only">Cliquez sur un sort pour ouvrir ses détails juste en dessous.</span>
+  </p>
+
+  {groupes.map((g) => <TableauNpm niveau={g.niveau} sorts={g.sorts} magies={magies} />)}
+</section>
+
+<SortsInteractifs />

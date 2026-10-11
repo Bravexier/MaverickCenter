@@ -1,8 +1,9 @@
 # Héberger le site sur un NAS
 
-Le site est **100 % statique** : un dossier de fichiers HTML à servir avec n'importe quel serveur web.
-Ce dossier contient tout pour le faire tourner avec nginx dans Docker (Synology *Container Manager*,
-QNAP *Container Station*, Unraid, TrueNAS, ou tout hôte Docker).
+Le site est un dossier de pages statiques, servi par nginx, accompagné d'un petit **service** (Node) qui enregistre les fiches de personnages
+dans sa base, `db/` (mode client / serveur : [`docs/serveur.md`](../docs/serveur.md)). Le code du service arrive avec le site (`site/_serveur/`).
+Ce dossier contient tout pour les faire tourner dans Docker (Synology *Container Manager*, QNAP *Container Station*, Unraid, TrueNAS, ou tout hôte
+Docker) : deux conteneurs, `maverick-center` (nginx) et `maverick-center-serveur` (le service).
 
 > Ce paquet est l'installation du NAS, jusqu'à la 1.0. À partir de la 1.0, la solution sera hébergée et installée par les
 > installateurs autonomes de [`installateur/`](installateur/README.md) (serveur normal et serveur de test).
@@ -22,10 +23,27 @@ QNAP *Container Station*, Unraid, TrueNAS, ou tout hôte Docker).
 
 Sur Synology : *Container Manager → Projet → Créer*, choisissez le dossier décompressé : il détecte `docker-compose.yml`.
 
+Le dossier `db/` (créé au premier lancement) contient la base vivante du service : **les fiches enregistrées**. C'est la seule donnée qui ne se
+reconstruit pas : sauvegardez-le (par exemple avec *Hyper Backup*), de préférence conteneur `maverick-center-serveur` arrêté.
+
+## Passage au mode client / serveur (une seule fois, NAS installé avant ce changement)
+
+`update-site.sh` (`update-nas.sh` sur un NAS installé avant son changement de nom) ne met à jour que `site/` : il apporte le code du service, mais pas la nouvelle configuration. Une fois :
+
+1. Remplacez `docker-compose.yml` et `nginx.conf` dans le dossier du projet par ceux du dépôt (dossier `deploy/` sur GitHub : ouvrir le fichier,
+   *Download raw file*, puis le déposer avec *File Station* à la place de l'ancien). Gardez `.htpasswd`, `.github-token` et `site/`.
+2. Relancez le projet : `docker compose up -d` (Synology : *Container Manager → Projet → maverick-center → Action → Compiler*). Le conteneur
+   `maverick-center-serveur` apparaît ; il attend que `site/_serveur/` existe (prochaine mise à jour du site) puis crée `db/vivante.db`.
+3. Vérifiez : `http://IP-DU-NAS:8080/api/etat/` doit afficher l'état du service (`"disponible":true`).
+
+Ensuite, plus rien à faire à la main : le service se relance seul quand une mise à jour du site apporte une nouvelle version de son code, et
+refait sa base quand les règles changent, sans perdre les fiches (voir `docs/serveur.md`).
+
 ## Sans Docker
 
 Servez le dossier `site/` avec le serveur web du NAS (Synology *Web Station*, par exemple) et activez un mot de passe
-d'accès dans ses réglages. Aucun module serveur n'est nécessaire (pas de PHP, pas de base de données).
+d'accès dans ses réglages : la lecture fonctionne. L'enregistrement des fiches demande en plus le service (Node.js ≥ 22.13 :
+`node site/_serveur/serveur/index.mjs`, voir ses variables dans `docs/serveur.md`) et un renvoi de `/api/` vers lui (port 8787).
 
 ## Accès depuis l'extérieur du réseau local
 
@@ -43,11 +61,16 @@ Si le site doit répondre sur une adresse du type `https://nas.exemple/maverick/
 ```
 PR fusionnée dans dev ──▶ GitHub Actions : tests + construction ──▶ branche « site » (privée)
                                                                          ▲
-                              NAS : update-nas.sh (toutes les 5 min) ────┘  connexions sortantes uniquement
+                              NAS : update-site.sh (toutes les 5 min) ───┘  connexions sortantes uniquement
 ```
 
 Aucun port à ouvrir : c'est le NAS qui interroge GitHub. Le workflow (`.github/workflows/livraison.yml`, job « Site », jusqu'à la 1.0 :
 voir `docs/flux-git.md`) refuse de publier si le dépôt n'est plus privé.
+
+> **Ancien nom : `update-nas.sh`.** Le script n'a rien de propre au NAS (il installe la branche `site` dans un dossier) : il s'appelle
+> `update-site.sh` et sert aussi au serveur de test du VPS avant la 0.2.0 ([`vps/README.md`](vps/README.md)). **Un NAS déjà installé garde sa
+> copie `update-nas.sh` : rien à changer**, ni le script, ni la tâche planifiée, ni `update-nas.env`. Si vous remplacez un jour le script par le
+> nouveau, il lit encore `update-nas.env` tant que `update-site.env` n'existe pas.
 
 ### Mise en place (une seule fois)
 
@@ -59,12 +82,12 @@ voir `docs/flux-git.md`) refuse de publier si le dépôt n'est plus privé.
    printf '%s' 'COLLEZ_LE_JETON_ICI' > .github-token && chmod 600 .github-token
    ```
    Ne le collez jamais dans une conversation, un fichier du dépôt ou un journal.
-3. **Premier essai à la main** : `sh update-nas.sh`. Il télécharge la version publiée et remplace le contenu de `site/`
+3. **Premier essai à la main** : `sh update-site.sh`. Il télécharge la version publiée et remplace le contenu de `site/`
    (journal dans `update.log`). Avant la première fusion, l'erreur « branche pas encore créée » est normale.
 4. **Planifier toutes les 5 minutes** :
    - Synology : *Panneau de configuration → Planificateur de tâches → Créer → Tâche planifiée → Script défini par l'utilisateur*,
-     utilisateur `root`, toutes les 5 minutes, commande `sh /volume1/docker/maverick-center/update-nas.sh` (adaptez le chemin) ;
-   - autre NAS ou Linux : `crontab -e` puis `*/5 * * * * sh /chemin/vers/update-nas.sh`.
+     utilisateur `root`, toutes les 5 minutes, commande `sh /volume1/docker/maverick-center/update-site.sh` (adaptez le chemin) ;
+   - autre NAS ou Linux : `crontab -e` puis `*/5 * * * * sh /chemin/vers/update-site.sh`.
 
 ### Ce que fait le script
 
@@ -73,8 +96,8 @@ voir `docs/flux-git.md`) refuse de publier si le dépôt n'est plus privé.
   et ne touche alors **pas** au site en place.
 - Remplace le contenu de `site/` (avec `rsync` s'il existe, sinon par copie), sans redémarrer nginx.
 - Un jeton expiré ou un problème réseau n'abîme rien : le site reste tel quel et `update.log` indique l'erreur.
-- `sh update-nas.sh --force` réinstalle même si la version est déjà à jour. Les réglages (`REPO`, `BRANCH`, `SITE_DIR`…)
-  se placent dans un fichier facultatif `update-nas.env` à côté du script.
+- `sh update-site.sh --force` réinstalle même si la version est déjà à jour. Les réglages (`REPO`, `BRANCH`, `SITE_DIR`…)
+  se placent dans un fichier facultatif `update-site.env` à côté du script (à défaut, l'ancien `update-nas.env` est lu).
 
 ### Entretien
 
@@ -84,6 +107,8 @@ voir `docs/flux-git.md`) refuse de publier si le dépôt n'est plus privé.
 
 ## Ce qui a été vérifié
 
-Le site statique est construit et testé (tests unitaires, contrôle navigateur). Le script `update-nas.sh` est testé contre un
-faux serveur GitHub (`client/test/update-nas.test.mjs`). Ni la configuration nginx, ni `docker-compose.yml`, ni le contact avec le
-vrai GitHub depuis un NAS n'ont pu être exécutés dans l'environnement de développement : le premier lancement sur le NAS est le vrai test.
+Le site statique est construit et testé (tests unitaires, contrôle navigateur). Le script `update-site.sh` est testé contre un
+faux serveur GitHub (`client/test/update-site.test.mjs`), le service par `client/test/serveur-*.test.mjs`. `docker-compose.yml` et `nginx.conf` ont été
+lancés avec Docker dans l'environnement de développement (le 2026-10-10 : mot de passe, pages, `/api/`, `/_serveur/` refusé, relance du service sur une
+nouvelle version, base refaite quand les règles changent, site servi service arrêté). Le contact avec le vrai GitHub depuis un NAS n'a pas pu l'être :
+le premier lancement sur le NAS reste le vrai test.

@@ -235,8 +235,11 @@ const COULEURS = {
 export const COULEUR_PAR_DEFAUT = '#ad5e29';
 export const couleurDeMagie = (nom) => COULEURS[normalize(nom ?? '')] ?? COULEUR_PAR_DEFAUT;
 
-export function texteSurCouleurDeMagie(nom) {
-  const composantes = couleurDeMagie(nom).slice(1).match(/.{2}/g).map((canal) => parseInt(canal, 16) / 255);
+export const texteSurCouleurDeMagie = (nom) => texteSurCouleur(couleurDeMagie(nom));
+
+/** Texte lisible sur un fond de cette couleur (« #rrggbb ») : presque noir sur une couleur claire (jaune), blanc sinon. */
+export function texteSurCouleur(couleur) {
+  const composantes = couleur.slice(1).match(/.{2}/g).map((canal) => parseInt(canal, 16) / 255);
   const canauxLineaires = composantes.map((canal) => (canal <= 0.04045 ? canal / 12.92 : ((canal + 0.055) / 1.055) ** 2.4));
   const luminance = canauxLineaires[0] * 0.2126 + canauxLineaires[1] * 0.7152 + canauxLineaires[2] * 0.0722;
   return luminance > 0.179 ? '#171210' : '#ffffff';

@@ -5,11 +5,18 @@ name: Garde des branches
 #     poussée sur GitHub est SUPPRIMÉE aussitôt (le travail reste dans le dépôt local de son auteur) ;
 #   - master n'accepte en PR que dev et hotfix/<nom>, dev que feature/<nom> ; le check « regles-de-branches » le contrôle
 #     (à rendre obligatoire, voir .github/rulesets/).
+#   - toutes les 6 heures (et à la demande : Actions → Garde des branches → Run workflow), un balayage depuis la branche par défaut
+#     rattrape ce que la garde de création ne voit pas (elle est lue dans le commit de la branche créée : une branche créée depuis un
+#     commit antérieur au flux y échappe) : nom interdit et déjà fusionnée → supprimée ; travail non fusionné ou mauvais point de
+#     départ → signalé en rouge, jamais supprimé.
 # La logique est dans tools/flux-git/ (testée par client/test/flux-git.test.mjs).
 on:
   create:
   pull_request:
     types: [opened, reopened, synchronize, edited]
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -68,3 +75,19 @@ jobs:
           DEPOT_SOURCE: ${{ github.event.pull_request.head.repo.full_name }}
           DEPOT: ${{ github.repository }}
         run: node tools/flux-git/cli.mjs verifier-pr --base "$BASE" --head "$HEAD" --sha "$SHA" --depot-source "$DEPOT_SOURCE" --depot "$DEPOT"
+
+  balayage:
+    name: balayage-des-branches
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # supprimer une branche au nom interdit déjà fusionnée
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Contrôler toutes les branches du dépôt
+        run: node tools/flux-git/cli.mjs balayer --pousser

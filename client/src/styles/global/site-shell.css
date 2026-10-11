@@ -1,0 +1,35 @@
+/* au-dessus du contenu : la pointe de l'épée du logo, qui dépasse sous la bande, passe devant le haut de la page */
+.site-header { position: relative; z-index: 2; background: var(--surface); border-bottom: 1px solid var(--border); }
+/* En-tête : le logo à gauche (lien vers l'accueil), puis le menu sur deux lignes : les rubriques, puis les entrées de la rubrique sélectionnée.
+   Pas de barre de recherche (demande du propriétaire) : la recherche est une page du menu Outils. La hauteur de la bande est celle du MENU, pas du logo (demande du propriétaire) :
+   le lien garde la largeur du logo et la hauteur de la bande, l'image y est posée en absolu, alignée en haut, et la pointe de l'épée dépasse sous la
+   bordure. Seul le lien est cliquable (l'image laisse passer les clics) : la partie qui dépasse ne cache rien du contenu. */
+.site-header__inner { display: flex; align-items: center; gap: 1.5rem; padding-block: 0.5rem; }
+.brand { flex: none; align-self: stretch; position: relative; width: 7rem; line-height: 0; }
+.brand img { position: absolute; top: 0; left: 0; display: block; height: 7rem; width: auto; pointer-events: none; }
+.site-header__menu { flex: 1; min-width: 0; }
+.site-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.25rem 0.5rem; }
+.site-nav ul[hidden] { display: none; }
+.site-nav__groups { padding-block: 0.3rem 0.4rem !important; }
+.nav-group__toggle { background: none; border: 0; border-radius: var(--radius); padding: 0.3rem 0.8rem; cursor: pointer; font-weight: bold; }
+.nav-group__toggle:hover { background: var(--border); }
+.nav-group__toggle[aria-current='true'] { color: var(--accent); }
+.nav-group__toggle[aria-pressed='true'] { background: var(--border); box-shadow: inset 0 -3px 0 var(--accent); }
+.site-nav__items { border-top: 1px solid var(--border); padding: 0.45rem 0 0.3rem !important; gap: 0.25rem 1.1rem !important; }
+.site-nav__items a { text-decoration: none; color: var(--text); }
+.site-nav__items a:hover { color: var(--accent); text-decoration: underline; }
+.site-nav__items a[aria-current='page'] { color: var(--accent); font-weight: bold; }
+.nav-soon { color: var(--muted); font-style: italic; }
+.site-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem 1.5rem; color: var(--muted); font-size: 0.85rem; padding-block: 1.5rem; }
+.site-footer__version { white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* Serveur de test (SITE_MODE=test) : impossible à confondre avec la production. */
+.bandeau-test { margin: 0; padding: 0.4rem 1rem; text-align: center; background: #b45309; color: #fff; font-size: 0.9rem; }
+/* Écran plus étroit que le menu sur une ligne : le logo réduit sur la première ligne, le menu dessous sur toute la largeur. */
+@media (max-width: 60rem) {
+  .site-header__inner { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.3rem 1rem; }
+  .site-header__menu { display: contents; }
+  /* le menu passe sous le logo : la première ligne reprend la hauteur du logo, qui ne dépasse plus */
+  .brand { align-self: start; width: auto; }
+  .brand img { position: static; height: 5rem; pointer-events: auto; }
+  .site-nav { grid-column: 1 / -1; grid-row: 2; }
+}

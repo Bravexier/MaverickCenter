@@ -1,0 +1,55 @@
+---
+import { etatHref, pageHref, type Magies, type MagieDb } from '../../lib/magies';
+import { infobulleDEtat } from '../../lib/sort-format.mjs';
+
+// Altération d'état liée à la magie (colonne « Magie Liée » de la « Liste des altérations d'état » : tables etat, etat_magie, etat_stade), entre la
+// présentation et les résistances (demande du propriétaire). Nom (lien vers sa section de la liste), type, effet de chaque stade ; une altération partagée
+// (Surcharge Magique : Arcane et Corruption) nomme l'autre magie. Rien quand la magie n'en a pas (Potentiel Illimité).
+interface Props {
+  magie: MagieDb;
+  magies: Magies;
+}
+const { magie, magies } = Astro.props;
+const etats = magie.etats.map((id) => {
+  const etat = magies.etats.get(id)!;
+  return {
+    etat,
+    info: infobulleDEtat(etat),
+    autres: etat.magiesLiees.filter((l) => l.id !== magie.id).map((l) => ({ href: pageHref(l.id), nom: l.nom })),
+  };
+});
+---
+
+{
+  etats.length > 0 && (
+    <section class="magie-section" id="alteration" aria-labelledby="alteration-titre">
+      <h2 id="alteration-titre">{etats.length > 1 ? 'Altérations d’état' : 'Altération d’état'}</h2>
+      {etats.map(({ etat, info, autres }) => (
+        <article class="etat-lie">
+          <h3 class="etat-lie__titre">
+            <a href={etatHref(etat)}>{info.titre}</a> <span class="etat-lie__type">{etat.typeBrut}</span>
+          </h3>
+          {autres.length > 0 && (
+            <p class="etat-lie__aussi muted">
+              Aussi liée à{' '}
+              {autres.map((a, i) => (
+                <>
+                  {i > 0 && ', '}
+                  <a href={a.href}>{a.nom}</a>
+                </>
+              ))}
+            </p>
+          )}
+          <ol class="etat-lie__stades">
+            {info.stades.map((s) => (
+              <li class="etat-lie__stade">
+                <span class="etat-lie__stade-nom">{s.libelle}</span>
+                <p class="texte">{s.effet}</p>
+              </li>
+            ))}
+          </ol>
+        </article>
+      ))}
+    </section>
+  )
+}

@@ -4,11 +4,14 @@ name: Version et livraison
 #   feature/<nom> → dev     dev : X.Y.Z+1 (master inchangée)
 #   dev → master            master et dev : X.Y+1.0, ou X+1.0.0 si la PR porte [V: X+1]
 #   hotfix/<nom> → master   master inchangée ; master refusionnée dans dev ; dev : X.Y.Z+1
+# Chaque nouvelle version est étiquetée sur le commit qui la porte : VX.Y.Z sur dev, VX.Y sur master (tools/flux-git/regles.mjs).
 # Puis la publication, selon la version (la 1.0 est le signal du propriétaire : elle apporte la connexion Discord) :
 #   avant la 1.0       job « Site » : le site unique, reconstruit depuis dev et publié sur la branche « site » (le NAS la suit avec
 #                      sa propre installation, deploy/update-nas.sh) — le fonctionnement d'avant le flux, inchangé ;
 #   à partir de 1.0    job « Installateur » : la solution est hébergée ; un script autonome par fusion (deploy/installateur/), publié en
-#                      « release » privée — serveur normal (vX.Y.Z, puis vX.Y.Z-hotfix.N) depuis master, test (vX.Y.Z-test) depuis dev.
+#                      « release » privée — serveur normal (VX.Y, l'étiquette de version de master, puis VX.Y-hotfix.N) depuis master,
+#                      test (VX.Y.Z-test) depuis dev.
+# Enfin (job « Supprimer la branche fusionnée »), la feature/<nom> ou la hotfix/<nom> fusionnée est supprimée sur GitHub, jamais dev.
 # Lancement manuel (Actions → Version et livraison → Run workflow) : republie dev ou master sans changer sa version.
 on:
   pull_request:
@@ -35,6 +38,7 @@ jobs:
     outputs:
       installateurs: ${{ steps.bot.outputs.installateurs }}
       site: ${{ steps.bot.outputs.site }}
+      a_supprimer: ${{ steps.bot.outputs.a_supprimer }}
     steps:
       - name: Garde-fou — le contenu appartient à un tiers
         env:
@@ -79,6 +83,25 @@ jobs:
               --texte-fichier "$RUNNER_TEMP/titre.txt" --texte-fichier "$RUNNER_TEMP/corps.txt" --pousser
           fi
 
+  nettoyage:
+    name: Supprimer la branche fusionnée
+    needs: version
+    # Seulement quand le bot a tout fait (une hotfix dont la refusion a échoué reste, pour la reprendre), et pour une branche de ce dépôt.
+    if: needs.version.result == 'success' && needs.version.outputs.a_supprimer != '' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Supprimer feature/<nom> ou hotfix/<nom> (seulement si elle n'a pas bougé depuis la fusion)
+        env:
+          BRANCHE: ${{ needs.version.outputs.a_supprimer }}
+          FUSIONNEE: ${{ github.event.pull_request.head.sha }}
+        run: node tools/flux-git/cli.mjs supprimer-fusionnee --branche "$BRANCHE" --sha "$FUSIONNEE" --pousser
+
   site:
     name: Site (avant la 1.0)
     needs: version
@@ -93,6 +116,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ needs.version.outputs.site }}
+
+      # Page « Mise à jour » du site de dev : la base de la production (master, telle qu'elle est maintenant) à côté de celle du site
+      # (scripts/db-reference.mjs ; rien en mode prod).
+      - run: git fetch --no-tags --depth=1 origin +refs/heads/master:refs/remotes/origin/master
 
       - uses: actions/setup-node@v4
         with:
@@ -144,6 +171,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ matrix.livraison.sha }}
+
+      # Page « Mise à jour » du site de dev : la base de la production (master, telle qu'elle est maintenant) à côté de celle du site
+      # (scripts/db-reference.mjs ; rien en mode prod).
+      - run: git fetch --no-tags --depth=1 origin +refs/heads/master:refs/remotes/origin/master
 
       - uses: actions/setup-node@v4
         with:

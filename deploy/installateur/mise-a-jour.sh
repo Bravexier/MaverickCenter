@@ -1,9 +1,9 @@
 #!/bin/sh
 # Mise à jour automatique d'une instance posée par un installateur (à partir de la 1.0, voir docs/flux-git.md et README.md à côté).
-# Chaque fusion dans master publie un installateur du serveur normal (vX.Y.Z, puis vX.Y.Z-hotfix.N), chaque fusion dans dev un
-# installateur du serveur de test (vX.Y.Z-test). Ce script prend le plus récent pour le mode de l'instance (lu dans son fichier
+# Chaque fusion dans master publie un installateur du serveur normal (VX.Y, puis VX.Y-hotfix.N), chaque fusion dans dev un
+# installateur du serveur de test (VX.Y.Z-test). Ce script prend le plus récent pour le mode de l'instance (lu dans son fichier
 # VERSION) et l'exécute s'il n'est pas déjà installé ; le serveur de test reprend alors une copie fraîche de la base du serveur normal.
-# (Le NAS d'avant la 1.0 a sa propre mise à jour : deploy/update-nas.sh.)
+# (Le NAS d'avant la 1.0 a sa propre mise à jour : deploy/update-site.sh, qui suit la branche « site ».)
 #
 # Connexions SORTANTES uniquement : aucun port à ouvrir.
 # Prérequis : sh, curl, tar, gzip. Pas de Node, pas de Docker requis pour ce script.
@@ -114,7 +114,7 @@ else
 fi
 TAG=$(champ tag_name < "$TMP/livraison.json" | head -n 1)
 case "$TAG" in
-  v[0-9]*) ;;
+  [vV][0-9]*) ;;
   *) die "réponse inattendue de GitHub (étiquette « $TAG »)" ;;
 esac
 case "$TAG" in

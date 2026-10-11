@@ -109,6 +109,13 @@ function couvre(sourceRef, classeur, onglet, cellule) {
 }
 const corrections = db.prepare("SELECT dump, classeur, onglet, cellule, champ, avant, apres FROM correction").all();
 bilan.corrections = corrections.length;
+// Le site de dev est la source des données qu'il modifie (décision du propriétaire) : une correction dont les lignes ont toutes été supprimées par le site
+// (D11 : un don, une spécialité ; historique_modification, `avant.source_ref` de la ligne supprimée) n'a plus de ligne à vérifier, elle est ignorée.
+const supprimeesParLeSite = noms.has('historique_modification')
+  ? db.prepare("SELECT avant FROM historique_modification WHERE operation = 'supprimer' AND avant IS NOT NULL").all()
+    .map((h) => { try { return JSON.parse(h.avant)?.source_ref; } catch { return null; } }).filter((s) => typeof s === 'string')
+  : [];
+let correctionsLignesSupprimees = 0;
 const tablesCellules = tables.filter((t) => !fts.includes(t.name) && !['correction', 'note_cellule', 'ecart_source'].includes(t.name) && colonnes(t.name).some((c) => c.name === 'source_ref'));
 for (const c of corrections.filter((x) => x.champ === 'v')) {
   let couvertes = 0, avecApres = 0;
@@ -121,23 +128,35 @@ for (const c of corrections.filter((x) => x.champ === 'v')) {
       if (txt.some((k) => typeof r[k] === 'string' && r[k].includes(c.apres))) avecApres += 1;
     }
   }
-  if (!couvertes) problemes.push(`correction ${c.dump}!${c.onglet}!${c.cellule} : aucune ligne typée ne couvre la cellule`);
+  if (!couvertes && supprimeesParLeSite.some((s) => couvre(s, c.classeur, c.onglet, c.cellule))) correctionsLignesSupprimees += 1;
+  else if (!couvertes) problemes.push(`correction ${c.dump}!${c.onglet}!${c.cellule} : aucune ligne typée ne couvre la cellule`);
   else if (!avecApres) problemes.push(`correction ${c.dump}!${c.onglet}!${c.cellule} : « ${c.apres} » ne figure dans aucune ligne qui couvre la cellule`);
 }
+if (correctionsLignesSupprimees) bilan.corrections_lignes_supprimees = correctionsLignesSupprimees;
 
-// Remarques : une note de cellule d'une entité dont la table a une colonne `remarque` figure dans cette remarque (texte sans espaces de bordure). Tant que les importeurs écrivent
-// les deux, la remarque ne peut pas perdre une note ; la table `note_cellule` garde la cellule d'origine et la nature (note, commentaire résolu).
+// Remarques : une note de cellule d'une entité dont la table a une colonne `remarque` figure dans la remarque que l'import a écrite (texte sans espaces de bordure). Tant que les
+// importeurs écrivent les deux, la remarque ne peut pas perdre une note ; la table `note_cellule` garde la cellule d'origine et la nature (note, commentaire résolu).
+// Le site de dev est la source des données qu'il modifie (décision du propriétaire) : la remarque comparée est celle d'avant ses modifications (historique_modification,
+// lib/historique-site.mjs#valeurDImport) ou, pour une note que le site tient d'accord avec sa remarque (dons du Médusain, serveur/edition.mjs : races_onglet.py
+// --verifier relit la note dans la page), la remarque actuelle ; une ligne qu'il a créée ou supprimée est ignorée.
 {
+  const { historiqueSite } = await import(pathToFileURL(`${LIB}/historique-site.mjs`).href);
+  const historique = historiqueSite(db);
   let verifiees = 0;
+  let ignorees = 0;
   for (const n of db.prepare('SELECT entite_table, entite_id, cellule, texte FROM note_cellule').all()) {
     if (!noms.has(n.entite_table) || !colonnes(n.entite_table).some((c) => c.name === 'remarque')) continue;
     const cle = colonnes(n.entite_table).filter((c) => c.pk);
     if (cle.length !== 1) continue;
-    const ligne = db.prepare(`SELECT remarque FROM "${n.entite_table}" WHERE "${cle[0].name}" = ?`).get(n.entite_id);
+    const ligne = db.prepare(`SELECT "${cle[0].name}" AS id, remarque FROM "${n.entite_table}" WHERE "${cle[0].name}" = ?`).get(n.entite_id);
+    const cleLigne = { [cle[0].name]: ligne ? ligne.id : n.entite_id };
+    if (historique.creee(n.entite_table, cleLigne) || historique.supprimee(n.entite_table, cleLigne)) { ignorees += 1; continue; }
     verifiees += 1;
-    if (!ligne || typeof ligne.remarque !== 'string' || !ligne.remarque.includes(n.texte.trim())) problemes.push(`remarque : la note ${n.entite_table}:${n.entite_id} (${n.cellule ?? 'cellule inconnue'}) ne figure pas dans la remarque de sa ligne`);
+    const remarques = ligne ? [historique.valeurDImport(n.entite_table, cleLigne, 'remarque', ligne.remarque), ligne.remarque] : [];
+    if (!remarques.some((r) => typeof r === 'string' && r.includes(n.texte.trim()))) problemes.push(`remarque : la note ${n.entite_table}:${n.entite_id} (${n.cellule ?? 'cellule inconnue'}) ne figure pas dans la remarque de sa ligne`);
   }
   bilan.notes_dans_remarque = verifiees;
+  if (ignorees) bilan.notes_lignes_du_site = ignorees;
 }
 
 // Niveaux de maîtrise (NM) : chaque bonus de sort_bonus_maitrise recopie une expression EXACTE de la cellule de son sort (texte_brut, puis le passage qui la contient), et la colonne

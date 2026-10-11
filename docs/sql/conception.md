@@ -22,7 +22,7 @@ Le propriétaire n'aime pas que la donnée des magies « soit un script » : la 
 
 1. **SQLite ≥ 3.45** (tables STRICT, FTS5, fonctions de fenêtre). Lecture : `node:sqlite` (Node ≥ 22.13, sans option). Écriture : `sqlite3` de la bibliothèque standard Python (`python3 -I`).
 2. **Site Astro statique + API Node en lecture seule** dans Docker derrière nginx avec mot de passe. Aucune écriture par le web.
-3. **La source de vérité reste Google Sheets / Docs** (propriété d'un tiers). La base est une **copie reconstruite** : l'import est idempotent et déterministe.
+3. **La source de vérité reste Google Sheets / Docs** (copies dans le Drive du propriétaire depuis la migration `0014-sources-copies-drive` ; originaux de l'ancien mainteneur). La base est une **copie reconstruite** : l'import est idempotent et déterministe.
 4. **Persistance dans git par export texte déterministe** (`data/rows/<table>.sql`). Le fichier `.db` n'est jamais commité ; les tables dérivées se recalculent.
 5. **Règle d'or** : jamais de règle ni de valeur inventée. Absent = `NULL`, jamais une valeur par défaut ; chaque ligne importée garde sa provenance (`origine`, `source_ref`).
 6. Conventions de nommage (§2) : français, singulier, snake_case, ASCII ; clés TEXT lisibles `<type>/<slug>` ; tables STRICT ; clés étrangères actives ; CHECK pour les énumérations.
@@ -31,7 +31,7 @@ Le propriétaire n'aime pas que la donnée des magies « soit un script » : la 
 
 | Exigence | Dans cette conception | Reste à faire (hors périmètre actuel) |
 | --- | --- | --- |
-| Le NAS est temporaire : rien de spécifique hors `deploy/` | Un seul artefact de données portable (`maverick.db`) ; l'API est un fichier Node sans dépendance configuré par variables d'environnement (`MAVERICK_DB`, `PORT`, `SCHEMA_VERSION`) ; nginx et `update-nas.sh` ne sont qu'un habillage (§8.4) | Dockerfile de l'API (lot 3), choix de l'hébergeur |
+| Le NAS est temporaire : rien de spécifique hors `deploy/` | Un seul artefact de données portable (`maverick.db`) ; l'API est un fichier Node sans dépendance configuré par variables d'environnement (`MAVERICK_DB`, `PORT`, `SCHEMA_VERSION`) ; nginx et `update-site.sh` ne sont qu'un habillage (§8.4) | Dockerfile de l'API (lot 3), choix de l'hébergeur |
 | La base SQLite est le pivot : identifiants stables, jamais réutilisés | Identifiants lisibles stables entre deux imports ; **garde `db:ids`** (testée) : un identifiant qui disparaît doit être déclaré dans `data/redirections.json` (§10.2) | Table `redirection` et gel des identifiants à la bascule vers l'édition |
 | SQL portable (PostgreSQL possible) | Les constructions propres à SQLite sont peu nombreuses, confinées et listées avec leur équivalent (§10.4) ; l'export de lignes est du `INSERT` standard | Convertisseur PostgreSQL si la bascule a lieu |
 | Modifications historisées (qui, quand, avant/après, brouillon/validé) | **Rien n'est construit** (aucune table inventée) ; le schéma évolue par migrations additives (§10.3) | Tables d'historique et service d'écriture à la bascule |
@@ -139,7 +139,7 @@ vierge (Python et Node). Les 131 tables de base sont **toutes non vides** une fo
 ### 4.1 Le flux
 
 ```
-Google Sheets / Docs (source de vérité, propriété d'un tiers)
+Google Sheets / Docs (source de vérité, copies du propriétaire)
    │  tools/sheets/xlsx_to_json.py, sheets_api_to_json.py, tools/import-gdocs.mjs      (existants)
    ▼
 dumps JSON ─► tools/sheets/corriger-dump.py   (registre tools/sheets/corrections.json, appliqué AVANT les extracteurs)
@@ -153,7 +153,7 @@ var/maverick.db  (jamais commité) ─► npm run db:check  ─► npm run db:id
    ├─► astro build : loader de contenu + index des [[liens]] ─► client/dist (statique)
    ├─► npm run db:export-rules ─► client/src/data/rules.json (généré)
    └─► API en lecture seule (api/db-reader) ─► /api/v1 derrière nginx
-publication : branche `site` = site statique + data/maverick.db + code de l'API ; NAS : update-nas.sh (remplacement atomique)
+publication : branche `site` = site statique + data/maverick.db + code de l'API ; NAS : update-site.sh (remplacement atomique)
 ```
 
 Reconstruction complète d'une base depuis `data/rows` : **0,44 s** en Python, **1,4 s** en Node (construction + dérivées + contrôles).
@@ -270,7 +270,7 @@ Une route composée par domaine (magie + sorts, race + ethnies, créature, arme�
 **Sécurité.** Connexion `readOnly` + `PRAGMA query_only = ON` ; aucun SQL fourni par l'appelant ; noms de table et de colonne **validés contre `sqlite_master`** (jamais interpolés tels quels) ; valeurs liées par paramètres ;
 filtres seulement sur colonnes indexées (pas de balayage complet) ; requête plein texte nettoyée (au plus 8 mots, `"mot"*`, aucune syntaxe FTS brute) ; `X-Content-Type-Options: nosniff` ; l'authentification reste devant (nginx, mot de passe) tant qu'il n'y a pas de rôles.
 
-**Remplacement à chaud de la base** (`update-nas.sh` : copie puis `rename` atomique). À chaque requête, l'API compare (inode, taille, mtime) ; si le fichier a changé, elle ouvre le nouveau, le **contrôle** (version de schéma attendue via `SCHEMA_VERSION`, lecture de `page`) puis l'échange.
+**Remplacement à chaud de la base** (`update-site.sh` : copie puis `rename` atomique). À chaque requête, l'API compare (inode, taille, mtime) ; si le fichier a changé, elle ouvre le nouveau, le **contrôle** (version de schéma attendue via `SCHEMA_VERSION`, lecture de `page`) puis l'échange.
 Un fichier inutilisable (corrompu, autre version, absent) laisse **l'ancienne base en service** et `GET /sante` répond `ok: false` avec la raison ; au démarrage sur un fichier inutilisable : 503 explicite. Vérifié sous charge : 200 requêtes pendant un `rename`, aucune erreur 5xx, chaque réponse vient d'une base entière.
 
 ---
@@ -295,6 +295,10 @@ si bien que le chargeur et l'index lisent la même base sans filtre. `HIDE_EXAMP
 
 ### 8.3 Le générateur de fiche : `rules.json` généré par SELECT
 
+> **Remplacé** (2026-10-10) : l'ancien générateur, `character.mjs` et `rules.json` ont été retirés. La fiche de personnage (`/fiche/`) lit les règles dans
+> `/fiche/regles.json`, tiré de la base au build par `client/src/lib/fiche-regles.mjs` (des SELECT simples, rien de calculé), et calcule avec
+> `client/src/lib/fiche-moteur.mjs` (voir `docs/character-generator.md`). Le texte ci-dessous est la conception d'origine.
+
 `character.mjs` reste pur : il lit toujours `client/src/data/rules.json`. Ce fichier est **produit** par `npm run db:export-rules` (Node, `node:sqlite`) : chaque clé est le résultat d'**un SELECT simple** (19 requêtes vérifiées dans `queries.json`, domaine `export_rules` :
 `attributes`, `skills`, `creation_constants`, `creation_pool`, `constants`, `levels`, `unlocks`, `thresholds`, `resistance_tiers`, `resistance_matrix`, `initiative`, `training`, `gift_types`, `gods`, `states`, `state_stages`, `state_tiers`, `postures`, `posture_effects`), plus le catalogue `races` / `classes` / `magies` tiré de `race`, `classe`, `magie`, `race_classe`, `race_magie` (accessibilités).
 Aucune règle n'est codée dans l'export, aucune valeur n'est calculée. Ce qui n'est dans aucune source (par exemple `allowedClasses` d'une magie) est **absent**, pas inventé.
@@ -305,7 +309,7 @@ Le fichier est généré **et commité** ; la CI relance l'export et échoue s'i
 - **Publication** (`.github/workflows/livraison.yml`, job « Site », après chaque fusion qui change `dev`, jusqu'à la 1.0 ; voir `docs/flux-git.md`) : `npm ci`, tests (Node + `unittest` de `tools/db`), `HIDE_EXAMPLES=1 npm run build` (qui reconstruit la base sans exemples), puis la branche `site` (une seule révision, réécrite) contient : `html/` (site statique), `data/maverick.db`, `api/` (le fichier `server.mjs` et ses modules), `MANIFEST` (empreintes SHA-256). À partir de la 1.0, ce même contenu part dans les installateurs de `deploy/installateur/` (hébergement de la 1.0).
 - **Conteneurs** : `deploy/docker-compose.yml` passe à deux services : `nginx` (site statique, `auth_basic` conservé, `location /api/ { proxy_pass http://api:3000; }`) et `api` (`node:22-alpine`, `read_only: true`, utilisateur non root, volume `./data:/data:ro`, variables `MAVERICK_DB=/data/maverick.db`, `PORT=3000`, `SCHEMA_VERSION=<N>`, bilan de santé sur `/api/v1/sante`).
   Un hébergeur sans nginx lance le même `server.mjs` et met l'authentification devant (variables d'environnement seulement).
-- **`update-nas.sh`** : installe `html/` → `site/`, `api/` → `api/`, et `data/maverick.db` par copie vers un fichier temporaire **puis `mv` atomique** (l'API le rouvre toute seule) ; garde-fous : `MIN_PAGES` conservé, empreintes du `MANIFEST` vérifiées, taille minimale de la base. Le NAS n'a besoin ni de Python ni de Node (Node tourne dans le conteneur `api`).
+- **`update-site.sh`** : installe `html/` → `site/`, `api/` → `api/`, et `data/maverick.db` par copie vers un fichier temporaire **puis `mv` atomique** (l'API le rouvre toute seule) ; garde-fous : `MIN_PAGES` conservé, empreintes du `MANIFEST` vérifiées, taille minimale de la base. Le NAS n'a besoin ni de Python ni de Node (Node tourne dans le conteneur `api`).
 - **`.nvmrc`** : 22 (déjà le cas) ; `engines` de `client/package.json` passe de `>=22.12.0` à `>=22.13.0` (`node:sqlite` sans option ; il émet un `ExperimentalWarning` que l'API et les scripts masquent par `--no-warnings`).
 
 ---
@@ -356,12 +360,19 @@ Aujourd'hui les identifiants se dérivent des noms de la source (§2). Pour teni
 
 - **Maintenant** : `npm run db:ids` (`tools/db/ids.py`, prototype `ids.garde.py`, testé) compare les identifiants (clés `id` TEXT) de `data/rows` à ceux du commit précédent. Un identifiant **disparu** est une erreur, sauf déclaré dans `data/redirections.json` (`{"ancien": "nouveau"}`, le nouveau existant) ; un ancien identifiant encore présent (donc réutilisé) est une erreur.
   Testé sur un renommage simulé de cette capacité (le cas réel de la PR n° 9 aurait été refusé sans redirection). Exécuté en CI.
+- **Fait (migration 0006)** : les sept tables qui contraignaient l'id à « préfixe || nom_cle » (`sort`, `classe`, `invocation`, `invocation_capacite_commune`, `creature`, `creature_attaque`, `creature_capacite`) ne le font plus : un nom corrigé change `nom` et `nom_cle`, l'id garde la clé d'origine (aucune redirection nécessaire). Les pages gardent aussi leur id et leur slug quand leur titre change.
 - **À la bascule vers l'édition** (migration 2, additive) : table `redirection(ancien_id, id)` lue par l'API (`/pages/{ancien}` → 301) et le résolveur de liens ; les identifiants sont **gelés** (un renommage change le titre, jamais l'id) ; l'identifiant n'est plus dérivé du slug.
 
-### 10.3 Historique des modifications (non construit)
+### 10.3 Historique des modifications (premier pas : l'édition du site de dev)
 
-Quand la base devient canonique, une migration additive ajoutera une table de modifications écrite **par le service d'écriture dans la même transaction que la modification** : (entité, champ, avant, après, auteur, instant, état `brouillon` / `validé`).
-Pas de déclencheurs SQL cachés. La persistance git par export texte est alors complétée par la sauvegarde SQLite en ligne ; l'export déterministe reste le moyen de relire et de comparer. Rien de cela n'est dessiné plus loin tant que la bascule n'est pas décidée avec le propriétaire.
+Section 14 de `data/schema.sql` (migration `0017-edition`) : `modification_lot` (un enregistrement depuis une page : instant, page, résumé, auteur —
+NULL avant la connexion Discord) et `modification` (une ligne touchée : table, clé, opération, colonnes **avant / après**, état `en_attente` /
+`integree` / `conflit`, aperçu HTML d'une page du guide). Le service d'écriture (`client/serveur/edition.mjs`) les écrit **dans la même transaction
+que la modification**, sans déclencheur SQL caché ; elles restent **vides dans `data/rows`** et ne vivent que dans la base vivante du site de dev.
+Quand de nouvelles règles arrivent, le journal est rejoué sur elles (une modification déjà présente est « intégrée », un lot contredit passe
+« conflit » en entier) ; `npm run db:appliquer-edition` le rejoue de même sur `data/rows`, que l'export déterministe réécrit (relecture et
+comparaison par git). Voir `docs/serveur.md`, « Édition ». Restent à décider avec le propriétaire : l'état `brouillon / validé` (relecture avant
+publication), l'auteur (connexion Discord) et le moment où la base devient canonique (les classeurs, une archive).
 
 ### 10.4 Portabilité vers PostgreSQL
 
@@ -394,7 +405,7 @@ Chaque lot est mergeable seul, laisse le site fonctionnel et se prouve par des t
 | --- | --- | --- |
 | **1. Fondations** | `data/schema.sql`, `data/derive.sql`, `data/rows/` (famille, type_page + 991 pages), `tools/db/` (session, export, reconstruction, `normalize`, `pages_md`, `ids`), `client/scripts/db-{build,derive,check}.mjs`, scripts npm `db:build` `db:check` `db:ids` `db:sync-pages` `db:migrate`, job CI `db`. Le site ne change pas. | Schéma exécuté sur base vierge (Python **et** Node) ; chaque table STRICT, clés étrangères résolues ; batterie de contraintes (≈ 70 cas : refuse pour la bonne raison, accepte la même écriture valide) ; export déterministe et reconstruction identique Python/Node ; `normalize()` Python = JavaScript ; 991 pages : aller-retour, graphe, `HIDE_EXAMPLES` ; `sync_pages` (idempotence, diff minimal, refus d'une famille portée) ; `db:check` positif **et négatif** (chaque défaut injecté est détecté) ; `db:ids` ; migration `N-1 → N` |
 | **2. Astro lit la base** | `db.mjs`, `wiki-db.mjs`, `content.config.ts`, `astro.config.mjs` ; `build` = `db:build` + `astro build` ; `HIDE_EXAMPLES` dans `db:build` seul | `dist/` identique (`diff -r`) avec et sans `HIDE_EXAMPLES`, depuis la base du lot 1 ; les tests existants (`wikilinks`, `wiki`, `search`…) restent verts |
-| **3. API, conteneur, livraison** | `api/db-reader/server.mjs`, `deploy/` à deux services, branche `site` enrichie (`data/maverick.db`, `MANIFEST`), `update-nas.sh` à remplacement atomique | Toutes les routes du §7 (valeurs, erreurs, pagination sans trou ni doublon, ETag/304, 405) rejouées contre `queries.json` ; remplacement à chaud sous charge ; fichier corrompu / autre version / absent ; base du lot 1 (domaines vides sans erreur 500) ; construction de l'image et `curl` sur `/api/v1/sante` |
+| **3. API, conteneur, livraison** | `api/db-reader/server.mjs`, `deploy/` à deux services, branche `site` enrichie (`data/maverick.db`, `MANIFEST`), `update-site.sh` à remplacement atomique | Toutes les routes du §7 (valeurs, erreurs, pagination sans trou ni doublon, ETag/304, 405) rejouées contre `queries.json` ; remplacement à chaud sous charge ; fichier corrompu / autre version / absent ; base du lot 1 (domaines vides sans erreur 500) ; construction de l'image et `curl` sur `/api/v1/sante` |
 | **4. Socle des règles** | Familles `fiche` + `annexes` (importeurs `regles-fiche.py`, `annexes-magie.py` ; `.md` des 6 pages d'annexes retirés), `db:export-rules`, `character.mjs` lit les vraies règles (tâche « Brancher les vraies règles ») | Golden : lignes de ces familles = lignes de référence de cette conception ; 21 requêtes `export_rules` ; `rules.json` généré identique au commité ; `rules.test.mjs` vert ; contrôle `ecart_source` (Calme/Prouesse, puissance magique 5…) |
 | **5. Magies et sorts** | Famille `magies` (+ notes de cellule des sorts) ; `/donnees/sort`, route composée magie ; `magies_innees`, `nom_court`, `resiste_a`… quittent `page.donnees` pour les tables | Golden ; 16 requêtes `magies` ; liens races ↔ magies recalculés à l'identique par `magie-relations.mjs` ; `dist/` identique |
 | **6. Classes** | Famille `classes` (700 pages dont 660 capacités ; registre de corrections appliqué avant l'extracteur, `f.corrections`) ; `v_capacite_exclusive` | Golden ; 13 requêtes `classes` ; choix exclusifs = 660 pages ; correction du Mercenaire tracée (`db:check`) ; `class-groups.mjs` inchangé ; `dist/` identique |
@@ -436,7 +447,7 @@ Détail et exemples dans les documents par domaine livrés avec la conception (`
 | --- | --- | --- |
 | Règles | « Calme » ou « Prouesse » (compétence de Volonté) ; puissance magique 5 au niveau 16 ou 17 ; plafond de caractéristique aux niveaux 5, 10, 15 ; total à répartir = égalité ou maximum ; sens des deux « croix » ; entraînement 10 % par compétence ou au total | Les deux sources gardées (`ecart_source`) ; aucune règle appliquée |
 | Règles | Quelle version du mode hyper fait foi (classeur « Mode hyper et co », onglet masqué V8, fiche, onglets de magie ; +15 / +7 ou +10 / +5) | Cinq lectures dans `mode_hyper_effet`, aucune préférée |
-| Magies | Corruption : la phrase « mono magie uniquement » est-elle la règle, ou la liste de la fiche (Arcane, Sang, Espace/Temps) ; Arcane/Corruption : résistance à elles-mêmes (fiche) ou à l'autre (V8, guide) | Les trois paires de la fiche + la phrase (`incompatibilite_note`) ; résistances V8 ; écart signalé |
+| Magies | ~~Corruption : la phrase « mono magie uniquement » est-elle la règle, ou la liste de la fiche (Arcane, Sang, Espace/Temps)~~ (**tranché**, décision R15 : mono-magie, excepté Elfe Noir Charbon et Felfe Noir) ; Arcane/Corruption : résistance à elles-mêmes (fiche) ou à l'autre (V8, guide) | Les paires de la fiche + la phrase (`incompatibilite_note`, gardée comme trace) ; `magie.mono_magie` (migration 0010) ; résistances V8 ; écart signalé |
 | Magies | « D/S/B » non développé dans les sources ; coût nu = chakra (lecture du guide) ; noms d'états (« Gelé » / « Gel ») | `dsb_brut` seul ; 32 sorts sans chakra écrit = `NULL` ; table d'alias explicite dans l'importeur |
 | Magies | 26 fils de commentaires orphelins (cellules supprimées, certains textes sont des règles) ; dieux : 28 noms, 16 reliés à une magie | `commentaire_orphelin` sans rattachement ; 16 dieux chargés |
 | Classes | Valeurs par niveau absentes (seul le niveau 1 est donné) ; « Don de départ » = niveau 1 ? ; les choix 10/15/20 dépendent-ils de la spécialité ? | `*_depart` ; rattachement à la spécialité si les colonnes sont sous sa bannière ; Archimage : cartouches = choix, spécialité `NULL` (décision du propriétaire) |

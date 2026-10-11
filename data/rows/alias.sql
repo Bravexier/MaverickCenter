@@ -15,6 +15,7 @@ INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/alignement', 1, 'L
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/alterations-d-etats-et-mode-hyper', 0, 'Altérations d''états', 'alterations-detats');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/alterations-d-etats-et-mode-hyper', 1, 'Mode Hyper', 'mode-hyper');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/attaque-et-defense', 0, 'Localisation des dégâts', 'localisation-des-degats');
+INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/bienvenue', 0, 'Guide du joueur', 'guide-du-joueur');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/donjon-pas-bon', 0, 'Type de donjon', 'type-de-donjon');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-armure-defense-bouclier', 0, 'Armure/Défense/Bouclier', 'armure-defense-bouclier');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-capacites-dons', 0, 'Capacités/Don', 'capacites-don');

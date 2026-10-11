@@ -1,0 +1,1 @@
+-- data/rows/personnage_armure.sql : export déterministe, une instruction par ligne, triée par (personnage_id, emplacement_id). NE PAS ÉDITER À LA MAIN.

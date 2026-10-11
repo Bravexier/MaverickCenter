@@ -1,0 +1,103 @@
+---
+// Onglets (motif « tabs » de l'ARIA : flèches gauche et droite, Début, Fin), partagés par les spécialités d'une classe (classes/ClasseDons.astro) et les
+// magies de la page du Potentiel Illimité (magie/SortsDuPotentiel.astro). À poser une fois par page, avant les onglets : un seul script pour toute la page,
+// que le build écrit dans la page (la version portable de tools/build-artifact.mjs refuse un script qui en importe un autre).
+//
+// HTML attendu : un groupe `[data-onglets]` dont les onglets `.onglet` sont des liens vers leur panneau (`href="#id-du-panneau"`), l'onglet ouvert au
+// départ portant `is-active` (de même que son panneau) ; la valeur de `data-onglets`, si elle est donnée, nomme la liste d'onglets. Les rôles ARIA sont
+// posés ici : sans JavaScript, les onglets sont de simples liens et les panneaux se suivent ; le CSS de la page ne cache un panneau fermé que sous
+// `html.js`, classe posée ici avant l'affichage (pas de saut de mise en page au chargement).
+// Une adresse (au chargement, retour arrière) ou un lien de la page vers un panneau ou un élément qu'il contient ouvre son onglet.
+// Des onglets dessinés après le chargement (mode modification du site de dev, D11 : src/scripts/edition/classes.mjs) se branchent par l'évènement
+// « onglets:brancher » envoyé sur leur groupe (ou un élément qui le contient) : aucun module n'est partagé entre les deux scripts.
+---
+
+<script is:inline>
+  document.documentElement.classList.add('js');
+</script>
+
+<script>
+  const groupes: { panneaux: HTMLElement[]; activer: (i: number) => void }[] = [];
+
+  function brancher(groupe: HTMLElement) {
+    if (groupe.dataset.ongletsBranches) return;
+    const onglets = [...groupe.querySelectorAll<HTMLAnchorElement>('.onglet')];
+    const panneaux = onglets.map((o) => document.getElementById(decodeURIComponent(o.hash.slice(1))));
+    if (onglets.length === 0 || panneaux.some((p) => !p)) return;
+    groupe.dataset.ongletsBranches = '1';
+    const sures = panneaux as HTMLElement[];
+    const liste = onglets[0].parentElement;
+    liste?.setAttribute('role', 'tablist');
+    if (groupe.dataset.onglets) liste?.setAttribute('aria-label', groupe.dataset.onglets);
+    onglets.forEach((o, i) => {
+      o.setAttribute('role', 'tab');
+      o.setAttribute('aria-controls', sures[i].id);
+      sures[i].setAttribute('role', 'tabpanel');
+      sures[i].setAttribute('aria-labelledby', o.id);
+    });
+    const activer = (i: number) =>
+      onglets.forEach((o, k) => {
+        const actif = k === i;
+        o.classList.toggle('is-active', actif);
+        o.setAttribute('aria-selected', String(actif));
+        o.tabIndex = actif ? 0 : -1;
+        sures[k].classList.toggle('is-active', actif);
+      });
+    activer(Math.max(0, onglets.findIndex((o) => o.classList.contains('is-active'))));
+    onglets.forEach((o, i) => {
+      o.addEventListener('click', (e) => {
+        e.preventDefault();
+        activer(i);
+        history.replaceState(null, '', o.hash);
+      });
+      o.addEventListener('keydown', (e) => {
+        const n = onglets.length;
+        const cible = { ArrowRight: (i + 1) % n, ArrowLeft: (i - 1 + n) % n, Home: 0, End: n - 1 }[e.key];
+        if (cible === undefined) return;
+        e.preventDefault();
+        activer(cible);
+        onglets[cible].focus();
+        history.replaceState(null, '', onglets[cible].hash);
+      });
+    });
+    groupes.push({ panneaux: sures, activer });
+  }
+  for (const groupe of document.querySelectorAll<HTMLElement>('[data-onglets]')) brancher(groupe);
+  document.addEventListener('onglets:brancher', (e) => {
+    const cible = e.target instanceof HTMLElement ? e.target : null;
+    if (!cible) return;
+    for (const g of cible.matches('[data-onglets]') ? [cible] : [...cible.querySelectorAll<HTMLElement>('[data-onglets]')]) brancher(g);
+  });
+
+  /** Ouvre l'onglet qui contient l'élément `id` (un panneau, un de ses éléments) ; `defiler` : l'amène à l'écran (adresse au chargement, retour arrière). */
+  function ouvrirPour(id: string, defiler: boolean) {
+    const cible = id ? document.getElementById(id) : null;
+    if (!cible) return;
+    for (const g of groupes) {
+      if (!g.panneaux[0].isConnected) continue; // groupe redessiné depuis (mode modification)
+      const i = g.panneaux.findIndex((p) => p.contains(cible));
+      if (i < 0) continue;
+      g.activer(i);
+      if (defiler) cible.scrollIntoView({ block: 'start' });
+    }
+  }
+  const depuisAdresse = () => {
+    try {
+      ouvrirPour(decodeURIComponent(location.hash.slice(1)), true);
+    } catch {
+      // adresse mal formée : ignorée
+    }
+  };
+  // un lien de la page vers un panneau ou un de ses éléments (navigation, « Ses dons ») ouvre l'onglet avant que le navigateur n'y défile
+  document.addEventListener('click', (e) => {
+    const lien = e.target instanceof Element ? e.target.closest<HTMLAnchorElement>('a[href*="#"]') : null;
+    if (!lien || e.defaultPrevented || lien.pathname !== location.pathname) return;
+    try {
+      ouvrirPour(decodeURIComponent(lien.hash.slice(1)), false);
+    } catch {
+      // ancre mal formée : le navigateur s'en charge
+    }
+  });
+  window.addEventListener('hashchange', depuisAdresse);
+  depuisAdresse();
+</script>

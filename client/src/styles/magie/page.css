@@ -1,0 +1,65 @@
+/* En-tête, navigation et sections de la page */
+.magie-hero { color: #fff; background: linear-gradient(135deg, var(--hero-1), var(--hero-2)); border-radius: 14px; padding: 1.4rem 1.5rem 1.5rem; box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08); }
+.magie-hero h1 { margin: 0.1rem 0 0.2rem; font-size: clamp(1.7rem, 4vw, 2.4rem); }
+.magie-hero__surtitre { margin: 0; font-size: 0.75rem; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.8; }
+.magie-hero__aliases { margin: 0 0 0.4rem; opacity: 0.85; font-style: italic; }
+.magie-hero__roles { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0; margin: 0.7rem 0 0; list-style: none; }
+.magie-hero__roles li { font-size: 0.72rem; letter-spacing: 0.1em; padding: 0.15rem 0.7rem; border-radius: 999px; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.28); }
+.magie-stats { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 1rem 0 0; }
+.magie-stat { min-width: 8.5rem; padding: 0.5rem 0.9rem; border-radius: 10px; background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.22); }
+.magie-stat dt { font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.8; }
+.magie-stat dd { margin: 0; font-size: 1.6rem; font-weight: 700; line-height: 1.2; }
+.magie-stat--texte dd { font-size: 1.05rem; line-height: 1.7; }
+.magie-stat--nul dd { opacity: 0.6; }
+.magie-hero__barre { margin: 0.9rem 0 0; font-size: 0.95rem; opacity: 0.92; }
+
+.magie-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.5rem; margin: 0.8rem 0 0; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
+.magie-nav a { text-decoration: none; font-size: 0.9rem; padding: 0.15rem 0.7rem; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+.magie-nav a:hover { border-color: var(--mag); color: var(--mag-readable); }
+.magie-nav__npm { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; margin-left: 0.4rem; padding-left: 0.6rem; border-left: 1px solid var(--border); }
+.magie-nav__npm a { font-size: 0.8rem; padding-inline: 0.5rem; }
+
+.magie-section { margin: 1.6rem 0; scroll-margin-top: 1rem; }
+.magie-section > h2, .magie-card > h2 { margin: 0 0 0.6rem; font-size: 1.3rem; }
+.magie-section h2 .count { font-size: 0.8rem; font-weight: normal; padding: 0.05rem 0.55rem; border-radius: 999px; background: var(--mag-soft); border: 1px solid var(--mag-line); color: var(--muted); vertical-align: middle; }
+.magie-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; }
+.magie-presentation { display: grid; gap: 1.2rem 1.6rem; grid-template-columns: minmax(0, 1.7fr) minmax(15rem, 1fr); align-items: start; }
+.magie-prose p:first-child, .magie-presentation__texte > p:first-child { margin-top: 0; }
+.magie-prose ul { padding-left: 1.2rem; }
+.magie-card--physique { border-left: 4px solid var(--mag); background: var(--mag-soft); }
+.magie-card--physique h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+
+.affinites { display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
+.affinite { background: var(--surface); border: 1px solid var(--border); border-top-width: 4px; border-radius: 12px; padding: 0.8rem 1rem 1rem; }
+.affinite--fort { border-top-color: var(--good); }
+.affinite--faible { border-top-color: var(--danger); }
+.affinite--incompatible { border-top-color: var(--muted); border-top-style: dashed; }
+.affinite h3 { margin: 0 0 0.2rem; font-size: 1.05rem; }
+.affinite h4 { margin: 0.8rem 0 0.2rem; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: normal; }
+.affinite p { margin: 0.25rem 0; }
+.affinite .affinite__mono { font-weight: 600; }
+
+/* Altération d'état liée à la magie (MagieEtats.astro) */
+.etat-lie { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--mag); border-radius: 12px; padding: 0.8rem 1rem 1rem; }
+.etat-lie + .etat-lie { margin-top: 0.9rem; }
+.etat-lie__titre { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem 0.6rem; margin: 0; font-size: 1.1rem; }
+.etat-lie__titre a { color: var(--mag-readable); }
+.etat-lie__type { font-size: 0.72rem; font-weight: normal; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.05rem 0.55rem; border-radius: 999px; background: var(--mag-soft); border: 1px solid var(--mag-line); color: var(--muted); }
+.etat-lie__aussi { margin: 0.25rem 0 0; font-size: 0.9rem; }
+.etat-lie__stades { display: grid; gap: 0.6rem 0.9rem; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); margin: 0.7rem 0 0; padding: 0; list-style: none; }
+.etat-lie__stade { padding: 0.5rem 0.75rem; border-radius: 8px; background: var(--mag-soft); border: 1px solid var(--mag-line); }
+.etat-lie__stade-nom { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.etat-lie__stade .texte { margin: 0.2rem 0 0; }
+
+/* (+) du titre « Capacité Mode Hyper » : lien vers la liste des effets mode hyper. Même teinte que la pastille « i » (tooltips.css) : lisible quelle que
+   soit la couleur de la magie, en clair comme en sombre */
+.lien-plus { --plus: color-mix(in srgb, var(--mag) 55%, var(--text)); display: inline-flex; align-items: center; justify-content: center; width: 1.45rem; height: 1.45rem; margin-left: 0.35rem;
+  border-radius: 50%; border: 1px solid var(--plus); background: var(--mag-soft); color: var(--plus); font-size: 1rem; font-weight: 700; line-height: 1; text-decoration: none; vertical-align: middle; }
+.lien-plus:hover { background: var(--plus); color: var(--surface); }
+.lien-plus:focus-visible { outline: 2px solid var(--mag); outline-offset: 2px; }
+
+.hyper { display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); }
+.hyper__carte { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--mag); border-radius: 12px; padding: 0.7rem 1rem 0.9rem; }
+.hyper__carte h3 { margin: 0 0 0.2rem; font-size: 1rem; color: var(--mag-readable); }
+
+@media (max-width: 52rem) { .magie-presentation { grid-template-columns: minmax(0, 1fr); } }

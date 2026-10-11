@@ -22,13 +22,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 
 const script = fileURLToPath(new URL('../../tools/sheets/classes.py', import.meta.url));
 const wiki = fileURLToPath(new URL('../src/content/wiki', import.meta.url));
 const python = spawnSync('python3', ['-I', '-c', 'pass']);
 const sansPython = python.status !== 0 && 'python3 absent';
 
-const CLASSEUR = 'https://docs.google.com/spreadsheets/d/1K9IX0z_w-4IJt9oiq1D9AE4NVjTPZIHEHCWBHqOkMOs/edit';
+const CLASSEUR = 'https://docs.google.com/spreadsheets/d/1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I/edit';
 const MARQUEUR = 'Note de cellule : ';
 const colonne = (lettres) => [...lettres].reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0);
 const adresse = (ref) => {
@@ -53,6 +55,13 @@ const capacites = readdirSync(dossierCapacites)
   .filter((f) => f.endsWith('.md'))
   .map((f) => ({ slug: f.slice(0, -3), texte: readFileSync(join(dossierCapacites, f), 'utf8') }))
   .filter((p) => p.texte.slice(0, 4000).includes(CLASSEUR));
+// Le site de dev est la source des dons qu'il modifie (décision du propriétaire ; D11 : il en crée et en supprime) : les notes et les fiches de
+// l'import se comptent sur l'import (historique_modification) ; une fiche que le site a supprimée est sautée, sa place (rang, spécialité) se lit
+// telle que l'import l'a écrite (le rang d'un don reçu sans choix suit les dons ajoutés au-dessus de lui).
+const historique = historiqueSite(ouvrirBase({ sansExemples: false }));
+const supprimee = (slug) => historique.supprimee('page', { id: `capacites/${slug}` });
+const donneesDImport = (slug) => JSON.parse(historique.valeurDImport('page', { id: `capacites/${slug}` }, 'donnees') ?? 'null');
+const supprimeesDImport = historique.lignesDImport('page').filter((p) => p.type === 'capacites' && supprimee(p.slug)).map((p) => p.slug);
 const page = (slug) => {
   const trouvee = capacites.find((p) => p.slug === slug);
   assert.ok(trouvee, `page capacites/${slug} absente`);
@@ -75,49 +84,49 @@ const NOTES = [
     "La falsification de document est un jet d'artisanat qui demande Social + Intelligence",
     "Note de cellule : La falsification de document est un jet d'artisanat qui demande Social + Intelligence"],
   ["Tueur", "AE44", "tueur-sournefice", 2, "\"SICAIRE\"",
-    "Si bien sur la cible n'est pas immunisé. Les golems sont immunisé aux altérations d'états qui ne sont pas leur faiblesse",
-    "Note de cellule : Si bien sur la cible n'est pas immunisé. Les golems sont immunisé aux altérations d'états qui ne sont pas leur faiblesse"],
+    "Si bien sûr la cible n'est pas immunisée. Les golems sont immunisés aux altérations d'états qui ne sont pas leur faiblesse",
+    "Note de cellule : Si bien sûr la cible n'est pas immunisée. Les golems sont immunisés aux altérations d'états qui ne sont pas leur faiblesse"],
   ["Pugiliste", "P50", "pugiliste-coup-de-paume", 3, undefined,
     "Demande de réussir un jet d'attaque, l'ennemi peut parer ou esquiver.",
     "Note de cellule : Demande de réussir un jet d'attaque, l'ennemi peut parer ou esquiver."],
   ["Parleur", "P50", "parleur-negociateur", 3, undefined,
-    "Marche seulement si bien sur le combat est théoriquement arrêtable. Il est pas impossible que l'ennemi soit impossible à raisonner, dans ce cas soyez prudent et demander si le combat est arrêtable.",
-    "Note de cellule : Marche seulement si bien sur le combat est théoriquement arrêtable. Il est pas impossible que l'ennemi soit impossible à raisonner, dans ce cas soyez prudent et demander si le combat est arrêtable."],
+    "Marche seulement si bien sûr le combat est théoriquement arrêtable. Il est pas impossible que l'ennemi soit impossible à raisonner, dans ce cas soyez prudent et demandez si le combat est arrêtable.",
+    "Note de cellule : Marche seulement si bien sûr le combat est théoriquement arrêtable. Il est pas impossible que l'ennemi soit impossible à raisonner, dans ce cas soyez prudent et demandez si le combat est arrêtable."],
   // deux paragraphes
   ["Bimane", "P12", "bimane-frappe-fatiguante", 2, undefined,
     "L'état de fatigue ne se cumule pas si le coup est répété sur la même cible.\n\nSi jamais la cible souffre déjà de fatigue 1 pour une autre raison, là c'est fatigue 2 (de même dans le cas de fatigue 2 à fatigue 3)",
     "Note de cellule : L'état de fatigue ne se cumule pas si le coup est répété sur la même cible.\n\nSi jamais la cible souffre déjà de fatigue 1 pour une autre raison, là c'est fatigue 2 (de même dans le cas de fatigue 2 à fatigue 3)"],
   ["Bimane", "A44", "bimane-poigne-du-titan", 1, "\"RAVAGEUR\"",
-    "Vous ne pouvez pas avoir deux armes à deux mains dans chaque mains.",
-    "Note de cellule : Vous ne pouvez pas avoir deux armes à deux mains dans chaque mains."],
+    "Vous ne pouvez pas avoir deux armes à deux mains dans chaque main.",
+    "Note de cellule : Vous ne pouvez pas avoir deux armes à deux mains dans chaque main."],
   ["Bimane", "H44", "bimane-bien-sen-servir", 2, "\"RAVAGEUR\"",
-    "Attention, ce coup à 30% de chance d'abîmé les armes",
-    "Note de cellule : Attention, ce coup à 30% de chance d'abîmé les armes"],
+    "Attention, ce coup a 30% de chance d'abîmer les armes",
+    "Note de cellule : Attention, ce coup a 30% de chance d'abîmer les armes"],
   ["Archer", "X37", "archer-tir-soudain", 1, "\"GRAND ARCHER\"",
-    "Les attaques d'opportunité s'enclanche quand l'ennemi sort de la zone d'influence.",
-    "Note de cellule : Les attaques d'opportunité s'enclanche quand l'ennemi sort de la zone d'influence."],
+    "Les attaques d'opportunité s'enclenchent quand l'ennemi sort de la zone d'influence.",
+    "Note de cellule : Les attaques d'opportunité s'enclenchent quand l'ennemi sort de la zone d'influence."],
   ["Arbalètrier", "X37", "arbaletrier-charger", 1, "\"BALISTE\"",
     "Ne marche le premier tour de jeu",
     "Note de cellule : Ne marche le premier tour de jeu"],
   // saut de ligne final dans le classeur : retiré
-  ["Arbalètrier", "H44", "arbaletrier-agressivement", 2, "\"GRAND ARBALETRIER\"",
-    "L'arbalète doit être recharger.\n",
-    "Note de cellule : L'arbalète doit être recharger."],
+  ["Arbalètrier", "H44", "arbaletrier-agressivement", 2, "\"GRAND ARBALÉTRIER\"",
+    "L'arbalète doit être rechargée.\n",
+    "Note de cellule : L'arbalète doit être rechargée."],
   ["Arbalètrier", "P50", "arbaletrier-carreau-dacier", 3, undefined,
-    "L'obstacle doit être assez fin, les mj seront libre de décidé.",
-    "Note de cellule : L'obstacle doit être assez fin, les mj seront libre de décidé."],
+    "L'obstacle doit être assez fin, les mj seront libres de décider.",
+    "Note de cellule : L'obstacle doit être assez fin, les mj seront libres de décider."],
   // liste, étoile à protéger
   ["Mage", "X30", "mage-soin-etrange", 1, "\"MAGE BLANC\"",
-    "Il est capable de soigner aussi les morts vivants.\n*Sort d'attaque basique lvl 1 :\n- Boule de sang\n- Boule de chakra\n- Boule sombre\n- Coup du sablier\n- Bulle de vide\n- Tir d'âme\n- Boule de feu\n- Bulle d'eau\n- Éclat glacé\n- Lance pierre\n- Lame d'air\n- Éclair\n- Frappe lumineuse\n- Sphère obscure",
-    "Note de cellule : Il est capable de soigner aussi les morts vivants.  \n\\*Sort d'attaque basique lvl 1 :\n\n- Boule de sang\n- Boule de chakra\n- Boule sombre\n- Coup du sablier\n- Bulle de vide\n- Tir d'âme\n- Boule de feu\n- Bulle d'eau\n- Éclat glacé\n- Lance pierre\n- Lame d'air\n- Éclair\n- Frappe lumineuse\n- Sphère obscure"],
+    "Il est capable de soigner aussi les morts vivants.\n*Sort d'attaque basique lvl 1 :\n- Boule de sang\n- Boule de chakra\n- Boule sombre\n- Coup du sablier\n- Bulle de vide\n- Tir d'âme\n- Boule de feu\n- Bulle d'eau\n- Éclat glacé\n- Lance-pierre\n- Lame d'air\n- Éclair\n- Frappe lumineuse\n- Sphère obscure",
+    "Note de cellule : Il est capable de soigner aussi les morts vivants.  \n\\*Sort d'attaque basique lvl 1 :\n\n- Boule de sang\n- Boule de chakra\n- Boule sombre\n- Coup du sablier\n- Bulle de vide\n- Tir d'âme\n- Boule de feu\n- Bulle d'eau\n- Éclat glacé\n- Lance-pierre\n- Lame d'air\n- Éclair\n- Frappe lumineuse\n- Sphère obscure"],
   // tabulations en fin de ligne dans le classeur : retirées ; trois lignes
   ["Mage", "A44", "mage-toujours-plus", 1, "\"MAGE NOIR\"",
-    "Bien entendu qu'on parle des sorts qui sont non IC. Le deuxième sort crame un IC sur les 3 disponible dans le tour donc prudence à en avoir un avant d'utiliser cette capacité.\nPeut lancer deux sorts de soin ou/et d'amplification en 1 seul tour. Il est necessaire de réussir un jet de concentration entre les deux sorts.\t\t\t\t\t\nLes deux sorts doivent être différents.",
-    "Note de cellule : Bien entendu qu'on parle des sorts qui sont non IC. Le deuxième sort crame un IC sur les 3 disponible dans le tour donc prudence à en avoir un avant d'utiliser cette capacité.  \nPeut lancer deux sorts de soin ou/et d'amplification en 1 seul tour. Il est necessaire de réussir un jet de concentration entre les deux sorts.  \nLes deux sorts doivent être différents."],
+    "Bien entendu qu'on parle des sorts qui sont non IC. Le deuxième sort crame un IC sur les 3 disponibles dans le tour donc prudence à en avoir un avant d'utiliser cette capacité.\nPeut lancer deux sorts de soin ou/et d'amplification en 1 seul tour. Il est nécessaire de réussir un jet de concentration entre les deux sorts.\t\t\t\t\t\nLes deux sorts doivent être différents.",
+    "Note de cellule : Bien entendu qu'on parle des sorts qui sont non IC. Le deuxième sort crame un IC sur les 3 disponibles dans le tour donc prudence à en avoir un avant d'utiliser cette capacité.  \nPeut lancer deux sorts de soin ou/et d'amplification en 1 seul tour. Il est nécessaire de réussir un jet de concentration entre les deux sorts.  \nLes deux sorts doivent être différents."],
   // même texte (en partie) que sur la capacité voisine, note propre à sa cellule
   ["Mage", "X44", "mage-deux-fois-plus", 1, "\"MAGE BLANC\"",
-    "Bien entendu qu'on parle des sorts qui sont non IC. Le deuxième sort crame un IC sur les 3 disponible dans le tour donc prudence à en avoir un avant d'utiliser cette capacité.\nLes deux sorts doivent être différents.",
-    "Note de cellule : Bien entendu qu'on parle des sorts qui sont non IC. Le deuxième sort crame un IC sur les 3 disponible dans le tour donc prudence à en avoir un avant d'utiliser cette capacité.  \nLes deux sorts doivent être différents."],
+    "Bien entendu qu'on parle des sorts qui sont non IC. Le deuxième sort crame un IC sur les 3 disponibles dans le tour donc prudence à en avoir un avant d'utiliser cette capacité.\nLes deux sorts doivent être différents.",
+    "Note de cellule : Bien entendu qu'on parle des sorts qui sont non IC. Le deuxième sort crame un IC sur les 3 disponibles dans le tour donc prudence à en avoir un avant d'utiliser cette capacité.  \nLes deux sorts doivent être différents."],
   ["Mage", "AE44", "mage-soin-similaire", 2, "\"MAGE BLANC\"",
     "Si jamais le lanceur est un mort vivant et qu'il soigne via la magie de la lumière, il récupère quand même la santé qu'il soigne.",
     "Note de cellule : Si jamais le lanceur est un mort vivant et qu'il soigne via la magie de la lumière, il récupère quand même la santé qu'il soigne."],
@@ -125,18 +134,18 @@ const NOTES = [
     "Le sort prend en compte la posture le moment où il a été chargé pour le calcul des dégâts de ce dernier.\n\nLa posture focus transforme ce don en IC.\n\nLe sort en question ne se met pas sur l'arme mais bien dans la main.",
     "Note de cellule : Le sort prend en compte la posture le moment où il a été chargé pour le calcul des dégâts de ce dernier.\n\nLa posture focus transforme ce don en IC.\n\nLe sort en question ne se met pas sur l'arme mais bien dans la main."],
   ["Mage Rouge", "P50", "mage-rouge-double-coup", 3, undefined,
-    "Dans le cas d'un critique, ce sera que pour le premier coup, les prochain c'est fixé à 40 de réussite.\nConsomme le chakra à chaque sort.\n\nPensez bien a noter la réussite du sort pour ne pas le perdre.",
-    "Note de cellule : Dans le cas d'un critique, ce sera que pour le premier coup, les prochain c'est fixé à 40 de réussite.  \nConsomme le chakra à chaque sort.\n\nPensez bien a noter la réussite du sort pour ne pas le perdre."],
+    "Dans le cas d'un critique, ce sera que pour le premier coup, les prochains c'est fixé à 40 de réussite.\nConsomme le chakra à chaque sort.\n\nPensez bien à noter la réussite du sort pour ne pas le perdre.",
+    "Note de cellule : Dans le cas d'un critique, ce sera que pour le premier coup, les prochains c'est fixé à 40 de réussite.  \nConsomme le chakra à chaque sort.\n\nPensez bien à noter la réussite du sort pour ne pas le perdre."],
   ["Mage Vert", "P5", "mage-vert-chargement", 1, undefined,
     "Permet de charger un sort d'attaque lvl1 ou lvl2 le premier tour et de l'utiliser en même temps que l'attaque de distance le tour suivant.\n\nIl est nécessaire que le sort possède la portée pour toucher la cible, si le projectile va plus loin, le sort ne marche pas.\n\nLa posture focus transforme ce don en IC.",
     "Note de cellule : Permet de charger un sort d'attaque lvl1 ou lvl2 le premier tour et de l'utiliser en même temps que l'attaque de distance le tour suivant.\n\nIl est nécessaire que le sort possède la portée pour toucher la cible, si le projectile va plus loin, le sort ne marche pas.\n\nLa posture focus transforme ce don en IC."],
   // guillemets droits
-  ["Mage Vert", "H30", "mage-vert-brutale", 2, "\"MAGE EMERAUDE\"",
+  ["Mage Vert", "H30", "mage-vert-brutale", 2, "\"MAGE ÉMERAUDE\"",
     "Les sorts \"fer\"",
     "Note de cellule : Les sorts \"fer\""],
   ["Mage Vert", "P50", "mage-vert-double-coup", 3, undefined,
-    "Dans le cas d'un critique, ce sera que pour le premier coup, les prochain c'est fixé à 40 de réussite.\nConsomme le chakra à chaque sort.\n\nPensez bien a noter la réussite du sort pour ne pas le perdre.",
-    "Note de cellule : Dans le cas d'un critique, ce sera que pour le premier coup, les prochain c'est fixé à 40 de réussite.  \nConsomme le chakra à chaque sort.\n\nPensez bien a noter la réussite du sort pour ne pas le perdre."],
+    "Dans le cas d'un critique, ce sera que pour le premier coup, les prochains c'est fixé à 40 de réussite.\nConsomme le chakra à chaque sort.\n\nPensez bien à noter la réussite du sort pour ne pas le perdre.",
+    "Note de cellule : Dans le cas d'un critique, ce sera que pour le premier coup, les prochains c'est fixé à 40 de réussite.  \nConsomme le chakra à chaque sort.\n\nPensez bien à noter la réussite du sort pour ne pas le perdre."],
   ["Mage Bleu", "P5", "mage-bleu-mimetisme", 1, undefined,
     "Le sort prend en compte la posture le moment où il a été chargé pour le calcul des dégâts de ce dernier.\n\nLa posture focus transforme ce don en IC.",
     "Note de cellule : Le sort prend en compte la posture le moment où il a été chargé pour le calcul des dégâts de ce dernier.\n\nLa posture focus transforme ce don en IC."],
@@ -160,18 +169,18 @@ const NOTES = [
     "Note de cellule : Sauf la zone vide"],
   // même texte sur deux cellules d'une même ligne : une note par page
   ["Flagelleur", "X30", "flagelleur-puni-moi", 1, "\"MASOCHISTE\"",
-    "Dans le cas du potentiel illimité, lancer un D14 pour déterminé une résistance magique aléatoire",
-    "Note de cellule : Dans le cas du potentiel illimité, lancer un D14 pour déterminé une résistance magique aléatoire"],
+    "Dans le cas du potentiel illimité, lancer un D14 pour déterminer une résistance magique aléatoire",
+    "Note de cellule : Dans le cas du potentiel illimité, lancer un D14 pour déterminer une résistance magique aléatoire"],
   ["Flagelleur", "AE30", "flagelleur-plus-fort", 2, "\"MASOCHISTE\"",
-    "Dans le cas du potentiel illimité, lancer un D14 pour déterminé une résistance magique aléatoire",
-    "Note de cellule : Dans le cas du potentiel illimité, lancer un D14 pour déterminé une résistance magique aléatoire"],
+    "Dans le cas du potentiel illimité, lancer un D14 pour déterminer une résistance magique aléatoire",
+    "Note de cellule : Dans le cas du potentiel illimité, lancer un D14 pour déterminer une résistance magique aléatoire"],
   // mêmes textes dans deux classes différentes : une fois chacune
-  ["Orios", "H30", "orios-gigantisme", 2, "\"VA-T-EN GUERRE\"",
-    "Bien entendu il est nécessaire d'avoir minimum 4 de force pour les porter : \n- Épée temple\n- Claymore (qui devient une arme de force)\n- Broyeur\n- Hache de Bataille\n- Bardiche\n- Tronc\n- Arc de guerre géant (là c'est juste une permision d'utiliser l'arme)\n- Baliste portable (même chose que pour l'arc de guerre géant)",
-    "Note de cellule : Bien entendu il est nécessaire d'avoir minimum 4 de force pour les porter :\n\n- Épée temple\n- Claymore (qui devient une arme de force)\n- Broyeur\n- Hache de Bataille\n- Bardiche\n- Tronc\n- Arc de guerre géant (là c'est juste une permision d'utiliser l'arme)\n- Baliste portable (même chose que pour l'arc de guerre géant)"],
+  ["Orios", "H30", "orios-gigantisme", 2, "\"VA-T-EN-GUERRE\"",
+    "Bien entendu il est nécessaire d'avoir minimum 4 de force pour les porter : \n- Épée temple\n- Claymore (qui devient une arme de force)\n- Broyeur\n- Hache de Bataille\n- Bardiche\n- Tronc\n- Arc de guerre géant (là c'est juste une permission d'utiliser l'arme)\n- Baliste portable (même chose que pour l'arc de guerre géant)",
+    "Note de cellule : Bien entendu il est nécessaire d'avoir minimum 4 de force pour les porter :\n\n- Épée temple\n- Claymore (qui devient une arme de force)\n- Broyeur\n- Hache de Bataille\n- Bardiche\n- Tronc\n- Arc de guerre géant (là c'est juste une permission d'utiliser l'arme)\n- Baliste portable (même chose que pour l'arc de guerre géant)"],
   ["Minotaure", "H30", "minotaure-gigantisme", 2, "\"GLADIATEUR\"",
-    "Bien entendu il est nécessaire d'avoir minimum 4 de force pour les porter : \n- Épée temple\n- Claymore (qui devient une arme de force)\n- Broyeur\n- Hache de Bataille\n- Bardiche\n- Tronc\n- Arc de guerre géant (là c'est juste une permision d'utiliser l'arme)\n- Baliste portable (même chose que pour l'arc de guerre géant)",
-    "Note de cellule : Bien entendu il est nécessaire d'avoir minimum 4 de force pour les porter :\n\n- Épée temple\n- Claymore (qui devient une arme de force)\n- Broyeur\n- Hache de Bataille\n- Bardiche\n- Tronc\n- Arc de guerre géant (là c'est juste une permision d'utiliser l'arme)\n- Baliste portable (même chose que pour l'arc de guerre géant)"],
+    "Bien entendu il est nécessaire d'avoir minimum 4 de force pour les porter : \n- Épée temple\n- Claymore (qui devient une arme de force)\n- Broyeur\n- Hache de Bataille\n- Bardiche\n- Tronc\n- Arc de guerre géant (là c'est juste une permission d'utiliser l'arme)\n- Baliste portable (même chose que pour l'arc de guerre géant)",
+    "Note de cellule : Bien entendu il est nécessaire d'avoir minimum 4 de force pour les porter :\n\n- Épée temple\n- Claymore (qui devient une arme de force)\n- Broyeur\n- Hache de Bataille\n- Bardiche\n- Tronc\n- Arc de guerre géant (là c'est juste une permission d'utiliser l'arme)\n- Baliste portable (même chose que pour l'arc de guerre géant)"],
   ["Marcass", "H30", "marcass-catapulte", 2, "\"CANAILLE\"",
     "Doit y avoir de la place derrière et en haut pour le faire ! Sinon sprotch...\n\nL'ami doit être assez léger.",
     "Note de cellule : Doit y avoir de la place derrière et en haut pour le faire ! Sinon sprotch...\n\nL'ami doit être assez léger."],
@@ -180,38 +189,40 @@ const NOTES = [
     "Note de cellule : Rouge"],
   // trois paragraphes
   ["Marcass", "X37", "marcass-totemiste", 1, "\"DÉVOT\"",
-    "Terre : Réduit les dégâts encaissés de 4.\n\nFeu : Augmente les dégâts infligés de 4. \n\nNécromancie : Économise 1 chakra à chaque sorts lancés.",
-    "Note de cellule : Terre : Réduit les dégâts encaissés de 4.\n\nFeu : Augmente les dégâts infligés de 4.\n\nNécromancie : Économise 1 chakra à chaque sorts lancés."],
+    "Terre : Réduit les dégâts encaissés de 4.\n\nFeu : Augmente les dégâts infligés de 4. \n\nNécromancie : Économise 1 chakra à chaque sort lancé.",
+    "Note de cellule : Terre : Réduit les dégâts encaissés de 4.\n\nFeu : Augmente les dégâts infligés de 4.\n\nNécromancie : Économise 1 chakra à chaque sort lancé."],
   ["Marcass", "AE37", "marcass-cest-plus-dur", 2, "\"DÉVOT\"",
     "Brun",
     "Note de cellule : Brun"],
   ["Marcass", "H44", "marcass-lance-totem", 2, "\"CANAILLE\"",
-    "Si une cible réussi un jet de défense parfait, l'attaque est stoppée",
-    "Note de cellule : Si une cible réussi un jet de défense parfait, l'attaque est stoppée"],
+    "Si une cible réussit un jet de défense parfait, l'attaque est stoppée",
+    "Note de cellule : Si une cible réussit un jet de défense parfait, l'attaque est stoppée"],
   ["Marcass", "AE44", "marcass-cest-meilleur", 2, "\"DÉVOT\"",
     "Vert foncé",
     "Note de cellule : Vert foncé"],
   ["Anansi", "P5", "anansi-coup-dpatte", 1, undefined,
-    "Le coup de pattes n'est compter qu'une fois. Le bimane ne peut faire en sorte que la patte tape deux fois dans le même tour.",
-    "Note de cellule : Le coup de pattes n'est compter qu'une fois. Le bimane ne peut faire en sorte que la patte tape deux fois dans le même tour."],
+    "Le coup de pattes n'est compté qu'une fois. Le bimane ne peut faire en sorte que la patte tape deux fois dans le même tour.",
+    "Note de cellule : Le coup de pattes n'est compté qu'une fois. Le bimane ne peut faire en sorte que la patte tape deux fois dans le même tour."],
   ["Anansi", "P12", "anansi-piege-toile", 2, undefined,
-    "La cible peut réussir un jet d'athlétisme/réfléxe pour s'oter de la toile.",
-    "Note de cellule : La cible peut réussir un jet d'athlétisme/réfléxe pour s'oter de la toile."],
+    "La cible peut réussir un jet d'athlétisme/réflexe pour s'ôter de la toile.",
+    "Note de cellule : La cible peut réussir un jet d'athlétisme/réflexe pour s'ôter de la toile."],
   // étoile à protéger en tête de note
   ["Anansi", "AE37", "anansi-pt-fragile", 2, "\"CEMIES\"",
-    "*Dans le cas de l'Arcane, ce sera aléatoire parmi les autres magies qui existe.",
-    "Note de cellule : \\*Dans le cas de l'Arcane, ce sera aléatoire parmi les autres magies qui existe."],
+    "*Dans le cas de l'Arcane, ce sera aléatoire parmi les autres magies qui existent.",
+    "Note de cellule : \\*Dans le cas de l'Arcane, ce sera aléatoire parmi les autres magies qui existent."],
   ["Anansi", "A44", "anansi-magie-patte", 1, "\"MARIONNETTISTE\"",
     "Arcane = Le coup de patte peut prendre en compte l'AM plutôt que l'AP\n\nNécromancie = Oblige le jet de vigueur à la cible pour ne pas prendre \"poison 1\"\n\nOmbre = Impose un malus de 10% au prochain jet de la victime",
     "Note de cellule : Arcane = Le coup de patte peut prendre en compte l'AM plutôt que l'AP\n\nNécromancie = Oblige le jet de vigueur à la cible pour ne pas prendre \"poison 1\"\n\nOmbre = Impose un malus de 10% au prochain jet de la victime"],
 ];
 
 test('pages réelles : 660 fiches de capacités du classeur, 43 notes rendues au total, une par fiche, aucune ailleurs', () => {
-  assert.equal(capacites.length, 660);
+  // à l'import : 660 fiches et 43 notes ; aujourd'hui, sans les fiches que le site a supprimées
+  assert.equal(capacites.length + supprimeesDImport.length, 660);
   assert.equal(NOTES.length, 43);
+  const presentes = NOTES.filter(([, , slug]) => !supprimee(slug));
   const avecNote = capacites.filter((p) => nbNotes(p.texte) > 0);
-  assert.equal(capacites.reduce((somme, p) => somme + nbNotes(p.texte), 0), 43);
-  assert.deepEqual(avecNote.map((p) => [p.slug, nbNotes(p.texte)]).sort(), NOTES.map(([, , slug]) => [slug, 1]).sort());
+  assert.equal(capacites.reduce((somme, p) => somme + nbNotes(p.texte), 0), presentes.length);
+  assert.deepEqual(avecNote.map((p) => [p.slug, nbNotes(p.texte)]).sort(), presentes.map(([, , slug]) => [slug, 1]).sort());
   // ni les pages de classes ni le glossaire ne reçoivent de note de cellule
   const classes = readdirSync(join(wiki, 'classes')).filter((f) => f.endsWith('.md'));
   assert.ok(classes.length >= 39);
@@ -220,7 +231,7 @@ test('pages réelles : 660 fiches de capacités du classeur, 43 notes rendues au
 });
 
 test('pages réelles : chaque note est sur la fiche de la capacité dont elle commente le bloc (ligne de la cellule « Lvl N » au-dessus)', () => {
-  for (const [onglet, cellule, slug] of NOTES) {
+  for (const [onglet, cellule, slug] of NOTES.filter(([, , s]) => !supprimee(s))) {
     const p = page(slug);
     const { r } = adresse(cellule);
     assert.equal(Number(champ(p, 'ligne')), r - 1, `${onglet} ${cellule} -> ${slug} : ligne ${champ(p, 'ligne')}`);
@@ -230,10 +241,12 @@ test('pages réelles : chaque note est sur la fiche de la capacité dont elle co
 });
 
 for (const [onglet, cellule, slug, rang, specialite, source, rendu] of NOTES) {
-  test(`pages réelles : ${onglet} ${cellule} -> « ${slug} », texte de la note intégral`, () => {
+  test(`pages réelles : ${onglet} ${cellule} -> « ${slug} », texte de la note intégral`, { skip: supprimee(slug) && 'fiche supprimée par le site de dev' }, () => {
     const p = page(slug);
-    assert.equal(Number(champ(p, 'rang')), rang);
-    assert.equal(champ(p, 'specialite'), specialite);
+    // sa place telle que l'import l'a écrite (le site peut ajouter un don reçu sans choix au-dessus, renommer une spécialité)
+    const d = donneesDImport(slug);
+    assert.equal(d.rang, rang);
+    assert.equal(d.specialite === undefined ? undefined : JSON.stringify(d.specialite), specialite);
     // la note termine la page, juste après l'effet, une seule fois, telle que rendue
     assert.ok(corps(p).endsWith(`\n\n${rendu}\n`), `${slug} : la page ne se termine pas par :\n${rendu}\n---\n${corps(p)}`);
     assert.equal(corps(p).split(rendu).length - 1, 1);
@@ -243,19 +256,22 @@ for (const [onglet, cellule, slug, rang, specialite, source, rendu] of NOTES) {
 }
 
 test('pages réelles : deux notes au texte identique dans deux classes (Orios, Minotaure) ou sur deux cellules voisines (Flagelleur) : une fois par page', () => {
-  for (const slug of ['orios-gigantisme', 'minotaure-gigantisme', 'flagelleur-puni-moi', 'flagelleur-plus-fort']) assert.equal(nbNotes(page(slug)), 1, slug);
+  for (const slug of ['orios-gigantisme', 'minotaure-gigantisme', 'flagelleur-puni-moi', 'flagelleur-plus-fort'].filter((s) => !supprimee(s))) assert.equal(nbNotes(page(slug)), 1, slug);
   // la note de Mage A44 contient une phrase qui est l'effet de X44 : chaque fiche garde la note de SA cellule, pas celle de la voisine
   const phrase = "Peut lancer deux sorts de soin ou/et d'amplification";
-  assert.equal(corps(page('mage-toujours-plus')).split(phrase).length - 1, 1, 'dans la note de A44 (son effet parle des sorts d’attaque)');
-  assert.equal(corps(page('mage-deux-fois-plus')).split(phrase).length - 1, 1, 'dans l’effet de X44 seulement, sa note ne la répète pas');
+  if (!supprimee('mage-toujours-plus')) assert.equal(corps(page('mage-toujours-plus')).split(phrase).length - 1, 1, 'dans la note de A44 (son effet parle des sorts d’attaque)');
+  if (!supprimee('mage-deux-fois-plus')) assert.equal(corps(page('mage-deux-fois-plus')).split(phrase).length - 1, 1, 'dans l’effet de X44 seulement, sa note ne la répète pas');
 });
 
 // Facultatif (le vrai dump n'est pas dans le dépôt) :
 //   CLASSES_DUMP=<classes-v7.corrige.json> [CLASSES_XLSX=<classeur.xlsx>] node --test test/classes-notes.test.mjs
 // Avec CLASSES_XLSX, les 43 notes du dump sont aussi recoupées avec celles du classeur (adresse par adresse).
+// Le site de dev est la source : dès qu'il a créé ou supprimé un don ou une spécialité (D11), les pages ne sont plus celles du dump, la vérification se saute.
 const dumpReel = process.env.CLASSES_DUMP;
+const remanieParLeSite = historique.lignesRemaniees('capacite').length + historique.lignesRemaniees('specialite').length > 0
+  && 'le site de dev a créé ou supprimé des dons ou des spécialités : les pages ne sont plus celles du dump (le site est la source)';
 test('classes.py --verifier : les pages du dépôt sont celles que le vrai dump produit, les 43 notes retrouvées (CLASSES_DUMP)', {
-  skip: sansPython || (!dumpReel && 'CLASSES_DUMP non défini (dump hors dépôt)'),
+  skip: sansPython || (!dumpReel && 'CLASSES_DUMP non défini (dump hors dépôt)') || remanieParLeSite,
 }, () => {
   const options = process.env.CLASSES_XLSX ? ['--xlsx', process.env.CLASSES_XLSX] : [];
   const r = spawnSync('python3', ['-I', script, '--dump', dumpReel, ...options, '--out', wiki, '--verifier'], { encoding: 'utf8' });
@@ -343,7 +359,7 @@ const N = {
   final: "L'arbalète doit être recharger.\n\n",
   liste: "Il est capable de soigner aussi les morts vivants.\n*Sort d'attaque basique lvl 1 :\n- Boule de sang\n- Boule de chakra",
   cartouche: "Il existe une situation où le changement de posture n'est pas possible.",
-  identique: 'Dans le cas du potentiel illimité, lancer un D14 pour déterminé une résistance magique aléatoire',
+  identique: 'Dans le cas du potentiel illimité, lancer un D14 pour déterminer une résistance magique aléatoire',
 };
 const NOTES_SYNTH = [
   ['Guerrier', 'P5', N.simple],

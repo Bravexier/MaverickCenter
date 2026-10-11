@@ -1,0 +1,61 @@
+# Maverick Center : Caddy (HTTPS automatique) devant les deux instances posées par les installateurs (deploy/installateur/).
+#
+#   https://maverick-jdr.com        serveur normal  (master) → 127.0.0.1:8080
+#   https://dev.maverick-jdr.com    serveur de test (dev)    → 127.0.0.1:8081
+#   https://www.maverick-jdr.com    redirigé vers maverick-jdr.com
+#
+# Chaque instance est un nginx (docker-compose.yml de l'installateur) protégé par un mot de passe INTERNE : les visiteurs n'en voient pas.
+# Caddy le présente à leur place (variables ci-dessous). Pour fermer le site au public (connexion Discord, 1.0), retirer les lignes
+# « header_up Authorization » et ne plus donner ce mot de passe à Caddy : le site redemande alors une identification.
+#
+# Variables, lues par systemd dans /etc/caddy/maverick.env (écrit par instances.sh, droits 600, jamais dans git) :
+#   MAVERICK_DOMAINE        maverick-jdr.com (défaut ci-dessous)
+#   MAVERICK_ACCES_NORMAL   « invite:motdepasse » encodé en base64 : le mot de passe interne du serveur normal
+#   MAVERICK_ACCES_TEST     idem pour le serveur de test
+#
+# Les ports 8080 et 8081 ne sont publiés que sur 127.0.0.1 (.env de chaque instance, posé par instances.sh) : seul Caddy les atteint.
+
+(maverick_commun) {
+	encode zstd gzip
+
+	header {
+		# Le contenu appartient à un tiers : accès non référencé (comme les Google Docs actuels), pas d'indexation.
+		X-Robots-Tag "noindex, nofollow"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+
+	handle /robots.txt {
+		root * /srv/maverick-racine
+		file_server
+	}
+}
+
+{$MAVERICK_DOMAINE:maverick-jdr.com} {
+	import maverick_commun
+
+	handle {
+		reverse_proxy 127.0.0.1:8080 {
+			header_up Authorization "Basic {$MAVERICK_ACCES_NORMAL}"
+		}
+	}
+}
+
+dev.{$MAVERICK_DOMAINE:maverick-jdr.com} {
+	import maverick_commun
+
+	# Serveur de test : jamais de copie gardée par le navigateur (on y modifie les règles, la page doit toujours être celle du serveur).
+	header Cache-Control "no-store"
+
+	handle {
+		reverse_proxy 127.0.0.1:8081 {
+			header_up Authorization "Basic {$MAVERICK_ACCES_TEST}"
+		}
+	}
+}
+
+www.{$MAVERICK_DOMAINE:maverick-jdr.com} {
+	redir https://{$MAVERICK_DOMAINE:maverick-jdr.com}{uri} permanent
+}

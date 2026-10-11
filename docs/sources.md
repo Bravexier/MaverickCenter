@@ -39,6 +39,16 @@ et aucun connecteur Discord n'était disponible dans le registre au moment de la
 12 documents distincts (le doc `1vn5Tq11…` avait été cité deux fois), listés dans `sources/sources.json`
 avec `"type": null` — **à classer** après lecture (renseigner `type` et `title`).
 
+**Copies du propriétaire (2026-10-10).** L'ancien mainteneur des documents est parti : ils ont été copiés dans le Drive du propriétaire du projet
+(dossier « Maverick JDR »), et le manifeste, les extracteurs `tools/sheets/*.py` et la base (migration `0014-sources-copies-drive`, registre `.json`)
+citent désormais ces copies ; dans le manifeste, `original` garde l'URL d'origine. Une copie garde le titre et les identifiants d'onglets (`gid`)
+de l'original : les libellés « Google Sheet « … », onglet « … » » restent justes. Les documents `1CwDq…` (« CODEX Maverick ») et `1vn5Tq11…`
+(« Bestiaire 2.0 ») sont hors de portée du Drive du propriétaire (ni partagés avec lui, ni trouvés par recherche) : ils n'ont pas été copiés et
+restent sur l'original (`note`), qui s'ouvre avec son lien ; leur titre est celui de la page Google (relevé le 2026-10-11). Le site ne renvoie plus
+aux classeurs « Familiers » et « Prototype » (demande du propriétaire, migration `0019-liens-familiers-prototype`) : leurs copies restent dans le Drive,
+mais ni la base ni la page des archives ne les citent. Pour que l'export et les liens du site marchent pour tous, les copies doivent être
+partagées comme les originaux (« tous les utilisateurs disposant du lien », lecture). La fiche auto corrigée (V1.2), qui lit ces copies : `docs/fiche-auto.md`.
+
 Export automatique, à lancer **depuis une machine qui a accès à Google** (documents partagés en
 « Toute personne disposant du lien ») :
 
@@ -65,7 +75,7 @@ classeurs, le guide ou une décision du propriétaire ; ce qu'il dit de différe
 statut `draft`. Exception : `https://maverick-jdr.fandom.com/fr/wiki/Progression`, dont le propriétaire du projet indique que le **tableau de progression est encore à jour** et qu'il
 fait foi pour les budgets de points (décision R3 de `docs/decisions-regles.md`). Il n'est pas encore importé : depuis une session cloud l'hôte
 `maverick-jdr.fandom.com` est bloqué par la politique réseau de l'environnement (à ajouter aux domaines autorisés, comme pour Discord et Google). Le contenu importé irait dans
-`sources/raw/` et ses règles dans `rules.json` avec cette URL en source ; tant qu'il n'est pas lu, les budgets suivent le guide et la fiche, signalés « à confirmer ».
+`sources/raw/` et ses règles dans la base (`data/rows`, tables `niveau_global` et `seuil_niveau`) avec cette URL en source ; tant qu'il n'est pas lu, les budgets suivent le guide et la fiche, signalés « à confirmer ».
 
 ### Google Sheets (classeurs de règles)
 
@@ -126,5 +136,6 @@ relancer l'extracteur sur ces pages.
 1. Importer/exporter les sources (ci-dessus).
 2. Lire chaque document, renseigner `type` dans `sources/sources.json`.
 3. Rédiger les pages du wiki ([guide de contenu](content-guide.md)) en citant la source dans `sources:`.
-4. Remplir [`rules.json`](character-generator.md) à partir des tableaux de règles (races, classes, magies…).
+4. Remplir la base (`data/rows`, [`sql/remplissage.md`](sql/remplissage.md)) à partir des tableaux de règles (races, classes, magies…) : la fiche de
+   personnage ([`character-generator.md`](character-generator.md)) les lit dans `/fiche/regles.json`, tiré de la base au build.
 5. Supprimer les pages `status: example`.

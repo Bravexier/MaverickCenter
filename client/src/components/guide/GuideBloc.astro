@@ -1,0 +1,398 @@
+---
+import { ouvrirBase } from '../../lib/donnees.mjs';
+import { pagesDeReference, partiesDuGuide } from '../../lib/guide.mjs';
+import { couleurDeCaracteristique, couleurDePosture, styleDeCouleur } from '../../lib/caracteristiques-postures.mjs';
+import { chargerFilRouge } from '../../lib/guide-fil-rouge.mjs';
+import {
+  chargerCompetences,
+  chargerEntrainement,
+  chargerInitiative,
+  chargerMagiesDuGuide,
+  chargerNiveaux,
+  chargerPostures,
+  chargerTypesDeDon,
+} from '../../lib/guide-db.mjs';
+import { rendreLigne } from '../../lib/guide-rendu';
+import { idBulle, pageHref } from '../../lib/magies';
+import { couleurDeMagie } from '../../lib/sort-format.mjs';
+import type { WikiEntry } from '../../lib/wiki';
+
+// Un bloc d'un chapitre du guide (`<!-- guide:<bloc> -->`, lib/guide.mjs#BLOCS), tiré de la base : rien n'y est écrit à la main, la base le tient à jour.
+interface Props {
+  bloc: string;
+  entry: WikiEntry;
+  entries: WikiEntry[];
+  chapitres: { id: string; numero: number; titre: string; resume: string; partie: { id: string; titre: string; couleur: string } }[];
+}
+const { bloc, entry, entries, chapitres } = Astro.props;
+const db = ouvrirBase();
+
+const niveaux = bloc === 'niveaux' ? chargerNiveaux(db) : [];
+const postures = bloc === 'postures' ? chargerPostures(db) : [];
+const magies = bloc === 'magies' || bloc === 'magie-bonus' ? chargerMagiesDuGuide(db) : [];
+const initiative = bloc === 'initiative' ? chargerInitiative(db) : [];
+const entrainement = bloc === 'entrainement' ? chargerEntrainement(db) : [];
+const typesDeDon = bloc === 'types-de-don' ? chargerTypesDeDon(db) : [];
+const competences =
+  bloc === 'competences'
+    ? await Promise.all(
+        chargerCompetences(db).map(async (c) => ({
+          ...c,
+          competences: await Promise.all(c.competences.map(async (k) => ({ ...k, html: k.description ? await rendreLigne(k.description, entry.id) : '' }))),
+        })),
+      )
+    : [];
+const references = bloc === 'documents' ? pagesDeReference(entries) : [];
+// Les personnages fil rouge (lib/guide-fil-rouge.mjs) : une carte par personnage, son contenu selon l'étape de la création.
+const filRouge = bloc.startsWith('fil-rouge') ? chargerFilRouge(db) : [];
+/** « 2 de la race + 6 de la classe = 8 » : le calcul d'un attribut, termes nuls omis (sauf le premier). */
+const calcul = (termes: [number | null | undefined, string][], total: number) =>
+  `${termes.filter(([v], i) => i === 0 || v).map(([v, d]) => `${v ?? 0} ${d}`).join(' + ')} = ${total}`;
+const nombre = (n: number) => n.toLocaleString('fr-FR');
+---
+
+{
+  bloc === 'sommaire' && (
+    <div class="guide-sommaire">
+      {partiesDuGuide(chapitres.filter((c) => c.id !== entry.id)).map(({ partie, chapitres: deLaPartie }) => (
+        <section class="guide-sommaire__partie" style={`--couleur-partie: ${partie.couleur}`} aria-label={partie.titre}>
+          <h3 class="guide-sommaire__titre-partie">{partie.titre}</h3>
+          <ol class="guide-sommaire__liste">
+            {deLaPartie.map((c) => (
+              <li>
+                <a class="guide-sommaire__lien" href={pageHref(c.id)}>
+                  <span class="guide-sommaire__numero" aria-hidden="true">{c.numero}</span>
+                  <span class="guide-sommaire__titre">{c.titre}</span>
+                </a>
+                <span class="guide-sommaire__resume">{c.resume}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+{
+  bloc.startsWith('fil-rouge') && (
+    <div class="guide-fil-rouge" role="group" aria-label="Les personnages fil rouge">
+      {filRouge.map((p) => (
+        <section class="guide-fil-rouge__perso" aria-label={p.titre}>
+          <h4 class="guide-fil-rouge__nom">{p.titre}</h4>
+          <dl>
+            {bloc === 'fil-rouge' && (
+              <>
+                <dt>Race</dt>
+                <dd><a href={pageHref(p.race.id)}>{p.race.nom}</a>{p.ethnie && p.ethnie.nom !== p.race.nom && <> ({p.ethnie.nom})</>}</dd>
+                <dt>Magie innée</dt>
+                <dd>{p.magie ? <a href={pageHref(p.magie.id)}>{p.magie.nom}</a> : <em>à préciser</em>}</dd>
+                <dt>Classe</dt>
+                <dd><a href={pageHref(p.classe.id)}>{p.classe.nom}</a></dd>
+              </>
+            )}
+            {bloc === 'fil-rouge-race' && (
+              <>
+                <dt>Race</dt>
+                <dd><a href={pageHref(p.race.id)}>{p.race.nom}</a>{p.ethnie && p.ethnie.nom !== p.race.nom && <> ({p.ethnie.nom})</>}</dd>
+                <dt>Santé de départ</dt>
+                <dd>{p.race.sante}</dd>
+                <dt>Chakra de départ</dt>
+                <dd>{p.race.chakra}</dd>
+                {p.race.barriere > 0 && (<><dt>Bonus de barrière</dt><dd>+{p.race.barriere}</dd></>)}
+                <dt>Vitesse</dt>
+                <dd>{p.race.vitesseSol} sur terre, {p.race.vitesseNage} à la nage</dd>
+                <dt>Don de base</dt>
+                <dd>{p.race.donDeBase}</dd>
+                {p.ethnie && p.ethnie.descriptif.length > 0 && (
+                  <>
+                    <dt>{p.ethnie.nom === p.race.nom ? 'Bonus de race' : 'Bonus d’ethnie'}</dt>
+                    <dd>{p.ethnie.descriptif.length > 1 ? <ul>{p.ethnie.descriptif.map((l) => <li>{l}</li>)}</ul> : p.ethnie.descriptif[0]}</dd>
+                  </>
+                )}
+              </>
+            )}
+            {bloc === 'fil-rouge-magie' && (
+              p.magie ? (
+                <>
+                  <dt>Magie innée</dt>
+                  <dd><a href={pageHref(p.magie.id)}>{p.magie.nom}</a></dd>
+                  <dt>Bonus de caractéristique</dt>
+                  <dd>+1 en {p.magie.caracteristique_id ? <span class="guide-carac" style={styleDeCouleur(couleurDeCaracteristique(p.magie.caracteristique_id))}>{p.magie.caracteristique}</span> : 'au choix ou aléatoire'}</dd>
+                  <dt>Chakra offert</dt>
+                  <dd>{p.magie.chakra}</dd>
+                  {p.magie.sante > 0 && (<><dt>Santé offerte</dt><dd>{p.magie.sante}</dd></>)}
+                  <dt>Dieu inné</dt>
+                  <dd>{p.magie.dieux.join(' & ') || '—'}</dd>
+                  <dt>Résiste à</dt>
+                  <dd>{p.magie.resiste.join(', ') || '—'}</dd>
+                  <dt>Vulnérable à</dt>
+                  <dd>{p.magie.vulnerable.join(', ') || '—'}</dd>
+                  <dt>Magie acquise</dt>
+                  <dd>aucune</dd>
+                </>
+              ) : (
+                <>
+                  <dt>Magie innée</dt>
+                  <dd><em>à préciser</em></dd>
+                </>
+              )
+            )}
+            {bloc === 'fil-rouge-classe' && (
+              <>
+                <dt>Classe</dt>
+                <dd><a href={pageHref(p.classe.id)}>{p.classe.nom}</a> ({p.classe.categorie.toLowerCase()}), niveau 2</dd>
+                <dt>Santé, chakra, barrière</dt>
+                <dd>+{p.classe.sante}, +{p.classe.chakra}, +{p.classe.barriere}</dd>
+                <dt>Maîtrises d’armes</dt>
+                <dd>{p.classe.maitrisesArmes.join(' ; ')}</dd>
+                <dt>Armures</dt>
+                <dd>{p.classe.maitrisesArmures.join(' ; ')}</dd>
+                <dt>Équipement de départ</dt>
+                <dd>{[p.classe.arme, p.classe.armure].filter(Boolean).join(' ; ')}</dd>
+                <dt>Inventaire de départ</dt>
+                <dd>{p.classe.inventaire.join(', ')}</dd>
+              </>
+            )}
+            {bloc === 'fil-rouge-sorts' && (
+              <>
+                <dt>Magie innée</dt>
+                <dd>oui{p.magie && <> ({p.magie.nom})</>}</dd>
+                <dt>Magie acquise</dt>
+                <dd>non</dd>
+                <dt>Classe magique</dt>
+                <dd>{p.classe.magique ? `oui (${p.classe.nom})` : 'non'}</dd>
+                <dt>Emplacements de sorts</dt>
+                <dd>{p.conditions} condition{p.conditions > 1 ? 's' : ''} × puissance magique {p.puissanceMagique} = <strong>{p.emplacements}</strong></dd>
+              </>
+            )}
+            {bloc === 'fil-rouge-attributs' && (
+              <>
+                <dt>Santé</dt>
+                <dd>{calcul([[p.race.sante, 'de la race'], [p.classe.sante, 'de la classe'], [p.magie?.sante, 'de la magie'], [p.ethnie?.sante, 'de l’ethnie']], p.attributs.sante)}</dd>
+                <dt>Chakra</dt>
+                <dd>{calcul([[p.race.chakra, 'de la race'], [p.classe.chakra, 'de la classe'], [p.magie?.chakra, 'de la magie'], [p.ethnie?.chakra, 'de l’ethnie']], p.attributs.chakra)}{!p.magieConnue && <> <em>(sans sa magie)</em></>}</dd>
+                <dt>Barrière</dt>
+                <dd>{calcul([[Math.floor(p.attributs.chakra / 2), 'pour la moitié du chakra'], [p.race.barriere, 'de la race'], [p.classe.barriere, 'de la classe'], [p.ethnie?.barriere, 'de l’ethnie']], p.attributs.barriere)}</dd>
+                <dt>Corruption maximale</dt>
+                <dd>{p.attributs.chakra}</dd>
+                {p.attributs.quatriemeBarre && (<><dt>{p.attributs.quatriemeBarre.ressource} (4ᵉ barre)</dt><dd>{p.attributs.quatriemeBarre.max}</dd></>)}
+                <dt>Vitesse</dt>
+                <dd>{p.attributs.vitesseSol} sur terre, {p.attributs.vitesseNage} à la nage</dd>
+                <dt>Armure magique de base</dt>
+                <dd>{p.attributs.am > 0 ? `${p.attributs.am} AM (classe magique)` : '0'}</dd>
+              </>
+            )}
+          </dl>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+{
+  bloc === 'magies' && (
+    <ul class="guide-magies" aria-label="Les 15 magies et leur dieu">
+      {magies.map((m) => (
+        <li style={`--couleur-magie: ${couleurDeMagie(m.nom)}`}>
+          <a class="guide-magie" href={pageHref(m.id)}>
+            <span class="guide-magie__point" aria-hidden="true" />
+            <span class="guide-magie__nom">{m.nom}</span>
+          </a>
+          {m.dieux.length > 0 && <span class="guide-magie__dieu">{m.dieux.join(' & ')}</span>}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+{
+  bloc === 'magie-bonus' && (
+    <div class="guide-defile" tabindex="0" role="region" aria-label="Ce que donne chaque magie">
+      <table class="guide-table">
+        <thead>
+          <tr>
+            <th scope="col">Magie</th>
+            <th scope="col">+1 en caractéristique (magie innée)</th>
+            <th scope="col">Chakra offert</th>
+            <th scope="col">Santé offerte</th>
+          </tr>
+        </thead>
+        <tbody>
+          {magies.map((m) => (
+            <tr style={`--couleur-magie: ${couleurDeMagie(m.nom)}`}>
+              <th scope="row">
+                <a class="guide-magie guide-magie--ligne" href={pageHref(m.id)}>
+                  <span class="guide-magie__point" aria-hidden="true" />
+                  <span class="guide-magie__nom">{m.nom}</span>
+                </a>
+              </th>
+              <td>{m.caracteristique_id ? <span class="guide-carac" style={styleDeCouleur(couleurDeCaracteristique(m.caracteristique_id))}>{m.caracteristique}</span> : (m.caracteristique ?? '—')}</td>
+              <td class="guide-nombre">{m.chakra ?? '—'}</td>
+              <td class="guide-nombre">{m.sante ?? '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+{
+  bloc === 'initiative' && (
+    <div class="guide-defile" tabindex="0" role="region" aria-label="Initiative selon l’Agilité">
+      <table class="guide-table guide-table--compacte">
+        <thead>
+          <tr>
+            <th scope="row">Agilité</th>
+            {initiative.map((i) => <th scope="col">{i.agilite}{i.note && <sup>*</sup>}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Initiative</th>
+            {initiative.map((i) => <td class="guide-nombre">{i.bonus_brut.replace(/ initiative$/, '')}</td>)}
+          </tr>
+        </tbody>
+      </table>
+      {initiative.filter((i) => i.note).map((i) => <p class="guide-note"><sup>*</sup> {i.agilite} en Agilité : {i.note.charAt(0).toLowerCase() + i.note.slice(1)}.</p>)}
+    </div>
+  )
+}
+
+{
+  bloc === 'competences' && (
+    <div class="guide-competences">
+      {competences.map((c) => (
+        <section class="guide-competences__groupe" style={styleDeCouleur(couleurDeCaracteristique(c.id))} aria-labelledby={`competences-${c.id}`}>
+          <h4 id={`competences-${c.id}`}>
+            <span class="guide-carac">{c.nom}</span> <span class="guide-lettre">({c.lettre})</span>
+          </h4>
+          <ul>
+            {c.competences.map((k) => (
+              <li>
+                <strong>{k.nom}</strong>
+                {k.html && <> — <Fragment set:html={k.html} /></>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+{
+  bloc === 'niveaux' && (
+    <div class="guide-defile" tabindex="0" role="region" aria-label="Tableau de la montée de niveau">
+      <table class="guide-table guide-table--niveaux">
+        <thead>
+          <tr>
+            <th scope="col">Niveau</th>
+            <th scope="col">XP nécessaire</th>
+            <th scope="col">Points de compétences</th>
+            <th scope="col">Points d’attributs</th>
+            <th scope="col">Niveaux de classe</th>
+            <th scope="col">Niveau de maîtrise d’un sort</th>
+            <th scope="col">Et aussi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {niveaux.map((n) => (
+            <tr>
+              <th scope="row">{n.niveau}</th>
+              <td class="guide-nombre">{nombre(n.xp)}</td>
+              <td class="guide-nombre">{n.competences ?? '—'}</td>
+              <td class="guide-nombre">{n.attributs ?? '—'}</td>
+              <td class="guide-nombre">{n.classe ? `+${n.classe}` : '—'}</td>
+              <td class="guide-nombre">{n.maitrise ? `+${n.maitrise}` : '—'}</td>
+              <td>{n.autres.length > 0 ? <ul class="guide-gains">{n.autres.map((a) => <li>{a}</li>)}</ul> : ''}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+{
+  bloc === 'types-de-don' && (
+    <dl class="guide-definitions">
+      {typesDeDon.map((t) => (
+        <>
+          <dt>{t.nom}</dt>
+          <dd>{t.definition}</dd>
+        </>
+      ))}
+    </dl>
+  )
+}
+
+{
+  bloc === 'entrainement' && (
+    <div class="guide-defile" tabindex="0" role="region" aria-label="Jet d’entraînement">
+      <table class="guide-table guide-table--compacte">
+        <thead>
+          <tr>
+            <th scope="col">Résultat du D100</th>
+            <th scope="col">Bonus obtenu</th>
+          </tr>
+        </thead>
+        <tbody>
+          {entrainement.map((e) => (
+            <tr class={e.rate ? 'guide-rate' : undefined}>
+              <td class="guide-nombre">{e.valeur_brut}</td>
+              <td>{e.resultat_brut}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+{
+  bloc === 'postures' && (
+    <div class="guide-postures">
+      {postures.map((p) => {
+        const id = idBulle('posture');
+        return (
+          <section class="guide-posture" style={styleDeCouleur(couleurDePosture(p.id))} aria-labelledby={`${id}-titre`}>
+            <h3 id={`${id}-titre`}>
+              <span class="bulle-zone">
+                <button type="button" class="guide-posture__nom" data-bulle={id} aria-describedby={id} title={p.description}>
+                  {p.nom}
+                </button>
+                <span class="bulle" role="tooltip" id={id} hidden>
+                  {p.description}
+                </span>
+              </span>
+            </h3>
+            <ul>{p.effets.map((e) => <li>{e}</li>)}</ul>
+          </section>
+        );
+      })}
+    </div>
+  )
+}
+
+{
+  bloc === 'documents' && (
+    <div class="guide-references">
+      {references.map((g) => (
+        <section class="guide-references__groupe">
+          <h3>
+            {g.document} {g.genre && <span class="guide-lettre">(Google {g.genre})</span>}
+          </h3>
+          <ul>
+            {g.pages.map((p) => (
+              <li>
+                <a href={pageHref(p.id)}>{p.titre}</a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  )
+}

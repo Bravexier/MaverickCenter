@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 4;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 27;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -364,11 +364,14 @@ CREATE TABLE magie (
   barre4_texte          TEXT,                       -- cellule « 4ème barre » telle qu'écrite
   barre4_max            INTEGER,                    -- « maximum de 10 Sang » : extrait du texte ci-dessus (NULL si la forme ne correspond pas)
   barre4_regen          INTEGER,                    -- « la régénère de 1 par tour » : idem
-  incompatibilite_note  TEXT,                       -- bloc « Magie non compatible » quand ce n'est PAS une liste de noms de magies (Corruption : phrase)
+  incompatibilite_note  TEXT,                       -- bloc « Magie non compatible » quand ce n'est PAS une liste de noms de magies (Corruption : phrase de la source,
+                                                    -- gardée comme trace : la page affiche « Mono-magie uniquement », voir mono_magie)
   origine               TEXT    NOT NULL REFERENCES famille(id)
     CHECK (origine = 'magies'),
   source_ref            TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  mono_magie            INTEGER NOT NULL CHECK (mono_magie IN (0, 1)),   -- 1 = « Mono-magie uniquement » : ne se combine avec aucune autre magie, sauf pour les
+                                                    -- ethnies de magie_ethnie_secondaire (décision R15 du propriétaire : Potentiel Illimité et Corruption ; migration 0010)
   CHECK ((barre4_ressource IS NULL) = (barre4_texte IS NULL))
 ) STRICT;
 
@@ -441,7 +444,9 @@ CREATE INDEX magie_incompatibilite_autre ON magie_incompatibilite (autre_magie_i
 
 -- Ethnies pour lesquelles une magie secondaire reste possible malgré les incompatibilités (fiche `Magie!U5`, colonne
 -- « Magie secondaire si Race » : « Elfe Noir Charbon, Elfe Noir Salé, Felfe Noir » pour Corruption). `ethnie_brut` est le nom écrit ;
--- `ethnie_id` l'ethnie rapprochée (les trois noms de la source se résolvent exactement : « Felfe Noir » = races/felfe#ethnie:felfe-noir).
+-- `ethnie_id` l'ethnie rapprochée (les noms de la source se résolvent exactement : « Felfe Noir » = races/felfe#ethnie:felfe-noir).
+-- L'Elfe Noir Salé de la cellule est une erreur (décision R15 du propriétaire, comme le dit la phrase de l'onglet : « Seuls les Elfes noirs (Charbon)
+-- et les Felfes noirs ») : sa ligne est retirée par la migration 0010.
 CREATE TABLE magie_ethnie_secondaire (
   magie_id   TEXT    NOT NULL REFERENCES magie(id),
   rang       INTEGER NOT NULL CHECK (rang >= 1),
@@ -486,7 +491,7 @@ CREATE TABLE amelioration_cadaverique (
 -- SORT : une ligne par sort de la table des sorts (14 magies x 23 sorts = 322 ; Potentiel Illimité n'a pas de table propre :
 -- il pioche dans les 14 autres, règle de la fiche, hors de ce domaine)
 CREATE TABLE sort (
-  id                    TEXT    NOT NULL PRIMARY KEY,   -- '<magie.id>#sort:<slug du nom>'
+  id                    TEXT    NOT NULL PRIMARY KEY,   -- '<magie.id>#sort:<clé du nom à l'import>' ; gelé : un renommage change nom et nom_cle, jamais l'id (0006)
   magie_id              TEXT    NOT NULL REFERENCES magie(id),
   nom                   TEXT    NOT NULL CHECK (length(nom) > 0),               -- espaces insécables remplacés par des espaces (identifiant)
   nom_cle               TEXT    NOT NULL CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),               -- normalize(nom) comme text.mjs : 'boule-de-sang' ; recherche d'un sort par son nom
@@ -535,7 +540,6 @@ CREATE TABLE sort (
                                                         -- dans l'ordre de lecture ; NULL quand le sort n'écrit aucun NM. Recopie lisible de sort_bonus_maitrise (db:check et les tests contrôlent l'accord)
   UNIQUE (magie_id, ordre),
   UNIQUE (magie_id, nom),
-  CHECK (id = magie_id || '#sort:' || nom_cle),
   -- le typé suit toujours le brut (la valeur typée n'est jamais une valeur saisie : tools/db/magies.py et db:check recalculent avec le même analyseur)
   CHECK (imparable = (instr(lower(type_brut), 'imparable') > 0)),
   CHECK (inesquivable = (instr(lower(type_brut), 'inesquivable') > 0)),
@@ -927,7 +931,7 @@ CREATE TABLE mode_super_objet (
 --   version 'onglet_magie'   : classeur V8, bloc « Capacité Mode Hyper » de chaque onglet de magie (15 magies : mono, bi ou forme complète) ;
 --   version 'fiche'          : fiche auto V15.2.2 : Magie!V2:W16 (15 magies mono / bi), Personnage!BI32 (« Effets de base »), Race!W (races) ;
 --   version 'onglet_race'    : classeur « Les races », bloc « Capacité Mode Hyper » de l'onglet de chaque race (décision du propriétaire : PRIME
---                              sur 'fiche' pour les races ; écrit par l'importeur races au lot 4).
+--                              sur 'fiche' pour les races ; migration 0007, `nom` = nom de la capacité, `libelle` = nom de l'onglet).
 --   portee 'general' : effet commun (libelle = « Général » ou le titre de l'encadré) ; 'magie' : une magie ; 'duo' : un couple de magies
 --   (version 'magie_masque') ; 'race' : une race (variante NULL : la source n'en distingue pas).
 --   variante 'mono' / 'bi' : colonnes « Mono magie » / « Bi magie » ; 'mono_et_bi' : cellule fusionnée sur les deux ; 'forme_complete' : Potentiel
@@ -949,6 +953,8 @@ CREATE TABLE mode_hyper_effet (
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('annexes', 'magies', 'races')),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  -- Colonne ajoutée par la migration 0007 (une colonne ajoutée va en dernier)
+  nom           TEXT,                                        -- nom de la capacité quand la source en écrit un (version 'onglet_race' : « Sang du condamné ») ; NULL sinon
   CHECK ((portee = 'general' AND magie_id IS NULL AND magie2_id IS NULL AND race_id IS NULL)
       OR (portee = 'magie'   AND magie_id IS NOT NULL AND magie2_id IS NULL AND race_id IS NULL)
       OR (portee = 'duo'     AND magie_id IS NOT NULL AND magie2_id IS NOT NULL AND race_id IS NULL)
@@ -1007,8 +1013,8 @@ CREATE TABLE categorie_classe (
 -- CLASSE : une ligne par onglet de classe (39)
 CREATE TABLE classe (
   id                 TEXT    NOT NULL PRIMARY KEY REFERENCES page(id),   -- = id de la page (entité typée qui a SA page)
-  nom                TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),    -- nom de l'onglet = nom dans le Sommaire (« Cuirassé », « Orios »). Le titre de la page
-                                                 -- des 13 classes « Hybride Animal » ajoute « (classe) » (page.titre) : ce suffixe n'est pas ici.
+  nom                TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),    -- nom de l'onglet = nom dans le Sommaire (« Cuirassé », « Orios ») = titre de la page.
+                                                 -- Les 13 classes « Hybride Animal » portent le nom de leur race, sans suffixe (migration 0009).
   nom_cle            TEXT    NOT NULL UNIQUE CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),    -- normalize(nom) : 'cuirasse', 'mage-bleu' ; sert aux jointures par nom avec les autres domaines
   categorie_id       TEXT    NOT NULL REFERENCES categorie_classe(id),   -- colonne du Sommaire où la classe est listée
   ordre              INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),         -- rang dans le Sommaire : catégories de gauche à droite, puis de haut en bas
@@ -1027,16 +1033,26 @@ CREATE TABLE classe (
   arme_depart        TEXT,                       -- « Arme de départ » : G7 (« Arme en acier selon la maîtrise »)
   armure_depart      TEXT,                       -- « Armure de départ » : G11
   chose_a_savoir     TEXT,                       -- bloc « CHOSE A SAVOIR » (colonne Z) : note libre de règle ; NULL = bloc absent OU intitulé sans texte (Bimane)
-  chose_a_savoir_lien TEXT,                      -- hyperlien externe attaché à la cellule du texte (Mage Bleu!Z3 : classeur des familiers) ; NULL = aucun
+  chose_a_savoir_lien TEXT,                      -- hyperlien externe attaché à la cellule du texte ; NULL = aucun (le seul, Mage Bleu!Z3 vers le classeur des
+                                                 -- familiers, est retiré par la migration 0019 : demande du propriétaire)
   description_titre  TEXT,                       -- titre du texte de présentation de la classe (AM1) : « Description Guerrier »
   description       TEXT,                        -- texte de présentation (AM2). NULL : Anansi, Goleois (titre sans texte), Grenadier (pas de zone de description)
   origine            TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'classes'),
   source_ref         TEXT    NOT NULL CHECK (length(source_ref) > 0), -- onglet + zones lues (départ, à savoir, description) + cellule du Sommaire
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
-  CHECK (id = 'classes/' || nom_cle)
+  magie_innee_id     TEXT    REFERENCES magie(id),  -- magie innée qui RÉSERVE et IMPOSE la classe : sans elle on ne prend pas la classe, avec elle la classe est
+                                                 -- la classe 1. Archimage : Potentiel Illimité (« CHOSE A SAVOIR » de son onglet, décision R23, migration 0015) ;
+                                                 -- NULL pour les autres classes. Contrôlé par v_personnage_controle (classe_reservee, classe_imposee)
+  magie_innee_exclue_id TEXT  REFERENCES magie(id)   -- magie innée qui FERME la classe, à tous les rangs. Mage Bleu : Potentiel Illimité (« CHOSE A SAVOIR » de son
+                                                 -- onglet : « Un potentiel illimité ne peut pas avoir cette classe. », décision R25, migration 0020) ; NULL pour les autres.
+                                                 -- Contrôlé par v_personnage_controle (classe_exclue)
 ) STRICT;
 
 CREATE INDEX classe_categorie ON classe (categorie_id, ordre);   -- « les classes d'une catégorie »
+
+CREATE UNIQUE INDEX classe_magie_innee ON classe (magie_innee_id) WHERE magie_innee_id IS NOT NULL;   -- une magie innée impose au plus une classe
+
+CREATE INDEX classe_magie_innee_exclue ON classe (magie_innee_exclue_id) WHERE magie_innee_exclue_id IS NOT NULL;   -- « les classes que ferme une magie innée »
 
 -- SPÉCIALITÉ : deux par classe, choisies au niveau de classe 10
 -- Onglet normal : bannières en majuscules de la ligne 17 (A17 = rang 1, X17 = rang 2) ; description = titre + texte dans la zone AM.
@@ -1245,6 +1261,8 @@ CREATE TABLE race (
     CHECK (origine = 'races'),
   source_ref      TEXT    NOT NULL CHECK (length(source_ref) > 0), -- « Fiche auto V15.2.2 › Race › A3:W3 ; Les races › première feuille › A2:B2 »
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  mono_magie      INTEGER NOT NULL CHECK (mono_magie IN (0, 1)),   -- 1 = « Une seule magie autorisé » (inconvénients de l'onglet de la race) : pas de magie
+                                              -- acquise, quelle que soit l'innée (décision R28 du propriétaire : la Lamia ; migration 0022)
   CHECK ((don_base_nom IS NULL) = (don_base_type IS NULL) AND (don_base_nom IS NULL) = (don_base_effets IS NULL)),
   CHECK (don_base_nom IS NULL OR don_base_brut IS NOT NULL)
 ) STRICT;
@@ -1376,7 +1394,8 @@ CREATE TABLE race_classe (
 
 CREATE INDEX race_classe_classe ON race_classe (classe_id, accessible);   -- « races qui peuvent prendre la classe X »
 
--- RACE_MAGIE : matrice « Accessibilité Magie » : 27 races x 15 magies = 405 lignes (244 à 1, 161 à 0).
+-- RACE_MAGIE : matrice « Accessibilité Magie » : 27 races x 15 magies = 405 lignes (245 à 1, 160 à 0). Une case corrigée par le propriétaire :
+-- Lamia × Corruption, à 0 dans la fiche (E24), vaut 1 (décision R22, migration 0013 ; source_ref le dit).
 -- Selon les formules de la fiche, elle ne restreint que la magie INNÉE (BDD!D2 -> liste de Personnage!S2) ; la liste des magies
 -- acquises ne la lit pas. Elle remplace le champ de frontmatter `magies_innees` des pages de race.
 CREATE TABLE race_magie (
@@ -1395,11 +1414,120 @@ CREATE TABLE race_magie (
 
 CREATE INDEX race_magie_magie ON race_magie (magie_id, accessible);       -- « races qui peuvent avoir la magie M comme magie innée »
 
+-- ▸ CONTENU DE L'ONGLET DE LA RACE : classeur « Les races », un onglet par race (migration 0007). Décision R13 du propriétaire : l'onglet est la SOURCE ; la fiche
+-- V15.2.2 (tables race, ethnie, race_restriction_carac…) en est un dérivé fait à la main, pas toujours à jour, dont les écarts ne sont plus affichés. Les pages
+-- de race du site sont rendues depuis ces tables (lib/races-db.mjs). Textes tels qu'écrits : paragraphes séparés par une ligne vide, retours à la ligne et
+-- puces « - » conservés ; un nombre n'est typé que s'il est écrit en chiffres. Lignes tirées des pages races/<slug> par tools/db/races_onglet.py (preuve :
+-- chaque section se réécrit à l'identique avec le code de tools/sheets/races.py, l'importeur qui a lu les onglets).
+-- RACE_ONGLET : une ligne par race.
+CREATE TABLE race_onglet (
+  race_id              TEXT    NOT NULL PRIMARY KEY REFERENCES race(id),
+  onglet               TEXT    NOT NULL UNIQUE CHECK (length(onglet) > 0),            -- nom de l'onglet : « Elfe Noir », « Namazus »
+  description_generale TEXT    NOT NULL CHECK (length(description_generale) > 0),     -- description générale (A4)
+  histoire             TEXT    NOT NULL CHECK (length(histoire) > 0),                 -- « HISTOIRE » (AK3)
+  description          TEXT    CHECK (description IS NULL OR length(description) > 0),   -- « DESCRIPTION » (AK30) : physique et culture, un bloc pour toute la race
+  -- « DONNÉES » : valeurs de départ de l'onglet (elles priment sur race.sante, race.chakra_depart… de la fiche)
+  sante_depart         INTEGER NOT NULL,                       -- « Santé de départ »
+  chakra_depart        INTEGER NOT NULL,                       -- « Chakra de départ »
+  barriere_bonus       INTEGER NOT NULL,                       -- « Barrière bonus »
+  vitesse_sol          INTEGER NOT NULL,                       -- « Vitesse Sol/Nage » : première valeur
+  vitesse_nage         INTEGER NOT NULL,                       -- « Vitesse Sol/Nage » : seconde valeur
+  avantages            TEXT    NOT NULL CHECK (length(avantages) > 0),       -- « Avantage(s) »
+  inconvenients        TEXT    NOT NULL CHECK (length(inconvenients) > 0),   -- « Inconvénient(s) »
+  don_base             TEXT    NOT NULL CHECK (length(don_base) > 0),        -- « Don B (Base) »
+  -- En-têtes du tableau des ethnies du bloc « Don R (Race) » (NULL : pas de tableau d'ethnies, la race a un don unique ou un tableau en panneaux)
+  dons_rubrique        TEXT    CHECK (dons_rubrique IN ('Type', 'Condition d''origine', 'Magie innée')),   -- 1re colonne : ce qui distingue l'ethnie
+  dons_rubrique_nom    TEXT    CHECK (dons_rubrique_nom IS NULL OR length(dons_rubrique_nom) > 0),          -- colonne du nom du don (« Nom ») ; NULL si absente
+  dons_rubrique_don    TEXT    CHECK (dons_rubrique_don IS NULL OR length(dons_rubrique_don) > 0),          -- colonne du don (« Don »)
+  dons_tableau_titre   TEXT    CHECK (dons_tableau_titre IS NULL OR length(dons_tableau_titre) > 0),        -- nom écrit sur le tableau en panneaux (Drakos : « Écaille draconique »)
+  origine              TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'races'),
+  source_ref           TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  CHECK ((dons_rubrique IS NULL) = (dons_rubrique_don IS NULL)),
+  CHECK (dons_rubrique_nom IS NULL OR dons_rubrique IS NOT NULL)
+) STRICT, WITHOUT ROWID;
+
+-- RACE_DON : dons raciaux de l'onglet, dans son ordre. forme 'ethnie' = une ligne du tableau des ethnies (étiquette = 1re colonne : « Elfe Charbon »,
+-- « Londolor Est », « Eau en innée ») ; 'unique' = le don de toute la race, sans tableau (Elfe doré, Majin, Hujin, Lamia, et « Trompe-mort » du Mort-vivant).
+-- Les ethnies de l'onglet ne portent pas le nom des sous-races de la fiche : `ethnie_id` est la correspondance explicite de l'importeur (ETHNIE_FICHE).
+CREATE TABLE race_don (
+  id          TEXT    NOT NULL PRIMARY KEY,                    -- '<race_id>#don:<slug>'
+  race_id     TEXT    NOT NULL REFERENCES race_onglet(race_id),
+  slug        TEXT    NOT NULL CHECK (length(slug) > 0 AND slug NOT GLOB '*[^a-z0-9-]*' AND slug NOT GLOB '*--*' AND slug NOT GLOB '-*' AND slug NOT GLOB '*-'),   -- normalize(etiquette) ou, pour un don unique, normalize(nom)
+  rang        INTEGER NOT NULL CHECK (rang >= 1),              -- ordre de l'onglet
+  forme       TEXT    NOT NULL CHECK (forme IN ('ethnie', 'unique')),
+  etiquette   TEXT    CHECK (etiquette IS NULL OR length(etiquette) > 0),   -- 1re colonne du tableau des ethnies (retours à la ligne réduits à une espace) ; NULL pour un don unique
+  nom         TEXT    CHECK (nom IS NULL OR length(nom) > 0),               -- nom du don (« Sang corrompu ») ; NULL quand l'onglet n'en écrit pas
+  texte       TEXT    NOT NULL CHECK (length(texte) > 0),                   -- le don, tel qu'écrit
+  ethnie_id   TEXT    REFERENCES ethnie(id),                                -- sous-race de la fiche qui lui correspond ; NULL = aucune (Trompe-mort)
+  origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'races'),
+  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  UNIQUE (race_id, slug),
+  UNIQUE (race_id, rang),
+  CHECK (id = race_id || '#don:' || slug),
+  CHECK ((forme = 'ethnie') = (etiquette IS NOT NULL)),
+  CHECK (forme = 'ethnie' OR nom IS NOT NULL)
+) STRICT;
+
+CREATE INDEX race_don_ethnie ON race_don (ethnie_id) WHERE ethnie_id IS NOT NULL;
+
+-- RACE_DON_TABLEAU_* : le tableau en panneaux du bloc « Don R (Race) » (Drakos : magie innée -> AP/AM, bonus de compétence, cran de résistance ;
+-- Mort-vivant : lieu de résurrection / raison de la mort -> don), cellule par cellule. Une race en a au plus un ; son titre est race_onglet.dons_tableau_titre.
+CREATE TABLE race_don_tableau_colonne (
+  race_id    TEXT    NOT NULL REFERENCES race_onglet(race_id),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),
+  libelle    TEXT    NOT NULL CHECK (length(libelle) > 0),        -- en-tête tel qu'écrit (« Lieu de résurrection\nRaison de la mort »)
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'races'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (race_id, rang)
+) STRICT, WITHOUT ROWID;
+
+CREATE TABLE race_don_tableau_ligne (
+  race_id    TEXT    NOT NULL REFERENCES race_onglet(race_id),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),
+  ethnie_id  TEXT    REFERENCES ethnie(id),                      -- sous-race de la fiche qui correspond à la ligne (« Drakos Rouge » pour Feu)
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'races'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (race_id, rang)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX race_don_tableau_ligne_ethnie ON race_don_tableau_ligne (ethnie_id) WHERE ethnie_id IS NOT NULL;
+
+CREATE TABLE race_don_tableau_cellule (
+  race_id    TEXT    NOT NULL,
+  ligne      INTEGER NOT NULL,
+  colonne    INTEGER NOT NULL,
+  valeur     TEXT    NOT NULL CHECK (length(valeur) > 0),         -- texte de la cellule tel qu'écrit (puces « - » et retours à la ligne conservés)
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'races'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (race_id, ligne, colonne),
+  FOREIGN KEY (race_id, ligne) REFERENCES race_don_tableau_ligne (race_id, rang),
+  FOREIGN KEY (race_id, colonne) REFERENCES race_don_tableau_colonne (race_id, rang)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX race_don_tableau_cellule_colonne_fk ON race_don_tableau_cellule (race_id, colonne);
+
+-- RACE_MAGIE_ONGLET : magies innées que l'onglet de la race limite explicitement (ligne « Inconvénient(s) » : « Magie du Feu, Terre, Foudre, Arcane,
+-- Potentiel illimité en inné uniquement »), dans l'ordre où il les cite. Quand une race en a, cette liste PRIME sur la matrice race_magie (décision R11 :
+-- le Nain) ; sinon la matrice fait foi (décision R8). Les 13 races hybrides citent les trois mêmes magies que la matrice.
+CREATE TABLE race_magie_onglet (
+  race_id    TEXT    NOT NULL REFERENCES race_onglet(race_id),
+  magie_id   TEXT    NOT NULL REFERENCES magie(id),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),
+  nom_brut   TEXT    NOT NULL CHECK (length(nom_brut) > 0),       -- nom de la magie dans la liste de l'importeur (« Potentiel Illimité »)
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'races'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (race_id, magie_id),
+  UNIQUE (race_id, rang)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX race_magie_onglet_magie ON race_magie_onglet (magie_id);
+
 -- ▸ RELATIONS ENTRE PEUPLES : classeur « Les races », onglet « Relation entre les races » (page lore/relations-entre-les-races).
 -- Matrice carrée de 69 peuples en lignes et en colonnes ; chaque case porte un niveau de l'échelle (de « Même peuple » à « Ennemie »). La matrice n'est
--- PAS symétrique. SENS NON TRANCHÉ : la légende de l'onglet (« Verticale = Comment le peuple voit les autres », « Horizontale = Comment le peuple est
--- vu par les autres ») se lit de deux façons ; les colonnes portent donc les noms de l'axe (ligne = étiquette de gauche, colonne = étiquette du
--- haut) et non « qui voit qui » : aucune lecture n'est choisie à la place du propriétaire (design.md §12).
+-- PAS symétrique. SENS (décision R12 du propriétaire) : la case (ligne A, colonne B) dit comment A voit B ; la légende de l'onglet (« Verticale = Comment le
+-- peuple voit les autres », « Horizontale = Comment le peuple est vu par les autres ») vise les étiquettes. Les colonnes gardent les noms de l'axe
+-- (ligne = étiquette de gauche, colonne = étiquette du haut) ; la vue v_regard_peuple les nomme « qui voit qui ».
 CREATE TABLE echelle_relation (
   id         TEXT    NOT NULL PRIMARY KEY,                   -- normalize(libelle) : 'meme-peuple', 'alliee', 'appreciee', 'acceptee', 'neutre', 'evitee', 'haine', 'ennemie'
   libelle    TEXT    NOT NULL UNIQUE,                        -- « Même peuple », « Alliée »… tel qu'écrit
@@ -1423,8 +1551,8 @@ CREATE TABLE peuple (
 CREATE INDEX peuple_race ON peuple (race_id) WHERE race_id IS NOT NULL;
 
 CREATE TABLE relation_peuple (
-  ligne_peuple_id   TEXT    NOT NULL REFERENCES peuple(id),                    -- étiquette de GAUCHE de la case
-  colonne_peuple_id TEXT    NOT NULL REFERENCES peuple(id),                    -- étiquette du HAUT de la case
+  ligne_peuple_id   TEXT    NOT NULL REFERENCES peuple(id),                    -- étiquette de GAUCHE de la case : le peuple qui voit (R12)
+  colonne_peuple_id TEXT    NOT NULL REFERENCES peuple(id),                    -- étiquette du HAUT de la case : le peuple vu (R12)
   echelle_id        TEXT    NOT NULL REFERENCES echelle_relation(id),
   origine           TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'races'),
   source_ref        TEXT    NOT NULL CHECK (length(source_ref) > 0),                                          -- « Les races › Relation entre les races › E23:H26 »
@@ -1443,7 +1571,7 @@ CREATE INDEX relation_peuple_echelle ON relation_peuple (echelle_id);
 -- (Animation des morts), marionettes d'ombre (Marionette de lombre).
 CREATE TABLE invocation (
   id            TEXT    NOT NULL PRIMARY KEY REFERENCES page(id),   -- = id de la page d'introduction de l'onglet
-  nom           TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),    -- nom de l'onglet = titre de la page : 'Appel aux golems', 'Marionette de lombre'
+  nom           TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),    -- nom de l'onglet = titre de la page : 'Appel aux golems', « Marionnette de l'ombre » (onglet « Marionette de lombre », nom corrigé par 0006)
   nom_cle       TEXT    NOT NULL UNIQUE CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),    -- normalize(nom)
   ordre         INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),   -- rang de l'onglet dans le classeur
   bandeau       TEXT    NOT NULL,           -- bandeau de l'onglet (AJ1, AP1, Z1) : 'INVOCATION GOLEM', 'INVOCATION NON-MORT'
@@ -1460,8 +1588,7 @@ CREATE TABLE invocation (
                                             -- tableau figure dans les deux classeurs (identité vérifiée à l'import) ; une seule copie, pas de doublon ici.
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'bestiaire'),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
-  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
-  CHECK (id = 'bestiaire/' || nom_cle)      -- l'id de page est '<type>/<slug>' et le slug est normalize(titre)
+  remarque TEXT    -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
 
 CREATE INDEX invocation_sort ON invocation (sort_id) WHERE sort_id IS NOT NULL;
@@ -1470,7 +1597,7 @@ CREATE INDEX invocation_sort ON invocation (sort_id) WHERE sort_id IS NOT NULL;
 -- (golems : Inerte, Élémentaire ; non-morts : Non-Mort, Élémentaire). Une ligne = un élément de la liste « - Nom. Texte ».
 -- Reconstruction : '- ' || nom || '. ' || texte = l'élément de liste de texte_general.
 CREATE TABLE invocation_capacite_commune (
-  id            TEXT    NOT NULL PRIMARY KEY,         -- '<invocation.id>#commune:<nom_cle>'
+  id            TEXT    NOT NULL PRIMARY KEY,         -- '<invocation.id>#commune:<clé du nom à l'import>' ; gelé : un renommage change nom et nom_cle, jamais l'id (0006)
   invocation_id TEXT    NOT NULL REFERENCES invocation(id),
   rang          INTEGER NOT NULL CHECK (rang >= 1),   -- ordre dans la liste
   nom           TEXT    NOT NULL CHECK (length(nom) > 0),                     -- « Inerte », « Non-Mort », « Élémentaire » : jusqu'au premier « . »
@@ -1480,8 +1607,7 @@ CREATE TABLE invocation_capacite_commune (
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (invocation_id, rang),
-  UNIQUE (invocation_id, nom_cle),
-  CHECK (id = invocation_id || '#commune:' || nom_cle)
+  UNIQUE (invocation_id, nom_cle)
 ) STRICT;
 
 -- Résistances / vulnérabilités / immunités écrites dans une capacité COMMUNE (aujourd'hui : « Non-Mort » : immunisée à la peur, à la
@@ -1552,7 +1678,7 @@ CREATE INDEX invocation_bloc_magie_magie ON invocation_bloc_magie (magie_id);
 -- CREATURE : une ligne par carte (63 = 30 golems/poupées + 28 non-morts + 5 marionettes)
 CREATE TABLE creature (
   id            TEXT    NOT NULL PRIMARY KEY REFERENCES page(id),   -- = id de la page (entité typée qui a SA page)
-  nom           TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),    -- nom de la carte (D1 / T1) = titre de la page ; coquilles conservées
+  nom           TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),    -- nom de la carte (D1 / T1) = titre de la page ; orthographe corrigée par 0006 (l'id garde la clé d'origine)
   nom_cle       TEXT    NOT NULL UNIQUE CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),    -- normalize(nom) : 'golem-de-magma' ; jointures par nom avec les autres domaines
   invocation_id TEXT    NOT NULL REFERENCES invocation(id),
   bloc_id       TEXT    NOT NULL,           -- bloc de marge (combinaison de magies ou palier EP) ; FK composite plus bas
@@ -1595,7 +1721,6 @@ CREATE TABLE creature (
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (bloc_id, rang),
   FOREIGN KEY (bloc_id, invocation_id) REFERENCES invocation_bloc (id, invocation_id),
-  CHECK (id = 'bestiaire/' || nom_cle),     -- l'id de page est '<type>/<slug>' et le slug est normalize(titre)
   CHECK ((chakra_brut IS NULL) = (chakra_forme IS NULL)),
   CHECK ((chakra_valeur IS NULL) = (chakra_forme IS NULL)),
   CHECK ((barriere_brut IS NULL) = (barriere_forme IS NULL)),
@@ -1666,7 +1791,7 @@ CREATE TABLE creature_bonus_npm (
 -- `brut` = la ligne entière (reconstruction : nom || ' - ' || reste ; contrôlée à l'import). Les colonnes typées ne sont remplies que
 -- pour les formes sans ambiguïté ; `precisions` garde TOUTES les parenthèses (zone, cône, coût en santé, « 2Po-Cône »…).
 CREATE TABLE creature_attaque (
-  id          TEXT    NOT NULL PRIMARY KEY,           -- '<creature.id>#attaque:<nom_cle>' ; '…~2' pour une attaque écrite deux fois à l'identique (Golem d'ombre)
+  id          TEXT    NOT NULL PRIMARY KEY,           -- '<creature.id>#attaque:<clé du nom à l'import>' ; gelé : un renommage change nom et nom_cle, jamais l'id (0006) ; '…~2' pour une attaque écrite deux fois à l'identique (Golem d'ombre)
   creature_id TEXT    NOT NULL REFERENCES creature(id),
   rang        INTEGER NOT NULL CHECK (rang >= 1),     -- ligne dans la cellule « Dégâts » (position : n'entre pas dans l'identifiant)
   nom         TEXT    NOT NULL CHECK (length(nom) > 0),                       -- avant le premier « - » : « Poing », « Arbalécho », « L'arme du lanceur »
@@ -1688,7 +1813,6 @@ CREATE TABLE creature_attaque (
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (creature_id, rang),
   UNIQUE (creature_id, nom_cle, occurrence),
-  CHECK (id = creature_id || '#attaque:' || nom_cle || CASE WHEN occurrence > 1 THEN '~' || occurrence ELSE '' END),
   CHECK ((des_nombre IS NULL) = (des_faces IS NULL)),
   CHECK (bonus_fixe IS NULL OR des_nombre IS NOT NULL),
   CHECK ((portee_min IS NULL) = (portee_max IS NULL)),
@@ -1719,7 +1843,7 @@ CREATE INDEX creature_attaque_nom ON creature_attaque (nom_cle);
 -- Forme du paragraphe : « [(NPM n) ][[étiquette] ]Nom. Texte ». Reconstruction exacte :
 --   ['(NPM ' || npm_min || ') '] || ['[' || etiquette || '] '] || nom || '. ' || texte   (contrôlée à l'import)
 CREATE TABLE creature_capacite (
-  id          TEXT    NOT NULL PRIMARY KEY,           -- '<creature.id>#capacite:<nom_cle>' ; '…#capacite:sort-supplementaire:npm3' quand le nom se répète à un autre NPM
+  id          TEXT    NOT NULL PRIMARY KEY,           -- '<creature.id>#capacite:<clé du nom à l'import>' ; gelé : un renommage change nom et nom_cle, jamais l'id (0006) ; '…#capacite:sort-supplementaire:npm3' quand le nom se répète à un autre NPM
   creature_id TEXT    NOT NULL REFERENCES creature(id),
   rang        INTEGER NOT NULL CHECK (rang >= 1),     -- ordre des paragraphes
   npm_min     INTEGER CHECK (npm_min BETWEEN 1 AND 5),   -- préfixe « (NPM 3) » : niveau de puissance magique à partir duquel la capacité s'ajoute ; NULL = capacité de base
@@ -1734,8 +1858,7 @@ CREATE TABLE creature_capacite (
   source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0), -- plage de la cellule « Capacité(s) » (G19:R28)
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (creature_id, rang),
-  CHECK (length(nom_cle) > 0),
-  CHECK (id = creature_id || '#capacite:' || nom_cle || COALESCE(':npm' || npm_min, ''))
+  CHECK (length(nom_cle) > 0)
 ) STRICT;
 
 CREATE INDEX creature_capacite_nom ON creature_capacite (nom_cle);
@@ -2152,7 +2275,10 @@ CREATE TABLE baton_magique (
 ) STRICT;
 
 -- Métiers (Google Doc « MÉTIER » : une page par métier, 72). `bonus_brut`, `artisanat_brut`, `equipement_brut`, `avantage_brut` sont les
--- quatre champs de la page, tels qu'écrits (liens [[…]] et échappements Markdown retirés).
+-- quatre champs de la page, tels qu'écrits (liens [[…]] et échappements Markdown retirés). Artisanat (décision R34) : un texte libre (ce que le
+-- métier fabrique, `artisanat_texte`) et deux caractéristiques (`test_carac_1_id`, `test_carac_2_id`) ; la compétence d'artisanat vaut 10 × la
+-- première + 10 × la seconde (regle_constante 'metier.artisanat_par_point_caracteristique'). Sur le site de dev, ce sont ces trois colonnes qui se
+-- modifient ; `artisanat_brut`, `test_brut` et `peut_fabriquer` en sont recalculés.
 CREATE TABLE metier (
   id                 TEXT    NOT NULL PRIMARY KEY REFERENCES page(id),   -- id de la page : 'metiers/forgeron'
   nom                TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),         -- titre de la page : « Éleveur (choix animal) »
@@ -2163,9 +2289,10 @@ CREATE TABLE metier (
   peut_fabriquer     INTEGER NOT NULL CHECK (peut_fabriquer IN (0, 1)),   -- 0 si « Artisanat possible : Rien »
   artisanat_texte    TEXT,                            -- partie avant le crochet : « Peut faire des armes métalliques » ; NULL si « Rien »
   test_brut          TEXT,                            -- contenu du crochet : « FORCE  + VOLONTÉ », « PERCEPTION x2 », « Artisanat SOCIAL + INTELLIGENCE » ; NULL si aucun
-  test_carac_1_id    TEXT    REFERENCES caracteristique(id),   -- renseignées seulement pour la forme exacte « CARAC + CARAC »
-  test_carac_2_id    TEXT    REFERENCES caracteristique(id),
-  equipement_brut    TEXT    NOT NULL,                -- « Équipement supplémentaire possible » : « Kit de réparation d'arme, Maillet en fer » ; « Rien »
+  test_carac_1_id    TEXT    REFERENCES caracteristique(id),   -- les deux caractéristiques de la compétence d'artisanat (décision R34) : « CARAC + CARAC »,
+  test_carac_2_id    TEXT    REFERENCES caracteristique(id),   -- « Artisanat CARAC + CARAC », et « CARAC x2 » = deux fois la même ; NULL sans crochet
+  equipement_brut    TEXT    NOT NULL,                -- « Équipement supplémentaire possible » : « Kit de réparation d'arme, Maillet en fer » ; « Rien ».
+                                                      -- Ses objets de départ (décision R35) : metier_objet_depart
   avantage_brut      TEXT,                            -- « Avantage possible » ; NULL si vide (Artisan)
   origine            TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref         TEXT    NOT NULL CHECK (length(source_ref) > 0),
@@ -2179,8 +2306,11 @@ CREATE INDEX metier_peut_fabriquer ON metier (peut_fabriquer);
 
 -- Bonus d'un métier : le champ « Bonus » découpé sur les virgules suivies d'un signe (« +3% Esquive, +3% Réflexe » -> 2 rangs ;
 -- « Diplomatie OU Intimidation » -> 2 options du même rang). `valeur`/`unite`/`cible` ne sont renseignés que pour la forme
--- « +N% Cible » ou « +N Cible » ; tout autre fragment garde son texte et valeur NULL. `cible_cle` = normalize(cible) : se joint aux
--- compétences et attributs du domaine fiche par nom, sans clé étrangère entre domaines.
+-- « +N% Cible » ou « +N Cible » ; tout autre fragment garde son texte et valeur NULL. `cible_cle` = normalize(cible).
+-- Lien de règle (décision R33) : `competence_id` quand la cible est une compétence de la fiche (le bonus s'ajoute à son Acquis, au plus jusqu'au
+-- plafond : décision R38), `attribut` pour un attribut de la fiche : 'initiative' (« +N INI »), 'vitesse' (« +1 Vitesse au sol pour le sprint ») et
+-- 'vitesse_nage' (« +1 Vitesse nage ») (décision R37) ; « +N% dans une compétence sociale au choix » donne une option par compétence de la
+-- caractéristique Social. Un rang à plusieurs options liées est un choix, fait dans la fiche (personnage_metier_bonus).
 CREATE TABLE metier_bonus (
   metier_id   TEXT    NOT NULL REFERENCES metier(id),
   rang        INTEGER NOT NULL CHECK (rang >= 1),
@@ -2192,11 +2322,17 @@ CREATE TABLE metier_bonus (
   cible_cle   TEXT CHECK (cible_cle IS NULL OR (cible_cle NOT GLOB '*[^a-z0-9-]*' AND cible_cle NOT GLOB '*--*' AND cible_cle NOT GLOB '-*' AND cible_cle NOT GLOB '*-')),
   origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  competence_id TEXT  REFERENCES competence(id),      -- compétence que le bonus augmente (Acquis), décision R33
+  attribut    TEXT    CHECK (attribut IN ('initiative', 'vitesse', 'vitesse_nage')),   -- attribut que le bonus augmente (décisions R33, R37)
   PRIMARY KEY (metier_id, rang, option),
-  CHECK ((valeur IS NULL) = (cible IS NULL))
+  CHECK ((valeur IS NULL) = (cible IS NULL)),
+  CHECK (competence_id IS NULL OR attribut IS NULL),
+  CHECK ((competence_id IS NULL AND attribut IS NULL) OR valeur IS NOT NULL)
 ) STRICT, WITHOUT ROWID;
 
 CREATE INDEX metier_bonus_cible ON metier_bonus (cible_cle) WHERE cible_cle IS NOT NULL;
+
+CREATE INDEX metier_bonus_competence ON metier_bonus (competence_id) WHERE competence_id IS NOT NULL;
 
 -- Familles de recettes qu'un métier dit pouvoir fabriquer : le champ « Artisanat possible » cite « fioles », « philtres », « remèdes »,
 -- « huiles », « alchimie primitive ». Seuls ces cinq mots désignent une famille de recettes de la base ; les autres artisanats
@@ -2211,6 +2347,23 @@ CREATE TABLE metier_recette_famille (
 ) STRICT, WITHOUT ROWID;
 
 CREATE INDEX metier_recette_famille_famille ON metier_recette_famille (famille);
+
+-- Objets de départ d'un métier (décision R35 : l'« Équipement supplémentaire possible » s'ajoute à l'inventaire à la création du personnage) :
+-- le champ découpé comme l'inventaire de départ d'une classe (classe_objet_depart, lib/classe-champs.mjs#decouperInventaire) : un rang par objet
+-- séparé par « , », une option par « OU » (un choix, fait dans la fiche) ; « Rien » : aucun objet. Le texte reste tel qu'écrit (« Crochet (x3) ») ;
+-- objet_depart_id quand il est, sans « (xN) », le nom d'un objet du glossaire des inventaires de départ.
+CREATE TABLE metier_objet_depart (
+  metier_id        TEXT    NOT NULL REFERENCES metier(id),
+  rang             INTEGER NOT NULL CHECK (rang >= 1),
+  option           INTEGER NOT NULL CHECK (option >= 1),
+  texte            TEXT    NOT NULL CHECK (length(texte) > 0),
+  objet_depart_id  TEXT    REFERENCES objet_depart(id),
+  origine          TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
+  source_ref       TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (metier_id, rang, option)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX metier_objet_depart_objet ON metier_objet_depart (objet_depart_id) WHERE objet_depart_id IS NOT NULL;
 
 -- Une ligne par arme listée (161 : 147 + 14 armes de monstres). Les colonnes typées sont extraites des clauses du texte d'effet
 -- (séparées par des virgules ou des retours à la ligne) ; une clause qui n'a pas exactement la forme attendue n'est pas interprétée
@@ -2892,6 +3045,13 @@ CREATE VIEW v_race_classe_accessible AS
 CREATE VIEW v_race_magie_accessible AS
   SELECT race_id, magie_id, ordre FROM race_magie WHERE accessible = 1;
 
+-- Regard d'un peuple sur un autre (décision R12 : la case (ligne A, colonne B) de « Relation entre les races » dit comment A voit B).
+-- « Comment les Elfes Noirs Charbon voient-ils les autres ? » : WHERE peuple_id = ? ; « Comment sont-ils vus ? » : WHERE vu_peuple_id = ?.
+-- echelle_ordre : 1 = Même peuple, 2 = Alliée … 8 = Ennemie (du plus favorable au plus défavorable).
+CREATE VIEW v_regard_peuple AS
+  SELECT r.ligne_peuple_id AS peuple_id, r.colonne_peuple_id AS vu_peuple_id, r.echelle_id, e.ordre AS echelle_ordre
+  FROM relation_peuple r JOIN echelle_relation e ON e.id = r.echelle_id;
+
 -- Magies d'une créature : celles de la marge de son bloc (« Terre + Feu » -> Terre et Feu) ET celle du sort qui invoque son
 -- invocation (Terre pour tous les golems, Nécromancie pour les non-morts, Ombre pour les marionettes, dont la marge « EPN »
 -- ne nomme aucune magie). Une ligne par (créature, magie) ; dans_marge / par_sort disent d'où vient le lien.
@@ -3184,3 +3344,697 @@ CREATE INDEX potion_niveau_fk ON potion (niveau_id);
 CREATE INDEX recette_test_carac_2_fk ON recette (test_carac_2_id) WHERE test_carac_2_id IS NOT NULL;
 
 CREATE INDEX recette_test_carac_1_fk ON recette (test_carac_1_id) WHERE test_carac_1_id IS NOT NULL;
+
+-- ====================================================================================================================
+-- 13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)
+-- Une fiche = les CHOIX du joueur, rangés comme sur la « Fiche personnage Maverick Auto V15.2.2 » (onglet Personnage, cellules citées) ; tout ce
+-- que la fiche CALCULE (niveau global, niveaux de classe, santé, chakra, barrière, initiative, totaux de compétences, résistances…) est recalculé
+-- depuis les règles de la base et n'est jamais stocké : une règle corrigée corrige toutes les fiches. Les vues v_personnage_niveau et
+-- v_personnage_controle en donnent la première part ; le reste viendra du moteur pur (client/src/lib/, docs/feuille-de-route.md).
+-- Qui voit quelle fiche (demande du propriétaire) : v_personnage_visible ; les groupes de jeu (one-shot ou campagne) : groupe, groupe_membre.
+-- Ces tables n'ont ni `origine` ni `source_ref` (rien n'est importé) ni `remarque` (réservée aux entités des classeurs) ; data/rows/ les garde VIDES :
+-- les fiches réelles vivent dans la base du serveur, pas dans git (docs/character-generator.md, « Fiches dans la base »).
+-- Instants : texte ISO 8601 en UTC ('2026-10-09T14:03:00Z'), portable tel quel vers PostgreSQL.
+-- ====================================================================================================================
+
+-- Personne qui se connecte au site. Connexion par Discord à la 1.0 (docs/feuille-de-route.md, « Authentification ») : on ne garde que l'identifiant
+-- Discord (immuable) et le nom d'affichage, jamais de mot de passe ni de jeton. Un compte local de secours (administrateur) n'a pas d'identifiant Discord.
+-- Tout utilisateur connecté est lecteur ; les autres rôles sont dans utilisateur_role.
+CREATE TABLE utilisateur (
+  id             TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0),   -- identifiant stable du site, jamais réutilisé
+  discord_id     TEXT    UNIQUE CHECK (discord_id IS NULL OR (length(discord_id) > 0 AND discord_id NOT GLOB '*[^0-9]*')),   -- « snowflake » Discord ; NULL = compte local de secours
+  nom_affichage  TEXT    NOT NULL CHECK (length(nom_affichage) > 0),
+  cree_le        TEXT    NOT NULL CHECK (cree_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z')
+) STRICT;
+
+-- Rôles d'un utilisateur, cumulables (la correspondance rôle Discord -> rôle du site est une configuration, pas une donnée) :
+-- 'mj' = maître du jeu (le « groupe MJ » : cible de la visibilité 'mj' d'une fiche), 'editeur' = modifie les règles (phase 2), 'admin' = voit et gère tout.
+CREATE TABLE utilisateur_role (
+  utilisateur_id  TEXT    NOT NULL REFERENCES utilisateur(id) ON DELETE CASCADE,
+  role            TEXT    NOT NULL CHECK (role IN ('mj', 'editeur', 'admin')),
+  PRIMARY KEY (utilisateur_id, role)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX utilisateur_role_role ON utilisateur_role (role);   -- « tous les MJ », « tous les administrateurs »
+
+-- Une fiche de personnage : le haut de l'onglet Personnage (identité, magies, alignement, bourse, expérience) et les choix uniques.
+-- Deux natures (demande du propriétaire) : la fiche d'un JOUEUR, qu'il crée pour son personnage (visible de lui seul et des administrateurs, sauf ce
+-- qu'il ouvre : visibilité, partage, inscription dans un groupe), et le PRÉTIRÉ, qui n'appartient à personne et que tout le monde voit.
+CREATE TABLE personnage (
+  id                    TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0),   -- identifiant stable, jamais réutilisé (un personnage renommé le garde)
+  nature                TEXT    NOT NULL CHECK (nature IN ('joueur', 'pretire')),
+  proprietaire_id       TEXT    REFERENCES utilisateur(id),   -- joueur qui l'a créée ; NULL exactement pour un prétiré
+  visibilite            TEXT    NOT NULL CHECK (visibilite IN ('privee', 'mj', 'tous')),
+                                                    -- qui la voit EN PLUS du propriétaire, des administrateurs, des membres des groupes où elle est inscrite
+                                                    -- et des utilisateurs désignés (personnage_partage) : 'privee' personne d'autre, 'mj' tous les MJ,
+                                                    -- 'tous' tout utilisateur connecté (toujours le cas d'un prétiré) ; calcul : v_personnage_visible
+  statut                TEXT    NOT NULL CHECK (statut IN ('brouillon', 'valide', 'archive')),   -- 'valide' : v_personnage_controle doit être vide pour elle
+  nom                   TEXT    NOT NULL CHECK (length(nom) > 0),   -- « NOM » (F1)
+  surnom                TEXT,                         -- « Surnom » (P1)
+  lieu_origine          TEXT,                         -- « Lieu origine » (F3)
+  race_id               TEXT    REFERENCES race(id),  -- « RACE » (I2) ; NULL tant que le brouillon ne l'a pas choisie
+  ethnie_id             TEXT    REFERENCES ethnie(id),   -- don racial de la ligne « R » (C40, onglet « Bonus Race ») : l'ethnie, de la race choisie
+  magie_innee_id        TEXT    REFERENCES magie(id), -- « Magie inn » (S2)
+  magie_acquise_id      TEXT    REFERENCES magie(id), -- « Magie acq » (S3) ; NULL = pas de magie acquise (facultative, guide « Personnage »)
+  caracteristique_magie_id TEXT REFERENCES caracteristique(id),   -- point de caractéristique de la magie innée quand elle ne le fixe pas
+                                                    -- (magie.caracteristique_id NULL : Potentiel Illimité, « AU CHOIX ou ALEATOIRE ») ; NULL sinon
+  dieu_choisi_id        TEXT    REFERENCES dieu(id),  -- « Dieu choisi » (S5) ; le dieu inné se déduit de la magie innée (magie_dieu), il n'est pas stocké
+  metier_id             TEXT    REFERENCES metier(id),   -- don de la ligne « M » (C41, « Métier ? ») ; NULL = sans métier
+  mode_classe           TEXT    NOT NULL CHECK (mode_classe IN ('mono', 'bi')),   -- « Mono classe » / « Bi classe » (BDD!K26) : figé à la création
+                                                    -- (la fiche le fige dès 201 XP) ; règle de progression : décision R2
+  xp                    INTEGER NOT NULL CHECK (xp >= 0),   -- « TOTAL XP » (S11) ; le niveau global s'en déduit (v_personnage_niveau)
+  alignement_loyal      INTEGER NOT NULL CHECK (alignement_loyal >= 0),       -- scores L, C, B, M (L5:O5, guide « Alignement ») ;
+  alignement_chaotique  INTEGER NOT NULL CHECK (alignement_chaotique >= 0),   -- le libellé (« Neutre Pur »…, I4) se calcule
+  alignement_bon        INTEGER NOT NULL CHECK (alignement_bon >= 0),
+  alignement_mauvais    INTEGER NOT NULL CHECK (alignement_mauvais >= 0),
+  bourse_pp             INTEGER NOT NULL CHECK (bourse_pp >= 0),   -- « Bourse » : Précieuse (I6), Or (N6), Fer (T6) = monnaie 'pp', 'ro', 'rf'
+  bourse_ro             INTEGER NOT NULL CHECK (bourse_ro >= 0),
+  bourse_rf             INTEGER NOT NULL CHECK (bourse_rf >= 0),
+  ambidextrie           INTEGER NOT NULL CHECK (ambidextrie IN (0, 1)),   -- case « Ambidextrie » (AU8)
+  bouclier_classe_id    TEXT    REFERENCES bouclier_classe(id),   -- « Nom Bouclier » (AA26) ; ses matériaux : personnage_bouclier_materiau
+  -- État en jeu (valeurs courantes ; les maximums se calculent). NULL = non suivi (au maximum).
+  sante_actuelle        INTEGER,
+  chakra_actuel         INTEGER CHECK (chakra_actuel IS NULL OR chakra_actuel >= 0),
+  barriere_actuelle     INTEGER CHECK (barriere_actuelle IS NULL OR barriere_actuelle >= 0),
+  corruption            INTEGER CHECK (corruption IS NULL OR corruption >= 0),   -- « Corruption » (K15), guide « Attributs »
+  barre4_actuelle       INTEGER CHECK (barre4_actuelle IS NULL OR barre4_actuelle >= 0),   -- Sang / Âme, la « 4ème barre » (A15:F15)
+  notes                 TEXT,                         -- « NOTE » (BA53)
+  evenements            TEXT,                         -- « ÉVÉNEMENTS » (B71)
+  cree_le               TEXT    NOT NULL CHECK (cree_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
+  modifie_le            TEXT    NOT NULL CHECK (modifie_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z' AND modifie_le >= cree_le),
+  posture_id            TEXT    REFERENCES posture(id),   -- posture du moment (sélecteur des 6 postures de la page /fiche/, demande du propriétaire ;
+                                                    -- migration 0027) ; NULL = aucune choisie
+  CHECK ((nature = 'pretire') = (proprietaire_id IS NULL)),   -- un prétiré n'est à personne ; la fiche d'un joueur a son propriétaire
+  CHECK (nature = 'joueur' OR visibilite = 'tous'),           -- « Les prétirés sont visibles par tous »
+  CHECK (magie_acquise_id IS NULL OR magie_acquise_id <> magie_innee_id),
+  CHECK (statut = 'brouillon' OR (race_id IS NOT NULL AND magie_innee_id IS NOT NULL))
+) STRICT;
+
+CREATE INDEX personnage_proprietaire ON personnage (proprietaire_id) WHERE proprietaire_id IS NOT NULL;   -- « mes personnages »
+
+-- Utilisateurs à qui le propriétaire montre sa fiche en plus de sa visibilité (« un utilisateur spécifique », plusieurs possibles).
+CREATE TABLE personnage_partage (
+  personnage_id   TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  utilisateur_id  TEXT    NOT NULL REFERENCES utilisateur(id) ON DELETE CASCADE,
+  PRIMARY KEY (personnage_id, utilisateur_id)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX personnage_partage_utilisateur ON personnage_partage (utilisateur_id);   -- « les fiches qu'on m'a montrées »
+
+-- Classes du personnage : « CLASSE » 1 (A9) et 2 (A11), chacune avec sa spécialité (I9, I11 : choisie au niveau de classe 10). Les niveaux de classe
+-- se déduisent de l'XP et du mode (v_personnage_niveau), ils ne sont pas stockés.
+CREATE TABLE personnage_classe (
+  personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  rang           INTEGER NOT NULL CHECK (rang IN (1, 2)),
+  classe_id      TEXT    NOT NULL REFERENCES classe(id),
+  specialite_id  TEXT,                                -- NULL tant qu'elle n'est pas choisie
+  PRIMARY KEY (personnage_id, rang),
+  UNIQUE (personnage_id, classe_id),
+  FOREIGN KEY (specialite_id, classe_id) REFERENCES specialite (id, classe_id)   -- une spécialité de CETTE classe
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX personnage_classe_classe ON personnage_classe (classe_id);
+
+-- Valeur de base de chaque caractéristique (E18, M18, U18, E19, M19, U19), choisie dans les bornes de la race (v_race_carac_borne) ; le total suit
+-- seuil_niveau 'caracteristiques_total' (décision R3 : exactement). Le point de la magie innée (G18…) et les bonus d'accessoires se calculent.
+CREATE TABLE personnage_caracteristique (
+  personnage_id      TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  caracteristique_id TEXT    NOT NULL REFERENCES caracteristique(id),
+  base               INTEGER NOT NULL CHECK (base >= 1),
+  croix              INTEGER NOT NULL CHECK (croix BETWEEN 0 AND 2),   -- croix sous la caractéristique (cases H18, I18…), décision R19 : handicap ou malus
+                                                    -- (blessure grave, trauma, maladie, mauvaise nuit) ; 1 = −20 % à tout test de la caractéristique,
+                                                    -- 2 = ses compétences ne sont plus utilisables (regle_constante 'competence.croix_1_malus', 'competence.croix_2_malus')
+  PRIMARY KEY (personnage_id, caracteristique_id)
+) STRICT, WITHOUT ROWID;
+
+-- Points de compétence : « Nat. » (naturel, budget de niveau_global, plafond seuil_niveau 'competence_naturel_max') et « Acquis » (bonus de race,
+-- classe, don, équipement, entraînement : au plus 5 par point de caractéristique de base, guide « Compétences »). Le total (K22…) se calcule.
+-- Compétence absente = 0 et 0.
+CREATE TABLE personnage_competence (
+  personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  competence_id  TEXT    NOT NULL REFERENCES competence(id),
+  naturel        INTEGER NOT NULL CHECK (naturel >= 0),
+  acquis         INTEGER NOT NULL CHECK (acquis >= 0),
+  PRIMARY KEY (personnage_id, competence_id)
+) STRICT, WITHOUT ROWID;
+
+-- Bonus de métier choisis (décision R33 : « En cas de choix c'est à saisir dans la fiche de personnage ») : pour chaque rang de metier_bonus du métier
+-- de la fiche qui propose plusieurs compétences (« +3% Diplomatie OU Intimidation »), la compétence retenue. Un rang à une seule option ne se choisit pas ;
+-- le bonus de métier se calcule (v_personnage_metier_bonus), il ne s'écrit pas dans personnage_competence.acquis.
+CREATE TABLE personnage_metier_bonus (
+  personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  rang           INTEGER NOT NULL CHECK (rang >= 1),   -- rang du bonus dans metier_bonus (métier de la fiche)
+  competence_id  TEXT    NOT NULL REFERENCES competence(id),
+  PRIMARY KEY (personnage_id, rang)
+) STRICT, WITHOUT ROWID;
+
+-- Gains d'attributs à chaque niveau global à partir du 2 : les points d'attributs (niveau_global.points_attributs, 15) répartis entre santé et chakra
+-- (la fiche compte F14 + M14 : BDD!K40), et le dé bonus des niveaux qui en donnent un (niveau_global.de_attributs_bonus : « 1d8 santé OU 1d8 chakra
+-- OU 1d4 pour les deux »). La fiche ajoute tout à la main dans la formule de F14/M14 (« +0 ») : ici chaque gain est daté par son niveau.
+CREATE TABLE personnage_progression (
+  personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  niveau         INTEGER NOT NULL REFERENCES niveau_global(niveau) CHECK (niveau >= 2),
+  points_sante   INTEGER NOT NULL CHECK (points_sante >= 0),
+  points_chakra  INTEGER NOT NULL CHECK (points_chakra >= 0),
+  de_choix       TEXT    CHECK (de_choix IN ('sante', 'chakra', 'les_deux')),   -- NULL = pas de dé à ce niveau
+  de_resultat    INTEGER CHECK (de_resultat >= 1),   -- résultat du dé, ajouté à la santé, au chakra, ou aux deux (« 1d4 pour les deux »)
+  PRIMARY KEY (personnage_id, niveau),
+  CHECK ((de_choix IS NULL) = (de_resultat IS NULL))
+) STRICT, WITHOUT ROWID;
+
+-- Dons de classe choisis (lignes « CLASSE 1 » / « CLASSE 2 », C43:L67) : seulement ceux qui demandent un CHOIX (v_capacite_exclusive : options d'une
+-- même ligne, une spécialité contre l'autre, paliers de l'Archimage). Les dons sans alternative se déduisent de la classe, du niveau et de la spécialité.
+CREATE TABLE personnage_capacite (
+  personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  capacite_id    TEXT    NOT NULL REFERENCES capacite(id),
+  PRIMARY KEY (personnage_id, capacite_id)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX personnage_capacite_capacite ON personnage_capacite (capacite_id);
+
+-- « LISTE DE SORTS » (AA55:AY74) : sorts de la magie innée ou acquise, avec leur niveau de maîtrise (« NM », AY). Un NM vient d'un niveau (au plus niveau
+-- global − 1 sur un sort, BDD!BB6, et au plus les NM gagnés en tout), d'un livre de sort (un seul par sort, lié à ce sort : page « Livre / Parchemin ») ou
+-- d'un cadeau du MJ ; un sort a au plus 3 NM en tout (regle_constante 'sort.nm_max', décision R26). Type, coût, portée, zone et effets se lisent dans `sort`.
+CREATE TABLE personnage_sort (
+  personnage_id    TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  sort_id          TEXT    NOT NULL REFERENCES sort(id),
+  rang             INTEGER NOT NULL CHECK (rang >= 1),   -- ligne de la liste sur la fiche
+  niveau_maitrise  INTEGER NOT NULL CHECK (niveau_maitrise >= 0),   -- NM du sort, toutes origines comprises
+  nm_livre         INTEGER NOT NULL DEFAULT 0 CHECK (nm_livre IN (0, 1)),   -- dont le NM d'un livre de sort (un par sort au plus ; migration 0021)
+  nm_cadeau        INTEGER NOT NULL DEFAULT 0 CHECK (nm_cadeau >= 0 AND nm_livre + nm_cadeau <= niveau_maitrise),   -- dont les NM donnés par le MJ
+  PRIMARY KEY (personnage_id, sort_id),
+  UNIQUE (personnage_id, rang)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX personnage_sort_sort ON personnage_sort (sort_id);
+
+-- « Maîtrise d'armes » (AA2:AV7) : nombre de dés (1d à 5d) par famille d'armes. Famille absente = pas de maîtrise (1d). Chaque point de maîtrise
+-- ajoute un dé : 4 points au plus (regle_constante 'maitrise_arme.des_sans_maitrise' et 'maitrise_arme.des_max', migration 0016).
+CREATE TABLE personnage_maitrise_arme (
+  personnage_id   TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  arme_famille_id TEXT    NOT NULL REFERENCES arme_famille(id),
+  des             INTEGER NOT NULL CHECK (des BETWEEN 1 AND 5),
+  PRIMARY KEY (personnage_id, arme_famille_id)
+) STRICT, WITHOUT ROWID;
+
+-- « ARMES » (AA9:AY18) : deux emplacements, chacun une arme du catalogue, sa composition (matériau), ses améliorations et son élément.
+CREATE TABLE personnage_arme (
+  personnage_id                TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  rang                         INTEGER NOT NULL CHECK (rang IN (1, 2)),   -- arme 1 (AA10) ou 2 (AN10)
+  arme_id                      TEXT    NOT NULL REFERENCES arme(id),
+  materiau_id                  TEXT    REFERENCES materiau_arme(ressource_id),   -- « Composition » (AE10)
+  amelioration_id              TEXT    REFERENCES amelioration_equipement(id),   -- « Amélioration » (AI13) : cible 'arme'
+  arme_elementaire_id          TEXT    REFERENCES arme_elementaire(id),          -- « Elément » (AI16)
+  amelioration_elementaire_id  TEXT    REFERENCES amelioration_equipement(id),   -- amélioration de la pièce élémentaire (AI18) : cible 'arme_elementaire'
+  effet_en_plus                TEXT,                                             -- « Effet en plus » (AA12), texte libre
+  PRIMARY KEY (personnage_id, rang)
+) STRICT, WITHOUT ROWID;
+
+-- « ARMURE / DÉFENSE » (AA19:AX23) : une pièce par emplacement (armure complète, ou casque, torse, bras, jambes).
+CREATE TABLE personnage_armure (
+  personnage_id                TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  emplacement_id               TEXT    NOT NULL REFERENCES armure_emplacement(id),
+  armure_id                    TEXT    NOT NULL REFERENCES armure(id),              -- « Nom Armure » (AD21)
+  amelioration_id              TEXT    REFERENCES amelioration_equipement(id),      -- cible 'armure'
+  armure_elementaire_id        TEXT    REFERENCES armure_elementaire(id),           -- « Elément » (AQ21)
+  amelioration_elementaire_id  TEXT    REFERENCES amelioration_equipement(id),      -- cible 'armure_elementaire'
+  PRIMARY KEY (personnage_id, emplacement_id)
+) STRICT, WITHOUT ROWID;
+
+-- Matériaux du bouclier (AF26, AJ26, AN26 et leurs quantités AH27, AL27, AP27) : au plus trois, la somme des quantités ne dépasse pas la classe
+-- du bouclier (validation de AL27 : « La somme des quantités de matériaux ne doit pas dépasser la… »).
+CREATE TABLE personnage_bouclier_materiau (
+  personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  rang           INTEGER NOT NULL CHECK (rang BETWEEN 1 AND 3),
+  materiau_id    TEXT    NOT NULL REFERENCES materiau_bouclier(ressource_id),
+  quantite       INTEGER NOT NULL CHECK (quantite >= 1),
+  PRIMARY KEY (personnage_id, rang),
+  UNIQUE (personnage_id, materiau_id)
+) STRICT, WITHOUT ROWID;
+
+-- « ACCESSOIRES » (AA28:AY37) : Chef, Collier, Bracelet 1 et 2, Bague 1 et 2, Ceinture, Autre. Chacun porte un effet de la table des accessoires
+-- (propriété en AD29…, effet en AA30…), sa valeur tirée quand l'effet est une fourchette, et la case « Malédiction » (AD31…).
+CREATE TABLE personnage_accessoire (
+  personnage_id       TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  emplacement         TEXT    NOT NULL CHECK (emplacement IN ('chef', 'collier', 'bracelet-1', 'bracelet-2', 'bague-1', 'bague-2', 'ceinture', 'autre')),
+  nom                 TEXT,                           -- nom donné à l'objet
+  accessoire_effet_id TEXT    REFERENCES accessoire_effet(id),   -- NULL = effet hors table (texte libre ci-dessous)
+  valeur              INTEGER,                        -- valeur tirée dans [bonus_min, bonus_max] de l'effet ; NULL si l'effet n'a pas de fourchette
+  texte               TEXT,                           -- effet tel qu'écrit sur la fiche quand il n'est pas dans la table
+  maudit              INTEGER NOT NULL CHECK (maudit IN (0, 1)),
+  PRIMARY KEY (personnage_id, emplacement),
+  CHECK (accessoire_effet_id IS NOT NULL OR texte IS NOT NULL)
+) STRICT, WITHOUT ROWID;
+
+-- « INVENTAIRE | SAC » (AA39:AY…) : une ligne par objet ; `ressource_id` quand l'objet est au catalogue, sinon le nom seul.
+CREATE TABLE personnage_inventaire (
+  personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  rang           INTEGER NOT NULL CHECK (rang >= 1),
+  nom            TEXT    NOT NULL CHECK (length(nom) > 0),
+  quantite       INTEGER NOT NULL CHECK (quantite >= 1),
+  ressource_id   TEXT    REFERENCES ressource(id),
+  PRIMARY KEY (personnage_id, rang)
+) STRICT, WITHOUT ROWID;
+
+-- Groupe de jeu : la table d'un one-shot (« OS ») ou d'une campagne. Ses membres voient les fiches qui y sont inscrites.
+CREATE TABLE groupe (
+  id       TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0),
+  nom      TEXT    NOT NULL CHECK (length(nom) > 0),
+  nature   TEXT    NOT NULL CHECK (nature IN ('one_shot', 'campagne')),
+  cree_le  TEXT    NOT NULL CHECK (cree_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z')
+) STRICT;
+
+-- Membres d'un groupe et fiche inscrite (demande du propriétaire) : un joueur peut être dans plusieurs groupes et avoir plusieurs fiches, mais n'inscrit
+-- qu'UNE fiche par groupe : une ligne par (groupe, membre), et inscrire une autre fiche remplace `personnage_id` (la précédente est désinscrite).
+-- La fiche inscrite devient visible de tous les membres du groupe, et d'eux seuls : ses autres fiches restent cachées (v_personnage_visible).
+-- On inscrit sa propre fiche ou un prétiré (v_groupe_controle).
+CREATE TABLE groupe_membre (
+  groupe_id       TEXT    NOT NULL REFERENCES groupe(id) ON DELETE CASCADE,
+  utilisateur_id  TEXT    NOT NULL REFERENCES utilisateur(id) ON DELETE CASCADE,
+  role            TEXT    NOT NULL CHECK (role IN ('mj', 'joueur')),   -- MJ de la table ou joueur
+  personnage_id   TEXT    REFERENCES personnage(id) ON DELETE SET NULL,   -- fiche inscrite ; NULL = aucune (membre qui n'a pas encore inscrit de fiche, MJ)
+  rejoint_le      TEXT    NOT NULL CHECK (rejoint_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
+  PRIMARY KEY (groupe_id, utilisateur_id)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX groupe_membre_utilisateur ON groupe_membre (utilisateur_id);   -- « mes groupes »
+
+CREATE INDEX groupe_membre_personnage ON groupe_membre (personnage_id) WHERE personnage_id IS NOT NULL;   -- « où cette fiche est inscrite »
+
+-- Niveau global et niveaux de classe d'un personnage. Niveau global = plus haut niveau dont l'XP minimale est atteinte (Personnage!W8 :
+-- VLOOKUP(S11; BDD!G2:H21; 2; 1)). Niveaux de classe : décision R2 (« un "monoclasse" choisit automatiquement sa 2e classe au niveau 11 ») :
+-- mono-classe : classe 1 = min(20, 2 × niveau global), classe 2 = 2 × niveau global − classe 1 ; bi-classe : chacune = niveau global (G9, G11).
+CREATE VIEW v_personnage_niveau AS
+  SELECT p.id AS personnage_id, n.niveau AS niveau_global,
+         CASE WHEN p.mode_classe = 'bi' THEN n.niveau WHEN 2 * n.niveau > 20 THEN 20 ELSE 2 * n.niveau END AS niveau_classe_1,
+         CASE WHEN p.mode_classe = 'bi' THEN n.niveau WHEN 2 * n.niveau > 20 THEN 2 * n.niveau - 20 ELSE 0 END AS niveau_classe_2
+  FROM personnage p
+  JOIN niveau_global n ON n.niveau = (SELECT MAX(g.niveau) FROM niveau_global g WHERE g.xp_min <= p.xp);
+
+-- Bonus que le métier d'une fiche apporte (décision R33) : une ligne par rang lié de metier_bonus (compétence ou attribut) — l'option seule du rang,
+-- ou, quand le rang en propose plusieurs, celle que la fiche a choisie (personnage_metier_bonus). `valeur` s'ajoute à l'Acquis de la compétence
+-- (`competence_id`, sans dépasser son plafond : décision R38) ou à l'attribut (`attribut` : initiative, vitesse, vitesse de nage ; R33, R37).
+CREATE VIEW v_personnage_metier_bonus AS
+  SELECT p.id AS personnage_id, b.rang, b.competence_id, b.attribut, b.valeur
+  FROM personnage p
+  JOIN metier_bonus b ON b.metier_id = p.metier_id
+  WHERE (b.competence_id IS NOT NULL OR b.attribut IS NOT NULL)
+    AND ((SELECT count(*) FROM metier_bonus o WHERE o.metier_id = b.metier_id AND o.rang = b.rang) = 1
+         OR EXISTS (SELECT 1 FROM personnage_metier_bonus c WHERE c.personnage_id = p.id AND c.rang = b.rang AND c.competence_id = b.competence_id));
+
+-- Qui voit quelle fiche (demande du propriétaire) : une ligne par (fiche, utilisateur, motif) ; un utilisateur voit une fiche s'il a au moins une ligne.
+-- Motifs : 'proprietaire' ; 'admin' (toutes les fiches) ; 'tous' (visibilité 'tous', donc tout prétiré) ; 'mj' (visibilité 'mj' : utilisateurs de rôle
+-- 'mj') ; 'groupe' (membres du groupe `groupe_id` où la fiche est inscrite) ; 'partage' (utilisateur désigné par le propriétaire).
+CREATE VIEW v_personnage_visible AS
+  SELECT p.id AS personnage_id, p.proprietaire_id AS utilisateur_id, 'proprietaire' AS motif, NULL AS groupe_id
+  FROM personnage p WHERE p.proprietaire_id IS NOT NULL
+  UNION ALL
+  SELECT p.id, r.utilisateur_id, 'admin', NULL
+  FROM personnage p CROSS JOIN utilisateur_role r WHERE r.role = 'admin'
+  UNION ALL
+  SELECT p.id, u.id, 'tous', NULL
+  FROM personnage p CROSS JOIN utilisateur u WHERE p.visibilite = 'tous'
+  UNION ALL
+  SELECT p.id, r.utilisateur_id, 'mj', NULL
+  FROM personnage p CROSS JOIN utilisateur_role r WHERE p.visibilite = 'mj' AND r.role = 'mj'
+  UNION ALL
+  SELECT i.personnage_id, m.utilisateur_id, 'groupe', i.groupe_id
+  FROM groupe_membre i JOIN groupe_membre m ON m.groupe_id = i.groupe_id
+  WHERE i.personnage_id IS NOT NULL
+  UNION ALL
+  SELECT s.personnage_id, s.utilisateur_id, 'partage', NULL
+  FROM personnage_partage s;
+
+-- Contrôle des inscriptions dans les groupes : une ligne par anomalie (vide = conforme). Un membre inscrit sa propre fiche ou un prétiré.
+CREATE VIEW v_groupe_controle AS
+  SELECT m.groupe_id, m.utilisateur_id, 'fiche_d_un_autre' AS regle, m.personnage_id AS detail
+  FROM groupe_membre m JOIN personnage p ON p.id = m.personnage_id
+  WHERE p.nature = 'joueur' AND p.proprietaire_id <> m.utilisateur_id;
+
+-- Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi.
+-- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33) ; ce qui
+-- demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Une fiche 'brouillon' peut
+-- avoir des lignes, une fiche 'valide' non (test).
+CREATE VIEW v_personnage_controle AS
+  -- Race : classe accessible (matrice « Accessibilité de Classe », décision R8)
+  SELECT pc.personnage_id, 'classe_inaccessible' AS regle, pc.classe_id AS detail
+  FROM personnage_classe pc JOIN personnage p ON p.id = pc.personnage_id
+  WHERE p.race_id IS NOT NULL
+    AND NOT EXISTS (SELECT 1 FROM race_classe rc WHERE rc.race_id = p.race_id AND rc.classe_id = pc.classe_id AND rc.accessible = 1)
+  UNION ALL
+  -- Classe réservée à une magie innée, qui l'impose en classe 1 (classe.magie_innee_id ; l'Archimage et le Potentiel Illimité, décision R23)
+  SELECT pc.personnage_id, 'classe_reservee', pc.classe_id
+  FROM personnage_classe pc JOIN classe c ON c.id = pc.classe_id JOIN personnage p ON p.id = pc.personnage_id
+  WHERE c.magie_innee_id IS NOT NULL AND c.magie_innee_id IS NOT p.magie_innee_id
+  UNION ALL
+  SELECT p.id, 'classe_imposee', c.id
+  FROM personnage p
+  JOIN classe c ON c.magie_innee_id = p.magie_innee_id
+  JOIN personnage_classe pc ON pc.personnage_id = p.id AND pc.rang = 1
+  WHERE pc.classe_id <> c.id
+  UNION ALL
+  -- Classe que ferme la magie innée, à tous les rangs (classe.magie_innee_exclue_id ; le Mage Bleu et le Potentiel Illimité, décision R25)
+  SELECT pc.personnage_id, 'classe_exclue', pc.classe_id
+  FROM personnage_classe pc JOIN classe c ON c.id = pc.classe_id JOIN personnage p ON p.id = pc.personnage_id
+  WHERE c.magie_innee_exclue_id = p.magie_innee_id
+  UNION ALL
+  -- Magie innée accessible à la race : matrice « Accessibilité Magie » (R8), sauf liste de l'onglet de la race qui prime (R11)
+  SELECT p.id, 'magie_innee_inaccessible', p.magie_innee_id
+  FROM personnage p
+  WHERE p.race_id IS NOT NULL AND p.magie_innee_id IS NOT NULL
+    AND CASE WHEN EXISTS (SELECT 1 FROM race_magie_onglet o WHERE o.race_id = p.race_id)
+             THEN NOT EXISTS (SELECT 1 FROM race_magie_onglet o WHERE o.race_id = p.race_id AND o.magie_id = p.magie_innee_id)
+             ELSE NOT EXISTS (SELECT 1 FROM race_magie rm WHERE rm.race_id = p.race_id AND rm.magie_id = p.magie_innee_id AND rm.accessible = 1)
+        END
+  UNION ALL
+  -- Magies incompatibles entre elles (bloc « Magie non compatible » des onglets de magie)
+  SELECT p.id, 'magies_incompatibles', p.magie_innee_id || ' / ' || p.magie_acquise_id
+  FROM personnage p
+  JOIN v_magie_incompatible i ON i.a = p.magie_innee_id AND i.b = p.magie_acquise_id
+  UNION ALL
+  -- Mono-magie (décision R15) : pas de magie acquise avec une magie mono-magie, sauf ethnie citée par magie_ethnie_secondaire, que la magie
+  -- mono-magie soit l'innée ou l'acquise (décision R20 : l'Elfe Noir Charbon et le Felfe Noir peuvent acquérir la Corruption)
+  SELECT p.id, 'mono_magie', m.id
+  FROM personnage p
+  JOIN magie m ON m.mono_magie = 1 AND m.id IN (p.magie_innee_id, p.magie_acquise_id)
+  WHERE p.magie_acquise_id IS NOT NULL
+    AND NOT EXISTS (SELECT 1 FROM magie_ethnie_secondaire s WHERE s.magie_id = m.id AND s.ethnie_id = p.ethnie_id)
+  UNION ALL
+  -- Race à une seule magie (race.mono_magie ; la Lamia, décision R28) : pas de magie acquise
+  SELECT p.id, 'race_mono_magie', p.magie_acquise_id
+  FROM personnage p JOIN race r ON r.id = p.race_id
+  WHERE r.mono_magie = 1 AND p.magie_acquise_id IS NOT NULL
+  UNION ALL
+  -- Ethnie : de la race choisie ; obligatoire quand la race en a ; liée à la magie innée quand elle porte une magie (BDD!X2)
+  SELECT p.id, 'ethnie_hors_race', p.ethnie_id
+  FROM personnage p JOIN ethnie e ON e.id = p.ethnie_id
+  WHERE p.race_id IS NULL OR e.race_id <> p.race_id
+  UNION ALL
+  SELECT p.id, 'ethnie_manquante', p.race_id
+  FROM personnage p
+  WHERE p.ethnie_id IS NULL AND EXISTS (SELECT 1 FROM ethnie e WHERE e.race_id = p.race_id)
+  UNION ALL
+  SELECT p.id, 'ethnie_magie', p.ethnie_id
+  FROM personnage p JOIN ethnie e ON e.id = p.ethnie_id
+  WHERE e.magie_id IS NOT NULL AND (p.magie_innee_id IS NULL OR e.magie_id <> p.magie_innee_id)
+  UNION ALL
+  -- Point de caractéristique de la magie innée : à choisir seulement quand la magie ne le fixe pas
+  SELECT p.id, 'caracteristique_magie', COALESCE(p.caracteristique_magie_id, '(absente)')
+  FROM personnage p JOIN magie m ON m.id = p.magie_innee_id
+  WHERE (m.caracteristique_id IS NULL) <> (p.caracteristique_magie_id IS NOT NULL)
+  UNION ALL
+  -- Caractéristiques : les six, dans les bornes de la race, total exact du niveau (seuil 'caracteristiques_total', décision R3)
+  SELECT p.id, 'caracteristique_manquante', c.id
+  FROM personnage p CROSS JOIN caracteristique c
+  WHERE p.statut <> 'brouillon'
+    AND NOT EXISTS (SELECT 1 FROM personnage_caracteristique pc WHERE pc.personnage_id = p.id AND pc.caracteristique_id = c.id)
+  UNION ALL
+  SELECT pc.personnage_id, 'caracteristique_hors_bornes', pc.caracteristique_id || ' = ' || pc.base
+  FROM personnage_caracteristique pc
+  JOIN personnage p ON p.id = pc.personnage_id
+  JOIN v_race_carac_borne b ON b.race_id = p.race_id AND b.caracteristique_id = pc.caracteristique_id
+  WHERE pc.base < b.minimum OR pc.base > b.maximum
+  UNION ALL
+  SELECT n.personnage_id, 'caracteristiques_total', (SELECT SUM(pc.base) FROM personnage_caracteristique pc WHERE pc.personnage_id = n.personnage_id) || ' / ' || s.valeur
+  FROM v_personnage_niveau n
+  JOIN seuil_niveau s ON s.regle = 'caracteristiques_total'
+   AND s.niveau_min = (SELECT MAX(t.niveau_min) FROM seuil_niveau t WHERE t.regle = 'caracteristiques_total' AND t.niveau_min <= n.niveau_global)
+  WHERE EXISTS (SELECT 1 FROM personnage_caracteristique pc WHERE pc.personnage_id = n.personnage_id)
+    AND (SELECT SUM(pc.base) FROM personnage_caracteristique pc WHERE pc.personnage_id = n.personnage_id) <> s.valeur
+  UNION ALL
+  -- Compétences : naturel au plus le maximum du niveau, total naturel = budget cumulé (R3) ; acquis au plus 5 par point de caractéristique de base
+  SELECT pc.personnage_id, 'competence_naturel_max', pc.competence_id || ' = ' || pc.naturel
+  FROM personnage_competence pc
+  JOIN v_personnage_niveau n ON n.personnage_id = pc.personnage_id
+  JOIN v_niveau v ON v.niveau = n.niveau_global
+  WHERE pc.naturel > v.competence_naturel_max
+  UNION ALL
+  SELECT n.personnage_id, 'competences_total', COALESCE((SELECT SUM(pc.naturel) FROM personnage_competence pc WHERE pc.personnage_id = n.personnage_id), 0) || ' / ' || v.points_competences_cumul
+  FROM v_personnage_niveau n
+  JOIN personnage p ON p.id = n.personnage_id
+  JOIN v_niveau v ON v.niveau = n.niveau_global
+  WHERE p.statut <> 'brouillon'
+    AND COALESCE((SELECT SUM(pc.naturel) FROM personnage_competence pc WHERE pc.personnage_id = n.personnage_id), 0) <> v.points_competences_cumul
+  UNION ALL
+  -- (l'Acquis compte le bonus du métier, décision R33, mais le plafond prévaut sur lui, décision R38 : le bonus ne compte que jusqu'au plafond ;
+  -- seuls les points saisis au-delà de ce qu'il laisse sont une erreur). Plafond : 5 par point de la caractéristique totale, le +1 de la magie innée
+  -- compris (sa caractéristique, ou celle que la fiche choisit quand la magie la laisse au choix), décision R41 : « 5 en volonté donnerait un max de
+  -- 25 aquis » (migration 0026)
+  SELECT pl.personnage_id, 'competence_acquis_max', co.id || ' = ' || (COALESCE(pco.acquis, 0) + MIN(COALESCE(mb.valeur, 0), pl.plafond))
+  FROM (SELECT pca.personnage_id, pca.caracteristique_id,
+               (pca.base + CASE WHEN mi.id IS NOT NULL AND pca.caracteristique_id = COALESCE(mi.caracteristique_id, p.caracteristique_magie_id)
+                                THEN (SELECT r.valeur FROM regle_constante r WHERE r.id = 'caracteristique.bonus_magie_innee') ELSE 0 END)
+               * (SELECT r.valeur FROM regle_constante r WHERE r.id = 'competence.acquis_max_par_point_caracteristique') AS plafond
+        FROM personnage_caracteristique pca
+        JOIN personnage p ON p.id = pca.personnage_id
+        LEFT JOIN magie mi ON mi.id = p.magie_innee_id) pl
+  JOIN competence co ON co.caracteristique_id = pl.caracteristique_id
+  LEFT JOIN personnage_competence pco ON pco.personnage_id = pl.personnage_id AND pco.competence_id = co.id
+  LEFT JOIN (SELECT personnage_id, competence_id, SUM(valeur) AS valeur FROM v_personnage_metier_bonus WHERE competence_id IS NOT NULL
+             GROUP BY personnage_id, competence_id) mb ON mb.personnage_id = pl.personnage_id AND mb.competence_id = co.id
+  WHERE COALESCE(pco.acquis, 0) + MIN(COALESCE(mb.valeur, 0), pl.plafond) > pl.plafond
+  UNION ALL
+  -- Métier (décision R33) : un bonus choisi est une compétence d'un rang à choix du métier de la fiche ; chaque rang à choix a le sien (sauf brouillon)
+  SELECT c.personnage_id, 'metier_bonus_hors_choix', c.competence_id
+  FROM personnage_metier_bonus c JOIN personnage p ON p.id = c.personnage_id
+  WHERE NOT EXISTS (SELECT 1 FROM metier_bonus b WHERE b.metier_id = p.metier_id AND b.rang = c.rang AND b.competence_id = c.competence_id
+                      AND (SELECT count(*) FROM metier_bonus o WHERE o.metier_id = b.metier_id AND o.rang = b.rang) > 1)
+  UNION ALL
+  SELECT p.id, 'metier_bonus_manquant', b.texte
+  FROM personnage p JOIN metier_bonus b ON b.metier_id = p.metier_id AND b.option = 1
+  WHERE p.statut <> 'brouillon'
+    AND (SELECT count(*) FROM metier_bonus o WHERE o.metier_id = b.metier_id AND o.rang = b.rang AND o.competence_id IS NOT NULL) > 1
+    AND NOT EXISTS (SELECT 1 FROM personnage_metier_bonus c WHERE c.personnage_id = p.id AND c.rang = b.rang)
+  UNION ALL
+  -- Progression : un gain par niveau atteint (2 à niveau global), points d'attributs exacts (R3), dé seulement aux niveaux qui en donnent un
+  SELECT pp.personnage_id, 'progression_niveau_non_atteint', CAST(pp.niveau AS TEXT)
+  FROM personnage_progression pp JOIN v_personnage_niveau n ON n.personnage_id = pp.personnage_id
+  WHERE pp.niveau > n.niveau_global
+  UNION ALL
+  SELECT n.personnage_id, 'progression_manquante', CAST(g.niveau AS TEXT)
+  FROM v_personnage_niveau n
+  JOIN personnage p ON p.id = n.personnage_id
+  JOIN niveau_global g ON g.niveau BETWEEN 2 AND n.niveau_global
+  WHERE p.statut <> 'brouillon'
+    AND NOT EXISTS (SELECT 1 FROM personnage_progression pp WHERE pp.personnage_id = n.personnage_id AND pp.niveau = g.niveau)
+  UNION ALL
+  SELECT pp.personnage_id, 'progression_points', pp.niveau || ' : ' || (pp.points_sante + pp.points_chakra) || ' / ' || COALESCE(g.points_attributs, 0)
+  FROM personnage_progression pp JOIN niveau_global g ON g.niveau = pp.niveau
+  WHERE pp.points_sante + pp.points_chakra <> COALESCE(g.points_attributs, 0)
+  UNION ALL
+  SELECT pp.personnage_id, 'progression_de', CAST(pp.niveau AS TEXT)
+  FROM personnage_progression pp JOIN niveau_global g ON g.niveau = pp.niveau
+  WHERE (pp.de_choix IS NULL) <> (g.de_attributs_bonus IS NULL)
+  UNION ALL
+  -- Classes : la 2e existe exactement quand elle a des niveaux (R2) ; une spécialité se choisit au niveau de classe 10 (BDD!I2, J2)
+  SELECT n.personnage_id, 'classe_2_manquante', CAST(n.niveau_classe_2 AS TEXT)
+  FROM v_personnage_niveau n JOIN personnage p ON p.id = n.personnage_id
+  WHERE p.statut <> 'brouillon' AND n.niveau_classe_2 > 0
+    AND NOT EXISTS (SELECT 1 FROM personnage_classe pc WHERE pc.personnage_id = n.personnage_id AND pc.rang = 2)
+  UNION ALL
+  SELECT n.personnage_id, 'classe_2_en_trop', pc.classe_id
+  FROM v_personnage_niveau n JOIN personnage_classe pc ON pc.personnage_id = n.personnage_id AND pc.rang = 2
+  WHERE n.niveau_classe_2 = 0
+  UNION ALL
+  SELECT n.personnage_id, 'classe_1_manquante', NULL
+  FROM v_personnage_niveau n JOIN personnage p ON p.id = n.personnage_id
+  WHERE p.statut <> 'brouillon'
+    AND NOT EXISTS (SELECT 1 FROM personnage_classe pc WHERE pc.personnage_id = n.personnage_id AND pc.rang = 1)
+  UNION ALL
+  SELECT pc.personnage_id, 'specialite_trop_tot', pc.specialite_id
+  FROM personnage_classe pc JOIN v_personnage_niveau n ON n.personnage_id = pc.personnage_id
+  WHERE pc.specialite_id IS NOT NULL
+    AND CASE pc.rang WHEN 1 THEN n.niveau_classe_1 ELSE n.niveau_classe_2 END < 10
+  UNION ALL
+  -- Dons choisis : d'une classe du personnage, de sa spécialité s'ils en dépendent, jamais deux options exclusives ensemble
+  SELECT pk.personnage_id, 'capacite_hors_classe', pk.capacite_id
+  FROM personnage_capacite pk JOIN capacite c ON c.id = pk.capacite_id
+  WHERE NOT EXISTS (SELECT 1 FROM personnage_classe pc WHERE pc.personnage_id = pk.personnage_id AND pc.classe_id = c.classe_id
+                      AND (c.specialite_id IS NULL OR c.specialite_id = pc.specialite_id))
+  UNION ALL
+  SELECT a.personnage_id, 'capacites_exclusives', a.capacite_id || ' / ' || b.capacite_id
+  FROM personnage_capacite a
+  JOIN v_capacite_exclusive x ON x.capacite_id = a.capacite_id
+  JOIN personnage_capacite b ON b.personnage_id = a.personnage_id AND b.capacite_id = x.autre_id
+  WHERE a.capacite_id < b.capacite_id
+  UNION ALL
+  -- Sorts : d'une magie du personnage (le Potentiel Illimité « pioche ses sorts dans toutes les magies existantes », son Explication) ;
+  -- NPM au plus la puissance magique du niveau (niveau_global : niveau 16 pour la 5, décision R16), le palier dont la note dit « non disponible pour
+  -- les personnages avec une magie acquise » ne comptant pas pour eux. NM (décision R26) : au plus 3 sur un sort, toutes origines comprises ; ceux de niveau
+  -- (hors livre et cadeau du MJ) au plus niveau global − 1 sur un sort (BDD!BB6) et au plus les NM gagnés en tout ; au-delà, ils viennent d'un livre ou du
+  -- MJ (décision R24)
+  SELECT ps.personnage_id, 'sort_hors_magie', ps.sort_id
+  FROM personnage_sort ps JOIN sort s ON s.id = ps.sort_id JOIN personnage p ON p.id = ps.personnage_id
+  WHERE s.magie_id <> COALESCE(p.magie_innee_id, '') AND s.magie_id <> COALESCE(p.magie_acquise_id, '')
+    AND COALESCE(p.magie_innee_id, '') <> 'magies/potentiel-illimite'
+  UNION ALL
+  SELECT ps.personnage_id, 'sort_puissance', ps.sort_id || ' : NPM ' || s.niveau
+  FROM personnage_sort ps
+  JOIN sort s ON s.id = ps.sort_id
+  JOIN personnage p ON p.id = ps.personnage_id
+  JOIN v_personnage_niveau n ON n.personnage_id = ps.personnage_id
+  WHERE s.niveau > (SELECT MAX(g.puissance_magique) FROM niveau_global g
+                    WHERE g.niveau <= n.niveau_global AND (p.magie_acquise_id IS NULL OR g.puissance_magique_note IS NULL))
+  UNION ALL
+  SELECT ps.personnage_id, 'sort_nm_plafond', ps.sort_id || ' = ' || ps.niveau_maitrise
+  FROM personnage_sort ps
+  WHERE ps.niveau_maitrise > (SELECT r.valeur FROM regle_constante r WHERE r.id = 'sort.nm_max')
+  UNION ALL
+  SELECT ps.personnage_id, 'sort_nm_max', ps.sort_id || ' = ' || (ps.niveau_maitrise - ps.nm_livre - ps.nm_cadeau)
+  FROM personnage_sort ps JOIN v_personnage_niveau n ON n.personnage_id = ps.personnage_id
+  WHERE ps.niveau_maitrise - ps.nm_livre - ps.nm_cadeau > n.niveau_global - (SELECT r.valeur FROM regle_constante r WHERE r.id = 'sort.nm_ecart_niveau_global')
+  UNION ALL
+  SELECT n.personnage_id, 'sorts_nm_total', (SELECT SUM(ps.niveau_maitrise - ps.nm_livre - ps.nm_cadeau) FROM personnage_sort ps WHERE ps.personnage_id = n.personnage_id) || ' / ' || v.niveaux_maitrise_cumul
+  FROM v_personnage_niveau n JOIN v_niveau v ON v.niveau = n.niveau_global
+  WHERE (SELECT SUM(ps.niveau_maitrise - ps.nm_livre - ps.nm_cadeau) FROM personnage_sort ps WHERE ps.personnage_id = n.personnage_id) > v.niveaux_maitrise_cumul
+  UNION ALL
+  -- Bouclier : des matériaux seulement avec un bouclier, quantités au plus la classe du bouclier (validation de Personnage!AL27)
+  SELECT p.id, 'bouclier_quantite', SUM(m.quantite) || ' / ' || COALESCE(MAX(bc.classe), 0)
+  FROM personnage p
+  JOIN personnage_bouclier_materiau m ON m.personnage_id = p.id
+  LEFT JOIN bouclier_classe bc ON bc.id = p.bouclier_classe_id
+  GROUP BY p.id
+  HAVING SUM(m.quantite) > COALESCE(MAX(bc.classe), 0)
+  UNION ALL
+  -- Équipement : chaque amélioration vise le bon genre d'objet
+  SELECT pa.personnage_id, 'amelioration_cible', pa.rang || ' : ' || ae.id
+  FROM personnage_arme pa JOIN amelioration_equipement ae ON ae.id = pa.amelioration_id
+  WHERE ae.cible <> 'arme'
+  UNION ALL
+  SELECT pa.personnage_id, 'amelioration_cible', pa.rang || ' : ' || ae.id
+  FROM personnage_arme pa JOIN amelioration_equipement ae ON ae.id = pa.amelioration_elementaire_id
+  WHERE ae.cible <> 'arme_elementaire'
+  UNION ALL
+  SELECT pa.personnage_id, 'amelioration_cible', pa.emplacement_id || ' : ' || ae.id
+  FROM personnage_armure pa JOIN amelioration_equipement ae ON ae.id = pa.amelioration_id
+  WHERE ae.cible <> 'armure'
+  UNION ALL
+  SELECT pa.personnage_id, 'amelioration_cible', pa.emplacement_id || ' : ' || ae.id
+  FROM personnage_armure pa JOIN amelioration_equipement ae ON ae.id = pa.amelioration_elementaire_id
+  WHERE ae.cible <> 'armure_elementaire'
+  UNION ALL
+  -- Accessoire : valeur tirée dans la fourchette de l'effet
+  SELECT pa.personnage_id, 'accessoire_valeur', pa.emplacement || ' = ' || COALESCE(CAST(pa.valeur AS TEXT), '(absente)')
+  FROM personnage_accessoire pa JOIN accessoire_effet ae ON ae.id = pa.accessoire_effet_id
+  WHERE (ae.bonus_min IS NULL) <> (pa.valeur IS NULL)
+     OR pa.valeur < ae.bonus_min OR pa.valeur > ae.bonus_max;
+
+-- ====================================================================================================================
+-- 14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)
+-- Demande du propriétaire : sur le site de dev (serveur de test, service lancé avec MAVERICK_EDITION=1), les pages du guide, des races, des magies,
+-- des classes et des métiers se modifient en place. Le service écrit chaque modification dans la base vivante ET dans ce journal, dans la même
+-- transaction (docs/sql/conception.md §10.3) : une ligne par ligne de table touchée (dérivées comprises), avec ses valeurs avant et après. Le journal
+-- sert à trois choses : rejouer les modifications quand une livraison refait la base vivante (client/serveur/edition-journal.mjs), montrer sur les
+-- pages statiques ce qui a changé depuis leur construction, et rapatrier les modifications dans data/rows (`npm run db:appliquer-edition`).
+-- Comme la section 13, ces tables n'ont ni `origine`, ni `source_ref`, ni `remarque`, et data/rows les garde VIDES. Instants : ISO 8601 en UTC.
+-- ====================================================================================================================
+
+-- Un enregistrement fait depuis une page (le bouton de confirmation) : toutes ses modifications passent ou aucune.
+CREATE TABLE modification_lot (
+  id         TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0),   -- UUID tiré par le service
+  fait_le    TEXT    NOT NULL CHECK (fait_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
+  auteur_id  TEXT    REFERENCES utilisateur(id),                     -- NULL avant la connexion Discord (1.0) : quiconque ouvre le site de dev
+  page_id    TEXT    CHECK (page_id IS NULL OR length(page_id) > 0), -- page d'où l'enregistrement est fait (« races/elfe-noir ») ; sans clé étrangère :
+                                                                     -- une page créée par l'édition peut ne pas encore être dans les règles livrées
+  resume     TEXT    NOT NULL CHECK (length(resume) > 0)             -- « Métier Forgeron : bonus_brut » : ce que le service a fait, lisible
+) STRICT;
+
+-- Une ligne de table touchée par un lot. `cle` = la clé primaire de la ligne ({"id": "metiers/forgeron"}) ; `avant` / `apres` = les colonnes
+-- modifiées (toute la ligne pour une insertion ou une suppression). État : 'en_attente' (dans la base vivante, pas encore dans data/rows),
+-- 'integree' (les règles livrées la contiennent déjà : elle est revenue par git), 'conflit' (les règles livrées ont changé la ligne autrement :
+-- elle n'est pas rejouée, `detail` dit pourquoi).
+CREATE TABLE modification (
+  lot_id     TEXT    NOT NULL REFERENCES modification_lot(id),
+  rang       INTEGER NOT NULL CHECK (rang >= 1),                     -- ordre d'application dans le lot
+  table_nom  TEXT    NOT NULL CHECK (length(table_nom) > 0 AND table_nom NOT GLOB '*[^a-z0-9_]*'),
+  cle        TEXT    NOT NULL CHECK (json_valid(cle) AND json_type(cle) = 'object'),
+  operation  TEXT    NOT NULL CHECK (operation IN ('inserer', 'modifier', 'supprimer')),
+  avant      TEXT    CHECK (avant IS NULL OR (json_valid(avant) AND json_type(avant) = 'object')),
+  apres      TEXT    CHECK (apres IS NULL OR (json_valid(apres) AND json_type(apres) = 'object')),
+  etat       TEXT    NOT NULL CHECK (etat IN ('en_attente', 'integree', 'conflit')),
+  detail     TEXT,                                                   -- raison d'un conflit ; NULL sinon
+  apercu     TEXT    CHECK (apercu IS NULL OR (json_valid(apercu) AND json_type(apercu) = 'array')),
+                                                                     -- page du guide : le HTML de l'éditeur, un élément par morceau de texte du corps,
+                                                                     -- que le site montre tant que la page construite ne l'a pas (assaini à l'affichage)
+  PRIMARY KEY (lot_id, rang),
+  CHECK ((operation = 'inserer') = (avant IS NULL)),
+  CHECK ((operation = 'supprimer') = (apres IS NULL)),
+  CHECK ((etat = 'conflit') = (detail IS NOT NULL))
+) STRICT;
+CREATE INDEX modification_etat ON modification (etat);
+CREATE INDEX modification_ligne ON modification (table_nom, cle);
+
+-- La note de version en préparation sur le site de dev (page /mise-a-jour/ : le champ libre que les admins remplissent, en plus de la liste
+-- calculée ; migration 0023). Une seule ligne. `lot` : le lot figé quand « Effectuer la mise à jour » est lancé (son texte part avec lui) ; la
+-- ligne est vidée quand une livraison apporte la note de version de ce lot (client/serveur/base-vivante.mjs).
+CREATE TABLE note_version_brouillon (
+  id          INTEGER NOT NULL PRIMARY KEY CHECK (id = 1),
+  texte       TEXT,                                                  -- Markdown ; NULL : rien d'écrit
+  modifie_le  TEXT    CHECK (modifie_le IS NULL OR modifie_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
+  lot         TEXT    CHECK (lot IS NULL OR length(lot) > 0)
+) STRICT;
+
+-- ====================================================================================================================
+-- 15. NOTES DE VERSION : ce que chaque version a changé dans les règles (page /mise-a-jour/), et l'historique des modifications faites sur le
+-- site de dev (migration 0023 ; demande du propriétaire). Écrites par le processus « Effectuer la mise à jour » (.github/workflows/mise-a-jour.yml,
+-- client/scripts/mise-a-jour-regles.mjs) dans la PR qui apporte les modifications du site, juste avant la livraison dev → master : la production
+-- montre la dernière note, et l'historique de toutes. Versionnées dans data/rows comme les règles (elles en font partie : le site les lit au build).
+-- ====================================================================================================================
+
+-- Une version livrée (dev → master) : « 0.2 » (X.Y : la production ne porte que deux chiffres), sa date, le champ libre des admins.
+CREATE TABLE note_version (
+  version     TEXT    NOT NULL PRIMARY KEY CHECK (version GLOB '[0-9]*.[0-9]*' AND version NOT GLOB '*[^0-9.]*' AND version NOT GLOB '*.*.*'),
+  publiee_le  TEXT    NOT NULL CHECK (publiee_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'),
+  depuis      TEXT    CHECK (depuis IS NULL OR (depuis GLOB '[0-9]*.[0-9]*' AND depuis NOT GLOB '*[^0-9.]*')),
+                                                                     -- version de production d'où part la liste (master avant la livraison)
+  texte       TEXT,                                                  -- champ libre des admins (Markdown) ; NULL : rien d'écrit
+  lot         TEXT    CHECK (lot IS NULL OR length(lot) > 0),        -- lot figé sur le site de dev qui l'a produite
+  exemple     INTEGER NOT NULL DEFAULT 0 CHECK (exemple IN (0, 1))   -- 1 : donnée de démonstration (lorem ipsum, demande du propriétaire tant qu'aucune
+                                                                     -- version n'a été livrée), retirée par la première vraie mise à jour
+) STRICT;
+
+-- Une ligne de la liste calculée : une modification d'un champ d'une entité entre la production et la nouvelle version. `domaine` range la ligne
+-- (sorts, magies, classes et leurs dons, races, métiers, guide), `groupe` et `entite` la nomment (« Lumière » › « Flash »), au nom qu'elle porte
+-- dans la nouvelle version (l'ancien pour une entité retirée). `sens` : la couleur (vert, rouge, gris) d'après les critères du propriétaire
+-- (client/src/lib/notes-de-version.mjs) ; `parties` : le détail quand une case se lit en morceaux (valeur de base, expression de NM), chacun avec son sens.
+-- `table_nom`, `cle`, `colonne` : la trace de la ligne de la base d'où elle vient.
+CREATE TABLE note_version_ligne (
+  version     TEXT    NOT NULL REFERENCES note_version(version) ON DELETE CASCADE,
+  rang        INTEGER NOT NULL CHECK (rang >= 1),                    -- ordre d'affichage
+  domaine     TEXT    NOT NULL CHECK (domaine IN ('sorts', 'magies', 'classes', 'races', 'metiers', 'guide')),
+  groupe      TEXT    CHECK (groupe IS NULL OR length(groupe) > 0),
+  entite      TEXT    NOT NULL CHECK (length(entite) > 0),
+  champ       TEXT    CHECK (champ IS NULL OR length(champ) > 0),    -- libellé de la colonne (« Coût ») ; NULL : l'entité entière (ajoutée, retirée)
+  nature      TEXT    NOT NULL CHECK (nature IN ('ajoute', 'retire', 'modifie')),
+  avant       TEXT,
+  apres       TEXT,
+  sens        TEXT    NOT NULL CHECK (sens IN ('amelioration', 'affaiblissement', 'neutre')),
+  parties     TEXT    CHECK (parties IS NULL OR (json_valid(parties) AND json_type(parties) = 'array')),
+  table_nom   TEXT    CHECK (table_nom IS NULL OR (length(table_nom) > 0 AND table_nom NOT GLOB '*[^a-z0-9_]*')),
+  cle         TEXT    CHECK (cle IS NULL OR (json_valid(cle) AND json_type(cle) = 'object')),
+  colonne     TEXT    CHECK (colonne IS NULL OR length(colonne) > 0),
+  PRIMARY KEY (version, rang),
+  CHECK (nature <> 'ajoute' OR avant IS NULL),                      -- ajouté : rien avant (l'entité, ou un champ qui n'existait pas)
+  CHECK (nature <> 'retire' OR apres IS NULL),                      -- retiré : rien après
+  CHECK (nature <> 'modifie' OR champ IS NOT NULL)                  -- modifié : un champ précis
+) STRICT;
+
+-- Le journal du site de dev une fois livré (une ligne par ligne de table touchée, comme `modification`) : qui a changé quoi, quand, avant et après
+-- (docs/feuille-de-route.md : modifications historisées). Les tests qui vérifient l'import (effectifs, textes cités, fidélité d'une page à son
+-- onglet) s'en servent pour ne plus contrôler ce que le site a modifié : le propriétaire a fait du site la source des règles.
+CREATE TABLE historique_modification (
+  lot_id      TEXT    NOT NULL CHECK (length(lot_id) > 0),
+  rang        INTEGER NOT NULL CHECK (rang >= 1),
+  fait_le     TEXT    NOT NULL CHECK (fait_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
+  resume      TEXT    NOT NULL CHECK (length(resume) > 0),          -- résumé du lot (modification_lot.resume)
+  version     TEXT    REFERENCES note_version(version),              -- version qui l'a livrée ; NULL : rapatriée à la main (npm run db:appliquer-edition)
+  table_nom   TEXT    NOT NULL CHECK (length(table_nom) > 0 AND table_nom NOT GLOB '*[^a-z0-9_]*'),
+  cle         TEXT    NOT NULL CHECK (json_valid(cle) AND json_type(cle) = 'object'),
+  operation   TEXT    NOT NULL CHECK (operation IN ('inserer', 'modifier', 'supprimer')),
+  avant       TEXT    CHECK (avant IS NULL OR (json_valid(avant) AND json_type(avant) = 'object')),
+  apres       TEXT    CHECK (apres IS NULL OR (json_valid(apres) AND json_type(apres) = 'object')),
+  PRIMARY KEY (lot_id, rang),
+  CHECK ((operation = 'inserer') = (avant IS NULL)),
+  CHECK ((operation = 'supprimer') = (apres IS NULL))
+) STRICT;
+CREATE INDEX historique_modification_ligne ON historique_modification (table_nom, cle);

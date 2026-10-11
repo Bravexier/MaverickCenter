@@ -1,0 +1,1 @@
+-- data/rows/groupe_membre.sql : export déterministe, une instruction par ligne, triée par (groupe_id, utilisateur_id). NE PAS ÉDITER À LA MAIN.

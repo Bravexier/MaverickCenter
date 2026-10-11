@@ -1,0 +1,35 @@
+---
+import type { DonDb } from '../../lib/classes';
+import { pageHref } from '../../lib/magies';
+import Texte from '../magie/Texte.astro';
+import { attributEd } from '../../lib/edition-modele.mjs';
+
+// Un don de classe (ligne de la table `capacite`) en carte : niveau, nom (lien vers sa fiche), type et sa précision telle qu'écrite (« 2 fois/Combat »),
+// effet, remarque du classeur (note de cellule). `id` = ancre du don sur la page de la classe (« #don-barde-perroquet »).
+interface Props {
+  don: DonDb;
+  titre?: 'h3' | 'h4';
+  cartouche?: boolean;
+}
+const { don, titre = 'h4', cartouche = false } = Astro.props;
+const Titre = titre;
+const bulleType = don.type?.definition ? `${don.type.libelle} : ${don.type.definition}` : undefined;
+// champs modifiables sur le site de dev (lib/edition-modele.mjs : table capacite) ; leur rendu après modification : lib/edition-rendu.mjs (don-type)
+const ed = (colonne: string) => attributEd('capacite', { id: don.id }, colonne);
+---
+
+<article class={`don${cartouche ? ' don--cartouche' : ''}`} id={don.ancre} data-type={don.type?.id}>
+  <header class="don__tete">
+    <span class="don__niveau" title={`Niveau de classe ${don.niveau}`}>Niv. {don.niveau}</span>
+    <Titre class="don__nom" data-ed={ed('nom')} data-ed-cible="a"><a href={pageHref(don.id)}>{don.nom}</a></Titre>
+  </header>
+  <p class="don__type" data-ed={ed('type_brut')} data-ed-rendu="don-type" data-ed-cadre hidden={!(don.type || don.precision)}>
+    {don.type && <span class="don-type" data-type={don.type.id} title={bulleType}>{don.type.libelle}</span>}
+    {don.precision && <span class="don__precision">{don.precision}</span>}
+  </p>
+  <div class="don__effet" data-ed={ed('effet')} data-ed-rendu="blocs" data-ed-cadre hidden={don.effet.length === 0}><Texte blocs={don.effet} /></div>
+  <div class="don__remarque" data-ed-cadre=".don__remarque-texte" hidden={don.remarque.length === 0}>
+    <p class="don__remarque-titre">Remarque</p>
+    <div class="don__remarque-texte" data-ed={ed('remarque')} data-ed-rendu="blocs"><Texte blocs={don.remarque} /></div>
+  </div>
+</article>

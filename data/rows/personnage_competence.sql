@@ -1,0 +1,1 @@
+-- data/rows/personnage_competence.sql : export déterministe, une instruction par ligne, triée par (personnage_id, competence_id). NE PAS ÉDITER À LA MAIN.

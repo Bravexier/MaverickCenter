@@ -95,6 +95,7 @@ for (const file of walk(raw)) {
   const rel = relative(raw, file).split('\\').join('/');
   if (rel.startsWith('_astro/')) continue; // inliné
   if (rel.endsWith('.db')) continue; // la base SQLite (téléchargement de /donnees/) n'a pas sa place dans la version portable
+  if (rel.startsWith('_serveur/')) continue; // le service des personnages (client/serveur/) ne tourne que derrière nginx, pas dans une page statique
   if (!rel.endsWith('.html')) {
     mkdirSync(dirname(join(files, rel)), { recursive: true });
     writeFileSync(join(files, rel), readFileSync(file));

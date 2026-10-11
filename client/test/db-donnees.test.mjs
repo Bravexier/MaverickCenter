@@ -11,6 +11,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
 
 const racine = fileURLToPath(new URL('../../', import.meta.url));
 const client = fileURLToPath(new URL('../', import.meta.url));
@@ -46,20 +48,29 @@ test('db:build construit la base depuis data/rows (schéma, lignes, clés étran
 test('la base contient les domaines : pages, magies et sorts, classes et capacités, races, bestiaire, équipement', () => {
   const db = new DatabaseSync(base, { readOnly: true });
   const n = (table) => db.prepare(`SELECT count(*) AS n FROM "${table}"`).get().n;
+  const pagesDuType = (type) => db.prepare("SELECT count(*) AS n FROM page WHERE type = ? AND statut <> 'example'").get(type).n;
   assert.equal(n('page'), nbPagesMd);
   assert.equal(n('type_page'), 10);
-  assert.equal(n('magie'), 15);
-  assert.equal(n('sort'), 322);
-  assert.equal(n('classe'), 39);
+  // effectifs de l'import : le site de dev, source des données qu'il modifie, peut créer des races, des classes… (lib/historique-site.mjs)
+  const historique = historiqueSite(db);
+  for (const [table, effectif] of [['magie', 15], ['sort', 322], ['classe', 39], ['capacite', 660], ['race', 27], ['invocation', 3], ['creature', 63]]) {
+    assert.equal(historique.effectifDImport(table), effectif, `${table} : effectif de l'import`);
+  }
+  // cohérence de l'état courant
   assert.equal(n('capacite'), fichiersMd('capacites'), 'une ligne capacite par page capacites/*.md');
-  assert.equal(n('capacite'), 660);
-  assert.equal(n('race'), 27, 'décision R1 : 27 races');
-  assert.equal(n('invocation'), 3);
-  assert.equal(n('creature'), 63);
+  assert.equal(n('classe'), pagesDuType('classes'), 'une ligne classe par page de classe');
+  assert.equal(n('race'), pagesDuType('races'), 'une ligne race par page de race');
+  assert.equal(n('race_onglet'), n('race'), 'chaque race a son onglet');
+  assert.equal(n('magie'), pagesDuType('magies'), 'une ligne magie par page de magie');
+  // décision R1 (27 races et non 23) : les 27 races de la liste du propriétaire sont là ; une race créée depuis le site ne la contredit pas
+  assert.equal(ORDRE_DES_RACES.length, 27);
+  const races = new Set(db.prepare('SELECT id FROM race').all().map((r) => r.id));
+  for (const id of ORDRE_DES_RACES) assert.ok(races.has(id), `décision R1 : ${id}`);
   for (const t of ['ressource', 'recette', 'arme', 'armure', 'metier', 'etat', 'peuple', 'note_cellule', 'ecart_source']) assert.ok(n(t) > 0, `${t} est rempli`);
   assert.equal(n('correction'), 1, 'la correction du Mercenaire est tracée');
-  // la correction orthographique est bien dans les lignes typées, l'ancien texte n'y est plus
-  assert.ok(db.prepare("SELECT 1 FROM classe WHERE nom LIKE '%Chasseur de primes%' OR id LIKE '%chasseur-de-primes%' LIMIT 1").get() || db.prepare("SELECT 1 FROM capacite WHERE id LIKE '%chasseur-de-primes%' LIMIT 1").get());
+  // la correction orthographique est bien dans les lignes typées, l'ancien texte n'y est plus (sauf si le site de dev a supprimé le don qui la portait :
+  // D11, db:check l'ignore alors)
+  if (!historique.supprimee('capacite', { id: 'capacites/mercenaire-chasseur-de-primes' })) assert.ok(db.prepare("SELECT 1 FROM classe WHERE nom LIKE '%Chasseur de primes%' OR id LIKE '%chasseur-de-primes%' LIMIT 1").get() || db.prepare("SELECT 1 FROM capacite WHERE id LIKE '%chasseur-de-primes%' LIMIT 1").get());
   assert.equal(db.prepare("SELECT count(*) AS n FROM capacite WHERE id LIKE '%chasseur-prime%'").get().n, 0);
   db.close();
 });

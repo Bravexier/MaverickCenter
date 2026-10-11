@@ -1,8 +1,8 @@
 -- data/rows/potion.sql : export déterministe, une instruction par ligne, triée par (ressource_id). NE PAS ÉDITER À LA MAIN.
 INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/alchimie-primitive#potion:bloc-degoutant', 'primitive', 1, 'novice', '- Redonne 15 barrière
-- 1 croix à le social pendant 2 tours', 'docs_typees', 'Google Doc « Alchimie » › Alchimie primitive › Bloc › tableau « Bloc dégoûtant »');
+- 1 croix au social pendant 2 tours', 'docs_typees', 'Google Doc « Alchimie » › Alchimie primitive › Bloc › tableau « Bloc dégoûtant »');
 INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/alchimie-primitive#potion:bloc-etrange', 'primitive', 2, 'apprenti', '- Redonne 35 barrière
-- 1 croix à le social pendant 2 tours', 'docs_typees', 'Google Doc « Alchimie » › Alchimie primitive › Bloc › tableau « Bloc étrange »');
+- 1 croix au social pendant 2 tours', 'docs_typees', 'Google Doc « Alchimie » › Alchimie primitive › Bloc › tableau « Bloc étrange »');
 INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/alchimie-primitive#potion:breuvage-amer', 'primitive', 2, 'apprenti', '- Redonne 35 chakra
 - 1 croix à la volonté pendant 2 tours', 'docs_typees', 'Google Doc « Alchimie » › Alchimie primitive › Breuvage › tableau « Breuvage amer »');
 INSERT INTO potion (ressource_id, famille, rang, niveau_id, effet, origine, source_ref) VALUES ('ressources/alchimie-primitive#potion:breuvage-immonde', 'primitive', 1, 'novice', '- Redonne 15 chakra

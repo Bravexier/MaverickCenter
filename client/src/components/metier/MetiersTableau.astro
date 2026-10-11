@@ -1,0 +1,251 @@
+---
+import tableauCss from '../../styles/metier/tableau.css?raw';
+import type { chargerMetiers, contexteDesMetiers } from '../../lib/metiers.mjs';
+import { attributEd } from '../../lib/edition-modele.mjs';
+import { RENDUS } from '../../lib/edition-rendu.mjs';
+import { COLONNES_METIERS } from '../../lib/metiers-tri.mjs';
+
+// Tableau de /metiers/ (demande du propriétaire), à l'image des tableaux de sorts (components/magie/MagieSorts.astro) : une ligne par métier de la table
+// `metier` (Nom, Bonus, Artisanat, Caractéristiques, Équipement supplémentaire) ; sélectionner une ligne ouvre juste en dessous la description du métier
+// (et son avantage possible). Bonus : chaque compétence visée (son Acquis) ou l'initiative est une pastille, dans la couleur de sa caractéristique
+// (décision R33) ; artisanat : un texte libre et, à part, ses deux caractéristiques (R34) ; équipement : les objets de départ (R35).
+// Les cellules sont les rendus de lib/edition-rendu.mjs, ceux que le mode modification réécrit après un enregistrement : un seul HTML.
+// Les métiers n'ont pas de page à eux : un lien vers un métier mène à sa ligne (`#metier-forgeron`, lib/metiers.mjs), que le script ouvre.
+// Sans JavaScript (et à l'impression), toutes les descriptions sont affichées.
+// Filtres et tri (demande du propriétaire, pour chaque colonne) : posés par le script (sans JavaScript, le tableau reste lisible tel quel), état dans
+// l'adresse (lib/metiers-tri.mjs). Chaque champ porte son attribut `data-ed` (lib/edition-modele.mjs) : sur le site de dev, le mode modification
+// (src/scripts/edition/) le rend modifiable ; une ligne ajoutée ou supprimée là redemande le tri (évènement « metiers:rafraichir »).
+interface Props {
+  metiers: ReturnType<typeof chargerMetiers>;
+  contexte: ReturnType<typeof contexteDesMetiers>;
+}
+const { metiers, contexte } = Astro.props;
+
+const colonnes = COLONNES_METIERS.map((c) => c.libelle);
+const ed = (id: string, colonne: string) => attributEd('metier', { id }, colonne);
+const rendu = (nom: string, m: (typeof metiers)[number], colonne: string) => RENDUS[nom](m.ligne[colonne], m.ligne, contexte);
+---
+
+<style is:inline set:html={tableauCss}></style>
+<section class="metiers" aria-label="Liste des métiers">
+  <p class="muted metiers-aide">
+    <span data-metiers-compte>{metiers.length} métiers, par ordre alphabétique.</span>{' '}
+    <span class="js-only">Cliquez sur un métier pour lire sa description juste en dessous.</span>
+  </p>
+  <form class="metiers-filtres" role="search" aria-label="Filtrer et trier les métiers" hidden>
+    {
+      COLONNES_METIERS.map((c) => (
+        <label>
+          <span>{c.libelle}</span>
+          <input type="search" name={c.cle} placeholder="Filtrer…" autocomplete="off" />
+        </label>
+      ))
+    }
+    <label>
+      <span>Trier par</span>
+      <select name="tri">
+        <option value="">Ordre alphabétique</option>
+        {COLONNES_METIERS.map((c) => <option value={`${c.cle}:asc`}>{c.libelle} (A → Z)</option>)}
+        {COLONNES_METIERS.map((c) => <option value={`${c.cle}:desc`}>{c.libelle} (Z → A)</option>)}
+      </select>
+    </label>
+    <button type="reset">Tout afficher</button>
+  </form>
+  <div class="metiers-wrap">
+    <table class="metiers-table">
+      <thead>
+        <tr>{colonnes.map((c) => <th scope="col">{c}</th>)}</tr>
+      </thead>
+      {
+        metiers.map((m) => (
+          <tbody class="metier" id={m.ancre} data-ed-metier={m.id}>
+            <tr class="metier__main">
+              <th scope="row" class="metier__nom" data-ed={ed(m.id, 'nom')} data-ed-cible=".metier__choisir" data-colonne="nom">
+                <button type="button" class="metier__choisir" aria-expanded="false" aria-controls={`detail-${m.ancre}`}>
+                  {m.nom}
+                </button>
+              </th>
+              <td data-label="Bonus" class="metier__bonus" data-ed={ed(m.id, 'bonus_brut')} data-ed-rendu="metier-bonus" data-colonne="bonus" set:html={rendu('metier-bonus', m, 'bonus_brut')} />
+              <td data-label="Artisanat" class="metier__artisanat" data-ed={ed(m.id, 'artisanat_texte')} data-ed-rendu="metier-artisanat" data-colonne="artisanat" set:html={rendu('metier-artisanat', m, 'artisanat_texte')} />
+              <td data-label="Caractéristiques" class="metier__caracs" data-colonne="caracteristiques" title="Compétence d’artisanat : 10 × chacune des deux caractéristiques">
+                <span class="metier__carac" data-ed={ed(m.id, 'test_carac_1_id')} data-ed-rendu="metier-carac" set:html={rendu('metier-carac', m, 'test_carac_1_id')} />
+                <span class="metier__carac" data-ed={ed(m.id, 'test_carac_2_id')} data-ed-rendu="metier-carac" set:html={rendu('metier-carac', m, 'test_carac_2_id')} />
+              </td>
+              <td data-label="Équipement supplémentaire" class="metier__equipement" data-ed={ed(m.id, 'equipement_brut')} data-ed-rendu="metier-equipement" data-colonne="equipement" set:html={rendu('metier-equipement', m, 'equipement_brut')} />
+            </tr>
+            <tr class="metier__detail" id={`detail-${m.ancre}`} hidden>
+              <td colspan={colonnes.length}>
+                <div class="metier-detail" role="region" aria-labelledby={`detail-${m.ancre}-titre`}>
+                  <header class="metier-detail__tete">
+                    <h2 id={`detail-${m.ancre}-titre`} data-ed-lecture={ed(m.id, 'nom')}>{m.nom}</h2>
+                    <button type="button" class="metier-detail__fermer" aria-label={`Fermer la description de ${m.nom}`}>Fermer</button>
+                  </header>
+                  <p class="metier-detail__texte" data-ed={ed(m.id, 'description')}>{m.description}</p>
+                  <p class="metier-detail__texte" data-ed-cadre hidden={!m.avantage}><strong>Avantage possible :</strong> <span data-ed={ed(m.id, 'avantage_brut')} data-ed-rendu="metier-avantage">{m.avantage}</span></p>
+                  <p class="metier-detail__texte metier-detail__remarque" data-ed-cadre hidden={!m.remarque}><span data-ed={ed(m.id, 'remarque')}>{m.remarque}</span></p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        ))
+      }
+    </table>
+  </div>
+</section>
+
+<noscript>
+  <style>
+    .metiers-table .metier__detail[hidden] { display: table-row !important; }
+  </style>
+</noscript>
+
+<script>
+  import { COLONNES_METIERS, adresseDeEtat, etatDepuisAdresse, filtrerEtTrier } from '../../lib/metiers-tri.mjs';
+
+  // Sélection d'un métier : sa ligne se met en évidence et sa description s'ouvre juste en dessous (un seul métier à la fois), comme pour les sorts.
+  // Sans JavaScript, toutes les descriptions sont affichées (feuille de style de <noscript> ci-dessus).
+  document.documentElement.classList.add('js');
+
+  // lignes relues à chaque fois : le mode modification du site de dev peut en ajouter ou en retirer
+  const lignes = () => [...document.querySelectorAll<HTMLElement>('tbody.metier')];
+  const bouton = (ligne: HTMLElement) => ligne.querySelector<HTMLButtonElement>('.metier__choisir');
+  const detail = (ligne: HTMLElement) => ligne.querySelector<HTMLElement>('.metier__detail');
+  const adresseSansMetier = () => location.pathname + location.search;
+
+  /** Ferme le métier ouvert ; si le focus était dans sa description, il revient sur le bouton de la ligne. */
+  function fermer() {
+    for (const ligne of lignes().filter((l) => l.classList.contains('is-selected'))) {
+      const d = detail(ligne);
+      const focusDedans = !!d && d.contains(document.activeElement);
+      ligne.classList.remove('is-selected');
+      bouton(ligne)?.setAttribute('aria-expanded', 'false');
+      if (d) d.hidden = true;
+      if (focusDedans) bouton(ligne)?.focus();
+    }
+  }
+
+  function ouvrir(ligne: HTMLElement, defiler: boolean) {
+    fermer();
+    ligne.classList.add('is-selected');
+    bouton(ligne)?.setAttribute('aria-expanded', 'true');
+    const d = detail(ligne);
+    if (d) {
+      d.hidden = false;
+      if (defiler) ligne.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    }
+    history.replaceState(null, '', `#${ligne.id}`);
+  }
+
+  /** Ferme tout et retire `#metier-…` de l'adresse (un rechargement ou un lien partagé ne rouvre pas le métier). */
+  function toutFermer() {
+    fermer();
+    if (location.hash.startsWith('#metier-')) history.replaceState(null, '', adresseSansMetier());
+  }
+
+  function basculer(ligne: HTMLElement) {
+    if (ligne.classList.contains('is-selected')) toutFermer();
+    else ouvrir(ligne, true);
+  }
+
+  // Un clic sur la ligne ouvre ou ferme ; un lien, un champ de saisie (mode modification), ou un texte en cours de sélection (copier un bonus), ne l'ouvre pas.
+  document.querySelector('.metiers-table')!.addEventListener('click', (e) => {
+    const cible = e.target as HTMLElement;
+    const ligne = cible.closest<HTMLElement>('tbody.metier');
+    if (!ligne) return;
+    if (cible.closest('.metier-detail__fermer')) {
+      toutFermer();
+      bouton(ligne)?.focus();
+      return;
+    }
+    if (!cible.closest('.metier__main') || cible.closest('a, input, textarea, select, [contenteditable]')) return;
+    if (!cible.closest('button') && (getSelection()?.toString() ?? '') !== '') return;
+    basculer(ligne);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !(e.target as HTMLElement).closest?.('input, textarea, select, [contenteditable]')) toutFermer();
+  });
+
+  /** Adresse `#metier-…` (lien `[[Forgeron]]`, recherche, mot-clé) : ouvre ce métier ; toute autre adresse ferme le métier ouvert. */
+  function depuisLien() {
+    let id = '';
+    try {
+      id = decodeURIComponent(location.hash.slice(1));
+    } catch {
+      return; // adresse mal formée : ignorée
+    }
+    const ligne = id.startsWith('metier-') ? lignes().find((l) => l.id === id) : undefined;
+    if (ligne) ouvrir(ligne, true);
+    else fermer();
+  }
+  window.addEventListener('hashchange', depuisLien);
+  depuisLien();
+
+  // Filtres et tri, pour chaque colonne (lib/metiers-tri.mjs) : sur le texte affiché des cellules, relu à chaque fois (une ligne modifiée ou ajoutée
+  // sur le site de dev est prise telle qu'elle s'affiche). L'état est dans l'adresse ; le lien d'un métier (#metier-…) n'est pas touché.
+  const table = document.querySelector<HTMLTableElement>('.metiers-table')!;
+  const formulaire = document.querySelector<HTMLFormElement>('.metiers-filtres')!;
+  const compte = document.querySelector<HTMLElement>('[data-metiers-compte]')!;
+  const entetes = [...table.querySelectorAll<HTMLTableCellElement>('thead th')];
+  let etat = etatDepuisAdresse(location.search);
+
+  // en-têtes cliquables : premier clic A → Z, second Z → A, troisième retour à l'ordre alphabétique
+  entetes.forEach((th, i) => {
+    const cle = COLONNES_METIERS[i].cle;
+    const bouton = document.createElement('button');
+    bouton.type = 'button';
+    bouton.className = 'metiers-tri';
+    bouton.textContent = th.textContent;
+    bouton.title = `Trier par ${COLONNES_METIERS[i].libelle}`;
+    th.replaceChildren(bouton);
+    bouton.addEventListener('click', () => {
+      etat = { ...etat, ...(etat.tri !== cle ? { tri: cle, sens: 'asc' } : etat.sens === 'asc' ? { sens: 'desc' } : { tri: null, sens: 'asc' }) };
+      appliquer(true);
+    });
+  });
+  formulaire.hidden = false;
+
+  function lire() {
+    return [...table.querySelectorAll<HTMLElement>('tbody.metier')].map((tbody) => ({
+      id: tbody.id,
+      tbody,
+      cellules: Object.fromEntries(
+        [...tbody.querySelectorAll<HTMLElement>('.metier__main > [data-colonne]')].map((c) => [c.dataset.colonne!, c.textContent!.replace(/\s+/g, ' ').trim()]),
+      ),
+    }));
+  }
+
+  function appliquer(ecrireAdresse: boolean) {
+    const toutes = lire().sort((a, b) => a.cellules.nom.localeCompare(b.cellules.nom, 'fr', { sensitivity: 'base' }));
+    const visibles = filtrerEtTrier(toutes, etat);
+    const gardees = new Set(visibles.map((l) => l.id));
+    for (const l of toutes) l.tbody.hidden = !gardees.has(l.id);
+    for (const l of [...visibles, ...toutes.filter((x) => !gardees.has(x.id))]) table.append(l.tbody);
+    entetes.forEach((th, i) => {
+      const cle = COLONNES_METIERS[i].cle;
+      th.setAttribute('aria-sort', etat.tri === cle ? (etat.sens === 'desc' ? 'descending' : 'ascending') : 'none');
+    });
+    (formulaire.elements.namedItem('tri') as HTMLSelectElement).value = etat.tri ? `${etat.tri}:${etat.sens}` : '';
+    for (const c of COLONNES_METIERS) (formulaire.elements.namedItem(c.cle) as HTMLInputElement).value = etat.filtres[c.cle] ?? '';
+    const filtre = Object.values(etat.filtres).some((f) => f?.trim());
+    const libelleTri = etat.tri ? `triés par ${COLONNES_METIERS.find((c) => c.cle === etat.tri)!.libelle.toLowerCase()} (${etat.sens === 'desc' ? 'Z → A' : 'A → Z'})` : 'par ordre alphabétique';
+    const metiers = (n: number) => `${n} métier${n > 1 ? 's' : ''}`;
+    compte.textContent = filtre ? `${metiers(visibles.length)} sur ${toutes.length}, ${libelleTri}.` : `${metiers(toutes.length)}, ${libelleTri}.`;
+    if (ecrireAdresse) history.replaceState(null, '', location.pathname + adresseDeEtat(etat) + location.hash);
+  }
+
+  formulaire.addEventListener('input', (e) => {
+    const champ = e.target as HTMLInputElement | HTMLSelectElement;
+    if (champ.name === 'tri') {
+      const [tri, sens] = champ.value.split(':');
+      etat = { ...etat, tri: tri || null, sens: sens === 'desc' ? 'desc' : 'asc' };
+    } else etat = { ...etat, filtres: { ...etat.filtres, [champ.name]: champ.value } };
+    appliquer(true);
+  });
+  formulaire.addEventListener('reset', () => {
+    etat = { tri: null, sens: 'asc', filtres: {} };
+    setTimeout(() => appliquer(true));
+  });
+  formulaire.addEventListener('submit', (e) => e.preventDefault());
+  document.addEventListener('metiers:rafraichir', () => appliquer(false));
+  appliquer(false);
+</script>

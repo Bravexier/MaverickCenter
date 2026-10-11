@@ -2,7 +2,7 @@
 // (lancé avant dev, build et test). Ici : le format écrit est celui que lit le site (analyse YAML réelle), sans perte, et le script d'export se vérifie lui-même.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -13,8 +13,11 @@ import { emettrePage, lirePages } from '../src/lib/pages-db.mjs';
 
 const client = fileURLToPath(new URL('../', import.meta.url));
 const wiki = join(client, 'src', 'content', 'wiki');
-const exporter = (args) => spawnSync(process.execPath, ['--no-warnings', join(client, 'scripts', 'db-export-pages.mjs'), ...args], { encoding: 'utf8' });
-const pages = lirePages(ouvrirBase({ sansExemples: false }));
+const exporter = (args, env = process.env) => spawnSync(process.execPath, ['--no-warnings', join(client, 'scripts', 'db-export-pages.mjs'), ...args], { encoding: 'utf8', env });
+const db = ouvrirBase({ sansExemples: false });
+const pages = lirePages(db);
+// toutes les pages de la base (1015 à l'import ; le site de dev, source des données qu'il modifie, peut en créer ou en supprimer)
+const nbPages = db.prepare('SELECT count(*) AS n FROM page').get().n;
 
 /** Ce que fait le site pour lire une page : l'en-tête YAML et le corps (voir content.config.ts : glob + schéma). */
 function lire(texte) {
@@ -41,8 +44,8 @@ test('emettrePage : champs structurés (chaîne, liste, entier) ; ceux des pages
   assert.deepEqual(magie.slice(4, 8), ['nom_court: "Sang"', 'resiste_a: ["Feu", "Terre"]', 'niveau: 20', 'summary: "Un « résumé »."']);
 });
 
-test('aller-retour sans perte pour les 991 pages : l’analyse YAML du site redonne exactement les champs de la base', () => {
-  assert.equal(pages.length, 991);
+test('aller-retour sans perte pour toutes les pages : l’analyse YAML du site redonne exactement les champs de la base', () => {
+  assert.equal(pages.length, nbPages);
   for (const p of pages) {
     const { data, corps } = lire(emettrePage(p));
     assert.equal(data.title, p.titre, p.id);
@@ -62,9 +65,9 @@ test('db-export-pages : fabrique un fichier par page, --verifier dit ce qui diff
   const sortie = join(dir, 'wiki');
   const ecrit = exporter(['--out', sortie]);
   assert.equal(ecrit.status, 0, ecrit.stderr);
-  assert.match(ecrit.stdout, /991 pages écrites/);
+  assert.match(ecrit.stdout, new RegExp(`\\b${nbPages} pages écrites`));
   const fichiers = readdirSync(sortie).flatMap((t) => readdirSync(join(sortie, t)).map((f) => `${t}/${f}`));
-  assert.equal(fichiers.length, 991);
+  assert.equal(fichiers.length, nbPages);
   assert.ok(existsSync(join(sortie, 'cartes')), 'chaque type de page a son dossier, même sans page');
 
   const ok = exporter(['--verifier', sortie]);
@@ -83,16 +86,19 @@ test('db-export-pages : fabrique un fichier par page, --verifier dit ce qui diff
 });
 
 test('db-export-pages : la base temporaire est supprimée quelle que soit la sortie (écriture, --verifier propre, --verifier avec écarts)', () => {
-  const restes = () => readdirSync(tmpdir()).filter((f) => f.startsWith('maverick-pages-'));
-  const avant = new Set(restes());
+  // un dossier temporaire propre au test (TMPDIR de l'export) : les autres suites, lancées en parallèle, écrivent dans le tmpdir() commun
   const dir = mkdtempSync(join(tmpdir(), 'pages-db-'));
+  const temporaire = join(dir, 'tmp');
+  mkdirSync(temporaire);
+  const env = { ...process.env, TMPDIR: temporaire, TMP: temporaire, TEMP: temporaire };
+  const restes = () => readdirSync(temporaire).filter((f) => f.startsWith('maverick-pages-'));
   try {
     const sortie = join(dir, 'wiki');
-    assert.equal(exporter(['--out', sortie]).status, 0);
-    assert.equal(exporter(['--verifier', sortie]).status, 0, 'verifier : aucun écart');
-    assert.equal(exporter(['--verifier', join(dir, 'absent')]).status, 1, 'verifier : tout manque');
+    assert.equal(exporter(['--out', sortie], env).status, 0);
+    assert.equal(exporter(['--verifier', sortie], env).status, 0, 'verifier : aucun écart');
+    assert.equal(exporter(['--verifier', join(dir, 'absent')], env).status, 1, 'verifier : tout manque');
+    assert.deepEqual(restes(), [], 'aucun dossier maverick-pages-* laissé dans le dossier temporaire');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
-  assert.deepEqual(restes().filter((f) => !avant.has(f)), [], 'aucun dossier maverick-pages-* laissé dans tmpdir()');
 });

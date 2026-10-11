@@ -1,0 +1,237 @@
+---
+import classeBaseCss from '../../styles/classe/base.css?raw';
+import classePageCss from '../../styles/classe/page.css?raw';
+import classeDonsCss from '../../styles/classe/dons.css?raw';
+import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
+import type { ClasseDb } from '../../lib/classes';
+import { idBulle, pageHref } from '../../lib/magies';
+import { classColor } from '../../lib/class-groups.mjs';
+import { couleurDeMagie, texteSurCouleur } from '../../lib/sort-format.mjs';
+import type { WikiEntry } from '../../lib/wiki';
+import Bulles from '../magie/Bulles.astro';
+import Texte from '../magie/Texte.astro';
+import ClasseDons from './ClasseDons.astro';
+import { attributEd } from '../../lib/edition-modele.mjs';
+import { empreinteDeStructure, htmlDuGroupeDeNavigation, htmlDuRepereMagique, lienDesSpecialites } from '../../lib/classe-dons-rendu.mjs';
+
+const classeCss = [classeBaseCss, classePageCss, classeDonsCss, magieTooltipsCss].join('\n');
+
+// Gabarit commun des pages de classe, sur le modèle des pages de magie et de race : bandeau (nom, catégorie du Sommaire, « Don de départ »),
+// présentation et « Chose à savoir », spécialités, équipement de départ, DONS disposés comme l'onglet (choix encadrés), tableau annexe de l'onglet.
+// Il affiche les lignes de la base (lib/classes-db.mjs) : pour changer une classe ou un don, on change la base, depuis le site de dev (mode modification :
+// champs, spécialités et dons créés ou supprimés, src/scripts/edition/classes.mjs, qui redessine les dons et les spécialités avec le même HTML :
+// lib/classe-dons-rendu.mjs). Aucun tableau Markdown, pas de source citée. Seuls le titre, les alias et le statut viennent de la page du wiki ; le repère
+// « Classe magique » (+4 AM) se lit dans les tables (catégorie, Archimage, don de spécialité : lib/classe-dons-rendu.mjs#htmlDuRepereMagique).
+interface Props {
+  entry: WikiEntry;
+  classe: ClasseDb;
+  statusNote?: string;
+}
+const { entry, classe, statusNote } = Astro.props;
+
+// couleur de la catégorie de /classes/ (rouge, vert, bleu, violet, jaune), sur toute la page comme celle d'une magie
+const couleur = classColor(entry);
+// spécialités : celles qui ont des dons (une colonne du plateau ; les deux de l'Archimage n'en ont pas) ; un article caché tant qu'il n'a ni description
+// ni remarque, que le mode modification ouvre pour le remplir (D11 : une spécialité créée sur le site n'a d'abord que son nom)
+const colonnes = classe.plateau.flatMap((e) => (e.forme === 'specialites' ? e.specialites : []));
+const specialitesMontrees = colonnes.map((c) => c.specialite).filter((s) => s.description.length + s.remarque.length > 0);
+const aDepart = classe.maitriseArme.length + classe.maitriseArmure.length + classe.inventaire.length > 0 || Boolean(classe.armeDepart || classe.armureDepart);
+const pageObjets = 'ressources/objets-de-depart-des-classes';
+const nav = [
+  { href: '#presentation', label: 'Présentation', show: classe.description.length > 0 },
+  { href: '#a-savoir', label: 'À savoir', show: classe.aSavoir.length > 0 },
+  { href: '#specialites', label: 'Spécialités', show: lienDesSpecialites(classe) },
+  { href: '#depart', label: 'Départ', show: aDepart },
+  { href: '#dons', label: 'Dons', show: classe.dons.length > 0 },
+  { href: '#annexe', label: 'Tableau de l’onglet', show: classe.annexe.length > 0 },
+].filter((n) => n.show);
+// « Classe magique » (+4 AM) : la classe elle-même (catégorie du Sommaire, Archimage), ou seulement avec la spécialité dont le don le dit (classes raciales,
+// Flagelleur) ; même HTML que le mode modification redessine (lib/classe-dons-rendu.mjs#htmlDuRepereMagique), à partir des tables
+const repereMagique = htmlDuRepereMagique(classe, { classeId: classe.id, amBase: classe.categorie?.amBase ?? null, amMagique: classe.amMagique, note: classe.categorie?.note ?? null });
+const bulles = classe.inventaire.map((options) => options.map((o) => (o.description ? idBulle('objet') : null)));
+// Champs modifiables sur le site de dev (lib/edition-modele.mjs) ; un champ vide est rendu caché (`data-ed-cadre`) pour pouvoir être rempli.
+const ed = (colonne: string) => attributEd('classe', { id: classe.id }, colonne);
+const edSpe = (id: string, colonne: string) => attributEd('specialite', { id }, colonne);
+---
+
+<style is:inline set:html={classeCss}></style>
+<div class="classe" data-ed-classe={classe.id} data-ed-structure={empreinteDeStructure(classe)} style={`--couleur-classe: ${couleur}; --couleur-texte-classe: ${texteSurCouleur(couleur)}`}>
+  <header class="classe-hero">
+    <p class="classe-hero__surtitre">{classe.categorie?.libelle ?? 'Classe'}</p>
+    <h1>{entry.data.title}</h1>
+    {entry.data.aliases.length > 0 && <p class="classe-hero__aliases">Aussi appelée {entry.data.aliases.join(' · ')}</p>}
+    <dl class="classe-stats">
+      {
+        classe.depart.map((s) => (
+          <div class={`classe-stat${s.valeur === 0 ? ' classe-stat--nul' : ''}`}>
+            <dt>{s.label}</dt>
+            <dd data-ed={ed(s.colonne)}>{s.valeur}</dd>
+          </div>
+        ))
+      }
+    </dl>
+    {
+      (repereMagique || classe.race) && (
+        <ul class="classe-hero__reperes">
+          <Fragment set:html={repereMagique} />
+          {classe.race && (
+            <li>
+              <strong>Classe raciale</strong> de la race <a href={pageHref(classe.race.id)}>{classe.race.nom}</a>
+            </li>
+          )}
+        </ul>
+      )
+    }
+  </header>
+
+  {statusNote && <p class="banner" role="note">{statusNote}</p>}
+
+  {
+    nav.length > 1 && (
+      <nav class="classe-nav no-print" aria-label="Sections de la page">
+        {nav.map((n) => <a href={n.href}>{n.label}</a>)}
+        <Fragment set:html={htmlDuGroupeDeNavigation(classe)} />
+      </nav>
+    )
+  }
+
+  {
+    (
+      <div class="classe-section classe-presentation" data-ed-cadre hidden={classe.description.length + classe.aSavoir.length === 0}>
+        {(
+          <section class="classe-prose" id="presentation" aria-label="Présentation" data-ed={ed('description')} data-ed-rendu="blocs" data-ed-cadre hidden={classe.description.length === 0}>
+            <Texte blocs={classe.description} />
+          </section>
+        )}
+        {(
+          <aside class="classe-card classe-card--a-savoir" id="a-savoir" aria-labelledby="a-savoir-titre" data-ed-cadre=".classe-prose" hidden={classe.aSavoir.length === 0}>
+            <h2 id="a-savoir-titre">Chose à savoir</h2>
+            <div class="classe-prose" data-ed={ed('chose_a_savoir')} data-ed-rendu="blocs"><Texte blocs={classe.aSavoir} /></div>
+            {classe.aSavoirLien && (
+              <p class="classe-card__lien">
+                <a href={classe.aSavoirLien} rel="noopener noreferrer">Lien joint au texte dans le classeur</a>
+              </p>
+            )}
+          </aside>
+        )}
+      </div>
+    )
+  }
+
+  {
+    colonnes.length > 0 && (
+      <section class="classe-section" id="specialites" aria-labelledby="specialites-titre" data-ed-cadre=".classe-prose, .classe-remarque__texte" hidden={specialitesMontrees.length === 0}>
+        <h2 id="specialites-titre">Spécialités</h2>
+        <div class="classe-specialites">
+          {colonnes.map(({ specialite: s }) => (
+            <article class="classe-specialite" data-ed-cadre=".classe-prose, .classe-remarque__texte" hidden={s.description.length + s.remarque.length === 0}>
+              <h3 data-ed={edSpe(s.id, 'nom')}>{s.nom}</h3>
+              <div class="classe-prose" data-ed={edSpe(s.id, 'description')} data-ed-rendu="blocs"><Texte blocs={s.description} /></div>
+              <div class="classe-remarque" data-ed-cadre=".classe-remarque__texte" hidden={s.remarque.length === 0}>
+                <p class="classe-remarque__titre">Remarque</p>
+                <div class="classe-remarque__texte" data-ed={edSpe(s.id, 'remarque')} data-ed-rendu="blocs"><Texte blocs={s.remarque} /></div>
+              </div>
+              <p class="classe-specialite__lien"><a href={`#${s.ancre}`}>Ses dons</a></p>
+            </article>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  {
+    (
+      <section class="classe-section" id="depart" aria-labelledby="depart-titre" data-ed-cadre hidden={!aDepart}>
+        <h2 id="depart-titre">Au départ</h2>
+        <div class="classe-depart">
+          {(
+            <article class="depart-carte" data-ed-cadre="ul" hidden={classe.maitriseArme.length === 0}>
+              <h3>Maîtrise des armes</h3>
+              <ul data-ed={ed('maitrise_arme')} data-ed-rendu="liste">{classe.maitriseArme.map((l) => <li>{l}</li>)}</ul>
+            </article>
+          )}
+          {(
+            <article class="depart-carte" data-ed-cadre="ul" hidden={classe.maitriseArmure.length === 0}>
+              <h3>Maîtrise des armures</h3>
+              <ul data-ed={ed('maitrise_armure')} data-ed-rendu="liste">{classe.maitriseArmure.map((l) => <li>{l}</li>)}</ul>
+            </article>
+          )}
+          {(
+            <article class="depart-carte" data-ed-cadre="p" hidden={!classe.armeDepart}>
+              <h3>Arme de départ</h3>
+              <p data-ed={ed('arme_depart')}>{classe.armeDepart}</p>
+            </article>
+          )}
+          {(
+            <article class="depart-carte" data-ed-cadre="p" hidden={!classe.armureDepart}>
+              <h3>Armure de départ</h3>
+              <p data-ed={ed('armure_depart')}>{classe.armureDepart}</p>
+            </article>
+          )}
+          {(
+            <article class="depart-carte depart-carte--inventaire" data-ed-cadre=".inventaire" hidden={classe.inventaire.length === 0}>
+              <h3>Inventaire de départ</h3>
+              <ul class="inventaire" data-ed={ed('inventaire_depart')} data-ed-rendu="inventaire">
+                {classe.inventaire.map((options, i) => (
+                  <li class={options.length > 1 ? 'inventaire__choix' : undefined}>
+                    {options.map((o, j) => (
+                      <>
+                        {j > 0 && <span class="inventaire__ou">ou</span>}
+                        {bulles[i][j] ? (
+                          <span class="bulle-zone">
+                            <button type="button" class="objet" data-bulle={bulles[i][j]} aria-describedby={bulles[i][j]} title={`${o.objet} : ${o.description}`}>
+                              {o.texte}
+                            </button>
+                            <span class="bulle" role="tooltip" id={bulles[i][j]} hidden>
+                              <strong class="bulle__titre">{o.objet}</strong>
+                              <span class="bulle__texte">{o.description}</span>
+                            </span>
+                          </span>
+                        ) : (
+                          <span class="objet objet--seul">{o.texte}</span>
+                        )}
+                      </>
+                    ))}
+                  </li>
+                ))}
+              </ul>
+              <p class="depart-carte__lien"><a href={pageHref(pageObjets)}>Tous les objets des inventaires de départ</a></p>
+            </article>
+          )}
+        </div>
+      </section>
+    )
+  }
+
+  {classe.dons.length > 0 && <ClasseDons classe={classe} />}
+
+  {
+    classe.annexe.length > 0 && (
+      <section class="classe-section" id="annexe" aria-labelledby="annexe-titre">
+        <h2 id="annexe-titre">Tableau de l’onglet</h2>
+        <p class="muted">Tableau sans titre sous les dons de l’onglet de la classe : une entrée par magie.</p>
+        <div class="annexe-classe">
+          {classe.annexe.map((a) => (
+            <article class="annexe-classe__carte" style={a.magie ? `--couleur-magie: ${couleurDeMagie(a.magie.nom)}` : undefined}>
+              <h3>{a.magie ? <a href={pageHref(a.magie.id)}>{a.libelle}</a> : a.libelle}</h3>
+              <ul>
+                {a.entrees.map((e) => (
+                  <li>
+                    {e.type && <span class="annexe-classe__type">{e.type}</span>} {e.nom && <strong>{e.nom}</strong>} {e.texte}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  <div class="classe-remarque" data-ed-cadre=".classe-remarque__texte" hidden={classe.remarque.length === 0}>
+    <p class="classe-remarque__titre">Remarque</p>
+    <div class="classe-remarque__texte" data-ed={ed('remarque')} data-ed-rendu="blocs"><Texte blocs={classe.remarque} /></div>
+  </div>
+
+  <Bulles />
+</div>

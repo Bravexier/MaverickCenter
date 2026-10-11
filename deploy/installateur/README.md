@@ -1,9 +1,9 @@
-# Installateurs : serveur normal et serveur de test (à partir de la 1.0)
+# Installateurs : serveur normal et serveur de test (à partir de la 0.2.0)
 
-À partir de la 1.0 (signal du propriétaire, avec la connexion Discord), la solution est hébergée hors du NAS et installée par des
+À partir de la 0.2.0 (`PREMIERE_VERSION_HEBERGEE`, décision du propriétaire ; la 1.0 est ensuite l'ouverture à tout le Discord), la solution est hébergée hors du NAS et installée par des
 **installateurs** : un script `.sh` autonome par fusion, qui contient le site et l'installe dans le dossier d'une instance, sans téléchargement ni
 jeton. Ils sont publiés en *release* GitHub (privée comme le dépôt) par `.github/workflows/livraison.yml` ; voir [`docs/flux-git.md`](../../docs/flux-git.md).
-Avant la 1.0, rien de tout cela ne sert : le NAS a sa propre installation ([`../README.md`](../README.md), branche `site`).
+Avant la 0.2.0, rien de tout cela ne sert : le NAS a sa propre installation ([`../README.md`](../README.md), branche `site`).
 
 > Le contenu des pages appartient au propriétaire du jeu. La configuration fournie protège donc l'accès par mot de passe
 > et interdit l'indexation par les moteurs de recherche. Ne la désactivez pas sans son accord.
@@ -13,12 +13,13 @@ Prérequis sur l'hôte : un hôte Docker (Linux), `sh`, `tar`, `gzip`, et `sha25
 
 | | Serveur normal (production) | Serveur de test |
 | --- | --- | --- |
-| Installateur | `maverick-center-vX.Y.Z-install.sh` (fusion dans `master`) | `maverick-center-vX.Y.Z-test-install.sh` (fusion dans `dev`) |
+| Installateur | `maverick-center-VX.Y-install.sh` (fusion dans `master` ; `VX.Y-hotfix.N` après un hotfix) | `maverick-center-VX.Y.Z-test-install.sh` (fusion dans `dev`) |
 | Dossier conseillé | `/srv/maverick-center` | `/srv/maverick-center-test` (à côté du serveur normal) |
 | Adresse | `http://<hôte>:8080` | `http://<hôte>:8081`, bandeau « Serveur de test » sur chaque page |
-| Base vivante `db/` | jamais touchée par une installation | **remplacée à chaque installation par une copie de celle du serveur normal, prise à cet instant** |
+| Base vivante `db/` | jamais touchée par une installation | **son contenu est remplacé à chaque installation par une copie de celle du serveur normal, prise à cet instant** (le dossier reste : il est monté dans le conteneur du service, qui rouvre la base). **Sauf** si le `.env` de l'instance contient `MAVERICK_BASE_TEST=conservee` : la copie n'est faite qu'à la première installation (`db/` vide), puis `db/` n'est plus touché, pour que les modifications faites en test durent ([`deploy/vps/`](../vps/README.md) pose ce réglage) |
 
-Une instance = un dossier : `site/` (remplacé à chaque installation), `db/` (base vivante : utilisateurs, et ce qu'ils font), `docker-compose.yml`,
+Une instance = un dossier : `site/` (remplacé à chaque installation, avec le code du service des personnages, `site/_serveur/`), `db/` (base vivante
+du service : utilisateurs, fiches, et ce qu'ils font ; voir [`docs/serveur.md`](../../docs/serveur.md)), `docker-compose.yml` (deux conteneurs : nginx et le service),
 `nginx.conf`, `.env` (port et nom du conteneur, créé une fois, jamais écrasé), `.htpasswd` (mots de passe, jamais touché), `VERSION` (ce qui est
 installé), `installation.log`. Un installateur de test refuse un dossier de production et inversement.
 
@@ -27,8 +28,8 @@ installé), `installation.log`. Un installateur de test refuse un dossier de pro
 1. Téléchargez l'installateur depuis la *release* GitHub de la version et copiez-le sur l'hôte.
 2. Lancez-le (en `root` ou avec un compte qui peut écrire dans le dossier) :
    ```bash
-   sh maverick-center-v1.2.0-install.sh --dossier /srv/maverick-center              # serveur normal
-   sh maverick-center-v1.2.3-test-install.sh --dossier /srv/maverick-center-test    # test : copie la base du serveur normal voisin
+   sh maverick-center-V1.2-install.sh --dossier /srv/maverick-center                # serveur normal
+   sh maverick-center-V1.2.3-test-install.sh --dossier /srv/maverick-center-test    # test : copie la base du serveur normal voisin
    ```
    Options : `--verifier` (contrôle l'archive et s'arrête), `--dossier-prod <dossier>` (test : serveur normal ailleurs que dans le dossier voisin
    `maverick-center`), `--sans-base-prod` (test sans serveur normal : base vide).
@@ -40,7 +41,8 @@ installé), `installation.log`. Un installateur de test refuse un dossier de pro
    ```
 
 Ordre conseillé la première fois : le serveur normal, puis le serveur de test (qui copie sa base). Les mises à jour suivantes n'ont besoin que de
-l'étape 2 : nginx relit les fichiers, aucun redémarrage. Port ou nom du conteneur : à changer dans `.env`, puis `docker compose up -d`.
+l'étape 2 : nginx relit les fichiers, et le service se relance seul quand la livraison apporte une nouvelle version de son code (il refait aussi sa
+base quand les règles changent, sans perdre les fiches). Port ou nom du conteneur : à changer dans `.env`, puis `docker compose up -d`.
 
 `docker-compose.yml` et `nginx.conf` : une livraison qui les change les remplace si vous ne les avez pas modifiés (l'installateur garde la version
 livrée précédente dans `.livre/` pour le savoir) et vous demande `docker compose up -d` ; si vous les avez modifiés sur place, ils sont conservés et

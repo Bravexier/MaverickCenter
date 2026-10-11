@@ -1,0 +1,90 @@
+---
+import { blocNonCompatible, MONO_MAGIE } from '../../lib/magie-non-compatible.mjs';
+import { pageHref, type Magies, type MagieDb } from '../../lib/magies';
+import EtatPastille from './EtatPastille.astro';
+
+// Résistances, vulnérabilités et incompatibilités d'une magie, lues dans les tables magie_resistance et v_magie_incompatible.
+// Chaque élément est un lien : une magie vers sa page, une altération d'état vers sa section de la « Liste des altérations d'état »
+// (avec son infobulle : type, magie liée, effet par stade), une race vers sa page.
+// « Magie non compatible » : lib/magie-non-compatible.mjs (« Mono-magie uniquement » pour une magie mono-magie, jamais le Potentiel Illimité dans une liste).
+interface Props {
+  magie: MagieDb;
+  magies: Magies;
+}
+const { magie, magies } = Astro.props;
+
+// Texte du lien = écriture de la source (« Gelé ») ; le nom de l'entité visée (« Gel ») est dans l'infobulle quand il diffère.
+const lienMagie = ({ id, brut }: { id: string; brut: string }) => ({ href: pageHref(id), texte: brut, soi: id === magie.id, titre: magies.magies.get(id)!.nom, etat: null });
+const lienEtat = ({ id, brut }: { id: string; brut: string }) => ({ href: '', texte: brut, soi: false, titre: '', etat: magies.etats.get(id)! });
+const cartes = (['resistance', 'vulnerabilite'] as const).map((sens) => ({
+  cle: sens === 'resistance' ? 'fort' : 'faible',
+  titre: sens === 'resistance' ? 'Résistances' : 'Vulnérabilités',
+  aide:
+    sens === 'resistance'
+      ? 'Résistance magique : dégâts de ces magies réduits'
+      : 'Vulnérabilité magique : dégâts de ces magies augmentés',
+  groupes: [
+    { titre: 'Magies', liens: magie.resistances[sens].magies.map(lienMagie) },
+    { titre: 'Altérations d’état', liens: magie.resistances[sens].etats.map(lienEtat) },
+  ],
+}));
+const bloc = blocNonCompatible(magie);
+const incompatibles = bloc.magies.map((id) => lienMagie({ id, brut: magies.magies.get(id)!.nom }));
+const ethnies = bloc.ethnies.map((e) => ({ href: pageHref(e.pageId), texte: e.nom, soi: false, titre: e.nom }));
+---
+
+<section class="magie-section" id="affinites" aria-labelledby="affinites-titre">
+  <h2 id="affinites-titre">Résistances et vulnérabilités</h2>
+  <div class="affinites">
+    {
+      cartes.map((c) => (
+        <article class={`affinite affinite--${c.cle}`}>
+          <h3 title={c.aide}>{c.titre}</h3>
+          {c.groupes.map((g) => (
+            <>
+              <h4>{g.titre}</h4>
+              {g.liens.length === 0 ? (
+                <p class="muted">Aucune</p>
+              ) : (
+                <ul class="chips">
+                  {g.liens.map((l) =>
+                    l.etat ? (
+                      <li><EtatPastille etat={l.etat} texte={l.texte} classe={`chip--${c.cle}`} /></li>
+                    ) : l.soi ? (
+                      <li><span class={`chip chip--${c.cle} chip--soi`} title="Cette magie, elle-même">{l.texte}</span></li>
+                    ) : (
+                      <li><a class={`chip chip--${c.cle}`} href={l.href} title={l.titre}>{l.texte}</a></li>
+                    ),
+                  )}
+                </ul>
+              )}
+            </>
+          ))}
+        </article>
+      ))
+    }
+    <article class="affinite affinite--incompatible">
+      <h3 title="Magie non compatible : ne se combine pas avec">Magie non compatible</h3>
+      {bloc.mono && <p class="affinite__mono">{MONO_MAGIE}</p>}
+      {!bloc.mono && incompatibles.length === 0 && !bloc.note && <p class="muted">Aucune</p>}
+      {
+        incompatibles.length > 0 && (
+          <ul class="chips">
+            {incompatibles.map((l) => <li><a class="chip chip--incompatible" href={l.href}>{l.texte}</a></li>)}
+          </ul>
+        )
+      }
+      {bloc.note && <p class="texte">{bloc.note}</p>}
+      {
+        ethnies.length > 0 && (
+          <>
+            <h4>{bloc.mono ? 'Excepté pour' : 'Magie secondaire possible si la race est'}</h4>
+            <ul class="chips">
+              {ethnies.map((l) => <li><a class="chip" href={l.href}>{l.texte}</a></li>)}
+            </ul>
+          </>
+        )
+      }
+    </article>
+  </div>
+</section>

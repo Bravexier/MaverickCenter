@@ -1,0 +1,104 @@
+---
+import carrouselCss from '../../styles/galerie/carrousel.css?raw';
+import { GALERIE, ancreDImage, galerieEnConstruction } from '../../lib/galerie.mjs';
+import { url } from '../../lib/wiki';
+
+// Défilement des images de la galerie sur l'accueil (demande du propriétaire). Les images : lib/galerie.mjs ; chacune mène à sa place sur /galeries/.
+// Sans JavaScript, la piste défile au doigt ou au clavier (scroll-snap) ; avec, flèches, points, défilement automatique et pause. Les commandes
+// n'existent qu'à partir de deux images. CSS : styles/galerie/carrousel.css, inséré ici (?raw).
+interface Props {
+  /** Délai entre deux images du défilement automatique, en millisecondes. */
+  intervalle?: number;
+}
+const { intervalle = 6000 } = Astro.props;
+const images = GALERIE;
+---
+
+<style is:inline set:html={carrouselCss}></style>
+<section class="carrousel" aria-roledescription="carrousel" aria-label="Galerie" data-intervalle={intervalle}>
+  <div class="carrousel__piste" id="carrousel-piste" tabindex="0">
+    {
+      images.map((image, i) => (
+        <figure class="carrousel__diapo" role="group" aria-roledescription="diapositive" aria-label={`${i + 1} sur ${images.length} : ${image.titre}`}>
+          <a href={url(`galeries/#${ancreDImage(image)}`)}>
+            <img src={url(image.fichier)} alt={image.alt} width={image.largeur} height={image.hauteur} loading={i === 0 ? 'eager' : 'lazy'} decoding="async" />
+          </a>
+          <figcaption>{image.titre}</figcaption>
+        </figure>
+      ))
+    }
+  </div>
+  {
+    images.length > 1 && (
+      <div class="carrousel__commandes" hidden>
+        <button type="button" class="carrousel__fleche" data-sens="-1" aria-controls="carrousel-piste" aria-label="Image précédente">‹</button>
+        <span class="carrousel__points">
+          {images.map((image, i) => (
+            <button type="button" class="carrousel__point" data-indice={i} aria-controls="carrousel-piste" aria-label={`Image ${i + 1} : ${image.titre}`} aria-current={i === 0 ? 'true' : undefined} />
+          ))}
+        </span>
+        <button type="button" class="carrousel__fleche" data-sens="1" aria-controls="carrousel-piste" aria-label="Image suivante">›</button>
+        <button type="button" class="carrousel__pause">Pause</button>
+      </div>
+    )
+  }
+  {
+    galerieEnConstruction(images) && (
+      <p class="carrousel__chantier">
+        <span class="carrousel__badge">En construction</span> La galerie n’a pour l’instant que le logo : les images qui s’y ajouteront défileront ici.
+      </p>
+    )
+  }
+</section>
+
+<script>
+  // Pas d'import : la version portable (tools/build-artifact.mjs) n'inline qu'un script autonome. Même calcul de voisinage que lib/galerie.mjs#imageVoisine.
+  for (const carrousel of document.querySelectorAll<HTMLElement>('.carrousel')) {
+    const piste = carrousel.querySelector<HTMLElement>('.carrousel__piste')!;
+    const commandes = carrousel.querySelector<HTMLElement>('.carrousel__commandes');
+    const nombre = piste.children.length;
+    if (!commandes || nombre < 2) continue;
+    commandes.hidden = false;
+    carrousel.classList.add('carrousel--anime');
+    const points = [...commandes.querySelectorAll<HTMLButtonElement>('.carrousel__point')];
+    const pause = commandes.querySelector<HTMLButtonElement>('.carrousel__pause')!;
+    const reduit = matchMedia('(prefers-reduced-motion: reduce)');
+    let courant = 0;
+    let enPause = reduit.matches; // « réduire les animations » : pas de défilement automatique, le bouton le relance
+    let souris = false;
+    let focus = false;
+
+    const marquer = () => points.forEach((p, i) => (i === courant ? p.setAttribute('aria-current', 'true') : p.removeAttribute('aria-current')));
+    const aller = (indice: number) => {
+      courant = ((indice % nombre) + nombre) % nombre;
+      piste.scrollTo({ left: courant * piste.clientWidth, behavior: reduit.matches ? 'auto' : 'smooth' });
+      marquer();
+    };
+    const libellePause = () => (pause.textContent = enPause ? 'Reprendre' : 'Pause');
+
+    commandes.querySelectorAll<HTMLButtonElement>('.carrousel__fleche').forEach((b) => b.addEventListener('click', () => aller(courant + Number(b.dataset.sens))));
+    points.forEach((p) => p.addEventListener('click', () => aller(Number(p.dataset.indice))));
+    pause.addEventListener('click', () => {
+      enPause = !enPause;
+      libellePause();
+    });
+    // Défilement au doigt ou au clavier : l'image affichée devient la courante.
+    let attente: ReturnType<typeof setTimeout> | undefined;
+    piste.addEventListener('scroll', () => {
+      clearTimeout(attente);
+      attente = setTimeout(() => {
+        courant = Math.round(piste.scrollLeft / Math.max(1, piste.clientWidth));
+        marquer();
+      }, 120);
+    });
+    // Pas de défilement automatique sous la souris, pendant qu'on s'en sert au clavier, ni onglet caché.
+    carrousel.addEventListener('mouseenter', () => (souris = true));
+    carrousel.addEventListener('mouseleave', () => (souris = false));
+    carrousel.addEventListener('focusin', () => (focus = true));
+    carrousel.addEventListener('focusout', (e) => (focus = carrousel.contains(e.relatedTarget as Node | null)));
+    libellePause();
+    setInterval(() => {
+      if (!enPause && !souris && !focus && !document.hidden) aller(courant + 1);
+    }, Number(carrousel.dataset.intervalle) || 6000);
+  }
+</script>

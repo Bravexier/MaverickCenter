@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 4 : 136 tables, 2 tables de recherche plein texte (FTS5) et 29 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 27 : 168 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -14,12 +14,15 @@
 - [4. ANNEXES DES MAGIES : états, résistances, météo, modes hyper et super (famille « annexes »)](#4-annexes-des-magies--états-résistances-météo-modes-hyper-et-super-famille--annexes) : `resistance_palier`, `resistance_magie`, `resistance_duo`, `resistance_combinaison`, `etat`, `etat_magie`, `etat_stade`, `etat_palier`, `meteo`, `meteo_effet`, `mode_texte`, `mode_hyper_depassement`, `mode_super_objet`, `mode_hyper_effet`
 - [5. DIEUX](#5-dieux) : `dieu`
 - [6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)](#6-classes-spécialités-capacités-famille--classes) : `categorie_classe`, `classe`, `specialite`, `capacite`, `objet_depart`, `classe_objet_depart`, `classe_maitrise_armure`, `classe_maitrise_arme`, `classe_annexe`
-- [7. RACES, ETHNIES, ACCESSIBILITÉS (famille « races »)](#7-races-ethnies-accessibilités-famille--races) : `race`, `race_restriction_carac`, `ethnie`, `ethnie_resistance`, `race_classe`, `race_magie`, `echelle_relation`, `peuple`, `relation_peuple`
+- [7. RACES, ETHNIES, ACCESSIBILITÉS (famille « races »)](#7-races-ethnies-accessibilités-famille--races) : `race`, `race_restriction_carac`, `ethnie`, `ethnie_resistance`, `race_classe`, `race_magie`, `race_onglet`, `race_don`, `race_don_tableau_colonne`, `race_don_tableau_ligne`, `race_don_tableau_cellule`, `race_magie_onglet`, `echelle_relation`, `peuple`, `relation_peuple`
 - [8. BESTIAIRE : invocations et créatures (famille « bestiaire »)](#8-bestiaire--invocations-et-créatures-famille--bestiaire) : `invocation`, `invocation_capacite_commune`, `invocation_resistance`, `invocation_bloc`, `invocation_bloc_magie`, `creature`, `creature_ressource`, `creature_caracteristique`, `creature_bonus_npm`, `creature_attaque`, `creature_attaque_type`, `creature_capacite`, `creature_capacite_sort`, `creature_capacite_resistance`, `creature_effet`
-- [9. ÉQUIPEMENT, RESSOURCES, CRAFT, MÉTIERS (familles « equipement », « craft », « docs_typees »)](#9-équipement-ressources-craft-métiers-familles--equipement---craft---docstypees) : `monnaie`, `constante_equipement`, `niveau_alchimie`, `affinite`, `arme_famille`, `arme_type`, `ressource`, `materiau_arme`, `materiau_armure`, `materiau_bouclier`, `gemme`, `bois`, `ingredient_alchimie`, `potion`, `potion_etat`, `kit_alchimie`, `fiole_verre`, `recette`, `recette_produit`, `recette_ingredient`, `baton_magique`, `metier`, `metier_bonus`, `metier_recette_famille`, `arme`, `arme_degats`, `arme_prerequis`, `arme_elementaire`, `armure_emplacement`, `armure`, `armure_degats`, `armure_elementaire`, `armure_elementaire_effet`, `bouclier_classe`, `bouclier_poids`, `bouclier`, `amelioration_equipement`, `amelioration_total`, `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet`, `accessoire_effet_gemme`, `accessoire_monture`, `familier`, `familier_effet`, `batiment`, `machine_guerre`, `maladie`, `maladie_methode`
+- [9. ÉQUIPEMENT, RESSOURCES, CRAFT, MÉTIERS (familles « equipement », « craft », « docs_typees »)](#9-équipement-ressources-craft-métiers-familles--equipement---craft---docstypees) : `monnaie`, `constante_equipement`, `niveau_alchimie`, `affinite`, `arme_famille`, `arme_type`, `ressource`, `materiau_arme`, `materiau_armure`, `materiau_bouclier`, `gemme`, `bois`, `ingredient_alchimie`, `potion`, `potion_etat`, `kit_alchimie`, `fiole_verre`, `recette`, `recette_produit`, `recette_ingredient`, `baton_magique`, `metier`, `metier_bonus`, `metier_recette_famille`, `metier_objet_depart`, `arme`, `arme_degats`, `arme_prerequis`, `arme_elementaire`, `armure_emplacement`, `armure`, `armure_degats`, `armure_elementaire`, `armure_elementaire_effet`, `bouclier_classe`, `bouclier_poids`, `bouclier`, `amelioration_equipement`, `amelioration_total`, `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet`, `accessoire_effet_gemme`, `accessoire_monture`, `familier`, `familier_effet`, `batiment`, `machine_guerre`, `maladie`, `maladie_methode`
 - [10. TRANSVERSAL : notes de cellule et écarts entre sources](#10-transversal--notes-de-cellule-et-écarts-entre-sources) : `note_cellule`, `ecart_source`, `correction`
 - [11. TABLES DÉRIVÉES (jamais exportées dans data/rows/, recalculées par `npm run db:build`)](#11-tables-dérivées-jamais-exportées-dans-datarows-recalculées-par-npm-run-dbbuild) : `lien`, `lien_candidat`, `page_fts`, `entite_fts`
-- [12. VUES (toujours à jour : rien à recalculer)](#12-vues-toujours-à-jour--rien-à-recalculer) : `cle_page`, `lien_page`, `lien_a_creer`, `tag`, `v_magie_incompatible`, `v_sort_bonus_au_nm`, `v_race_carac_borne`, `v_race_classe_accessible`, `v_race_magie_accessible`, `v_creature_magie`, `v_creature_resistance`, `v_creature_sort`, `v_creature_cout_invocation`, `v_creature_meme_bloc`, `v_arme`, `v_ingredient_possible`, `v_ressource_recette`, `v_metier_recette`, `v_potion`, `v_arme_composee`, `v_armure_piece`, `v_niveau`, `v_competence`, `v_resistance_magie_lectures`, `v_resistance_ecart`, `v_mode_hyper_lectures`, `v_classe_capacite`, `v_capacite_exclusive`, `v_capacite_partagee`
+- [12. VUES (toujours à jour : rien à recalculer)](#12-vues-toujours-à-jour--rien-à-recalculer) : `cle_page`, `lien_page`, `lien_a_creer`, `tag`, `v_magie_incompatible`, `v_sort_bonus_au_nm`, `v_race_carac_borne`, `v_race_classe_accessible`, `v_race_magie_accessible`, `v_regard_peuple`, `v_creature_magie`, `v_creature_resistance`, `v_creature_sort`, `v_creature_cout_invocation`, `v_creature_meme_bloc`, `v_arme`, `v_ingredient_possible`, `v_ressource_recette`, `v_metier_recette`, `v_potion`, `v_arme_composee`, `v_armure_piece`, `v_niveau`, `v_competence`, `v_resistance_magie_lectures`, `v_resistance_ecart`, `v_mode_hyper_lectures`, `v_classe_capacite`, `v_capacite_exclusive`, `v_capacite_partagee`
+- [13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-joueurs-et-prétirés-les-groupes-de-jeu-et-la-visibilité-saisie-jamais-importée--migration-0011) : `utilisateur`, `utilisateur_role`, `personnage`, `personnage_partage`, `personnage_classe`, `personnage_caracteristique`, `personnage_competence`, `personnage_metier_bonus`, `personnage_progression`, `personnage_capacite`, `personnage_sort`, `personnage_maitrise_arme`, `personnage_arme`, `personnage_armure`, `personnage_bouclier_materiau`, `personnage_accessoire`, `personnage_inventaire`, `groupe`, `groupe_membre`, `v_personnage_niveau`, `v_personnage_metier_bonus`, `v_personnage_visible`, `v_groupe_controle`, `v_personnage_controle`
+- [14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)](#14-édition--le-journal-des-modifications-faites-depuis-le-site-de-dev-saisie-jamais-importée--migration-0017) : `modification_lot`, `modification`, `note_version_brouillon`
+- [15. NOTES DE VERSION : ce que chaque version a changé dans les règles (page /mise-a-jour/), et l'historique des modifications faites sur le](#15-notes-de-version--ce-que-chaque-version-a-changé-dans-les-règles-page-mise-a-jour-et-lhistorique-des-modifications-faites-sur-le) : `note_version`, `note_version_ligne`, `historique_modification`
 
 ## 0. FAMILLES D'IMPORT
 
@@ -315,10 +318,11 @@ MAGIE : une ligne par onglet de magie (15 : Potentiel Illimité + 14 magies)
 | `barre4_texte` | TEXT | non |  | cellule « 4ème barre » telle qu'écrite |
 | `barre4_max` | INTEGER | non |  | « maximum de 10 Sang » : extrait du texte ci-dessus (NULL si la forme ne correspond pas) |
 | `barre4_regen` | INTEGER | non |  | « la régénère de 1 par tour » : idem |
-| `incompatibilite_note` | TEXT | non |  | bloc « Magie non compatible » quand ce n'est PAS une liste de noms de magies (Corruption : phrase) |
+| `incompatibilite_note` | TEXT | non |  | bloc « Magie non compatible » quand ce n'est PAS une liste de noms de magies (Corruption : phrase de la source, gardée comme trace : la page affiche « Mono-magie uniquement », voir mono_magie) |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
+| `mono_magie` | INTEGER | oui |  | 1 = « Mono-magie uniquement » : ne se combine avec aucune autre magie, sauf pour les ethnies de magie_ethnie_secondaire (décision R15 du propriétaire : Potentiel Illimité et Corruption ; migration 0010) |
 
 ### `magie_role`
 
@@ -362,7 +366,7 @@ Magies qu'on ne peut pas combiner. Une ligne = « magie_id cite autre_magie_id �
 
 ### `magie_ethnie_secondaire`
 
-Ethnies pour lesquelles une magie secondaire reste possible malgré les incompatibilités (fiche `Magie!U5`, colonne « Magie secondaire si Race » : « Elfe Noir Charbon, Elfe Noir Salé, Felfe Noir » pour Corruption). `ethnie_brut` est le nom écrit ; `ethnie_id` l'ethnie rapprochée (les trois noms de la source se résolvent exactement : « Felfe Noir » = races/felfe#ethnie:felfe-noir).
+Ethnies pour lesquelles une magie secondaire reste possible malgré les incompatibilités (fiche `Magie!U5`, colonne « Magie secondaire si Race » : « Elfe Noir Charbon, Elfe Noir Salé, Felfe Noir » pour Corruption). `ethnie_brut` est le nom écrit ; `ethnie_id` l'ethnie rapprochée (les noms de la source se résolvent exactement : « Felfe Noir » = races/felfe#ethnie:felfe-noir). L'Elfe Noir Salé de la cellule est une erreur (décision R15 du propriétaire, comme le dit la phrase de l'onglet : « Seuls les Elfes noirs (Charbon) et les Felfes noirs ») : sa ligne est retirée par la migration 0010.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -404,7 +408,7 @@ SORT : une ligne par sort de la table des sorts (14 magies x 23 sorts = 322 ; Po
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
-| `id` | TEXT | oui | PK | '<magie.id>#sort:<slug du nom>' |
+| `id` | TEXT | oui | PK | '<magie.id>#sort:<clé du nom à l'import>' ; gelé : un renommage change nom et nom_cle, jamais l'id (0006) |
 | `magie_id` | TEXT | oui | → magie.id |  |
 | `nom` | TEXT | oui |  | espaces insécables remplacés par des espaces (identifiant) |
 | `nom_cle` | TEXT | oui |  | normalize(nom) comme text.mjs : 'boule-de-sang' ; recherche d'un sort par son nom |
@@ -733,7 +737,7 @@ Mode super : objets légendaires ou enchantés (Mode Super!A3:T59). Cellule « E
 
 ### `mode_hyper_effet`
 
-Effets du mode hyper. Plusieurs lectures du même sujet coexistent et ne disent pas toujours la même chose ; elles sont TOUTES conservées, une ligne par (version, cible), et la requête choisit sa version (aucune source ne dit laquelle prévaut, voir ecart_source) : version 'classeur_modes' : classeur « Mode hyper et co », onglet Mode Hyper (général, 15 magies mono / bi, 27 races) ; version 'magie_masque' : classeur V8, onglet masqué « Mode Hyper (Magie) » (14 magies seules + 73 couples + « Avantages de base ») ; version 'onglet_magie' : classeur V8, bloc « Capacité Mode Hyper » de chaque onglet de magie (15 magies : mono, bi ou forme complète) ; version 'fiche' : fiche auto V15.2.2 : Magie!V2:W16 (15 magies mono / bi), Personnage!BI32 (« Effets de base »), Race!W (races) ; version 'onglet_race' : classeur « Les races », bloc « Capacité Mode Hyper » de l'onglet de chaque race (décision du propriétaire : PRIME sur 'fiche' pour les races ; écrit par l'importeur races au lot 4). portee 'general' : effet commun (libelle = « Général » ou le titre de l'encadré) ; 'magie' : une magie ; 'duo' : un couple de magies (version 'magie_masque') ; 'race' : une race (variante NULL : la source n'en distingue pas). variante 'mono' / 'bi' : colonnes « Mono magie » / « Bi magie » ; 'mono_et_bi' : cellule fusionnée sur les deux ; 'forme_complete' : Potentiel Illimité (« Forme Complète ») ; le couple d'une version 'magie_masque' est une variante 'bi'. `variante_brut` : libellé de colonne écrit.
+Effets du mode hyper. Plusieurs lectures du même sujet coexistent et ne disent pas toujours la même chose ; elles sont TOUTES conservées, une ligne par (version, cible), et la requête choisit sa version (aucune source ne dit laquelle prévaut, voir ecart_source) : version 'classeur_modes' : classeur « Mode hyper et co », onglet Mode Hyper (général, 15 magies mono / bi, 27 races) ; version 'magie_masque' : classeur V8, onglet masqué « Mode Hyper (Magie) » (14 magies seules + 73 couples + « Avantages de base ») ; version 'onglet_magie' : classeur V8, bloc « Capacité Mode Hyper » de chaque onglet de magie (15 magies : mono, bi ou forme complète) ; version 'fiche' : fiche auto V15.2.2 : Magie!V2:W16 (15 magies mono / bi), Personnage!BI32 (« Effets de base »), Race!W (races) ; version 'onglet_race' : classeur « Les races », bloc « Capacité Mode Hyper » de l'onglet de chaque race (décision du propriétaire : PRIME sur 'fiche' pour les races ; migration 0007, `nom` = nom de la capacité, `libelle` = nom de l'onglet). portee 'general' : effet commun (libelle = « Général » ou le titre de l'encadré) ; 'magie' : une magie ; 'duo' : un couple de magies (version 'magie_masque') ; 'race' : une race (variante NULL : la source n'en distingue pas). variante 'mono' / 'bi' : colonnes « Mono magie » / « Bi magie » ; 'mono_et_bi' : cellule fusionnée sur les deux ; 'forme_complete' : Potentiel Illimité (« Forme Complète ») ; le couple d'une version 'magie_masque' est une variante 'bi'. `variante_brut` : libellé de colonne écrit.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -752,6 +756,7 @@ Effets du mode hyper. Plusieurs lectures du même sujet coexistent et ne disent 
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
+| `nom` | TEXT | non |  | nom de la capacité quand la source en écrit un (version 'onglet_race' : « Sang du condamné ») ; NULL sinon |
 
 ## 5. DIEUX
 
@@ -792,7 +797,7 @@ CLASSE : une ligne par onglet de classe (39)
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `id` | TEXT | oui | PK, → page.id | = id de la page (entité typée qui a SA page) |
-| `nom` | TEXT | oui | unique | nom de l'onglet = nom dans le Sommaire (« Cuirassé », « Orios »). Le titre de la page des 13 classes « Hybride Animal » ajoute « (classe) » (page.titre) : ce suffixe n'est pas ici. |
+| `nom` | TEXT | oui | unique | nom de l'onglet = nom dans le Sommaire (« Cuirassé », « Orios ») = titre de la page. Les 13 classes « Hybride Animal » portent le nom de leur race, sans suffixe (migration 0009). |
 | `nom_cle` | TEXT | oui | unique | normalize(nom) : 'cuirasse', 'mage-bleu' ; sert aux jointures par nom avec les autres domaines |
 | `categorie_id` | TEXT | oui | → categorie_classe.id | colonne du Sommaire où la classe est listée |
 | `ordre` | INTEGER | oui | unique | rang dans le Sommaire : catégories de gauche à droite, puis de haut en bas |
@@ -806,12 +811,14 @@ CLASSE : une ligne par onglet de classe (39)
 | `arme_depart` | TEXT | non |  | « Arme de départ » : G7 (« Arme en acier selon la maîtrise ») |
 | `armure_depart` | TEXT | non |  | « Armure de départ » : G11 |
 | `chose_a_savoir` | TEXT | non |  | bloc « CHOSE A SAVOIR » (colonne Z) : note libre de règle ; NULL = bloc absent OU intitulé sans texte (Bimane) |
-| `chose_a_savoir_lien` | TEXT | non |  | hyperlien externe attaché à la cellule du texte (Mage Bleu!Z3 : classeur des familiers) ; NULL = aucun |
+| `chose_a_savoir_lien` | TEXT | non |  | hyperlien externe attaché à la cellule du texte ; NULL = aucun (le seul, Mage Bleu!Z3 vers le classeur des familiers, est retiré par la migration 0019 : demande du propriétaire) |
 | `description_titre` | TEXT | non |  | titre du texte de présentation de la classe (AM1) : « Description Guerrier » |
 | `description` | TEXT | non |  | texte de présentation (AM2). NULL : Anansi, Goleois (titre sans texte), Grenadier (pas de zone de description) |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  | onglet + zones lues (départ, à savoir, description) + cellule du Sommaire |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
+| `magie_innee_id` | TEXT | non | → magie.id, unique | magie innée qui RÉSERVE et IMPOSE la classe : sans elle on ne prend pas la classe, avec elle la classe est la classe 1. Archimage : Potentiel Illimité (« CHOSE A SAVOIR » de son onglet, décision R23, migration 0015) ; NULL pour les autres classes. Contrôlé par v_personnage_controle (classe_reservee, classe_imposee) |
+| `magie_innee_exclue_id` | TEXT | non | → magie.id | magie innée qui FERME la classe, à tous les rangs. Mage Bleu : Potentiel Illimité (« CHOSE A SAVOIR » de son onglet : « Un potentiel illimité ne peut pas avoir cette classe. », décision R25, migration 0020) ; NULL pour les autres. Contrôlé par v_personnage_controle (classe_exclue) |
 
 ### `specialite`
 
@@ -959,6 +966,7 @@ RACE : une ligne par race (27 dans les cinq onglets du classeur ; le guide dit �
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  | « Fiche auto V15.2.2 › Race › A3:W3 ; Les races › première feuille › A2:B2 » |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
+| `mono_magie` | INTEGER | oui |  | 1 = « Une seule magie autorisé » (inconvénients de l'onglet de la race) : pas de magie acquise, quelle que soit l'innée (décision R28 du propriétaire : la Lamia ; migration 0022) |
 
 ### `race_restriction_carac`
 
@@ -1030,7 +1038,7 @@ RACE_CLASSE : matrice « Accessibilité de Classe » : 27 races x 39 classes = 1
 
 ### `race_magie`
 
-RACE_MAGIE : matrice « Accessibilité Magie » : 27 races x 15 magies = 405 lignes (244 à 1, 161 à 0). Selon les formules de la fiche, elle ne restreint que la magie INNÉE (BDD!D2 -> liste de Personnage!S2) ; la liste des magies acquises ne la lit pas. Elle remplace le champ de frontmatter `magies_innees` des pages de race.
+RACE_MAGIE : matrice « Accessibilité Magie » : 27 races x 15 magies = 405 lignes (245 à 1, 160 à 0). Une case corrigée par le propriétaire : Lamia × Corruption, à 0 dans la fiche (E24), vaut 1 (décision R22, migration 0013 ; source_ref le dit). Selon les formules de la fiche, elle ne restreint que la magie INNÉE (BDD!D2 -> liste de Personnage!S2) ; la liste des magies acquises ne la lit pas. Elle remplace le champ de frontmatter `magies_innees` des pages de race.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1042,9 +1050,100 @@ RACE_MAGIE : matrice « Accessibilité Magie » : 27 races x 15 magies = 405 lig
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  | « Fiche auto V15.2.2 › Accessibilité Magie › C2 » |
 
+### `race_onglet`
+
+▸ CONTENU DE L'ONGLET DE LA RACE : classeur « Les races », un onglet par race (migration 0007). Décision R13 du propriétaire : l'onglet est la SOURCE ; la fiche V15.2.2 (tables race, ethnie, race_restriction_carac…) en est un dérivé fait à la main, pas toujours à jour, dont les écarts ne sont plus affichés. Les pages de race du site sont rendues depuis ces tables (lib/races-db.mjs). Textes tels qu'écrits : paragraphes séparés par une ligne vide, retours à la ligne et puces « - » conservés ; un nombre n'est typé que s'il est écrit en chiffres. Lignes tirées des pages races/<slug> par tools/db/races_onglet.py (preuve : chaque section se réécrit à l'identique avec le code de tools/sheets/races.py, l'importeur qui a lu les onglets). RACE_ONGLET : une ligne par race.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `race_id` | TEXT | oui | PK, → race.id |  |
+| `onglet` | TEXT | oui | unique | nom de l'onglet : « Elfe Noir », « Namazus » |
+| `description_generale` | TEXT | oui |  | description générale (A4) |
+| `histoire` | TEXT | oui |  | « HISTOIRE » (AK3) |
+| `description` | TEXT | non |  | « DESCRIPTION » (AK30) : physique et culture, un bloc pour toute la race |
+| `sante_depart` | INTEGER | oui |  | « Santé de départ » |
+| `chakra_depart` | INTEGER | oui |  | « Chakra de départ » |
+| `barriere_bonus` | INTEGER | oui |  | « Barrière bonus » |
+| `vitesse_sol` | INTEGER | oui |  | « Vitesse Sol/Nage » : première valeur |
+| `vitesse_nage` | INTEGER | oui |  | « Vitesse Sol/Nage » : seconde valeur |
+| `avantages` | TEXT | oui |  | « Avantage(s) » |
+| `inconvenients` | TEXT | oui |  | « Inconvénient(s) » |
+| `don_base` | TEXT | oui |  | « Don B (Base) » |
+| `dons_rubrique` | TEXT | non |  | 1re colonne : ce qui distingue l'ethnie |
+| `dons_rubrique_nom` | TEXT | non |  | colonne du nom du don (« Nom ») ; NULL si absente |
+| `dons_rubrique_don` | TEXT | non |  | colonne du don (« Don ») |
+| `dons_tableau_titre` | TEXT | non |  | nom écrit sur le tableau en panneaux (Drakos : « Écaille draconique ») |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
+### `race_don`
+
+RACE_DON : dons raciaux de l'onglet, dans son ordre. forme 'ethnie' = une ligne du tableau des ethnies (étiquette = 1re colonne : « Elfe Charbon », « Londolor Est », « Eau en innée ») ; 'unique' = le don de toute la race, sans tableau (Elfe doré, Majin, Hujin, Lamia, et « Trompe-mort » du Mort-vivant). Les ethnies de l'onglet ne portent pas le nom des sous-races de la fiche : `ethnie_id` est la correspondance explicite de l'importeur (ETHNIE_FICHE).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | TEXT | oui | PK | '<race_id>#don:<slug>' |
+| `race_id` | TEXT | oui | → race_onglet.race_id |  |
+| `slug` | TEXT | oui |  | normalize(etiquette) ou, pour un don unique, normalize(nom) |
+| `rang` | INTEGER | oui |  | ordre de l'onglet |
+| `forme` | TEXT | oui |  |  |
+| `etiquette` | TEXT | non |  | 1re colonne du tableau des ethnies (retours à la ligne réduits à une espace) ; NULL pour un don unique |
+| `nom` | TEXT | non |  | nom du don (« Sang corrompu ») ; NULL quand l'onglet n'en écrit pas |
+| `texte` | TEXT | oui |  | le don, tel qu'écrit |
+| `ethnie_id` | TEXT | non | → ethnie.id | sous-race de la fiche qui lui correspond ; NULL = aucune (Trompe-mort) |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+| `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
+
+### `race_don_tableau_colonne`
+
+RACE_DON_TABLEAU_* : le tableau en panneaux du bloc « Don R (Race) » (Drakos : magie innée -> AP/AM, bonus de compétence, cran de résistance ; Mort-vivant : lieu de résurrection / raison de la mort -> don), cellule par cellule. Une race en a au plus un ; son titre est race_onglet.dons_tableau_titre.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `race_id` | TEXT | oui | PK 1, → race_onglet.race_id |  |
+| `rang` | INTEGER | oui | PK 2 |  |
+| `libelle` | TEXT | oui |  | en-tête tel qu'écrit (« Lieu de résurrection\nRaison de la mort ») |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
+### `race_don_tableau_ligne`
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `race_id` | TEXT | oui | PK 1, → race_onglet.race_id |  |
+| `rang` | INTEGER | oui | PK 2 |  |
+| `ethnie_id` | TEXT | non | → ethnie.id | sous-race de la fiche qui correspond à la ligne (« Drakos Rouge » pour Feu) |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
+### `race_don_tableau_cellule`
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `race_id` | TEXT | oui | PK 1, → race_don_tableau_ligne.race_id |  |
+| `ligne` | INTEGER | oui | PK 2, → race_don_tableau_ligne.rang |  |
+| `colonne` | INTEGER | oui | PK 3, → race_don_tableau_colonne.rang |  |
+| `valeur` | TEXT | oui |  | texte de la cellule tel qu'écrit (puces « - » et retours à la ligne conservés) |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
+### `race_magie_onglet`
+
+RACE_MAGIE_ONGLET : magies innées que l'onglet de la race limite explicitement (ligne « Inconvénient(s) » : « Magie du Feu, Terre, Foudre, Arcane, Potentiel illimité en inné uniquement »), dans l'ordre où il les cite. Quand une race en a, cette liste PRIME sur la matrice race_magie (décision R11 : le Nain) ; sinon la matrice fait foi (décision R8). Les 13 races hybrides citent les trois mêmes magies que la matrice.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `race_id` | TEXT | oui | PK 1, → race_onglet.race_id |  |
+| `magie_id` | TEXT | oui | PK 2, → magie.id |  |
+| `rang` | INTEGER | oui |  |  |
+| `nom_brut` | TEXT | oui |  | nom de la magie dans la liste de l'importeur (« Potentiel Illimité ») |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
 ### `echelle_relation`
 
-▸ RELATIONS ENTRE PEUPLES : classeur « Les races », onglet « Relation entre les races » (page lore/relations-entre-les-races). Matrice carrée de 69 peuples en lignes et en colonnes ; chaque case porte un niveau de l'échelle (de « Même peuple » à « Ennemie »). La matrice n'est PAS symétrique. SENS NON TRANCHÉ : la légende de l'onglet (« Verticale = Comment le peuple voit les autres », « Horizontale = Comment le peuple est vu par les autres ») se lit de deux façons ; les colonnes portent donc les noms de l'axe (ligne = étiquette de gauche, colonne = étiquette du haut) et non « qui voit qui » : aucune lecture n'est choisie à la place du propriétaire (design.md §12).
+▸ RELATIONS ENTRE PEUPLES : classeur « Les races », onglet « Relation entre les races » (page lore/relations-entre-les-races). Matrice carrée de 69 peuples en lignes et en colonnes ; chaque case porte un niveau de l'échelle (de « Même peuple » à « Ennemie »). La matrice n'est PAS symétrique. SENS (décision R12 du propriétaire) : la case (ligne A, colonne B) dit comment A voit B ; la légende de l'onglet (« Verticale = Comment le peuple voit les autres », « Horizontale = Comment le peuple est vu par les autres ») vise les étiquettes. Les colonnes gardent les noms de l'axe (ligne = étiquette de gauche, colonne = étiquette du haut) ; la vue v_regard_peuple les nomme « qui voit qui ».
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1074,8 +1173,8 @@ Un peuple = une étiquette de l'onglet (« Elfe Forestier Forêt », « Humain C
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
-| `ligne_peuple_id` | TEXT | oui | PK 1, → peuple.id | étiquette de GAUCHE de la case |
-| `colonne_peuple_id` | TEXT | oui | PK 2, → peuple.id | étiquette du HAUT de la case |
+| `ligne_peuple_id` | TEXT | oui | PK 1, → peuple.id | étiquette de GAUCHE de la case : le peuple qui voit (R12) |
+| `colonne_peuple_id` | TEXT | oui | PK 2, → peuple.id | étiquette du HAUT de la case : le peuple vu (R12) |
 | `echelle_id` | TEXT | oui | → echelle_relation.id |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  | « Les races › Relation entre les races › E23:H26 » |
@@ -1089,7 +1188,7 @@ INVOCATION : une ligne par onglet du classeur (3) Une « invocation » est un TY
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `id` | TEXT | oui | PK, → page.id | = id de la page d'introduction de l'onglet |
-| `nom` | TEXT | oui | unique | nom de l'onglet = titre de la page : 'Appel aux golems', 'Marionette de lombre' |
+| `nom` | TEXT | oui | unique | nom de l'onglet = titre de la page : 'Appel aux golems', « Marionnette de l'ombre » (onglet « Marionette de lombre », nom corrigé par 0006) |
 | `nom_cle` | TEXT | oui | unique | normalize(nom) |
 | `ordre` | INTEGER | oui | unique | rang de l'onglet dans le classeur |
 | `bandeau` | TEXT | oui |  | bandeau de l'onglet (AJ1, AP1, Z1) : 'INVOCATION GOLEM', 'INVOCATION NON-MORT' |
@@ -1107,7 +1206,7 @@ Capacités communes d'une invocation : la liste « ▸ Toutes ces créatures ont
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
-| `id` | TEXT | oui | PK | '<invocation.id>#commune:<nom_cle>' |
+| `id` | TEXT | oui | PK | '<invocation.id>#commune:<clé du nom à l'import>' ; gelé : un renommage change nom et nom_cle, jamais l'id (0006) |
 | `invocation_id` | TEXT | oui | → invocation.id |  |
 | `rang` | INTEGER | oui |  | ordre dans la liste |
 | `nom` | TEXT | oui |  | « Inerte », « Non-Mort », « Élémentaire » : jusqu'au premier « . » |
@@ -1172,7 +1271,7 @@ CREATURE : une ligne par carte (63 = 30 golems/poupées + 28 non-morts + 5 mario
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `id` | TEXT | oui | PK, → page.id | = id de la page (entité typée qui a SA page) |
-| `nom` | TEXT | oui | unique | nom de la carte (D1 / T1) = titre de la page ; coquilles conservées |
+| `nom` | TEXT | oui | unique | nom de la carte (D1 / T1) = titre de la page ; orthographe corrigée par 0006 (l'id garde la clé d'origine) |
 | `nom_cle` | TEXT | oui | unique | normalize(nom) : 'golem-de-magma' ; jointures par nom avec les autres domaines |
 | `invocation_id` | TEXT | oui | → invocation.id |  |
 | `bloc_id` | TEXT | oui | → invocation_bloc.id | bloc de marge (combinaison de magies ou palier EP) ; FK composite plus bas |
@@ -1251,7 +1350,7 @@ ATTAQUES : ligne « Dégâts » de la carte, une ligne de texte par attaque « P
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
-| `id` | TEXT | oui | PK | '<creature.id>#attaque:<nom_cle>' ; '…~2' pour une attaque écrite deux fois à l'identique (Golem d'ombre) |
+| `id` | TEXT | oui | PK | '<creature.id>#attaque:<clé du nom à l'import>' ; gelé : un renommage change nom et nom_cle, jamais l'id (0006) ; '…~2' pour une attaque écrite deux fois à l'identique (Golem d'ombre) |
 | `creature_id` | TEXT | oui | → creature.id |  |
 | `rang` | INTEGER | oui |  | ligne dans la cellule « Dégâts » (position : n'entre pas dans l'identifiant) |
 | `nom` | TEXT | oui |  | avant le premier « - » : « Poing », « Arbalécho », « L'arme du lanceur » |
@@ -1292,7 +1391,7 @@ CAPACITÉS : cellule « Capacité(s) », un paragraphe (séparé par une ligne v
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
-| `id` | TEXT | oui | PK | '<creature.id>#capacite:<nom_cle>' ; '…#capacite:sort-supplementaire:npm3' quand le nom se répète à un autre NPM |
+| `id` | TEXT | oui | PK | '<creature.id>#capacite:<clé du nom à l'import>' ; gelé : un renommage change nom et nom_cle, jamais l'id (0006) ; '…#capacite:sort-supplementaire:npm3' quand le nom se répète à un autre NPM |
 | `creature_id` | TEXT | oui | → creature.id |  |
 | `rang` | INTEGER | oui |  | ordre des paragraphes |
 | `npm_min` | INTEGER | non |  | préfixe « (NPM 3) » : niveau de puissance magique à partir duquel la capacité s'ajoute ; NULL = capacité de base |
@@ -1696,7 +1795,7 @@ Bâtons magiques (onglet Bâton magique › « Bonus passifs » : 14 magies x 3 
 
 ### `metier`
 
-Métiers (Google Doc « MÉTIER » : une page par métier, 72). `bonus_brut`, `artisanat_brut`, `equipement_brut`, `avantage_brut` sont les quatre champs de la page, tels qu'écrits (liens [[…]] et échappements Markdown retirés).
+Métiers (Google Doc « MÉTIER » : une page par métier, 72). `bonus_brut`, `artisanat_brut`, `equipement_brut`, `avantage_brut` sont les quatre champs de la page, tels qu'écrits (liens [[…]] et échappements Markdown retirés). Artisanat (décision R34) : un texte libre (ce que le métier fabrique, `artisanat_texte`) et deux caractéristiques (`test_carac_1_id`, `test_carac_2_id`) ; la compétence d'artisanat vaut 10 × la première + 10 × la seconde (regle_constante 'metier.artisanat_par_point_caracteristique'). Sur le site de dev, ce sont ces trois colonnes qui se modifient ; `artisanat_brut`, `test_brut` et `peut_fabriquer` en sont recalculés.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1709,9 +1808,9 @@ Métiers (Google Doc « MÉTIER » : une page par métier, 72). `bonus_brut`, `a
 | `peut_fabriquer` | INTEGER | oui |  | 0 si « Artisanat possible : Rien » |
 | `artisanat_texte` | TEXT | non |  | partie avant le crochet : « Peut faire des armes métalliques » ; NULL si « Rien » |
 | `test_brut` | TEXT | non |  | contenu du crochet : « FORCE  + VOLONTÉ », « PERCEPTION x2 », « Artisanat SOCIAL + INTELLIGENCE » ; NULL si aucun |
-| `test_carac_1_id` | TEXT | non | → caracteristique.id | renseignées seulement pour la forme exacte « CARAC + CARAC » |
-| `test_carac_2_id` | TEXT | non | → caracteristique.id |  |
-| `equipement_brut` | TEXT | oui |  | « Équipement supplémentaire possible » : « Kit de réparation d'arme, Maillet en fer » ; « Rien » |
+| `test_carac_1_id` | TEXT | non | → caracteristique.id | les deux caractéristiques de la compétence d'artisanat (décision R34) : « CARAC + CARAC », |
+| `test_carac_2_id` | TEXT | non | → caracteristique.id | « Artisanat CARAC + CARAC », et « CARAC x2 » = deux fois la même ; NULL sans crochet |
+| `equipement_brut` | TEXT | oui |  | « Équipement supplémentaire possible » : « Kit de réparation d'arme, Maillet en fer » ; « Rien ». Ses objets de départ (décision R35) : metier_objet_depart |
 | `avantage_brut` | TEXT | non |  | « Avantage possible » ; NULL si vide (Artisan) |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
@@ -1719,7 +1818,7 @@ Métiers (Google Doc « MÉTIER » : une page par métier, 72). `bonus_brut`, `a
 
 ### `metier_bonus`
 
-Bonus d'un métier : le champ « Bonus » découpé sur les virgules suivies d'un signe (« +3% Esquive, +3% Réflexe » -> 2 rangs ; « Diplomatie OU Intimidation » -> 2 options du même rang). `valeur`/`unite`/`cible` ne sont renseignés que pour la forme « +N% Cible » ou « +N Cible » ; tout autre fragment garde son texte et valeur NULL. `cible_cle` = normalize(cible) : se joint aux compétences et attributs du domaine fiche par nom, sans clé étrangère entre domaines.
+Bonus d'un métier : le champ « Bonus » découpé sur les virgules suivies d'un signe (« +3% Esquive, +3% Réflexe » -> 2 rangs ; « Diplomatie OU Intimidation » -> 2 options du même rang). `valeur`/`unite`/`cible` ne sont renseignés que pour la forme « +N% Cible » ou « +N Cible » ; tout autre fragment garde son texte et valeur NULL. `cible_cle` = normalize(cible). Lien de règle (décision R33) : `competence_id` quand la cible est une compétence de la fiche (le bonus s'ajoute à son Acquis, au plus jusqu'au plafond : décision R38), `attribut` pour un attribut de la fiche : 'initiative' (« +N INI »), 'vitesse' (« +1 Vitesse au sol pour le sprint ») et 'vitesse_nage' (« +1 Vitesse nage ») (décision R37) ; « +N% dans une compétence sociale au choix » donne une option par compétence de la caractéristique Social. Un rang à plusieurs options liées est un choix, fait dans la fiche (personnage_metier_bonus).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1733,6 +1832,8 @@ Bonus d'un métier : le champ « Bonus » découpé sur les virgules suivies d'u
 | `cible_cle` | TEXT | non |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `competence_id` | TEXT | non | → competence.id | compétence que le bonus augmente (Acquis), décision R33 |
+| `attribut` | TEXT | non |  | attribut que le bonus augmente (décisions R33, R37) |
 
 ### `metier_recette_famille`
 
@@ -1743,6 +1844,20 @@ Familles de recettes qu'un métier dit pouvoir fabriquer : le champ « Artisanat
 | `metier_id` | TEXT | oui | PK 1, → metier.id |  |
 | `famille` | TEXT | oui | PK 2 |  |
 | `mot_source` | TEXT | oui |  | mot repéré dans le champ : « fioles », « alchimie primitive » |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
+### `metier_objet_depart`
+
+Objets de départ d'un métier (décision R35 : l'« Équipement supplémentaire possible » s'ajoute à l'inventaire à la création du personnage) : le champ découpé comme l'inventaire de départ d'une classe (classe_objet_depart, lib/classe-champs.mjs#decouperInventaire) : un rang par objet séparé par « , », une option par « OU » (un choix, fait dans la fiche) ; « Rien » : aucun objet. Le texte reste tel qu'écrit (« Crochet (x3) ») ; objet_depart_id quand il est, sans « (xN) », le nom d'un objet du glossaire des inventaires de départ.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `metier_id` | TEXT | oui | PK 1, → metier.id |  |
+| `rang` | INTEGER | oui | PK 2 |  |
+| `option` | INTEGER | oui | PK 3 |  |
+| `texte` | TEXT | oui |  |  |
+| `objet_depart_id` | TEXT | non | → objet_depart.id |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 
@@ -2426,6 +2541,19 @@ Vues « seulement les 1 » : évitent l'erreur classique d'oublier `accessible =
 | `magie_id` | TEXT | non |  |  |
 | `ordre` | INTEGER | non |  |  |
 
+### `v_regard_peuple`
+
+*vue*
+
+Regard d'un peuple sur un autre (décision R12 : la case (ligne A, colonne B) de « Relation entre les races » dit comment A voit B). « Comment les Elfes Noirs Charbon voient-ils les autres ? » : WHERE peuple_id = ? ; « Comment sont-ils vus ? » : WHERE vu_peuple_id = ?. echelle_ordre : 1 = Même peuple, 2 = Alliée … 8 = Ennemie (du plus favorable au plus défavorable).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `peuple_id` | TEXT | non |  |  |
+| `vu_peuple_id` | TEXT | non |  |  |
+| `echelle_id` | TEXT | non |  |  |
+| `echelle_ordre` | INTEGER | non |  |  |
+
 ### `v_creature_magie`
 
 *vue*
@@ -2762,3 +2890,413 @@ Capacités écrites à l'identique (nom, type, effet, note de cellule) à plusie
 | `effet` | — | non |  |  |
 | `nb_emplacements` | — | non |  |  |
 | `premiere_id` | — | non |  |  |
+
+## 13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)
+
+### `utilisateur`
+
+Personne qui se connecte au site. Connexion par Discord à la 1.0 (docs/feuille-de-route.md, « Authentification ») : on ne garde que l'identifiant Discord (immuable) et le nom d'affichage, jamais de mot de passe ni de jeton. Un compte local de secours (administrateur) n'a pas d'identifiant Discord. Tout utilisateur connecté est lecteur ; les autres rôles sont dans utilisateur_role.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | TEXT | oui | PK | identifiant stable du site, jamais réutilisé |
+| `discord_id` | TEXT | non | unique | « snowflake » Discord ; NULL = compte local de secours |
+| `nom_affichage` | TEXT | oui |  |  |
+| `cree_le` | TEXT | oui |  |  |
+
+### `utilisateur_role`
+
+Rôles d'un utilisateur, cumulables (la correspondance rôle Discord -> rôle du site est une configuration, pas une donnée) : 'mj' = maître du jeu (le « groupe MJ » : cible de la visibilité 'mj' d'une fiche), 'editeur' = modifie les règles (phase 2), 'admin' = voit et gère tout.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `utilisateur_id` | TEXT | oui | PK 1, → utilisateur.id |  |
+| `role` | TEXT | oui | PK 2 |  |
+
+### `personnage`
+
+Une fiche de personnage : le haut de l'onglet Personnage (identité, magies, alignement, bourse, expérience) et les choix uniques. Deux natures (demande du propriétaire) : la fiche d'un JOUEUR, qu'il crée pour son personnage (visible de lui seul et des administrateurs, sauf ce qu'il ouvre : visibilité, partage, inscription dans un groupe), et le PRÉTIRÉ, qui n'appartient à personne et que tout le monde voit.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | TEXT | oui | PK | identifiant stable, jamais réutilisé (un personnage renommé le garde) |
+| `nature` | TEXT | oui |  |  |
+| `proprietaire_id` | TEXT | non | → utilisateur.id | joueur qui l'a créée ; NULL exactement pour un prétiré |
+| `visibilite` | TEXT | oui |  |  |
+| `statut` | TEXT | oui |  | 'valide' : v_personnage_controle doit être vide pour elle |
+| `nom` | TEXT | oui |  | « NOM » (F1) |
+| `surnom` | TEXT | non |  | « Surnom » (P1) |
+| `lieu_origine` | TEXT | non |  | « Lieu origine » (F3) |
+| `race_id` | TEXT | non | → race.id | « RACE » (I2) ; NULL tant que le brouillon ne l'a pas choisie |
+| `ethnie_id` | TEXT | non | → ethnie.id | don racial de la ligne « R » (C40, onglet « Bonus Race ») : l'ethnie, de la race choisie |
+| `magie_innee_id` | TEXT | non | → magie.id | « Magie inn » (S2) |
+| `magie_acquise_id` | TEXT | non | → magie.id | « Magie acq » (S3) ; NULL = pas de magie acquise (facultative, guide « Personnage ») |
+| `caracteristique_magie_id` | TEXT | non | → caracteristique.id | point de caractéristique de la magie innée quand elle ne le fixe pas (magie.caracteristique_id NULL : Potentiel Illimité, « AU CHOIX ou ALEATOIRE ») ; NULL sinon |
+| `dieu_choisi_id` | TEXT | non | → dieu.id | « Dieu choisi » (S5) ; le dieu inné se déduit de la magie innée (magie_dieu), il n'est pas stocké |
+| `metier_id` | TEXT | non | → metier.id | don de la ligne « M » (C41, « Métier ? ») ; NULL = sans métier |
+| `mode_classe` | TEXT | oui |  | « Mono classe » / « Bi classe » (BDD!K26) : figé à la création (la fiche le fige dès 201 XP) ; règle de progression : décision R2 |
+| `xp` | INTEGER | oui |  | « TOTAL XP » (S11) ; le niveau global s'en déduit (v_personnage_niveau) |
+| `alignement_loyal` | INTEGER | oui |  | scores L, C, B, M (L5:O5, guide « Alignement ») ; |
+| `alignement_chaotique` | INTEGER | oui |  | le libellé (« Neutre Pur »…, I4) se calcule |
+| `alignement_bon` | INTEGER | oui |  |  |
+| `alignement_mauvais` | INTEGER | oui |  |  |
+| `bourse_pp` | INTEGER | oui |  | « Bourse » : Précieuse (I6), Or (N6), Fer (T6) = monnaie 'pp', 'ro', 'rf' |
+| `bourse_ro` | INTEGER | oui |  |  |
+| `bourse_rf` | INTEGER | oui |  |  |
+| `ambidextrie` | INTEGER | oui |  | case « Ambidextrie » (AU8) |
+| `bouclier_classe_id` | TEXT | non | → bouclier_classe.id | « Nom Bouclier » (AA26) ; ses matériaux : personnage_bouclier_materiau |
+| `sante_actuelle` | INTEGER | non |  |  |
+| `chakra_actuel` | INTEGER | non |  |  |
+| `barriere_actuelle` | INTEGER | non |  |  |
+| `corruption` | INTEGER | non |  | « Corruption » (K15), guide « Attributs » |
+| `barre4_actuelle` | INTEGER | non |  | Sang / Âme, la « 4ème barre » (A15:F15) |
+| `notes` | TEXT | non |  | « NOTE » (BA53) |
+| `evenements` | TEXT | non |  | « ÉVÉNEMENTS » (B71) |
+| `cree_le` | TEXT | oui |  |  |
+| `modifie_le` | TEXT | oui |  |  |
+| `posture_id` | TEXT | non | → posture.id | posture du moment (sélecteur des 6 postures de la page /fiche/, demande du propriétaire ; migration 0027) ; NULL = aucune choisie |
+
+### `personnage_partage`
+
+Utilisateurs à qui le propriétaire montre sa fiche en plus de sa visibilité (« un utilisateur spécifique », plusieurs possibles).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
+| `utilisateur_id` | TEXT | oui | PK 2, → utilisateur.id |  |
+
+### `personnage_classe`
+
+Classes du personnage : « CLASSE » 1 (A9) et 2 (A11), chacune avec sa spécialité (I9, I11 : choisie au niveau de classe 10). Les niveaux de classe se déduisent de l'XP et du mode (v_personnage_niveau), ils ne sont pas stockés.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
+| `rang` | INTEGER | oui | PK 2 |  |
+| `classe_id` | TEXT | oui | → classe.id |  |
+| `specialite_id` | TEXT | non | → specialite.id | NULL tant qu'elle n'est pas choisie |
+
+### `personnage_caracteristique`
+
+Valeur de base de chaque caractéristique (E18, M18, U18, E19, M19, U19), choisie dans les bornes de la race (v_race_carac_borne) ; le total suit seuil_niveau 'caracteristiques_total' (décision R3 : exactement). Le point de la magie innée (G18…) et les bonus d'accessoires se calculent.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
+| `caracteristique_id` | TEXT | oui | PK 2, → caracteristique.id |  |
+| `base` | INTEGER | oui |  |  |
+| `croix` | INTEGER | oui |  | croix sous la caractéristique (cases H18, I18…), décision R19 : handicap ou malus (blessure grave, trauma, maladie, mauvaise nuit) ; 1 = −20 % à tout test de la caractéristique, 2 = ses compétences ne sont plus utilisables (regle_constante 'competence.croix_1_malus', 'competence.croix_2_malus') |
+
+### `personnage_competence`
+
+Points de compétence : « Nat. » (naturel, budget de niveau_global, plafond seuil_niveau 'competence_naturel_max') et « Acquis » (bonus de race, classe, don, équipement, entraînement : au plus 5 par point de caractéristique de base, guide « Compétences »). Le total (K22…) se calcule. Compétence absente = 0 et 0.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
+| `competence_id` | TEXT | oui | PK 2, → competence.id |  |
+| `naturel` | INTEGER | oui |  |  |
+| `acquis` | INTEGER | oui |  |  |
+
+### `personnage_metier_bonus`
+
+Bonus de métier choisis (décision R33 : « En cas de choix c'est à saisir dans la fiche de personnage ») : pour chaque rang de metier_bonus du métier de la fiche qui propose plusieurs compétences (« +3% Diplomatie OU Intimidation »), la compétence retenue. Un rang à une seule option ne se choisit pas ; le bonus de métier se calcule (v_personnage_metier_bonus), il ne s'écrit pas dans personnage_competence.acquis.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
+| `rang` | INTEGER | oui | PK 2 | rang du bonus dans metier_bonus (métier de la fiche) |
+| `competence_id` | TEXT | oui | → competence.id |  |
+
+### `personnage_progression`
+
+Gains d'attributs à chaque niveau global à partir du 2 : les points d'attributs (niveau_global.points_attributs, 15) répartis entre santé et chakra (la fiche compte F14 + M14 : BDD!K40), et le dé bonus des niveaux qui en donnent un (niveau_global.de_attributs_bonus : « 1d8 santé OU 1d8 chakra OU 1d4 pour les deux »). La fiche ajoute tout à la main dans la formule de F14/M14 (« +0 ») : ici chaque gain est daté par son niveau.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
+| `niveau` | INTEGER | oui | PK 2, → niveau_global.niveau |  |
+| `points_sante` | INTEGER | oui |  |  |
+| `points_chakra` | INTEGER | oui |  |  |
+| `de_choix` | TEXT | non |  | NULL = pas de dé à ce niveau |
+| `de_resultat` | INTEGER | non |  | résultat du dé, ajouté à la santé, au chakra, ou aux deux (« 1d4 pour les deux ») |
+
+### `personnage_capacite`
+
+Dons de classe choisis (lignes « CLASSE 1 » / « CLASSE 2 », C43:L67) : seulement ceux qui demandent un CHOIX (v_capacite_exclusive : options d'une même ligne, une spécialité contre l'autre, paliers de l'Archimage). Les dons sans alternative se déduisent de la classe, du niveau et de la spécialité.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
+| `capacite_id` | TEXT | oui | PK 2, → capacite.id |  |
+
+### `personnage_sort`
+
+« LISTE DE SORTS » (AA55:AY74) : sorts de la magie innée ou acquise, avec leur niveau de maîtrise (« NM », AY). Un NM vient d'un niveau (au plus niveau global − 1 sur un sort, BDD!BB6, et au plus les NM gagnés en tout), d'un livre de sort (un seul par sort, lié à ce sort : page « Livre / Parchemin ») ou d'un cadeau du MJ ; un sort a au plus 3 NM en tout (regle_constante 'sort.nm_max', décision R26). Type, coût, portée, zone et effets se lisent dans `sort`.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
+| `sort_id` | TEXT | oui | PK 2, → sort.id |  |
+| `rang` | INTEGER | oui |  | ligne de la liste sur la fiche |
+| `niveau_maitrise` | INTEGER | oui |  | NM du sort, toutes origines comprises |
+| `nm_livre` | INTEGER | oui |  | dont le NM d'un livre de sort (un par sort au plus ; migration 0021) |
+| `nm_cadeau` | INTEGER | oui |  | dont les NM donnés par le MJ |
+
+### `personnage_maitrise_arme`
+
+« Maîtrise d'armes » (AA2:AV7) : nombre de dés (1d à 5d) par famille d'armes. Famille absente = pas de maîtrise (1d). Chaque point de maîtrise ajoute un dé : 4 points au plus (regle_constante 'maitrise_arme.des_sans_maitrise' et 'maitrise_arme.des_max', migration 0016).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
+| `arme_famille_id` | TEXT | oui | PK 2, → arme_famille.id |  |
+| `des` | INTEGER | oui |  |  |
+
+### `personnage_arme`
+
+« ARMES » (AA9:AY18) : deux emplacements, chacun une arme du catalogue, sa composition (matériau), ses améliorations et son élément.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
+| `rang` | INTEGER | oui | PK 2 | arme 1 (AA10) ou 2 (AN10) |
+| `arme_id` | TEXT | oui | → arme.id |  |
+| `materiau_id` | TEXT | non | → materiau_arme.ressource_id | « Composition » (AE10) |
+| `amelioration_id` | TEXT | non | → amelioration_equipement.id | « Amélioration » (AI13) : cible 'arme' |
+| `arme_elementaire_id` | TEXT | non | → arme_elementaire.id | « Elément » (AI16) |
+| `amelioration_elementaire_id` | TEXT | non | → amelioration_equipement.id | amélioration de la pièce élémentaire (AI18) : cible 'arme_elementaire' |
+| `effet_en_plus` | TEXT | non |  | « Effet en plus » (AA12), texte libre |
+
+### `personnage_armure`
+
+« ARMURE / DÉFENSE » (AA19:AX23) : une pièce par emplacement (armure complète, ou casque, torse, bras, jambes).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
+| `emplacement_id` | TEXT | oui | PK 2, → armure_emplacement.id |  |
+| `armure_id` | TEXT | oui | → armure.id | « Nom Armure » (AD21) |
+| `amelioration_id` | TEXT | non | → amelioration_equipement.id | cible 'armure' |
+| `armure_elementaire_id` | TEXT | non | → armure_elementaire.id | « Elément » (AQ21) |
+| `amelioration_elementaire_id` | TEXT | non | → amelioration_equipement.id | cible 'armure_elementaire' |
+
+### `personnage_bouclier_materiau`
+
+Matériaux du bouclier (AF26, AJ26, AN26 et leurs quantités AH27, AL27, AP27) : au plus trois, la somme des quantités ne dépasse pas la classe du bouclier (validation de AL27 : « La somme des quantités de matériaux ne doit pas dépasser la… »).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
+| `rang` | INTEGER | oui | PK 2 |  |
+| `materiau_id` | TEXT | oui | → materiau_bouclier.ressource_id |  |
+| `quantite` | INTEGER | oui |  |  |
+
+### `personnage_accessoire`
+
+« ACCESSOIRES » (AA28:AY37) : Chef, Collier, Bracelet 1 et 2, Bague 1 et 2, Ceinture, Autre. Chacun porte un effet de la table des accessoires (propriété en AD29…, effet en AA30…), sa valeur tirée quand l'effet est une fourchette, et la case « Malédiction » (AD31…).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
+| `emplacement` | TEXT | oui | PK 2 |  |
+| `nom` | TEXT | non |  | nom donné à l'objet |
+| `accessoire_effet_id` | TEXT | non | → accessoire_effet.id | NULL = effet hors table (texte libre ci-dessous) |
+| `valeur` | INTEGER | non |  | valeur tirée dans [bonus_min, bonus_max] de l'effet ; NULL si l'effet n'a pas de fourchette |
+| `texte` | TEXT | non |  | effet tel qu'écrit sur la fiche quand il n'est pas dans la table |
+| `maudit` | INTEGER | oui |  |  |
+
+### `personnage_inventaire`
+
+« INVENTAIRE | SAC » (AA39:AY…) : une ligne par objet ; `ressource_id` quand l'objet est au catalogue, sinon le nom seul.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
+| `rang` | INTEGER | oui | PK 2 |  |
+| `nom` | TEXT | oui |  |  |
+| `quantite` | INTEGER | oui |  |  |
+| `ressource_id` | TEXT | non | → ressource.id |  |
+
+### `groupe`
+
+Groupe de jeu : la table d'un one-shot (« OS ») ou d'une campagne. Ses membres voient les fiches qui y sont inscrites.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | TEXT | oui | PK |  |
+| `nom` | TEXT | oui |  |  |
+| `nature` | TEXT | oui |  |  |
+| `cree_le` | TEXT | oui |  |  |
+
+### `groupe_membre`
+
+Membres d'un groupe et fiche inscrite (demande du propriétaire) : un joueur peut être dans plusieurs groupes et avoir plusieurs fiches, mais n'inscrit qu'UNE fiche par groupe : une ligne par (groupe, membre), et inscrire une autre fiche remplace `personnage_id` (la précédente est désinscrite). La fiche inscrite devient visible de tous les membres du groupe, et d'eux seuls : ses autres fiches restent cachées (v_personnage_visible). On inscrit sa propre fiche ou un prétiré (v_groupe_controle).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `groupe_id` | TEXT | oui | PK 1, → groupe.id |  |
+| `utilisateur_id` | TEXT | oui | PK 2, → utilisateur.id |  |
+| `role` | TEXT | oui |  | MJ de la table ou joueur |
+| `personnage_id` | TEXT | non | → personnage.id | fiche inscrite ; NULL = aucune (membre qui n'a pas encore inscrit de fiche, MJ) |
+| `rejoint_le` | TEXT | oui |  |  |
+
+### `v_personnage_niveau`
+
+*vue*
+
+Niveau global et niveaux de classe d'un personnage. Niveau global = plus haut niveau dont l'XP minimale est atteinte (Personnage!W8 : VLOOKUP(S11; BDD!G2:H21; 2; 1)). Niveaux de classe : décision R2 (« un "monoclasse" choisit automatiquement sa 2e classe au niveau 11 ») : mono-classe : classe 1 = min(20, 2 × niveau global), classe 2 = 2 × niveau global − classe 1 ; bi-classe : chacune = niveau global (G9, G11).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | non |  |  |
+| `niveau_global` | INTEGER | non |  |  |
+| `niveau_classe_1` | — | non |  |  |
+| `niveau_classe_2` | — | non |  |  |
+
+### `v_personnage_metier_bonus`
+
+*vue*
+
+Bonus que le métier d'une fiche apporte (décision R33) : une ligne par rang lié de metier_bonus (compétence ou attribut) — l'option seule du rang, ou, quand le rang en propose plusieurs, celle que la fiche a choisie (personnage_metier_bonus). `valeur` s'ajoute à l'Acquis de la compétence (`competence_id`, sans dépasser son plafond : décision R38) ou à l'attribut (`attribut` : initiative, vitesse, vitesse de nage ; R33, R37).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | non |  |  |
+| `rang` | INTEGER | non |  |  |
+| `competence_id` | TEXT | non |  |  |
+| `attribut` | TEXT | non |  |  |
+| `valeur` | INTEGER | non |  |  |
+
+### `v_personnage_visible`
+
+*vue*
+
+Qui voit quelle fiche (demande du propriétaire) : une ligne par (fiche, utilisateur, motif) ; un utilisateur voit une fiche s'il a au moins une ligne. Motifs : 'proprietaire' ; 'admin' (toutes les fiches) ; 'tous' (visibilité 'tous', donc tout prétiré) ; 'mj' (visibilité 'mj' : utilisateurs de rôle 'mj') ; 'groupe' (membres du groupe `groupe_id` où la fiche est inscrite) ; 'partage' (utilisateur désigné par le propriétaire).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | non |  |  |
+| `utilisateur_id` | TEXT | non |  |  |
+| `motif` | — | non |  |  |
+| `groupe_id` | TEXT | non |  |  |
+
+### `v_groupe_controle`
+
+*vue*
+
+Contrôle des inscriptions dans les groupes : une ligne par anomalie (vide = conforme). Un membre inscrit sa propre fiche ou un prétiré.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `groupe_id` | TEXT | non |  |  |
+| `utilisateur_id` | TEXT | non |  |  |
+| `regle` | — | non |  |  |
+| `detail` | TEXT | non |  |  |
+
+### `v_personnage_controle`
+
+*vue*
+
+Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité) n'est pas ici. Une fiche 'brouillon' peut avoir des lignes, une fiche 'valide' non (test).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | non |  |  |
+| `regle` | — | non |  |  |
+| `detail` | BLOB | non |  |  |
+
+## 14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)
+
+### `modification_lot`
+
+Un enregistrement fait depuis une page (le bouton de confirmation) : toutes ses modifications passent ou aucune.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | TEXT | oui | PK | UUID tiré par le service |
+| `fait_le` | TEXT | oui |  |  |
+| `auteur_id` | TEXT | non | → utilisateur.id | NULL avant la connexion Discord (1.0) : quiconque ouvre le site de dev |
+| `page_id` | TEXT | non |  | page d'où l'enregistrement est fait (« races/elfe-noir ») ; sans clé étrangère : une page créée par l'édition peut ne pas encore être dans les règles livrées |
+| `resume` | TEXT | oui |  | « Métier Forgeron : bonus_brut » : ce que le service a fait, lisible |
+
+### `modification`
+
+Une ligne de table touchée par un lot. `cle` = la clé primaire de la ligne ({"id": "metiers/forgeron"}) ; `avant` / `apres` = les colonnes modifiées (toute la ligne pour une insertion ou une suppression). État : 'en_attente' (dans la base vivante, pas encore dans data/rows), 'integree' (les règles livrées la contiennent déjà : elle est revenue par git), 'conflit' (les règles livrées ont changé la ligne autrement : elle n'est pas rejouée, `detail` dit pourquoi).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `lot_id` | TEXT | oui | PK 1, → modification_lot.id |  |
+| `rang` | INTEGER | oui | PK 2 | ordre d'application dans le lot |
+| `table_nom` | TEXT | oui |  |  |
+| `cle` | TEXT | oui |  |  |
+| `operation` | TEXT | oui |  |  |
+| `avant` | TEXT | non |  |  |
+| `apres` | TEXT | non |  |  |
+| `etat` | TEXT | oui |  |  |
+| `detail` | TEXT | non |  | raison d'un conflit ; NULL sinon |
+| `apercu` | TEXT | non |  |  |
+
+### `note_version_brouillon`
+
+La note de version en préparation sur le site de dev (page /mise-a-jour/ : le champ libre que les admins remplissent, en plus de la liste calculée ; migration 0023). Une seule ligne. `lot` : le lot figé quand « Effectuer la mise à jour » est lancé (son texte part avec lui) ; la ligne est vidée quand une livraison apporte la note de version de ce lot (client/serveur/base-vivante.mjs).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | INTEGER | oui | PK |  |
+| `texte` | TEXT | non |  | Markdown ; NULL : rien d'écrit |
+| `modifie_le` | TEXT | non |  |  |
+| `lot` | TEXT | non |  |  |
+
+## 15. NOTES DE VERSION : ce que chaque version a changé dans les règles (page /mise-a-jour/), et l'historique des modifications faites sur le
+
+### `note_version`
+
+Une version livrée (dev → master) : « 0.2 » (X.Y : la production ne porte que deux chiffres), sa date, le champ libre des admins.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `version` | TEXT | oui | PK |  |
+| `publiee_le` | TEXT | oui |  |  |
+| `depuis` | TEXT | non |  |  |
+| `texte` | TEXT | non |  | champ libre des admins (Markdown) ; NULL : rien d'écrit |
+| `lot` | TEXT | non |  | lot figé sur le site de dev qui l'a produite |
+| `exemple` | INTEGER | oui |  | 1 : donnée de démonstration (lorem ipsum, demande du propriétaire tant qu'aucune version n'a été livrée), retirée par la première vraie mise à jour |
+
+### `note_version_ligne`
+
+Une ligne de la liste calculée : une modification d'un champ d'une entité entre la production et la nouvelle version. `domaine` range la ligne (sorts, magies, classes et leurs dons, races, métiers, guide), `groupe` et `entite` la nomment (« Lumière » › « Flash »), au nom qu'elle porte dans la nouvelle version (l'ancien pour une entité retirée). `sens` : la couleur (vert, rouge, gris) d'après les critères du propriétaire (client/src/lib/notes-de-version.mjs) ; `parties` : le détail quand une case se lit en morceaux (valeur de base, expression de NM), chacun avec son sens. `table_nom`, `cle`, `colonne` : la trace de la ligne de la base d'où elle vient.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `version` | TEXT | oui | PK 1, → note_version.version |  |
+| `rang` | INTEGER | oui | PK 2 | ordre d'affichage |
+| `domaine` | TEXT | oui |  |  |
+| `groupe` | TEXT | non |  |  |
+| `entite` | TEXT | oui |  |  |
+| `champ` | TEXT | non |  | libellé de la colonne (« Coût ») ; NULL : l'entité entière (ajoutée, retirée) |
+| `nature` | TEXT | oui |  |  |
+| `avant` | TEXT | non |  |  |
+| `apres` | TEXT | non |  |  |
+| `sens` | TEXT | oui |  |  |
+| `parties` | TEXT | non |  |  |
+| `table_nom` | TEXT | non |  |  |
+| `cle` | TEXT | non |  |  |
+| `colonne` | TEXT | non |  |  |
+
+### `historique_modification`
+
+Le journal du site de dev une fois livré (une ligne par ligne de table touchée, comme `modification`) : qui a changé quoi, quand, avant et après (docs/feuille-de-route.md : modifications historisées). Les tests qui vérifient l'import (effectifs, textes cités, fidélité d'une page à son onglet) s'en servent pour ne plus contrôler ce que le site a modifié : le propriétaire a fait du site la source des règles.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `lot_id` | TEXT | oui | PK 1 |  |
+| `rang` | INTEGER | oui | PK 2 |  |
+| `fait_le` | TEXT | oui |  |  |
+| `resume` | TEXT | oui |  | résumé du lot (modification_lot.resume) |
+| `version` | TEXT | non | → note_version.version | version qui l'a livrée ; NULL : rapatriée à la main (npm run db:appliquer-edition) |
+| `table_nom` | TEXT | oui |  |  |
+| `cle` | TEXT | oui |  |  |
+| `operation` | TEXT | oui |  |  |
+| `avant` | TEXT | non |  |  |
+| `apres` | TEXT | non |  |  |

@@ -62,7 +62,30 @@ Un changement de structure se fait par une **migration** `data/migrations/NNNN-<
 (nouvelle colonne **en dernier**, `PRAGMA user_version` + 1), écrire la migration, puis **avant de commiter** `npm run db:migrate -- ../data/migrations/NNNN-<nom>.sql` (dans `client/`). Il transforme les lignes
 déjà commitées, sans accéder aux classeurs : reconstruit la base de la version précédente (schéma du dernier commit), exécute la migration, vérifie que le schéma obtenu est exactement `data/schema.sql`,
 et réécrit `data/rows` avec la nouvelle version. Voir `docs/sql/conception.md` §10.1. Migrations en place : `0002-remarque.sql` (nouvelle colonne), `0003-orthographe-magies.sql` (migration de **données** : seules les lignes changent, avec un registre `.json` des corrections ; la version du schéma monte quand même d'un cran),
-`0004-bonus-maitrise.sql` (structure et données : colonnes `sort.mode_brut` et `sort.bonus_maitrise`, tables `sort_mode` et `sort_bonus_maitrise` qui remplace `sort_progression_nm`, vue `v_sort_bonus_au_nm`, registre `.json`).
+`0004-bonus-maitrise.sql` (structure et données : colonnes `sort.mode_brut` et `sort.bonus_maitrise`, tables `sort_mode` et `sort_bonus_maitrise` qui remplace `sort_progression_nm`, vue `v_sort_bonus_au_nm`, registre `.json`),
+`0005-orthographe-base.sql` (données : passe complète d'orthographe sur toute la base, registre `.json`),
+`0006-orthographe-noms.sql` (structure et données : les sept tables qui dérivaient l'id du nom sont reconstruites sans cette contrainte, puis les noms à trancher sont corrigés partout et leurs clés recalculées ; registre `.json`), `0007-races-onglet.sql` (structure et données : contenu de l'onglet de chaque race,
+tables `race_onglet`, `race_don`, `race_don_tableau_*`, `race_magie_onglet`, colonne `mode_hyper_effet.nom` et version `onglet_race`, vue `v_regard_peuple` ; écrite par `tools/db/races_onglet.py --ecrire`
+depuis les pages de race, `--verifier` contrôle que les tables sont toujours celles des pages), `0008-dons-de-classe.sql` (données : le type de page `capacites` s'affiche « Dons de classe »,
+singulier « Don », dans `type_page` ; ids, adresses et table `capacite` inchangés), `0009-classes-sans-suffixe.sql` (données : « (classe) » retiré du titre des 13 classes raciales, clés de titre recalculées), `0010-mono-magie.sql` (structure et données, décision R15 :
+colonne `magie.mono_magie`, 1 pour le Potentiel Illimité et la Corruption, table `magie` reconstruite ; l'Elfe Noir Salé retiré des ethnies de la Corruption), `0011-personnages.sql` (structure et données : tables des fiches de personnages, des groupes de jeu et des rôles, section 13, vides dans `data/rows` ; vues `v_personnage_niveau`,
+`v_personnage_visible`, `v_groupe_controle` et `v_personnage_controle` ; trois constantes de la fiche dans `regle_constante` : voir `docs/character-generator.md`, « Fiches dans la base »), `0012-eaunoire.sql` (données, décision R21 :
+la déesse de la Corruption s'appelle « Eaunoire », dans `dieu.nom` et la phrase de l'Elfe noir, page et onglet ; identifiant `demon-deau-noire` inchangé), `0013-lamia-corruption.sql` (données, décision R22 :
+la Lamia a la Corruption en magie innée, case E24 de la matrice `race_magie` et page de la Lamia, front matter et section « Magies accessibles »), `0014-sources-copies-drive.sql`
+(données : les documents Google cités pointent sur leurs copies du Drive du propriétaire, registre `0014-sources-copies-drive.json` ; la table `source`, dont l'id dérive de
+l'identifiant Google, est réécrite avec ses renvois `page_source`, ainsi que les liens du corps des pages, du Mage Bleu et des ressources d'Alchimie ; voir `docs/sources.md`),
+`0015-archimage-potentiel-illimite.sql` (structure et données, décision R23 : colonne `classe.magie_innee_id` en dernier par `ADD COLUMN`, avec son index partiel unique, Potentiel Illimité
+pour l'Archimage d'après son « CHOSE A SAVOIR » ; règles `classe_reservee` et `classe_imposee` de `v_personnage_controle`), `0016-maitrise-arme.sql`
+(données : constantes `maitrise_arme.des_sans_maitrise` (1 dé, guide) et `maitrise_arme.des_max` (5 dés, liste « 1d » à « 5d » de la fiche auto) : 4 points de maîtrise au plus),
+`0017-edition.sql` (structure : journal des modifications faites depuis le site de dev, section 14, tables vides dans `data/rows`), `0018-nm-excedentaires.sql`
+(structure, décision R24 : la règle `sorts_nm_total` quitte `v_personnage_controle`, plus de NM que ceux gagnés est permis),
+`0019-liens-familiers-prototype.sql` (données, demande du propriétaire : plus aucun lien vers les classeurs « Familiers » et « Prototype » ; l'hyperlien « CHOSE A SAVOIR » du Mage Bleu,
+`classe.chose_a_savoir_lien` et sa ligne dans la page, et celui de la page `ressources/familiers` avec la phrase qui le portait sont retirés ; la page `/archives/` ne montre plus ces classeurs), `0020-mage-bleu-potentiel-illimite.sql`
+(structure et données, décision R25 : colonne `classe.magie_innee_exclue_id`, Potentiel Illimité pour le Mage Bleu d'après son « CHOSE A SAVOIR » ; règle `classe_exclue`),
+`0021-nm-plafond.sql` (structure et données, décision R26 : colonnes `personnage_sort.nm_livre` et `nm_cadeau`, constante `sort.nm_max` = 3 et sa phrase dans le guide ; règles `sort_nm_plafond`, `sort_nm_max` et `sorts_nm_total` sur les NM de niveau).
+`0022-lamia-une-seule-magie.sql` (structure et données, décision R28 : colonne `race.mono_magie`, à 1 pour la Lamia seule — « Une seule magie autorisé », inconvénients de son onglet —, table reconstruite comme `magie` en 0010 ; règle `race_mono_magie` de `v_personnage_controle`).
+`0026-acquis-caracteristique-totale.sql` (structure, décision R41 : la règle `competence_acquis_max` de `v_personnage_controle` compte la caractéristique totale, le +1 de la magie innée compris).
+`0027-posture-du-moment.sql` (structure, demande du propriétaire : colonne `personnage.posture_id`, la posture du moment, choisie parmi les six de `posture`).
 
 ## La colonne `remarque`
 

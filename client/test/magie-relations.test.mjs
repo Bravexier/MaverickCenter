@@ -38,11 +38,21 @@ test('une race sans données (champ absent) n’a ni magies ni exclusion : null'
   assert.equal(magiesOfRace(entries, entries.at(-1)), null);
 });
 
-test('racesOfMagie sépare les races qui peuvent l’avoir en magie innée et celles qui ne le peuvent pas, triées par titre', () => {
-  const entries = [...MAGIES, race('orios', 'Orios', ['Eau', 'Feu']), race('elfe', 'Élfe', ['Glace']), race('anansi', 'Anansi', ['Feu', 'Glace']), race('exemple', 'Exemple')];
+test('racesOfMagie sépare les races qui peuvent l’avoir en magie innée et celles qui ne le peuvent pas, dans l’ordre de la liste /races/', () => {
+  const entries = [
+    ...MAGIES,
+    race('orios', 'Orios', ['Eau', 'Feu']),
+    race('elfe-noir', 'Elfe Noir', ['Glace']),
+    race('anansi', 'Anansi', ['Feu', 'Glace']),
+    race('humain', 'Humain', ['Feu']),
+    race('zzz', 'Absente de la liste', ['Feu']),
+    race('aaa', 'Aussi absente', ['Feu']),
+    race('exemple', 'Exemple'),
+  ];
   const result = racesOfMagie(entries, feu);
-  assert.deepEqual(ids(result.avec), ['races/anansi', 'races/orios']);
-  assert.deepEqual(ids(result.sans), ['races/elfe']);
+  // ORDRE_DES_RACES (lib/race-kinds.mjs) : Humain… puis Orios… puis Anansi ; pures et hybrides mêlées dans une seule liste ; une race absente de l'ordre vient après, par titre
+  assert.deepEqual(ids(result.avec), ['races/humain', 'races/orios', 'races/anansi', 'races/zzz', 'races/aaa']);
+  assert.deepEqual(ids(result.sans), ['races/elfe-noir']);
   assert.ok(!ids([...result.avec, ...result.sans]).includes('races/exemple'), 'une race sans données n’est dans aucune des deux listes');
 });
 
@@ -99,6 +109,18 @@ test('relationMatrix : symboles croisés, ligne = la magie décrite', () => {
   assert.deepEqual(at('magies/glace', 'magies/espace-temps'), { fort: false, faible: false, incompatible: true });
   assert.deepEqual(at('magies/espace-temps', 'magies/glace'), { fort: false, faible: false, incompatible: true }, 'symétrique');
   assert.equal(at('magies/corruption', 'magies/feu'), null, 'aucune donnée pour la Corruption : case vide, pas « aucune relation »');
+});
+
+test('accessMatrix et relationMatrix : colonnes dans l’ordre donné (celui du classeur), une magie hors de l’ordre vient après, par nom', () => {
+  const ordre = ['magies/potentiel-illimite', 'magies/corruption', 'magies/espace-temps', 'magies/feu'];
+  const entries = [...MAGIES, race('orios', 'Orios', ['Eau', 'Feu'])];
+  const attendu = ['Potentiel Illimité', 'Corruption', 'Espace/Temps', 'Feu', 'Eau', 'Glace'];
+  const acces = accessMatrix(entries, ordre);
+  assert.deepEqual(acces.magies.map((e) => e.data.nom_court), attendu);
+  assert.deepEqual(acces.cells[0], [false, false, false, true, true, false], 'les cases suivent les colonnes');
+  const rel = relationMatrix(MAGIES, ordre);
+  assert.deepEqual(rel.magies.map((e) => e.data.nom_court), attendu, 'lignes et colonnes dans le même ordre');
+  assert.deepEqual(rel.cells[3][4], { fort: false, faible: true, incompatible: false }, 'Feu (ligne 4) faible contre Eau (colonne 5)');
 });
 
 test('unresolvedNames liste, par page, les noms de magies qui ne correspondent à aucune magie', () => {

@@ -1,6 +1,6 @@
 {
   "classeur": "Magie Maverick V8",
-  "fichier": "1sYzEBmnjZNVbf103zgATttlRO9zuKtzdFCdTAV58e8c",
+  "fichier": "1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0",
   "regenerer": "python3 -I tools/sheets/magies.py --dump <magie-v8.json avec notes> --exporter-commentaires client/test/fixtures/magies-commentaires.json",
   "contrat": "une entrée par note ou par fil cité dans les pages ; `lignes` = les lignes du commentaire, sans blancs de bord de ligne ni lignes vides en tête et en queue, lignes vides intermédiaires conservées (voir magies.py)",
   "entrees": [
@@ -229,7 +229,7 @@
       "genre": "Note",
       "cellule": "BJ13",
       "colonne": "Effets secondaires",
-      "sort": "Verrouille Visible",
+      "sort": "Verrouillage Visible",
       "lignes": [
         "Si la cible est dans la posture indiquée à ce moment-là, il doit changer de posture de suite.",
         "",
@@ -579,7 +579,7 @@
       "genre": "Note",
       "cellule": "BJ46",
       "colonne": "Effets secondaires",
-      "sort": "Touché du Vide",
+      "sort": "Toucher du Vide",
       "lignes": [
         "Si c'est la barrière, la barrière est vampirisée.",
         "Si c'est les points de vie, c'est les points de vie qui sont vampirisés"
@@ -748,7 +748,7 @@
       "genre": "Note",
       "cellule": "BJ70",
       "colonne": "Effets secondaires",
-      "sort": "Résurrection Noir",
+      "sort": "Résurrection Noire",
       "lignes": [
         "Est considérée comme morte tant que la cible n'a pas bu 1 super fiole de soin par jour sur 1 mois. Ou alors qu'une résurrection est appliquée sur lui."
       ]
@@ -759,7 +759,7 @@
       "genre": "Commentaire résolu",
       "cellule": "BJ70",
       "colonne": "Effets secondaires",
-      "sort": "Résurrection Noir",
+      "sort": "Résurrection Noire",
       "lignes": [
         "Est considéré comme mort tant que la cible n'a pas bu 1 fiole par jour sur 5 jours. Ou alors qu'une résurrection est appliquée sur lui."
       ]
@@ -841,7 +841,7 @@
       "sort": "Larmes d'Océane",
       "lignes": [
         "Cette météo ne peut pas être retirée par les autres météos ou bien les effets de classes.",
-        "Le Don \"Climatospetique\" ne peut pas contrer cet effet.",
+        "Le Don \"Climatosceptique\" ne peut pas contrer cet effet.",
         "Cet effet dure maximum 5 tours."
       ]
     },
@@ -1150,9 +1150,9 @@
       "genre": "Note",
       "cellule": "BJ25",
       "colonne": "Effets secondaires",
-      "sort": "Colonne tesla",
+      "sort": "Colonne Tesla",
       "lignes": [
-        "Para-tonnerre : Attire les sorts de la foudre ou bien la foudre naturelle sur la cible (objet ou créature)"
+        "Paratonnerre : Attire les sorts de la foudre ou bien la foudre naturelle sur la cible (objet ou créature)"
       ]
     },
     {
@@ -1406,5 +1406,5 @@
       ]
     }
   ],
-  "corrections": "Copie tenue à jour avec les corrections orthographiques de data/migrations/0003-orthographe-magies.sql : les lignes citées ici sont celles des notes après correction."
+  "corrections": "Copie tenue à jour avec les corrections orthographiques de data/migrations/0003-orthographe-magies.sql et les noms corrigés par 0006-orthographe-noms.sql : les lignes et les noms de sorts cités ici sont ceux des notes après correction."
 }

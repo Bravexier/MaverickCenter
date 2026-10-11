@@ -1,0 +1,272 @@
+name: Mise à jour des règles
+# Le nom de chaque run porte le lot : le service retrouve ainsi son run même si GitHub ne lui a pas rendu son identifiant au déclenchement
+# (client/serveur/notes-de-version.mjs#creerGithub, suivre).
+run-name: "Mise à jour des règles — lot ${{ inputs.lot }}${{ inputs.essai && ' (simulation)' || '' }}"
+
+# Page « Mise à jour » du site de dev (client/serveur/notes-de-version.mjs) : « Effectuer la mise à jour » (ou « Simulation de mise à jour »),
+# après confirmation, fige un lot (journal des modifications du site + champ libre + `simulation`), le sert à
+# https://<site de dev>/api/mise-a-jour/lots/<lot>/ et déclenche ce workflow sur dev.
+# Demande du propriétaire : rejouer le lot sur dev, ouvrir une PR avec toutes les modifications de la base, la fusionner seule si elle est sans
+# conflit et verte, puis, juste après, livrer dev → master ; et aucune autre table que celles du lot (et de la note de version) ne change.
+# Tout est dans client/scripts/mise-a-jour-github.mjs (testé par client/test/mise-a-jour-github.test.mjs), en deux jobs :
+#   preparer — AUCUN SECRET (npm ci, npm test et le code du dépôt y tournent) : lot téléchargé, empreinte et mode (simulation ou non) vérifiés ;
+#     refus si une autre mise à jour attend sa livraison dans dev ; lot rejoué sur une branche partie de dev (client/scripts/mise-a-jour-regles.mjs :
+#     un conflit arrête tout), liste blanche des fichiers contrôlée deux fois, db:build, db:check puis tout le job client de ci.yml (npm test,
+#     build, tests du site construit, build de test, installateur, version portable) ; commit local publié dans l'artefact « preparation »
+#     (git bundle sur la base origin/dev, le lot, le résumé). Simulation (entrée « essai ») : tout pareil.
+#   livrer — le SEUL job qui cite MISE_A_JOUR_TOKEN ; il n'exécute ni npm ni node_modules, seulement git et node sur le script (qui n'importe que
+#     node: et tools/flux-git/regles.mjs). Il revérifie l'artefact avec git (lot = empreinte de l'entrée, un seul commit sur la base annoncée,
+#     fichiers ⊆ data/rows/<tables du lot et de la note de version>), puis deux étapes aux noms fixes (le service lit leur état) :
+#       « Fusion dans dev » : commit posé sur origin/dev à jour (tel quel, ou rebase textuel si dev a bougé : un conflit = la même ligne de
+#         data/rows changée des deux côtés, échec net, rien n'est poussé), poussée, PR vers dev, checks client, character-service et
+#         regles-de-branches VERTS, fusion par commit de fusion (si dev bouge pendant l'attente : PR fermée et commit rejoué, jusqu'à 3 essais) ;
+#       « Livraison vers master » : commit de version que livraison.yml pousse sur dev pour cette PR, puis PR de livraison dev → master (jamais
+#         [V: X+1]), checks verts, fusion par commit de fusion : livraison.yml fait la version X.Y.0, les étiquettes et la publication.
+#     Simulation : les deux étapes vérifient sans effet de bord (artefact, liste blanche, application à blanc sur dev, git push --dry-run
+#     authentifié par le jeton, lectures de l'API) ; ni poussée, ni PR.
+# Relancer le run (Re-run) avec le même lot reprend là où il s'est arrêté (lot déjà dans dev : directement la livraison ; déjà livré : rien).
+#
+# Mise en place (une fois, par le propriétaire) : secret MISE_A_JOUR_TOKEN = jeton personnel fine-grained (administrateur du dépôt), limité à ce
+# dépôt, Contents, Pull requests et Workflows en écriture. Le jeton du workflow ne suffit pas : une PR qu'il ouvre ne lance aucune CI, une fusion
+# qu'il fait ne lance pas livraison.yml. Variable MISE_A_JOUR_HOTE : seul hôte permis pour l'adresse du lot (défaut dev.maverick-jdr.com, le
+# serveur de test de deploy/vps/) : sans cette restriction, quiconque peut déclencher ce workflow (le jeton Actions du serveur de test suffit)
+# ferait livrer un lot servi par n'importe quel site, l'empreinte étant fournie par le même appel.
+# Jetons : dans preparer, seul le jeton du workflow existe (contents: read), utilisé par actions/checkout et jamais gardé (persist-credentials:
+# false) ; une dépendance npm compromise ne peut que fausser l'artefact, que livrer revérifie. Dans livrer, MISE_A_JOUR_TOKEN est dans
+# l'environnement du garde-fou et des deux étapes du script : tout processus de ce job pourrait le lire (/proc/<pid>/environ, sudo du runner),
+# d'où l'absence de tout autre code que les actions officielles, git et le script ; git ne le reçoit que pour push, par son environnement (ni
+# en argument ni dans .git/config), sans hooks.
+on:
+  workflow_dispatch:
+    inputs:
+      lot:
+        description: Identifiant du lot figé par la page Mise à jour (uuid)
+        type: string
+        required: true
+      empreinte:
+        description: Empreinte SHA-256 du lot (64 caractères hexadécimaux)
+        type: string
+        required: true
+      adresse:
+        description: Adresse du lot sur le site de dev (https://…/api/mise-a-jour/lots/<lot>/)
+        type: string
+        required: true
+      essai:
+        description: Simulation de mise à jour (applique et contrôle le lot, vérifie le jeton, sans rien pousser ni fusionner) ; doit correspondre au lot
+        type: boolean
+        default: false
+
+# Une mise à jour à la fois ; une seconde attend la fin de la première (jamais annulée en route).
+concurrency:
+  group: mise-a-jour-des-regles
+  cancel-in-progress: false
+
+# Aucune permission par défaut : chaque job déclare les siennes, en lecture seule (tout ce qui écrit passe par MISE_A_JOUR_TOKEN, dans livrer).
+permissions: {}
+
+jobs:
+  preparer:
+    # Nom épinglé : le service lit les jobs du run (GET /actions/runs/{id}/jobs).
+    name: preparer
+    # Un workflow_dispatch se lance sur dev seulement (le service le déclenche avec ref: dev).
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Garde-fou — le contenu appartient à un tiers
+        env:
+          IS_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          if [ "$IS_PRIVATE" != "true" ]; then
+            echo "::error::Le dépôt n'est pas privé : mise à jour refusée (le contenu appartient à un tiers)."
+            exit 1
+          fi
+
+      - name: Garde-fou — entrées (lot, empreinte, adresse)
+        shell: bash
+        env:
+          LOT: ${{ inputs.lot }}
+          EMPREINTE: ${{ inputs.empreinte }}
+          ADRESSE: ${{ inputs.adresse }}
+        run: |
+          # Les valeurs ne sont jamais recopiées dans le journal avant d'être validées.
+          uuid='^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+          sha256='^[0-9a-f]{64}$'
+          adresse='^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?/api/mise-a-jour/lots/[0-9a-f-]{36}/$'
+          if ! [[ "$LOT" =~ $uuid ]]; then echo "::error::Entrée « lot » invalide : un uuid est attendu."; exit 1; fi
+          if ! [[ "$EMPREINTE" =~ $sha256 ]]; then echo "::error::Entrée « empreinte » invalide : un SHA-256 (64 caractères hexadécimaux minuscules) est attendu."; exit 1; fi
+          if ! [[ "$ADRESSE" =~ $adresse ]] || [[ "$ADRESSE" != *"/api/mise-a-jour/lots/$LOT/" ]]; then
+            echo "::error::Entrée « adresse » invalide : https://<site de dev>/api/mise-a-jour/lots/$LOT/ est attendue."
+            exit 1
+          fi
+
+      # dev et master complets (fetch-depth: 0) : la base de production (master) est construite à côté de celle du site, comme dans ci.yml.
+      # Le jeton du workflow (lecture) n'est pas gardé dans .git/config.
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+          token: ${{ github.token }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Installer les dépendances
+        working-directory: client
+        run: npm ci
+
+      - name: Préparer le lot (rejeu sur dev, contrôles de la CI, commit)
+        id: preparer
+        env:
+          LOT: ${{ inputs.lot }}
+          EMPREINTE: ${{ inputs.empreinte }}
+          ADRESSE: ${{ inputs.adresse }}
+          ESSAI: ${{ inputs.essai }}
+          HOTE_ATTENDU: ${{ vars.MISE_A_JOUR_HOTE || 'dev.maverick-jdr.com' }}
+          ARTEFACT: ${{ runner.temp }}/mise-a-jour-preparation
+        run: node client/scripts/mise-a-jour-github.mjs --phase preparer
+
+      - name: Publier la préparation
+        uses: actions/upload-artifact@v4
+        with:
+          name: preparation
+          path: ${{ runner.temp }}/mise-a-jour-preparation/
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
+
+      - name: Résumé
+        if: always()
+        env:
+          ETAT: ${{ job.status }}
+          ETAPE: ${{ steps.preparer.outcome }}
+          ESSAI: ${{ inputs.essai }}
+        run: |
+          {
+            echo
+            if [ -z "$ETAPE" ] || [ "$ETAPE" = skipped ]; then
+              echo "**Arrêt avant la préparation du lot** (garde-fous, récupération du dépôt ou installation) : voir les étapes ci-dessus. Rien n'a été poussé."
+            fi
+            if [ "$ESSAI" = true ]; then mode="simulation de mise à jour"; else mode="mise à jour"; fi
+            echo "Résultat du job preparer ($mode) : $ETAT. Rien n'est poussé par ce job ; la page « Mise à jour » du site de dev affiche l'état du run."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  livrer:
+    # Nom épinglé, comme ceux de ses étapes « Fusion dans dev » et « Livraison vers master » : le service les lit.
+    name: livrer
+    needs: preparer
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    # Le jeton du workflow ne fait que lire (code, PR, checks) ; tout ce qui écrit passe par MISE_A_JOUR_TOKEN.
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: read
+    steps:
+      - name: Garde-fou — jeton du bot (secret MISE_A_JOUR_TOKEN)
+        env:
+          MISE_A_JOUR_TOKEN: ${{ secrets.MISE_A_JOUR_TOKEN }}
+        run: |
+          if [ -z "$MISE_A_JOUR_TOKEN" ]; then
+            message="Secret MISE_A_JOUR_TOKEN absent : créer un jeton fine-grained (Settings → Developer settings → Fine-grained tokens) limité à ce dépôt, permissions Contents, Pull requests et Workflows en lecture et écriture, par un administrateur du dépôt, puis l'enregistrer dans Settings → Secrets and variables → Actions sous le nom MISE_A_JOUR_TOKEN. Le jeton du workflow ne suffit pas : une PR qu'il ouvre ne lance aucune CI et une fusion qu'il fait ne lance pas livraison.yml."
+            echo "::error::$message"
+            printf '### Mise à jour des règles\n\n**Échec** : %s\n' "$message" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: Garde-fou — le contenu appartient à un tiers
+        env:
+          IS_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          if [ "$IS_PRIVATE" != "true" ]; then
+            echo "::error::Le dépôt n'est pas privé : mise à jour refusée (le contenu appartient à un tiers)."
+            exit 1
+          fi
+
+      - name: Garde-fou — entrées (lot, empreinte, adresse)
+        shell: bash
+        env:
+          LOT: ${{ inputs.lot }}
+          EMPREINTE: ${{ inputs.empreinte }}
+          ADRESSE: ${{ inputs.adresse }}
+        run: |
+          uuid='^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+          sha256='^[0-9a-f]{64}$'
+          adresse='^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?/api/mise-a-jour/lots/[0-9a-f-]{36}/$'
+          if ! [[ "$LOT" =~ $uuid ]]; then echo "::error::Entrée « lot » invalide : un uuid est attendu."; exit 1; fi
+          if ! [[ "$EMPREINTE" =~ $sha256 ]]; then echo "::error::Entrée « empreinte » invalide : un SHA-256 (64 caractères hexadécimaux minuscules) est attendu."; exit 1; fi
+          if ! [[ "$ADRESSE" =~ $adresse ]] || [[ "$ADRESSE" != *"/api/mise-a-jour/lots/$LOT/" ]]; then
+            echo "::error::Entrée « adresse » invalide : https://<site de dev>/api/mise-a-jour/lots/$LOT/ est attendue."
+            exit 1
+          fi
+
+      # Le code de dev (le script) et l'historique complet (la base du commit préparé) ; jeton du workflow (lecture) non gardé.
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+          token: ${{ github.token }}
+          persist-credentials: false
+
+      # Node seul : pas de cache npm (setup-node lancerait npm pour le trouver), ni npm ci.
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Récupérer la préparation
+        uses: actions/download-artifact@v4
+        with:
+          name: preparation
+          path: ${{ runner.temp }}/mise-a-jour-preparation
+
+      - name: Fusion dans dev
+        id: dev
+        env:
+          GH_TOKEN: ${{ secrets.MISE_A_JOUR_TOKEN }}
+          GITHUB_TOKEN_LECTURE: ${{ github.token }}
+          LOT: ${{ inputs.lot }}
+          EMPREINTE: ${{ inputs.empreinte }}
+          ADRESSE: ${{ inputs.adresse }}
+          ESSAI: ${{ inputs.essai }}
+          HOTE_ATTENDU: ${{ vars.MISE_A_JOUR_HOTE || 'dev.maverick-jdr.com' }}
+          ARTEFACT: ${{ runner.temp }}/mise-a-jour-preparation
+        run: node client/scripts/mise-a-jour-github.mjs --phase dev
+
+      - name: Livraison vers master
+        id: master
+        env:
+          GH_TOKEN: ${{ secrets.MISE_A_JOUR_TOKEN }}
+          GITHUB_TOKEN_LECTURE: ${{ github.token }}
+          LOT: ${{ inputs.lot }}
+          EMPREINTE: ${{ inputs.empreinte }}
+          ADRESSE: ${{ inputs.adresse }}
+          ESSAI: ${{ inputs.essai }}
+          HOTE_ATTENDU: ${{ vars.MISE_A_JOUR_HOTE || 'dev.maverick-jdr.com' }}
+          ARTEFACT: ${{ runner.temp }}/mise-a-jour-preparation
+        run: node client/scripts/mise-a-jour-github.mjs --phase master
+
+      - name: Résumé
+        if: always()
+        env:
+          ETAT: ${{ job.status }}
+          ETAPE_DEV: ${{ steps.dev.outcome }}
+          ETAPE_MASTER: ${{ steps.master.outcome }}
+          ESSAI: ${{ inputs.essai }}
+        run: |
+          {
+            echo
+            if [ -z "$ETAPE_DEV" ] || [ "$ETAPE_DEV" = skipped ]; then
+              echo "**Arrêt avant la fusion dans dev** (garde-fous, récupération du dépôt ou de la préparation) : voir les étapes ci-dessus. Rien n'a été poussé."
+            elif [ "$ETAPE_DEV" = success ] && [ "$ETAPE_MASTER" != success ] && [ "$ESSAI" != true ]; then
+              echo "**« Fusion dans dev » réussie, « Livraison vers master » non** : le lot est dans dev. Relancer le run (Re-run all jobs : rien n'est rejoué, le run reprend à la livraison dev → master), ou livrer dev → master à la main (« Create a merge commit »)."
+            fi
+            if [ "$ESSAI" = true ]; then mode="simulation de mise à jour"; else mode="mise à jour"; fi
+            echo "Résultat du job livrer ($mode) : $ETAT. La page « Mise à jour » du site de dev affiche cet état."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,175 @@
+---
+import { geometrieDesLiaisons, liaisonsEntreMagies, POINTES } from '../../lib/magie-fleches.mjs';
+import { couleurDeMagie } from '../../lib/sort-format.mjs';
+import { normalize } from '../../lib/text.mjs';
+import { entryHref, type WikiEntry } from '../../lib/wiki';
+import type { MagieDb } from '../../lib/magies';
+import orbiteCss from '../../styles/magie/orbit.css?raw';
+
+interface Props {
+  magies: { entry: WikiEntry; magie: MagieDb }[];
+}
+
+const { magies } = Astro.props;
+// Deux cartes, positions au centre de chaque pastille. Grand écran (x, y sur 1000 × HAUTEUR_GRANDE), disposée pour qu'aucun trait de relation ni aucune
+// boucle ne passe sous une autre pastille et que deux pointes d'une même magie ne se touchent pas (demandes du propriétaire) : le Potentiel Illimité, sans
+// relation, au centre ; les huit magies liées en anneau autour, symétriques gauche–droite (Vent ↔ Nécromancie, Feu ↔ Eau, Terre ↔ Sang, Glace ↔ Foudre :
+// les relations ont la même symétrie) ; Feu et Eau plus bas que Terre et Sang, sinon le trait Feu – Eau passerait sous eux ; Corruption – Arcane et
+// Espace-Temps – Vide aux coins du haut, Lumière – Ombre en bas. Écran étroit, sous 60rem (mx, my sur 1000 × HAUTEUR_ETROITE) : deux colonnes, sans
+// relations, les paires côte à côte (demande du propriétaire) reliées par leur trait. Pas d'infobulle (demande du propriétaire) : le survol ne montre que
+// les relations. Les proportions sont reprises par styles/magie/orbit.css (aspect-ratio du grand écran, hauteur de l'écran étroit) ;
+// test/magies-html.test.mjs vérifie qu'aucune pastille n'en touche une autre et qu'aucun trait ne passe sous une pastille.
+const HAUTEUR_GRANDE = 440;
+const HAUTEUR_ETROITE = 590;
+const disposition = [
+  { cle: 'Potentiel Illimité', nom: 'Potentiel Illimité', region: 'potentiel', x: 500, y: 220, mx: 500, my: 30 },
+  { cle: 'Arcane', nom: 'Arcane', region: 'primordiale', x: 315, y: 40, mx: 740, my: 104 },
+  { cle: 'Corruption', nom: 'Corruption', region: 'primordiale', x: 80, y: 40, mx: 260, my: 104 },
+  { cle: 'Espace/Temps', nom: 'Espace-Temps', region: 'primordiale', x: 685, y: 40, mx: 260, my: 178 },
+  { cle: 'Vide', nom: 'Vide', region: 'primordiale', x: 920, y: 40, mx: 740, my: 178 },
+  { cle: 'Nécromancie', nom: 'Nécromancie', region: 'primordiale', x: 705, y: 330, mx: 740, my: 252 },
+  { cle: 'Sang', nom: 'Sang', region: 'primordiale', x: 615, y: 120, mx: 260, my: 252 },
+  { cle: 'Lumière', nom: 'Lumière', region: 'lumiere-ombre', x: 385, y: 400, mx: 260, my: 326 },
+  { cle: 'Ombre', nom: 'Ombre', region: 'lumiere-ombre', x: 615, y: 400, mx: 740, my: 326 },
+  { cle: 'Feu', nom: 'Feu', region: 'elementaire', x: 145, y: 160, mx: 280, my: 410 },
+  { cle: 'Eau', nom: 'Eau', region: 'elementaire', x: 855, y: 160, mx: 720, my: 410 },
+  { cle: 'Glace', nom: 'Glace', region: 'elementaire', x: 75, y: 260, mx: 750, my: 484 },
+  { cle: 'Terre', nom: 'Terre', region: 'elementaire', x: 385, y: 120, mx: 720, my: 558 },
+  { cle: 'Vent', nom: 'Vent', region: 'elementaire', x: 295, y: 330, mx: 280, my: 558 },
+  { cle: 'Foudre', nom: 'Foudre', region: 'elementaire', x: 925, y: 260, mx: 250, my: 484 },
+];
+// Une hauteur ramenée à la carte : en millièmes pour le SVG (viewBox 1000 × 1000, étiré à la carte), en pourcentage pour les pastilles.
+const millieme = (valeur: number, total: number) => Math.round((valeur / total) * 10000) / 10;
+const pourcent = (valeur: number, total: number) => millieme(valeur, total) / 10;
+
+const index = new Map(magies.map((item) => [normalize(item.magie.nom), item]));
+
+const noeuds = disposition.flatMap((place, ordre) => {
+  const item = index.get(normalize(place.cle));
+  return item ? [{ ...place, ...item, ordre, couleur: couleurDeMagie(item.magie.nom) }] : [];
+});
+const parNom = new Map(noeuds.map((noeud) => [normalize(noeud.cle), noeud]));
+const liens: { a: any; b: any; type: string }[] = [];
+const ajouterLien = (a: any, b: any, type: string) => {
+  if (a && b) liens.push({ a, b, type });
+};
+const incompatible = (a: any, b: any) => a.magie.incompatibles.includes(b.magie.id) || b.magie.incompatibles.includes(a.magie.id);
+const vulnérableÀ = (a: any, b: any) => a.magie.resistances.vulnerabilite.magies.some((r: any) => r.id === b.magie.id);
+
+for (const [gauche, droite] of [['Arcane', 'Corruption'], ['Espace/Temps', 'Vide'], ['Nécromancie', 'Sang']]) {
+  const a = parNom.get(normalize(gauche));
+  const b = parNom.get(normalize(droite));
+  if (a && b && incompatible(a, b)) ajouterLien(a, b, 'incompatible');
+}
+
+const lumiere = parNom.get(normalize('Lumière'));
+const ombre = parNom.get(normalize('Ombre'));
+if (lumiere && ombre && (vulnérableÀ(lumiere, ombre) || vulnérableÀ(ombre, lumiere))) ajouterLien(lumiere, ombre, 'opposition');
+
+// Grand écran : ces traits ne sont pas dessinés ; au survol d'une magie SEULEMENT (demande du propriétaire : toutes à la fois, la carte est trop chargée),
+// ses relations (lib/magie-fleches.mjs), dans sa couleur : un trait par magie liée, une ÉPÉE au bout de la magie contre laquelle l'autre est efficace,
+// un BOUCLIER au bout de celle qui résiste à l'autre, une boucle à bouclier si elle résiste à elle-même.
+// Tailles des pastilles en unités de la carte (1000 × HAUTEUR_GRANDE), pour une carte de 60rem : 9rem, 8rem (éléments), 12rem (Potentiel), 3rem de haut.
+const TAILLES = { potentiel: 200, elementaire: 134 } as Record<string, number>;
+const cleCss = (noeud: any) => normalize(noeud.nom);
+const parId = new Map(noeuds.map((noeud) => [noeud.magie.id, noeud]));
+const pastilles = new Map(noeuds.map((noeud) => [noeud.magie.id, { x: noeud.x, y: noeud.y, w: TAILLES[noeud.region] ?? 150, h: 48 }]));
+const relations = geometrieDesLiaisons(liaisonsEntreMagies(noeuds.map((noeud) => noeud.magie)), pastilles, { hauteur: HAUTEUR_GRANDE });
+const avec = (...ids: string[]) => ids.map((id) => `avec-${cleCss(parId.get(id))}`).join(' ');
+// Part de la couleur de la magie dans le trait (le reste : couleur du texte), selon sa luminance : une magie claire (Vide, Lumière, Foudre) est assombrie
+// davantage sur fond clair, une magie sombre (Corruption, Nécromancie) éclaircie davantage sur fond sombre.
+const luminance = (hex: string) => {
+  const [r, g, b] = hex.slice(1).match(/.{2}/g)!.map((canal) => {
+    const c = parseInt(canal, 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const surbrillance = noeuds
+  .map((noeud) => {
+    const k = cleCss(noeud);
+    const l = luminance(noeud.couleur);
+    const clair = l > 0.85 ? 35 : l > 0.6 ? 50 : 65;
+    const sombre = l < 0.1 ? 40 : l < 0.25 ? 55 : 70;
+    // survol, ou focus au clavier seulement (:focus-visible) : un clic donne aussi le focus au lien, et le retour arrière le restaure ; avec :focus-within,
+    // les relations restaient affichées sans la souris (bogue signalé par le propriétaire)
+    return `.magies-orbite:has([data-magie="${k}"]:hover, [data-magie="${k}"] a:focus-visible) .magies-relation.avec-${k} { --c: ${noeud.couleur}; --part: ${clair}%; --part-sombre: ${sombre}%; opacity: 1; }`;
+  })
+  .join('\n');
+---
+
+<div class="magies-orbite" role="group" aria-label="Carte des magies">
+  <svg class="magies-orbite__liens" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
+    {
+      liens.map(({ a, b, type }) => (
+        <g class={`magies-orbite__lien magies-orbite__lien--${type}`}>
+          <line class="magies-orbite__lien--petit" x1={a.mx} y1={millieme(a.my, HAUTEUR_ETROITE)} x2={b.mx} y2={millieme(b.my, HAUTEUR_ETROITE)} />
+        </g>
+      ))
+    }
+  </svg>
+  <svg class="magies-orbite__relations" viewBox={`0 0 1000 ${HAUTEUR_GRANDE}`} aria-hidden="true">
+    {
+      relations.traits.map((trait) => (
+        <g class={`magies-relation ${avec(trait.a, trait.b)}`}>
+          <line x1={trait.x1} y1={trait.y1} x2={trait.x2} y2={trait.y2} />
+          {trait.pointes.map((pointe) => (
+            <g class={`magies-relation__${pointe.forme}`} transform={pointe.transform}>
+              <path d={POINTES[pointe.forme].dessin} />
+              {POINTES[pointe.forme].arete && <path class="magies-relation__arete" d={POINTES[pointe.forme].arete} />}
+            </g>
+          ))}
+        </g>
+      ))
+    }
+    {
+      relations.boucles.map((boucle) => (
+        <g class={`magies-relation magies-relation--boucle ${avec(boucle.id)}`}>
+          <path class="magies-relation__boucle" d={boucle.chemin} />
+          {boucle.pointes.map((pointe) => (
+            <g class={`magies-relation__${pointe.forme}`} transform={pointe.transform}>
+              <path d={POINTES[pointe.forme].dessin} />
+              {POINTES[pointe.forme].arete && <path class="magies-relation__arete" d={POINTES[pointe.forme].arete} />}
+            </g>
+          ))}
+        </g>
+      ))
+    }
+  </svg>
+  <ul class="magies-orbite__liste">
+    {
+      noeuds.map((noeud) => (
+        <li
+          class={`magies-orbite__position magies-orbite__position--${noeud.region}`}
+          data-magie={cleCss(noeud)}
+          style={`--x: ${noeud.x / 10}%; --y: ${pourcent(noeud.y, HAUTEUR_GRANDE)}%; --mx: ${noeud.mx / 10}%; --my: ${pourcent(noeud.my, HAUTEUR_ETROITE)}%; --couleur-magie: ${noeud.couleur}; --ordre: ${noeud.ordre}`}
+        >
+          <a
+            class="magies-orbite__noeud"
+            href={entryHref(noeud.entry)}
+            aria-label={noeud.nom}
+          >
+            <span class="magies-orbite__pastille" aria-hidden="true" />
+            <span class="magies-orbite__nom">{noeud.nom}</span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</div>
+
+<p class="magies-legende">
+  <span class="magies-legende__item">Survolez une magie :</span>
+  <span class="magies-legende__item">
+    A
+    <svg viewBox="-34 -12 36 24" aria-hidden="true"><line x1="-34" y1="0" x2="-26" y2="0" /><path d={POINTES.epee.dessin} /></svg>
+    B : A est efficace contre B
+  </span>
+  <span class="magies-legende__item">
+    A
+    <svg viewBox="-34 -12 36 24" aria-hidden="true"><line x1="-34" y1="0" x2="-20" y2="0" /><g transform="translate(-11 0)"><path d={POINTES.bouclier.dessin} /><path class="magies-legende__arete" d={POINTES.bouclier.arete} /></g></svg>
+    B : B résiste à A (boucle : résiste à elle-même)
+  </span>
+</p>
+
+<style is:inline set:html={orbiteCss + '\n' + surbrillance}></style>

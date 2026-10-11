@@ -7,22 +7,31 @@
 //   node tools/flux-git/cli.mjs verifier-pr --base <cible> --head <source> --sha <commit> [--depot-source <o/r> --depot <o/r>]
 //       une PR : source permise pour la cible, bon point de départ, version non modifiée à la main (code 1 sinon)
 //   node tools/flux-git/cli.mjs appliquer --base <cible> --head <source> [--pr <n>] [--texte-fichier <f>]... [--pousser]
-//       après une fusion : incréments de version, refusion de master dans dev, puis ce qu'il faut publier (regles.mjs, livrableDe) :
-//       avant la 1.0 le site (branche « site », depuis dev), à partir de la 1.0 les installateurs (étiquettes posées ici)
+//       après une fusion : incréments de version, refusion de master dans dev, étiquette de chaque nouvelle version (VX.Y.Z sur dev,
+//       VX.Y sur master), puis ce qu'il faut publier (regles.mjs, livrableDe) : avant la 0.2.0 le site (branche « site », depuis dev),
+//       à partir de la 0.2.0 les installateurs (étiquettes posées ici)
+//   node tools/flux-git/cli.mjs balayer [--pousser]
+//       toutes les branches du dépôt, depuis la branche par défaut (une branche créée depuis un vieux commit échappe à la garde de
+//       création, lue dans ce commit) : nom interdit et déjà fusionnée → supprimée ; nom interdit avec du travail non fusionné, ou
+//       feature/hotfix au mauvais point de départ → signalée (code 10), jamais supprimée
+//   node tools/flux-git/cli.mjs supprimer-fusionnee --branche feature/<nom>|hotfix/<nom> --sha <commit fusionné> [--pousser]
+//       après la fusion : supprime la branche sur GitHub seulement si elle pointe encore sur le commit fusionné (bail atomique) ;
+//       si elle a reçu des commits depuis, elle est gardée (avertissement)
 //   node tools/flux-git/cli.mjs regenerer --branche master|dev [--pousser]
-//       republier une branche sans changer sa version (nouvelle étiquette d'installateur, ou le site avant la 1.0)
+//       republier une branche sans changer sa version (nouvelle étiquette d'installateur, ou le site avant la 0.2.0)
 //
 // Options communes : --distant <nom> (défaut origin). Sans --pousser, rien ne quitte le dépôt local (essai à blanc).
 // Résultat de appliquer/regenerer : JSON sur la sortie standard, et dans $GITHUB_OUTPUT s'il existe :
-//   installateurs=<json>   les installateurs à fabriquer ([] avant la 1.0)
-//   site=<commit>          le commit de dev à publier sur la branche « site » (vide à partir de la 1.0)
+//   installateurs=<json>   les installateurs à fabriquer ([] avant la 0.2.0)
+//   site=<commit>          le commit de dev à publier sur la branche « site » (vide à partir de la 0.2.0)
+//   a_supprimer=<branche>  la feature ou la hotfix fusionnée, à supprimer sur GitHub une fois tout fait (vide sinon)
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  DEV, FAMILLES, MASTER, demandeMajeure, etiquette, livrableDe, modeDeEtiquette, planifier, poserVersionJson, typeDeFusion, verifierCreation,
-  verifierPR,
+  DEV, FAMILLES, MASTER, brancheASupprimer, familleDe, demandeMajeure, etiquette, etiquetteDeVersion, livrableDe, modeDeEtiquette, planifier, poserVersionJson,
+  typeDeFusion, verifierCreation, verifierPR,
 } from './regles.mjs';
 
 /** Les fichiers qui portent la version (le pied de page du site lit client/package.json). */
@@ -37,7 +46,7 @@ function git(args, { ok = [0], entree } = {}) {
   const r = spawnSync('git', args, { encoding: 'utf8', input: entree, maxBuffer: 64 * 1024 * 1024 });
   if (r.error) throw r.error;
   if (!ok.includes(r.status)) throw new Error(`git ${args.join(' ')} : ${(r.stderr || r.stdout).trim()}`);
-  return { sortie: r.stdout.trim(), code: r.status };
+  return { sortie: r.stdout.trim(), code: r.status, erreur: (r.stderr || '').trim() };
 }
 const sortie = (args) => git(args).sortie;
 const existe = (ref) => git(['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], { ok: [0, 1] }).code === 0;
@@ -75,14 +84,67 @@ function verifierOrigine(famille, sha, distant) {
 
 function verifierCreationCmd({ branche, sha, distant }) {
   // Tant que master et dev n'existent pas toutes les deux, le flux n'est pas en place : rien n'est vérifié ni supprimé (mise en place du dépôt).
-  const absentes = [MASTER, DEV].filter((b) => !existe(`${distant}/${b}`));
-  if (absentes.length) return `${branche} : flux Git pas encore en place (${absentes.join(' et ')} absente${absentes.length > 1 ? 's' : ''}), aucune vérification.`;
+  const absent = fluxAbsent(distant);
+  if (absent) return `${branche} : ${absent}, aucune vérification.`;
   const r = verifierCreation(branche);
   if (!r.ok) throw new Refus(r.raison);
   if (r.famille === 'principale' || r.famille === 'publication') return `${branche} : branche ${r.famille}.`;
   const probleme = verifierOrigine(r.famille, sha, distant);
   if (probleme) throw new Refus(`${branche} : ${probleme}`);
   return `${branche} : créée depuis ${r.depuis}, conforme.`;
+}
+
+/** Le flux est en place quand master et dev existent toutes les deux ; avant, ni la garde ni le balayage n'agissent. */
+function fluxAbsent(distant) {
+  const absentes = [MASTER, DEV].filter((b) => !existe(`${distant}/${b}`));
+  return absentes.length ? `flux Git pas encore en place (${absentes.join(' et ')} absente${absentes.length > 1 ? 's' : ''})` : null;
+}
+
+function balayer({ distant, envoyer }) {
+  git(['fetch', '--quiet', '--prune', distant]);
+  const absent = fluxAbsent(distant);
+  if (absent) return { type: 'balayage', resultats: [], message: `${absent} : aucun balayage.` };
+  // Noms complets (refs/remotes/<distant>/…) : « %(refname:short) » raccourcit « x/HEAD » en « x », et un nom court peut désigner une étiquette.
+  const prefixe = `refs/remotes/${distant}/`;
+  const refs = sortie(['for-each-ref', '--format=%(refname)%09%(objectname)%09%(symref)', prefixe]).split('\n').filter(Boolean)
+    .map((l) => l.split('\t')).filter(([, , symref]) => !symref)
+    .map(([ref, sha]) => ({ ref, sha, branche: ref.slice(prefixe.length) }));
+  const resultats = [];
+  for (const { ref, sha, branche } of refs) {
+    const famille = familleDe(branche);
+    if (famille === 'principale' || famille === 'publication') continue;
+    if (!famille) {
+      const fusionnee = estAncetre(ref, `${prefixe}${DEV}`) || estAncetre(ref, `${prefixe}${MASTER}`);
+      resultats.push(fusionnee
+        ? { branche, sha, action: 'supprimee', raison: 'nom interdit, et tout son contenu est déjà dans dev ou master' }
+        : { branche, sha, action: 'signalee', raison: 'nom interdit, mais elle contient du travail absent de dev et de master : le reprendre dans une feature/<nom> (ou la supprimer à la main)' });
+      continue;
+    }
+    const probleme = verifierOrigine(famille, sha, distant);
+    if (probleme) resultats.push({ branche, sha, action: 'signalee', raison: probleme });
+  }
+  // Une suppression par branche, avec bail : refusée si la branche a bougé depuis la lecture ; un refus n'empêche pas les autres.
+  for (const r of resultats.filter((x) => x.action === 'supprimee')) {
+    if (!envoyer) continue;
+    const p = git(['push', '--quiet', `--force-with-lease=refs/heads/${r.branche}:${r.sha}`, distant, `:refs/heads/${r.branche}`], { ok: [0, 1, 128] });
+    if (p.code !== 0) Object.assign(r, { action: 'signalee', raison: `suppression refusée (${(p.erreur || p.sortie).split('\n').pop()}) : elle a peut-être bougé entre-temps` });
+  }
+  return { type: 'balayage', resultats, poussee: Boolean(envoyer) };
+}
+
+/** Après une fusion : la branche fusionnée est supprimée seulement si elle pointe encore sur le commit fusionné. */
+function supprimerFusionnee({ branche, sha, distant, envoyer }) {
+  const famille = familleDe(branche);
+  if (famille !== 'feature' && famille !== 'hotfix') throw new Refus(`refus de supprimer « ${branche} » : seules feature/<nom> et hotfix/<nom> le sont`);
+  if (!/^[0-9a-f]{40}$/.test(sha)) throw new Refus(`commit fusionné invalide « ${sha} »`);
+  // Comparaison exacte du nom (ls-remote filtre par fin de nom) ; aucun nom n'est mis dans une adresse.
+  const actuel = sortie(['ls-remote', '--heads', distant]).split('\n').map((l) => l.split('\t')).find(([, ref]) => ref === `refs/heads/${branche}`)?.[0];
+  if (!actuel) return `${branche} : déjà supprimée.`;
+  if (actuel !== sha) return avertir(`${branche} a reçu des commits après la fusion (${actuel.slice(0, 7)} au lieu de ${sha.slice(0, 7)}) : elle est gardée, à supprimer à la main une fois son travail repris.`);
+  if (!envoyer) return `${branche} : à supprimer (essai à blanc).`;
+  const p = git(['push', '--quiet', `--force-with-lease=refs/heads/${branche}:${sha}`, distant, `:refs/heads/${branche}`], { ok: [0, 1, 128] });
+  if (p.code !== 0) return avertir(`${branche} : suppression refusée (${(p.erreur || p.sortie).split('\n').pop()}), elle a sans doute bougé : gardée.`);
+  return `${branche} : supprimée (elle est fusionnée).`;
 }
 
 function verifierPRCmd({ base, head, sha, distant, depotSource, depot }) {
@@ -170,8 +232,11 @@ function synchroniser(source, message) {
 }
 
 function etiquettesExistantes() {
-  return sortie(['tag', '--list', 'v*']).split('\n').filter(Boolean);
+  return sortie(['tag', '--list']).split('\n').filter(Boolean);
 }
+
+/** Commit d'une étiquette déjà posée (lue après le fetch des étiquettes), ou '' si elle n'existe pas. */
+const commitDeEtiquette = (tag) => git(['rev-parse', '--verify', '--quiet', `refs/tags/${tag}^{commit}`], { ok: [0, 1] }).sortie;
 
 function pousser(distant, refs) {
   git(['push', '--quiet', '--atomic', distant, ...refs]);
@@ -203,7 +268,7 @@ function appliquer({ base, head, pr, textes, distant, envoyer, tentatives = 10 }
   if (!type) throw new Refus(`fusion hors des règles (${head} → ${base}) : aucune version ni publication. Seules feature/<nom> → dev, dev → master et hotfix/<nom> → master sont gérées.`);
   const majeure = type === 'livraison' && demandeMajeure(...textes);
   const ref = pr ? ` (PR #${pr})` : '';
-  let prodDuHotfix; // undefined : pas encore traité ; null : rien à livrer (avant la 1.0) ; sinon la livraison de production déjà étiquetée
+  let prodDuHotfix; // undefined : pas encore traité ; null : rien à livrer (avant la 0.2.0) ; sinon la livraison de production déjà étiquetée
   for (let essai = 1; essai <= tentatives; essai += 1) {
     const reessayer = (e) => {
       if (essai === tentatives) throw e;
@@ -241,7 +306,7 @@ function appliquer({ base, head, pr, textes, distant, envoyer, tentatives = 10 }
         prodDuHotfix = null;
       }
     }
-    const partiel = (message) => ({ type, majeure, journal, livraisons: prodDuHotfix ? [prodDuHotfix] : [], poussee: Boolean(envoyer), erreur: message });
+    const partiel = (message) => ({ type, majeure, journal, livraisons: prodDuHotfix ? [prodDuHotfix] : [], etiquettes: [], poussee: Boolean(envoyer), erreur: message });
 
     if (plan.master) {
       git(['checkout', '--quiet', '-B', MASTER, avant.master]);
@@ -278,14 +343,32 @@ function appliquer({ base, head, pr, textes, distant, envoyer, tentatives = 10 }
     });
     if (prodDuHotfix) livraisons.unshift(prodDuHotfix);
 
+    // Étiquettes de version (demande du propriétaire) : le commit qui porte la nouvelle version de chaque branche (VX.Y.Z sur dev,
+    // VX.Y sur master). Une étiquette déjà posée ailleurs n'est pas déplacée : signalée, elle n'empêche ni la version ni la publication.
+    const etiquettes = [];
+    for (const [branche, nouvelle] of [[MASTER, plan.master?.version], [DEV, plan.dev.version]]) {
+      if (!nouvelle) continue;
+      const tag = etiquetteDeVersion(branche, nouvelle);
+      const deja = commitDeEtiquette(tag);
+      if (deja && deja !== apres[branche]) journal.push(`${branche} : étiquette ${tag} déjà posée sur ${deja.slice(0, 7)}, laissée telle quelle`);
+      else if (!deja) etiquettes.push({ branche, version: nouvelle, tag, sha: apres[branche] });
+    }
+
     const refs = [];
     if (apres.master !== avant.master) refs.push(`${apres.master}:refs/heads/${MASTER}`);
     if (apres.dev !== avant.dev) refs.push(`${apres.dev}:refs/heads/${DEV}`);
-    for (const l of livraisons) if (l.tag && l !== prodDuHotfix) refs.push(`${l.sha}:refs/tags/${l.tag}`);
-    if (!envoyer) return { type, majeure, journal, livraisons, poussee: false };
+    // Une étiquette par nom : l'installateur de production d'une livraison porte l'étiquette de version de master (même nom, même commit).
+    const aPoser = new Map();
+    for (const { tag, sha } of [...livraisons.filter((l) => l.tag && l !== prodDuHotfix), ...etiquettes]) {
+      if (aPoser.has(tag) && aPoser.get(tag) !== sha) throw new Error(`étiquette ${tag} demandée sur deux commits (${aPoser.get(tag).slice(0, 7)}, ${sha.slice(0, 7)})`);
+      aPoser.set(tag, sha);
+    }
+    for (const [tag, sha] of aPoser) refs.push(`${sha}:refs/tags/${tag}`);
+    const aSupprimer = brancheASupprimer({ base, head });
+    if (!envoyer) return { type, majeure, journal, livraisons, etiquettes, poussee: false, aSupprimer };
     try {
       pousser(distant, refs);
-      return { type, majeure, journal, livraisons, poussee: true };
+      return { type, majeure, journal, livraisons, etiquettes, poussee: true, aSupprimer };
     } catch (e) {
       if (essai === tentatives && type === 'hotfix') return partiel(`refusion de master dans dev impossible à pousser : ${e.message}${indiceJeton(e.message)}`);
       reessayer(new Error(`${e.message}${indiceJeton(e.message)}`));
@@ -300,10 +383,10 @@ function regenerer({ branche, distant, envoyer }) {
   const sha = sortie(['rev-parse', `${distant}/${branche}`]);
   const version = versionSur(sha);
   const mode = livrableDe(branche, version);
-  if (!mode) throw new Refus(`master est en v${version} : avant la 1.0, master n'a pas de serveur, rien à publier (le site suit dev)`);
+  if (!mode) throw new Refus(`master est en v${version} : avant la 0.2.0, master n'a pas de serveur, rien à publier (le site suit dev)`);
   const tag = mode === 'site' ? null : etiquette({ mode, version, existantes: etiquettesExistantes(), motif: 'rebuild' });
   if (envoyer && tag) pousser(distant, [`${sha}:refs/tags/${tag}`]);
-  return { type: 'regeneration', journal: [], livraisons: [{ mode, branche, sha, version, tag, type: 'regeneration' }], poussee: Boolean(envoyer) };
+  return { type: 'regeneration', journal: [], livraisons: [{ mode, branche, sha, version, tag, type: 'regeneration' }], etiquettes: [], poussee: Boolean(envoyer) };
 }
 
 function options(argv) {
@@ -332,23 +415,42 @@ function principal(argv) {
   if (commande === 'verifier-pr') { exiger(o, 'base', 'head', 'sha'); return verifierPRCmd(o); }
   if (commande === 'appliquer') { exiger(o, 'base', 'head'); return appliquer(o); }
   if (commande === 'regenerer') { exiger(o, 'branche'); return regenerer(o); }
-  throw new Refus('commande attendue : verifier-creation, verifier-pr, appliquer ou regenerer');
+  if (commande === 'balayer') return balayer(o);
+  if (commande === 'supprimer-fusionnee') { exiger(o, 'branche', 'sha'); return supprimerFusionnee(o); }
+  throw new Refus('commande attendue : verifier-creation, verifier-pr, appliquer, regenerer, balayer ou supprimer-fusionnee');
 }
 
 const annoter = (texte) => (process.env.GITHUB_ACTIONS ? `::error::${texte}` : `ERREUR : ${texte}`);
+function avertir(texte) { return process.env.GITHUB_ACTIONS ? `::warning::${texte}` : `AVERTISSEMENT : ${texte}`; }
 try {
   const r = principal(process.argv.slice(2));
   if (typeof r === 'string') {
     console.log(r);
+  } else if (r.type === 'balayage') {
+    const lignes = r.message ? [r.message] : r.resultats.length
+      ? r.resultats.map((x) => `- ${x.branche} : ${x.action === 'supprimee' ? (r.poussee ? 'supprimée' : 'à supprimer') : 'signalée'} (${x.raison})`)
+      : ['Toutes les branches sont conformes.'];
+    console.log(lignes.join('\n'));
+    if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Balayage des branches\n\n${lignes.join('\n')}\n`);
+    const signalees = r.resultats.filter((x) => x.action === 'signalee');
+    if (signalees.length) {
+      console.error(annoter(`${signalees.length} branche(s) hors des règles à reprendre : ${signalees.map((x) => x.branche).join(', ')}`));
+      process.exit(CODE_REFUS);
+    }
   } else {
     console.log(JSON.stringify(r, null, 2));
     const installateurs = r.livraisons.filter((l) => l.mode !== 'site');
     const site = r.livraisons.find((l) => l.mode === 'site');
-    if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `installateurs=${JSON.stringify(installateurs)}\nsite=${site ? site.sha : ''}\n`);
+    // a_supprimer n'est écrit que si tout est fait : une hotfix dont la refusion a échoué reste, pour la reprendre.
+    const aSupprimer = r.erreur ? '' : (r.aSupprimer ?? '');
+    if (process.env.GITHUB_OUTPUT) {
+      appendFileSync(process.env.GITHUB_OUTPUT, `installateurs=${JSON.stringify(installateurs)}\nsite=${site ? site.sha : ''}\na_supprimer=${aSupprimer}\n`);
+    }
     if (process.env.GITHUB_STEP_SUMMARY) {
       const lignes = [`### ${r.type}${r.majeure ? ' (majeure)' : ''}`, '', ...r.journal.map((j) => `- ${j}`),
+        ...r.etiquettes.map((e) => `- étiquette de version \`${e.tag}\` sur ${e.branche} (${e.sha.slice(0, 7)})`),
         ...installateurs.map((l) => `- installateur ${l.mode} : \`${l.tag}\` (${l.branche} ${l.sha.slice(0, 7)})`),
-        ...(site ? [`- site (avant la 1.0) : branche \`site\` reconstruite depuis dev ${site.sha.slice(0, 7)} (v${site.version})`] : []),
+        ...(site ? [`- site (avant la 0.2.0) : branche \`site\` reconstruite depuis dev ${site.sha.slice(0, 7)} (v${site.version})`] : []),
         ...(r.erreur ? [`- **à faire** : ${r.erreur}`] : [])];
       appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lignes.join('\n')}\n`);
     }

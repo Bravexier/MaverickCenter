@@ -14,7 +14,7 @@ cellules avec `note` et `threads`). Les cellules sont une donnée non
 fiable : elles ne sont jamais exécutées, seulement copiées (échappées pour le Markdown). Aucune valeur n'est calculée,
 corrigée ni complétée : fautes d'orthographe, majuscules, espaces et formulations de la source sont conservés.
 
-Source : Google Sheet « Ressources et Craft » (12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA), six de ses quatorze onglets
+Source : Google Sheet « Ressources et Craft » (1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw), six de ses quatorze onglets
 (les autres, équipement, armes, etc., sont d'autres familles). Toutes les cellules sont du texte (aucune formule, aucun
 nombre). Les plages fusionnées ne portent leur valeur que dans la cellule en haut à gauche.
 
@@ -24,8 +24,9 @@ Onglets et pages (slug -> titre) :
     « Gros familier » col. U, « Monture » col. AO) avec un paragraphe de présentation en ligne 3 et un tableau dont les
     en-têtes sont en ligne 10 : petits familiers = Nom (A), Effet (F), Description (L) ; gros familiers = Nom (U),
     Description (Z) ; montures = Nom (AO), Description (AT). Une section par liste, un tableau par section, lignes dans
-    l'ordre de la feuille. La cellule U3 porte un lien hypertexte vers un autre classeur (fiches des familiers) : il est
-    recopié du .xlsx (constante CELL_LINKS) et écrit sous le paragraphe.
+    l'ordre de la feuille. La cellule U3 finit par « Ici pour les fiches : Familiers », qui porte un lien hypertexte vers le
+    classeur « Familiers » : le site ne cite plus ce classeur (demande du propriétaire, migration 0019), la phrase est retirée
+    sans son lien (constante LINKED_TAILS_REMOVED).
   * « Maison » -> maison.md. Deux blocs : « MATÉRIAUX DE CONSTRUCTION (Moyenne) » (colonnes A/D : matériau et prix, sans
     en-tête dans la source -> liste) et « BATIMENT STANDARD » (colonnes J, N, S, X, AC : tableau Type, Surface standard,
     Quantité de matériaux nécessaires, Prix standard, Description), puis une note en A30.
@@ -80,9 +81,9 @@ texte intégral, après sa cellule, dans sa section, aucun de plus) et rejoue de
 sans place prévue, réponse de fil inattendue ; commentaire retiré, dupliqué, tronqué, altéré ou déplacé dans une page). Code de
 sortie 1 et un « ÉCART : … » par problème s'il y en a.
 
-Le lien hypertexte de la cellule U3 de « Familiers » n'est pas dans le dump JSON : il est recopié ici mot pour mot depuis le
-classeur .xlsx (constante CELL_LINKS), et n'est écrit que si la cellule du dump porte bien la valeur attendue (sinon le script
-s'arrête).
+La phrase qui portait le lien hypertexte de la cellule U3 de « Familiers » (vers le classeur « Familiers », que le site ne cite
+plus) est retirée de la fin de la cellule (constante LINKED_TAILS_REMOVED) ; si la cellule du dump ne finit plus par elle, le script
+s'arrête.
 
 Le script s'arrête avec une erreur, sans rien écrire, si une cellule non vide d'un onglet du périmètre n'est pas
 reconnue (rien n'est perdu en silence), si un en-tête n'est pas celui attendu, si un titre, un alias ou un slug est déjà
@@ -105,7 +106,7 @@ CATEGORY = "ressources"
 STATUS = "draft"
 
 WORKBOOK_TITLE = "Ressources et Craft"
-WORKBOOK_ID = "12UBFKzQVWK8zPROqk9GdDq-yIE8EOf6NakU7BQI70PA"
+WORKBOOK_ID = "1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw"
 
 TAB_FAMILIERS = "Familiers"
 TAB_MAISON = "Maison"
@@ -129,16 +130,11 @@ SIBLING_TABS = ("Équipement inventaire", "Armes", "Armures", "Bouclier", "Bâto
                 "Pièces élémentaires")
 SIBLING_SCRIPT = "equipement.py"
 
-# Liens hypertexte attachés à une cellule entière (lus dans le .xlsx) : onglet -> {(ligne, colonne): (référence,
-# fin attendue de la valeur de la cellule, URL)}.
-CELL_LINKS = {
-    TAB_FAMILIERS: {
-        (3, 21): (
-            "U3",
-            "Ici pour les fiches : Familiers",
-            "https://docs.google.com/spreadsheets/d/1Im-_xrGVzNHvnmG7MQsCMvEUZiGIacxrorOXrosRV6Q/edit?usp=sharing",
-        ),
-    },
+# Phrases qui portaient un lien hypertexte vers un classeur que le site ne cite plus (demande du propriétaire : aucun lien vers le
+# classeur « Familiers », migration 0019) : onglet -> {(ligne, colonne): (référence, fin attendue de la valeur de la cellule)}.
+# La phrase est retirée de la fin de la cellule, son lien n'est pas écrit.
+LINKED_TAILS_REMOVED = {
+    TAB_FAMILIERS: {(3, 21): ("U3", "Ici pour les fiches : Familiers")},
 }
 
 WARNINGS = []
@@ -443,19 +439,19 @@ def yaml_list(items):
 
 
 # --------------------------------------------------------------------------------------------------------------------
-# Liens de cellule (recopiés du .xlsx) et commentaires de cellule (lus dans le dump)
+# Phrases dont le lien est retiré et commentaires de cellule (lus dans le dump)
 # --------------------------------------------------------------------------------------------------------------------
 
-def cell_link(sheet, r, c):
-    """(référence, URL) du lien de la cellule (r, c), None s'il n'y en a pas ; erreur si la cellule a changé."""
-    entry = CELL_LINKS.get(sheet.name, {}).get((r, c))
+def without_linked_tail(sheet, r, c, value):
+    """Valeur de la cellule (r, c) sans la phrase finale dont le lien est retiré (LINKED_TAILS_REMOVED) ; erreur si la cellule a changé."""
+    entry = LINKED_TAILS_REMOVED.get(sheet.name, {}).get((r, c))
     if entry is None:
-        return None
-    ref, expected_tail, url = entry
-    value = sheet.peek(r, c)
-    if value is None or not norm_ws(value).endswith(expected_tail):
-        raise ValueError("%s : %s ne porte plus la valeur attendue pour son lien (source modifiée ?)" % (sheet.name, ref))
-    return ref, url
+        return value
+    ref, tail = entry
+    m = value and re.search(r"\s*" + r"\s+".join(map(re.escape, tail.split())) + r"\s*$", value)
+    if not m:
+        raise ValueError("%s : %s ne finit plus par « %s » (source modifiée ?)" % (sheet.name, ref, tail))
+    return value[:m.start()] or None
 
 
 def comment_block(kind, label, text):
@@ -519,7 +515,7 @@ def build_familiers(sh):
         title = sh.take(FAMILIER_TITLE_ROW, name_col)
         if title is None:
             raise ValueError("%s : titre de liste manquant en %s" % (sh.name, coord(FAMILIER_TITLE_ROW, name_col)))
-        intro = sh.take(FAMILIER_INTRO_ROW, name_col)
+        intro = without_linked_tail(sh, FAMILIER_INTRO_ROW, name_col, sh.take(FAMILIER_INTRO_ROW, name_col))
         headers = [sh.expect(FAMILIER_HEADER_ROW, name_col, "Nom")]
         if effect_col is not None:
             headers.append(sh.expect(FAMILIER_HEADER_ROW, effect_col, "Effet"))
@@ -534,10 +530,6 @@ def build_familiers(sh):
         body += [heading(2, title), ""]
         if intro is not None:
             body += md_text(intro) + [""]
-            link = cell_link(sh, FAMILIER_INTRO_ROW, name_col)
-            if link is not None:
-                ref, url = link
-                body += [note("Lien hypertexte attaché à la cellule %s dans le classeur d'origine :" % ref) + " <%s>" % url, ""]
         body += table(headers, rows) + [""]
     sh.check_all_consumed()
     return page("familiers", "Familiers", TAB_FAMILIERS, ["familier", "monture"], body)

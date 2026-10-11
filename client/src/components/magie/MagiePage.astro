@@ -1,0 +1,152 @@
+---
+import { couleurDeMagie, nombre, sortsParNpm, texteSurCouleurDeMagie } from '../../lib/sort-format.mjs';
+import magieBaseCss from '../../styles/magie/base.css?raw';
+import magiePageCss from '../../styles/magie/page.css?raw';
+import magieSortsCss from '../../styles/magie/sorts.css?raw';
+import magieDetailCss from '../../styles/magie/sort-detail.css?raw';
+import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
+import magieCreaturesCss from '../../styles/magie/creatures.css?raw';
+import magieResponsiveCss from '../../styles/magie/responsive.css?raw';
+import magiePrintCss from '../../styles/magie/print.css?raw';
+import { racesOfMagie } from '../../lib/magie-relations.mjs';
+import { magiesDuPotentiel, POTENTIEL_ILLIMITE } from '../../lib/potentiel-illimite.mjs';
+import { pageHref, type Magies, type MagieDb } from '../../lib/magies';
+import { attributEd } from '../../lib/edition-modele.mjs';
+import type { WikiEntry } from '../../lib/wiki';
+import Bulles from './Bulles.astro';
+import MagieAffinites from './MagieAffinites.astro';
+import MagieEtats from './MagieEtats.astro';
+import MagieSorts from './MagieSorts.astro';
+import RacesDeMagie from './RacesDeMagie.astro';
+import SortsDuPotentiel from './SortsDuPotentiel.astro';
+import Texte from './Texte.astro';
+
+const magieCss = [magieBaseCss, magiePageCss, magieSortsCss, magieDetailCss, magieTooltipsCss, magieCreaturesCss, magieResponsiveCss, magiePrintCss].join('\n');
+
+// Gabarit commun des pages de magie : bannière (nom, rôles, ressources offertes), présentation, altération d'état liée, résistances, Mode Hyper, sorts par niveau de
+// puissance magique (le Potentiel Illimité, qui n'en a pas à lui, montre à leur place ceux des autres magies, en onglets : SortsDuPotentiel.astro),
+// races. Il affiche les lignes de la base (tables magie, sort… ; lib/magies-db.mjs) : pour changer une magie ou un sort, on change la base. Seuls le titre, les alias et le statut (pages du wiki) et la section « Disponibilité par race » (`magies_innees` des pages de
+// race, avec l'exception du Nain : lib/magie-relations.mjs) viennent encore du front matter.
+interface Props {
+  entry: WikiEntry;
+  entries: WikiEntry[];
+  magie: MagieDb;
+  magies: Magies;
+  statusNote?: string;
+}
+const { entry, entries, magie, magies, statusNote } = Astro.props;
+const couleur = couleurDeMagie(magie.nom);
+const couleurTexte = texteSurCouleurDeMagie(magie.nom);
+
+// Champs modifiables sur le site de dev (lib/edition-modele.mjs) : chaque élément qui affiche une colonne de la base porte son attribut `data-ed` ;
+// un champ vide est rendu caché (`data-ed-cadre`), pour pouvoir être rempli en mode modification.
+const ed = (colonne: string) => attributEd('magie', { id: magie.id }, colonne);
+const ressources = [
+  { label: 'Santé offerte', valeur: String(magie.sante ?? ''), colonne: 'sante_offerte' },
+  { label: 'Chakra offert', valeur: String(magie.chakra ?? ''), colonne: 'chakra_offert' },
+  { label: 'Caractéristique bonus', valeur: magie.caracteristique ? magie.caracteristique.brut : '', colonne: 'caracteristique_brut' },
+].map((r) => ({ ...r, vide: r.valeur === '', valeur: nombre(r.valeur), nul: r.valeur === '0', texte: !/^-?\d+$/.test(r.valeur) }));
+const groupes = sortsParNpm(magie.sorts);
+const autresMagies = magie.id === POTENTIEL_ILLIMITE ? magiesDuPotentiel(magies.magies) : [];
+const { avec, sans } = racesOfMagie(entries, entry);
+const aDesRaces = avec.length + sans.length > 0;
+const pageModeHyper = entries.find((e) => e.id === 'guide/liste-des-effets-mode-hyper');
+
+const aPresentation = magie.description.length > 0 || magie.descriptionPhysique.length > 0 || Boolean(magie.banniere);
+const nav = [
+  { href: '#presentation', label: 'Présentation', show: aPresentation },
+  { href: '#alteration', label: 'Altération d’état', show: magie.etats.length > 0 },
+  { href: '#affinites', label: 'Résistances', show: true },
+  { href: '#mode-hyper', label: 'Mode Hyper', show: magie.modeHyper.length > 0 },
+  { href: '#sorts', label: 'Sorts', show: groupes.length > 0 || autresMagies.length > 0 },
+  { href: '#races-disponibles', label: 'Races', show: aDesRaces },
+].filter((n) => n.show);
+---
+
+<style is:inline set:html={magieCss}></style>
+<div class="magie" style={`--couleur-magie: ${couleur}; --couleur-texte-magie: ${couleurTexte}`}>
+  <header class="magie-hero">
+    <p class="magie-hero__surtitre">Magie</p>
+    <h1>{entry.data.title}</h1>
+    {entry.data.aliases.length > 0 && <p class="magie-hero__aliases">Aussi appelée {entry.data.aliases.join(' · ')}</p>}
+    {
+      magie.roles.length > 0 && (
+        <ul class="magie-hero__roles" aria-label="Rôles">
+          {magie.roles.map((r) => <li data-ed={attributEd('magie_role', { magie_id: magie.id, rang: r.rang }, 'role_brut')}>{r.brut}</li>)}
+        </ul>
+      )
+    }
+    <dl class="magie-stats">
+      {ressources.map((r) => (
+        <div class={`magie-stat${r.nul ? ' magie-stat--nul' : ''}${r.texte ? ' magie-stat--texte' : ''}`} data-ed-cadre hidden={r.vide}>
+          <dt>{r.label}</dt>
+          <dd data-ed={ed(r.colonne)}>{r.valeur}</dd>
+        </div>
+      ))}
+    </dl>
+    {magie.barre4 && <p class="magie-hero__barre"><strong>4ème barre</strong> <span data-ed={ed('barre4_texte')}>{magie.barre4.texte}</span></p>}
+  </header>
+
+  {statusNote && <p class="banner" role="note">{statusNote}</p>}
+
+  {
+    nav.length > 1 && (
+      <nav class="magie-nav no-print" aria-label="Sections de la page">
+        {nav.map((n) => <a href={n.href}>{n.label}</a>)}
+        {groupes.length > 0 && (
+          <span class="magie-nav__npm" role="group" aria-label="Niveaux de puissance magique">
+            {groupes.map((g) => <a href={`#npm-${g.niveau}`} title={`Niveau de Puissance Magique ${g.niveau}`}>NPM {g.niveau}</a>)}
+          </span>
+        )}
+      </nav>
+    )
+  }
+
+  <section class="magie-section magie-presentation" id="presentation" aria-label="Présentation" data-ed-cadre hidden={!aPresentation}>
+    <div class="magie-prose magie-presentation__texte">
+      <p class="banner" role="note" data-ed-cadre hidden={!magie.banniere}><strong data-ed={ed('banniere')}>{magie.banniere}</strong></p>
+      <div data-ed={ed('description')} data-ed-rendu="blocs"><Texte blocs={magie.description} /></div>
+    </div>
+    <aside class="magie-card magie-card--physique" data-ed-cadre hidden={magie.descriptionPhysique.length === 0}>
+      <h2>Description physique</h2>
+      <div class="magie-prose" data-ed={ed('description_physique')} data-ed-rendu="blocs"><Texte blocs={magie.descriptionPhysique} /></div>
+    </aside>
+  </section>
+
+  <section class="magie-section magie-card" id="explication" aria-labelledby="explication-titre" data-ed-cadre hidden={magie.explication.length === 0}>
+    <h2 id="explication-titre">Explication</h2>
+    <div class="magie-prose" data-ed={ed('explication')} data-ed-rendu="blocs"><Texte blocs={magie.explication} /></div>
+  </section>
+
+  <MagieEtats magie={magie} magies={magies} />
+
+  <MagieAffinites magie={magie} magies={magies} />
+
+  {
+    magie.modeHyper.length > 0 && (
+      <section class="magie-section" id="mode-hyper" aria-labelledby="mode-hyper-titre">
+        <h2 id="mode-hyper-titre">
+          Capacité Mode Hyper
+          {pageModeHyper && (
+            <a class="lien-plus no-print" href={pageHref(pageModeHyper.id)} title="Liste des effets mode hyper" aria-label="Liste des effets mode hyper"><span aria-hidden="true">+</span></a>
+          )}
+        </h2>
+        <div class="hyper">
+          {magie.modeHyper.map((v) => (
+            <article class="hyper__carte">
+              <h3>{v.libelle}</h3>
+              <div data-ed={attributEd('mode_hyper_effet', { id: v.id }, 'effet')} data-ed-rendu="blocs"><Texte blocs={v.blocs} /></div>
+            </article>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  {groupes.length > 0 && <MagieSorts groupes={groupes} magies={magies} />}
+  {autresMagies.length > 0 && <SortsDuPotentiel autres={autresMagies} magies={magies} entries={entries} />}
+
+  <Bulles />
+
+  {aDesRaces && <RacesDeMagie entry={entry} entries={entries} />}
+</div>

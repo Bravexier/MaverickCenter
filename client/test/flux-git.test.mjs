@@ -3,14 +3,14 @@
 // hotfix → master avec refusion dans dev, conflits, contrôles des créations de branches et des PR.
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, describe, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
-  avantLaUn, comparerVersions, demandeMajeure, etiquette, familleDe, incrementer, livrableDe, modeDeEtiquette, planifier, poserVersionJson,
-  typeDeFusion, verifierCreation, verifierPR,
+  avantHebergement, avantLaUn, brancheASupprimer, comparerVersions, demandeMajeure, etiquette, etiquetteDeVersion, familleDe, incrementer, livrableDe, modeDeEtiquette,
+  planifier, poserVersionJson, PREMIERE_VERSION_HEBERGEE, typeDeFusion, verifierCreation, verifierPR,
 } from '../../tools/flux-git/regles.mjs';
 import { modeDuSite } from '../src/lib/mode-site.mjs';
 
@@ -23,7 +23,7 @@ describe('règles pures', () => {
     assert.equal(familleDe('feature/carte'), 'feature');
     assert.equal(familleDe('feature/a/b'), 'feature');
     assert.equal(familleDe('hotfix/lien-casse'), 'hotfix');
-    assert.equal(familleDe('site'), 'publication', 'branche du site avant la 1.0, écrite par le bot');
+    assert.equal(familleDe('site'), 'publication', 'branche du site avant la 0.2.0, écrite par le bot');
     for (const nom of ['feature/', 'hotfix/', 'feature', 'develop', 'main', 'dev/x', 'claude/x', 'features/x', 'Feature/x', 'site/x', 'feature/x/']) {
       assert.equal(familleDe(nom), null, nom);
     }
@@ -46,6 +46,15 @@ describe('règles pures', () => {
     assert.equal(typeDeFusion({ base: 'main', head: 'feature/x' }), null);
   });
 
+  test('branche supprimée après la fusion : la feature ou la hotfix, jamais dev ni une branche hors des règles', () => {
+    assert.equal(brancheASupprimer({ base: 'dev', head: 'feature/carte' }), 'feature/carte');
+    assert.equal(brancheASupprimer({ base: 'master', head: 'hotfix/lien' }), 'hotfix/lien');
+    assert.equal(brancheASupprimer({ base: 'master', head: 'dev' }), null, 'la source d\'une livraison reste');
+    assert.equal(brancheASupprimer({ base: 'master', head: 'feature/x' }), null);
+    assert.equal(brancheASupprimer({ base: 'main', head: 'feature/x' }), null);
+    assert.equal(brancheASupprimer({ base: 'dev', head: 'claude/x' }), null);
+  });
+
   test('versions : incréments et marqueur [V: X+1]', () => {
     assert.equal(incrementer('0.1.25', 'patch'), '0.1.26');
     assert.equal(incrementer('0.1.25', 'mineure'), '0.2.0');
@@ -62,12 +71,12 @@ describe('règles pures', () => {
     assert.deepEqual(planifier({ type: 'feature', versionMaster: '0.1.25', versionDev: '0.1.27' }),
       { master: null, dev: { version: '0.1.28', synchroniser: false }, livrer: ['site'] });
     assert.deepEqual(planifier({ type: 'livraison', versionMaster: '0.1.27', versionDev: '0.1.27' }),
-      { master: { version: '0.2.0' }, dev: { version: '0.2.0', synchroniser: true }, livrer: ['site'] });
+      { master: { version: '0.2.0' }, dev: { version: '0.2.0', synchroniser: true }, livrer: ['prod', 'test'] });
     assert.deepEqual(planifier({ type: 'livraison', versionMaster: '0.1.27', versionDev: '0.1.27', majeure: true }),
       { master: { version: '1.0.0' }, dev: { version: '1.0.0', synchroniser: true }, livrer: ['prod', 'test'] });
     assert.equal(planifier({ type: 'livraison', versionMaster: '0.1.27', versionDev: '0.1.29' }).dev.version, '0.2.0', 'jamais en arrière');
     assert.deepEqual(planifier({ type: 'hotfix', versionMaster: '0.2.0', versionDev: '0.2.3' }),
-      { master: null, dev: { version: '0.2.4', synchroniser: true }, livrer: ['site'] });
+      { master: null, dev: { version: '0.2.4', synchroniser: true }, livrer: ['prod', 'test'] });
     assert.deepEqual(planifier({ type: 'feature', versionMaster: '1.0.0', versionDev: '1.0.4' }).livrer, ['test']);
     assert.deepEqual(planifier({ type: 'livraison', versionMaster: '1.0.4', versionDev: '1.0.4' }).livrer, ['prod', 'test']);
     assert.deepEqual(planifier({ type: 'hotfix', versionMaster: '1.1.0', versionDev: '1.1.3' }),
@@ -75,33 +84,63 @@ describe('règles pures', () => {
     assert.throws(() => planifier({ type: 'autre', versionMaster: '0.1.0', versionDev: '0.1.0' }), /inconnu/);
   });
 
-  test('la 1.0 est le signal : avant, un seul site depuis dev ; ensuite, serveur normal (master) et serveur de test (dev)', () => {
+  test('la 0.2.0 est la première version hébergée : avant, un seul site depuis dev ; ensuite, serveur normal (master) et serveur de test (dev)', () => {
+    assert.equal(PREMIERE_VERSION_HEBERGEE, '0.2.0');
+    assert.equal(avantHebergement('0.1.99'), true);
+    assert.equal(avantHebergement('0.2.0'), false);
     assert.equal(avantLaUn('0.99.12'), true);
     assert.equal(avantLaUn('1.0.0'), false);
-    assert.equal(livrableDe('dev', '0.3.1'), 'site');
-    assert.equal(livrableDe('master', '0.3.0'), null);
+    assert.equal(livrableDe('dev', '0.1.64'), 'site');
+    assert.equal(livrableDe('master', '0.1.64'), null);
+    assert.equal(livrableDe('dev', '0.2.0'), 'test');
+    assert.equal(livrableDe('master', '0.2.0'), 'prod');
+    assert.equal(livrableDe('dev', '0.3.1'), 'test');
     assert.equal(livrableDe('dev', '1.0.0'), 'test');
     assert.equal(livrableDe('master', '1.0.0'), 'prod');
     assert.equal(livrableDe('master', '2.4.1'), 'prod');
     assert.throws(() => livrableDe('feature/x', '1.0.0'), /master ou dev/);
   });
 
-  test('étiquettes uniques des installateurs', () => {
-    assert.equal(etiquette({ mode: 'prod', version: '0.2.0' }), 'v0.2.0');
-    assert.equal(etiquette({ mode: 'test', version: '0.2.3' }), 'v0.2.3-test');
-    assert.equal(etiquette({ mode: 'prod', version: '0.2.0', existantes: ['v0.2.0'], motif: 'hotfix' }), 'v0.2.0-hotfix.1');
-    assert.equal(etiquette({ mode: 'prod', version: '0.2.0', existantes: ['v0.2.0', 'v0.2.0-hotfix.1'] }), 'v0.2.0-hotfix.2');
-    assert.equal(etiquette({ mode: 'test', version: '0.2.3', existantes: ['v0.2.3-test'] }), 'v0.2.3-test-rebuild.1');
+  test('étiquettes de version (demande du propriétaire) : VX.Y.Z sur dev, VX.Y sur master', () => {
+    assert.equal(etiquetteDeVersion('dev', '0.1.75'), 'V0.1.75');
+    assert.equal(etiquetteDeVersion('dev', '0.2.0'), 'V0.2.0');
+    assert.equal(etiquetteDeVersion('master', '0.2.0'), 'V0.2');
+    assert.equal(etiquetteDeVersion('master', '1.0.0'), 'V1.0');
+    assert.throws(() => etiquetteDeVersion('feature/x', '0.2.0'), /master ou dev/);
+    assert.throws(() => etiquetteDeVersion('dev', 'v0.2.0'), /version invalide/);
+  });
+
+  test('étiquettes uniques des installateurs : la production prend l\'étiquette de version de master', () => {
+    assert.equal(etiquette({ mode: 'prod', version: '0.2.0' }), 'V0.2');
+    assert.equal(etiquette({ mode: 'test', version: '0.2.3' }), 'V0.2.3-test');
+    assert.equal(etiquette({ mode: 'prod', version: '0.2.0', existantes: ['V0.2'], motif: 'hotfix' }), 'V0.2-hotfix.1');
+    assert.equal(etiquette({ mode: 'prod', version: '0.2.0', existantes: ['V0.2', 'V0.2-hotfix.1'] }), 'V0.2-hotfix.2');
+    assert.equal(etiquette({ mode: 'prod', version: '0.2.0', existantes: ['V0.2'], motif: 'rebuild' }), 'V0.2-rebuild.1');
+    assert.equal(etiquette({ mode: 'test', version: '0.2.3', existantes: ['V0.2.3', 'V0.2.3-test'] }), 'V0.2.3-test-rebuild.1');
+    assert.equal(etiquette({ mode: 'test', version: '0.2.3', existantes: ['V0.2.3'] }), 'V0.2.3-test', 'l\'étiquette de version de dev est à côté');
     assert.throws(() => etiquette({ mode: 'preprod', version: '0.2.3' }), /mode inconnu/);
-    assert.equal(modeDeEtiquette('v0.2.3-test'), 'test');
-    assert.equal(modeDeEtiquette('v0.2.3-test-rebuild.1'), 'test');
-    assert.equal(modeDeEtiquette('v0.2.0-hotfix.1'), 'prod');
+    assert.equal(modeDeEtiquette('V0.2.3-test'), 'test');
+    assert.equal(modeDeEtiquette('V0.2.3-test-rebuild.1'), 'test');
+    assert.equal(modeDeEtiquette('V0.2'), 'prod');
+    assert.equal(modeDeEtiquette('V0.2-hotfix.1'), 'prod');
+    assert.equal(modeDeEtiquette('V0.2-rebuild.3'), 'prod');
+    assert.equal(modeDeEtiquette('V0.2.3'), null, 'étiquette de version de dev : pas d\'installateur');
+  });
+
+  test('aucune étiquette ne diffère d\'une autre par la seule casse (elles se confondraient dans un clone Windows ou macOS)', () => {
+    const noms = [];
+    for (const v of ['0.2.0', '0.2.1', '0.3.0', '1.0.0']) {
+      noms.push(etiquetteDeVersion('dev', v), etiquette({ mode: 'test', version: v }));
+      if (v.endsWith('.0')) noms.push(etiquetteDeVersion('master', v));
+    }
+    noms.push(etiquette({ mode: 'prod', version: '0.2.0', existantes: noms }));
+    assert.equal(new Set(noms.map((n) => n.toLowerCase())).size, new Set(noms).size, noms.join(' '));
   });
 
   test('mode du site construit : serveur de test marqué, étiquette de la livraison', () => {
-    assert.deepEqual(modeDuSite({}, '0.2.0'), { test: false, etiquette: 'v0.2.0' });
-    assert.deepEqual(modeDuSite({ SITE_MODE: 'prod', SITE_TAG: 'v0.2.0-hotfix.1' }, '0.2.0'), { test: false, etiquette: 'v0.2.0-hotfix.1' });
-    assert.deepEqual(modeDuSite({ SITE_MODE: 'test', SITE_TAG: 'v0.2.3-test' }, '0.2.3'), { test: true, etiquette: 'v0.2.3-test' });
+    assert.deepEqual(modeDuSite({}, '0.1.75'), { test: false, etiquette: 'V0.1.75' }, 'sans livraison : l\'étiquette de version de dev');
+    assert.deepEqual(modeDuSite({ SITE_MODE: 'prod', SITE_TAG: 'V0.2-hotfix.1' }, '0.2.0'), { test: false, etiquette: 'V0.2-hotfix.1' });
+    assert.deepEqual(modeDuSite({ SITE_MODE: 'test', SITE_TAG: 'V0.2.3-test' }, '0.2.3'), { test: true, etiquette: 'V0.2.3-test' });
   });
 
   test('pose de la version dans package.json et package-lock.json (texte conservé)', () => {
@@ -132,7 +171,7 @@ function git(cwd, ...args) {
 const lock = (v) => `${JSON.stringify({ name: 'm', version: v, lockfileVersion: 3, requires: true, packages: { '': { name: 'm', version: v } } }, null, 2)}\n`;
 
 let compteur = 0;
-/** Un distant nu avec master et dev à `version` (0.1.25 : avant la 1.0), et deux clones : le développeur et le bot. */
+/** Un distant nu avec master et dev à `version` (0.1.25 : avant la 0.2.0), et deux clones : le développeur et le bot. */
 function depot(version = '0.1.25') {
   const dossier = join(racine, `d${(compteur += 1)}`);
   const distant = join(dossier, 'distant.git');
@@ -182,6 +221,14 @@ function bot(d, ...args) {
   const r = spawnSync('node', [CLI, ...args], { cwd: d.bot, env: ENV, encoding: 'utf8' });
   return { code: r.status, out: r.stdout + r.stderr, json: r.stdout.startsWith('{') ? JSON.parse(r.stdout) : null };
 }
+/** Comme bot(), avec les sorties GitHub Actions ($GITHUB_OUTPUT) lues en retour. */
+function botSorties(d, ...args) {
+  const fichier = join(d.dossier, `sorties-${(compteur += 1)}`);
+  writeFileSync(fichier, '');
+  const r = spawnSync('node', [CLI, ...args], { cwd: d.bot, env: { ...ENV, GITHUB_OUTPUT: fichier }, encoding: 'utf8' });
+  const sorties = Object.fromEntries(readFileSync(fichier, 'utf8').trim().split('\n').filter(Boolean).map((l) => l.split(/=(.*)/s).slice(0, 2)));
+  return { code: r.status, out: r.stdout + r.stderr, sorties, json: r.stdout.startsWith('{') ? JSON.parse(r.stdout) : null };
+}
 /** Une feature de plus, fusionnée dans dev, et le passage du bot. */
 function feature(d, nom) {
   branche(d, nom, 'dev');
@@ -199,9 +246,11 @@ function livraison(d, ...options) {
 }
 const publie = (r) => r.json.livraisons.map((l) => [l.mode, l.tag, l.version]);
 const tags = (d) => git(d.dev, 'ls-remote', '--tags', '--refs', 'origin').split('\n').filter(Boolean).map((l) => l.split('refs/tags/')[1]).sort();
+/** Commit d'une étiquette du distant. */
+const commitDe = (d, tag) => git(distantDe(d), 'rev-parse', `refs/tags/${tag}^{commit}`);
 
 describe('le bot sur un vrai dépôt Git', () => {
-  test('règle 7, avant la 1.0 : feature → dev incrémente le patch de dev, master inchangée, le site suit dev', () => {
+  test('règle 7, avant la 0.2.0 : feature → dev incrémente le patch de dev, master inchangée, le site suit dev', () => {
     const d = depot();
     branche(d, 'feature/carte', 'dev');
     fusionner(d, 'feature/carte', 'dev');
@@ -212,16 +261,33 @@ describe('le bot sur un vrai dépôt Git', () => {
     assert.equal(JSON.parse(git(distantDe(d), 'show', 'origin/dev:client/package-lock.json')).packages[''].version, '0.1.26');
     assert.deepEqual(publie(r), [['site', null, '0.1.26']]);
     assert.equal(r.json.livraisons[0].sha, git(distantDe(d), 'rev-parse', 'origin/dev'));
-    assert.deepEqual(tags(d), [], 'avant la 1.0 : aucune étiquette, aucun installateur');
+    assert.deepEqual(tags(d), ['V0.1.26'], 'avant la 0.2.0 : l\'étiquette de version seule, aucun installateur');
+    assert.equal(commitDe(d, 'V0.1.26'), git(distantDe(d), 'rev-parse', 'origin/dev'), 'sur le commit qui porte la version');
+    assert.deepEqual(r.json.etiquettes.map((e) => [e.branche, e.tag, e.version]), [['dev', 'V0.1.26', '0.1.26']]);
     assert.match(git(distantDe(d), 'log', '-1', '--format=%s', 'origin/dev'), /^chore: version v0\.1\.26 \(feature feature\/carte\) \(PR #12\)$/);
+    assert.equal(r.json.aSupprimer, 'feature/carte');
+  });
+
+  test('sorties pour le workflow : site, installateurs, branche à supprimer (pas dev après une livraison)', () => {
+    const d = depot();
+    branche(d, 'feature/a', 'dev');
+    fusionner(d, 'feature/a', 'dev');
+    const f = botSorties(d, 'appliquer', '--base', 'dev', '--head', 'feature/a', '--pousser');
+    assert.equal(f.code, 0, f.out);
+    assert.deepEqual(f.sorties, { installateurs: '[]', site: git(distantDe(d), 'rev-parse', 'origin/dev'), a_supprimer: 'feature/a' });
+    fusionner(d, 'dev', 'master');
+    const l = botSorties(d, 'appliquer', '--base', 'master', '--head', 'dev', '--pousser');
+    assert.equal(l.code, 0, l.out);
+    assert.equal(l.sorties.a_supprimer, '');
   });
 
   test('règle 7, à partir de la 1.0 : installateur de test', () => {
     const d = depot('1.2.5');
     const r = feature(d, 'feature/carte');
     assert.equal(versionDistante(d, 'master'), '1.2.5');
-    assert.deepEqual(publie(r), [['test', 'v1.2.6-test', '1.2.6']]);
-    assert.deepEqual(tags(d), ['v1.2.6-test']);
+    assert.deepEqual(publie(r), [['test', 'V1.2.6-test', '1.2.6']]);
+    assert.deepEqual(tags(d), ['V1.2.6', 'V1.2.6-test']);
+    assert.equal(commitDe(d, 'V1.2.6'), commitDe(d, 'V1.2.6-test'));
   });
 
   test('sans --pousser, rien ne quitte le dépôt (essai à blanc)', () => {
@@ -235,7 +301,7 @@ describe('le bot sur un vrai dépôt Git', () => {
     assert.deepEqual(tags(d), []);
   });
 
-  test('règle 4, avant la 1.0 : livraison X.Y.Z → X.Y+1.0 sur les deux branches, dev = master, seul le site est republié', () => {
+  test('règle 4, première livraison 0.1.x → 0.2.0 : X.Y.Z → X.Y+1.0 sur les deux branches, dev = master, installateurs de production et de test', () => {
     const d = depot();
     feature(d, 'feature/a');
     feature(d, 'feature/b');
@@ -244,19 +310,21 @@ describe('le bot sur un vrai dépôt Git', () => {
     assert.equal(versionDistante(d, 'master'), '0.2.0');
     assert.equal(versionDistante(d, 'dev'), '0.2.0');
     assert.equal(git(distantDe(d), 'rev-parse', 'origin/dev'), git(distantDe(d), 'rev-parse', 'origin/master'), 'avance rapide : dev rejoint master');
-    assert.deepEqual(publie(r), [['site', null, '0.2.0']]);
-    assert.deepEqual(tags(d), []);
+    assert.deepEqual(publie(r), [['prod', 'V0.2', '0.2.0'], ['test', 'V0.2.0-test', '0.2.0']], 'la production sous l\'étiquette de version de master');
+    assert.deepEqual(tags(d), ['V0.1.26', 'V0.1.27', 'V0.2', 'V0.2.0', 'V0.2.0-test']);
+    assert.deepEqual(r.json.etiquettes.map((e) => [e.branche, e.tag]), [['master', 'V0.2'], ['dev', 'V0.2.0']]);
+    for (const t of ['V0.2', 'V0.2.0', 'V0.2.0-test']) assert.equal(commitDe(d, t), git(distantDe(d), 'rev-parse', 'origin/master'), t);
   });
 
-  test('règle 4, à partir de la 1.0 : installateurs de production et de test', () => {
+  test('règle 4, après la première version hébergée : installateurs de production et de test', () => {
     const d = depot('1.0.0');
     feature(d, 'feature/a');
     feature(d, 'feature/b');
     const r = livraison(d);
     assert.equal(versionDistante(d, 'master'), '1.1.0');
     assert.equal(versionDistante(d, 'dev'), '1.1.0');
-    assert.deepEqual(publie(r), [['prod', 'v1.1.0', '1.1.0'], ['test', 'v1.1.0-test', '1.1.0']]);
-    assert.deepEqual(tags(d), ['v1.1.0', 'v1.1.0-test', 'v1.0.1-test', 'v1.0.2-test'].sort());
+    assert.deepEqual(publie(r), [['prod', 'V1.1', '1.1.0'], ['test', 'V1.1.0-test', '1.1.0']]);
+    assert.deepEqual(tags(d), ['V1.0.1', 'V1.0.1-test', 'V1.0.2', 'V1.0.2-test', 'V1.1', 'V1.1.0', 'V1.1.0-test']);
   });
 
   test('règle 5 : [V: X+1] dans le titre ou la description → X+1.0.0 ; la 1.0 ouvre les serveurs normal et de test', () => {
@@ -269,11 +337,11 @@ describe('le bot sur un vrai dépôt Git', () => {
     assert.equal(r.json.majeure, true);
     assert.equal(versionDistante(d, 'master'), '1.0.0');
     assert.equal(versionDistante(d, 'dev'), '1.0.0');
-    assert.deepEqual(publie(r), [['prod', 'v1.0.0', '1.0.0'], ['test', 'v1.0.0-test', '1.0.0']], 'plus de branche « site » : les installateurs prennent le relais');
-    assert.deepEqual(tags(d), ['v1.0.0', 'v1.0.0-test']);
+    assert.deepEqual(publie(r), [['prod', 'V1.0', '1.0.0'], ['test', 'V1.0.0-test', '1.0.0']], 'plus de branche « site » : les installateurs prennent le relais');
+    assert.deepEqual(tags(d), ['V1.0', 'V1.0.0', 'V1.0.0-test']);
     const r2 = livraison(d, '--texte-fichier', corps);
     assert.equal(versionDistante(d, 'master'), '2.0.0');
-    assert.deepEqual(publie(r2).map(([m, t]) => [m, t]), [['prod', 'v2.0.0'], ['test', 'v2.0.0-test']]);
+    assert.deepEqual(publie(r2).map(([m, t]) => [m, t]), [['prod', 'V2.0'], ['test', 'V2.0.0-test']]);
   });
 
   test('livraison pendant qu\'une feature avance dev : conflit de version résolu, dev contient master', () => {
@@ -288,6 +356,9 @@ describe('le bot sur un vrai dépôt Git', () => {
     assert.equal(versionDistante(d, 'dev'), '0.2.0');
     git(distantDe(d), 'merge-base', '--is-ancestor', 'origin/master', 'origin/dev');
     assert.equal(git(distantDe(d), 'show', 'origin/dev:feature-b.txt'), 'feature/b', 'le travail de dev est conservé');
+    assert.notEqual(git(distantDe(d), 'rev-parse', 'origin/dev'), git(distantDe(d), 'rev-parse', 'origin/master'));
+    assert.equal(commitDe(d, 'V0.2'), git(distantDe(d), 'rev-parse', 'origin/master'), 'chaque branche a l\'étiquette de sa version');
+    assert.equal(commitDe(d, 'V0.2.0'), git(distantDe(d), 'rev-parse', 'origin/dev'));
   });
 
   test('règle 6, à partir de la 1.0 : hotfix → master inchangée, refusion dans dev puis patch de dev, installateurs', () => {
@@ -304,19 +375,21 @@ describe('le bot sur un vrai dépôt Git', () => {
     assert.equal(versionDistante(d, 'dev'), '1.1.2');
     git(distantDe(d), 'merge-base', '--is-ancestor', 'origin/master', 'origin/dev');
     assert.match(git(distantDe(d), 'show', 'origin/dev:site.txt'), /corrigée/);
-    assert.deepEqual(publie(r), [['prod', 'v1.1.0-hotfix.1', '1.1.0'], ['test', 'v1.1.2-test', '1.1.2']]);
+    assert.deepEqual(publie(r), [['prod', 'V1.1-hotfix.1', '1.1.0'], ['test', 'V1.1.2-test', '1.1.2']]);
     assert.equal(r.json.livraisons[0].sha, masterAvant);
+    assert.deepEqual(r.json.etiquettes.map((e) => [e.branche, e.tag]), [['dev', 'V1.1.2']], 'master garde sa version, donc son étiquette');
+    assert.equal(commitDe(d, 'V1.1.2'), git(distantDe(d), 'rev-parse', 'origin/dev'));
 
     // Second hotfix : nouvelle étiquette de production, même version.
     branche(d, 'hotfix/autre', 'master', 'autre.txt');
     fusionner(d, 'hotfix/autre', 'master');
     const r2 = bot(d, 'appliquer', '--base', 'master', '--head', 'hotfix/autre', '--pousser');
     assert.equal(r2.code, 0, r2.out);
-    assert.equal(r2.json.livraisons[0].tag, 'v1.1.0-hotfix.2');
+    assert.equal(r2.json.livraisons[0].tag, 'V1.1-hotfix.2');
     assert.equal(versionDistante(d, 'dev'), '1.1.3');
   });
 
-  test('règle 6, avant la 1.0 : même chose pour les versions, mais seul le site (dev) est republié', () => {
+  test('règle 6, avant la 0.2.0 : même chose pour les versions, mais seul le site (dev) est republié', () => {
     const d = depot();
     feature(d, 'feature/a'); // dev 0.1.26
     branche(d, 'hotfix/lien', 'master', 'site.txt', 'ligne 1 corrigée\nligne 2\nligne 3\n');
@@ -327,7 +400,7 @@ describe('le bot sur un vrai dépôt Git', () => {
     assert.equal(versionDistante(d, 'dev'), '0.1.27');
     assert.deepEqual(publie(r), [['site', null, '0.1.27']]);
     assert.match(git(distantDe(d), 'show', 'origin/dev:site.txt'), /corrigée/, 'le correctif arrive sur le site par dev');
-    assert.deepEqual(tags(d), []);
+    assert.deepEqual(tags(d), ['V0.1.26', 'V0.1.27'], 'les étiquettes de version de dev seules');
   });
 
   test('hotfix en conflit avec dev : rien n\'est poussé, la marche à suivre est donnée', () => {
@@ -354,17 +427,19 @@ describe('le bot sur un vrai dépôt Git', () => {
     branche(d, 'hotfix/x', 'master', 'site.txt', 'ligne 1 version hotfix\nligne 2\nligne 3\n');
     fusionner(d, 'hotfix/x', 'master');
     const devAvant = git(distantDe(d), 'rev-parse', 'origin/dev');
-    const r = bot(d, 'appliquer', '--base', 'master', '--head', 'hotfix/x', '--pr', '41', '--pousser');
+    const r = botSorties(d, 'appliquer', '--base', 'master', '--head', 'hotfix/x', '--pr', '41', '--pousser');
     assert.equal(r.code, 10, r.out);
+    assert.equal(r.sorties.a_supprimer, '', 'la hotfix reste tant que sa refusion n\'est pas faite');
+    assert.match(r.sorties.installateurs, /"tag":"V1\.0"/);
     assert.match(r.json.erreur, /conflit \(site\.txt\).*Create a merge commit/);
-    assert.deepEqual(publie(r), [['prod', 'v1.0.0', '1.0.0']], 'règle 9 : le hotfix est livré même si la refusion attend');
-    assert.ok(tags(d).includes('v1.0.0'));
+    assert.deepEqual(publie(r), [['prod', 'V1.0', '1.0.0']], 'règle 9 : le hotfix est livré même si la refusion attend');
+    assert.ok(tags(d).includes('V1.0'));
     assert.equal(git(distantDe(d), 'rev-parse', 'origin/dev'), devAvant, 'dev n\'est pas touchée');
 
     const r2 = bot(d, 'appliquer', '--base', 'master', '--head', 'hotfix/x', '--pr', '41', '--pousser');
     assert.equal(r2.code, 10, r2.out);
     assert.deepEqual(publie(r2), [], 'pas de second installateur pour le même commit');
-    assert.deepEqual(tags(d).filter((t) => t.startsWith('v1.0.0') && !t.includes('test')), ['v1.0.0']);
+    assert.deepEqual(tags(d).filter((t) => modeDeEtiquette(t) === 'prod'), ['V1.0']);
   });
 
   test('une relance (Re-run) d\'un passage déjà fait ne refait pas l\'incrément', () => {
@@ -399,6 +474,19 @@ describe('le bot sur un vrai dépôt Git', () => {
     assert.equal(versionDistante(d, 'dev'), '0.1.27', 'deux fusions, deux incréments');
   });
 
+  test('étiquette de version déjà posée ailleurs : laissée telle quelle et signalée, la version passe quand même', () => {
+    const d = depot();
+    git(d.dev, 'push', '--quiet', 'origin', 'origin/master:refs/tags/V0.1.26'); // posée à la main sur un autre commit
+    const ancien = commitDe(d, 'V0.1.26');
+    const r = feature(d, 'feature/a');
+    assert.equal(versionDistante(d, 'dev'), '0.1.26');
+    assert.equal(commitDe(d, 'V0.1.26'), ancien, 'jamais déplacée');
+    assert.deepEqual(r.json.etiquettes, []);
+    assert.ok(r.json.journal.some((j) => /étiquette V0\.1\.26 déjà posée .* laissée telle quelle/.test(j)), r.json.journal.join('\n'));
+    feature(d, 'feature/b');
+    assert.equal(commitDe(d, 'V0.1.27'), git(distantDe(d), 'rev-parse', 'origin/dev'), 'la suivante est posée normalement');
+  });
+
   test('fusion hors des règles : refusée, aucune version', () => {
     const d = depot();
     const r = bot(d, 'appliquer', '--base', 'master', '--head', 'claude/x', '--pousser');
@@ -406,14 +494,14 @@ describe('le bot sur un vrai dépôt Git', () => {
     assert.match(r.out, /hors des règles/);
   });
 
-  test('régénération, avant la 1.0 : le site depuis dev ; master n\'a pas de serveur', () => {
+  test('régénération, avant la 0.2.0 : le site depuis dev ; master n\'a pas de serveur', () => {
     const d = depot();
     const r = bot(d, 'regenerer', '--branche', 'dev', '--pousser');
     assert.equal(r.code, 0, r.out);
     assert.deepEqual(publie(r), [['site', null, '0.1.25']]);
     const m = bot(d, 'regenerer', '--branche', 'master', '--pousser');
     assert.equal(m.code, 10);
-    assert.match(m.out, /avant la 1\.0, master n'a pas de serveur/);
+    assert.match(m.out, /avant la 0\.2\.0, master n'a pas de serveur/);
     assert.deepEqual(tags(d), []);
   });
 
@@ -421,10 +509,11 @@ describe('le bot sur un vrai dépôt Git', () => {
     const d = depot('1.0.0');
     const r1 = bot(d, 'regenerer', '--branche', 'master', '--pousser');
     assert.equal(r1.code, 0, r1.out);
-    assert.equal(r1.json.livraisons[0].tag, 'v1.0.0');
+    assert.equal(r1.json.livraisons[0].tag, 'V1.0');
     const r2 = bot(d, 'regenerer', '--branche', 'master', '--pousser');
-    assert.equal(r2.json.livraisons[0].tag, 'v1.0.0-rebuild.1');
-    assert.equal(bot(d, 'regenerer', '--branche', 'dev', '--pousser').json.livraisons[0].tag, 'v1.0.0-test');
+    assert.equal(r2.json.livraisons[0].tag, 'V1.0-rebuild.1');
+    assert.equal(bot(d, 'regenerer', '--branche', 'dev', '--pousser').json.livraisons[0].tag, 'V1.0.0-test');
+    assert.deepEqual(r2.json.etiquettes, [], 'pas de nouvelle version, pas d\'étiquette de version');
     assert.equal(versionDistante(d, 'master'), '1.0.0');
   });
 
@@ -435,6 +524,95 @@ describe('le bot sur un vrai dépôt Git', () => {
     const r = bot(d, 'verifier-creation', '--branche', 'dev/session', '--sha', git(d.dev, 'rev-parse', 'HEAD'));
     assert.equal(r.code, 0, r.out);
     assert.match(r.out, /pas encore en place \(dev absente\)/);
+  });
+
+  test('balayage : nom interdit et fusionnée → supprimée ; travail non fusionné ou mauvais départ → signalée, gardée', () => {
+    const d = depot();
+    const branchesDistantes = () => git(distantDe(d), 'ls-remote', '--heads', 'origin').split('\n').map((l) => l.split('refs/heads/')[1]).sort();
+    feature(d, 'feature/a'); // dev a maintenant des commits absents de master
+    git(d.dev, 'push', '--quiet', 'origin', 'origin/master:refs/heads/develop'); // ancienne branche, tout son contenu est dans master
+    branche(d, 'claude/session', 'dev'); // nom interdit, avec du travail
+    branche(d, 'feature/ok', 'dev');
+    branche(d, 'hotfix/depuis-dev', 'dev'); // contient dev
+    git(d.dev, 'checkout', '--quiet', '--orphan', 'publication');
+    git(d.dev, 'commit', '--quiet', '--allow-empty', '-m', 'site construit');
+    git(d.dev, 'push', '--quiet', 'origin', 'publication:site');
+
+    const r = bot(d, 'balayer', '--pousser');
+    assert.equal(r.code, 10, r.out);
+    assert.match(r.out, /develop : supprimée/);
+    assert.match(r.out, /claude\/session : signalée \(nom interdit, mais elle contient du travail/);
+    assert.match(r.out, /hotfix\/depuis-dev : signalée \(hotfix\/<nom> doit partir de master/);
+    assert.doesNotMatch(r.out, /^- (feature\/a|feature\/ok|site|master|dev) :/m, 'les branches conformes ne sont pas citées');
+    assert.deepEqual(branchesDistantes(), ['claude/session', 'dev', 'feature/a', 'feature/ok', 'hotfix/depuis-dev', 'master', 'site'].sort());
+
+    git(d.dev, 'push', '--quiet', 'origin', '--delete', 'claude/session', 'hotfix/depuis-dev');
+    const propre = bot(d, 'balayer', '--pousser');
+    assert.equal(propre.code, 0, propre.out);
+    assert.match(propre.out, /Toutes les branches sont conformes/);
+  });
+
+  test('balayage : noms complets (« x/HEAD » n\'est pas « x »), une suppression refusée n\'empêche pas les autres', () => {
+    const d = depot();
+    const branchesDistantes = () => git(distantDe(d), 'ls-remote', '--heads', 'origin').split('\n').map((l) => l.split('refs/heads/')[1]).sort();
+    for (const b of ['vieux/HEAD', 'bloquee', 'autre-vieille']) git(d.dev, 'push', '--quiet', 'origin', `origin/master:refs/heads/${b}`);
+    // Le serveur refuse de supprimer « bloquee » (comme une protection ou une panne réseau).
+    writeFileSync(join(d.distant, 'hooks', 'pre-receive'), '#!/bin/sh\nwhile read ancien nouveau ref; do\n  if [ "$ref" = refs/heads/bloquee ]; then echo "suppression interdite" >&2; exit 1; fi\ndone\n');
+    chmodSync(join(d.distant, 'hooks', 'pre-receive'), 0o755);
+    const r = bot(d, 'balayer', '--pousser');
+    assert.equal(r.code, 10, r.out);
+    assert.match(r.out, /^- vieux\/HEAD : supprimée/m);
+    assert.match(r.out, /^- autre-vieille : supprimée/m);
+    assert.match(r.out, /^- bloquee : signalée \(suppression refusée/m);
+    assert.deepEqual(branchesDistantes(), ['bloquee', 'dev', 'master']);
+  });
+
+  test('suppression après la fusion : seulement si la branche pointe encore sur le commit fusionné', () => {
+    const d = depot();
+    const existe = (b) => git(distantDe(d), 'ls-remote', '--heads', 'origin').split('\n').some((l) => l.endsWith(`refs/heads/${b}`));
+    const sha = branche(d, 'feature/finie', 'dev');
+    let r = bot(d, 'supprimer-fusionnee', '--branche', 'feature/finie', '--sha', sha, '--pousser');
+    assert.equal(r.code, 0, r.out);
+    assert.match(r.out, /supprimée/);
+    assert.ok(!existe('feature/finie'));
+    r = bot(d, 'supprimer-fusionnee', '--branche', 'feature/finie', '--sha', sha, '--pousser');
+    assert.match(r.out, /déjà supprimée/);
+
+    // Un commit poussé après la fusion : la branche est gardée.
+    const fusionne = branche(d, 'feature/suite', 'dev');
+    ecrire(d.dev, 'suite.txt', 'travail après la fusion');
+    git(d.dev, 'add', '-A');
+    git(d.dev, 'commit', '--quiet', '-m', 'suite');
+    git(d.dev, 'push', '--quiet', 'origin', 'feature/suite');
+    r = bot(d, 'supprimer-fusionnee', '--branche', 'feature/suite', '--sha', fusionne, '--pousser');
+    assert.equal(r.code, 0, r.out);
+    assert.match(r.out, /a reçu des commits après la fusion .* gardée/);
+    assert.ok(existe('feature/suite'));
+
+    // « # » dans le nom : c'est bien cette branche qui est supprimée, pas « feature/a ».
+    const shaA = branche(d, 'feature/a', 'dev');
+    const shaDiese = branche(d, 'feature/a#b', 'dev', 'diese.txt');
+    assert.notEqual(shaA, shaDiese);
+    r = bot(d, 'supprimer-fusionnee', '--branche', 'feature/a#b', '--sha', shaDiese, '--pousser');
+    assert.equal(r.code, 0, r.out);
+    assert.ok(!existe('feature/a#b'));
+    assert.ok(existe('feature/a'), 'l\'autre branche est intacte');
+
+    for (const b of ['dev', 'master', 'site', 'develop']) {
+      const refus = bot(d, 'supprimer-fusionnee', '--branche', b, '--sha', sha, '--pousser');
+      assert.equal(refus.code, 10, `${b} : ${refus.out}`);
+    }
+    assert.ok(existe('dev') && existe('master'));
+  });
+
+  test('balayage : rien tant que le flux n\'est pas en place', () => {
+    const d = depot();
+    git(d.dev, 'push', '--quiet', 'origin', '--delete', 'dev');
+    git(d.dev, 'push', '--quiet', 'origin', 'origin/master:refs/heads/develop');
+    const r = bot(d, 'balayer', '--pousser');
+    assert.equal(r.code, 0, r.out);
+    assert.match(r.out, /pas encore en place \(dev absente\)/);
+    assert.match(git(distantDe(d), 'ls-remote', '--heads', 'origin'), /refs\/heads\/develop/);
   });
 
   test('règles 2 et 3 à la création : nom et point de départ', () => {

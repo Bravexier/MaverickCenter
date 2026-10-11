@@ -1,0 +1,26 @@
+---
+import { morceauxAvecEtats } from '../../lib/sort-format.mjs';
+import type { Magies } from '../../lib/magies';
+import EtatPastille from './EtatPastille.astro';
+
+// Valeur d'une cellule de sort : le texte en gras, les précisions entre parenthèses (« (xNP de créature) ») en petit et estompé,
+// parenthèses conservées (le texte copié est celui de la source). Une précision marquée `nm` (l'expression d'un bonus de niveau de maîtrise,
+// lib/sort-maitrise.mjs#marquerBonus : « (+1/NM) ») est une pastille à sa place, sans ses parenthèses. Quand `etats` est donné (altérations
+// d'état repérées dans la cellule), chacune devient une pastille avec infobulle dans le texte (voir Texte.astro).
+interface Props {
+  segments: { texte: string; modif: boolean; nm?: boolean }[];
+  etats?: { etatId: string; stade: number | null; forme: string; extrait: string }[];
+  magies?: Magies;
+}
+const { segments, etats, magies } = Astro.props;
+const decoupe = (texte: string) =>
+  (etats && magies ? morceauxAvecEtats(texte, etats) : [{ texte }]) as { texte: string; etat?: { etatId: string; stade: number | null } }[];
+const pieces = segments.map((s) => ({ ...s, morceaux: decoupe(s.texte) }));
+---
+
+{
+  pieces.map((s, i) => {
+    const contenu = s.morceaux.map((p) => (p.etat && magies ? <EtatPastille etat={magies.etats.get(p.etat.etatId)!} texte={p.texte} stade={p.etat.stade} /> : p.texte));
+    return <>{i > 0 && ' '}{s.nm ? <span class="nm">{contenu}</span> : s.modif ? <small class="mod">({contenu})</small> : <span class="val">{contenu}</span>}</>;
+  })
+}

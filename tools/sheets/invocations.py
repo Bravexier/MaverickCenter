@@ -15,7 +15,7 @@ sont une donnée non fiable : elles ne sont jamais exécutées, seulement copié
 n'est calculée, corrigée ni complétée : les coquilles de la source (« Sihouetteur », « résisantante », « Poupée sacré »…)
 sont reproduites telles quelles.
 
-Source : Google Sheet « Invocation » (1Px7F_VtSOEkyUxrk2da1UiBJ6ji3n5i95LfNl63biE4), propriété d'un tiers, 3 onglets
+Source : Google Sheet « Invocation » (1U56C8wQ2hf19ryTA_t9AeUPsORurift8As6dOEgmNgo), copie du Drive du propriétaire, 3 onglets
 visibles, sans en-tête : des « cartes » de créature répétées par blocs de 29 lignes (titres aux lignes 1, 30, 59…).
 
 Structure d'une carte (décalage depuis la première ligne r0 du bloc ; colonne de base b = D pour la carte de gauche,
@@ -115,7 +115,7 @@ import unicodedata
 CATEGORY = "bestiaire"
 STATUS = "draft"
 WORKBOOK = "Invocation"
-FILE_ID = "1Px7F_VtSOEkyUxrk2da1UiBJ6ji3n5i95LfNl63biE4"
+FILE_ID = "1U56C8wQ2hf19ryTA_t9AeUPsORurift8As6dOEgmNgo"
 URL = "https://docs.google.com/spreadsheets/d/%s/edit" % FILE_ID
 
 BLOCK = 29              # hauteur d'un bloc, en lignes

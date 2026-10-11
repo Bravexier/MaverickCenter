@@ -1,0 +1,47 @@
+---
+import { sortAncre, type Magies, type SortDb } from '../../lib/magies';
+import Info from './Info.astro';
+import LigneDeSort from './LigneDeSort.astro';
+
+// Tableau des sorts d'UNE magie à UN niveau de puissance magique (NPM) : le seul gabarit de tableau de sorts du site. Il ne varie que de la magie
+// (ses sorts) et du NPM : la page de chaque magie en pose un par NPM (MagieSorts.astro), celle du Potentiel Illimité un par magie et par NPM,
+// dans ses onglets (SortsDuPotentiel.astro). Une ligne par sort (LigneDeSort.astro) : Nom, Type, Coût, Portée, Zone, D/S/B.
+// La règle spéciale d'un niveau (« sort niveau 5 ») est dans l'infobulle « i » du titre, juste après le texte du titre : texte et « i »
+// forment un seul bloc (`npm__intitule`) qui passe à la ligne d'un tenant sur un téléphone étroit, sans que le « i » se retrouve seul sous le badge.
+// Sans JavaScript (et à l'impression), le bloc s'efface (`display: contents`) et la règle est écrite en entier sur sa propre ligne sous le titre.
+// `prefixe` (« feu- ») rend uniques les identifiants HTML quand une page montre plusieurs magies ; `titre` : niveau du titre du tableau.
+interface Props {
+  niveau: number;
+  sorts: SortDb[];
+  magies: Magies;
+  prefixe?: string;
+  titre?: 'h3' | 'h4';
+}
+const { niveau, sorts, magies, prefixe = '', titre: Titre = 'h3' } = Astro.props;
+
+const COLONNES = ['Nom', 'Type', 'Coût', 'Portée', 'Zone', 'D/S/B'];
+const id = `npm-${prefixe}${niveau}`;
+const regles = magies.regles.filter((r) => r.niveau_sort === niveau);
+const texteDeRegle = (r: { titre: string; texte: string }) => (r.texte.startsWith(`${r.titre} : `) ? r.texte.slice(r.titre.length + 3) : r.texte);
+---
+
+<section class="npm" id={id} aria-labelledby={`${id}-titre`}>
+  <Titre class="npm__titre">
+    <span class="npm__badge">NPM {niveau}</span>
+    <span class="npm__intitule">
+      <span class="npm__nom" id={`${id}-titre`}>Niveau de Puissance Magique {niveau}</span>
+      {regles.map((r) => <Info titre={r.titre} texte={texteDeRegle(r)} />)}
+    </span>
+    <span class="npm__pips" role="img" aria-label={`Niveau ${niveau} sur 5`}>
+      {[1, 2, 3, 4, 5].map((n) => <i class={n <= niveau ? 'on' : ''} />)}
+    </span>
+  </Titre>
+  <div class="sorts-wrap">
+    <table class="sorts">
+      <thead>
+        <tr>{COLONNES.map((c) => <th scope="col">{c}</th>)}</tr>
+      </thead>
+      {sorts.map((s) => <LigneDeSort sort={s} magies={magies} ancre={sortAncre(s, prefixe)} prefixe={prefixe} colonnes={COLONNES.length} />)}
+    </table>
+  </div>
+</section>
