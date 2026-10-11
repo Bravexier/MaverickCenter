@@ -3,7 +3,9 @@
 //   - /races/ et /classes/ : bouton « + Ajouter… » en mode modification (formulaire, création immédiate, puis la page de l'entité) ; la pastille d'une
 //     entité créée apparaît dans sa colonne ;
 //   - l'adresse d'une entité créée tombe sur la page 404 du site : on y dessine sa page à partir de la base vivante, avec ses champs modifiables
-//     (les mêmes attributs `data-ed` que les gabarits), pour la compléter.
+//     (les mêmes attributs `data-ed` que les gabarits), pour la compléter ; une classe créée y reçoit aussi ses spécialités et ses dons (D11 :
+//     src/scripts/edition/classes.mjs) ;
+//   - l'adresse d'un don créé (sa fiche n'existe pas encore) mène à son ancre sur la page de sa classe.
 import raceBaseCss from '../../styles/race/base.css?raw';
 import racePageCss from '../../styles/race/page.css?raw';
 import raceRelationsCss from '../../styles/race/relations.css?raw';
@@ -72,14 +74,14 @@ function pageDeClasse(lignes, id) {
     css: [classeBaseCss, classePageCss].join('\n'),
     titre: classe.nom,
     html: `<p class="muted"><a href="#">Classes</a></p>
-    <div class="classe" style="--couleur-classe: ${couleur}; --couleur-texte-classe: ${texteSurCouleur(couleur)}">
+    <div class="classe" data-ed-classe="${echapperHtml(id)}" style="--couleur-classe: ${couleur}; --couleur-texte-classe: ${texteSurCouleur(couleur)}">
       <header class="classe-hero">
         <p class="classe-hero__surtitre">${echapperHtml(tags.find((t) => t !== 'classe') ?? 'Classe')}</p>
         <h1>${echapperHtml(classe.nom)}</h1>
         <dl class="classe-stats">${stat('Santé de départ', 'sante_depart')}${stat('Chakra de départ', 'chakra_depart')}${stat('Barrière de départ', 'barriere_depart')}</dl>
       </header>
       <p class="banner" role="note">Classe créée sur le site de dev : sa page sera construite comme les autres à la prochaine version du site, une fois le journal des
-        modifications rapatrié. Complétez-la ici (crayon) ; ses spécialités et ses dons ne s’ajoutent pas encore depuis le site.</p>
+        modifications rapatrié. Complétez-la ici (crayon), spécialités et dons compris.</p>
       <div class="classe-section classe-presentation">
         <section class="classe-prose" id="presentation" aria-label="Présentation" data-ed="${c('description')}" data-ed-rendu="blocs" data-ed-cadre></section>
         <aside class="classe-card classe-card--a-savoir" id="a-savoir" data-ed-cadre=".classe-prose"><h2>Chose à savoir</h2><div class="classe-prose" data-ed="${c('chose_a_savoir')}" data-ed-rendu="blocs"></div></aside>
@@ -88,6 +90,7 @@ function pageDeClasse(lignes, id) {
         ${carte('Maîtrise des armes', 'maitrise_arme', 'liste', 'ul')}${carte('Maîtrise des armures', 'maitrise_armure', 'liste', 'ul')}
         ${carte('Arme de départ', 'arme_depart')}${carte('Armure de départ', 'armure_depart')}${carte('Inventaire de départ', 'inventaire_depart', 'inventaire', 'ul')}
       </div></section>
+      <section class="classe-section" id="dons" hidden></section>
     </div>`,
   };
 }
@@ -97,6 +100,12 @@ const PAGES = { races: pageDeRace, classes: pageDeClasse };
 function dessinerPage(ed, lignes) {
   const id = idDeLAdresse(ed.base);
   const type = id.split('/')[0];
+  // un don créé : sa fiche sera construite à la prochaine version du site ; d'ici là, son ancre sur la page de sa classe
+  const don = type === 'capacites' && lignes.find((l) => l.table === 'capacite' && l.cle.id === id && l.ligne);
+  if (don) {
+    location.replace(`${ed.base}${don.ligne.classe_id}/#don-${id.slice(id.indexOf('/') + 1)}`);
+    return true;
+  }
   const page = lignes.find((l) => l.table === 'page' && l.cle.id === id && l.ligne);
   if (!page || !PAGES[type]) return false;
   const rendu = PAGES[type](lignes, id);

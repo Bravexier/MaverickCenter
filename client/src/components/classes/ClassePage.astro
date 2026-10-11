@@ -17,8 +17,10 @@ const classeCss = [classeBaseCss, classePageCss, classeDonsCss, magieTooltipsCss
 
 // Gabarit commun des pages de classe, sur le modèle des pages de magie et de race : bandeau (nom, catégorie du Sommaire, « Don de départ »),
 // présentation et « Chose à savoir », spécialités, équipement de départ, DONS disposés comme l'onglet (choix encadrés), tableau annexe de l'onglet.
-// Il affiche les lignes de la base (lib/classes-db.mjs) : pour changer une classe ou un don, on change la base. Aucun tableau Markdown, pas de source
-// citée. Seuls le titre, les alias et le statut viennent de la page du wiki ; le type magique (+4 AM) suit lib/classe-magique.mjs.
+// Il affiche les lignes de la base (lib/classes-db.mjs) : pour changer une classe ou un don, on change la base, depuis le site de dev (mode modification :
+// champs, spécialités et dons créés ou supprimés, src/scripts/edition/classes.mjs, qui redessine les dons et les spécialités avec le même HTML :
+// lib/classe-dons-rendu.mjs). Aucun tableau Markdown, pas de source citée. Seuls le titre, les alias et le statut viennent de la page du wiki ; le type
+// magique (+4 AM) suit lib/classe-magique.mjs.
 interface Props {
   entry: WikiEntry;
   classe: ClasseDb;
@@ -29,8 +31,11 @@ const { entry, classe, magique, statusNote } = Astro.props;
 
 // couleur de la catégorie de /classes/ (rouge, vert, bleu, violet, jaune), sur toute la page comme celle d'une magie
 const couleur = classColor(entry);
-const specialitesDecrites = classe.specialites.filter((s) => s.description.length > 0);
+// spécialités : celles qui ont des dons (une colonne du plateau ; les deux de l'Archimage n'en ont pas) ; un article caché tant qu'il n'a ni description
+// ni remarque, que le mode modification ouvre pour le remplir (D11 : une spécialité créée sur le site n'a d'abord que son nom)
 const colonnes = classe.plateau.flatMap((e) => (e.forme === 'specialites' ? e.specialites : []));
+const specialitesDecrites = colonnes.map((c) => c.specialite).filter((s) => s.description.length > 0);
+const specialitesMontrees = colonnes.map((c) => c.specialite).filter((s) => s.description.length + s.remarque.length > 0);
 const aDepart = classe.maitriseArme.length + classe.maitriseArmure.length + classe.inventaire.length > 0 || Boolean(classe.armeDepart || classe.armureDepart);
 const pageObjets = 'ressources/objets-de-depart-des-classes';
 const nav = [
@@ -51,7 +56,7 @@ const edSpe = (id: string, colonne: string) => attributEd('specialite', { id }, 
 ---
 
 <style is:inline set:html={classeCss}></style>
-<div class="classe" style={`--couleur-classe: ${couleur}; --couleur-texte-classe: ${texteSurCouleur(couleur)}`}>
+<div class="classe" data-ed-classe={classe.id} style={`--couleur-classe: ${couleur}; --couleur-texte-classe: ${texteSurCouleur(couleur)}`}>
   <header class="classe-hero">
     <p class="classe-hero__surtitre">{classe.categorie?.libelle ?? 'Classe'}</p>
     <h1>{entry.data.title}</h1>
@@ -129,21 +134,19 @@ const edSpe = (id: string, colonne: string) => attributEd('specialite', { id }, 
   }
 
   {
-    specialitesDecrites.length > 0 && (
-      <section class="classe-section" id="specialites" aria-labelledby="specialites-titre">
+    colonnes.length > 0 && (
+      <section class="classe-section" id="specialites" aria-labelledby="specialites-titre" data-ed-cadre=".classe-prose, .classe-remarque__texte" hidden={specialitesMontrees.length === 0}>
         <h2 id="specialites-titre">Spécialités</h2>
         <div class="classe-specialites">
-          {specialitesDecrites.map((s) => (
-            <article class="classe-specialite">
+          {colonnes.map(({ specialite: s }) => (
+            <article class="classe-specialite" data-ed-cadre=".classe-prose, .classe-remarque__texte" hidden={s.description.length + s.remarque.length === 0}>
               <h3 data-ed={edSpe(s.id, 'nom')}>{s.nom}</h3>
               <div class="classe-prose" data-ed={edSpe(s.id, 'description')} data-ed-rendu="blocs"><Texte blocs={s.description} /></div>
               <div class="classe-remarque" data-ed-cadre=".classe-remarque__texte" hidden={s.remarque.length === 0}>
                 <p class="classe-remarque__titre">Remarque</p>
                 <div class="classe-remarque__texte" data-ed={edSpe(s.id, 'remarque')} data-ed-rendu="blocs"><Texte blocs={s.remarque} /></div>
               </div>
-              {colonnes.some((c) => c.specialite.id === s.id) && (
-                <p class="classe-specialite__lien"><a href={`#${s.ancre}`}>Ses dons</a></p>
-              )}
+              <p class="classe-specialite__lien"><a href={`#${s.ancre}`}>Ses dons</a></p>
             </article>
           ))}
         </div>

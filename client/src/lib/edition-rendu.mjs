@@ -44,8 +44,10 @@ export function placerPastilles(textes, pastilles) {
  * Blocs d'un texte long (paragraphes, listes à puces, intertitres « ▸ ») : le HTML de components/magie/Texte.astro, avec les pastilles d'état que
  * le champ montrait (`pastilles`, voir placerPastilles).
  */
-export function htmlDeBlocs(texte, pastilles = null) {
-  const blocs = blocsDeTexte(texte);
+export const htmlDeBlocs = (texte, pastilles = null) => htmlDesBlocs(blocsDeTexte(texte), pastilles);
+
+/** Le même HTML depuis des blocs déjà découpés (lib/sort-format.mjs#blocsDeTexte : ceux que lib/classe-assemblage.mjs garde pour la page d'une classe). */
+export function htmlDesBlocs(blocs, pastilles = null) {
   const morceaux = placerPastilles(blocs.flatMap((b) => ('items' in b ? b.items : b.titre ? [] : [b.texte])), pastilles);
   let i = 0;
   const suivant = () => morceaux[i++].map((m) => (m.etat ? m.etat.html : avecLiens(m.texte))).join('');
