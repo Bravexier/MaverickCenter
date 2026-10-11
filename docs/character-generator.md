@@ -13,10 +13,16 @@ L'ancienne adresse `/generateur/` mène à `/fiche/` (page 404, `lib/nav.mjs#nou
 ## La page `/fiche/`
 
 La fiche se remplit dans l'ordre du guide (« Créer son personnage »), une section par étape, numérotée et teintée de la couleur de sa partie du
-guide : 1 race et ethnie, 2 magies et dieux, 3 classe(s) et spécialités (avec l'XP et le niveau), 4 caractéristiques, compétences et maîtrises d'armes,
+guide : 1 race et ethnie, 2 magies et dieux, 3 classe(s) et spécialités, 4 caractéristiques, compétences et maîtrises d'armes,
 5 sorts, 6 attributs, alignement, bourse, métier ; puis 7 gains de niveau et dons à choisir, 8 équipement (armes, armure, bouclier, accessoires,
-inventaire), 9 état en jeu, notes, événements, et le contrôle des règles. Races, magies et classes sont des **pastilles** dans les couleurs de leurs pages
-(`/races/`, `/magies/`, `/classes/`) ; celles que les règles ferment sont grisées. Chaque caractéristique, et le tableau de ses compétences, a sa couleur
+inventaire), 9 état en jeu, notes, événements, et le contrôle des règles. **Compacte** (demandes du propriétaire) : pas de lien vers le guide ;
+race, ethnie, magies innée et acquise, classes et spécialités sont des **menus déroulants** (`<details class="choix">` : fermé, le choix fait ; ouvert, les
+**pastilles** dans les couleurs de `/races/`, `/magies/`, `/classes/`, celles que les règles ferment grisées ; un choix, un clic ailleurs ou Échap le
+referme) ; les caractéristiques sont des **curseurs** bornés par la race, à 1 (le minimum) par défaut, jamais vides (`caracteristiquesCompletes`), et le
+naturel des compétences un curseur jusqu'au maximum du niveau ; les **sorts** sont un tableau d'une ligne par emplacement, chacune avec la liste des sorts
+possibles moins ceux des autres lignes (`lignesDeSorts`) ; les **NM** au-delà de ceux gagnés sont permis, comptés « du MJ » (décision R24). L'en-tête porte
+la **jauge d'XP** (`progressionXp`) : l'XP se modifie dans son champ ou s'ajoute avec le bouton +, le niveau suit. Une fiche enregistrée se **supprime**
+(bouton « Supprimer », après confirmation ; retour à la liste des personnages). Chaque caractéristique, et le tableau de ses compétences, a sa couleur
 (demande du propriétaire, `lib/caracteristiques-postures.mjs`, transmise par `regles.json` : `couleur` et `texte` de chaque caractéristique). Le **Potentiel Illimité** en magie innée met l'Archimage en classe 1
 et l'y **verrouille** (les autres classes 1 sont grisées, la pastille de l'Archimage ne se retire pas) ; sans lui, l'Archimage est grisée à tous les rangs,
 et quitter le Potentiel Illimité la retire (décision R23). Les dons à choix d'une classe ou d'une spécialité retirée partent avec elle. Tout ce que la base
@@ -35,7 +41,7 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   (`lib/fiche-controles.mjs`) ; une fiche ne passe « validée » que sans aucune. Ce que la base ne contrôle pas encore (bonus d'équipement, nombre de
   sorts par emplacement, plafond de NPM du Potentiel Illimité) n'est montré que comme compteur.
 - **Enregistrement** : création (`POST`) puis modification (`PUT` avec la version lue : si quelqu'un a modifié la fiche entre-temps, rien n'est écrasé et
-  la page propose de la recharger). Sans le service (version portable, service arrêté), la fiche se remplit, s'**exporte** en JSON et s'**imprime** ; un
+  la page propose de la recharger), suppression (`DELETE` avec la version lue). Sans le service (version portable, service arrêté), la fiche se remplit, s'**exporte** en JSON et s'**imprime** ; un
   fichier exporté se **réimporte** pour créer le prétiré.
 - Avant la 1.0, la page ne crée que des **prétirés** (à personne, visibles de tous) : les fiches de joueur arriveront avec la connexion Discord.
 
@@ -95,7 +101,7 @@ depuis les règles de la base, si bien qu'une règle corrigée corrige toutes le
   mono-magie (R15 ; l'Elfe Noir Charbon et le Felfe Noir peuvent aussi acquérir la Corruption, R20), ethnie (de la race, liée à la magie innée quand elle en porte
   une), bornes et total exact des caractéristiques (R3), plafonds et total exact des compétences (R3), gains de niveau (points exacts, dé), 2ᵉ classe, spécialité
   avant le niveau de classe 10, dons hors classe ou exclusifs, sorts (magie du personnage, toutes pour le Potentiel Illimité ; NPM au plus la puissance magique
-  du niveau, la 5 au niveau 16 et sans magie acquise, R16 ; NM au plus niveau global − 1 ; total des NM), matériaux du bouclier, améliorations, valeur d'un
+  du niveau, la 5 au niveau 16 et sans magie acquise, R16 ; NM au plus niveau global − 1 ; plus de NM que ceux gagnés est permis, R24), matériaux du bouclier, améliorations, valeur d'un
   accessoire. Une fiche `valide` n'y a aucune ligne. Ce qui demande le moteur (bonus de classe, d'équipement et de race, nombre de sorts, plafond de NPM du
   Potentiel Illimité, résistances, valeurs dérivées) n'y est pas encore.
 

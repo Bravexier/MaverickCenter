@@ -6,6 +6,7 @@
 //   POST /api/personnages/          crée un prétiré                       → 201, { personnage, controles, niveau }
 //   GET  /api/personnages/<id>/     une fiche                             → { personnage, controles, niveau }
 //   PUT  /api/personnages/<id>/     modifie une fiche (avec sa `version`) → { personnage, controles, niveau } ; 409 si elle a changé entre-temps
+//   DELETE /api/personnages/<id>/   supprime une fiche (corps { version })  → { supprime } ; 409 si elle a changé entre-temps
 // Édition des règles, sur le site de dev seulement (service lancé avec MAVERICK_EDITION=1 ; ailleurs 403) — serveur/edition.mjs :
 //   GET  /api/edition/en-attente/   lignes modifiées depuis la construction des pages (ce que les pages statiques doivent montrer à la place)
 //   POST /api/edition/lignes/       { lignes: [{ table, cle }] } → la ligne actuelle de chacune (passage en mode modification)
@@ -22,7 +23,8 @@
 // script d'un autre site ne peut pas écrire à la place de quelqu'un de connecté.
 import { ErreurEdition, donneesDeRace, enregistrer, listes, lireLignes, pagesDuWiki } from './edition.mjs';
 import { journalExporte, lignesEnAttente } from './edition-journal.mjs';
-import { ErreurFiche, controlesDe, enregistrerFiche, lireFiche, listerFiches, niveauDe } from './fiches.mjs';
+import { ErreurFiche, controlesDe, enregistrerFiche, lireFiche, listerFiches, niveauDe, supprimerFiche } from './fiches.mjs';
+import { CHAMP_VERSION } from '../src/lib/fiche-format.mjs';
 
 export const PREFIXE = '/api/';
 /** Taille maximale d'un corps de requête (une fiche fait quelques kilo-octets). */
@@ -74,7 +76,7 @@ export function traiter(requete, service) {
     }
     if (!id || id.length > 200) return erreur(404, 'Fiche introuvable.');
   }
-  const refus = id === null ? permis('GET', 'POST') : permis('GET', 'PUT');
+  const refus = id === null ? permis('GET', 'POST') : permis('GET', 'PUT', 'DELETE');
   if (refus) return refus;
 
   const db = service.base();
@@ -92,6 +94,11 @@ export function traiter(requete, service) {
   const { valeur, refus: illisible } = lireCorps(requete.corps);
   if (illisible) return illisible;
   try {
+    if (methode === 'DELETE') {
+      supprimerFiche(db, id, valeur?.[CHAMP_VERSION]);
+      service.journal?.(`suppression du prétiré ${id}`);
+      return json(200, { supprime: id });
+    }
     const resultat = enregistrerFiche(db, valeur, { id });
     service.journal?.(`${id === null ? 'création' : 'modification'} du prétiré ${resultat.personnage.id}`);
     if (id === null) return json(201, resultat, { Location: `${PREFIXE}personnages/${encodeURIComponent(resultat.personnage.id)}/` });

@@ -62,6 +62,7 @@ fiche réelle dans git ni dans `/donnees/maverick.db` (le service refuse une bas
 | `POST /api/personnages/` | Crée un prétiré → `201`, `Location`, `{ personnage, controles, niveau }` |
 | `GET /api/personnages/<id>/` | `{ personnage, controles, niveau }` |
 | `PUT /api/personnages/<id>/` | Modifie → `{ personnage, controles, niveau }` |
+| `DELETE /api/personnages/<id>/` | Supprime, corps `{ "version": … }` (celle de la fiche lue) → `{ supprime }` ; `409` si elle a changé entre-temps |
 
 Les adresses finissent par « / », comme celles du site : en développement, Astro refuse une adresse sans « / » finale avant de la transmettre au
 service (qui accepte les deux formes).
@@ -83,7 +84,8 @@ service (qui accepte les deux formes).
 - **Refus** (`400`, rien n'est écrit) : `{ erreur, problemes: [...] }`, un message par problème, en français (« caracteristiques[0] : valeur
   hors des bornes (base >= 1) », « « race_id » : « races/x » n'existe pas dans les règles (race) », champ inconnu…).
 - **Contrôles** : les règles de `v_personnage_controle` enfreintes sont rendues avec chaque fiche ; un brouillon peut en avoir, une fiche ne
-  passe `valide` que sans aucune (sinon `422` avec la liste). Un prétiré n'est pas supprimé par l'API : on l'archive (`statut: "archive"`).
+  passe `valide` que sans aucune (sinon `422` avec la liste). On peut archiver un prétiré (`statut: "archive"`) ou le **supprimer** (demande du
+  propriétaire) : la fiche et toutes ses lignes disparaissent (`ON DELETE CASCADE` ; une inscription dans un groupe passe à `NULL`), sans retour possible.
 - **Écritures** : corps JSON (`Content-Type: application/json`) d'au plus 1 Mo, et pas de requête qu'un navigateur dit venir d'un autre site
   (`Sec-Fetch-Site`) : un formulaire ou un script d'un autre site ne peut pas écrire à la place de quelqu'un qui a le mot de passe.
 

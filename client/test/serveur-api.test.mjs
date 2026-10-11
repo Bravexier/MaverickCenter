@@ -166,7 +166,26 @@ test('fiche de joueur : ni listée, ni lue, ni modifiable sans comptes (avant la
   assert.ok(!appel('GET', '/api/personnages').corps.personnages.some((f) => f.id === 'fiche-alice'));
   assert.equal(appel('GET', '/api/personnages/fiche-alice').statut, 404);
   assert.equal(appel('PUT', '/api/personnages/fiche-alice', { version: 'x', nom: 'Pris' }).statut, 404);
+  assert.equal(appel('DELETE', '/api/personnages/fiche-alice', { version: 'x' }).statut, 404);
   assert.equal(db.prepare("SELECT nom FROM personnage WHERE id = 'fiche-alice'").get().nom, 'Secret');
+});
+
+test('suppression (demande du propriétaire) : avec la version lue, la fiche et toutes ses lignes disparaissent ; version ancienne refusée (409)', () => {
+  const { personnage: p } = appel('POST', '/api/personnages', ficheConforme('À supprimer')).corps;
+  const lignes = () => TABLES_VIVANTES.filter((t) => db.prepare(`PRAGMA table_info("${t}")`).all().some((c) => c.name === 'personnage_id') || t === 'personnage')
+    .reduce((n, t) => n + db.prepare(`SELECT count(*) AS n FROM "${t}" WHERE ${t === 'personnage' ? 'id' : 'personnage_id'} = ?`).get(p.id).n, 0);
+  assert.ok(lignes() > 1);
+  assert.equal(appel('DELETE', `/api/personnages/${p.id}/`, { version: 'ancienne' }).statut, 409);
+  assert.equal(appel('DELETE', `/api/personnages/${p.id}/`, { version: p.version }, { 'content-type': 'text/plain' }).statut, 415);
+  assert.equal(appel('DELETE', `/api/personnages/${p.id}/`, { version: p.version }, { ...JSON_, 'sec-fetch-site': 'cross-site' }).statut, 403);
+  assert.ok(lire(p.id).personnage, 'rien n’est supprimé par un refus');
+  const r = appel('DELETE', `/api/personnages/${p.id}/`, { version: p.version });
+  assert.deepEqual([r.statut, r.corps], [200, { supprime: p.id }]);
+  assert.equal(lignes(), 0);
+  assert.equal(appel('GET', `/api/personnages/${p.id}`).statut, 404);
+  assert.ok(!appel('GET', '/api/personnages').corps.personnages.some((f) => f.id === p.id));
+  assert.equal(appel('DELETE', `/api/personnages/${p.id}/`, { version: p.version }).statut, 404);
+  assert.ok(journal.includes(`suppression du prétiré ${p.id}`));
 });
 
 test('routes, méthodes et garde des écritures : JSON exigé, requête d’un autre site refusée, base indisponible', () => {
@@ -175,9 +194,11 @@ test('routes, méthodes et garde des écritures : JSON exigé, requête d’un a
   assert.equal(appel('GET', '/api/personnages/a/b').statut, 404);
   assert.equal(appel('GET', '/autre').statut, 404);
   assert.equal(appel('GET', '/api/personnages/%E0%A4%A').statut, 404);
-  let r = appel('DELETE', '/api/personnages/x');
-  assert.deepEqual([r.statut, r.entetes.Allow], [405, 'GET, PUT']);
+  let r = appel('PATCH', '/api/personnages/x');
+  assert.deepEqual([r.statut, r.entetes.Allow], [405, 'GET, PUT, DELETE']);
   r = appel('PUT', '/api/personnages', {});
+  assert.deepEqual([r.statut, r.entetes.Allow], [405, 'GET, POST']);
+  r = appel('DELETE', '/api/personnages', {});
   assert.deepEqual([r.statut, r.entetes.Allow], [405, 'GET, POST']);
   assert.equal(appel('POST', '/api/etat').statut, 405);
   assert.equal(appel('POST', '/api/personnages', { nom: 'x' }, { 'content-type': 'text/plain' }).statut, 415);

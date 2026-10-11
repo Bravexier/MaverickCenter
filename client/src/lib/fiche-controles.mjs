@@ -32,7 +32,6 @@ export const LIBELLES_DES_CONTROLES = Object.freeze({
   sort_hors_magie: 'Sort d’une autre magie',
   sort_puissance: 'Sort au-dessus de la puissance magique',
   sort_nm_max: 'Niveau de maîtrise au-dessus du maximum (niveau − 1)',
-  sorts_nm_total: 'Plus de niveaux de maîtrise que ceux gagnés',
   bouclier_quantite: 'Matériaux du bouclier au-delà de sa classe',
   amelioration_cible: 'Amélioration d’un autre genre d’objet',
   accessoire_valeur: 'Valeur d’accessoire hors de la fourchette de son effet',

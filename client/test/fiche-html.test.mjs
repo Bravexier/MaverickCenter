@@ -28,6 +28,24 @@ test('/fiche/ : les étapes du guide, numérotées dans la couleur de leur parti
   assert.match(html, /<button type="button" class="fiche-barre__principal" id="fiche-enregistrer" disabled>Enregistrer<\/button>/);
 });
 
+test('/fiche/ compacte (demandes du propriétaire) : pas de lien vers le guide, choix en menus déroulants, jauge d’XP avec ajout, suppression', options, () => {
+  const html = lire('fiche/index.html');
+  const fiche = html.slice(html.indexOf('<div class="fiche" id="fiche"'));
+  assert.ok(!/Le guide</.test(fiche) && !/href="\/guide\//.test(fiche), 'aucun lien vers le guide dans la fiche (le menu du site garde le sien)');
+  const menus = [...html.matchAll(/<details class="choix" id="choix-([a-z0-9-]+)"( hidden)?>/g)].map((m) => m[1]);
+  assert.deepEqual(menus, ['race', 'ethnie', 'magie-innee', 'magie-acquise', 'classe-1', 'specialite-1', 'classe-2', 'specialite-2']);
+  for (const conteneur of ['races', 'ethnies', 'magies-innees', 'magies-acquises', 'classe-1', 'classe-2', 'specialite-1', 'specialite-2']) {
+    assert.match(html, new RegExp(`<div class="choix__panneau"><(div|ul) id="${conteneur}"`), `${conteneur} dans un menu`);
+  }
+  assert.match(html, /<input type="number" min="0" step="1" data-champ="xp" data-entier id="xp" aria-label="Expérience \(XP\)">/);
+  assert.match(html, /<div class="xp__jauge" id="xp-jauge" role="progressbar"/);
+  assert.match(html, /<button type="button" class="xp__plus" id="xp-plus" aria-expanded="false" aria-controls="xp-ajout"/);
+  assert.match(html, /<form class="xp__ajout" id="xp-ajout" hidden>/);
+  assert.equal([...html.matchAll(/data-champ="xp"/g)].length, 1, 'un seul champ d’XP : celui de la jauge');
+  assert.match(html, /<button type="button" class="fiche-barre__danger" id="fiche-supprimer" hidden>Supprimer<\/button>/);
+  assert.ok(!html.includes('id="ajout-sort"'), 'les sorts se choisissent dans le tableau, ligne par ligne');
+});
+
 test('/fiche/regles.json : les règles de la base que lit la page', options, () => {
   const regles = JSON.parse(lire('fiche/regles.json'));
   assert.equal(regles.races.length, 27);

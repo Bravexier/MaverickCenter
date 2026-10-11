@@ -26,6 +26,18 @@ export function xpDuNiveauSuivant(regles, niveau) {
 }
 
 /**
+ * Jauge d'XP de la page : niveau atteint, XP minimale de ce niveau et du suivant (null au niveau maximal), part du chemin parcourue entre les deux
+ * (de 0 à 1 ; 1 au niveau maximal). Une XP négative ou illisible compte pour 0.
+ */
+export function progressionXp(regles, xp) {
+  const valeur = Math.max(0, entier(xp));
+  const niveau = niveauGlobal(regles, valeur);
+  const debut = ligneDeNiveau(regles, niveau).xp_min;
+  const suivant = xpDuNiveauSuivant(regles, niveau);
+  return { xp: valeur, niveau, debut, suivant, part: suivant === null ? 1 : Math.min(1, (valeur - debut) / (suivant - debut)) };
+}
+
+/**
  * Niveaux de classe (décision R2, v_personnage_niveau) : mono-classe, la classe 1 gagne 2 niveaux par niveau global jusqu'à 20 et l'excédent va
  * à la classe 2 (prise au niveau global 11) ; bi-classe, chacune = niveau global.
  */
@@ -132,6 +144,19 @@ export function caracteristiquesDe(regles, fiche) {
     const [min, max] = race?.bornes[k.id] ?? [constante(regles, 'caracteristique.base_min'), constante(regles, 'caracteristique.base_max')];
     return { id: k.id, nom: k.nom, lettre: k.lettre, base, croix: saisie ? entier(saisie.croix) : 0, bonus: plus, valeur: (base ?? 0) + plus, min, max };
   });
+}
+
+/**
+ * Les six caractéristiques de la fiche, toutes présentes (demande du propriétaire : pas de case vide, on ne peut pas choisir 0) : une valeur absente
+ * part du minimum de la race (1 de manière générale, « un minimum de 1 et un maximum de 4 ») ; avec `borner`, chaque valeur est aussi ramenée dans
+ * les bornes de la race (après un changement de race). Rend une nouvelle liste ; la fiche n'est pas modifiée.
+ */
+export function caracteristiquesCompletes(regles, fiche, { borner = false } = {}) {
+  return caracteristiquesDe(regles, fiche).map((c) => ({
+    caracteristique_id: c.id,
+    base: borner ? Math.min(c.max, Math.max(c.min, c.base ?? c.min)) : c.base ?? c.min,
+    croix: c.croix,
+  }));
 }
 
 /** Total des bases et budget exact du niveau (seuil 'caracteristiques_total', décision R3). */
@@ -318,6 +343,30 @@ export function maitriseDesSorts(regles, fiche) {
     total: (fiche.sorts ?? []).reduce((s, x) => s + entier(x.niveau_maitrise), 0),
     disponibles: ligneDeNiveau(regles, niveau).niveaux_maitrise_cumul,
   };
+}
+
+/** NM au-delà de ceux gagnés : permis, donnés par le MJ (décision R24) ; la page les compte à part. */
+export function nmExcedentaires(regles, fiche) {
+  const nm = maitriseDesSorts(regles, fiche);
+  return Math.max(0, nm.total - nm.disponibles);
+}
+
+/**
+ * Tableau des sorts de la page (demande du propriétaire) : une ligne par emplacement, ou par sort choisi s'il y en a plus. Chaque ligne propose les
+ * sorts possibles (sortsPossibles : magies du personnage, NPM accessible) moins ceux déjà pris sur les autres lignes ; le sort de la ligne y reste,
+ * même s'il n'est plus possible (`horsDesRegles`), pour qu'on le voie et qu'on le change.
+ */
+export function lignesDeSorts(regles, fiche) {
+  const choisis = fiche.sorts ?? [];
+  const possibles = sortsPossibles(regles, fiche);
+  const nombre = Math.max(emplacementsDeSorts(regles, fiche).total, choisis.length);
+  return Array.from({ length: nombre }, (_, i) => {
+    const ligne = choisis[i] ?? null;
+    const autres = new Set(choisis.filter((_, j) => j !== i).map((s) => s.sort_id));
+    const choix = possibles.filter((s) => !autres.has(s.id));
+    const actuel = ligne ? trouver(regles.sorts, ligne.sort_id) : null;
+    return { index: i, ligne, sort: actuel, choix, horsDesRegles: Boolean(ligne) && !choix.some((s) => s.id === ligne.sort_id) };
+  });
 }
 
 /** Dons à choisir pour chaque classe : les groupes de sa classe et de sa spécialité choisie, jusqu'à son niveau de classe. */

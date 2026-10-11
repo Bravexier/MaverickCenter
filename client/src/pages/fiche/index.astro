@@ -5,21 +5,22 @@ import { PARTIES } from '../../lib/guide.mjs';
 import { url } from '../../lib/wiki';
 
 // Fiche de personnage (demande du propriétaire) : création et modification d'un PRÉTIRÉ sur le même écran (/fiche/, /fiche/?id=<id>), en suivant
-// les étapes du guide « Créer son personnage », puis la progression, l'équipement et l'état en jeu. Les règles viennent de la base (/fiche/regles.json,
+// les étapes du guide « Créer son personnage », puis la progression, l'équipement et l'état en jeu. Compacte (demandes du propriétaire) : les choix
+// (race, ethnie, magies, classes, spécialités) dans des menus déroulants, caractéristiques et compétences en curseurs, jauge d'XP dans l'en-tête. Les règles viennent de la base (/fiche/regles.json,
 // lib/fiche-regles.mjs), les calculs de lib/fiche-moteur.mjs, l'enregistrement du service des personnages (/api/, docs/serveur.md). Le formulaire est
 // construit par src/scripts/fiche.mjs. CSS : styles/fiche/fiche.css, inséré ici (?raw).
 const couleur = Object.fromEntries(PARTIES.map((p) => [p.id, p.couleur]));
 const ETAPES = [
-  { id: 'identite', num: '1', titre: 'Imaginer son personnage et choisir sa race', court: 'Race', partie: 'creer', guide: 'guide/choisir-sa-race/' },
-  { id: 'magies', num: '2', titre: 'Choisir ses magies', court: 'Magies', partie: 'creer', guide: 'guide/choisir-ses-magies/' },
-  { id: 'classes', num: '3', titre: 'Choisir sa classe', court: 'Classe', partie: 'creer', guide: 'guide/choisir-sa-classe/' },
-  { id: 'caracteristiques', num: '4', titre: 'Caractéristiques et compétences', court: 'Caractéristiques', partie: 'creer', guide: 'guide/caracteristiques-et-competences/' },
-  { id: 'sorts', num: '5', titre: 'Ses sorts', court: 'Sorts', partie: 'creer', guide: 'guide/premiers-sorts/' },
-  { id: 'finaliser', num: '6', titre: 'Finaliser son personnage', court: 'Attributs', partie: 'creer', guide: 'guide/finaliser-son-personnage/' },
-  { id: 'progression', num: '7', titre: 'Progresser : gains de niveau et dons', court: 'Progression', partie: 'progresser', guide: 'guide/la-montee-de-niveau/' },
-  { id: 'equipement', num: '8', titre: 'Équipement', court: 'Équipement', partie: 'jouer', guide: 'guide/l-equipement/' },
-  { id: 'jeu', num: '9', titre: 'En jeu : état, notes et événements', court: 'En jeu', partie: 'jouer', guide: null },
-  { id: 'controles', num: '✓', titre: 'Contrôle des règles', court: 'Contrôle', partie: 'plus-loin', guide: null },
+  { id: 'identite', num: '1', titre: 'Identité et race', court: 'Race', partie: 'creer' },
+  { id: 'magies', num: '2', titre: 'Magies', court: 'Magies', partie: 'creer' },
+  { id: 'classes', num: '3', titre: 'Classes', court: 'Classes', partie: 'creer' },
+  { id: 'caracteristiques', num: '4', titre: 'Caractéristiques et compétences', court: 'Caractéristiques', partie: 'creer' },
+  { id: 'sorts', num: '5', titre: 'Sorts', court: 'Sorts', partie: 'creer' },
+  { id: 'finaliser', num: '6', titre: 'Attributs, métier, alignement, bourse', court: 'Attributs', partie: 'creer' },
+  { id: 'progression', num: '7', titre: 'Gains de niveau et dons', court: 'Progression', partie: 'progresser' },
+  { id: 'equipement', num: '8', titre: 'Équipement', court: 'Équipement', partie: 'jouer' },
+  { id: 'jeu', num: '9', titre: 'En jeu : état, notes et événements', court: 'En jeu', partie: 'jouer' },
+  { id: 'controles', num: '✓', titre: 'Contrôle des règles', court: 'Contrôle', partie: 'plus-loin' },
 ];
 const style = (partie: string) => `--etape: ${couleur[partie]}`;
 const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
@@ -29,13 +30,24 @@ const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
   <style is:inline set:html={ficheCss}></style>
   <div class="fiche" id="fiche" data-regles={url('fiche/regles.json')} data-api={url('api/')} data-personnages={url('personnages/')} data-fiche={url('fiche/')}>
     <header class="fiche-entete">
-      <p class="fiche-surtitre">Fiche de personnage · prétiré</p>
-      <h1 id="fiche-titre">Nouveau prétiré</h1>
-      <p class="fiche-intro">
-        Une fiche se remplit dans l’ordre du <a href={url('guide/creer-son-personnage/')}>guide</a>, une étape à la fois ; les valeurs se calculent
-        au fil de la saisie. Pour l’instant, la fiche crée des <strong>prétirés</strong> : des personnages qui ne sont à personne et que tout le monde voit.{' '}
-        <a href={url('personnages/')}>Tous les personnages</a>.
-      </p>
+      <div class="fiche-entete__titre">
+        <p class="fiche-surtitre">Fiche de personnage · prétiré · <a href={url('personnages/')}>tous les personnages</a></p>
+        <h1 id="fiche-titre">Nouveau prétiré</h1>
+      </div>
+      <div class="xp" id="xp-bloc">
+        <div class="xp__ligne">
+          <strong class="xp__niveau" id="xp-niveau">Niveau 1</strong>
+          <input type="number" min="0" step="1" data-champ="xp" data-entier id="xp" aria-label="Expérience (XP)" />
+          <span class="xp__objectif" id="xp-objectif"></span>
+          <button type="button" class="xp__plus" id="xp-plus" aria-expanded="false" aria-controls="xp-ajout" title="Ajouter de l’XP" aria-label="Ajouter de l’XP">+</button>
+        </div>
+        <div class="xp__jauge" id="xp-jauge" role="progressbar" aria-label="Expérience vers le niveau suivant"><span class="xp__rempli" id="xp-rempli"></span></div>
+        <form class="xp__ajout" id="xp-ajout" hidden>
+          <label>XP gagnée <input type="number" min="1" step="1" id="xp-gain" /></label>
+          <button type="submit">Ajouter</button>
+          <button type="button" id="xp-annuler">Annuler</button>
+        </form>
+      </div>
     </header>
 
     <div class="fiche-barre" role="toolbar" aria-label="Enregistrement">
@@ -53,6 +65,7 @@ const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
       <button type="button" id="fiche-exporter">Exporter</button>
       <label class="fiche-bouton-fichier"><input type="file" id="fiche-importer" accept="application/json,.json" hidden /><span role="button" tabindex="0">Importer</span></label>
       <button type="button" id="fiche-imprimer">Imprimer</button>
+      <button type="button" class="fiche-barre__danger" id="fiche-supprimer" hidden>Supprimer</button>
     </div>
 
     <p class="banner fiche-indisponible" id="fiche-indisponible" hidden></p>
@@ -64,15 +77,17 @@ const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
 
     {[etape('identite')].map((e) => (
       <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
-        <h2 id={`titre-${e.id}`}><span class="num">{e.num}</span>{e.titre}<small><a href={url(e.guide!)}>Le guide</a></small></h2>
+        <h2 id={`titre-${e.id}`}><span class="num">{e.num}</span>{e.titre}</h2>
         <div class="fiche-etape__corps">
           <div class="fiche-champs">
             <label class="fiche-champ"><span>Nom</span><input data-champ="nom" required maxlength="120" autocomplete="off" /></label>
             <label class="fiche-champ"><span>Surnom</span><input data-champ="surnom" maxlength="120" autocomplete="off" /></label>
             <label class="fiche-champ"><span>Lieu d’origine</span><input data-champ="lieu_origine" maxlength="120" autocomplete="off" /></label>
           </div>
-          <div><h3>Race</h3><div id="races" class="groupes-pastilles"></div></div>
-          <div id="bloc-ethnies" hidden><h3>Ethnie</h3><ul id="ethnies" class="pastilles"></ul></div>
+          <div class="choix-grille">
+            <details class="choix" id="choix-race"><summary><span class="choix__etiquette">Race</span><span class="choix__valeur" id="valeur-race"></span></summary><div class="choix__panneau"><div id="races" class="groupes-pastilles"></div></div></details>
+            <details class="choix" id="choix-ethnie" hidden><summary><span class="choix__etiquette">Ethnie</span><span class="choix__valeur" id="valeur-ethnie"></span></summary><div class="choix__panneau"><ul id="ethnies" class="pastilles"></ul></div></details>
+          </div>
           <ul id="race-resume" class="fiche-resume" aria-label="Ce que donne la race"></ul>
         </div>
       </section>
@@ -80,12 +95,14 @@ const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
 
     {[etape('magies')].map((e) => (
       <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
-        <h2 id={`titre-${e.id}`}><span class="num">{e.num}</span>{e.titre}<small><a href={url(e.guide!)}>Le guide</a></small></h2>
+        <h2 id={`titre-${e.id}`}><span class="num">{e.num}</span>{e.titre}</h2>
         <div class="fiche-etape__corps">
-          <div><h3>Magie innée</h3><ul id="magies-innees" class="pastilles"></ul></div>
-          <label class="fiche-champ" id="bloc-carac-magie" hidden><span>Caractéristique du +1 de la magie innée (au choix)</span><select data-champ="caracteristique_magie_id" id="carac-magie"></select></label>
-          <div><h3>Magie acquise <small class="muted">(facultative)</small></h3><ul id="magies-acquises" class="pastilles"></ul></div>
+          <div class="choix-grille">
+            <details class="choix" id="choix-magie-innee"><summary><span class="choix__etiquette">Magie innée</span><span class="choix__valeur" id="valeur-magie-innee"></span></summary><div class="choix__panneau"><ul id="magies-innees" class="pastilles"></ul></div></details>
+            <details class="choix" id="choix-magie-acquise"><summary><span class="choix__etiquette">Magie acquise</span><span class="choix__valeur" id="valeur-magie-acquise"></span></summary><div class="choix__panneau"><ul id="magies-acquises" class="pastilles"></ul></div></details>
+          </div>
           <div class="fiche-champs">
+            <label class="fiche-champ" id="bloc-carac-magie" hidden><span>+1 de la magie innée sur</span><select data-champ="caracteristique_magie_id" id="carac-magie"></select></label>
             <p class="fiche-champ"><span>Dieu inné</span><strong id="dieu-inne">—</strong></p>
             <label class="fiche-champ"><span>Dieu choisi</span><select data-champ="dieu_choisi_id" id="dieux"><option value="">—</option></select></label>
           </div>
@@ -96,27 +113,28 @@ const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
 
     {[etape('classes')].map((e) => (
       <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
-        <h2 id={`titre-${e.id}`}><span class="num">{e.num}</span>{e.titre}<small><a href={url(e.guide!)}>Le guide</a></small></h2>
+        <h2 id={`titre-${e.id}`}><span class="num">{e.num}</span>{e.titre}</h2>
         <div class="fiche-etape__corps">
-          <div class="fiche-champs">
-            <div class="fiche-champ"><span>Une ou deux classes</span><ul id="modes" class="pastilles pastilles--etroites"></ul></div>
-            <label class="fiche-champ"><span>Expérience (XP)</span><input type="number" min="0" step="1" data-champ="xp" data-entier id="xp" /></label>
-            <p class="fiche-champ"><span>Niveau</span><strong id="niveau-detail">—</strong></p>
+          <div class="fiche-champ fiche-champ--ligne"><span>Une ou deux classes</span><ul id="modes" class="pastilles pastilles--etroites"></ul></div>
+          <p class="fiche-aide" id="classe-imposee" hidden></p>
+          <div class="choix-grille choix-grille--classes">
+            <details class="choix" id="choix-classe-1"><summary><span class="choix__etiquette" id="titre-classe-1">Classe</span><span class="choix__valeur" id="valeur-classe-1"></span></summary><div class="choix__panneau"><div id="classe-1" class="groupes-pastilles groupes-pastilles--classes"></div></div></details>
+            <details class="choix" id="choix-specialite-1" hidden><summary><span class="choix__etiquette" id="titre-specialite-1">Spécialité</span><span class="choix__valeur" id="valeur-specialite-1"></span></summary><div class="choix__panneau"><ul id="specialite-1" class="pastilles"></ul></div></details>
+            <details class="choix" id="choix-classe-2" hidden><summary><span class="choix__etiquette" id="titre-classe-2">Seconde classe</span><span class="choix__valeur" id="valeur-classe-2"></span></summary><div class="choix__panneau"><div id="classe-2" class="groupes-pastilles groupes-pastilles--classes"></div></div></details>
+            <details class="choix" id="choix-specialite-2" hidden><summary><span class="choix__etiquette" id="titre-specialite-2">Spécialité</span><span class="choix__valeur" id="valeur-specialite-2"></span></summary><div class="choix__panneau"><ul id="specialite-2" class="pastilles"></ul></div></details>
           </div>
-          <div id="bloc-classe-1"><h3 id="titre-classe-1">Classe</h3><p class="fiche-aide" id="classe-imposee" hidden></p><div id="classe-1" class="groupes-pastilles groupes-pastilles--classes"></div><div id="specialite-1"></div></div>
-          <div id="bloc-classe-2" hidden><h3 id="titre-classe-2">Seconde classe</h3><div id="classe-2" class="groupes-pastilles groupes-pastilles--classes"></div><div id="specialite-2"></div></div>
         </div>
       </section>
     ))}
 
     {[etape('caracteristiques')].map((e) => (
       <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
-        <h2 id={`titre-${e.id}`}><span class="num">{e.num}</span>{e.titre}<small><a href={url(e.guide!)}>Le guide</a></small></h2>
+        <h2 id={`titre-${e.id}`}><span class="num">{e.num}</span>{e.titre}</h2>
         <div class="fiche-etape__corps">
           <div class="fiche-entete-bloc"><h3>Caractéristiques</h3><span class="budget" id="budget-caracs"></span></div>
           <div id="caracs" class="caracs"></div>
           <div class="fiche-entete-bloc"><h3>Compétences</h3><span class="budget" id="budget-competences"></span></div>
-          <p class="fiche-aide">Score = 10 × la caractéristique + les points naturels + les points acquis. Une croix : −20 % ; deux croix : la compétence n’est plus utilisable.</p>
+          <p class="fiche-aide">Score = 10 × la caractéristique + naturel + acquis. Une croix : −20 % ; deux croix : inutilisable.</p>
           <div id="competences" class="competences"></div>
           <div><h3>Maîtrises d’armes</h3><div class="fiche-defile"><table class="fiche-table" id="maitrises"></table></div></div>
         </div>
@@ -125,22 +143,20 @@ const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
 
     {[etape('sorts')].map((e) => (
       <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
-        <h2 id={`titre-${e.id}`}><span class="num">{e.num}</span>{e.titre}<small><a href={url(e.guide!)}>Le guide</a></small></h2>
+        <h2 id={`titre-${e.id}`}><span class="num">{e.num}</span>{e.titre}</h2>
         <div class="fiche-etape__corps">
-          <div class="fiche-entete-bloc"><p class="fiche-aide" id="emplacements-detail"></p><span class="budget" id="budget-sorts"></span></div>
-          <div class="fiche-entete-bloc"><p class="fiche-aide" id="nm-detail"></p><span class="budget" id="budget-nm"></span></div>
-          <div class="fiche-defile"><table class="fiche-table" id="sorts"></table></div>
-          <div class="fiche-ligne-ajout"><select id="ajout-sort" aria-label="Sort à ajouter"></select><button type="button" id="bouton-ajout-sort">Ajouter le sort</button></div>
+          <div class="fiche-entete-bloc"><p class="fiche-aide" id="emplacements-detail"></p><span class="fiche-budgets"><span class="budget" id="budget-sorts"></span><span class="budget" id="budget-nm"></span></span></div>
+          <div class="fiche-defile"><table class="fiche-table fiche-table--sorts" id="sorts"></table></div>
         </div>
       </section>
     ))}
 
     {[etape('finaliser')].map((e) => (
       <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
-        <h2 id={`titre-${e.id}`}><span class="num">{e.num}</span>{e.titre}<small><a href={url(e.guide!)}>Le guide</a></small></h2>
+        <h2 id={`titre-${e.id}`}><span class="num">{e.num}</span>{e.titre}</h2>
         <div class="fiche-etape__corps">
           <div id="attributs" class="attributs"></div>
-          <p class="fiche-aide">Comme la fiche automatique : santé et chakra = classes + race + magies + ethnie + accessoires + gains de niveau ; barrière = la moitié du chakra + classes + race + ethnie + accessoires. Armure de base sans l’équipement.</p>
+          <p class="fiche-aide">Santé et chakra = classes + race + magies + ethnie + accessoires + gains de niveau ; barrière = la moitié du chakra + classes + race + ethnie + accessoires.</p>
           <div class="fiche-champs">
             <label class="fiche-champ"><span>Métier</span><select data-champ="metier_id" id="metiers"><option value="">Sans métier</option></select></label>
             <label class="fiche-coche"><input type="checkbox" data-champ="ambidextrie" /> Ambidextrie</label>
@@ -162,7 +178,7 @@ const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
 
     {[etape('progression')].map((e) => (
       <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
-        <h2 id={`titre-${e.id}`}><span class="num">{e.num}</span>{e.titre}<small><a href={url(e.guide!)}>Le guide</a></small></h2>
+        <h2 id={`titre-${e.id}`}><span class="num">{e.num}</span>{e.titre}</h2>
         <div class="fiche-etape__corps">
           <div><h3>Gains de niveau</h3><p class="fiche-aide" id="progression-aide"></p><div class="fiche-defile"><table class="fiche-table" id="progression"></table></div></div>
           <div><h3>Dons de classe à choisir</h3><div id="dons" class="fiche-etape__dons"></div></div>
@@ -172,7 +188,7 @@ const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
 
     {[etape('equipement')].map((e) => (
       <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
-        <h2 id={`titre-${e.id}`}><span class="num">{e.num}</span>{e.titre}<small><a href={url(e.guide!)}>Le guide</a></small></h2>
+        <h2 id={`titre-${e.id}`}><span class="num">{e.num}</span>{e.titre}</h2>
         <div class="fiche-etape__corps">
           <div><h3>Armes</h3><div id="armes" class="equipement"></div></div>
           <div><h3>Armure</h3><div class="fiche-defile"><table class="fiche-table fiche-table--fixe" id="armures"></table></div></div>
