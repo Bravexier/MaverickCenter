@@ -11,10 +11,10 @@ import { enregistrerFiche } from '../serveur/fiches.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import {
-  attributsDe, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, magieAcquiseValable, nmDuSort,
+  attributsDe, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, magieAcquiseValable, nmDuSort,
   progressionXp, classeMagique, classesPermises, classesSelonLaMagieInnee,
   competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, magiesInneesPermises, maitriseDesSorts, niveauGlobal,
-  maitriseDArme, niveauxDeClasse, npmMax, progressionAttendue, puissanceMagique, refusClasse, refusMagieAcquise, sortsPossibles, xpDuNiveauSuivant,
+  maitriseDArme, niveauxDeClasse, notationDesDes, npmMax, progressionAttendue, puissanceMagique, refusClasse, refusMagieAcquise, sortsPossibles, ecrireValeurDuMoment, valeursDuMoment, xpDuNiveauSuivant,
 } from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { FIL_ROUGE, chargerFilRouge } from '../src/lib/guide-fil-rouge.mjs';
@@ -420,4 +420,57 @@ test('dons à choisir : groupes de la classe et de la spécialité choisie, jusq
   assert.ok(dix.groupes.length >= 1 && dix.groupes.every((g) => g.specialite_id === epeiste && g.niveau <= 18));
   const archimage = donsAChoisir(regles, { ...ficheVide(), xp: 11450, classes: [{ rang: 1, classe_id: 'classes/archimage' }] })[0];
   assert.ok(archimage.groupes.length >= 2 && archimage.groupes.every((g) => g.specialite_id === null));
+});
+
+test('saisie d’un curseur au clic droit (demande du propriétaire) : ramenée au maximum au-dessus, au minimum en dessous, arrondie', () => {
+  assert.equal(borner('7', 0, 4), 4);
+  assert.equal(borner('-3', 1, 4), 1);
+  assert.equal(borner('2.6', 0, 4), 3);
+  assert.equal(borner('2,4', 0, 4), 2, 'virgule décimale');
+  assert.equal(borner(' 3 ', 0, 4), 3);
+  assert.equal(borner('', 0, 4), null, 'rien de tapé : rien ne change');
+  assert.equal(borner('abc', 0, 4), null);
+});
+
+test('valeurs du moment : de 0 au maximum, absentes au maximum (corruption à 0) ; la corruption prend la place du chakra, sauf magie de la Corruption', () => {
+  // les phrases du guide que valeursDuMoment applique
+  const corps = (id) => db.prepare('SELECT corps_md FROM page WHERE id = ?').get(id).corps_md;
+  assert.match(corps('guide/fiche-attributs'), /25 de chakra maximum, si jamais vous avez 2 points de corruption, vous ne pourrez pas monter au-delà de 23\/25/);
+  assert.match(corps('guide/fiche-attributs'), /Ceux qui utilisent la magie de la corruption ne sont pas concernés par cette règle/);
+  assert.match(corps('magies/magie-de-la-corruption'), /la corruption n'empiète pas dans l'espace du chakra/);
+  assert.match(corps('guide/finaliser-son-personnage'), /\*\*Corruption\*\* : son maximum est celui du chakra/);
+  // l'exemple du propriétaire : 50 de chakra, 15 de corruption, 35 au plus
+  const attributs = { sante: 40, chakra: 50, barriere: 25, corruptionMax: 50, quatriemeBarre: null };
+  const par = (fiche) => Object.fromEntries(valeursDuMoment(regles, { ...ficheVide(), ...fiche }, attributs).map((j) => [j.champ, j]));
+  const vide = par({});
+  assert.deepEqual(Object.keys(vide), ['sante_actuelle', 'chakra_actuel', 'barriere_actuelle', 'corruption']);
+  assert.deepEqual(Object.values(vide).map((j) => [j.min, j.max, j.valeur]), [[0, 40, 40], [0, 50, 50], [0, 25, 25], [0, 50, 0]]);
+  const corrompu = par({ corruption: 15 });
+  assert.deepEqual([corrompu.chakra_actuel.max, corrompu.chakra_actuel.valeur, corrompu.chakra_actuel.reduction], [35, 35, 15]);
+  assert.equal(par({ corruption: 15, chakra_actuel: 20 }).chakra_actuel.valeur, 20);
+  assert.equal(par({ corruption: 15, chakra_actuel: 40 }).chakra_actuel.hors, true, '40 enregistré, 35 au plus');
+  assert.equal(par({ corruption: 15, magie_innee_id: 'magies/magie-de-la-corruption' }).chakra_actuel.max, 50, 'magie de la Corruption innée');
+  assert.equal(par({ corruption: 15, magie_acquise_id: 'magies/magie-de-la-corruption' }).chakra_actuel.max, 50, 'ou acquise');
+  assert.equal(par({ corruption: 80 }).chakra_actuel.max, 0, 'jamais en dessous de 0');
+  // la corruption qui monte prend la place du chakra actuel ; celle qui baisse ne le rend pas ; les autres curseurs n'écrivent qu'eux, bornés
+  const fiche = { ...ficheConforme(), sante_actuelle: 3 };
+  const a = attributsDe(regles, fiche);
+  assert.ok(a.chakra > 5);
+  const monte = ecrireValeurDuMoment(regles, fiche, 'corruption', a.chakra - 5);
+  assert.deepEqual(monte, { corruption: a.chakra - 5, chakra_actuel: 5 }, 'chakra plein (vide = au maximum), 5 de place');
+  assert.deepEqual(ecrireValeurDuMoment(regles, { ...fiche, ...monte }, 'corruption', 0), { corruption: 0, chakra_actuel: 5 }, 'la corruption retirée ne rend pas de chakra');
+  assert.deepEqual(ecrireValeurDuMoment(regles, { ...fiche, chakra_actuel: 2 }, 'corruption', 1), { corruption: 1, chakra_actuel: 2 });
+  assert.deepEqual(ecrireValeurDuMoment(regles, fiche, 'corruption', a.chakra + 50), { corruption: a.chakra, chakra_actuel: 0 }, 'au plus le chakra');
+  assert.deepEqual(ecrireValeurDuMoment(regles, fiche, 'sante_actuelle', 999), { sante_actuelle: a.sante });
+  assert.deepEqual(ecrireValeurDuMoment(regles, fiche, 'barre4_actuelle', 3), {}, 'pas de 4ᵉ barre sans Sang ni Nécromancie');
+  // la 4ᵉ barre de la magie qui en a une (Sang : 10 au plus)
+  const sang = valeursDuMoment(regles, ficheConforme({ magie_innee_id: 'magies/magie-du-sang' })).find((j) => j.champ === 'barre4_actuelle');
+  assert.deepEqual([sang.nom, sang.max, sang.valeur], ['Sang actuel', 10, 10]);
+});
+
+test('maîtrises d’armes : les dés dans leur colonne (demande du propriétaire), pour chaque écriture du dé des familles', () => {
+  assert.deepEqual(regles.familles_armes.map((f) => notationDesDes(f.de, 3)),
+    ['3D10', '3D6', '3D10', '3D10', '3D10', '3D6/3D8/3D10', '3D8', '3D6', '3D8', '3D12', '3D6', '3 dés']);
+  assert.equal(notationDesDes('D10', 1), '1D10');
+  assert.equal(notationDesDes(null, 1), '1 dé');
 });

@@ -5,9 +5,9 @@
 import { libelleDuControle } from '../lib/fiche-controles.mjs';
 import { CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ficheVide } from '../lib/fiche-format.mjs';
 import {
-  attributsDe, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, classesDe, classesSelonLaMagieInnee,
-  competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, lignesDeSorts, magieAcquiseValable, magiesInneesPermises, maitriseDArme,
-  maitriseDesSorts, niveauGlobal, nmDuSort, npmMax, progressionAttendue, progressionXp, refusClasse, refusMagieAcquise, trouver,
+  attributsDe, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, classesDe, classesSelonLaMagieInnee,
+  competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, lignesDeSorts, magieAcquiseValable, notationDesDes, magiesInneesPermises, maitriseDArme,
+  maitriseDesSorts, niveauGlobal, nmDuSort, npmMax, progressionAttendue, progressionXp, refusClasse, refusMagieAcquise, trouver, ecrireValeurDuMoment, valeursDuMoment,
 } from '../lib/fiche-moteur.mjs';
 
 const racine = document.getElementById('fiche');
@@ -408,26 +408,32 @@ function construireCaracteristiques() {
           el('td', { class: 'curseur-td' }, el('span', { class: 'curseur-cellule' }, acquis, valeurAcquis)), el('td', { class: 'nombre' }, score));
       }))))));
 
-  // la base garde le nombre de dés (1 sans maîtrise, 5 au plus) ; on choisit des points de maîtrise (4 au plus), un dé de plus chacun
+  // la base garde le nombre de dés (1 sans maîtrise, 5 au plus) ; un curseur de points de maîtrise (4 au plus), un dé de plus chacun, et les dés
+  // dans leur colonne (demande du propriétaire)
   const maitrise = maitriseDArme(regles);
   reconstruire($('maitrises'), 'fixe', () => [
-    el('thead', {}, el('tr', {}, el('th', {}, 'Famille d’armes'), el('th', {}, 'Dé'), el('th', {}, 'Maîtrise'))),
+    el('thead', {}, el('tr', {}, el('th', {}, 'Famille d’armes'), el('th', {}, 'Maîtrise'), el('th', { class: 'nombre' }, 'Dés'))),
     el('tbody', {}, regles.familles_armes.map((f) => {
-      const choix = el('select', {
-        'aria-label': `Maîtrise : ${f.nom}`,
-        onchange: (ev) => {
+      const curseur = el('input', {
+        type: 'range', min: '0', max: String(maitrise.pointsMax), step: '1', class: 'curseur', 'aria-label': `Maîtrise : ${f.nom} (points)`,
+        title: `De 0 à ${maitrise.pointsMax} points : ${maitrise.desSansMaitrise} dé sans maîtrise, un de plus par point`,
+        oninput: (ev) => {
           const points = entier(ev.target.value);
           retirer('maitrises_armes', (x) => x.arme_famille_id === f.id);
           if (points > 0) fiche.maitrises_armes.push({ arme_famille_id: f.id, des: maitrise.desDe(points) });
           changer();
         },
-      }, option('0', `Aucune (${maitrise.desSansMaitrise} dé)`),
-      Array.from({ length: maitrise.pointsMax }, (_, i) => i + 1).map((n) => option(String(n), `${n} point${n > 1 ? 's' : ''} (${maitrise.desDe(n)} dés)`)));
-      synchro(() => {
-        const ligneDeMaitrise = ligneDe('maitrises_armes', (x) => x.arme_famille_id === f.id);
-        poser(choix, String(ligneDeMaitrise ? maitrise.pointsDe(ligneDeMaitrise.des) : 0));
       });
-      return el('tr', {}, el('td', {}, f.nom), el('td', { class: 'muted' }, f.de ?? ''), el('td', {}, choix));
+      const points = el('output', { class: 'curseur__valeur' });
+      const des = el('strong', { class: 'des' });
+      synchro(() => {
+        const l = ligneDe('maitrises_armes', (x) => x.arme_famille_id === f.id);
+        const n = l ? maitrise.pointsDe(l.des) : 0;
+        poser(curseur, n);
+        points.textContent = String(n);
+        des.textContent = notationDesDes(f.de, l ? l.des : maitrise.desSansMaitrise);
+      });
+      return el('tr', {}, el('td', {}, f.nom), el('td', { class: 'curseur-td' }, el('span', { class: 'curseur-cellule' }, curseur, points)), el('td', { class: 'nombre' }, des));
     })),
   ]);
 }
@@ -527,8 +533,74 @@ function construireAttributs() {
   ];
   reconstruire($('attributs'), JSON.stringify(cartes), () => cartes.map(([cle, nom, valeur, d]) => el('div', { class: 'attribut', dataset: { a: cle } },
     el('span', { class: 'attribut__nom' }, nom), el('span', { class: 'attribut__valeur' }, valeur), el('span', { class: 'attribut__detail' }, d))));
-  $('bloc-barre4').hidden = !a.quatriemeBarre;
-  if (a.quatriemeBarre) $('titre-barre4').textContent = `${a.quatriemeBarre.ressource} actuel`;
+}
+
+// ------------------------------------------------------------------ étape 9 : valeurs du moment
+/** Santé, chakra, barrière, corruption (et 4ᵉ barre) du moment : des curseurs de 0 au maximum (demande du propriétaire ; valeursDuMoment). */
+function construireJeu() {
+  const jauges = calcul.jauges;
+  reconstruire($('jauges'), jauges.map((j) => j.champ).join(), () => jauges.map(({ champ, nom }) => {
+    const curseur = el('input', {
+      type: 'range', min: '0', step: '1', class: 'curseur', 'aria-label': nom,
+      oninput: (ev) => {
+        Object.assign(fiche, ecrireValeurDuMoment(regles, fiche, champ, ev.target.value));   // la corruption emporte le chakra actuel avec elle
+        changer();
+      },
+    });
+    const valeur = el('output', { class: 'jauge__valeur' });
+    const detail = el('span', { class: 'jauge__detail' });
+    const titre = el('span', { class: 'jauge__nom' }, nom);
+    synchro(() => {
+      const j = calcul.jauges.find((x) => x.champ === champ);
+      titre.textContent = j.nom;
+      curseur.max = String(j.max);
+      poser(curseur, j.valeur);
+      valeur.textContent = `${j.hors ? fiche[champ] : j.valeur} / ${j.max}`;
+      valeur.toggleAttribute('data-hors', j.hors);
+      detail.textContent = j.reduction ? `${j.chakra} de chakra − ${j.reduction} de corruption` : champ === 'corruption' ? 'au plus le chakra' : '';
+    });
+    return el('div', { class: 'jauge', dataset: { a: champ } }, el('span', { class: 'jauge__tete' }, titre, valeur), curseur, detail);
+  }));
+}
+
+// ------------------------------------------------------------------ saisie d'un curseur (demande du propriétaire)
+/**
+ * Un clic droit sur un curseur (ou Entrée quand il a le focus) le remplace par une case de saisie : le nombre tapé, ramené entre le minimum et le
+ * maximum du curseur (borner), lui est donné à Entrée ou quand la case perd le focus ; Échap abandonne.
+ */
+function ouvrirSaisie(curseur) {
+  if (curseur.disabled || curseur.hidden) return;
+  const min = Number(curseur.min || 0);
+  const max = Number(curseur.max || 100);
+  const saisie = el('input', {
+    type: 'number', class: 'curseur-saisie', min: String(min), max: String(max), step: '1', inputmode: 'numeric',
+    'aria-label': `${curseur.getAttribute('aria-label') ?? 'Valeur'} : saisie (de ${min} à ${max})`,
+  });
+  saisie.value = curseur.value;
+  let fini = false;
+  const fermer = (valider) => {
+    if (fini) return;
+    fini = true;
+    const v = valider ? borner(saisie.value, min, max) : null;
+    saisie.remove();
+    curseur.hidden = false;
+    curseur.focus();
+    if (v !== null && String(v) !== curseur.value) {
+      curseur.value = String(v);
+      curseur.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  };
+  saisie.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter' && ev.key !== 'Escape') return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    fermer(ev.key === 'Enter');
+  });
+  saisie.addEventListener('blur', () => fermer(true));
+  curseur.hidden = true;
+  curseur.after(saisie);
+  saisie.focus();
+  saisie.select();
 }
 
 // ------------------------------------------------------------------ étape 7 : progression et dons à choix
@@ -795,6 +867,7 @@ function rafraichir() {
     nm: maitriseDesSorts(regles, fiche),
     attributs: attributsDe(regles, fiche),
   };
+  calcul.jauges = valeursDuMoment(regles, fiche, calcul.attributs);
   for (const champ of racine.querySelectorAll('[data-champ]')) poser(champ, fiche[champ.dataset.champ]);
   const titre = fiche.nom || (id ? 'Prétiré sans nom' : 'Nouveau prétiré');
   $('fiche-titre').textContent = titre;
@@ -806,6 +879,7 @@ function rafraichir() {
   construireCaracteristiques();
   construireSorts();
   construireAttributs();
+  construireJeu();
   construireProgression();
   construireEquipement();
   for (const liste of synchros.values()) for (const s of liste) s();
@@ -1034,6 +1108,16 @@ async function demarrer() {
   });
   racine.addEventListener('keydown', (ev) => {
     if (ev.key === 'Escape') fermerMenu(ev.target.closest?.('details.choix'), true);
+    if (ev.key === 'Enter' && ev.target instanceof HTMLInputElement && ev.target.type === 'range') {
+      ev.preventDefault();
+      ouvrirSaisie(ev.target);
+    }
+  });
+  // clic droit sur un curseur : saisir le nombre à la main
+  racine.addEventListener('contextmenu', (ev) => {
+    if (!(ev.target instanceof HTMLInputElement) || ev.target.type !== 'range') return;
+    ev.preventDefault();
+    ouvrirSaisie(ev.target);
   });
   // ajout d'XP : le bouton + ouvre un petit champ
   const ajoutXp = $('xp-ajout');

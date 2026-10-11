@@ -19,7 +19,12 @@ inventaire), 9 état en jeu, notes, événements, et le contrôle des règles. *
 race, ethnie, magies innée et acquise, classes et spécialités sont des **menus déroulants** (`<details class="choix">` : fermé, le choix fait ; ouvert, les
 **pastilles** dans les couleurs de `/races/`, `/magies/`, `/classes/`, celles que les règles ferment grisées ; un choix, un clic ailleurs ou Échap le
 referme) ; les caractéristiques sont des **curseurs** bornés par la race, à 1 (le minimum) par défaut, jamais vides (`caracteristiquesCompletes`), et le
-naturel et l'acquis des compétences des curseurs (naturel : jusqu'au maximum du niveau ; acquis : 5 par point de caractéristique de base) ; les **sorts**
+naturel et l'acquis des compétences des curseurs (naturel : jusqu'au maximum du niveau ; acquis : 5 par point de caractéristique de base), comme les
+**maîtrises d'armes** (0 à 4 points, les dés dans la colonne « Dés » : `notationDesDes`) et les **valeurs du moment** (santé, chakra, barrière, corruption,
+4ᵉ barre ; de 0 au maximum, au maximum tant qu'on n'y touche pas, la corruption à 0 ; le chakra actuel au plus chakra − corruption, sauf avec la magie de la
+Corruption, et la corruption qui monte emporte le chakra actuel, celle qui baisse ne le rend pas : `valeursDuMoment`, `ecrireValeurDuMoment`, guide
+« Fiche de personnage : Attributs »). Un **clic droit** sur un curseur (ou Entrée) le remplace par une case de saisie : le nombre tapé est ramené au
+maximum au-dessus, au minimum en dessous (`borner`) ; Échap abandonne ; les **sorts**
 sont un tableau d'une ligne par emplacement, sans emplacement en plus (décision R27), chacune avec la liste des sorts possibles moins ceux des autres lignes
 (`lignesDeSorts`) ; les **NM** d'un sort se notent par origine (de niveau, d'un livre — un par sort —, du MJ), 3 au plus sur un sort (décisions R24, R26). L'en-tête porte
 la **jauge d'XP** (`progressionXp`) : l'XP se modifie dans son champ ou s'ajoute avec le bouton +, le niveau suit. Une fiche enregistrée se **supprime**
