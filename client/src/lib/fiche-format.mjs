@@ -13,7 +13,7 @@
 export const TABLES_FICHES = Object.freeze([
   'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
   'personnage_metier_bonus', 'personnage_progression', 'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure',
-  'personnage_bouclier_materiau', 'personnage_accessoire', 'personnage_inventaire', 'groupe', 'groupe_membre',
+  'personnage_bouclier_materiau', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe', 'groupe_membre',
 ]);
 
 /** Clé du JSON → table de détail. Toute table de la section 13 qui cite `personnage` en fait partie, sauf HORS_FICHE (test serveur-fiches). */
@@ -31,6 +31,7 @@ export const PARTIES_DE_FICHE = Object.freeze({
   bouclier_materiaux: 'personnage_bouclier_materiau',
   accessoires: 'personnage_accessoire',
   inventaire: 'personnage_inventaire',
+  ceinture: 'personnage_ceinture',
 });
 
 /** Tables qui citent une fiche sans en faire partie : le partage d'une fiche de joueur et les inscriptions dans les groupes de jeu. */

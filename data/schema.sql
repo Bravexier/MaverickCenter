@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 30;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 31;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -335,6 +335,9 @@ CREATE TABLE posture_effet (
   texte      TEXT    NOT NULL,                               -- version 'fiche' : la ligne sans le tiret ; versions guide : l'explication après « : »
   origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'fiche'),
   source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  -- Colonne ajoutée par la migration 0031 (une colonne ajoutée va en dernier)
+  inconvenient INTEGER CHECK (inconvenient IS NULL OR inconvenient IN (0, 1)),   -- version 'fiche' : 1 = un inconvénient de la posture (en rouge sur la
+                                                             -- fiche), 0 = un avantage (en vert), décision R47 ; NULL pour les versions du guide
   PRIMARY KEY (posture_id, version, rang),
   CHECK ((version = 'fiche') = (intitule IS NULL))
 ) STRICT, WITHOUT ROWID;
@@ -3649,6 +3652,12 @@ CREATE TABLE personnage (
   modifie_le            TEXT    NOT NULL CHECK (modifie_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z' AND modifie_le >= cree_le),
   posture_id            TEXT    REFERENCES posture(id),   -- posture du moment (sélecteur des 6 postures de la page /fiche/, demande du propriétaire ;
                                                     -- migration 0027) ; NULL = aucune choisie
+  -- Portrait (demande du propriétaire, migration 0031) : l'image choisie, réduite par la page /fiche/ (data URL WebP ou JPEG, 700 000 caractères au plus),
+  -- et son cadrage, pour la recadrer plus tard : centre du cadre carré dans l'image (portrait_x, portrait_y, de 0 à 1) et zoom (de 1 à 4). NULL = le logo.
+  portrait              TEXT    CHECK (portrait IS NULL OR (portrait GLOB 'data:image/*' AND length(portrait) <= 700000)),
+  portrait_x            REAL    CHECK (portrait_x IS NULL OR portrait_x BETWEEN 0 AND 1),
+  portrait_y            REAL    CHECK (portrait_y IS NULL OR portrait_y BETWEEN 0 AND 1),
+  portrait_zoom         REAL    CHECK (portrait_zoom IS NULL OR portrait_zoom BETWEEN 1 AND 4),
   CHECK ((nature = 'pretire') = (proprietaire_id IS NULL)),   -- un prétiré n'est à personne ; la fiche d'un joueur a son propriétaire
   CHECK (nature = 'joueur' OR visibilite = 'tous'),           -- « Les prétirés sont visibles par tous »
   CHECK (magie_acquise_id IS NULL OR magie_acquise_id <> magie_innee_id),
@@ -3816,6 +3825,18 @@ CREATE TABLE personnage_accessoire (
 CREATE TABLE personnage_inventaire (
   personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
   rang           INTEGER NOT NULL CHECK (rang >= 1),
+  nom            TEXT    NOT NULL CHECK (length(nom) > 0),
+  quantite       INTEGER NOT NULL CHECK (quantite >= 1),
+  ressource_id   TEXT    REFERENCES ressource(id),
+  PRIMARY KEY (personnage_id, rang)
+) STRICT, WITHOUT ROWID;
+
+-- La ceinture (demande du propriétaire, migration 0031) : ses 3 emplacements d'objets rapides, utilisables en IC (guide « Fiche de personnage :
+-- Accessoires et Ceinture » : « La ceinture […] possède 3 emplacements d'objets rapides », « Les objets dans la ceinture ne peuvent pas dépasser le
+-- nombre de 3 ») ; un objet par emplacement, au catalogue (`ressource_id`) ou non, et sa quantité (les flèches d'un carquois…).
+CREATE TABLE personnage_ceinture (
+  personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  rang           INTEGER NOT NULL CHECK (rang BETWEEN 1 AND 3),   -- l'emplacement
   nom            TEXT    NOT NULL CHECK (length(nom) > 0),
   quantite       INTEGER NOT NULL CHECK (quantite >= 1),
   ressource_id   TEXT    REFERENCES ressource(id),

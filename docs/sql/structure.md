@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 30 : 181 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 31 : 182 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -21,7 +21,7 @@
 - [10. TRANSVERSAL : notes de cellule et écarts entre sources](#10-transversal--notes-de-cellule-et-écarts-entre-sources) : `note_cellule`, `ecart_source`, `correction`
 - [11. TABLES DÉRIVÉES (jamais exportées dans data/rows/, recalculées par `npm run db:build`)](#11-tables-dérivées-jamais-exportées-dans-datarows-recalculées-par-npm-run-dbbuild) : `lien`, `lien_candidat`, `page_fts`, `entite_fts`
 - [12. VUES (toujours à jour : rien à recalculer)](#12-vues-toujours-à-jour--rien-à-recalculer) : `cle_page`, `lien_page`, `lien_a_creer`, `tag`, `v_magie_incompatible`, `v_sort_bonus_au_nm`, `v_race_carac_borne`, `v_race_classe_accessible`, `v_race_magie_accessible`, `v_regard_peuple`, `v_creature_magie`, `v_creature_resistance`, `v_creature_sort`, `v_creature_cout_invocation`, `v_creature_meme_bloc`, `v_arme`, `v_ingredient_possible`, `v_ressource_recette`, `v_metier_recette`, `v_potion`, `v_arme_composee`, `v_armure_piece`, `v_niveau`, `v_competence`, `v_resistance_magie_lectures`, `v_resistance_ecart`, `v_mode_hyper_lectures`, `v_classe_capacite`, `v_capacite_exclusive`, `v_capacite_partagee`
-- [13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-joueurs-et-prétirés-les-groupes-de-jeu-et-la-visibilité-saisie-jamais-importée--migration-0011) : `utilisateur`, `utilisateur_role`, `personnage`, `personnage_partage`, `personnage_classe`, `personnage_caracteristique`, `personnage_competence`, `personnage_metier_bonus`, `personnage_progression`, `personnage_capacite`, `personnage_sort`, `personnage_maitrise_arme`, `personnage_arme`, `personnage_armure`, `personnage_bouclier_materiau`, `personnage_accessoire`, `personnage_inventaire`, `groupe`, `groupe_membre`, `v_personnage_niveau`, `v_personnage_metier_bonus`, `v_personnage_visible`, `v_groupe_controle`, `v_personnage_controle`
+- [13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-joueurs-et-prétirés-les-groupes-de-jeu-et-la-visibilité-saisie-jamais-importée--migration-0011) : `utilisateur`, `utilisateur_role`, `personnage`, `personnage_partage`, `personnage_classe`, `personnage_caracteristique`, `personnage_competence`, `personnage_metier_bonus`, `personnage_progression`, `personnage_capacite`, `personnage_sort`, `personnage_maitrise_arme`, `personnage_arme`, `personnage_armure`, `personnage_bouclier_materiau`, `personnage_accessoire`, `personnage_inventaire`, `personnage_ceinture`, `groupe`, `groupe_membre`, `v_personnage_niveau`, `v_personnage_metier_bonus`, `v_personnage_visible`, `v_groupe_controle`, `v_personnage_controle`
 - [14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)](#14-édition--le-journal-des-modifications-faites-depuis-le-site-de-dev-saisie-jamais-importée--migration-0017) : `modification_lot`, `modification`, `note_version_brouillon`
 - [15. NOTES DE VERSION : ce que chaque version a changé dans les règles (page /mise-a-jour/), et l'historique des modifications faites sur le](#15-notes-de-version--ce-que-chaque-version-a-changé-dans-les-règles-page-mise-a-jour-et-lhistorique-des-modifications-faites-sur-le) : `note_version`, `note_version_ligne`, `historique_modification`
 
@@ -293,6 +293,7 @@ Les quatre types de don (guide « Capacités/Don »). Le domaine classes écrit 
 | `texte` | TEXT | oui |  | version 'fiche' : la ligne sans le tiret ; versions guide : l'explication après « : » |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
+| `inconvenient` | INTEGER | non |  | version 'fiche' : 1 = un inconvénient de la posture (en rouge sur la fiche), 0 = un avantage (en vert), décision R47 ; NULL pour les versions du guide |
 
 ## 3. MAGIES ET SORTS (famille « magies »)
 
@@ -3166,6 +3167,10 @@ Une fiche de personnage : le haut de l'onglet Personnage (identité, magies, ali
 | `cree_le` | TEXT | oui |  |  |
 | `modifie_le` | TEXT | oui |  |  |
 | `posture_id` | TEXT | non | → posture.id | posture du moment (sélecteur des 6 postures de la page /fiche/, demande du propriétaire ; migration 0027) ; NULL = aucune choisie |
+| `portrait` | TEXT | non |  |  |
+| `portrait_x` | REAL | non |  |  |
+| `portrait_y` | REAL | non |  |  |
+| `portrait_zoom` | REAL | non |  |  |
 
 ### `personnage_partage`
 
@@ -3325,6 +3330,18 @@ Matériaux du bouclier (AF26, AJ26, AN26 et leurs quantités AH27, AL27, AP27) :
 | --- | --- | --- | --- | --- |
 | `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
 | `rang` | INTEGER | oui | PK 2 |  |
+| `nom` | TEXT | oui |  |  |
+| `quantite` | INTEGER | oui |  |  |
+| `ressource_id` | TEXT | non | → ressource.id |  |
+
+### `personnage_ceinture`
+
+La ceinture (demande du propriétaire, migration 0031) : ses 3 emplacements d'objets rapides, utilisables en IC (guide « Fiche de personnage : Accessoires et Ceinture » : « La ceinture […] possède 3 emplacements d'objets rapides », « Les objets dans la ceinture ne peuvent pas dépasser le nombre de 3 ») ; un objet par emplacement, au catalogue (`ressource_id`) ou non, et sa quantité (les flèches d'un carquois…).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
+| `rang` | INTEGER | oui | PK 2 | l'emplacement |
 | `nom` | TEXT | oui |  |  |
 | `quantite` | INTEGER | oui |  |  |
 | `ressource_id` | TEXT | non | → ressource.id |  |

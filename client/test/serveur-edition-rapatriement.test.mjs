@@ -65,7 +65,10 @@ const crees = lot([
 // un don créé dans la classe créée (D11) : sa fiche capacites/… est de la famille des classes, sa seule source est sa provenance
 crees.push(lot([{ op: 'creer', entite: 'capacite', valeurs: { classe_id: crees[2], niveau: '1', nom: 'Don d’essai', type: 'Passif', effet: 'Il essaie aussi.' } }]).crees[0].id);
 assert.ok(crees[3].startsWith('capacites/'));
-// un métier créé un autre jour puis supprimé : sa source (« Site de dev › édition du 2026-10-12 ») n'est plus citée, elle part avec lui
+// un métier créé un autre jour puis supprimé : sa source (« Site de dev › édition du 2026-10-12 ») n'est plus citée, elle part avec lui — sauf si de
+// vraies modifications de ce jour-là la citaient déjà (la simulation de mise à jour de la CI, lancée le 2026-10-12) : l'état d'avant est lu
+const SOURCE_JETABLE = 'ref:site-de-dev-edition-du-2026-10-12';
+const sourceJetableAvant = lire('SELECT count(*) AS n FROM source WHERE id = ?', SOURCE_JETABLE).n;
 const jetable = lot([{ op: 'creer', entite: 'metier', valeurs: { nom: noms.jetable } }], { instant: '2026-10-12T08:00:00Z' }).crees[0].id;
 lot([{ op: 'supprimer', entite: 'metier', cle: { id: jetable } }], { instant: '2026-10-12T08:00:01Z' });
 
@@ -116,7 +119,7 @@ test('pages créées par le site : chacune a sa source « Site de dev › éditi
       assert.equal(page.source_ref, sources[0].texte);
     }
     assert.deepEqual(v.prepare("SELECT id FROM page p WHERE statut <> 'example' AND NOT EXISTS (SELECT 1 FROM page_source ps WHERE ps.page_id = p.id)").all(), []);
-    assert.equal(v.prepare("SELECT count(*) AS n FROM source WHERE id = 'ref:site-de-dev-edition-du-2026-10-12'").get().n, 0, 'source du métier supprimé retirée');
+    assert.equal(v.prepare('SELECT count(*) AS n FROM source WHERE id = ?').get(SOURCE_JETABLE).n, sourceJetableAvant, 'source du métier supprimé retirée (gardée si elle était déjà citée)');
     assert.deepEqual(v.prepare('SELECT id FROM source WHERE id NOT IN (SELECT source_id FROM page_source)').all(), [], 'aucune source orpheline');
   } finally {
     v.close();

@@ -15,17 +15,17 @@ const present = existsSync(join(dist, 'fiche', 'index.html'));
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
 const lire = (rel) => readFileSync(join(dist, rel), 'utf8');
 
-test('/fiche/ : les étapes du guide dans la couleur de leur partie, les données à lire (règles, service) et le script', options, () => {
+const BLOC = /<(?:section|div) class="fiche-etape[^"]*" id="etape-([a-z]+)"/g;
+
+test('/fiche/ : quatre zones dans la couleur de leur partie du guide, les données à lire (règles, service) et le script', options, () => {
   const html = lire('fiche/index.html');
   assert.match(html, /<div class="fiche" id="fiche" data-regles="\/fiche\/regles\.json" data-api="\/api\/" data-personnages="\/personnages\/" data-fiche="\/fiche\/">/);
-  const etapes = [...html.matchAll(/<section class="fiche-etape[^"]*" id="etape-([a-z]+)" style="--etape: (#[0-9a-f]{6})"/g)].map((m) => [m[1], m[2]]);
-  assert.deepEqual(etapes.map(([id]) => id), ['identite', 'magies', 'classes', 'attributs', 'progression', 'caracteristiques', 'sorts', 'maitrises', 'equipement', 'jeu', 'controles']);
-  const creer = ['identite', 'magies', 'classes', 'attributs', 'caracteristiques', 'sorts', 'maitrises'];
-  assert.ok(etapes.filter(([id]) => creer.includes(id)).every(([, c]) => c === '#2e7d4f'), 'les étapes de création : couleur de « Créer son personnage »');
-  for (const [id] of etapes) assert.match(html, new RegExp(`<a href="#etape-${id}"`), `sommaire : ${id}`);
-  for (const champ of ['nom', 'surnom', 'lieu_origine', 'xp', 'statut', 'metier_id', 'dieu_choisi_id', 'caracteristique_magie_id', 'ambidextrie', 'bourse_pp', 'notes', 'evenements']) {
+  const zones = [...html.matchAll(/<section class="fiche-zone[^"]*" id="zone-([a-z]+)" style="--etape: (#[0-9a-f]{6})"/g)].map((m) => [m[1], m[2]]);
+  assert.deepEqual(zones, [['identite', '#2e7d4f'], ['portee', '#b03030'], ['situation', '#2a6f97'], ['parametres', '#6a4a9c']]);
+  for (const champ of ['nom', 'surnom', 'lieu_origine', 'xp', 'statut', 'metier_id', 'dieu_choisi_id', 'caracteristique_magie_id', 'bourse_pp', 'notes', 'evenements']) {
     assert.match(html, new RegExp(`data-champ="${champ}"`), champ);
   }
+  assert.ok(!html.includes('data-champ="ambidextrie"'), 'plus de case « Ambidextrie » : l’attaque à deux armes est calculée (décision R46)');
   assert.match(html, /<style>[^<]*\.fiche-etape/, 'feuille de style de la fiche insérée dans la page');
   assert.match(html, /<script type="module" src="\/_astro\/[^"]+\.js"><\/script>/);
   assert.match(html, /<button type="button" class="fiche-barre__principal" id="fiche-enregistrer" disabled>Enregistrer<\/button>/);
@@ -35,17 +35,22 @@ test('/fiche/ : les étapes du guide dans la couleur de leur partie, les donnée
   assert.match(html, /@media print\s*\{[^}]*\.fiche-retraits[^}]*display:\s*none/, 'masquée à l’impression');
 });
 
-test('/fiche/ disposée en rangées (demande du propriétaire) : 1-2-3, 6-7, 4-5, 10, 8-9, puis le contrôle ; aucun numéro de bloc', options, () => {
+test('/fiche/ en quatre zones (demande du propriétaire), sans cadre, titre ni pastille visibles : identité, à portée de main, selon la situation, paramètres en onglets', options, () => {
   const html = lire('fiche/index.html');
   const fiche = html.slice(html.indexOf('<div class="fiche" id="fiche"'));
-  const jetons = [...fiche.matchAll(/<div class="fiche-rangee( fiche-rangee--[a-z0-9]+)?">|<section class="fiche-etape[^"]*" id="etape-([a-z]+)"/g)]
-    .map((m) => (m[2] ? m[2] : `[${(m[1] ?? '').replace(' fiche-rangee--', '')}]`));
-  assert.deepEqual(jetons, ['[3]', 'identite', 'magies', 'classes', '[2]', 'attributs', 'progression', '[2]', 'caracteristiques', 'sorts', '[]', 'maitrises',
-    '[large]', 'equipement', 'jeu', 'controles']);
-  const entre = fiche.slice(fiche.indexOf('id="etape-jeu"'), fiche.indexOf('id="etape-controles"'));
-  assert.match(entre, /<\/section>\s*<\/div>\s*<section/, 'le contrôle hors des rangées, sur toute la largeur');
-  assert.ok(!/class="num"/.test(fiche), 'plus de numéro, ni dans le sommaire ni dans les titres');
-  for (const [, titre] of fiche.matchAll(/<h2 id="titre-[a-z]+">([^<]*)<\/h2>/g)) assert.doesNotMatch(titre, /^\d/, titre);
+  const jetons = [...fiche.matchAll(/<section class="fiche-zone[^"]*" id="zone-([a-z]+)"|<(?:section|div) class="fiche-etape[^"]*" id="etape-([a-z]+)"/g)]
+    .map((m) => (m[1] ? `[${m[1]}]` : m[2]));
+  assert.deepEqual(jetons, ['[identite]', 'identite', '[portee]', 'attributs', 'caracteristiques', 'armes', 'ceinture', 'sorts', 'dons',
+    '[situation]', 'posture', 'armure', 'accessoires', 'mouvement', 'resistances', 'bouclier', '[parametres]', 'progression', 'choix', 'inventaire', 'jeu', 'controles']);
+  assert.ok(!fiche.includes('fiche-zones-nav') && !fiche.includes('fiche-etapes'), 'ni pastilles des zones ni sommaire des blocs');
+  assert.match(html, /\.fiche-zone__titre\s*\{[^}]*clip-path:\s*inset\(50%\)/, 'titres des zones lus par les lecteurs d’écran, pas affichés');
+  // zone IV : des onglets (components/Onglets.astro), le compteur des choix et celui du contrôle
+  const onglets = [...fiche.matchAll(/<a class="onglet[^"]*" id="onglet-([a-z]+)" href="#etape-([a-z]+)"/g)].map((m) => [m[1], m[2]]);
+  assert.deepEqual(onglets, [['progression', 'progression'], ['choix', 'choix'], ['inventaire', 'inventaire'], ['jeu', 'jeu'], ['controles', 'controles']]);
+  assert.match(fiche, /<div class="parametres" data-onglets="Paramètres et suivi">/);
+  assert.match(fiche, /id="choix-compte" hidden><\/span>/);
+  assert.match(fiche, /id="controles-compte" hidden><\/span>/);
+  assert.ok(!/class="num"/.test(fiche), 'aucun numéro de bloc');
 });
 
 test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options, () => {
@@ -58,37 +63,55 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   for (const champ of ['nom', 'surnom', 'lieu_origine', 'metier_id', 'alignement_loyal', 'alignement_chaotique', 'alignement_bon', 'alignement_mauvais']) {
     assert.match(identite, new RegExp(`data-champ="${champ}"`), `identité : ${champ}`);
   }
-  // les quatre scores d'alignement serrés, l'alignement qui en résulte à côté
+  assert.ok(identite.indexOf('id="metiers"') > identite.indexOf('id="choix-ethnie"'), 'le métier, facultatif, sous l’ethnie');
+  assert.match(identite, /<option value="">Sans métier \(facultatif\)<\/option>/);
+  // portrait (le logo en attendant une image), niveau seul (l'XP est dans la zone IV), case « Bi-classé »
+  assert.match(identite, /<img class="portrait__image" id="portrait-image" src="\/logo\.webp" data-defaut="\/logo\.webp"/);
+  assert.match(identite, /<input type="file" id="portrait-fichier" accept="image\/\*" hidden>/);
+  assert.match(identite, /<strong id="identite-niveau">1<\/strong>/);
+  assert.ok(!identite.includes('data-champ="xp"'), 'pas d’XP dans l’identité');
+  assert.match(identite, /<input type="checkbox" id="bi-classe">/);
+  assert.ok(!html.includes('id="modes"') && !html.includes('id="classe-imposee"'), 'plus de boutons « Une classe / Deux classes » ni de texte de classe imposée');
   assert.match(identite, /<fieldset class="alignement">[\s\S]*?<output class="alignement__resultat" id="alignement-resultat" aria-live="polite">/);
-  const equipement = bloc('equipement');
-  assert.ok(equipement.indexOf('data-champ="bourse_pp"') > equipement.indexOf('id="inventaire"'), 'la bourse à la fin de l’équipement');
-  for (const champ of ['bourse_pp', 'bourse_ro', 'bourse_rf']) assert.match(equipement, new RegExp(`data-champ="${champ}"`), champ);
-  const maitrises = bloc('maitrises');
-  assert.match(maitrises, /<span class="budget fiche-etape__coin" id="budget-maitrises"><\/span>/, 'le quota dans un coin (décision R32)');
-  assert.match(maitrises, /<ul id="maitrises" class="maitrises"/);
-  assert.match(maitrises, /data-champ="ambidextrie"/);
-  assert.ok(!bloc('caracteristiques').includes('id="maitrises"'), 'les maîtrises ont quitté les caractéristiques');
+  // II. à portée de main
+  const attributs = bloc('attributs');
+  assert.match(attributs, /<div id="attributs-barres" class="attributs"><\/div>/, 'valeurs du moment et maximums fusionnés');
+  assert.match(attributs, /<div id="attributs-corruption" class="attributs-corruption"><\/div>/);
+  assert.ok(!attributs.includes('fiche-aide'), 'pas de texte de calcul');
+  const armes = bloc('armes');
+  assert.match(armes, /<div id="armes" class="equipement equipement--armes"><\/div>/);
+  assert.match(armes, /<span class="budget" id="budget-maitrises"><\/span>/, 'le quota de maîtrise (décision R32)');
+  assert.match(armes, /<ul id="maitrises" class="maitrises"/);
+  assert.match(bloc('ceinture'), /<ol id="ceinture" class="ceinture"/, 'les 3 emplacements de la ceinture');
+  const dons = bloc('dons');
+  assert.ok(dons.indexOf('id="dons-classes"') > dons.indexOf('id="dons-race"'), 'les dons de la race, puis ceux des classes');
+  assert.match(bloc('sorts'), /<table class="fiche-table fiche-table--sorts" id="sorts"><\/table>/);
+  // III. selon la situation
+  const posture = bloc('posture');
+  assert.match(posture, /<div id="postures" class="postures__cartes" role="group" aria-labelledby="titre-postures"><\/div>/, 'les six postures en cases');
+  assert.match(posture, /<div id="postures-hyper" class="postures__hyper" hidden><\/div>/, 'le Mode Hyper et le Mode Hyper 100 %, une fois débloqués');
+  assert.match(bloc('mouvement'), /<ul id="attributs-pastilles" class="fiche-resume attributs-pastilles"/, 'initiative, vitesse et nage');
+  assert.match(bloc('resistances'), /<table class="resistances__table" aria-labelledby="titre-resistances"><tbody id="resistances"><\/tbody><\/table>/);
+  assert.match(bloc('resistances'), /<p class="fiche-aide" id="resistances-choix" hidden><\/p>/);
+  assert.match(bloc('armure'), /<table class="fiche-table fiche-table--fixe" id="armures"><\/table>/);
+  assert.match(bloc('bouclier'), /<div id="bouclier" class="equipement"><\/div>/);
+  // IV. paramètres et suivi
   const progression = bloc('progression');
   for (const id of ['xp-bloc', 'xp-niveau', 'xp-jauge', 'xp-plus', 'xp-ajout']) assert.match(progression, new RegExp(`id="${id}"`), `progression : ${id}`);
   assert.match(progression, /<div id="progression" class="gains"><\/div>/, 'gains de niveau compacts');
-  const attributs = bloc('attributs');
-  assert.match(attributs, /<div id="attributs-barres" class="attributs"><\/div>/, 'valeurs du moment et maximums fusionnés');
-  assert.match(attributs, /<ul id="attributs-pastilles" class="fiche-resume attributs-pastilles"/, 'initiative, vitesse et nage en pastilles');
-  assert.match(attributs, /<div id="attributs-corruption" class="attributs-corruption"><\/div>/);
-  assert.match(attributs, /<div id="postures" class="postures__choix" role="group" aria-labelledby="titre-postures"><\/div>/, 'le sélecteur des six postures');
-  assert.ok(!attributs.includes('fiche-aide'), 'plus de texte de calcul');
-  const sorts = bloc('sorts');
-  assert.ok(sorts.indexOf('id="dons-race"') > sorts.indexOf('id="sorts"') && sorts.indexOf('id="dons-classes"') > sorts.indexOf('id="dons-race"'),
-    'sous les sorts : les dons de la race, puis ceux des classes');
-  assert.ok(!html.includes('id="jauges"'), 'plus de bloc à part pour les valeurs du moment');
-  for (const id of ['metier_id', 'alignement_loyal', 'bourse_pp']) assert.ok(!attributs.includes(`data-champ="${id}"`), `${id} hors des attributs`);
-  const magies = bloc('magies');
-  assert.ok(magies.indexOf('id="resistances"') > magies.indexOf('id="magie-resume"'), 'les résistances dans le bloc des magies, sous ce qu’elles donnent');
-  assert.match(magies, /<h3 id="titre-resistances">Résistances et faiblesses<\/h3>\s*<table class="resistances__table" aria-labelledby="titre-resistances"><tbody id="resistances"><\/tbody><\/table>/);
-  assert.match(magies, /<p class="fiche-aide" id="resistances-choix" hidden><\/p>/);
+  const choix = bloc('choix');
+  for (const id of ['choix-tete', 'choix-attente', 'choix-aller', 'choix-reduire', 'metier-bloc', 'bloc-carac-magie', 'choix-specialites', 'dons']) {
+    assert.match(choix, new RegExp(`id="${id}"`), `choix : ${id}`);
+  }
+  const inventaire = bloc('inventaire');
+  assert.ok(inventaire.indexOf('data-champ="bourse_pp"') > inventaire.indexOf('id="inventaire"'), 'la bourse après le sac');
+  for (const champ of ['bourse_pp', 'bourse_ro', 'bourse_rf']) assert.match(inventaire, new RegExp(`data-champ="${champ}"`), champ);
   const jeu = bloc('jeu');
   assert.match(jeu, /data-champ="notes"/);
   assert.match(jeu, /data-champ="evenements"/);
+  assert.match(bloc('controles'), /<ul class="controles" id="controles">/);
+  // le recadrage du portrait
+  assert.match(html, /<dialog class="recadrage" id="recadrage" aria-labelledby="titre-recadrage">/);
 });
 
 test('/fiche/ compacte (demandes du propriétaire) : pas de lien vers le guide, choix en menus déroulants, jauge d’XP avec ajout, suppression', options, () => {

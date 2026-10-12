@@ -19,7 +19,7 @@ db.exec('PRAGMA foreign_keys = ON');
 const TABLES = [
   'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
   'personnage_metier_bonus', 'personnage_progression', 'personnage_capacite', 'personnage_sort', 'personnage_maitrise_arme', 'personnage_arme', 'personnage_armure',
-  'personnage_bouclier_materiau', 'personnage_accessoire', 'personnage_inventaire', 'groupe', 'groupe_membre',
+  'personnage_bouclier_materiau', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'groupe', 'groupe_membre',
 ];
 const INSTANT = '2026-10-09T12:00:00Z';
 const controle = (id) => db.prepare('SELECT regle, detail FROM v_personnage_controle WHERE personnage_id = ? ORDER BY regle, detail').all(id).map((r) => ({ ...r }));
@@ -58,7 +58,7 @@ function personnageValide(id, surcharge = {}) {
   for (const c of ['arc', 'arme-lourde', 'athletisme', 'parade', 'stabilite']) inserer('personnage_competence', { personnage_id: id, competence_id: c, naturel: 20, acquis: 0 });
 }
 
-test('les 19 tables des fiches et des groupes existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
+test('les 20 tables des fiches et des groupes existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
   for (const t of TABLES) {
     assert.equal(LIGNES_AU_DEPART[t], 0, t);
     const lignes = readFileSync(join(racine, 'data', 'rows', `${t}.sql`), 'utf8').trim().split('\n');

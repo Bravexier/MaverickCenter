@@ -1,40 +1,35 @@
 ---
 import Base from '../../layouts/Base.astro';
+import Onglets from '../../components/Onglets.astro';
 import ficheCss from '../../styles/fiche/fiche.css?raw';
 import { PARTIES } from '../../lib/guide.mjs';
 import { url } from '../../lib/wiki';
 
-// Fiche de personnage (demande du propriétaire) : création et modification d'un PRÉTIRÉ sur le même écran (/fiche/, /fiche/?id=<id>), en suivant
-// les étapes du guide « Créer son personnage », puis la progression, l'équipement et les notes. Compacte (demandes du propriétaire) : les choix
-// (race, ethnie, magies, classes, spécialités) dans des menus déroulants, caractéristiques, compétences, maîtrises et valeurs du moment en curseurs. Blocs
-// disposés en rangées, sans numéro (demande du propriétaire) : identité, magies, classes ; attributs, progression ; caractéristiques, sorts ; maîtrises
-// d'armes ; équipement, notes ; puis le contrôle. Les règles viennent de la base (/fiche/regles.json, lib/fiche-regles.mjs), les calculs de
-// lib/fiche-moteur.mjs, l'enregistrement du service des personnages (/api/, docs/serveur.md). Le formulaire est construit par src/scripts/fiche.mjs.
-// CSS : styles/fiche/fiche.css, inséré ici (?raw).
+// Fiche de personnage (demande du propriétaire) : création et modification d'un PRÉTIRÉ sur le même écran (/fiche/, /fiche/?id=<id>). Quatre zones,
+// sans cadre ni titre visibles (demandes du propriétaire) : I. l'identité (portrait, nom, surnom, origine, race, magies, classes, alignement, niveau seul) ; II. ce qu'on veut toujours
+// à portée (attributs, caractéristiques et compétences, sorts, dons débloqués, armes et maîtrises, les trois emplacements de la ceinture) ; III. ce qui
+// dépend de la situation (posture, initiative et vitesses, armure, bouclier, résistances et faiblesses, accessoires) ; IV. ce qui se règle et se suit, en
+// onglets (progression et XP, choix, inventaire, notes et événements, contrôle des règles). Compacte (demandes du propriétaire) : les choix (race, ethnie,
+// magies, classes, spécialités) dans des menus déroulants, caractéristiques, compétences, maîtrises et valeurs du moment en curseurs. Les règles viennent
+// de la base (/fiche/regles.json, lib/fiche-regles.mjs), les calculs de lib/fiche-moteur.mjs, l'enregistrement du service des personnages (/api/,
+// docs/serveur.md). Le formulaire est construit par src/scripts/fiche.mjs. CSS : styles/fiche/fiche.css, inséré ici (?raw) ; onglets de la zone IV :
+// components/Onglets.astro.
 const couleur = Object.fromEntries(PARTIES.map((p) => [p.id, p.couleur]));
-const ETAPES = [
-  { id: 'identite', titre: 'Identité, race, métier, alignement', court: 'Identité', partie: 'creer' },
-  { id: 'magies', titre: 'Magies', court: 'Magies', partie: 'creer' },
-  { id: 'classes', titre: 'Classes', court: 'Classes', partie: 'creer' },
-  { id: 'attributs', titre: 'Attributs et valeurs du moment', court: 'Attributs', partie: 'creer' },
-  { id: 'progression', titre: 'Niveau, gains de niveau et dons', court: 'Progression', partie: 'progresser' },
-  { id: 'caracteristiques', titre: 'Caractéristiques et compétences', court: 'Caractéristiques', partie: 'creer' },
-  { id: 'sorts', titre: 'Sorts et dons', court: 'Sorts et dons', partie: 'creer' },
-  { id: 'maitrises', titre: 'Maîtrises d’armes', court: 'Maîtrises', partie: 'creer' },
-  { id: 'equipement', titre: 'Équipement et bourse', court: 'Équipement', partie: 'jouer' },
-  { id: 'jeu', titre: 'Notes et événements', court: 'Notes', partie: 'jouer' },
-  { id: 'controles', titre: 'Contrôle des règles', court: 'Contrôle', partie: 'plus-loin' },
+const ZONES = [
+  { id: 'identite', numero: 'I', titre: 'Identité', court: 'Identité', partie: 'creer' },
+  { id: 'portee', numero: 'II', titre: 'À portée de main', court: 'À portée', partie: 'jouer' },
+  { id: 'situation', numero: 'III', titre: 'Selon la situation', court: 'Situation', partie: 'decouvrir' },
+  { id: 'parametres', numero: 'IV', titre: 'Paramètres et suivi', court: 'Paramètres', partie: 'progresser' },
 ];
-const style = (partie: string) => `--etape: ${couleur[partie]}`;
-const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
+const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)!.partie]}`;
 ---
 
-<Base title="Fiche de personnage" description="Créer et modifier un personnage prétiré, étape par étape, avec les règles de Maverick">
+<Base title="Fiche de personnage" description="Créer et modifier un personnage prétiré, avec les règles de Maverick">
   <style is:inline set:html={ficheCss}></style>
   <div class="fiche" id="fiche" data-regles={url('fiche/regles.json')} data-api={url('api/')} data-personnages={url('personnages/')} data-fiche={url('fiche/')}>
     <header class="fiche-entete">
       <p class="fiche-surtitre">Fiche de personnage · prétiré · <a href={url('personnages/')}>tous les personnages</a></p>
-      <h1 id="fiche-titre">Nouveau prétiré</h1>
+      <h1 class="visuellement-cache" id="fiche-titre">Nouveau prétiré</h1>
     </header>
 
     <div class="fiche-barre" role="toolbar" aria-label="Enregistrement">
@@ -48,11 +43,13 @@ const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
       </label>
       <button type="button" class="fiche-barre__principal" id="fiche-enregistrer" disabled>Enregistrer</button>
       <p class="fiche-message" id="fiche-message" role="status" aria-live="polite"></p>
-      <button type="button" id="fiche-nouvelle">Nouveau</button>
-      <button type="button" id="fiche-exporter">Exporter</button>
-      <label class="fiche-bouton-fichier"><input type="file" id="fiche-importer" accept="application/json,.json" hidden /><span role="button" tabindex="0">Importer</span></label>
-      <button type="button" id="fiche-imprimer">Imprimer</button>
-      <button type="button" class="fiche-barre__danger" id="fiche-supprimer" hidden>Supprimer</button>
+      <span class="fiche-barre__outils">
+        <button type="button" id="fiche-nouvelle">Nouveau</button>
+        <button type="button" id="fiche-exporter">Exporter</button>
+        <label class="fiche-bouton-fichier"><input type="file" id="fiche-importer" accept="application/json,.json" hidden /><span role="button" tabindex="0">Importer</span></label>
+        <button type="button" id="fiche-imprimer">Imprimer</button>
+        <button type="button" class="fiche-barre__danger" id="fiche-supprimer" hidden>Supprimer</button>
+      </span>
     </div>
 
     <p class="banner fiche-indisponible" id="fiche-indisponible" hidden></p>
@@ -60,30 +57,31 @@ const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
     <p class="banner fiche-retraits" id="fiche-retraits" role="status" hidden></p>
     <noscript><p class="banner">Cette page a besoin de JavaScript pour construire la fiche et l’enregistrer.</p></noscript>
 
-    <ul class="fiche-etapes" aria-label="Parties de la fiche">
-      {ETAPES.map((e) => <li><a href={`#etape-${e.id}`} style={style(e.partie)}>{e.court}</a></li>)}
-    </ul>
+    {/* ===================================================================== I. Identité */}
+    <section class="fiche-zone fiche-zone--identite" id="zone-identite" style={style('identite')} aria-labelledby="titre-zone-identite">
+      <h2 class="fiche-zone__titre" id="titre-zone-identite"><span class="fiche-zone__numero" aria-hidden="true">I</span>Identité</h2>
+      <div class="fiche-etape identite" id="etape-identite">
+        {/* portrait (demande du propriétaire) : le logo en attendant une image ; une image choisie se recadre (src/scripts/fiche.mjs#construirePortrait) */}
+        <figure class="portrait" id="portrait">
+          <div class="portrait__cadre">
+            <img class="portrait__image" id="portrait-image" src={url('logo.webp')} data-defaut={url('logo.webp')} alt="Portrait du personnage (logo en attendant une image)" width="512" height="512" />
+          </div>
+          <figcaption class="portrait__actions">
+            <label class="fiche-bouton-fichier"><input type="file" id="portrait-fichier" accept="image/*" hidden /><span role="button" tabindex="0" id="portrait-choisir">Choisir une image</span></label>
+            <button type="button" id="portrait-recadrer" hidden>Recadrer</button>
+            <button type="button" class="retirer" id="portrait-retirer" hidden aria-label="Retirer le portrait" title="Retirer le portrait">✕</button>
+          </figcaption>
+        </figure>
 
-    {/* rangées de blocs (demande du propriétaire) : côte à côte sur un écran large, l'un sous l'autre sinon ; le panneau d'un menu déroulant
-         s'étend sur toute la rangée */}
-    <div class="fiche-rangee fiche-rangee--3">
-      {[etape('identite')].map((e) => (
-        <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
-          <h2 id={`titre-${e.id}`}>{e.titre}</h2>
-          <div class="fiche-etape__corps">
-            <div class="fiche-champs">
-              <label class="fiche-champ"><span>Nom</span><input data-champ="nom" required maxlength="120" autocomplete="off" /></label>
-              <label class="fiche-champ"><span>Surnom</span><input data-champ="surnom" maxlength="120" autocomplete="off" /></label>
-              <label class="fiche-champ"><span>Lieu d’origine</span><input data-champ="lieu_origine" maxlength="120" autocomplete="off" /></label>
-              <label class="fiche-champ"><span>Métier</span><select data-champ="metier_id" id="metiers"><option value="">Sans métier</option></select></label>
-            </div>
-            {/* ce que donne le métier (décisions R33 à R35) : bonus d'acquis ou d'initiative (choix à faire ici), artisanat, objets de départ */}
-            <div id="metier-bloc" hidden></div>
-            <div class="choix-grille">
-              <details class="choix" id="choix-race"><summary><span class="choix__etiquette">Race</span><span class="choix__valeur" id="valeur-race"></span></summary><div class="choix__panneau"><div id="races" class="groupes-pastilles"></div></div></details>
-              <details class="choix" id="choix-ethnie" hidden><summary><span class="choix__etiquette">Ethnie</span><span class="choix__valeur" id="valeur-ethnie"></span></summary><div class="choix__panneau"><ul id="ethnies" class="pastilles"></ul></div></details>
-            </div>
-            <ul id="race-resume" class="fiche-resume" aria-label="Ce que donne la race"></ul>
+        <div class="identite__corps">
+          <div class="identite__tete">
+            <label class="identite__nom"><span class="visuellement-cache">Nom</span><input data-champ="nom" required maxlength="120" autocomplete="off" placeholder="Nom du personnage" /></label>
+            {/* le niveau seul (demande du propriétaire) : l'XP est dans la zone IV */}
+            <p class="identite__niveau" title="Niveau global : l’XP se règle dans « Paramètres et suivi »"><small>Niveau</small><strong id="identite-niveau">1</strong></p>
+          </div>
+          <div class="identite__ligne">
+            <label class="fiche-champ"><span>Surnom</span><input data-champ="surnom" maxlength="120" autocomplete="off" /></label>
+            <label class="fiche-champ"><span>Lieu d’origine</span><input data-champ="lieu_origine" maxlength="120" autocomplete="off" /></label>
             {/* alignement (demande du propriétaire) : les quatre scores serrés, axe Loi/Chaos puis axe Bien/Mal, et l'alignement qui en résulte à côté */}
             <fieldset class="alignement">
               <legend>Alignement</legend>
@@ -98,74 +96,167 @@ const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
               <output class="alignement__resultat" id="alignement-resultat" aria-live="polite">Neutre</output>
             </fieldset>
           </div>
-        </section>
-      ))}
 
-      {[etape('magies')].map((e) => (
-        <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
-          <h2 id={`titre-${e.id}`}>{e.titre}</h2>
-          <div class="fiche-etape__corps">
-            <div class="choix-grille">
+          {/* race, magies, classes : trois colonnes de menus déroulants ; le panneau d'un menu s'étend sur les trois */}
+          <div class="identite__choix">
+            <div class="identite__colonne" aria-label="Race">
+              <details class="choix" id="choix-race"><summary><span class="choix__etiquette">Race</span><span class="choix__valeur" id="valeur-race"></span></summary><div class="choix__panneau"><div id="races" class="groupes-pastilles"></div></div></details>
+              <details class="choix" id="choix-ethnie" hidden><summary><span class="choix__etiquette">Ethnie</span><span class="choix__valeur" id="valeur-ethnie"></span></summary><div class="choix__panneau"><ul id="ethnies" class="pastilles"></ul></div></details>
+              {/* le métier, facultatif, sous l'ethnie (demande du propriétaire) ; ce qu'il donne et ses choix sont dans le cadre « Choix » */}
+              <label class="choix-liste"><span class="choix__etiquette">Métier</span><select data-champ="metier_id" id="metiers"><option value="">Sans métier (facultatif)</option></select></label>
+            </div>
+            <div class="identite__colonne" aria-label="Magies">
               <details class="choix" id="choix-magie-innee"><summary><span class="choix__etiquette">Magie innée</span><span class="choix__valeur" id="valeur-magie-innee"></span></summary><div class="choix__panneau"><ul id="magies-innees" class="pastilles"></ul></div></details>
               <details class="choix" id="choix-magie-acquise"><summary><span class="choix__etiquette">Magie acquise</span><span class="choix__valeur" id="valeur-magie-acquise"></span></summary><div class="choix__panneau"><ul id="magies-acquises" class="pastilles"></ul></div></details>
+              <div class="identite__dieux">
+                <p class="fiche-champ"><span>Dieu inné</span><strong id="dieu-inne">—</strong></p>
+                <label class="fiche-champ"><span>Dieu choisi</span><select data-champ="dieu_choisi_id" id="dieux"><option value="">—</option></select></label>
+              </div>
             </div>
-            <div class="fiche-champs">
-              <label class="fiche-champ" id="bloc-carac-magie" hidden><span>+1 de la magie innée sur</span><select data-champ="caracteristique_magie_id" id="carac-magie"></select></label>
-              <p class="fiche-champ"><span>Dieu inné</span><strong id="dieu-inne">—</strong></p>
-              <label class="fiche-champ"><span>Dieu choisi</span><select data-champ="dieu_choisi_id" id="dieux"><option value="">—</option></select></label>
-            </div>
-            <ul id="magie-resume" class="fiche-resume" aria-label="Ce que donnent les magies"></ul>
-            <div class="resistances">
-              <h3 id="titre-resistances">Résistances et faiblesses</h3>
-              <table class="resistances__table" aria-labelledby="titre-resistances"><tbody id="resistances"></tbody></table>
-              <p class="fiche-aide" id="resistances-choix" hidden></p>
-            </div>
-          </div>
-        </section>
-      ))}
-
-      {[etape('classes')].map((e) => (
-        <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
-          <h2 id={`titre-${e.id}`}>{e.titre}</h2>
-          <div class="fiche-etape__corps">
-            <div class="fiche-champ fiche-champ--ligne"><span>Une ou deux classes</span><ul id="modes" class="pastilles pastilles--etroites"></ul></div>
-            <p class="fiche-aide" id="classe-imposee" hidden></p>
-            <div class="choix-grille choix-grille--classes">
+            <div class="identite__colonne" aria-label="Classes">
+              {/* une case « Bi-classé » (demande du propriétaire) : décochée, mono-classe (la seconde classe vient au niveau 11, décision R2) */}
+              <label class="fiche-coche identite__bi"><input type="checkbox" id="bi-classe" /> Bi-classé</label>
               <details class="choix" id="choix-classe-1"><summary><span class="choix__etiquette" id="titre-classe-1">Classe</span><span class="choix__valeur" id="valeur-classe-1"></span></summary><div class="choix__panneau"><div id="classe-1" class="groupes-pastilles groupes-pastilles--classes"></div></div></details>
               <details class="choix" id="choix-specialite-1" hidden><summary><span class="choix__etiquette" id="titre-specialite-1">Spécialité</span><span class="choix__valeur" id="valeur-specialite-1"></span></summary><div class="choix__panneau"><ul id="specialite-1" class="pastilles"></ul></div></details>
               <details class="choix" id="choix-classe-2" hidden><summary><span class="choix__etiquette" id="titre-classe-2">Seconde classe</span><span class="choix__valeur" id="valeur-classe-2"></span></summary><div class="choix__panneau"><div id="classe-2" class="groupes-pastilles groupes-pastilles--classes"></div></div></details>
               <details class="choix" id="choix-specialite-2" hidden><summary><span class="choix__etiquette" id="titre-specialite-2">Spécialité</span><span class="choix__valeur" id="valeur-specialite-2"></span></summary><div class="choix__panneau"><ul id="specialite-2" class="pastilles"></ul></div></details>
             </div>
           </div>
-        </section>
-      ))}
-    </div>
+        </div>
+      </div>
+    </section>
 
-    <div class="fiche-rangee fiche-rangee--2">
-      {[etape('attributs')].map((e) => (
-        <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
-          <h2 id={`titre-${e.id}`}>{e.titre}</h2>
+    {/* ===================================================================== II. À portée de main */}
+    <section class="fiche-zone" id="zone-portee" style={style('portee')} aria-labelledby="titre-zone-portee">
+      <h2 class="fiche-zone__titre" id="titre-zone-portee"><span class="fiche-zone__numero" aria-hidden="true">II</span>À portée de main</h2>
+      <div class="fiche-zone__grille zone-portee">
+        <section class="fiche-etape zp-attributs" id="etape-attributs" aria-labelledby="titre-attributs">
+          <h3 id="titre-attributs">Attributs</h3>
           <div class="fiche-etape__corps">
-            {/* demandes du propriétaire : les valeurs du moment avec leur maximum (santé, barrière, chakra, et Âme ou Sang), sans texte de calcul (en
-                infobulle) ; initiative, vitesse et nage en simples pastilles, à côté de la corruption ; le sélecteur des six postures */}
-            <div id="attributs-barres" class="attributs"></div>
-            <div class="attributs-bas">
-              <ul id="attributs-pastilles" class="fiche-resume attributs-pastilles" aria-label="Initiative et vitesses"></ul>
+            {/* les valeurs du moment avec leur maximum (santé, barrière, chakra, Âme ou Sang, corruption), sans texte de calcul (en infobulle) */}
+            <div class="attributs-ligne">
+              <div id="attributs-barres" class="attributs"></div>
               <div id="attributs-corruption" class="attributs-corruption"></div>
-            </div>
-            <div class="postures">
-              <span class="postures__titre" id="titre-postures">Posture</span>
-              <div id="postures" class="postures__choix" role="group" aria-labelledby="titre-postures"></div>
-              <p id="posture-effets" class="postures__effets" aria-live="polite"></p>
             </div>
           </div>
         </section>
-      ))}
 
-      {[etape('progression')].map((e) => (
-        <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
-          <h2 id={`titre-${e.id}`}>{e.titre}</h2>
+        <section class="fiche-etape zp-caracs" id="etape-caracteristiques" aria-labelledby="titre-caracteristiques">
+          <h3 id="titre-caracteristiques">Caractéristiques et compétences</h3>
           <div class="fiche-etape__corps">
+            <div class="fiche-entete-bloc"><h4 class="fiche-sous-titre">Caractéristiques</h4><span class="budget" id="budget-caracs"></span></div>
+            <div id="caracs" class="caracs"></div>
+            <div class="fiche-entete-bloc"><h4 class="fiche-sous-titre" title="Score = 10 × la caractéristique + naturel + acquis. Une croix : −20 % ; deux croix : inutilisable. Clic droit sur un curseur (ou Entrée) : saisir le nombre.">Compétences</h4><span class="budget" id="budget-competences"></span></div>
+            <div id="competences" class="competences"></div>
+          </div>
+        </section>
+
+        <div class="zp-colonne">
+          <section class="fiche-etape" id="etape-armes" aria-labelledby="titre-armes">
+            <h3 id="titre-armes">Armes et maîtrises</h3>
+            <div class="fiche-etape__corps">
+              <div id="armes" class="equipement equipement--armes"></div>
+              {/* quota de maîtrise (décision R32) : points répartis / points des classes et de leurs dons */}
+              <div class="fiche-entete-bloc"><h4 class="fiche-sous-titre">Maîtrises d’armes</h4><span class="budget" id="budget-maitrises"></span></div>
+              <ul id="maitrises" class="maitrises" aria-label="Maîtrise de chaque famille d’armes"></ul>
+            </div>
+          </section>
+          {/* la ceinture : 3 emplacements d'objets rapides, utilisables en IC (guide « Fiche de personnage : Accessoires et Ceinture ») */}
+          <section class="fiche-etape" id="etape-ceinture" aria-labelledby="titre-ceinture">
+            <h3 id="titre-ceinture">Ceinture</h3>
+            <div class="fiche-etape__corps">
+              <ol id="ceinture" class="ceinture" aria-label="Emplacements d’objets rapides"></ol>
+              <p class="fiche-aide" id="ceinture-aide">3 objets rapides au plus, utilisables en IC. Carquois, sac de bombes ou de pierres : à la ceinture pour servir.</p>
+            </div>
+          </section>
+        </div>
+
+        <section class="fiche-etape zp-sorts" id="etape-sorts" aria-labelledby="titre-sorts">
+          <h3 id="titre-sorts">Sorts</h3>
+          <div class="fiche-etape__corps">
+            <div class="fiche-entete-bloc"><p class="fiche-aide" id="emplacements-detail"></p><span class="fiche-budgets"><span class="budget" id="budget-sorts"></span><span class="budget" id="budget-nm"></span></span></div>
+            <div class="fiche-defile"><table class="fiche-table fiche-table--sorts" id="sorts"></table></div>
+          </div>
+        </section>
+
+        {/* rappel des dons (demande du propriétaire) : ceux de la race (don de base d'abord), puis ceux des classes, débloqués au niveau atteint */}
+        <section class="fiche-etape zp-dons" id="etape-dons" aria-labelledby="titre-dons">
+          <h3 id="titre-dons">Dons débloqués</h3>
+          <div class="fiche-etape__corps">
+            <div><h4 class="fiche-sous-titre">Dons raciaux</h4><ul id="dons-race" class="dons-liste" aria-label="Dons de la race"></ul></div>
+            <div><h4 class="fiche-sous-titre">Dons de classe</h4><div id="dons-classes" class="dons-classes"></div></div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    {/* ===================================================================== III. Selon la situation */}
+    <section class="fiche-zone" id="zone-situation" style={style('situation')} aria-labelledby="titre-zone-situation">
+      <h2 class="fiche-zone__titre" id="titre-zone-situation"><span class="fiche-zone__numero" aria-hidden="true">III</span>Selon la situation</h2>
+      <div class="fiche-zone__grille zone-situation">
+        {/* les six postures, chacune dans sa case avec ses effets (demande du propriétaire), sur deux lignes : Offensif, Neutre, Défensif, puis Focus,
+             Vigilance, Symbiose ; à droite, le Mode Hyper et le Mode Hyper 100 % une fois débloqués */}
+        <section class="fiche-etape zs-posture" id="etape-posture" aria-labelledby="titre-postures">
+          <h3 id="titre-postures">Postures</h3>
+          <div class="fiche-etape__corps postures">
+            <div id="postures" class="postures__cartes" role="group" aria-labelledby="titre-postures"></div>
+            <div id="postures-hyper" class="postures__hyper" hidden></div>
+          </div>
+        </section>
+
+        <div class="zs-gauche">
+          <section class="fiche-etape" id="etape-armure" aria-labelledby="titre-armure">
+            <h3 id="titre-armure">Armure</h3>
+            <div class="fiche-etape__corps">
+              <div class="fiche-defile"><table class="fiche-table fiche-table--fixe" id="armures"></table></div>
+            </div>
+          </section>
+          <section class="fiche-etape" id="etape-accessoires" aria-labelledby="titre-accessoires">
+            <h3 id="titre-accessoires">Accessoires</h3>
+            <div class="fiche-etape__corps">
+              <div class="fiche-defile"><table class="fiche-table fiche-table--fixe" id="accessoires"></table></div>
+            </div>
+          </section>
+        </div>
+
+        <div class="zs-droite">
+          <section class="fiche-etape" id="etape-mouvement" aria-labelledby="titre-mouvement">
+            <h3 id="titre-mouvement">Initiative et vitesses</h3>
+            <div class="fiche-etape__corps">
+              <ul id="attributs-pastilles" class="fiche-resume attributs-pastilles" aria-label="Initiative et vitesses"></ul>
+            </div>
+          </section>
+          <section class="fiche-etape" id="etape-resistances" aria-labelledby="titre-resistances">
+            <h3 id="titre-resistances">Résistances et faiblesses</h3>
+            <div class="fiche-etape__corps">
+              <table class="resistances__table" aria-labelledby="titre-resistances"><tbody id="resistances"></tbody></table>
+              <p class="fiche-aide" id="resistances-choix" hidden></p>
+            </div>
+          </section>
+          <section class="fiche-etape" id="etape-bouclier" aria-labelledby="titre-bouclier">
+            <h3 id="titre-bouclier">Bouclier</h3>
+            <div class="fiche-etape__corps"><div id="bouclier" class="equipement"></div></div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    {/* ===================================================================== IV. Paramètres et suivi, en onglets */}
+    <section class="fiche-zone" id="zone-parametres" style={style('parametres')} aria-labelledby="titre-zone-parametres">
+      <h2 class="fiche-zone__titre" id="titre-zone-parametres"><span class="fiche-zone__numero" aria-hidden="true">IV</span>Paramètres et suivi</h2>
+      <Onglets />
+      <div class="parametres" data-onglets="Paramètres et suivi">
+        <div class="parametres__onglets">
+          <a class="onglet is-active" id="onglet-progression" href="#etape-progression">Progression</a>
+          <a class="onglet" id="onglet-choix" href="#etape-choix">Choix <span class="onglet__compte onglet__compte--attente" id="choix-compte" hidden></span></a>
+          <a class="onglet" id="onglet-inventaire" href="#etape-inventaire">Inventaire</a>
+          <a class="onglet" id="onglet-jeu" href="#etape-jeu">Notes et événements</a>
+          <a class="onglet" id="onglet-controles" href="#etape-controles">Contrôle <span class="onglet__compte" id="controles-compte" hidden></span></a>
+        </div>
+
+        <section class="fiche-etape parametres__panneau is-active" id="etape-progression">
+          <h3 class="parametres__titre">Progression</h3>
+          <div class="fiche-etape__corps parametres__deux">
             <div class="xp" id="xp-bloc">
               <div class="xp__ligne">
                 <strong class="xp__niveau" id="xp-niveau">Niveau 1</strong>
@@ -180,96 +271,87 @@ const etape = (id: string) => ETAPES.find((e) => e.id === id)!;
                 <button type="button" id="xp-annuler">Annuler</button>
               </form>
             </div>
-            <div><h3>Gains de niveau</h3><p class="fiche-aide" id="progression-aide"></p><div id="progression" class="gains"></div></div>
-            <div><h3>Dons de classe à choisir</h3><div id="dons" class="fiche-etape__dons"></div></div>
+            <div><h4 class="fiche-sous-titre">Gains de niveau</h4><p class="fiche-aide" id="progression-aide"></p><div id="progression" class="gains"></div></div>
           </div>
         </section>
-      ))}
-    </div>
 
-    <div class="fiche-rangee fiche-rangee--2">
-      {[etape('caracteristiques')].map((e) => (
-        <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
-          <h2 id={`titre-${e.id}`}>{e.titre}</h2>
-          <div class="fiche-etape__corps">
-            <p class="fiche-aide">Clic droit sur un curseur (ou Entrée) : saisir le nombre ; il est ramené entre le minimum et le maximum.</p>
-            <div class="fiche-entete-bloc"><h3>Caractéristiques</h3><span class="budget" id="budget-caracs"></span></div>
-            <div id="caracs" class="caracs"></div>
-            <div class="fiche-entete-bloc"><h3>Compétences</h3><span class="budget" id="budget-competences"></span></div>
-            <p class="fiche-aide">Score = 10 × la caractéristique + naturel + acquis. Une croix : −20 % ; deux croix : inutilisable.</p>
-            <div id="competences" class="competences"></div>
+        {/* tant qu'il reste des choix à faire, ce panneau sort en tiroir en bas de l'écran (demande du propriétaire) ; il ne se range que quand la zone IV
+             est à l'écran (src/scripts/fiche.mjs#construireChoixEnAttente) */}
+        <section class="fiche-etape parametres__panneau" id="etape-choix" aria-labelledby="titre-choix">
+          <h3 class="parametres__titre" id="titre-choix">Choix</h3>
+          <div class="tiroir__tete" id="choix-tete" hidden>
+            <strong class="tiroir__titre" id="choix-titre">Choix à faire</strong>
+            <ul class="tiroir__attente" id="choix-attente" aria-label="Choix qui restent à faire"></ul>
+            <span class="tiroir__boutons">
+              <button type="button" id="choix-aller">Aller aux choix</button>
+              <button type="button" id="choix-reduire" aria-expanded="true">Réduire</button>
+            </span>
+          </div>
+          <div class="fiche-etape__corps parametres__deux">
+            <div class="parametres__pile">
+              <div class="fiche-champs">
+                <label class="fiche-champ" id="bloc-carac-magie" hidden><span>+1 de la magie innée sur</span><select data-champ="caracteristique_magie_id" id="carac-magie"></select></label>
+              </div>
+              {/* ce que donne le métier choisi dans l'identité (décisions R33 à R35) : bonus d'acquis ou d'initiative (choix à faire ici), artisanat, objets de départ */}
+              <div id="metier-bloc" hidden><h4 class="fiche-sous-titre" id="metier-titre">Métier</h4><div id="metier-detail"></div></div>
+              <div><h4 class="fiche-sous-titre">Ce que donnent la race et les magies</h4>
+                <ul id="race-resume" class="fiche-resume" aria-label="Ce que donne la race"></ul>
+                <ul id="magie-resume" class="fiche-resume" aria-label="Ce que donnent les magies"></ul>
+              </div>
+            </div>
+            <div class="parametres__pile">
+              {/* la spécialité de chaque classe qui y a droit, aussi choisie ici (demande du propriétaire : « le doubler dans le menu de choix ») */}
+              <div id="choix-specialites" class="choix-specialites" hidden></div>
+              <div><h4 class="fiche-sous-titre">Dons de classe à choisir</h4><div id="dons" class="fiche-etape__dons"></div></div>
+            </div>
           </div>
         </section>
-      ))}
 
-      {[etape('sorts')].map((e) => (
-        <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
-          <h2 id={`titre-${e.id}`}>{e.titre}</h2>
-          <div class="fiche-etape__corps">
-            <div class="fiche-entete-bloc"><p class="fiche-aide" id="emplacements-detail"></p><span class="fiche-budgets"><span class="budget" id="budget-sorts"></span><span class="budget" id="budget-nm"></span></span></div>
-            <div class="fiche-defile"><table class="fiche-table fiche-table--sorts" id="sorts"></table></div>
-            {/* rappel des dons (demande du propriétaire) : ceux de la race (don de base d'abord), puis ceux des classes, débloqués au niveau atteint */}
-            <div><h3>Dons raciaux</h3><ul id="dons-race" class="dons-liste" aria-label="Dons de la race"></ul></div>
-            <div><h3>Dons de classe débloqués</h3><div id="dons-classes" class="dons-classes"></div></div>
-          </div>
-        </section>
-      ))}
-    </div>
-
-    <div class="fiche-rangee">
-      {[etape('maitrises')].map((e) => (
-        <section class="fiche-etape fiche-etape--coin" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
-          <h2 id={`titre-${e.id}`}>{e.titre}</h2>
-          {/* quota de maîtrise (décision R32) : points répartis / points des classes et de leurs dons, dans le coin du bloc */}
-          <span class="budget fiche-etape__coin" id="budget-maitrises"></span>
-          <div class="fiche-etape__corps">
-            <ul id="maitrises" class="maitrises" aria-label="Maîtrise de chaque famille d’armes"></ul>
-            <label class="fiche-coche"><input type="checkbox" data-champ="ambidextrie" /> Ambidextrie</label>
-          </div>
-        </section>
-      ))}
-    </div>
-
-    <div class="fiche-rangee fiche-rangee--large">
-      {[etape('equipement')].map((e) => (
-        <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
-          <h2 id={`titre-${e.id}`}>{e.titre}</h2>
-          <div class="fiche-etape__corps">
-            <div><h3>Armes</h3><div id="armes" class="equipement"></div></div>
-            <div><h3>Armure</h3><div class="fiche-defile"><table class="fiche-table fiche-table--fixe" id="armures"></table></div></div>
-            <div><h3>Bouclier</h3><div id="bouclier" class="equipement"></div></div>
-            <div><h3>Accessoires</h3><div class="fiche-defile"><table class="fiche-table fiche-table--fixe" id="accessoires"></table></div></div>
-            <div><h3>Inventaire</h3><div class="fiche-defile"><table class="fiche-table" id="inventaire"></table></div>
+        <section class="fiche-etape parametres__panneau" id="etape-inventaire">
+          <h3 class="parametres__titre">Inventaire</h3>
+          <div class="fiche-etape__corps parametres__deux parametres__deux--large">
+            <div><h4 class="fiche-sous-titre">Sac</h4><div class="fiche-defile"><table class="fiche-table" id="inventaire"></table></div>
               <div class="fiche-ligne-ajout"><button type="button" id="bouton-ajout-objet">Ajouter un objet</button></div></div>
-            <div><h3>Bourse</h3><div class="fiche-champs">
+            <div><h4 class="fiche-sous-titre">Bourse</h4><div class="fiche-champs bourse">
               <label class="fiche-champ"><span>Pièces précieuses</span><input type="number" min="0" step="1" data-champ="bourse_pp" data-entier /></label>
               <label class="fiche-champ"><span>Or</span><input type="number" min="0" step="1" data-champ="bourse_ro" data-entier /></label>
               <label class="fiche-champ"><span>Fer</span><input type="number" min="0" step="1" data-champ="bourse_rf" data-entier /></label>
             </div></div>
           </div>
         </section>
-      ))}
 
-      {[etape('jeu')].map((e) => (
-        <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
-          <h2 id={`titre-${e.id}`}>{e.titre}</h2>
-          <div class="fiche-etape__corps">
-            <label class="fiche-champ fiche-champ--large"><span>Notes</span><textarea data-champ="notes" rows="8"></textarea></label>
-            <label class="fiche-champ fiche-champ--large"><span>Événements</span><textarea data-champ="evenements" rows="6"></textarea></label>
+        <section class="fiche-etape parametres__panneau" id="etape-jeu">
+          <h3 class="parametres__titre">Notes et événements</h3>
+          <div class="fiche-etape__corps parametres__deux">
+            <label class="fiche-champ"><span>Notes</span><textarea data-champ="notes" rows="8"></textarea></label>
+            <label class="fiche-champ"><span>Événements</span><textarea data-champ="evenements" rows="8"></textarea></label>
           </div>
         </section>
-      ))}
-    </div>
 
-    {[etape('controles')].map((e) => (
-      <section class="fiche-etape" id={`etape-${e.id}`} style={style(e.partie)} aria-labelledby={`titre-${e.id}`}>
-        <h2 id={`titre-${e.id}`}>{e.titre}</h2>
-        <div class="fiche-etape__corps">
-          <p class="fiche-aide">Ce que la base sait contrôler, vérifié à chaque enregistrement. Un brouillon peut enfreindre des règles ; une fiche ne passe « validée » que sans aucune.</p>
-          <ul class="controles" id="controles"><li>La fiche n’a pas encore été enregistrée.</li></ul>
+        <section class="fiche-etape parametres__panneau" id="etape-controles">
+          <h3 class="parametres__titre">Contrôle des règles</h3>
+          <div class="fiche-etape__corps">
+            <p class="fiche-aide">Ce que la base sait contrôler, vérifié à chaque enregistrement. Un brouillon peut enfreindre des règles ; une fiche ne passe « validée » que sans aucune.</p>
+            <ul class="controles" id="controles"><li>La fiche n’a pas encore été enregistrée.</li></ul>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    {/* recadrage du portrait : l'image se déplace au doigt ou à la souris, le curseur (ou la molette) zoome */}
+    <dialog class="recadrage" id="recadrage" aria-labelledby="titre-recadrage">
+      <form method="dialog" class="recadrage__corps" id="recadrage-formulaire">
+        <h2 id="titre-recadrage">Recadrer le portrait</h2>
+        <div class="recadrage__vue" id="recadrage-vue" tabindex="0" aria-label="Cadre du portrait : glisser pour déplacer, flèches du clavier aussi">
+          <img id="recadrage-image" alt="" draggable="false" />
         </div>
-      </section>
-    ))}
+        <label class="recadrage__zoom">Zoom <input type="range" id="recadrage-zoom" min="1" max="4" step="0.01" value="1" /></label>
+        <div class="recadrage__boutons">
+          <button type="button" id="recadrage-annuler">Annuler</button>
+          <button type="submit" class="fiche-barre__principal" id="recadrage-valider" value="ok">Valider</button>
+        </div>
+      </form>
+    </dialog>
   </div>
 </Base>
 

@@ -7,6 +7,7 @@ import { groupesDeChoix } from './classe-dons.mjs';
 import { ditClasseMagique } from './classe-magique.mjs';
 import { couleurDeCaracteristique, couleurDePosture } from './caracteristiques-postures.mjs';
 import { CLASS_GROUPS, classCategory, classColor } from './class-groups.mjs';
+import { bonusDeDegatsEcrit } from './degats-texte.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, RACE_COLORS, raceKind } from './race-kinds.mjs';
 import { lecteurDeResistances } from './resistance-texte.mjs';
@@ -173,6 +174,11 @@ export function chargerReglesDeFiche(db) {
   // (classe.magie_innee_exclue_id : le Mage Bleu et le Potentiel Illimité, décision R25) ; maîtrises d'armes de la classe (classe_maitrise_arme) ; ses
   // dons, pour le rappel des dons débloqués (demande du propriétaire), avec les points de maîtrise que donne chacun (texte du don, lib/maitrise-arme.mjs),
   // pour le quota de maîtrise de la fiche (décision R32).
+  // bonus de dégâts d'arme qu'écrit un don passif (lib/degats-texte.mjs : pastille des dégâts des armes, demande du propriétaire) ; rien sinon
+  const degatsEcrits = (d) => {
+    const b = d.type === 'passif' ? bonusDeDegatsEcrit(d.effet) : null;
+    return b ? { degats: b } : {};
+  };
   const amMagique = db.prepare("SELECT am_base FROM categorie_classe WHERE id = 'classe-magique'").get()?.am_base;
   if (!amMagique) throw new Error('categorie_classe « classe-magique » : am_base absent');
   const alternatives = parCle(lignes(db, 'SELECT capacite_id, autre_id FROM v_capacite_exclusive'), 'capacite_id', (r) => r.autre_id);
@@ -206,7 +212,7 @@ export function chargerReglesDeFiche(db) {
         maitrises: maitrises.get(c.id) ?? [],
         dons: [...dons].sort((a, b) => a.niveau - b.niveau || a.ligne - b.ligne || a.rang - b.rang).map((d) => ({
           id: d.id, nom: d.nom, nature: d.nature, niveau: d.niveau, specialite_id: d.specialite_id, type: d.type, effet: d.effet,
-          points_maitrise: pointsDeMaitriseDArme(d.effet), ...resistancesEcrites(lireResistances(d.effet)),
+          points_maitrise: pointsDeMaitriseDArme(d.effet), ...resistancesEcrites(lireResistances(d.effet)), ...degatsEcrits(d),
         })),
       };
     });
@@ -223,9 +229,46 @@ export function chargerReglesDeFiche(db) {
     }));
 
   // Postures (sélecteur de la page, demande du propriétaire) : les six, dans l'ordre de la page « Postures », leur couleur et leurs effets du tableau de la fiche.
-  const effetsDePosture = parCle(lignes(db, "SELECT posture_id, texte FROM posture_effet WHERE version = 'fiche' ORDER BY posture_id, rang"), 'posture_id', (r) => r.texte);
+  // Avantages et inconvénients (décision R47, migration 0031) : `inconvenients` = les rangs des lignes du tableau de la fiche qui sont des inconvénients
+  // (posture_effet.inconvenient), les autres sont des avantages ; `ordre_postures` : l'ordre des cases sur la fiche (demande du propriétaire : Offensif,
+  // Neutre, Défensif, puis Focus, Vigilance, Symbiose).
+  const ordre_postures = ['offensif', 'neutre', 'defensif', 'focus', 'vigilance', 'symbiose'].map((slug) => `guide/postures#posture:${slug}`);
+  const lignesDePosture = lignes(db, "SELECT posture_id, rang, texte, inconvenient FROM posture_effet WHERE version = 'fiche' ORDER BY posture_id, rang");
+  const effetsDePosture = parCle(lignesDePosture, 'posture_id', (r) => r.texte);
+  const inconvenientsDePosture = parCle(lignesDePosture.filter((r) => r.inconvenient === 1), 'posture_id', (r) => r.rang);
   const postures = lignes(db, 'SELECT id, nom FROM posture ORDER BY ordre')
-    .map((p) => ({ id: p.id, nom: p.nom, couleur: couleurDePosture(p.id), texte: texteSurCouleur(couleurDePosture(p.id)), effets: effetsDePosture.get(p.id) ?? [] }));
+    .map((p) => ({
+      id: p.id, nom: p.nom, couleur: couleurDePosture(p.id), texte: texteSurCouleur(couleurDePosture(p.id)), effets: effetsDePosture.get(p.id) ?? [],
+      inconvenients: inconvenientsDePosture.get(p.id) ?? [],
+    }));
+
+  // Mode Hyper et Mode Hyper 100 % (demande du propriétaire : leurs cases à côté des postures, quand ils sont débloqués) : les niveaux et le Mode Hyper 100 %
+  // tels qu'écrits par la page « Liste des effets mode hyper » (« se débloque au niveau 2 », « n'est disponible qu'au niveau 10 ») ; les effets de base de la
+  // fiche (mode_hyper_effet version 'fiche', valeurs retenues par la décision R5) ; l'effet de chaque magie (onglet de la magie, comme sa page) et de chaque race
+  // (onglet de la race, décision R13).
+  const pageHyper = db.prepare("SELECT corps_md FROM page WHERE id = 'guide/liste-des-effets-mode-hyper'").get()?.corps_md ?? '';
+  const niveauHyper = /se d[ée]bloque au niveau (\d+)/.exec(pageHyper)?.[1];
+  const sectionCent = /## Mode Hyper 100 ?%\s*\n([\s\S]*?)(?=\n## |$)/.exec(pageHyper)?.[1] ?? '';
+  const niveauCent = /disponible qu['’]au niveau (\d+)/.exec(sectionCent)?.[1];
+  if (!niveauHyper || !niveauCent) throw new Error('page « Liste des effets mode hyper » : niveaux du Mode Hyper et du Mode Hyper 100 % introuvables');
+  const mode_hyper = {
+    niveau: Number(niveauHyper),
+    effets: lignes(db, "SELECT effet FROM mode_hyper_effet WHERE version = 'fiche' AND portee = 'general' ORDER BY rang").map((r) => r.effet),
+    magies: Object.fromEntries([...parCle(lignes(db, "SELECT magie_id, variante, effet FROM mode_hyper_effet WHERE version = 'onglet_magie' AND portee = 'magie'"), 'magie_id')]
+      .map(([id, rows]) => [id, Object.fromEntries(rows.map((r) => [r.variante, r.effet]))])),
+    races: Object.fromEntries(lignes(db, "SELECT race_id, nom, effet FROM mode_hyper_effet WHERE version = 'onglet_race'").map((r) => [r.race_id, { nom: r.nom, effet: r.effet }])),
+    cent: {
+      niveau: Number(niveauCent),
+      effets: [...sectionCent.matchAll(/^- (.+)$/gm)].map((m) => m[1].trim()),
+      suite: /^En revanche, (.+)$/m.exec(sectionCent)?.[1]?.trim() ?? null,
+    },
+  };
+
+  // Attaque à deux armes, une dans chaque main (décision R46 : « −20 % Attaque main directrice, −40 % Attaque main secondaire. Ce malus est réduit de moitié
+  // avec des dagues ou en étant classe bimane. Les deux se cumulent » ; l'arme 1 est l'arme principale ; seulement avec deux armes de mêlée). Aucune table de
+  // la base ne porte ces valeurs : elles sont écrites ici, d'après la décision. Armes de mêlée : toutes, sauf les types des armes des quatre classes
+  // « Physiques Distance » (arc, arbalète, arme de jet, bombes), lecture validée avec la maquette (R46).
+  const ambidextrie = { malus_directrice: 20, malus_secondaire: 40, diviseur: 2, type_dague: 'dague', classe: 'classes/bimane', types_a_distance: ['arc', 'arbalete', 'arme-de-jet', 'bombe'] };
 
   // Équipement : les catalogues de la base, avec ce qu'il faut pour choisir (nom, famille, cible d'une amélioration, AP/AM indiqués).
   const nomDeRessource = (id) => db.prepare('SELECT nom FROM ressource WHERE id = ?').get(id)?.nom ?? id;
@@ -234,11 +277,18 @@ export function chargerReglesDeFiche(db) {
     // la famille a sa ligne dans les maîtrises (pas ARME DE MONSTRES, décision R45), toutes nomment les armes de l'équipement
     familles_armes: lignes(db, 'SELECT id, nom, de_brut, note_brut, maitrisable FROM arme_famille ORDER BY ordre')
       .map((f) => ({ id: f.id, nom: f.nom, de: f.de_brut, de_selon_force: desSelonLaForce(f.note_brut), maitrisable: f.maitrisable === 1 })),
-    armes: lignes(db, 'SELECT id, nom, famille_id, mains FROM arme ORDER BY famille_id, ordre'),
-    materiaux_armes: lignes(db, 'SELECT ressource_id FROM materiau_arme ORDER BY ordre').map((m) => ({ id: m.ressource_id, nom: nomDeRessource(m.ressource_id) })),
-    ameliorations: lignes(db, 'SELECT id, cible, niveau, effet_brut FROM amelioration_equipement ORDER BY cible, niveau')
-      .map((a) => ({ id: a.id, cible: a.cible, niveau: a.niveau, effet: a.effet_brut })),
-    armes_elementaires: lignes(db, 'SELECT id, nom, magie_id FROM arme_elementaire ORDER BY ordre'),
+    // le dé de l'arme (« D8 au lieu du D10 » de son effet, sinon celui de son type ; NULL pour le Pugilat : selon la Force), son bonus de dégâts (« +N dégâts »)
+    // et ses types de dégâts (arme_degats), pour la pastille des dégâts ; son type (arme_type) pour l'attaque à deux armes
+    armes: (() => {
+      const types = parCle(lignes(db, 'SELECT arme_id, type_degats FROM arme_degats ORDER BY arme_id, type_degats'), 'arme_id', (r) => r.type_degats);
+      return lignes(db, 'SELECT id, nom, famille_id, type_id, mains, de, bonus_degats FROM arme ORDER BY famille_id, ordre')
+        .map((a) => ({ ...a, types_degats: types.get(a.id) ?? [] }));
+    })(),
+    // « tous les bonus se cumulent une fois l'arme forgée » (page « Armes ») : celui de la composition, de l'amélioration, de l'élément et de son amélioration
+    materiaux_armes: lignes(db, 'SELECT ressource_id, bonus_degats FROM materiau_arme ORDER BY ordre').map((m) => ({ id: m.ressource_id, nom: nomDeRessource(m.ressource_id), bonus_degats: m.bonus_degats })),
+    ameliorations: lignes(db, 'SELECT id, cible, niveau, effet_brut, bonus_degats FROM amelioration_equipement ORDER BY cible, niveau')
+      .map((a) => ({ id: a.id, cible: a.cible, niveau: a.niveau, effet: a.effet_brut, bonus_degats: a.bonus_degats })),
+    armes_elementaires: lignes(db, 'SELECT id, nom, magie_id, bonus_degats FROM arme_elementaire ORDER BY ordre'),
     emplacements_armure: lignes(db, "SELECT id, nom FROM armure_emplacement WHERE id <> 'bouclier' ORDER BY ordre"),
     armures: lignes(db, 'SELECT id, nom, type, ap, am FROM armure ORDER BY ordre'),
     armures_elementaires: lignes(db, 'SELECT id, nom, categorie, ap, am FROM armure_elementaire ORDER BY ordre'),
@@ -251,6 +301,6 @@ export function chargerReglesDeFiche(db) {
 
   return {
     constantes, am_classe_magique: amMagique, niveaux, caracteristiques, competences, initiative, races, ethnies, magies, dieux, metiers, classes, sorts, postures,
-    resistance_paliers, etats, ...equipement,
+    ordre_postures, mode_hyper, ambidextrie, resistance_paliers, etats, ...equipement,
   };
 }
