@@ -9,6 +9,7 @@ import { decouperBonus, decouperEquipement } from './metier-champs.mjs';
 import { analyserType, bonusDeMaitrise } from './sort-analyse.mjs';
 import { blocsDeTexte, coutDeSort, marquesDeMode, morceauxAvecEtats, morceauxAvecLiens, valeurDeSort } from './sort-format.mjs';
 import { marquerBonus } from './sort-maitrise.mjs';
+import { RENDUS_DU_BESTIAIRE } from './monstre-rendu.mjs';
 
 const ENTITES_HTML = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const echapperHtml = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES_HTML[c]);
@@ -212,6 +213,8 @@ export const RENDUS = {
   'sort-portee': valeurDeCase('portee', false),
   'sort-zone': valeurDeCase('zone', false),
   'sort-dsb': valeurDeCase('dsb', true),
+  // Bestiaire (lib/bestiaire-rendu.mjs : la ligne du tableau et la carte d'un monstre) : rubrique d'une carte, catégorie, cellules, lieux…
+  ...RENDUS_DU_BESTIAIRE,
 };
 
 /** HTML d'un champ d'après son rendu ; un rendu inconnu retombe sur le texte. */

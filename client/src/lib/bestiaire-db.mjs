@@ -121,7 +121,7 @@ export function chargerMonstres(db) {
       lieu: e.lieu_brut,
       complement: e.complement,
       lieux: lieuxDe.map((l) => l.lieu),
-      blocs: (blocs.get(e.id) ?? []).map((b) => ({ titre: b.titre, texte: b.texte })),
+      blocs: (blocs.get(e.id) ?? []).map((b) => ({ rang: b.rang, titre: b.titre, texte: b.texte })),
       butin: tableauDuButin(butins.get(e.id) ?? []),
     };
     const sesCartes = cartes.get(e.id) ?? [];
@@ -232,11 +232,11 @@ export function chargerMonstres(db) {
   };
 }
 
-/** Tableau du butin d'une espèce : [{ score, ennemi_simple, mini_boss, boss }] dans l'ordre des tranches ; une cellule vide reste null. */
+/** Tableau du butin d'une espèce : [{ rang, score, ennemi_simple, mini_boss, boss }] dans l'ordre des tranches ; une cellule vide reste null. */
 export function tableauDuButin(lignes) {
   const tranches = new Map();
   for (const b of lignes) {
-    if (!tranches.has(b.rang)) tranches.set(b.rang, { score: b.score_brut, ennemi_simple: null, mini_boss: null, boss: null });
+    if (!tranches.has(b.rang)) tranches.set(b.rang, { rang: b.rang, score: b.score_brut, ennemi_simple: null, mini_boss: null, boss: null });
     tranches.get(b.rang)[b.categorie] = b.texte;
   }
   return [...tranches.values()];

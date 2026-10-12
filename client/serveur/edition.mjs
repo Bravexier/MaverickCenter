@@ -46,6 +46,7 @@ import {
 } from '../src/lib/dons-edition.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { ErreurJournal, cleDe, lireLigne, nouveauLot, ouvrirLot, rejouer, structure } from './edition-journal.mjs';
+import { domainesDuBestiaire, especesDeMonstres, lignesDuBestiaire as lignesRenduesDuBestiaire } from './edition-bestiaire.mjs';
 import {
   libelleDeFiche, noterLesRetraits, nouveauxRetraitsDeFiches, numerosDesFichesDeJoueur, ordreDesLibelles, retirerDesFiches,
 } from './fiches-retraits.mjs';
@@ -1140,6 +1141,8 @@ const DOMAINES = {
   metier: METIER, magie: MAGIE, magie_role: MAGIE_ROLE, mode_hyper_effet: MODE_HYPER_EFFET, sort: SORT, race: RACE, race_onglet: RACE_ONGLET,
   race_don: RACE_DON, race_don_tableau_colonne: tableDeLOnglet('race_don_tableau_colonne'),
   race_don_tableau_cellule: tableDeLOnglet('race_don_tableau_cellule'), peuple: PEUPLE, classe: CLASSE, specialite: SPECIALITE, capacite: CAPACITE, page: PAGE,
+  // le bestiaire : espèce, carte de monstre, rubriques d'une carte (serveur/edition-bestiaire.mjs)
+  ...domainesDuBestiaire({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye, ordreSuivant }),
 };
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -1538,7 +1541,21 @@ export function listes(db) {
     objets: db.prepare('SELECT id, nom, nom_cle, description FROM objet_depart ORDER BY id').all(),
     // types de don du guide (infobulle du type d'un don)
     typesDon: db.prepare('SELECT id, nom, definition FROM type_don ORDER BY ordre').all(),
+    // les espèces du bestiaire (formulaire « Nouveau monstre »)
+    especesDeMonstres: especesDeMonstres(db),
   };
+}
+
+/**
+ * Le tableau des monstres pour une page construite avant des créations ou suppressions (POST /api/edition/bestiaire/ : { connues, logo }) : l'ordre de
+ * ses lignes, et la ligne et la carte en HTML de celles que la page n'a pas (serveur/edition-bestiaire.mjs#lignesDuBestiaire).
+ */
+export function lignesDuBestiaire(db, corps) {
+  const { connues, logo = '' } = corps ?? {};
+  if (!Array.isArray(connues) || connues.length > 5000 || !connues.every((id) => typeof id === 'string') || typeof logo !== 'string') {
+    throw refus('Corps attendu : { connues: [identifiants des lignes de la page] (au plus 5000), logo: adresse du logo }');
+  }
+  return lignesRenduesDuBestiaire(db, { connues, logo });
 }
 
 /** Les pages du wiki qu'un lien du guide peut viser (base vivante : une race ou une classe créée depuis le site en fait partie), par titre. */

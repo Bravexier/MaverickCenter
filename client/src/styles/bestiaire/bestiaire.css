@@ -12,6 +12,8 @@ html.js .bestiaire .js-seul { display: inline; }
 .bestiaire .muted { color: var(--muted); }
 .bestiaire .vide { color: var(--muted); opacity: 0.6; }
 .bestiaire .texte { white-space: pre-line; }
+/* un cadre vide (type, alignement, description… d'une carte) est caché par l'attribut hidden, même sur un élément affiché en bloc ou en pastille */
+.bestiaire [hidden] { display: none !important; }
 .bestiaire .nombre { font-variant-numeric: tabular-nums; }
 
 /* Onglets (components/Onglets.astro) */
@@ -204,3 +206,9 @@ html:not(.js) .bcarte__fermer { display: none; }
   .bvue { grid-template-columns: minmax(0, 1fr); }
   .bcartes { position: static; max-height: none; overflow: visible; border: 0; }
 }
+
+/* Mode modification du site de dev (src/scripts/edition/bestiaire.mjs) : les saisies de l'en-tête d'une carte restent sur leur ligne, à la taille de leur
+   texte ; le bouton « Supprimer » d'une ligne, petit, à côté du nom */
+.bcarte__espece .ed-saisie, .bcarte__badges .ed-saisie { display: inline-block; width: auto; min-width: 4rem; max-width: 100%; field-sizing: content; vertical-align: middle; }
+.bcarte__badges .bbadge:has(.ed-saisie) { padding: 0.1rem 0.2rem; }
+.bligne__nom .ed-supprimer { margin-left: 0.4rem; font-size: 0.72rem; padding: 0 0.4rem; vertical-align: middle; }

@@ -1,17 +1,20 @@
 ---
 // Tableau des monstres du « Bestiaire 2.0 » (lib/bestiaire-db.mjs#chargerMonstres) : une ligne par carte (ennemi simple, mini-boss, boss) et une par espèce
 // sans carte. Demande du propriétaire : six colonnes seulement (nom, espèce, EP, catégorie, type, lieu), « le reste est dans le détail » : un clic sur une
-// ligne ouvre sa carte (CarteMonstre.astro) à côté du tableau, dans un panneau qui suit le défilement (sur un petit écran, par-dessus la page).
+// ligne ouvre sa carte à côté du tableau, dans un panneau qui suit le défilement (sur un petit écran, par-dessus la page).
 // Sans JavaScript, le nom est un lien vers la carte, qui s'affiche alors (:target) sous le tableau.
+// La ligne et la carte sont celles de lib/bestiaire-rendu.mjs : le même HTML que le mode modification du site de dev (monstre créé depuis la construction).
 import Filtres from './Filtres.astro';
-import CarteMonstre from './CarteMonstre.astro';
-import { CATEGORIES, type chargerMonstres } from '../../lib/bestiaire-db.mjs';
+import type { chargerMonstres } from '../../lib/bestiaire-db.mjs';
+import { htmlDeCarteMonstre, htmlDeLigneMonstre } from '../../lib/bestiaire-rendu.mjs';
+import { url } from '../../lib/wiki';
 
 interface Props {
   monstres: ReturnType<typeof chargerMonstres>;
 }
 const { monstres } = Astro.props;
 const { lignes, facettes } = monstres;
+const logo = url('logo.webp');
 
 const COLONNES: { cle: string; libelle: string; titre?: string; classe?: string }[] = [
   { cle: 'nom', libelle: 'Nom' },
@@ -49,42 +52,14 @@ const COLONNES: { cle: string; libelle: string; titre?: string; classe?: string 
           </tr>
         </thead>
         <tbody>
-          {
-            lignes.map((l, i) => {
-              const c = l.carte;
-              return (
-                <tr class="bligne" id={l.ancre} data-ligne data-ordre={i} data-carte={`carte-${l.ancre}`} data-facettes={JSON.stringify(l.facettes)} data-tri={JSON.stringify(l.tri)}>
-                  <th scope="row" class="bligne__nom">
-                    <a class="bligne__ouvrir" href={`#carte-${l.ancre}`} aria-controls={`carte-${l.ancre}`}>
-                      {l.nom}
-                    </a>
-                  </th>
-                  <td>{l.espece.nom}</td>
-                  <td class="nombre">{c ? c.echelle : l.espece.ep.replace(/^EP\s*/, '')}</td>
-                  <td>
-                    {c ? (
-                      <span class={`bcat bcat--${c.categorie}`} title={c.categorieBrut}>
-                        {CATEGORIES[c.categorie as keyof typeof CATEGORIES]}
-                      </span>
-                    ) : (
-                      <span class="vide" title="Pas de carte dans le doc">
-                        —
-                      </span>
-                    )}
-                  </td>
-                  <td>{c?.type ?? <span class="vide">—</span>}</td>
-                  <td class="bligne__lieux">{l.texteLieux || <span class="vide">—</span>}</td>
-                </tr>
-              );
-            })
-          }
+          {lignes.map((l, i) => <Fragment set:html={htmlDeLigneMonstre(l, i)} />)}
         </tbody>
       </table>
       <p class="btableau__vide" data-aucune hidden>Aucun monstre ne correspond à ces critères.</p>
     </div>
     <aside class="bcartes" aria-label="Carte du monstre choisi" data-cartes>
       <p class="bcartes__invite js-seul">Choisissez un monstre dans le tableau pour ouvrir sa carte.</p>
-      {lignes.map((l) => <CarteMonstre ligne={l} />)}
+      {lignes.map((l) => <Fragment set:html={htmlDeCarteMonstre(l, { logo })} />)}
     </aside>
   </div>
 </section>

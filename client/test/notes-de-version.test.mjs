@@ -99,7 +99,53 @@ test('comparerBases : un champ par ligne, entités ajoutées et retirées, domai
   assert.equal(b.total, lignes.length);
   assert.equal(b.amelioration + b.affaiblissement + b.neutre, b.total);
   assert.deepEqual(b.parDomaine, { sorts: 6, races: 3, metiers: 2, guide: 1 });
-  assert.deepEqual(DOMAINES.map((d) => d.id), ['sorts', 'magies', 'classes', 'races', 'metiers', 'guide']);
+  assert.deepEqual(DOMAINES.map((d) => d.id), ['sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire']);
+});
+
+test('Codex et bestiaire : champs modifiés, carte ajoutée ou retirée (pas ses rubriques), contenu entièrement nouveau en une ligne', () => {
+  const page = (id, titre, corps, origine = 'docs') => ({ id, type: 'lore', statut: 'draft', origine, titre, corps_md: corps, donnees: null });
+  const espece = (id, nom, ordre, valeurs = {}) => ({ id, nom, ordre, ep_brut: 'EP2', description: null, lieu_brut: 'Marais', complement: null, ...valeurs });
+  const monstre = (id, espece_id, rang, nom, valeurs = {}) => ({ id, espece_id, rang, nom, echelle_brut: '2', categorie: 'ennemi_simple', type_brut: 'Bête', alignement_brut: null, variable: 0, ...valeurs });
+  const rubrique = (monstre_id, rang, titre, texte) => ({ monstre_id, rang, rubrique: 'degats', titre, texte });
+  const ref = {
+    tables: {
+      page: [page('lore/eaunoire', 'Eaunoire', 'Déesse.'), page('lore/relations-entre-les-races', 'Relations', 'a', 'races')],
+      monstre_espece: [espece('monstres/blob', 'Blob', 1), espece('monstres/zombi', 'Zombi', 2)],
+      monstre: [monstre('monstres/blob#carte:blob', 'monstres/blob', 1, 'Blob'), monstre('monstres/zombi#carte:zombi', 'monstres/zombi', 1, 'Zombi')],
+      monstre_rubrique: [rubrique('monstres/blob#carte:blob', 1, 'Dégâts', 'Gifle - 1d4'), rubrique('monstres/zombi#carte:zombi', 1, 'Dégâts', 'Morsure - 1d6')],
+      monstre_butin: [{ espece_id: 'monstres/blob', rang: 1, categorie: 'boss', score_brut: '3-15', texte: 'Gelée x 1' }],
+    },
+  };
+  const dev = structuredClone(ref);
+  const t = dev.tables;
+  t.page[0] = { ...t.page[0], corps_md: 'Déesse de la Corruption.' };
+  t.page[1] = { ...t.page[1], corps_md: 'b' }; // tirée du classeur des races : pas une page du Codex
+  t.monstre_espece[0] = { ...t.monstre_espece[0], lieu_brut: 'Marais, Grotte' };
+  t.monstre[0] = { ...t.monstre[0], categorie: 'boss', variable: 1 };
+  t.monstre_rubrique[0] = { ...t.monstre_rubrique[0], texte: 'Gifle - 2d4' };
+  t.monstre_butin[0] = { ...t.monstre_butin[0], texte: 'Gelée x 2' };
+  t.monstre.splice(1, 1); // le zombi retiré, avec sa rubrique
+  t.monstre_rubrique.splice(1, 1);
+  t.monstre.push(monstre('monstres/blob#carte:roi-blob', 'monstres/blob', 2, 'Roi blob', { categorie: 'boss' }));
+  t.monstre_rubrique.push(rubrique('monstres/blob#carte:roi-blob', 1, 'Dégâts', 'Écrasement - 2d10'));
+  const cle = (l) => `${l.domaine} | ${l.groupe ?? ''} | ${l.entite} | ${l.champ ?? '(entité)'} | ${l.nature} | ${l.avant ?? ''} → ${l.apres ?? ''}`;
+  assert.deepEqual(comparerBases(ref, dev).map(cle), [
+    'codex |  | Eaunoire | Texte | modifie | Déesse. → Déesse de la Corruption.',
+    'bestiaire | Blob | Blob | Lieu de rencontre (lieux séparés par des virgules) | modifie | Marais → Marais, Grotte',
+    'bestiaire | Blob | Blob | Catégorie | modifie | Ennemi simple → Boss',
+    'bestiaire | Blob | Blob | Stats selon l’échelle de puissance | modifie | Non → Oui : « Ses stats varient selon son échelle de puissance. »',
+    'bestiaire | Blob | Blob › Dégâts | Texte de la rubrique | modifie | Gifle - 1d4 → Gifle - 2d4',
+    'bestiaire | Blob | Roi blob | (entité) | ajoute |  → Roi blob',
+    'bestiaire | Blob | Blob › butin 3-15 (Boss) | Butin possible | modifie | Gelée x 1 → Gelée x 2',
+    'bestiaire | Zombi | Zombi | (entité) | retire | Zombi → ',
+  ]);
+  // à leur première livraison (rien en production), le Codex et le bestiaire tiennent en une ligne chacun ; leurs rubriques ne sont pas listées
+  const vide = { tables: { page: ref.tables.page.filter((p) => p.origine !== 'docs') } };
+  assert.deepEqual(comparerBases(vide, ref).map(cle), [
+    'codex |  | Eaunoire | (entité) | ajoute |  → Eaunoire',
+    'bestiaire |  | 2 espèces | (entité) | ajoute |  → 2 espèces',
+    'bestiaire |  | 2 monstres | (entité) | ajoute |  → 2 monstres',
+  ]);
 });
 
 test('comparerBases : bases identiques → rien ; espaces et fins de ligne ne comptent pas', () => {

@@ -15,7 +15,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { normalize } from '../../client/src/lib/text.mjs';
-import { bornes, categorieDe, SENS_DEFENSE, valeursDeLaCarte } from '../../client/src/lib/monstre-champs.mjs';
+import { bornes, categorieDe, lieux, SENS_DEFENSE, valeursDeLaCarte } from '../../client/src/lib/monstre-champs.mjs';
 
 export const DOCUMENT = 'Bestiaire 2.0';
 
@@ -298,7 +298,7 @@ function espece(L, debut, fin, ordre, lettre, ids, casse) {
   e.description = texteDe(iLieu < 0 ? avant : avant.slice(0, iLieu)) || null;
   e.lieu_brut = iLieu < 0 ? null : compacter(avant[iLieu].replace(/^Lieu de rencontre\s*:/, '')) || null;
   e.complement = iLieu < 0 ? null : texteDe(avant.slice(iLieu + 1)) || null;
-  e.lieux = (e.lieu_brut ?? '').split(/\s*,\s*/).filter(Boolean).map((l, k) => ({ rang: k + 1, lieu: l, lieu_cle: normalize(l) }));
+  e.lieux = lieux(e.lieu_brut);
   e.cartes = [];
   e.blocs = [];
   e.butin = [];

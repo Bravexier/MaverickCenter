@@ -2,6 +2,8 @@
 // (plusieurs valeurs : l'une OU l'autre ; plusieurs filtres : tous), le tri par en-tête et la carte de la ligne choisie, à côté du tableau (sur un petit
 // écran, par-dessus la page). L'état de chaque tableau tient dans l'adresse, sous son préfixe (lib/bestiaire-filtres.mjs) ; le lien d'une ligne
 // (#monstre-…, #invoquee-…) ou de sa carte (#carte-…) ouvre la carte. La recherche porte aussi sur le texte de la carte.
+// Mode modification du site de dev (src/scripts/edition/bestiaire.mjs) : l'évènement « bestiaire:rafraichir » relit les lignes (monstre créé, supprimé,
+// modifié) ; « bestiaire:carte-ouverte » dit quelle carte vient de s'ouvrir (ses champs deviennent des saisies). Rien d'autre n'est partagé.
 // Il n'importe qu'un module pur que seule cette page utilise (la version portable refuse un module partagé entre deux scripts).
 import { adresseAvecEtat, basculer, effectifs, etatDepuisAdresse, filtrerEtTrier, normaliser, triSuivant } from '../lib/bestiaire-filtres.mjs';
 
@@ -25,18 +27,23 @@ function brancher(section) {
   const entetes = [...table.querySelectorAll('thead th[data-tri]')];
   const corps = table.tBodies[0];
   const zone = section.querySelector('[data-cartes]');
-  const lignes = [...corps.querySelectorAll('tr[data-ligne]')].map((tr) => {
-    const carte = document.getElementById(tr.dataset.carte);
-    return {
-      tr,
-      carte,
-      id: tr.id,
-      ordre: Number(tr.dataset.ordre),
-      facettes: JSON.parse(tr.dataset.facettes),
-      tri: JSON.parse(tr.dataset.tri),
-      texteNormalise: normaliser(`${tr.textContent} ${carte?.textContent ?? ''}`),
-    };
-  });
+  // dans l'ordre du doc (`data-ordre`) : celui du tableau sans tri, même relu après un tri ou l'ajout d'une ligne
+  const lireLignes = () =>
+    [...corps.querySelectorAll('tr[data-ligne]')]
+      .map((tr) => {
+        const carte = document.getElementById(tr.dataset.carte);
+        return {
+          tr,
+          carte,
+          id: tr.id,
+          ordre: Number(tr.dataset.ordre),
+          facettes: JSON.parse(tr.dataset.facettes),
+          tri: JSON.parse(tr.dataset.tri),
+          texteNormalise: normaliser(`${tr.textContent} ${carte?.textContent ?? ''}`),
+        };
+      })
+      .sort((a, b) => a.ordre - b.ordre);
+  let lignes = lireLignes();
   const libelles = new Map(); // `${cle}\u0000${valeur}` -> libellé
   const facettes = [...formulaire.querySelectorAll('[data-facette]')].map((details) => {
     const cle = details.dataset.facette;
@@ -173,6 +180,7 @@ function brancher(section) {
     // sur un petit écran, la carte passe par-dessus la page : le focus y va (Échap ou « Fermer » la referme)
     if (matchMedia('(max-width: 70rem)').matches) l.carte.querySelector('.bcarte__fermer')?.focus({ preventScroll: true });
     history.replaceState(null, '', `${location.pathname}${location.search}#${l.id}`);
+    document.dispatchEvent(new CustomEvent('bestiaire:carte-ouverte', { detail: { carte: l.carte } }));
   }
   function toutFermer() {
     const l = ouverte();
@@ -197,7 +205,21 @@ function brancher(section) {
     toutFermer();
     if (l) lien(l).focus();
   });
-  tableaux.push({ lignes, ouvrir, toutFermer, appliquer, formulaire, facettes });
+  // lignes ajoutées, retirées ou réécrites par le mode modification : relues (texte de la recherche, filtres, tri), la carte ouverte le reste
+  document.addEventListener('bestiaire:rafraichir', () => {
+    lignes = lireLignes();
+    appliquer(false);
+  });
+  tableaux.push({
+    get lignes() {
+      return lignes;
+    },
+    ouvrir,
+    toutFermer,
+    appliquer,
+    formulaire,
+    facettes,
+  });
   appliquer(false);
 }
 

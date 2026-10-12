@@ -38,7 +38,7 @@ test('une ligne par monstre ou créature, chacune avec sa carte ; les identifian
   for (const [, cible] of main.matchAll(/aria-(?:controls|labelledby|describedby)="([^"]+)"/g)) assert.ok(connus.has(cible), cible);
   for (const ancre of lignes(main)) {
     assert.ok(connus.has(`carte-${ancre}`), `carte de ${ancre}`);
-    assert.ok(main.includes(`<a class="bligne__ouvrir" href="#carte-${ancre}" aria-controls="carte-${ancre}">`), `lien vers la carte de ${ancre}`);
+    assert.ok(main.includes(`<a class="bligne__ouvrir" href="#carte-${ancre}" aria-controls="carte-${ancre}"`), `lien vers la carte de ${ancre}`);
   }
   // liens internes vers une autre créature (même combinaison) : vers une ligne qui existe
   for (const [, cible] of main.matchAll(/href="#(invoquee-[^"]+)"/g)) assert.ok(connus.has(cible), cible);
@@ -72,7 +72,8 @@ test('tableau réduit (demande du propriétaire) : six colonnes pour les monstre
 
 test('sans JavaScript, une carte s’affiche par son lien (:target) ; le script de la page est un seul fichier sans import', options, () => {
   assert.match(html, /html:not\(\.js\) \.bcarte:target \{ display: block; \}/);
-  const scripts = [...html.matchAll(/<script type="module" src="([^"]+)"/g)].map((m) => m[1]);
+  // le mode modification du site de dev (components/edition/Edition.astro) charge son éditeur à part : il n'est pas dans la version portable
+  const scripts = [...html.matchAll(/<script type="module" src="([^"]+)"/g)].map((m) => m[1]).filter((src) => !src.includes('Edition.astro'));
   assert.ok(scripts.length >= 1);
   for (const src of scripts) {
     const code = readFileSync(join(dist, src.replace(/^\//, '')), 'utf8');

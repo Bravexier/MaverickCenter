@@ -1,12 +1,12 @@
 // Notes de version (page /mise-a-jour/, demande du propriétaire) : la liste de ce qui a changé dans les règles entre la base de PRODUCTION
 // (master, la base « classique ») et la base de DEV (règles de dev + modifications faites sur le site de dev), domaine par domaine (sorts,
-// magies, classes et leurs dons, races, métiers, guide). Une ligne par champ modifié d'une entité, avec l'ancienne et la nouvelle valeur et sa
+// magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire). Une ligne par champ modifié d'une entité, avec l'ancienne et la nouvelle valeur et sa
 // couleur (lib/notes-de-version-sens.mjs : critères du propriétaire, décision R29). Les champs listés sont ceux que le site de dev modifie
 // (lib/edition-modele.mjs#TABLES) : tout le reste de la base en est dérivé (colonnes typées, `X_cle`, tables de détail, pages) et n'est pas listé.
 // Les deux bases peuvent avoir des schémas différents (master est plus ancien) : une table ou une colonne absente d'un côté est tolérée.
 // Fonctions pures, sans dépendance navigateur : le service (serveur/notes-de-version.mjs) et le processus de mise à jour
 // (scripts/mise-a-jour-regles.mjs) lisent les tables puis appellent comparerBases ; la page affiche avec lib/notes-de-version-rendu.mjs.
-import { TABLES } from './edition-modele.mjs';
+import { CATEGORIES_DE_MONSTRE, STATS_VARIABLES, TABLES } from './edition-modele.mjs';
 import { sensDuChangement } from './notes-de-version-sens.mjs';
 import { ORDRE_DES_RACES } from './race-kinds.mjs';
 
@@ -18,6 +18,8 @@ export const DOMAINES = [
   { id: 'races', titre: 'Races' },
   { id: 'metiers', titre: 'Métiers' },
   { id: 'guide', titre: 'Guide' },
+  { id: 'codex', titre: 'Codex' },
+  { id: 'bestiaire', titre: 'Bestiaire' },
 ];
 
 /**
@@ -34,7 +36,7 @@ export const TABLES_DES_NOTES = Object.freeze(['note_version', 'note_version_lig
 export const TABLES_LUES = [
   'sort', 'magie', 'magie_role', 'mode_hyper_effet', 'classe', 'categorie_classe', 'specialite', 'capacite', 'race', 'race_onglet', 'race_don',
   'race_don_tableau_colonne', 'race_don_tableau_cellule', 'race_magie', 'race_magie_onglet', 'peuple', 'relation_peuple', 'echelle_relation',
-  'metier', 'caracteristique', 'page',
+  'metier', 'caracteristique', 'page', 'monstre_espece', 'monstre', 'monstre_rubrique', 'monstre_espece_bloc', 'monstre_butin',
 ];
 
 const colonnesDe = (table) => Object.entries(TABLES[table].colonnes).map(([colonne, c]) => ({ colonne, libelle: c.libelle }));
@@ -45,9 +47,15 @@ const lignesDe = (base, table) => base?.tables?.[table] ?? null;
 const indexer = (rows, cle) => new Map((rows ?? []).map((r) => [cle.map((c) => String(r[c])).join('\u0000'), r]));
 const parId = (rows) => new Map((rows ?? []).map((r) => [r.id, r]));
 
+/** Libellés des catégories de monstre et de la phrase « varie selon l'échelle » (lib/edition-modele.mjs : CATEGORIES_DE_MONSTRE, STATS_VARIABLES). */
+const libelleDeChoix = (choix, v) => choix.find((c) => c.valeur === String(v))?.libelle ?? v;
+
 /**
  * Définition de chaque table comparée : domaine, clé, colonnes listées, filtre des lignes, groupe et nom de l'entité, ordre d'affichage.
  * `ctx` = { dev, ref } : tables indexées des deux bases (une ligne se nomme d'après la base où elle existe, de préférence dev).
+ * `detail` : une ligne qui n'existe qu'avec une autre (la rubrique d'une carte, le butin d'une espèce) ; seul un champ modifié est listé, son ajout ou
+ * son retrait est dit par l'entité qui la porte. `resume(n)` : un contenu entièrement nouveau (aucune ligne en production : le Codex, le bestiaire
+ * à leur première livraison) est dit en une ligne (« 116 pages du Codex »), pas entité par entité.
  */
 const DEFINITIONS = [
   {
@@ -127,6 +135,39 @@ const DEFINITIONS = [
     },
     entite: (r) => r.titre, ordre: (r) => [chapitreDe(r) ?? 999, r.titre],
   },
+  {
+    // les pages du Codex (lore tiré du Google Doc « CODEX Maverick », famille docs : lib/edition-modele.mjs#texteDePageModifiable)
+    table: 'page', domaine: 'codex', cle: ['id'], colonnes: colonnesDe('page'), genre: 'Page du Codex',
+    filtre: (r) => r.type === 'lore' && r.origine === 'docs' && r.statut !== 'example',
+    groupe: () => null, entite: (r) => r.titre, ordre: (r) => [r.titre], resume: (n) => `${n} pages du Codex`,
+  },
+  {
+    table: 'monstre_espece', domaine: 'bestiaire', cle: ['id'], colonnes: colonnesDe('monstre_espece'), genre: 'Espèce',
+    groupe: (r) => r.nom, entite: (r) => r.nom, ordre: (r) => [r.ordre ?? 0, 0], resume: (n) => `${n} espèces`,
+  },
+  {
+    table: 'monstre', domaine: 'bestiaire', cle: ['id'], colonnes: colonnesDe('monstre'), genre: 'Monstre',
+    groupe: (r, x) => x.nom('monstre_espece', r.espece_id), entite: (r) => r.nom,
+    ordre: (r, x) => [x.ordre('monstre_espece', r.espece_id), 1, r.rang ?? 0, 0], resume: (n) => `${n} monstres`,
+    valeur: (colonne, v) => (colonne === 'categorie' ? libelleDeChoix(CATEGORIES_DE_MONSTRE, v) : colonne === 'variable' ? libelleDeChoix(STATS_VARIABLES, v) : v),
+  },
+  {
+    table: 'monstre_rubrique', domaine: 'bestiaire', cle: ['monstre_id', 'rang'], colonnes: colonnesDe('monstre_rubrique'), genre: 'Rubrique', detail: true,
+    groupe: (r, x) => x.nom('monstre_espece', x.ligne('monstre', r.monstre_id)?.espece_id),
+    entite: (r, x) => `${x.nom('monstre', r.monstre_id)} › ${r.titre ?? 'Santé, chakra, barrière'}`,
+    ordre: (r, x) => [x.ordre('monstre_espece', x.ligne('monstre', r.monstre_id)?.espece_id), 1, x.ligne('monstre', r.monstre_id)?.rang ?? 0, 1, r.rang],
+  },
+  {
+    table: 'monstre_espece_bloc', domaine: 'bestiaire', cle: ['espece_id', 'rang'], colonnes: colonnesDe('monstre_espece_bloc'), genre: 'Bloc', detail: true,
+    groupe: (r, x) => x.nom('monstre_espece', r.espece_id), entite: (r, x) => `${x.nom('monstre_espece', r.espece_id)} › ${r.titre}`,
+    ordre: (r, x) => [x.ordre('monstre_espece', r.espece_id), 2, r.rang],
+  },
+  {
+    table: 'monstre_butin', domaine: 'bestiaire', cle: ['espece_id', 'rang', 'categorie'], colonnes: colonnesDe('monstre_butin'), genre: 'Butin', detail: true,
+    groupe: (r, x) => x.nom('monstre_espece', r.espece_id),
+    entite: (r, x) => `${x.nom('monstre_espece', r.espece_id)} › butin ${r.score_brut} (${libelleDeChoix(CATEGORIES_DE_MONSTRE, r.categorie)})`,
+    ordre: (r, x) => [x.ordre('monstre_espece', r.espece_id), 3, r.rang, ['ennemi_simple', 'mini_boss', 'boss'].indexOf(r.categorie)],
+  },
 ];
 
 function chapitreDe(page) {
@@ -139,7 +180,8 @@ function chapitreDe(page) {
 
 /** Contexte de nommage : noms et ordres lus d'abord dans dev, puis dans la référence (entité retirée). */
 function contexte(ref, dev) {
-  const index = (base) => Object.fromEntries(['magie', 'classe', 'specialite', 'race', 'categorie_classe', 'peuple', 'caracteristique'].map((t) => [t, parId(lignesDe(base, t))]));
+  const index = (base) => Object.fromEntries(['magie', 'classe', 'specialite', 'race', 'categorie_classe', 'peuple', 'caracteristique', 'monstre_espece', 'monstre']
+    .map((t) => [t, parId(lignesDe(base, t))]));
   const d = index(dev);
   const r = index(ref);
   const ligne = (table, id) => d[table].get(id) ?? r[table].get(id) ?? null;
@@ -149,6 +191,7 @@ function contexte(ref, dev) {
   const cases = [cellules(dev), cellules(ref)];
   const trouver = (maps, cle) => maps.map((m) => m.get(cle)).find(Boolean) ?? null;
   return {
+    ligne,
     nom: (table, id) => {
       const l = ligne(table, id);
       return l?.nom ?? l?.libelle ?? (id ? String(id) : null);
@@ -195,10 +238,16 @@ function comparerTable(def, ref, dev, x) {
     const domaine = typeof def.domaine === 'function' ? def.domaine(r) : def.domaine;
     return { def, domaine, groupe: def.groupe(r, x), entite: def.entite(r, x) || '—', ordre: def.ordre(r, x), cle: Object.fromEntries(def.cle.map((c) => [c, r[c]])) };
   };
+  // un contenu entièrement nouveau : une ligne, pas une par entité
+  if (def.resume && !a.size && b.size > 1) {
+    const domaine = typeof def.domaine === 'function' ? def.domaine([...b.values()][0]) : def.domaine;
+    return [ligneDeNote({ def, domaine, groupe: null, entite: def.resume(b.size), ordre: [-1], champ: null, nature: 'ajoute', avant: null, apres: def.resume(b.size), cle: {} })];
+  }
   for (const [k, r] of b) {
     const avant = a.get(k);
     const base = decrire(r);
     if (!avant) {
+      if (def.detail) continue; // dit par l'entité qui la porte
       // une table absente de la production (schéma plus ancien) : l'entité existait peut-être, mais pas ce contenu ; on le dit ajouté
       sortie.push(ligneDeNote({ ...base, champ: refRows ? null : def.genre, nature: 'ajoute', avant: null, apres: def.entite(r, x) }));
       continue;
@@ -214,7 +263,7 @@ function comparerTable(def, ref, dev, x) {
     });
   }
   for (const [k, r] of a) {
-    if (b.has(k)) continue;
+    if (b.has(k) || def.detail) continue;
     sortie.push(ligneDeNote({ ...decrire(r), champ: devRows ? null : def.genre, nature: 'retire', avant: def.entite(r, x), apres: null }));
   }
   return sortie;

@@ -29,6 +29,21 @@ export const RUBRIQUES = {
   tactique: 'TACTIQUE COMBAT',
 };
 
+/**
+ * Rubriques d'une carte créée depuis le site de dev (serveur/edition-bestiaire.mjs), vides, avec leur titre par défaut : la disposition de la plupart
+ * des cartes du doc (181 cartes sur 315 : santé, chakra et barrière sur une ligne, dégâts, défense, vitesse, caractéristiques, compétences,
+ * vulnérabilités, résistances, immunités, capacités, tactique).
+ */
+export const GABARIT_DE_CARTE = ['attributs', 'degats', 'defense', 'vitesse', 'caracteristiques', 'competences', 'vulnerabilite', 'resistance', 'immunite', 'capacites', 'tactique'];
+
+/** Lieux de rencontre d'une espèce (`monstre_espece_lieu`) : la ligne « Lieu de rencontre » découpée aux virgules, chaque lieu tel qu'écrit. */
+export const lieux = (texte) =>
+  String(texte ?? '')
+    .split(/\s*,\s*/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((lieu, k) => ({ rang: k + 1, lieu, lieu_cle: normalize(lieu) }));
+
 /** Catégories d'un monstre : clé de `monstre.categorie` -> libellé ; et lecture de l'écriture du doc (« Mini boss », « Mini-Boss » -> 'mini_boss'). */
 export const CATEGORIES = { ennemi_simple: 'Ennemi simple', mini_boss: 'Mini-boss', boss: 'Boss' };
 const CLES_CATEGORIES = { 'ennemi-simple': 'ennemi_simple', 'mini-boss': 'mini_boss', boss: 'boss' };

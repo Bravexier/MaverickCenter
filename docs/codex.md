@@ -44,6 +44,19 @@ Chronologie et Carte & lieux restent « bientôt » (E5, E6 de la [feuille de ro
 - Un nouvel export : le remplacer dans `sources/raw/`, puis `python3 -I tools/docs/codex.py`, `--verifier`, `npm run db:sync-pages` (depuis `client/`).
   Le script n'écrit que dans `lore/`, refuse d'écraser une page qui ne vient pas du document et signale (sans les supprimer) les pages qu'il ne produit plus.
 
+## Modifier le Codex (site de dev)
+
+Demande du propriétaire : « Exactement comme pour les pages des règles les pages du codex doivent pouvoir être modifiées aussi ». Sur le site de dev, en mode
+modification (`docs/serveur.md`, « Édition »), le titre et le texte d'une page du Codex se modifient avec l'éditeur des pages du guide (la page entière est
+un seul morceau de texte, réécrit en Markdown : `lib/markdown-edition.mjs`, dont l'aller-retour est rejoué sur toutes les pages du Codex). Seules les
+pages tirées du document le sont (`lib/edition-modele.mjs#texteDePageModifiable`) ; « Relations entre les races », du classeur des races, ne l'est pas.
+Un ancien titre devient un alias ; HTML brut et liens non sûrs sont refusés, comme pour le guide. Les modifications sont listées dans la note de version
+(domaine « Codex » ; à sa première livraison, le Codex y tient en une ligne).
+
+Le site est la source de ce qu'il modifie : une page qu'il a modifiée est contrôlée par `--verifier` **dans son état d'import** (titre, texte et alias
+d'avant toute édition, relus dans `data/rows/historique_modification.sql` : `pages_du_site`) ; une nouvelle écriture des pages (`codex.py`) la **garde**
+telle que le site l'a laissée, et `--verifier` signale alors si le document a changé depuis pour elle (à reprendre à la main).
+
 ## Corrections appliquées (`tools/docs/codex-corrections.json`)
 
 L'export reste tel quel ; le script corrige, avant le découpage, **seulement** ce qu'une décision ou une correction déjà faite dans toute la base impose

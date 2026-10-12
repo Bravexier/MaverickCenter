@@ -102,7 +102,8 @@ service (qui accepte les deux formes).
 ## Édition des règles (site de dev)
 
 Demande du propriétaire : sur le **site de dev seulement**, et **sur ordinateur seulement** (écran large et pointeur précis : ni téléphone ni
-tablette), les pages du guide, des races, des magies, des classes et des métiers se modifient en place. Le service n'ouvre ses routes
+tablette), les pages du guide, des races, des magies, des classes et des métiers se modifient en place, et celles du Codex (pages du Codex et
+bestiaire : « Exactement comme pour les pages des règles les pages du codex doivent pouvoir être modifiées aussi »). Le service n'ouvre ses routes
 `/api/edition/` que s'il est lancé avec `MAVERICK_EDITION=1` (le `.env` du serveur de test, posé par `deploy/vps/instances.sh` ou l'installateur
 de test ; `npm run serveur` l'ouvre par défaut, `MAVERICK_EDITION=0` le ferme) : ailleurs elles répondent `403` et `/api/etat/` dit
 `edition: false`, et la page ne charge même pas l'éditeur (`src/scripts/edition.mjs`).
@@ -117,6 +118,8 @@ toutes les modifications de la page **d'un bloc** puis repasse en lecture ; déc
 | Races | Chaque case de l'onglet (présentation, histoire, valeurs de départ, avantages, dons et leur tableau, capacité Mode Hyper…), magies innées, relations entre peuples (déplacer ou ajouter une race ou une ethnie dans le tableau d'une race) ; créer une race (pure ou hybride) ou un peuple |
 | Magies | Présentation, description, explication, rôles, Mode Hyper ; chaque case de chaque sort (type, mode, NM et états recalculés : `lib/sort-analyse.mjs` ; une ligne peut avoir un effet de NM dans plusieurs colonnes). La table des relations entre magies ne se modifie pas |
 | Classes | Tous les champs (maîtrises, inventaire, spécialités, dons : tables de détail recalculées, `lib/classe-champs.mjs`) ; créer une classe dans une catégorie ; une classe raciale se crée pour une race hybride qui n'en a pas encore ; créer et supprimer une spécialité (avec son don de spécialité du niveau 10) ou un don (D11, ci-dessous) |
+| Codex | Titre et texte des pages tirées du Google Doc « CODEX Maverick » (`lib/edition-modele.mjs#texteDePageModifiable` ; pas la description des relations entre les peuples, tirée du classeur des races), avec l'éditeur du guide (toute la page est un seul morceau de texte) ; `tools/docs/codex.py --verifier` contrôle une page que le site a modifiée dans son état d'import, et une nouvelle écriture des pages la garde telle quelle (docs/codex.md) |
+| Bestiaire | Les monstres (`docs/bestiaire.md`, « Modifier le bestiaire ») : les champs de la carte ouverte (nom, catégorie, type, alignement, échelle, texte de chaque rubrique ; de l'espèce : nom, échelles, description, lieu, complément, blocs, cases de butin) ; ajouter un monstre (une carte dans une espèce, rubriques vides) ou une espèce, supprimer une carte ou une espèce sans carte ; bornes des échelles, écriture de la catégorie, lieux de rencontre, valeurs typées et tables de détail d'une carte recalculés par les fonctions de l'extraction (`lib/monstre-champs.mjs`, `serveur/edition-bestiaire.mjs`). Les créatures invoquées ne se modifient pas ici |
 | Métiers | Ajouter, modifier, supprimer (retiré des fiches qui l'ont, avec une note : R42) ; bonus (et leur compétence ou l'initiative, décision R33), objets de départ (R35) et recettes recalculés (`lib/metier-champs.mjs`) ; artisanat en trois champs, texte et deux listes de caractéristiques (R34 : « Artisanat possible » en est recalculé, une seule caractéristique est refusée, sans texte elles partent) ; corps de la page (`lib/corps-metiers.mjs` : un champ réécrit en entier, paragraphes compris, ses liens `[[…]]` gardés tant que leur texte reste écrit) ; filtres et tri par colonne |
 
 Ce qui suit aussi, pour que les outils du dépôt acceptent les modifications rapatriées (`serveur-edition-derivations`, `serveur-edition-rapatriement`,
@@ -267,6 +270,7 @@ une valeur que le site a changée.
 | `GET /api/edition/pages/` | Les pages du wiki (`id`, `titre`) : cibles d'un lien posé dans le texte du guide |
 | `POST /api/edition/race/` | `{ race }` → magies innées et relations de la race dans la base vivante |
 | `POST /api/edition/classe/` | `{ classe }` → spécialités, dons, choix et fiches qui les citent (qui en seront retirées), dans la base vivante (D11) |
+| `POST /api/edition/bestiaire/` | `{ connues, logo }` → l'ordre des lignes du tableau des monstres (`ordre` : leurs identifiants) et, pour celles que la page n'a pas (`connues`), la ligne et la carte en HTML (`lib/bestiaire-rendu.mjs`, comme la page construite) |
 | `POST /api/edition/` | `{ page, operations: [...] }` → applique un lot d'un bloc (`modifier`, `creer`, `supprimer`, `relations`, `magies_innees` : `serveur/edition.mjs`) ; rend `{ lot, modifications, crees, lignes, fiches }` (`fiches` : les fiches de personnage dont le lot a retiré un élément, R42) |
 | `GET /api/edition/journal/` | Le journal des modifications en attente, et des « intégrées » des lots que les règles n'ont pas encore reçus (`maverick-edition/1`), en pièce jointe |
 
@@ -280,7 +284,8 @@ Demande du propriétaire : une page **Mise à jour** (menu Outils, `/mise-a-jour
 **Sur le serveur normal** (et partout sans service : version portable, site statique) : la page construite montre la **note de version** de la
 dernière livraison (`note_version`, `note_version_ligne`, section 15 de `data/schema.sql`), puis l'**historique** des précédentes. Une note est
 la liste des modifications des règles d'une version X.Y à la suivante (toutes les versions X.Y.Z de dev entre les deux), par domaine (sorts par
-magie, magies, classes et leurs dons, races, métiers, guide), l'ancienne valeur **barrée** mais lisible et la nouvelle à côté, en **vert**
+magie, magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire : migration `0030-notes-codex-bestiaire`), l'ancienne valeur **barrée**
+mais lisible et la nouvelle à côté, en **vert**
 (amélioration) ou **rouge** (affaiblissement) d'après la décision R29 (`docs/decisions-regles.md`, `lib/notes-de-version-sens.mjs`), plus le
 champ libre des admins. Tant qu'aucune livraison n'a eu lieu, deux notes d'exemple (lorem ipsum, `exemple = 1`, migration `0023`) tiennent la place ;
 la première vraie mise à jour les retire.
@@ -288,7 +293,10 @@ la première vraie mise à jour les retire.
 **Sur le site de dev** (`MAVERICK_EDITION=1`) : au-dessus, la note **en préparation**, calculée par le service à chaque visite
 (`GET /api/mise-a-jour/`) : la base de la **production** (référence : la base de master, construite au build à côté de celle du site,
 `site/donnees/reference.db` et `reference.json`, `scripts/db-reference.mjs`) comparée à la base vivante (règles de dev + modifications du site).
-Seuls les champs que le site modifie sont comparés (`lib/edition-modele.mjs#TABLES`) : le reste en est dérivé. Le **champ libre** (Markdown simple :
+Seuls les champs que le site modifie sont comparés (`lib/edition-modele.mjs#TABLES`) : le reste en est dérivé. Une ligne qui n'existe qu'avec une
+autre (la rubrique d'une carte de monstre, une case de butin, un bloc d'une espèce) n'est listée que pour un champ modifié : son ajout ou son retrait est
+dit par la carte ou l'espèce qui la porte ; un contenu entièrement absent de la production (le Codex et le bestiaire à leur première livraison) tient en
+une ligne (« 116 pages du Codex », « 144 espèces », « 315 monstres ») au lieu d'une par entité (`lib/notes-de-version.mjs`, `resume` et `detail`). Le **champ libre** (Markdown simple :
 paragraphes, listes, gras, italique, liens web) s'enregistre dans `note_version_brouillon` (section 14 : il suit la base vivante quand les
 règles changent ; `409` si quelqu'un l'a changé entre-temps).
 
