@@ -76,6 +76,11 @@ l'historique des fusions (une refusion faite par *squash* laisserait `master` ho
 sans conflit et la CI verte. Seule exception, la refusion de `master` dans `dev` décrite plus haut : elle doit rester une fusion (le bot vérifie que
 `master` est dans l'historique de `dev`).
 
+**Avant chaque push, on se remet à jour sur la base, par défaut** (demande du propriétaire) : `git fetch --prune origin` ; si `origin/dev` (ou
+`origin/master` pour un hotfix) a bougé depuis le départ de la branche (`git merge-base --is-ancestor origin/dev HEAD` échoue), `git rebase` sur elle,
+relancer les contrôles que le rebase touche, puis pousser (`git push --force-with-lease` si la branche était déjà poussée). Même sans conflit : la PR
+est ainsi toujours testée sur la base du moment.
+
 Plusieurs fusions rapprochées sont traitées chacune à leur tour par le bot (il relit les branches et recommence si une autre fusion est passée
 entre-temps). Relancer un passage déjà fait (*Re-run*) ne refait rien : le bot reconnaît la PR à ses commits « (PR #n) » et s'arrête ; pour republier
 une branche, *Actions → Version et livraison → Run workflow*.
