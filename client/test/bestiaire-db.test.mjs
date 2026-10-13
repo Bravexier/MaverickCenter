@@ -164,7 +164,7 @@ test('décision R53 : les créatures invoquées n’ont pas d’échelle de puis
   assert.ok(blocs.some((b) => b.npm !== null));
   for (const b of blocs) assert.equal(b.npm === null, b.magies > 0, `${b.id} : un NPM ou des magies de marge`);
   // ce que montrent le bestiaire (tableaux, cartes) et les pages des créatures : jamais « EP » pour une créature invoquée
-  const ep = /\bEP ?\d/;
+  const ep = /\bEP\b/;
   for (const l of invocations.lignes) assert.doesNotMatch(l.bloc, ep, l.id);
   for (const l of invocations.tableaux.flatMap((t) => t.lignes)) assert.doesNotMatch(l.libelle, ep, l.id);
   const pages = db.prepare("SELECT id, corps_md FROM page WHERE source_ref LIKE 'Google Sheet « Invocation »%'").all();

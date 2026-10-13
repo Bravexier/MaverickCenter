@@ -125,7 +125,8 @@ test('créatures invoquées : trois tableaux dépliables (demande du propriétai
     }
   }
   // décision R53 : une créature invoquée n'a pas d'échelle de puissance ; nulle part « EP » dans l'onglet (tableaux, cartes : « Marionnette de l'ombre (NPM 3) »)
-  assert.doesNotMatch(bloc.replace(/<[^>]*>/g, ' '), /\bEP ?\d/);
+  // (le HTML brut : un attribut `title` s'affiche aussi, dans la bulle partagée de components/Infobulles.astro)
+  assert.doesNotMatch(bloc, /\bEP\b/);
   const marionnettes = invocations.tableaux.find((t) => !t.duo);
   assert.ok(bloc.includes(`NPM 1 à ${marionnettes.lignes.length} · ${marionnettes.creatures} créatures`), 'le titre du tableau des marionnettes');
   // pas de tri (l'ordre du classeur) ; les cartes restent à côté
