@@ -10,18 +10,57 @@ Deux onglets (`components/Onglets.astro`), chacun avec son tableau, sa recherche
 inséré en `?raw`, script `src/scripts/bestiaire.mjs`, logique pure `lib/bestiaire-filtres.mjs`, lignes `lib/bestiaire-db.mjs`) :
 
 - **Monstres** : les cartes du Google Doc « Bestiaire 2.0 » (une ligne par carte : ennemi simple, mini-boss, boss ; une ligne par espèce qui n'a pas encore
-  de carte). Colonnes : nom, espèce, EP, catégorie, type, alignement, santé, chakra, barrière, défense, vitesse, F.P.V.S.I.A., attaques, capacités,
-  vulnérabilités, résistances, immunités, lieux. Au-dessus, repliés : les règles des échelles de puissance et le glossaire du butin.
-- **Créatures invoquées** : les 63 créatures du classeur « Invocation » (golems et poupées, non-morts, marionnettes de l'ombre), à part.
+  de carte). Demande du propriétaire : « Le tableau est trop large […] Le tableau devrait n'avoir que le nom / l'espèce / les EP / la catégorie, le type,
+  le lieu. Le reste est dans le détail. Une carte qui s'ouvrira à côté du tableau avec en plus un encart pour un portrait (placeholder du logo en
+  attendant) ». Six colonnes, donc ; la ligne et sa carte sont rendues par `lib/bestiaire-rendu.mjs` (le même HTML pour la page construite et pour le mode
+  modification). Au-dessus, repliés : les règles des échelles de puissance et le glossaire du butin.
+- **Créatures invoquées** : les 63 créatures du classeur « Invocation » (golems et poupées, non-morts, marionnettes de l'ombre), à part ; trois colonnes
+  (nom, invocation, magies), la carte à côté (`CarteInvoquee.astro`).
 
-Recherche : tous les mots, sans casse ni accents, dans tout ce que la ligne et sa fiche affichent. Filtres : un menu par champ, à cases ; plusieurs valeurs
-d'un même filtre = l'une OU l'autre, plusieurs filtres = tous à la fois ; chaque valeur affiche combien de lignes elle garderait. Un clic sur un en-tête trie
+Recherche : tous les mots, sans casse ni accents, dans tout ce que la ligne et sa carte affichent. Filtres : un menu par champ, à cases (catégorie, EP,
+type, alignement, lieu, vulnérabilité, résistance, immunité, capacité ; ils portent aussi sur ce que la carte seule montre) ; plusieurs valeurs d'un même
+filtre = l'une OU l'autre, plusieurs filtres = tous à la fois ; chaque valeur affiche combien de lignes elle garderait. Un clic sur un en-tête trie
 (croissant, décroissant, puis l'ordre du doc ; une valeur absente toujours à la fin). Recherche, filtres et tri sont dans l'adresse
-(`?q=golem&categorie=boss&ep=5&tri=sante&sens=desc` ; préfixe `i-` pour les créatures invoquées), pour partager une recherche. Un clic sur un nom ouvre sa
-**fiche** sous la ligne : l'espèce (description, lieu de rencontre), toute la carte telle qu'écrite (rubrique par rubrique), les blocs qui suivent les cartes
-et le butin ; `#monstre-<nom>` ou `#invoquee-<nom>` ouvre une fiche. Sans JavaScript, toutes les fiches sont affichées et les filtres sont cachés.
+(`?q=golem&categorie=boss&ep=5&tri=ep&sens=desc` ; préfixe `i-` pour les créatures invoquées), pour partager une recherche.
 
-« varie » : la carte donne ses valeurs par échelle de puissance (« Ses stats varient selon son échelle de puissance ») ; elles sont dans la fiche.
+Un clic sur une ligne ouvre sa **carte** à côté du tableau, dans un panneau qui suit le défilement (sur un écran de moins de 70rem, par-dessus la page ;
+Échap ou « Fermer » la referme) : en-tête (nom, espèce, catégorie, type, alignement, échelle), **portrait** (le logo en attendant), toute la carte
+rubrique par rubrique (santé, chakra et barrière en tuiles, F.P.V.S.I.A. en cases colorées, cibles des défenses en pastilles quand l'écriture s'y prête,
+sinon le texte tel qu'écrit : `lib/monstre-rendu.mjs`), l'espèce (description, lieu de rencontre, blocs qui suivent les cartes) et le butin.
+`#monstre-<nom>`, `#carte-monstre-<nom>` ou `#invoquee-<nom>` ouvre une carte. Sans JavaScript, le nom est un lien vers la carte, qui s'affiche alors
+(`:target`) ; les filtres sont cachés.
+
+« varie » : la carte donne ses valeurs par échelle de puissance (« Ses stats varient selon son échelle de puissance ») ; elles sont dans la carte.
+
+## Modifier le bestiaire (site de dev)
+
+Demande du propriétaire : « Exactement comme pour les pages des règles les pages du codex doivent pouvoir être modifiées aussi. Cela inclut donc le
+Bestiaire, ainsi que la possibilité de créer / modifier / supprimer un monstre ». Sur le site de dev, en mode modification (le crayon,
+`docs/serveur.md`, « Édition ») :
+
+- **Modifier** : les champs de la **carte ouverte** deviennent des saisies (`data-ed-sur-demande` : une carte à la fois, il y en a plus de 300 dans la
+  page ; `src/scripts/edition/bestiaire.mjs`) : nom, catégorie, type, alignement, échelle, « varie selon l'échelle », le texte de chaque rubrique ; de
+  l'espèce : nom, échelle(s), description, lieu de rencontre, complément, texte des blocs ; le texte d'une case de butin. À l'enregistrement, la ligne du
+  tableau et les autres cartes de l'espèce suivent.
+- **Ajouter** : « + Ajouter un monstre » (une carte dans une espèce, d'abord celle de la carte ouverte) et « + Ajouter une espèce ». Enregistrés tout de
+  suite ; la carte du monstre créé s'ouvre, avec les rubriques de la plupart des cartes du doc, vides (`GABARIT_DE_CARTE` : santé, chakra et barrière sur
+  une ligne, dégâts, défense, vitesse, caractéristiques, compétences, vulnérabilités, résistances, immunités, capacités, tactique). Une espèce se range à
+  la fin du doc ; elle a sa ligne jusqu'à sa première carte.
+- **Supprimer** : un bouton sur chaque ligne : une carte (avec tout son texte et ses valeurs typées ; son espèce reste, avec une ligne à elle si c'était sa
+  dernière carte), ou une espèce sans carte (avec ses lieux, ses blocs et son butin). Une espèce qui a encore des cartes ne se supprime pas.
+
+Ce que la base tire du texte est **recalculé par le service** avec les fonctions de l'extraction (`lib/monstre-champs.mjs`), jamais saisi
+(`serveur/edition-bestiaire.mjs`) : les bornes d'une échelle (« EP2 - 4 » → 2 et 4 ; hors de 1 à 10 : refusé), l'écriture de la catégorie, les lieux de
+rencontre (découpés aux virgules), et, pour une rubrique modifiée, les valeurs typées de sa carte (santé, chakra, barrière, armures, vitesses) et ses
+tables de détail (caractéristiques, attaques, capacités, cibles des défenses). Les identifiants sont tirés du nom une fois (`monstres/<nom>`,
+`<espèce>#carte:<nom>`), puis figés : un monstre renommé garde le sien, et un identifiant supprimé ne resert jamais (suffixe `-2`). Une rubrique ne
+s'ajoute ni ne se retire seule (elle vient avec sa carte) ; une case de butin vide ne se remplit pas encore. Aucune fiche de personnage ne cite un monstre.
+
+Une page construite avant la création ou la suppression d'un monstre demande au service l'ordre de ses lignes et le HTML de celles qu'elle n'a pas
+(`POST /api/edition/bestiaire/`). Les modifications partent dans le journal, puis dans `data/rows` par la mise à jour, et sont listées dans la note de
+version (domaine « Bestiaire » : un champ modifié par ligne, une carte ajoutée ou retirée ; à sa première livraison, le bestiaire tient en deux lignes,
+« N espèces » et « N monstres »). Le site étant la source de ce qu'il modifie, `client/test/bestiaire-extraction.test.mjs` compare l'extraction du doc à
+l'état d'**import** des tables (`lib/historique-site.mjs`), et les autres tests du bestiaire contrôlent la cohérence de l'état courant.
 
 ## La source et l'extraction
 
@@ -52,4 +91,6 @@ Lumière…). Les « objets en rouge » du glossaire (« en attente d'être mis 
 2. **« Hallebarde amochée »** a une carte nommée « CUIRASSE ABÎMÉ » (ligne 18857), comme l'espèce « Cuirasse abîmée » : copier-coller à corriger ?
 3. **« N points d'armure / N résistance magique »** (environ 90 cartes) : est-ce l'armure physique et l'armure magique (AP / AM) ? Tant que ce n'est pas
    tranché, ces cartes n'ont pas de valeurs typées de défense (le texte s'affiche, le tri par défense les met à la fin).
-4. Les monstres n'ont pas de page à eux (une ligne et sa fiche dans le tableau) : en faut-il une, comme les créatures invoquées ?
+4. Les monstres n'ont pas de page à eux (une ligne et sa carte dans le tableau) : en faut-il une, comme les créatures invoquées ?
+5. Les **créatures invoquées** ne se modifient pas encore depuis le bestiaire (elles viennent des sorts du classeur « Invocation ») : faut-il les ouvrir
+   aussi au mode modification ?

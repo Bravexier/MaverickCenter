@@ -1,5 +1,5 @@
 // Éditeur visuel du guide (lib/markdown-edition.mjs, couleur des cases : lib/markdown-couleurs.mjs) : le HTML d'une page, réécrit en Markdown, doit
-// redonner le même rendu. Aller-retour Markdown → HTML → Markdown → HTML sur toutes les pages du guide, avec les plugins du site ([[liens]], couleurs) ;
+// redonner le même rendu. Aller-retour Markdown → HTML → Markdown → HTML sur toutes les pages du guide et du Codex, avec les plugins du site ([[liens]], couleurs) ;
 // puis les écritures propres à l'éditeur (liens, couleurs, échappements, listes, tableaux) et le découpage du corps aux blocs tirés de la base.
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
@@ -13,6 +13,7 @@ import { buildIndex, remarkWikilinks, scanContent, splitFrontmatter } from '../s
 import { remarkCouleursDeCase } from '../src/lib/markdown-couleurs.mjs';
 import { COULEURS_DE_CASE, decouperCorps, htmlSur, recomposerCorps, versMarkdown } from '../src/lib/markdown-edition.mjs';
 import { fragmentsAjoutes } from '../src/lib/markdown-sur.mjs';
+import { texteDePageModifiable } from '../src/lib/edition-modele.mjs';
 
 const dossier = fileURLToPath(new URL('../src/content/wiki/', import.meta.url));
 const index = buildIndex(scanContent(dossier));
@@ -37,14 +38,21 @@ const aller = async (md) => versMarkdown(enfants(await rendre(md)));
 // les espaces entre balises ne changent pas le rendu
 const normal = (html) => html.replace(/\s+/g, ' ').replace(/>\s+</g, '><').replace(/\s+</g, '<').replace(/>\s+/g, '>').trim();
 
-const pagesDuGuide = readdirSync(join(dossier, 'guide'))
-  .filter((f) => f.endsWith('.md'))
-  .map((f) => ({ id: `guide/${f.slice(0, -3)}`, corps: splitFrontmatter(readFileSync(join(dossier, 'guide', f), 'utf8')).body }));
+// les pages dont le texte se modifie : le guide et le Codex (lib/edition-modele.mjs#texteDePageModifiable)
+const pagesModifiables = ['guide', 'lore'].flatMap((type) =>
+  readdirSync(join(dossier, type))
+    .filter((f) => f.endsWith('.md'))
+    .map((f) => ({ type, id: `${type}/${f.slice(0, -3)}`, ...splitFrontmatter(readFileSync(join(dossier, type, f), 'utf8')) }))
+    .filter((p) => texteDePageModifiable(type, p.data.sources?.[0]))
+    .map((p) => ({ type: p.type, id: p.id, corps: p.body })),
+);
 
-test('aller-retour sur toutes les pages du guide : le Markdown réécrit d’après le HTML redonne le même HTML', async () => {
-  assert.ok(pagesDuGuide.length >= 60, `${pagesDuGuide.length} pages`);
+test('aller-retour sur toutes les pages du guide et du Codex : le Markdown réécrit d’après le HTML redonne le même HTML', async () => {
+  const effectif = (type) => pagesModifiables.filter((p) => p.type === type).length;
+  assert.ok(effectif('guide') >= 60, `${effectif('guide')} pages du guide`);
+  assert.ok(effectif('lore') >= 100, `${effectif('lore')} pages du Codex`);
   let morceaux = 0;
-  for (const page of pagesDuGuide) {
+  for (const page of pagesModifiables) {
     for (const m of decouperCorps(page.corps)) {
       if (!m.visible) continue;
       morceaux++;
@@ -58,7 +66,7 @@ test('aller-retour sur toutes les pages du guide : le Markdown réécrit d’apr
       assert.equal(versMarkdown(enfants(htmlSur(enfants(html)))), md, `${page.id} : aperçu assaini`);
     }
   }
-  assert.ok(morceaux > pagesDuGuide.length);
+  assert.ok(morceaux > pagesModifiables.length);
 });
 
 test('liens : [[cible]] et [[cible|texte]] (cible gardée telle qu’écrite), lien vers une page absente, lien Markdown et adresse nue', async () => {
@@ -101,6 +109,14 @@ test('mise en page tapée dans l’éditeur : titres, listes imbriquées, citati
   assert.equal(await aller(md), md);
 });
 
+test('deux listes de même sorte qui se suivent restent deux listes : la seconde prend l’autre marque (« * », « 1) »)', async () => {
+  const html = '<ul><li>a</li></ul><ul><li>b</li></ul><ul><li>c</li></ul><ol><li>un</li></ol><ol><li>deux</li></ol><p>fin</p><ul><li>d</li></ul>';
+  const md = versMarkdown(enfants(html));
+  assert.equal(md, '- a\n\n* b\n\n- c\n\n1. un\n\n1) deux\n\nfin\n\n- d\n');
+  assert.equal(normal(await rendre(md)), normal(html));
+  assert.equal(await aller(md), md);
+});
+
 test('corps découpé aux blocs tirés de la base : rien ne se perd, seuls les morceaux de texte visibles sont remplacés', () => {
   const corps = 'Intro.\n\n<!-- guide:niveaux -->\n\nSuite **grasse**.\n\n<!-- guide:postures -->\n';
   const morceaux = decouperCorps(corps);
@@ -109,7 +125,7 @@ test('corps découpé aux blocs tirés de la base : rien ne se perd, seuls les m
   assert.deepEqual(morceaux.filter((m) => m.visible).map((m) => m.texte.trim()), ['Intro.', 'Suite **grasse**.']);
   assert.equal(recomposerCorps(corps, [null, 'Autre suite.\n']), 'Intro.\n\n<!-- guide:niveaux -->\n\nAutre suite.\n\n<!-- guide:postures -->\n');
   assert.equal(recomposerCorps(corps, []), corps);
-  for (const page of pagesDuGuide) assert.equal(recomposerCorps(page.corps, []), page.corps, page.id);
+  for (const page of pagesModifiables) assert.equal(recomposerCorps(page.corps, []), page.corps, page.id);
 });
 
 test('aperçu assaini : ni script, ni style, ni attribut d’événement, ni adresse « javascript: » ; liens, couleurs et mise en page gardés', () => {

@@ -15,6 +15,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { normalize } from '../../client/src/lib/text.mjs';
+import { bornes, categorieDe, lieux, SENS_DEFENSE, valeursDeLaCarte } from '../../client/src/lib/monstre-champs.mjs';
 
 export const DOCUMENT = 'Bestiaire 2.0';
 
@@ -41,10 +42,7 @@ export const RUBRIQUES = [
 ];
 export const CLES_RUBRIQUES = RUBRIQUES.map(([cle]) => cle);
 
-/** Rubriques qui listent des cibles (« Brûlure, Paralysie ») : sens de la ligne de `monstre_defense`. */
-export const SENS_DEFENSE = ['vulnerabilite', 'grande_vulnerabilite', 'resistance', 'grande_resistance', 'double_resistance', 'immunite', 'reflexion'];
-
-export const CATEGORIES = { 'ennemi-simple': 'ennemi_simple', 'mini-boss': 'mini_boss', boss: 'boss' };
+export { SENS_DEFENSE };
 
 const SEPARATEUR = /^_{6,}\s*$/;
 const TITRE_ESPECE = /^([^\t*\s].*?)\s*\((EP[^)]*)\)\s*$/;
@@ -84,12 +82,6 @@ function texteDe(lignes) {
   }
   return sortie.join('\n');
 }
-const paragraphes = (texte) => (texte ? texte.split(/\n\n+/) : []);
-const entiers = (texte) => [...String(texte).matchAll(/\d+/g)].map((m) => Number(m[0]));
-const bornes = (texte) => {
-  const n = entiers(texte);
-  return n.length ? [Math.min(...n), Math.max(...n)] : [null, null];
-};
 
 /** Référence d'une ligne du doc : « Bestiaire 2.0 › ligne 670 » (ligne de l'export texte, 1 = première). */
 const ref = (i, j = i) => (j > i ? `${DOCUMENT} › lignes ${i + 1}-${j + 1}` : `${DOCUMENT} › ligne ${i + 1}`);
@@ -131,7 +123,7 @@ function cellules(lignes) {
 /** « Ennemi simple : 35 / Mini boss : 70 / Boss : 140 » -> { ennemi_simple, mini_boss, boss } */
 function parCategorie(texte) {
   const valeurs = {};
-  for (const m of texte.matchAll(/(Ennemi simple|Mini[- ]boss|Boss)\s*:\s*(\d+)/gi)) valeurs[CATEGORIES[normalize(m[1])]] = Number(m[2]);
+  for (const m of texte.matchAll(/(Ennemi simple|Mini[- ]boss|Boss)\s*:\s*(\d+)/gi)) valeurs[categorieDe(m[1])] = Number(m[2]);
   return valeurs;
 }
 
@@ -198,7 +190,7 @@ function butin(L, debut, fin) {
       categorie = null;
       continue;
     }
-    const cat = CATEGORIES[normalize(t)];
+    const cat = categorieDe(t);
     if (cat) {
       categorie = cat;
       continue;
@@ -211,45 +203,6 @@ function butin(L, debut, fin) {
   return sortie;
 }
 
-/**
- * « Pince - 2d10 + 2 dégâts d’estoc », « Bâton mal-foutue: 1d6 dégâts de frappe » -> { nom, texte } ; une ligne sans « nom - texte » chiffré n'est pas
- * une attaque (« Arme de la créature : », « Se fier au dégâts moyen… », « EP 1 - 10 : Faux déformée… » d'une carte qui varie selon l'échelle).
- */
-function attaques(texte) {
-  return texte
-    .split('\n')
-    .map((l) => l.match(/^(.{1,60}?)(?:\s+[-–]\s+|\s*:\s+)(.*\d.*)$/))
-    .filter((m) => m && !/^(\[?EP\s*\d|Arme de la créature)/i.test(m[1]))
-    .map((m, k) => ({ rang: k + 1, nom: m[1].trim(), texte: m[2].trim() }));
-}
-
-/**
- * Capacités : un paragraphe « [EP2] Nom. Texte » ouvre une capacité ; un paragraphe qui ne commence pas par un nom (tableau, suite) continue la précédente.
- * Préfixe : les crochets et parenthèses avant le nom, tels qu'écrits (« [EP2] », « [Gauche] » d'une tête du Cerbère, « (Neige) [EP3] » d'une forme) ;
- * ep_min : le N du premier « [EPN] » du préfixe (capacité gagnée à partir de cette échelle), sinon NULL.
- */
-function capacites(texte) {
-  const sortie = [];
-  for (const p of paragraphes(texte)) {
-    const m = p.match(/^((?:[[(][^\])\n]*[\])]\s*)*)([^.:\n]{1,70}?)\s*\.\s+([\s\S]*)$/);
-    if (m && /^[\p{Lu}\d]/u.test(m[2])) {
-      const prefixe = m[1].trim() || null;
-      const ep = prefixe?.match(/\[EP\s*(\d+)/);
-      sortie.push({ rang: sortie.length + 1, prefixe, ep_min: ep ? Number(ep[1]) : null, nom: m[2].trim(), texte: m[3].trim() });
-    } else if (sortie.length) sortie.at(-1).texte += `\n\n${p}`;
-    else sortie.push({ rang: 1, prefixe: null, ep_min: null, nom: null, texte: p });
-  }
-  return sortie;
-}
-
-/** Cibles d'une rubrique de défense, quand elle est UNE liste « A, B, C » de noms courts ; sinon aucune (« Varie selon la magie », tableau…). */
-function cibles(texte) {
-  if (!texte || texte.includes('\n')) return [];
-  const morceaux = texte.split(/\s*,\s*/).map((m) => m.trim().replace(/\.$/, '')).filter(Boolean);
-  if (!morceaux.every((m) => m.length <= 30 && !/[:.;]/.test(m) && !/^(varie|variable|selon|voir|aucun|rien)/i.test(m))) return [];
-  return morceaux;
-}
-
 /** Une carte de monstre : de son en-tête (« NOM   Créature échelle 2 ») à `fin` (exclue). */
 function carte(L, debut, fin, espece, rang, casse) {
   const m = L[debut].match(/^(.*?)\s*Créature échelle\s*(.*?)\s*$/);
@@ -257,7 +210,7 @@ function carte(L, debut, fin, espece, rang, casse) {
   let i = debut + 1;
   while (i < fin && !L[i].trim()) i++;
   const [type_brut = null, alignement_brut = null, categorie_brut = null] = L[i].split('|').map((p) => compacter(p) || null);
-  const categorie = CATEGORIES[normalize(categorie_brut ?? '')];
+  const categorie = categorieDe(categorie_brut);
   if (!categorie) throw new Error(`catégorie inconnue « ${categorie_brut} » (${ref(i)})`);
   const rubriques = [];
   let variable = 0;
@@ -275,12 +228,7 @@ function carte(L, debut, fin, espece, rang, casse) {
   }
   if (rubriques.length === 0) throw new Error(`carte sans rubrique (${ref(debut)})`);
   const r = rubriques.map((x, k) => ({ rang: k + 1, rubrique: x.rubrique, titre: x.rubrique === 'attributs' ? null : x.titre, texte: texteDe(x.lignes), source_ref: ref(x.debut) }));
-  const de = (cle) => r.find((x) => x.rubrique === cle)?.texte ?? '';
-  // Santé, chakra, barrière : une seule ligne « Santé : 70  Chakra : 0  Barrière : 0 » (sinon : valeurs par EP, gardées en texte)
-  const a = de('attributs').match(/^Santé\s*:\s*(\d+)\s+Chakra\s*:\s*(\d+)\s+Barrière\s*:\s*(\d+)$/);
-  const defense = de('defense').match(/^(\d+) (?:armure physique|AP) ?\/ ?(\d+) (?:armure magique|AM)\b/i);
-  const vitesse = de('vitesse').match(/^(\d+) cases? sol \/ (\d+) cases? nage$/i);
-  const fpvsia = de('caracteristiques').match(/^F\s*:\s*(\d+)\s*\/\s*P\s*:\s*(\d+)\s*\/\s*V\s*:\s*(\d+)\s*\/\s*S\s*:\s*(\d+)\s*\/\s*I\s*:\s*(\d+)\s*\/\s*A\s*:\s*(\d+)$/);
+  const v = valeursDeLaCarte(r);
   const [ep_min, ep_max] = bornes(m[2]);
   const cle = normalize(nomBrut);
   return {
@@ -298,21 +246,19 @@ function carte(L, debut, fin, espece, rang, casse) {
     categorie_brut,
     categorie,
     variable,
-    sante: a ? Number(a[1]) : null,
-    chakra: a ? Number(a[2]) : null,
-    barriere: a ? Number(a[3]) : null,
-    armure_physique: defense ? Number(defense[1]) : null,
-    armure_magique: defense ? Number(defense[2]) : null,
-    vitesse_sol: vitesse ? Number(vitesse[1]) : null,
-    vitesse_nage: vitesse ? Number(vitesse[2]) : null,
+    sante: v.sante,
+    chakra: v.chakra,
+    barriere: v.barriere,
+    armure_physique: v.armure_physique,
+    armure_magique: v.armure_magique,
+    vitesse_sol: v.vitesse_sol,
+    vitesse_nage: v.vitesse_nage,
     source_ref: ref(debut, fin - 1),
     rubriques: r,
-    caracteristiques: fpvsia ? ['force', 'perception', 'volonte', 'social', 'intelligence', 'agilite'].map((c, k) => ({ caracteristique_id: c, rang: k + 1, valeur: Number(fpvsia[k + 1]) })) : [],
-    attaques: attaques(de('degats')),
-    capacites: capacites(de('capacites')),
-    defenses: SENS_DEFENSE.flatMap((sens) =>
-      r.filter((x) => x.rubrique === sens).flatMap((x) => cibles(x.texte)).map((c, k) => ({ sens, rang: k + 1, cible: c, cible_cle: normalize(c) })),
-    ),
+    caracteristiques: v.caracteristiques,
+    attaques: v.attaques,
+    capacites: v.capacites,
+    defenses: v.defenses,
   };
 }
 
@@ -352,7 +298,7 @@ function espece(L, debut, fin, ordre, lettre, ids, casse) {
   e.description = texteDe(iLieu < 0 ? avant : avant.slice(0, iLieu)) || null;
   e.lieu_brut = iLieu < 0 ? null : compacter(avant[iLieu].replace(/^Lieu de rencontre\s*:/, '')) || null;
   e.complement = iLieu < 0 ? null : texteDe(avant.slice(iLieu + 1)) || null;
-  e.lieux = (e.lieu_brut ?? '').split(/\s*,\s*/).filter(Boolean).map((l, k) => ({ rang: k + 1, lieu: l, lieu_cle: normalize(l) }));
+  e.lieux = lieux(e.lieu_brut);
   e.cartes = [];
   e.blocs = [];
   e.butin = [];

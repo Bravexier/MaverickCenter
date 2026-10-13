@@ -8,7 +8,7 @@
 const ENTITES_HTML = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const echapper = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ENTITES_HTML[c]);
 
-export const TITRES_DOMAINES = { sorts: 'Sorts', magies: 'Magies', classes: 'Classes', races: 'Races', metiers: 'Métiers', guide: 'Guide' };
+export const TITRES_DOMAINES = { sorts: 'Sorts', magies: 'Magies', classes: 'Classes', races: 'Races', metiers: 'Métiers', guide: 'Guide', codex: 'Codex', bestiaire: 'Bestiaire' };
 const ORDRE_DOMAINES = Object.keys(TITRES_DOMAINES);
 const LIBELLES_SENS = { amelioration: 'amélioration', affaiblissement: 'affaiblissement', neutre: '' };
 const LIBELLES_PARTIES = { valeur: '', nm: 'NM' };

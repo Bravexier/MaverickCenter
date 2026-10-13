@@ -1,14 +1,14 @@
 // Monstres du Google Doc « Bestiaire 2.0 » (migration 0029-bestiaire-monstres, section 8 bis de data/schema.sql) : l'extracteur
 // tools/bestiaire/extraire.mjs, rejoué sur l'export texte du doc (sources/raw/bestiaire-2-0.txt), redonne exactement les lignes de la base ; et rien n'y
-// est inventé : chaque texte se retrouve dans le doc. Les tables des monstres ne sont pas modifiables sur le site de dev (lib/edition-modele.mjs) :
-// la base est encore l'import tel quel (si elles le deviennent, ce test lira l'import dans historique_modification, lib/historique-site.mjs).
+// est inventé : chaque texte se retrouve dans le doc. Les monstres se modifient sur le site de dev (lib/edition-modele.mjs, serveur/edition-bestiaire.mjs) :
+// le site est la source de ce qu'il modifie, l'extraction se compare donc à l'état d'import des tables (historique_modification, lib/historique-site.mjs).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { compacter, CORRECTIONS, extraireBestiaire, lignesDuDoc, lignesSql } from '../../tools/bestiaire/extraire.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
-import { TABLES } from '../src/lib/edition-modele.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { normalize } from '../src/lib/text.mjs';
 
 const racine = new URL('../../', import.meta.url);
@@ -19,18 +19,19 @@ const db = ouvrirBase({ sansExemples: false });
 const TABLES_MONSTRES = ['monstre_regle', 'monstre_echelle', 'monstre_butin_objet', 'monstre_espece', 'monstre_espece_lieu', 'monstre_espece_bloc', 'monstre_butin', 'monstre',
   'monstre_rubrique', 'monstre_caracteristique', 'monstre_attaque', 'monstre_capacite', 'monstre_defense'];
 
-test('l’extraction rejouée sur l’export du doc redonne exactement les tables des monstres de la base', () => {
+test('l’extraction rejouée sur l’export du doc redonne exactement les tables des monstres de la base, telles que l’import les a laissées', () => {
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'monstre%' ORDER BY name").all().map((r) => r.name);
   assert.deepEqual(tables, [...TABLES_MONSTRES].sort(), 'les tables de la section 8 bis');
   const memoire = new DatabaseSync(':memory:', { enableForeignKeyConstraints: false });
   memoire.exec(readFileSync(new URL('data/schema.sql', racine), 'utf8'));
   memoire.exec(lignesSql(b).join('\n'));
+  const historique = historiqueSite(db);
   for (const t of TABLES_MONSTRES) {
-    const pk = db.prepare(`SELECT name FROM pragma_table_info('${t}') WHERE pk > 0 ORDER BY pk`).all().map((r) => r.name).join(', ');
-    const lire = (base) => base.prepare(`SELECT * FROM ${t} ORDER BY ${pk}`).all();
-    assert.deepEqual(lire(db), lire(memoire), t);
+    const pk = db.prepare(`SELECT name FROM pragma_table_info('${t}') WHERE pk > 0 ORDER BY pk`).all().map((r) => r.name);
+    const cle = (l) => JSON.stringify(pk.map((c) => l[c]));
+    const trier = (lignes) => lignes.map((l) => ({ ...l })).sort((x, y) => (cle(x) < cle(y) ? -1 : cle(x) > cle(y) ? 1 : 0));
+    assert.deepEqual(trier(historique.lignesDImport(t)), trier(memoire.prepare(`SELECT * FROM ${t}`).all()), t);
   }
-  assert.ok(!Object.keys(TABLES).some((t) => t.startsWith('monstre')), 'pas encore modifiables sur le site de dev : la base est l’import');
 });
 
 test('effectifs : 4 règles, 10 échelles, 144 espèces (« Golem de corail » écrit deux fois), 315 cartes, 102 objets au glossaire', () => {

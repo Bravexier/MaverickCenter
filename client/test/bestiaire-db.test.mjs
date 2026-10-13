@@ -1,4 +1,7 @@
 // Lignes des deux tableaux de /bestiaire/ (lib/bestiaire-db.mjs) : monstres du « Bestiaire 2.0 » et, à part, créatures invoquées (demande du propriétaire).
+// Les monstres se modifient sur le site de dev : ces tests contrôlent la cohérence des lignes avec la base, pas les valeurs de l'import
+// (test/bestiaire-extraction.test.mjs les compare au doc).
+import { normalize } from '../src/lib/text.mjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { CATEGORIES, chargerBestiaire, optionsDeFacette, tableauDuButin } from '../src/lib/bestiaire-db.mjs';
@@ -15,8 +18,13 @@ test('monstres : une ligne par carte, et une par espèce sans carte ; ancres uni
   const ancres = [...monstres.lignes, ...invocations.lignes].map((l) => l.ancre);
   assert.equal(new Set(ancres).size, ancres.length);
   for (const a of ancres) assert.match(a, /^(monstre|invoquee)-[a-z0-9-]+$/);
-  assert.ok(monstres.lignes.some((l) => l.ancre === 'monstre-amblypyge-de-brai'));
-  assert.ok(monstres.lignes.some((l) => l.ancre === 'monstre-golem-de-corail-iii-2'), 'carte écrite dans les deux « Golem de corail »');
+  // l'ancre d'une carte est son nom ; un nom écrit dans deux espèces (« Golem de corail III ») : la seconde prend « -2 »
+  const vus = new Map();
+  for (const l of monstres.lignes.filter((x) => x.carte)) {
+    const cle = normalize(l.nom);
+    vus.set(cle, (vus.get(cle) ?? 0) + 1);
+    assert.equal(l.ancre, vus.get(cle) === 1 ? `monstre-${cle}` : `monstre-${cle}-${vus.get(cle)}`, l.id);
+  }
   // l'ordre du doc : espèce par espèce, carte par carte
   const ordre = db.prepare('SELECT m.id FROM monstre m JOIN monstre_espece e ON e.id = m.espece_id ORDER BY e.ordre, m.rang').all().map((r) => r.id);
   assert.deepEqual(monstres.lignes.filter((l) => l.carte).map((l) => l.id), ordre);
@@ -42,10 +50,16 @@ test('filtres des monstres : chaque option compte les lignes qui portent sa vale
   }
   const options = (cle) => monstres.facettes.find((f) => f.cle === cle).options;
   assert.deepEqual(options('categorie').map((o) => o.libelle), Object.values(CATEGORIES));
-  assert.deepEqual(options('ep').map((o) => o.valeur), ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']);
-  const nonMort = options('type').find((o) => o.valeur === 'non-mort');
-  assert.equal(nonMort.libelle, 'Non-mort', '« Non-mort » (64) et « Non-Mort » (3) réunis');
-  assert.equal(nonMort.nombre, n("SELECT count(*) AS n FROM monstre WHERE type_brut IN ('Non-mort', 'Non-Mort')"));
+  const echelles = [...new Set(monstres.lignes.flatMap((l) => l.facettes.ep))].sort((a, b) => a - b);
+  assert.deepEqual(options('ep').map((o) => o.valeur), echelles, 'les échelles dans l’ordre');
+  // un type écrit de plusieurs façons (« Non-mort », « Non-Mort ») : une seule option, l'écriture la plus fréquente, toutes ses lignes
+  const types = db.prepare('SELECT type_brut AS t, count(*) AS n FROM monstre WHERE type_brut IS NOT NULL GROUP BY type_brut').all();
+  for (const o of options('type')) {
+    const ecritures = types.filter((x) => normalize(x.t) === o.valeur).sort((a, b) => b.n - a.n || a.t.localeCompare(b.t, 'fr'));
+    assert.equal(o.libelle, ecritures[0].t, o.valeur);
+    assert.equal(o.nombre, ecritures.reduce((k, x) => k + x.n, 0), o.valeur);
+  }
+  assert.ok(options('type').length < types.length, 'des écritures réunies');
 });
 
 test('optionsDeFacette : effectifs, libellés et ordre voulu', () => {
@@ -62,12 +76,15 @@ test('butin d’une espèce : une ligne par tranche, une colonne par catégorie,
     { rang: 2, score_brut: '16-60', categorie: 'mini_boss', texte: 'Z' },
   ]);
   assert.deepEqual(t, [
-    { score: '3-15', ennemi_simple: 'Y', mini_boss: null, boss: 'X' },
-    { score: '16-60', ennemi_simple: null, mini_boss: 'Z', boss: null },
+    { rang: 1, score: '3-15', ennemi_simple: 'Y', mini_boss: null, boss: 'X' },
+    { rang: 2, score: '16-60', ennemi_simple: null, mini_boss: 'Z', boss: null },
   ]);
-  const amblypyge = monstres.lignes.find((l) => l.ancre === 'monstre-amblypyge-noir');
-  assert.equal(amblypyge.espece.butin.length, 8);
-  assert.equal(amblypyge.espece.butin[0].ennemi_simple, 'Fragment de pièce de Corruption x 1');
+  // le butin d'une ligne : celui de son espèce dans la base, tranche par tranche
+  for (const l of monstres.lignes) {
+    const lignes = db.prepare('SELECT * FROM monstre_butin WHERE espece_id = ? ORDER BY rang').all(l.espece.id);
+    assert.deepEqual(l.espece.butin, tableauDuButin(lignes), l.id);
+  }
+  assert.ok(monstres.lignes.some((l) => l.espece.butin.length));
 });
 
 test('créatures invoquées : à part, une ligne par créature, dans l’ordre du classeur ; filtres sur l’invocation, la magie, les dégâts, les défenses, les capacités', () => {

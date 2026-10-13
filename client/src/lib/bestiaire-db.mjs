@@ -121,7 +121,7 @@ export function chargerMonstres(db) {
       lieu: e.lieu_brut,
       complement: e.complement,
       lieux: lieuxDe.map((l) => l.lieu),
-      blocs: (blocs.get(e.id) ?? []).map((b) => ({ titre: b.titre, texte: b.texte })),
+      blocs: (blocs.get(e.id) ?? []).map((b) => ({ rang: b.rang, titre: b.titre, texte: b.texte })),
       butin: tableauDuButin(butins.get(e.id) ?? []),
     };
     const sesCartes = cartes.get(e.id) ?? [];
@@ -133,7 +133,7 @@ export function chargerMonstres(db) {
         carte: null,
         nom: e.nom,
         facettes: { ep: echellesDe(e.ep_min, e.ep_max), lieu: unique(lieuxDe.map((l) => l.cle)) },
-        tri: { nom: e.nom, espece: e.nom, ep: e.ep_min },
+        tri: { nom: e.nom, espece: e.nom, ep: e.ep_min, lieu: lieuxDe.map((x) => x.lieu).join(', ') || null },
       });
       continue;
     }
@@ -178,7 +178,7 @@ export function chargerMonstres(db) {
           attaques: (attaques.get(c.id) ?? []).map((a) => ({ nom: a.nom, texte: a.texte })),
           capacites: caps,
           ...colonnes,
-          rubriques: r.map((x) => ({ rubrique: x.rubrique, titre: x.titre ?? LIBELLES_RUBRIQUES[x.rubrique], texte: x.texte })),
+          rubriques: r.map((x) => ({ rang: x.rang, rubrique: x.rubrique, titre: x.titre ?? LIBELLES_RUBRIQUES[x.rubrique], texte: x.texte })),
         },
         facettes: {
           categorie: [c.categorie],
@@ -204,6 +204,7 @@ export function chargerMonstres(db) {
           defense: c.armure_physique,
           vitesse: c.vitesse_sol,
           ...Object.fromEntries(FPVSIA.map((k) => [k.id, fpvsia.get(k.id) ?? null])),
+          lieu: lieuxDe.map((x) => x.lieu).join(', ') || null,
         },
       });
     }
@@ -231,11 +232,11 @@ export function chargerMonstres(db) {
   };
 }
 
-/** Tableau du butin d'une espèce : [{ score, ennemi_simple, mini_boss, boss }] dans l'ordre des tranches ; une cellule vide reste null. */
+/** Tableau du butin d'une espèce : [{ rang, score, ennemi_simple, mini_boss, boss }] dans l'ordre des tranches ; une cellule vide reste null. */
 export function tableauDuButin(lignes) {
   const tranches = new Map();
   for (const b of lignes) {
-    if (!tranches.has(b.rang)) tranches.set(b.rang, { score: b.score_brut, ennemi_simple: null, mini_boss: null, boss: null });
+    if (!tranches.has(b.rang)) tranches.set(b.rang, { rang: b.rang, score: b.score_brut, ennemi_simple: null, mini_boss: null, boss: null });
     tranches.get(b.rang)[b.categorie] = b.texte;
   }
   return [...tranches.values()];

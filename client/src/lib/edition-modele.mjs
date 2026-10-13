@@ -1,8 +1,8 @@
 // Modèle de l'édition depuis le site de dev (demande du propriétaire ; client/serveur/edition.mjs, docs/serveur.md, « Édition ») : quelles colonnes de
 // quelles tables une page peut modifier, avec leur type de champ, et comment une page désigne un champ (attribut `data-ed`). Le service n'accepte
 // que ces colonnes ; tout ce qui en dépend dans la base (colonnes typées, tables de détail, page du wiki) est recalculé par le service, jamais saisi.
-// Entités créables (ENTITES) : métier, race, classe, peuple, spécialité, don de classe ; supprimables : métier, spécialité, don de classe (retirés des
-// fiches de personnage qui les ont, avec une note datée : décision R42, annonceDesFiches).
+// Entités créables (ENTITES) : métier, race, classe, peuple, spécialité, don de classe, espèce et carte de monstre ; supprimables : métier, spécialité,
+// don de classe (retirés des fiches de personnage qui les ont, avec une note datée : décision R42, annonceDesFiches), espèce et carte de monstre.
 // Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, pur lui aussi) : partagées par le service, les gabarits Astro et le
 // script des pages (src/scripts/edition.mjs).
 import { NIVEAUX_DE_DON, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
@@ -20,6 +20,18 @@ export { NIVEAUX_DE_DON, NIVEAU_DES_SPECIALITES, SPECIALITES_MAX, TYPES_DE_DON_S
  * Options : `requis` (vide refusé), `vide` (valeur enregistrée pour un champ vidé quand la colonne n'accepte pas NULL : '' ou 'Rien'),
  * `min` / `max` (entier).
  */
+/** Catégories d'un monstre (colonne `monstre.categorie`) : les libellés de lib/monstre-champs.mjs#CATEGORIES (test/serveur-edition-bestiaire.test.mjs). */
+export const CATEGORIES_DE_MONSTRE = [
+  { valeur: 'ennemi_simple', libelle: 'Ennemi simple' },
+  { valeur: 'mini_boss', libelle: 'Mini-boss' },
+  { valeur: 'boss', libelle: 'Boss' },
+];
+/** `monstre.variable` : la carte dit « Ses stats varient selon son échelle de puissance. » (1) ou non (0). */
+export const STATS_VARIABLES = [
+  { valeur: '0', libelle: 'Non' },
+  { valeur: '1', libelle: 'Oui : « Ses stats varient selon son échelle de puissance. »' },
+];
+
 export const TABLES = {
   metier: {
     libelle: 'Métier',
@@ -153,8 +165,50 @@ export const TABLES = {
       texte_niveau5: { type: 'texte', libelle: 'Texte du sort (niveau 5)' },
     },
   },
-  // Pages du guide : titre et texte (Markdown réécrit par l'éditeur visuel, lib/markdown-edition.mjs) ; le service refuse toute autre page (celles des
-  // races, magies, classes et métiers suivent leurs tables)
+  // Bestiaire (/bestiaire/, components/bestiaire/ ; demande du propriétaire : créer, modifier, supprimer un monstre) : une espèce, une carte de monstre,
+  // le texte de chaque rubrique d'une carte (les valeurs typées en sont tirées par le service : lib/monstre-champs.mjs#valeursDeLaCarte), les blocs et le
+  // butin d'une espèce. Les échelles s'écrivent comme dans le doc (« EP2 », « EP1 - 10 » pour une espèce, « 2 », « 1-10 » pour une carte).
+  monstre_espece: {
+    libelle: 'Espèce de monstre',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Nom de l’espèce', requis: true },
+      ep_brut: { type: 'ligne', libelle: 'Échelle(s) de puissance de l’espèce (« EP2 », « EP1 - 10 »)', requis: true },
+      description: { type: 'texte', libelle: 'Description' },
+      lieu_brut: { type: 'ligne', libelle: 'Lieu de rencontre (lieux séparés par des virgules)' },
+      complement: { type: 'texte', libelle: 'Complément (après le lieu de rencontre)' },
+    },
+  },
+  monstre: {
+    libelle: 'Monstre',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Nom du monstre', requis: true },
+      echelle_brut: { type: 'ligne', libelle: 'Échelle de puissance (« 2 », « 1-10 »)', requis: true },
+      categorie: { type: 'choix', libelle: 'Catégorie', requis: true, choix: CATEGORIES_DE_MONSTRE },
+      type_brut: { type: 'ligne', libelle: 'Type (« Vermine », « Non-mort »)' },
+      alignement_brut: { type: 'ligne', libelle: 'Alignement' },
+      variable: { type: 'choix', libelle: 'Stats selon l’échelle de puissance', requis: true, choix: STATS_VARIABLES },
+    },
+  },
+  monstre_rubrique: {
+    libelle: 'Rubrique de la carte',
+    colonnes: {
+      texte: { type: 'texte', libelle: 'Texte de la rubrique', vide: '' },
+    },
+  },
+  monstre_espece_bloc: {
+    libelle: 'Bloc de l’espèce',
+    colonnes: {
+      texte: { type: 'texte', libelle: 'Texte du bloc', vide: '' },
+    },
+  },
+  monstre_butin: {
+    libelle: 'Butin',
+    colonnes: {
+      texte: { type: 'ligne', libelle: 'Butin possible', requis: true },
+    },
+  },
+  // Pages du guide et du Codex (texteDePageModifiable) : titre et texte (Markdown réécrit par l'éditeur visuel, lib/markdown-edition.mjs) ; le service
+  // refuse toute autre page (celles des races, magies, classes et métiers suivent leurs tables)
   page: {
     libelle: 'Page',
     colonnes: {
@@ -163,6 +217,16 @@ export const TABLES = {
     },
   },
 };
+
+/** Première source des pages du Codex (tools/docs/codex.py, docs/codex.md). */
+export const SOURCE_DU_CODEX = 'Google Doc « CODEX Maverick »';
+/**
+ * Une page dont le titre et le texte se modifient (lignes `page` de TABLES) : une page du guide, ou une page du Codex (demande du propriétaire :
+ * « Exactement comme pour les pages des règles les pages du codex doivent pouvoir être modifiées aussi ») = type `lore` tiré du Google Doc « CODEX
+ * Maverick » (première source) ; pas la description des relations entre les peuples (lore aussi, mais tirée du classeur des races). Les autres pages
+ * suivent leurs tables.
+ */
+export const texteDePageModifiable = (type, premiereSource) => type === 'guide' || (type === 'lore' && premiereSource === SOURCE_DU_CODEX);
 
 /**
  * Entités qu'une page peut créer ou supprimer (`suppression`), avec les champs demandés à la création (`champs`, même format que les colonnes de
@@ -214,6 +278,25 @@ export const ENTITES = {
     champs: {
       nom: { type: 'ligne', libelle: 'Nom du peuple', requis: true },
       race_id: { type: 'ligne', libelle: 'Race', requis: true },
+    },
+  },
+  // Bestiaire : une espèce (une ligne du tableau tant qu'elle n'a pas de carte), une carte de monstre dans une espèce, créée avec les rubriques vides de
+  // la disposition la plus courante du doc (lib/monstre-champs.mjs#GABARIT_DE_CARTE). Identifiants tirés du nom une fois, puis figés et jamais
+  // réutilisés ; une espèce ne se supprime qu'une fois ses cartes supprimées. Aucune fiche de personnage ne cite un monstre (pas de R42).
+  monstre_espece: {
+    table: 'monstre_espece',
+    libelle: 'espèce',
+    nouveau: 'Nouvelle espèce',
+    suppression: true,
+    champs: champsDe('monstre_espece', ['nom', 'ep_brut', 'description', 'lieu_brut']),
+  },
+  monstre: {
+    table: 'monstre',
+    libelle: 'monstre',
+    suppression: true,
+    champs: {
+      espece_id: { type: 'choix', libelle: 'Espèce', requis: true, liste: 'especesDeMonstres' },
+      ...champsDe('monstre', ['nom', 'echelle_brut', 'categorie', 'type_brut', 'alignement_brut']),
     },
   },
   // une spécialité d'une classe (D11) : créée avec son don de spécialité du niveau 10 (sans lui elle n'aurait ni colonne ni bannière) ; supprimée avec tous
