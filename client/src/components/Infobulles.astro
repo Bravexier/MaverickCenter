@@ -102,7 +102,7 @@
       var largeur = document.documentElement.clientWidth;
       var hauteur = document.documentElement.clientHeight;
       var r = cible.getBoundingClientRect();
-      // le déclencheur a disparu (page recalculée) ou est sorti de l'écran (aussi de côté : un conteneur qui défile en largeur, la frise de la chronologie)
+      // le déclencheur a disparu (page recalculée) ou est sorti de l'écran (aussi de côté : un conteneur qui défile en largeur)
       if (!cible.isConnected || (r.width === 0 && r.height === 0) || r.bottom < 0 || r.top > hauteur || r.right < 0 || r.left > largeur) return fermer();
       var dessous = hauteur - r.bottom - ecart - marge;
       var dessus = r.top - ecart - marge;

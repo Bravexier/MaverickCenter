@@ -1,0 +1,172 @@
+---
+import chronologieCss from '../../styles/chronologie/chronologie.css?raw';
+import { adresseDEvenement, couleursDesEvenements, libelleDeDate, voisins } from '../../lib/chronologie.mjs';
+import { url } from '../../lib/wiki';
+import ChronologieEvenement from './ChronologieEvenement.astro';
+import Frise from './Frise.astro';
+
+// L'onglet Chronologie (demande du propriétaire) : sur la gauche, en vertical, la frise (components/chronologie/Frise.astro : une immense barre en
+// dégradé, la date à gauche, le titre à droite) ; un clic sur un événement fait apparaître sa page à côté, sur 75 % de la largeur
+// (ChronologieEvenement.astro) ; tout à l'extrémité droite, deux chevrons, Haut et Bas, passent à l'événement précédent ou suivant. Sur /chronologie/
+// (`id` null), la page laisse la place au mode d'emploi de la frise. Chaque événement a sa propre adresse (/chronologie/<id>/) : un lien se partage,
+// et tout se lit sans JavaScript. Entre deux pages de la chronologie, le navigateur fait glisser la nouvelle page (transition entre documents,
+// styles/chronologie/chronologie.css) ; la frise, elle, reste en place. Petit écran : /chronologie/ est la frise, et la page d'un événement occupe
+// tout l'écran, avec un lien vers la frise ; les chevrons passent en bas à droite.
+interface Props {
+  /** Les événements dans l'ordre de lecture (lib/chronologie-db.mjs#chargerChronologie). */
+  evenements: any[];
+  /** L'événement affiché ; null sur /chronologie/. */
+  id: string | null;
+}
+const { evenements, id } = Astro.props;
+
+const couleurs = couleursDesEvenements(evenements);
+const { evenement, precedent, suivant } = id ? voisins(evenements, id) : { evenement: null, precedent: null, suivant: evenements[0] ?? null };
+const href = (e: any) => url(adresseDEvenement(e.id));
+const etiquette = (e: any) => `${libelleDeDate(e)} : ${e.titre}`;
+---
+
+<style is:inline set:html={chronologieCss}></style>
+<div
+  class:list={['chrono', evenement ? 'chrono--evenement' : 'chrono--accueil']}
+  data-chrono
+  style={evenement ? `--couleur-evenement: ${couleurs.get(evenement.id)}` : undefined}
+>
+  <Frise evenements={evenements} couleurs={couleurs} courant={evenement?.id ?? null} />
+
+  {
+    evenement ? (
+      <ChronologieEvenement evenement={evenement} total={evenements.length} />
+    ) : (
+      <article class="chrono-page chrono-accueil" aria-labelledby="chrono-titre">
+        <h1 id="chrono-titre">Chronologie</h1>
+        <p>
+          Les {evenements.length} événements que datent le Codex et les pages de race, du plus ancien au plus récent. Choisissez-en un dans la frise :
+          sa page s’ouvre ici, avec les passages des sources qui en parlent, leur date surlignée.
+        </p>
+        <p>
+          Les chevrons, à droite, passent à l’événement précédent ou suivant (au clavier : ← et →). Un losange marque un Impact majeur, un point plus
+          grand un Impact mineur, d’après la liste « Les Impacts mineur et majeur » du Codex.
+        </p>
+        {
+          suivant && (
+            <p>
+              <a class="chrono-commencer" href={href(suivant)}>
+                Commencer : {suivant.titre}
+              </a>
+            </p>
+          )
+        }
+      </article>
+    )
+  }
+
+  <nav class="chrono-chevrons" aria-label="Événement précédent ou suivant">
+    {
+      precedent ? (
+        <a class="chrono-chevron" href={href(precedent)} rel="prev" title={`Précédent : ${etiquette(precedent)}`} data-chrono-precedent>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
+          <span class="chrono-invisible">Précédent : {etiquette(precedent)}</span>
+        </a>
+      ) : (
+        <span class="chrono-chevron" role="link" aria-disabled="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
+          <span class="chrono-invisible">Précédent ({evenement ? 'premier événement' : 'aucun événement'})</span>
+        </span>
+      )
+    }
+    {
+      suivant ? (
+        <a class="chrono-chevron" href={href(suivant)} rel="next" title={`Suivant : ${etiquette(suivant)}`} data-chrono-suivant>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+          <span class="chrono-invisible">Suivant : {etiquette(suivant)}</span>
+        </a>
+      ) : (
+        <span class="chrono-chevron" role="link" aria-disabled="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+          <span class="chrono-invisible">Suivant (dernier événement)</span>
+        </span>
+      )
+    }
+  </nav>
+</div>
+<script is:inline>
+  // ← et → : événement précédent ou suivant (les chevrons), sauf pendant une saisie ou avec une touche de modification. ↑ et ↓ gardent leur rôle :
+  // faire défiler la page ou la frise.
+  document.addEventListener('keydown', function (e) {
+    var sens = { ArrowLeft: '[data-chrono-precedent]', ArrowRight: '[data-chrono-suivant]' }[e.key];
+    if (!sens || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    var cible = e.target;
+    if (cible && cible.closest && cible.closest('input, textarea, select, [contenteditable]')) return;
+    var lien = document.querySelector(sens);
+    if (lien) location.href = lien.href;
+  });
+
+  // Écran tactile : glisser le doigt vers la gauche sur la page d'un événement passe au suivant, vers la droite au précédent, comme dans le guide :
+  // geste franchement horizontal (2 fois plus large que haut, 60 px ou le quart de l'écran), d'un seul doigt, hors de la frise, d'un champ, d'une
+  // sélection de texte, d'une page zoomée et du bord de l'écran. La page suit un peu le doigt, sauf mouvement réduit.
+  (function () {
+    var page = document.querySelector('.chrono--evenement .chrono-page');
+    if (!page) return;
+    var calme = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var depart = null;
+    function voisin(dx) {
+      return document.querySelector(dx < 0 ? '[data-chrono-suivant]' : '[data-chrono-precedent]');
+    }
+    function selection() {
+      return window.getSelection && String(window.getSelection()) !== '';
+    }
+    // Décalage borné à 64 px : au-delà de la marge de <main>, la page est coupée (overflow-x: clip, styles/chronologie/chronologie.css).
+    function decaler(x, transition, opacite) {
+      if (calme) return;
+      x = Math.max(-64, Math.min(64, x));
+      page.style.transition = transition;
+      page.style.transform = x ? 'translateX(' + x + 'px)' : '';
+      page.style.opacity = opacite || '';
+    }
+    document.addEventListener('touchstart', function (e) {
+      depart = null;
+      var t = e.touches[0];
+      var cible = e.target;
+      if (e.touches.length !== 1 || !cible.closest || !cible.closest('[data-chrono]') || selection()) return;
+      if (cible.closest('input, textarea, select, [contenteditable], [data-frise]')) return;
+      if (window.visualViewport && visualViewport.scale > 1.01) return;
+      if (t.clientX < 24 || t.clientX > window.innerWidth - 24) return;
+      depart = { x: t.clientX, y: t.clientY, horizontal: null };
+    }, { passive: true });
+    document.addEventListener('touchmove', function (e) {
+      if (!depart) return;
+      if (e.touches.length !== 1) {
+        depart = null;
+        decaler(0, 'transform 0.2s ease');
+        return;
+      }
+      var dx = e.touches[0].clientX - depart.x;
+      var dy = e.touches[0].clientY - depart.y;
+      if (depart.horizontal === null && Math.abs(dx) + Math.abs(dy) > 12) depart.horizontal = Math.abs(dx) > 2 * Math.abs(dy);
+      if (depart.horizontal) decaler(dx * (voisin(dx) ? 0.35 : 0.1), 'none');
+    }, { passive: true });
+    document.addEventListener('touchend', function (e) {
+      if (!depart) return;
+      var t = e.changedTouches[0];
+      var dx = t.clientX - depart.x;
+      var dy = t.clientY - depart.y;
+      var lien = voisin(dx);
+      var tourne = depart.horizontal && lien && Math.abs(dx) >= Math.max(60, window.innerWidth / 4) && Math.abs(dx) > 2 * Math.abs(dy) && !selection();
+      depart = null;
+      if (!tourne) {
+        decaler(0, 'transform 0.2s ease');
+        return;
+      }
+      decaler(dx < 0 ? -64 : 64, 'transform 0.15s ease, opacity 0.15s ease', '0.4');
+      location.href = lien.href;
+    }, { passive: true });
+    document.addEventListener('touchcancel', function () {
+      if (depart) decaler(0, 'transform 0.2s ease');
+      depart = null;
+    }, { passive: true });
+    window.addEventListener('pageshow', function () {
+      decaler(0, '');
+    });
+  })();
+</script>

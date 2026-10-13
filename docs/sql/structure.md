@@ -786,7 +786,7 @@ Un événement, dans l'ordre de lecture (`rang`) : un fait que le Codex ou une p
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `id` | TEXT | oui | PK |  |
-| `rang` | INTEGER | oui | unique | ordre de lecture : frise, Précédent / Suivant ; le rang 1 est servi à /chronologie/ |
+| `rang` | INTEGER | oui | unique | ordre de lecture : frise, chevrons Haut / Bas ; chaque événement à /chronologie/<id>/ |
 | `titre` | TEXT | oui |  |  |
 | `titre_cle` | TEXT | oui |  |  |
 | `epoque` | TEXT | oui |  | place dans la frise (EPOQUES de lib/chronologie.mjs) |

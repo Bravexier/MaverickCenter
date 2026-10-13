@@ -1,74 +1,83 @@
 ---
-import { adresseDEvenement, libelleDeDate, PORTEES } from '../../lib/chronologie.mjs';
-import { idBulle } from '../../lib/magies';
+import { adresseDEvenement, dateCourte, PORTEES } from '../../lib/chronologie.mjs';
 import { url } from '../../lib/wiki';
 
-// La frise de la chronologie (demande du propriétaire : une ligne temporelle en haut et en bas de chaque page d'événement, à la place de la pagination
-// numérotée du guide). Un point par événement, sur une ligne coupée en périodes (« Au début », un siècle par période datée, « Date inconnue »,
-// « Aujourd'hui » : lib/chronologie.mjs#periodesDeLaFrise), chacune de sa couleur et titrée au-dessus. Un Impact majeur ou mineur de la liste du Codex
-// a un point plus grand (losange pour un majeur). Le point de l'événement affiché est plein, sa date écrite dessous. Titre et date de chaque point en
-// infobulle (components/Infobulles.astro, liée au point par aria-describedby : portée et lieu y sont dits ; sans JavaScript, `title`). La frise
-// défile de côté : le script de ChronologieEvenement.astro centre l'événement affiché et garde le point qui a le focus hors des voiles des bords ;
-// un glissement du doigt ou une flèche du clavier y fait défiler la frise sans tourner la page.
+// La frise de la chronologie (demande du propriétaire) : sur la gauche, en vertical, la chronologie en une immense barre avec un dégradé ; chaque
+// date est notée à gauche de la barre, le titre à droite ; un clic ouvre la page de l'événement à côté (components/chronologie/Chronologie.astro).
+// Un événement par ligne, dans l'ordre de lecture ; la ligne entière est le lien. Le dégradé : chaque ligne peint son morceau de barre, de la
+// couleur mêlée à celle de l'événement précédent (en haut) à celle mêlée au suivant (en bas), en passant par la sienne au niveau de son point
+// (lib/chronologie.mjs#couleursDesEvenements) : la barre change de teinte sans à-coup d'un bout à l'autre. Un Impact majeur de la liste du Codex a
+// un losange, un Impact mineur un point plus grand ; « Date inconnue » a une barre en pointillés. L'événement affiché (`courant`) est repéré
+// (aria-current). Le nom d'un lien est son texte visible, complété pour les lecteurs d'écran (« An 505 : La Grande Croisade, Impact majeur »).
+// La frise défile seule, à hauteur d'écran : le script qui suit la remet où on l'a laissée et y montre l'événement affiché.
 interface Props {
   evenements: any[];
-  periodes: any[];
-  courant: string;
-  /** 'haut' ou 'bas' : deux frises par page, avec des étiquettes distinctes (lecteurs d'écran) ; la légende est sous celle du bas. */
-  position: 'haut' | 'bas';
+  couleurs: Map<string, string>;
+  /** L'événement affiché ; null sur /chronologie/ (la frise seule et son mode d'emploi). */
+  courant: string | null;
 }
-const { evenements, periodes, courant, position } = Astro.props;
-const etiquette = (e: any) => `${libelleDeDate(e)} : ${e.titre}`;
-const classeDuPoint = (e: any) => ['frise__point', e.portee && `frise__point--${e.portee}`].filter(Boolean).join(' ');
+const { evenements, couleurs, courant } = Astro.props;
+const style = (e: any, i: number) => {
+  const c = couleurs.get(e.id);
+  const avant = i > 0 ? couleurs.get(evenements[i - 1].id) : c;
+  const apres = i < evenements.length - 1 ? couleurs.get(evenements[i + 1].id) : c;
+  return `--c: ${c}; --c-avant: ${avant}; --c-apres: ${apres}`;
+};
 ---
 
-<nav class={`frise frise--${position}`} aria-label={position === 'haut' ? 'Frise chronologique' : 'Frise chronologique (bas de page)'}>
-  <div class="frise__fenetre">
-    <ol class="frise__piste" data-frise>
-      {
-        periodes.map((p) => (
-          <li class="frise__periode" style={`--couleur-periode: ${p.couleur}`}>
-            <span class="frise__titre" title={p.description}>{p.titre}</span>
-            <ol class="frise__points">
-              {p.evenements.map((e: any) => {
-                const id = idBulle(`frise-${position}`);
-                const actuel = e.id === courant;
-                return (
-                  <li class="frise__case">
-                    <span class="bulle-zone">
-                      <a
-                        class={classeDuPoint(e)}
-                        href={url(adresseDEvenement(evenements, e.id))}
-                        aria-current={actuel ? 'page' : undefined}
-                        aria-label={etiquette(e)}
-                        aria-describedby={id}
-                        data-bulle={id}
-                        title={etiquette(e)}
-                        data-frise-actuel={actuel ? '' : undefined}
-                      />
-                      <span class="bulle" role="tooltip" id={id} hidden>
-                        <span class="bulle__sous">{[libelleDeDate(e), e.portee && PORTEES[e.portee], e.lieu].filter(Boolean).join(' · ')}</span>
-                        <span class="bulle__titre">{e.titre}</span>
-                      </span>
-                    </span>
-                    {actuel && <span class="frise__date" aria-hidden="true">{libelleDeDate(e)}</span>}
-                  </li>
-                );
-              })}
-            </ol>
-          </li>
-        ))
-      }
-    </ol>
-  </div>
-  {
-    position === 'bas' && (
-      <p class="frise__legende">
-        <span class="frise__legende-item"><span class="frise__point frise__point--majeur" aria-hidden="true" />Impact majeur</span>
-        <span class="frise__legende-item"><span class="frise__point frise__point--mineur" aria-hidden="true" />Impact mineur</span>
-        <span class="frise__legende-item"><span class="frise__point" aria-hidden="true" />Autre événement</span>
-        <span class="frise__legende-source">Impacts : liste « Les Impacts mineur et majeur » du Codex</span>
-      </p>
-    )
-  }
+<nav class="frise" aria-label="Frise chronologique" data-frise>
+  <p class="frise__legende" aria-hidden="true">
+    <span class="frise__legende-item"><span class="frise__repere frise__repere--majeur"></span>Impact majeur</span>
+    <span class="frise__legende-item"><span class="frise__repere frise__repere--mineur"></span>Impact mineur</span>
+    <span class="frise__legende-item"><span class="frise__repere"></span>Autre</span>
+  </p>
+  <ol class="frise__liste">
+    {
+      evenements.map((e: any, i: number) => (
+        <li class={`frise__evenement frise__evenement--${e.epoque}`} id={`evenement-${e.id}`} style={style(e, i)}>
+          <a class="frise__lien" href={url(adresseDEvenement(e.id))} aria-current={e.id === courant ? 'page' : undefined}>
+            <span class="frise__date">
+              {e.epoque === 'datee' && <span class="chrono-invisible">An </span>}
+              {dateCourte(e)}
+              <span class="chrono-invisible"> : </span>
+            </span>
+            <span class="frise__barre">
+              <span class={['frise__repere', e.portee && `frise__repere--${e.portee}`].filter(Boolean).join(' ')} />
+            </span>
+            <span class="frise__titre">
+              {e.titre}
+              {e.portee && <span class="chrono-invisible">, {PORTEES[e.portee]}</span>}
+            </span>
+          </a>
+        </li>
+      ))
+    }
+  </ol>
 </nav>
+<script is:inline>
+  // La frise défile seule (grand écran) : on la remet où on l'a laissée sur la page précédente de la chronologie (sessionStorage, au départ de la
+  // page), puis on y montre l'événement affiché s'il est hors de la partie visible (centré). Lancé dès que la frise est lue, avant le premier
+  // affichage : elle ne saute pas. Sur petit écran, la frise ne défile pas seule (elle est la page /chronologie/) : rien à faire.
+  (function () {
+    var frise = document.querySelector('[data-frise]');
+    if (!frise || frise.scrollHeight <= frise.clientHeight + 1) return;
+    var cle = 'chronologie:frise';
+    try {
+      var garde = JSON.parse(sessionStorage.getItem(cle) || 'null');
+      if (garde && typeof garde.haut === 'number') frise.scrollTop = garde.haut;
+    } catch (e) {}
+    var actuel = frise.querySelector('[aria-current="page"]');
+    if (actuel) {
+      var f = frise.getBoundingClientRect();
+      var r = actuel.getBoundingClientRect();
+      var haut = Math.max(f.top, 0) + 48;
+      var bas = Math.min(f.bottom, window.innerHeight) - 24;
+      if (r.top < haut || r.bottom > bas) frise.scrollTop += r.top - (haut + bas - r.height) / 2;
+    }
+    addEventListener('pagehide', function () {
+      try {
+        sessionStorage.setItem(cle, JSON.stringify({ haut: frise.scrollTop }));
+      } catch (e) {}
+    });
+  })();
+</script>
