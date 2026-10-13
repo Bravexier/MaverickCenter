@@ -18,9 +18,6 @@ export const normaliser = (texte) =>
     .replace(/\s+/g, ' ')
     .trim();
 
-/** État vide d'un tableau. */
-export const etatVide = () => ({ q: '', facettes: {}, tri: null, sens: 'asc' });
-
 /** État lu dans l'adresse ; `config` = { prefixe, facettes: [clés], tris: [clés] } ; une clé ou une valeur inconnue est ignorée. */
 export function etatDepuisAdresse(recherche, { prefixe = '', facettes = [], tris = [], valeurs = {} } = {}) {
   const p = new URLSearchParams(recherche);
