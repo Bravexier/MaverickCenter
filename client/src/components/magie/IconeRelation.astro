@@ -1,0 +1,19 @@
+---
+import { POINTES } from '../../lib/magie-fleches.mjs';
+
+// Épée (vulnérabilité) ou bouclier (résistance) du tableau des relations entre magies : les dessins de la carte de /magies/ (lib/magie-fleches.mjs#POINTES),
+// l'épée en diagonale pour tenir dans une case étroite. Couleur : celle du texte (currentColor), l'arête du bouclier en creux.
+interface Props {
+  nom: 'epee' | 'bouclier';
+}
+const { nom } = Astro.props;
+const pointe = POINTES[nom];
+const cadre = nom === 'epee' ? { viewBox: '-23 -3 25 25', transform: 'rotate(-45)' } : { viewBox: '-10 -11 20 23', transform: undefined };
+---
+
+<svg class={`icone-relation icone-relation--${nom}`} viewBox={cadre.viewBox} aria-hidden="true" focusable="false">
+  <g transform={cadre.transform}>
+    <path d={pointe.dessin} />
+    {'arete' in pointe && pointe.arete && <path class="icone-relation__arete" d={pointe.arete} />}
+  </g>
+</svg>
