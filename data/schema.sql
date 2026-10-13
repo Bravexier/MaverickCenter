@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 34;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 35;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -991,6 +991,50 @@ CREATE TABLE dieu (
   source_ref       TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
 ) STRICT;
+
+-- ====================================================================================================================
+-- 5 bis. CHRONOLOGIE : les événements datés du Codex et des races (famille « chronologie » ; migration 0035, docs/chronologie.md)
+-- Page /chronologie/ : une page par événement, lue comme le guide du joueur, frise en haut et en bas (client/src/lib/chronologie.mjs).
+-- Les lignes viennent du registre tools/chronologie/evenements.json, résolu contre le texte des pages par tools/chronologie/chronologie.mjs :
+-- le texte d'un extrait est COPIÉ d'une page du Codex (lore/…) ou d'une race (races/…), jamais réécrit.
+-- ====================================================================================================================
+
+-- Un événement, dans l'ordre de lecture (`rang`) : un fait que le Codex ou une page de race date, plus l'ouverture « Au début » (Origine du monde, les trois
+-- premières races), les « Date inconnue » de la liste des Impacts et « Aujourd'hui » (Situation actuelle). Le titre d'un événement de la page « Les Impacts
+-- mineur et majeur » est la ligne de la liste, telle quelle ; les autres titres sont du site, faits des mots de leurs extraits.
+CREATE TABLE evenement (
+  id         TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),
+                                                     -- adresse /chronologie/<id>/ ; tiré une fois du titre puis figé
+  rang       INTEGER NOT NULL UNIQUE CHECK (rang >= 1),        -- ordre de lecture : frise, Précédent / Suivant ; le rang 1 est servi à /chronologie/
+  titre      TEXT    NOT NULL CHECK (length(titre) > 0),
+  titre_cle  TEXT    NOT NULL CHECK (titre_cle NOT GLOB '*[^a-z0-9-]*' AND titre_cle NOT GLOB '*--*' AND titre_cle NOT GLOB '-*' AND titre_cle NOT GLOB '*-'),
+  epoque     TEXT    NOT NULL CHECK (epoque IN ('debut', 'datee', 'inconnue', 'aujourdhui')),   -- place dans la frise (EPOQUES de lib/chronologie.mjs)
+  annee      INTEGER,                                          -- année écrite par la source (signe moins compris) ; NULL hors de l'époque 'datee'
+  annee_fin  INTEGER,                                          -- seconde année d'un intervalle écrit (« dans les ans -400 à -350 ») ; NULL sinon
+  portee     TEXT    CHECK (portee IN ('majeur', 'mineur')),   -- « Impact majeur » / « Impact mineur » : liste de la page « Les Impacts mineur et majeur »
+  lieu       TEXT    CHECK (lieu IS NULL OR length(lieu) > 0), -- le lieu entre parenthèses de cette liste, tel quel (« Erisia », « Ici et là »)
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'chronologie'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),  -- provenance du premier extrait
+  CHECK ((epoque = 'datee') = (annee IS NOT NULL)),
+  CHECK (annee_fin IS NULL OR annee_fin > annee),
+  CHECK (lieu IS NULL OR portee IS NOT NULL)
+) STRICT;
+CREATE INDEX evenement_titre ON evenement (titre_cle);
+
+-- Les extraits d'un événement, dans l'ordre : un passage contigu d'une page, copié de page.corps_md (Markdown) tel qu'il était à l'import. Une modification
+-- de la page sur le site de dev ne refait pas l'extrait (test/chronologie-db.test.mjs relit les pages dans leur état d'import).
+CREATE TABLE evenement_extrait (
+  evenement_id TEXT    NOT NULL REFERENCES evenement(id),
+  rang         INTEGER NOT NULL CHECK (rang >= 1),
+  page_id      TEXT    NOT NULL REFERENCES page(id),         -- la page d'où vient le passage (lien sous l'extrait)
+  section      TEXT    CHECK (section IS NULL OR length(section) > 0),   -- titre de la section de la page où commence le passage ; NULL = avant tout titre
+  texte        TEXT    NOT NULL CHECK (length(texte) > 0),
+  date_brut    TEXT    CHECK (date_brut IS NULL OR instr(texte, date_brut) > 0),   -- l'expression de date du passage, surlignée ; NULL = aucune
+  origine      TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'chronologie'),
+  source_ref   TEXT    NOT NULL CHECK (length(source_ref) > 0),   -- « CODEX Maverick › <page> › <section> », « Les races › <onglet> › <section> »
+  PRIMARY KEY (evenement_id, rang)
+) STRICT, WITHOUT ROWID;
+CREATE INDEX evenement_extrait_page_fk ON evenement_extrait (page_id);
 
 -- ====================================================================================================================
 -- 6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)

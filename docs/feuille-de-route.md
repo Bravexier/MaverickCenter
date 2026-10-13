@@ -36,7 +36,7 @@ d'une source ou d'une décision de [`decisions-regles.md`](decisions-regles.md) 
 | E2 | Page du Bestiaire | A · V0.3, puis B · V0.5 | réponses du propriétaire (`docs/bestiaire.md`) | **premier jet en place** (2026-10-11) : `/bestiaire/`, monstres du « Bestiaire 2.0 » (section 8 bis) et créatures invoquées à part, tableaux filtrables |
 | E3 | Refonte de l'équipement et intégration à la fiche | A · V0.4 | la liste des ratés de l'intégration | catalogues de la section 9, bloc équipement de `/fiche/`, tables `personnage_arme`, `personnage_armure`… |
 | E4 | Générateur d'accessoires magiques | A · V0.4 | E3 pour les accessoires | tables de tirage `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet` ; `personnage_accessoire` |
-| E5 | Chronologie | B · V0.5 | sources du lore | entrée « bientôt » du menu Codex |
+| E5 | Chronologie | B · V0.5 | sources du lore | **premier jet en place** (2026-10-13) : `/chronologie/`, une page par événement daté du Codex et des races, frise en haut et en bas ([`chronologie.md`](chronologie.md)) |
 | E6 | Carte interactive et lieux | B · V0.5 | image de la carte, sources | type `cartes` (aucune page), entrée « bientôt » du menu Codex |
 | E7 | Connexion par Discord seulement : touriste ou joueur, puis rôles | C · V0.6, éprouvée avant la V1.0 | application Discord du propriétaire | tables `utilisateur`, `utilisateur_role` ; « Authentification » plus bas |
 | E8 | Fiches de personnage assignées à un compte | C · V0.6 | E7 | `personnage.proprietaire_id`, `personnage_partage`, `v_personnage_visible` |
@@ -146,11 +146,13 @@ flowchart LR
 
 ### E5 — Chronologie (jalon B)
 
-- **Prérequis** : la source. Le « CODEX Maverick » est importé (2026-10-11, [`codex.md`](codex.md)) : sa page « Les Impacts mineur et majeur » donne
-  les grands événements datés (An 20 à An 1138) et les pages des civilisations en citent d'autres (règnes des empereurs, fondations) ; le salon
-  « lore-bestiaire-codex » (export local ou bot, voir [`sources.md`](sources.md)) et le calendrier du monde restent à rapatrier.
-- **Ensuite** : une table d'événements (titre, date dans le calendrier du monde, texte, sources, liens vers lieux, races, dieux), une page `/chronologie/`
-  en frise filtrable (époque, peuple, lieu), modifiable sur le site de dev ; entrée Codex › Chronologie.
+- **Déjà là** (premier jet, 2026-10-13, [`chronologie.md`](chronologie.md)) : `/chronologie/` (menu Codex › Chronologie), une page par événement, lue comme le
+  guide (flèches Précédent / Suivant, clavier, glissement du doigt) avec une frise en haut et en bas ; 72 événements : la liste « Les Impacts mineur et
+  majeur » du Codex en entier, les dates des autres pages du Codex (fondations, guerres, objets légendaires…) et des pages de race (apparitions), chacun avec
+  les extraits copiés de ses pages sources (tables `evenement`, `evenement_extrait`, migration `0035-chronologie`).
+- **Ensuite** : les réponses du propriétaire aux questions de [`chronologie.md`](chronologie.md) (contradictions de dates, règnes, calendrier des mois) ;
+  le salon « lore-bestiaire-codex » (export local ou bot, voir [`sources.md`](sources.md)) et le calendrier du monde ; des filtres (époque, peuple, lieu) ;
+  la modification sur le site de dev ; les liens vers les lieux (E6).
 
 ### E6 — Carte interactive et lieux (jalon B)
 

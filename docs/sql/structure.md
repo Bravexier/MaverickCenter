@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 34 : 182 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 35 : 184 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -13,6 +13,7 @@
 - [3. MAGIES ET SORTS (famille « magies »)](#3-magies-et-sorts-famille--magies) : `magie`, `magie_role`, `magie_resistance`, `magie_incompatibilite`, `magie_ethnie_secondaire`, `magie_dieu`, `amelioration_cadaverique`, `sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `commentaire_orphelin`, `legende_sort`, `regle_magie`
 - [4. ANNEXES DES MAGIES : états, résistances, météo, modes hyper et super (famille « annexes »)](#4-annexes-des-magies--états-résistances-météo-modes-hyper-et-super-famille--annexes) : `resistance_palier`, `resistance_magie`, `resistance_duo`, `resistance_combinaison`, `etat`, `etat_magie`, `etat_stade`, `etat_palier`, `meteo`, `meteo_effet`, `mode_texte`, `mode_hyper_depassement`, `mode_super_objet`, `mode_hyper_effet`
 - [5. DIEUX](#5-dieux) : `dieu`
+- [5 bis. CHRONOLOGIE : les événements datés du Codex et des races (famille « chronologie » ; migration 0035, docs/chronologie.md)](#5-bis-chronologie--les-événements-datés-du-codex-et-des-races-famille--chronologie---migration-0035-docschronologiemd) : `evenement`, `evenement_extrait`
 - [6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)](#6-classes-spécialités-capacités-famille--classes) : `categorie_classe`, `classe`, `specialite`, `capacite`, `objet_depart`, `classe_objet_depart`, `classe_maitrise_armure`, `classe_maitrise_arme`, `classe_annexe`
 - [7. RACES, ETHNIES, ACCESSIBILITÉS (famille « races »)](#7-races-ethnies-accessibilités-famille--races) : `race`, `race_restriction_carac`, `ethnie`, `ethnie_resistance`, `race_classe`, `race_magie`, `race_onglet`, `race_don`, `race_don_tableau_colonne`, `race_don_tableau_ligne`, `race_don_tableau_cellule`, `race_magie_onglet`, `echelle_relation`, `peuple`, `relation_peuple`
 - [8. BESTIAIRE : invocations et créatures (famille « bestiaire »)](#8-bestiaire--invocations-et-créatures-famille--bestiaire) : `invocation`, `invocation_capacite_commune`, `invocation_resistance`, `invocation_bloc`, `invocation_bloc_magie`, `creature`, `creature_ressource`, `creature_caracteristique`, `creature_bonus_npm`, `creature_attaque`, `creature_attaque_type`, `creature_capacite`, `creature_capacite_sort`, `creature_capacite_resistance`, `creature_effet`
@@ -775,6 +776,41 @@ Noms de la liste déroulante « Dieu choisi » (Personnage!S5, 26 valeurs) et de
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
+
+## 5 bis. CHRONOLOGIE : les événements datés du Codex et des races (famille « chronologie » ; migration 0035, docs/chronologie.md)
+
+### `evenement`
+
+Un événement, dans l'ordre de lecture (`rang`) : un fait que le Codex ou une page de race date, plus l'ouverture « Au début » (Origine du monde, les trois premières races), les « Date inconnue » de la liste des Impacts et « Aujourd'hui » (Situation actuelle). Le titre d'un événement de la page « Les Impacts mineur et majeur » est la ligne de la liste, telle quelle ; les autres titres sont du site, faits des mots de leurs extraits.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | TEXT | oui | PK |  |
+| `rang` | INTEGER | oui | unique | ordre de lecture : frise, Précédent / Suivant ; le rang 1 est servi à /chronologie/ |
+| `titre` | TEXT | oui |  |  |
+| `titre_cle` | TEXT | oui |  |  |
+| `epoque` | TEXT | oui |  | place dans la frise (EPOQUES de lib/chronologie.mjs) |
+| `annee` | INTEGER | non |  | année écrite par la source (signe moins compris) ; NULL hors de l'époque 'datee' |
+| `annee_fin` | INTEGER | non |  | seconde année d'un intervalle écrit (« dans les ans -400 à -350 ») ; NULL sinon |
+| `portee` | TEXT | non |  | « Impact majeur » / « Impact mineur » : liste de la page « Les Impacts mineur et majeur » |
+| `lieu` | TEXT | non |  | le lieu entre parenthèses de cette liste, tel quel (« Erisia », « Ici et là ») |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  | provenance du premier extrait |
+
+### `evenement_extrait`
+
+Les extraits d'un événement, dans l'ordre : un passage contigu d'une page, copié de page.corps_md (Markdown) tel qu'il était à l'import. Une modification de la page sur le site de dev ne refait pas l'extrait (test/chronologie-db.test.mjs relit les pages dans leur état d'import).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `evenement_id` | TEXT | oui | PK 1, → evenement.id |  |
+| `rang` | INTEGER | oui | PK 2 |  |
+| `page_id` | TEXT | oui | → page.id | la page d'où vient le passage (lien sous l'extrait) |
+| `section` | TEXT | non |  | titre de la section de la page où commence le passage ; NULL = avant tout titre |
+| `texte` | TEXT | oui |  |  |
+| `date_brut` | TEXT | non |  | l'expression de date du passage, surlignée ; NULL = aucune |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  | « CODEX Maverick › <page> › <section> », « Les races › <onglet> › <section> » |
 
 ## 6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)
 

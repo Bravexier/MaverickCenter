@@ -19,7 +19,7 @@ Le document compte huit parties :
 
 | Partie | Pages produites |
 | --- | --- |
-| Au début … | Origine du monde, Situation actuelle, Les Impacts mineur et majeur (dates des grands événements : la future chronologie, E5) |
+| Au début … | Origine du monde, Situation actuelle, Les Impacts mineur et majeur (dates des grands événements : la chronologie, E5, [`chronologie.md`](chronologie.md)) |
 | Les Divinités | 23 divinités (Tofrom et Morfot, 4 primordiaux, 13 dieux, 4 autres) et leur sommaire |
 | Temples/Cultes/Guildes | 34 temples, cultes et guildes, rangés par magie, et leur sommaire (définitions, grades des croisés) |
 | Les races non-jouable | Dragon, Vampires primordiaux et leur sommaire |
@@ -29,7 +29,8 @@ Le document compte huit parties :
 | GLOSSAIRE | Glossaire (termes du jeu) |
 
 Plus `lore/codex`, le sommaire de tout le document. Le menu **Codex › Mythologie** mène aux Divinités, **Codex › Factions** aux Temples/Cultes/Guildes ;
-Chronologie et Carte & lieux restent « bientôt » (E5, E6 de la [feuille de route](feuille-de-route.md)).
+**Codex › Chronologie** reprend les événements datés du document (la liste des Impacts en entier, et les dates des autres pages) : [`chronologie.md`](chronologie.md) ;
+Carte & lieux reste « bientôt » (E6 de la [feuille de route](feuille-de-route.md)).
 
 ## Règles du découpage
 

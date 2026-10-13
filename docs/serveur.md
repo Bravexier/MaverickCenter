@@ -297,7 +297,8 @@ la première vraie mise à jour les retire.
 **Sur le site de dev** (`MAVERICK_EDITION=1`) : au-dessus, la note **en préparation**, calculée par le service à chaque visite
 (`GET /api/mise-a-jour/`) : la base de la **production** (référence : la base de master, construite au build à côté de celle du site,
 `site/donnees/reference.db` et `reference.json`, `scripts/db-reference.mjs`) comparée à la base vivante (règles de dev + modifications du site).
-Seuls les champs que le site modifie sont comparés (`lib/edition-modele.mjs#TABLES`) : le reste en est dérivé. Une ligne qui n'existe qu'avec une
+Seuls les champs que le site modifie sont comparés (`lib/edition-modele.mjs#TABLES`) : le reste en est dérivé (la chronologie, qui ne se modifie pas
+encore sur le site, n'y figure pas : [`chronologie.md`](chronologie.md)). Une ligne qui n'existe qu'avec une
 autre (la rubrique d'une carte de monstre, une case de butin, un bloc d'une espèce) n'est listée que pour un champ modifié : son ajout ou son retrait est
 dit par la carte ou l'espèce qui la porte ; un contenu entièrement absent de la production (le Codex et le bestiaire à leur première livraison) tient en
 une ligne (« 116 pages du Codex », « 144 espèces », « 315 monstres ») au lieu d'une par entité (`lib/notes-de-version.mjs`, `resume` et `detail`). Le **champ libre** (Markdown simple :

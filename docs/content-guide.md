@@ -228,6 +228,12 @@ Les monstres du Google Doc « Bestiaire 2.0 » et, à part, les créatures invoq
 et tri, une fiche sous chaque ligne ; rendus depuis les tables (`lib/bestiaire-db.mjs`), jamais depuis un Markdown. Les monstres n'ont pas de page.
 La page, l'extraction du doc et les questions en attente : [`bestiaire.md`](bestiaire.md).
 
+## Chronologie (`/chronologie/`) : une page par événement daté
+
+Les événements que datent le Codex et les pages de race, une page chacun, lus comme le guide mais avec une frise en haut et en bas ; rendus depuis les tables
+`evenement` et `evenement_extrait` (`lib/chronologie-db.mjs`), jamais depuis un Markdown : un événement n'a pas de page du wiki. Ses extraits sont **copiés**
+des pages (registre `tools/chronologie/evenements.json`) : une page du Codex ou d'une race se corrige à sa place, puis le registre est relu (`--verifier`).
+Règles de sélection et questions en attente : [`chronologie.md`](chronologie.md).
 ## Armes (`/ressources/armes/`) : un tableau par famille, la fiche de l'arme forgée
 
 Demande du propriétaire (2026-10-13) : « Pas de tableau markdown, inspire-toi des sorts et fais un tableau par type d'arme. » La page est rendue depuis
@@ -254,6 +260,7 @@ modification (`lib/corps-armes.mjs`).
   boucliers ; voir `docs/serveur.md`, « Édition ». La fiche de personnage calcule les mêmes dégâts (`degatsDArme`) et pose le fer avec l'arme choisie.
 - `test/arme-champs.test.mjs` (découpages rejoués sur toute la base), `corps-armes.test.mjs`, `arme-forge.test.mjs` (l'exemple du propriétaire : Espadon
   en titane +5 = D10+29, 620 RO et 3 titanes ou 1 220 RO), `serveur-edition-armes.test.mjs`, `armes-html.test.mjs` (site construit).
+
 
 ## Pages de classe : un gabarit commun, alimenté par la base
 

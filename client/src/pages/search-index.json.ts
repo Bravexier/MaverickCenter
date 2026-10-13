@@ -3,6 +3,9 @@ import { TYPES } from '../lib/types.mjs';
 import { loadWiki, typeOf } from '../lib/wiki';
 import { adresseDePage } from '../lib/metiers.mjs';
 import { sansMarqueurs } from '../lib/guide.mjs';
+import { ouvrirBase } from '../lib/donnees.mjs';
+import { chargerChronologie } from '../lib/chronologie-db.mjs';
+import { adresseDEvenement, libelleDeDate } from '../lib/chronologie.mjs';
 
 /** Texte brut approximatif d'une page, pour la recherche plein texte côté navigateur. */
 function plainText(body: string) {
@@ -30,5 +33,19 @@ export const GET: APIRoute = async () => {
       text: plainText(sansMarqueurs(entry.body ?? '')),
     };
   });
+  // Les événements de la chronologie ne sont pas des pages du wiki (tables evenement, lib/chronologie-db.mjs) : ils sont ajoutés à part, avec le texte
+  // de leurs extraits.
+  const evenements = chargerChronologie(ouvrirBase());
+  for (const e of evenements) {
+    index.push({
+      title: e.titre,
+      type: 'Événement',
+      path: adresseDEvenement(evenements, e.id),
+      summary: libelleDeDate(e),
+      aliases: [],
+      tags: ['chronologie'],
+      text: plainText(e.extraits.map((x: { texte: string }) => x.texte).join(' ')),
+    });
+  }
   return new Response(JSON.stringify(index), { headers: { 'Content-Type': 'application/json' } });
 };

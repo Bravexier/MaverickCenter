@@ -1,6 +1,6 @@
 # Aperçu du schéma de la base
 
-> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 182 tables, 2 tables de recherche, 35 vues.
+> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 184 tables, 2 tables de recherche, 35 vues.
 > Ce qui reste à trancher sur le **contenu** (pas sur la forme) est dans [`a-valider.md`](a-valider.md).
 
 **Lecture des colonnes** : **gras** = clé primaire ; `→table` = clé étrangère vers cette table ; `?` = peut être absente (`NULL`, jamais une valeur inventée) ; `+provenance` = `origine` (famille d'import) et `source_ref` (classeur › onglet › plage). Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté.
@@ -97,6 +97,17 @@
 | Table | Rôle | Colonnes |
 | --- | --- | --- |
 | `dieu` | Noms de la liste déroulante « Dieu choisi » (Personnage!S5, 26 valeurs) et de la colonne « Dieux » de la feuille Magie (X2:X29). | **id**, nom, ordre_choix?, dans_liste_magie, remarque?, +provenance |
+
+## 5 bis. CHRONOLOGIE : les événements datés du Codex et des races (famille « chronologie » ; migration 0035, docs/chronologie.md)
+
+**Relations dans cette section** : `evenement_extrait→evenement`
+
+**Vers d'autres sections** : `evenement_extrait→page (§1)`
+
+| Table | Rôle | Colonnes |
+| --- | --- | --- |
+| `evenement` | Un événement, dans l'ordre de lecture (`rang`) : un fait que le Codex ou une page de race date, plus l'ouverture « Au début » (Origine du monde, les trois premières races), les « Date inconnue » de la | **id**, rang, titre, titre_cle, epoque, annee?, annee_fin?, portee?, lieu?, +provenance |
+| `evenement_extrait` | Les extraits d'un événement, dans l'ordre : un passage contigu d'une page, copié de page.corps_md (Markdown) tel qu'il était à l'import. | **evenement_id**→evenement, **rang**, page_id→page, section?, texte, date_brut?, +provenance |
 
 ## 6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)
 
