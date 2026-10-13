@@ -519,7 +519,7 @@
     {
       "id": "ruines-de-noname-scellees", "titre": "Les Ruines de Noname scellées", "epoque": "datee", "annee": 1144,
       "extraits": [
-        { "page": "lore/ruines-rouges", "debut": "Selon la légende, ces ruines renfermeraient le lieu", "fin": "quand les Ruines étaient ouvertes.", "date": "en 1144" }
+        { "page": "lore/ruines-rouges", "debut": "Ces ruines étaient ouvertes pendant longtemps", "fin": "quand les Ruines étaient ouvertes.", "date": "en 1144" }
       ]
     },
     {
@@ -531,7 +531,8 @@
     {
       "id": "disparition-de-l-ordre-des-abeilles", "titre": "Disparition de l’Ordre des Abeilles", "epoque": "datee", "annee": 1160,
       "extraits": [
-        { "page": "lore/ordre-des-abeilles", "debut": "Depuis leur disparition en 1160", "fin": "où vivent encore les abeilles blanches.", "date": "en 1160" }
+        { "page": "lore/ordre-des-abeilles", "debut": "Depuis leur disparition en 1160", "fin": "où vivent encore les abeilles blanches.", "date": "en 1160" },
+        { "page": "lore/ordre-des-abeilles", "debut": "L’ordre est entouré d’une aura de mystère.", "fin": "mais sous une autre forme." }
       ]
     },
     {
@@ -544,10 +545,7 @@
     {
       "id": "baton-de-la-destruction", "titre": "Bâton de la Destruction", "epoque": "inconnue", "portee": "mineur", "lieu": "Golopa",
       "extraits": [
-        { "page": "lore/les-impacts-mineur-et-majeur", "debut": "Bâton de la Destruction (???) (Golopa)", "date": "???" },
-        { "page": "lore/baton-de-la-destruction", "debut": "Le Bâton de la Destruction est une relique", "fin": "les plus dangereux jamais façonnés.", "date": "pendant l’ère “négative”" },
-        { "page": "lore/baton-de-la-destruction", "debut": "Il s’agit de l’un des artefacts les plus difficiles à réunir", "fin": "laissant uniquement des fragments de légendes.", "date": "des époques “négatives”" },
-        { "page": "lore/baton-de-la-destruction", "debut": "À une époque reculée, le dirigeant du Culte de la Destruction", "fin": "après l’avoir ramené.", "date": "À une époque reculée" }
+        { "page": "lore/les-impacts-mineur-et-majeur", "debut": "Bâton de la Destruction (???) (Golopa)", "date": "???" }
       ]
     },
     {

@@ -78,5 +78,9 @@ Les contradictions relevées entre les sources (le texte est gardé tel quel ; r
 10. **Dreya (Joueur)**, quatrième porteur d'Excalibur en l'an 500 : un personnage de joueur dans le Codex ; à garder dans la chronologie ?
 11. **Les mois** : les dates de création écrivent un jour et un mois au nom d'un dieu (« 1 Séraphin, an \-30 », « 28 Evravonie 0 », « 10 Drassah 197 ») ;
     l'ordre des mois n'est écrit nulle part. Un calendrier du monde permettrait de ranger les événements d'une même année.
-12. **Les règnes** (empereurs, ambassadeurs, consuls) : les montrer dans la chronologie (une frise des règnes, à part), ou les laisser sur leurs pages ?
-13. **Modifier la chronologie sur le site de dev** (titres, extraits, nouveaux événements), comme le Codex : à prévoir ?
+12. **Les « ??? » de la liste des Impacts.** La liste des impacts mineurs semble rangée par date : « Apparition des Terres Grises (???) » vient avant
+    l'an 30, « Bâton de la Destruction (???) (Golopa) » entre l'an 499 et l'an 808. Faut-il les placer là sur la frise (elles sont aujourd'hui sous
+    « Date inconnue ») ? Et qu'est-ce que l'impact « Bâton de la Destruction » à Golopa : la page du bâton ne parle ni d'un impact ni de Golopa
+    (sa forge « pendant l'ère “négative” » n'est donc pas reprise dans l'événement).
+13. **Les règnes** (empereurs, ambassadeurs, consuls) : les montrer dans la chronologie (une frise des règnes, à part), ou les laisser sur leurs pages ?
+14. **Modifier la chronologie sur le site de dev** (titres, extraits, nouveaux événements), comme le Codex : à prévoir ?
