@@ -39,6 +39,8 @@ abandonne.
 - **Portrait** (migration `0031-fiche-zones`) : « Choisir une image » ouvre le **recadrage** (un cadre carré où l'image se déplace au doigt, à la souris ou aux
   flèches ; un curseur ou la molette zoome de 1 à 4) ; la fiche garde l'image, réduite à 600 000 pixels et sous 700 000 caractères en data URL
   (`personnage.portrait`), et son cadrage (`portrait_x`, `portrait_y`, `portrait_zoom`) : « Recadrer » rouvre l'image d'origine, « ✕ » revient au logo.
+  Réduction et dialogue : `src/scripts/portrait.mjs` (CSS `styles/portrait/recadrage.css`, inséré à la première ouverture), partagé avec le portrait des
+  monstres du bestiaire (mode modification, `docs/bestiaire.md`) ; bornes, formats et empreinte : `lib/portrait.mjs` (`test/portrait.test.mjs`).
 - **Ceinture** (guide « Fiche de personnage : Accessoires et Ceinture », migration `0031-fiche-zones`) : ses **3 emplacements** d'objets rapides, chacun un
   objet (au catalogue des ressources ou non) et sa quantité (`personnage_ceinture`, rang 1 à 3).
 - **Choix à faire** (`choixEnAttente`) : l'ethnie d'une race choisie, la spécialité d'une classe au niveau de son don de spécialité, chaque groupe de dons à

@@ -83,13 +83,13 @@ html.js .bpanneau__titre { position: absolute; width: 1px; height: 1px; overflow
 .bfiltres__effacer { font-size: 0.82rem; padding: 0.2rem 0.7rem; }
 .bfiltres__effacer[hidden] { display: none; }
 
-/* Le tableau : défile dans son cadre, en-tête et nom fixes */
+/* Le tableau : défile dans son cadre, en-tête et première colonne fixes ; le texte des cellules passe à la ligne (le tableau tient dans sa moitié) */
 .btableau__aide { margin: 0 0 0.5rem; font-size: 0.88rem; }
 .btableau__vide { margin: 0.8rem 0; color: var(--muted); }
 .btableau__vide[hidden] { display: none; }
 .btableau__defile { overflow: auto; max-height: calc(100vh - 7rem); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
 .btableau__defile:focus-visible { outline: 2px solid var(--bes); outline-offset: 2px; }
-.btable { border-collapse: separate; border-spacing: 0; font-size: 0.86rem; width: max-content; min-width: 100%; }
+.btable { border-collapse: separate; border-spacing: 0; font-size: 0.86rem; width: 100%; }
 .btable thead th { position: sticky; top: 0; z-index: 3; text-align: left; font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600;
   color: var(--muted); padding: 0.5rem 0.55rem; background: color-mix(in srgb, var(--accent) 9%, var(--surface)); border-bottom: 1px solid var(--bes-line); white-space: nowrap; }
 .btable thead th:first-child { left: 0; z-index: 4; }
@@ -99,19 +99,20 @@ html.js .bpanneau__titre { position: absolute; width: 1px; height: 1px; overflow
 th[aria-sort="ascending"] .btri::after { content: '↑'; opacity: 1; }
 th[aria-sort="descending"] .btri::after { content: '↓'; opacity: 1; }
 .btri:focus-visible { outline: 2px solid var(--bes); outline-offset: 2px; border-radius: 3px; }
-/* Lignes : six colonnes (monstres) ou trois (créatures invoquées) ; la ligne choisie est marquée, sa carte s'ouvre à côté */
+/* Lignes : six colonnes (monstres : espèce, nom, type, catégorie, EP, lieux) ou trois (créatures invoquées) ; la ligne choisie est marquée, sa carte s'ouvre à côté */
 .btable tr.bligne[hidden] { display: none; }
 .bligne > * { padding: 0.4rem 0.6rem; vertical-align: top; border-top: 1px solid var(--border); background: var(--surface); }
 .bligne { cursor: pointer; scroll-margin-top: 2.6rem; }
 .bligne:hover > * { background: var(--bes-soft); }
 .bligne.est-ouverte > * { background: var(--bes-soft); }
-.bligne__nom { position: sticky; left: 0; z-index: 2; text-align: left; min-width: 10rem; box-shadow: 1px 0 0 var(--border); }
-.bligne.est-ouverte .bligne__nom { box-shadow: inset 4px 0 0 var(--bes), 1px 0 0 var(--border); }
+.bligne > :first-child { position: sticky; left: 0; z-index: 2; box-shadow: 1px 0 0 var(--border); }
+.bligne.est-ouverte > :first-child { box-shadow: inset 4px 0 0 var(--bes), 1px 0 0 var(--border); }
+.bligne__nom { text-align: left; min-width: 6.5rem; }
+.bligne__espece { color: var(--muted); }
 .bligne__ouvrir { color: var(--text); font-weight: 700; text-decoration: none; line-height: 1.3; }
 .bligne__ouvrir:hover { text-decoration: underline dotted; }
 .bligne__ouvrir:focus-visible { outline: 2px solid var(--bes); outline-offset: 2px; border-radius: 4px; }
 .btable td.nombre { text-align: right; white-space: nowrap; }
-.bligne__lieux { min-width: 8rem; }
 .varie { font-style: italic; color: var(--muted); cursor: help; }
 .prefixe { font-size: 0.72rem; padding: 0 0.3rem; border-radius: 4px; background: var(--bes-soft); color: var(--muted); white-space: nowrap; }
 .bcible { display: inline-block; padding: 0 0.4rem; border-radius: 999px; font-size: 0.78rem; line-height: 1.5; border: 1px solid var(--border); background: var(--bg); }
@@ -124,8 +125,9 @@ th[aria-sort="descending"] .btri::after { content: '↓'; opacity: 1; }
 .bmagies { display: inline-flex; flex-wrap: wrap; gap: 0.2rem; align-items: center; }
 .bmagie { display: inline-block; padding: 0 0.45rem; border-radius: 999px; font-size: 0.78rem; background: var(--m); color: var(--m-texte); border: 1px solid color-mix(in srgb, var(--m) 70%, var(--text)); }
 
-/* Le tableau à gauche, la carte à droite (panneau qui suit le défilement) ; sur un écran étroit, la carte passe par-dessus la page */
-.bvue { display: grid; grid-template-columns: minmax(0, 1fr) minmax(24rem, 36rem); gap: 1rem; align-items: start; }
+/* Le tableau à gauche, la carte à droite, moitié-moitié (demande du propriétaire : « du 50/50 avec la tuile du monstre choisi ») ; la carte est un panneau qui
+   suit le défilement ; sur un écran étroit, elle passe par-dessus la page */
+.bvue { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
 .bcartes { position: sticky; top: 0.75rem; max-height: calc(100vh - 1.5rem); overflow-y: auto; overscroll-behavior: contain; background: var(--surface);
   border: 1px solid var(--border); border-radius: 12px; }
 .bcartes__invite { margin: 0; padding: 2.5rem 1.5rem; text-align: center; color: var(--muted); }
@@ -145,10 +147,14 @@ html:not(.js) .bcartes { position: static; max-height: none; }
 .bcarte__badges { margin: 0; display: flex; flex-wrap: wrap; gap: 0.3rem; }
 .bbadge { display: inline-block; padding: 0 0.45rem; border-radius: 999px; font-size: 0.78rem; border: 1px solid var(--border); background: var(--bg); white-space: nowrap; }
 .bbadge--ep { border-style: dashed; }
-.bcarte__portrait { grid-area: portrait; margin: 0; width: 7.5rem; aspect-ratio: 1; display: grid; place-items: center; border: 1px dashed var(--bes-line);
-  border-radius: 12px; background: var(--bes-soft); position: relative; overflow: hidden; }
-.bcarte__portrait img { width: 70%; height: auto; opacity: 0.55; }
-.bcarte__portrait figcaption { position: absolute; bottom: 0.25rem; left: 0; right: 0; text-align: center; font-size: 0.68rem; color: var(--muted); }
+/* le portrait (migration 0033, lib/bestiaire-rendu.mjs#htmlDuPortrait) : un cadre carré qui montre le carré cadré de l'image (l'image y est placée en
+   pourcentages, comme la vignette de la fiche de personnage) ; sans image, le logo en filigrane */
+.bcarte__portrait { grid-area: portrait; margin: 0; width: 8.5rem; display: grid; gap: 0.3rem; justify-items: center; }
+.bcarte__cadre { position: relative; width: 100%; aspect-ratio: 1; overflow: hidden; border: 1px solid var(--bes-line); border-radius: 12px; background: var(--bes-soft); }
+.bcarte__cadre img { position: absolute; display: block; max-width: none; }
+.bcarte__portrait[data-vide] .bcarte__cadre { border-style: dashed; display: grid; place-items: center; }
+.bcarte__portrait[data-vide] .bcarte__cadre img { position: static; width: 70%; height: auto; opacity: 0.55; }
+.bcarte__portrait figcaption { font-size: 0.68rem; color: var(--muted); text-align: center; }
 .bcarte__fermer { grid-area: fermer; justify-self: start; align-self: end; font-size: 0.8rem; padding: 0.15rem 0.7rem; border: 1px solid var(--border); border-radius: 999px;
   color: var(--text); text-decoration: none; background: var(--bg); }
 .bcarte__fermer:hover { border-color: var(--bes); }
@@ -195,8 +201,7 @@ html:not(.js) .bcarte__fermer { display: none; }
 }
 
 @media (max-width: 30rem) {
-  .bcarte__portrait { width: 5.5rem; }
-  .bligne__nom { min-width: 8rem; }
+  .bcarte__portrait { width: 6rem; }
 }
 
 @media print {
@@ -212,3 +217,9 @@ html:not(.js) .bcarte__fermer { display: none; }
 .bcarte__espece .ed-saisie, .bcarte__badges .ed-saisie { display: inline-block; width: auto; min-width: 4rem; max-width: 100%; field-sizing: content; vertical-align: middle; }
 .bcarte__badges .bbadge:has(.ed-saisie) { padding: 0.1rem 0.2rem; }
 .bligne__nom .ed-supprimer { margin-left: 0.4rem; font-size: 0.72rem; padding: 0 0.4rem; vertical-align: middle; }
+/* les boutons du portrait de la carte ouverte (choisir, recadrer, retirer), sous le cadre, un peu plus large pour qu'ils tiennent sur une ligne ;
+   « Portrait à venir » leur laisse sa place */
+.ed-mode .bcarte__portrait { width: 9.5rem; }
+.bcarte__portrait .ed-portrait { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.2rem; }
+.bcarte__portrait .ed-portrait .ed-outil { font-size: 0.72rem; padding: 0.05rem 0.4rem; white-space: nowrap; }
+.bcarte__portrait:has(.ed-portrait) figcaption { display: none; }

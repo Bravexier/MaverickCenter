@@ -17,6 +17,8 @@
 //   POST /api/edition/race/         { race } → magies innées et relations de la race, dans la base vivante
 //   POST /api/edition/classe/       { classe } → spécialités, dons, choix et fiches qui les citent (ajout et suppression depuis sa page)
 //   POST /api/edition/bestiaire/    { connues, logo } → l'ordre des lignes du tableau des monstres, et la ligne et la carte de celles que la page n'a pas
+//   POST /api/edition/portrait/     { table, cle } → le portrait d'une carte de monstre ou d'une espèce, en entier, et son cadrage (les autres réponses
+//                                   ne donnent d'une image que son empreinte : ligneSansImage)
 //   POST /api/edition/              { page, operations } → applique un lot d'un bloc et le note au journal
 //   GET  /api/edition/journal/      le journal des modifications en attente, à rapatrier dans data/rows (npm run db:appliquer-edition)
 // Page « Mise à jour », sur le site de dev seulement (même garde) — serveur/notes-de-version.mjs :
@@ -34,7 +36,8 @@
 // Avant la 1.0, pas de comptes : quiconque a le mot de passe du site (nginx) lit et écrit les prétirés. Les écritures exigent un corps JSON
 // (Content-Type: application/json) et refusent une requête qu'un navigateur dit venir d'un autre site (Sec-Fetch-Site) : un formulaire ou un
 // script d'un autre site ne peut pas écrire à la place de quelqu'un de connecté.
-import { ErreurEdition, donneesDeClasse, donneesDeRace, enregistrer, lignesDuBestiaire, listes, lireLignes, pagesDuWiki } from './edition.mjs';
+import { ErreurEdition, donneesDeClasse, donneesDeRace, enregistrer, lignesDuBestiaire, listes, lireLignes, pagesDuWiki, portraitDe } from './edition.mjs';
+import { ligneSansImage } from '../src/lib/edition-modele.mjs';
 import { journalExporte, lignesEnAttente } from './edition-journal.mjs';
 import {
   actualiserLancement, CONFIRMATION, enregistrerBrouillon, ErreurNotes, estLiberable, figerLot, leverMaintenance, libererLot, lireLot, lireReference,
@@ -131,13 +134,13 @@ export function traiter(requete, service) {
 /** Les routes /api/edition/… (site de dev seulement). */
 function traiterEdition(requete, service, action, reste, permis) {
   if (!service.edition) return erreur(403, 'L’édition des règles n’est ouverte que sur le site de dev.');
-  if (reste.length || !['en-attente', 'lignes', 'listes', 'pages', 'journal', 'race', 'classe', 'bestiaire', undefined].includes(action)) return erreur(404, 'Adresse inconnue.');
-  const refus = action === undefined || ['lignes', 'race', 'classe', 'bestiaire'].includes(action) ? permis('POST') : permis('GET');
+  if (reste.length || !['en-attente', 'lignes', 'listes', 'pages', 'journal', 'race', 'classe', 'bestiaire', 'portrait', undefined].includes(action)) return erreur(404, 'Adresse inconnue.');
+  const refus = action === undefined || ['lignes', 'race', 'classe', 'bestiaire', 'portrait'].includes(action) ? permis('POST') : permis('GET');
   if (refus) return refus;
   const db = service.base();
   if (!db) return erreur(503, 'La base n’est pas disponible pour le moment.', { etat: service.etat() });
 
-  if (action === 'en-attente') return json(200, { lignes: lignesEnAttente(db) });
+  if (action === 'en-attente') return json(200, { lignes: lignesEnAttente(db).map((l) => ({ ...l, ligne: ligneSansImage(l.table, l.ligne) })) });
   if (action === 'listes') return json(200, listes(db));
   if (action === 'pages') return json(200, { pages: pagesDuWiki(db) });
   if (action === 'journal') {
@@ -153,6 +156,7 @@ function traiterEdition(requete, service, action, reste, permis) {
     if (action === 'race') return json(200, donneesDeRace(db, valeur?.race));
     if (action === 'classe') return json(200, donneesDeClasse(db, valeur?.classe));
     if (action === 'bestiaire') return json(200, lignesDuBestiaire(db, valeur));
+    if (action === 'portrait') return json(200, portraitDe(db, valeur));
     const resultat = enregistrer(db, valeur);
     // les fiches dont le lot a retiré un élément supprimé (R42) : un compte, jamais leurs noms (le journal du service n'est pas la réponse)
     const adaptees = resultat.fiches?.length ? ` ; ${resultat.fiches.length} fiche(s) de personnage adaptée(s)` : '';

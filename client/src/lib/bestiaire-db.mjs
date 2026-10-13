@@ -4,9 +4,10 @@
 //   * Monstres : les tables du « Bestiaire 2.0 » (data/schema.sql, section 8 bis) ; une ligne par carte (ennemi simple, mini-boss, boss), et une ligne
 //     par espèce qui n'a pas encore de carte (description seule : la plupart des Ottar).
 //   * Créatures invoquées : les tables des invocations (section 8) ; une ligne par créature.
-// Chaque ligne porte ce que le tableau affiche, le texte de sa fiche (sous la ligne) et ses valeurs de filtre (`facettes` : clé -> valeurs) et de tri
-// (`tri`). Rien n'est calculé ni déduit : une valeur que la base n'a pas typée reste son texte (`*_brut`, rubriques) ; les libellés des filtres sont
-// l'écriture la plus fréquente de chaque valeur dans la base (« Non-mort » réunit « Non-mort » et « Non-Mort »).
+// Chaque ligne porte ce que le tableau affiche, le texte de sa carte (à côté du tableau), son portrait (migration 0033) et ses valeurs de filtre
+// (`facettes` : clé -> valeurs) et de tri (`tri`), pour les colonnes affichées seulement (« Inutile de filtrer par les colonnes non affichées »).
+// Rien n'est calculé ni déduit : une valeur que la base n'a pas typée reste son texte (`*_brut`, rubriques) ; les libellés des filtres sont l'écriture
+// la plus fréquente de chaque valeur dans la base (« Non-mort » réunit « Non-mort » et « Non-Mort »).
 // `chargerBestiaire` reçoit la base ouverte par lib/donnees.mjs (build) ; module sans dépendance navigateur ni Astro.
 import { normalize } from './text.mjs';
 
@@ -91,6 +92,9 @@ function ecritures() {
   return { m, noter };
 }
 
+/** Le portrait d'une carte, ou d'une espèce sans carte (migration 0033) : l'image et son cadrage tels que la base les garde, ou null. */
+const portraitDe = (r) => (r.portrait ? { donnees: r.portrait, x: r.portrait_x, y: r.portrait_y, zoom: r.portrait_zoom } : null);
+
 /** Échelles couvertes par une plage (« EP1 - 10 » -> 1 à 10) ; aucune si la plage n'est pas connue. */
 const echellesDe = (min, max) => (min === null || max === null ? [] : Array.from({ length: max - min + 1 }, (_, k) => String(min + k)));
 
@@ -108,7 +112,8 @@ export function chargerMonstres(db) {
   const capacites = regrouper(all('SELECT * FROM monstre_capacite ORDER BY monstre_id, rang'), 'monstre_id');
   const defenses = regrouper(all('SELECT * FROM monstre_defense ORDER BY monstre_id, sens, rang'), 'monstre_id');
 
-  const ec = { type: ecritures(), alignement: ecritures(), lieu: ecritures(), capacite: ecritures(), vulnerabilite: ecritures(), resistance: ecritures(), immunite: ecritures() };
+  // filtres : les colonnes du tableau seulement (demande du propriétaire : « Inutile de filtrer par les colonnes non affichées ») ; le nom passe par la recherche
+  const ec = { espece: ecritures(), type: ecritures(), lieu: ecritures() };
   const lignes = [];
   const ancres = new Set(especes.filter((e) => !(cartes.get(e.id) ?? []).length).map((e) => e.id.slice(e.id.indexOf('/') + 1)));
   for (const e of especes) {
@@ -126,14 +131,17 @@ export function chargerMonstres(db) {
     };
     const sesCartes = cartes.get(e.id) ?? [];
     const base = (slug) => ({ ancre: `monstre-${slug}`, espece, texteLieux: lieuxDe.map((l) => l.lieu).join(', ') });
+    const cleEspece = ec.espece.noter(e.nom);
+    const texteDesLieux = lieuxDe.map((x) => x.lieu).join(', ') || null;
     if (!sesCartes.length) {
       lignes.push({
         ...base(e.id.slice(e.id.indexOf('/') + 1)),
         id: e.id,
         carte: null,
         nom: e.nom,
-        facettes: { ep: echellesDe(e.ep_min, e.ep_max), lieu: unique(lieuxDe.map((l) => l.cle)) },
-        tri: { nom: e.nom, espece: e.nom, ep: e.ep_min, lieu: lieuxDe.map((x) => x.lieu).join(', ') || null },
+        portrait: portraitDe(e),
+        facettes: { espece: unique([cleEspece]), ep: echellesDe(e.ep_min, e.ep_max), lieu: unique(lieuxDe.map((l) => l.cle)) },
+        tri: { espece: e.nom, nom: e.nom, ep: e.ep_min, lieu: texteDesLieux },
       });
       continue;
     }
@@ -147,7 +155,7 @@ export function chargerMonstres(db) {
         return d.filter((x) => sens.includes(x.sens)).map((x) => ({ cible: x.cible, sens: x.sens }));
       };
       const fpvsia = new Map((caracs.get(c.id) ?? []).map((x) => [x.caracteristique_id, x.valeur]));
-      const caps = (capacites.get(c.id) ?? []).map((x) => ({ prefixe: x.prefixe, nom: x.nom, texte: x.texte, cle: ec.capacite.noter(x.nom) }));
+      const caps = (capacites.get(c.id) ?? []).map((x) => ({ prefixe: x.prefixe, nom: x.nom, texte: x.texte }));
       // ancre : le nom de la carte (« monstre-amblypyge-de-brai ») ; un nom déjà pris (une carte écrite dans deux espèces) : « -2 »
       let slug = c.nom_cle;
       for (let n = 2; ancres.has(slug); n++) slug = `${c.nom_cle}-${n}`;
@@ -157,6 +165,7 @@ export function chargerMonstres(db) {
         ...base(slug),
         id: c.id,
         nom: c.nom,
+        portrait: portraitDe(c),
         carte: {
           nomBrut: c.nom_brut,
           echelle: c.echelle_brut,
@@ -180,46 +189,33 @@ export function chargerMonstres(db) {
           ...colonnes,
           rubriques: r.map((x) => ({ rang: x.rang, rubrique: x.rubrique, titre: x.titre ?? LIBELLES_RUBRIQUES[x.rubrique], texte: x.texte })),
         },
+        // filtres et tri : les colonnes du tableau, dans leur ordre (TableauMonstres.astro)
         facettes: {
+          espece: unique([cleEspece]),
+          type: unique([ec.type.noter(c.type_brut)]),
           categorie: [c.categorie],
           ep: echellesDe(c.ep_min, c.ep_max),
-          type: unique([ec.type.noter(c.type_brut)]),
-          alignement: unique([ec.alignement.noter(c.alignement_brut)]),
           lieu: unique(lieuxDe.map((l) => l.cle)),
-          vulnerabilite: unique(colonnes.vulnerabilites.map((x) => ec.vulnerabilite.noter(x.cible))),
-          resistance: unique(colonnes.resistances.map((x) => ec.resistance.noter(x.cible))),
-          immunite: unique(colonnes.immunites.map((x) => ec.immunite.noter(x.cible))),
-          capacite: unique(caps.map((x) => x.cle)),
         },
         tri: {
-          nom: c.nom,
           espece: e.nom,
-          ep: c.ep_min,
-          categorie: ['ennemi_simple', 'mini_boss', 'boss'].indexOf(c.categorie),
+          nom: c.nom,
           type: c.type_brut,
-          alignement: c.alignement_brut,
-          sante: c.sante,
-          chakra: c.chakra,
-          barriere: c.barriere,
-          defense: c.armure_physique,
-          vitesse: c.vitesse_sol,
-          ...Object.fromEntries(FPVSIA.map((k) => [k.id, fpvsia.get(k.id) ?? null])),
-          lieu: lieuxDe.map((x) => x.lieu).join(', ') || null,
+          categorie: ['ennemi_simple', 'mini_boss', 'boss'].indexOf(c.categorie),
+          ep: c.ep_min,
+          lieu: texteDesLieux,
         },
       });
     }
   }
   const echellesDispo = [...new Set(lignes.flatMap((l) => l.facettes.ep))].sort((a, b) => a - b);
+  // un filtre par colonne affichée (sauf le nom : la recherche), dans l'ordre des colonnes ; une longue liste (espèces, lieux) a sa recherche (Filtres.astro)
   const facettes = [
+    { cle: 'espece', libelle: 'Espèce', options: optionsDeFacette(lignes, 'espece', ec.espece.m) },
+    { cle: 'type', libelle: 'Type', options: optionsDeFacette(lignes, 'type', ec.type.m) },
     { cle: 'categorie', libelle: 'Catégorie', options: optionsDeFacette(lignes, 'categorie', new Map(Object.entries(CATEGORIES).map(([k, v]) => [k, new Map([[v, 1]])])), Object.keys(CATEGORIES)) },
     { cle: 'ep', libelle: 'Échelle (EP)', options: optionsDeFacette(lignes, 'ep', new Map(echellesDispo.map((n) => [n, new Map([[`EP ${n}`, 1]])])), echellesDispo) },
-    { cle: 'type', libelle: 'Type', options: optionsDeFacette(lignes, 'type', ec.type.m) },
-    { cle: 'alignement', libelle: 'Alignement', options: optionsDeFacette(lignes, 'alignement', ec.alignement.m) },
-    { cle: 'lieu', libelle: 'Lieu de rencontre', options: optionsDeFacette(lignes, 'lieu', ec.lieu.m) },
-    { cle: 'vulnerabilite', libelle: 'Vulnérabilité', options: optionsDeFacette(lignes, 'vulnerabilite', ec.vulnerabilite.m) },
-    { cle: 'resistance', libelle: 'Résistance', options: optionsDeFacette(lignes, 'resistance', ec.resistance.m) },
-    { cle: 'immunite', libelle: 'Immunité', options: optionsDeFacette(lignes, 'immunite', ec.immunite.m) },
-    { cle: 'capacite', libelle: 'Capacité', options: optionsDeFacette(lignes, 'capacite', ec.capacite.m) },
+    { cle: 'lieu', libelle: 'Lieux', options: optionsDeFacette(lignes, 'lieu', ec.lieu.m) },
   ];
   return {
     lignes,
@@ -268,7 +264,6 @@ export function chargerInvocations(db) {
   const caracs = regrouper(all('SELECT creature_id, caracteristique_id, valeur FROM creature_caracteristique ORDER BY creature_id, rang'), 'creature_id');
   const bonus = regrouper(all('SELECT creature_id, texte_brut FROM creature_bonus_npm ORDER BY creature_id, rang'), 'creature_id');
   const attaques = regrouper(all('SELECT id, creature_id, nom, brut FROM creature_attaque ORDER BY creature_id, rang'), 'creature_id');
-  const types = regrouper(all('SELECT a.creature_id, t.type, t.libelle FROM creature_attaque_type t JOIN creature_attaque a ON a.id = t.attaque_id ORDER BY a.creature_id, a.rang, t.rang'), 'creature_id');
   const capacites = regrouper(all('SELECT creature_id, npm_min, etiquette, nom, nom_cle, texte FROM creature_capacite ORDER BY creature_id, rang'), 'creature_id');
   const effets = regrouper(all('SELECT creature_id, libelle, texte FROM creature_effet ORDER BY creature_id, rang'), 'creature_id');
   const ressources = regrouper(all('SELECT creature_id, libelle, brut FROM creature_ressource ORDER BY creature_id, ressource'), 'creature_id');
@@ -283,7 +278,7 @@ export function chargerInvocations(db) {
     'creature_id',
   );
 
-  const ec = { magie: ecritures(), degat: ecritures(), capacite: ecritures(), defense: ecritures() };
+  const ec = { magie: ecritures() };
   const ordreMagies = new Map();
   const lignes = creatures.map((c) => {
     const inv = parInvocation.get(c.invocation_id);
@@ -293,9 +288,9 @@ export function chargerInvocations(db) {
     const d = (defenses.get(c.id) ?? []).map((x) => {
       const cible = x.cible_type === 'magie' ? x.cible_magie : x.cible_type === 'etat' ? x.cible_etat : x.cible_type === 'degat' ? DEGATS[x.cible_degat] : premiereMajuscule(x.cible_brut);
       const libelle = `${SENS_CREATURE[x.sens]} : ${cible}`;
-      return { ...x, cible, libelle, cle: ec.defense.noter(libelle) };
+      return { ...x, cible, libelle };
     });
-    const caps = (capacites.get(c.id) ?? []).map((x) => ({ ...x, cle: ec.capacite.noter(x.nom) }));
+    const caps = capacites.get(c.id) ?? [];
     const slug = c.id.slice(c.id.indexOf('/') + 1);
     return {
       id: c.id,
@@ -326,23 +321,15 @@ export function chargerInvocations(db) {
         resiste: liste.filter((x) => x.sens === 'resistance').map((x) => x.cible),
         vulnerable: liste.filter((x) => x.sens === 'vulnerabilite').map((x) => x.cible),
       })),
+      // filtres et tri : les colonnes du tableau seulement (nom, invocation, magies)
       facettes: {
         invocation: [inv.nom_cle],
         magie: unique(sesMagies.map((m) => ec.magie.noter(m.nom))),
-        degat: unique((types.get(c.id) ?? []).map((t) => ec.degat.noter(premiereMajuscule(t.type)))),
-        capacite: unique(caps.map((x) => x.cle)),
-        defense: unique(d.map((x) => x.cle)),
       },
       tri: {
         nom: c.nom,
         invocation: inv.ordre,
         magies: c.marge_brut,
-        sante: c.sante_valeur,
-        chakra: c.chakra_valeur,
-        barriere: c.barriere_valeur,
-        defense: c.armure_physique,
-        vitesse: c.vitesse_sol,
-        ...Object.fromEntries(FPVSIA.map((k) => [k.id, fpvsia.get(k.id) ?? null])),
       },
     };
   });
@@ -351,9 +338,6 @@ export function chargerInvocations(db) {
   const facettes = [
     { cle: 'invocation', libelle: 'Invocation', options: optionsDeFacette(lignes, 'invocation', new Map(invocations.map((i) => [i.nom_cle, new Map([[i.nom, 1]])])), ordreInvocations) },
     { cle: 'magie', libelle: 'Magie', options: optionsDeFacette(lignes, 'magie', ec.magie.m, ordreDesMagies) },
-    { cle: 'degat', libelle: 'Type de dégâts', options: optionsDeFacette(lignes, 'degat', ec.degat.m) },
-    { cle: 'defense', libelle: 'Résistance, vulnérabilité, immunité', options: optionsDeFacette(lignes, 'defense', ec.defense.m) },
-    { cle: 'capacite', libelle: 'Capacité', options: optionsDeFacette(lignes, 'capacite', ec.capacite.m) },
   ];
   return { lignes, facettes, invocations: invocations.map((i) => ({ id: i.id, nom: i.nom, sortId: i.sort_id, sortNom: i.sort_nom, magieId: i.sort_magie_id, magie: i.sort_magie })) };
 }

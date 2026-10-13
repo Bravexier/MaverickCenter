@@ -15,7 +15,7 @@
 //   { op: 'relations', cases: [{ voit, vu, echelle }] }                                                     relations entre peuples (races)
 //   { op: 'magies_innees', race, magies: [ids] }                                                             magies innées d'une race
 // Node seulement (node:sqlite), sans dépendance.
-import { ENTITES, ErreurValeur, MOT_CLE_RACE_HYBRIDE, TABLES, texteDePageModifiable, valeurDuChamp } from '../src/lib/edition-modele.mjs';
+import { colonnesImage, ENTITES, ErreurValeur, ligneSansImage, MOT_CLE_RACE_HYBRIDE, TABLES, texteDePageModifiable, valeurDuChamp } from '../src/lib/edition-modele.mjs';
 import {
   RIEN, artisanatBrut, corpsDeMetier, decouperBonus, decouperEquipement, famillesDeRecette, testDArtisanat,
 } from '../src/lib/metier-champs.mjs';
@@ -1379,7 +1379,7 @@ function modifier(ctx, op) {
     const changees = Object.keys(valeurs).filter((c) => c in op.avant && (op.avant[c] ?? null) !== (avant[c] ?? null));
     if (changees.length) {
       throw new ErreurEdition(409, `${TABLES[table].libelle} : modifié entre-temps par quelqu’un d’autre (${changees.join(', ')}). Rechargez la page.`, {
-        table, cle: cleDe(db, table, avant), ligne: avant,
+        table, cle: cleDe(db, table, avant), ligne: ligneSansImage(table, avant),
       });
     }
   }
@@ -1501,7 +1501,7 @@ export function enregistrer(db, corps, { instant, id, auteurId = null } = {}) {
       lot: id,
       modifications: w.nombre,
       crees: ctx.crees,
-      lignes: [...vues.values()].map((l) => ({ table: l.table, cle: l.cle, ligne: lireLigne(db, l.table, l.cle) })),
+      lignes: [...vues.values()].map((l) => ({ table: l.table, cle: l.cle, ligne: ligneSansImage(l.table, lireLigne(db, l.table, l.cle)) })),
       fiches,
     };
   } catch (e) {
@@ -1510,13 +1510,16 @@ export function enregistrer(db, corps, { instant, id, auteurId = null } = {}) {
   }
 }
 
-/** Lignes demandées par une page qui passe en mode modification : [{ table, cle }] → la ligne de chacune (null si elle n'existe pas). */
+/**
+ * Lignes demandées par une page qui passe en mode modification : [{ table, cle }] → la ligne de chacune (null si elle n'existe pas), ses images
+ * résumées (ligneSansImage : un portrait se demande à part, portraitDe).
+ */
 export function lireLignes(db, demandes) {
   if (!Array.isArray(demandes) || demandes.length > 5000) throw refus('Corps attendu : { lignes: [{ table, cle }] } (au plus 5000)');
   return demandes.map((d, i) => {
     if (!d || !TABLES[d.table] || !d.cle || typeof d.cle !== 'object') throw refus(`lignes[${i}] : table ou clé invalide`);
     try {
-      return { table: d.table, cle: d.cle, ligne: lireLigne(db, d.table, d.cle) };
+      return { table: d.table, cle: d.cle, ligne: ligneSansImage(d.table, lireLigne(db, d.table, d.cle)) };
     } catch (e) {
       if (e instanceof ErreurJournal) throw refus(`lignes[${i}] : ${e.message}`);
       throw e;
@@ -1556,6 +1559,26 @@ export function lignesDuBestiaire(db, corps) {
     throw refus('Corps attendu : { connues: [identifiants des lignes de la page] (au plus 5000), logo: adresse du logo }');
   }
   return lignesRenduesDuBestiaire(db, { connues, logo });
+}
+
+/**
+ * Le portrait d'une ligne, en entier (POST /api/edition/portrait/ : { table, cle }) : l'image et son cadrage, que les autres réponses ne font que
+ * résumer (ligneSansImage). `portrait` : null si la ligne n'en a pas.
+ */
+export function portraitDe(db, corps) {
+  const { table, cle } = corps ?? {};
+  if (typeof table !== 'string' || !colonnesImage(table).includes('portrait') || !cle || typeof cle !== 'object' || Array.isArray(cle)) {
+    throw refus('Corps attendu : { table (une table qui a un portrait), cle: { … } }');
+  }
+  let ligne;
+  try {
+    ligne = lireLigne(db, table, cle);
+  } catch (e) {
+    if (e instanceof ErreurJournal) throw refus(e.message);
+    throw e;
+  }
+  if (!ligne) throw new ErreurEdition(404, `${TABLES[table].libelle} introuvable : ${JSON.stringify(cle)}`);
+  return { table, cle: cleDe(db, table, ligne), portrait: ligne.portrait, portrait_x: ligne.portrait_x, portrait_y: ligne.portrait_y, portrait_zoom: ligne.portrait_zoom };
 }
 
 /** Les pages du wiki qu'un lien du guide peut viser (base vivante : une race ou une classe créée depuis le site en fait partie), par titre. */

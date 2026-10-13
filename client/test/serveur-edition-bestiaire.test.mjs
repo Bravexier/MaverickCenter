@@ -2,10 +2,11 @@
 // rubrique modifiée refait les valeurs typées de sa carte et ses tables de détail (lib/monstre-champs.mjs, comme l'extraction du doc), une échelle ses
 // bornes, une catégorie son écriture, un lieu de rencontre les lieux de l'espèce ; une espèce et une carte se créent (identifiant tiré du nom une fois,
 // jamais réutilisé ; rubriques de la carte : GABARIT_DE_CARTE) et se suppriment avec tout ce qui en vient ; le rejeu du journal redonne les mêmes
-// tables ; POST /api/edition/bestiaire/ rend la ligne et la carte qu'une page construite avant n'a pas. Le test lit l'état avant d'écrire et crée des
-// noms absents de la base (docs/serveur.md, « Mise à jour »).
+// tables ; POST /api/edition/bestiaire/ rend la ligne et la carte qu'une page construite avant n'a pas ; le portrait d'une carte ou d'une espèce
+// (« de la même manière que dans la feuille de personnage ») garde son cadrage dans l'image, et ne sort en entier que par POST /api/edition/portrait/.
+// Le test lit l'état avant d'écrire et crée des noms absents de la base (docs/serveur.md, « Mise à jour »).
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
@@ -14,11 +15,14 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
-import { CATEGORIES_DE_MONSTRE, ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
+import { CATEGORIES_DE_MONSTRE, ENTITES, journalSansImage, TABLES } from '../src/lib/edition-modele.mjs';
 import { RENDUS, rendreChamp } from '../src/lib/edition-rendu.mjs';
 import { CATEGORIES, GABARIT_DE_CARTE, RUBRIQUES, valeursDeLaCarte } from '../src/lib/monstre-champs.mjs';
 import { htmlDeRubrique } from '../src/lib/monstre-rendu.mjs';
+import { comparerBases } from '../src/lib/notes-de-version.mjs';
+import { empreinte, PORTRAIT_MAX, resumeDuPortrait } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { lireTables } from '../serveur/notes-de-version.mjs';
 
 const racine = mkdtempSync(join(tmpdir(), 'maverick-edition-bestiaire-'));
 after(() => rmSync(racine, { recursive: true, force: true }));
@@ -182,6 +186,73 @@ test('POST /api/edition/bestiaire/ : l’ordre des lignes, et la ligne et la car
   assert.match(l.carte, new RegExp(`^<article class="bcarte" id="carte-${l.ancre}"`));
   assert.match(l.carte, /<img src="\/x\/logo\.webp"/);
   for (const corps of [{}, { connues: 'x' }, { connues: [1] }, { connues: [], logo: 3 }]) assert.equal(appel('POST', '/api/edition/bestiaire/', corps).statut, 400, JSON.stringify(corps));
+});
+
+test('portrait d’une carte et d’une espèce : l’image et son cadrage vont ensemble ; les réponses n’en donnent que l’empreinte ; notes et historique la résument', () => {
+  const IMAGES = JSON.parse(readFileSync(new URL('./fixtures/portraits.json', import.meta.url), 'utf8'));
+  const monstre = un('SELECT * FROM monstre WHERE id <> ? AND portrait IS NULL ORDER BY espece_id, rang LIMIT 1', carte.id);
+  const cle = { id: monstre.id };
+  const portraitDe = (table, id) => ({ ...un(`SELECT portrait, portrait_x, portrait_y, portrait_zoom FROM ${table} WHERE id = ?`, id) });
+  const resume = (image) => ({ image: true, empreinte: empreinte(image), resume: resumeDuPortrait(image) });
+  const recopie = (corps, image) => JSON.stringify(corps).includes(image.slice(40, 120));
+  // une image sans cadrage : centrée, sans zoom ; la réponse ne la recopie pas
+  let r = enregistrer({ op: 'modifier', table: 'monstre', cle, valeurs: { portrait: IMAGES.webp } });
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  assert.deepEqual(portraitDe('monstre', monstre.id), { portrait: IMAGES.webp, portrait_x: 0.5, portrait_y: 0.5, portrait_zoom: 1 });
+  assert.deepEqual(r.corps.lignes.find((l) => l.table === 'monstre').ligne.portrait, resume(IMAGES.webp));
+  assert.ok(!recopie(r.corps, IMAGES.webp), 'la réponse d’un lot ne recopie pas l’image');
+  // recadrer seul : le carré reste dans l'image (3 × 2 pixels, zoom 2 : un carré d'un pixel, x de 1/6 à 5/6, y de 1/4 à 3/4) ; « 0,1 » se lit 0.1
+  r = enregistrer({ op: 'modifier', table: 'monstre', cle, valeurs: { portrait_x: 0.95, portrait_y: '0,1', portrait_zoom: 2 } });
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  assert.deepEqual(portraitDe('monstre', monstre.id), { portrait: IMAGES.webp, portrait_x: 0.8333, portrait_y: 0.25, portrait_zoom: 2 });
+  // lecture (mode modification), lignes en attente, conflit : l'empreinte ; l'image entière par POST /api/edition/portrait/
+  const lues = appel('POST', '/api/edition/lignes/', { lignes: [{ table: 'monstre', cle }] });
+  assert.deepEqual(lues.corps.lignes[0].ligne.portrait, resume(IMAGES.webp));
+  const attente = appel('GET', '/api/edition/en-attente/');
+  assert.deepEqual(attente.corps.lignes.find((l) => l.table === 'monstre' && l.cle.id === monstre.id).ligne.portrait, resume(IMAGES.webp));
+  assert.ok(!recopie(attente.corps, IMAGES.webp) && !recopie(lues.corps, IMAGES.webp));
+  const conflit = enregistrer({ op: 'modifier', table: 'monstre', cle, valeurs: { nom: nomLibre('Autre') }, avant: { nom: `${monstre.nom} (autrefois)` } });
+  assert.equal(conflit.statut, 409);
+  assert.deepEqual(conflit.corps.ligne.portrait, resume(IMAGES.webp));
+  assert.deepEqual(appel('POST', '/api/edition/portrait/', { table: 'monstre', cle }).corps,
+    { table: 'monstre', cle, portrait: IMAGES.webp, portrait_x: 0.8333, portrait_y: 0.25, portrait_zoom: 2 });
+  for (const corps of [{}, { table: 'sort', cle: { id: 'x' } }, { table: 'monstre', cle: 'x' }, { table: 'monstre', cle: ['x'] }]) {
+    assert.equal(appel('POST', '/api/edition/portrait/', corps).statut, 400, JSON.stringify(corps));
+  }
+  assert.equal(appel('POST', '/api/edition/portrait/', { table: 'monstre', cle: { id: `${monstre.espece_id}#carte:absente-${process.pid}` } }).statut, 404);
+  assert.equal(appel('GET', '/api/edition/portrait/').statut, 405);
+  // refus : ce qui n'est pas une image que la page écrit, trop lourd, cadrage hors bornes
+  for (const [valeurs, motif] of [
+    [{ portrait: 'data:image/svg+xml;base64,PHN2Zz4=' }, /image attendue/],
+    [{ portrait: 'https://exemple.fr/image.png' }, /image attendue/],
+    [{ portrait: `data:image/png;base64,${'A'.repeat(PORTRAIT_MAX)}` }, /trop lourde/],
+    [{ portrait_zoom: 5 }, /au plus 4/],
+    [{ portrait_x: 'gauche' }, /nombre attendu/],
+  ]) {
+    const refus = enregistrer({ op: 'modifier', table: 'monstre', cle, valeurs });
+    assert.equal(refus.statut, 400, JSON.stringify(valeurs).slice(0, 60));
+    assert.match(refus.corps.erreur, motif);
+  }
+  // une espèce sans carte a le sien ; retirer l'image retire son cadrage
+  const espece = un('SELECT * FROM monstre_espece e WHERE portrait IS NULL AND NOT EXISTS (SELECT 1 FROM monstre m WHERE m.espece_id = e.id) ORDER BY ordre LIMIT 1');
+  assert.equal(enregistrer({ op: 'modifier', table: 'monstre_espece', cle: { id: espece.id }, valeurs: { portrait: IMAGES.png, portrait_zoom: 3 } }).statut, 200);
+  assert.deepEqual(portraitDe('monstre_espece', espece.id), { portrait: IMAGES.png, portrait_x: 0.5, portrait_y: 0.5, portrait_zoom: 3 });
+  assert.equal(enregistrer({ op: 'modifier', table: 'monstre_espece', cle: { id: espece.id }, valeurs: { portrait: null } }).statut, 200);
+  assert.deepEqual(portraitDe('monstre_espece', espece.id), { portrait: null, portrait_x: null, portrait_y: null, portrait_zoom: null });
+  // le journal garde l'image (rapatriée dans data/rows : test suivant) ; l'historique n'en garde que le résumé
+  const notees = journalExporte(db).lots.flatMap((l) => l.modifications).filter((m) => m.table === 'monstre' && m.cle.id === monstre.id && m.apres && 'portrait' in m.apres);
+  assert.equal(notees[0].apres.portrait, IMAGES.webp);
+  const historisee = JSON.parse(journalSansImage('monstre', JSON.stringify(notees[0].apres)));
+  assert.deepEqual(historisee, { ...notees[0].apres, portrait: resumeDuPortrait(IMAGES.webp) });
+  assert.equal(journalSansImage('monstre', JSON.stringify({ nom: 'x' })), JSON.stringify({ nom: 'x' }), 'sans image : tel quel');
+  assert.equal(journalSansImage('sort', null), null);
+  // la note de version : une ligne « Portrait » (empreinte, poids, cadrage), aucune pour le cadrage seul ni pour un portrait posé puis retiré
+  const production = baseNeuve();
+  const note = comparerBases(lireTables(production), lireTables(db)).filter((l) => l.domaine === 'bestiaire' && /portrait|cadrage|zoom/i.test(l.champ ?? ''));
+  production.close();
+  assert.deepEqual(note.map((l) => [l.entite, l.champ, l.nature, l.avant, l.apres]), [
+    [monstre.nom, 'Portrait', 'ajoute', null, `${resumeDuPortrait(IMAGES.webp)}, cadrage 0.8333 × 0.25, zoom 2`],
+  ]);
 });
 
 test('rejeu du journal sur les règles : les mêmes tables du bestiaire que la base vivante', () => {

@@ -21,6 +21,7 @@ import { TABLES_FICHES } from '../serveur/base-vivante.mjs';
 import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, ORDRE_DE_REJEU, TABLES_INTERDITES } from '../serveur/edition-journal.mjs';
 import { lireTables } from '../serveur/notes-de-version.mjs';
+import { journalSansImage } from '../src/lib/edition-modele.mjs';
 import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
 import { bilan, comparerBases, TABLES_DES_NOTES, versionCourte, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
 import { markdownDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
@@ -176,7 +177,11 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
       }
       const insererHistorique = db.prepare(`INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-      for (const m of historique) insererHistorique.run(m.lot_id, m.rang, m.fait_le, m.resume, version, m.table_nom, m.cle, m.operation, m.avant, m.apres);
+      // une image (portrait) n'y est que résumée : la ligne de sa table la garde
+      for (const m of historique) {
+        insererHistorique.run(m.lot_id, m.rang, m.fait_le, m.resume, version, m.table_nom, m.cle, m.operation, journalSansImage(m.table_nom, m.avant),
+          journalSansImage(m.table_nom, m.apres));
+      }
       db.exec('DELETE FROM modification; DELETE FROM modification_lot; DELETE FROM note_version_brouillon');
       const rompues = db.prepare('PRAGMA foreign_key_check').all();
       if (rompues.length) {

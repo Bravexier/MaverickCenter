@@ -113,7 +113,8 @@ test('fautes relevées disparues des textes (rien n’est revenu)', () => {
     .map((t) => t.name).filter((t) => !INTOUCHABLES.includes(t) && !TABLES_DES_NOTES.includes(t));
   assert.ok(tables.includes('page') && tables.includes('sort') && tables.length > 100, `${tables.length} tables balayées`);
   for (const t of tables) {
-    const cols = db.prepare(`PRAGMA table_info("${t}")`).all().filter((c) => c.type === 'TEXT' && !/(_id|^id|_cle|^cle|^slug|^source_ref|^origine)$/.test(c.name));
+    // un portrait (migration 0033) est une image en base64, pas un texte
+    const cols = db.prepare(`PRAGMA table_info("${t}")`).all().filter((c) => c.type === 'TEXT' && !/(_id|^id|_cle|^cle|^slug|^source_ref|^origine|^portrait)$/.test(c.name));
     for (const col of cols) {
       for (const { v } of db.prepare(`SELECT "${col.name}" AS v FROM "${t}" WHERE "${col.name}" IS NOT NULL`).all()) {
         // les tableaux d'écarts des races citent la fiche telle quelle : on retire ces colonnes avant de chercher

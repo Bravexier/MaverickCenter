@@ -30,20 +30,29 @@ test('monstres : une ligne par carte, et une par espèce sans carte ; ancres uni
   assert.deepEqual(monstres.lignes.filter((l) => l.carte).map((l) => l.id), ordre);
 });
 
-test('monstres : les valeurs de tri et de filtre sont celles de la base, rien de calculé', () => {
-  const parId = new Map(db.prepare('SELECT * FROM monstre').all().map((m) => [m.id, m]));
+test('monstres : tri et filtres sur les colonnes du tableau seulement (espèce, nom, type, catégorie, EP, lieux), valeurs de la base, rien de calculé', () => {
+  const parId = new Map(db.prepare('SELECT m.*, e.nom AS espece_nom FROM monstre m JOIN monstre_espece e ON e.id = m.espece_id').all().map((m) => [m.id, m]));
   for (const l of monstres.lignes.filter((x) => x.carte)) {
     const m = parId.get(l.id);
-    assert.deepEqual([l.tri.sante, l.tri.chakra, l.tri.barriere, l.tri.defense, l.tri.vitesse, l.tri.ep], [m.sante, m.chakra, m.barriere, m.armure_physique, m.vitesse_sol, m.ep_min], l.id);
+    assert.deepEqual(Object.keys(l.tri), ['espece', 'nom', 'type', 'categorie', 'ep', 'lieu'], l.id);
+    assert.deepEqual(Object.keys(l.facettes), ['espece', 'type', 'categorie', 'ep', 'lieu'], l.id);
+    assert.deepEqual([l.tri.espece, l.tri.nom, l.tri.type, l.tri.categorie, l.tri.ep], [m.espece_nom, m.nom, m.type_brut, ['ennemi_simple', 'mini_boss', 'boss'].indexOf(m.categorie), m.ep_min], l.id);
     assert.deepEqual(l.facettes.categorie, [m.categorie]);
+    assert.deepEqual(l.facettes.espece, [normalize(m.espece_nom)]);
     assert.equal(l.facettes.ep.length, m.ep_max - m.ep_min + 1, l.id);
   }
-  // « varie » : une carte dont les stats sont par échelle n'a pas de santé typée
-  for (const l of monstres.lignes.filter((x) => x.carte?.variable)) assert.equal(l.tri.sante, null, l.id);
+  // une espèce sans carte : ni type ni catégorie (triée après les autres sur ces colonnes)
+  for (const l of monstres.lignes.filter((x) => !x.carte)) assert.deepEqual(Object.keys(l.facettes), ['espece', 'ep', 'lieu'], l.id);
 });
 
 test('filtres des monstres : chaque option compte les lignes qui portent sa valeur ; libellé = l’écriture la plus fréquente', () => {
-  assert.deepEqual(monstres.facettes.map((f) => f.cle), ['categorie', 'ep', 'type', 'alignement', 'lieu', 'vulnerabilite', 'resistance', 'immunite', 'capacite']);
+  // « Inutile de filtrer par les colonnes non affichées » (demande du propriétaire) : un filtre par colonne, dans leur ordre, sauf le nom (la recherche)
+  assert.deepEqual(monstres.facettes.map((f) => f.cle), ['espece', 'type', 'categorie', 'ep', 'lieu']);
+  // l'espèce : une option par nom d'espèce (« Golem de corail », écrit deux fois dans le doc, n'en fait qu'une)
+  assert.deepEqual(
+    monstres.facettes.find((f) => f.cle === 'espece').options.map((o) => o.valeur).sort(),
+    [...new Set(db.prepare('SELECT nom FROM monstre_espece').all().map((r) => normalize(r.nom)))].sort(),
+  );
   for (const f of monstres.facettes) {
     assert.ok(f.options.length > 0, f.cle);
     for (const o of f.options) assert.equal(o.nombre, monstres.lignes.filter((l) => (l.facettes[f.cle] ?? []).includes(o.valeur)).length, `${f.cle} ${o.valeur}`);
@@ -87,17 +96,19 @@ test('butin d’une espèce : une ligne par tranche, une colonne par catégorie,
   assert.ok(monstres.lignes.some((l) => l.espece.butin.length));
 });
 
-test('créatures invoquées : à part, une ligne par créature, dans l’ordre du classeur ; filtres sur l’invocation, la magie, les dégâts, les défenses, les capacités', () => {
+test('créatures invoquées : à part, une ligne par créature, dans l’ordre du classeur ; filtres sur les colonnes affichées (invocation, magie)', () => {
   assert.equal(invocations.lignes.length, n('SELECT count(*) AS n FROM creature'));
   assert.deepEqual(invocations.invocations.map((i) => i.nom), db.prepare('SELECT nom FROM invocation ORDER BY ordre').all().map((r) => r.nom));
-  assert.deepEqual(invocations.facettes.map((f) => f.cle), ['invocation', 'magie', 'degat', 'defense', 'capacite']);
+  assert.deepEqual(invocations.facettes.map((f) => f.cle), ['invocation', 'magie']);
+  for (const l of invocations.lignes) assert.deepEqual(Object.keys(l.tri), ['nom', 'invocation', 'magies'], l.id);
   for (const f of invocations.facettes) for (const o of f.options) assert.equal(o.nombre, invocations.lignes.filter((l) => l.facettes[f.cle].includes(o.valeur)).length, `${f.cle} ${o.valeur}`);
   const magma = invocations.lignes.find((l) => l.ancre === 'invoquee-golem-de-magma');
   assert.deepEqual(magma.magiesDuBloc, ['Terre', 'Feu']);
   assert.equal(magma.sante, '20/NPM');
   assert.equal(magma.invocation.sortNom, db.prepare("SELECT s.nom FROM invocation i JOIN sort s ON s.id = i.sort_id WHERE i.id = 'bestiaire/appel-aux-golems'").get().nom);
-  assert.ok(magma.facettes.defense.includes('immunite-peur') === false, 'les golems ne sont pas des non-morts');
+  const peur = (l) => l.defensesEcrites.some((d) => normalize(d.libelle) === 'immunite-peur');
+  assert.ok(!peur(magma), 'les golems ne sont pas des non-morts');
   const zombi = invocations.lignes.find((l) => l.ancre === 'invoquee-zombi');
-  assert.ok(zombi.facettes.defense.includes('immunite-peur'), 'capacité commune « Non-Mort »');
+  assert.ok(peur(zombi), 'capacité commune « Non-Mort »');
   assert.deepEqual(zombi.defensesParMagie.map((d) => d.magie), ['Nécromancie']);
 });

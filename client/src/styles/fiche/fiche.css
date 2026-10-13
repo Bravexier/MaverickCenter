@@ -238,28 +238,7 @@ main:has(> .fiche) { max-width: 100rem; }
 .portrait__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.25rem; }
 .portrait__actions button, .portrait__actions .fiche-bouton-fichier span { padding: 0.15rem 0.5rem; font-size: 0.76rem; }
 
-/* le recadrage : un cadre carré où l'image se déplace, un curseur de zoom */
-.recadrage { width: min(26rem, calc(100vw - 2rem)); padding: 0; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); color: var(--text); }
-.recadrage::backdrop { background: color-mix(in srgb, #000 55%, transparent); }
-.recadrage__corps { display: grid; gap: 0.6rem; padding: 0.9rem; }
-.recadrage h2 { margin: 0; font-size: 1.05rem; }
-.recadrage__vue {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 1;
-  overflow: hidden;
-  border-radius: 14px;
-  background: repeating-conic-gradient(color-mix(in srgb, var(--text) 8%, var(--surface)) 0 25%, var(--surface) 0 50%) 0 0 / 1.2rem 1.2rem;
-  cursor: grab;
-  touch-action: none;
-  outline: 2px solid var(--border);
-}
-.recadrage__vue:active { cursor: grabbing; }
-.recadrage__vue:focus-visible { outline-color: var(--accent); }
-.recadrage__vue img { position: absolute; top: 0; left: 0; max-width: none; transform-origin: 0 0; user-select: none; pointer-events: none; }
-.recadrage__zoom { display: flex; align-items: center; gap: 0.5rem; color: var(--muted); font-size: 0.85rem; }
-.recadrage__zoom input { flex: 1; }
-.recadrage__boutons { display: flex; justify-content: flex-end; gap: 0.4rem; }
+/* le recadrage : styles/portrait/recadrage.css, inséré par src/scripts/portrait.mjs (partagé avec le portrait d'un monstre, mode modification du bestiaire) */
 
 /* ----------------------------------------------------------------- IV. paramètres et suivi : des onglets (components/Onglets.astro) ; sans
    JavaScript et à l'impression, les panneaux se suivent, chacun avec son titre */

@@ -255,7 +255,8 @@ document.addEventListener('keydown', (e) => {
     ouvert.querySelector('summary').focus();
     return;
   }
-  if (!e.target.closest?.('input, textarea, select')) for (const t of tableaux) t.toutFermer();
+  // Échap dans une saisie ou un dialogue (recadrage d'un portrait, formulaire du mode modification) ne ferme que lui
+  if (!e.target.closest?.('input, textarea, select, dialog')) for (const t of tableaux) t.toutFermer();
 });
 // un clic hors d'un menu de filtre le ferme
 document.addEventListener('click', (e) => {

@@ -21,6 +21,7 @@ import { fileURLToPath } from 'node:url';
 import { integrerLivrees } from '../serveur/base-vivante.mjs';
 import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal } from '../serveur/edition-journal.mjs';
+import { journalSansImage } from '../src/lib/edition-modele.mjs';
 
 const CLIENT = fileURLToPath(new URL('../', import.meta.url));
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
@@ -39,7 +40,10 @@ export function historiser(db) {
     .all();
   const inserer = db.prepare(`INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres)
     VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)`);
-  for (const m of modifications) inserer.run(m.lot_id, m.rang, m.fait_le, m.resume, m.table_nom, m.cle, m.operation, m.avant, m.apres);
+  // une image (portrait) n'y est que résumée : la ligne de sa table la garde
+  for (const m of modifications) {
+    inserer.run(m.lot_id, m.rang, m.fait_le, m.resume, m.table_nom, m.cle, m.operation, journalSansImage(m.table_nom, m.avant), journalSansImage(m.table_nom, m.apres));
+  }
   return modifications.length;
 }
 

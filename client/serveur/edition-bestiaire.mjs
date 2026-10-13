@@ -4,12 +4,15 @@
 //     catégorie, lieux de rencontre, valeurs typées d'une carte et ses tables de détail) est recalculé par les fonctions de l'extraction du doc
 //     (lib/monstre-champs.mjs, comme tools/bestiaire/extraire.mjs), jamais saisi ; création et suppression d'une espèce et d'une carte ;
 //   - les lignes du tableau et les cartes que la page n'a pas (monstre créé depuis la construction du site : POST /api/edition/bestiaire/), rendues
-//     par lib/bestiaire-rendu.mjs comme la page construite.
+//     par lib/bestiaire-rendu.mjs comme la page construite ;
+//   - le portrait d'une carte, ou d'une espèce sans carte (« il sera possible d'enregistrer le portrait de la même manière que dans la feuille de
+//     personnage », migration 0033) : l'image et son cadrage vont ensemble (suiviDuPortrait) ; l'image entière ne sort que par POST /api/edition/portrait/.
 // Chaque écriture passe par le journal (`ctx.w`), suppressions de détail comprises : les tables des monstres n'ont pas de ON DELETE CASCADE.
 // Les outils communs du service (refus, synchroniser, provenance…) sont donnés par serveur/edition.mjs (domainesDuBestiaire), sans import en retour.
 import { chargerMonstres } from '../src/lib/bestiaire-db.mjs';
 import { htmlDeCarteMonstre, htmlDeLigneMonstre } from '../src/lib/bestiaire-rendu.mjs';
 import { bornes, CATEGORIES, GABARIT_DE_CARTE, lieux, RUBRIQUES, valeursDeLaCarte } from '../src/lib/monstre-champs.mjs';
+import { bornerCadrage, CADRAGE_PAR_DEFAUT, dimensionsDuPortrait, ZOOM_MAX, ZOOM_MIN } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
 
@@ -19,6 +22,26 @@ const VALEURS_TYPEES = ['sante', 'chakra', 'barriere', 'armure_physique', 'armur
 /** Tables de détail d'une carte, puis d'une espèce : vidées (au journal) avant de supprimer la ligne qu'elles citent. */
 const DETAILS_D_UNE_CARTE = ['monstre_defense', 'monstre_capacite', 'monstre_attaque', 'monstre_caracteristique', 'monstre_rubrique'];
 const DETAILS_D_UNE_ESPECE = ['monstre_butin', 'monstre_espece_bloc', 'monstre_espece_lieu'];
+/** Le portrait et son cadrage (lib/portrait.mjs), comme personnage.portrait : mêmes colonnes dans monstre et monstre_espece. */
+export const COLONNES_DU_PORTRAIT = ['portrait', 'portrait_x', 'portrait_y', 'portrait_zoom'];
+
+/**
+ * Le cadrage qui suit l'image (colonnes du portrait modifiées) : sans image, pas de cadrage ; avec une image, un cadrage absent est centré sans zoom, et
+ * le carré reste dans l'image (lib/portrait.mjs#bornerCadrage, la règle de la page qui recadre) — une image dont l'en-tête ne se lit pas garde le
+ * cadrage reçu (ses bornes sont celles des colonnes).
+ */
+export function suiviDuPortrait(ligne, valeurs) {
+  if (!COLONNES_DU_PORTRAIT.some((c) => c in valeurs)) return {};
+  if (ligne.portrait === null || ligne.portrait === undefined) return { portrait_x: null, portrait_y: null, portrait_zoom: null };
+  const cadrage = {
+    x: ligne.portrait_x ?? CADRAGE_PAR_DEFAUT.x,
+    y: ligne.portrait_y ?? CADRAGE_PAR_DEFAUT.y,
+    zoom: Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, ligne.portrait_zoom ?? CADRAGE_PAR_DEFAUT.zoom)),
+  };
+  const dimensions = dimensionsDuPortrait(ligne.portrait);
+  const c = dimensions ? bornerCadrage(cadrage, dimensions) : cadrage;
+  return { portrait_x: c.x, portrait_y: c.y, portrait_zoom: c.zoom };
+}
 
 /**
  * Les domaines du bestiaire ({ table: { colonnes?, deriver?, creer?, supprimer? } }, voir serveur/edition.mjs#DOMAINES).
@@ -56,7 +79,7 @@ export function domainesDuBestiaire({ refus, ErreurEdition, synchroniser, proven
 
   const MONSTRE_ESPECE = {
     colonnes(_ctx, ligne, valeurs) {
-      return 'ep_brut' in valeurs ? echelles(ligne.ep_brut, 'Échelle de l’espèce') : {};
+      return { ...('ep_brut' in valeurs ? echelles(ligne.ep_brut, 'Échelle de l’espèce') : {}), ...suiviDuPortrait(ligne, valeurs) };
     },
     deriver(ctx, avant, apres) {
       if (avant.lieu_brut !== apres.lieu_brut) suivreLesLieux(ctx, apres);
@@ -99,7 +122,7 @@ export function domainesDuBestiaire({ refus, ErreurEdition, synchroniser, proven
       // une autre catégorie : l'écriture du doc (« Mini boss ») ne la dit plus, le libellé la remplace
       if ('categorie' in valeurs && valeurs.categorie !== avant.categorie) sortie.categorie_brut = CATEGORIES[valeurs.categorie];
       if ('variable' in valeurs) sortie.variable = Number(valeurs.variable);
-      return sortie;
+      return { ...sortie, ...suiviDuPortrait(ligne, valeurs) };
     },
     /**
      * Une carte dans une espèce : id « <espèce>#carte:<nom> » tiré une fois (suffixe -2… si l'id est pris ou a déjà servi), puis figé ; rangée après
