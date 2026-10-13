@@ -6,8 +6,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import {
-  analyserCoutDAmelioration, analyserEffetDAmelioration, analyserEffetDArme, analyserEffetDeMateriau, CATEGORIES_D_ARME, categoriesDArme, colonnesDeLArme,
-  coutEnRo, decouperCategorieDArme, decouperNomDArme, durabiliteDeLArme, nomBrutDArme, prixEnRf, prixEnRo, totalDesAmeliorations,
+  analyserCoutDAmelioration, analyserEffetDAmelioration, analyserEffetDArme, analyserEffetDeMateriau, colonnesDeLArme, COMPETENCES_D_ARME,
+  competencesDArme, coutEnRo, decouperCategorieDArme, decouperNomDArme, durabiliteDeLArme, ECRITURES_DE_COMPETENCE, nomBrutDArme, prixEnRf, prixEnRo,
+  totalDesAmeliorations,
 } from '../src/lib/arme-champs.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
@@ -35,13 +36,13 @@ test('chaque arme : ses types de dégâts (arme_degats) et ses minimums de carac
   }
 });
 
-test('nom et catégorie : la cellule Nom se découpe en nom + mains, la Catégorie en type + catégorie, et se réécrivent', () => {
+test('nom et compétence : la cellule Nom se découpe en nom + mains, la Catégorie en type + compétence, et se réécrivent', () => {
   for (const a of db.prepare('SELECT * FROM arme').all()) {
     assert.deepEqual(decouperNomDArme(a.nom_brut), { nom: a.nom, mains: a.mains }, a.id);
     assert.equal(decouperCategorieDArme(a.categorie_brut).competence_brut, a.competence_brut, a.id);
     assert.equal(coutEnRo(a.cout_brut), a.cout_ro, a.id);
-    assert.ok(CATEGORIES_D_ARME.includes(a.competence_brut), `${a.id} : catégorie ${a.competence_brut}`);
-    assert.ok(categoriesDArme(a.competence_brut).length >= 1, a.id);
+    assert.ok(ECRITURES_DE_COMPETENCE.includes(a.competence_brut), `${a.id} : compétence ${a.competence_brut}`);
+    assert.ok(competencesDArme(a.competence_brut).length >= 1, a.id);
   }
   assert.equal(nomBrutDArme('Flamberge', 'deux'), 'Flamberge\n(deux mains)');
   assert.equal(nomBrutDArme('Katana', null), 'Katana');
@@ -53,18 +54,24 @@ test('nom et catégorie : la cellule Nom se découpe en nom + mains, la Catégor
   }
 });
 
-test('catégories (décision R48) : Lourde, Légère, les deux, Précision pour l’arbalète ; l’arc prend la catégorie de la couleur de sa case', () => {
-  const ids = (ecriture) => categoriesDArme(ecriture).map((c) => c.id);
-  assert.deepEqual(ids('Arme Lourde'), ['lourde']);
-  assert.deepEqual(ids('Arme Légère'), ['legere']);
-  assert.deepEqual(ids('Arme Lourde/Légère'), ['lourde', 'legere']);
-  assert.deepEqual(categoriesDArme('Arbalète').map((c) => [c.libelle, c.caracteristique_id]), [['Précision', 'perception']]);
-  // « L'arc n'est pas une catégorie » : « Arc » sur le rouge des armes lourdes, « Arc / Arme Légère » sur le jaune des armes lourdes/légères
-  assert.deepEqual(ids('Arc'), ['lourde']);
-  assert.deepEqual(ids('Arc / Arme Légère'), ['lourde', 'legere']);
-  assert.deepEqual(categoriesDArme('Arme Lourde').map((c) => c.caracteristique_id), ['force']);
-  assert.deepEqual(categoriesDArme('Arme Légère').map((c) => c.caracteristique_id), ['agilite']);
+test('compétences (décision R48, corrigée) : Lourde, Légère, les deux, Arc, Arc / Légère, Arbalète ; ids, noms et caractéristiques de la table competence', () => {
+  const ids = (ecriture) => competencesDArme(ecriture).map((c) => c.id);
+  assert.deepEqual(ids('Arme Lourde'), ['arme-lourde']);
+  assert.deepEqual(ids('Arme Légère'), ['arme-legere']);
+  assert.deepEqual(ids('Arme Lourde/Légère'), ['arme-lourde', 'arme-legere']);
+  // « Il y a bien une catégorie "Arc" […] Il y a donc "Arc (rouge)" et "Arc / arme légère" » ; « Renomme également "précision" en "Arbalète" »
+  assert.deepEqual(ids('Arc'), ['arc']);
+  assert.deepEqual(ids('Arc / Arme Légère'), ['arc', 'arme-legere']);
+  assert.deepEqual(competencesDArme('Arc').map((c) => [c.libelle, c.caracteristique_id]), [['Arc', 'force']]);
+  assert.deepEqual(competencesDArme('Arbalète').map((c) => [c.libelle, c.caracteristique_id]), [['Arbalète', 'perception']]);
+  assert.deepEqual(competencesDArme('Arme Lourde').map((c) => c.caracteristique_id), ['force']);
+  assert.deepEqual(competencesDArme('Arme Légère').map((c) => c.caracteristique_id), ['agilite']);
   assert.deepEqual(ids('Inconnue'), []);
+  // la couleur vient de la caractéristique de la compétence : celle de la base
+  const competence = db.prepare('SELECT nom, caracteristique_id FROM competence WHERE id = ?');
+  for (const [id, c] of Object.entries(COMPETENCES_D_ARME)) {
+    assert.deepEqual({ ...competence.get(id) }, { nom: c.nom, caracteristique_id: c.caracteristique_id }, id);
+  }
 });
 
 test('effets supplémentaires : l’effet sans les clauses montrées dans une autre colonne ; une valeur des modes qui diverge reste écrite', () => {

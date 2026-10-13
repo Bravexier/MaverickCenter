@@ -7,7 +7,7 @@
 // caracteristique_id), caracteristiques (id, nom), typesDArmes ({ valeur, libelle, de, de_regle, portee_min, portee_max }), soliditeDesArmes (2).
 // Fonctions pures, chaîne HTML en sortie, tout texte échappé.
 import {
-  analyserCoutDAmelioration, analyserEffetDAmelioration, analyserEffetDArme, analyserEffetDeMateriau, categoriesDArme, coutEnRo, durabiliteDeLArme,
+  analyserCoutDAmelioration, analyserEffetDAmelioration, analyserEffetDArme, analyserEffetDeMateriau, competencesDArme, coutEnRo, durabiliteDeLArme,
   LIBELLES_DES_DEGATS, MAINS, porteeDeLArme, prixEnRo,
 } from './arme-champs.mjs';
 import { couleurDeCaracteristique } from './caracteristiques-postures.mjs';
@@ -38,16 +38,16 @@ export function deAffiche(ligne, ctx = {}) {
 }
 
 /**
- * Pastille de la catégorie (décision R48) : la couleur de sa caractéristique (Lourde : Force, Légère : Agilité, Précision : Perception), en dégradé pour
- * les deux ; l'écriture de l'onglet (« Arc », « Arme Lourde/Légère ») en infobulle.
+ * Pastille de la compétence (décision R48) : la couleur de la caractéristique de chaque compétence (Arme Lourde et Arc : Force, Arme Légère : Agilité,
+ * Arbalète : Perception), en dégradé pour deux ; la compétence et sa caractéristique en infobulle.
  */
-export function htmlDeCategorie(competenceBrut, ctx = {}) {
-  const cats = categoriesDArme(competenceBrut);
-  if (!cats.length) return competenceBrut ? `<span class="arme-cat arme-cat--texte">${e(competenceBrut)}</span>` : VIDE;
+export function htmlDeCompetence(competenceBrut, ctx = {}) {
+  const comps = competencesDArme(competenceBrut);
+  if (!comps.length) return competenceBrut ? `<span class="arme-comp arme-comp--texte">${e(competenceBrut)}</span>` : VIDE;
   const carac = new Map((ctx.caracteristiques ?? []).map((c) => [c.id, c.nom]));
-  const [c1, c2 = c1] = cats.map((c) => couleurDeCaracteristique(c.caracteristique_id));
-  const titre = `${cats.map((c) => `${c.nom} (${carac.get(c.caracteristique_id) ?? c.caracteristique_id})`).join(' et ')} — écrit « ${competenceBrut} » dans l’onglet`;
-  return `<span class="arme-cat${cats.length > 1 ? ' arme-cat--deux' : ''}" data-categories="${cats.map((c) => c.id).join(' ')}" style="--c1: ${c1}; --c2: ${c2}; --c-texte: ${texteSurCouleur(c1)}" title="${e(titre)}">${e(cats.map((c) => c.libelle).join(' / '))}</span>`;
+  const [c1, c2 = c1] = comps.map((c) => couleurDeCaracteristique(c.caracteristique_id));
+  const titre = comps.map((c) => `${c.nom} (${carac.get(c.caracteristique_id) ?? c.caracteristique_id})`).join(' et ');
+  return `<span class="arme-comp${comps.length > 1 ? ' arme-comp--deux' : ''}" data-competences="${comps.map((c) => c.id).join(' ')}" style="--c1: ${c1}; --c2: ${c2}; --c-texte: ${texteSurCouleur(c1)}" title="${e(titre)}">${e(comps.map((c) => c.libelle).join(' / '))}</span>`;
 }
 
 /** Les types de dégâts en pastilles (Taille, Estoc, Frappe), d'après l'effet. */
@@ -68,7 +68,7 @@ export const RENDUS_DES_ARMES = {
     const m = MAINS.find((x) => x.valeur === valeur);
     return m ? e(m.libelle) : '';
   },
-  'arme-categorie': (valeur, _ligne, ctx = {}) => htmlDeCategorie(valeur, ctx),
+  'arme-competence': (valeur, _ligne, ctx = {}) => htmlDeCompetence(valeur, ctx),
   'arme-type': (valeur, _ligne, ctx = {}) => e(typeDe(valeur, ctx)?.libelle ?? valeur ?? ''),
   // dégâts de l'arme nue : son dé et son bonus (« D10+5 »)
   'arme-degats': (_valeur, ligne, ctx = {}) => {
@@ -133,7 +133,7 @@ export function htmlDeLigneDArme(a, ctx = {}) {
     + `<span class="arme__mains" data-ed="${ed('mains')}" data-ed-rendu="arme-mains">${rendu('arme-mains', 'mains')}</span>`
     + (a.remarque ? `<span class="arme__remarque" title="${e(a.remarque)}" aria-label="${e(`Remarque : ${a.remarque}`)}">★</span>` : '')
     + '</th>'
-    + `<td class="arme__categorie" data-ed="${ed('competence_brut')}" data-ed-rendu="arme-categorie">${rendu('arme-categorie', 'competence_brut')}</td>`
+    + `<td class="arme__competence" data-ed="${ed('competence_brut')}" data-ed-rendu="arme-competence">${rendu('arme-competence', 'competence_brut')}</td>`
     + `<td class="arme__type" data-ed="${ed('type_id')}" data-ed-rendu="arme-type">${rendu('arme-type', 'type_id')}</td>`
     + tiree('arme__degats', 'arme-degats')
     + tiree('arme__types', 'arme-types-degats')

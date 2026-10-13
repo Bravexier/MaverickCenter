@@ -25,39 +25,38 @@ export const MAINS = [
 ];
 
 /**
- * Catégories d'arme de la page (demande du propriétaire, décision R48) : Lourde (couleur de la Force), Légère (Agilité), les deux (dégradé Force -
- * Agilité), Précision (Perception : « que pour les arbalètes pour le moment »).
+ * Compétence d'une arme (demande du propriétaire, décision R48, corrigée le 2026-10-13 : « Il y a bien une catégorie "Arc" […] Renomme également
+ * "précision" en "Arbalète" ») : la 2ᵉ ligne de la case Catégorie de l'onglet (arme.competence_brut) écrit une ou deux compétences de la table `competence` ;
+ * la pastille prend la couleur de la caractéristique de chacune (Arme Lourde et Arc : Force, Arme Légère : Agilité, Arbalète : Perception), en dégradé
+ * pour deux. Les ids, noms et caractéristiques sont ceux de la base (test/arme-champs.test.mjs).
  */
-export const CATEGORIES = {
-  lourde: { libelle: 'Lourde', nom: 'Arme lourde', caracteristique_id: 'force' },
-  legere: { libelle: 'Légère', nom: 'Arme légère', caracteristique_id: 'agilite' },
-  precision: { libelle: 'Précision', nom: 'Arme de précision', caracteristique_id: 'perception' },
+export const COMPETENCES_D_ARME = {
+  'arme-lourde': { libelle: 'Lourde', nom: 'Arme Lourde', caracteristique_id: 'force' },
+  'arme-legere': { libelle: 'Légère', nom: 'Arme Légère', caracteristique_id: 'agilite' },
+  arc: { libelle: 'Arc', nom: 'Arc', caracteristique_id: 'force' },
+  arbalete: { libelle: 'Arbalète', nom: 'Arbalète', caracteristique_id: 'perception' },
 };
 
-/**
- * Catégories de chaque écriture de l'onglet (décision R48). « L'arc n'est pas une catégorie. Si tu vois dans le tableau "arc" fie-toi à sa couleur pour
- * lourd ou légère » : dans l'onglet, la case Catégorie « Arc » a le rouge des armes lourdes (#ea9999), « Arc / Arme Légère » le jaune des armes
- * lourdes/légères (#ffe599) ; l'arbalète a sa couleur à elle (#f6b26b).
- */
-export const CATEGORIES_PAR_ECRITURE = {
-  'Arme Lourde': ['lourde'],
-  'Arme Légère': ['legere'],
-  'Arme Lourde/Légère': ['lourde', 'legere'],
-  Arc: ['lourde'],
-  'Arc / Arme Légère': ['lourde', 'legere'],
-  Arbalète: ['precision'],
+/** Compétences de chaque écriture de l'onglet (décision R48) : « Arc » (case rouge) est l'Arc seul, « Arc / Arme Légère » (case jaune) l'Arc et l'Arme Légère. */
+export const COMPETENCES_PAR_ECRITURE = {
+  'Arme Lourde': ['arme-lourde'],
+  'Arme Légère': ['arme-legere'],
+  'Arme Lourde/Légère': ['arme-lourde', 'arme-legere'],
+  Arc: ['arc'],
+  'Arc / Arme Légère': ['arc', 'arme-legere'],
+  Arbalète: ['arbalete'],
 };
 
-/** Écritures de la catégorie d'arme (2e ligne de la cellule Catégorie : arme.competence_brut), telles que l'onglet les écrit : la liste du champ modifiable. */
-export const CATEGORIES_D_ARME = Object.keys(CATEGORIES_PAR_ECRITURE);
+/** Écritures de la compétence d'une arme (arme.competence_brut), telles que l'onglet les écrit : la liste du champ modifiable et l'ordre de la légende. */
+export const ECRITURES_DE_COMPETENCE = Object.keys(COMPETENCES_PAR_ECRITURE);
 
 /**
- * Catégorie d'une arme en pastilles : [{ id, libelle, nom, caracteristique_id }] d'après l'écriture de l'onglet (décision R48) ; vide pour une écriture
+ * Compétence d'une arme en pastilles : [{ id, libelle, nom, caracteristique_id }] d'après l'écriture de l'onglet (décision R48) ; vide pour une écriture
  * inconnue.
  */
-export function categoriesDArme(competenceBrut) {
-  const ids = CATEGORIES_PAR_ECRITURE[String(competenceBrut ?? '').trim()] ?? [];
-  return ids.map((id) => ({ id, ...CATEGORIES[id] }));
+export function competencesDArme(competenceBrut) {
+  const ids = COMPETENCES_PAR_ECRITURE[String(competenceBrut ?? '').trim()] ?? [];
+  return ids.map((id) => ({ id, ...COMPETENCES_D_ARME[id] }));
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------- nom, catégorie, coût

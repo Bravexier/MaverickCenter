@@ -3,8 +3,8 @@ import armesCss from '../../styles/armes/armes.css?raw';
 import { attributEd } from '../../lib/edition-modele.mjs';
 import { RENDUS } from '../../lib/edition-rendu.mjs';
 import { ancreDeMateriau, type chargerArmes, type contexteDesArmes } from '../../lib/armes-db.mjs';
-import { CATEGORIES, totalDesAmeliorations } from '../../lib/arme-champs.mjs';
-import { couleurDeCaracteristique } from '../../lib/caracteristiques-postures.mjs';
+import { ECRITURES_DE_COMPETENCE, totalDesAmeliorations } from '../../lib/arme-champs.mjs';
+import { htmlDeCompetence } from '../../lib/armes-rendu.mjs';
 import TableauArmes from './TableauArmes.astro';
 
 // Page /ressources/armes/ (demande du propriétaire, 2026-10-13 : « refaire intégralement la présentation de l'onglet des armes », « Pas de tableau
@@ -28,14 +28,8 @@ const total = totalDesAmeliorations(armes.ameliorations);
 const edM = (id: string, colonne: string) => attributEd('materiau_arme', { ressource_id: id }, colonne);
 const edA = (id: string, colonne: string) => attributEd('amelioration_equipement', { id }, colonne);
 const nbArmes = armes.familles.reduce((n, f) => n + f.armes.length, 0);
-// légende des catégories (décision R48) : la couleur de la caractéristique de chacune, le dégradé Force - Agilité pour les deux
-const c = (id: keyof typeof CATEGORIES) => couleurDeCaracteristique(CATEGORIES[id].caracteristique_id);
-const LEGENDE = [
-  { libelle: 'Lourde', c1: c('lourde'), c2: c('lourde'), titre: 'Arme lourde (Force)' },
-  { libelle: 'Légère', c1: c('legere'), c2: c('legere'), titre: 'Arme légère (Agilité)' },
-  { libelle: 'Lourde / Légère', c1: c('lourde'), c2: c('legere'), titre: 'Arme lourde et légère : dégradé Force - Agilité' },
-  { libelle: 'Précision', c1: c('precision'), c2: c('precision'), titre: 'Arme de précision (Perception) : les arbalètes' },
-];
+// légende des compétences (décision R48) : chaque écriture de l'onglet, dans la pastille du tableau (couleur de la caractéristique, dégradé pour deux)
+const LEGENDE = ECRITURES_DE_COMPETENCE.map((ecriture) => htmlDeCompetence(ecriture, contexte));
 ---
 
 <style is:inline set:html={armesCss}></style>
@@ -56,7 +50,7 @@ const LEGENDE = [
 
   <div class="armes-outils">
     <p class="armes-legende" aria-label="Légende">
-      {LEGENDE.map((l) => <span class:list={['arme-cat', { 'arme-cat--deux': l.c1 !== l.c2 }]} style={`--c1: ${l.c1}; --c2: ${l.c2}; --c-texte: #171210`} title={l.titre}>{l.libelle}</span>)}
+      {LEGENDE.map((html) => <Fragment set:html={html} />)}
       <span class="armes-legende__depart" title="Arme de départ">Arme de départ</span>
     </p>
     <p class="armes-outils__boutons js-seul">

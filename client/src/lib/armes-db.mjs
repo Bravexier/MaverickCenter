@@ -15,7 +15,7 @@ export const ancreDeMateriau = (id) => `materiau-${String(id).slice(String(id).l
 
 /**
  * Les listes dont les rendus des cellules ont besoin (lib/armes-rendu.mjs) : les mêmes que le service donne au mode modification
- * (serveur/edition.mjs#listes) — compétences et caractéristiques (couleur et infobulle de la catégorie), types d'armes (libellé, dé, règle du dé,
+ * (serveur/edition.mjs#listes) — compétences et caractéristiques (couleur et infobulle de la compétence), types d'armes (libellé, dé, règle du dé,
  * portée par défaut ; aussi la liste du champ « Type »), solidité de base des armes (constante de l'onglet).
  */
 export function contexteDesArmes(db) {

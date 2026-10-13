@@ -26,10 +26,10 @@ html:not(.js) .armes .js-seul-ligne { display: none; }
 .armes-regles__corps { padding: 0 1rem 0.8rem; }
 .armes-regles__corps h2 { font-size: 1.05rem; }
 
-/* Légende des catégories, boutons Tout déplier / Tout replier */
+/* Légende des compétences, boutons Tout déplier / Tout replier */
 .armes-outils { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; margin: 0 0 0.8rem; }
 .armes-legende { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin: 0; }
-.armes-legende .arme-cat { display: inline-block; min-width: 0; }
+.armes-legende .arme-comp { display: inline-block; min-width: 0; }
 .armes-legende__depart { display: inline-block; padding: 0.05rem 0.6rem; font-size: 0.8rem; border-radius: 6px; background: var(--depart-fond-fort); box-shadow: inset 4px 0 0 var(--depart); }
 .armes-outils__boutons { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0; }
 html.js .armes-outils__boutons { display: flex; }
@@ -92,7 +92,7 @@ html.js .arme--depart:hover > * { background: var(--depart-fond-fort); }
 .arme__mains { display: block; font-size: 0.78rem; font-weight: 400; color: var(--muted); }
 .arme__mains:empty { display: none; }
 .arme__remarque { color: var(--arm); cursor: help; margin-left: 0.2rem; }
-.arme__categorie { min-width: 7.5rem; }
+.arme__competence { min-width: 7.5rem; }
 .arme__degats, .arme__durabilite { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .arme-degats { font-weight: 700; }
 .arme__durabilite { text-align: center !important; }
@@ -105,10 +105,10 @@ html.js .arme--depart:hover > * { background: var(--depart-fond-fort); }
 .arme-effet { display: block; }
 .arme-effet + .arme-effet { margin-top: 0.2rem; }
 
-/* Catégorie : couleur de la caractéristique de la compétence (Force, Agilité, Perception), dégradé pour les deux */
-.arme-cat { display: block; padding: 0.12rem 0.6rem; border-radius: 6px; text-align: center; font-size: 0.82rem; font-weight: 600; white-space: nowrap;
+/* Compétence (décision R48) : couleur de la caractéristique de la compétence (Arme Lourde et Arc : Force, Arme Légère : Agilité, Arbalète : Perception), dégradé pour deux */
+.arme-comp { display: block; padding: 0.12rem 0.6rem; border-radius: 6px; text-align: center; font-size: 0.82rem; font-weight: 600; white-space: nowrap;
   background: linear-gradient(90deg, var(--c1), var(--c2)); color: var(--c-texte, #171210); }
-.arme-cat--texte { background: none; color: inherit; font-weight: 400; }
+.arme-comp--texte { background: none; color: inherit; font-weight: 400; }
 
 /* Types de dégâts */
 .arme-dgt { display: inline-block; margin: 0 0.15rem 0.2rem 0; padding: 0 0.55rem; font-size: 0.78rem; border-radius: 999px; border: 1px solid var(--arm-line); background: var(--surface); }
@@ -134,7 +134,7 @@ html.js .arme--depart:hover > * { background: var(--depart-fond-fort); }
 .arme-fiche > .arme-fiche__section:first-child { padding-top: 0; margin-top: 0; border-top: 0; }
 .arme-fiche__sous-titre { margin: 0.15rem 0 0.5rem; color: var(--muted); }
 .arme-fiche__badges { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; margin: 0 0 0.6rem; }
-.arme-fiche__badges .arme-cat { display: inline-block; }
+.arme-fiche__badges .arme-comp { display: inline-block; }
 .arme-fiche__depart { display: inline-block; padding: 0.05rem 0.6rem; font-size: 0.78rem; border-radius: 6px; background: var(--depart-fond-fort); box-shadow: inset 4px 0 0 var(--depart); }
 .arme-fiche__forge { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; margin: 0 0 0.6rem; font-size: 0.85rem; }
 .arme-fiche__materiau { padding: 0.05rem 0.6rem; border-radius: 6px; background: var(--mat); color: var(--mat-texte); border: 1px solid var(--border); font-weight: 600; }
@@ -176,7 +176,7 @@ body.ed-mode .armes .arme--depart > * { background: var(--depart-fond); }
 body.ed-mode .armes :is(.arme__choisir, .materiau__choisir, .amelioration__choisir) { pointer-events: none; }
 body.ed-mode .armes .arme__nom { position: static; }
 body.ed-mode .armes .arme__effet .ed-saisie { min-width: 22rem; }
-body.ed-mode .armes :is(.arme__categorie, .arme__type, .arme__nom) select.ed-saisie { min-width: 10rem; }
+body.ed-mode .armes :is(.arme__competence, .arme__type, .arme__nom) select.ed-saisie { min-width: 10rem; }
 
 @media print {
   .armes-outils__boutons, .armes-cote__haut, .arme-fiche { display: none !important; }
