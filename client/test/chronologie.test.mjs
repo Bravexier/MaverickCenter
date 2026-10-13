@@ -9,6 +9,7 @@ import {
 import { chargerChronologie } from '../src/lib/chronologie-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { normalize } from '../src/lib/text.mjs';
 import { lireRegistre, pagesDeLaBase, resoudre, sectionA } from '../../tools/chronologie/chronologie.mjs';
 
 const ev = (rang, epoque, annee = null, extra = {}) => ({ id: `e${rang}`, rang, titre: `E${rang}`, epoque, annee, annee_fin: null, portee: null, lieu: null, ...extra });
@@ -57,6 +58,27 @@ test('periodesDeLaFrise : une période par époque hors des années, un siècle 
   for (const p of periodes) assert.match(p.couleur, /^(#[0-9a-f]{6}|hsl\(\d+ \d+% \d+%\))$/);
 });
 
+/** Contraste WCAG d'une couleur de période (« #rrggbb » ou « hsl(h s% l%) ») avec le blanc. */
+function contrasteAvecLeBlanc(couleur) {
+  let rgb;
+  const h = couleur.match(/^hsl\((\d+) (\d+)% (\d+)%\)$/);
+  if (h) {
+    const [t, s, l] = [Number(h[1]), Number(h[2]) / 100, Number(h[3]) / 100];
+    const f = (n) => { const k = (n + t / 30) % 12; return l - s * Math.min(l, 1 - l) * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+    rgb = [f(0), f(8), f(4)];
+  } else rgb = [1, 3, 5].map((i) => parseInt(couleur.slice(i, i + 2), 16) / 255);
+  const lin = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const L = 0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]);
+  return 1.05 / (L + 0.05);
+}
+
+test('couleurs des périodes : un texte blanc sur leur aplat se lit (4,5:1), sur toute la frise de la base', () => {
+  assert.ok(contrasteAvecLeBlanc('#000000') > 20 && contrasteAvecLeBlanc('#ffffff') === 1, 'calcul du contraste');
+  for (const p of periodesDeLaFrise(chargerChronologie(ouvrirBase({ sansExemples: false })))) {
+    assert.ok(contrasteAvecLeBlanc(p.couleur) >= 4.5, `${p.titre} (${p.couleur}) : ${contrasteAvecLeBlanc(p.couleur).toFixed(2)}:1`);
+  }
+});
+
 test('extraitsParPage : les passages qui se suivent sur une même page partagent une légende', () => {
   const x = (page_id) => ({ page_id, page_titre: page_id.toUpperCase() });
   assert.deepEqual(extraitsParPage([x('a'), x('a'), x('b'), x('a')]).map((g) => [g.page_id, g.extraits.length]), [['a', 2], ['b', 1], ['a', 1]]);
@@ -102,6 +124,10 @@ test('resoudre : un extrait est le texte de la page de son début à sa fin ; er
   assert.match(erreurs([{ page: 'lore/x', debut: 'En l’an 12', fin: 'jamais' }]), /fin introuvable/);
   assert.match(erreurs([{ page: 'lore/x', debut: 'En l’an 12', date: 'an 13' }]), /absente de l'extrait/);
   assert.match(erreurs([{ page: 'lore/z', debut: 'x' }]), /page introuvable/);
+  assert.match(erreurs([{ page: 'lore/x', debut: '' }]), /début vide ou absent/, 'un début vide ne fait pas boucler la recherche');
+  assert.match(erreurs([{ page: 'lore/x' }]), /début vide ou absent/);
+  assert.match(erreurs([{ page: 'lore/x', debut: 'En l’an 12', fin: '' }]), /fin vide/);
+  assert.match(erreurs([{ page: 'races/y', debut: 'Phrase.', occurrence: 0 }]), /occurrence invalide/);
   assert.match(erreurs([{ page: 'lore/x', debut: 'Autre chose.' }], { epoque: 'debut' }), /une année pour les événements datés/);
   assert.match(erreurs([{ page: 'lore/x', debut: 'Autre chose.' }], { lieu: 'Erisia' }), /un lieu seulement/);
   assert.equal(resoudre({ evenements: [{ id: 'y', titre: 'Y', epoque: 'debut', extraits: [{ page: 'races/y', debut: 'Phrase. Phrase.' }] }] }, pages).extraits[0].source_ref, 'Les races › Ygrec');
@@ -121,7 +147,12 @@ const sourceRetouchee = (pageId) =>
   historique.touchee('page', { id: pageId }) || (pageId.startsWith('races/') && historique.touchee('race_onglet', { race_id: pageId }));
 
 test('la base : le registre résolu sur les pages telles que l’import les a laissées redonne les lignes de la migration 0035', () => {
-  const pages = pagesDeLaBase(db, registre, (id, corps) => historique.valeurDImport('page', { id }, 'corps_md', corps));
+  // titre et texte de la page, onglet de la race : tels que l'import les a laissés (le site de dev peut les réécrire)
+  const pages = pagesDeLaBase(db, registre, (id, p) => ({
+    titre: historique.valeurDImport('page', { id }, 'titre', p.titre),
+    corps_md: historique.valeurDImport('page', { id }, 'corps_md', p.corps_md),
+    onglet: p.onglet === null ? null : historique.valeurDImport('race_onglet', { race_id: id }, 'onglet', p.onglet),
+  }));
   const resolu = resoudre(registre, pages);
   assert.deepEqual(resolu.erreurs.filter((e) => ![...pages.keys()].some((id) => sourceRetouchee(id) && e.includes(`(${id})`))), []);
   const sansNull = (l) => ({ ...l });
@@ -173,10 +204,13 @@ test('la liste « Les Impacts mineur et majeur » du Codex est reprise en entier
 });
 
 test('le lieu d’un Impact mène à la page du Codex qui porte exactement son nom, sinon à rien', () => {
-  const lieux = Object.fromEntries(evenements.filter((e) => e.lieu).map((e) => [e.lieu, e.lieu_page_id]));
-  assert.equal(lieux.Erisia, 'lore/erisia');
-  assert.equal(lieux.Mrode, 'lore/mrode');
-  assert.equal(lieux['Ici et là'], null);
+  const pagesDuCodex = db.prepare("SELECT id, titre_cle FROM page WHERE type = 'lore'").all();
+  const avecLieu = evenements.filter((e) => e.lieu);
+  assert.ok(avecLieu.length > 0);
+  for (const e of avecLieu) assert.equal(e.lieu_page_id, pagesDuCodex.find((p) => p.titre_cle === normalize(e.lieu))?.id ?? null, `${e.id} : ${e.lieu}`);
+  // à l'import, « Erisia » et « Mrode » sont des pages du Codex, « Ici et là » n'en est pas une
+  if (!historique.touchee('page', { id: 'lore/erisia' }, 'titre')) assert.ok(avecLieu.some((e) => e.lieu === 'Erisia' && e.lieu_page_id === 'lore/erisia'));
+  assert.ok(avecLieu.some((e) => e.lieu === 'Ici et là' && e.lieu_page_id === null));
 });
 
 test('Au début, Date inconnue, Aujourd’hui : l’ouverture et la fin de la frise viennent du Codex (« Au début … » : Origine du monde, Situation actuelle)', () => {

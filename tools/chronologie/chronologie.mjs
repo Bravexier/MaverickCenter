@@ -6,7 +6,7 @@
 //   node tools/chronologie/chronologie.mjs --verifier    -> le registre relu contre la base : extraits introuvables, lignes différentes
 //
 // Fonctions pures (resoudre, lignesSql) ; seul le lancement en ligne de commande ouvre la base (client/src/lib/donnees.mjs). Le test
-// client/test/chronologie-db.test.mjs rejoue la résolution sur les pages telles que l'import les a laissées et la compare aux lignes de la base.
+// client/test/chronologie.test.mjs rejoue la résolution sur les pages telles que l'import les a laissées et la compare aux lignes de la base.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { normalize } from '../../client/src/lib/text.mjs';
@@ -85,6 +85,11 @@ export function resoudre(registre, pages) {
     const lignesExtraits = (e.extraits ?? []).flatMap((x, j) => {
       const page = pages.get(x.page);
       const lequel = `extrait ${j + 1} (${x.page})`;
+      const texteNonVide = (v) => typeof v === 'string' && v.length > 0;
+      if (!texteNonVide(x.debut)) return erreur(`${lequel} : début vide ou absent`), [];
+      if (x.fin !== undefined && !texteNonVide(x.fin)) return erreur(`${lequel} : fin vide`), [];
+      if (x.date !== undefined && !texteNonVide(x.date)) return erreur(`${lequel} : date vide`), [];
+      if (x.occurrence !== undefined && !(Number.isInteger(x.occurrence) && x.occurrence >= 1)) return erreur(`${lequel} : occurrence invalide (entier à partir de 1)`), [];
       if (!page) return erreur(`${lequel} : page introuvable`), [];
       const n = occurrences(page.corps, x.debut);
       const rang = x.occurrence ?? 1;
@@ -137,13 +142,18 @@ const insert = (table, ligne) => `INSERT INTO ${table} (${Object.keys(ligne).joi
 /** Les INSERT d'un registre résolu : les événements dans l'ordre, puis leurs extraits. */
 export const lignesSql = ({ evenements, extraits }) => [...evenements.map((e) => insert('evenement', e)), ...extraits.map((x) => insert('evenement_extrait', x))];
 
-/** Les pages que cite le registre, lues dans une base node:sqlite : Map(id -> { titre, corps, onglet }). `corpsDe(id, corps)` peut remplacer le corps. */
-export function pagesDeLaBase(db, registre, corpsDe = (id, corps) => corps) {
+/**
+ * Les pages que cite le registre, lues dans une base node:sqlite : Map(id -> { titre, corps, onglet }). `lire(id, { titre, corps_md, onglet })` peut
+ * remplacer ces valeurs (le test les relit dans leur état d'import : le site de dev peut réécrire le titre ou le texte d'une page, ou l'onglet d'une race).
+ */
+export function pagesDeLaBase(db, registre, lire = (id, p) => p) {
   const ids = [...new Set(registre.evenements.flatMap((e) => (e.extraits ?? []).map((x) => x.page)))];
   const page = db.prepare('SELECT p.titre, p.corps_md, o.onglet FROM page p LEFT JOIN race_onglet o ON o.race_id = p.id WHERE p.id = ?');
   return new Map(ids.flatMap((id) => {
-    const p = page.get(id);
-    return p ? [[id, { titre: p.titre, corps: corpsDe(id, p.corps_md), onglet: p.onglet ?? undefined }]] : [];
+    const ligne = page.get(id);
+    if (!ligne) return [];
+    const p = lire(id, { titre: ligne.titre, corps_md: ligne.corps_md, onglet: ligne.onglet ?? null });
+    return [[id, { titre: p.titre, corps: p.corps_md, onglet: p.onglet ?? undefined }]];
   }));
 }
 

@@ -6,7 +6,10 @@
 .chrono,
 .frise__periode {
   --chrono: var(--couleur-periode, var(--accent));
-  --chrono-texte: var(--chrono);
+  /* texte coloré sur la feuille : la couleur assombrie en thème clair (les teintes jaune-vert des siècles passent ainsi 4,5:1), éclaircie en sombre */
+  --chrono-texte: color-mix(in srgb, var(--chrono) 82%, #000);
+  /* traits et points de la frise, anneau de focus : la couleur telle quelle en clair, éclaircie en sombre (3:1 sur le fond) */
+  --chrono-trait: var(--chrono);
   --chrono-soft: color-mix(in srgb, var(--chrono) 12%, var(--surface));
   --chrono-line: color-mix(in srgb, var(--chrono) 40%, var(--border));
   /* infobulles (styles/magie/tooltips.css) : mêmes variables que les pages de magie */
@@ -15,9 +18,15 @@
   --mag-line: var(--chrono-line);
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) :is(.chrono, .frise__periode) { --chrono-texte: color-mix(in srgb, var(--chrono) 45%, #fff); }
+  :root:not([data-theme="light"]) :is(.chrono, .frise__periode) {
+    --chrono-texte: color-mix(in srgb, var(--chrono) 45%, #fff);
+    --chrono-trait: var(--chrono-texte);
+  }
 }
-:root[data-theme="dark"] :is(.chrono, .frise__periode) { --chrono-texte: color-mix(in srgb, var(--chrono) 45%, #fff); }
+:root[data-theme="dark"] :is(.chrono, .frise__periode) {
+  --chrono-texte: color-mix(in srgb, var(--chrono) 45%, #fff);
+  --chrono-trait: var(--chrono-texte);
+}
 .chrono { display: grid; gap: 1.25rem; margin-top: 0.5rem; }
 /* Un glissement horizontal du doigt tourne la page : le navigateur ne doit pas en faire, en plus, un retour dans l'historique (comme le guide). */
 html { overscroll-behavior-x: none; }
@@ -35,19 +44,33 @@ main { overflow-x: clip; }
 
 /* ---------- La frise ---------- */
 .frise { display: grid; gap: 0.4rem; min-width: 0; }
-/* La piste défile de côté (le script de ChronologieEvenement.astro y centre l'événement affiché) ; un dégradé sur ses bords dit qu'il y a une suite. */
+/* La fenêtre de la piste : un fondu sur chaque bord dit qu'il y a une suite. Pas de masque sur la piste elle-même : il couperait les infobulles des
+   points (position fixe, mais peintes dans la piste). Les deux voiles passent sous les bulles (z-index de styles/magie/tooltips.css). */
+.frise__fenetre { position: relative; min-width: 0; }
+.frise__fenetre::before,
+.frise__fenetre::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 1rem;
+  pointer-events: none;
+}
+.frise__fenetre::before { left: 0; background: linear-gradient(to right, var(--bg), transparent); }
+.frise__fenetre::after { right: 0; background: linear-gradient(to left, var(--bg), transparent); }
+/* La piste défile de côté (le script de ChronologieEvenement.astro y centre l'événement affiché et garde le point qui a le focus hors des voiles). */
 .frise__piste {
   display: flex;
   align-items: flex-start;
   gap: 0.35rem;
   margin: 0;
-  padding: 0.2rem 0.75rem 0.55rem;
+  padding: 0.2rem 1.5rem 1.7rem;
   overflow-x: auto;
   overscroll-behavior-x: contain;
+  scroll-padding-inline: 2rem;
   list-style: none;
   scrollbar-width: thin;
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 0.9rem, #000 calc(100% - 0.9rem), transparent);
-  mask-image: linear-gradient(to right, transparent, #000 0.9rem, #000 calc(100% - 0.9rem), transparent);
 }
 .frise__piste:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* Une période : son titre au-dessus, ses points sur un segment de ligne à sa couleur. */
@@ -87,7 +110,7 @@ main { overflow-x: clip; }
   width: 0.8rem;
   height: 0.8rem;
   margin: 0.2rem auto;
-  border: 2px solid var(--chrono);
+  border: 2px solid var(--chrono-trait);
   border-radius: 50%;
   background: var(--surface);
   transition: transform 0.12s, background-color 0.12s;
@@ -101,11 +124,15 @@ a.frise__point[data-ouverte] { background: var(--chrono-soft); transform: scale(
 a.frise__point--majeur:hover,
 a.frise__point--majeur:focus-visible,
 a.frise__point--majeur[data-ouverte] { transform: rotate(45deg) scale(1.25); }
-a.frise__point:focus-visible { outline: 2px solid var(--chrono); outline-offset: 3px; }
+a.frise__point:focus-visible { outline: 2px solid var(--chrono-trait); outline-offset: 3px; }
 /* L'événement affiché : point plein, sa date dessous. */
-.frise__point[aria-current='page'] { background: var(--chrono); box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--chrono); }
+.frise__point[aria-current='page'] { background: var(--chrono-trait); box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--chrono-trait); }
+/* La date de l'événement affiché, sous son point : hors du flux, pour ne pas élargir la case (le point resterait décalé sur le suivant). */
 .frise__date {
-  margin-top: 0.15rem;
+  position: absolute;
+  top: 1.35rem;
+  left: 50%;
+  transform: translateX(-50%);
   padding: 0.05rem 0.45rem;
   border-radius: 999px;
   background: var(--chrono);
@@ -124,7 +151,7 @@ a.frise__point:focus-visible { outline: 2px solid var(--chrono); outline-offset:
   color: var(--muted);
   font-size: 0.8rem;
 }
-.frise__legende-item { display: inline-flex; align-items: center; gap: 0.4rem; --chrono: var(--muted); }
+.frise__legende-item { display: inline-flex; align-items: center; gap: 0.4rem; --chrono-trait: var(--muted); }
 .frise__legende-item .frise__point { margin: 0; background: var(--surface); }
 .frise__legende-source { flex-basis: 100%; text-align: center; font-size: 0.75rem; }
 

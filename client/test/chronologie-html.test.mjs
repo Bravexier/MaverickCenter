@@ -21,9 +21,10 @@ const frises = (main) => [...main.matchAll(/<nav class="frise frise--(haut|bas)"
 test('une page par événement : le premier est l’accueil de /chronologie/, les autres à /chronologie/<id>/', options, () => {
   assert.ok(evenements.length > 0);
   assert.ok(!existsSync(join(dist, 'chronologie', evenements[0].id)), 'pas de seconde adresse pour le premier événement');
+  const decoder = (t) => t.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
   for (const e of evenements) {
-    const main = principal(lire(e));
-    assert.match(main, new RegExp(`<h1 id="chrono-titre">${e.titre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/'/g, '&#39;').replace(/"/g, '&quot;')}</h1>`), `${e.id} : titre`);
+    const titre = principal(lire(e)).match(/<h1 id="chrono-titre">([^<]*)<\/h1>/)?.[1];
+    assert.equal(titre === undefined ? undefined : decoder(titre), e.titre, `${e.id} : titre`);
   }
 });
 
@@ -60,10 +61,13 @@ test('flèches et liens du bas : Précédent et Suivant mènent aux voisins, gri
 test('les extraits : un bloc par passage, la date surlignée, un lien vers la page source ; identifiants uniques, chaque bulle existe', options, () => {
   for (const e of evenements) {
     const main = principal(lire(e));
-    assert.equal((main.match(/<blockquote class="chrono-extrait">/g) ?? []).length, e.extraits.length, `${e.id} : un bloc par extrait`);
-    const dates = e.extraits.filter((x) => x.date_brut).length;
-    const surlignees = (main.match(/<mark class="chrono-surligne">/g) ?? []).length;
-    assert.ok(surlignees <= dates && surlignees >= Math.min(1, dates), `${e.id} : dates surlignées (${surlignees} sur ${dates})`);
+    // un morceau par extrait : de son début à celui du suivant (un extrait peut contenir une citation, donc un <blockquote> imbriqué)
+    const blocs = main.split('<blockquote class="chrono-extrait">').slice(1);
+    assert.equal(blocs.length, e.extraits.length, `${e.id} : un bloc par extrait`);
+    e.extraits.forEach((x, i) => {
+      const marques = (blocs[i].match(/<mark class="chrono-surligne">/g) ?? []).length;
+      assert.equal(marques, x.date_brut ? 1 : 0, `${e.id}, extrait ${i + 1} : ${x.date_brut ? `date « ${x.date_brut} » surlignée` : 'aucune date'}`);
+    });
     for (const page of new Set(e.extraits.map((x) => x.page_id))) assert.ok(main.includes(`<a href="/${page}/">`), `${e.id} : lien vers ${page}`);
     const ids = [...main.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
     assert.equal(new Set(ids).size, ids.length, `${e.id} : identifiants uniques`);

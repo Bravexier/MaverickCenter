@@ -1004,7 +1004,7 @@ CREATE TABLE dieu (
 -- mineur et majeur » est la ligne de la liste, telle quelle ; les autres titres sont du site, faits des mots de leurs extraits.
 CREATE TABLE evenement (
   id         TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),
-                                                     -- adresse /chronologie/<id>/ ; tiré une fois du titre puis figé
+                                                     -- adresse /chronologie/<id>/ ; court, choisi dans tools/chronologie/evenements.json, puis figé
   rang       INTEGER NOT NULL UNIQUE CHECK (rang >= 1),        -- ordre de lecture : frise, Précédent / Suivant ; le rang 1 est servi à /chronologie/
   titre      TEXT    NOT NULL CHECK (length(titre) > 0),
   titre_cle  TEXT    NOT NULL CHECK (titre_cle NOT GLOB '*[^a-z0-9-]*' AND titre_cle NOT GLOB '*--*' AND titre_cle NOT GLOB '-*' AND titre_cle NOT GLOB '*-'),
@@ -1022,7 +1022,7 @@ CREATE TABLE evenement (
 CREATE INDEX evenement_titre ON evenement (titre_cle);
 
 -- Les extraits d'un événement, dans l'ordre : un passage contigu d'une page, copié de page.corps_md (Markdown) tel qu'il était à l'import. Une modification
--- de la page sur le site de dev ne refait pas l'extrait (test/chronologie-db.test.mjs relit les pages dans leur état d'import).
+-- de la page sur le site de dev ne refait pas l'extrait (test/chronologie.test.mjs relit les pages dans leur état d'import).
 CREATE TABLE evenement_extrait (
   evenement_id TEXT    NOT NULL REFERENCES evenement(id),
   rang         INTEGER NOT NULL CHECK (rang >= 1),

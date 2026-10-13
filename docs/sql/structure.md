@@ -799,7 +799,7 @@ Un événement, dans l'ordre de lecture (`rang`) : un fait que le Codex ou une p
 
 ### `evenement_extrait`
 
-Les extraits d'un événement, dans l'ordre : un passage contigu d'une page, copié de page.corps_md (Markdown) tel qu'il était à l'import. Une modification de la page sur le site de dev ne refait pas l'extrait (test/chronologie-db.test.mjs relit les pages dans leur état d'import).
+Les extraits d'un événement, dans l'ordre : un passage contigu d'une page, copié de page.corps_md (Markdown) tel qu'il était à l'import. Une modification de la page sur le site de dev ne refait pas l'extrait (test/chronologie.test.mjs relit les pages dans leur état d'import).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

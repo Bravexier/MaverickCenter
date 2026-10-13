@@ -43,6 +43,8 @@ Carte & lieux reste « bientôt » (E6 de la [feuille de route](feuille-de-route
 - Mots-clés : « codex », la partie (divinité, faction, civilisation…), la magie d'un temple (nom de la magie dans la base), le continent.
 - Le renvoi « Voir “Temple du Vent” » (Mrode) devient un lien vers « Temple de Vent », le titre de la section des temples.
 - Un nouvel export : le remplacer dans `sources/raw/`, puis `python3 -I tools/docs/codex.py`, `--verifier`, `npm run db:sync-pages` (depuis `client/`).
+  Puis la chronologie, qui cite le texte des pages : `node tools/chronologie/chronologie.mjs --verifier` ; un extrait à reprendre se corrige dans
+  `tools/chronologie/evenements.json`, puis une migration écrite par `--sql` ([`chronologie.md`](chronologie.md)).
   Le script n'écrit que dans `lore/`, refuse d'écraser une page qui ne vient pas du document et signale (sans les supprimer) les pages qu'il ne produit plus.
 
 ## Modifier le Codex (site de dev)

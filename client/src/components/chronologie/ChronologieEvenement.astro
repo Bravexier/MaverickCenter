@@ -137,16 +137,25 @@ const css = [chronologieCss, magieTooltipsCss].join('\n');
 </div>
 <Bulles />
 <script is:inline>
-  // Chaque frise défile de côté : l'événement affiché y est centré (scrollLeft, pas scrollIntoView, qui ferait aussi défiler la page).
+  // Chaque frise défile de côté : l'événement affiché y est centré (scrollLeft, pas scrollIntoView, qui ferait aussi défiler la page). Un point qui
+  // prend le focus au clavier près d'un bord est ramené hors du voile de ce bord (le navigateur ne fait pas défiler un point encore en partie visible).
   (function () {
+    var marge = 32;
+    function montrer(piste, point, centrer) {
+      var a = piste.getBoundingClientRect();
+      var b = point.getBoundingClientRect();
+      if (centrer) piste.scrollLeft += b.left - a.left - (piste.clientWidth - b.width) / 2;
+      else if (b.left < a.left + marge) piste.scrollLeft -= a.left + marge - b.left;
+      else if (b.right > a.right - marge) piste.scrollLeft += b.right - (a.right - marge);
+    }
     var frises = document.querySelectorAll('[data-frise]');
     for (var i = 0; i < frises.length; i += 1) {
       var piste = frises[i];
       var point = piste.querySelector('[data-frise-actuel]');
-      if (!point) continue;
-      var a = piste.getBoundingClientRect();
-      var b = point.getBoundingClientRect();
-      piste.scrollLeft += b.left - a.left - (piste.clientWidth - b.width) / 2;
+      if (point) montrer(piste, point, true);
+      piste.addEventListener('focusin', function (e) {
+        montrer(e.currentTarget, e.target, false);
+      });
     }
   })();
 
