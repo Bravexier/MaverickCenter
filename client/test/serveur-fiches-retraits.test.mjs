@@ -36,8 +36,8 @@ const nomLibre = (nom, table, type) => {
 };
 const lot = (operations) => enregistrer(db, { page: 'essai', operations });
 
-test('RETRAITS : exactement les clés étrangères des fiches vers metier, specialite, capacite et sort (colonnes dans l’ordre)', () => {
-  const vers = new Set(['metier', 'specialite', 'capacite', 'sort']);
+test('RETRAITS : exactement les clés étrangères des fiches vers metier, specialite, capacite, sort et arme (colonnes dans l’ordre)', () => {
+  const vers = new Set(['metier', 'specialite', 'capacite', 'sort', 'arme']);
   const cles = [];
   for (const t of TABLES_FICHES) {
     const parId = new Map();
@@ -48,7 +48,7 @@ test('RETRAITS : exactement les clés étrangères des fiches vers metier, speci
     }
     cles.push(...parId.values());
   }
-  assert.equal(cles.length, 4);
+  assert.equal(cles.length, 5);
   assert.deepEqual(RETRAITS.map((r) => ({ table: r.table, vise: r.vise, colonnes: [...r.colonnes] })), cles);
   for (const r of RETRAITS) {
     assert.ok(['vider', 'supprimer'].includes(r.action), r.table);

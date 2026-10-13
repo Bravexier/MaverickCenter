@@ -11,7 +11,7 @@ import { valeurAuNm } from '../lib/sort-maitrise.mjs';
 import { cadrageDe } from '../lib/portrait.mjs';
 import { dessinerVignette, ouvrirRecadrage, reduireImage } from './portrait.mjs';
 import {
-  ajusterValeurDuMoment, alignementDe, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
+  ajusterValeurDuMoment, alignementDe, armesApresChoix, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
   choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsAcquis, donsDeRace, donsValables,
   emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionAttendue, progressionXp,
@@ -1097,9 +1097,10 @@ const EMPLACEMENTS_ACCESSOIRES = [['chef', 'Chef'], ['collier', 'Collier'], ['br
 function construireEquipement() {
   reconstruire($('armes'), 'fixe', () => [1, 2].map((rang) => {
     const l = () => ligneDe('armes', (x) => x.rang === rang);
+    // une arme choisie sans matériau prend le fer (armesApresChoix, décision R49)
     const poserChamp = (cle) => (v) => {
-      if (cle === 'arme_id' && !v) retirer('armes', (x) => x.rang === rang);
-      else if (cle === 'arme_id' || l()) ligne('armes', (x) => x.rang === rang, () => ({ rang, arme_id: null }))[cle] = v;
+      if (cle === 'arme_id') fiche.armes = armesApresChoix(regles, fiche, rang, v);
+      else if (l()) l()[cle] = v;
       changer();
     };
     const familles = new Map(regles.familles_armes.map((f) => [f.id, f.nom]));

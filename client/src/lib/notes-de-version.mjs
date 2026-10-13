@@ -1,12 +1,13 @@
 // Notes de version (page /mise-a-jour/, demande du propriétaire) : la liste de ce qui a changé dans les règles entre la base de PRODUCTION
 // (master, la base « classique ») et la base de DEV (règles de dev + modifications faites sur le site de dev), domaine par domaine (sorts,
-// magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire). Une ligne par champ modifié d'une entité, avec l'ancienne et la nouvelle valeur et sa
+// magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire, armes). Une ligne par champ modifié d'une entité, avec l'ancienne et la nouvelle valeur et sa
 // couleur (lib/notes-de-version-sens.mjs : critères du propriétaire, décision R29). Les champs listés sont ceux que le site de dev modifie
 // (lib/edition-modele.mjs#TABLES) : tout le reste de la base en est dérivé (colonnes typées, `X_cle`, tables de détail, pages) et n'est pas listé.
 // Les deux bases peuvent avoir des schémas différents (master est plus ancien) : une table ou une colonne absente d'un côté est tolérée.
 // Fonctions pures, sans dépendance navigateur : le service (serveur/notes-de-version.mjs) et le processus de mise à jour
 // (scripts/mise-a-jour-regles.mjs) lisent les tables puis appellent comparerBases ; la page affiche avec lib/notes-de-version-rendu.mjs.
-import { CATEGORIES_DE_MONSTRE, STATS_VARIABLES, TABLES } from './edition-modele.mjs';
+import { CATEGORIES_DE_MONSTRE, OUI_NON, STATS_VARIABLES, TABLES } from './edition-modele.mjs';
+import { MAINS } from './arme-champs.mjs';
 import { sensDuChangement } from './notes-de-version-sens.mjs';
 import { resumeDuPortrait } from './portrait.mjs';
 import { ORDRE_DES_RACES } from './race-kinds.mjs';
@@ -21,6 +22,7 @@ export const DOMAINES = [
   { id: 'guide', titre: 'Guide' },
   { id: 'codex', titre: 'Codex' },
   { id: 'bestiaire', titre: 'Bestiaire' },
+  { id: 'armes', titre: 'Armes' },
 ];
 
 /**
@@ -38,6 +40,7 @@ export const TABLES_LUES = [
   'sort', 'magie', 'magie_role', 'mode_hyper_effet', 'classe', 'categorie_classe', 'specialite', 'capacite', 'race', 'race_onglet', 'race_don',
   'race_don_tableau_colonne', 'race_don_tableau_cellule', 'race_magie', 'race_magie_onglet', 'peuple', 'relation_peuple', 'echelle_relation',
   'metier', 'caracteristique', 'page', 'monstre_espece', 'monstre', 'monstre_rubrique', 'monstre_espece_bloc', 'monstre_butin',
+  'arme', 'arme_famille', 'arme_type', 'materiau_arme', 'ressource', 'amelioration_equipement',
 ];
 
 const colonnesDe = (table) => Object.entries(TABLES[table].colonnes).map(([colonne, c]) => ({ colonne, libelle: c.libelle }));
@@ -179,6 +182,28 @@ const DEFINITIONS = [
     entite: (r, x) => `${x.nom('monstre_espece', r.espece_id)} › butin ${r.score_brut} (${libelleDeChoix(CATEGORIES_DE_MONSTRE, r.categorie)})`,
     ordre: (r, x) => [x.ordre('monstre_espece', r.espece_id), 3, r.rang, ['ennemi_simple', 'mini_boss', 'boss'].indexOf(r.categorie)],
   },
+  // la page des armes (migration 0034) : une arme sous sa famille, puis les matériaux, puis les améliorations d'arme
+  {
+    table: 'arme', domaine: 'armes', cle: ['id'], colonnes: colonnesDe('arme'), genre: 'Arme',
+    groupe: (r, x) => x.nom('arme_famille', r.famille_id), entite: (r) => r.nom, ordre: (r, x) => [1, x.ordre('arme_famille', r.famille_id), r.ordre ?? 0],
+    valeur: (colonne, v, x) =>
+      colonne === 'depart_possible' ? libelleDeChoix(OUI_NON, v)
+        : colonne === 'mains' ? (v ? libelleDeChoix(MAINS, v) : v)
+          : colonne === 'type_id' ? x.nom('arme_type', v) : v,
+  },
+  {
+    // le nom d'un matériau d'arme (ressource partagée avec les armures et les boucliers)
+    table: 'ressource', domaine: 'armes', cle: ['id'], colonnes: colonnesDe('ressource'), genre: 'Matériau', filtre: (r) => r.genre === 'materiau',
+    groupe: () => 'Matériaux', entite: (r) => r.nom, ordre: () => [2, 0],
+  },
+  {
+    table: 'materiau_arme', domaine: 'armes', cle: ['ressource_id'], colonnes: colonnesDe('materiau_arme'), genre: 'Matériau',
+    groupe: () => 'Matériaux', entite: (r, x) => x.nom('ressource', r.ressource_id), ordre: (r) => [2, r.ordre ?? 0],
+  },
+  {
+    table: 'amelioration_equipement', domaine: 'armes', cle: ['id'], colonnes: colonnesDe('amelioration_equipement'), genre: 'Amélioration',
+    filtre: (r) => r.cible === 'arme', groupe: () => 'Améliorations', entite: (r) => `Amélioration +${r.niveau}`, ordre: (r) => [3, r.niveau],
+  },
 ];
 
 function chapitreDe(page) {
@@ -191,7 +216,8 @@ function chapitreDe(page) {
 
 /** Contexte de nommage : noms et ordres lus d'abord dans dev, puis dans la référence (entité retirée). */
 function contexte(ref, dev) {
-  const index = (base) => Object.fromEntries(['magie', 'classe', 'specialite', 'race', 'categorie_classe', 'peuple', 'caracteristique', 'monstre_espece', 'monstre']
+  const index = (base) => Object.fromEntries(['magie', 'classe', 'specialite', 'race', 'categorie_classe', 'peuple', 'caracteristique', 'monstre_espece', 'monstre',
+    'arme_famille', 'arme_type', 'ressource']
     .map((t) => [t, parId(lignesDe(base, t))]));
   const d = index(dev);
   const r = index(ref);

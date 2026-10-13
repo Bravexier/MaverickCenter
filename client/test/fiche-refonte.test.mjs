@@ -11,7 +11,8 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { enregistrerFiche, lireFiche } from '../serveur/fiches.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
-import { attaqueADeuxArmes, choixEnAttente, degatsDArme, donDeBase, maitriseDArme, modeHyperDe } from '../src/lib/fiche-moteur.mjs';
+import { armesApresChoix, attaqueADeuxArmes, choixEnAttente, degatsDArme, donDeBase, maitriseDArme, modeHyperDe } from '../src/lib/fiche-moteur.mjs';
+import { forgerArme } from '../src/lib/arme-forge.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
@@ -94,6 +95,32 @@ test('dégâts d’une arme : dés de la maîtrise, dé de l’arme, bonus de l�
   const lanceur = { ...archer(6), classes: [{ rang: 1, classe_id: 'classes/lanceur', specialite_id: null }], armes: [{ rang: 1, arme_id: jet.id }] };
   const oh = degatsDArme(regles, lanceur, 1).bonus.find((b) => b.nom.startsWith('Oh hisse'));
   assert.equal(oh?.valeur, 7);
+});
+
+test('arme choisie : le fer par défaut (décision R49) ; le matériau, l’amélioration et l’élément déjà choisis restent ; vide retire la ligne', () => {
+  const fer = regles.materiau_arme_defaut;
+  assert.ok(fer && regles.materiaux_armes.find((m) => m.id === fer)?.nom === 'Fer', 'le fer du tableau des matériaux d’arme');
+  const epee = regles.armes.find((a) => a.famille_id === 'epees');
+  const dague = regles.armes.find((a) => a.famille_id === 'dagues');
+  const titane = regles.materiaux_armes.find((m) => m.id.endsWith('#materiau:titane'));
+  assert.deepEqual(armesApresChoix(regles, { armes: [] }, 1, epee.id), [{ rang: 1, arme_id: epee.id, materiau_id: fer }]);
+  const avecTitane = { armes: [{ rang: 1, arme_id: epee.id, materiau_id: titane.id, amelioration_id: 'x' }, { rang: 2, arme_id: dague.id, materiau_id: fer }] };
+  assert.deepEqual(armesApresChoix(regles, avecTitane, 1, dague.id)[0], { rang: 1, arme_id: dague.id, materiau_id: titane.id, amelioration_id: 'x' });
+  assert.deepEqual(armesApresChoix(regles, avecTitane, 2, null), [avecTitane.armes[0]]);
+});
+
+test('dégâts de la fiche = ceux de la page des armes (lib/arme-forge.mjs) : le dé de l’arme, son bonus, celui du matériau et de l’amélioration', () => {
+  // l'exemple du propriétaire, lu dans la base : Espadon en titane, amélioration +5 (D10+29 tant que la base n'a pas changé)
+  const espadon = regles.armes.find((a) => a.id === 'ressources/armes#arme:epees:espadon');
+  const titane = regles.materiaux_armes.find((m) => m.id.endsWith('#materiau:titane'));
+  const plus5 = regles.ameliorations.find((a) => a.cible === 'arme' && a.niveau === 5);
+  const fiche = { ...archer(6), classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: null }], armes: [{ rang: 1, arme_id: espadon.id, materiau_id: titane.id, amelioration_id: plus5.id }] };
+  const d = degatsDArme(regles, fiche, 1);
+  const f = forgerArme({ de: espadon.de, bonus_degats: espadon.bonus_degats, durabilite: 2, cout_ro: 0 }, { ...titane, cran_solidite: 0, prix_ro: 0 },
+    regles.ameliorations.filter((a) => a.cible === 'arme').map((a) => ({ ...a, cout_ro: 0, cout_materiaux: 0, bonus_cran: 0 })), 5);
+  assert.equal(d.de, espadon.de, 'le dé de l’arme, pas celui de son type');
+  const donsDeClasse = d.bonus.filter((b) => !b.nom.startsWith('Composition') && !b.nom.startsWith('Amélioration') && b.nom !== espadon.nom).reduce((s, b) => s + b.valeur, 0);
+  assert.equal(d.total - donsDeClasse, f.bonus.total);
 });
 
 test('Mode Hyper : débloqué au niveau 2, Mode Hyper 100 % au niveau 10 ; effets de base, de la magie (mono ou bi) et de la race', () => {

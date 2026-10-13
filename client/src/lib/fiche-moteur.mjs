@@ -896,6 +896,20 @@ export function attaqueADeuxArmes(regles, fiche) {
 }
 
 /**
+ * Les armes de la fiche après le choix de l'arme `rang` (1 ou 2) : `armeId` vide retire la ligne ; une arme choisie sans matériau prend le matériau par
+ * défaut, le fer (décision R49 : « le fait de choisir son arme, son matériau (par défaut le fer), et son amélioration recalcule les dégâts »). Le
+ * matériau, l'amélioration et l'élément déjà choisis restent.
+ */
+export function armesApresChoix(regles, fiche, rang, armeId) {
+  const armes = (fiche.armes ?? []).filter((x) => entier(x.rang) !== rang);
+  if (!armeId) return armes;
+  const avant = (fiche.armes ?? []).find((x) => entier(x.rang) === rang);
+  const ligne = { ...(avant ?? { rang }), arme_id: armeId };
+  if (!ligne.materiau_id && regles.materiau_arme_defaut) ligne.materiau_id = regles.materiau_arme_defaut;
+  return [...armes, ligne].sort((a, b) => entier(a.rang) - entier(b.rang));
+}
+
+/**
  * Les dégâts d'une arme (rang 1 ou 2), pour sa pastille (demande du propriétaire : « rajouter les bonus dus aux améliorations et potentiels passifs de
  * classes ») : autant de dés que la maîtrise de sa famille en donne (maitriseDArme), le dé de l'arme (« D8 au lieu du D10 » de son effet, sinon celui de son
  * type ; Pugilat : selon la Force, deDeLaFamille), plus les bonus qui se cumulent (page « Armes » : « tous les bonus se cumulent une fois l'arme forgée ») —

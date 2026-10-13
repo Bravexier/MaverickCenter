@@ -74,8 +74,8 @@ export function ficheVide(nom = '') {
 /** Ce qui suit la date d'une ligne de retrait : la page /fiche/ reconnaît ces lignes à ce préfixe. */
 export const PREFIXE_DE_RETRAIT = 'Retrait (règles modifiées) : ';
 
-/** Natures d'un élément retiré, dans l'ordre des lignes d'une fiche : métier, spécialité, don, sort. */
-export const ORDRE_DES_NATURES = Object.freeze(['metier', 'specialite', 'capacite', 'sort']);
+/** Natures d'un élément retiré, dans l'ordre des lignes d'une fiche : métier, spécialité, don, sort, arme (décision R52 : une arme supprimée, comme R42). */
+export const ORDRE_DES_NATURES = Object.freeze(['metier', 'specialite', 'capacite', 'sort', 'arme']);
 
 /** Le jour (UTC) d'un instant au format des colonnes `*_le` (« 2026-10-11T08:30:00Z » → « 11/10/2026 ») ; lève une Error sur un instant mal formé. */
 export function jourDuRetrait(instant) {
@@ -96,8 +96,9 @@ const positif = (n) => typeof n === 'number' && n > 0;
  *   don        : « le don « Botte secrète » (classe Bretteur des dunes, spécialité LAME COURBE, niveau 20) » ;
  *   spécialité : « la spécialité « LAME COURBE » (classe X, avec les dons choisis « A » et « B ») » (`dons` : ceux de la fiche qui partent avec elle) ;
  *   sort       : « le sort « Boule de feu » (magie Feu, NPM 2, 2 NM sur cette fiche dont 1 de livre et 1 du MJ) » (des faits, rien sur ce qu'ils deviennent) ;
- *   métier     : « le métier « Forgeron » ».
- * @param {{ nature: 'metier' | 'specialite' | 'capacite' | 'sort', id: string, nom?: string | null, classe?: string | null, specialite?: string | null,
+ *   métier     : « le métier « Forgeron » » ;
+ *   arme       : « l'arme « Katana » (ÉPÉES, arme 1) » (décision R52).
+ * @param {{ nature: 'metier' | 'specialite' | 'capacite' | 'sort' | 'arme', id: string, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
  *   niveau?: number | null, magie?: string | null, npm?: number | null, nm?: number | null, nm_livre?: number | null, nm_cadeau?: number | null,
  *   dons?: string[] }} d
  */
@@ -125,6 +126,10 @@ export function descriptionDuRetrait(d) {
     }
   } else if (d.nature === 'metier') {
     tete = `le métier « ${nom} »`;
+  } else if (d.nature === 'arme') {
+    tete = `l’arme « ${nom} »`;
+    if (d.famille) parties.push(d.famille);
+    if (d.rang !== null && d.rang !== undefined) parties.push(`arme ${d.rang}`);
   } else {
     throw new Error(`nature de retrait inconnue : ${d.nature}`);
   }

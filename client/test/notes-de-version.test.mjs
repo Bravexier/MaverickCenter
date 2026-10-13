@@ -99,7 +99,29 @@ test('comparerBases : un champ par ligne, entités ajoutées et retirées, domai
   assert.equal(b.total, lignes.length);
   assert.equal(b.amelioration + b.affaiblissement + b.neutre, b.total);
   assert.deepEqual(b.parDomaine, { sorts: 6, races: 3, metiers: 2, guide: 1 });
-  assert.deepEqual(DOMAINES.map((d) => d.id), ['sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire']);
+  assert.deepEqual(DOMAINES.map((d) => d.id), ['sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire', 'armes']);
+});
+
+test('armes (migration 0034) : une arme sous sa famille, un matériau, une amélioration d’arme ; « Oui/Non », mains et type en toutes lettres', () => {
+  const famille = { id: 'epees', nom: 'ÉPÉES', ordre: 1 };
+  const types = [{ id: 'epee', nom: 'Épée' }, { id: 'dague', nom: 'Dague' }];
+  const arme = (valeurs = {}) => ({ id: 'ressources/armes#arme:epees:katana', famille_id: 'epees', ordre: 11, nom: 'Katana', mains: null, competence_brut: 'Arme Légère',
+    type_id: 'epee', cout_brut: '15 Ro', effet: 'Dégâts taille, +3 dégâts', description: 'Une épée.', depart_possible: 0, ...valeurs });
+  const ressource = { id: 'ressources/armures#materiau:titane', nom: 'Titane' };
+  const materiau = (prix) => ({ ressource_id: ressource.id, ordre: 13, prix_brut: prix, effet_brut: "Dégâts +9 pour l'arme" });
+  const amelioration = (cible, cout) => ({ id: `x#amelioration:${cible}:5`, cible, niveau: 5, cout_brut: cout, effet_brut: '+10 dégâts' });
+  const base = (a, m, am) => ({ tables: { arme: [a], arme_famille: [famille], arme_type: types, ressource: [ressource], materiau_arme: [m], amelioration_equipement: am } });
+  const ref = base(arme(), materiau('200 RO'), [amelioration('arme', '200 RO'), amelioration('armure', '1 RO')]);
+  const dev = base(arme({ depart_possible: 1, mains: 'deux', type_id: 'dague', effet: 'Dégâts taille, +4 dégâts' }), materiau('250 RO'),
+    [amelioration('arme', '210 RO'), amelioration('armure', '2 RO')]);
+  const lignes = comparerBases(ref, dev).filter((l) => l.domaine === 'armes');
+  const champ = (c) => lignes.find((l) => l.champ === c);
+  assert.deepEqual([champ('Arme de départ').avant, champ('Arme de départ').apres, champ('Arme de départ').groupe], ['Non', 'Oui', 'ÉPÉES']);
+  assert.deepEqual([champ('Mains').nature, champ('Mains').apres], ['ajoute', 'deux mains']);
+  assert.deepEqual([champ('Type d’arme').avant, champ('Type d’arme').apres], ['Épée', 'Dague']);
+  assert.equal(lignes.find((l) => l.table_nom === 'materiau_arme').entite, 'Titane');
+  // seule l'amélioration d'arme est listée
+  assert.deepEqual(lignes.filter((l) => l.table_nom === 'amelioration_equipement').map((l) => [l.entite, l.apres]), [['Amélioration +5', '210 RO']]);
 });
 
 test('Codex et bestiaire : champs modifiés, carte ajoutée ou retirée (pas ses rubriques), contenu entièrement nouveau en une ligne', () => {

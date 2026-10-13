@@ -9,6 +9,7 @@ import RacePage from '../../components/race/RacePage.astro';
 import ClassePage from '../../components/classes/ClassePage.astro';
 import ChoixDeCapacite from '../../components/classes/ChoixDeCapacite.astro';
 import GuideChapitre from '../../components/guide/GuideChapitre.astro';
+import ArmesPage from '../../components/armes/ArmesPage.astro';
 import { TYPES } from '../../lib/types.mjs';
 import { normalize } from '../../lib/text.mjs';
 import { classCategory } from '../../lib/class-groups.mjs';
@@ -21,6 +22,9 @@ import { estUnMetier } from '../../lib/metiers.mjs';
 import { estUnChapitre, PREMIER_CHAPITRE } from '../../lib/guide.mjs';
 import { entryHref, loadWiki, slugOf, typeOf, url, type WikiEntry } from '../../lib/wiki';
 import { attributEd, texteDePageModifiable } from '../../lib/edition-modele.mjs';
+import { chargerArmes, contexteDesArmes, PAGE_DES_ARMES, reglesDeLaPage } from '../../lib/armes-db.mjs';
+import { ouvrirBase } from '../../lib/donnees.mjs';
+import { rendreMarkdown } from '../../lib/guide-rendu';
 
 export async function getStaticPaths() {
   const { entries } = await loadWiki();
@@ -51,7 +55,15 @@ const classe = classes?.classes.get(entry.id) ?? null;
 // Chapitres du guide : une page de livre avec flèches et pagination (components/guide/GuideChapitre.astro), qui rend elle-même son Markdown ; ni mots-clés,
 // ni pages liées, ni sources sous le texte (la lecture continue par la pagination).
 const chapitre = estUnChapitre(entry);
-const gabarit = Boolean(magie || race || classe || chapitre);
+// Page des armes (demande du propriétaire) : un tableau par famille, la fiche de l'arme choisie, les matériaux et les améliorations, depuis les tables
+// (components/armes/ArmesPage.astro, lib/armes-db.mjs) ; de son Markdown, seules les règles de l'onglet (introduction, prix) sont rendues.
+const armes = entry.id === PAGE_DES_ARMES ? chargerArmes(ouvrirBase()) : null;
+const contexteArmes = armes ? contexteDesArmes(ouvrirBase()) : null;
+const reglesArmes = armes?.page ? reglesDeLaPage(armes.page.corps_md) : null;
+const reglesArmesHtml = reglesArmes
+  ? { introduction: await rendreMarkdown(reglesArmes.introduction, entry.id), prix: reglesArmes.prix ? await rendreMarkdown(reglesArmes.prix, entry.id) : '' }
+  : null;
+const gabarit = Boolean(magie || race || classe || chapitre || armes);
 const Content = gabarit ? null : (await render(entry)).Content; // les gabarits des magies, des races, des classes et du guide ne rendent pas le Markdown
 const mentions = outgoing.get(entry.id) ?? [];
 const mentionedBy = incoming.get(entry.id) ?? [];
@@ -60,7 +72,7 @@ const statusNote = entry.data.status === 'example' ? 'Contenu d’exemple : à r
 // Mode modification du site de dev (demande du propriétaire) : les pages du guide, des races, des magies et des classes (les métiers sont sur /metiers/),
 // et celles du Codex (« Exactement comme pour les pages des règles les pages du codex doivent pouvoir être modifiées aussi »).
 const pageDeTexte = texteDePageModifiable(typeOf(entry), entry.data.sources[0]); // le guide et le Codex (lib/edition-modele.mjs)
-const modifiable = (pageDeTexte || ['races', 'magies', 'classes'].includes(typeOf(entry))) && entry.data.status !== 'example';
+const modifiable = (pageDeTexte || ['races', 'magies', 'classes'].includes(typeOf(entry)) || Boolean(armes)) && entry.data.status !== 'example';
 // une page de référence du guide ou une page du Codex : titre et texte modifiables (src/scripts/edition/guide.mjs) ; les autres pages suivent leurs tables
 const texteModifiable = modifiable && pageDeTexte && !chapitre;
 ---
@@ -99,6 +111,8 @@ const texteModifiable = modifiable && pageDeTexte && !chapitre;
       <ClassePage entry={entry} classe={classe} statusNote={statusNote} />
     ) : chapitre ? (
       <GuideChapitre entry={entry} entries={entries} />
+    ) : armes && contexteArmes && reglesArmesHtml ? (
+      <ArmesPage armes={armes} contexte={contexteArmes} regles={reglesArmesHtml} resume={entry.data.summary} />
     ) : (
       <>
         <h1>

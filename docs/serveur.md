@@ -45,8 +45,8 @@ Pourquoi une copie des règles : les fiches citent les règles (race, classe, so
 
 **Quand une livraison change les règles**, le service le voit (empreinte différente) et refait la base vivante : nouvelle copie des règles, puis
 toutes les lignes de la section 13 y sont recopiées colonne par colonne (une colonne ajoutée prend sa valeur par défaut), et le journal de l'édition
-est rejoué (site de dev, ci-dessous). Un **don, une spécialité (avec les dons choisis qui en dépendent), un sort ou un métier** que les nouvelles
-règles n'ont plus est alors **retiré des fiches** qui l'utilisent, avec une note datée dans chacune (décision R42, « Fiches de personnage (R42) »
+est rejoué (site de dev, ci-dessous). Un **don, une spécialité (avec les dons choisis qui en dépendent), un sort, un métier ou une arme** que les nouvelles
+règles n'ont plus est alors **retiré des fiches** qui l'utilisent, avec une note datée dans chacune (décisions R42, R52, « Fiches de personnage (R42) »
 ci-dessous) ; `/api/etat` en donne la liste (`base.retraits` : `{ le, fiches }`, la dernière liste non vide, datée, gardée dans `vivante.json` par les
 reconstructions qui ne retirent rien et au redémarrage). **Toute autre ligne qui ne passe pas** — une fiche cite une race, une classe, une magie… qui
 n'existe plus (y compris un don, une spécialité ou un sort dont la classe ou la magie a disparu : un sort d'une magie supprimée chez un Potentiel
@@ -102,7 +102,7 @@ service (qui accepte les deux formes).
 ## Édition des règles (site de dev)
 
 Demande du propriétaire : sur le **site de dev seulement**, et **sur ordinateur seulement** (écran large et pointeur précis : ni téléphone ni
-tablette), les pages du guide, des races, des magies, des classes et des métiers se modifient en place, et celles du Codex (pages du Codex et
+tablette), les pages du guide, des races, des magies, des classes, des métiers et des armes se modifient en place, et celles du Codex (pages du Codex et
 bestiaire : « Exactement comme pour les pages des règles les pages du codex doivent pouvoir être modifiées aussi »). Le service n'ouvre ses routes
 `/api/edition/` que s'il est lancé avec `MAVERICK_EDITION=1` (le `.env` du serveur de test, posé par `deploy/vps/instances.sh` ou l'installateur
 de test ; `npm run serveur` l'ouvre par défaut, `MAVERICK_EDITION=0` le ferme) : ailleurs elles répondent `403` et `/api/etat/` dit
@@ -120,6 +120,7 @@ toutes les modifications de la page **d'un bloc** puis repasse en lecture ; déc
 | Classes | Tous les champs (maîtrises, inventaire, spécialités, dons : tables de détail recalculées, `lib/classe-champs.mjs`) ; créer une classe dans une catégorie ; une classe raciale se crée pour une race hybride qui n'en a pas encore ; créer et supprimer une spécialité (avec son don de spécialité du niveau 10) ou un don (D11, ci-dessous) |
 | Codex | Titre et texte des pages tirées du Google Doc « CODEX Maverick » (`lib/edition-modele.mjs#texteDePageModifiable` ; pas la description des relations entre les peuples, tirée du classeur des races), avec l'éditeur du guide (toute la page est un seul morceau de texte) ; `tools/docs/codex.py --verifier` contrôle une page que le site a modifiée dans son état d'import, et une nouvelle écriture des pages la garde telle quelle (docs/codex.md) |
 | Bestiaire | Les monstres (`docs/bestiaire.md`, « Modifier le bestiaire ») : les champs de la carte ouverte (nom, catégorie, type, alignement, échelle, texte de chaque rubrique ; de l'espèce : nom, échelles, description, lieu, complément, blocs, cases de butin) ; ajouter un monstre (une carte dans une espèce, rubriques vides) ou une espèce, supprimer une carte ou une espèce sans carte ; bornes des échelles, écriture de la catégorie, lieux de rencontre, valeurs typées et tables de détail d'une carte recalculés par les fonctions de l'extraction (`lib/monstre-champs.mjs`, `serveur/edition-bestiaire.mjs`) ; le portrait d'une carte ou d'une espèce sans carte (choisi, recadré ou retiré comme sur la fiche de personnage, `src/scripts/portrait.mjs` ; enregistré tout de suite, seul dans son lot ; cadrage gardé dans l'image par le service). Les créatures invoquées ne se modifient pas ici |
+| Armes | `/ressources/armes/` (« tout peut être éditable à l'instar des autres pages ») : en mode modification, rien ne se sélectionne et tous les tableaux s'ouvrent. Chaque arme (sauf les armes de monstres) : nom, mains, catégorie (une écriture de l'onglet), type, coût, effet, description, arme de départ ; dé, bonus, portée, solidité, provenance, types de dégâts et minimums de caractéristique en sont recalculés (`lib/arme-champs.mjs`, rejoué sur toute la base), les colonnes tirées se réaffichent après l'enregistrement. Ajouter une arme (famille, nom, catégorie, type, effet… : à la fin du tableau de sa famille) ou la supprimer (retirée des fiches qui l'ont, avec une note datée : R52, comme R42). Chaque matériau : nom (la ressource, partagée avec les armures et les boucliers : leurs pages suivent, R52), prix et effets (bonus, crans, effet secondaire recalculés). Chaque amélioration d'arme : coût et effet (la ligne TOTAL est refaite). Le corps Markdown de la page suit, ligne à ligne (`lib/corps-armes.mjs`, `serveur/edition-armes.mjs`) |
 | Métiers | Ajouter, modifier, supprimer (retiré des fiches qui l'ont, avec une note : R42) ; bonus (et leur compétence ou l'initiative, décision R33), objets de départ (R35) et recettes recalculés (`lib/metier-champs.mjs`) ; artisanat en trois champs, texte et deux listes de caractéristiques (R34 : « Artisanat possible » en est recalculé, une seule caractéristique est refusée, sans texte elles partent) ; corps de la page (`lib/corps-metiers.mjs` : un champ réécrit en entier, paragraphes compris, ses liens `[[…]]` gardés tant que leur texte reste écrit) ; filtres et tri par colonne |
 
 Ce qui suit aussi, pour que les outils du dépôt acceptent les modifications rapatriées (`serveur-edition-derivations`, `serveur-edition-rapatriement`,
@@ -186,12 +187,13 @@ chargement l'élément que vise l'adresse (`#don-…`) est ouvert et montré. Li
 `/capacites/<slug>/` d'un don supprimé reste en ligne (l'adresse d'un don créé mène à son ancre sur la page de sa classe) et `/fiche/regles.json` ne
 change pas : la page `/fiche/` propose encore un don, une spécialité ou un métier supprimé, et son envoi est refusé (`400`, problème nommé : la règle
 n'existe plus) ; un élément renommé y garde son ancien nom, alors que `/personnages/` montre déjà le nouveau ; la fiche écarte un don qu'aucun choix
-des règles ne range (`donsValables`). En production (et sur le serveur de test), une fiche qui cite un don, une spécialité, un sort ou un métier
-supprimé par une livraison en est retirée, avec une note datée, quand la base vivante est refaite (R42).
+des règles ne range (`donsValables`). En production (et sur le serveur de test), une fiche qui cite un don, une spécialité, un sort, un métier ou une
+arme supprimé par une livraison en est retirée, avec une note datée, quand la base vivante est refaite (R42, R52).
 
 **Fiches de personnage (R42)** (décision du propriétaire : « juste supprimer le don des fiches », « Même en dev il faut supprimer [le don] des
-fiches », « Il en va de même pour les sorts ou métiers supprimés » ; `serveur/fiches-retraits.mjs`). Supprimer depuis le site un don, une spécialité
-ou un métier qu'une fiche utilise le **retire de la fiche**, qui reste : la ligne `personnage_capacite` part, `personnage_classe.specialite_id`
+fiches », « Il en va de même pour les sorts ou métiers supprimés » ; une arme aussi : R52 ; `serveur/fiches-retraits.mjs`). Supprimer depuis le site un don,
+une spécialité, un métier ou une arme qu'une fiche utilise le **retire de la fiche**, qui reste : la ligne `personnage_capacite` (ou `personnage_arme`, avec
+la composition, l'amélioration et l'élément de cet emplacement) part, `personnage_classe.specialite_id`
 passe à `NULL` (la classe reste) avec les dons choisis de la spécialité, `personnage.metier_id` passe à `NULL` avec les bonus « A OU B » que la fiche
 y avait choisis (`personnage_metier_bonus`) (un sort, que le site ne supprime pas
 encore, partirait de `personnage_sort` ; à la reconstruction, les quatre sont retirés, sauf un don, une spécialité ou un sort dont la classe ou la
@@ -285,7 +287,8 @@ Demande du propriétaire : une page **Mise à jour** (menu Outils, `/mise-a-jour
 **Sur le serveur normal** (et partout sans service : version portable, site statique) : la page construite montre la **note de version** de la
 dernière livraison (`note_version`, `note_version_ligne`, section 15 de `data/schema.sql`), puis l'**historique** des précédentes. Une note est
 la liste des modifications des règles d'une version X.Y à la suivante (toutes les versions X.Y.Z de dev entre les deux), par domaine (sorts par
-magie, magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire : migration `0032-notes-codex-bestiaire`), l'ancienne valeur **barrée**
+magie, magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire : migration `0032-notes-codex-bestiaire` ; armes, matériaux et améliorations
+d'arme : migration `0034-armes-modifiables`), l'ancienne valeur **barrée**
 mais lisible et la nouvelle à côté, en **vert**
 (amélioration) ou **rouge** (affaiblissement) d'après la décision R29 (`docs/decisions-regles.md`, `lib/notes-de-version-sens.mjs`), plus le
 champ libre des admins. Tant qu'aucune livraison n'a eu lieu, deux notes d'exemple (lorem ipsum, `exemple = 1`, migration `0023`) tiennent la place ;
