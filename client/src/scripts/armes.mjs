@@ -49,7 +49,7 @@ if (racine) {
     return {
       nom: ligne.querySelector('.arme__choisir')?.textContent.trim() ?? '',
       mains: ligne.querySelector('.arme__mains')?.textContent.trim() ?? '',
-      categorie: ligne.querySelector('.arme__categorie')?.innerHTML ?? '',
+      competence: ligne.querySelector('.arme__competence')?.innerHTML ?? '',
       type: ligne.querySelector('.arme__type')?.textContent.trim() ?? '',
       famille: famille?.querySelector('.armes-famille__nom')?.textContent.trim() ?? '',
       note: famille?.dataset.note ?? '',
@@ -129,7 +129,7 @@ if (racine) {
       <header class="arme-fiche__tete">
         <h2 id="arme-fiche-titre">${e(a.nom)}</h2>
         <p class="arme-fiche__sous-titre">${[a.type, a.mains, a.famille].filter(Boolean).map(e).join(' · ')}</p>
-        <p class="arme-fiche__badges">${a.categorie}${a.depart ? '<span class="arme-fiche__depart" title="Arme de départ">Arme de départ</span>' : ''}</p>
+        <p class="arme-fiche__badges">${a.competence}${a.depart ? '<span class="arme-fiche__depart" title="Arme de départ">Arme de départ</span>' : ''}</p>
       </header>
       <p class="arme-fiche__forge">Forgée en ${mat || '—'} · <span class="arme-fiche__niveau">${titreNiveau}</span></p>
       <div class="arme-fiche__tuiles">

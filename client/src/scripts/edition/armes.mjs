@@ -3,7 +3,7 @@
 // les tableaux sont visibles » ; « Fais donc la possibilité de créer / supprimer des armes ».
 //   - en mode modification : tous les tableaux s'ouvrent (familles, matériaux, améliorations) et la fiche de l'arme se ferme (styles/armes/armes.css cache
 //     la fiche et montre les colonnes `ed-seul` ; le script de la page ignore les clics) ;
-//   - ajouter : formulaire « Nouvelle arme » (famille, nom, catégorie, type, effet…), enregistré tout de suite (POST /api/edition/, opération creer) ; sa
+//   - ajouter : formulaire « Nouvelle arme » (famille, nom, compétence, type, effet…), enregistré tout de suite (POST /api/edition/, opération creer) ; sa
 //     ligne s'ajoute à la fin du tableau de sa famille (lib/armes-rendu.mjs#htmlDeLigneDArme, le HTML de la page construite) ;
 //   - supprimer : bouton sur chaque ligne ; la suppression part avec le bouton de confirmation (une fiche de personnage qui a l'arme la perd, avec une
 //     note datée : décision R52, annonce de l'éditeur) ;

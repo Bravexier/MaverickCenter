@@ -248,12 +248,13 @@ prix de votre arme ? ») s'affichent, repliées ; le reste du Markdown (tableaux
 modification (`lib/corps-armes.mjs`).
 
 - **Un tableau repliable par famille** (bandeau de l'onglet : Épées, Dagues…), sans les armes de monstres (décision R45). Colonnes : Nom (la description en
-  infobulle), Catégorie, Type, Dégâts, Type de dégâts, Portée, Durabilité, Effets supplémentaires, Origine. Les colonnes Dégâts (dé de l'arme, « D8 au lieu
+  infobulle), Compétence, Type, Dégâts, Type de dégâts, Portée, Durabilité, Effets supplémentaires, Origine. Les colonnes Dégâts (dé de l'arme, « D8 au lieu
   du D10 » de son effet, sinon celui de son type ; plus son bonus), Type de dégâts, Portée (1 par défaut, décision R50), Durabilité (2 crans de base, corrigés
   par « 1 seul cran » ou « ±1 cran »), Origine (« Origine X » ou « Facture X ») sont tirées de l'effet (`lib/arme-champs.mjs`) ; **Effets supplémentaires** =
   l'effet sans les clauses montrées ailleurs (une clause qui en contredit une autre reste écrite).
-- **Catégorie** (décision R48) : Lourde (couleur de la Force), Légère (Agilité), les deux en dégradé Force - Agilité, Précision (Perception, les arbalètes) ;
-  « Arc » prend la couleur de sa case dans l'onglet (rouge : lourde ; « Arc / Arme Légère » jaune : les deux).
+- **Compétence** (décision R48) : la compétence que l'onglet écrit sous le type, dans la couleur de sa caractéristique (table `competence`) — Lourde
+  (Force), Légère (Agilité), Lourde / Légère (dégradé Force - Agilité), Arc (Force), Arc / Légère (dégradé Force - Agilité), Arbalète (Perception) ;
+  la légende les reprend toutes.
 - **Armes de départ** (nom sur fond bleu dans la source) : ligne en bleu, infobulle « Arme de départ ».
 - **Sélection** (`src/scripts/armes.mjs`) : cliquer une arme ouvre à côté sa fiche (résumé collant : dégâts, durabilité, coût), puis les **matériaux**
   (case Matière dans sa couleur de l'onglet : `lib/materiaux-couleurs.mjs` ; prix en RO seulement) et les **améliorations** (+1 à +10, ligne TOTAL).

@@ -1,5 +1,5 @@
 // Page /ressources/armes/ construite (dist/) : rendue depuis les tables (pas de tableau Markdown), un tableau repliable par famille sans les armes de
-// monstres, les colonnes voulues par le propriétaire, les lignes de départ en bleu avec leur infobulle, la description en infobulle du nom, les catégories
+// monstres, les colonnes voulues par le propriétaire, les lignes de départ en bleu avec leur infobulle, la description en infobulle du nom, les compétences
 // en couleur (décision R48), les matériaux dans leur couleur, les améliorations, les champs du mode modification. Se saute sans dist/ (npm run build) ;
 // la CI le lance après le build.
 import assert from 'node:assert/strict';
@@ -38,22 +38,33 @@ test('un tableau repliable par famille, sans les armes de monstres ; une ligne p
   assert.equal(new Set(ids).size, ids.length, 'identifiants uniques');
 });
 
-test('colonnes : Nom, Catégorie, Type, Dégâts, Type de dégâts, Portée, Durabilité, Effets supplémentaires, Origine ; Description, Coût, Effet et départ en mode modification', options, () => {
+test('colonnes : Nom, Compétence, Type, Dégâts, Type de dégâts, Portée, Durabilité, Effets supplémentaires, Origine ; Description, Coût, Effet et départ en mode modification', options, () => {
   const tete = main.slice(main.indexOf('<thead>'), main.indexOf('</thead>'));
   const colonnes = [...tete.matchAll(/<th scope="col"(?: class="ed-seul")?>([^<]+)<\/th>/g)].map((m) => m[1]);
-  assert.deepEqual(colonnes.slice(0, 9), ['Nom', 'Catégorie', 'Type', 'Dégâts', 'Type de dégâts', 'Portée', 'Durabilité', 'Effets supplémentaires', 'Origine']);
+  assert.deepEqual(colonnes.slice(0, 9), ['Nom', 'Compétence', 'Type', 'Dégâts', 'Type de dégâts', 'Portée', 'Durabilité', 'Effets supplémentaires', 'Origine']);
   assert.equal((tete.match(/class="ed-seul"/g) ?? []).length, 4);
 });
 
-test('armes de départ en bleu avec l’infobulle « Arme de départ » ; description en infobulle du nom ; catégories en couleur', options, () => {
+test('armes de départ en bleu avec l’infobulle « Arme de départ » ; description en infobulle du nom ; compétences en couleur', options, () => {
   for (const a of armes.familles.flatMap((f) => f.armes)) {
     const debut = main.indexOf(`id="${ancreDArme(a.id)}"`);
     const ligne = main.slice(main.lastIndexOf('<tr', debut), main.indexOf('</tr>', debut));
     assert.equal(ligne.includes('arme--depart') && ligne.includes('title="Arme de départ"'), a.depart_possible === 1, a.id);
     if (a.description) assert.ok(ligne.includes(`title="${echapper(a.description)}"`), `${a.id} : description en infobulle`);
     assert.ok(ligne.includes(`data-ed="${echapper(attributEd('arme', { id: a.id }, 'effet'))}"`), `${a.id} : effet modifiable`);
-    assert.match(ligne, /<span class="arme-cat[^"]*" data-categories="(lourde|legere|precision)( legere)?"/, a.id);
+    assert.match(ligne, /<span class="arme-comp[^"]*" data-competences="(arme-lourde|arme-legere|arc|arbalete)( arme-legere)?"/, a.id);
   }
+});
+
+test('légende des compétences (décision R48) : Lourde, Légère, Lourde / Légère, Arc, Arc / Légère, Arbalète, dans la couleur de leur caractéristique', options, () => {
+  const legende = main.slice(main.indexOf('<p class="armes-legende"'), main.indexOf('</p>', main.indexOf('<p class="armes-legende"')));
+  const pastilles = [...legende.matchAll(/<span class="arme-comp( arme-comp--deux)?" data-competences="([^"]+)" style="--c1: ([^;]+); --c2: ([^;]+);[^"]*" title="([^"]+)">([^<]+)<\/span>/g)];
+  assert.deepEqual(pastilles.map((m) => m[6]), ['Lourde', 'Légère', 'Lourde / Légère', 'Arc', 'Arc / Légère', 'Arbalète']);
+  const couleur = Object.fromEntries(pastilles.map((m) => [m[6], [m[3], m[4]]]));
+  assert.deepEqual(couleur.Arc, couleur.Lourde, 'l’Arc a la couleur de la Force, comme l’Arme Lourde');
+  assert.deepEqual(couleur['Arc / Légère'], [couleur.Arc[0], couleur['Légère'][0]], 'dégradé Arc - Arme Légère');
+  assert.notDeepEqual(couleur['Arbalète'], couleur.Lourde);
+  assert.ok(!main.includes('Précision'), 'plus de « Précision »');
 });
 
 test('matériaux dans leur couleur, prix en RO ; améliorations +1 à +10 avec le total ; le fer est le matériau par défaut', options, () => {

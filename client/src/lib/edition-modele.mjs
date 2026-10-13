@@ -8,7 +8,7 @@
 // service, les gabarits Astro et le script des pages (src/scripts/edition.mjs).
 import { NIVEAUX_DE_DON, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
 import { dimensionsDuPortrait, empreinte, estUnPortrait, PORTRAIT_MAX, resumeDuPortrait } from './portrait.mjs';
-import { CATEGORIES_D_ARME, MAINS } from './arme-champs.mjs';
+import { ECRITURES_DE_COMPETENCE, MAINS } from './arme-champs.mjs';
 
 export { NIVEAUX_DE_DON, NIVEAU_DES_SPECIALITES, SPECIALITES_MAX, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
 
@@ -241,7 +241,7 @@ export const TABLES = {
     colonnes: {
       nom: { type: 'ligne', libelle: 'Nom', requis: true },
       mains: { type: 'choix', libelle: 'Mains', choix: MAINS },
-      competence_brut: { type: 'choix', libelle: 'Catégorie', requis: true, choix: CATEGORIES_D_ARME.map((c) => ({ valeur: c, libelle: c })) },
+      competence_brut: { type: 'choix', libelle: 'Compétence', requis: true, choix: ECRITURES_DE_COMPETENCE.map((c) => ({ valeur: c, libelle: c })) },
       type_id: { type: 'choix', libelle: 'Type d’arme', requis: true, liste: 'typesDArmes' },
       cout_brut: { type: 'ligne', libelle: 'Coût (« 10 Ro »)' },
       effet: { type: 'texte', libelle: 'Effet (dégâts, portée, solidité, origine… : les colonnes en sont tirées)' },
