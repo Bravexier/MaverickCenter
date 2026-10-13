@@ -1,0 +1,74 @@
+---
+import { adresseDEvenement, libelleDeDate, PORTEES } from '../../lib/chronologie.mjs';
+import { idBulle } from '../../lib/magies';
+import { url } from '../../lib/wiki';
+
+// La frise de la chronologie (demande du propriétaire : une ligne temporelle en haut et en bas de chaque page d'événement, à la place de la pagination
+// numérotée du guide). Un point par événement, sur une ligne coupée en périodes (« Au début », un siècle par période datée, « Date inconnue »,
+// « Aujourd'hui » : lib/chronologie.mjs#periodesDeLaFrise), chacune de sa couleur et titrée au-dessus. Un Impact majeur ou mineur de la liste du Codex
+// a un point plus grand (losange pour un majeur). Le point de l'événement affiché est plein, sa date écrite dessous. Titre et date de chaque point en
+// infobulle (components/Infobulles.astro, liée au point par aria-describedby : portée et lieu y sont dits ; sans JavaScript, `title`). La frise
+// défile de côté : le script de ChronologieEvenement.astro centre l'événement affiché et garde le point qui a le focus hors des voiles des bords ;
+// un glissement du doigt ou une flèche du clavier y fait défiler la frise sans tourner la page.
+interface Props {
+  evenements: any[];
+  periodes: any[];
+  courant: string;
+  /** 'haut' ou 'bas' : deux frises par page, avec des étiquettes distinctes (lecteurs d'écran) ; la légende est sous celle du bas. */
+  position: 'haut' | 'bas';
+}
+const { evenements, periodes, courant, position } = Astro.props;
+const etiquette = (e: any) => `${libelleDeDate(e)} : ${e.titre}`;
+const classeDuPoint = (e: any) => ['frise__point', e.portee && `frise__point--${e.portee}`].filter(Boolean).join(' ');
+---
+
+<nav class={`frise frise--${position}`} aria-label={position === 'haut' ? 'Frise chronologique' : 'Frise chronologique (bas de page)'}>
+  <div class="frise__fenetre">
+    <ol class="frise__piste" data-frise>
+      {
+        periodes.map((p) => (
+          <li class="frise__periode" style={`--couleur-periode: ${p.couleur}`}>
+            <span class="frise__titre" title={p.description}>{p.titre}</span>
+            <ol class="frise__points">
+              {p.evenements.map((e: any) => {
+                const id = idBulle(`frise-${position}`);
+                const actuel = e.id === courant;
+                return (
+                  <li class="frise__case">
+                    <span class="bulle-zone">
+                      <a
+                        class={classeDuPoint(e)}
+                        href={url(adresseDEvenement(evenements, e.id))}
+                        aria-current={actuel ? 'page' : undefined}
+                        aria-label={etiquette(e)}
+                        aria-describedby={id}
+                        data-bulle={id}
+                        title={etiquette(e)}
+                        data-frise-actuel={actuel ? '' : undefined}
+                      />
+                      <span class="bulle" role="tooltip" id={id} hidden>
+                        <span class="bulle__sous">{[libelleDeDate(e), e.portee && PORTEES[e.portee], e.lieu].filter(Boolean).join(' · ')}</span>
+                        <span class="bulle__titre">{e.titre}</span>
+                      </span>
+                    </span>
+                    {actuel && <span class="frise__date" aria-hidden="true">{libelleDeDate(e)}</span>}
+                  </li>
+                );
+              })}
+            </ol>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+  {
+    position === 'bas' && (
+      <p class="frise__legende">
+        <span class="frise__legende-item"><span class="frise__point frise__point--majeur" aria-hidden="true" />Impact majeur</span>
+        <span class="frise__legende-item"><span class="frise__point frise__point--mineur" aria-hidden="true" />Impact mineur</span>
+        <span class="frise__legende-item"><span class="frise__point" aria-hidden="true" />Autre événement</span>
+        <span class="frise__legende-source">Impacts : liste « Les Impacts mineur et majeur » du Codex</span>
+      </p>
+    )
+  }
+</nav>

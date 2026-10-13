@@ -1,0 +1,307 @@
+/* Chargé uniquement depuis components/chronologie/ChronologieEvenement.astro (?raw) : les pages de la chronologie (/chronologie/ et
+   /chronologie/<événement>/). Même livre que le guide du joueur (styles/guide/guide.css : une feuille sur toute la largeur, deux flèches rondes par-dessus
+   ses bords en bas de l'écran, effacées quand les liens du bas arrivent), avec une frise en haut et en bas au lieu de la pagination numérotée.
+   Couleur de la période de l'événement (lib/chronologie.mjs#periodesDeLaFrise), posée par `--couleur-periode` sur la page et sur chaque période de la
+   frise : --chrono pour les aplats (texte blanc dessus), --chrono-texte pour un texte coloré (éclairci en thème sombre). */
+.chrono,
+.frise__periode {
+  --chrono: var(--couleur-periode, var(--accent));
+  /* texte coloré sur la feuille : la couleur assombrie en thème clair (les teintes jaune-vert des siècles passent ainsi 4,5:1), éclaircie en sombre */
+  --chrono-texte: color-mix(in srgb, var(--chrono) 82%, #000);
+  /* traits et points de la frise, anneau de focus : la couleur telle quelle en clair, éclaircie en sombre (3:1 sur le fond) */
+  --chrono-trait: var(--chrono);
+  --chrono-soft: color-mix(in srgb, var(--chrono) 12%, var(--surface));
+  --chrono-line: color-mix(in srgb, var(--chrono) 40%, var(--border));
+  /* teinte des infobulles (styles/global/infobulles.css) : celle de la période */
+  --mag: var(--chrono);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) :is(.chrono, .frise__periode) {
+    --chrono-texte: color-mix(in srgb, var(--chrono) 45%, #fff);
+    --chrono-trait: var(--chrono-texte);
+  }
+}
+:root[data-theme="dark"] :is(.chrono, .frise__periode) {
+  --chrono-texte: color-mix(in srgb, var(--chrono) 45%, #fff);
+  --chrono-trait: var(--chrono-texte);
+}
+.chrono { display: grid; gap: 1.25rem; margin-top: 0.5rem; }
+/* Un glissement horizontal du doigt tourne la page : le navigateur ne doit pas en faire, en plus, un retour dans l'historique (comme le guide). */
+html { overscroll-behavior-x: none; }
+/* La page suit le doigt (décalage borné à 64 px) : sans ce clip, elle élargirait l'écran. */
+main { overflow-x: clip; }
+
+.chrono-invisible {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- La frise ---------- */
+.frise { display: grid; gap: 0.4rem; min-width: 0; }
+/* La fenêtre de la piste : un fondu sur chaque bord dit qu'il y a une suite. Pas de masque sur la piste elle-même : il couperait les infobulles des
+   points (position fixe, mais peintes dans la piste). Les deux voiles passent sous les bulles (z-index de styles/global/infobulles.css). */
+.frise__fenetre { position: relative; min-width: 0; }
+.frise__fenetre::before,
+.frise__fenetre::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 1rem;
+  pointer-events: none;
+}
+.frise__fenetre::before { left: 0; background: linear-gradient(to right, var(--bg), transparent); }
+.frise__fenetre::after { right: 0; background: linear-gradient(to left, var(--bg), transparent); }
+/* La piste défile de côté (le script de ChronologieEvenement.astro y centre l'événement affiché et garde le point qui a le focus hors des voiles). */
+.frise__piste {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.2rem 1.5rem 1.7rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-padding-inline: 2rem;
+  list-style: none;
+  scrollbar-width: thin;
+}
+.frise__piste:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Une période : son titre au-dessus, ses points sur un segment de ligne à sa couleur. */
+.frise__periode { display: grid; justify-items: start; gap: 0.2rem; flex: none; }
+.frise__titre {
+  padding: 0 0.3rem;
+  color: var(--chrono-texte);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.frise__points {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0 0.3rem;
+  list-style: none;
+}
+/* La ligne : un trait à la couleur de la période, à mi-hauteur des points. */
+.frise__points::before {
+  content: '';
+  position: absolute;
+  inset: 0.6rem 0 auto;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--chrono-line);
+}
+.frise__case { position: relative; display: grid; justify-items: center; width: 1.1rem; }
+.frise__case .bulle-zone { display: block; }
+.frise__point {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: 0.8rem;
+  height: 0.8rem;
+  margin: 0.2rem auto;
+  border: 2px solid var(--chrono-trait);
+  border-radius: 50%;
+  background: var(--surface);
+  transition: transform 0.12s, background-color 0.12s;
+}
+/* Impact mineur : un point plus grand ; Impact majeur : un losange. */
+.frise__point--mineur { width: 1rem; height: 1rem; margin: 0.1rem auto; border-width: 3px; }
+.frise__point--majeur { width: 0.95rem; height: 0.95rem; margin: 0.125rem auto; border-width: 3px; border-radius: 2px; transform: rotate(45deg); }
+a.frise__point:hover,
+a.frise__point:focus-visible,
+a.frise__point[data-ouverte] { background: var(--chrono-soft); transform: scale(1.25); }
+a.frise__point--majeur:hover,
+a.frise__point--majeur:focus-visible,
+a.frise__point--majeur[data-ouverte] { transform: rotate(45deg) scale(1.25); }
+a.frise__point:focus-visible { outline: 2px solid var(--chrono-trait); outline-offset: 3px; }
+/* L'événement affiché : point plein, sa date dessous. */
+.frise__point[aria-current='page'] { background: var(--chrono-trait); box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--chrono-trait); }
+/* La date de l'événement affiché, sous son point : hors du flux, pour ne pas élargir la case (le point resterait décalé sur le suivant). */
+.frise__date {
+  position: absolute;
+  top: 1.35rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: var(--chrono);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.frise__legende {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.35rem 1rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.frise__legende-item { display: inline-flex; align-items: center; gap: 0.4rem; --chrono-trait: var(--muted); }
+.frise__legende-item .frise__point { margin: 0; background: var(--surface); }
+.frise__legende-source { flex-basis: 100%; text-align: center; font-size: 0.75rem; }
+
+/* ---------- La page et ses flèches (comme le guide) ---------- */
+.chrono-cadre {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.chrono-cadre > * { grid-area: 1 / 1; }
+.chrono-fleche {
+  position: sticky;
+  bottom: 1.5rem;
+  z-index: 1;
+  align-self: end;
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border: 2px solid var(--chrono-line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--chrono-texte);
+  font-size: 2rem;
+  line-height: 1;
+  text-decoration: none;
+  box-shadow: 0 3px 12px rgb(0 0 0 / 0.18);
+  transition: background-color 0.15s, color 0.15s, transform 0.15s, opacity 0.2s, visibility 0.2s;
+}
+.chrono-fleche--precedent { justify-self: start; margin-left: -0.5rem; }
+.chrono-fleche--suivant { justify-self: end; margin-right: -0.5rem; }
+.chrono[data-bas-visible] .chrono-fleche { opacity: 0; visibility: hidden; }
+.chrono-fleche > span[aria-hidden] { margin-top: -0.2rem; }
+a.chrono-fleche:hover,
+a.chrono-fleche:focus-visible { background: var(--chrono); border-color: var(--chrono); color: #fff; }
+a.chrono-fleche--precedent:hover { transform: translateX(-2px); }
+a.chrono-fleche--suivant:hover { transform: translateX(2px); }
+a.chrono-fleche:focus-visible { outline: 2px solid var(--chrono); outline-offset: 3px; }
+.chrono-fleche[aria-disabled='true'] { border-color: var(--border); color: var(--border); box-shadow: none; cursor: not-allowed; }
+
+.chrono-page {
+  min-width: 0;
+  padding: 1.5rem clamp(1rem, 4vw, 2.75rem) 2rem;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) * 1.5);
+  background: var(--surface);
+  box-shadow: 0 1px 0 var(--border), 0 10px 30px rgb(0 0 0 / 0.05);
+}
+.chrono-numero {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.chrono-periode {
+  display: inline-block;
+  margin-right: 0.5rem;
+  padding: 0.05rem 0.55rem;
+  border-radius: 999px;
+  background: var(--chrono);
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+.chrono-date {
+  margin: 0.9rem 0 0;
+  color: var(--chrono-texte);
+  font-size: clamp(1.4rem, 3.5vw, 1.8rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+.chrono-page h1 {
+  margin: 0.1rem 0 0.9rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 3px solid var(--chrono);
+  font-size: clamp(1.5rem, 4vw, 2rem);
+}
+.chrono-etiquettes { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: -0.3rem 0 1.1rem; }
+.chrono-portee,
+.chrono-lieu {
+  padding: 0.1rem 0.6rem;
+  border: 1px solid var(--chrono-line);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.chrono-portee--majeur { border-color: var(--chrono); background: var(--chrono); color: #fff; }
+.chrono-portee--mineur { background: var(--chrono-soft); color: var(--chrono-texte); }
+.chrono-lieu { color: var(--text); text-decoration: none; }
+a.chrono-lieu:hover, a.chrono-lieu:focus-visible { border-color: var(--chrono); background: var(--chrono-soft); }
+
+/* Les extraits : une citation par passage, regroupés par page source (légende sous le groupe). */
+.chrono-source { margin: 1.1rem 0 0; }
+.chrono-extrait {
+  margin: 0;
+  padding: 0.55rem 1rem;
+  border-left: 4px solid var(--chrono);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--chrono-soft);
+}
+.chrono-extrait + .chrono-extrait { margin-top: 0.5rem; }
+.chrono-extrait > :first-child { margin-top: 0.2rem; }
+.chrono-extrait > :last-child { margin-bottom: 0.2rem; }
+.chrono-extrait p { margin: 0.45rem 0; }
+.chrono-extrait ul, .chrono-extrait ol { margin: 0.35rem 0; padding-left: 1.25rem; }
+.chrono-extrait blockquote { margin: 0.5rem 0; padding-left: 0.8rem; border-left: 2px solid var(--chrono-line); }
+mark.chrono-surligne {
+  padding: 0 0.15em;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--chrono) 22%, var(--surface));
+  color: inherit;
+  font-weight: 700;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.chrono-legende { margin-top: 0.35rem; color: var(--muted); font-size: 0.85rem; text-align: right; }
+.chrono-legende::before { content: '— '; }
+.chrono-legende__sections { margin-left: 0.25rem; }
+.chrono-legende a { color: var(--chrono-texte); font-weight: 600; }
+
+/* ---------- En bas : les événements voisins ---------- */
+.chrono-voisins {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.chrono-voisin {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+.chrono-voisin--suivant { text-align: right; }
+.chrono-voisin__sens { color: var(--muted); font-size: 0.85rem; }
+.chrono-voisin__titre { color: var(--chrono-texte); font-weight: 700; }
+a.chrono-voisin:hover, a.chrono-voisin:focus-visible { border-color: var(--chrono); box-shadow: inset 0 0 0 1px var(--chrono); }
+.chrono-voisin[aria-disabled='true'] { border-style: dashed; background: transparent; }
+.chrono-voisin[aria-disabled='true'] .chrono-voisin__sens { color: var(--border); }
+
+@media (max-width: 52rem) {
+  .chrono-fleche { display: none; }
+}
+@media (max-width: 30rem) {
+  .chrono-voisins { grid-template-columns: 1fr; }
+  .chrono-voisin--suivant { text-align: left; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .frise__point, .chrono-fleche { transition: none; }
+}
