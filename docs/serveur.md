@@ -284,7 +284,7 @@ Demande du propriétaire : une page **Mise à jour** (menu Outils, `/mise-a-jour
 **Sur le serveur normal** (et partout sans service : version portable, site statique) : la page construite montre la **note de version** de la
 dernière livraison (`note_version`, `note_version_ligne`, section 15 de `data/schema.sql`), puis l'**historique** des précédentes. Une note est
 la liste des modifications des règles d'une version X.Y à la suivante (toutes les versions X.Y.Z de dev entre les deux), par domaine (sorts par
-magie, magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire : migration `0030-notes-codex-bestiaire`), l'ancienne valeur **barrée**
+magie, magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire : migration `0032-notes-codex-bestiaire`), l'ancienne valeur **barrée**
 mais lisible et la nouvelle à côté, en **vert**
 (amélioration) ou **rouge** (affaiblissement) d'après la décision R29 (`docs/decisions-regles.md`, `lib/notes-de-version-sens.mjs`), plus le
 champ libre des admins. Tant qu'aucune livraison n'a eu lieu, deux notes d'exemple (lorem ipsum, `exemple = 1`, migration `0023`) tiennent la place ;

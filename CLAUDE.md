@@ -218,7 +218,7 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   `scripts/db-reference.mjs` depuis `git archive origin/master` (CI et livraison font `git fetch … master` avant le build ; sans master, la page dit que la référence manque ;
   rien en `SITE_MODE=prod` ni dans la version portable). La liste ne compare que les colonnes de `TABLES` (`edition-modele.mjs`) ; une couleur vient de R29 et de rien d'autre
   (`notes-de-version-sens.mjs`, tout cas douteux reste neutre). Domaines : sorts, magies, classes, races, métiers, guide, Codex, bestiaire (contrainte de
-  `note_version_ligne.domaine`, migration `0030`) ; une table nouvelle dans `TABLES` n'est listée qu'avec sa définition (`DEFINITIONS`, `TABLES_LUES`) ; `detail` : ligne qui
+  `note_version_ligne.domaine`, migration `0032`) ; une table nouvelle dans `TABLES` n'est listée qu'avec sa définition (`DEFINITIONS`, `TABLES_LUES`) ; `detail` : ligne qui
   n'existe qu'avec une autre (rubrique, butin), `resume` : contenu absent de la production dit en une ligne. `scripts/mise-a-jour-regles.mjs` refuse d'écrire un fichier de `data/rows` hors des tables du journal et de la
   note (`TABLES_DE_LA_NOTE`) : un fichier de `data/rows` qui n'est pas tel que l'exporteur l'écrit bloque donc une mise à jour. Pas de protection du bouton avant la connexion Discord
   (décision du propriétaire). La première mise à jour fait la livraison 0.2.0. Les notes `exemple = 1` (lorem ipsum, migration `0023`) sont retirées par la première vraie.
