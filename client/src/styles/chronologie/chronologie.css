@@ -12,10 +12,8 @@
   --chrono-trait: var(--chrono);
   --chrono-soft: color-mix(in srgb, var(--chrono) 12%, var(--surface));
   --chrono-line: color-mix(in srgb, var(--chrono) 40%, var(--border));
-  /* infobulles (styles/magie/tooltips.css) : mêmes variables que les pages de magie */
+  /* teinte des infobulles (styles/global/infobulles.css) : celle de la période */
   --mag: var(--chrono);
-  --mag-soft: var(--chrono-soft);
-  --mag-line: var(--chrono-line);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) :is(.chrono, .frise__periode) {
@@ -45,7 +43,7 @@ main { overflow-x: clip; }
 /* ---------- La frise ---------- */
 .frise { display: grid; gap: 0.4rem; min-width: 0; }
 /* La fenêtre de la piste : un fondu sur chaque bord dit qu'il y a une suite. Pas de masque sur la piste elle-même : il couperait les infobulles des
-   points (position fixe, mais peintes dans la piste). Les deux voiles passent sous les bulles (z-index de styles/magie/tooltips.css). */
+   points (position fixe, mais peintes dans la piste). Les deux voiles passent sous les bulles (z-index de styles/global/infobulles.css). */
 .frise__fenetre { position: relative; min-width: 0; }
 .frise__fenetre::before,
 .frise__fenetre::after {

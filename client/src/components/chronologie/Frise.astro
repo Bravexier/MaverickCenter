@@ -7,7 +7,7 @@ import { url } from '../../lib/wiki';
 // numérotée du guide). Un point par événement, sur une ligne coupée en périodes (« Au début », un siècle par période datée, « Date inconnue »,
 // « Aujourd'hui » : lib/chronologie.mjs#periodesDeLaFrise), chacune de sa couleur et titrée au-dessus. Un Impact majeur ou mineur de la liste du Codex
 // a un point plus grand (losange pour un majeur). Le point de l'événement affiché est plein, sa date écrite dessous. Titre et date de chaque point en
-// infobulle (components/magie/Bulles.astro, liée au point par aria-describedby : portée et lieu y sont dits ; sans JavaScript, `title`). La frise
+// infobulle (components/Infobulles.astro, liée au point par aria-describedby : portée et lieu y sont dits ; sans JavaScript, `title`). La frise
 // défile de côté : le script de ChronologieEvenement.astro centre l'événement affiché et garde le point qui a le focus hors des voiles des bords ;
 // un glissement du doigt ou une flèche du clavier y fait défiler la frise sans tourner la page.
 interface Props {

@@ -1,11 +1,9 @@
 ---
 import chronologieCss from '../../styles/chronologie/chronologie.css?raw';
-import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
 import { adresseDEvenement, extraitsParPage, libelleDeDate, marquerLaDate, periodeDe, periodesDeLaFrise, PORTEES, surlignerLaDate, titreDeSection, voisins } from '../../lib/chronologie.mjs';
 import { rendreMarkdown } from '../../lib/guide-rendu';
 import { pageHref } from '../../lib/magies';
 import { url } from '../../lib/wiki';
-import Bulles from '../magie/Bulles.astro';
 import Frise from './Frise.astro';
 
 // Un événement de la chronologie (lib/chronologie.mjs) : une page à la fois, comme un chapitre du guide (components/guide/GuideChapitre.astro, dont la
@@ -35,10 +33,9 @@ const href = (e: any) => url(adresseDEvenement(evenements, e.id));
 const etiquette = (e: any) => `${libelleDeDate(e)} : ${e.titre}`;
 /** Les sections de la page d'où viennent les extraits d'un groupe, dans l'ordre, sans doublon (légende sous le groupe). */
 const sections = (g: any) => [...new Set(g.extraits.map((x: any) => x.section).filter(Boolean).map(titreDeSection))];
-const css = [chronologieCss, magieTooltipsCss].join('\n');
 ---
 
-<style is:inline set:html={css}></style>
+<style is:inline set:html={chronologieCss}></style>
 <div class="chrono" data-chrono style={`--couleur-periode: ${periode.couleur}`}>
   <Frise evenements={evenements} periodes={periodes} courant={evenement.id} position="haut" />
 
@@ -135,7 +132,6 @@ const css = [chronologieCss, magieTooltipsCss].join('\n');
 
   <Frise evenements={evenements} periodes={periodes} courant={evenement.id} position="bas" />
 </div>
-<Bulles />
 <script is:inline>
   // Chaque frise défile de côté : l'événement affiché y est centré (scrollLeft, pas scrollIntoView, qui ferait aussi défiler la page). Un point qui
   // prend le focus au clavier près d'un bord est ramené hors du voile de ce bord (le navigateur ne fait pas défiler un point encore en partie visible).
