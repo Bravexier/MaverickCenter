@@ -5,6 +5,7 @@ import { url } from '../lib/wiki';
 import { NAV, activeGroup, groupIsCurrent } from '../lib/nav.mjs';
 import { modeDuSite } from '../lib/mode-site.mjs';
 import Edition from '../components/edition/Edition.astro';
+import Infobulles from '../components/Infobulles.astro';
 
 interface Props {
   title: string;
@@ -119,7 +120,8 @@ const site = modeDuSite(process.env, packageInfo.version);
       <span class="site-footer__version">{site.etiquette}</span>
     </footer>
     {edition && !portable && <Edition page={edition} />}
-      <script is:inline>
+    <Infobulles />
+    <script is:inline>
       (function () {
         var toggles = document.querySelectorAll('.nav-group__toggle');
         var rows = document.querySelectorAll('.site-nav__items');

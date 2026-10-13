@@ -611,7 +611,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 /* l'effet secondaire d'un sort, sur sa propre ligne sous le sort (demande du propriétaire) */
 .fiche-table--sorts tr.avec-effet td { border-bottom: 0; }
 .fiche-table--sorts tr.sort-effet td { padding-top: 0; color: var(--muted); font-size: 0.76rem; line-height: 1.3; white-space: pre-line; }
-/* la remarque d'un sort : une étoile, son texte en infobulle (demande du propriétaire ; l'infobulle du navigateur, que le cadre défilant ne coupe pas) */
+/* la remarque d'un sort : une étoile, son texte en infobulle (demande du propriétaire ; son `title`, montré en position fixe par components/Infobulles.astro : le cadre défilant ne la coupe pas) */
 .sort-choix { display: flex; min-width: 9rem; align-items: center; gap: 0.3rem; }
 .sort-choix select { flex: 1; min-width: 0; }
 .sort-remarque { flex: none; color: #c99a06; font-size: 0.95rem; line-height: 1; cursor: help; }
