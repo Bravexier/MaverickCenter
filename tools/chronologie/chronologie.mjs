@@ -52,7 +52,8 @@ export function provenance(page, section) {
 /**
  * Le registre résolu : { evenements, extraits, erreurs }. `pages` : Map(id de page -> { titre, corps, onglet? }) — le corps est page.corps_md, `onglet`
  * le nom de l'onglet d'une page de race (race_onglet.onglet). Un extrait est le texte de la page de son début à la fin de `fin` (ou `debut` seul s'il
- * n'a pas de fin) ; `debut` doit y être écrit une seule fois. Les lignes ont les colonnes des tables, dans leur ordre.
+ * n'a pas de fin) ; `debut` doit y être écrit une seule fois, sauf si `occurrence` (1, 2…) dit laquelle prendre. Les lignes ont les colonnes des tables,
+ * dans leur ordre.
  */
 export function resoudre(registre, pages) {
   const erreurs = [];
@@ -86,8 +87,12 @@ export function resoudre(registre, pages) {
       const lequel = `extrait ${j + 1} (${x.page})`;
       if (!page) return erreur(`${lequel} : page introuvable`), [];
       const n = occurrences(page.corps, x.debut);
-      if (n !== 1) return erreur(`${lequel} : début ${n ? 'écrit plusieurs fois' : 'introuvable'} : ${JSON.stringify(x.debut.slice(0, 60))}`), [];
-      const debut = page.corps.indexOf(x.debut);
+      const rang = x.occurrence ?? 1;
+      if (n === 0 || (x.occurrence === undefined ? n > 1 : rang > n)) {
+        return erreur(`${lequel} : début ${n ? 'écrit plusieurs fois (préciser « occurrence »)' : 'introuvable'} : ${JSON.stringify(x.debut.slice(0, 60))}`), [];
+      }
+      let debut = -1;
+      for (let k = 0; k < rang; k += 1) debut = page.corps.indexOf(x.debut, debut + 1);
       let fin = debut + x.debut.length;
       if (x.fin !== undefined) {
         const f = page.corps.indexOf(x.fin, debut);

@@ -95,6 +95,9 @@ test('resoudre : un extrait est le texte de la page de son début à sa fin ; er
   assert.equal(r.evenements[0].source_ref, 'CODEX Maverick › X › Histoire');
   const erreurs = (extraits, plus) => resoudre(registre(extraits, plus), pages).erreurs.join('\n');
   assert.match(erreurs([{ page: 'races/y', debut: 'Phrase.' }]), /écrit plusieurs fois/);
+  const seconde = resoudre({ evenements: [{ id: 'y', titre: 'Y', epoque: 'debut', extraits: [{ page: 'races/y', debut: 'Phrase.', occurrence: 2 }] }] }, pages);
+  assert.deepEqual([seconde.erreurs, seconde.extraits[0].texte], [[], 'Phrase.'], 'occurrence : laquelle des deux');
+  assert.match(erreurs([{ page: 'races/y', debut: 'Phrase.', occurrence: 3 }]), /écrit plusieurs fois/);
   assert.match(erreurs([{ page: 'lore/x', debut: 'absent' }]), /début introuvable/);
   assert.match(erreurs([{ page: 'lore/x', debut: 'En l’an 12', fin: 'jamais' }]), /fin introuvable/);
   assert.match(erreurs([{ page: 'lore/x', debut: 'En l’an 12', date: 'an 13' }]), /absente de l'extrait/);

@@ -10,25 +10,30 @@
     {
       "id": "trois-premieres-races", "titre": "Les trois premières races", "epoque": "debut",
       "extraits": [
+        { "page": "races/humain", "debut": "Race majoritaire dans le monde de Maverick, une légende dirait que ce sont les premiers êtres humanoïdes à être apparus sur cette terre.", "date": "les premiers êtres humanoïdes à être apparus", "occurrence": 1 },
         { "page": "races/humain", "debut": "Cette race fait partie des 3 premières à être arrivées dans le monde avec les Nains et les Elfes Dorés.", "date": "des 3 premières à être arrivées dans le monde" },
         { "page": "races/nain", "debut": "Cette race fait partie des 3 premières à être arrivées dans le monde avec les Humains et les Elfes Dorés.", "date": "des 3 premières à être arrivées dans le monde" },
         { "page": "races/nain", "debut": "Arrivés peu après les Humains et les Elfes Dorés", "fin": "creusées à même la roche.", "date": "Arrivés peu après les Humains et les Elfes Dorés" },
+        { "page": "lore/volt", "debut": "On raconte qu’il sera à l’origine des nains." },
         { "page": "races/elfe-dore", "debut": "Les elfes dorés comptent parmi les premières races", "fin": "entre les peuples.", "date": "parmi les premières races à avoir foulé les terres de Maverick" },
-        { "page": "races/elfe-dore", "debut": "Cette race est apparue en même temps que les Humains et les Nains", "fin": "personne ne venait empiéter sur l'autre.", "date": "en même temps que les Humains et les Nains" }
+        { "page": "races/elfe-dore", "debut": "Cette race est apparue en même temps que les Humains et les Nains", "fin": "personne ne venait empiéter sur l'autre.", "date": "en même temps que les Humains et les Nains" },
+        { "page": "races/elfe-dore", "debut": "Malgré cela, elle demeure l’une des trois races fondatrices du monde, aux côtés des Humains et des Nains.", "date": "l’une des trois races fondatrices du monde" }
       ]
     },
     {
       "id": "drassahthac", "titre": "Apparition des Drassah'thac", "epoque": "datee", "annee": -450,
       "extraits": [
         { "page": "races/drassahthac", "debut": "Ce sont les premiers hybrides animaux à être apparus et ceux en l'an -450.", "date": "en l'an -450" },
-        { "page": "races/drassahthac", "debut": "Ce sont les premiers hybrides animaux à avoir existé", "fin": "ils ont accès à toutes les magies.", "date": "peu après les humains, elfes et nains" }
+        { "page": "races/drassahthac", "debut": "Ce sont les premiers hybrides animaux à avoir existé", "fin": "ils ont accès à toutes les magies.", "date": "peu après les humains, elfes et nains" },
+        { "page": "lore/drassah", "debut": "Ceci dit, cette déesse décida de faire  naître une nouvelle race à son image", "fin": "héritant de ses traits." }
       ]
     },
     {
       "id": "orios", "titre": "Arrivée des Orios", "epoque": "datee", "annee": -430,
       "extraits": [
         { "page": "races/orios", "debut": "Cette race est arrivée en -430, peu de temps après les premiers humains.", "date": "en -430" },
-        { "page": "races/orios", "debut": "Ce sont les deuxièmes hybrides animaux à être apparus sur Maverick.", "fin": "les aurait changés en Orios.", "date": "les deuxièmes hybrides animaux à être apparus" }
+        { "page": "races/orios", "debut": "Ce sont les deuxièmes hybrides animaux à être apparus sur Maverick.", "fin": "les aurait changés en Orios.", "date": "les deuxièmes hybrides animaux à être apparus" },
+        { "page": "lore/brock", "debut": "Il est aussi à l'origine des orios." }
       ]
     },
     {
@@ -40,7 +45,9 @@
         { "page": "races/satyre", "debut": "La cinquième race hybride animale est née", "fin": "de ces unions naquirent les premiers satyres.", "date": "La cinquième race hybride animale" },
         { "page": "races/jackalope", "debut": "Apparu avec tous les autres hybrides animaux dans les ans -400 à -350.", "date": "dans les ans -400 à -350" },
         { "page": "races/jackalope", "debut": "Race humain lapin à l'origine du Dieu de la débauche, Bauc.", "fin": "les Jackalopes sont nés avec un talent naturel pour l'art.", "date": "Après l'arrivée des Satyres" },
+        { "page": "lore/bauc", "debut": "De son inspiration naquirent les Satyres et les Jackalopes", "fin": "représentent l’essence artistique." },
         { "page": "races/anansi", "debut": "Apparu avec tous les autres hybrides animaux dans les ans -400 à -350.", "date": "dans les ans -400 à -350" },
+        { "page": "races/anansi", "debut": "Selon certaines rumeurs douteuses, ils seraient à l’origine un petit village", "fin": "réussirent à prospérer lentement mais sûrement." },
         { "page": "races/goleois", "debut": "Apparu avec tous les autres hybrides animaux dans les ans -400 à -350.", "date": "dans les ans -400 à -350" },
         { "page": "races/goleois", "debut": "Leur origine est assez inconnue mais on parlerait d'une secte d'humains", "fin": "les êtres que nous connaissons aujourd'hui." },
         { "page": "races/kitsune", "debut": "Apparu avec tous les autres animaux hybrides dans les ans -400 à -350.", "date": "dans les ans -400 à -350" },
@@ -52,7 +59,8 @@
         { "page": "races/namazu", "debut": "C'est une race qui existe suite à une malédiction", "fin": "Umbro leur a redonné la vue qu'ils avaient perdue." },
         { "page": "races/olwman", "debut": "Apparu avec tous les autres hybrides animaux dans les ans -400 à -350.", "date": "dans les ans -400 à -350" },
         { "page": "races/olwman", "debut": "Les Origines de cette race sont très mystérieuses", "fin": "leur soif de savoir." },
-        { "page": "races/rokh", "debut": "Apparu avec tous les autres animaux hybrides autres dans les ans -400 à -350..", "date": "dans les ans -400 à -350" }
+        { "page": "races/rokh", "debut": "Apparu avec tous les autres animaux hybrides autres dans les ans -400 à -350..", "date": "dans les ans -400 à -350" },
+        { "page": "races/rokh", "debut": "Selon la légende, cette race fut créée par le Dieu de la Foudre Volt", "fin": "que sont Aurora et Eoline." }
       ]
     },
     {
@@ -63,49 +71,60 @@
       ]
     },
     {
-      "id": "academie-de-l-arcane", "titre": "Création de l’Académie de l’Arcane", "epoque": "datee", "annee": -112,
+      "id": "academie-de-l-arcane", "titre": "Création de l’Académie de l’arcane", "epoque": "datee", "annee": -112,
       "extraits": [
-        { "page": "lore/academie-de-larcane", "debut": "* **Date de création :** \\-112", "date": "\\-112" }
+        { "page": "lore/academie-de-larcane", "debut": "* **Date de création :** \\-112", "date": "\\-112" },
+        { "page": "lore/academie-de-larcane", "debut": "Bien avant la fondation d’Elloris, la colline sur laquelle", "fin": "mais comme un langage divin." }
       ]
     },
     {
       "id": "elfes-argentes", "titre": "Apparition des Elfes argentés", "epoque": "datee", "annee": -100,
       "extraits": [
         { "page": "races/elfe-argente", "debut": "Cette race est apparue pour la première fois en l'an -100, après un \"accident\".", "date": "en l'an -100" },
-        { "page": "races/elfe-argente", "debut": "Tout comme les forestiers et les noirs, ils ont été des esclaves des dorés.", "fin": "une partie des elfes dorés en elfe argenté." }
+        { "page": "races/elfe-argente", "debut": "Leur origine reste encore assez inconnue", "fin": "une partie des elfes dorés en elfe argenté." },
+        { "page": "races/elfe-dore", "debut": "L'origine de ces elfes ?", "fin": "mais qui est toujours un secret aujourd'hui." },
+        { "page": "lore/empire-argente", "debut": "Les Elfes argentés ne sont pas une race naturelle", "fin": "immédiatement réduite à l’esclavage." }
       ]
     },
     {
       "id": "elfes-forestiers", "titre": "Apparition des Elfes forestiers", "epoque": "datee", "annee": -50,
       "extraits": [
-        { "page": "races/elfe-forestier", "debut": "Cette race est apparue pour la première fois en l'an -50, c'est une lente évolution des elfes dorés dans le milieu forestier.", "date": "en l'an -50" }
+        { "page": "races/elfe-forestier", "debut": "Cette race est apparue pour la première fois en l'an -50, c'est une lente évolution des elfes dorés dans le milieu forestier.", "date": "en l'an -50" },
+        { "page": "races/elfe-forestier", "debut": "L'une des branches qu'ont engendrées les Elfes Dorés", "fin": "d'où le nom d'Elfes Forestiers." },
+        { "page": "races/elfe-dore", "debut": "L'origine de ces elfes ?", "fin": "mais qui est toujours un secret aujourd'hui." },
+        { "page": "lore/republique-forestier", "debut": "À l’origine, les Elfes forestiers étaient des Elfes dorés", "fin": "et leur magie s’harmonisa avec leur environnement." }
       ]
     },
     {
       "id": "minotaures", "titre": "Apparition des Minotaures", "epoque": "datee", "annee": -50,
       "extraits": [
-        { "page": "races/minotaure", "debut": "Apparu en l'an -50, contrairement aux autres hybrides animales, c'est une création alchimique.", "date": "en l'an -50" }
+        { "page": "races/minotaure", "debut": "Apparu en l'an -50, contrairement aux autres hybrides animales, c'est une création alchimique.", "date": "en l'an -50" },
+        { "page": "races/minotaure", "debut": "Créés par les Elfes Dorés afin de servir d’esclaves", "fin": "sous la domination de leurs créateurs." }
       ]
     },
     {
       "id": "majins", "titre": "Arrivée des Majins dans leur monde d’origine", "epoque": "datee", "annee": -39,
       "extraits": [
-        { "page": "races/majin", "debut": "Cette race est arrivée dans leur monde d'origine en -39.", "date": "en -39" }
+        { "page": "races/majin", "debut": "Cette race est arrivée dans leur monde d'origine en -39.", "date": "en -39" },
+        { "page": "races/majin", "debut": "C'est une race plutôt jeune si on les compare avec les Humains", "fin": "prétendante du trône de l'Ambassadeur de l'Absolu." }
       ]
     },
     {
       "id": "temples-elementaires", "titre": "Création des temples élémentaires", "epoque": "datee", "annee": -30,
       "extraits": [
         { "page": "lore/temple-du-feu", "debut": "**Date de création :** 1 Séraphin, an \\-30", "date": "1 Séraphin, an \\-30" },
+        { "page": "lore/temple-du-feu", "debut": "Le Temple du Feu fut bâti dans la lave même du Volcan Doré", "fin": "avant d’y sceller une flamme éternelle." },
         { "page": "lore/temple-de-la-foudre", "debut": "Date de création : 1 Volt \\-30", "date": "1 Volt \\-30" },
         { "page": "lore/temple-de-la-foudre", "debut": "Fondé peu avant la Grande Union des Temples", "fin": "qui ravageait autrefois la mer orientale.", "date": "peu avant la Grande Union des Temples" },
         { "page": "lore/temple-de-la-lumiere", "debut": "* Date de création : 1 Aurora, an \\-30", "date": "1 Aurora, an \\-30" },
         { "page": "lore/temple-de-la-lumiere", "debut": "Fondé avant même l’aube des grandes civilisations", "fin": "donnant naissance à cette Tour Cristalline.", "date": "avant même l’aube des grandes civilisations" },
         { "page": "lore/temple-de-la-terre", "debut": "Date de création : 1 Dimitri \\-30", "date": "1 Dimitri \\-30" },
         { "page": "lore/temple-de-la-terre", "debut": "Le Temple de la Terre fut fondé durant la même ère", "fin": "à travers des bastions physiques.", "date": "durant la même ère que les autres grands temples élémentaires" },
+        { "page": "lore/temple-de-la-terre", "debut": "Le premier ambassadeur, Titane, façonna les fondations du temple", "fin": "dans une architecture indestructible." },
         { "page": "lore/temple-de-leau", "debut": "Date de création : 1 Océane \\-30", "date": "1 Océane \\-30" },
-        { "page": "lore/temple-de-leau", "debut": "La fondation du Temple de l’Eau remonte à l’ère pré-Impériale", "fin": "dans les conflits régionaux.", "date": "l’ère pré-Impériale" },
+        { "page": "lore/temple-de-leau", "debut": "La fondation du Temple de l’Eau remonte à l’ère pré-Impériale", "fin": "une partie de ses eaux pour y ériger un sanctuaire.", "date": "l’ère pré-Impériale" },
         { "page": "lore/temple-de-lombre", "debut": "**Date de création :** 1 Umbro \\-30", "date": "1 Umbro \\-30" },
+        { "page": "lore/temple-de-lombre", "debut": "Le Temple de l’Ombre serait né d’un pacte entre Umbro", "fin": "à la hauteur de la grandeur des idéaux d’Umbro." },
         { "page": "lore/temple-de-vent", "debut": "* **Date de création :** 1 Éoline, an \\-30", "date": "1 Éoline, an \\-30" },
         { "page": "lore/temple-de-vent", "debut": "Érigé à la demande directe d’Éoline", "fin": "dissipa le nuage par son souffle divin." }
       ]
@@ -136,13 +155,15 @@
         { "page": "races/elfe-noir", "debut": "Cette race est apparue pour la première fois en l'an 12, après une fuite possible grâce à Eaunoire.", "date": "en l'an 12" },
         { "page": "races/elfe-noir", "debut": "À l’origine, les Elfes Charbon étaient des elfes dorés condamnés à mort", "fin": "Eaunoire, premier ambassadeur déchu de l’Eau." },
         { "page": "lore/eaunoire", "debut": "À une époque où seuls les Elfes Dorés peuplaient le monde", "fin": "C’est ainsi que naquirent les Elfes Noirs.", "date": "À une époque où seuls les Elfes Dorés peuplaient le monde" },
-        { "page": "lore/temple-noir", "debut": "L’origine du Temple noir est intimement liée", "fin": "Ainsi sont nés les elfes noirs.", "date": "Une époque où seul les Elfes Dorés existait" }
+        { "page": "lore/temple-noir", "debut": "L’origine du Temple noir est intimement liée", "fin": "Ainsi sont nés les elfes noirs.", "date": "Une époque où seul les Elfes Dorés existait" },
+        { "page": "lore/republique-noire", "debut": "Les Elfes Noirs sont issus d’un schisme ancien", "fin": "qui leur offrit une nouvelle façon de vivre." }
       ]
     },
     {
       "id": "or-de-londolor", "titre": "Découverte de l’or à Londolor", "epoque": "datee", "annee": 14,
       "extraits": [
-        { "page": "lore/londolor", "debut": "C’est en l’an 14 qu’ils découvrent un grand gisement d’or", "fin": "pour y creuser le plus efficacement possible.", "date": "en l’an 14" },
+        { "page": "lore/londolor", "debut": "Mines profondes, dont un immense gisement d’or découvert en l’an 14", "date": "en l’an 14" },
+        { "page": "lore/londolor", "debut": "La ville-mine des nains de l’est", "fin": "pour y creuser le plus efficacement possible.", "date": "en l’an 14" },
         { "page": "lore/londolor", "debut": "La découverte de l’or en l’an 14, tournant économique majeur.", "date": "en l’an 14" }
       ]
     },
@@ -150,7 +171,7 @@
       "id": "premier-impact", "titre": "Guerre des Temples/Apparition de l'Ottar Monde", "epoque": "datee", "annee": 20, "portee": "majeur",
       "extraits": [
         { "page": "lore/les-impacts-mineur-et-majeur", "debut": "Guerre des Temples/Apparition de l'Ottar Monde (An 20\\)", "date": "An 20" },
-        { "page": "lore/temple-de-lespace-temps", "debut": "Lorsque le Premier Impact survint en l’an 20", "fin": "chaque tour se retranchant dans sa vision du monde.", "date": "en l’an 20" },
+        { "page": "lore/temple-de-lespace-temps", "debut": "Lorsque le Premier Impact survint en l’an 20", "fin": "arrachant le temple à la trame du monde.", "date": "en l’an 20" },
         { "page": "lore/temple-de-lespace-temps", "debut": "Mais lors du Premier Impact, en l’an \\-30", "fin": "l’effondrement de leur propre sanctuaire.", "date": "en l’an \\-30" },
         { "page": "lore/temple-de-lespace-temps", "debut": "Mais la guerre éclata avant son éveil.", "fin": "fut l’origine directe du Vide." },
         { "page": "lore/mora", "debut": "À une époque où existait encore le Temple de l’Espace/Temps", "fin": "Cela avait scindé la religion en deux.", "date": "lors de ce que l’on nomme aujourd’hui le Premier Impact" },
@@ -169,7 +190,8 @@
       "id": "excalibur", "titre": "Construction d’Excalibur", "epoque": "datee", "annee": 21,
       "extraits": [
         { "page": "lore/excalibur", "debut": "An 21 \\- Construction de l’arme", "fin": "Objectif de l’arme déterminé", "date": "An 21" },
-        { "page": "lore/excalibur", "debut": "L’histoire d’Excalibur débute avec Charles Carsote", "fin": "Ainsi naquit le premier véritable porteur d’Excalibur.", "date": "En l’an 21" }
+        { "page": "lore/excalibur", "debut": "L’histoire d’Excalibur débute avec Charles Carsote", "fin": "Ainsi naquit le premier véritable porteur d’Excalibur.", "date": "En l’an 21" },
+        { "page": "lore/excalibur", "debut": "Selon une légende, quand l’arme fût forgée", "fin": "envers les êtres immortels.", "date": "quand l’arme fût forgée" }
       ]
     },
     {
@@ -202,7 +224,8 @@
       "id": "vampirisme", "titre": "Naissance de la maladie du Vampirisme", "epoque": "datee", "annee": 45,
       "extraits": [
         { "page": "lore/vampires-primordiaux", "debut": "Les Vampires Primordiaux sont les tout premiers êtres à avoir porté le vampirisme.", "fin": "les frappa d’une malédiction : le Vampirisme." },
-        { "page": "lore/vampires-primordiaux", "debut": "Mais les neuf Vampires Primordiaux proposèrent un accord", "fin": "distincte de sa forme primordiale.", "date": "en l’an 45" }
+        { "page": "lore/vampires-primordiaux", "debut": "Mais les neuf Vampires Primordiaux proposèrent un accord", "fin": "distincte de sa forme primordiale.", "date": "en l’an 45" },
+        { "page": "lore/confrerie-du-sang", "debut": "Il y a eu l’apparition des vampires primordiaux", "fin": "devenu des émissaires du sang." }
       ]
     },
     {
@@ -250,6 +273,7 @@
       "id": "compagnie-du-fer-noir", "titre": "Fondation de la Compagnie du Fer Noir", "epoque": "datee", "annee": 114,
       "extraits": [
         { "page": "lore/compagnie-du-fer-noir", "debut": "Fondée en 114, la Compagnie du Fer Noir", "fin": "d’une valeur inestimable.", "date": "Fondée en 114" },
+        { "page": "lore/compagnie-du-fer-noir", "debut": "* **Date de création :** 114", "date": "114" },
         { "page": "lore/compagnie-du-fer-noir", "debut": "L’exploitation attira rapidement les convoitises", "fin": "spécialisée dans le minage et le mercenariat." }
       ]
     },
@@ -291,7 +315,8 @@
       "extraits": [
         { "page": "lore/londolor", "debut": "En l’an 200, lors d’une guerre contre les elfes noirs", "fin": "d’une solution à leur stérilité.", "date": "En l’an 200" },
         { "page": "races/minotaure", "debut": "Ce n’est qu’à la suite d’une guerre de territoire entre les Nains et les Elfes Charbon", "fin": "et leur offrirent refuge." },
-        { "page": "races/nain", "debut": "Ce sont également les Nains qui, en l’an 280, libérèrent les Minotaures", "fin": "ne se sont jamais véritablement apaisées.", "date": "en l’an 280" }
+        { "page": "races/nain", "debut": "Ce sont également les Nains qui, en l’an 280, libérèrent les Minotaures", "fin": "ne se sont jamais véritablement apaisées.", "date": "en l’an 280" },
+        { "page": "lore/republique-noire", "debut": "Un peu plus tard, les elfes noirs ont perdu les minotaures", "fin": "mais les ont pas réduit en esclavage." }
       ]
     },
     {
@@ -311,7 +336,9 @@
     {
       "id": "fin-de-l-empire-dore", "titre": "Révolte des Elfes argentés et destruction de l’Empire Doré", "epoque": "datee", "annee": 205,
       "extraits": [
-        { "page": "lore/empire-argente", "debut": "Des siècles d’oppression menèrent en 205 à une révolte violente.", "fin": "et exilèrent les survivants restants.", "date": "en 205" }
+        { "page": "lore/empire-argente", "debut": "Des siècles d’oppression menèrent en 205 à une révolte violente.", "fin": "et exilèrent les survivants restants.", "date": "en 205" },
+        { "page": "lore/republique-noire", "debut": "Tout ceci à durer des siècles jusqu’au jour où", "fin": "comme fierté de leur peuple." },
+        { "page": "races/elfe-argente", "debut": "Malgré leur statut d'esclave, les elfes argentés devenaient très nombreux", "fin": "libérer leur chaîne et celle des autres." }
       ]
     },
     {
@@ -428,6 +455,7 @@
     {
       "id": "barrage-argente", "titre": "Naissance du Barrage Argenté", "epoque": "datee", "annee": 680,
       "extraits": [
+        { "page": "lore/barrage-argente", "debut": "Le Barrage Argenté est une cité-nation isolée, née d’une rébellion", "fin": "la doctrine génocidaire de l’Empire Argenté." },
         { "page": "lore/barrage-argente", "debut": "En 680, l’Empire Argenté entama une politique de purification raciale et culturelle", "fin": "dernier bastion de la liberté des elfes argentés.", "date": "En 680" },
         { "page": "lore/empire-argente", "debut": "tensions entre castes magiques et non-magiques", "fin": "l’apparition du Barrage argenté.", "date": "en 680" }
       ]
@@ -499,7 +527,8 @@
       "extraits": [
         { "page": "lore/les-impacts-mineur-et-majeur", "debut": "Bâton de la Destruction (???) (Golopa)", "date": "???" },
         { "page": "lore/baton-de-la-destruction", "debut": "Le Bâton de la Destruction est une relique", "fin": "les plus dangereux jamais façonnés.", "date": "pendant l’ère “négative”" },
-        { "page": "lore/baton-de-la-destruction", "debut": "Il s’agit de l’un des artefacts les plus difficiles à réunir", "fin": "laissant uniquement des fragments de légendes.", "date": "des époques “négatives”" }
+        { "page": "lore/baton-de-la-destruction", "debut": "Il s’agit de l’un des artefacts les plus difficiles à réunir", "fin": "laissant uniquement des fragments de légendes.", "date": "des époques “négatives”" },
+        { "page": "lore/baton-de-la-destruction", "debut": "À une époque reculée, le dirigeant du Culte de la Destruction", "fin": "après l’avoir ramené.", "date": "À une époque reculée" }
       ]
     },
     {
