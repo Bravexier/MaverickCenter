@@ -4,12 +4,17 @@
 //     catégorie, lieux de rencontre, valeurs typées d'une carte et ses tables de détail) est recalculé par les fonctions de l'extraction du doc
 //     (lib/monstre-champs.mjs, comme tools/bestiaire/extraire.mjs), jamais saisi ; création et suppression d'une espèce et d'une carte ;
 //   - les lignes du tableau et les cartes que la page n'a pas (monstre créé depuis la construction du site : POST /api/edition/bestiaire/), rendues
-//     par lib/bestiaire-rendu.mjs comme la page construite.
+//     par lib/bestiaire-rendu.mjs comme la page construite ;
+//   - le portrait d'une carte, ou d'une espèce sans carte (« il sera possible d'enregistrer le portrait de la même manière que dans la feuille de
+//     personnage », migration 0033) : l'image et son cadrage vont ensemble (suiviDuPortrait) ; l'image entière ne sort que par POST /api/edition/portrait/.
+//     Le portrait suit la tuile : la première carte d'une espèce prend celui de l'espèce, et une espèce qui perd sa dernière carte reprend le sien (sans
+//     quoi l'image resterait dans la base sans tuile pour la montrer, la recadrer ou la retirer).
 // Chaque écriture passe par le journal (`ctx.w`), suppressions de détail comprises : les tables des monstres n'ont pas de ON DELETE CASCADE.
 // Les outils communs du service (refus, synchroniser, provenance…) sont donnés par serveur/edition.mjs (domainesDuBestiaire), sans import en retour.
 import { chargerMonstres } from '../src/lib/bestiaire-db.mjs';
 import { htmlDeCarteMonstre, htmlDeLigneMonstre } from '../src/lib/bestiaire-rendu.mjs';
 import { bornes, CATEGORIES, GABARIT_DE_CARTE, lieux, RUBRIQUES, valeursDeLaCarte } from '../src/lib/monstre-champs.mjs';
+import { bornerCadrage, CADRAGE_PAR_DEFAUT, cadrageDe, dimensionsDuPortrait, empreinte, ZOOM_MAX, ZOOM_MIN } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
 
@@ -19,6 +24,28 @@ const VALEURS_TYPEES = ['sante', 'chakra', 'barriere', 'armure_physique', 'armur
 /** Tables de détail d'une carte, puis d'une espèce : vidées (au journal) avant de supprimer la ligne qu'elles citent. */
 const DETAILS_D_UNE_CARTE = ['monstre_defense', 'monstre_capacite', 'monstre_attaque', 'monstre_caracteristique', 'monstre_rubrique'];
 const DETAILS_D_UNE_ESPECE = ['monstre_butin', 'monstre_espece_bloc', 'monstre_espece_lieu'];
+/** Le portrait et son cadrage (lib/portrait.mjs), comme personnage.portrait : mêmes colonnes dans monstre et monstre_espece. */
+export const COLONNES_DU_PORTRAIT = ['portrait', 'portrait_x', 'portrait_y', 'portrait_zoom'];
+const portraitDe = (ligne) => Object.fromEntries(COLONNES_DU_PORTRAIT.map((c) => [c, ligne?.[c] ?? null]));
+const SANS_PORTRAIT = portraitDe(null);
+
+/**
+ * Le cadrage qui suit l'image (colonnes du portrait modifiées) : sans image, pas de cadrage ; avec une image, un cadrage absent est centré sans zoom, et
+ * le carré reste dans l'image (lib/portrait.mjs#bornerCadrage, la règle de la page qui recadre) — une image dont l'en-tête ne se lit pas garde le
+ * cadrage reçu (ses bornes sont celles des colonnes).
+ */
+export function suiviDuPortrait(ligne, valeurs) {
+  if (!COLONNES_DU_PORTRAIT.some((c) => c in valeurs)) return {};
+  if (ligne.portrait === null || ligne.portrait === undefined) return { portrait_x: null, portrait_y: null, portrait_zoom: null };
+  const cadrage = {
+    x: ligne.portrait_x ?? CADRAGE_PAR_DEFAUT.x,
+    y: ligne.portrait_y ?? CADRAGE_PAR_DEFAUT.y,
+    zoom: Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, ligne.portrait_zoom ?? CADRAGE_PAR_DEFAUT.zoom)),
+  };
+  const dimensions = dimensionsDuPortrait(ligne.portrait);
+  const c = dimensions ? bornerCadrage(cadrage, dimensions) : cadrage;
+  return { portrait_x: c.x, portrait_y: c.y, portrait_zoom: c.zoom };
+}
 
 /**
  * Les domaines du bestiaire ({ table: { colonnes?, deriver?, creer?, supprimer? } }, voir serveur/edition.mjs#DOMAINES).
@@ -56,7 +83,7 @@ export function domainesDuBestiaire({ refus, ErreurEdition, synchroniser, proven
 
   const MONSTRE_ESPECE = {
     colonnes(_ctx, ligne, valeurs) {
-      return 'ep_brut' in valeurs ? echelles(ligne.ep_brut, 'Échelle de l’espèce') : {};
+      return { ...('ep_brut' in valeurs ? echelles(ligne.ep_brut, 'Échelle de l’espèce') : {}), ...suiviDuPortrait(ligne, valeurs) };
     },
     deriver(ctx, avant, apres) {
       if (avant.lieu_brut !== apres.lieu_brut) suivreLesLieux(ctx, apres);
@@ -99,7 +126,7 @@ export function domainesDuBestiaire({ refus, ErreurEdition, synchroniser, proven
       // une autre catégorie : l'écriture du doc (« Mini boss ») ne la dit plus, le libellé la remplace
       if ('categorie' in valeurs && valeurs.categorie !== avant.categorie) sortie.categorie_brut = CATEGORIES[valeurs.categorie];
       if ('variable' in valeurs) sortie.variable = Number(valeurs.variable);
-      return sortie;
+      return { ...sortie, ...suiviDuPortrait(ligne, valeurs) };
     },
     /**
      * Une carte dans une espèce : id « <espèce>#carte:<nom> » tiré une fois (suffixe -2… si l'id est pris ou a déjà servi), puis figé ; rangée après
@@ -118,12 +145,15 @@ export function domainesDuBestiaire({ refus, ErreurEdition, synchroniser, proven
       for (let n = 2; lireLigne(db, 'monstre', { id }) || idDejaEmploye(db, ['monstre'], id); n += 1) id = `${espece.id}#carte:${cle}-${n}`;
       const rang = (db.prepare('SELECT max(rang) AS m FROM monstre WHERE espece_id = ?').get(espece.id).m ?? 0) + 1;
       const source_ref = provenance(ctx.instant);
+      // la première carte d'une espèce prend le portrait de sa tuile (l'espèce n'a plus de ligne à elle)
+      const tuile = rang === 1 && espece.portrait !== null;
       w.inserer('monstre', {
         id, espece_id: espece.id, rang, nom: valeurs.nom, nom_brut: valeurs.nom, nom_cle: cle, echelle_brut: valeurs.echelle_brut,
         ...echelles(valeurs.echelle_brut, 'Échelle de puissance'), type_brut: valeurs.type_brut ?? null, alignement_brut: valeurs.alignement_brut ?? null,
         categorie_brut: CATEGORIES[valeurs.categorie], categorie: valeurs.categorie, variable: 0, ...Object.fromEntries(VALEURS_TYPEES.map((c) => [c, null])),
-        origine: ORIGINE, source_ref,
+        origine: ORIGINE, source_ref, ...(tuile ? portraitDe(espece) : {}),
       });
+      if (tuile) w.modifier('monstre_espece', { id: espece.id }, SANS_PORTRAIT);
       GABARIT_DE_CARTE.forEach((rubrique, k) => {
         w.inserer('monstre_rubrique', { monstre_id: id, rang: k + 1, rubrique, titre: rubrique === 'attributs' ? null : RUBRIQUES[rubrique], texte: '', origine: ORIGINE, source_ref });
       });
@@ -136,6 +166,11 @@ export function domainesDuBestiaire({ refus, ErreurEdition, synchroniser, proven
       if (!monstre) throw new ErreurEdition(404, `Monstre introuvable : ${cle.id}`);
       vider(ctx, DETAILS_D_UNE_CARTE, { monstre_id: monstre.id });
       w.supprimer('monstre', { id: monstre.id });
+      // sa dernière carte supprimée, l'espèce reprend une ligne à elle, et le portrait de la carte si elle n'en a pas
+      const espece = lireLigne(db, 'monstre_espece', { id: monstre.espece_id });
+      if (monstre.portrait !== null && espece?.portrait === null && !db.prepare('SELECT 1 FROM monstre WHERE espece_id = ?').get(espece.id)) {
+        w.modifier('monstre_espece', { id: espece.id }, portraitDe(monstre));
+      }
       return { resume: `Monstre supprimé : ${monstre.nom}` };
     },
   };
@@ -155,13 +190,17 @@ export const especesDeMonstres = (db) =>
 
 /**
  * L'ordre des lignes du tableau des monstres (`ordre` : leurs identifiants, carte ou espèce sans carte) et, pour celles que la page n'a pas (`connues` :
- * les identifiants de ses lignes), la ligne et la carte en HTML (lib/bestiaire-rendu.mjs ; `logo` : l'adresse du logo du portrait).
+ * les identifiants de ses lignes), la ligne et la carte en HTML (lib/bestiaire-rendu.mjs ; `logo` : l'adresse du logo, à la place du portrait) et ce
+ * que dit son portrait (`portrait` : { empreinte, x, y, zoom } ou null), que la page charge à l'ouverture de la carte.
  */
 export function lignesDuBestiaire(db, { connues, logo }) {
   const deja = new Set(connues);
   const { lignes } = chargerMonstres(db);
+  const vu = (p) => (p ? { empreinte: empreinte(p.donnees), ...cadrageDe(p) } : null);
   return {
     ordre: lignes.map((l) => l.id),
-    lignes: lignes.flatMap((l, i) => (deja.has(l.id) ? [] : [{ id: l.id, ancre: l.ancre, ligne: htmlDeLigneMonstre(l, i), carte: htmlDeCarteMonstre(l, { logo }) }])),
+    lignes: lignes.flatMap((l, i) => (deja.has(l.id)
+      ? []
+      : [{ id: l.id, ancre: l.ancre, ligne: htmlDeLigneMonstre(l, i), carte: htmlDeCarteMonstre(l, { logo }), portrait: vu(l.portrait) }])),
   };
 }

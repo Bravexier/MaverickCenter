@@ -12,19 +12,24 @@ inséré en `?raw`, script `src/scripts/bestiaire.mjs`, logique pure `lib/bestia
 - **Monstres** : les cartes du Google Doc « Bestiaire 2.0 » (une ligne par carte : ennemi simple, mini-boss, boss ; une ligne par espèce qui n'a pas encore
   de carte). Demande du propriétaire : « Le tableau est trop large […] Le tableau devrait n'avoir que le nom / l'espèce / les EP / la catégorie, le type,
   le lieu. Le reste est dans le détail. Une carte qui s'ouvrira à côté du tableau avec en plus un encart pour un portrait (placeholder du logo en
-  attendant) ». Six colonnes, donc ; la ligne et sa carte sont rendues par `lib/bestiaire-rendu.mjs` (le même HTML pour la page construite et pour le mode
-  modification). Au-dessus, repliés : les règles des échelles de puissance et le glossaire du butin.
+  attendant) », puis : « Le tableau est encore trop large. J'aimerai du 50/50 avec la tuile du monstre choisi. J'aimerai les colonnes suivantes dans cet
+  ordre : Espèce | NOM | Type | Catégorie | EP | Lieux ». Six colonnes, donc, dans cet ordre (le nom reste l'en-tête de la ligne, et la première colonne
+  reste visible quand le tableau défile en largeur) ; tableau et carte se partagent la largeur à parts égales. La ligne et sa carte sont rendues par
+  `lib/bestiaire-rendu.mjs` (le même HTML pour la page construite et pour le mode modification). Au-dessus, repliés : les règles des échelles de
+  puissance et le glossaire du butin.
 - **Créatures invoquées** : les 63 créatures du classeur « Invocation » (golems et poupées, non-morts, marionnettes de l'ombre), à part ; trois colonnes
   (nom, invocation, magies), la carte à côté (`CarteInvoquee.astro`).
 
-Recherche : tous les mots, sans casse ni accents, dans tout ce que la ligne et sa carte affichent. Filtres : un menu par champ, à cases (catégorie, EP,
-type, alignement, lieu, vulnérabilité, résistance, immunité, capacité ; ils portent aussi sur ce que la carte seule montre) ; plusieurs valeurs d'un même
+Recherche : tous les mots, sans casse ni accents, dans tout ce que la ligne et sa carte affichent. Filtres : un menu à cases par colonne affichée, rien
+d'autre (« Inutile de filtrer par les colonnes non affichées », demande du propriétaire) : espèce, type, catégorie, EP, lieux pour les monstres (le nom
+passe par la recherche), invocation et magie pour les créatures invoquées ; plusieurs valeurs d'un même
 filtre = l'une OU l'autre, plusieurs filtres = tous à la fois ; chaque valeur affiche combien de lignes elle garderait. Un clic sur un en-tête trie
 (croissant, décroissant, puis l'ordre du doc ; une valeur absente toujours à la fin). Recherche, filtres et tri sont dans l'adresse
 (`?q=golem&categorie=boss&ep=5&tri=ep&sens=desc` ; préfixe `i-` pour les créatures invoquées), pour partager une recherche.
 
 Un clic sur une ligne ouvre sa **carte** à côté du tableau, dans un panneau qui suit le défilement (sur un écran de moins de 70rem, par-dessus la page ;
-Échap ou « Fermer » la referme) : en-tête (nom, espèce, catégorie, type, alignement, échelle), **portrait** (le logo en attendant), toute la carte
+Échap ou « Fermer » la referme) : en-tête (nom, espèce, catégorie, type, alignement, échelle), **portrait** (le logo en attendant une image ; voir plus
+bas), toute la carte
 rubrique par rubrique (santé, chakra et barrière en tuiles, F.P.V.S.I.A. en cases colorées, cibles des défenses en pastilles quand l'écriture s'y prête,
 sinon le texte tel qu'écrit : `lib/monstre-rendu.mjs`), l'espèce (description, lieu de rencontre, blocs qui suivent les cartes) et le butin.
 `#monstre-<nom>`, `#carte-monstre-<nom>` ou `#invoquee-<nom>` ouvre une carte. Sans JavaScript, le nom est un lien vers la carte, qui s'affiche alors
@@ -48,6 +53,15 @@ Bestiaire, ainsi que la possibilité de créer / modifier / supprimer un monstre
   la fin du doc ; elle a sa ligne jusqu'à sa première carte.
 - **Supprimer** : un bouton sur chaque ligne : une carte (avec tout son texte et ses valeurs typées ; son espèce reste, avec une ligne à elle si c'était sa
   dernière carte), ou une espèce sans carte (avec ses lieux, ses blocs et son butin). Une espèce qui a encore des cartes ne se supprime pas.
+- **Portrait** (demande du propriétaire : « En mode édition, il sera possible d'enregistrer le portrait de la même manière que dans la feuille de
+  personnage ») : sous le cadre de la carte ouverte, « Choisir une image » (puis « Changer »), « Recadrer » et ✕. Comme sur la fiche
+  (`src/scripts/portrait.mjs`, partagé) : l'image est réduite (600 000 pixels au plus, WebP ou JPEG sous 700 000 caractères), puis recadrée dans un
+  dialogue (glisser, flèches, molette ou curseur de zoom) ; on garde l'image et son cadrage (centre du carré et zoom, de 1 à 4 : on peut recadrer plus
+  tard). Le portrait s'**enregistre tout de suite**, seul dans son lot (une image fait jusqu'à 700 000 caractères, une requête au plus 1 Mio) ; ✕ le
+  retire après confirmation. Une carte a le sien ; une espèce sans carte aussi (sa tuile). Le portrait suit la tuile : la première carte créée dans une
+  espèce prend celui de l'espèce, et une espèce qui perd sa dernière carte reprend celui de la carte (s'il n'en a pas déjà un) ; sans quoi l'image
+  resterait dans la base sans tuile pour la montrer. Un portrait changé par quelqu'un d'autre pendant qu'on le recadre est refusé (conflit, comme un
+  champ : l'image est comparée par son empreinte). La page ne charge l'image d'un portrait changé depuis la construction qu'à l'ouverture de sa carte.
 
 Ce que la base tire du texte est **recalculé par le service** avec les fonctions de l'extraction (`lib/monstre-champs.mjs`), jamais saisi
 (`serveur/edition-bestiaire.mjs`) : les bornes d'une échelle (« EP2 - 4 » → 2 et 4 ; hors de 1 à 10 : refusé), l'écriture de la catégorie, les lieux de
@@ -55,6 +69,17 @@ rencontre (découpés aux virgules), et, pour une rubrique modifiée, les valeur
 tables de détail (caractéristiques, attaques, capacités, cibles des défenses). Les identifiants sont tirés du nom une fois (`monstres/<nom>`,
 `<espèce>#carte:<nom>`), puis figés : un monstre renommé garde le sien, et un identifiant supprimé ne resert jamais (suffixe `-2`). Une rubrique ne
 s'ajoute ni ne se retire seule (elle vient avec sa carte) ; une case de butin vide ne se remplit pas encore. Aucune fiche de personnage ne cite un monstre.
+
+Le portrait vit dans `monstre.portrait` et `monstre_espece.portrait` (data URL, et son cadrage `portrait_x`, `portrait_y`, `portrait_zoom` : les mêmes
+colonnes que `personnage`, migration `0033-portraits-du-bestiaire`) ; le service garde le cadrage dans l'image (`lib/portrait.mjs#bornerCadrage`, la règle
+du dialogue) et l'efface avec elle. Au build, chaque image devient un fichier, `/bestiaire/portraits/<empreinte>.webp` (ou `.jpg`, `.png` selon son format :
+`lib/portraits-publies.mjs`, une route par format, `pages/bestiaire/portraits/[empreinte].webp.ts`… ; la page n'emporte pas 300 images en data URL ; une
+image changée change d'adresse), que la carte montre cadré sans script (`styleDuCadrage` : l'image placée
+en pourcentages dans un cadre carré). Une image n'est acceptée que si elle se décode en entier et que son en-tête donne ses dimensions (`estUnPortrait`,
+`dimensionsDuPortrait`) : le build en publie les octets. Les réponses de l'édition (lignes lues, en attente, réponse d'un lot, conflit) n'en donnent que
+`{ image, empreinte, resume }` (`ligneSansImage`) ; la page la demande à part (`POST /api/edition/portrait/`). Le journal exporté et le lot figé de la mise à
+jour la portent en entier (rejouée sur `data/rows`) ; l'historique des modifications et la note de version n'en gardent que le résumé (« image 3f2a9c01
+(84 Ko), cadrage 0.5 × 0.5, zoom 1 ») ; la page `/donnees/` en montre la longueur.
 
 Une page construite avant la création ou la suppression d'un monstre demande au service l'ordre de ses lignes et le HTML de celles qu'elle n'a pas
 (`POST /api/edition/bestiaire/`). Les modifications partent dans le journal, puis dans `data/rows` par la mise à jour, et sont listées dans la note de

@@ -59,8 +59,15 @@ export function ancre(valeursCle) {
   return 'r-' + valeursCle.map((v) => String(v).replace(/[^A-Za-z0-9-]/g, (c) => `_${c.codePointAt(0).toString(16)}_`)).join('.');
 }
 
-/** Colonnes qu'on résume au lieu de les afficher en entier (le texte intégral de la page est dans le wiki). */
-const RESUMEES = { page: { corps_md: 'corps_md_caracteres' } };
+/**
+ * Colonnes qu'on résume au lieu de les afficher en entier : le texte intégral d'une page est dans le wiki, un portrait (data URL de 700 000 caractères au
+ * plus, migration 0033) sur la carte de son monstre.
+ */
+const RESUMEES = {
+  page: { corps_md: 'corps_md_caracteres' },
+  monstre: { portrait: 'portrait_caracteres' },
+  monstre_espece: { portrait: 'portrait_caracteres' },
+};
 
 const premiereFrase = (t) => {
   const m = /^(.{20,220}?[.!?])(\s|$)/.exec(t ?? '');

@@ -8,6 +8,7 @@
 // (scripts/mise-a-jour-regles.mjs) lisent les tables puis appellent comparerBases ; la page affiche avec lib/notes-de-version-rendu.mjs.
 import { CATEGORIES_DE_MONSTRE, STATS_VARIABLES, TABLES } from './edition-modele.mjs';
 import { sensDuChangement } from './notes-de-version-sens.mjs';
+import { resumeDuPortrait } from './portrait.mjs';
 import { ORDRE_DES_RACES } from './race-kinds.mjs';
 
 /** Domaines de la liste, dans l'ordre d'affichage, avec leur titre. */
@@ -40,6 +41,14 @@ export const TABLES_LUES = [
 ];
 
 const colonnesDe = (table) => Object.entries(TABLES[table].colonnes).map(([colonne, c]) => ({ colonne, libelle: c.libelle }));
+/** Le cadrage d'un portrait n'est pas une ligne à lui : il est dit avec l'image (portraitDit). */
+const CADRAGE = ['portrait_x', 'portrait_y', 'portrait_zoom'];
+const sansCadrage = (table) => colonnesDe(table).filter((c) => !CADRAGE.includes(c.colonne));
+/**
+ * Un portrait (migration 0033) dit sans recopier l'image : son empreinte, son poids et son cadrage (« image 3f2a9c01 (84 Ko), cadrage 0.5 × 0.5,
+ * zoom 1 ») — une image changée ou seulement recadrée fait une ligne de la note ; null sans image.
+ */
+const portraitDit = (v, ligne) => (v ? `${resumeDuPortrait(v)}, cadrage ${ligne?.portrait_x ?? 0.5} × ${ligne?.portrait_y ?? 0.5}, zoom ${ligne?.portrait_zoom ?? 1}` : null);
 const texte = (v) => (v === null || v === undefined ? null : String(v).replace(/\r\n?/g, '\n').trim() || null);
 const pareil = (a, b) => texte(a) === texte(b);
 const cleTriee = (o) => Object.fromEntries(Object.keys(o).sort().map((k) => [k, o[k]]));
@@ -142,14 +151,16 @@ const DEFINITIONS = [
     groupe: () => null, entite: (r) => r.titre, ordre: (r) => [r.titre], resume: (n) => `${n} pages du Codex`,
   },
   {
-    table: 'monstre_espece', domaine: 'bestiaire', cle: ['id'], colonnes: colonnesDe('monstre_espece'), genre: 'Espèce',
+    table: 'monstre_espece', domaine: 'bestiaire', cle: ['id'], colonnes: sansCadrage('monstre_espece'), genre: 'Espèce',
     groupe: (r) => r.nom, entite: (r) => r.nom, ordre: (r) => [r.ordre ?? 0, 0], resume: (n) => `${n} espèces`,
+    valeur: (colonne, v, _x, ligne) => (colonne === 'portrait' ? portraitDit(v, ligne) : v),
   },
   {
-    table: 'monstre', domaine: 'bestiaire', cle: ['id'], colonnes: colonnesDe('monstre'), genre: 'Monstre',
+    table: 'monstre', domaine: 'bestiaire', cle: ['id'], colonnes: sansCadrage('monstre'), genre: 'Monstre',
     groupe: (r, x) => x.nom('monstre_espece', r.espece_id), entite: (r) => r.nom,
     ordre: (r, x) => [x.ordre('monstre_espece', r.espece_id), 1, r.rang ?? 0, 0], resume: (n) => `${n} monstres`,
-    valeur: (colonne, v) => (colonne === 'categorie' ? libelleDeChoix(CATEGORIES_DE_MONSTRE, v) : colonne === 'variable' ? libelleDeChoix(STATS_VARIABLES, v) : v),
+    valeur: (colonne, v, _x, ligne) => (colonne === 'categorie' ? libelleDeChoix(CATEGORIES_DE_MONSTRE, v)
+      : colonne === 'variable' ? libelleDeChoix(STATS_VARIABLES, v) : colonne === 'portrait' ? portraitDit(v, ligne) : v),
   },
   {
     table: 'monstre_rubrique', domaine: 'bestiaire', cle: ['monstre_id', 'rang'], colonnes: colonnesDe('monstre_rubrique'), genre: 'Rubrique', detail: true,
@@ -254,9 +265,9 @@ function comparerTable(def, ref, dev, x) {
     }
     def.colonnes.forEach(({ colonne, libelle }, i) => {
       const absente = colonnesRef && !colonnesRef.has(colonne);
-      const lire = (v) => (def.valeur ? def.valeur(colonne, v, x) : v);
-      const v1 = lire(absente ? null : avant[colonne]);
-      const v2 = lire(r[colonne]);
+      const lire = (v, ligne) => (def.valeur ? def.valeur(colonne, v, x, ligne) : v);
+      const v1 = lire(absente ? null : avant[colonne], avant);
+      const v2 = lire(r[colonne], r);
       if (pareil(v1, v2)) return;
       const nature = texte(v1) === null ? 'ajoute' : texte(v2) === null ? 'retire' : 'modifie';
       sortie.push(ligneDeNote({ ...base, ordre: [...base.ordre, i], champ: libelle, colonne, nature, avant: v1, apres: v2 }));

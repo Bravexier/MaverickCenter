@@ -33,8 +33,9 @@ const sort = l.invocation.magieId && l.invocation.sortId ? `${url(`${l.invocatio
         }
       </p>
     </div>
-    <figure class="bcarte__portrait">
-      <img src={url('logo.webp')} alt="" width="319" height="320" loading="lazy" decoding="async" />
+    {/* le cadre des portraits des monstres (lib/bestiaire-rendu.mjs#htmlDuPortrait), le logo en attendant : une créature invoquée n'a pas encore de portrait */}
+    <figure class="bcarte__portrait" data-vide>
+      <div class="bcarte__cadre"><img src={url('logo.webp')} alt="" width="319" height="320" loading="lazy" decoding="async" /></div>
       <figcaption>Portrait à venir</figcaption>
     </figure>
     <a class="bcarte__fermer" href={`#${l.ancre}`} aria-label={`Fermer la carte de ${l.nom}`}>Fermer</a>

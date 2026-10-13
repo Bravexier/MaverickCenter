@@ -3,9 +3,10 @@
 // que ces colonnes ; tout ce qui en dépend dans la base (colonnes typées, tables de détail, page du wiki) est recalculé par le service, jamais saisi.
 // Entités créables (ENTITES) : métier, race, classe, peuple, spécialité, don de classe, espèce et carte de monstre ; supprimables : métier, spécialité,
 // don de classe (retirés des fiches de personnage qui les ont, avec une note datée : décision R42, annonceDesFiches), espèce et carte de monstre.
-// Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, pur lui aussi) : partagées par le service, les gabarits Astro et le
-// script des pages (src/scripts/edition.mjs).
+// Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs et lib/portrait.mjs, purs eux aussi) : partagées par le service, les
+// gabarits Astro et le script des pages (src/scripts/edition.mjs).
 import { NIVEAUX_DE_DON, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
+import { dimensionsDuPortrait, empreinte, estUnPortrait, PORTRAIT_MAX, resumeDuPortrait } from './portrait.mjs';
 
 export { NIVEAUX_DE_DON, NIVEAU_DES_SPECIALITES, SPECIALITES_MAX, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
 
@@ -16,9 +17,14 @@ export { NIVEAUX_DE_DON, NIVEAU_DES_SPECIALITES, SPECIALITES_MAX, TYPES_DE_DON_S
  *   markdown corps Markdown d'une page (guide) ;
  *   entier   nombre entier (signe permis) ;
  *   choix    une valeur d'une liste : `choix` ([{ valeur, libelle }], contrôlée ici) ou `liste` (nom d'une liste de GET /api/edition/listes/, lue dans
- *            la base vivante et contrôlée par le service).
+ *            la base vivante et contrôlée par le service) ;
+ *   reel     nombre (décimales permises) ;
+ *   image    une image en data URL (WebP, JPEG ou PNG, PORTRAIT_MAX caractères au plus, base64 complet et en-tête lisible : lib/portrait.mjs) ;
+ *            jamais une saisie de l'éditeur commun (une extension la choisit et la recadre : src/scripts/edition/bestiaire.mjs) ; les réponses de
+ *            l'édition (lignes lues, en attente, d'un lot, d'un conflit) n'en donnent que l'empreinte (ligneSansImage), l'image entière passe par
+ *            POST /api/edition/portrait/ — le journal exporté et le lot figé de la mise à jour la portent en entier (rejouée sur data/rows).
  * Options : `requis` (vide refusé), `vide` (valeur enregistrée pour un champ vidé quand la colonne n'accepte pas NULL : '' ou 'Rien'),
- * `min` / `max` (entier).
+ * `min` / `max` (entier, réel).
  */
 /** Catégories d'un monstre (colonne `monstre.categorie`) : les libellés de lib/monstre-champs.mjs#CATEGORIES (test/serveur-edition-bestiaire.test.mjs). */
 export const CATEGORIES_DE_MONSTRE = [
@@ -26,6 +32,16 @@ export const CATEGORIES_DE_MONSTRE = [
   { valeur: 'mini_boss', libelle: 'Mini-boss' },
   { valeur: 'boss', libelle: 'Boss' },
 ];
+/**
+ * Le portrait d'une carte de monstre ou d'une espèce (demande du propriétaire : « enregistrer le portrait de la même manière que dans la feuille de
+ * personnage », migration 0033) : l'image et son cadrage, comme personnage.portrait (lib/portrait.mjs).
+ */
+const COLONNES_DU_PORTRAIT = {
+  portrait: { type: 'image', libelle: 'Portrait', max: PORTRAIT_MAX },
+  portrait_x: { type: 'reel', libelle: 'Cadrage du portrait (horizontal)', min: 0, max: 1 },
+  portrait_y: { type: 'reel', libelle: 'Cadrage du portrait (vertical)', min: 0, max: 1 },
+  portrait_zoom: { type: 'reel', libelle: 'Zoom du portrait', min: 1, max: 4 },
+};
 /** `monstre.variable` : la carte dit « Ses stats varient selon son échelle de puissance. » (1) ou non (0). */
 export const STATS_VARIABLES = [
   { valeur: '0', libelle: 'Non' },
@@ -176,6 +192,7 @@ export const TABLES = {
       description: { type: 'texte', libelle: 'Description' },
       lieu_brut: { type: 'ligne', libelle: 'Lieu de rencontre (lieux séparés par des virgules)' },
       complement: { type: 'texte', libelle: 'Complément (après le lieu de rencontre)' },
+      ...COLONNES_DU_PORTRAIT,
     },
   },
   monstre: {
@@ -187,6 +204,7 @@ export const TABLES = {
       type_brut: { type: 'ligne', libelle: 'Type (« Vermine », « Non-mort »)' },
       alignement_brut: { type: 'ligne', libelle: 'Alignement' },
       variable: { type: 'choix', libelle: 'Stats selon l’échelle de puissance', requis: true, choix: STATS_VARIABLES },
+      ...COLONNES_DU_PORTRAIT,
     },
   },
   monstre_rubrique: {
@@ -349,6 +367,27 @@ export class ErreurValeur extends Error {
  * Texte : fins de ligne unifiées, espaces de bord retirées ; un champ vidé vaut `vide` s'il est défini, sinon NULL (absent = NULL).
  */
 export function valeurDuChamp(champ, brute, nom = champ.libelle) {
+  if (champ.type === 'image') {
+    if (brute === null || brute === undefined || brute === '') {
+      if (champ.requis) throw new ErreurValeur(`« ${nom} » : valeur obligatoire`);
+      return null;
+    }
+    if (typeof brute !== 'string' || brute.length > (champ.max ?? PORTRAIT_MAX)) throw new ErreurValeur(`« ${nom} » : image trop lourde (${champ.max ?? PORTRAIT_MAX} caractères au plus)`);
+    // une image que la page écrit : un base64 complet, et un en-tête dont on lit les dimensions (le cadrage et le build en ont besoin)
+    if (!estUnPortrait(brute) || !dimensionsDuPortrait(brute)) throw new ErreurValeur(`« ${nom} » : image attendue (data URL WebP, JPEG ou PNG)`);
+    return brute;
+  }
+  if (champ.type === 'reel') {
+    if (brute === null || brute === undefined || String(brute).trim() === '') {
+      if (champ.requis) throw new ErreurValeur(`« ${nom} » : valeur obligatoire`);
+      return null;
+    }
+    const n = typeof brute === 'number' ? brute : Number(String(brute).trim().replace(',', '.'));
+    if (!Number.isFinite(n)) throw new ErreurValeur(`« ${nom} » : nombre attendu`);
+    if (champ.min !== undefined && n < champ.min) throw new ErreurValeur(`« ${nom} » : au moins ${champ.min}`);
+    if (champ.max !== undefined && n > champ.max) throw new ErreurValeur(`« ${nom} » : au plus ${champ.max}`);
+    return n;
+  }
   if (champ.type === 'entier') {
     if (brute === null || brute === undefined || String(brute).trim() === '') {
       if (champ.requis) throw new ErreurValeur(`« ${nom} » : valeur obligatoire`);
@@ -370,6 +409,38 @@ export function valeurDuChamp(champ, brute, nom = champ.libelle) {
     return champ.vide ?? null;
   }
   return texte;
+}
+
+/** Les colonnes d'image d'une table du modèle (portrait). */
+export const colonnesImage = (table) => Object.entries(TABLES[table]?.colonnes ?? {}).filter(([, c]) => c.type === 'image').map(([nom]) => nom);
+
+/**
+ * Une ligne renvoyée par le service sans ses images (lignes en attente, lignes lues, réponse d'un lot, conflit) : une image y devient
+ * { image: true, empreinte, resume } (lib/portrait.mjs : l'empreinte nomme aussi le fichier publié au build), pour ne pas renvoyer 700 000 caractères à
+ * chaque page ; l'image entière se demande à part (POST /api/edition/portrait/).
+ */
+export function ligneSansImage(table, ligne) {
+  const colonnes = colonnesImage(table);
+  if (!ligne || !colonnes.length) return ligne;
+  const sortie = { ...ligne };
+  for (const c of colonnes) {
+    if (typeof sortie[c] === 'string') sortie[c] = { image: true, empreinte: empreinte(sortie[c]), resume: resumeDuPortrait(sortie[c]) };
+  }
+  return sortie;
+}
+
+/**
+ * `avant` / `apres` d'une modification du journal (JSON) versés dans historique_modification (scripts/db-appliquer-edition.mjs, mise-a-jour-regles.mjs) :
+ * une image y devient son résumé (« image 3f2a9c01 (84 Ko) », lib/portrait.mjs#resumeDuPortrait) — l'historique dit qu'elle a changé sans la recopier
+ * dans data/rows (la ligne de la table garde l'image elle-même).
+ */
+export function journalSansImage(table, json) {
+  const colonnes = colonnesImage(table);
+  if (json === null || json === undefined || !colonnes.length) return json;
+  const valeurs = JSON.parse(json);
+  if (!valeurs || !colonnes.some((c) => typeof valeurs[c] === 'string')) return json;
+  for (const c of colonnes) if (typeof valeurs[c] === 'string') valeurs[c] = resumeDuPortrait(valeurs[c]);
+  return JSON.stringify(valeurs);
 }
 
 /** L'attribut `data-ed` d'un élément qui affiche un champ : ["table", {clé primaire}, "colonne"] en JSON. */

@@ -1,7 +1,8 @@
 ---
 // Tableau des créatures invoquées (lib/bestiaire-db.mjs#chargerInvocations) : à part des monstres (demande du propriétaire : elles ne fonctionnent pas tout à
 // fait pareillement : un sort les appelle, leurs valeurs suivent souvent le niveau de puissance magique, « /NPM »). Comme pour les monstres, peu de colonnes
-// (nom, invocation, magies) et la carte de la créature à côté (CarteInvoquee.astro), avec le lien vers le sort qui l'invoque et vers sa page.
+// (nom, invocation, magies) et la carte de la créature à côté (CarteInvoquee.astro), avec le lien vers le sort qui l'invoque et vers sa page ; filtres sur
+// ces colonnes seulement (invocation, magie : « Inutile de filtrer par les colonnes non affichées »).
 import Filtres from './Filtres.astro';
 import CarteInvoquee from './CarteInvoquee.astro';
 import type { chargerInvocations } from '../../lib/bestiaire-db.mjs';
@@ -28,7 +29,7 @@ const pastille = (nom: string) => `--m: ${couleurDeMagie(nom)}; --m-texte: ${tex
     id="invoquees"
     facettes={facettes}
     recherche="Rechercher une créature invoquée"
-    aide="Tous les mots, où qu’ils soient, carte comprise : nom, magie, capacités, effets… Plusieurs valeurs d’un même filtre : l’une ou l’autre ; plusieurs filtres : tous à la fois."
+    aide="Tous les mots, où qu’ils soient, carte comprise : nom, magie, capacités, effets… Un filtre par colonne ; plusieurs valeurs d’un même filtre : l’une ou l’autre ; plusieurs filtres : tous à la fois."
   />
   <p class="btableau__aide muted">
     {lignes.length} créatures appelées par trois sorts :

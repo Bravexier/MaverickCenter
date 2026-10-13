@@ -1,13 +1,15 @@
 ---
 // Tableau des monstres du « Bestiaire 2.0 » (lib/bestiaire-db.mjs#chargerMonstres) : une ligne par carte (ennemi simple, mini-boss, boss) et une par espèce
-// sans carte. Demande du propriétaire : six colonnes seulement (nom, espèce, EP, catégorie, type, lieu), « le reste est dans le détail » : un clic sur une
-// ligne ouvre sa carte à côté du tableau, dans un panneau qui suit le défilement (sur un petit écran, par-dessus la page).
+// sans carte. Demandes du propriétaire : « Le reste est dans le détail » (un clic sur une ligne ouvre sa carte à côté du tableau, dans un panneau qui suit
+// le défilement ; sur un petit écran, par-dessus la page) ; puis « du 50/50 avec la tuile du monstre choisi », les colonnes « Espèce | Nom | Type |
+// Catégorie | EP | Lieux » dans cet ordre, et « Inutile de filtrer par les colonnes non affichées » (lib/bestiaire-db.mjs : un filtre par colonne).
 // Sans JavaScript, le nom est un lien vers la carte, qui s'affiche alors (:target) sous le tableau.
 // La ligne et la carte sont celles de lib/bestiaire-rendu.mjs : le même HTML que le mode modification du site de dev (monstre créé depuis la construction).
 import Filtres from './Filtres.astro';
 import type { chargerMonstres } from '../../lib/bestiaire-db.mjs';
 import { htmlDeCarteMonstre, htmlDeLigneMonstre } from '../../lib/bestiaire-rendu.mjs';
 import { url } from '../../lib/wiki';
+import { estUnPortrait, fichierDuPortrait } from '../../lib/portrait.mjs';
 
 interface Props {
   monstres: ReturnType<typeof chargerMonstres>;
@@ -15,14 +17,17 @@ interface Props {
 const { monstres } = Astro.props;
 const { lignes, facettes } = monstres;
 const logo = url('logo.webp');
+// un portrait (migration 0033) : le fichier que publient pages/bestiaire/portraits/[empreinte].<ext>.ts (lib/portraits-publies.mjs), nommé d'après son
+// empreinte ; une image qui n'en a pas (pas une image que la page écrit) : le logo
+const adresseDuPortrait = (donnees: string) => (estUnPortrait(donnees) ? url(`bestiaire/portraits/${fichierDuPortrait(donnees)}`) : null);
 
 const COLONNES: { cle: string; libelle: string; titre?: string; classe?: string }[] = [
-  { cle: 'nom', libelle: 'Nom' },
   { cle: 'espece', libelle: 'Espèce' },
-  { cle: 'ep', libelle: 'EP', titre: 'Échelle de puissance', classe: 'nombre' },
-  { cle: 'categorie', libelle: 'Catégorie' },
+  { cle: 'nom', libelle: 'Nom' },
   { cle: 'type', libelle: 'Type' },
-  { cle: 'lieu', libelle: 'Lieu' },
+  { cle: 'categorie', libelle: 'Catégorie' },
+  { cle: 'ep', libelle: 'EP', titre: 'Échelle de puissance', classe: 'nombre' },
+  { cle: 'lieu', libelle: 'Lieux' },
 ];
 ---
 
@@ -31,7 +36,7 @@ const COLONNES: { cle: string; libelle: string; titre?: string; classe?: string 
     id="monstres"
     facettes={facettes}
     recherche="Rechercher un monstre"
-    aide="Tous les mots, où qu’ils soient, carte comprise : nom, espèce, capacités, tactique, butin… Plusieurs valeurs d’un même filtre : l’une ou l’autre ; plusieurs filtres : tous à la fois."
+    aide="Tous les mots, où qu’ils soient, carte comprise : nom, espèce, capacités, tactique, butin… Un filtre par colonne ; plusieurs valeurs d’un même filtre : l’une ou l’autre ; plusieurs filtres : tous à la fois."
   />
   <p class="btableau__aide muted">
     {monstres.cartes} cartes de {monstres.especes} espèces, dans l’ordre du doc{lignes.length > monstres.cartes && ` ; les ${lignes.length - monstres.cartes} espèces sans carte ont une ligne à elles`}.{' '}
@@ -59,7 +64,7 @@ const COLONNES: { cle: string; libelle: string; titre?: string; classe?: string 
     </div>
     <aside class="bcartes" aria-label="Carte du monstre choisi" data-cartes>
       <p class="bcartes__invite js-seul">Choisissez un monstre dans le tableau pour ouvrir sa carte.</p>
-      {lignes.map((l) => <Fragment set:html={htmlDeCarteMonstre(l, { logo })} />)}
+      {lignes.map((l) => <Fragment set:html={htmlDeCarteMonstre(l, { logo, adresseDuPortrait })} />)}
     </aside>
   </div>
 </section>

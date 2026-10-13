@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 32;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 33;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -1995,6 +1995,12 @@ CREATE TABLE monstre_espece (
   complement  TEXT,                                              -- texte entre le lieu de rencontre et la première carte (rare)
   origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
   source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  -- portrait (demande du propriétaire : « enregistrer le portrait de la même manière que dans la feuille de personnage », migration 0033) : l'image réduite par
+  -- la page (data URL WebP ou JPEG, 700 000 caractères au plus) et son cadrage (centre du cadre carré dans l'image, de 0 à 1 ; zoom de 1 à 4). NULL = le logo.
+  portrait    TEXT    CHECK (portrait IS NULL OR (portrait GLOB 'data:image/*' AND length(portrait) <= 700000)),
+  portrait_x  REAL    CHECK (portrait_x IS NULL OR portrait_x BETWEEN 0 AND 1),
+  portrait_y  REAL    CHECK (portrait_y IS NULL OR portrait_y BETWEEN 0 AND 1),
+  portrait_zoom REAL  CHECK (portrait_zoom IS NULL OR portrait_zoom BETWEEN 1 AND 4),
   CHECK (ep_min IS NULL OR ep_min <= ep_max)
 ) STRICT;
 
@@ -2068,6 +2074,12 @@ CREATE TABLE monstre (
   vitesse_nage    INTEGER CHECK (vitesse_nage >= 0),
   origine         TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
   source_ref      TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  -- portrait (demande du propriétaire : « enregistrer le portrait de la même manière que dans la feuille de personnage », migration 0033) : l'image réduite par
+  -- la page (data URL WebP ou JPEG, 700 000 caractères au plus) et son cadrage (centre du cadre carré dans l'image, de 0 à 1 ; zoom de 1 à 4). NULL = le logo.
+  portrait        TEXT    CHECK (portrait IS NULL OR (portrait GLOB 'data:image/*' AND length(portrait) <= 700000)),
+  portrait_x      REAL    CHECK (portrait_x IS NULL OR portrait_x BETWEEN 0 AND 1),
+  portrait_y      REAL    CHECK (portrait_y IS NULL OR portrait_y BETWEEN 0 AND 1),
+  portrait_zoom   REAL    CHECK (portrait_zoom IS NULL OR portrait_zoom BETWEEN 1 AND 4),
   UNIQUE (espece_id, rang),
   CHECK (ep_min IS NULL OR ep_min <= ep_max),
   CHECK ((sante IS NULL) = (chakra IS NULL) AND (sante IS NULL) = (barriere IS NULL)),

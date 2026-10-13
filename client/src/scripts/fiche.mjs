@@ -1,11 +1,15 @@
 // Formulaire de la page /fiche/ (pages/fiche/index.astro) : construit les étapes à partir des règles de la base (/fiche/regles.json), garde la
 // fiche en cours au format d'échange (lib/fiche-format.mjs), recalcule ce qui en découle à chaque saisie (lib/fiche-moteur.mjs) et l'enregistre
 // auprès du service des personnages (/api/personnages/, docs/serveur.md). Création et modification sur le même écran : /fiche/?id=<id>.
-// Script de page (navigateur) : il n'importe que des modules purs que seule cette page utilise (la version portable refuse un module partagé).
+// Script de page (navigateur) : il n'importe que des modules purs que seule cette page utilise (la version portable refuse un module partagé), et le
+// choix et le recadrage du portrait (src/scripts/portrait.mjs, lib/portrait.mjs), partagés avec le mode modification du bestiaire, absent de la version
+// portable.
 import { libelleDuControle } from '../lib/fiche-controles.mjs';
 import { CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ficheVide, nouveauxRetraits, resumeDesRetraits } from '../lib/fiche-format.mjs';
 import { RAISONS } from '../lib/degats-texte.mjs';
 import { valeurAuNm } from '../lib/sort-maitrise.mjs';
+import { cadrageDe } from '../lib/portrait.mjs';
+import { dessinerVignette, ouvrirRecadrage, reduireImage } from './portrait.mjs';
 import {
   ajusterValeurDuMoment, alignementDe, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
   choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsAcquis, donsDeRace, donsValables,
@@ -1250,28 +1254,9 @@ function construireEquipement() {
  * Le portrait (le logo en attendant une image, recadrable une fois choisie : personnage.portrait et son cadrage, migration 0031) et les 3 emplacements
  * de la ceinture (objets rapides, guide « Fiche de personnage : Accessoires et Ceinture » : personnage_ceinture), enregistrés avec la fiche.
  */
-const PIXELS_MAX_PORTRAIT = 600_000;   // l'image gardée : 600 000 pixels au plus (assez pour recadrer)…
-const LONGUEUR_MAX_PORTRAIT = 690_000;   // … et sa data URL sous la limite de la base (700 000 caractères : data/schema.sql, personnage.portrait)
 const PLACES_DE_CEINTURE = 3;
-const COTE_VIGNETTE = 384;
 /** La vignette affichée (le carré cadré), refaite quand l'image ou son cadrage changent. */
 let vignette = { cle: null };
-
-const chargerImage = (source) => new Promise((ok, ko) => {
-  const i = new Image();
-  i.onload = () => ok(i);
-  i.onerror = ko;
-  i.src = source;
-});
-
-/** Le carré cadré d'une image (cadrage : centre x, y de 0 à 1, zoom de 1 à 4 ; le côté du carré est le petit côté de l'image divisé par le zoom). */
-async function dessinerVignette(source, { x, y, zoom }) {
-  const img = await chargerImage(source);
-  const cote = Math.min(img.naturalWidth, img.naturalHeight) / zoom;
-  const toile = el('canvas', { width: COTE_VIGNETTE, height: COTE_VIGNETTE });
-  toile.getContext('2d').drawImage(img, x * img.naturalWidth - cote / 2, y * img.naturalHeight - cote / 2, cote, cote, 0, 0, COTE_VIGNETTE, COTE_VIGNETTE);
-  return toile.toDataURL('image/jpeg', 0.9);
-}
 
 function construirePortrait() {
   const figure = $('portrait');
@@ -1295,111 +1280,14 @@ function construirePortrait() {
 }
 
 /** Le cadrage enregistré (centré, sans zoom quand la fiche n'en a pas). */
-const cadrageDuPortrait = () => ({ x: fiche.portrait_x ?? 0.5, y: fiche.portrait_y ?? 0.5, zoom: fiche.portrait_zoom ?? 1 });
+const cadrageDuPortrait = () => cadrageDe({ x: fiche.portrait_x, y: fiche.portrait_y, zoom: fiche.portrait_zoom });
 
-/**
- * L'image choisie, ramenée à PIXELS_MAX_PORTRAIT pixels au plus, en data URL WebP (JPEG si le navigateur ne sait pas écrire le WebP), qualité puis taille
- * baissées jusqu'à tenir sous LONGUEUR_MAX_PORTRAIT caractères.
- */
-async function reduireImage(fichier) {
-  const url = URL.createObjectURL(fichier);
-  try {
-    const img = await chargerImage(url);
-    let echelle = Math.min(1, Math.sqrt(PIXELS_MAX_PORTRAIT / (img.naturalWidth * img.naturalHeight)));
-    for (let essai = 0; essai < 6; essai += 1, echelle *= 0.75) {
-      const toile = el('canvas', { width: Math.max(1, Math.round(img.naturalWidth * echelle)), height: Math.max(1, Math.round(img.naturalHeight * echelle)) });
-      toile.getContext('2d').drawImage(img, 0, 0, toile.width, toile.height);
-      for (const qualite of [0.85, 0.7, 0.55]) {
-        const webp = toile.toDataURL('image/webp', qualite);
-        const donnees = webp.startsWith('data:image/webp') ? webp : toile.toDataURL('image/jpeg', qualite);
-        if (donnees.length <= LONGUEUR_MAX_PORTRAIT) return donnees;
-      }
-    }
-    throw new Error('image trop lourde');
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
-/**
- * Le recadrage : l'image couvre un cadre carré ; elle se déplace au doigt, à la souris ou aux flèches, le curseur ou la molette zoome (1 à 4). Le cadrage
- * gardé est le centre du cadre dans l'image (x, y entre 0 et 1) et le zoom : l'image d'origine reste, on peut recadrer plus tard.
- */
-function ouvrirRecadrage(source, cadrage = { x: 0.5, y: 0.5, zoom: 1 }) {
-  const dialogue = $('recadrage');
-  const vue = $('recadrage-vue');
-  const image = $('recadrage-image');
-  const zoom = $('recadrage-zoom');
-  const etat = { ...cadrage };
-  let largeur = 0;
-  let hauteur = 0;
-  const echelle = () => (vue.clientWidth / Math.min(largeur, hauteur)) * etat.zoom;
-  const borner01 = () => {
-    const s = echelle();
-    const demiX = vue.clientWidth / (2 * largeur * s);
-    const demiY = vue.clientWidth / (2 * hauteur * s);
-    etat.x = Math.min(1 - demiX, Math.max(demiX, etat.x));
-    etat.y = Math.min(1 - demiY, Math.max(demiY, etat.y));
-  };
-  const dessiner = () => {
-    if (!largeur) return;
-    borner01();
-    const s = echelle();
-    const v = vue.clientWidth;
-    image.style.transform = `translate(${v / 2 - etat.x * largeur * s}px, ${v / 2 - etat.y * hauteur * s}px) scale(${s})`;
-    zoom.value = String(etat.zoom);
-  };
-  image.onload = () => {
-    largeur = image.naturalWidth;
-    hauteur = image.naturalHeight;
-    dessiner();
-  };
-  image.src = source;
-  let glisse = null;
-  vue.onpointerdown = (ev) => {
-    glisse = { x: ev.clientX, y: ev.clientY };
-    vue.setPointerCapture(ev.pointerId);
-  };
-  vue.onpointermove = (ev) => {
-    if (!glisse || !largeur) return;
-    const s = echelle();
-    etat.x -= (ev.clientX - glisse.x) / (largeur * s);
-    etat.y -= (ev.clientY - glisse.y) / (hauteur * s);
-    glisse = { x: ev.clientX, y: ev.clientY };
-    dessiner();
-  };
-  vue.onpointerup = () => { glisse = null; };
-  vue.onpointercancel = vue.onpointerup;
-  vue.onwheel = (ev) => {
-    ev.preventDefault();
-    etat.zoom = Math.min(4, Math.max(1, etat.zoom * Math.exp(-ev.deltaY * 0.0015)));
-    dessiner();
-  };
-  vue.onkeydown = (ev) => {
-    const pas = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[ev.key];
-    if (!pas || !largeur) return;
-    ev.preventDefault();
-    const s = echelle();
-    etat.x += (pas[0] * 12) / (largeur * s);
-    etat.y += (pas[1] * 12) / (hauteur * s);
-    dessiner();
-  };
-  zoom.oninput = () => {
-    etat.zoom = Number(zoom.value);
-    dessiner();
-  };
-  $('recadrage-annuler').onclick = () => dialogue.close();
-  $('recadrage-formulaire').onsubmit = (ev) => {
-    ev.preventDefault();
-    if (!largeur) return;
-    const arrondi = (v) => Math.round(v * 10000) / 10000;
-    Object.assign(fiche, { portrait: source, portrait_x: arrondi(etat.x), portrait_y: arrondi(etat.y), portrait_zoom: arrondi(etat.zoom) });
-    dialogue.close();
-    changer();
-  };
-  dialogue.showModal();
-  vue.focus();
-  dessiner();
+/** Le recadrage (src/scripts/portrait.mjs) : l'image d'origine et son cadrage validé entrent dans la fiche (annulé : rien ne change). */
+async function recadrerPortrait(source, cadrage) {
+  const c = await ouvrirRecadrage(source, cadrage);
+  if (!c) return;
+  Object.assign(fiche, { portrait: source, portrait_x: c.x, portrait_y: c.y, portrait_zoom: c.zoom });
+  changer();
 }
 
 /** Les 3 emplacements de la ceinture : un objet (au catalogue des ressources ou non) et sa quantité (le nombre de flèches d'un carquois…). */
@@ -1800,7 +1688,7 @@ async function demarrer() {
     fichierPortrait.value = '';
     if (!f) return;
     try {
-      ouvrirRecadrage(await reduireImage(f));
+      recadrerPortrait(await reduireImage(f));
     } catch {
       message('Cette image n’a pas pu être lue (ou reste trop lourde une fois réduite).', 'erreur');
     }
@@ -1811,7 +1699,7 @@ async function demarrer() {
       fichierPortrait.click();
     }
   });
-  $('portrait-recadrer').addEventListener('click', () => fiche.portrait && ouvrirRecadrage(fiche.portrait, cadrageDuPortrait()));
+  $('portrait-recadrer').addEventListener('click', () => fiche.portrait && recadrerPortrait(fiche.portrait, cadrageDuPortrait()));
   $('portrait-retirer').addEventListener('click', () => {
     Object.assign(fiche, { portrait: null, portrait_x: null, portrait_y: null, portrait_zoom: null });
     changer();
