@@ -1,0 +1,114 @@
+// Rendu HTML des cellules de la page /ressources/armes/ (components/armes/) : le même HTML sert à la page construite et au mode modification du site de
+// dev (lib/edition-rendu.mjs : une cellule modifiée, ou tirée d'une cellule modifiée, se réaffiche depuis sa ligne de la base). Les colonnes Dégâts,
+// Type de dégâts, Portée, Durabilité, Effets supplémentaires et Origine sont tirées de l'effet (lib/arme-champs.mjs). Les valeurs dont la fiche de l'arme
+// forgée a besoin (dé, bonus, portée, durabilité, coût, prix) sont posées en attributs `data-…` sur l'élément rendu : le script de la page les lit au moment de la
+// sélection (src/scripts/armes.mjs), si bien qu'une cellule réécrite après un enregistrement donne aussitôt les bonnes valeurs.
+// Contexte (`ctx`, les mêmes listes que celles du service : serveur/edition.mjs#listes, lib/armes-db.mjs#contexteDesArmes) : competences (id,
+// caracteristique_id), caracteristiques (id, nom), typesDArmes ({ valeur, libelle, de, de_regle, portee_min, portee_max }), soliditeDesArmes (2).
+// Fonctions pures, chaîne HTML en sortie, tout texte échappé.
+import {
+  analyserCoutDAmelioration, analyserEffetDAmelioration, analyserEffetDArme, analyserEffetDeMateriau, categoriesDArme, coutEnRo, durabiliteDeLArme,
+  LIBELLES_DES_DEGATS, MAINS, porteeDeLArme, prixEnRo,
+} from './arme-champs.mjs';
+import { couleurDeCaracteristique } from './caracteristiques-postures.mjs';
+import { texteSurCouleur } from './sort-format.mjs';
+
+const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const e = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES[c]);
+const VIDE = '<span class="vide" aria-label="aucun">—</span>';
+const attribut = (nom, valeur) => (valeur === null || valeur === undefined ? '' : ` data-${nom}="${e(valeur)}"`);
+/** La première lettre en capitale (« naine » → « Naine ») : la forme, jamais le fond. */
+const capitale = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t);
+
+/** Le type d'arme d'après son id (« Épée »), dans la liste du contexte. */
+const typeDe = (id, ctx) => (ctx.typesDArmes ?? []).find((t) => t.valeur === id) ?? null;
+
+/** Les dés d'une règle de dé selon la Force (« D6 1-2 Force, D8 3-4 Force, D10 5 Force » → « D6/D8/D10 »). */
+const desDeLaRegle = (regle) => (String(regle ?? '').match(/D\d+/g) ?? []).join('/');
+
+/**
+ * Dé de l'arme pour la page : celui de la ligne (effet, sinon type) ; sans dé (Pugilat), les dés de la règle du type, selon la Force.
+ * → { de, regle (texte de la règle, sinon null) }
+ */
+export function deAffiche(ligne, ctx = {}) {
+  if (ligne.de) return { de: ligne.de, regle: null };
+  const type = typeDe(ligne.type_id, ctx);
+  return { de: desDeLaRegle(type?.de_regle) || '—', regle: type?.de_regle ?? null };
+}
+
+/**
+ * Pastille de la catégorie (décision R48) : la couleur de sa caractéristique (Lourde : Force, Légère : Agilité, Précision : Perception), en dégradé pour
+ * les deux ; l'écriture de l'onglet (« Arc », « Arme Lourde/Légère ») en infobulle.
+ */
+export function htmlDeCategorie(competenceBrut, ctx = {}) {
+  const cats = categoriesDArme(competenceBrut);
+  if (!cats.length) return competenceBrut ? `<span class="arme-cat arme-cat--texte">${e(competenceBrut)}</span>` : VIDE;
+  const carac = new Map((ctx.caracteristiques ?? []).map((c) => [c.id, c.nom]));
+  const [c1, c2 = c1] = cats.map((c) => couleurDeCaracteristique(c.caracteristique_id));
+  const titre = `${cats.map((c) => `${c.nom} (${carac.get(c.caracteristique_id) ?? c.caracteristique_id})`).join(' et ')} — écrit « ${competenceBrut} » dans l’onglet`;
+  return `<span class="arme-cat${cats.length > 1 ? ' arme-cat--deux' : ''}" data-categories="${cats.map((c) => c.id).join(' ')}" style="--c1: ${c1}; --c2: ${c2}; --c-texte: ${texteSurCouleur(c1)}" title="${e(titre)}">${e(cats.map((c) => c.libelle).join(' / '))}</span>`;
+}
+
+/** Les types de dégâts en pastilles (Taille, Estoc, Frappe), d'après l'effet. */
+export function htmlDesTypesDeDegats(effet) {
+  const types = analyserEffetDArme(effet).degats;
+  return types.length ? types.map((t) => `<span class="arme-dgt arme-dgt--${t}">${LIBELLES_DES_DEGATS[t]}</span>`).join(' ') : VIDE;
+}
+
+/** Les effets supplémentaires, une ligne par ligne de l'effet (les modes « Une main = … » gardés). */
+export function htmlDesEffets(effet) {
+  const autres = analyserEffetDArme(effet).autres;
+  return autres ? autres.split('\n').map((l) => `<span class="arme-effet">${e(l)}</span>`).join('') : VIDE;
+}
+
+/** Rendus nommés (attribut `data-ed-rendu`), fusionnés dans lib/edition-rendu.mjs#RENDUS : (valeur de la colonne, ligne, contexte) → HTML. */
+export const RENDUS_DES_ARMES = {
+  'arme-mains': (valeur) => {
+    const m = MAINS.find((x) => x.valeur === valeur);
+    return m ? e(m.libelle) : '';
+  },
+  'arme-categorie': (valeur, _ligne, ctx = {}) => htmlDeCategorie(valeur, ctx),
+  'arme-type': (valeur, _ligne, ctx = {}) => e(typeDe(valeur, ctx)?.libelle ?? valeur ?? ''),
+  // dégâts de l'arme nue : son dé et son bonus (« D10+5 »)
+  'arme-degats': (_valeur, ligne, ctx = {}) => {
+    const { de, regle } = deAffiche(ligne, ctx);
+    const bonus = ligne.bonus_degats ?? 0;
+    const texte = bonus ? `${de}${bonus > 0 ? '+' : '−'}${Math.abs(bonus)}` : de;
+    const titre = regle ? ` title="${e(`Dé selon la Force : ${regle}`)}"` : '';
+    return `<span class="arme-degats"${attribut('de', de)}${attribut('bonus', bonus)}${titre}>${e(texte)}</span>`;
+  },
+  'arme-types-degats': (valeur) => htmlDesTypesDeDegats(valeur),
+  // portée : celle de l'effet, 1 par défaut (décision R50)
+  'arme-portee': (_valeur, ligne) => `<span class="arme-portee" data-portee="${e(porteeDeLArme(ligne))}">${e(porteeDeLArme(ligne))}</span>`,
+  'arme-durabilite': (_valeur, ligne, ctx = {}) => {
+    const d = durabiliteDeLArme(ligne, ctx.soliditeDesArmes ?? 0);
+    return `<span class="arme-durabilite" data-durabilite="${d}" title="${d} cran${d > 1 ? 's' : ''} de solidité">${d}</span>`;
+  },
+  'arme-effets': (valeur) => htmlDesEffets(valeur),
+  'arme-origine': (_valeur, ligne) =>
+    ligne.provenance ? `<span class="arme-origine" title="${e(`${ligne.provenance_mot} ${ligne.provenance}`)}">${e(capitale(ligne.provenance))}</span>` : VIDE,
+  'arme-cout': (valeur) => `<span class="arme-cout"${attribut('ro', coutEnRo(valeur))}>${valeur ? e(valeur) : '—'}</span>`,
+  'arme-depart': (valeur) => (Number(valeur) === 1 ? 'Oui' : 'Non'),
+  // matériaux : le prix en RO seulement (« Ignore le prix en RF, il n'est plus d'actualité »), l'effet en lignes typées
+  'materiau-prix': (valeur) => {
+    const ro = prixEnRo(valeur);
+    return `<span class="materiau-prix"${attribut('ro', ro)} title="${e(`Prix écrit : ${valeur ?? ''}`)}">${ro === null ? e(valeur ?? '—') : `${ro} RO`}</span>`;
+  },
+  'materiau-effet': (valeur) => {
+    const m = analyserEffetDeMateriau(valeur);
+    const lignes = [];
+    if (m.bonus_degats) lignes.push(`<span class="materiau-effet__bonus">Dégâts ${m.bonus_degats > 0 ? '+' : '−'}${Math.abs(m.bonus_degats)}</span>`);
+    if (m.cran_solidite) lignes.push(`<span class="materiau-effet__cran">${m.cran_solidite > 0 ? '+' : '−'}${Math.abs(m.cran_solidite)} cran${Math.abs(m.cran_solidite) > 1 ? 's' : ''} de solidité</span>`);
+    for (const l of String(m.effet_secondaire ?? '').split('\n').filter(Boolean)) lignes.push(`<span class="materiau-effet__secondaire">${e(l)}</span>`);
+    return `<span class="materiau-effet"${attribut('bonus', m.bonus_degats ?? 0)}${attribut('cran', m.cran_solidite ?? 0)}>${lignes.length ? lignes.join('') : '<span class="materiau-effet__rien">Rien de particulier</span>'}</span>`;
+  },
+  // améliorations : coût et effet tels qu'écrits, leurs valeurs en attributs (coût cumulé et effet du niveau : lib/arme-forge.mjs)
+  'amelioration-cout': (valeur) => {
+    const c = analyserCoutDAmelioration(valeur);
+    return `<span class="amelioration-cout"${attribut('ro', c.cout_ro ?? 0)}${attribut('materiaux', c.cout_materiaux ?? 0)}>${e(valeur ?? '')}</span>`;
+  },
+  'amelioration-effet': (valeur) => {
+    const a = analyserEffetDAmelioration(valeur);
+    return `<span class="amelioration-effet"${attribut('bonus', a.bonus_degats ?? 0)}${attribut('cran', a.bonus_cran ?? 0)}>${e(valeur ?? '')}</span>`;
+  },
+};

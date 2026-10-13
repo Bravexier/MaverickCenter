@@ -3,10 +3,11 @@
 // que ces colonnes ; tout ce qui en dépend dans la base (colonnes typées, tables de détail, page du wiki) est recalculé par le service, jamais saisi.
 // Entités créables (ENTITES) : métier, race, classe, peuple, spécialité, don de classe, espèce et carte de monstre ; supprimables : métier, spécialité,
 // don de classe (retirés des fiches de personnage qui les ont, avec une note datée : décision R42, annonceDesFiches), espèce et carte de monstre.
-// Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs et lib/portrait.mjs, purs eux aussi) : partagées par le service, les
-// gabarits Astro et le script des pages (src/scripts/edition.mjs).
+// Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, lib/portrait.mjs et lib/arme-champs.mjs, purs eux aussi) : partagées par le
+// service, les gabarits Astro et le script des pages (src/scripts/edition.mjs).
 import { NIVEAUX_DE_DON, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
 import { dimensionsDuPortrait, empreinte, estUnPortrait, PORTRAIT_MAX, resumeDuPortrait } from './portrait.mjs';
+import { CATEGORIES_D_ARME, MAINS } from './arme-champs.mjs';
 
 export { NIVEAUX_DE_DON, NIVEAU_DES_SPECIALITES, SPECIALITES_MAX, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
 
@@ -46,6 +47,12 @@ const COLONNES_DU_PORTRAIT = {
 export const STATS_VARIABLES = [
   { valeur: '0', libelle: 'Non' },
   { valeur: '1', libelle: 'Oui : « Ses stats varient selon son échelle de puissance. »' },
+];
+
+/** Une case Oui / Non (colonne entière 0 ou 1 : arme.depart_possible). */
+export const OUI_NON = [
+  { valeur: '0', libelle: 'Non' },
+  { valeur: '1', libelle: 'Oui' },
 ];
 
 export const TABLES = {
@@ -223,6 +230,38 @@ export const TABLES = {
     libelle: 'Butin',
     colonnes: {
       texte: { type: 'ligne', libelle: 'Butin possible', requis: true },
+    },
+  },
+  // Armes (/ressources/armes/, demande du propriétaire : « tout peut être éditable à l'instar des autres pages ») : les cellules de l'onglet « Armes » ;
+  // le service en tire les colonnes typées (dé, bonus, portée, solidité, provenance…), les types de dégâts et les minimums de caractéristique
+  // (lib/arme-champs.mjs), et suit le corps de la page (lib/corps-armes.mjs). Pas les armes de monstres (absentes de la page).
+  arme: {
+    libelle: 'Arme',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Nom', requis: true },
+      mains: { type: 'choix', libelle: 'Mains', choix: MAINS },
+      competence_brut: { type: 'choix', libelle: 'Catégorie', requis: true, choix: CATEGORIES_D_ARME.map((c) => ({ valeur: c, libelle: c })) },
+      type_id: { type: 'choix', libelle: 'Type d’arme', requis: true, liste: 'typesDArmes' },
+      cout_brut: { type: 'ligne', libelle: 'Coût (« 10 Ro »)' },
+      effet: { type: 'texte', libelle: 'Effet (dégâts, portée, solidité, origine… : les colonnes en sont tirées)' },
+      description: { type: 'texte', libelle: 'Description' },
+      depart_possible: { type: 'choix', libelle: 'Arme de départ', requis: true, choix: OUI_NON },
+    },
+  },
+  // matériaux d'arme (tableau MATERIAUX de l'onglet) : prix et effets ; le nom est celui de la ressource, partagé avec les armures et les boucliers
+  materiau_arme: {
+    libelle: 'Matériau d’arme',
+    colonnes: {
+      prix_brut: { type: 'ligne', libelle: 'Prix (« 200 RO »)', requis: true },
+      effet_brut: { type: 'texte', libelle: 'Effets (« Dégâts +N pour l’arme », « ±N cran de solidité », puis les autres effets)', requis: true },
+    },
+  },
+  // améliorations d'arme (+1 à +10) : coût et effet ; les améliorations d'armure, de bouclier et des pièces élémentaires ne se modifient pas ici
+  amelioration_equipement: {
+    libelle: 'Amélioration d’arme',
+    colonnes: {
+      cout_brut: { type: 'ligne', libelle: 'Coût (« 1 Matériel + 50 RO »)', requis: true },
+      effet_brut: { type: 'ligne', libelle: 'Effet (« +10 dégâts, +1 cran de solidité »)', requis: true },
     },
   },
   // Pages du guide et du Codex (texteDePageModifiable) : titre et texte (Markdown réécrit par l'éditeur visuel, lib/markdown-edition.mjs) ; le service

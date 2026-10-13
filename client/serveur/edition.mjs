@@ -49,6 +49,9 @@ import { empreinte } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { ErreurJournal, cleDe, lireLigne, nouveauLot, ouvrirLot, rejouer, structure } from './edition-journal.mjs';
 import { domainesDuBestiaire, especesDeMonstres, lignesDuBestiaire as lignesRenduesDuBestiaire } from './edition-bestiaire.mjs';
+import { contexteDuCorpsDesArmes, domainesDesArmes } from './edition-armes.mjs';
+import { corpsDesArmesApres, ErreurCorpsArmes, PAGE_DES_ARMES, TABLES_DE_LA_PAGE_DES_ARMES } from '../src/lib/corps-armes.mjs';
+import { contexteDesArmes } from '../src/lib/armes-db.mjs';
 import {
   libelleDeFiche, noterLesRetraits, nouveauxRetraitsDeFiches, numerosDesFichesDeJoueur, ordreDesLibelles, retirerDesFiches,
 } from './fiches-retraits.mjs';
@@ -1145,6 +1148,8 @@ const DOMAINES = {
   race_don_tableau_cellule: tableDeLOnglet('race_don_tableau_cellule'), peuple: PEUPLE, classe: CLASSE, specialite: SPECIALITE, capacite: CAPACITE, page: PAGE,
   // le bestiaire : espèce, carte de monstre, rubriques d'une carte (serveur/edition-bestiaire.mjs)
   ...domainesDuBestiaire({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye, ordreSuivant }),
+  // la page des armes : armes, matériaux, améliorations d'arme (serveur/edition-armes.mjs)
+  ...domainesDesArmes({ refus, ErreurEdition, synchroniser }),
 };
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -1209,6 +1214,7 @@ export function recalculerLesPages(db, modifications) {
   const classes = new Map();
   const dons = new Map();
   const metiers = new Set();
+  const armes = []; // lignes des tables de la page des armes (lib/corps-armes.mjs)
   const titres = [];
   const ajouter = (carte, id, ligne) => {
     if (!id) return;
@@ -1228,6 +1234,7 @@ export function recalculerLesPages(db, modifications) {
       dons.set(ligne.id, l);
     }
     if (l.table === 'metier') metiers.add(ligne.id);
+    if (TABLES_DE_LA_PAGE_DES_ARMES.includes(l.table) && l.apres && (l.avant ?? l.inseree)) armes.push(l);
     if (l.table === 'creature_effet' && l.avant && l.apres && l.avant.libelle !== l.apres.libelle) titres.push(l);
     const anciennes = l.avant ?? l.inseree;
     const colonnes = anciennes && l.apres ? Object.keys(l.apres).filter((c) => (anciennes[c] ?? null) !== (l.apres[c] ?? null)) : null;
@@ -1321,6 +1328,20 @@ export function recalculerLesPages(db, modifications) {
     const metier = lireLigne(db, 'metier', { id });
     const page = metier && pageDe(id);
     if (page) ecrire(page, pageDuMetier(page.corps_md, null, metier));
+  }
+  // la page des armes : la ligne Markdown de chaque arme, matériau ou amélioration rejoués (et la liste des armes de départ, la ligne TOTAL)
+  const pageDesArmes = armes.length ? pageDe(PAGE_DES_ARMES) : null;
+  if (pageDesArmes) {
+    let corps = pageDesArmes.corps_md;
+    try {
+      const contexteArmes = contexteDuCorpsDesArmes(db);
+      const rang = (t) => TABLES_DE_LA_PAGE_DES_ARMES.indexOf(t);
+      for (const l of [...armes].sort((a, b) => rang(a.table) - rang(b.table))) corps = corpsDesArmesApres(corps, l.table, l.avant ?? l.inseree, l.apres, contexteArmes);
+      ecrire(pageDesArmes, { corps_md: corps });
+    } catch (e) {
+      if (!(e instanceof ErreurCorpsArmes)) throw e;
+      illisibles.push({ page: PAGE_DES_ARMES, raison: e.message });
+    }
   }
   return { pages: [...new Set(ecrites)], illisibles };
 }
@@ -1555,6 +1576,9 @@ export function listes(db) {
     typesDon: db.prepare('SELECT id, nom, definition FROM type_don ORDER BY ordre').all(),
     // les espèces du bestiaire (formulaire « Nouveau monstre »)
     especesDeMonstres: especesDeMonstres(db),
+    // la page des armes (lib/armes-rendu.mjs) : types d'armes (champ « Type », dé, règle du dé, portée), solidité de base des armes
+    typesDArmes: contexteDesArmes(db).typesDArmes,
+    soliditeDesArmes: contexteDesArmes(db).soliditeDesArmes,
   };
 }
 

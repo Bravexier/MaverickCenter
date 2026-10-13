@@ -10,6 +10,7 @@ import { analyserType, bonusDeMaitrise } from './sort-analyse.mjs';
 import { blocsDeTexte, coutDeSort, marquesDeMode, morceauxAvecEtats, morceauxAvecLiens, valeurDeSort } from './sort-format.mjs';
 import { marquerBonus } from './sort-maitrise.mjs';
 import { RENDUS_DU_BESTIAIRE } from './monstre-rendu.mjs';
+import { RENDUS_DES_ARMES } from './armes-rendu.mjs';
 
 const ENTITES_HTML = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const echapperHtml = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES_HTML[c]);
@@ -215,6 +216,9 @@ export const RENDUS = {
   'sort-dsb': valeurDeCase('dsb', true),
   // Bestiaire (lib/bestiaire-rendu.mjs : la ligne du tableau et la carte d'un monstre) : rubrique d'une carte, catégorie, cellules, lieux…
   ...RENDUS_DU_BESTIAIRE,
+  // Armes (lib/armes-rendu.mjs : les cellules des tableaux de /ressources/armes/, des matériaux et des améliorations) : ctx.competences,
+  // ctx.caracteristiques, ctx.typesDArmes, ctx.soliditeDesArmes (listes du service)
+  ...RENDUS_DES_ARMES,
 };
 
 /** HTML d'un champ d'après son rendu ; un rendu inconnu retombe sur le texte. */
