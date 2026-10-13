@@ -3,11 +3,16 @@
 // style CSS qui montre le carré cadré sans script, dimensions lues dans l'en-tête des images que la page écrit, empreinte et nom de fichier.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
+import { chargerMonstres } from '../src/lib/bestiaire-db.mjs';
+import { htmlDeCarteMonstre, htmlDuPortrait } from '../src/lib/bestiaire-rendu.mjs';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
 import {
-  bornerCadrage, CADRAGE_PAR_DEFAUT, cadrageDe, carreDuCadrage, dimensionsDesOctets, dimensionsDuPortrait, empreinte, estUnPortrait, fichierDuPortrait,
-  kiloOctetsDuPortrait, LONGUEUR_MAX_PORTRAIT, octetsDuPortrait, PORTRAIT_MAX, resumeDuPortrait, styleDuCadrage,
+  bornerCadrage, CADRAGE_PAR_DEFAUT, cadrageDe, carreDuCadrage, dimensionsDesOctets, dimensionsDuPortrait, empreinte, estUnPortrait, extensionDuPortrait,
+  fichierDuPortrait, kiloOctetsDuPortrait, LONGUEUR_MAX_PORTRAIT, octetsDuPortrait, PORTRAIT_MAX, resumeDuPortrait, styleDuCadrage,
 } from '../src/lib/portrait.mjs';
+import { cheminsDesPortraits, reponseDuPortrait, TYPES_DE_PORTRAIT } from '../src/lib/portraits-publies.mjs';
 
 const IMAGES = JSON.parse(readFileSync(new URL('./fixtures/portraits.json', import.meta.url), 'utf8'));
 
@@ -15,9 +20,13 @@ test('format : une data URL WebP, JPEG ou PNG en base64, sous la limite de la ba
   for (const cle of ['webp', 'jpeg', 'png', 'webpAlpha', 'webpSansPerte']) assert.ok(estUnPortrait(IMAGES[cle]), cle);
   assert.ok(LONGUEUR_MAX_PORTRAIT < PORTRAIT_MAX, 'la page réduit sous la limite de la base');
   for (const refus of [null, '', 'data:image/svg+xml;base64,PHN2Zz4=', 'data:text/html;base64,PHA+', 'data:image/png,abc', 'data:image/png;base64,ab c',
-    'javascript:alert(1)', `data:image/png;base64,${'A'.repeat(PORTRAIT_MAX)}`]) {
+    'javascript:alert(1)', `data:image/png;base64,${'A'.repeat(PORTRAIT_MAX)}`, 'data:image/png;base64,AAAAA', `${IMAGES.png}A`, 'data:image/png;base64,AA=A']) {
     assert.equal(estUnPortrait(refus), false, String(refus).slice(0, 40));
   }
+  // un base64 incomplet ne se décode pas : null, jamais une exception (le service et le build le lisent)
+  assert.equal(octetsDuPortrait('data:image/png;base64,AAAAA'), null);
+  assert.equal(dimensionsDuPortrait(`data:image/png;base64,${'A'.repeat(100_001)}`), null);
+  assert.deepEqual(['webp', 'jpeg', 'png'].map((k) => extensionDuPortrait(IMAGES[k])), ['webp', 'jpg', 'png']);
 });
 
 test('dimensions lues dans l’en-tête des images écrites par Chromium (WebP VP8X, JPEG, PNG)', () => {
@@ -102,4 +111,40 @@ test('empreinte, nom de fichier et résumé : stables, différents d’une image
   assert.equal(kiloOctetsDuPortrait(`data:image/png;base64,${'A'.repeat(4096)}`), 3);
   assert.equal(resumeDuPortrait(IMAGES.webp), `image ${empreinte(IMAGES.webp).slice(0, 8)} (1 Ko)`);
   assert.equal(resumeDuPortrait(null), null);
+});
+
+test('carte avec un portrait (lib/bestiaire-rendu.mjs) : l’image publiée, cadrée sans script, et l’empreinte de ce qu’elle montre ; sans adresse, le logo', () => {
+  const l = chargerMonstres(ouvrirBase()).lignes.find((x) => x.carte);
+  const html = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  const portrait = { donnees: IMAGES.webp, x: 5 / 6, y: 0.75, zoom: 2 };
+  const carte = htmlDeCarteMonstre({ ...l, portrait }, { logo: '/logo.webp', adresseDuPortrait: (d) => `/bestiaire/portraits/${fichierDuPortrait(d)}` });
+  const figure = carte.match(/<figure class="bcarte__portrait"[^>]*>.*?<\/figure>/)[0];
+  assert.ok(figure.includes(`data-portrait="${empreinte(IMAGES.webp)}:${5 / 6}:0.75:2"`), figure);
+  assert.ok(figure.includes(`<img src="/bestiaire/portraits/${empreinte(IMAGES.webp)}.webp" alt="Portrait : ${html(l.nom)}" style="width:300%;height:200%;left:-200%;top:-100%"`), figure);
+  assert.ok(!figure.includes('data-vide') && !figure.includes('figcaption'));
+  // le service rend la carte sans adresse : le logo, et la page charge l'image (src/scripts/edition/bestiaire.mjs)
+  assert.match(htmlDeCarteMonstre({ ...l, portrait }, { logo: '/logo.webp' }), /<figure class="bcarte__portrait" data-portrait="" data-vide data-ed-portrait="[^"]+" data-logo="\/logo\.webp"><div class="bcarte__cadre"><img src="\/logo\.webp" alt=""/);
+  // une image dont l'adresse est une data URL (mode modification) reste échappée dans l'attribut
+  assert.match(htmlDuPortrait({ table: 'monstre', cle: { id: 'x"y' }, nom: '<b>', portrait }, { logo: '/l.webp', adresse: (d) => d }), /data-ed-portrait="\[&quot;monstre&quot;,\{&quot;id&quot;:&quot;x\\&quot;y&quot;\}\]".*alt="Portrait : &lt;b&gt;"/);
+});
+
+test('fichiers publiés au build (lib/portraits-publies.mjs) : un par image et par format, les octets de l’image ; une image illisible n’en a pas', async () => {
+  const db = new DatabaseSync(':memory:');
+  db.exec('CREATE TABLE monstre (id TEXT, portrait TEXT); CREATE TABLE monstre_espece (id TEXT, portrait TEXT);');
+  const inserer = (table, id, portrait) => db.prepare(`INSERT INTO ${table} VALUES (?, ?)`).run(id, portrait);
+  inserer('monstre', 'a', IMAGES.webp);
+  inserer('monstre', 'b', IMAGES.webp);
+  inserer('monstre', 'c', IMAGES.png);
+  inserer('monstre', 'd', null);
+  inserer('monstre_espece', 'e', IMAGES.webpAlpha);
+  inserer('monstre_espece', 'f', 'data:image/png;base64,AAAAA');
+  const webp = cheminsDesPortraits(db, 'webp');
+  assert.deepEqual(webp.map((c) => c.params.empreinte).sort(), [empreinte(IMAGES.webp), empreinte(IMAGES.webpAlpha)].sort(), 'une image écrite deux fois : un fichier');
+  assert.deepEqual(cheminsDesPortraits(db, 'png').map((c) => c.params.empreinte), [empreinte(IMAGES.png)], 'l’image illisible n’a pas de fichier');
+  assert.deepEqual(cheminsDesPortraits(db, 'jpg'), []);
+  const c = webp.find((x) => x.params.empreinte === empreinte(IMAGES.webp));
+  assert.deepEqual([...c.props.octets], [...octetsDuPortrait(IMAGES.webp)]);
+  const reponse = reponseDuPortrait(c.props);
+  assert.equal(reponse.headers.get('content-type'), TYPES_DE_PORTRAIT.webp);
+  assert.deepEqual(dimensionsDesOctets(new Uint8Array(await reponse.arrayBuffer())), { largeur: 3, hauteur: 2 });
 });

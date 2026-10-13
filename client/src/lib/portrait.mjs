@@ -20,8 +20,15 @@ export const CADRAGE_PAR_DEFAUT = Object.freeze({ x: 0.5, y: 0.5, zoom: 1 });
 const FORMAT = /^data:image\/(webp|jpeg|png);base64,([A-Za-z0-9+/]+={0,2})$/;
 const EXTENSIONS = { webp: 'webp', jpeg: 'jpg', png: 'png' };
 
-/** Une data URL d'image que la page sait écrire (WebP, JPEG ou PNG en base64), sous la limite de la base. */
-export const estUnPortrait = (v) => typeof v === 'string' && v.length <= PORTRAIT_MAX && FORMAT.test(v);
+/**
+ * Une data URL d'image que la page sait écrire (WebP, JPEG ou PNG en base64), sous la limite de la base : un base64 complet (longueur multiple de 4,
+ * comme l'écrit canvas.toDataURL), qui se décode donc en entier — le build en publie les octets (pages/bestiaire/portraits/).
+ */
+export function estUnPortrait(v) {
+  if (typeof v !== 'string' || v.length > PORTRAIT_MAX) return false;
+  const m = FORMAT.exec(v);
+  return Boolean(m) && m[2].length % 4 === 0;
+}
 
 const borner = (v, min, max) => Math.min(max, Math.max(min, v));
 const arrondi = (v) => Math.round(v * 10000) / 10000;
@@ -60,13 +67,18 @@ export function styleDuCadrage(cadrage, dimensions) {
   return `width:${pc(dimensions.largeur)};height:${pc(dimensions.hauteur)};left:${pc(-gauche)};top:${pc(-haut)}`;
 }
 
-/** Les octets d'une data URL d'image (les `max` premiers seulement si demandé), ou null si ce n'en est pas une. */
+/** Les octets d'une data URL d'image (les `max` premiers seulement si demandé), ou null si ce n'en est pas une ou si son base64 ne se décode pas. */
 export function octetsDuPortrait(donnees, max = Infinity) {
   const m = FORMAT.exec(String(donnees ?? ''));
   if (!m) return null;
   // 4 caractères base64 = 3 octets : on ne décode que ce qu'il faut
   const base64 = Number.isFinite(max) ? m[2].slice(0, Math.ceil(max / 3) * 4) : m[2];
-  const binaire = atob(base64);
+  let binaire;
+  try {
+    binaire = atob(base64);
+  } catch {
+    return null;
+  }
   const octets = new Uint8Array(binaire.length);
   for (let i = 0; i < binaire.length; i += 1) octets[i] = binaire.charCodeAt(i);
   return octets;
@@ -136,10 +148,13 @@ export function empreinte(texte) {
   return a.toString(16).padStart(8, '0') + b.toString(16).padStart(8, '0');
 }
 
+/** L'extension du fichier d'un portrait (« webp », « jpg », « png ») d'après son format ; null si ce n'en est pas un. */
+export const extensionDuPortrait = (donnees) => EXTENSIONS[FORMAT.exec(String(donnees ?? ''))?.[1]] ?? null;
+
 /** Le nom du fichier d'un portrait publié par le build (« 3f2a…9c.webp ») : son empreinte et l'extension de son format ; null si ce n'en est pas un. */
 export function fichierDuPortrait(donnees) {
-  const m = FORMAT.exec(String(donnees ?? ''));
-  return m ? `${empreinte(donnees)}.${EXTENSIONS[m[1]]}` : null;
+  const extension = extensionDuPortrait(donnees);
+  return extension ? `${empreinte(donnees)}.${extension}` : null;
 }
 
 /** Le poids d'une image, en kilo-octets (environ 3 octets par 4 caractères de base64). */

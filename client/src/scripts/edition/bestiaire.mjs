@@ -27,6 +27,7 @@ const rangeeDe = (id) => rangees().find((tr) => tr.dataset.edMonstre === id) ?? 
 const rafraichir = () => document.dispatchEvent(new CustomEvent('bestiaire:rafraichir'));
 const supprimes = new Map(); // id de la ligne -> entité à supprimer ('monstre' : une carte, 'monstre_espece' : une espèce sans carte)
 let ecoute = null;
+let ecoutePortraits = null;
 const images = new Map(); // empreinte -> data URL : les portraits déjà lus au service ou choisis dans cette page
 
 function retirer(tr) {
@@ -65,6 +66,9 @@ async function reconcilier(ed) {
     t.append(tr);
     zone().append(carte);
     ajoutees.push({ id: l.id, ancre, tr });
+    // le service rend la carte avec le logo : son portrait (`l.portrait` : empreinte et cadrage) se montre comme les autres, à l'ouverture
+    const figure = carte.querySelector('.bcarte__portrait[data-ed-portrait]');
+    if (figure && l.portrait) await afficherPortrait(ed, figure, l.portrait);
   }
   for (const tr of rangees()) tr.dataset.ordre = String(ordre.get(tr.dataset.edMonstre) ?? rangees().length);
   if (ed.enEdition) for (const a of ajoutees) boutonSupprimer(a.tr);
@@ -73,10 +77,10 @@ async function reconcilier(ed) {
 }
 
 // --- Portrait ----------------------------------------------------------------------------------------------------------------------------------
-/** La ligne qui porte le portrait d'une figure : [table, clé] (`data-ed-portrait`). */
+/** La ligne qui porte le portrait d'une figure : { table, cle } (`data-ed-portrait`), ou null. */
 function ligneDuPortrait(figure) {
   try {
-    const [table, cle] = JSON.parse(figure.dataset.edPortrait);
+    const [table, cle] = JSON.parse(figure?.dataset.edPortrait ?? '');
     return TABLES_DE_LIGNE.has(table) && typeof cle?.id === 'string' ? { table, cle } : null;
   } catch {
     return null;
@@ -88,8 +92,18 @@ const figuresDe = (table, cle) => [...document.querySelectorAll('.bcarte__portra
   return l?.table === table && l.cle.id === cle?.id;
 });
 
+/** Ce qu'une ligne du service dit du portrait (ligneSansImage) : { empreinte, x, y, zoom }, ou null sans image. */
+const portraitVu = (ligne) => (ligne.portrait?.image ? { empreinte: ligne.portrait.empreinte, x: ligne.portrait_x, y: ligne.portrait_y, zoom: ligne.portrait_zoom } : null);
+
+/** Ce que la figure montre, ou doit montrer dès l'ouverture de sa carte (`data-portrait-attendu`) : { empreinte, … } ou null. */
+function vuDeLaFigure(figure) {
+  if (figure.dataset.portraitAttendu) return JSON.parse(figure.dataset.portraitAttendu);
+  const [cle, x, y, zoom] = (figure.dataset.portrait ?? '').split(':');
+  return cle ? { empreinte: cle, x: Number(x), y: Number(y), zoom: Number(zoom) } : null;
+}
+
 /** L'image entière d'une ligne et son cadrage, lus au service (POST /api/edition/portrait/) ; l'image est gardée pour la suite. */
-async function lirePortrait(ed, table, cle) {
+async function lirePortrait(ed, { table, cle }) {
   const r = await ed.appel('POST', 'edition/portrait/', { table, cle });
   if (r.portrait) images.set(empreinte(r.portrait), r.portrait);
   return r.portrait ? { donnees: r.portrait, x: r.portrait_x, y: r.portrait_y, zoom: r.portrait_zoom } : null;
@@ -115,82 +129,123 @@ function remplacerPortrait(figure, portrait) {
 }
 
 /**
- * Le portrait d'une ligne de la base dans sa carte (lignes en attente, réponse d'un enregistrement) : la ligne n'en donne que l'empreinte et le cadrage
- * (ligneSansImage) ; une figure qui montre déjà cette image ainsi cadrée ne change pas, sinon l'image vient du service (ou de ce qu'il a déjà donné).
+ * Montre dans une figure le portrait `vu` (empreinte et cadrage ; null : le logo). Une carte fermée ne charge rien : la figure note ce qu'elle doit
+ * montrer (`data-portrait-attendu`) jusqu'à l'ouverture de sa carte (plus de 300 cartes dans la page, une image fait jusqu'à 700 000 caractères) ;
+ * une figure qui le montre déjà ne change pas ; sinon l'image vient du service (ou de ce qu'il a déjà donné).
  */
-async function afficherPortrait(ed, table, cle, ligne) {
-  const figures = figuresDe(table, cle);
-  if (!figures.length || !('portrait' in ligne)) return;
-  const p = ligne.portrait;
-  const vu = p?.image ? { empreinte: p.empreinte, x: ligne.portrait_x, y: ligne.portrait_y, zoom: ligne.portrait_zoom } : null;
-  const aRefaire = figures.filter((f) => f.dataset.portrait !== empreinteDuPortrait(vu));
-  if (!aRefaire.length) return;
+async function afficherPortrait(ed, figure, vu) {
+  if (figure.dataset.portrait === empreinteDuPortrait(vu)) {
+    delete figure.dataset.portraitAttendu;
+    etatDesOutils(figure);
+    return;
+  }
+  if (!figure.closest('.bcarte')?.classList.contains('est-ouverte')) {
+    figure.dataset.portraitAttendu = JSON.stringify(vu);
+    return;
+  }
+  delete figure.dataset.portraitAttendu;
   let portrait = null;
   if (vu) {
     const donnees = images.get(vu.empreinte);
-    portrait = donnees ? { donnees, ...cadrageDe(vu) } : await lirePortrait(ed, table, cle);
+    // l'image lue au service est celle de maintenant (et son cadrage), même si elle a encore changé depuis
+    portrait = donnees ? { donnees, ...cadrageDe(vu) } : await lirePortrait(ed, ligneDuPortrait(figure));
   }
-  for (const f of aRefaire) if (f.isConnected) remplacerPortrait(f, portrait);
+  if (figure.isConnected) remplacerPortrait(figure, portrait);
 }
 
-/** Enregistre le portrait d'une ligne, seul dans son lot, puis le montre ; `valeurs` : l'image et son cadrage, le cadrage seul, ou { portrait: null }. */
-async function enregistrerPortrait(ed, figure, valeurs, message) {
+/** Une carte s'ouvre : son portrait changé depuis la construction se charge maintenant. */
+function portraitsDeLaCarte(ed, carte) {
+  for (const f of carte?.querySelectorAll('.bcarte__portrait[data-portrait-attendu]') ?? []) {
+    afficherPortrait(ed, f, JSON.parse(f.dataset.portraitAttendu)).catch((e) => ed.annoncer(`Le portrait n’a pas pu être affiché : ${e.message}`, 'erreur'));
+  }
+}
+
+/**
+ * Enregistre le portrait d'une ligne, seul dans son lot, puis le montre. `valeurs` : l'image et son cadrage, le cadrage seul, ou { portrait: null } ;
+ * `avant` : l'image (son empreinte) et le cadrage que la page croit en place — refus 409 si quelqu'un d'autre l'a changé entre-temps.
+ */
+async function enregistrerPortrait(ed, figure, valeurs, avant, message) {
   const ligne = ligneDuPortrait(figure);
-  if (!ligne) return;
-  const outils = [...figure.querySelectorAll('.ed-portrait button')];
-  for (const b of outils) b.disabled = true;
+  if (!ligne) {
+    ed.annoncer('Portrait non enregistré : sa carte n’est plus dans la page.', 'erreur');
+    return;
+  }
   try {
-    const r = await ed.appel('POST', 'edition/', { page: ed.page, operations: [{ op: 'modifier', table: ligne.table, cle: ligne.cle, valeurs }] });
+    const r = await ed.appel('POST', 'edition/', { page: ed.page, operations: [{ op: 'modifier', table: ligne.table, cle: ligne.cle, valeurs, avant }] });
     if (valeurs.portrait) images.set(empreinte(valeurs.portrait), valeurs.portrait);
     for (const l of r.lignes) ed.appliquerLigne(l.table, l.cle, l.ligne);
     ed.annoncer(r.modifications ? message : 'Rien n’a changé dans la base.');
   } catch (e) {
     ed.annoncer(`Portrait non enregistré : ${e.message}`, 'erreur');
-  } finally {
-    for (const b of outils) b.disabled = false;
+    // un conflit : la figure montre le portrait tel qu'il est maintenant
+    if (e.statut === 409 && e.corps?.ligne && figure.isConnected) await afficherPortrait(ed, figure, portraitVu(e.corps.ligne)).catch(() => {});
   }
 }
 
-/** « Choisir une image » ou « Changer », « Recadrer » et ✕ selon que la figure montre une image. */
+/** « Choisir une image » ou « Changer », « Recadrer » et ✕ selon que la figure montre (ou va montrer) une image. */
 function etatDesOutils(figure) {
   const outils = figure.querySelector('.ed-portrait');
   if (!outils) return;
-  const vide = !figure.dataset.portrait;
+  const vide = !vuDeLaFigure(figure);
   outils.querySelector('[data-action="choisir"]').textContent = vide ? 'Choisir une image' : 'Changer';
   outils.querySelector('[data-action="recadrer"]').hidden = vide;
   outils.querySelector('[data-action="retirer"]').hidden = vide;
 }
 
-/** Les boutons du portrait d'une carte ouverte en mode modification (comme ceux de la fiche de personnage). */
+/**
+ * Les boutons du portrait d'une carte ouverte en mode modification (comme ceux de la fiche de personnage). Une action à la fois : les boutons restent
+ * désactivés de la lecture ou de la réduction de l'image jusqu'à l'enregistrement ; une action qui finit après la sortie du mode modification n'enregistre
+ * rien (et le dit).
+ */
 function outilsDuPortrait(ed, carte) {
   const depart = carte.querySelector('.bcarte__portrait[data-ed-portrait]');
   if (!depart || depart.querySelector('.ed-portrait') || !ligneDuPortrait(depart)) return;
   const outils = document.createElement('div');
   outils.className = 'ed-portrait';
   const figure = () => outils.closest('.bcarte__portrait');
-  const nom = () => nomDeLaCarte(carte) || 'ce monstre';
+  const titre = () => `Portrait : ${nomDeLaCarte(carte) || 'ce monstre'}`;
+  const actif = () => ed.enEdition && outils.isConnected;
+  const avantDe = (vu) => ({ portrait: vu ? { empreinte: vu.empreinte } : null, ...(vu ? { portrait_x: vu.x, portrait_y: vu.y, portrait_zoom: vu.zoom } : {}) });
+  let occupe = false;
+  const uneAction = async (action) => {
+    if (occupe) return;
+    occupe = true;
+    for (const b of outils.querySelectorAll('button')) b.disabled = true;
+    try {
+      await action();
+    } catch (e) {
+      ed.annoncer(`Portrait non enregistré : ${e.message}`, 'erreur');
+    } finally {
+      occupe = false;
+      for (const b of outils.querySelectorAll('button')) b.disabled = false;
+    }
+  };
+  const quitte = () => ed.annoncer('Portrait non enregistré : la page a quitté le mode modification.', 'erreur');
   const fichier = document.createElement('input');
   fichier.type = 'file';
   fichier.accept = 'image/*';
   fichier.hidden = true;
-  const bouton = (action, texte, titre, danger = false) => {
+  const bouton = (action, texte, aide, danger = false) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = `ed-outil${danger ? ' ed-outil--danger' : ''}`;
     b.dataset.action = action;
     b.textContent = texte;
-    b.title = titre;
-    if (danger) b.setAttribute('aria-label', titre);
+    b.title = aide;
+    if (danger) b.setAttribute('aria-label', aide);
     return b;
   };
   const choisir = bouton('choisir', 'Choisir une image', 'Choisir une image (réduite, puis recadrée) : enregistrée tout de suite');
   const recadrer = bouton('recadrer', 'Recadrer', 'Recadrer le portrait : enregistré tout de suite');
   const retirer = bouton('retirer', '✕', 'Retirer le portrait', true);
-  choisir.addEventListener('click', () => fichier.click());
-  fichier.addEventListener('change', async () => {
+  choisir.addEventListener('click', () => {
+    if (!occupe) fichier.click();
+  });
+  fichier.addEventListener('change', () => uneAction(async () => {
     const f = fichier.files?.[0];
     fichier.value = '';
     if (!f) return;
+    const avant = avantDe(vuDeLaFigure(figure()));
     let donnees;
     try {
       donnees = await reduireImage(f);
@@ -198,26 +253,30 @@ function outilsDuPortrait(ed, carte) {
       ed.annoncer('Cette image n’a pas pu être lue (ou reste trop lourde une fois réduite).', 'erreur');
       return;
     }
-    const c = await ouvrirRecadrage(donnees, CADRAGE_PAR_DEFAUT, { titre: `Portrait : ${nom()}` });
-    if (c) await enregistrerPortrait(ed, figure(), { portrait: donnees, portrait_x: c.x, portrait_y: c.y, portrait_zoom: c.zoom }, 'Portrait enregistré.');
-  });
-  recadrer.addEventListener('click', async () => {
-    const f = figure();
-    const ligne = ligneDuPortrait(f);
-    try {
-      // l'image d'origine et son cadrage actuel, lus au service (la page n'a peut-être que le fichier publié au build)
-      const p = await lirePortrait(ed, ligne.table, ligne.cle);
-      if (!p) return;
-      const c = await ouvrirRecadrage(p.donnees, cadrageDe(p), { titre: `Portrait : ${nom()}` });
-      if (c) await enregistrerPortrait(ed, figure(), { portrait_x: c.x, portrait_y: c.y, portrait_zoom: c.zoom }, 'Cadrage enregistré.');
-    } catch (e) {
-      ed.annoncer(`Le portrait n’a pas pu être lu : ${e.message}`, 'erreur');
+    if (!actif()) return quitte();
+    const c = await ouvrirRecadrage(donnees, CADRAGE_PAR_DEFAUT, { titre: titre() });
+    if (!c) return;
+    if (!actif()) return quitte();
+    await enregistrerPortrait(ed, figure(), { portrait: donnees, portrait_x: c.x, portrait_y: c.y, portrait_zoom: c.zoom }, avant, 'Portrait enregistré.');
+  }));
+  recadrer.addEventListener('click', () => uneAction(async () => {
+    // l'image d'origine et son cadrage actuel, lus au service (la page n'a peut-être que le fichier publié au build)
+    const p = await lirePortrait(ed, ligneDuPortrait(figure()));
+    if (!p) {
+      ed.annoncer('Ce portrait a été retiré entre-temps.', 'erreur');
+      return;
     }
-  });
-  retirer.addEventListener('click', async () => {
-    if (!confirm(`Retirer le portrait de ${nom()} ? (enregistré tout de suite)`)) return;
-    await enregistrerPortrait(ed, figure(), { portrait: null }, 'Portrait retiré.');
-  });
+    if (!actif()) return quitte();
+    const c = await ouvrirRecadrage(p.donnees, cadrageDe(p), { titre: titre() });
+    if (!c) return;
+    if (!actif()) return quitte();
+    const avant = avantDe({ empreinte: empreinte(p.donnees), ...p });
+    await enregistrerPortrait(ed, figure(), { portrait_x: c.x, portrait_y: c.y, portrait_zoom: c.zoom }, avant, 'Cadrage enregistré.');
+  }));
+  retirer.addEventListener('click', () => uneAction(async () => {
+    if (!confirm(`Retirer le portrait de ${nomDeLaCarte(carte) || 'ce monstre'} ? (enregistré tout de suite)`)) return;
+    await enregistrerPortrait(ed, figure(), { portrait: null }, avantDe(vuDeLaFigure(figure())), 'Portrait retiré.');
+  }));
   outils.append(fichier, choisir, recadrer, retirer);
   depart.append(outils);
   etatDesOutils(depart);
@@ -336,6 +395,11 @@ export const bestiaire = {
   actif: (doc) => Boolean(doc.querySelector('[data-bestiaire-tableau][data-prefixe=""] tr[data-ed-monstre]')),
 
   async surcouche(ed, lignes) {
+    // un portrait changé depuis la construction se charge à l'ouverture de sa carte (afficherPortrait), en lecture comme en mode modification
+    if (!ecoutePortraits) {
+      ecoutePortraits = (e) => portraitsDeLaCarte(ed, e.detail?.carte);
+      document.addEventListener('bestiaire:carte-ouverte', ecoutePortraits);
+    }
     if (lignes.some((l) => TABLES_DE_LIGNE.has(l.table) && (l.creee || !l.ligne))) await reconcilier(ed);
   },
 
@@ -348,7 +412,10 @@ export const bestiaire = {
   ligne(ed, table, cle, ligne) {
     if (!TABLES_DE_LIGNE.has(table)) return;
     if (ligne) {
-      afficherPortrait(ed, table, cle, ligne).catch((e) => ed.annoncer(`Le portrait n’a pas pu être affiché : ${e.message}`, 'erreur'));
+      if (!('portrait' in ligne)) return;
+      for (const f of figuresDe(table, cle)) {
+        afficherPortrait(ed, f, portraitVu(ligne)).catch((e) => ed.annoncer(`Le portrait n’a pas pu être affiché : ${e.message}`, 'erreur'));
+      }
       return;
     }
     const tr = rangeeDe(cle.id);

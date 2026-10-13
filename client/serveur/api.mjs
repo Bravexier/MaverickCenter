@@ -18,7 +18,7 @@
 //   POST /api/edition/classe/       { classe } → spécialités, dons, choix et fiches qui les citent (ajout et suppression depuis sa page)
 //   POST /api/edition/bestiaire/    { connues, logo } → l'ordre des lignes du tableau des monstres, et la ligne et la carte de celles que la page n'a pas
 //   POST /api/edition/portrait/     { table, cle } → le portrait d'une carte de monstre ou d'une espèce, en entier, et son cadrage (les autres réponses
-//                                   ne donnent d'une image que son empreinte : ligneSansImage)
+//                                   de l'édition ne donnent d'une image que son empreinte : ligneSansImage ; le journal la porte en entier)
 //   POST /api/edition/              { page, operations } → applique un lot d'un bloc et le note au journal
 //   GET  /api/edition/journal/      le journal des modifications en attente, à rapatrier dans data/rows (npm run db:appliquer-edition)
 // Page « Mise à jour », sur le site de dev seulement (même garde) — serveur/notes-de-version.mjs :

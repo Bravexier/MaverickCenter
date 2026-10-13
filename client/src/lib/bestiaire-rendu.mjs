@@ -59,7 +59,7 @@ export function htmlDeLigneMonstre(l, i) {
  * Le portrait d'une carte, ou d'une espèce sans carte (demande du propriétaire : « enregistrer le portrait de la même manière que dans la feuille de
  * personnage », migration 0033) : le carré cadré de l'image, sans script (lib/portrait.mjs#styleDuCadrage : cadre carré, image placée en pourcentages),
  * ou le logo en attendant (`logo` : son adresse). `portrait` : { donnees, x, y, zoom } (lib/bestiaire-db.mjs) ; `adresse(donnees)` : l'adresse de
- * l'image — le fichier publié au build (pages/bestiaire/portraits/[fichier].ts), la data URL dans le mode modification ; sans adresse (le service rend
+ * l'image — le fichier publié au build (lib/portraits-publies.mjs), la data URL dans le mode modification ; sans adresse (le service rend
  * la carte d'un monstre créé depuis la construction), le logo, et le mode modification charge l'image (src/scripts/edition/bestiaire.mjs).
  * `data-portrait` : l'empreinte de l'image affichée et son cadrage (vide : le logo), `data-ed-portrait` : la ligne qui le porte.
  */

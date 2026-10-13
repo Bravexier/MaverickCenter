@@ -85,13 +85,16 @@ function dialogue() {
 
 /**
  * Le recadrage : l'image couvre un cadre carré ; elle se déplace au doigt, à la souris ou aux flèches, le curseur ou la molette zoome (1 à 4). Rend le
- * cadrage validé — le centre du cadre dans l'image (x, y entre 0 et 1) et le zoom, arrondis à 4 décimales — ou null si le dialogue est fermé sans valider.
+ * cadrage validé — le centre du cadre dans l'image (x, y entre 0 et 1) et le zoom, arrondis à 4 décimales — ou null si le dialogue est fermé sans valider
+ * (ou déjà ouvert pour un autre recadrage).
  * `titre` : le titre du dialogue (« Recadrer le portrait » par défaut).
  * @returns {Promise<{ x: number, y: number, zoom: number } | null>}
  */
 export function ouvrirRecadrage(source, cadrage = CADRAGE_PAR_DEFAUT, { titre = 'Recadrer le portrait' } = {}) {
   insererStyle();
   const d = dialogue();
+  // un recadrage à la fois : celui qui est ouvert n'est pas détourné (image, cadrage, réponse), le second est simplement abandonné
+  if (d.open) return Promise.resolve(null);
   const $ = (id) => d.querySelector(`#${id}`);
   const vue = $('recadrage-vue');
   const image = $('recadrage-image');

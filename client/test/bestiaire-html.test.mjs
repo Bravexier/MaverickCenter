@@ -60,8 +60,11 @@ test('filtres : formulaire caché sans JavaScript, une case par valeur, le préf
 test('tableau réduit (demande du propriétaire) : six colonnes pour les monstres, trois pour les créatures invoquées ; la carte à côté, avec son portrait', options, () => {
   const entetes = (bloc) => [...bloc.slice(bloc.indexOf('<table class="btable">'), bloc.indexOf('</thead>', bloc.indexOf('<table class="btable">'))).matchAll(/<th scope="col"[^>]*>\s*([^<]+?)\s*<\/th>/g)].map((m) => m[1]);
   assert.deepEqual(entetes(panneau('monstres')), ['Espèce', 'Nom', 'Type', 'Catégorie', 'EP', 'Lieux']);
-  // l'espèce d'abord, puis le nom, en-tête de ligne et lien vers la carte
-  assert.match(panneau('monstres'), /<tr class="bligne" id="monstre-amblypyge-noir"[^>]*><td class="bligne__espece"[^>]*>Amblypyge noir<\/td><th scope="row" class="bligne__nom"><a class="bligne__ouvrir"/);
+  // l'espèce d'abord, puis le nom, en-tête de ligne et lien vers la carte (une ligne de la base construite : le site de dev peut renommer une carte)
+  const l = chargerBestiaire(ouvrirBase()).monstres.lignes.find((x) => x.carte);
+  const html_ = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  const re = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  assert.match(panneau('monstres'), new RegExp(`<tr class="bligne" id="${re(l.ancre)}"[^>]*><td class="bligne__espece"[^>]*>${re(html_(l.espece.nom))}</td><th scope="row" class="bligne__nom"><a class="bligne__ouvrir"[^>]*>${re(html_(l.nom))}</a>`));
   assert.ok(panneau('monstres').includes(`data-tris="${JSON.stringify(['espece', 'nom', 'type', 'categorie', 'ep', 'lieu']).replace(/"/g, '&quot;')}"`));
   // moitié-moitié avec la carte (demande du propriétaire)
   assert.match(html, /\.bvue \{ display: grid; grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\);/);

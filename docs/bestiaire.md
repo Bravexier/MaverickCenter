@@ -58,7 +58,10 @@ Bestiaire, ainsi que la possibilité de créer / modifier / supprimer un monstre
   (`src/scripts/portrait.mjs`, partagé) : l'image est réduite (600 000 pixels au plus, WebP ou JPEG sous 700 000 caractères), puis recadrée dans un
   dialogue (glisser, flèches, molette ou curseur de zoom) ; on garde l'image et son cadrage (centre du carré et zoom, de 1 à 4 : on peut recadrer plus
   tard). Le portrait s'**enregistre tout de suite**, seul dans son lot (une image fait jusqu'à 700 000 caractères, une requête au plus 1 Mio) ; ✕ le
-  retire après confirmation. Une carte a le sien ; une espèce sans carte aussi (sa tuile).
+  retire après confirmation. Une carte a le sien ; une espèce sans carte aussi (sa tuile). Le portrait suit la tuile : la première carte créée dans une
+  espèce prend celui de l'espèce, et une espèce qui perd sa dernière carte reprend celui de la carte (s'il n'en a pas déjà un) ; sans quoi l'image
+  resterait dans la base sans tuile pour la montrer. Un portrait changé par quelqu'un d'autre pendant qu'on le recadre est refusé (conflit, comme un
+  champ : l'image est comparée par son empreinte). La page ne charge l'image d'un portrait changé depuis la construction qu'à l'ouverture de sa carte.
 
 Ce que la base tire du texte est **recalculé par le service** avec les fonctions de l'extraction (`lib/monstre-champs.mjs`), jamais saisi
 (`serveur/edition-bestiaire.mjs`) : les bornes d'une échelle (« EP2 - 4 » → 2 et 4 ; hors de 1 à 10 : refusé), l'écriture de la catégorie, les lieux de
@@ -69,11 +72,14 @@ s'ajoute ni ne se retire seule (elle vient avec sa carte) ; une case de butin vi
 
 Le portrait vit dans `monstre.portrait` et `monstre_espece.portrait` (data URL, et son cadrage `portrait_x`, `portrait_y`, `portrait_zoom` : les mêmes
 colonnes que `personnage`, migration `0033-portraits-du-bestiaire`) ; le service garde le cadrage dans l'image (`lib/portrait.mjs#bornerCadrage`, la règle
-du dialogue) et l'efface avec elle. Au build, chaque image devient un fichier, `/bestiaire/portraits/<empreinte>.webp` (`pages/bestiaire/portraits/[fichier].ts` :
-la page n'emporte pas 300 images en data URL ; une image changée change d'adresse), que la carte montre cadré sans script (`styleDuCadrage` : l'image placée
-en pourcentages dans un cadre carré). Le service ne renvoie jamais une image entière dans ses réponses habituelles (lignes lues, en attente, réponse d'un lot :
-`{ image, empreinte, resume }`, `ligneSansImage`) ; la page la demande à part (`POST /api/edition/portrait/`). L'historique des modifications et la note de
-version n'en gardent que le résumé (« image 3f2a9c01 (84 Ko), cadrage 0.5 × 0.5, zoom 1 ») ; la page `/donnees/` en montre la longueur.
+du dialogue) et l'efface avec elle. Au build, chaque image devient un fichier, `/bestiaire/portraits/<empreinte>.webp` (ou `.jpg`, `.png` selon son format :
+`lib/portraits-publies.mjs`, une route par format, `pages/bestiaire/portraits/[empreinte].webp.ts`… ; la page n'emporte pas 300 images en data URL ; une
+image changée change d'adresse), que la carte montre cadré sans script (`styleDuCadrage` : l'image placée
+en pourcentages dans un cadre carré). Une image n'est acceptée que si elle se décode en entier et que son en-tête donne ses dimensions (`estUnPortrait`,
+`dimensionsDuPortrait`) : le build en publie les octets. Les réponses de l'édition (lignes lues, en attente, réponse d'un lot, conflit) n'en donnent que
+`{ image, empreinte, resume }` (`ligneSansImage`) ; la page la demande à part (`POST /api/edition/portrait/`). Le journal exporté et le lot figé de la mise à
+jour la portent en entier (rejouée sur `data/rows`) ; l'historique des modifications et la note de version n'en gardent que le résumé (« image 3f2a9c01
+(84 Ko), cadrage 0.5 × 0.5, zoom 1 ») ; la page `/donnees/` en montre la longueur.
 
 Une page construite avant la création ou la suppression d'un monstre demande au service l'ordre de ses lignes et le HTML de celles qu'elle n'a pas
 (`POST /api/edition/bestiaire/`). Les modifications partent dans le journal, puis dans `data/rows` par la mise à jour, et sont listées dans la note de

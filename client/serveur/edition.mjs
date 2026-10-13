@@ -7,6 +7,7 @@
 //
 // Opérations d'un lot (corps de POST /api/edition/) :
 //   { op: 'modifier',  table, cle: { … }, valeurs: { colonne: valeur }, avant?: { colonne: valeur lue } }   avant : refus 409 si la base a changé depuis
+//                      (une image : { empreinte } ou null, comparée même si `valeurs` ne la contient pas)
 //                      apercu?: [html]  page du guide : son HTML dans l'éditeur, un élément par morceau de texte du corps (lignesEnAttente)
 //   { op: 'creer',     entite, valeurs: { … } }                                                            entite : clé de ENTITES ; une valeur « @i » d'un
 //                      don (specialite_id, avec) désigne la ligne créée par l'opération i du même lot (ctx.crees)
@@ -44,6 +45,7 @@ import {
   donneesDeDon, groupeDe, idDeDon, idDeSpecialite, motsClesDeDon, natureHorsSpecialite, NIVEAU_DES_SPECIALITES, NIVEAUX_DE_DON,
   placeNouvelleLigne, slugDeClasse, SPECIALITES_MAX, titreDeDon, typeBrutDeSaisie,
 } from '../src/lib/dons-edition.mjs';
+import { empreinte } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { ErreurJournal, cleDe, lireLigne, nouveauLot, ouvrirLot, rejouer, structure } from './edition-journal.mjs';
 import { domainesDuBestiaire, especesDeMonstres, lignesDuBestiaire as lignesRenduesDuBestiaire } from './edition-bestiaire.mjs';
@@ -1376,7 +1378,14 @@ function modifier(ctx, op) {
   if (!avant) throw new ErreurEdition(404, `${TABLES[table].libelle} introuvable : ${JSON.stringify(op.cle)}`);
   const valeurs = valeursCanoniques(table, avant, validees);
   if (op.avant && typeof op.avant === 'object') {
-    const changees = Object.keys(valeurs).filter((c) => c in op.avant && (op.avant[c] ?? null) !== (avant[c] ?? null));
+    // une image se compare par son empreinte (la page n'en a que le résumé : ligneSansImage), qu'elle soit modifiée ou non : un recadrage seul d'une
+    // image remplacée entre-temps est refusé comme un autre conflit
+    const images = colonnesImage(table);
+    const empreinteVue = (v) => (v && typeof v === 'object' ? v.empreinte ?? null : v ?? null);
+    const changees = [
+      ...Object.keys(valeurs).filter((c) => !images.includes(c) && c in op.avant && (op.avant[c] ?? null) !== (avant[c] ?? null)),
+      ...images.filter((c) => c in op.avant && empreinteVue(op.avant[c]) !== (typeof avant[c] === 'string' ? empreinte(avant[c]) : null)),
+    ];
     if (changees.length) {
       throw new ErreurEdition(409, `${TABLES[table].libelle} : modifié entre-temps par quelqu’un d’autre (${changees.join(', ')}). Rechargez la page.`, {
         table, cle: cleDe(db, table, avant), ligne: ligneSansImage(table, avant),

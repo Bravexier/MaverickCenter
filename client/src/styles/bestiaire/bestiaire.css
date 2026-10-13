@@ -209,7 +209,8 @@ html:not(.js) .bcarte__fermer { display: none; }
   html.js .bpanneau:not(.is-active) { display: block; }
   .btableau__defile { max-height: none; overflow: visible; }
   .bvue { grid-template-columns: minmax(0, 1fr); }
-  .bcartes { position: static; max-height: none; overflow: visible; border: 0; }
+  /* même spécificité que la règle des petits écrans (une page A4 en fait partie), placée après : la carte ouverte s'imprime une fois, après le tableau */
+  .bcartes, html.js .bcartes { position: static; inset: auto; z-index: auto; max-height: none; overflow: visible; border: 0; }
 }
 
 /* Mode modification du site de dev (src/scripts/edition/bestiaire.mjs) : les saisies de l'en-tête d'une carte restent sur leur ligne, à la taille de leur

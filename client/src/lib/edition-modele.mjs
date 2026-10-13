@@ -6,7 +6,7 @@
 // Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs et lib/portrait.mjs, purs eux aussi) : partagées par le service, les
 // gabarits Astro et le script des pages (src/scripts/edition.mjs).
 import { NIVEAUX_DE_DON, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
-import { empreinte, estUnPortrait, PORTRAIT_MAX, resumeDuPortrait } from './portrait.mjs';
+import { dimensionsDuPortrait, empreinte, estUnPortrait, PORTRAIT_MAX, resumeDuPortrait } from './portrait.mjs';
 
 export { NIVEAUX_DE_DON, NIVEAU_DES_SPECIALITES, SPECIALITES_MAX, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
 
@@ -19,9 +19,10 @@ export { NIVEAUX_DE_DON, NIVEAU_DES_SPECIALITES, SPECIALITES_MAX, TYPES_DE_DON_S
  *   choix    une valeur d'une liste : `choix` ([{ valeur, libelle }], contrôlée ici) ou `liste` (nom d'une liste de GET /api/edition/listes/, lue dans
  *            la base vivante et contrôlée par le service) ;
  *   reel     nombre (décimales permises) ;
- *   image    une image en data URL (WebP, JPEG ou PNG, PORTRAIT_MAX caractères au plus : lib/portrait.mjs) ; jamais une saisie de l'éditeur commun (une
- *            extension la choisit et la recadre : src/scripts/edition/bestiaire.mjs), jamais renvoyée en entier hors de POST /api/edition/portrait/
- *            (ligneSansImage).
+ *   image    une image en data URL (WebP, JPEG ou PNG, PORTRAIT_MAX caractères au plus, base64 complet et en-tête lisible : lib/portrait.mjs) ;
+ *            jamais une saisie de l'éditeur commun (une extension la choisit et la recadre : src/scripts/edition/bestiaire.mjs) ; les réponses de
+ *            l'édition (lignes lues, en attente, d'un lot, d'un conflit) n'en donnent que l'empreinte (ligneSansImage), l'image entière passe par
+ *            POST /api/edition/portrait/ — le journal exporté et le lot figé de la mise à jour la portent en entier (rejouée sur data/rows).
  * Options : `requis` (vide refusé), `vide` (valeur enregistrée pour un champ vidé quand la colonne n'accepte pas NULL : '' ou 'Rien'),
  * `min` / `max` (entier, réel).
  */
@@ -372,7 +373,8 @@ export function valeurDuChamp(champ, brute, nom = champ.libelle) {
       return null;
     }
     if (typeof brute !== 'string' || brute.length > (champ.max ?? PORTRAIT_MAX)) throw new ErreurValeur(`« ${nom} » : image trop lourde (${champ.max ?? PORTRAIT_MAX} caractères au plus)`);
-    if (!estUnPortrait(brute)) throw new ErreurValeur(`« ${nom} » : image attendue (data URL WebP, JPEG ou PNG)`);
+    // une image que la page écrit : un base64 complet, et un en-tête dont on lit les dimensions (le cadrage et le build en ont besoin)
+    if (!estUnPortrait(brute) || !dimensionsDuPortrait(brute)) throw new ErreurValeur(`« ${nom} » : image attendue (data URL WebP, JPEG ou PNG)`);
     return brute;
   }
   if (champ.type === 'reel') {
