@@ -268,8 +268,10 @@ test('/magies/ : le tableau des relations suit la carte, lignes et colonnes dans
   assert.equal(lignes[6][1], '#ff0000', 'la ligne du Feu est rouge');
   assert.ok(!tableau.includes('Potentiel Illimité'), 'ni ligne ni colonne pour le Potentiel Illimité');
   assert.ok(!tableau.includes('Une case « – »'), 'plus d’explication des cases « – »');
-  assert.match(tableau, /<td title="Feu faible contre Eau"><span class="tableau-magies__marque tableau-magies__marque--faible" aria-hidden="true">▼<\/span>/);
-  assert.match(tableau, /<td title="Nécromancie fort contre Sang ; Nécromancie incompatible avec Sang">/, 'deux marques dans une case');
+  // Résistance = bouclier, vulnérabilité = épée (demande du propriétaire), plus de triangles.
+  assert.match(tableau, /<td title="Feu vulnérable face à Eau"><span class="tableau-magies__marque tableau-magies__marque--faible" aria-hidden="true"><svg class="icone-relation icone-relation--epee"/);
+  assert.match(tableau, /<td title="Nécromancie résiste face à Sang ; Nécromancie incompatible avec Sang"><span class="tableau-magies__marque tableau-magies__marque--fort" aria-hidden="true"><svg class="icone-relation icone-relation--bouclier"/, 'deux marques dans une case');
+  assert.ok(!/[▲▼]|fort contre|faible contre/.test(tableau), 'plus de triangles ni de « fort / faible contre »');
 });
 
 test('/races-et-magies/ n’existe plus et aucune page de magie n’y renvoie', options, () => {
