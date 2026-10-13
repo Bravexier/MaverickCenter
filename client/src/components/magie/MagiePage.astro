@@ -8,11 +8,13 @@ import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
 import magieCreaturesCss from '../../styles/magie/creatures.css?raw';
 import magieResponsiveCss from '../../styles/magie/responsive.css?raw';
 import magiePrintCss from '../../styles/magie/print.css?raw';
+import carteCss from '../../styles/bestiaire/carte.css?raw';
 import { racesOfMagie } from '../../lib/magie-relations.mjs';
 import { magiesDuPotentiel, POTENTIEL_ILLIMITE } from '../../lib/potentiel-illimite.mjs';
-import { pageHref, type Magies, type MagieDb } from '../../lib/magies';
+import { bulleDeCreature, carteDeCreature, pageHref, type Magies, type MagieDb } from '../../lib/magies';
 import { attributEd } from '../../lib/edition-modele.mjs';
 import type { WikiEntry } from '../../lib/wiki';
+import CarteInvoquee from '../bestiaire/CarteInvoquee.astro';
 import MagieAffinites from './MagieAffinites.astro';
 import MagieEtats from './MagieEtats.astro';
 import MagieSorts from './MagieSorts.astro';
@@ -47,6 +49,12 @@ const ressources = [
 ].map((r) => ({ ...r, vide: r.valeur === '', valeur: nombre(r.valeur), nul: r.valeur === '0', texte: !/^-?\d+$/.test(r.valeur) }));
 const groupes = sortsParNpm(magie.sorts);
 const autresMagies = magie.id === POTENTIEL_ILLIMITE ? magiesDuPotentiel(magies.magies) : [];
+// Les créatures citées par les sorts de la page (invocations, effets de carte comme « Manteau noir ») : leur carte du bestiaire en infobulle (demande du
+// propriétaire), une bulle par créature, posée hors des onglets et des détails de sort (components/Infobulles.astro ne montre pas une bulle dont un parent est caché)
+const sortsDeLaPage = [...groupes, ...autresMagies.flatMap((a) => a.groupes)].flatMap((g) => g.sorts);
+const creatures = [...new Set(sortsDeLaPage.flatMap((s) => [...s.invoque.flatMap((i) => i.creatures.map((c) => c.id)), ...s.effetsDeCarte.map((e) => e.id)]))]
+  .map((id) => carteDeCreature(id))
+  .filter((c) => c !== undefined);
 const { avec, sans } = racesOfMagie(entries, entry);
 const aDesRaces = avec.length + sans.length > 0;
 const pageModeHyper = entries.find((e) => e.id === 'guide/liste-des-effets-mode-hyper');
@@ -62,7 +70,7 @@ const nav = [
 ].filter((n) => n.show);
 ---
 
-<style is:inline set:html={magieCss}></style>
+<style is:inline set:html={creatures.length ? `${magieCss}\n${carteCss}` : magieCss}></style>
 <div class="magie" style={`--couleur-magie: ${couleur}; --couleur-texte-magie: ${couleurTexte}`}>
   <header class="magie-hero">
     <p class="magie-hero__surtitre">Magie</p>
@@ -144,6 +152,16 @@ const nav = [
 
   {groupes.length > 0 && <MagieSorts groupes={groupes} magies={magies} />}
   {autresMagies.length > 0 && <SortsDuPotentiel autres={autresMagies} magies={magies} entries={entries} />}
+
+  {
+    creatures.length > 0 && (
+      <div class="cartes-creatures">
+        {creatures.map((c) => (
+          <CarteInvoquee ligne={c} bulle={bulleDeCreature(c.id)} />
+        ))}
+      </div>
+    )
+  }
 
   {aDesRaces && <RacesDeMagie entry={entry} entries={entries} />}
 </div>

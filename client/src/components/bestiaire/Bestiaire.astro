@@ -2,11 +2,12 @@
 // Page /bestiaire/ (demande du propriétaire, 2026-10-11) : deux catégories en onglets, les monstres du « Bestiaire 2.0 » et, à part, les créatures invoquées
 // (« elles ne fonctionnent pas tout à fait pareillement ») ; chacune son tableau, sa recherche et ses filtres (lib/bestiaire-filtres.mjs, script
 // src/scripts/bestiaire.mjs). Au-dessus du tableau des monstres, repliés : les règles des échelles de puissance et le glossaire du butin (introduction et fin
-// du doc). Les onglets : components/Onglets.astro (sans JavaScript, les deux catégories se suivent). CSS : styles/bestiaire/bestiaire.css (?raw).
+// du doc). Les onglets : components/Onglets.astro (sans JavaScript, les deux catégories se suivent). CSS : styles/bestiaire/bestiaire.css et carte.css (la carte, partagée avec les pages de magie) (?raw).
 import Onglets from '../Onglets.astro';
 import TableauMonstres from './TableauMonstres.astro';
 import TableauInvocations from './TableauInvocations.astro';
 import bestiaireCss from '../../styles/bestiaire/bestiaire.css?raw';
+import carteCss from '../../styles/bestiaire/carte.css?raw';
 import type { chargerBestiaire } from '../../lib/bestiaire-db.mjs';
 
 interface Props {
@@ -25,7 +26,7 @@ const CATEGORIES_XP = [
 ] as const;
 ---
 
-<style is:inline set:html={bestiaireCss}></style>
+<style is:inline set:html={`${bestiaireCss}\n${carteCss}`}></style>
 <Onglets />
 <div class="bestiaire" data-onglets="Catégories du bestiaire">
   <nav class="bonglets" aria-label="Catégories du bestiaire">

@@ -1,11 +1,14 @@
-// Script de /bestiaire/ (components/bestiaire/Bestiaire.astro) : pour chaque tableau `[data-bestiaire-tableau]`, la recherche, les filtres à cases
-// (plusieurs valeurs : l'une OU l'autre ; plusieurs filtres : tous), le tri par en-tête et la carte de la ligne choisie, à côté du tableau (sur un petit
-// écran, par-dessus la page). L'état de chaque tableau tient dans l'adresse, sous son préfixe (lib/bestiaire-filtres.mjs) ; le lien d'une ligne
-// (#monstre-…, #invoquee-…) ou de sa carte (#carte-…) ouvre la carte. La recherche porte aussi sur le texte de la carte.
+// Script de /bestiaire/ (components/bestiaire/Bestiaire.astro) : pour chaque section `[data-bestiaire-tableau]`, la recherche, les filtres à cases
+// (plusieurs valeurs : l'une OU l'autre ; plusieurs filtres : tous), le tri par en-tête et la carte de la case choisie, à côté du tableau (sur un petit
+// écran, par-dessus la page). Une section a un tableau (les monstres) ou plusieurs, dépliables (`details[data-repli]` : les créatures invoquées, un
+// tableau par invocation) ; une ligne (`tr[data-ligne]`) est ce que filtrent la recherche et les filtres, une case est ce qui ouvre une carte : la ligne
+// elle-même (un monstre : `data-carte` sur le `tr`) ou chacune de ses cases `[data-case]` (une combinaison de magies : ses deux créatures). L'état de
+// chaque section tient dans l'adresse, sous son préfixe (lib/bestiaire-filtres.mjs) ; le lien d'une case (#monstre-…, #invoquee-…) ou de sa carte
+// (#carte-…) ouvre la carte, et le tableau replié qui la contient. La recherche porte aussi sur le texte des cartes de la ligne.
 // Mode modification du site de dev (src/scripts/edition/bestiaire.mjs) : l'évènement « bestiaire:rafraichir » relit les lignes (monstre créé, supprimé,
 // modifié) ; « bestiaire:carte-ouverte » dit quelle carte vient de s'ouvrir (ses champs deviennent des saisies). Rien d'autre n'est partagé.
 // Il n'importe qu'un module pur que seule cette page utilise (la version portable refuse un module partagé entre deux scripts).
-import { adresseAvecEtat, basculer, effectifs, etatDepuisAdresse, filtrerEtTrier, normaliser, triSuivant } from '../lib/bestiaire-filtres.mjs';
+import { adresseAvecEtat, basculer, casesTrouvees, effectifs, etatDepuisAdresse, filtrerEtTrier, normaliser, triSuivant } from '../lib/bestiaire-filtres.mjs';
 
 document.documentElement.classList.add('js');
 const reduit = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -18,29 +21,36 @@ function brancher(section) {
     tris: JSON.parse(section.dataset.tris ?? '[]'),
   };
   const formulaire = section.querySelector('[data-filtres]');
-  const table = section.querySelector('table.btable');
   const compte = section.querySelector('[data-compte]');
   const puces = section.querySelector('[data-puces]');
   const effacer = section.querySelector('[data-effacer]');
   const aucune = section.querySelector('[data-aucune]');
   const recherche = formulaire.elements.namedItem('q');
-  const entetes = [...table.querySelectorAll('thead th[data-tri]')];
-  const corps = table.tBodies[0];
+  const entetes = [...section.querySelectorAll('table.btable thead th[data-tri]')];
+  const replis = [...section.querySelectorAll('details[data-repli]')];
   const zone = section.querySelector('[data-cartes]');
-  // dans l'ordre du doc (`data-ordre`) : celui du tableau sans tri, même relu après un tri ou l'ajout d'une ligne
+  // le titre d'un tableau dépliable dit son effectif (« 15 combinaisons · 30 créatures ») ; filtré, combien en restent
+  for (const n of section.querySelectorAll('[data-repli-compte]')) n.dataset.texte = n.textContent.replace(/\s+/g, ' ').trim();
+  // le texte d'une carte que cherche la recherche d'une case : sans ce qui nomme d'autres créatures (« Même combinaison », `data-hors-recherche`),
+  // sinon chercher une créature trouverait aussi sa voisine
+  const texteDeCarte = (carte) => {
+    if (!carte) return '';
+    if (!carte.querySelector('[data-hors-recherche]')) return carte.textContent;
+    const copie = carte.cloneNode(true);
+    for (const n of copie.querySelectorAll('[data-hors-recherche]')) n.remove();
+    return copie.textContent;
+  };
+  // dans l'ordre du doc (`data-ordre`) : celui du tableau sans tri, même relu après un tri ou l'ajout d'une ligne ; chaque case avec sa carte
   const lireLignes = () =>
-    [...corps.querySelectorAll('tr[data-ligne]')]
+    [...section.querySelectorAll('table.btable tbody tr[data-ligne]')]
       .map((tr) => {
-        const carte = document.getElementById(tr.dataset.carte);
-        return {
-          tr,
-          carte,
-          id: tr.id,
-          ordre: Number(tr.dataset.ordre),
-          facettes: JSON.parse(tr.dataset.facettes),
-          tri: JSON.parse(tr.dataset.tri),
-          texteNormalise: normaliser(`${tr.textContent} ${carte?.textContent ?? ''}`),
-        };
+        const ligne = { tr, ordre: Number(tr.dataset.ordre), facettes: JSON.parse(tr.dataset.facettes), tri: JSON.parse(tr.dataset.tri) };
+        ligne.cases = (tr.dataset.carte ? [tr] : [...tr.querySelectorAll('[data-case][data-carte]')]).map((el) => {
+          const carte = document.getElementById(el.dataset.carte);
+          return { el, id: el.id, carte, ligne, texteNormalise: normaliser(`${el.textContent} ${texteDeCarte(carte)}`) };
+        });
+        ligne.texteNormalise = normaliser(`${tr.textContent} ${ligne.cases.map((c) => c.carte?.textContent ?? '').join(' ')}`);
+        return ligne;
       })
       .sort((a, b) => a.ordre - b.ordre);
   let lignes = lireLignes();
@@ -76,12 +86,21 @@ function brancher(section) {
   const singulier = section.dataset.singulier ?? 'ligne';
   const pluriel = section.dataset.pluriel ?? 'lignes';
   const nombreDe = (n) => `${n} ${n > 1 ? pluriel : singulier}`;
+  // le compte porte sur les cases (une créature, un monstre), pas sur les lignes (une combinaison de magies en a deux) : celles que la recherche désigne
+  let trouvees = new Map(); // ligne -> ses cases trouvées
+  const casesDe = (ls) => ls.reduce((n, l) => n + (trouvees.get(l) ?? l.cases).length, 0);
 
   function appliquer(ecrireAdresse) {
     const visibles = filtrerEtTrier(lignes, etat);
     const gardees = new Set(visibles);
-    for (const l of lignes) l.tr.hidden = !gardees.has(l);
-    for (const l of [...visibles, ...lignes.filter((x) => !gardees.has(x))]) corps.append(l.tr);
+    trouvees = new Map(visibles.map((l) => [l, casesTrouvees(l, etat)]));
+    for (const l of lignes) {
+      l.tr.hidden = !gardees.has(l);
+      // dans une ligne gardée, la case que la recherche ne trouve pas est estompée
+      for (const c of l.cases) if (c.el !== l.tr) c.el.classList.toggle('est-hors', gardees.has(l) && !trouvees.get(l).includes(c));
+    }
+    // chaque ligne reste dans son tableau
+    for (const l of [...visibles, ...lignes.filter((x) => !gardees.has(x))]) l.tr.parentElement.append(l.tr);
     for (const th of entetes) th.setAttribute('aria-sort', etat.tri === th.dataset.tri ? (etat.sens === 'desc' ? 'descending' : 'ascending') : 'none');
     // filtres : cases, effectifs (parmi les lignes qui passent les AUTRES filtres), nombre de valeurs cochées
     for (const f of facettes) {
@@ -119,8 +138,17 @@ function brancher(section) {
     );
     const filtre = Boolean(etat.q) || Object.keys(etat.facettes).length > 0;
     effacer.hidden = !filtre;
-    compte.textContent = filtre ? `${nombreDe(visibles.length)} sur ${lignes.length}.` : `${nombreDe(lignes.length)}.`;
+    const total = lignes.reduce((n, l) => n + l.cases.length, 0);
+    compte.textContent = filtre ? `${nombreDe(casesDe(visibles))} sur ${total}.` : `${nombreDe(total)}.`;
     aucune.hidden = visibles.length > 0;
+    // tableaux dépliables : une recherche ou un filtre déplie ceux qui ont des réponses et cache les autres ; leur titre dit combien
+    for (const d of replis) {
+      const dedans = visibles.filter((l) => d.contains(l.tr));
+      const n = d.querySelector('[data-repli-compte]');
+      if (n) n.textContent = filtre ? `${nombreDe(casesDe(dedans))} sur ${n.dataset.total}` : n.dataset.texte;
+      d.hidden = filtre && dedans.length === 0;
+      if (filtre && dedans.length) d.open = true;
+    }
     if (ecrireAdresse) history.replaceState(null, '', location.pathname + adresseAvecEtat(location.search, etat, config) + location.hash);
   }
 
@@ -156,54 +184,63 @@ function brancher(section) {
     });
   }
 
-  // cartes : un clic sur une ligne (ou son nom) ouvre sa carte à côté du tableau, une seule à la fois par tableau
-  const lien = (l) => l.tr.querySelector('.bligne__ouvrir');
-  const ouverte = () => lignes.find((l) => l.tr.classList.contains('est-ouverte'));
+  // cartes : un clic sur une case (ou son nom) ouvre sa carte à côté du tableau, une seule à la fois par section
+  const lien = (c) => c.el.querySelector('.bligne__ouvrir');
+  const toutesLesCases = () => lignes.flatMap((l) => l.cases);
+  const ouverte = () => toutesLesCases().find((c) => c.el.classList.contains('est-ouverte'));
   function fermer() {
-    const l = ouverte();
-    if (!l) return;
-    const focus = l.carte.contains(document.activeElement);
-    l.tr.classList.remove('est-ouverte');
-    l.tr.removeAttribute('aria-current');
-    l.carte.classList.remove('est-ouverte');
+    const c = ouverte();
+    if (!c) return;
+    const focus = c.carte.contains(document.activeElement);
+    c.el.classList.remove('est-ouverte');
+    c.el.removeAttribute('aria-current');
+    c.carte.classList.remove('est-ouverte');
     zone.classList.remove('est-ouverte');
-    if (focus) lien(l).focus();
+    if (focus) lien(c).focus();
   }
-  function ouvrir(l, defiler) {
+  function ouvrir(c, defiler) {
     fermer();
-    l.tr.classList.add('est-ouverte');
-    l.tr.setAttribute('aria-current', 'true');
-    l.carte.classList.add('est-ouverte');
+    // la case est dans un tableau replié : on le déplie
+    const repli = c.el.closest('details[data-repli]');
+    if (repli) {
+      repli.hidden = false;
+      repli.open = true;
+    }
+    c.el.classList.add('est-ouverte');
+    c.el.setAttribute('aria-current', 'true');
+    c.carte.classList.add('est-ouverte');
     zone.classList.add('est-ouverte');
     zone.scrollTop = 0;
-    if (defiler) l.tr.scrollIntoView({ block: 'nearest', behavior: reduit() ? 'auto' : 'smooth' });
+    if (defiler) c.el.scrollIntoView({ block: 'nearest', behavior: reduit() ? 'auto' : 'smooth' });
     // sur un petit écran, la carte passe par-dessus la page : le focus y va (Échap ou « Fermer » la referme)
-    if (matchMedia('(max-width: 70rem)').matches) l.carte.querySelector('.bcarte__fermer')?.focus({ preventScroll: true });
-    history.replaceState(null, '', `${location.pathname}${location.search}#${l.id}`);
-    document.dispatchEvent(new CustomEvent('bestiaire:carte-ouverte', { detail: { carte: l.carte } }));
+    if (matchMedia('(max-width: 70rem)').matches) c.carte.querySelector('.bcarte__fermer')?.focus({ preventScroll: true });
+    history.replaceState(null, '', `${location.pathname}${location.search}#${c.id}`);
+    document.dispatchEvent(new CustomEvent('bestiaire:carte-ouverte', { detail: { carte: c.carte } }));
   }
   function toutFermer() {
-    const l = ouverte();
+    const c = ouverte();
     fermer();
-    if (l && (location.hash === `#${l.id}` || location.hash === `#${l.carte.id}`)) history.replaceState(null, '', location.pathname + location.search);
+    if (c && (location.hash === `#${c.id}` || location.hash === `#${c.carte.id}`)) history.replaceState(null, '', location.pathname + location.search);
   }
-  corps.addEventListener('click', (e) => {
+  section.addEventListener('click', (e) => {
     const cible = e.target;
-    const tr = cible.closest('tr[data-ligne]');
-    const l = tr && lignes.find((x) => x.tr === tr);
-    if (!l) return;
+    if (!cible.closest('table.btable tbody')) return;
+    // la case cliquée : la ligne d'un monstre, ou la case d'une créature dans la ligne de sa combinaison
+    const el = cible.closest('[data-case]') ?? cible.closest('tr[data-ligne][data-carte]');
+    const c = el && toutesLesCases().find((x) => x.el === el);
+    if (!c) return;
     if (cible.closest('a') && !cible.closest('.bligne__ouvrir')) return;
     if (!cible.closest('a') && (getSelection()?.toString() ?? '') !== '') return;
     e.preventDefault();
-    if (l.tr.classList.contains('est-ouverte')) toutFermer();
-    else ouvrir(l, false);
+    if (c.el.classList.contains('est-ouverte')) toutFermer();
+    else ouvrir(c, false);
   });
   zone.addEventListener('click', (e) => {
     if (!e.target.closest('.bcarte__fermer')) return;
     e.preventDefault();
-    const l = ouverte();
+    const c = ouverte();
     toutFermer();
-    if (l) lien(l).focus();
+    if (c) lien(c).focus();
   });
   // lignes ajoutées, retirées ou réécrites par le mode modification : relues (texte de la recherche, filtres, tri), la carte ouverte le reste
   document.addEventListener('bestiaire:rafraichir', () => {
@@ -224,6 +261,10 @@ function brancher(section) {
 }
 
 for (const section of document.querySelectorAll('[data-bestiaire-tableau]')) brancher(section);
+// à l'impression, les tableaux repliés se déplient (un <details> fermé n'imprime que son titre)
+window.addEventListener('beforeprint', () => {
+  for (const d of document.querySelectorAll('details[data-repli]')) d.open = true;
+});
 
 // adresse #monstre-… / #invoquee-… (ou #carte-…) : ouvre cette carte (l'onglet qui la contient est ouvert par components/Onglets.astro)
 function depuisAdresse() {
@@ -234,13 +275,13 @@ function depuisAdresse() {
     return;
   }
   for (const t of tableaux) {
-    const l = t.lignes.find((x) => x.id === id || x.carte?.id === id);
-    if (l) {
-      if (l.tr.hidden) {
+    const c = t.lignes.flatMap((l) => l.cases).find((x) => x.id === id || x.carte?.id === id);
+    if (c) {
+      if (c.ligne.tr.hidden) {
         // ligne cachée par les filtres : on les retire pour la montrer
         t.formulaire.dispatchEvent(new Event('reset', { cancelable: true }));
       }
-      t.ouvrir(l, true);
+      t.ouvrir(c, true);
     }
   }
 }

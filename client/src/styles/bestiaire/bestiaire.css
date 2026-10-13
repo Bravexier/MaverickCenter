@@ -1,5 +1,7 @@
-/* Chargé uniquement depuis components/bestiaire/Bestiaire.astro (?raw) : la page /bestiaire/ (deux onglets, un grand tableau par onglet, filtres, fiches
-   sous les lignes). La page prend toute la largeur ; le tableau défile dans son cadre (en-tête et première colonne fixes), jamais la page. */
+/* Chargé uniquement depuis components/bestiaire/Bestiaire.astro (?raw) : la page /bestiaire/ (deux onglets, les tableaux, filtres, la carte de la case
+   choisie à côté). La page prend toute la largeur ; le tableau des monstres défile dans son cadre (en-tête et première colonne fixes) ; ceux des
+   créatures invoquées, l'un sous l'autre, avec la page (en-tête collé en haut de la fenêtre sur grand écran). La carte elle-même
+   (monstre, créature invoquée) : styles/bestiaire/carte.css, partagé avec les pages de magie (la carte d'une créature y sert d'infobulle). */
 main:has(> .bestiaire) { max-width: 120rem; }
 .bestiaire {
   --bes: var(--accent);
@@ -114,16 +116,35 @@ th[aria-sort="descending"] .btri::after { content: '↓'; opacity: 1; }
 .bligne__ouvrir:focus-visible { outline: 2px solid var(--bes); outline-offset: 2px; border-radius: 4px; }
 .btable td.nombre { text-align: right; white-space: nowrap; }
 .varie { font-style: italic; color: var(--muted); cursor: help; }
-.prefixe { font-size: 0.72rem; padding: 0 0.3rem; border-radius: 4px; background: var(--bes-soft); color: var(--muted); white-space: nowrap; }
-.bcible { display: inline-block; padding: 0 0.4rem; border-radius: 999px; font-size: 0.78rem; line-height: 1.5; border: 1px solid var(--border); background: var(--bg); }
-.bcible--grande_vulnerabilite, .bcible--grande_resistance, .bcible--double_resistance { font-weight: 700; border-color: var(--bes-line); }
-.bcible--reflexion { font-style: italic; }
-.bcibles { display: flex; flex-wrap: wrap; gap: 0.25rem; }
-.bcat { display: inline-block; padding: 0 0.45rem; border-radius: 999px; font-size: 0.78rem; white-space: nowrap; border: 1px solid var(--border); }
-.bcat--mini_boss { border-color: var(--bes-line); background: var(--bes-soft); }
-.bcat--boss { background: var(--bes); border-color: var(--bes); color: var(--surface); font-weight: 700; }
-.bmagies { display: inline-flex; flex-wrap: wrap; gap: 0.2rem; align-items: center; }
-.bmagie { display: inline-block; padding: 0 0.45rem; border-radius: 999px; font-size: 0.78rem; background: var(--m); color: var(--m-texte); border: 1px solid color-mix(in srgb, var(--m) 70%, var(--text)); }
+
+/* Les créatures invoquées (TableauInvocations.astro) : un tableau dépliable par invocation ; golems et non-morts, une ligne par combinaison de magies et ses
+   deux créatures côte à côte ; marionnettes, une ligne par palier et sa créature. Une case (la créature) ouvre sa carte, pas la ligne entière */
+.binvocations { display: grid; gap: 0.6rem; align-content: start; min-width: 0; }
+.binvocation { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.binvocation > summary { list-style: none; cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.7rem; padding: 0.6rem 0.9rem; }
+/* « déroulable » (demande du propriétaire) : en flex, le résumé perd son triangle ; on le redessine, ▸ replié, ▾ déplié */
+.binvocation > summary::-webkit-details-marker { display: none; }
+.binvocation > summary::before { content: '▸'; color: var(--muted); width: 0.8em; }
+.binvocation[open] > summary::before { content: '▾'; }
+.binvocation > summary:focus-visible { outline: 2px solid var(--bes); outline-offset: 2px; border-radius: 12px; }
+.binvocation__nom { font-weight: 700; font-size: 1.05rem; }
+.binvocation__compte { font-size: 0.82rem; }
+.binvocation__sort { margin: 0; padding: 0.15rem 0.9rem 0.55rem; font-size: 0.85rem; }
+.binvocation .btableau__defile { max-height: none; border-width: 1px 0 0; border-radius: 0 0 12px 12px; }
+/* trois tableaux l'un sous l'autre : la page défile, pas chacun dans son cadre ; sur grand écran (le tableau tient dans sa moitié) le cadre ne défile
+   pas du tout, pour que l'en-tête reste collé en haut de la fenêtre (un cadre qui défile, même sans hauteur bornée, le retiendrait) */
+@media (min-width: 70.01rem) {
+  .binvocation .btableau__defile { overflow: visible; }
+}
+.bligne--bloc { cursor: default; }
+.bligne--bloc:hover > * { background: var(--surface); }
+.bligne__bloc { text-align: left; font-weight: 400; min-width: 7rem; }
+.bligne--bloc > .bcase { cursor: pointer; scroll-margin-top: 2.6rem; }
+.bligne--bloc > .bcase:hover, .bligne--bloc > .bcase.est-ouverte { background: var(--bes-soft); }
+.bligne--bloc > .bcase.est-ouverte { box-shadow: inset 0 -3px 0 var(--bes); }
+.btable--duo .bcase { width: 40%; }
+/* une recherche garde la ligne d'une combinaison ; sa créature que la recherche ne trouve pas est estompée */
+.bligne--bloc > .bcase.est-hors { opacity: 0.4; }
 
 /* Le tableau à gauche, la carte à droite, moitié-moitié (demande du propriétaire : « du 50/50 avec la tuile du monstre choisi ») ; la carte est un panneau qui
    suit le défilement ; sur un écran étroit, elle passe par-dessus la page */
@@ -137,71 +158,12 @@ html:not(.js) .bcarte:target { display: block; }
 html.js .bcarte.est-ouverte { display: block; }
 html:not(.js) .bcartes { position: static; max-height: none; }
 
-/* La carte */
-.bcarte { padding: 0.9rem 1rem 1.1rem; font-size: 0.92rem; }
-.bcarte__tete { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "titres portrait" "fermer portrait"; gap: 0.3rem 0.9rem; align-items: start;
-  padding-bottom: 0.8rem; border-bottom: 2px solid var(--bes-line); }
-.bcarte__titres { grid-area: titres; min-width: 0; }
-.bcarte__tete h3 { margin: 0; font-size: 1.25rem; line-height: 1.2; }
-.bcarte__espece { margin: 0.15rem 0 0.4rem; color: var(--muted); }
-.bcarte__badges { margin: 0; display: flex; flex-wrap: wrap; gap: 0.3rem; }
-.bbadge { display: inline-block; padding: 0 0.45rem; border-radius: 999px; font-size: 0.78rem; border: 1px solid var(--border); background: var(--bg); white-space: nowrap; }
-.bbadge--ep { border-style: dashed; }
-/* le portrait (migration 0033, lib/bestiaire-rendu.mjs#htmlDuPortrait) : un cadre carré qui montre le carré cadré de l'image (l'image y est placée en
-   pourcentages, comme la vignette de la fiche de personnage) ; sans image, le logo en filigrane */
-.bcarte__portrait { grid-area: portrait; margin: 0; width: 8.5rem; display: grid; gap: 0.3rem; justify-items: center; }
-.bcarte__cadre { position: relative; width: 100%; aspect-ratio: 1; overflow: hidden; border: 1px solid var(--bes-line); border-radius: 12px; background: var(--bes-soft); }
-.bcarte__cadre img { position: absolute; display: block; max-width: none; }
-.bcarte__portrait[data-vide] .bcarte__cadre { border-style: dashed; display: grid; place-items: center; }
-.bcarte__portrait[data-vide] .bcarte__cadre img { position: static; width: 70%; height: auto; opacity: 0.55; }
-.bcarte__portrait figcaption { font-size: 0.68rem; color: var(--muted); text-align: center; }
-.bcarte__fermer { grid-area: fermer; justify-self: start; align-self: end; font-size: 0.8rem; padding: 0.15rem 0.7rem; border: 1px solid var(--border); border-radius: 999px;
-  color: var(--text); text-decoration: none; background: var(--bg); }
-.bcarte__fermer:hover { border-color: var(--bes); }
-html:not(.js) .bcarte__fermer { display: none; }
-.bcarte__section { padding-top: 0.8rem; }
-.bcarte__section + .bcarte__section { margin-top: 0.8rem; border-top: 1px solid var(--border); }
-.bcarte h4 { margin: 0 0 0.35rem; font-size: 0.98rem; }
-.bcarte p { margin: 0 0 0.45rem; }
-.bcarte__bonus { display: block; margin-top: 0.25rem; font-size: 0.8rem; }
-.brubriques { margin: 0; display: grid; gap: 0.5rem; }
-.brubrique { display: grid; gap: 0.15rem; }
-.brubrique dt { font-weight: 700; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
-.brubrique dd { margin: 0; }
-.brubrique dd ul { margin: 0; padding-left: 1.1rem; }
-.bstats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; }
-.bstat { display: grid; justify-items: center; padding: 0.35rem 0.3rem; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); }
-.bstat__nom { font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
-.bstat__val { font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.bstat--sante { border-color: color-mix(in srgb, #c62828 45%, var(--border)); }
-.bstat--chakra { border-color: color-mix(in srgb, #1565c0 45%, var(--border)); }
-.bstat--barriere { border-color: color-mix(in srgb, #f9a825 55%, var(--border)); }
-.bcaracs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.3rem; }
-.bcarac { display: grid; justify-items: center; padding: 0.2rem 0; border-radius: 8px; background: var(--c); color: var(--c-texte); }
-.bcarac__sigle { font-size: 0.7rem; font-weight: 700; }
-.bcarac__val { font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.bcapacites { list-style: none; padding-left: 0 !important; display: grid; gap: 0.35rem; }
-.bcapacites .commune { opacity: 0.85; }
-.varie-note { font-style: italic; color: var(--muted); }
-.bbloc { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin-bottom: 0.3rem; }
-.bbloc > summary { cursor: pointer; padding: 0.35rem 0.7rem; font-weight: 600; }
-.bbloc > p { padding: 0 0.7rem 0.5rem; }
-.bbutin__defile { overflow-x: auto; }
-.bbutin { border-collapse: collapse; font-size: 0.82rem; width: 100%; }
-.bbutin th, .bbutin td { border: 1px solid var(--border); padding: 0.25rem 0.45rem; text-align: left; vertical-align: top; background: var(--surface); }
-.bbutin thead th { background: var(--bes-soft); }
-.bbutin .est-sienne { box-shadow: inset 0 0 0 2px var(--bes-line); }
-.bbutin thead th.est-sienne { background: var(--bes); color: var(--surface); }
 
 @media (max-width: 70rem) {
   .bvue { grid-template-columns: minmax(0, 1fr); }
   html.js .bcartes { position: fixed; inset: 0; z-index: 60; max-height: none; border-radius: 0; border: 0; display: none; }
   html.js .bcartes.est-ouverte { display: block; }
   html.js .bcarte { max-width: 40rem; margin: 0 auto; }
-}
-
-@media (max-width: 30rem) {
-  .bcarte__portrait { width: 6rem; }
 }
 
 @media print {

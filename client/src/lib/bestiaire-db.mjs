@@ -67,7 +67,8 @@ const unique = (valeurs) => [...new Set(valeurs.filter((v) => v !== null && v !=
  */
 export function optionsDeFacette(lignes, cle, ecritures, ordre = 'alpha') {
   const effectifs = new Map();
-  for (const l of lignes) for (const v of new Set(l.facettes[cle] ?? [])) effectifs.set(v, (effectifs.get(v) ?? 0) + 1);
+  // une ligne compte pour ses cases (une combinaison de magies : ses deux créatures), comme le compte de la page
+  for (const l of lignes) for (const v of new Set(l.facettes[cle] ?? [])) effectifs.set(v, (effectifs.get(v) ?? 0) + (l.cases?.length ?? 1));
   const libelle = (v) => {
     const compte = ecritures.get(v);
     if (!compte) return v;
@@ -243,7 +244,13 @@ const SENS_CREATURE = { resistance: 'Résistance', vulnerabilite: 'Vulnérabilit
 const DEGATS = { physique: 'Dégâts physiques', frappe: 'Dégâts de frappe', taille: 'Dégâts de taille', estoc: 'Dégâts d’estoc', sonore: 'Dégâts sonores' };
 const premiereMajuscule = (s) => (s ? s[0].toLocaleUpperCase('fr') + s.slice(1) : s);
 
-/** Les créatures invoquées (section 8) : { lignes, facettes, invocations }. */
+/**
+ * Les créatures invoquées (section 8) : { lignes, tableaux, facettes, invocations }. `lignes` : une par créature (sa carte) ; `tableaux` : un par invocation
+ * (demande du propriétaire : « Fait 3 tableaux. Un tableau Appel aux Golem et un Animation des morts sous le même modèle, et déroulable. Il faudra mettre
+ * deux cases à chaque fois côte à côte pour chaque combinaison de magie (avec le mono en premier). Quant à ceux de la manipulation de l'ombre une seule
+ * ligne par NM ») : une ligne par bloc de la marge du classeur, dans son ordre — combinaison de magies et ses deux créatures (carte de gauche, carte de
+ * droite ; le mono est le premier bloc) ou palier « EP » des marionnettes (le sigle du classeur, non défini : écrit tel quel) et sa créature.
+ */
 export function chargerInvocations(db) {
   const all = (sql) => db.prepare(sql).all();
   const invocations = all(
@@ -299,6 +306,9 @@ export function chargerInvocations(db) {
       description: c.description,
       invocation: { id: inv.id, nom: inv.nom, sortId: inv.sort_id, sortNom: inv.sort_nom, magieId: inv.sort_magie_id, magie: inv.sort_magie },
       bloc: c.marge_brut,
+      blocId: c.bloc_id,
+      // 1 = carte de gauche, 2 = carte de droite du bloc (classeur)
+      rang: c.rang,
       magiesDuBloc: (magiesDuBloc.get(c.bloc_id) ?? []).map((m) => m.nom),
       magies: sesMagies.map((m) => m.nom),
       sante: c.sante_brut,
@@ -321,25 +331,46 @@ export function chargerInvocations(db) {
         resiste: liste.filter((x) => x.sens === 'resistance').map((x) => x.cible),
         vulnerable: liste.filter((x) => x.sens === 'vulnerabilite').map((x) => x.cible),
       })),
-      // filtres et tri : les colonnes du tableau seulement (nom, invocation, magies)
-      facettes: {
-        invocation: [inv.nom_cle],
-        magie: unique(sesMagies.map((m) => ec.magie.noter(m.nom))),
-      },
-      tri: {
-        nom: c.nom,
-        invocation: inv.ordre,
-        magies: c.marge_brut,
-      },
+      // le filtre « Magie » (les magies de la créature : celles de sa combinaison, ou celle du sort qui l'invoque)
+      magiesCles: unique(sesMagies.map((m) => ec.magie.noter(m.nom))),
     };
   });
-  const ordreInvocations = invocations.map((i) => i.nom_cle);
   const ordreDesMagies = [...ordreMagies].sort((a, b) => a[1] - b[1]).map(([cle]) => cle);
-  const facettes = [
-    { cle: 'invocation', libelle: 'Invocation', options: optionsDeFacette(lignes, 'invocation', new Map(invocations.map((i) => [i.nom_cle, new Map([[i.nom, 1]])])), ordreInvocations) },
-    { cle: 'magie', libelle: 'Magie', options: optionsDeFacette(lignes, 'magie', ec.magie.m, ordreDesMagies) },
-  ];
-  return { lignes, facettes, invocations: invocations.map((i) => ({ id: i.id, nom: i.nom, sortId: i.sort_id, sortNom: i.sort_nom, magieId: i.sort_magie_id, magie: i.sort_magie })) };
+  const versInvocation = (i) => ({ id: i.id, nom: i.nom, nomCle: i.nom_cle, sortId: i.sort_id, sortNom: i.sort_nom, magieId: i.sort_magie_id, magie: i.sort_magie });
+  // les tableaux : une ligne par bloc, dans l'ordre du classeur (la requête des créatures est déjà triée par invocation, bloc, rang)
+  const blocs = all('SELECT id, invocation_id, rang, marge_brut, ep FROM invocation_bloc ORDER BY invocation_id, rang');
+  const parBloc = regrouper(lignes, 'blocId');
+  let ordre = 0;
+  const tableaux = invocations.map((i) => {
+    const lignesDuTableau = blocs
+      .filter((b) => b.invocation_id === i.id && parBloc.has(b.id))
+      .map((b) => {
+        const cases = parBloc.get(b.id).sort((x, y) => x.rang - y.rang);
+        const magiesDuBlocNoms = cases[0].magiesDuBloc;
+        return {
+          id: b.id,
+          ordre: ordre++,
+          marge: b.marge_brut,
+          ep: b.ep,
+          // les magies de la combinaison, dans l'ordre de la marge ; une seule : le bloc « mono » (« Terre + Terre » en a deux, la même)
+          magies: magiesDuBlocNoms,
+          mono: magiesDuBlocNoms.length === 1,
+          cases,
+          // filtre : la seule colonne filtrable affichée, la magie (« Inutile de filtrer par les colonnes non affichées ») ; pas de tri : l'ordre du classeur
+          facettes: { magie: unique(cases.flatMap((c) => c.magiesCles)) },
+        };
+      });
+    return {
+      invocation: versInvocation(i),
+      // deux créatures par combinaison (golems, non-morts : « sous le même modèle ») ou une par palier (marionnettes)
+      duo: lignesDuTableau.some((l) => l.cases.length > 1),
+      lignes: lignesDuTableau,
+      creatures: lignesDuTableau.reduce((n, l) => n + l.cases.length, 0),
+    };
+  });
+  const lignesDesTableaux = tableaux.flatMap((t) => t.lignes);
+  const facettes = [{ cle: 'magie', libelle: 'Magie', options: optionsDeFacette(lignesDesTableaux, 'magie', ec.magie.m, ordreDesMagies) }];
+  return { lignes, tableaux, facettes, invocations: invocations.map(versInvocation) };
 }
 
 /** Le bestiaire entier, pour la page. */

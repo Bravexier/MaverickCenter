@@ -140,32 +140,21 @@ export function chargerMagies(db) {
     all('SELECT id, nom, sort_id, texte_general, tableau_titre, remarque FROM invocation WHERE sort_id IS NOT NULL ORDER BY ordre'),
     'sort_id',
   );
+  // Créatures invoquées par bloc (le nom de chacune montre sa carte du bestiaire en infobulle : lib/magies.ts#carteDeCreature, CarteInvoquee.astro)
   const creaturesDeInvocation = regrouper(
     all(
-      `SELECT c.id, c.nom, c.invocation_id, b.marge_brut AS bloc, c.sante_brut, c.chakra_brut, c.barriere_brut, c.defense_brut, c.vitesse_brut
+      `SELECT c.id, c.nom, c.invocation_id, b.marge_brut AS bloc
        FROM creature c JOIN invocation_bloc b ON b.id = c.bloc_id
        ORDER BY b.rang, c.rang`,
     ),
     'invocation_id',
   );
-  // Fiche minimale d'une créature (stats et capacités), affichée sous sa ligne : le reste est sur sa page du bestiaire
-  const caracteristiquesDeCreature = regrouper(
-    all(
-      `SELECT cc.creature_id, k.nom, cc.valeur FROM creature_caracteristique cc JOIN caracteristique k ON k.id = cc.caracteristique_id
-       ORDER BY cc.creature_id, cc.rang`,
-    ),
-    'creature_id',
-  );
-  const attaquesDeCreature = regrouper(all('SELECT creature_id, brut FROM creature_attaque ORDER BY creature_id, rang'), 'creature_id');
-  const bonusDeCreature = regrouper(all('SELECT creature_id, texte_brut FROM creature_bonus_npm ORDER BY creature_id, rang'), 'creature_id');
-  const capacitesDeCreature = regrouper(
-    all('SELECT creature_id, npm_min, etiquette, nom, texte FROM creature_capacite ORDER BY creature_id, rang'),
-    'creature_id',
-  );
+  // effets d'une carte liés à un sort (« Manteau noir ») : dans l'ordre des cartes du classeur (bloc, puis carte de gauche et de droite)
   const effetsDeCarte = regrouper(
     all(
       `SELECT e.sort_id, e.creature_id, c.nom AS creature, e.libelle, e.texte FROM creature_effet e JOIN creature c ON c.id = e.creature_id
-       WHERE e.sort_id IS NOT NULL ORDER BY e.sort_id, c.nom`,
+       JOIN invocation_bloc b ON b.id = c.bloc_id
+       WHERE e.sort_id IS NOT NULL ORDER BY e.sort_id, b.rang, c.rang, e.rang`,
     ),
     'sort_id',
   );
@@ -215,26 +204,7 @@ export function chargerMagies(db) {
         texte: blocsDeTexte(i.texte_general),
         remarque: blocsDeTexte(i.remarque),
         tableau: i.tableau_titre ? { titre: i.tableau_titre, lignes: magie.ameliorations } : null,
-        creatures: (creaturesDeInvocation.get(i.id) ?? []).map((c) => ({
-          id: c.id,
-          nom: c.nom,
-          bloc: c.bloc,
-          // [{ libelle, brut }] : seulement les lignes que la carte écrit (« Chakra » absent des marionnettes)
-          stats: [
-            ['Santé', c.sante_brut],
-            ['Chakra', c.chakra_brut],
-            ['Barrière', c.barriere_brut],
-            ['Défense', c.defense_brut],
-            ['Vitesse', c.vitesse_brut],
-          ]
-            .filter(([, brut]) => brut)
-            .map(([libelle, brut]) => ({ libelle, brut })),
-          caracteristiques: (caracteristiquesDeCreature.get(c.id) ?? []).map((k) => ({ nom: k.nom, valeur: k.valeur })),
-          bonus: (bonusDeCreature.get(c.id) ?? []).map((b) => b.texte_brut),
-          // ligne « Dégâts » de la carte : une ligne de texte par attaque, telle qu'écrite
-          attaques: (attaquesDeCreature.get(c.id) ?? []).map((a) => a.brut),
-          capacites: (capacitesDeCreature.get(c.id) ?? []).map((k) => ({ nom: k.nom, npmMin: k.npm_min, etiquette: k.etiquette, blocs: blocsDeTexte(k.texte) })),
-        })),
+        creatures: (creaturesDeInvocation.get(i.id) ?? []).map((c) => ({ id: c.id, nom: c.nom, bloc: c.bloc })),
       })),
       effetsDeCarte: (effetsDeCarte.get(s.id) ?? []).map((e) => ({ id: e.creature_id, nom: e.creature, libelle: e.libelle, blocs: blocsDeTexte(e.texte) })),
       memeNom: (memeNom.get(s.nom_cle) ?? []).filter((o) => o.id !== s.id).map((o) => o.id),

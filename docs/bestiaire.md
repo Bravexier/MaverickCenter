@@ -7,7 +7,7 @@ fonctionnent pas tout à fait pareillement ».
 ## La page
 
 Deux onglets (`components/Onglets.astro`), chacun avec son tableau, sa recherche et ses filtres (`components/bestiaire/`, CSS `styles/bestiaire/bestiaire.css`
-inséré en `?raw`, script `src/scripts/bestiaire.mjs`, logique pure `lib/bestiaire-filtres.mjs`, lignes `lib/bestiaire-db.mjs`) :
+et `carte.css` — la carte d'un monstre ou d'une créature invoquée, partagée avec les pages de magie —, insérés en `?raw`, script `src/scripts/bestiaire.mjs`, logique pure `lib/bestiaire-filtres.mjs`, lignes `lib/bestiaire-db.mjs`) :
 
 - **Monstres** : les cartes du Google Doc « Bestiaire 2.0 » (une ligne par carte : ennemi simple, mini-boss, boss ; une ligne par espèce qui n'a pas encore
   de carte). Demande du propriétaire : « Le tableau est trop large […] Le tableau devrait n'avoir que le nom / l'espèce / les EP / la catégorie, le type,
@@ -17,12 +17,24 @@ inséré en `?raw`, script `src/scripts/bestiaire.mjs`, logique pure `lib/bestia
   reste visible quand le tableau défile en largeur) ; tableau et carte se partagent la largeur à parts égales. La ligne et sa carte sont rendues par
   `lib/bestiaire-rendu.mjs` (le même HTML pour la page construite et pour le mode modification). Au-dessus, repliés : les règles des échelles de
   puissance et le glossaire du butin.
-- **Créatures invoquées** : les 63 créatures du classeur « Invocation » (golems et poupées, non-morts, marionnettes de l'ombre), à part ; trois colonnes
-  (nom, invocation, magies), la carte à côté (`CarteInvoquee.astro`).
+- **Créatures invoquées** : les 63 créatures du classeur « Invocation » (golems et poupées, non-morts, marionnettes de l'ombre), à part. Demande du
+  propriétaire : « Fait 3 tableaux. Un tableau Appel aux Golem et un Animation des morts sous le même modèle, et déroulable. Il faudra mettre deux cases
+  à chaque fois côte à côte pour chaque combinaison de magie (avec le mono en premier). Quant à ceux de la manipulation de l'ombre une seule ligne par
+  NM. La carte sera à garder et servirait de tooltip dans leur correspondance dans les tableaux des magies et leurs sorts associés. » Donc trois tableaux
+  dépliables (`<details>`, repliés au départ ; `TableauInvocations.astro`, `chargerInvocations().tableaux`), dans l'ordre du classeur :
+  - **Appel aux golems** et **Animation des morts** : une ligne par combinaison de magies (`invocation_bloc`, le mono d'abord, comme la marge du
+    classeur), ses deux créatures (rang 1 à gauche, rang 2 à droite, comme les deux cartes du classeur, qui n'ont pas d'en-tête) dans deux cases côte à côte ;
+  - **Marionnette de l'ombre** : une ligne par palier, écrit « EP1 » à « EP5 » comme la marge du classeur (le propriétaire dit « NM » : question en
+    attente, plus bas), et sa créature.
+
+  Un clic sur une créature (une **case**) ouvre sa carte à côté (`CarteInvoquee.astro`), comme pour les monstres. La recherche n'allume, dans une ligne,
+  que les cases qu'elle trouve (l'autre est estompée), sans lire « Même combinaison » de la carte, qui nomme la voisine (`data-hors-recherche`) ; les
+  nombres du filtre comptent des créatures, comme le compte de la page. Les trois tableaux défilent avec la page (sur grand écran, l'en-tête reste en
+  haut de la fenêtre). La même carte est l'**infobulle** de la créature sur les pages de magie (voir `docs/content-guide.md`, « Pages de magie »).
 
 Recherche : tous les mots, sans casse ni accents, dans tout ce que la ligne et sa carte affichent. Filtres : un menu à cases par colonne affichée, rien
 d'autre (« Inutile de filtrer par les colonnes non affichées », demande du propriétaire) : espèce, type, catégorie, EP, lieux pour les monstres (le nom
-passe par la recherche), invocation et magie pour les créatures invoquées ; plusieurs valeurs d'un même
+passe par la recherche), la magie seule pour les créatures invoquées (la marge de leurs tableaux ; ni tri, l'ordre du classeur compte) ; plusieurs valeurs d'un même
 filtre = l'une OU l'autre, plusieurs filtres = tous à la fois ; chaque valeur affiche combien de lignes elle garderait. Un clic sur un en-tête trie
 (croissant, décroissant, puis l'ordre du doc ; une valeur absente toujours à la fin). Recherche, filtres et tri sont dans l'adresse
 (`?q=golem&categorie=boss&ep=5&tri=ep&sens=desc` ; préfixe `i-` pour les créatures invoquées), pour partager une recherche.
@@ -119,3 +131,6 @@ Lumière…). Les « objets en rouge » du glossaire (« en attente d'être mis 
 4. Les monstres n'ont pas de page à eux (une ligne et sa carte dans le tableau) : en faut-il une, comme les créatures invoquées ?
 5. Les **créatures invoquées** ne se modifient pas encore depuis le bestiaire (elles viennent des sorts du classeur « Invocation ») : faut-il les ouvrir
    aussi au mode modification ?
+6. Les tableaux des **marionnettes de l'ombre** ont une ligne par palier, écrit « EP1 » à « EP5 » comme la marge du classeur ; la demande dit « une
+   seule ligne par NM » : faut-il écrire « NPM 1 »… (le palier est-il le niveau de puissance magique du sort) ? Tant que ce n'est pas tranché, la page
+   garde l'écriture du classeur.

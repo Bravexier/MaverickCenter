@@ -14,6 +14,11 @@
 //     d'état), un second suit le lien ; un appui ailleurs la ferme.
 // La bulle est en position fixe près du déclencheur (un tableau qui défile couperait une bulle absolue), du côté qui a le plus de place, bornée à
 // l'écran, avec une pointe vers le déclencheur (un élément à part : la bulle défile quand son texte est trop long), et suit le défilement.
+// Une bulle haute (`data-placement="cote"` : la carte d'une créature invoquée, components/bestiaire/CarteInvoquee.astro) se place à côté du
+// déclencheur, à droite ou à gauche (pointe de côté), pour ne pas le recouvrir ; sans la place de côté, dessous ou dessus comme les autres, sa
+// hauteur bornée à l'espace qui reste (à la souris et au clavier : elle ne cache pas son déclencheur). Au toucher, elle couvre presque l'écran d'un
+// téléphone : un appui dans une bulle `data-fermer-au-toucher` (sans lien ni bouton) la ferme. Une bulle plus haute que sa place défile : à la
+// molette, et au clavier tant que son déclencheur a le focus (flèches haut et bas, pages, début, fin). Un clic dans une bulle ne la ferme pas.
 // Teinte : celle de la page (--mag : magie, classe, race, partie du guide), lue sur le déclencheur pour la bulle partagée ; sinon l'accent du site.
 // Sans JavaScript : les bulles riches restent cachées et l'attribut `title` (texte simple) joue le rôle d'infobulle native.
 // Script en ligne, sans module : la version portable n'a ni import ni module partagé entre pages (tools/build-artifact.mjs).
@@ -99,10 +104,32 @@
       var r = cible.getBoundingClientRect();
       // le déclencheur a disparu (page recalculée) ou est sorti de l'écran (aussi de côté : un conteneur qui défile en largeur, la frise de la chronologie)
       if (!cible.isConnected || (r.width === 0 && r.height === 0) || r.bottom < 0 || r.top > hauteur || r.right < 0 || r.left > largeur) return fermer();
-      bulle.style.maxHeight = hauteur - 2 * marge + 'px';
-      var b = bulle.getBoundingClientRect();
       var dessous = hauteur - r.bottom - ecart - marge;
       var dessus = r.top - ecart - marge;
+      bulle.style.maxHeight = hauteur - 2 * marge + 'px';
+      var b = bulle.getBoundingClientRect();
+      if (bulle.getAttribute('data-placement') === 'cote') {
+        var aDroite = largeur - r.right - ecart - marge;
+        var aGauche = r.left - ecart - marge;
+        if (Math.max(aDroite, aGauche) >= b.width) {
+          var droite = aDroite >= b.width;
+          var g = droite ? r.right + ecart : r.left - ecart - b.width;
+          var h = borner(r.top + r.height / 2 - b.height / 2, marge, hauteur - b.height - marge);
+          bulle.style.left = g + 'px';
+          bulle.style.top = h + 'px';
+          // la pointe, sur le bord tourné vers le déclencheur, à sa hauteur
+          fleche.hidden = false;
+          fleche.setAttribute('data-cote', droite ? 'droite' : 'gauche');
+          fleche.style.left = (droite ? g : g + b.width) - 6 + 'px';
+          fleche.style.top = borner(r.top + r.height / 2, h + 14, h + b.height - 14) - 6 + 'px';
+          return;
+        }
+        // pas de place à côté : dessous ou dessus, sans dépasser l'espace qui reste (sauf au toucher, où un appui dans la bulle la ferme)
+        if (!tactile.matches) {
+          bulle.style.maxHeight = Math.max(dessous, dessus, 120) + 'px';
+          b = bulle.getBoundingClientRect();
+        }
+      }
       var enDessous = b.height <= dessous || dessous >= dessus;
       var vise = r.left + borner(ouverte.decalage, Math.min(8, r.width / 2), r.width - Math.min(8, r.width / 2));
       var gauche = borner(vise - 22, marge, largeur - b.width - marge);
@@ -218,12 +245,17 @@
       var c = declencheur(e.target);
       if (c && c !== suspendu && c.matches(':focus-visible')) ouvrir(c);
     });
+    // le déclencheur perd le focus : la bulle se ferme, sauf si c'est un clic dans la bulle (pour lire, sélectionner, défiler : le pointeur, qui est
+    // dessus, la fermera en la quittant)
     document.addEventListener('focusout', function (e) {
-      if (ouverte && ouverte.cible.contains(e.target)) fermer();
+      if (ouverte && ouverte.cible.contains(e.target) && !ouverte.bulle.matches(':hover')) fermer();
     });
     document.addEventListener('click', function (e) {
       var c = declencheur(e.target);
-      if (dansBulle(e.target)) return;
+      if (dansBulle(e.target)) {
+        if (tactile.matches && ouverte.bulle.hasAttribute('data-fermer-au-toucher')) fermer();
+        return;
+      }
       if (!c) return fermer();
       if (!c.hasAttribute('data-bulle')) return;
       if (tactile.matches) {
@@ -238,7 +270,8 @@
     });
     // Échap ferme une bulle riche seule : on intercepte avant le gestionnaire du panneau d'un sort (SortsInteractifs), qui n'est pas prévenu
     // quand une bulle était ouverte. Une touche (Échap compris, qui garde alors son effet) ferme la bulle d'un `title` et lui rend son attribut,
-    // comme l'infobulle du navigateur.
+    // comme l'infobulle du navigateur. Une bulle riche plus haute que sa place (la carte d'une créature) défile au clavier, au lieu de la page,
+    // tant que son déclencheur a le focus.
     document.addEventListener(
       'keydown',
       function (e) {
@@ -249,6 +282,13 @@
           if (['Shift', 'Control', 'Alt', 'Meta', 'AltGraph'].indexOf(e.key) < 0) fermer();
         } else if (e.key === 'Escape') {
           fermer();
+          e.stopPropagation();
+        } else if (ouverte.bulle.scrollHeight > ouverte.bulle.clientHeight && document.activeElement === ouverte.cible && !(e.altKey || e.ctrlKey || e.metaKey || e.shiftKey)) {
+          var b = ouverte.bulle;
+          var pas = { ArrowDown: 40, ArrowUp: -40, PageDown: b.clientHeight * 0.9, PageUp: -b.clientHeight * 0.9, Home: -b.scrollHeight, End: b.scrollHeight }[e.key];
+          if (pas === undefined) return;
+          b.scrollBy({ top: pas });
+          e.preventDefault();
           e.stopPropagation();
         }
       },
