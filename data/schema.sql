@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 35;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 36;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -1687,15 +1687,17 @@ CREATE INDEX invocation_resistance_cible ON invocation_resistance (sens, cible_t
 -- BLOC : une ligne de marge du classeur (A13:C16, A42:C45…) = une combinaison de magies avec ses deux créatures
 -- Onglets « Appel aux golems » (15 blocs) et « Animation des morts » (14) : la marge dit la ou les magies (« Terre Mono »,
 -- « Terre + Sang », « Nécromancie + Espace/Temps »), la carte de gauche et celle de droite sont les deux créatures du bloc.
--- Onglet « Marionette de lombre » (5 blocs) : la marge est un palier « EP1 » à « EP5 », UNE créature par bloc.
+-- Onglet « Marionette de lombre » (5 blocs) : la marge écrit « EP1 » à « EP5 », une faute du classeur pour le NPM de la créature, « NPM 1 » à
+-- « NPM 5 » (décision R53 : les créatures invoquées n'ont pas d'échelle de puissance) ; UNE créature par bloc.
 CREATE TABLE invocation_bloc (
   id            TEXT    NOT NULL PRIMARY KEY,         -- '<invocation.id>#bloc:<cle>'
   invocation_id TEXT    NOT NULL REFERENCES invocation(id),
   rang          INTEGER NOT NULL CHECK (rang >= 1),   -- ordre des blocs dans l'onglet (de haut en bas)
-  cle           TEXT    NOT NULL CHECK (cle NOT GLOB '*[^a-z0-9-]*' AND cle NOT GLOB '*--*' AND cle NOT GLOB '-*' AND cle NOT GLOB '*-'),                     -- normalize(marge_brut) : 'terre-feu', 'terre-mono', 'ep3'
-  marge_brut    TEXT    NOT NULL,                     -- libellé de marge, espaces compactés : 'Terre + Sang', 'Terre Mono', 'EP1'
-  ep            INTEGER CHECK (ep BETWEEN 1 AND 5),   -- N de « EPN » (onglet Marionette seulement). Le sigle EP n'est défini nulle part
-                                                      -- dans le classeur : conservé tel quel, sans traduction.
+  cle           TEXT    NOT NULL CHECK (cle NOT GLOB '*[^a-z0-9-]*' AND cle NOT GLOB '*--*' AND cle NOT GLOB '-*' AND cle NOT GLOB '*-'),                     -- normalize(marge_brut) à l'import : 'terre-feu', 'terre-mono', 'ep3' (dans l'id : ne change plus)
+  marge_brut    TEXT    NOT NULL,                     -- libellé de marge tel qu'écrit, espaces compactés : 'Terre + Sang', 'Terre Mono', 'EP1' (trace de la source)
+  npm           INTEGER CHECK (npm BETWEEN 1 AND 5),  -- niveau de puissance magique de la créature du bloc (onglet Marionette seulement) : N de « EPN », une
+                                                      -- faute du classeur pour « NPM N » (décision R53, migration 0036 : les créatures invoquées n'ont pas
+                                                      -- d'échelle de puissance, leur rang est le NPM)
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'bestiaire'),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
@@ -1728,7 +1730,7 @@ CREATE TABLE creature (
   nom           TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),    -- nom de la carte (D1 / T1) = titre de la page ; orthographe corrigée par 0006 (l'id garde la clé d'origine)
   nom_cle       TEXT    NOT NULL UNIQUE CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),    -- normalize(nom) : 'golem-de-magma' ; jointures par nom avec les autres domaines
   invocation_id TEXT    NOT NULL REFERENCES invocation(id),
-  bloc_id       TEXT    NOT NULL,           -- bloc de marge (combinaison de magies ou palier EP) ; FK composite plus bas
+  bloc_id       TEXT    NOT NULL,           -- bloc de marge (combinaison de magies ou NPM de la marionnette) ; FK composite plus bas
   rang          INTEGER NOT NULL CHECK (rang IN (1, 2)),   -- 1 = carte de gauche, 2 = carte de droite du bloc (2 seulement en onglets « duo »)
   description   TEXT,                       -- cellule de description (D3 / T3) ; NULL = absente
   -- Santé / Chakra / Barrière : ligne « Santé » de la carte. `*_forme` dit la forme du texte, `*_valeur` le nombre quand il y en a un.
@@ -3394,7 +3396,7 @@ CREATE VIEW v_creature_sort AS
 CREATE VIEW v_creature_cout_invocation AS
   SELECT c.id AS creature_id, i.id AS invocation_id, s.id AS sort_id, s.nom AS sort_nom,
          s.cout_brut AS cout_brut, s.cout_chakra AS cout_chakra, s.cout_ressource AS cout_ressource,
-         s.cout_ressource_valeur AS cout_ressource_valeur, b.ep AS ep
+         s.cout_ressource_valeur AS cout_ressource_valeur, b.npm AS npm
   FROM creature c
   JOIN invocation i ON i.id = c.invocation_id
   JOIN invocation_bloc b ON b.id = c.bloc_id

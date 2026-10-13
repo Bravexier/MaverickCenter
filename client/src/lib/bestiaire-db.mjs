@@ -245,11 +245,19 @@ const DEGATS = { physique: 'Dégâts physiques', frappe: 'Dégâts de frappe', t
 const premiereMajuscule = (s) => (s ? s[0].toLocaleUpperCase('fr') + s.slice(1) : s);
 
 /**
+ * Le libellé d'un bloc de la marge du classeur « Invocation » (`invocation_bloc` : `marge_brut`, `npm`) : sa combinaison de magies telle qu'écrite
+ * (« Terre + Sang », « Terre Mono ») ou, pour une marionnette, son NPM, « NPM 3 ». La marge de l'onglet Marionette écrit « EP3 », une faute du classeur
+ * (décision R53 : les créatures invoquées n'ont pas d'échelle de puissance, leur rang est le niveau de puissance magique) ; elle reste en trace dans la
+ * base, jamais affichée. Le même libellé partout : bestiaire (tableaux, cartes) et pages de magie (lib/magies-db.mjs).
+ */
+export const libelleDuBloc = ({ marge_brut, npm }) => (npm === null || npm === undefined ? marge_brut : `NPM ${npm}`);
+
+/**
  * Les créatures invoquées (section 8) : { lignes, tableaux, facettes, invocations }. `lignes` : une par créature (sa carte) ; `tableaux` : un par invocation
  * (demande du propriétaire : « Fait 3 tableaux. Un tableau Appel aux Golem et un Animation des morts sous le même modèle, et déroulable. Il faudra mettre
  * deux cases à chaque fois côte à côte pour chaque combinaison de magie (avec le mono en premier). Quant à ceux de la manipulation de l'ombre une seule
  * ligne par NM ») : une ligne par bloc de la marge du classeur, dans son ordre — combinaison de magies et ses deux créatures (carte de gauche, carte de
- * droite ; le mono est le premier bloc) ou palier « EP » des marionnettes (le sigle du classeur, non défini : écrit tel quel) et sa créature.
+ * droite ; le mono est le premier bloc) ou NPM d'une marionnette (« une seule ligne par NM » ; décision R53 : libelleDuBloc) et sa créature.
  */
 export function chargerInvocations(db) {
   const all = (sql) => db.prepare(sql).all();
@@ -260,7 +268,7 @@ export function chargerInvocations(db) {
   const parInvocation = new Map(invocations.map((i) => [i.id, i]));
   const communes = regrouper(all('SELECT invocation_id, nom, texte FROM invocation_capacite_commune ORDER BY invocation_id, rang'), 'invocation_id');
   const creatures = all(
-    `SELECT c.*, b.marge_brut, b.ep, b.rang AS bloc_rang FROM creature c JOIN invocation_bloc b ON b.id = c.bloc_id JOIN invocation i ON i.id = c.invocation_id
+    `SELECT c.*, b.marge_brut, b.npm, b.rang AS bloc_rang FROM creature c JOIN invocation_bloc b ON b.id = c.bloc_id JOIN invocation i ON i.id = c.invocation_id
      ORDER BY i.ordre, b.rang, c.rang`,
   );
   const magiesDuBloc = regrouper(
@@ -305,7 +313,7 @@ export function chargerInvocations(db) {
       nom: c.nom,
       description: c.description,
       invocation: { id: inv.id, nom: inv.nom, sortId: inv.sort_id, sortNom: inv.sort_nom, magieId: inv.sort_magie_id, magie: inv.sort_magie },
-      bloc: c.marge_brut,
+      bloc: libelleDuBloc(c),
       blocId: c.bloc_id,
       // 1 = carte de gauche, 2 = carte de droite du bloc (classeur)
       rang: c.rang,
@@ -338,7 +346,7 @@ export function chargerInvocations(db) {
   const ordreDesMagies = [...ordreMagies].sort((a, b) => a[1] - b[1]).map(([cle]) => cle);
   const versInvocation = (i) => ({ id: i.id, nom: i.nom, nomCle: i.nom_cle, sortId: i.sort_id, sortNom: i.sort_nom, magieId: i.sort_magie_id, magie: i.sort_magie });
   // les tableaux : une ligne par bloc, dans l'ordre du classeur (la requête des créatures est déjà triée par invocation, bloc, rang)
-  const blocs = all('SELECT id, invocation_id, rang, marge_brut, ep FROM invocation_bloc ORDER BY invocation_id, rang');
+  const blocs = all('SELECT id, invocation_id, rang, marge_brut, npm FROM invocation_bloc ORDER BY invocation_id, rang');
   const parBloc = regrouper(lignes, 'blocId');
   let ordre = 0;
   const tableaux = invocations.map((i) => {
@@ -350,8 +358,9 @@ export function chargerInvocations(db) {
         return {
           id: b.id,
           ordre: ordre++,
-          marge: b.marge_brut,
-          ep: b.ep,
+          // la combinaison de magies telle qu'écrite, ou le NPM d'une marionnette (décision R53)
+          libelle: libelleDuBloc(b),
+          npm: b.npm,
           // les magies de la combinaison, dans l'ordre de la marge ; une seule : le bloc « mono » (« Terre + Terre » en a deux, la même)
           magies: magiesDuBlocNoms,
           mono: magiesDuBlocNoms.length === 1,
@@ -362,7 +371,7 @@ export function chargerInvocations(db) {
       });
     return {
       invocation: versInvocation(i),
-      // deux créatures par combinaison (golems, non-morts : « sous le même modèle ») ou une par palier (marionnettes)
+      // deux créatures par combinaison (golems, non-morts : « sous le même modèle ») ou une par NPM (marionnettes)
       duo: lignesDuTableau.some((l) => l.cases.length > 1),
       lignes: lignesDuTableau,
       creatures: lignesDuTableau.reduce((n, l) => n + l.cases.length, 0),

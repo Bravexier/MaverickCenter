@@ -4,7 +4,7 @@
 import { normalize } from '../src/lib/text.mjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { CATEGORIES, chargerBestiaire, optionsDeFacette, tableauDuButin } from '../src/lib/bestiaire-db.mjs';
+import { CATEGORIES, chargerBestiaire, libelleDuBloc, optionsDeFacette, tableauDuButin } from '../src/lib/bestiaire-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
@@ -120,29 +120,31 @@ test('créatures invoquées : à part, une carte par créature, dans l’ordre d
   assert.deepEqual(zombi.defensesParMagie.map((d) => d.magie), ['Nécromancie']);
 });
 
-test('créatures invoquées : trois tableaux (demande du propriétaire), une ligne par bloc du classeur — combinaison et ses deux créatures côte à côte, le mono d’abord ; palier et sa créature', () => {
+test('créatures invoquées : trois tableaux (demande du propriétaire), une ligne par bloc du classeur — combinaison et ses deux créatures côte à côte, le mono d’abord ; NPM d’une marionnette et sa créature', () => {
   // un tableau par invocation, dans l'ordre du classeur ; une ligne par bloc de la marge, dans son ordre ; chaque créature dans une case, une seule fois
   assert.deepEqual(invocations.tableaux.map((t) => t.invocation.id), db.prepare('SELECT id FROM invocation ORDER BY ordre').all().map((r) => r.id));
-  const blocs = db.prepare('SELECT b.id, b.invocation_id, b.marge_brut, b.ep, (SELECT count(*) FROM invocation_bloc_magie m WHERE m.bloc_id = b.id) AS magies FROM invocation_bloc b ORDER BY b.invocation_id, b.rang').all();
+  const blocs = db.prepare('SELECT b.id, b.invocation_id, b.marge_brut, b.npm, (SELECT count(*) FROM invocation_bloc_magie m WHERE m.bloc_id = b.id) AS magies FROM invocation_bloc b ORDER BY b.invocation_id, b.rang').all();
   for (const t of invocations.tableaux) {
     const siens = blocs.filter((b) => b.invocation_id === t.invocation.id);
     assert.deepEqual(t.lignes.map((l) => l.id), siens.map((b) => b.id), `${t.invocation.id} : ses blocs, dans l'ordre`);
-    assert.deepEqual(t.lignes.map((l) => l.marge), siens.map((b) => b.marge_brut));
+    // le libellé d'une ligne : la combinaison telle qu'écrite, ou le NPM d'une marionnette (décision R53)
+    assert.deepEqual(t.lignes.map((l) => l.libelle), siens.map((b) => (b.npm === null ? b.marge_brut : `NPM ${b.npm}`)));
     assert.equal(t.creatures, n(`SELECT count(*) AS n FROM creature WHERE invocation_id = '${t.invocation.id}'`));
     for (const l of t.lignes) {
       const rangs = db.prepare('SELECT id FROM creature WHERE bloc_id = ? ORDER BY rang').all(l.id).map((r) => r.id);
       assert.deepEqual(l.cases.map((c) => c.id), rangs, `${l.id} : carte de gauche, puis de droite`);
-      // le mono : une seule magie dans la marge (« Terre + Terre » en a deux, la même) ; un palier n'a pas de magie
+      // le mono : une seule magie dans la marge (« Terre + Terre » en a deux, la même) ; la marge d'une marionnette ne nomme pas de magie
       assert.equal(l.mono, siens.find((b) => b.id === l.id).magies === 1, l.id);
       // les magies de la combinaison, dans l'ordre de la marge
       assert.deepEqual(l.magies, db.prepare('SELECT m.nom FROM invocation_bloc_magie bm JOIN magie m ON m.id = bm.magie_id WHERE bm.bloc_id = ? ORDER BY bm.rang').all(l.id).map((r) => r.nom), l.id);
     }
-    // golems, non-morts : deux créatures par combinaison, le mono en premier ; marionnettes : une par palier « EP »
+    // golems, non-morts : deux créatures par combinaison, le mono en premier ; marionnettes : une par NPM, du plus petit au plus grand
     if (t.duo) {
       assert.ok(t.lignes.every((l) => l.cases.length === 2), `${t.invocation.id} : deux cases côte à côte`);
       assert.ok(t.lignes[0].mono && t.lignes.slice(1).every((l) => !l.mono), `${t.invocation.id} : le mono d'abord, et lui seul`);
     } else {
-      assert.ok(t.lignes.every((l) => l.cases.length === 1 && l.ep !== null && l.magies.length === 0), `${t.invocation.id} : une ligne par palier`);
+      assert.ok(t.lignes.every((l) => l.cases.length === 1 && l.npm !== null && l.magies.length === 0), `${t.invocation.id} : une ligne par NPM`);
+      assert.ok(t.lignes.every((l, k) => k === 0 || l.npm > t.lignes[k - 1].npm), `${t.invocation.id} : NPM croissants`);
     }
   }
   assert.deepEqual(invocations.tableaux.map((t) => t.duo), [true, true, false], 'golems et non-morts sur le même modèle, marionnettes à part');
@@ -152,3 +154,25 @@ test('créatures invoquées : trois tableaux (demande du propriétaire), une lig
   assert.deepEqual(invocations.tableaux.flatMap((t) => t.lignes.map((l) => l.ordre)), blocs.map((_, k) => k));
 });
 
+
+test('décision R53 : les créatures invoquées n’ont pas d’échelle de puissance ; le « EPN » de l’onglet Marionette est leur NPM, jamais affiché « EP »', () => {
+  // le libellé d'un bloc : la marge telle qu'écrite, ou « NPM N » quand le bloc a un NPM
+  assert.equal(libelleDuBloc({ marge_brut: 'Terre + Sang', npm: null }), 'Terre + Sang');
+  assert.equal(libelleDuBloc({ marge_brut: 'EP3', npm: 3 }), 'NPM 3');
+  // dans la base : un NPM pour chaque bloc des marionnettes, aucun pour les combinaisons de magies (qui ont, elles, leurs magies de marge)
+  const blocs = db.prepare('SELECT b.id, b.npm, (SELECT count(*) FROM invocation_bloc_magie m WHERE m.bloc_id = b.id) AS magies FROM invocation_bloc b').all();
+  assert.ok(blocs.some((b) => b.npm !== null));
+  for (const b of blocs) assert.equal(b.npm === null, b.magies > 0, `${b.id} : un NPM ou des magies de marge`);
+  // ce que montrent le bestiaire (tableaux, cartes) et les pages des créatures : jamais « EP » pour une créature invoquée
+  const ep = /\bEP ?\d/;
+  for (const l of invocations.lignes) assert.doesNotMatch(l.bloc, ep, l.id);
+  for (const l of invocations.tableaux.flatMap((t) => t.lignes)) assert.doesNotMatch(l.libelle, ep, l.id);
+  const pages = db.prepare("SELECT id, corps_md FROM page WHERE source_ref LIKE 'Google Sheet « Invocation »%'").all();
+  assert.ok(pages.length > 60);
+  for (const p of pages) assert.doesNotMatch(p.corps_md, ep, p.id);
+  // la page d'une marionnette dit son NPM, celui de son bloc ; la page de l'invocation les liste
+  for (const l of invocations.lignes.filter((x) => x.bloc.startsWith('NPM '))) {
+    const corps = db.prepare('SELECT corps_md FROM page WHERE id = ?').get(l.id)?.corps_md;
+    assert.ok(corps?.includes(`**Libellé du bloc** : ${l.bloc}\n`), `${l.id} : ${l.bloc} dans sa page`);
+  }
+});

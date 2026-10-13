@@ -102,7 +102,7 @@ Pour pouvoir invoquer un golem double-magie, il faut posséder une seconde magie
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Appel aux golems »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/bete-de-lombre', 'bestiaire', 'bete-de-lombre', 'Bête de l''Ombre', 'bete-de-lombre', 'La Bête de l’Ombre est l’ultime métamorphose de l’invocation, une forme qui renonce définitivement à toute imitation humaine.', NULL, '**Invocation** : Marionnette de l''ombre (onglet du classeur « Invocation »)
 
-**Libellé du bloc** : EP5
+**Libellé du bloc** : NPM 5
 
 ## Description
 
@@ -240,7 +240,7 @@ Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de ma�
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Animation des morts »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/double-sombre', 'bestiaire', 'double-sombre', 'Double sombre', 'double-sombre', 'Le Double sombre atteint un degré de mimétisme presque parfait.', NULL, '**Invocation** : Marionnette de l''ombre (onglet du classeur « Invocation »)
 
-**Libellé du bloc** : EP3
+**Libellé du bloc** : NPM 3
 
 ## Description
 
@@ -303,7 +303,7 @@ Attaque brûlante. L''attaque de cette créature est capable d''infliger une br�
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Animation des morts »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/executeur-lunaire', 'bestiaire', 'executeur-lunaire', 'Exécuteur lunaire', 'executeur-lunaire', 'L’Exécuteur lunaire est l’évolution monstrueuse de l''ombre du lanceur À l’instant de son invocation, ses proportions semblent croître sous les yeux des témoins, comme si l’ombre refusait toute limite imposée par la forme mortelle.', NULL, '**Invocation** : Marionnette de l''ombre (onglet du classeur « Invocation »)
 
-**Libellé du bloc** : EP4
+**Libellé du bloc** : NPM 4
 
 ## Description
 
@@ -983,11 +983,11 @@ Cette invocation demande de la barrière pour être invoquée, elle va piocher d
 
 ## Créatures
 
-- EP1 : Ombre rampante
-- EP2 : Silhouetteur obscur
-- EP3 : Double sombre
-- EP4 : Exécuteur lunaire
-- EP5 : Bête de l''Ombre
+- NPM 1 : Ombre rampante
+- NPM 2 : Silhouetteur obscur
+- NPM 3 : Double sombre
+- NPM 4 : Exécuteur lunaire
+- NPM 5 : Bête de l''Ombre
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Marionette de lombre »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/momie', 'bestiaire', 'momie', 'Momie', 'momie', 'Ces humanoïdes entourés de bandelettes de lin ont été créés pour garder les tombes des défunts importants.', NULL, '**Invocation** : Animation des morts (onglet du classeur « Invocation »)
 
@@ -1090,7 +1090,7 @@ Vomi. La créature vomit une espèce d’acide qui va s’infiltrer dans les arm
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Animation des morts »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/ombre-rampante', 'bestiaire', 'ombre-rampante', 'Ombre rampante', 'ombre-rampante', 'L’Ombre rampante est une émanation imparfaite, arrachée de l’ombre du porteur avant même qu’elle n’ait une véritable forme.', NULL, '**Invocation** : Marionnette de l''ombre (onglet du classeur « Invocation »)
 
-**Libellé du bloc** : EP1
+**Libellé du bloc** : NPM 1
 
 ## Description
 
@@ -1696,7 +1696,7 @@ Recollage. Les membres de cette créature se réassemblent automatiquement. Ne p
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Animation des morts »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/sihouetteur-obscur', 'bestiaire', 'sihouetteur-obscur', 'Silhouetteur obscur', 'silhouetteur-obscur', 'Le Silhouetteur obscur est une incarnation plus aboutie de l’ombre invoquée, déjà suffisamment stable pour adopter une posture humanoïde, bien que profondément imparfaite.', NULL, '**Invocation** : Marionnette de l''ombre (onglet du classeur « Invocation »)
 
-**Libellé du bloc** : EP2
+**Libellé du bloc** : NPM 2
 
 ## Description
 

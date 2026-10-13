@@ -24,8 +24,11 @@ et `carte.css` — la carte d'un monstre ou d'une créature invoquée, partagée
   dépliables (`<details>`, repliés au départ ; `TableauInvocations.astro`, `chargerInvocations().tableaux`), dans l'ordre du classeur :
   - **Appel aux golems** et **Animation des morts** : une ligne par combinaison de magies (`invocation_bloc`, le mono d'abord, comme la marge du
     classeur), ses deux créatures (rang 1 à gauche, rang 2 à droite, comme les deux cartes du classeur, qui n'ont pas d'en-tête) dans deux cases côte à côte ;
-  - **Marionnette de l'ombre** : une ligne par palier, écrit « EP1 » à « EP5 » comme la marge du classeur (le propriétaire dit « NM » : question en
-    attente, plus bas), et sa créature.
+  - **Marionnette de l'ombre** : une ligne par NPM, « NPM 1 » à « NPM 5 », et sa créature. La marge du classeur écrit « EP1 » à « EP5 » : une faute
+    (décision R53 : « Les créatures invoquées n'ont pas de EP. c'est les pets invoqués par les joueurs. Leur "rang" c'est directement lié au Niveau de
+    Puissance Magique » ; « C'est pour le coup une faute sur le classeur »). La base garde l'écriture de la marge en trace (`invocation_bloc.marge_brut`)
+    et le NPM dans `invocation_bloc.npm` (migration `0036-invocations-npm`) ; tableau, carte (« Marionnette de l'ombre (NPM 3) ») et pages de magie
+    écrivent « NPM 3 » (`lib/bestiaire-db.mjs#libelleDuBloc`), comme les pages des marionnettes et de l'invocation.
 
   Un clic sur une créature (une **case**) ouvre sa carte à côté (`CarteInvoquee.astro`), comme pour les monstres. La recherche n'allume, dans une ligne,
   que les cases qu'elle trouve (l'autre est estompée), sans lire « Même combinaison » de la carte, qui nomme la voisine (`data-hors-recherche`) ; les
@@ -131,6 +134,3 @@ Lumière…). Les « objets en rouge » du glossaire (« en attente d'être mis 
 4. Les monstres n'ont pas de page à eux (une ligne et sa carte dans le tableau) : en faut-il une, comme les créatures invoquées ?
 5. Les **créatures invoquées** ne se modifient pas encore depuis le bestiaire (elles viennent des sorts du classeur « Invocation ») : faut-il les ouvrir
    aussi au mode modification ?
-6. Les tableaux des **marionnettes de l'ombre** ont une ligne par palier, écrit « EP1 » à « EP5 » comme la marge du classeur ; la demande dit « une
-   seule ligne par NM » : faut-il écrire « NPM 1 »… (le palier est-il le niveau de puissance magique du sort) ? Tant que ce n'est pas tranché, la page
-   garde l'écriture du classeur.

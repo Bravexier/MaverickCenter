@@ -334,6 +334,20 @@ test('synthétique : sans aucune note, 66 pages (63 créatures + 3 introductions
   assert.equal(lancer(ctx, ['--verifier']).status, 0);
 });
 
+test('décision R53 : la marge « EP3 » de l’onglet Marionette (une faute du classeur) s’écrit « NPM 3 » dans les pages ; les autres marges telles quelles', { skip: sansPython }, () => {
+  const ctx = preparer(classeur());
+  assert.equal(lancer(ctx).status, 0);
+  const pages = etat(ctx);
+  const texte = Object.values(pages).join('\n');
+  assert.doesNotMatch(texte, /\bEP ?\d/, 'aucun « EP » dans les pages');
+  const marionnettes = Object.values(pages).filter((t) => t.includes('**Libellé du bloc** : '));
+  assert.equal(marionnettes.length, 5);
+  assert.deepEqual(marionnettes.map((t) => t.match(/\*\*Libellé du bloc\*\* : (.*)/)[1]).sort(), ['NPM 1', 'NPM 2', 'NPM 3', 'NPM 4', 'NPM 5']);
+  const intro = Object.values(pages).find((t) => t.includes('\n- NPM 1 : '));
+  assert.ok(intro, 'la page de l’invocation liste ses créatures par NPM');
+  assert.ok(texte.includes('**Magie(s)** : Terre Mono'), 'une marge de combinaison reste telle qu’écrite');
+});
+
 test('notes : chacune est écrite juste sous sa cellule, « Note de la cellule « intitulé » : texte », texte intégral, une seule fois', { skip: sansPython }, () => {
   const ctx = preparer();
   const r = lancer(ctx);
