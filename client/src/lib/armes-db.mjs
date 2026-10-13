@@ -48,6 +48,14 @@ export const reglesDeLaPage = (corps) => ({
 });
 
 /**
+ * La phrase « Les armes en bleu sont les armes possibles en arme de départ » des règles (en gras et en bleu dans la cellule du classeur ; en gras dans le
+ * Markdown de la page) prend le bleu des lignes des armes de départ : son paragraphe, rendu en HTML, reçoit la classe `armes-regles__depart`. Rien
+ * d'autre ne change.
+ */
+export const avecPhraseDesArmesDeDepart = (html) =>
+  String(html ?? '').replace(/<p>(<strong>Les armes en bleu [^<]*<\/strong>)<\/p>/, '<p class="armes-regles__depart">$1</p>');
+
+/**
  * Les données de la page :
  *   familles      : les bandeaux (ordre de l'onglet) qui ont des armes à maîtrise, chacun { id, nom, de_brut, note_brut, cout_libelle, armes: [lignes arme] } ;
  *   materiaux     : [{ ligne (materiau_arme), nom, couleur: { fond, texte }, defaut (le fer) }] dans l'ordre de l'onglet ;

@@ -25522,23 +25522,24 @@ Pour recycler ou reforger une arme, le métier de forgeron est INDISPENSABLE.
 
 Le matériel choisi peut donner des bonus mais aussi le type d''arme forgée, tous les bonus se cumulent une fois l''arme forgée (exemple : Une claymore en cuivre donne un bonus aux dégâts de +10 car le cuivre donne +5 aux dégâts et la claymore donne aussi +5 aux dégâts)
 
-Recharge longue = Doit utiliser son action ou son mouvement pour recharger.
+*Recharge longue* = Doit utiliser son action ou son mouvement pour recharger.
 
-Recharge très longue = Doit utiliser son action ET son mouvement pour recharger.
+*Recharge très longue* = Doit utiliser son action ET son mouvement pour recharger.
 
-Mordhau ou Demi-épée = C''est un terme utilisé pour désigner une méthode de combat avec certaines armes de corps à corps (notamment les épées), qui consiste à prendre son arme par la lame et à taper avec le manche comme un sourd. Cela permet à certaines armes de pouvoir faire des dégâts de frappe alors qu''elles en sont incapables. Bien entendu, cette technique avancée implique une prise de risque pour l''état de l''arme, utiliser une arme de cette façon fait que vous avez 30% de chance d''abîmer votre arme (lui faire perdre un cran de solidité).  
-Exemple : Si vous faites plus de 70 dans votre jet d''attaque avec arme en mordhau, votre arme perd immédiatement un cran de solidité.
+*Mordhau ou Demi-épée* = C''est un terme utilisé pour désigner une méthode de combat avec certaines armes de corps à corps (notamment les épées), qui consiste à prendre son arme par la lame et à taper avec le manche comme un sourd. Cela permet à certaines armes de pouvoir faire des dégâts de frappe alors qu''elles en sont incapables. Bien entendu, cette technique avancée implique une prise de risque pour l''état de l''arme, utiliser une arme de cette façon fait que vous avez 30% de chance d''abîmer votre arme (lui faire perdre un cran de solidité).  
+*Exemple : Si vous faites plus de 70 dans votre jet d''attaque avec arme en mordhau, votre arme perd immédiatement un cran de solidité.*
 
-Les armes en bleu sont les armes possibles en arme de départ.
+**Les armes en bleu sont les armes possibles en arme de départ.**
 
-CAS PARTICULIERS :  
-Dague
+***CAS PARTICULIERS :***
+
+**Dague**
 
 - Divise par 2 le malus de l''ambidextrie avec ces armes, ce qui veut dire que si une dague est dans un lot d''ambidextrie, son malus sera de 10% si première arme et 20% si deuxième arme (contre 20% et 40%. Et bien entendu la division fonctionne en combinaison avec le bimane = donc 5% et 10% si on cumule les deux). Si vous utilisez une autre arme qu''une dague en ambidextrie, la dague elle aura cette règle appliquée mais pas l''autre arme.
 
 - Un coup réussi à la dague impose un malus de 10% à la défense de l''adversaire (sauf la lame secrète qui lui inflige 20%).
 
-Arme de jet
+**Arme de jet**
 
 - Permettre de lancer 2 armes de jet en échange du déplacement et action (ou utiliser 2 fois la fronde).
 
