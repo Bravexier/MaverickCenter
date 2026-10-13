@@ -40,7 +40,6 @@ export const RUBRIQUES = [
   ['capacites', /^Capacité\(s\)\s*$/],
   ['tactique', /^TACTIQUE COMBAT\s*$/],
 ];
-export const CLES_RUBRIQUES = RUBRIQUES.map(([cle]) => cle);
 
 export { SENS_DEFENSE };
 
