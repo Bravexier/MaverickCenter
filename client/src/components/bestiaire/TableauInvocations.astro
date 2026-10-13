@@ -7,7 +7,8 @@
 //   - trois tableaux dépliables (<details>, repliés au départ), dans l'ordre du classeur ;
 //   - golems et non-morts : une ligne par combinaison de magies (le mono d'abord, comme la marge du classeur), ses deux créatures dans deux cases côte à
 //     côte (la carte de gauche et celle de droite du classeur, qui n'a pas d'en-tête pour elles) ;
-//   - marionnettes : une ligne par palier, écrit « EP1 »… comme le classeur (sigle non défini dans la source), et sa créature ;
+//   - marionnettes : une ligne par NPM, « NPM 1 » à « NPM 5 », et sa créature (le classeur écrit « EP1 »…, une faute : décision R53, les créatures
+//     invoquées n'ont pas d'échelle de puissance ; lib/bestiaire-db.mjs#libelleDuBloc) ;
 //   - un clic sur une créature ouvre sa carte à côté (CarteInvoquee.astro), comme pour les monstres ; une recherche et un filtre par magie (la seule
 //     colonne filtrable affichée) portent sur les trois tableaux ; pas de tri : l'ordre du classeur.
 // Le script de la page (src/scripts/bestiaire.mjs) lit une ligne (`tr[data-ligne]`, filtrée) et ses cases (`[data-case]`, une carte chacune).
@@ -28,6 +29,12 @@ const pastille = (nom: string) => `--m: ${couleurDeMagie(nom)}; --m-texte: ${tex
 const lienDuSort = (i: (typeof tableaux)[number]['invocation']) =>
   i.magieId && i.sortId ? `${url(`${i.magieId}/`)}#sort-${i.sortId.slice(i.sortId.indexOf('#sort:') + 6)}` : null;
 const nombre = (n: number) => `${n} créature${n > 1 ? 's' : ''}`;
+// les NPM d'un tableau de marionnettes : « NPM 1 à 5 »
+const npms = (t: (typeof tableaux)[number]) => {
+  const n = t.lignes.map((l) => l.npm).filter((x): x is number => x !== null);
+  const [min, max] = [Math.min(...n), Math.max(...n)];
+  return min === max ? `NPM ${min}` : `NPM ${min} à ${max}`;
+};
 ---
 
 <section class="btableau" data-bestiaire-tableau data-prefixe={P} data-facettes={JSON.stringify(facettes.map((f) => f.cle))} data-tris="[]" data-singulier="créature" data-pluriel="créatures" aria-label="Créatures invoquées">
@@ -50,7 +57,7 @@ const nombre = (n: number) => `${n} créature${n > 1 ? 's' : ''}`;
               <summary>
                 <span class="binvocation__nom">{t.invocation.nom}</span>
                 <span class="binvocation__compte muted" data-repli-compte data-total={t.creatures}>
-                  {t.duo ? `${t.lignes.length} combinaisons · ` : `${t.lignes.length} paliers · `}
+                  {t.duo ? `${t.lignes.length} combinaisons · ` : `${npms(t)} · `}
                   {nombre(t.creatures)}
                 </span>
               </summary>
@@ -67,8 +74,8 @@ const nombre = (n: number) => `${n} créature${n > 1 ? 's' : ''}`;
                           Magies
                         </th>
                       ) : (
-                        <th scope="col" title="La marge du classeur : « EP1 » à « EP5 » (sigle écrit tel quel)">
-                          EP
+                        <th scope="col" title="Niveau de puissance magique de la créature">
+                          NPM
                         </th>
                       )}
                       <th scope="col" colspan={t.duo ? 2 : 1}>
@@ -79,7 +86,7 @@ const nombre = (n: number) => `${n} créature${n > 1 ? 's' : ''}`;
                   <tbody>
                     {t.lignes.map((l) => (
                       <tr class="bligne bligne--bloc" data-ligne data-ordre={l.ordre} data-facettes={JSON.stringify(l.facettes)} data-tri="{}">
-                        <th scope="row" class="bligne__bloc" title={l.marge}>
+                        <th scope="row" class="bligne__bloc" title={l.libelle}>
                           {t.duo ? (
                             <span class="bmagies">
                               {l.magies.map((m) => (
@@ -90,7 +97,7 @@ const nombre = (n: number) => `${n} créature${n > 1 ? 's' : ''}`;
                               {l.mono && <span class="muted"> mono</span>}
                             </span>
                           ) : (
-                            l.marge
+                            l.libelle
                           )}
                         </th>
                         {l.cases.map((c) => (

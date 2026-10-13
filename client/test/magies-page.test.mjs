@@ -458,11 +458,14 @@ test('créatures invoquées : chacune a sa carte du bestiaire (l’infobulle de 
     "SELECT c.id FROM creature c JOIN invocation_bloc b ON b.id = c.bloc_id WHERE c.invocation_id = 'bestiaire/appel-aux-golems' ORDER BY b.rang, c.rang",
   ).all().map((r) => r.id);
   assert.deepEqual(golems.map((c) => c.id), ordre);
-  // effets de carte (« Manteau noir ») : dans l'ordre des paliers EP1 à EP5, comme les cartes du classeur
+  // effets de carte (« Manteau noir ») : dans l'ordre des NPM 1 à 5, comme les cartes du classeur ; les marionnettes, sous leur NPM (décision R53)
   const manteau = m.sorts.get('magies/magie-de-lombre#sort:manteau-noir').effetsDeCarte;
-  const paliers = db.prepare('SELECT c.id FROM creature c JOIN invocation_bloc b ON b.id = c.bloc_id WHERE c.id IN (SELECT creature_id FROM creature_effet WHERE sort_id IS NOT NULL) ORDER BY b.rang, c.rang')
+  const npms = db.prepare('SELECT c.id FROM creature c JOIN invocation_bloc b ON b.id = c.bloc_id WHERE c.id IN (SELECT creature_id FROM creature_effet WHERE sort_id IS NOT NULL) ORDER BY b.rang, c.rang')
     .all().map((r) => r.id);
-  assert.deepEqual(manteau.map((e) => e.id), paliers);
+  assert.deepEqual(manteau.map((e) => e.id), npms);
+  const marionnettes = m.sorts.get('magies/magie-de-lombre#sort:marionnette-de-lombre')?.invoque[0]?.creatures ?? [];
+  assert.equal(marionnettes.length, npms.length);
+  assert.ok(marionnettes.every((c) => /^NPM \d$/.test(c.bloc)), 'bloc des marionnettes : « NPM N », jamais « EPN »');
 });
 
 test('une seule source pour les relations entre magies : le tableau de /magies/ lit la base comme les pages de magie', () => {

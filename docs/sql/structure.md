@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 35 : 184 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 36 : 184 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -1275,16 +1275,16 @@ Résistances / vulnérabilités / immunités écrites dans une capacité COMMUNE
 
 ### `invocation_bloc`
 
-BLOC : une ligne de marge du classeur (A13:C16, A42:C45…) = une combinaison de magies avec ses deux créatures Onglets « Appel aux golems » (15 blocs) et « Animation des morts » (14) : la marge dit la ou les magies (« Terre Mono », « Terre + Sang », « Nécromancie + Espace/Temps »), la carte de gauche et celle de droite sont les deux créatures du bloc. Onglet « Marionette de lombre » (5 blocs) : la marge est un palier « EP1 » à « EP5 », UNE créature par bloc.
+BLOC : une ligne de marge du classeur (A13:C16, A42:C45…) = une combinaison de magies avec ses deux créatures Onglets « Appel aux golems » (15 blocs) et « Animation des morts » (14) : la marge dit la ou les magies (« Terre Mono », « Terre + Sang », « Nécromancie + Espace/Temps »), la carte de gauche et celle de droite sont les deux créatures du bloc. Onglet « Marionette de lombre » (5 blocs) : la marge écrit « EP1 » à « EP5 », une faute du classeur pour le NPM de la créature, « NPM 1 » à « NPM 5 » (décision R53 : les créatures invoquées n'ont pas d'échelle de puissance) ; UNE créature par bloc.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `id` | TEXT | oui | PK | '<invocation.id>#bloc:<cle>' |
 | `invocation_id` | TEXT | oui | → invocation.id |  |
 | `rang` | INTEGER | oui |  | ordre des blocs dans l'onglet (de haut en bas) |
-| `cle` | TEXT | oui |  | normalize(marge_brut) : 'terre-feu', 'terre-mono', 'ep3' |
-| `marge_brut` | TEXT | oui |  | libellé de marge, espaces compactés : 'Terre + Sang', 'Terre Mono', 'EP1' |
-| `ep` | INTEGER | non |  | N de « EPN » (onglet Marionette seulement). Le sigle EP n'est défini nulle part dans le classeur : conservé tel quel, sans traduction. |
+| `cle` | TEXT | oui |  | normalize(marge_brut) à l'import : 'terre-feu', 'terre-mono', 'ep3' (dans l'id : ne change plus) |
+| `marge_brut` | TEXT | oui |  | libellé de marge tel qu'écrit, espaces compactés : 'Terre + Sang', 'Terre Mono', 'EP1' (trace de la source) |
+| `npm` | INTEGER | non |  | niveau de puissance magique de la créature du bloc (onglet Marionette seulement) : N de « EPN », une faute du classeur pour « NPM N » (décision R53, migration 0036 : les créatures invoquées n'ont pas d'échelle de puissance, leur rang est le NPM) |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
@@ -1312,7 +1312,7 @@ CREATURE : une ligne par carte (63 = 30 golems/poupées + 28 non-morts + 5 mario
 | `nom` | TEXT | oui | unique | nom de la carte (D1 / T1) = titre de la page ; orthographe corrigée par 0006 (l'id garde la clé d'origine) |
 | `nom_cle` | TEXT | oui | unique | normalize(nom) : 'golem-de-magma' ; jointures par nom avec les autres domaines |
 | `invocation_id` | TEXT | oui | → invocation.id |  |
-| `bloc_id` | TEXT | oui | → invocation_bloc.id | bloc de marge (combinaison de magies ou palier EP) ; FK composite plus bas |
+| `bloc_id` | TEXT | oui | → invocation_bloc.id | bloc de marge (combinaison de magies ou NPM de la marionnette) ; FK composite plus bas |
 | `rang` | INTEGER | oui |  | 1 = carte de gauche, 2 = carte de droite du bloc (2 seulement en onglets « duo ») |
 | `description` | TEXT | non |  | cellule de description (D3 / T3) ; NULL = absente |
 | `sante_brut` | TEXT | oui |  |  |
@@ -2876,7 +2876,7 @@ Coût d'invocation : il n'est PAS sur la carte, il est écrit sur le SORT qui in
 | `cout_chakra` | INTEGER | non |  |  |
 | `cout_ressource` | TEXT | non |  |  |
 | `cout_ressource_valeur` | INTEGER | non |  |  |
-| `ep` | INTEGER | non |  |  |
+| `npm` | INTEGER | non |  |  |
 
 ### `v_creature_meme_bloc`
 

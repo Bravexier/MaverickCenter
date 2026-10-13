@@ -118,7 +118,7 @@ th[aria-sort="descending"] .btri::after { content: '↓'; opacity: 1; }
 .varie { font-style: italic; color: var(--muted); cursor: help; }
 
 /* Les créatures invoquées (TableauInvocations.astro) : un tableau dépliable par invocation ; golems et non-morts, une ligne par combinaison de magies et ses
-   deux créatures côte à côte ; marionnettes, une ligne par palier et sa créature. Une case (la créature) ouvre sa carte, pas la ligne entière */
+   deux créatures côte à côte ; marionnettes, une ligne par NPM (décision R53) et sa créature. Une case (la créature) ouvre sa carte, pas la ligne entière */
 .binvocations { display: grid; gap: 0.6rem; align-content: start; min-width: 0; }
 .binvocation { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
 .binvocation > summary { list-style: none; cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.7rem; padding: 0.6rem 0.9rem; }

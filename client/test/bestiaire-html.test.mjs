@@ -29,7 +29,7 @@ test('deux onglets : les monstres (ouverts au départ) et, à part, les créatur
 
 test('une case par monstre ou créature, chacune avec sa carte ; les identifiants sont uniques et les aria-controls mènent quelque part', options, () => {
   const { monstres, invocations } = chargerBestiaire(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }));
-  // une case : la ligne d'un monstre, ou la case d'une créature invoquée dans la ligne de sa combinaison (ou de son palier)
+  // une case : la ligne d'un monstre, ou la case d'une créature invoquée dans la ligne de sa combinaison (ou de son NPM)
   const lignes = (bloc) => [...bloc.matchAll(/<tr class="bligne" id="([^"]+)" data-ligne/g)].map((m) => m[1]);
   const cases = (bloc) => [...bloc.matchAll(/<td class="bcase" id="([^"]+)" data-case data-carte="carte-\1"/g)].map((m) => m[1]);
   assert.deepEqual(lignes(panneau('monstres')), monstres.lignes.map((l) => l.ancre));
@@ -84,7 +84,7 @@ test('tableau réduit (demande du propriétaire) : six colonnes pour les monstre
   }
 });
 
-test('créatures invoquées : trois tableaux dépliables (demande du propriétaire), golems et non-morts sur le même modèle — la combinaison, puis ses deux créatures côte à côte —, marionnettes par palier', options, () => {
+test('créatures invoquées : trois tableaux dépliables (demande du propriétaire), golems et non-morts sur le même modèle — la combinaison, puis ses deux créatures côte à côte —, marionnettes par NPM (décision R53)', options, () => {
   const { invocations } = chargerBestiaire(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }));
   const bloc = panneau('invoquees');
   // un <details> par invocation, replié au départ, dans l'ordre du classeur ; son titre dit son effectif
@@ -96,17 +96,17 @@ test('créatures invoquées : trois tableaux dépliables (demande du propriétai
     const tableau = bloc.slice(debut, bloc.indexOf('</details>', debut));
     assert.ok(tableau.includes(`data-total="${t.creatures}"`), `${t.invocation.nom} : effectif`);
     const entetes = [...tableau.matchAll(/<th scope="col"[^>]*>([^<]+)<\/th>/g)].map((m) => m[1]);
-    assert.deepEqual(entetes, t.duo ? ['Magies', 'Créatures'] : ['EP', 'Créature'], `${t.invocation.nom} : en-têtes`);
+    assert.deepEqual(entetes, t.duo ? ['Magies', 'Créatures'] : ['NPM', 'Créature'], `${t.invocation.nom} : en-têtes`);
     if (t.duo) assert.ok(tableau.includes('<th scope="col" colspan="2">Créatures</th>'), 'les deux cases sous un seul en-tête (le classeur n’en a pas pour elles)');
-    // une ligne par bloc : son en-tête (la combinaison, le mono d'abord ; ou le palier tel qu'écrit), puis ses créatures, côte à côte
+    // une ligne par bloc : son en-tête (la combinaison, le mono d'abord ; ou le NPM de la marionnette), puis ses créatures, côte à côte
     const lignes = [...tableau.matchAll(/<tr class="bligne bligne--bloc" data-ligne[^>]*><th scope="row" class="bligne__bloc" title="([^"]*)">([\s\S]*?)<\/th>((?:<td class="bcase"[\s\S]*?<\/td>)+)<\/tr>/g)];
     assert.equal(lignes.length, t.lignes.length, `${t.invocation.nom} : une ligne par bloc`);
     lignes.forEach((m, k) => {
       const l = t.lignes[k];
-      assert.equal(m[1], l.marge.replace(/'/g, '&#39;'));
-      assert.deepEqual([...m[3].matchAll(/<td class="bcase" id="([^"]+)"/g)].map((x) => x[1]), l.cases.map((c) => c.ancre), `${l.marge} : ses créatures, côte à côte`);
-      if (t.duo) assert.equal(m[2].includes('<span class="muted"> mono</span>'), l.mono, `${l.marge} : mono`);
-      else assert.equal(m[2], l.marge, `${l.marge} : le palier tel qu'écrit`);
+      assert.equal(m[1], l.libelle.replace(/'/g, '&#39;'));
+      assert.deepEqual([...m[3].matchAll(/<td class="bcase" id="([^"]+)"/g)].map((x) => x[1]), l.cases.map((c) => c.ancre), `${l.libelle} : ses créatures, côte à côte`);
+      if (t.duo) assert.equal(m[2].includes('<span class="muted"> mono</span>'), l.mono, `${l.libelle} : mono`);
+      else assert.equal(m[2], `NPM ${l.npm}`, `${l.libelle} : le NPM de la marionnette`);
     });
     if (t.duo) assert.ok(t.lignes[0].mono, `${t.invocation.nom} : le mono en premier`);
   }
@@ -124,6 +124,11 @@ test('créatures invoquées : trois tableaux dépliables (demande du propriétai
       if (k.etiquette) assert.ok(carte.replace(/&#39;/g, "'").includes(`<span class="prefixe">[${k.etiquette}]</span>`), `${l.nom} : [${k.etiquette}]`);
     }
   }
+  // décision R53 : une créature invoquée n'a pas d'échelle de puissance ; nulle part « EP » dans l'onglet (tableaux, cartes : « Marionnette de l'ombre (NPM 3) »)
+  // (le HTML brut : un attribut `title` s'affiche aussi, dans la bulle partagée de components/Infobulles.astro)
+  assert.doesNotMatch(bloc, /\bEP\b/);
+  const marionnettes = invocations.tableaux.find((t) => !t.duo);
+  assert.ok(bloc.includes(`NPM 1 à ${marionnettes.lignes.length} · ${marionnettes.creatures} créatures`), 'le titre du tableau des marionnettes');
   // pas de tri (l'ordre du classeur) ; les cartes restent à côté
   assert.ok(bloc.includes('data-tris="[]"'));
   assert.ok(!/<th scope="col"[^>]* data-tri=/.test(bloc));

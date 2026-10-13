@@ -2,6 +2,7 @@
 // les notes de cellule du classeur sont dans la colonne `remarque` de la ligne qu'elles commentent (la table note_cellule n'est qu'une trace).
 // le gabarit des pages de magie (components/MagiePage.astro) n'interprète aucun Markdown, il affiche ces lignes.
 // Node seulement (la base est ouverte par lib/donnees.mjs au build). Une requête par table, puis assemblage en mémoire.
+import { libelleDuBloc } from './bestiaire-db.mjs';
 import { blocsDeTexte, elementsDeTexte } from './sort-format.mjs';
 import { ORDRE_CHAMPS_NM } from './sort-maitrise.mjs';
 
@@ -140,10 +141,11 @@ export function chargerMagies(db) {
     all('SELECT id, nom, sort_id, texte_general, tableau_titre, remarque FROM invocation WHERE sort_id IS NOT NULL ORDER BY ordre'),
     'sort_id',
   );
-  // Créatures invoquées par bloc (le nom de chacune montre sa carte du bestiaire en infobulle : lib/magies.ts#carteDeCreature, CarteInvoquee.astro)
+  // Créatures invoquées par bloc, sous son libellé (combinaison de magies ou NPM d'une marionnette, décision R53 : bestiaire-db.mjs#libelleDuBloc) ; le nom
+  // de chacune montre sa carte du bestiaire en infobulle (lib/magies.ts#carteDeCreature, CarteInvoquee.astro)
   const creaturesDeInvocation = regrouper(
     all(
-      `SELECT c.id, c.nom, c.invocation_id, b.marge_brut AS bloc
+      `SELECT c.id, c.nom, c.invocation_id, b.marge_brut, b.npm
        FROM creature c JOIN invocation_bloc b ON b.id = c.bloc_id
        ORDER BY b.rang, c.rang`,
     ),
@@ -204,7 +206,7 @@ export function chargerMagies(db) {
         texte: blocsDeTexte(i.texte_general),
         remarque: blocsDeTexte(i.remarque),
         tableau: i.tableau_titre ? { titre: i.tableau_titre, lignes: magie.ameliorations } : null,
-        creatures: (creaturesDeInvocation.get(i.id) ?? []).map((c) => ({ id: c.id, nom: c.nom, bloc: c.bloc })),
+        creatures: (creaturesDeInvocation.get(i.id) ?? []).map((c) => ({ id: c.id, nom: c.nom, bloc: libelleDuBloc(c) })),
       })),
       effetsDeCarte: (effetsDeCarte.get(s.id) ?? []).map((e) => ({ id: e.creature_id, nom: e.creature, libelle: e.libelle, blocs: blocsDeTexte(e.texte) })),
       memeNom: (memeNom.get(s.nom_cle) ?? []).filter((o) => o.id !== s.id).map((o) => o.id),
