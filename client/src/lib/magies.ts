@@ -1,3 +1,4 @@
+import { chargerInvocations } from './bestiaire-db.mjs';
 import { ouvrirBase } from './donnees.mjs';
 import { chargerMagies } from './magies-db.mjs';
 import { ancreDeTitre } from './sort-format.mjs';
@@ -11,6 +12,28 @@ export type SortDb = Magies['sorts'] extends Map<string, infer S> ? S : never;
 
 let cache: Magies | undefined;
 export const loadMagies = () => (cache ??= chargerMagies(ouvrirBase()));
+/**
+ * La carte d'une créature invoquée, telle que le bestiaire la montre (lib/bestiaire-db.mjs#chargerInvocations) : sur une page de magie, elle sert
+ * d'infobulle à son nom (components/bestiaire/CarteInvoquee.astro, `bulle`). Chargées une fois par build.
+ */
+export type CarteDeCreature = ReturnType<typeof chargerInvocations>['lignes'][number];
+let cartes: Map<string, CarteDeCreature> | undefined;
+export const carteDeCreature = (id: string) => (cartes ??= new Map(chargerInvocations(ouvrirBase()).lignes.map((l) => [l.id, l]))).get(id);
+/** L'infobulle d'une créature sur une page de magie : une par créature et par page (tous ses déclencheurs la visent). */
+export const bulleDeCreature = (id: string) => `bulle-creature-${id.slice(id.indexOf('/') + 1)}`;
+/** Le texte de repli d'une infobulle de créature (attribut `title`, sans JavaScript) : ses valeurs telles qu'écrites, une par ligne. */
+export const titreDeCreature = (l: CarteDeCreature) =>
+  [
+    `Santé : ${l.sante}`,
+    l.chakra && `Chakra : ${l.chakra}`,
+    l.barriere && `Barrière : ${l.barriere}`,
+    l.defense && `Défense : ${l.defense}`,
+    l.vitesse && `Vitesse : ${l.vitesse}`,
+    ...l.attaques.map((a) => `Dégâts : ${a.brut}`),
+  ]
+    .filter(Boolean)
+    .join('\n');
+
 /** Ids des pages de magie dans l'ordre du classeur (magie.ordre : 1 = Potentiel Illimité), pour les tableaux des races et des relations. */
 export const ordreDesMagies = () => [...loadMagies().magies.values()].sort((a, b) => a.ordre - b.ordre).map((m) => m.id);
 

@@ -27,16 +27,20 @@ test('deux onglets : les monstres (ouverts au départ) et, à part, les créatur
   assert.ok(panneau('monstres').length > 0 && panneau('invoquees').length > 0);
 });
 
-test('une ligne par monstre ou créature, chacune avec sa carte ; les identifiants sont uniques et les aria-controls mènent quelque part', options, () => {
+test('une case par monstre ou créature, chacune avec sa carte ; les identifiants sont uniques et les aria-controls mènent quelque part', options, () => {
   const { monstres, invocations } = chargerBestiaire(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }));
+  // une case : la ligne d'un monstre, ou la case d'une créature invoquée dans la ligne de sa combinaison (ou de son palier)
   const lignes = (bloc) => [...bloc.matchAll(/<tr class="bligne" id="([^"]+)" data-ligne/g)].map((m) => m[1]);
+  const cases = (bloc) => [...bloc.matchAll(/<td class="bcase" id="([^"]+)" data-case data-carte="carte-\1"/g)].map((m) => m[1]);
   assert.deepEqual(lignes(panneau('monstres')), monstres.lignes.map((l) => l.ancre));
-  assert.deepEqual(lignes(panneau('invoquees')), invocations.lignes.map((l) => l.ancre));
+  assert.deepEqual(lignes(panneau('invoquees')), []);
+  assert.deepEqual(cases(panneau('invoquees')), invocations.tableaux.flatMap((t) => t.lignes.flatMap((l) => l.cases.map((c) => c.ancre))));
+  assert.deepEqual([...cases(panneau('invoquees'))].sort(), invocations.lignes.map((l) => l.ancre).sort(), 'chaque créature une fois');
   const ids = [...main.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
   assert.equal(new Set(ids).size, ids.length, 'identifiants uniques');
   const connus = new Set(ids);
   for (const [, cible] of main.matchAll(/aria-(?:controls|labelledby|describedby)="([^"]+)"/g)) assert.ok(connus.has(cible), cible);
-  for (const ancre of lignes(main)) {
+  for (const ancre of [...lignes(main), ...cases(main)]) {
     assert.ok(connus.has(`carte-${ancre}`), `carte de ${ancre}`);
     assert.ok(main.includes(`<a class="bligne__ouvrir" href="#carte-${ancre}" aria-controls="carte-${ancre}"`), `lien vers la carte de ${ancre}`);
   }
@@ -45,7 +49,7 @@ test('une ligne par monstre ou créature, chacune avec sa carte ; les identifian
 });
 
 test('filtres : formulaire caché sans JavaScript, une case par valeur, le préfixe « i- » pour les créatures invoquées', options, () => {
-  for (const [id, facettes, prefixe] of [['monstres', ['espece', 'type', 'categorie', 'ep', 'lieu'], ''], ['invoquees', ['invocation', 'magie'], 'i-']]) {
+  for (const [id, facettes, prefixe] of [['monstres', ['espece', 'type', 'categorie', 'ep', 'lieu'], ''], ['invoquees', ['magie'], 'i-']]) {
     const bloc = panneau(id);
     assert.match(bloc, /<form class="bfiltres" role="search"[^>]*data-filtres hidden>/);
     assert.ok(bloc.includes(`data-prefixe="${prefixe}"`), id);
@@ -57,7 +61,7 @@ test('filtres : formulaire caché sans JavaScript, une case par valeur, le préf
   assert.match(panneau('invoquees'), /<input type="checkbox" name="magie" value="feu">/);
 });
 
-test('tableau réduit (demande du propriétaire) : six colonnes pour les monstres, trois pour les créatures invoquées ; la carte à côté, avec son portrait', options, () => {
+test('tableau réduit (demande du propriétaire) : six colonnes pour les monstres ; la carte à côté, avec son portrait', options, () => {
   const entetes = (bloc) => [...bloc.slice(bloc.indexOf('<table class="btable">'), bloc.indexOf('</thead>', bloc.indexOf('<table class="btable">'))).matchAll(/<th scope="col"[^>]*>\s*([^<]+?)\s*<\/th>/g)].map((m) => m[1]);
   assert.deepEqual(entetes(panneau('monstres')), ['Espèce', 'Nom', 'Type', 'Catégorie', 'EP', 'Lieux']);
   // l'espèce d'abord, puis le nom, en-tête de ligne et lien vers la carte (une ligne de la base construite : le site de dev peut renommer une carte)
@@ -68,16 +72,61 @@ test('tableau réduit (demande du propriétaire) : six colonnes pour les monstre
   assert.ok(panneau('monstres').includes(`data-tris="${JSON.stringify(['espece', 'nom', 'type', 'categorie', 'ep', 'lieu']).replace(/"/g, '&quot;')}"`));
   // moitié-moitié avec la carte (demande du propriétaire)
   assert.match(html, /\.bvue \{ display: grid; grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\);/);
-  assert.deepEqual(entetes(panneau('invoquees')), ['Nom', 'Invocation', 'Magies']);
   for (const id of ['monstres', 'invoquees']) {
     const bloc = panneau(id);
     assert.match(bloc, /<div class="bvue">[\s\S]*<aside class="bcartes" aria-label="[^"]+" data-cartes>/, `${id} : panneau des cartes à côté du tableau`);
     const cartes = (bloc.match(/<article class="bcarte" /g) ?? []).length;
-    assert.equal(cartes, (bloc.match(/<tr class="bligne" /g) ?? []).length, `${id} : une carte par ligne`);
+    const cases = (bloc.match(/<tr class="bligne" /g) ?? []).length + (bloc.match(/<td class="bcase" /g) ?? []).length;
+    assert.equal(cartes, cases, `${id} : une carte par case`);
     if (id === 'invoquees') {
       assert.equal((bloc.match(/<figure class="bcarte__portrait" data-vide>\s*<div class="bcarte__cadre"><img src="\/logo\.webp" alt=""/g) ?? []).length, cartes, 'invoquées : le logo en attendant un portrait');
     }
   }
+});
+
+test('créatures invoquées : trois tableaux dépliables (demande du propriétaire), golems et non-morts sur le même modèle — la combinaison, puis ses deux créatures côte à côte —, marionnettes par palier', options, () => {
+  const { invocations } = chargerBestiaire(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }));
+  const bloc = panneau('invoquees');
+  // un <details> par invocation, replié au départ, dans l'ordre du classeur ; son titre dit son effectif
+  const replis = [...bloc.matchAll(/<details class="binvocation" id="tableau-([^"]+)" data-repli><summary><span class="binvocation__nom">([^<]+)<\/span>/g)].map((m) => m[1]);
+  assert.deepEqual(replis, invocations.tableaux.map((t) => t.invocation.nomCle));
+  assert.ok(!/<details class="binvocation"[^>]* open/.test(bloc), 'repliés au départ');
+  for (const t of invocations.tableaux) {
+    const debut = bloc.indexOf(`id="tableau-${t.invocation.nomCle}"`);
+    const tableau = bloc.slice(debut, bloc.indexOf('</details>', debut));
+    assert.ok(tableau.includes(`data-total="${t.creatures}"`), `${t.invocation.nom} : effectif`);
+    const entetes = [...tableau.matchAll(/<th scope="col"[^>]*>([^<]+)<\/th>/g)].map((m) => m[1]);
+    assert.deepEqual(entetes, t.duo ? ['Magies', 'Créatures'] : ['EP', 'Créature'], `${t.invocation.nom} : en-têtes`);
+    if (t.duo) assert.ok(tableau.includes('<th scope="col" colspan="2">Créatures</th>'), 'les deux cases sous un seul en-tête (le classeur n’en a pas pour elles)');
+    // une ligne par bloc : son en-tête (la combinaison, le mono d'abord ; ou le palier tel qu'écrit), puis ses créatures, côte à côte
+    const lignes = [...tableau.matchAll(/<tr class="bligne bligne--bloc" data-ligne[^>]*><th scope="row" class="bligne__bloc" title="([^"]*)">([\s\S]*?)<\/th>((?:<td class="bcase"[\s\S]*?<\/td>)+)<\/tr>/g)];
+    assert.equal(lignes.length, t.lignes.length, `${t.invocation.nom} : une ligne par bloc`);
+    lignes.forEach((m, k) => {
+      const l = t.lignes[k];
+      assert.equal(m[1], l.marge.replace(/'/g, '&#39;'));
+      assert.deepEqual([...m[3].matchAll(/<td class="bcase" id="([^"]+)"/g)].map((x) => x[1]), l.cases.map((c) => c.ancre), `${l.marge} : ses créatures, côte à côte`);
+      if (t.duo) assert.equal(m[2].includes('<span class="muted"> mono</span>'), l.mono, `${l.marge} : mono`);
+      else assert.equal(m[2], l.marge, `${l.marge} : le palier tel qu'écrit`);
+    });
+    if (t.duo) assert.ok(t.lignes[0].mono, `${t.invocation.nom} : le mono en premier`);
+  }
+  // dans une carte, « Même combinaison » nomme l'autre créature : hors du texte que cherche la recherche d'une case (src/scripts/bestiaire.mjs,
+  // `data-hors-recherche`), sinon chercher une créature trouverait aussi sa voisine, qui ne serait pas estompée
+  const combinaisons = [...bloc.matchAll(/<p([^>]*)>\s*<strong>Même combinaison :<\/strong>/g)];
+  assert.equal(combinaisons.length, invocations.lignes.filter((l) => l.memeBloc.length).length);
+  assert.ok(combinaisons.length > 0 && combinaisons.every((m) => /\sdata-hors-recherche\b/.test(m[1])), '« Même combinaison » hors de la recherche');
+  // le NPM minimum et le qualificatif d'une capacité sont dans la carte
+  for (const l of invocations.lignes) {
+    const debut = bloc.indexOf(`id="carte-${l.ancre}"`);
+    const carte = bloc.slice(debut, bloc.indexOf('</article>', debut));
+    for (const k of l.capacites) {
+      if (k.npm) assert.ok(carte.includes(`<span class="prefixe">NPM ${k.npm}</span>`), `${l.nom} : NPM de ${k.nom}`);
+      if (k.etiquette) assert.ok(carte.replace(/&#39;/g, "'").includes(`<span class="prefixe">[${k.etiquette}]</span>`), `${l.nom} : [${k.etiquette}]`);
+    }
+  }
+  // pas de tri (l'ordre du classeur) ; les cartes restent à côté
+  assert.ok(bloc.includes('data-tris="[]"'));
+  assert.ok(!/<th scope="col"[^>]* data-tri=/.test(bloc));
 });
 
 test('portraits des monstres (migration 0033) : un par carte, le logo en attendant une image, sinon le fichier publié par le build, cadré sans script', options, () => {

@@ -1,24 +1,11 @@
-/* Créatures invoquées et fiches associées */
+/* Créatures invoquées d'un sort : par bloc (combinaison de magies ou palier), leur nom (sa carte du bestiaire en infobulle : components/Infobulles.astro,
+   styles/bestiaire/carte.css) et le lien vers leur page */
 .invoque { list-style: none; padding: 0 !important; margin: 0.3rem 0; display: grid; gap: 0.4rem; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); }
 .invoque li { padding: 0.35rem 0.6rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
 .invoque__bloc { display: block; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
 .invoque__creatures { display: flex; flex-wrap: wrap; gap: 0.3rem 0.5rem; margin-top: 0.2rem; }
 .creature { display: inline-flex; align-items: baseline; gap: 0.25rem; }
-button.creature__bouton { cursor: pointer; font: inherit; font-size: 0.9rem; color: var(--text); }
-button.creature__bouton:hover { background: var(--accent-soft); }
-button.creature__bouton[aria-expanded="true"] { border-color: var(--mag); background: var(--mag-soft); font-weight: 600; }
+button.creature__bouton { cursor: help; font: inherit; font-size: 0.9rem; color: var(--text); }
+button.creature__bouton:hover, button.creature__bouton[data-ouverte] { border-color: var(--mag); background: var(--mag-soft); }
+button.creature__bouton:focus-visible { outline: 2px solid var(--mag); outline-offset: 2px; }
 .creature__lien { padding: 0 0.5rem; font-size: 0.68rem; line-height: 1.5; text-transform: uppercase; letter-spacing: 0.05em; }
-.invoque .creature__rangee { grid-column: 1 / -1; padding: 0; border: 0; background: none; }
-.invoque .creature__rangee[hidden] { display: none; }
-.creature__fiche { padding: 0.6rem 0.9rem; border: 1px solid var(--mag-line); border-left: 4px solid var(--mag); border-radius: 8px; background: var(--bg); }
-.creature__fiche > h6 { margin: 0 0 0.4rem; font-size: 1rem; }
-.creature__colonnes .texte-titre { margin-top: 0; }
-.creature__colonnes { display: grid; gap: 0.8rem 1.4rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
-.creature__stats { margin: 0.2rem 0 0; display: grid; gap: 0.3rem; }
-.creature__stats > div { display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.5rem; }
-.creature__stats dt { color: var(--muted); font-size: 0.8rem; }
-.creature__stats dd { margin: 0; }
-.creature__ligne { display: block; }
-.creature__capacites { list-style: none; margin: 0.2rem 0 0 !important; padding: 0 !important; display: grid; gap: 0.5rem; }
-.creature__capacites .texte { margin: 0.1rem 0 0; font-size: 0.9rem; }
-.creature__capacites .repere { margin-left: 0.4rem; }

@@ -12,8 +12,8 @@ const SCRIPT = /<script is:inline data-infobulles>([\s\S]*?)<\/script>/;
 const code = readFileSync(fileURLToPath(new URL('../src/components/Infobulles.astro', import.meta.url)), 'utf8').match(SCRIPT)[1];
 
 /** Un faux navigateur, juste ce que le script emploie : un arbre d'éléments, des écouteurs, des minuteries qu'on fait avancer à la main.
- *  `page(Element, body)` : le contenu de la page, posé avant que le script ne tourne. */
-function navigateur(page = () => {}) {
+ *  `page(Element, body)` : le contenu de la page, posé avant que le script ne tourne ; `tactile` : un écran sans survol (hover: none). */
+function navigateur(page = () => {}, { tactile = false } = {}) {
   class Noeud {}
   let guettes = [];
   class Element extends Noeud {
@@ -57,7 +57,11 @@ function navigateur(page = () => {}) {
       for (let x = this; x; x = x.parentElement) if (x.tagName === 'DIALOG' && x.hasAttribute('open')) return x;
       return null;
     }
-    matches(sel) { assert.equal(sel, ':focus-visible'); return this.focusVisible; }
+    matches(sel) {
+      if (sel === ':hover') return this.survol === true;
+      assert.equal(sel, ':focus-visible');
+      return this.focusVisible;
+    }
     getBoundingClientRect() { return { left: 100, top: 100, right: 200, bottom: 120, width: 100, height: 20 }; }
     *tous() { yield this; for (const e of this.enfants) yield* e.tous(); }
   }
@@ -77,6 +81,7 @@ function navigateur(page = () => {}) {
       return [...html.tous()].filter((e) => e.hasAttribute('data-bulle') && e.hasAttribute('title'));
     },
     addEventListener: ecouter('document'),
+    activeElement: null,
   };
   let minuteries = [];
   const contexte = {
@@ -89,7 +94,7 @@ function navigateur(page = () => {}) {
       observe(cible, o) { guettes.push({ cible, filtre: o.attributeFilter, rappel: this.rappel, de: this }); }
       disconnect() { guettes = guettes.filter((g) => g.de !== this); }
     },
-    matchMedia: () => ({ matches: false }),
+    matchMedia: () => ({ matches: tactile }),
     getComputedStyle: (e) => ({ getPropertyValue: (p) => e.vars[p] ?? '', backgroundColor: 'rgb(255, 253, 248)', borderTopColor: 'rgb(217, 204, 182)' }),
     setTimeout: (f) => minuteries.push(f),
     clearTimeout: (i) => { if (i) minuteries[i - 1] = null; },
@@ -117,6 +122,8 @@ function navigateur(page = () => {}) {
       for (const f of enCours) f?.();
     },
     get bulle() { return doc.getElementById('bulle-du-titre'); },
+    get fleche() { return [...body.tous()].find((e) => e.getAttribute('class') === 'bulle-fleche') ?? null; },
+    document: doc,
   };
 }
 
@@ -231,6 +238,51 @@ test('une bulle riche (`data-bulle`) : son `title` (repli sans JavaScript) retir
   assert.ok(bulle.hidden);
   assert.equal(echap.arrete, true, 'le panneau du sort reste ouvert');
   assert.equal(pastille.getAttribute('title'), null);
+});
+
+test('la carte d’une créature (`data-placement="cote"`, `data-fermer-au-toucher`) : à côté de son nom, pointe de côté ; un clic dedans ne la ferme pas ; elle défile au clavier', () => {
+  let nom, carte;
+  const page = (Element, body) => {
+    nom = body.appendChild(new Element('button', { 'data-bulle': 'bulle-creature-noye', title: 'Santé : 20/NPM' }));
+    carte = body.appendChild(new Element('div', { class: 'bulle bulle--carte', role: 'tooltip', id: 'bulle-creature-noye', 'data-placement': 'cote', 'data-fermer-au-toucher': '' }));
+    carte.hidden = true;
+  };
+  const n = navigateur(page);
+  n.emettre('pointerover', { target: nom });
+  assert.ok(!carte.hidden);
+  // le faux navigateur donne à tout élément le rectangle 100–200 × 100–120 dans une fenêtre de 1000 × 800 : la place est à droite
+  assert.equal(carte.style.left, '209px', 'à droite du nom, la place de la pointe entre les deux');
+  assert.equal(n.fleche.getAttribute('data-cote'), 'droite');
+  assert.ok(!n.fleche.hidden);
+  // un clic dans la carte (le focus quitte le nom) ne la ferme pas tant que le pointeur est dessus
+  carte.survol = true;
+  n.emettre('focusout', { target: nom });
+  n.emettre('click', { target: carte });
+  assert.ok(!carte.hidden);
+  carte.survol = false;
+  n.emettre('pointerout', { target: carte, relatedTarget: n.body });
+  n.avancer();
+  assert.ok(carte.hidden, 'le pointeur qui la quitte la ferme');
+  // au clavier : plus haute que sa place, elle défile (flèches, pages, début, fin) au lieu de la page, tant que son nom a le focus
+  nom.focusVisible = true;
+  n.emettre('focusin', { target: nom });
+  n.document.activeElement = nom;
+  const defile = [];
+  Object.assign(carte, { scrollHeight: 1200, clientHeight: 700, scrollBy: (o) => defile.push(o.top) });
+  const bas = n.emettre('keydown', { key: 'ArrowDown' });
+  assert.deepEqual(defile, [40]);
+  assert.equal(bas.arrete, true, 'la page ne défile pas');
+  n.emettre('keydown', { key: 'End' });
+  assert.deepEqual(defile, [40, 1200]);
+  n.emettre('keydown', { key: 'Tab' });
+  assert.equal(defile.length, 2, 'les autres touches ne la font pas défiler');
+  assert.ok(!carte.hidden);
+  // au toucher, un appui dans la carte (qui couvre presque l'écran d'un téléphone) la ferme
+  const t = navigateur(page, { tactile: true });
+  t.emettre('click', { target: nom });
+  assert.ok(!carte.hidden);
+  t.emettre('click', { target: carte });
+  assert.ok(carte.hidden);
 });
 
 // ---- site construit -------------------------------------------------------------------------------------------------------------------------

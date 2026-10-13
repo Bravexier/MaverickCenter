@@ -2,6 +2,10 @@
 // Carte d'une créature invoquée (lib/bestiaire-db.mjs#chargerInvocations), sur le modèle de la carte d’un monstre (lib/bestiaire-rendu.mjs) : en-tête, portrait
 // (le logo en attendant), santé / chakra / barrière en tuiles, F.P.V.S.I.A. en cases colorées, puis le texte tel qu'écrit : défense, vitesse, dégâts,
 // capacités (et celles communes à son invocation), effets, résistances écrites et celles de sa magie (« Élémentaire »), le sort qui l'invoque et son coût.
+// `bulle` (un identifiant) : la même carte en infobulle, sur une page de magie (demande du propriétaire : « La carte sera à garder et servirait de tooltip
+// dans leur correspondance dans les tableaux des magies et leurs sorts associés » ; components/Infobulles.astro) : dans une bulle `role="tooltip"`
+// cachée, sans identifiant interne ni élément interactif (ni « Fermer », ni liens : une infobulle n'en a pas), le nom en titre simple. CSS :
+// styles/bestiaire/carte.css.
 import { htmlDesCaracteristiques } from '../../lib/monstre-rendu.mjs';
 import { couleurDeMagie, texteSurCouleurDeMagie } from '../../lib/sort-format.mjs';
 import { url } from '../../lib/wiki';
@@ -9,17 +13,22 @@ import type { chargerInvocations } from '../../lib/bestiaire-db.mjs';
 
 interface Props {
   ligne: ReturnType<typeof chargerInvocations>['lignes'][number];
+  bulle?: string;
 }
-const { ligne: l } = Astro.props;
+const { ligne: l, bulle } = Astro.props;
+// en infobulle, la carte est dans sa bulle ; sinon, seule
+const Enveloppe = bulle ? 'div' : Fragment;
+const enveloppe = bulle ? { class: 'bulle bulle--carte', role: 'tooltip', id: bulle, 'data-placement': 'cote', 'data-fermer-au-toucher': true, hidden: true } : {};
 const id = `carte-${l.ancre}`;
 const pastille = (nom: string) => `--m: ${couleurDeMagie(nom)}; --m-texte: ${texteSurCouleurDeMagie(nom)}`;
 const sort = l.invocation.magieId && l.invocation.sortId ? `${url(`${l.invocation.magieId}/`)}#sort-${l.invocation.sortId.slice(l.invocation.sortId.indexOf('#sort:') + 6)}` : null;
 ---
 
-<article class="bcarte" id={id} aria-labelledby={`${id}-titre`} data-carte={l.ancre}>
+<Enveloppe {...enveloppe}>
+<article class="bcarte" id={bulle ? undefined : id} aria-labelledby={bulle ? undefined : `${id}-titre`} aria-label={bulle ? `Carte de ${l.nom}` : undefined} data-carte={bulle ? undefined : l.ancre}>
   <header class="bcarte__tete">
     <div class="bcarte__titres">
-      <h3 id={`${id}-titre`}>{l.nom}</h3>
+      {bulle ? <p class="bcarte__titre">{l.nom}</p> : <h3 id={`${id}-titre`}>{l.nom}</h3>}
       <p class="bcarte__espece">
         {l.invocation.nom} <span class="muted">({l.bloc})</span>
       </p>
@@ -38,7 +47,7 @@ const sort = l.invocation.magieId && l.invocation.sortId ? `${url(`${l.invocatio
       <div class="bcarte__cadre"><img src={url('logo.webp')} alt="" width="319" height="320" loading="lazy" decoding="async" /></div>
       <figcaption>Portrait à venir</figcaption>
     </figure>
-    <a class="bcarte__fermer" href={`#${l.ancre}`} aria-label={`Fermer la carte de ${l.nom}`}>Fermer</a>
+    {!bulle && <a class="bcarte__fermer" href={`#${l.ancre}`} aria-label={`Fermer la carte de ${l.nom}`}>Fermer</a>}
   </header>
 
   <section class="bcarte__section" aria-label="La carte">
@@ -144,25 +153,30 @@ const sort = l.invocation.magieId && l.invocation.sortId ? `${url(`${l.invocatio
   <section class="bcarte__section" aria-label="Description et invocation">
     {l.description && <p class="texte">{l.description}</p>}
     <p>
-      <strong>Invoquée par</strong> {sort ? <a href={sort}>{l.invocation.sortNom}</a> : l.invocation.sortNom}
+      <strong>Invoquée par</strong> {sort && !bulle ? <a href={sort}>{l.invocation.sortNom}</a> : l.invocation.sortNom}
       {l.invocation.magie && <> ({l.invocation.magie})</>}
       {l.cout && <> · coût : {l.cout}</>}
     </p>
     {
       l.memeBloc.length > 0 && (
-        <p>
+        <p data-hors-recherche>
           <strong>Même combinaison :</strong>{' '}
           {l.memeBloc.map((m, k) => (
             <>
               {k > 0 && ', '}
-              <a href={`#invoquee-${m.id.slice(m.id.indexOf('/') + 1)}`}>{m.nom}</a>
+              {bulle ? m.nom : <a href={`#invoquee-${m.id.slice(m.id.indexOf('/') + 1)}`}>{m.nom}</a>}
             </>
           ))}
         </p>
       )
     }
-    <p>
-      <a href={url(`${l.id}/`)}>Page de la créature</a>
-    </p>
+    {
+      !bulle && (
+        <p>
+          <a href={url(`${l.id}/`)}>Page de la créature</a>
+        </p>
+      )
+    }
   </section>
 </article>
+</Enveloppe>

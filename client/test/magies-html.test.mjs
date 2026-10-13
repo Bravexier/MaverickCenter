@@ -6,6 +6,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { chargerInvocations } from '../src/lib/bestiaire-db.mjs';
 import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerMagies } from '../src/lib/magies-db.mjs';
@@ -170,7 +171,8 @@ test('chaque identifiant est unique dans une page ; aria-controls, aria-describe
 test('infobulles : un déclencheur par bulle, un texte de repli (title), une bulle en role="tooltip" cachée et faite d’éléments en ligne seulement', options, () => {
   let bulles = 0;
   for (const { slug, html } of pages) {
-    const declencheurs = [...html.matchAll(/<(?:a|button)\b[^>]*\sdata-bulle="([^"]+)"[^>]*>/g)];
+    // la carte d'une créature (bulle-creature-…) est une infobulle à part : test suivant
+    const declencheurs = [...html.matchAll(/<(?:a|button)\b[^>]*\sdata-bulle="([^"]+)"[^>]*>/g)].filter((d) => !d[1].startsWith('bulle-creature-'));
     for (const [balise, id] of declencheurs) {
       assert.match(balise, /\saria-describedby="/, `${slug} : ${id} sans aria-describedby`);
       assert.match(balise, /\stitle="[^"]+"/, `${slug} : ${id} sans texte de repli (sans JavaScript)`);
@@ -238,19 +240,40 @@ test('panneau d’un sort : un seul cadre « Effets » par sort, les règles d�
   assert.match(necro, /<summary>TABLEAU &quot;AMÉLIORATION CADAVÉRIQUE&quot;<\/summary>/);
 });
 
-test('créatures invoquées : un bouton et un lien « Bestiaire » par créature, une fiche cachée par bouton, juste sous le bloc de la créature', options, () => {
-  const attendu = { 'magie-de-la-necromancie': 28, 'magie-de-la-terre': 30, 'magie-de-lombre': 5 };
-  for (const [slug, n] of Object.entries(attendu)) {
-    const { html } = pages.find((p) => p.slug === slug);
-    const boutons = [...html.matchAll(/<button\b[^>]*class="chip creature__bouton"[^>]*aria-controls="([^"]+)"/g)].map((m) => m[1]);
-    assert.equal(boutons.length, n, `${slug} : boutons`);
-    assert.equal([...html.matchAll(/class="chip creature__lien"/g)].length, n, `${slug} : liens Bestiaire`);
-    for (const id of boutons) {
-      assert.match(html, new RegExp(`<article class="creature__fiche" id="${id}" hidden`), `${slug} : fiche ${id} cachée`);
-      assert.doesNotMatch(html, new RegExp(`<button[^>]*aria-controls="${id}"[^>]*aria-expanded`), 'aria-expanded est posé par le script, pas par le HTML');
+test('créatures invoquées (et celles de « Manteau noir ») : un bouton et un lien « Bestiaire » par créature, aucun lien à bulle ; sa carte du bestiaire en infobulle (demande du propriétaire), une par créature et par page', options, () => {
+  const { lignes } = chargerInvocations(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }));
+  const parSlug = new Map(lignes.map((l) => [l.id.slice(l.id.indexOf('/') + 1), l]));
+  // les créatures citées par page : les sorts d'invocation (Terre, Nécromancie, Ombre), « Manteau noir » (Ombre), et les trois dans le Potentiel Illimité
+  const attendu = { 'magie-de-la-necromancie': [28, 28], 'magie-de-la-terre': [30, 30], 'magie-de-lombre': [5, 10], 'potentiel-illimite': [63, 68] };
+  for (const { slug, html } of pages) {
+    const [cartes, declencheurs] = attendu[slug] ?? [0, 0];
+    const boutons = [...html.matchAll(/<button type="button" class="chip creature__bouton" data-bulle="bulle-creature-([^"]+)" aria-describedby="bulle-creature-\1" title="[^"]+">([^<]+)<\/button>/g)];
+    // au toucher, la carte couvre l'écran d'un téléphone : un lien à bulle ne pourrait pas être suivi (le second appui tomberait sur elle)
+    assert.doesNotMatch(html, /<a\b[^>]*data-bulle="bulle-creature-/, `${slug} : aucun lien à bulle`);
+    assert.equal(boutons.length, declencheurs, `${slug} : déclencheurs (noms des créatures, et « Carte de … » de Manteau noir)`);
+    assert.equal([...html.matchAll(/data-bulle="bulle-creature-/g)].length, declencheurs, `${slug} : chaque déclencheur a la forme complète (aria-describedby, title)`);
+    assert.equal([...html.matchAll(/class="chip creature__lien"/g)].length, boutons.length, `${slug} : un lien Bestiaire par bouton`);
+    for (const [, s, nom] of boutons) assert.equal(nom.replace(/&#39;/g, "'"), parSlug.get(s)?.nom, `${slug} : ${s}`);
+    // plus de fiche minimale sous les blocs
+    assert.doesNotMatch(html, /creature__fiche|creature__rangee/, `${slug} : fiche minimale retirée`);
+    // les cartes : une bulle par créature citée, cachée, role="tooltip", posée hors des onglets et des détails de sort (dans .cartes-creatures),
+    // sans identifiant interne ni élément interactif (une infobulle n'en a pas)
+    const bulles = [...html.matchAll(/<div class="bulle bulle--carte" role="tooltip" id="bulle-creature-([^"]+)" data-placement="cote" data-fermer-au-toucher(?:="[^"]*")? hidden>/g)].map((m) => m[1]);
+    assert.equal(bulles.length, cartes, `${slug} : cartes en infobulle`);
+    assert.equal(new Set(bulles).size, bulles.length, `${slug} : une par créature`);
+    const cites = new Set(boutons.map((b) => b[1]));
+    assert.deepEqual([...cites].sort(), [...bulles].sort(), `${slug} : chaque créature citée a sa carte, et seulement elles`);
+    if (!cartes) continue;
+    const reserve = html.slice(html.indexOf('<div class="cartes-creatures">'));
+    for (const s of bulles) {
+      const debut = reserve.indexOf(`id="bulle-creature-${s}"`);
+      const carte = reserve.slice(debut, reserve.indexOf('</article>', debut)).replace(/&#39;/g, "'");
+      assert.ok(carte.includes(`<article class="bcarte" aria-label="Carte de ${parSlug.get(s).nom}">`), `${slug} : carte de ${s}`);
+      assert.doesNotMatch(carte, /<(?:a|button|input|select|textarea)\b|\sid="(?!bulle-creature-)/, `${slug} : ${s} sans lien, bouton ni identifiant interne`);
+      assert.match(carte, /<p class="bcarte__titre">/);
     }
-    // la fiche suit le bloc : « </li><li class="creature__rangee" hidden><article … » ; jamais en fin de liste
-    assert.equal([...html.matchAll(/<li class="creature__rangee" hidden>/g)].length, [...html.matchAll(/<span class="invoque__bloc">/g)].length, `${slug} : une rangée de fiches par bloc`);
+    // la CSS de la carte vient avec elle (styles/bestiaire/carte.css)
+    assert.match(html, /\.bulle--carte \{ width: min\(30rem, calc\(100vw - 1rem\)\);/);
   }
 });
 

@@ -1,7 +1,7 @@
 // Recherche, filtres et tri des tableaux de /bestiaire/ (lib/bestiaire-filtres.mjs, fonctions pures).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { adresseAvecEtat, basculer, effectifs, etatDepuisAdresse, filtrerEtTrier, garder, normaliser, triSuivant } from '../src/lib/bestiaire-filtres.mjs';
+import { adresseAvecEtat, basculer, casesTrouvees, effectifs, etatDepuisAdresse, filtrerEtTrier, garder, normaliser, triSuivant } from '../src/lib/bestiaire-filtres.mjs';
 
 const config = { prefixe: '', facettes: ['categorie', 'ep', 'lieu'], tris: ['nom', 'sante'] };
 const lignes = [
@@ -80,4 +80,34 @@ test('adresse : aller-retour, valeurs multiples, préfixe d’un tableau, param�
   // valeurs inconnues : ignorées
   const lu = etatDepuisAdresse('?tri=inconnu&sens=desc&categorie=boss&categorie=dragon&categorie=boss', { ...config, valeurs: { categorie: ['boss', 'mini_boss'] } });
   assert.deepEqual(lu, { q: '', facettes: { categorie: ['boss'] }, tri: null, sens: 'asc' });
+});
+
+test('cases d’une ligne (une combinaison de magies et ses deux créatures) : la recherche désigne celle qui contient tous les mots ; sinon toutes', () => {
+  const zombi = { texte: 'Zombi Non-Mort Mord' };
+  const squelette = { texte: 'Squelette archer Non-Mort Tire' };
+  const ligne = { texte: 'Nécromancie mono Zombi Squelette archer', cases: [zombi, squelette] };
+  assert.deepEqual(casesTrouvees(ligne, { q: '' }), [zombi, squelette], 'sans recherche : toutes');
+  assert.deepEqual(casesTrouvees(ligne, { q: 'zombi' }), [zombi]);
+  assert.deepEqual(casesTrouvees(ligne, { q: 'SQUELETTE tire' }), [squelette], 'sans casse, tous les mots');
+  assert.deepEqual(casesTrouvees(ligne, { q: 'non-mort' }), [zombi, squelette], 'les deux');
+  // les mots sont dans l'en-tête de la ligne (la combinaison) ou répartis entre les deux cases : toutes
+  assert.deepEqual(casesTrouvees(ligne, { q: 'necromancie' }), [zombi, squelette]);
+  assert.deepEqual(casesTrouvees(ligne, { q: 'mord tire' }), [zombi, squelette]);
+  // une ligne d'une seule case (un monstre) : elle-même
+  const monstre = { texte: 'Amblypyge noir', cases: [] };
+  monstre.cases = [monstre];
+  assert.deepEqual(casesTrouvees(monstre, { q: 'noir' }), [monstre]);
+});
+
+test('effectifs d’une ligne à cases (une combinaison et ses deux créatures) : elle compte pour ses cases, celles que la recherche trouve, comme le compte de la page', () => {
+  const ligne = (magies, ...noms) => {
+    const l = { texte: `${magies.join(' ')} ${noms.join(' ')}`, facettes: { magie: magies } };
+    l.cases = noms.map((n) => ({ texte: n }));
+    return l;
+  };
+  const lignes = [ligne(['terre'], 'Golem de pierre', 'Poupée de terre'), ligne(['terre', 'feu'], 'Golem de magma', 'Poupée de braise'), ligne(['ombre'], 'Ombre rampante')];
+  assert.deepEqual(Object.fromEntries(effectifs(lignes, { q: '', facettes: {} }, 'magie')), { terre: 4, feu: 2, ombre: 1 });
+  assert.deepEqual(Object.fromEntries(effectifs(lignes, { q: 'golem', facettes: {} }, 'magie')), { terre: 2, feu: 1 }, 'les poupées ne sont pas trouvées');
+  // une ligne sans cases (un test, une ligne de monstre déjà lue) compte pour une
+  assert.deepEqual(Object.fromEntries(effectifs([{ texte: 'x', facettes: { magie: ['feu'] } }], { q: '', facettes: {} }, 'magie')), { feu: 1 });
 });

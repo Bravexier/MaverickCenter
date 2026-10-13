@@ -96,12 +96,19 @@ test('butin d’une espèce : une ligne par tranche, une colonne par catégorie,
   assert.ok(monstres.lignes.some((l) => l.espece.butin.length));
 });
 
-test('créatures invoquées : à part, une ligne par créature, dans l’ordre du classeur ; filtres sur les colonnes affichées (invocation, magie)', () => {
+test('créatures invoquées : à part, une carte par créature, dans l’ordre du classeur ; un filtre sur la seule colonne filtrable affichée (magie)', () => {
   assert.equal(invocations.lignes.length, n('SELECT count(*) AS n FROM creature'));
   assert.deepEqual(invocations.invocations.map((i) => i.nom), db.prepare('SELECT nom FROM invocation ORDER BY ordre').all().map((r) => r.nom));
-  assert.deepEqual(invocations.facettes.map((f) => f.cle), ['invocation', 'magie']);
-  for (const l of invocations.lignes) assert.deepEqual(Object.keys(l.tri), ['nom', 'invocation', 'magies'], l.id);
-  for (const f of invocations.facettes) for (const o of f.options) assert.equal(o.nombre, invocations.lignes.filter((l) => l.facettes[f.cle].includes(o.valeur)).length, `${f.cle} ${o.valeur}`);
+  assert.deepEqual(invocations.facettes.map((f) => f.cle), ['magie']);
+  const lignesDesTableaux = invocations.tableaux.flatMap((t) => t.lignes);
+  // le nombre d'une valeur compte des créatures (les cases de ses lignes), comme le compte de la page, pas des combinaisons
+  for (const f of invocations.facettes) {
+    for (const o of f.options) {
+      const n = lignesDesTableaux.filter((l) => l.facettes[f.cle].includes(o.valeur)).reduce((k, l) => k + l.cases.length, 0);
+      assert.equal(o.nombre, n, `${f.cle} ${o.valeur}`);
+    }
+  }
+  assert.ok(lignesDesTableaux.some((l) => l.cases.length === 2 && l.facettes.magie.length), 'des lignes de deux créatures sont comptées');
   const magma = invocations.lignes.find((l) => l.ancre === 'invoquee-golem-de-magma');
   assert.deepEqual(magma.magiesDuBloc, ['Terre', 'Feu']);
   assert.equal(magma.sante, '20/NPM');
@@ -112,3 +119,36 @@ test('créatures invoquées : à part, une ligne par créature, dans l’ordre d
   assert.ok(peur(zombi), 'capacité commune « Non-Mort »');
   assert.deepEqual(zombi.defensesParMagie.map((d) => d.magie), ['Nécromancie']);
 });
+
+test('créatures invoquées : trois tableaux (demande du propriétaire), une ligne par bloc du classeur — combinaison et ses deux créatures côte à côte, le mono d’abord ; palier et sa créature', () => {
+  // un tableau par invocation, dans l'ordre du classeur ; une ligne par bloc de la marge, dans son ordre ; chaque créature dans une case, une seule fois
+  assert.deepEqual(invocations.tableaux.map((t) => t.invocation.id), db.prepare('SELECT id FROM invocation ORDER BY ordre').all().map((r) => r.id));
+  const blocs = db.prepare('SELECT b.id, b.invocation_id, b.marge_brut, b.ep, (SELECT count(*) FROM invocation_bloc_magie m WHERE m.bloc_id = b.id) AS magies FROM invocation_bloc b ORDER BY b.invocation_id, b.rang').all();
+  for (const t of invocations.tableaux) {
+    const siens = blocs.filter((b) => b.invocation_id === t.invocation.id);
+    assert.deepEqual(t.lignes.map((l) => l.id), siens.map((b) => b.id), `${t.invocation.id} : ses blocs, dans l'ordre`);
+    assert.deepEqual(t.lignes.map((l) => l.marge), siens.map((b) => b.marge_brut));
+    assert.equal(t.creatures, n(`SELECT count(*) AS n FROM creature WHERE invocation_id = '${t.invocation.id}'`));
+    for (const l of t.lignes) {
+      const rangs = db.prepare('SELECT id FROM creature WHERE bloc_id = ? ORDER BY rang').all(l.id).map((r) => r.id);
+      assert.deepEqual(l.cases.map((c) => c.id), rangs, `${l.id} : carte de gauche, puis de droite`);
+      // le mono : une seule magie dans la marge (« Terre + Terre » en a deux, la même) ; un palier n'a pas de magie
+      assert.equal(l.mono, siens.find((b) => b.id === l.id).magies === 1, l.id);
+      // les magies de la combinaison, dans l'ordre de la marge
+      assert.deepEqual(l.magies, db.prepare('SELECT m.nom FROM invocation_bloc_magie bm JOIN magie m ON m.id = bm.magie_id WHERE bm.bloc_id = ? ORDER BY bm.rang').all(l.id).map((r) => r.nom), l.id);
+    }
+    // golems, non-morts : deux créatures par combinaison, le mono en premier ; marionnettes : une par palier « EP »
+    if (t.duo) {
+      assert.ok(t.lignes.every((l) => l.cases.length === 2), `${t.invocation.id} : deux cases côte à côte`);
+      assert.ok(t.lignes[0].mono && t.lignes.slice(1).every((l) => !l.mono), `${t.invocation.id} : le mono d'abord, et lui seul`);
+    } else {
+      assert.ok(t.lignes.every((l) => l.cases.length === 1 && l.ep !== null && l.magies.length === 0), `${t.invocation.id} : une ligne par palier`);
+    }
+  }
+  assert.deepEqual(invocations.tableaux.map((t) => t.duo), [true, true, false], 'golems et non-morts sur le même modèle, marionnettes à part');
+  const ids = invocations.tableaux.flatMap((t) => t.lignes.flatMap((l) => l.cases.map((c) => c.id)));
+  assert.deepEqual([...ids].sort(), invocations.lignes.map((l) => l.id).sort(), 'chaque créature une fois');
+  // l'ordre des lignes (data-ordre) suit les trois tableaux
+  assert.deepEqual(invocations.tableaux.flatMap((t) => t.lignes.map((l) => l.ordre)), blocs.map((_, k) => k));
+});
+

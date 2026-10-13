@@ -45,6 +45,18 @@ export function adresseAvecEtat(recherche, etat, { prefixe = '', facettes = [] }
   return texte ? `?${texte}` : '';
 }
 
+/**
+ * Les cases d'une ligne gardée que la recherche désigne (une combinaison de magies a deux créatures : celle que la recherche ne trouve pas est estompée,
+ * et n'est pas comptée) : celles dont le texte (`texteNormalise` : la case et sa carte) contient tous les mots ; si aucune ne les contient seule (les mots
+ * sont dans l'en-tête de la ligne, la combinaison, ou répartis entre les deux), toutes. Sans recherche : toutes.
+ */
+export function casesTrouvees(ligne, etat) {
+  const mots = normaliser(etat.q).split(' ').filter(Boolean);
+  if (!mots.length) return ligne.cases;
+  const trouvees = ligne.cases.filter((c) => mots.every((m) => (c.texteNormalise ?? normaliser(c.texte)).includes(m)));
+  return trouvees.length ? trouvees : ligne.cases;
+}
+
 /** Vrai si la ligne passe la recherche et tous les filtres, sauf celui de clé `sauf` (pour compter les options d'un filtre). */
 export function garder(ligne, etat, sauf = null) {
   for (const [cle, choisies] of Object.entries(etat.facettes ?? {})) {
@@ -87,7 +99,9 @@ export function effectifs(lignes, etat, cle) {
   const compte = new Map();
   for (const l of lignes) {
     if (!garder(l, etat, cle)) continue;
-    for (const v of new Set(l.facettes?.[cle] ?? [])) compte.set(v, (compte.get(v) ?? 0) + 1);
+    // une ligne à cases compte pour celles que la recherche trouve (casesTrouvees), comme le compte de la page
+    const poids = l.cases ? casesTrouvees(l, etat).length : 1;
+    for (const v of new Set(l.facettes?.[cle] ?? [])) compte.set(v, (compte.get(v) ?? 0) + poids);
   }
   return compte;
 }

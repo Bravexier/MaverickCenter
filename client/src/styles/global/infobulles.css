@@ -38,6 +38,9 @@
 }
 .bulle-fleche[data-cote='dessous'] { border-right-color: transparent; border-bottom-color: transparent; border-top-left-radius: 2px; }
 .bulle-fleche[data-cote='dessus'] { border-left-color: transparent; border-top-color: transparent; border-bottom-right-radius: 2px; }
+/* une bulle à côté de son déclencheur (`data-placement="cote"`) : la pointe sur son bord gauche (bulle à droite) ou droit (bulle à gauche) */
+.bulle-fleche[data-cote='droite'] { border-top-color: transparent; border-right-color: transparent; border-bottom-left-radius: 2px; }
+.bulle-fleche[data-cote='gauche'] { border-left-color: transparent; border-bottom-color: transparent; border-top-right-radius: 2px; }
 .bulle-fleche[hidden] { display: none; }
 @keyframes bulle-apparition { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
