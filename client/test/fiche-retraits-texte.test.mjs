@@ -41,6 +41,8 @@ test('descriptionDuRetrait : don, spécialité (et ses dons choisis), sort (NPM,
   assert.equal(descriptionDuRetrait({ nature: 'metier', id: 'metiers/forgeron', nom: 'Forgeron' }), 'le métier « Forgeron »');
   assert.equal(descriptionDuRetrait({ nature: 'metier', id: 'metiers/forgeron', nom: null }), 'le métier « metiers/forgeron »');
   assert.throws(() => descriptionDuRetrait({ nature: 'race', id: 'races/x' }), /nature de retrait inconnue/);
+  // une arme supprimée (décision R52) : sa famille et son emplacement
+  assert.equal(descriptionDuRetrait({ nature: 'arme', id: 'a', nom: 'Katana', famille: 'ÉPÉES', rang: 1 }), 'l’arme « Katana » (ÉPÉES, arme 1)');
 });
 
 test('ligneDeRetrait : la ligne exacte, datée, neutre (« n’existe plus dans les règles »), qui invite à s’adapter', () => {
@@ -102,7 +104,7 @@ test('resumeDesRetraits : rien sans ligne ; singulier ; pluriel avec le jour le 
 });
 
 test('ordreDesRetraits : métier, spécialité, don, sort, puis par nom', () => {
-  assert.deepEqual([...ORDRE_DES_NATURES], ['metier', 'specialite', 'capacite', 'sort']);
+  assert.deepEqual([...ORDRE_DES_NATURES], ['metier', 'specialite', 'capacite', 'sort', 'arme']);
   const elements = [
     { nature: 'sort', id: 's2', nom: 'Zéphyr' }, { nature: 'sort', id: 's1', nom: 'Aura' }, { nature: 'capacite', id: 'k2', nom: 'Don 10' },
     { nature: 'capacite', id: 'k1', nom: 'Don 9' }, { nature: 'specialite', id: 'sp', nom: 'LAME' }, { nature: 'metier', id: 'm', nom: 'Forgeron' },

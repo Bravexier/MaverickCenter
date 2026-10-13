@@ -192,6 +192,11 @@ const DEFINITIONS = [
           : colonne === 'type_id' ? x.nom('arme_type', v) : v,
   },
   {
+    // le nom d'un matériau d'arme (ressource partagée avec les armures et les boucliers)
+    table: 'ressource', domaine: 'armes', cle: ['id'], colonnes: colonnesDe('ressource'), genre: 'Matériau', filtre: (r) => r.genre === 'materiau',
+    groupe: () => 'Matériaux', entite: (r) => r.nom, ordre: () => [2, 0],
+  },
+  {
     table: 'materiau_arme', domaine: 'armes', cle: ['ressource_id'], colonnes: colonnesDe('materiau_arme'), genre: 'Matériau',
     groupe: () => 'Matériaux', entite: (r, x) => x.nom('ressource', r.ressource_id), ordre: (r) => [2, r.ordre ?? 0],
   },

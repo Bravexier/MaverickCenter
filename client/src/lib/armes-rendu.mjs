@@ -11,6 +11,7 @@ import {
   LIBELLES_DES_DEGATS, MAINS, porteeDeLArme, prixEnRo,
 } from './arme-champs.mjs';
 import { couleurDeCaracteristique } from './caracteristiques-postures.mjs';
+import { attributEd } from './edition-modele.mjs';
 import { texteSurCouleur } from './sort-format.mjs';
 
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -112,3 +113,37 @@ export const RENDUS_DES_ARMES = {
     return `<span class="amelioration-effet"${attribut('bonus', a.bonus_degats ?? 0)}${attribut('cran', a.bonus_cran ?? 0)}>${e(valeur ?? '')}</span>`;
   },
 };
+
+/** Ancre HTML d'une arme : « arme-epees-flamberge » pour « ressources/armes#arme:epees:flamberge ». */
+export const ancreDArme = (id) => `arme-${String(id).slice(String(id).indexOf('#arme:') + 6).replace(/:/g, '-')}`;
+
+/**
+ * La ligne d'une arme dans le tableau de sa famille (components/armes/TableauArmes.astro, et le mode modification pour une arme créée depuis la
+ * construction du site : src/scripts/edition/armes.mjs) : un seul HTML. Chaque champ porte son `data-ed` ; les colonnes tirées de l'effet sont en lecture
+ * (`data-ed-lecture`) ; Description, Coût, Effet et Arme de départ ne s'affichent qu'en mode modification (`ed-seul`). `a` : la ligne de la table arme.
+ */
+export function htmlDeLigneDArme(a, ctx = {}) {
+  const ed = (colonne) => e(attributEd('arme', { id: a.id }, colonne));
+  const rendu = (nom, colonne) => RENDUS_DES_ARMES[nom](a[colonne], a, ctx);
+  const tiree = (classe, nom) => `<td class="${classe}" data-ed-lecture="${ed('effet')}" data-ed-rendu="${nom}">${rendu(nom, 'effet')}</td>`;
+  const depart = Number(a.depart_possible) === 1;
+  return `<tr class="arme${depart ? ' arme--depart' : ''}" id="${ancreDArme(a.id)}" data-arme="${e(a.id)}"${depart ? ' title="Arme de départ"' : ''}>`
+    + '<th scope="row" class="arme__nom">'
+    + `<span class="arme__libelle" data-ed="${ed('nom')}" data-ed-cible=".arme__choisir"><button type="button" class="arme__choisir" aria-pressed="false"${a.description ? ` title="${e(a.description)}"` : ''}>${e(a.nom)}</button></span>`
+    + `<span class="arme__mains" data-ed="${ed('mains')}" data-ed-rendu="arme-mains">${rendu('arme-mains', 'mains')}</span>`
+    + (a.remarque ? `<span class="arme__remarque" title="${e(a.remarque)}" aria-label="${e(`Remarque : ${a.remarque}`)}">★</span>` : '')
+    + '</th>'
+    + `<td class="arme__categorie" data-ed="${ed('competence_brut')}" data-ed-rendu="arme-categorie">${rendu('arme-categorie', 'competence_brut')}</td>`
+    + `<td class="arme__type" data-ed="${ed('type_id')}" data-ed-rendu="arme-type">${rendu('arme-type', 'type_id')}</td>`
+    + tiree('arme__degats', 'arme-degats')
+    + tiree('arme__types', 'arme-types-degats')
+    + tiree('arme__portee', 'arme-portee')
+    + tiree('arme__durabilite', 'arme-durabilite')
+    + tiree('arme__effets', 'arme-effets')
+    + tiree('arme__origine', 'arme-origine')
+    + `<td class="arme__description ed-seul" data-ed="${ed('description')}">${e(a.description ?? '')}</td>`
+    + `<td class="arme__cout ed-seul" data-ed="${ed('cout_brut')}" data-ed-rendu="arme-cout">${rendu('arme-cout', 'cout_brut')}</td>`
+    + `<td class="arme__effet ed-seul" data-ed="${ed('effet')}">${e(a.effet ?? '')}</td>`
+    + `<td class="arme__depart ed-seul" data-ed="${ed('depart_possible')}" data-ed-rendu="arme-depart">${rendu('arme-depart', 'depart_possible')}</td>`
+    + '</tr>';
+}

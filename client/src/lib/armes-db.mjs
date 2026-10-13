@@ -9,8 +9,7 @@ export { PAGE_DES_ARMES };
 
 const lignes = (db, sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
 
-/** Ancre HTML d'une arme : « arme-epees-flamberge » pour « ressources/armes#arme:epees:flamberge ». */
-export const ancreDArme = (id) => `arme-${String(id).slice(String(id).indexOf('#arme:') + 6).replace(/:/g, '-')}`;
+export { ancreDArme } from './armes-rendu.mjs';
 /** Ancre HTML d'un matériau : « materiau-titane ». */
 export const ancreDeMateriau = (id) => `materiau-${String(id).slice(String(id).lastIndexOf(':') + 1)}`;
 

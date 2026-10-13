@@ -19,7 +19,7 @@ const options = present ? {} : { skip: 'site non construit (npm run build)' };
 const html = present ? readFileSync(fichier, 'utf8') : '';
 const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
 const armes = present ? chargerArmes(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' })) : null;
-const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
 
 test('pas de tableau Markdown : la page est le gabarit des armes, avec les règles de l’onglet repliées', options, () => {
   assert.match(main, /<div class="armes" data-armes>/);

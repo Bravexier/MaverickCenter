@@ -1,8 +1,9 @@
 // Modèle de l'édition depuis le site de dev (demande du propriétaire ; client/serveur/edition.mjs, docs/serveur.md, « Édition ») : quelles colonnes de
 // quelles tables une page peut modifier, avec leur type de champ, et comment une page désigne un champ (attribut `data-ed`). Le service n'accepte
 // que ces colonnes ; tout ce qui en dépend dans la base (colonnes typées, tables de détail, page du wiki) est recalculé par le service, jamais saisi.
-// Entités créables (ENTITES) : métier, race, classe, peuple, spécialité, don de classe, espèce et carte de monstre ; supprimables : métier, spécialité,
-// don de classe (retirés des fiches de personnage qui les ont, avec une note datée : décision R42, annonceDesFiches), espèce et carte de monstre.
+// Entités créables (ENTITES) : métier, race, classe, peuple, spécialité, don de classe, espèce et carte de monstre, arme ; supprimables : métier,
+// spécialité, don de classe, arme (retirés des fiches de personnage qui les ont, avec une note datée : décisions R42, R52, annonceDesFiches), espèce et
+// carte de monstre.
 // Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, lib/portrait.mjs et lib/arme-champs.mjs, purs eux aussi) : partagées par le
 // service, les gabarits Astro et le script des pages (src/scripts/edition.mjs).
 import { NIVEAUX_DE_DON, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
@@ -248,7 +249,13 @@ export const TABLES = {
       depart_possible: { type: 'choix', libelle: 'Arme de départ', requis: true, choix: OUI_NON },
     },
   },
-  // matériaux d'arme (tableau MATERIAUX de l'onglet) : prix et effets ; le nom est celui de la ressource, partagé avec les armures et les boucliers
+  // nom d'un matériau d'arme : la ressource, partagée avec les armures et les boucliers (« comme c'est le même pour armure et bouclier, ça le changera
+  // aussi ») ; le service refuse les autres ressources
+  ressource: {
+    libelle: 'Matériau',
+    colonnes: { nom: { type: 'ligne', libelle: 'Nom du matériau (aussi pour les armures et les boucliers)', requis: true } },
+  },
+  // matériaux d'arme (tableau MATERIAUX de l'onglet) : prix et effets
   materiau_arme: {
     libelle: 'Matériau d’arme',
     colonnes: {
@@ -354,6 +361,18 @@ export const ENTITES = {
     champs: {
       espece_id: { type: 'choix', libelle: 'Espèce', requis: true, liste: 'especesDeMonstres' },
       ...champsDe('monstre', ['nom', 'echelle_brut', 'categorie', 'type_brut', 'alignement_brut']),
+    },
+  },
+  // une arme dans une famille de la page des armes (demande du propriétaire : « Fais donc la possibilité de créer / supprimer des armes ») ; supprimée,
+  // elle est retirée des fiches de personnage qui l'ont, avec une note datée (décision R52, comme R42)
+  arme: {
+    table: 'arme',
+    libelle: 'arme',
+    nouveau: 'Nouvelle arme',
+    suppression: true,
+    champs: {
+      famille_id: { type: 'choix', libelle: 'Famille (le tableau où l’arme s’ajoute)', requis: true, liste: 'famillesDArmes' },
+      ...champsDe('arme', ['nom', 'mains', 'competence_brut', 'type_id', 'cout_brut', 'effet', 'description', 'depart_possible']),
     },
   },
   // une spécialité d'une classe (D11) : créée avec son don de spécialité du niveau 10 (sans lui elle n'aurait ni colonne ni bannière) ; supprimée avec tous

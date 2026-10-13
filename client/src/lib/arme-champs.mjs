@@ -275,8 +275,11 @@ export function colonnesDeLArme(ligne, type, caracteristiques = CARACTERISTIQUES
 export const porteeDeLArme = (arme) =>
   arme.portee_min === null || arme.portee_min === undefined ? '1' : arme.portee_min === arme.portee_max ? String(arme.portee_min) : `${arme.portee_min}-${arme.portee_max}`;
 
-/** Durabilité de l'arme nue, en crans : « 1 seul cran » de son effet, sinon la base de l'onglet (2) corrigée de « ±N cran » (vue v_arme). */
-export const durabiliteDeLArme = (arme, base) => arme.solidite_fixee ?? base + (arme.solidite_delta ?? 0);
+/**
+ * Durabilité de l'arme nue, en crans : « 1 seul cran » de son effet, sinon la base de l'onglet (2) corrigée de « ±N cran » (vue v_arme) ; jamais moins de
+ * 1 (décision R51).
+ */
+export const durabiliteDeLArme = (arme, base) => Math.max(1, arme.solidite_fixee ?? base + (arme.solidite_delta ?? 0));
 
 // ---------------------------------------------------------------------------------------------------------------------------------- matériaux, améliorations
 

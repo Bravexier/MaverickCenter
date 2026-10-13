@@ -246,11 +246,12 @@ modification (`lib/corps-armes.mjs`).
 - **Sélection** (`src/scripts/armes.mjs`) : cliquer une arme ouvre à côté sa fiche (résumé collant : dégâts, durabilité, coût), puis les **matériaux**
   (case Matière dans sa couleur de l'onglet : `lib/materiaux-couleurs.mjs` ; prix en RO seulement) et les **améliorations** (+1 à +10, ligne TOTAL).
   Choisir un matériau (le fer par défaut) et une amélioration ajuste la fiche (`lib/arme-forge.mjs`, décision R49) : dégâts = dé de l'arme + bonus de
-  l'arme, du matériau et du niveau d'amélioration ; durabilité = celle de l'arme + crans du matériau et de l'amélioration ; coût = arme + niveaux +1 à +N
+  l'arme, du matériau et du niveau d'amélioration ; durabilité = celle de l'arme + crans du matériau et de l'amélioration, au moins 1 (R51) ; coût = arme + niveaux +1 à +N
   + un matériau pour forger et ceux des niveaux, payés en RO ou fournis ; l'effet du matériau en vert. État dans l'adresse (`?arme=…&materiau=…&amelioration=N`).
   Sans JavaScript, tous les tableaux s'affichent, sans fiche.
 - **Mode modification** (site de dev) : rien ne se sélectionne, tous les tableaux s'ouvrent, quatre colonnes de plus (Description, Coût, Effet, Arme de
-  départ) ; voir `docs/serveur.md`, « Édition ». La fiche de personnage calcule les mêmes dégâts (`degatsDArme`) et pose le fer avec l'arme choisie.
+  départ) ; une arme se crée (« + Ajouter une arme ») ou se supprime (retirée des fiches, R52) ; le nom d'un matériau change aussi pour les armures et les
+  boucliers ; voir `docs/serveur.md`, « Édition ». La fiche de personnage calcule les mêmes dégâts (`degatsDArme`) et pose le fer avec l'arme choisie.
 - `test/arme-champs.test.mjs` (découpages rejoués sur toute la base), `corps-armes.test.mjs`, `arme-forge.test.mjs` (l'exemple du propriétaire : Espadon
   en titane +5 = D10+29, 620 RO et 3 titanes ou 1 220 RO), `serveur-edition-armes.test.mjs`, `armes-html.test.mjs` (site construit).
 

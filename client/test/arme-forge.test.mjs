@@ -25,9 +25,11 @@ test('amélioration +N : les coûts des niveaux 1 à N, l’effet du niveau N (p
   assert.deepEqual(ameliorationCumulee(AMELIORATIONS, 0), { niveau: 0, ro: 0, materiaux: 0, bonus_degats: 0, bonus_cran: 0 });
 });
 
-test('durabilité : celle de l’arme, plus le cran du matériau et celui de l’amélioration (« tous les bonus se cumulent »)', () => {
+test('durabilité (décision R51) : celle de l’arme, plus le cran du matériau et celui de l’amélioration, jamais moins de 1', () => {
   assert.deepEqual(forgerArme(ESPADON, TITANE, AMELIORATIONS, 10).durabilite, { arme: 2, materiau: 1, amelioration: 2, total: 5 });
-  assert.equal(forgerArme({ ...ESPADON, durabilite: 1 }, { nom: 'Fonte', bonus_degats: 7, cran_solidite: -1, prix_ro: 40 }, AMELIORATIONS, 0).durabilite.total, 0);
+  // un Katana (1 seul cran) en fonte (−1 cran) : 1, pas 0
+  assert.equal(forgerArme({ ...ESPADON, durabilite: 1 }, { nom: 'Fonte', bonus_degats: 7, cran_solidite: -1, prix_ro: 40 }, AMELIORATIONS, 0).durabilite.total, 1);
+  assert.equal(forgerArme({ ...ESPADON, durabilite: 1 }, { nom: 'Fonte', bonus_degats: 7, cran_solidite: -1, prix_ro: 40 }, AMELIORATIONS, 5).durabilite.total, 1);
 });
 
 test('sans amélioration, en fer (aucun bonus) : le dé seul, le coût de l’arme et un matériau', () => {

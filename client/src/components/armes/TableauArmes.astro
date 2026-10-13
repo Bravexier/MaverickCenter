@@ -1,14 +1,14 @@
 ---
-import { attributEd } from '../../lib/edition-modele.mjs';
-import { RENDUS } from '../../lib/edition-rendu.mjs';
-import { ancreDArme, type chargerArmes, type contexteDesArmes } from '../../lib/armes-db.mjs';
+import { htmlDeLigneDArme } from '../../lib/armes-rendu.mjs';
+import type { chargerArmes, contexteDesArmes } from '../../lib/armes-db.mjs';
 
 // Le tableau d'UNE famille d'armes (bandeau de l'onglet « Armes »), repliable (demande du propriétaire : « chaque tableau peut être réduit si besoin ») :
 // Nom (la description en infobulle : « La description prend trop de place dans le tableau. Mets-la en tooltip »), Catégorie (pastille dans la couleur de
 // sa caractéristique : Force, Agilité, les deux en dégradé, Perception pour l'arbalète ; décision R48), Type, Dégâts, Type de dégâts, Portée (1 par défaut,
 // décision R50), Durabilité, Effets supplémentaires, Origine. Une arme de départ (nom sur fond bleu dans la source) a sa ligne en bleu, avec l'infobulle
 // « Arme de départ ». Cliquer une ligne la sélectionne : sa fiche s'ouvre à côté (src/scripts/armes.mjs).
-// Les cellules sont les rendus de lib/armes-rendu.mjs (via lib/edition-rendu.mjs#RENDUS), ceux que le mode modification réécrit après un enregistrement.
+// La ligne d'une arme est le HTML de lib/armes-rendu.mjs#htmlDeLigneDArme (celui que le mode modification pose pour une arme créée), ses cellules les
+// rendus que le mode modification réécrit après un enregistrement.
 // Mode modification (site de dev) : chaque champ porte son `data-ed` ; les colonnes tirées de l'effet sont en lecture (`data-ed-lecture`, recalculées
 // par le service) ; quatre colonnes n'apparaissent qu'en mode modification (classe `ed-seul`) : Description, Coût, Effet (le texte de l'onglet, d'où
 // les colonnes tirées viennent), Arme de départ.
@@ -19,8 +19,6 @@ interface Props {
 }
 const { famille, contexte } = Astro.props;
 const id = `famille-${famille.id}`;
-const ed = (armeId: string, colonne: string) => attributEd('arme', { id: armeId }, colonne);
-const rendu = (nom: string, a: Armes['familles'][number]['armes'][number], colonne: string) => RENDUS[nom](a[colonne], a, contexte);
 const unite = famille.cout_libelle.includes('(unité)');
 ---
 
@@ -51,36 +49,7 @@ const unite = famille.cout_libelle.includes('(unité)');
         </tr>
       </thead>
       <tbody>
-        {
-          famille.armes.map((a) => (
-            <tr
-              class:list={['arme', { 'arme--depart': a.depart_possible === 1 }]}
-              id={ancreDArme(a.id)}
-              data-arme={a.id}
-              title={a.depart_possible === 1 ? 'Arme de départ' : undefined}
-            >
-              <th scope="row" class="arme__nom">
-                <span class="arme__libelle" data-ed={ed(a.id, 'nom')} data-ed-cible=".arme__choisir">
-                  <button type="button" class="arme__choisir" aria-pressed="false" title={a.description ?? undefined}>{a.nom}</button>
-                </span>
-                <span class="arme__mains" data-ed={ed(a.id, 'mains')} data-ed-rendu="arme-mains" set:html={rendu('arme-mains', a, 'mains')} />
-                {a.remarque && <span class="arme__remarque" title={a.remarque} aria-label={`Remarque : ${a.remarque}`}>★</span>}
-              </th>
-              <td class="arme__categorie" data-ed={ed(a.id, 'competence_brut')} data-ed-rendu="arme-categorie" set:html={rendu('arme-categorie', a, 'competence_brut')} />
-              <td class="arme__type" data-ed={ed(a.id, 'type_id')} data-ed-rendu="arme-type" set:html={rendu('arme-type', a, 'type_id')} />
-              <td class="arme__degats" data-ed-lecture={ed(a.id, 'effet')} data-ed-rendu="arme-degats" set:html={rendu('arme-degats', a, 'effet')} />
-              <td class="arme__types" data-ed-lecture={ed(a.id, 'effet')} data-ed-rendu="arme-types-degats" set:html={rendu('arme-types-degats', a, 'effet')} />
-              <td class="arme__portee" data-ed-lecture={ed(a.id, 'effet')} data-ed-rendu="arme-portee" set:html={rendu('arme-portee', a, 'effet')} />
-              <td class="arme__durabilite" data-ed-lecture={ed(a.id, 'effet')} data-ed-rendu="arme-durabilite" set:html={rendu('arme-durabilite', a, 'effet')} />
-              <td class="arme__effets" data-ed-lecture={ed(a.id, 'effet')} data-ed-rendu="arme-effets" set:html={rendu('arme-effets', a, 'effet')} />
-              <td class="arme__origine" data-ed-lecture={ed(a.id, 'effet')} data-ed-rendu="arme-origine" set:html={rendu('arme-origine', a, 'effet')} />
-              <td class="arme__description ed-seul" data-ed={ed(a.id, 'description')}>{a.description ?? ''}</td>
-              <td class="arme__cout ed-seul" data-ed={ed(a.id, 'cout_brut')} data-ed-rendu="arme-cout" set:html={rendu('arme-cout', a, 'cout_brut')} />
-              <td class="arme__effet ed-seul" data-ed={ed(a.id, 'effet')}>{a.effet ?? ''}</td>
-              <td class="arme__depart ed-seul" data-ed={ed(a.id, 'depart_possible')} data-ed-rendu="arme-depart" set:html={rendu('arme-depart', a, 'depart_possible')} />
-            </tr>
-          ))
-        }
+        {famille.armes.map((a) => <Fragment set:html={htmlDeLigneDArme(a, contexte)} />)}
       </tbody>
     </table>
   </div>

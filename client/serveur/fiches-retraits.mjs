@@ -1,5 +1,5 @@
 // Fiches de personnage et règles supprimées (décision R42 ; docs/serveur.md, « Fiches de personnage (R42) ») : un don, une spécialité (avec les dons
-// choisis qui en dépendent), un sort ou un métier que les règles suppriment est RETIRÉ des fiches qui l'utilisent — la fiche reste, seul l'élément part —
+// choisis qui en dépendent), un sort, un métier ou une arme (décision R52) que les règles suppriment est RETIRÉ des fiches qui l'utilisent — la fiche reste, seul l'élément part —
 // et une ligne datée par élément s'ajoute à la fin de ses notes (« NOTE », cellule BA53 ; texte : src/lib/fiche-format.mjs#ligneDeRetrait). Deux moments :
 //   - le site de dev supprime une ligne de règle (serveur/edition.mjs : métier, spécialité, don) : retirerDesFiches, AVANT la suppression de la règle
 //     (clés étrangères contrôlées), noms lus dans la base avant qu'elle ne parte ;
@@ -27,6 +27,8 @@ export const RETRAITS = Object.freeze([
   }),
   Object.freeze({ table: 'personnage_capacite', colonnes: Object.freeze(['capacite_id']), vise: 'capacite', action: 'supprimer', cle: Object.freeze(['personnage_id', 'capacite_id']) }),
   Object.freeze({ table: 'personnage_sort', colonnes: Object.freeze(['sort_id']), vise: 'sort', action: 'supprimer', cle: Object.freeze(['personnage_id', 'sort_id']) }),
+  // une arme supprimée (décision R52, comme R42) : son emplacement (arme 1 ou 2) part, avec sa composition, son amélioration et son élément
+  Object.freeze({ table: 'personnage_arme', colonnes: Object.freeze(['arme_id']), vise: 'arme', action: 'supprimer', cle: Object.freeze(['personnage_id', 'rang']) }),
 ]);
 
 /**
@@ -92,7 +94,7 @@ function appliquer(db, aRetirer, acc) {
  * @param {{ metiers?: string[], specialites?: string[], capacites?: string[], sorts?: string[] }} cibles
  * @param {Map} acc nouveauxRetraitsDeFiches()
  */
-export function retirerDesFiches(db, { metiers = [], specialites = [], capacites = [], sorts = [] } = {}, acc = nouveauxRetraitsDeFiches()) {
+export function retirerDesFiches(db, { metiers = [], specialites = [], capacites = [], sorts = [], armes = [] } = {}, acc = nouveauxRetraitsDeFiches()) {
   const aRetirer = [];
   const capacitesDonnees = new Set(capacites);
   const regroupes = new Set(); // `${fiche}\u0000${don}` : dons nommés sur la ligne de leur spécialité
@@ -131,6 +133,13 @@ export function retirerDesFiches(db, { metiers = [], specialites = [], capacites
     if (!m) continue;
     for (const f of db.prepare(`SELECT ${champsDeFiche} FROM main.personnage p WHERE p.metier_id = ?`).all(m.id)) {
       aRetirer.push({ ...f, vise: 'metier', cle: [f.personnage], descripteur: { nature: 'metier', id: m.id, nom: m.nom } });
+    }
+  }
+  for (const id of armes) {
+    const a = db.prepare('SELECT a.id, a.nom, f.nom AS famille FROM main.arme a LEFT JOIN main.arme_famille f ON f.id = a.famille_id WHERE a.id = ?').get(id);
+    if (!a) continue;
+    for (const f of db.prepare(`SELECT ${champsDeFiche}, pa.rang FROM main.personnage_arme pa JOIN main.personnage p ON p.id = pa.personnage_id WHERE pa.arme_id = ?`).all(a.id)) {
+      aRetirer.push({ ...f, vise: 'arme', cle: [f.personnage, f.rang], descripteur: { nature: 'arme', id: a.id, nom: a.nom, famille: a.famille ?? null, rang: f.rang } });
     }
   }
   return appliquer(db, aRetirer, acc);
@@ -199,6 +208,15 @@ export function retirerLesManquants(db, acc = nouveauxRetraitsDeFiches()) {
     WHERE p.metier_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM main.metier x WHERE x.id = p.metier_id)
     ORDER BY p.id`).all()) {
     aRetirer.push({ ...m, vise: 'metier', cle: [m.personnage], descripteur: { nature: 'metier', id: m.id, nom: m.nom ?? null } });
+  }
+  // armes : absentes des nouvelles règles (décision R52) ; nom et famille lus dans l'ancienne base
+  for (const a of db.prepare(`SELECT ${champsDeFiche}, pa.rang, pa.arme_id AS id, x.nom AS nom, f.nom AS famille
+    FROM main.personnage_arme pa JOIN main.personnage p ON p.id = pa.personnage_id
+    LEFT JOIN ancienne.arme x ON x.id = pa.arme_id
+    LEFT JOIN ancienne.arme_famille f ON f.id = x.famille_id
+    WHERE NOT EXISTS (SELECT 1 FROM main.arme y WHERE y.id = pa.arme_id)
+    ORDER BY p.id, pa.rang`).all()) {
+    aRetirer.push({ ...a, vise: 'arme', cle: [a.personnage, a.rang], descripteur: { nature: 'arme', id: a.id, nom: a.nom ?? null, famille: a.famille ?? null, rang: a.rang } });
   }
   return appliquer(db, aRetirer, acc);
 }

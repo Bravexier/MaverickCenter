@@ -1,5 +1,6 @@
 // Édition de la page « Armes » depuis le site de dev (demande du propriétaire, 2026-10-13 : « tout peut être éditable à l'instar des autres pages qui
-// peuvent l'être ») : les domaines des tables arme, materiau_arme et amelioration_equipement pour serveur/edition.mjs (DOMAINES). Ce que la base tire des
+// peuvent l'être ») : les domaines des tables arme, ressource (nom d'un matériau d'arme), materiau_arme et amelioration_equipement pour
+// serveur/edition.mjs (DOMAINES). Ce que la base tire des
 // cellules (colonnes typées de l'arme, types de dégâts, minimums de caractéristique, bonus et crans d'un matériau, coût et effet d'une amélioration, ligne
 // TOTAL) est recalculé par les découpages de l'importeur (lib/arme-champs.mjs, rejoués sur toute la base par test/arme-champs.test.mjs), jamais saisi ; le
 // corps de la page suit (lib/corps-armes.mjs). Ni création ni suppression : la fiche de personnage cite les armes, matériaux et améliorations.
@@ -7,8 +8,10 @@
 import {
   analyserCoutDAmelioration, analyserEffetDAmelioration, analyserEffetDArme, analyserEffetDeMateriau, colonnesDeLArme, prixEnRf, totalDesAmeliorations,
 } from '../src/lib/arme-champs.mjs';
-import { corpsDesArmesApres, ErreurCorpsArmes, PAGE_DES_ARMES } from '../src/lib/corps-armes.mjs';
+import { corpsAvecMateriauRenomme, corpsDesArmesApres, ErreurCorpsArmes, PAGE_DES_ARMES, PAGES_DES_MATERIAUX } from '../src/lib/corps-armes.mjs';
+import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
+import { retirerDesFiches } from './fiches-retraits.mjs';
 
 /**
  * Le contexte des rendus du corps de la page (lib/corps-armes.mjs#corpsDesArmesApres), lu dans la base.
@@ -20,12 +23,32 @@ export const contexteDuCorpsDesArmes = (db) => ({
   nomDuMateriau: (id) => db.prepare('SELECT nom FROM ressource WHERE id = ?').get(id)?.nom ?? id,
 });
 
+/** La page dont les armes sont des entités (page_entite) : celle des armes. */
+const ORIGINE = 'equipement';
+
 /**
- * Les domaines de la page des armes ({ table: { colonnes, deriver } }, voir serveur/edition.mjs#DOMAINES).
- * @param {{ refus: Function, ErreurEdition: Function, synchroniser: Function }} outils
+ * Les domaines de la page des armes ({ table: { colonnes, deriver, creer?, supprimer? } }, voir serveur/edition.mjs#DOMAINES).
+ * @param {{ refus: Function, ErreurEdition: Function, synchroniser: Function, provenance: Function, idDejaEmploye: Function }} outils
  */
-export function domainesDesArmes({ refus, ErreurEdition, synchroniser }) {
+export function domainesDesArmes({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye }) {
   const caracteristiques = (db) => db.prepare('SELECT id, nom FROM caracteristique').all();
+
+  /** Les types de dégâts et les minimums de caractéristique de l'arme, refaits depuis son effet. */
+  function suivreLesDetails(ctx, arme) {
+    const e = analyserEffetDArme(arme.effet, caracteristiques(ctx.db));
+    const communes = { origine: arme.origine, source_ref: arme.source_ref };
+    synchroniser(ctx, 'arme_degats', { arme_id: arme.id }, e.degats.map((t) => ({ type_degats: t })), communes);
+    synchroniser(ctx, 'arme_prerequis', { arme_id: arme.id },
+      e.prerequis.map((p) => ({ caracteristique_id: p.caracteristique_id, minimum: p.minimum, exigence: p.exigence, texte: p.texte })), communes);
+  }
+
+  /** Une famille où l'on peut ajouter ou retirer des armes : une famille de la page (pas les armes de monstres, décision R45). */
+  function familleDeLaPage(db, id, quoi) {
+    const famille = lireLigne(db, 'arme_famille', { id });
+    if (!famille) throw refus(`${quoi} : famille d’armes inconnue (${id}).`);
+    if (!famille.maitrisable) throw refus(`${quoi} : les armes de monstres ne se modifient pas ici.`);
+    return famille;
+  }
 
   /** Le corps de la page après la modification d'une ligne : sa ligne Markdown réécrite ; un corps sans la forme de l'importeur refuse le lot. */
   function suivreLeCorps(ctx, table, avant, apres) {
@@ -52,14 +75,70 @@ export function domainesDesArmes({ refus, ErreurEdition, synchroniser }) {
       return { ...colonnesDeLArme({ ...ligne, ...depart }, type, caracteristiques(db), avant), ...depart };
     },
     deriver(ctx, avant, apres) {
-      if ((apres.effet ?? null) !== (avant.effet ?? null)) {
-        const e = analyserEffetDArme(apres.effet, caracteristiques(ctx.db));
-        const communes = { origine: apres.origine, source_ref: apres.source_ref };
-        synchroniser(ctx, 'arme_degats', { arme_id: apres.id }, e.degats.map((t) => ({ type_degats: t })), communes);
-        synchroniser(ctx, 'arme_prerequis', { arme_id: apres.id },
-          e.prerequis.map((p) => ({ caracteristique_id: p.caracteristique_id, minimum: p.minimum, exigence: p.exigence, texte: p.texte })), communes);
-      }
+      if ((apres.effet ?? null) !== (avant.effet ?? null)) suivreLesDetails(ctx, apres);
       suivreLeCorps(ctx, 'arme', avant, apres);
+    },
+    /**
+     * Une arme dans une famille de la page (demande du propriétaire : « Fais donc la possibilité de créer / supprimer des armes ») : id
+     * « ressources/armes#arme:<famille>:<nom> » tiré une fois (suffixe -2… si l'id est pris ou a déjà servi), puis figé ; à la fin de sa famille ; ses
+     * colonnes tirées, ses types de dégâts et ses minimums refaits depuis ses cellules ; sa ligne à la fin du tableau de sa famille dans le corps.
+     */
+    creer(ctx, valeurs) {
+      const { db, w, instant } = ctx;
+      const famille = familleDeLaPage(db, valeurs.famille_id, valeurs.nom);
+      const type = lireLigne(db, 'arme_type', { id: valeurs.type_id });
+      if (!type) throw refus(`${valeurs.nom} : type d’arme inconnu (${valeurs.type_id}).`);
+      const cle = normalize(valeurs.nom);
+      if (!cle) throw refus(`« ${valeurs.nom} » : le nom doit contenir au moins une lettre ou un chiffre.`);
+      if (db.prepare('SELECT 1 FROM arme WHERE famille_id = ? AND nom_cle = ?').get(famille.id, cle)) {
+        throw new ErreurEdition(409, `La famille « ${famille.nom} » a déjà une arme « ${valeurs.nom} ».`);
+      }
+      let id = `ressources/armes#arme:${famille.id}:${cle}`;
+      for (let n = 2; lireLigne(db, 'arme', { id }) || idDejaEmploye(db, ['arme'], id); n += 1) id = `ressources/armes#arme:${famille.id}:${cle}-${n}`;
+      const ordre = (db.prepare('SELECT max(ordre) AS m FROM arme WHERE famille_id = ?').get(famille.id).m ?? 0) + 1;
+      const ligne = {
+        id, famille_id: famille.id, type_id: type.id, nom: valeurs.nom, nom_cle: cle, mains: valeurs.mains ?? null, competence_brut: valeurs.competence_brut,
+        cout_brut: valeurs.cout_brut ?? null, effet: valeurs.effet ?? null, description: valeurs.description ?? null,
+        depart_possible: Number(valeurs.depart_possible ?? 0), ordre, origine: ORIGINE, source_ref: `${provenance(instant)} › ${valeurs.nom}`, remarque: null,
+      };
+      const arme = w.inserer('arme', { ...ligne, ...colonnesDeLArme(ligne, type, caracteristiques(db)) });
+      w.inserer('page_entite', { entite_table: 'arme', entite_id: id, page_id: PAGE_DES_ARMES, principale: 0, origine: ORIGINE });
+      suivreLesDetails(ctx, arme);
+      suivreLeCorps(ctx, 'arme', null, arme);
+      return { id, resume: `Arme créée : ${valeurs.nom} (${famille.nom})` };
+    },
+    /**
+     * Une arme supprimée : retirée des fiches de personnage qui l'ont, avec une note datée (décision R52, comme R42 ; avant sa suppression : clés
+     * étrangères contrôlées, son nom encore lisible), puis ses types de dégâts, ses minimums, son lien à la page et sa ligne du corps.
+     */
+    supprimer(ctx, cle) {
+      const { db, w } = ctx;
+      const arme = typeof cle?.id === 'string' ? lireLigne(db, 'arme', { id: cle.id }) : null;
+      if (!arme) throw new ErreurEdition(404, `Arme introuvable : ${cle?.id}`);
+      familleDeLaPage(db, arme.famille_id, arme.nom);
+      retirerDesFiches(db, { armes: [arme.id] }, ctx.retraits);
+      for (const t of ['arme_degats', 'arme_prerequis']) synchroniser(ctx, t, { arme_id: arme.id }, []);
+      synchroniser(ctx, 'page_entite', { entite_table: 'arme', entite_id: arme.id }, []);
+      w.supprimer('arme', { id: arme.id });
+      suivreLeCorps(ctx, 'arme', arme, null);
+      return { id: arme.id, resume: `Arme supprimée : ${arme.nom}` };
+    },
+  };
+
+  // le nom d'un matériau d'arme : la ressource, que les armures et les boucliers partagent ; leurs pages suivent aussi (cases de leurs tableaux)
+  const RESSOURCE = {
+    colonnes(ctx, ligne) {
+      if (!lireLigne(ctx.db, 'materiau_arme', { ressource_id: ligne.id })) throw refus(`${ligne.nom} : seuls les matériaux d’arme se renomment ici.`);
+      return {};
+    },
+    deriver(ctx, avant, apres) {
+      if (avant.nom === apres.nom) return;
+      suivreLeCorps(ctx, 'ressource', avant, apres);
+      for (const id of PAGES_DES_MATERIAUX) {
+        const page = lireLigne(ctx.db, 'page', { id });
+        const corps = page && corpsAvecMateriauRenomme(page.corps_md, avant.nom, apres.nom);
+        if (page && corps !== page.corps_md) ctx.w.modifier('page', { id }, { corps_md: corps });
+      }
     },
   };
 
@@ -89,5 +168,5 @@ export function domainesDesArmes({ refus, ErreurEdition, synchroniser }) {
     },
   };
 
-  return { arme: ARME, materiau_arme: MATERIAU_ARME, amelioration_equipement: AMELIORATION_EQUIPEMENT };
+  return { arme: ARME, ressource: RESSOURCE, materiau_arme: MATERIAU_ARME, amelioration_equipement: AMELIORATION_EQUIPEMENT };
 }

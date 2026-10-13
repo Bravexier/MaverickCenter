@@ -7,6 +7,9 @@
 // (le matériau de l'arme et ceux des niveaux 2 et 4), ou 1 220 RO en achetant les titanes.
 // Module pur, sans import : seul le script de la page (src/scripts/armes.mjs) l'importe (deux scripts de page ne partagent jamais un module).
 
+/** Durabilité minimale d'une arme, en crans (décision R51). */
+export const DURABILITE_MIN = 1;
+
 /** Un nombre écrit à la française : « 1 220 ». */
 export const nombre = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
@@ -43,8 +46,9 @@ export function forgerArme(arme, materiau, ameliorations, niveau = 0) {
   const amelioration = ameliorationCumulee(ameliorations, niveau);
   const bonus = { arme: arme.bonus_degats ?? 0, materiau: materiau?.bonus_degats ?? 0, amelioration: amelioration.bonus_degats };
   bonus.total = bonus.arme + bonus.materiau + bonus.amelioration;
+  // les crans se cumulent, sans descendre sous 1 (décision R51 : « il faut les cumuler mais il est impossible de descendre à moins de 1 »)
   const durabilite = { arme: arme.durabilite, materiau: materiau?.cran_solidite ?? 0, amelioration: amelioration.bonus_cran };
-  durabilite.total = durabilite.arme + durabilite.materiau + durabilite.amelioration;
+  durabilite.total = Math.max(DURABILITE_MIN, durabilite.arme + durabilite.materiau + durabilite.amelioration);
   // un matériau pour forger l'arme, plus ceux des niveaux d'amélioration ; payés en RO ou fournis
   const materiaux = materiau ? 1 + amelioration.materiaux : 0;
   const prixMateriau = materiau?.prix_ro ?? null;

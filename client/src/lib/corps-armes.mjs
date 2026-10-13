@@ -6,7 +6,7 @@
 // Stratégie : REMPLACEMENT DE LIGNES, comme lib/corps-magies.mjs. Chaque ligne de tableau se rend depuis sa ligne de la base exactement comme
 // l'importeur l'a écrite (test/corps-armes.test.mjs : chaque arme, matériau et amélioration de la base retrouve sa ligne, la liste des armes de départ se
 // refait à l'identique) ; la ligne d'avant est cherchée dans la section de sa famille (une arme peut être écrite sous deux bandeaux : Crochet grappin) et
-// remplacée. Une ligne introuvable (corps qui n'a plus la forme de l'importeur) lève ErreurCorpsArmes : le service refuse le lot plutôt que de laisser le
+// remplacée ; une arme créée depuis le site s'ajoute à la fin du tableau de sa famille, une arme supprimée en part. Une ligne introuvable (corps qui n'a plus la forme de l'importeur) lève ErreurCorpsArmes : le service refuse le lot plutôt que de laisser le
 // corps en retard. Fonctions pures, sans dépendance.
 
 export const PAGE_DES_ARMES = 'ressources/armes';
@@ -54,13 +54,25 @@ function section(lignes, estTitre, quoi) {
 /** Le titre « ## » de la section d'une famille d'armes (bandeau : « ## ÉPÉES - D10 », « ## ARME DE MONSTRES - … »), d'après son nom. */
 const titreDeFamille = (nom) => (l) => l === `## ${nom}` || l.startsWith(`## ${nom} `);
 
-/** Remplace, dans la section, la ligne `avant` par `apres` (une seule fois) ; ErreurCorpsArmes si elle n'y est pas. */
+/** Remplace, dans la section, la ligne `avant` par `apres` (une seule fois ; `apres` null : la ligne part) ; ErreurCorpsArmes si elle n'y est pas. */
 function remplacerDansSection(corps, bornes, avant, apres, quoi) {
   const lignes = corps.split('\n');
   const [debut, fin] = bornes(lignes);
   const i = lignes.findIndex((l, k) => k > debut && k < fin && l === avant);
   if (i < 0) throw new ErreurCorpsArmes(`ligne introuvable : ${quoi}`);
-  lignes[i] = apres;
+  if (apres === null) lignes.splice(i, 1);
+  else lignes[i] = apres;
+  return lignes.join('\n');
+}
+
+/** Ajoute `ligne` après la dernière ligne du tableau de la section ; ErreurCorpsArmes si la section n'a pas de tableau. */
+function ajouterDansSection(corps, bornes, ligne, quoi) {
+  const lignes = corps.split('\n');
+  const [debut, fin] = bornes(lignes);
+  let derniere = -1;
+  for (let k = debut + 1; k < fin; k++) if (lignes[k].startsWith('|')) derniere = k;
+  if (derniere < 0) throw new ErreurCorpsArmes(`tableau introuvable : ${quoi}`);
+  lignes.splice(derniere + 1, 0, ligne);
   return lignes.join('\n');
 }
 
@@ -89,17 +101,27 @@ export function corpsAvecArmesDeDepart(corps, familles, armes) {
 }
 
 /**
- * Le corps après la modification d'une ligne d'une des tables de la page (arme, materiau_arme, amelioration_equipement de cible « arme »,
- * amelioration_total « arme »). `contexte` : { familles: [{ id, nom }] (ordre des bandeaux), armes: () => lignes arme (pour la liste des armes de départ),
+ * Le corps après la modification d'une ligne d'une des tables de la page (ressource d'un matériau d'arme renommé, arme, materiau_arme,
+ * amelioration_equipement de cible « arme », amelioration_total « arme »). `contexte` : { familles: [{ id, nom }] (ordre des bandeaux), armes: () => lignes arme (pour la liste des armes de départ),
  * nomDuMateriau: (ressource_id) => nom }.
  */
 export function corpsDesArmesApres(corps, table, avant, apres, contexte) {
+  if (table === 'ressource') {
+    // un matériau d'arme renommé : sa ligne du tableau des matériaux
+    if (avant.nom === apres.nom) return corps;
+    return corpsAvecMateriauRenomme(corps, avant.nom, apres.nom, (lignes) => section(lignes, (l) => l === TITRE_DES_MATERIAUX, 'matériaux'));
+  }
   if (table === 'arme') {
-    const famille = contexte.familles.find((f) => f.id === apres.famille_id);
-    if (!famille) throw new ErreurCorpsArmes(`famille inconnue : ${apres.famille_id}`);
+    const ligne = apres ?? avant;
+    const famille = contexte.familles.find((f) => f.id === ligne.famille_id);
+    if (!famille) throw new ErreurCorpsArmes(`famille inconnue : ${ligne.famille_id}`);
     const bornes = (lignes) => section(lignes, titreDeFamille(famille.nom), famille.nom);
-    let sortie = remplacerDansSection(corps, bornes, ligneDArme(avant), ligneDArme(apres), `${famille.nom} › ${avant.nom}`);
-    if (avant.depart_possible !== apres.depart_possible || (apres.depart_possible === 1 && avant.nom_brut !== apres.nom_brut)) {
+    let sortie;
+    if (!avant) sortie = ajouterDansSection(corps, bornes, ligneDArme(apres), `${famille.nom} › ${apres.nom}`); // une arme créée : à la fin de son tableau
+    else if (!apres) sortie = remplacerDansSection(corps, bornes, ligneDArme(avant), null, `${famille.nom} › ${avant.nom}`); // supprimée : sa ligne part
+    else sortie = remplacerDansSection(corps, bornes, ligneDArme(avant), ligneDArme(apres), `${famille.nom} › ${avant.nom}`);
+    const depart = (x) => x?.depart_possible === 1;
+    if (depart(avant) !== depart(apres) || (depart(apres) && avant.nom_brut !== apres.nom_brut)) {
       sortie = corpsAvecArmesDeDepart(sortie, contexte.familles, contexte.armes());
     }
     return sortie;
@@ -123,4 +145,37 @@ export function corpsDesArmesApres(corps, table, avant, apres, contexte) {
 }
 
 /** Tables dont une ligne touche le corps de la page des armes (recalculerLesPages, dans cet ordre). */
-export const TABLES_DE_LA_PAGE_DES_ARMES = ['arme', 'materiau_arme', 'amelioration_equipement', 'amelioration_total'];
+export const TABLES_DE_LA_PAGE_DES_ARMES = ['ressource', 'arme', 'materiau_arme', 'amelioration_equipement', 'amelioration_total'];
+
+/**
+ * Pages qui écrivent les matériaux d'arme dans leurs tableaux, en plus de celle des armes : un matériau est une ressource partagée avec les armures et
+ * les boucliers (« comme c'est le même pour armure et bouclier, ça le changera aussi (ça utilisera la même table) »).
+ */
+export const PAGES_DES_MATERIAUX = ['ressources/armures', 'ressources/bouclier'];
+
+const cleDeCase = (t) => String(t ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+/**
+ * Un matériau renommé dans le Markdown d'une page : chaque case de tableau qui écrit exactement son ancien nom (à la casse, aux accents et aux espaces
+ * près : « Fer Noir » de la grille des armures) et chaque titre « ### Ligne : X » / « ### Colonne : X » qui le nomme prennent le nouveau nom. Un nom qui
+ * le contient sans être lui (« Armure Fer/Titane », une armure ; « minerais de titane ») ne change pas. `bornes(lignes)` limite le remplacement à une
+ * section (par défaut : tout le corps).
+ */
+export function corpsAvecMateriauRenomme(corps, ancien, nouveau, bornes = (lignes) => [-1, lignes.length]) {
+  const cle = cleDeCase(ancien);
+  if (!cle || ancien === nouveau) return corps;
+  const lignes = corps.split('\n');
+  const [debut, fin] = bornes(lignes);
+  const cellule = celluleDArmes(nouveau);
+  for (let i = debut + 1; i < fin; i++) {
+    const l = lignes[i];
+    const titre = /^(#{2,6} (?:Ligne|Colonne) : )(.+)$/.exec(l);
+    if (titre && cleDeCase(titre[2]) === cle) lignes[i] = `${titre[1]}${nouveau}`;
+    else if (l.startsWith('|') && !/^\|[\s:|-]+\|$/.test(l)) {
+      // cases d'une ligne de tableau (séparées par « | » non échappé)
+      const cases = l.split(/(?<!\\)\|/);
+      lignes[i] = cases.map((c, k) => (k > 0 && k < cases.length - 1 && cleDeCase(c.replace(/\\\|/g, '|')) === cle ? ` ${cellule} ` : c)).join('|');
+    }
+  }
+  return lignes.join('\n');
+}

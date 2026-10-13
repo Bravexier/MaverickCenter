@@ -89,7 +89,9 @@ const LEGENDE = [
                 armes.materiaux.map((m) => (
                   <tr class="materiau" id={ancreDeMateriau(m.ligne.ressource_id)} data-materiau={m.ligne.ressource_id} data-defaut={m.defaut ? '1' : undefined}>
                     <th scope="row" class="materiau__nom" style={`--mat: ${m.couleur.fond}; --mat-texte: ${m.couleur.texte}`}>
-                      <button type="button" class="materiau__choisir" aria-pressed="false">{m.nom}</button>
+                      <span data-ed={attributEd('ressource', { id: m.ligne.ressource_id }, 'nom')} data-ed-cible=".materiau__choisir">
+                        <button type="button" class="materiau__choisir" aria-pressed="false">{m.nom}</button>
+                      </span>
                     </th>
                     <td class="materiau__prix" data-ed={edM(m.ligne.ressource_id, 'prix_brut')} data-ed-rendu="materiau-prix" set:html={RENDUS['materiau-prix'](m.ligne.prix_brut, m.ligne, contexte)} />
                     <td class="materiau__effet" data-ed={edM(m.ligne.ressource_id, 'effet_brut')} data-ed-rendu="materiau-effet" set:html={RENDUS['materiau-effet'](m.ligne.effet_brut, m.ligne, contexte)} />
