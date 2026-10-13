@@ -22,7 +22,7 @@ import { estUnMetier } from '../../lib/metiers.mjs';
 import { estUnChapitre, PREMIER_CHAPITRE } from '../../lib/guide.mjs';
 import { entryHref, loadWiki, slugOf, typeOf, url, type WikiEntry } from '../../lib/wiki';
 import { attributEd, texteDePageModifiable } from '../../lib/edition-modele.mjs';
-import { chargerArmes, contexteDesArmes, PAGE_DES_ARMES, reglesDeLaPage } from '../../lib/armes-db.mjs';
+import { avecPhraseDesArmesDeDepart, chargerArmes, contexteDesArmes, PAGE_DES_ARMES, reglesDeLaPage } from '../../lib/armes-db.mjs';
 import { ouvrirBase } from '../../lib/donnees.mjs';
 import { rendreMarkdown } from '../../lib/guide-rendu';
 
@@ -61,7 +61,7 @@ const armes = entry.id === PAGE_DES_ARMES ? chargerArmes(ouvrirBase()) : null;
 const contexteArmes = armes ? contexteDesArmes(ouvrirBase()) : null;
 const reglesArmes = armes?.page ? reglesDeLaPage(armes.page.corps_md) : null;
 const reglesArmesHtml = reglesArmes
-  ? { introduction: await rendreMarkdown(reglesArmes.introduction, entry.id), prix: reglesArmes.prix ? await rendreMarkdown(reglesArmes.prix, entry.id) : '' }
+  ? { introduction: avecPhraseDesArmesDeDepart(await rendreMarkdown(reglesArmes.introduction, entry.id)), prix: reglesArmes.prix ? await rendreMarkdown(reglesArmes.prix, entry.id) : '' }
   : null;
 const gabarit = Boolean(magie || race || classe || chapitre || armes);
 const Content = gabarit ? null : (await render(entry)).Content; // les gabarits des magies, des races, des classes et du guide ne rendent pas le Markdown

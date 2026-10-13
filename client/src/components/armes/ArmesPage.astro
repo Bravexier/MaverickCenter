@@ -3,15 +3,16 @@ import armesCss from '../../styles/armes/armes.css?raw';
 import { attributEd } from '../../lib/edition-modele.mjs';
 import { RENDUS } from '../../lib/edition-rendu.mjs';
 import { ancreDeMateriau, type chargerArmes, type contexteDesArmes } from '../../lib/armes-db.mjs';
-import { ECRITURES_DE_COMPETENCE, totalDesAmeliorations } from '../../lib/arme-champs.mjs';
-import { htmlDeCompetence } from '../../lib/armes-rendu.mjs';
+import { COMPETENCES_D_ARME, totalDesAmeliorations } from '../../lib/arme-champs.mjs';
+import { htmlDuFiltreDeCompetence } from '../../lib/armes-rendu.mjs';
 import TableauArmes from './TableauArmes.astro';
 
 // Page /ressources/armes/ (demande du propriétaire, 2026-10-13 : « refaire intégralement la présentation de l'onglet des armes », « Pas de tableau
 // markdown, inspire-toi des sorts et fais un tableau par type d'arme ») : rendue depuis les tables de la base (lib/armes-db.mjs), jamais depuis son
-// Markdown. Les règles de l'onglet (texte du classeur) en tête, repliées ; un tableau repliable par famille (TableauArmes.astro) ; à côté, quand une
-// arme est sélectionnée, sa fiche et, dessous, les matériaux et les améliorations : choisir un matériau et une amélioration ajuste les dégâts, la
-// durabilité, les effets et le coût de la fiche (src/scripts/armes.mjs, calcul : lib/arme-forge.mjs). Sans JavaScript, tout est affiché (pas de fiche).
+// Markdown. Les règles de l'onglet (texte du classeur avec sa mise en forme) en tête, repliées ; un filtre par compétence (Lourde, Légère, Arc,
+// Arbalète : lib/armes-filtres.mjs) ; un tableau repliable par famille (TableauArmes.astro) ; à côté, quand une arme est sélectionnée, sa fiche et,
+// dessous, les matériaux et les améliorations : choisir un matériau et une amélioration ajuste les dégâts, la durabilité, les effets et le coût de la
+// fiche (src/scripts/armes.mjs, calcul : lib/arme-forge.mjs). Sans JavaScript, tout est affiché (ni fiche ni filtre).
 // Mode modification du site de dev : pas de sélection, la fiche est cachée, tous les tableaux sont visibles et leurs champs modifiables
 // (src/scripts/edition/armes.mjs). CSS : styles/armes/armes.css (?raw, inséré ici seulement).
 type Armes = ReturnType<typeof chargerArmes>;
@@ -28,8 +29,9 @@ const total = totalDesAmeliorations(armes.ameliorations);
 const edM = (id: string, colonne: string) => attributEd('materiau_arme', { ressource_id: id }, colonne);
 const edA = (id: string, colonne: string) => attributEd('amelioration_equipement', { id }, colonne);
 const nbArmes = armes.familles.reduce((n, f) => n + f.armes.length, 0);
-// légende des compétences (décision R48) : chaque écriture de l'onglet, dans la pastille du tableau (couleur de la caractéristique, dégradé pour deux)
-const LEGENDE = ECRITURES_DE_COMPETENCE.map((ecriture) => htmlDeCompetence(ecriture, contexte));
+// filtre par compétence (demande du propriétaire ; lib/armes-filtres.mjs) : un bouton par compétence d'arme, dans la couleur de sa caractéristique
+// (décision R48), qui sert aussi de légende aux pastilles des tableaux
+const FILTRES = Object.keys(COMPETENCES_D_ARME).map((id) => htmlDuFiltreDeCompetence(id, contexte));
 ---
 
 <style is:inline set:html={armesCss}></style>
@@ -41,20 +43,26 @@ const LEGENDE = ECRITURES_DE_COMPETENCE.map((ecriture) => htmlDeCompetence(ecrit
   {resume && <p class="armes__chapo">{resume}</p>}
   <details class="armes-regles">
     <summary>Règles des armes : fabrication, recharge, mordhau, cas particuliers, prix</summary>
-    <div class="prose armes-regles__corps">
-      <Fragment set:html={regles.introduction} />
-      {regles.prix && <h2>Comment déterminer le prix de votre arme ?</h2>}
-      <Fragment set:html={regles.prix} />
+    <div class="armes-regles__corps">
+      <div class="prose armes-regles__texte"><Fragment set:html={regles.introduction} /></div>
+      {regles.prix && (
+        <section class="armes-regles__prix" aria-labelledby="armes-prix-titre">
+          <h2 id="armes-prix-titre">Comment déterminer le prix de votre arme ?</h2>
+          <Fragment set:html={regles.prix} />
+        </section>
+      )}
     </div>
   </details>
 
   <div class="armes-outils">
-    <p class="armes-legende" aria-label="Légende">
-      {LEGENDE.map((html) => <Fragment set:html={html} />)}
-      <span class="armes-legende__depart" title="Arme de départ">Arme de départ</span>
-    </p>
+    <div class="armes-filtre js-seul" role="group" aria-labelledby="armes-filtre-titre" data-armes-filtre>
+      <span class="armes-filtre__titre" id="armes-filtre-titre">Compétence</span>
+      {FILTRES.map((html) => <Fragment set:html={html} />)}
+      <button type="button" class="armes-filtre__tout" data-armes-filtre-tout hidden>Toutes</button>
+    </div>
+    <p class="armes-legende"><span class="armes-legende__depart" title="Arme de départ">Arme de départ</span></p>
     <p class="armes-outils__boutons js-seul">
-      <span class="armes-aide">{nbArmes} armes. Cliquez sur une arme pour ouvrir sa fiche et la forger.</span>
+      <span class="armes-aide"><span data-armes-compte>{nbArmes} armes</span>. Cliquez sur une arme pour ouvrir sa fiche et la forger.</span>
       <button type="button" class="armes-bouton" data-armes-tout="ouvrir">Tout déplier</button>
       <button type="button" class="armes-bouton" data-armes-tout="fermer">Tout replier</button>
     </p>

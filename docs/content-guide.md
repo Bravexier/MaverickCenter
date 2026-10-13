@@ -247,26 +247,36 @@ les tables (`lib/armes-db.mjs`, `components/armes/`), jamais depuis son Markdown
 prix de votre arme ? ») s'affichent, repliées ; le reste du Markdown (tableaux) ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque
 modification (`lib/corps-armes.mjs`).
 
+- **Règles** (« le texte des règles est mal rendu ») : le Markdown de l'introduction porte la mise en forme de la cellule A1 de l'onglet (lue dans le
+  classeur, perdue à l'import) — définitions en italique (*Recharge longue*, *Recharge très longue*, *Mordhau ou Demi-épée*, l'*Exemple*), « Les armes en
+  bleu… » en gras (et en bleu sur la page, le bleu des armes de départ : `lib/armes-db.mjs#avecPhraseDesArmesDeDepart`), ***CAS PARTICULIERS :*** en gras
+  italique, **Dague** et **Arme de jet** en gras ; le texte, lui, n'est pas réécrit. Sur un grand écran, deux colonnes ; le prix à part, sa formule encadrée.
+
 - **Un tableau repliable par famille** (bandeau de l'onglet : Épées, Dagues…), sans les armes de monstres (décision R45). Colonnes : Nom (la description en
   infobulle), Compétence, Type, Dégâts, Type de dégâts, Portée, Durabilité, Effets supplémentaires, Origine. Les colonnes Dégâts (dé de l'arme, « D8 au lieu
   du D10 » de son effet, sinon celui de son type ; plus son bonus), Type de dégâts, Portée (1 par défaut, décision R50), Durabilité (2 crans de base, corrigés
   par « 1 seul cran » ou « ±1 cran »), Origine (« Origine X » ou « Facture X ») sont tirées de l'effet (`lib/arme-champs.mjs`) ; **Effets supplémentaires** =
   l'effet sans les clauses montrées ailleurs (une clause qui en contredit une autre reste écrite).
 - **Compétence** (décision R48) : la compétence que l'onglet écrit sous le type, dans la couleur de sa caractéristique (table `competence`) — Lourde
-  (Force), Légère (Agilité), Lourde / Légère (dégradé Force - Agilité), Arc (Force), Arc / Légère (dégradé Force - Agilité), Arbalète (Perception) ;
-  la légende les reprend toutes.
+  (Force), Légère (Agilité), Lourde / Légère (dégradé Force - Agilité), Arc (Force), Arc / Légère (dégradé Force - Agilité), Arbalète (Perception).
+- **Filtre par compétence** (« filtrer les armes par compétence arc / arbalète / légère et lourde ») : quatre boutons à bascule, Lourde, Légère, Arc,
+  Arbalète, dans leur couleur (ils servent aussi de légende) ; une arme reste si l'UNE de ses compétences est choisie (« Arc / Arme Légère » sous Arc comme
+  sous Légère), « Toutes » efface le choix, une famille sans arme affichée se cache, les comptes disent « N armes sur M » ; une arme ouverte qui disparaît
+  se ferme. État dans l'adresse (`?competence=arc,arbalete`) ; pas de filtre sans JavaScript ni en mode modification (`lib/armes-filtres.mjs`, testé).
 - **Armes de départ** (nom sur fond bleu dans la source) : ligne en bleu, infobulle « Arme de départ ».
 - **Sélection** (`src/scripts/armes.mjs`) : cliquer une arme ouvre à côté sa fiche (résumé collant : dégâts, durabilité, coût), puis les **matériaux**
   (case Matière dans sa couleur de l'onglet : `lib/materiaux-couleurs.mjs` ; prix en RO seulement) et les **améliorations** (+1 à +10, ligne TOTAL).
   Choisir un matériau (le fer par défaut) et une amélioration ajuste la fiche (`lib/arme-forge.mjs`, décision R49) : dégâts = dé de l'arme + bonus de
   l'arme, du matériau et du niveau d'amélioration ; durabilité = celle de l'arme + crans du matériau et de l'amélioration, au moins 1 (R51) ; coût = arme + niveaux +1 à +N
-  + un matériau pour forger et ceux des niveaux, payés en RO ou fournis ; l'effet du matériau en vert. État dans l'adresse (`?arme=…&materiau=…&amelioration=N`).
+  + un matériau pour forger et ceux des niveaux, payés en RO ou fournis ; l'effet du matériau en vert. État dans l'adresse (`?arme=…&materiau=…&amelioration=N`,
+  avec `competence=…` du filtre).
   Sans JavaScript, tous les tableaux s'affichent, sans fiche.
 - **Mode modification** (site de dev) : rien ne se sélectionne, tous les tableaux s'ouvrent, quatre colonnes de plus (Description, Coût, Effet, Arme de
   départ) ; une arme se crée (« + Ajouter une arme ») ou se supprime (retirée des fiches, R52) ; le nom d'un matériau change aussi pour les armures et les
   boucliers ; voir `docs/serveur.md`, « Édition ». La fiche de personnage calcule les mêmes dégâts (`degatsDArme`) et pose le fer avec l'arme choisie.
 - `test/arme-champs.test.mjs` (découpages rejoués sur toute la base), `corps-armes.test.mjs`, `arme-forge.test.mjs` (l'exemple du propriétaire : Espadon
-  en titane +5 = D10+29, 620 RO et 3 titanes ou 1 220 RO), `serveur-edition-armes.test.mjs`, `armes-html.test.mjs` (site construit).
+  en titane +5 = D10+29, 620 RO et 3 titanes ou 1 220 RO), `armes-filtres.test.mjs`, `serveur-edition-armes.test.mjs`, `armes-html.test.mjs` (site
+  construit : filtre, règles mises en forme).
 
 
 ## Pages de classe : un gabarit commun, alimenté par la base

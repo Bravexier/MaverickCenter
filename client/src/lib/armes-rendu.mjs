@@ -7,8 +7,8 @@
 // caracteristique_id), caracteristiques (id, nom), typesDArmes ({ valeur, libelle, de, de_regle, portee_min, portee_max }), soliditeDesArmes (2).
 // Fonctions pures, chaîne HTML en sortie, tout texte échappé.
 import {
-  analyserCoutDAmelioration, analyserEffetDAmelioration, analyserEffetDArme, analyserEffetDeMateriau, competencesDArme, coutEnRo, durabiliteDeLArme,
-  LIBELLES_DES_DEGATS, MAINS, porteeDeLArme, prixEnRo,
+  analyserCoutDAmelioration, analyserEffetDAmelioration, analyserEffetDArme, analyserEffetDeMateriau, COMPETENCES_D_ARME, competencesDArme, coutEnRo,
+  durabiliteDeLArme, LIBELLES_DES_DEGATS, MAINS, porteeDeLArme, prixEnRo,
 } from './arme-champs.mjs';
 import { couleurDeCaracteristique } from './caracteristiques-postures.mjs';
 import { attributEd } from './edition-modele.mjs';
@@ -48,6 +48,18 @@ export function htmlDeCompetence(competenceBrut, ctx = {}) {
   const [c1, c2 = c1] = comps.map((c) => couleurDeCaracteristique(c.caracteristique_id));
   const titre = comps.map((c) => `${c.nom} (${carac.get(c.caracteristique_id) ?? c.caracteristique_id})`).join(' et ');
   return `<span class="arme-comp${comps.length > 1 ? ' arme-comp--deux' : ''}" data-competences="${comps.map((c) => c.id).join(' ')}" style="--c1: ${c1}; --c2: ${c2}; --c-texte: ${texteSurCouleur(c1)}" title="${e(titre)}">${e(comps.map((c) => c.libelle).join(' / '))}</span>`;
+}
+
+/**
+ * Bouton du filtre par compétence (demande du propriétaire : « filtrer les armes par compétence arc / arbalète / légère et lourde » ; lib/armes-filtres.mjs) :
+ * la pastille de la compétence, dans la couleur de sa caractéristique, à bascule (aria-pressed) ; la compétence et sa caractéristique en infobulle.
+ */
+export function htmlDuFiltreDeCompetence(id, ctx = {}) {
+  const c = COMPETENCES_D_ARME[id];
+  if (!c) return '';
+  const carac = new Map((ctx.caracteristiques ?? []).map((x) => [x.id, x.nom])).get(c.caracteristique_id) ?? c.caracteristique_id;
+  const fond = couleurDeCaracteristique(c.caracteristique_id);
+  return `<button type="button" class="arme-comp armes-filtre__choix" data-competence="${e(id)}" aria-pressed="false" style="--c1: ${fond}; --c2: ${fond}; --c-texte: ${texteSurCouleur(fond)}" title="${e(`${c.nom} (${carac})`)}">${e(c.libelle)}</button>`;
 }
 
 /** Les types de dégâts en pastilles (Taille, Estoc, Frappe), d'après l'effet. */

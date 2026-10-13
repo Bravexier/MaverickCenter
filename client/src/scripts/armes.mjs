@@ -1,11 +1,15 @@
 // Page /ressources/armes/ (components/armes/ArmesPage.astro) — demande du propriétaire : cliquer sur une arme la sélectionne et ouvre à côté sa fiche,
 // avec dessous les matériaux et les améliorations ; choisir un matériau (le fer par défaut) et une amélioration ajuste dans la fiche les dégâts, la
-// durabilité, les effets (celui du matériau en vert) et le coût total (calcul : lib/arme-forge.mjs, le seul module importé ici).
+// durabilité, les effets (celui du matériau en vert) et le coût total (calcul : lib/arme-forge.mjs). Les boutons « Compétence » filtrent les tableaux
+// (« filtrer les armes par compétence arc / arbalète / légère et lourde » : lib/armes-filtres.mjs) ; une famille sans arme affichée se cache. Ces deux
+// modules sont les seuls importés ici, et aucun autre script de page ne les importe.
 // Les valeurs viennent des cellules telles qu'affichées (attributs `data-…` des rendus de lib/armes-rendu.mjs), lues à chaque sélection : après un
 // enregistrement du mode modification, qui réécrit ces cellules, la fiche suit sans recharger la page (évènement « armes:rafraichir »).
 // En mode modification (body.ed-mode) : rien ne se sélectionne (src/scripts/edition/armes.mjs ferme la fiche et ouvre tous les tableaux).
-// État dans l'adresse : ?arme=<ancre de la ligne>&materiau=<ancre>&amelioration=<niveau> (une adresse `#arme-…` ouvre aussi l'arme).
+// État dans l'adresse : ?arme=<ancre de la ligne>&materiau=<ancre>&amelioration=<niveau>&competence=<ids> (une adresse `#arme-…` ouvre aussi l'arme).
+// En mode modification, pas de filtre : tout s'affiche.
 import { forgerArme, nombre } from '../lib/arme-forge.mjs';
+import { armeVisible, basculerCompetence, ecrireCompetences, lireCompetences, PARAMETRE_DES_COMPETENCES } from '../lib/armes-filtres.mjs';
 
 const racine = document.querySelector('[data-armes]');
 
@@ -21,6 +25,16 @@ if (racine) {
   let arme = null;
   let materiau = racine.querySelector('.materiau[data-defaut]');
   let niveau = 0;
+
+  // filtre par compétence : les boutons donnent les compétences connues, dans leur ordre
+  const filtre = racine.querySelector('[data-armes-filtre]');
+  const boutonsDuFiltre = [...racine.querySelectorAll('[data-armes-filtre] [data-competence]')];
+  const connues = boutonsDuFiltre.map((b) => b.dataset.competence);
+  const compte = racine.querySelector('[data-armes-compte]');
+  let choisies = [];
+  const armes = (n) => `${n} arme${n > 1 ? 's' : ''}`;
+  /** Les compétences d'une ligne (lib/armes-rendu.mjs#htmlDeCompetence : data-competences="arc arme-legere"). */
+  const competencesDe = (ligne) => (ligne.querySelector('.arme__competence [data-competences]')?.dataset.competences ?? '').split(' ').filter(Boolean);
 
   const lignesDAmelioration = () => [...racine.querySelectorAll('.amelioration[data-niveau]')].filter((l) => Number(l.dataset.niveau) > 0);
 
@@ -162,13 +176,15 @@ if (racine) {
 
   function adresse() {
     const p = new URLSearchParams(location.search);
-    for (const k of ['arme', 'materiau', 'amelioration']) p.delete(k);
+    for (const k of ['arme', 'materiau', 'amelioration', PARAMETRE_DES_COMPETENCES]) p.delete(k);
+    const competences = ecrireCompetences(choisies, connues);
+    if (competences) p.set(PARAMETRE_DES_COMPETENCES, competences);
     if (arme) {
       p.set('arme', arme.id);
       if (materiau && !materiau.hasAttribute('data-defaut')) p.set('materiau', materiau.id);
       if (niveau) p.set('amelioration', String(niveau));
     }
-    const q = p.toString();
+    const q = p.toString().replace(/%2C/gi, ','); // ?competence=arc,arbalete
     history.replaceState(history.state, '', `${location.pathname}${q ? `?${q}` : ''}${arme ? '' : location.hash}`);
   }
 
@@ -196,6 +212,36 @@ if (racine) {
     precedente?.querySelector('.arme__choisir')?.focus({ preventScroll: true });
   }
 
+  /**
+   * Applique le filtre : une ligne reste si l'une de ses compétences est choisie (toutes sans choix, et toujours en mode modification) ; une famille
+   * sans ligne affichée se cache ; les comptes disent « N armes sur M ». L'arme ouverte, si elle est filtrée, se ferme.
+   */
+  function filtrer() {
+    const actif = choisies.length > 0 && !enEdition();
+    let affichees = 0;
+    let toutes = 0;
+    for (const famille of racine.querySelectorAll('.armes-tableaux > .armes-famille')) {
+      const lignes = [...famille.querySelectorAll('tbody tr.arme')];
+      let n = 0;
+      for (const l of lignes) {
+        const visible = !actif || armeVisible(competencesDe(l), choisies);
+        l.classList.toggle('est-filtree', !visible);
+        if (visible) n += 1;
+      }
+      famille.classList.toggle('est-filtree', actif && n === 0);
+      const c = famille.querySelector('.armes-famille__compte');
+      if (c) c.textContent = actif && n < lignes.length ? `${armes(n)} sur ${lignes.length}` : armes(lignes.length);
+      affichees += n;
+      toutes += lignes.length;
+    }
+    if (compte) compte.textContent = actif ? `${armes(affichees)} sur ${toutes}` : armes(toutes);
+    filtre?.classList.toggle('est-actif', actif);
+    for (const b of boutonsDuFiltre) b.setAttribute('aria-pressed', String(actif && choisies.includes(b.dataset.competence)));
+    const tout = racine.querySelector('[data-armes-filtre-tout]');
+    if (tout) tout.hidden = !actif;
+    if (arme?.classList.contains('est-filtree')) fermer();
+  }
+
   racine.addEventListener('click', (ev) => {
     const cible = ev.target;
     if (!(cible instanceof Element)) return;
@@ -203,6 +249,13 @@ if (racine) {
     if (tout) {
       const ouvrirTout = tout.getAttribute('data-armes-tout') === 'ouvrir';
       for (const d of racine.querySelectorAll('.armes-tableaux > .armes-famille')) d.open = ouvrirTout;
+      return;
+    }
+    const competence = cible.closest('[data-armes-filtre] [data-competence]');
+    if (competence || cible.closest('[data-armes-filtre-tout]')) {
+      choisies = competence ? basculerCompetence(choisies, competence.dataset.competence, connues) : [];
+      filtrer();
+      adresse();
       return;
     }
     if (cible.closest('[data-armes-fermer]')) {
@@ -240,6 +293,7 @@ if (racine) {
   // après un enregistrement du mode modification (cellules réécrites) ou à son entrée (src/scripts/edition/armes.mjs)
   document.addEventListener('armes:rafraichir', () => {
     total();
+    filtrer();
     if (enEdition()) {
       if (arme) fermer();
       return;
@@ -255,8 +309,10 @@ if (racine) {
   if (m?.classList.contains('materiau')) materiau = m;
   const n = Number(params.get('amelioration'));
   if (Number.isInteger(n) && lignesDAmelioration().some((l) => Number(l.dataset.niveau) === n)) niveau = n;
+  choisies = lireCompetences(params.get(PARAMETRE_DES_COMPETENCES), connues);
   total();
+  filtrer();
   const depart = parId(params.get('arme')) ?? parId(decodeURIComponent(location.hash.slice(1)));
-  if (depart?.classList.contains('arme')) ouvrir(depart, { defiler: true });
+  if (depart?.classList.contains('arme') && !depart.classList.contains('est-filtree')) ouvrir(depart, { defiler: true });
   else marquer();
 }

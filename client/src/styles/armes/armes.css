@@ -20,16 +20,44 @@ html:not(.js) .armes .js-seul-ligne { display: none; }
 .armes [hidden] { display: none !important; }
 .armes__chapo { margin: -0.3rem 0 0.8rem; color: var(--muted); }
 
-/* Règles de l'onglet (texte du classeur), repliées */
+/* Règles de l'onglet (texte de la cellule du classeur, avec sa mise en forme : définitions en italique, sous-titres en gras), repliées ; sur un grand
+   écran, le texte en deux colonnes ; le prix d'une arme à part, sa formule encadrée */
 .armes-regles { margin: 0 0 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
 .armes-regles > summary { cursor: pointer; padding: 0.6rem 0.9rem; font-weight: 700; }
-.armes-regles__corps { padding: 0 1rem 0.8rem; }
-.armes-regles__corps h2 { font-size: 1.05rem; }
+.armes-regles__corps { display: grid; gap: 0.9rem; padding: 0.2rem 1.2rem 1rem; }
+.armes-regles__texte { max-width: none; line-height: 1.55; }
+@media (min-width: 64rem) { .armes-regles__texte { columns: 2; column-gap: 2.6rem; column-rule: 1px solid var(--border); } }
+.armes-regles__texte > * { break-inside: avoid; }
+.armes-regles__texte > :first-child { margin-top: 0; }
+.armes-regles__texte p { margin: 0 0 0.75rem; }
+.armes-regles__texte em { color: color-mix(in srgb, var(--text) 82%, var(--arm)); }
+.armes-regles__texte ul { margin: 0 0 0.9rem; padding-left: 1.2rem; }
+.armes-regles__texte li > p { margin: 0 0 0.35rem; }
+.armes-regles__texte p:has(+ ul) { margin-bottom: 0.3rem; }
+/* « Les armes en bleu sont les armes possibles en arme de départ » : en gras et en bleu dans le classeur, le bleu des lignes des armes de départ ici */
+.armes-regles__depart { padding: 0.35rem 0.7rem; border-radius: 6px; background: var(--depart-fond); box-shadow: inset 4px 0 0 var(--depart);
+  color: color-mix(in srgb, var(--depart) 70%, var(--text)); }
+.armes-regles__prix { border-top: 1px solid var(--border); padding-top: 0.7rem; }
+.armes-regles__prix h2 { margin: 0 0 0.45rem; font-size: 1rem; }
+.armes-regles__prix p { display: inline-block; margin: 0; padding: 0.4rem 0.85rem; border: 1px solid var(--arm-line); border-radius: 8px; background: var(--arm-soft); font-weight: 600; }
 
-/* Légende des compétences, boutons Tout déplier / Tout replier */
+/* Filtre par compétence (lib/armes-filtres.mjs : une arme reste si l'une de ses compétences est choisie), légende « Arme de départ », boutons Tout déplier /
+   Tout replier. Choisir une compétence estompe les autres boutons ; « Toutes » efface le choix. En mode modification, pas de filtre : tout s'affiche. */
 .armes-outils { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; margin: 0 0 0.8rem; }
+html.js .armes .armes-filtre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
+.armes-filtre__titre { font-size: 0.82rem; font-weight: 700; color: var(--muted); margin-right: 0.15rem; }
+.armes-filtre__choix { display: inline-block; min-width: 0; font: inherit; font-size: 0.82rem; font-weight: 600; border: 2px solid transparent; cursor: pointer; }
+.armes-filtre__choix:hover { border-color: color-mix(in srgb, var(--text) 35%, transparent); }
+.armes-filtre__choix:focus-visible { outline: 2px solid var(--arm); outline-offset: 2px; }
+.armes-filtre__choix[aria-pressed="true"] { border-color: var(--text); }
+.armes-filtre__choix[aria-pressed="true"]::before { content: '✓ '; }
+.armes-filtre.est-actif .armes-filtre__choix[aria-pressed="false"] { opacity: 0.45; }
+.armes-filtre__tout { font: inherit; font-size: 0.8rem; padding: 0.1rem 0.6rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); cursor: pointer; }
+.armes-filtre__tout:hover { border-color: var(--arm); }
+.armes .est-filtree { display: none; }
+body.ed-mode .armes-filtre { display: none !important; }
+body.ed-mode .armes .est-filtree { display: revert; }
 .armes-legende { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin: 0; }
-.armes-legende .arme-comp { display: inline-block; min-width: 0; }
 .armes-legende__depart { display: inline-block; padding: 0.05rem 0.6rem; font-size: 0.8rem; border-radius: 6px; background: var(--depart-fond-fort); box-shadow: inset 4px 0 0 var(--depart); }
 .armes-outils__boutons { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0; }
 html.js .armes-outils__boutons { display: flex; }
