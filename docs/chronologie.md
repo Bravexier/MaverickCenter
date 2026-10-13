@@ -45,8 +45,8 @@ Tables `evenement` et `evenement_extrait` (`data/schema.sql`, section **5 bis** 
 - **Les autres titres sont du site**, faits des mots de leurs extraits (« Fondation de la Compagnie du Fer Noir » pour « Fondée en 114, la Compagnie du Fer
   Noir… ») ; aucun nom ni fait n'y est ajouté.
 - **Un extrait parle explicitement du même fait** (même sujet nommé ; même année quand il en donne une) : la phrase datée, le récit qui l'entoure dans la même
-  page, et les passages d'autres pages qui nomment le même fait. Quand deux pages datent le même fait différemment, l'événement est placé à la première date
-  et garde les deux extraits, chacun avec sa date surlignée (voir les questions plus bas).
+  page, et les passages d'autres pages qui nomment le même fait. Quand deux pages datent le même fait différemment, l'événement est placé à la date de la
+  liste des Impacts s'il en vient, sinon à la plus ancienne, et garde les extraits de chaque date, chacun avec sa date surlignée (voir les questions plus bas).
 - **Ne sont pas repris** : les tableaux de dirigeants (empereurs de l'Empire humain, ambassadeurs des temples, consuls du Barrage Argenté) — ce sont des
   règnes, pas des événements ; les en-têtes d'époque des pages (« (Avant 1145) ») ; les « Date de création : Inconnu » ; les faits sans année (naissance des
   dieux, Massacre d'Excalibur, Grande Union des Temples…) ; les dates des pages hors du Codex et des races (bombes « Disponible en l'an 150 » et gants
@@ -71,7 +71,8 @@ Les contradictions relevées entre les sources (le texte est gardé tel quel ; r
    sont apparus en -450, les Orios en -430 et les Minotaures en -50.
 7. **Premier Drakos** : « un Dragon de la terre et une humaine » (page Drakos) ou « une dragonne de la Terre et un prêtre humain » (page Dragon) ?
 8. **Elfes dorés** : la révolte des Elfes argentés détruit l'Empire Doré « en 205 » (Empire Argenté), les elfes dorés sont « tous bannis » « en l'an 215 »
-   (Elfe doré), le conflit « Dorés contre Argentés » dure de l'an 200 à 230 (Temple de l'Espace/Temps) : trois événements distincts ici.
+   par Notox Casus (Elfe doré), que Notox scelle « dans une dimension figée » après le conflit « Dorés contre Argentés » de l'an 200 à 230 (Temple de
+   l'Espace/Temps) : trois événements ici (début du conflit, destruction de l'Empire Doré, bannissement). Est-ce une seule guerre à montrer d'un bloc ?
 9. **Ordre du Soleil** (créé « 5 Aurora 20 ») « Né après l'apparition des premiers vampires », alors que la maladie du Vampirisme naît « officiellement »
    en l'an 45 ; **Ordre de la Glace Rouge** créé « 20 Celsius 310 » mais existant « depuis la fin du Premier impact ».
 10. **Dreya (Joueur)**, quatrième porteur d'Excalibur en l'an 500 : un personnage de joueur dans le Codex ; à garder dans la chronologie ?

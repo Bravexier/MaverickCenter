@@ -133,7 +133,7 @@
       "id": "empire-humain-et-calendrier", "titre": "Naissance de l’Empire Humain et du calendrier", "epoque": "datee", "annee": 0,
       "extraits": [
         { "page": "lore/empire-humain", "debut": "Née en l’an 0 en même temps que le calendrier", "fin": "du monde connu.", "date": "en l’an 0" },
-        { "page": "lore/temple-de-lespace-temps", "debut": "* **Les Chronarques :** Sages du temps", "fin": "l’existence de l’horlogerie.", "date": "à l’an 0" }
+        { "page": "lore/temple-de-lespace-temps", "debut": "* **Les Chronarques :** Sages du temps", "fin": "mis au point le Calendrier à l’an 0\\.", "date": "à l’an 0" }
       ]
     },
     {
@@ -171,26 +171,32 @@
       "id": "premier-impact", "titre": "Guerre des Temples/Apparition de l'Ottar Monde", "epoque": "datee", "annee": 20, "portee": "majeur",
       "extraits": [
         { "page": "lore/les-impacts-mineur-et-majeur", "debut": "Guerre des Temples/Apparition de l'Ottar Monde (An 20\\)", "date": "An 20" },
-        { "page": "lore/temple-de-lespace-temps", "debut": "Lorsque le Premier Impact survint en l’an 20", "fin": "arrachant le temple à la trame du monde.", "date": "en l’an 20" },
+        { "page": "lore/temple-de-lespace-temps", "debut": "Lorsque le Premier Impact survint en l’an 20", "fin": "partout dans le ciel de couleur rose.", "date": "en l’an 20" },
         { "page": "lore/temple-de-lespace-temps", "debut": "Mais lors du Premier Impact, en l’an \\-30", "fin": "l’effondrement de leur propre sanctuaire.", "date": "en l’an \\-30" },
-        { "page": "lore/temple-de-lespace-temps", "debut": "Mais la guerre éclata avant son éveil.", "fin": "fut l’origine directe du Vide." },
+        { "page": "lore/temple-de-lespace-temps", "debut": "À l’origine, aucun ambassadeur complet n’avait été désigné", "fin": "fut l’origine directe du Vide." },
         { "page": "lore/mora", "debut": "À une époque où existait encore le Temple de l’Espace/Temps", "fin": "Cela avait scindé la religion en deux.", "date": "lors de ce que l’on nomme aujourd’hui le Premier Impact" },
-        { "page": "lore/seraphe", "debut": "Bien qu’il ne soit pas l’unique cause du Premier Impact", "fin": "dans une série de conflits dévastateurs.", "date": "du Premier Impact" },
-        { "page": "lore/seraphe", "debut": "**Amulette de Puissance :** Amulette unique forgée dans les flammes du Premier Impact.", "fin": "tant que dure la bataille.", "date": "dans les flammes du Premier Impact" },
-        { "page": "lore/ordre-de-la-glace-rouge", "debut": "Cet ordre existe depuis la fin du Premier impact, quand la paix entre feu et glace a été déclarée.", "date": "depuis la fin du Premier impact" }
+        { "page": "lore/seraphe", "debut": "Bien qu’il ne soit pas l’unique cause du Premier Impact", "fin": "dans une série de conflits dévastateurs.", "date": "du Premier Impact" }
       ]
     },
     {
       "id": "ordre-du-soleil", "titre": "Création de l’Ordre du Soleil", "epoque": "datee", "annee": 20,
       "extraits": [
-        { "page": "lore/ordre-solaire", "debut": "L’Ordre du Soleil, également appelé Chevaliers Solaires", "fin": "* **Date de création :** 5 Aurora 20", "date": "5 Aurora 20" }
+        { "page": "lore/ordre-solaire", "debut": "L’Ordre du Soleil, également appelé Chevaliers Solaires", "fin": "contre ces créatures impies du sang.", "date": "Né après l’apparition des premiers vampires" },
+        { "page": "lore/ordre-solaire", "debut": "* **Date de création :** 5 Aurora 20", "date": "5 Aurora 20" }
       ]
     },
     {
       "id": "excalibur", "titre": "Construction d’Excalibur", "epoque": "datee", "annee": 21,
       "extraits": [
-        { "page": "lore/excalibur", "debut": "An 21 \\- Construction de l’arme", "fin": "Objectif de l’arme déterminé", "date": "An 21" },
-        { "page": "lore/excalibur", "debut": "L’histoire d’Excalibur débute avec Charles Carsote", "fin": "Ainsi naquit le premier véritable porteur d’Excalibur.", "date": "En l’an 21" },
+        { "page": "lore/excalibur", "debut": "An 21 \\- Construction de l’arme", "date": "An 21" },
+        { "page": "lore/excalibur", "debut": "L’histoire d’Excalibur débute avec Charles Carsote", "fin": "à partir de l’alliage mentionné plus haut.", "date": "En l’an 21" }
+      ]
+    },
+    {
+      "id": "excalibur-premier-porteur", "titre": "Premier porteur d’Excalibur : Charlotte Carsote", "epoque": "datee", "annee": 21,
+      "extraits": [
+        { "page": "lore/excalibur", "debut": "An 21 \\- Premier porteur : Charlotte Carsote/Objectif de l’arme déterminé", "date": "An 21" },
+        { "page": "lore/excalibur", "debut": "Lorsque Charles mania l’arme pour la première fois", "fin": "Ainsi naquit le premier véritable porteur d’Excalibur." },
         { "page": "lore/excalibur", "debut": "Selon une légende, quand l’arme fût forgée", "fin": "envers les êtres immortels.", "date": "quand l’arme fût forgée" }
       ]
     },
@@ -211,11 +217,11 @@
       "id": "premier-hujin", "titre": "Arrivée du premier Hujin", "epoque": "datee", "annee": 40,
       "extraits": [
         { "page": "races/hujin", "debut": "Le premier Hujin est arrivé en l'an 40", "fin": "qui a fini dans le sang.", "date": "en l'an 40" },
-        { "page": "races/hujin", "debut": "Le premier Hujin est né sur le sol de Maverick", "fin": "comme race hybride stable par la plupart des races." }
+        { "page": "races/hujin", "debut": "Le premier Hujin est né sur le sol de Maverick", "fin": "et là tout se déroulait bien mieux." }
       ]
     },
     {
-      "id": "excalibur-deuxieme-porteur", "titre": "Deuxième porteur d’Excalibur", "epoque": "datee", "annee": 43,
+      "id": "excalibur-deuxieme-porteur", "titre": "Deuxième porteur d’Excalibur : Shigun Dobarto", "epoque": "datee", "annee": 43,
       "extraits": [
         { "page": "lore/excalibur", "debut": "An 43 \\- Deuxième porteur : Shigun Dobarto", "date": "An 43" }
       ]
@@ -223,9 +229,7 @@
     {
       "id": "vampirisme", "titre": "Naissance de la maladie du Vampirisme", "epoque": "datee", "annee": 45,
       "extraits": [
-        { "page": "lore/vampires-primordiaux", "debut": "Les Vampires Primordiaux sont les tout premiers êtres à avoir porté le vampirisme.", "fin": "les frappa d’une malédiction : le Vampirisme." },
-        { "page": "lore/vampires-primordiaux", "debut": "Mais les neuf Vampires Primordiaux proposèrent un accord", "fin": "distincte de sa forme primordiale.", "date": "en l’an 45" },
-        { "page": "lore/confrerie-du-sang", "debut": "Il y a eu l’apparition des vampires primordiaux", "fin": "devenu des émissaires du sang." }
+        { "page": "lore/vampires-primordiaux", "debut": "Fou de rage face à cette survie impossible, Brock envisagea de les annihiler", "fin": "distincte de sa forme primordiale.", "date": "en l’an 45" }
       ]
     },
     {
@@ -239,7 +243,7 @@
       "extraits": [
         { "page": "lore/les-impacts-mineur-et-majeur", "debut": "Arrivés des Lamias (An 51\\) (Erisia)", "date": "An 51" },
         { "page": "races/lamia", "debut": "Cette race extraplanaire est apparue la première fois en l'an 51.", "date": "en l'an 51" },
-        { "page": "races/lamia", "debut": "Elles sont arrivées grâce à une faille temporelle", "fin": "leur spécialité et leur dirigeante." }
+        { "page": "races/lamia", "debut": "Elles sont arrivées grâce à une faille temporelle", "fin": "s'adapter à leur nouvel environnement." }
       ]
     },
     {
@@ -252,14 +256,14 @@
     {
       "id": "redecouverte-de-ville-oeil", "titre": "Redécouverte du Trapèze de Ville-Œil", "epoque": "datee", "annee": 60, "annee_fin": 80,
       "extraits": [
-        { "page": "lore/ville-oeil", "debut": "Les recherches indiquent que l’édifice était autrefois dédié", "fin": "Mais la possession de Ville-Œil fut immédiatement disputée.", "date": "entre l’an 60 et 80 après le Premier Impact" }
+        { "page": "lore/ville-oeil", "debut": "La classe dirigeante de l’époque prit une décision radicale.", "fin": "Mais la possession de Ville-Œil fut immédiatement disputée.", "date": "entre l’an 60 et 80 après le Premier Impact" }
       ]
     },
     {
       "id": "felfes", "titre": "Apparition des Felfes", "epoque": "datee", "annee": 80,
       "extraits": [
         { "page": "races/felfe", "debut": "Ils sont apparus en l'an 80, une belle union taboue entre une grande fée et un elfe argenté.", "date": "en l'an 80" },
-        { "page": "races/felfe", "debut": "L’origine des felfes demeure incertaine", "fin": "une descendance hybride aux caractéristiques variées." }
+        { "page": "races/felfe", "debut": "L’origine des felfes demeure incertaine", "fin": "une femelle à la peau argentée." }
       ]
     },
     {
@@ -274,7 +278,7 @@
       "extraits": [
         { "page": "lore/compagnie-du-fer-noir", "debut": "Fondée en 114, la Compagnie du Fer Noir", "fin": "d’une valeur inestimable.", "date": "Fondée en 114" },
         { "page": "lore/compagnie-du-fer-noir", "debut": "* **Date de création :** 114", "date": "114" },
-        { "page": "lore/compagnie-du-fer-noir", "debut": "L’exploitation attira rapidement les convoitises", "fin": "spécialisée dans le minage et le mercenariat." }
+        { "page": "lore/compagnie-du-fer-noir", "debut": "La découverte du Fer Noir laissait entrevoir une immense fortune.", "fin": "spécialisée dans le minage et le mercenariat." }
       ]
     },
     {
@@ -287,14 +291,15 @@
     {
       "id": "guerisseurs-silencieux", "titre": "Création des Guérisseurs Silencieux", "epoque": "datee", "annee": 146,
       "extraits": [
-        { "page": "lore/guerisseurs-silencieux", "debut": "Les Guérisseurs Silencieux sont une branche dissidente du Temple Noir", "fin": "* **Date de création :** 15 Océane 146", "date": "15 Océane 146" }
+        { "page": "lore/guerisseurs-silencieux", "debut": "Les Guérisseurs Silencieux sont une branche dissidente du Temple Noir", "fin": "la guérison. et l’aide à autrui." },
+        { "page": "lore/guerisseurs-silencieux", "debut": "* **Date de création :** 15 Océane 146", "date": "15 Océane 146" }
       ]
     },
     {
       "id": "age-de-fer", "titre": "Âge de fer", "epoque": "datee", "annee": 150, "portee": "majeur",
       "extraits": [
         { "page": "lore/les-impacts-mineur-et-majeur", "debut": "Âge de fer (An 150\\)", "date": "An 150" },
-        { "page": "lore/academie-de-larcane", "debut": "Il s'agit à la base d'un système qui permettait de maintenir le taux de chakra", "fin": "revenait à pisser dans un violon.", "date": "pour seulement 1 mois" }
+        { "page": "lore/academie-de-larcane", "debut": "Il s'agit à la base d'un système qui permettait de maintenir le taux de chakra", "fin": "revenait à pisser dans un violon." }
       ]
     },
     {
@@ -314,6 +319,7 @@
       "id": "liberation-des-minotaures", "titre": "Libération des Minotaures", "epoque": "datee", "annee": 200,
       "extraits": [
         { "page": "lore/londolor", "debut": "En l’an 200, lors d’une guerre contre les elfes noirs", "fin": "d’une solution à leur stérilité.", "date": "En l’an 200" },
+        { "page": "lore/londolor", "debut": "Les minotaures, libérés du joug elfique noir par les nains", "fin": "reconnus, intégrés et pleinement citoyens." },
         { "page": "races/minotaure", "debut": "Ce n’est qu’à la suite d’une guerre de territoire entre les Nains et les Elfes Charbon", "fin": "et leur offrirent refuge." },
         { "page": "races/nain", "debut": "Ce sont également les Nains qui, en l’an 280, libérèrent les Minotaures", "fin": "ne se sont jamais véritablement apaisées.", "date": "en l’an 280" },
         { "page": "lore/republique-noire", "debut": "Un peu plus tard, les elfes noirs ont perdu les minotaures", "fin": "mais les ont pas réduit en esclavage." }
@@ -323,12 +329,13 @@
       "id": "dores-contre-argentes", "titre": "Conflit « Dorés contre Argentés »", "epoque": "datee", "annee": 200, "annee_fin": 230,
       "extraits": [
         { "page": "lore/temple-de-lespace-temps", "debut": "* *Notox*, Ambassadeur de l’Espace", "fin": "une singularité semblable à un trou noir.", "date": "an 200-230" },
-        { "page": "lore/republique-forestier", "debut": "Éparpillés en de nombreuses poches à travers le monde", "fin": "réputé pour son imprenable territoire et ses sculptures uniques.", "date": "au cours de la grande guerre opposant Elfes dorés et Elfes argentés" }
+        { "page": "lore/republique-forestier", "debut": "Éparpillés en de nombreuses poches à travers le monde", "fin": "pour s’émanciper.", "date": "au cours de la grande guerre opposant Elfes dorés et Elfes argentés" }
       ]
     },
     {
       "id": "medecin-sans-frontiere", "titre": "Fondation de Médecin sans frontière", "epoque": "datee", "annee": 202,
       "extraits": [
+        { "page": "lore/medecin-sans-frontiere", "debut": "Les médecins sans frontière est un ordre religieux secondaire", "fin": "déesse de la Mort et de la Vie." },
         { "page": "lore/medecin-sans-frontiere", "debut": "Ce culte a été fondé par deux personnes en l’an 202", "fin": "qui aiderait le plus de monde possible.", "date": "en l’an 202" },
         { "page": "lore/medecin-sans-frontiere", "debut": "**Date de création :** 202", "date": "202" }
       ]
@@ -338,13 +345,15 @@
       "extraits": [
         { "page": "lore/empire-argente", "debut": "Des siècles d’oppression menèrent en 205 à une révolte violente.", "fin": "et exilèrent les survivants restants.", "date": "en 205" },
         { "page": "lore/republique-noire", "debut": "Tout ceci à durer des siècles jusqu’au jour où", "fin": "comme fierté de leur peuple." },
-        { "page": "races/elfe-argente", "debut": "Malgré leur statut d'esclave, les elfes argentés devenaient très nombreux", "fin": "libérer leur chaîne et celle des autres." }
+        { "page": "races/elfe-argente", "debut": "Malgré leur statut d'esclave, les elfes argentés devenaient très nombreux", "fin": "libérer leur chaîne et celle des autres." },
+        { "page": "races/elfe-forestier", "debut": "Ils ont été pendant un temps esclaves de leurs ancêtres", "fin": "ont gagné leur liberté et ont conquis les forêts." }
       ]
     },
     {
       "id": "ordre-du-brai", "titre": "Création de l’Ordre du Brai", "epoque": "datee", "annee": 212,
       "extraits": [
-        { "page": "lore/ordre-du-brai", "debut": "L’Ordre du Brai est une secte issue d’une scission du Temple Noir", "fin": "* **Date de création :** 4 Séraphin 212", "date": "4 Séraphin 212" }
+        { "page": "lore/ordre-du-brai", "debut": "L’Ordre du Brai est une secte issue d’une scission du Temple Noir", "fin": "pour y bâtir leurs bastions." },
+        { "page": "lore/ordre-du-brai", "debut": "* **Date de création :** 4 Séraphin 212", "date": "4 Séraphin 212" }
       ]
     },
     {
@@ -357,7 +366,8 @@
     {
       "id": "bannissement-des-elfes-dores", "titre": "Bannissement des elfes dorés", "epoque": "datee", "annee": 215,
       "extraits": [
-        { "page": "races/elfe-dore", "debut": "En l'An 50, un elfe argenté du nom de Notox Casus", "fin": "ce même Notox Casus.", "date": "en l'an 215" }
+        { "page": "races/elfe-dore", "debut": "En l'An 50, un elfe argenté du nom de Notox Casus", "fin": "ce même Notox Casus.", "date": "en l'an 215" },
+        { "page": "lore/temple-de-lespace-temps", "debut": "* *Notox*, Ambassadeur de l’Espace", "fin": "une singularité semblable à un trou noir.", "date": "an 200-230" }
       ]
     },
     {
@@ -373,7 +383,7 @@
       ]
     },
     {
-      "id": "excalibur-troisieme-porteur", "titre": "Troisième porteur d’Excalibur", "epoque": "datee", "annee": 253,
+      "id": "excalibur-troisieme-porteur", "titre": "Troisième porteur d’Excalibur : Gaël l’argenté", "epoque": "datee", "annee": 253,
       "extraits": [
         { "page": "lore/excalibur", "debut": "An 253 \\- Troisième porteur : Gaël l’argenté", "date": "An 253" }
       ]
@@ -381,12 +391,15 @@
     {
       "id": "les-exaltes", "titre": "Création des Exaltés", "epoque": "datee", "annee": 310,
       "extraits": [
-        { "page": "lore/les-exaltes", "debut": "Les Exaltés sont un petit ordre marginal", "fin": "* **Date de création :** 10 Séraphin 310", "date": "10 Séraphin 310" }
+        { "page": "lore/les-exaltes", "debut": "Les Exaltés sont un petit ordre marginal", "fin": "celui de la purification, pas de la destruction." },
+        { "page": "lore/les-exaltes", "debut": "* **Date de création :** 10 Séraphin 310", "date": "10 Séraphin 310" }
       ]
     },
     {
       "id": "ordre-de-la-glace-rouge", "titre": "Création de l’Ordre de la Glace Rouge", "epoque": "datee", "annee": 310,
       "extraits": [
+        { "page": "lore/ordre-de-la-glace-rouge", "debut": "L’Ordre de la Glace Rouge est une confrérie religieuse mineure", "fin": "et de Séraphin, dieu du Feu." },
+        { "page": "lore/ordre-de-la-glace-rouge", "debut": "Cet ordre existe depuis la fin du Premier impact, quand la paix entre feu et glace a été déclarée.", "date": "depuis la fin du Premier impact" },
         { "page": "lore/ordre-de-la-glace-rouge", "debut": "* **Date de création :** 20 Celsius 310", "date": "20 Celsius 310" }
       ]
     },
@@ -399,13 +412,19 @@
     {
       "id": "epee-400", "titre": "Création de l’épée 400", "epoque": "datee", "annee": 320,
       "extraits": [
-        { "page": "lore/400", "debut": "L’arme fut créée en 320 par Joseph Wiczkoblaz", "fin": "un désir de justice sanglante.", "date": "en 320" }
+        { "page": "lore/400", "debut": "L’arme fut créée en 320 par Joseph Wiczkoblaz", "fin": "mais l’épée, elle, disparut.", "date": "en 320" }
+      ]
+    },
+    {
+      "id": "reapparitions-de-l-epee-400", "titre": "Réapparitions de l’épée 400", "epoque": "datee", "annee": 321,
+      "extraits": [
+        { "page": "lore/400", "debut": "Depuis 321, 400 réapparaît sporadiquement", "fin": "un désir de justice sanglante.", "date": "Depuis 321" }
       ]
     },
     {
       "id": "flammes-bleues", "titre": "Création des Flammes Bleues", "epoque": "datee", "annee": 342,
       "extraits": [
-        { "page": "lore/les-flammes-bleues", "debut": "* **Date de création :** 10 Celsius 342", "date": "10 Celsius 342" }
+        { "page": "lore/les-flammes-bleues", "debut": "Les Flammes Bleues sont un ordre restreint", "fin": "* **Date de création :** 10 Celsius 342", "date": "10 Celsius 342" }
       ]
     },
     {
@@ -429,7 +448,7 @@
       ]
     },
     {
-      "id": "excalibur-quatrieme-porteur", "titre": "Quatrième porteur d’Excalibur", "epoque": "datee", "annee": 500,
+      "id": "excalibur-quatrieme-porteur", "titre": "Quatrième porteur d’Excalibur : Dreya", "epoque": "datee", "annee": 500,
       "extraits": [
         { "page": "lore/excalibur", "debut": "An 500 \\- Quatrième porteur : Dreya (Joueur)", "date": "An 500" }
       ]

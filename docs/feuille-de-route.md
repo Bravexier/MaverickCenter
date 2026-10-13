@@ -147,7 +147,7 @@ flowchart LR
 ### E5 — Chronologie (jalon B)
 
 - **Déjà là** (premier jet, 2026-10-13, [`chronologie.md`](chronologie.md)) : `/chronologie/` (menu Codex › Chronologie), une page par événement, lue comme le
-  guide (flèches Précédent / Suivant, clavier, glissement du doigt) avec une frise en haut et en bas ; 72 événements : la liste « Les Impacts mineur et
+  guide (flèches Précédent / Suivant, clavier, glissement du doigt) avec une frise en haut et en bas ; 74 événements : la liste « Les Impacts mineur et
   majeur » du Codex en entier, les dates des autres pages du Codex (fondations, guerres, objets légendaires…) et des pages de race (apparitions), chacun avec
   les extraits copiés de ses pages sources (tables `evenement`, `evenement_extrait`, migration `0035-chronologie`).
 - **Ensuite** : les réponses du propriétaire aux questions de [`chronologie.md`](chronologie.md) (contradictions de dates, règnes, calendrier des mois) ;
