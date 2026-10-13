@@ -13,7 +13,6 @@ import { magiesDuPotentiel, POTENTIEL_ILLIMITE } from '../../lib/potentiel-illim
 import { pageHref, type Magies, type MagieDb } from '../../lib/magies';
 import { attributEd } from '../../lib/edition-modele.mjs';
 import type { WikiEntry } from '../../lib/wiki';
-import Bulles from './Bulles.astro';
 import MagieAffinites from './MagieAffinites.astro';
 import MagieEtats from './MagieEtats.astro';
 import MagieSorts from './MagieSorts.astro';
@@ -145,8 +144,6 @@ const nav = [
 
   {groupes.length > 0 && <MagieSorts groupes={groupes} magies={magies} />}
   {autresMagies.length > 0 && <SortsDuPotentiel autres={autresMagies} magies={magies} entries={entries} />}
-
-  <Bulles />
 
   {aDesRaces && <RacesDeMagie entry={entry} entries={entries} />}
 </div>

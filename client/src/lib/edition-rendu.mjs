@@ -201,7 +201,7 @@ export const RENDUS = {
         .join('')}</li>`)
       .join('');
   },
-  // type d'un don : nom et définition du guide (ctx.typesDon : table type_don, listes du service) en infobulle native, comme DonCarte.astro
+  // type d'un don : nom et définition du guide (ctx.typesDon : table type_don, listes du service) en infobulle (`title`, components/Infobulles.astro), comme DonCarte.astro
   'don-type': (valeur, _ligne, ctx = {}) => {
     if (!valeur) return '';
     const { type } = analyserTypeDeDon(valeur);

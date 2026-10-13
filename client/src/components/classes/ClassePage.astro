@@ -8,7 +8,6 @@ import { idBulle, pageHref } from '../../lib/magies';
 import { classColor } from '../../lib/class-groups.mjs';
 import { couleurDeMagie, texteSurCouleur } from '../../lib/sort-format.mjs';
 import type { WikiEntry } from '../../lib/wiki';
-import Bulles from '../magie/Bulles.astro';
 import Texte from '../magie/Texte.astro';
 import ClasseDons from './ClasseDons.astro';
 import { attributEd } from '../../lib/edition-modele.mjs';
@@ -232,6 +231,4 @@ const edSpe = (id: string, colonne: string) => attributEd('specialite', { id }, 
     <p class="classe-remarque__titre">Remarque</p>
     <div class="classe-remarque__texte" data-ed={ed('remarque')} data-ed-rendu="blocs"><Texte blocs={classe.remarque} /></div>
   </div>
-
-  <Bulles />
 </div>

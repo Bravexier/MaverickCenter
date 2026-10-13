@@ -1,0 +1,265 @@
+---
+// Infobulles de tout le site (demande du propriétaire : toutes habillées comme le reste du site) ; un script, inclus une fois par layouts/Base.astro.
+// Deux sortes, un seul habillage (styles/global/infobulles.css) :
+//   - bulle riche : le déclencheur porte `data-bulle="<id>"`, sa bulle est écrite dans la page (`<span class="bulle" role="tooltip" id="<id>" hidden>` :
+//     altérations d'état, règles d'un niveau, résumés des classes et des races, chapitres du guide, objets…) ;
+//   - infobulle d'un attribut `title` : son texte dans une bulle partagée (`.bulle--simple`), à la place de l'infobulle du navigateur, qui ne se
+//     style pas. L'attribut est retiré le temps de l'affichage (sinon le navigateur montrerait la sienne en plus), puis remis : les scripts qui
+//     le lisent ou l'écrivent (fiche, armes, édition) le retrouvent ; un appui ou une touche ferme la bulle, et la remet, avant leur gestionnaire.
+// Affichage :
+//   - à la souris : au survol (une bulle riche aussitôt, un `title` après un court délai, aussitôt si une autre bulle vient de se fermer) ; la bulle
+//     reste ouverte quand le pointeur passe dessus (WCAG 1.4.13) ;
+//   - au clavier : au focus visible ; Échap ferme une bulle riche SEULE (le panneau du sort reste ouvert), une touche ferme celle d'un `title` ;
+//   - au toucher (bulles riches seulement, comme l'infobulle du navigateur) : un premier appui ouvre la bulle (sans suivre le lien d'une pastille
+//     d'état), un second suit le lien ; un appui ailleurs la ferme.
+// La bulle est en position fixe près du déclencheur (un tableau qui défile couperait une bulle absolue), du côté qui a le plus de place, bornée à
+// l'écran, avec une pointe vers le déclencheur (un élément à part : la bulle défile quand son texte est trop long), et suit le défilement.
+// Teinte : celle de la page (--mag : magie, classe, race, partie du guide), lue sur le déclencheur pour la bulle partagée ; sinon l'accent du site.
+// Sans JavaScript : les bulles riches restent cachées et l'attribut `title` (texte simple) joue le rôle d'infobulle native.
+// Script en ligne, sans module : la version portable n'a ni import ni module partagé entre pages (tools/build-artifact.mjs).
+---
+
+<script is:inline data-infobulles>
+  (function () {
+    var ouverte = null; // { cible, bulle, simple, titre, decalage }
+    var enAttente = null; // déclencheur d'un `title` dont l'ouverture est différée
+    var suspendu = null; // déclencheur appuyé : plus de bulle jusqu'à ce que le pointeur le quitte (comme l'infobulle du navigateur)
+    var attente, delai, image, derniereFermeture = 0;
+    var tactile = matchMedia('(hover: none)');
+    var marge = 8; // distance minimale au bord de l'écran
+    var ecart = 9; // entre le déclencheur et la bulle : la place de la pointe
+    var simple = null, fleche = null; // créées au premier usage
+
+    // Avec JavaScript, une bulle riche remplace l'infobulle native : on retire `title` pour ne pas avoir les deux.
+    document.querySelectorAll('[data-bulle][title]').forEach(function (c) { c.removeAttribute('title'); });
+
+    var borner = function (v, min, max) { return Math.max(min, Math.min(v, Math.max(min, max))); };
+
+    function creer(classe, id) {
+      var n = document.createElement('span');
+      n.className = classe;
+      if (id) { n.id = id; n.setAttribute('role', 'tooltip'); } else n.setAttribute('aria-hidden', 'true');
+      n.hidden = true;
+      document.body.appendChild(n);
+      return n;
+    }
+
+    /** Le déclencheur sous un nœud : une bulle riche, l'élément dont la bulle partagée est ouverte (son `title` est retiré) ou un `title` non vide. */
+    function declencheur(n) {
+      for (var el = n instanceof Element ? n : null; el && el !== document.body; el = el.parentElement) {
+        if (el.classList.contains('bulle')) return null;
+        if (el.hasAttribute('data-bulle')) return el;
+        if (ouverte && ouverte.simple && el === ouverte.cible) return el;
+        if (el instanceof HTMLElement && (el.getAttribute('title') || '').trim()) return el;
+      }
+      return null;
+    }
+    var dansBulle = function (n) { return n instanceof Node && ouverte !== null && ouverte.bulle.contains(n); };
+
+    // un script qui change le `title` d'un déclencheur ouvert (la fiche recalcule les siens) : la bulle prend le nouveau texte
+    var guetteur = new MutationObserver(function () {
+      if (!ouverte || !ouverte.simple) return;
+      var t = ouverte.cible.getAttribute('title');
+      if (t === null) return;
+      ouverte.titre = t;
+      ouverte.cible.removeAttribute('title');
+      if (!t.trim()) return fermer();
+      ouverte.bulle.textContent = t;
+      placer();
+    });
+
+    function fermer() {
+      clearTimeout(delai);
+      if (!ouverte) return;
+      var o = ouverte;
+      ouverte = null;
+      derniereFermeture = Date.now();
+      o.bulle.hidden = true;
+      o.bulle.style.removeProperty('position');
+      o.bulle.style.removeProperty('left');
+      o.bulle.style.removeProperty('top');
+      o.bulle.style.removeProperty('max-height');
+      fleche.hidden = true;
+      o.cible.removeAttribute('data-ouverte');
+      if (o.simple) {
+        guetteur.disconnect();
+        if (!o.cible.hasAttribute('title')) o.cible.setAttribute('title', o.titre);
+        var decrit = (o.cible.getAttribute('aria-describedby') || '').split(' ').filter(function (x) { return x && x !== o.bulle.id; }).join(' ');
+        if (decrit) o.cible.setAttribute('aria-describedby', decrit);
+        else o.cible.removeAttribute('aria-describedby');
+      }
+    }
+
+    /** Place la bulle près de son déclencheur, du côté qui a le plus de place, sans sortir de l'écran (zone visible : sans la barre de défilement) ; la pointe vise le déclencheur. */
+    function placer() {
+      if (!ouverte) return;
+      var cible = ouverte.cible, bulle = ouverte.bulle;
+      var largeur = document.documentElement.clientWidth;
+      var hauteur = document.documentElement.clientHeight;
+      var r = cible.getBoundingClientRect();
+      // le déclencheur a disparu (page recalculée) ou est sorti de l'écran
+      if (!cible.isConnected || (r.width === 0 && r.height === 0) || r.bottom < 0 || r.top > hauteur) return fermer();
+      bulle.style.maxHeight = hauteur - 2 * marge + 'px';
+      var b = bulle.getBoundingClientRect();
+      var dessous = hauteur - r.bottom - ecart - marge;
+      var dessus = r.top - ecart - marge;
+      var enDessous = b.height <= dessous || dessous >= dessus;
+      var vise = r.left + borner(ouverte.decalage, Math.min(8, r.width / 2), r.width - Math.min(8, r.width / 2));
+      var gauche = borner(vise - 22, marge, largeur - b.width - marge);
+      var haut = borner(enDessous ? r.bottom + ecart : r.top - ecart - b.height, marge, hauteur - b.height - marge);
+      bulle.style.left = gauche + 'px';
+      bulle.style.top = haut + 'px';
+      // la pointe, à cheval sur le bord de la bulle ; pas de pointe quand la bulle, faute de place, couvre son déclencheur
+      var bord = enDessous ? haut : haut + b.height;
+      fleche.hidden = enDessous ? haut < r.bottom : bord > r.top;
+      fleche.setAttribute('data-cote', enDessous ? 'dessous' : 'dessus');
+      fleche.style.left = borner(vise, gauche + 14, gauche + b.width - 14) - 6 + 'px';
+      fleche.style.top = bord - 6 + 'px';
+    }
+
+    function ouvrir(cible, x) {
+      clearTimeout(attente);
+      clearTimeout(delai);
+      enAttente = null;
+      if (ouverte && ouverte.cible === cible) return;
+      var estSimple = !cible.hasAttribute('data-bulle');
+      var bulle, titre = null;
+      if (estSimple) {
+        titre = cible.getAttribute('title');
+        if (!titre || !titre.trim()) return;
+        simple = simple || creer('bulle bulle--simple', 'bulle-du-titre');
+        bulle = simple;
+      } else {
+        bulle = document.getElementById(cible.getAttribute('data-bulle') || '');
+        if (!bulle) return;
+      }
+      fermer();
+      fleche = fleche || creer('bulle-fleche');
+      // une fenêtre modale (<dialog>) passe devant tout le reste de la page : la bulle partagée et la pointe y vont avec le déclencheur
+      var hote = cible.closest('dialog[open]') || document.body;
+      if (fleche.parentNode !== hote) hote.appendChild(fleche);
+      cible.removeAttribute('title'); // bulle riche : `title` remis par un script (édition) ; bulle partagée : remis à la fermeture
+      if (estSimple) {
+        if (bulle.parentNode !== hote) hote.appendChild(bulle);
+        bulle.textContent = titre;
+        var teinte = getComputedStyle(cible).getPropertyValue('--mag').trim();
+        if (teinte) bulle.style.setProperty('--bulle-teinte', teinte);
+        else bulle.style.removeProperty('--bulle-teinte');
+        var decrit = cible.getAttribute('aria-describedby');
+        cible.setAttribute('aria-describedby', decrit ? decrit + ' ' + bulle.id : bulle.id);
+        guetteur.observe(cible, { attributes: true, attributeFilter: ['title'] });
+      }
+      var r = cible.getBoundingClientRect();
+      // la pointe vise le pointeur sur un grand déclencheur (une ligne de tableau), le milieu d'un petit, le début d'un champ au clavier
+      var decalage = x === undefined ? Math.min(r.width / 2, 24) : r.width > 48 ? x - r.left : r.width / 2;
+      ouverte = { cible: cible, bulle: bulle, simple: estSimple, titre: titre, decalage: decalage };
+      bulle.hidden = false;
+      bulle.style.position = 'fixed';
+      bulle.style.visibility = 'hidden';
+      cible.setAttribute('data-ouverte', '');
+      var style = getComputedStyle(bulle);
+      fleche.style.setProperty('--fleche-fond', style.backgroundColor);
+      fleche.style.setProperty('--fleche-ligne', style.borderTopColor);
+      fleche.hidden = false;
+      placer();
+      bulle.style.visibility = '';
+    }
+
+    /** Fermeture différée : le pointeur a le temps de passer du déclencheur à la bulle. */
+    function fermerBientot() {
+      clearTimeout(delai);
+      delai = setTimeout(fermer, 150);
+    }
+
+    document.addEventListener('pointerover', function (e) {
+      if (e.pointerType === 'touch') return;
+      if (ouverte && !ouverte.cible.isConnected) fermer();
+      if (dansBulle(e.target)) return clearTimeout(delai);
+      var c = declencheur(e.target);
+      if (!c || c === suspendu) return;
+      if (ouverte && ouverte.cible === c) return clearTimeout(delai);
+      if (c === enAttente) return;
+      clearTimeout(attente);
+      enAttente = null;
+      // bulle riche : aussitôt ; `title` : après un délai, comme l'infobulle du navigateur, sauf si une bulle est ouverte ou vient de se fermer
+      if (c.hasAttribute('data-bulle') || ouverte || Date.now() - derniereFermeture < 400) return ouvrir(c, e.clientX);
+      enAttente = c;
+      var x = e.clientX;
+      attente = setTimeout(function () { if (enAttente === c && c.isConnected) ouvrir(c, x); }, 450);
+    });
+    document.addEventListener('pointerout', function (e) {
+      if (e.pointerType === 'touch') return;
+      var vers = e.relatedTarget;
+      if (enAttente && !enAttente.contains(vers)) {
+        clearTimeout(attente);
+        enAttente = null;
+      }
+      if (suspendu && !suspendu.contains(vers)) suspendu = null;
+      if (!ouverte) return;
+      if (ouverte.cible.contains(e.target) || dansBulle(e.target)) {
+        if (!ouverte.cible.contains(vers) && !dansBulle(vers)) fermerBientot();
+      }
+    });
+    // un appui ferme la bulle d'un `title` (et lui rend son attribut avant le gestionnaire du clic) ; plus de bulle tant que le pointeur reste sur l'élément
+    document.addEventListener(
+      'pointerdown',
+      function (e) {
+        clearTimeout(attente);
+        enAttente = null;
+        if (dansBulle(e.target)) return;
+        var c = declencheur(e.target);
+        if (c && !c.hasAttribute('data-bulle')) suspendu = c;
+        if (ouverte && ouverte.simple) fermer();
+      },
+      true,
+    );
+    // Clavier : seulement le focus visible (un appui au toucher ou un clic de souris donne aussi le focus, mais ne doit pas ouvrir seul la bulle).
+    document.addEventListener('focusin', function (e) {
+      var c = declencheur(e.target);
+      if (c && c !== suspendu && c.matches(':focus-visible')) ouvrir(c);
+    });
+    document.addEventListener('focusout', function (e) {
+      if (ouverte && ouverte.cible.contains(e.target)) fermer();
+    });
+    document.addEventListener('click', function (e) {
+      var c = declencheur(e.target);
+      if (dansBulle(e.target)) return;
+      if (!c) return fermer();
+      if (!c.hasAttribute('data-bulle')) return;
+      if (tactile.matches) {
+        // premier appui : la bulle ; une pastille d'état (un lien) ne suit son lien qu'au second appui, sur la même pastille
+        if (ouverte && ouverte.cible === c) {
+          if (c.tagName === 'BUTTON') fermer();
+        } else {
+          if (c.tagName === 'A') e.preventDefault();
+          ouvrir(c);
+        }
+      } else if (c.tagName === 'BUTTON') ouvrir(c);
+    });
+    // Échap ferme une bulle riche seule : on intercepte avant le gestionnaire du panneau d'un sort (SortsInteractifs), qui n'est pas prévenu
+    // quand une bulle était ouverte. Une touche (Échap compris, qui garde alors son effet) ferme la bulle d'un `title` et lui rend son attribut,
+    // comme l'infobulle du navigateur.
+    document.addEventListener(
+      'keydown',
+      function (e) {
+        clearTimeout(attente);
+        enAttente = null;
+        if (!ouverte) return;
+        if (ouverte.simple) {
+          if (['Shift', 'Control', 'Alt', 'Meta', 'AltGraph'].indexOf(e.key) < 0) fermer();
+        } else if (e.key === 'Escape') {
+          fermer();
+          e.stopPropagation();
+        }
+      },
+      true,
+    );
+    var replacer = function () {
+      cancelAnimationFrame(image);
+      image = requestAnimationFrame(placer);
+    };
+    addEventListener('scroll', replacer, { passive: true, capture: true });
+    addEventListener('resize', replacer);
+    addEventListener('blur', function () { if (ouverte && ouverte.simple) fermer(); });
+  })();
+</script>

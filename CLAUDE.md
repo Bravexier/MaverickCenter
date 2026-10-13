@@ -113,7 +113,7 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   posés par l'import (catégorie du Sommaire du classeur) : `client/src/lib/class-groups.mjs`, testé ; chaque classe y est une **pastille sur le modèle de la carte des magies** (pas de tableau,
   demande du propriétaire) : `components/classes/ClassesPastilles.astro`, CSS `styles/classe/liste.css` (`?raw`).
   « Raciales » = « Classe Hybride Animal » ; « Spéciales » = « Classe Hybride » + « Classe spéciale » ; le Parleur (classé mêlée dans le classeur) est volontairement sous « Spéciales »
-  (`CLASS_OVERRIDES`, décision du propriétaire). Chaque colonne a la couleur de sa catégorie, le résumé est en infobulle (`Bulles.astro`). **« (classe) » est supprimé de partout, base comprise** (demande du propriétaire, migration `0009-classes-sans-suffixe`) :
+  (`CLASS_OVERRIDES`, décision du propriétaire). Chaque colonne a la couleur de sa catégorie, le résumé est en infobulle (`Infobulles.astro`). **« (classe) » est supprimé de partout, base comprise** (demande du propriétaire, migration `0009-classes-sans-suffixe`) :
   une classe raciale porte le nom de sa race (titre « Orios », page `classes/orios`) ; `tools/sheets/classes.py` n'ajoute plus de suffixe ; `[[classes/orios]]` / `[[races/orios]]` lèvent l'ambiguïté d'un lien.
   `test/classes-html.test.mjs` contrôle la page construite (pastilles, couleurs, infobulles).
 - Pages de magie : rendues depuis la base (`lib/magies-db.mjs`, `lib/magies.ts`), jamais depuis leur `.md` (qui ne sert qu'à la recherche et aux `[[liens]]`) ; la remarque d'un sort
@@ -123,7 +123,7 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   La carte elle-même (`MagiesConstellation.astro`) montre, **au survol d'une magie seulement** (grand écran), ses relations : un trait par magie liée, **épée** au bout de la magie vulnérable,
   **bouclier** au bout de celle qui résiste, boucle pour « résiste à elle-même » (`lib/magie-fleches.mjs`, demandes du propriétaire), au survol ou au focus clavier (`:focus-visible`, pas `:focus-within` : un clic laissait les relations affichées au retour arrière) ; **pas d'infobulle** sur la carte, légende sur une ligne ; le **Potentiel Illimité au centre**, disposition symétrique
   choisie pour qu'aucun trait ne passe sous une pastille (testé) : voir `docs/content-guide.md`, « La carte de `/magies/` ».
-  Dans le panneau d'un sort, remarque et texte du sort sont dans le même cadre « Effets » que les effets secondaires ; les altérations d'état sont des pastilles **dans le texte** (`morceauxAvecEtats`, d'après `sort_etat`) avec infobulle (`Bulles.astro` : une bulle ne contient que des `<span>`, sinon le `<p>` qui la porte se ferme) ;
+  Dans le panneau d'un sort, remarque et texte du sort sont dans le même cadre « Effets » que les effets secondaires ; les altérations d'état sont des pastilles **dans le texte** (`morceauxAvecEtats`, d'après `sort_etat`) avec infobulle (`Infobulles.astro` : une bulle ne contient que des `<span>`, sinon le `<p>` qui la porte se ferme) ;
   les créatures invoquées ont une fiche minimale au clic, sous leur bloc. Pas de légende, pas de source citée (ni par sort, ni en pied de page), pas de liste des lanceurs sur ces pages.
   Demandes du propriétaire : encart de l'**altération d'état liée** (`etat_magie`) entre la présentation et les résistances (`MagieEtats.astro`) ; « Magie non compatible » sans le Potentiel Illimité,
   et « Mono-magie uniquement » pour une magie `magie.mono_magie` (Potentiel Illimité, Corruption excepté Elfe Noir Charbon et Felfe Noir : décision R15, migration `0010-mono-magie`, `lib/magie-non-compatible.mjs`) ;
@@ -256,6 +256,12 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
 - **Couleurs des caractéristiques (et de leurs compétences) et des postures** (demande du propriétaire) : `lib/caracteristiques-postures.mjs` (clés = ids de la base,
   `test/caracteristiques-postures.test.mjs`), posées en `--c` / `--c-texte` (aplat clair, texte foncé) dans le guide (`GuideBloc.astro`) et la fiche ; la fiche les reçoit
   par `regles.json` (`fiche-regles.mjs`), son script n'importe pas le module.
+- **Infobulles** (demande du propriétaire : toutes habillées comme le reste du site) : un seul système, `components/Infobulles.astro` (script en ligne, une fois
+  par page par `layouts/Base.astro`) et `styles/global/infobulles.css` (fond clair, filet de couleur à gauche comme les cartes, serif, intitulés en petites capitales,
+  pointe vers le déclencheur ; teinte = `--mag` du contexte, sinon l'accent). Bulle riche : `data-bulle="<id>"` + `<span class="bulle" role="tooltip" id="<id>" hidden>` écrit
+  dans la page ; tout attribut `title` s'affiche dans la bulle partagée (`#bulle-du-titre`) au lieu de l'infobulle du navigateur, qui ne se style pas : l'attribut est
+  retiré le temps de l'affichage puis remis (un appui ou une touche le rend avant les gestionnaires de la page : un script qui lit `title` le retrouve). Rien au
+  toucher pour un `title` (comme le navigateur). Ne pas ajouter d'autre script de bulles ni d'infobulle en CSS. `test/infobulles.test.mjs` (faux navigateur, puis site construit).
 - `npm run autolink` (aperçu) / `-- --write` : maillage automatique des pages, voir `docs/content-guide.md`.
 - **Fiche de personnage** (`/fiche/`, `docs/character-generator.md`) : `/generateur/` n'existe plus, la page 404 y renvoie (`lib/nav.mjs#nouvelleAdresse`,
   `PAGES_RENOMMEES`). Les règles de la page viennent de la base au build (`lib/fiche-regles.mjs`), jamais écrites à la main ; chaque calcul de
