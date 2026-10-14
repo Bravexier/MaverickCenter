@@ -1,9 +1,10 @@
 // Filtre des armes par compétence (lib/armes-filtres.mjs ; demande du propriétaire : « filtrer les armes par compétence arc / arbalète / légère et
 // lourde ») : une arme reste si l'une de ses compétences est choisie, toutes sans choix ; l'état de l'adresse se lit et s'écrit dans l'ordre des boutons.
+// Plus « Arme de départ » (« trier par "arme de départ" ») : seules les armes de départ, en même temps que le filtre des compétences.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { COMPETENCES_D_ARME, competencesDArme, ECRITURES_DE_COMPETENCE } from '../src/lib/arme-champs.mjs';
-import { armeVisible, basculerCompetence, ecrireCompetences, lireCompetences } from '../src/lib/armes-filtres.mjs';
+import { armeVisible, basculerCompetence, ecrireCompetences, lireCompetences, lireDepart } from '../src/lib/armes-filtres.mjs';
 
 const connues = Object.keys(COMPETENCES_D_ARME);
 
@@ -42,4 +43,16 @@ test('adresse : ?competence=arc,arbalete se lit (ids connus, ordre des boutons, 
   assert.equal(ecrireCompetences(['arbalete', 'arme-lourde'], connues), 'arme-lourde,arbalete');
   assert.equal(ecrireCompetences([], connues), '');
   assert.deepEqual(lireCompetences(ecrireCompetences(['arc', 'arme-legere'], connues), connues), ['arme-legere', 'arc']);
+});
+
+test('« Arme de départ » : seules les armes de départ, en même temps que le filtre des compétences ; ?depart=1', () => {
+  const ids = (ecriture) => competencesDArme(ecriture).map((c) => c.id);
+  assert.equal(armeVisible(ids('Arc'), [], { depart: false, seulementDepart: true }), false);
+  assert.equal(armeVisible(ids('Arc'), [], { depart: true, seulementDepart: true }), true);
+  assert.equal(armeVisible(ids('Arc'), ['arbalete'], { depart: true, seulementDepart: true }), false, 'les deux filtres à la fois');
+  assert.equal(armeVisible(ids('Arc / Arme Légère'), ['arme-legere'], { depart: true, seulementDepart: true }), true);
+  assert.equal(armeVisible(ids('Arme Lourde'), [], { depart: false }), true, 'sans le filtre, une arme qui n’est pas de départ reste');
+  assert.equal(lireDepart('1'), true);
+  assert.equal(lireDepart(null), false);
+  assert.equal(lireDepart('oui'), false);
 });

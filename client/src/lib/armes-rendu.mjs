@@ -129,10 +129,15 @@ export const RENDUS_DES_ARMES = {
 /** Ancre HTML d'une arme : « arme-epees-flamberge » pour « ressources/armes#arme:epees:flamberge ». */
 export const ancreDArme = (id) => `arme-${String(id).slice(String(id).indexOf('#arme:') + 6).replace(/:/g, '-')}`;
 
+/** Colonnes de la ligne d'une arme hors mode modification (Nom, Compétence, Type, Dégâts, Type de dégâts, Portée, Durabilité, Origine). */
+export const COLONNES_D_UNE_ARME = 8;
+
 /**
- * La ligne d'une arme dans le tableau de sa famille (components/armes/TableauArmes.astro, et le mode modification pour une arme créée depuis la
- * construction du site : src/scripts/edition/armes.mjs) : un seul HTML. Chaque champ porte son `data-ed` ; les colonnes tirées de l'effet sont en lecture
- * (`data-ed-lecture`) ; Description, Coût, Effet et Arme de départ ne s'affichent qu'en mode modification (`ed-seul`). `a` : la ligne de la table arme.
+ * Les lignes d'une arme dans le tableau de sa famille (components/armes/TableauArmes.astro, et le mode modification pour une arme créée depuis la
+ * construction du site : src/scripts/edition/armes.mjs) : un seul HTML, deux `<tr>`. La première porte les colonnes ; la seconde (`arme-suite`), sous
+ * elle, ses effets supplémentaires, comme l'effet d'un sort choisi sous sa ligne dans la fiche de personnage (demande du propriétaire) ; vide, elle se
+ * cache (styles/armes/armes.css). Chaque champ porte son `data-ed` ; les colonnes tirées de l'effet sont en lecture (`data-ed-lecture`) ; Description,
+ * Coût, Effet et Arme de départ ne s'affichent qu'en mode modification (`ed-seul`). `a` : la ligne de la table arme.
  */
 export function htmlDeLigneDArme(a, ctx = {}) {
   const ed = (colonne) => e(attributEd('arme', { id: a.id }, colonne));
@@ -151,11 +156,12 @@ export function htmlDeLigneDArme(a, ctx = {}) {
     + tiree('arme__types', 'arme-types-degats')
     + tiree('arme__portee', 'arme-portee')
     + tiree('arme__durabilite', 'arme-durabilite')
-    + tiree('arme__effets', 'arme-effets')
     + tiree('arme__origine', 'arme-origine')
     + `<td class="arme__description ed-seul" data-ed="${ed('description')}">${e(a.description ?? '')}</td>`
     + `<td class="arme__cout ed-seul" data-ed="${ed('cout_brut')}" data-ed-rendu="arme-cout">${rendu('arme-cout', 'cout_brut')}</td>`
     + `<td class="arme__effet ed-seul" data-ed="${ed('effet')}">${e(a.effet ?? '')}</td>`
     + `<td class="arme__depart ed-seul" data-ed="${ed('depart_possible')}" data-ed-rendu="arme-depart">${rendu('arme-depart', 'depart_possible')}</td>`
-    + '</tr>';
+    + '</tr>'
+    + `<tr class="arme-suite" data-arme-suite="${e(a.id)}"><td class="arme-suite__marge"></td>`
+    + `<td class="arme__effets" colspan="${COLONNES_D_UNE_ARME - 1}" data-ed-lecture="${ed('effet')}" data-ed-rendu="arme-effets">${rendu('arme-effets', 'effet')}</td></tr>`;
 }

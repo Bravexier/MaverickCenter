@@ -26,15 +26,18 @@ function recompter(famille) {
   compte.textContent = `${n} arme${n > 1 ? 's' : ''}`;
 }
 
-/** La ligne d'une arme que la page n'a pas, ajoutée à la fin du tableau de sa famille (rien si la famille n'est pas sur la page). */
+/**
+ * Les lignes d'une arme que la page n'a pas (la sienne et celle de ses effets : lib/armes-rendu.mjs#htmlDeLigneDArme), ajoutées à la fin du tableau de
+ * sa famille (rien si la famille n'est pas sur la page) ; rend la ligne de l'arme.
+ */
 function ajouter(ed, ligne) {
   if (ligneDe(ligne.id)) return ligneDe(ligne.id);
   const famille = document.getElementById(`famille-${ligne.famille_id}`);
   const corps = famille?.querySelector('tbody');
   if (!corps) return null;
   corps.insertAdjacentHTML('beforeend', htmlDeLigneDArme(ligne, ed.listes));
-  const tr = corps.lastElementChild;
-  tr.classList.add('ed-nouveau');
+  const tr = ligneDe(ligne.id);
+  tr?.classList.add('ed-nouveau');
   recompter(famille);
   return tr;
 }
@@ -43,6 +46,7 @@ function retirer(id) {
   const tr = ligneDe(id);
   if (!tr) return;
   const famille = tr.closest('.armes-famille');
+  if (tr.nextElementSibling?.classList.contains('arme-suite')) tr.nextElementSibling.remove();
   tr.remove();
   recompter(famille);
 }
