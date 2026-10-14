@@ -7,6 +7,8 @@
 import { CATEGORIES_D_INGREDIENTS, SECTIONS_DE_L_INVENTAIRE } from './corps-composants.mjs';
 import { TABLES_FICHES } from './fiche-format.mjs';
 
+export { pourquoiPasSupprimable } from './composants-champs.mjs';
+
 export const PAGE_DES_COMPOSANTS = 'ressources/composants';
 
 const lignes = (db, sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
@@ -32,16 +34,6 @@ export function citationsDeRessource(db, id, sauf = [], references = referencesA
   }
   return sortie;
 }
-
-/** Libellés des tables qui citent un composant, pour l'infobulle d'un composant qui ne se supprime pas. */
-const LIBELLES_DES_CITATIONS = {
-  armure: 'armures', bouclier: 'boucliers', materiau_arme: 'matériaux d’arme', materiau_armure: 'matériaux d’armure', materiau_bouclier: 'matériaux de bouclier',
-  recette_ingredient: 'recettes', recette_produit: 'recettes', accessoire_effet_gemme: 'effets d’accessoire', accessoire_monture: 'montures d’accessoire',
-  potion_etat: 'potions', kit_alchimie: 'kits d’alchimie',
-};
-/** « cité par : armures, recettes » d'après les citations (« armure (21) »). */
-export const pourquoiPasSupprimable = (citations) =>
-  citations.length ? `Cité par : ${[...new Set(citations.map((c) => LIBELLES_DES_CITATIONS[c.replace(/ \(\d+\)$/, '')] ?? c.replace(/ \(\d+\)$/, '')))].join(', ')}` : '';
 
 /** Un ingrédient qui va dans le tableau des fruits (« la table des fruits ») : son type est « Fruit ». */
 export const estUnFruit = (i) => /^fruit$/i.test(String(i?.type ?? '').trim());

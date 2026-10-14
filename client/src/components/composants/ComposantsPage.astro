@@ -35,12 +35,12 @@ const slug = (t: string) => t.normalize('NFD').replace(/\p{Diacritic}/gu, '').to
 const QUALITES = ['Commune', 'Raffinée', 'Parfaite'];
 const tableaux: Tableau[] = [
   {
-    id: 'monnaie', titre: 'Monnaie', note: 'Le Ricken de fer (RF) est l’unité : chaque monnaie vaut un nombre de RF (CONVERTISSEUR de l’onglet).',
+    id: 'monnaie', titre: 'Monnaie', note: 'Chaque monnaie vaut un nombre de RF, l’unité (CONVERTISSEUR de l’onglet « Équipement inventaire »).',
     entetes: ['Nom', 'Abréviation', 'Valeur', 'Conversion'], lignes: monnaies.map((m) => htmlDeLigneDeMonnaie(m, monnaies)),
     ajout: { entite: 'monnaie', libelle: 'une monnaie' },
   },
   {
-    id: 'materiaux', titre: 'Matériaux', note: 'Le nom d’un matériau est le même pour les armes, les armures et les boucliers : le changer ici le change partout.',
+    id: 'materiaux', titre: 'Matériaux', note: 'Un matériau porte le même nom dans les tableaux des armes, des armures et des boucliers.',
     entetes: ['Matière', 'Prix', 'Description', 'Utilisé pour'], lignes: composants.materiaux.map(htmlDeLigneDeMateriau),
     ajout: { entite: 'composant', valeurs: { tableau: 'materiau' }, libelle: 'un matériau' },
   },
@@ -50,12 +50,12 @@ const tableaux: Tableau[] = [
     lignes: composants.gemmes.map(htmlDeLigneDeGemme), ajout: { entite: 'gemme', libelle: 'une gemme' },
   },
   {
-    id: 'bois', titre: 'Bois des bâtons magiques', note: 'Un bois par magie, avec une gemme pour fabriquer un bâton magique.',
+    id: 'bois', titre: 'Bois des bâtons magiques', note: 'Un bois par magie (onglet « Bâton magique »).',
     entetes: ['Magie', 'Bois', 'Description', 'Prix'], lignes: composants.bois.map(htmlDeLigneDeBois), ajout: { entite: 'bois', libelle: 'un bois' },
   },
   {
     id: 'fruits', titre: 'Fruits', groupe: 'Ingrédients d’alchimie',
-    note: 'Les ingrédients de type « Fruit » de la liste d’ingrédients : un amplificateur majeur (« Fruit (majeur) ») ou un catalyseur.',
+    note: 'Les ingrédients de type « Fruit » de la liste d’ingrédients (doc « Alchimie »).',
     entetes: ['Fruit', 'Catégorie', 'Type', 'Affinité'], lignes: composants.fruits.map((i) => htmlDeLigneDIngredient(i, { fruit: true })),
     ajout: { entite: 'ingredient', valeurs: { categorie: 'catalyseur', type_brut: 'Fruit' }, montrer: ['categorie', 'type_brut'], libelle: 'un fruit' },
   },

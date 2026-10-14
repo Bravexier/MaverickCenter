@@ -1242,7 +1242,7 @@ export function recalculerLesPages(db, modifications) {
       dons.set(ligne.id, l);
     }
     if (l.table === 'metier') metiers.add(ligne.id);
-    if (TABLES_DE_LA_PAGE_DES_ARMES.includes(l.table) && (l.table !== 'ressource' || (l.avant && l.apres && l.avant.nom !== l.apres.nom))) armes.push(l);
+    if (TABLES_DE_LA_PAGE_DES_ARMES.includes(l.table) && (l.table !== 'ressource' || (l.avant && l.apres && l.avant.genre === 'materiau' && l.avant.nom !== l.apres.nom))) armes.push(l);
     if (TABLES_DES_COMPOSANTS.includes(l.table)) composants.push(l);
     if (l.table === 'creature_effet' && l.avant && l.apres && l.avant.libelle !== l.apres.libelle) titres.push(l);
     const anciennes = l.avant ?? l.inseree;

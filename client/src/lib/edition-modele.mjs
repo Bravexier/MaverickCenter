@@ -462,6 +462,7 @@ export const ENTITES = {
   ingredient: {
     table: 'ingredient_alchimie',
     libelle: 'ingrédient',
+    nouveau: 'Nouvel ingrédient',
     suppression: true,
     champs: {
       categorie: { type: 'choix', libelle: 'Catégorie', requis: true, choix: CATEGORIES_D_INGREDIENTS },

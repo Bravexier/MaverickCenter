@@ -14,6 +14,7 @@ import {
   pagesDuComposant, sectionDeLInventaire, SECTIONS_DE_L_INVENTAIRE,
 } from '../src/lib/corps-composants.mjs';
 import { citationsDeRessource } from '../src/lib/composants-db.mjs';
+import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
 import { suivreLeMateriauRenomme } from './edition-armes.mjs';
@@ -57,14 +58,18 @@ export function domainesDesComposants({ refus, ErreurEdition, synchroniser, prov
         if (e instanceof ErreurCorpsComposants) throw new ErreurEdition(500, `Page ${id} : corps illisible (${e.message}) ; rien n’est enregistré.`);
         throw e;
       }
-      if (corps !== page.corps_md) ctx.w.modifier('page', { id }, { corps_md: corps });
+      if (corps === page.corps_md) continue;
+      // ni HTML brut ni lien non sûr ajouté : le Markdown part tel quel dans la page construite, puis en production (lib/markdown-sur.mjs)
+      const ajoutes = fragmentsAjoutes(page.corps_md, corps);
+      if (ajoutes.length) throw refus(`${(apres ?? avant).nom ?? (apres ?? avant).ressource_id ?? ''} : ${messageDeRefus(ajoutes)}`);
+      ctx.w.modifier('page', { id }, { corps_md: corps });
     }
   }
 
   /** Un identifiant libre tiré du nom (« <page>#<sorte>:<clé> », suffixe -2… s'il est pris ou a déjà servi). */
   function idLibre(db, table, base, cle) {
     let id = `${base}:${cle}`;
-    for (let n = 2; lireLigne(db, table, table === 'ressource' ? { id } : { ressource_id: id }) || lireLigne(db, 'ressource', { id }) || idDejaEmploye(db, ['ressource', 'gemme'], id); n += 1) {
+    for (let n = 2; lireLigne(db, 'ressource', { id }) || idDejaEmploye(db, ['ressource', 'gemme'], id); n += 1) {
       id = `${base}:${cle}-${n}`;
     }
     return id;
@@ -247,6 +252,9 @@ export function domainesDesComposants({ refus, ErreurEdition, synchroniser, prov
     },
   };
 
+  /** Les monnaies dans lesquelles les prix sont écrits (RF, RO). */
+  const MONNAIES_DES_PRIX = ['rf', 'ro'];
+
   /** L'unité des monnaies : celle qui vaut 1 RF (le Ricken de fer). */
   const unite = (db) => db.prepare('SELECT * FROM monnaie WHERE valeur_rf = 1').get() ?? null;
 
@@ -261,6 +269,11 @@ export function domainesDesComposants({ refus, ErreurEdition, synchroniser, prov
 
   const MONNAIE = {
     colonnes(ctx, ligne, valeurs, avant) {
+      // les prix des composants s'écrivent en RF et en RO (« 1 000 RF / 10 RO » : lib/composants-champs.mjs#prixEnRf, 1 RO = 100 RF) : leur abréviation et
+      // leur valeur ne changent pas, sans quoi tous les prix en RF seraient faux
+      if (MONNAIES_DES_PRIX.includes(avant.id) && (('valeur_rf' in valeurs && ligne.valeur_rf !== avant.valeur_rf) || ('abreviation' in valeurs && ligne.abreviation !== avant.abreviation))) {
+        throw refus(`${avant.nom} : son abréviation et sa valeur sont celles de tous les prix écrits (« 100 RF / 1 RO ») ; elles ne se modifient pas.`);
+      }
       // l'unité vaut 1 RF par définition (« Le RF est l'unité du CONVERTISSEUR ») ; aucune autre monnaie ne vaut 1
       if ('valeur_rf' in valeurs && (avant.valeur_rf === 1) !== (ligne.valeur_rf === 1)) {
         throw refus(avant.valeur_rf === 1 ? `${avant.nom} : l’unité des monnaies vaut 1 RF.` : `${avant.nom} : seule l’unité des monnaies vaut 1 RF.`);

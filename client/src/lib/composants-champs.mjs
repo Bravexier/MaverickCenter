@@ -1,5 +1,5 @@
 // Composants (page /ressources/composants/, demande du propriétaire, 2026-10-14) : ce que la base tire des cellules qu'on modifie sur le site de dev,
-// avec les règles de l'importeur, rejouées sur toute la base par test/composants-champs.test.mjs (un changement ici doit redonner la base, sinon migration).
+// avec les règles de l'importeur, rejouées sur toute la base par test/corps-composants.test.mjs (un changement ici doit redonner la base, sinon migration).
 //   - le prix d'une ressource ou d'une gemme en RF (« 1 000 RF / 10 RO » → 1000 ; « 0,6 Ro » → 60 ; deux écritures qui ne disent pas la même valeur →
 //     null, comme « 800 RF / 80 RO » de l'Os) ;
 //   - la ligne du CONVERTISSEUR d'une monnaie (« 1 PP : 100 000 RF ») d'après sa valeur en RF.
@@ -50,3 +50,13 @@ export const PRIX_DE_GEMME = ['prix_commune', 'prix_raffinee', 'prix_parfaite', 
 
 /** Les colonnes `_rf` d'une gemme, tirées de ses écritures `_brut`. */
 export const prixDeGemmeEnRf = (ligne) => Object.fromEntries(PRIX_DE_GEMME.map((p) => [`${p}_rf`, prixEnRf(ligne[`${p}_brut`])]));
+
+/** Libellés des tables qui citent un composant, pour l'infobulle d'un composant qui ne se supprime pas. */
+const LIBELLES_DES_CITATIONS = {
+  armure: 'armures', bouclier: 'boucliers', materiau_arme: 'matériaux d’arme', materiau_armure: 'matériaux d’armure', materiau_bouclier: 'matériaux de bouclier',
+  recette_ingredient: 'recettes', recette_produit: 'recettes', accessoire_effet_gemme: 'effets d’accessoire', accessoire_monture: 'montures d’accessoire',
+  potion_etat: 'potions', kit_alchimie: 'kits d’alchimie',
+};
+/** « cité par : armures, recettes » d'après les citations (« armure (21) »). */
+export const pourquoiPasSupprimable = (citations) =>
+  citations.length ? `Cité par : ${[...new Set(citations.map((c) => LIBELLES_DES_CITATIONS[c.replace(/ \(\d+\)$/, '')] ?? c.replace(/ \(\d+\)$/, '')))].join(', ')}` : '';

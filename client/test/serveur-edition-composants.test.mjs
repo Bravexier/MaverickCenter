@@ -15,7 +15,8 @@ import { prixEnRf } from '../src/lib/composants-champs.mjs';
 import {
   PAGE_DE_L_INVENTAIRE, PAGE_DES_ACCESSOIRES, PAGE_DES_ARMURES, PAGE_DES_BATONS, PAGE_DES_BOUCLIERS, PAGE_DES_INGREDIENTS,
 } from '../src/lib/corps-composants.mjs';
-import { ficheVide } from '../src/lib/fiche-format.mjs';
+import { OBJETS_AU_CATALOGUE, retirerLesManquants } from '../serveur/fiches-retraits.mjs';
+import { ficheVide, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
 
@@ -171,6 +172,35 @@ test('gemme et bois créés pour une magie qui n’en a pas, ingrédient créé 
   ]));
   assert.ok(!corps(PAGE_DES_INGREDIENTS).includes(nomI));
   for (const id of [idG, idI]) assert.equal(ligne('SELECT 1 FROM ressource WHERE id = ?', id), undefined);
+});
+
+test('ni HTML brut ni lien non sûr dans les pages qui écrivent un composant ; le RF et le RO gardent leur abréviation et leur valeur', () => {
+  const objet = ligne("SELECT id FROM ressource WHERE page_id = ? AND section = 'MATOS AVENTURES' ORDER BY id LIMIT 1", PAGE_DE_L_INVENTAIRE);
+  const r = enregistrer([{ op: 'modifier', table: 'ressource', cle: objet, valeurs: { description: '<img src=x onerror=alert(1)>' } }]);
+  assert.equal(r.statut, 400, JSON.stringify(r.corps));
+  assert.ok(!corps(PAGE_DE_L_INVENTAIRE).includes('onerror'));
+  for (const [id, valeurs] of [['ro', { valeur_rf: 1000 }], ['ro', { abreviation: 'RX' }], ['rf', { abreviation: 'RFX' }]]) {
+    assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs }]).statut, 400, `${id} ${JSON.stringify(valeurs)}`);
+  }
+  ok(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id: 'ro' }, valeurs: { nom: 'Ricken d’or' } }]));
+});
+
+test('OBJETS_AU_CATALOGUE : exactement les tables des fiches qui citent une ressource ; à la reconstruction, l’objet d’une ressource disparue reste sous son nom', () => {
+  const citent = TABLES_FICHES.filter((t) => db.prepare(`PRAGMA foreign_key_list("${t}")`).all().some((f) => f.table === 'ressource')).sort();
+  assert.deepEqual(citent, [...OBJETS_AU_CATALOGUE].sort());
+  const base = vivante();
+  const r = base.prepare("SELECT id, nom FROM ressource WHERE page_id = ? AND section = 'AUTRES' ORDER BY id LIMIT 1").get(PAGE_DE_L_INVENTAIRE);
+  const cree = traiter({ methode: 'POST', chemin: '/api/personnages/', entetes: { 'content-type': 'application/json' },
+    corps: JSON.stringify({ ...ficheVide(`Témoin ${process.pid}`), inventaire: [{ rang: 1, nom: r.nom, quantite: 1, ressource_id: r.id }] }) }, { base: () => base, etat: () => ({}), edition: true });
+  assert.equal(cree.statut, 201, JSON.stringify(cree.corps));
+  const fiche = cree.corps.personnage.id;
+  base.exec('PRAGMA foreign_keys = OFF');
+  base.prepare('DELETE FROM ressource WHERE id = ?').run(r.id); // les nouvelles règles ne l'ont plus
+  base.prepare('ATTACH DATABASE ? AS ancienne').run(cheminBase({ sansExemples: false }));
+  retirerLesManquants(base);
+  base.exec('DETACH DATABASE ancienne');
+  assert.deepEqual({ ...base.prepare('SELECT nom, ressource_id FROM personnage_inventaire WHERE personnage_id = ?').get(fiche) }, { nom: r.nom, ressource_id: null });
+  base.close();
 });
 
 test('prixEnRf : l’écriture des prix des composants', () => {

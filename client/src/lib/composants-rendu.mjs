@@ -3,8 +3,7 @@
 // réaffiche depuis sa ligne de la base). Chaque champ modifiable porte son `data-ed` ; une ligne porte l'entité qui la crée ou la supprime (`data-entite`,
 // `data-cle`) et, si d'autres règles la citent, pourquoi elle ne se supprime pas (`data-citee`).
 // Fonctions pures, chaîne HTML en sortie, tout texte échappé.
-import { conversionsDe, milliers, prixEnRf } from './composants-champs.mjs';
-import { pourquoiPasSupprimable } from './composants-db.mjs';
+import { conversionsDe, milliers, pourquoiPasSupprimable, prixEnRf } from './composants-champs.mjs';
 import { CATEGORIES_D_INGREDIENTS } from './corps-composants.mjs';
 import { attributEd } from './edition-modele.mjs';
 import { couleurDeMateriau } from './materiaux-couleurs.mjs';
