@@ -241,9 +241,9 @@ réappliqué) ; `/api/etat/` compte les modifications `en_attente` et `conflit`,
 instant du lot, puis son identifiant, puis le rang) est le même pour le service, `db:appliquer-edition` et la mise à jour des règles ; l'instant
 est à la seconde, l'identifiant d'un lot commence par l'instant à la milliseconde et un compteur (`nouveauLot`) : deux lots de la même seconde
 se rejouent dans l'ordre où ils ont été enregistrés. Une colonne qui vaut déjà ce qu'une modification plus récente de la même ligne y écrit est
-« déjà là » (deux lots sur la même colonne, une ligne créée puis modifiée) ; une colonne qui n'est « déjà là » que parce qu'une modification plus récente
-lui remet sa valeur d'avant (A → B → A) est réécrite avec les autres colonnes de sa modification (une contrainte de la ligne peut les lier : l'époque et
-l'année d'un événement de la chronologie). Une ligne créée puis supprimée par le journal n'a rien à rejouer, et une ligne qui la citait entre-temps (un
+« déjà là » (deux lots sur la même colonne, une ligne créée puis modifiée) — sauf si elle vaut encore ce que la modification avait trouvé (`avant`) :
+elle n'est alors pas faite et se fait (A → B → A : un lot suivant peut compter sur B, un nom de catégorie ou de mot-clé libéré, une date intermédiaire ;
+les lots déjà livrés, eux, ne sont jamais rejoués). Une ligne créée puis supprimée par le journal n'a rien à rejouer, et une ligne qui la citait entre-temps (un
 bloc de la chronologie lié à une page créée puis supprimée) ne met pas son lot en conflit : la référence vers cette ligne « fantôme » n'est pas rompue
 (`referenceRompue`, `serveur/edition-journal.mjs`). Supprimer un mot-clé (`mot_cle`) rejoue aussi les `ON DELETE CASCADE` de `page_tag`, que la
 mise à jour des règles a donc le droit d'écrire. Un lot noté avant la migration 0042 (page_tag avec sa colonne `libelle`, un mot-clé que le vocabulaire

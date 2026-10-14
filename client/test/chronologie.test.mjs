@@ -283,6 +283,8 @@ test('gestion des catégories : suppressions, puis chaque renommage quand son no
   assert.throws(() => operationsDesCategories([ligne('a', 'A', 'X'), ligne(null, null, 'x')]), /de la même façon/);
   assert.throws(() => operationsDesCategories([ligne(null, null, ' !! ')]), /lettre ou un chiffre/);
   assert.throws(() => operationsDesCategories([ligne(null, null, 'Sans catégorie')]), /aucune catégorie/);
+  assert.throws(() => operationsDesCategories([ligne(null, null, 'Sans catégorie (à trier)')]), /aucune catégorie/, 'ni le libellé réservé');
+  assert.deepEqual(ops([ligne(null, null, 'Sanscatégorie')]), ['+Sanscatégorie'], 'une autre écriture reste permise');
   // une catégorie supprimée ne tient plus son nom
   assert.deepEqual(ops([ligne('a', 'A', 'B'), ligne('b', 'B', 'B', true)]), ['-b', 'a→B']);
 });

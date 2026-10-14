@@ -361,6 +361,24 @@ async function gererLesCategories(ed) {
     } catch (err) {
       erreur.textContent = err.message;
       erreur.hidden = false;
+      if (err.statut !== 409 && err.statut !== 404) return;
+      // une catégorie changée ou supprimée ailleurs entre-temps : la liste relue, les noms saisis gardés, pour un nouvel essai
+      try {
+        const fraiches = (await ed.appel('GET', 'edition/chronologie/')).categories ?? [];
+        for (const l of [...lignes]) {
+          if (!l.categorie) continue;
+          const c = fraiches.find((x) => x.id === l.categorie.id);
+          if (c) l.categorie = c;
+          else {
+            l.li.remove();
+            lignes.splice(lignes.indexOf(l), 1);
+          }
+        }
+        for (const c of fraiches) if (!lignes.some((l) => l.categorie?.id === c.id)) ligneDe(c, c.libelle);
+        erreur.textContent += ' La liste a été relue : vérifiez-la, puis enregistrez de nouveau.';
+      } catch {
+        // la liste reste telle quelle ; le message dit le refus
+      }
     }
   });
   document.body.append(dialogue);
@@ -389,7 +407,10 @@ async function categoriesChangees(ed, supprimees) {
 
 /** Les cases des catégories de l'événement affiché (mode modification), cochées selon `cochees` ; remplace celles d'avant. */
 function poserLesCases(ed, cochees) {
-  const champ = ed.champ({ nom: 'categories', libelle: 'Catégories', type: 'categories', choix: categoriesVivantes(ed), valeur: cochees });
+  // les catégories connues, plus celles que porte l'événement (créées ailleurs depuis la dernière lecture : sans leur case, l'enregistrement les retirerait)
+  const choix = [...categoriesVivantes(ed)];
+  for (const c of etat.donnees?.categories ?? []) if (!choix.some((x) => x.id === c.id)) choix.push(c);
+  const champ = ed.champ({ nom: 'categories', libelle: 'Catégories', type: 'categories', choix, valeur: cochees });
   etat.categories.zone.querySelector('.ed-categories')?.remove();
   etat.categories.zone.append(champ.element);
   etat.categories.lire = champ.lire;

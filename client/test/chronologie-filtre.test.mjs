@@ -204,6 +204,19 @@ test('la frise refaite par le site de dev sans la catégorie choisie (supprimée
   assert.deepEqual(chevron(nav, 'suivant'), { href: '/chronologie/c/', titre: 'An c : C', clavier: true });
 });
 
+test('?filtre= vers une catégorie créée depuis la construction : appliqué dès que la frise refaite par le site de dev la propose', () => {
+  const nav = page('b', 'https://site.test/chronologie/b/?filtre=nouvelle');
+  assert.deepEqual(visibles(nav), ['a', 'b', 'c', 'd', 'e'], 'inconnue au chargement : tout');
+  // l'extension ajoute la catégorie au choix et à la ligne d (src/scripts/edition/chronologie.mjs#refaireLaFrise)
+  const choix = nav.document.querySelector('[data-frise-choix]');
+  const option = choix.querySelector('option');
+  choix.append(new option.constructor('option', { value: 'nouvelle' }, []));
+  nav.document.querySelector('#evenement-d').setAttribute('data-categories', 'nouvelle');
+  nav.document.dispatchEvent({ type: 'chronologie:frise-changee' });
+  assert.equal(choix.value, 'nouvelle');
+  assert.deepEqual(visibles(nav), ['b', 'd'], 'd, et b (la page affichée)');
+});
+
 test('/chronologie/ (aucun événement affiché) : « Suivant » et « Commencer » mènent au premier événement visible de la catégorie', () => {
   const nav = page(null, 'https://site.test/chronologie/?filtre=paix');
   assert.deepEqual(chevron(nav, 'precedent'), { grise: 'true', clavier: false });

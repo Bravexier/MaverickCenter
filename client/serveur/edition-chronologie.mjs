@@ -8,7 +8,7 @@
 // opérations du lot : `categories` (les catégories d'un événement) et `fusionner_mots_cles`.
 // Rien n'est déduit : un événement n'a que ce qu'on saisit ; l'ordre de lecture suit la date (lib/chronologie.mjs#ordonner), un événement créé vient après
 // ceux de sa date. Les outils communs du service (refus, motCleDe…) sont donnés par serveur/edition.mjs (domainesDeLaChronologie), sans import en retour.
-import { dateDansLeTexte, erreurDeDate, libelleDeDate, ordonner, SANS_CATEGORIE } from '../src/lib/chronologie.mjs';
+import { dateDansLeTexte, ecritureReservee, erreurDeDate, libelleDeDate, ordonner } from '../src/lib/chronologie.mjs';
 import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
 import { raisonDeProtection } from '../src/lib/mots-cles.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -223,7 +223,7 @@ export function domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDe
   function cleDeCategorie(db, libelle, sauf = null) {
     const cle = normalize(libelle);
     if (!cle) throw refus(`Catégorie « ${libelle} » : elle doit contenir au moins une lettre ou un chiffre.`);
-    if (cle === SANS_CATEGORIE) throw refus(`« ${libelle} » : c’est le choix du filtre pour les événements qui n’ont aucune catégorie.`);
+    if (ecritureReservee(cle)) throw refus(`« ${libelle} » : c’est le choix du filtre pour les événements qui n’ont aucune catégorie.`);
     const autre = db.prepare('SELECT * FROM categorie_chronologie WHERE libelle_cle = ? AND id IS NOT ?').get(cle, sauf);
     if (autre) throw new ErreurEdition(409, `La catégorie « ${autre.libelle} » existe déjà.`);
     return cle;

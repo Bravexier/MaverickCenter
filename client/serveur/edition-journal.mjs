@@ -270,8 +270,13 @@ function rejouerUne(db, m, derivee, suivantes = []) {
   structure(db, m.table_nom); // table disparue : erreur
   const sansDerivees = (valeurs) => Object.fromEntries(Object.entries(valeurs).filter(([c]) => !derivee(m.table_nom, cle, c)));
   const ligne = lireLigne(db, m.table_nom, cle);
-  /** La colonne vaut déjà `valeur`, ou ce qu'une modification plus récente de la ligne y écrit. */
-  const deja = (c, valeur) => egal(ligne[c], valeur) || suivantes.some((s) => s.apres && c in s.apres && egal(ligne[c], s.apres[c]));
+  /**
+   * La colonne vaut déjà `valeur`, ou ce qu'une modification plus récente de la ligne y écrit — sauf si elle vaut encore ce que cette modification a
+   * trouvé (`avant`) : elle n'est alors pas faite, et se fait (A → B → A : un lot suivant peut compter sur B, un nom libéré, une date intermédiaire). Les
+   * lots déjà livrés ne sont jamais rejoués (historique_modification : base-vivante.mjs, mise-a-jour-regles.mjs, db-appliquer-edition.mjs).
+   */
+  const encoreAvant = (c) => Boolean(avant && c in avant && egal(ligne[c], avant[c]));
+  const deja = (c, valeur) => egal(ligne[c], valeur) || (!encoreAvant(c) && suivantes.some((s) => s.apres && c in s.apres && egal(ligne[c], s.apres[c])));
   const supprimeePlusTard = suivantes.some((s) => s.operation === 'supprimer');
   if (m.operation === 'inserer') {
     if (!ligne) {
@@ -300,10 +305,7 @@ function rejouerUne(db, m, derivee, suivantes = []) {
   if (!aEcrire.length) return 'integree';
   const changees = aEcrire.filter((c) => !egal(ligne[c], avant[c]));
   if (changees.length) return `les règles ont changé ${changees.join(', ')} autrement`;
-  // une colonne « déjà là » seulement parce qu'une modification plus récente y remet sa valeur d'avant (A → B → A) est réécrite avec les autres : une
-  // contrainte de la ligne peut les lier (la date d'un événement : époque et année), et la modification plus récente la remettra
-  const avec = Object.keys(voulues).filter((c) => !aEcrire.includes(c) && !egal(ligne[c], voulues[c]) && egal(ligne[c], avant[c]));
-  modifierBrut(db, m.table_nom, cle, sous(voulues, [...aEcrire, ...avec]));
+  modifierBrut(db, m.table_nom, cle, sous(voulues, aEcrire));
   return 'applique';
 }
 

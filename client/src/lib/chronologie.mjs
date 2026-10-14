@@ -27,6 +27,8 @@ export const PORTEES = { majeur: 'Impact majeur', mineur: 'Impact mineur' };
  */
 export const SANS_CATEGORIE = 'sans-categorie';
 export const LIBELLE_SANS_CATEGORIE = 'Sans catégorie (à trier)';
+/** Une écriture (normalize) réservée au choix « Sans catégorie » : la sienne, ou une qui commence comme elle (« Sans catégorie (à trier) »). */
+export const ecritureReservee = (cle) => cle === SANS_CATEGORIE || cle.startsWith(`${SANS_CATEGORIE}-`);
 
 /**
  * Le lot de la gestion des catégories (bouton « Catégories » du mode modification) d'après ses lignes : [{ id (null : à créer), libelle (actuel ; null :
@@ -41,7 +43,7 @@ export function operationsDesCategories(lignes) {
   const vus = new Map();
   for (const l of restantes) {
     const cle = normalize(l.nom);
-    if (cle === SANS_CATEGORIE) throw new Error(`« ${l.nom.trim()} » : c’est le choix du filtre pour les événements qui n’ont aucune catégorie.`);
+    if (ecritureReservee(cle)) throw new Error(`« ${l.nom.trim()} » : c’est le choix du filtre pour les événements qui n’ont aucune catégorie.`);
     if (vus.has(cle)) throw new Error(`« ${l.nom.trim()} » et « ${vus.get(cle)} » s’écrivent de la même façon.`);
     vus.set(cle, l.nom.trim());
   }

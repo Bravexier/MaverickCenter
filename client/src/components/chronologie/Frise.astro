@@ -194,6 +194,8 @@ const ed = (e: any, colonne: string) => attributEd('evenement', { id: e.id }, co
     // la frise refaite par le site de dev : son choix a pu perdre la catégorie choisie (supprimée, ou plus portée par aucun événement) ; il est alors
     // revenu à « Toutes », que la frise et l'adresse suivent
     document.addEventListener('chronologie:frise-changee', function () {
+      // une catégorie créée depuis la construction, que l'adresse demandait : la frise refaite la propose, elle s'applique
+      if (choix && !filtre && demande && Array.prototype.some.call(choix.options, function (o) { return o.value === demande; })) choix.value = demande;
       if (choix && choix.value !== filtre) {
         filtre = choix.value;
         history.replaceState(history.state, '', avecFiltre(location.href, filtre));

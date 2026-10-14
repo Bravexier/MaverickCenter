@@ -206,6 +206,7 @@ test('catégories : créer, renommer (l’id reste), refus d’une écriture pri
   assert.deepEqual({ ...ligne('SELECT libelle, libelle_cle FROM categorie_chronologie WHERE id = ?', id) }, { libelle: nom, libelle_cle: normalize(nom) });
   assert.equal(enregistrer([{ op: 'creer', entite: 'categorie_chronologie', valeurs: { libelle: nom.toUpperCase() } }]).statut, 409, 'même écriture');
   assert.equal(enregistrer([{ op: 'creer', entite: 'categorie_chronologie', valeurs: { libelle: 'Sans catégorie' } }]).statut, 400, `« ${SANS_CATEGORIE} » est le choix du filtre`);
+  assert.equal(enregistrer([{ op: 'creer', entite: 'categorie_chronologie', valeurs: { libelle: 'Sans catégorie (à trier)' } }]).statut, 400, 'ni son libellé');
   assert.equal(enregistrer([{ op: 'creer', entite: 'categorie_chronologie', valeurs: { libelle: '!!' } }]).statut, 400, 'sans lettre');
   // deux événements la portent
   const e1 = enregistrer([{ op: 'creer', entite: 'evenement', valeurs: { epoque: 'inconnue', titre: titreLibre('Porteur 1'), description: 'Texte.', categories: [id] } }]).corps.crees[0].id;
@@ -362,6 +363,42 @@ test('rejeu du journal (livraison) : la chronologie et le vocabulaire reviennent
   }
   assert.deepEqual(neuve.prepare('PRAGMA foreign_key_check').all(), []);
   neuve.close();
+});
+
+test('rejeu : des renommages qui réemploient un nom libéré (Guerre → Guerres, Conflit → Guerre, puis retour) reviennent sans conflit, dans l’ordre', () => {
+  const base = vivante();
+  const service2 = { base: () => base, etat: () => ({}), edition: true };
+  const lot = (operations) => {
+    const r = traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' }, corps: JSON.stringify({ page: 'chronologie/', operations }) }, service2);
+    assert.equal(r.statut, 200, JSON.stringify(r.corps));
+    return r.corps;
+  };
+  const nom = (b) => {
+    let t = b;
+    for (let i = 2; base.prepare('SELECT 1 FROM categorie_chronologie WHERE libelle_cle = ?').get(normalize(t)); i += 1) t = `${b} ${i}`;
+    return t;
+  };
+  const [g, gs, c, b] = [nom('Essai guerre'), nom('Essai guerres'), nom('Essai conflit'), nom('Essai batailles')];
+  const guerre = lot([{ op: 'creer', entite: 'categorie_chronologie', valeurs: { libelle: g } }]).crees[0].id;
+  const conflit = lot([{ op: 'creer', entite: 'categorie_chronologie', valeurs: { libelle: c } }]).crees[0].id;
+  const renommer = (id, avant, apres) => lot([{ op: 'modifier', table: 'categorie_chronologie', cle: { id }, valeurs: { libelle: apres }, avant: { libelle: avant } }]);
+  renommer(guerre, g, gs);
+  renommer(conflit, c, g);
+  renommer(conflit, g, b);
+  renommer(guerre, gs, g);
+  const attendu = base.prepare('SELECT id, libelle FROM categorie_chronologie WHERE id IN (?, ?) ORDER BY id').all(guerre, conflit).map((l) => ({ ...l }));
+  assert.deepEqual(attendu.map((l) => l.libelle).sort(), [b, g].sort());
+  // la base vivante refaite (livraison), le journal rejoué
+  const neuve = vivante();
+  neuve.exec('PRAGMA foreign_keys = OFF');
+  neuve.exec('BEGIN');
+  chargerJournal(neuve, journalExporte(base));
+  const bilan = rejouerLeJournal(neuve, {});
+  neuve.exec('COMMIT');
+  assert.equal(bilan.conflits, 0, JSON.stringify(neuve.prepare("SELECT table_nom, cle, detail FROM modification WHERE etat = 'conflit'").all()));
+  assert.deepEqual(neuve.prepare('SELECT id, libelle FROM categorie_chronologie WHERE id IN (?, ?) ORDER BY id').all(guerre, conflit).map((l) => ({ ...l })), attendu);
+  neuve.close();
+  base.close();
 });
 
 test('lots notés avant la migration 0042 (page_tag avec `libelle`, mot-clé neuf) : rejoués sans conflit, le mot-clé retrouvé ou créé ; un lot en conflit ne le laisse pas', () => {
