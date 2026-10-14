@@ -29,9 +29,3 @@ export const cleDeMateriau = (ressourceId) => String(ressourceId).slice(String(r
 
 /** { fond, texte } d'un matériau, d'après son identifiant dans la base. */
 export const couleurDeMateriau = (ressourceId) => COULEURS_DES_MATERIAUX[cleDeMateriau(ressourceId)] ?? COULEUR_DE_MATERIAU_NEUTRE;
-
-/** Variables CSS d'une case teintée d'un matériau : `--mat` (fond) et `--mat-texte`. */
-export const styleDeMateriau = (ressourceId) => {
-  const c = couleurDeMateriau(ressourceId);
-  return `--mat: ${c.fond}; --mat-texte: ${c.texte}`;
-};
