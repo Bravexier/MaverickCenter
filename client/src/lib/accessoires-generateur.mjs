@@ -36,10 +36,10 @@ export const lancer = (faces, alea = Math.random) => 1 + Math.min(faces - 1, Mat
 export const dansLaPlage = (plages, jet) => plages.find((p) => Number(p.min) <= jet && jet <= Number(p.max)) ?? null;
 
 /**
- * Paramètres de l'adresse de la page : ?emplacement=<id>&propriete=<id>&effet=<fin de l'id de l'effet>&acquis=<jet>&monture=<niveau>&maudit=1.
+ * Paramètres de l'adresse de la page : ?emplacement=<id>&propriete=<id>&effet=<fin de l'id de l'effet>&acquis=<jet>&monture=<niveau>&gemmes=<clé>,<clé>&maudit=1.
  * `lireEtat` ne garde que des chaînes non vides ; `ecrireEtat` les remet dans le même ordre (les vides sont retirés).
  */
-export const PARAMETRES = ['emplacement', 'propriete', 'effet', 'acquis', 'monture', 'maudit'];
+export const PARAMETRES = ['emplacement', 'propriete', 'effet', 'acquis', 'monture', 'gemmes', 'maudit'];
 
 export function lireEtat(recherche) {
   const p = new URLSearchParams(recherche);
@@ -56,3 +56,35 @@ export function ecrireEtat(recherche, etat) {
 
 /** Partie d'un identifiant d'effet après « #effet: » (« attaque:5 », « competence:force:2 ») : ce qui va dans l'adresse et dans `data-effet`. */
 export const cleDEffet = (id) => String(id).slice(String(id).indexOf('#effet:') + 7);
+
+/**
+ * Gemmes au choix (demande du propriétaire, 2026-10-14 : « Dans le cas où les gemmes sont au choix, laisser la possibilité d'en cocher 2 ») : un effet écrit
+ * ses gemmes en rangs (« A + B ») dont certains laissent le choix (« Turquoise ou + Perle ou + Diamant rose ou + Onyx », « Onyx + Grenat/Malachite »).
+ * Un rang à une seule gemme est imposé ; les autres sont au choix, deux gemmes en tout (`GEMMES_PAR_ACCESSOIRE`) : « Onyx + Grenat/Malachite » laisse
+ * en cocher une, les quatre gemmes de l'Intelligence en laissent cocher deux. `rangs` : listes de clés de gemme (« onix »).
+ * { imposees: [clé], auChoix: [clé], max } ; `max` = 0 quand rien n'est au choix.
+ */
+export const GEMMES_PAR_ACCESSOIRE = 2;
+
+export function gemmesAuChoix(rangs) {
+  const imposees = rangs.filter((r) => r.length === 1).map((r) => r[0]);
+  const auChoix = [...new Set(rangs.filter((r) => r.length > 1).flat())].filter((g) => !imposees.includes(g));
+  return { imposees, auChoix, max: auChoix.length ? Math.max(0, GEMMES_PAR_ACCESSOIRE - imposees.length) : 0 };
+}
+
+/** Les gemmes cochées qui valent pour ces rangs : parmi celles au choix, sans doublon, `max` au plus (les premières cochées). */
+export function gemmesCochees(rangs, cochees) {
+  const { auChoix, max } = gemmesAuChoix(rangs);
+  return [...new Set(cochees)].filter((g) => auChoix.includes(g)).slice(0, max);
+}
+
+/**
+ * Prix d'un accessoire aux gemmes au choix (demande du propriétaire : cocher les gemmes « mettra alors le prix à jour »), sur la composition que suivent
+ * les prix écrits du tableau (test/accessoires-db.test.mjs le vérifie sur chaque effet à gemmes imposées) : le quart de chaque gemme, à la qualité du
+ * niveau de l'effet, plus la monture. `quartsRf` : le prix d'un quart de chaque gemme retenue, en RF (1 RO = 100 RF) ; `montureRo` : en RO.
+ * Rend le prix en RO, ou null s'il manque une valeur.
+ */
+export function prixDeLAccessoire(quartsRf, montureRo) {
+  if (!quartsRf.length || quartsRf.some((q) => !Number.isFinite(q)) || !Number.isFinite(montureRo)) return null;
+  return quartsRf.reduce((s, q) => s + q, 0) / 100 + montureRo;
+}

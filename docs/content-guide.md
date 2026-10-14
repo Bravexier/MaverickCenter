@@ -295,9 +295,10 @@ seules les règles (avant « ## CRÉATION D'ACCESSOIRE ») et les consignes écr
 « Ne peut dépasser 4 »…) s'affichent ; le reste (tableaux) ne sert qu'à la recherche et aux `[[liens]]`. La page n'est pas modifiable sur le site de dev.
 
 - **Tableaux** : Étape 1 Identité (`accessoire_emplacement`), Étape 2 Propriété (`accessoire_propriete`, plages du 1d100), Étape 3 Effet — un tableau
-  repliable par propriété (`accessoire_effet`), la Compétence en grille (une ligne par caractéristique, une colonne par niveau : « 1 % à 5 % »…),
+  repliable par propriété (`accessoire_effet`), la Compétence en une ligne par compétence et par niveau (« plusieurs lignes pour chaque niveau et pas des cases », demande du propriétaire : bonus d'acquis « 1 % à 5 % »…, niveau, gemmes, prix),
   la Malédiction sans tableau —, puis la Monture (`accessoire_monture`). Le dé de chaque table est son plus grand jet écrit (1d4, 1d100, 1d6, 1d20).
-- **Dé** (« dans chaque tableau une case avec un icône de dé ») : l'en-tête de la première colonne ; un clic tire une ligne au hasard et affiche le jet ;
+- **Dé** (« dans chaque tableau une case avec un icône de dé ») : l'en-tête de la première colonne des tableaux des étapes, pas la Monture (« Pas de
+  random à faire sur la table des Montures ») ; un clic tire une ligne au hasard et affiche le jet ;
   la Compétence tire 1d6 (la ligne) puis 1d20 (le bonus d'acquis, donc la colonne), le bonus tiré est écrit dans l'encart. « Tirer un accessoire » suit
   les étapes 1 à 3 ; une malédiction (propriété 96-100 ou ligne MALÉDICTION d'un tableau d'effets) rend l'accessoire maudit et fait relancer depuis
   l'étape 1 (« on relance les dés au début des étapes et l'effet sera le contraire de ce qui est indiqué »). Rien n'est inversé ni calculé : l'encart le dit.
@@ -305,8 +306,12 @@ seules les règles (avant « ## CRÉATION D'ACCESSOIRE ») et les consignes écr
   classique aux niveaux 1 et 2, raffinée aux 3 et 4, parfaite au 5) et le prix d'un quart de chacune, monture, prix écrit dans le tableau, case « Maudit ».
   Choisir un effet choisit d'office la monture de son niveau tant qu'on n'en a pas choisi une (le prix écrit d'un effet compte les quarts de gemme de la
   qualité de son niveau et la monture de ce niveau : vrai pour 115 des 116 effets à prix ; « Grenat + Onyx » au niveau 4, 179 Ro, fait exception).
-  Recliquer une ligne choisie la retire. État dans l'adresse (`?emplacement=…&propriete=…&effet=…&acquis=…&monture=…&maudit=1`).
-- **Couleurs** : les lignes d'effet, les cases des compétences, les montures et l'encart dans la couleur de leur niveau, celle des cases « Niveau 1 » à
+  **Gemmes au choix** (« Dans le cas où les gemmes sont au choix, laisser la possibilité d'en cocher 2 », « Cela mettra alors le prix à jour ») : une
+  case par gemme au choix, deux gemmes en tout — les quatre de l'Intelligence en laissent cocher deux, « Onyx + Grenat/Malachite » une
+  (`gemmesAuChoix`, `gemmesCochees`) ; les gemmes cochées et la monture choisies, le prix se calcule (`prixDeLAccessoire` : les quarts à la qualité du
+  niveau + la monture, la composition des prix écrits, que `test/accessoires-db.test.mjs` vérifie sur chaque effet à gemmes imposées).
+  Recliquer une ligne choisie la retire. État dans l'adresse (`?emplacement=…&propriete=…&effet=…&acquis=…&monture=…&gemmes=…&maudit=1`).
+- **Couleurs** : les lignes d'effet, les montures et l'encart dans la couleur de leur niveau, celle des cases « Niveau 1 » à
   « Niveau 5 » du tableau Monture de l'onglet (`lib/accessoires-generateur.mjs#COULEURS_DES_NIVEAUX`) ; une gemme dans la couleur de sa magie
   (`couleurDeMagie`). **Pas de tableau des gemmes** : une infobulle par gemme (magie, description, prix d'un quart classique, raffiné, parfait).
 - Sans JavaScript : tous les tableaux, ouverts, sans encart ni dé. `test/accessoires-generateur.test.mjs`, `accessoires-db.test.mjs` (tables complètes :

@@ -3,7 +3,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  cleDEffet, COULEURS_DES_NIVEAUX, dansLaPlage, ecrireEtat, facesDuDe, lancer, lireEtat, qualiteDeGemme, QUALITES_DE_GEMME, styleDeNiveau,
+  cleDEffet, COULEURS_DES_NIVEAUX, dansLaPlage, ecrireEtat, facesDuDe, gemmesAuChoix, gemmesCochees, lancer, lireEtat, prixDeLAccessoire, qualiteDeGemme,
+  QUALITES_DE_GEMME, styleDeNiveau,
 } from '../src/lib/accessoires-generateur.mjs';
 
 test('une couleur par niveau 1 à 5, celles du tableau « Monture » de l’onglet', () => {
@@ -50,4 +51,23 @@ test('état dans l’adresse : aller-retour, vides retirés, autres paramètres 
 test('clé d’un effet : la partie après « #effet: »', () => {
   assert.equal(cleDEffet('ressources/accessoires#effet:competence:force:2'), 'competence:force:2');
   assert.equal(cleDEffet('ressources/accessoires#effet:attaque:5'), 'attaque:5');
+});
+
+test('gemmes au choix : deux en tout, les rangs à une gemme imposés (« laisser la possibilité d’en cocher 2 »)', () => {
+  assert.deepEqual(gemmesAuChoix([['ambre'], ['grenat']]), { imposees: ['ambre', 'grenat'], auChoix: [], max: 0 });
+  assert.deepEqual(gemmesAuChoix([['turquoise', 'perle', 'diamant-rose', 'onix']]), { imposees: [], auChoix: ['turquoise', 'perle', 'diamant-rose', 'onix'], max: 2 });
+  assert.deepEqual(gemmesAuChoix([['onix'], ['grenat', 'malachite']]), { imposees: ['onix'], auChoix: ['grenat', 'malachite'], max: 1 });
+  assert.deepEqual(gemmesCochees([['turquoise', 'perle', 'diamant-rose', 'onix']], ['perle', 'chocolat', 'perle', 'onix', 'turquoise']), ['perle', 'onix']);
+  assert.deepEqual(gemmesCochees([['onix'], ['grenat', 'malachite']], ['onix', 'malachite', 'grenat']), ['malachite']);
+  assert.deepEqual(gemmesCochees([['ambre'], ['grenat']], ['ambre']), []);
+  const s = ecrireEtat('', { effet: 'caracteristique:intelligence', gemmes: 'perle,onix' });
+  assert.equal(lireEtat(s).gemmes, 'perle,onix');
+});
+
+test('prix d’un accessoire aux gemmes au choix : quarts (en RF) + monture (en RO)', () => {
+  assert.equal(prixDeLAccessoire([5700, 4700], 100), 204);
+  assert.equal(prixDeLAccessoire([1000, 800], 5), 23);
+  assert.equal(prixDeLAccessoire([], 5), null);
+  assert.equal(prixDeLAccessoire([1000, Number.NaN], 5), null);
+  assert.equal(prixDeLAccessoire([1000], Number.NaN), null);
 });

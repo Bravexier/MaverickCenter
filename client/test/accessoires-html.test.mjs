@@ -29,11 +29,14 @@ test('pas de tableau Markdown : le gabarit du générateur, avec les règles de 
   assert.match(main, /data-acc-tout-tirer/);
 });
 
-test('une case au dé par tableau : identité, propriété, chaque propriété à effets, monture', options, () => {
+test('une case au dé par tableau des étapes : identité, propriété, chaque propriété à effets ; pas la monture', options, () => {
   const tables = (main.match(/<table class="acc-table/g) ?? []).length;
   const des = [...main.matchAll(/<button type="button" class="acc-de js-seul" data-de="(\d+)"(?: data-de-bonus="(\d+)")?/g)];
-  assert.equal(des.length, tables);
   assert.equal(tables, 2 + a.proprietes.filter((p) => p.effets.length).length + 1);
+  // pas de dé sur la Monture (« Pas de random à faire sur la table des Montures »)
+  assert.equal(des.length, tables - 1);
+  const monture = main.slice(main.indexOf('data-table="monture"'), main.indexOf('</section>', main.indexOf('data-table="monture"')));
+  assert.ok(!monture.includes('data-de='), 'pas de dé sur la Monture');
   assert.deepEqual(des.map((d) => [d[1], d[2] ?? null]).slice(0, 2), [['4', null], ['100', null]]);
   assert.ok(des.some((d) => d[1] === '6' && d[2] === '20'), 'compétence : 1d6 puis 1d20');
 });
@@ -67,12 +70,22 @@ test('gemmes : une infobulle par gemme, chaque mention dans la couleur de sa mag
   assert.equal(new Set(ids).size, ids.length, 'identifiants uniques');
 });
 
-test('le script de la page n’importe que lib/accessoires-generateur.mjs, qu’aucun autre script de page n’importe', () => {
+test('le script de la page n’importe que lib/accessoires-generateur.mjs et lib/monnaies.mjs (le prix calculé), qu’aucun autre script de page n’importe', () => {
   const imports = (chemin) => [...readFileSync(chemin, 'utf8').matchAll(/^import .* from '([^']+)';$/gm)].map((m) => m[1]);
-  assert.deepEqual(imports(new URL('../src/scripts/accessoires.mjs', import.meta.url)), ['../lib/accessoires-generateur.mjs']);
+  assert.deepEqual(imports(new URL('../src/scripts/accessoires.mjs', import.meta.url)), ['../lib/accessoires-generateur.mjs', '../lib/monnaies.mjs']);
   assert.deepEqual(imports(new URL('../src/lib/accessoires-generateur.mjs', import.meta.url)), [], 'module sans import');
+  assert.deepEqual(imports(new URL('../src/lib/monnaies.mjs', import.meta.url)), [], 'module sans import');
   const scripts = new URL('../src/scripts/', import.meta.url);
   for (const nom of readdirSync(scripts, { recursive: true }).filter((n) => n.endsWith('.mjs') && n !== 'accessoires.mjs')) {
-    assert.deepEqual(imports(new URL(nom, scripts)).filter((m) => /accessoires-generateur\.mjs$/.test(m)), [], nom);
+    assert.deepEqual(imports(new URL(nom, scripts)).filter((m) => /(accessoires-generateur|monnaies)\.mjs$/.test(m)), [], nom);
   }
+});
+
+test('compétences : une ligne par compétence et par niveau, pas de cases (« plusieurs lignes pour chaque niveau et pas des cases »)', options, () => {
+  const debut = main.indexOf('<table class="acc-table acc-table--competences">');
+  const table = main.slice(debut, main.indexOf('</table>', debut));
+  const lignes = [...table.matchAll(/<tr class="acc-ligne acc-effet[^"]*"[^>]* data-choix="effet" data-valeur="([^"]+)" data-propriete="competence" data-jet="(\d+)" data-min="(\d+)" data-max="(\d+)"/g)];
+  const effets = a.competences.lignes.flatMap((l) => l.effets.map((e) => [cleDEffet(e.id), String(l.jet), String(e.bonus_min), String(e.bonus_max)]));
+  assert.deepEqual(lignes.map((m) => m.slice(1)), effets);
+  assert.ok(!table.includes('<td class="acc-case"'));
 });

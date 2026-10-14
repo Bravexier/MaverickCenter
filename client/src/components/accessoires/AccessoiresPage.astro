@@ -8,8 +8,8 @@ import { htmlAvecMonnaies } from '../../lib/monnaies.mjs';
 // présente comme celle des armes : un bloc d'explication, plusieurs tableaux et sur le côté un encart pour décrire l'accessoire ainsi créé en fonction de
 // ce qui a été sélectionné dans les différents tableaux. » Rendue depuis les tables (lib/accessoires-db.mjs) : les règles de l'onglet en tête ; les
 // tableaux des étapes (Identité 1d4, Propriété 1d100, un tableau d'effets par propriété), puis la monture ; à côté, l'accessoire créé
-// (src/scripts/accessoires.mjs). Chaque tableau a une case avec un dé, qui en tire une ligne au hasard (« dans chaque tableau, une case avec une icône de
-// dé ») ; pas de tableau des gemmes, une infobulle sur chaque gemme (écrite une fois par gemme en bas de page), la gemme dans la couleur de sa magie ;
+// (src/scripts/accessoires.mjs). Chaque tableau des étapes a une case avec un dé, qui en tire une ligne au hasard (« dans chaque tableau, une case avec une
+// icône de dé ») ; pas la Monture (« Pas de random à faire sur la table des Montures ») ; pas de tableau des gemmes, une infobulle sur chaque gemme (écrite une fois par gemme en bas de page), la gemme dans la couleur de sa magie ;
 // les lignes des effets, la monture et l'accessoire créé dans la couleur de leur niveau (lib/accessoires-generateur.mjs#COULEURS_DES_NIVEAUX).
 // Sans JavaScript : tous les tableaux, ni sélection ni encart. CSS : styles/accessoires/accessoires.css (?raw, inséré ici seulement).
 type Accessoires = ReturnType<typeof chargerAccessoires>;
@@ -26,7 +26,6 @@ const proprietesAvecEffets = accessoires.proprietes.filter((p) => p.effets.lengt
 const faces = {
   emplacement: facesDuDe(accessoires.emplacements.map((e) => e.jet)),
   propriete: facesDuDe(accessoires.proprietes.map((p) => p.jet_max)),
-  monture: facesDuDe(accessoires.montures.map((m) => m.niveau)),
 };
 const facesDeLaPropriete = (p: Accessoires['proprietes'][number]) => facesDuDe(p.effets.map((e) => e.jet));
 const facesDuBonus = facesDuDe(accessoires.competences.colonnes.map((c) => c.max));
@@ -123,29 +122,29 @@ const DE_SVG =
                       <tr>
                         <th scope="col" class="acc-de-case"><button type="button" class="acc-de js-seul" data-de={facesDeLaPropriete(p)} data-de-bonus={facesDuBonus} aria-label={`Lancer ${de} : compétence`} title={`Lancer ${de}`}><Fragment set:html={DE_SVG} /><span class="acc-de__resultat" data-de-resultat></span></button><span class="acc-de-case__texte">Jet</span></th>
                         <th scope="col">Compétence</th>
+                        <th scope="col">Bonus d’acquis</th>
+                        <th scope="col">Niveau</th>
                         <th scope="col">Gemmes</th>
-                        {accessoires.competences.colonnes.map((c) => (
-                          <th scope="col" class="acc-colonne-niveau" style={styleDeNiveau(c.niveau)}>{c.min} % à {c.max} %<span class="acc-colonne-niveau__nom">Niveau {c.niveau}</span></th>
-                        ))}
+                        <th scope="col">Prix</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {accessoires.competences.lignes.map((l) => (
-                        <tr class="acc-ligne-competence" data-min={l.jet} data-max={l.jet}>
+                      {/* une ligne par compétence et par niveau (demande du propriétaire : « plusieurs lignes pour chaque niveau et pas des cases »), comme les
+                          autres tableaux d'effets ; le 1d6 donne la compétence (data-jet), le 1d20 le bonus d'acquis, donc la ligne (data-min, data-max) */}
+                      {accessoires.competences.lignes.flatMap((l) => l.effets.map((e, k) => (
+                        <tr class={`acc-ligne acc-effet${k === 0 ? ' acc-ligne--groupe' : ''}`} style={styleDeNiveau(e.niveau)} data-choix="effet" data-valeur={cleDEffet(e.id)} data-propriete="competence" data-jet={l.jet} data-min={e.bonus_min} data-max={e.bonus_max} data-niveau={e.niveau} data-niveau-brut={e.niveau_brut} data-libelle={l.libelle} data-sous={l.caracteristique} data-prix={e.prix_brut ?? undefined} data-prix-html={e.prix_brut ? htmlAvecMonnaies(e.prix_brut) : undefined}>
                           <td class="acc-jet">{l.jet}</td>
-                          <th scope="row" class="acc-effet__libelle">{l.libelle}{l.caracteristique && <span class="acc-effet__sous">{l.caracteristique}</span>}</th>
+                          <th scope="row" class="acc-effet__libelle"><button type="button" class="acc-choisir" aria-pressed="false">{l.libelle}</button>{l.caracteristique && <span class="acc-effet__sous">{l.caracteristique}</span>}</th>
+                          <td class="acc-effet__bonus">{e.bonus_min} % à {e.bonus_max} %</td>
+                          <td class="acc-effet__niveau">{e.niveau_brut ?? ''}</td>
                           <td class="acc-gemmes" data-gemmes>
                             {l.gemmes.map((rang, i) => (
-                              <>{i > 0 && <span class="acc-gemmes__plus">+</span>}{rang.map((g, j) => (<>{j > 0 && <span class="acc-gemmes__ou">ou</span>}<span class="acc-gemme" style={styleDeGemme(g)} data-bulle={bulleDeGemme(g.id)} data-gemme={cleDeRessource(g.id)}>{g.nom}</span></>))}</>
+                              <>{i > 0 && <span class="acc-gemmes__plus">+</span>}{rang.map((g, j) => (<>{j > 0 && <span class="acc-gemmes__ou">ou</span>}<span class="acc-gemme" style={styleDeGemme(g)} data-bulle={bulleDeGemme(g.id)} data-gemme={cleDeRessource(g.id)} data-rang={i + 1}>{g.nom}</span></>))}</>
                             ))}
                           </td>
-                          {l.effets.map((e) => (
-                            <td class="acc-case" style={styleDeNiveau(e.niveau)} data-choix="effet" data-valeur={cleDEffet(e.id)} data-propriete="competence" data-min={e.bonus_min} data-max={e.bonus_max} data-niveau={e.niveau} data-niveau-brut={e.niveau_brut} data-libelle={l.libelle} data-sous={l.caracteristique} data-prix={e.prix_brut} data-prix-html={e.prix_brut ? htmlAvecMonnaies(e.prix_brut) : undefined}>
-                              <button type="button" class="acc-choisir" aria-pressed="false" aria-label={`${l.libelle}, niveau ${e.niveau} (${e.bonus_min} % à ${e.bonus_max} %) : ${e.prix_brut ?? 'prix absent'}`} set:html={e.prix_brut ? htmlAvecMonnaies(e.prix_brut) : '—'} />
-                            </td>
-                          ))}
+                          <td class="acc-effet__prix" set:html={e.prix_brut ? htmlAvecMonnaies(e.prix_brut) : ''} />
                         </tr>
-                      ))}
+                      )))}
                     </tbody>
                   </table>
                 ) : (
@@ -174,7 +173,7 @@ const DE_SVG =
                             <td class="acc-effet__niveau">{e.niveau_brut ?? ''}</td>
                             <td class="acc-gemmes" data-gemmes>
                               {e.gemmes.length ? e.gemmes.map((rang, i) => (
-                                <>{i > 0 && <span class="acc-gemmes__plus">+</span>}{rang.map((g, j) => (<>{j > 0 && <span class="acc-gemmes__ou">ou</span>}<span class="acc-gemme" style={styleDeGemme(g)} data-bulle={bulleDeGemme(g.id)} data-gemme={cleDeRessource(g.id)}>{g.nom}</span></>))}</>
+                                <>{i > 0 && <span class="acc-gemmes__plus">+</span>}{rang.map((g, j) => (<>{j > 0 && <span class="acc-gemmes__ou">ou</span>}<span class="acc-gemme" style={styleDeGemme(g)} data-bulle={bulleDeGemme(g.id)} data-gemme={cleDeRessource(g.id)} data-rang={i + 1}>{g.nom}</span></>))}</>
                               )) : (e.gemmes_brut ?? '')}
                             </td>
                             <td class="acc-effet__prix" set:html={htmlAvecMonnaies(e.prix_brut ?? '')} />
@@ -191,11 +190,11 @@ const DE_SVG =
       </section>
 
       <section class="acc-bloc" data-table="monture" aria-labelledby="acc-monture">
-        <h2 class="acc-bloc__titre" id="acc-monture">Monture <span class="acc-bloc__de">1d{faces.monture}</span></h2>
+        <h2 class="acc-bloc__titre" id="acc-monture">Monture</h2>
         <table class="acc-table">
           <thead>
             <tr>
-              <th scope="col" class="acc-de-case"><button type="button" class="acc-de js-seul" data-de={faces.monture} aria-label={`Lancer 1d${faces.monture} : monture`} title={`Lancer 1d${faces.monture}`}><Fragment set:html={DE_SVG} /><span class="acc-de__resultat" data-de-resultat></span></button><span class="acc-de-case__texte">Niveau</span></th>
+              <th scope="col">Niveau</th>
               <th scope="col">Matière</th>
               <th scope="col">Prix</th>
               <th scope="col">Effet</th>
@@ -203,7 +202,7 @@ const DE_SVG =
           </thead>
           <tbody>
             {accessoires.montures.map((m) => (
-              <tr class="acc-ligne acc-monture" style={styleDeNiveau(m.niveau)} data-choix="monture" data-valeur={m.niveau} data-min={m.niveau} data-max={m.niveau} data-niveau={m.niveau} data-libelle={m.matiere} data-prix={m.prix_brut} data-prix-html={m.prix_brut ? htmlAvecMonnaies(m.prix_brut) : undefined} data-effet={m.effet_brut}>
+              <tr class="acc-ligne acc-monture" style={styleDeNiveau(m.niveau)} data-choix="monture" data-valeur={m.niveau} data-min={m.niveau} data-max={m.niveau} data-niveau={m.niveau} data-libelle={m.matiere} data-prix={m.prix_brut} data-prix-html={m.prix_brut ? htmlAvecMonnaies(m.prix_brut) : undefined} data-prix-ro={m.prix_ro ?? undefined} data-effet={m.effet_brut}>
                 <td class="acc-jet">Niveau {m.niveau}</td>
                 <th scope="row"><button type="button" class="acc-choisir" aria-pressed="false">{m.matiere}</button></th>
                 <td set:html={htmlAvecMonnaies(m.prix_brut)} />
@@ -224,7 +223,7 @@ const DE_SVG =
 
   <div class="acc-bulles" data-acc-qualites={JSON.stringify(QUALITES_DE_GEMME)}>
     {accessoires.gemmes.map((g) => (
-      <span class="bulle" role="tooltip" id={bulleDeGemme(g.id)} hidden style={`--mag: ${g.couleur}`} data-quarts={JSON.stringify(Object.fromEntries(Object.entries(g.quarts).map(([q, t]) => [q, t ? htmlAvecMonnaies(t) : t])))} data-nom={g.nom}
+      <span class="bulle" role="tooltip" id={bulleDeGemme(g.id)} hidden style={`--mag: ${g.couleur}`} data-quarts={JSON.stringify(Object.fromEntries(Object.entries(g.quarts).map(([q, t]) => [q, t ? htmlAvecMonnaies(t) : t])))} data-quarts-rf={JSON.stringify(g.quartsRf)} data-nom={g.nom}
         ><strong class="bulle__titre">{g.nom}</strong
         ><span class="bulle__sous">Magie : {g.magie.nom}</span
         >{g.description && <span class="bulle__texte">{g.description}</span>}<span class="bulle__texte">Quart de gemme : classique <Fragment set:html={htmlAvecMonnaies(g.quarts.commune ?? '')} /> · raffinée <Fragment set:html={htmlAvecMonnaies(g.quarts.raffinee ?? '')} /> · parfaite <Fragment set:html={htmlAvecMonnaies(g.quarts.parfaite ?? '')} /></span></span
