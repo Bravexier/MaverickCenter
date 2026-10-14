@@ -994,7 +994,7 @@ CREATE TABLE dieu (
 
 -- ====================================================================================================================
 -- 5 bis. CHRONOLOGIE : les événements datés du Codex et des races (famille « chronologie » ; migration 0035, docs/chronologie.md)
--- Page /chronologie/ : une page par événement, lue comme le guide du joueur, frise en haut et en bas (client/src/lib/chronologie.mjs).
+-- Pages /chronologie/<id>/ : une par événement, ouverte à droite d'une frise verticale en dégradé, chevrons Haut et Bas (client/src/lib/chronologie.mjs).
 -- Les lignes viennent du registre tools/chronologie/evenements.json, résolu contre le texte des pages par tools/chronologie/chronologie.mjs :
 -- le texte d'un extrait est COPIÉ d'une page du Codex (lore/…) ou d'une race (races/…), jamais réécrit.
 -- ====================================================================================================================

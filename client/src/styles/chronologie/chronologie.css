@@ -17,12 +17,12 @@
 }
 :root[data-theme="dark"] .chrono { --chrono-texte: color-mix(in srgb, var(--chrono) 45%, #fff); }
 
-/* Toute la largeur de l'écran (bornée sur un très grand écran) : la frise à gauche, la page sur les trois quarts à droite, la place des chevrons au
-   bord droit. */
-main:has(> .chrono) { max-width: 100rem; }
+/* Toute la largeur de l'écran : la frise sur le quart gauche, la page sur les trois quarts à droite (demande du propriétaire), la place des chevrons
+   au bord droit. */
+main:has(> .chrono) { max-width: none; }
 .chrono {
   display: grid;
-  grid-template-columns: minmax(17rem, 1fr) minmax(0, 3fr);
+  grid-template-columns: minmax(15rem, 1fr) minmax(0, 3fr);
   grid-template-areas: 'frise page';
   column-gap: clamp(1rem, 2.5vw, 2.25rem);
   align-items: start;
@@ -43,18 +43,20 @@ main { overflow-x: clip; }
 }
 
 /* ---------- La frise : une ligne par événement, la date | la barre | le titre ---------- */
-/* Elle défile seule, à hauteur d'écran, et reste en place pendant qu'on lit la page. Arrivée au bout, la molette fait défiler la page (pas de
-   overscroll-behavior : contain) : en haut de la page, sous l'en-tête, le bas de la frise est hors de l'écran, et il y vient ainsi. */
+/* Elle défile seule, de l'en-tête au bas de l'écran, et reste en place pendant qu'on lit la page (collée en haut de l'écran). */
 .frise {
   --date: 5.5rem;
   --barre: 1.9rem;
   grid-area: frise;
   position: sticky;
   top: 0;
+  /* la hauteur de l'écran sous l'en-tête (--frise-haut : la place au-dessus de la frise, mesurée par le script de Frise.astro ; sans lui, l'écran) */
   height: 100vh;
-  height: 100dvh;
+  height: calc(100dvh - var(--frise-haut, 0px));
   overflow-y: auto;
   scrollbar-width: thin;
+  /* la ligne qui reçoit le focus (Maj+Tab) s'arrête sous la légende collante, pas dessous (WCAG 2.4.11) */
+  scroll-padding-block: 3.25rem 1rem;
   padding: 0 0.2rem 2.5rem 0;
 }
 .frise__legende {
@@ -71,7 +73,7 @@ main { overflow-x: clip; }
   color: var(--muted);
   font-size: 0.75rem;
 }
-.frise__legende-item { display: inline-flex; align-items: center; gap: 0.4rem; --trait: var(--muted); }
+.frise__legende-item { display: inline-flex; align-items: center; gap: 0.4rem; }
 .frise__legende .frise__repere { position: static; display: inline-block; translate: none; }
 .frise__liste { margin: 0; padding: 0; list-style: none; }
 
@@ -118,8 +120,9 @@ main { overflow-x: clip; }
 .frise__barre::before {
   content: '';
   position: absolute;
-  top: 0;
-  bottom: 0;
+  /* un demi-pixel de chevauchement : à une échelle d'affichage de 125 % ou 150 %, le bord lissé de deux morceaux ne laisse pas voir le fond */
+  top: -0.5px;
+  bottom: -0.5px;
   left: 50%;
   width: 0.6rem;
   margin-left: -0.3rem;
@@ -157,19 +160,21 @@ main { overflow-x: clip; }
 .frise__lien:hover { background: color-mix(in srgb, var(--trait) 9%, transparent); }
 .frise__lien:hover .frise__repere { scale: 1.2; }
 .frise__lien:focus-visible { outline: 2px solid var(--trait); outline-offset: -2px; }
-/* L'événement affiché : sa ligne teintée, un filet du côté de sa page, le point plein. */
-.frise__lien[aria-current='page'] {
+/* L'événement affiché : sa ligne teintée, un filet du côté de sa page, le point plein. De même pour la ligne où mène « Toute la chronologie » (petit
+   écran : /chronologie/#evenement-<id>), arrêtée vers le milieu de l'écran. */
+.frise__lien[aria-current='page'],
+.frise__evenement:target > .frise__lien {
   background: color-mix(in srgb, var(--trait) 15%, var(--surface));
   box-shadow: inset -4px 0 0 var(--trait);
 }
-.frise__lien[aria-current='page'] .frise__titre { color: var(--texte); font-weight: 700; }
-.frise__lien[aria-current='page'] .frise__repere { background: var(--trait); box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--trait); }
+:is(.frise__lien[aria-current='page'], .frise__evenement:target > .frise__lien) .frise__titre { color: var(--texte); font-weight: 700; }
+:is(.frise__lien[aria-current='page'], .frise__evenement:target > .frise__lien) .frise__repere { background: var(--trait); box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--trait); }
+.frise__evenement { scroll-margin-block: 35vh; }
 
 /* ---------- La page ---------- */
 .chrono-page {
   grid-area: page;
   min-width: 0;
-  max-width: 64rem;
   margin-top: 0.5rem;
   padding: 1.5rem clamp(1rem, 4vw, 2.75rem) 2rem;
   border: 1px solid var(--border);
@@ -255,8 +260,8 @@ mark.chrono-surligne {
   font-weight: 700;
   text-decoration: none;
 }
-.chrono-commencer:hover, .chrono-commencer:focus-visible { background: var(--chrono-texte); }
-.chrono-commencer:focus-visible { outline: 2px solid var(--chrono); outline-offset: 3px; }
+.chrono-commencer:hover, .chrono-commencer:focus-visible { background: color-mix(in srgb, var(--chrono) 78%, #000); }
+.chrono-commencer:focus-visible { outline: 2px solid var(--chrono-texte); outline-offset: 3px; }
 
 /* ---------- Les chevrons, tout à l'extrémité droite : Haut = précédent, Bas = suivant ---------- */
 .chrono-chevrons {
@@ -283,16 +288,16 @@ mark.chrono-surligne {
 .chrono-chevron svg { width: 1.45rem; height: 1.45rem; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; transition: translate 0.15s; }
 a.chrono-chevron:hover,
 a.chrono-chevron:focus-visible { border-color: var(--chrono); background: var(--chrono); color: #fff; }
-a.chrono-chevron:focus-visible { outline: 2px solid var(--chrono); outline-offset: 3px; }
+a.chrono-chevron:focus-visible { outline: 2px solid var(--chrono-texte); outline-offset: 3px; }
 a.chrono-chevron[rel='prev']:hover svg { translate: 0 -2px; }
 a.chrono-chevron[rel='next']:hover svg { translate: 0 2px; }
 .chrono-chevron[aria-disabled='true'] { border-color: var(--border); background: var(--bg); color: var(--border); box-shadow: none; cursor: not-allowed; }
 
-/* ---------- D'une page à l'autre : la frise reste en place, la page de l'événement arrive par la droite (navigateurs qui le savent) ---------- */
+/* ---------- D'une page à l'autre : la page de l'événement arrive par la droite (navigateurs qui le savent) ---------- */
+/* La frise, elle, n'a pas de nom de transition : elle reste dans le fondu de la page entière, où ses lignes ne bougent pas (le script de Frise.astro
+   les remet à la même place à l'écran). */
 @view-transition { navigation: auto; }
-.frise { view-transition-name: chrono-frise; }
 .chrono-page { view-transition-name: chrono-page; }
-.chrono-chevrons { view-transition-name: chrono-chevrons; }
 ::view-transition-group(chrono-page) { animation: none; }
 ::view-transition-old(chrono-page) { animation: chrono-sortie 0.14s ease-in both; }
 ::view-transition-new(chrono-page) { animation: chrono-entree 0.24s ease-out both; }

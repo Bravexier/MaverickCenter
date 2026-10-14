@@ -9,7 +9,7 @@ import { url } from '../../lib/wiki';
 // (lib/chronologie.mjs#couleursDesEvenements) : la barre change de teinte sans à-coup d'un bout à l'autre. Un Impact majeur de la liste du Codex a
 // un losange, un Impact mineur un point plus grand ; « Date inconnue » a une barre en pointillés. L'événement affiché (`courant`) est repéré
 // (aria-current). Le nom d'un lien est son texte visible, complété pour les lecteurs d'écran (« An 505 : La Grande Croisade, Impact majeur »).
-// La frise défile seule, à hauteur d'écran : le script qui suit la remet où on l'a laissée et y montre l'événement affiché.
+// La frise défile seule, à hauteur d'écran : le script qui suit garde ses lignes à leur place d'une page à l'autre et y montre l'événement affiché.
 interface Props {
   evenements: any[];
   couleurs: Map<string, string>;
@@ -55,28 +55,44 @@ const style = (e: any, i: number) => {
   </ol>
 </nav>
 <script is:inline>
-  // La frise défile seule (grand écran) : on la remet où on l'a laissée sur la page précédente de la chronologie (sessionStorage, au départ de la
-  // page), puis on y montre l'événement affiché s'il est hors de la partie visible (centré). Lancé dès que la frise est lue, avant le premier
-  // affichage : elle ne saute pas. Sur petit écran, la frise ne défile pas seule (elle est la page /chronologie/) : rien à faire.
+  // La frise défile seule (grand écran), à hauteur d'écran sous l'en-tête : sa hauteur est celle de l'écran moins la place de l'en-tête au-dessus
+  // d'elle (--frise-haut, mesurée ici et à chaque changement de taille), pour qu'elle tienne tout entière à l'écran en haut de la page.
+  // Au départ d'une page de la chronologie, on note son défilement et la place de son bord haut à l'écran (sessionStorage) ; à l'arrivée sur la
+  // suivante, ses lignes reprennent la même place à l'écran, même si la page précédente était défilée (la frise, collante, y touchait le haut de
+  // l'écran) : la ligne cliquée ne bouge pas. Puis, si l'événement affiché est hors de la partie visible (sous la légende, ou en bas), on l'y
+  // centre. Lancé dès que la frise est lue, avant le premier affichage : elle ne saute pas. Sur petit écran, la frise ne défile pas seule (elle est
+  // la page /chronologie/) : rien d'autre à faire.
   (function () {
     var frise = document.querySelector('[data-frise]');
-    if (!frise || frise.scrollHeight <= frise.clientHeight + 1) return;
+    if (!frise) return;
+    function mesurer() {
+      frise.style.setProperty('--frise-haut', Math.max(0, frise.parentElement.getBoundingClientRect().top + window.scrollY) + 'px');
+    }
+    mesurer();
+    addEventListener('resize', mesurer);
+    if (frise.scrollHeight <= frise.clientHeight + 1) return;
     var cle = 'chronologie:frise';
     try {
       var garde = JSON.parse(sessionStorage.getItem(cle) || 'null');
-      if (garde && typeof garde.haut === 'number') frise.scrollTop = garde.haut;
+      if (garde && typeof garde.haut === 'number') {
+        var voulu = garde.haut + (typeof garde.bord === 'number' ? frise.getBoundingClientRect().top - garde.bord : 0);
+        frise.scrollTop = voulu;
+        // vers la fin de la frise, elle ne peut pas défiler autant : la page descend du reste (la frise monte d'autant, jusqu'au haut de l'écran)
+        if (voulu - frise.scrollTop > 1) window.scrollBy(0, voulu - frise.scrollTop);
+      }
     } catch (e) {}
     var actuel = frise.querySelector('[aria-current="page"]');
+    var legende = frise.querySelector('.frise__legende');
     if (actuel) {
       var f = frise.getBoundingClientRect();
+      var haut = Math.max(f.top, 0) + (legende ? legende.offsetHeight : 0) + 8;
+      var bas = Math.min(f.bottom, window.innerHeight) - 16;
       var r = actuel.getBoundingClientRect();
-      var haut = Math.max(f.top, 0) + 48;
-      var bas = Math.min(f.bottom, window.innerHeight) - 24;
       if (r.top < haut || r.bottom > bas) frise.scrollTop += r.top - (haut + bas - r.height) / 2;
     }
     addEventListener('pagehide', function () {
       try {
-        sessionStorage.setItem(cle, JSON.stringify({ haut: frise.scrollTop }));
+        sessionStorage.setItem(cle, JSON.stringify({ haut: frise.scrollTop, bord: frise.getBoundingClientRect().top }));
       } catch (e) {}
     });
   })();

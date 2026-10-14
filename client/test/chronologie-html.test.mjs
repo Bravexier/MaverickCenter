@@ -124,6 +124,27 @@ test('les extraits : un bloc par passage, la date surlignée, un lien vers la pa
   }
 });
 
+test('la mise en page demandée, dans la feuille de la page : frise au quart gauche (date | barre | titre), page aux trois quarts, chevrons fixés à droite, barre en dégradé', options, () => {
+  const html = lireChemin(adresseDEvenement(evenements[0].id));
+  /** Les déclarations des règles de la feuille de la chronologie au sélecteur exact donné (toutes, mises bout à bout). */
+  const regle = (selecteur) => {
+    const blocs = [];
+    for (let i = html.indexOf(`\n${selecteur} {`); i >= 0; i = html.indexOf(`\n${selecteur} {`, i + 1)) blocs.push(html.slice(i, html.indexOf('}', i)));
+    assert.ok(blocs.length, `règle ${selecteur}`);
+    return blocs.join('\n');
+  };
+  assert.match(regle('main:has(> .chrono)'), /max-width: none;/, 'toute la largeur de l’écran');
+  assert.match(regle('.chrono'), /grid-template-columns: minmax\(15rem, 1fr\) minmax\(0, 3fr\);/, 'un quart, trois quarts');
+  assert.match(regle('.chrono'), /grid-template-areas: 'frise page';/, 'la frise à gauche, la page à droite');
+  assert.match(regle('.frise__lien'), /grid-template-columns: var\(--date\) var\(--barre\) minmax\(0, 1fr\);/, 'la date à gauche de la barre, le titre à droite');
+  assert.match(regle('.frise'), /position: sticky;[\s\S]*height: calc\(100dvh - var\(--frise-haut, 0px\)\);[\s\S]*overflow-y: auto;/, 'la frise défile seule, à hauteur d’écran sous l’en-tête');
+  assert.match(regle('.frise'), /scroll-padding-block: 3\.25rem/, 'la ligne qui reçoit le focus n’est pas cachée par la légende');
+  assert.match(regle('.frise__barre::before'), /linear-gradient\([\s\S]*var\(--trait-avant\)[\s\S]*var\(--trait\) var\(--y\)[\s\S]*var\(--trait-apres\)/, 'le dégradé de chaque morceau de barre');
+  assert.match(regle('.chrono-chevrons'), /position: fixed;[\s\S]*top: 50%;[\s\S]*right: max\(0\.75rem/, 'les chevrons, fixés tout à droite');
+  assert.match(html, /\.frise__evenement:target > \.frise__lien/, 'la ligne où mène « Toute la chronologie » est marquée');
+  assert.ok(!/<a class="chrono-chevron"[^>]* title=/.test(html), 'pas d’infobulle sur les chevrons (celle du Haut couvrait le Bas)');
+});
+
 test('scripts en ligne sans import (version portable) ; le menu Codex mène à la chronologie ; transition entre les pages de la chronologie', options, () => {
   for (const chemin of ['chronologie', adresseDEvenement(evenements[0].id)]) {
     const html = lireChemin(chemin);

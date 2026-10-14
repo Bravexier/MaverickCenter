@@ -11,7 +11,8 @@ import Frise from './Frise.astro';
 // (`id` null), la page laisse la place au mode d'emploi de la frise. Chaque événement a sa propre adresse (/chronologie/<id>/) : un lien se partage,
 // et tout se lit sans JavaScript. Entre deux pages de la chronologie, le navigateur fait glisser la nouvelle page (transition entre documents,
 // styles/chronologie/chronologie.css) ; la frise, elle, reste en place. Petit écran : /chronologie/ est la frise, et la page d'un événement occupe
-// tout l'écran, avec un lien vers la frise ; les chevrons passent en bas à droite.
+// tout l'écran, avec un lien vers la frise ; les chevrons passent en bas à droite. Couleur de la page : celle de l'événement affiché ; sur
+// /chronologie/, celle du premier (une teinte foncée qui porte un texte blanc, dans les deux thèmes : l'accent du site s'éclaircit en sombre).
 interface Props {
   /** Les événements dans l'ordre de lecture (lib/chronologie-db.mjs#chargerChronologie). */
   evenements: any[];
@@ -30,7 +31,7 @@ const etiquette = (e: any) => `${libelleDeDate(e)} : ${e.titre}`;
 <div
   class:list={['chrono', evenement ? 'chrono--evenement' : 'chrono--accueil']}
   data-chrono
-  style={evenement ? `--couleur-evenement: ${couleurs.get(evenement.id)}` : undefined}
+  style={(evenement ?? suivant) ? `--couleur-evenement: ${couleurs.get((evenement ?? suivant).id)}` : undefined}
 >
   <Frise evenements={evenements} couleurs={couleurs} courant={evenement?.id ?? null} />
 
@@ -61,10 +62,11 @@ const etiquette = (e: any) => `${libelleDeDate(e)} : ${e.titre}`;
     )
   }
 
+  {/* Pas d'attribut title (infobulle du site) : la bulle du chevron Haut couvrirait le chevron Bas. Leur nom (lecteur d'écran) dit l'événement visé. */}
   <nav class="chrono-chevrons" aria-label="Événement précédent ou suivant">
     {
       precedent ? (
-        <a class="chrono-chevron" href={href(precedent)} rel="prev" title={`Précédent : ${etiquette(precedent)}`} data-chrono-precedent>
+        <a class="chrono-chevron" href={href(precedent)} rel="prev" data-chrono-precedent>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
           <span class="chrono-invisible">Précédent : {etiquette(precedent)}</span>
         </a>
@@ -77,7 +79,7 @@ const etiquette = (e: any) => `${libelleDeDate(e)} : ${e.titre}`;
     }
     {
       suivant ? (
-        <a class="chrono-chevron" href={href(suivant)} rel="next" title={`Suivant : ${etiquette(suivant)}`} data-chrono-suivant>
+        <a class="chrono-chevron" href={href(suivant)} rel="next" data-chrono-suivant>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
           <span class="chrono-invisible">Suivant : {etiquette(suivant)}</span>
         </a>
