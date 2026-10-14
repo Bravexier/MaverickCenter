@@ -135,6 +135,8 @@ textarea.ed-saisie--ligne { resize: none; min-height: 0; }
 .ed-dialogue .ed-aide { margin: 0; font-size: 0.85rem; color: var(--muted); }
 .ed-dialogue .ed-erreur { margin: 0; color: var(--danger); font-weight: 600; }
 .ed-dialogue .ed-boutons { display: flex; justify-content: flex-end; gap: 0.6rem; }
+/* un champ caché selon un autre (« Ajouter une capacité » : nom et description d'une capacité nouvelle seulement) : `display: grid` ne l'emporte pas */
+.ed-dialogue label[hidden] { display: none; }
 .ed-dialogue button { font: inherit; padding: 0.35rem 1rem; border-radius: 6px; cursor: pointer; }
 .ed-dialogue button[type='submit'] { color: #fff; background: var(--good); border: 0; font-weight: 700; }
 
@@ -160,6 +162,43 @@ textarea.ed-saisie--ligne { resize: none; min-height: 0; }
 /* fiches de personnage adaptées par le lot (R42) : reste affiché, sans la couleur d'une erreur */
 .ed-annonce--avis { border-left-color: var(--accent); }
 .ed-annonce button { position: absolute; top: 0.35rem; right: 0.4rem; border: 0; background: none; color: var(--muted); font-size: 1.1rem; cursor: pointer; }
+
+/* Bestiaire : les capacités de la carte ouverte (src/scripts/edition/bestiaire.mjs ; décisions R66 à R69) — sous le texte de chaque tuile, un panneau
+   discret : en tête, la portée de la capacité commune et « Retirer » ; la capacité commune (nom, description : toutes ses cartes), ce qui est propre à la
+   carte (préfixe, sorts, une valeur « {N} » par curseur, avec l'aperçu du texte) ; « + Ajouter une capacité » sous la liste. Rien hors du mode modification. */
+.ed-capacite {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.45rem;
+  padding: 0.4rem 0.55rem 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  background: color-mix(in srgb, var(--accent-soft) 40%, var(--surface));
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+}
+.ed-capacite__tete { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.3rem 0.8rem; }
+.ed-capacite__portee { margin: 0; color: var(--muted); font-style: italic; }
+.ed-capacite__champ { display: grid; gap: 0.1rem; }
+.ed-capacite .ed-libelle { margin: 0; }
+.ed-capacite__valeurs { display: grid; gap: 0.3rem; }
+.ed-capacite__valeurs[hidden] { display: none; }
+.ed-emplacement { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.55rem; }
+.ed-emplacement > .ed-libelle { min-width: 4.2rem; }
+.ed-curseur { flex: 1 1 8rem; min-width: 6rem; margin: 0; accent-color: var(--accent); }
+.ed-saisie.ed-nombre { display: inline-block; width: 5.2rem; min-width: 0; }
+.ed-saisie.ed-invalide { border-color: var(--danger); box-shadow: inset 3px 0 0 var(--danger); }
+.ed-emplacement__commune { font-size: 0.8rem; color: var(--muted); }
+.ed-emplacement.ed-propre .ed-emplacement__commune { font-style: italic; }
+.ed-capacite__apercu { margin: 0; padding: 0.3rem 0.45rem; color: var(--text); background: var(--surface); border: 1px dashed var(--border); border-radius: 4px; }
+.ed-capacite .ed-outil { font-size: 0.78rem; padding: 0.1rem 0.55rem; }
+.ed-capacite .ed-outil:disabled { opacity: 0.45; cursor: default; background: var(--surface); }
+.ed-ajout-capacite { display: block; margin-top: 0.45rem; }
+body:not(.ed-mode) :is(.ed-capacite, .ed-ajout-capacite) { display: none; }
+@media print {
+  .ed-capacite, .ed-ajout-capacite { display: none !important; }
+}
 
 /* Page d'une entité créée depuis le site, avant la prochaine version du site (page 404 du site de dev) */
 .ed-page-nouvelle { display: grid; gap: 1rem; }

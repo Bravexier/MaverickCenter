@@ -583,8 +583,9 @@ document.addEventListener('keydown', (e) => {
     ouvert.querySelector('summary').focus();
     return;
   }
-  // Échap dans une saisie ou un dialogue (recadrage d'un portrait, formulaire du mode modification) ne ferme que lui ; sur le curseur d'échelle, il ferme la carte
-  if (!e.target.closest?.('input:not([type=range]), textarea, select, dialog')) for (const t of tableaux) t.fermerLaCarte();
+  // Échap dans une saisie ou un dialogue (recadrage d'un portrait, formulaire du mode modification) ne ferme que lui ; sur le curseur d'échelle, il ferme la
+  // carte, pas sur un curseur du mode modification (la valeur d'une capacité, `.ed-curseur`)
+  if (!e.target.closest?.('input:not([type=range]), input.ed-curseur, textarea, select, dialog')) for (const t of tableaux) t.fermerLaCarte();
 });
 // un clic hors d'un menu de filtre le ferme
 document.addEventListener('click', (e) => {

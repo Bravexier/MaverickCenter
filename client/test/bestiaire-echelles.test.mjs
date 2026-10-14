@@ -15,9 +15,12 @@ import { normalize } from '../src/lib/text.mjs';
 import {
   apresUnTrait,
   avecLesValeurs,
+  borneDuCurseur,
   bornes,
   echelleDuPrefixe,
   emplacements,
+  emplacementsDetailles,
+  valeursAEnvoyer,
   echellesEcrites,
   objetDuButin,
   parEchelle,
@@ -429,6 +432,16 @@ test('capacités en tuiles (demande du propriétaire : « de la même manière q
   assert.deepEqual(emplacements('Malus de {10}% et 3d{6}, pas {x}.'), [10, 6]);
   assert.equal(avecLesValeurs('Malus de {10}% et 3d{6}.', { 2: 10 }), 'Malus de 10% et 3d10.');
   assert.equal(avecLesValeurs('Sans emplacement.', { 1: 4 }), 'Sans emplacement.');
+  // le curseur du site de dev : un pourcentage va de 0 à 100, sinon jusqu'au double de la plus grande valeur (20 au moins)
+  const places = emplacementsDetailles('Malus de {10}% , {3} santé, {25} % et 3d{6}.');
+  assert.deepEqual(places, [
+    { numero: 1, commune: 10, pourcent: true }, { numero: 2, commune: 3, pourcent: false }, { numero: 3, commune: 25, pourcent: true }, { numero: 4, commune: 6, pourcent: false },
+  ]);
+  assert.deepEqual(places.map((p) => borneDuCurseur(p)), [100, 20, 100, 20]);
+  assert.equal(borneDuCurseur({ commune: 6, pourcent: false }, 30), 60);
+  // ce qui part : la valeur commune revient à null, une valeur inchangée ne part pas, un emplacement disparu non plus
+  assert.deepEqual(valeursAEnvoyer('Malus de {10}% et {3}.', new Map([[1, 15], [2, 3], [5, 9]]), new Map()), { 1: 15 });
+  assert.deepEqual(valeursAEnvoyer('Malus de {10}% et {3}.', new Map([[1, 10], [2, 7]]), new Map([[1, 15], [2, 7]])), { 1: null });
   assert.equal(texteDeCapacite({ description: 'Cette créature peut lancer les sorts, avec les niveaux de maîtrise maximum :', valeurs: {}, sorts: 'Éclair, Bulle d’eau.' }),
     'Cette créature peut lancer les sorts, avec les niveaux de maîtrise maximum : Éclair, Bulle d’eau.');
   // une carte sans capacité (créée sur le site de dev) : « — »

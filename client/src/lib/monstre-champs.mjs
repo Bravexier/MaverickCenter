@@ -203,6 +203,38 @@ export const echelleDuPrefixe = (prefixe) => {
 export const emplacements = (description) => [...String(description ?? '').matchAll(/\{(\d+)\}/g)].map((m) => Number(m[1]));
 
 /**
+ * Les emplacements d'une description, pour le curseur du site de dev (décision R69) : [{ numero, commune, pourcent }], dans l'ordre d'`emplacements` ;
+ * `pourcent` : un « % » suit l'accolade (« {10}% », ou « {10} % » avec une espace, insécable ou non).
+ */
+export function emplacementsDetailles(description) {
+  const pourcents = [...String(description ?? '').matchAll(/\{\d+\}(\s?%)?/g)].map((m) => Boolean(m[1]));
+  return emplacements(description).map((commune, i) => ({ numero: i + 1, commune, pourcent: pourcents[i] ?? false }));
+}
+
+/**
+ * La borne haute du curseur d'un emplacement (arbitrage, décision R69) : 100 pour un pourcentage, sinon au moins 20 et deux fois la plus grande des
+ * valeurs commune et propre à la carte ; la saisie au clavier va au-delà.
+ */
+export const borneDuCurseur = (emplacement, propre = null) => (emplacement.pourcent ? 100 : Math.max(20, 2 * Math.max(emplacement.commune, propre ?? 0)));
+
+/**
+ * Ce qu'une carte envoie pour les valeurs de ses emplacements (opération valeurs_de_capacite, décision R69) : `choisies` (numéro -> valeur réglée au
+ * curseur), `propres` (numéro -> valeur propre lue au service) ; la valeur commune s'envoie null (la carte suit alors la description), et seule une valeur
+ * qui change quelque chose part ; un numéro absent de la description (emplacement retiré entre-temps) est laissé. -> { numéro: valeur ou null }.
+ */
+export function valeursAEnvoyer(description, choisies, propres) {
+  const places = emplacementsDetailles(description);
+  const sortie = {};
+  for (const [numero, v] of choisies) {
+    const p = places[Number(numero) - 1];
+    if (!p) continue;
+    const voulue = v === p.commune ? null : v;
+    if (voulue !== (propres.get(Number(numero)) ?? null)) sortie[numero] = voulue;
+  }
+  return sortie;
+}
+
+/**
  * La description d'une capacité commune telle qu'une carte l'affiche : chaque « {N} » remplacé par la valeur de la carte pour cet emplacement
  * (`valeurs` : numéro de l'emplacement -> valeur, monstre_capacite_valeur), sinon par sa valeur commune N.
  */

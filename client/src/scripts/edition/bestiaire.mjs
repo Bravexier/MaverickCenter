@@ -11,11 +11,17 @@
 //     le cadre de la carte ouverte, « Choisir une image » (réduite puis recadrée comme sur la fiche : src/scripts/portrait.mjs), « Recadrer » et ✕ ; le
 //     portrait s'enregistre tout de suite, seul dans son lot (une image fait jusqu'à 700 000 caractères, une requête au plus 1 Mio) ; le service ne
 //     renvoie d'une image que son empreinte (ligneSansImage) : l'image entière se demande à part (POST /api/edition/portrait/).
+//   - les capacités (décisions R66 à R69 ; « Elle change pour tous », et, du chef, « si l'effet ne diffère que d'un chiffre, le mettre modifiable par un
+//     slider ») : sous chaque tuile de la carte ouverte, un panneau — le nom et la description de la capacité commune (les modifier les change sur toutes
+//     ses cartes), le préfixe et la liste de sorts de cette carte, un curseur par emplacement « {N} » de la description (la valeur de cette carte ;
+//     opération valeurs_de_capacite), « Retirer cette capacité » ; « + Ajouter une capacité » (existante ou nouvelle) est enregistré tout de suite.
+//     Le bloc des capacités d'une carte touchée est redemandé au service (POST /api/edition/bestiaire/ { capacites }), rendu comme la page construite.
 // Chaque changement redemande la recherche, les filtres et le tri au script de la page (évènement « bestiaire:rafraichir ») ; une carte réécrite lui fait
 // recaler l'échelle de la carte ouverte (« bestiaire:echelle-reecrite ») ; le script de la page dit quelle carte s'ouvre (« bestiaire:carte-ouverte »).
 // Aucun module partagé avec lui.
 import { htmlDuPortrait, empreinteDuPortrait } from '../../lib/bestiaire-rendu.mjs';
-import { cleDeLigne, ENTITES, lireAttributEd } from '../../lib/edition-modele.mjs';
+import { attributEd, cleDeLigne, ENTITES, lireAttributEd } from '../../lib/edition-modele.mjs';
+import { avecLesValeurs, borneDuCurseur, emplacementsDetailles as placesDe, valeursAEnvoyer } from '../../lib/monstre-champs.mjs';
 import { CADRAGE_PAR_DEFAUT, cadrageDe, empreinte } from '../../lib/portrait.mjs';
 import { ouvrirRecadrage, reduireImage } from '../portrait.mjs';
 
@@ -283,20 +289,425 @@ function outilsDuPortrait(ed, carte) {
   etatDesOutils(depart);
 }
 
+// --- Capacités (décisions R66 à R69) -----------------------------------------------------------------------------------------------------------
+// Une tuile `li.bcapacite[data-capacite][data-rang]` (lib/monstre-rendu.mjs#htmlDesCapacitesDuMonstre) = une capacité commune placée sur une carte
+// (monstre_capacite { monstre_id, rang }) ; son panneau `div.ed-capacite[data-placement]` n'existe qu'en mode modification.
+const retirees = new Map(); // placement -> { monstre_id, rang } : capacités à retirer de leur carte à l'enregistrement
+// placement -> { monstre_id, rang, commune (id), propres: Map(numéro -> valeur propre lue au service) ou null avant lecture, valeurs: Map(numéro -> valeur
+// choisie au curseur), invalides: Set(numéro : saisie qui n'est pas un entier positif ou nul) }
+const reglages = new Map();
+const cleDePlacement = (monstreId, rang) => `${monstreId}\u0000${Number(rang)}`;
+const blocsDesCapacites = () => new Map([...document.querySelectorAll('dd[data-capacites-de]')].map((dd) => [dd.dataset.capacitesDe, dd]));
+const capaciteListee = (ed, id) => (ed.listes.capacitesDeMonstre ?? []).find((c) => c.valeur === id) ?? null;
+const TABLES_DES_CAPACITES = new Set(['monstre_capacite_commune', 'monstre_capacite', 'monstre_capacite_valeur']);
+
+/** Les saisies montées (ed.editeurs) d'une colonne d'une ligne : la même capacité commune peut être montrée par plusieurs tuiles. */
+const saisiesDe = (ed, table, cle, colonne) => {
+  const k = cleDeLigne(table, cle);
+  return [...ed.editeurs.values()].filter((x) => x.info.colonne === colonne && cleDeLigne(x.info.table, x.info.cle) === k);
+};
+
+/** La description d'une capacité commune telle qu'elle sera à l'enregistrement : sa saisie, sinon sa ligne lue, sinon la liste du service. */
+function descriptionDe(ed, id) {
+  const [saisie] = saisiesDe(ed, 'monstre_capacite_commune', { id }, 'description');
+  if (saisie) return saisie.controle.value;
+  return ed.lignes?.get(cleDeLigne('monstre_capacite_commune', { id }))?.description ?? capaciteListee(ed, id)?.description ?? '';
+}
+
+/** La valeur d'un emplacement pour la carte : celle choisie au curseur, sinon sa valeur propre, sinon la valeur commune. */
+const valeurDe = (r, p) => r.valeurs.get(p.numero) ?? r.propres?.get(p.numero) ?? p.commune;
+
+function boutonDOutil(texte, aide, classe = '') {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = `ed-outil${classe ? ` ${classe}` : ''}`;
+  b.textContent = texte;
+  if (aide) b.title = aide;
+  return b;
+}
+
+/** Un emplacement : curseur et nombre synchronisés, la valeur commune, et un bouton qui y revient ; `apres` : l'aperçu du texte suit. */
+function saisieDEmplacement(ed, r, p, apres) {
+  const ligne = document.createElement('div');
+  ligne.className = 'ed-emplacement';
+  const libelle = document.createElement('span');
+  libelle.className = 'ed-libelle';
+  libelle.textContent = `Valeur ${p.numero}`;
+  const curseur = document.createElement('input');
+  curseur.type = 'range';
+  curseur.className = 'ed-curseur';
+  const nombre = document.createElement('input');
+  nombre.type = 'number';
+  nombre.className = 'ed-saisie ed-nombre';
+  nombre.inputMode = 'numeric';
+  for (const x of [curseur, nombre]) {
+    x.min = '0';
+    x.step = '1';
+    x.setAttribute('aria-label', `Valeur ${p.numero} de la capacité pour cette carte (valeur commune ${p.commune})`);
+  }
+  const commune = document.createElement('span');
+  commune.className = 'ed-emplacement__commune';
+  commune.textContent = `valeur commune ${p.commune}${p.pourcent ? ' %' : ''}`;
+  const retour = boutonDOutil('valeur commune', `Revenir à la valeur commune (${p.commune}) : la carte suit alors la description`);
+  const propre = r.propres?.get(p.numero) ?? null;
+  const etat = (v) => {
+    ligne.classList.toggle('ed-propre', v !== p.commune);
+    retour.disabled = v === p.commune;
+    nombre.classList.toggle('ed-modifiee', v !== (propre ?? p.commune));
+  };
+  const poser = (v, depuis) => {
+    r.valeurs.set(p.numero, v);
+    r.invalides.delete(p.numero);
+    nombre.classList.remove('ed-invalide');
+    // le curseur s'élargit pour une valeur saisie au-delà de sa borne
+    if (v > Number(curseur.max)) curseur.max = String(v);
+    if (depuis !== curseur) curseur.value = String(v);
+    if (depuis !== nombre) nombre.value = String(v);
+    etat(v);
+    ed.marquerModifie();
+    apres();
+  };
+  const depart = valeurDe(r, p);
+  curseur.max = String(Math.max(borneDuCurseur(p, propre), depart));
+  curseur.value = String(depart);
+  nombre.value = String(depart);
+  etat(depart);
+  curseur.addEventListener('input', () => poser(Number(curseur.value), curseur));
+  nombre.addEventListener('input', () => {
+    const v = nombre.value.trim() === '' ? Number.NaN : Number(nombre.value);
+    if (Number.isInteger(v) && v >= 0) return poser(v, nombre);
+    r.invalides.add(p.numero);
+    nombre.classList.add('ed-invalide');
+    ed.marquerModifie();
+  });
+  retour.addEventListener('click', () => poser(p.commune, null));
+  ligne.append(libelle, curseur, nombre, commune, retour);
+  return ligne;
+}
+
+/**
+ * Les curseurs d'un panneau, d'après la description en cours (une description modifiée qui change ses emplacements les redessine ; les valeurs
+ * choisies restent, par numéro) et l'aperçu du texte de la carte avec ces valeurs (lib/monstre-champs.mjs#avecLesValeurs). Rien avant la lecture des
+ * valeurs propres.
+ */
+function dessinerLesValeurs(ed, panneau) {
+  const r = reglages.get(panneau.dataset.placement);
+  const zone = panneau.querySelector('.ed-capacite__valeurs');
+  if (!r?.propres || !zone) return;
+  const places = placesDe(descriptionDe(ed, r.commune));
+  const apercu = () => {
+    const sortie = zone.querySelector('.ed-capacite__apercu');
+    const valeurs = Object.fromEntries(places.map((p) => [p.numero, valeurDe(r, p)]));
+    if (sortie) sortie.textContent = avecLesValeurs(descriptionDe(ed, r.commune), valeurs);
+  };
+  const signature = JSON.stringify(places);
+  if (zone.dataset.signature !== signature) {
+    zone.dataset.signature = signature;
+    r.invalides.clear();
+    const titre = document.createElement('span');
+    titre.className = 'ed-libelle';
+    titre.textContent = 'Valeurs — cette carte';
+    const sortie = document.createElement('p');
+    sortie.className = 'ed-capacite__apercu';
+    sortie.setAttribute('aria-live', 'polite');
+    zone.replaceChildren(titre, ...places.map((p) => saisieDEmplacement(ed, r, p, apercu)), sortie);
+  }
+  zone.hidden = places.length === 0;
+  apercu();
+}
+
+/** « Capacité commune : sur N cartes — la modifier la change sur toutes » (N : liste du service, relue après chaque changement des capacités). */
+function ecrireLaPortee(ed, el) {
+  const n = capaciteListee(ed, el.dataset.capacite)?.cartes;
+  el.textContent = n === undefined
+    ? 'Capacité commune : la modifier la change sur toutes les cartes qui l’ont.'
+    : n > 1 ? `Capacité commune : sur ${n} cartes — la modifier la change sur toutes.` : 'Capacité commune : sur 1 carte (celle-ci).';
+}
+
+/** Un champ du panneau : son intitulé, et un `span` que monterCarte change en saisie (`data-ed-sur-demande`, comme les champs de la carte). */
+function champDuPanneau(libelle, table, cle, colonne, texte) {
+  const bloc = document.createElement('div');
+  bloc.className = 'ed-capacite__champ';
+  const intitule = document.createElement('span');
+  intitule.className = 'ed-libelle';
+  intitule.textContent = libelle;
+  const valeur = document.createElement('span');
+  valeur.dataset.edLecture = attributEd(table, cle, colonne);
+  valeur.dataset.edSurDemande = '';
+  valeur.textContent = texte;
+  bloc.append(intitule, valeur);
+  return bloc;
+}
+
+/** Le panneau d'une tuile : la capacité commune (nom, description : toutes ses cartes), ce qui est propre à la carte (préfixe, sorts, valeurs), « Retirer ». */
+function panneauDeCapacite(ed, tuile, monstreId) {
+  const rang = Number(tuile.dataset.rang);
+  const id = tuile.dataset.capacite;
+  if (!id || !Number.isInteger(rang)) return;
+  const cle = { monstre_id: monstreId, rang };
+  const k = cleDePlacement(monstreId, rang);
+  if (!reglages.has(k)) reglages.set(k, { monstre_id: monstreId, rang, commune: id, propres: null, valeurs: new Map(), invalides: new Set() });
+  const listee = capaciteListee(ed, id);
+  const panneau = document.createElement('div');
+  panneau.className = 'ed-capacite';
+  panneau.dataset.placement = k;
+  const portee = document.createElement('p');
+  portee.className = 'ed-capacite__portee';
+  portee.dataset.capacite = id;
+  ecrireLaPortee(ed, portee);
+  // la mention et « Retirer » sur la même ligne, en tête du panneau
+  const tete = document.createElement('div');
+  tete.className = 'ed-capacite__tete';
+  panneau.append(
+    tete,
+    champDuPanneau('Nom — toutes ses cartes', 'monstre_capacite_commune', { id }, 'nom', tuile.querySelector('.bcapacite__nom')?.textContent ?? ''),
+    champDuPanneau('Description — toutes ses cartes', 'monstre_capacite_commune', { id }, 'description', listee?.description ?? ''),
+    champDuPanneau('Préfixe — cette carte (« [EP3] » : à partir de l’EP 3)', 'monstre_capacite', cle, 'prefixe', tuile.querySelector('.bcapacite__tete .prefixe')?.textContent ?? ''),
+  );
+  if (listee?.listeDeSorts) panneau.append(champDuPanneau('Sorts — cette carte', 'monstre_capacite', cle, 'sorts', ''));
+  const valeurs = document.createElement('div');
+  valeurs.className = 'ed-capacite__valeurs';
+  valeurs.hidden = true;
+  const retirer = boutonDOutil('Retirer cette capacité', 'Retirer cette capacité de cette carte (à l’enregistrement) ; la capacité commune reste sur ses autres cartes', 'ed-outil--danger');
+  retirer.setAttribute('aria-pressed', 'false');
+  retirer.addEventListener('click', () => {
+    const oui = !retirees.has(k);
+    if (oui) retirees.set(k, { monstre_id: monstreId, rang });
+    else retirees.delete(k);
+    retirer.setAttribute('aria-pressed', String(oui));
+    retirer.textContent = oui ? 'Sera retirée — annuler' : 'Retirer cette capacité';
+    tuile.classList.toggle('ed-supprime', oui);
+    ed.marquerModifie();
+  });
+  tete.append(portee, retirer);
+  panneau.append(valeurs);
+  panneau.addEventListener('input', (e) => suivreLaSaisie(ed, e.target));
+  tuile.append(panneau);
+}
+
+/**
+ * Une saisie du nom ou de la description d'une capacité commune : la même dans tous les panneaux qui la montrent (autre carte ouverte entre-temps,
+ * capacité deux fois sur la carte) ; une description modifiée redessine les curseurs de ses tuiles.
+ */
+function suivreLaSaisie(ed, cible) {
+  const el = cible.closest?.('[data-ed]');
+  const x = el && ed.editeurs.get(el);
+  if (!x || x.controle !== cible || x.info.table !== 'monstre_capacite_commune') return;
+  for (const autre of saisiesDe(ed, x.info.table, x.info.cle, x.info.colonne)) {
+    if (autre === x) continue;
+    autre.controle.value = x.controle.value;
+    autre.controle.classList.toggle('ed-modifiee', autre.controle.value !== autre.original);
+  }
+  if (x.info.colonne !== 'description') return;
+  for (const p of document.querySelectorAll('.ed-capacite[data-placement]')) if (reglages.get(p.dataset.placement)?.commune === x.info.cle.id) dessinerLesValeurs(ed, p);
+}
+
+/** Après un montage de saisies : une capacité commune déjà modifiée dans un autre panneau l'est aussi dans les nouveaux. */
+function alignerLesCommunes(ed) {
+  const modifiees = new Map();
+  const k = (x) => `${x.info.cle.id}\u0000${x.info.colonne}`;
+  for (const x of ed.editeurs.values()) if (x.info.table === 'monstre_capacite_commune' && x.controle.value !== x.original) modifiees.set(k(x), x.controle.value);
+  for (const x of ed.editeurs.values()) {
+    const v = x.info.table === 'monstre_capacite_commune' ? modifiees.get(k(x)) : undefined;
+    if (v === undefined || x.controle.value === v) continue;
+    x.controle.value = v;
+    x.controle.classList.add('ed-modifiee');
+  }
+}
+
+/** Les valeurs propres des emplacements des tuiles de la carte (monstre_capacite_valeur : une ligne seulement quand la valeur n'est pas la commune). */
+async function chargerLesValeurs(ed, carte) {
+  const panneaux = [...carte.querySelectorAll('.ed-capacite[data-placement]')];
+  const attente = [...new Set(panneaux.map((p) => reglages.get(p.dataset.placement)).filter((r) => r && !r.propres))];
+  const demandes = attente.flatMap((r) => placesDe(descriptionDe(ed, r.commune)).map((p) => ({
+    table: 'monstre_capacite_valeur', cle: { monstre_id: r.monstre_id, rang: r.rang, numero: p.numero },
+  })));
+  const lues = demandes.length ? (await ed.appel('POST', 'edition/lignes/', { lignes: demandes })).lignes : [];
+  if (!ed.enEdition) return;
+  for (const r of attente) r.propres = new Map();
+  for (const l of lues) if (l.ligne) reglages.get(cleDePlacement(l.cle.monstre_id, l.cle.rang))?.propres?.set(l.cle.numero, l.ligne.valeur);
+  for (const p of panneaux) dessinerLesValeurs(ed, p);
+}
+
+/** Les panneaux des tuiles de la carte qui n'en ont pas encore, et « + Ajouter une capacité » à la fin de son bloc. */
+function panneauxDeLaCarte(ed, carte) {
+  for (const dd of carte.querySelectorAll('dd[data-capacites-de]')) {
+    const id = dd.dataset.capacitesDe;
+    for (const tuile of dd.querySelectorAll('li.bcapacite[data-rang]')) if (!tuile.querySelector(':scope > .ed-capacite')) panneauDeCapacite(ed, tuile, id);
+    let ajout = dd.querySelector(':scope > .ed-ajout-capacite');
+    if (!ajout) {
+      ajout = boutonDOutil('+ Ajouter une capacité', 'Ajouter à cette carte une capacité commune existante ou nouvelle (enregistré tout de suite)', 'ed-ajout-capacite');
+      ajout.addEventListener('click', () => formulaireCapacite(ed, id));
+    }
+    dd.append(ajout);
+  }
+}
+
+/** Le bloc des capacités de ces cartes, rendu par le service comme la page construite : { id de la carte: html } (cartes absentes de la page exclues). */
+async function blocsDuService(ed, ids) {
+  const blocs = blocsDesCapacites();
+  const voulus = [...new Set(ids)].filter((id) => blocs.has(id));
+  if (!voulus.length) return new Map();
+  const { capacites = {} } = await ed.appel('POST', 'edition/bestiaire/', { capacites: voulus });
+  return new Map(Object.entries(capacites).filter(([id]) => blocs.get(id)?.isConnected).map(([id, html]) => [blocs.get(id), html]));
+}
+
+/** Hors du mode modification (enregistrement, surcouche au chargement) : le bloc des capacités de ces cartes remplacé ; la page relit ses lignes. */
+async function refaireLesCapacites(ed, ids) {
+  const blocs = await blocsDuService(ed, ids);
+  for (const [dd, html] of blocs) dd.innerHTML = html;
+  if (!blocs.size) return;
+  rafraichir();
+  document.dispatchEvent(new CustomEvent('bestiaire:echelle-reecrite'));
+}
+
+/** Une tuile qui quitte le bloc en mode modification : ses saisies, son réglage et son retrait éventuel partent avec elle. */
+function oublierLaTuile(ed, tuile) {
+  for (const el of tuile.querySelectorAll('[data-ed]')) ed.editeurs.delete(el);
+  const k = tuile.querySelector('.ed-capacite')?.dataset.placement;
+  if (k) {
+    reglages.delete(k);
+    retirees.delete(k);
+  }
+  tuile.remove();
+}
+
+/**
+ * En mode modification (capacité ajoutée) : les tuiles que le bloc n'a pas encore s'ajoutent à la fin, celles qui n'y sont plus partent, les autres
+ * restent telles quelles (avec leurs saisies en cours) ; un bloc sans tuile avant ou après est remplacé entier.
+ */
+function fusionnerLeBloc(ed, dd, html) {
+  const modele = document.createElement('template');
+  modele.innerHTML = html;
+  const neuve = modele.content.querySelector('ul.bcapacites');
+  const liste = dd.querySelector(':scope > ul.bcapacites');
+  const ajout = dd.querySelector(':scope > .ed-ajout-capacite');
+  if (!neuve || !liste) {
+    for (const t of dd.querySelectorAll('li.bcapacite')) oublierLaTuile(ed, t);
+    dd.replaceChildren(modele.content);
+  } else {
+    const rangs = new Set([...neuve.children].map((li) => li.dataset.rang));
+    for (const li of [...liste.children]) if (!rangs.has(li.dataset.rang)) oublierLaTuile(ed, li);
+    const deja = new Set([...liste.children].map((li) => li.dataset.rang));
+    for (const li of [...neuve.children]) if (!deja.has(li.dataset.rang)) liste.append(li);
+  }
+  if (ajout) dd.append(ajout);
+}
+
+/** Les cartes dont les capacités ont changé : celles des lignes de placement et de valeur, et toutes celles de la page qui ont une capacité commune modifiée. */
+function cartesTouchees(lignes) {
+  const ids = new Set();
+  const communes = new Set();
+  for (const l of lignes ?? []) {
+    if (l.table === 'monstre_capacite' || l.table === 'monstre_capacite_valeur') ids.add(l.cle?.monstre_id);
+    else if (l.table === 'monstre_capacite_commune') communes.add(l.cle?.id);
+  }
+  if (communes.size) {
+    for (const li of document.querySelectorAll('dd[data-capacites-de] li.bcapacite[data-capacite]')) {
+      if (communes.has(li.dataset.capacite)) ids.add(li.closest('dd[data-capacites-de]').dataset.capacitesDe);
+    }
+  }
+  ids.delete(undefined);
+  return [...ids];
+}
+
+/**
+ * « + Ajouter une capacité » : une capacité commune existante, ou nouvelle (nom et description, créée dans le même lot : « @0 »), à la fin des
+ * capacités de la carte ; enregistré tout de suite, comme « + Ajouter un monstre ». Le bloc de la carte est redemandé au service et la liste des
+ * capacités relue (le nombre de cartes de chacune).
+ */
+function formulaireCapacite(ed, monstreId) {
+  const NOUVELLE = '*'; // jamais un identifiant (tiré du nom par normalize : lettres, chiffres et tirets)
+  const liste = ed.listes.capacitesDeMonstre ?? [];
+  const { champs: commune } = ENTITES.monstre_capacite_commune;
+  const { champs: place } = ENTITES.monstre_capacite;
+  const dialogue = ed.formulaire({
+    titre: 'Ajouter une capacité',
+    aide: 'La capacité est ajoutée tout de suite à la fin des capacités de cette carte, dans la base du site de dev. Une capacité commune vaut pour toutes les cartes qui l’ont : son nom et sa description se modifient pour toutes.',
+    champs: [
+      {
+        nom: 'capacite', libelle: 'Capacité', type: 'choix', requis: true, valeur: NOUVELLE, aide: ' ',
+        choix: [{ valeur: NOUVELLE, libelle: '— Nouvelle capacité —' }, ...liste.map((c) => ({ valeur: c.valeur, libelle: c.libelle }))],
+      },
+      { nom: 'nom', libelle: commune.nom.libelle, type: 'ligne' },
+      { nom: 'description', libelle: commune.description.libelle, type: 'texte', aide: '« {10}% » : un pourcentage (curseur de 0 à 100).' },
+      { nom: 'prefixe', libelle: place.prefixe.libelle, type: 'ligne' },
+      { nom: 'sorts', libelle: place.sorts.libelle, type: 'ligne' },
+    ],
+    bouton: 'Ajouter',
+    valider: async (v) => {
+      const nouvelle = v.capacite === NOUVELLE;
+      const choisie = liste.find((c) => c.valeur === v.capacite);
+      if (nouvelle && (!v.nom.trim() || !v.description.trim())) throw new Error('Une nouvelle capacité a besoin d’un nom et d’une description.');
+      const valeurs = { monstre_id: monstreId, capacite_commune_id: nouvelle ? '@0' : v.capacite };
+      if (v.prefixe.trim()) valeurs.prefixe = v.prefixe.trim();
+      if (choisie?.listeDeSorts && v.sorts.trim()) valeurs.sorts = v.sorts.trim();
+      const operations = [{ op: 'creer', entite: 'monstre_capacite', valeurs }];
+      if (nouvelle) operations.unshift({ op: 'creer', entite: 'monstre_capacite_commune', valeurs: { nom: v.nom.trim(), description: v.description.trim() } });
+      await ed.appel('POST', 'edition/', { page: ed.page, operations });
+      const nom = nouvelle ? v.nom.trim() : choisie?.libelle ?? v.capacite;
+      try {
+        Object.assign(ed.listes, await ed.appel('GET', 'edition/listes/'));
+        for (const [dd, html] of await blocsDuService(ed, [monstreId])) fusionnerLeBloc(ed, dd, html);
+        for (const p of document.querySelectorAll('.ed-capacite__portee')) ecrireLaPortee(ed, p);
+        const carte = blocsDesCapacites().get(monstreId)?.closest('.bcarte');
+        if (carte) await monterCarte(ed, carte);
+        ed.annoncer(`Capacité ajoutée : ${nom}.`);
+      } catch (e) {
+        ed.annoncer(`Capacité ajoutée (${nom}), mais la carte n’a pas pu être remise à jour : ${e.message}`, 'erreur');
+      }
+    },
+  });
+  // nom et description pour une nouvelle capacité seulement ; la liste de sorts pour une capacité qui en a une (« Lanceur de sorts ») ; sous le choix, la
+  // description de la capacité choisie
+  const form = dialogue.querySelector('form');
+  const champ = (nom) => form.elements.namedItem(nom);
+  const aide = champ('capacite').closest('label').querySelector('.ed-aide');
+  const suivre = () => {
+    const nouvelle = champ('capacite').value === NOUVELLE;
+    const choisie = liste.find((c) => c.valeur === champ('capacite').value);
+    for (const nom of ['nom', 'description']) {
+      champ(nom).closest('label').hidden = !nouvelle;
+      champ(nom).required = nouvelle;
+    }
+    champ('sorts').closest('label').hidden = !choisie?.listeDeSorts;
+    aide.textContent = choisie
+      ? `${choisie.description}${choisie.cartes ? ` — sur ${choisie.cartes} carte${choisie.cartes > 1 ? 's' : ''}` : ''}`
+      : 'Une capacité commune nouvelle : elle pourra ensuite être ajoutée à d’autres cartes.';
+  };
+  champ('capacite').addEventListener('change', suivre);
+  suivre();
+}
+
+/**
+ * Les opérations des capacités : les valeurs réglées au curseur (une opération valeurs_de_capacite par placement ; la valeur commune -> null, la carte suit
+ * alors la description), seulement celles qui changent quelque chose, et seulement pour les emplacements de la description telle qu'elle sera enregistrée.
+ */
+function operationsDeValeurs(ed) {
+  const ops = [];
+  for (const r of reglages.values()) {
+    if (!r.propres || !r.valeurs.size) continue;
+    const valeurs = valeursAEnvoyer(descriptionDe(ed, r.commune), r.valeurs, r.propres);
+    if (Object.keys(valeurs).length) ops.push({ op: 'valeurs_de_capacite', monstre_id: r.monstre_id, rang: r.rang, valeurs });
+  }
+  return ops;
+}
+
 /** Les champs de la carte (`data-ed-sur-demande`) deviennent des saisies : leurs lignes sont lues dans la base vivante, puis l'éditeur les monte. */
 async function monterCarte(ed, carte) {
   if (!ed.enEdition || !carte) return;
   outilsDuPortrait(ed, carte);
   // la description, repliée en lecture, s'ouvre pour être modifiée (elle reste fermée hors du mode modification : src/scripts/bestiaire.mjs)
   for (const d of carte.querySelectorAll('details.bcarte__description')) d.open = true;
+  // les capacités : un panneau par tuile, dont les champs deviennent des saisies avec ceux de la carte
+  panneauxDeLaCarte(ed, carte);
   const champs = [...carte.querySelectorAll('[data-ed-sur-demande][data-ed-lecture]')];
-  if (!champs.length) return;
   for (const el of champs) {
     el.dataset.ed = el.dataset.edLecture;
     delete el.dataset.edLecture;
   }
   // les cadres vides (type, alignement, description…) s'ouvrent pour être remplis
-  for (const c of carte.querySelectorAll('[data-ed-cadre][hidden]')) c.hidden = false;
+  if (champs.length) for (const c of carte.querySelectorAll('[data-ed-cadre][hidden]')) c.hidden = false;
   const demandes = new Map();
   for (const el of champs) {
     const info = lireAttributEd(el.dataset.ed);
@@ -309,7 +720,12 @@ async function monterCarte(ed, carte) {
       if (!ed.enEdition) return;
       for (const l of lignes) if (l.ligne) ed.lignes.set(cleDeLigne(l.table, l.cle), l.ligne);
     }
-    ed.monterChamps(carte);
+    if (champs.length) {
+      ed.monterChamps(carte);
+      alignerLesCommunes(ed);
+    }
+    // les curseurs des capacités, une fois les descriptions lues (leurs emplacements « {N} »)
+    await chargerLesValeurs(ed, carte);
   } catch (e) {
     ed.annoncer(`La carte n’a pas pu passer en mode modification : ${e.message}`, 'erreur');
   }
@@ -432,6 +848,9 @@ export const bestiaire = {
       document.addEventListener('bestiaire:carte-ouverte', ecoutePortraits);
     }
     if (lignes.some((l) => TABLES_DE_LIGNE.has(l.table) && (l.creee || !l.ligne))) await reconcilier(ed);
+    // des capacités modifiées depuis la construction (une capacité commune : toutes ses cartes de la page) : leur bloc vient du service
+    const cartes = cartesTouchees(lignes.filter((l) => TABLES_DES_CAPACITES.has(l.table)));
+    if (cartes.length) await refaireLesCapacites(ed, cartes);
   },
 
   pret() {
@@ -481,28 +900,57 @@ export const bestiaire = {
     monterCarte(ed, zone()?.querySelector('.bcarte.est-ouverte'));
   },
 
-  operations(_ed, operations) {
-    if (!supprimes.size) return operations;
-    // rien à modifier dans ce qui va disparaître (la carte, ses rubriques ; une espèce sans carte)
+  verifier() {
+    for (const [k, r] of reglages) {
+      if (r.invalides.size && !retirees.has(k) && !supprimes.has(r.monstre_id)) {
+        return 'Une valeur de capacité n’est pas un nombre entier positif ou nul : corrigez-la (ou revenez à la valeur commune) avant d’enregistrer.';
+      }
+    }
+    return null;
+  },
+
+  operations(ed, operations) {
+    const carteSupprimee = (id) => supprimes.has(id);
+    const placementRetire = (cle) => retirees.has(cleDePlacement(cle?.monstre_id, cle?.rang));
+    // rien à modifier dans ce qui va disparaître (la carte, ses rubriques et ses capacités ; une espèce sans carte ; une capacité retirée de sa carte)
     const garde = operations.filter((op) => !(
-      ((op.table === 'monstre' || op.table === 'monstre_espece') && supprimes.has(op.cle?.id)) || (op.table === 'monstre_rubrique' && supprimes.has(op.cle?.monstre_id))
+      ((op.table === 'monstre' || op.table === 'monstre_espece') && carteSupprimee(op.cle?.id))
+      || (op.table === 'monstre_rubrique' && carteSupprimee(op.cle?.monstre_id))
+      || ((op.table === 'monstre_capacite' || op.table === 'monstre_capacite_valeur') && (carteSupprimee(op.cle?.monstre_id) || placementRetire(op.cle)))
     ));
-    return [...garde, ...[...supprimes].map(([id, entite]) => ({ op: 'supprimer', entite, cle: { id } }))];
+    // les valeurs des curseurs (après la description commune modifiée dans le même lot), puis les capacités retirées
+    const valeurs = operationsDeValeurs(ed).filter((op) => !carteSupprimee(op.monstre_id) && !placementRetire(op));
+    const retraits = [...retirees.values()].filter((p) => !carteSupprimee(p.monstre_id))
+      .map((p) => ({ op: 'supprimer', entite: 'monstre_capacite', cle: { monstre_id: p.monstre_id, rang: p.rang } }));
+    return [...garde, ...valeurs, ...retraits, ...[...supprimes].map(([id, entite]) => ({ op: 'supprimer', entite, cle: { id } }))];
   },
 
   apresEnregistrement(ed, resultat) {
-    // une carte supprimée peut laisser son espèce sans carte (elle reprend une ligne à elle) : le service redonne le tableau ; sinon les textes changés
-    // (recherche, tri) sont relus
-    const lignesChangees = resultat.crees?.length || resultat.lignes?.some((l) => TABLES_DE_LIGNE.has(l.table) && !l.ligne);
-    if (lignesChangees) reconcilier(ed).catch((e) => ed.annoncer(`Le tableau n’a pas pu être remis à jour : ${e.message}`, 'erreur'));
-    else rafraichir();
+    // une carte ou une espèce créée ou supprimée (une carte supprimée peut laisser son espèce sans carte : elle reprend une ligne à elle) : le service
+    // redonne le tableau ; des capacités changées : le bloc des cartes touchées (une capacité commune : toutes ses cartes de la page) et la liste des
+    // capacités (nombre de cartes de chacune) ; sinon les textes changés (recherche, tri) sont relus
+    const lignes = resultat.lignes ?? [];
+    const tableau = resultat.crees?.some((c) => TABLES_DE_LIGNE.has(c.entite)) || lignes.some((l) => TABLES_DE_LIGNE.has(l.table) && !l.ligne);
+    const cartes = cartesTouchees(lignes);
+    const capacites = lignes.some((l) => TABLES_DES_CAPACITES.has(l.table));
+    if (!tableau && !cartes.length) {
+      rafraichir();
+      return;
+    }
+    (async () => {
+      if (tableau) await reconcilier(ed).catch((e) => ed.annoncer(`Le tableau n’a pas pu être remis à jour : ${e.message}`, 'erreur'));
+      if (cartes.length) await refaireLesCapacites(ed, cartes).catch((e) => ed.annoncer(`Les capacités n’ont pas pu être remises à jour : ${e.message}`, 'erreur'));
+      if (capacites) Object.assign(ed.listes, await ed.appel('GET', 'edition/listes/').catch(() => ({})));
+    })();
   },
 
   fin() {
     document.querySelector('.ed-outils-bestiaire')?.remove();
-    for (const b of document.querySelectorAll('.bligne__nom .ed-supprimer, .bcarte__portrait .ed-portrait')) b.remove();
-    for (const tr of document.querySelectorAll('tr.bligne.ed-supprime')) tr.classList.remove('ed-supprime');
+    for (const b of document.querySelectorAll('.bligne__nom .ed-supprimer, .bcarte__portrait .ed-portrait, .ed-capacite, .ed-ajout-capacite')) b.remove();
+    for (const el of document.querySelectorAll('tr.bligne.ed-supprime, li.bcapacite.ed-supprime')) el.classList.remove('ed-supprime');
     supprimes.clear();
+    retirees.clear();
+    reglages.clear();
     if (ecoute) document.removeEventListener('bestiaire:carte-ouverte', ecoute);
     ecoute = null;
     // la description, ouverte pour être modifiée, se replie de nouveau (« enroulée par défaut »)
