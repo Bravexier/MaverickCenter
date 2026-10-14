@@ -4,6 +4,8 @@ import { url } from '../../lib/wiki';
 
 // La frise de la chronologie (demande du propriétaire) : sur la gauche, en vertical, la chronologie en une immense barre avec un dégradé ; chaque
 // date est notée à gauche de la barre, le titre à droite ; un clic ouvre la page de l'événement à côté (components/chronologie/Chronologie.astro).
+// Sur téléphone, la même liste sert trois fois (styles/chronologie/chronologie.css) : elle est la page /chronologie/ ; sur la page d'un événement,
+// la mini-frise collée à gauche (la barre et ses points, sans texte) ; ouverte, le tiroir par-dessus la page (son en-tête : `.frise__entete`).
 // Un événement par ligne, dans l'ordre de lecture ; la ligne entière est le lien. Le dégradé : chaque ligne peint son morceau de barre, de la
 // couleur mêlée à celle de l'événement précédent (en haut) à celle mêlée au suivant (en bas), en passant par la sienne au niveau de son point
 // (lib/chronologie.mjs#couleursDesEvenements) : la barre change de teinte sans à-coup d'un bout à l'autre. Un Impact majeur de la liste du Codex a
@@ -25,7 +27,15 @@ const style = (e: any, i: number) => {
 };
 ---
 
-<nav class="frise" aria-label="Frise chronologique" data-frise>
+<nav class="frise" id="frise" aria-label="Frise chronologique" data-frise>
+  {/* l'en-tête du tiroir (téléphone : la frise ouverte en grand par-dessus la page d'un événement) ; caché ailleurs */}
+  <div class="frise__entete">
+    <p class="frise__entete-titre">Chronologie<small>{evenements.length} événements</small></p>
+    <button type="button" class="frise__fermer" data-frise-fermer>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+      <span class="chrono-invisible">Fermer la frise</span>
+    </button>
+  </div>
   <p class="frise__legende" aria-hidden="true">
     <span class="frise__legende-item"><span class="frise__repere frise__repere--majeur"></span>Impact majeur</span>
     <span class="frise__legende-item"><span class="frise__repere frise__repere--mineur"></span>Impact mineur</span>
@@ -65,12 +75,14 @@ const style = (e: any, i: number) => {
   (function () {
     var frise = document.querySelector('[data-frise]');
     if (!frise) return;
+    // posée sur .chrono : la frise d'ordinateur et, sur téléphone, la mini-frise et son bouton la lisent
     function mesurer() {
-      frise.style.setProperty('--frise-haut', Math.max(0, frise.parentElement.getBoundingClientRect().top + window.scrollY) + 'px');
+      frise.parentElement.style.setProperty('--frise-haut', Math.max(0, frise.parentElement.getBoundingClientRect().top + window.scrollY) + 'px');
     }
     mesurer();
     addEventListener('resize', mesurer);
-    if (frise.scrollHeight <= frise.clientHeight + 1) return;
+    // petit écran : la frise est la page (/chronologie/) ou la mini-frise (overflow: hidden ; Chronologie.astro s'en occupe)
+    if (getComputedStyle(frise).overflowY !== 'auto' || frise.scrollHeight <= frise.clientHeight + 1) return;
     var cle = 'chronologie:frise';
     try {
       var garde = JSON.parse(sessionStorage.getItem(cle) || 'null');
