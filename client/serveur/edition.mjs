@@ -52,7 +52,10 @@ import {
 import { empreinte } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { ErreurJournal, cleDe, lireLigne, nouveauLot, ouvrirLot, rejouer, structure } from './edition-journal.mjs';
-import { domainesDuBestiaire, especesDeMonstres, groupesDeMonstres, lignesDuBestiaire as lignesRenduesDuBestiaire } from './edition-bestiaire.mjs';
+import {
+  ancienneEcritureDesCapacites, capacitesDeMonstre, domainesDuBestiaire, especesDeMonstres, groupesDeMonstres, lignesDuBestiaire as lignesRenduesDuBestiaire,
+  operationsDuBestiaire,
+} from './edition-bestiaire.mjs';
 import { contexteDuCorpsDesArmes, domainesDesArmes } from './edition-armes.mjs';
 import { contexteDuCorpsDesComposants, domainesDesComposants, magiesSansBois, magiesSansGemme } from './edition-composants.mjs';
 import { corpsDuComposantApres, ErreurCorpsComposants, pagesDuComposant, TABLES_DES_COMPOSANTS } from '../src/lib/corps-composants.mjs';
@@ -883,7 +886,8 @@ function reference(ctx, valeur, entite) {
   if (!texte.startsWith('@')) return texte;
   const i = Number(texte.slice(1));
   const cree = Number.isInteger(i) ? ctx.crees.find((c) => c.operation === i && c.entite === entite) : null;
-  if (!cree) throw refus(`« ${texte} » ne désigne pas ${entite === 'specialite' ? 'une spécialité créée' : 'un don créé'} plus haut dans ce lot.`);
+  const quoi = { specialite: 'une spécialité créée', capacite: 'un don créé', monstre_capacite_commune: 'une capacité de monstre créée' }[entite] ?? 'une ligne créée';
+  if (!cree) throw refus(`« ${texte} » ne désigne pas ${quoi} plus haut dans ce lot.`);
   return cree.id;
 }
 
@@ -1195,7 +1199,7 @@ const DOMAINES = {
   race_don: RACE_DON, race_don_tableau_colonne: tableDeLOnglet('race_don_tableau_colonne'),
   race_don_tableau_cellule: tableDeLOnglet('race_don_tableau_cellule'), peuple: PEUPLE, classe: CLASSE, specialite: SPECIALITE, capacite: CAPACITE, page: PAGE,
   // le bestiaire : espèce, carte de monstre, rubriques d'une carte (serveur/edition-bestiaire.mjs)
-  ...domainesDuBestiaire({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye, ordreSuivant }),
+  ...domainesDuBestiaire({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye, ordreSuivant, reference }),
   // la page des armes : armes, matériaux, améliorations d'arme (serveur/edition-armes.mjs)
   ...domainesDesArmes({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye }),
   // la page des composants : matériaux, gemmes, bois, ingrédients d'alchimie, objets de l'équipement, monnaies (serveur/edition-composants.mjs)
@@ -1449,7 +1453,12 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
     derivee: colonneDerivee, applique: (m) => appliquees.push(m), horsControleParLot,
     // le dictionnaire des sources n'est vidé que de ses orphelins (supprimerPage) : une source encore citée au rejeu reste
     siOrphelines: ['source'],
-    adapter: () => ancienneEcritureDesMotsCles(db),
+    // les formes d'avant les migrations 0043 (mots-clés) et 0044 (capacités de monstre communes)
+    adapter: () => {
+      const motsCles = ancienneEcritureDesMotsCles(db);
+      const capacites = ancienneEcritureDesCapacites(db);
+      return (m) => capacites(motsCles(m));
+    },
   });
   const reelles = appliquees.filter((m) => !m.synthetique);
   const metiers = new Set(reelles.filter((m) => m.table === 'metier' || m.table === 'metier_bonus').map((m) => m.cle?.metier_id ?? m.cle?.id));
@@ -1575,7 +1584,7 @@ function modifier(ctx, op) {
 }
 
 /** Créations dont le refus commence par le nom saisi : une page en envoie plusieurs dans un lot (la file de la page d'une classe, D11). */
-const NOMMER_LE_REFUS = new Set(['specialite', 'capacite']);
+const NOMMER_LE_REFUS = new Set(['specialite', 'capacite', 'monstre_capacite_commune']);
 
 function creer(ctx, op) {
   const entite = ENTITES[op.entite];
@@ -1617,7 +1626,7 @@ function supprimer(ctx, op) {
   return DOMAINES[entite.table].supprimer(ctx, op.cle, op).resume;
 }
 
-const OPERATIONS = { modifier, creer, supprimer, relations, magies_innees: magiesInnees, ...CHRONOLOGIE.operations };
+const OPERATIONS = { modifier, creer, supprimer, relations, magies_innees: magiesInnees, ...CHRONOLOGIE.operations, ...operationsDuBestiaire({ refus, ErreurEdition, provenance }) };
 
 /**
  * Applique un lot dans la base vivante, d'un bloc : tout passe ou rien n'est écrit (ErreurEdition : statut HTTP, message en français).
@@ -1730,6 +1739,8 @@ export function listes(db) {
     especesDeMonstres: especesDeMonstres(db),
     // les groupes d'espèces (formulaire « Nouvelle espèce » : un nouvel Ottar rejoint « Ottar », décision R64)
     groupesDeMonstres: groupesDeMonstres(db),
+    // les capacités de monstre communes (choix d'une capacité à ajouter à une carte ; décision R66)
+    capacitesDeMonstre: capacitesDeMonstre(db),
     // le bestiaire : le tableau de l'introduction (curseur d'échelle d'une carte, rendu « monstre-echelle ») et le glossaire du butin (l'objet d'une case
     // en infobulle, rendu « monstre-butin » : les définitions sont dans la page, il ne faut que l'identifiant et le nom)
     echellesDePuissance: db.prepare('SELECT * FROM monstre_echelle ORDER BY ep').all(),
@@ -1757,11 +1768,12 @@ export function listes(db) {
  * ses lignes, et la ligne et la carte en HTML de celles que la page n'a pas (serveur/edition-bestiaire.mjs#lignesDuBestiaire).
  */
 export function lignesDuBestiaire(db, corps) {
-  const { connues, logo = '' } = corps ?? {};
-  if (!Array.isArray(connues) || connues.length > 5000 || !connues.every((id) => typeof id === 'string') || typeof logo !== 'string') {
-    throw refus('Corps attendu : { connues: [identifiants des lignes de la page] (au plus 5000), logo: adresse du logo }');
+  const { connues, logo = '', capacites } = corps ?? {};
+  const ids = (x) => Array.isArray(x) && x.length <= 5000 && x.every((id) => typeof id === 'string');
+  if (capacites !== undefined ? !ids(capacites) || (connues !== undefined && !ids(connues)) : !ids(connues) || typeof logo !== 'string') {
+    throw refus('Corps attendu : { connues: [identifiants des lignes de la page] (au plus 5000), logo: adresse du logo } ou { capacites: [identifiants des cartes] }');
   }
-  return lignesRenduesDuBestiaire(db, { connues, logo });
+  return lignesRenduesDuBestiaire(db, { connues, logo, capacites });
 }
 
 /**

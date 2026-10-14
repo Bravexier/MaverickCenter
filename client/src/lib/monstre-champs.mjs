@@ -1,6 +1,7 @@
 // Découpage d'une carte de monstre du « Bestiaire 2.0 » : ce que la base tire du texte de ses rubriques (data/schema.sql, section 8 bis). Le même découpage
 // sert à l'extraction du doc (tools/bestiaire/extraire.mjs), à la page (lib/bestiaire-db.mjs, rendu de la carte) et au mode modification du site de dev
-// (serveur/edition.mjs : une rubrique modifiée refait les valeurs typées de la carte). Rien n'est déduit : une valeur n'est typée que si son écriture est
+// (serveur/edition.mjs : une rubrique modifiée refait les valeurs typées de la carte) ; les capacités, elles, sont des tables à part (décision R66 :
+// emplacements « {N} » des descriptions, `emplacements`, `avecLesValeurs`). Rien n'est déduit : une valeur n'est typée que si son écriture est
 // sans ambiguïté (sinon NULL, le texte de la rubrique fait foi). Fonctions pures ; seule dépendance : lib/text.mjs.
 import { normalize } from './text.mjs';
 
@@ -195,6 +196,91 @@ export const echelleDuPrefixe = (prefixe) => {
 };
 
 /**
+ * Emplacements de la description d'une capacité commune (décision R69 : « si l'effet ne diffère que d'un chiffre, le mettre modifiable par un
+ * slider ») : chaque « {N} », N entier, est un emplacement dont la valeur commune est N. Renvoie ces valeurs communes, dans l'ordre (le 1er emplacement
+ * d'abord : c'est son numéro dans monstre_capacite_valeur).
+ */
+export const emplacements = (description) => [...String(description ?? '').matchAll(/\{(\d+)\}/g)].map((m) => Number(m[1]));
+
+/**
+ * Les emplacements d'une description, pour le curseur du site de dev (décision R69) : [{ numero, commune, pourcent }], dans l'ordre d'`emplacements` ;
+ * `pourcent` : un « % » suit l'accolade (« {10}% », ou « {10} % » avec une espace, insécable ou non).
+ */
+export function emplacementsDetailles(description) {
+  const pourcents = [...String(description ?? '').matchAll(/\{\d+\}(\s?%)?/g)].map((m) => Boolean(m[1]));
+  return emplacements(description).map((commune, i) => ({ numero: i + 1, commune, pourcent: pourcents[i] ?? false }));
+}
+
+/**
+ * La borne haute du curseur d'un emplacement (arbitrage, décision R69) : 100 pour un pourcentage, sinon au moins 20 et deux fois la plus grande des
+ * valeurs commune et propre à la carte ; la saisie au clavier va au-delà.
+ */
+export const borneDuCurseur = (emplacement, propre = null) => (emplacement.pourcent ? 100 : Math.max(20, 2 * Math.max(emplacement.commune, propre ?? 0)));
+
+/**
+ * Ce qu'une carte envoie pour les valeurs de ses emplacements (opération valeurs_de_capacite, décision R69) : `choisies` (numéro -> valeur réglée au
+ * curseur), `propres` (numéro -> valeur propre lue au service) ; la valeur commune s'envoie null (la carte suit alors la description), et seule une valeur
+ * qui change quelque chose part ; un numéro absent de la description (emplacement retiré entre-temps) est laissé. -> { numéro: valeur ou null }.
+ */
+export function valeursAEnvoyer(description, choisies, propres) {
+  const places = emplacementsDetailles(description);
+  const sortie = {};
+  for (const [numero, v] of choisies) {
+    const p = places[Number(numero) - 1];
+    if (!p) continue;
+    const voulue = v === p.commune ? null : v;
+    if (voulue !== (propres.get(Number(numero)) ?? null)) sortie[numero] = voulue;
+  }
+  return sortie;
+}
+
+/**
+ * Quand une description change son nombre d'emplacements (décision R69), quel emplacement d'avant devient quel emplacement d'après : Map(numéro avant ->
+ * numéro après). Même nombre : chacun garde son numéro (le texte ou une valeur commune a changé). Sinon un emplacement se reconnaît au texte qui le
+ * précède, ou à celui qui le suit, s'il est le seul à l'avoir (un texte vide ne compte pas) ; un emplacement retiré, ou qui ne se reconnaît pas, n'a pas
+ * de suite (ses valeurs propres partent plutôt que de passer à un autre emplacement).
+ */
+export function suiteDesEmplacements(avant, apres) {
+  const decoupe = (d) => {
+    const morceaux = String(d ?? '').split(/\{\d+\}/);
+    const communes = emplacements(d);
+    return communes.map((commune, i) => ({ numero: i + 1, commune, avant: morceaux.slice(0, i + 1).join('\u0000'), apres: morceaux.slice(i + 1).join('\u0000') }));
+  };
+  const a = decoupe(avant);
+  const b = decoupe(apres);
+  if (a.length === b.length) return new Map(a.map((x) => [x.numero, x.numero]));
+  // chaque couple (avant, après) qui partage le texte qui précède ou celui qui suit (chacun propre à un seul emplacement de la nouvelle description),
+  // noté : un point par texte partagé, un de plus pour la même valeur commune ; les mieux notés d'abord ; deux suites aussi bien notées : aucune.
+  // Un texte vide (emplacement au début ou à la fin des deux descriptions) ne reconnaît rien : tout le reste a pu changer
+  const seul = (cle, valeur) => b.filter((y) => y[cle] === valeur).length === 1;
+  const partage = (x, y, cle) => x[cle] !== '' && x[cle] === y[cle] && seul(cle, y[cle]);
+  const couples = a.flatMap((x) => b.map((y) => {
+    const textes = (partage(x, y, 'avant') ? 1 : 0) + (partage(x, y, 'apres') ? 1 : 0);
+    return { x: x.numero, y: y.numero, note: textes ? textes + (x.commune === y.commune ? 1 : 0) : 0 };
+  })).filter((c) => c.note > 0);
+  const suite = new Map();
+  const prises = new Set();
+  for (const note of [...new Set(couples.map((c) => c.note))].sort((p, q) => q - p)) {
+    const libres = couples.filter((c) => c.note === note && !suite.has(c.x) && !prises.has(c.y));
+    for (const c of libres) {
+      if (libres.filter((d) => d.x === c.x || d.y === c.y).length > 1) continue; // ambigu
+      suite.set(c.x, c.y);
+      prises.add(c.y);
+    }
+  }
+  return suite;
+}
+
+/**
+ * La description d'une capacité commune telle qu'une carte l'affiche : chaque « {N} » remplacé par la valeur de la carte pour cet emplacement
+ * (`valeurs` : numéro de l'emplacement -> valeur, monstre_capacite_valeur), sinon par sa valeur commune N.
+ */
+export function avecLesValeurs(description, valeurs = {}) {
+  let k = 0;
+  return String(description ?? '').replace(/\{(\d+)\}/g, (_, n) => String(valeurs[++k] ?? Number(n)));
+}
+
+/**
  * « Pince - 2d10 + 2 dégâts d’estoc », « Bâton mal-foutue: 1d6 dégâts de frappe » -> { rang, nom, texte } ; une ligne sans « nom - texte » chiffré n'est pas
  * une attaque (« Arme de la créature : », « Se fier au dégâts moyen… », « EP 1 - 10 : Faux déformée… » d'une carte qui varie selon l'échelle).
  */
@@ -339,8 +425,9 @@ export function caracteristiques(texte) {
 
 /**
  * Tout ce que la base tire des rubriques d'une carte ([{ rubrique, texte }], dans l'ordre) : colonnes typées de `monstre` et lignes des tables de détail
- * (`monstre_caracteristique`, `monstre_attaque`, `monstre_capacite`, `monstre_defense`). La première rubrique d'une clé fait foi pour les valeurs uniques ;
- * les cibles de deux rubriques de même sens se suivent.
+ * (`monstre_caracteristique`, `monstre_attaque`, `monstre_defense`). La première rubrique d'une clé fait foi pour les valeurs uniques ; les cibles de deux
+ * rubriques de même sens se suivent. `capacites` : les capacités telles que le doc les écrit (rubrique « Capacité(s) »), que seul l'extracteur range sous
+ * les capacités communes (registre tools/bestiaire/capacites.json, décision R66) ; la base n'a plus ce texte (la rubrique n'y est qu'un repère vide).
  */
 export function valeursDeLaCarte(rubriques) {
   const de = (cle) => rubriques.find((r) => r.rubrique === cle)?.texte ?? '';
@@ -350,7 +437,7 @@ export function valeursDeLaCarte(rubriques) {
     ...vitesse(de('vitesse')),
     caracteristiques: caracteristiques(de('caracteristiques')),
     attaques: attaques(de('degats')),
-    // un premier paragraphe sans nom reste dans le texte de la rubrique (aucune ligne : `monstre_capacite.nom` est obligatoire)
+    // un premier paragraphe sans nom n'est pas une capacité (aucun cas dans le doc)
     capacites: capacites(de('capacites'))
       .filter((c) => c.nom !== null)
       .map((c, k) => ({ ...c, rang: k + 1 })),

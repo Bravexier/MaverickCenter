@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 43 : 190 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 44 : 192 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -17,7 +17,7 @@
 - [6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)](#6-classes-spécialités-capacités-famille--classes) : `categorie_classe`, `classe`, `specialite`, `capacite`, `objet_depart`, `classe_objet_depart`, `classe_maitrise_armure`, `classe_maitrise_arme`, `classe_annexe`
 - [7. RACES, ETHNIES, ACCESSIBILITÉS (famille « races »)](#7-races-ethnies-accessibilités-famille--races) : `race`, `race_restriction_carac`, `ethnie`, `ethnie_resistance`, `race_classe`, `race_magie`, `race_onglet`, `race_don`, `race_don_tableau_colonne`, `race_don_tableau_ligne`, `race_don_tableau_cellule`, `race_magie_onglet`, `echelle_relation`, `peuple`, `relation_peuple`
 - [8. BESTIAIRE : invocations et créatures (famille « bestiaire »)](#8-bestiaire--invocations-et-créatures-famille--bestiaire) : `invocation`, `invocation_capacite_commune`, `invocation_resistance`, `invocation_bloc`, `invocation_bloc_magie`, `creature`, `creature_ressource`, `creature_caracteristique`, `creature_bonus_npm`, `creature_attaque`, `creature_attaque_type`, `creature_capacite`, `creature_capacite_sort`, `creature_capacite_resistance`, `creature_effet`
-- [8 bis. BESTIAIRE 2.0 : monstres, butin, échelles de puissance (famille « monstres »)](#8-bis-bestiaire-20--monstres-butin-échelles-de-puissance-famille--monstres) : `monstre_regle`, `monstre_echelle`, `monstre_butin_objet`, `monstre_groupe`, `monstre_espece`, `monstre_espece_lieu`, `monstre_espece_bloc`, `monstre_butin`, `monstre`, `monstre_rubrique`, `monstre_caracteristique`, `monstre_attaque`, `monstre_capacite`, `monstre_defense`
+- [8 bis. BESTIAIRE 2.0 : monstres, butin, échelles de puissance (famille « monstres »)](#8-bis-bestiaire-20--monstres-butin-échelles-de-puissance-famille--monstres) : `monstre_regle`, `monstre_echelle`, `monstre_butin_objet`, `monstre_groupe`, `monstre_espece`, `monstre_espece_lieu`, `monstre_espece_bloc`, `monstre_butin`, `monstre`, `monstre_rubrique`, `monstre_caracteristique`, `monstre_attaque`, `monstre_capacite_commune`, `monstre_capacite`, `monstre_capacite_valeur`, `monstre_defense`
 - [9. ÉQUIPEMENT, RESSOURCES, CRAFT, MÉTIERS (familles « equipement », « craft », « docs_typees »)](#9-équipement-ressources-craft-métiers-familles--equipement---craft---docstypees) : `monnaie`, `constante_equipement`, `niveau_alchimie`, `affinite`, `arme_famille`, `arme_type`, `ressource`, `materiau_arme`, `materiau_armure`, `materiau_bouclier`, `materiau`, `gemme`, `bois`, `ingredient_alchimie`, `potion`, `potion_etat`, `kit_alchimie`, `fiole_verre`, `recette`, `recette_produit`, `recette_ingredient`, `baton_magique`, `metier`, `metier_bonus`, `metier_recette_famille`, `metier_objet_depart`, `arme`, `arme_degats`, `arme_prerequis`, `arme_elementaire`, `armure_emplacement`, `armure`, `armure_degats`, `armure_elementaire`, `armure_elementaire_effet`, `bouclier_classe`, `bouclier_poids`, `bouclier`, `amelioration_equipement`, `amelioration_total`, `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet`, `accessoire_effet_gemme`, `accessoire_effet_cible`, `accessoire_monture`, `familier`, `familier_effet`, `batiment`, `machine_guerre`, `maladie`, `maladie_methode`
 - [10. TRANSVERSAL : notes de cellule et écarts entre sources](#10-transversal--notes-de-cellule-et-écarts-entre-sources) : `note_cellule`, `ecart_source`, `correction`
 - [11. TABLES DÉRIVÉES (jamais exportées dans data/rows/, recalculées par `npm run db:build`)](#11-tables-dérivées-jamais-exportées-dans-datarows-recalculées-par-npm-run-dbbuild) : `lien`, `lien_candidat`, `page_fts`, `entite_fts`
@@ -1682,7 +1682,7 @@ MONSTRE : une carte « NOM Créature échelle N » ; « Type | Alignement | Cat�
 
 ### `monstre_rubrique`
 
-Rubriques d'une carte, dans l'ordre du doc, TOUT leur texte (rien de la carte n'est perdu) : 'attributs' = la ligne « Santé : … Chakra : … Barrière : … » (ou « [EP3] Santé : 330 … ») ; 'sante' / 'chakra' / 'barriere' = les mêmes, par échelle, sous un titre seul ; les autres rubriques suivent leur titre (`titre` tel qu'écrit, NULL pour 'attributs' qui n'en a pas).
+Rubriques d'une carte, dans l'ordre du doc, TOUT leur texte (rien de la carte n'est perdu) : 'attributs' = la ligne « Santé : … Chakra : … Barrière : … » (ou « [EP3] Santé : 330 … ») ; 'sante' / 'chakra' / 'barriere' = les mêmes, par échelle, sous un titre seul ; les autres rubriques suivent leur titre (`titre` tel qu'écrit, NULL pour 'attributs' qui n'en a pas). Sauf 'capacites', qui n'est qu'un repère (texte vide) : la place et le titre du bloc des capacités de la carte, qui sont dans monstre_capacite -> monstre_capacite_commune (décision R66 ; texte du doc : sources/raw et l'extracteur).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1720,18 +1720,45 @@ Attaques : les lignes « Nom - texte » (ou « Nom: texte ») de la rubrique Dé
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 
+### `monstre_capacite_commune`
+
+Capacités de monstre communes (décision R66 : « notées dans des tables à part (pour l'instant juste Nom et Description) histoire de mutualiser les capacités communes », « Elle change pour tous ») : le nom et la description d'une capacité, écrits une fois et cités par chaque carte qui l'a (monstre_capacite). Les capacités des créatures invoquées et les bonus du Mage Bleu restent à part (R67). Deux capacités peuvent porter le même nom avec deux textes (« Les textes doivent rester différents », R68). Registre : tools/bestiaire/capacites.json (chaque écriture du doc -> sa capacité), lu par l'extracteur. Une description peut porter des emplacements « {N} » (décision R69 : « si l'effet ne diffère que d'un chiffre, le mettre modifiable par un slider ») : N, un entier, est la valeur commune ; une carte qui en a une autre l'écrit dans monstre_capacite_valeur. id : normalize(nom) à la création (« + » écrit « plus »), suffixe -2, -3… si l'id est pris ou a déjà servi ; FIGÉ (un renommage ne le change pas).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | TEXT | oui | PK |  |
+| `nom` | TEXT | oui |  | « Inerte », « Science du critique+ », « Tome de l’ombre niv. 1 » |
+| `nom_cle` | TEXT | oui |  | normalize(nom) ; non unique (deux textes d'une même capacité, R68) |
+| `description` | TEXT | oui |  | paragraphes séparés par une ligne vide ; « {N} » = emplacement de valeur commune N (R69) |
+| `liste_de_sorts` | INTEGER | oui |  | 1 : chaque carte écrit sa liste de sorts (monstre_capacite.sorts) : « Lanceur de sorts », seule capacité à liste (R66 : « Tout doit être unifié, sauf "Lanceur de sort" ») |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  | la première carte du doc qui l'écrit ; « Décision R68 » pour un texte du propriétaire ; « Site de dev › … » pour une capacité créée sur le site |
+
 ### `monstre_capacite`
 
-Capacités : un paragraphe « [EP2] Nom. Texte » de la rubrique Capacité(s) ; un paragraphe sans nom (tableau, suite) continue la capacité précédente.
+Capacités d'une carte : la place d'une capacité commune sur la carte (ordre du doc, préfixe « [EP2] Nom. ») ; son nom et sa description sont ceux de monstre_capacite_commune (R66). Le bloc s'affiche à la place de la rubrique 'capacites' de la carte. `rang` n'est jamais renuméroté : une capacité retirée laisse un trou, une capacité ajoutée va à la fin.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `monstre_id` | TEXT | oui | PK 1, → monstre.id |  |
 | `rang` | INTEGER | oui | PK 2 |  |
 | `prefixe` | TEXT | non |  | crochets et parenthèses avant le nom : « [EP2] », « [Gauche] », « (Neige) [EP3] » |
-| `ep_min` | INTEGER | non |  | N du premier « [EPN] » du préfixe |
-| `nom` | TEXT | oui |  |  |
-| `texte` | TEXT | oui |  |  |
+| `ep_min` | INTEGER | non |  | N du premier « [EPN] » du préfixe (R56) ; recalculé, jamais saisi |
+| `capacite_commune_id` | TEXT | oui | → monstre_capacite_commune.id |  |
+| `sorts` | TEXT | non |  | la liste de CETTE carte, telle qu'écrite (« Boule de feu, Souffle chaud. »), pour une capacité à liste_de_sorts seulement ; affichée après la description |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
+### `monstre_capacite_valeur`
+
+Valeur d'un emplacement « {N} » de la description pour une carte qui n'a pas la valeur commune (R69 : « Minus » à 15 % pour le Gobelin demi-vie, la description écrivant {10}) ; sans ligne, la carte a la valeur commune. numero = le rang de l'emplacement dans la description (1 = le premier « {…} »).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `monstre_id` | TEXT | oui | PK 1, → monstre_capacite.monstre_id |  |
+| `rang` | INTEGER | oui | PK 2, → monstre_capacite.rang |  |
+| `numero` | INTEGER | oui | PK 3 |  |
+| `valeur` | INTEGER | oui |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 

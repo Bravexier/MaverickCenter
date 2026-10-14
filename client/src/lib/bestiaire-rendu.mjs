@@ -7,7 +7,7 @@
 // saisies qu'une fois la carte ouverte (src/scripts/edition/bestiaire.mjs : 315 cartes dans la page). Fonctions pures, tout texte échappé.
 import { attributEd } from './edition-modele.mjs';
 import { CATEGORIES, echellesEcrites, objetDuButin, renvoieAuxDegatsMoyens, RUBRIQUES } from './monstre-champs.mjs';
-import { htmlDeCategorie, htmlDeLEchelle, htmlDeRubrique, htmlDuButin, PHRASE_VARIABLE, RENDUS_DU_BESTIAIRE } from './monstre-rendu.mjs';
+import { htmlDeCategorie, htmlDeLEchelle, htmlDeRubrique, htmlDesCapacitesDuMonstre, htmlDuButin, PHRASE_VARIABLE, RENDUS_DU_BESTIAIRE } from './monstre-rendu.mjs';
 import { cadrageDe, dimensionsDuPortrait, empreinte, styleDuCadrage } from './portrait.mjs';
 
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -38,6 +38,22 @@ function rubriquesEnHtml(rubriques, html) {
   }
   return sortie.join('');
 }
+
+/**
+ * Les rubriques d'une carte, le bloc des capacités à la place de la rubrique « Capacité(s) » (décision R66 : elle n'en garde que la place et le titre ;
+ * ses capacités sont dans monstre_capacite) : la première seulement ; une carte sans cette rubrique le reçoit à la fin.
+ */
+function rubriquesAvecCapacites(rubriques) {
+  const k = rubriques.findIndex((r) => r.rubrique === 'capacites');
+  if (k < 0) return [...rubriques, { rang: null, rubrique: 'capacites', titre: RUBRIQUES.capacites, texte: '' }];
+  return rubriques.filter((r, i) => r.rubrique !== 'capacites' || i === k);
+}
+
+/**
+ * Le bloc des capacités d'une carte (lib/monstre-rendu.mjs#htmlDesCapacitesDuMonstre), sans champ `data-ed` : le mode modification monte ses saisies sur
+ * chaque tuile (src/scripts/edition/bestiaire.mjs) et le service le refait après une modification (serveur/edition-bestiaire.mjs#lignesDuBestiaire).
+ */
+export const htmlDesCapacitesDeLaCarte = (l) => htmlDesCapacitesDuMonstre(l.carte?.capacites ?? []);
 
 /**
  * L'adresse (sans la base du site) de la page d'un monstre (demande du propriétaire : « Prévoir une page spécifique pour chaque monstre dans le cas où on
@@ -191,8 +207,10 @@ export function htmlDeCarteMonstre(l, { logo, adresseDuPortrait = null, echelles
   const laCarte = c
     ? `<section class="bcarte__section" aria-label="La carte">`
       + `<p class="varie-note"${cadre(!c.variable)}><span${champ('monstre', k.monstre, 'variable', { rendu: 'monstre-variable', ...s })}>${c.variable ? e(PHRASE_VARIABLE) : ''}</span></p>`
-      + `<dl class="brubriques">${rubriquesEnHtml(c.rubriques, (r) => `<div class="brubrique brubrique--${e(r.rubrique)}"><dt>${e(r.titre)}</dt>`
-        + `<dd${champ('monstre_rubrique', { monstre_id: l.id, rang: r.rang }, 'texte', { rendu: 'monstre-rubrique', ...s })}>${htmlDeRubrique(r.rubrique, r.texte, { echelles: echellesDeLaCarte, magiesDesCibles })}</dd></div>`)}</dl></section>`
+      + `<dl class="brubriques">${rubriquesEnHtml(rubriquesAvecCapacites(c.rubriques), (r) => `<div class="brubrique brubrique--${e(r.rubrique)}"><dt>${e(r.titre)}</dt>`
+        + (r.rubrique === 'capacites'
+          ? `<dd data-capacites-de="${e(l.id)}">${htmlDesCapacitesDeLaCarte(l)}</dd></div>`
+          : `<dd${champ('monstre_rubrique', { monstre_id: l.id, rang: r.rang }, 'texte', { rendu: 'monstre-rubrique', ...s })}>${htmlDeRubrique(r.rubrique, r.texte, { echelles: echellesDeLaCarte, magiesDesCibles })}</dd></div>`))}</dl></section>`
     : '';
   const es = l.espece;
   // les intitulés des sections : sous le nom de la carte (h3 dans le tableau, h1 sur la page du monstre)

@@ -109,12 +109,19 @@ function brancher(section) {
   const zone = section.querySelector('[data-cartes]');
   // le titre d'un tableau dépliable dit son effectif (« 15 combinaisons · 30 créatures ») ; filtré, combien en restent
   for (const n of section.querySelectorAll('[data-repli-compte]')) n.dataset.texte = n.textContent.replace(/\s+/g, ' ').trim();
-  // le texte d'une carte que cherche la recherche d'une case : sans ce qui nomme d'autres créatures (« Même combinaison », `data-hors-recherche`),
-  // sinon chercher une créature trouverait aussi sa voisine
+  // le texte d'une carte que cherche la recherche (d'une case et de sa ligne) : sans ce qui nomme d'autres créatures (« Même combinaison », `data-hors-recherche`),
+  // sinon chercher une créature trouverait aussi sa voisine, ni les panneaux du mode modification (libellés des curseurs des capacités) ; un champ que le
+  // mode modification a ouvert dans la carte compte pour ce qui y est écrit (sa valeur, que textContent ne donne pas)
+  const SAISIES = 'textarea, select, input:not([type]), input[type="text"], input[type="search"]';
   const texteDeCarte = (carte) => {
     if (!carte) return '';
-    if (!carte.querySelector('[data-hors-recherche]')) return carte.textContent;
+    const saisies = [...carte.querySelectorAll(SAISIES)];
+    if (!saisies.length && !carte.querySelector('[data-hors-recherche]')) return carte.textContent;
     const copie = carte.cloneNode(true);
+    [...copie.querySelectorAll(SAISIES)].forEach((c, i) => {
+      const o = saisies[i];
+      c.replaceWith(` ${o.tagName === 'SELECT' ? o.selectedOptions?.[0]?.textContent ?? o.value : o.value} `);
+    });
     for (const n of copie.querySelectorAll('[data-hors-recherche]')) n.remove();
     return copie.textContent;
   };
@@ -127,7 +134,7 @@ function brancher(section) {
           const carte = document.getElementById(el.dataset.carte);
           return { el, id: el.id, carte, ligne, texteNormalise: normaliser(`${el.textContent} ${texteDeCarte(carte)}`) };
         });
-        ligne.texteNormalise = normaliser(`${tr.textContent} ${ligne.cases.map((c) => c.carte?.textContent ?? '').join(' ')}`);
+        ligne.texteNormalise = normaliser(`${tr.textContent} ${ligne.cases.map((c) => texteDeCarte(c.carte)).join(' ')}`);
         return ligne;
       })
       .sort((a, b) => a.ordre - b.ordre);
@@ -583,8 +590,9 @@ document.addEventListener('keydown', (e) => {
     ouvert.querySelector('summary').focus();
     return;
   }
-  // Échap dans une saisie ou un dialogue (recadrage d'un portrait, formulaire du mode modification) ne ferme que lui ; sur le curseur d'échelle, il ferme la carte
-  if (!e.target.closest?.('input:not([type=range]), textarea, select, dialog')) for (const t of tableaux) t.fermerLaCarte();
+  // Échap dans une saisie ou un dialogue (recadrage d'un portrait, formulaire du mode modification) ne ferme que lui ; sur le curseur d'échelle, il ferme la
+  // carte, pas sur un curseur du mode modification (la valeur d'une capacité, `.ed-curseur`)
+  if (!e.target.closest?.('input:not([type=range]), input.ed-curseur, textarea, select, dialog')) for (const t of tableaux) t.fermerLaCarte();
 });
 // un clic hors d'un menu de filtre le ferme
 document.addEventListener('click', (e) => {

@@ -8,14 +8,16 @@
 // Rien n'est déduit : chaque ligne cite sa place dans le doc (source_ref) et garde le texte tel qu'écrit. Une carte de monstre est découpée en rubriques
 // (Santé, Dégâts, Défense, Vitesse, Caractéristiques, Compétences, Vulnérabilités, Résistances, Immunités, Capacités, Tactique…) gardées en entier dans
 // `monstre_rubrique` ; les valeurs typées (santé, armures, vitesses, F.P.V.S.I.A., attaques, capacités, cibles des vulnérabilités…) n'en sont tirées que
-// quand l'écriture est sans ambiguïté (sinon NULL, le texte reste).
+// quand l'écriture est sans ambiguïté (sinon NULL, le texte reste). Seule exception, les capacités (décisions R66 à R69) : chaque capacité écrite sur une
+// carte est rangée sous une capacité commune par le registre tools/bestiaire/capacites.json (monstre_capacite_commune, monstre_capacite,
+// monstre_capacite_valeur), et la rubrique « Capacité(s) » ne garde que sa place (texte vide).
 // Transformations : les quatre graphies que la base a déjà corrigées partout (CORRECTIONS) ; et le nom d'une carte, écrit en capitales dans le doc (« AMBLYPYGE DE BRAI ») ; `nom` le remet en minuscules en gardant la
 // casse que le doc donne ailleurs à chaque mot (titre de l'espèce, puis texte courant : « Amblypyge de brai », « Élémentaire de l'Eau ») et les chiffres romains
 // en capitales (« Golem de fer II ») ; `nom_brut` garde l'original.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { normalize } from '../../client/src/lib/text.mjs';
-import { bornes, categorieDe, lieux, SENS_DEFENSE, valeursDeLaCarte } from '../../client/src/lib/monstre-champs.mjs';
+import { bornes, categorieDe, emplacements, lieux, SENS_DEFENSE, valeursDeLaCarte } from '../../client/src/lib/monstre-champs.mjs';
 
 export const DOCUMENT = 'Bestiaire 2.0';
 
@@ -122,6 +124,46 @@ function casseur(texte) {
   };
 }
 
+/** Le registre des capacités communes (tools/bestiaire/capacites.json, décisions R66 à R69 ; voir son en-tête « _ »). */
+export function lireRegistre(chemin = new URL('./capacites.json', import.meta.url)) {
+  const { capacites, ecritures } = JSON.parse(readFileSync(chemin, 'utf8'));
+  return { capacites, ecritures };
+}
+
+/** Contrôles du registre : identifiants, emplacements, valeurs et listes de sorts cohérents ; renvoie les écarts (vide = bon). */
+export function ecartsDuRegistre({ capacites, ecritures }) {
+  const ecarts = [];
+  const parId = new Map();
+  for (const c of capacites) {
+    if (parId.has(c.id)) ecarts.push(`capacité ${c.id} : identifiant en double`);
+    parId.set(c.id, c);
+    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(c.id)) ecarts.push(`capacité ${c.id} : identifiant mal formé`);
+    if (!c.nom || !c.description) ecarts.push(`capacité ${c.id} : nom ou description vide`);
+    if (/[{}]/.test(c.description.replace(/\{\d+\}/g, ''))) ecarts.push(`capacité ${c.id} : accolade hors d'un emplacement « {N} »`);
+  }
+  const vues = new Set();
+  for (const e of ecritures) {
+    const cle = `${e.nom}\u0000${e.texte}`;
+    if (vues.has(cle)) ecarts.push(`écriture « ${e.nom} » en double`);
+    vues.add(cle);
+    if (!e.placements?.length) ecarts.push(`écriture « ${e.nom} » : aucun placement`);
+    for (const p of e.placements ?? []) {
+      const c = parId.get(p.capacite);
+      if (!c) { ecarts.push(`écriture « ${e.nom} » : capacité ${p.capacite} inconnue`); continue; }
+      const n = emplacements(c.description).length;
+      for (const [k, v] of Object.entries(p.valeurs ?? {})) {
+        if (!(Number(k) >= 1 && Number(k) <= n)) ecarts.push(`écriture « ${e.nom} » : emplacement ${k} absent de ${c.id}`);
+        if (!Number.isInteger(v) || v < 0) ecarts.push(`écriture « ${e.nom} » : valeur ${v} invalide`);
+        if (v === emplacements(c.description)[Number(k) - 1]) ecarts.push(`écriture « ${e.nom} » : valeur ${k} égale à la valeur commune (à ne pas écrire)`);
+      }
+      if (Boolean(p.sorts) !== Boolean(c.liste_de_sorts)) ecarts.push(`écriture « ${e.nom} » : liste de sorts ${p.sorts ? 'sur une capacité sans liste' : 'manquante'}`);
+    }
+  }
+  const utilisees = new Set(ecritures.flatMap((e) => (e.placements ?? []).map((p) => p.capacite)));
+  for (const c of capacites) if (!utilisees.has(c.id)) ecarts.push(`capacité ${c.id} : aucune écriture ne la place`);
+  return ecarts;
+}
+
 /** Lignes du doc, sans BOM ni retours chariot. */
 export const lignesDuDoc = (texte) => texte.replace(/^﻿/, '').replace(/\r/g, '').split('\n');
 
@@ -220,8 +262,30 @@ function butin(L, debut, fin) {
   return sortie;
 }
 
+/**
+ * Les capacités écrites sur une carte -> leurs placements (rang, préfixe, capacité commune, liste de sorts, valeurs propres à la carte), d'après le registre.
+ * Une écriture absente du registre arrête l'extraction.
+ */
+function placementsDe(ecrites, registre, ou) {
+  const sortie = [];
+  for (const x of ecrites) {
+    const e = registre.parEcriture.get(`${x.nom}\u0000${x.texte}`);
+    if (!e) throw new Error(`capacité « ${x.nom} » (${ou}) : absente du registre tools/bestiaire/capacites.json`);
+    e.employee = true;
+    e.placements.forEach((p, k) => sortie.push({
+      rang: sortie.length + 1,
+      prefixe: k === 0 ? x.prefixe : null,
+      ep_min: k === 0 ? x.ep_min : null,
+      capacite_commune_id: p.capacite,
+      sorts: p.sorts ?? null,
+      valeurs: Object.entries(p.valeurs ?? {}).map(([numero, valeur]) => ({ numero: Number(numero), valeur })),
+    }));
+  }
+  return sortie;
+}
+
 /** Une carte de monstre : de son en-tête (« NOM   Créature échelle 2 ») à `fin` (exclue). */
-function carte(L, debut, fin, espece, rang, casse) {
+function carte(L, debut, fin, espece, rang, casse, registre) {
   const m = L[debut].match(/^(.*?)\s*Créature échelle\s*(.*?)\s*$/);
   const nomBrut = compacter(m[1]);
   let i = debut + 1;
@@ -244,8 +308,10 @@ function carte(L, debut, fin, espece, rang, casse) {
     else if (s) throw new Error(`ligne hors rubrique « ${s} » (${ref(i)})`);
   }
   if (rubriques.length === 0) throw new Error(`carte sans rubrique (${ref(debut)})`);
-  const r = rubriques.map((x, k) => ({ rang: k + 1, rubrique: x.rubrique, titre: x.rubrique === 'attributs' ? null : x.titre, texte: texteDe(x.lignes), source_ref: ref(x.debut) }));
-  const v = valeursDeLaCarte(r);
+  const ecrites = rubriques.map((x, k) => ({ rang: k + 1, rubrique: x.rubrique, titre: x.rubrique === 'attributs' ? null : x.titre, texte: texteDe(x.lignes), source_ref: ref(x.debut) }));
+  const v = valeursDeLaCarte(ecrites);
+  // la rubrique « Capacité(s) » ne garde que sa place et son titre : ses capacités sont rangées par le registre (R66)
+  const r = ecrites.map((x) => (x.rubrique === 'capacites' ? { ...x, texte: '' } : x));
   const [ep_min, ep_max] = bornes(m[2]);
   const cle = normalize(nomBrut);
   return {
@@ -274,13 +340,15 @@ function carte(L, debut, fin, espece, rang, casse) {
     rubriques: r,
     caracteristiques: v.caracteristiques,
     attaques: v.attaques,
-    capacites: v.capacites,
+    texteDesCapacites: ecrites.filter((x) => x.rubrique === 'capacites').map((x) => x.texte).join('\n\n'),
+    capacitesEcrites: v.capacites,
+    capacites: placementsDe(v.capacites, registre, ref(debut)),
     defenses: v.defenses,
   };
 }
 
 /** Une espèce : de son titre « Nom (EPx) » à `fin` (exclue) : description, lieu de rencontre, cartes, blocs qui suivent les cartes, butin. */
-function espece(L, debut, fin, ordre, lettre, ids, casse) {
+function espece(L, debut, fin, ordre, lettre, ids, casse, registre) {
   const [, nom, ep] = L[debut].match(TITRE_ESPECE);
   let cle = normalize(nom);
   let id = `monstres/${cle}`;
@@ -320,7 +388,7 @@ function espece(L, debut, fin, ordre, lettre, ids, casse) {
   e.blocs = [];
   e.butin = [];
   marques.forEach((m, k) => {
-    if (m.genre === 'carte') e.cartes.push(carte(L, m.i, finDe(k), e, e.cartes.length + 1, casse));
+    if (m.genre === 'carte') e.cartes.push(carte(L, m.i, finDe(k), e, e.cartes.length + 1, casse, registre));
     else if (m.genre === 'bloc') e.blocs.push({ rang: e.blocs.length + 1, titre: compacter(L[m.i]), texte: texteDe(L.slice(m.i + 1, finDe(k))), source_ref: ref(m.i, finDe(k) - 1) });
     else {
       const rang0 = e.butin.reduce((n, b) => Math.max(n, b.rang), 0);
@@ -363,8 +431,15 @@ function groupe(L, i, titres) {
   return { id: `monstres/${normalize(nom)}`, nom, nom_cle: normalize(nom), description: texteDe(L.slice(i + 1, fin)) || null, source_ref: ref(i, der), ligne: i };
 }
 
-/** Le doc entier -> { regles, echelles, groupes, especes, glossaire } ; les brouillons (« (a refaire) », « (a continuer) ») ne sont pas repris. */
-export function extraireBestiaire(texte) {
+/**
+ * Le doc entier -> { regles, echelles, groupes, especes, glossaire, capacites } ; les brouillons (« (a refaire) », « (a continuer) ») ne sont pas repris.
+ * `capacites` : les capacités communes du registre (par identifiant), chacune avec sa provenance : la première carte du doc qui écrit son texte, sinon la
+ * source que lui donne le registre, sinon la première carte qui la place.
+ */
+export function extraireBestiaire(texte, registre = lireRegistre()) {
+  const ecarts = ecartsDuRegistre(registre);
+  if (ecarts.length) throw new Error(`registre des capacités : ${ecarts.join(' ; ')}`);
+  const reg = { ...registre, parEcriture: new Map(registre.ecritures.map((e) => [`${e.nom}\u0000${e.texte}`, { ...e }])) };
   const L = lignesDuDoc(texte);
   const iGlossaire = L.findIndex((l) => DEBUT_GLOSSAIRE.test(l.trim()));
   if (iGlossaire < 0) throw new Error('« GLOSSAIRE BUTIN » introuvable');
@@ -389,7 +464,7 @@ export function extraireBestiaire(texte) {
     let fin = Math.min(k + 1 < titres.length ? titres[k + 1] : iGlossaire, brouillons.find((b) => b > debut) ?? iGlossaire);
     // la fin d'une espèce : avant le séparateur de page et la lettre de l'espèce suivante
     while (fin - 1 > debut && (!L[fin - 1].trim() || SEPARATEUR.test(L[fin - 1].trim()) || LETTRE.test(L[fin - 1]))) fin--;
-    especes.push(espece(L, debut, fin, k + 1, lettre, ids, casse));
+    especes.push(espece(L, debut, fin, k + 1, lettre, ids, casse, reg));
   }
   // les groupes : chacun prend les espèces qui suivent son titre, tant que leur nom contient le sien (décision R64)
   const groupes = titresDeGroupe.map((i) => groupe(L, i, titres));
@@ -398,7 +473,27 @@ export function extraireBestiaire(texte) {
     for (let k = titres.findIndex((t) => t > g.ligne); k >= 0 && k < especes.length && especes[k].nom_cle.includes(g.nom_cle); k++) especes[k].groupe_id = g.id;
     delete g.ligne;
   }
-  return { ...intro, groupes, especes, glossaire: glossaire(L, iGlossaire) };
+  const inemployees = [...reg.parEcriture.values()].filter((e) => !e.employee);
+  if (inemployees.length) throw new Error(`registre des capacités : écritures absentes du doc : ${inemployees.map((e) => `« ${e.nom} »`).join(', ')}`);
+  // les capacités communes, chacune avec la ligne de la première carte du doc qui écrit son texte (au plus avec une faute, ou découpé autrement) ; sinon
+  // la source que lui donne le registre (texte du propriétaire, texte d'une créature invoquée retenu par le chef), sinon la première carte qui la place
+  const premiere = new Map();
+  const ecrite = new Map();
+  const PROCHE = /^(R66 : fautes corrigées|R66 : description commune, fautes corrigées|découpage)/;
+  for (const c of especes.flatMap((e) => e.cartes)) {
+    const ligne = c.rubriques.find((r) => r.rubrique === 'capacites')?.source_ref ?? c.source_ref;
+    for (const x of c.capacitesEcrites) {
+      const e = reg.parEcriture.get(`${x.nom}\u0000${x.texte}`);
+      for (const p of e.placements) {
+        if (!premiere.has(p.capacite)) premiere.set(p.capacite, ligne);
+        if (!ecrite.has(p.capacite) && (!e.decision || PROCHE.test(e.decision))) ecrite.set(p.capacite, ligne);
+      }
+    }
+  }
+  const capacites = registre.capacites
+    .map((x) => ({ id: x.id, nom: x.nom, nom_cle: normalize(x.nom), description: x.description, liste_de_sorts: x.liste_de_sorts ? 1 : 0, source_ref: x.source ?? ecrite.get(x.id) ?? premiere.get(x.id) }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  return { ...intro, groupes, especes, glossaire: glossaire(L, iGlossaire), capacites };
 }
 
 // ---------------------------------------------------------------- SQL de la migration
@@ -413,19 +508,21 @@ export function lignesSql(b) {
   for (const e of b.echelles) out.push(insert('monstre_echelle', { ...e, ...O, source_ref: e.source_ref }));
   for (const g of b.glossaire) out.push(insert('monstre_butin_objet', { id: g.id, rang: g.rang, nom: g.nom, texte: g.texte, ...O, source_ref: g.source_ref }));
   for (const g of b.groupes) out.push(insert('monstre_groupe', { id: g.id, nom: g.nom, nom_cle: g.nom_cle, description: g.description, ...O, source_ref: g.source_ref }));
+  for (const c of b.capacites) out.push(insert('monstre_capacite_commune', { id: c.id, nom: c.nom, nom_cle: c.nom_cle, description: c.description, liste_de_sorts: c.liste_de_sorts, ...O, source_ref: c.source_ref }));
   for (const e of b.especes) {
     out.push(insert('monstre_espece', { id: e.id, nom: e.nom, nom_cle: e.nom_cle, ordre: e.ordre, lettre: e.lettre, ep_brut: e.ep_brut, ep_min: e.ep_min, ep_max: e.ep_max, description: e.description, lieu_brut: e.lieu_brut, complement: e.complement, ...O, source_ref: e.source_ref, groupe_id: e.groupe_id }));
     for (const l of e.lieux) out.push(insert('monstre_espece_lieu', { espece_id: e.id, rang: l.rang, lieu: l.lieu, lieu_cle: l.lieu_cle, ...O, source_ref: e.source_ref }));
     for (const x of e.blocs) out.push(insert('monstre_espece_bloc', { espece_id: e.id, rang: x.rang, titre: x.titre, texte: x.texte, ...O, source_ref: x.source_ref }));
     for (const x of e.butin) out.push(insert('monstre_butin', { espece_id: e.id, rang: x.rang, categorie: x.categorie, score_min: x.score_min, score_max: x.score_max, score_brut: x.score_brut, texte: x.texte, ...O, source_ref: x.source_ref }));
     for (const c of e.cartes) {
-      const { rubriques, caracteristiques, attaques: att, capacites: cap, defenses, ...ligne } = c;
+      const { rubriques, caracteristiques, attaques: att, capacites: cap, defenses, texteDesCapacites, capacitesEcrites, ...ligne } = c;
       out.push(insert('monstre', { ...ligne, ...O }));
       for (const r of rubriques) out.push(insert('monstre_rubrique', { monstre_id: c.id, ...r, ...O }));
       for (const x of caracteristiques) out.push(insert('monstre_caracteristique', { monstre_id: c.id, ...x, ...O, source_ref: rubriques.find((r) => r.rubrique === 'caracteristiques').source_ref }));
       const refDe = (cle) => rubriques.find((r) => r.rubrique === cle)?.source_ref ?? c.source_ref;
       for (const x of att) out.push(insert('monstre_attaque', { monstre_id: c.id, ...x, ...O, source_ref: refDe('degats') }));
-      for (const x of cap) out.push(insert('monstre_capacite', { monstre_id: c.id, ...x, ...O, source_ref: refDe('capacites') }));
+      for (const { valeurs, ...x } of cap) out.push(insert('monstre_capacite', { monstre_id: c.id, ...x, ...O, source_ref: refDe('capacites') }));
+      for (const x of cap) for (const v of x.valeurs) out.push(insert('monstre_capacite_valeur', { monstre_id: c.id, rang: x.rang, ...v, ...O, source_ref: refDe('capacites') }));
       for (const x of defenses) out.push(insert('monstre_defense', { monstre_id: c.id, ...x, ...O, source_ref: refDe(x.sens) }));
     }
   }
@@ -443,7 +540,9 @@ export function bilan(b) {
     cartes: cartes.length,
     rubriques: cartes.reduce((n, c) => n + c.rubriques.length, 0),
     attaques: cartes.reduce((n, c) => n + c.attaques.length, 0),
+    capacitesCommunes: b.capacites.length,
     capacites: cartes.reduce((n, c) => n + c.capacites.length, 0),
+    valeursPropres: cartes.reduce((n, c) => n + c.capacites.reduce((k, x) => k + x.valeurs.length, 0), 0),
     defenses: cartes.reduce((n, c) => n + c.defenses.length, 0),
     butin: b.especes.reduce((n, e) => n + e.butin.length, 0),
     especesAvecButin: b.especes.filter((e) => e.butin.length).length,
@@ -461,7 +560,10 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const args = process.argv.slice(2);
   const source = args.includes('--source') ? args[args.indexOf('--source') + 1] : fileURLToPath(new URL('../../sources/raw/bestiaire-2-0.txt', import.meta.url));
   const b = extraireBestiaire(readFileSync(source, 'utf8'));
-  if (args.includes('--sql')) process.stdout.write(lignesSql(b).join('\n') + '\n');
+  // --tables a,b : seulement les INSERT de ces tables (une migration de données)
+  const tables = args.includes('--tables') ? args[args.indexOf('--tables') + 1].split(',') : null;
+  const garder = (l) => !tables || tables.includes(l.match(/^INSERT INTO (\w+)/)[1]);
+  if (args.includes('--sql')) process.stdout.write(lignesSql(b).filter(garder).join('\n') + '\n');
   else if (args.includes('--json')) process.stdout.write(JSON.stringify(b, null, 1));
   else console.log(JSON.stringify(bilan(b), null, 1));
 }

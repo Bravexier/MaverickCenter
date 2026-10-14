@@ -1,6 +1,6 @@
 # Aperçu du schéma de la base
 
-> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 190 tables, 2 tables de recherche, 35 vues.
+> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 192 tables, 2 tables de recherche, 35 vues.
 > Ce qui reste à trancher sur le **contenu** (pas sur la forme) est dans [`a-valider.md`](a-valider.md).
 
 **Lecture des colonnes** : **gras** = clé primaire ; `→table` = clé étrangère vers cette table ; `?` = peut être absente (`NULL`, jamais une valeur inventée) ; `+provenance` = `origine` (famille d'import) et `source_ref` (classeur › onglet › plage). Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté.
@@ -180,7 +180,7 @@
 
 ## 8 bis. BESTIAIRE 2.0 : monstres, butin, échelles de puissance (famille « monstres »)
 
-**Relations dans cette section** : `monstre_attaque→monstre`, `monstre_butin→monstre_espece`, `monstre_capacite→monstre`, `monstre_caracteristique→monstre`, `monstre_defense→monstre`, `monstre_espece_bloc→monstre_espece`, `monstre_espece_lieu→monstre_espece`, `monstre_espece→monstre_groupe`, `monstre_rubrique→monstre`, `monstre→monstre_espece`
+**Relations dans cette section** : `monstre_attaque→monstre`, `monstre_butin→monstre_espece`, `monstre_capacite_valeur→monstre_capacite`, `monstre_capacite→monstre`, `monstre_capacite→monstre_capacite_commune`, `monstre_caracteristique→monstre`, `monstre_defense→monstre`, `monstre_espece_bloc→monstre_espece`, `monstre_espece_lieu→monstre_espece`, `monstre_espece→monstre_groupe`, `monstre_rubrique→monstre`, `monstre→monstre_espece`
 
 **Vers d'autres sections** : `monstre_caracteristique→caracteristique (§2)`
 
@@ -198,7 +198,9 @@
 | `monstre_rubrique` | Rubriques d'une carte, dans l'ordre du doc, TOUT leur texte (rien de la carte n'est perdu) : 'attributs' = la ligne « Santé : … Chakra : … Barrière : … » (ou « [EP3] Santé : 330 … ») ; 'sante' / 'chak | **monstre_id**→monstre, **rang**, rubrique, titre?, texte, +provenance |
 | `monstre_caracteristique` | F.P.V.S.I.A. d'une carte quand la rubrique est UNE ligne « F : 6 / P : 4 / V : 6 / S : 2 / I : 3 / A : 6 » (le sigle est écrit en clair sur la carte ; même ordre que creature_caracteristique). | **monstre_id**→monstre, **caracteristique_id**→caracteristique, rang, valeur, +provenance |
 | `monstre_attaque` | Attaques : les lignes « Nom - texte » (ou « Nom: texte ») de la rubrique Dégâts dont le texte porte un nombre (« Pince - 2d10 + 2 dégâts d’estoc »). | **monstre_id**→monstre, **rang**, nom, texte, +provenance |
-| `monstre_capacite` | Capacités : un paragraphe « [EP2] Nom. | **monstre_id**→monstre, **rang**, prefixe?, ep_min?, nom, texte, +provenance |
+| `monstre_capacite_commune` | Capacités de monstre communes (décision R66 : « notées dans des tables à part (pour l'instant juste Nom et Description) histoire de mutualiser les capacités communes », « Elle change pour tous ») : le | **id**, nom, nom_cle, description, liste_de_sorts, +provenance |
+| `monstre_capacite` | Capacités d'une carte : la place d'une capacité commune sur la carte (ordre du doc, préfixe « [EP2] Nom. | **monstre_id**→monstre, **rang**, prefixe?, ep_min?, capacite_commune_id→monstre_capacite_commune, sorts?, +provenance |
+| `monstre_capacite_valeur` | Valeur d'un emplacement « {N} » de la description pour une carte qui n'a pas la valeur commune (R69 : « Minus » à 15 % pour le Gobelin demi-vie, la description écrivant {10}) ; sans ligne, la carte a la valeur commune. | **monstre_id**→monstre_capacite, **rang**→monstre_capacite, **numero**, valeur, +provenance |
 | `monstre_defense` | Cibles des vulnérabilités, résistances, immunités et réflexions : la rubrique quand elle est UNE liste « Brûlure, Paralysie » de noms courts (« Varie selon la magie », un tableau ou plusieurs lignes : | **monstre_id**→monstre, **sens**, **rang**, cible, cible_cle, +provenance |
 
 ## 9. ÉQUIPEMENT, RESSOURCES, CRAFT, MÉTIERS (familles « equipement », « craft », « docs_typees »)

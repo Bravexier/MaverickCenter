@@ -7,17 +7,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-de-brai', 6, 'competences', 'Compétence(s) secondaire(s)', '+10% Arme lourde, +10% Esquive', 'monstres', 'Bestiaire 2.0 › ligne 751');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-de-brai', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Brûlure, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 755');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-de-brai', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Corruption, Surcharge magique', 'monstres', 'Bestiaire 2.0 › ligne 759');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-de-brai', 9, 'capacites', 'Capacité(s)', 'Carapace huileuse. Les dégâts physiques infligés sur lui diminue de 5 en dégâts mais prend 5 dégâts de plus contre les dégâts de feu et de foudre.
-
-Diagonale incohérente. Les diagonales comptent pour 1 case de déplacement.
-
-Embuscade poisseuse. Si cette créature attaque alors qu''elle est dans l''obsurité, sur un marais, un terrain corrompu = +3 dégâts, +2% à la réussite critique
-
-Pétrolier. Chaque attaque qui touche inflige 5 corruption.
-
-Pincement entravante. Si la créature réussit son attaque avec son arme naturelle, elle empêche la cible d''utiliser des "réactions" pendant 1 tour.
-
-Pétronage. La vitesse de nage dans le pétrole ou les marais est doublée, la vitesse augmente de +2 sous la météo “Pluie pétrole”.', 'monstres', 'Bestiaire 2.0 › ligne 763');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-de-brai', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 763');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-de-brai', 10, 'tactique', 'TACTIQUE COMBAT', 'En plus d’être plus fort, il est parfaitement adapté au terrain marais et sa vitesse augmente dangereusement.', 'monstres', 'Bestiaire 2.0 › ligne 781');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-de-corruption', 1, 'attributs', NULL, 'Santé : 280 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 791');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-de-corruption', 2, 'degats', 'Dégâts', 'Pince - 2d10 + 10 dégâts d’estoc', 'monstres', 'Bestiaire 2.0 › ligne 794');
@@ -27,21 +17,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-de-corruption', 6, 'competences', 'Compétence(s) secondaire(s)', '+15% Arme lourde, +15% Esquive', 'monstres', 'Bestiaire 2.0 › ligne 809');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-de-corruption', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Brûlure, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 813');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-de-corruption', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Corruption, Surcharge magique', 'monstres', 'Bestiaire 2.0 › ligne 817');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-de-corruption', 9, 'capacites', 'Capacité(s)', 'Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Carapace huileuse. Les dégâts physiques infligés sur lui diminue de 5 en dégâts mais prend 5 dégâts de plus contre les dégâts de feu et de foudre.
-
-Diagonale incohérente. Les diagonales comptent pour 1 case de déplacement.
-
-Embuscade poisseuse. Si cette créature attaque alors qu''elle est dans l''obscurité, sur un marais, un terrain corrompu = +3 dégâts, +2% à la réussite critique
-
-Pétrolier. Chaque attaque qui touche inflige 5 corruption.
-
-Pincement entravante. Si la créature réussit son attaque avec son arme naturelle, elle empêche la cible d''utiliser des "réactions" pendant 1 tour.
-
-Pétronage. La vitesse de nage dans le pétrole ou les marais est doublée, la vitesse augmente de +2 sous la météo “Pluie pétrole”.
-
-Larmes du paria. Quand la créature tombe en dessous de 50% de santé = Pétrolier passe à 7 corruption, chaque attaque au contact subit force l''assaillant un jet de fermeté pour ne pas prendre "surcharge magique 1".', 'monstres', 'Bestiaire 2.0 › ligne 821');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-de-corruption', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 821');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-de-corruption', 10, 'tactique', 'TACTIQUE COMBAT', 'L’Amplypyge de corruption est la forme la plus sublime de son espèce, il est capable de corrompre ses ennemis plus efficacement mais également d’affaiblir très lentement leur chakra et barrière.', 'monstres', 'Bestiaire 2.0 › ligne 845');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-noir', 1, 'attributs', NULL, 'Santé : 70 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 674');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-noir', 2, 'degats', 'Dégâts', 'Pince - 2d10 + 2 dégâts d’estoc', 'monstres', 'Bestiaire 2.0 › ligne 677');
@@ -51,15 +27,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-noir', 6, 'competences', 'Compétence(s) secondaire(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 692');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-noir', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Brûlure, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 697');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-noir', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Corruption, Surcharge magique', 'monstres', 'Bestiaire 2.0 › ligne 701');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-noir', 9, 'capacites', 'Capacité(s)', 'Carapace huileuse. Les dégâts physiques infligés sur lui diminue de 5 en dégâts mais prend 5 dégâts de plus contre les dégâts de feu et de foudre.
-
-Diagonale incohérente. Les diagonales comptent pour 1 case de déplacement.
-
-Embuscade poisseuse. Si cette créature attaque alors qu''elle est dans l''obsurité, sur un marais, un terrain corrompu = +3 dégâts, +2% à la réussite critique
-
-Pétrolier. Chaque attaque qui touche inflige 5 corruption.
-
-Pincement entravante. Si la créature réussit son attaque avec son arme naturelle, elle empêche la cible d''utiliser des "réactions" pendant 1 tour.', 'monstres', 'Bestiaire 2.0 › ligne 705');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-noir', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 705');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amblypyge-noir#carte:amblypyge-noir', 10, 'tactique', 'TACTIQUE COMBAT', 'Ce prédateur opportuniste cherchera à affaiblir ses victimes et les entraver par le terrain boueux et huileux auquel il est parfaitement adapté.
 
 Il n’apprécie pas les attaques de feu et de foudre et est plus vulnérable à leur altération d’état.', 'monstres', 'Bestiaire 2.0 › ligne 720');
@@ -73,11 +41,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amphilactrus#carte:jeune-amphilactrus', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Terre, Sang, Pétrification, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 945');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amphilactrus#carte:jeune-amphilactrus', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Vent, Brûlure, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 949');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amphilactrus#carte:jeune-amphilactrus', 9, 'grande_resistance', 'Grande(s) Résistance(s) Dégâts ÷4', 'Eau, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 953');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amphilactrus#carte:jeune-amphilactrus', 10, 'capacites', 'Capacité(s)', 'Lanceur de sorts. Cette créature est capable de lancer des sorts (ils ont tous 3NM) : Éclair, Bulle d’eau, Nerveux, Eau soignante.
-
-Super barrière. La barrière de la créature correspond à son chakra.
-
-Symbiose eau. Tant qu’elle est dans l’eau, cette créature inflige +3 à tous ses dégâts et récupère 2 santé à chaque début de tour.', 'monstres', 'Bestiaire 2.0 › ligne 957');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amphilactrus#carte:jeune-amphilactrus', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 957');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/amphilactrus#carte:jeune-amphilactrus', 11, 'tactique', 'TACTIQUE COMBAT', 'La plupart d’entre eux ne sont pas trop dangereux, sauf si bien entendu vous vous trouvez sur leur territoire. Ils sont capables d’utiliser un panel de sort limité mais à pleine puissance.
 
 Ils sont plutôt résistants à la magie mais leur peau laisse peu de place à la défense physique, ce qui les rend vulnérables contre les armes de tout type.', 'monstres', 'Bestiaire 2.0 › ligne 967');
@@ -121,29 +85,7 @@ EP 6 - 7 : +5% Dans les compétences d’armes, +5% Esquive, +5% Magie, +5% Para
 EP 8 - 10 : +10% Dans les compétences d’armes, +10% Esquive, +10% Magie, +10% Parade, +10% Fermeté, +10% Vigueur', 'monstres', 'Bestiaire 2.0 › ligne 1041');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/archidemon#carte:archidemon', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Varie selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 1054');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/archidemon#carte:archidemon', 10, 'resistance', 'Résistance(s) Dégâts ÷2', 'Varie selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 1058');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/archidemon#carte:archidemon', 11, 'capacites', 'Capacité(s)', 'Haine mutuelle. Cette créature inflige un bonus +10 dégâts contre les Majins mais ces derniers ont également le même bonus sur cette première.
-
-Magie aléatoire. Cette créature commence avec une ou deux magie(s) aléatoire(s), le mj le détermine au dé (ou bien de lui-même). Elle peut lancer des sorts selon son niveau.
-
-Produit du Nuage. Cette créature produit une sorte de nuage de kcirevam en permanence quand il est en stress. Chaque attaque qu’il prend et chaque tour de jeu terminée, il obtient 2 compteurs de Nuage. Il gagne +4 aux dégâts tous les 10 compteurs (pour un maximum de 30).
-
-[EP2] Nuage déterminant. Si 10 compteurs de Nuage = +5% à tous les jets de dés.
-
-[EP3] Élément contrôlé. L’attaque de cette créature peut taper dans deux éléments à la fois, aucun élément, un seul à la fois et ceux à volonté.
-
-[EP4] Nuage rapide. Si 15 compteurs de Nuage = +1 Vitesse
-
-[EP5] Renfermement. Soigne de 2d6 santé à chaque début de tour.
-
-[EP6] Nuage maudit. Si 20 compteurs de Nuage = Les attaques de la créature impose l’effet du sort d’ombre “malédiction” pendant 1 tour.
-
-[EP7] Aura de peur. Inflige un malus de -10% au jet de défense aux ennemis à deux cases.
-
-[EP8] Nuage colérique. Si 30 compteurs de Nuage = Peut sacrifié 3IC pour une attaque supplémentaire (1 fois/combat)
-
-[EP9] Explosion nuageuse. Capable de libérer le nuage en une grosse explosion sur tout le terrain. Inflige 1d4 multiplié par le nombre de compteurs consommés. Inflige un contre coup qui correspond à la moitié des dégâts infligés. Réussir un jet de défense divise par 2 les dégâts réussi mais ne les annule pas.
-
-[EP10] Élasticité. La portée des attaques augmente de 2.', 'monstres', 'Bestiaire 2.0 › ligne 1062');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/archidemon#carte:archidemon', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 1062');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/archidemon#carte:archidemon', 12, 'tactique', 'TACTIQUE COMBAT', 'L’archidémon exploite le Nuage incomplet qu’il produit en permanence quand il est excité ou en stress. Plus ce nuage est présent dans son corps, plus il est puissant, parfois il peut débloquer des techniques avancées pour surpasser ses ennemis.', 'monstres', 'Bestiaire 2.0 › ligne 1099');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/archidemon#carte:archidemon-abominable', 1, 'sante', 'Santé', 'EP 1 : 80 EP 6 : 560
 EP 2 : 160 EP 7 : 640
@@ -181,33 +123,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 EP 7 - 10 : +20% Dans les compétences d’armes, +20% Esquive, +20% Magie, +20% Parade, +20% Fermeté, +20% Vigueur', 'monstres', 'Bestiaire 2.0 › ligne 1287');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/archidemon#carte:archidemon-abominable', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Varie selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 1294');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/archidemon#carte:archidemon-abominable', 10, 'resistance', 'Résistance(s) Dégâts ÷2', 'Varie selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 1298');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/archidemon#carte:archidemon-abominable', 11, 'capacites', 'Capacité(s)', 'Haine mutuelle. Cette créature inflige un bonus +10 dégâts contre les Majins mais ces derniers ont également le même bonus sur cette première.
-
-Magie aléatoire. Cette créature commence avec une ou deux magie(s) aléatoire(s), le mj le détermine au dé (ou bien de lui-même). Elle peut lancer des sorts selon son niveau.
-
-Produit du Nuage. Cette créature produit une sorte de nuage de kcirevam en permanence quand il est en stress. Chaque attaque qu’il prend et chaque tour de jeu terminée, il obtient 2 compteurs de Nuage. Il gagne +4 aux dégâts tous les 10 compteurs (pour un maximum de 30).
-
-Nuage déterminant. Si 10 compteurs de Nuage = +5% à tous les jets de dés.
-
-Élément contrôlé. L’attaque de cette créature peut taper dans deux éléments à la fois, aucun élément, un seul à la fois et ceux à volonté.
-
-[EP2] Nuage rapide. Si 15 compteurs de Nuage = +1 Vitesse
-
-[EP3] Renfermement. Soigne de 2d6 santé à chaque début de tour.
-
-[EP4] Nuage maudit. Si 20 compteurs de Nuage = Les attaques de la créature impose l’effet du sort d’ombre “malédiction” pendant 1 tour.
-
-[EP5] Aura de peur. Inflige un malus de -10% au jet de défense aux ennemis à deux cases.
-
-[EP6] Nuage colérique. Si 30 compteurs de Nuage = Peut sacrifié 3IC pour une attaque supplémentaire (1 fois/combat)
-
-[EP7] Explosion nuageuse. Capable de libérer le nuage en une grosse explosion sur tout le terrain. Inflige 1d4 multiplié par le nombre de compteurs consommés. Inflige un contre coup qui correspond à la moitié des dégâts infligés. Réussir un jet de défense divise par 2 les dégâts réussi mais ne les annule pas.
-
-[EP8] Élasticité. La portée des attaques augmente de 2.
-
-[EP9] Grande réserve. La réserve de Nuage augmente à 40.
-
-[EP10] Optimisation. Obtient 3 compteurs au lieu de 2 pour le don “Produit du nuage”.', 'monstres', 'Bestiaire 2.0 › ligne 1302');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/archidemon#carte:archidemon-abominable', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 1302');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/archidemon#carte:archidemon-abominable', 12, 'tactique', 'TACTIQUE COMBAT', 'L’abominable en plus d’être encore plus déformer par la haine, il est capable d’optimiser son utilisation du Nuage pour être encore plus fort.', 'monstres', 'Bestiaire 2.0 › ligne 1345');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/archidemon#carte:archidemon-superieur', 1, 'sante', 'Santé', 'EP 1 : 40 EP 6 : 280
 EP 2 : 80 EP 7 : 320
@@ -247,31 +163,7 @@ EP 6 - 7 : +15% Dans les compétences d’armes, +15% Esquive, +15% Magie, +15% 
 EP 8 - 10 : +15% Dans les compétences d’armes, +15% Esquive, +15% Magie, +15% Parade, +15% Fermeté, +15% Vigueur', 'monstres', 'Bestiaire 2.0 › ligne 1164');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/archidemon#carte:archidemon-superieur', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Varie selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 1174');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/archidemon#carte:archidemon-superieur', 10, 'resistance', 'Résistance(s) Dégâts ÷2', 'Varie selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 1178');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/archidemon#carte:archidemon-superieur', 11, 'capacites', 'Capacité(s)', 'Haine mutuelle. Cette créature inflige un bonus +10 dégâts contre les Majins mais ces derniers ont également le même bonus sur cette première.
-
-Magie aléatoire. Cette créature commence avec une ou deux magie(s) aléatoire(s), le mj le détermine au dé (ou bien de lui-même). Elle peut lancer des sorts selon son niveau.
-
-Produit du Nuage. Cette créature produit une sorte de nuage de kcirevam en permanence quand il est en stress. Chaque attaque qu’il prend et chaque tour de jeu terminée, il obtient 2 compteurs de Nuage. Il gagne +4 aux dégâts tous les 10 compteurs (pour un maximum de 30).
-
-Nuage déterminant. Si 10 compteurs de Nuage = +5% à tous les jets de dés.
-
-[EP2] Élément contrôlé. L’attaque de cette créature peut taper dans deux éléments à la fois, aucun élément, un seul à la fois et ceux à volonté.
-
-[EP3] Nuage rapide. Si 15 compteurs de Nuage = +1 Vitesse
-
-[EP4] Renfermement. Soigne de 2d6 santé à chaque début de tour.
-
-[EP5] Nuage maudit. Si 20 compteurs de Nuage = Les attaques de la créature impose l’effet du sort d’ombre “malédiction” pendant 1 tour.
-
-[EP6] Aura de peur. Inflige un malus de -10% au jet de défense aux ennemis à deux cases.
-
-[EP7] Nuage colérique. Si 30 compteurs de Nuage = Peut sacrifié 3IC pour une attaque supplémentaire (1 fois/combat)
-
-[EP8] Explosion nuageuse. Capable de libérer le nuage en une grosse explosion sur tout le terrain. Inflige 1d4 multiplié par le nombre de compteurs consommés. Inflige un contre coup qui correspond à la moitié des dégâts infligés. Réussir un jet de défense divise par 2 les dégâts réussi mais ne les annule pas.
-
-[EP9] Élasticité. La portée des attaques augmente de 2.
-
-[EP10] Grande réserve. La réserve de Nuage augmente à 40.', 'monstres', 'Bestiaire 2.0 › ligne 1182');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/archidemon#carte:archidemon-superieur', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 1182');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/archidemon#carte:archidemon-superieur', 12, 'tactique', 'TACTIQUE COMBAT', 'Le supérieur en plus d’être plus fort possède une réserve de nuage bien plus grande que les normaux, ce qui lui permet d’augmenter encore plus sa puissance.', 'monstres', 'Bestiaire 2.0 › ligne 1222');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-beige', 1, 'attributs', NULL, 'Santé : 23 Chakra : 12 Barrière : 6', 'monstres', 'Bestiaire 2.0 › ligne 1446');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-beige', 2, 'degats', 'Dégâts', 'Auréole légère - 2d8 dégâts de lumière (portée 1-5)', 'monstres', 'Bestiaire 2.0 › ligne 1449');
@@ -282,11 +174,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-beige', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Ombre, Peur, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 1470');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-beige', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Lumière, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 1474');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-beige', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 1478');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-beige', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de la Lumière lvl1. Permet à cette créature de lancer des sorts de la magie de la Lumière au niveau 1 de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 1482');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-beige', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 1482');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-beige', 11, 'tactique', 'TACTIQUE COMBAT', 'Malgré leur aspect gélatineux et primitif, ces créatures sont capables de lancer les sorts les plus basiques de la magie de la lumière. Ils voient ceux qui sont faibles contre eux comme des proies et vont s''acharner sur eux quand ils le peuvent. Si des ennemis possèdent des magies efficaces sur lui, il va garder ses distances avec eux.', 'monstres', 'Bestiaire 2.0 › ligne 1492');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-de-la-lumiere', 1, 'attributs', NULL, 'Santé : 92 Chakra : 48 Barrière : 24', 'monstres', 'Bestiaire 2.0 › ligne 1561');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-de-la-lumiere', 2, 'degats', 'Dégâts', 'Auréole légère - 2d8 + 6 dégâts de lumière (portée 1-5)
@@ -298,15 +186,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-de-la-lumiere', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Ombre, Peur, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 1585');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-de-la-lumiere', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Lumière, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 1589');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-de-la-lumiere', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 1593');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-de-la-lumiere', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de la Lumière lvl1. Permet à cette créature de lancer des sorts de la magie de la Lumière au niveau 1 de puissance.
-
-Élément Lumière. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “aveuglement 1”. L’arme peut taper dans l’élément associé et ses sorts de la lumière infligent également un bonus de +3 aux dégâts.
-
-Dynamo. Cette créature brille si fort que tous les jets offensifs dirigés contre elle ont un malus de 10% à la réussite.', 'monstres', 'Bestiaire 2.0 › ligne 1597');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-de-la-lumiere', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 1597');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-de-la-lumiere', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce gros blob très brillant est comme un phare dans l’obscurité, il est si brillant qu’il pose des malus pour le toucher.', 'monstres', 'Bestiaire 2.0 › ligne 1613');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-vanille', 1, 'attributs', NULL, 'Santé : 46 Chakra : 24 Barrière : 12', 'monstres', 'Bestiaire 2.0 › ligne 1502');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-vanille', 2, 'degats', 'Dégâts', 'Auréole légère - 2d8 + 3 dégâts de lumière (portée 1-5)
@@ -318,13 +198,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-vanille', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Ombre, Peur, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 1526');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-vanille', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Lumière, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 1530');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-vanille', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 1534');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-vanille', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de la Lumière lvl1. Permet à cette créature de lancer des sorts de la magie de la Lumière au niveau 1 de puissance.
-
-Élément Lumière. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “aveuglement 1”. L’arme peut taper dans l’élément associé et ses sorts de la lumière infligent également un bonus de +3 aux dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 1538');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-vanille', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 1538');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-beige#carte:blob-vanille', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce blob qui dégage une odeur très agréable possède des pousse de vanille sur son corps, ce dernier est brillant et lui permet d’avoir une chance d’aveugler ses ennemis.', 'monstres', 'Bestiaire 2.0 › ligne 1551');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-blanc', 1, 'attributs', NULL, 'Santé : 23 Chakra : 12 Barrière : 6', 'monstres', 'Bestiaire 2.0 › ligne 1692');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-blanc', 2, 'degats', 'Dégâts', 'Arcane légère - 2d8 dégâts d’arcane (portée 1-5)', 'monstres', 'Bestiaire 2.0 › ligne 1695');
@@ -335,11 +209,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-blanc', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Corruption, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 1716');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-blanc', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Frappe', 'monstres', 'Bestiaire 2.0 › ligne 1720');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-blanc', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Surcharge magique, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 1724');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-blanc', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de l’Arcane lvl1. Permet à cette créature de lancer des sorts de la magie de l’Arcane au niveau 1 de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 1728');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-blanc', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 1728');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-blanc', 11, 'tactique', 'TACTIQUE COMBAT', 'Malgré leur aspect gélatineux et primitif, ces créatures sont capables de lancer les sorts les plus basiques de la magie de l’arcane. Ils voient ceux qui sont faibles contre eux comme des proies et vont s''acharner sur eux quand ils le peuvent. Si des ennemis possèdent des magies efficaces sur lui, il va garder ses distances avec eux.', 'monstres', 'Bestiaire 2.0 › ligne 1738');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-de-larcane', 1, 'attributs', NULL, 'Santé : 92 Chakra : 48 Barrière : 24', 'monstres', 'Bestiaire 2.0 › ligne 1807');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-de-larcane', 2, 'degats', 'Dégâts', 'Arcane légère - 2d8 + 5 dégâts d’arcane (portée 1-5)
@@ -351,15 +221,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-de-larcane', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Corruption, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 1831');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-de-larcane', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Frappe', 'monstres', 'Bestiaire 2.0 › ligne 1835');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-de-larcane', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Surcharge magique, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 1839');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-de-larcane', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de l’Arcane lvl1. Permet à cette créature de lancer des sorts de la magie de l’Arcane au niveau 1 de puissance.
-
-Élément Arcane . L’arme de cette créature possède 30% de chance d’obliger un jet de fermeté à l’adversaire pour ne pas qu’il prenne “surcharge magique 1”. L’arme peut taper dans l’élément associé et ses sorts d’arcane infligent également un bonus de +3 aux dégâts.
-
-Régénération magique. Cette créature récupère 5 chakra au début de son tour.', 'monstres', 'Bestiaire 2.0 › ligne 1843');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-de-larcane', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 1843');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-de-larcane', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce blob s’est imposé comme le chef des blobs argents, il possède un pêcher mature et ce dernier lui régénère lentement son chakra au fur et à mesure du temps.', 'monstres', 'Bestiaire 2.0 › ligne 1859');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-peche', 1, 'attributs', NULL, 'Santé : 46 Chakra : 24 Barrière : 12', 'monstres', 'Bestiaire 2.0 › ligne 1748');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-peche', 2, 'degats', 'Dégâts', 'Arcane légère - 2d8 + 3 dégâts d’arcane (portée 1-5)
@@ -371,13 +233,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-peche', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Corruption, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 1772');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-peche', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Frappe', 'monstres', 'Bestiaire 2.0 › ligne 1776');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-peche', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Surcharge magique, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 1780');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-peche', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de l’Arcane lvl1. Permet à cette créature de lancer des sorts de la magie de l’Arcane au niveau 1 de puissance.
-
-Élément Arcane . L’arme de cette créature possède 30% de chance d’obliger un jet de fermeté à l’adversaire pour ne pas qu’il prenne “surcharge magique 1”. L’arme peut taper dans l’élément associé et ses sorts d’arcane infligent également un bonus de +3 aux dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 1784');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-peche', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 1784');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-blanc#carte:blob-peche', 11, 'tactique', 'TACTIQUE COMBAT', 'La présence du pêcher lui permet d’être plus efficace au combat et d’avoir une légère armure magique', 'monstres', 'Bestiaire 2.0 › ligne 1797');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-bleu', 1, 'attributs', NULL, 'Santé : 23 Chakra : 12 Barrière : 6', 'monstres', 'Bestiaire 2.0 › ligne 1938');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-bleu', 2, 'degats', 'Dégâts', 'Vague légère - 2d8 dégâts d’eau (portée 1-5)', 'monstres', 'Bestiaire 2.0 › ligne 1941');
@@ -388,11 +244,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-bleu', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Sang, Foudre, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 1962');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-bleu', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Eau, Feu, Poison, Brûlure, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 1966');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-bleu', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 1970');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-bleu', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de l’Eau lvl1. Permet à cette créature de lancer des sorts de la magie de l’Eau au niveau 1 de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 1974');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-bleu', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 1974');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-bleu', 11, 'tactique', 'TACTIQUE COMBAT', 'Malgré leur aspect gélatineux et primitif, ces créatures sont capables de lancer les sorts les plus basiques de la magie de l’eau. Ils voient ceux qui sont faibles contre eux comme des proies et vont s''acharner sur eux quand ils le peuvent. Si des ennemis possèdent des magies efficaces sur lui, il va garder ses distances avec eux.', 'monstres', 'Bestiaire 2.0 › ligne 1984');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-de-leau', 1, 'attributs', NULL, 'Santé : 92 Chakra : 48 Barrière : 24', 'monstres', 'Bestiaire 2.0 › ligne 2053');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-de-leau', 2, 'degats', 'Dégâts', 'Vague légère - 2d8 + 5 dégâts d’eau (portée 1-5)
@@ -404,15 +256,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-de-leau', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Sang, Foudre, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 2077');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-de-leau', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Eau, Feu, Poison, Brûlure, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 2081');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-de-leau', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 2085');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-de-leau', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de l’Eau lvl1. Permet à cette créature de lancer des sorts de la magie de l’Eau au niveau 1 de puissance.
-
-Élément Eau. L’arme de cette créature possède 30% de chance d’obliger un jet de fermeté à l’adversaire pour ne pas qu’il prenne “confusion 1”. Ses sorts d’eau infligent un bonus de +3 aux dégâts.
-
-Puissance. Cette créature inflige un bonus de 5 dégâts avec la magie.', 'monstres', 'Bestiaire 2.0 › ligne 2089');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-de-leau', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 2089');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-de-leau', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce blob très gros possède une protection à la magie plus que notable ainsi qu’une puissance magique bien supérieure par rapport à ses homologues ainsi qu’une puissance plus grande avec la magie.', 'monstres', 'Bestiaire 2.0 › ligne 2105');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-prune', 1, 'attributs', NULL, 'Santé : 46 Chakra : 24 Barrière : 12', 'monstres', 'Bestiaire 2.0 › ligne 1994');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-prune', 2, 'degats', 'Dégâts', 'Vague légère - 2d8 + 3 dégâts d’eau (portée 1-5)
@@ -424,13 +268,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-prune', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Sang, Foudre, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 2018');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-prune', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Eau, Feu, Poison, Brûlure, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 2022');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-prune', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 2026');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-prune', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de l’Eau lvl1. Permet à cette créature de lancer des sorts de la magie de l’Eau au niveau 1 de puissance.
-
-Élément Eau. L’arme de cette créature possède 30% de chance d’obliger un jet de fermeté à l’adversaire pour ne pas qu’il prenne “confusion 1”. L’arme peut taper dans l’élément associé et ses sorts d’eau infligent également un bonus de +3 aux dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 2030');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-prune', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 2030');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bleu#carte:blob-prune', 11, 'tactique', 'TACTIQUE COMBAT', 'La présence du prunier lui permet d’être plus en phase avec sa magie et ainsi d''être plus efficace.', 'monstres', 'Bestiaire 2.0 › ligne 2043');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-bordeaux', 1, 'attributs', NULL, 'Santé : 23 Chakra : 12 Barrière : 6', 'monstres', 'Bestiaire 2.0 › ligne 2184');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-bordeaux', 2, 'degats', 'Dégâts', 'Blessure légère - 2d8 dégâts de sang (portée 1-5)', 'monstres', 'Bestiaire 2.0 › ligne 2187');
@@ -441,11 +279,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-bordeaux', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Nécromancie, Glace, Gelé, Poison, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 2208');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-bordeaux', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Sang, Terre, Eau, Pétrification, Confusion, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 2212');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-bordeaux', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 2216');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-bordeaux', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome du Sang lvl1. Permet à cette créature de lancer des sorts de la magie du Sang au niveau 1 de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 2220');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-bordeaux', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 2220');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-bordeaux', 11, 'tactique', 'TACTIQUE COMBAT', 'Malgré leur aspect gélatineux et primitif, ces créatures sont capables de lancer les sorts les plus basiques de la magie du sang. Ils voient ceux qui sont faibles contre eux comme des proies et vont s''acharner sur eux quand ils le peuvent. Si des ennemis possèdent des magies efficaces sur lui, il va garder ses distances avec eux.', 'monstres', 'Bestiaire 2.0 › ligne 2230');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-du-sang', 1, 'attributs', NULL, 'Santé : 92 Chakra : 48 Barrière : 24', 'monstres', 'Bestiaire 2.0 › ligne 2299');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-du-sang', 2, 'degats', 'Dégâts', 'Blessure légère - 2d8 + 5 dégâts de sang(portée 1-5)
@@ -457,15 +291,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-du-sang', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Nécromancie, Glace, Gelé, Poison, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 2323');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-du-sang', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Sang, Terre, Eau, Pétrification, Confusion, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 2327');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-du-sang', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 2331');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-du-sang', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome du Sang lvl1. Permet à cette créature de lancer des sorts de la magie du Sang au niveau 1 de puissance.
-
-Élément Sang. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “saignement 1”. L’arme peut taper dans l’élément associé et ses sorts de sang infligent également un bonus de +3 aux dégâts.
-
-Petite régénération. Cette créature récupère 5 santé au début de chacun de ses tours.', 'monstres', 'Bestiaire 2.0 › ligne 2335');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-du-sang', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 2335');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-du-sang', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce blob très gros est capable de se régénérer au fur et à mesure du temps qui passe. Son grenadier arrivé à maturité lui permet ça.', 'monstres', 'Bestiaire 2.0 › ligne 2351');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-grenade', 1, 'attributs', NULL, 'Santé : 46 Chakra : 24 Barrière : 12', 'monstres', 'Bestiaire 2.0 › ligne 2240');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-grenade', 2, 'degats', 'Dégâts', 'Blessure légère - 2d8 + 3 dégâts de sang(portée 1-5)
@@ -477,13 +303,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-grenade', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Nécromancie, Glace, Gelé, Poison, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 2264');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-grenade', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Sang, Terre, Eau, Pétrification, Confusion, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 2268');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-grenade', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 2272');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-grenade', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome du Sang lvl1. Permet à cette créature de lancer des sorts de la magie du Sang au niveau 1 de puissance.
-
-Élément Sang. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “saignement 1”. L’arme peut taper dans l’élément associé et ses sorts de sang infligent également un bonus de +3 aux dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 2276');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-grenade', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 2276');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-bordeaux#carte:blob-grenade', 11, 'tactique', 'TACTIQUE COMBAT', 'La présence du grenadier lui permet d’être bien plus efficace avec ses armes mais également sa magie.', 'monstres', 'Bestiaire 2.0 › ligne 2289');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-brun', 1, 'attributs', NULL, 'Santé : 23 Chakra : 12 Barrière : 6', 'monstres', 'Bestiaire 2.0 › ligne 2430');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-brun', 2, 'degats', 'Dégâts', 'Pierre légère - 2d8 dégâts de terre (portée 1-5)', 'monstres', 'Bestiaire 2.0 › ligne 2433');
@@ -494,11 +314,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-brun', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Sang, Feu, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 2454');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-brun', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Foudre, Vent, Terre, Pétrification, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 2458');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-brun', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 2462');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-brun', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de la Terre lvl1. Permet à cette créature de lancer des sorts de la magie de la Terre au niveau 1 de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 2466');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-brun', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 2466');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-brun', 11, 'tactique', 'TACTIQUE COMBAT', 'Malgré leur aspect gélatineux et primitif, ces créatures sont capables de lancer les sorts les plus basiques de la magie de la terre. Ils voient ceux qui sont faibles contre eux comme des proies et vont s''acharner sur eux quand ils le peuvent. Si des ennemis possèdent des magies efficaces sur lui, il va garder ses distances avec eux.', 'monstres', 'Bestiaire 2.0 › ligne 2476');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-cacao', 1, 'attributs', NULL, 'Santé : 46 Chakra : 24 Barrière : 12', 'monstres', 'Bestiaire 2.0 › ligne 2486');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-cacao', 2, 'degats', 'Dégâts', 'Pierre légère - 2d8 + 3 dégâts de terre (portée 1-5)
@@ -510,13 +326,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-cacao', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Sang, Feu, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 2510');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-cacao', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Foudre, Vent, Terre, Pétrification, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 2514');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-cacao', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 2518');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-cacao', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de la Terre lvl1. Permet à cette créature de lancer des sorts de la magie de la Terre au niveau 1 de puissance.
-
-Élément Terre. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “pétrifié 1”. L’arme peut taper dans l’élément associé et ses sorts de terre infligent également un bonus de +3 aux dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 2522');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-cacao', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 2522');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-cacao', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce blob qui possède une pousse de cacaoyer sur lui est bien plus fort que le brun, il possède plus de défense et frappe plus fort.', 'monstres', 'Bestiaire 2.0 › ligne 2535');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-de-la-terre', 1, 'attributs', NULL, 'Santé : 92 Chakra : 48 Barrière : 24', 'monstres', 'Bestiaire 2.0 › ligne 2545');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-de-la-terre', 2, 'degats', 'Dégâts', 'Pierre légère - 2d8 + 5 dégâts de terre (portée 1-5)
@@ -528,15 +338,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-de-la-terre', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Sang, Feu, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 2569');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-de-la-terre', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Foudre, Vent, Terre, Pétrification, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 2573');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-de-la-terre', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 2577');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-de-la-terre', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de la Terre lvl1. Permet à cette créature de lancer des sorts de la magie de la Terre au niveau 1 de puissance.
-
-Élément Terre. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “pétrifié 1”. L’arme peut taper dans l’élément associé et ses sorts de terre infligent également un bonus de +3 aux dégâts.
-
-Égide. Permet de survivre à 1 santé contre une attaque qui est censée vous mettre dans le coma. Marche qu’une fois.', 'monstres', 'Bestiaire 2.0 › ligne 2581');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-de-la-terre', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 2581');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-brun#carte:blob-de-la-terre', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce blob est quasiment entouré d’une carapace qui le protège correctement des attaques physiques, il reste vulnérable contre les attaques magiques.', 'monstres', 'Bestiaire 2.0 › ligne 2597');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-cyan', 1, 'attributs', NULL, 'Santé : 23 Chakra : 12 Barrière : 6', 'monstres', 'Bestiaire 2.0 › ligne 2676');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-cyan', 2, 'degats', 'Dégâts', 'Glace légère - 2d8 dégâts de glace (portée 1-5)', 'monstres', 'Bestiaire 2.0 › ligne 2679');
@@ -547,11 +349,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-cyan', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Vent, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 2700');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-cyan', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Glace, Nécromancie, Sang, Poison, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 2704');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-cyan', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Gelé, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 2708');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-cyan', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de la Glace lvl1. Permet à cette créature de lancer des sorts de la magie de la Glace au niveau 1 de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 2712');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-cyan', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 2712');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-cyan', 11, 'tactique', 'TACTIQUE COMBAT', 'Malgré leur aspect gélatineux et primitif, ces créatures sont capables de lancer les sorts les plus basiques de la magie de la glace. Ils voient ceux qui sont faibles contre eux comme des proies et vont s''acharner sur eux quand ils le peuvent. Si des ennemis possèdent des magies efficaces sur lui, il va garder ses distances avec eux.', 'monstres', 'Bestiaire 2.0 › ligne 2722');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-de-la-glace', 1, 'attributs', NULL, 'Santé : 92 Chakra : 48 Barrière : 24', 'monstres', 'Bestiaire 2.0 › ligne 2791');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-de-la-glace', 2, 'degats', 'Dégâts', 'Glace légère - 2d8 + 5 dégâts de glace (portée 1-5)
@@ -563,15 +361,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-de-la-glace', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Vent, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 2815');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-de-la-glace', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Glace, Nécromancie, Sang, Poison, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 2819');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-de-la-glace', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Gelé, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 2823');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-de-la-glace', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de la Glace lvl1. Permet à cette créature de lancer des sorts de la magie de la Glace au niveau 1 de puissance.
-
-Élément Glace. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “gelé 1”. L’arme peut taper dans l’élément associé et ses sorts de glace infligent également un bonus de +3 aux dégâts.
-
-Résistance à la magie. Cette créature encaisse seulement la moitié des dégâts magiques.', 'monstres', 'Bestiaire 2.0 › ligne 2827');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-de-la-glace', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 2827');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-de-la-glace', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce blob est quasiment entouré d’une carapace faite de glace et de menthe, ce qui le rend très résistant à la magie, les attaques physiques sont sa principale faiblesse.', 'monstres', 'Bestiaire 2.0 › ligne 2843');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-menthe', 1, 'attributs', NULL, 'Santé : 46 Chakra : 24 Barrière : 12', 'monstres', 'Bestiaire 2.0 › ligne 2732');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-menthe', 2, 'degats', 'Dégâts', 'Glace légère - 2d8 + 3 dégâts de glace (portée 1-5)
@@ -583,13 +373,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-menthe', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Vent, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 2756');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-menthe', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Glace, Nécromancie, Sang, Poison, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 2760');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-menthe', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Gelé, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 2764');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-menthe', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de la Glace lvl1. Permet à cette créature de lancer des sorts de la magie de la Glace au niveau 1 de puissance.
-
-Élément Glace. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “gelé 1”. L’arme peut taper dans l’élément associé et ses sorts de glace infligent également un bonus de +3 aux dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 2768');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-menthe', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 2768');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-cyan#carte:blob-menthe', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce blob qui possède un buisson de menthe sur le corps lui permet d’encore plus d’augmenter son armure magique.', 'monstres', 'Bestiaire 2.0 › ligne 2781');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-citron', 1, 'attributs', NULL, 'Santé : 48 Chakra : 24 Barrière : 12', 'monstres', 'Bestiaire 2.0 › ligne 2978');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-citron', 2, 'degats', 'Dégâts', 'Foudre légère - 2d8 +3 dégâts de foudre (portée 1-5)
@@ -601,13 +385,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-citron', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Terre, Nécromancie, Pétrification, Poison', 'monstres', 'Bestiaire 2.0 › ligne 3002');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-citron', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vent, Eau, Foudre, Confusion, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 3006');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-citron', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Brûlure, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 3010');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-citron', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de la Foudre lvl1. Permet à cette créature de lancer des sorts de la magie de la Foudre au niveau 1 de puissance.
-
-Élément Foudre. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “paralysie 1”. L’arme peut taper dans l’élément associé et ses sorts de foudre infligent également un bonus de +3 aux dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 3014');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-citron', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 3014');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-citron', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce blob, qui possède une pousse de citronnier sur lui, est bien plus fort que le jaune, il est capable de frapper physiquement ses ennemis avec une petite chance de paralyser les adversaires.', 'monstres', 'Bestiaire 2.0 › ligne 3027');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-de-la-foudre', 1, 'attributs', NULL, 'Santé : 92 Chakra : 48 Barrière : 48', 'monstres', 'Bestiaire 2.0 › ligne 3037');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-de-la-foudre', 2, 'degats', 'Dégâts', 'Foudre légère - 2d8 + 5 dégâts de foudre (portée 1-5)
@@ -619,15 +397,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-de-la-foudre', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Terre, Nécromancie, Pétrification, Poison', 'monstres', 'Bestiaire 2.0 › ligne 3061');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-de-la-foudre', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vent, Eau, Foudre, Confusion, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 3065');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-de-la-foudre', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Brûlure, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 3069');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-de-la-foudre', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de la Foudre lvl1. Permet à cette créature de lancer des sorts de la magie de la Foudre au niveau 1 de puissance.
-
-Élément Foudre. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “paralysie 1”. L’arme peut taper dans l’élément associé et ses sorts de foudre infligent également un bonus de +3 aux dégâts.
-
-Super barrière. La barrière de la créature correspond à son chakra.', 'monstres', 'Bestiaire 2.0 › ligne 3073');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-de-la-foudre', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 3073');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-de-la-foudre', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce blob jaune avec un beau citronnier sur le corps possède une barrière colossale pour son échelle de puissance. Il sera nécessaire d’être vigilant car sa barrière ne tombera pas aussi facilement.', 'monstres', 'Bestiaire 2.0 › ligne 3089');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-jaune', 1, 'attributs', NULL, 'Santé : 23 Chakra : 12 Barrière : 6', 'monstres', 'Bestiaire 2.0 › ligne 2922');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-jaune', 2, 'degats', 'Dégâts', 'Foudre légère - 2d8 dégâts de foudre (portée 1-5)', 'monstres', 'Bestiaire 2.0 › ligne 2925');
@@ -638,11 +408,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-jaune', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Terre, Nécromancie, Pétrification, Poison', 'monstres', 'Bestiaire 2.0 › ligne 2946');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-jaune', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vent, Eau, Foudre, Confusion, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 2950');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-jaune', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Brûlure, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 2954');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-jaune', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de la Foudre lvl1. Permet à cette créature de lancer des sorts de la magie de la Foudre au niveau 1 de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 2958');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-jaune', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 2958');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-jaune#carte:blob-jaune', 11, 'tactique', 'TACTIQUE COMBAT', 'Malgré leur aspect gélatineux et primitif, ces créatures sont capables de lancer les sorts les plus basiques de la magie de la foudre. Ils voient ceux qui sont faibles contre eux comme des proies et vont s''acharner sur eux quand ils le peuvent. Si des ennemis possèdent des magies efficaces sur lui, il va garder ses distances avec eux.', 'monstres', 'Bestiaire 2.0 › ligne 2968');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-de-lombre', 1, 'attributs', NULL, 'Santé : 92 Chakra : 48 Barrière : 24', 'monstres', 'Bestiaire 2.0 › ligne 3281');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-de-lombre', 2, 'degats', 'Dégâts', 'Brume légère - 2d8 + 6 dégâts d’ombre (portée 1-5)
@@ -654,15 +420,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-de-lombre', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière, Aveuglement, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 3305');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-de-lombre', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 3309');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-de-lombre', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Peur', 'monstres', 'Bestiaire 2.0 › ligne 3313');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-de-lombre', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de l’Ombre lvl1. Permet à cette créature de lancer des sorts de la magie de l’Ombre au niveau 1 de puissance.
-
-Élément Ombre. L’arme de cette créature possède 30% de chance d’obliger un jet de fermeté à l’adversaire pour ne pas qu’il prenne “peur 1”. L’arme peut taper dans l’élément associé et ses sorts de l’ombre infligent également un bonus de +3 aux dégâts.
-
-Sournois. Quand l’adversaire n’est pas attentif à l’attaquant, permet d’infliger un bonus de 2d4 dégâts en plus des dégâts de l’arme.', 'monstres', 'Bestiaire 2.0 › ligne 3317');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-de-lombre', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 3317');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-de-lombre', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce blob s’est imposé comme chef des blob mauves, il se reconnaît par son aspect qui mélange gelée et vignes. Il est également capable de frapper ses adversaires dans les points faibles.', 'monstres', 'Bestiaire 2.0 › ligne 3333');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-mauve', 1, 'attributs', NULL, 'Santé : 23 Chakra : 12 Barrière : 6', 'monstres', 'Bestiaire 2.0 › ligne 3166');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-mauve', 2, 'degats', 'Dégâts', 'Brume légère - 2d8 dégâts d’ombre (portée 1-5)', 'monstres', 'Bestiaire 2.0 › ligne 3169');
@@ -673,11 +431,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-mauve', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière, Aveuglement, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 3190');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-mauve', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 3194');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-mauve', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Peur', 'monstres', 'Bestiaire 2.0 › ligne 3198');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-mauve', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de l’Ombre lvl1. Permet à cette créature de lancer des sorts de la magie de l’Ombre au niveau 1 de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 3202');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-mauve', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 3202');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-mauve', 11, 'tactique', 'TACTIQUE COMBAT', 'Malgré leur aspect gélatineux et primitif, ces créatures sont capables de lancer les sorts les plus basiques de la magie de l’ombre. Ils voient ceux qui sont faibles contre eux comme des proies et vont s''acharner sur eux quand ils le peuvent. Si des ennemis possèdent des magies efficaces sur lui, il va garder ses distances avec eux.', 'monstres', 'Bestiaire 2.0 › ligne 3212');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-raisin', 1, 'attributs', NULL, 'Santé : 46 Chakra : 24 Barrière : 12', 'monstres', 'Bestiaire 2.0 › ligne 3222');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-raisin', 2, 'degats', 'Dégâts', 'Brume légère - 2d8 + 3 dégâts d’ombre (portée 1-5)
@@ -689,13 +443,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-raisin', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière, Aveuglement, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 3246');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-raisin', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 3250');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-raisin', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Peur', 'monstres', 'Bestiaire 2.0 › ligne 3254');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-raisin', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de l’Ombre lvl1. Permet à cette créature de lancer des sorts de la magie de l’Ombre au niveau 1 de puissance.
-
-Élément Ombre. L’arme de cette créature possède 30% de chance d’obliger un jet de fermeté à l’adversaire pour ne pas qu’il prenne “peur 1”. L’arme peut taper dans l’élément associé et ses sorts de l’ombreinfligent également un bonus de +3 aux dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 3258');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-raisin', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 3258');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-mauve#carte:blob-raisin', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce blob qui possède des pousses de vignes sur lui est bien plus fort que le mauve, il possède aussi une petite défense physique supplémentaire.', 'monstres', 'Bestiaire 2.0 › ligne 3271');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-metallique#carte:blob-alliage', 1, 'sante', 'Santé', 'EP 1 : 140 EP 6 : 840
 EP 2 : 280 EP 7 : 960
@@ -735,25 +483,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-metallique#carte:blob-alliage', 10, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 3702');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-metallique#carte:blob-alliage', 11, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vent, Terre', 'monstres', 'Bestiaire 2.0 › ligne 3706');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-metallique#carte:blob-alliage', 12, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Foudre, Paralysie, Surdité, Pétrification, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 3710');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-metallique#carte:blob-alliage', 13, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Fondu. Cette créature est faite d''un métal fondu et possède ainsi des propriétés défensives qui correspondent à son matériau et qui détermine son échelle de puissance.
-EP1 : Acier | 6AP | Résist taille, Vulné frappe
-EP2 : Fer noir | 5AP 2AM | Résist estoc, Vulné frappe
-EP3 : Argent | 10AP | Résist taille, Vulné frappe
-EP4 : Cuivre | 2AP 6AM | Résist estoc, Vulné frappe
-EP5 : Bronze | 6AP 6AM | Résist estoc, Vulné frappe
-EP6 : Laiton | 5AP 12AM | Résist frappe, Vulné estoc
-EP7 : Or | 12AP 5AM | Résist frappe, Vulné taille
-EP8 : Titane | 13AP 7AM | Résist taille, Vulné estoc
-EP9 : Mythril | 8AP 10AM | Résist taille, Vulné frappe
-EP10 : Vif argent | 10AP 10AM | Résist taille, Vulné frappe
-
-Gluant gris. Cette créature possède naturellement une immunité à certaines altérations d’état mais sa structure lui inflige une faiblesse supplémentaire contre l’eau et le feu.
-
-Bond. Cette créature est capable de faire un bond équivalent à sa vitesse x2 en échange de 3IC.
-
-Refonte. Quand cette créature tombe en dessous de 50% de santé la première fois, elle libère un équivalent de lui en ennemi simple (même EP), ce dernier possède seulement la moitié de sa santé.', 'monstres', 'Bestiaire 2.0 › ligne 3714');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-metallique#carte:blob-alliage', 13, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 3714');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-metallique#carte:blob-alliage', 14, 'tactique', 'TACTIQUE COMBAT', 'Les versions alliage sont les plus raffinées et dangereuses parmi les blobs métalliques. En plus d’avoir une forte agilité, ils peuvent faire apparaître une version d’eux même en moins fort en cas de danger.', 'monstres', 'Bestiaire 2.0 › ligne 3740');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-metallique#carte:blob-metallique', 1, 'sante', 'Santé', 'EP 1 : 35 EP 6 : 210
 EP 2 : 70 EP 7 : 240
@@ -795,21 +525,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-metallique#carte:blob-metallique', 10, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 3483');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-metallique#carte:blob-metallique', 11, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vent, Terre', 'monstres', 'Bestiaire 2.0 › ligne 3487');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-metallique#carte:blob-metallique', 12, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Foudre, Paralysie, Surdité, Pétrification, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 3491');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-metallique#carte:blob-metallique', 13, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Fondu. Cette créature est faite d''un métal fondu et possède ainsi des propriétés défensives qui correspondent à son matériau et qui détermine son échelle de puissance.
-EP1 : Acier | 6AP | Résist taille, Vulné frappe
-EP2 : Fer noir | 5AP 2AM | Résist estoc, Vulné frappe
-EP3 : Argent | 10AP | Résist taille, Vulné frappe
-EP4 : Cuivre | 2AP 6AM | Résist estoc, Vulné frappe
-EP5 : Bronze | 6AP 6AM | Résist estoc, Vulné frappe
-EP6 : Laiton | 5AP 12AM | Résist frappe, Vulné estoc
-EP7 : Or | 12AP 5AM | Résist frappe, Vulné taille
-EP8 : Titane | 13AP 7AM | Résist taille, Vulné estoc
-EP9 : Mythril | 8AP 10AM | Résist taille, Vulné frappe
-EP10 : Vif argent | 10AP 10AM | Résist taille, Vulné frappe
-
-Gluant gris. Cette créature possède naturellement une immunité à certaines altérations d’état mais sa structure lui inflige une faiblesse supplémentaire contre l’eau et le feu.', 'monstres', 'Bestiaire 2.0 › ligne 3495');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-metallique#carte:blob-metallique', 13, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 3495');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-metallique#carte:blob-metallique', 14, 'tactique', 'TACTIQUE COMBAT', 'Ce blob très particulier est à la base une création alchimique qui est faite de différents métaux et est plus ou moins fort selon lequel il est relié. Connaître les différents métaux est une bonne chose pour estimer leur potentiel défensif.', 'monstres', 'Bestiaire 2.0 › ligne 3515');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-metallique#carte:blob-mineral', 1, 'sante', 'Santé', 'EP 1 : 70 EP 6 : 420
 EP 2 : 140 EP 7 : 480
@@ -849,23 +565,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-metallique#carte:blob-mineral', 10, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 3591');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-metallique#carte:blob-mineral', 11, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vent, Terre', 'monstres', 'Bestiaire 2.0 › ligne 3595');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-metallique#carte:blob-mineral', 12, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Foudre, Paralysie, Surdité, Pétrification, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 3599');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-metallique#carte:blob-mineral', 13, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Fondu. Cette créature est faite d''un métal fondu et possède ainsi des propriétés défensives qui correspondent à son matériau et qui détermine son échelle de puissance.
-EP1 : Acier | 6AP | Résist taille, Vulné frappe
-EP2 : Fer noir | 5AP 2AM | Résist estoc, Vulné frappe
-EP3 : Argent | 10AP | Résist taille, Vulné frappe
-EP4 : Cuivre | 2AP 6AM | Résist estoc, Vulné frappe
-EP5 : Bronze | 6AP 6AM | Résist estoc, Vulné frappe
-EP6 : Laiton | 5AP 12AM | Résist frappe, Vulné estoc
-EP7 : Or | 12AP 5AM | Résist frappe, Vulné taille
-EP8 : Titane | 13AP 7AM | Résist taille, Vulné estoc
-EP9 : Mythril | 8AP 10AM | Résist taille, Vulné frappe
-EP10 : Vif argent | 10AP 10AM | Résist taille, Vulné frappe
-
-Gluant gris. Cette créature possède naturellement une immunité à certaines altérations d’état mais sa structure lui inflige une faiblesse supplémentaire contre l’eau et le feu.
-
-Bond. Cette créature est capable de faire un bond équivalent à sa vitesse x2 en échange de 3IC.', 'monstres', 'Bestiaire 2.0 › ligne 3603');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-metallique#carte:blob-mineral', 13, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 3603');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-metallique#carte:blob-mineral', 14, 'tactique', 'TACTIQUE COMBAT', 'Cette version plus puissante du blob métallique est capable de faire des bonds prodigieux pour attaquer ses ennemis.', 'monstres', 'Bestiaire 2.0 › ligne 3626');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-de-la-corruption', 1, 'attributs', NULL, 'Santé : 92 Chakra : 48 Barrière : 24', 'monstres', 'Bestiaire 2.0 › ligne 3935');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-de-la-corruption', 2, 'degats', 'Dégâts', 'Irradiation légère - 2d8 + 5 dégâts de corruption (portée 1-5)
@@ -877,18 +577,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-de-la-corruption', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Arcane, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 3959');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-de-la-corruption', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Frappe', 'monstres', 'Bestiaire 2.0 › ligne 3963');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-de-la-corruption', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Surcharge magique, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 3967');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-de-la-corruption', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de de la Corruption lvl1. Permet à cette créature de lancer des sorts de la magie de la Corruption au niveau 1 de puissance.
-
-Élément Corruption. L’arme de cette créature possède 30% de chance d’obliger un jet de fermeté à l’adversaire pour ne pas qu’il prenne “surcharge magique 1”. L’arme peut taper dans l’élément associé et ses sorts d’arcane infligent également un bonus de +3 aux dégâts.
-
-Pollution. Chaque attaque qui touche oblige un jet de vigueur qui donne ces effets pendant 2 tours :
-Si réussite : Diminue aléatoirement une résistance
-Si échec : Aggrave une vulnérabilité aléatoirement
-(L’arcane, corruption et PI ne sont pas affectés par cette effet).', 'monstres', 'Bestiaire 2.0 › ligne 3971');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-de-la-corruption', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 3971');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-de-la-corruption', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce gros blob parfaitement noir est entouré de plante ce qui lui donne une petite armure magique. Il est assez dangereux car il est capable de polluer l’intégralité de son environnement si on lui laisse le temps.', 'monstres', 'Bestiaire 2.0 › ligne 3990');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-noir', 1, 'attributs', NULL, 'Santé : 23 Chakra : 12 Barrière : 6', 'monstres', 'Bestiaire 2.0 › ligne 3820');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-noir', 2, 'degats', 'Dégâts', 'Irradiation légère - 2d8 dégâts de corruption (portée 1-5)', 'monstres', 'Bestiaire 2.0 › ligne 3823');
@@ -899,11 +588,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-noir', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Arcane, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 3844');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-noir', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Frappe', 'monstres', 'Bestiaire 2.0 › ligne 3848');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-noir', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Surcharge magique, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 3852');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-noir', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de de la Corruption lvl1. Permet à cette créature de lancer des sorts de la magie de la Corruption au niveau 1 de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 3856');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-noir', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 3856');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-noir', 11, 'tactique', 'TACTIQUE COMBAT', 'Malgré leur aspect gélatineux et primitif, ces créatures sont capables de lancer les sorts les plus basiques de la magie de la corruption. Ils voient ceux qui sont faibles contre eux comme des proies et vont s''acharner sur eux quand ils le peuvent. Si des ennemis possèdent des magies efficaces sur lui, il va garder ses distances avec eux.', 'monstres', 'Bestiaire 2.0 › ligne 3866');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-reglisse', 1, 'attributs', NULL, 'Santé : 46 Chakra : 24 Barrière : 12', 'monstres', 'Bestiaire 2.0 › ligne 3876');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-reglisse', 2, 'degats', 'Dégâts', 'Irradiation légère - 2d8 + 3 dégâts de corruption (portée 1-5)
@@ -915,13 +600,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-reglisse', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Arcane, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 3900');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-reglisse', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Frappe', 'monstres', 'Bestiaire 2.0 › ligne 3904');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-reglisse', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Surcharge magique, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 3908');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-reglisse', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de de la Corruption lvl1. Permet à cette créature de lancer des sorts de la magie de la Corruption au niveau 1 de puissance.
-
-Élément Corruption. L’arme de cette créature possède 30% de chance d’obliger un jet de fermeté à l’adversaire pour ne pas qu’il prenne “surcharge magique 1”. L’arme peut taper dans l’élément associé et ses sorts d’arcane infligent également un bonus de +3 aux dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 3912');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-reglisse', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 3912');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-noir#carte:blob-reglisse', 11, 'tactique', 'TACTIQUE COMBAT', 'La présence de réglisse autour de lui lui permet d’être plus efficace au combat et d’avoir une légère armure magique.', 'monstres', 'Bestiaire 2.0 › ligne 3925');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-de-lespace-temps', 1, 'attributs', NULL, 'Santé : 92 Chakra : 48 Barrière : 24', 'monstres', 'Bestiaire 2.0 › ligne 4675');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-de-lespace-temps', 2, 'degats', 'Dégâts', 'Aiguille légère - 2d8 + 5 dégâts d’espace/temps (portée 1-5)
@@ -933,15 +612,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-de-lespace-temps', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Vide, Enragé, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 4699');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-de-lespace-temps', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Espace/Temps, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 4703');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-de-lespace-temps', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Fatigue, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 4707');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-de-lespace-temps', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de l’Espace/Temps lvl1. Permet à cette créature de lancer des sorts de la magie de l’Espace/Temps au niveau 1 de puissance.
-
-Élément Espace/Temps. L’arme de cette créature possède 30% de chance d’obliger un jet de fermeté à l’adversaire pour ne pas qu’il prenne “fatigue 1”. L’arme peut taper dans l’élément associé et ses sorts d’espace/temps infligent également un bonus de +3 aux dégâts.
-
-Célérité. Cette créature possède une action en plus par tour.', 'monstres', 'Bestiaire 2.0 › ligne 4711');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-de-lespace-temps', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 4711');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-de-lespace-temps', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce blob avec un litchi parfaitement épanoui lui permet d’avoir une vitesse hors du commun et d’agir une fois en plus durant un tour de combat.', 'monstres', 'Bestiaire 2.0 › ligne 4727');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-litchi', 1, 'attributs', NULL, 'Santé : 46 Chakra : 24 Barrière : 12', 'monstres', 'Bestiaire 2.0 › ligne 4616');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-litchi', 2, 'degats', 'Dégâts', 'Aiguille légère - 2d8 + 3 dégâts d’espace/temps (portée 1-5)
@@ -953,13 +624,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-litchi', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Vide, Enragé, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 4640');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-litchi', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Espace/Temps, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 4644');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-litchi', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Fatigue, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 4648');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-litchi', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de l’Espace/Temps lvl1. Permet à cette créature de lancer des sorts de la magie de l’Espace/Temps au niveau 1 de puissance.
-
-Élément Espace/Temps. L’arme de cette créature possède 30% de chance d’obliger un jet de fermeté à l’adversaire pour ne pas qu’il prenne “fatigue 1”. L’arme peut taper dans l’élément associé et ses sorts d’espace/temps infligent également un bonus de +3 aux dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 4652');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-litchi', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 4652');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-litchi', 11, 'tactique', 'TACTIQUE COMBAT', 'Un petit litchi pousse sur lui et lui permet d’être encore plus en phase avec la magie de l’espace/temps.', 'monstres', 'Bestiaire 2.0 › ligne 4665');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-rose', 1, 'attributs', NULL, 'Santé : 23 Chakra : 12 Barrière : 6', 'monstres', 'Bestiaire 2.0 › ligne 4560');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-rose', 2, 'degats', 'Dégâts', 'Aiguille légère - 2d8 dégâts d’espace/temps (portée 1-5)', 'monstres', 'Bestiaire 2.0 › ligne 4563');
@@ -970,11 +635,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-rose', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Vide, Enragé, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 4584');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-rose', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Espace/Temps, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 4588');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-rose', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Fatigue, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 4592');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-rose', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de l’Espace/Temps lvl1. Permet à cette créature de lancer des sorts de la magie de l’Espace/Temps au niveau 1 de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 4596');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-rose', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 4596');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rose#carte:blob-rose', 11, 'tactique', 'TACTIQUE COMBAT', 'Malgré leur aspect gélatineux et primitif, ces créatures sont capables de lancer les sorts les plus basiques de la magie de l’espace/temps. Ils voient ceux qui sont faibles contre eux comme des proies et vont s''acharner sur eux quand ils le peuvent. Si des ennemis possèdent des magies efficaces sur lui, il va garder ses distances avec eux.', 'monstres', 'Bestiaire 2.0 › ligne 4606');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-du-feu', 1, 'attributs', NULL, 'Santé : 184 Chakra : 48 Barrière : 24', 'monstres', 'Bestiaire 2.0 › ligne 4429');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-du-feu', 2, 'degats', 'Dégâts', 'Flamme légère - 2d8 + 6 dégâts de feu (portée 1-5)
@@ -986,15 +647,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-du-feu', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Vent, Eau, Confusion, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 4453');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-du-feu', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Glace, Feu, Terre, Gel, Pétrification, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 4457');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-du-feu', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Brûlure, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 4461');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-du-feu', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome du Feu lvl1. Permet à cette créature de lancer des sorts de la magie du Feu au niveau 1 de puissance.
-
-Élément Feu. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “brûlure 1”. L’arme peut taper dans l’élément associé et ses sorts de feu infligent également un bonus de +3 aux dégâts.
-
-Super santé. Cette créature a sa santé qui est doublée.', 'monstres', 'Bestiaire 2.0 › ligne 4465');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-du-feu', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 4465');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-du-feu', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce blob s’est imposé comme chef des blob rouges, il est tellement en phase avec le feu qu’une légère flamme peut s’échapper de son corps. La végétation s’est énormément développée, lui conférant une vitalité hors normes. Il est d’un naturel très colérique et est capable d’influencer les blob plus faible que lui pour qu’il attaque les intrus à ses côtés.', 'monstres', 'Bestiaire 2.0 › ligne 4481');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-fraise', 1, 'attributs', NULL, 'Santé : 46 Chakra : 24 Barrière : 12', 'monstres', 'Bestiaire 2.0 › ligne 4370');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-fraise', 2, 'degats', 'Dégâts', 'Flamme légère - 2d8 + 3 dégâts de feu (portée 1-5)
@@ -1006,13 +659,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-fraise', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Vent, Eau, Confusion, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 4394');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-fraise', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Glace, Feu, Terre, Gel, Pétrification, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 4398');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-fraise', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Brûlure, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 4402');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-fraise', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome du Feu lvl1. Permet à cette créature de lancer des sorts de la magie du Feu au niveau 1 de puissance.
-
-Élément Feu. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “brûlure 1”. L’arme peut taper dans l’élément associé et ses sorts de feu infligent également un bonus de +3 aux dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 4406');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-fraise', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 4406');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-fraise', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce blob qui possède une pousse de fraisier sur lui est bien plus fort que le rouge, il est capable de frapper physiquement ses ennemis avec une petite chance de brûler les adversaires.', 'monstres', 'Bestiaire 2.0 › ligne 4419');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-rouge', 1, 'attributs', NULL, 'Santé : 23 Chakra : 12 Barrière : 6', 'monstres', 'Bestiaire 2.0 › ligne 4314');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-rouge', 2, 'degats', 'Dégâts', 'Flamme légère - 2d8 dégâts de feu (portée 1-5)', 'monstres', 'Bestiaire 2.0 › ligne 4317');
@@ -1023,11 +670,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-rouge', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Vent, Eau, Confusion, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 4338');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-rouge', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Glace, Feu, Terre, Gel, Pétrification, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 4342');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-rouge', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Brûlure, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 4346');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-rouge', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome du Feu lvl1. Permet à cette créature de lancer des sorts de la magie du Feu au niveau 1 de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 4350');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-rouge', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 4350');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-rouge#carte:blob-rouge', 11, 'tactique', 'TACTIQUE COMBAT', 'Malgré leur aspect gélatineux et primitif, ces créatures sont capables de lancer les sorts les plus basiques de la magie du feu. Ils voient ceux qui sont faibles contre eux comme des proies et vont s''acharner sur eux quand ils le peuvent. Si des ennemis possèdent des magies efficaces sur lui, il va garder ses distances avec eux.', 'monstres', 'Bestiaire 2.0 › ligne 4360');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-royale#carte:blob-royale', 1, 'sante', 'Santé', 'EP 1 : 80 EP 6 : 560
 EP 2 : 160 EP 7 : 640
@@ -1066,31 +709,7 @@ EP 4 - 10 : +20% Arme Lourde, +20% Magie', 'monstres', 'Bestiaire 2.0 › ligne 
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-royale#carte:blob-royale', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 4869');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-royale#carte:blob-royale', 10, 'resistance', 'Résistance(s) Dégâts ÷2', 'Frappe', 'monstres', 'Bestiaire 2.0 › ligne 4873');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-royale#carte:blob-royale', 11, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Brûlure, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 4877');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-royale#carte:blob-royale', 12, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome universel lvl 1. Cette créature est capable de lancer n’importe quel sort jusqu’au niveau 1 de puissance.
-
-Progéniture. Quand la créature perd 30 santé, un blob aléatoire est relâché et entre dans le combat immédiatement (toujours des ennemis simples).
-
-[EP2] Tome universel lvl 2. Cette créature est capable de lancer n’importe quel sort jusqu’au niveau 2 de puissance.
-
-[EP3] Obédience. -10% aux jets des cibles pour résister aux altérations d’états.
-
-[EP4] Tome universel lvl 3. Cette créature est capable de lancer n’importe quel sort jusqu’au niveau 3 de puissance.
-
-[EP5] Rune immédiate. Cette créature obtient une résistance à l’élément du dernier sort subi et cela plusieurs fois dans un tour (une résistance à la fois).
-
-[EP6] Tome universel lvl 4. Cette créature est capable de lancer n’importe quel sort jusqu’au niveau 4 de puissance.
-
-[EP7] Répression. La météo invoquée par cette créature ne peut être annulée ou remplacée.
-
-[EP8] Climato-égoïste. Les bonus de la météo ne s’appliquent que pour lui et ses alliés.
-
-[EP9] Coup alternatif. Permet de choisir si l''attaque va prendre en compte l''armure physique ou bien l''armure magique de la cible.
-
-[EP10] Tome universel lvl 5. Cette créature est capable de lancer n’importe quel sort jusqu’au niveau 5 de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 4881');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-royale#carte:blob-royale', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 4881');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-royale#carte:blob-royale', 13, 'tactique', 'TACTIQUE COMBAT', 'Le roi blob est une créature assez massive qui possède une particularité qui est encore inexpliqué, en effet sa présence fait que tous les blob autour de lui vont commencer à se comportent différemment, habituellement pacifique, les blobs vont devenir très agressif et attaquer toutes créatures à proximité d’eux et défendre leur roi jusqu’au bout. Il est capable d’utiliser toutes les sorts qui existent et les plus gros sont capables de relâcher des blobs pour qu’il l’aide contre l''adversité.', 'monstres', 'Bestiaire 2.0 › ligne 4921');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-coco', 1, 'attributs', NULL, 'Santé : 46 Chakra : 24 Barrière : 12', 'monstres', 'Bestiaire 2.0 › ligne 4125');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-coco', 2, 'degats', 'Dégâts', 'Bulle légère - 2d8 + 3 dégâts de vide (portée 1-5)
@@ -1102,13 +721,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-coco', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Espace/Temps, Fatigue, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 4149');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-coco', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vide, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 4153');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-coco', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Enragé, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 4157');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-coco', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome du Vide lvl1. Permet à cette créature de lancer des sorts de la magie du Vide au niveau 1 de puissance.
-
-Élément Vide. L’arme de cette créature possède 30% de chance d’obliger un jet de fermeté à l’adversaire pour ne pas qu’il prenne “enragé 1”. L’arme peut taper dans l’élément associé et ses sorts de vide infligent également un bonus de +3 aux dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 4161');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-coco', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 4161');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-coco', 11, 'tactique', 'TACTIQUE COMBAT', 'La présence du palmier augmente encore plus son armure magique et sa puissance.', 'monstres', 'Bestiaire 2.0 › ligne 4174');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-du-vide', 1, 'attributs', NULL, 'Santé : 92 Chakra : 48 Barrière : 24', 'monstres', 'Bestiaire 2.0 › ligne 4184');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-du-vide', 2, 'degats', 'Dégâts', 'Bulle légère - 2d8 + 5 dégâts de vide (portée 1-5)
@@ -1120,15 +733,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-du-vide', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Espace/Temps, Fatigue, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 4208');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-du-vide', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vide, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 4212');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-du-vide', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Enragé, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 4216');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-du-vide', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome du Vide lvl1. Permet à cette créature de lancer des sorts de la magie du Vide au niveau 1 de puissance.
-
-Élément Vide. L’arme de cette créature possède 30% de chance d’obliger un jet de fermeté à l’adversaire pour ne pas qu’il prenne “enragé 1”. L’arme peut taper dans l’élément associé et ses sorts de vide infligent également un bonus de +3 aux dégâts.
-
-Anti-magie. Cette créature est totalement immunisée à la magie.', 'monstres', 'Bestiaire 2.0 › ligne 4220');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-du-vide', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 4220');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-du-vide', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce blob avec un petit palmier est totalement imperméable à la magie, seuls les dégâts physiques lui feront quoi que ce soit.', 'monstres', 'Bestiaire 2.0 › ligne 4236');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-transparent', 1, 'attributs', NULL, 'Santé : 23 Chakra : 12 Barrière : 6', 'monstres', 'Bestiaire 2.0 › ligne 4069');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-transparent', 2, 'degats', 'Dégâts', 'Bulle légère - 2d8 dégâts de vide (portée 1-5)', 'monstres', 'Bestiaire 2.0 › ligne 4072');
@@ -1139,11 +744,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-transparent', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Espace/Temps, Fatigue, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 4093');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-transparent', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vide, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 4097');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-transparent', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Enragé, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 4101');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-transparent', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome du Vide lvl1. Permet à cette créature de lancer des sorts de la magie du Vide au niveau 1 de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 4105');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-transparent', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 4105');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-transparent#carte:blob-transparent', 11, 'tactique', 'TACTIQUE COMBAT', 'Malgré leur aspect gélatineux et primitif, ces créatures sont capables de lancer les sorts les plus basiques de la magie du vide. Ils voient ceux qui sont faibles contre eux comme des proies et vont s''acharner sur eux quand ils le peuvent. Si des ennemis possèdent des magies efficaces sur lui, il va garder ses distances avec eux.', 'monstres', 'Bestiaire 2.0 › ligne 4115');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-du-vent', 1, 'attributs', NULL, 'Santé : 92 Chakra : 48 Barrière : 24', 'monstres', 'Bestiaire 2.0 › ligne 5101');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-du-vent', 2, 'degats', 'Dégâts', 'Brise légère - 2d8 + 5 dégâts de vent (portée 1-5)
@@ -1156,15 +757,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-du-vent', 8, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Terre, Foudre, Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 5129');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-du-vent', 9, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Glace, Vent, Gel, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 5133');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-du-vent', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Brûlure, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 5137');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-du-vent', 11, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome du Vent lvl1. Permet à cette créature de lancer des sorts de la magie du Vent au niveau 1 de puissance.
-
-Élément Vent. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “surdité 1”. L’arme peut taper dans l’élément associé et ses sorts de vent infligent également un bonus de +3 aux dégâts.
-
-Plus rapide. Cette créature à un bonus de +3 à la vitesse et de +3 aux jets d''initiative.', 'monstres', 'Bestiaire 2.0 › ligne 5141');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-du-vent', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 5141');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-du-vent', 12, 'tactique', 'TACTIQUE COMBAT', 'Ce blob entièrement recouvert de actinidia ne paye pas de mine par rapport à ses homologues des autres magies qui sont plus gros mais il se distingue par sa vitesse et son temps de réaction assez bluffant.', 'monstres', 'Bestiaire 2.0 › ligne 5157');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-kiwi', 1, 'attributs', NULL, 'Santé : 48 Chakra : 24 Barrière : 12', 'monstres', 'Bestiaire 2.0 › ligne 5038');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-kiwi', 2, 'degats', 'Dégâts', 'Brise légère - 2d8 + 3 dégâts de vent (portée 1-5)
@@ -1177,13 +770,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-kiwi', 8, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Terre, Foudre, Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 5066');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-kiwi', 9, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Glace, Vent, Gel, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 5070');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-kiwi', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Brûlure, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 5074');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-kiwi', 11, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome du Vent lvl1. Permet à cette créature de lancer des sorts de la magie du Vent au niveau 1 de puissance.
-
-Élément Vent. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “surdité 1”. L’arme peut taper dans l’élément associé et ses sorts de vent infligent également un bonus de +3 aux dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 5078');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-kiwi', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 5078');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-kiwi', 12, 'tactique', 'TACTIQUE COMBAT', 'Ce blob, qui possède une pousse de actinidia sur lui, est bien plus fort que le vert, il est capable de frapper physiquement ses ennemis avec une petite chance de rendre sourd les adversaires.', 'monstres', 'Bestiaire 2.0 › ligne 5091');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-vert', 1, 'attributs', NULL, 'Santé : 23 Chakra : 12 Barrière : 6', 'monstres', 'Bestiaire 2.0 › ligne 4978');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-vert', 2, 'degats', 'Dégâts', 'Brise légère - 2d8 dégâts de vent (portée 1-5)', 'monstres', 'Bestiaire 2.0 › ligne 4981');
@@ -1195,11 +782,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-vert', 8, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Terre, Foudre, Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 5006');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-vert', 9, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Glace, Vent, Gel, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 5010');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-vert', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Brûlure, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 5014');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-vert', 11, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome du Vent lvl1. Permet à cette créature de lancer des sorts de la magie du Vent au niveau 1 de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 5018');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-vert', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 5018');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert#carte:blob-vert', 12, 'tactique', 'TACTIQUE COMBAT', 'Malgré leur aspect gélatineux et primitif, ces créatures sont capables de lancer les sorts les plus basiques de la magie du vent. Ils voient ceux qui sont faibles contre eux comme des proies et vont s''acharner sur eux quand ils le peuvent. Si des ennemis possèdent des magies efficaces sur lui, il va garder ses distances avec eux.', 'monstres', 'Bestiaire 2.0 › ligne 5028');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-corossol', 1, 'attributs', NULL, 'Santé : 48 Chakra : 24 Barrière : 12', 'monstres', 'Bestiaire 2.0 › ligne 5294');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-corossol', 2, 'degats', 'Dégâts', 'Nécrose légère - 2d8 + 3 dégâts de nécromancie (portée 1-5)
@@ -1212,13 +795,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-corossol', 8, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Glace, Confusion, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 5322');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-corossol', 9, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Sang, Foudre, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 5326');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-corossol', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 5330');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-corossol', 11, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de la Nécromancie lvl1. Permet à cette créature de lancer des sorts de la magie de la Nécromancie au niveau 1 de puissance.
-
-Élément Nécromancie. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “poison 1”. L’arme peut taper dans l’élément associé et ses sorts de nécromancie infligent également un bonus de +3 aux dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 5334');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-corossol', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 5334');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-corossol', 12, 'tactique', 'TACTIQUE COMBAT', 'Ce blob, qui possède une pousse de corossolier sur lui, est bien plus fort que le vert foncé, il est capable de frapper physiquement ses ennemis avec une petite chance d’empoisonner.', 'monstres', 'Bestiaire 2.0 › ligne 5347');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-de-la-necromancie', 1, 'attributs', NULL, 'Santé : 92 Chakra : 48 Barrière : 24', 'monstres', 'Bestiaire 2.0 › ligne 5357');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-de-la-necromancie', 2, 'degats', 'Dégâts', 'Nécrose légère - 2d8 + 5 dégâts de nécromancie (portée 1-5)
@@ -1230,15 +807,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-de-la-necromancie', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Glace, Confusion, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 5381');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-de-la-necromancie', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Sang, Foudre, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 5385');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-de-la-necromancie', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 5389');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-de-la-necromancie', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de la Nécromancie lvl1. Permet à cette créature de lancer des sorts de la magie de la Nécromancie au niveau 1 de puissance.
-
-Élément Nécromancie. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “poison 1”. L’arme peut taper dans l’élément associé et ses sorts de nécromancie infligent également un bonus de +3 aux dégâts.
-
-Super invocation. Cette créature peut avoir deux invocations.', 'monstres', 'Bestiaire 2.0 › ligne 5393');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-de-la-necromancie', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 5393');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-de-la-necromancie', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce blob avec un beau corossolier sur le dos est un puissant invocateur, l’arbre qui est épanoui sur lui, lui donne la possibilité d’avoir une invocation de plus.', 'monstres', 'Bestiaire 2.0 › ligne 5409');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-vert-fonce', 1, 'attributs', NULL, 'Santé : 23 Chakra : 12 Barrière : 6', 'monstres', 'Bestiaire 2.0 › ligne 5238');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-vert-fonce', 2, 'degats', 'Dégâts', 'Nécrose légère - 2d8 dégâts de nécromancie (portée 1-5)', 'monstres', 'Bestiaire 2.0 › ligne 5241');
@@ -1249,11 +818,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-vert-fonce', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Glace, Confusion, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 5262');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-vert-fonce', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Sang, Foudre, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 5266');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-vert-fonce', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Contrôle mentale, Saignement, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 5270');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-vert-fonce', 10, 'capacites', 'Capacité(s)', 'Inerte. Amplifie la Volonté à 10, ce qui permet d’être immunisé au jet de volonté (sauf contre les altérations d’état faible où un jet se fait avec un malus de 30).
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Tome de la Nécromancie lvl1. Permet à cette créature de lancer des sorts de la magie de la Nécromancie au niveau 1 de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 5274');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-vert-fonce', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 5274');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/blob-vert-fonce#carte:blob-vert-fonce', 11, 'tactique', 'TACTIQUE COMBAT', 'Malgré leur aspect gélatineux et primitif, ces créatures sont capables de lancer les sorts les plus basiques de la magie de la nécromancie. Ils voient ceux qui sont faibles contre eux comme des proies et vont s''acharner sur eux quand ils le peuvent. Si des ennemis possèdent des magies efficaces sur lui, il va garder ses distances avec eux.', 'monstres', 'Bestiaire 2.0 › ligne 5284');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-blizzard', 1, 'attributs', NULL, 'Santé : 560 Chakra : 160 Barrière : 80', 'monstres', 'Bestiaire 2.0 › ligne 5618');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-blizzard', 2, 'degats', 'Dégâts', 'Grandes griffes – 4d10 + 16 dégâts de taille/estoc
@@ -1265,19 +830,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-blizzard', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Vent, Brûlure, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 5641');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-blizzard', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Glace, Nécromancie, Sang', 'monstres', 'Bestiaire 2.0 › ligne 5645');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-blizzard', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Couardise, Peur, Fatigue, Saignement, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 5649');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-blizzard', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Souffle élémentaire. Cette créature est capable de cracher un souffle lié à son élément. Ce souffle est capable d''infliger l''altération d''état lié à l''élément à hauteur de 35% de chance de l''infliger. (les joueurs doivent faire les jets en conséquences pour ne pas prendre l''altération d''état)
-
-Fragilité tranchante. Chaque fois qu’il subit une attaque physique au cac, des éclats de glace sèche sont projetés autour de lui (2d6 dégâts).
-
-Craquellement. Les armes qui le frappent directement et qui font 91 ou plus à leur jet perdent un cran de solidité.
-
-Météo sournoise. Tant que cette créature est dans une météo qui avantage sa magie, il est capable de faire des dégâts sournois à hauteur de 2d4.
-
-Météo invisible. Tant que cette créature est dans une météo qui avantage sa magie, il est capable en échange de ses 3IC de se rendre invisible pendant 2 tours. 2 fois/combat.
-
-Blizzard permanent. Invoque la météo “tempête de neige” en entrant sur le terrain et fait perdurer tant que personne ne la change.', 'monstres', 'Bestiaire 2.0 › ligne 5653');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-blizzard', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 5653');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-blizzard', 11, 'tactique', 'TACTIQUE COMBAT', 'Croyant être des élus qui ont été choisis par la déesse pour veiller sur les montagnes froides, les carcalanches du blizzard sont capables de faire appel au blizzard pour anéantir ses ennemis. Il cherchera à frapper les ennemis les plus faibles, réduire le nombre le plus rapidement possible.
 
 C’est intéressant de noter que ces monstres ne sont pas chaotiques comme leur homologue plus faible, il est plus neutre dans sa façon d’agir, plus réfléchi.', 'monstres', 'Bestiaire 2.0 › ligne 5673');
@@ -1291,15 +844,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-froid', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Vent, Brûlure, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 5520');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-froid', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Glace, Nécromancie, Sang', 'monstres', 'Bestiaire 2.0 › ligne 5524');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-froid', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Couardise, Peur, Fatigue, Saignement, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 5528');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-froid', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Souffle élémentaire. Cette créature est capable de cracher un souffle lié à son élément. Ce souffle est capable d''infliger l''altération d''état lié à l''élément à hauteur de 35% de chance de l''infliger. (les joueurs doivent faire les jets en conséquences pour ne pas prendre l''altération d''état)
-
-Fragilité tranchante. Chaque fois qu’il subit une attaque physique au cac, des éclats de glace sèche sont projetés autour de lui (2d6 dégâts).
-
-Craquellement. Les armes qui le frappent directement et qui font 91 ou plus à leur jet perdent un cran de solidité.
-
-Météo sournoise. Tant que cette créature est dans une météo qui avantage sa magie, il est capable de faire des dégâts sournois à hauteur de 2d4.', 'monstres', 'Bestiaire 2.0 › ligne 5532');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-froid', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 5532');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-froid', 11, 'tactique', 'TACTIQUE COMBAT', 'Le plus classique de carcalanche qu’on peut croiser dans les régions très froides, ancien cadavre d’un fou qui a essayé de lutter contre la morsure de la déesse de la Glace, il n’hésite pas à prendre une revanche contre la vie.', 'monstres', 'Bestiaire 2.0 › ligne 5546');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-givre', 1, 'attributs', NULL, 'Santé : 280 Chakra : 80 Barrière : 40', 'monstres', 'Bestiaire 2.0 › ligne 5556');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-givre', 2, 'degats', 'Dégâts', 'Grandes griffes – 4d10 + 8 dégâts de taille/estoc
@@ -1311,17 +856,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-givre', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Vent, Brûlure, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 5579');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-givre', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Glace, Nécromancie, Sang', 'monstres', 'Bestiaire 2.0 › ligne 5583');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-givre', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Couardise, Peur, Fatigue, Saignement, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 5587');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-givre', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Souffle élémentaire. Cette créature est capable de cracher un souffle lié à son élément. Ce souffle est capable d''infliger l''altération d''état lié à l''élément à hauteur de 35% de chance de l''infliger. (les joueurs doivent faire les jets en conséquences pour ne pas prendre l''altération d''état)
-
-Fragilité tranchante. Chaque fois qu’il subit une attaque physique au cac, des éclats de glace sèche sont projetés autour de lui (2d6 dégâts).
-
-Craquellement. Les armes qui le frappent directement et qui font 91 ou plus à leur jet perdent un cran de solidité.
-
-Météo sournoise. Tant que cette créature est dans une météo qui avantage sa magie, il est capable de faire des dégâts sournois à hauteur de 2d4.
-
-Météo invisible. Tant que cette créature est dans une météo qui avantage sa magie, il est capable en échange de ses 3IC de se rendre invisible pendant 2 tours. 2 fois/combat.', 'monstres', 'Bestiaire 2.0 › ligne 5591');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-givre', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 5591');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/carcalanche#carte:carcalanche-du-givre', 11, 'tactique', 'TACTIQUE COMBAT', 'Les carcalanche plus anciens ont fait de leur lieu de mort un terrain favorable, ils sont capables de sournoiserie quand la météo leur est favorable.', 'monstres', 'Bestiaire 2.0 › ligne 5608');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/casque-brise#carte:casque-brise', 1, 'attributs', NULL, 'Santé : 35 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 5757');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/casque-brise#carte:casque-brise', 2, 'degats', 'Dégâts', 'Arbalète fantomatique – 2d12 dégâts de taille (ignore 4AP)', 'monstres', 'Bestiaire 2.0 › ligne 5760');
@@ -1332,11 +867,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/casque-brise#carte:casque-brise', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', '', 'monstres', 'Bestiaire 2.0 › ligne 5779');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/casque-brise#carte:casque-brise', 8, 'resistance', 'Résistance(s) Dégâts ÷2', '', 'monstres', 'Bestiaire 2.0 › ligne 5784');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/casque-brise#carte:casque-brise', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Saignement, Peur, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 5789');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/casque-brise#carte:casque-brise', 10, 'capacites', 'Capacité(s)', 'Mourir peut attendre. Cette créature n’a que la moitié de sa santé qu’elle est censée avoir. Quand elle tombe en dessous de 0 santé, elle sombre dans une mort temporaire qui ne dure qu’un tour, à la fin de ce dernier, elle revient avec toute sa santé et barrière. La deuxième mort est fatale par contre.
-
-Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Devoir de l’Éclaireur. Cette créature est perspicace, elle dispose d’une portée d’attaque qui va sur tout le terrain, ses attaques sont si rapides que la cible a un malus de 10% pour se défendre et une fois par tour elle peut ignorer une attaque d’opportunité.', 'monstres', 'Bestiaire 2.0 › ligne 5793');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/casque-brise#carte:casque-brise', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 5793');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/casque-brise#carte:casque-brise', 11, 'tactique', 'TACTIQUE COMBAT', 'Il est celui qui détruit les cibles à distance, son arbalète est capable de traverser la plupart des armures, il soutient ceux en première ligne, préférant s’attaquer à ceux qui sont collés à la Cuirasse abîmée.', 'monstres', 'Bestiaire 2.0 › ligne 5803');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-adulte', 1, 'attributs', NULL, 'Santé : 200 Chakra : 160 Barrière : 80', 'monstres', 'Bestiaire 2.0 › ligne 5894');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-adulte', 2, 'degats', 'Dégâts', 'Morsure – 4d10 + 8 dégâts d''estoc.
@@ -1348,23 +879,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-adulte', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Nécromancie, Poison', 'monstres', 'Bestiaire 2.0 › ligne 5918');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-adulte', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Foudre, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 5922');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-adulte', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Terre, Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 5926');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-adulte', 10, 'capacites', 'Capacité(s)', '3 têtes. Cette créature possède 3 initiatives et des dons différents selon la tête qui joue.
-
-[Gauche] Téméraire. Cette créature est toujours en offensive et n’est pas affectée par le malus pour toucher.
-
-[Gauche] Science du critique+. Cette créature a +3 à la réussite critique et à l’échec critique.
-
-[Centre] Défenseur. Cette créature est toujours en défensive.
-
-[Centre] Sujet épineux+. En posture de défense, cette créature inflige 10 dégâts lors d’une parade parfaite.
-
-[Droite] Concentré. Cette créature est toujours en focus.
-
-[Droite] Tome du Feu lvl 3. Permet à cette créature de lancer des sorts de la magie du Feu au niveau 3 de puissance.
-
-[Droite] Tome du Sang lvl 3. Permet à cette créature de lancer des sorts de la magie du Sang au niveau 3 de puissance.
-
-[Droite] Tome de la Terre lvl 3. Permet à cette créature de lancer des sorts de la magie de la Terre au niveau 3 de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 5930');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-adulte', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 5930');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-adulte', 11, 'tactique', 'TACTIQUE COMBAT', 'Cette version adulte du chien à trois têtes domine ses adversaires du haut de ces 2,5 mètres. Il est bien plus fort que le jeune.', 'monstres', 'Bestiaire 2.0 › ligne 5958');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-geant', 1, 'attributs', NULL, 'Santé : 400 Chakra : 360 Barrière : 160', 'monstres', 'Bestiaire 2.0 › ligne 5966');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-geant', 2, 'degats', 'Dégâts', 'Morsure – 4d10 + 16 dégâts d''estoc.
@@ -1376,25 +891,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-geant', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Nécromancie, Poison', 'monstres', 'Bestiaire 2.0 › ligne 5990');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-geant', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Foudre, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 5994');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-geant', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Terre, Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 5998');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-geant', 10, 'capacites', 'Capacité(s)', '3 têtes. Cette créature possède 3 initiatives et des dons différents selon la tête qui joue.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-[Gauche] Téméraire. Cette créature est toujours en offensive et n’est pas affectée par le malus pour toucher.
-
-[Gauche] Science du critique++. Cette créature a +5 à la réussite critique et à l’échec critique.
-
-[Centre] Défenseur. Cette créature est toujours en défensive.
-
-[Centre] Sujet épineux++. En posture de défense, cette créature inflige 14 dégâts lors d’une parade parfaite.
-
-[Droite] Concentré. Cette créature est toujours en focus.
-
-[Droite] Tome du Feu lvl 3. Permet à cette créature de lancer des sorts de la magie du Feu au niveau 3 de puissance.
-
-[Droite] Tome du Sang lvl 3. Permet à cette créature de lancer des sorts de la magie du Sang au niveau 3 de puissance.
-
-[Droite] Tome de la Terre lvl 3. Permet à cette créature de lancer des sorts de la magie de la Terre au niveau 3 de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 6002');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-geant', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 6002');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-geant', 11, 'tactique', 'TACTIQUE COMBAT', 'Cette version xl du cerbère qu’on retrouve dans la forêt colossale est un chasseur implacable. Du haut de ses 3m, il peut écraser par sa seule force des aventuriers mal préparer.', 'monstres', 'Bestiaire 2.0 › ligne 6033');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-jeune', 1, 'attributs', NULL, 'Santé : 100 Chakra : 80 Barrière : 40', 'monstres', 'Bestiaire 2.0 › ligne 5820');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-jeune', 2, 'degats', 'Dégâts', 'Morsure – 4d10 dégâts d''estoc.
@@ -1406,23 +903,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-jeune', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Nécromancie, Poison', 'monstres', 'Bestiaire 2.0 › ligne 5844');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-jeune', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Foudre, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 5848');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-jeune', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Terre, Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 5852');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-jeune', 10, 'capacites', 'Capacité(s)', '3 têtes. Cette créature possède 3 initiatives et des dons différents selon la tête qui joue.
-
-[Gauche] Téméraire. Cette créature est toujours en offensive et n’est pas affectée par le malus pour toucher.
-
-[Gauche] Science du critique. Cette créature a +2 à la réussite critique et à l’échec critique.
-
-[Centre] Défenseur. Cette créature est toujours en défensive.
-
-[Centre] Sujet épineux. En posture de défense, cette créature inflige 8 dégâts lors d’une parade parfaite.
-
-[Droite] Concentré. Cette créature est toujours en focus.
-
-[Droite] Tome du Feu lvl 3. Permet à cette créature de lancer des sorts de la magie du Feu au niveau 3 de puissance.
-
-[Droite] Tome du Sang lvl 3. Permet à cette créature de lancer des sorts de la magie du Sang au niveau 3 de puissance.
-
-[Droite] Tome de la Terre lvl 3. Permet à cette créature de lancer des sorts de la magie de la Terre au niveau 3 de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 5856');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-jeune', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 5856');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cerbere#carte:cerbere-jeune', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce gros chien à trois têtes est un monstre à ne sous-estimer sous aucun prétexte, en plus d’être capable d’agir 3 fois par tour, les têtes gauche et droite sont toujours protégées par celle du centre qui encaisse les coups peu importe la puissance.', 'monstres', 'Bestiaire 2.0 › ligne 5884');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-brule', 1, 'attributs', NULL, 'Santé : 60 Chakra : 50 Barrière : 25', 'monstres', 'Bestiaire 2.0 › ligne 6049');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-brule', 2, 'degats', 'Dégâts', 'Sabre de cendre - 3d10 dégâts de taille', 'monstres', 'Bestiaire 2.0 › ligne 6052');
@@ -1433,13 +914,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-brule', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Vent, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 6071');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-brule', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Terre, Glace, Pétrification, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 6075');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-brule', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Couardise, Peur, Fatigue, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 6079');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-brule', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrises maximum : Boule de feu, Souffle chaud.
-
-Concentration coloré. Utilise la concentration au lieu de la magie pour lancer ses sorts.
-
-Chargement contact. Permet de charger un sort d''attaque lvl1 ou lvl2 le premier tour et de l''utiliser en même temps que l''attaque de contact le tour suivant.', 'monstres', 'Bestiaire 2.0 › ligne 6083');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-brule', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 6083');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-brule', 11, 'tactique', 'TACTIQUE COMBAT', 'Ces zombis de feu se battent comme le font les mages rouges, charge un sort et l’utilise avec leur prochaine attaque avec leur arme. Leur volonté très élevé fait qu’ils ratent très rarement leur sort mais étrangement il ne lance jamais leur sort comme ça, ils chargent toujours leur sort.', 'monstres', 'Bestiaire 2.0 › ligne 6096');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-carbonise', 1, 'attributs', NULL, 'Santé : 120 Chakra : 100 Barrière : 50', 'monstres', 'Bestiaire 2.0 › ligne 6106');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-carbonise', 2, 'degats', 'Dégâts', 'Sabre de cendre - 3d10 + 7 dégâts de taille', 'monstres', 'Bestiaire 2.0 › ligne 6109');
@@ -1450,15 +925,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-carbonise', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Vent, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 6128');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-carbonise', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Terre, Glace, Pétrification, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 6132');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-carbonise', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Couardise, Peur, Fatigue, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 6136');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-carbonise', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrises maximum : Boule de feu, Souffle chaud.
-
-Concentration coloré. Utilise la concentration au lieu de la magie pour lancer ses sorts.
-
-Chargement contact. Permet de charger un sort d''attaque lvl1 ou lvl2 le premier tour et de l''utiliser en même temps que l''attaque de contact le tour suivant.
-
-Surchauffe. Permet de consommer le triple du coût du sort pour augmenter ses dégâts de 2d.', 'monstres', 'Bestiaire 2.0 › ligne 6140');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-carbonise', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 6140');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-carbonise', 11, 'tactique', 'TACTIQUE COMBAT', 'Ces versions carbonisées sont capables de surcharger leurs sortilèges pour les rendre encore plus puissants mais ils consomment bien trop de chakra.', 'monstres', 'Bestiaire 2.0 › ligne 6156');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-vitrifie', 1, 'attributs', NULL, 'Santé : 240 Chakra : 200 Barrière : 100', 'monstres', 'Bestiaire 2.0 › ligne 6166');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-vitrifie', 2, 'degats', 'Dégâts', 'Lame de verre rouge - 3d10 + 14 dégâts de taille/estoc', 'monstres', 'Bestiaire 2.0 › ligne 6169');
@@ -1470,19 +937,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-vitrifie', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Terre, Glace, Pétrification, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 6192');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-vitrifie', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Fatigue, Couardise, Peur, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 6196');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-vitrifie', 10, 'reflexion', 'Réflexion(s) Renvoi des dégâts/effets', 'Lumière', 'monstres', 'Bestiaire 2.0 › ligne 6200');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-vitrifie', 11, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrises maximum : Boule de feu, Souffle chaud.
-
-Concentration coloré. Utilise la concentration au lieu de la magie pour lancer ses sorts.
-
-Chargement contact. Permet de charger un sort d''attaque lvl1 ou lvl2 le premier tour et de l''utiliser en même temps que l''attaque de contact le tour suivant.
-
-Surchauffe. Permet de consommer le triple du coût du sort pour augmenter ses dégâts de 2d.
-
-Verre pilé. A chaque coup physique encaissé, des éclats de verre sont envoyés à l’attaquant, infligeant 3d6 dégâts neutre.
-
-Réflexion du verre. Cette créature de renvoyer les dégâts/effets magiques ou physiques de l’élément lumière, en plus de ne prendre aucun dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 6204');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-vitrifie', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 6204');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/charcabe#carte:charcabe-vitrifie', 12, 'tactique', 'TACTIQUE COMBAT', 'Cette version très rare du charcabé est une forme qui n''apparaît que dans certaines conditions, en outre la présence abondante de sable sur lui et l’exposition prolongée à une forte chaleur fait que le sable s’est vitrifié sur sa peau, lui donnant cette carapace de verre très étrange.
 
 Son arme est aussi faite d’un verre parfaitement rouge qui réagit très bien à la magie du feu. Conductrice de la magie du feu, elle permet d’augmenter la portée des sorts.', 'monstres', 'Bestiaire 2.0 › ligne 6226');
@@ -1496,15 +951,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-bicorne#carte:cheval-bicorne-bordeau', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière, Nécromancie, Poison', 'monstres', 'Bestiaire 2.0 › ligne 6454');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-bicorne#carte:cheval-bicorne-bordeau', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre, Sang, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 6458');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-bicorne#carte:cheval-bicorne-bordeau', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Peur', 'monstres', 'Bestiaire 2.0 › ligne 6462');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-bicorne#carte:cheval-bicorne-bordeau', 10, 'capacites', 'Capacité(s)', 'Charge. Cette créature est capable d’infliger 1d de dégâts supplémentaire si elle parcourt plus de 4 cases avant son attaque.
-
-Attaque maudite. L’une des armes* de cette créature à l''effet du sort de l''ombre "malédiction" et l''applique automatiquement.
-
-Anti-bien. Inflige un bonus de 10 dégâts contre les créatures à l’alignement bon.
-
-Aura de peur. Inflige un malus de -10% au jet de défense aux ennemis à deux cases.
-
-Attaque sanglante. L’une des armes* de cette créature obligent le jet de vigueur pour ne pas prendre “Saignement 1”.', 'monstres', 'Bestiaire 2.0 › ligne 6466');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-bicorne#carte:cheval-bicorne-bordeau', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 6466');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-bicorne#carte:cheval-bicorne-bordeau', 11, 'tactique', 'TACTIQUE COMBAT', 'Des légendes parlent de ces destriers comme des messagers des divinités les plus malveillantes, ils ont un sale caractère et ne se laisseront jamais dompter. On raconte que ceux qui ont réussi à les monter sont des êtres si maléfiques que le simple fait de les voir installe une peur incompréhensible.
 Sa corne couleur rouge sang est capable de faire couler le sang de son ennemi s''il manque de vigueur.', 'monstres', 'Bestiaire 2.0 › ligne 6482');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-bicorne#carte:cheval-bicorne-mauve', 1, 'attributs', NULL, 'Santé : 360 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 6371');
@@ -1517,13 +964,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-bicorne#carte:cheval-bicorne-mauve', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière, Nécromancie, Poison', 'monstres', 'Bestiaire 2.0 › ligne 6395');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-bicorne#carte:cheval-bicorne-mauve', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre, Sang, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 6399');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-bicorne#carte:cheval-bicorne-mauve', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Peur', 'monstres', 'Bestiaire 2.0 › ligne 6403');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-bicorne#carte:cheval-bicorne-mauve', 10, 'capacites', 'Capacité(s)', 'Charge. Cette créature est capable d’infliger 1d de dégâts supplémentaire si elle parcourt plus de 4 cases avant son attaque.
-
-Attaque maudite. L’une des armes* de cette créature à l''effet du sort de l''ombre "malédiction" et l''applique automatiquement.
-
-Anti-bien. Inflige un bonus de 10 dégâts contre les créatures à l’alignement bon.
-
-Aura de peur. Inflige un malus de -10% au jet de défense aux ennemis à deux cases.', 'monstres', 'Bestiaire 2.0 › ligne 6407');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-bicorne#carte:cheval-bicorne-mauve', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 6407');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-bicorne#carte:cheval-bicorne-mauve', 11, 'tactique', 'TACTIQUE COMBAT', 'Ses attributs de couleurs mauve brillant augmentent encore plus sa présence effrayante, semant le doute parmi les ennemis.', 'monstres', 'Bestiaire 2.0 › ligne 6420');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-bicorne#carte:cheval-bicorne-noir', 1, 'attributs', NULL, 'Santé : 180 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 6315');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-bicorne#carte:cheval-bicorne-noir', 2, 'degats', 'Dégâts', 'Corne* - 4d10 dégâts de taille/estoc
@@ -1535,11 +976,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-bicorne#carte:cheval-bicorne-noir', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière, Nécromancie, Poison', 'monstres', 'Bestiaire 2.0 › ligne 6339');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-bicorne#carte:cheval-bicorne-noir', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre, Sang, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 6343');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-bicorne#carte:cheval-bicorne-noir', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Peur', 'monstres', 'Bestiaire 2.0 › ligne 6347');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-bicorne#carte:cheval-bicorne-noir', 10, 'capacites', 'Capacité(s)', 'Charge. Cette créature est capable d’infliger 1d de dégâts supplémentaire si elle parcourt plus de 4 cases avant son attaque.
-
-Attaque maudite. L''attaque de cette créature à l''effet du sort de l''ombre "malédiction" et l''applique automatiquement.
-
-Anti-bien. Inflige un bonus de 10 dégâts contre les créatures à l’alignement bon.', 'monstres', 'Bestiaire 2.0 › ligne 6351');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-bicorne#carte:cheval-bicorne-noir', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 6351');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-bicorne#carte:cheval-bicorne-noir', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce cheval de trait intimidant par ses couleurs et sa présence est unique en son genre. Capable de sentir le bien et le mal dans le cœur des autres, il est particulièrement agressif envers ceux dont le cœur n’est pas empli par le mal. Il ne se laissera dompter que par le mal qu’il incarne également. Sa corne est capable d’affaiblir ses ennemis.', 'monstres', 'Bestiaire 2.0 › ligne 6361');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-argente', 1, 'attributs', NULL, 'Santé : 360 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 6562');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-argente', 2, 'degats', 'Dégâts', 'Corne* - 4d10 + 8 dégâts de taille/estoc
@@ -1551,13 +988,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-argente', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Ombre, Foudre, Peur, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 6586');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-argente', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Lumière, Eau, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 6590');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-argente', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 6594');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-argente', 10, 'capacites', 'Capacité(s)', 'Charge. Cette créature est capable d’infliger 1d de dégâts supplémentaire si elle parcourt plus de 4 cases avant son attaque.
-
-Attaque aveuglante. L’une des armes* de cette créature si elle touche force un jet de vigueur à la cible, si elle rate, elle encaisse “aveuglement 1”.
-
-Anti-mal. Inflige un bonus de 10 dégâts contre les créatures à l’alignement mauvais.
-
-Anti-non mort. Inflige un bonus de 1d dégâts contre les non-morts.', 'monstres', 'Bestiaire 2.0 › ligne 6598');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-argente', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 6598');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-argente', 11, 'tactique', 'TACTIQUE COMBAT', 'Ses sabots et sa corne sont faits d’un matériel qui est très proche de l’argent, ce qui permet à cette créature d’être bien plus efficace contre les non-morts.', 'monstres', 'Bestiaire 2.0 › ligne 6611');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-blanc', 1, 'attributs', NULL, 'Santé : 180 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 6506');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-blanc', 2, 'degats', 'Dégâts', 'Corne* - 4d10 dégâts de taille/estoc
@@ -1569,11 +1000,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-blanc', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Ombre, Foudre, Peur, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 6530');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-blanc', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Lumière, Eau, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 6534');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-blanc', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 6538');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-blanc', 10, 'capacites', 'Capacité(s)', 'Charge. Cette créature est capable d’infliger 1d de dégâts supplémentaire si elle parcourt plus de 4 cases avant son attaque.
-
-Attaque aveuglante. L’une des armes* de cette créature si elle touche force un jet de vigueur à la cible, si elle rate, elle encaisse “aveuglement 1”.
-
-Anti-mal. Inflige un bonus de 10 dégâts contre les créatures à l’alignement mauvais.', 'monstres', 'Bestiaire 2.0 › ligne 6542');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-blanc', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 6542');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-blanc', 11, 'tactique', 'TACTIQUE COMBAT', 'Bien que ce soit un cheval, sa magnifique robe blanche et sa grande corne font que cette créature est unique en son genre. Capable de sentir le bien et le mal dans le cœur des autres, il saura faire preuve d’agressivité contre ceux du mal. Sa corne très solide est une arme formidable qui est capable d’aveugler.', 'monstres', 'Bestiaire 2.0 › ligne 6552');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-dore', 1, 'attributs', NULL, 'Santé : 720 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 6621');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-dore', 2, 'degats', 'Dégâts', 'Corne* - 4d10 + 16 dégâts de taille/estoc
@@ -1585,15 +1012,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-dore', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Ombre, Foudre, Peur, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 6645');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-dore', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Lumière, Eau, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 6649');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-dore', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 6653');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-dore', 10, 'capacites', 'Capacité(s)', 'Charge. Cette créature est capable d’infliger 1d de dégâts supplémentaire si elle parcourt plus de 4 cases avant son attaque.
-
-Attaque aveuglante. L’une des armes* de cette créature si elle touche force un jet de vigueur à la cible, si elle rate, elle encaisse “aveuglement 1”.
-
-Anti-mal. Inflige un bonus de 10 dégâts contre les créatures à l’alignement mauvais.
-
-Anti-non mort. Inflige un bonus de 1d dégâts contre les non-morts.
-
-Anti-démon. Inflige un bonus de 1d dégâts contre les démons.', 'monstres', 'Bestiaire 2.0 › ligne 6657');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-dore', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 6657');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cheval-unicorne#carte:cheval-unicorne-dore', 11, 'tactique', 'TACTIQUE COMBAT', 'La corne et les sabots parfaitement dorés sont capables d’infliger les pires souffrances contre les démons. Ces majestueux chevaux ont un caractère bien trempé et il semble quasi impossible de les dompter. On entend souvent des légendes concernant des grands noms des temples de la lumière et de l’eau qui auraient réussi à les monter.', 'monstres', 'Bestiaire 2.0 › ligne 6673');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/collecteur#carte:collecteur', 1, 'sante', 'Santé', 'EP 2 : 50
 EP 3 : 70
@@ -1629,21 +1048,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/collecteur#carte:collecteur', 10, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Terre, Vent, Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 6753');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/collecteur#carte:collecteur', 11, 'double_resistance', 'Double(s) Résistance(s) Dégâts/Effets ÷4', 'Foudre, Paralysie, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 6757');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/collecteur#carte:collecteur', 12, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Aveuglement, Fatigue, Saignement, Surdité, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 6761');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/collecteur#carte:collecteur', 13, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisée aux attaques d’estoc.
-
-Être de la Terre. Cette créature est capable de lancer des sorts de son niveau de puissance magique.
-
-Être de la Nécromancie. Cette créature est capable de lancer des sorts de son niveau de puissance magique.
-
-[EP3] Force démesurée. Cette créature peut dépasser la limite de Force de 1.
-
-[EP4] Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-[EP5] Statue. Si la créature n’a pas bougé durant ce tour, elle gagne +5AP mais perd 6 INI, et ceux jusqu''au début de son prochain tour.
-
-[EP6] Racine. Si la créature n’a pas bougé durant ce tour, elle récupère 5% de sa santé max.', 'monstres', 'Bestiaire 2.0 › ligne 6765');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/collecteur#carte:collecteur', 13, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 6765');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/collecteur#carte:collecteur', 14, 'tactique', 'TACTIQUE COMBAT', 'Ce monstre à beau être lent, il possède beaucoup de puissance, sa nature squelettique fait qu’il n’a pas à s’inquiéter de ceux qui utilise des projectile et son lien avec la terre fait qu’il n’est pas vulnérable aux dégâts de frappe. Il avancera vers l’ennemi le plus proche, le détruira de toutes ses forces pour avoir l’occasion d’assimiler ses ossements.', 'monstres', 'Bestiaire 2.0 › ligne 6790');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/collecteur#carte:collecteur-puissant', 1, 'sante', 'Santé', 'EP 2 : 100
 EP 3 : 140
@@ -1679,21 +1084,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/collecteur#carte:collecteur-puissant', 10, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Terre, Vent, Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 6862');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/collecteur#carte:collecteur-puissant', 11, 'double_resistance', 'Double(s) Résistance(s) Dégâts/Effets ÷4', 'Foudre, Paralysie, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 6866');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/collecteur#carte:collecteur-puissant', 12, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Aveuglement, Fatigue, Saignement, Surdité, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 6870');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/collecteur#carte:collecteur-puissant', 13, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisée aux attaques d’estoc.
-
-Être de la Terre. Cette créature est capable de lancer des sorts de son niveau de puissance magique.
-
-Être de la Nécromancie. Cette créature est capable de lancer des sorts de son niveau de puissance magique.
-
-[EP3] Force démesurée. Cette créature peut dépasser la limite de Force de 1.
-
-[EP4] Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-[EP5] Statue. Si la créature n’a pas bougé durant ce tour, elle gagne +5AP mais perd 6 INI, et ceux jusqu''au début de son prochain tour.
-
-[EP6] Racine. Si la créature n’a pas bougé durant ce tour, elle récupère 5% de sa santé max.', 'monstres', 'Bestiaire 2.0 › ligne 6874');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/collecteur#carte:collecteur-puissant', 13, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 6874');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/collecteur#carte:collecteur-puissant', 14, 'tactique', 'TACTIQUE COMBAT', 'Mesurant 1 mètre de plus que les formes ennemis simples. Il est simplement bien plus costaud.', 'monstres', 'Bestiaire 2.0 › ligne 6899');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/collecteur#carte:collecteur-titan', 1, 'sante', 'Santé', 'EP 2 : 100
 EP 3 : 140
@@ -1729,25 +1120,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/collecteur#carte:collecteur-titan', 10, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Terre, Vent, Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 6971');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/collecteur#carte:collecteur-titan', 11, 'double_resistance', 'Double(s) Résistance(s) Dégâts/Effets ÷4', 'Foudre, Paralysie, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 6975');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/collecteur#carte:collecteur-titan', 12, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Aveuglement, Fatigue, Saignement, Surdité, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 6979');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/collecteur#carte:collecteur-titan', 13, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisée aux attaques d’estoc.
-
-Être de la Terre. Cette créature est capable de lancer des sorts de son niveau de puissance magique.
-
-Être de la Nécromancie. Cette créature est capable de lancer des sorts de son niveau de puissance magique.
-
-Force démesurée. Cette créature peut dépasser la limite de Force de 1.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-[EP3] Statue. Si la créature n’a pas bougé durant ce tour, elle gagne +5AP mais perd 6 INI, et ceux jusqu''au début de son prochain tour.
-
-[EP4] Racine. Si la créature n’a pas bougé durant ce tour, elle récupère 5% de sa santé max.
-
-[EP5] Racine. Si la créature n’a pas bougé durant ce tour, elle récupère 5% de sa santé max.
-
-[EP6] Racine. Si la créature n’a pas bougé durant ce tour, elle récupère 5% de sa santé max.', 'monstres', 'Bestiaire 2.0 › ligne 6983');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/collecteur#carte:collecteur-titan', 13, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 6983');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/collecteur#carte:collecteur-titan', 14, 'tactique', 'TACTIQUE COMBAT', '3 fois plus grand que ses semblables, ce monstre est une force de la nature qui semble être impossible à arrêter, le combat contre lui est long et fatiguant.
 
 Cette créature est capable de raser des village pour faire une grande moisson d''âmes.', 'monstres', 'Bestiaire 2.0 › ligne 7014');
@@ -1761,17 +1134,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-du-feu', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Vent, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 7178');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-du-feu', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Terre, Glace, Pétrification, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 7182');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-du-feu', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 7186');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-du-feu', 10, 'capacites', 'Capacité(s)', 'Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Regard infernal+. Cette créature est non seulement capable de forcer le jet de vigueur à toutes les cibles qu’elle voit pour ne pas qu’elle prenne brûlure 1, mais elle peut aussi aggraver la brûlure jusqu’au stade 2 si elle touche avec son arme une victime de brûlure. (Action 2 fois par combat)
-
-Rage. Active un pouvoir de rage qui augmente de +3 les dégâts et de +2 les dégâts subis pendant 3 tours.
-
-Rage incoercible. Cible un adversaire et lui inflige un bonus de 5 dégâts pendant 3 tours.
-
-Animosité (rage). Permet d’avoir une attaque de bec bonus qui vient juste après l''attaque de corps à corps.
-
-Mes précieux !. Cette créature a la possibilité de voler une arme à une main, un accessoire, un objet à la ceinture ou de l’or dans la bourse d’une cible qui possède moins de 20% de sa santé max. La victime peut tenter un jet de Stabilité ou Réflexe, si elle rate : L’objet est perdu et la créature va la poser plus loin pour revenir au combat, dès qu’il a volé 3 objets, il fuit le combat.', 'monstres', 'Bestiaire 2.0 › ligne 7190');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-du-feu', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 7190');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-du-feu', 11, 'tactique', 'TACTIQUE COMBAT', 'Le chef d’une nuée de corbeau agressif, il est bien plus massif que les autres et possède une plumage qui mélange le rouge et le noir dans une harmonie troublante, presque comme si il avait des symbole lié au feu sur lui. Il est adapté pour le combat et possède assez de force pour voler une arme à une main au lieu des petits objets, il va la balancer plus loin pour que les autres corbeaux le récupèrent pendant qu’il continue le combat.', 'monstres', 'Bestiaire 2.0 › ligne 7208');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-noir', 1, 'attributs', NULL, 'Santé : 70 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 7037');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-noir', 2, 'degats', 'Dégâts', 'Griffe enflammé - 2d10 + 2 dégâts de feu/taille
@@ -1783,13 +1146,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-noir', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Vent, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 7061');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-noir', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Terre, Glace, Pétrification, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 7065');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-noir', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 7069');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-noir', 10, 'capacites', 'Capacité(s)', 'Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Regard infernal. Cette créature est non seulement capable de forcer le jet de vigueur à toutes les cibles qu’elle voit pour ne pas qu’elle prenne brûlure 1, mais elle peut aussi aggraver la brûlure jusqu’au stade 2 si elle touche avec son arme une victime de brûlure. (Action 1 fois par combat)
-
-Rage. Active un pouvoir de rage qui augmente de +3 les dégâts et de +2 les dégâts subis pendant 3 tours.
-
-Mon précieux !. Une fois par combat, cette créature a la possibilité de voler un accessoire, un objet à la ceinture ou de l’or dans la bourse d’une cible qui possède moins de 20% de sa santé max. La victime peut tenter un jet de Stabilité ou Réflexe, si elle rate : L’objet est perdu et la créature s''enfuit.', 'monstres', 'Bestiaire 2.0 › ligne 7073');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-noir', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 7073');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-noir', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce corbeau est intimidant de part son apparence un peu biscornue et sa taille. Il est très agressif et n''hésite pas une seconde à attaquer des malheureux qui auraient des objets brillants sur eux.', 'monstres', 'Bestiaire 2.0 › ligne 7085');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-rouge', 1, 'attributs', NULL, 'Santé : 140 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 7095');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-rouge', 2, 'degats', 'Dégâts', 'Griffe enflammé - 2d10 + 6 dégâts de feu/taille
@@ -1801,15 +1158,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-rouge', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Vent, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 7118');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-rouge', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Terre, Glace, Pétrification, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 7122');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-rouge', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 7126');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-rouge', 10, 'capacites', 'Capacité(s)', 'Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Regard infernal. Cette créature est non seulement capable de forcer le jet de vigueur à toutes les cibles qu’elle voit pour ne pas qu’elle prenne brûlure 1, mais elle peut aussi aggraver la brûlure jusqu’au stade 2 si elle touche avec son arme une victime de brûlure. (Action 1 fois par combat)
-
-Rage. Active un pouvoir de rage qui augmente de +3 les dégâts et de +2 les dégâts subis pendant 3 tours.
-
-Rage incoercible. Cible un adversaire et lui inflige un bonus de 5 dégâts pendant 3 tours.
-
-Mon précieux !. Une fois par combat, cette créature a la possibilité de voler un accessoire, un objet à la ceinture ou de l’or dans la bourse d’une cible qui possède moins de 20% de sa santé max. La victime peut tenter un jet de Stabilité ou Réflexe, si elle rate : L’objet est perdu et la créature s''enfuit.', 'monstres', 'Bestiaire 2.0 › ligne 7130');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-rouge', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 7130');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/corbeau-agressif#carte:corbeau-agressif-rouge', 11, 'tactique', 'TACTIQUE COMBAT', 'Plus gros et plus fort, il se reconnaît à son plumage rouge. Il est capable de prendre pour cible un adversaire pour être bien plus efficace pour l’affaiblir.', 'monstres', 'Bestiaire 2.0 › ligne 7145');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:crieur-osseux', 1, 'attributs', NULL, 'Santé : 60 Chakra : 40 Barrière : 20', 'monstres', 'Bestiaire 2.0 › ligne 7221');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:crieur-osseux', 2, 'degats', 'Dégâts', 'Cri – 3d10 dégâts sonore (Cône, portée 1 - 4)
@@ -1821,15 +1170,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:crieur-osseux', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Frappe, Terre, Foudre, Pétrification, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 7244');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:crieur-osseux', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vent, Glace, Feu, Gelé, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 7248');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:crieur-osseux', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Couardise, Peur, Fatigue, Aveuglement, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 7252');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:crieur-osseux', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Terrain favorable. Si jamais la météo est "Vent violent" ou "Tempête de sable", ses dégâts augmentent de +8 et son arme a le double de sa portée.
-
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrises maximum : Lame d''air, Propulsion.', 'monstres', 'Bestiaire 2.0 › ligne 7256');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:crieur-osseux', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 7256');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:crieur-osseux', 11, 'tactique', 'TACTIQUE COMBAT', 'Ces squelettes étranges sont capables de faire d’énormes cris pour perturbé leurs ennemis. Leur cri est si puissant qu’il est capable de rendre sourd. En plus de leur cri, ils peuvent lancer divers sorts du vent.', 'monstres', 'Bestiaire 2.0 › ligne 7271');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:gueulard-osseux', 1, 'attributs', NULL, 'Santé : 240 Chakra : 160 Barrière : 80', 'monstres', 'Bestiaire 2.0 › ligne 7344');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:gueulard-osseux', 2, 'degats', 'Dégâts', 'Cri – 3d10 + 14 dégâts sonore (Cône, portée 1 - 4)
@@ -1841,19 +1182,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:gueulard-osseux', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Frappe, Terre, Foudre, Pétrification, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 7367');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:gueulard-osseux', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vent, Glace, Feu, Gelé, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 7371');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:gueulard-osseux', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Aveuglement, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 7375');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:gueulard-osseux', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Terrain favorable. Si jamais la météo est "Vent violent" ou "Tempête de sable", ses dégâts augmentent de +8 et son arme a le double de sa portée.
-
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrises maximum : Lame d''air, Propulsion, Éternuement.
-
-Super cri. La portée du cri augmente de 2.
-
-Cri repoussant. Les dégâts sonores pousse les adversaire de 2 cases en arrière et leur fait perdre 1 de vitesse pour leur prochain tour.', 'monstres', 'Bestiaire 2.0 › ligne 7379');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:gueulard-osseux', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 7379');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:gueulard-osseux', 11, 'tactique', 'TACTIQUE COMBAT', 'Les gueulards ont une voix si puissante qu’elle force les ennemis à reculer. Ils sont reconnaissable car leur cage thoracique possède bien plus de cotes, est plus grosse et leur colonne vertébrale semble plus épaisse.', 'monstres', 'Bestiaire 2.0 › ligne 7400');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:hurleur-osseux', 1, 'attributs', NULL, 'Santé : 120 Chakra : 80 Barrière : 40', 'monstres', 'Bestiaire 2.0 › ligne 7281');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:hurleur-osseux', 2, 'degats', 'Dégâts', 'Cri – 3d10 + 7 dégâts sonore (Cône, portée 1 - 4)
@@ -1865,17 +1194,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:hurleur-osseux', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Frappe, Terre, Foudre, Pétrification, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 7304');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:hurleur-osseux', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vent, Glace, Feu, Gelé, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 7308');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:hurleur-osseux', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Couardise, Peur, Fatigue, Aveuglement, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 7312');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:hurleur-osseux', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Terrain favorable. Si jamais la météo est "Vent violent" ou "Tempête de sable", ses dégâts augmentent de +8 et son arme a le double de sa portée.
-
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrises maximum : Lame d''air, Propulsion, Éternuement.
-
-Super cri. La portée du cri augmente de 2.', 'monstres', 'Bestiaire 2.0 › ligne 7316');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:hurleur-osseux', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 7316');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/crieur-osseux#carte:hurleur-osseux', 11, 'tactique', 'TACTIQUE COMBAT', 'Les hurleurs possèdent un crâne légèrement plus gros et sont capables de pousser des cris plus puissants. Leur absence de réponse aux attaques physiques font qu’ils restent vulnérables à ces dernières.', 'monstres', 'Bestiaire 2.0 › ligne 7334');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:criquet-thaumivore-geant', 1, 'attributs', NULL, 'Santé : 160 Chakra : 120 Barrière : 60', 'monstres', 'Bestiaire 2.0 › ligne 7614');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:criquet-thaumivore-geant', 2, 'degats', 'Dégâts', 'Morsure – 2d10 + 10 dégâts de taille
@@ -1887,18 +1206,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:criquet-thaumivore-geant', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', '', 'monstres', 'Bestiaire 2.0 › ligne 7637');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:criquet-thaumivore-geant', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Corruption, Surcharge magique', 'monstres', 'Bestiaire 2.0 › ligne 7642');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:criquet-thaumivore-geant', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', '', 'monstres', 'Bestiaire 2.0 › ligne 7646');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:criquet-thaumivore-geant', 10, 'capacites', 'Capacité(s)', 'Bond. Cette créature est capable de faire un bond équivalent à sa vitesse x2 en échange de 3IC.
-
-Morsure aspirante bleue. La morsure de cette créature est capable d’aspirer le chakra de sa victime à hauteur de 30% par rapport aux dégâts infligés avec l’attaque.
-
-Chargement bleu. Cette créature possède une réserve de chakra vide qui peut se remplir par un moyen x. Quand elle atteint certains seuil de réserve, elle débloque des passif qui se cumule entre eux :
-20% de chakra = +4 Initiative
-40% de chakra = +7 aux dégâts
-60% de chakra = +2 vitesse
-80% de chakra = +7 AM
-100% de chakra = Débloque le don “” et DOIT le faire dès que possible.
-
-Charge chakratique. Quand la réserve de chakra atteint 100%, peut faire une charge sur une cible dont la portée correspond au sprint de la créature. Une fois cette attaque faite, la réserve de chakra retombe à 0.', 'monstres', 'Bestiaire 2.0 › ligne 7651');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:criquet-thaumivore-geant', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 7651');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:criquet-thaumivore-geant', 11, 'tactique', 'TACTIQUE COMBAT', 'Certaine la forme la plus rare du criquet qu’on retrouve plus souvent dans la forêt colossale. Sa morsure absorbe encore plus de chakra et ses amplifications sont encore plus forte.', 'monstres', 'Bestiaire 2.0 › ligne 7669');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:criquet-thaumivore-jeune', 1, 'attributs', NULL, 'Santé : 40 Chakra : 30 Barrière : 15', 'monstres', 'Bestiaire 2.0 › ligne 7483');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:criquet-thaumivore-jeune', 2, 'degats', 'Dégâts', 'Morsure – 2d10 + 2 dégâts de taille
@@ -1910,18 +1218,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:criquet-thaumivore-jeune', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', '', 'monstres', 'Bestiaire 2.0 › ligne 7507');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:criquet-thaumivore-jeune', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Corruption, Surcharge magique', 'monstres', 'Bestiaire 2.0 › ligne 7512');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:criquet-thaumivore-jeune', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', '', 'monstres', 'Bestiaire 2.0 › ligne 7516');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:criquet-thaumivore-jeune', 10, 'capacites', 'Capacité(s)', 'Bond. Cette créature est capable de faire un bond équivalent à sa vitesse x2 en échange de 3IC.
-
-Morsure aspirante bleue. La morsure de cette créature est capable d’aspirer le chakra de sa victime à hauteur de 25% par rapport aux dégâts infligés avec l’attaque.
-
-Chargement bleu. Cette créature possède une réserve de chakra vide qui peut se remplir par un moyen x. Quand elle atteint certains seuil de réserve, elle débloque des passif qui se cumule entre eux :
-20% de chakra = +2 Initiative
-40% de chakra = +3 aux dégâts
-60% de chakra = +10% Esquive
-80% de chakra = +4 AM
-100% de chakra = Débloque le don “” et DOIT le faire dès que possible.
-
-Charge chakratique. Quand la réserve de chakra atteint 100%, peut faire une charge sur une cible dont la portée correspond au sprint de la créature. Une fois cette attaque faite, la réserve de chakra retombe à 0.', 'monstres', 'Bestiaire 2.0 › ligne 7521');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:criquet-thaumivore-jeune', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 7521');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:criquet-thaumivore-jeune', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce gros criquet est vif et possède une morsure capable de vider le chakra en plus de faire des dégâts, il va naturellement aller en direction de ceux qui ont le plus de chakra en réserve pour pouvoir s’en repaître.', 'monstres', 'Bestiaire 2.0 › ligne 7539');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:gros-criquet-thaumivore', 1, 'attributs', NULL, 'Santé : 80 Chakra : 60 Barrière : 30', 'monstres', 'Bestiaire 2.0 › ligne 7549');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:gros-criquet-thaumivore', 2, 'degats', 'Dégâts', 'Morsure – 2d10 + 6 dégâts de taille
@@ -1933,18 +1230,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:gros-criquet-thaumivore', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', '', 'monstres', 'Bestiaire 2.0 › ligne 7572');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:gros-criquet-thaumivore', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Corruption, Surcharge magique', 'monstres', 'Bestiaire 2.0 › ligne 7577');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:gros-criquet-thaumivore', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', '', 'monstres', 'Bestiaire 2.0 › ligne 7581');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:gros-criquet-thaumivore', 10, 'capacites', 'Capacité(s)', 'Bond. Cette créature est capable de faire un bond équivalent à sa vitesse x2 en échange de 3IC.
-
-Morsure aspirante bleue. La morsure de cette créature est capable d’aspirer le chakra de sa victime à hauteur de 25% par rapport aux dégâts infligés avec l’attaque.
-
-Chargement bleu. Cette créature possède une réserve de chakra vide qui peut se remplir par un moyen x. Quand elle atteint certains seuil de réserve, elle débloque des passif qui se cumule entre eux :
-20% de chakra = +3 Initiative
-40% de chakra = +5 aux dégâts
-60% de chakra = +1 vitesse
-80% de chakra = +6 AM
-100% de chakra = Débloque le don “” et DOIT le faire dès que possible.
-
-Charge chakratique. Quand la réserve de chakra atteint 100%, peut faire une charge sur une cible dont la portée correspond au sprint de la créature. Une fois cette attaque faite, la réserve de chakra retombe à 0.', 'monstres', 'Bestiaire 2.0 › ligne 7586');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:gros-criquet-thaumivore', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 7586');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:gros-criquet-thaumivore', 11, 'tactique', 'TACTIQUE COMBAT', 'Il a bien mangé celui-là ! Avec ses 80 cm en moyenne et sa plus grosse réserve de chakra, ses amplifications sont plus fortes.', 'monstres', 'Bestiaire 2.0 › ligne 7604');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cuirasse-abimee#carte:cuirasse-abime', 1, 'attributs', NULL, 'Santé : 35 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 7685');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cuirasse-abimee#carte:cuirasse-abime', 2, 'degats', 'Dégâts', 'Griffes fantomatiques – 2d8 dégâts de taille', 'monstres', 'Bestiaire 2.0 › ligne 7688');
@@ -1955,11 +1241,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cuirasse-abimee#carte:cuirasse-abime', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', '', 'monstres', 'Bestiaire 2.0 › ligne 7707');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cuirasse-abimee#carte:cuirasse-abime', 8, 'resistance', 'Résistance(s) Dégâts ÷2', '', 'monstres', 'Bestiaire 2.0 › ligne 7712');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cuirasse-abimee#carte:cuirasse-abime', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Saignement, Peur, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 7717');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cuirasse-abimee#carte:cuirasse-abime', 10, 'capacites', 'Capacité(s)', 'Mourir peut attendre. Cette créature n’a que la moitié de sa santé qu’elle est censée avoir. Quand elle tombe en dessous de 0 santé, elle sombre dans une mort temporaire qui ne dure qu’un tour, à la fin de ce dernier, elle revient avec toute sa santé et barrière. La deuxième mort est fatale par contre.
-
-Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Devoir de l’Égide. Cette créature est robuste, il est capable de bloquer un adversaire dans sa zone d’influence mais également d’imposer un désavantage à ce même adversaire si il tente une attaque à distance ou un sort sur une autre cible que lui. Il peut bloquer 4 adversaires comme ça.', 'monstres', 'Bestiaire 2.0 › ligne 7721');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cuirasse-abimee#carte:cuirasse-abime', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 7721');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/cuirasse-abimee#carte:cuirasse-abime', 11, 'tactique', 'TACTIQUE COMBAT', 'Il est la défense du Cortège du Passé, il est là pour se coller aux ennemis et les empêcher de faire trop de mal aux autres morceaux d’armures. Il est assez difficile de le faire tomber à cause de ses défenses plus que bonnes.', 'monstres', 'Bestiaire 2.0 › ligne 7731');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:darvask-delta', 1, 'attributs', NULL, 'Santé : 440 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 7866');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:darvask-delta', 2, 'degats', 'Dégâts', 'Morsure - 3d10 + 15 dégâts d''estoc
@@ -1972,19 +1254,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:darvask-delta', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière, Foudre, Aveuglement, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 7890');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:darvask-delta', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Eau, Terre, Nécromancie, Confusion, Pétrification, Poison', 'monstres', 'Bestiaire 2.0 › ligne 7894');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:darvask-delta', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Peur, Couardise', 'monstres', 'Bestiaire 2.0 › ligne 7898');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:darvask-delta', 10, 'capacites', 'Capacité(s)', 'Grimpeur. Cette créature possède un moyen de grimper les murs ou toutes surfaces en hauteur. Elle n’a pas besoin de jet pour les traverser et elle ne consomme pas son tour.
-
-Prise du jour. Lorsque cette créature utilise sa morsure, la cible est bloqué dans sa gueule et doit faire un jet d’athlétisme/équilibre au début de son tour de jeu pour en sortir :
-Si elle rate son jet = Elle est toujours bloquée et prend les dégâts de la morsure sans aucun moyen de se défendre.
-Si elle réussit son jet = Elle sort de la gueule en perdant la moitié de son déplacement au passage.
-
-Écailles protecteurs. Les écailles de cette créature annulent 4 dégâts à chaque première attaque d’un tour.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Force démesurée. Cette créature peut dépasser la limite de Force de 1.
-
-Folle de guerre. Cette créature doit avancer vers l’ennemi, elle ne peut pas attendre et est immunisée contre toutes formes de peur.', 'monstres', 'Bestiaire 2.0 › ligne 7902');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:darvask-delta', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 7902');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:darvask-delta', 11, 'tactique', 'TACTIQUE COMBAT', 'Assez rares parmi les darvasks, les deltas sont des individus bien plus gros et violents, on pense que ce sont des cas atteints d’une sévère maladie mentale qui les pousse à devenir fou. Ils possèdent une force hors du commun, ils ne sont pas à prendre à la légère. Il ne craint rien et est même prêt à attaquer une cible même si elle est clairement plus forte, par pure folie.', 'monstres', 'Bestiaire 2.0 › ligne 7923');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:darvask-jeune', 1, 'attributs', NULL, 'Santé : 110 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 7755');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:darvask-jeune', 2, 'degats', 'Dégâts', 'Morsure - 3d10 + 3 dégâts d''estoc
@@ -1997,11 +1267,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:darvask-jeune', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière, Foudre, Aveuglement, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 7779');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:darvask-jeune', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Eau, Terre, Nécromancie, Confusion, Pétrification, Poison', 'monstres', 'Bestiaire 2.0 › ligne 7783');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:darvask-jeune', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', '', 'monstres', 'Bestiaire 2.0 › ligne 7787');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:darvask-jeune', 10, 'capacites', 'Capacité(s)', 'Grimpeur. Cette créature possède un moyen de grimper les murs ou toutes surfaces en hauteur. Elle n’a pas besoin de jet pour les traverser et elle ne consomme pas son tour.
-
-Prise du jour. Lorsque cette créature utilise sa morsure, la cible est bloqué dans sa gueule et doit faire un jet d’athlétisme/équilibre au début de son tour de jeu pour en sortir :
-Si elle rate son jet = Elle est toujours bloquée et prend les dégâts de la morsure sans aucun moyen de se défendre.
-Si elle réussit son jet = Elle sort de la gueule en perdant la moitié de son déplacement au passage.', 'monstres', 'Bestiaire 2.0 › ligne 7792');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:darvask-jeune', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 7792');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:darvask-jeune', 11, 'tactique', 'TACTIQUE COMBAT', 'Ces gros lézards sont assez dangereux, notamment leur puissante mâchoire qui est capable de broyer métal et os. Ils possèdent beaucoup de résistances magiques mais des faiblesses aussi, ils auront tendance à fuir ceux qui ont des magies efficace contre eux.', 'monstres', 'Bestiaire 2.0 › ligne 7801');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:gros-darvask', 1, 'attributs', NULL, 'Santé : 220 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 7809');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:gros-darvask', 2, 'degats', 'Dégâts', 'Morsure - 3d10 + 6 dégâts d''estoc
@@ -2014,13 +1280,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:gros-darvask', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière, Foudre, Aveuglement, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 7833');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:gros-darvask', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Eau, Terre, Nécromancie, Confusion, Pétrification, Poison', 'monstres', 'Bestiaire 2.0 › ligne 7837');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:gros-darvask', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', '', 'monstres', 'Bestiaire 2.0 › ligne 7841');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:gros-darvask', 10, 'capacites', 'Capacité(s)', 'Grimpeur. Cette créature possède un moyen de grimper les murs ou toutes surfaces en hauteur. Elle n’a pas besoin de jet pour les traverser et elle ne consomme pas son tour.
-
-Prise du jour. Lorsque cette créature utilise sa morsure, la cible est bloqué dans sa gueule et doit faire un jet d’athlétisme/équilibre au début de son tour de jeu pour en sortir :
-Si elle rate son jet = Elle est toujours bloquée et prend les dégâts de la morsure sans aucun moyen de se défendre.
-Si elle réussit son jet = Elle sort de la gueule en perdant la moitié de son déplacement au passage.
-
-Écailles protecteurs. Les écailles de cette créature annulent 4 dégâts à chaque première attaque d’un tour.', 'monstres', 'Bestiaire 2.0 › ligne 7846');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:gros-darvask', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 7846');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/darvask#carte:gros-darvask', 11, 'tactique', 'TACTIQUE COMBAT', 'Les gros darvask possèdent des écailles qui se reforme avec le frisson du combat, elles peuvent encaisser une partie des dégâts de la première attaque qu’ils reçoivent à un tour.', 'monstres', 'Bestiaire 2.0 › ligne 7858');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-foudre#carte:elementaire-de-la-foudre', 1, 'sante', 'Santé', '[EP3] Santé : 330
 [EP5] Santé : 560
@@ -2046,19 +1306,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-foudre#carte:elementaire-de-la-foudre', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Nécromancie, Terre, Poison, Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 7994');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-foudre#carte:elementaire-de-la-foudre', 10, 'resistance', 'Résistance(s) Dégâts ÷2', 'Eau, Vent, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 7998');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-foudre#carte:elementaire-de-la-foudre', 11, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Foudre, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 8002');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-foudre#carte:elementaire-de-la-foudre', 12, 'capacites', 'Capacité(s)', 'Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Distributeur de dégâts. Les attaques physiques ou magiques de cette créature font 2 fois moins de dégâts mais elles sont capables de se distribuer aux ennemis qui sont trop proches de la cible initiale. Si un ennemi est à 3 cases ou moins de la cible initiale, il prend les dégâts et le distribuera si un autre ennemi est trop proche de lui, etc … Les ennemis ne peuvent pas prendre 2 fois l’attaque (impossible de faire une boucle infini).
-
-Lance foudre. A son tour, cette créature envoie une lance faite entièrement de foudre dans le ciel en cloche et va atterrir sur un ennemi aléatoire qui pourra tenter un jet de défense. C’est un IC.
-
-[EP3] Être de la Foudre. Cette créature peut utiliser tous les sorts de la magie de la foudre de son niveau.
-
-[EP5] Réponse mobile. A chaque attaque qu’il subit, il gagne +1 en vitesse pour 1 tour.
-
-[EP7] Élan fulgurant. Quand la créature encaisse un coup, il peut se déplacer gratuitement devant un ennemi. Ne provoque pas d’attaque d’opportunité. (Réaction 1 fois/tour)', 'monstres', 'Bestiaire 2.0 › ligne 8006');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-foudre#carte:elementaire-de-la-foudre', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 8006');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-foudre#carte:elementaire-de-la-foudre', 13, 'tactique', 'TACTIQUE COMBAT', 'Cet élémentaire est l’incarnation même de la vitesse, il est si rapide qu’il est parfois difficile de suivre son mouvement.
 
 Soyez prudent si vous êtes dans un espace restreint, sa capacité à faire de ses attaques des véritables éclairs en chaîne pourrait vous affaiblir bien rapidement.', 'monstres', 'Bestiaire 2.0 › ligne 8028');
@@ -2127,23 +1375,7 @@ Cristal : Nécromancie, Sang, Taille
 Absorbe Dégâts/Effets = Redonne de la barrière
 Neige : Glace
 Cristal : Glace', 'monstres', 'Bestiaire 2.0 › ligne 8175');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-glace#carte:elementaire-de-glace', 11, 'capacites', 'Capacité(s)', 'Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Reflet uni. Cette créature est comme divisée en deux parties, le total d’attributs est divisé en deux.
-
-Uni dans la mort. Cette créature est en symbiose complète avec une autre, mettre hors de combat l’une d’entre n’est pas suffisant, il est nécessaire que les deux créatures meurent quasiment au même moment. Si l’une d’entre elle tombe au combat, elle se relèvera après un tour avec 10% de sa santé.
-
-(Neige) [EP3] Force démesurée. Cette créature peut dépasser la limite de Force de 1.
-
-(Cristal) [EP3] Être de la Glace. Cette créature peut utiliser tous les sorts de la magie de la glace de son niveau.
-
-(Neige) [EP5] Neige permanente. Invoque la météo “neige” en entrant sur le terrain et fait perdurer tant que personne ne la change.
-
-(Cristal) [EP5] Perce-AM. Les sorts de cette créature ignorent 4AM.
-
-(Neige/Cristal) [EP7] Dans mon élément. Si cette créature se retrouve dans un environnement lié à sa magie (météo ou terrain), inflige un bonus de +7 à tous les dégâts, +3AM et AP, +5% à tous les jets de dés et +1% à la RC.', 'monstres', 'Bestiaire 2.0 › ligne 8185');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-glace#carte:elementaire-de-glace', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 8185');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-glace#carte:elementaire-de-glace', 12, 'tactique', 'TACTIQUE COMBAT', 'La particularité la plus terrifiante de l’Élémentaire de Glace réside dans le lien unissant ses deux formes. Tant que l’un des deux demeure actif, l’autre ne peut être définitivement détruit. Lorsqu’un aspect est vaincu, son corps se désagrège, mais son essence persiste : après un tour, il se reforme très partiellement, prêt à reprendre le combat.
 
 Pour mettre fin à cette entité, il est impératif de neutraliser les deux aspects simultanément. Toute tentative de les affronter séparément est vouée à l’échec, car l’Élémentaire de Glace se régénère inlassablement tant que son essence demeure divisée mais intacte.
@@ -2172,19 +1404,7 @@ EP 7 : F : 7 / P : 6 / V : 10 / S : 0 / I : 6 / A : 2', 'monstres', 'Bestiaire 2
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-lumiere#carte:elementaire-de-la-lumiere', 8, 'competences', 'Compétence(s) secondaire(s)', 'EP 3, 5, 7 : +15% Compétence de F, +15% Compétence de I', 'monstres', 'Bestiaire 2.0 › ligne 8314');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-lumiere#carte:elementaire-de-la-lumiere', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Ombre, Peur', 'monstres', 'Bestiaire 2.0 › ligne 8318');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-lumiere#carte:elementaire-de-la-lumiere', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Lumière, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 8322');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-lumiere#carte:elementaire-de-la-lumiere', 11, 'capacites', 'Capacité(s)', 'Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Champ protecteur. A chaque coup que prend la créature, un champ de force va être invoqué et peut encaisser la même quantité de dégâts que le coup précédant. Pour qu’un champ de force apparaisse, il faut attendre que la créature n’est plus rien et qu’elle prenne un coup.
-
-Rayon d’Aurora. Invoque “Grand Soleil” dès le début du combat.
-
-[EP3] Être de la Lumière. Cette créature peut utiliser tous les sorts de la magie de la lumière de son niveau.
-
-[EP5] Répression solaire. La météo “grand soleil” ne peut être annulée ou remplacée tant qu’elle est là.
-
-[EP7] Puissance solaire. Tant qu’une météo qui avantage la lumière est présente = +12 dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 8326');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-lumiere#carte:elementaire-de-la-lumiere', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 8326');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-lumiere#carte:elementaire-de-la-lumiere', 12, 'tactique', 'TACTIQUE COMBAT', 'Cet élémentaire est un adversaire qui empêche d’être tué trop rapidement, un coup trop violent sur lui active un champ de force avec autant de protection que le dernier coup encaissé, ce qui va empêcher le coup suivant de marcher.
 
 Il profite très bien des avantages de la météo “grand soleil” surtout qu’il peut empêcher le changement de météo à haut niveau.', 'monstres', 'Bestiaire 2.0 › ligne 8348');
@@ -2207,17 +1427,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 EP 5 : F : 2 / P : 7 / V : 10 / S : 0 / I : 7 / A : 2
 EP 7 : F : 2 / P : 7 / V : 10 / S : 0 / I : 7 / A : 2', 'monstres', 'Bestiaire 2.0 › ligne 8438');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-necromancie#carte:elementaire-de-la-necromancie', 8, 'competences', 'Compétence(s) secondaire(s)', 'EP 3, 5, 7 : +15% Compétence de F, +15% Compétence de I', 'monstres', 'Bestiaire 2.0 › ligne 8444');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-necromancie#carte:elementaire-de-la-necromancie', 9, 'capacites', 'Capacité(s)', 'Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Serviteur toxique. Cette créature n’attaque pas directement, elle se cache derrière une cage d’os indestructible et lance ses invocations contre ses ennemis, elle peut en invoquer 4 à la fois, sans jet, a accès à toutes les invocations de la nécromancie et les remplace le tour après leur mort. Une fois qu’une invocation est tuée, la santé qu’elle possédait sera infligée contre la santé du boss (pas sa barrière). Il peut lancer les invocations selon son niveau de puissance magique.
-
-Demi-santé. Cette créature a deux fois moins de santé.
-
-[EP3] Être de la Nécromancie. Cette créature peut utiliser tous les sorts de la magie de la nécromancie de son niveau.
-
-[EP5] Aura de grand chef. Donne un bonus de +5 aux dégâts de ses alliés tant qu’il est encore debout.
-
-[EP7] Général non-mort. Si d’autres non-mort sont présents sur le terrain et sont ses alliés : +6 dégâts et +1 Vitesse tant que la créature est en vie.', 'monstres', 'Bestiaire 2.0 › ligne 8448');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-necromancie#carte:elementaire-de-la-necromancie', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 8448');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-necromancie#carte:elementaire-de-la-necromancie', 10, 'tactique', 'TACTIQUE COMBAT', 'C’est un véritable rouleau compresseur, il va invoquer à la chaîne des non-morts différents pour pouvoir combattre ceux qui le menacent. La stratégie repose sur tuer rapidement ses invocations pour l’épuiser et le tuer à la longue.
 
 N’essayez pas de l’atteindre directement, sa cage d’os est trop épaisse pour lui mettre le moindre coup.
@@ -2246,19 +1456,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-terre#carte:elementaire-de-la-terre', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Sang, Brûlure, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 8568');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-terre#carte:elementaire-de-la-terre', 10, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vent, Foudre, Surdité, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 8572');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-terre#carte:elementaire-de-la-terre', 11, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Terre, Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 8576');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-terre#carte:elementaire-de-la-terre', 12, 'capacites', 'Capacité(s)', 'Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Terraformation. A chaque fois que la créature perd 30% de sa santé max, il se déplace gratuitement sur le terrain et ce dernier est totalement changé avec des murs et des obstacles nouveaux.
-
-Au-delà de la portée. Cette créature peut utiliser les obstacles sur le terrain comme extension de portée et frapper les ennemis qui sont à deux cases d’eux. Ses armes font deux fois moins de dégâts quand il use de cette méthode pour atteindre un ennemi (sauf quand il lui reste moins de 40% de sa santé).
-
-[EP3] Être de la Terre. Cette créature peut utiliser tous les sorts de la magie de la terre de son niveau.
-
-[EP5] Multi-racines. Cette créature est capable avec l’une de ses *armes de frapper l’intégralité des ennemis sur le terrain et sans limite de portée.
-
-[EP7] Liane ralentisseur. Les sorts ou armes en lien avec les plantes qui touchent une cible lui retirent également 1 de vitesse pour son prochain tour.', 'monstres', 'Bestiaire 2.0 › ligne 8580');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-terre#carte:elementaire-de-la-terre', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 8580');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-la-terre#carte:elementaire-de-la-terre', 13, 'tactique', 'TACTIQUE COMBAT', 'Cet élémentaire est capable de refaçonner le terrain comme il l’entend et de se repositionner en cas de danger. Son dédale de pierre et liane est loin d’être passif est lui sert d''extension du corps pour placer des coups aux ennemis à l’intérieur, ce qui lui permet d’épuiser ses ennemis pendant que eux ne peuvent pas l’atteindre.', 'monstres', 'Bestiaire 2.0 › ligne 8602');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-larcane#carte:elementaire-de-larcane', 1, 'sante', 'Santé', '[EP3] Santé : 220
 [EP5] Santé : 360
@@ -2283,19 +1481,7 @@ EP 7 : F : 6 / P : 3 / V : 10 / S : 0 / I : 7 / A : 5', 'monstres', 'Bestiaire 2
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-larcane#carte:elementaire-de-larcane', 8, 'competences', 'Compétence(s) secondaire(s)', 'EP 3, 5, 7 : +10% Compétence de A et F, +15% Compétence de I', 'monstres', 'Bestiaire 2.0 › ligne 8695');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-larcane#carte:elementaire-de-larcane', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Corruption', 'monstres', 'Bestiaire 2.0 › ligne 8699');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-larcane#carte:elementaire-de-larcane', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Arcane', 'monstres', 'Bestiaire 2.0 › ligne 8703');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-larcane#carte:elementaire-de-larcane', 11, 'capacites', 'Capacité(s)', 'Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Blessure chakratique. Cette créature exploite le chakra de ses adversaire à son avantage, elle obtient un bonus de 1 dégât à ses attaques par 5 chakra courant dans la réserve de sa cible. Quand ses ennemis utilisent du chakra, si leur score de réussite est au dessus de 75, ils perdent le quart du coût en chakra du sort en santé (minimum 1 santé).
-
-[EP3] Être de l‘Arcane. Cette créature peut utiliser tous les sorts de la magie de l’arcane de son niveau.
-
-[EP5] Brûlure chakratique. Tant qu’elle est sur le terrain, cette créature augmente les coûts en chakra de 50% pour ses ennemis.
-
-[EP7] Cadeau chakratique. Cette créature peut donner une partie de son chakra à une cible. (3 fois/combat)', 'monstres', 'Bestiaire 2.0 › ligne 8707');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-larcane#carte:elementaire-de-larcane', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 8707');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-larcane#carte:elementaire-de-larcane', 12, 'tactique', 'TACTIQUE COMBAT', 'L’anti mage par excellence, cet élémentaire fait vibrer le chakra de ses ennemis et malheur à ceux qui l''utilisent mal. Il est capable de faire des ravages contre ceux qui stocke beaucoup de chakra en eux.
 
 Et même si vous pensez être à l’abri en vidant votre réserve de chakra, les plus forts sont capables de vous redonner du chakra.', 'monstres', 'Bestiaire 2.0 › ligne 8729');
@@ -2323,28 +1509,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-leau#carte:elementaire-de-leau', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Foudre, Sang, Paralysie, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 8831');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-leau#carte:elementaire-de-leau', 10, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Nécromancie, Brûlure, Poison', 'monstres', 'Bestiaire 2.0 › ligne 8835');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-leau#carte:elementaire-de-leau', 11, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Eau, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 8839');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-leau#carte:elementaire-de-leau', 12, 'capacites', 'Capacité(s)', 'Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Changement d’état. Cette créature est dans une matière qui fait qu’il peut changer aléatoirement de forme entre les différents états de l’eau : Liquide, Gazeux et Solide. Ces différents états lui donne des particularités :
-Liquide : État normal
-Gazeuse : Très résistant aux dégâts physiques, ignore les attaques d’opportunités, +3 INI, ses sorts infligent +8 dégâts mais prend 8 dégâts des sorts ennemis.
-Solide : Très résistant aux dégâts magiques, -1 vitesse, -3 INI, ses armes infligent +8 dégâts mais prend 8 dégâts des armes ennemis
-
-État altéré. Les armes de cette créature ont 25% de chance de forcer un jet pour ne pas prendre une altération d’état mais ce dernier change selon l’état de la créature :
-Liquide : Fermeté pour ne pas prendre “Confusion 1”
-Gazeuse : Vigueur pour ne pas prendre “Brûlure 1”
-Solide : Vigueur pour ne pas prendre “Gel 1”
-
-[EP3] Être de l’Eau. Cette créature peut utiliser tous les sorts de la magie de l’eau de son niveau.
-
-[EP5] États parfaits. La résistance obtenue par l’état solide et gazeux deviennent des immunités.
-
-[EP7] Transition chaotique. Quand la créature change d’état, un effet est provoqué :
-Liquide ←→ Solide : Impose un jet de fermeté aux ennemis, s''ils ratent : Confusion 1
-Solide ←→ Gazeux : Nuage froid qui divise par 2 la vitesse des ennemis pendant 2 tours.
-Gazeux ←→ Liquide : Invoque la pluie pendant 2 tours', 'monstres', 'Bestiaire 2.0 › ligne 8843');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-leau#carte:elementaire-de-leau', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 8843');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-leau#carte:elementaire-de-leau', 13, 'tactique', 'TACTIQUE COMBAT', 'On pourrait presque dire que cet élémentaire est un change forme, une créature qui s’adapte selon la situation. Il est important de bien s’adapter à ses différentes formes car il change totalement aléatoirement de forme à chaque tour de jeu, c’est 1d3 tous les débuts de tours.', 'monstres', 'Bestiaire 2.0 › ligne 8874');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-lespace-temps#carte:elementaire-de-lespace-temps', 1, 'sante', 'Santé', '[EP3] Santé : 330
 [EP5] Santé : 560
@@ -2370,19 +1535,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-lespace-temps#carte:elementaire-de-lespace-temps', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Foudre, Sang, Paralysie, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 8972');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-lespace-temps#carte:elementaire-de-lespace-temps', 10, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Nécromancie, Brûlure, Poison', 'monstres', 'Bestiaire 2.0 › ligne 8976');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-lespace-temps#carte:elementaire-de-lespace-temps', 11, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Eau, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 8980');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-lespace-temps#carte:elementaire-de-lespace-temps', 12, 'capacites', 'Capacité(s)', 'Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Rythme étrange. Les tours pairs elle est vulnérable au dégâts physiques et insensible aux dégâts magique et inversement les tour impairs
-
-25h. Cette créature est capable d’utiliser un sortilège de l’Espace/Temps qui est capable de placement, le sort ne fera rien d’autre que l’effet de placement. Cet IC peut se faire avant, après ou pendant le tour réel de la créature (1 fois par tour)
-
-[EP3] Être de l’Espace/Temps. Cette créature peut utiliser tous les sorts de la magie de l’espace/temps de son niveau.
-
-[EP5] Annule horloge. Si un adversaire fait un jet de dé et que le nombre 6, 12 ou 24 est le résultat, le dé est totalement annulé (que ce soit action ou dégâts). Si c''est l''initiative, elle tombe à 0.
-
-[EP7] Super horloge. Si cette créature fait un 6, 12 ou 24 = c’est une réussite critique.', 'monstres', 'Bestiaire 2.0 › ligne 8984');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-lespace-temps#carte:elementaire-de-lespace-temps', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 8984');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-lespace-temps#carte:elementaire-de-lespace-temps', 13, 'tactique', 'TACTIQUE COMBAT', 'Un vrai jeu de rythme avec cet élémentaire, il faut apprendre à jouer entre sorts et armes pour espérer lui faire des dégâts.
 
 Ses poings font des dégâts très aléatoires, il faut être prudent quand un dégâts est encaissé.', 'monstres', 'Bestiaire 2.0 › ligne 9006');
@@ -2406,21 +1559,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-lombre#carte:elementaire-de-lombre', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 9104');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-lombre#carte:elementaire-de-lombre', 10, 'resistance', 'Résistance(s) Dégâts ÷2', '', 'monstres', 'Bestiaire 2.0 › ligne 9108');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-lombre#carte:elementaire-de-lombre', 11, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Ombre, Peur', 'monstres', 'Bestiaire 2.0 › ligne 9113');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-lombre#carte:elementaire-de-lombre', 12, 'capacites', 'Capacité(s)', 'Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Copie brumeuse. Cette créature imite ses adversaires en créer des copies d’ombre de ces derniers, la puissance de ces copies dépend entièrement des originaux. L’une des copies est tangible et est le seul moyen d’infliger des dégâts à l’élémentaire. Chaque attaque qui est tenté contre lui (réussi ou raté), il se déplace de copie, un jet d’observation/distinction peut être tenté au début du tour pour repérer celui qui est tangible.
-
-Sournois. Quand l’adversaire n’est pas attentif à l’attaquant, permet d’infliger un bonus de 2d4 dégâts en plus des dégâts de l’arme.
-
-Demi-santé. Cette créature a deux fois moins de santé.
-
-[EP3] Être de l’Ombre. Cette créature peut utiliser tous les sorts de la magie de l’ombre de son niveau.
-
-[EP5] Attaque maudite. L''attaque de cette créature à l''effet du sort de l''ombre "malédiction" et l''applique automatiquement pendant 1 tour.
-
-[EP7] Brouillard de l’assassin. Pose automatiquement la météo “brouillard obscur” et le fait perdurer tant qu’il n’est pas changé. Les attaques discrètes sont garanties à chacune de ses attaques tant que la météo est présente.', 'monstres', 'Bestiaire 2.0 › ligne 9117');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-lombre#carte:elementaire-de-lombre', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 9117');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-de-lombre#carte:elementaire-de-lombre', 13, 'tactique', 'TACTIQUE COMBAT', 'Cet élémentaire est un maître dans l’art de la discorde, le fait qu’il mime ses ennemis et qu’il déplace son seul point faible sur le terrain le rend assez compliqué à gérer. Il exploite les avantages de ses ennemis le mieux possible, pour pouvoir les vaincre.', 'monstres', 'Bestiaire 2.0 › ligne 9142');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-feu#carte:elementaire-du-feu', 1, 'sante', 'Santé', '[EP3] Santé : 330
 [EP5] Santé : 500
@@ -2446,17 +1585,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-feu#carte:elementaire-du-feu', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Vent, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 9241');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-feu#carte:elementaire-du-feu', 10, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre, Glace, Pétrification, Gel', 'monstres', 'Bestiaire 2.0 › ligne 9245');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-feu#carte:elementaire-du-feu', 11, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Feu, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 9249');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-feu#carte:elementaire-du-feu', 12, 'capacites', 'Capacité(s)', 'Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Brasier unifié. Quand la créature perd 25% de santé, elle va se diviser en deux, ces deux nouveaux être se partagent la santé courante mais conserve la puissance de base. Ce processus peut se faire 3 fois maximum. Une fois que la première division à eu lieu, les créatures nouvelles n''ont qu’une seule initiative.
-
-[EP3] Être du Feu. Cette créature peut utiliser tous les sorts de la magie du feu de son niveau.
-
-[EP5] Petit et rapide. La division 2 et 3 ont un bonus de +4 à l’initiative et +1 à la vitesse.
-
-[EP7] Corps de feu. Chaque attaque physique/magique au contact qu''un assaillant prodigue lui oblige de faire un de vigueur pour ne pas subir "Brûlure 1".', 'monstres', 'Bestiaire 2.0 › ligne 9253');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-feu#carte:elementaire-du-feu', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 9253');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-feu#carte:elementaire-du-feu', 13, 'tactique', 'TACTIQUE COMBAT', 'Un feu se propage en plein de petites poches tout aussi destructeur, il faut redoubler de prudence quand la créature commence à se diviser.', 'monstres', 'Bestiaire 2.0 › ligne 9271');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-sang#carte:elementaire-du-sang', 1, 'sante', 'Santé', '[EP3] Santé : 440
 [EP5] Santé : 720
@@ -2485,35 +1614,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-sang#carte:elementaire-du-sang', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Glace, Nécromancie, Feu, Vent, Gel, Poison, Brûlure, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 9373');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-sang#carte:elementaire-du-sang', 10, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre, Eau, Vide, Arcane', 'monstres', 'Bestiaire 2.0 › ligne 9377');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-sang#carte:elementaire-du-sang', 11, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Sang', 'monstres', 'Bestiaire 2.0 › ligne 9381');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-sang#carte:elementaire-du-sang', 12, 'capacites', 'Capacité(s)', 'Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Force démesurée. Cette créature peut dépasser la limite de Force de 1.
-
-[EP3] Excitation de la chair. Plus le temps avance, plus cette créature obtient des amplification permanente sur lui :
-Tour 2 = +4 dégâts avec les armes
-Tour 3 = +5 AP/AM
-Tour 4 = Peut utiliser les sorts de sang en utilisant que le coût en sang. Le coût en sang est minimum 2 et tous les sorts coûtent +1 sang.
-Tour 5 = Les jambes augmentent en taille, +1 vitesse et +2 INI
-Tour 6 = Des yeux multiples se forme sur la tête, voit à 360°, Impossible pour les adversaires d''être discret ou de le prendre par surprise, ses adversaires qui était discret
-Tour 7 = Obtient une paire de bras supplémentaire, ce qui lui donne 1 parade supplémentaire (sauf offensif), +5 dégâts, d’avoir un bonus de 1d10 dégâts à chaque attaque physique qu’il fait.
-
-[EP5] Gonflement musculaire. Des bonus supplémentaire s’ajoute avec “excitation de la chair” :
-Tour 2 = +2 dégâts avec les armes
-Tour 3 = +5 AP/AM
-Tour 4 = +5 dégâts avec les sorts
-Tour 5 = +2 INI
-Tour 6 = Récupère 10 santé au début de chaque tour
-Tour 7 = +1d10 dégâts pour le bonus
-
-[EP7] Surtension fibreuse. Des bonus supplémentaire s’ajoute avec “excitation de la chair” et “gonflement de la chair” :
-Tour 2 = Une sorte de griffe osseuse sort d’une de ses mains, ce qui lui permet d’infliger des dégâts d’estoc
-Tour 3 = +5 AP/AM
-Tour 4 = Les sorts de sang ont tous 20% de chance de forcer le jet de vigueur pour ne pas prendre “saignement 1”
-Tour 5 = +1 vitesse
-Tour 6 = Viser la tête ne donne plus de bonus de dégâts
-Tour 7 = Il sera capable d’encaisser un coup qui était censé le tuer', 'monstres', 'Bestiaire 2.0 › ligne 9385');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-sang#carte:elementaire-du-sang', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 9385');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-sang#carte:elementaire-du-sang', 13, 'tactique', 'TACTIQUE COMBAT', 'Ne pas perdre de temps … C’est certainement le mot d’ordre contre cet élémentaire, plus le temps avance, plus il va devenir puissant. Sa forme finale de combat arrive au bout du 7ème tour et bonne chance pour réussir à le gérer à partir de là.
 
 Son absence d’armure au départ et ses nombreuses faiblesses magiques sont la clé pour réussir à le faire tomber, il est important de se concentrer sur ces points faibles.', 'monstres', 'Bestiaire 2.0 › ligne 9422');
@@ -2541,21 +1642,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-vent#carte:elementaire-du-vent', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Foudre, Terre, Paralysie, Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 9525');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-vent#carte:elementaire-du-vent', 10, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Glace, Brûlure, Gel', 'monstres', 'Bestiaire 2.0 › ligne 9529');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-vent#carte:elementaire-du-vent', 11, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Vent, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 9533');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-vent#carte:elementaire-du-vent', 12, 'capacites', 'Capacité(s)', 'Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Corps de cyclone. Cette créature se place au centre (5x5) de la battlemap et force ses ennemis à aller dans les coins. Les ennemis doivent se déplacer dans le cyclone au centre pour lui faire des dégâts. Il est nécessaire de réussir des jet de stabilité/réflexe pour pouvoir avancer dans la tornade, un échec divise par 2 la vitesse pour 1 tour. Il est impossible de sprinter dans la tornade. Si jamais un ennemi retombe dans la tornade, il est repoussé de 1d4 cases en arrière. Au sein du cyclone, les projectiles et attaques magiques ne fonctionnent pas et ne peuvent pas atteindre le centre.
-
-Allonge inattendue. Augmente la portée des sorts d''attaque de +3.
-
-[EP3] Être du Vent. Cette créature peut utiliser tous les sorts de la magie du vent de son niveau.
-
-[EP5] Prédateur aérien. Bonus de +6 dégâts contre les ennemis qui souffrent d''un malus à la vitesse ou à l''initiative (hors agilité à 1).
-
-[EP7] Début transparent. Au début du tour, la première attaque contre lui se fera avec un désavantage.', 'monstres', 'Bestiaire 2.0 › ligne 9537');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-vent#carte:elementaire-du-vent', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 9537');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-vent#carte:elementaire-du-vent', 13, 'tactique', 'TACTIQUE COMBAT', 'Cet élémentaire force ses ennemis à jouer sur son terrain, le cyclone autour de lui ne fait certes pas de dégâts mais il balaye le terrain en retirant tout les obstacles et en laissant ses ennemis galérer a approcher. Pendant qu’ils approchent lentement, l’élémentaire est libre d’attaque avec ses nombreux sorts de vent.
 
 Il est cependant plus faible avec ses armes, il est assez vulnérable quand on arrive enfin à l’approcher.', 'monstres', 'Bestiaire 2.0 › ligne 9562');
@@ -2582,41 +1669,7 @@ EP 7 : F : 6 / P : 6 / V : 10 / S : 0 / I : 7 / A : 2', 'monstres', 'Bestiaire 2
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-vide#carte:elementaire-du-vide', 8, 'competences', 'Compétence(s) secondaire(s)', 'EP 3, 5, 7 : +9% Compétence de F, +9% Compétence de I', 'monstres', 'Bestiaire 2.0 › ligne 9659');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-vide#carte:elementaire-du-vide', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Espace/Temps, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 9663');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-vide#carte:elementaire-du-vide', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Enragée, Vide', 'monstres', 'Bestiaire 2.0 › ligne 9667');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-vide#carte:elementaire-du-vide', 11, 'capacites', 'Capacité(s)', 'Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Aléa négatif. Chaque début de son tour, cette créature va prendre pour cible un ennemi au hasard, lance un D20 et inflige un effet négatif selon le résultat :
-1 : Inflige saignement 1
-2 : Met une croix en Force pour 1 tour
-3 : Inflige poison 1
-4 : Inflige un malus de 10% au prochain jet de la victime
-5 : Inflige brûlure 1
-6 : Met une croix en Perception pour 1 tour
-7 : Inflige le sort de l’ombre “malédiction” pour 1 tour
-8 : Inflige surdité 1
-9 : Inflige paralysie 1
-10 : Met une croix en Volonté pour 1 tour
-11 : Inflige surcharge magique 1
-12 : Inflige peur 1
-13 : Inflige aveuglement 1
-14 : Met une croix en Intelligence pour 1 tour
-15 : Inflige enragé 1
-16 : Inflige gel 1
-17 : Inflige confusion 1
-18 : Met une croix en Agilité pour 1 tour
-19 : Retire tout les effets positif de la cible
-20 : Relance le dé
-
-Les cibles peuvent tenter des jets de vigueur ou fermeté (selon l’altération d’état)
-
-[EP3] Être du vide. Cette créature peut utiliser tous les sorts de la magie du vide de son niveau.
-
-[EP5] Totem du néant. Les ennemis à 3 cases autour de la créature ont un malus de 10% à tous les jets qui implique la volonté.
-
-[EP7] Attaque dissipante. Tous les 2 tours, l’attaque de cette créature inflige l’effet du sort “dissipation” de la magie du vide.', 'monstres', 'Bestiaire 2.0 › ligne 9671');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-vide#carte:elementaire-du-vide', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 9671');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/elementaire-du-vide#carte:elementaire-du-vide', 12, 'tactique', 'TACTIQUE COMBAT', 'Tout comme les élémentaires, il n’est que Chaos et destruction et va abuser de sa magie et ses avantages pour faire le plus de dégâts possible, il aura tendance à faire en sorte que tout le monde souffre d’effets négatifs.', 'monstres', 'Bestiaire 2.0 › ligne 9716');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase', 1, 'attributs', NULL, 'Santé : 90 Chakra : 50 Barrière : 25', 'monstres', 'Bestiaire 2.0 › ligne 9765');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase', 2, 'degats', 'Dégâts', 'Sabre de cendre – 3d10 dégâts de taille/estoc.', 'monstres', 'Bestiaire 2.0 › ligne 9768');
@@ -2627,15 +1680,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Vent, Eau', 'monstres', 'Bestiaire 2.0 › ligne 9787');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Glace', 'monstres', 'Bestiaire 2.0 › ligne 9791');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Couardise, Peur, Fatigue, Aveuglement, Saignement, Estoc, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 9795');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Élément Feu. L’élément d’attaque de cette créature est le Feu avec 25% de chance d’obliger un jet de vigueur à la cible, si elle rate, elle prend “Brûlure 1”.
-
-Tome du Feu lvl2. Permet à cette créature de lancer des sorts de la magie du Feu au niveau 2 de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 9799');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 9799');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase', 11, 'tactique', 'TACTIQUE COMBAT', 'Ces créatures élémentaires ont une haine profonde envers la vie, surtout ceux qui possèdent des magies faibles face au feu, ils vont se concentrer sur eux.', 'monstres', 'Bestiaire 2.0 › ligne 9813');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase-calcine', 1, 'attributs', NULL, 'Santé : 180 Chakra : 100 Barrière : 50', 'monstres', 'Bestiaire 2.0 › ligne 9823');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase-calcine', 2, 'degats', 'Dégâts', 'Sabre de cendre – 3d10 + 7 dégâts de taille/estoc.', 'monstres', 'Bestiaire 2.0 › ligne 9826');
@@ -2646,17 +1691,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase-calcine', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Vent, Eau', 'monstres', 'Bestiaire 2.0 › ligne 9845');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase-calcine', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Glace', 'monstres', 'Bestiaire 2.0 › ligne 9849');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase-calcine', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Couardise, Peur, Fatigue, Aveuglement, Saignement, Estoc, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 9853');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase-calcine', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Élément Feu. L’élément d’attaque de cette créature est le Feu avec 25% de chance d’obliger un jet de vigueur à la cible, si elle rate, elle prend “Brûlure 1”.
-
-Tome du Feu lvl3. Permet à cette créature de lancer des sorts de la magie du Feu au niveau 3 de puissance.
-
-Duelliste. (Contre un seul ennemi) Bonus de 5% au jet de défense, +3 dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 9857');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase-calcine', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 9857');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase-calcine', 11, 'tactique', 'TACTIQUE COMBAT', 'Ces créatures élémentaires ont une haine profonde envers la vie, surtout ceux qui possèdent des magies faibles face au feu, ils vont se concentrer sur eux.', 'monstres', 'Bestiaire 2.0 › ligne 9874');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase-cramoisie', 1, 'attributs', NULL, 'Santé : 360 Chakra : 200 Barrière : 100', 'monstres', 'Bestiaire 2.0 › ligne 9882');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase-cramoisie', 2, 'degats', 'Dégâts', 'Sabre de cendre – 3d10 + 14 dégâts de taille/estoc.', 'monstres', 'Bestiaire 2.0 › ligne 9885');
@@ -2667,19 +1702,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase-cramoisie', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Vent, Eau', 'monstres', 'Bestiaire 2.0 › ligne 9904');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase-cramoisie', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Glace, Terre', 'monstres', 'Bestiaire 2.0 › ligne 9908');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase-cramoisie', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Couardise, Peur, Fatigue, Aveuglement, Saignement, Estoc, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 9912');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase-cramoisie', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Élément Feu. L’élément d’attaque de cette créature est le Feu avec 25% de chance d’obliger un jet de vigueur à la cible, si elle rate, elle prend “Brûlure 1”.
-
-Tome du Feu lvl3. Permet à cette créature de lancer des sorts de la magie du Feu au niveau 3 de puissance.
-
-Duelliste. (Contre un seul ennemi) Bonus de 5% au jet de défense, +3 dégâts.
-
-Déflagration. Sacrifie la valeur de AP et AM pour les ajoutés comme modificateur au dégâts pendant 3 tours.', 'monstres', 'Bestiaire 2.0 › ligne 9916');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase-cramoisie', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 9916');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/embrase#carte:embrase-cramoisie', 11, 'tactique', 'TACTIQUE COMBAT', 'Ces puissants tas de cendre sont capables de sacrifier leur défense pour le transformer en dégâts, il n’hésitera pas à le faire quand la situation demande plus de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 9936');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/epee-rouillee#carte:epee-rouillee', 1, 'attributs', NULL, 'Santé : 35 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 9954');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/epee-rouillee#carte:epee-rouillee', 2, 'degats', 'Dégâts', 'Épée temple ancienne – 2d10 + 6 + 5* dégâts de taille', 'monstres', 'Bestiaire 2.0 › ligne 9957');
@@ -2690,11 +1713,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/epee-rouillee#carte:epee-rouillee', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', '', 'monstres', 'Bestiaire 2.0 › ligne 9976');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/epee-rouillee#carte:epee-rouillee', 8, 'resistance', 'Résistance(s) Dégâts ÷2', '', 'monstres', 'Bestiaire 2.0 › ligne 9981');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/epee-rouillee#carte:epee-rouillee', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Saignement, Peur, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 9986');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/epee-rouillee#carte:epee-rouillee', 10, 'capacites', 'Capacité(s)', 'Mourir peut attendre. Cette créature n’a que la moitié de sa santé qu’elle est censée avoir. Quand elle tombe en dessous de 0 santé, elle sombre dans une mort temporaire qui ne dure qu’un tour, à la fin de ce dernier, elle revient avec toute sa santé et barrière. La deuxième mort est fatale par contre.
-
-Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Devoir de l’Attaquant. Cette créature est puissante, il est capable d’utiliser son arme en mordhau en plus d’avoir un bonus de +5* aux dégâts. Son style de combat est si particulier qu’il empêche toute contre-attaque et son lien profond avec son arme fait qu’il ne peut pas être désarmé.', 'monstres', 'Bestiaire 2.0 › ligne 9990');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/epee-rouillee#carte:epee-rouillee', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 9990');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/epee-rouillee#carte:epee-rouillee', 11, 'tactique', 'TACTIQUE COMBAT', 'Il est l’attaque du Cortège, c’est celui qui arrive pour détruire tous ceux qui sont sur le territoire du Cortège. Il possède une puissance conséquente mais il ne dispose d’aucune protection donc il est très rapide à faire tomber. Un véritable canon de verre.', 'monstres', 'Bestiaire 2.0 › ligne 10000');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-chevaleresse', 1, 'attributs', NULL, 'Santé : 200 Chakra : 40 Barrière : 20', 'monstres', 'Bestiaire 2.0 › ligne 10119');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-chevaleresse', 2, 'degats', 'Dégâts', 'Morsure - 2d10 + 8 dégâts d’estoc
@@ -2705,9 +1724,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-chevaleresse', 6, 'competences', 'Compétence(s) secondaire(s)', '+10% Arme lourde, +10% Parade, 10% Magie', 'monstres', 'Bestiaire 2.0 › ligne 10139');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-chevaleresse', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Nécromancie, Glace, Gelé, Poison', 'monstres', 'Bestiaire 2.0 › ligne 10143');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-chevaleresse', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Sang, Terre, Eau, Pétrification, Confusion, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 10147');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-chevaleresse', 9, 'capacites', 'Capacité(s)', 'Souffle élémentaire. Cette créature est capable de cracher un souffle lié à son élément. Ce souffle est capable d''infliger l''altération d''état lié à l''élément à hauteur de 35% de chance de l''infliger. (les joueurs doivent faire les jets en conséquences pour ne pas prendre l''altération d''état)
-
-Super santé. Cette créature a le double de santé.', 'monstres', 'Bestiaire 2.0 › ligne 10151');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-chevaleresse', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 10151');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-chevaleresse', 10, 'tactique', 'TACTIQUE COMBAT', 'Cette fourmi est 50% plus grosse que ses consoeurs et est parfaitement adaptée pour affronter plusieurs menaces à elle toute seule. Prudence, elle est très vigoureuse et ne sera pas simple à tomber.', 'monstres', 'Bestiaire 2.0 › ligne 10158');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-ouvriere', 1, 'attributs', NULL, 'Santé : 25 Chakra : 10 Barrière : 5', 'monstres', 'Bestiaire 2.0 › ligne 10020');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-ouvriere', 2, 'degats', 'Dégâts', 'Morsure - 2d10 + 2 dégâts d’estoc
@@ -2718,9 +1735,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-ouvriere', 6, 'competences', 'Compétence(s) secondaire(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 10040');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-ouvriere', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Vent, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 10045');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-ouvriere', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Terre, Glace, Brûlure, Pétrification, Gel', 'monstres', 'Bestiaire 2.0 › ligne 10049');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-ouvriere', 9, 'capacites', 'Capacité(s)', 'Souffle élémentaire. Cette créature est capable de cracher un souffle lié à son élément. Ce souffle est capable d''infliger l''altération d''état lié à l''élément à hauteur de 35% de chance de l''infliger. (les joueurs doivent faire les jets en conséquences pour ne pas prendre l''altération d''état)
-
-Esprit de meute. Cette créature gagne un bonus de +5% à tous ses jets par alliés dans une zone de 2 cases autour de lui.', 'monstres', 'Bestiaire 2.0 › ligne 10053');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-ouvriere', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 10053');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-ouvriere', 10, 'tactique', 'TACTIQUE COMBAT', 'Cette grosse fourmi utilise l’effet de groupe pour pouvoir anéantir une menace à son territoire. Elle est également capable de cracher du feu contre ses ennemis. Son lien profond avec le feu fait qu’elle est vulnérable à certains éléments.', 'monstres', 'Bestiaire 2.0 › ligne 10060');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-soldat', 1, 'attributs', NULL, 'Santé : 50 Chakra : 20 Barrière : 10', 'monstres', 'Bestiaire 2.0 › ligne 10070');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-soldat', 2, 'degats', 'Dégâts', 'Morsure - 2d10 + 4 dégâts d’estoc
@@ -2731,9 +1746,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-soldat', 6, 'competences', 'Compétence(s) secondaire(s)', '+10% Arme lourde, +10% Parade, 10% Magie', 'monstres', 'Bestiaire 2.0 › ligne 10090');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-soldat', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Nécromancie, Glace, Gelé, Poison', 'monstres', 'Bestiaire 2.0 › ligne 10094');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-soldat', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Sang, Terre, Eau, Pétrification, Confusion, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 10098');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-soldat', 9, 'capacites', 'Capacité(s)', 'Souffle élémentaire. Cette créature est capable de cracher un souffle lié à son élément. Ce souffle est capable d''infliger l''altération d''état lié à l''élément à hauteur de 35% de chance de l''infliger. (les joueurs doivent faire les jets en conséquences pour ne pas prendre l''altération d''état)
-
-Esprit de meute. Cette créature gagne un bonus de +5% à tous ses jets par alliés dans une zone de 2 cases autour de lui.', 'monstres', 'Bestiaire 2.0 › ligne 10102');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-soldat', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 10102');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fourbraise#carte:fourbraise-soldat', 10, 'tactique', 'TACTIQUE COMBAT', 'C’est la même chose que les ouvriers sauf qu''elles sont bien plus fortes.', 'monstres', 'Bestiaire 2.0 › ligne 10109');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-electrique', 1, 'attributs', NULL, 'Santé : 80 Chakra : 30 Barrière : 15', 'monstres', 'Bestiaire 2.0 › ligne 10235');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-electrique', 2, 'degats', 'Dégâts', 'Lance légère - 3d10 dégâts de taille', 'monstres', 'Bestiaire 2.0 › ligne 10238');
@@ -2744,13 +1757,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-electrique', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Frappe, Terre, Nécromancie, Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 10257');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-electrique', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Foudre, Eau, Vent, Surdité, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 10261');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-electrique', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Couardise, Peur, Fatigue, Aveuglement, Saignement, Estoc, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 10265');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-electrique', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Initiative extrême. Permet d''avoir un bonus de +10 au jet d''initiative.
-
-Lame foudroyante. (IC) En échange de 5 chakra, la prochaine attaque physique au contact libère une foudre qui inflige 1d8 dégâts qui va ignorer l’AM et l’AP de la cible.', 'monstres', 'Bestiaire 2.0 › ligne 10269');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-electrique', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 10269');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-electrique', 11, 'tactique', 'TACTIQUE COMBAT', 'Le fulgurâme est un mélange de métal et d’os ce qui lui donne une plutôt bonne défense physique naturelle. Il est agile et exploite sa lance et son lien avec la foudre pour abattre ses ennemis, il est très agressif et si il a une occasion de passer en offensif, il le fera.', 'monstres', 'Bestiaire 2.0 › ligne 10281');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-foudroyant', 1, 'attributs', NULL, 'Santé : 320 Chakra : 120 Barrière : 60', 'monstres', 'Bestiaire 2.0 › ligne 10351');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-foudroyant', 2, 'degats', 'Dégâts', 'Lance d’os jaune - 3d10 + 14 dégâts de taille', 'monstres', 'Bestiaire 2.0 › ligne 10354');
@@ -2762,17 +1769,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-foudroyant', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Frappe, Terre, Nécromancie, Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 10374');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-foudroyant', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Foudre, Eau, Vent, Surdité, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 10378');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-foudroyant', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Couardise, Peur, Fatigue, Aveuglement, Saignement, Estoc, Paralysie Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 10382');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-foudroyant', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Initiative extrême. Permet d''avoir un bonus de +10 au jet d''initiative.
-
-Lame foudroyante. (IC) En échange de 5 chakra, la prochaine attaque physique au contact libère une foudre qui inflige 1d8 dégâts qui va ignorer l’AM et l’AP de la cible.
-
-Réfléxe éclair. (IC) En échange de 5 chakra, augmente son prochain jet de défense de 10%.
-
-Corps électrique. Chaque attaque au contact qu''un assaillant prodigue lui oblige de faire un de vigueur pour ne pas subir "Paralysie 1".', 'monstres', 'Bestiaire 2.0 › ligne 10386');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-foudroyant', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 10386');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-foudroyant', 11, 'tactique', 'TACTIQUE COMBAT', 'Le foudroyant possède de la foudre qui circule en dehors de son corps en permanence, ce qui fait qu’il fait planer une menace constante pour ceux qui oseraient l''attaquer avec des armes de contact, il les force un jet de vigueur pour ne pas qu’il souffre de paralysie. Au-delà de ça, son armure de cellulose fer est bien meilleure, renforcée par sa foudre.', 'monstres', 'Bestiaire 2.0 › ligne 10404');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-tonnerre', 1, 'attributs', NULL, 'Santé : 160 Chakra : 60 Barrière : 30', 'monstres', 'Bestiaire 2.0 › ligne 10291');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-tonnerre', 2, 'degats', 'Dégâts', 'Lance légère - 3d10 + 7 dégâts de taille', 'monstres', 'Bestiaire 2.0 › ligne 10294');
@@ -2784,15 +1781,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-tonnerre', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Frappe, Terre, Nécromancie, Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 10314');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-tonnerre', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Foudre, Eau, Vent, Surdité, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 10318');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-tonnerre', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Couardise, Peur, Fatigue, Aveuglement, Saignement, Estoc, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 10322');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-tonnerre', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Initiative extrême. Permet d''avoir un bonus de +10 au jet d''initiative.
-
-Lame foudroyante. (IC) En échange de 5 chakra, la prochaine attaque physique au contact libère une foudre qui inflige 1d8 dégâts qui va ignorer l’AM et l’AP de la cible.
-
-Réfléxe éclair. (IC) En échange de 5 chakra, augmente son prochain jet de défense de 10%.', 'monstres', 'Bestiaire 2.0 › ligne 10326');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-tonnerre', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 10326');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/fulgurame#carte:fulgurame-tonnerre', 11, 'tactique', 'TACTIQUE COMBAT', 'La version tonnerre est capable d’exploiter son chakra pour augmenter son agilité à des fins défensives, il sera très difficile de l’attendre tellement il est vif. Il dispose d’une armure qui mélange cellulose et fer.', 'monstres', 'Bestiaire 2.0 › ligne 10341');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gants-usages#carte:gants-usages', 1, 'attributs', NULL, 'Santé : 5 Chakra : 30 Barrière : 15', 'monstres', 'Bestiaire 2.0 › ligne 10496');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gants-usages#carte:gants-usages', 2, 'degats', 'Dégâts', 'Griffes fantomatiques – 2d6 dégâts de taille', 'monstres', 'Bestiaire 2.0 › ligne 10499');
@@ -2803,11 +1792,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gants-usages#carte:gants-usages', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', '', 'monstres', 'Bestiaire 2.0 › ligne 10518');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gants-usages#carte:gants-usages', 8, 'resistance', 'Résistance(s) Dégâts ÷2', '', 'monstres', 'Bestiaire 2.0 › ligne 10523');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gants-usages#carte:gants-usages', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Saignement, Peur, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 10528');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gants-usages#carte:gants-usages', 10, 'capacites', 'Capacité(s)', 'Mourir peut attendre. Cette créature n’a que la moitié de sa santé qu’elle est censée avoir. Quand elle tombe en dessous de 0 santé, elle sombre dans une mort temporaire qui ne dure qu’un tour, à la fin de ce dernier, elle revient avec toute sa santé et barrière. La deuxième mort est fatale par contre.
-
-Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Devoir du Magicien. Cette créature versatile, anciennement du Potentiel Illimité, est capable d’utiliser tous les sorts d’attaques et d’entraves de niveau 1 en plus d’avoir un bonus de 5 aux dégâts des sorts.', 'monstres', 'Bestiaire 2.0 › ligne 10532');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gants-usages#carte:gants-usages', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 10532');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gants-usages#carte:gants-usages', 11, 'tactique', 'TACTIQUE COMBAT', 'Les gants sont une forme de manifestation d’un ancien mage du Potentiel Illimité, il est compliqué de le gérer car leur accès à tous les sorts niveaux 1 les rend efficaces sur tout le monde quoi qu’il arrive. Ils auront tendance à rester à distance.', 'monstres', 'Bestiaire 2.0 › ligne 10542');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gardien-du-passe#carte:gardien-du-passe', 1, 'attributs', NULL, 'Santé : 460 Chakra : 100 Barrière : 50', 'monstres', 'Bestiaire 2.0 › ligne 10558');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gardien-du-passe#carte:gardien-du-passe', 2, 'degats', 'Dégâts', 'Épée temple ancienne – 3d10 + 14 + 5* dégâts de taille/estoc
@@ -2824,25 +1809,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gardien-du-passe#carte:gardien-du-passe', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', '', 'monstres', 'Bestiaire 2.0 › ligne 10586');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gardien-du-passe#carte:gardien-du-passe', 8, 'resistance', 'Résistance(s) Dégâts ÷2', '', 'monstres', 'Bestiaire 2.0 › ligne 10591');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gardien-du-passe#carte:gardien-du-passe', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Saignement, Peur, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 10596');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gardien-du-passe#carte:gardien-du-passe', 10, 'capacites', 'Capacité(s)', 'Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Devoir final. La fusion ultime de ceux qui sont encore lié à leur devoir, il dispose de tous les avantages des autres fantômes du Cortège, donc il possède :
-- Peut bloquer les adversaires dans sa zone d’influence.
-- Impose un désavantage aux ennemis dans la zone d’influence qui tente une attaque à distance ou un sort sur un autre ennemi.
-- Peut utiliser l’épée en mordhau.
-- +5 dégâts avec l’épée.
-- Les ennemis ne peuvent pas contre-attaquer.
-- Ne peut pas être désarmé.
-- Peut faire un balayage avec la hallebarde pour toucher les 3 cibles devant lui, en échange de 15% de réussite.
-- Capable d’utiliser tous les sorts d’attaques et entraves de niveau 1 et 2 de puissance.
-- +5 dégâts avec les sorts.
-- Portée infinie avec l’arbalète.
-- Malus de 10% aux jets de défenses des ennemis si contre l’arbalète.
-- Peut sortir de la zone d’influence d’un ennemi 1 fois par tour sans prendre d’attaques d’opportunités.
-- +1 Vitesse
-- +4 Initiative
-- Attaque sournoise
-- Peut aller dans les zones d’influences sans se faire attaquer.', 'monstres', 'Bestiaire 2.0 › ligne 10600');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gardien-du-passe#carte:gardien-du-passe', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 10600');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gardien-du-passe#carte:gardien-du-passe', 11, 'tactique', 'TACTIQUE COMBAT', 'Le Gardien du Passé est un puissant adversaire à affronter, il possède une versatilité qui fait en grande partie sa puissance. Il est capable d’utiliser des armes de contact, à distance, utiliser un large panel de sorts, possède beaucoup de défenses, bref … une véritable épreuve. Sa défense en plus n’est pas fixe de partout, sa plus grosse protection est au corps et les parties les moins protégées impliquent de viser. Bonne chance !', 'monstres', 'Bestiaire 2.0 › ligne 10623');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:garrestre-puissant', 1, 'attributs', NULL, 'Santé : 480 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 10725');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:garrestre-puissant', 2, 'degats', 'Dégâts', 'Poing – 4d12 + 10 dégâts de frappe
@@ -2853,17 +1820,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:garrestre-puissant', 6, 'competences', 'Compétence(s) secondaire(s)', '+10% Arme lourde, +10% Parade', 'monstres', 'Bestiaire 2.0 › ligne 10742');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:garrestre-puissant', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Vent, Sang, Brûlure, Surdité, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 10745');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:garrestre-puissant', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre, Foudre, Nécromancie, Pétrification, Paralysie, Poison', 'monstres', 'Bestiaire 2.0 › ligne 10748');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:garrestre-puissant', 9, 'capacites', 'Capacité(s)', 'Lien forestier. Tant qu’il est dans la forêt, il bénéficie d’une bonus à la réussite de 5% et d’un bonus aux dégâts de 2. Sortir de la forêt fait qu’il peut en mourir.
-
-Racine. Tant qu''il est sur de la terre, cette créature récupère 3 santé au début de son tour.
-
-Folle de guerre. Cette créature doit avancer vers l’ennemi, elle ne peut pas attendre et est immunisée contre toutes formes de peur.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Fracas. Une arme* de cette créature est capable de se détruire et toucher ceux qui sont à 2 cases autour de la zone d’impact.
-
-Force démesurée. Cette créature peut dépasser la limite de Force de 1.', 'monstres', 'Bestiaire 2.0 › ligne 10751');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:garrestre-puissant', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 10751');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:garrestre-puissant', 10, 'tactique', 'TACTIQUE COMBAT', 'Les puissants sont encore plus grands et costauds. Ils ont une musculature plus développée et sont capables de lancer des rochers qui peuvent toucher plusieurs cibles à la fois.', 'monstres', 'Bestiaire 2.0 › ligne 10770');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:garrestre-sage', 1, 'attributs', NULL, 'Santé : 480 Chakra : 480 Barrière : 240', 'monstres', 'Bestiaire 2.0 › ligne 10778');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:garrestre-sage', 2, 'degats', 'Dégâts', 'Poing – 4d10 + 20 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 10781');
@@ -2873,15 +1830,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:garrestre-sage', 6, 'competences', 'Compétence(s) secondaire(s)', '+15% Arme lourde, +10% Parade, +20% Magie', 'monstres', 'Bestiaire 2.0 › ligne 10794');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:garrestre-sage', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Vent, Sang, Brûlure, Surdité, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 10797');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:garrestre-sage', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre, Foudre, Nécromancie, Pétrification, Paralysie, Poison', 'monstres', 'Bestiaire 2.0 › ligne 10800');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:garrestre-sage', 9, 'capacites', 'Capacité(s)', 'Lien forestier. Tant qu’il est dans la forêt, il bénéficie d’une bonus à la réussite de 5% et d’un bonus aux dégâts de 2. Sortir de la forêt fait qu’il peut en mourir.
-
-Racine. Tant qu''il est sur de la terre, cette créature récupère 6 santé au début de son tour.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Être de la Terre. Cette créature est capable de lancer des sorts de son niveau de puissance magique.
-
-Élément Terre. L’arme de cette créature possède 30% de chance d’obliger un jet de fermeté à l’adversaire pour ne pas qu’il prenne “pétrifié 1”. L’arme peut taper dans l’élément associé et ses sorts de terre infligent également un bonus de +3 aux dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 10803');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:garrestre-sage', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 10803');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:garrestre-sage', 10, 'tactique', 'TACTIQUE COMBAT', 'Les plus anciens des garrestre sont étonnement pas spécialement plus grand ou gros, au contraire ils sont moins épais mais possèdent un comportement beaucoup plus raisonné, sage, réfléchi, intelligent … Ils sont capables d’utiliser tous les sorts de la terre à leur disposition, ils ont troqué de la force et agilité pour être bien plus puissant avec leur magie. Ils sont reconnaissables car ils ont une sorte de cape à capuche faite en mousse et végétaux.
 Ils sont rares parmi les garrestres mais gare quand vous en apercevez un, c’est un puissant mage et généralement il est le chef d’un petit groupe de garrestres.', 'monstres', 'Bestiaire 2.0 › ligne 10819');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:jeune-garrestre', 1, 'attributs', NULL, 'Santé : 240 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 10681');
@@ -2893,11 +1842,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:jeune-garrestre', 6, 'competences', 'Compétence(s) secondaire(s)', '+5% Arme lourde, +5% Parade', 'monstres', 'Bestiaire 2.0 › ligne 10698');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:jeune-garrestre', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Vent, Sang, Brûlure, Surdité, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 10701');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:jeune-garrestre', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre, Foudre, Nécromancie, Pétrification, Paralysie, Poison', 'monstres', 'Bestiaire 2.0 › ligne 10704');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:jeune-garrestre', 9, 'capacites', 'Capacité(s)', 'Lien forestier. Tant qu’il est dans la forêt, il bénéficie d’une bonus à la réussite de 5% et d’un bonus aux dégâts de 2. Sortir de la forêt fait qu’il peut en mourir.
-
-Racine. Tant qu''il est sur de la terre, cette créature récupère 3 santé au début de son tour.
-
-Folle de guerre. Cette créature doit avancer vers l’ennemi, elle ne peut pas attendre et est immunisée contre toutes formes de peur.', 'monstres', 'Bestiaire 2.0 › ligne 10707');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:jeune-garrestre', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 10707');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/garrestre#carte:jeune-garrestre', 10, 'tactique', 'TACTIQUE COMBAT', 'Les jeunes sont parfaitement capables d’arracher le sol pour lancer de gros rochers sur ceux qui menacent leur territoire. Ils sont particulièrement violents mais également prévisibles. Leur vulnérabilité à certaines magies font qu’ils sont gérables sur le plan magique.', 'monstres', 'Bestiaire 2.0 › ligne 10717');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin#carte:gobelin-demi-vie', 1, 'attributs', NULL, 'Santé : 50 Chakra : 20 Barrière : 10', 'monstres', 'Bestiaire 2.0 › ligne 10891');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin#carte:gobelin-demi-vie', 2, 'degats', 'Dégâts', 'Arme bricolé – 2d10+4 dégâts de tailles / estoc / frappe
@@ -2909,11 +1854,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin#carte:gobelin-demi-vie', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière', 'monstres', 'Bestiaire 2.0 › ligne 10915');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin#carte:gobelin-demi-vie', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre', 'monstres', 'Bestiaire 2.0 › ligne 10919');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin#carte:gobelin-demi-vie', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Corruption', 'monstres', 'Bestiaire 2.0 › ligne 10923');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin#carte:gobelin-demi-vie', 10, 'capacites', 'Capacité(s)', 'Minus. Impose un malus de -15 pour être touché.
-
-Charge sans peur+. Permet d''avoir un bonus de +9 au jet d''initiative.
-
-Arme mal faite. L’arme de mauvaise facture a 10% de chance d''obliger le jet de vigueur pour ne pas saigner.', 'monstres', 'Bestiaire 2.0 › ligne 10927');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin#carte:gobelin-demi-vie', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 10927');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin#carte:gobelin-nouveau-ne', 1, 'attributs', NULL, 'Santé : 25 Chakra : 10 Barrière : 5', 'monstres', 'Bestiaire 2.0 › ligne 10840');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin#carte:gobelin-nouveau-ne', 2, 'degats', 'Dégâts', 'Arme bricolé – 2d8-1 dégâts de tailles ou estoc ou frappe
 Coup de poing – 2d4 dégât de frappe', 'monstres', 'Bestiaire 2.0 › ligne 10843');
@@ -2924,11 +1865,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin#carte:gobelin-nouveau-ne', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière', 'monstres', 'Bestiaire 2.0 › ligne 10865');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin#carte:gobelin-nouveau-ne', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre', 'monstres', 'Bestiaire 2.0 › ligne 10869');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin#carte:gobelin-nouveau-ne', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Corruption', 'monstres', 'Bestiaire 2.0 › ligne 10873');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin#carte:gobelin-nouveau-ne', 10, 'capacites', 'Capacité(s)', 'Minus. Impose un malus de -10 pour être touché.
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Arme mal faite. L’arme de mauvaise facture a 5% de chance d''obliger le jet de vigueur pour ne pas saigner.', 'monstres', 'Bestiaire 2.0 › ligne 10877');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin#carte:gobelin-nouveau-ne', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 10877');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin#carte:gobelin-obsolete', 1, 'attributs', NULL, 'Santé : 110 Chakra : 30 Barrière : 15', 'monstres', 'Bestiaire 2.0 › ligne 10941');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin#carte:gobelin-obsolete', 2, 'degats', 'Dégâts', 'Arme bricolé – 2d10+9 dégâts de tailles / estoc / frappe
 Coup de poing – 2d4 dégât de frappe', 'monstres', 'Bestiaire 2.0 › ligne 10944');
@@ -2939,11 +1876,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin#carte:gobelin-obsolete', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière', 'monstres', 'Bestiaire 2.0 › ligne 10965');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin#carte:gobelin-obsolete', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre', 'monstres', 'Bestiaire 2.0 › ligne 10969');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin#carte:gobelin-obsolete', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Corruption', 'monstres', 'Bestiaire 2.0 › ligne 10973');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin#carte:gobelin-obsolete', 10, 'capacites', 'Capacité(s)', 'Minus. Impose un malus de -20 pour être touché.
-
-Charge sans peur+. Permet d''avoir un bonus de +11 au jet d''initiative.
-
-Arme mal faite. L’arme de mauvaise facture a 15% de chance d''obliger le jet de vigueur pour ne pas saigner.', 'monstres', 'Bestiaire 2.0 › ligne 10977');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin#carte:gobelin-obsolete', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 10977');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-demi-vie', 1, 'attributs', NULL, 'Santé : 50 Chakra : 20 Barrière : 10', 'monstres', 'Bestiaire 2.0 › ligne 11048');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-demi-vie', 2, 'degats', 'Dégâts', 'Arc mal-foutue – 2d8+2 dégâts d’estoc', 'monstres', 'Bestiaire 2.0 › ligne 11051');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-demi-vie', 3, 'defense', 'Défense', '2 AP / 2 AM (Peau)', 'monstres', 'Bestiaire 2.0 › ligne 11055');
@@ -2953,11 +1886,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-demi-vie', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière', 'monstres', 'Bestiaire 2.0 › ligne 11071');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-demi-vie', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre', 'monstres', 'Bestiaire 2.0 › ligne 11075');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-demi-vie', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Corruption', 'monstres', 'Bestiaire 2.0 › ligne 11079');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-demi-vie', 10, 'capacites', 'Capacité(s)', 'Minus. Impose un malus de - 15 pour être touché.
-
-Arc mal fait. Malgré une arme de mauvaise facture, cette mauvaise facture donne +10% de chance de critique, échec comme réussite.
-
-Encrier. Chaque tir réussi a 10% d’appliquer 2d6 points de corruption et réduit de 10% les jets pour résister à une altération d''état.', 'monstres', 'Bestiaire 2.0 › ligne 11083');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-demi-vie', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 11083');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-nouveau-ne', 1, 'attributs', NULL, 'Santé : 25 Chakra : 10 Barrière : 5', 'monstres', 'Bestiaire 2.0 › ligne 10996');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-nouveau-ne', 2, 'degats', 'Dégâts', 'Arc mal-foutue: 2d8-1 dégâts d’estoc', 'monstres', 'Bestiaire 2.0 › ligne 10999');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-nouveau-ne', 3, 'defense', 'Défense', '0 AP/0 AM (Peau)', 'monstres', 'Bestiaire 2.0 › ligne 11003');
@@ -2967,11 +1896,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-nouveau-ne', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière', 'monstres', 'Bestiaire 2.0 › ligne 11020');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-nouveau-ne', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre', 'monstres', 'Bestiaire 2.0 › ligne 11024');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-nouveau-ne', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Corruption', 'monstres', 'Bestiaire 2.0 › ligne 11028');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-nouveau-ne', 10, 'capacites', 'Capacité(s)', 'Minus. Impose un malus de - 10 pour être touché.
-
-Arc mal fait. L’arme de mauvaise facture donne +5% de chance de critique, échec comme réussite.
-
-Encrier. Chaque tir réussi a 5% d’appliquer 2d6 points de corruption et réduit de 5% les jet pour résister à une altération d''état.', 'monstres', 'Bestiaire 2.0 › ligne 11032');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-nouveau-ne', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 11032');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-obsolete', 1, 'attributs', NULL, 'Santé : 80 Chakra : 60 Barrière : 30', 'monstres', 'Bestiaire 2.0 › ligne 11099');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-obsolete', 2, 'degats', 'Dégâts', 'Arc mal-foutue – 2d8+5 dégâts d’estoc', 'monstres', 'Bestiaire 2.0 › ligne 11102');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-obsolete', 3, 'defense', 'Défense', '4 AP / 4 AM (Peau)', 'monstres', 'Bestiaire 2.0 › ligne 11106');
@@ -2981,11 +1906,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-obsolete', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière', 'monstres', 'Bestiaire 2.0 › ligne 11122');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-obsolete', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre', 'monstres', 'Bestiaire 2.0 › ligne 11126');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-obsolete', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Corruption', 'monstres', 'Bestiaire 2.0 › ligne 11130');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-obsolete', 10, 'capacites', 'Capacité(s)', 'Minus. Impose un malus de - 20 pour être touché.
-
-Arc mal fait. L’arme de mauvaise facture donne +15% de chance de critique, échec comme réussite.
-
-Encrier. Chaque tir réussi a 15% d’appliquer 2d6 points de corruption et réduit de 15% les jets pour résister à une altération d’état.', 'monstres', 'Bestiaire 2.0 › ligne 11134');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-archer#carte:gobelin-archer-obsolete', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 11134');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-demi-vie', 1, 'attributs', NULL, 'Santé : 25 Chakra : 40 Barrière : 20', 'monstres', 'Bestiaire 2.0 › ligne 11210');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-demi-vie', 2, 'degats', 'Dégâts', 'Bâton mal-foutue: 2d8+2 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 11213');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-demi-vie', 3, 'defense', 'Défense', '2 AP / 2 AM (Peau)', 'monstres', 'Bestiaire 2.0 › ligne 11217');
@@ -2995,15 +1916,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-demi-vie', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière', 'monstres', 'Bestiaire 2.0 › ligne 11233');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-demi-vie', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre', 'monstres', 'Bestiaire 2.0 › ligne 11237');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-demi-vie', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Corruption', 'monstres', 'Bestiaire 2.0 › ligne 11241');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-demi-vie', 10, 'capacites', 'Capacité(s)', 'Minus. Impose un malus de - 15 pour être touché.
-
-Arme mal faite. L’arme de mauvaise facture a +10% de chance de critique, échec comme réussite.
-
-Tome de l’ombre niv. 1. Connais tous les sorts de l’ombre de NPM 1.
-
-Tome de la corruption niv1. Connais tous les sort de la corruption de NPM 1.
-
-Puissance magique supérieure. Les dégâts magiques sont augmenté de +3', 'monstres', 'Bestiaire 2.0 › ligne 11245');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-demi-vie', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 11245');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-nouveau-ne', 1, 'attributs', NULL, 'Santé : 10 Chakra : 25 Barrière : 12', 'monstres', 'Bestiaire 2.0 › ligne 11155');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-nouveau-ne', 2, 'degats', 'Dégâts', 'Bâton mal-foutue – 2d8 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 11158');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-nouveau-ne', 3, 'defense', 'Défense', '0 AP/0 AM (Peau)', 'monstres', 'Bestiaire 2.0 › ligne 11162');
@@ -3013,13 +1926,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-nouveau-ne', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière', 'monstres', 'Bestiaire 2.0 › ligne 11179');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-nouveau-ne', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre', 'monstres', 'Bestiaire 2.0 › ligne 11183');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-nouveau-ne', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Corruption', 'monstres', 'Bestiaire 2.0 › ligne 11187');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-nouveau-ne', 10, 'capacites', 'Capacité(s)', 'Minus. Impose un malus de - 10 pour être touché.
-
-Arme mal faite. L’arme de mauvaise facture a +5% de chance de critique, échec comme réussite.
-
-Tome de l’ombre niv. 1. Connais tous les sorts de l’ombre de NPM 1.
-
-Tome de la corruption niv. 1. Connais tous les sorts de corruption de NPM 1.', 'monstres', 'Bestiaire 2.0 › ligne 11191');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-nouveau-ne', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 11191');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-obsolete', 1, 'attributs', NULL, 'Santé : 45 Chakra : 90 Barrière : 45', 'monstres', 'Bestiaire 2.0 › ligne 11267');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-obsolete', 2, 'degats', 'Dégâts', 'Bâton mal-foutue: 2d8+5 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 11270');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-obsolete', 3, 'defense', 'Défense', '4 AP / 4 AM (Peau)', 'monstres', 'Bestiaire 2.0 › ligne 11274');
@@ -3029,15 +1936,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-obsolete', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière', 'monstres', 'Bestiaire 2.0 › ligne 11290');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-obsolete', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre', 'monstres', 'Bestiaire 2.0 › ligne 11294');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-obsolete', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Corruption', 'monstres', 'Bestiaire 2.0 › ligne 11298');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-obsolete', 10, 'capacites', 'Capacité(s)', 'Minus. Impose un malus de - 20 pour être touché.
-
-Arme mal faite. L’arme de mauvaise facture a +15% de chance de critique, échec comme réussite.
-
-Tome de l’ombre niv. 1. Connais tous les sorts de l’ombre de NPM 1.
-
-Tome de la corruption niv.1. Connais tous les sorts de corruption de NPM 1.
-
-Puissance magique supérieure. Les dégâts magiques sont augmenté de +6', 'monstres', 'Bestiaire 2.0 › ligne 11302');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/gobelin-mage#carte:gobelin-mage-obsolete', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 11302');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-i', 1, 'attributs', NULL, 'Santé : 310 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 11336');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-i', 2, 'degats', 'Dégâts', 'Crosse brillante – 5d8 + 10 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 11339');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-i', 3, 'defense', 'Défense', '0 armure physique / 7 armure magique (Peau)', 'monstres', 'Bestiaire 2.0 › ligne 11343');
@@ -3045,17 +1944,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-i', 5, 'caracteristiques', 'Caractéristiques (F.P.V.S.I.A.)', 'F : 8 / P : 8 / V : 10 / S : 0 / I : 0 / A : 8', 'monstres', 'Bestiaire 2.0 › ligne 11349');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-i', 6, 'competences', 'Compétence(s) secondaire(s)', '+5% Arme lourde, +5% Parade', 'monstres', 'Bestiaire 2.0 › ligne 11352');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-i', 7, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Arcane, Corruption, Surcharge magique, Arme physique', 'monstres', 'Bestiaire 2.0 › ligne 11355');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-i', 8, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Immatériel. Cette créature est naturellement immunisée aux dégâts physiques (armes) , seules la magie, une arme spectrale ou une arme sous l’effet d’un sort “fer” peuvent la toucher.
-
-Rune immédiate. Cette créature obtient une résistance à l’élément du dernier sort subi et cela plusieurs fois dans un tour (une résistance à la fois).', 'monstres', 'Bestiaire 2.0 › ligne 11358');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-i', 8, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 11358');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-i', 9, 'tactique', 'TACTIQUE COMBAT', 'Ce golem raffiné est connu pour avoir un corps fantomatique et est donc immunisé à tout assaut physique contre lui, il est recommandé d’utiliser la magie, des armes sous un sort “fer”, une arme élémentaire ou bien une arme en vif argent.
 Ce golem est conscient de sa condition de fantôme et se concentrera sur ceux qui peuvent le toucher.
 Il semble posséder une arme qui fait beaucoup penser à la crosse d’argent, l’arme des croisés du temple de l’arcane.', 'monstres', 'Bestiaire 2.0 › ligne 11376');
@@ -3066,19 +1955,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-ii', 5, 'caracteristiques', 'Caractéristiques (F.P.V.S.I.A.)', 'F : 8 / P : 8 / V : 10 / S : 0 / I : 0 / A : 8', 'monstres', 'Bestiaire 2.0 › ligne 11399');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-ii', 6, 'competences', 'Compétence(s) secondaire(s)', '+10% Arme lourde, +10% Parade', 'monstres', 'Bestiaire 2.0 › ligne 11402');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-ii', 7, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Arcane, Corruption, Surcharge magique, Arme physique', 'monstres', 'Bestiaire 2.0 › ligne 11405');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-ii', 8, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Immatériel. Cette créature est naturellement immunisée aux dégâts physiques (armes) , seules la magie, une arme spectrale ou une arme sous l’effet d’un sort “fer” peuvent la toucher.
-
-Rune immédiate. Cette créature obtient une résistance à l’élément du dernier sort subi et cela plusieurs fois dans un tour (une résistance à la fois).
-
-Coup alternatif. Permet de choisir si l''attaque va prendre en compte l''armure physique ou bien l''armure magique de la cible.', 'monstres', 'Bestiaire 2.0 › ligne 11408');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-ii', 8, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 11408');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-ii', 9, 'tactique', 'TACTIQUE COMBAT', 'Cette version possède la capacité de décider si les dégâts de son arme vont être réduite par l’armure physique ou magique de son adversaire.', 'monstres', 'Bestiaire 2.0 › ligne 11429');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-iii', 1, 'attributs', NULL, 'Santé : 1240 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 11437');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-iii', 2, 'degats', 'Dégâts', 'Crosse brillante – 5d8 + 34 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 11440');
@@ -3087,21 +1964,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-iii', 5, 'caracteristiques', 'Caractéristiques (F.P.V.S.I.A.)', 'F : 8 / P : 8 / V : 10 / S : 0 / I : 0 / A : 8', 'monstres', 'Bestiaire 2.0 › ligne 11450');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-iii', 6, 'competences', 'Compétence(s) secondaire(s)', '+15% Arme lourde, +15% Parade', 'monstres', 'Bestiaire 2.0 › ligne 11453');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-iii', 7, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Arcane, Corruption, Surcharge magique, Arme physique', 'monstres', 'Bestiaire 2.0 › ligne 11456');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-iii', 8, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Immatériel. Cette créature est naturellement immunisée aux dégâts physiques (armes) , seules la magie, une arme spectrale ou une arme sous l’effet d’un sort “fer” peuvent la toucher.
-
-Rune immédiate. Cette créature obtient une résistance à l’élément du dernier sort subi et cela plusieurs fois dans un tour (une résistance à la fois).
-
-Coup alternatif. Permet de choisir si l''attaque va prendre en compte l''armure physique ou bien l''armure magique de la cible.
-
-Miroir partiel. Renvoi à hauteur de 25% des effets du sort de l’adversaire (l’agresseur peut se défendre contre cette contre attaque si c’est possible)', 'monstres', 'Bestiaire 2.0 › ligne 11459');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-iii', 8, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 11459');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-darcane#carte:golem-darcane-iii', 9, 'tactique', 'TACTIQUE COMBAT', 'Cette version parfaitement raffinée agit comme un miroir pour la magie. En effet, il est capable de renvoyer en partie les sorts qu’il encaisse, ce qui lui permet d’être assez ingérable sur le plan magique.', 'monstres', 'Bestiaire 2.0 › ligne 11483');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-i', 1, 'attributs', NULL, 'Santé : 35 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 11587');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-i', 2, 'degats', 'Dégâts', 'Poing – 2d10 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 11590');
@@ -3112,11 +1975,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-i', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', '', 'monstres', 'Bestiaire 2.0 › ligne 11607');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-i', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Eau, Vent, Terre', 'monstres', 'Bestiaire 2.0 › ligne 11611');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-i', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Brûlure, Confusion, Surdité, Pétrification, Poison, Maladie', 'monstres', 'Bestiaire 2.0 › ligne 11614');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-i', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.', 'monstres', 'Bestiaire 2.0 › ligne 11617');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-i', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 11617');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-i', 11, 'tactique', 'TACTIQUE COMBAT', 'Comme tous les golems, c’est une créature dénuée de conscience et qui a pour rôle d’attaquer tout intrus à son environnement. Celui d’argile est très basique et possède des résistances magiques intéressantes en plus d’avoir aucune grosse faiblesse.
 Il attaque la première cible qui passe ou alors le plus dangereux selon lui.', 'monstres', 'Bestiaire 2.0 › ligne 11626');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-ii', 1, 'attributs', NULL, 'Santé : 70 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 11637');
@@ -3128,11 +1987,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-ii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', '', 'monstres', 'Bestiaire 2.0 › ligne 11657');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-ii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Eau, Vent, Terre, Foudre', 'monstres', 'Bestiaire 2.0 › ligne 11661');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-ii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Brûlure, Confusion, Surdité, Pétrification, Paralysie, Poison, Maladie', 'monstres', 'Bestiaire 2.0 › ligne 11664');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-ii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.', 'monstres', 'Bestiaire 2.0 › ligne 11667');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-ii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 11667');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-ii', 11, 'tactique', 'TACTIQUE COMBAT', 'La deuxième version du golem d’argile est moins grossier dans sa structure et est plus raffiné, il est un peu plus solide et possède une résistance à la foudre en plus des autres.', 'monstres', 'Bestiaire 2.0 › ligne 11676');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-iii', 1, 'attributs', NULL, 'Santé : 140 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 11686');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-iii', 2, 'degats', 'Dégâts', 'Poing – 2d10 + 6 + 3 dégâts de frappe
@@ -3144,13 +1999,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-iii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', '', 'monstres', 'Bestiaire 2.0 › ligne 11707');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-iii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Eau, Vent, Terre, Foudre, Glace', 'monstres', 'Bestiaire 2.0 › ligne 11711');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-iii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Brûlure, Confusion, Surdité, Pétrification, Paralysie, Gelé, Poison, Maladie', 'monstres', 'Bestiaire 2.0 › ligne 11715');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-iii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Contact. Cette créature à un bonus de +3 aux dégâts avec les armes et un bonus de 5% Arme lourde et légère.', 'monstres', 'Bestiaire 2.0 › ligne 11718');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-iii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 11718');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dargile#carte:golem-dargile-iii', 11, 'tactique', 'TACTIQUE COMBAT', 'La troisième version du golem d’argile ressemble à un humanoïde en armure et équipé d’une grande épée, le tout en argile, ce golem possède des bases dans le combat avec une arme et utilise son épée contre ses adversaires maîtrisant également la technique du mordhau. Son absence de résistance physique fait qu’il tombe rapidement sous les coups des combattants qui privilégient les armes.', 'monstres', 'Bestiaire 2.0 › ligne 11730');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-i', 1, 'attributs', NULL, 'Santé : 35 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 11833');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-i', 2, 'degats', 'Dégâts', 'Pic de bois – 2d10 dégâts d''estoc/frappe', 'monstres', 'Bestiaire 2.0 › ligne 11836');
@@ -3161,13 +2010,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-i', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Glace, Foudre, Sang, Brûlure, Gelé, Paralysie, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 11853');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-i', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre, Vent, Eau, Lumière', 'monstres', 'Bestiaire 2.0 › ligne 11856');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-i', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Pétrification, Surdité, Confusion, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 11859');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-i', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Racine. Tant qu''il est sur de la terre, cette créature récupère 3 santé au début de son tour.', 'monstres', 'Bestiaire 2.0 › ligne 11862');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-i', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 11862');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-i', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce golem qui ressemble à un amalgame de branches et de tronc d’arbres est un gardien des forêts, il n’hésitera pas à attaquer ceux qui abîment son environnement. Il attaque avec force la cible la plus dangereuse pour lui et la forêt.', 'monstres', 'Bestiaire 2.0 › ligne 11874');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-ii', 1, 'attributs', NULL, 'Santé : 70 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 11884');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-ii', 2, 'degats', 'Dégâts', 'Pic de bois – 2d10 + 3 dégâts d''estoc/frappe', 'monstres', 'Bestiaire 2.0 › ligne 11886');
@@ -3178,17 +2021,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-ii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Glace, Foudre, Sang, Brûlure, Gelé, Paralysie, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 11901');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-ii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre, Vent, Eau, Lumière', 'monstres', 'Bestiaire 2.0 › ligne 11904');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-ii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Pétrification, Surdité, Confusion, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 11907');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-ii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Racine. Tant qu''il est sur de la terre, cette créature récupère 3 santé au début de son tour.
-
-Éclatement en bois. Action utilisable tous les 5 tours, cette créature peut projeter des éclats de bois acérés dans un rayon de 4 cases autour de lui. Toutes les créatures situées dans la zone subissent 6d6 dégâts de taille.', 'monstres', 'Bestiaire 2.0 › ligne 11911');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-ii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 11911');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-ii', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce golem qui fait penser à un tronc d''arbre attaque tout intrus qui abîme le jardin ou la forêt dans lequel il se trouve, il utilise ses bras pour transpercer ses adversaires. Au bout d''un moment il va libérer une partie de sa matière dans une grosse attaque de zone autour de lui, cette tactique il ne peut la faire que 3 fois, au bout de la 3ème fois, il meurt.', 'monstres', 'Bestiaire 2.0 › ligne 11928');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-iii', 1, 'attributs', NULL, 'Santé : 140 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 11938');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-iii', 2, 'degats', 'Dégâts', 'Pic de bois – 2d10 + 6 dégâts d''estoc/frappe
@@ -3200,19 +2033,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-iii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Glace, Foudre, Sang, Brûlure, Gelé, Paralysie, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 11956');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-iii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre, Vent, Eau, Lumière', 'monstres', 'Bestiaire 2.0 › ligne 11959');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-iii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Pétrification, Surdité, Confusion, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 11962');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-iii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Racine. Tant qu''il est sur de la terre, cette créature récupère 3 santé au début de son tour.
-
-Éclatement en bois. Action utilisable tous les 5 tours, cette créature peut projeter des éclats de bois acérés dans un rayon de 4 cases autour de lui. Toutes les créatures situées dans la zone subissent 6d6 dégâts de taille.
-
-Mortier. Cette créature possède une arme qui peut tirer des projectiles et est considérée comme une arbalète dans la stats qu’il faut utiliser. Les projectiles tirés par cette arme ignore 3AP mais sont détruits après utilisation.', 'monstres', 'Bestiaire 2.0 › ligne 11966');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-iii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 11966');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-bois#carte:golem-de-bois-iii', 11, 'tactique', 'TACTIQUE COMBAT', 'Cette version plus évoluée du golem de bois possède un bras tubulaire avec lequel il est capable de tirer moult projectile, allant du rocher au fruit, même à distance, personne n’est à l’abri.', 'monstres', 'Bestiaire 2.0 › ligne 11986');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-i', 1, 'attributs', NULL, 'Santé : 70 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 12089');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-i', 2, 'degats', 'Dégâts', 'Griffe – 2d10 dégâts de taille
@@ -3225,13 +2046,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-i', 8, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Foudre, Sang, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 12113');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-i', 9, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Feu, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 12117');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-i', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Eau, Confusion, Poison, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 12120');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-i', 11, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.', 'monstres', 'Bestiaire 2.0 › ligne 12123');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-i', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 12123');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-i', 12, 'tactique', 'TACTIQUE COMBAT', 'Ce golem qu’on retrouve souvent dans les marais et les rivières pollué agit comme la plupart des golems, il attaque tout intrus à son environnement. Il est capable de cracher une masse boueuse sur ses adversaires, lui permettant de les affaiblir à distance.', 'monstres', 'Bestiaire 2.0 › ligne 12135');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-ii', 1, 'attributs', NULL, 'Santé : 140 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 12143');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-ii', 2, 'degats', 'Dégâts', 'Griffe – 2d10 + 5 dégâts de taille
@@ -3244,17 +2059,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-ii', 8, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Foudre, Sang, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 12167');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-ii', 9, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Feu, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 12171');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-ii', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Eau, Confusion, Poison, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 12174');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-ii', 11, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Frappe confuse. L’arme de cette créature possède 30% de chance d’obliger un jet de fermeté à l’adversaire pour ne pas qu’il prenne “confusion 1”.', 'monstres', 'Bestiaire 2.0 › ligne 12177');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-ii', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 12177');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-ii', 12, 'tactique', 'TACTIQUE COMBAT', 'La version 2 du golem de boue est un peu plus massif et est capable avec ses armes d’avoir une chance d’infliger la confusion.', 'monstres', 'Bestiaire 2.0 › ligne 12195');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-iii', 1, 'attributs', NULL, 'Santé : 280 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 12205');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-iii', 2, 'degats', 'Dégâts', 'Griffe de boue – 2d10 + 10 dégâts de taille
@@ -3267,19 +2072,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-iii', 8, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Foudre, Sang, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 12229');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-iii', 9, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Feu, Frappe', 'monstres', 'Bestiaire 2.0 › ligne 12233');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-iii', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Eau, Confusion, Poison, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 12236');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-iii', 11, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Frappe confuse. L’arme de cette créature possède 30% de chance d’obliger un jet de fermeté à l’adversaire pour ne pas qu’il prenne “confusion 1”.
-
-Camouflage. Cette créature inflige toujours des dégâts discrets tant qu''elle est dans le bon décor (eau).', 'monstres', 'Bestiaire 2.0 › ligne 12239');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-iii', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 12239');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-boue#carte:golem-de-boue-iii', 12, 'tactique', 'TACTIQUE COMBAT', 'Ce golem de boue est capable de partiellement se dissoudre dans l’eau pour être capable d’infliger des dégâts discrets à ses adversaires.', 'monstres', 'Bestiaire 2.0 › ligne 12260');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-i', 1, 'attributs', NULL, 'Santé : 310 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 12366');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-i', 2, 'degats', 'Dégâts', 'Poing cagneux – 5d10 dégâts de frappe
@@ -3292,23 +2085,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-i', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Nécromancie, Glace, Poison, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 12387');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-i', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Sang, Eau, Terre', 'monstres', 'Bestiaire 2.0 › ligne 12390');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-i', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Saignement, Confusion, Pétrifié', 'monstres', 'Bestiaire 2.0 › ligne 12394');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-i', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Forme changeante. Cette créature à tout les début de tour (juste après l''initiative et avant tout le monde) change aléatoirement de forme et ainsi les bonus qu''elle possède, il y a 8 formes :
-1. Muscles difformes : +2 Force, +4 dégâts avec ses armes.
-2. Corps maigre : +2 Agilité, +5% Esquive, Peut faire des grand saut (4 mètres maxi)
-3. Tête doublée : +2 Intelligence, Peut utiliser utiliser les sorts "sang" sans malus et sans coût (sauf le NPM 5)
-4. Croûte rabougrie : +1 Force, +10% Parade, +10 AP et AM.
-5. Yeux repoussants : +2 Perception, Voit à 360°, Impossible pour les adversaires d''être discret ou de le prendre par surprise, ses adversaires qui était discret perdent immédiatement leur discrétion.
-6. Renfermement mal foutu : Régénère 20 santé ce tour.
-7. Célérité obèse : Peut attaquer 2 fois ce tour.
-8. 4 jambes estropiées : +2 Vitesse.
-
-Attaque multiple. Cette créature peut taper sur 3 axes quand il attaque avec ses armes (Devant, Gauche, Droite) [NOTE : 4 axes quand il est sous la forme 5 lui ajoute derrière lui]', 'monstres', 'Bestiaire 2.0 › ligne 12397');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-i', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 12397');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-i', 11, 'tactique', 'TACTIQUE COMBAT', 'Cette monstruosité à un corps qui change tout le temps, il est important d’être prêt à toute éventualité car chaque forme à sa façon de se battre et d’agir. Il attaquera toujours le plus proche ou celui qui lui inflige de gros dégâts. Son défaut repose sur son manque d’attaque à distance.', 'monstres', 'Bestiaire 2.0 › ligne 12420');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-ii', 1, 'attributs', NULL, 'Santé : 620 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 12430');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-ii', 2, 'degats', 'Dégâts', 'Poing cagneux – 5d10 + 12 dégâts de frappe
@@ -3321,27 +2098,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-ii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Nécromancie, Glace, Poison, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 12451');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-ii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Sang, Eau, Terre', 'monstres', 'Bestiaire 2.0 › ligne 12454');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-ii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Saignement, Confusion, Pétrifié', 'monstres', 'Bestiaire 2.0 › ligne 12458');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-ii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Forme changeante. Cette créature à tout les début de tour (juste après l''initiative et avant tout le monde) change aléatoirement de forme et ainsi les bonus qu''elle possède, il y a 8 formes :
-1. Muscles difformes : +2 Force, +5 dégâts avec ses armes.
-2. Corps maigre : +2 Agilité, +10% Esquive, Peut faire des grand saut (4 mètres maxi)
-3. Tête doublée : +2 Intelligence, Peut utiliser utiliser les sorts "sang" sans malus et sans coût (sauf le NPM 5)
-4. Croûte rabougrie : +1 Force, +10% Parade, +10 AP et AM.
-5. Yeux repoussants : +2 Perception, Voit à 360°, Impossible pour les adversaires d''être discret ou de le prendre par surprise, ses adversaires qui était discret perdent immédiatement leur discrétion.
-6. Renfermement mal foutu : Régénère 40 santé ce tour.
-7. Célérité obèse : Peut attaquer 2 fois ce tour.
-8. 4 jambes estropiées : +2 Vitesse.
-
-Attaque multiple. Cette créature peut taper sur 3 axes quand il attaque avec ses armes (Devant, Gauche, Droite) [NOTE : 4 axes quand il est sous la forme 5 lui ajoute derrière lui]
-
-Baroud. Si la santé tombe à 0, possède un dernier tour d’action, si sa santé remonte en positif pendant ce dernier tour, le don est de nouveau actif.', 'monstres', 'Bestiaire 2.0 › ligne 12461');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-ii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 12461');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-ii', 11, 'tactique', 'TACTIQUE COMBAT', 'En plus de pouvoir changer tout le temps de forme, il semble être capable d’encaisser un tour de plus même s''il tombe à 0 de santé.', 'monstres', 'Bestiaire 2.0 › ligne 12490');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-iii', 1, 'attributs', NULL, 'Santé : 1240 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 12500');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-iii', 2, 'degats', 'Dégâts', 'Poing cagneux – 5d10 + 24 dégâts de frappe
@@ -3354,29 +2111,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-iii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Nécromancie, Glace, Poison, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 12521');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-iii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Sang, Eau, Terre', 'monstres', 'Bestiaire 2.0 › ligne 12524');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-iii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Saignement, Confusion, Pétrifié', 'monstres', 'Bestiaire 2.0 › ligne 12528');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-iii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Forme changeante. Cette créature à tout les début de tour (juste après l''initiative et avant tout le monde) change aléatoirement de forme et ainsi les bonus qu''elle possède, il y a 8 formes :
-1. Muscles difformes : +2 Force, +5 dégâts avec ses armes.
-2. Corps maigre : +2 Agilité, +10% Esquive, Peut faire des grand saut (4 mètres maxi)
-3. Tête doublée : +2 Intelligence, Peut utiliser utiliser les sorts "sang" sans malus et sans coût (sauf le NPM 5)
-4. Croûte rabougrie : +1 Force, +10% Parade, +10 AP et AM.
-5. Yeux repoussants : +2 Perception, Voit à 360°, Impossible pour les adversaires d''être discret ou de le prendre par surprise, ses adversaires qui était discret perdent immédiatement leur discrétion.
-6. Renfermement mal foutu : Régénère 60 santé ce tour.
-7. Célérité obèse : Peut attaquer 3 fois ce tour.
-8. 4 jambes estropiées : +2 Vitesse.
-
-Attaque multiple. Cette créature peut taper sur 3 axes quand il attaque avec ses armes (Devant, Gauche, Droite) [NOTE : 4 axes quand il est sous la forme 5 lui ajoute derrière lui]
-
-Baroud. Si la santé tombe à 0, possède un dernier tour d’action, si sa santé remonte en positif pendant ce dernier tour, le don est de nouveau actif.
-
-Égide. Permet de survivre à 1 santé contre une attaque qui est censée vous mettre dans le coma. Marche qu’une fois.', 'monstres', 'Bestiaire 2.0 › ligne 12531');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-iii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 12531');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-chair#carte:golem-de-chair-iii', 11, 'tactique', 'TACTIQUE COMBAT', 'En plus de pouvoir tenir un tour de plus, il semble être capable d’encaisser totalement un coup qui est censé le mettre dans le coma, il est très solide et il demande beaucoup d’effort de la part des adversaires pour le faire tomber. Il n’hésitera pas à changer de posture contrairement aux autres qui restent toujours en neutre.', 'monstres', 'Bestiaire 2.0 › ligne 12563');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-i', 1, 'attributs', NULL, 'Santé : 150 Chakra : 30 Barrière : 15', 'monstres', 'Bestiaire 2.0 › ligne 12666');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-i', 2, 'degats', 'Dégâts', 'Poing – 4d10 dégâts de frappe
@@ -3388,17 +2123,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-i', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Foudre, Glace, Sang', 'monstres', 'Bestiaire 2.0 › ligne 12686');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-i', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Terre, Vent, Nécromancie', 'monstres', 'Bestiaire 2.0 › ligne 12689');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-i', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Eau, Confusion, Brûlure, Pétrification, Surdité, Poison', 'monstres', 'Bestiaire 2.0 › ligne 12692');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-i', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Squelettique. Rend cette créature immunisée aux attaques d’estoc.
-
-Souffle élémentaire. Cette créature est capable de cracher un souffle lié à son élément. Ce souffle est capable d''infliger l''altération d''état lié à l''élément à hauteur de 35% de chance de l''infliger. (les joueurs doivent faire les jets en conséquences pour ne pas prendre l''altération d''état)
-
-Réparation. Cette créature récupère 2d6 barrière au début de son tour.', 'monstres', 'Bestiaire 2.0 › ligne 12695');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-i', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 12695');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-i', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce golem très particulier possède la capacité de faire un souffle hydraulique sur ses ennemis mais c’est sa barrière qui semble en permanence se recharger.
 Il dispose de beaucoup de résistance élémentaire et il n’est pas inquiété par les dégâts d’estoc vu qu’il est immunité à ces derniers, il ne dispose pas de faiblesse aux dégâts de frappe comme les squelettes car sa composition lui permet de ne pas l’être.', 'monstres', 'Bestiaire 2.0 › ligne 12713');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-ii', 1, 'attributs', NULL, 'Santé : 300 Chakra : 60 Barrière : 30', 'monstres', 'Bestiaire 2.0 › ligne 12724');
@@ -3411,21 +2136,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-ii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Foudre, Glace, Sang', 'monstres', 'Bestiaire 2.0 › ligne 12744');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-ii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Terre, Vent, Nécromancie', 'monstres', 'Bestiaire 2.0 › ligne 12747');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-ii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Eau, Confusion, Brûlure, Pétrification, Surdité, Poison', 'monstres', 'Bestiaire 2.0 › ligne 12750');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-ii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Squelettique. Rend cette créature immunisée aux attaques d’estoc.
-
-Souffle élémentaire. Cette créature est capable de cracher un souffle lié à son élément. Ce souffle est capable d''infliger l''altération d''état lié à l''élément à hauteur de 35% de chance de l''infliger. (les joueurs doivent faire les jets en conséquences pour ne pas prendre l''altération d''état)
-
-Réparation. Cette créature récupère 2d6 barrière au début de son tour.
-
-Humidification. Dispose d''une protection qui vont ignorer les 10 premiers dégâts qui vont lui être infligés lors d''un combat (se recharge tous les 3 tours)', 'monstres', 'Bestiaire 2.0 › ligne 12753');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-ii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 12753');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-ii', 11, 'tactique', 'TACTIQUE COMBAT', 'Cette version plus évoluée et plus massive secrète un mucus qui semble pouvoir encaisser n’importe quelle type de dégâts, il se rétablit après 30 secondes.', 'monstres', 'Bestiaire 2.0 › ligne 12777');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-iii', 1, 'attributs', NULL, 'Santé : 600 Chakra : 120 Barrière : 60', 'monstres', 'Bestiaire 2.0 › ligne 12787');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-iii', 2, 'degats', 'Dégâts', 'Poing – 4d10 + 8 dégâts de frappe
@@ -3437,23 +2148,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-iii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Foudre, Glace, Sang', 'monstres', 'Bestiaire 2.0 › ligne 12807');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-iii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Terre, Vent, Nécromancie', 'monstres', 'Bestiaire 2.0 › ligne 12810');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-iii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Eau, Confusion, Brûlure, Pétrification, Surdité, Poison', 'monstres', 'Bestiaire 2.0 › ligne 12813');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-iii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Squelettique. Rend cette créature immunisée aux attaques d’estoc.
-
-Souffle élémentaire. Cette créature est capable de cracher un souffle lié à son élément. Ce souffle est capable d''infliger l''altération d''état lié à l''élément à hauteur de 35% de chance de l''infliger. (les joueurs doivent faire les jets en conséquences pour ne pas prendre l''altération d''état)
-
-Réparation. Cette créature récupère 2d6 barrière au début de son tour.
-
-Humidification. Dispose d''une protection qui vont ignorer les 10 premiers dégâts qui vont lui être infligés lors d''un combat (se recharge tous les 3 tours).
-
-Esclave de la conscience. Si un corps humanoïde est disponible sur le terrain, cette créature est capable de le parasité pour en faire un allié (invoque un squelrail)', 'monstres', 'Bestiaire 2.0 › ligne 12816');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-iii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 12816');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail#carte:golem-de-corail-iii', 11, 'tactique', 'TACTIQUE COMBAT', 'Les plus anciens coraux sont capables de se réunir en un golem massif qui possède la capacité de parasiter de leur corail des corps d''humanoÏdes pour créer des squelraux. Laissez lui du temps et des cadavres, et il pourrait créer une vraie garde rapprochée.', 'monstres', 'Bestiaire 2.0 › ligne 12843');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-i', 1, 'attributs', NULL, 'Santé : 150 Chakra : 30 Barrière : 15', 'monstres', 'Bestiaire 2.0 › ligne 12945');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-i', 2, 'degats', 'Dégâts', 'Poing – 4d10 dégâts de frappe
@@ -3465,17 +2160,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-i', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Foudre, Glace, Sang', 'monstres', 'Bestiaire 2.0 › ligne 12965');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-i', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Terre, Vent, Nécromancie', 'monstres', 'Bestiaire 2.0 › ligne 12968');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-i', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Eau, Confusion, Brûlure, Pétrification, Surdité, Poison', 'monstres', 'Bestiaire 2.0 › ligne 12971');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-i', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Squelettique. Rend cette créature immunisée aux attaques d’estoc.
-
-Souffle élémentaire. Cette créature est capable de cracher un souffle lié à son élément. Ce souffle est capable d''infliger l''altération d''état lié à l''élément à hauteur de 35% de chance de l''infliger. (les joueurs doivent faire les jets en conséquences pour ne pas prendre l''altération d''état)
-
-Réparation. Cette créature récupère 2d6 barrière au début de son tour.', 'monstres', 'Bestiaire 2.0 › ligne 12974');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-i', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 12974');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-i', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce golem très particulier possède la capacité de faire un souffle hydraulique sur ses ennemis mais c’est sa barrière qui semble en permanence se recharger.
 Il dispose de beaucoup de résistance élémentaire et il n’est pas inquiété par les dégâts d’estoc vu qu’il est immunité à ces derniers, il ne dispose pas de faiblesse aux dégâts de frappe comme les squelettes car sa composition lui permet de ne pas l’être.', 'monstres', 'Bestiaire 2.0 › ligne 12992');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-ii', 1, 'attributs', NULL, 'Santé : 300 Chakra : 60 Barrière : 30', 'monstres', 'Bestiaire 2.0 › ligne 13003');
@@ -3488,21 +2173,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-ii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Foudre, Glace, Sang', 'monstres', 'Bestiaire 2.0 › ligne 13023');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-ii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Terre, Vent, Nécromancie', 'monstres', 'Bestiaire 2.0 › ligne 13026');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-ii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Eau, Confusion, Brûlure, Pétrification, Surdité, Poison', 'monstres', 'Bestiaire 2.0 › ligne 13029');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-ii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Squelettique. Rend cette créature immunisée aux attaques d’estoc.
-
-Souffle élémentaire. Cette créature est capable de cracher un souffle lié à son élément. Ce souffle est capable d''infliger l''altération d''état lié à l''élément à hauteur de 35% de chance de l''infliger. (les joueurs doivent faire les jets en conséquences pour ne pas prendre l''altération d''état)
-
-Réparation. Cette créature récupère 2d6 barrière au début de son tour.
-
-Humidification. Dispose d''une protection qui vont ignorer les 10 premiers dégâts qui vont lui être infligés lors d''un combat (se recharge tous les 3 tours)', 'monstres', 'Bestiaire 2.0 › ligne 13032');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-ii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 13032');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-ii', 11, 'tactique', 'TACTIQUE COMBAT', 'Cette version plus évoluée et plus massive secrète un mucus qui semble pouvoir encaisser n’importe quelle type de dégâts, il se rétablit après 30 secondes.', 'monstres', 'Bestiaire 2.0 › ligne 13056');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-iii', 1, 'attributs', NULL, 'Santé : 600 Chakra : 120 Barrière : 60', 'monstres', 'Bestiaire 2.0 › ligne 13066');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-iii', 2, 'degats', 'Dégâts', 'Poing – 4d10 + 8 dégâts de frappe
@@ -3514,23 +2185,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-iii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Foudre, Glace, Sang', 'monstres', 'Bestiaire 2.0 › ligne 13086');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-iii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Terre, Vent, Nécromancie', 'monstres', 'Bestiaire 2.0 › ligne 13089');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-iii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Eau, Confusion, Brûlure, Pétrification, Surdité, Poison', 'monstres', 'Bestiaire 2.0 › ligne 13092');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-iii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Squelettique. Rend cette créature immunisée aux attaques d’estoc.
-
-Souffle élémentaire. Cette créature est capable de cracher un souffle lié à son élément. Ce souffle est capable d''infliger l''altération d''état lié à l''élément à hauteur de 35% de chance de l''infliger. (les joueurs doivent faire les jets en conséquences pour ne pas prendre l''altération d''état)
-
-Réparation. Cette créature récupère 2d6 barrière au début de son tour.
-
-Humidification. Dispose d''une protection qui vont ignorer les 10 premiers dégâts qui vont lui être infligés lors d''un combat (se recharge tous les 3 tours).
-
-Esclave de la conscience. Si un corps humanoïde est disponible sur le terrain, cette créature est capable de le parasité pour en faire un allié (invoque un squelrail)', 'monstres', 'Bestiaire 2.0 › ligne 13095');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-iii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 13095');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-corail-2#carte:golem-de-corail-iii', 11, 'tactique', 'TACTIQUE COMBAT', 'Les plus anciens coraux sont capables de se réunir en un golem massif qui possède la capacité de parasiter de leur corail des corps d''humanoÏdes pour créer des squelraux. Laissez lui du temps et des cadavres, et il pourrait créer une vraie garde rapprochée.', 'monstres', 'Bestiaire 2.0 › ligne 13122');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-i', 1, 'attributs', NULL, 'Santé : 140 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 13224');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-i', 2, 'degats', 'Dégâts', 'Poing – 2d10 dégâts de frappe
@@ -3542,17 +2197,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-i', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Temps/Espace, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 13244');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-i', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vide', 'monstres', 'Bestiaire 2.0 › ligne 13248');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-i', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Enragé', 'monstres', 'Bestiaire 2.0 › ligne 13251');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-i', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Attaque immatérielle. Les armes de cette créature ignorent les AP données par les armures.
-
-Invisible. Cette créature est invisible à l''œil nu, il faudra être inventif pour la repérer (météo, farine, terre, sable, etc …)
-
-Sournois. Quand l’adversaire n’est pas attentif à l’attaquant, permet d’infliger un bonus de 2d4 dégâts en plus des dégâts de l’arme.', 'monstres', 'Bestiaire 2.0 › ligne 13254');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-i', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 13254');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-i', 11, 'tactique', 'TACTIQUE COMBAT', 'Inutile de tourner autour du pot, ce golem, disposant d’une invisibilité quasi-permanente grâce à son corps de cristal, va passer son temps à mettre des coups dans le dos et approcher les éléments les plus importants de ses ennemis comme les soigneurs. Il sera important d’être observateur pour vite le trouver car il peut peut mettre vite une équipe mal préparer au tapis.
 Quand elle tombe en dessous de 25% de sa santé, elle perd son invisibilité.', 'monstres', 'Bestiaire 2.0 › ligne 13272');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-ii', 1, 'attributs', NULL, 'Santé : 280 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 13283');
@@ -3565,21 +2210,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-ii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Temps/Espace, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 13303');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-ii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vide', 'monstres', 'Bestiaire 2.0 › ligne 13307');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-ii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Enragé', 'monstres', 'Bestiaire 2.0 › ligne 13310');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-ii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Attaque immatérielle. Les armes de cette créature ignorent les AP données par les armures.
-
-Invisible. Cette créature est invisible à l''œil nu, il faudra être inventif pour la repérer (météo, farine, terre, sable, etc …)
-
-Sournois. Quand l’adversaire n’est pas attentif à l’attaquant, permet d’infliger un bonus de 2d4 dégâts en plus des dégâts de l’arme.
-
-Implosion. Quand cette créature perd 25% de sa santé, elle explose et pose une zone de pression automatiquement sur une zone de 5x5 qui empêche les créature dans cette dernière de bouger pour leur prochain tour.', 'monstres', 'Bestiaire 2.0 › ligne 13313');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-ii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 13313');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-ii', 11, 'tactique', 'TACTIQUE COMBAT', 'Cette version est capable d’empêcher ses ennemis trop proches de bouger pendant un petit temps si jamais le golem à pris trop de dégâts. Sinon pas de changement par rapport à la première version.', 'monstres', 'Bestiaire 2.0 › ligne 13337');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-iii', 1, 'attributs', NULL, 'Santé : 560 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 13347');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-iii', 2, 'degats', 'Dégâts', 'Poing – 2d10 + 14 dégâts de frappe
@@ -3591,23 +2222,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-iii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Temps/Espace, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 13367');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-iii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vide', 'monstres', 'Bestiaire 2.0 › ligne 13371');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-iii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Enragé', 'monstres', 'Bestiaire 2.0 › ligne 13374');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-iii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Attaque immatérielle. Les armes de cette créature ignorent les AP données par les armures.
-
-Invisible. Cette créature est invisible à l''œil nu, il faudra être inventif pour la repérer (météo, farine, terre, sable, etc …)
-
-Sournois. Quand l’adversaire n’est pas attentif à l’attaquant, permet d’infliger un bonus de 2d4 dégâts en plus des dégâts de l’arme.
-
-Implosion. Quand cette créature perd 25% de sa santé, elle explose et pose une zone de pression automatiquement sur une zone de 5x5 qui empêche les créature dans cette dernière de bouger pour leur prochain tour.
-
-Attaque dissipante. Tous les 2 tours, l’attaque de cette créature inflige l’effet du sort “dissipation” de la magie du vide.', 'monstres', 'Bestiaire 2.0 › ligne 13377');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-iii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 13377');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-cristal#carte:golem-de-cristal-iii', 11, 'tactique', 'TACTIQUE COMBAT', 'En plus de faire de gros dégâts, cette version du golem de cristal est capable d’annuler les bonus d’un adversaire et va même se concentrer sur les adversaires qui auront tendance à se préparer avant une attaque.', 'monstres', 'Bestiaire 2.0 › ligne 13404');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-fer#carte:golem-de-fer-i', 1, 'attributs', NULL, 'Santé : 70 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 13777');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-fer#carte:golem-de-fer-i', 2, 'degats', 'Dégâts', 'Poing – 2d10 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 13780');
@@ -3618,11 +2233,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-fer#carte:golem-de-fer-i', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Eau, Glace, Foudre, Confusion, Brûlure, Gelé, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 13796');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-fer#carte:golem-de-fer-i', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vent, Terre', 'monstres', 'Bestiaire 2.0 › ligne 13800');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-fer#carte:golem-de-fer-i', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Surdité, Pétrification, Poison', 'monstres', 'Bestiaire 2.0 › ligne 13803');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-fer#carte:golem-de-fer-i', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.', 'monstres', 'Bestiaire 2.0 › ligne 13806');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-fer#carte:golem-de-fer-i', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 13806');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-fer#carte:golem-de-fer-i', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce golem qu’on retrouve très peu à l’état sauvage est utilisé pour garder des lieux précis. Il ne réfléchit pas, il chasse les intrus à son environnement sans la moindre pitié.', 'monstres', 'Bestiaire 2.0 › ligne 13815');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-fer#carte:golem-de-fer-ii', 1, 'attributs', NULL, 'Santé : 140 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 13825');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-fer#carte:golem-de-fer-ii', 2, 'degats', 'Dégâts', 'Poing – 2d10 + 5 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 13828');
@@ -3636,15 +2247,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 
 Absorbe(s) Dégâts/Effets = 0
 Feu', 'monstres', 'Bestiaire 2.0 › ligne 13851');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-fer#carte:golem-de-fer-ii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Moteur thermique. Cette créature absorbe les dégâts de l’élément feu, si un dégâts de feu est tenté sur lui, ses dégâts augmente de 5 et sa vitesse de 1 pendant 2 tours.', 'monstres', 'Bestiaire 2.0 › ligne 13858');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-fer#carte:golem-de-fer-ii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 13858');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-fer#carte:golem-de-fer-ii', 11, 'tactique', 'TACTIQUE COMBAT', 'Le torse de ce golem de fer ressemble à une grille dans lequel on peut y voir son noyau qui chauffe énormément, baignant d’une sorte d’énergie brûlante. Sa vulnérabilité au feu devient un absorption qui lui permet d’augmenter sa force et sa vitesse temporairement.', 'monstres', 'Bestiaire 2.0 › ligne 13873');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-fer#carte:golem-de-fer-iii', 1, 'attributs', NULL, 'Santé : 230 Chakra : 50 Barrière : 25', 'monstres', 'Bestiaire 2.0 › ligne 13883');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-fer#carte:golem-de-fer-iii', 2, 'degats', 'Dégâts', 'Poing – 2d10 + 10 dégâts de frappe
@@ -3659,17 +2262,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 
 Absorbe(s) Dégâts/Effets = 0
 Feu', 'monstres', 'Bestiaire 2.0 › ligne 13910');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-fer#carte:golem-de-fer-iii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Moteur thermique. Cette créature absorbe les dégâts de l’élément feu, si un dégâts de feu est tenté sur lui, ses dégâts augmente de 5 et sa vitesse de 1 pendant 2 tours.
-
-Crache feu. Contre 3IC, cette créature peut cracher une gerbe de flamme qui va à 3 PO en ligne droite et touché toutes les créatures dans la zone, inflige 3d6 dégâts. Coûte 5 chakra.', 'monstres', 'Bestiaire 2.0 › ligne 13917');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-fer#carte:golem-de-fer-iii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 13917');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-fer#carte:golem-de-fer-iii', 11, 'tactique', 'TACTIQUE COMBAT', 'Le torse de ce golem de fer ressemble à une grille dans lequel on peut y voir son noyau qui chauffe énormément, baignant d’une sorte d’énergie brûlante. Sa vulnérabilité au feu devient un absorption qui lui permet d’augmenter sa force et sa vitesse temporairement.', 'monstres', 'Bestiaire 2.0 › ligne 13935');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-i', 1, 'attributs', NULL, 'Santé : 180 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 14035');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-i', 2, 'degats', 'Dégâts', 'Pioche métallique – 4d10 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 14038');
@@ -3680,13 +2273,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-i', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Terre, Nécromancie, Pétrification, Poison', 'monstres', 'Bestiaire 2.0 › ligne 14054');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-i', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Eau, Vent', 'monstres', 'Bestiaire 2.0 › ligne 14058');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-i', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Foudre, Paralysie, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 14062');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-i', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Élément Foudre. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne paralysie 1”. L’arme peut taper dans l’élément associé.', 'monstres', 'Bestiaire 2.0 › ligne 14066');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-i', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 14066');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-i', 11, 'tactique', 'TACTIQUE COMBAT', 'Cette version évoluée du golem de mine est parfaitement adaptée pour le travail dans les mines dangeureuse mais il est tout à fait capable de se battre contre les nombreux dangers que compose les mines. Sa structure entièrement métallique lui donne de bonnes défenses mais également un lien avec la foudre, qui lui permet dans un premier temps de repérer les filons de minerais métallique mais également de frapper dans l’élément de la foudre.', 'monstres', 'Bestiaire 2.0 › ligne 14078');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-ii', 1, 'attributs', NULL, 'Santé : 360 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 14088');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-ii', 2, 'degats', 'Dégâts', 'Pioche métallique – 4d10 + 8 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 14091');
@@ -3697,17 +2284,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-ii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Terre, Nécromancie, Pétrification, Poison', 'monstres', 'Bestiaire 2.0 › ligne 14107');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-ii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Eau, Vent', 'monstres', 'Bestiaire 2.0 › ligne 14111');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-ii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Foudre, Paralysie, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 14115');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-ii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Élément Foudre. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne paralysie 1”. L’arme peut taper dans l’élément associé.
-
-Plaque miroir. Possède une plaque miroir qui peut absorber un sort niveau 3 maximum, cette plaque réapparaît tous les 3 tours.', 'monstres', 'Bestiaire 2.0 › ligne 14119');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-ii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 14119');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-ii', 11, 'tactique', 'TACTIQUE COMBAT', 'Son corps est si brillant qu’il est semblable à un miroir, ce même corps est capable d’absorber un sort d’une puissance 3 maximum est d’en annuler totalement les effets. Il faut malgré tout un temps de recharge pour qu’il revienne.
 Prenez toujours en considération la plaque miroir, elle pourrait vous mettre dans le pétrin.', 'monstres', 'Bestiaire 2.0 › ligne 14137');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-iii', 1, 'attributs', NULL, 'Santé : 720 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 14148');
@@ -3719,21 +2296,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-iii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Terre, Nécromancie, Pétrification, Poison', 'monstres', 'Bestiaire 2.0 › ligne 14167');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-iii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Eau, Vent', 'monstres', 'Bestiaire 2.0 › ligne 14171');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-iii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Foudre, Paralysie, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 14175');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-iii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Élément Foudre. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne paralysie 1”. L’arme peut taper dans l’élément associé.
-
-Plaque miroir. Possède une plaque miroir qui peut absorber un sort niveau 3 maximum, cette plaque réapparaît tous les 3 tours.
-
-Distributeur de foudre. Chaque attaque de l’élément foudre va se distribuer à la cible la plus proche de la première (maximum 3 PO) et infliger la moitié des dégâts et ainsi de suite …
-
-Anti Brumeux. Cette créature inflige un bonus de 10 dégâts contre les créature lié à la Brume Noir et peut protéger ses alliés à 4 cases de lui des effets négatifs de cette dernière.', 'monstres', 'Bestiaire 2.0 › ligne 14179');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-iii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 14179');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-foudre#carte:golem-de-foudre-iii', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce géant de 3m de haut, totalement fait de métal, est un golem rare fait pour le travail dans les mines qui sont considérer comme les plus dangeureuse, celle qui sont susceptible d’abriter la Brume Noir, très répéter dans Londolor Centre. Son corps semble être incapable d’être abimé par cette brume et il semble pouvoir lutter contre. En posséder un pour lutter contre la Brume Noir est plus que confortable vu que cette dernière est impitoyable avec les fous qui ose la braver.', 'monstres', 'Bestiaire 2.0 › ligne 14203');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-i', 1, 'attributs', NULL, 'Santé : 140 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 13506');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-i', 2, 'degats', 'Dégâts', 'Poing – 3d10 dégâts de frappe
@@ -3745,15 +2308,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-i', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Vent, Brûlure, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 13526');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-i', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Sang, Nécromancie', 'monstres', 'Bestiaire 2.0 › ligne 13530');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-i', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Glace, Gelé, Saignement, Poison', 'monstres', 'Bestiaire 2.0 › ligne 13533');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-i', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Élément glace. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “gelé 1”. L’arme peut taper dans l’élément associé.
-
-Météo favorable. Tant que cette créature est dans une météo qui avantage sa magie, il gagne 10 aux dégâts qu’il inflige.', 'monstres', 'Bestiaire 2.0 › ligne 13536');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-i', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 13536');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-i', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce golem est un art martial qui utilise son corps comme une arme en plus d’être très avantagé dans la neige.
 Il est très dur de le gérer sur le plan magique car il dispose d’une bonne défense magique qui lui permet de ne pas trop s’inquiéter des lanceurs de sorts malgré une défense physique inexistante.', 'monstres', 'Bestiaire 2.0 › ligne 13551');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-ii', 1, 'attributs', NULL, 'Santé : 280 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 13562');
@@ -3766,19 +2321,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-ii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Vent, Brûlure, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 13582');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-ii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Sang, Nécromancie', 'monstres', 'Bestiaire 2.0 › ligne 13586');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-ii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Glace, Gelé, Saignement, Poison', 'monstres', 'Bestiaire 2.0 › ligne 13589');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-ii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Élément glace. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “gelé 1”. L’arme peut taper dans l’élément associé.
-
-Météo favorable. Tant que cette créature est dans une météo qui avantage sa magie, il gagne 10 aux dégâts qu’il inflige.
-
-Neige permanente. Invoque la météo “neige” en entrant sur le terrain et fait perdurer tant que personne ne la change.', 'monstres', 'Bestiaire 2.0 › ligne 13592');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-ii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 13592');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-ii', 11, 'tactique', 'TACTIQUE COMBAT', 'En plus d’être plus fort sous la neige, cette créature est capable de l’invoquer dès le début du combat.', 'monstres', 'Bestiaire 2.0 › ligne 13613');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-iii', 1, 'attributs', NULL, 'Santé : 560 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 13623');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-iii', 2, 'degats', 'Dégâts', 'Poing de glace – 3d10 + 14 dégâts de frappe
@@ -3790,21 +2333,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-iii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Vent, Brûlure, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 13643');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-iii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Sang, Nécromancie', 'monstres', 'Bestiaire 2.0 › ligne 13647');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-iii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Glace, Gelé, Saignement, Poison', 'monstres', 'Bestiaire 2.0 › ligne 13650');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-iii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Élément glace. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “gelé 1”. L’arme peut taper dans l’élément associé.
-
-Météo favorable. Tant que cette créature est dans une météo qui avantage sa magie, il gagne 10 aux dégâts qu’il inflige.
-
-Neige permanente. Invoque la météo “neige” en entrant sur le terrain et fait perdurer tant que personne ne la change.
-
-Répression. La météo invoquée par cette créature ne peut être annulée ou remplacée.', 'monstres', 'Bestiaire 2.0 › ligne 13653');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-iii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 13653');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-glace#carte:golem-de-glace-iii', 11, 'tactique', 'TACTIQUE COMBAT', 'Pour une raison encore inconnue, ce golem à une énorme influence sur la météo et semble être capable d’imposer la neige et empêcher toute créature de la changer durant le combat.', 'monstres', 'Bestiaire 2.0 › ligne 13677');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-i', 1, 'attributs', NULL, 'Santé : 110 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 15343');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-i', 2, 'degats', 'Dégâts', 'Arc long - 3d8 + 6 dégâts d’estoc (portée 2 - 10)
@@ -3816,13 +2345,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-i', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Ombre, Peur', 'monstres', 'Bestiaire 2.0 › ligne 15363');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-i', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Lumière', 'monstres', 'Bestiaire 2.0 › ligne 15367');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-i', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 15370');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-i', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Élément Lumière. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “aveuglement 1”. L’arme peut taper dans l’élément associé.', 'monstres', 'Bestiaire 2.0 › ligne 15373');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-i', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 15373');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-i', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce golem plus petit et moins massif que les autres utilise un arc pour attaquer les intrus et ceux avec beaucoup de dextérité. Ses poings restent une menace pour ceux qui tenteraient de se rapprocher de lui. Ses armes peuvent naturellement aveugler et taper dans l’élément lumière.
 A sa mort, son arc devient une simple arme en fer.', 'monstres', 'Bestiaire 2.0 › ligne 15385');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-ii', 1, 'attributs', NULL, 'Santé : 220 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 15396');
@@ -3835,15 +2358,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-ii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Ombre, Peur', 'monstres', 'Bestiaire 2.0 › ligne 15416');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-ii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Lumière', 'monstres', 'Bestiaire 2.0 › ligne 15420');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-ii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 15423');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-ii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Élément Lumière. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “aveuglement 1”. L’arme peut taper dans l’élément associé.
-
-Lumière de force. Chaque début de tour, cette créature bénéficie d’un champ de force qui encaisse 5 dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 15426');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-ii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 15426');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-ii', 11, 'tactique', 'TACTIQUE COMBAT', 'Cette version plus raffinée en plus d’être plus forte, émet une lumière qui semble le protéger en partie des dégâts qu’elle peut recevoir.', 'monstres', 'Bestiaire 2.0 › ligne 15441');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-iii', 1, 'attributs', NULL, 'Santé : 440 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 15451');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-iii', 2, 'degats', 'Dégâts', 'Arc du rayon - 3d8 + 18 dégâts d’estoc (portée 2 - 12)
@@ -3855,19 +2370,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-iii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Ombre, Peur', 'monstres', 'Bestiaire 2.0 › ligne 15471');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-iii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Lumière', 'monstres', 'Bestiaire 2.0 › ligne 15475');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-iii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 15478');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-iii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Élément Lumière. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “aveuglement 1”. L’arme peut taper dans l’élément associé.
-
-Lumière de force. Chaque début de tour, cette créature bénéficie d’un champ de force qui encaisse 5 dégâts.
-
-Phare. Tous les 3 tours, la créature fait exploser une lumière qui inflige 10 dégâts fixe qui perce AP/AM et forcera le jet de vigueur aux ennemis sur le terrain pour ne pas qu’ils prennent “aveuglement 1”', 'monstres', 'Bestiaire 2.0 › ligne 15481');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-iii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 15481');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-lumiere#carte:golem-de-lumiere-iii', 11, 'tactique', 'TACTIQUE COMBAT', 'Telle un phare, ce golem est capable de briller si fort qu’il endommage la vue de ses adversaires. Il dispose d’une grande adresse avec son arc qui semble être fait de lumière pure, il n’est pas recommandé de le laisser prendre de la distance.', 'monstres', 'Bestiaire 2.0 › ligne 15502');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-i', 1, 'attributs', NULL, 'Santé : 140 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 14602');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-i', 2, 'degats', 'Dégâts', 'Poing – 3d10 dégâts de frappe
@@ -3879,17 +2382,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-i', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Vent, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 14622');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-i', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Terre, Glace', 'monstres', 'Bestiaire 2.0 › ligne 14626');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-i', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Brûlure, Pétrification, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 14629');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-i', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Élément Feu. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “brûlure 1”. L’arme peut taper dans l’élément associé.
-
-Bouclier de feu. Projette des flammes inesquivables qui infligent 2d6 en réponse à toutes agressions au corps à corps.', 'monstres', 'Bestiaire 2.0 › ligne 14632');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-i', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 14632');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-i', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce golem bouillant dispose d’une arme avec une portée tellement grande qu’il ne va pas se gêner de faire tomber une pluie de feu sur ses ennemis. Il est très dangereux à distance, il est donc recommandé de ne pas le laisser installer le terrain.', 'monstres', 'Bestiaire 2.0 › ligne 14650');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-ii', 1, 'attributs', NULL, 'Santé : 280 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 14660');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-ii', 2, 'degats', 'Dégâts', 'Poing – 3d10 + 7 dégâts de frappe
@@ -3901,19 +2394,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-ii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Vent, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 14680');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-ii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Terre, Glace', 'monstres', 'Bestiaire 2.0 › ligne 14684');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-ii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Brûlure, Pétrification, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 14687');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-ii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Élément Feu. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “brûlure 1”. L’arme peut taper dans l’élément associé.
-
-Bouclier de feu. Projette des flammes inesquivables qui infligent 2d6 en réponse à toutes agressions au corps à corps.
-
-Super explosion. Les projectiles de cette créature touche une zone de 3x3 au lieu de 2x2.', 'monstres', 'Bestiaire 2.0 › ligne 14690');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-ii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 14690');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-ii', 11, 'tactique', 'TACTIQUE COMBAT', 'Les projectiles de ce golem, en plus de faire plus de dégâts, ont une zone plus grande pour pouvoir toucher encore plus de monde.', 'monstres', 'Bestiaire 2.0 › ligne 14711');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-iii', 1, 'attributs', NULL, 'Santé : 560 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 14721');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-iii', 2, 'degats', 'Dégâts', 'Poing – 3d10 + 14 dégâts de frappe
@@ -3925,21 +2406,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-iii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Vent, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 14741');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-iii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Terre, Glace', 'monstres', 'Bestiaire 2.0 › ligne 14745');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-iii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Brûlure, Pétrification, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 14748');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-iii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Élément Feu. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “brûlure 1”. L’arme peut taper dans l’élément associé.
-
-Bouclier de feu. Projette des flammes inesquivables qui infligent 2d6 en réponse à toutes agressions au corps à corps.
-
-Super explosion. Les projectiles de cette créature touche une zone de 3x3 au lieu de 2x2.
-
-Moteur à vapeur. Quand il prend une attaque de l’élément Eau ou Vent, sa vitesse augmente de +2 pendant 2 tours. Si la météo est positive pour le Vent ou l’Eau, sa vitesse de base monte à 4 et il a +3 à l’initiative.', 'monstres', 'Bestiaire 2.0 › ligne 14751');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-iii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 14751');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-magma#carte:golem-de-magma-iii', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce golem en plus d’avoir les atouts des autres versions, il semble être capable de tirer un avantage quand on tente de jouer avec ses vulnérabilités magiques.', 'monstres', 'Bestiaire 2.0 › ligne 14775');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-i', 1, 'attributs', NULL, 'Santé : 240 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 14309');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-i', 2, 'degats', 'Dégâts', 'Poing – 4d10 dégâts de frappe
@@ -3950,21 +2417,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-i', 6, 'competences', 'Compétence(s) secondaire(s)', '+5% Arme lourde, +5% Parade, +5% Stabilité', 'monstres', 'Bestiaire 2.0 › ligne 14326');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-i', 7, 'resistance', 'Résistance(s) Dégâts ÷2', 'Eau, Vent, Terre', 'monstres', 'Bestiaire 2.0 › ligne 14329');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-i', 8, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Foudre, Temps/Espace, Vide', 'monstres', 'Bestiaire 2.0 › ligne 14333');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-i', 9, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-De marbre. Cette créature est totalement immunisée aux dégâts et effets négatifs des magies d’Espace/Temps et de Vide.
-
-Rempart fragile. L’AP et l’AM de cette créature sont très élevés mais elle possède un point faible qui ne dispose pas de cette défense (le point faible varie selon les créatures) (Point faible = Articulation [malus 25% pour toucher])
-
-Anti-chaos. Cette créature inflige +5 dégâts contre les créatures chaotiques.
-
-Anti-mal. Cette créature inflige +5 dégâts contre les créatures mauvaises.
-
-Lance foudre. A son tour, cette créature envoie une lance faite entièrement de foudre dans le ciel en cloche et va atterrir sur un ennemi aléatoire qui pourra tenter un jet de défense. C’est un IC.', 'monstres', 'Bestiaire 2.0 › ligne 14337');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-i', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 14337');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-i', 10, 'tactique', 'TACTIQUE COMBAT', 'Gardien des lieux de culte et reflet d’êtres bons, le golem de marbre est une créature dont le corps massif n’est pas à prendre à la légère, il possède une grande force qu’il n’hésite pas une seconde à exploiter pour détruire les intrus à son environnement. Il possède des défenses plus que remarquables, il ne possède aucunes faiblesses magiques, son point faible repose à son défaut de construction qui se trouve à ses articulation aux jambes et bras, ces points faibles sont petits et impose un gros malus pour les toucher. Prudence, il sera difficile à détruire.
 Il aura aussi tendance à se concentrer contre les adversaires du chaos et du mal, envers qui il voue une haine farouche.', 'monstres', 'Bestiaire 2.0 › ligne 14361');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-ii', 1, 'attributs', NULL, 'Santé : 480 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 14372');
@@ -3976,23 +2429,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-ii', 6, 'competences', 'Compétence(s) secondaire(s)', '+10% Arme lourde, +10% Parade, +10% Stabilité', 'monstres', 'Bestiaire 2.0 › ligne 14389');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-ii', 7, 'resistance', 'Résistance(s) Dégâts ÷2', 'Eau, Vent, Terre', 'monstres', 'Bestiaire 2.0 › ligne 14392');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-ii', 8, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Foudre, Temps/Espace, Vide', 'monstres', 'Bestiaire 2.0 › ligne 14396');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-ii', 9, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-De marbre. Cette créature est totalement immunisée aux dégâts et effets négatifs des magies d’Espace/Temps et de Vide.
-
-Rempart fragile. L’AP et l’AM de cette créature sont très élevés mais elle possède un point faible qui ne dispose pas de cette défense (le point faible varie selon les créatures) (Point faible = Articulation [malus 25% pour toucher])
-
-Anti-chaos. Cette créature inflige +5 dégâts contre les créatures chaotiques.
-
-Anti-mal. Cette créature inflige +5 dégâts contre les créatures mauvaises.
-
-Lance foudre. A son tour, cette créature envoie une lance faite entièrement de foudre dans le ciel en cloche et va atterrir sur un ennemi aléatoire qui pourra tenter un jet de défense. C’est un IC.
-
-Grisâtre. Cette créature peut annuler la météo (IC).', 'monstres', 'Bestiaire 2.0 › ligne 14400');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-ii', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 14400');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-ii', 10, 'tactique', 'TACTIQUE COMBAT', 'Cette forme plus puissante du golem de marbre possède la capacité d’influencer la météo, de faire en sorte qu’elle redevienne neutre.', 'monstres', 'Bestiaire 2.0 › ligne 14427');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-iii', 1, 'attributs', NULL, 'Santé : 960 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 14437');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-iii', 2, 'degats', 'Dégâts', 'Poing – 4d10 + 20 dégâts de frappe
@@ -4003,25 +2440,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-iii', 6, 'competences', 'Compétence(s) secondaire(s)', '+20% Arme lourde, +20% Parade, +20% Stabilité', 'monstres', 'Bestiaire 2.0 › ligne 14454');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-iii', 7, 'resistance', 'Résistance(s) Dégâts ÷2', 'Eau, Vent, Terre', 'monstres', 'Bestiaire 2.0 › ligne 14457');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-iii', 8, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Foudre, Temps/Espace, Vide', 'monstres', 'Bestiaire 2.0 › ligne 14461');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-iii', 9, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-De marbre. Cette créature est totalement immunisée aux dégâts et effets négatifs des magies d’Espace/Temps et de Vide.
-
-Rempart fragile. L’AP et l’AM de cette créature sont très élevés mais elle possède un point faible qui ne dispose pas de cette défense (le point faible varie selon les créatures) (Point faible = Articulation [malus 25% pour toucher])
-
-Anti-chaos. Cette créature inflige +5 dégâts contre les créatures chaotiques.
-
-Anti-mal. Cette créature inflige +5 dégâts contre les créatures mauvaises.
-
-Lance foudre. A son tour, cette créature envoie une lance faite entièrement de foudre dans le ciel en cloche et va atterrir sur un ennemi aléatoire qui pourra tenter un jet de défense. C’est un IC.
-
-Grisâtre. Cette créature peut annuler la météo (IC).
-
-Tambour. Peut frapper le sol pour créer une secousse (cercle de 7). Jet de stabilité/réflexe pour les cibles dans la zone, si le jet est raté, incapacité de se déplacer et malus de 10% sur tous les jets pour le prochain tour.', 'monstres', 'Bestiaire 2.0 › ligne 14465');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-iii', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 14465');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-marbre#carte:golem-de-marbre-iii', 10, 'tactique', 'TACTIQUE COMBAT', 'Cette forme parfaite du golem de marbre est si forte qu’il est capable de faire secouer le sol pour déstabiliser ses ennemis.', 'monstres', 'Bestiaire 2.0 › ligne 14495');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-maverium#carte:golem-de-maverium', 1, 'attributs', NULL, 'Santé : 1360 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 14884');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-maverium#carte:golem-de-maverium', 2, 'degats', 'Dégâts', 'Poing – 6d10 + 40 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 14887');
@@ -4030,21 +2449,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-maverium#carte:golem-de-maverium', 5, 'caracteristiques', 'Caractéristiques (F.P.V.S.I.A.)', 'F : 8 / P : 8 / V : 10 / S : 0 / I : 3 / A : 6', 'monstres', 'Bestiaire 2.0 › ligne 14897');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-maverium#carte:golem-de-maverium', 6, 'competences', 'Compétence(s) secondaire(s)', '+20% Arme lourde, +20% Stabilité, +20% Athlétisme, +20% Parade', 'monstres', 'Bestiaire 2.0 › ligne 14900');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-maverium#carte:golem-de-maverium', 7, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Magie', 'monstres', 'Bestiaire 2.0 › ligne 14903');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-maverium#carte:golem-de-maverium', 8, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Défense infranchissable. Les AP de cette créature ne peuvent pas être diminuées ou ignorées par des effets de sorts ou d’armes.
-
-Anti-magie. Cette créature est totalement immunisée à la magie.
-
-Anti-barrière. L’arme de cette créature possède la même propriété que le maverium, il casse la barrière au moindre dégâts infligés.
-
-Bond. Cette créature est capable de faire un bond équivalent à sa vitesse x2 en échange de 3IC.', 'monstres', 'Bestiaire 2.0 › ligne 14906');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-maverium#carte:golem-de-maverium', 8, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 14906');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-maverium#carte:golem-de-maverium', 9, 'tactique', 'TACTIQUE COMBAT', 'L’ultime golem qui existe dans ce monde, il est totalement imperméable aux chakra et il est capable de réduire les barrières en poussière d’une simple pichenette. C''est une véritable épreuve de force pure ou la magie n’a pas sa place.', 'monstres', 'Bestiaire 2.0 › ligne 14930');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-i', 1, 'attributs', NULL, 'Santé : 280 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 15031');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-i', 2, 'degats', 'Dégâts', 'Poing nuageux – 5d10 dégâts de frappe
@@ -4055,36 +2460,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-i', 6, 'competences', 'Compétence(s) secondaire(s)', '+10% Arme lourde, +10% Arbalète, +10% Esquive', 'monstres', 'Bestiaire 2.0 › ligne 15048');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-i', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Selon la forme', 'monstres', 'Bestiaire 2.0 › ligne 15051');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-i', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Selon la forme', 'monstres', 'Bestiaire 2.0 › ligne 15054');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-i', 9, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Forme météo. Cette créature possède une structure particulière qui fait qu’elle se modifier selon la météo :
-Neutre : +7 dégâts avec les armes
-Grand soleil : Élément Lumière
-Canicule : Élément Feu
-Pluie : Élément Eau
-Pluie diluvienne : Élément Eau
-Neige : Élément Glace
-Tempête de neige : Élément Glace
-Vent violent : Élément Vent
-Brouillard : Élément Nécromancie
-Purée de pois : Élément Nécromancie
-Brouillard obscur : Élément Ombre
-Orage : Élément Foudre et Espace/Temps
-Champ magnétique : Élément Foudre et Terre
-Tempête de sable : Élément Vent et Terre
-Lune de sang : Élément Sang
-Éclipse : Élément Lumière et Ombre
-Crachin blanc : Élément Arcane
-Pluie pétrole : Élément Corruption
-Saccage temporel : Élément Vide
-
-Caprice météorologique. La météo change tous les 3 tours.', 'monstres', 'Bestiaire 2.0 › ligne 15057');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-i', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 15057');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-i', 10, 'tactique', 'TACTIQUE COMBAT', 'Le golem de nuage est une créature qui change selon la météo, il est capable de la rendre instable. Selon la météo, il change son élément et donc par définition ses résistances et faiblesses magiques. Il est capable de taper dans l’élément de la météo mais peut aussi ne pas le faire.', 'monstres', 'Bestiaire 2.0 › ligne 15094');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-ii', 1, 'attributs', NULL, 'Santé : 560 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 15102');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-ii', 2, 'degats', 'Dégâts', 'Poing nuageux – 5d10 + 11 dégâts de frappe
@@ -4095,36 +2471,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-ii', 6, 'competences', 'Compétence(s) secondaire(s)', '+20% Arme lourde, +20% Arbalète, +20% Esquive', 'monstres', 'Bestiaire 2.0 › ligne 15119');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-ii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Selon la forme', 'monstres', 'Bestiaire 2.0 › ligne 15122');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-ii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Selon la forme', 'monstres', 'Bestiaire 2.0 › ligne 15125');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-ii', 9, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Forme météo+. Cette créature possède une structure particulière qui fait qu’elle se modifier selon la météo, elle possède également 10% de chance de forcer un jet de vigueur/fermeté à son adversaire pour ne pas qu’il encaisse l’altération d’état lié à son/ses élément(s) :
-Neutre : +10 dégâts avec les armes
-Grand soleil : Élément Lumière, les soins ennemis sont réduits au lieu d’être amplifiés.
-Canicule : Élément Feu, malus de 20% pour esquiver les brûlures.
-Pluie : Élément Eau, +20% de chance en plus d’infliger “confusion 1”.
-Pluie diluvienne : Élément Eau, la météo inflige 2d6 dégâts non élémentaire au début de chaque tour.
-Neige : Élément Glace, double l’AM.
-Tempête de neige : Élément Glace, triple l’AM.
-Vent violent : Élément Vent, +2 vitesse et INI.
-Brouillard : Élément Nécromancie, malus de 10% aux ennemis pour toucher la créature.
-Purée de pois : Élément Nécromancie, malus de 20% aux ennemis pour toucher la créature.
-Brouillard obscur : Élément Ombre, pose l’effet du sort “malédiction” pendant un tour sur la cible après une attaque réussi.
-Orage : Élément Foudre et Espace/Temps, +20% de chance en plus d’infliger “paralysie 1”.
-Champ magnétique : Élément Foudre et Terre, double l’AP.
-Tempête de sable : Élément Vent et Terre, double l’AP.
-Lune de sang : Élément Sang, la créature peut faire les sorts “Sang” en IC sans jet et sans coût (sauf le Sang perfection)
-Éclipse : Élément Lumière et Ombre, les magies désavantagées sont tout simplement désactivées.
-Crachin blanc : Élément Arcane, chaque attaque brûlera 2d6 chakra à la cible.
-Pluie pétrole : Élément Corruption, chaque attaque inflige 2d4 corruption.
-Saccage temporel : Élément Vide, au début de chaque tour - un ennemi aléatoire va voir sa magie désactivée.
-
-Caprice météorologique+. La météo change tous les 2 tours.', 'monstres', 'Bestiaire 2.0 › ligne 15128');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-ii', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 15128');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-ii', 10, 'tactique', 'TACTIQUE COMBAT', 'En plus d’avoir encore plus d’effets pour les différentes météos, il rend cette dernière encore plus instable.', 'monstres', 'Bestiaire 2.0 › ligne 15165');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-iii', 1, 'attributs', NULL, 'Santé : 1120 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 15177');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-iii', 2, 'degats', 'Dégâts', 'Poing nuageux – 5d10 + 22 dégâts de frappe
@@ -4135,36 +2482,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-iii', 6, 'competences', 'Compétence(s) secondaire(s)', '+20% Arme lourde, +20% Arbalète, +20% Esquive', 'monstres', 'Bestiaire 2.0 › ligne 15194');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-iii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Selon la forme', 'monstres', 'Bestiaire 2.0 › ligne 15197');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-iii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Selon la forme', 'monstres', 'Bestiaire 2.0 › ligne 15200');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-iii', 9, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Forme météo+. Cette créature possède une structure particulière qui fait qu’elle se modifier selon la météo, elle possède également 10% de chance de forcer un jet de vigueur/fermeté à son adversaire pour ne pas qu’il encaisse l’altération d’état lié à son/ses élément(s) :
-Neutre : +10 dégâts avec les armes
-Grand soleil : Élément Lumière, les soins ennemis sont réduits au lieu d’être amplifiés.
-Canicule : Élément Feu, malus de 20% pour esquiver les brûlures.
-Pluie : Élément Eau, +20% de chance en plus d’infliger “confusion 1”.
-Pluie diluvienne : Élément Eau, la météo inflige 2d6 dégâts non élémentaire au début de chaque tour.
-Neige : Élément Glace, double l’AM.
-Tempête de neige : Élément Glace, triple l’AM.
-Vent violent : Élément Vent, +2 vitesse et INI.
-Brouillard : Élément Nécromancie, malus de 10% aux ennemis pour toucher la créature.
-Purée de pois : Élément Nécromancie, malus de 20% aux ennemis pour toucher la créature.
-Brouillard obscur : Élément Ombre, pose l’effet du sort “malédiction” pendant un tour sur la cible après une attaque réussi.
-Orage : Élément Foudre et Espace/Temps, +20% de chance en plus d’infliger “paralysie 1”.
-Champ magnétique : Élément Foudre et Terre, double l’AP.
-Tempête de sable : Élément Vent et Terre, double l’AP.
-Lune de sang : Élément Sang, la créature peut faire les sorts “Sang” en IC sans jet et sans coût (sauf le Sang perfection)
-Éclipse : Élément Lumière et Ombre, les magies désavantagées sont tout simplement désactivées.
-Crachin blanc : Élément Arcane, chaque attaque brûlera 2d6 chakra à la cible.
-Pluie pétrole : Élément Corruption, chaque attaque inflige 2d4 corruption.
-Saccage temporel : Élément Vide, au début de chaque tour - un ennemi aléatoire va voir sa magie désactivée.
-
-Caprice météorologique++. La météo change tous les tours.', 'monstres', 'Bestiaire 2.0 › ligne 15203');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-iii', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 15203');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-nuage#carte:golem-de-nuage-iii', 10, 'tactique', 'TACTIQUE COMBAT', 'Sa présence assez terrifiante semble ébranler totalement la météo qui n’arrête de changer sur le terrain tous les débuts de tour, sa présence est souvent annonciateur de mauvais présage ou de catastrophe climatique.', 'monstres', 'Bestiaire 2.0 › ligne 15240');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-i', 1, 'attributs', NULL, 'Santé : 110 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 15870');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-i', 2, 'degats', 'Dégâts', 'Poing – 3d10 dégâts de frappe
@@ -4176,21 +2494,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-i', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Glace, Nécromancie, Confusion, Gelé, Poison', 'monstres', 'Bestiaire 2.0 › ligne 15890');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-i', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre, Feu, Lumière', 'monstres', 'Bestiaire 2.0 › ligne 15894');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-i', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Pétrification, Brûlure, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 15897');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-i', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Matière sèche. La peau de cette créature réagit à certaines météo :
-Pluie : AP ÷ 2
-Pluie diluvienne : AP à 0
-Grand soleil : AP x 2
-Canicule : AP x 4
-Neige : AM x 2
-Tempête de neige : AM x 4
-Vent violent : +1 Vitesse
-Tempête de sable/Champ magnétique : +10 dégâts', 'monstres', 'Bestiaire 2.0 › ligne 15900');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-i', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 15900');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-i', 11, 'tactique', 'TACTIQUE COMBAT', 'Comme pour la plupart des golems, il attaque les intrus à son environnement même si lui met du temps à attaquer, il n’attaquera que si du mal est fait à son environnement, ça reste possible d’éviter le conflit.
 Au combat, il possède une force brute qu’il utilise pour lancer d’énormes rochers qu’il arrache du sol pour attaquer ses ennemis à distance.', 'monstres', 'Bestiaire 2.0 › ligne 15920');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-ii', 1, 'attributs', NULL, 'Santé : 220 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 15931');
@@ -4203,25 +2507,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-ii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Glace, Nécromancie, Confusion, Gelé, Poison', 'monstres', 'Bestiaire 2.0 › ligne 15951');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-ii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre, Feu, Lumière', 'monstres', 'Bestiaire 2.0 › ligne 15955');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-ii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Pétrification, Brûlure, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 15958');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-ii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Matière sèche. La peau de cette créature réagit à certaines météo :
-Pluie : AP ÷ 2
-Pluie diluvienne : AP à 0
-Grand soleil : AP x 2
-Canicule : AP x 4
-Neige : AM x 2
-Tempête de neige : AM x 4
-Vent violent : +1 Vitesse
-Tempête de sable/Champ magnétique : +10 dégâts
-
-Régénération. Cette créature récupère 10 santé au début de chacun de ses tours.', 'monstres', 'Bestiaire 2.0 › ligne 15961');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-ii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 15961');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-ii', 11, 'tactique', 'TACTIQUE COMBAT', 'La deuxième version de ce golem est capable de se réparer avec le temps.', 'monstres', 'Bestiaire 2.0 › ligne 15991');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-iii', 1, 'attributs', NULL, 'Santé : 440 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 16001');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-iii', 2, 'degats', 'Dégâts', 'Poing de pain – 3d10 + 12 dégâts de frappe
@@ -4233,27 +2519,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-iii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Glace, Nécromancie, Confusion, Gelé, Poison', 'monstres', 'Bestiaire 2.0 › ligne 16021');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-iii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre, Feu, Lumière', 'monstres', 'Bestiaire 2.0 › ligne 16025');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-iii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Pétrification, Brûlure, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 16028');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-iii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Matière sèche. La peau de cette créature réagit à certaines météo :
-Pluie : AP ÷ 2
-Pluie diluvienne : AP à 0
-Grand soleil : AP x 2
-Canicule : AP x 4
-Neige : AM x 2
-Tempête de neige : AM x 4
-Vent violent : +1 Vitesse
-Tempête de sable/Champ magnétique : +10 dégâts
-
-Régénération. Cette créature récupère 10 santé au début de chacun de ses tours.
-
-Lanceur de poids. Cette créature peut ajouter son score de Force à sa portée maximale de son arme à distance.', 'monstres', 'Bestiaire 2.0 › ligne 16031');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-iii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 16031');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain#carte:golem-de-pain-iii', 11, 'tactique', 'TACTIQUE COMBAT', 'Cette version finale du golem de pain semble avoir des poings renforcés et possède une telle force qu’il peut lancer ses rochers encore plus loin. Même à distance, vous n’êtes pas à l’abri !', 'monstres', 'Bestiaire 2.0 › ligne 16060');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain-dor#carte:golem-de-pain-dor', 1, 'attributs', NULL, 'Santé : 720 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 16164');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain-dor#carte:golem-de-pain-dor', 2, 'degats', 'Dégâts', 'Poing de pain d’or – 4d10 + 16 dégâts de frappe
@@ -4264,241 +2530,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain-dor#carte:golem-de-pain-dor', 6, 'competences', 'Compétence(s) secondaire(s)', '+20% Arme lourde, +20% Parade, +20% Athlétisme, +20% Stabilité', 'monstres', 'Bestiaire 2.0 › ligne 16181');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain-dor#carte:golem-de-pain-dor', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Variable', 'monstres', 'Bestiaire 2.0 › ligne 16184');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain-dor#carte:golem-de-pain-dor', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Variable', 'monstres', 'Bestiaire 2.0 › ligne 16188');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain-dor#carte:golem-de-pain-dor', 9, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Régénération. Cette créature récupère 10 santé au début de chacun de ses tours.
-
-Lanceur de poids. Cette créature peut ajouter son score de Force à sa portée maximale de son arme à distance.
-
-Cuisson absolue. La peau de cette créature réagit aux éléments qu’on lui inflige, changeant sa peau et lui donne des propriétés. Cet état dure 3 tours tant qu’un autre élément n’est pas utilisé pour le remplacer, au bout de 3 tours, il redevient neutre. Utiliser un élément contraire à celui actif enclenche une “contre-cuisson”, l’effet de contre cuisson peut être esquiver ou parer s’il inflige des dégâts (sauf contre indication).
-Voir le tableau plus bas.
-
-Élément
-Effets/Description
-Résistance Vulnérabilité
-Sang
-Miche sacrificielle
-Élément Sang
-
-20% de chance de forcer un jet de vigueur aux ennemis pour ne pas prendre l’altération d’état de la magie stade 1
-
-Folle de guerre
-
-+12 dégâts mais perd 5% de sa santé max à chaque coup réussi ou raté.
-
-Si touché par faiblesse :
-Un nuage mauvais est invoqué, pendant 1 tour, les soins prodigués sont divisés par 2.
-Résistance : Sang
-
-Vulnérabilité : Nécromancie
-Arcane
-Pain blanc
-Élément Arcane
-
-20% de chance de forcer un jet de vigueur aux ennemis pour ne pas prendre l’altération d’état de la magie stade 1
-
-Renvoi à hauteur de 25% des effets du sort de l’adversaire (l’agresseur peut se défendre contre cette contre attaque si c’est possible)
-
-+2 AM
-
-Si touché par faiblesse :
-Une explosion se produit, force les ennemis un jet de fermeté, si ils ratent : Perd 3d10 chakra.
-Résistance : Arcane
-
-Vulnérabilité : Corruption
-Corruption
-Pain noir
-Élément Corruption
-
-20% de chance de forcer un jet de vigueur aux ennemis pour ne pas prendre l’altération d’état de la magie stade 1
-
-Possède une aura négative de 2 cases de rayon, les ennemis à l’intérieur ont un malus de 5% à tout leur jets.
-
-+2 AP
-
-Si touché par faiblesse :
-Une explosion noire se produit, inflige autant de corruption que le dernier sort subi à coûté en chakra.
-Résistance : Corruption
-
-Vulnérabilité : Arcane
-Espace/Temps
-Cuisson instable
-Élément Espace/Temps
-
-20% de chance de forcer un jet de vigueur aux ennemis pour ne pas prendre l’altération d’état de la magie stade 1.
-
-Possède une esquive/parade supplémentaire peu importe la posture
-
-+2 INI
-
-Si touché par faiblesse :
-Une implosion se produit, annule toutes amplifications positives et négatives sur tout le monde.
-Résistance : Espace/Temps
-
-Vulnérabilité :
-Vide
-Vide
-Cuisson creuse
-Élément Vide
-
-20% de chance de forcer un jet de vigueur aux ennemis pour ne pas prendre l’altération d’état de la magie stade 1
-
-Dégâts divisé par 2
-
-Ses armes ignorent les défenses ennemies.
-
-Si touché par faiblesse :
-Ses deux initiatives seront en premier et dernier quoi qu’il arrive pour le prochain tour.
-Résistance : Vide
-
-Vulnérabilité : Espace/Temps
-Nécromancie
-Miche moisie
-Élément Nécromancie
-
-20% de chance de forcer un jet de vigueur aux ennemis pour ne pas prendre l’altération d’état de la magie stade 1
-
-+5 AP
-
-Draine la santé de ses ennemis à hauteur de 10% des dégâts infligés.
-
--6 dégâts
-
-Si touché par faiblesse :
-Une onde choc retentit sur le terrain et inflige 10 dégâts de sang perce AM et force un jet de vigueur à ceux qui sont touchés, s''ils ratent : Malus de 20% au prochain test pour éviter une altération d’état.
-Résistance : Nécromancie
-
-Vulnérabilité : Sang
-Feu
-Caramélisation
-Élément Feu
-
-20% de chance de forcer un jet de vigueur aux ennemis pour ne pas prendre l’altération d’état de la magie stade 1
-
-+3 dégâts
-
-+2 AP
-
-Si touché par faiblesse :
-(Défense impossible) Invoque un nuage sur le terrain pendant 1 tour, inflige 10 dégâts de glace perce AM aux ennemis et impose un malus de 10% pour toucher une cible.
-Résistance : Feu
-
-Vulnérabilité : Glace
-Eau
-Croûte imbibé
-Élément Eau
-
-20% de chance de forcer un jet de vigueur aux ennemis pour ne pas prendre l’altération d’état de la magie stade 1
-
-La régénération lui donne 15 santé au lieu de 10.
-
-+5 AM
-
--3 Initiative
-
-Si touché par faiblesse :
-Provoque un violent arc électrique autour de lui, inflige 20 dégâts de foudre dans un rayon de 6 cases autour et force un jet de vigueur, si c’est raté : Bloque le sprint pour le prochain tour.
-Résistance : Eau
-
-Vulnérabilité : Foudre
-Glace
-Congélation
-Élément Glace
-
-40% de chance de forcer un jet de vigueur aux ennemis pour ne pas prendre l’altération d’état de la magie stade 1
-
-+10 AM
-
--1 vitesse
-
-Si touché par faiblesse :
-(Défense impossible)
-Produit une poussée autour du golem qui inflige 10 dégâts de feu perce AM et repousse de 4 cases les cibles à 1-2 cases de lui.
-Résistance : Glace
-
-Vulnérabilité : Feu
-Terre
-Levain rustique
-Élément Terre
-
-20% de chance de forcer un jet de vigueur aux ennemis pour ne pas prendre l’altération d’état de la magie stade 1
-
-+5 dégâts
-
-+10 AP
-
--1 Vitesse
-
-Si touché par faiblesse :
-Explosion de fragments de croûte de pain, inflige 20 dégâts de taille/vent à tous les ennemis dans un rayon de 6 cases.
-Résistance : Terre
-
-Vulnérabilité : Vent
-Vent
-Levain actif
-Élément Vent
-
-20% de chance de forcer un jet de vigueur aux ennemis pour ne pas prendre l’altération d’état de la magie stade 1
-
-+1 Vitesse
-
-Si touché par faiblesse :
-Provoque une onde de choc, inflige 10 dégâts de terre perce AM et force un jet de stabilité/réflexe pour ne pas tomber au sol.
-Résistance : Vent
-
-Vulnérabilité : Terre
-Foudre
-Croûte électrique
-Élément Foudre
-
-20% de chance de forcer un jet de vigueur aux ennemis pour ne pas prendre l’altération d’état de la magie stade 1
-
-+3 dégâts
-
-+10 Initiative
-
-Si touché par faiblesse :
-
-Résistance : Foudre
-
-Vulnérabilité : Eau
-Lumière
-Dorure sacré
-Élément Lumière
-
-20% de chance de forcer un jet de vigueur aux ennemis pour ne pas prendre l’altération d’état de la magie stade 1
-
-Annule 5 dégâts d’une attaque encaissée, cette réduction se recharge après chaque attaque et elle n’est pas affectée par les attaques qui ignorent les défenses.
-
-Si touché par faiblesse :
-Toute la lumière se libère d’un coup, forçant un jet de vigueur aux ennemis qui le voit, ceux qui rate encaissent aveuglement 2 pendant 2 tours.
-Résistance : Lumière
-
-Vulnérabilité : Ombre
-Ombre
-Dorure maudite
-Élément Ombre
-
-20% de chance de forcer un jet de vigueur aux ennemis pour ne pas prendre l’altération d’état de la magie stade 1
-
-L’attaque de cette créature possède l’effet du sort “Malédiction” de la magie de l’ombre et l’impose pour 1 tour à la victime.
-
-Si touché par faiblesse :
-L’ombre de la créature se manifeste le temps d’une attaque et va frapper l’ennemi le plus proche avec les mêmes dégâts que le golem.
-Résistance : Ombre
-
-Vulnérabilité : Lumière
-Neutre
-(c’est de le cas où il n’a pas subi de dégâts magique encore)
-
-Aucune propriété
-Résistant à tous les dégâts physiques', 'monstres', 'Bestiaire 2.0 › ligne 16191');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain-dor#carte:golem-de-pain-dor', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 16191');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-pain-dor#carte:golem-de-pain-dor', 10, 'tactique', 'TACTIQUE COMBAT', 'Il y a peu de chose à dire au-delà de ce qui a été expliqué plus haut, c’est un ennemi versatile qui force l’utilisation de la magie contre lui à cause de sa carapace solide aux attaques physiques. Soyez prêt à tout.', 'monstres', 'Bestiaire 2.0 › ligne 16511');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-petrole#carte:golem-de-petrole-i', 1, 'attributs', NULL, 'Santé : 210 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 16532');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-petrole#carte:golem-de-petrole-i', 2, 'degats', 'Dégâts', 'Crachat – 4d10 dégâts de frappe (portée 1 - 8)', 'monstres', 'Bestiaire 2.0 › ligne 16535');
@@ -4514,26 +2546,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 Enflammé : Frappe, Terre, Arcane, Pétrification, Surcharge magique', 'monstres', 'Bestiaire 2.0 › ligne 16561');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-petrole#carte:golem-de-petrole-i', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Non enflammé : Corruption
 Enflammé : Corruption, Feu, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 16565');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-petrole#carte:golem-de-petrole-i', 11, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Pétronage. La vitesse de nage dans le pétrole ou les marais est doublée, la vitesse augmente de +2 sous la météo “Pluie pétrole”. Peut nager dans de l’eau non magique.
-
-Poison noir. Chaque attaque de cette créature infligent de la corruption à hauteur de 10% des dégâts infligés (minimum 1 corruption infligé)
-
-[Non enflammé] Pollution. Chaque attaque qui touche oblige un jet de vigueur qui donne ces effets pendant 2 tours :
-Si réussite : Diminue aléatoirement une résistance
-Si échec : Aggrave une vulnérabilité aléatoirement
-(L’arcane, corruption et PI ne sont pas affectés par cette effet).
-
-[Enflammé] Élément Feu. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “brûlure 1”. L’arme peut taper dans l’élément associé.
-
-[Enflammé] Bouclier de feu. Projette des flammes inesquivables qui infligent 2d6 en réponse à toutes agressions au corps à corps.', 'monstres', 'Bestiaire 2.0 › ligne 16569');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-petrole#carte:golem-de-petrole-i', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 16569');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-petrole#carte:golem-de-petrole-i', 12, 'tactique', 'TACTIQUE COMBAT', 'Ce golem poisseu est vu comme le monstre des marais, avec un corps qui encaisse parfaitement certains types de dégâts physiques, la prudence est recommandée car quand il est soumis à une flamme ou une décharge électrique trop forte, son corps prend feu et se bat d’une autre façon, ses défenses sont égalements changer quand il est en feu.
 
 Sa forme enflammée est très vulnérable à l’eau mais cette forme cesse immédiatement si de l’eau magique ou non est appliquée sur lui.', 'monstres', 'Bestiaire 2.0 › ligne 16599');
@@ -4551,28 +2564,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 Enflammé : Frappe, Terre, Arcane, Pétrification, Surcharge magique', 'monstres', 'Bestiaire 2.0 › ligne 16641');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-petrole#carte:golem-de-petrole-ii', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Non enflammé : Corruption
 Enflammé : Corruption, Feu, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 16645');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-petrole#carte:golem-de-petrole-ii', 11, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Pétronage. La vitesse de nage dans le pétrole ou les marais est doublée, la vitesse augmente de +2 sous la météo “Pluie pétrole”. Peut nager dans de l’eau non magique.
-
-Poison noir. Chaque attaque de cette créature infligent de la corruption à hauteur de 10% des dégâts infligés (minimum 1 corruption infligé)
-
-[Non enflammé] Pollution. Chaque attaque qui touche oblige un jet de vigueur qui donne ces effets pendant 2 tours :
-Si réussite : Diminue aléatoirement une résistance
-Si échec : Aggrave une vulnérabilité aléatoirement
-(L’arcane, corruption et PI ne sont pas affectés par cette effet).
-
-[Enflammé] Élément Feu. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “brûlure 1”. L’arme peut taper dans l’élément associé.
-
-[Enflammé] Bouclier de feu. Projette des flammes inesquivables qui infligent 2d6 en réponse à toutes agressions au corps à corps.
-
-[Enflammé] Gros projectile. L’arme de cette créature touche sur une zone de 2x2 au lieu d''une seule case.', 'monstres', 'Bestiaire 2.0 › ligne 16649');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-petrole#carte:golem-de-petrole-ii', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 16649');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-petrole#carte:golem-de-petrole-ii', 12, 'tactique', 'TACTIQUE COMBAT', 'Cette version du golem de pétrole est capable d’envoyer des projectile plus gros quand il est enflammé, ainsi touchant plusieurs cibles.', 'monstres', 'Bestiaire 2.0 › ligne 16682');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-petrole#carte:golem-de-petrole-iii', 1, 'attributs', NULL, 'Santé : 840 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 16692');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-petrole#carte:golem-de-petrole-iii', 2, 'degats', 'Dégâts', 'Crachat – 4d10 + 16 dégâts de frappe (portée 1 - 8)', 'monstres', 'Bestiaire 2.0 › ligne 16695');
@@ -4588,32 +2580,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 Enflammé : Frappe, Terre, Arcane, Pétrification, Surcharge magique', 'monstres', 'Bestiaire 2.0 › ligne 16721');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-petrole#carte:golem-de-petrole-iii', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Non enflammé : Corruption
 Enflammé : Corruption, Feu, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 16725');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-petrole#carte:golem-de-petrole-iii', 11, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Gluant. Cette créature est faite dans une matière gélatineuse, ce qui lui permet d’être résistante face au dégâts de frappe. Sa structure lui inflige une faiblesse contre la paralysie.
-
-Pétronage. La vitesse de nage dans le pétrole ou les marais est doublée, la vitesse augmente de +2 sous la météo “Pluie pétrole”. Peut nager dans de l’eau non magique.
-
-Poison noir. Chaque attaque de cette créature infligent de la corruption à hauteur de 10% des dégâts infligés (minimum 1 corruption infligé)
-
-[Non enflammé] Pollution. Chaque attaque qui touche oblige un jet de vigueur qui donne ces effets pendant 2 tours :
-Si réussite : Diminue aléatoirement une résistance
-Si échec : Aggrave une vulnérabilité aléatoirement
-(L’arcane, corruption et PI ne sont pas affectés par cette effet).
-
-[Non enflammé] Explosion noire. Si cette créature perd 25% de sa santé max alors qu’il n’est pas enflammé, il libère de la matière partout autour de lui, obligeant un jet de parade/esquive avec un malus de 20% à tous ceux présent sur le terrain. Inflige 2d6 de corruption et 30 dégâts neutre (réduisible par l’AM).
-
-[Enflammé] Élément Feu. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “brûlure 1”. L’arme peut taper dans l’élément associé.
-
-[Enflammé] Bouclier de feu. Projette des flammes inesquivables qui infligent 2d6 en réponse à toutes agressions au corps à corps.
-
-[Enflammé] Gros projectile. L’arme de cette créature touche sur une zone de 2x2 au lieu d''une seule case.', 'monstres', 'Bestiaire 2.0 › ligne 16729');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-petrole#carte:golem-de-petrole-iii', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 16729');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-petrole#carte:golem-de-petrole-iii', 12, 'tactique', 'TACTIQUE COMBAT', 'Cette version géante du monstre des marais a engendré tellement de matière qu’il est capable en cas de danger d’en libérer une partie pour polluer l’environnement autour de lui ainsi que ses ennemis.', 'monstres', 'Bestiaire 2.0 › ligne 16768');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-i', 1, 'attributs', NULL, 'Santé : 310 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 16872');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-i', 2, 'degats', 'Dégâts', 'Arbalécho de rouage – (1d6+4)x1d10 dégâts de frappe (portée 1 - 15)', 'monstres', 'Bestiaire 2.0 › ligne 16875');
@@ -4624,19 +2591,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-i', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Vide, Eau, Glace, Enragé, Confusion, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 16891');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-i', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vent, Feu, Foudre', 'monstres', 'Bestiaire 2.0 › ligne 16895');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-i', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Espace/Temps, Fatigue, Surdité, Brûlure, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 16898');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-i', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-25h. Cette créature est capable d’utiliser un sortilège de l’Espace/Temps qui est capable de placement, le sort ne fera rien d’autre que l’effet de placement. Cet IC peut se faire avant, après ou pendant le tour réel de la créature (1 fois par tour)
-
-Couple extrémité. Les tours impairs = Commence en premier le tour. Les tours pairs = Commence en dernier le tour
-
-Diagonale incohérente. Les diagonales comptent pour 1 case de déplacement au lieu de 2.
-
-Sulfateuse. Les arbalètes n’ont plus de recharge longue.', 'monstres', 'Bestiaire 2.0 › ligne 16901');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-i', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 16901');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-i', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce golem particulier se bat avec une arbalète qui ressemble à une version primitive de l’arme du Temple de l’Espace/Temps, encastré dans son bras, il tire de rouage qui semble faire des dégâts très aléatoires. Il se concentrera contre ceux qui peuvent le menacer par leur magie.
 PS : Sa posture offensive met à fond le deuxième dé de son arme, pas le premier.', 'monstres', 'Bestiaire 2.0 › ligne 16922');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-ii', 1, 'attributs', NULL, 'Santé : 620 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 16933');
@@ -4648,21 +2603,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-ii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Vide, Eau, Glace, Enragé, Confusion, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 16952');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-ii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vent, Feu, Foudre', 'monstres', 'Bestiaire 2.0 › ligne 16956');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-ii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Espace/Temps, Fatigue, Surdité, Brûlure, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 16959');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-ii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-25h. Cette créature est capable d’utiliser un sortilège de l’Espace/Temps qui est capable de placement, le sort ne fera rien d’autre que l’effet de placement. Cet IC peut se faire avant, après ou pendant le tour réel de la créature (1 fois par tour)
-
-Couple extrémité. Les tours impairs = Commence en premier le tour. Les tours pairs = Commence en dernier le tour
-
-Diagonale incohérente. Les diagonales comptent pour 1 case de déplacement au lieu de 2.
-
-Sulfateuse. Les arbalètes n’ont plus de recharge longue.
-
-Super 12. Si cette créature fait un 12, c’est une réussite critique.', 'monstres', 'Bestiaire 2.0 › ligne 16962');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-ii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 16962');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-ii', 11, 'tactique', 'TACTIQUE COMBAT', 'Celui-ci contrairement à l’ennemi simple semble pouvoir plier certaines lois à son avantage.
 PS : Sa posture offensive met à fond le deuxième dé de son arme, pas le premier.', 'monstres', 'Bestiaire 2.0 › ligne 16986');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-iii', 1, 'attributs', NULL, 'Santé : 1240 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 16997');
@@ -4674,23 +2615,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-iii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Vide, Eau, Glace, Enragé, Confusion, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 17016');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-iii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vent, Feu, Foudre', 'monstres', 'Bestiaire 2.0 › ligne 17020');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-iii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Espace/Temps, Fatigue, Surdité, Brûlure, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 17023');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-iii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-25h. Cette créature est capable d’utiliser un sortilège de l’Espace/Temps qui est capable de placement, le sort ne fera rien d’autre que l’effet de placement. Cet IC peut se faire avant, après ou pendant le tour réel de la créature (1 fois par tour)
-
-Couple extrémité. Les tours impairs = Commence en premier le tour. Les tours pairs = Commence en dernier le tour
-
-Diagonale incohérente. Les diagonales comptent pour 1 case de déplacement au lieu de 2.
-
-Sulfateuse. Les arbalètes n’ont plus de recharge longue.
-
-Super 12. Si cette créature fait un 12, c’est une réussite critique.
-
-Annule 12. Si un adversaire fait un jet de dé et que le nombre 12 est présent dans le résultat, le dé est totalement annulé (que ce soit action ou dégâts). Si c''est l''initiative, elle tombe à 0.', 'monstres', 'Bestiaire 2.0 › ligne 17026');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-iii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 17026');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-rouage#carte:golem-de-rouage-iii', 11, 'tactique', 'TACTIQUE COMBAT', 'Cette forme parfaite du golem de rouage plie la réalité non seulement à son avantage mais surtout au détriment de ses adversaires qui se verront échouer là où ils devraient normalement réussir.
 PS : Sa posture offensive met à fond le deuxième dé de son arme, pas le premier.', 'monstres', 'Bestiaire 2.0 › ligne 17053');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-i', 1, 'attributs', NULL, 'Santé : 70 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 17158');
@@ -4702,15 +2627,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-i', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Eau, Sang, Brûlure, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 17177');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-i', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre, Vent', 'monstres', 'Bestiaire 2.0 › ligne 17181');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-i', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Pétrification, Surdité, Saignement, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 17184');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-i', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Squelettique. Rend cette créature immunisée aux attaques d’estoc.
-
-Régénaréno. Cette créature récupère 10 santé au début de son tour tant qu’elle est sur le terrain sable ou que la météo “tempête sable” est activée.', 'monstres', 'Bestiaire 2.0 › ligne 17187');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-i', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 17187');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-i', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce golem, fait quasiment entièrement de sable, ne craint aucunement les attaques d’estoc vu que sa nature squelettique fait qu’il en est totalement immunisé, il est assez sensible à la magie celà dit.', 'monstres', 'Bestiaire 2.0 › ligne 17202');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-ii', 1, 'attributs', NULL, 'Santé : 140 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 17212');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-ii', 2, 'degats', 'Dégâts', 'Griffe – 2d10 + 5 dégâts de taille/estoc', 'monstres', 'Bestiaire 2.0 › ligne 17215');
@@ -4721,19 +2638,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-ii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Eau, Sang, Brûlure, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 17231');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-ii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre, Vent', 'monstres', 'Bestiaire 2.0 › ligne 17235');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-ii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Pétrification, Surdité, Saignement, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 17238');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-ii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Squelettique. Rend cette créature immunisée aux attaques d’estoc.
-
-Régénaréno. Cette créature récupère 10 santé au début de son tour tant qu’elle est sur le terrain sable ou que la météo “tempête sable” est activée.
-
-Forcaréno. Cette créature a un bonus de +1 à la vitesse et +4 aux dégâts tant qu’elle est sur le terrain sable ou que la météo “tempête sable” est activée.', 'monstres', 'Bestiaire 2.0 › ligne 17241');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-ii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 17241');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-ii', 11, 'tactique', 'TACTIQUE COMBAT', 'En plus de bénéficier d’une bonne régénération sur le sable, ce dernier lui donne de la vitesse et de la puissance en plus. Il sera important de le faire sortir de son terrain.', 'monstres', 'Bestiaire 2.0 › ligne 17262');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-iii', 1, 'attributs', NULL, 'Santé : 280 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 17272');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-iii', 2, 'degats', 'Dégâts', 'Griffe – 2d10 + 10 dégâts de taille/estoc
@@ -4745,21 +2650,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-iii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Eau, Sang, Brûlure, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 17292');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-iii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre, Vent', 'monstres', 'Bestiaire 2.0 › ligne 17296');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-iii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Pétrification, Surdité, Saignement, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 17299');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-iii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Squelettique. Rend cette créature immunisée aux attaques d’estoc.
-
-Régénaréno. Cette créature récupère 10 santé au début de son tour tant qu’elle est sur le terrain sable ou que la météo “tempête sable” est activée.
-
-Forcaréno. Cette créature a un bonus de +1 à la vitesse et +4 aux dégâts tant qu’elle est sur le terrain sable ou que la météo “tempête sable” est activée.
-
-Appelaréno. Invoque automatiquement la tempête de sable dès que le combat commence.', 'monstres', 'Bestiaire 2.0 › ligne 17302');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-iii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 17302');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sable#carte:golem-de-sable-iii', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce golem de sable est très raffiné au niveau de sa forme et semble être capable de commander la tempête de sable pour ne faire plus qu’un avec ce dernier. Il possède une lance faite de sable rigide.', 'monstres', 'Bestiaire 2.0 › ligne 17326');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-i', 1, 'attributs', NULL, 'Santé : 110 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 17433');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-i', 2, 'degats', 'Dégâts', 'Poing – 3d10 dégâts de frappe
@@ -4772,15 +2663,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-i', 8, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Saignement', 'monstres', 'Bestiaire 2.0 › ligne 17457');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-i', 9, 'resistance', 'Résistance(s) Dégâts ÷2', 'Eau, Vent, Terre, Nécromancie', 'monstres', 'Bestiaire 2.0 › ligne 17461');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-i', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Confusion, Surdité, Pétrification, Poison', 'monstres', 'Bestiaire 2.0 › ligne 17464');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-i', 11, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Élément Terre. L’arme de cette créature possède 30% de chance d’obliger un jet de fermeté à l’adversaire pour ne pas qu’il prenne “pétrifié 1”. L’arme peut taper dans l’élément associé et ses sorts de terre infligent également un bonus de +3 aux dégâts.
-
-Élément Eau. L’arme de cette créature possède 30% de chance d’obliger un jet de fermeté à l’adversaire pour ne pas qu’il prenne “confusion 1”. L’arme peut taper dans l’élément associé et ses sorts d’eau infligent également un bonus de +3 aux dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 17467');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-i', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 17467');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-i', 12, 'tactique', 'TACTIQUE COMBAT', 'Ce golem fait entièrement de bloc de sel est une créature intimement liée à l’eau et la terre. Capable d’utiliser une sorte de souffle de sel pour toucher ses ennemis, il n’hésitera pas à détruire les intrus qui osent souiller le sel qu’il protège. Il est très vulnérable au sang et cherchera à tout prix de neutraliser ceux qui sont capables d’utiliser cette magie en utilisant toute leur puissance. Aussi étonnant que ça puisse paraître, ces golems sont capables de saigner une sorte de liquide opaque, ce qui les rend sensibles aux saignements.', 'monstres', 'Bestiaire 2.0 › ligne 17482');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-ii', 1, 'attributs', NULL, 'Santé : 220 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 17492');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-ii', 2, 'degats', 'Dégâts', 'Poing – 3d10 + 6 dégâts de frappe
@@ -4793,19 +2676,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-ii', 8, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Saignement', 'monstres', 'Bestiaire 2.0 › ligne 17516');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-ii', 9, 'resistance', 'Résistance(s) Dégâts ÷2', 'Eau, Vent, Terre, Nécromancie', 'monstres', 'Bestiaire 2.0 › ligne 17520');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-ii', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Confusion, Surdité, Pétrification, Poison', 'monstres', 'Bestiaire 2.0 › ligne 17523');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-ii', 11, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Élément Terre. L’arme de cette créature possède 30% de chance d’obliger un jet de fermeté à l’adversaire pour ne pas qu’il prenne “pétrifié 1”. L’arme peut taper dans l’élément associé et ses sorts de terre infligent également un bonus de +3 aux dégâts.
-
-Élément Eau. L’arme de cette créature possède 30% de chance d’obliger un jet de fermeté à l’adversaire pour ne pas qu’il prenne “confusion 1”. L’arme peut taper dans l’élément associé et ses sorts d’eau infligent également un bonus de +3 aux dégâts.
-
-Jet de sel. Cette créature lance du sel et diminue de 2 cran la résistance à l’eau de la cible. (IC - 1 fois/combat)', 'monstres', 'Bestiaire 2.0 › ligne 17526');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-ii', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 17526');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-ii', 12, 'tactique', 'TACTIQUE COMBAT', 'Cette deuxième version du golem, bien plus massif, est capable de lancer du sel sur ses ennemis pour diminuer drastiquement leur résistance à l’élément Eau.', 'monstres', 'Bestiaire 2.0 › ligne 17547');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-iii', 1, 'attributs', NULL, 'Santé : 440 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 17557');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-iii', 2, 'degats', 'Dégâts', 'Poing – 3d10 + 12 dégâts de frappe
@@ -4819,21 +2690,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-iii', 8, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Saignement', 'monstres', 'Bestiaire 2.0 › ligne 17582');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-iii', 9, 'resistance', 'Résistance(s) Dégâts ÷2', 'Eau, Vent, Terre, Nécromancie', 'monstres', 'Bestiaire 2.0 › ligne 17586');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-iii', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Confusion, Surdité, Pétrification, Poison', 'monstres', 'Bestiaire 2.0 › ligne 17589');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-iii', 11, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Élément Terre. L’arme de cette créature possède 30% de chance d’obliger un jet de fermeté à l’adversaire pour ne pas qu’il prenne “pétrifié 1”. L’arme peut taper dans l’élément associé et ses sorts de terre infligent également un bonus de +3 aux dégâts.
-
-Élément Eau. L’arme de cette créature possède 30% de chance d’obliger un jet de fermeté à l’adversaire pour ne pas qu’il prenne “confusion 1”. L’arme peut taper dans l’élément associé et ses sorts d’eau infligent également un bonus de +3 aux dégâts.
-
-Jet de sel. Cette créature lance du sel et diminue de 2 cran la résistance à l’eau de la cible. (IC - 1 fois/combat)
-
-Détachement. Cette créature est capable de retirer une partie de son corps pour l’utiliser comme une arme, elle perd 10% de sa santé en faisant ça.', 'monstres', 'Bestiaire 2.0 › ligne 17592');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-iii', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 17592');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-sel#carte:golem-de-sel-iii', 12, 'tactique', 'TACTIQUE COMBAT', 'Cette version géante du golem de sel est très puissante est capable de retirer une partie de sa matière pour la lancer sur ses ennemis.', 'monstres', 'Bestiaire 2.0 › ligne 17616');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-i', 1, 'attributs', NULL, 'Santé : 180 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 17716');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-i', 2, 'degats', 'Dégâts', 'Poing – 4d10 dégâts de frappe
@@ -4849,17 +2706,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-i', 8, 'grande_resistance', 'Grande(s) résistance(s) Dégâts ÷4', 'Eau, Vent, Sang, Ombre', 'monstres', 'Bestiaire 2.0 › ligne 17744');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-i', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Acide, Foudre', 'monstres', 'Bestiaire 2.0 › ligne 17747');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-i', 10, 'reflexion', 'Réflexion(s) Renvoi des dégâts/effets', 'Lumière', 'monstres', 'Bestiaire 2.0 › ligne 17751');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-i', 11, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Fait de verre. Cette créature possède énormément de résistances magiques mais possède une forte vulnérabilité contre les dégâts sonores.
-
-Verre pilé. A chaque coup physique encaissé, des éclats de verre sont envoyés à l’attaquant, infligeant 3d6 dégâts neutre.
-
-Réflexion du verre. Cette créature de renvoyer les dégâts/effets magiques ou physiques de l’élément lumière, en plus de ne prendre aucun dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 17754');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-i', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 17754');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-i', 12, 'tactique', 'TACTIQUE COMBAT', 'Ce golem particulier est un cauchemar pour ceux qui compte sur leur magie pour abattre leur ennemi, ses multiples résistances le rend très dur à gérer sur ce plan là mais toutes ces résistances ont le terrible coût de la sensibilité contre les dégâts sonore, un mage du vent ou de l’ombre sauront le faire tomber en poussière s''ils possèdent le bon sort.
 Il reste malgré tout assez sensible au dégâts physique à cause de son manque d’armure physique.', 'monstres', 'Bestiaire 2.0 › ligne 17772');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-ii', 1, 'attributs', NULL, 'Santé : 360 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 17783');
@@ -4876,21 +2723,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-ii', 8, 'grande_resistance', 'Grande(s) résistance(s) Dégâts ÷4', 'Eau, Vent, Sang, Ombre', 'monstres', 'Bestiaire 2.0 › ligne 17811');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-ii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Acide, Foudre', 'monstres', 'Bestiaire 2.0 › ligne 17814');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-ii', 10, 'reflexion', 'Réflexion(s) Renvoi des dégâts/effets', 'Lumière', 'monstres', 'Bestiaire 2.0 › ligne 17818');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-ii', 11, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Fait de verre. Cette créature possède énormément de résistances magiques mais possède une forte vulnérabilité contre les dégâts sonores.
-
-Verre pilé. A chaque coup physique encaissé, des éclats de verre sont envoyés à l’attaquant, infligeant 3d6 dégâts neutre.
-
-Réflexion du verre. Cette créature de renvoyer les dégâts/effets magiques ou physiques de l’élément lumière, en plus de ne prendre aucun dégâts.
-
-Réfraction du verre. Non content de renvoyer les sorts de lumière, cette créature peut renvoyer le sort dans la direction qu’il souhaite.', 'monstres', 'Bestiaire 2.0 › ligne 17821');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-ii', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 17821');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-ii', 12, 'tactique', 'TACTIQUE COMBAT', 'Cette version plus travaillée du golem de verre peut faire en sorte que son corps renvoie les sorts de lumière dans la direction qu’il entend comme la bonne.', 'monstres', 'Bestiaire 2.0 › ligne 17845');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-iii', 1, 'attributs', NULL, 'Santé : 720 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 17855');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-iii', 2, 'degats', 'Dégâts', 'Poing – 4d10 + 16 dégâts de frappe
@@ -4906,23 +2739,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-iii', 8, 'grande_resistance', 'Grande(s) résistance(s) Dégâts ÷4', 'Eau, Vent, Sang, Ombre', 'monstres', 'Bestiaire 2.0 › ligne 17883');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-iii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Acide, Foudre', 'monstres', 'Bestiaire 2.0 › ligne 17886');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-iii', 10, 'reflexion', 'Réflexion(s) Renvoi des dégâts/effets', 'Lumière', 'monstres', 'Bestiaire 2.0 › ligne 17890');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-iii', 11, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Fait de verre. Cette créature possède énormément de résistances magiques mais possède une forte vulnérabilité contre les dégâts sonores.
-
-Verre pilé. A chaque coup physique encaissé, des éclats de verre sont envoyés à l’attaquant, infligeant 3d6 dégâts neutre.
-
-Réflexion du verre. Cette créature de renvoyer les dégâts/effets magiques ou physiques de l’élément lumière, en plus de ne prendre aucun dégâts.
-
-Réfraction du verre. Non content de renvoyer les sorts de lumière, cette créature peut renvoyer le sort dans la direction qu’il souhaite.
-
-Défense prismatique. Quand un coup à été encaissé d’un certain élément, sa résistance à ce dernier augmente pendant 1 tour (cumulable).', 'monstres', 'Bestiaire 2.0 › ligne 17893');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-iii', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 17893');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-verre#carte:golem-de-verre-iii', 12, 'tactique', 'TACTIQUE COMBAT', 'Le verre particulier de ce golem réagit aux assauts de la magie et semble s''adapter temporairement.
 Tâchez de ne pas faire toujours la même chose contre lui.', 'monstres', 'Bestiaire 2.0 › ligne 17920');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-vitrail#carte:golem-de-vitrail-i', 1, 'attributs', NULL, 'Santé : 240 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 18029');
@@ -4936,25 +2753,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-vitrail#carte:golem-de-vitrail-i', 9, 'grande_resistance', 'Grande(s) résistance(s) Dégâts ÷4', 'Eau, Vent, Sang', 'monstres', 'Bestiaire 2.0 › ligne 18056');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-vitrail#carte:golem-de-vitrail-i', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Acide, Foudre', 'monstres', 'Bestiaire 2.0 › ligne 18059');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-vitrail#carte:golem-de-vitrail-i', 11, 'reflexion', 'Réflexion(s) Renvoi des dégâts/effets', 'Lumière, Ombre', 'monstres', 'Bestiaire 2.0 › ligne 18063');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-vitrail#carte:golem-de-vitrail-i', 12, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Fait de verre. Cette créature possède énormément de résistances magiques mais possède une forte vulnérabilité contre les dégâts sonores.
-
-Attaque sanglante. Les armes naturelles de cette créature obligent le jet de vigueur pour ne pas prendre “Saignement 1”.
-
-Rempart fragile. L’AP et l’AM de cette créature sont très élevés mais elle possède un point faible qui ne dispose pas de cette défense (le point faible varie selon les créatures) (Point faible = Coeur)
-
-Anti-loi. Cette créature inflige +5 dégâts contre les créatures loyales.
-
-Anti-bien. Cette créature inflige +5 dégâts contre les créatures bonnes.
-
-Verre pilé. A chaque coup physique encaissé, des éclats de verre sont envoyés à l’attaquant, infligeant 3d6 dégâts neutre.
-
-Réflexion du vitrail. Cette créature de renvoyer les dégâts/effets magiques ou physiques de l’élément lumière et ombre, en plus de ne prendre aucun dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 18066');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-vitrail#carte:golem-de-vitrail-i', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 18066');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-vitrail#carte:golem-de-vitrail-i', 13, 'tactique', 'TACTIQUE COMBAT', 'Gardien des lieux de culte et reflet d’êtres mauvais, le golem de vitrail est une créature dont le corps élancé et parfaitement adapté pour l’agilité, ses armes tranchantes et pointus sont capables de percer la plus solide des peaux. Il possède un cœur qui a l’air de représenter son noyau énergétique, il bat en permanence et semble être son seul et unique point faible, il est obligé d’ouvrir son torse (1 tour sur 2, un tour complet où le coeur est exposé) pour laisser échapper la chaleur, exposant la seule partie de son corps qui ne possède pas ses énormes défenses.
 Tout comme le golem de verre, il est vulnérable au son mais moins que ce dernier.
 Il aura aussi tendance à se concentrer contre les adversaires de la loi et du bien, envers qui il voue une haine farouche.', 'monstres', 'Bestiaire 2.0 › ligne 18096');
@@ -4969,29 +2768,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-vitrail#carte:golem-de-vitrail-ii', 9, 'grande_resistance', 'Grande(s) résistance(s) Dégâts ÷4', 'Eau, Vent, Sang', 'monstres', 'Bestiaire 2.0 › ligne 18135');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-vitrail#carte:golem-de-vitrail-ii', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Acide, Foudre', 'monstres', 'Bestiaire 2.0 › ligne 18138');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-vitrail#carte:golem-de-vitrail-ii', 11, 'reflexion', 'Réflexion(s) Renvoi des dégâts/effets', 'Lumière, Ombre', 'monstres', 'Bestiaire 2.0 › ligne 18142');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-vitrail#carte:golem-de-vitrail-ii', 12, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Fait de verre. Cette créature possède énormément de résistances magiques mais possède une forte vulnérabilité contre les dégâts sonores.
-
-Attaque sanglante. Les armes naturelles de cette créature obligent le jet de vigueur pour ne pas prendre “Saignement 1”.
-
-Rempart fragile. L’AP et l’AM de cette créature sont très élevés mais elle possède un point faible qui ne dispose pas de cette défense (le point faible varie selon les créatures) (Point faible = Coeur)
-
-Anti-loi. Cette créature inflige +5 dégâts contre les créatures loyales.
-
-Anti-bien. Cette créature inflige +5 dégâts contre les créatures bonnes.
-
-Verre pilé. A chaque coup physique encaissé, des éclats de verre sont envoyés à l’attaquant, infligeant 3d10 dégâts neutre.
-
-Réflexion du vitrail. Cette créature de renvoyer les dégâts/effets magiques ou physiques de l’élément lumière et ombre, en plus de ne prendre aucun dégâts.
-
-Réfraction du vitrail. Non content de renvoyer les sorts de lumière et d’ombre, cette créature peut renvoyer le sort dans la direction qu’il souhaite.', 'monstres', 'Bestiaire 2.0 › ligne 18145');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-vitrail#carte:golem-de-vitrail-ii', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 18145');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-vitrail#carte:golem-de-vitrail-ii', 13, 'tactique', 'TACTIQUE COMBAT', 'Même chose que pour la version concernant son cœur qui s’expose tous les deux tours. Comme pour le golem de verre II, cette deuxième version est capable de rediriger les attaques de lumière et d’ombre sur la cible qu’ils veulent.', 'monstres', 'Bestiaire 2.0 › ligne 18181');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-vitrail#carte:golem-de-vitrail-iii', 1, 'attributs', NULL, 'Santé : 960 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 18191');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-vitrail#carte:golem-de-vitrail-iii', 2, 'degats', 'Dégâts', 'Aiguille de Vitrail – 4d10 + 20 dégâts de taille/estoc', 'monstres', 'Bestiaire 2.0 › ligne 18194');
@@ -5004,31 +2781,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-vitrail#carte:golem-de-vitrail-iii', 9, 'grande_resistance', 'Grande(s) résistance(s) Dégâts ÷4', 'Eau, Vent, Sang', 'monstres', 'Bestiaire 2.0 › ligne 18218');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-vitrail#carte:golem-de-vitrail-iii', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Acide, Foudre', 'monstres', 'Bestiaire 2.0 › ligne 18221');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-vitrail#carte:golem-de-vitrail-iii', 11, 'reflexion', 'Réflexion(s) Renvoi des dégâts/effets', 'Lumière, Ombre', 'monstres', 'Bestiaire 2.0 › ligne 18225');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-vitrail#carte:golem-de-vitrail-iii', 12, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Fait de verre. Cette créature possède énormément de résistances magiques mais possède une forte vulnérabilité contre les dégâts sonores.
-
-Attaque sanglante. Les armes naturelles de cette créature obligent le jet de vigueur pour ne pas prendre “Saignement 1”.
-
-Rempart fragile. L’AP et l’AM de cette créature sont très élevés mais elle possède un point faible qui ne dispose pas de cette défense (le point faible varie selon les créatures) (Point faible = Coeur)
-
-Anti-loi. Cette créature inflige +5 dégâts contre les créatures loyales.
-
-Anti-bien. Cette créature inflige +5 dégâts contre les créatures bonnes.
-
-Verre pilé. A chaque coup physique encaissé, des éclats de verre sont envoyés à l’attaquant, infligeant 3d10 dégâts neutre.
-
-Réflexion du vitrail. Cette créature de renvoyer les dégâts/effets magiques ou physiques de l’élément lumière et ombre, en plus de ne prendre aucun dégâts.
-
-Réfraction du vitrail. Non content de renvoyer les sorts de lumière et d’ombre, cette créature peut renvoyer le sort dans la direction qu’il souhaite.
-
-Coeur prismatique. Cumule les dégâts encaissés pendant le tour où le cœur est exposé, inflige un coup qui touchera tout le monde sur le terrain avec un malus de 30% pour le jet de défense (dégâts du coup = dégâts cumulés ÷ 10). Ce coup ignore 50% des AP et AM.', 'monstres', 'Bestiaire 2.0 › ligne 18228');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-vitrail#carte:golem-de-vitrail-iii', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 18228');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-de-vitrail#carte:golem-de-vitrail-iii', 13, 'tactique', 'TACTIQUE COMBAT', 'Le cœur de ce golem de vitrail réagit aux coups qu’on lui porte et semble cumuler l’énergie des attaques pour concentrer le tout en une grosse onde qui va toucher tout le monde sur le terrain. Prudence, ne soyez pas tenté de lui faire trop de dégâts d’un coup, il pourrait vous le rendre.', 'monstres', 'Bestiaire 2.0 › ligne 18267');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-i', 1, 'attributs', NULL, 'Santé : 110 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 15607');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-i', 2, 'degats', 'Dégâts', 'Dague - 3d6 + 8 dégâts d’estoc/taille (portée 1 - 7)
@@ -5040,13 +2793,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-i', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 15627');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-i', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre', 'monstres', 'Bestiaire 2.0 › ligne 15631');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-i', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Peur', 'monstres', 'Bestiaire 2.0 › ligne 15634');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-i', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Doublette parfaite. Les malus pour toucher avec deux armes descend respectivement à 10% pour la première arme et 20% pour la seconde arme.', 'monstres', 'Bestiaire 2.0 › ligne 15637');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-i', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 15637');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-i', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce golem très vicieux tape avec ses deux armes sur ses cibles que ce soit au corps à corps ou à distance, si il perd ses dagues, elles vont se reformer. Son manque de défense le rend assez facile à détruire.', 'monstres', 'Bestiaire 2.0 › ligne 15649');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-ii', 1, 'attributs', NULL, 'Santé : 220 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 15659');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-ii', 2, 'degats', 'Dégâts', 'Dague - 3d6 + 10 dégâts d’estoc/taille (portée 1 - 7)
@@ -5058,15 +2805,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-ii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 15679');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-ii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre', 'monstres', 'Bestiaire 2.0 › ligne 15683');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-ii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Peur', 'monstres', 'Bestiaire 2.0 › ligne 15686');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-ii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Doublette parfaite. Les malus pour toucher avec deux armes descend respectivement à 10% pour la première arme et 20% pour la seconde arme.
-
-Attaque maudite. L''attaque de cette créature à l''effet du sort de l''ombre "malédiction" et l''applique automatiquement pendant 1 tour.', 'monstres', 'Bestiaire 2.0 › ligne 15689');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-ii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 15689');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-ii', 11, 'tactique', 'TACTIQUE COMBAT', 'Encore plus vicieux, il est capable de maudire ses victimes avec ses dagues.', 'monstres', 'Bestiaire 2.0 › ligne 15704');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-iii', 1, 'attributs', NULL, 'Santé : 440 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 15714');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-iii', 2, 'degats', 'Dégâts', 'Dague crépusculaire - 3d6 + 12 dégâts d’estoc/taille (portée 1 - 7)
@@ -5078,19 +2817,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-iii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 15734');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-iii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre', 'monstres', 'Bestiaire 2.0 › ligne 15738');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-iii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Peur', 'monstres', 'Bestiaire 2.0 › ligne 15741');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-iii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Doublette parfaite. Les malus pour toucher avec deux armes descend respectivement à 10% pour la première arme et 20% pour la seconde arme.
-
-Attaque maudite. L''attaque de cette créature à l''effet du sort de l''ombre "malédiction" et l''applique automatiquement pendant 1 tour.
-
-Mantelet des ténèbres. Impose un malus de 10% aux jets de parade/esquive aux ennemis à 3 cases ou moins.', 'monstres', 'Bestiaire 2.0 › ligne 15744');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-iii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 15744');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-dombre#carte:golem-dombre-iii', 11, 'tactique', 'TACTIQUE COMBAT', 'Cette forme du golem qui fait penser à une statue du Dieu de l’ombre en personne est capable d’imposer par sa présence réduisant les défenses de ses ennemis.', 'monstres', 'Bestiaire 2.0 › ligne 15765');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-i', 1, 'attributs', NULL, 'Santé : 210 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 18371');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-i', 2, 'degats', 'Dégâts', 'Fouet d’os – 4d10 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 18374');
@@ -5101,19 +2828,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-i', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Glace, Eau, Frappe, Gelé, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 18390');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-i', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Foudre, Sang', 'monstres', 'Bestiaire 2.0 › ligne 18394');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-i', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Paralysie, Saignement, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 18397');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-i', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Squelettique. Rend cette créature immunisée aux attaques d’estoc.
-
-Aura de frayeur. Sur un zone de 3 autour de lanceur, force le jet de fermeté aux adversaires pour ne pas prendre “peur 1”.
-
-Aura des brisés. Sur un zone de 3 autour de lanceur, impose un malus de 10% aux jets d’esquive/parade/psychologie des adversaires.
-
-Aura des affaiblis. Sur un zone de 3 autour de lanceur, impose un malus de 10% aux jets d’arme lourde/arme légère/arbalète/arc/magie/concentration des adversaires.', 'monstres', 'Bestiaire 2.0 › ligne 18400');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-i', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 18400');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-i', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce golem totalement fait d’os possède les mêmes particularités qu’un squelette classique : une immunité aux dégâts d’estoc mais une faiblesse aux dégâts de frappe. Ce qui le rend unique c’est son aura, sa présence qui est capable de mettre à genoux quiconque tente de l’approcher.', 'monstres', 'Bestiaire 2.0 › ligne 18421');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-ii', 1, 'attributs', NULL, 'Santé : 420 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 18431');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-ii', 2, 'degats', 'Dégâts', 'Fouet d’os – 4d10 + 8 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 18434');
@@ -5124,23 +2839,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-ii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Glace, Eau, Frappe, Gelé, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 18450');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-ii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Foudre, Sang', 'monstres', 'Bestiaire 2.0 › ligne 18454');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-ii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Paralysie, Saignement, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 18457');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-ii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Squelettique. Rend cette créature immunisée aux attaques d’estoc.
-
-Aura de frayeur. Sur un zone de 3 autour de lanceur, force le jet de fermeté aux adversaires pour ne pas prendre “peur 1”.
-
-Aura des brisés. Sur un zone de 3 autour de lanceur, impose un malus de 10% aux jets d’esquive/parade/psychologie des adversaires.
-
-Aura des affaiblis. Sur un zone de 3 autour de lanceur, impose un malus de 10% aux jets d’arme lourde/arme légère/arbalète/arc/magie/concentration des adversaires.
-
-Appels aux morts. Si cette créature tombe en dessous de 20% de santé, elle invoque automatiquement un squelette (cf. Squelette ennemi simple).', 'monstres', 'Bestiaire 2.0 › ligne 18460');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-ii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 18460');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-ii', 11, 'tactique', 'TACTIQUE COMBAT', 'Cette version plus évoluée est capable d''appeler un squelette en renfort en cas de danger.', 'monstres', 'Bestiaire 2.0 › ligne 18487');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-iii', 1, 'attributs', NULL, 'Santé : 840 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 18497');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-iii', 2, 'degats', 'Dégâts', 'Fouet d’os – 4d10 + 16 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 18500');
@@ -5151,27 +2850,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-iii', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Glace, Eau, Frappe, Gelé, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 18516');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-iii', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Foudre, Sang', 'monstres', 'Bestiaire 2.0 › ligne 18520');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-iii', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Paralysie, Saignement, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 18523');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-iii', 10, 'capacites', 'Capacité(s)', 'Golem. Cette créature ne peut récupérer de la santé que via des réparations ou des sorts adaptés.
-
-Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité/réflexe pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Squelettique. Rend cette créature immunisée aux attaques d’estoc.
-
-Aura de frayeur. Sur un zone de 3 autour de lanceur, force le jet de fermeté aux adversaires pour ne pas prendre “peur 1”.
-
-Aura des brisés. Sur un zone de 3 autour de lanceur, impose un malus de 10% aux jets d’esquive/parade/psychologie des adversaires.
-
-Aura des affaiblis. Sur un zone de 3 autour de lanceur, impose un malus de 10% aux jets d’arme lourde/arme légère/arbalète/arc/magie/concentration des adversaires.
-
-Appels aux morts. Si cette créature tombe en dessous de 20% de santé, elle invoque automatiquement deux squelettes (cf. Squelette ennemi simple).
-
-Aura de grand chef. Donne un bonus de +5 aux dégâts de ses alliés tant qu’il est encore debout.
-
-Super aura. Les passifs en zone ont une portée augmentée de 2.', 'monstres', 'Bestiaire 2.0 › ligne 18526');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-iii', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 18526');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/golem-osseux#carte:golem-osseux-iii', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce golem géant fait entièrement d’os possède un e aura bien plus imposante que les autres et est capable d’appeler plus de renfort en cas de coup dur, en plus de pouvoir amplifier leur efficacité au combat.', 'monstres', 'Bestiaire 2.0 › ligne 18559');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:grand-griffon', 1, 'attributs', NULL, 'Santé : 420 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 18721');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:grand-griffon', 2, 'degats', 'Dégâts', 'Griffes* – 3d10 + 8 dégâts de taille
@@ -5185,17 +2864,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:grand-griffon', 9, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Eau, Glace, Brûlure, Confusion, Gel', 'monstres', 'Bestiaire 2.0 › ligne 18749');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:grand-griffon', 10, 'grande_resistance', 'Grande(s) Résistance(s) Dégâts ÷4', 'Vent', 'monstres', 'Bestiaire 2.0 › ligne 18752');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:grand-griffon', 11, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Surdité, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 18755');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:grand-griffon', 12, 'capacites', 'Capacité(s)', 'Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Riposte systématique. Cette créature contre-attaque chaque assauts qui lui sont infligés dans la mesure du possible et même quand la créature intervient pour protéger un allié.
-
-Vue/Ouïe claire. Cette créature ne peut être rendue aveugle ou sourde.
-
-Riposte sûre. Cette créature à un bonus de 10% pour toucher sa cible quand elle contre-attaque.
-
-Arme foudroyante. L’une des armes* de cette créature est de l’élément foudre et est capable de taper dans cet élément ou non.
-
-Arme aérienne. L’une des armes** de cette créature est de l’élément vent et est capable de taper dans cet élément ou non.', 'monstres', 'Bestiaire 2.0 › ligne 18758');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:grand-griffon', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 18758');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:grand-griffon', 13, 'tactique', 'TACTIQUE COMBAT', 'Les grands griffons sont en symbiose avec les éléments de foudre et de vent. Leur bec est capable d’infliger des dégâts de vent pendant que leur terrible griffes émane une énergie de foudre.', 'monstres', 'Bestiaire 2.0 › ligne 18776');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:griffon-jeune', 1, 'attributs', NULL, 'Santé : 140 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 18665');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:griffon-jeune', 2, 'degats', 'Dégâts', 'Griffes – 3d10 + 3 dégâts de taille
@@ -5209,11 +2878,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:griffon-jeune', 9, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Eau, Glace, Brûlure, Confusion, Gel', 'monstres', 'Bestiaire 2.0 › ligne 18693');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:griffon-jeune', 10, 'grande_resistance', 'Grande(s) Résistance(s) Dégâts ÷4', 'Vent', 'monstres', 'Bestiaire 2.0 › ligne 18696');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:griffon-jeune', 11, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Surdité, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 18699');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:griffon-jeune', 12, 'capacites', 'Capacité(s)', 'Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Riposte systématique. Cette créature contre-attaque chaque assauts qui lui sont infligés dans la mesure du possible et même quand la créature intervient pour protéger un allié.
-
-Vue/Ouïe claire. Cette créature ne peut être rendue aveugle ou sourde.', 'monstres', 'Bestiaire 2.0 › ligne 18702');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:griffon-jeune', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 18702');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:griffon-jeune', 13, 'tactique', 'TACTIQUE COMBAT', 'Le griffon est une créature autant fascinante que dangereuse. Sa principale force repose sur sa capacité à répondre à chaque agression contre lui.', 'monstres', 'Bestiaire 2.0 › ligne 18711');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:griffon-royale', 1, 'attributs', NULL, 'Santé : 840 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 18786');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:griffon-royale', 2, 'degats', 'Dégâts', 'Griffes* – 3d10 + 14 dégâts de taille
@@ -5226,21 +2891,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:griffon-royale', 8, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Nécromancie, Poison', 'monstres', 'Bestiaire 2.0 › ligne 18810');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:griffon-royale', 9, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Eau, Glace, Brûlure, Confusion, Gel', 'monstres', 'Bestiaire 2.0 › ligne 18814');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:griffon-royale', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Foudre, Vent, Surdité, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 18817');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:griffon-royale', 11, 'capacites', 'Capacité(s)', 'Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Riposte systématique. Cette créature contre-attaque chaque assauts qui lui sont infligés dans la mesure du possible et même quand la créature intervient pour protéger un allié.
-
-Vue/Ouïe claire. Cette créature ne peut être rendue aveugle ou sourde.
-
-Riposte sûre. Cette créature à un bonus de 10% pour toucher sa cible quand elle contre-attaque.
-
-Arme foudroyante. L’une des armes* de cette créature est de l’élément foudre et est capable de taper dans cet élément ou non.
-
-Arme aérienne. L’une des armes** de cette créature est de l’élément vent et est capable de taper dans cet élément ou non.
-
-Riposte colérique. Chaque contre-attaque augmente ses dégâts de +2 pendant 1 tour (cumulable).
-
-Maître des cieux. Cette créature est totalement immunisée à la magie du Vent et de la Foudre.', 'monstres', 'Bestiaire 2.0 › ligne 18820');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:griffon-royale', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 18820');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/griffon#carte:griffon-royale', 12, 'tactique', 'TACTIQUE COMBAT', 'Rares et reconnaissable par leur plumage blanc, les griffons royaux sont les dirigeants de leur groupe. Totalement immunisé aux magies de foudre et de vent, ils attaquent avec une frénésie impressionnante et plus on l’attaque, plus il devient puissant.', 'monstres', 'Bestiaire 2.0 › ligne 18844');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/hallebarde-amochee#carte:cuirasse-abime', 1, 'attributs', NULL, 'Santé : 35 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 18861');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/hallebarde-amochee#carte:cuirasse-abime', 2, 'degats', 'Dégâts', 'Hallebarde ancienne – 2d10 + 6 dégâts de taille', 'monstres', 'Bestiaire 2.0 › ligne 18864');
@@ -5251,11 +2902,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/hallebarde-amochee#carte:cuirasse-abime', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', '', 'monstres', 'Bestiaire 2.0 › ligne 18883');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/hallebarde-amochee#carte:cuirasse-abime', 8, 'resistance', 'Résistance(s) Dégâts ÷2', '', 'monstres', 'Bestiaire 2.0 › ligne 18888');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/hallebarde-amochee#carte:cuirasse-abime', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Saignement, Peur, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 18893');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/hallebarde-amochee#carte:cuirasse-abime', 10, 'capacites', 'Capacité(s)', 'Mourir peut attendre. Cette créature n’a que la moitié de sa santé qu’elle est censée avoir. Quand elle tombe en dessous de 0 santé, elle sombre dans une mort temporaire qui ne dure qu’un tour, à la fin de ce dernier, elle revient avec toute sa santé et barrière. La deuxième mort est fatale par contre.
-
-Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Devoir de l''Arrière. Cette créature est ingénieuse, elle est capable de faire un balayage devant elle avec son arme en échange de 15% de réussite pour pouvoir toucher 3 cibles en 1 coup et de taper avec son arme qui dispose d’une portée de 1-3. Elle ne peut pas être désarmer.', 'monstres', 'Bestiaire 2.0 › ligne 18897');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/hallebarde-amochee#carte:cuirasse-abime', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 18897');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/hallebarde-amochee#carte:cuirasse-abime', 11, 'tactique', 'TACTIQUE COMBAT', 'Il est le second attaquant du Cortège, plus prudent que l’Épée Rouillée, il essayera toujours de profiter au maximum de la portée de son arme et d’affaiblir le maximum de cible, il aura tendance à soutenir offensivement les autres membres du Cortège. Son absence de résistance physique et magique font qu’il tombe aussi vite que son homologue de corps à corps.', 'monstres', 'Bestiaire 2.0 › ligne 18907');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-2-yeux', 1, 'attributs', NULL, 'Santé : 40 Chakra : 30 Barrière : 15', 'monstres', 'Bestiaire 2.0 › ligne 18935');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-2-yeux', 2, 'degats', 'Dégâts', 'Fouherbe – 2d10 + 3 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 18938');
@@ -5265,11 +2912,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-2-yeux', 6, 'competences', 'Compétence(s) secondaire(s)', '+5% Magie, +5% Arme légère', 'monstres', 'Bestiaire 2.0 › ligne 18953');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-2-yeux', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 18957');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-2-yeux', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 18961');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-2-yeux', 9, 'capacites', 'Capacité(s)', 'Rassemblement. Cette créature est capable de fusionner avec une autre de la même espèce pour devenir la version mini-boss (si c’était des ennemis simples) ou boss (si c’était des mini-boss)
-
-Broussaille. Cette créature perd un cran de résistance au Feu et à la Glace, n’aggrave pas les faiblesses.
-
-Magie aléatoire. Cette créature commence avec une magie aléatoire, le mj le détermine au dé (ou bien de lui-même). Elle peut lancer des sorts selon son niveau.', 'monstres', 'Bestiaire 2.0 › ligne 18965');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-2-yeux', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 18965');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-2-yeux', 10, 'tactique', 'TACTIQUE COMBAT', 'Les herbes folles sont plus maligne qu’on le penserai et elles sont capablent de stratégie quand l’adversaire en face semble costaud. Elles connaissent les bases de la magie et savent qu’elles ne doivent pas utiliser leur magie n’importe comment.', 'monstres', 'Bestiaire 2.0 › ligne 18975');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-3-yeux', 1, 'attributs', NULL, 'Santé : 80 Chakra : 60 Barrière : 30', 'monstres', 'Bestiaire 2.0 › ligne 18983');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-3-yeux', 2, 'degats', 'Dégâts', 'Fouherbe – 2d10 + 6 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 18986');
@@ -5279,13 +2922,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-3-yeux', 6, 'competences', 'Compétence(s) secondaire(s)', '+10% Magie, +10% Arme légère', 'monstres', 'Bestiaire 2.0 › ligne 19001');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-3-yeux', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 19005');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-3-yeux', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 19009');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-3-yeux', 9, 'capacites', 'Capacité(s)', 'Rassemblement. Cette créature est capable de fusionner avec une autre de la même espèce pour devenir la version mini-boss (si c’était des ennemis simples) ou boss (si c’était des mini-boss)
-
-Broussaille. Cette créature perd un cran de résistance au Feu et à la Glace, n’aggrave pas les faiblesses.
-
-Magie aléatoire. Cette créature commence avec une magie aléatoire, le mj le détermine au dé (ou bien de lui-même). Elle peut lancer des sorts selon son niveau.
-
-Pilonnage. Lorsqu’un sort frappe une cible de même magie, sa résistance s’affaiblit d’un cran juste pour l’attaque.', 'monstres', 'Bestiaire 2.0 › ligne 19013');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-3-yeux', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 19013');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-3-yeux', 10, 'tactique', 'TACTIQUE COMBAT', 'Cette version de la plante est deux fois plus grosse et possède ce qui semble être 3 yeux. En plus de pouvoir lancer des sorts à sa guise, elle semble ne pas être gênée pour attaquer ceux qui possèdent la même qu’elle, ses sorts semblent ignorer au moins en partie la résistance magique.', 'monstres', 'Bestiaire 2.0 › ligne 19026');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-4-yeux', 1, 'attributs', NULL, 'Santé : 160 Chakra : 120 Barrière : 60', 'monstres', 'Bestiaire 2.0 › ligne 19034');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-4-yeux', 2, 'degats', 'Dégâts', 'Fouherbe – 2d10 + 12 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 19037');
@@ -5295,15 +2932,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-4-yeux', 6, 'competences', 'Compétence(s) secondaire(s)', '+15% Magie, +15% Arme légère', 'monstres', 'Bestiaire 2.0 › ligne 19052');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-4-yeux', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 19056');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-4-yeux', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 19060');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-4-yeux', 9, 'capacites', 'Capacité(s)', 'Rassemblement. Cette créature est capable de fusionner avec une autre de la même espèce pour devenir la version mini-boss (si c’était des ennemis simples) ou boss (si c’était des mini-boss)
-
-Broussaille. Cette créature perd un cran de résistance au Feu et à la Glace, n’aggrave pas les faiblesses.
-
-Magie aléatoire. Cette créature commence avec une magie aléatoire, le mj le détermine au dé (ou bien de lui-même). Elle peut lancer des sorts selon son niveau.
-
-Pilonnage. Lorsqu’un sort frappe une cible de même magie, sa résistance s’affaiblit d’un cran.
-
-Acharnement. Lorsqu’un sort frappe une cible de magie vulnérable, sa faiblesse s’aggrave d’un cran juste pour l’attaque.', 'monstres', 'Bestiaire 2.0 › ligne 19064');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-4-yeux', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 19064');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/herbe-folle#carte:herbe-folle-4-yeux', 10, 'tactique', 'TACTIQUE COMBAT', 'La plus grosse version des herbes folles qui est mine de rien assez effranyante avec ses 4 yeux et sa bouche verticale. Sa magie est capable d’aggraver la vulnérabilité d’une cible si elle possède une magie qui est faible contre la sienne.', 'monstres', 'Bestiaire 2.0 › ligne 19080');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/irapullum#carte:irapullum', 1, 'attributs', NULL, 'Santé : 110 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 19095');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/irapullum#carte:irapullum', 2, 'degats', 'Dégâts', 'Bec - 3d10 de dégâts d’estoc.
@@ -5316,9 +2945,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/irapullum#carte:irapullum', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Nécromancie, Glace, Brûlure, Poison, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 19119');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/irapullum#carte:irapullum', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Foudre, Eau, Vent, Paralysie, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 19123');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/irapullum#carte:irapullum', 9, 'double_resistance', 'Double(s) Résistance(s) Dégâts ÷4', 'Terre, Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 19127');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/irapullum#carte:irapullum', 10, 'capacites', 'Capacité(s)', 'Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Attaque sanglante. Les armes naturelles de cette créature obligent le jet de vigueur pour ne pas prendre “Saignement 1”.', 'monstres', 'Bestiaire 2.0 › ligne 19131');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/irapullum#carte:irapullum', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 19131');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/irapullum#carte:irapullum', 11, 'tactique', 'TACTIQUE COMBAT', 'Contrairement à son cousin plus docile, l’Irapullum est un prédateur actif, animé par une faim constante. Il chasse tout ce qui bouge, surtout ses semblables, et se déplace avec une vitesse surprenante pour sa taille. S’il agit le plus souvent de manière instinctive, il démontre une forme d’intelligence en combat, exploitant le terrain ou les failles de ses proies.
 
 Sa principale faiblesse repose sur son manque d’armure magique et de réponses face aux attaques à distance.', 'monstres', 'Bestiaire 2.0 › ligne 19140');
@@ -5333,11 +2960,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/irapullum#carte:irapullum-sanglant', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Nécromancie, Glace, Brûlure, Poison, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 19175');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/irapullum#carte:irapullum-sanglant', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Foudre, Eau, Vent, Paralysie, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 19179');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/irapullum#carte:irapullum-sanglant', 9, 'double_resistance', 'Double(s) Résistance(s) Dégâts ÷4', 'Terre, Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 19183');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/irapullum#carte:irapullum-sanglant', 10, 'capacites', 'Capacité(s)', 'Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Attaque sanglante. Les armes naturelles de cette créature obligent le jet de vigueur pour ne pas prendre “Saignement 1”.
-
-Psychotique. Réussir à infliger saignement à sa cible provoque une frénésie qui permet d''attaquer une seconde fois (1 fois/2 tours).', 'monstres', 'Bestiaire 2.0 › ligne 19187');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/irapullum#carte:irapullum-sanglant', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 19187');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/irapullum#carte:irapullum-sanglant', 11, 'tactique', 'TACTIQUE COMBAT', 'Un Irapullum plus gros et plus fort, il est capable d’entrer dans une folie furieuse quand il réussit à faire saigner une cible, ce qui lui permet de taper une seconde fois.
 
 Il manque toujours de réponse contre les projectiles et les attaques magiques efficaces contre lui.', 'monstres', 'Bestiaire 2.0 › ligne 19197');
@@ -5352,13 +2975,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/irapullum#carte:irapullum-vorace', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Nécromancie, Glace, Brûlure, Poison, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 19232');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/irapullum#carte:irapullum-vorace', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Foudre, Eau, Vent, Paralysie, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 19236');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/irapullum#carte:irapullum-vorace', 9, 'double_resistance', 'Double(s) Résistance(s) Dégâts ÷4', 'Terre, Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 19240');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/irapullum#carte:irapullum-vorace', 10, 'capacites', 'Capacité(s)', 'Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Attaque sanglante. Les armes naturelles de cette créature obligent le jet de vigueur pour ne pas prendre “Saignement 1”.
-
-Psychotique. Réussir à infliger saignement à sa cible provoque une frénésie qui permet d''attaquer une seconde fois (1 fois/tour).
-
-Sang variable. Cette créature est capable d’utiliser tous les sorts “sang” de la magie du sang en plus de pouvoir les utiliser sans avoir de jet. (IC) (coût = 10 santé) (n’a pas accès au “Sang perfection”).', 'monstres', 'Bestiaire 2.0 › ligne 19244');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/irapullum#carte:irapullum-vorace', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 19244');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/irapullum#carte:irapullum-vorace', 11, 'tactique', 'TACTIQUE COMBAT', 'En plus de sa force brute, le Vorace est capable d’utiliser certains sorts de la magie du sang en échange de sa propre énergie vitale.
 
 Il manque toujours de réponse contre les projectiles et les attaques magiques efficaces contre lui.', 'monstres', 'Bestiaire 2.0 › ligne 19257');
@@ -5371,11 +2988,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/jambieres-moisies#carte:jambieres-moisies', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', '', 'monstres', 'Bestiaire 2.0 › ligne 19301');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/jambieres-moisies#carte:jambieres-moisies', 8, 'resistance', 'Résistance(s) Dégâts ÷2', '', 'monstres', 'Bestiaire 2.0 › ligne 19306');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/jambieres-moisies#carte:jambieres-moisies', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Saignement, Peur, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 19311');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/jambieres-moisies#carte:jambieres-moisies', 10, 'capacites', 'Capacité(s)', 'Mourir peut attendre. Cette créature n’a que la moitié de sa santé qu’elle est censée avoir. Quand elle tombe en dessous de 0 santé, elle sombre dans une mort temporaire qui ne dure qu’un tour, à la fin de ce dernier, elle revient avec toute sa santé et barrière. La deuxième mort est fatale par contre.
-
-Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Devoir de l’Exécuteur. Cette créature est vicieuse, elle dispose d’un bonus à la vitesse de +1, à l’Initiative de +4, elle est capable d’attaque sournoise qui lui donne un bonus de 1d8 dégâts en plus de son arme. Elle est également capable de passer dans les zones d’influences sans déclencher des attaques d’opportunités.', 'monstres', 'Bestiaire 2.0 › ligne 19315');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/jambieres-moisies#carte:jambieres-moisies', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 19315');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/jambieres-moisies#carte:jambieres-moisies', 11, 'tactique', 'TACTIQUE COMBAT', 'Le tueur du Cortèse, son objectif est d’affaiblir tout en étant discret ou alors achevé les adversaires les plus affaiblis. Il est attiré par une proie affaiblie et se permettra d’arrêter un duel si il sent qu’un autre adversaire est sur le point de tomber.', 'monstres', 'Bestiaire 2.0 › ligne 19325');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:chef-de-guerre-karn', 1, 'attributs', NULL, 'Santé : 280 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 19472');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:chef-de-guerre-karn', 2, 'degats', 'Dégâts', 'Corne* - 2d10 + 5 dégâts d’estoc
@@ -5387,29 +3000,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:chef-de-guerre-karn', 6, 'competences', 'Compétence(s) secondaire(s)', '+20% Arme lourde, +20% Parade, +20% Stabilité, +20% Esquive', 'monstres', 'Bestiaire 2.0 › ligne 19490');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:chef-de-guerre-karn', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Variable selon l’élément', 'monstres', 'Bestiaire 2.0 › ligne 19493');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:chef-de-guerre-karn', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Variable selon l’élément', 'monstres', 'Bestiaire 2.0 › ligne 19497');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:chef-de-guerre-karn', 9, 'capacites', 'Capacité(s)', 'Perce armure. L’attaque de cette créature perce 3 AP.
-
-Fermeté. Cette créature ne subit aucun dégâts de recul et inflige un bonus de +5 dégâts si elle fait une attaque suivie d’un déplacement qui a consommé toute sa vitesse.
-
-Destruction. Le coup critique de cette créature retire automatiquement un cran de solidité à l’arme ou morceau d’armure.
-
-Soif de combat. Quand cette créature tombe en dessous de 75% de santé, +3 aux dégâts. En dessous de 50%, +5 aux dégâts. En dessous de 25%, +7 aux dégâts.
-
-Élément aléatoire. Cette créature peut être de différentes formes et possède un bonus différent selon la magie auquel il est relié. Et avec tout ça, une de ses armes* naturelles est capable d''infliger l’élément relié.
-Sang = Force le jet de vigueur/fermeté à chaque attaque réussi pour empêcher le marquage
-Arcane = Retire 1d6 chakra à la cible
-Corruption = Inflige 4 corruption a chaque attaque réussi
-Espace/Temps = Retire 1 vitesse à la cible pour son prochain tour à chaque attaque réussi
-Vide = Force le jet de vigueur/fermeté à chaque attaque réussi pour empêcher le silence
-Nécromancie = Pose une charge de nécrose, au bout de 5 charges, la cible tombe dans le coma
-Feu = Bonus de +3 aux dégâts
-Eau = Soigne une altération d’état à chaque début de tour
-Glace = Double l’AM
-Terre = Double l’AP
-Vent = +1 Vitesse
-Foudre = +5 INI
-Lumière = Régénère 5 santé au début de chaque tour
-Ombre = Attaque sournoise', 'monstres', 'Bestiaire 2.0 › ligne 19500');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:chef-de-guerre-karn', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 19500');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:chef-de-guerre-karn', 10, 'tactique', 'TACTIQUE COMBAT', 'Voici celui qui dirige le harde et protège les siens d’une menace, contrairement aux autres qui sont farouches, lui n’a pas peur de ceux qui menacent le troupeau. En plus d’être puissant, il est capable de l’être encore plus si sa santé se dégrade.', 'monstres', 'Bestiaire 2.0 › ligne 19529');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:jeune-karn', 1, 'attributs', NULL, 'Santé : 70 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 19347');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:jeune-karn', 2, 'degats', 'Dégâts', 'Corne* - 2d10 + 2 dégâts d’estoc
@@ -5421,25 +3012,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:jeune-karn', 6, 'competences', 'Compétence(s) secondaire(s)', '+5% Arme lourde, +5% Parade, +5% Stabilité, +5% Esquive', 'monstres', 'Bestiaire 2.0 › ligne 19365');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:jeune-karn', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Variable selon l’élément', 'monstres', 'Bestiaire 2.0 › ligne 19368');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:jeune-karn', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Variable selon l’élément', 'monstres', 'Bestiaire 2.0 › ligne 19372');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:jeune-karn', 9, 'capacites', 'Capacité(s)', 'Perce armure. L’attaque de cette créature perce 3 AP.
-
-Fermeté. Cette créature ne subit aucun dégâts de recul et inflige un bonus de +5 dégâts si elle fait une attaque suivie d’un déplacement qui a consommé toute sa vitesse.
-
-Élément aléatoire. Cette créature peut être de différentes formes et possède un bonus différent selon la magie auquel il est relié. Et avec tout ça, une de ses armes* naturelles est capable d''infliger l’élément relié.
-Sang = Force le jet de vigueur/fermeté à chaque attaque réussi pour empêcher le marquage
-Arcane = Retire 1d6 chakra à la cible
-Corruption = Inflige 4 corruption a chaque attaque réussi
-Espace/Temps = Retire 1 vitesse à la cible pour son prochain tour à chaque attaque réussi
-Vide = Force le jet de vigueur/fermeté à chaque attaque réussi pour empêcher le silence
-Nécromancie = Pose une charge de nécrose, au bout de 5 charges, la cible tombe dans le coma
-Feu = Bonus de +3 aux dégâts
-Eau = Soigne une altération d’état à chaque début de tour
-Glace = Double l’AM
-Terre = Double l’AP
-Vent = +1 Vitesse
-Foudre = +5 INI
-Lumière = Régénère 5 santé au début de chaque tour
-Ombre = Attaque sournoise', 'monstres', 'Bestiaire 2.0 › ligne 19375');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:jeune-karn', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 19375');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:jeune-karn', 10, 'tactique', 'TACTIQUE COMBAT', 'Ces bêtes ont beau être craintives, elles possèdent quand même des outils pour se battre si elles n’ont pas le choix. Elles ne réfléchissent pas et attaquent les plus proches en restant loin de ceux qui possèdent des magies efficaces contre elles.', 'monstres', 'Bestiaire 2.0 › ligne 19398');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:karn-mature', 1, 'attributs', NULL, 'Santé : 140 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 19408');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:karn-mature', 2, 'degats', 'Dégâts', 'Corne* - 2d10 + 5 dégâts d’estoc
@@ -5451,27 +3024,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:karn-mature', 6, 'competences', 'Compétence(s) secondaire(s)', '+10% Arme lourde, +10% Parade, +10% Stabilité, +10% Esquive', 'monstres', 'Bestiaire 2.0 › ligne 19426');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:karn-mature', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Variable selon l’élément', 'monstres', 'Bestiaire 2.0 › ligne 19429');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:karn-mature', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Variable selon l’élément', 'monstres', 'Bestiaire 2.0 › ligne 19433');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:karn-mature', 9, 'capacites', 'Capacité(s)', 'Perce armure. L’attaque de cette créature perce 3 AP.
-
-Fermeté. Cette créature ne subit aucun dégâts de recul et inflige un bonus de +5 dégâts si elle fait une attaque suivie d’un déplacement qui a consommé toute sa vitesse.
-
-Destruction. Le coup critique de cette créature retire automatiquement un cran de solidité à l’arme ou morceau d’armure.
-
-Élément aléatoire. Cette créature peut être de différentes formes et possède un bonus différent selon la magie auquel il est relié. Et avec tout ça, une de ses armes* naturelles est capable d''infliger l’élément relié.
-Sang = Force le jet de vigueur/fermeté à chaque attaque réussi pour empêcher le marquage
-Arcane = Retire 1d6 chakra à la cible
-Corruption = Inflige 4 corruption a chaque attaque réussi
-Espace/Temps = Retire 1 vitesse à la cible pour son prochain tour à chaque attaque réussi
-Vide = Force le jet de vigueur/fermeté à chaque attaque réussi pour empêcher le silence
-Nécromancie = Pose une charge de nécrose, au bout de 5 charges, la cible tombe dans le coma
-Feu = Bonus de +3 aux dégâts
-Eau = Soigne une altération d’état à chaque début de tour
-Glace = Double l’AM
-Terre = Double l’AP
-Vent = +1 Vitesse
-Foudre = +5 INI
-Lumière = Régénère 5 santé au début de chaque tour
-Ombre = Attaque sournoise', 'monstres', 'Bestiaire 2.0 › ligne 19436');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:karn-mature', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 19436');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/karn#carte:karn-mature', 10, 'tactique', 'TACTIQUE COMBAT', 'Les armes naturelles de ce karn sont assez costauds pour détruire des équipements entiers.', 'monstres', 'Bestiaire 2.0 › ligne 19462');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/loup-garou#carte:loup-garou', 1, 'sante', 'Santé', 'EP 1 : 25 EP 6 : 150
 EP 2 : 50 EP 7 : 170
@@ -5514,27 +3067,7 @@ EP 8 - 10 : +10% Arme Légère, +10% Esquive, +10% Fermeté, +10% Magie, +10% R�
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/loup-garou#carte:loup-garou', 9, 'grande_vulnerabilite', 'Grande(s) Vulnérabilité(s) Dégâts x4', 'Pétrification, Brûlure, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 19677');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/loup-garou#carte:loup-garou', 10, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Terre, Feu, Lumière', 'monstres', 'Bestiaire 2.0 › ligne 19681');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/loup-garou#carte:loup-garou', 11, 'resistance', 'Résistance(s) Dégâts ÷2', 'Sang, Glace, Foudre, Eau, Ombre, Saignement, Gel, Paralysie, Confusion, Peur', 'monstres', 'Bestiaire 2.0 › ligne 19685');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/loup-garou#carte:loup-garou', 12, 'capacites', 'Capacité(s)', 'Haine mutuelle. Cette créature inflige un bonus +10 dégâts contre les Fenrirs mais ces derniers ont également le même bonus sur cette première.
-
-Triumvirat instable fenrir. Cette créature est liée aux magies de la Foudre, Glace et Ombre et est capable d’utiliser ces magies selon son niveau. Mais les faiblesses aux altérations d’états s’en trouvent amplifiées.
-
-[EP2] Bond. Cette créature est capable de faire un bond équivalent à sa vitesse x2 en échange de 3IC.
-
-[EP3] Issue de l’éclair. Immunisé à la paralysie.
-
-[EP4] Lame canine. Les dégâts de taille ont un bonus de +8 aux dégâts.
-
-[EP5] Aura d’ombre. Permet d''annuler totalement une frappe de l’élément lumière, que ce soit dégâts ou effets secondaires. (Réaction 1 fois/combat)
-
-[EP6] Rayon Lune. Régénère 25% de la barrière la nuit. (Action 2 fois/nuit)
-
-[EP7] Magicien. Les dégâts de Glace, Ombre et de Foudre augmentent de +10.
-
-[EP8] Aura lunaire. Réduit les dégâts de glace, feu, lumière et ombre de 6.
-
-[EP9] Hurlement. Les alliés à 3 cases gagnent +4 à leur dégâts pendant 3 tours. Permet de donner des ordres précis à une créature canine alliée. (Action 1 fois/combat)
-
-[EP10] Super Odorat. Cette créature ne peut pas avoir de croix à la Perception.', 'monstres', 'Bestiaire 2.0 › ligne 19689');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/loup-garou#carte:loup-garou', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 19689');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/loup-garou#carte:loup-garou', 13, 'tactique', 'TACTIQUE COMBAT', 'Les loup-garou sont de terrifiantes créatures liées à 3 magies en même temps, comme si le nuage avait poussé leur origine sous la forme la plus chaotique possible, bien entendu cette instabilité est également son principal point faible, il se retrouve avec des plus grosses faiblesses qu’il serait bon d’exploiter.', 'monstres', 'Bestiaire 2.0 › ligne 19722');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/loup-garou#carte:loup-garou-abominable', 1, 'sante', 'Santé', 'EP 1 : 100 EP 6 : 600
 EP 2 : 200 EP 7 : 640
@@ -5573,31 +3106,7 @@ EP 4 - 10 : +20% Arme Légère, +20% Esquive, +20% Fermeté, +20% Magie, +20% R�
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/loup-garou#carte:loup-garou-abominable', 9, 'grande_vulnerabilite', 'Grande(s) Vulnérabilité(s) Dégâts x4', 'Pétrification, Brûlure, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 19918');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/loup-garou#carte:loup-garou-abominable', 10, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Terre, Feu, Lumière', 'monstres', 'Bestiaire 2.0 › ligne 19922');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/loup-garou#carte:loup-garou-abominable', 11, 'resistance', 'Résistance(s) Dégâts ÷2', 'Sang, Glace, Foudre, Eau, Ombre, Saignement, Gel, Paralysie, Confusion, Peur', 'monstres', 'Bestiaire 2.0 › ligne 19926');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/loup-garou#carte:loup-garou-abominable', 12, 'capacites', 'Capacité(s)', 'Haine mutuelle. Cette créature inflige un bonus +10 dégâts contre les Fenrirs mais ces derniers ont également le même bonus sur cette première.
-
-Triumvirat instable fenrir. Cette créature est liée aux magies de la Foudre, Glace et Ombre et est capable d’utiliser ces magies selon son niveau. Mais les faiblesses aux altérations d’états s’en trouvent amplifiées.
-
-Bond. Cette créature est capable de faire un bond équivalent à sa vitesse x2 en échange de 3IC.
-
-Issue de l’éclair. Immunisé à la paralysie.
-
-[EP2] Lame canine. Les dégâts de taille ont un bonus de +8 aux dégâts.
-
-[EP3] Aura d’ombre. Permet d''annuler totalement une frappe de l’élément lumière, que ce soit dégâts ou effets secondaires. (Réaction 1 fois/combat)
-
-[EP4] Rayon Lune. Régénère 25% de la barrière la nuit. (Action 2 fois/nuit)
-
-[EP5] Magicien. Les dégâts de Glace, Ombre et de Foudre augmentent de +10.
-
-[EP6] Aura lunaire. Réduit les dégâts de glace, feu, lumière et ombre de 6.
-
-[EP7] Hurlement. Les alliés à 3 cases gagnent +4 à leur dégâts pendant 3 tours. Permet de donner des ordres précis à une créature canine alliée. (Action 1 fois/combat)
-
-[EP8] Super Odorat. Cette créature ne peut pas avoir de croix à la Perception.
-
-[EP9] Cri d''Alpha. Oblige les adversaires à faire un jet de calme pour ne pas perdre 1 tour. Les créatures canines non apprivoisées fuient automatiquement. (Action 1 fois/combat)
-
-[EP10] Tourner pour gagner. Quand cette créature fait une attaque cyclone, il n’a pas de malus.', 'monstres', 'Bestiaire 2.0 › ligne 19930');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/loup-garou#carte:loup-garou-abominable', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 19930');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/loup-garou#carte:loup-garou-abominable', 13, 'tactique', 'TACTIQUE COMBAT', 'Les abominables sont le pinacle de l’agilité, en plus d’être puissant, ils maîtrisent l’attaque cyclone qui permet de toucher toutes les ennemis autour d’eux.', 'monstres', 'Bestiaire 2.0 › ligne 19969');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/loup-garou#carte:loup-garou-superieur', 1, 'sante', 'Santé', 'EP 1 : 50 EP 6 : 300
 EP 2 : 100 EP 7 : 340
@@ -5636,29 +3145,7 @@ EP 5 - 10 : +10% Arme Légère, +10% Esquive, +10% Fermeté, +10% Magie, +10% R�
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/loup-garou#carte:loup-garou-superieur', 9, 'grande_vulnerabilite', 'Grande(s) Vulnérabilité(s) Dégâts x4', 'Pétrification, Brûlure, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 19796');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/loup-garou#carte:loup-garou-superieur', 10, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Terre, Feu, Lumière', 'monstres', 'Bestiaire 2.0 › ligne 19800');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/loup-garou#carte:loup-garou-superieur', 11, 'resistance', 'Résistance(s) Dégâts ÷2', 'Sang, Glace, Foudre, Eau, Ombre, Saignement, Gel, Paralysie, Confusion, Peur', 'monstres', 'Bestiaire 2.0 › ligne 19804');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/loup-garou#carte:loup-garou-superieur', 12, 'capacites', 'Capacité(s)', 'Haine mutuelle. Cette créature inflige un bonus +10 dégâts contre les Fenrirs mais ces derniers ont également le même bonus sur cette première.
-
-Triumvirat instable fenrir. Cette créature est liée aux magies de la Foudre, Glace et Ombre et est capable d’utiliser ces magies selon son niveau. Mais les faiblesses aux altérations d’états s’en trouvent amplifiées.
-
-Bond. Cette créature est capable de faire un bond équivalent à sa vitesse x2 en échange de 3IC.
-
-[EP2] Issue de l’éclair. Immunisé à la paralysie.
-
-[EP3] Lame canine. Les dégâts de taille ont un bonus de +8 aux dégâts.
-
-[EP4] Aura d’ombre. Permet d''annuler totalement une frappe de l’élément lumière, que ce soit dégâts ou effets secondaires. (Réaction 1 fois/combat)
-
-[EP5] Rayon Lune. Régénère 25% de la barrière la nuit. (Action 2 fois/nuit)
-
-[EP6] Magicien. Les dégâts de Glace, Ombre et de Foudre augmentent de +10.
-
-[EP7] Aura lunaire. Réduit les dégâts de glace, feu, lumière et ombre de 6.
-
-[EP8] Hurlement. Les alliés à 3 cases gagnent +4 à leur dégâts pendant 3 tours. Permet de donner des ordres précis à une créature canine alliée. (Action 1 fois/combat)
-
-[EP9] Super Odorat. Cette créature ne peut pas avoir de croix à la Perception.
-
-[EP10] Cri d''Alpha. Oblige les adversaires à faire un jet de calme pour ne pas perdre 1 tour. Les créatures canines non apprivoisées fuient automatiquement. (Action 1 fois/combat)', 'monstres', 'Bestiaire 2.0 › ligne 19808');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/loup-garou#carte:loup-garou-superieur', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 19808');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/loup-garou#carte:loup-garou-superieur', 13, 'tactique', 'TACTIQUE COMBAT', 'Les versions supérieures sont plus résistantes et plus fortes que les démons de base. Prudence celà dit, il abusera de sa magie et améliora le plus possible ses alliés.', 'monstres', 'Bestiaire 2.0 › ligne 19844');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-paladin', 1, 'attributs', NULL, 'Santé : 560 Chakra : 400 Barrière : 200', 'monstres', 'Bestiaire 2.0 › ligne 20166');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-paladin', 2, 'degats', 'Dégâts', 'Rapière en os – 4d10 + 15 dégâts d’estoc', 'monstres', 'Bestiaire 2.0 › ligne 20169');
@@ -5669,19 +3156,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-paladin', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Ombre', 'monstres', 'Bestiaire 2.0 › ligne 20188');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-paladin', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Lumière, Nécromancie', 'monstres', 'Bestiaire 2.0 › ligne 20192');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-paladin', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Aveuglement, Fatigue, Saignement, Surdité, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 20196');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-paladin', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Soin non-mort. Cette créature est capable de soigner ses alliés non-morts avec la magie de la lumière.
-
-Tome de Lumière lvl4. Permet à cette créature de lancer des sorts de la magie de la Lumière au niveau 4 de puissance.
-
-Anti-mal. Inflige un bonus de +8 dégâts contre les créatures mauvaises.
-
-Rayon d’Aurora. Invoque “Grand Soleil” dès le début du combat.
-
-Climatoptimiste. Double les effets positifs de la météo pour lui et ses alliés.', 'monstres', 'Bestiaire 2.0 › ligne 20200');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-paladin', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 20200');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-paladin', 11, 'tactique', 'TACTIQUE COMBAT', 'Ces squelettes font énormément penser à des prêtres de la lumière et sont capables d''amplifier les bienfaits du soleil. Ils ont tendance à bombarder avec leurs meilleurs sortilèges de lumière.', 'monstres', 'Bestiaire 2.0 › ligne 20220');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-pretre', 1, 'attributs', NULL, 'Santé : 280 Chakra : 200 Barrière : 100', 'monstres', 'Bestiaire 2.0 › ligne 20105');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-pretre', 2, 'degats', 'Dégâts', 'Rapière en os – 4d10 + 10 dégâts d’estoc', 'monstres', 'Bestiaire 2.0 › ligne 20108');
@@ -5692,17 +3167,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-pretre', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Ombre', 'monstres', 'Bestiaire 2.0 › ligne 20127');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-pretre', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Lumière, Nécromancie', 'monstres', 'Bestiaire 2.0 › ligne 20131');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-pretre', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Aveuglement, Fatigue, Saignement, Surdité, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 20135');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-pretre', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Soin non-mort. Cette créature est capable de soigner ses alliés non-morts avec la magie de la lumière.
-
-Tome de Lumière lvl4. Permet à cette créature de lancer des sorts de la magie de la Lumière au niveau 4 de puissance.
-
-Anti-mal. Inflige un bonus de +8 dégâts contre les créatures mauvaises.
-
-Rayon d’Aurora. Invoque “Grand Soleil” dès le début du combat.', 'monstres', 'Bestiaire 2.0 › ligne 20139');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-pretre', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 20139');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-pretre', 11, 'tactique', 'TACTIQUE COMBAT', 'Ils utilisent le soleil à leur avantage, si jamais le soleil venait à être retiré, ils le remettent.', 'monstres', 'Bestiaire 2.0 › ligne 20156');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-soldat', 1, 'attributs', NULL, 'Santé : 140 Chakra : 100 Barrière : 50', 'monstres', 'Bestiaire 2.0 › ligne 20046');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-soldat', 2, 'degats', 'Dégâts', 'Rapière en os – 4d10 dégâts d’estoc', 'monstres', 'Bestiaire 2.0 › ligne 20049');
@@ -5713,15 +3178,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-soldat', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Ombre', 'monstres', 'Bestiaire 2.0 › ligne 20068');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-soldat', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Lumière, Nécromancie', 'monstres', 'Bestiaire 2.0 › ligne 20072');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-soldat', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Aveuglement, Fatigue, Saignement, Surdité, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 20076');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-soldat', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Soin non-mort. Cette créature est capable de soigner ses alliés non-morts avec la magie de la lumière.
-
-Tome de Lumière lvl4. Permet à cette créature de lancer des sorts de la magie de la Lumière au niveau 4 de puissance.
-
-Anti-mal. Inflige un bonus de +8 dégâts contre les créatures mauvaises.', 'monstres', 'Bestiaire 2.0 › ligne 20080');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-soldat', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 20080');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/lumiphage#carte:lumiphage-soldat', 11, 'tactique', 'TACTIQUE COMBAT', 'Les seuls non-mort qui semble être bon de nature, il n’attaque jamais les créatures bonnes, sauf pour se défendre. En revanche les créatures mauvaises ou neutres sont poursuivies et traquées sans relâche. Ils utilisent leur magie de la lumière à leur avantages pour soigner et attaquer.
 Un groupe d''aventuriers qui sont tous alignés sur le spectre Bon n’ont aucune inquiétude à avoir car les Lumiphages ne les attaqueront pas.', 'monstres', 'Bestiaire 2.0 › ligne 20094');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-adulte', 1, 'attributs', NULL, 'Santé : 220 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 20290');
@@ -5734,11 +3191,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-adulte', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Sang, Feu, Saignement, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 20313');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-adulte', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre', 'monstres', 'Bestiaire 2.0 › ligne 20317');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-adulte', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 20321');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-adulte', 10, 'capacites', 'Capacité(s)', 'Esprit de meute. Cette créature gagne un bonus de +5% à tous ses jets par alliés dans une zone de 2 cases autour de lui.
-
-Terrain avantageux. Si cette créature est dans un terrain qui lui est favorable = +2 à la réussite critique et +3 aux dégâts. (Terrain favorable = Forêt, Plateau, Montagne)
-
-Fourrure de roche. Cette créature est capable d’augmenter ses AP de 5 pendant 3 tours. (IC - 1 fois/combat)', 'monstres', 'Bestiaire 2.0 › ligne 20325');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-adulte', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 20325');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-adulte', 11, 'tactique', 'TACTIQUE COMBAT', 'Les adultes sont capables de rentrer en phase avec la terre et d’augmenter significativement leur défense physique temporairement.', 'monstres', 'Bestiaire 2.0 › ligne 20334');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-alpha', 1, 'attributs', NULL, 'Santé : 330 Chakra : 110 Barrière : 55', 'monstres', 'Bestiaire 2.0 › ligne 20344');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-alpha', 2, 'degats', 'Dégâts', 'Morsure terrestre - 3d10 + 12 dégâts d''estoc et de terre
@@ -5750,11 +3203,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-alpha', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Sang, Feu, Saignement, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 20367');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-alpha', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre', 'monstres', 'Bestiaire 2.0 › ligne 20371');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-alpha', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 20375');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-alpha', 10, 'capacites', 'Capacité(s)', 'Terrain avantageux. Si cette créature est dans un terrain qui lui est favorable = +2 à la réussite critique et +3 aux dégâts. (Terrain favorable = Forêt, Plateau, Montagne)
-
-Fourrure de roche. Cette créature est capable d’augmenter ses AP de 5 pendant 3 tours. (IC - 1 fois/combat)
-
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrises maximum : Explosion rocheuse, Infection, Fer raffiné.', 'monstres', 'Bestiaire 2.0 › ligne 20379');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-alpha', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 20379');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-alpha', 11, 'tactique', 'TACTIQUE COMBAT', 'Les alphas sont ceux qui dirigent et protègent leur meute, quand c’est nécessaire, l’alpha va affronter le danger de lui-même. Un alpha possède une grande vigueur et est capable d''utiliser certains sorts de la magie de la terre à son avantage. Sa carapace de pierre est encore plus marquée que les autres adultes, comme une véritable coque protectrice mais sans pour autant lui retirer son agilité.', 'monstres', 'Bestiaire 2.0 › ligne 20389');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-jeune', 1, 'attributs', NULL, 'Santé : 110 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 20239');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-jeune', 2, 'degats', 'Dégâts', 'Morsure terrestre - 3d10 dégâts d''estoc et de terre
@@ -5766,9 +3215,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-jeune', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Sang, Feu, Saignement, Brûlure', 'monstres', 'Bestiaire 2.0 › ligne 20262');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-jeune', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre', 'monstres', 'Bestiaire 2.0 › ligne 20266');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-jeune', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 20270');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-jeune', 10, 'capacites', 'Capacité(s)', 'Esprit de meute. Cette créature gagne un bonus de +5% à tous ses jets par alliés dans une zone de 2 cases autour de lui.
-
-Terrain avantageux. Si cette créature est dans un terrain qui lui est favorable = +2 à la réussite critique et +3 aux dégâts. (Terrain favorable = Forêt, Plateau, Montagne)', 'monstres', 'Bestiaire 2.0 › ligne 20274');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-jeune', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 20274');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/luperoc#carte:luperoc-jeune', 11, 'tactique', 'TACTIQUE COMBAT', 'Ces loups de roche jeune reste une menace de par leur organisation de meute, ils cherchent toujours à épuiser leur cibles par des petites attaques tout en restant ensemble pour mutuellement se soutenir. Leur carapace de pierre font qu’ils encaissent plutôt les assauts physiques. Leur absence d’armure magique les rend sensibles contre la magie, surtout celle du sang et du feu, ils ne vont d’ailleurs pas hésiter à neutraliser un ennemi qui possède ces magies.', 'monstres', 'Bestiaire 2.0 › ligne 20280');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/main-blanche#carte:main-blanche', 1, 'attributs', NULL, 'Santé : 90 Chakra : 90 Barrière : 90', 'monstres', 'Bestiaire 2.0 › ligne 20413');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/main-blanche#carte:main-blanche', 2, 'degats', 'Dégâts', '[Non métamorphosé] Poing – 4d10 dégâts de frappe
@@ -5777,11 +3224,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/main-blanche#carte:main-blanche', 4, 'vitesse', 'Vitesse', '[Non métamorphosé] 5 cases sol / 4 cases nage', 'monstres', 'Bestiaire 2.0 › ligne 20424');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/main-blanche#carte:main-blanche', 5, 'caracteristiques', 'Caractéristiques (F.P.V.S.I.A.)', '[Non métamorphosé] F : 5 / P : 5 / V : 5 / S : 5 / I : 5 / A : 5', 'monstres', 'Bestiaire 2.0 › ligne 20427');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/main-blanche#carte:main-blanche', 6, 'competences', 'Compétence(s) secondaire(s)', '[Non métamorphosé] +10% dans toutes les compétences', 'monstres', 'Bestiaire 2.0 › ligne 20430');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/main-blanche#carte:main-blanche', 7, 'capacites', 'Capacité(s)', 'Calque amitié/amour. Cette créature est capable de calquer les capacités d’une créature que sa cible affectionne dans son cœur en se métamorphosant en cette dernière. La métamorphose cesse quand l’adversaire est dans le coma ou quand le métamorphe tombe en dessous de 50% de santé (elle copie les carac, compétences, don, race, classe, magie mais garde ses attributs)
-
-Super barrière. Cette créature possède une barrière qui correspond à son chakra.
-
-Attendrissement. En échange de 3IC, cette créature peut forcer le jet de fermeté à sa cible, si cette dernière rate, elle ne peut pas attaquer à son prochain tour. (recharge de 3 tours)', 'monstres', 'Bestiaire 2.0 › ligne 20433');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/main-blanche#carte:main-blanche', 7, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 20433');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/main-blanche#carte:main-blanche', 8, 'tactique', 'TACTIQUE COMBAT', 'La main est une monstruosité qui se métamorphose quand elle a repéré sa proie, elle utilisera tous les avantages de sa métamorphose pour abattre sa cible (sans pour autant dépasser les limites, même si la métamorphose implique un utilisateur de sorts niveau 5 de puissance, la main ne pourra pas utiliser plus haut que le niveau 3). Ka laib a tendance à garder sa cible en vue et se concentre sur elle. En cas de danger, elle n’hésitera pas à fuir.', 'monstres', 'Bestiaire 2.0 › ligne 20443');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/masse-empoisonneuse#carte:masse-empoisonneuse', 1, 'attributs', NULL, 'Santé : 76 Chakra : 100 Barrière : 50', 'monstres', 'Bestiaire 2.0 › ligne 20460');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/masse-empoisonneuse#carte:masse-empoisonneuse', 2, 'degats', 'Dégâts', 'Griffes – 4d10 dégâts de taille
@@ -5794,11 +3237,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/masse-empoisonneuse#carte:masse-empoisonneuse', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Sang, Foudre, Saignement, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 20487');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/masse-empoisonneuse#carte:masse-empoisonneuse', 9, 'double_resistance', 'Double(s) Résistance(s) Dégâts ÷4', 'Nécromancie', 'monstres', 'Bestiaire 2.0 › ligne 20491');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/masse-empoisonneuse#carte:masse-empoisonneuse', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison', 'monstres', 'Bestiaire 2.0 › ligne 20495');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/masse-empoisonneuse#carte:masse-empoisonneuse', 11, 'capacites', 'Capacité(s)', 'Attaque poison. Les armes de cette créature obligent un jet de vigueur à la cible, si cette dernière rate, elle se prend “Poison 1”
-
-Critique venimeuse. Une attaque en réussite critique va automatiquement infliger le stade 1 d’empoisonnement à la victime jusqu’au prochain remède, et ceux peu importe les résistances de la cible (sauf immunité).
-
-Attrape moi. Les jets de défense possèdent un bonus de 5% par ennemi empoisonné sur le terrain (maximum 20%).', 'monstres', 'Bestiaire 2.0 › ligne 20499');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/masse-empoisonneuse#carte:masse-empoisonneuse', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 20499');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/masse-empoisonneuse#carte:masse-empoisonneuse', 12, 'tactique', 'TACTIQUE COMBAT', 'Ces créatures monstrueuses sont capables de tuer leurs victimes lentement avec leur violent poison. Elle dispose d’une armure magique naturelle qui les protège en partie des magies qui peuvent les menacer comme l’Eau ou la Glace. N''essayez pas de jouer à distance contre elle, elle dispose d’une arme sous la forme d’une grosse boule empoisonnée capable de toucher d’assez loin.', 'monstres', 'Bestiaire 2.0 › ligne 20509');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-adulte', 1, 'attributs', NULL, 'Santé : 220 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 20583');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-adulte', 2, 'degats', 'Dégâts', 'Coup de tête - 3d10 dégâts + 6 dégâts d''estoc
@@ -5811,13 +3250,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-adulte', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Eau, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 20610');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-adulte', 9, 'grande_resistance', 'Grande(s) Résistance(s) Dégâts ÷4', 'Foudre, Vent, Paralysie, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 20614');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-adulte', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 20618');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-adulte', 11, 'capacites', 'Capacité(s)', 'Aveugle naturel. Cette créature est naturellement aveugle, ce qui l''immunise de tous les effets, attaques ou altérations d’état lié à la vue. Cet aveuglement ne l’empêche pas de connaître son environnement et de savoir où sont ses ennemis, la Perception n’est donc pas endommagée.
-
-Fouisseur. Cette créature peut plonger dans le sol pour attaquer par le bas une autre, ça lui demande un tour complet pour pouvoir attaquer mais bénéficie d’un bonus de +5 dégâts quand l’attaque fait mouche.
-
-Perce muraille. L’attaque de cette créature perce 6 AP.
-
-Tremblement. Dans le sol, cette créature fait remuer le sol si fort qu’elle force un jet de stabilité à sa cible pour ne pas qu’elle tombe par terre.', 'monstres', 'Bestiaire 2.0 › ligne 20622');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-adulte', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 20622');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-adulte', 12, 'tactique', 'TACTIQUE COMBAT', 'Les adultes sont capables de faire trembler le sol pour déstabiliser leurs ennemis.', 'monstres', 'Bestiaire 2.0 › ligne 20634');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-alpha', 1, 'attributs', NULL, 'Santé : 330 Chakra : 110 Barrière : 55', 'monstres', 'Bestiaire 2.0 › ligne 20644');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-alpha', 2, 'degats', 'Dégâts', 'Coup de tête - 3d10 dégâts + 12 dégâts d''estoc
@@ -5830,15 +3263,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-alpha', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Eau, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 20671');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-alpha', 9, 'grande_resistance', 'Grande(s) Résistance(s) Dégâts ÷4', 'Foudre, Vent, Paralysie, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 20675');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-alpha', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 20679');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-alpha', 11, 'capacites', 'Capacité(s)', 'Aveugle naturel. Cette créature est naturellement aveugle, ce qui l''immunise de tous les effets, attaques ou altérations d’état lié à la vue. Cet aveuglement ne l’empêche pas de connaître son environnement et de savoir où sont ses ennemis, la Perception n’est donc pas endommagée.
-
-Fouisseur. Cette créature peut plonger dans le sol pour attaquer par le bas une autre, ça lui demande un tour complet pour pouvoir attaquer mais bénéficie d’un bonus de +5 dégâts quand l’attaque fait mouche.
-
-Perce muraille. L’attaque de cette créature perce 6 AP.
-
-Tremblement. Dans le sol, cette créature fait remuer le sol si fort qu’elle force un jet de stabilité à sa cible pour ne pas qu’elle tombe par terre.
-
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrises maximum : Explosion rocheuse, Fer raffiné, Fer foudroyant, Souffle électrique.', 'monstres', 'Bestiaire 2.0 › ligne 20683');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-alpha', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 20683');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-alpha', 12, 'tactique', 'TACTIQUE COMBAT', 'Les alphas sont solitaires et sont des versions sous hormones des molvaciers. Ils ont également appris à lancer des sortilèges de la magie de la terre et de la foudre pour mieux affronter les menaces. Ils sont bien plus redoutables que les autres car territoriaux.', 'monstres', 'Bestiaire 2.0 › ligne 20698');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-jeune', 1, 'attributs', NULL, 'Santé : 110 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 20525');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-jeune', 2, 'degats', 'Dégâts', 'Coup de tête - 3d10 + 3 dégâts d’estoc
@@ -5851,11 +3276,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-jeune', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Eau, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 20552');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-jeune', 9, 'grande_resistance', 'Grande(s) Résistance(s) Dégâts ÷4', 'Foudre, Vent, Paralysie, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 20556');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-jeune', 10, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 20560');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-jeune', 11, 'capacites', 'Capacité(s)', 'Aveugle naturel. Cette créature est naturellement aveugle, ce qui l''immunise de tous les effets, attaques ou altérations d’état lié à la vue. Cet aveuglement ne l’empêche pas de connaître son environnement et de savoir où sont ses ennemis, la Perception n’est donc pas endommagée.
-
-Fouisseur. Cette créature peut plonger dans le sol pour attaquer par le bas une autre, ça lui demande un tour complet pour pouvoir attaquer mais bénéficie d’un bonus de +5 dégâts quand l’attaque fait mouche.
-
-Perce muraille. L’attaque de cette créature perce 6 AP.', 'monstres', 'Bestiaire 2.0 › ligne 20564');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-jeune', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 20564');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/molvacier#carte:molvacier-jeune', 12, 'tactique', 'TACTIQUE COMBAT', 'Ces grosses taupes sont capables de creuser de grandes galeries dans les montagnes et sont considérées comme nuisibles par les nains car leur passage peut entraîner des effondrement de galerie. Bien que craintif, elles peut se défendre avec ses griffes fait d’acier naturellement qui est capable de démolir des armures trop légère.', 'monstres', 'Bestiaire 2.0 › ligne 20573');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie', 1, 'attributs', NULL, 'Santé : 110 Chakra : 70 Barrière : 35', 'monstres', 'Bestiaire 2.0 › ligne 20786');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie', 2, 'degats', 'Dégâts', 'Arbalète à une main - 4d12 dégâts d’estoc
@@ -5868,17 +3289,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Vide, Enragé', 'monstres', 'Bestiaire 2.0 › ligne 20810');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie', 8, 'grande_resistance', 'Grande(s) Résistance(s) Dégâts ÷4', 'Espace/Temps', 'monstres', 'Bestiaire 2.0 › ligne 20814');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 20818');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Attaque maudite. L’une des armes* de cette créature possède l’effet du sort “Malédiction” de la magie de l’ombre et l’impose pour 1 tour à la victime.
-
-Anti-chaos. Cette créature inflige +5 dégâts contre les créatures chaotiques.
-
-Maître du silence. Cette créature ne peut pas subir les sorts ou effets qui empêche d’utiliser la magie.
-
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrises maximum : Téléportation, Faille temporelle, Frappe temporelle, Vieillissement.
-
-Concentration coloré. Utilise la concentration au lieu de la magie pour lancer ses sorts.', 'monstres', 'Bestiaire 2.0 › ligne 20822');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 20822');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie', 11, 'tactique', 'TACTIQUE COMBAT', 'Les momies sont des combattantes avec un matériel qui ne paye pas de mine à première vue mais ces dernières se défendent très bien avec en plus de leur accès à des sorts de l’espace/temps. Personne ne sait d’où leur vient ce savoir.
 
 Elles gardent farouchement les lieux où elles ont été placées, il est possible de ne pas se faire attaquer par des momies en leur faisant comprendre que vous n’êtes pas un pilleur de tombe.', 'monstres', 'Bestiaire 2.0 › ligne 20840');
@@ -5893,21 +3304,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie-royale', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Vide, Enragé', 'monstres', 'Bestiaire 2.0 › ligne 20944');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie-royale', 8, 'grande_resistance', 'Grande(s) Résistance(s) Dégâts ÷4', 'Espace/Temps', 'monstres', 'Bestiaire 2.0 › ligne 20948');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie-royale', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 20952');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie-royale', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Attaque maudite. L’une des armes* de cette créature possède l’effet du sort “Malédiction” de la magie de l’ombre et l’impose pour 1 tour à la victime.
-
-Anti-chaos. Cette créature inflige +5 dégâts contre les créatures chaotiques.
-
-Maître du silence. Cette créature ne peut pas subir les sorts ou effets qui empêche d’utiliser la magie.
-
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrises maximum : Téléportation, Faille temporelle, Frappe temporelle, Vieillissement, Horloge aspirante, Inversion.
-
-Concentration coloré. Utilise la concentration au lieu de la magie pour lancer ses sorts.
-
-Sulfateuse. Les arbalètes n’ont plus de recharge longue.
-
-Corps précieux. Le matériau Argent ne possède pas son bonus de dégâts contre cette créature.', 'monstres', 'Bestiaire 2.0 › ligne 20956');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie-royale', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 20956');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie-royale', 11, 'tactique', 'TACTIQUE COMBAT', 'Les momies royales disposent des bandages et des armures les plus précieux, ce sont de farouches protectrices des cimetières ou tombeau où elles se trouvent. Attendez-vous à un combat particulièrement difficile.', 'monstres', 'Bestiaire 2.0 › ligne 20980');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie-surveillante', 1, 'attributs', NULL, 'Santé : 220 Chakra : 140 Barrière : 70', 'monstres', 'Bestiaire 2.0 › ligne 20853');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie-surveillante', 2, 'degats', 'Dégâts', 'Arbalète à une main - 4d12 + 8 dégâts d’estoc
@@ -5920,19 +3317,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie-surveillante', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Vide, Enragé', 'monstres', 'Bestiaire 2.0 › ligne 20877');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie-surveillante', 8, 'grande_resistance', 'Grande(s) Résistance(s) Dégâts ÷4', 'Espace/Temps', 'monstres', 'Bestiaire 2.0 › ligne 20881');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie-surveillante', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 20885');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie-surveillante', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Attaque maudite. L’une des armes* de cette créature possède l’effet du sort “Malédiction” de la magie de l’ombre et l’impose pour 1 tour à la victime.
-
-Anti-chaos. Cette créature inflige +5 dégâts contre les créatures chaotiques.
-
-Maître du silence. Cette créature ne peut pas subir les sorts ou effets qui empêche d’utiliser la magie.
-
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrises maximum : Téléportation, Faille temporelle, Frappe temporelle, Vieillissement, Horloge aspirante.
-
-Concentration coloré. Utilise la concentration au lieu de la magie pour lancer ses sorts.
-
-Sulfateuse. Les arbalètes n’ont plus de recharge longue.', 'monstres', 'Bestiaire 2.0 › ligne 20889');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie-surveillante', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 20889');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/momie#carte:momie-surveillante', 11, 'tactique', 'TACTIQUE COMBAT', 'Les surveillantes sont des momies bien plus puissantes et efficaces que les autres. Leurs bandages sont parfaitement capables de recharger leur arbalète pendant qu’elles font autre chose.', 'monstres', 'Bestiaire 2.0 › ligne 20910');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-chasseur', 1, 'attributs', NULL, 'Santé : 310 Chakra : 310 Barrière : 155', 'monstres', 'Bestiaire 2.0 › ligne 21125');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-chasseur', 2, 'degats', 'Dégâts', 'Marteau de Mord’or – 5d12 + 12 dégâts de frappe.', 'monstres', 'Bestiaire 2.0 › ligne 21128');
@@ -5943,19 +3328,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-chasseur', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Terre, Glace', 'monstres', 'Bestiaire 2.0 › ligne 21147');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-chasseur', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre, Lumière, Nécromancie, Vide, Foudre, Eau', 'monstres', 'Bestiaire 2.0 › ligne 21151');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-chasseur', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Toutes les altérations d’états', 'monstres', 'Bestiaire 2.0 › ligne 21155');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-chasseur', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Cord’or. Cette créature est immunisée à toutes les altérations, à tous les sorts qui ne causent pas de dégâts.
-
-Vise le trésor. Cette créature va se concentrer sur les adversaires les plus “riches”.
-
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrises maximum : Éclair en chaîne, Anti-Mythril, Rayon négatif, Poison de masse.
-
-Arnaque défensif. Peut convertir ses AP en dégâts physiques et ses AM en dégâts magiques pendant 3 tours.', 'monstres', 'Bestiaire 2.0 › ligne 21159');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-chasseur', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 21159');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-chasseur', 11, 'tactique', 'TACTIQUE COMBAT', 'Ils utiliseront leur capacité spéciale “Arnaque défensif” que s''ils sont en position de force.', 'monstres', 'Bestiaire 2.0 › ligne 21180');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-collectionneur', 1, 'attributs', NULL, 'Santé : 620 Chakra : 620 Barrière : 310', 'monstres', 'Bestiaire 2.0 › ligne 21190');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-collectionneur', 2, 'degats', 'Dégâts', 'Marteau de Mord’or – 5d12 + 20 dégâts de frappe.', 'monstres', 'Bestiaire 2.0 › ligne 21193');
@@ -5966,19 +3339,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-collectionneur', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Terre, Glace', 'monstres', 'Bestiaire 2.0 › ligne 21212');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-collectionneur', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre, Lumière, Nécromancie, Vide, Foudre, Eau', 'monstres', 'Bestiaire 2.0 › ligne 21216');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-collectionneur', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Toutes les altérations d’états', 'monstres', 'Bestiaire 2.0 › ligne 21220');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-collectionneur', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Cord’or. Cette créature est immunisée à toutes les altérations, à tous les sorts qui ne causent pas de dégâts.
-
-Vise le trésor. Cette créature va se concentrer sur les adversaires les plus “riches”.
-
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrises maximum : Fulguration, Terre maudite, Frappe négative, Répar’Os
-
-Arnaque défensif. Peut convertir ses AP en dégâts physiques et ses AM en dégâts magiques pendant 3 tours.', 'monstres', 'Bestiaire 2.0 › ligne 21224');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-collectionneur', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 21224');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-collectionneur', 11, 'tactique', 'TACTIQUE COMBAT', 'Ces puissants mord’or sont déterminés à récupérer les trésors les plus beaux, ils n''attaquent jamais les pauvres. (moins de 6 000 Ro total en bourse et équipement réuni)', 'monstres', 'Bestiaire 2.0 › ligne 21245');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-pilleur', 1, 'attributs', NULL, 'Santé : 155 Chakra : 155 Barrière : 77', 'monstres', 'Bestiaire 2.0 › ligne 21066');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-pilleur', 2, 'degats', 'Dégâts', 'Marteau de Mord’or – 5d12 dégâts de frappe.', 'monstres', 'Bestiaire 2.0 › ligne 21069');
@@ -5989,15 +3350,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-pilleur', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Terre, Glace', 'monstres', 'Bestiaire 2.0 › ligne 21088');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-pilleur', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre, Lumière, Nécromancie, Vide, Foudre, Eau', 'monstres', 'Bestiaire 2.0 › ligne 21092');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-pilleur', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Toutes les altérations d’états', 'monstres', 'Bestiaire 2.0 › ligne 21096');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-pilleur', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Cord’or. Cette créature est immunisée à toutes les altérations, à tous les sorts qui ne causent pas de dégâts.
-
-Vise le trésor. Cette créature va se concentrer sur les adversaires les plus “riches”.
-
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrises maximum : Éclair en chaîne, Anti-Mythril, Rayon négatif, Poison de masse.', 'monstres', 'Bestiaire 2.0 › ligne 21100');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-pilleur', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 21100');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/mordor#carte:mordor-pilleur', 11, 'tactique', 'TACTIQUE COMBAT', 'Ces créatures aiment les richesses et attaquent en priorité les plus riches des adversaires, quand ils ont mis au sol un adversaire, ils volent leur bourse d’or ainsi qu’une pièce d’équipement (la plus chère).', 'monstres', 'Bestiaire 2.0 › ligne 21115');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-bordeaux', 1, 'attributs', NULL, 'Santé : 25 Chakra : 10 Barrière : 5', 'monstres', 'Bestiaire 2.0 › ligne 21263');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-bordeaux', 2, 'degats', 'Dégâts', 'Piqûre - 2d10 + 2 dégâts d’estoc', 'monstres', 'Bestiaire 2.0 › ligne 21266');
@@ -6007,9 +3360,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-bordeaux', 6, 'competences', 'Compétence(s) secondaire(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 21282');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-bordeaux', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Nécromancie, Glace, Gelé, Poison', 'monstres', 'Bestiaire 2.0 › ligne 21287');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-bordeaux', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Sang, Terre, Eau, Pétrification, Confusion, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 21291');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-bordeaux', 9, 'capacites', 'Capacité(s)', 'Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Suçon. Chaque attaque redonne de la santé ou de la barrière (selon ce qui est touché) à hauteur de 50% des dégâts infligés.', 'monstres', 'Bestiaire 2.0 › ligne 21295');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-bordeaux', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 21295');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-bordeaux', 10, 'tactique', 'TACTIQUE COMBAT', 'Ces gros moustiques sont capables en touchant leur adversaire d’aspirer une partie des dégâts infligés. Il ne dispose d’aucune défense digne de ce nom donc est facilement atteignable.', 'monstres', 'Bestiaire 2.0 › ligne 21302');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-du-sang', 1, 'attributs', NULL, 'Santé : 100 Chakra : 40 Barrière : 20', 'monstres', 'Bestiaire 2.0 › ligne 21363');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-du-sang', 2, 'degats', 'Dégâts', 'Piqûre - 2d10 + 8 dégâts d’estoc', 'monstres', 'Bestiaire 2.0 › ligne 21366');
@@ -6019,16 +3370,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-du-sang', 6, 'competences', 'Compétence(s) secondaire(s)', '+15% Arme légère, +15% Esquive', 'monstres', 'Bestiaire 2.0 › ligne 21382');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-du-sang', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Nécromancie, Glace, Gelé, Poison', 'monstres', 'Bestiaire 2.0 › ligne 21386');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-du-sang', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Sang, Terre, Eau, Pétrification, Confusion, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 21390');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-du-sang', 9, 'capacites', 'Capacité(s)', 'Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Suçon. Chaque attaque redonne de la santé ou de la barrière (selon ce qui est touché) à hauteur de 50% des dégâts infligés.
-
-Perce armure. L’attaque de cette créature perce 3 AP.
-
-Réserve abondante. Chaque attaque réussie permet d’augmenter une réserve et d’avoir des bonus.
-1 : +2 dégâts
-2 : +3 dégâts
-3 : Peut tout relacher en une attaque qui inflige 20 dégâts de sang dans un cône à 4 de portée. C’est parable et esquivable.', 'monstres', 'Bestiaire 2.0 › ligne 21394');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-du-sang', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 21394');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-du-sang', 10, 'tactique', 'TACTIQUE COMBAT', 'Cette version parfaitement bordeaux est capable de cumuler une poche de sang qui augmente sa puissance et qui à terme lui donne accès à une grosse attaque en zone.', 'monstres', 'Bestiaire 2.0 › ligne 21410');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-sanguin', 1, 'attributs', NULL, 'Santé : 50 Chakra : 20 Barrière : 10', 'monstres', 'Bestiaire 2.0 › ligne 21312');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-sanguin', 2, 'degats', 'Dégâts', 'Piqûre - 2d10 + 4 dégâts d’estoc', 'monstres', 'Bestiaire 2.0 › ligne 21315');
@@ -6038,11 +3380,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-sanguin', 6, 'competences', 'Compétence(s) secondaire(s)', '+10% Arme légère, +10% Esquive', 'monstres', 'Bestiaire 2.0 › ligne 21331');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-sanguin', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Nécromancie, Glace, Gelé, Poison', 'monstres', 'Bestiaire 2.0 › ligne 21335');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-sanguin', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Sang, Terre, Eau, Pétrification, Confusion, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 21339');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-sanguin', 9, 'capacites', 'Capacité(s)', 'Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Suçon. Chaque attaque redonne de la santé ou de la barrière (selon ce qui est touché) à hauteur de 50% des dégâts infligés.
-
-Perce armure. L’attaque de cette créature perce 3 AP.', 'monstres', 'Bestiaire 2.0 › ligne 21343');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-sanguin', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 21343');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/moustique-bordeaux#carte:moustique-sanguin', 10, 'tactique', 'TACTIQUE COMBAT', 'Sa piqûre est bien plus efficace et est capable de traverser une partie des armures.', 'monstres', 'Bestiaire 2.0 › ligne 21353');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye', 1, 'attributs', NULL, 'Santé : 70 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 21495');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye', 2, 'degats', 'Dégâts', 'Morsure - 2d10 dégâts d’estoc.
@@ -6054,11 +3392,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Foudre, Sang', 'monstres', 'Bestiaire 2.0 › ligne 21518');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Eau, Glace, Feu', 'monstres', 'Bestiaire 2.0 › ligne 21522');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Fatigue, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 21526');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Téméraire. Cette créature est toujours en offensif.
-
-Vomi. La créature vomi une espèce d’acide qui va s’infiltrer dans les armures ou vêtements et brûler la peau. Inflige pendant 2 tours 2d6 dégâts perce armure et va retirer un cran de solidité au morceau d’armure touché (une seule fois).', 'monstres', 'Bestiaire 2.0 › ligne 21530');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 21530');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye', 11, 'tactique', 'TACTIQUE COMBAT', 'Le noyé est un zombi boursouflé et rempli d’un liquide corrosif qui est capable de détruire les armures, il ne se gène pas pour vomir dès que possible pour rendre son ennemi plus digeste.', 'monstres', 'Bestiaire 2.0 › ligne 21539');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye-acide', 1, 'attributs', NULL, 'Santé : 140 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 21549');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye-acide', 2, 'degats', 'Dégâts', 'Morsure - 2d10 + 5 dégâts d’estoc.
@@ -6070,11 +3404,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye-acide', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Foudre, Sang', 'monstres', 'Bestiaire 2.0 › ligne 21572');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye-acide', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Eau, Glace, Feu', 'monstres', 'Bestiaire 2.0 › ligne 21576');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye-acide', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Fatigue, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 21580');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye-acide', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Téméraire. Cette créature est toujours en offensif.
-
-Vomi+. La créature vomi une espèce d’acide qui va s’infiltrer dans les armures ou vêtements et brûler la peau. Inflige pendant 2 tours 3d6 dégâts perce armure et va retirer un cran de solidité au morceau d’armure touché (une seule fois).', 'monstres', 'Bestiaire 2.0 › ligne 21584');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye-acide', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 21584');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye-acide', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce zombi qui possède les veines de couleur verte pulse sans arrêt et libère un acide plus puissant.', 'monstres', 'Bestiaire 2.0 › ligne 21593');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye-corrosif', 1, 'attributs', NULL, 'Santé : 280 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 21607');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye-corrosif', 2, 'degats', 'Dégâts', 'Morsure - 2d10 + 10 dégâts d’estoc.
@@ -6086,13 +3416,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye-corrosif', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Foudre, Sang', 'monstres', 'Bestiaire 2.0 › ligne 21630');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye-corrosif', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Eau, Glace, Feu', 'monstres', 'Bestiaire 2.0 › ligne 21634');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye-corrosif', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Fatigue, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 21638');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye-corrosif', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Téméraire. Cette créature est toujours en offensif.
-
-Vomi+. La créature vomi une espèce d’acide qui va s’infiltrer dans les armures ou vêtements et brûler la peau. Inflige pendant 2 tours 3d6 dégâts perce armure et va retirer un cran de solidité au morceau d’armure touché (une seule fois).
-
-Croc vert. L’attaque de morsure de cette créature possède également la propriété du jet de vomi et l’inflige juste après l''attaque.', 'monstres', 'Bestiaire 2.0 › ligne 21642');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye-corrosif', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 21642');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/noye#carte:noye-corrosif', 11, 'tactique', 'TACTIQUE COMBAT', 'L’acide de ce zombi est également présent dans ses dents et va l’infliger juste après son attaque de morsure.', 'monstres', 'Bestiaire 2.0 › ligne 21654');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ogre#carte:ogre', 1, 'sante', 'Santé', 'EP 1 : 20 EP 6 : 140
 EP 2 : 40 EP 7 : 160
@@ -6143,31 +3467,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 Mage : Glace, Feu, Foudre, Gelé, Brûlure, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 21749');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ogre#carte:ogre', 11, 'double_resistance', 'Double(s) Résistance(s) Dégâts/Effets ÷4', 'Guerrier : Terre, Pétrification
 Mage : Aucune', 'monstres', 'Bestiaire 2.0 › ligne 21754');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ogre#carte:ogre', 12, 'capacites', 'Capacité(s)', 'Haine mutuelle. Cette créature inflige un bonus +10 dégâts contre les Marcass mais ces derniers ont également le même bonus sur cette première.
-
-Pile ou Face. Cette créature dispose de deux façon de se battre, ce qui entraîne de gros changements dans la manière d''appréhender la créature. (Forme : Guerrier/Mage). La créature peut changer de forme au début ou en fin de tour gratuitement.
-Magie Guerrier : Sang/Terre
-Magie Mage : Feu/Foudre
-
-Tome 2 fois 2 couleurs. Cette créature dispose de 2 paires de magies qui utilise d’une façon qui lui est propre (voir Pile ou Face). Il utilisera les sorts qui correspondent à son niveau de puissance, il ne peut pas atteindre les sorts niveau 5 de puissance magique.
-
-[EP2] Recyclage. Manger de la viande avariée ou de mort redonne 2d8 santé.
-
-[EP3] Charge porcine. Permet d''avoir un bonus de +2 à la vitesse. Possible uniquement en ligne droite et si il y a une cible à l''arrivée.
-
-[EP4] Magie et Acier. +3 aux dégâts des armes et des sorts.
-
-[EP5] Critique altérant. L’arme de cette créature, sur un coup critique, est capable d''obliger le jet de vigueur/fermeté pour ne pas que la cible prenne l’altération d’état liée à sa magie (aléatoire si elle en a plusieurs)
-
-[EP6] Nécrophage. Manger de la viande de cadavre redonne 3d8 barrière.
-
-[EP7] Face ou Face. L’ogre est capable d''activer temporairement ses deux têtes en même temps. Ce qui fait qu’elle combine tous les avantages en défense. Dure 3 tours. (1 fois par combat)
-
-[EP8] Phalange. L’arme de cette créature ignore l’effet des boucliers.
-
-[EP9] Météore. Permet de sauter sur une case et infliger -1d dégâts sur une zone de 3x3. (Portée = Vitesse)
-
-[EP10] Balayage. Permet de sacrifier 35% de réussite pour faire une attaque qui va toucher toutes les cibles autour (y compris en diagonale).', 'monstres', 'Bestiaire 2.0 › ligne 21759');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ogre#carte:ogre', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 21759');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ogre#carte:ogre', 13, 'tactique', 'TACTIQUE COMBAT', 'Comme expliqué dans la description générale de la créature, elle possède deux façon de se battre :
 * La moitié guerrière est un brutal colosse adepte du corps-à-corps. Elle utilise la magie de la Terre pour se renforcer ou écraser ses ennemis, et celle du Sang pour gagner en puissance et régénérer ses blessures au combat.
 * La moitié mage, plus fine et rusée, manie la magie du Feu et de la Foudre, déclenchant explosions et éclairs ravageurs avec une précision létale.
@@ -6218,37 +3518,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 Mage : Glace, Feu, Foudre, Gelé, Brûlure, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 22023');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ogre#carte:ogre-abominable', 11, 'double_resistance', 'Double(s) Résistance(s) Dégâts/Effets ÷4', 'Guerrier : Terre, Pétrification
 Mage : Aucune', 'monstres', 'Bestiaire 2.0 › ligne 22028');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ogre#carte:ogre-abominable', 12, 'capacites', 'Capacité(s)', 'Haine mutuelle. Cette créature inflige un bonus +10 dégâts contre les Marcass mais ces derniers ont également le même bonus sur cette première.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Pile ou Face. Cette créature dispose de deux façon de se battre, ce qui entraîne de gros changements dans la manière d''appréhender la créature. (Forme : Guerrier/Mage). La créature peut changer de forme au début ou en fin de tour gratuitement.
-Magie Guerrier : Sang/Terre
-Magie Mage : Feu/Foudre
-
-Tome 2 fois 2 couleurs. Cette créature dispose de 2 paires de magies qui utilise d’une façon qui lui est propre (voir Pile ou Face). Il utilisera les sorts qui correspondent à son niveau de puissance, il ne peut pas atteindre les sorts niveau 5 de puissance magique.
-
-Recyclage. Manger de la viande avariée ou de mort redonne 2d8 santé.
-
-Charge porcine. Permet d''avoir un bonus de +2 à la vitesse. Possible uniquement en ligne droite et si il y a une cible à l''arrivée.
-
-[EP2] Magie et Acier. +3 aux dégâts des armes et des sorts.
-
-[EP3] Critique altérant. L’arme de cette créature, sur un coup critique, est capable d''obliger le jet de vigueur/fermeté pour ne pas que la cible prenne l’altération d’état liée à sa magie (aléatoire si elle en a plusieurs)
-
-[EP4] Nécrophage. Manger de la viande de cadavre redonne 3d8 barrière.
-
-[EP5] Face ou Face. L’ogre est capable d''activer temporairement ses deux têtes en même temps. Ce qui fait qu’elle combine tous les avantages en défense. Dure 3 tours. (1 fois par combat)
-
-[EP6] Phalange. L’arme de cette créature ignore l’effet des boucliers.
-
-[EP7] Météore. Permet de sauter sur une case et infliger -1d dégâts sur une zone de 3x3. (Portée = Vitesse)
-
-[EP8] Balayage. Permet de sacrifier 35% de réussite pour faire une attaque qui va toucher toutes les cibles autour (y compris en diagonale).
-
-[EP9] Surpuissance. Pendant le “Face et Face”, la créature obtient un bonus de +7 à tous les dégâts.
-
-[EP10] Surtension. Pendant le “Face et Face”, la créature est capable de lancer des sorts niveau 5 de puissance et ce premier dure 1 tour de plus.', 'monstres', 'Bestiaire 2.0 › ligne 22033');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ogre#carte:ogre-abominable', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 22033');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ogre#carte:ogre-abominable', 13, 'tactique', 'TACTIQUE COMBAT', 'Cet ogre est énorme en taille, en plus d’avoir une bonne forme physique, il exploite très bien le fait d’avoir ses deux moitiés actives en même temps, comme s''il avait un mode hyper primitif.', 'monstres', 'Bestiaire 2.0 › ligne 22080');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ogre#carte:ogre-superieur', 1, 'sante', 'Santé', 'EP 1 : 40 EP 6 : 280
 EP 2 : 80 EP 7 : 320
@@ -6295,33 +3565,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 Mage : Glace, Feu, Foudre, Gelé, Brûlure, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 21887');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ogre#carte:ogre-superieur', 11, 'double_resistance', 'Double(s) Résistance(s) Dégâts/Effets ÷4', 'Guerrier : Terre, Pétrification
 Mage : Aucune', 'monstres', 'Bestiaire 2.0 › ligne 21892');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ogre#carte:ogre-superieur', 12, 'capacites', 'Capacité(s)', 'Haine mutuelle. Cette créature inflige un bonus +10 dégâts contre les Marcass mais ces derniers ont également le même bonus sur cette première.
-
-Pile ou Face. Cette créature dispose de deux façon de se battre, ce qui entraîne de gros changements dans la manière d''appréhender la créature. (Forme : Guerrier/Mage). La créature peut changer de forme au début ou en fin de tour gratuitement.
-Magie Guerrier : Sang/Terre
-Magie Mage : Feu/Foudre
-
-Tome 2 fois 2 couleurs. Cette créature dispose de 2 paires de magies qui utilise d’une façon qui lui est propre (voir Pile ou Face). Il utilisera les sorts qui correspondent à son niveau de puissance, il ne peut pas atteindre les sorts niveau 5 de puissance magique.
-
-Recyclage. Manger de la viande avariée ou de mort redonne 2d8 santé.
-
-[EP2] Charge porcine. Permet d''avoir un bonus de +2 à la vitesse. Possible uniquement en ligne droite et si il y a une cible à l''arrivée.
-
-[EP3] Magie et Acier. +3 aux dégâts des armes et des sorts.
-
-[EP4] Critique altérant. L’arme de cette créature, sur un coup critique, est capable d''obliger le jet de vigueur/fermeté pour ne pas que la cible prenne l’altération d’état liée à sa magie (aléatoire si elle en a plusieurs)
-
-[EP5] Nécrophage. Manger de la viande de cadavre redonne 3d8 barrière.
-
-[EP6] Face ou Face. L’ogre est capable d''activer temporairement ses deux têtes en même temps. Ce qui fait qu’elle combine tous les avantages en défense. Dure 3 tours. (1 fois par combat)
-
-[EP7] Phalange. L’arme de cette créature ignore l’effet des boucliers.
-
-[EP8] Météore. Permet de sauter sur une case et infliger -1d dégâts sur une zone de 3x3. (Portée = Vitesse)
-
-[EP9] Balayage. Permet de sacrifier 35% de réussite pour faire une attaque qui va toucher toutes les cibles autour (y compris en diagonale).
-
-[EP10] Surpuissance. Pendant le “Face et Face”, la créature obtient un bonus de +7 à tous les dégâts.', 'monstres', 'Bestiaire 2.0 › ligne 21897');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ogre#carte:ogre-superieur', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 21897');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ogre#carte:ogre-superieur', 13, 'tactique', 'TACTIQUE COMBAT', 'Comme tous les supérieurs des autres démons, ils sont plus puissants. Rien de plus à dire.', 'monstres', 'Bestiaire 2.0 › ligne 21938');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/orc#carte:orc', 1, 'sante', 'Santé', 'EP 1 : 20 EP 6 : 140
 EP 2 : 40 EP 7 : 160
@@ -6363,29 +3607,7 @@ EP 6 - 7 : +5% Dans les compétences d’armes, +5% Esquive, +5% Réflexe, +5% �
 EP 8 - 10 : +10% Dans les compétences d’armes, +10% Esquive, +10% Réflexe, +10% Équilibre', 'monstres', 'Bestiaire 2.0 › ligne 22151');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/orc#carte:orc', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Varie selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 22164');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/orc#carte:orc', 10, 'resistance', 'Résistance(s) Dégâts ÷2', 'Varie selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 22168');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/orc#carte:orc', 11, 'capacites', 'Capacité(s)', 'Haine mutuelle. Cette créature inflige un bonus +10 dégâts contre les Elfes forestiers mais ces derniers ont également le même bonus sur cette première.
-
-Magie aléatoire. Cette créature commence avec une magie aléatoire, le mj le détermine au dé (ou bien de lui-même). Elle peut lancer des sorts selon son niveau.
-
-Nerveux. Cette créature à +4 à l’initiative.
-
-[EP2] Mimique. Imite le jet de l''agresseur lors d''un combat. Si c''est une réussite critique, un jet de chance est nécessaire. (2 fois/combat)
-
-[EP3] Doublette parfaite. Les malus pour toucher avec deux armes descend respectivement à 10% pour la première arme et 20% pour la seconde arme.
-
-[EP4] Sournois. Quand l''adversaire n''est pas attentif au personnage, permet d''infliger un bonus de 2d4 dégâts en plus des dégâts de l''arme.
-
-[EP5] Charge sans peur. Le bonus à l’initiative passe à +7.
-
-[EP6] Mimétisme. Capable de copier un don d’une classe d’un adversaire si il a été enclenché.
-
-[EP7] Bond. Cette créature est capable de faire un bond équivalent à sa vitesse x2 en échange de 3IC.
-
-[EP8] Prédaforêt. Tant que cette créature est en milieu forestier = +1% à la réussite critique.
-
-[EP9] Équilibré. Réduit de 5% le malus de la deuxième arme.
-
-[EP10] Vraiment sournois. L’attaque sournoise passe à 4d4.', 'monstres', 'Bestiaire 2.0 › ligne 22172');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/orc#carte:orc', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 22172');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/orc#carte:orc', 12, 'tactique', 'TACTIQUE COMBAT', 'C’est un monstre qui n’est pas là pour perdre du temps, il tape vite et bouge aussi vite. Tout repose sur sa mobilité et initiative.
 Entraver ses mouvements est une solution.', 'monstres', 'Bestiaire 2.0 › ligne 22208');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/orc#carte:orc-abominable', 1, 'sante', 'Santé', 'EP 1 : 80 EP 6 : 560
@@ -6426,29 +3648,7 @@ EP 6 - 7 : +15% Dans les compétences d’armes, +15% Esquive, +15% Réflexe, +1
 EP 8 - 10 : +20% Dans les compétences d’armes, +20% Esquive, +20% Réflexe, +20% Équilibre', 'monstres', 'Bestiaire 2.0 › ligne 22393');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/orc#carte:orc-abominable', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Varie selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 22403');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/orc#carte:orc-abominable', 10, 'resistance', 'Résistance(s) Dégâts ÷2', 'Varie selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 22407');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/orc#carte:orc-abominable', 11, 'capacites', 'Capacité(s)', 'Haine mutuelle. Cette créature inflige un bonus +10 dégâts contre les Elfes forestiers mais ces derniers ont également le même bonus sur cette première.
-
-Magie aléatoire. Cette créature commence avec une magie aléatoire, le mj le détermine au dé (ou bien de lui-même). Elle peut lancer des sorts selon son niveau.
-
-Nerveux. Cette créature à +4 à l’initiative.
-
-[EP2] Mimique. Imite le jet de l''agresseur lors d''un combat. Si c''est une réussite critique, un jet de chance est nécessaire. (2 fois/combat)
-
-[EP3] Doublette parfaite. Les malus pour toucher avec deux armes descend respectivement à 10% pour la première arme et 20% pour la seconde arme.
-
-[EP4] Sournois. Quand l''adversaire n''est pas attentif au personnage, permet d''infliger un bonus de 2d4 dégâts en plus des dégâts de l''arme.
-
-[EP5] Charge sans peur. Le bonus à l’initiative passe à +7.
-
-[EP6] Mimétisme. Capable de copier un don d’une classe d’un adversaire si il a été enclenché.
-
-[EP7] Bond. Cette créature est capable de faire un bond équivalent à sa vitesse x2 en échange de 3IC.
-
-[EP8] Prédaforêt. Tant que cette créature est en milieu forestier = +1% à la réussite critique.
-
-[EP9] Équilibré. Réduit de 5% le malus de la deuxième arme.
-
-[EP10] Vraiment sournois. L’attaque sournoise passe à 4d4.', 'monstres', 'Bestiaire 2.0 › ligne 22411');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/orc#carte:orc-abominable', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 22411');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/orc#carte:orc-abominable', 12, 'tactique', 'TACTIQUE COMBAT', 'Rien de plus à dire, c’est la même chose en plus fort.', 'monstres', 'Bestiaire 2.0 › ligne 22447');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/orc#carte:orc-superieur', 1, 'sante', 'Santé', 'EP 1 : 40 EP 6 : 280
 EP 2 : 80 EP 7 : 320
@@ -6488,29 +3688,7 @@ EP 6 - 7 : +10% Dans les compétences d’armes, +10% Esquive, +10% Réflexe, +1
 EP 8 - 10 : +15% Dans les compétences d’armes, +15% Esquive, +15% Réflexe, +15% Équilibre', 'monstres', 'Bestiaire 2.0 › ligne 22274');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/orc#carte:orc-superieur', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Varie selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 22284');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/orc#carte:orc-superieur', 10, 'resistance', 'Résistance(s) Dégâts ÷2', 'Varie selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 22288');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/orc#carte:orc-superieur', 11, 'capacites', 'Capacité(s)', 'Haine mutuelle. Cette créature inflige un bonus +10 dégâts contre les Elfes forestiers mais ces derniers ont également le même bonus sur cette première.
-
-Magie aléatoire. Cette créature commence avec une magie aléatoire, le mj le détermine au dé (ou bien de lui-même). Elle peut lancer des sorts selon son niveau.
-
-Nerveux. Cette créature à +4 à l’initiative.
-
-[EP2] Mimique. Imite le jet de l''agresseur lors d''un combat. Si c''est une réussite critique, un jet de chance est nécessaire. (2 fois/combat)
-
-[EP3] Doublette parfaite. Les malus pour toucher avec deux armes descend respectivement à 10% pour la première arme et 20% pour la seconde arme.
-
-[EP4] Sournois. Quand l''adversaire n''est pas attentif au personnage, permet d''infliger un bonus de 2d4 dégâts en plus des dégâts de l''arme.
-
-[EP5] Charge sans peur. Le bonus à l’initiative passe à +7.
-
-[EP6] Mimétisme. Capable de copier un don d’une classe d’un adversaire si il a été enclenché.
-
-[EP7] Bond. Cette créature est capable de faire un bond équivalent à sa vitesse x2 en échange de 3IC.
-
-[EP8] Prédaforêt. Tant que cette créature est en milieu forestier = +1% à la réussite critique.
-
-[EP9] Équilibré. Réduit de 5% le malus de la deuxième arme.
-
-[EP10] Vraiment sournois. L’attaque sournoise passe à 4d4.', 'monstres', 'Bestiaire 2.0 › ligne 22292');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/orc#carte:orc-superieur', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 22292');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/orc#carte:orc-superieur', 12, 'tactique', 'TACTIQUE COMBAT', 'Rien de plus à dire, c’est la même chose en plus fort.', 'monstres', 'Bestiaire 2.0 › ligne 22328');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-blizzard', 1, 'attributs', NULL, 'Santé : 400 Chakra : 360 Barrière : 180', 'monstres', 'Bestiaire 2.0 › ligne 22667');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-blizzard', 2, 'degats', 'Dégâts', 'Étoile du nord – 4d10 + 16 dégâts de frappe.', 'monstres', 'Bestiaire 2.0 › ligne 22670');
@@ -6521,19 +3699,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-blizzard', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Vent', 'monstres', 'Bestiaire 2.0 › ligne 22689');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-blizzard', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Glace, Nécromancie, Sang', 'monstres', 'Bestiaire 2.0 › ligne 22693');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-blizzard', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Aveuglement, Fatigue, Saignement, Gelé, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 22697');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-blizzard', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Élément Glace. L’élément d’attaque de cette créature est la Glace avec 25% de chance d’obliger un jet de vigueur à la cible, si elle rate, elle prend “Gelé 1”.
-
-Tome de la Glace lvl3. Permet à cette créature de lancer des sorts de la magie de la Glace au niveau 3 de puissance.
-
-Anti alignement. Inflige +4 dégâts contre les créatures de la Loi et du Chaos.
-
-Aucune fuite. Si jamais il y a impossibilité de fuir ou qu’un état de peur est tenté contre lui = +5 dégâts, +1 Vitesse le temps que la situation se débloque.', 'monstres', 'Bestiaire 2.0 › ligne 22701');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-blizzard', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 22701');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-blizzard', 11, 'tactique', 'TACTIQUE COMBAT', 'Leur armure les recouvrent tellement qu’on dirait des statues à la gloire de la Déesse de la glace, ils sont très forts et seront prêts à tout pour défendre leur territoire. Ils s''assurent de neutraliser les éléments les plus dangereux pour eux.
 
 ________________
@@ -6554,15 +3720,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-froid', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Vent', 'monstres', 'Bestiaire 2.0 › ligne 22570');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-froid', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Glace, Nécromancie, Sang', 'monstres', 'Bestiaire 2.0 › ligne 22574');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-froid', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Aveuglement, Fatigue, Saignement, Gelé, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 22578');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-froid', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Élément Glace. L’élément d’attaque de cette créature est la Glace avec 25% de chance d’obliger un jet de vigueur à la cible, si elle rate, elle prend “Gelé 1”.
-
-Tome de la Glace lvl3. Permet à cette créature de lancer des sorts de la magie de la Glace au niveau 3 de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 22582');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-froid', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 22582');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-froid', 11, 'tactique', 'TACTIQUE COMBAT', 'Ces squelettes font partie des rares non-mort à avoir un sens moral, ils ont tendance à ne pas attaquer sur le coup mais n''hésitent pas à recourir à la menace. Ils sont très efficaces pour fracasser les ennemis qui se cachent derrière une armure lourde et cherchent à entraver grâce à leur magie de glace.', 'monstres', 'Bestiaire 2.0 › ligne 22596');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-givre', 1, 'attributs', NULL, 'Santé : 200 Chakra : 160 Barrière : 80', 'monstres', 'Bestiaire 2.0 › ligne 22606');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-givre', 2, 'degats', 'Dégâts', 'Étoile du nord – 4d10 + 8 dégâts de frappe.', 'monstres', 'Bestiaire 2.0 › ligne 22609');
@@ -6573,17 +3731,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-givre', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Vent', 'monstres', 'Bestiaire 2.0 › ligne 22628');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-givre', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Glace, Nécromancie, Sang', 'monstres', 'Bestiaire 2.0 › ligne 22632');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-givre', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Aveuglement, Fatigue, Saignement, Gelé, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 22636');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-givre', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Élément Glace. L’élément d’attaque de cette créature est la Glace avec 25% de chance d’obliger un jet de vigueur à la cible, si elle rate, elle prend “Gelé 1”.
-
-Tome de la Glace lvl3. Permet à cette créature de lancer des sorts de la magie de la Glace au niveau 3 de puissance.
-
-Anti alignement. Inflige +4 dégâts contre les créatures de la Loi et du Chaos.', 'monstres', 'Bestiaire 2.0 › ligne 22640');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-givre', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 22640');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/os-du-froid#carte:os-du-givre', 11, 'tactique', 'TACTIQUE COMBAT', 'Ces squelettes ont un malin plaisir à tourmenter ceux qui ont pris la voie de la Loi ou du Chaos, il est capable de le sentir et de le pourchasser.', 'monstres', 'Bestiaire 2.0 › ligne 22657');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ottar-chariot#carte:ottar-chariot', 1, 'sante', 'Santé', 'EP 1 : 140 EP 6 : 840
 EP 2 : 280 EP 7 : 960
@@ -6633,17 +3781,7 @@ EP 4 - 10 : +10% Arme Lourde, +10% Stabilité, +10% Vigueur, +10% Intimidation',
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ottar-chariot#carte:ottar-chariot', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', '', 'monstres', 'Bestiaire 2.0 › ligne 23282');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ottar-chariot#carte:ottar-chariot', 10, 'resistance', 'Résistance(s) Dégâts ÷2', '', 'monstres', 'Bestiaire 2.0 › ligne 23287');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ottar-chariot#carte:ottar-chariot', 11, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Peur, Couardise', 'monstres', 'Bestiaire 2.0 › ligne 23292');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ottar-chariot#carte:ottar-chariot', 12, 'capacites', 'Capacité(s)', 'Ottar. Cette créature est un Ottar et est donc totalement invulnérable au contrôle mental, à la peur et à la couardise.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Rempart solide. L’AP et l’AM de cette créature sont très élevés, pour affaiblir son armure, il faut réussir à le toucher avec un coup qui fait des dégâts supérieurs à sa valeur d’armure. Chaque coup réussi divisera par 2 ses AP et AM sur le morceau ciblé.
-
-Force démesurée. Cette créature peut dépasser la limite de Force de 1.
-
-Obscurité avantageuse. Cette créature est avantagée dans le noir, il impose un malus de 5% à tout les jets hostiles envers lui et toutes ses attaques font 1d de dégâts supplémantaire.
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.', 'monstres', 'Bestiaire 2.0 › ligne 23296');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ottar-chariot#carte:ottar-chariot', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 23296');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ottar-chariot#carte:ottar-chariot', 13, 'tactique', 'TACTIQUE COMBAT', 'L’Ottar chariot est un monstre de force brute qui ne doit pas être sous-estimé, il dispose d’une bardiche géante capable de réduire en charpie beaucoup d''armures.Son armure est très solide et il est nécessaire de l’affaiblir avant de pouvoir prétendre lui faire des dégâts de manière convenable. Son absence d’attaque à distance fait que les attaquants physique et magique à distance peuvent affaiblir son armure mais prudence, son arme géante fait qu’il tape de plus loin qu’il n’y paraît.', 'monstres', 'Bestiaire 2.0 › ligne 23315');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ours-garou#carte:ours-garou', 1, 'sante', 'Santé', 'EP 1 : 35 EP 6 : 210
 EP 2 : 70 EP 7 : 240
@@ -6688,27 +3826,7 @@ EP 8 - 10 : +10% Arme Lourde, +10% Stabilité, +10% Vigueur, +10% Intimidation, 
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ours-garou#carte:ours-garou', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', '', 'monstres', 'Bestiaire 2.0 › ligne 23570');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ours-garou#carte:ours-garou', 10, 'resistance', 'Résistance(s) Dégâts ÷2', '', 'monstres', 'Bestiaire 2.0 › ligne 23575');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ours-garou#carte:ours-garou', 11, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Peur, Couardise', 'monstres', 'Bestiaire 2.0 › ligne 23580');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ours-garou#carte:ours-garou', 12, 'capacites', 'Capacité(s)', 'Haine mutuelle. Cette créature inflige un bonus +10 dégâts contre les Orios mais ces derniers ont également le même bonus sur cette première.
-
-Force démesurée. Cette créature peut dépasser la limite de Force de 1.
-
-[EP2] Aura de peur. Inflige un malus de -10% au jet de défense aux ennemis à deux cases.
-
-[EP3] Sang contrôlé. Immunisé au saignement.
-
-[EP4] Attaque sanglante. Les armes naturelles de cette créature obligent le jet de vigueur pour ne pas prendre “Saignement 1”.
-
-[EP5] Patience. Cette créature peut consommer un tour pour obtenir +1 action à son prochain tour. (1 fois/combat)
-
-[EP6] Gigantisme. Cette créature peut utiliser l’arc de guerre géant avec les bras seulement.
-
-[EP7] Fureur animale. Chaque attaque avec l’arme de corps à corps sera systématiquement suivie d’une attaque de morsure qui infligera 2d10 de dégâts d’estoc.
-
-[EP8] Rage d’ours. Cette créature peut consommer son tour à galvaniser ses alliés, leur donnant un boost de +5 aux dégâts pendant 3 tours. (1 fois/combat)
-
-[EP9] Rage de sang. Cette créature peut consommer son tour à enrager ses alliés, leur donnant la capacité de faire +10 dégâts contre les cibles qui ont un état de saignement pendant 4 tours. (1 fois/combat)
-
-[EP10] Super force. Cette créature ne peut pas avoir de croix à la Force.', 'monstres', 'Bestiaire 2.0 › ligne 23584');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ours-garou#carte:ours-garou', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 23584');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ours-garou#carte:ours-garou', 13, 'tactique', 'TACTIQUE COMBAT', 'Les ours-garous sont de puissantes créatures qui ne doivent pas être sous-estimé car même caché derrière une armure lourde, elle peut céder face à leur assauts bestiaux. Ils comptent trop sur leur force et pas assez sur la stratégie, ce qui les rend très prévisible et assez vulnérable contre ceux qui attaquent à distance.
 
 Prudence celà dit, certains d’entre eux possèdent assez de cerveau pour utiliser un arc de guerre géant pour attaquer ceux qui se pensent à l’abri à distance.', 'monstres', 'Bestiaire 2.0 › ligne 23617');
@@ -6751,33 +3869,7 @@ EP 4 - 10 : +10% Arme Lourde, +10% Stabilité, +10% Vigueur, +10% Intimidation, 
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ours-garou#carte:ours-garou-abominable', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', '', 'monstres', 'Bestiaire 2.0 › ligne 23822');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ours-garou#carte:ours-garou-abominable', 10, 'resistance', 'Résistance(s) Dégâts ÷2', '', 'monstres', 'Bestiaire 2.0 › ligne 23827');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ours-garou#carte:ours-garou-abominable', 11, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Peur, Couardise', 'monstres', 'Bestiaire 2.0 › ligne 23832');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ours-garou#carte:ours-garou-abominable', 12, 'capacites', 'Capacité(s)', 'Haine mutuelle. Cette créature inflige un bonus +10 dégâts contre les Orios mais ces derniers ont également le même bonus sur cette première.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Force démesurée. Cette créature peut dépasser la limite de Force de 1.
-
-Aura de peur. Inflige un malus de -10% au jet de défense aux ennemis à deux cases.
-
-Sang contrôlé. Immunisé au saignement.
-
-[EP2] Attaque sanglante. Les armes naturelles de cette créature obligent le jet de vigueur pour ne pas prendre “Saignement 1”.
-
-[EP3] Patience. Cette créature peut consommer un tour pour obtenir +1 action à son prochain tour. (1 fois/combat)
-
-[EP4] Gigantisme. Cette créature peut utiliser l’arc de guerre géant avec les bras seulement.
-
-[EP5] Fureur animale. Chaque attaque avec l’arme de corps à corps sera systématiquement suivie d’une attaque de morsure qui infligera 2d10 de dégâts d’estoc.
-
-[EP6] Rage d’ours. Cette créature peut consommer son tour à galvaniser ses alliés, leur donnant un boost de +5 aux dégâts pendant 3 tours. (1 fois/combat)
-
-[EP7] Rage de sang. Cette créature peut consommer son tour à enrager ses alliés, leur donnant la capacité de faire +10 dégâts contre les cibles qui ont un état de saignement pendant 4 tours. (1 fois/combat)
-
-[EP8] Super force. Cette créature ne peut pas avoir de croix à la Force.
-
-[EP9] Force d’ours. Cette créature inflige +10 dégâts avec toutes ses armes.
-
-[EP10] Broyage. Les armes naturelles de cette créature sont capables, sur un coup critique, d’infliger des malus caractéristiques aléatoires. (cumulable)', 'monstres', 'Bestiaire 2.0 › ligne 23836');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ours-garou#carte:ours-garou-abominable', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 23836');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ours-garou#carte:ours-garou-abominable', 13, 'tactique', 'TACTIQUE COMBAT', 'Les abominables sont des aberrations qui n’hésiterons pas à tuer tout être vivant sur leur chemin. Ils sont assez forts pour détruire des os entiers d’un seul coup, et ne doivent pas être sous-estimés.', 'monstres', 'Bestiaire 2.0 › ligne 23878');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ours-garou#carte:ours-garou-superieur', 1, 'sante', 'Santé', 'EP 1 : 70 EP 6 : 420
 EP 2 : 140 EP 7 : 480
@@ -6818,29 +3910,7 @@ EP 5 - 10 : +10% Arme Lourde, +10% Stabilité, +10% Vigueur, +10% Intimidation, 
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ours-garou#carte:ours-garou-superieur', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', '', 'monstres', 'Bestiaire 2.0 › ligne 23696');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ours-garou#carte:ours-garou-superieur', 10, 'resistance', 'Résistance(s) Dégâts ÷2', '', 'monstres', 'Bestiaire 2.0 › ligne 23701');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ours-garou#carte:ours-garou-superieur', 11, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Peur, Couardise', 'monstres', 'Bestiaire 2.0 › ligne 23706');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ours-garou#carte:ours-garou-superieur', 12, 'capacites', 'Capacité(s)', 'Haine mutuelle. Cette créature inflige un bonus +10 dégâts contre les Orios mais ces derniers ont également le même bonus sur cette première.
-
-Force démesurée. Cette créature peut dépasser la limite de Force de 1.
-
-Aura de peur. Inflige un malus de -10% au jet de défense aux ennemis à deux cases.
-
-[EP2] Sang contrôlé. Immunisé au saignement.
-
-[EP3] Attaque sanglante. Les armes naturelles de cette créature obligent le jet de vigueur pour ne pas prendre “Saignement 1”.
-
-[EP4] Patience. Cette créature peut consommer un tour pour obtenir +1 action à son prochain tour. (1 fois/combat)
-
-[EP5] Gigantisme. Cette créature peut utiliser l’arc de guerre géant avec les bras seulement.
-
-[EP6] Fureur animale. Chaque attaque avec l’arme de corps à corps sera systématiquement suivie d’une attaque de morsure qui infligera 2d10 de dégâts d’estoc.
-
-[EP7] Rage d’ours. Cette créature peut consommer son tour à galvaniser ses alliés, leur donnant un boost de +5 aux dégâts pendant 3 tours. (1 fois/combat)
-
-[EP8] Rage de sang. Cette créature peut consommer son tour à exciter ses alliés, leur donnant la capacité de faire +10 dégâts contre les cibles qui ont un état de saignement pendant 4 tours. (1 fois/combat)
-
-[EP9] Super force. Cette créature ne peut pas avoir de croix à la Force.
-
-[EP10] Force d’ours. Cette créature inflige +10 dégâts avec toutes ses armes.', 'monstres', 'Bestiaire 2.0 › ligne 23710');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ours-garou#carte:ours-garou-superieur', 12, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 23710');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/ours-garou#carte:ours-garou-superieur', 13, 'tactique', 'TACTIQUE COMBAT', 'Les versions supérieures sont plus résistantes et plus fortes que les démons de base. La stratégie est la même, juste qu’il faut faire bien attention quand l’ennemi est trop proche.', 'monstres', 'Bestiaire 2.0 › ligne 23746');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-electrique', 1, 'attributs', NULL, 'Santé : 70 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 23956');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-electrique', 2, 'degats', 'Dégâts', 'Aile foudroyante - 2d10 + 3 dégâts de foudre
@@ -6852,13 +3922,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-electrique', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Terre, Nécromancie, Pétrification, Poison', 'monstres', 'Bestiaire 2.0 › ligne 23979');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-electrique', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Foudre, Eau, Vent, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 23983');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-electrique', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 23987');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-electrique', 10, 'capacites', 'Capacité(s)', 'Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Minus. Cette créature est petite, elle impose un malus de 10% aux jets des adversaires qui tentent de la toucher.
-
-Élément Foudre. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “paralysie 1”.
-
-Pied véloce. +2 vitesse en cas de météo “orage” ou “champ magnétique”', 'monstres', 'Bestiaire 2.0 › ligne 23991');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-electrique', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 23991');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-electrique', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce pigeon bien plus costaud que le précédent est encore plus relié à la foudre, à tel point que les météo avantageuses pour la foudre augmentent encore plus sa vitesse.', 'monstres', 'Bestiaire 2.0 › ligne 24003');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-foudroyant', 1, 'attributs', NULL, 'Santé : 35 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 23901');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-foudroyant', 2, 'degats', 'Dégâts', 'Aile foudroyante - 2d10 dégâts de foudre
@@ -6870,11 +3934,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-foudroyant', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Terre, Nécromancie, Pétrification, Poison', 'monstres', 'Bestiaire 2.0 › ligne 23925');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-foudroyant', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Foudre, Eau, Vent, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 23929');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-foudroyant', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 23933');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-foudroyant', 10, 'capacites', 'Capacité(s)', 'Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Minus. Cette créature est petite, elle impose un malus de 10% aux jets des adversaires qui tentent de la toucher.
-
-Élément Foudre. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “paralysie 1”.', 'monstres', 'Bestiaire 2.0 › ligne 23937');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-foudroyant', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 23937');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-foudroyant', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce pigeon ne paye pas de mine à première vue, mais son lien plutôt profond avec la foudre lui donne beaucoup d’avantage, surtout au niveau de la vitesse. Sa petite taille joue à son avantage vu qu’il sera plus difficile de l’atteindre.', 'monstres', 'Bestiaire 2.0 › ligne 23946');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-tonnerre', 1, 'attributs', NULL, 'Santé : 140 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 24013');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-tonnerre', 2, 'degats', 'Dégâts', 'Aile foudroyante - 2d10 + 6 dégâts de foudre
@@ -6887,13 +3947,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-tonnerre', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Terre, Nécromancie, Pétrification, Poison', 'monstres', 'Bestiaire 2.0 › ligne 24037');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-tonnerre', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Foudre, Eau, Vent, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 24041');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-tonnerre', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 24045');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-tonnerre', 10, 'capacites', 'Capacité(s)', 'Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Élément Foudre. L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “paralysie 1”.
-
-Pied véloce. +2 vitesse en cas de météo “orage” ou “champ magnétique”
-
-Lance foudre. A son tour, cette créature envoie une lance faite entièrement de foudre dans le ciel en cloche et va atterrir sur un ennemi aléatoire qui pourra tenter un jet de défense. C’est un IC.', 'monstres', 'Bestiaire 2.0 › ligne 24049');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-tonnerre', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 24049');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/pigeon-foudroyant#carte:pigeon-tonnerre', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce pigeon bien plus gros que ces semblables s’est imposé comme chef des nuées de pigeons foudroyants, les plus faibles le suivent. Ce pigeon qu’on nomme “tonnerre” n’a pas volé son nom car il est capable d’invoquer une lance de foudre avec son propre corps et l’envoyer sur ses ennemis.', 'monstres', 'Bestiaire 2.0 › ligne 24061');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirobuste#carte:potirobuste-sergent', 1, 'attributs', NULL, 'Santé : 120 Chakra : 120 Barrière : 120', 'monstres', 'Bestiaire 2.0 › ligne 24147');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirobuste#carte:potirobuste-sergent', 2, 'degats', 'Dégâts', 'Fourche - 4d10 + 8 dégâts d’estoc', 'monstres', 'Bestiaire 2.0 › ligne 24150');
@@ -6904,21 +3958,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirobuste#carte:potirobuste-sergent', 6, 'competences', 'Compétence(s) secondaire(s)', '+10% Arme lourde, +10% Parade', 'monstres', 'Bestiaire 2.0 › ligne 24166');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirobuste#carte:potirobuste-sergent', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Vent, Ombre, Confusion, Surdité, Peur', 'monstres', 'Bestiaire 2.0 › ligne 24170');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirobuste#carte:potirobuste-sergent', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Glace, Terre, Lumière, Brûlure, Gelé, Pétrification, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 24174');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirobuste#carte:potirobuste-sergent', 9, 'capacites', 'Capacité(s)', 'Demi-santé. Cette créature a deux fois moins de santé.
-
-Super barrière. Cette créature possède une barrière qui correspond à son chakra.
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Tome du Feu lvl3. Permet à cette créature de lancer des sorts de la magie du Feu au niveau 3 de puissance.
-
-Tome de la Lumière lvl3. Permet à cette créature de lancer des sorts de la magie de la Lumière au niveau 3 de puissance.
-
-Rage. Active un pouvoir de rage qui augmente de +3 les dégâts et de +2 les dégâts subis pendant 3 tours.
-
-Attaquant. Permet d''infliger +5 dégâts avec des armes d''hast.
-
-Réparation. Cette créature récupère 2d6 barrière au début de son tour.', 'monstres', 'Bestiaire 2.0 › ligne 24178');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirobuste#carte:potirobuste-sergent', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 24178');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirobuste#carte:potirobuste-sergent', 10, 'tactique', 'TACTIQUE COMBAT', 'Le sergent est un potimen plus épais et un peu plus grand, il se remarque facilement car il n’hésite absolument pas à se mettre au milieu des champs de blé pour montrer qu’il existe et intimider les intrus.', 'monstres', 'Bestiaire 2.0 › ligne 24203');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirobuste#carte:potirobuste-soldat', 1, 'attributs', NULL, 'Santé : 60 Chakra : 60 Barrière : 60', 'monstres', 'Bestiaire 2.0 › ligne 24081');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirobuste#carte:potirobuste-soldat', 2, 'degats', 'Dégâts', 'Fourche - 4d10 + 4 dégâts d’estoc', 'monstres', 'Bestiaire 2.0 › ligne 24084');
@@ -6929,19 +3969,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirobuste#carte:potirobuste-soldat', 6, 'competences', 'Compétence(s) secondaire(s)', '+5% Arme lourde, +5% Parade', 'monstres', 'Bestiaire 2.0 › ligne 24100');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirobuste#carte:potirobuste-soldat', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Vent, Ombre, Confusion, Surdité, Peur', 'monstres', 'Bestiaire 2.0 › ligne 24104');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirobuste#carte:potirobuste-soldat', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Feu, Glace, Terre, Lumière, Brûlure, Gelé, Pétrification, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 24108');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirobuste#carte:potirobuste-soldat', 9, 'capacites', 'Capacité(s)', 'Demi-santé. Cette créature a deux fois moins de santé.
-
-Super barrière. Cette créature possède une barrière qui correspond à son chakra.
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Tome du Feu lvl3. Permet à cette créature de lancer des sorts de la magie du Feu au niveau 3 de puissance.
-
-Tome de la Lumière lvl3. Permet à cette créature de lancer des sorts de la magie de la Lumière au niveau 3 de puissance.
-
-Rage. Active un pouvoir de rage qui augmente de +3 les dégâts et de +2 les dégâts subis pendant 3 tours.
-
-Attaquant. Permet d''infliger +5 dégâts avec des armes d''hast.', 'monstres', 'Bestiaire 2.0 › ligne 24112');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirobuste#carte:potirobuste-soldat', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 24112');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirobuste#carte:potirobuste-soldat', 10, 'tactique', 'TACTIQUE COMBAT', 'Le potirobuste est la première ligne parmi les potimens, il est là pour taper fort l’adversaire et de manière rapprochée. Il possède aussi un gros potentiel de destruction avec sa magie de feu en plus de pouvoir se soigner avec la lumière.
 
 Il est quand même assez malin pour bloquer les éléments ennemis qui pourraient menacer ses alliés plus fragiles.', 'monstres', 'Bestiaire 2.0 › ligne 24134');
@@ -6956,19 +3984,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirodeur#carte:potirodeur-malin', 6, 'competences', 'Compétence(s) secondaire(s)', '+5% Arme légère, +5% Esquive', 'monstres', 'Bestiaire 2.0 › ligne 24242');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirodeur#carte:potirodeur-malin', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Foudre, Terre, Ombre, Pétrification, Paralysie, Peur', 'monstres', 'Bestiaire 2.0 › ligne 24246');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirodeur#carte:potirodeur-malin', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vent, Glace, Feu, Lumière, Surdité, Gelé, Brûlure, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 24250');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirodeur#carte:potirodeur-malin', 9, 'capacites', 'Capacité(s)', 'Demi-santé. Cette créature a deux fois moins de santé.
-
-Super barrière. Cette créature possède une barrière qui correspond à son chakra.
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Tome du Vent lvl3. Permet à cette créature de lancer des sorts de la magie du Vent au niveau 3 de puissance.
-
-Tome de la Lumière lvl3. Permet à cette créature de lancer des sorts de la magie de la Lumière au niveau 3 de puissance.
-
-Doublette parfaite. Les malus pour toucher avec deux armes descend respectivement à 10% pour la première arme et 20% pour la seconde arme.
-
-Bien sournois. Quand l''adversaire n''est pas attentif au personnage, permet d''infliger un bonus de 3d4 dégâts en plus des dégâts de l''arme.', 'monstres', 'Bestiaire 2.0 › ligne 24254');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirodeur#carte:potirodeur-malin', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 24254');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirodeur#carte:potirodeur-malin', 10, 'tactique', 'TACTIQUE COMBAT', 'Le potirodeur est un potimen qui aime se faire discret, spécialistes des attaques sournoises, il est là pour aider ses coéquipiers en attaquant les éléments les plus affaiblis de l’ennemi pour réduire leur nombre.
 
 Garder un œil sur un allié affaibli, un potirodeur l’a peut-être déjà pris pour cible pour pouvoir le mettre hors combat.', 'monstres', 'Bestiaire 2.0 › ligne 24276');
@@ -6983,21 +3999,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirodeur#carte:potirodeur-vicieux', 6, 'competences', 'Compétence(s) secondaire(s)', '+10% Arme légère, +10% Esquive', 'monstres', 'Bestiaire 2.0 › ligne 24310');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirodeur#carte:potirodeur-vicieux', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Foudre, Terre, Ombre, Pétrification, Paralysie, Peur', 'monstres', 'Bestiaire 2.0 › ligne 24314');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirodeur#carte:potirodeur-vicieux', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Vent, Glace, Feu, Lumière, Surdité, Gelé, Brûlure, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 24318');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirodeur#carte:potirodeur-vicieux', 9, 'capacites', 'Capacité(s)', 'Demi-santé. Cette créature a deux fois moins de santé.
-
-Super barrière. Cette créature possède une barrière qui correspond à son chakra.
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Tome du Vent lvl3. Permet à cette créature de lancer des sorts de la magie du Vent au niveau 3 de puissance.
-
-Tome de la Lumière lvl3. Permet à cette créature de lancer des sorts de la magie de la Lumière au niveau 3 de puissance.
-
-Doublette parfaite. Les malus pour toucher avec deux armes descend respectivement à 10% pour la première arme et 20% pour la seconde arme.
-
-Bien sournois. Quand l''adversaire n''est pas attentif au personnage, permet d''infliger un bonus de 3d4 dégâts en plus des dégâts de l''arme.
-
-Camouflage. Dans le bon environnement (champs), cette créature peut complètement disparaître et obliger ses adversaires à le chercher. Peut profiter d’une attaque discrète.', 'monstres', 'Bestiaire 2.0 › ligne 24322');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirodeur#carte:potirodeur-vicieux', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 24322');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potirodeur#carte:potirodeur-vicieux', 10, 'tactique', 'TACTIQUE COMBAT', 'Le potirodeur est un potimen qui aime se faire discret, spécialistes des attaques sournoises, il est là pour aider ses coéquipiers en attaquant les éléments les plus affaiblis de l’ennemi pour réduire leur nombre.
 
 Garder un œil sur un allié affaibli, un potirodeur l’a peut-être déjà pris pour cible pour pouvoir le mettre hors combat.', 'monstres', 'Bestiaire 2.0 › ligne 24347');
@@ -7010,19 +4012,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potironcier#carte:potironcier-mage', 6, 'competences', 'Compétence(s) secondaire(s)', '+5% Magie, +5% Fermeté', 'monstres', 'Bestiaire 2.0 › ligne 24385');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potironcier#carte:potironcier-mage', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Ombre, Peur', 'monstres', 'Bestiaire 2.0 › ligne 24389');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potironcier#carte:potironcier-mage', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Corruption, Lumière, Surcharge magique, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 24393');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potironcier#carte:potironcier-mage', 9, 'capacites', 'Capacité(s)', 'Demi-santé. Cette créature a deux fois moins de santé.
-
-Super barrière. Cette créature possède une barrière qui correspond à son chakra.
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Tome de l’Arcane lvl3. Permet à cette créature de lancer des sorts de la magie de l’Arcane au niveau 3 de puissance.
-
-Tome de la Lumière lvl3. Permet à cette créature de lancer des sorts de la magie de la Lumière au niveau 3 de puissance.
-
-Excès. Le lanceur peut sacrifier 20% de réussite pour augmenter d''un cran le dé (maximum D12).
-
-Présentateur météo. Invoque une météo avantageuse pour ses alliés au début du combat.', 'monstres', 'Bestiaire 2.0 › ligne 24397');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potironcier#carte:potironcier-mage', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 24397');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potironcier#carte:potironcier-mage', 10, 'tactique', 'TACTIQUE COMBAT', 'Le potironcier est la force magique des potimens, il ne bouge pas beaucoup et garde ses distances avec les ennemis car il est plutôt fragile, mais il est capable de faire des trous dans les lignes ennemis avec ses sorts.
 
 Ne le laissez pas trop s’installer où il risque de vous démolir lentement.', 'monstres', 'Bestiaire 2.0 › ligne 24419');
@@ -7035,21 +4025,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potironcier#carte:potironcier-magicien', 6, 'competences', 'Compétence(s) secondaire(s)', '+5% Magie, +5% Fermeté', 'monstres', 'Bestiaire 2.0 › ligne 24451');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potironcier#carte:potironcier-magicien', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Ombre, Peur', 'monstres', 'Bestiaire 2.0 › ligne 24455');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potironcier#carte:potironcier-magicien', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Corruption, Lumière, Surcharge magique, Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 24459');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potironcier#carte:potironcier-magicien', 9, 'capacites', 'Capacité(s)', 'Demi-santé. Cette créature a deux fois moins de santé.
-
-Super barrière. Cette créature possède une barrière qui correspond à son chakra.
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Tome de l’Arcane lvl3. Permet à cette créature de lancer des sorts de la magie de l’Arcane au niveau 3 de puissance.
-
-Tome de la Lumière lvl3. Permet à cette créature de lancer des sorts de la magie de la Lumière au niveau 3 de puissance.
-
-Excès. Le lanceur peut sacrifier 20% de réussite pour augmenter d''un cran le dé (maximum D12).
-
-Climato-choix. Invoque une météo avantageuse pour ses alliés au début du combat.
-
-Climato-égoïste. Les effets positifs de la météo ne sont que pour lui et ses alliés.', 'monstres', 'Bestiaire 2.0 › ligne 24463');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potironcier#carte:potironcier-magicien', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 24463');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/potironcier#carte:potironcier-magicien', 10, 'tactique', 'TACTIQUE COMBAT', 'La version magicien est capable de faire bien plus de dégâts et d’empêcher les ennemis de profiter de la météo.', 'monstres', 'Bestiaire 2.0 › ligne 24488');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/presque-ottar#carte:presque-ottar', 1, 'sante', 'Santé', 'EP 1 : 100 EP 6 : 600
 EP 2 : 200 EP 7 : 700
@@ -7094,7 +4070,7 @@ EP 10 : F : 8 / P : 8 / V : 8 / S : 0 / I : 8 / A : 8', 'monstres', 'Bestiaire 2
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/presque-ottar#carte:presque-ottar', 8, 'competences', 'Compétence(s) secondaire(s)', 'Variable selon les magies', 'monstres', 'Bestiaire 2.0 › ligne 22816');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/presque-ottar#carte:presque-ottar', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Variable selon les magies', 'monstres', 'Bestiaire 2.0 › ligne 22820');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/presque-ottar#carte:presque-ottar', 10, 'resistance', 'Résistance(s) Dégâts ÷2', 'Variable selon les magies', 'monstres', 'Bestiaire 2.0 › ligne 22824');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/presque-ottar#carte:presque-ottar', 11, 'capacites', 'Capacité(s)', 'Effondrement chakratique. Son chakra s’effondre et sa magie est hors de contrôle, cette créature obtient quatres dons selon si elle est mono magie ou bi-magie. Voir tableau plus bas.', 'monstres', 'Bestiaire 2.0 › ligne 22828');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/presque-ottar#carte:presque-ottar', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 22828');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/presque-ottar#carte:presque-ottar', 12, 'tactique', 'TACTIQUE COMBAT', 'Le presque Ottar n’est jamais le même selon les magies qui entrent dans un effondrement, il est nécessaire de bien connaître les magies et ce que ça peut impliquer.', 'monstres', 'Bestiaire 2.0 › ligne 22832');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-adulte', 1, 'attributs', NULL, 'Santé : 680 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 24562');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-adulte', 2, 'degats', 'Dégâts', 'Morsure surpuissante – 6d12 + 20 dégâts d’estoc
@@ -7105,19 +4081,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-adulte', 6, 'competences', 'Compétence(s) secondaire(s)', '+15% Arme lourde, +15% Parade, +15% Stabilité, +15% Athlétisme, +10% Fermeté, -10% Esquive', 'monstres', 'Bestiaire 2.0 › ligne 24581');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-adulte', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Acide', 'monstres', 'Bestiaire 2.0 › ligne 24585');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-adulte', 8, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Magie', 'monstres', 'Bestiaire 2.0 › ligne 24589');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-adulte', 9, 'capacites', 'Capacité(s)', 'Folle de guerre. Cette créature doit avancer vers l’ennemi, elle ne peut pas attendre et est immunisée contre toutes formes de peur.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Anti-magie. Cette créature est totalement immunisée à la magie.
-
-Aveugle naturel. Cette créature est naturellement aveugle, ce qui l''immunise de tous les effets, attaques ou altérations d’état lié à la vue. Cet aveuglement ne l’empêche pas de connaître son environnement et de savoir où sont ses ennemis, la Perception n’est donc pas endommagée.
-
-Son strident. Cette créature est capable de faire résonner un son strident sur tout le terrain qui va empêcher l’utilisation de la magie pendant 2 tours complets. (4 tours de recharge)
-
-Vulnérabilité acide. Cette créature possède une vulnérabilité contre les dégâts d’acide, les sorts affligeants des dégâts d’acide ne sont pas annulés mais leur effets secondaires oui.
-
-Destruction. Le coup critique de cette créature retire automatiquement un cran de solidité à l’arme ou morceau d’armure.', 'monstres', 'Bestiaire 2.0 › ligne 24593');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-adulte', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 24593');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-adulte', 10, 'tactique', 'TACTIQUE COMBAT', 'Les adultes sont massifs et puissants, leur mâchoire surpuissante est capable de broyer le métal.', 'monstres', 'Bestiaire 2.0 › ligne 24614');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-jeune', 1, 'attributs', NULL, 'Santé : 340 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 24505');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-jeune', 2, 'degats', 'Dégâts', 'Morsure surpuissante – 6d12 + 10 dégâts d’estoc
@@ -7128,15 +4092,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-jeune', 6, 'competences', 'Compétence(s) secondaire(s)', '+10% Arme lourde, +10% Parade, +10% Stabilité, +10% Athlétisme, +10% Fermeté, -10% Esquive', 'monstres', 'Bestiaire 2.0 › ligne 24524');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-jeune', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Acide', 'monstres', 'Bestiaire 2.0 › ligne 24528');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-jeune', 8, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Magie, Couardise, Aveuglement, Peur', 'monstres', 'Bestiaire 2.0 › ligne 24532');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-jeune', 9, 'capacites', 'Capacité(s)', 'Folle de guerre. Cette créature doit avancer vers l’ennemi, elle ne peut pas attendre et est immunisée contre toutes formes de peur.
-
-Anti-magie. Cette créature est totalement immunisée à la magie.
-
-Aveugle naturel. Cette créature est naturellement aveugle, ce qui l''immunise de tous les effets, attaques ou altérations d’état lié à la vue. Cet aveuglement ne l’empêche pas de connaître son environnement et de savoir où sont ses ennemis, la Perception n’est donc pas endommagée.
-
-Son strident. Cette créature est capable de faire résonner un son strident sur tout le terrain qui va empêcher l’utilisation de la magie pendant 2 tours complets. (4 tours de recharge)
-
-Vulnérabilité acide. Cette créature possède une vulnérabilité contre les dégâts d’acide, les sorts affligeants des dégâts d’acide ne sont pas annulés mais leur effets secondaires oui.', 'monstres', 'Bestiaire 2.0 › ligne 24536');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-jeune', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 24536');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-jeune', 10, 'tactique', 'TACTIQUE COMBAT', 'Territorial, c’est une créature qui vit par petit groupe et mange énormément de végétaux, bien qu’aveugle, il est capable de sentir quand un intrus n’est pas loin et n''hésitera pas à le charger. L’acide représente sa seule vulnérabilité.', 'monstres', 'Bestiaire 2.0 › ligne 24552');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-sanguin', 1, 'attributs', NULL, 'Santé : 1360 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 24624');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-sanguin', 2, 'degats', 'Dégâts', 'Morsure surpuissante – 6d12 + 30 dégâts d’estoc
@@ -7147,21 +4103,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-sanguin', 6, 'competences', 'Compétence(s) secondaire(s)', '+15% Arme lourde, +15% Parade, +15% Stabilité, +15% Athlétisme, +10% Fermeté, -10% Esquive', 'monstres', 'Bestiaire 2.0 › ligne 24643');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-sanguin', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Acide', 'monstres', 'Bestiaire 2.0 › ligne 24647');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-sanguin', 8, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Magie', 'monstres', 'Bestiaire 2.0 › ligne 24651');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-sanguin', 9, 'capacites', 'Capacité(s)', 'Folle de guerre. Cette créature doit avancer vers l’ennemi, elle ne peut pas attendre et est immunisée contre toutes formes de peur.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Anti-magie. Cette créature est totalement immunisée à la magie.
-
-Aveugle naturel. Cette créature est naturellement aveugle, ce qui l''immunise de tous les effets, attaques ou altérations d’état lié à la vue. Cet aveuglement ne l’empêche pas de connaître son environnement et de savoir où sont ses ennemis, la Perception n’est donc pas endommagée.
-
-Son strident. Cette créature est capable de faire résonner un son strident sur tout le terrain qui va empêcher l’utilisation de la magie pendant 2 tours complets. (4 tours de recharge)
-
-Vulnérabilité acide. Cette créature possède une vulnérabilité contre les dégâts d’acide, les sorts affligeants des dégâts d’acide ne sont pas annulés mais leur effets secondaires oui.
-
-Destruction. Le coup critique de cette créature retire automatiquement un cran de solidité à l’arme ou morceau d’armure.
-
-Inarrêtable. Cette créature ne peut être arrêtée dans son élan, seule une autre chose inarrêtable peut être utilisée pour l’arrêter.', 'monstres', 'Bestiaire 2.0 › ligne 24655');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-sanguin', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 24655');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/radrak-frenetique#carte:radrak-frenetique-sanguin', 10, 'tactique', 'TACTIQUE COMBAT', 'Cette forme très rare de radrak est une véritable bête qui ne craint rien ni personne, il pourrait même affronter un dragon même si ça implique sa mort. Une soif de violence peut lui prendre et le rendre tout simplement impossible à stopper à moins de le mettre hors combat.', 'monstres', 'Bestiaire 2.0 › ligne 24679');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-gris', 1, 'attributs', NULL, 'Santé : 17 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 24761');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-gris', 2, 'degats', 'Dégâts', 'Morsure - 2d8 dégâts d’estoc
@@ -7172,9 +4114,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-gris', 6, 'competences', 'Compétence(s) secondaire(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 24780');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-gris', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Glace, Confusion, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 24785');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-gris', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Sang, Foudre, Poison, Saignement, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 24789');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-gris', 9, 'capacites', 'Capacité(s)', 'Demi-santé. Cette créature a deux fois moins de santé.
-
-Petit sournois. Quand l’adversaire n’est pas attentif à l’attaquant, permet d’infliger un bonus de 1d4 dégâts en plus des dégâts de l’arme.', 'monstres', 'Bestiaire 2.0 › ligne 24793');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-gris', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 24793');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-gris', 10, 'tactique', 'TACTIQUE COMBAT', 'Un ennemi faible qui possède peu de santé, rien de dangereux. Il s''acharnera sur le plus proche.', 'monstres', 'Bestiaire 2.0 › ligne 24800');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-noir', 1, 'attributs', NULL, 'Santé : 35 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 24810');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-noir', 2, 'degats', 'Dégâts', 'Morsure - 2d8 + 4 dégâts d’estoc
@@ -7185,9 +4125,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-noir', 6, 'competences', 'Compétence(s) secondaire(s)', '+10% Arme lourde, +10% Esquive', 'monstres', 'Bestiaire 2.0 › ligne 24829');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-noir', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Glace, Confusion, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 24833');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-noir', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Sang, Foudre, Poison, Saignement, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 24837');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-noir', 9, 'capacites', 'Capacité(s)', 'Demi-santé. Cette créature a deux fois moins de santé.
-
-Sournois. Quand l’adversaire n’est pas attentif à l’attaquant, permet d’infliger un bonus de 2d4 dégâts en plus des dégâts de l’arme.', 'monstres', 'Bestiaire 2.0 › ligne 24841');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-noir', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 24841');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-noir', 10, 'tactique', 'TACTIQUE COMBAT', 'Le rat noir est un peu plus dangereux que son homologue gris, capable de frapper là où ça fait mal, il attendra que ses allié occupe l’ennemi avant de frapper sur les côtés ou le dos.', 'monstres', 'Bestiaire 2.0 › ligne 24848');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-putride', 1, 'attributs', NULL, 'Santé : 70 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 24858');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-putride', 2, 'degats', 'Dégâts', 'Morsure - 2d8 + 6 dégâts d’estoc
@@ -7198,11 +4136,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-putride', 6, 'competences', 'Compétence(s) secondaire(s)', '+15% Arme lourde, +15% Esquive, +15% Vigueur', 'monstres', 'Bestiaire 2.0 › ligne 24877');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-putride', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Glace, Confusion, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 24881');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-putride', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Sang, Foudre, Poison, Saignement, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 24885');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-putride', 9, 'capacites', 'Capacité(s)', 'Demi-santé. Cette créature a deux fois moins de santé.
-
-Sournois. Quand l’adversaire n’est pas attentif à l’attaquant, permet d’infliger un bonus de 2d4 dégâts en plus des dégâts de l’arme.
-
-Attaque poison. L’arme de la créature est capable d’empoisonnement. Chaque attaque va obliger un jet de vigueur à la victime, si elle rate, elle prend “Poison 1”.', 'monstres', 'Bestiaire 2.0 › ligne 24889');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-putride', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 24889');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-putride', 10, 'tactique', 'TACTIQUE COMBAT', 'Le rat putride s’est imposé comme un chef de groupe de rats, ses griffes et dents sont imprégnées de poison et il est capable de l’infliger très facilement. Mais il reste fragile comme tous ses homologues rongeurs.', 'monstres', 'Bestiaire 2.0 › ligne 24899');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-arcanique', 1, 'attributs', NULL, 'Santé : 200 Chakra : 80 Barrière : 80', 'monstres', 'Bestiaire 2.0 › ligne 25087');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-arcanique', 2, 'degats', 'Dégâts', 'Frappe – 2d10 +10 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 25090');
@@ -7213,11 +4147,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-arcanique', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Sang, Nécromancie, Saignement, Poison', 'monstres', 'Bestiaire 2.0 › ligne 25109');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-arcanique', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre, Eau, Arcane, Surcharge magique, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 25113');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-arcanique', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 25117');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-arcanique', 10, 'capacites', 'Capacité(s)', 'Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrises maximum : Explosion rocheuse, Vague déferlante.
-
-Super barrière. Cette créature possède une barrière qui correspond à son chakra.', 'monstres', 'Bestiaire 2.0 › ligne 25121');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-arcanique', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 25121');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-arcanique', 11, 'tactique', 'TACTIQUE COMBAT', 'Une légende parlera des salithres arcaniques, des salithre anciennes qui sont très imbibé d’arcane, à telle point qu’on pourrait y trouver les plus belles perles dans le monde. Mais leur existence est devenue une légende du fait qu’elles ont disparu il y a longtemps car elles ont été trop chassées.', 'monstres', 'Bestiaire 2.0 › ligne 25131');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-de-plage', 1, 'attributs', NULL, 'Santé : 50 Chakra : 20 Barrière : 10', 'monstres', 'Bestiaire 2.0 › ligne 24987');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-de-plage', 2, 'degats', 'Dégâts', 'Frappe – 2d10 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 24990');
@@ -7228,9 +4158,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-de-plage', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Sang, Nécromancie, Saignement, Poison', 'monstres', 'Bestiaire 2.0 › ligne 25009');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-de-plage', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre, Eau, Arcane, Surcharge magique, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 25013');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-de-plage', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 25017');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-de-plage', 10, 'capacites', 'Capacité(s)', 'Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrises maximum : Lance pierre, Boule de chakra.', 'monstres', 'Bestiaire 2.0 › ligne 25021');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-de-plage', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 25021');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-de-plage', 11, 'tactique', 'TACTIQUE COMBAT', 'Cette créature possède une défense physique plus que remarquable, elle n’est pas très agressive et va souvent attaquer en réponse à une agression.', 'monstres', 'Bestiaire 2.0 › ligne 25028');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-de-roche', 1, 'attributs', NULL, 'Santé : 100 Chakra : 40 Barrière : 20', 'monstres', 'Bestiaire 2.0 › ligne 25036');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-de-roche', 2, 'degats', 'Dégâts', 'Frappe – 2d10 + 5 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 25039');
@@ -7241,9 +4169,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-de-roche', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Sang, Nécromancie, Saignement, Poison', 'monstres', 'Bestiaire 2.0 › ligne 25058');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-de-roche', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre, Eau, Arcane, Surcharge magique, Confusion', 'monstres', 'Bestiaire 2.0 › ligne 25062');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-de-roche', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 25066');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-de-roche', 10, 'capacites', 'Capacité(s)', 'Inaltérable. Résiste aux sorts ou actions qui pourrait lui détruire sa structure.
-
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrises maximum : Explosion rocheuse, Vague déferlante.', 'monstres', 'Bestiaire 2.0 › ligne 25070');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-de-roche', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 25070');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-de-roche', 11, 'tactique', 'TACTIQUE COMBAT', 'Cette version plus grosse que celle de plage possède une légère armure magique en plus de sa défense plus que notable. Elle est aussi capable de lancer des sorts plus puissants.', 'monstres', 'Bestiaire 2.0 › ligne 25077');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/sanglier#carte:gros-sanglier', 1, 'attributs', NULL, 'Santé : 140 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 25193');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/sanglier#carte:gros-sanglier', 2, 'degats', 'Dégâts', 'Défense - 2d10 + 5 dégâts d’estoc
@@ -7255,9 +4181,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/sanglier#carte:gros-sanglier', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Sang', 'monstres', 'Bestiaire 2.0 › ligne 25216');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/sanglier#carte:gros-sanglier', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre', 'monstres', 'Bestiaire 2.0 › ligne 25220');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/sanglier#carte:gros-sanglier', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 25224');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/sanglier#carte:gros-sanglier', 10, 'capacites', 'Capacité(s)', 'Charge. Cette créature est capable d’infliger 1d de dégâts supplémentaire si elle parcourt plus de 4 cases avant son attaque.
-
-Fermeté. Cette créature ne subit aucun dégâts de recul en plus d’infliger un bonus de dégâts de +5 avec toute attaque de charge.', 'monstres', 'Bestiaire 2.0 › ligne 25228');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/sanglier#carte:gros-sanglier', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 25228');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/sanglier#carte:sanglier', 1, 'attributs', NULL, 'Santé : 70 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 25146');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/sanglier#carte:sanglier', 2, 'degats', 'Dégâts', 'Défense - 2d10 dégâts d’estoc
 Coup de tête - 2d10 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 25149');
@@ -7268,7 +4192,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/sanglier#carte:sanglier', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Sang', 'monstres', 'Bestiaire 2.0 › ligne 25169');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/sanglier#carte:sanglier', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre', 'monstres', 'Bestiaire 2.0 › ligne 25173');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/sanglier#carte:sanglier', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 25177');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/sanglier#carte:sanglier', 10, 'capacites', 'Capacité(s)', 'Charge. Cette créature est capable d’infliger 1d de dégâts supplémentaire si elle parcourt plus de 4 cases avant son attaque.', 'monstres', 'Bestiaire 2.0 › ligne 25181');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/sanglier#carte:sanglier', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 25181');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/sanglier#carte:sanglier-de-terre', 1, 'attributs', NULL, 'Santé : 560 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 25241');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/sanglier#carte:sanglier-de-terre', 2, 'degats', 'Dégâts', 'Défense - 2d10 + 10 dégâts d’estoc
 Coup de tête - 2d10 + 10 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 25244');
@@ -7279,13 +4203,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/sanglier#carte:sanglier-de-terre', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Sang', 'monstres', 'Bestiaire 2.0 › ligne 25264');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/sanglier#carte:sanglier-de-terre', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Terre', 'monstres', 'Bestiaire 2.0 › ligne 25268');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/sanglier#carte:sanglier-de-terre', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 25272');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/sanglier#carte:sanglier-de-terre', 10, 'capacites', 'Capacité(s)', 'Charge. Cette créature est capable d’infliger 1d de dégâts supplémentaire si elle parcourt plus de 4 cases avant son attaque.
-
-Fermeté. Cette créature ne subit aucun dégâts de recul en plus d’infliger un bonus de dégâts de +5 avec toute attaque de charge.
-
-Inarrêtable. Cette créature ne peut être arrêtée dans son élan, seule une autre chose inarrêtable peut être utilisée pour l’arrêter.
-
-Super Santé. Cette créature a le double de PV.', 'monstres', 'Bestiaire 2.0 › ligne 25276');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/sanglier#carte:sanglier-de-terre', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 25276');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/saurotudo#carte:saurotudo-jeune', 1, 'attributs', NULL, 'Santé : 110 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 25301');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/saurotudo#carte:saurotudo-jeune', 2, 'degats', 'Dégâts', 'Patte – 3d10 dégâts de frappe
 Queue - 3d10 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 25304');
@@ -7299,13 +4217,7 @@ Sang, Saignement', 'monstres', 'Bestiaire 2.0 › ligne 25320');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/saurotudo#carte:saurotudo-jeune', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', '', 'monstres', 'Bestiaire 2.0 › ligne 25328');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/saurotudo#carte:saurotudo-jeune', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Eau, Vent, Terre, Poison, Confusion, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 25333');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/saurotudo#carte:saurotudo-jeune', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 25337');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/saurotudo#carte:saurotudo-jeune', 10, 'capacites', 'Capacité(s)', 'Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Balayage. Cette créature possède une arme (queue) qui est capable de toucher toute les cibles autour d’elle en échange de 30% de réussite.
-
-Camouflage. Dans le bon environnement (marais, eau), cette créature peut complètement disparaître et obliger ses adversaires à le chercher. Peut profiter d’une attaque discrète.
-
-Écrasement. Le poids de cette créature est assez grand pour faire des dégâts colossaux contre les créatures deux fois moins grandes que lui. Par une action, cette créature peut faire un gros plaquage sur une ou plusieurs créatures plus petites qu’elle, les créatures doivent faire un test de réussite (95 ou moins) pour ne pas tomber dans le coma immédiatement.', 'monstres', 'Bestiaire 2.0 › ligne 25341');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/saurotudo#carte:saurotudo-jeune', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 25341');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/saurotudo#carte:saurotudo-jeune', 11, 'tactique', 'TACTIQUE COMBAT', 'Cette créature est paisible et n’attaque jamais en premier (sauf quand ses petits sont menacés) mais il n’est pas à prendre avec le dos de la cuillère, il reste une créature disposant d’une solide carapace physique, de résistance magique utile et d’une grande neutralité aux restes. Il reste néanmoins très vulnérable contre les créatures liées au Sang.
 
 Il est mieux de s’en faire un ami plutôt qu’un ennemi.', 'monstres', 'Bestiaire 2.0 › ligne 25354');
@@ -7319,11 +4231,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:general-de-fer', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Paralysie, Gelé, Brûlure, Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 25513');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:general-de-fer', 8, 'resistance', 'Résistance(s) Dégâts ÷2', '', 'monstres', 'Bestiaire 2.0 › ligne 25517');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:general-de-fer', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', '', 'monstres', 'Bestiaire 2.0 › ligne 25522');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:general-de-fer', 10, 'capacites', 'Capacité(s)', 'Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Multi-fer++. Cette créature est capable d’activer en IC n’importe quel sort de type “fer” et d’avoir un bonus de +6 aux dégâts. Dure 3 tours.
-
-Laser de fer++. Tire tous les tours un laser qui passe à travers toutes les protections physiques, magiques, la barrière. Il est parable et esquivable. Ceci est un IC.', 'monstres', 'Bestiaire 2.0 › ligne 25527');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:general-de-fer', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 25527');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:general-de-fer', 11, 'tactique', 'TACTIQUE COMBAT', 'La version ultime du soldat de fer. Il ressemble presque à une armure vivante qui suinterai du métal liquide dans les orbite et tout autre interstices de l’armure. Il est capable de tirer le laser toutes les 10 secondes et tape très fort avec son arme.', 'monstres', 'Bestiaire 2.0 › ligne 25537');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:lieutenant-de-fer', 1, 'attributs', NULL, 'Santé : 200 Chakra : 80 Barrière : 40', 'monstres', 'Bestiaire 2.0 › ligne 25433');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:lieutenant-de-fer', 2, 'degats', 'Dégâts', 'Lame de fer – 3d10 + 7 dégâts estoc/taille
@@ -7335,11 +4243,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:lieutenant-de-fer', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Paralysie, Gelé, Brûlure, Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 25456');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:lieutenant-de-fer', 8, 'resistance', 'Résistance(s) Dégâts ÷2', '', 'monstres', 'Bestiaire 2.0 › ligne 25460');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:lieutenant-de-fer', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', '', 'monstres', 'Bestiaire 2.0 › ligne 25465');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:lieutenant-de-fer', 10, 'capacites', 'Capacité(s)', 'Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Multi-fer+. Cette créature est capable d’activer en IC n’importe quel sort de type “fer” et avoir un bonus de +3 aux dégâts. Dure 3 tours.
-
-Laser de fer+. Tire tous les deux tours un laser qui passe à travers toutes les protections physiques, magiques, la barrière. Il est parable et esquivable. Ceci est un IC.', 'monstres', 'Bestiaire 2.0 › ligne 25470');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:lieutenant-de-fer', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 25470');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:lieutenant-de-fer', 11, 'tactique', 'TACTIQUE COMBAT', 'Une version plus solide du soldat de fer, ça se remarque à sa peau qui ressemble davantage à une armure.', 'monstres', 'Bestiaire 2.0 › ligne 25480');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:soldat-de-fer', 1, 'attributs', NULL, 'Santé : 100 Chakra : 40 Barrière : 20', 'monstres', 'Bestiaire 2.0 › ligne 25375');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:soldat-de-fer', 2, 'degats', 'Dégâts', 'Lame de fer – 3d10 + 3 dégâts estoc/taille
@@ -7351,11 +4255,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:soldat-de-fer', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Paralysie, Gelé, Brûlure, Pétrification', 'monstres', 'Bestiaire 2.0 › ligne 25399');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:soldat-de-fer', 8, 'resistance', 'Résistance(s) Dégâts ÷2', '', 'monstres', 'Bestiaire 2.0 › ligne 25403');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:soldat-de-fer', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', '', 'monstres', 'Bestiaire 2.0 › ligne 25408');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:soldat-de-fer', 10, 'capacites', 'Capacité(s)', 'Inerte. Cette créature possède 10 de volonté et est donc immunisée contre les jets de Volonté (sauf les altérations d’état dont il est vulnérable, là il n’a que 50% de chance de les éviter).
-
-Multi-fer. Cette créature est capable d’activer en IC n’importe quel sort de type “fer” mais sans avoir le bonus de dégâts. Dure 3 tours.
-
-Laser de fer. Tire tous les trois tours un laser qui passe à travers toutes les protections physiques, magiques, la barrière. Il est parable et esquivable. Ceci est un IC.', 'monstres', 'Bestiaire 2.0 › ligne 25413');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:soldat-de-fer', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 25413');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/soldat-de-fer#carte:soldat-de-fer', 11, 'tactique', 'TACTIQUE COMBAT', 'Cet ennemi est un puissant adversaire capable de faire tomber la meilleure des défenses, il n''y a pas vraiment de stratégie particulière vu qu’ils sont bons à tout.', 'monstres', 'Bestiaire 2.0 › ligne 25423');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche', 1, 'attributs', NULL, 'Santé : 240 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 25554');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche', 2, 'degats', 'Dégâts', 'Épée de lumière – 4d10 dégâts de taille/estoc', 'monstres', 'Bestiaire 2.0 › ligne 25557');
@@ -7366,13 +4266,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Ombre', 'monstres', 'Bestiaire 2.0 › ligne 25576');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Lumière', 'monstres', 'Bestiaire 2.0 › ligne 25580');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 25584');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est dépourvue de morale et d''émotion ce qu''il l''a rendue immunisée aux sorts mentaux ainsi qu''une immunité contre le poison et la maladie. Elle bénéficie également d''un bonus de +60 pour l''intimidation. Sa volonté est à 9 (les jets de vigueur/fermeté contre des effets de magie dont il est vulnérable divise par 2 les chances de les réussir).
-
-Téméraire. Cette créature est toujours en offensive et ne possède pas le malus pour toucher sa cible.
-
-Force Solaire. Perd 20% de sa santé à la fin de chacun de ses tours mais a un bonus de 10 à toutes ses attaques (15 si il y a la météo "grand soleil").
-
-Photophile. Cette créature attire les sorts d''attaques de lumière vers lui et ne prend pas de dégâts des sorts de soin de la lumière.', 'monstres', 'Bestiaire 2.0 › ligne 25588');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 25588');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce zombi est une créature assez particulière, en effet c’est un zombi qui sous l’effet de l''excitation va brûler de l’intérieur et prendre beaucoup de puissance pendant le combat. Il ne tient que maximum 5 tours pendant un combat. Il cherchera à finir le combat le plus vite possible donc utilise dès le début toute sa puissance sur ses ennemis.', 'monstres', 'Bestiaire 2.0 › ligne 25599');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche-astral', 1, 'attributs', NULL, 'Santé : 960 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 25667');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche-astral', 2, 'degats', 'Dégâts', 'Épée de lumière – 4d10 + 20 dégâts de taille/estoc', 'monstres', 'Bestiaire 2.0 › ligne 25670');
@@ -7383,17 +4277,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche-astral', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Ombre', 'monstres', 'Bestiaire 2.0 › ligne 25689');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche-astral', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Lumière', 'monstres', 'Bestiaire 2.0 › ligne 25693');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche-astral', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 25697');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche-astral', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est dépourvue de morale et d''émotion ce qu''il l''a rendue immunisée aux sorts mentaux ainsi qu''une immunité contre le poison et la maladie. Elle bénéficie également d''un bonus de +60 pour l''intimidation. Sa volonté est à 9 (les jets de vigueur/fermeté contre des effets de magie dont il est vulnérable divise par 2 les chances de les réussir).
-
-Téméraire. Cette créature est toujours en offensive et ne possède pas le malus pour toucher sa cible.
-
-Force Solaire++. Perd 5% de sa santé à la fin de chacun de ses tours mais a un bonus de 10 à toutes ses attaques (15 si il y a la météo "grand soleil").
-
-Photophile. Cette créature attire les sorts d''attaques de lumière vers lui et ne prend pas de dégâts des sorts de soin de la lumière.
-
-Explosion lumineuse. Lors de sa mort, il va exploser dans une explosion faite de lumière qui force le jet de vigueur à tous ceux qui sont à 5 cases ou moins de lui, si les cibles ratent, elles prennent "Aveuglement 2".
-
-Lumière de super force. Annule 5 dégâts d’une attaque encaissé, cette réduction se recharge après chaque attaque et elle n’est pas affectée par les attaques qui ignorent les défenses.', 'monstres', 'Bestiaire 2.0 › ligne 25701');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche-astral', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 25701');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche-astral', 11, 'tactique', 'TACTIQUE COMBAT', 'En plus d’être bien plus puissante du à sa lumière corrompue mais en plus cette dernière lui procure une petite protection sous la forme d’un champ de force qui se recharge après chaque coup qu’il a reçu ce qui le rend un poil plus solide même si il finira par mourir au bout d’un certain nombre de tour. Et il tient 4 fois plus longtemps que les solécorchés classiques.', 'monstres', 'Bestiaire 2.0 › ligne 25718');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche-brillant', 1, 'attributs', NULL, 'Santé : 480 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 25609');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche-brillant', 2, 'degats', 'Dégâts', 'Épée de lumière – 4d10 + 10 dégâts de taille/estoc', 'monstres', 'Bestiaire 2.0 › ligne 25612');
@@ -7404,15 +4288,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche-brillant', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Ombre', 'monstres', 'Bestiaire 2.0 › ligne 25631');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche-brillant', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Lumière', 'monstres', 'Bestiaire 2.0 › ligne 25635');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche-brillant', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Aveuglement', 'monstres', 'Bestiaire 2.0 › ligne 25639');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche-brillant', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est dépourvue de morale et d''émotion ce qu''il l''a rendue immunisée aux sorts mentaux ainsi qu''une immunité contre le poison et la maladie. Elle bénéficie également d''un bonus de +60 pour l''intimidation. Sa volonté est à 9 (les jets de vigueur/fermeté contre des effets de magie dont il est vulnérable divise par 2 les chances de les réussir).
-
-Téméraire. Cette créature est toujours en offensive et ne possède pas le malus pour toucher sa cible.
-
-Force Solaire+. Perd 10% de sa santé à la fin de chacun de ses tours mais a un bonus de 10 à toutes ses attaques (15 si il y a la météo "grand soleil").
-
-Photophile. Cette créature attire les sorts d''attaques de lumière vers lui et ne prend pas de dégâts des sorts de soin de la lumière.
-
-Explosion lumineuse. Lors de sa mort, il va exploser dans une explosion faite de lumière qui force le jet de vigueur à tous ceux qui sont à 5 cases ou moins de lui, si les cibles ratent, elles prennent "Aveuglement 2".', 'monstres', 'Bestiaire 2.0 › ligne 25643');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche-brillant', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 25643');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/solecorche#carte:solecorche-brillant', 11, 'tactique', 'TACTIQUE COMBAT', 'Cette version plus brillante est capable à sa mort de libérer une gigantesque explosion de lumière qui est capable d’aveugler ses victimes, en plus de tenir 2 fois plus longtemps un combat.', 'monstres', 'Bestiaire 2.0 › ligne 25657');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette', 1, 'attributs', NULL, 'Santé : 35 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 25742');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette', 2, 'degats', 'Dégâts', 'Sabre rouillé – 2d10 dégâts de taille', 'monstres', 'Bestiaire 2.0 › ligne 25745');
@@ -7423,11 +4299,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Frappe', 'monstres', 'Bestiaire 2.0 › ligne 25765');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette', 8, 'resistance', 'Résistance(s) Dégâts ÷2', '', 'monstres', 'Bestiaire 2.0 › ligne 25769');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Peur, Aveuglement, Fatigue, Saignement, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 25774');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisée aux attaques d’estoc.
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.', 'monstres', 'Bestiaire 2.0 › ligne 25778');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 25778');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette', 11, 'tactique', 'TACTIQUE COMBAT', 'Malgré sa nature de non-mort, le squelette est un prédateur qui traque la vie sous toutes ses formes, il va chercher à chasser ceux qui se tiennent éloignés du combat s''ils le peuvent, sinon ils attaquent le plus proche. Malheureusement, ses os peuvent être réduit facilement en poussière avec les bonnes armes.', 'monstres', 'Bestiaire 2.0 › ligne 25786');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette-combattant', 1, 'attributs', NULL, 'Santé : 70 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 25796');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette-combattant', 2, 'degats', 'Dégâts', 'Masse d’arme en fer – 2d10 + 3 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 25799');
@@ -7439,13 +4311,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette-combattant', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Frappe', 'monstres', 'Bestiaire 2.0 › ligne 25819');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette-combattant', 8, 'resistance', 'Résistance(s) Dégâts ÷2', '', 'monstres', 'Bestiaire 2.0 › ligne 25823');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette-combattant', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Peur, Aveuglement, Fatigue, Saignement, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 25828');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette-combattant', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisée aux attaques d’estoc.
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Grand bouclier. Tant qu’il porte un bouclier, réduit de moitié les dégâts infligés par des armes à distance ou de jet, ceux pour le porteur et les alliés adjacent à lui.', 'monstres', 'Bestiaire 2.0 › ligne 25832');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette-combattant', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 25832');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette-combattant', 11, 'tactique', 'TACTIQUE COMBAT', 'Le combattant est un squelette équipé d’une masse et d’un écu de bois, il est bien plus efficace que le squelette classique pour se battre, il n’est pas rare de voir les combattants coordonner les attaques d’autres squelettes plus faibles qu’eux. Il aura tendance à chercher à bloquer des adversaires à son contact et laisser les autres frapper sur les flans.', 'monstres', 'Bestiaire 2.0 › ligne 25843');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette-heros', 1, 'attributs', NULL, 'Santé : 140 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 25855');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette-heros', 2, 'degats', 'Dégâts', 'Masse d’arme en fer – 2d10 + 8 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 25858');
@@ -7457,15 +4323,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette-heros', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Frappe', 'monstres', 'Bestiaire 2.0 › ligne 25878');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette-heros', 8, 'resistance', 'Résistance(s) Dégâts ÷2', '', 'monstres', 'Bestiaire 2.0 › ligne 25882');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette-heros', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Peur, Aveuglement, Fatigue, Saignement, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 25887');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette-heros', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisée aux attaques d’estoc.
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Grand bouclier. Tant qu’il porte un bouclier, réduit de moitié les dégâts infligés par des armes à distance ou de jet, ceux pour le porteur et les alliés adjacent à lui.
-
-Posture souple. Cette créature peut changer de posture autant de fois qu’il le veut durant son tour.', 'monstres', 'Bestiaire 2.0 › ligne 25891');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette-heros', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 25891');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette#carte:squelette-heros', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce chef d''escouade non-mort possède une intelligence tactique rudimentaire.. Son armure renforcée et son expertise avec la masse en font un défi pour même les guerriers chevronnés.
 Il est celui qui a réussi à se distinguer parmi les autres par sa technique au combat particulièrement unique. Il est assez malin car il va chercher la cible qui est importante parmi les ennemis comme par exemple les soigneurs ou les mages. Il va systématiquement frapper en offensif et passer en défensif après son attaque.', 'monstres', 'Bestiaire 2.0 › ligne 25905');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-arbaletrier', 1, 'attributs', NULL, 'Santé : 140 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 26223');
@@ -7478,15 +4336,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-arbaletrier', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Frappe', 'monstres', 'Bestiaire 2.0 › ligne 26246');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-arbaletrier', 8, 'resistance', 'Résistance(s) Dégâts ÷2', '', 'monstres', 'Bestiaire 2.0 › ligne 26250');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-arbaletrier', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Peur, Aveuglement, Fatigue, Saignement, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 26255');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-arbaletrier', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Coup perturbateur. La cible aura un malus de 10% à son esquive ou parade.
-
-Visualisation. Le malus pour viser une partie du corps diminue de 5%.', 'monstres', 'Bestiaire 2.0 › ligne 26259');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-arbaletrier', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 26259');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-arbaletrier', 11, 'tactique', 'TACTIQUE COMBAT', 'Ils ont délaissé l’arc pour prendre l’efficace arbalète qui permet de traverser les armures les plus fines, ils ont tendance à viser les ennemis avec des armures plus lourdes.', 'monstres', 'Bestiaire 2.0 › ligne 26273');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-archer', 1, 'attributs', NULL, 'Santé : 70 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 26165');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-archer', 2, 'degats', 'Dégâts', 'Arc en fer – 2d8 dégâts d’estoc (PO 2 - 10).
@@ -7498,13 +4348,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-archer', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Frappe', 'monstres', 'Bestiaire 2.0 › ligne 26188');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-archer', 8, 'resistance', 'Résistance(s) Dégâts ÷2', '', 'monstres', 'Bestiaire 2.0 › ligne 26192');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-archer', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Peur, Aveuglement, Fatigue, Saignement, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 26197');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-archer', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Coup perturbateur. La cible aura un malus de 10% à son esquive ou parade.', 'monstres', 'Bestiaire 2.0 › ligne 26201');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-archer', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 26201');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-archer', 11, 'tactique', 'TACTIQUE COMBAT', 'Ces squelettes-ci sont des soldats mieux entraînés capables d’utiliser efficacement des arcs long, ils cherchent à viser les cibles qui n’ont pas de grosses protections quand ils le peuvent.
 Si un ennemi est trop près, ils peuvent très bien se défendre avec leur épée longue.', 'monstres', 'Bestiaire 2.0 › ligne 26212');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-soldat', 1, 'attributs', NULL, 'Santé : 280 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 26283');
@@ -7517,17 +4361,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-soldat', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Frappe', 'monstres', 'Bestiaire 2.0 › ligne 26306');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-soldat', 8, 'resistance', 'Résistance(s) Dégâts ÷2', '', 'monstres', 'Bestiaire 2.0 › ligne 26310');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-soldat', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Peur, Aveuglement, Fatigue, Saignement, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 26315');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-soldat', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Coup perturbateur. La cible aura un malus de 10% à son esquive ou parade.
-
-Visualisation. Le malus pour viser une partie du corps diminue de 5%.
-
-Sulfateuse. Annule la recharge longue de l’arbalète.', 'monstres', 'Bestiaire 2.0 › ligne 26319');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-soldat', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 26319');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-archer#carte:squelette-soldat', 11, 'tactique', 'TACTIQUE COMBAT', 'Les squelettes soldats sont des ennemis redoutables qui ne doivent pas être sous-estimés, ils sont très bons pour percer les armures adverses et vont faire en sorte d''endommager suffisamment les ennemis à distance pour les terminer au corps à corps si les carreaux n’ont pas réussi à tuer.', 'monstres', 'Bestiaire 2.0 › ligne 26336');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-montagne', 1, 'attributs', NULL, 'Santé : 840 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 26101');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-montagne', 2, 'degats', 'Dégâts', 'Épée osseuse liée – 4d10 + 18 dégâts de taille.', 'monstres', 'Bestiaire 2.0 › ligne 26104');
@@ -7538,15 +4372,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-montagne', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Sang, Frappe, Feu', 'monstres', 'Bestiaire 2.0 › ligne 26123');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-montagne', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Taille, Eau, Terre, Vent, Nécromancie', 'monstres', 'Bestiaire 2.0 › ligne 26127');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-montagne', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Peur, Aveuglement, Fatigue, Saignement, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 26131');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-montagne', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Lenteur. Cette créature à un malus de 5 à l’initiative.
-
-Égide. Permet de survivre à 1 santé contre une attaque qui est censée vous mettre dans le coma. Marche qu’une fois.
-
-Maladie de la Pierre. Quand cette créature fait un coup critique à l’attaque, il oblige un jet de vigueur à la cible, si cette dernière rate, elle prend “pétrification 1”. Si la victime fait un échec critique à son jet, elle contracte la Maladie de la Pierre.', 'monstres', 'Bestiaire 2.0 › ligne 26135');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-montagne', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 26135');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-montagne', 11, 'tactique', 'TACTIQUE COMBAT', 'Certains atteignent le dernier stade de la maladie et développent une immense armure qui ressemble étrangement à l’armure montagne (d’où leur nom), elle possède les mêmes propriétés défensives que cette dernière. Il est incapable de spinter. Si il se retrouve au contact d’un ennemi, il utilisera toute sa puissance pour détruire sa cible.', 'monstres', 'Bestiaire 2.0 › ligne 26149');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-pierre', 1, 'attributs', NULL, 'Santé : 210 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 25988');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-pierre', 2, 'degats', 'Dégâts', 'Épée osseuse liée – 4d10 dégâts de taille.', 'monstres', 'Bestiaire 2.0 › ligne 25991');
@@ -7557,13 +4383,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-pierre', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Sang, Frappe, Feu', 'monstres', 'Bestiaire 2.0 › ligne 26010');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-pierre', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Taille, Eau, Terre, Vent, Nécromancie', 'monstres', 'Bestiaire 2.0 › ligne 26014');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-pierre', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Peur, Aveuglement, Fatigue, Saignement, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 26018');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-pierre', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Lenteur. Cette créature à un malus de 5 à l’initiative.
-
-Égide. Permet de survivre à 1 santé contre une attaque qui est censée vous mettre dans le coma. Marche qu’une fois.', 'monstres', 'Bestiaire 2.0 › ligne 26022');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-pierre', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 26022');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-pierre', 11, 'tactique', 'TACTIQUE COMBAT', 'Leur absence totale de magie ne laisse aucun doute sur leur comportement, ils vont charger le premier arriver et frapper de toute leur force, ils prennent souvent la posture offensive.', 'monstres', 'Bestiaire 2.0 › ligne 26033');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-roche', 1, 'attributs', NULL, 'Santé : 420 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 26043');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-roche', 2, 'degats', 'Dégâts', 'Épée osseuse liée – 4d10 + 9 dégâts de taille.', 'monstres', 'Bestiaire 2.0 › ligne 26046');
@@ -7574,15 +4394,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-roche', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Sang, Frappe, Feu', 'monstres', 'Bestiaire 2.0 › ligne 26065');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-roche', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Taille, Eau, Terre, Vent, Nécromancie', 'monstres', 'Bestiaire 2.0 › ligne 26069');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-roche', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Peur, Aveuglement, Fatigue, Saignement, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 26073');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-roche', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Lenteur. Cette créature à un malus de 5 à l’initiative.
-
-Égide. Permet de survivre à 1 santé contre une attaque qui est censée vous mettre dans le coma. Marche qu’une fois.
-
-Maladie de la Pierre. Quand cette créature fait un coup critique à l’attaque, il oblige un jet de vigueur à la cible, si cette dernière rate, elle prend “pétrification 1”. Si la victime fait un échec critique à son jet, elle contracte la Maladie de la Pierre.', 'monstres', 'Bestiaire 2.0 › ligne 26077');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-roche', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 26077');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-de-pierre#carte:squelette-de-roche', 11, 'tactique', 'TACTIQUE COMBAT', 'Ils sont légèrement plus costaud que les simples, ils sont capables de pétrifier leurs victimes et ne vont pas se gêner de le faire. Sur énormément de malchance, la victime peut subir la même maladie.', 'monstres', 'Bestiaire 2.0 › ligne 26091');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-colerique', 1, 'attributs', NULL, 'Santé : 240 Chakra : 100 Barrière : 50', 'monstres', 'Bestiaire 2.0 › ligne 26353');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-colerique', 2, 'degats', 'Dégâts', 'Griffes mauvaises – 6d12 dégâts de taille/estoc.', 'monstres', 'Bestiaire 2.0 › ligne 26356');
@@ -7593,15 +4405,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-colerique', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière, Terre, Feu, Glace, Pétrification, Brûlure, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 26375');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-colerique', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre, Foudre, Vent, Nécromancie, Sang', 'monstres', 'Bestiaire 2.0 › ligne 26379');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-colerique', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Peur, Aveuglement, Fatigue, Saignement, Paralysie, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 26383');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-colerique', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Résistance à la magie. Cette créature encaisse seulement la moitié des dégâts magiques.
-
-Tome de l’Ombre lvl5. Permet à cette créature de lancer des sorts de la magie de l’Ombre au niveau 5 de puissance.
-
-Tome de la Foudre lvl5. Permet à cette créature de lancer des sorts de la magie de la Foudre au niveau 5 de puissance.', 'monstres', 'Bestiaire 2.0 › ligne 26387');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-colerique', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 26387');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-colerique', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce squelette très puissant possède une force démesurée ainsi qu’une résistance à la magie, qu''il maîtrise parfaitement sous la forme de la Foudre et de l’Ombre. Il est assez malin et est capable de s’adapter à une situation ou à une autre.', 'monstres', 'Bestiaire 2.0 › ligne 26402');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-determine', 1, 'attributs', NULL, 'Santé : 960 Chakra : 400 Barrière : 200', 'monstres', 'Bestiaire 2.0 › ligne 26477');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-determine', 2, 'degats', 'Dégâts', 'Griffes mauvaises – 6d12 + 30 dégâts de taille/estoc.', 'monstres', 'Bestiaire 2.0 › ligne 26480');
@@ -7612,21 +4416,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-determine', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière, Terre, Feu, Glace, Pétrification, Brûlure, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 26499');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-determine', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre, Foudre, Vent, Nécromancie, Sang', 'monstres', 'Bestiaire 2.0 › ligne 26503');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-determine', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Peur, Aveuglement, Fatigue, Saignement, Paralysie, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 26507');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-determine', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Résistance à la magie. Cette créature encaisse seulement la moitié des dégâts magiques.
-
-Tome de l’Ombre lvl5. Permet à cette créature de lancer des sorts de la magie de l’Ombre au niveau 5 de puissance.
-
-Tome de la Foudre lvl5. Permet à cette créature de lancer des sorts de la magie de la Foudre au niveau 5 de puissance.
-
-Général non-mort. Si d’autres non-mort sont présents sur le terrain et sont ses alliés : +6 dégâts et +1 Vitesse tant que la créature est en vie.
-
-Climatosceptique. Cette créature ne prend aucun effet négatif de la météo.', 'monstres', 'Bestiaire 2.0 › ligne 26511');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-determine', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 26511');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-determine', 11, 'tactique', 'TACTIQUE COMBAT', 'Il est le summum des squelettes, il est très puissant en plus d’ignorer totalement les effets négatifs de la météo.', 'monstres', 'Bestiaire 2.0 › ligne 26535');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-puissant', 1, 'attributs', NULL, 'Santé : 480 Chakra : 200 Barrière : 100', 'monstres', 'Bestiaire 2.0 › ligne 26412');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-puissant', 2, 'degats', 'Dégâts', 'Griffes mauvaises – 6d12 + 15 dégâts de taille/estoc.', 'monstres', 'Bestiaire 2.0 › ligne 26415');
@@ -7637,19 +4427,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-puissant', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Lumière, Terre, Feu, Glace, Pétrification, Brûlure, Gelé', 'monstres', 'Bestiaire 2.0 › ligne 26434');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-puissant', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Ombre, Foudre, Vent, Nécromancie, Sang', 'monstres', 'Bestiaire 2.0 › ligne 26438');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-puissant', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Peur, Aveuglement, Fatigue, Saignement, Paralysie, Surdité', 'monstres', 'Bestiaire 2.0 › ligne 26442');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-puissant', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Résistance à la magie. Cette créature encaisse seulement la moitié des dégâts magiques.
-
-Tome de l’Ombre lvl5. Permet à cette créature de lancer des sorts de la magie de l’Ombre au niveau 5 de puissance.
-
-Tome de la Foudre lvl5. Permet à cette créature de lancer des sorts de la magie de la Foudre au niveau 5 de puissance.
-
-Général non-mort. Si d’autres non-mort sont présents sur le terrain et sont ses alliés : +6 dégâts et +1 Vitesse tant que la créature est en vie.', 'monstres', 'Bestiaire 2.0 › ligne 26446');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-puissant', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 26446');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-mauvais#carte:squelette-mauvais-puissant', 11, 'tactique', 'TACTIQUE COMBAT', 'En plus d’être très fort, il est capable de rendre les non-mort autour de lui plus fort.', 'monstres', 'Bestiaire 2.0 › ligne 26467');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-poison', 1, 'attributs', NULL, 'Santé : 150 Chakra : 40 Barrière : 20', 'monstres', 'Bestiaire 2.0 › ligne 26616');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-poison', 2, 'degats', 'Dégâts', 'Dague verte – 3d6 + 6 dégâts de taille/estoc.
@@ -7661,17 +4439,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-poison', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Frappe, Glace, Eau', 'monstres', 'Bestiaire 2.0 › ligne 26639');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-poison', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Foudre', 'monstres', 'Bestiaire 2.0 › ligne 26643');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-poison', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Aveuglement, Confusion, Fatigue, Saignement, Surdité, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 26647');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-poison', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Attaque poison. L’arme de la créature est capable d’empoisonnement. Chaque attaque va obliger un jet de vigueur à la victime, si elle rate, elle prend “Poison 1”.
-
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrises maximum : Pieu d’os, Armure d’os.
-
-Double attaque. Cette créature possède deux armes et peut les utiliser en ambidextrie (avec les malus réduit à 10% et 20% pour les attaques)', 'monstres', 'Bestiaire 2.0 › ligne 26651');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-poison', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 26651');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-poison', 11, 'tactique', 'TACTIQUE COMBAT', 'Ces squelettes sont des combattants vicieux qui sont capables d’utiliser deux dagues qui sont en permanence enduites du poison que produit le squelette. Il va viser en priorité les sans armures qui sont plus vulnérables à des petites attaques.', 'monstres', 'Bestiaire 2.0 › ligne 26668');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-toxique', 1, 'attributs', NULL, 'Santé : 310 Chakra : 60 Barrière : 30', 'monstres', 'Bestiaire 2.0 › ligne 26678');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-toxique', 2, 'degats', 'Dégâts', 'Dague verte – 4d6 + 6 dégâts de taille/estoc.
@@ -7683,19 +4451,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-toxique', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Frappe, Glace, Eau', 'monstres', 'Bestiaire 2.0 › ligne 26701');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-toxique', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Taille, Nécromancie, Foudre', 'monstres', 'Bestiaire 2.0 › ligne 26705');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-toxique', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Aveuglement, Confusion, Fatigue, Saignement, Surdité, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 26709');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-toxique', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Attaque poison. L’arme de la créature est capable d’empoisonnement. Chaque attaque va obliger un jet de vigueur à la victime, si elle rate, elle prend “Poison 1”.
-
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrises maximum : Pieu d’os, Armure d’os.
-
-Double attaque. Cette créature possède deux armes et peut les utiliser en ambidextrie (avec les malus réduit à 10% et 20% pour les attaques)
-
-Pandémie. Quand un ennemi passe à côté de ses alliés alors qu’il souffre d’un poison, son allié est forcé de faire un jet de vigueur pour ne pas prendre le poison.', 'monstres', 'Bestiaire 2.0 › ligne 26713');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-toxique', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 26713');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-toxique', 11, 'tactique', 'TACTIQUE COMBAT', 'Ces squelettes ont perfectionné l’art de tuer lentement les cibles avec leur poison, ils font en sorte que les ennemis se regroupent pour faire en sorte que leur poison se répandent.', 'monstres', 'Bestiaire 2.0 › ligne 26733');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-venin', 1, 'attributs', NULL, 'Santé : 70 Chakra : 30 Barrière : 15', 'monstres', 'Bestiaire 2.0 › ligne 26557');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-venin', 2, 'degats', 'Dégâts', 'Griffe dégoulinante – 3d10 dégâts de taille/estoc.', 'monstres', 'Bestiaire 2.0 › ligne 26560');
@@ -7706,15 +4462,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-venin', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Frappe, Glace, Eau', 'monstres', 'Bestiaire 2.0 › ligne 26579');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-venin', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Foudre', 'monstres', 'Bestiaire 2.0 › ligne 26583');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-venin', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Aveuglement, Confusion, Fatigue, Saignement, Surdité, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 26587');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-venin', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Attaque poison. L’arme de la créature est capable d’empoisonnement. Chaque attaque va obliger un jet de vigueur à la victime, si elle rate, elle prend “Poison 1”.
-
-Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrises maximum : Pieu d’os, Armure d’os.', 'monstres', 'Bestiaire 2.0 › ligne 26591');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-venin', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 26591');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-venin', 11, 'tactique', 'TACTIQUE COMBAT', 'Ces squelettes purulents et immondes cherchent à empoisonner le plus de victime possible, quand un ennemi est déjà empoisonné, le squelette va chercher une autre victime à empoisonné (si elle peut manoeuvrer).', 'monstres', 'Bestiaire 2.0 › ligne 26606');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:velue', 1, 'sante', 'Santé', 'EP 1 : 20 EP 6 : 140
 EP 2 : 40 EP 7 : 160
@@ -7757,29 +4505,7 @@ EP 6 - 7 : +5% Arme Lourde, +5% Magie, +5% Vigueur, +5 Fermeté
 EP 8 - 10 : +10% Arme Lourde, +10% Magie, +10% Vigueur, +10 Fermeté', 'monstres', 'Bestiaire 2.0 › ligne 26810');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:velue', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Varie selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 26823');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:velue', 10, 'resistance', 'Résistance(s) Dégâts ÷2', 'Varie selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 26827');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:velue', 11, 'capacites', 'Capacité(s)', 'Haine mutuelle. Cette créature inflige un bonus +10 dégâts contre les Drakos mais ces derniers ont également le même bonus sur cette première.
-
-Magie aléatoire. Cette créature commence avec une magie aléatoire, le mj le détermine au dé (ou bien de lui-même). Elle peut lancer des sorts selon son niveau.
-
-Pics évolutifs. Cette créature est couverte de pics sur son corps qui ne font que grandir au fur et à mesure du temps. Chaque début de tour, la créature cumule +1AP/AM tant que ses pics sont présents (maximum 5 tours). Au bout de 3 tours elle peut les relâcher dans une attaque en cône de 6 de portée, elles infligent 5 dégâts d’estoc multiplié par le nombre de tour cumulé.
-
-[EP2] Souffle élémentaire. Cette créature est capable de cracher un souffle lié à son élément. Ce souffle est capable d''infliger l''altération d''état lié à l''élément à hauteur de 35% de chance de l''infliger. (les joueurs doivent faire les jets en conséquence pour ne pas prendre l''altération d''état).
-
-[EP3] Humidification. Dispose d''une protection qui vont ignorer les 10 premiers dégâts qui vont lui être infligés lors d''un combat (se recharge tous les 3 tours)
-
-[EP4] Pics solide. Les pics donnent +2AP/AM au lieu de 1.
-
-[EP5] Pics élémentaires. Les pics peuvent infliger des dégâts élémentaires liés à la magie de la créature.
-
-[EP6] Super pics. Les dégâts de pics évolutifs passent à 10.
-
-[EP7] Super souffle. Le souffle passe à 8 po maximum.
-
-[EP8] Charge piquante. Au lieu d''envoyer les pics dans une direction en cône, la créature peut les utiliser pour faire une charge en avant qui inflige 20 dégâts de frappe par tour cumulé. Elle s’arrête au premier gros obstacle. Elle ne prend pas de dégâts de recul mais les pics disparaissent et la créature perd 1 tour et sa posture.
-
-[EP9] Pics résistants. Les pics donnent +4AP/AM au lieu de 1.
-
-[EP10] Hyper pics. Les dégâts de pics évolutifs passent à 20.', 'monstres', 'Bestiaire 2.0 › ligne 26831');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:velue', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 26831');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:velue', 12, 'tactique', 'TACTIQUE COMBAT', 'Les velues possèdent des écailles qui poussent tout le temps, au bout d’un moment elles finissent de grandir elles sont comme “fini”. Quand ça arrive, il faut être prudent car la créature peut les envoyer en avant dans une attaque en cône dévastatrice.
 Le mieux est de jouer sur ses faiblesses magiques et ne pas chercher à être grouper. Dans une zone étroite, elle est à son avantage.', 'monstres', 'Bestiaire 2.0 › ligne 26867');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:velue-abominable', 1, 'sante', 'Santé', 'EP 1 : 80 EP 6 : 560
@@ -7819,31 +4545,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 EP 5 - 10 : +15% Arme Lourde, +15% Magie, +15% Vigueur, +15 Fermeté, +15% Concentration', 'monstres', 'Bestiaire 2.0 › ligne 27054');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:velue-abominable', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Varie selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 27061');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:velue-abominable', 10, 'resistance', 'Résistance(s) Dégâts ÷2', 'Varie selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 27065');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:velue-abominable', 11, 'capacites', 'Capacité(s)', 'Haine mutuelle. Cette créature inflige un bonus +10 dégâts contre les Drakos mais ces derniers ont également le même bonus sur cette première.
-
-Magie aléatoire. Cette créature commence avec une magie aléatoire, le mj le détermine au dé (ou bien de lui-même). Elle peut lancer des sorts selon son niveau.
-
-Pics évolutifs. Cette créature est couverte de pics sur son corps qui ne font que grandir au fur et à mesure du temps. Chaque début de tour, la créature cumule +1AP/AM tant que ses pics sont présents (maximum 5 tours). Au bout de 3 tours elle peut les relâcher dans une attaque en cône de 6 de portée, elles infligent 5 dégâts d’estoc multiplié par le nombre de tour cumulé.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-[EP2] Souffle élémentaire. Cette créature est capable de cracher un souffle lié à son élément. Ce souffle est capable d''infliger l''altération d''état lié à l''élément à hauteur de 35% de chance de l''infliger. (les joueurs doivent faire les jets en conséquence pour ne pas prendre l''altération d''état).
-
-[EP3] Humidification. Dispose d''une protection qui vont ignorer les 10 premiers dégâts qui vont lui être infligés lors d''un combat (se recharge tous les 3 tours)
-
-[EP4] Pics solide+. Les pics donnent +3AP/AM au lieu de 1.
-
-[EP5] Pics élémentaires. Les pics peuvent infliger des dégâts élémentaires liés à la magie de la créature.
-
-[EP6] Super pics+. Les dégâts de pics évolutifs passent à 15.
-
-[EP7] Super souffle. Le souffle passe à 8 po maximum.
-
-[EP8] Charge piquante. Au lieu d''envoyer les pics dans une direction en cône, la créature peut les utiliser pour faire une charge en avant qui inflige 20 dégâts de frappe par tour cumulé. Elle s’arrête au premier gros obstacle. Elle ne prend pas de dégâts de recul mais les pics disparaissent et la créature perd 1 tour et sa posture.
-
-[EP9] Pics résistants+. Les pics donnent +5AP/AM au lieu de 1.
-
-[EP10] Hyper pics+. Les dégâts de pics évolutifs passent à 25.', 'monstres', 'Bestiaire 2.0 › ligne 27069');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:velue-abominable', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 27069');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:velue-abominable', 12, 'tactique', 'TACTIQUE COMBAT', 'Cette velue est grande en taille, elle est capable de faire des ravages contre une équipe mal préparée. Ses pics sont plus puissants et résistants.', 'monstres', 'Bestiaire 2.0 › ligne 27108');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:velue-superieur', 1, 'sante', 'Santé', 'EP 1 : 40 EP 6 : 280
 EP 2 : 80 EP 7 : 320
@@ -7882,31 +4584,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 EP 5 - 10 : +10% Arme Lourde, +10% Magie, +10% Vigueur, +10 Fermeté', 'monstres', 'Bestiaire 2.0 › ligne 26934');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:velue-superieur', 9, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Varie selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 26941');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:velue-superieur', 10, 'resistance', 'Résistance(s) Dégâts ÷2', 'Varie selon la magie', 'monstres', 'Bestiaire 2.0 › ligne 26945');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:velue-superieur', 11, 'capacites', 'Capacité(s)', 'Haine mutuelle. Cette créature inflige un bonus +10 dégâts contre les Drakos mais ces derniers ont également le même bonus sur cette première.
-
-Magie aléatoire. Cette créature commence avec une magie aléatoire, le mj le détermine au dé (ou bien de lui-même). Elle peut lancer des sorts selon son niveau.
-
-Pics évolutifs. Cette créature est couverte de pics sur son corps qui ne font que grandir au fur et à mesure du temps. Chaque début de tour, la créature cumule +1AP/AM tant que ses pics sont présents (maximum 5 tours). Au bout de 3 tours elle peut les relâcher dans une attaque en cône de 6 de portée, elles infligent 5 dégâts d’estoc multiplié par le nombre de tour cumulé.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-[EP2] Souffle élémentaire. Cette créature est capable de cracher un souffle lié à son élément. Ce souffle est capable d''infliger l''altération d''état lié à l''élément à hauteur de 35% de chance de l''infliger. (les joueurs doivent faire les jets en conséquence pour ne pas prendre l''altération d''état).
-
-[EP3] Humidification. Dispose d''une protection qui vont ignorer les 10 premiers dégâts qui vont lui être infligés lors d''un combat (se recharge tous les 3 tours)
-
-[EP4] Pics solide. Les pics donnent +2AP/AM au lieu de 1.
-
-[EP5] Pics élémentaires. Les pics peuvent infliger des dégâts élémentaires liés à la magie de la créature.
-
-[EP6] Super pics. Les dégâts de pics évolutifs passent à 10.
-
-[EP7] Super souffle. Le souffle passe à 8 po maximum.
-
-[EP8] Charge piquante. Au lieu d''envoyer les pics dans une direction en cône, la créature peut les utiliser pour faire une charge en avant qui inflige 20 dégâts de frappe par tour cumulé. Elle s’arrête au premier gros obstacle. Elle ne prend pas de dégâts de recul mais les pics disparaissent et la créature perd 1 tour et sa posture.
-
-[EP9] Pics résistants. Les pics donnent +4AP/AM au lieu de 1.
-
-[EP10] Hyper pics. Les dégâts de pics évolutifs passent à 20.', 'monstres', 'Bestiaire 2.0 › ligne 26949');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:velue-superieur', 11, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 26949');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:velue-superieur', 12, 'tactique', 'TACTIQUE COMBAT', 'Elles sont plus grosses et plus dangereuses que les normales. La stratégie ne change pas vraiment.', 'monstres', 'Bestiaire 2.0 › ligne 26988');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-adulte', 1, 'attributs', NULL, 'Santé : 310 Chakra : 50 Barrière : 25', 'monstres', 'Bestiaire 2.0 › ligne 27557');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-adulte', 2, 'degats', 'Dégâts', 'Griffes – 4d10 + 8 dégâts de taille.
@@ -7918,24 +4596,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-adulte', 6, 'competences', 'Compétence(s) secondaire(s)', '+10% Arme lourde, +10% Magie, +10% Vigueur, +10% Fermeté', 'monstres', 'Bestiaire 2.0 › ligne 27577');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-adulte', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Variable selon l’élément', 'monstres', 'Bestiaire 2.0 › ligne 27581');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-adulte', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Variable selon l’élément', 'monstres', 'Bestiaire 2.0 › ligne 27585');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-adulte', 9, 'capacites', 'Capacité(s)', 'Adaptation élémentaire. Cette créature ne possède pas la même forme selon l’environnement où on la rencontre, chaque environnement peut être associé à une magie, et lui donne différents bonus :
-Sang = Élément sang, +7 dégâts avec les armes, 7AP/3AM
-Arcane = Élément arcane, +7 dégâts avec le souffle, 2AP/8AM
-Corruption = Élément corruption, les attaques infligent 4 corruption, 2AP/8AM
-Espace/Temps = Élément espace/temps, les diagonales compte pour 1 case de déplacement, 4AP/6AM
-Nécromancie = Élément sang, résistance aux dégâts d’estoc, 7AP/3AM
-Feu = Élément feu, infligent brûlure 2 avec le souffle, 5AP/5AM
-Eau = Élément eau, régénère 5 barrière au début de chaque tour, 4AP/6AM
-Glace = Élément glace, malus de 3 à l’initiative aux ennemis à 2 cases, 0AP/10AM
-Terre = Élément terre, si santé en dessous de 25% = peut projeter des éclat de pierre sur un rayon de 4 cases qui infligent 4d10 dégâts, 10AP/0AM
-Vent = Élément vent, inflige des dégâts sonore avec le souffle, 4AP/6AM
-Foudre = Élément foudre, possède une plaque miroir qui peut absorber un sort niveau 3, cette plaque réapparaît tous les 3 tours, 6AP/4AM
-Lumière = Élément lumière, régénère 5 santé au début de chaque tour, 5AP/5AM
-Ombre = Élément ombre, chaque attaques infligent un malus de 10% au prochain jet de la victime, 5AP/5AM
-
-Souffle élémentaire. Cette créature est capable de cracher un souffle lié à son élément. Ce souffle est capable d''infliger l''altération d''état lié à l''élément à hauteur de 35% de chance de l''infliger. (les joueurs doivent faire les jets en conséquence pour ne pas prendre l''altération d''état).
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.', 'monstres', 'Bestiaire 2.0 › ligne 27589');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-adulte', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 27589');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-adulte', 10, 'tactique', 'TACTIQUE COMBAT', 'L’adulte est bien plus massif que le jeune et est donc à ne pas sous-estimer.', 'monstres', 'Bestiaire 2.0 › ligne 27612');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-apex', 1, 'attributs', NULL, 'Santé : 670 Chakra : 50 Barrière : 25', 'monstres', 'Bestiaire 2.0 › ligne 27622');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-apex', 2, 'degats', 'Dégâts', 'Griffes – 4d10 + 16 dégâts de taille.
@@ -7947,26 +4608,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-apex', 6, 'competences', 'Compétence(s) secondaire(s)', '+10% Arme lourde, +10% Magie, +10% Vigueur, +10% Fermeté', 'monstres', 'Bestiaire 2.0 › ligne 27642');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-apex', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Variable selon l’élément', 'monstres', 'Bestiaire 2.0 › ligne 27646');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-apex', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Variable selon l’élément', 'monstres', 'Bestiaire 2.0 › ligne 27650');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-apex', 9, 'capacites', 'Capacité(s)', 'Adaptation élémentaire. Cette créature ne possède pas la même forme selon l’environnement où on la rencontre, chaque environnement peut être associé à une magie, et lui donne différents bonus :
-Sang = Élément sang, +7 dégâts avec les armes, 7AP/3AM
-Arcane = Élément arcane, +7 dégâts avec le souffle, 2AP/8AM
-Corruption = Élément corruption, les attaques infligent 4 corruption, 2AP/8AM
-Espace/Temps = Élément espace/temps, les diagonales compte pour 1 case de déplacement, 4AP/6AM
-Nécromancie = Élément sang, résistance aux dégâts d’estoc, 7AP/3AM
-Feu = Élément feu, infligent brûlure 2 avec le souffle, 5AP/5AM
-Eau = Élément eau, régénère 5 barrière au début de chaque tour, 4AP/6AM
-Glace = Élément glace, malus de 3 à l’initiative aux ennemis à 2 cases, 0AP/10AM
-Terre = Élément terre, si santé en dessous de 25% = peut projeter des éclat de pierre sur un rayon de 4 cases qui infligent 4d10 dégâts, 10AP/0AM
-Vent = Élément vent, inflige des dégâts sonore avec le souffle, 4AP/6AM
-Foudre = Élément foudre, possède une plaque miroir qui peut absorber un sort niveau 3, cette plaque réapparaît tous les 3 tours, 6AP/4AM
-Lumière = Élément lumière, régénère 5 santé au début de chaque tour, 5AP/5AM
-Ombre = Élément ombre, chaque attaques infligent un malus de 10% au prochain jet de la victime, 5AP/5AM
-
-Souffle élémentaire. Cette créature est capable de cracher un souffle lié à son élément. Ce souffle est capable d''infliger l''altération d''état lié à l''élément à hauteur de 35% de chance de l''infliger. (les joueurs doivent faire les jets en conséquence pour ne pas prendre l''altération d''état).
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Aura de prédateur. Cette créature est si effrayante qu’il empêche toute contre attaque contre lui.', 'monstres', 'Bestiaire 2.0 › ligne 27654');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-apex', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 27654');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-apex', 10, 'tactique', 'TACTIQUE COMBAT', 'Celui qu’on appelle “apex” est le voromorphe qui a su s’imposer sur son territoire qu’aucune créature ne tente sa chance pour le prédater. Il dispose d’une immunité à l’élément de son environnement et fait des ravages contre les pauvres caravanes qui ont le malheur de passer sur son territoire quand il chasse.', 'monstres', 'Bestiaire 2.0 › ligne 27680');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-jeune', 1, 'attributs', NULL, 'Santé : 130 Chakra : 50 Barrière : 25', 'monstres', 'Bestiaire 2.0 › ligne 27497');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-jeune', 2, 'degats', 'Dégâts', 'Griffes – 4d10 dégâts de taille.
@@ -7978,22 +4620,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-jeune', 6, 'competences', 'Compétence(s) secondaire(s)', '+5% Arme lourde, +5% Magie, +5% Vigueur, +5% Fermeté', 'monstres', 'Bestiaire 2.0 › ligne 27517');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-jeune', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Variable selon l’élément', 'monstres', 'Bestiaire 2.0 › ligne 27521');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-jeune', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Variable selon l’élément', 'monstres', 'Bestiaire 2.0 › ligne 27525');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-jeune', 9, 'capacites', 'Capacité(s)', 'Adaptation élémentaire. Cette créature ne possède pas la même forme selon l’environnement où on la rencontre, chaque environnement peut être associé à une magie, et lui donne différents bonus :
-Sang = Élément sang, +7 dégâts avec les armes, 7AP/3AM
-Arcane = Élément arcane, +7 dégâts avec le souffle, 2AP/8AM
-Corruption = Élément corruption, les attaques infligent 4 corruption, 2AP/8AM
-Espace/Temps = Élément espace/temps, les diagonales compte pour 1 case de déplacement, 4AP/6AM
-Nécromancie = Élément sang, résistance aux dégâts d’estoc, 7AP/3AM
-Feu = Élément feu, infligent brûlure 2 avec le souffle, 5AP/5AM
-Eau = Élément eau, régénère 5 barrière au début de chaque tour, 4AP/6AM
-Glace = Élément glace, malus de 3 à l’initiative aux ennemis à 2 cases, 0AP/10AM
-Terre = Élément terre, si santé en dessous de 25% = peut projeter des éclat de pierre sur un rayon de 4 cases qui infligent 4d10 dégâts, 10AP/0AM
-Vent = Élément vent, inflige des dégâts sonore avec le souffle, 4AP/6AM
-Foudre = Élément foudre, possède une plaque miroir qui peut absorber un sort niveau 3, cette plaque réapparaît tous les 3 tours, 6AP/4AM
-Lumière = Élément lumière, régénère 5 santé au début de chaque tour, 5AP/5AM
-Ombre = Élément ombre, chaque attaques infligent un malus de 10% au prochain jet de la victime, 5AP/5AM
-
-Souffle élémentaire. Cette créature est capable de cracher un souffle lié à son élément. Ce souffle est capable d''infliger l''altération d''état lié à l''élément à hauteur de 35% de chance de l''infliger. (les joueurs doivent faire les jets en conséquence pour ne pas prendre l''altération d''état).', 'monstres', 'Bestiaire 2.0 › ligne 27529');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-jeune', 9, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 27529');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-jeune', 10, 'tactique', 'TACTIQUE COMBAT', 'Le Voromorphe est une créature assez imprévisible à cause de sa capacité à s’adapter à son environnement, un voromorphe du feu sera différent de celui de la terre, etc … Il faut savoir faire preuve de souplesse avec cette créature pour ne pas être surpris.', 'monstres', 'Bestiaire 2.0 › ligne 27549');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi', 1, 'attributs', NULL, 'Santé : 35 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 27706');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi', 2, 'degats', 'Dégâts', 'Griffes – 2d8 dégâts de taille
@@ -8005,9 +4632,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Glace', 'monstres', 'Bestiaire 2.0 › ligne 27730');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Foudre, Sang', 'monstres', 'Bestiaire 2.0 › ligne 27734');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 27738');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Téméraire. Cette créature est toujours en offensive et ne possède pas le malus pour toucher sa cible.', 'monstres', 'Bestiaire 2.0 › ligne 27742');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 27742');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi', 11, 'tactique', 'TACTIQUE COMBAT', 'Le zombi utilise ses violentes griffes ou sa puissante morsure pour attaquer ses adversaires, mais sa lenteur de déplacement et la médiocrité de sa technique de combat font qu’il est très simple à gérer pour de bons aventuriers. Prudence cependant, il est en permanence en offensif et fait d’énormes dégâts si il parvient à toucher sa cible, il a également un coup critique plus élevé.', 'monstres', 'Bestiaire 2.0 › ligne 27748');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi-agressif', 1, 'attributs', NULL, 'Santé : 70 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 27758');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi-agressif', 2, 'degats', 'Dégâts', 'Griffes – 2d8 + 3 dégâts de taille
@@ -8019,11 +4644,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi-agressif', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Glace', 'monstres', 'Bestiaire 2.0 › ligne 27781');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi-agressif', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Foudre, Sang', 'monstres', 'Bestiaire 2.0 › ligne 27785');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi-agressif', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 27789');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi-agressif', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Téméraire. Cette créature est toujours en offensive et ne possède pas le malus pour toucher sa cible.
-
-Régénération partiel. Cette créature récupère 5 santé au début de son tour.', 'monstres', 'Bestiaire 2.0 › ligne 27793');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi-agressif', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 27793');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi-agressif', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce zombi est plus rapide, plus fort et un peu plus précis, il est important de garder des distances de sécurité.', 'monstres', 'Bestiaire 2.0 › ligne 27802');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi-enerve', 1, 'attributs', NULL, 'Santé : 140 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 27816');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi-enerve', 2, 'degats', 'Dégâts', 'Griffes – 2d8 + 6 dégâts de taille
@@ -8035,13 +4656,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi-enerve', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Glace', 'monstres', 'Bestiaire 2.0 › ligne 27839');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi-enerve', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Foudre, Sang', 'monstres', 'Bestiaire 2.0 › ligne 27843');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi-enerve', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 27847');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi-enerve', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Téméraire. Cette créature est toujours en offensive et ne possède pas le malus pour toucher sa cible.
-
-Régénération partiel. Cette créature récupère 5 santé au début de son tour.
-
-Dent en acier. La morsure ignore 4 AP.', 'monstres', 'Bestiaire 2.0 › ligne 27851');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi-enerve', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 27851');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi#carte:zombi-enerve', 11, 'tactique', 'TACTIQUE COMBAT', 'Ce zombi assez rare semble avoir des dents tellement acérées qu’il est capable de traverser totalement ou en partie les armures.', 'monstres', 'Bestiaire 2.0 › ligne 27863');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-general', 1, 'attributs', NULL, 'Santé : 280 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 27997');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-general', 2, 'degats', 'Dégâts', 'Étendard déchirée – 2d10 + 10 dégâts d’estoc
@@ -8054,13 +4669,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-general', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Glace', 'monstres', 'Bestiaire 2.0 › ligne 28021');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-general', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Foudre, Sang', 'monstres', 'Bestiaire 2.0 › ligne 28025');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-general', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 28029');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-general', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Téméraire raisonné. Cette créature n’a pas le malus pour toucher quand elle est en offensif
-
-Frappe poison. L’arme de la créature possède une chance d’empoisonnement. Chaque attaque a 25% de chance d’obliger un jet de vigueur à la victime, si elle rate, elle prend “Poison 1”.
-
-Aura du général. Les ennemis sur le terrain ont un malus de 5% à tous leurs jets tant que la créature est vivante.', 'monstres', 'Bestiaire 2.0 › ligne 28033');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-general', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 28033');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-general', 11, 'tactique', 'TACTIQUE COMBAT', 'La forme ultime du zombi soldat, ce colosse ne se bat absolument pas de la même façon que ses soldats, il se bat avec un étendard de guerre ainsi qu’une lourde armure qui montre encore le prestige de son rang.
 
 Il semble être bien plus discipliné que ses soldats et n’est pas toujours dans une posture d’attaque, il frappe de manière raisonnée, il maîtrise l’art de l’offensif ce qui lui permet de ne jamais avoir le malus pour toucher sa cible. Il émet une aura écrasante qui fait douter ses ennemis.', 'monstres', 'Bestiaire 2.0 › ligne 28045');
@@ -8074,15 +4683,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-sergent', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Glace', 'monstres', 'Bestiaire 2.0 › ligne 27960');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-sergent', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Foudre, Sang', 'monstres', 'Bestiaire 2.0 › ligne 27964');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-sergent', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 27968');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-sergent', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Téméraire. Cette créature est toujours en offensive et ne possède pas le malus pour toucher sa cible.
-
-Frappe poison. L’arme de la créature possède une chance d’empoisonnement. Chaque attaque a 25% de chance d’obliger un jet de vigueur à la victime, si elle rate, elle prend “Poison 1”.
-
-Intervention. Cette créature est capable de prendre un coup à la place d''un allié si il est à côté de lui.
-
-Chef non-mort. Si d’autres non-mort sont présents sur le terrain et sont ses alliés : +4 dégâts et +2 Initiative tant que la créature est en vie (non cumulable).', 'monstres', 'Bestiaire 2.0 › ligne 27972');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-sergent', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 27972');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-sergent', 11, 'tactique', 'TACTIQUE COMBAT', 'La version sergent du zombi soldat est celui qui arrive à inspirer les autres, il est capable de les rendre plus fort et plus vif au combat, en plus d’être lui-même plus puissant.', 'monstres', 'Bestiaire 2.0 › ligne 27987');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-soldat', 1, 'attributs', NULL, 'Santé : 70 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 27879');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-soldat', 2, 'degats', 'Dégâts', 'Hache de bataille rouillée – 2d10 dégâts de taille
@@ -8094,13 +4695,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-soldat', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Eau, Glace', 'monstres', 'Bestiaire 2.0 › ligne 27903');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-soldat', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Nécromancie, Foudre, Sang', 'monstres', 'Bestiaire 2.0 › ligne 27907');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-soldat', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 27911');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-soldat', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Téméraire. Cette créature est toujours en offensive et ne possède pas le malus pour toucher sa cible.
-
-Frappe poison. L’arme de la créature possède une chance d’empoisonnement. Chaque attaque a 25% de chance d’obliger un jet de vigueur à la victime, si elle rate, elle prend “Poison 1”.
-
-Intervention. Cette créature est capable de prendre un coup à la place d''un allié si il est à côté de lui.', 'monstres', 'Bestiaire 2.0 › ligne 27915');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-soldat', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 27915');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombi-soldat#carte:zombi-soldat', 11, 'tactique', 'TACTIQUE COMBAT', 'Le zombi soldat représente l''infanterie suicidaire des armées des non-morts, ils font des trous dans les lignes ennemis avec leur attaques puissantes et sont capables de prendre un coup à la place d’un allié en utilisant leur corps comme bouclier. Ils n’ont peur de rien, pas même d’une magie efficace contre eux.', 'monstres', 'Bestiaire 2.0 › ligne 27927');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox', 1, 'attributs', NULL, 'Santé : 214 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 28066');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox', 2, 'degats', 'Dégâts', 'Morsure - 3d12 dégâts d’estoc.
@@ -8110,11 +4705,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox', 5, 'caracteristiques', 'Caractéristiques (F.P.V.S.I.A.)', 'F : 5 / P : 4 / V : 6 / S : 0 / I : 3 / A : 3', 'monstres', 'Bestiaire 2.0 › ligne 28081');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox', 6, 'competences', 'Compétence(s) secondaire(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 28085');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox', 7, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 28090');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox', 8, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Super santé. Cette créature possède le double de santé.
-
-Crache chakra. Tous les 10% de santé perdu, cette créature libère “Boule de chakra” sur tous les ennemis sur le terrain, ce sort va infliger 6d6 dégâts magiques (comme si elle était surchargé)', 'monstres', 'Bestiaire 2.0 › ligne 28094');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox', 8, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 28094');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox', 9, 'tactique', 'TACTIQUE COMBAT', 'Le zombinox est un zombi difforme qui possède une endurance hors normes et encaisse parfaitement bien les coups les plus durs, il est lent et maladroit mais il est recommandé de jouer la sécurité avec lui car il est capable de lancer des sorts quand il perd de la santé.', 'monstres', 'Bestiaire 2.0 › ligne 28104');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox-ii', 1, 'attributs', NULL, 'Santé : 428 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 28114');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox-ii', 2, 'degats', 'Dégâts', 'Morsure - 3d12 + 4 dégâts d’estoc.
@@ -8124,13 +4715,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox-ii', 5, 'caracteristiques', 'Caractéristiques (F.P.V.S.I.A.)', 'F : 5 / P : 4 / V : 6 / S : 0 / I : 3 / A : 3', 'monstres', 'Bestiaire 2.0 › ligne 28129');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox-ii', 6, 'competences', 'Compétence(s) secondaire(s)', '+10% Arme lourde', 'monstres', 'Bestiaire 2.0 › ligne 28133');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox-ii', 7, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 28137');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox-ii', 8, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Super santé. Cette créature possède le double de santé.
-
-Crache chakra. Tous les 10% de santé perdu, cette créature libère “Boule de chakra” sur tous les ennemis sur le terrain, ce sort va infliger 6d6 dégâts magiques (comme si elle était surchargé)
-
-Tu ne passe pas. Permet de bloquer les adversaires dans sa zone d’influence complète. Permet également d’intercepter les attaques avec un jet de défense réussi.', 'monstres', 'Bestiaire 2.0 › ligne 28141');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox-ii', 8, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 28141');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox-ii', 9, 'tactique', 'TACTIQUE COMBAT', 'Le zombinox II est une version plus solide qui est capable avec ses bras multiples de bloquer les adversaires dans sa zone d’influence.', 'monstres', 'Bestiaire 2.0 › ligne 28154');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox-iii', 1, 'attributs', NULL, 'Santé : 856 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 28166');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox-iii', 2, 'degats', 'Dégâts', 'Morsure - 3d12 + 10 dégâts d’estoc.
@@ -8140,13 +4725,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox-iii', 5, 'caracteristiques', 'Caractéristiques (F.P.V.S.I.A.)', 'F : 5 / P : 4 / V : 6 / S : 0 / I : 3 / A : 3', 'monstres', 'Bestiaire 2.0 › ligne 28181');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox-iii', 6, 'competences', 'Compétence(s) secondaire(s)', '+20% Arme lourde', 'monstres', 'Bestiaire 2.0 › ligne 28185');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox-iii', 7, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Fatigue', 'monstres', 'Bestiaire 2.0 › ligne 28189');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox-iii', 8, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Super santé. Cette créature possède le double de santé.
-
-Crache chakra+. Tous les 10% de santé perdu, cette créature libère “Boule de chakra” sur tous les ennemis sur le terrain, ce sort va infliger 7d6 dégâts magiques (comme si elle était surchargé)
-
-Tu ne passe pas. Permet de bloquer les adversaires dans sa zone d’influence complète. Permet également d’intercepter les attaques avec un jet de défense réussi.', 'monstres', 'Bestiaire 2.0 › ligne 28193');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox-iii', 8, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 28193');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zombinox#carte:zombinox-iii', 9, 'tactique', 'TACTIQUE COMBAT', 'Cette version perfectionnée du zombinox est l’incarnation du sac de santé. Il est bien moins maladroit que les autres versions et tape très fort.', 'monstres', 'Bestiaire 2.0 › ligne 28206');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zompi#carte:zompi', 1, 'attributs', NULL, 'Santé : 85 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 28222');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zompi#carte:zompi', 2, 'degats', 'Dégâts', 'Morsure - 2d12 + 2 dégâts d’estoc.
@@ -8161,13 +4740,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 
 Absorbe(s) Récupère Santé ou Chakra
 Eau', 'monstres', 'Bestiaire 2.0 › ligne 28253');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zompi#carte:zompi', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Régénération partiel. Cette créature récupère 5 santé au début de son tour.
-
-Crache spore. Crache des spores qui obligent toutes les créatures à 2 cases de lui de réussir un jet de vigueur, si elles ratent, elles sont étourdies pendant 1 tour.
-
-Dégustation d’eau. Absorbe les dégâts de l’élément eau, ce qui lui donne +5 dégâts à la prochaine attaque en plus de le soigner à hauteur de 5d6.', 'monstres', 'Bestiaire 2.0 › ligne 28261');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zompi#carte:zompi', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 28261');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zompi#carte:zompi', 11, 'tactique', 'TACTIQUE COMBAT', 'Le zompi est un non-mort infecté par un champignon qui se trouve directement dans son cerveau. Son objectif est de répandre le plus possible ses spores dans le corps de ses victimes. Il ne faut pas essayer de l’affronter de face pour les aventuriers avec une vigueur faible sous peine de voir ses capacités de combat réduite.', 'monstres', 'Bestiaire 2.0 › ligne 28273');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zompi#carte:zompi-claqueur', 1, 'attributs', NULL, 'Santé : 170 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 28283');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zompi#carte:zompi-claqueur', 2, 'degats', 'Dégâts', 'Morsure - 3d12 + 8 dégâts d’estoc.
@@ -8182,15 +4755,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 
 Absorbe(s) Récupère Santé ou Chakra
 Eau', 'monstres', 'Bestiaire 2.0 › ligne 28314');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zompi#carte:zompi-claqueur', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Régénération partiel+. Cette créature récupère 10 santé au début de son tour.
-
-Crache spore. Crache des spores à la fin de son tour, qui obligent toutes les créatures à 2 cases de lui de réussir un jet de vigueur, si elles ratent, elles sont étourdies pendant 1 tour.
-
-Dégustation d’eau. Absorbe les dégâts de l’élément eau, ce qui lui donne +5 dégâts à la prochaine attaque en plus de le soigner à hauteur de 5d6.
-
-Tête fongique. La tête est protégée et n’est plus considérée comme un point faible.', 'monstres', 'Bestiaire 2.0 › ligne 28322');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zompi#carte:zompi-claqueur', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 28322');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zompi#carte:zompi-claqueur', 11, 'tactique', 'TACTIQUE COMBAT', 'Le zompi claqueur est une version plus évoluée, les champignons se sont surdéveloppés au niveau de la tête et protègent le cerveau, ce qui ne constitue plus un point faible viable pour attaquer le monstre.', 'monstres', 'Bestiaire 2.0 › ligne 28337');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zompi#carte:zompiceps', 1, 'attributs', NULL, 'Santé : 340 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 28347');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zompi#carte:zompiceps', 2, 'degats', 'Dégâts', 'Poing - 3d10 + 15 dégâts de frappe.', 'monstres', 'Bestiaire 2.0 › ligne 28350');
@@ -8204,17 +4769,5 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 
 Absorbe(s) Récupère Santé ou Chakra
 Eau', 'monstres', 'Bestiaire 2.0 › ligne 28377');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zompi#carte:zompiceps', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est immunisée à la peur, à la couardise, à la fatigue, au poison, à la maladie. Les soins de lumière lui infligent des dégâts mais il a la possibilité de faire un jet de défense pour ne pas prendre les dégâts.
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Régénération partiel+. Cette créature récupère 10 santé au début de son tour.
-
-Crache spore. Crache des spores qui obligent toutes les créatures à 2 cases de lui de réussir un jet de vigueur, si elles ratent, elles sont étourdies pendant 1 tour.
-
-Dégustation d’eau. Absorbe les dégâts de l’élément eau, ce qui lui donne +5 dégâts à la prochaine attaque en plus de le soigner à hauteur de 5d6.
-
-Tête fongique. La tête est protégée et n’est plus considérée comme un point faible.
-
-Super armure. Cette créature possède une protection qui va demander un certain nombre de dégâts pour être détruite (25 dégâts), elle doit être détruite en un seul coup sinon elle se reconstruit immédiatement. Si jamais elle est détruite, elle revient au bout de 2 tours. Cette armure empêche tout dégâts à la santé de la créature, peu importe les moyens utilisés.', 'monstres', 'Bestiaire 2.0 › ligne 28385');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zompi#carte:zompiceps', 10, 'capacites', 'Capacité(s)', '', 'monstres', 'Bestiaire 2.0 › ligne 28385');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/zompi#carte:zompiceps', 11, 'tactique', 'TACTIQUE COMBAT', 'Le champignon a atteint son stade final et enveloppe complètement son hôte à tel point qu’on pourrait croire que c’est un champignon en forme d’humanoïde. Il est très massif et utilise ses poings pour détruire la vie qui se trouve sur son chemin, il ne possède plus de tête donc aucun point faible apparent. Le champignon est tellement développé que ça lui donne une armure très difficile à pénétrer.', 'monstres', 'Bestiaire 2.0 › ligne 28406');

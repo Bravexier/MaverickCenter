@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 43;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 44;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -2200,7 +2200,8 @@ CREATE INDEX monstre_ep ON monstre (ep_min, ep_max);
 
 -- Rubriques d'une carte, dans l'ordre du doc, TOUT leur texte (rien de la carte n'est perdu) : 'attributs' = la ligne « Santé : … Chakra : … Barrière : … »
 -- (ou « [EP3] Santé : 330 … ») ; 'sante' / 'chakra' / 'barriere' = les mêmes, par échelle, sous un titre seul ; les autres rubriques suivent leur titre
--- (`titre` tel qu'écrit, NULL pour 'attributs' qui n'en a pas).
+-- (`titre` tel qu'écrit, NULL pour 'attributs' qui n'en a pas). Sauf 'capacites', qui n'est qu'un repère (texte vide) : la place et le titre du bloc des
+-- capacités de la carte, qui sont dans monstre_capacite -> monstre_capacite_commune (décision R66 ; texte du doc : sources/raw et l'extracteur).
 CREATE TABLE monstre_rubrique (
   monstre_id TEXT    NOT NULL REFERENCES monstre(id),
   rang       INTEGER NOT NULL CHECK (rang >= 1),
@@ -2211,7 +2212,8 @@ CREATE TABLE monstre_rubrique (
   texte      TEXT    NOT NULL,                                   -- paragraphes séparés par une ligne vide ; '' = rubrique vide
   origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
   source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
-  PRIMARY KEY (monstre_id, rang)
+  PRIMARY KEY (monstre_id, rang),
+  CHECK (rubrique <> 'capacites' OR texte = '')
 ) STRICT, WITHOUT ROWID;
 
 CREATE INDEX monstre_rubrique_rubrique ON monstre_rubrique (rubrique);
@@ -2242,20 +2244,57 @@ CREATE TABLE monstre_attaque (
   PRIMARY KEY (monstre_id, rang)
 ) STRICT, WITHOUT ROWID;
 
--- Capacités : un paragraphe « [EP2] Nom. Texte » de la rubrique Capacité(s) ; un paragraphe sans nom (tableau, suite) continue la capacité précédente.
+-- Capacités de monstre communes (décision R66 : « notées dans des tables à part (pour l'instant juste Nom et Description) histoire de mutualiser les
+-- capacités communes », « Elle change pour tous ») : le nom et la description d'une capacité, écrits une fois et cités par chaque carte qui l'a
+-- (monstre_capacite). Les capacités des créatures invoquées et les bonus du Mage Bleu restent à part (R67). Deux capacités peuvent porter le même nom avec
+-- deux textes (« Les textes doivent rester différents », R68). Registre : tools/bestiaire/capacites.json (chaque écriture du doc -> sa capacité), lu par
+-- l'extracteur. Une description peut porter des emplacements « {N} » (décision R69 : « si l'effet ne diffère que d'un chiffre, le mettre modifiable par un
+-- slider ») : N, un entier, est la valeur commune ; une carte qui en a une autre l'écrit dans monstre_capacite_valeur.
+-- id : normalize(nom) à la création (« + » écrit « plus »), suffixe -2, -3… si l'id est pris ou a déjà servi ; FIGÉ (un renommage ne le change pas).
+CREATE TABLE monstre_capacite_commune (
+  id             TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),
+  nom            TEXT    NOT NULL CHECK (length(nom) > 0),        -- « Inerte », « Science du critique+ », « Tome de l’ombre niv. 1 »
+  nom_cle        TEXT    NOT NULL,                                -- normalize(nom) ; non unique (deux textes d'une même capacité, R68)
+  description    TEXT    NOT NULL CHECK (length(description) > 0), -- paragraphes séparés par une ligne vide ; « {N} » = emplacement de valeur commune N (R69)
+  liste_de_sorts INTEGER NOT NULL DEFAULT 0 CHECK (liste_de_sorts IN (0, 1)),   -- 1 : chaque carte écrit sa liste de sorts (monstre_capacite.sorts) : « Lanceur de
+                                                                                 -- sorts », seule capacité à liste (R66 : « Tout doit être unifié, sauf "Lanceur de sort" »)
+  origine        TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref     TEXT    NOT NULL CHECK (length(source_ref) > 0)  -- la première carte du doc qui l'écrit ; « Décision R68 » pour un texte du propriétaire ;
+                                                                  -- « Site de dev › … » pour une capacité créée sur le site
+) STRICT;
+
+CREATE INDEX monstre_capacite_commune_nom ON monstre_capacite_commune (nom_cle);
+
+-- Capacités d'une carte : la place d'une capacité commune sur la carte (ordre du doc, préfixe « [EP2] Nom. ») ; son nom et sa description sont ceux de
+-- monstre_capacite_commune (R66). Le bloc s'affiche à la place de la rubrique 'capacites' de la carte. `rang` n'est jamais renuméroté : une capacité retirée
+-- laisse un trou, une capacité ajoutée va à la fin.
 CREATE TABLE monstre_capacite (
-  monstre_id TEXT    NOT NULL REFERENCES monstre(id),
-  rang       INTEGER NOT NULL CHECK (rang >= 1),
-  prefixe    TEXT,                                               -- crochets et parenthèses avant le nom : « [EP2] », « [Gauche] », « (Neige) [EP3] »
-  ep_min     INTEGER CHECK (ep_min BETWEEN 1 AND 10),            -- N du premier « [EPN] » du préfixe
-  nom        TEXT    NOT NULL CHECK (length(nom) > 0),
-  texte      TEXT    NOT NULL,
-  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
-  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  monstre_id          TEXT    NOT NULL REFERENCES monstre(id),
+  rang                INTEGER NOT NULL CHECK (rang >= 1),
+  prefixe             TEXT    CHECK (prefixe IS NULL OR length(prefixe) > 0),  -- crochets et parenthèses avant le nom : « [EP2] », « [Gauche] », « (Neige) [EP3] »
+  ep_min              INTEGER CHECK (ep_min BETWEEN 1 AND 10),            -- N du premier « [EPN] » du préfixe (R56) ; recalculé, jamais saisi
+  capacite_commune_id TEXT    NOT NULL REFERENCES monstre_capacite_commune(id),
+  sorts               TEXT    CHECK (sorts IS NULL OR length(sorts) > 0), -- la liste de CETTE carte, telle qu'écrite (« Boule de feu, Souffle chaud. »), pour une
+                                                                          -- capacité à liste_de_sorts seulement ; affichée après la description
+  origine             TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref          TEXT    NOT NULL CHECK (length(source_ref) > 0),
   PRIMARY KEY (monstre_id, rang)
 ) STRICT, WITHOUT ROWID;
 
-CREATE INDEX monstre_capacite_nom ON monstre_capacite (nom);
+CREATE INDEX monstre_capacite_commune_id ON monstre_capacite (capacite_commune_id);
+
+-- Valeur d'un emplacement « {N} » de la description pour une carte qui n'a pas la valeur commune (R69 : « Minus » à 15 % pour le Gobelin demi-vie, la
+-- description écrivant {10}) ; sans ligne, la carte a la valeur commune. numero = le rang de l'emplacement dans la description (1 = le premier « {…} »).
+CREATE TABLE monstre_capacite_valeur (
+  monstre_id TEXT    NOT NULL,
+  rang       INTEGER NOT NULL,
+  numero     INTEGER NOT NULL CHECK (numero >= 1),
+  valeur     INTEGER NOT NULL CHECK (valeur >= 0),
+  origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (monstre_id, rang, numero),
+  FOREIGN KEY (monstre_id, rang) REFERENCES monstre_capacite(monstre_id, rang)
+) STRICT, WITHOUT ROWID;
 
 -- Cibles des vulnérabilités, résistances, immunités et réflexions : la rubrique quand elle est UNE liste « Brûlure, Paralysie » de noms courts
 -- (« Varie selon la magie », un tableau ou plusieurs lignes : aucune ligne ici, la rubrique fait foi). `sens` = la rubrique d'où vient la cible.

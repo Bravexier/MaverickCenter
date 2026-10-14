@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { chargerMonstres } from '../src/lib/bestiaire-db.mjs';
-import { htmlDeCarteMonstre } from '../src/lib/bestiaire-rendu.mjs';
+import { htmlDeCarteMonstre, htmlDesCapacitesDeLaCarte } from '../src/lib/bestiaire-rendu.mjs';
 import { magiesDesCibles as magiesDesCiblesDe, renvoisAuxDegatsMoyens } from '../src/lib/bestiaire-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { rendreChamp } from '../src/lib/edition-rendu.mjs';
@@ -14,9 +14,14 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import {
   apresUnTrait,
+  avecLesValeurs,
+  borneDuCurseur,
   bornes,
-  capacites as capacitesDe,
   echelleDuPrefixe,
+  emplacements,
+  emplacementsDetailles,
+  suiteDesEmplacements,
+  valeursAEnvoyer,
   echellesEcrites,
   objetDuButin,
   parEchelle,
@@ -27,7 +32,9 @@ import {
   texteParEchelle,
   valeurALEchelle,
 } from '../src/lib/monstre-champs.mjs';
-import { htmlDAttention, htmlDeCapacite, htmlDeLEchelle, htmlDeRubrique, htmlDuButin, idDeBulleDuButin, phrasesDeDegats } from '../src/lib/monstre-rendu.mjs';
+import {
+  htmlDAttention, htmlDeCapacite, htmlDeLEchelle, htmlDeRubrique, htmlDesCapacitesDuMonstre, htmlDuButin, idDeBulleDuButin, phrasesDeDegats, texteDeCapacite,
+} from '../src/lib/monstre-rendu.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const cartes = db.prepare('SELECT * FROM monstre ORDER BY espece_id, rang').all();
@@ -96,7 +103,7 @@ test('l’import du doc : une carte à plusieurs échelles écrit chaque échell
   let multiples = 0;
   for (const c of cartesDImport) {
     const eps = echellesEcrites(c.echelle_brut);
-    const varient = rubriquesDe(c.id, rubriquesDImport).filter((r) => r.rubrique !== 'capacites' && parEchelle(r.texte));
+    const varient = rubriquesDe(c.id, rubriquesDImport).filter((r) => parEchelle(r.texte));
     if (eps.length < 2) {
       assert.deepEqual(varient.map((r) => r.rubrique), [], `${c.nom} (EP ${c.echelle_brut}) : rien par échelle`);
       continue;
@@ -122,7 +129,7 @@ test('toute la base : les lignes par échelle redonnent le texte de leur rubriqu
 });
 
 test('rendu par échelle : chaque valeur porte ses échelles (data-eps), aucun nombre qui ne soit écrit sur la carte', () => {
-  for (const r of rubriques.filter((x) => x.rubrique !== 'capacites' && parEchelle(x.texte))) {
+  for (const r of rubriques.filter((x) => parEchelle(x.texte))) {
     const html = htmlDeRubrique(r.rubrique, r.texte);
     const segments = segmentsParEchelle(r.texte).filter((x) => x.eps);
     const marques = [...html.matchAll(/data-eps="([\d ]+)"/g)].map((m) => m[1]);
@@ -378,55 +385,100 @@ test('un trait du doc dans une rubrique : ce qui le suit va dans un panneau « A
 });
 
 test('décision R56 : une capacité « [EPN] » est gagnée à partir de l’EP N ; le curseur la cache en dessous', () => {
-  const html = htmlDeRubrique('capacites', '[EP3] Nuage rapide. Texte.\n\n(Neige) [EP5] Neige permanente. Texte.\n\n[Gauche] Téméraire. Texte.\n\nSans préfixe. Texte.');
+  const cap = (prefixe, nom, rang) => ({ rang, prefixe, id: 'x', nom, description: 'Texte.', valeurs: {}, sorts: null });
+  const html = htmlDesCapacitesDuMonstre([cap('[EP3]', 'Nuage rapide', 1), cap('(Neige) [EP5]', 'Neige permanente', 2), cap('[Gauche]', 'Téméraire', 3), cap(null, 'Sans préfixe', 4)]);
   const lis = [...html.matchAll(/<li([^>]*)>/g)].map((m) => m[1]);
-  assert.deepEqual(lis, [' class="bcapacite" data-eps="3 4 5 6 7 8 9 10"', ' class="bcapacite" data-eps="5 6 7 8 9 10"', ' class="bcapacite"', ' class="bcapacite"']);
+  assert.deepEqual(lis, [
+    ' class="bcapacite" data-eps="3 4 5 6 7 8 9 10" data-capacite="x" data-rang="1"',
+    ' class="bcapacite" data-eps="5 6 7 8 9 10" data-capacite="x" data-rang="2"',
+    ' class="bcapacite" data-capacite="x" data-rang="3"',
+    ' class="bcapacite" data-capacite="x" data-rang="4"',
+  ]);
   assert.match(html, /<span class="prefixe" title="Gagnée à partir de l’EP 3">\[EP3\]<\/span>/);
   assert.match(html, /<span class="prefixe">\[Gauche\]<\/span>/);
   assert.equal(echelleDuPrefixe('(Neige/Cristal) [EP7]'), 7);
   assert.equal(echelleDuPrefixe('[Enflammé]'), null);
   assert.equal(echelleDuPrefixe(null), null);
-  // toute la base : autant de capacités marquées que de capacités typées « à partir de l'EP N » (monstre_capacite.ep_min), chacune dans les échelles de sa carte
+  // toute la base : ep_min suit le préfixe ; une carte a autant de tuiles marquées que de capacités « à partir de l'EP N », chacune dans les échelles de sa
+  // carte à l'import du doc (le site de dev peut changer l'échelle d'une carte, ou ses capacités)
+  const placements = db.prepare('SELECT * FROM monstre_capacite').all();
+  for (const p of placements) assert.equal(p.ep_min, echelleDuPrefixe(p.prefixe), `${p.monstre_id} ${p.rang}`);
+  const { lignes } = chargerMonstres(db);
   const typees = db.prepare('SELECT monstre_id, count(*) AS n FROM monstre_capacite WHERE ep_min IS NOT NULL GROUP BY monstre_id').all();
+  // à l'import du doc, 35 cartes ont une capacité « à partir de l'EP N » (lu dans l'état d'import : le site de dev peut en ajouter ou en retirer)
+  assert.equal(new Set(historique.lignesDImport('monstre_capacite').filter((p) => p.ep_min !== null).map((p) => p.monstre_id)).size, 35);
   for (const { monstre_id: id, n } of typees) {
-    const c = cartes.find((x) => x.id === id);
-    const r = rubriquesDe(id).filter((x) => x.rubrique === 'capacites');
-    const marquees = r.flatMap((x) => capacitesDe(x.texte)).filter((x) => echelleDuPrefixe(x.prefixe) !== null);
-    assert.equal(marquees.length, n, id);
-    // dans les échelles de la carte, à l'import du doc (le site de dev peut changer l'échelle d'une carte)
-    const importee = cartesDImport.find((x) => x.id === id);
-    if (importee && importee.echelle_brut === c.echelle_brut) for (const x of marquees) assert.ok(x.ep_min >= c.ep_min && x.ep_min <= c.ep_max, `${id} : ${x.nom}`);
-    const html = r.map((x) => htmlDeRubrique('capacites', x.texte)).join('');
-    assert.equal((html.match(/<li class="bcapacite" data-eps=/g) ?? []).length, n, id);
+    const l = lignes.find((x) => x.id === id);
+    assert.equal((htmlDesCapacitesDeLaCarte(l).match(/<li class="bcapacite" data-eps=/g) ?? []).length, n, id);
+  }
+  const importees = historique.lignesDImport('monstre_capacite').filter((p) => p.ep_min !== null);
+  assert.ok(importees.length > 200, `${importees.length} capacités « [EPN] » à l’import`);
+  for (const p of importees) {
+    const c = cartesDImport.find((x) => x.id === p.monstre_id);
+    assert.ok(p.ep_min >= c.ep_min && p.ep_min <= c.ep_max, `${p.monstre_id} : rang ${p.rang}`);
   }
 });
 
-test('capacités en tuiles (demande du propriétaire : « de la même manière que le font les dons de classe ») : pastilles, nom, texte ; une tuile par capacité', () => {
+test('capacités en tuiles (demande du propriétaire : « de la même manière que le font les dons de classe ») : pastilles, nom, texte de la capacité commune aux valeurs de la carte', () => {
   assert.equal(
-    htmlDeRubrique('capacites', '[EP3] Nuage rapide. Un <texte>.\n\nSans préfixe. Autre texte.'),
+    htmlDesCapacitesDuMonstre([
+      { rang: 2, prefixe: '[EP3]', id: 'nuage-rapide', nom: 'Nuage rapide', description: 'Un <texte> à {10} % et {2}d6.', valeurs: { 1: 15 }, sorts: null },
+      { rang: 5, prefixe: null, id: 'sans-prefixe', nom: 'Sans préfixe', description: 'Autre texte.', valeurs: {}, sorts: null },
+    ]),
     '<ul class="bcapacites" role="list">'
-      + '<li class="bcapacite" data-eps="3 4 5 6 7 8 9 10"><p class="bcapacite__tete"><span class="prefixe" title="Gagnée à partir de l’EP 3">[EP3]</span> <strong class="bcapacite__nom">Nuage rapide</strong></p> '
-      + '<div class="bcapacite__texte"><span class="texte">Un &lt;texte&gt;.</span></div></li>'
-      + '<li class="bcapacite"><p class="bcapacite__tete"><strong class="bcapacite__nom">Sans préfixe</strong></p> <div class="bcapacite__texte"><span class="texte">Autre texte.</span></div></li></ul>',
+      + '<li class="bcapacite" data-eps="3 4 5 6 7 8 9 10" data-capacite="nuage-rapide" data-rang="2"><p class="bcapacite__tete"><span class="prefixe" title="Gagnée à partir de l’EP 3">[EP3]</span> <strong class="bcapacite__nom">Nuage rapide</strong></p> '
+      + '<div class="bcapacite__texte"><span class="texte">Un &lt;texte&gt; à 15 % et 2d6.</span></div></li>'
+      + '<li class="bcapacite" data-capacite="sans-prefixe" data-rang="5"><p class="bcapacite__tete"><strong class="bcapacite__nom">Sans préfixe</strong></p> <div class="bcapacite__texte"><span class="texte">Autre texte.</span></div></li></ul>',
   );
-  // une capacité commune (créature invoquée) : sa pastille et sa classe
+  // décision R69 : un emplacement « {N} » vaut N, ou la valeur de la carte ; décision R66 : la liste de sorts de la carte suit la description
+  assert.deepEqual(emplacements('Malus de {10}% et 3d{6}, pas {x}.'), [10, 6]);
+  assert.equal(avecLesValeurs('Malus de {10}% et 3d{6}.', { 2: 10 }), 'Malus de 10% et 3d10.');
+  assert.equal(avecLesValeurs('Sans emplacement.', { 1: 4 }), 'Sans emplacement.');
+  // le curseur du site de dev : un pourcentage va de 0 à 100, sinon jusqu'au double de la plus grande valeur (20 au moins)
+  const places = emplacementsDetailles('Malus de {10}% , {3} santé, {25} % et 3d{6}.');
+  assert.deepEqual(places, [
+    { numero: 1, commune: 10, pourcent: true }, { numero: 2, commune: 3, pourcent: false }, { numero: 3, commune: 25, pourcent: true }, { numero: 4, commune: 6, pourcent: false },
+  ]);
+  assert.deepEqual(places.map((p) => borneDuCurseur(p)), [100, 20, 100, 20]);
+  assert.equal(borneDuCurseur({ commune: 6, pourcent: false }, 30), 60);
+  // ce qui part : la valeur commune revient à null, une valeur inchangée ne part pas, un emplacement disparu non plus
+  assert.deepEqual(valeursAEnvoyer('Malus de {10}% et {3}.', new Map([[1, 15], [2, 3], [5, 9]]), new Map()), { 1: 15 });
+  assert.deepEqual(valeursAEnvoyer('Malus de {10}% et {3}.', new Map([[1, 10], [2, 7]]), new Map([[1, 15], [2, 7]])), { 1: null });
+  // une description qui change son nombre d'emplacements : chacun se reconnaît au texte qui l'entoure (et à sa valeur commune), jamais deviné
+  const suite = (a, b) => Object.fromEntries(suiteDesEmplacements(a, b));
+  assert.deepEqual(suite('A {10} B {3} C', 'A {12} B {4} C'), { 1: 1, 2: 2 }, 'même nombre : chacun garde son numéro');
+  assert.deepEqual(suite('A {10} B {3} C {5} D', 'A {10} B C {5} D'), { 1: 1, 3: 2 }, 'celui du milieu retiré : le dernier devient le 2e');
+  assert.deepEqual(suite('A {10} B {5} D', 'A {10} B {3} C {5} D'), { 1: 1, 2: 3 }, 'un emplacement ajouté au milieu');
+  assert.deepEqual(suite('A {2} puis {3} fin', 'A {3} fin'), { 2: 1 }, 'le premier retiré');
+  // au début ou à la fin des deux descriptions, un texte vide ne reconnaît rien (tout le reste a pu changer) : la valeur propre part
+  assert.deepEqual(suite('{2} puis {3}', '{3}'), {}, 'plus aucun texte autour : rien ne se reconnaît');
+  assert.deepEqual(suite('Les dégâts magiques sont augmenté de +{3}', 'Les dégâts magiques sont augmentés de +{3}, et la portée de ses sorts de +{2}'), {});
+  assert.deepEqual(suite('{3} santé récupérée par tour.', '{10}% de chance de régénérer {3} santé par tour.'), {});
+  assert.deepEqual(suite('Soigne {3}', 'Soigne de {3} santé, portée {10}'), {});
+  assert.deepEqual(suite('Soigne {3} santé.', 'Soigne {3} santé, portée {10}.'), { 1: 1 }, 'le texte qui précède reconnaît le premier');
+  assert.deepEqual(suite('A {10} B {5} D', 'A {10} B {5} C {5} D'), { 1: 1 }, 'ambigu : aucune suite (ses valeurs propres partent)');
+  assert.equal(texteDeCapacite({ description: 'Cette créature peut lancer les sorts, avec les niveaux de maîtrise maximum :', valeurs: {}, sorts: 'Éclair, Bulle d’eau.' }),
+    'Cette créature peut lancer les sorts, avec les niveaux de maîtrise maximum : Éclair, Bulle d’eau.');
+  // une carte sans capacité (créée sur le site de dev) : « — »
+  assert.equal(htmlDesCapacitesDuMonstre([]), '<span class="vide">—</span>');
+  // une capacité commune (créature invoquée, que les capacités communes des monstres ne touchent pas : décision R67) : sa pastille et sa classe
   assert.equal(
     htmlDeCapacite({ prefixes: [{ texte: 'commune', titre: 'Commune à toutes les créatures de « X »' }], nom: 'Inerte', texte: 'T.', commune: true }),
     '<li class="bcapacite bcapacite--commune"><p class="bcapacite__tete"><span class="prefixe" title="Commune à toutes les créatures de « X »">commune</span> <strong class="bcapacite__nom">Inerte</strong></p> <div class="bcapacite__texte"><span class="texte">T.</span></div></li>',
   );
-  // une capacité sans nom (premier paragraphe écrit sans « Nom. », possible après une modification sur le site de dev) : pas d'en-tête vide
-  assert.equal(htmlDeRubrique('capacites', 'texte écrit sans nom.'),
-    '<ul class="bcapacites" role="list"><li class="bcapacite"><div class="bcapacite__texte"><span class="texte">texte écrit sans nom.</span></div></li></ul>');
   // le nom et le texte restent deux mots dans textContent, que lit la recherche (« Haine mutuelle Cette… », pas « mutuelleCette »)
-  assert.doesNotMatch(htmlDeRubrique('capacites', 'Haine mutuelle. Cette créature.'), /<\/p><div/);
-  // toute la base : autant de tuiles que de capacités, chacune avec son nom, sans titre hN ni lien (la carte d'une créature invoquée sert d'infobulle)
-  for (const r of rubriques.filter((x) => x.rubrique === 'capacites')) {
-    const caps = capacitesDe(r.texte).filter((x) => x.nom);
-    const html = htmlDeRubrique('capacites', r.texte);
-    if (apresUnTrait(r.texte)) continue;
-    assert.equal((html.match(/<li class="bcapacite[ "]/g) ?? []).length, capacitesDe(r.texte).length, r.monstre_id);
-    for (const c of caps) assert.ok(html.includes(`<strong class="bcapacite__nom">${c.nom.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')}</strong>`), `${r.monstre_id} : ${c.nom}`);
-    assert.doesNotMatch(html, /<h\d|<a /, r.monstre_id);
+  assert.doesNotMatch(htmlDesCapacitesDuMonstre([{ rang: 1, prefixe: null, id: 'h', nom: 'Haine mutuelle', description: 'Cette créature.', valeurs: {}, sorts: null }]), /<\/p><div/);
+  // toute la base : une tuile par capacité de la carte, avec son nom et ses valeurs (plus aucun « {N} »), sans titre hN ni lien (la carte d'une créature
+  // invoquée sert d'infobulle) ; le bloc est à la place de la rubrique « Capacité(s) », sans champ de texte (décision R66)
+  const { lignes } = chargerMonstres(db);
+  const e = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  for (const l of lignes.filter((x) => x.carte)) {
+    const html = htmlDesCapacitesDeLaCarte(l);
+    assert.equal((html.match(/<li class="bcapacite[ "]/g) ?? []).length, l.carte.capacites.length, l.id);
+    for (const c of l.carte.capacites) assert.ok(html.includes(`<strong class="bcapacite__nom">${e(c.nom)}</strong>`), `${l.id} : ${c.nom}`);
+    assert.doesNotMatch(html, /<h\d|<a |\{\d+\}/, l.id);
+    const carte = htmlDeCarteMonstre(l, { logo: '/logo.webp', echelles, glossaire, elements });
+    assert.ok(carte.includes(`<dd data-capacites-de="${e(l.id)}">${html}</dd>`), `${l.id} : le bloc des capacités`);
   }
 });
 

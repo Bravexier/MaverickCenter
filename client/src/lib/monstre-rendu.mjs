@@ -14,7 +14,7 @@ import { htmlAvecMonnaies } from './monnaies.mjs';
 import { normalize } from './text.mjs';
 import {
   attributs,
-  capacites,
+  avecLesValeurs,
   caracteristiques,
   CATEGORIES,
   cibles,
@@ -184,7 +184,7 @@ export function htmlDeRubrique(rubrique, texte, options = {}) {
   const coupe = apresUnTrait(texte);
   if (coupe) return `${coupe.avant.trim() ? htmlDeRubrique(rubrique, coupe.avant, options) : ''}${htmlDAttention(coupe.apres)}`;
   const { echelles = [], magiesDesCibles = {} } = options;
-  if (rubrique !== 'capacites' && parEchelle(texte)) return htmlParEchelle(rubrique, texte);
+  if (parEchelle(texte)) return htmlParEchelle(rubrique, texte);
   // la formule « N (+k/mEP) » ou « N (+k/EP) » : la défense seulement (décisions R55, R59)
   if (rubrique === 'defense') {
     const groupes = texteParEchelle(texte, echelles);
@@ -205,29 +205,14 @@ export function htmlDeRubrique(rubrique, texte, options = {}) {
     if (liste.length) return `<span class="bcibles">${liste.map((c) => htmlDeCible(rubrique, c, magiesDesCibles)).join('')}</span>`;
     return htmlDesCiblesParLigne(rubrique, texte, magiesDesCibles) ?? htmlDeTexte(texte);
   }
-  if (rubrique === 'capacites') {
-    const caps = capacites(texte);
-    if (!caps.length) return htmlDeTexte(texte);
-    // le texte d'une capacité peut être écrit par échelle (« Fondu » des Blobs métalliques : « EP1 : Acier | 6AP | … ») ; son préfixe « [EP2] » reste tel quel
-    const corps = (t) => (parEchelle(t) ? htmlDesLignes(segmentsParEchelle(t)) : `<span class="texte">${htmlAvecMonnaies(t)}</span>`);
-    // une capacité « [EPN] » est gagnée à partir de l'EP N (décision R56) : elle porte les échelles N à 10, le curseur la cache en dessous
-    const depuis = (c) => {
-      const n = echelleDuPrefixe(c.prefixe);
-      return n === null || n > EP_MAX ? '' : ` data-eps="${Array.from({ length: EP_MAX - n + 1 }, (_, k) => n + k).join(' ')}"`;
-    };
-    const prefixe = (c) => {
-      const n = echelleDuPrefixe(c.prefixe);
-      return { texte: c.prefixe, titre: n === null ? null : `Gagnée à partir de l’EP ${n}` };
-    };
-    return htmlDesCapacites(caps.map((c) => ({ prefixes: c.prefixe ? [prefixe(c)] : [], nom: c.nom, corps: corps(c.texte), attributs: depuis(c) })));
-  }
   return htmlDeTexte(texte);
 }
 
 /**
  * Une capacité en tuile (demande du propriétaire : « Les capacités devraient ressortir dans une tuile de la même manière que le font les dons de
- * classe ») : l'en-tête (ses pastilles : « [EP3] », « NPM 2 », « [Gauche] », « commune », et son nom), puis son texte. Pour un monstre (htmlDeRubrique,
- * page construite et mode modification) et une créature invoquée (components/bestiaire/CarteInvoquee.astro, carte et infobulle des pages de magie).
+ * classe ») : l'en-tête (ses pastilles : « [EP3] », « NPM 2 », « [Gauche] », « commune », et son nom), puis son texte. Pour un monstre
+ * (htmlDesCapacitesDuMonstre, page construite et mode modification) et une créature invoquée (components/bestiaire/CarteInvoquee.astro, carte et infobulle
+ * des pages de magie).
  * `prefixes` : [{ texte, titre }] ; `corps` : le HTML du texte (sinon `texte`, écrit tel quel) ; `attributs` : ` data-eps="…"` (décision R56) ;
  * `commune` : une capacité commune à toutes les créatures d'une invocation. Ni lien ni titre hN : la carte d'une créature invoquée sert d'infobulle.
  * Le nom s'écrit sans le point qui le suit dans le doc (`capacites`, lib/monstre-champs.mjs, le retire), comme un don de classe ; pas d'en-tête vide.
@@ -244,6 +229,34 @@ export const htmlDeCapacite = ({ prefixes = [], nom = null, texte = '', corps = 
   + `<div class="bcapacite__texte">${corps ?? `<span class="texte">${e(texte)}</span>`}</div></li>`;
 /** Les capacités d'une carte, une tuile chacune, sur une colonne (côte à côte, deux dons de classe sont un choix : ce n'en est pas un ici). */
 export const htmlDesCapacites = (capacites) => `<ul class="bcapacites" role="list">${capacites.map(htmlDeCapacite).join('')}</ul>`;
+
+/**
+ * Le texte d'une capacité sur une carte de monstre : la description de la capacité commune (décision R66), chaque emplacement « {N} » remplacé par la
+ * valeur de la carte (décision R69), puis la liste de sorts de la carte (« Lanceur de sorts »).
+ */
+export const texteDeCapacite = (c) => [avecLesValeurs(c.description, c.valeurs), c.sorts].filter((t) => String(t ?? '').trim()).join(' ');
+
+/**
+ * Les capacités d'une carte de monstre, une tuile chacune (htmlDeCapacite), d'après ses placements (lib/bestiaire-db.mjs#chargerMonstres :
+ * monstre_capacite -> monstre_capacite_commune, décision R66) : le préfixe tel qu'écrit (« [EP3] » : gagnée à partir de l'EP 3, décision R56 ; la tuile
+ * porte alors les échelles 3 à 10, que le curseur cache en dessous), le nom de la capacité commune et son texte (texteDeCapacite ; un texte écrit par
+ * échelle, « Fondu » des Blobs métalliques, garde ses lignes). Chaque tuile porte sa capacité commune et son rang sur la carte (`data-capacite`,
+ * `data-rang` : le mode modification). Sans capacité : « — ».
+ */
+export function htmlDesCapacitesDuMonstre(capacites = []) {
+  if (!capacites.length) return htmlDeTexte('');
+  return htmlDesCapacites(capacites.map((c) => {
+    const t = texteDeCapacite(c);
+    const n = echelleDuPrefixe(c.prefixe);
+    const eps = n === null || n > EP_MAX ? '' : ` data-eps="${Array.from({ length: EP_MAX - n + 1 }, (_, k) => n + k).join(' ')}"`;
+    return {
+      prefixes: c.prefixe ? [{ texte: c.prefixe, titre: n === null ? null : `Gagnée à partir de l’EP ${n}` }] : [],
+      nom: c.nom,
+      corps: parEchelle(t) ? htmlDesLignes(segmentsParEchelle(t)) : `<span class="texte">${htmlAvecMonnaies(t)}</span>`,
+      attributs: `${eps} data-capacite="${e(c.id)}" data-rang="${e(c.rang)}"`,
+    };
+  }));
+}
 
 /** Pastille de la catégorie d'une carte (« Mini-boss ») ; l'écriture du doc (« Mini boss ») en infobulle. */
 export const htmlDeCategorie = (categorie, brut) =>

@@ -43,6 +43,7 @@ export const TABLES_LUES = [
   'sort', 'magie', 'magie_role', 'mode_hyper_effet', 'classe', 'categorie_classe', 'specialite', 'capacite', 'race', 'race_onglet', 'race_don',
   'race_don_tableau_colonne', 'race_don_tableau_cellule', 'race_magie', 'race_magie_onglet', 'peuple', 'relation_peuple', 'echelle_relation',
   'metier', 'caracteristique', 'page', 'monstre_groupe', 'monstre_espece', 'monstre', 'monstre_rubrique', 'monstre_espece_bloc', 'monstre_butin',
+  'monstre_capacite_commune', 'monstre_capacite', 'monstre_capacite_valeur',
   'arme', 'arme_famille', 'arme_type', 'materiau_arme', 'ressource', 'amelioration_equipement', 'gemme', 'bois', 'ingredient_alchimie', 'monnaie', 'materiau',
   'evenement', 'evenement_extrait', 'evenement_categorie', 'categorie_chronologie', 'mot_cle',
 ];
@@ -184,6 +185,35 @@ const DEFINITIONS = [
     entite: (r, x) => `${x.nom('monstre', r.monstre_id)} › ${r.titre ?? 'Santé, chakra, barrière'}`,
     ordre: (r, x) => [x.ordre('monstre_espece', x.ligne('monstre', r.monstre_id)?.espece_id), 1, x.ligne('monstre', r.monstre_id)?.rang ?? 0, 1, r.rang],
   },
+  // les capacités (décisions R66 à R69) : une capacité commune (toutes ses cartes), sa place sur une carte, la valeur d'un emplacement propre à une carte
+  {
+    table: 'monstre_capacite_commune', domaine: 'bestiaire', cle: ['id'], colonnes: colonnesDe('monstre_capacite_commune'), genre: 'Capacité de monstre',
+    groupe: () => 'Capacités de monstre', entite: (r, x) => x.capacite(r.id, r), ordre: (r) => [Number.MAX_SAFE_INTEGER, r.nom, r.id],
+    resume: (n) => `${n} capacités de monstre`,
+  },
+  {
+    table: 'monstre_capacite', domaine: 'bestiaire', cle: ['monstre_id', 'rang'], colonnes: colonnesDe('monstre_capacite'), genre: 'Capacité de la carte',
+    groupe: (r, x) => x.nom('monstre_espece', x.ligne('monstre', r.monstre_id)?.espece_id),
+    // une capacité ajoutée ou retirée avec sa carte est dite par la carte (comme ses rubriques)
+    suit: (r, x) => !x.dans('ref', 'monstre', r.monstre_id) || !x.dans('dev', 'monstre', r.monstre_id),
+    entite: (r, x) => `${x.nom('monstre', r.monstre_id)} › ${x.capacite(r.capacite_commune_id)}`,
+    ordre: (r, x) => [x.ordre('monstre_espece', x.ligne('monstre', r.monstre_id)?.espece_id), 1, x.ligne('monstre', r.monstre_id)?.rang ?? 0, 2, r.rang],
+    resume: (n) => `${n} capacités sur les cartes`,
+    // deux capacités communes peuvent porter le même nom (R68) : leur identifiant les distingue
+    valeur: (colonne, v, x) => (colonne === 'capacite_commune_id' && v ? `${x.nom('monstre_capacite_commune', v)} (${v})` : v),
+  },
+  {
+    table: 'monstre_capacite_valeur', domaine: 'bestiaire', cle: ['monstre_id', 'rang', 'numero'], colonnes: colonnesDe('monstre_capacite_valeur'),
+    genre: 'Valeur d’une capacité', groupe: (r, x) => x.nom('monstre_espece', x.ligne('monstre', r.monstre_id)?.espece_id),
+    // une valeur ajoutée ou retirée avec sa capacité (ou sa carte) est dite par elle
+    suit: (r, x) => !x.dans('ref', 'monstre_capacite', `${r.monstre_id}\u0000${r.rang}`) || !x.dans('dev', 'monstre_capacite', `${r.monstre_id}\u0000${r.rang}`),
+    entite: (r, x) => {
+      const p = x.ligne('monstre_capacite', `${r.monstre_id}\u0000${r.rang}`);
+      return `${x.nom('monstre', r.monstre_id)} › ${p ? x.capacite(p.capacite_commune_id) : 'capacité'} › valeur ${r.numero} (${r.valeur})`;
+    },
+    ordre: (r, x) => [x.ordre('monstre_espece', x.ligne('monstre', r.monstre_id)?.espece_id), 1, x.ligne('monstre', r.monstre_id)?.rang ?? 0, 2, r.rang, r.numero],
+    resume: (n) => `${n} valeurs de capacité propres à une carte`,
+  },
   {
     table: 'monstre_espece_bloc', domaine: 'bestiaire', cle: ['espece_id', 'rang'], colonnes: colonnesDe('monstre_espece_bloc'), genre: 'Bloc', detail: true,
     groupe: (r, x) => x.nom('monstre_espece', r.espece_id), entite: (r, x) => `${x.nom('monstre_espece', r.espece_id)} › ${r.titre}`,
@@ -276,12 +306,22 @@ function chapitreDe(page) {
 
 /** Contexte de nommage : noms et ordres lus d'abord dans dev, puis dans la référence (entité retirée). */
 function contexte(ref, dev) {
-  const index = (base) => Object.fromEntries(['magie', 'classe', 'specialite', 'race', 'categorie_classe', 'peuple', 'caracteristique', 'monstre_espece', 'monstre',
-    'arme_famille', 'arme_type', 'ressource', 'evenement', 'categorie_chronologie', 'mot_cle', 'page']
-    .map((t) => [t, parId(lignesDe(base, t))]));
+  const index = (base) => ({
+    ...Object.fromEntries(['magie', 'classe', 'specialite', 'race', 'categorie_classe', 'peuple', 'caracteristique', 'monstre_espece', 'monstre',
+      'arme_famille', 'arme_type', 'ressource', 'evenement', 'categorie_chronologie', 'mot_cle', 'page', 'monstre_capacite_commune']
+      .map((t) => [t, parId(lignesDe(base, t))])),
+    // la place d'une capacité sur une carte : clé « monstre_id \u0000 rang »
+    monstre_capacite: indexer(lignesDe(base, 'monstre_capacite'), ['monstre_id', 'rang']),
+  });
   const d = index(dev);
   const r = index(ref);
   const ligne = (table, id) => d[table].get(id) ?? r[table].get(id) ?? null;
+  // les capacités communes de chaque nom (production et dev réunies) : deux du même nom (« Anti-mal » +5 et +8 : décision R68) se nomment avec leur id
+  const capacitesParNom = new Map();
+  for (const c of [...r.monstre_capacite_commune.values(), ...d.monstre_capacite_commune.values()]) {
+    if (!capacitesParNom.has(c.nom_cle)) capacitesParNom.set(c.nom_cle, new Set());
+    capacitesParNom.get(c.nom_cle).add(c.id);
+  }
   const entetes = (base) => indexer(lignesDe(base, 'race_don_tableau_colonne'), ['race_id', 'rang']);
   const cellules = (base) => indexer(lignesDe(base, 'race_don_tableau_cellule'), ['race_id', 'ligne', 'colonne']);
   const tetes = [entetes(dev), entetes(ref)];
@@ -296,6 +336,11 @@ function contexte(ref, dev) {
       return l?.nom ?? l?.libelle ?? (id ? String(id) : null);
     },
     ordre: (table, id) => ligne(table, id)?.ordre ?? 0,
+    /** Le nom d'une capacité de monstre commune, suivi de son identifiant si une autre porte le même nom (`l` : sa ligne, si on l'a). */
+    capacite: (id, l = ligne('monstre_capacite_commune', id)) => {
+      if (!l) return id ? String(id) : null;
+      return (capacitesParNom.get(l.nom_cle)?.size ?? 0) > 1 ? `${l.nom} (${l.id})` : l.nom;
+    },
     ordreClasse: (id) => {
       const c = ligne('classe', id);
       return [ligne('categorie_classe', c?.categorie_id)?.ordre ?? 0, c?.ordre ?? 0];
