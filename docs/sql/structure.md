@@ -1,19 +1,19 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 42 : 187 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 42 : 190 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
 ## Sommaire
 
 - [0. FAMILLES D'IMPORT](#0-familles-dimport) : `famille`
-- [1. PAGES, LIENS, MOTS-CLÉS, SOURCES (couche générique)](#1-pages-liens-mots-clés-sources-couche-générique) : `type_page`, `page`, `alias`, `page_tag`, `source`, `page_source`, `page_entite`
+- [1. PAGES, LIENS, MOTS-CLÉS, SOURCES (couche générique)](#1-pages-liens-mots-clés-sources-couche-générique) : `type_page`, `page`, `alias`, `mot_cle`, `page_tag`, `source`, `page_source`, `page_entite`
 - [2. RÈGLES DE LA FICHE : caractéristiques, compétences, niveaux, constantes, postures (famille « fiche »)](#2-règles-de-la-fiche--caractéristiques-compétences-niveaux-constantes-postures-famille--fiche) : `caracteristique`, `competence`, `niveau_global`, `niveau_deblocage`, `seuil_niveau`, `regle_constante`, `entrainement_palier`, `initiative_agilite`, `type_don`, `posture`, `posture_effet`
 - [3. MAGIES ET SORTS (famille « magies »)](#3-magies-et-sorts-famille--magies) : `magie`, `magie_role`, `magie_resistance`, `magie_incompatibilite`, `magie_ethnie_secondaire`, `magie_dieu`, `amelioration_cadaverique`, `sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `commentaire_orphelin`, `legende_sort`, `regle_magie`
 - [4. ANNEXES DES MAGIES : états, résistances, météo, modes hyper et super (famille « annexes »)](#4-annexes-des-magies--états-résistances-météo-modes-hyper-et-super-famille--annexes) : `resistance_palier`, `resistance_magie`, `resistance_duo`, `resistance_combinaison`, `etat`, `etat_magie`, `etat_stade`, `etat_palier`, `meteo`, `meteo_effet`, `mode_texte`, `mode_hyper_depassement`, `mode_super_objet`, `mode_hyper_effet`
 - [5. DIEUX](#5-dieux) : `dieu`
-- [5 bis. CHRONOLOGIE : les événements datés du Codex et des races (famille « chronologie » ; migration 0035, docs/chronologie.md)](#5-bis-chronologie--les-événements-datés-du-codex-et-des-races-famille--chronologie---migration-0035-docschronologiemd) : `evenement`, `evenement_extrait`
+- [5 bis. CHRONOLOGIE : les événements datés du Codex et des races (famille « chronologie » ; migration 0035, docs/chronologie.md)](#5-bis-chronologie--les-événements-datés-du-codex-et-des-races-famille--chronologie---migration-0035-docschronologiemd) : `evenement`, `evenement_extrait`, `categorie_chronologie`, `evenement_categorie`
 - [6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)](#6-classes-spécialités-capacités-famille--classes) : `categorie_classe`, `classe`, `specialite`, `capacite`, `objet_depart`, `classe_objet_depart`, `classe_maitrise_armure`, `classe_maitrise_arme`, `classe_annexe`
 - [7. RACES, ETHNIES, ACCESSIBILITÉS (famille « races »)](#7-races-ethnies-accessibilités-famille--races) : `race`, `race_restriction_carac`, `ethnie`, `ethnie_resistance`, `race_classe`, `race_magie`, `race_onglet`, `race_don`, `race_don_tableau_colonne`, `race_don_tableau_ligne`, `race_don_tableau_cellule`, `race_magie_onglet`, `echelle_relation`, `peuple`, `relation_peuple`
 - [8. BESTIAIRE : invocations et créatures (famille « bestiaire »)](#8-bestiaire--invocations-et-créatures-famille--bestiaire) : `invocation`, `invocation_capacite_commune`, `invocation_resistance`, `invocation_bloc`, `invocation_bloc_magie`, `creature`, `creature_ressource`, `creature_caracteristique`, `creature_bonus_npm`, `creature_attaque`, `creature_attaque_type`, `creature_capacite`, `creature_capacite_sort`, `creature_capacite_resistance`, `creature_effet`
@@ -21,7 +21,7 @@
 - [9. ÉQUIPEMENT, RESSOURCES, CRAFT, MÉTIERS (familles « equipement », « craft », « docs_typees »)](#9-équipement-ressources-craft-métiers-familles--equipement---craft---docstypees) : `monnaie`, `constante_equipement`, `niveau_alchimie`, `affinite`, `arme_famille`, `arme_type`, `ressource`, `materiau_arme`, `materiau_armure`, `materiau_bouclier`, `materiau`, `gemme`, `bois`, `ingredient_alchimie`, `potion`, `potion_etat`, `kit_alchimie`, `fiole_verre`, `recette`, `recette_produit`, `recette_ingredient`, `baton_magique`, `metier`, `metier_bonus`, `metier_recette_famille`, `metier_objet_depart`, `arme`, `arme_degats`, `arme_prerequis`, `arme_elementaire`, `armure_emplacement`, `armure`, `armure_degats`, `armure_elementaire`, `armure_elementaire_effet`, `bouclier_classe`, `bouclier_poids`, `bouclier`, `amelioration_equipement`, `amelioration_total`, `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet`, `accessoire_effet_gemme`, `accessoire_effet_cible`, `accessoire_monture`, `familier`, `familier_effet`, `batiment`, `machine_guerre`, `maladie`, `maladie_methode`
 - [10. TRANSVERSAL : notes de cellule et écarts entre sources](#10-transversal--notes-de-cellule-et-écarts-entre-sources) : `note_cellule`, `ecart_source`, `correction`
 - [11. TABLES DÉRIVÉES (jamais exportées dans data/rows/, recalculées par `npm run db:build`)](#11-tables-dérivées-jamais-exportées-dans-datarows-recalculées-par-npm-run-dbbuild) : `lien`, `lien_candidat`, `page_fts`, `entite_fts`
-- [12. VUES (toujours à jour : rien à recalculer)](#12-vues-toujours-à-jour--rien-à-recalculer) : `cle_page`, `lien_page`, `lien_a_creer`, `tag`, `v_magie_incompatible`, `v_sort_bonus_au_nm`, `v_race_carac_borne`, `v_race_classe_accessible`, `v_race_magie_accessible`, `v_regard_peuple`, `v_creature_magie`, `v_creature_resistance`, `v_creature_sort`, `v_creature_cout_invocation`, `v_creature_meme_bloc`, `v_arme`, `v_ingredient_possible`, `v_ressource_recette`, `v_metier_recette`, `v_potion`, `v_arme_composee`, `v_armure_piece`, `v_niveau`, `v_competence`, `v_resistance_magie_lectures`, `v_resistance_ecart`, `v_mode_hyper_lectures`, `v_classe_capacite`, `v_capacite_exclusive`, `v_capacite_partagee`
+- [12. VUES (toujours à jour : rien à recalculer)](#12-vues-toujours-à-jour--rien-à-recalculer) : `cle_page`, `lien_page`, `lien_a_creer`, `v_mot_cle`, `v_magie_incompatible`, `v_sort_bonus_au_nm`, `v_race_carac_borne`, `v_race_classe_accessible`, `v_race_magie_accessible`, `v_regard_peuple`, `v_creature_magie`, `v_creature_resistance`, `v_creature_sort`, `v_creature_cout_invocation`, `v_creature_meme_bloc`, `v_arme`, `v_ingredient_possible`, `v_ressource_recette`, `v_metier_recette`, `v_potion`, `v_arme_composee`, `v_armure_piece`, `v_niveau`, `v_competence`, `v_resistance_magie_lectures`, `v_resistance_ecart`, `v_mode_hyper_lectures`, `v_classe_capacite`, `v_capacite_exclusive`, `v_capacite_partagee`
 - [13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-joueurs-et-prétirés-les-groupes-de-jeu-et-la-visibilité-saisie-jamais-importée--migration-0011) : `utilisateur`, `utilisateur_role`, `personnage`, `personnage_partage`, `personnage_classe`, `personnage_caracteristique`, `personnage_competence`, `personnage_metier_bonus`, `personnage_progression`, `personnage_capacite`, `personnage_sort`, `personnage_maitrise_arme`, `personnage_arme`, `personnage_armure`, `personnage_bouclier_materiau`, `personnage_accessoire`, `personnage_inventaire`, `personnage_ceinture`, `groupe`, `groupe_membre`, `v_personnage_niveau`, `v_personnage_metier_bonus`, `v_personnage_visible`, `v_groupe_controle`, `v_personnage_controle`
 - [14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)](#14-édition--le-journal-des-modifications-faites-depuis-le-site-de-dev-saisie-jamais-importée--migration-0017) : `modification_lot`, `modification`, `note_version_brouillon`
 - [15. NOTES DE VERSION : ce que chaque version a changé dans les règles (page /mise-a-jour/), et l'historique des modifications faites sur le](#15-notes-de-version--ce-que-chaque-version-a-changé-dans-les-règles-page-mise-a-jour-et-lhistorique-des-modifications-faites-sur-le) : `note_version`, `note_version_ligne`, `historique_modification`
@@ -82,16 +82,25 @@ Alias d'une page (frontmatter `aliases`) : autres noms utilisables dans [[ ]]. `
 | `texte` | TEXT | oui |  |  |
 | `cle` | TEXT | oui |  | normalize(texte), calculé par l'importeur ; client/scripts/db-derive.mjs le vérifie |
 
+### `mot_cle`
+
+Vocabulaire des mots-clés (migration 0042, demande du propriétaire : sur /recherche/, en mode modification, « supprimer / ajouter / modifier des mots clés » ; une suppression le retire de tous les endroits qui le citent). Un mot-clé existe ici même sans page (créé sur le site de dev). Il est posé sur les pages (page_tag) ; les événements de la chronologie ont leurs catégories (categorie_chronologie). id = normalize(libelle) à la création, puis FIGÉ : un renommage ne change que `libelle` (et `libelle_cle`), les liens restent ; un id n'est jamais réutilisé (historique du site). libelle_cle = normalize(libelle) : les écritures « espace/temps », « espace temps » et « espace-temps » sont UN seul mot-clé. Pas de provenance : dictionnaire partagé (comme `source`). Les importeurs (tools/db/maverick.py, pages_md.py) et le service (serveur/edition.mjs#motCleDe) cherchent un libellé par libelle_cle et ne créent un mot-clé que s'il manque (jamais sur un id déjà employé) ; aucun import ne supprime un mot-clé, ni ne repose une écriture que le site a renommée, fusionnée ou supprimée (historique_modification : tools/db/maverick.py#mot_cle).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | TEXT | oui | PK |  |
+| `libelle` | TEXT | oui |  | l'écriture affichée partout (pages, /recherche/) |
+| `libelle_cle` | TEXT | oui | unique |  |
+
 ### `page_tag`
 
-Mots-clés d'une page (frontmatter `tags`). tag_id = normalize(libelle) : c'est la clé de l'URL /tags/<tag_id>/ (les écritures « espace/temps », « espace temps » et « espace-temps » sont UN seul mot-clé). Il n'y a pas de table `tag` : les mots-clés n'ont aucun attribut dans les sources, ils se déduisent de page_tag (voir la vue `tag` plus bas), donc ni orphelin à nettoyer après une réimportation, ni règle d'écriture à maintenir.
+Mots-clés d'une page (frontmatter `tags`, dans l'ordre) : l'écriture est celle du vocabulaire (mot_cle.libelle ; jusqu'à la migration 0042, chaque page gardait la sienne). Supprimer un mot-clé retire ses lignes (ON DELETE CASCADE : le service les note une à une ; au rejeu du journal, clés coupées, la cascade retire aussi celles des pages d'exemple, absentes de la base du site de dev).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `page_id` | TEXT | oui | PK 1, → page.id |  |
-| `ordre` | INTEGER | oui | PK 2 | rang dans la liste `tags:` |
-| `tag_id` | TEXT | oui |  | normalize(libelle), calculé par l'importeur ; client/scripts/db-derive.mjs le vérifie |
-| `libelle` | TEXT | oui |  | écriture sur CETTE page (conserve la source sans perte) |
+| `ordre` | INTEGER | oui | PK 2 | rang dans la liste `tags:` (un mot-clé supprimé laisse un trou : l'ordre des autres ne change pas) |
+| `tag_id` | TEXT | oui | → mot_cle.id |  |
 
 ### `source`
 
@@ -786,7 +795,7 @@ Un événement, dans l'ordre de lecture (`rang`) : un fait que le Codex ou une p
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `id` | TEXT | oui | PK |  |
-| `rang` | INTEGER | oui | unique | ordre de lecture : frise, chevrons Haut / Bas ; chaque événement à /chronologie/<id>/ |
+| `rang` | INTEGER | oui | unique | ordre à date égale (la frise trie par époque, année, rang : lib/chronologie.mjs#ordonner) ; un événement créé sur le site prend le plus grand + 1 (migration 0042 : plus forcément contigu) |
 | `titre` | TEXT | oui |  |  |
 | `titre_cle` | TEXT | oui |  |  |
 | `epoque` | TEXT | oui |  | place dans la frise (EPOQUES de lib/chronologie.mjs) |
@@ -799,18 +808,37 @@ Un événement, dans l'ordre de lecture (`rang`) : un fait que le Codex ou une p
 
 ### `evenement_extrait`
 
-Les extraits d'un événement, dans l'ordre : un passage contigu d'une page, copié de page.corps_md (Markdown) tel qu'il était à l'import. Une modification de la page sur le site de dev ne refait pas l'extrait (test/chronologie.test.mjs relit les pages dans leur état d'import).
+Les blocs de description d'un événement, dans l'ordre (la « Description » et le « Lien » de la demande du propriétaire : le texte d'un bloc et sa page). À l'import, un bloc est un extrait : un passage contigu d'une page, copié de page.corps_md (Markdown) tel qu'il était à l'import ; une modification de la page sur le site de dev ne refait pas l'extrait (test/chronologie.test.mjs relit les pages dans leur état d'import). Depuis la migration 0042, un bloc se modifie, s'ajoute et se retire sur le site de dev (serveur/edition-chronologie.mjs) : son texte, et son lien vers une page du wiki (ou aucun).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `evenement_id` | TEXT | oui | PK 1, → evenement.id |  |
 | `rang` | INTEGER | oui | PK 2 |  |
-| `page_id` | TEXT | oui | → page.id | la page d'où vient le passage (lien sous l'extrait) |
-| `section` | TEXT | non |  | titre de la section de la page où commence le passage ; NULL = avant tout titre |
+| `page_id` | TEXT | non | → page.id | le lien du bloc (légende sous le texte) ; NULL : aucun (bloc écrit sur le site de dev) |
+| `section` | TEXT | non |  | titre de la section de la page où commence le passage ; NULL = avant tout titre, ou lien changé sur le site de dev |
 | `texte` | TEXT | oui |  |  |
 | `date_brut` | TEXT | non |  | l'expression de date du passage, surlignée ; NULL = aucune |
 | `origine` | TEXT | oui | → famille.id |  |
-| `source_ref` | TEXT | oui |  | « CODEX Maverick › <page> › <section> », « Les races › <onglet> › <section> » |
+| `source_ref` | TEXT | oui |  | « CODEX Maverick › <page> › <section> », « Les races › <onglet> › <section> », « Site de dev › édition du AAAA-MM-JJ » |
+
+### `categorie_chronologie`
+
+Les catégories de la chronologie (migration 0042, demande du propriétaire : « Les mots clés sont trop nombreux et trop libres pour faire de vraies catégories stables. Le filtre sera donc sous forme de liste déroulante sur un champ catégorie. On peut choisir plusieurs catégories pour chaque entrée, mais pas pour le filtre. Le mode édition ajoute un bouton pour pouvoir créer, modifier et supprimer une catégorie. Une catégorie supprimée la retire de l'entrée. ») : un vocabulaire à part, créé sur le site de dev (aucune à l'import : rien dans les sources ne range les événements). id = normalize(libelle) à la création, puis FIGÉ (adresse /chronologie/?filtre=<id>) ; jamais « sans-categorie », la valeur du filtre « Sans catégorie (à trier) » (site de dev seulement) ; un id n'est jamais réutilisé (historique du site). Deux catégories n'ont jamais la même écriture (libelle_cle). Affichées dans l'ordre de leur libellé.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | TEXT | oui | PK |  |
+| `libelle` | TEXT | oui |  |  |
+| `libelle_cle` | TEXT | oui | unique |  |
+
+### `evenement_categorie`
+
+Les catégories d'un événement (plusieurs au choix). Un événement sans catégorie est « Sans catégorie (à trier) ». Supprimer une catégorie retire ses lignes (ON DELETE CASCADE : le service les note une à une).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `evenement_id` | TEXT | oui | PK 1, → evenement.id |  |
+| `categorie_id` | TEXT | oui | PK 2, → categorie_chronologie.id |  |
 
 ## 6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)
 
@@ -2760,16 +2788,17 @@ Graphe de pages tel que le calcule wiki.ts : paires (depuis, vers) distinctes, l
 | `ancre` | TEXT | non |  |  |
 | `etat` | TEXT | non |  |  |
 
-### `tag`
+### `v_mot_cle`
 
 *vue*
 
-Dictionnaire des mots-clés, déduit de page_tag. Libellé d'affichage = écriture de la page de plus petit (titre_cle, id) qui porte le mot-clé : une règle fixe, reproductible par n'importe quel importeur ou client.
+Le vocabulaire des mots-clés et les pages qui les portent (page /recherche/ du site de dev : un mot-clé supprimé est retiré de nb_pages pages).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `id` | TEXT | non |  |  |
-| `libelle` | — | non |  |  |
+| `libelle` | TEXT | non |  |  |
+| `libelle_cle` | TEXT | non |  |  |
 | `nb_pages` | — | non |  |  |
 
 ### `v_magie_incompatible`
@@ -3580,7 +3609,7 @@ Une version livrée (dev → master) : « 0.2 » (X.Y : la production ne porte q
 
 ### `note_version_ligne`
 
-Une ligne de la liste calculée : une modification d'un champ d'une entité entre la production et la nouvelle version. `domaine` range la ligne (sorts, magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire : migration 0032 ; armes : 0034), `groupe` et `entite` la nomment (« Lumière » › « Flash »), au nom qu'elle porte dans la nouvelle version (l'ancien pour une entité retirée). `sens` : la couleur (vert, rouge, gris) d'après les critères du propriétaire (client/src/lib/notes-de-version.mjs) ; `parties` : le détail quand une case se lit en morceaux (valeur de base, expression de NM), chacun avec son sens. `table_nom`, `cle`, `colonne` : la trace de la ligne de la base d'où elle vient.
+Une ligne de la liste calculée : une modification d'un champ d'une entité entre la production et la nouvelle version. `domaine` range la ligne (sorts, magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire : migration 0032 ; armes : 0034 ; composants : 0040 ; chronologie, mots-clés : 0042), `groupe` et `entite` la nomment (« Lumière » › « Flash »), au nom qu'elle porte dans la nouvelle version (l'ancien pour une entité retirée). `sens` : la couleur (vert, rouge, gris) d'après les critères du propriétaire (client/src/lib/notes-de-version.mjs) ; `parties` : le détail quand une case se lit en morceaux (valeur de base, expression de NM), chacun avec son sens. `table_nom`, `cle`, `colonne` : la trace de la ligne de la base d'où elle vient.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

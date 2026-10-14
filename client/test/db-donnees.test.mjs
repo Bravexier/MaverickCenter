@@ -182,7 +182,9 @@ test('db:sync-pages : une page « docs » ajoutée à la main entre dans la base
   const retrait = pages('sync', ...args);
   assert.equal(retrait.status, 0, retrait.stdout + retrait.stderr);
   const touches = readdirSync(rows).filter((f) => readFileSync(join(rows, f), 'utf8') !== readFileSync(join(copieRows, f), 'utf8'));
-  assert.deepEqual(touches, [], 'ajout puis retrait : data/rows est revenu à l’identique (alias, mot-clé et source de la page retirés avec elle)');
+  // seul le vocabulaire garde une trace : le mot-clé « test », créé avec la page, y reste (aucun import ne supprime un mot-clé : migration 0042)
+  assert.deepEqual(touches, ['mot_cle.sql'], 'ajout puis retrait : data/rows est revenu à l’identique (alias, mot-clé posé et source de la page retirés avec elle)');
+  assert.match(readFileSync(join(copieRows, 'mot_cle.sql'), 'utf8'), /VALUES \('test', 'test', 'test'\);/);
 
   // une page de la famille « classes » (importeur typé) ne se crée pas à la main
   const capacite = readdirSync(join(copieWiki, 'capacites'))[0];

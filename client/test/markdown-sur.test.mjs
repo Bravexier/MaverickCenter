@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import { createMarkdownProcessor } from '@astrojs/markdown-remark';
-import { ErreurMiseAJour, pageNonSure, verifierLot } from '../scripts/mise-a-jour-regles.mjs';
+import { blocNonSur, ErreurMiseAJour, pageNonSure, textesDesBlocs, verifierLot } from '../scripts/mise-a-jour-regles.mjs';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
@@ -130,6 +130,29 @@ test('lot reçu : une modification de page qui ajoute du HTML brut est refusée 
     { rang: 1, table: 'page', cle: { id: 'x/y' }, operation: 'inserer', avant: null, apres: { id: 'x/y', corps_md: '[a](javascript:alert(1))' } },
   ] }] } }), (e) => e instanceof ErreurMiseAJour && e.code === 2);
   assert.doesNotThrow(() => verifierLot(lot('`<catégorie>`', '`<catégorie>` et la suite.')));
+});
+
+test('lot reçu : une description de la chronologie (evenement_extrait.texte) qui gagne du HTML brut est refusée ; après le rejeu aussi (blocNonSur)', () => {
+  const lot = (modification) => ({
+    format: 'maverick-mise-a-jour/1', id: '11111111-2222-3333-4444-555555555555', texte: null,
+    journal: { format: 'maverick-edition/1', lots: [{ id: 'l', fait_le: 'x', resume: 'r', modifications: [{ rang: 1, ...modification }] }] },
+  });
+  const cle = { evenement_id: 'e', rang: 1 };
+  assert.throws(() => verifierLot(lot({ table: 'evenement_extrait', cle, operation: 'modifier', avant: { texte: 'Texte.' }, apres: { texte: 'Texte <img src=x onerror=alert(1)>' } })),
+    (e) => e instanceof ErreurMiseAJour && e.code === 2 && /description .*HTML brut/.test(e.message));
+  assert.throws(() => verifierLot(lot({ table: 'evenement_extrait', cle, operation: 'inserer', avant: null, apres: { ...cle, texte: '[a](javascript:alert(1))' } })),
+    (e) => e instanceof ErreurMiseAJour && e.code === 2);
+  assert.doesNotThrow(() => verifierLot(lot({ table: 'evenement_extrait', cle, operation: 'modifier', avant: { texte: 'Texte.' }, apres: { texte: 'Texte, un chevron \\< écrit.' } })));
+
+  const db = new DatabaseSync(':memory:');
+  db.exec("CREATE TABLE evenement_extrait (evenement_id TEXT, rang INTEGER, texte TEXT); INSERT INTO evenement_extrait VALUES ('a', 1, 'A'), ('a', 2, 'B `<x>`')");
+  const avant = textesDesBlocs(db);
+  assert.equal(blocNonSur(db, avant), null);
+  db.exec("UPDATE evenement_extrait SET texte = 'B `<x>` encore' WHERE rang = 2");
+  assert.equal(blocNonSur(db, avant), null);
+  db.exec("INSERT INTO evenement_extrait VALUES ('b', 1, 'Nouveau <iframe src=x>')");
+  assert.deepEqual(blocNonSur(db, avant), { id: 'b#1', fragments: ['<iframe src=x>'] });
+  db.close();
 });
 
 test('après le rejeu : la première page dont le corps a gagné un fragment est signalée (pageNonSure)', () => {

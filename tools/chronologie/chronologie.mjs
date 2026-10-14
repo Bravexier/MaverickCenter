@@ -1,9 +1,12 @@
 // La chronologie (/chronologie/, docs/chronologie.md) : le registre tools/chronologie/evenements.json (un événement par entrée, dans l'ordre de lecture ;
 // chaque extrait repéré par son début et sa fin dans une page du wiki) résolu contre le texte des pages de la base -> les lignes des tables `evenement`
 // et `evenement_extrait` (data/schema.sql, section 5 bis ; migration 0035). Le texte d'un extrait est COPIÉ de page.corps_md, jamais réécrit.
+// Depuis la migration 0042, la chronologie se modifie sur le site de dev (il en est la source) : le registre n'est plus que la trace de l'import ; on
+// ne s'en sert plus pour réécrire la chronologie (une migration écrite par --sql écraserait les modifications du site).
 //
-//   node tools/chronologie/chronologie.mjs --sql         -> les INSERT de la migration (sortie standard), résolus contre la base de data/rows
-//   node tools/chronologie/chronologie.mjs --verifier    -> le registre relu contre la base : extraits introuvables, lignes différentes
+//   node tools/chronologie/chronologie.mjs --sql         -> les INSERT de la migration 0035 (sortie standard), résolus contre la base de data/rows
+//   node tools/chronologie/chronologie.mjs --verifier    -> le registre relu contre les pages et les lignes telles que l'import les a laissées (historique
+//                                                            du site : client/src/lib/historique-site.mjs) : extraits introuvables, lignes différentes
 //
 // Fonctions pures (resoudre, lignesSql) ; seul le lancement en ligne de commande ouvre la base (client/src/lib/donnees.mjs). Le test
 // client/test/chronologie.test.mjs rejoue la résolution sur les pages telles que l'import les a laissées et la compare aux lignes de la base.
@@ -159,9 +162,16 @@ export function pagesDeLaBase(db, registre, lire = (id, p) => p) {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const { ouvrirBase } = await import('../../client/src/lib/donnees.mjs');
+  const { historiqueSite } = await import('../../client/src/lib/historique-site.mjs');
   const db = ouvrirBase({ sansExemples: false });
+  const historique = historiqueSite(db);
   const registre = lireRegistre();
-  const resultat = resoudre(registre, pagesDeLaBase(db, registre));
+  // les pages telles que l'import les a laissées (le site de dev peut réécrire le titre ou le texte d'une page, ou l'onglet d'une race)
+  const resultat = resoudre(registre, pagesDeLaBase(db, registre, (id, p) => ({
+    titre: historique.valeurDImport('page', { id }, 'titre', p.titre),
+    corps_md: historique.valeurDImport('page', { id }, 'corps_md', p.corps_md),
+    onglet: p.onglet === null ? null : historique.valeurDImport('race_onglet', { race_id: id }, 'onglet', p.onglet),
+  })));
   if (resultat.erreurs.length) {
     process.stderr.write(`${resultat.erreurs.length} erreur(s) dans le registre :\n${resultat.erreurs.map((e) => `- ${e}`).join('\n')}\n`);
     process.exit(1);
@@ -175,7 +185,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     } else {
       const texte = (lignes) => lignes.map((l) => JSON.stringify(l)).sort();
       const comparer = (table, attendues) => {
-        const base = new Set(texte(db.prepare(`SELECT * FROM ${table}`).all().map((l) => ({ ...l }))));
+        const base = new Set(texte(historique.lignesDImport(table).map((l) => ({ ...l }))));
         const registreTxt = new Set(texte(attendues));
         const manque = [...registreTxt].filter((l) => !base.has(l));
         const enTrop = [...base].filter((l) => !registreTxt.has(l));

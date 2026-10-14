@@ -51,7 +51,7 @@ try {
   const alias = db.prepare('SELECT page_id, texte, cle FROM alias ORDER BY page_id, ordre').all();
   for (const r of alias) (aliasParPage.get(r.page_id) ?? aliasParPage.set(r.page_id, []).get(r.page_id)).push(r.texte);
   const tagsParPage = new Map();
-  for (const r of db.prepare('SELECT page_id, libelle FROM page_tag ORDER BY page_id, ordre').all()) {
+  for (const r of db.prepare('SELECT t.page_id, m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id ORDER BY t.page_id, t.ordre').all()) {
     (tagsParPage.get(r.page_id) ?? tagsParPage.set(r.page_id, []).get(r.page_id)).push(r.libelle);
   }
 
@@ -63,10 +63,7 @@ try {
   for (const a of alias) {
     if (normalize(a.texte) !== a.cle) problemes.push(`alias ${a.page_id} ${JSON.stringify(a.texte)} : cle=${JSON.stringify(a.cle)} != normalize(texte)`);
   }
-  for (const t of db.prepare('SELECT tag_id, libelle FROM page_tag').all()) {
-    if (normalize(t.libelle) !== t.tag_id) problemes.push(`page_tag ${t.tag_id} : écriture ${JSON.stringify(t.libelle)} ne se normalise pas en ${t.tag_id}`);
-  }
-  // Toute colonne `X_cle` (24 colonnes) vaut normalize(X) : même garde pour toutes (la copie Python de normalize ne peut pas dériver en silence).
+  // Toute colonne `X_cle` (24 colonnes, dont mot_cle.libelle_cle) vaut normalize(X) : même garde pour toutes (la copie Python de normalize ne peut pas dériver en silence).
   const cles = controleNomCle(db, db.prepare("SELECT name, sql FROM sqlite_master WHERE type = 'table'").all(), normalize);
   problemes.push(...cles.problemes);
   bilan.colonnesCle = cles.colonnesVerifiees;

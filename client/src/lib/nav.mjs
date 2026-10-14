@@ -60,7 +60,7 @@ export const NAV = [
   {
     key: 'outils',
     label: 'Outils',
-    autres: ['pages/', 'tags/', 'donnees/'],
+    autres: ['pages/', 'donnees/'],
     items: [
       { label: 'Statistiques' },
       { label: 'Mise à jour', path: 'mise-a-jour/' },
@@ -97,15 +97,18 @@ export function legacyWikiRedirect(pathname, base = '/') {
   const root = base.replace(/\/$/, '') + '/';
   const old = `${root}wiki`;
   if (pathname !== old && !pathname.startsWith(`${old}/`)) return null;
-  return root + (pathname.slice(old.length + 1) || 'pages/');
+  // les barres en tête du reste retirées : « /wiki//autre.site/ » donnerait « //autre.site/ », une adresse hors du site
+  return root + (pathname.slice(old.length + 1).replace(/^\/+/, '') || 'pages/');
 }
 
 /** Pages renommées (demande du propriétaire) : ancienne adresse → nouvelle, relatives à la racine du site. La liste des mots-clés est dans la recherche. */
 export const PAGES_RENOMMEES = { 'generateur/': 'fiche/', 'tags/': 'recherche/' };
 
 /**
- * Nouvelle adresse d'une ancienne adresse du site : les pages du wiki sous `/wiki/` (legacyWikiRedirect) et les pages renommées (le générateur
- * `/generateur/` est devenu la fiche `/fiche/`, la liste des mots-clés `/tags/` est dans la recherche). `null` si ce n'en est pas une. Lu par la page 404.
+ * Nouvelle adresse d'une ancienne adresse du site : les pages du wiki sous `/wiki/` (legacyWikiRedirect), les pages renommées (le générateur
+ * `/generateur/` est devenu la fiche `/fiche/`, la liste des mots-clés `/tags/` est dans la recherche) et la page d'un mot-clé `/tags/<clé>/`, devenue
+ * la liste de ses éléments dans la recherche, `/recherche/?mot-cle=<clé>` (les ids du vocabulaire, migration 0042, sont les anciennes clés ; un mot-clé
+ * disparu depuis y est dit « n'existe plus »). `null` si ce n'en est pas une. Lu par la page 404, qui y ajoute la requête et l'ancre (adresseComplete).
  */
 export function nouvelleAdresse(pathname, base = '/') {
   const wiki = legacyWikiRedirect(pathname, base);
@@ -113,5 +116,19 @@ export function nouvelleAdresse(pathname, base = '/') {
   const root = base.replace(/\/$/, '') + '/';
   if (!pathname.startsWith(root)) return null;
   const rel = pathname.slice(root.length).replace(/\/?$/, '/');
+  const motCle = rel.match(/^tags\/([^/]+)\/$/);
+  if (motCle) return `${root}recherche/?mot-cle=${motCle[1]}`;
   return PAGES_RENOMMEES[rel] ? root + PAGES_RENOMMEES[rel] : null;
+}
+
+/**
+ * L'adresse où renvoyer : `cible` (qui peut avoir sa propre requête, « /recherche/?mot-cle=feu »), plus les paramètres de la requête d'origine (`search`)
+ * qu'elle n'a pas déjà, puis l'ancre (`hash`) : jamais deux « ? ».
+ */
+export function adresseComplete(cible, search = '', hash = '') {
+  const [chemin, requete = ''] = cible.split('?');
+  const parametres = new URLSearchParams(requete);
+  for (const [nom, valeur] of new URLSearchParams(search)) if (!parametres.has(nom)) parametres.append(nom, valeur);
+  const texte = parametres.toString();
+  return `${chemin}${texte ? `?${texte}` : ''}${hash}`;
 }

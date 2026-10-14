@@ -1,0 +1,1 @@
+-- data/rows/evenement_categorie.sql : export déterministe, une instruction par ligne, triée par (evenement_id, categorie_id). NE PAS ÉDITER À LA MAIN.

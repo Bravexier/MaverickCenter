@@ -74,7 +74,7 @@ test('créer une race hybride : page (mot-clé « race hybride »), race, onglet
   assert.equal(race.ordre, ordre, 'à la suite des races de la base');
   assert.equal(ligne('SELECT histoire FROM race_onglet WHERE race_id = ?', ID_LYCAN).histoire, A_COMPLETER);
   assert.equal(ligne('SELECT description_generale FROM race_onglet WHERE race_id = ?', ID_LYCAN).description_generale, 'Les loups-garous.');
-  assert.deepEqual(lignes('SELECT libelle FROM page_tag WHERE page_id = ? ORDER BY ordre', ID_LYCAN).map((t) => t.libelle), ['race', 'race hybride']);
+  assert.deepEqual(lignes('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? ORDER BY t.ordre', ID_LYCAN).map((t) => t.libelle), ['race', 'race hybride']);
   assert.equal(ligne('SELECT count(*) AS n FROM race_magie WHERE race_id = ? AND accessible = 0', ID_LYCAN).n, ligne('SELECT count(*) AS n FROM magie').n);
   assert.equal(ligne('SELECT count(*) AS n FROM race_classe WHERE race_id = ?', ID_LYCAN).n, ligne('SELECT count(*) AS n FROM classe').n);
   assert.equal(ligne('SELECT race_id FROM peuple WHERE id = ?', PEUPLE_LYCAN).race_id, ID_LYCAN);

@@ -300,8 +300,39 @@ function rejouerUne(db, m, derivee, suivantes = []) {
   if (!aEcrire.length) return 'integree';
   const changees = aEcrire.filter((c) => !egal(ligne[c], avant[c]));
   if (changees.length) return `les règles ont changé ${changees.join(', ')} autrement`;
-  modifierBrut(db, m.table_nom, cle, sous(voulues, aEcrire));
+  // une colonne « déjà là » seulement parce qu'une modification plus récente y remet sa valeur d'avant (A → B → A) est réécrite avec les autres : une
+  // contrainte de la ligne peut les lier (la date d'un événement : époque et année), et la modification plus récente la remettra
+  const avec = Object.keys(voulues).filter((c) => !aEcrire.includes(c) && !egal(ligne[c], voulues[c]) && egal(ligne[c], avant[c]));
+  modifierBrut(db, m.table_nom, cle, sous(voulues, [...aEcrire, ...avec]));
   return 'applique';
+}
+
+/**
+ * La première référence rompue de la table `table` qui ne vise pas une ligne « fantôme » (créée puis supprimée par le journal : rejouerUne ne l'insère
+ * pas) : { parent } ; null s'il n'y en a pas. Entre la création et la suppression d'une telle ligne, une autre a pu la citer (un bloc de la chronologie
+ * lié à la page d'un métier créé puis supprimé, la fiche d'un don qui portait le mot-clé d'une spécialité renommée ensuite) : la suppression l'a
+ * détachée dans le même lot, l'état final est cohérent. `fantomes` : Map table → Set des clés (JSON, colonnes triées).
+ */
+function referenceRompue(db, table, fantomes) {
+  if (!db.prepare(`PRAGMA foreign_key_check("${table}")`).get()) return null;
+  const parId = new Map();
+  for (const f of db.prepare(`PRAGMA foreign_key_list("${table}")`).all()) {
+    if (!parId.has(f.id)) parId.set(f.id, { parent: f.table, de: [], vers: [] });
+    parId.get(f.id).de.push(f.from);
+    parId.get(f.id).vers.push(f.to);
+  }
+  for (const { parent, de, vers: versBrut } of parId.values()) {
+    const vers = versBrut.some((c) => c === null) ? structure(db, parent).cle : versBrut;
+    const non = de.map((c) => `e.${guillemets(c)} IS NOT NULL`).join(' AND ');
+    const egalite = de.map((c, i) => `p.${guillemets(vers[i])} = e.${guillemets(c)}`).join(' AND ');
+    const rompues = db.prepare(`SELECT ${de.map((c) => `e.${guillemets(c)}`).join(', ')} FROM "${table}" e WHERE ${non}
+      AND NOT EXISTS (SELECT 1 FROM "${parent}" p WHERE ${egalite})`).all();
+    for (const r of rompues) {
+      const cle = JSON.stringify(Object.fromEntries(vers.map((c, i) => [c, r[de[i]]]).sort(([a], [b]) => a.localeCompare(b))));
+      if (!fantomes.get(parent)?.has(cle)) return { parent };
+    }
+  }
+  return null;
 }
 
 /** Une modification du journal telle que la reçoit `applique` (rejouer) : valeurs décodées. */
@@ -328,10 +359,12 @@ const decodee = (m) => ({
  * base vivante recopie AVANT le rejeu (base-vivante.mjs#transferer) : une fiche peut citer un don, une spécialité ou une classe qu'un lot SUIVANT crée,
  * et le contrôle d'un lot antérieur qui touche la même table (capacite, specialite, classe) la verrait rompue et mettrait ce lot sans rapport en conflit.
  * L'appelant les contrôle toutes après le rejeu complet.
- * @param {{ derivee?: (table: string, cle: object, colonne: string) => boolean, applique?: (m: object) => void, horsControleParLot?: Iterable<string> }} [options]
+ * `adapter(m)` : lit une modification notée sous une forme ancienne dans la forme des règles (une ligne de la table modification, rendue modifiée ou
+ * telle quelle) ; appelé sur chacune avant tout rejeu (serveur/edition.mjs#ancienneEcritureDesMotsCles : page_tag d'avant la migration 0042).
+ * @param {{ derivee?: (table: string, cle: object, colonne: string) => boolean, applique?: (m: object) => void, horsControleParLot?: Iterable<string>, adapter?: (m: object) => object }} [options]
  * @returns {{ appliquees: number, integrees: number, conflits: number, lots: number }}
  */
-export function rejouer(db, { derivee = () => false, applique = null, horsControleParLot = [] } = {}) {
+export function rejouer(db, { derivee = () => false, applique = null, horsControleParLot = [], adapter = null } = {}) {
   const horsControle = new Set(horsControleParLot);
   const bilan = { appliquees: 0, integrees: 0, conflits: 0, lots: 0 };
   const enAttente = db
@@ -339,7 +372,8 @@ export function rejouer(db, { derivee = () => false, applique = null, horsContro
       `SELECT m.* FROM modification m JOIN modification_lot l ON l.id = m.lot_id
        WHERE m.etat = 'en_attente' ORDER BY ${ORDRE_DE_REJEU}`,
     )
-    .all();
+    .all()
+    .map((m) => (adapter ? adapter(m) : m));
   const parLot = new Map();
   const parLigne = new Map(); // ligne (table, clé) -> ses modifications en attente, dans l'ordre : { operation, apres }
   const ligneDe = (m) => `${m.table_nom}\u0000${m.cle}`;
@@ -353,6 +387,16 @@ export function rejouer(db, { derivee = () => false, applique = null, horsContro
     const toutes = parLigne.get(ligneDe(m));
     return toutes.slice(toutes.findIndex((s) => s.m === m) + 1);
   };
+  // les lignes « fantômes » : créées puis supprimées par le journal, jamais insérées au rejeu (rejouerUne) ; une référence vers elle n'est pas rompue
+  const fantomes = new Map();
+  for (const mods of parLigne.values()) {
+    const i = mods.findIndex((x) => x.operation === 'inserer');
+    if (i < 0 || !mods.slice(i + 1).some((x) => x.operation === 'supprimer')) continue;
+    const { m } = mods[i];
+    const cle = JSON.stringify(Object.fromEntries(Object.entries(JSON.parse(m.cle)).sort(([a], [b]) => a.localeCompare(b))));
+    if (!fantomes.has(m.table_nom)) fantomes.set(m.table_nom, new Set());
+    fantomes.get(m.table_nom).add(cle);
+  }
   const marquer = db.prepare('UPDATE modification SET etat = ?, detail = ? WHERE lot_id = ? AND rang = ?');
   for (const [lot, modifications] of parLot) {
     bilan.lots += 1;
@@ -380,7 +424,7 @@ export function rejouer(db, { derivee = () => false, applique = null, horsContro
         for (const t of tablesQuiCitent(db, m.table_nom)) if (!horsControle.has(t)) tables.add(t);
       }
       for (const t of tables) {
-        const rompue = db.prepare(`PRAGMA foreign_key_check("${t}")`).get();
+        const rompue = referenceRompue(db, t, fantomes);
         if (rompue) {
           conflit = `${t} : clé étrangère rompue vers ${rompue.parent}`;
           break;

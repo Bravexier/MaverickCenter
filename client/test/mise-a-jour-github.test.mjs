@@ -973,6 +973,13 @@ describe('fonctions pures', () => {
     assert.deepEqual(horsListe(['data/rows/VERSION', 'data/schema.sql'], ['VERSION'], tables), ['data/rows/VERSION', 'data/schema.sql']);
     assert.deepEqual(tablesDuLot(JSON.parse(LOT_JSON)), ['metier']);
     assert.throws(() => tablesDuLot({ journal: { lots: [{ modifications: [{ table: 'x; DROP' }] }] } }));
+    // ce que le rejeu écrit au-delà du journal (serveur/edition.mjs#rejouerLeJournal) : la cascade d'un mot-clé supprimé (pages d'exemple), le mot-clé
+    // d'une ligne page_tag notée avant la migration 0042
+    const lot = (...modifications) => ({ journal: { lots: [{ modifications }] } });
+    assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'supprimer', avant: { id: 'demo' }, apres: null })), ['mot_cle', 'page_tag']);
+    assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'modifier', avant: { libelle: 'a' }, apres: { libelle: 'b' } })), ['mot_cle']);
+    assert.deepEqual(tablesDuLot(lot({ table: 'page_tag', operation: 'inserer', avant: null, apres: { page_id: 'p', ordre: 1, tag_id: 'x', libelle: 'X' } })), ['mot_cle', 'page_tag']);
+    assert.deepEqual(tablesDuLot(lot({ table: 'page_tag', operation: 'inserer', avant: null, apres: { page_id: 'p', ordre: 1, tag_id: 'x' } })), ['page_tag']);
   });
 
   test('git diff-tree -z : modes et chemins ; préparation : forme contrôlée', () => {

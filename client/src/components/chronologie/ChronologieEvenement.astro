@@ -1,58 +1,102 @@
 ---
-import { extraitsParPage, libelleDeDate, marquerLaDate, PORTEES, surlignerLaDate, titreDeSection } from '../../lib/chronologie.mjs';
+import {
+  extraitsParPage, LIBELLE_SANS_CATEGORIE, libelleDeDate, marquerLaDate, PORTEES, SANS_CATEGORIE, surlignerLaDate, titreDeSection,
+} from '../../lib/chronologie.mjs';
+import { attributEd } from '../../lib/edition-modele.mjs';
 import { rendreMarkdown } from '../../lib/guide-rendu';
 import { pageHref } from '../../lib/magies';
+import { modeDuSite } from '../../lib/mode-site.mjs';
+import { url } from '../../lib/wiki';
 
 // La page d'un événement de la chronologie, à droite de la frise (components/chronologie/Chronologie.astro) : sa date, son titre, la portée et le lieu
-// d'un Impact du Codex, puis les extraits copiés des pages sources, regroupés par page, la date de chacun surlignée, et un lien vers la page.
+// d'un Impact du Codex, ses catégories, puis ses blocs de description (demande du propriétaire : « Date, Titre, Description, Lien ») — le texte d'un bloc
+// et, en légende, sa page (le « lien ») ; pour un événement des sources, les extraits copiés des pages, regroupés par page, la date surlignée.
+// Une catégorie mène à la frise filtrée sur elle (/chronologie/?filtre=<id>) ; sans catégorie : « Sans catégorie (à trier) », hors de la production
+// seulement (SITE_MODE=prod : demande du propriétaire, « visible uniquement sur DEV »).
+// Sur le site de dev (mode modification : src/scripts/edition/chronologie.mjs), date, titre, Impact et lieu sont des champs `data-ed` (lib/edition-modele.mjs ;
+// leurs saisies `.chrono-ed` n'apparaissent qu'en mode modification) ; catégories et blocs (`data-chrono-categories`, `data-chrono-bloc`) sont repris par
+// l'extension.
 // Couleur de la page : celle de l'événement sur la frise (--couleur-evenement, posée par Chronologie.astro).
 interface Props {
   evenement: any;
-  /** Le nombre d'événements de la chronologie (« événement N sur M »). */
+  /** Sa place dans l'ordre de lecture (1 à N) et le nombre d'événements (« événement N sur M »). */
+  position: number;
   total: number;
 }
-const { evenement, total } = Astro.props;
+const { evenement, position, total } = Astro.props;
+const ed = (colonne: string) => attributEd('evenement', { id: evenement.id }, colonne);
 
 const groupes = await Promise.all(
   extraitsParPage(evenement.extraits).map(async (g) => ({
     ...g,
     extraits: await Promise.all(
-      g.extraits.map(async (x: any) => ({ ...x, html: surlignerLaDate(await rendreMarkdown(marquerLaDate(x.texte, x.date_brut), x.page_id)) })),
+      g.extraits.map(async (x: any) => ({ ...x, html: surlignerLaDate(await rendreMarkdown(marquerLaDate(x.texte, x.date_brut), x.page_id ?? `chronologie/${evenement.id}`)) })),
     ),
   })),
 );
 /** Les sections de la page d'où viennent les extraits d'un groupe, dans l'ordre, sans doublon (légende sous le groupe). */
 const sections = (g: any) => [...new Set(g.extraits.map((x: any) => x.section).filter(Boolean).map(titreDeSection))];
+const filtre = (id: string) => url(`chronologie/?filtre=${encodeURIComponent(id)}`);
+const aTrier = !modeDuSite(process.env, '').prod;
 ---
 
-<article class="chrono-page" aria-labelledby="chrono-titre">
-  <p class="chrono-numero">Chronologie · événement {evenement.rang} sur {total}</p>
-  <p class="chrono-date">{libelleDeDate(evenement)}</p>
-  <h1 id="chrono-titre">{evenement.titre}</h1>
-  {
-    (evenement.portee || evenement.lieu) && (
-      <p class="chrono-etiquettes">
-        {evenement.portee && <span class={`chrono-portee chrono-portee--${evenement.portee}`}>{PORTEES[evenement.portee]}</span>}
-        {evenement.lieu &&
-          (evenement.lieu_page_id ? (
-            <a class="chrono-lieu" href={pageHref(evenement.lieu_page_id)}>{evenement.lieu}</a>
-          ) : (
-            <span class="chrono-lieu">{evenement.lieu}</span>
+<article class="chrono-page" aria-labelledby="chrono-titre" data-chrono-evenement={evenement.id}>
+  <p class="chrono-numero">Chronologie · événement {position} sur {total}</p>
+  <p class="chrono-date" data-ed-lecture={ed('epoque')} data-ed-rendu="evenement-date">{libelleDeDate(evenement)}</p>
+  <div class="chrono-ed chrono-ed--date" aria-label="Date">
+    <span class="chrono-ed__champ"><span class="chrono-ed__libelle">Époque</span><span data-ed={ed('epoque')}>{evenement.epoque}</span></span>
+    <span class="chrono-ed__champ"><span class="chrono-ed__libelle">Année</span><span data-ed={ed('annee')}>{evenement.annee ?? ''}</span></span>
+    <span class="chrono-ed__champ"><span class="chrono-ed__libelle">Année de fin</span><span data-ed={ed('annee_fin')}>{evenement.annee_fin ?? ''}</span></span>
+  </div>
+  <h1 id="chrono-titre"><span data-ed={ed('titre')}>{evenement.titre}</span></h1>
+  <p class="chrono-etiquettes" data-ed-cadre="[data-ed-lecture]" hidden={!evenement.portee && !evenement.lieu}>
+    <span data-ed-lecture={ed('portee')} data-ed-rendu="evenement-portee">
+      {evenement.portee && <span class={`chrono-portee chrono-portee--${evenement.portee}`}>{PORTEES[evenement.portee]}</span>}
+    </span>
+    {
+      evenement.lieu_page_id ? (
+        <a class="chrono-lieu" href={pageHref(evenement.lieu_page_id)} data-ed-cadre="[data-ed-lecture]"><span data-ed-lecture={ed('lieu')}>{evenement.lieu}</span></a>
+      ) : (
+        <span class="chrono-lieu" hidden={!evenement.lieu} data-ed-cadre="[data-ed-lecture]"><span data-ed-lecture={ed('lieu')}>{evenement.lieu ?? ''}</span></span>
+      )
+    }
+  </p>
+  <div class="chrono-ed chrono-ed--impact" aria-label="Impact">
+    <span class="chrono-ed__champ"><span class="chrono-ed__libelle">Impact</span><span data-ed={ed('portee')}>{evenement.portee ?? ''}</span></span>
+    <span class="chrono-ed__champ"><span class="chrono-ed__libelle">Lieu de l’Impact</span><span data-ed={ed('lieu')}>{evenement.lieu ?? ''}</span></span>
+  </div>
+  <ul
+    class="chrono-categories"
+    aria-label="Catégories"
+    data-chrono-categories={evenement.categories.map((c: any) => c.id).join(' ')}
+    data-a-trier={aTrier ? '' : undefined}
+    hidden={!evenement.categories.length && !aTrier}
+  >
+    {
+      evenement.categories.length ? (
+        evenement.categories.map((c: any) => (
+          <li><a class="chrono-categorie" href={filtre(c.id)}>{c.libelle}</a></li>
+        ))
+      ) : (
+        aTrier && <li><a class="chrono-categorie chrono-categorie--a-trier" href={filtre(SANS_CATEGORIE)}>{LIBELLE_SANS_CATEGORIE}</a></li>
+      )
+    }
+  </ul>
+  <div class="chrono-blocs" data-chrono-blocs>
+    {
+      groupes.map((g) => (
+        <figure class="chrono-source">
+          {g.extraits.map((x: any) => (
+            <blockquote class="chrono-extrait" data-chrono-bloc={x.rang} data-chrono-page={x.page_id ?? ''} set:html={x.html} />
           ))}
-      </p>
-    )
-  }
-  {
-    groupes.map((g) => (
-      <figure class="chrono-source">
-        {g.extraits.map((x: any) => (
-          <blockquote class="chrono-extrait" set:html={x.html} />
-        ))}
-        <figcaption class="chrono-legende">
-          <a href={pageHref(g.page_id)}>{g.page_titre}</a>
-          {sections(g).length > 0 && <span class="chrono-legende__sections">· {sections(g).join(', ')}</span>}
-        </figcaption>
-      </figure>
-    ))
-  }
+          {g.page_id && (
+            <figcaption class="chrono-legende">
+              <a href={pageHref(g.page_id)}>{g.page_titre}</a>
+              {sections(g).length > 0 && <span class="chrono-legende__sections">· {sections(g).join(', ')}</span>}
+            </figcaption>
+          )}
+        </figure>
+      ))
+    }
+  </div>
 </article>

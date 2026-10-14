@@ -1,14 +1,17 @@
 // Modèle de l'édition depuis le site de dev (demande du propriétaire ; client/serveur/edition.mjs, docs/serveur.md, « Édition ») : quelles colonnes de
 // quelles tables une page peut modifier, avec leur type de champ, et comment une page désigne un champ (attribut `data-ed`). Le service n'accepte
 // que ces colonnes ; tout ce qui en dépend dans la base (colonnes typées, tables de détail, page du wiki) est recalculé par le service, jamais saisi.
-// Entités créables (ENTITES) : métier, race, classe, peuple, spécialité, don de classe, espèce et carte de monstre, arme, composant, gemme, bois, ingrédient, monnaie ;
-// supprimables : métier, spécialité, don de classe, arme (retirés des fiches de personnage qui les ont, avec une note datée : décisions R42, R52,
-// annonceDesFiches), espèce et carte de monstre, composant, gemme, bois, ingrédient et monnaie (s'ils ne sont cités par aucune autre règle).
+// Entités créables (ENTITES) : métier, race, classe, peuple, spécialité, don de classe, espèce et carte de monstre, arme, composant, gemme, bois, ingrédient, monnaie,
+// événement de la chronologie et bloc de description, catégorie de la chronologie, mot-clé ; supprimables : métier, spécialité, don de classe, arme
+// (retirés des fiches de personnage qui les ont, avec une note datée : décisions R42, R52, annonceDesFiches), espèce et carte de monstre, composant, gemme,
+// bois, ingrédient et monnaie (s'ils ne sont cités par aucune autre règle), événement, bloc de description, catégorie (retirée de ses événements), mot-clé
+// (retiré de tout ce qui le porte).
 // Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, lib/portrait.mjs et lib/arme-champs.mjs, purs eux aussi) : partagées par le
 // service, les gabarits Astro et le script des pages (src/scripts/edition.mjs).
 import { NIVEAUX_DE_DON, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
 import { dimensionsDuPortrait, empreinte, estUnPortrait, PORTRAIT_MAX, resumeDuPortrait } from './portrait.mjs';
 import { ECRITURES_DE_COMPETENCE, MAINS } from './arme-champs.mjs';
+import { EPOQUES, PORTEES } from './chronologie.mjs';
 
 export { NIVEAUX_DE_DON, NIVEAU_DES_SPECIALITES, SPECIALITES_MAX, TYPES_DE_DON_SAISIE } from './dons-edition.mjs';
 
@@ -21,6 +24,8 @@ export { NIVEAUX_DE_DON, NIVEAU_DES_SPECIALITES, SPECIALITES_MAX, TYPES_DE_DON_S
  *   choix    une valeur d'une liste : `choix` ([{ valeur, libelle }], contrôlée ici) ou `liste` (nom d'une liste de GET /api/edition/listes/, lue dans
  *            la base vivante et contrôlée par le service) ;
  *   reel     nombre (décimales permises) ;
+ *   categories des identifiants de catégories de la chronologie (`categorie_chronologie.id`), sans doublon, dans l'ordre donné : liste JSON, ou texte
+ *            « id1, id2 » ; leur existence est contrôlée par le service (formulaire « Nouvel événement ») ;
  *   image    une image en data URL (WebP, JPEG ou PNG, PORTRAIT_MAX caractères au plus, base64 complet et en-tête lisible : lib/portrait.mjs) ;
  *            jamais une saisie de l'éditeur commun (une extension la choisit et la recadre : src/scripts/edition/bestiaire.mjs) ; les réponses de
  *            l'édition (lignes lues, en attente, d'un lot, d'un conflit) n'en donnent que l'empreinte (ligneSansImage), l'image entière passe par
@@ -49,6 +54,11 @@ export const STATS_VARIABLES = [
   { valeur: '0', libelle: 'Non' },
   { valeur: '1', libelle: 'Oui : « Ses stats varient selon son échelle de puissance. »' },
 ];
+
+/** L'époque d'un événement de la chronologie (colonne `evenement.epoque` : lib/chronologie.mjs#EPOQUES). */
+export const EPOQUES_SAISIE = EPOQUES.map((e) => ({ valeur: e.id, libelle: e.id === 'datee' ? 'Événement daté (une année)' : e.titre }));
+/** La portée d'un Impact de la chronologie (colonne `evenement.portee` : lib/chronologie.mjs#PORTEES ; vide : ni l'un ni l'autre). */
+export const PORTEES_SAISIE = Object.entries(PORTEES).map(([valeur, libelle]) => ({ valeur, libelle }));
 
 /** Une case Oui / Non (colonne entière 0 ou 1 : arme.depart_possible). */
 export const OUI_NON = [
@@ -348,6 +358,42 @@ export const TABLES = {
       effet_brut: { type: 'ligne', libelle: 'Effet (« +10 dégâts, +1 cran de solidité »)', requis: true },
     },
   },
+  // Chronologie (migration 0042, demande du propriétaire : « que la page puisse être modifiée […] supprimer une page, ou en créer une nouvelle, lui attribuant
+  // une date ») : la date (époque, année, année de fin), le titre, la portée et le lieu d'un Impact (serveur/edition-chronologie.mjs) ; les blocs de
+  // description (« Description » : le texte, « Lien » : la page du wiki) ; les catégories d'un événement ont leur opération (`categories`)
+  evenement: {
+    libelle: 'Événement',
+    colonnes: {
+      titre: { type: 'ligne', libelle: 'Titre', requis: true },
+      epoque: { type: 'choix', libelle: 'Date : époque', requis: true, choix: EPOQUES_SAISIE },
+      annee: { type: 'entier', libelle: 'Année (événement daté)' },
+      annee_fin: { type: 'entier', libelle: 'Année de fin (intervalle « An X à Y »)' },
+      portee: { type: 'choix', libelle: 'Impact (liste du Codex)', choix: PORTEES_SAISIE },
+      lieu: { type: 'ligne', libelle: 'Lieu de l’Impact' },
+    },
+  },
+  evenement_extrait: {
+    libelle: 'Description',
+    colonnes: {
+      texte: { type: 'markdown', libelle: 'Description', requis: true },
+      // l'identifiant d'une page du wiki (liste de GET /api/edition/pages/), contrôlé par le service ; vide : aucun lien
+      page_id: { type: 'ligne', libelle: 'Lien' },
+    },
+  },
+  // les catégories de la chronologie (bouton « Catégories » en mode modification ; demande du propriétaire : « créer, modifier et supprimer une
+  // catégorie ») : renommer une catégorie change son écriture partout (son id, et donc /chronologie/?filtre=<id>, reste) ; deux catégories ne s'écrivent
+  // jamais de la même façon
+  categorie_chronologie: {
+    libelle: 'Catégorie',
+    colonnes: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
+  },
+  // le vocabulaire des mots-clés (/recherche/ en mode modification) : renommer un mot-clé change son écriture partout (son id reste) ; vers l'écriture d'un
+  // autre mot-clé : refusé, la page propose de les fusionner (opération `fusionner_mots_cles`) ; les mots-clés dont le site se sert ne bougent pas
+  // (lib/mots-cles.mjs#MOTS_CLES_PROTEGES)
+  mot_cle: {
+    libelle: 'Mot-clé',
+    colonnes: { libelle: { type: 'ligne', libelle: 'Mot-clé', requis: true } },
+  },
   // Pages du guide et du Codex (texteDePageModifiable) : titre et texte (Markdown réécrit par l'éditeur visuel, lib/markdown-edition.mjs) ; le service
   // refuse toute autre page (celles des races, magies, classes et métiers suivent leurs tables)
   page: {
@@ -537,6 +583,50 @@ export const ENTITES = {
       don_effet: { type: 'texte', libelle: 'Effet du don de spécialité', aide: 's’il dit « considérer comme classe magique », la spécialité donne +4 AM (R7)' },
     },
   },
+  // un événement de la chronologie (demandes du propriétaire : « Chaque entrée […] a donc les éléments suivants : 1) Date 2) Titre 3) Description 4) Lien »,
+  // et ses catégories : « On peut choisir plusieurs catégories pour chaque entrée ») : créé avec un bloc de description ; supprimé avec ses blocs et ses
+  // catégories. Identifiant (son adresse /chronologie/<id>/) tiré une fois du titre, figé, jamais réutilisé.
+  evenement: {
+    table: 'evenement',
+    libelle: 'événement',
+    nouveau: 'Nouvel événement',
+    suppression: true,
+    champs: {
+      ...champsDe('evenement', ['epoque', 'annee', 'annee_fin', 'titre']),
+      description: { type: 'markdown', libelle: 'Description', requis: true },
+      lien: { type: 'ligne', libelle: 'Lien (une page du wiki)' },
+      categories: { type: 'categories', libelle: 'Catégories' },
+    },
+  },
+  // un bloc de description de plus dans un événement (texte et lien) ; le dernier bloc d'un événement ne se supprime pas
+  evenement_extrait: {
+    table: 'evenement_extrait',
+    libelle: 'bloc de description',
+    nouveau: 'Nouveau bloc de description',
+    suppression: true,
+    champs: {
+      evenement_id: { type: 'ligne', libelle: 'Événement', requis: true },
+      texte: { type: 'markdown', libelle: 'Description', requis: true },
+      lien: { type: 'ligne', libelle: 'Lien (une page du wiki)' },
+    },
+  },
+  // une catégorie de la chronologie ; supprimée, elle est retirée de tous les événements qui la portent
+  categorie_chronologie: {
+    table: 'categorie_chronologie',
+    libelle: 'catégorie',
+    nouveau: 'Nouvelle catégorie',
+    suppression: true,
+    champs: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
+  },
+  // un mot-clé du vocabulaire (/recherche/) ; supprimé, il est retiré de toutes les pages qui le portent (sauf les mots-clés dont le site se sert :
+  // lib/mots-cles.mjs)
+  mot_cle: {
+    table: 'mot_cle',
+    libelle: 'mot-clé',
+    nouveau: 'Nouveau mot-clé',
+    suppression: true,
+    champs: { libelle: { type: 'ligne', libelle: 'Mot-clé', requis: true } },
+  },
   // un don de classe (« capacité », D11) : sa place vient du bouton (classe, spécialité, ou le don `avec` dont il devient une option : même ligne, même
   // niveau, même spécialité) ; sans `avec`, une nouvelle ligne à la fin de son niveau (lib/dons-edition.mjs#placeNouvelleLigne). `specialite_id` et
   // `avec` acceptent « @i » : la spécialité ou le don créé par l'opération i du même lot.
@@ -570,6 +660,13 @@ export class ErreurValeur extends Error {
  * Texte : fins de ligne unifiées, espaces de bord retirées ; un champ vidé vaut `vide` s'il est défini, sinon NULL (absent = NULL).
  */
 export function valeurDuChamp(champ, brute, nom = champ.libelle) {
+  if (champ.type === 'categories') {
+    const liste = Array.isArray(brute) ? brute : String(brute ?? '').split(',');
+    if (!liste.every((v) => typeof v === 'string')) throw new ErreurValeur(`« ${nom} » : identifiants de catégories attendus`);
+    const ids = [...new Set(liste.map((v) => v.trim()).filter(Boolean))];
+    if (champ.requis && !ids.length) throw new ErreurValeur(`« ${nom} » : valeur obligatoire`);
+    return ids;
+  }
   if (champ.type === 'image') {
     if (brute === null || brute === undefined || brute === '') {
       if (champ.requis) throw new ErreurValeur(`« ${nom} » : valeur obligatoire`);

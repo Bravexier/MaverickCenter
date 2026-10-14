@@ -1,5 +1,8 @@
 ---
-import { adresseDEvenement, dateCourte, PORTEES } from '../../lib/chronologie.mjs';
+import { adresseDEvenement, dateCourte, LIBELLE_SANS_CATEGORIE, libelleDeDate, PORTEES, SANS_CATEGORIE } from '../../lib/chronologie.mjs';
+import { choixDuFiltre } from '../../lib/chronologie-db.mjs';
+import { attributEd } from '../../lib/edition-modele.mjs';
+import { modeDuSite } from '../../lib/mode-site.mjs';
 import { url } from '../../lib/wiki';
 
 // La frise de la chronologie (demande du propriétaire) : sur la gauche, en vertical, la chronologie en une immense barre avec un dégradé ; chaque
@@ -11,6 +14,11 @@ import { url } from '../../lib/wiki';
 // (lib/chronologie.mjs#couleursDesEvenements) : la barre change de teinte sans à-coup d'un bout à l'autre. Un Impact majeur de la liste du Codex a
 // un losange, un Impact mineur un point plus grand ; « Date inconnue » a une barre en pointillés. L'événement affiché (`courant`) est repéré
 // (aria-current). Le nom d'un lien est son texte visible, complété pour les lecteurs d'écran (« An 505 : La Grande Croisade, Impact majeur »).
+// Filtre (demandes du propriétaire : « filtrer la chronologie de façon à ne voir qu'un type d'évènement » ; « Le filtre sera donc sous forme de liste
+// déroulante sur un champ catégorie ») : une catégorie à la fois ; chaque ligne porte les ids de ses catégories (`data-categories`) ; le choix est dans
+// l'adresse (`?filtre=<id>`), appliqué par le script qui suit la frise avant son premier affichage. « Sans catégorie (à trier) » (les événements sans
+// catégorie) n'est proposé que hors de la production (SITE_MODE=prod : « visible uniquement sur DEV pour pouvoir voir rapidement les entrées à trier ») ;
+// sans aucun choix que « Toutes », le filtre est caché. Sans JavaScript, tout est affiché.
 // La frise défile seule, à hauteur d'écran : le script qui suit garde ses lignes à leur place d'une page à l'autre et y montre l'événement affiché.
 interface Props {
   evenements: any[];
@@ -25,37 +33,60 @@ const style = (e: any, i: number) => {
   const apres = i < evenements.length - 1 ? couleurs.get(evenements[i + 1].id) : c;
   return `--c: ${c}; --c-avant: ${avant}; --c-apres: ${apres}`;
 };
+const filtre = choixDuFiltre(evenements);
+const aTrier = !modeDuSite(process.env, '').prod;
+const sansCategorie = aTrier ? filtre.sansCategorie : 0;
+const rienAFiltrer = !filtre.categories.length && !sansCategorie;
+// les champs du site de dev (mode modification) : titre et date d'une ligne suivent la base vivante (src/scripts/edition/editeur.mjs)
+const ed = (e: any, colonne: string) => attributEd('evenement', { id: e.id }, colonne);
 ---
 
 <nav class="frise" id="frise" aria-label="Frise chronologique" data-frise>
   {/* l'en-tête du tiroir (téléphone : la frise ouverte en grand par-dessus la page d'un événement) ; caché ailleurs */}
   <div class="frise__entete">
-    <p class="frise__entete-titre">Chronologie<small>{evenements.length} événements</small></p>
+    <p class="frise__entete-titre">Chronologie<small data-frise-compte-tiroir>{evenements.length} événements</small></p>
     <button type="button" class="frise__fermer" data-frise-fermer>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
       <span class="chrono-invisible">Fermer la frise</span>
     </button>
   </div>
-  <p class="frise__legende" aria-hidden="true">
-    <span class="frise__legende-item"><span class="frise__repere frise__repere--majeur"></span>Impact majeur</span>
-    <span class="frise__legende-item"><span class="frise__repere frise__repere--mineur"></span>Impact mineur</span>
-    <span class="frise__legende-item"><span class="frise__repere"></span>Autre</span>
-  </p>
+  <div class="frise__tete">
+    <div class="frise__filtre" data-frise-filtre hidden={rienAFiltrer}>
+      <label class="frise__filtre-libelle" for="frise-filtre">Catégorie</label>
+      <select id="frise-filtre" class="frise__filtre-choix" data-frise-choix data-a-trier={aTrier ? '' : undefined}>
+        <option value="">Toutes ({evenements.length})</option>
+        {filtre.categories.map((c) => <option value={c.id}>{c.libelle} ({c.nombre})</option>)}
+        {sansCategorie > 0 && <option value={SANS_CATEGORIE}>{LIBELLE_SANS_CATEGORIE} ({sansCategorie})</option>}
+      </select>
+    </div>
+    <p class="frise__legende" aria-hidden="true">
+      <span class="frise__legende-item"><span class="frise__repere frise__repere--majeur"></span>Impact majeur</span>
+      <span class="frise__legende-item"><span class="frise__repere frise__repere--mineur"></span>Impact mineur</span>
+      <span class="frise__legende-item"><span class="frise__repere"></span>Autre</span>
+    </p>
+  </div>
+  <p class="chrono-invisible" aria-live="polite" data-frise-compte></p>
   <ol class="frise__liste">
     {
       evenements.map((e: any, i: number) => (
-        <li class={`frise__evenement frise__evenement--${e.epoque}`} id={`evenement-${e.id}`} style={style(e, i)}>
+        <li
+          class={`frise__evenement frise__evenement--${e.epoque}`}
+          id={`evenement-${e.id}`}
+          style={style(e, i)}
+          data-categories={e.categories.map((c: any) => c.id).join(' ')}
+          data-etiquette={`${libelleDeDate(e)} : ${e.titre}`}
+        >
           <a class="frise__lien" href={url(adresseDEvenement(e.id))} aria-current={e.id === courant ? 'page' : undefined}>
             <span class="frise__date">
               {e.epoque === 'datee' && <span class="chrono-invisible">An </span>}
-              {dateCourte(e)}
+              <span data-ed-lecture={ed(e, 'epoque')} data-ed-rendu="evenement-date-courte">{dateCourte(e)}</span>
               <span class="chrono-invisible"> : </span>
             </span>
             <span class="frise__barre">
               <span class={['frise__repere', e.portee && `frise__repere--${e.portee}`].filter(Boolean).join(' ')} />
             </span>
             <span class="frise__titre">
-              {e.titre}
+              <span data-ed-lecture={ed(e, 'titre')}>{e.titre}</span>
               {e.portee && <span class="chrono-invisible">, {PORTEES[e.portee]}</span>}
             </span>
           </a>
@@ -67,11 +98,14 @@ const style = (e: any, i: number) => {
 <script is:inline>
   // La frise défile seule (grand écran), à hauteur d'écran sous l'en-tête : sa hauteur est celle de l'écran moins la place de l'en-tête au-dessus
   // d'elle (--frise-haut, mesurée ici et à chaque changement de taille), pour qu'elle tienne tout entière à l'écran en haut de la page.
-  // Au départ d'une page de la chronologie, on note son défilement et la place de son bord haut à l'écran (sessionStorage) ; à l'arrivée sur la
-  // suivante, ses lignes reprennent la même place à l'écran, même si la page précédente était défilée (la frise, collante, y touchait le haut de
-  // l'écran) : la ligne cliquée ne bouge pas. Puis, si l'événement affiché est hors de la partie visible (sous la légende, ou en bas), on l'y
-  // centre. Lancé dès que la frise est lue, avant le premier affichage : elle ne saute pas. Sur petit écran, la frise ne défile pas seule (elle est
-  // la page /chronologie/) : rien d'autre à faire.
+  // Le filtre par catégorie est appliqué d'abord, avant le premier affichage : l'adresse le donne (?filtre=<id>, ou sans-categorie sur le site de dev) ;
+  // les lignes hors filtre sont cachées (l'événement affiché reste, marqué « hors filtre »), le dégradé se refait entre les lignes visibles, et les liens
+  // de la frise gardent le filtre. Un changement du choix réécrit l'adresse (sans recharger) ; le script des chevrons (Chronologie.astro) suit
+  // (évènement « chronologie:frise-filtree ») ; une frise modifiée par le site de dev (évènement « chronologie:frise-changee ») est refiltrée.
+  // Au départ d'une page de la chronologie, on note son défilement et la place de son bord haut à l'écran (sessionStorage, une clé par filtre) ; à
+  // l'arrivée sur la suivante, ses lignes reprennent la même place à l'écran, même si la page précédente était défilée (la frise, collante, y touchait
+  // le haut de l'écran) : la ligne cliquée ne bouge pas. Puis, si l'événement affiché est hors de la partie visible (sous l'en-tête de la frise, ou en
+  // bas), on l'y centre. Sur petit écran, la frise ne défile pas seule (elle est la page /chronologie/) : rien d'autre à faire.
   (function () {
     var frise = document.querySelector('[data-frise]');
     if (!frise) return;
@@ -81,13 +115,99 @@ const style = (e: any, i: number) => {
     }
     mesurer();
     addEventListener('resize', mesurer);
+
+    var SANS = 'sans-categorie';
+    var choix = frise.querySelector('[data-frise-choix]');
+    var compte = frise.querySelector('[data-frise-compte]');
+    var compteTiroir = frise.querySelector('[data-frise-compte-tiroir]');
+    function lignes() {
+      return Array.prototype.slice.call(frise.querySelectorAll('.frise__evenement'));
+    }
+    function categoriesDe(li) {
+      return (li.getAttribute('data-categories') || '').split(' ').filter(Boolean);
+    }
+    function garde(li, f) {
+      if (!f) return true;
+      var categories = categoriesDe(li);
+      return f === SANS ? categories.length === 0 : categories.indexOf(f) >= 0;
+    }
+    function avecFiltre(href, f) {
+      var u = new URL(href, location.href);
+      if (f) u.searchParams.set('filtre', f);
+      else u.searchParams.delete('filtre');
+      return u.href;
+    }
+    function filtrer(f) {
+      var visibles = [];
+      lignes().forEach(function (li) {
+        var courant = Boolean(li.querySelector('[aria-current="page"]'));
+        var ok = garde(li, f);
+        li.hidden = !ok && !courant;
+        li.classList.toggle('est-hors-filtre', !ok && courant);
+        li.classList.remove('est-premier', 'est-dernier');
+        var lien = li.querySelector('.frise__lien');
+        if (lien) lien.href = avecFiltre(lien.getAttribute('href'), f);
+        if (!li.hidden) visibles.push(li);
+      });
+      // le dégradé entre lignes visibles : chacune prend la couleur de ses voisines à l'écran
+      visibles.forEach(function (li, i) {
+        var c = li.style.getPropertyValue('--c');
+        li.style.setProperty('--c-avant', i > 0 ? visibles[i - 1].style.getPropertyValue('--c') : c);
+        li.style.setProperty('--c-apres', i < visibles.length - 1 ? visibles[i + 1].style.getPropertyValue('--c') : c);
+      });
+      if (visibles.length) {
+        visibles[0].classList.add('est-premier');
+        visibles[visibles.length - 1].classList.add('est-dernier');
+      }
+      var n = lignes().filter(function (li) { return garde(li, f); }).length;
+      var texte = n + ' événement' + (n > 1 ? 's' : '') + (f ? (f === SANS ? ' sans catégorie' : ' dans cette catégorie') : '');
+      if (compte) compte.textContent = f ? texte : '';
+      if (compteTiroir) compteTiroir.textContent = texte;
+      frise.setAttribute('data-filtre', f);
+      document.dispatchEvent(new CustomEvent('chronologie:frise-filtree', { detail: { filtre: f } }));
+    }
+    // le filtre de l'adresse, s'il est une option du choix (une catégorie supprimée depuis, « sans catégorie » en production : toutes)
+    var demande = new URLSearchParams(location.search).get('filtre') || '';
+    var connu = choix && Array.prototype.some.call(choix.options, function (o) { return o.value === demande; });
+    var filtre = connu ? demande : '';
+    if (choix) choix.value = filtre;
+    filtrer(filtre);
+    // l'événement affiché ramené au milieu de la partie visible de la frise, quand elle défile (ordinateur, tiroir du téléphone)
+    function centrer() {
+      var actuel = frise.querySelector('[aria-current="page"]');
+      if (!actuel || getComputedStyle(frise).overflowY !== 'auto') return;
+      var tete = frise.querySelector('.frise__tete');
+      var f = frise.getBoundingClientRect();
+      var haut = Math.max(f.top, 0) + (tete ? tete.offsetHeight : 0) + 8;
+      var bas = Math.min(f.bottom, window.innerHeight) - 16;
+      var r = actuel.getBoundingClientRect();
+      if (r.top < haut || r.bottom > bas) frise.scrollTop += r.top - (haut + bas - r.height) / 2;
+    }
+    if (choix) {
+      choix.addEventListener('change', function () {
+        filtre = choix.value;
+        history.replaceState(history.state, '', avecFiltre(location.href, filtre));
+        filtrer(filtre);
+        centrer();
+      });
+    }
+    // la frise refaite par le site de dev : son choix a pu perdre la catégorie choisie (supprimée, ou plus portée par aucun événement) ; il est alors
+    // revenu à « Toutes », que la frise et l'adresse suivent
+    document.addEventListener('chronologie:frise-changee', function () {
+      if (choix && choix.value !== filtre) {
+        filtre = choix.value;
+        history.replaceState(history.state, '', avecFiltre(location.href, filtre));
+      }
+      filtrer(filtre);
+    });
+
     // petit écran : la frise est la page (/chronologie/) ou la mini-frise (overflow: hidden ; Chronologie.astro s'en occupe)
     if (getComputedStyle(frise).overflowY !== 'auto' || frise.scrollHeight <= frise.clientHeight + 1) return;
-    var cle = 'chronologie:frise';
+    var cle = 'chronologie:frise' + (filtre ? ':' + filtre : '');
     try {
-      var garde = JSON.parse(sessionStorage.getItem(cle) || 'null');
-      if (garde && typeof garde.haut === 'number') {
-        var voulu = garde.haut + (typeof garde.bord === 'number' ? frise.getBoundingClientRect().top - garde.bord : 0);
+      var garde_ = JSON.parse(sessionStorage.getItem(cle) || 'null');
+      if (garde_ && typeof garde_.haut === 'number') {
+        var voulu = garde_.haut + (typeof garde_.bord === 'number' ? frise.getBoundingClientRect().top - garde_.bord : 0);
         frise.scrollTop = voulu;
         // Vers la fin de la frise, elle ne peut pas défiler autant : la page descend du reste (la frise monte d'autant, jusqu'au haut de l'écran).
         // Ce qui n'est pas encore lu (la fin de la page, le pied de page) peut manquer pour descendre assez : le reste, une fois la page lue.
@@ -102,18 +222,10 @@ const style = (e: any, i: number) => {
         if (reste > 1) document.addEventListener('DOMContentLoaded', descendre);
       }
     } catch (e) {}
-    var actuel = frise.querySelector('[aria-current="page"]');
-    var legende = frise.querySelector('.frise__legende');
-    if (actuel) {
-      var f = frise.getBoundingClientRect();
-      var haut = Math.max(f.top, 0) + (legende ? legende.offsetHeight : 0) + 8;
-      var bas = Math.min(f.bottom, window.innerHeight) - 16;
-      var r = actuel.getBoundingClientRect();
-      if (r.top < haut || r.bottom > bas) frise.scrollTop += r.top - (haut + bas - r.height) / 2;
-    }
+    centrer();
     addEventListener('pagehide', function () {
       try {
-        sessionStorage.setItem(cle, JSON.stringify({ haut: frise.scrollTop, bord: frise.getBoundingClientRect().top }));
+        sessionStorage.setItem('chronologie:frise' + (filtre ? ':' + filtre : ''), JSON.stringify({ haut: frise.scrollTop, bord: frise.getBoundingClientRect().top }));
       } catch (e) {}
     });
   })();

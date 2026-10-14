@@ -100,7 +100,7 @@ test('comparerBases : un champ par ligne, entités ajoutées et retirées, domai
   assert.equal(b.total, lignes.length);
   assert.equal(b.amelioration + b.affaiblissement + b.neutre, b.total);
   assert.deepEqual(b.parDomaine, { sorts: 6, races: 3, metiers: 2, guide: 1 });
-  assert.deepEqual(DOMAINES.map((d) => d.id), ['sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire', 'armes', 'composants']);
+  assert.deepEqual(DOMAINES.map((d) => d.id), ['sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire', 'armes', 'composants', 'chronologie', 'mots-cles']);
 });
 
 test('armes (migration 0034) : une arme sous sa famille, un matériau, une amélioration d’arme ; « Oui/Non », mains et type en toutes lettres', () => {
@@ -417,4 +417,57 @@ test('TABLES_DES_NOTES : exactement les tables de la section 15 de data/schema.s
   const suite = schema.slice(debut + 1).search(/^-- 1[6-9]\. /m);
   const section = suite < 0 ? schema.slice(debut) : schema.slice(debut, debut + 1 + suite);
   assert.deepEqual([...TABLES_DES_NOTES], [...section.matchAll(/^CREATE TABLE (\w+)/gm)].map((m) => m[1]));
+});
+
+test('chronologie et mots-clés (migration 0042) : en une ligne tant que la production ne les a pas ; puis date, Impact, lien d’une description, catégories d’un événement et de la chronologie, vocabulaire', () => {
+  const evenement = (id, valeurs = {}) => ({ id, rang: 1, titre: 'La Chute', titre_cle: 'la-chute', epoque: 'datee', annee: 12, annee_fin: null, portee: null, lieu: null, ...valeurs });
+  const bloc = (evenement_id, rang, valeurs = {}) => ({ evenement_id, rang, page_id: 'lore/erisia', section: null, texte: 'Il tombe.', date_brut: null, ...valeurs });
+  const page = [{ id: 'lore/erisia', titre: 'Erisia' }, { id: 'lore/mrode', titre: 'Mrode' }];
+  const categorie = (id, libelle) => ({ id, libelle, libelle_cle: id });
+  const mot = (id, libelle) => ({ id, libelle, libelle_cle: id });
+  // la production d'avant la chronologie : une ligne par table, pas une par entité
+  const neuves = comparerBases({ tables: { page } }, {
+    tables: {
+      page, evenement: [evenement('a'), evenement('b', { rang: 2 })], evenement_extrait: [bloc('a', 1), bloc('b', 1)], evenement_categorie: [],
+      categorie_chronologie: [categorie('guerre', 'Guerre'), categorie('paix', 'Paix')], mot_cle: [mot('demo', 'Démo'), mot('aide', 'Aide')],
+    },
+  });
+  assert.deepEqual(neuves.map((l) => [l.domaine, l.entite]), [
+    ['chronologie', '2 événements de la chronologie'], ['chronologie', '2 descriptions d’événements'], ['chronologie', '2 catégories de la chronologie'], ['mots-cles', '2 mots-clés'],
+  ]);
+  // ensuite : chaque changement, dans les termes de la page
+  const ref = {
+    tables: {
+      page, evenement: [evenement('a'), evenement('b', { rang: 2, titre: 'Retirée' })], evenement_extrait: [bloc('a', 1), bloc('b', 1)],
+      evenement_categorie: [{ evenement_id: 'a', categorie_id: 'guerre' }, { evenement_id: 'a', categorie_id: 'vieille' }],
+      categorie_chronologie: [categorie('guerre', 'Guerre'), categorie('paix', 'Paix'), categorie('vieille', 'Vieille')],
+      mot_cle: [mot('demo', 'Démo'), mot('vieux', 'Vieux')],
+    },
+  };
+  const dev = {
+    tables: {
+      page, evenement: [evenement('a', { epoque: 'inconnue', annee: null, portee: 'majeur' }), evenement('c', { rang: 3, titre: 'Nouvelle' })],
+      evenement_extrait: [bloc('a', 1, { page_id: 'lore/mrode' }), bloc('a', 2, { texte: 'Puis il se relève.' }), bloc('c', 1)],
+      evenement_categorie: [{ evenement_id: 'a', categorie_id: 'guerre' }, { evenement_id: 'a', categorie_id: 'paix' }],
+      categorie_chronologie: [categorie('guerre', 'Guerres'), categorie('paix', 'Paix')],
+      mot_cle: [mot('demo', 'Démos')],
+    },
+  };
+  const lignes = comparerBases(ref, dev).map((l) => [l.domaine, l.entite, l.champ, l.nature, l.avant, l.apres]);
+  const enSemble = (l) => new Set(l.map((x) => JSON.stringify(x)));
+  assert.deepEqual(enSemble(lignes.filter(([d]) => d === 'chronologie')), enSemble([
+    ['chronologie', 'Guerres', 'Catégorie', 'modifie', 'Guerre', 'Guerres'],
+    ['chronologie', 'Vieille', null, 'retire', 'Vieille', null],
+    ['chronologie', 'La Chute', 'Date : époque', 'modifie', 'Événement daté (une année)', 'Date inconnue'],
+    ['chronologie', 'La Chute', 'Année (événement daté)', 'retire', '12', null],
+    ['chronologie', 'La Chute', 'Impact (liste du Codex)', 'ajoute', null, 'Impact majeur'],
+    ['chronologie', 'La Chute › description 1', 'Lien', 'modifie', 'Erisia', 'Mrode'],
+    ['chronologie', 'La Chute › description 2', null, 'ajoute', null, 'La Chute › description 2'],
+    ['chronologie', 'La Chute', 'Catégories', 'modifie', 'Guerres, Vieille', 'Guerres, Paix'],
+    ['chronologie', 'Nouvelle', null, 'ajoute', null, 'Nouvelle'],
+    ['chronologie', 'Retirée', null, 'retire', 'Retirée', null],
+  ]), 'la description d’un événement ajouté ou retiré est dite par lui ; une catégorie supprimée, par elle et par ses événements');
+  // les catégories d'abord (avant les événements, dans l'ordre de leur écriture)
+  assert.deepEqual(lignes.filter(([d]) => d === 'chronologie').slice(0, 2).map(([, e]) => e), ['Guerres', 'Vieille']);
+  assert.deepEqual(lignes.filter(([d]) => d === 'mots-cles'), [['mots-cles', 'Démos', 'Mot-clé', 'modifie', 'Démo', 'Démos'], ['mots-cles', 'Vieux', null, 'retire', 'Vieux', null]]);
 });

@@ -7,9 +7,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { chargerChronologie } from '../src/lib/chronologie-db.mjs';
-import { adresseDEvenement, couleursDesEvenements, dateCourte } from '../src/lib/chronologie.mjs';
+import { chargerChronologie, choixDuFiltre } from '../src/lib/chronologie-db.mjs';
+import { adresseDEvenement, couleursDesEvenements, dateCourte, LIBELLE_SANS_CATEGORIE, libelleDeDate, SANS_CATEGORIE } from '../src/lib/chronologie.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { lireAttributEd } from '../src/lib/edition-modele.mjs';
+import { cheminDePage } from '../src/lib/metiers.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const present = existsSync(join(dist, 'chronologie', 'index.html'));
@@ -23,13 +25,20 @@ const hrefDe = (e) => `/${adresseDEvenement(e.id)}`;
 /** Le texte affiché d'un morceau de HTML : sans le texte réservé aux lecteurs d'écran (.chrono-invisible) ni les balises. */
 const visible = (html = '') => decoder(html.replace(/<span class="chrono-invisible">[^<]*<\/span>/g, '').replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim();
 
-/** Les lignes de la frise d'une page : [{ id, style, href, courant, date, titre (affichés), nom (lu par un lecteur d'écran), repere }], dans l'ordre. */
+/**
+ * Les lignes de la frise d'une page : [{ id, style, categories, etiquette, href, courant, date, titre (affichés), nom (lu par un lecteur d'écran), repere }],
+ * dans l'ordre.
+ */
 function frise(main) {
   const nav = main.match(/<nav class="frise" id="frise" aria-label="Frise chronologique" data-frise>([\s\S]*?)<\/nav>/)?.[1];
   assert.ok(nav, 'une frise');
-  return [...nav.matchAll(/<li class="frise__evenement frise__evenement--[a-z]+" id="evenement-([^"]+)" style="([^"]+)">([\s\S]*?)<\/li>/g)].map(([, id, style, ligne]) => ({
+  // un attribut vide s'écrit sans valeur (`data-categories` : aucune catégorie)
+  const lignes = /<li class="frise__evenement frise__evenement--[a-z]+" id="evenement-([^"]+)" style="([^"]+)" data-categories(?:="([^"]*)")? data-etiquette="([^"]*)">([\s\S]*?)<\/li>/g;
+  return [...nav.matchAll(lignes)].map(([, id, style, categories, etiquette, ligne]) => ({
     id,
     style,
+    categories: categories ?? '',
+    etiquette: decoder(etiquette),
     href: ligne.match(/<a class="frise__lien" href="([^"]+)"/)?.[1],
     courant: / aria-current="page"/.test(ligne),
     date: visible(ligne.match(/<span class="frise__date">([\s\S]*?)<\/span>\s*<span class="frise__barre">/)?.[1]),
@@ -43,20 +52,22 @@ function chevrons(main) {
   const nav = main.match(/<nav class="chrono-chevrons"[^>]*>([\s\S]*?)<\/nav>/)?.[1];
   assert.ok(nav, 'les chevrons');
   const lien = (rel) => nav.match(new RegExp(`<a class="chrono-chevron" href="([^"]+)" rel="${rel}"`))?.[1] ?? null;
-  const grises = (nav.match(/<span class="chrono-chevron" role="link" aria-disabled="true">/g) ?? []).length;
+  const grises = (nav.match(/<a class="chrono-chevron" role="link" aria-disabled="true"/g) ?? []).length;
   return { precedent: lien('prev'), suivant: lien('next'), grises };
 }
 
 test('une page par événement, à /chronologie/<id>/, titrée de l’événement ; /chronologie/ est la frise et son mode d’emploi', options, () => {
   assert.ok(evenements.length > 0);
   for (const e of evenements) {
-    const titre = principal(lire(e)).match(/<h1 id="chrono-titre">([^<]*)<\/h1>/)?.[1];
+    const titre = principal(lire(e)).match(/<h1 id="chrono-titre"><span data-ed="[^"]+">([^<]*)<\/span><\/h1>/)?.[1];
     assert.equal(titre === undefined ? undefined : decoder(titre), e.titre, `${e.id} : titre`);
   }
+  // « événement N sur M » : sa place dans l'ordre de lecture (le rang n'est que l'ordre à date égale)
+  evenements.forEach((e, i) => assert.match(principal(lire(e)), new RegExp(`<p class="chrono-numero">Chronologie · événement ${i + 1} sur ${evenements.length}</p>`), `${e.id} : numéro`));
   const accueil = principal(lireChemin('chronologie'));
   assert.match(accueil, /<h1 id="chrono-titre">Chronologie<\/h1>/);
   assert.ok(!accueil.includes('class="chrono-extrait"'), 'aucun extrait sur /chronologie/');
-  assert.match(accueil, new RegExp(`<a class="chrono-commencer" href="${hrefDe(evenements[0])}">`), 'un lien vers le premier événement');
+  assert.match(accueil, new RegExp(`<a class="chrono-commencer" href="${hrefDe(evenements[0])}" data-chrono-commencer>`), 'un lien vers le premier événement');
   assert.ok(!accueil.includes('class="chrono-barre__frise"') && !accueil.includes('class="frise-ouvrir"'), 'ni barre du bas ni mini-frise sur /chronologie/');
   assert.match(accueil, /<p class="chrono-accueil__court">/, 'la phrase courte du téléphone');
 });
@@ -110,13 +121,13 @@ test('les extraits : un bloc par passage, la date surlignée, un lien vers la pa
   for (const e of evenements) {
     const main = principal(lire(e));
     // un morceau par extrait : de son début à celui du suivant (un extrait peut contenir une citation, donc un <blockquote> imbriqué)
-    const blocs = main.split('<blockquote class="chrono-extrait">').slice(1);
+    const blocs = main.split(/<blockquote class="chrono-extrait" data-chrono-bloc="\d+" data-chrono-page(?:="[^"]*")?>/).slice(1);
     assert.equal(blocs.length, e.extraits.length, `${e.id} : un bloc par extrait`);
     e.extraits.forEach((x, i) => {
       const marques = (blocs[i].match(/<mark class="chrono-surligne">/g) ?? []).length;
       assert.equal(marques, x.date_brut ? 1 : 0, `${e.id}, extrait ${i + 1} : ${x.date_brut ? `date « ${x.date_brut} » surlignée` : 'aucune date'}`);
     });
-    for (const page of new Set(e.extraits.map((x) => x.page_id))) assert.ok(main.includes(`<a href="/${page}/">`), `${e.id} : lien vers ${page}`);
+    for (const page of new Set(e.extraits.map((x) => x.page_id).filter(Boolean))) assert.ok(main.includes(`<a href="/${cheminDePage(page)}">`), `${e.id} : lien vers ${page}`);
     // téléphone : le milieu de la barre du bas (sans JavaScript, un lien vers sa ligne de /chronologie/) et le bouton posé sur la mini-frise ouvrent le tiroir
     assert.match(main, new RegExp(`<a class="chrono-barre__frise" href="/chronologie/#evenement-${e.id}" aria-controls="frise" data-frise-ouvrir>`), `${e.id} : milieu de la barre du bas`);
     assert.match(main, /<button type="button" class="frise-ouvrir" aria-controls="frise" aria-expanded="false" data-frise-ouvrir>/, `${e.id} : bouton de la mini-frise`);
@@ -144,7 +155,11 @@ test('la mise en page demandée, dans la feuille de la page : frise au quart gau
   assert.match(regle('.chrono'), /grid-template-areas: 'frise page';/, 'la frise à gauche, la page à droite');
   assert.match(regle('.frise__lien'), /grid-template-columns: var\(--date\) var\(--barre\) minmax\(0, 1fr\);/, 'la date à gauche de la barre, le titre à droite');
   assert.match(regle('.frise'), /position: sticky;[\s\S]*height: calc\(100dvh - var\(--frise-haut, 0px\)\);[\s\S]*overflow-y: auto;/, 'la frise défile seule, à hauteur d’écran sous l’en-tête');
-  assert.match(regle('.frise'), /scroll-padding-block: 3\.25rem/, 'la ligne qui reçoit le focus n’est pas cachée par la légende');
+  assert.match(regle('.frise'), /scroll-padding-block: 5\.5rem/, 'la ligne qui reçoit le focus n’est pas cachée par l’en-tête de la frise (filtre et légende)');
+  assert.match(regle('.frise__tete'), /position: sticky;/, 'le filtre et la légende restent en haut de la frise');
+  assert.match(regle('html.js .frise__filtre:not([hidden])'), /display: flex;/, 'le filtre, avec JavaScript seulement (et s’il y a de quoi choisir)');
+  assert.match(html, /\n\.frise__evenement\.est-premier \.frise__barre::before \{/, 'les bouts de la barre suivent le filtre (première et dernière lignes visibles)');
+  assert.match(regle('body:has(.chrono) .ed-cote'), /top: auto;[\s\S]*bottom: 1rem;/, 'le crayon du site de dev ne couvre pas les chevrons');
   assert.match(regle('.frise__barre::before'), /linear-gradient\([\s\S]*var\(--trait-avant\)[\s\S]*var\(--trait\) var\(--y\)[\s\S]*var\(--trait-apres\)/, 'le dégradé de chaque morceau de barre');
   assert.match(regle('.chrono-chevrons'), /position: fixed;[\s\S]*top: 50%;[\s\S]*right: max\(0\.75rem/, 'les chevrons, fixés tout à droite');
   assert.match(html, /\.frise__evenement:target > \.frise__lien/, 'la ligne où mène le milieu de la barre du bas sans JavaScript est marquée');
@@ -162,8 +177,51 @@ test('la mise en page demandée, dans la feuille de la page : frise au quart gau
   assert.match(regleTel('html.js .chrono--evenement .frise.est-ouverte'), /position: fixed;[\s\S]*inset: 0 auto 0 0;/, 'le tiroir, par-dessus la page, depuis la gauche');
   assert.match(regleTel('.chrono--evenement .chrono-chevrons'), /bottom: 0;[\s\S]*grid-template-columns: 3rem minmax\(0, 1fr\) 3rem;/, 'la barre du bas : chevron, événement, chevron');
   assert.match(regleTel('body:has(.chrono--evenement)'), /padding-bottom: calc\(4\.25rem/, 'la page réserve la place de la barre du bas');
-  for (const [, attributs] of html.matchAll(/<a class="chrono-chevron"([^>]*)>/g)) {
+  for (const [, attributs] of html.matchAll(/<a class="chrono-chevron" href=([^>]*)>/g)) {
     assert.match(attributs, / title="[^"]+" data-placement="cote"/, 'l’infobulle d’un chevron dit l’événement visé, à sa gauche (dessous, celle du Haut couvrirait le Bas)');
+  }
+});
+
+test('catégories (migration 0042) : chaque ligne de la frise porte les siennes et son étiquette ; le filtre (liste déroulante, un choix) propose celles des événements et, hors de la production, « Sans catégorie (à trier) » ; la page d’un événement les montre, chacune mène à la frise filtrée', options, () => {
+  const filtre = choixDuFiltre(evenements);
+  const aTrier = process.env.SITE_MODE !== 'prod';
+  const sans = aTrier ? filtre.sansCategorie : 0;
+  const attendues = [
+    ['', `Toutes (${evenements.length})`],
+    ...filtre.categories.map((c) => [c.id, `${c.libelle} (${c.nombre})`]),
+    ...(sans ? [[SANS_CATEGORIE, `${LIBELLE_SANS_CATEGORIE} (${sans})`]] : []),
+  ];
+  for (const chemin of ['chronologie', ...evenements.map((e) => adresseDEvenement(e.id))]) {
+    const main = principal(lireChemin(chemin));
+    frise(main).forEach((l, i) => {
+      const e = evenements[i];
+      assert.equal(l.categories, e.categories.map((c) => c.id).join(' '), `${chemin} : catégories de ${e.id}`);
+      assert.equal(l.etiquette, `${libelleDeDate(e)} : ${e.titre}`, `${chemin} : étiquette de ${e.id} (infobulle des chevrons)`);
+    });
+    const zone = main.match(/<div class="frise__filtre" data-frise-filtre( hidden)?>/);
+    assert.ok(zone, `${chemin} : le filtre`);
+    assert.equal(Boolean(zone[1]), attendues.length < 2, `${chemin} : le filtre est caché s’il n’y a rien à choisir`);
+    const choix = main.match(/<select id="frise-filtre" class="frise__filtre-choix" data-frise-choix( data-a-trier)?>([\s\S]*?)<\/select>/);
+    assert.ok(choix, `${chemin} : la liste déroulante des catégories`);
+    assert.equal(Boolean(choix[1]), aTrier, `${chemin} : « Sans catégorie » proposé hors de la production seulement`);
+    assert.deepEqual([...choix[2].matchAll(/<option value="([^"]*)">([^<]*)<\/option>/g)].map(([, v, t]) => [v, decoder(t)]), attendues, `${chemin} : les catégories proposées`);
+    assert.match(main, /<label class="frise__filtre-libelle" for="frise-filtre">Catégorie<\/label>/, `${chemin} : le filtre est nommé`);
+  }
+  for (const e of evenements) {
+    const main = principal(lire(e));
+    const ul = main.match(/<ul class="chrono-categories" aria-label="Catégories" data-chrono-categories(?:="([^"]*)")?( data-a-trier)?( hidden)?>([\s\S]*?)<\/ul>/);
+    assert.ok(ul, `${e.id} : ses catégories`);
+    assert.equal(ul[1] ?? '', e.categories.map((c) => c.id).join(' '));
+    assert.equal(Boolean(ul[2]), aTrier);
+    assert.equal(Boolean(ul[3]), !e.categories.length && !aTrier, `${e.id} : sans catégorie, en production, rien n’est montré`);
+    const pastilles = [...ul[4].matchAll(/<a class="chrono-categorie[^"]*" href="([^"]+)">([^<]*)<\/a>/g)].map(([, href, texte]) => [decoder(href), decoder(texte)]);
+    const voulues = e.categories.length
+      ? e.categories.map((c) => [`/chronologie/?filtre=${encodeURIComponent(c.id)}`, c.libelle])
+      : aTrier ? [[`/chronologie/?filtre=${SANS_CATEGORIE}`, LIBELLE_SANS_CATEGORIE]] : [];
+    assert.deepEqual(pastilles, voulues, `${e.id} : une pastille par catégorie, qui mène à la frise filtrée (aucune : « Sans catégorie (à trier) » hors de la production)`);
+    // site de dev : date, titre, Impact et lieu sont des champs de l'événement (lib/edition-modele.mjs)
+    const champs = [...main.matchAll(/data-ed(?:-lecture)?="([^"]+)"/g)].map(([, a]) => lireAttributEd(decoder(a))).filter((i) => i?.table === 'evenement' && i.cle.id === e.id);
+    for (const colonne of ['titre', 'epoque', 'annee', 'annee_fin', 'portee', 'lieu']) assert.ok(champs.some((i) => i.colonne === colonne), `${e.id} : champ ${colonne}`);
   }
 });
 

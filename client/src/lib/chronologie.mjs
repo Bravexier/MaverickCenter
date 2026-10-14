@@ -20,6 +20,13 @@ export const EPOQUES = [
 /** Portée d'un événement de la page « Les Impacts mineur et majeur » du Codex (titres de ses deux listes). */
 export const PORTEES = { majeur: 'Impact majeur', mineur: 'Impact mineur' };
 
+/**
+ * « Sans catégorie (à trier) » : le choix du filtre de la frise pour les événements qui n'ont aucune catégorie (table categorie_chronologie, migration 0042),
+ * sur le site de dev seulement (demande du propriétaire : « pour pouvoir voir rapidement les entrées à trier ») ; aucune catégorie ne prend cet id.
+ */
+export const SANS_CATEGORIE = 'sans-categorie';
+export const LIBELLE_SANS_CATEGORIE = 'Sans catégorie (à trier)';
+
 const rangDEpoque = (id) => EPOQUES.findIndex((e) => e.id === id);
 
 /** La date d'un événement telle que sa page l'affiche : « An 505 », « An -400 à -350 », ou le nom de son époque hors des années. */
@@ -31,23 +38,32 @@ export function libelleDeDate(evenement) {
 }
 
 /**
- * Les événements dans l'ordre de lecture, vérifiés : rangs 1, 2, 3… sans trou, époques dans l'ordre de EPOQUES, années croissantes (au sens large)
- * parmi les événements datés, une année exactement pour eux seuls. Sinon une erreur : le build s'arrête plutôt que de montrer une frise fausse.
+ * Les événements dans l'ordre de lecture : par époque (ordre de EPOQUES), puis par année parmi les événements datés, puis par `rang` (l'ordre à date égale :
+ * celui du registre de l'import ; un événement créé sur le site de dev prend le plus grand rang + 1, il vient donc après ceux de sa date ; changer sa
+ * date le déplace sans renuméroter les autres : migration 0042). Vérifie les rangs (entiers ≥ 1, uniques) et la date (une année pour les événements
+ * datés, et pour eux seuls) ; sinon une erreur : le build s'arrête plutôt que de montrer une frise fausse.
  */
 export function ordonner(evenements) {
-  const liste = [...evenements].sort((a, b) => a.rang - b.rang);
-  liste.forEach((e, i) => {
-    if (e.rang !== i + 1) throw new Error(`chronologie : rang ${i + 1} attendu, ${e.id} porte le rang ${e.rang}`);
+  const vus = new Set();
+  for (const e of evenements) {
+    if (!Number.isInteger(e.rang) || e.rang < 1 || vus.has(e.rang)) throw new Error(`chronologie : ${e.id} : rang ${e.rang} invalide ou déjà pris`);
+    vus.add(e.rang);
     if (rangDEpoque(e.epoque) < 0) throw new Error(`chronologie : ${e.id} a une époque inconnue (${e.epoque})`);
     if ((e.epoque === 'datee') !== Number.isInteger(e.annee)) throw new Error(`chronologie : ${e.id} : une année pour les événements datés, et pour eux seuls`);
-    const avant = liste[i - 1];
-    if (!avant) return;
-    if (rangDEpoque(e.epoque) < rangDEpoque(avant.epoque)) throw new Error(`chronologie : ${e.id} (${e.epoque}) vient après ${avant.id} (${avant.epoque})`);
-    if (e.epoque === 'datee' && avant.epoque === 'datee' && e.annee < avant.annee) {
-      throw new Error(`chronologie : ${e.id} (an ${e.annee}) vient après ${avant.id} (an ${avant.annee})`);
-    }
-  });
-  return liste;
+  }
+  return [...evenements].sort((a, b) => rangDEpoque(a.epoque) - rangDEpoque(b.epoque) || (a.annee ?? 0) - (b.annee ?? 0) || a.rang - b.rang);
+}
+
+/**
+ * Ce qui ne va pas dans la date d'un événement ({ epoque, annee, annee_fin }) : un message en français, ou null. Les contraintes de la table `evenement`
+ * (data/schema.sql), dites pour la page qui la modifie.
+ */
+export function erreurDeDate({ epoque, annee = null, annee_fin = null }) {
+  if (rangDEpoque(epoque) < 0) return `époque inconnue (${epoque})`;
+  if (epoque === 'datee' && !Number.isInteger(annee)) return 'un événement daté a une année';
+  if (epoque !== 'datee' && (annee !== null || annee_fin !== null)) return `« ${EPOQUES.find((e) => e.id === epoque).titre} » n’a pas d’année : choisissez « Événement daté » pour en donner une`;
+  if (annee_fin !== null && !(annee_fin > annee)) return `l’année de fin (${annee_fin}) vient après l’année (${annee})`;
+  return null;
 }
 
 /** L'événement d'id donné et ses voisins dans l'ordre de lecture : { evenement, precedent, suivant } (null au bord : chevron grisé). */
@@ -120,8 +136,9 @@ export function extraitsParPage(extraits) {
   const groupes = [];
   for (const x of extraits) {
     const dernier = groupes.at(-1);
-    if (dernier && dernier.page_id === x.page_id) dernier.extraits.push(x);
-    else groupes.push({ page_id: x.page_id, page_titre: x.page_titre, extraits: [x] });
+    // un bloc sans lien (écrit sur le site de dev) n'a pas de légende : jamais regroupé
+    if (dernier && x.page_id && dernier.page_id === x.page_id) dernier.extraits.push(x);
+    else groupes.push({ page_id: x.page_id ?? null, page_titre: x.page_titre ?? null, extraits: [x] });
   }
   return groupes;
 }
@@ -139,17 +156,46 @@ export function marquerLaDate(texte, date) {
   return texte.slice(0, i) + DEBUT_DATE + date + FIN_DATE + texte.slice(i + date.length);
 }
 
+/** Un texte Markdown sans ses échappements (« \-112 » → « -112 », « 230\) » → « 230) ») : l'écriture qu'un éditeur visuel en refait. */
+const sansEchappements = (texte) => texte.replace(/\\([!-/:-@[-`{-~])/g, '$1');
+
+/**
+ * La date à surligner dans le texte d'un bloc modifié : `date` telle quelle si le texte la contient encore, sinon sa forme sans échappements (l'éditeur
+ * en place réécrit « \-112 » en « -112 ») si le texte contient celle-là ; sinon null (plus de surlignage : le texte ne dit plus cette date).
+ */
+export function dateDansLeTexte(texte, date) {
+  if (!date) return null;
+  if (texte.includes(date)) return date;
+  const forme = sansEchappements(date);
+  return forme && texte.includes(forme) ? forme : null;
+}
+
 /** Le titre d'une section tel que la légende d'un extrait l'affiche : sans le deux-points final d'un titre de liste (« Impact majeur : »). */
 export const titreDeSection = (section) => section.replace(/\s*:\s*$/, '');
 
+/** La position `i` du HTML `html` est-elle dans une balise (son nom ou un attribut, guillemets compris) plutôt que dans du texte ? */
+function dansUneBalise(html, i) {
+  let balise = false;
+  let guillemet = null;
+  for (let k = 0; k < i; k += 1) {
+    const c = html[k];
+    if (!balise) balise = c === '<';
+    else if (guillemet) guillemet = c === guillemet ? null : guillemet;
+    else if (c === '"' || c === "'") guillemet = c;
+    else if (c === '>') balise = false;
+  }
+  return balise;
+}
+
 /**
  * Le HTML rendu d'un extrait marqué (marquerLaDate) : les marqueurs deviennent <mark class="chrono-surligne">…</mark> si la date est restée d'un seul tenant
- * (aucune balise entre les deux) ; sinon ils sont simplement retirés.
+ * (aucune balise entre les deux) et dans le texte ; sinon (dans un attribut, à cheval sur une balise) ils sont simplement retirés.
  */
 export function surlignerLaDate(html) {
   const debut = html.indexOf(DEBUT_DATE);
   const fin = html.indexOf(FIN_DATE);
   const sans = (t) => t.replaceAll(DEBUT_DATE, '').replaceAll(FIN_DATE, '');
-  if (debut < 0 || fin < debut || html.slice(debut, fin).includes('<')) return sans(html);
+  // la date dans un attribut (texte d'une image, titre d'un lien) : jamais de balise là, les marqueurs partent seuls
+  if (debut < 0 || fin < debut || html.slice(debut, fin).includes('<') || dansUneBalise(html, debut)) return sans(html);
   return sans(html.slice(0, debut)) + '<mark class="chrono-surligne">' + html.slice(debut + 1, fin) + '</mark>' + sans(html.slice(fin + 1));
 }

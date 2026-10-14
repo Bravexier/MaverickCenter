@@ -15,6 +15,6 @@ const evenements = chargerChronologie(ouvrirBase());
 const evenement = evenements.find((e) => e.id === slug)!;
 ---
 
-<Base title={`Chronologie : ${evenement.titre}`} description={`${libelleDeDate(evenement)} : ${evenement.titre}`}>
+<Base title={`Chronologie : ${evenement.titre}`} description={`${libelleDeDate(evenement)} : ${evenement.titre}`} edition={`chronologie/${evenement.id}/`}>
   <Chronologie evenements={evenements} id={evenement.id} />
 </Base>

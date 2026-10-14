@@ -25,7 +25,7 @@ const parCle = (rows, cle, valeur = (r) => r) => {
 
 /** Entrées minimales (id, titre, tags) des pages de races et de classes : pour réutiliser raceKind et classColor, comme /races/ et /classes/. */
 function entreesDesPages(db) {
-  const tags = parCle(lignes(db, "SELECT page_id, libelle FROM page_tag WHERE page_id LIKE 'classes/%' OR page_id LIKE 'races/%' ORDER BY page_id, ordre"), 'page_id', (r) => r.libelle);
+  const tags = parCle(lignes(db, "SELECT t.page_id, m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id LIKE 'classes/%' OR t.page_id LIKE 'races/%' ORDER BY t.page_id, t.ordre"), 'page_id', (r) => r.libelle);
   return lignes(db, "SELECT id, titre FROM page WHERE type IN ('classes', 'races')").map((p) => ({ id: p.id, data: { title: p.titre, tags: tags.get(p.id) ?? [] } }));
 }
 

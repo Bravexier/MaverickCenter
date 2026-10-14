@@ -191,7 +191,7 @@ test('créer un métier : page (titre, résumé, corps, mot-clé), ligne metier,
   assert.deepEqual(lignes('SELECT texte, competence_id FROM metier_bonus WHERE metier_id = ? ORDER BY rang', id).map((b) => [b.texte, b.competence_id]),
     decouperBonus('+3% Calme, +2% Fermeté', competences).map((b) => [b.texte, b.competence_id]));
   assert.deepEqual(lignes('SELECT texte FROM metier_objet_depart WHERE metier_id = ?', id).map((o) => o.texte), ['Canne']);
-  assert.equal(ligne('SELECT libelle FROM page_tag WHERE page_id = ?', id).libelle, 'métier');
+  assert.equal(ligne('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ?', id).libelle, 'métier');
   assert.equal(ligne("SELECT principale FROM page_entite WHERE entite_table = 'metier' AND entite_id = ?", id).principale, 1);
   assert.ok(appel('GET', '/api/edition/en-attente/').corps.lignes.some((l) => l.table === 'metier' && l.creee && l.cle.id === id));
 

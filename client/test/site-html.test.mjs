@@ -96,17 +96,55 @@ test('aucun lien vers les classeurs « Familiers » et « Prototype » (demande 
   assert.deepEqual(avecLien, []);
 });
 
-test('/recherche/ : la recherche et tous les mots-clés ; plus de /tags/ (la page 404 y renvoie), la page d’un mot-clé ramène à la recherche', options, () => {
+test('/recherche/ : la recherche et le vocabulaire des mots-clés (liens ?mot-cle=<id>, nombre de pages) ; plus de /tags/ (la page 404 y renvoie) ; les pastilles des pages y mènent', options, () => {
   const html = lire('recherche/index.html');
   assert.match(html, /<form id="search-form" action="\/recherche\/"/);
-  const motsCles = [...html.matchAll(/<li data-cle="([^"]+)"><a class="badge" href="\/tags\/([^"/]+)\/">/g)];
-  assert.ok(motsCles.length > 100, `${motsCles.length} mots-clés`);
-  for (const [, cle, adresse] of motsCles) {
-    assert.equal(cle, adresse);
-    assert.ok(existsSync(join(dist, 'tags', cle, 'index.html')), `tags/${cle}/`);
+  assert.match(html, /<div class="recherche" data-recherche data-lien-mot-cle="\/recherche\/\?mot-cle=">/);
+  assert.match(html, /<noscript><p class="banner">La recherche [^<]*JavaScript[^<]*<a href="\/pages\/">index de toutes les pages<\/a>/, 'sans JavaScript : l’index des pages');
+  // plus de « Sans catégorie (à trier) » ni d'événements dans la vue d'un mot-clé : les événements ont des catégories (filtre de la frise), pas de mot-clé
+  for (const reste of ['data-sans-categorie', 'data-libelle-sans-categorie', 'data-reserve', 'badge--sans-categorie', 'mot-cle-evenements']) assert.ok(!html.includes(reste), reste);
+  assert.match(html, /<ul id="mot-cle-pages" class="entry-list" hidden><\/ul>/, 'la vue d’un mot-clé : ses pages');
+  // l'index : chaque page porte les ids de ses mots-clés ; un événement n'en porte aucun, ses `tags` sont les libellés de ses catégories
+  const index = JSON.parse(lire('search-index.json'));
+  assert.ok(index.every((e) => Array.isArray(e.motsCles) && !('evenement' in e)), 'motsCles partout, plus de drapeau `evenement`');
+  const evenements = index.filter((e) => e.type === 'Événement');
+  assert.ok(evenements.length > 50 && evenements.every((e) => e.path.startsWith('chronologie/')), 'les événements de la chronologie');
+  assert.ok(evenements.every((e) => e.motsCles.length === 0), 'aucun mot-clé sur un événement');
+  const base = ouvrirBase();
+  const categories = new Map();
+  for (const c of base.prepare('SELECT ec.evenement_id AS id, c.libelle FROM evenement_categorie ec JOIN categorie_chronologie c ON c.id = ec.categorie_id').all()) {
+    categories.set(c.id, [...(categories.get(c.id) ?? []), c.libelle]);
   }
-  assert.ok(!existsSync(join(dist, 'tags', 'index.html')), 'ancienne liste des mots-clés');
-  assert.match(lire(`tags/${motsCles[0][1]}/index.html`), /<a href="\/recherche\/#mots-cles">Mots-clés<\/a> ›/);
+  for (const e of evenements) {
+    const id = e.path.slice('chronologie/'.length, -1);
+    assert.deepEqual([...e.tags].sort(), [...(categories.get(id) ?? [])].sort(), `${id} : ses tags = les libellés de ses catégories`);
+  }
+  const comptes = new Map();
+  for (const e of index) for (const id of new Set(e.motsCles)) comptes.set(id, (comptes.get(id) ?? 0) + 1);
+  // la liste : tout le vocabulaire, un mot-clé qu'aucune page visible ne porte caché
+  const vocabulaire = new Map(base.prepare('SELECT id, libelle, libelle_cle FROM mot_cle').all().map((m) => [m.id, m]));
+  const liste = html.slice(html.indexOf('<ul class="tags" id="liste-mots-cles">'), html.indexOf('id="aucun-mot-cle"'));
+  const motsCles = [...liste.matchAll(/<li data-id="([^"]+)" data-cle="([^"]+)" data-n="(\d+)" data-libelle="[^"]*"( hidden)?>\s*<a class="badge" href="\/recherche\/\?mot-cle=([^"]+)">([^<]+)<\/a>\s*<\/li>/g)];
+  assert.equal(motsCles.length, (liste.match(/<li /g) ?? []).length, 'chaque mot-clé a la forme attendue');
+  assert.ok(motsCles.length > 100, `${motsCles.length} mots-clés`);
+  for (const [, id, cle, n, cache, lien, texte] of motsCles) {
+    assert.equal(lien, id, 'le lien porte l’id (figé), pas l’écriture');
+    assert.equal(Number(n), comptes.get(id) ?? 0, `${id} : nombre de pages de l’index`);
+    assert.equal(Boolean(cache), Number(n) === 0, `${id} : caché si aucune page visible ne le porte`);
+    assert.ok(texte.endsWith(` (${n})`), texte);
+    assert.equal(vocabulaire.get(id)?.libelle_cle, cle, `${id} : son écriture`);
+  }
+  assert.deepEqual(motsCles.map((m) => m[1]).sort(), [...vocabulaire.keys()].sort(), 'tout le vocabulaire, rien d’autre');
+  assert.match(html, new RegExp(`<small id="nombre-mots-cles" class="muted">\\(${motsCles.filter((m) => !m[4]).length}\\)</small>`), 'le nombre de mots-clés affichés');
+  // plus de pages /tags/ : la page 404 renvoie /tags/<clé>/ vers /recherche/?mot-cle=<clé>
+  assert.ok(!existsSync(join(dist, 'tags')), 'dossier dist/tags/');
+  // les pastilles d'une page du wiki mènent à la recherche, par l'id du mot-clé
+  const nain = lire('races/nain/index.html');
+  const pastilles = [...nain.slice(nain.indexOf('<ul class="tags" aria-label="Mots-clés">')).split('</ul>')[0].matchAll(/<a class="badge" href="\/recherche\/\?mot-cle=([^"]+)">([^<]+)<\/a>/g)];
+  assert.ok(pastilles.length > 0, 'pastilles de la page du Nain');
+  for (const [, id, libelle] of pastilles) assert.equal(vocabulaire.get(id)?.libelle, libelle.replaceAll('&#39;', "'").replaceAll('&amp;', '&'), id);
+  const avecTags = walk(dist).filter((f) => f.endsWith('.html')).filter((f) => /href="\/tags\//.test(readFileSync(f, 'utf8')));
+  assert.deepEqual(avecTags, [], 'aucun lien vers /tags/');
 });
 
 test('en-tête : la bande a la hauteur du menu, pas du logo, dont la pointe de l’épée dépasse dessous ; sur téléphone, le logo reste dans la bande', options, () => {

@@ -477,10 +477,14 @@ def du_codex(chemin):
     return (data.get('sources') or [None])[0] == SOURCES[0]
 
 
-def pages_du_site(historique=HISTORIQUE, schema=SCHEMA):
+def pages_du_site(historique=HISTORIQUE, schema=SCHEMA, sur_disque=None):
     """Pages du Codex que le site de dev a modifiées (modifications rapatriées ou livrées : table historique_modification) -> slug -> leur état
     d'import : 'titre' et 'corps' (corps_md) = la valeur « avant » de la première modification de la colonne (absents : jamais modifiés), 'alias'
-    = {'retires': textes que le site a ajoutés, 'remis': textes qu'il a supprimés}. Même lecture que client/src/lib/historique-site.mjs."""
+    = {'retires': textes que le site a ajoutés, 'remis': textes qu'il a supprimés}. Même lecture que client/src/lib/historique-site.mjs.
+    Les mots-clés (vocabulaire mot_cle, migration 0042) : une page dont le site a retiré, fusionné (page_tag) ou renommé (mot_cle : son écriture est
+    dans `tags:` des pages sur disque, `sur_disque` = slug -> texte) un mot-clé est aussi « modifiée par le site » ('mots_cles' : True) ; ses mots-clés
+    ne sont pas comparés au document, et une nouvelle écriture la garde telle quelle (sinon elle remettrait l'ancienne écriture, et db:sync-pages en
+    ferait un second mot-clé)."""
     if not os.path.exists(historique):
         return {}
     with open(schema, encoding='utf-8') as f:
@@ -491,13 +495,26 @@ def pages_du_site(historique=HISTORIQUE, schema=SCHEMA):
         db.executescript(f.read())
     pages = {}
     vues = set()
+    nouvelle = lambda slug: pages.setdefault(slug, {'alias': {'retires': set(), 'remis': set()}})  # noqa: E731
+    renommes = set()   # écritures (normalize) qu'un mot-clé a prises sur le site
+    for table_nom, cle, avant, apres in db.execute(
+            "SELECT table_nom, cle, avant, apres FROM historique_modification WHERE table_nom IN ('page_tag', 'mot_cle') ORDER BY fait_le, lot_id, rang"):
+        cle = json.loads(cle)
+        if table_nom == 'page_tag':
+            if str(cle.get('page_id')).startswith(f'{TYPE}/'):
+                nouvelle(cle['page_id'][len(TYPE) + 1:])['mots_cles'] = True
+        elif apres and 'libelle' in json.loads(apres):
+            renommes.add(T.normalize(json.loads(apres)['libelle']))
+    for slug, texte in (sur_disque or {}).items():
+        if renommes & {T.normalize(t) for t in pages_md.parse_frontmatter(texte)[0].get('tags') or []}:
+            nouvelle(slug)['mots_cles'] = True
     for table_nom, cle, operation, avant, apres in db.execute(
             "SELECT table_nom, cle, operation, avant, apres FROM historique_modification WHERE table_nom IN ('page', 'alias') ORDER BY fait_le, lot_id, rang"):
         cle = json.loads(cle)
         page_id = cle.get('id') if table_nom == 'page' else cle.get('page_id')
         if not str(page_id).startswith(f'{TYPE}/'):
             continue
-        p = pages.setdefault(page_id[len(TYPE) + 1:], {'alias': {'retires': set(), 'remis': set()}})
+        p = nouvelle(page_id[len(TYPE) + 1:])
         avant, apres = json.loads(avant or 'null'), json.loads(apres or 'null')
         if table_nom == 'page':
             for colonne, nom in (('titre', 'titre'), ('corps_md', 'corps')):
@@ -518,10 +535,13 @@ def pages_du_site(historique=HISTORIQUE, schema=SCHEMA):
     return pages
 
 
-def etat_d_import(texte, site):
-    """(frontmatter, corps) d'une page sur disque, ramenée à son état d'import (pages_du_site) ; les alias en liste triée."""
+def etat_d_import(texte, site, sans_mots_cles=False):
+    """(frontmatter, corps) d'une page sur disque, ramenée à son état d'import (pages_du_site) ; les alias en liste triée. Ses mots-clés retirés si le
+    site les a changés (`site['mots_cles']`, ou `sans_mots_cles` pour la page attendue en face)."""
     data, corps = pages_md.parse_frontmatter(texte)
     data = dict(data)
+    if sans_mots_cles or (site and site.get('mots_cles')):
+        data.pop('tags', None)
     if site:
         if 'titre' in site:
             data['title'] = site['titre']
@@ -564,16 +584,24 @@ def normaliser(texte):
     return re.sub(r'\s+', ' ', t).strip()
 
 
-def verifier(lignes, out, site):
-    """Contrôles indépendants du découpage (voir l'en-tête), les pages modifiées par le site de dev dans leur état d'import. -> (erreurs, nombre
-    de pages, nombre de pages modifiées par le site)."""
+def pages_sur_disque(out):
+    """Les pages du Codex sur disque : slug -> texte (fichier .md)."""
     dossier = os.path.join(out, TYPE)
     pages = {}
+    if not os.path.isdir(dossier):
+        return pages
     for nom in sorted(os.listdir(dossier)):
         chemin = os.path.join(dossier, nom)
         if nom.endswith('.md') and du_codex(chemin):
             with open(chemin, encoding='utf-8') as f:
                 pages[nom[:-3]] = f.read()
+    return pages
+
+
+def verifier(lignes, out, site):
+    """Contrôles indépendants du découpage (voir l'en-tête), les pages modifiées par le site de dev dans leur état d'import. -> (erreurs, nombre
+    de pages, nombre de pages modifiées par le site)."""
+    pages = pages_sur_disque(out)
     a_l_import = {slug: etat_d_import(t, site.get(slug)) for slug, t in pages.items()}
     erreurs = []
     tout = '\n'.join(normaliser(corps) for _, corps in a_l_import.values())
@@ -611,7 +639,7 @@ def verifier(lignes, out, site):
         elif slug not in attendu.pages:
             erreurs.append(f'(3) page en trop sur disque : {TYPE}/{slug}')
         elif slug in site:
-            if a_l_import[slug] != etat_d_import(texte_de_page(attendu.pages[slug]), None):
+            if a_l_import[slug] != etat_d_import(texte_de_page(attendu.pages[slug]), None, site[slug].get('mots_cles', False)):
                 erreurs.append(f'(3) page modifiée par le site de dev, différente du découpage dans son état d\'import : {TYPE}/{slug}')
         elif pages[slug] != texte_de_page(attendu.pages[slug]):
             erreurs.append(f'(3) page différente du découpage : {TYPE}/{slug}')
@@ -622,7 +650,7 @@ def main(argv):
     option = lambda nom, defaut: argv[argv.index(nom) + 1] if nom in argv else defaut  # noqa: E731
     source = option('--source', SOURCE)
     out = option('--out', OUT)
-    site = pages_du_site(option('--historique', HISTORIQUE))
+    site = pages_du_site(option('--historique', HISTORIQUE), sur_disque=pages_sur_disque(out))
     lignes = lire_lignes(source)
     if '--verifier' in argv:
         erreurs, n, du_site = verifier(lignes, out, site)

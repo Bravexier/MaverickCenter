@@ -27,8 +27,10 @@ const couleurs = couleursDesEvenements(evenements);
 const { evenement, precedent, suivant } = id ? voisins(evenements, id) : { evenement: null, precedent: null, suivant: evenements[0] ?? null };
 const href = (e: any) => url(adresseDEvenement(e.id));
 const etiquette = (e: any) => `${libelleDeDate(e)} : ${e.titre}`;
+/** La place de l'événement affiché dans l'ordre de lecture (1 à N : le rang n'est que l'ordre à date égale, lib/chronologie.mjs#ordonner). */
+const position = evenement ? evenements.indexOf(evenement) + 1 : 0;
 /** La place de l'événement affiché dans la frise, pour le filet de la barre du bas (téléphone). */
-const progression = evenement ? `${((evenement.rang / evenements.length) * 100).toFixed(2)}%` : '0%';
+const progression = evenement ? `${((position / evenements.length) * 100).toFixed(2)}%` : '0%';
 ---
 
 <style is:inline set:html={chronologieCss}></style>
@@ -47,31 +49,33 @@ const progression = evenement ? `${((evenement.rang / evenements.length) * 100).
     evenement && (
       <button type="button" class="frise-ouvrir" aria-controls="frise" aria-expanded="false" data-frise-ouvrir>
         <span class="frise-ouvrir__poignee" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></svg></span>
-        <span class="chrono-invisible">Ouvrir la frise chronologique (événement {evenement.rang} sur {evenements.length})</span>
+        <span class="chrono-invisible">Ouvrir la frise chronologique (événement {position} sur {evenements.length})</span>
       </button>
     )
   }
 
   {
     evenement ? (
-      <ChronologieEvenement evenement={evenement} total={evenements.length} />
+      <ChronologieEvenement evenement={evenement} position={position} total={evenements.length} />
     ) : (
       <article class="chrono-page chrono-accueil" aria-labelledby="chrono-titre">
         <h1 id="chrono-titre">Chronologie</h1>
-        <p class="chrono-accueil__court">Les {evenements.length} événements que datent le Codex et les pages de race, du plus ancien au plus récent. Touchez-en un pour lire sa page.</p>
+        <p class="chrono-accueil__court">Les {evenements.length} événements de la chronologie, du plus ancien au plus récent. Touchez-en un pour lire sa page.</p>
         <p>
-          Les {evenements.length} événements que datent le Codex et les pages de race, du plus ancien au plus récent. Choisissez-en un dans la frise :
-          sa page s’ouvre ici, avec les passages des sources qui en parlent, leur date surlignée.
+          Les {evenements.length} événements de la chronologie, du plus ancien au plus récent : ceux que datent le Codex et les pages de race, et ceux
+          ajoutés depuis. Choisissez-en un dans la frise : sa page s’ouvre ici, avec sa description (pour un événement des sources, les passages qui en
+          parlent, leur date surlignée), la page qui en dit plus et ses catégories.
         </p>
         <p>
-          Les chevrons, à droite, passent à l’événement précédent ou suivant (au clavier : ← et →). Un losange marque un Impact majeur, un point plus
-          grand un Impact mineur, d’après la liste « Les Impacts mineur et majeur » du Codex.
+          En haut de la frise, « Catégorie » ne montre que les événements d’une catégorie. Les chevrons, à droite, passent à l’événement précédent ou
+          suivant de la catégorie choisie (au clavier : ← et →). Un losange marque un Impact majeur, un point plus grand un Impact mineur, d’après la liste
+          « Les Impacts mineur et majeur » du Codex.
         </p>
         {
           suivant && (
             <p>
-              <a class="chrono-commencer" href={href(suivant)}>
-                Commencer : {suivant.titre}
+              <a class="chrono-commencer" href={href(suivant)} data-chrono-commencer>
+                Commencer : <span data-chrono-commencer-titre>{suivant.titre}</span>
               </a>
             </p>
           )
@@ -81,19 +85,20 @@ const progression = evenement ? `${((evenement.rang / evenements.length) * 100).
   }
 
   {/* Chaque chevron dit l'événement visé dans l'infobulle du site (`title`), placée à sa gauche (`data-placement="cote"` : dessous, la bulle du
-       chevron Haut couvrirait le chevron Bas) ; son nom, pour un lecteur d'écran : « Précédent » ou « Suivant », la bulle en description. */}
+       chevron Haut couvrirait le chevron Bas) ; son nom, pour un lecteur d'écran : « Précédent » ou « Suivant », la bulle en description. Au bord, le
+       chevron est grisé (un lien sans adresse, `aria-disabled`) ; le script qui suit la barre les réécrit d'après la frise filtrée. */}
   <nav class="chrono-chevrons" aria-label="Parcourir la chronologie" style={`--progression: ${progression}`}>
     {
       precedent ? (
-        <a class="chrono-chevron" href={href(precedent)} rel="prev" title={etiquette(precedent)} data-placement="cote" data-chrono-precedent>
+        <a class="chrono-chevron" href={href(precedent)} rel="prev" title={etiquette(precedent)} data-placement="cote" data-chrono-chevron="precedent" data-chrono-precedent>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
-          <span class="chrono-invisible">Précédent</span>
+          <span class="chrono-invisible" data-chrono-bord>Précédent</span>
         </a>
       ) : (
-        <span class="chrono-chevron" role="link" aria-disabled="true">
+        <a class="chrono-chevron" role="link" aria-disabled="true" data-placement="cote" data-chrono-chevron="precedent">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
-          <span class="chrono-invisible">Précédent ({evenement ? 'premier événement' : 'aucun événement'})</span>
-        </span>
+          <span class="chrono-invisible" data-chrono-bord>Précédent ({evenement ? 'premier événement' : 'aucun événement'})</span>
+        </a>
       )
     }
     {/* Téléphone : entre les chevrons, l'événement affiché ; un appui ouvre la frise (sans JavaScript : sa ligne de /chronologie/). */}
@@ -109,7 +114,7 @@ const progression = evenement ? `${((evenement.rang / evenements.length) * 100).
           <span class="chrono-barre__texte">
             <span class="chrono-barre__date">
               {libelleDeDate(evenement)}
-              <span class="chrono-barre__rang"> · {evenement.rang}/{evenements.length}</span>
+              <span class="chrono-barre__rang"> · {position}/{evenements.length}</span>
             </span>
             <span class="chrono-barre__titre">{evenement.titre}</span>
           </span>
@@ -119,20 +124,76 @@ const progression = evenement ? `${((evenement.rang / evenements.length) * 100).
     }
     {
       suivant ? (
-        <a class="chrono-chevron" href={href(suivant)} rel="next" title={etiquette(suivant)} data-placement="cote" data-chrono-suivant>
+        <a class="chrono-chevron" href={href(suivant)} rel="next" title={etiquette(suivant)} data-placement="cote" data-chrono-chevron="suivant" data-chrono-suivant>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
-          <span class="chrono-invisible">Suivant</span>
+          <span class="chrono-invisible" data-chrono-bord>Suivant</span>
         </a>
       ) : (
-        <span class="chrono-chevron" role="link" aria-disabled="true">
+        <a class="chrono-chevron" role="link" aria-disabled="true" data-placement="cote" data-chrono-chevron="suivant">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
-          <span class="chrono-invisible">Suivant (dernier événement)</span>
-        </span>
+          <span class="chrono-invisible" data-chrono-bord>Suivant (dernier événement)</span>
+        </a>
       )
     }
   </nav>
 </div>
 {evenement && <div class="frise-voile" data-frise-voile hidden />}
+<script is:inline>
+  // Les chevrons (et ← →, le glissement du doigt, « Commencer ») vont à l'événement précédent ou suivant VISIBLE dans la frise : celle-ci peut être
+  // filtrée par catégorie (script de Frise.astro, évènement « chronologie:frise-filtree ») ou complétée par le site de dev. Chaque chevron prend
+  // l'adresse de la ligne visée (qui porte déjà le filtre), son étiquette en infobulle (`title` : l'infobulle du site, components/Infobulles.astro) ;
+  // sans ligne visée, il est grisé (sans adresse ni `data-chrono-precedent` / `data-chrono-suivant`, que lisent le clavier et le glissement).
+  (function () {
+    var frise = document.querySelector('[data-frise]');
+    if (!frise) return;
+    var chevrons = { precedent: document.querySelector('[data-chrono-chevron="precedent"]'), suivant: document.querySelector('[data-chrono-chevron="suivant"]') };
+    var commencer = document.querySelector('[data-chrono-commencer]');
+    function regler(sens, li, aucun) {
+      var a = chevrons[sens];
+      if (!a) return;
+      var bord = a.querySelector('[data-chrono-bord]');
+      if (li) {
+        a.href = li.querySelector('.frise__lien').href;
+        a.rel = sens === 'precedent' ? 'prev' : 'next';
+        a.title = li.getAttribute('data-etiquette') || '';
+        a.removeAttribute('role');
+        a.removeAttribute('aria-disabled');
+        a.setAttribute(sens === 'precedent' ? 'data-chrono-precedent' : 'data-chrono-suivant', '');
+        if (bord) bord.textContent = sens === 'precedent' ? 'Précédent' : 'Suivant';
+      } else {
+        a.removeAttribute('href');
+        a.removeAttribute('rel');
+        a.title = '';
+        a.setAttribute('role', 'link');
+        a.setAttribute('aria-disabled', 'true');
+        a.removeAttribute(sens === 'precedent' ? 'data-chrono-precedent' : 'data-chrono-suivant');
+        if (bord) bord.textContent = aucun ? 'Précédent (aucun événement)' : sens === 'precedent' ? 'Précédent (premier événement)' : 'Suivant (dernier événement)';
+      }
+    }
+    function suivre() {
+      var visibles = Array.prototype.slice.call(frise.querySelectorAll('.frise__evenement')).filter(function (li) { return !li.hidden; });
+      var actuel = frise.querySelector('[aria-current="page"]');
+      var courant = actuel ? actuel.closest('.frise__evenement') : null;
+      var i = courant ? visibles.indexOf(courant) : -1;
+      if (courant) {
+        regler('precedent', visibles[i - 1]);
+        regler('suivant', visibles[i + 1]);
+      } else {
+        // /chronologie/ : rien avant ; « Suivant » et « Commencer » mènent au premier événement visible
+        regler('precedent', null, true);
+        regler('suivant', visibles[0]);
+        if (commencer && visibles[0]) {
+          commencer.href = visibles[0].querySelector('.frise__lien').href;
+          var titre = commencer.querySelector('[data-chrono-commencer-titre]');
+          var texte = visibles[0].querySelector('.frise__titre [data-ed-lecture]');
+          if (titre && texte) titre.textContent = texte.textContent;
+        }
+      }
+    }
+    suivre();
+    document.addEventListener('chronologie:frise-filtree', suivre);
+  })();
+</script>
 <script is:inline>
   // Téléphone, page d'un événement : la mini-frise (la frise réduite à sa barre et à ses points) est fixée au bord gauche de l'écran, de l'en-tête du
   // site (tant qu'il est visible) à la barre du bas ; l'événement affiché est au milieu de sa partie visible, à chaque défilement et changement de
@@ -148,7 +209,7 @@ const progression = evenement ? `${((evenement.rang / evenements.length) * 100).
     var voile = document.querySelector('[data-frise-voile]');
     if (!chrono || !frise || !ouvrir) return;
     var liste = frise.querySelector('.frise__liste');
-    var legende = frise.querySelector('.frise__legende');
+    var tete = frise.querySelector('.frise__tete');
     var actuel = frise.querySelector('[aria-current="page"]');
     var barre = document.querySelector('.chrono-chevrons');
     var poignee = ouvrir.querySelector('.frise-ouvrir__poignee');
@@ -180,11 +241,11 @@ const progression = evenement ? `${((evenement.rang / evenements.length) * 100).
       var r = actuel.getBoundingClientRect();
       liste.scrollTop += r.top + r.height / 2 - (haut + bas) / 2;
     }
-    // grand écran : la frise d'ordinateur défile seule ; l'événement au milieu de sa partie visible, sous sa légende (comme au chargement, Frise.astro)
+    // grand écran : la frise d'ordinateur défile seule ; l'événement au milieu de sa partie visible, sous son en-tête (comme au chargement, Frise.astro)
     function centrerOrdinateur() {
       if (!actuel) return;
       var f = frise.getBoundingClientRect();
-      var haut = Math.max(f.top, 0) + (legende ? legende.offsetHeight : 0) + 8;
+      var haut = Math.max(f.top, 0) + (tete ? tete.offsetHeight : 0) + 8;
       var bas = Math.min(f.bottom, window.innerHeight) - 16;
       var r = actuel.getBoundingClientRect();
       frise.scrollTop += r.top - (haut + bas - r.height) / 2;

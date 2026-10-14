@@ -46,7 +46,7 @@ export function chargerRaces(db) {
   );
   const onglets = new Map(all('SELECT * FROM race_onglet').map((o) => [o.race_id, o]));
   // races créées hybrides depuis le site de dev, avant leur classe raciale (même règle que lib/race-kinds.mjs#raceKind)
-  const marqueesHybrides = new Set(db.prepare('SELECT page_id FROM page_tag WHERE tag_id = ?').all(TAG_RACE_HYBRIDE).map((t) => t.page_id));
+  const marqueesHybrides = new Set(db.prepare('SELECT t.page_id FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE m.libelle_cle = ?').all(TAG_RACE_HYBRIDE).map((t) => t.page_id));
 
   const races = new Map();
   for (const r of all('SELECT * FROM race ORDER BY ordre')) {

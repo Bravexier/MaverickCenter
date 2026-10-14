@@ -15,9 +15,12 @@
 //   POST /api/edition/lignes/       { lignes: [{ table, cle }] } → la ligne actuelle de chacune (passage en mode modification)
 //   GET  /api/edition/listes/       listes des formulaires (compétences, catégories de classe, races hybrides…)
 //   GET  /api/edition/pages/        les pages du wiki (id, titre) : cibles d'un lien posé dans le texte du guide
+//   GET  /api/edition/mots-cles/    le vocabulaire des mots-clés, avec leurs pages et ceux dont le site se sert (/recherche/ en mode modification)
+//   GET  /api/edition/chronologie/  les événements de la chronologie dans l'ordre de lecture avec leurs catégories, et les catégories (surcouche de la frise)
 //   POST /api/edition/race/         { race } → magies innées et relations de la race, dans la base vivante
 //   POST /api/edition/classe/       { classe } → spécialités, dons, choix et fiches qui les citent (ajout et suppression depuis sa page)
 //   POST /api/edition/bestiaire/    { connues, logo } → l'ordre des lignes du tableau des monstres, et la ligne et la carte de celles que la page n'a pas
+//   POST /api/edition/evenement/    { evenement } → un événement de la chronologie, ses blocs de description et ses catégories, dans la base vivante
 //   POST /api/edition/portrait/     { table, cle } → le portrait d'une carte de monstre ou d'une espèce, en entier, et son cadrage (les autres réponses
 //                                   de l'édition ne donnent d'une image que son empreinte : ligneSansImage ; le journal la porte en entier)
 //   POST /api/edition/              { page, operations } → applique un lot d'un bloc et le note au journal
@@ -40,6 +43,7 @@
 import { ErreurEdition, donneesDeClasse, donneesDeRace, enregistrer, lignesDuBestiaire, listes, lireLignes, pagesDuWiki, portraitDe } from './edition.mjs';
 import { ligneSansImage } from '../src/lib/edition-modele.mjs';
 import { journalExporte, lignesEnAttente } from './edition-journal.mjs';
+import { chronologieVivante, donneesDEvenement, vocabulaire } from './edition-chronologie.mjs';
 import {
   actualiserLancement, CONFIRMATION, enregistrerBrouillon, ErreurNotes, estLiberable, figerLot, leverMaintenance, libererLot, lireLot, lireReference,
   noteEnPreparation, occupe,
@@ -163,8 +167,10 @@ function traiterPortrait(requete, service, brut, permis) {
 /** Les routes /api/edition/… (site de dev seulement). */
 function traiterEdition(requete, service, action, reste, permis) {
   if (!service.edition) return erreur(403, 'L’édition des règles n’est ouverte que sur le site de dev.');
-  if (reste.length || !['en-attente', 'lignes', 'listes', 'pages', 'journal', 'race', 'classe', 'bestiaire', 'portrait', undefined].includes(action)) return erreur(404, 'Adresse inconnue.');
-  const refus = action === undefined || ['lignes', 'race', 'classe', 'bestiaire', 'portrait'].includes(action) ? permis('POST') : permis('GET');
+  if (reste.length || !['en-attente', 'lignes', 'listes', 'pages', 'mots-cles', 'chronologie', 'journal', 'race', 'classe', 'bestiaire', 'portrait', 'evenement', undefined].includes(action)) {
+    return erreur(404, 'Adresse inconnue.');
+  }
+  const refus = action === undefined || ['lignes', 'race', 'classe', 'bestiaire', 'portrait', 'evenement'].includes(action) ? permis('POST') : permis('GET');
   if (refus) return refus;
   const db = service.base();
   if (!db) return erreur(503, 'La base n’est pas disponible pour le moment.', { etat: service.etat() });
@@ -172,6 +178,8 @@ function traiterEdition(requete, service, action, reste, permis) {
   if (action === 'en-attente') return json(200, { lignes: lignesEnAttente(db).map((l) => ({ ...l, ligne: ligneSansImage(l.table, l.ligne) })) });
   if (action === 'listes') return json(200, listes(db));
   if (action === 'pages') return json(200, { pages: pagesDuWiki(db) });
+  if (action === 'mots-cles') return json(200, { motsCles: vocabulaire(db) });
+  if (action === 'chronologie') return json(200, chronologieVivante(db));
   if (action === 'journal') {
     const jour = new Date().toISOString().slice(0, 10);
     return json(200, journalExporte(db), { 'Content-Disposition': `attachment; filename="journal-edition-${jour}.json"` });
@@ -186,6 +194,10 @@ function traiterEdition(requete, service, action, reste, permis) {
     if (action === 'classe') return json(200, donneesDeClasse(db, valeur?.classe));
     if (action === 'bestiaire') return json(200, lignesDuBestiaire(db, valeur));
     if (action === 'portrait') return json(200, portraitDe(db, valeur));
+    if (action === 'evenement') {
+      const donnees = donneesDEvenement(db, valeur?.evenement);
+      return donnees ? json(200, donnees) : erreur(404, `Événement introuvable : ${valeur?.evenement}`);
+    }
     const resultat = enregistrer(db, valeur);
     // les fiches dont le lot a retiré un élément supprimé (R42) : un compte, jamais leurs noms (le journal du service n'est pas la réponse)
     const adaptees = resultat.fiches?.length ? ` ; ${resultat.fiches.length} fiche(s) de personnage adaptée(s)` : '';

@@ -1,12 +1,12 @@
 // Notes de version (page /mise-a-jour/, demande du propriétaire) : la liste de ce qui a changé dans les règles entre la base de PRODUCTION
 // (master, la base « classique ») et la base de DEV (règles de dev + modifications faites sur le site de dev), domaine par domaine (sorts,
-// magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire, armes, composants). Une ligne par champ modifié d'une entité, avec l'ancienne et la nouvelle valeur et sa
+// magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire, armes, composants, chronologie, mots-clés). Une ligne par champ modifié d'une entité, avec l'ancienne et la nouvelle valeur et sa
 // couleur (lib/notes-de-version-sens.mjs : critères du propriétaire, décision R29). Les champs listés sont ceux que le site de dev modifie
 // (lib/edition-modele.mjs#TABLES) : tout le reste de la base en est dérivé (colonnes typées, `X_cle`, tables de détail, pages) et n'est pas listé.
 // Les deux bases peuvent avoir des schémas différents (master est plus ancien) : une table ou une colonne absente d'un côté est tolérée.
 // Fonctions pures, sans dépendance navigateur : le service (serveur/notes-de-version.mjs) et le processus de mise à jour
 // (scripts/mise-a-jour-regles.mjs) lisent les tables puis appellent comparerBases ; la page affiche avec lib/notes-de-version-rendu.mjs.
-import { CATEGORIES_DE_MONSTRE, OUI_NON, STATS_VARIABLES, TABLES } from './edition-modele.mjs';
+import { CATEGORIES_DE_MONSTRE, EPOQUES_SAISIE, OUI_NON, PORTEES_SAISIE, STATS_VARIABLES, TABLES } from './edition-modele.mjs';
 import { MAINS } from './arme-champs.mjs';
 import { sensDuChangement } from './notes-de-version-sens.mjs';
 import { resumeDuPortrait } from './portrait.mjs';
@@ -24,6 +24,8 @@ export const DOMAINES = [
   { id: 'bestiaire', titre: 'Bestiaire' },
   { id: 'armes', titre: 'Armes' },
   { id: 'composants', titre: 'Composants' },
+  { id: 'chronologie', titre: 'Chronologie' },
+  { id: 'mots-cles', titre: 'Mots-clés' },
 ];
 
 /**
@@ -42,6 +44,7 @@ export const TABLES_LUES = [
   'race_don_tableau_colonne', 'race_don_tableau_cellule', 'race_magie', 'race_magie_onglet', 'peuple', 'relation_peuple', 'echelle_relation',
   'metier', 'caracteristique', 'page', 'monstre_groupe', 'monstre_espece', 'monstre', 'monstre_rubrique', 'monstre_espece_bloc', 'monstre_butin',
   'arme', 'arme_famille', 'arme_type', 'materiau_arme', 'ressource', 'amelioration_equipement', 'gemme', 'bois', 'ingredient_alchimie', 'monnaie', 'materiau',
+  'evenement', 'evenement_extrait', 'evenement_categorie', 'categorie_chronologie', 'mot_cle',
 ];
 
 /** Les ressources de la page des composants, par genre (dans l'ordre de la page), et leur groupe dans la note. */
@@ -234,7 +237,34 @@ const DEFINITIONS = [
     groupe: () => GROUPES_DE_COMPOSANT.ingredient_alchimie, entite: (r, x) => x.nom('ressource', r.ressource_id),
     ordre: (r, x) => [1, 3, x.ligne('ressource', r.ressource_id)?.section ?? '', x.ordre('ressource', r.ressource_id)],
   },
+  // la chronologie (migration 0042) : un événement (date, titre, Impact, lieu) ; ses blocs de description sous lui (un bloc d'un événement ajouté ou retiré est
+  // dit par l'événement : `suit`) ; ses catégories en ensemble (comparerCategoriesDesEvenements)
+  {
+    table: 'evenement', domaine: 'chronologie', cle: ['id'], colonnes: colonnesDe('evenement'), genre: 'Événement',
+    groupe: () => null, entite: (r) => r.titre, ordre: (r) => ordreDEvenement(r), resume: (n) => `${n} événements de la chronologie`,
+    valeur: (colonne, v) => (colonne === 'epoque' ? libelleDeChoix(EPOQUES_SAISIE, v) : colonne === 'portee' && v ? libelleDeChoix(PORTEES_SAISIE, v) : v),
+  },
+  {
+    table: 'evenement_extrait', domaine: 'chronologie', cle: ['evenement_id', 'rang'], colonnes: colonnesDe('evenement_extrait'), genre: 'Description',
+    suit: (r, x) => !x.dans('ref', 'evenement', r.evenement_id) || !x.dans('dev', 'evenement', r.evenement_id),
+    groupe: (r, x) => x.ligne('evenement', r.evenement_id)?.titre ?? r.evenement_id, entite: (r, x) => `${x.ligne('evenement', r.evenement_id)?.titre ?? r.evenement_id} › description ${r.rang}`,
+    ordre: (r, x) => [...ordreDEvenement(x.ligne('evenement', r.evenement_id) ?? {}), 1, r.rang], resume: (n) => `${n} descriptions d’événements`,
+    valeur: (colonne, v, x) => (colonne === 'page_id' && v ? x.ligne('page', v)?.titre ?? v : v),
+  },
+  // les catégories de la chronologie (migration 0042, bouton « Catégories » sur le site de dev) : ajoutée, renommée, retirée (de tous ses événements)
+  {
+    table: 'categorie_chronologie', domaine: 'chronologie', cle: ['id'], colonnes: colonnesDe('categorie_chronologie'), genre: 'Catégorie',
+    groupe: () => 'Catégories', entite: (r) => r.libelle, ordre: (r) => [-1, r.libelle_cle], resume: (n) => `${n} catégories de la chronologie`,
+  },
+  // le vocabulaire des mots-clés (migration 0042, /recherche/ sur le site de dev) : ajouté, renommé, retiré (de toutes les pages)
+  {
+    table: 'mot_cle', domaine: 'mots-cles', cle: ['id'], colonnes: colonnesDe('mot_cle'), genre: 'Mot-clé',
+    groupe: () => null, entite: (r) => r.libelle, ordre: (r) => [r.libelle_cle], resume: (n) => `${n} mots-clés`,
+  },
 ];
+
+/** L'ordre de lecture d'un événement dans une note : époque, année, rang (lib/chronologie.mjs#ordonner). */
+const ordreDEvenement = (e) => [EPOQUES_SAISIE.findIndex((x) => x.valeur === e.epoque), e.annee ?? 0, e.rang ?? 0];
 
 function chapitreDe(page) {
   try {
@@ -247,7 +277,7 @@ function chapitreDe(page) {
 /** Contexte de nommage : noms et ordres lus d'abord dans dev, puis dans la référence (entité retirée). */
 function contexte(ref, dev) {
   const index = (base) => Object.fromEntries(['magie', 'classe', 'specialite', 'race', 'categorie_classe', 'peuple', 'caracteristique', 'monstre_espece', 'monstre',
-    'arme_famille', 'arme_type', 'ressource']
+    'arme_famille', 'arme_type', 'ressource', 'evenement', 'categorie_chronologie', 'mot_cle', 'page']
     .map((t) => [t, parId(lignesDe(base, t))]));
   const d = index(dev);
   const r = index(ref);
@@ -259,6 +289,8 @@ function contexte(ref, dev) {
   const trouver = (maps, cle) => maps.map((m) => m.get(cle)).find(Boolean) ?? null;
   return {
     ligne,
+    /** La ligne existe-t-elle dans la base de production (`ref`) ou de dev (`dev`) ? */
+    dans: (cote, table, id) => (cote === 'ref' ? r : d)[table].has(id),
     nom: (table, id) => {
       const l = ligne(table, id);
       return l?.nom ?? l?.libelle ?? (id ? String(id) : null);
@@ -314,7 +346,7 @@ function comparerTable(def, ref, dev, x) {
     const avant = a.get(k);
     const base = decrire(r);
     if (!avant) {
-      if (def.detail) continue; // dit par l'entité qui la porte
+      if (def.detail || def.suit?.(r, x)) continue; // dit par l'entité qui la porte
       // une table absente de la production (schéma plus ancien) : l'entité existait peut-être, mais pas ce contenu ; on le dit ajouté
       sortie.push(ligneDeNote({ ...base, champ: refRows ? null : def.genre, nature: 'ajoute', avant: null, apres: def.entite(r, x) }));
       continue;
@@ -330,7 +362,7 @@ function comparerTable(def, ref, dev, x) {
     });
   }
   for (const [k, r] of a) {
-    if (b.has(k) || def.detail) continue;
+    if (b.has(k) || def.detail || def.suit?.(r, x)) continue;
     sortie.push(ligneDeNote({ ...decrire(r), champ: devRows ? null : def.genre, nature: 'retire', avant: def.entite(r, x), apres: null }));
   }
   return sortie;
@@ -368,6 +400,38 @@ function comparerMagiesInnees(ref, dev, x) {
     sortie.push(ligneDeNote({
       def, domaine: 'races', groupe: x.nom('race', race), entite: x.nom('race', race), ordre: [x.ordreRace(race), 5], champ: 'Magies innées',
       colonne: null, nature: v1 ? (v2 ? 'modifie' : 'retire') : 'ajoute', avant: v1 || null, apres: v2 || null, cle: { race_id: race },
+    }));
+  }
+  return sortie;
+}
+
+/**
+ * Les catégories d'un événement de la chronologie (migration 0042), dites en ensemble : « Catégories : Guerre → Guerre, Fondation » (aucune : sans
+ * catégorie). Un événement ajouté ou retiré est dit par la table evenement, une catégorie supprimée par la sienne (ses événements la perdent aussi :
+ * dit ici) ; tant que la production n'a pas la chronologie, rien.
+ */
+function comparerCategoriesDesEvenements(ref, dev, x) {
+  const devRows = lignesDe(dev, 'evenement_categorie');
+  const refRows = lignesDe(ref, 'evenement_categorie');
+  if (!devRows || !refRows) return [];
+  const parEvenement = (rows) => {
+    const m = new Map();
+    for (const l of rows) (m.get(l.evenement_id) ?? m.set(l.evenement_id, []).get(l.evenement_id)).push(x.nom('categorie_chronologie', l.categorie_id));
+    return m;
+  };
+  const a = parEvenement(refRows);
+  const b = parEvenement(devRows);
+  const dire = (noms) => (noms?.length ? [...noms].sort((p, q) => p.localeCompare(q, 'fr')).join(', ') : null);
+  const sortie = [];
+  for (const id of new Set([...a.keys(), ...b.keys()])) {
+    if (!x.dans('ref', 'evenement', id) || !x.dans('dev', 'evenement', id)) continue;
+    const v1 = dire(a.get(id));
+    const v2 = dire(b.get(id));
+    if (v1 === v2) continue;
+    const e = x.ligne('evenement', id);
+    sortie.push(ligneDeNote({
+      def: { table: 'evenement_categorie' }, domaine: 'chronologie', groupe: null, entite: e.titre, ordre: [...ordreDEvenement(e), 2], champ: 'Catégories',
+      colonne: null, nature: v1 ? (v2 ? 'modifie' : 'retire') : 'ajoute', avant: v1, apres: v2, cle: { evenement_id: id },
     }));
   }
   return sortie;
@@ -427,6 +491,7 @@ export function comparerBases(ref, dev) {
     ...DEFINITIONS.flatMap((def) => comparerTable(def, ref, dev, x)),
     ...comparerMagiesInnees(ref, dev, x),
     ...comparerRelations(ref, dev, x),
+    ...comparerCategoriesDesEvenements(ref, dev, x),
   ];
   const rangDomaine = (d) => DOMAINES.findIndex((x_) => x_.id === d);
   lignes.sort((p, q) => rangDomaine(p.domaine) - rangDomaine(q.domaine) || comparerOrdres(p.ordre, q.ordre));

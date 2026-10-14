@@ -8,8 +8,7 @@
 // tant que la page construite ne l'a pas (surcouche).
 import { cleDeLigne } from '../../lib/edition-modele.mjs';
 import { arbreDuDom, COULEURS_DE_CASE, decouperCorps, htmlSur, recomposerCorps, versMarkdown } from '../../lib/markdown-edition.mjs';
-import { cheminDePage } from '../../lib/metiers.mjs';
-import { normalize } from '../../lib/text.mjs';
+import { editeurEnPlace } from './texte-en-place.mjs';
 
 const ETIQUETTES_COULEUR = { rouge: 'Rouge', orange: 'Orange', jaune: 'Jaune', vert: 'Vert', bleu: 'Bleu', violet: 'Violet', gris: 'Gris' };
 
@@ -22,7 +21,6 @@ const etat = {
   envoye: null, // aperçu envoyé avec le dernier enregistrement
   barre: null,
   abandon: null,
-  pages: null, // cibles possibles d'un lien (GET /api/edition/pages/), lues au premier lien posé
 };
 
 const corpsId = () => document.querySelector('[data-ed-corps]')?.dataset.edCorps ?? null;
@@ -42,180 +40,9 @@ function lienRelatif(ed) {
 }
 const markdownDe = (ed, el) => versMarkdown(enfantsDe(el), { lienRelatif: lienRelatif(ed) });
 
-// --- Sélection --------------------------------------------------------------------------------------------------------------------------------
-const dansUnMorceau = (noeud) => {
-  const el = noeud?.nodeType === 1 ? noeud : noeud?.parentElement;
-  return el ? etat.morceaux.find((m) => m.contains(el)) ?? null : null;
-};
-function plage() {
-  const sel = getSelection();
-  if (!sel?.rangeCount) return null;
-  const r = sel.getRangeAt(0);
-  return dansUnMorceau(r.startContainer) && dansUnMorceau(r.endContainer) ? r : null;
-}
-function restaurer(r) {
-  if (!r) return;
-  const sel = getSelection();
-  sel.removeAllRanges();
-  sel.addRange(r);
-}
-const elementDe = (noeud) => (noeud?.nodeType === 1 ? noeud : noeud?.parentElement);
-const proche = (r, selecteur) => {
-  const el = elementDe(r?.startContainer)?.closest(selecteur);
-  return el && dansUnMorceau(el) ? el : null;
-};
-
-// --- Commandes --------------------------------------------------------------------------------------------------------------------------------
-function commande(ed, nom, valeur = null) {
-  if (!plage()) {
-    ed.annoncer('Placez d’abord le curseur dans le texte de la page.');
-    return;
-  }
-  document.execCommand(nom, false, valeur);
-  ed.marquerModifie();
-}
-
-/** Paragraphe, titre ou citation ; le même bouton sur un bloc qui l'est déjà le rend paragraphe. */
-function bloc(ed, balise) {
-  const r = plage();
-  if (!r) return commande(ed, 'formatBlock', balise);
-  const actuel = proche(r, 'p, h1, h2, h3, h4, h5, h6, blockquote');
-  const cible = actuel?.tagName.toLowerCase() === balise && balise !== 'p' ? 'p' : balise;
-  if (actuel?.tagName.toLowerCase() === 'blockquote' && cible === 'p') {
-    actuel.replaceWith(...actuel.childNodes);
-    ed.marquerModifie();
-    return;
-  }
-  commande(ed, 'formatBlock', cible);
-}
-
-/**
- * Petite boîte de dialogue (mêmes styles que les formulaires de création) : un champ, avec une liste de suggestions s'il y en a. `valider(saisie)` lève
- * une erreur (affichée, la boîte reste ouverte) ou rend l'action à faire, lancée une fois la boîte fermée (tant qu'elle est ouverte, la page est inerte).
- */
-function demander(ed, { titre, aide, libelle, valeur = '', suggestions = null, bouton = 'Valider', valider }) {
-  const dialogue = document.createElement('dialog');
-  dialogue.className = 'ed-dialogue';
-  const id = `ed-suggestions-${Math.random().toString(36).slice(2)}`;
-  dialogue.innerHTML = `<form method="dialog"><h2></h2><p class="ed-aide"></p><label><span class="ed-libelle"></span><input class="ed-saisie" required autocomplete="off"></label>
-    <p class="ed-erreur" role="alert" hidden></p><div class="ed-boutons"><button type="button" value="annuler">Annuler</button><button type="submit"></button></div></form>`;
-  dialogue.querySelector('h2').textContent = titre;
-  dialogue.querySelector('.ed-aide').textContent = aide ?? '';
-  dialogue.querySelector('.ed-libelle').textContent = libelle;
-  dialogue.querySelector('[type="submit"]').textContent = bouton;
-  const saisie = dialogue.querySelector('input');
-  saisie.value = valeur;
-  if (suggestions) {
-    const liste = document.createElement('datalist');
-    liste.id = id;
-    for (const s of suggestions) liste.append(new Option(s));
-    dialogue.append(liste);
-    saisie.setAttribute('list', id);
-  }
-  const erreur = dialogue.querySelector('.ed-erreur');
-  dialogue.querySelector('[value="annuler"]').addEventListener('click', () => dialogue.close());
-  dialogue.addEventListener('close', () => dialogue.remove());
-  dialogue.querySelector('form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    try {
-      const action = valider(saisie.value.trim());
-      dialogue.close();
-      action();
-    } catch (err) {
-      erreur.textContent = err.message;
-      erreur.hidden = false;
-    }
-  });
-  document.body.append(dialogue);
-  dialogue.showModal();
-  saisie.select();
-}
-
-const echapper = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-const libelleDePage = (p) => `${p.titre} — ${p.id}`;
-
-/** Pose (ou change) un lien vers une page du wiki sur le texte choisi : il s'écrira [[cible|texte]]. */
-async function lienWiki(ed) {
-  const r = plage();
-  if (!r) return ed.annoncer('Choisissez d’abord le texte à lier (ou placez le curseur là où le lien doit aller).');
-  try {
-    etat.pages ??= (await ed.appel('GET', 'edition/pages/')).pages;
-  } catch (e) {
-    return ed.annoncer(`Liste des pages indisponible : ${e.message}`, 'erreur');
-  }
-  const existant = proche(r, 'a, span.wikilink');
-  const actuelle = existant?.dataset.cible ? etat.pages.find((p) => p.id === existant.dataset.cible || normalize(p.titre) === normalize(existant.dataset.cible)) : null;
-  demander(ed, {
-    titre: existant ? 'Changer le lien' : 'Lien vers une page du wiki',
-    aide: 'Tapez quelques lettres du titre puis choisissez la page. Le texte choisi reste le texte du lien.',
-    libelle: 'Page',
-    valeur: actuelle ? libelleDePage(actuelle) : '',
-    suggestions: etat.pages.map(libelleDePage),
-    bouton: 'Lier',
-    valider(saisie) {
-      const page = etat.pages.find((p) => libelleDePage(p) === saisie || p.id === saisie) ?? etat.pages.filter((p) => normalize(p.titre) === normalize(saisie)).at(0);
-      if (!page) throw new Error('Page introuvable : choisissez-la dans la liste.');
-      const href = `${(ed.base || '/').replace(/\/?$/, '/')}${cheminDePage(page.id)}`;
-      return () => {
-        if (existant) {
-          const lien = document.createElement('a');
-          lien.className = 'wikilink';
-          lien.dataset.cible = page.id;
-          lien.href = href;
-          lien.append(...existant.childNodes);
-          existant.replaceWith(lien);
-        } else {
-          restaurer(r);
-          const texte = r.toString().trim() || page.titre;
-          document.execCommand('insertHTML', false, `<a class="wikilink" data-cible="${echapper(page.id)}" href="${echapper(href)}">${echapper(texte)}</a>`);
-        }
-        ed.marquerModifie();
-      };
-    },
-  });
-}
-
-/** Lien vers une adresse web (ou une adresse du site écrite depuis la racine, « /races/ »). */
-function lienWeb(ed) {
-  const r = plage();
-  if (!r) return ed.annoncer('Choisissez d’abord le texte à lier.');
-  const existant = proche(r, 'a');
-  demander(ed, {
-    titre: 'Lien vers une adresse',
-    aide: 'Une adresse web complète (https://…) ou une adresse du site depuis sa racine (/races/).',
-    libelle: 'Adresse',
-    valeur: existant && !existant.classList.contains('wikilink') ? existant.getAttribute('href') ?? '' : 'https://',
-    bouton: 'Lier',
-    valider(adresse) {
-      if (!/^(https?:\/\/[^\s]+|\/(?!\/)[^\s]*)$/.test(adresse)) throw new Error('Adresse attendue : https://… ou /…');
-      return () => {
-        if (existant) {
-          existant.classList.remove('wikilink');
-          delete existant.dataset.cible;
-          existant.setAttribute('href', adresse);
-        } else {
-          restaurer(r);
-          const texte = r.toString().trim() || adresse;
-          document.execCommand('insertHTML', false, `<a href="${echapper(adresse)}">${echapper(texte)}</a>`);
-        }
-        ed.marquerModifie();
-      };
-    },
-  });
-}
-
-/** Retire les liens sous le curseur ou dans le texte choisi : il ne reste que leur texte. */
-function retirerLien(ed) {
-  const r = plage();
-  if (!r) return ed.annoncer('Placez d’abord le curseur sur le lien à retirer.');
-  const liens = new Set();
-  const autour = proche(r, 'a, span.wikilink');
-  if (autour) liens.add(autour);
-  for (const m of etat.morceaux) for (const l of m.querySelectorAll('a, span.wikilink')) if (r.intersectsNode(l)) liens.add(l);
-  if (!liens.size) return ed.annoncer('Aucun lien ici.');
-  for (const l of liens) l.replaceWith(...l.childNodes);
-  ed.marquerModifie();
-}
+// --- Sélection, commandes, liens : l'éditeur en place partagé (texte-en-place.mjs), sur les morceaux du corps -----------------------------------
+const texte = editeurEnPlace(() => etat.morceaux);
+const { plage, proche, commande, bloc, lienWiki, lienWeb, retirerLien } = texte;
 
 // --- Tableaux ---------------------------------------------------------------------------------------------------------------------------------
 const caseCourante = (r) => proche(r, 'td, th');
@@ -326,31 +153,7 @@ const OUTILS = [
 ];
 
 function barreDOutils(ed) {
-  const barre = document.createElement('div');
-  barre.className = 'ed-barre-guide';
-  barre.setAttribute('role', 'toolbar');
-  barre.setAttribute('aria-label', 'Mise en forme du texte du guide');
-  const ajouter = (groupe, etiquette, titre, action, classe) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.innerHTML = etiquette;
-    b.title = titre;
-    b.setAttribute('aria-label', titre);
-    if (classe) b.classList.add(classe);
-    // le clic ne doit pas retirer le curseur du texte
-    b.addEventListener('mousedown', (e) => e.preventDefault());
-    b.addEventListener('click', () => action(ed));
-    groupe.append(b);
-    return b;
-  };
-  for (const [nom, boutons] of OUTILS) {
-    const groupe = document.createElement('div');
-    groupe.className = 'ed-barre-guide__groupe';
-    groupe.setAttribute('role', 'group');
-    groupe.setAttribute('aria-label', nom);
-    for (const [etiquette, titre, action, classe] of boutons) ajouter(groupe, etiquette, titre, action, classe);
-    barre.append(groupe);
-  }
+  const { element: barre, ajouter } = texte.barre(ed, OUTILS, 'Mise en forme du texte du guide');
   const couleurs = document.createElement('div');
   couleurs.className = 'ed-barre-guide__groupe';
   couleurs.setAttribute('role', 'group');
@@ -403,25 +206,14 @@ export const guide = {
     const { signal } = etat.abandon;
     Object.assign(etat, { actif: true, morceaux, original: morceaux.map((m) => m.innerHTML), initial: morceaux.map((m) => markdownDe(ed, m)), envoye: null });
     for (const m of morceaux) {
-      m.contentEditable = 'true';
-      m.spellcheck = true;
-      m.classList.add('ed-texte-guide');
-      m.addEventListener('input', () => ed.marquerModifie(), { signal });
-      // un collage n'apporte que du texte (la mise en forme d'un autre site ou d'un traitement de texte ne passerait pas proprement en Markdown)
-      m.addEventListener('paste', (e) => {
-        e.preventDefault();
-        document.execCommand('insertText', false, e.clipboardData?.getData('text/plain') ?? '');
-      }, { signal });
+      // modifiable en place (texte-en-place.mjs : saisie suivie, collage en texte seul, lien qui ne s'ouvre pas au clic)
+      texte.rendreModifiable(ed, m, signal);
       m.addEventListener('keydown', (e) => {
         // dans une case de tableau, Entrée passe à la ligne dans la case (un tableau Markdown n'a pas de paragraphe dans une case)
         if (e.key === 'Enter' && caseCourante(plage())) {
           e.preventDefault();
           document.execCommand('insertLineBreak');
         }
-      }, { signal });
-      // un lien dans le texte modifiable ne s'ouvre pas au clic (le curseur s'y place)
-      m.addEventListener('click', (e) => {
-        if (e.target.closest('a')) e.preventDefault();
       }, { signal });
     }
     etat.barre = barreDOutils(ed);

@@ -11,10 +11,13 @@
 //                      apercu?: [html]  page du guide : son HTML dans l'éditeur, un élément par morceau de texte du corps (lignesEnAttente)
 //   { op: 'creer',     entite, valeurs: { … } }                                                            entite : clé de ENTITES ; une valeur « @i » d'un
 //                      don (specialite_id, avec) désigne la ligne créée par l'opération i du même lot (ctx.crees)
-//   { op: 'supprimer', entite, cle: { … } }                                                              entite : métier, spécialité, don ; retiré des
-//                      fiches de personnage qui l'ont, avec une note datée (décision R42 : serveur/fiches-retraits.mjs, réponse `fiches`)
+//   { op: 'supprimer', entite, cle: { … } }                                                              entite : métier, spécialité, don, arme ; retiré
+//                      des fiches de personnage qui l'ont, avec une note datée (décision R42 : serveur/fiches-retraits.mjs, réponse `fiches`) ; espèce,
+//                      monstre ; événement, bloc de description, mot-clé (retiré de tout ce qui le porte : serveur/edition-chronologie.mjs)
 //   { op: 'relations', cases: [{ voit, vu, echelle }] }                                                     relations entre peuples (races)
 //   { op: 'magies_innees', race, magies: [ids] }                                                             magies innées d'une race
+//   { op: 'categories', evenement, categories: [ids], avant?: [ids] }                                        catégories d'un événement de la chronologie
+//   { op: 'fusionner_mots_cles', mot_cle, dans }                                                             un mot-clé rejoint un autre (ses pages le suivent)
 // Node seulement (node:sqlite), sans dépendance.
 import { colonnesImage, ENTITES, ErreurValeur, ligneSansImage, MOT_CLE_RACE_HYBRIDE, TABLES, texteDePageModifiable, valeurDuChamp } from '../src/lib/edition-modele.mjs';
 import {
@@ -39,6 +42,7 @@ import {
 } from '../src/lib/classe-champs.mjs';
 import { HYBRIDES_SANS_CLASSE_RACIALE, TAG_RACE_HYBRIDE } from '../src/lib/race-kinds.mjs';
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
+import { parLibelle, raisonDeProtection } from '../src/lib/mots-cles.mjs';
 import { decouperCorps } from '../src/lib/markdown-edition.mjs';
 import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
 import {
@@ -52,6 +56,7 @@ import { domainesDuBestiaire, especesDeMonstres, groupesDeMonstres, lignesDuBest
 import { contexteDuCorpsDesArmes, domainesDesArmes } from './edition-armes.mjs';
 import { contexteDuCorpsDesComposants, domainesDesComposants, magiesSansBois, magiesSansGemme } from './edition-composants.mjs';
 import { corpsDuComposantApres, ErreurCorpsComposants, pagesDuComposant, TABLES_DES_COMPOSANTS } from '../src/lib/corps-composants.mjs';
+import { categoriesDeLaChronologie, domainesDeLaChronologie } from './edition-chronologie.mjs';
 import {
   corpsAvecMateriauRenomme, corpsDesArmesApres, ErreurCorpsArmes, PAGE_DES_ARMES, PAGES_DES_MATERIAUX, TABLES_DE_LA_PAGE_DES_ARMES,
 } from '../src/lib/corps-armes.mjs';
@@ -144,10 +149,38 @@ function supprimerPage(ctx, pageId) {
     for (const l of db.prepare(`SELECT * FROM "${table}" WHERE page_id = ?`).all(pageId)) w.supprimer(table, cleDe(db, table, l));
   }
   for (const l of db.prepare('SELECT * FROM page_entite WHERE page_id = ?').all(pageId)) w.supprimer('page_entite', cleDe(db, 'page_entite', l));
+  // un bloc de description de la chronologie qui la citait garde son texte et perd son lien (sa légende)
+  for (const b of db.prepare('SELECT evenement_id, rang FROM evenement_extrait WHERE page_id = ?').all(pageId)) {
+    w.modifier('evenement_extrait', { evenement_id: b.evenement_id, rang: b.rang }, { page_id: null, section: null });
+  }
   w.supprimer('page', { id: pageId });
   // le dictionnaire des sources n'a pas d'orphelin (comme tools/db/pages_md.py sync)
   for (const id of sources) if (!db.prepare('SELECT 1 FROM page_source WHERE source_id = ?').get(id)) w.supprimer('source', { id });
 }
+
+/**
+ * L'id du mot-clé qui s'écrit `libelle` (même clé normalize : « espace temps » = « espace/temps » ; vocabulaire `mot_cle`, migration 0042), créé s'il manque
+ * (noté au journal avant la ligne qui le cite) : un nouveau prend la clé pour id, suffixée -2, -3… si cet id est pris
+ * ou a déjà servi (historique, journal : un id de mot-clé n'est jamais réutilisé). L'écriture d'un mot-clé existant ne change pas. Même règle que
+ * tools/db/maverick.py#mot_cle (sans l'historique).
+ */
+export function motCleDe(ctx, libelle) {
+  const { db, w } = ctx;
+  const cle = normalize(libelle);
+  if (!cle) throw refus(`Mot-clé « ${libelle} » : il doit contenir au moins une lettre ou un chiffre`);
+  const trouve = db.prepare('SELECT id FROM mot_cle WHERE libelle_cle = ?').get(cle);
+  if (trouve) return trouve.id;
+  let id = cle;
+  for (let n = 2; lireLigne(db, 'mot_cle', { id }) || idDejaEmploye(db, ['mot_cle'], id); n += 1) id = `${cle}-${n}`;
+  w.inserer('mot_cle', { id, libelle, libelle_cle: cle });
+  return id;
+}
+
+/** Le mot-clé qui s'écrit `libelle` (même clé normalize), ou null. */
+const motCleEcrit = (db, libelle) => db.prepare('SELECT * FROM mot_cle WHERE libelle_cle = ?').get(normalize(libelle)) ?? null;
+
+/** Le mot-clé n'est plus posé sur aucune page. */
+const motCleOrphelin = (db, id) => !db.prepare('SELECT 1 FROM page_tag WHERE tag_id = ?').get(id);
 
 /**
  * Une page neuve (type, slug, titre…) : refusée si l'id existe déjà. Sa provenance est sa première (et seule) source, comme pour les pages importées
@@ -166,7 +199,7 @@ function creerPage(ctx, { type, slug, titre, resume = null, donnees = null, corp
     id, type, slug, titre, titre_cle: normalize(titre), resume, donnees: donnees === null ? null : jsonCommePython(donnees), corps_md: corps, statut: 'draft',
     origine, source_ref: texte,
   });
-  tags.forEach((libelle, ordre) => w.inserer('page_tag', { page_id: id, ordre, tag_id: normalize(libelle), libelle }));
+  tags.forEach((libelle, ordre) => w.inserer('page_tag', { page_id: id, ordre, tag_id: motCleDe(ctx, libelle) }));
   const source = `ref:${normalize(texte)}`;
   if (!lireLigne(db, 'source', { id: source })) {
     w.inserer('source', { id: source, nature: 'libelle', texte, url: null, genre: null, google_id: null, fichier: null, onglets: null });
@@ -726,7 +759,7 @@ function suivrePageDeClasse(ctx, classeId, remplacer) {
 /** Les races hybrides qui n'ont pas encore de classe raciale (demande du propriétaire : seule l'une d'elles peut recevoir une classe raciale). */
 export function racesHybridesSansClasse(db) {
   const raciales = new Set(db.prepare('SELECT nom_cle FROM classe WHERE categorie_id = ?').all(CATEGORIE_RACIALE).map((c) => c.nom_cle));
-  const marquees = new Set(db.prepare('SELECT page_id FROM page_tag WHERE tag_id = ?').all(TAG_RACE_HYBRIDE).map((t) => t.page_id));
+  const marquees = new Set(db.prepare('SELECT t.page_id FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE m.libelle_cle = ?').all(TAG_RACE_HYBRIDE).map((t) => t.page_id));
   return db.prepare('SELECT id, nom FROM race ORDER BY nom').all()
     .filter((r) => (marquees.has(r.id) || HYBRIDES_SANS_CLASSE_RACIALE.has(r.id)) && !raciales.has(r.id.slice(r.id.indexOf('/') + 1)));
 }
@@ -873,7 +906,9 @@ const estMiroir = (db, don) => don.nature !== 'specialite' && !don.specialite_id
 
 /** Le libellé de classe des mots-clés d'une fiche de don : celui d'un don frère (l'écriture de l'onglet, « arbalètrier »), sinon le nom en minuscules. */
 function libelleDeClasseDesDons(db, classe) {
-  const t = db.prepare('SELECT t.libelle FROM page_tag t JOIN capacite k ON k.id = t.page_id WHERE k.classe_id = ? AND t.ordre = 1 ORDER BY k.ligne, k.rang, k.id LIMIT 1').get(classe.id);
+  const t = db.prepare(
+    'SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id JOIN capacite k ON k.id = t.page_id WHERE k.classe_id = ? AND t.ordre = 1 ORDER BY k.ligne, k.rang, k.id LIMIT 1',
+  ).get(classe.id);
   return t?.libelle ?? classe.nom.toLowerCase();
 }
 
@@ -928,15 +963,20 @@ const SPECIALITE = {
     // la page de la classe écrit chaque spécialité qui a des dons (« ### NOM », sa description, sa remarque)
     suivrePageDeClasse(ctx, apres.classe_id, (L) => ({ ...L, specialites: L.specialites.map((s) => (s.id === avant.id ? avant : s)) }));
     if (apres.nom === avant.nom) return;
-    // les fiches de dons de la spécialité la citent par son nom (`donnees.specialite`, refait depuis les tables ; mot-clé)
+    // les fiches de dons de la spécialité la citent par son nom (`donnees.specialite`, refait depuis les tables ; mot-clé, en minuscules comme l'import)
     suivreDonneesDesDons(ctx, apres.classe_id);
-    for (const k of ctx.db.prepare('SELECT id FROM capacite WHERE specialite_id = ?').all(apres.id)) {
-      for (const t of ctx.db.prepare('SELECT * FROM page_tag WHERE page_id = ? AND tag_id = ?').all(k.id, normalize(avant.nom))) {
-        if (!ctx.db.prepare('SELECT 1 FROM page_tag WHERE page_id = ? AND tag_id = ?').get(k.id, normalize(apres.nom))) {
-          ctx.w.modifier('page_tag', { page_id: k.id, ordre: t.ordre }, { tag_id: normalize(apres.nom), libelle: apres.nom.toLowerCase() });
-        }
-      }
+    const ancien = motCleEcrit(ctx.db, avant.nom);
+    if (!ancien || ancien.libelle_cle === normalize(apres.nom)) return;
+    const dons = ctx.db.prepare('SELECT id FROM capacite WHERE specialite_id = ?').all(apres.id);
+    const portent = dons.filter((k) => ctx.db.prepare('SELECT 1 FROM page_tag WHERE page_id = ? AND tag_id = ?').get(k.id, ancien.id));
+    if (!portent.length) return;
+    const nouveau = motCleDe(ctx, apres.nom.toLowerCase());
+    for (const k of portent) {
+      const t = ctx.db.prepare('SELECT * FROM page_tag WHERE page_id = ? AND tag_id = ?').get(k.id, ancien.id);
+      if (!ctx.db.prepare('SELECT 1 FROM page_tag WHERE page_id = ? AND tag_id = ?').get(k.id, nouveau)) ctx.w.modifier('page_tag', { page_id: k.id, ordre: t.ordre }, { tag_id: nouveau });
     }
+    // l'ancien nom de la spécialité ne range plus rien : il quitte le vocabulaire (sauf un mot-clé dont le site se sert, lib/mots-cles.mjs)
+    if (motCleOrphelin(ctx.db, ancien.id) && !raisonDeProtection(ancien.libelle_cle)) ctx.w.supprimer('mot_cle', { id: ancien.id });
   },
   /**
    * Une spécialité, avec son don de spécialité (niveau 10, sur la ligne des autres dons de spécialité de la classe) : sans lui, elle n'aurait ni colonne
@@ -1146,6 +1186,9 @@ function apercuDe(op, corps) {
   return a;
 }
 
+/** La chronologie (événements, descriptions, catégories) et les mots-clés : leurs domaines et leurs opérations du lot (`categories`, `fusionner_mots_cles`). */
+const CHRONOLOGIE = domainesDeLaChronologie({ refus, ErreurEdition, provenance, idDejaEmploye, motCleDe });
+
 /** Ce que l'édition sait faire, table par table : colonnes recalculées dans la ligne, dérivations ailleurs, création, suppression. */
 const DOMAINES = {
   metier: METIER, magie: MAGIE, magie_role: MAGIE_ROLE, mode_hyper_effet: MODE_HYPER_EFFET, sort: SORT, race: RACE, race_onglet: RACE_ONGLET,
@@ -1157,6 +1200,8 @@ const DOMAINES = {
   ...domainesDesArmes({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye }),
   // la page des composants : matériaux, gemmes, bois, ingrédients d'alchimie, objets de l'équipement, monnaies (serveur/edition-composants.mjs)
   ...domainesDesComposants({ refus, ErreurEdition, synchroniser, provenance, idDejaEmploye }),
+  // la chronologie (événements, blocs de description) et le vocabulaire des mots-clés (serveur/edition-chronologie.mjs)
+  ...CHRONOLOGIE.domaines,
 };
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -1400,10 +1445,55 @@ export function recalculerLesPages(db, modifications) {
  */
 export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = {}) {
   const appliquees = [];
-  const bilan = rejouer(db, { derivee: colonneDerivee, applique: (m) => appliquees.push(m), horsControleParLot });
+  const anciens = []; // mots-clés créés pour des lots d'avant la migration 0042 (ancienneEcritureDesMotsCles)
+  const bilan = rejouer(db, { derivee: colonneDerivee, applique: (m) => appliquees.push(m), horsControleParLot, adapter: ancienneEcritureDesMotsCles(db, anciens) });
+  // un mot-clé créé pour un lot que le rejeu n'a pas gardé (en conflit) : retiré ; ceux qui restent partent avec les règles (mise à jour, rapatriement)
+  const gardes = [];
+  for (const id of anciens) {
+    if (motCleOrphelin(db, id)) db.prepare('DELETE FROM mot_cle WHERE id = ?').run(id);
+    else gardes.push(id);
+  }
   const metiers = new Set(appliquees.filter((m) => m.table === 'metier' || m.table === 'metier_bonus').map((m) => m.cle?.metier_id ?? m.cle?.id));
-  Object.assign(sortie, recalculerLesPages(db, appliquees), { tablesCompletees: [...completerLesMetiers(db, metiers)] });
+  const completees = completerLesMetiers(db, metiers);
+  // un mot-clé supprimé (ou fusionné) : rejoué clés coupées, la cascade de son schéma retire aussi ses lignes que le lot n'a pas notées (les pages
+  // d'exemple, absentes de la base du site de dev) — page_tag peut donc changer au-delà du journal
+  if (appliquees.some((m) => m.table === 'mot_cle' && m.operation === 'supprimer')) completees.add('page_tag');
+  if (gardes.length) completees.add('mot_cle');
+  Object.assign(sortie, recalculerLesPages(db, appliquees), { tablesCompletees: [...completees] });
   return bilan;
+}
+
+/**
+ * Les modifications de page_tag notées avant la migration 0042 (journal du site de dev encore en attente quand la livraison arrive, lot figé, journal
+ * exporté) : leur colonne `libelle` n'existe plus (l'écriture vit dans le vocabulaire mot_cle) et leur `tag_id` peut viser un mot-clé que le vocabulaire
+ * n'a pas (une spécialité créée ou renommée sur le site) — sans quoi tout le lot passait « conflit » et ses créations disparaissaient. Rend l'adaptateur
+ * de edition-journal.mjs#rejouer : la modification lue sans `libelle` (le journal stocké ne change pas : un autre rejeu, celui de la mise à jour sur
+ * data/rows, en a besoin), et le mot-clé manquant retrouvé par son écriture ou créé, comme tools/db/maverick.py#mot_cle (id noté, -2… s'il a déjà
+ * servi) ; ses ids s'ajoutent à `crees` (ils ne sont pas notés au journal : refaits à chaque rejeu tant que le lot attend).
+ */
+function ancienneEcritureDesMotsCles(db, crees) {
+  return (m) => {
+    if (m.table_nom !== 'page_tag') return m;
+    const avant = m.avant === null ? null : JSON.parse(m.avant);
+    const apres = m.apres === null ? null : JSON.parse(m.apres);
+    if (!(avant && 'libelle' in avant) && !(apres && 'libelle' in apres)) return m;
+    const libelle = typeof apres?.libelle === 'string' ? apres.libelle : null;
+    if (avant) delete avant.libelle;
+    if (apres) delete apres.libelle;
+    if (typeof apres?.tag_id === 'string' && !lireLigne(db, 'mot_cle', { id: apres.tag_id })) {
+      const ecrit = libelle ? db.prepare('SELECT id FROM mot_cle WHERE libelle_cle = ?').get(normalize(libelle)) : null;
+      if (ecrit) apres.tag_id = ecrit.id;
+      else {
+        const texte = libelle ?? apres.tag_id;
+        let id = apres.tag_id;
+        for (let n = 2; lireLigne(db, 'mot_cle', { id }) || idDejaEmploye(db, ['mot_cle'], id); n += 1) id = `${apres.tag_id}-${n}`;
+        db.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle) VALUES (?, ?, ?)').run(id, texte, normalize(texte));
+        apres.tag_id = id;
+        crees.push(id);
+      }
+    }
+    return { ...m, avant: avant && JSON.stringify(avant), apres: apres && JSON.stringify(apres) };
+  };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -1511,7 +1601,7 @@ function supprimer(ctx, op) {
   return DOMAINES[entite.table].supprimer(ctx, op.cle, op).resume;
 }
 
-const OPERATIONS = { modifier, creer, supprimer, relations, magies_innees: magiesInnees };
+const OPERATIONS = { modifier, creer, supprimer, relations, magies_innees: magiesInnees, ...CHRONOLOGIE.operations };
 
 /**
  * Applique un lot dans la base vivante, d'un bloc : tout passe ou rien n'est écrit (ErreurEdition : statut HTTP, message en français).
@@ -1639,6 +1729,10 @@ export function listes(db) {
     // la page des composants : les magies sans gemme ni bois (formulaires « Nouvelle gemme », « Nouveau bois » : une par magie)
     magiesSansGemme: magiesSansGemme(db),
     magiesSansBois: magiesSansBois(db),
+    // le vocabulaire des mots-clés (migration 0042) : leur écriture (pages créées, /recherche/), triés par libellé
+    motsCles: db.prepare('SELECT id, libelle, libelle_cle FROM mot_cle').all().map((m) => ({ ...m })).sort(parLibelle),
+    // les catégories de la chronologie (cases du formulaire « Nouvel événement » ; la page les relit avec la chronologie vivante)
+    categoriesChronologie: categoriesDeLaChronologie(db),
   };
 }
 
