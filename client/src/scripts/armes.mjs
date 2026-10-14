@@ -55,6 +55,9 @@ if (racine) {
       return { niveau: Number(l.dataset.niveau), cout_ro: entier(cout.ro), cout_materiaux: entier(cout.materiaux), bonus_degats: entier(effet.bonus), bonus_cran: entier(effet.cran) };
     });
 
+  /** L'icône du Ricken d'or (demande du propriétaire : les monnaies en icônes ; components/armes/ArmesPage.astro la pose dans un <template>). */
+  const PIECE = racine.querySelector('[data-armes-piece]')?.innerHTML.trim() || 'RO';
+
   /** La ligne TOTAL des améliorations, refaite depuis les niveaux affichés (comme lib/arme-champs.mjs#totalDesAmeliorations). */
   function total() {
     const cellule = racine.querySelector('[data-armes-total]');
@@ -62,7 +65,7 @@ if (racine) {
     const a = ameliorations();
     const ro = a.reduce((s, x) => s + (x.cout_ro ?? 0), 0);
     const mat = a.reduce((s, x) => s + (x.cout_materiaux ?? 0), 0);
-    cellule.textContent = `${mat} matériau${mat > 1 ? 'x' : ''} + ${ro} RO`;
+    cellule.innerHTML = `${mat} matériau${mat > 1 ? 'x' : ''} + ${ro} ${PIECE}`;
   }
 
   /** Le texte d'infobulle d'un élément : son `title`, que components/Infobulles.astro déplace dans `data-infobulle` dès le chargement. */
@@ -111,7 +114,7 @@ if (racine) {
   }
 
   const signe = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : '0');
-  const ro = (n) => `${nombre(n)} RO`;
+  const ro = (n) => `${nombre(n)} ${PIECE}`;
 
   function rendreFiche() {
     if (!arme) return;

@@ -81,7 +81,7 @@ export function ficheVide(nom = '') {
 export const PREFIXE_DE_RETRAIT = 'Retrait (règles modifiées) : ';
 
 /** Natures d'un élément retiré, dans l'ordre des lignes d'une fiche : métier, spécialité, don, sort, arme (décision R52 : une arme supprimée, comme R42). */
-export const ORDRE_DES_NATURES = Object.freeze(['metier', 'specialite', 'capacite', 'sort', 'arme']);
+export const ORDRE_DES_NATURES = Object.freeze(['metier', 'specialite', 'capacite', 'sort', 'arme', 'objet']);
 
 /** Le jour (UTC) d'un instant au format des colonnes `*_le` (« 2026-10-11T08:30:00Z » → « 11/10/2026 ») ; lève une Error sur un instant mal formé. */
 export function jourDuRetrait(instant) {
@@ -103,8 +103,9 @@ const positif = (n) => typeof n === 'number' && n > 0;
  *   spécialité : « la spécialité « LAME COURBE » (classe X, avec les dons choisis « A » et « B ») » (`dons` : ceux de la fiche qui partent avec elle) ;
  *   sort       : « le sort « Boule de feu » (magie Feu, NPM 2, 2 NM sur cette fiche dont 1 de livre et 1 du MJ) » (des faits, rien sur ce qu'ils deviennent) ;
  *   métier     : « le métier « Forgeron » » ;
- *   arme       : « l'arme « Katana » (ÉPÉES, arme 1) » (décision R52).
- * @param {{ nature: 'metier' | 'specialite' | 'capacite' | 'sort' | 'arme', id: string, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
+ *   arme       : « l'arme « Katana » (ÉPÉES, arme 1) » (décision R52) ;
+ *   objet      : « l'objet « Corde (1m) » (inventaire) » : un composant supprimé de la base, que la fiche garde sous son nom (décision R60).
+ * @param {{ nature: 'metier' | 'specialite' | 'capacite' | 'sort' | 'arme' | 'objet', id: string, emplacement?: string | null, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
  *   niveau?: number | null, magie?: string | null, npm?: number | null, nm?: number | null, nm_livre?: number | null, nm_cadeau?: number | null,
  *   dons?: string[] }} d
  */
@@ -136,6 +137,9 @@ export function descriptionDuRetrait(d) {
     tete = `l’arme « ${nom} »`;
     if (d.famille) parties.push(d.famille);
     if (d.rang !== null && d.rang !== undefined) parties.push(`arme ${d.rang}`);
+  } else if (d.nature === 'objet') {
+    tete = `l’objet « ${nom} »`;
+    if (d.emplacement) parties.push(d.emplacement);
   } else {
     throw new Error(`nature de retrait inconnue : ${d.nature}`);
   }
@@ -147,7 +151,10 @@ export function descriptionDuRetrait(d) {
  * reconstruction n'a pas été « supprimée »), et sans dire quoi choisir (un choix dissous donne le survivant d'office).
  */
 export const ligneDeRetrait = (d, instant) =>
-  `[${jourDuRetrait(instant)}] ${PREFIXE_DE_RETRAIT}${descriptionDuRetrait(d)} n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.`;
+  `[${jourDuRetrait(instant)}] ${PREFIXE_DE_RETRAIT}${descriptionDuRetrait(d)} ${d.nature === 'objet'
+    // décision R60 : l'objet reste dans la fiche sous son nom (« objet supprimé de la base, veuillez la mettre à jour »)
+    ? 'a été supprimé de la base ; il reste dans la fiche sous son nom : veuillez la mettre à jour.'
+    : 'n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.'}`;
 
 /** Ordre des retraits d'une fiche : par nature (ORDRE_DES_NATURES), puis par nom ; le même sur le site de dev et à la reconstruction. */
 export const ordreDesRetraits = (a, b) => ORDRE_DES_NATURES.indexOf(a.nature) - ORDRE_DES_NATURES.indexOf(b.nature)

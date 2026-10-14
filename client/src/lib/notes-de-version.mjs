@@ -41,7 +41,7 @@ export const TABLES_LUES = [
   'sort', 'magie', 'magie_role', 'mode_hyper_effet', 'classe', 'categorie_classe', 'specialite', 'capacite', 'race', 'race_onglet', 'race_don',
   'race_don_tableau_colonne', 'race_don_tableau_cellule', 'race_magie', 'race_magie_onglet', 'peuple', 'relation_peuple', 'echelle_relation',
   'metier', 'caracteristique', 'page', 'monstre_espece', 'monstre', 'monstre_rubrique', 'monstre_espece_bloc', 'monstre_butin',
-  'arme', 'arme_famille', 'arme_type', 'materiau_arme', 'ressource', 'amelioration_equipement', 'gemme', 'bois', 'ingredient_alchimie', 'monnaie',
+  'arme', 'arme_famille', 'arme_type', 'materiau_arme', 'ressource', 'amelioration_equipement', 'gemme', 'bois', 'ingredient_alchimie', 'monnaie', 'materiau',
 ];
 
 /** Les ressources de la page des composants, par genre (dans l'ordre de la page), et leur groupe dans la note. */
@@ -187,7 +187,7 @@ const DEFINITIONS = [
     entite: (r, x) => `${x.nom('monstre_espece', r.espece_id)} › butin ${r.score_brut} (${libelleDeChoix(CATEGORIES_DE_MONSTRE, r.categorie)})`,
     ordre: (r, x) => [x.ordre('monstre_espece', r.espece_id), 3, r.rang, ['ennemi_simple', 'mini_boss', 'boss'].indexOf(r.categorie)],
   },
-  // la page des armes (migration 0034) : une arme sous sa famille, puis les matériaux, puis les améliorations d'arme
+  // la page des armes (migration 0034) : une arme sous sa famille, puis les améliorations d'arme (les matériaux : domaine des composants, décision R62)
   {
     table: 'arme', domaine: 'armes', cle: ['id'], colonnes: colonnesDe('arme'), genre: 'Arme',
     groupe: (r, x) => x.nom('arme_famille', r.famille_id), entite: (r) => r.nom, ordre: (r, x) => [1, x.ordre('arme_famille', r.famille_id), r.ordre ?? 0],
@@ -195,10 +195,6 @@ const DEFINITIONS = [
       colonne === 'depart_possible' ? libelleDeChoix(OUI_NON, v)
         : colonne === 'mains' ? (v ? libelleDeChoix(MAINS, v) : v)
           : colonne === 'type_id' ? x.nom('arme_type', v) : v,
-  },
-  {
-    table: 'materiau_arme', domaine: 'armes', cle: ['ressource_id'], colonnes: colonnesDe('materiau_arme'), genre: 'Matériau',
-    groupe: () => 'Matériaux', entite: (r, x) => x.nom('ressource', r.ressource_id), ordre: (r) => [2, r.ordre ?? 0],
   },
   {
     table: 'amelioration_equipement', domaine: 'armes', cle: ['id'], colonnes: colonnesDe('amelioration_equipement'), genre: 'Amélioration',
@@ -214,6 +210,15 @@ const DEFINITIONS = [
     table: 'ressource', domaine: 'composants', cle: ['id'], colonnes: colonnesDe('ressource'), genre: 'Composant', filtre: (r) => GROUPES_DE_COMPOSANT[r.genre] !== undefined,
     groupe: (r) => (['produit', 'materiel'].includes(r.genre) && r.section ? `${GROUPES_DE_COMPOSANT[r.genre]} › ${r.section}` : GROUPES_DE_COMPOSANT[r.genre]),
     entite: (r) => r.nom, ordre: (r) => [1, Object.keys(GROUPES_DE_COMPOSANT).indexOf(r.genre), r.section ?? '', r.ordre ?? 0],
+  },
+  // un matériau (décision R62 : la page « Composants » en est la seule source) : son type, ses effets sur une arme
+  {
+    table: 'materiau', domaine: 'composants', cle: ['ressource_id'], colonnes: colonnesDe('materiau'), genre: 'Matériau', detail: true,
+    groupe: () => GROUPES_DE_COMPOSANT.materiau, entite: (r, x) => x.nom('ressource', r.ressource_id), ordre: (r, x) => [1, 0, '', x.ordre('ressource', r.ressource_id)],
+  },
+  {
+    table: 'materiau_arme', domaine: 'composants', cle: ['ressource_id'], colonnes: colonnesDe('materiau_arme'), genre: 'Matériau',
+    groupe: () => GROUPES_DE_COMPOSANT.materiau, entite: (r, x) => x.nom('ressource', r.ressource_id), ordre: (r, x) => [1, 0, '', x.ordre('ressource', r.ressource_id)],
   },
   {
     table: 'gemme', domaine: 'composants', cle: ['ressource_id'], colonnes: colonnesDe('gemme'), genre: 'Gemme', detail: true,

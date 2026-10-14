@@ -27,7 +27,7 @@ const slug = (t) => String(t).normalize('NFD').replace(/\p{Diacritic}/gu, '').to
 /** Les monnaies de la page (valeurs en RF), pour refaire les conversions. */
 const monnaiesDeLaPage = () =>
   [...document.querySelectorAll('[data-composants] tr[data-monnaie]')].map((tr) => ({
-    id: tr.dataset.monnaie, valeur_rf: Number(tr.dataset.valeur), abreviation: tr.querySelector('.comp-abr')?.textContent.trim() ?? '',
+    id: tr.dataset.monnaie, valeur_rf: Number(tr.dataset.valeur), abreviation: tr.querySelector('.comp-abr')?.dataset.abreviation ?? '',
   }));
 
 function refaireLesConversions() {
@@ -51,8 +51,10 @@ function placeEtHtml(entite, l, ed) {
     const fruit = /^fruit$/i.test(String(i.type ?? '').trim());
     return { tbody: corps(fruit ? 'fruits' : `ingredients-${i.categorie}`), html: htmlDeLigneDIngredient(i, { fruit }) };
   }
+  if (entite === 'materiau') {
+    return { tbody: corps('materiaux'), html: htmlDeLigneDeMateriau({ ...l.ressource, type: l.materiau?.type ?? 'Autres', arme: null, usages: [] }) };
+  }
   const r = l.ressource;
-  if (r.genre === 'materiau') return { tbody: corps('materiaux'), html: htmlDeLigneDeMateriau({ ...r, usages: [] }) };
   return { tbody: corps(`objets-${slug(r.section ?? '')}`), html: htmlDeLigneDObjet(r, r.genre === 'materiel') };
 }
 
@@ -111,7 +113,7 @@ const champsDeCreation = (ed, entite, donnees, montrer = []) =>
     }));
 
 /** La clé de la ligne créée d'une entité, d'après son identifiant. */
-const cleCreee = (entite, id) => (['gemme', 'bois', 'ingredient'].includes(entite) ? { ressource_id: id } : { id });
+const cleCreee = (entite, id) => (['materiau', 'gemme', 'bois', 'ingredient'].includes(entite) ? { ressource_id: id } : { id });
 
 /** Les lignes d'une entité dans une liste de lignes du service ({ table, cle, ligne }) : { ressource, gemme, bois, ingredient_alchimie, monnaie }. */
 function lignesDeLEntite(lignes, id) {
@@ -120,13 +122,13 @@ function lignesDeLEntite(lignes, id) {
     if (!l.ligne) continue;
     if (l.table === 'monnaie' && l.ligne.id === id) sortie.monnaie = l.ligne;
     if (l.table === 'ressource' && l.ligne.id === id) sortie.ressource = l.ligne;
-    if (['gemme', 'bois', 'ingredient_alchimie'].includes(l.table) && l.ligne.ressource_id === id) sortie[l.table] = l.ligne;
+    if (['materiau', 'gemme', 'bois', 'ingredient_alchimie'].includes(l.table) && l.ligne.ressource_id === id) sortie[l.table] = l.ligne;
   }
   return sortie;
 }
 
 /** L'entité d'une ressource créée (ses lignes) : gemme, bois, ingrédient, ou un composant (matériau, objet). */
-const entiteDe = (l) => (l.monnaie ? 'monnaie' : l.gemme ? 'gemme' : l.bois ? 'bois' : l.ingredient_alchimie ? 'ingredient' : 'composant');
+const entiteDe = (l) => (l.monnaie ? 'monnaie' : l.materiau ? 'materiau' : l.gemme ? 'gemme' : l.bois ? 'bois' : l.ingredient_alchimie ? 'ingredient' : 'composant');
 /** Une ressource que la page montre (pas une potion ni un livre). */
 const surLaPage = (r) => ['materiau', 'gemme', 'bois', 'ingredient_alchimie', 'produit', 'materiel'].includes(r?.genre);
 
@@ -139,14 +141,14 @@ export const composants = {
       const id = l.table === 'monnaie' ? l.cle.id : l.table === 'ressource' ? l.cle.id : null;
       if (!id) continue;
       if (!l.ligne) {
-        for (const entite of l.table === 'monnaie' ? ['monnaie'] : ['composant', 'gemme', 'bois', 'ingredient']) retirer(entite, cleCreee(entite, id));
+        for (const entite of l.table === 'monnaie' ? ['monnaie'] : ['composant', 'materiau', 'gemme', 'bois', 'ingredient']) retirer(entite, cleCreee(entite, id));
         continue;
       }
       if (l.table === 'ressource' && !surLaPage(l.ligne)) continue;
       const toutes = lignesDeLEntite(lignes, id);
       const entite = entiteDe(toutes);
       // une gemme, un bois ou un ingrédient s'affichent avec leur ligne de détail (créée par le même lot)
-      if (l.table === 'ressource' && ['gemme', 'bois', 'ingredient_alchimie'].includes(l.ligne.genre) && entite === 'composant') continue;
+      if (l.table === 'ressource' && ['materiau', 'gemme', 'bois', 'ingredient_alchimie'].includes(l.ligne.genre) && entite === 'composant') continue;
       ajouter(ed, entite, cleCreee(entite, id), toutes);
     }
     rafraichir();
@@ -155,13 +157,17 @@ export const composants = {
   ligne(_ed, table, cle, ligne) {
     if (!ligne) {
       if (table === 'monnaie') retirer('monnaie', cle);
-      if (table === 'ressource') for (const entite of ['composant', 'gemme', 'bois', 'ingredient']) retirer(entite, cleCreee(entite, cle.id));
+      if (table === 'ressource') for (const entite of ['composant', 'materiau', 'gemme', 'bois', 'ingredient']) retirer(entite, cleCreee(entite, cle.id));
     } else if (table === 'monnaie') {
       const tr = ligneDe('monnaie', cle);
-      if (tr) tr.dataset.valeur = String(ligne.valeur_rf);
+      if (tr) {
+        tr.dataset.valeur = String(ligne.valeur_rf);
+        const abr = tr.querySelector('.comp-abr');
+        if (abr) abr.dataset.abreviation = ligne.abreviation;
+      }
       refaireLesConversions();
     }
-    if (['monnaie', 'ressource', 'gemme', 'ingredient_alchimie'].includes(table)) rafraichir();
+    if (['monnaie', 'ressource', 'materiau', 'materiau_arme', 'gemme', 'ingredient_alchimie'].includes(table)) rafraichir();
   },
 
   debut(ed) {

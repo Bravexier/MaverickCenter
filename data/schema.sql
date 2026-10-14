@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 40;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 41;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -2381,6 +2381,16 @@ CREATE TABLE materiau_bouclier (
   am            INTEGER,
   solidite      INTEGER NOT NULL CHECK (solidite >= 0),
   ordre         INTEGER NOT NULL CHECK (ordre >= 1),
+  origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
+  source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0)
+) STRICT;
+
+-- La fiche d'un matériau sur la page « Composants » (décision R62, migration 0041 : « La table des matériaux de l'onglet Composants devient désormais la
+-- seule source de vérité ») : son type, d'après l'armure (« Léger, Intermédiaire, Lourd et autres pour tout ce qui ne rentre pas dans ces catégories » ;
+-- inutile pour l'arme). Une ligne par ressource de genre 'materiau' ; le type d'un matériau d'armure est aussi materiau_armure.type, que l'édition suit.
+CREATE TABLE materiau (
+  ressource_id  TEXT    NOT NULL PRIMARY KEY REFERENCES ressource(id),
+  type          TEXT    NOT NULL CHECK (type IN ('Léger', 'Intermédiaire', 'Lourd', 'Autres')),
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0)
 ) STRICT;

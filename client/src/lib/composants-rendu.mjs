@@ -4,9 +4,11 @@
 // `data-cle`) et, si d'autres règles la citent, pourquoi elle ne se supprime pas (`data-citee`).
 // Fonctions pures, chaîne HTML en sortie, tout texte échappé.
 import { conversionsDe, milliers, pourquoiPasSupprimable, prixEnRf } from './composants-champs.mjs';
+import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from './monnaies.mjs';
 import { CATEGORIES_D_INGREDIENTS } from './corps-composants.mjs';
 import { attributEd } from './edition-modele.mjs';
 import { couleurDeMateriau } from './materiaux-couleurs.mjs';
+import { RENDUS_DES_ARMES } from './armes-rendu.mjs';
 import { couleurDeMagie, texteSurCouleur } from './sort-format.mjs';
 
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -38,7 +40,7 @@ export const RENDUS_DES_COMPOSANTS = {
   'composant-prix': (valeur) => {
     if (!valeur) return VIDE;
     const rf = prixEnRf(valeur);
-    return `<span class="comp-prix"${rf === null ? '' : ` title="${e(`${milliers(rf)} RF`)}"`}>${e(valeur)}</span>`;
+    return `<span class="comp-prix"${rf === null ? '' : ` title="${e(`${milliers(rf)} Ricken de fer`)}"`}>${htmlAvecMonnaies(valeur)}</span>`;
   },
   // une description ; une adresse web seule (le doc « Alchimie » dans « Matos fabrication ») devient un lien
   'composant-description': (valeur) => {
@@ -46,7 +48,9 @@ export const RENDUS_DES_COMPOSANTS = {
     if (/^https?:\/\/\S+$/.test(valeur)) return `<a href="${e(valeur)}" rel="noopener noreferrer">Voir le document</a>`;
     return e(valeur).replace(/\n/g, '<br>');
   },
-  'monnaie-valeur': (valeur) => `<span class="comp-valeur">${e(milliers(valeur ?? ''))} RF</span>`,
+  'monnaie-valeur': (valeur) => `<span class="comp-valeur">${e(milliers(valeur ?? ''))} ${htmlDePiece('RF')}</span>`,
+  // le symbole d'une monnaie : son icône (lib/monnaies.mjs), l'abréviation d'une monnaie créée depuis le site, qui n'en a pas
+  'monnaie-symbole': (valeur) => (MONNAIES_DU_JEU[String(valeur ?? '').toUpperCase()] ? htmlDePiece(String(valeur).toUpperCase()) : e(valeur ?? '')),
   // la catégorie d'un fruit : celle de l'ingrédient, « majeur » d'après son type (« Fruit (majeur) »)
   'ingredient-categorie': (valeur, ligne) => {
     const c = CATEGORIES_D_INGREDIENTS.find((x) => x.categorie === ligne?.categorie)?.section ?? ligne?.categorie ?? '';
@@ -58,15 +62,15 @@ const rendu = (nom, valeur, ligne) => RENDUS_DES_COMPOSANTS[nom](valeur, ligne);
 /** Les conversions d'une monnaie vers les plus petites (« 1 PP = 1 000 RO = 100 000 RF »), d'après les valeurs en RF. */
 export const htmlDesConversions = (m, monnaies) => {
   const c = conversionsDe(m, monnaies);
-  return c.length ? e(`1 ${m.abreviation} = ${c.map((x) => `${milliers(x.valeur)} ${x.vers.abreviation}`).join(' = ')}`) : '<span class="muted">Unité</span>';
+  return c.length ? htmlAvecMonnaies(`1 ${m.abreviation} = ${c.map((x) => `${milliers(x.valeur)} ${x.vers.abreviation}`).join(' = ')}`) : '<span class="muted">Unité</span>';
 };
 
-/** Une monnaie : Nom | Abréviation | Valeur en RF | Conversions (refaites par l'extension de l'éditeur après un enregistrement). */
+/** Une monnaie : Nom | Symbole (son icône) | Valeur en RF (non modifiable) | Conversions (refaites par l'extension de l'éditeur après un enregistrement). */
 export const htmlDeLigneDeMonnaie = (m, monnaies) =>
   `<tr class="composant" id="${e(`monnaie-${m.id}`)}" data-monnaie="${e(m.id)}" data-valeur="${e(m.valeur_rf)}"${attributsDeLigne('monnaie', { id: m.id }, m.valeur_rf === 1 ? 'L’unité des monnaies ne se supprime pas' : '', [m.nom, m.abreviation])}>`
   + `<th scope="row" class="comp-nom" data-ed="${ed('monnaie', { id: m.id }, 'nom')}">${e(m.nom)}</th>`
-  + `<td class="comp-abr" data-ed="${ed('monnaie', { id: m.id }, 'abreviation')}">${e(m.abreviation)}</td>`
-  + `<td data-ed="${ed('monnaie', { id: m.id }, 'valeur_rf')}" data-ed-rendu="monnaie-valeur">${rendu('monnaie-valeur', m.valeur_rf)}</td>`
+  + `<td class="comp-abr" data-abreviation="${e(m.abreviation)}" data-ed="${ed('monnaie', { id: m.id }, 'abreviation')}" data-ed-rendu="monnaie-symbole">${rendu('monnaie-symbole', m.abreviation)}</td>`
+  + `<td>${rendu('monnaie-valeur', m.valeur_rf)}</td>`
   + `<td class="comp-conversions" data-conversions>${htmlDesConversions(m, monnaies)}</td></tr>`;
 
 /** Les cases Nom (et sa pastille), Prix, Description d'une ressource. */
@@ -74,13 +78,20 @@ const nom = (r, pastille = '') => `<th scope="row" class="comp-nom">${pastille}<
 const prix = (r) => `<td class="comp-prix-case" data-ed="${ed('ressource', { id: r.id }, 'prix_brut')}" data-ed-rendu="composant-prix">${rendu('composant-prix', r.prix_brut)}</td>`;
 const description = (r) => `<td class="comp-description" data-ed="${ed('ressource', { id: r.id }, 'description')}" data-ed-rendu="composant-description">${rendu('composant-description', r.description)}</td>`;
 
-/** Un matériau : Nom (dans sa couleur) | Prix | Description | Utilisé pour (armes, armures, boucliers, montures). */
+/**
+ * Un matériau (décision R62 : la page « Composants » en est la seule source) : Nom (dans sa couleur) | Type (d'après l'armure) | Prix | Description |
+ * Effets sur une arme (ceux du tableau MATÉRIAUX de l'onglet « Armes », pour un matériau d'arme) | Utilisé pour (armes, armures, boucliers, montures).
+ */
 export function htmlDeLigneDeMateriau(r) {
   const c = couleurDeMateriau(r.id);
   const pastille = `<span class="comp-teinte" style="--c: ${c.fond}" aria-hidden="true"></span>`;
   const usages = (r.usages ?? []).map((u) => `<span class="comp-usage">${e(u)}</span>`).join(' ') || VIDE;
-  return `<tr class="composant" id="${ancreDeComposant(r.id)}"${attributsDeLigne('composant', { id: r.id }, r.citations, [r.nom, r.description])}>`
-    + `${nom(r, pastille)}${prix(r)}${description(r)}<td class="comp-usages">${usages}</td></tr>`;
+  const arme = r.arme
+    ? `<td class="comp-effet" data-ed="${ed('materiau_arme', { ressource_id: r.id }, 'effet_brut')}" data-ed-rendu="materiau-effet">${RENDUS_DES_ARMES['materiau-effet'](r.arme.effet_brut)}</td>`
+    : `<td class="comp-effet">${VIDE}</td>`;
+  return `<tr class="composant" id="${ancreDeComposant(r.id)}"${attributsDeLigne('materiau', { ressource_id: r.id }, r.citations, [r.nom, r.type, r.description])}>`
+    + `${nom(r, pastille)}<td class="comp-type" data-ed="${ed('materiau', { ressource_id: r.id }, 'type')}">${e(r.type ?? 'Autres')}</td>`
+    + `${prix(r)}${description(r)}${arme}<td class="comp-usages">${usages}</td></tr>`;
 }
 
 /** Les prix d'une gemme, par qualité : la gemme entière (bâton magique) puis le quart (accessoires). */

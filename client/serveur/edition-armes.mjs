@@ -6,7 +6,7 @@
 // corps de la page suit (lib/corps-armes.mjs). Ni création ni suppression : la fiche de personnage cite les armes, matériaux et améliorations.
 // Les outils communs du service (refus, synchroniser…) sont donnés par serveur/edition.mjs (domainesDesArmes), sans import en retour.
 import {
-  analyserCoutDAmelioration, analyserEffetDAmelioration, analyserEffetDArme, analyserEffetDeMateriau, colonnesDeLArme, prixEnRf, totalDesAmeliorations,
+  analyserCoutDAmelioration, analyserEffetDAmelioration, analyserEffetDArme, analyserEffetDeMateriau, colonnesDeLArme, totalDesAmeliorations,
 } from '../src/lib/arme-champs.mjs';
 import { corpsAvecMateriauRenomme, corpsDesArmesApres, ErreurCorpsArmes, PAGE_DES_ARMES, PAGES_DES_MATERIAUX } from '../src/lib/corps-armes.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -30,22 +30,29 @@ export const contexteDuCorpsDesArmes = (db) => ({
  */
 export function suivreLeMateriauRenomme(ctx, avant, apres, ErreurEdition) {
   if (avant.nom === apres.nom) return;
-  const page = lireLigne(ctx.db, 'page', { id: PAGE_DES_ARMES });
-  if (page) {
-    let corps;
-    try {
-      corps = corpsDesArmesApres(page.corps_md, 'ressource', avant, apres, contexteDuCorpsDesArmes(ctx.db));
-    } catch (e) {
-      if (e instanceof ErreurCorpsArmes) throw new ErreurEdition(500, `Page ${PAGE_DES_ARMES} : corps illisible (${e.message}) ; rien n’est enregistré.`);
-      throw e;
-    }
-    if (corps !== page.corps_md) ctx.w.modifier('page', { id: PAGE_DES_ARMES }, { corps_md: corps });
-  }
+  suivreLeCorpsDesArmes(ctx, 'ressource', avant, apres, ErreurEdition);
   for (const id of PAGES_DES_MATERIAUX) {
     const p = lireLigne(ctx.db, 'page', { id });
     const corps = p && corpsAvecMateriauRenomme(p.corps_md, avant.nom, apres.nom);
     if (p && corps !== p.corps_md) ctx.w.modifier('page', { id }, { corps_md: corps });
   }
+}
+
+/**
+ * Le corps de la page des armes après la modification d'une ligne de ses tables (lib/corps-armes.mjs#corpsDesArmesApres) ; un corps sans la forme de
+ * l'importeur refuse le lot. Aussi pour l'édition des composants (le prix d'un matériau, recopié dans materiau_arme : décision R62).
+ */
+export function suivreLeCorpsDesArmes(ctx, table, avant, apres, ErreurEdition) {
+  const page = lireLigne(ctx.db, 'page', { id: PAGE_DES_ARMES });
+  if (!page) return;
+  let corps;
+  try {
+    corps = corpsDesArmesApres(page.corps_md, table, avant, apres, contexteDuCorpsDesArmes(ctx.db));
+  } catch (e) {
+    if (e instanceof ErreurCorpsArmes) throw new ErreurEdition(500, `Page ${PAGE_DES_ARMES} : corps illisible (${e.message}) ; rien n’est enregistré.`);
+    throw e;
+  }
+  if (corps !== page.corps_md) ctx.w.modifier('page', { id: PAGE_DES_ARMES }, { corps_md: corps });
 }
 
 /** La page dont les armes sont des entités (page_entite) : celle des armes. */
@@ -76,18 +83,7 @@ export function domainesDesArmes({ refus, ErreurEdition, synchroniser, provenanc
   }
 
   /** Le corps de la page après la modification d'une ligne : sa ligne Markdown réécrite ; un corps sans la forme de l'importeur refuse le lot. */
-  function suivreLeCorps(ctx, table, avant, apres) {
-    const page = lireLigne(ctx.db, 'page', { id: PAGE_DES_ARMES });
-    if (!page) return;
-    let corps;
-    try {
-      corps = corpsDesArmesApres(page.corps_md, table, avant, apres, contexteDuCorpsDesArmes(ctx.db));
-    } catch (e) {
-      if (e instanceof ErreurCorpsArmes) throw new ErreurEdition(500, `Page ${PAGE_DES_ARMES} : corps illisible (${e.message}) ; rien n’est enregistré.`);
-      throw e;
-    }
-    if (corps !== page.corps_md) ctx.w.modifier('page', { id: PAGE_DES_ARMES }, { corps_md: corps });
-  }
+  const suivreLeCorps = (ctx, table, avant, apres) => suivreLeCorpsDesArmes(ctx, table, avant, apres, ErreurEdition);
 
   const ARME = {
     colonnes(ctx, ligne, valeurs, avant) {
@@ -151,7 +147,8 @@ export function domainesDesArmes({ refus, ErreurEdition, synchroniser, provenanc
   };
 
   const MATERIAU_ARME = {
-    colonnes: (_ctx, ligne) => ({ ...analyserEffetDeMateriau(ligne.effet_brut), prix_rf: prixEnRf(ligne.prix_brut) }),
+    // les effets seulement (le prix est celui de la ressource, recopié par l'édition des composants : décision R62)
+    colonnes: (_ctx, ligne) => analyserEffetDeMateriau(ligne.effet_brut),
     deriver: (ctx, avant, apres) => suivreLeCorps(ctx, 'materiau_arme', avant, apres),
   };
 

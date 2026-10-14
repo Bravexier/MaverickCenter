@@ -24,7 +24,7 @@ test('modules livrés : l’entrée, le service, le format des fiches et l’éd
     'serveur/index.mjs', 'serveur/maintenance.mjs', 'serveur/notes-de-version.mjs', 'serveur/service.mjs', 'src/lib/arme-champs.mjs', 'src/lib/armes-db.mjs', 'src/lib/armes-rendu.mjs', 'src/lib/bestiaire-db.mjs', 'src/lib/bestiaire-rendu.mjs',
     'src/lib/caracteristiques-postures.mjs', 'src/lib/classe-champs.mjs', 'src/lib/composants-champs.mjs', 'src/lib/composants-db.mjs', 'src/lib/corps-armes.mjs', 'src/lib/corps-classes.mjs',
     'src/lib/corps-composants.mjs', 'src/lib/corps-magies.mjs',
-    'src/lib/corps-metiers.mjs', 'src/lib/corps-races.mjs', 'src/lib/dons-edition.mjs', 'src/lib/edition-modele.mjs', 'src/lib/fiche-format.mjs', 'src/lib/guide.mjs', 'src/lib/json-python.mjs', 'src/lib/markdown-edition.mjs', 'src/lib/markdown-sur.mjs', 'src/lib/materiaux-couleurs.mjs', 'src/lib/metier-champs.mjs',
+    'src/lib/corps-metiers.mjs', 'src/lib/corps-races.mjs', 'src/lib/dons-edition.mjs', 'src/lib/edition-modele.mjs', 'src/lib/fiche-format.mjs', 'src/lib/guide.mjs', 'src/lib/json-python.mjs', 'src/lib/markdown-edition.mjs', 'src/lib/markdown-sur.mjs', 'src/lib/materiaux-couleurs.mjs', 'src/lib/metier-champs.mjs', 'src/lib/monnaies.mjs',
     'src/lib/monstre-champs.mjs', 'src/lib/monstre-rendu.mjs', 'src/lib/notes-de-version-sens.mjs',
     'src/lib/notes-de-version.mjs', 'src/lib/portrait.mjs', 'src/lib/race-kinds.mjs', 'src/lib/sort-analyse.mjs', 'src/lib/sort-etats.mjs', 'src/lib/sort-format.mjs', 'src/lib/sort-maitrise.mjs', 'src/lib/text.mjs',
   ]);

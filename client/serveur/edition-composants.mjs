@@ -17,7 +17,7 @@ import { citationsDeRessource } from '../src/lib/composants-db.mjs';
 import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
-import { suivreLeMateriauRenomme } from './edition-armes.mjs';
+import { suivreLeCorpsDesArmes, suivreLeMateriauRenomme } from './edition-armes.mjs';
 import { detacherDesFiches } from './fiches-retraits.mjs';
 
 const ORIGINE = 'equipement';
@@ -97,26 +97,38 @@ export function domainesDesComposants({ refus, ErreurEdition, synchroniser, prov
     colonnes(ctx, ligne, valeurs, avant) {
       if (!estUnComposant(avant)) throw refus(`${avant.nom} : seuls les composants (matériaux, gemmes, objets de l’équipement) se modifient ici.`);
       if (avant.genre === 'gemme' && 'prix_brut' in valeurs) throw refus(`${avant.nom} : les prix d’une gemme sont ceux de la gemme entière et du quart de gemme.`);
+      // le prix d'un matériau d'arme est aussi celui de la page des armes (décision R62 : materiau_arme le recopie), qui en a besoin
+      if ('prix_brut' in valeurs && !ligne.prix_brut && lireLigne(ctx.db, 'materiau_arme', { ressource_id: avant.id })) {
+        throw refus(`${avant.nom} : un matériau d’arme a un prix (page des armes).`);
+      }
       return 'prix_brut' in valeurs ? { prix_rf: prixEnRf(ligne.prix_brut) } : {};
     },
     deriver(ctx, avant, apres) {
-      if (avant.genre === 'materiau') suivreLeMateriauRenomme(ctx, avant, apres, ErreurEdition);
+      if (avant.genre === 'materiau') {
+        suivreLeMateriauRenomme(ctx, avant, apres, ErreurEdition);
+        // décision R62 : la page « Composants » est la seule source ; le prix d'un matériau d'arme est recopié dans materiau_arme (et sa ligne du corps des armes)
+        const ma = lireLigne(ctx.db, 'materiau_arme', { ressource_id: avant.id });
+        if (ma && (ma.prix_brut !== apres.prix_brut || ma.prix_rf !== apres.prix_rf)) {
+          const nouvelle = ctx.w.modifier('materiau_arme', { ressource_id: avant.id }, { prix_brut: apres.prix_brut, prix_rf: apres.prix_rf });
+          suivreLeCorpsDesArmes(ctx, 'materiau_arme', ma, nouvelle, ErreurEdition);
+        }
+      }
       suivreLesPages(ctx, 'ressource', avant, apres);
     },
     /**
-     * Un composant dans un tableau de la page : un matériau (id de la page des armures, comme les autres) ou un objet d'un tableau de l'onglet
-     * (« ressources/equipement-inventaire#materiel:… »), à la fin de son tableau ; sa ligne s'ajoute au corps de l'onglet.
+     * Un objet dans un tableau de l'onglet « Équipement inventaire » (« ressources/equipement-inventaire#materiel:… »), à la fin de son tableau ; sa
+     * ligne s'ajoute au corps de l'onglet. (Un matériau : son entité, MATERIAU.creer.)
      */
     creer(ctx, valeurs) {
       const { db, w, instant } = ctx;
       const [genre, section = null] = String(valeurs.tableau).split(':');
       const s = section ? SECTIONS_DE_L_INVENTAIRE.find((x) => x.genre === genre && x.section === section) : null;
-      if (genre !== 'materiau' && !s) throw refus(`${valeurs.nom} : tableau inconnu (${valeurs.tableau}).`);
+      if (!s) throw refus(`${valeurs.nom} : tableau inconnu (${valeurs.tableau}).`);
       const cle = cleDuNom(valeurs.nom);
       if (db.prepare("SELECT 1 FROM ressource WHERE genre = ? AND coalesce(section, '') = coalesce(?, '') AND nom_cle = ?").get(genre, section, cle)) {
         throw new ErreurEdition(409, `Ce tableau a déjà un composant « ${valeurs.nom} ».`);
       }
-      const page = s ? PAGE_DE_L_INVENTAIRE : PAGE_D_UN_MATERIAU;
+      const page = PAGE_DE_L_INVENTAIRE;
       const id = idLibre(db, 'ressource', `${page}#${genre}`, cle);
       const ordre = (db.prepare("SELECT max(ordre) AS m FROM ressource WHERE genre = ? AND coalesce(section, '') = coalesce(?, '')").get(genre, section).m ?? 0) + 1;
       const r = w.inserer('ressource', {
@@ -130,13 +142,58 @@ export function domainesDesComposants({ refus, ErreurEdition, synchroniser, prov
     supprimer(ctx, cle) {
       const { db, w } = ctx;
       const r = typeof cle?.id === 'string' ? lireLigne(db, 'ressource', { id: cle.id }) : null;
-      if (!r || !estUnComposant(r) || LIEES_A_UNE_MAGIE.includes(r.genre) || r.genre === 'ingredient_alchimie') throw new ErreurEdition(404, `Composant introuvable : ${cle?.id}`);
+      if (!r || !sectionDeLInventaire(r)) throw new ErreurEdition(404, `Objet introuvable : ${cle?.id}`);
       refuserSiCitee(db, r);
-      detacherDesFiches(db, [r.id]);
+      detacherDesFiches(db, [r.id], ctx.retraits);
       retirerLesTraces(ctx, 'ressource', r.id);
       w.supprimer('ressource', { id: r.id });
       suivreLesPages(ctx, 'ressource', r, null);
       return { id: r.id, resume: `Composant supprimé : ${r.nom}` };
+    },
+  };
+
+  /** Le corps des pages pour la table materiau, et la fiche d'armure du matériau qui suit son type. */
+  const MATERIAU = {
+    colonnes(ctx, ligne, _valeurs, avant) {
+      // un matériau d'armure est léger, intermédiaire ou lourd (sa fiche d'armure le dit) ; « Autres » : ce qui n'entre pas dans ces catégories
+      if (ligne.type === 'Autres' && lireLigne(ctx.db, 'materiau_armure', { ressource_id: avant.ressource_id })) {
+        throw refus(`${contexteDuCorpsDesComposants(ctx.db).ressource(avant.ressource_id)?.nom ?? avant.ressource_id} : un matériau d’armure est léger, intermédiaire ou lourd.`);
+      }
+      return {};
+    },
+    deriver(ctx, avant, apres) {
+      if (avant.type === apres.type) return;
+      const fiche = lireLigne(ctx.db, 'materiau_armure', { ressource_id: apres.ressource_id });
+      if (fiche) ctx.w.modifier('materiau_armure', { ressource_id: apres.ressource_id }, { type: apres.type });
+      suivreLesPages(ctx, 'materiau', avant, apres);
+    },
+    /** Un matériau (id de la page des armures, comme les autres) : sa ressource et son type ; ni fiche d'armure, de bouclier ou d'arme (rien n'en est déduit). */
+    creer(ctx, valeurs) {
+      const { db, w, instant } = ctx;
+      const cle = cleDuNom(valeurs.nom);
+      if (db.prepare("SELECT 1 FROM ressource WHERE genre = 'materiau' AND nom_cle = ?").get(cle)) throw new ErreurEdition(409, `Le matériau « ${valeurs.nom} » existe déjà.`);
+      const id = idLibre(db, 'ressource', `${PAGE_D_UN_MATERIAU}#materiau`, cle);
+      const ordre = (db.prepare("SELECT max(ordre) AS m FROM ressource WHERE genre = 'materiau'").get().m ?? 0) + 1;
+      const source = `${provenance(instant)} › ${valeurs.nom}`;
+      w.inserer('ressource', {
+        id, genre: 'materiau', section: null, nom: valeurs.nom, nom_cle: cle, description: valeurs.description ?? null, prix_brut: valeurs.prix_brut ?? null,
+        prix_rf: prixEnRf(valeurs.prix_brut), page_id: PAGE_D_UN_MATERIAU, ordre, origine: ORIGINE, source_ref: source, remarque: null,
+      });
+      w.inserer('materiau', { ressource_id: id, type: valeurs.type, origine: ORIGINE, source_ref: source });
+      w.inserer('page_entite', { entite_table: 'ressource', entite_id: id, page_id: PAGE_D_UN_MATERIAU, principale: 0, origine: ORIGINE });
+      return { id, resume: `Matériau créé : ${valeurs.nom} (${valeurs.type})` };
+    },
+    supprimer(ctx, cle) {
+      const { db, w } = ctx;
+      const id = cle?.ressource_id ?? cle?.id;
+      const r = typeof id === 'string' ? lireLigne(db, 'ressource', { id }) : null;
+      if (!r || r.genre !== 'materiau') throw new ErreurEdition(404, `Matériau introuvable : ${id}`);
+      refuserSiCitee(db, r, ['materiau']);
+      detacherDesFiches(db, [r.id], ctx.retraits);
+      if (lireLigne(db, 'materiau', { ressource_id: r.id })) w.supprimer('materiau', { ressource_id: r.id });
+      retirerLesTraces(ctx, 'ressource', r.id);
+      w.supprimer('ressource', { id: r.id });
+      return { id: r.id, resume: `Matériau supprimé : ${r.nom}` };
     },
   };
 
@@ -173,7 +230,7 @@ export function domainesDesComposants({ refus, ErreurEdition, synchroniser, prov
         const r = typeof id === 'string' ? lireLigne(db, 'ressource', { id }) : null;
         if (!r || r.genre !== table) throw new ErreurEdition(404, `${libelle} introuvable : ${id}`);
         refuserSiCitee(db, r, [table]);
-        detacherDesFiches(db, [r.id]);
+        detacherDesFiches(db, [r.id], ctx.retraits);
         w.supprimer(table, { ressource_id: r.id });
         retirerLesTraces(ctx, 'ressource', r.id);
         w.supprimer('ressource', { id: r.id });
@@ -243,7 +300,7 @@ export function domainesDesComposants({ refus, ErreurEdition, synchroniser, prov
       const r = typeof id === 'string' ? lireLigne(db, 'ressource', { id }) : null;
       if (!r || r.genre !== 'ingredient_alchimie') throw new ErreurEdition(404, `Ingrédient introuvable : ${id}`);
       refuserSiCitee(db, r, ['ingredient_alchimie']);
-      detacherDesFiches(db, [r.id]);
+      detacherDesFiches(db, [r.id], ctx.retraits);
       w.supprimer('ingredient_alchimie', { ressource_id: r.id });
       retirerLesTraces(ctx, 'ressource', r.id);
       w.supprimer('ressource', { id: r.id });
@@ -252,8 +309,8 @@ export function domainesDesComposants({ refus, ErreurEdition, synchroniser, prov
     },
   };
 
-  /** Les monnaies dans lesquelles les prix sont écrits (RF, RO). */
-  const MONNAIES_DES_PRIX = ['rf', 'ro'];
+  /** Les monnaies dans lesquelles les prix sont écrits, qui ont une icône (RF, RO, PP : lib/monnaies.mjs). */
+  const MONNAIES_DES_PRIX = ['rf', 'ro', 'pp'];
 
   /** L'unité des monnaies : celle qui vaut 1 RF (le Ricken de fer). */
   const unite = (db) => db.prepare('SELECT * FROM monnaie WHERE valeur_rf = 1').get() ?? null;
@@ -269,14 +326,11 @@ export function domainesDesComposants({ refus, ErreurEdition, synchroniser, prov
 
   const MONNAIE = {
     colonnes(ctx, ligne, valeurs, avant) {
-      // les prix des composants s'écrivent en RF et en RO (« 1 000 RF / 10 RO » : lib/composants-champs.mjs#prixEnRf, 1 RO = 100 RF) : leur abréviation et
-      // leur valeur ne changent pas, sans quoi tous les prix en RF seraient faux
-      if (MONNAIES_DES_PRIX.includes(avant.id) && (('valeur_rf' in valeurs && ligne.valeur_rf !== avant.valeur_rf) || ('abreviation' in valeurs && ligne.abreviation !== avant.abreviation))) {
-        throw refus(`${avant.nom} : son abréviation et sa valeur sont celles de tous les prix écrits (« 100 RF / 1 RO ») ; elles ne se modifient pas.`);
-      }
-      // l'unité vaut 1 RF par définition (« Le RF est l'unité du CONVERTISSEUR ») ; aucune autre monnaie ne vaut 1
-      if ('valeur_rf' in valeurs && (avant.valeur_rf === 1) !== (ligne.valeur_rf === 1)) {
-        throw refus(avant.valeur_rf === 1 ? `${avant.nom} : l’unité des monnaies vaut 1 RF.` : `${avant.nom} : seule l’unité des monnaies vaut 1 RF.`);
+      // la valeur d'une monnaie ne se modifie pas (TABLES : « elles servent de valeur utile pour les calculs et de potentiel tooltip ») ; l'abréviation
+      // du RF, du RO et de la PP non plus : les prix s'écrivent avec elles (lib/composants-champs.mjs#prixEnRf) et leurs icônes s'y attachent
+      // (lib/monnaies.mjs)
+      if (MONNAIES_DES_PRIX.includes(avant.id) && 'abreviation' in valeurs && ligne.abreviation !== avant.abreviation) {
+        throw refus(`${avant.nom} : son abréviation est celle de tous les prix écrits (« 100 RF / 1 RO ») et de son icône ; elle ne se modifie pas.`);
       }
       const u = avant.valeur_rf === 1 ? ligne : unite(ctx.db);
       return { convertisseur_brut: convertisseurDeMonnaie(ligne, u?.abreviation ?? 'RF') };
@@ -313,7 +367,7 @@ export function domainesDesComposants({ refus, ErreurEdition, synchroniser, prov
     },
   };
 
-  return { ressource: RESSOURCE, gemme: GEMME, bois: BOIS, ingredient_alchimie: INGREDIENT, monnaie: MONNAIE };
+  return { ressource: RESSOURCE, materiau: MATERIAU, gemme: GEMME, bois: BOIS, ingredient_alchimie: INGREDIENT, monnaie: MONNAIE };
 }
 
 /** Les magies qui n'ont pas de gemme (formulaire « Nouvelle gemme », liste `magiesSansGemme` de GET /api/edition/listes/), dans l'ordre des magies. */

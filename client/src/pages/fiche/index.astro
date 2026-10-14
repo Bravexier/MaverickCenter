@@ -4,6 +4,7 @@ import Onglets from '../../components/Onglets.astro';
 import ficheCss from '../../styles/fiche/fiche.css?raw';
 import { PARTIES } from '../../lib/guide.mjs';
 import { url } from '../../lib/wiki';
+import { htmlDePiece } from '../../lib/monnaies.mjs';
 
 // Fiche de personnage (demande du propriétaire) : création et modification d'un PRÉTIRÉ sur le même écran (/fiche/, /fiche/?id=<id>). Quatre zones,
 // sans cadre ni titre visibles (demandes du propriétaire) : I. l'identité (portrait, nom, surnom, origine, race, magies, classes, alignement, niveau seul) ; II. ce qu'on veut toujours
@@ -306,9 +307,9 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
             <div><h4 class="fiche-sous-titre">Sac</h4><div class="fiche-defile"><table class="fiche-table" id="inventaire"></table></div>
               <div class="fiche-ligne-ajout"><button type="button" id="bouton-ajout-objet">Ajouter un objet</button></div></div>
             <div><h4 class="fiche-sous-titre">Bourse</h4><div class="fiche-champs bourse">
-              <label class="fiche-champ"><span>Pièces précieuses</span><input type="number" min="0" step="1" data-champ="bourse_pp" data-entier /></label>
-              <label class="fiche-champ"><span>Or</span><input type="number" min="0" step="1" data-champ="bourse_ro" data-entier /></label>
-              <label class="fiche-champ"><span>Fer</span><input type="number" min="0" step="1" data-champ="bourse_rf" data-entier /></label>
+              <label class="fiche-champ"><span><Fragment set:html={htmlDePiece('PP')} /> Pierres précieuses</span><input type="number" min="0" step="1" data-champ="bourse_pp" data-entier /></label>
+              <label class="fiche-champ"><span><Fragment set:html={htmlDePiece('RO')} /> Ricken d’or</span><input type="number" min="0" step="1" data-champ="bourse_ro" data-entier /></label>
+              <label class="fiche-champ"><span><Fragment set:html={htmlDePiece('RF')} /> Ricken de fer</span><input type="number" min="0" step="1" data-champ="bourse_rf" data-entier /></label>
             </div></div>
           </div>
         </section>

@@ -58,7 +58,7 @@ export const avecPhraseDesArmesDeDepart = (html) =>
 /**
  * Les données de la page :
  *   familles      : les bandeaux (ordre de l'onglet) qui ont des armes à maîtrise, chacun { id, nom, de_brut, note_brut, cout_libelle, armes: [lignes arme] } ;
- *   materiaux     : [{ ligne (materiau_arme), nom, couleur: { fond, texte }, defaut (le fer) }] dans l'ordre de l'onglet ;
+ *   materiaux     : [{ ligne (materiau_arme), nom, prix (celui de la ressource : R62), couleur: { fond, texte }, defaut (le fer) }] dans l'ordre de l'onglet ;
  *   ameliorations : les lignes amelioration_equipement de cible « arme », par niveau ;
  *   page          : { titre, resume, corps_md } de la page « Armes ».
  */
@@ -68,8 +68,9 @@ export function chargerArmes(db) {
     .map((f) => ({ ...f, armes: armes.filter((a) => a.famille_id === f.id) }))
     .filter((f) => f.armes.length);
   // le fer : le matériau par défaut (décision R49 : « son matériau (par défaut le fer) »)
-  const materiaux = lignes(db, 'SELECT m.*, r.nom, r.nom_cle FROM materiau_arme m JOIN ressource r ON r.id = m.ressource_id ORDER BY m.ordre')
-    .map(({ nom, nom_cle, ...ligne }) => ({ ligne, nom, couleur: couleurDeMateriau(ligne.ressource_id), defaut: nom_cle === 'fer' }));
+  // le prix : celui de la ressource (décision R62 : la page « Composants » est la seule source des matériaux)
+  const materiaux = lignes(db, 'SELECT m.*, r.nom, r.nom_cle, r.prix_brut AS prix_ressource FROM materiau_arme m JOIN ressource r ON r.id = m.ressource_id ORDER BY m.ordre')
+    .map(({ nom, nom_cle, prix_ressource, ...ligne }) => ({ ligne, nom, prix: prix_ressource ?? ligne.prix_brut, couleur: couleurDeMateriau(ligne.ressource_id), defaut: nom_cle === 'fer' }));
   const ameliorations = lignes(db, "SELECT * FROM amelioration_equipement WHERE cible = 'arme' ORDER BY niveau");
   const page = db.prepare('SELECT titre, resume, corps_md FROM page WHERE id = ?').get(PAGE_DES_ARMES) ?? null;
   return { familles, materiaux, ameliorations, page: page ? { ...page } : null };

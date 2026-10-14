@@ -2,6 +2,7 @@
 // les modifie sur le site de dev (serveur/edition-composants.mjs) et au rejeu du journal (serveur/edition.mjs#recalculerLesPages) :
 //   - « Équipement inventaire » (ressources/equipement-inventaire, rendue depuis son Markdown) : la liste MONNAIE et le CONVERTISSEUR, refaits depuis la
 //     table monnaie ; la ligne de chaque objet (produits non monétaires, matos) dans le tableau de sa section, ajoutée à la fin ou retirée avec lui ;
+//   - « Armures » : le type d'un matériau dans les fiches des matières de la grille (décision R62) ;
 //   - « Armures » et « Bouclier » : le prix et la description d'un matériau dans leur tableau « MATÉRIAUX » (son nom : lib/corps-armes.mjs#corpsAvecMateriauRenomme,
 //     appelé par l'édition des armes) ; « Accessoires » : son nom dans le tableau « Monture » ;
 //   - « Bâton magique » et « Accessoires » : le nom, la description et les prix d'une gemme dans leur tableau des gemmes (gemme entière, quart de gemme) ;
@@ -49,7 +50,7 @@ export const SECTIONS_DE_L_INVENTAIRE = Object.freeze([
 export const sectionDeLInventaire = (r) => SECTIONS_DE_L_INVENTAIRE.find((s) => s.genre === r?.genre && s.section === r?.section) ?? null;
 
 /** Tables dont une ligne touche ces corps (recalculerLesPages, dans cet ordre). */
-export const TABLES_DES_COMPOSANTS = ['monnaie', 'ressource', 'gemme', 'ingredient_alchimie'];
+export const TABLES_DES_COMPOSANTS = ['monnaie', 'ressource', 'materiau', 'gemme', 'ingredient_alchimie'];
 
 export class ErreurCorpsComposants extends Error {
   constructor(message) {
@@ -188,6 +189,7 @@ export function pagesDuComposant(table, ligne) {
   if (table === 'monnaie') return [PAGE_DE_L_INVENTAIRE];
   if (table === 'gemme') return [PAGE_DES_BATONS, PAGE_DES_ACCESSOIRES];
   if (table === 'ingredient_alchimie') return [PAGE_DES_INGREDIENTS];
+  if (table === 'materiau') return [PAGE_DES_ARMURES];
   if (table !== 'ressource' || !ligne) return [];
   if (sectionDeLInventaire(ligne)) return [PAGE_DE_L_INVENTAIRE];
   if (ligne.genre === 'ingredient_alchimie') return [PAGE_DES_INGREDIENTS];
@@ -259,6 +261,15 @@ export function corpsDuComposantApres(pageId, corps, table, avant, apres, contex
     const i = b ? indiceDeLigne(lignes, b, 1, [apres.nom, avant.nom]) : -1;
     if (i < 0) return corps;
     reecrireCases(lignes, i, changements(avant, apres, TABLEAU_DES_MATERIAUX.ressource));
+    return lignes.join('\n');
+  }
+  // le type d'un matériau (décision R62) : sa case « Type » des fiches des matières de la grille des armures
+  if (table === 'materiau') {
+    if (pageId !== PAGE_DES_ARMURES) return corps;
+    const b = bornesDe(lignes, '## Fiches des matières de la grille');
+    const i = b ? indiceDeLigne(lignes, b, 1, [contexte.ressource(apres.ressource_id)?.nom]) : -1;
+    if (i < 0) return corps;
+    reecrireCases(lignes, i, changements(avant, apres, { type: 3 }));
     return lignes.join('\n');
   }
   if (table === 'ressource' && ligne.genre === 'bois') {

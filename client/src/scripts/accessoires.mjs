@@ -117,6 +117,9 @@ if (racine) {
 
   const qualites = JSON.parse(racine.querySelector('[data-acc-qualites]')?.dataset.accQualites ?? '[]');
   const bulleDeLaGemme = (pastille) => document.getElementById(pastille.dataset.bulle ?? '');
+  /** Un prix en HTML, ses monnaies en icônes (demande du propriétaire ; les icônes : <template data-acc-piece> de la page, lib/monnaies.mjs). */
+  const PIECES = Object.fromEntries([...racine.querySelectorAll('template[data-acc-piece]')].map((t) => [t.dataset.accPiece, t.innerHTML.trim()]));
+  const prixHtml = (t) => e(t).replace(/(?<![\p{L}\p{N}])(R[Oo]|R[Ff]|PP)(?![\p{L}\p{N}])/gu, (m) => PIECES[m.toUpperCase()] ?? m);
 
   /** Les gemmes de l'effet (pastilles de sa ligne) et, d'après la qualité de son niveau, le prix d'un quart de chacune. */
   function htmlDesGemmes(effet) {
@@ -129,7 +132,7 @@ if (racine) {
       ? [...cellule.querySelectorAll('.acc-gemme')].map((g) => {
           const b = bulleDeLaGemme(g);
           const quarts = JSON.parse(b?.dataset.quarts ?? '{}');
-          return `${e(b?.dataset.nom ?? g.textContent)} ${e(quarts[q.id] ?? '?')}`;
+          return `${e(b?.dataset.nom ?? g.textContent)} ${prixHtml(quarts[q.id] ?? '?')}`;
         })
       : [];
     return `<dd class="acc-produit__gemmes">${pastilles}${q ? `<span class="acc-produit__sous">Quarts de gemme ${e(q.libelle)} (niveau ${q.niveaux.join(' et ')}) : ${prix.join(' · ')}</span>` : ''}</dd>`;
@@ -173,7 +176,7 @@ if (racine) {
     }
     const m = etat.monture;
     const monture = m
-      ? `${e(m.dataset.libelle)} <span class="acc-produit__sous">Niveau ${e(m.dataset.niveau)} · ${e(m.dataset.prix)} · ${e(m.dataset.effet)}${etat.montureAuto ? ' · celle du niveau de l’effet' : ''}</span>`
+      ? `${e(m.dataset.libelle)} <span class="acc-produit__sous">Niveau ${e(m.dataset.niveau)} · ${prixHtml(m.dataset.prix)} · ${e(m.dataset.effet)}${etat.montureAuto ? ' · celle du niveau de l’effet' : ''}</span>`
       : aChoisir;
     const malediction = x?.dataset.malediction || etat.propriete?.dataset.malediction;
     produit.innerHTML = `
@@ -186,7 +189,7 @@ if (racine) {
         ${x?.dataset.niveauBrut ? ligne('Niveau', e(x.dataset.niveauBrut)) : ''}
         ${x ? ligne('Gemmes', htmlDesGemmes(x) || '<span class="acc-produit__manque">aucune</span>') : ''}
         ${ligne('Monture', monture)}
-        ${x?.dataset.prix ? ligne('Prix indiqué', `<strong>${e(x.dataset.prix)}</strong>`) : ''}
+        ${x?.dataset.prix ? ligne('Prix indiqué', `<strong>${prixHtml(x.dataset.prix)}</strong>`) : ''}
       </dl>
       ${malediction ? '<p class="acc-produit__note">Malédiction : relancez les dés depuis l’étape 1 ; l’effet obtenu sera le contraire de ce qui est indiqué.</p>' : ''}
       ${etat.maudit && !malediction ? '<p class="acc-produit__note">Accessoire maudit : l’effet est le contraire de ce qui est indiqué (exemple : +1 force devient -1 force).</p>' : ''}

@@ -56,12 +56,14 @@ export const OUI_NON = [
   { valeur: '1', libelle: 'Oui' },
 ];
 
+/** Les types d'un matériau (décision R62, table materiau) : ceux de l'armure, et « Autres » pour ce qui n'y entre pas. */
+export const TYPES_DE_MATERIAU = ['Léger', 'Intermédiaire', 'Lourd', 'Autres'].map((t) => ({ valeur: t, libelle: t }));
+
 /**
- * Les tableaux de la page « Composants » où un composant peut être créé (champ « Tableau » du formulaire) : les matériaux, puis ceux de l'onglet
- * « Équipement inventaire » (genre:section de la ressource : lib/corps-composants.mjs#SECTIONS_DE_L_INVENTAIRE).
+ * Les tableaux de la page « Composants » où un objet peut être créé (champ « Tableau » du formulaire) : ceux de l'onglet « Équipement inventaire »
+ * (genre:section de la ressource : lib/corps-composants.mjs#SECTIONS_DE_L_INVENTAIRE) ; un matériau, une gemme, un bois, un ingrédient ont leur entité.
  */
 export const TABLEAUX_DE_COMPOSANTS = [
-  { valeur: 'materiau', libelle: 'Matériaux' },
   { valeur: 'produit:VÉGÉTAUX', libelle: 'Produits non monétaires › Végétaux' },
   { valeur: 'produit:ANIMAUX', libelle: 'Produits non monétaires › Animaux' },
   { valeur: 'produit:AUTRES', libelle: 'Produits non monétaires › Autres' },
@@ -284,6 +286,11 @@ export const TABLES = {
       description: { type: 'texte', libelle: 'Description' },
     },
   },
+  // le type d'un matériau (décision R62 : d'après l'armure, « Léger, Intermédiaire, Lourd et autres pour tout ce qui ne rentre pas dans ces catégories »)
+  materiau: {
+    libelle: 'Matériau',
+    colonnes: { type: { type: 'choix', libelle: 'Type (d’après l’armure)', requis: true, choix: TYPES_DE_MATERIAU } },
+  },
   // les prix d'une gemme : la gemme entière (onglet Bâton magique) et le quart de gemme (onglet Accessoires), par qualité
   gemme: {
     libelle: 'Gemme',
@@ -305,20 +312,21 @@ export const TABLES = {
       affinite_brut: { type: 'ligne', libelle: 'Affinité (« Santé », « Santé + Chakra »)', requis: true },
     },
   },
-  // les monnaies (MONNAIE et CONVERTISSEUR de l'onglet) : la ligne du convertisseur est tirée de la valeur en RF ; l'unité (le RF) vaut 1
+  // les monnaies (MONNAIE et CONVERTISSEUR de l'onglet) : le nom et l'abréviation ; la valeur en RF ne se modifie pas (demande du propriétaire, décision
+  // R61 : « Les valeurs ne sont effectivement pas modifiables. Elles servent de valeur utile pour les calculs et de potentiel tooltip »), elle se donne à
+  // la création
   monnaie: {
     libelle: 'Monnaie',
     colonnes: {
       nom: { type: 'ligne', libelle: 'Nom', requis: true },
       abreviation: { type: 'ligne', libelle: 'Abréviation', requis: true },
-      valeur_rf: { type: 'entier', libelle: 'Valeur en RF', requis: true, min: 1 },
     },
   },
-  // matériaux d'arme (tableau MATERIAUX de l'onglet) : prix et effets
+  // matériaux d'arme (tableau MATERIAUX de l'onglet) : les effets sur une arme, modifiés depuis la page « Composants » (décision R62 : « la seule source de
+  // vérité » ; le prix est celui de la ressource, que le service recopie ici)
   materiau_arme: {
     libelle: 'Matériau d’arme',
     colonnes: {
-      prix_brut: { type: 'ligne', libelle: 'Prix (« 200 RO »)', requis: true },
       effet_brut: { type: 'texte', libelle: 'Effets (« Dégâts +N pour l’arme », « ±N cran de solidité », puis les autres effets)', requis: true },
     },
   },
@@ -444,6 +452,17 @@ export const ENTITES = {
     champs: {
       tableau: { type: 'choix', libelle: 'Tableau (où le composant s’ajoute)', requis: true, choix: TABLEAUX_DE_COMPOSANTS },
       ...champsDe('ressource', ['nom', 'prix_brut', 'description']),
+    },
+  },
+  // un matériau (décision R62) : son type et sa ressource ; il n'a pas de fiche d'armure, de bouclier ni d'arme (rien n'en est déduit)
+  materiau: {
+    table: 'materiau',
+    libelle: 'matériau',
+    suppression: true,
+    champs: {
+      nom: { type: 'ligne', libelle: 'Nom', requis: true },
+      type: { type: 'choix', libelle: 'Type (d’après l’armure)', requis: true, choix: TYPES_DE_MATERIAU },
+      ...champsDe('ressource', ['prix_brut', 'description']),
     },
   },
   gemme: {

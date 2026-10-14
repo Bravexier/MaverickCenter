@@ -47,7 +47,8 @@ export const libelleDeCategorie = (i) => {
 /**
  * Les données de la page :
  *   monnaies    : lignes monnaie, par valeur croissante ;
- *   materiaux   : [{ ...ressource, usages: ['Armes', 'Armures', …], citations }] dans l'ordre des armures (l'Os, de la page des armes, à la fin) ;
+ *   materiaux   : [{ ...ressource, type (table materiau, « Autres » sans ligne : décision R62), arme (sa ligne materiau_arme, ou null), usages: ['Armes',
+ *                 'Armures', …], citations }] dans l'ordre des armures (l'Os, de la page des armes, à la fin) ;
  *   gemmes      : [{ ...ressource, ...gemme, magie: { id, nom }, citations }] dans l'ordre des magies ;
  *   bois        : [{ ...ressource, magie, citations }] dans l'ordre des magies ;
  *   fruits      : les ingrédients de type Fruit, [{ ...ressource, ...ingredient, citations }], amplificateurs majeurs d'abord ;
@@ -63,8 +64,9 @@ export function chargerComposants(db) {
   ].filter(([t]) => db.prepare(`SELECT 1 FROM ${t} WHERE ressource_id = ?`).get(id)).map(([, l]) => l)
     .concat(db.prepare('SELECT 1 FROM accessoire_monture WHERE materiau_id = ?').get(id) ? ['Montures'] : []);
   const monnaies = lignes(db, 'SELECT * FROM monnaie ORDER BY valeur_rf');
-  const materiaux = lignes(db, "SELECT * FROM ressource WHERE genre = 'materiau' ORDER BY page_id <> 'ressources/armures', ordre, nom_cle")
-    .map((r) => ({ ...avec(r), usages: usages(r.id) }));
+  const materiaux = lignes(db, `SELECT r.*, coalesce(m.type, 'Autres') AS type FROM ressource r LEFT JOIN materiau m ON m.ressource_id = r.id
+    WHERE r.genre = 'materiau' ORDER BY r.page_id <> 'ressources/armures', r.ordre, r.nom_cle`)
+    .map((r) => ({ ...avec(r, ['materiau']), usages: usages(r.id), arme: lignes(db, 'SELECT * FROM materiau_arme WHERE ressource_id = ?', r.id)[0] ?? null }));
   const gemmes = lignes(db, `SELECT r.*, g.*, m.nom AS magie_nom FROM gemme g JOIN ressource r ON r.id = g.ressource_id JOIN magie m ON m.id = g.magie_id
     ORDER BY m.ordre`).map(({ magie_nom, ...g }) => ({ ...avec(g, ['gemme']), magie: { id: g.magie_id, nom: magie_nom } }));
   const bois = lignes(db, `SELECT r.*, b.magie_id, m.nom AS magie_nom FROM bois b JOIN ressource r ON r.id = b.ressource_id JOIN magie m ON m.id = b.magie_id
