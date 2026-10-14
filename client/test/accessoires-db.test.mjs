@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { bulleDeGemme, chargerAccessoires, consignesDesEtapes, reglesDeLaPage } from '../src/lib/accessoires-db.mjs';
-import { facesDuDe, QUALITES_DE_GEMME } from '../src/lib/accessoires-generateur.mjs';
+import { facesDuDe, gemmesAuChoix, prixDeLAccessoire, qualiteDeGemme, QUALITES_DE_GEMME } from '../src/lib/accessoires-generateur.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { couleurDeMagie } from '../src/lib/sort-format.mjs';
 
@@ -77,4 +77,23 @@ test('consignes des étapes : le texte sous chaque étape, sans les lignes du d�
   for (const lignes of Object.values(c)) for (const l of lignes) assert.ok(!/^[|-]/.test(l) && !/= ?1d\d+$/.test(l), l);
   assert.ok(Object.keys(c).every((k) => k === 'emplacement' || k === 'propriete' || a.proprietes.some((p) => p.id === k)));
   assert.deepEqual(consignesDesEtapes('', a.proprietes), {});
+});
+
+test('prix d’un accessoire = quarts de gemme à la qualité du niveau + monture du niveau : la composition des prix écrits du tableau', () => {
+  const monture = new Map(a.montures.map((m) => [m.niveau, m.prix_ro]));
+  const ecarts = [];
+  let verifies = 0;
+  for (const e of a.proprietes.flatMap((p) => p.effets)) {
+    const rangs = e.gemmes.map((r) => r.map((g) => g.id));
+    if (e.prix_ro === null || !e.niveau || !rangs.length || gemmesAuChoix(rangs).max) continue;
+    const q = qualiteDeGemme(e.niveau).id;
+    const prix = prixDeLAccessoire(e.gemmes.map((r) => r[0].quartsRf[q]), monture.get(e.niveau));
+    if (prix === e.prix_ro) verifies++;
+    else ecarts.push(e.id);
+  }
+  // « Permet à un dé de dégâts d'être maximum » (Grenat + Onyx, niveau 4) : 179 Ro écrits, 124 Ro par la composition
+  assert.deepEqual(ecarts, ['ressources/accessoires#effet:attaque:5']);
+  assert.ok(verifies >= 100, `${verifies} prix vérifiés`);
+  // les effets aux gemmes au choix n'ont pas de prix écrit : il se calcule une fois les gemmes cochées
+  for (const e of a.proprietes.flatMap((p) => p.effets).filter((x) => gemmesAuChoix(x.gemmes.map((r) => r.map((g) => g.id))).max)) assert.equal(e.prix_ro, null, e.id);
 });

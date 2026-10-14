@@ -5,7 +5,8 @@
 // Les valeurs viennent des lignes telles qu'affichées (attributs `data-…`) ; état dans l'adresse (lib/accessoires-generateur.mjs#PARAMETRES).
 // Malédiction (règles de la page) : « Dans le cas d'une malédiction, on relance les dés au début des étapes et l'effet sera le contraire de ce qui est
 // indiqué à la base » : tomber sur une malédiction marque l'accessoire maudit ; « Tirer un accessoire » relance alors depuis l'étape 1.
-import { dansLaPlage, ecrireEtat, lancer, lireEtat, qualiteDeGemme } from '../lib/accessoires-generateur.mjs';
+import { dansLaPlage, ecrireEtat, gemmesAuChoix, gemmesCochees, lancer, lireEtat, prixDeLAccessoire, qualiteDeGemme } from '../lib/accessoires-generateur.mjs';
+import { htmlDeMontant } from '../lib/monnaies.mjs';
 
 const racine = document.querySelector('[data-accessoires]');
 
@@ -18,7 +19,8 @@ if (racine) {
   const trouver = (sorte, valeur) => choix(sorte).find((x) => x.dataset.valeur === String(valeur)) ?? null;
   const plage = (x) => ({ min: Number(x.dataset.min), max: Number(x.dataset.max), x });
 
-  const etat = { emplacement: null, propriete: null, effet: null, acquis: null, monture: null, montureAuto: false, maudit: false };
+  // gemmes : celles cochées parmi les gemmes au choix de l'effet (lib/accessoires-generateur.mjs#gemmesAuChoix)
+  const etat = { emplacement: null, propriete: null, effet: null, acquis: null, monture: null, montureAuto: false, maudit: false, gemmes: [] };
 
   /** Ouvre le tableau d'effets d'une propriété et replie les autres (sans propriété : tous repliés). */
   function ouvrirLaFamille(propriete) {
@@ -45,11 +47,13 @@ if (racine) {
       if (etat.effet && etat.effet.dataset.propriete !== x.dataset.valeur) {
         etat.effet = null;
         etat.acquis = null;
+        etat.gemmes = [];
         montureDuNiveau();
       }
       ouvrirLaFamille(x.dataset.valeur);
       if (defiler) racine.querySelector(`.acc-famille[data-propriete="${x.dataset.valeur}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else if (sorte === 'effet') {
+      if (etat.effet !== x) etat.gemmes = [];
       etat.effet = x;
       etat.acquis = acquis;
       etat.propriete = trouver('propriete', x.dataset.propriete);
@@ -63,6 +67,7 @@ if (racine) {
     if (sorte === 'effet') {
       etat.effet = null;
       etat.acquis = null;
+      etat.gemmes = [];
       montureDuNiveau();
     } else {
       etat[sorte] = null;
@@ -76,12 +81,12 @@ if (racine) {
     const table = bouton.closest('table');
     const jet = lancer(faces);
     if (bouton.dataset.deBonus) {
-      // compétence : 1d6 pour la ligne, puis 1d20 pour le bonus d'acquis (sa colonne)
-      const ligne = dansLaPlage([...table.querySelectorAll('.acc-ligne-competence')].map(plage), jet)?.x;
+      // compétence : 1d6 pour la compétence (data-jet), puis 1d20 pour le bonus d'acquis, qui donne la ligne de son niveau (data-min, data-max)
       const bonus = lancer(Number(bouton.dataset.deBonus));
-      const cellule = ligne && dansLaPlage([...ligne.querySelectorAll('[data-choix]')].map(plage), bonus)?.x;
-      if (cellule) choisir(cellule, { acquis: bonus });
-      return { x: cellule, texte: `${jet} · ${bonus}` };
+      const lignes = [...table.querySelectorAll('[data-choix]')].filter((x) => Number(x.dataset.jet) === jet);
+      const x = dansLaPlage(lignes.map(plage), bonus)?.x ?? null;
+      if (x) choisir(x, { acquis: bonus });
+      return { x, texte: `${jet} · ${bonus}` };
     }
     const x = dansLaPlage([...table.querySelectorAll('[data-choix]')].map(plage), jet)?.x ?? null;
     if (x) choisir(x);
@@ -97,7 +102,7 @@ if (racine) {
 
   /** Tout l'accessoire : étapes 1 à 3 (une malédiction le rend maudit et fait relancer depuis l'étape 1), la monture du niveau de l'effet. */
   function toutTirer() {
-    Object.assign(etat, { emplacement: null, propriete: null, effet: null, acquis: null, monture: null, montureAuto: false, maudit: false });
+    Object.assign(etat, { emplacement: null, propriete: null, effet: null, acquis: null, monture: null, montureAuto: false, maudit: false, gemmes: [] });
     effacerLesJets();
     for (let essai = 0; essai < 50; essai++) {
       const d1 = deDe('[data-table="emplacement"]');
@@ -116,25 +121,70 @@ if (racine) {
   // --- rendu ---------------------------------------------------------------------------------------------------------------------------------------
 
   const qualites = JSON.parse(racine.querySelector('[data-acc-qualites]')?.dataset.accQualites ?? '[]');
-  const bulleDeLaGemme = (pastille) => document.getElementById(pastille.dataset.bulle ?? '');
+  const bulleDeLaGemme = (pastille) => document.getElementById(pastille?.dataset.bulle ?? '');
   // Les prix sont en HTML dans la page (`data-prix-html`, quarts de `data-quarts`), montants décomposés et monnaies en icônes (demande du
-  // propriétaire ; lib/monnaies.mjs, que ce script n'importe pas).
+  // propriétaire ; lib/monnaies.mjs) ; le prix calculé d'un accessoire aux gemmes au choix passe par lib/monnaies.mjs#htmlDeMontant, que ce script est le seul
+  // à importer.
 
   /** Les gemmes de l'effet (pastilles de sa ligne) et, d'après la qualité de son niveau, le prix d'un quart de chacune. */
+  /** Les rangs de gemmes d'un effet, tels qu'affichés dans sa ligne (« A + B », « A ou B ») : listes de clés de gemme. */
+  function rangsDe(effet) {
+    const rangs = [];
+    for (const g of effet.closest('tr')?.querySelectorAll('[data-gemmes] .acc-gemme[data-rang]') ?? []) (rangs[Number(g.dataset.rang) - 1] ??= []).push(g.dataset.gemme);
+    return rangs.filter(Boolean);
+  }
+
+  /**
+   * Les gemmes de l'effet (pastilles de sa ligne) et, d'après la qualité de son niveau, le prix d'un quart de chacune. Quand l'effet laisse des gemmes au
+   * choix (demande du propriétaire : « laisser la possibilité d'en cocher 2 »), une case par gemme au choix, deux gemmes en tout (gemmesAuChoix) ; le prix
+   * n'est donné que pour les gemmes imposées et cochées.
+   */
   function htmlDesGemmes(effet) {
     const cellule = effet.closest('tr')?.querySelector('[data-gemmes]');
     if (!cellule || !cellule.textContent.trim()) return '';
     const qualite = qualiteDeGemme(effet.dataset.niveau);
     const q = qualite && qualites.find((x) => x.id === qualite.id);
-    const pastilles = cellule.innerHTML.replace(/ data-bulle=/g, ' tabindex="0" data-bulle=');
+    const pastille = (cle) => cellule.querySelector(`.acc-gemme[data-gemme="${cle}"]`)?.outerHTML.replace(/ data-bulle=/, ' tabindex="0" data-bulle=') ?? e(cle);
+    const rangs = rangsDe(effet);
+    const choix = gemmesAuChoix(rangs);
+    const cochees = gemmesCochees(rangs, etat.gemmes);
+    let pastilles = cellule.innerHTML.replace(/ data-bulle=/g, ' tabindex="0" data-bulle=');
+    if (choix.max) {
+      const plein = cochees.length >= choix.max;
+      pastilles = `${choix.imposees.map(pastille).join(' <span class="acc-gemmes__plus">+</span> ')}${choix.imposees.length ? ' <span class="acc-gemmes__plus">+</span>' : ''}
+        <span class="acc-produit__choix" role="group" aria-label="Gemmes au choix">${choix.auChoix.map((g) => {
+          const coche = cochees.includes(g);
+          return `<label class="acc-produit__gemme-choix"><input type="checkbox" data-acc-gemme="${e(g)}"${coche ? ' checked' : ''}${!coche && plein ? ' disabled' : ''}> ${pastille(g)}</label>`;
+        }).join('')}</span>
+        <span class="acc-produit__sous">Au choix : cochez-en ${choix.max === 1 ? 'une' : choix.max} (${cochees.length}/${choix.max})</span>`;
+    }
+    const retenues = choix.max ? [...choix.imposees, ...cochees] : [...cellule.querySelectorAll('.acc-gemme')].map((g) => g.dataset.gemme);
     const prix = q
-      ? [...cellule.querySelectorAll('.acc-gemme')].map((g) => {
-          const b = bulleDeLaGemme(g);
+      ? retenues.map((cle) => {
+          const b = bulleDeLaGemme(cellule.querySelector(`.acc-gemme[data-gemme="${cle}"]`));
           const quarts = JSON.parse(b?.dataset.quarts ?? '{}');
-          return `${e(b?.dataset.nom ?? g.textContent)} ${(quarts[q.id] ?? '?')}`;
+          return `${e(b?.dataset.nom ?? cle)} ${(quarts[q.id] ?? '?')}`;
         })
       : [];
-    return `<dd class="acc-produit__gemmes">${pastilles}${q ? `<span class="acc-produit__sous">Quarts de gemme ${e(q.libelle)} (niveau ${q.niveaux.join(' et ')}) : ${prix.join(' · ')}</span>` : ''}</dd>`;
+    return `<dd class="acc-produit__gemmes">${pastilles}${q && prix.length ? `<span class="acc-produit__sous">Quarts de gemme ${e(q.libelle)} (niveau ${q.niveaux.join(' et ')}) : ${prix.join(' · ')}</span>` : ''}</dd>`;
+  }
+
+  /**
+   * Le prix d'un effet aux gemmes au choix, une fois les gemmes cochées et la monture choisie (prixDeLAccessoire) : les quarts des gemmes imposées et
+   * cochées, à la qualité du niveau, plus la monture ; null tant qu'il en manque.
+   */
+  function prixCalcule(effet) {
+    const rangs = rangsDe(effet);
+    const choix = gemmesAuChoix(rangs);
+    const cochees = gemmesCochees(rangs, etat.gemmes);
+    const qualite = qualiteDeGemme(effet.dataset.niveau);
+    if (!choix.max || cochees.length < choix.max || !qualite || !etat.monture) return null;
+    const cellule = effet.closest('tr')?.querySelector('[data-gemmes]');
+    const quarts = [...choix.imposees, ...cochees].map((cle) => {
+      const b = bulleDeLaGemme(cellule?.querySelector(`.acc-gemme[data-gemme="${cle}"]`));
+      return Number(JSON.parse(b?.dataset.quartsRf ?? '{}')[qualite.id]);
+    });
+    return prixDeLAccessoire(quarts, Number(etat.monture.dataset.prixRo));
   }
 
   const ligne = (titre, valeur) => `<dt>${e(titre)}</dt>${valeur.startsWith('<dd') ? valeur : `<dd>${valeur}</dd>`}`;
@@ -188,7 +238,9 @@ if (racine) {
         ${x?.dataset.niveauBrut ? ligne('Niveau', e(x.dataset.niveauBrut)) : ''}
         ${x ? ligne('Gemmes', htmlDesGemmes(x) || '<span class="acc-produit__manque">aucune</span>') : ''}
         ${ligne('Monture', monture)}
-        ${x?.dataset.prix ? ligne('Prix indiqué', `<strong>${(x.dataset.prixHtml ?? e(x.dataset.prix))}</strong>`) : ''}
+        ${x && prixCalcule(x) !== null
+          ? ligne('Prix', `<strong>${htmlDeMontant(String(prixCalcule(x)).replace('.', ','), 'Ro')}</strong><span class="acc-produit__sous">Quarts des gemmes choisies et monture${x.dataset.prix ? ` (tableau : ${x.dataset.prixHtml ?? e(x.dataset.prix)})` : ''}</span>`)
+          : x?.dataset.prix ? ligne('Prix indiqué', `<strong>${(x.dataset.prixHtml ?? e(x.dataset.prix))}</strong>`) : ''}
       </dl>
       ${malediction ? '<p class="acc-produit__note">Malédiction : relancez les dés depuis l’étape 1 ; l’effet obtenu sera le contraire de ce qui est indiqué.</p>' : ''}
       ${etat.maudit && !malediction ? '<p class="acc-produit__note">Accessoire maudit : l’effet est le contraire de ce qui est indiqué (exemple : +1 force devient -1 force).</p>' : ''}
@@ -205,6 +257,7 @@ if (racine) {
       effet: etat.effet?.dataset.valeur,
       acquis: etat.acquis,
       monture: etat.montureAuto ? null : etat.monture?.dataset.valeur,
+      gemmes: etat.gemmes.join(',') || null,
       maudit: etat.maudit,
     });
     if (s !== location.search) history.replaceState(history.state, '', `${location.pathname}${s}${location.hash}`);
@@ -219,6 +272,7 @@ if (racine) {
       const x = trouver('effet', a.effet);
       const acquis = Number(a.acquis);
       if (x) choisir(x, { acquis: Number.isInteger(acquis) && acquis >= Number(x.dataset.min) && acquis <= Number(x.dataset.max) ? acquis : null });
+      if (x && a.gemmes) etat.gemmes = gemmesCochees(rangsDe(x), a.gemmes.split(','));
     }
     if (a.monture) {
       etat.monture = trouver('monture', a.monture);
@@ -246,7 +300,7 @@ if (racine) {
       return;
     }
     if (cible.closest('[data-acc-effacer]')) {
-      Object.assign(etat, { emplacement: null, propriete: null, effet: null, acquis: null, monture: null, montureAuto: false, maudit: false });
+      Object.assign(etat, { emplacement: null, propriete: null, effet: null, acquis: null, monture: null, montureAuto: false, maudit: false, gemmes: [] });
       effacerLesJets();
       ouvrirLaFamille(null);
       rendre();
@@ -261,7 +315,16 @@ if (racine) {
   });
 
   produit.addEventListener('change', (ev) => {
-    if (!(ev.target instanceof HTMLInputElement) || !ev.target.matches('[data-acc-maudit]')) return;
+    if (!(ev.target instanceof HTMLInputElement)) return;
+    if (ev.target.matches('[data-acc-gemme]')) {
+      const g = ev.target.dataset.accGemme;
+      const cochees = ev.target.checked ? [...etat.gemmes, g] : etat.gemmes.filter((x) => x !== g);
+      etat.gemmes = etat.effet ? gemmesCochees(rangsDe(etat.effet), cochees) : [];
+      rendre();
+      produit.querySelector(`[data-acc-gemme="${g}"]`)?.focus();
+      return;
+    }
+    if (!ev.target.matches('[data-acc-maudit]')) return;
     etat.maudit = ev.target.checked;
     rendre();
   });

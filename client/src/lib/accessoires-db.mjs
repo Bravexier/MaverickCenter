@@ -53,9 +53,9 @@ export function consignesDesEtapes(corps, proprietes) {
  * Les données de la page :
  *   emplacements : étape 1, [{ id, nom, jet }] ;
  *   proprietes   : étape 2, [{ id, nom, jet_min, jet_max, effets: [effet] }] dans l'ordre de l'onglet ; la Malédiction n'a pas d'effets ;
- *   competences  : la propriété Compétence en grille, { colonnes: [{ niveau, min, max }], lignes: [{ jet, libelle, caracteristique, gemmes, effets: [effet par niveau] }] } ;
- *   gemmes       : les 14 gemmes, [{ id, nom, description, magie, couleur, texte, quarts: { commune, raffinee, parfaite } }] (infobulles) ;
- *   montures     : [{ niveau, matiere, prix_brut, effet_brut }] ;
+ *   competences  : la propriété Compétence par compétence (le tableau en fait une ligne par niveau), { colonnes: [{ niveau, min, max }], lignes: [{ jet, libelle, caracteristique, gemmes, effets: [effet par niveau] }] } ;
+ *   gemmes       : les 14 gemmes, [{ id, nom, description, magie, couleur, texte, quarts: { commune, raffinee, parfaite }, quartsRf }] (infobulles) ;
+ *   montures     : [{ niveau, matiere, prix_brut, prix_ro, effet_brut }] ;
  *   page         : { titre, resume, corps_md }.
  * Un effet : la ligne `accessoire_effet` et `gemmes` = ses rangs (« A + B »), chacun la liste de ses options (« A ou B »), chaque option une gemme de
  * `gemmes` (nom de la base, pas l'écriture de la source).
@@ -63,7 +63,8 @@ export function consignesDesEtapes(corps, proprietes) {
 export function chargerAccessoires(db) {
   const gemmes = lignes(
     db,
-    `SELECT g.ressource_id AS id, r.nom, r.description, m.id AS magie_id, m.nom AS magie, g.quart_commune_brut, g.quart_raffinee_brut, g.quart_parfaite_brut
+    `SELECT g.ressource_id AS id, r.nom, r.description, m.id AS magie_id, m.nom AS magie, g.quart_commune_brut, g.quart_raffinee_brut, g.quart_parfaite_brut,
+            g.quart_commune_rf, g.quart_raffinee_rf, g.quart_parfaite_rf
        FROM gemme g JOIN ressource r ON r.id = g.ressource_id JOIN magie m ON m.id = g.magie_id ORDER BY r.nom_cle`,
   ).map((g) => ({
     id: g.id,
@@ -73,6 +74,8 @@ export function chargerAccessoires(db) {
     couleur: couleurDeMagie(g.magie),
     texte: texteSurCouleur(couleurDeMagie(g.magie)),
     quarts: { commune: g.quart_commune_brut, raffinee: g.quart_raffinee_brut, parfaite: g.quart_parfaite_brut },
+    // en RF (1 RO = 100 RF) : le prix d'un effet aux gemmes au choix (lib/accessoires-generateur.mjs#prixDeLAccessoire)
+    quartsRf: { commune: g.quart_commune_rf, raffinee: g.quart_raffinee_rf, parfaite: g.quart_parfaite_rf },
   }));
   const parId = new Map(gemmes.map((g) => [g.id, g]));
   const gemmesDe = new Map();
@@ -88,7 +91,7 @@ export function chargerAccessoires(db) {
   }));
   const caracteristiques = new Map(lignes(db, 'SELECT id, nom FROM caracteristique').map((c) => [c.id, c.nom]));
 
-  // Compétence : une ligne par caractéristique (1d6), une colonne par niveau (1d20 : « 1% -5% = Niveau 1 »…)
+  // Compétence : par caractéristique (1d6), un effet par niveau (1d20 : « 1% -5% = Niveau 1 »…)
   const deCompetence = effets.filter((e) => e.propriete_id === 'competence');
   const niveaux = [...new Set(deCompetence.map((e) => e.niveau))].sort((a, b) => a - b);
   const colonnes = niveaux.map((niveau) => {
@@ -106,7 +109,7 @@ export function chargerAccessoires(db) {
 
   const montures = lignes(
     db,
-    'SELECT m.niveau, r.nom AS matiere, m.prix_brut, m.effet_brut FROM accessoire_monture m JOIN ressource r ON r.id = m.materiau_id ORDER BY m.niveau',
+    'SELECT m.niveau, r.nom AS matiere, m.prix_brut, m.prix_ro, m.effet_brut FROM accessoire_monture m JOIN ressource r ON r.id = m.materiau_id ORDER BY m.niveau',
   );
   const emplacements = lignes(db, 'SELECT id, nom, jet FROM accessoire_emplacement ORDER BY jet');
   const page = db.prepare('SELECT titre, resume, corps_md FROM page WHERE id = ?').get(PAGE_DES_ACCESSOIRES) ?? null;
