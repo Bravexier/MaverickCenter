@@ -243,16 +243,19 @@ est à la seconde, l'identifiant d'un lot commence par l'instant à la milliseco
 se rejouent dans l'ordre où ils ont été enregistrés. Une colonne qui vaut déjà ce qu'une modification plus récente de la même ligne y écrit est
 « déjà là » (deux lots sur la même colonne, une ligne créée puis modifiée) — sauf si elle vaut encore ce que la modification avait trouvé (`avant`) :
 elle n'est alors pas faite et se fait (A → B → A : un lot suivant peut compter sur B, un nom de catégorie ou de mot-clé libéré, une date intermédiaire ;
-les lots déjà livrés, eux, ne sont jamais rejoués). Une ligne créée puis supprimée par le journal non livré (modifications en attente, ou déjà
-« intégrées » par un rejeu précédent : la base vivante est refaite à chaque livraison) et absente des règles n'a rien à rejouer, et une ligne qui la
-citait entre-temps (un bloc de la chronologie lié à une page créée puis supprimée) ne met pas son lot en conflit : la référence vers cette ligne
-« fantôme » n'est pas rompue (`fantomesDuJournal`, `referenceRompue`, `serveur/edition-journal.mjs`). Si sa suppression part en conflit alors qu'une
-ligne la cite, le rejeu reprend du début avec elle insérée pour de bon (`rejouer`, passes successives) : aucune référence n'est jamais laissée rompue.
-Supprimer un mot-clé (`mot_cle`) rejoue aussi les `ON DELETE CASCADE` de `page_tag`, que la mise à jour des règles a donc le droit d'écrire. Un lot
-noté avant la migration 0043 (page_tag avec sa colonne `libelle`, un mot-clé que le vocabulaire n'a pas) est lu dans la forme nouvelle au rejeu
-(`adapter` de `rejouer` : `ancienneEcritureDesMotsCles`), le mot-clé manquant retrouvé par son écriture ou créé sous l'id noté (`-2`… seulement si
-l'historique l'a déjà employé : un renommage noté depuis vise cette création), table `mot_cle` alors écrite par la mise à jour ; le journal stocké
-garde sa forme. Le
+les lots déjà livrés, eux, ne sont jamais rejoués). Une ligne créée puis supprimée par le journal en attente est « fantôme » : elle n'est pas
+insérée (ses modifications non plus), et une ligne qui la citait entre-temps (un bloc de la chronologie lié à la page d'un métier créé puis supprimé)
+ne met pas son lot en conflit. Rien n'en est noté : ses modifications restent en attente jusqu'à la livraison et sont réévaluées à chaque rejeu, le
+résultat ne dépend donc pas d'une reconstruction précédente. À la fin d'une passe, un fantôme dont une suppression est tombée avec son lot en conflit,
+ou qu'une référence cite encore (le lot qui retirait la citation est en conflit), est écarté et le rejeu reprend du début (`rejouer`, passes
+successives) : la ligne est alors rejouée comme une autre — créée, modifiée, et supprimée seulement si son lot passe, ce qui exige que plus rien ne la
+cite. Aucune référence n'est jamais laissée rompue, et une création dont la suppression est en conflit existe entière, dans la base vivante comme dans
+`data/rows` (`test/serveur-edition-rejeu-fantomes.test.mjs`). Supprimer un mot-clé (`mot_cle`) rejoue aussi les `ON DELETE CASCADE` de `page_tag`,
+que la mise à jour des règles a donc le droit d'écrire. Un lot noté avant la migration 0043 (page_tag avec sa colonne `libelle`, un mot-clé que le
+vocabulaire n'a pas) est lu dans la forme nouvelle au rejeu (`adapter` de `rejouer` : `ancienneEcritureDesMotsCles`) : le mot-clé manquant est
+retrouvé par son écriture, ou créé sous l'id noté (`-2`… seulement si l'historique l'a déjà employé : un renommage noté depuis vise cette création)
+par une modification ajoutée au lot qui l'emploie, juste avant lui — annulée avec ce lot s'il est en conflit (les lots qui s'en servent ensuite le sont
+alors aussi), jamais notée au journal ; table `mot_cle` alors écrite par la mise à jour. Le journal stocké garde sa forme. Le
 **corps et le résumé des pages typées**, et les champs structurés des fiches de dons, ne sont pas des valeurs figées du journal (`colonneDerivee`) : le rejeu ne les compare ni ne les écrit, puis
 `rejouerLeJournal` (`serveur/edition.mjs`) les refait depuis les tables rejouées, pour chaque page qu'elles touchent — dans la base vivante comme dans
 `db:appliquer-edition` et la mise à jour des règles. Un lot n'est donc jamais en conflit pour une page qu'une autre modification ou une livraison a

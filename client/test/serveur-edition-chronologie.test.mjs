@@ -437,7 +437,7 @@ test('rejeu : une ligne créée puis supprimée (métier) citée entre-temps (li
   const premiere = rebatir(base);
   assert.deepEqual(premiere.conflits, [], '1re livraison');
   const seconde = rebatir(premiere.base);
-  assert.deepEqual(seconde.conflits, [], '2e livraison : les états « intégrés » de la 1re comptent');
+  assert.deepEqual(seconde.conflits, [], '2e livraison : rien n’est noté des lignes fantômes, elles sont réévaluées comme à la 1re');
   assert.ok(seconde.base.prepare('SELECT 1 FROM evenement WHERE id = ?').get(evenement));
   for (const b of [base, premiere.base, seconde.base]) b.close();
 });
