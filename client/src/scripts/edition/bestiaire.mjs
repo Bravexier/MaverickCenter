@@ -287,6 +287,8 @@ function outilsDuPortrait(ed, carte) {
 async function monterCarte(ed, carte) {
   if (!ed.enEdition || !carte) return;
   outilsDuPortrait(ed, carte);
+  // la description, repliée en lecture, s'ouvre pour être modifiée (elle reste fermée hors du mode modification : src/scripts/bestiaire.mjs)
+  for (const d of carte.querySelectorAll('details.bcarte__description')) d.open = true;
   const champs = [...carte.querySelectorAll('[data-ed-sur-demande][data-ed-lecture]')];
   if (!champs.length) return;
   for (const el of champs) {
@@ -503,6 +505,8 @@ export const bestiaire = {
     supprimes.clear();
     if (ecoute) document.removeEventListener('bestiaire:carte-ouverte', ecoute);
     ecoute = null;
+    // la description, ouverte pour être modifiée, se replie de nouveau (« enroulée par défaut »)
+    for (const d of document.querySelectorAll('details.bcarte__description[open]')) d.open = false;
     // les champs des cartes redeviennent de simples affichages (réécrits par l'éditeur quand leur ligne change)
     for (const el of document.querySelectorAll('[data-ed-sur-demande][data-ed]')) {
       el.dataset.edLecture = el.dataset.ed;

@@ -19,7 +19,8 @@ import { CATEGORIES_DE_MONSTRE, ENTITES, journalSansImage, TABLES } from '../src
 import { RENDUS, rendreChamp } from '../src/lib/edition-rendu.mjs';
 import { CATEGORIES, GABARIT_DE_CARTE, RUBRIQUES, valeursDeLaCarte } from '../src/lib/monstre-champs.mjs';
 import { htmlDeLEchelle, htmlDeRubrique, htmlDuButin } from '../src/lib/monstre-rendu.mjs';
-import { echellesDesCartes, magiesDesCibles, renvoisAuxDegatsMoyens } from '../src/lib/bestiaire-db.mjs';
+import { chargerMonstres, echellesDesCartes, magiesDesCibles, renvoisAuxDegatsMoyens } from '../src/lib/bestiaire-db.mjs';
+import { htmlDeLigneMonstre } from '../src/lib/bestiaire-rendu.mjs';
 import { comparerBases } from '../src/lib/notes-de-version.mjs';
 import { empreinte, PORTRAIT_MAX, resumeDuPortrait } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -43,7 +44,7 @@ const carte = un('SELECT * FROM monstre WHERE sante IS NOT NULL AND armure_physi
 const rubrique = (cle) => un('SELECT * FROM monstre_rubrique WHERE monstre_id = ? AND rubrique = ? ORDER BY rang LIMIT 1', carte.id, cle);
 
 test('modèle : tables et entités du bestiaire, catégories de lib/monstre-champs.mjs, rendus des champs', () => {
-  for (const t of ['monstre_espece', 'monstre', 'monstre_rubrique', 'monstre_espece_bloc', 'monstre_butin']) assert.ok(TABLES[t], t);
+  for (const t of ['monstre_groupe', 'monstre_espece', 'monstre', 'monstre_rubrique', 'monstre_espece_bloc', 'monstre_butin']) assert.ok(TABLES[t], t);
   assert.deepEqual(Object.fromEntries(CATEGORIES_DE_MONSTRE.map((c) => [c.valeur, c.libelle])), CATEGORIES);
   assert.equal(ENTITES.monstre.suppression, true);
   assert.equal(ENTITES.monstre_espece.suppression, true);
@@ -117,6 +118,63 @@ test('espèce modifiée : échelles, lieux de rencontre découpés aux virgules'
   assert.equal(enregistrer({ op: 'modifier', table: 'monstre_espece', cle: { id: espece.id }, valeurs: { lieu_brut: '' } }).statut, 200);
   assert.equal(un('SELECT count(*) AS n FROM monstre_espece_lieu WHERE espece_id = ?', espece.id).n, 0);
   assert.equal(un('SELECT lieu_brut FROM monstre_espece WHERE id = ?', espece.id).lieu_brut, null);
+});
+
+test('groupe d’espèces modifié (décision R64, « Ottar ») : nom et sa clé, description ; les lignes de ses espèces le suivent ; refus d’un nom vide', () => {
+  const groupe = un('SELECT * FROM monstre_groupe ORDER BY id LIMIT 1');
+  assert.ok(groupe, 'un groupe (Ottar)');
+  const membres = tous('SELECT id FROM monstre_espece WHERE groupe_id = ? ORDER BY ordre', groupe.id).map((x) => x.id);
+  assert.ok(membres.length > 1);
+  // un nom absent de la base (CLAUDE.md : un test du service prend des noms absents)
+  let nom = `${groupe.nom} essai`;
+  for (let n = 2; un('SELECT 1 FROM monstre_groupe WHERE nom_cle = ?', normalize(nom)); n += 1) nom = `${groupe.nom} essai ${n}`;
+  const r = enregistrer({ op: 'modifier', table: 'monstre_groupe', cle: { id: groupe.id }, valeurs: { nom, description: 'Texte\n\nsur deux paragraphes.' } });
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  assert.deepEqual({ ...un('SELECT nom, nom_cle, description FROM monstre_groupe WHERE id = ?', groupe.id) }, { nom, nom_cle: normalize(nom), description: 'Texte\n\nsur deux paragraphes.' });
+  // l'appartenance et l'identifiant ne changent pas ; les lignes rendues (page, service) portent le nouveau nom dans la colonne Espèce, le tri et le filtre
+  assert.deepEqual(tous('SELECT id FROM monstre_espece WHERE groupe_id = ? ORDER BY ordre', groupe.id).map((x) => x.id), membres);
+  const lignes = chargerMonstres(db).lignes.filter((l) => membres.includes(l.espece.id));
+  assert.ok(lignes.length >= membres.length);
+  for (const l of lignes) {
+    assert.deepEqual([l.tri.espece, l.facettes.espece], [nom, [normalize(nom)]], l.id);
+    assert.match(htmlDeLigneMonstre(l, 0), new RegExp(`<td class="bligne__espece"[^>]*>${nom}</td>`), l.id);
+  }
+  assert.equal(enregistrer({ op: 'modifier', table: 'monstre_groupe', cle: { id: groupe.id }, valeurs: { nom: ' ' } }).statut, 400, 'un nom vide est refusé');
+  assert.equal(enregistrer({ op: 'modifier', table: 'monstre_groupe', cle: { id: groupe.id }, valeurs: { nom: groupe.nom, description: groupe.description } }).statut, 200);
+});
+
+test('nouvelle espèce (décision R64) : rangée sous un groupe au choix ; une espèce au nom d’un groupe ne prend pas son identifiant', () => {
+  const groupe = un('SELECT * FROM monstre_groupe ORDER BY id LIMIT 1');
+  const avant = chargerMonstres(db).especes;
+  // une espèce au nom du groupe : un autre identifiant, une espèce de plus, aucune ligne du groupe pour voisine
+  const homonyme = enregistrer({ op: 'creer', entite: 'monstre_espece', valeurs: { nom: groupe.nom, ep_brut: 'EP1' } });
+  assert.equal(homonyme.statut, 200, JSON.stringify(homonyme.corps));
+  const idHomonyme = homonyme.corps.crees[0].id;
+  assert.notEqual(idHomonyme, groupe.id);
+  assert.equal(chargerMonstres(db).especes, avant + 1);
+  // un nouvel Ottar, rangé sous le groupe dès sa création
+  let nom = `${groupe.nom} essai`;
+  for (let n = 2; un('SELECT 1 FROM monstre_espece WHERE nom_cle = ?', normalize(nom)); n += 1) nom = `${groupe.nom} essai ${n}`;
+  const r = enregistrer({ op: 'creer', entite: 'monstre_espece', valeurs: { nom, ep_brut: 'EP1 - 10', groupe_id: groupe.id } });
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  const cree = un('SELECT id, groupe_id FROM monstre_espece WHERE nom = ?', nom);
+  assert.equal(cree.groupe_id, groupe.id);
+  const ligne = chargerMonstres(db).lignes.find((l) => l.id === cree.id);
+  assert.deepEqual([ligne.tri.espece, ligne.espece.groupe.id], [groupe.nom, groupe.id]);
+  assert.equal(chargerMonstres(db).especes, avant + 1, 'le nouvel Ottar compte avec son groupe');
+  assert.equal(enregistrer({ op: 'creer', entite: 'monstre_espece', valeurs: { nom: `${nom} bis`, ep_brut: 'EP1', groupe_id: 'monstres/groupe-absent' } }).statut, 404);
+  for (const id of [cree.id, idHomonyme]) assert.equal(enregistrer({ op: 'supprimer', entite: 'monstre_espece', cle: { id } }).statut, 200);
+});
+
+test('description de la créature (décision R65) : la carte reçoit la sienne, l’espèce garde la sienne ; vide = NULL', () => {
+  const avantEspece = un('SELECT description FROM monstre_espece WHERE id = ?', carte.espece_id).description;
+  assert.equal(un('SELECT description FROM monstre WHERE id = ?', carte.id).description, null, 'le doc n’en écrit aucune');
+  const r = enregistrer({ op: 'modifier', table: 'monstre', cle: { id: carte.id }, valeurs: { description: 'Une créature à part.\n\nDeux paragraphes.' } });
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  assert.equal(un('SELECT description FROM monstre WHERE id = ?', carte.id).description, 'Une créature à part.\n\nDeux paragraphes.');
+  assert.equal(un('SELECT description FROM monstre_espece WHERE id = ?', carte.espece_id).description, avantEspece);
+  assert.equal(enregistrer({ op: 'modifier', table: 'monstre', cle: { id: carte.id }, valeurs: { description: '' } }).statut, 200);
+  assert.equal(un('SELECT description FROM monstre WHERE id = ?', carte.id).description, null);
 });
 
 test('créer une espèce, puis un monstre dedans ; supprimer le monstre, puis l’espèce ; un identifiant ne resert jamais', () => {
@@ -325,7 +383,7 @@ test('le portrait suit la tuile : la première carte d’une espèce prend le si
 });
 
 test('rejeu du journal sur les règles : les mêmes tables du bestiaire que la base vivante', () => {
-  const tables = ['monstre_espece', 'monstre_espece_lieu', 'monstre', 'monstre_rubrique', 'monstre_caracteristique', 'monstre_attaque', 'monstre_capacite', 'monstre_defense'];
+  const tables = ['monstre_groupe', 'monstre_espece', 'monstre_espece_lieu', 'monstre', 'monstre_rubrique', 'monstre_caracteristique', 'monstre_attaque', 'monstre_capacite', 'monstre_defense'];
   const lire = (base) => Object.fromEntries(tables.map((t) => [t, base.prepare(`SELECT * FROM ${t} ORDER BY 1, 2, 3`).all().map((l) => JSON.stringify(l))]));
   const journal = journalExporte(db);
   const neuve = baseNeuve();

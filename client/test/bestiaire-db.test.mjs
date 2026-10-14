@@ -15,7 +15,8 @@ const n = (sql) => db.prepare(sql).get().n;
 
 test('monstres : une ligne par carte, et une par espèce sans carte ; ancres uniques', () => {
   assert.equal(monstres.cartes, n('SELECT count(*) AS n FROM monstre'));
-  assert.equal(monstres.especes, n('SELECT count(*) AS n FROM monstre_espece'));
+  // un groupe d'espèces compte pour une (les 22 Ottar, décision R64)
+  assert.equal(monstres.especes, n('SELECT count(DISTINCT coalesce(groupe_id, id)) AS n FROM monstre_espece'));
   assert.equal(monstres.lignes.length, monstres.cartes + n('SELECT count(*) AS n FROM monstre_espece e WHERE NOT EXISTS (SELECT 1 FROM monstre m WHERE m.espece_id = e.id)'));
   const ancres = [...monstres.lignes, ...invocations.lignes].map((l) => l.ancre);
   assert.equal(new Set(ancres).size, ancres.length);
@@ -33,7 +34,8 @@ test('monstres : une ligne par carte, et une par espèce sans carte ; ancres uni
 });
 
 test('monstres : tri et filtres sur les colonnes du tableau seulement (espèce, nom, type, catégorie, EP, lieux), valeurs de la base, rien de calculé', () => {
-  const parId = new Map(db.prepare('SELECT m.*, e.nom AS espece_nom FROM monstre m JOIN monstre_espece e ON e.id = m.espece_id').all().map((m) => [m.id, m]));
+  // la colonne Espèce : le nom du groupe d'une espèce qui en a un (« Ottar », décision R64), sinon le sien
+  const parId = new Map(db.prepare('SELECT m.*, coalesce(g.nom, e.nom) AS espece_nom FROM monstre m JOIN monstre_espece e ON e.id = m.espece_id LEFT JOIN monstre_groupe g ON g.id = e.groupe_id').all().map((m) => [m.id, m]));
   for (const l of monstres.lignes.filter((x) => x.carte)) {
     const m = parId.get(l.id);
     assert.deepEqual(Object.keys(l.tri), ['espece', 'nom', 'type', 'categorie', 'ep', 'lieu'], l.id);
@@ -55,13 +57,42 @@ test('monstres : tri et filtres sur les colonnes du tableau seulement (espèce, 
   for (const l of monstres.lignes.filter((x) => !x.carte)) assert.deepEqual(Object.keys(l.facettes), ['espece', 'ep', 'lieu'], l.id);
 });
 
+test('groupe d’espèces (décision R64) : le nom du groupe dans la colonne Espèce, son filtre et son tri ; chaque espèce garde sa description, ses blocs ; à l’import, « Ottar » et ses 22 espèces', () => {
+  // l'état courant (le nom et la description du groupe se modifient sur le site de dev) : des invariants
+  const groupes = new Map(db.prepare('SELECT * FROM monstre_groupe').all().map((g) => [g.id, g]));
+  const especes = new Map(db.prepare('SELECT id, description, groupe_id FROM monstre_espece').all().map((e) => [e.id, e]));
+  for (const l of monstres.lignes) {
+    const e = especes.get(l.espece.id);
+    const g = groupes.get(e.groupe_id);
+    assert.deepEqual(l.espece.groupe && { ...l.espece.groupe }, g ? { id: g.id, nom: g.nom, description: g.description } : null, l.id);
+    assert.equal(l.tri.espece, g?.nom ?? l.espece.nom, `${l.id} : tri`);
+    assert.deepEqual(l.facettes.espece, [normalize(g?.nom ?? l.espece.nom)], `${l.id} : filtre`);
+    assert.equal(l.espece.description, e.description, `${l.id} : sa description à elle`);
+  }
+  // un groupe compte pour une espèce ; une espèce nommée comme lui reste une autre (clés distinctes)
+  assert.equal(monstres.especes, new Set([...especes.values()].map((e) => (e.groupe_id ? `groupe:${e.groupe_id}` : `espece:${e.id}`))).size);
+  // l'import (historique du site) : le groupe « Ottar », titre « Ottar (explication) » du doc, et ses 22 espèces, du Presque-Ottar à l'Ottar Tour
+  const historique = historiqueSite(db);
+  const [g] = historique.lignesDImport('monstre_groupe');
+  assert.deepEqual([g.id, g.nom], ['monstres/ottar', 'Ottar']);
+  assert.match(g.description, /^Les Ottars ont été des êtres humanoïdes de tout horizon/);
+  const membres = historique.lignesDImport('monstre_espece').filter((e) => e.groupe_id === g.id).sort((a, b) => a.ordre - b.ordre);
+  assert.equal(membres.length, 22);
+  assert.deepEqual([membres[0].id, membres[21].id], ['monstres/presque-ottar', 'monstres/ottar-tour']);
+  assert.equal(historique.lignesDImport('monstre_espece_bloc').filter((b) => b.espece_id === 'monstres/presque-ottar').length, 15);
+  // décision R65 : la description de la créature elle-même, sur sa carte (le doc n'en écrit aucune à l'import)
+  const parId = new Map(db.prepare('SELECT id, description FROM monstre').all().map((m) => [m.id, m.description]));
+  for (const l of monstres.lignes.filter((x) => x.carte)) assert.equal(l.carte.description, parId.get(l.id), l.id);
+  assert.deepEqual(historique.lignesDImport('monstre').filter((m) => m.description !== null).map((m) => m.id), []);
+});
+
 test('filtres des monstres : chaque option compte les lignes qui portent sa valeur ; libellé = l’écriture la plus fréquente', () => {
   // « Inutile de filtrer par les colonnes non affichées » (demande du propriétaire) : un filtre par colonne, dans leur ordre, sauf le nom (la recherche)
   assert.deepEqual(monstres.facettes.map((f) => f.cle), ['espece', 'type', 'categorie', 'ep', 'lieu']);
   // l'espèce : une option par nom d'espèce (« Golem de corail », écrit deux fois dans le doc, n'en fait qu'une)
   assert.deepEqual(
     monstres.facettes.find((f) => f.cle === 'espece').options.map((o) => o.valeur).sort(),
-    [...new Set(db.prepare('SELECT nom FROM monstre_espece').all().map((r) => normalize(r.nom)))].sort(),
+    [...new Set(db.prepare('SELECT coalesce(g.nom, e.nom) AS nom FROM monstre_espece e LEFT JOIN monstre_groupe g ON g.id = e.groupe_id').all().map((r) => normalize(r.nom)))].sort(),
   );
   for (const f of monstres.facettes) {
     assert.ok(f.options.length > 0, f.cle);

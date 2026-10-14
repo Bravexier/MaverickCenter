@@ -16,7 +16,13 @@ export function getStaticPaths() {
 }
 
 const { ligne, monstres } = Astro.props;
-const description = ligne.carte ? `${ligne.nom} (${ligne.espece.nom}) : la carte du bestiaire.` : `${ligne.nom} : l’espèce du bestiaire.`;
+// l'espèce : son groupe s'il en a un (« Ottar », décision R64)
+const espece = ligne.espece.groupe?.nom ?? ligne.espece.nom;
+const description = ligne.carte
+  ? `${ligne.nom} (${espece}) : la carte du bestiaire.`
+  : ligne.espece.groupe
+    ? `${ligne.nom} (${espece}) : sans carte de combat, dans le bestiaire.`
+    : `${ligne.nom} : l’espèce du bestiaire.`;
 ---
 
 <Base title={`${ligne.nom} — Bestiaire`} description={description}>

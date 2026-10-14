@@ -48,7 +48,7 @@ import {
 import { empreinte } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { ErreurJournal, cleDe, lireLigne, nouveauLot, ouvrirLot, rejouer, structure } from './edition-journal.mjs';
-import { domainesDuBestiaire, especesDeMonstres, lignesDuBestiaire as lignesRenduesDuBestiaire } from './edition-bestiaire.mjs';
+import { domainesDuBestiaire, especesDeMonstres, groupesDeMonstres, lignesDuBestiaire as lignesRenduesDuBestiaire } from './edition-bestiaire.mjs';
 import { contexteDuCorpsDesArmes, domainesDesArmes } from './edition-armes.mjs';
 import { contexteDuCorpsDesComposants, domainesDesComposants, magiesSansBois, magiesSansGemme } from './edition-composants.mjs';
 import { corpsDuComposantApres, ErreurCorpsComposants, pagesDuComposant, TABLES_DES_COMPOSANTS } from '../src/lib/corps-composants.mjs';
@@ -1622,6 +1622,8 @@ export function listes(db) {
     typesDon: db.prepare('SELECT id, nom, definition FROM type_don ORDER BY ordre').all(),
     // les espèces du bestiaire (formulaire « Nouveau monstre »)
     especesDeMonstres: especesDeMonstres(db),
+    // les groupes d'espèces (formulaire « Nouvelle espèce » : un nouvel Ottar rejoint « Ottar », décision R64)
+    groupesDeMonstres: groupesDeMonstres(db),
     // le bestiaire : le tableau de l'introduction (curseur d'échelle d'une carte, rendu « monstre-echelle ») et le glossaire du butin (l'objet d'une case
     // en infobulle, rendu « monstre-butin » : les définitions sont dans la page, il ne faut que l'identifiant et le nom)
     echellesDePuissance: db.prepare('SELECT * FROM monstre_echelle ORDER BY ep').all(),

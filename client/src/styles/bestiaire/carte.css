@@ -42,6 +42,31 @@
 .bcarte__badges { margin: 0; display: flex; flex-wrap: wrap; gap: 0.3rem; }
 .bbadge { display: inline-block; padding: 0 0.45rem; border-radius: 999px; font-size: 0.78rem; border: 1px solid var(--border); background: var(--bg); white-space: nowrap; }
 .bbadge--ep { border-style: dashed; }
+/* la description, repliée sous les tags, au-dessus du filet de l'en-tête (demande du propriétaire ; lib/bestiaire-rendu.mjs#htmlDeCarteMonstre) : entre les
+   titres et « Fermer », à gauche du portrait ; sur un téléphone, toute la largeur sous le portrait. Seulement la carte d'un monstre (`:has`) : les
+   créatures invoquées et leur infobulle gardent leur en-tête */
+.bcarte__tete:has(> .bcarte__description) { grid-template-areas: "titres portrait" "description portrait" "fermer portrait"; grid-template-rows: auto auto 1fr; }
+.bcarte__description { grid-area: description; min-width: 0; }
+.bcarte__description > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: baseline; gap: 0.3rem; font-size: 0.85rem; color: var(--bes); font-weight: 700; }
+/* « déroulable » : ▸ repliée, ▾ dépliée, comme les tableaux des créatures invoquées */
+.bcarte__description > summary::-webkit-details-marker { display: none; }
+.bcarte__description > summary::before { content: '▸'; width: 0.8em; }
+.bcarte__description[open] > summary::before { content: '▾'; }
+.bcarte__description > summary:focus-visible { outline: 2px solid var(--bes); outline-offset: 2px; border-radius: 4px; }
+.bcarte .bcarte__description > p { margin: 0.35rem 0 0; }
+/* l'espèce, puis la créature, à la ligne (décision R65) */
+.bcarte .bcarte__description > p + p { margin-top: 0.8rem; }
+/* en mode modification, les deux champs à la suite, chacun avec son intitulé (demande du propriétaire : « il faut bien qu'on ait les deux champs
+   description espèce et description créature à la suite l'un de l'autre ») : la saisie n'a qu'un texte indicatif, qui s'efface une fois remplie. En
+   pseudo-élément, l'intitulé n'entre pas dans le texte que lit la recherche */
+body.ed-mode .bcarte__description > p::before { display: block; margin-bottom: 0.2rem; font-size: 0.78rem; font-weight: 700; color: var(--muted); }
+body.ed-mode .bcarte__description > .bcarte__desc-espece::before { content: 'Description de l’espèce'; }
+body.ed-mode .bcarte__description > .bcarte__desc-creature::before { content: 'Description de la créature'; }
+@media (max-width: 30rem) {
+  .bcarte__tete:has(> .bcarte__description) { grid-template-areas: "titres portrait" "description description" "fermer fermer"; grid-template-rows: auto; }
+}
+/* à l'impression, dépliée (le script de la page l'ouvre aussi avant d'imprimer : src/scripts/bestiaire.mjs) */
+@media print { .bcarte__description::details-content { content-visibility: visible; } .bcarte__description > summary { display: none; } }
 /* le portrait (migration 0033, lib/bestiaire-rendu.mjs#htmlDuPortrait) : un cadre carré qui montre le carré cadré de l'image (l'image y est placée en
    pourcentages, comme la vignette de la fiche de personnage) ; sans image, le logo en filigrane */
 .bcarte__portrait { grid-area: portrait; margin: 0; width: 8.5rem; display: grid; gap: 0.3rem; justify-items: center; }

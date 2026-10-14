@@ -217,6 +217,14 @@ export const TABLES = {
   // Bestiaire (/bestiaire/, components/bestiaire/ ; demande du propriétaire : créer, modifier, supprimer un monstre) : une espèce, une carte de monstre,
   // le texte de chaque rubrique d'une carte (les valeurs typées en sont tirées par le service : lib/monstre-champs.mjs#valeursDeLaCarte), les blocs et le
   // butin d'une espèce. Les échelles s'écrivent comme dans le doc (« EP2 », « EP1 - 10 » pour une espèce, « 2 », « 1-10 » pour une carte).
+  // le groupe d'espèces (décision R64 : « Ottar ») : son nom (la colonne Espèce de ses espèces) et sa description ; ses espèces ne changent que par migration
+  monstre_groupe: {
+    libelle: 'Groupe d’espèces',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Nom de l’espèce (le groupe)', requis: true },
+      description: { type: 'texte', libelle: 'Description de l’espèce' },
+    },
+  },
   monstre_espece: {
     libelle: 'Espèce de monstre',
     colonnes: {
@@ -237,6 +245,8 @@ export const TABLES = {
       type_brut: { type: 'ligne', libelle: 'Type (« Vermine », « Non-mort »)' },
       alignement_brut: { type: 'ligne', libelle: 'Alignement' },
       variable: { type: 'choix', libelle: 'Stats selon l’échelle de puissance', requis: true, choix: STATS_VARIABLES },
+      // décision R65 : après celle de l'espèce, dans l'en-tête de la carte
+      description: { type: 'texte', libelle: 'Description de la créature' },
       ...COLONNES_DU_PORTRAIT,
     },
   },
@@ -419,7 +429,8 @@ export const ENTITES = {
     libelle: 'espèce',
     nouveau: 'Nouvelle espèce',
     suppression: true,
-    champs: champsDe('monstre_espece', ['nom', 'ep_brut', 'description', 'lieu_brut']),
+    // son groupe (décision R64 : un nouvel Ottar rejoint « Ottar ») : seulement à la création, l'appartenance ne se modifie pas ensuite
+    champs: { ...champsDe('monstre_espece', ['nom', 'ep_brut', 'description', 'lieu_brut']), groupe_id: { type: 'choix', libelle: 'Rangée sous l’espèce (groupe, facultatif)', liste: 'groupesDeMonstres' } },
   },
   monstre: {
     table: 'monstre',

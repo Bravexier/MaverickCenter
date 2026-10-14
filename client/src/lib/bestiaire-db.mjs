@@ -2,7 +2,8 @@
 // champs » ; « Les créatures invoquées doivent être dans une catégorie à part car ils ne fonctionnent pas tout à fait pareillement ») : deux catégories,
 // chacune son tableau, ses filtres et sa recherche (components/bestiaire/).
 //   * Monstres : les tables du « Bestiaire 2.0 » (data/schema.sql, section 8 bis) ; une ligne par carte (ennemi simple, mini-boss, boss), et une ligne
-//     par espèce qui n'a pas encore de carte (description seule : la plupart des Ottar).
+//     par espèce qui n'a pas encore de carte (description seule : la plupart des Ottar). Une espèce d'un groupe (`monstre_groupe`, décision R64 : les
+//     Ottar) prend son nom dans la colonne Espèce, son filtre et « Même espèce ».
 //   * Créatures invoquées : les tables des invocations (section 8) ; une ligne par créature.
 // Chaque ligne porte ce que le tableau affiche, le texte de sa carte (à côté du tableau), son portrait (migration 0033) et ses valeurs de filtre
 // (`facettes` : clé -> valeurs) et de tri (`tri`), pour les colonnes affichées seulement (« Inutile de filtrer par les colonnes non affichées »).
@@ -109,6 +110,8 @@ const echellesDe = (brut, min, max) => {
 export function chargerMonstres(db) {
   const all = (sql) => db.prepare(sql).all();
   const especes = all('SELECT * FROM monstre_espece ORDER BY ordre');
+  // les groupes d'espèces (décision R64 : « regrouper tous les Ottar (et le presqu'Ottar) sous la même espèce d'Ottar »)
+  const groupes = new Map(all('SELECT id, nom, description FROM monstre_groupe').map((g) => [g.id, g]));
   const cartes = regrouper(all('SELECT * FROM monstre ORDER BY espece_id, rang'), 'espece_id');
   const lieux = regrouper(all('SELECT * FROM monstre_espece_lieu ORDER BY espece_id, rang'), 'espece_id');
   const blocs = regrouper(all('SELECT * FROM monstre_espece_bloc ORDER BY espece_id, rang'), 'espece_id');
@@ -125,9 +128,12 @@ export function chargerMonstres(db) {
   const ancres = new Set(especes.filter((e) => !(cartes.get(e.id) ?? []).length).map((e) => e.id.slice(e.id.indexOf('/') + 1)));
   for (const e of especes) {
     const lieuxDe = (lieux.get(e.id) ?? []).map((l) => ({ lieu: l.lieu, cle: ec.lieu.noter(l.lieu) }));
+    const g = groupes.get(e.groupe_id) ?? null;
     const espece = {
       id: e.id,
       nom: e.nom,
+      // son groupe (Ottar) : son nom, et sa description, celle de l'espèce ; la description de l'espèce du doc est alors celle de la créature (décision R65)
+      groupe: g && { id: g.id, nom: g.nom, description: g.description },
       ep: e.ep_brut,
       description: e.description,
       lieu: e.lieu_brut,
@@ -138,7 +144,9 @@ export function chargerMonstres(db) {
     };
     const sesCartes = cartes.get(e.id) ?? [];
     const base = (slug) => ({ ancre: `monstre-${slug}`, espece, texteLieux: lieuxDe.map((l) => l.lieu).join(', ') });
-    const cleEspece = ec.espece.noter(e.nom);
+    // la colonne Espèce : le nom du groupe d'une espèce qui en a un (« Ottar »), sinon le sien
+    const nomDEspece = g?.nom ?? e.nom;
+    const cleEspece = ec.espece.noter(nomDEspece);
     const texteDesLieux = lieuxDe.map((x) => x.lieu).join(', ') || null;
     if (!sesCartes.length) {
       lignes.push({
@@ -148,7 +156,7 @@ export function chargerMonstres(db) {
         nom: e.nom,
         portrait: portraitDe(e),
         facettes: { espece: unique([cleEspece]), ep: echellesDe(e.ep_brut, e.ep_min, e.ep_max), lieu: unique(lieuxDe.map((l) => l.cle)) },
-        tri: { espece: e.nom, nom: e.nom, ep: e.ep_min, lieu: texteDesLieux },
+        tri: { espece: nomDEspece, nom: e.nom, ep: e.ep_min, lieu: texteDesLieux },
       });
       continue;
     }
@@ -175,6 +183,8 @@ export function chargerMonstres(db) {
         portrait: portraitDe(c),
         carte: {
           nomBrut: c.nom_brut,
+          // la description de la créature elle-même, après celle de l'espèce (décision R65) ; le doc n'en écrit aucune
+          description: c.description,
           echelle: c.echelle_brut,
           categorie: c.categorie,
           categorieBrut: c.categorie_brut,
@@ -205,7 +215,7 @@ export function chargerMonstres(db) {
           lieu: unique(lieuxDe.map((l) => l.cle)),
         },
         tri: {
-          espece: e.nom,
+          espece: nomDEspece,
           nom: c.nom,
           type: c.type_brut,
           categorie: ['ennemi_simple', 'mini_boss', 'boss'].indexOf(c.categorie),
@@ -227,7 +237,8 @@ export function chargerMonstres(db) {
   return {
     lignes,
     facettes,
-    especes: especes.length,
+    // les espèces du tableau : un groupe compte pour une (les 22 Ottar, décision R64)
+    especes: new Set(especes.map((e) => (e.groupe_id ? `groupe:${e.groupe_id}` : `espece:${e.id}`))).size,
     cartes: lignes.filter((l) => l.carte).length,
     regles: all('SELECT rang, texte FROM monstre_regle ORDER BY rang'),
     echelles: all('SELECT * FROM monstre_echelle ORDER BY ep'),

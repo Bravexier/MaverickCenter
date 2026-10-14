@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 41 : 186 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 42 : 187 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -17,7 +17,7 @@
 - [6. CLASSES, SPÉCIALITÉS, CAPACITÉS (famille « classes »)](#6-classes-spécialités-capacités-famille--classes) : `categorie_classe`, `classe`, `specialite`, `capacite`, `objet_depart`, `classe_objet_depart`, `classe_maitrise_armure`, `classe_maitrise_arme`, `classe_annexe`
 - [7. RACES, ETHNIES, ACCESSIBILITÉS (famille « races »)](#7-races-ethnies-accessibilités-famille--races) : `race`, `race_restriction_carac`, `ethnie`, `ethnie_resistance`, `race_classe`, `race_magie`, `race_onglet`, `race_don`, `race_don_tableau_colonne`, `race_don_tableau_ligne`, `race_don_tableau_cellule`, `race_magie_onglet`, `echelle_relation`, `peuple`, `relation_peuple`
 - [8. BESTIAIRE : invocations et créatures (famille « bestiaire »)](#8-bestiaire--invocations-et-créatures-famille--bestiaire) : `invocation`, `invocation_capacite_commune`, `invocation_resistance`, `invocation_bloc`, `invocation_bloc_magie`, `creature`, `creature_ressource`, `creature_caracteristique`, `creature_bonus_npm`, `creature_attaque`, `creature_attaque_type`, `creature_capacite`, `creature_capacite_sort`, `creature_capacite_resistance`, `creature_effet`
-- [8 bis. BESTIAIRE 2.0 : monstres, butin, échelles de puissance (famille « monstres »)](#8-bis-bestiaire-20--monstres-butin-échelles-de-puissance-famille--monstres) : `monstre_regle`, `monstre_echelle`, `monstre_butin_objet`, `monstre_espece`, `monstre_espece_lieu`, `monstre_espece_bloc`, `monstre_butin`, `monstre`, `monstre_rubrique`, `monstre_caracteristique`, `monstre_attaque`, `monstre_capacite`, `monstre_defense`
+- [8 bis. BESTIAIRE 2.0 : monstres, butin, échelles de puissance (famille « monstres »)](#8-bis-bestiaire-20--monstres-butin-échelles-de-puissance-famille--monstres) : `monstre_regle`, `monstre_echelle`, `monstre_butin_objet`, `monstre_groupe`, `monstre_espece`, `monstre_espece_lieu`, `monstre_espece_bloc`, `monstre_butin`, `monstre`, `monstre_rubrique`, `monstre_caracteristique`, `monstre_attaque`, `monstre_capacite`, `monstre_defense`
 - [9. ÉQUIPEMENT, RESSOURCES, CRAFT, MÉTIERS (familles « equipement », « craft », « docs_typees »)](#9-équipement-ressources-craft-métiers-familles--equipement---craft---docstypees) : `monnaie`, `constante_equipement`, `niveau_alchimie`, `affinite`, `arme_famille`, `arme_type`, `ressource`, `materiau_arme`, `materiau_armure`, `materiau_bouclier`, `materiau`, `gemme`, `bois`, `ingredient_alchimie`, `potion`, `potion_etat`, `kit_alchimie`, `fiole_verre`, `recette`, `recette_produit`, `recette_ingredient`, `baton_magique`, `metier`, `metier_bonus`, `metier_recette_famille`, `metier_objet_depart`, `arme`, `arme_degats`, `arme_prerequis`, `arme_elementaire`, `armure_emplacement`, `armure`, `armure_degats`, `armure_elementaire`, `armure_elementaire_effet`, `bouclier_classe`, `bouclier_poids`, `bouclier`, `amelioration_equipement`, `amelioration_total`, `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet`, `accessoire_effet_gemme`, `accessoire_effet_cible`, `accessoire_monture`, `familier`, `familier_effet`, `batiment`, `machine_guerre`, `maladie`, `maladie_methode`
 - [10. TRANSVERSAL : notes de cellule et écarts entre sources](#10-transversal--notes-de-cellule-et-écarts-entre-sources) : `note_cellule`, `ecart_source`, `correction`
 - [11. TABLES DÉRIVÉES (jamais exportées dans data/rows/, recalculées par `npm run db:build`)](#11-tables-dérivées-jamais-exportées-dans-datarows-recalculées-par-npm-run-dbbuild) : `lien`, `lien_candidat`, `page_fts`, `entite_fts`
@@ -1537,9 +1537,22 @@ Glossaire du butin (fin du doc, « GLOSSAIRE BUTIN ») : « Nom. Définition ».
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 
+### `monstre_groupe`
+
+GROUPE D'ESPÈCES (décision R64, migration 0042) : des espèces du doc qui n'en font qu'une pour le propriétaire (« regrouper tous les Ottar (et le presqu'Ottar) sous la même espèce d'Ottar, dont la description était auparavant perdue dans la mauvaise fiche ») ; un titre « Nom (explication) » du doc, sa description (les paragraphes qui le suivent), et les espèces qui le suivent dont le nom contient le sien (aujourd'hui : « Ottar », 22 espèces). Ni carte ni ligne à lui : le tableau écrit son nom dans la colonne Espèce de ses espèces, la carte de chacune montre sa description.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | TEXT | oui | PK | « monstres/<nom_cle> » |
+| `nom` | TEXT | oui |  | titre tel qu'écrit, sans « (explication) » |
+| `nom_cle` | TEXT | oui |  |  |
+| `description` | TEXT | non |  | paragraphes qui suivent le titre, jusqu'au trait, séparés par une ligne vide |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
 ### `monstre_espece`
 
-ESPÈCE : un titre « Nom (EPx) » du doc, rangé sous sa lettre ; sa description, son lieu de rencontre, puis ses cartes (de 0 à 3 : ennemi simple, mini-boss, boss), les blocs qui suivent les cartes et le tableau du butin.
+ESPÈCE : un titre « Nom (EPx) » du doc, rangé sous sa lettre ; sa description, son lieu de rencontre, puis ses cartes (de 0 à 3 : ennemi simple, mini-boss, boss), les blocs qui suivent les cartes et le tableau du butin ; son groupe éventuel (« Ottar »).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1560,6 +1573,7 @@ ESPÈCE : un titre « Nom (EPx) » du doc, rangé sous sa lettre ; sa descriptio
 | `portrait_x` | REAL | non |  |  |
 | `portrait_y` | REAL | non |  |  |
 | `portrait_zoom` | REAL | non |  |  |
+| `groupe_id` | TEXT | non | → monstre_groupe.id | son groupe (décision R64, migration 0042) ; NULL = aucun |
 
 ### `monstre_espece_lieu`
 
@@ -1636,6 +1650,7 @@ MONSTRE : une carte « NOM Créature échelle N » ; « Type | Alignement | Cat�
 | `portrait_x` | REAL | non |  |  |
 | `portrait_y` | REAL | non |  |  |
 | `portrait_zoom` | REAL | non |  |  |
+| `description` | TEXT | non |  |  |
 
 ### `monstre_rubrique`
 

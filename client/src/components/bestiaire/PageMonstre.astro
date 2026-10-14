@@ -22,8 +22,10 @@ interface Props {
 }
 const { ligne: l, monstres } = Astro.props;
 const { echelles, glossaire, elements, magiesDesCibles } = monstres;
-// les autres cartes de l'espèce (« Loup-garou », « Loup-garou supérieur »…), dans l'ordre du doc
-const voisines = monstres.lignes.filter((x) => x.espece.id === l.espece.id && x.id !== l.id);
+// les autres cartes de l'espèce (« Loup-garou », « Loup-garou supérieur »…), dans l'ordre du doc ; d'une espèce d'un groupe, toutes celles du groupe (les 22
+// Ottar, décision R64)
+const especeDe = (x: Monstres['lignes'][number]) => (x.espece.groupe ? `groupe:${x.espece.groupe.id}` : `espece:${x.espece.id}`);
+const voisines = monstres.lignes.filter((x) => especeDe(x) === especeDe(l) && x.id !== l.id);
 const lien = (id: string) => url(cheminDeMonstre(id) ?? 'bestiaire/');
 ---
 

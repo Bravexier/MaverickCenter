@@ -175,7 +175,8 @@ export function texteParEchelle(texte, echelles = []) {
 /**
  * Un trait « ________________ » (ligne de séparation du doc) dans le texte d'une rubrique : ce qui le suit n'a pas de place décidée. À l'import, un
  * seul cas : « Ottar (explication) », section de lore écrite à la suite de la carte dans le Bestiaire 2.0, que l'extraction a rattachée à la tactique de
- * l'Os du blizzard. Demande du propriétaire : « Je ne sais pas. Signale le avec un panneau "attention" » (lib/monstre-rendu.mjs#htmlDAttention).
+ * l'Os du blizzard. Demande du propriétaire : « Je ne sais pas. Signale le avec un panneau "attention" » (lib/monstre-rendu.mjs#htmlDAttention). Ce texte
+ * est depuis la description de l'espèce « Ottar » (décision R64, `monstre_groupe`) ; le propriétaire l'a coupé de la tactique sur le site de dev.
  * { avant, apres } coupé au premier trait, sans les lignes vides qui l'entourent ; null sans trait ou sans rien après.
  */
 const TRAIT = /^[ \t]*_{3,}[ \t]*$/m;
