@@ -4,8 +4,9 @@
 // ou en pastilles (cibles des défenses), sinon le texte s'affiche tel qu'écrit. Une carte écrite par échelle de puissance (« EP 1 : 20 EP 6 : 140 »…) :
 // chaque valeur porte les échelles qu'elle couvre (`data-eps`) et le curseur de la carte (htmlDeLEchelle) n'en montre qu'une (demande du propriétaire :
 // « pour les tuiles des ennemis ayant plusieurs échelles, [choisir l'échelle] par un slider et que ses caractéristiques soient calculées en fonction ») ;
-// chaque valeur est celle que la carte écrit pour l'échelle. Seule exception, la formule « N (+k/mEP) » d'une défense, calculée à chaque échelle selon la
-// décision R55 (« +2 tous les 3 EP ») ; une capacité « [EPN] » n'est montrée qu'à partir de l'EP N (décision R56). Fonctions pures, chaîne HTML en sortie,
+// chaque valeur est celle que la carte écrit pour l'échelle. Seule exception, la formule « N (+k/mEP) » ou « N (+k/EP) » d'une défense, calculée à chaque
+// échelle selon les décisions R55 (« +2 tous les 3 EP ») et R59 (« on ne compte pas le EP1 ») ; une capacité « [EPN] » n'est montrée qu'à partir de l'EP N
+// (décision R56) ; le texte qui suit un trait du doc est signalé par un panneau « Attention » (htmlDAttention). Fonctions pures, chaîne HTML en sortie,
 // tout texte échappé.
 import { couleurDeCaracteristique, styleDeCouleur } from './caracteristiques-postures.mjs';
 import { couleurDeMagie, texteSurCouleur } from './sort-format.mjs';
@@ -16,6 +17,7 @@ import {
   caracteristiques,
   CATEGORIES,
   cibles,
+  apresUnTrait,
   echelleDuPrefixe,
   echellesEcrites,
   FPVSIA,
@@ -146,31 +148,43 @@ const libelleDesEchelles = (eps) =>
 const EP_MAX = 10;
 
 /**
- * Un texte à formules « N (+k/mEP) » (décision R55) lu à chaque échelle de la carte : une ligne par groupe d'échelles (lib/monstre-champs.mjs#texteParEchelle),
- * la valeur calculée soulignée, la formule écrite en infobulle ; le curseur n'en montre qu'une, sans JavaScript toutes s'affichent.
+ * Un texte à formules « N (+k/mEP) » ou « N (+k/EP) » (décisions R55, R59) lu à chaque échelle de la carte : une ligne par groupe d'échelles
+ * (lib/monstre-champs.mjs#texteParEchelle), la valeur calculée soulignée, la formule écrite en infobulle ; le curseur n'en montre qu'une, sans JavaScript
+ * toutes s'affichent.
  */
 function htmlDesProgressions(groupes) {
   const morceau = (m) => {
     if (m.texte !== undefined) return e(m.texte);
     const f = progressionDe(m.formule);
-    return `<span class="bcalcul" title="${e(`« ${m.formule.trim()} » : +${f.pas} ${f.tous === 1 ? 'à chaque EP' : `tous les ${f.tous} EP`}`)}">${m.valeur}</span>${e(m.mots)}`;
+    const lecture = `${f.base} à l’EP 1, puis +${f.pas} ${f.tous === 1 ? 'par EP' : `tous les ${f.tous} EP`}`;
+    return `<span class="bcalcul" title="${e(`« ${m.formule.trim()} » : ${lecture}`)}">${m.valeur}</span>${e(m.mots)}`;
   };
   return `<span class="bep-lignes">${groupes
     .map((g) => `<span class="bep-ligne" data-eps="${g.eps.join(' ')}"><span class="bep">${libelleDesEchelles(g.eps)}</span> <span class="texte">${g.morceaux.map(morceau).join('')}</span></span>`)
     .join('')}</span>`;
 }
 const progressionDe = (formule) => {
-  const m = formule.match(/\(\s*\+\s*(\d+)\s*\/\s*(\d*)\s*EP\s*\)/);
-  return { pas: Number(m[1]), tous: m[2] ? Number(m[2]) : 1 };
+  const m = formule.match(/^(\d+)[^(]*\(\s*\+\s*(\d+)\s*\/\s*([1-9]\d*)?\s*EP\s*\)/);
+  return { base: Number(m[1]), pas: Number(m[2]), tous: m[3] ? Number(m[3]) : 1 };
 };
 
 /**
- * HTML d'une rubrique (`monstre_rubrique.rubrique`) d'après son texte ; `echelles` : celles qu'écrit la carte (lib/monstre-champs.mjs#echellesEcrites), pour
- * une formule « N (+k/mEP) » (décision R55 : N à la première).
+ * Le panneau « Attention » d'un texte dont la place n'est pas décidée (lib/monstre-champs.mjs#apresUnTrait : ce qui suit un trait du doc dans une rubrique) ;
+ * le texte, tel qu'écrit, dans le panneau (demande du propriétaire : « Signale le avec un panneau "attention" »).
  */
-export function htmlDeRubrique(rubrique, texte, { echelles = [], magiesDesCibles = {} } = {}) {
+export const htmlDAttention = (texte) =>
+  `<span class="battention" role="note"><span class="battention__titre">Attention</span> <span class="battention__motif">La place de ce texte sur la carte n’est pas décidée.</span>${htmlDeTexte(texte)}</span>`;
+
+/**
+ * HTML d'une rubrique (`monstre_rubrique.rubrique`) d'après son texte ; `echelles` : celles qu'écrit la carte (lib/monstre-champs.mjs#echellesEcrites), pour
+ * une formule « N (+k/mEP) » ou « N (+k/EP) » (décisions R55, R59). Ce qui suit un trait du doc va dans un panneau « Attention » (htmlDAttention).
+ */
+export function htmlDeRubrique(rubrique, texte, options = {}) {
+  const coupe = apresUnTrait(texte);
+  if (coupe) return `${coupe.avant.trim() ? htmlDeRubrique(rubrique, coupe.avant, options) : ''}${htmlDAttention(coupe.apres)}`;
+  const { echelles = [], magiesDesCibles = {} } = options;
   if (rubrique !== 'capacites' && parEchelle(texte)) return htmlParEchelle(rubrique, texte);
-  // la formule « N (+k/mEP) » : la défense seulement (décision R55)
+  // la formule « N (+k/mEP) » ou « N (+k/EP) » : la défense seulement (décisions R55, R59)
   if (rubrique === 'defense') {
     const groupes = texteParEchelle(texte, echelles);
     if (groupes.length) return htmlDesProgressions(groupes);
@@ -276,7 +290,7 @@ export function htmlDeLEchelle(echelleBrut, categorie, echelles = [], renvoi = f
  * Chacun reçoit la valeur de la colonne et sa ligne de la base.
  */
 export const RENDUS_DU_BESTIAIRE = {
-  // `ctx.echellesDesCartes` (serveur/edition.mjs#listes) : l'échelle écrite de chaque carte, pour une formule « N (+k/mEP) » (décision R55)
+  // `ctx.echellesDesCartes` (serveur/edition.mjs#listes) : l'échelle écrite de chaque carte, pour une formule « N (+k/mEP) » ou « N (+k/EP) » (décisions R55, R59)
   'monstre-rubrique': (valeur, ligne, ctx = {}) =>
     htmlDeRubrique(ligne?.rubrique, valeur, { echelles: echellesEcrites(ctx.echellesDesCartes?.[ligne?.monstre_id]), magiesDesCibles: ctx.magiesDesCibles ?? {} }),
   'monstre-categorie': (valeur, ligne) => htmlDeCategorie(valeur, ligne?.categorie_brut),

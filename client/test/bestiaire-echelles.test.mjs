@@ -13,6 +13,7 @@ import { rendreChamp } from '../src/lib/edition-rendu.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import {
+  apresUnTrait,
   bornes,
   capacites as capacitesDe,
   echelleDuPrefixe,
@@ -26,7 +27,7 @@ import {
   texteParEchelle,
   valeurALEchelle,
 } from '../src/lib/monstre-champs.mjs';
-import { htmlDeLEchelle, htmlDeRubrique, htmlDuButin, idDeBulleDuButin, phrasesDeDegats } from '../src/lib/monstre-rendu.mjs';
+import { htmlDAttention, htmlDeLEchelle, htmlDeRubrique, htmlDuButin, idDeBulleDuButin, phrasesDeDegats } from '../src/lib/monstre-rendu.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const cartes = db.prepare('SELECT * FROM monstre ORDER BY espece_id, rang').all();
@@ -266,60 +267,114 @@ test('carte construite : le curseur (s’il y a lieu) entre la tête et la carte
   }
 });
 
-test('décision R55 : « N (+k/mEP) » vaut N à la première échelle de la carte, puis +k toutes les m échelles (« 5 (+2/3EP) » : 7 à 4, 9 à 7, 11 à 10)', () => {
+test('décisions R55 et R59 : « N (+k/mEP) » et « N (+k/EP) » valent N à l’EP 1, puis +k toutes les m échelles sans compter l’EP 1, Collecteurs compris', () => {
   const dix = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   const lu = (texte, eps) => texteParEchelle(texte, eps).map((g) => [g.eps, g.morceaux.map((m) => m.texte ?? `${m.valeur}${m.mots}`).join('')]);
-  // l'exemple du propriétaire
+  // les calculs du propriétaire, EP 1 à 10 : « 5 (+2/3EP) » et « 2 + 1/EP » (« on ne compte pas le EP1 dans le calcul "par EP" »)
   const [f] = progressions('5 armure physique (+2/3EP)');
-  assert.deepEqual([4, 7, 10].map((ep) => valeurALEchelle(f, ep, 1)), [7, 9, 11]);
-  assert.deepEqual([1, 2, 3].map((ep) => valeurALEchelle(f, ep, 1)), [5, 5, 5]);
+  assert.deepEqual(dix.map((ep) => valeurALEchelle(f, ep)), [5, 5, 5, 7, 7, 7, 9, 9, 9, 11]);
+  const [g] = progressions('2 (+1/EP) armure physique');
+  assert.deepEqual(dix.map((ep) => valeurALEchelle(g, ep)), [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   assert.deepEqual(lu('5 armure physique (+2/3EP) / 5 (+2/3EP) armure magique (Peau)', dix), [
     [[1, 2, 3], '5 armure physique / 5 armure magique (Peau)'],
     [[4, 5, 6], '7 armure physique / 7 armure magique (Peau)'],
     [[7, 8, 9], '9 armure physique / 9 armure magique (Peau)'],
     [[10], '11 armure physique / 11 armure magique (Peau)'],
   ]);
-  // « /EP » : à chaque échelle
   assert.deepEqual(lu('2 (+1/EP) armure physique / 0 armure magique', [1, 2, 3]), [
     [[1], '2 armure physique / 0 armure magique'],
     [[2], '3 armure physique / 0 armure magique'],
     [[3], '4 armure physique / 0 armure magique'],
   ]);
+  // la valeur ne dépend que de l'EP, pas de la première échelle de la carte : le Collecteur (EP 2 à 6), « 2 (+1/EP) », vaut 3 à l'EP 2 et 7 à l'EP 6
+  assert.deepEqual(lu('2 (+1/EP) armure physique / 0 armure magique (Peau)', [2, 3, 4, 5, 6]).map(([eps, t]) => [eps, t.split(' ')[0]]), [
+    [[2], '3'], [[3], '4'], [[4], '5'], [[5], '6'], [[6], '7'],
+  ]);
+  assert.deepEqual(lu('5 (+2/3EP) armure', [2, 3, 4]), [[[2, 3], '5 armure'], [[4], '7 armure']]);
   // des échelles regroupées seulement si elles se suivent dans la liste écrite et donnent le même texte
   assert.deepEqual(lu('1 (+2/3EP) armure', [1, 2, 4, 5]).map(([eps]) => eps), [[1, 2], [4, 5]]);
   assert.deepEqual(texteParEchelle('5 armure physique / 2 armure magique', dix), [], 'sans formule');
-  assert.deepEqual(texteParEchelle('5 (+2/3EP) armure', [4]), [], 'une seule échelle : le texte tel qu’écrit');
-  // rendu : une ligne par groupe d'échelles, la valeur calculée soulignée, la formule écrite en infobulle
+  // une carte d'une seule échelle : sa valeur (la formule ne dépend que de l'EP), son étiquette visible (pas de curseur)
+  assert.deepEqual(lu('5 (+2/3EP) armure', [4]), [[[4], '7 armure']]);
+  assert.match(htmlDeRubrique('defense', '5 (+2/3EP) armure', { echelles: [4] }), /data-eps="4"><span class="bep">EP 4<\/span> <span class="texte"><span class="bcalcul" [^>]+>7<\/span> armure/);
+  assert.deepEqual(texteParEchelle('5 (+2/3EP) armure', []), [], 'sans échelle écrite : le texte tel qu’écrit');
+  // « /0EP » n'est pas une formule : le texte tel qu'écrit, jamais NaN
+  assert.deepEqual(progressions('2 (+1/0EP) armure'), []);
+  assert.doesNotMatch(htmlDeRubrique('defense', '2 (+1/0EP) armure', { echelles: [1, 2, 3] }), /NaN|Infinity|bcalcul/);
+  // rendu : une ligne par groupe d'échelles, la valeur calculée soulignée, la formule écrite et sa lecture en infobulle
   assert.equal(
     htmlDeRubrique('defense', '5 (+2/3EP) armure', { echelles: [1, 2, 3, 4] }),
-    '<span class="bep-lignes"><span class="bep-ligne" data-eps="1 2 3"><span class="bep">EP 1 - 3</span> <span class="texte"><span class="bcalcul" title="« 5 (+2/3EP) » : +2 tous les 3 EP">5</span> armure</span></span>'
-      + '<span class="bep-ligne" data-eps="4"><span class="bep">EP 4</span> <span class="texte"><span class="bcalcul" title="« 5 (+2/3EP) » : +2 tous les 3 EP">7</span> armure</span></span></span>',
+    '<span class="bep-lignes"><span class="bep-ligne" data-eps="1 2 3"><span class="bep">EP 1 - 3</span> <span class="texte"><span class="bcalcul" title="« 5 (+2/3EP) » : 5 à l’EP 1, puis +2 tous les 3 EP">5</span> armure</span></span>'
+      + '<span class="bep-ligne" data-eps="4"><span class="bep">EP 4</span> <span class="texte"><span class="bcalcul" title="« 5 (+2/3EP) » : 5 à l’EP 1, puis +2 tous les 3 EP">7</span> armure</span></span></span>',
   );
+  assert.equal(
+    htmlDeRubrique('defense', '2 (+1/EP) armure', { echelles: [2, 3] }),
+    '<span class="bep-lignes"><span class="bep-ligne" data-eps="2"><span class="bep">EP 2</span> <span class="texte"><span class="bcalcul" title="« 2 (+1/EP) » : 2 à l’EP 1, puis +1 par EP">3</span> armure</span></span>'
+      + '<span class="bep-ligne" data-eps="3"><span class="bep">EP 3</span> <span class="texte"><span class="bcalcul" title="« 2 (+1/EP) » : 2 à l’EP 1, puis +1 par EP">4</span> armure</span></span></span>',
+  );
+  assert.match(htmlDeRubrique('defense', '5 armure physique (+2/3EP)', { echelles: [1, 2] }), /title="« 5 armure physique \(\+2\/3EP\) » : 5 à l’EP 1, puis \+2 tous les 3 EP"/);
   assert.equal(htmlDeRubrique('defense', '5 (+2/3EP) armure'), '<span class="texte">5 (+2/3EP) armure</span>', 'sans les échelles de la carte : tel qu’écrit');
-  // une carte qui ne commence pas à l'EP 1 (le Collecteur, EP 2 à 6) : où est N ? la formule reste telle qu'écrite (question au propriétaire)
-  assert.deepEqual(texteParEchelle('2 (+1/EP) armure physique', [2, 3, 4, 5, 6]), []);
   // la défense seulement : une autre rubrique garde la formule telle qu'écrite
   assert.doesNotMatch(htmlDeRubrique('degats', 'Griffe - 2d10 + 2 (+1/EP) dégâts', { echelles: [1, 2, 3] }), /bcalcul|data-eps/);
-  // toute la base : chaque formule d'une carte à plusieurs échelles est lue à chacune de ses échelles, une fois
+  // toute la base : chaque formule d'une carte est lue à chacune de ses échelles, une fois, selon les calculs du propriétaire
+  const attendue = (x, ep) => x.base + x.pas * Math.floor((ep - 1) / x.tous);
+  let lues = 0;
   for (const c of cartes) {
     const eps = echellesEcrites(c.echelle_brut);
     for (const r of rubriquesDe(c.id).filter((x) => x.rubrique === 'defense' && progressions(x.texte).length)) {
-      if (eps.length < 2 || eps[0] !== 1) continue;
+      if (!eps.length) continue;
+      lues++;
+      const formules = progressions(r.texte);
       const groupes = texteParEchelle(r.texte, eps);
-      assert.deepEqual(groupes.flatMap((g) => g.eps), eps, `${c.id} · ${r.rubrique}`);
+      assert.deepEqual(groupes.flatMap((x) => x.eps), eps, `${c.id} · ${r.rubrique}`);
       const html = htmlDeRubrique(r.rubrique, r.texte, { echelles: eps });
-      assert.deepEqual([...html.matchAll(/data-eps="([\d ]+)"/g)].map((m) => m[1]), groupes.map((g) => g.eps.join(' ')), c.id);
-      // à la première échelle, la valeur écrite ; le texte hors formules, inchangé
-      assert.equal(groupes[0].morceaux.map((m) => m.texte ?? `${m.valeur}${m.mots}`).join(''), r.texte.replace(/\s*\(\s*\+\s*\d+\s*\/\s*\d*\s*EP\s*\)/g, ''), c.id);
+      assert.deepEqual([...html.matchAll(/data-eps="([\d ]+)"/g)].map((m) => m[1]), groupes.map((x) => x.eps.join(' ')), c.id);
+      for (const groupe of groupes) {
+        const valeurs = groupe.morceaux.filter((m) => m.texte === undefined).map((m) => m.valeur);
+        for (const ep of groupe.eps) assert.deepEqual(valeurs, formules.map((x) => attendue(x, ep)), `${c.id} · EP ${ep}`);
+        // le texte hors formules, inchangé
+        assert.equal(groupe.morceaux.filter((m) => m.texte !== undefined).map((m) => m.texte).join(''), r.texte.replace(/\d+((?:[ \t]+\p{L}+)*?)[ \t]*\(\s*\+\s*\d+\s*\/\s*\d*\s*EP\s*\)/gu, ''), c.id);
+      }
       assert.equal(rendreChamp('monstre-rubrique', r.texte, r, { echellesDesCartes: { [c.id]: c.echelle_brut } }), html, `${c.id} : rendu du mode modification`);
     }
   }
-  // l'import du doc : 16 défenses à formule sur des cartes de l'EP 1 à 10, 3 sur les Collecteurs (EP 2 à 6)
+  assert.ok(lues > 0);
+  // l'import du doc : 16 défenses à formule sur des cartes de l'EP 1 à 10 (3 « /mEP » : les Archidémons), 3 « /EP » sur les Collecteurs (EP 2 à 6) ;
+  // toutes se calculent
   const aFormule = (liste) => cartesDImport.filter((c) => rubriquesDe(c.id, liste).some((x) => x.rubrique === 'defense' && progressions(x.texte).length));
-  assert.deepEqual(
-    aFormule(rubriquesDImport).map((c) => echellesEcrites(c.echelle_brut)[0]).reduce((n, ep) => ({ ...n, [ep]: (n[ep] ?? 0) + 1 }), {}),
-    { 1: 16, 2: 3 },
+  const importees = aFormule(rubriquesDImport);
+  assert.deepEqual(importees.map((c) => echellesEcrites(c.echelle_brut)[0]).reduce((n, ep) => ({ ...n, [ep]: (n[ep] ?? 0) + 1 }), {}), { 1: 16, 2: 3 });
+  const parM = importees.filter((c) => rubriquesDe(c.id, rubriquesDImport).some((x) => x.rubrique === 'defense' && progressions(x.texte).some((p) => p.tous > 1)));
+  assert.equal(parM.length, 3, '« /mEP » : les trois Archidémons');
+  for (const c of importees) {
+    for (const r of rubriquesDe(c.id, rubriquesDImport).filter((x) => x.rubrique === 'defense')) assert.ok(texteParEchelle(r.texte, echellesEcrites(c.echelle_brut)).length, c.id);
+  }
+});
+
+test('un trait du doc dans une rubrique : ce qui le suit va dans un panneau « Attention » (« Ottar (explication) », tactique de l’Os du blizzard)', () => {
+  assert.equal(apresUnTrait('Texte de la tactique.'), null);
+  assert.equal(apresUnTrait('Texte.\n\n________________\n\n'), null, 'rien après le trait');
+  assert.deepEqual(apresUnTrait('Texte.\n\n\n________________\nTitre (explication)\nParagraphe.\n\nSuite.'), {
+    avant: 'Texte.',
+    apres: 'Titre (explication)\nParagraphe.\n\nSuite.',
+  });
+  const html = htmlDeRubrique('tactique', 'Texte.\n________________\nTitre <b>\nParagraphe.');
+  assert.equal(
+    html,
+    '<span class="texte">Texte.</span><span class="battention" role="note"><span class="battention__titre">Attention</span> <span class="battention__motif">'
+      + 'La place de ce texte sur la carte n’est pas décidée.</span><span class="texte">Titre &lt;b&gt;\nParagraphe.</span></span>',
   );
+  assert.equal(htmlDeRubrique('tactique', '________________\nSeul.'), htmlDAttention('Seul.'), 'rien avant le trait : le panneau seul');
+  // l'import du doc : une seule rubrique a un trait, la tactique de l'Os du blizzard, suivie de « Ottar (explication) » ; le panneau garde tout le texte
+  const avecTrait = rubriquesDImport.filter((r) => apresUnTrait(r.texte));
+  assert.deepEqual(avecTrait.map((r) => [r.monstre_id, r.rubrique]), [['monstres/os-du-froid#carte:os-du-blizzard', 'tactique']]);
+  const [r] = avecTrait;
+  assert.match(apresUnTrait(r.texte).apres, /^Ottar \(explication\)\nLes Ottars ont été des êtres humanoïdes/);
+  const rendu = texte(htmlDeRubrique(r.rubrique, r.texte));
+  for (const morceau of r.texte.split(/\n+/).filter((l) => !/^_+$/.test(l.trim()))) assert.ok(rendu.includes(morceau.trim()), morceau);
+  // et la carte construite le montre (comme le mode modification)
+  const ligne = chargerMonstres(db).lignes.find((l) => l.id === r.monstre_id);
+  if (ligne && rubriquesDe(r.monstre_id).some((x) => apresUnTrait(x.texte))) assert.match(htmlDeCarteMonstre(ligne, { logo: '/logo.webp', echelles, glossaire, elements }), /class="battention"/);
 });
 
 test('décision R56 : une capacité « [EPN] » est gagnée à partir de l’EP N ; le curseur la cache en dessous', () => {

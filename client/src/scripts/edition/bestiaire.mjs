@@ -314,11 +314,11 @@ async function monterCarte(ed, carte) {
 }
 
 /**
- * Une défense à formule « N (+k/mEP) » se calcule avec les échelles de sa carte (décision R55, rendu « monstre-rubrique » : `ed.listes.echellesDesCartes`,
- * lu une fois au démarrage) : une carte réécrite (échelle modifiée, carte créée, surcouche au chargement) met la liste à jour et refait ses défenses à
- * formule, hors saisie en cours.
+ * Une défense à formule « N (+k/mEP) » ou « N (+k/EP) » se calcule avec les échelles de sa carte (décisions R55, R59, rendu « monstre-rubrique » :
+ * `ed.listes.echellesDesCartes`, lu une fois au démarrage) : une carte réécrite (échelle modifiée, carte créée, surcouche au chargement) met la liste à
+ * jour et refait ses défenses à formule, hors saisie en cours.
  */
-const FORMULE = /\(\s*\+\s*\d+\s*\/\s*\d*\s*EP\s*\)/;
+const FORMULE = /\(\s*\+\s*\d+\s*\/\s*(?:[1-9]\d*)?\s*EP\s*\)/;
 async function refaireLaDefense(ed, id, echelle) {
   ed.listes.echellesDesCartes = { ...(ed.listes.echellesDesCartes ?? {}), [id]: echelle };
   const champs = [...document.querySelectorAll('[data-ed-rendu="monstre-rubrique"]')].filter((el) => {

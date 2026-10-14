@@ -68,9 +68,10 @@ Demande du propriétaire : « pour les tuiles des ennemis ayant plusieurs échel
 caractéristiques soient calculées en fonction ». Les 40 cartes qui « varient selon leur échelle de puissance » (« 1-10 », « 2-6 », « 3, 5, 7 ») écrivent
 elles-mêmes leurs valeurs échelle par échelle (« EP 1 : 20 », « EP 2 - 5 : 70 », « [EP3] Santé : 330 ») : chaque valeur affichée est celle que la
 carte écrit pour l'échelle choisie (règle d'or). Seule exception, la **défense** écrite « 5 armure physique (+2/3EP) » ou « 2 (+1/EP) armure physique »
-(19 cartes) : décision R55 du propriétaire, « +2 tous les 3 EP. 5 (+2/3EP) veut dire 7 à 4, 9 à 7 et 11 à 10 » ; la valeur se calcule à l'échelle
-choisie (N à l'EP 1, +k toutes les m échelles, « /EP » : à chaque échelle ; une carte qui ne commence pas à l'EP 1, comme le Collecteur, garde
-sa formule telle qu'écrite : question 10), soulignée, la formule écrite en infobulle. Une
+(19 cartes), calculée à l'échelle choisie (ou à la seule échelle d'une carte qui n'en écrit qu'une), soulignée, la formule écrite en infobulle. Décision R55 du propriétaire, « +2 tous les 3 EP. 5 (+2/3EP)
+veux dire 7 à 4, 9 à 7 et 11 à 10 », et « on ne compte pas le EP1 dans le calcul "par EP" » : N à l'EP 1, puis +k toutes les m échelles (« /EP » : à
+chaque échelle ; « 2 (+1/EP) » vaut 2 à l'EP 1, 3 à l'EP 2… 11 à l'EP 10). La valeur ne dépend que de l'EP, pas de la première échelle de la carte
+(décision R59) : le Collecteur (EP 2 à 6) vaut 3 à l'EP 2. Une
 **capacité « [EPN] »** est gagnée à partir de l'EP N (décision R56) : elle n'apparaît qu'à partir de cette échelle, son préfixe le dit en infobulle. Sous la tête de la carte, un **curseur** sur les échelles qu'elle écrit (pas une
 plage qu'elle n'écrit pas : 3, 5 et 7, ni 4 ni 6) ; la carte ne montre plus que les valeurs de cette échelle (santé, chakra, barrière en tuiles,
 caractéristiques, compétences, dégâts, défense, le texte d'une capacité écrit par échelle comme le « Fondu » des blobs métalliques) ; une ligne sans
@@ -82,9 +83,9 @@ Sans JavaScript (et à l'impression), pas de curseur : toutes les valeurs, chacu
 Découpage : `lib/monstre-champs.mjs#segmentsParEchelle` (une ligne par échelle, une forme devant, la ligne à deux colonnes du doc, un titre de groupe
 comme « Neige ») ; rendu : `lib/monstre-rendu.mjs` (`data-eps` sur chaque valeur, le curseur par `htmlDeLEchelle`) ; choix : `data-ep` sur la carte et
 une règle CSS par échelle (`styles/bestiaire/bestiaire.css`) ; défense calculée : `texteParEchelle` (une ligne par groupe d'échelles de même valeur,
-« EP 1 - 3 ») ; capacité « [EPN] » : `data-eps` de N à 10 (`echelleDuPrefixe`). `client/test/bestiaire-echelles.test.mjs` rejoue le découpage sur toute
+« EP 1 - 3 », `valeurALEchelle`) ; capacité « [EPN] » : `data-eps` de N à 10 (`echelleDuPrefixe`). `client/test/bestiaire-echelles.test.mjs` rejoue le découpage sur toute
 la base : chaque carte à plusieurs échelles écrit une valeur pour chacune dans chaque rubrique qui varie, aucune pour une échelle qu'elle n'écrit pas,
-aucun nombre affiché n'est absent de la carte, hors les défenses calculées selon R55.
+aucun nombre affiché n'est absent de la carte, hors les défenses calculées selon R55 et R59.
 
 ### Butin
 
@@ -97,7 +98,13 @@ plus long l'emporte (`lib/monstre-champs.mjs#objetDuButin`). Décision R57 (« C
 fautes corrigées dans la base et l'extracteur (« Petite os » -> « Petit os », « 4 os moyen » -> « Os moyen x 4 », « Gelée argent » -> « Gelée
 blanche », « Peau du radrak » -> « Peau de radrak » au glossaire), et un objet qui vaut pour tous les éléments se cite avec le sien (« Minitaire de
 Foudre », « Fragment de pièce de Feu », « Fragment de pièce Espace/Temps » : `FAMILLES_PAR_ELEMENT`, éléments = noms des magies), un fruit avec
-l'élément que nomme sa définition (« Fraise de feu » cite « Fraise : Fruit du Feu » ; l'infobulle montre l'entrée « Fraise », sous son nom : question 6).
+l'élément que nomme sa définition (« Fraise de feu » cite « Fraise : Fruit du Feu » ; l'infobulle montre l'entrée « Fraise », sous son nom) : « A
+l'instar des matériaux et des gemmes chaque fruit est de base lié à un élément. "Fraise de feu" et "fraise" reportent au même » (le doc « Alchimie »,
+lui, distingue l'amplificateur « Fraise de feu » du catalyseur « Fraise »). Les 12 objets du glossaire qu'aucune case ne
+cite (Chapeau de méduse, Cristal de brume blanche, Eau fondue du premier givre, Fungus fantôme, Gelée pomme, Herbe multicolore, Miel blanc, Oeil de
+chauve-souris, Plume de griffon, Plume de sang, Plume tonnerre, Poudre d'os lumineuse) restent dans la base (`monstre_butin_objet`) : « Garde les en
+base pour le moment ». « Gelée pêche », qu'aucune case ne cite non plus (le Blob blanc écrit « Gelée coco »), relève de la question 6 et reste aussi
+dans la base. Le glossaire n'est pas affiché ailleurs.
 
 ### Vulnérabilités et résistances
 
@@ -119,6 +126,16 @@ ces cartes, forment un bloc « Santé, chakra, barrière » d'une ligne de trois
 (`lib/bestiaire-rendu.mjs`, `btrio`). L'étiquette « EP n » d'une ligne ou d'une tuile ne se voit plus dès que le curseur a choisi l'échelle (la forme
 « (Guerrier) » reste) : la carte a alors l'apparence d'une carte à une seule échelle ; sans JavaScript et à l'impression, toutes les échelles et leurs
 étiquettes.
+
+### Texte dont la place n'est pas décidée
+
+Un trait « ________________ » (ligne de séparation du doc) dans le texte d'une rubrique : ce qui le suit est écrit à la suite de la carte dans le doc et
+l'extraction l'a rattaché à sa dernière rubrique. Une seule rubrique est dans ce cas : la tactique de l'« Os du blizzard » (dernière carte de l'Os du
+froid), suivie de la section de lore « Ottar (explication) » (« Les Ottars ont été des êtres humanoïdes… », juste avant le « Presque-Ottar » dans le
+doc). Demande du propriétaire : « Je ne sais pas. Signale le avec un panneau "attention" ». Le texte reste où il est, tel qu'écrit, dans un panneau
+« Attention » (« La place de ce texte sur la carte n'est pas décidée. ») : `lib/monstre-champs.mjs#apresUnTrait`,
+`lib/monstre-rendu.mjs#htmlDAttention`, styles `.battention` (`styles/bestiaire/carte.css`). En mode modification, le trait se voit dans le texte de la
+rubrique : le couper avec ce qui le suit retire le panneau.
 
 ### Règles des échelles de puissance
 
@@ -214,19 +231,9 @@ Lumière…). Les « objets en rouge » du glossaire (« en attente d'être mis 
 4. Les monstres n'ont pas de page à eux (une ligne et sa carte dans le tableau) : en faut-il une, comme les créatures invoquées ?
 5. Les **créatures invoquées** ne se modifient pas encore depuis le bestiaire (elles viennent des sorts du classeur « Invocation ») : faut-il les ouvrir
    aussi au mode modification ?
-6. **Fruits « majeurs »** : « Fraise de feu »… cite maintenant « Fraise » (R57, comme demandé). Mais le butin des blobs donne à la fois « Fraise de
-   feu » et « Fraise » (« Prune d'eau » et « Prune »…), et le doc « Alchimie » les distingue (« Fraise de feu » : amplificateur, « Fruit (majeur) » ;
-   « Fraise » : catalyseur). Faut-il ajouter les fruits majeurs au glossaire, avec leur définition ?
-7. **Blob blanc** : sa ligne 61-100 donne « Gelée coco » (la gelée supérieure du Blob transparent ; son mini-boss est pourtant le Blob pêche), la
+6. **Blob blanc** : sa ligne 61-100 donne « Gelée coco » (la gelée supérieure du Blob transparent ; son mini-boss est pourtant le Blob pêche), la
    définition « Gelée pêche » dit « Chair supérieure de blob transparent », et sa description est mot pour mot celle du Blob transparent : copier-coller ?
-   Faut-il écrire « Gelée pêche » et « blob blanc », et quelle description ?
-8. **« Ottar (explication) »**, une section de lore du doc (« Les Ottars ont été des êtres humanoïdes… »), est collée dans la tactique de l'« Os du
-   blizzard » (dernière carte de l'Os du froid) : où la mettre ?
-9. **Glossaire** : 12 objets ne sont cités par aucune case (Chapeau de méduse, Cristal de brume blanche, Eau fondue du premier givre, Fungus fantôme,
-   Gelée pomme, Herbe multicolore, Miel blanc, Oeil de chauve-souris, Plume de griffon, Plume de sang, Plume tonnerre, Poudre d'os lumineuse) :
-   probablement les « objets en rouge » (« en attente d'être mis dans un tableau de butin »). Et où mettre le glossaire lui-même (« on le mettra
-   ailleurs ») ?
-10. **Défense « N (+k/EP) » d'une carte qui ne commence pas à l'EP 1** (les trois Collecteurs, EP 2 à 6 : « 2 (+1/EP) armure physique ») : N vaut-il
-    pour l'EP 1 (3 à l'EP 2) ou pour sa première échelle (2 à l'EP 2) ? En attendant, la formule s'affiche telle qu'écrite.
-11. La note « *Parmi Rouge, Jaune, Vert foncé, Brun » retirée du butin du Blob métallique (R58) expliquait l'astérisque de « Gelée aléatoire* » :
-    faut-il l'ajouter au glossaire (« Gelée aléatoire : parmi rouge, jaune, vert foncé, brun ») ?
+   Réponse : « Possible… » (2026-10-14) ; rien n'est changé tant que le texte à écrire (« Gelée pêche », « blob blanc », quelle description) n'est pas donné.
+7. La note « *Parmi Rouge, Jaune, Vert foncé, Brun » retirée du butin du Blob métallique (R58) expliquait l'astérisque de « Gelée aléatoire* » :
+   faut-il l'ajouter au glossaire (« Gelée aléatoire : parmi rouge, jaune, vert foncé, brun ») ? Réponse : « Je sais pas » (2026-10-14) ; la note
+   reste hors du site.

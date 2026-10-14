@@ -259,8 +259,8 @@ export const magiesDesCibles = (db) =>
     db.prepare('SELECT e.nom AS nom, m.nom AS magie FROM etat e JOIN etat_magie em ON em.etat_id = e.id JOIN magie m ON m.id = em.magie_id ORDER BY e.ordre, em.rang').all(),
   );
 
-/** L'échelle écrite de chaque carte ({ id: echelle_brut }), pour le rendu « monstre-rubrique » du mode modification (une formule « N (+k/mEP) »,
- *  décision R55 : serveur/edition.mjs#listes). */
+/** L'échelle écrite de chaque carte ({ id: echelle_brut }), pour le rendu « monstre-rubrique » du mode modification (une formule « N (+k/mEP) » ou « N (+k/EP) »,
+ *  décisions R55, R59 : serveur/edition.mjs#listes). */
 export const echellesDesCartes = (db) => Object.fromEntries(db.prepare('SELECT id, echelle_brut FROM monstre ORDER BY id').all().map((r) => [r.id, r.echelle_brut]));
 
 /** Tableau du butin d'une espèce : [{ rang, score, ennemi_simple, mini_boss, boss }] dans l'ordre des tranches ; une cellule vide reste null. */

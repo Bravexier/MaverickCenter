@@ -124,7 +124,7 @@ export function htmlDeCarteMonstre(l, { logo, adresseDuPortrait = null, echelles
     + `<a class="bcarte__fermer" href="#${e(l.ancre)}" aria-label="${e(`Fermer la carte de ${l.nom}`)}">Fermer</a></header>`;
   // le curseur d'échelle : refait quand l'échelle ou la catégorie du monstre change (mode modification) ; vide pour une carte d'une seule échelle
   const echelle = c ? `<div class="bcarte__echelle"${champ('monstre', k.monstre, 'echelle_brut', { rendu: 'monstre-echelle' })}>${htmlDeLEchelle(c.echelle, c.categorie, echelles, renvoieAuxDegatsMoyens(c.rubriques))}</div>` : '';
-  // les échelles qu'écrit la carte : une formule « N (+k/mEP) » se calcule à chacune (décision R55)
+  // les échelles qu'écrit la carte : une formule « N (+k/mEP) » ou « N (+k/EP) » se calcule à chacune (décisions R55, R59)
   const echellesDeLaCarte = c ? echellesEcrites(c.echelle) : [];
   const laCarte = c
     ? `<section class="bcarte__section" aria-label="La carte">`
