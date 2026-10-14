@@ -252,8 +252,9 @@ export function demarrer(racine, etatService) {
       for (const x of actives()) x.debut?.(ed);
       modifie = false;
       confirmer.hidden = false;
-      crayon.title = 'Quitter le mode modification (sans enregistrer)';
-      crayon.setAttribute('aria-label', crayon.title);
+      const aide = 'Quitter le mode modification (sans enregistrer)';
+      crayon.title = aide;
+      crayon.setAttribute('aria-label', aide);
     } catch (e) {
       crayon.setAttribute('aria-pressed', 'false');
       annoncer(`Impossible de passer en mode modification : ${e.message}`, 'erreur');
@@ -271,7 +272,7 @@ export function demarrer(racine, etatService) {
     confirmer.hidden = true;
     crayon.setAttribute('aria-pressed', 'false');
     crayon.title = 'Modifier cette page';
-    crayon.setAttribute('aria-label', crayon.title);
+    crayon.setAttribute('aria-label', 'Modifier cette page');
   }
 
   function operationsDesChamps() {

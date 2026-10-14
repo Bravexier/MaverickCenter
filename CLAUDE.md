@@ -264,10 +264,13 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
 - **Infobulles** (demande du propriétaire : toutes habillées comme le reste du site) : un seul système, `components/Infobulles.astro` (script en ligne, une fois
   par page par `layouts/Base.astro`) et `styles/global/infobulles.css` (fond clair, filet de couleur à gauche comme les cartes, serif, intitulés en petites capitales,
   pointe vers le déclencheur ; teinte = `--mag` du contexte, sinon l'accent). Bulle riche : `data-bulle="<id>"` + `<span class="bulle" role="tooltip" id="<id>" hidden>` écrit
-  dans la page ; tout attribut `title` s'affiche dans la bulle partagée (`#bulle-du-titre`) au lieu de l'infobulle du navigateur, qui ne se style pas : l'attribut est
-  retiré le temps de l'affichage puis remis (un appui ou une touche le rend avant les gestionnaires de la page : un script qui lit `title` le retrouve). Rien au
-  toucher pour un `title` (comme le navigateur). `data-placement="cote"` (sur une bulle riche, ou sur le déclencheur d'un `title`) place la bulle à côté de son
-  déclencheur au lieu de dessous (carte d'une créature invoquée, chevrons de la chronologie). Ne pas ajouter d'autre script de bulles ni d'infobulle en CSS. `test/infobulles.test.mjs` (faux navigateur, puis site construit).
+  dans la page, ou toute une tuile (`<div class="bulle bulle--carte" data-placement="cote">` : la carte d'une créature invoquée). **Jamais l'infobulle du navigateur**
+  (demande du propriétaire : « uniquement l'habillée ») : tout attribut `title` est déplacé dans `data-infobulle` au chargement et dès qu'un script en pose un
+  (observateur de toute la page), le texte restant une `aria-description` ; il s'affiche dans la bulle partagée (`#bulle-du-titre`). Conséquences : un script
+  qui LIT un `title` lit `data-infobulle` (`scripts/armes.mjs`, `bestiaire.mjs`, `lib/markdown-edition.mjs`), un sélecteur CSS `[title]` s'écrit aussi
+  `[data-infobulle]`, et pour retirer une infobulle on écrit `el.title = ''` (un `removeAttribute('title')` ne fait plus rien). Rien au toucher pour un `title`
+  (comme le navigateur). `data-placement="cote"` (sur une bulle riche, ou sur le déclencheur d'un `title`) place la bulle à côté de son déclencheur au lieu
+  de dessous (carte d'une créature invoquée, chevrons de la chronologie). Ne pas ajouter d'autre script de bulles ni d'infobulle en CSS. `test/infobulles.test.mjs` (faux navigateur, puis site construit).
 - `npm run autolink` (aperçu) / `-- --write` : maillage automatique des pages, voir `docs/content-guide.md`.
 - **Fiche de personnage** (`/fiche/`, `docs/character-generator.md`) : `/generateur/` n'existe plus, la page 404 y renvoie (`lib/nav.mjs#nouvelleAdresse`,
   `PAGES_RENOMMEES`). Les règles de la page viennent de la base au build (`lib/fiche-regles.mjs`), jamais écrites à la main ; chaque calcul de

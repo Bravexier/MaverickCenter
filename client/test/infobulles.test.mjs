@@ -16,9 +16,17 @@ const code = readFileSync(fileURLToPath(new URL('../src/components/Infobulles.as
 function navigateur(page = () => {}, { tactile = false } = {}) {
   class Noeud {}
   let guettes = [];
+  /** Un changement de la page, remis aux observateurs (MutationObserver) qui le guettent, en microtâche comme dans un navigateur. */
+  const notifier = (changement) => {
+    for (const g of guettes) {
+      if (!g.cible.contains(changement.target) || (changement.type === 'attributes' && !g.filtre.includes(changement.attributeName))) continue;
+      queueMicrotask(() => g.rappel([changement]));
+    }
+  };
   class Element extends Noeud {
     constructor(tag, attributs = {}) {
       super();
+      this.nodeType = 1;
       this.tagName = tag.toUpperCase();
       this.attributs = new Map(Object.entries(attributs));
       this.enfants = [];
@@ -42,14 +50,20 @@ function navigateur(page = () => {}, { tactile = false } = {}) {
     }
     getAttribute(n) { return this.attributs.has(n) ? this.attributs.get(n) : null; }
     hasAttribute(n) { return this.attributs.has(n); }
-    setAttribute(n, v) { this.attributs.set(n, String(v)); this.changer(n); }
-    removeAttribute(n) { if (this.attributs.delete(n)) this.changer(n); }
-    changer(n) { for (const g of guettes) if (g.cible === this && g.filtre.includes(n)) queueMicrotask(() => g.rappel([])); }
+    setAttribute(n, v) { this.attributs.set(n, String(v)); notifier({ type: 'attributes', target: this, attributeName: n }); }
+    removeAttribute(n) { if (this.attributs.delete(n)) notifier({ type: 'attributes', target: this, attributeName: n }); }
+    /** `el.title = …`, comme dans un navigateur : l'attribut. */
+    set title(v) { this.setAttribute('title', v); }
     appendChild(e) {
       if (e.parentElement) e.parentElement.enfants.splice(e.parentElement.enfants.indexOf(e), 1);
       e.parentElement = this;
       this.enfants.push(e);
+      notifier({ type: 'childList', target: this, addedNodes: [e] });
       return e;
+    }
+    querySelectorAll(sel) {
+      assert.equal(sel, '[title]');
+      return [...this.tous()].filter((e) => e !== this && e.hasAttribute('title'));
     }
     contains(n) { for (let x = n; x; x = x.parentElement) if (x === this) return true; return false; }
     closest(sel) {
@@ -77,8 +91,8 @@ function navigateur(page = () => {}, { tactile = false } = {}) {
     createElement: (tag) => new Element(tag),
     getElementById: (id) => [...html.tous()].find((e) => e.id === id) ?? null,
     querySelectorAll: (sel) => {
-      assert.equal(sel, '[data-bulle][title]');
-      return [...html.tous()].filter((e) => e.hasAttribute('data-bulle') && e.hasAttribute('title'));
+      assert.equal(sel, 'body [title]');
+      return body.querySelectorAll('[title]');
     },
     addEventListener: ecouter('document'),
     activeElement: null,
@@ -91,7 +105,10 @@ function navigateur(page = () => {}, { tactile = false } = {}) {
     Node: Noeud,
     MutationObserver: class {
       constructor(rappel) { this.rappel = rappel; }
-      observe(cible, o) { guettes.push({ cible, filtre: o.attributeFilter, rappel: this.rappel, de: this }); }
+      observe(cible, o) {
+        assert.ok(o.subtree && o.childList && o.attributes, 'toute la page : les attributs posés et les éléments ajoutés');
+        guettes.push({ cible, filtre: o.attributeFilter, rappel: this.rappel, de: this });
+      }
       disconnect() { guettes = guettes.filter((g) => g.de !== this); }
     },
     matchMedia: () => ({ matches: tactile }),
@@ -128,10 +145,49 @@ function navigateur(page = () => {}, { tactile = false } = {}) {
 }
 
 const ouverte = (b) => b !== null && !b.hidden;
+/** Laisse passer les microtâches : les rappels de l'observateur de la page. */
+const microtaches = () => new Promise((ok) => setTimeout(ok, 0));
+/** Aucun `title` dans la page : le navigateur n'a rien à afficher. */
+const sansTitle = (n) => assert.deepEqual(n.body.querySelectorAll('[title]').map((e) => e.tagName), [], 'aucun `title` : jamais l’infobulle du navigateur');
 
-test('un `title` : sa bulle après un délai, l’attribut retiré pendant l’affichage puis remis, la description câblée le temps de l’affichage', async () => {
-  const n = navigateur();
-  const cible = n.body.appendChild(new n.Element('span', { title: 'Dé de la famille', 'aria-describedby': 'aide' }));
+test('jamais l’infobulle du navigateur : tout `title` déplacé dans `data-infobulle`, au chargement et dès qu’un script en pose un', async () => {
+  let texte, bouton, feuille, pastille;
+  const n = navigateur((Element, body) => {
+    texte = body.appendChild(new Element('span', { title: 'Dé de la famille' }));
+    bouton = body.appendChild(new Element('button', { title: 'Ajouter de l’XP', 'aria-label': 'Ajouter de l’XP' }));
+    feuille = body.appendChild(new Element('style', { title: 'autre thème' }));
+    pastille = body.appendChild(new Element('a', { 'data-bulle': 'etat-1', title: 'Gel' }));
+  });
+  assert.equal(texte.getAttribute('title'), null);
+  assert.equal(texte.getAttribute('data-infobulle'), 'Dé de la famille', 'le texte, pour la bulle habillée et les scripts qui le lisent');
+  assert.equal(texte.getAttribute('aria-description'), 'Dé de la famille', 'toujours une description pour les lecteurs d’écran');
+  assert.equal(bouton.getAttribute('aria-description'), null, 'pas de description qui redit le nom');
+  assert.equal(feuille.getAttribute('title'), 'autre thème', 'le `title` d’une feuille de style n’est pas une infobulle');
+  assert.equal(pastille.getAttribute('title'), null, 'bulle riche : son repli sans JavaScript retiré');
+  assert.equal(pastille.getAttribute('data-infobulle'), null);
+  // un script pose un `title` (la fiche recalcule les siens), ajoute un élément qui en porte, ou en vide un
+  texte.title = 'Dé de la Force';
+  const ligne = n.body.appendChild(new n.Element('tr', { title: 'Arme de départ' }));
+  const nom = ligne.appendChild(new n.Element('button', { title: 'Une arme courbe' }));
+  await microtaches();
+  n.body.enfants.filter((e) => e !== feuille).forEach((e) => assert.equal(e.getAttribute('title'), null));
+  assert.equal(nom.getAttribute('title'), null);
+  assert.equal(texte.getAttribute('data-infobulle'), 'Dé de la Force');
+  assert.equal(ligne.getAttribute('data-infobulle'), 'Arme de départ');
+  assert.equal(nom.getAttribute('data-infobulle'), 'Une arme courbe');
+  nom.title = '';
+  await microtaches();
+  assert.equal(nom.getAttribute('data-infobulle'), '', 'vidé : plus d’infobulle');
+  assert.equal(nom.getAttribute('aria-description'), null);
+});
+
+test('un `title` : sa bulle habillée après un délai, qui reste quand le pointeur passe dessus ; aussitôt pour la voisine ; un `title` vide masque celui du parent', async () => {
+  let cible, ligne, vide;
+  const n = navigateur((Element, body) => {
+    cible = body.appendChild(new Element('span', { title: 'Dé de la famille' }));
+    ligne = body.appendChild(new Element('tr', { title: 'Arme de départ' }));
+    vide = ligne.appendChild(new Element('td', { title: '' }));
+  });
   n.emettre('pointerover', { target: cible });
   assert.equal(n.bulle, null, 'rien avant le délai');
   n.avancer();
@@ -139,8 +195,6 @@ test('un `title` : sa bulle après un délai, l’attribut retiré pendant l’a
   assert.equal(n.bulle.textContent, 'Dé de la famille');
   assert.equal(n.bulle.getAttribute('role'), 'tooltip');
   assert.equal(n.bulle.getAttribute('class'), 'bulle bulle--simple');
-  assert.equal(cible.getAttribute('title'), null, 'sinon le navigateur montrerait aussi la sienne');
-  assert.equal(cible.getAttribute('aria-describedby'), 'aide bulle-du-titre');
   // le pointeur passe sur la bulle : elle reste (WCAG 1.4.13)
   n.emettre('pointerout', { target: cible, relatedTarget: n.bulle });
   n.emettre('pointerover', { target: n.bulle });
@@ -149,24 +203,28 @@ test('un `title` : sa bulle après un délai, l’attribut retiré pendant l’a
   n.emettre('pointerout', { target: n.bulle, relatedTarget: n.body });
   n.avancer();
   assert.ok(!ouverte(n.bulle));
-  assert.equal(cible.getAttribute('title'), 'Dé de la famille', 'remis : les scripts qui le lisent le retrouvent');
-  assert.equal(cible.getAttribute('aria-describedby'), 'aide');
-  // juste après, un autre `title` s'ouvre aussitôt (comme l'infobulle du navigateur)
-  const voisin = n.body.appendChild(new n.Element('td', { title: 'Portée' }));
-  n.emettre('pointerover', { target: voisin });
+  // juste après, une autre s'ouvre aussitôt (comme l'infobulle du navigateur)
+  n.emettre('pointerover', { target: ligne });
   assert.ok(ouverte(n.bulle));
-  assert.equal(n.bulle.textContent, 'Portée');
+  assert.equal(n.bulle.textContent, 'Arme de départ');
+  n.emettre('pointerout', { target: ligne, relatedTarget: n.body });
+  n.avancer();
+  n.avancer();
+  n.emettre('pointerover', { target: vide });
+  n.avancer();
+  assert.ok(!ouverte(n.bulle), 'title="" : pas l’infobulle de la ligne');
+  await microtaches();
+  sansTitle(n);
 });
 
-test('un `title` : un appui ou une touche ferme la bulle et rend l’attribut avant les gestionnaires de la page ; plus de bulle tant que le pointeur reste', () => {
-  const n = navigateur();
-  const bouton = n.body.appendChild(new n.Element('button', { title: 'Arme courbe' }));
+test('un `title` : un appui ou une touche ferme la bulle ; plus de bulle tant que le pointeur reste ; Échap garde son effet ; jamais de `title` remis', async () => {
+  let bouton;
+  const n = navigateur((Element, body) => { bouton = body.appendChild(new Element('button', { title: 'Arme courbe' })); });
   n.emettre('pointerover', { target: bouton });
   n.avancer();
   assert.ok(ouverte(n.bulle));
   n.emettre('pointerdown', { target: bouton });
   assert.ok(!ouverte(n.bulle));
-  assert.equal(bouton.getAttribute('title'), 'Arme courbe', 'rendu avant le clic (armes.mjs lit la description dans `title`)');
   n.emettre('pointerover', { target: bouton });
   n.avancer();
   assert.ok(!ouverte(n.bulle), 'suspendue tant que le pointeur reste sur l’élément');
@@ -177,26 +235,29 @@ test('un `title` : un appui ou une touche ferme la bulle et rend l’attribut av
   const echap = n.emettre('keydown', { key: 'Escape' });
   assert.ok(!ouverte(n.bulle));
   assert.equal(echap.arrete, false, 'Échap garde son effet (fermer une fenêtre)');
-  assert.equal(bouton.getAttribute('title'), 'Arme courbe');
+  await microtaches();
+  sansTitle(n);
+  assert.equal(bouton.getAttribute('data-infobulle'), 'Arme courbe');
 });
 
-test('un `title` changé par un script pendant l’affichage : la bulle prend le nouveau texte, l’attribut reste retiré, puis le nouveau est remis', async () => {
-  const n = navigateur();
-  const cible = n.body.appendChild(new n.Element('p', { title: 'Niveau 1' }));
+test('un `title` changé par un script pendant l’affichage : la bulle prend le nouveau texte ; vidé, elle se ferme', async () => {
+  let cible;
+  const n = navigateur((Element, body) => { cible = body.appendChild(new Element('p', { title: 'Niveau 1' })); });
   n.emettre('pointerover', { target: cible });
   n.avancer();
-  cible.setAttribute('title', 'Niveau 2');
-  await new Promise((ok) => setTimeout(ok, 0));
+  cible.title = 'Niveau 2';
+  await microtaches();
   assert.equal(n.bulle.textContent, 'Niveau 2');
-  assert.equal(cible.getAttribute('title'), null);
-  n.emettre('pointerout', { target: cible, relatedTarget: n.body });
-  n.avancer();
-  assert.equal(cible.getAttribute('title'), 'Niveau 2');
+  assert.ok(ouverte(n.bulle));
+  cible.title = '';
+  await microtaches();
+  assert.ok(!ouverte(n.bulle));
+  sansTitle(n);
 });
 
-test('un `title` : rien au toucher (comme le navigateur) ; au clavier, au focus visible ; la teinte de la page ; dans une fenêtre modale', () => {
-  const n = navigateur();
-  const cible = n.body.appendChild(new n.Element('input', { title: 'Résultat du dé' }));
+test('un `title` : rien au toucher (comme le navigateur) ; au clavier, au focus visible ; la teinte de la page ; dans une fenêtre modale', async () => {
+  let cible;
+  const n = navigateur((Element, body) => { cible = body.appendChild(new Element('input', { title: 'Résultat du dé' })); });
   cible.vars['--mag'] = '#1e90ff';
   n.emettre('pointerover', { target: cible, pointerType: 'touch' });
   n.avancer();
@@ -211,6 +272,7 @@ test('un `title` : rien au toucher (comme le navigateur) ; au clavier, au focus 
   assert.ok(!ouverte(n.bulle));
   const fenetre = n.body.appendChild(new n.Element('dialog', { open: '' }));
   const annuler = fenetre.appendChild(new n.Element('button', { title: 'Annuler (Échap)' }));
+  await microtaches();
   n.emettre('pointerover', { target: annuler });
   n.avancer();
   assert.ok(ouverte(n.bulle));
@@ -285,9 +347,10 @@ test('la carte d’une créature (`data-placement="cote"`, `data-fermer-au-touch
   assert.ok(carte.hidden);
 });
 
-test('un `title` dont le déclencheur porte `data-placement="cote"` : la bulle partagée à côté de lui, pointe de côté (chevrons de la chronologie) ; le suivant, sans l’attribut, dessous', () => {
+test('un `title` dont le déclencheur porte `data-placement="cote"` : la bulle partagée à côté de lui, pointe de côté (chevrons de la chronologie) ; le suivant, sans l’attribut, dessous', async () => {
   const n = navigateur();
   const chevron = n.body.appendChild(new n.Element('a', { title: 'An 500 : Quatrième porteur d’Excalibur : Dreya', 'data-placement': 'cote' }));
+  await microtaches(); // le `title` de l'élément ajouté passe dans `data-infobulle`
   n.emettre('pointerover', { target: chevron });
   n.avancer();
   assert.ok(ouverte(n.bulle));
@@ -299,9 +362,11 @@ test('un `title` dont le déclencheur porte `data-placement="cote"` : la bulle p
   n.avancer();
   assert.ok(!ouverte(n.bulle));
   const autre = n.body.appendChild(new n.Element('span', { title: 'Portée' }));
+  await microtaches();
   n.emettre('pointerover', { target: autre });
   assert.ok(ouverte(n.bulle));
   assert.equal(n.fleche.getAttribute('data-cote'), 'dessous', 'la bulle partagée ne garde pas le placement du déclencheur précédent');
+  sansTitle(n);
 });
 
 // ---- site construit -------------------------------------------------------------------------------------------------------------------------
@@ -316,7 +381,7 @@ test('site construit : le script des infobulles une fois sur chaque page, en lig
     const html = readFileSync(f, 'utf8');
     const rel = relative(dist, f);
     assert.equal(html.match(/<script data-infobulles>/g)?.length, 1, `${rel} : une fois`);
-    assert.equal(html.split("querySelectorAll('[data-bulle][title]')").length - 1, 1, `${rel} : un seul gestionnaire des bulles riches`);
+    assert.equal(html.split("querySelectorAll('body [title]')").length - 1, 1, `${rel} : un seul gestionnaire des infobulles`);
   }
 });
 

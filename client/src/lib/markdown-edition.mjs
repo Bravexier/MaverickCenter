@@ -311,7 +311,9 @@ function attributsSurs(n, nom) {
     const lien = classes(n).filter((c) => c === 'wikilink' || c === 'wikilink--missing');
     if (lien.length) garder('class', lien.join(' '));
     if (attribut(n, 'data-cible') !== null && lien.length) garder('data-cible', attribut(n, 'data-cible'));
-    if (attribut(n, 'title') !== null) garder('title', attribut(n, 'title'));
+    // le `title` d'un lien est dans `data-infobulle` sur la page (components/Infobulles.astro) : il redevient `title`
+    const titre = attribut(n, 'title') ?? attribut(n, 'data-infobulle');
+    if (titre !== null) garder('title', titre);
   }
   if (nom === 'a' && ADRESSE_SURE.test(attribut(n, 'href') ?? '')) garder('href', attribut(n, 'href'));
   return a.join('');

@@ -56,6 +56,9 @@ if (racine) {
     cellule.textContent = `${mat} matériau${mat > 1 ? 'x' : ''} + ${ro} RO`;
   }
 
+  /** Le texte d'infobulle d'un élément : son `title`, que components/Infobulles.astro déplace dans `data-infobulle` dès le chargement. */
+  const infobulle = (el) => el?.getAttribute('data-infobulle') ?? el?.getAttribute('title') ?? '';
+
   /** L'arme telle qu'affichée dans sa ligne. */
   function lireArme(ligne) {
     const degats = ligne.querySelector('.arme-degats')?.dataset ?? {};
@@ -69,7 +72,7 @@ if (racine) {
       note: famille?.dataset.note ?? '',
       unite: famille?.dataset.unite === '1',
       de: degats.de ?? '',
-      regle: ligne.querySelector('.arme-degats')?.getAttribute('title') ?? '',
+      regle: infobulle(ligne.querySelector('.arme-degats')),
       bonus: entier(degats.bonus) ?? 0,
       portee: ligne.querySelector('.arme-portee')?.dataset.portee ?? '',
       durabilite: entier(ligne.querySelector('[data-durabilite]')?.dataset.durabilite) ?? 0,
@@ -77,10 +80,10 @@ if (racine) {
       types: ligne.querySelector('.arme__types')?.innerHTML ?? '',
       effets: ligne.querySelector('.arme__effets')?.innerHTML ?? '',
       sansEffets: Boolean(ligne.querySelector('.arme__effets > .vide')),
-      description: ligne.querySelector('.arme__choisir')?.getAttribute('title') ?? '',
+      description: infobulle(ligne.querySelector('.arme__choisir')),
       origine: ligne.querySelector('.arme__origine')?.innerHTML ?? '',
       depart: ligne.classList.contains('arme--depart'),
-      remarque: ligne.querySelector('.arme__remarque')?.getAttribute('title') ?? '',
+      remarque: infobulle(ligne.querySelector('.arme__remarque')),
     };
   }
 
