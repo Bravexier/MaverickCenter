@@ -9,7 +9,7 @@
 // Sur le site de dev, la même minuterie suit aussi une vraie mise à jour en cours (run GitHub, note arrivée) et publie l'annonce de maintenance que
 // lisent les deux serveurs (maintenance.mjs).
 import { createServer } from 'node:http';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { CORPS_MAX, traiter } from './api.mjs';
 import { FICHIER_BASE, lireEtat, ouvrirBaseVivante, preparerBaseVivante, signature } from './base-vivante.mjs';
