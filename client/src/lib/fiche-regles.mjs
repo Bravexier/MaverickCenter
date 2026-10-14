@@ -5,7 +5,7 @@
 // Node seulement (la base est ouverte par lib/donnees.mjs).
 import { groupesDeChoix } from './classe-dons.mjs';
 import { ditClasseMagique } from './classe-magique.mjs';
-import { couleurDeCaracteristique, couleurDePosture } from './caracteristiques-postures.mjs';
+import { COULEURS_ALIGNEMENTS, couleurDeCaracteristique, couleurDePosture } from './caracteristiques-postures.mjs';
 import { CLASS_GROUPS, classCategory, classColor } from './class-groups.mjs';
 import { bonusDeDegatsEcrit } from './degats-texte.mjs';
 import { desSelonLaForce, pointsDeMaitriseDArme } from './maitrise-arme.mjs';
@@ -319,8 +319,11 @@ export function chargerReglesDeFiche(db) {
     ressources: lignes(db, 'SELECT id, nom, genre FROM ressource ORDER BY nom COLLATE NOCASE'),
   };
 
+  // couleur de la pastille de l'alignement (demande du propriétaire : celle de son titre dans le guide pour MJ, lib/caracteristiques-postures.mjs)
+  const alignements = Object.fromEntries(Object.entries(COULEURS_ALIGNEMENTS).map(([nom, couleur]) => [nom, { couleur, texte: texteSurCouleur(couleur) }]));
+
   return {
     constantes, am_classe_magique: amMagique, niveaux, caracteristiques, competences, initiative, races, ethnies, magies, dieux, metiers, classes, sorts, postures,
-    ordre_postures, mode_hyper, ambidextrie, resistance_paliers, etats, ...equipement,
+    ordre_postures, mode_hyper, ambidextrie, resistance_paliers, etats, alignements, ...equipement,
   };
 }

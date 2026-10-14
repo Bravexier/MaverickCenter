@@ -232,6 +232,10 @@ function construireAlignement() {
   const a = alignementDe(regles, fiche);
   const sortie = $('alignement-resultat');
   sortie.textContent = a.nom;
+  // la couleur de son titre dans le guide pour MJ (demande du propriétaire ; regles.alignements)
+  const teinte = regles.alignements?.[a.nom];
+  sortie.style.setProperty('--c', teinte?.couleur ?? '');
+  sortie.style.setProperty('--c-texte', teinte?.texte ?? '');
   sortie.title = `Loi/Chaos : ${a.loi} ; Bien/Mal : ${a.bien} (5 points d’écart sur un axe pour qu’une tendance l’emporte)`;
 }
 

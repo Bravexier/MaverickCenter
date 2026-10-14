@@ -24,6 +24,23 @@ export const COULEURS_POSTURES = {
   symbiose: '#cc66ff',
 };
 
+/**
+ * Couleurs des neuf alignements (demande du propriétaire) : celles de leur titre dans « Les neuf alignements » du Google Doc « Règle du jeu/Guide pour
+ * MJ - Maverick » (couleur du texte des titres, lue le 2026-10-14). Clé = le nom que donne fiche-moteur.mjs#alignementDe. Couleurs foncées ou vives :
+ * le texte posé dessus est choisi par texteSurCouleur.
+ */
+export const COULEURS_ALIGNEMENTS = {
+  'Loyal Bon': '#45818e',
+  'Loyal Neutre': '#3c78d8',
+  'Loyal Mauvais': '#674ea7',
+  'Neutre Bon': '#6aa84f',
+  Neutre: '#999999',
+  'Neutre Mauvais': '#783f04',
+  'Chaotique Bon': '#f1c232',
+  'Chaotique Neutre': '#e69138',
+  'Chaotique Mauvais': '#cc0000',
+};
+
 /** Couleur d'une caractéristique ou d'une posture absente des listes (aucune aujourd'hui : test/caracteristiques-postures.test.mjs). */
 export const COULEUR_NEUTRE = '#cccccc';
 
@@ -32,6 +49,9 @@ export const couleurDeCaracteristique = (id) => COULEURS_CARACTERISTIQUES[id] ??
 
 /** Couleur d'une posture, d'après son id dans la base (« guide/postures#posture:offensif ») ou sa clé (« offensif »). */
 export const couleurDePosture = (id) => COULEURS_POSTURES[String(id).slice(String(id).lastIndexOf(':') + 1)] ?? COULEUR_NEUTRE;
+
+/** Couleur d'un alignement, d'après son nom (« Loyal Bon »). */
+export const couleurDAlignement = (nom) => COULEURS_ALIGNEMENTS[nom] ?? COULEUR_NEUTRE;
 
 /** Variables CSS d'un élément teinté : `--c` (la couleur) et `--c-texte` (le texte lisible dessus). */
 export const styleDeCouleur = (couleur) => `--c: ${couleur}; --c-texte: ${texteSurCouleur(couleur)}`;
