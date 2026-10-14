@@ -240,7 +240,7 @@ test('valeur à N NM sur tous les sorts (fiche de personnage) : plus aucune expr
   const lisible = (b) => /^[+\-–−]?\s*\d+(?:d\d*)?\s*(?:%|AM|AP|[a-zà-ÿ]+)?$/i.test(String(b.incrementBrut ?? '').trim());
   for (const [id, s] of sorts) {
     const bonus = bonusDe(id);
-    for (const champ of ['cout', 'portee', 'dsb', 'effets']) {
+    for (const champ of ['cout', 'portee', 'zone', 'dsb', 'effets']) {
       const brut = s[COLONNE[champ]];
       if (!brut) continue;
       for (const nm of [0, 1, 2, 3]) {
@@ -250,7 +250,9 @@ test('valeur à N NM sur tous les sorts (fiche de personnage) : plus aucune expr
           assert.ok(!valeur.includes(b.texteBrut), `${id} ${champ} à ${nm} NM : « ${b.texteBrut} » reste dans « ${valeur} »`);
         }
       }
-      if (champ !== 'effets') assert.equal(valeurAuNm(brut, bonus, champ, 0), sansBonus(brut, bonus, champ), `${id} ${champ} : la valeur de base à 0 NM`);
+      // une écriture qui n'est pas un calcul (« (ou verticales/3NM) » dans une zone) reste telle qu'écrite : pas de valeur de base à comparer
+      const calculs = bonus.filter((x) => x.champ === champ).every((x) => x.nature === 'par_nm' || /^\s*\d\s*NM\s*=/i.test(x.texteBrut));
+      if (champ !== 'effets' && calculs) assert.equal(valeurAuNm(brut, bonus, champ, 0), sansBonus(brut, bonus, champ), `${id} ${champ} : la valeur de base à 0 NM`);
     }
   }
 });

@@ -830,33 +830,42 @@ export function donDeBase(texte) {
 /** Le niveau de classe où se choisit la spécialité : celui de son don de spécialité (le plus bas des dons `specialite` de la classe, 10). */
 export const niveauDeSpecialite = (classe) => Math.min(...(classe?.dons ?? []).filter((d) => d.nature === 'specialite').map((d) => d.niveau));
 
+/** La clé d'un choix à faire (choixEnAttente), la même sur sa tuile dans la page (`data-choix-cle`). */
+export const cleDeChoix = {
+  specialite: (rang) => `specialite:${rang}`,
+  don: (rang, groupe) => `don:${rang}:${groupe.options[0]?.id}`,
+  metierBonus: (rang) => `metier_bonus:${rang}`,
+  metierObjet: (rang) => `metier_objet:${rang}`,
+};
+
 /**
  * Les choix qui restent à faire (demande du propriétaire : les mettre en évidence, le cadre « Choix » en tiroir tant qu'il en reste) : l'ethnie d'une race
  * choisie qui en a, la spécialité d'une
  * classe qui a atteint le niveau de son don de spécialité (le plus bas de ses dons `specialite`, 10), chaque groupe de dons à choisir encore sans choix
  * (donsAChoisir), chaque bonus de métier à choisir (bonusDuMetier), chaque objet de départ à choisir (objetsDuMetier), et le +1 d'une magie innée qui laisse
- * la caractéristique au choix. [{ nature, libelle, rang? }] ; vide quand tout est choisi.
+ * la caractéristique au choix. [{ nature, libelle, cle, rang? }] ; vide quand tout est choisi. `cle` désigne le choix (la page y accroche sa tuile, montrée
+ * dans l'infobulle de l'élément du tiroir : demande du propriétaire).
  */
 export function choixEnAttente(regles, fiche) {
   const attente = [];
   const race = trouver(regles.races, fiche.race_id);
-  if (race && !fiche.ethnie_id && ethniesDeLaRace(regles, race.id).length) attente.push({ nature: 'ethnie', libelle: `Ethnie : ${race.nom}` });
+  if (race && !fiche.ethnie_id && ethniesDeLaRace(regles, race.id).length) attente.push({ nature: 'ethnie', cle: 'ethnie', libelle: `Ethnie : ${race.nom}` });
   for (const c of classesDe(regles, fiche)) {
     if (!c.classe || !c.classe.specialites.length) continue;
-    if (c.niveau >= niveauDeSpecialite(c.classe) && !c.choix?.specialite_id) attente.push({ nature: 'specialite', rang: c.rang, libelle: `Spécialité : ${c.classe.nom}` });
+    if (c.niveau >= niveauDeSpecialite(c.classe) && !c.choix?.specialite_id) attente.push({ nature: 'specialite', rang: c.rang, cle: cleDeChoix.specialite(c.rang), libelle: `Spécialité : ${c.classe.nom}` });
   }
   const choisis = new Set((fiche.capacites ?? []).map((d) => d.capacite_id));
   for (const d of donsAChoisir(regles, fiche)) {
     for (const g of d.groupes) {
-      if (!g.options.some((o) => choisis.has(o.id))) attente.push({ nature: 'don', rang: d.rang, libelle: `Don ${d.classe.nom} niv. ${g.niveau} : ${g.options.map((o) => o.nom).join(' ou ')}` });
+      if (!g.options.some((o) => choisis.has(o.id))) attente.push({ nature: 'don', rang: d.rang, cle: cleDeChoix.don(d.rang, g), libelle: `Don ${d.classe.nom} niv. ${g.niveau} : ${g.options.map((o) => o.nom).join(' ou ')}` });
     }
   }
-  for (const b of bonusDuMetier(regles, fiche).rangs) if (b.aChoisir && !b.retenue) attente.push({ nature: 'metier_bonus', libelle: `Métier : ${b.texte}` });
+  for (const b of bonusDuMetier(regles, fiche).rangs) if (b.aChoisir && !b.retenue) attente.push({ nature: 'metier_bonus', cle: cleDeChoix.metierBonus(b.rang), libelle: `Métier : ${b.texte}` });
   for (const r of objetsDuMetier(regles, fiche.metier_id)) {
-    if (r.options.length > 1 && objetChoisi(fiche, r) < 0) attente.push({ nature: 'metier_objet', libelle: `Objet de départ : ${r.options.map((o) => o.texte).join(' ou ')}` });
+    if (r.options.length > 1 && objetChoisi(fiche, r) < 0) attente.push({ nature: 'metier_objet', cle: cleDeChoix.metierObjet(r.rang), libelle: `Objet de départ : ${r.options.map((o) => o.texte).join(' ou ')}` });
   }
   const innee = trouver(regles.magies, fiche.magie_innee_id);
-  if (innee && !innee.caracteristique_id && !fiche.caracteristique_magie_id) attente.push({ nature: 'carac_magie', libelle: `+1 de la magie innée (${innee.nom})` });
+  if (innee && !innee.caracteristique_id && !fiche.caracteristique_magie_id) attente.push({ nature: 'carac_magie', cle: 'carac_magie', libelle: `+1 de la magie innée (${innee.nom})` });
   return attente;
 }
 

@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { segments } from '../src/lib/sort-format.mjs';
-import { applications, bonusAuNm, lignesDeBonus, LIBELLES_CHAMP_NM, marquerBonus, NM_MAX, ORDRE_CHAMPS_NM, sansBonus, texteDeBonus, valeurAuNm } from '../src/lib/sort-maitrise.mjs';
+import { applications, bonusAuNm, lignesDeBonus, LIBELLES_CHAMP_NM, marquerBonus, modesAuNm, NM_MAX, ORDRE_CHAMPS_NM, sansBonus, texteDeBonus, valeurAuNm } from '../src/lib/sort-maitrise.mjs';
 
 const parNm = (champ, texteBrut, pasNm = 1, extra = {}) => ({ champ, nature: 'par_nm', texteBrut, contexte: texteBrut, pasNm, seuilNm: null, ...extra });
 const palier = (champ, texteBrut, seuilNm = 3, extra = {}) => ({ champ, nature: 'palier', texteBrut, contexte: texteBrut, pasNm: null, seuilNm, ...extra });
@@ -120,4 +120,20 @@ test('valeur à N NM (fiche de personnage, demande du propriétaire) : le bonus 
   assert.equal(valeurAuNm('5', [], 'portee', 2), '5');
   assert.equal(valeurAuNm(null, [], 'dsb', 1), null);
   assert.equal(a('5 (+1/NM)', inc('portee', '+1/NM', '+1'), 9), '8', 'au plus 3 NM');
+});
+
+test('modes à N NM (fiche de personnage, demande du propriétaire : l’indication IC) : la valeur de base, puis « IC pour 3 NM » au seuil, « IC x 2 si 3NM » à la place de l’IC, « IC x 1/NM » par NM', () => {
+  const vus = (modes, bonus, nm) => modesAuNm(modes, bonus, nm).map((m) => `${m.atteint ? '' : '~'}${m.texte}`).join(', ');
+  const ic = { mode: 'ic', libelle: 'IC' };
+  assert.equal(vus([ic], [], 0), 'IC');
+  assert.equal(vus([{ mode: 'imparable', libelle: 'Imparable' }], [], 2), 'Imparable');
+  const pour3 = [palier('type', 'IC pour 3 NM')];
+  assert.deepEqual([0, 2, 3].map((nm) => vus([], pour3, nm)), ['~IC pour 3 NM', '~IC pour 3 NM', 'IC'], 'pas encore IC : l’expression reste, en attente');
+  const x2 = [palier('type', 'IC x 2 si 3NM')];
+  assert.deepEqual([1, 3].map((nm) => vus([ic], x2, nm)), ['IC, ~IC x 2 si 3NM', 'IC x 2']);
+  const parNmIc = [parNm('type', 'IC x 1/NM', 1, { incrementBrut: 'IC x 1' })];
+  assert.deepEqual([0, 1, 2, 3].map((nm) => vus([], parNmIc, nm)), ['~IC x 1/NM', 'IC x 1', 'IC x 2', 'IC x 3']);
+  assert.equal(vus([], [texte('type', 'IC au niveau 3 de maîtrise')], 3), '~IC au niveau 3 de maîtrise', 'une écriture qui n’est pas un calcul reste telle quelle');
+  assert.equal(vus([], [parNm('cout', '-5/NM', 1, { incrementBrut: '-5' })], 3), '', 'seul le type compte');
+  assert.equal(vus([], pour3, 9), 'IC', 'NM ramené à 3 au plus');
 });

@@ -7,11 +7,11 @@
 import { libelleDuControle } from '../lib/fiche-controles.mjs';
 import { CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ficheVide, nouveauxRetraits, resumeDesRetraits } from '../lib/fiche-format.mjs';
 import { RAISONS } from '../lib/degats-texte.mjs';
-import { valeurAuNm } from '../lib/sort-maitrise.mjs';
+import { modesAuNm, valeurAuNm } from '../lib/sort-maitrise.mjs';
 import { cadrageDe } from '../lib/portrait.mjs';
 import { dessinerVignette, ouvrirRecadrage, reduireImage } from './portrait.mjs';
 import {
-  ajusterValeurDuMoment, alignementDe, armesApresChoix, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
+  ajusterValeurDuMoment, alignementDe, armesApresChoix, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
   choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsAcquis, donsDeRace, donsValables,
   emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionAttendue, progressionXp,
@@ -206,6 +206,7 @@ function construireRaces() {
     refus: ethnie.race_id !== fiche.race_id ? 'ethnie d’une autre race' : ethnieCompatible(ethnie, fiche.magie_innee_id) ? null : 'liée à une autre magie innée',
     verrou: imposee === ethnie.id ? pourquoi() : null,
   }]);
+  $('ethnies').dataset.choixCle = 'ethnie';   // sa tuile dans l'infobulle du tiroir des choix (choixEnAttente)
   reconstruire($('ethnies'), `${fiche.race_id}`, () => ethnies.map((e) => pastille({
     texte: e.nom, couleur: race.couleur, choisie: () => fiche.ethnie_id === e.id,
     refus: () => (ethnieCompatible(e, fiche.magie_innee_id) ? null : `seulement avec la ${trouver(regles.magies, e.magie_id)?.nom ?? 'magie de l’ethnie'} innée`),
@@ -491,7 +492,7 @@ function construireMetier() {
     const nomDeCible = (o) => ATTRIBUTS[o.attribut] ?? competence(o.competence_id)?.nom ?? o.competence_id;
     const lignesDeBonus = rangs.map((b) => {
       if (b.aChoisir) {
-        const li = el('li', { class: 'metier-fiche__choix' }, el('strong', {}, `${valeur(b)} au choix `),
+        const li = el('li', { class: 'metier-fiche__choix', dataset: { choixCle: cleDeChoix.metierBonus(b.rang) } }, el('strong', {}, `${valeur(b)} au choix `),
           el('ul', { class: 'pastilles pastilles--etroites' }, b.options.filter((o) => o.competence_id).map((o) => {
             const k = couleurDe(o.competence_id);
             return pastille({
@@ -525,7 +526,7 @@ function construireMetier() {
     const objets = objetsDuMetier(regles, metier.id).map((r) => (r.options.length === 1
       ? el('li', {}, el('strong', {}, 'Objet de départ '), r.options[0].texte)
       : (() => {
-        const li = el('li', { class: 'metier-fiche__choix' }, el('strong', {}, 'Objet de départ au choix '),
+        const li = el('li', { class: 'metier-fiche__choix', dataset: { choixCle: cleDeChoix.metierObjet(r.rang) } }, el('strong', {}, 'Objet de départ au choix '),
         el('ul', { class: 'pastilles pastilles--etroites' }, r.options.map((o, i) => pastille({
           texte: o.texte, couleur: '#8a7a66', choisie: () => objetChoisi(fiche, r) === i,
           surClic: () => {
@@ -605,11 +606,13 @@ function construireSorts() {
   const lignes = lignesDeSorts(regles, fiche);
   const cle = JSON.stringify([lignes.length, (fiche.sorts ?? []).map((x) => x.sort_id), fiche.magie_innee_id, fiche.magie_acquise_id, max]);
   reconstruire($('sorts'), cle, () => [
-    el('thead', {}, el('tr', {}, el('th', { class: 'nombre' }, '#'), el('th', {}, 'Sort'), el('th', {}, 'Coût'), el('th', {}, 'Portée'),
+    el('thead', {}, el('tr', {}, el('th', { class: 'nombre' }, '#'), el('th', {}, 'Sort'),
+      el('th', { title: 'Instant Cast (IC), imparable, inesquivable, au NM du sort ; en grisé : pas encore atteint' }, 'IC'),
+      el('th', {}, 'Coût'), el('th', {}, 'Portée'), el('th', {}, 'Zone'),
       el('th', { title: 'Dégâts, soins ou barrière' }, 'D/S/B'),
       el('th', { title: 'NM de niveau, d’un livre (un par sort), du MJ ; 3 au plus en tout' }, 'NM : niveau · livre · MJ'))),
     el('tbody', {}, lignes.length === 0
-      ? el('tr', {}, el('td', { colspan: '6', class: 'muted' }, 'Aucun emplacement de sort.'))
+      ? el('tr', {}, el('td', { colspan: '8', class: 'muted' }, 'Aucun emplacement de sort.'))
       : lignes.flatMap((l) => {
         // un groupe par NPM, le nom seul ; chaque sort sur la couleur de sa magie, comme sur les pages de magie (demande du propriétaire)
         const couleurDe = (s) => trouver(regles.magies, s?.magie_id);
@@ -649,9 +652,12 @@ function construireSorts() {
         const cadeau = el('input', { type: 'number', min: '0', step: '1', 'aria-label': `NM donnés par le MJ, emplacement ${l.index + 1}`, disabled: !l.ligne,
           oninput: (ev) => ecrireNm('cadeau', entier(ev.target.value)) });
         const total = el('output', { class: 'curseur__valeur' });
-        // coût, portée, D/S/B et effet à la valeur du NM du sort, sans « (+1/NM) » (demande du propriétaire ; valeurAuNm)
+        // coût, portée, zone, D/S/B et effet à la valeur du NM du sort, sans « (+1/NM) » (demande du propriétaire ; valeurAuNm) ; l'indication IC (et
+        // imparable, inesquivable) au NM du sort, une condition pas encore atteinte (« IC pour 3 NM ») en grisé (modesAuNm)
+        const modes = el('td', { class: 'sort-modes' });
         const cout = el('td', { class: 'sort-valeur' });
         const portee = el('td', { class: 'sort-valeur' });
+        const zone = el('td', { class: 'sort-valeur' });
         const dsb = el('td', { class: 'sort-valeur' });
         const effet = el('span', { class: 'sort-effet__texte' });
         const remarque = l.sort?.remarque
@@ -662,6 +668,11 @@ function construireSorts() {
           const auNm = (brut, champ) => (l.sort ? valeurAuNm(brut, l.sort.bonus ?? [], champ, nm.total) ?? '' : '');
           cout.textContent = auNm(l.sort?.cout, 'cout');
           portee.textContent = auNm(l.sort?.portee, 'portee');
+          zone.textContent = auNm(l.sort?.zone, 'zone');
+          modes.replaceChildren(...(l.sort ? modesAuNm(l.sort.modes, l.sort.bonus ?? [], nm.total) : []).map((m) => el('span', {
+            class: 'sort-mode', dataset: { mode: m.mode ?? 'autre', ...(m.atteint ? {} : { attente: '' }) },
+            title: m.atteint ? null : `Pas encore : ${nm.total} NM sur ce sort`,
+          }, m.texte)));
           dsb.textContent = auNm(l.sort?.dsb, 'dsb');
           effet.textContent = auNm(l.sort?.effets, 'effets');
           if (document.activeElement !== deNiveau) poser(deNiveau, fiche.sorts[l.index] ? nm.deNiveau : '');
@@ -677,10 +688,10 @@ function construireSorts() {
         return [
           el('tr', { class: classe, title: l.enTrop ? 'Au-delà des emplacements du personnage : à retirer' : null },
             el('td', { class: 'nombre muted' }, String(l.index + 1)), el('td', {}, el('span', { class: 'sort-choix' }, liste, remarque)),
-            cout, portee, dsb,
+            modes, cout, portee, zone, dsb,
             el('td', { class: 'nm-origines' }, deNiveau, el('label', { class: 'nm-livre' }, livre, 'livre'), cadeau, total)),
           // l'effet secondaire du sort, sur sa propre ligne (demande du propriétaire)
-          l.sort?.effets ? el('tr', { class: `sort-effet${l.enTrop ? ' en-trop' : ''}` }, el('td', {}), el('td', { colspan: '5' }, effet)) : null,
+          l.sort?.effets ? el('tr', { class: `sort-effet${l.enTrop ? ' en-trop' : ''}` }, el('td', {}), el('td', { colspan: '7' }, effet)) : null,
         ];
       })),
   ]);
@@ -903,6 +914,7 @@ function construireChoixSpecialites() {
         changer();
       },
     })));
+    cadre.dataset.choixCle = cleDeChoix.specialite(c.rang);
     synchro(() => cadre.toggleAttribute('data-a-choisir', aChoisir('specialite', c.rang)));
     return cadre;
   }));
@@ -924,10 +936,19 @@ function construireChoixEnAttente() {
   compte.title = attente.length ? `${attente.length} choix à faire` : '';
   $('choix-tete').hidden = attente.length === 0;
   $('choix-titre').textContent = attente.length > 1 ? `${attente.length} choix à faire` : 'Un choix à faire';
-  reconstruire($('choix-attente'), JSON.stringify(attente), () => attente.map((c) => el('li', { dataset: { nature: c.nature } },
-    c.nature === 'ethnie'
-      ? el('button', { type: 'button', class: 'tiroir__lien', title: 'Ouvrir le menu de l’ethnie', onclick: (ev) => { ev.stopPropagation(); ouvrirMenu('choix-ethnie'); } }, c.libelle)
-      : c.libelle)));
+  // au survol (ou au focus) d'un choix, sa tuile dans une infobulle (demande du propriétaire ; bulleDeChoix)
+  reconstruire($('choix-attente'), JSON.stringify(attente), () => attente.map((c) => {
+    const tuile = () => tuileDeChoix(c.cle);
+    const remplir = () => remplirBulleDeChoix(c.cle);
+    return el('li', {
+      dataset: { nature: c.nature, ...(tuile() ? { bulle: bulleDeChoix().id } : {}) }, tabindex: c.nature === 'ethnie' ? null : '0',
+      onpointerover: remplir, onpointerdown: remplir, onfocusin: remplir,
+    }, c.nature === 'ethnie'
+      ? el('button', { type: 'button', class: 'tiroir__lien', 'aria-label': `${c.libelle} : ouvrir le menu de l’ethnie`, onclick: (ev) => { ev.stopPropagation(); ouvrirMenu('choix-ethnie'); } }, c.libelle)
+      : c.libelle);
+  }));
+  const bulle = document.getElementById('bulle-choix');
+  if (bulle && !bulle.hidden) remplirBulleDeChoix(bulle.dataset.cle);
   const tiroir = attente.length > 0 && !zoneParametresVisible;
   panneau.classList.toggle('est-tiroir', tiroir);
   panneau.toggleAttribute('data-reduit', tiroir && tiroirReduit);
@@ -935,6 +956,72 @@ function construireChoixEnAttente() {
   $('choix-reduire').hidden = !tiroir;
   $('choix-reduire').textContent = tiroirReduit ? 'Déplier' : 'Réduire';
   $('choix-reduire').setAttribute('aria-expanded', String(!tiroirReduit));
+}
+
+/**
+ * L'infobulle d'un choix du tiroir (demande du propriétaire : « la tuile correspondant au choix qui apparaît dans la tooltip au survol ») : une copie de
+ * la tuile du choix (`data-choix-cle` = la clé de choixEnAttente : pastilles de l'ethnie ou de la spécialité, groupe de dons, choix du métier, +1 de la
+ * magie innée), dans une bulle riche de components/Infobulles.astro, remplie juste avant qu'elle s'ouvre. Ses boutons, cases et listes renvoient leur clic
+ * ou leur valeur à la tuile de la page : le choix se fait aussi depuis la bulle. Une seule bulle, posée dans la zone IV hors du tiroir (son `transform`
+ * fausserait la position fixe).
+ */
+const tuileDeChoix = (cle) => (cle ? [...racine.querySelectorAll('[data-choix-cle]')].find((t) => t.dataset.choixCle === cle && !t.closest('#bulle-choix')) ?? null : null);
+const CHAMPS_DE_TUILE = 'button, input, select';
+
+function bulleDeChoix() {
+  let bulle = document.getElementById('bulle-choix');
+  if (bulle) return bulle;
+  bulle = el('span', { class: 'bulle bulle--tuile', role: 'tooltip', id: 'bulle-choix', hidden: true });
+  const original = (champ) => {
+    const copie = bulle.querySelector('[data-copie]');
+    const tuile = tuileDeChoix(bulle.dataset.cle);
+    if (!copie || !tuile) return null;
+    const i = [...copie.querySelectorAll(CHAMPS_DE_TUILE)].indexOf(champ);
+    return i < 0 ? null : tuile.querySelectorAll(CHAMPS_DE_TUILE)[i] ?? null;
+  };
+  bulle.addEventListener('click', (ev) => {
+    const champ = ev.target instanceof Element ? ev.target.closest('button, input') : null;
+    const cible = champ && original(champ);
+    if (!cible) return;
+    ev.preventDefault();
+    cible.click();
+  });
+  bulle.addEventListener('change', (ev) => {
+    const cible = ev.target instanceof HTMLSelectElement ? original(ev.target) : null;
+    if (!cible) return;
+    cible.value = ev.target.value;
+    cible.dispatchEvent(new Event('input', { bubbles: true }));
+    cible.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  ($('etape-choix').closest('.fiche-zone') ?? racine).append(bulle);   // les couleurs de la zone IV, hors du tiroir
+  return bulle;
+}
+
+/** Remplit la bulle avec la copie de la tuile du choix `cle`, dans un conteneur comme le sien (ses styles), sans identifiant ni nom de groupe partagés. */
+function remplirBulleDeChoix(cle) {
+  const tuile = tuileDeChoix(cle);
+  const bulle = bulleDeChoix();
+  if (!tuile) return;
+  bulle.dataset.cle = cle;
+  const copie = tuile.cloneNode(true);
+  copie.removeAttribute('data-choix-cle');
+  copie.hidden = false;
+  copie.setAttribute('data-copie', '');
+  for (const n of [copie, ...copie.querySelectorAll('[id]')]) n.removeAttribute('id');
+  for (const n of copie.querySelectorAll('input[name]')) n.name = `bulle-${n.name}`;
+  for (const n of [copie, ...copie.querySelectorAll('[data-champ]')]) n.removeAttribute('data-champ');   // la tuile de la page reste le seul champ de la fiche
+  // l'état coché ou choisi d'un champ n'est pas toujours un attribut : on le recopie
+  const sources = tuile.querySelectorAll(CHAMPS_DE_TUILE);
+  copie.querySelectorAll(CHAMPS_DE_TUILE).forEach((n, i) => {
+    if (n instanceof HTMLInputElement) n.checked = sources[i].checked;
+    if (n instanceof HTMLSelectElement) n.value = sources[i].value;
+  });
+  const parent = tuile.parentElement;
+  const enveloppe = parent && parent.matches('ul, ol') ? parent.cloneNode(false) : null;
+  enveloppe?.removeAttribute('id');
+  enveloppe?.removeAttribute('aria-label');
+  if (enveloppe) enveloppe.append(copie);
+  bulle.replaceChildren(enveloppe ?? copie);
 }
 
 /** Ouvre un menu déroulant de la fiche (la spécialité d'une classe, depuis le tiroir des choix) et l'amène à l'écran. */
@@ -1060,7 +1147,7 @@ function construireProgression() {
             });
             return r;
           };
-          const cadre = el('fieldset', { class: 'dons-groupe' },
+          const cadre = el('fieldset', { class: 'dons-groupe', dataset: { choixCle: cleDeChoix.don(d.rang, g) } },
             el('legend', {}, `Niveau de classe ${g.niveau}${specialite ? ` · ${specialite.nom}` : ''} : un seul au choix`),
             el('div', { class: 'dons-options' },
               el('label', {}, radio(null), 'Pas encore choisi'),

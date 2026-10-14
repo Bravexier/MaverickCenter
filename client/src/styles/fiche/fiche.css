@@ -325,6 +325,11 @@ html:not(.js) .parametres { gap: 0.75rem; }
 .tiroir__titre::before { content: '⚠ '; }
 .tiroir__attente { display: flex; flex: 1 1 18rem; flex-wrap: wrap; gap: 0.25rem; margin: 0; padding: 0; list-style: none; }
 .tiroir__attente li { padding: 0.05rem 0.55rem; border: 1px dashed color-mix(in srgb, var(--a-choisir) 60%, var(--border)); border-radius: 999px; background: var(--surface); font-size: 0.76rem; }
+/* un choix du tiroir : sa tuile en infobulle (demande du propriétaire ; src/scripts/fiche.mjs#remplirBulleDeChoix), où le choix se fait aussi */
+.tiroir__attente li[data-bulle] { cursor: help; }
+.tiroir__attente li[data-bulle]:focus-visible { outline: 2px solid var(--a-choisir); outline-offset: 2px; }
+.fiche .bulle--tuile { width: min(34rem, calc(100vw - 1rem)); max-width: min(34rem, calc(100vw - 1rem)); padding: 0.55rem 0.7rem; font: inherit; font-size: 0.85rem; white-space: normal; }
+.fiche .bulle--tuile .fiche-champ { display: grid; gap: 0.2rem; }
 .fiche .tiroir__lien { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; }
 .tiroir__boutons { display: inline-flex; gap: 0.3rem; margin-left: auto; }
 .tiroir__boutons button { padding: 0.15rem 0.55rem; font-size: 0.78rem; }
@@ -608,6 +613,12 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .fiche-table--fixe .etroite { width: 5rem; }
 .fiche-table--sorts td:nth-child(2) { width: 30%; }
 .fiche-table--sorts td.sort-valeur { font-size: 0.8rem; }
+/* l'indication IC (et imparable, inesquivable) au NM du sort, comme les marques des pages de magie ; une condition pas encore atteinte en grisé, en pointillés */
+.sort-modes { white-space: nowrap; }
+.sort-mode { display: inline-block; margin: 0.05rem 0.2rem 0.05rem 0; padding: 0 0.4rem; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); font-size: 0.7rem; }
+.sort-mode[data-mode='ic'] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.sort-mode[data-mode='imparable'], .sort-mode[data-mode='inesquivable'] { border-style: dashed; }
+.sort-mode[data-attente] { border-color: var(--border); border-style: dotted; color: var(--muted); font-weight: normal; cursor: help; }
 /* l'effet secondaire d'un sort, sur sa propre ligne sous le sort (demande du propriétaire) */
 .fiche-table--sorts tr.avec-effet td { border-bottom: 0; }
 .fiche-table--sorts tr.sort-effet td { padding-top: 0; color: var(--muted); font-size: 0.76rem; line-height: 1.3; white-space: pre-line; }

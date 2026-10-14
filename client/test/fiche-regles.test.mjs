@@ -169,14 +169,16 @@ test('postures (sélecteur de la page, demande du propriétaire) : les six de la
   assert.match(db.prepare("SELECT sql FROM sqlite_master WHERE name = 'personnage'").get().sql, /posture_id\s+TEXT\s+REFERENCES posture\(id\)/, 'la fiche garde sa posture (migration 0027)');
 });
 
-test('sorts : coût, portée, D/S/B, effets et remarque tels qu’écrits, avec leurs expressions de NM de ces colonnes (sort_bonus_maitrise)', () => {
-  const ligne = (id) => db.prepare('SELECT cout_brut, portee_brut, dsb_brut, effets, remarque FROM sort WHERE id = ?').get(id);
+test('sorts : coût, portée, zone, D/S/B, effets et remarque tels qu’écrits, leurs modes (IC…), avec leurs expressions de NM de ces colonnes et du type (sort_bonus_maitrise)', () => {
+  const ligne = (id) => db.prepare('SELECT cout_brut, portee_brut, zone_brut, dsb_brut, effets, remarque FROM sort WHERE id = ?').get(id);
   for (const s of regles.sorts) {
     const l = ligne(s.id);
-    assert.deepEqual([s.cout, s.portee, s.dsb, s.effets, s.remarque], [l.cout_brut, l.portee_brut, l.dsb_brut, l.effets, l.remarque], s.id);
-    const attendus = db.prepare("SELECT champ, texte_brut FROM sort_bonus_maitrise WHERE sort_id = ? AND champ IN ('cout', 'portee', 'dsb', 'effets') ORDER BY champ, rang").all(s.id);
+    assert.deepEqual([s.cout, s.portee, s.zone, s.dsb, s.effets, s.remarque], [l.cout_brut, l.portee_brut, l.zone_brut, l.dsb_brut, l.effets, l.remarque], s.id);
+    const attendus = db.prepare("SELECT champ, texte_brut FROM sort_bonus_maitrise WHERE sort_id = ? AND champ IN ('type', 'cout', 'portee', 'zone', 'dsb', 'effets') ORDER BY champ, rang").all(s.id);
     assert.deepEqual(s.bonus.map((b) => [b.champ, b.texteBrut]), attendus.map((b) => [b.champ, b.texte_brut]), s.id);
+    assert.deepEqual(s.modes.map((m) => m.libelle), db.prepare('SELECT libelle FROM sort_mode WHERE sort_id = ? ORDER BY rang').all(s.id).map((m) => m.libelle), s.id);
   }
+  assert.ok(regles.sorts.some((s) => s.modes.some((m) => m.mode === 'ic')) && regles.sorts.some((s) => s.bonus.some((b) => b.champ === 'type')));
 });
 
 test('résistances (tableau « Résistance / Faiblesse » de la fiche) : les six paliers, les listes de chaque magie et l’altération qui lui est liée, ce que les dons écrivent', () => {

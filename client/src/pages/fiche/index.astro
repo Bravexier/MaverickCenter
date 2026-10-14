@@ -290,7 +290,7 @@ const style = (id: string) => `--etape: ${couleur[ZONES.find((z) => z.id === id)
           <div class="fiche-etape__corps parametres__deux">
             <div class="parametres__pile">
               <div class="fiche-champs">
-                <label class="fiche-champ" id="bloc-carac-magie" hidden><span>+1 de la magie innée sur</span><select data-champ="caracteristique_magie_id" id="carac-magie"></select></label>
+                <label class="fiche-champ" id="bloc-carac-magie" data-choix-cle="carac_magie" hidden><span>+1 de la magie innée sur</span><select data-champ="caracteristique_magie_id" id="carac-magie"></select></label>
               </div>
               {/* ce que donne le métier choisi dans l'identité (décisions R33 à R35) : bonus d'acquis ou d'initiative (choix à faire ici), artisanat, objets de départ */}
               <div id="metier-bloc" hidden><h4 class="fiche-sous-titre" id="metier-titre">Métier</h4><div id="metier-detail"></div></div>
