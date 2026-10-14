@@ -139,8 +139,7 @@ function pastille({ texte, couleur, texteSurCouleur, choisie, refus = () => null
     bouton.toggleAttribute('data-verrou', Boolean(impose));
     if (impose) bouton.setAttribute('aria-disabled', 'true');
     else bouton.removeAttribute('aria-disabled');
-    if (non || impose) bouton.title = non || impose;
-    else bouton.removeAttribute('title');
+    bouton.title = non || impose || ''; // vide : plus d'infobulle (components/Infobulles.astro a déplacé l'attribut : un removeAttribute ne l'efface pas)
   });
   return el('li', {}, bouton);
 }

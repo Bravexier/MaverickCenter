@@ -96,13 +96,10 @@ export const armes = {
       if (tr) {
         const depart = Number(ligne.depart_possible) === 1;
         tr.classList.toggle('arme--depart', depart);
-        if (depart) tr.title = 'Arme de départ';
-        else tr.removeAttribute('title');
+        // `title` vide pour retirer une infobulle (components/Infobulles.astro a déplacé l'attribut : un removeAttribute ne l'efface pas)
+        tr.title = depart ? 'Arme de départ' : '';
         const nom = tr.querySelector('.arme__choisir');
-        if (nom) {
-          if (ligne.description) nom.title = ligne.description;
-          else nom.removeAttribute('title');
-        }
+        if (nom) nom.title = ligne.description || '';
       }
     }
     if (['arme', 'ressource', 'materiau_arme', 'amelioration_equipement'].includes(table)) rafraichir();

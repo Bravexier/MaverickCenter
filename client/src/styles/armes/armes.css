@@ -127,7 +127,7 @@ html.js .arme--depart:hover > * { background: var(--depart-fond-fort); }
 .arme__effets { min-width: 14rem; }
 .arme__description { min-width: 18rem; white-space: pre-line; font-size: 0.86rem; }
 /* la description de l'arme est l'infobulle de son nom */
-.arme__choisir[title] { text-decoration: underline dotted color-mix(in srgb, var(--muted) 60%, transparent); text-underline-offset: 3px; }
+.arme__choisir:is([title], [data-infobulle]:not([data-infobulle=""])) { text-decoration: underline dotted color-mix(in srgb, var(--muted) 60%, transparent); text-underline-offset: 3px; }
 .arme__portee { white-space: nowrap; text-align: center !important; font-variant-numeric: tabular-nums; }
 .arme__effet { min-width: 18rem; white-space: pre-line; }
 .arme-effet { display: block; }

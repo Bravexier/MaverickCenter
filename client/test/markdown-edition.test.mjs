@@ -145,6 +145,11 @@ test('aperçu assaini : ni script, ni style, ni attribut d’événement, ni adr
   ].join(''));
 });
 
+test('aperçu assaini : le `title` d’un lien, déplacé dans `data-infobulle` sur la page (components/Infobulles.astro), redevient `title`', () => {
+  const page = '<p><a class="wikilink wikilink--missing" data-cible="Page" data-infobulle="Page à créer" aria-description="Page à créer">Page</a></p>';
+  assert.equal(htmlSur(enfants(page)), '<p><a class="wikilink wikilink--missing" data-cible="Page" title="Page à créer">Page</a></p>');
+});
+
 test('mise en forme du navigateur : <strike>, <span style> en gras ou en italique, <div> de saisie, sauts de ligne de bord', () => {
   assert.equal(versMarkdown(enfants('<div>a <strike>b</strike> <span style="font-weight: bold;">c</span> <span style="font-style: italic">d</span></div><div>e</div>')),
     'a ~~b~~ **c** *d*\n\ne\n');

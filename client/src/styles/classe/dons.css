@@ -21,7 +21,7 @@
 .don__nom a:hover { text-decoration: underline; }
 .don__type { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.45rem; margin: 0.3rem 0 0; }
 .don-type { --gh: 30; --gs: 55%; font-size: 0.75rem; padding: 0.02rem 0.55rem; border-radius: 999px; border: 1px solid color-mix(in srgb, hsl(var(--gh) var(--gs) 50%) 40%, var(--border)); background: color-mix(in srgb, hsl(var(--gh) var(--gs) 50%) 15%, var(--surface)); color: color-mix(in srgb, hsl(var(--gh) var(--gs) var(--gl)) 85%, var(--text)); }
-.don-type[title] { cursor: help; }
+.don-type:is([title], [data-infobulle]:not([data-infobulle=""])) { cursor: help; } /* data-infobulle : le `title` déplacé (components/Infobulles.astro) */
 .don-type[data-type="passif"] { --gh: 210; --gs: 30%; }
 .don-type[data-type="actif"] { --gh: 32; }
 .don-type[data-type="action"] { --gh: 5; }

@@ -140,6 +140,8 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   un second suit le lien d'une pastille d'état), en position fixe près du déclencheur, bornée à l'écran (le tableau défile et couperait une bulle absolue) ; sans JavaScript l'attribut `title` du déclencheur donne le même contenu en texte simple. La bulle n'est faite que
   d'éléments « en ligne » (`<span>`) : une pastille est posée dans un paragraphe, où un bloc fermerait le `<p>` et ferait fuir le contenu de la bulle (`test/magies-html.test.mjs` le vérifie sur le site construit, ainsi que le câblage `aria-*`) ;
   seule exception, la carte d'une créature invoquée (`<div class="bulle bulle--carte">`), posée hors de tout paragraphe, après les tableaux de sorts.
+  Avec JavaScript, **jamais l'infobulle du navigateur** (demande du propriétaire) : tout attribut `title` du site, écrit dans la page ou posé par un script, est
+  aussitôt déplacé dans `data-infobulle` et s'affiche dans la bulle habillée (voir `CLAUDE.md`, « Infobulles »).
 - **Potentiel Illimité** : il n'a pas de sorts à lui (« cette magie pioche ses sorts dans toutes les magies existantes », bloc « Explication » de son onglet). À la place de la
   section des sorts, sa page montre **« Sorts des autres magies » : 14 onglets, un par autre magie**, dans l'ordre du classeur et dans sa couleur (`components/magie/SortsDuPotentiel.astro`,
   `lib/potentiel-illimite.mjs`, CSS `styles/magie/potentiel.css` inséré en `?raw` sur cette page seulement). Chaque onglet reprend **les tableaux de cette magie du NPM 1 au NPM 4** (demande

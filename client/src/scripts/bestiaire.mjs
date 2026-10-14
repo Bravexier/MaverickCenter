@@ -114,7 +114,9 @@ function brancher(section) {
     bouton.type = 'button';
     bouton.className = 'btri';
     bouton.textContent = th.textContent.trim();
-    bouton.title = th.title ? `Trier — ${th.title}` : `Trier par ${th.textContent.trim()}`;
+    // le `title` de l'en-tête est déjà dans `data-infobulle` (components/Infobulles.astro)
+    const aide = th.getAttribute('data-infobulle') ?? th.getAttribute('title');
+    bouton.title = aide ? `Trier — ${aide}` : `Trier par ${th.textContent.trim()}`;
     th.replaceChildren(bouton);
     bouton.addEventListener('click', () => {
       etat = triSuivant(etat, th.dataset.tri);
