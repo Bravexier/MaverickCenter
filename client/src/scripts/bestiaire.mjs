@@ -110,11 +110,18 @@ function brancher(section) {
   // le titre d'un tableau dépliable dit son effectif (« 15 combinaisons · 30 créatures ») ; filtré, combien en restent
   for (const n of section.querySelectorAll('[data-repli-compte]')) n.dataset.texte = n.textContent.replace(/\s+/g, ' ').trim();
   // le texte d'une carte que cherche la recherche (d'une case et de sa ligne) : sans ce qui nomme d'autres créatures (« Même combinaison », `data-hors-recherche`),
-  // sinon chercher une créature trouverait aussi sa voisine, ni les panneaux du mode modification (libellés des curseurs des capacités)
+  // sinon chercher une créature trouverait aussi sa voisine, ni les panneaux du mode modification (libellés des curseurs des capacités) ; un champ que le
+  // mode modification a ouvert dans la carte compte pour ce qui y est écrit (sa valeur, que textContent ne donne pas)
+  const SAISIES = 'textarea, select, input:not([type]), input[type="text"], input[type="search"]';
   const texteDeCarte = (carte) => {
     if (!carte) return '';
-    if (!carte.querySelector('[data-hors-recherche]')) return carte.textContent;
+    const saisies = [...carte.querySelectorAll(SAISIES)];
+    if (!saisies.length && !carte.querySelector('[data-hors-recherche]')) return carte.textContent;
     const copie = carte.cloneNode(true);
+    [...copie.querySelectorAll(SAISIES)].forEach((c, i) => {
+      const o = saisies[i];
+      c.replaceWith(` ${o.tagName === 'SELECT' ? o.selectedOptions?.[0]?.textContent ?? o.value : o.value} `);
+    });
     for (const n of copie.querySelectorAll('[data-hors-recherche]')) n.remove();
     return copie.textContent;
   };

@@ -440,7 +440,9 @@ test('capacités communes (décisions R66, R69) : modifiées pour toutes leurs c
   assert.equal(enregistrer({ op: 'supprimer', entite: 'monstre_capacite_commune', cle: { id: tId } }).statut, 200);
   // « Lanceur de sorts », seule capacité à liste de sorts (R66), ne se supprime pas
   const aListe = un('SELECT id FROM monstre_capacite_commune WHERE liste_de_sorts = 1 ORDER BY id LIMIT 1');
-  assert.equal(enregistrer({ op: 'supprimer', entite: 'monstre_capacite_commune', cle: { id: aListe.id } }).statut, 409);
+  r = enregistrer({ op: 'supprimer', entite: 'monstre_capacite_commune', cle: { id: aListe.id } });
+  assert.equal(r.statut, 409);
+  assert.match(r.corps.erreur, /liste de sorts/, 'refusée pour sa liste de sorts, pas seulement parce que des cartes la portent');
   for (const description of ['Accolade { seule.', 'Pas {x}.', '']) {
     assert.equal(enregistrer({ op: 'modifier', table: 'monstre_capacite_commune', cle: { id: gabarit.id }, valeurs: { description } }).statut, 400, description);
   }

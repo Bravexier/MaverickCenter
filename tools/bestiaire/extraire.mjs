@@ -479,7 +479,7 @@ export function extraireBestiaire(texte, registre = lireRegistre()) {
   // la source que lui donne le registre (texte du propriétaire, texte d'une créature invoquée retenu par le chef), sinon la première carte qui la place
   const premiere = new Map();
   const ecrite = new Map();
-  const PROCHE = /^(R66 : fautes corrigées|R66 : description commune|découpage)/;
+  const PROCHE = /^(R66 : fautes corrigées|R66 : description commune, fautes corrigées|découpage)/;
   for (const c of especes.flatMap((e) => e.cartes)) {
     const ligne = c.rubriques.find((r) => r.rubrique === 'capacites')?.source_ref ?? c.source_ref;
     for (const x of c.capacitesEcrites) {

@@ -6,7 +6,8 @@
 -- - monstre_capacite_commune : 469 capacités (nom, description), rangées par le registre tools/bestiaire/capacites.json ;
 -- - monstre_capacite : refaite, la place de chaque capacité sur sa carte (rang, préfixe, capacité commune, liste de sorts) ; 1 762 placements (le doc
 --   en écrit 1 762 : « Tome de la corruption niv.1. », collé faute d'espace à la capacité qui le précède sur le Gobelin mage obsolète, est à part) ;
--- - monstre_capacite_valeur : les 32 valeurs d'une carte qui ne sont pas la valeur commune de leur emplacement ;
+-- - monstre_capacite_valeur : les 32 valeurs d'une carte qui ne sont pas la valeur commune de leur emplacement ; une carte supprimée emporte ses
+--   capacités, et une capacité ses valeurs (ON DELETE CASCADE : le rejeu d'un lot du site de dev noté avant 0044, qui ne les nomme pas toutes) ;
 -- - monstre_rubrique : la rubrique « Capacité(s) » ne garde que sa place et son titre (texte vide) ; rangs inchangés (une modification de la tactique de
 --   l'Os du blizzard, rang 11, attend sur le site de dev).
 -- Lignes écrites par l'extracteur (node tools/bestiaire/extraire.mjs --sql --tables …), que client/test/bestiaire-extraction.test.mjs compare à la base.
@@ -645,7 +646,7 @@ INSERT INTO monstre_capacite_commune (id, nom, nom_cle, description, liste_de_so
 INSERT INTO monstre_capacite_commune (id, nom, nom_cle, description, liste_de_sorts, origine, source_ref) VALUES ('lame-foudroyante', 'Lame foudroyante', 'lame-foudroyante', '(IC) En échange de 5 chakra, la prochaine attaque physique au contact libère une foudre qui inflige 1d8 dégâts qui va ignorer l’AM et l’AP de la cible.', 0, 'monstres', 'Bestiaire 2.0 › ligne 10269');
 INSERT INTO monstre_capacite_commune (id, nom, nom_cle, description, liste_de_sorts, origine, source_ref) VALUES ('lance-foudre', 'Lance foudre', 'lance-foudre', 'A son tour, cette créature envoie une lance faite entièrement de foudre dans le ciel en cloche et va atterrir sur un ennemi aléatoire qui pourra tenter un jet de défense. C’est un IC.', 0, 'monstres', 'Bestiaire 2.0 › ligne 8006');
 INSERT INTO monstre_capacite_commune (id, nom, nom_cle, description, liste_de_sorts, origine, source_ref) VALUES ('lanceur-de-poids', 'Lanceur de poids', 'lanceur-de-poids', 'Cette créature peut ajouter son score de Force à sa portée maximale de son arme à distance.', 0, 'monstres', 'Bestiaire 2.0 › ligne 16031');
-INSERT INTO monstre_capacite_commune (id, nom, nom_cle, description, liste_de_sorts, origine, source_ref) VALUES ('lanceur-de-sorts', 'Lanceur de sorts', 'lanceur-de-sorts', 'Cette créature peut lancer les sorts, avec les niveaux de maîtrise maximum :', 1, 'monstres', 'Bestiaire 2.0 › ligne 957');
+INSERT INTO monstre_capacite_commune (id, nom, nom_cle, description, liste_de_sorts, origine, source_ref) VALUES ('lanceur-de-sorts', 'Lanceur de sorts', 'lanceur-de-sorts', 'Cette créature peut lancer les sorts, avec les niveaux de maîtrise maximum :', 1, 'monstres', 'Bestiaire 2.0 › ligne 6083');
 INSERT INTO monstre_capacite_commune (id, nom, nom_cle, description, liste_de_sorts, origine, source_ref) VALUES ('larmes-du-paria', 'Larmes du paria', 'larmes-du-paria', 'Quand la créature tombe en dessous de 50% de santé = Pétrolier passe à 7 corruption, chaque attaque au contact subit force l''assaillant un jet de fermeté pour ne pas prendre "surcharge magique 1".', 0, 'monstres', 'Bestiaire 2.0 › ligne 821');
 INSERT INTO monstre_capacite_commune (id, nom, nom_cle, description, liste_de_sorts, origine, source_ref) VALUES ('laser-de-fer', 'Laser de fer', 'laser-de-fer', 'Tire tous les trois tours un laser qui passe à travers toutes les protections physiques, magiques, la barrière. Il est parable et esquivable. Ceci est un IC.', 0, 'monstres', 'Bestiaire 2.0 › ligne 25413');
 INSERT INTO monstre_capacite_commune (id, nom, nom_cle, description, liste_de_sorts, origine, source_ref) VALUES ('laser-de-fer-plus', 'Laser de fer+', 'laser-de-fer', 'Tire tous les deux tours un laser qui passe à travers toutes les protections physiques, magiques, la barrière. Il est parable et esquivable. Ceci est un IC.', 0, 'monstres', 'Bestiaire 2.0 › ligne 25470');
@@ -896,7 +897,7 @@ DROP INDEX monstre_capacite_nom;
 DROP TABLE monstre_capacite;
 
 CREATE TABLE monstre_capacite (
-  monstre_id          TEXT    NOT NULL REFERENCES monstre(id),
+  monstre_id          TEXT    NOT NULL REFERENCES monstre(id) ON DELETE CASCADE,
   rang                INTEGER NOT NULL CHECK (rang >= 1),
   prefixe             TEXT    CHECK (prefixe IS NULL OR length(prefixe) > 0),  -- crochets et parenthèses avant le nom : « [EP2] », « [Gauche] », « (Neige) [EP3] »
   ep_min              INTEGER CHECK (ep_min BETWEEN 1 AND 10),            -- N du premier « [EPN] » du préfixe (R56) ; recalculé, jamais saisi
@@ -2681,7 +2682,7 @@ CREATE TABLE monstre_capacite_valeur (
   origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
   source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
   PRIMARY KEY (monstre_id, rang, numero),
-  FOREIGN KEY (monstre_id, rang) REFERENCES monstre_capacite(monstre_id, rang)
+  FOREIGN KEY (monstre_id, rang) REFERENCES monstre_capacite(monstre_id, rang) ON DELETE CASCADE
 ) STRICT, WITHOUT ROWID;
 
 INSERT INTO monstre_capacite_valeur (monstre_id, rang, numero, valeur, origine, source_ref) VALUES ('monstres/criquet-thaumivore#carte:criquet-thaumivore-geant', 2, 1, 30, 'monstres', 'Bestiaire 2.0 › ligne 7651');

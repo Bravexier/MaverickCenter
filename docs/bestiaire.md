@@ -181,8 +181,10 @@ communes » ; « Elle change pour tous » ; « corrige les tous et fusionne » ;
   les Gobelins demi-vie et obsolètes), Racine (« {3} santé », 6 pour le Garrestre sage), Verre pilé (3d{6}, 3d10 pour le Golem de vitrail II et III),
   Arme mal faite, Arc mal fait, Encrier, Morsure aspirante bleue, Puissance magique supérieure, Forme changeante, Chargement bleu. Le rendu remplace
   chaque « {N} » avant tout le reste (`lib/monstre-champs.mjs#avecLesValeurs`) : un texte écrit par échelle (« Fondu ») garde ses lignes. Une
-  description qui change son nombre d'emplacements : les valeurs propres suivent l'emplacement qu'on reconnaît (texte autour, valeur commune :
-  `suiteDesEmplacements`), celles d'un emplacement retiré ou méconnaissable partent, jamais vers un autre.
+  description qui change son nombre d'emplacements : les valeurs propres suivent l'emplacement qu'on reconnaît (texte autour, s'il n'est pas vide,
+  valeur commune : `suiteDesEmplacements`), celles d'un emplacement retiré ou méconnaissable partent, jamais vers un autre. Une carte supprimée
+  emporte ses capacités, et une capacité ses valeurs (`ON DELETE CASCADE`, pour le rejeu d'un lot du site de dev noté avant 0044 :
+  `ancienneEcritureDesCapacites`, `docs/serveur.md`) ; le service les note quand même une à une.
 - **Les créatures invoquées et le Mage Bleu** restent à part (R67) : leurs capacités ne changent pas, et leur tuile non plus (même HTML).
 - **Questions déjà tranchées par la même réponse** (« Le reste on suis ta proposition ») : une page des capacités (`/bestiaire/capacites/`, menu Codex)
   pour les créer, les renommer et les supprimer, à venir ; une capacité encore sur une carte ne se supprime pas (le service le refuse déjà) ; les

@@ -262,7 +262,13 @@ est lu dans la forme nouvelle au rejeu (`adapter` de `rejouer` : `ancienneEcritu
 ou créé sous l'id noté (`-2`… seulement si l'historique l'a déjà employé : un renommage noté depuis vise cette création) dans chaque lot qui le pose,
 s'il manque — par le premier qui passe, avec son écriture, même si la ligne de `page_tag` est retirée ensuite (le site de dev l'a eu : un renommage,
 une fiche de don créés depuis s'en servent) —, annulé avec un lot en conflit, jamais noté au journal, et jamais retiré ensuite (son id et son écriture
-ne resservent pas) ; table `mot_cle` alors écrite par la mise à jour. Le journal stocké garde sa forme. Le
+ne resservent pas) ; table `mot_cle` alors écrite par la mise à jour. Un lot noté avant la migration 0044 (une capacité de monstre avec son `nom` et
+son `texte`, tirée du texte de la rubrique « Capacité(s) », que 0044 vide : décision R66) est lu de même (`ancienneEcritureDesCapacites`,
+`serveur/edition-bestiaire.mjs`) : le texte d'avant de la rubrique est lu vide, une capacité retirée sans `nom` ni `texte` (0044 a gardé chaque place,
+son préfixe et sa source), ses valeurs propres et une place que 0044 a ajoutée partant par la cascade du schéma (`monstre_capacite` → `monstre`,
+`monstre_capacite_valeur` → `monstre_capacite` : tables alors écrites par la mise à jour) ; une capacité écrite (créée ou changée par le texte de la
+rubrique) n'a pas d'équivalent sûr : l'adaptateur rend un `conflit`, son lot passe en conflit avec un message qui dit quoi refaire. Le journal stocké
+garde sa forme. Le
 **corps et le résumé des pages typées**, et les champs structurés des fiches de dons, ne sont pas des valeurs figées du journal (`colonneDerivee`) : le rejeu ne les compare ni ne les écrit, puis
 `rejouerLeJournal` (`serveur/edition.mjs`) les refait depuis les tables rejouées, pour chaque page qu'elles touchent — dans la base vivante comme dans
 `db:appliquer-edition` et la mise à jour des règles. Un lot n'est donc jamais en conflit pour une page qu'une autre modification ou une livraison a

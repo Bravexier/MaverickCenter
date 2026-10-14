@@ -400,13 +400,17 @@ function dessinerLesValeurs(ed, panneau) {
   if (!r?.propres || !zone) return;
   const places = placesDe(descriptionDe(ed, r.commune));
   // une description qui change son nombre d'emplacements dans ce lot : les valeurs de la carte se règlent après l'avoir enregistrée (le service décide
-  // alors quel emplacement garde quelle valeur : lib/monstre-champs.mjs#suiteDesEmplacements)
-  if (places.length !== r.emplacements) {
+  // alors quel emplacement garde quelle valeur : lib/monstre-champs.mjs#suiteDesEmplacements) ; ce qui était réglé ici est abandonné, et le dit
+  if (bloque(ed, r)) {
     if (zone.dataset.signature !== 'attente') {
       zone.dataset.signature = 'attente';
+      const reglees = [...r.valeurs].some(([n, v]) => v !== (r.propres.get(n) ?? null)) || r.invalides.size > 0;
+      r.valeurs.clear();
+      r.invalides.clear();
       const note = document.createElement('p');
       note.className = 'ed-capacite__portee';
-      note.textContent = 'Le nombre de valeurs « {N} » de la description change : enregistrez-la d’abord, puis réglez les valeurs de cette carte.';
+      note.textContent = `Le nombre de valeurs « {N} » de la description change : enregistrez-la d’abord, puis réglez les valeurs de cette carte.${
+        reglees ? ' Les valeurs réglées ici ne seront pas enregistrées.' : ''}`;
       zone.replaceChildren(note);
     }
     zone.hidden = false;
@@ -709,12 +713,15 @@ function formulaireCapacite(ed, monstreId) {
  * Les opérations des capacités : les valeurs réglées au curseur (une opération valeurs_de_capacite par placement ; la valeur commune -> null, la carte suit
  * alors la description), seulement celles qui changent quelque chose, et seulement pour les emplacements de la description telle qu'elle sera enregistrée.
  */
+/** Les curseurs d'une capacité sont bloqués : sa description (modifiée dans ce lot) n'a plus le nombre d'emplacements de celle de la base. */
+const bloque = (ed, r) => placesDe(descriptionDe(ed, r.commune)).length !== r.emplacements;
+
 function operationsDeValeurs(ed) {
   const ops = [];
   for (const r of reglages.values()) {
     if (!r.propres || !r.valeurs.size) continue;
     // une description qui change son nombre d'emplacements dans ce lot : ses curseurs sont bloqués (dessinerLesValeurs), rien ne part
-    if (placesDe(descriptionDe(ed, r.commune)).length !== r.emplacements) continue;
+    if (bloque(ed, r)) continue;
     const valeurs = valeursAEnvoyer(descriptionDe(ed, r.commune), r.valeurs, r.propres);
     if (Object.keys(valeurs).length) ops.push({ op: 'valeurs_de_capacite', monstre_id: r.monstre_id, rang: r.rang, valeurs });
   }
@@ -928,9 +935,10 @@ export const bestiaire = {
     monterCarte(ed, zone()?.querySelector('.bcarte.est-ouverte'));
   },
 
-  verifier() {
+  verifier(ed) {
     for (const [k, r] of reglages) {
-      if (r.invalides.size && !retirees.has(k) && !supprimes.has(r.monstre_id)) {
+      // une saisie d'un panneau bloqué ne part pas (operationsDeValeurs) : elle ne bloque pas l'enregistrement
+      if (r.invalides.size && !retirees.has(k) && !supprimes.has(r.monstre_id) && !bloque(ed, r)) {
         return 'Une valeur de capacité n’est pas un nombre entier positif ou nul : corrigez-la (ou revenez à la valeur commune) avant d’enregistrer.';
       }
     }

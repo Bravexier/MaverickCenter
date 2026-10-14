@@ -53,7 +53,8 @@ import { empreinte } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { ErreurJournal, cleDe, lireLigne, nouveauLot, ouvrirLot, rejouer, structure } from './edition-journal.mjs';
 import {
-  capacitesDeMonstre, domainesDuBestiaire, especesDeMonstres, groupesDeMonstres, lignesDuBestiaire as lignesRenduesDuBestiaire, operationsDuBestiaire,
+  ancienneEcritureDesCapacites, capacitesDeMonstre, domainesDuBestiaire, especesDeMonstres, groupesDeMonstres, lignesDuBestiaire as lignesRenduesDuBestiaire,
+  operationsDuBestiaire,
 } from './edition-bestiaire.mjs';
 import { contexteDuCorpsDesArmes, domainesDesArmes } from './edition-armes.mjs';
 import { contexteDuCorpsDesComposants, domainesDesComposants, magiesSansBois, magiesSansGemme } from './edition-composants.mjs';
@@ -1452,7 +1453,12 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
     derivee: colonneDerivee, applique: (m) => appliquees.push(m), horsControleParLot,
     // le dictionnaire des sources n'est vidé que de ses orphelins (supprimerPage) : une source encore citée au rejeu reste
     siOrphelines: ['source'],
-    adapter: () => ancienneEcritureDesMotsCles(db),
+    // les formes d'avant les migrations 0043 (mots-clés) et 0044 (capacités de monstre communes)
+    adapter: () => {
+      const motsCles = ancienneEcritureDesMotsCles(db);
+      const capacites = ancienneEcritureDesCapacites(db);
+      return (m) => capacites(motsCles(m));
+    },
   });
   const reelles = appliquees.filter((m) => !m.synthetique);
   const metiers = new Set(reelles.filter((m) => m.table === 'metier' || m.table === 'metier_bonus').map((m) => m.cle?.metier_id ?? m.cle?.id));
@@ -1461,6 +1467,11 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
   // d'exemple, absentes de la base du site de dev) — page_tag peut donc changer au-delà du journal ; un mot-clé créé pour un lot d'avant 0043 : mot_cle
   if (reelles.some((m) => m.table === 'mot_cle' && m.operation === 'supprimer')) completees.add('page_tag');
   if (appliquees.some((m) => m.synthetique && m.table === 'mot_cle')) completees.add('mot_cle');
+  // une carte ou une capacité supprimée : la cascade de leur schéma retire aussi les capacités et les valeurs propres qu'un lot noté avant la migration
+  // 0044 n'a pas notées (ancienneEcritureDesCapacites)
+  const supprimees = new Set(reelles.filter((m) => m.operation === 'supprimer').map((m) => m.table));
+  if (supprimees.has('monstre')) completees.add('monstre_capacite');
+  if (supprimees.has('monstre') || supprimees.has('monstre_capacite')) completees.add('monstre_capacite_valeur');
   Object.assign(sortie, recalculerLesPages(db, reelles), { tablesCompletees: [...completees] });
   return bilan;
 }

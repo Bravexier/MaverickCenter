@@ -13,7 +13,9 @@
 //     personnage », migration 0033) : l'image et son cadrage vont ensemble (suiviDuPortrait) ; l'image entière ne sort que par POST /api/edition/portrait/.
 //     Le portrait suit la tuile : la première carte d'une espèce prend celui de l'espèce, et une espèce qui perd sa dernière carte reprend le sien (sans
 //     quoi l'image resterait dans la base sans tuile pour la montrer, la recadrer ou la retirer).
-// Chaque écriture passe par le journal (`ctx.w`), suppressions de détail comprises : les tables des monstres n'ont pas de ON DELETE CASCADE.
+// Chaque écriture passe par le journal (`ctx.w`), suppressions de détail comprises : les tables des monstres n'ont pas de ON DELETE CASCADE, sauf les
+// capacités d'une carte et leurs valeurs, pour le rejeu d'un lot noté avant la migration 0044 (ancienneEcritureDesCapacites) — le service les note
+// quand même une à une.
 // Les outils communs du service (refus, synchroniser, provenance…) sont donnés par serveur/edition.mjs (domainesDuBestiaire), sans import en retour.
 import { chargerMonstres } from '../src/lib/bestiaire-db.mjs';
 import { htmlDeCarteMonstre, htmlDeLigneMonstre, htmlDesCapacitesDeLaCarte } from '../src/lib/bestiaire-rendu.mjs';
@@ -40,6 +42,8 @@ export function refusDeDescription(description) {
   const reste = String(description ?? '').replace(/\{\d+\}/g, '');
   if (/[{}]/.test(reste)) return 'une accolade ne s’écrit qu’autour d’un nombre entier : « {10} » est une valeur que chaque carte peut changer (curseur).';
   if (emplacements(description).length > 20) return 'au plus 20 valeurs « {N} » par description.';
+  // au-delà de 2^53, un nombre ne s'écrit plus tel quel (« 1e+21 ») : comme une valeur propre (valeurs_de_capacite)
+  if (emplacements(description).some((n) => !Number.isSafeInteger(n))) return 'une valeur « {N} » est un nombre trop grand.';
   return null;
 }
 
@@ -391,6 +395,44 @@ export function operationsDuBestiaire({ refus, ErreurEdition, provenance }) {
     return `Valeurs de « ${commune.nom} » (${monstre?.nom ?? p.monstre_id}) : ${dites.join(', ') || 'aucune'}`;
   }
   return { valeurs_de_capacite: valeursDeCapacite };
+}
+
+/**
+ * Les modifications des capacités notées avant la migration 0044 (journal du site de dev encore en attente quand la livraison arrive, lot figé, journal
+ * exporté) : une capacité y était une ligne de monstre_capacite avec son nom et son texte, tirée du texte de la rubrique « Capacité(s) », que 0044 vide
+ * (décision R66). Rend l'adaptateur de edition-journal.mjs#rejouer (serveur/edition.mjs#rejouerLeJournal), fabriqué au début de chaque passe (base
+ * dans l'état des règles) ; le journal stocké ne change pas :
+ *   - la rubrique « Capacité(s) » : son texte d'avant est lu vide, comme celui des règles (une carte supprimée, ou toutes ses capacités retirées, se
+ *     rejoue) ;
+ *   - une capacité retirée d'une carte (la carte supprimée, ou la rubrique changée) : lue sans `nom` ni `texte` — 0044 a gardé chaque place, avec son
+ *     préfixe et sa source ; ses valeurs propres, et la place que 0044 a ajoutée (« Tome de la corruption niv.1. »), partent par la cascade du schéma ;
+ *   - une capacité écrite (créée ou changée par le texte de la rubrique) n'a pas d'équivalent sûr (laquelle des capacités communes, R66 et R68 ?) : son lot
+ *     passe en conflit, avec un message qui dit quoi refaire.
+ */
+export function ancienneEcritureDesCapacites(db) {
+  const SANS_EQUIVALENT = 'capacités écrites dans le texte de la rubrique « Capacité(s) », comme avant la migration 0044 : chaque capacité est '
+    + 'depuis une capacité commune (décision R66) ; à refaire sur le site de dev, dans le panneau de la capacité';
+  const capacitesDuJournal = new Set(); // rubriques « Capacité(s) » créées par le journal : « monstre_id\u0000rang »
+  const lire = (v) => (v === null || v === undefined ? null : JSON.parse(v));
+  const ancienne = (v) => Boolean(v && ('nom' in v || 'texte' in v));
+  return (m) => {
+    if (m.table_nom !== 'monstre_rubrique' && m.table_nom !== 'monstre_capacite') return m;
+    const cle = JSON.parse(m.cle);
+    const avant = lire(m.avant);
+    const apres = lire(m.apres);
+    if (m.table_nom === 'monstre_rubrique') {
+      const k = `${cle.monstre_id}\u0000${cle.rang}`;
+      if (m.operation === 'inserer' && apres?.rubrique === 'capacites') capacitesDuJournal.add(k);
+      const rubrique = apres?.rubrique ?? avant?.rubrique ?? lireLigne(db, 'monstre_rubrique', cle)?.rubrique ?? (capacitesDuJournal.has(k) ? 'capacites' : null);
+      if (rubrique !== 'capacites' || !(avant?.texte || apres?.texte)) return m;
+      if (apres?.texte) return { ...m, conflit: SANS_EQUIVALENT };
+      return { ...m, avant: JSON.stringify({ ...avant, texte: '' }), ...(apres ? { apres: JSON.stringify({ ...apres, texte: '' }) } : {}) };
+    }
+    if (!ancienne(avant) && !ancienne(apres)) return m;
+    if (m.operation !== 'supprimer') return { ...m, conflit: SANS_EQUIVALENT };
+    const { nom: _nom, texte: _texte, ...reste } = avant;
+    return { ...m, avant: JSON.stringify(reste) };
+  };
 }
 
 /**

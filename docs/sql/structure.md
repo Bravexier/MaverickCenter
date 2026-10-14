@@ -1736,7 +1736,7 @@ Capacités de monstre communes (décision R66 : « notées dans des tables à pa
 
 ### `monstre_capacite`
 
-Capacités d'une carte : la place d'une capacité commune sur la carte (ordre du doc, préfixe « [EP2] Nom. ») ; son nom et sa description sont ceux de monstre_capacite_commune (R66). Le bloc s'affiche à la place de la rubrique 'capacites' de la carte. `rang` n'est jamais renuméroté : une capacité retirée laisse un trou, une capacité ajoutée va à la fin.
+Capacités d'une carte : la place d'une capacité commune sur la carte (ordre du doc, préfixe « [EP2] Nom. ») ; son nom et sa description sont ceux de monstre_capacite_commune (R66). Le bloc s'affiche à la place de la rubrique 'capacites' de la carte. `rang` n'est jamais renuméroté : une capacité retirée laisse un trou, une capacité ajoutée va à la fin. Supprimer une carte retire ses capacités, et une capacité ses valeurs (ON DELETE CASCADE : le service les note une à une ; au rejeu du journal, clés coupées, la cascade retire aussi celles qu'un lot noté avant la migration 0044 n'a pas notées, comme la capacité « Tome de la corruption niv.1. » que 0044 a détachée de la précédente : serveur/edition-bestiaire.mjs#ancienneEcritureDesCapacites).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

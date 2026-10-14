@@ -232,7 +232,8 @@ test('capacités de monstre (décisions R66, R69) : description commune modifié
     tables: {
       monstre_espece: [espece],
       monstre: [monstre],
-      monstre_capacite_commune: [commune('minus', 'Minus', 'Malus de {10}%.'), commune('vol', 'Vol', 'Vole.'), commune('nage', 'Nage', 'Nage.')],
+      monstre_capacite_commune: [commune('minus', 'Minus', 'Malus de {10}%.'), commune('vol', 'Vol', 'Vole.'), commune('nage', 'Nage', 'Nage.'),
+        commune('anti-mal', 'Anti-mal', '+5.'), { ...commune('anti-mal-2', 'Anti-mal', '+8.'), nom_cle: 'anti-mal' }],
       monstre_capacite: [place(1, 'minus'), place(2, 'vol')],
       monstre_capacite_valeur: [],
     },
@@ -242,6 +243,7 @@ test('capacités de monstre (décisions R66, R69) : description commune modifié
   t.monstre_capacite_commune[0].description = 'Malus de {12}%.';
   t.monstre_capacite.splice(1, 1);
   t.monstre_capacite.push(place(3, 'nage', { prefixe: '[EP2]', ep_min: 2 }));
+  t.monstre_capacite.push(place(4, 'anti-mal-2'));
   t.monstre_capacite_valeur.push({ monstre_id: monstre.id, rang: 1, numero: 1, valeur: 20 });
   const cle = (l) => `${l.domaine} | ${l.groupe ?? ''} | ${l.entite} | ${l.champ ?? '(entité)'} | ${l.nature} | ${l.avant ?? ''} → ${l.apres ?? ''}`;
   // dans l'ordre de la carte (rang, puis emplacement), la capacité commune après les espèces
@@ -249,14 +251,29 @@ test('capacités de monstre (décisions R66, R69) : description commune modifié
     'bestiaire | Gobelin | Gobelin chef › Minus › valeur 1 (20) | (entité) | ajoute |  → Gobelin chef › Minus › valeur 1 (20)',
     'bestiaire | Gobelin | Gobelin chef › Vol | (entité) | retire | Gobelin chef › Vol → ',
     'bestiaire | Gobelin | Gobelin chef › Nage | (entité) | ajoute |  → Gobelin chef › Nage',
+    // deux capacités du même nom (décision R68) : l'identifiant dit laquelle
+    'bestiaire | Gobelin | Gobelin chef › Anti-mal (anti-mal-2) | (entité) | ajoute |  → Gobelin chef › Anti-mal (anti-mal-2)',
     'bestiaire | Capacités de monstre | Minus | Description (sur toutes ses cartes ; « {10} » : une valeur que chaque carte peut changer) | modifie | Malus de {10}%. → Malus de {12}%.',
   ]);
+  // une carte retirée (ou ajoutée) : la carte seule, pas une ligne de plus par capacité et par valeur propre (« dit par l'entité qui la porte »)
+  const avecAutre = structuredClone(dev);
+  avecAutre.tables.monstre.push({ ...monstre, id: 'monstres/gobelin#carte:autre', nom: 'Gobelin autre', rang: 2 });
+  avecAutre.tables.monstre_capacite.push({ ...place(1, 'vol'), monstre_id: 'monstres/gobelin#carte:autre' });
+  const sansCarte = structuredClone(avecAutre);
+  const autreQueLeChef = (l) => l.monstre_id !== monstre.id && l.id !== monstre.id;
+  for (const t of ['monstre', 'monstre_capacite', 'monstre_capacite_valeur']) sansCarte.tables[t] = sansCarte.tables[t].filter(autreQueLeChef);
+  assert.deepEqual(comparerBases(avecAutre, sansCarte).map((l) => `${l.nature} ${l.entite}`), ['retire Gobelin chef']);
+  assert.deepEqual(comparerBases(sansCarte, avecAutre).map((l) => `${l.nature} ${l.entite}`), ['ajoute Gobelin chef']);
+  // une capacité commune homonyme retirée : nommée avec son identifiant
+  const sansHomonyme = structuredClone(ref);
+  sansHomonyme.tables.monstre_capacite_commune.pop();
+  assert.deepEqual(comparerBases(ref, sansHomonyme).map((l) => l.entite), ['Anti-mal (anti-mal-2)']);
   // la première livraison (la production n'a pas ces tables) : une ligne par table, pas une par capacité
   t.monstre_capacite_valeur.push({ monstre_id: monstre.id, rang: 3, numero: 1, valeur: 4 });
   const avant = { tables: { monstre_espece: [espece], monstre: [monstre] } };
   assert.deepEqual(comparerBases(avant, dev).map(cle), [
-    'bestiaire |  | 3 capacités de monstre | (entité) | ajoute |  → 3 capacités de monstre',
-    'bestiaire |  | 2 capacités sur les cartes | (entité) | ajoute |  → 2 capacités sur les cartes',
+    'bestiaire |  | 5 capacités de monstre | (entité) | ajoute |  → 5 capacités de monstre',
+    'bestiaire |  | 3 capacités sur les cartes | (entité) | ajoute |  → 3 capacités sur les cartes',
     'bestiaire |  | 2 valeurs de capacité propres à une carte | (entité) | ajoute |  → 2 valeurs de capacité propres à une carte',
   ]);
 });

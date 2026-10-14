@@ -449,7 +449,13 @@ test('capacités en tuiles (demande du propriétaire : « de la même manière q
   assert.deepEqual(suite('A {10} B {3} C', 'A {12} B {4} C'), { 1: 1, 2: 2 }, 'même nombre : chacun garde son numéro');
   assert.deepEqual(suite('A {10} B {3} C {5} D', 'A {10} B C {5} D'), { 1: 1, 3: 2 }, 'celui du milieu retiré : le dernier devient le 2e');
   assert.deepEqual(suite('A {10} B {5} D', 'A {10} B {3} C {5} D'), { 1: 1, 2: 3 }, 'un emplacement ajouté au milieu');
-  assert.deepEqual(suite('{2} puis {3}', '{3}'), { 2: 1 }, 'le premier retiré');
+  assert.deepEqual(suite('A {2} puis {3} fin', 'A {3} fin'), { 2: 1 }, 'le premier retiré');
+  // au début ou à la fin des deux descriptions, un texte vide ne reconnaît rien (tout le reste a pu changer) : la valeur propre part
+  assert.deepEqual(suite('{2} puis {3}', '{3}'), {}, 'plus aucun texte autour : rien ne se reconnaît');
+  assert.deepEqual(suite('Les dégâts magiques sont augmenté de +{3}', 'Les dégâts magiques sont augmentés de +{3}, et la portée de ses sorts de +{2}'), {});
+  assert.deepEqual(suite('{3} santé récupérée par tour.', '{10}% de chance de régénérer {3} santé par tour.'), {});
+  assert.deepEqual(suite('Soigne {3}', 'Soigne de {3} santé, portée {10}'), {});
+  assert.deepEqual(suite('Soigne {3} santé.', 'Soigne {3} santé, portée {10}.'), { 1: 1 }, 'le texte qui précède reconnaît le premier');
   assert.deepEqual(suite('A {10} B {5} D', 'A {10} B {5} C {5} D'), { 1: 1 }, 'ambigu : aucune suite (ses valeurs propres partent)');
   assert.equal(texteDeCapacite({ description: 'Cette créature peut lancer les sorts, avec les niveaux de maîtrise maximum :', valeurs: {}, sorts: 'Éclair, Bulle d’eau.' }),
     'Cette créature peut lancer les sorts, avec les niveaux de maîtrise maximum : Éclair, Bulle d’eau.');

@@ -237,8 +237,8 @@ export function valeursAEnvoyer(description, choisies, propres) {
 /**
  * Quand une description change son nombre d'emplacements (décision R69), quel emplacement d'avant devient quel emplacement d'après : Map(numéro avant ->
  * numéro après). Même nombre : chacun garde son numéro (le texte ou une valeur commune a changé). Sinon un emplacement se reconnaît au texte qui le
- * précède, ou à celui qui le suit, s'il est le seul à l'avoir ; un emplacement retiré, ou qui ne se reconnaît pas, n'a pas de suite (ses valeurs propres
- * partent plutôt que de passer à un autre emplacement).
+ * précède, ou à celui qui le suit, s'il est le seul à l'avoir (un texte vide ne compte pas) ; un emplacement retiré, ou qui ne se reconnaît pas, n'a pas
+ * de suite (ses valeurs propres partent plutôt que de passer à un autre emplacement).
  */
 export function suiteDesEmplacements(avant, apres) {
   const decoupe = (d) => {
@@ -250,10 +250,12 @@ export function suiteDesEmplacements(avant, apres) {
   const b = decoupe(apres);
   if (a.length === b.length) return new Map(a.map((x) => [x.numero, x.numero]));
   // chaque couple (avant, après) qui partage le texte qui précède ou celui qui suit (chacun propre à un seul emplacement de la nouvelle description),
-  // noté : un point par texte partagé, un de plus pour la même valeur commune ; les mieux notés d'abord ; deux suites aussi bien notées : aucune
+  // noté : un point par texte partagé, un de plus pour la même valeur commune ; les mieux notés d'abord ; deux suites aussi bien notées : aucune.
+  // Un texte vide (emplacement au début ou à la fin des deux descriptions) ne reconnaît rien : tout le reste a pu changer
   const seul = (cle, valeur) => b.filter((y) => y[cle] === valeur).length === 1;
+  const partage = (x, y, cle) => x[cle] !== '' && x[cle] === y[cle] && seul(cle, y[cle]);
   const couples = a.flatMap((x) => b.map((y) => {
-    const textes = (x.avant === y.avant && seul('avant', y.avant) ? 1 : 0) + (x.apres === y.apres && seul('apres', y.apres) ? 1 : 0);
+    const textes = (partage(x, y, 'avant') ? 1 : 0) + (partage(x, y, 'apres') ? 1 : 0);
     return { x: x.numero, y: y.numero, note: textes ? textes + (x.commune === y.commune ? 1 : 0) : 0 };
   })).filter((c) => c.note > 0);
   const suite = new Map();

@@ -205,6 +205,11 @@ test('capacités : les textes retenus par le chef (R68), les gabarits à curseur
   assert.equal(capacite('monstres/amphilactrus#carte:jeune-amphilactrus', 'Lanceur de sorts').texte,
     'Cette créature peut lancer les sorts, avec les niveaux de maîtrise maximum : Éclair, Bulle d’eau, Nerveux, Eau soignante.');
   assert.equal(cartes.flatMap((c) => c.capacites).filter((p) => p.sorts).length, 21);
+  // sa provenance : la première carte qui écrit son texte (à une faute près), pas le Jeune Amphilactrus, dont le chef a fait remplacer le texte (R66)
+  const capacitesDe = (carte) => de(carte).rubriques.find((r) => r.rubrique === 'capacites').source_ref;
+  const source = b.capacites.find((c) => c.id === 'lanceur-de-sorts').source_ref;
+  assert.notEqual(source, capacitesDe('monstres/amphilactrus#carte:jeune-amphilactrus'));
+  assert.equal(source, capacitesDe('monstres/charcabe#carte:charcabe-brule'));
   // le Gobelin mage obsolète : « Tome de la corruption niv.1. », collé dans le doc à la capacité qui le précède, est une capacité à part
   assert.deepEqual(de('monstres/gobelin-mage#carte:gobelin-mage-obsolete').capacites.map(affichee).map((a) => a.nom).filter((n) => /^Tome de l/.test(n)),
     ['Tome de l’ombre niv. 1', 'Tome de la corruption niv. 1']);

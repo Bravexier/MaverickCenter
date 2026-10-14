@@ -980,6 +980,11 @@ describe('fonctions pures', () => {
     assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'modifier', avant: { libelle: 'a' }, apres: { libelle: 'b' } })), ['mot_cle']);
     assert.deepEqual(tablesDuLot(lot({ table: 'page_tag', operation: 'inserer', avant: null, apres: { page_id: 'p', ordre: 1, tag_id: 'x', libelle: 'X' } })), ['mot_cle', 'page_tag']);
     assert.deepEqual(tablesDuLot(lot({ table: 'page_tag', operation: 'inserer', avant: null, apres: { page_id: 'p', ordre: 1, tag_id: 'x' } })), ['page_tag']);
+    // une carte ou une capacité supprimée : la cascade de leur schéma (capacités et valeurs propres qu'un lot noté avant la migration 0044 n'a pas notées)
+    assert.deepEqual(tablesDuLot(lot({ table: 'monstre', operation: 'supprimer', avant: { id: 'm' }, apres: null })), ['monstre', 'monstre_capacite', 'monstre_capacite_valeur']);
+    assert.deepEqual(tablesDuLot(lot({ table: 'monstre_capacite', operation: 'supprimer', avant: { monstre_id: 'm', rang: 1 }, apres: null })),
+      ['monstre_capacite', 'monstre_capacite_valeur']);
+    assert.deepEqual(tablesDuLot(lot({ table: 'monstre', operation: 'modifier', avant: { nom: 'a' }, apres: { nom: 'b' } })), ['monstre']);
   });
 
   test('git diff-tree -z : modes et chemins ; préparation : forme contrôlée', () => {
