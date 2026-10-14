@@ -72,7 +72,7 @@ chaque instance ; rien n'est affiché. Relancer le script les conserve (`--regen
 > Avant la 0.2.0, il n'y a pas encore d'installateur : voir [« Avant la 0.2.0 »](#avant-la-020--le-serveur-de-test-suit-la-branche-site) plus bas,
 > qui remplace les étapes 5 et 6 pour le serveur de test.
 
-1. Dans GitHub, page **Releases** du dépôt (privé : connexion nécessaire), télécharger les deux fichiers de la dernière version :
+1. Dans GitHub, page **Releases** du dépôt (public depuis le 2026-10-14), télécharger les deux fichiers de la dernière version :
    `maverick-center-VX.Y-install.sh` (normal) et `maverick-center-VX.Y.Z-install.sh` (test : la version complète de `dev`).
 2. Les copier sur le serveur : `scp -i .ssh\maverick_key maverick-center-*-install.sh ubuntu@<IP>:~/`
 3. Sur le serveur, **le normal d'abord** (le test en copie la base) :

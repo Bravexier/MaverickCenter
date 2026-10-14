@@ -107,7 +107,7 @@ Le serveur de test du VPS (`dev.maverick-jdr.com`) suit la même branche avec le
 
 La solution est alors hébergée (le NAS est temporaire ; le serveur : [`deploy/vps/`](../deploy/vps/README.md)). Après chaque fusion, le job
 `Installateur` construit le site et publie un **installateur** (`deploy/installateur/`) : un script `.sh` autonome qui contient le site et l'installe
-sur l'hôte, sans téléchargement ni jeton. Il est publié comme *release* GitHub du dépôt (privée comme lui). La branche `site` n'est plus mise à jour.
+sur l'hôte, sans téléchargement ni jeton. Il est publié comme *release* GitHub du dépôt (publique comme lui depuis le 2026-10-14). La branche `site` n'est plus mise à jour.
 
 | Fusion dans | Installateur | Étiquette (release) |
 | --- | --- | --- |

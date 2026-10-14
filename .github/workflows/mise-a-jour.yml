@@ -75,15 +75,6 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Garde-fou — le contenu appartient à un tiers
-        env:
-          IS_PRIVATE: ${{ github.event.repository.private }}
-        run: |
-          if [ "$IS_PRIVATE" != "true" ]; then
-            echo "::error::Le dépôt n'est pas privé : mise à jour refusée (le contenu appartient à un tiers)."
-            exit 1
-          fi
-
       - name: Garde-fou — entrées (lot, empreinte, adresse)
         shell: bash
         env:
@@ -178,15 +169,6 @@ jobs:
             message="Secret MISE_A_JOUR_TOKEN absent : créer un jeton fine-grained (Settings → Developer settings → Fine-grained tokens) limité à ce dépôt, permissions Contents, Pull requests et Workflows en lecture et écriture, par un administrateur du dépôt, puis l'enregistrer dans Settings → Secrets and variables → Actions sous le nom MISE_A_JOUR_TOKEN. Le jeton du workflow ne suffit pas : une PR qu'il ouvre ne lance aucune CI et une fusion qu'il fait ne lance pas livraison.yml."
             echo "::error::$message"
             printf '### Mise à jour des règles\n\n**Échec** : %s\n' "$message" >> "$GITHUB_STEP_SUMMARY"
-            exit 1
-          fi
-
-      - name: Garde-fou — le contenu appartient à un tiers
-        env:
-          IS_PRIVATE: ${{ github.event.repository.private }}
-        run: |
-          if [ "$IS_PRIVATE" != "true" ]; then
-            echo "::error::Le dépôt n'est pas privé : mise à jour refusée (le contenu appartient à un tiers)."
             exit 1
           fi
 
