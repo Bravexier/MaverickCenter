@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 36;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 37;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -2973,6 +2973,8 @@ CREATE TABLE accessoire_effet (
   origine              TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
   source_ref           TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  usage                TEXT    CHECK (usage IS NULL OR usage IN ('action', 'limite')),   -- rappel sous les dons de la fiche (décision R54, migration 0037) :
+                                                      -- 'action' = effet écrit « (Action) … » ; 'limite' = usage compté (« 1 fois par combat », « l'objet se brise »…)
   CHECK ((bonus_valeur IS NULL) = (bonus_cible IS NULL)),
   CHECK ((bonus_min IS NULL) = (bonus_max IS NULL)),
   -- identifiant : l'entier final est une valeur ÉCRITE dans la source, pas un rang (insérer une ligne ne le décale pas) : résultat du dé (colonne « Jet »),
@@ -3006,6 +3008,34 @@ CREATE TABLE accessoire_effet_gemme (
 ) STRICT, WITHOUT ROWID;
 
 CREATE INDEX accessoire_effet_gemme_gemme ON accessoire_effet_gemme (gemme_id);
+
+-- Ce que l'effet d'un accessoire change sur la fiche de personnage (demande du propriétaire, migration 0037 ; « une table adaptée, à l'instar des armes » :
+-- comme arme_degats, tirée de l'effet écrit par client/src/lib/accessoire-champs.mjs, que test/accessoire-champs.test.mjs rejoue sur toute la base).
+-- Une ligne par valeur que l'effet écrit sans ambiguïté ; un effet qui ne change aucune valeur de la fiche n'a pas de ligne. Décision R54 :
+-- Caractéristique = +1 à cette caractéristique (plafonné à 4 et aux bornes de la race) ; Compétence = la valeur tirée (personnage_accessoire.valeur) en
+-- Acquis d'UNE compétence de cette caractéristique, choisie dans la fiche ; « Dégâts magie » : les sorts d'attaque. Malédiction : la valeur change de signe.
+--   cible       : caracteristique, competence (cible_id = la caractéristique), sante, chakra, barriere, initiative, vitesse, barre4_max (sang ou âme),
+--                 armure_ap, armure_am (de base), degats_physiques (toutes les armes), degats_magie (sorts d'attaque), degats_famille (une famille d'armes
+--                 choisie), portee_distance, portee_sorts, maitrise_arme (points), mode_hyper_tours, resistance (cible_id = une magie ou une altération d'état : un cran)
+--   valeur      : NULL = la valeur tirée de l'accessoire (compétence)
+--   choix       : 1 = la cible exacte se choisit dans la fiche (personnage_accessoire.competence_id, .arme_famille_id)
+CREATE TABLE accessoire_effet_cible (
+  effet_id     TEXT    NOT NULL REFERENCES accessoire_effet(id),
+  rang         INTEGER NOT NULL CHECK (rang >= 1),
+  cible        TEXT    NOT NULL CHECK (cible IN ('caracteristique', 'competence', 'sante', 'chakra', 'barriere', 'initiative', 'vitesse', 'barre4_max',
+                                                 'armure_ap', 'armure_am', 'degats_physiques', 'degats_magie', 'degats_famille', 'portee_distance',
+                                                 'portee_sorts', 'maitrise_arme', 'mode_hyper_tours', 'resistance')),
+  cible_id     TEXT,
+  valeur       INTEGER,
+  choix        INTEGER NOT NULL CHECK (choix IN (0, 1)),
+  origine      TEXT    NOT NULL REFERENCES famille(id) CHECK (origine IN ('equipement', 'craft', 'docs_typees')),
+  source_ref   TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  PRIMARY KEY (effet_id, rang),
+  CHECK ((cible IN ('caracteristique', 'competence', 'resistance')) = (cible_id IS NOT NULL)),
+  CHECK (valeur IS NOT NULL OR cible = 'competence')
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX accessoire_effet_cible_par_cible ON accessoire_effet_cible (cible, cible_id);
 
 -- Montures d'accessoires (onglet Accessoires › Monture : 5 niveaux ; « Un lingot permet de faire 2 montures d'anneau, 2 de collier… »).
 CREATE TABLE accessoire_monture (
@@ -3875,6 +3905,8 @@ CREATE TABLE personnage_accessoire (
   valeur              INTEGER,                        -- valeur tirée dans [bonus_min, bonus_max] de l'effet ; NULL si l'effet n'a pas de fourchette
   texte               TEXT,                           -- effet tel qu'écrit sur la fiche quand il n'est pas dans la table
   maudit              INTEGER NOT NULL CHECK (maudit IN (0, 1)),
+  competence_id       TEXT    REFERENCES competence(id),     -- effet « Compétence X » : la compétence choisie, de cette caractéristique (décision R54, migration 0037)
+  arme_famille_id     TEXT    REFERENCES arme_famille(id),   -- effet « +5 dégâts avec une catégorie d'arme » : la famille choisie (migration 0037)
   PRIMARY KEY (personnage_id, emplacement),
   CHECK (accessoire_effet_id IS NOT NULL OR texte IS NOT NULL)
 ) STRICT, WITHOUT ROWID;

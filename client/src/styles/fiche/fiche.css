@@ -932,3 +932,10 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .resistances__vide { color: var(--muted); }
 #resistances-choix { margin: 0.3rem 0 0; }
 #resistances-choix[hidden] { display: none; }
+
+/* Accessoires (décision R54) : sous l'effet, le choix qu'il demande (compétence, famille d'armes) et ce qu'il change sur la fiche */
+.accessoire-cellule { display: grid; gap: 0.25rem; }
+.accessoire-cellule > select[hidden] { display: none; }
+.accessoire-effet { font-size: 0.8rem; color: var(--good, #2e7d32); }
+.accessoire-effet:empty { display: none; }
+.accessoire-cellule > select[data-a-choisir] { outline: 2px solid var(--a-choisir); outline-offset: 1px; }
