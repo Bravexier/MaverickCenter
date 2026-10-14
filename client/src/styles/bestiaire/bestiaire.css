@@ -80,6 +80,8 @@ html.js .bestiaire .bregles__curseur.js-seul, html.js .bestiaire .bechelle__curs
 .bcarte__echelle:empty { display: none; }
 .bcarte__echelle { position: sticky; top: 0; z-index: 2; margin: 0.6rem 0 0; padding: 0.5rem 0.7rem; border: 1px solid var(--bes-line); border-radius: 10px;
   background: color-mix(in srgb, var(--bes-soft) 70%, var(--surface)); }
+/* un écran bas (téléphone en paysage) : le bloc collé prendrait la moitié de la carte ; il défile avec elle */
+@media (max-height: 30rem) { .bcarte__echelle { position: static; } }
 .bechelle { display: grid; gap: 0.35rem; }
 .bechelle__reperes { display: grid; gap: 0.2rem; }
 .bechelle__repere p { margin: 0; }
@@ -216,7 +218,7 @@ th[aria-sort="descending"] .btri::after { content: '↓'; opacity: 1; }
 .binvocation__nom { font-weight: 700; font-size: 1.05rem; }
 .binvocation__compte { font-size: 0.82rem; }
 .binvocation__sort { margin: 0; padding: 0.15rem 0.9rem 0.55rem; font-size: 0.85rem; }
-.binvocation .btableau__defile { max-height: none; border-width: 1px 0 0; border-radius: 0 0 12px 12px; }
+.binvocation .btableau__defile { max-height: none; border-width: 1px 0 0; border-radius: 0 0 12px 12px; scrollbar-gutter: auto; }
 /* trois tableaux l'un sous l'autre : la page défile, pas chacun dans son cadre ; sur grand écran (le tableau tient dans sa moitié) le cadre ne défile
    pas du tout, pour que l'en-tête reste collé en haut de la fenêtre (un cadre qui défile, même sans hauteur bornée, le retiendrait) */
 @media (min-width: 70.01rem) {
@@ -239,11 +241,17 @@ th[aria-sort="descending"] .btri::after { content: '↓'; opacity: 1; }
 .bcartes { position: sticky; top: 0.75rem; max-height: calc(100vh - 1.5rem); max-height: var(--bcartes-max, calc(100dvh - 1.5rem)); overflow-y: auto;
   overscroll-behavior: contain; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
 .bcartes__invite { margin: 0; padding: 2.5rem 1.5rem; text-align: center; color: var(--muted); }
+html.js .bestiaire .bcartes__invite.js-seul { display: block; }
 html.js .bcartes.est-ouverte .bcartes__invite { display: none; }
 .bcarte { display: none; }
 html:not(.js) .bcarte:target { display: block; }
 html.js .bcarte.est-ouverte { display: block; }
 html:not(.js) .bcartes { position: static; max-height: none; }
+/* une carte ouverte : sa vue fait au moins un écran, sinon, à côté d'un tableau court, la carte donnerait elle-même sa hauteur à la vue et --bcartes-max
+   ne pourrait plus que baisser */
+@media screen and (min-width: 70.01rem) {
+  html.js .bvue:has(> .bcartes.est-ouverte) { min-height: calc(100vh - 1.5rem); min-height: calc(100dvh - 1.5rem); }
+}
 
 
 @media (max-width: 70rem) {
@@ -255,6 +263,8 @@ html:not(.js) .bcartes { position: static; max-height: none; }
 
 @media print {
   .bfiltres, .bcarte__fermer, .bonglets, .bcartes__invite { display: none !important; }
+  /* toutes les échelles s'impriment : pas de curseur qui n'en annonce qu'une */
+  .bechelle__curseur, .bregles__curseur { display: none !important; }
   html.js .bpanneau:not(.is-active) { display: block; }
   .btableau__defile { max-height: none; overflow: visible; }
   .bvue { grid-template-columns: minmax(0, 1fr); }

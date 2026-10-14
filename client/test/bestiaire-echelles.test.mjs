@@ -1,14 +1,17 @@
 // Cartes de monstre à plusieurs échelles de puissance et butin (demandes du propriétaire : « pour les tuiles des ennemis ayant plusieurs échelles de
 // créature puisse être sélectionné (par un slider ?) et que ses caractéristiques soient calculées en fonction » ; le glossaire du butin « pour faire un
 // tooltip […] sur le butin concerné ») : lib/monstre-champs.mjs (echellesEcrites, segmentsParEchelle, objetDuButin) et lib/monstre-rendu.mjs, rejoués
-// sur toute la base. Rien n'est calculé : à chaque échelle, la carte montre la valeur qu'elle écrit pour cette échelle.
+// sur toute la base. Rien n'est calculé : à chaque échelle, la carte montre la valeur qu'elle écrit pour cette échelle. Les monstres se modifient sur le
+// site de dev : ce que l'import du doc garantit se lit dans son état d'import (lib/historique-site.mjs) ; l'état courant n'est tenu qu'à la cohérence.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { chargerMonstres } from '../src/lib/bestiaire-db.mjs';
 import { htmlDeCarteMonstre } from '../src/lib/bestiaire-rendu.mjs';
+import { renvoisAuxDegatsMoyens } from '../src/lib/bestiaire-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { rendreChamp } from '../src/lib/edition-rendu.mjs';
-import { bornes, echellesEcrites, objetDuButin, parEchelle, segmentsParEchelle } from '../src/lib/monstre-champs.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { bornes, echellesEcrites, objetDuButin, parEchelle, renvoieAuxDegatsMoyens, segmentsParEchelle } from '../src/lib/monstre-champs.mjs';
 import { htmlDeLEchelle, htmlDeRubrique, htmlDuButin, idDeBulleDuButin, phrasesDeDegats } from '../src/lib/monstre-rendu.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
@@ -16,7 +19,10 @@ const cartes = db.prepare('SELECT * FROM monstre ORDER BY espece_id, rang').all(
 const rubriques = db.prepare('SELECT * FROM monstre_rubrique ORDER BY monstre_id, rang').all();
 const glossaire = db.prepare('SELECT id, nom, texte FROM monstre_butin_objet ORDER BY rang').all();
 const echelles = db.prepare('SELECT * FROM monstre_echelle ORDER BY ep').all();
-const rubriquesDe = (id) => rubriques.filter((r) => r.monstre_id === id);
+const historique = historiqueSite(db);
+const cartesDImport = historique.lignesDImport('monstre');
+const rubriquesDImport = historique.lignesDImport('monstre_rubrique');
+const rubriquesDe = (id, liste = rubriques) => liste.filter((r) => r.monstre_id === id);
 // le texte visible d'un fragment HTML (balises retirées, entités rendues)
 const texte = (html) =>
   html
@@ -39,15 +45,17 @@ test('échelles écrites : une plage donne toutes ses échelles, une liste seule
   assert.deepEqual(echellesEcrites(''), []);
   assert.deepEqual(echellesEcrites(null), []);
   assert.deepEqual(echellesEcrites('Variable'), []);
+  // toute la base : les échelles écrites vont d'une borne à l'autre (une écriture sans nombre n'en a aucune : le texte fait foi, le service l'accepte)
   for (const [table, colonne] of [['monstre', 'echelle_brut'], ['monstre_espece', 'ep_brut']]) {
     for (const r of db.prepare(`SELECT ${colonne} AS brut, ep_min, ep_max FROM ${table}`).all()) {
+      assert.deepEqual(bornes(r.brut), [r.ep_min, r.ep_max], `${table} : « ${r.brut} »`);
       const eps = echellesEcrites(r.brut);
-      assert.ok(eps.length >= 1, `${table} : « ${r.brut} » écrit au moins une échelle`);
-      assert.deepEqual([eps[0], eps.at(-1)], [r.ep_min, r.ep_max], `${table} : « ${r.brut} »`);
-      assert.deepEqual([eps[0], eps.at(-1)], bornes(r.brut));
+      if (eps.length) assert.deepEqual([eps[0], eps.at(-1)], [r.ep_min, r.ep_max], `${table} : « ${r.brut} »`);
     }
   }
-  const listes = cartes.filter((c) => /,/.test(c.echelle_brut));
+  // l'import du doc : chaque carte écrit au moins une échelle ; les listes « 3, 5, 7 » n'ont ni 4 ni 6
+  for (const c of cartesDImport) assert.ok(echellesEcrites(c.echelle_brut).length >= 1, `${c.id} : « ${c.echelle_brut} »`);
+  const listes = cartesDImport.filter((c) => /,/.test(c.echelle_brut));
   assert.ok(listes.length > 0 && listes.every((c) => echellesEcrites(c.echelle_brut).join() === '3,5,7'), 'les cartes « 3, 5, 7 » : ni 4 ni 6');
 });
 
@@ -68,11 +76,11 @@ test('lignes par échelle : « EP 2 - 5 : … », « [EP3] … », une forme dev
   assert.equal(parEchelle(''), false);
 });
 
-test('toute la base : une carte à plusieurs échelles écrit chaque échelle dans chaque rubrique qui varie, une carte à une échelle n’en a aucune', () => {
+test('l’import du doc : une carte à plusieurs échelles écrit chaque échelle dans chaque rubrique qui varie, une carte à une échelle n’en a aucune', () => {
   let multiples = 0;
-  for (const c of cartes) {
+  for (const c of cartesDImport) {
     const eps = echellesEcrites(c.echelle_brut);
-    const varient = rubriquesDe(c.id).filter((r) => r.rubrique !== 'capacites' && parEchelle(r.texte));
+    const varient = rubriquesDe(c.id, rubriquesDImport).filter((r) => r.rubrique !== 'capacites' && parEchelle(r.texte));
     if (eps.length < 2) {
       assert.deepEqual(varient.map((r) => r.rubrique), [], `${c.nom} (EP ${c.echelle_brut}) : rien par échelle`);
       continue;
@@ -85,12 +93,16 @@ test('toute la base : une carte à plusieurs échelles écrit chaque échelle da
       const couvertes = new Set(segments.flatMap((x) => x.eps ?? []));
       assert.deepEqual(eps.filter((n) => !couvertes.has(n)), [], `${c.nom} · ${r.rubrique} : une valeur à chaque échelle écrite`);
       assert.deepEqual([...couvertes].filter((n) => !eps.includes(n)), [], `${c.nom} · ${r.rubrique} : aucune échelle que la carte n’écrit pas`);
-      // les segments redonnent le texte de la rubrique (aux espaces près)
-      const recompose = segments.map((x) => (x.vide ? '' : (x.texte ?? x.titre))).join('\n');
-      assert.equal(recompose.replace(/\s+/g, ''), r.texte.replace(/\s+/g, ''), `${c.nom} · ${r.rubrique}`);
     }
   }
   assert.ok(multiples >= 40, `${multiples} cartes à plusieurs échelles`);
+});
+
+test('toute la base : les lignes par échelle redonnent le texte de leur rubrique (aux espaces près)', () => {
+  for (const r of rubriques) {
+    const recompose = segmentsParEchelle(r.texte).map((x) => (x.vide ? '' : (x.texte ?? x.titre))).join('\n');
+    assert.equal(recompose.replace(/\s+/g, ''), r.texte.replace(/\s+/g, ''), `${r.monstre_id} · ${r.rubrique}`);
+  }
 });
 
 test('rendu par échelle : chaque valeur porte ses échelles (data-eps), aucun nombre qui ne soit écrit sur la carte', () => {
@@ -135,15 +147,15 @@ test('butin : l’objet du glossaire écrit en tête de la case, suivi d’une q
   for (const t of ['Citron de foudre x 1d4', '4 os moyen', 'gelée verte x 1', 'Gelée vertes', 'Gelée verte pour 24h', 'Cœur', '']) assert.equal(id(t), null, t);
   assert.equal(objetDuButin('Gelée verte', []), null);
   // toute la base : l'objet trouvé et la suite redonnent la case
-  const cases = db.prepare('SELECT texte FROM monstre_butin').all();
-  let citees = 0;
-  for (const { texte: t } of cases) {
+  for (const { texte: t } of db.prepare('SELECT texte FROM monstre_butin').all()) {
     const o = objetDuButin(t, glossaire);
     if (!o) continue;
-    citees += 1;
     assert.equal(o.ecrit + o.reste, t);
     assert.equal(o.ecrit.replace(/œ/g, 'oe').replace(/Œ/g, 'Oe'), o.objet.nom.replace(/œ/g, 'oe').replace(/Œ/g, 'Oe'));
   }
+  // l'import du doc : plus de 200 cases citent un objet du glossaire
+  const glossaireDImport = historique.lignesDImport('monstre_butin_objet');
+  const citees = historique.lignesDImport('monstre_butin').filter((c) => objetDuButin(c.texte, glossaireDImport)).length;
   assert.ok(citees > 200, `${citees} cases citent un objet du glossaire`);
 });
 
@@ -162,7 +174,7 @@ test('case de butin : l’objet en bouton à infobulle (la bulle de l’objet, �
 test('curseur d’échelle : seulement sur une carte à plusieurs échelles, sur les échelles qu’elle écrit, avec les repères du tableau de l’introduction', () => {
   assert.equal(htmlDeLEchelle('2', 'boss', echelles), '');
   assert.equal(htmlDeLEchelle('', 'boss', echelles), '');
-  const html = htmlDeLEchelle('3, 5, 7', 'mini_boss', echelles);
+  const html = htmlDeLEchelle('3, 5, 7', 'mini_boss', echelles, true);
   assert.match(html, /<input type="range" min="0" max="2" step="1" value="0" data-echelles="\[3,5,7\]" aria-valuetext="EP 3">/);
   assert.match(html, /<p class="bechelle__curseur js-seul">/);
   assert.match(html, /\(3 échelles : 3, 5, 7\)/);
@@ -183,7 +195,28 @@ test('curseur d’échelle : seulement sur une carte à plusieurs échelles, sur
     }
   }
   assert.deepEqual(phrasesDeDegats(echelles[0].degats_brut, null), []);
-  assert.equal(rendreChamp('monstre-echelle', '2-6', { categorie: 'boss' }, { echellesDePuissance: echelles }), htmlDeLEchelle('2-6', 'boss', echelles));
+  // une carte qui écrit ses propres dégâts (sans renvoi au tableau) : les niveaux et l'expérience, pas les phrases de dégâts moyens
+  const sansRenvoi = htmlDeLEchelle('3, 5, 7', 'mini_boss', echelles);
+  assert.doesNotMatch(sansRenvoi, /Dégâts moyens|bechelle__degats/);
+  assert.match(sansRenvoi, /expérience reçue/);
+  assert.equal(rendreChamp('monstre-echelle', '2-6', { id: 'x', categorie: 'boss' }, { echellesDePuissance: echelles }), htmlDeLEchelle('2-6', 'boss', echelles));
+  assert.equal(
+    rendreChamp('monstre-echelle', '2-6', { id: 'x', categorie: 'boss' }, { echellesDePuissance: echelles, renvoisAuxDegatsMoyens: ['x'] }),
+    htmlDeLEchelle('2-6', 'boss', echelles, true),
+  );
+});
+
+test('renvoi au tableau de l’introduction : écrit dans la rubrique « dégâts » de la carte ; la liste du service est celle des cartes', () => {
+  assert.equal(renvoieAuxDegatsMoyens([{ rubrique: 'degats', texte: 'Se fier au dégâts moyen dans le tableau de l’introduction.\n\nArme : …' }]), true);
+  assert.equal(renvoieAuxDegatsMoyens([{ rubrique: 'degats', texte: 'Se fier aux dégâts moyens dans le tableau de l\'introduction' }]), true);
+  assert.equal(renvoieAuxDegatsMoyens([{ rubrique: 'capacites', texte: 'Se fier au dégâts moyen dans le tableau de l’introduction.' }]), false);
+  assert.equal(renvoieAuxDegatsMoyens([{ rubrique: 'degats', texte: 'EP 3 : Poing - (1d6x1d8)+8' }]), false);
+  assert.equal(renvoieAuxDegatsMoyens([]), false);
+  const liste = new Set(renvoisAuxDegatsMoyens(db));
+  for (const c of cartes) assert.equal(liste.has(c.id), renvoieAuxDegatsMoyens(rubriquesDe(c.id)), c.id);
+  // l'import du doc : toutes les cartes à plusieurs échelles y renvoient, sauf l'Élémentaire de l'Espace/Temps, qui écrit ses dégâts
+  const sans = cartesDImport.filter((c) => echellesEcrites(c.echelle_brut).length >= 2 && !renvoieAuxDegatsMoyens(rubriquesDe(c.id, rubriquesDImport)));
+  assert.deepEqual(sans.map((c) => c.nom), ['Élémentaire de l’Espace/Temps']);
 });
 
 test('carte construite : le curseur (s’il y a lieu) entre la tête et la carte, une case de butin par objet cité', () => {
@@ -194,6 +227,7 @@ test('carte construite : le curseur (s’il y a lieu) entre la tête et la carte
     assert.equal(/data-echelles=/.test(html), Boolean(plusieurs), l.id);
     if (l.carte) assert.match(html, /<\/header><div class="bcarte__echelle" data-ed-lecture="[^"]+" data-ed-rendu="monstre-echelle">/, l.id);
     else assert.doesNotMatch(html, /bcarte__echelle/, l.id);
+    assert.equal(/bechelle__degats/.test(html), Boolean(plusieurs && renvoieAuxDegatsMoyens(l.carte.rubriques)), `${l.id} : dégâts moyens seulement sur renvoi`);
     const attendus = l.espece.butin.flatMap((t) => ['ennemi_simple', 'mini_boss', 'boss'].map((cat) => t[cat])).filter((t) => t && objetDuButin(t, glossaire)).length;
     assert.equal((html.match(/<button type="button" class="bobjet" /g) ?? []).length, attendus, l.id);
   }

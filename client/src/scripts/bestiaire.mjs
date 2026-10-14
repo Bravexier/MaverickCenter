@@ -6,7 +6,8 @@
 // chaque section tient dans l'adresse, sous son préfixe (lib/bestiaire-filtres.mjs) ; le lien d'une case (#monstre-…, #invoquee-…) ou de sa carte
 // (#carte-…) ouvre la carte, et le tableau replié qui la contient. La recherche porte aussi sur le texte des cartes de la ligne.
 // Mode modification du site de dev (src/scripts/edition/bestiaire.mjs) : l'évènement « bestiaire:rafraichir » relit les lignes (monstre créé, supprimé,
-// modifié) ; « bestiaire:carte-ouverte » dit quelle carte vient de s'ouvrir (ses champs deviennent des saisies). Rien d'autre n'est partagé.
+// modifié) ; « bestiaire:echelle-reecrite » dit qu'une carte a été réécrite (son curseur d'échelle aussi) ; « bestiaire:carte-ouverte » dit quelle carte
+// vient de s'ouvrir (ses champs deviennent des saisies). Rien d'autre n'est partagé.
 // Il n'importe qu'un module pur que seule cette page utilise (la version portable refuse un module partagé entre deux scripts).
 import {
   adresseAvecEtat,
@@ -46,6 +47,11 @@ const ajusterBientot = () => {
 addEventListener('scroll', ajusterBientot, { passive: true });
 addEventListener('resize', ajusterBientot);
 document.addEventListener('toggle', ajusterBientot, true);
+// un onglet rouvert (components/Onglets.astro), des lignes filtrées ou dépliées : la vue change de taille sans défilement ni redimensionnement
+if (typeof ResizeObserver === 'function') {
+  const observateur = new ResizeObserver(ajusterBientot);
+  for (const v of document.querySelectorAll('.bvue')) observateur.observe(v);
+}
 
 function brancher(section) {
   const config = {
@@ -136,6 +142,7 @@ function brancher(section) {
     // chaque ligne reste dans son tableau
     for (const l of [...visibles, ...lignes.filter((x) => !gardees.has(x))]) l.tr.parentElement.append(l.tr);
     for (const th of entetes) th.setAttribute('aria-sort', etat.tri === th.dataset.tri ? (etat.sens === 'desc' ? 'descending' : 'ascending') : 'none');
+    ajusterBientot();
     // filtres : cases, effectifs (parmi les lignes qui passent les AUTRES filtres), nombre de valeurs cochées
     for (const f of facettes) {
       const choisies = new Set(etat.facettes[f.cle] ?? []);
@@ -223,8 +230,7 @@ function brancher(section) {
   // page) ou petit écran : la ligne vient à l'écran.
   const cadre = vue?.querySelector(':scope > .btableau__defile') ?? null;
   const cadree = () => cadre !== null && large() && getComputedStyle(cadre).overflowY !== 'visible';
-  function montrer(c, defiler) {
-    const doux = reduit() ? 'auto' : 'smooth';
+  function montrer(c, defiler, doux = reduit() ? 'auto' : 'smooth') {
     if (cadree()) {
       const r = vue.getBoundingClientRect();
       if (r.top < 0 || r.bottom > innerHeight) vue.scrollIntoView({ block: 'start', behavior: doux });
@@ -243,7 +249,9 @@ function brancher(section) {
     (e) => {
       if (!cadree() || e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
       const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? innerHeight : 1);
-      const d = defilementDAbord(vue.getBoundingClientRect().top, dy);
+      // ce que la page peut encore défiler dans ce sens : au bout, la molette revient au tableau ou à la carte
+      const reste = dy > 0 ? document.documentElement.scrollHeight - innerHeight - scrollY : scrollY;
+      const d = defilementDAbord(vue.getBoundingClientRect().top, dy, reste);
       if (!d) return;
       e.preventDefault();
       scrollBy({ top: d, behavior: 'instant' });
@@ -308,6 +316,8 @@ function brancher(section) {
     c.carte.classList.add('est-ouverte');
     zone.classList.add('est-ouverte');
     zone.scrollTop = 0;
+    // à l'ouverture : l'échelle du filtre EP (echelleParDefaut), pas celle laissée à la fermeture précédente
+    delete c.carte.dataset.ep;
     preparerLEchelle(c.carte);
     montrer(c, defiler);
     // sur un petit écran, la carte passe par-dessus la page : le focus y va (Échap ou « Fermer » la referme)
@@ -349,11 +359,18 @@ function brancher(section) {
     if (c) preparerLEchelle(c.carte);
     ajusterLesCartes();
   });
+  // le mode modification a réécrit le curseur d'une carte (src/scripts/edition/bestiaire.mjs : enregistrement, surcouche au chargement) : on recale l'échelle
+  // de la carte ouverte sur son data-ep, sans relire les lignes
+  document.addEventListener('bestiaire:echelle-reecrite', () => {
+    const c = ouverte();
+    if (c) preparerLEchelle(c.carte);
+  });
   tableaux.push({
     get lignes() {
       return lignes;
     },
     ouvrir,
+    montrer,
     toutFermer,
     appliquer,
     formulaire,
@@ -417,6 +434,18 @@ function depuisAdresse() {
 }
 window.addEventListener('hashchange', depuisAdresse);
 depuisAdresse();
+// au chargement, le navigateur cale lui-même l'élément de l'ancre (#carte-…) jusqu'à la fin du chargement : la vue de la carte ouverte est recalée ensuite
+addEventListener(
+  'load',
+  () =>
+    requestAnimationFrame(() => {
+      for (const t of tableaux) {
+        const c = t.lignes.flatMap((l) => l.cases).find((x) => x.el.classList.contains('est-ouverte'));
+        if (c) t.montrer(c, true, 'instant');
+      }
+    }),
+  { once: true },
+);
 
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
@@ -426,8 +455,8 @@ document.addEventListener('keydown', (e) => {
     ouvert.querySelector('summary').focus();
     return;
   }
-  // Échap dans une saisie ou un dialogue (recadrage d'un portrait, formulaire du mode modification) ne ferme que lui
-  if (!e.target.closest?.('input, textarea, select, dialog')) for (const t of tableaux) t.toutFermer();
+  // Échap dans une saisie ou un dialogue (recadrage d'un portrait, formulaire du mode modification) ne ferme que lui ; sur le curseur d'échelle, il ferme la carte
+  if (!e.target.closest?.('input:not([type=range]), textarea, select, dialog')) for (const t of tableaux) t.toutFermer();
 });
 // un clic hors d'un menu de filtre le ferme
 document.addEventListener('click', (e) => {

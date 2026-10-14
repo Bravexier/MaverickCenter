@@ -6,7 +6,7 @@
 // le réaffiche (`data-ed-rendu`, lib/monstre-rendu.mjs#RENDUS_DU_BESTIAIRE) ; ceux de la carte ont aussi `data-ed-sur-demande` : ils ne deviennent des
 // saisies qu'une fois la carte ouverte (src/scripts/edition/bestiaire.mjs : 315 cartes dans la page). Fonctions pures, tout texte échappé.
 import { attributEd } from './edition-modele.mjs';
-import { CATEGORIES } from './monstre-champs.mjs';
+import { CATEGORIES, renvoieAuxDegatsMoyens } from './monstre-champs.mjs';
 import { htmlDeCategorie, htmlDeLEchelle, htmlDeRubrique, htmlDuButin, PHRASE_VARIABLE, RENDUS_DU_BESTIAIRE } from './monstre-rendu.mjs';
 import { cadrageDe, dimensionsDuPortrait, empreinte, styleDuCadrage } from './portrait.mjs';
 
@@ -105,7 +105,7 @@ export function htmlDeCarteMonstre(l, { logo, adresseDuPortrait = null, echelles
     + htmlDuPortrait({ table: c ? 'monstre' : 'monstre_espece', cle: c ? k.monstre : k.espece, nom: l.nom, portrait: l.portrait }, { logo, adresse: adresseDuPortrait })
     + `<a class="bcarte__fermer" href="#${e(l.ancre)}" aria-label="${e(`Fermer la carte de ${l.nom}`)}">Fermer</a></header>`;
   // le curseur d'échelle : refait quand l'échelle ou la catégorie du monstre change (mode modification) ; vide pour une carte d'une seule échelle
-  const echelle = c ? `<div class="bcarte__echelle"${champ('monstre', k.monstre, 'echelle_brut', { rendu: 'monstre-echelle' })}>${htmlDeLEchelle(c.echelle, c.categorie, echelles)}</div>` : '';
+  const echelle = c ? `<div class="bcarte__echelle"${champ('monstre', k.monstre, 'echelle_brut', { rendu: 'monstre-echelle' })}>${htmlDeLEchelle(c.echelle, c.categorie, echelles, renvoieAuxDegatsMoyens(c.rubriques))}</div>` : '';
   const laCarte = c
     ? `<section class="bcarte__section" aria-label="La carte">`
       + `<p class="varie-note"${cadre(!c.variable)}><span${champ('monstre', k.monstre, 'variable', { rendu: 'monstre-variable', ...s })}>${c.variable ? e(PHRASE_VARIABLE) : ''}</span></p>`

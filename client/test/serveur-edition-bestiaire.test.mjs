@@ -19,6 +19,7 @@ import { CATEGORIES_DE_MONSTRE, ENTITES, journalSansImage, TABLES } from '../src
 import { RENDUS, rendreChamp } from '../src/lib/edition-rendu.mjs';
 import { CATEGORIES, GABARIT_DE_CARTE, RUBRIQUES, valeursDeLaCarte } from '../src/lib/monstre-champs.mjs';
 import { htmlDeLEchelle, htmlDeRubrique, htmlDuButin } from '../src/lib/monstre-rendu.mjs';
+import { renvoisAuxDegatsMoyens } from '../src/lib/bestiaire-db.mjs';
 import { comparerBases } from '../src/lib/notes-de-version.mjs';
 import { empreinte, PORTRAIT_MAX, resumeDuPortrait } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -174,6 +175,9 @@ test('curseur d’échelle et butin en infobulle : les listes du service (serveu
   const l = JSON.parse(JSON.stringify(appel('GET', '/api/edition/listes/').corps));
   assert.deepEqual(l.echellesDePuissance, tous('SELECT * FROM monstre_echelle ORDER BY ep'));
   assert.deepEqual(l.objetsDuButin, tous('SELECT id, nom FROM monstre_butin_objet ORDER BY rang'));
+  assert.deepEqual(l.renvoisAuxDegatsMoyens, renvoisAuxDegatsMoyens(db));
+  const renvoi = l.renvoisAuxDegatsMoyens[0];
+  assert.equal(rendreChamp('monstre-echelle', '1-10', { id: renvoi, categorie: 'boss' }, l), htmlDeLEchelle('1-10', 'boss', l.echellesDePuissance, true));
   const butin = un("SELECT texte FROM monstre_butin WHERE texte LIKE 'Gelée%' ORDER BY espece_id, rang LIMIT 1").texte;
   assert.equal(rendreChamp('monstre-butin', butin, {}, l), htmlDuButin(butin, l.objetsDuButin));
   assert.match(rendreChamp('monstre-butin', butin, {}, l), /<button type="button" class="bobjet" data-bulle="bulle-butin-/);

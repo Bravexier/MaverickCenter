@@ -185,7 +185,7 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   La ligne d'un monstre et sa carte sont le HTML de `lib/bestiaire-rendu.mjs` (page construite ET service, pour un monstre créé depuis le build : `POST /api/edition/bestiaire/`) ;
   le découpage d'une carte (`lib/monstre-champs.mjs`) sert à l'extracteur, à la page et au service (une rubrique modifiée refait les valeurs typées et tables de détail de sa
   carte) : ne pas le dupliquer. Les champs d'une carte portent `data-ed-lecture` + `data-ed-sur-demande` : l'extension `edition/bestiaire.mjs` n'en fait des saisies qu'à
-  l'ouverture de la carte (300 cartes). Le script de page et l'extension ne communiquent que par évènements (`bestiaire:rafraichir`, `bestiaire:carte-ouverte`).
+  l'ouverture de la carte (300 cartes). Le script de page et l'extension ne communiquent que par évènements (`bestiaire:rafraichir`, `bestiaire:echelle-reecrite`, `bestiaire:carte-ouverte`).
   Les monstres se modifient : un test qui épingle l'import le lit par `lib/historique-site.mjs` (`bestiaire-extraction` compare l'extraction à `lignesDImport`).
   **Portrait** (demande du propriétaire : « de la même manière que dans la feuille de personnage ») : `monstre.portrait` / `monstre_espece.portrait` + cadrage, comme
   `personnage` ; une colonne de type `image` (`lib/edition-modele.mjs`) n'est jamais une saisie de l'éditeur commun, les réponses de l'édition (lignes lues, en

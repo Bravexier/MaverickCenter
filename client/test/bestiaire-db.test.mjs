@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { CATEGORIES, chargerBestiaire, libelleDuBloc, optionsDeFacette, tableauDuButin } from '../src/lib/bestiaire-db.mjs';
 import { echellesEcrites } from '../src/lib/monstre-champs.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const { monstres, invocations } = chargerBestiaire(db);
@@ -41,10 +42,15 @@ test('monstres : tri et filtres sur les colonnes du tableau seulement (espèce, 
     assert.deepEqual(l.facettes.categorie, [m.categorie]);
     assert.deepEqual(l.facettes.espece, [normalize(m.espece_nom)]);
     // le filtre EP suit l'échelle écrite : une plage « 1-10 » donne ses dix échelles, une liste « 3, 5, 7 » seulement les siennes (ni 4 ni 6)
-    assert.deepEqual(l.facettes.ep, echellesEcrites(m.echelle_brut).map(String), l.id);
-    assert.deepEqual([Number(l.facettes.ep[0]), Number(l.facettes.ep.at(-1))], [m.ep_min, m.ep_max], `${l.id} : bornes`);
+    // (une écriture sans échelle lisible : la plage de ses bornes, ou aucune ; le service l'accepte, le texte fait foi)
+    const ecrites = echellesEcrites(m.echelle_brut);
+    const plage = m.ep_min === null ? [] : Array.from({ length: m.ep_max - m.ep_min + 1 }, (_, k) => m.ep_min + k);
+    assert.deepEqual(l.facettes.ep, (ecrites.length ? ecrites : plage).map(String), l.id);
   }
-  assert.ok(monstres.lignes.some((l) => l.carte && l.facettes.ep.join() === '3,5,7'), 'une carte « 3, 5, 7 »');
+  // l'import du doc : les cartes « 3, 5, 7 »
+  const listes = historiqueSite(db).lignesDImport('monstre').filter((c) => /,/.test(c.echelle_brut));
+  assert.ok(listes.length > 0, 'des cartes « 3, 5, 7 » à l’import');
+  for (const c of listes) assert.deepEqual(echellesEcrites(c.echelle_brut), [3, 5, 7], c.id);
   // une espèce sans carte : ni type ni catégorie (triée après les autres sur ces colonnes)
   for (const l of monstres.lignes.filter((x) => !x.carte)) assert.deepEqual(Object.keys(l.facettes), ['espece', 'ep', 'lieu'], l.id);
 });

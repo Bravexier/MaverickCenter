@@ -70,8 +70,8 @@ est celle que la carte écrit pour l'échelle choisie (règle d'or). Sous la tê
 plage qu'elle n'écrit pas : 3, 5 et 7, ni 4 ni 6) ; la carte ne montre plus que les valeurs de cette échelle (santé, chakra, barrière en tuiles,
 caractéristiques, compétences, dégâts, défense, le texte d'une capacité écrit par échelle comme le « Fondu » des blobs métalliques) ; une ligne sans
 échelle reste à toutes. À côté du curseur, les repères du tableau de l'introduction pour cette échelle : les niveaux des joueurs, l'expérience que la
-créature donne selon sa catégorie, et les phrases « Dégâts moyens » de sa catégorie, auxquelles ces cartes renvoient (« Se fier au dégâts moyen dans le
-tableau de l'introduction. »). À l'ouverture : l'échelle cochée dans le filtre EP si la carte l'écrit (la plus petite), sinon la première qu'elle écrit.
+créature donne selon sa catégorie, et, pour une carte qui y renvoie (« Se fier au dégâts moyen dans le tableau de l'introduction. », dans sa rubrique
+« Dégâts » : 39 des 40 ; l'Élémentaire de l'Espace/Temps écrit ses propres dégâts), les phrases « Dégâts moyens » de sa catégorie. À l'ouverture : l'échelle cochée dans le filtre EP si la carte l'écrit (la plus petite), sinon la première qu'elle écrit.
 Sans JavaScript (et à l'impression), pas de curseur : toutes les valeurs, chacune avec son étiquette « EP n ».
 
 Découpage : `lib/monstre-champs.mjs#segmentsParEchelle` (une ligne par échelle, une forme devant, la ligne à deux colonnes du doc, un titre de groupe

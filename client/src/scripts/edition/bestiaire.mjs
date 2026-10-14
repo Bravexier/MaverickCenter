@@ -11,8 +11,9 @@
 //     le cadre de la carte ouverte, « Choisir une image » (réduite puis recadrée comme sur la fiche : src/scripts/portrait.mjs), « Recadrer » et ✕ ; le
 //     portrait s'enregistre tout de suite, seul dans son lot (une image fait jusqu'à 700 000 caractères, une requête au plus 1 Mio) ; le service ne
 //     renvoie d'une image que son empreinte (ligneSansImage) : l'image entière se demande à part (POST /api/edition/portrait/).
-// Chaque changement redemande la recherche, les filtres et le tri au script de la page (évènement « bestiaire:rafraichir ») ; le script de la page dit
-// quelle carte s'ouvre (« bestiaire:carte-ouverte »). Aucun module partagé avec lui.
+// Chaque changement redemande la recherche, les filtres et le tri au script de la page (évènement « bestiaire:rafraichir ») ; une carte réécrite lui fait
+// recaler l'échelle de la carte ouverte (« bestiaire:echelle-reecrite ») ; le script de la page dit quelle carte s'ouvre (« bestiaire:carte-ouverte »).
+// Aucun module partagé avec lui.
 import { htmlDuPortrait, empreinteDuPortrait } from '../../lib/bestiaire-rendu.mjs';
 import { cleDeLigne, ENTITES, lireAttributEd } from '../../lib/edition-modele.mjs';
 import { CADRAGE_PAR_DEFAUT, cadrageDe, empreinte } from '../../lib/portrait.mjs';
@@ -412,6 +413,9 @@ export const bestiaire = {
   ligne(ed, table, cle, ligne) {
     if (!TABLES_DE_LIGNE.has(table)) return;
     if (ligne) {
+      // le curseur d'échelle de la carte (data-ed-lecture sur echelle_brut) vient d'être réécrit, curseur remis à sa première échelle : la page recale
+      // l'échelle de la carte ouverte (src/scripts/bestiaire.mjs ; enregistrement, portrait, surcouche au chargement)
+      if (table === 'monstre') document.dispatchEvent(new CustomEvent('bestiaire:echelle-reecrite'));
       if (!('portrait' in ligne)) return;
       for (const f of figuresDe(table, cle)) {
         afficherPortrait(ed, f, portraitVu(ligne)).catch((e) => ed.annoncer(`Le portrait n’a pas pu être affiché : ${e.message}`, 'erreur'));

@@ -123,6 +123,12 @@ export function segmentsParEchelle(texte) {
   return sortie;
 }
 
+/** Le renvoi d'une carte au tableau de l'introduction (« Se fier au dégâts moyen dans le tableau de l'introduction. », rubrique « degats ») : seule une
+ *  carte qui l'écrit montre, à côté de son curseur d'échelle, les phrases « Dégâts moyens » du tableau (lib/monstre-rendu.mjs#htmlDeLEchelle). */
+export const RENVOI_AUX_DEGATS_MOYENS = /Se fier aux? dégâts? moyens? dans le tableau de l[’']introduction/i;
+/** `rubriques` : [{ rubrique, texte }] d'une carte. */
+export const renvoieAuxDegatsMoyens = (rubriques) => (rubriques ?? []).some((r) => r.rubrique === 'degats' && RENVOI_AUX_DEGATS_MOYENS.test(r.texte ?? ''));
+
 /** Une rubrique écrite par échelle : au moins une ligne de segmentsParEchelle porte des échelles. */
 export const parEchelle = (texte) => segmentsParEchelle(texte).some((s) => s.eps);
 

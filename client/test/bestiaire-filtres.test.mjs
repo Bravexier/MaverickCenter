@@ -148,6 +148,13 @@ test('molette sur une vue décalée : la page défile d’abord jusqu’à caler
   assert.equal(defilementDAbord(-500, -100), -100);
   assert.equal(defilementDAbord(400, -100), 0, 'vers le haut, vue sous la marge : le tableau défile');
   assert.equal(defilementDAbord(-125, 300), 0, 'vers le bas, vue au-dessus : le tableau défile');
+  // la page au bout (une recherche qui laisse peu de lignes) : la molette revient à la carte ou au tableau, jamais bloquée
+  assert.equal(defilementDAbord(552, 200, 0), 0, 'page en bas : rien pour elle');
+  assert.equal(defilementDAbord(690, 200, 138), 138, 'ce qui reste à la page');
+  assert.equal(defilementDAbord(690, 200, 138.6), 138);
+  assert.equal(defilementDAbord(-125, -300, 40), -40, 'vers le haut : ce qui reste au-dessus');
+  assert.equal(defilementDAbord(-125, -300, 0), 0, 'page en haut');
+  assert.equal(defilementDAbord(-125, -300, -5), 0, 'reste négatif : rien');
 });
 
 test('échelle d’une carte à l’ouverture : celle cochée dans le filtre EP si la carte l’écrit (la plus petite), sinon la première qu’elle écrit', () => {

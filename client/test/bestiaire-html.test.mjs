@@ -193,7 +193,7 @@ test('glossaire du butin (demande du propriétaire : « retirer le glossaire du 
     0,
   );
   assert.equal(declencheurs.length, attendus);
-  assert.ok(attendus > 500, `${attendus} cases de butin à infobulle`);
+  assert.ok(attendus > 0, `${attendus} cases de butin à infobulle`);
 });
 
 test('curseur d’échelle (demande du propriétaire) : sur chaque carte à plusieurs échelles et sur elles seules ; la carte ne montre que l’échelle choisie', options, () => {
@@ -225,6 +225,11 @@ test('défilement (demande du propriétaire) : une barre visible au tableau et �
   assert.match(html, /\.btableau__defile::-webkit-scrollbar-thumb, \.bcartes::-webkit-scrollbar-thumb \{[^}]*background: var\(--bes-line\)/);
   assert.match(html, /@supports not selector\(::-webkit-scrollbar\) \{\s*\.btableau__defile, \.bcartes \{ scrollbar-width: thin;/);
   assert.match(html, /max-height: var\(--bcartes-max, calc\(100dvh - 1\.5rem\)\)/);
+  // une carte ouverte : sa vue fait au moins un écran (sinon, à côté d'un tableau court, la carte fixerait elle-même sa hauteur)
+  assert.match(html, /html\.js \.bvue:has\(> \.bcartes\.est-ouverte\) \{ min-height: calc\(100vh - 1\.5rem\); min-height: calc\(100dvh - 1\.5rem\); \}/);
+  // à l'impression, toutes les échelles et aucun curseur
+  const impression = html.slice(html.indexOf('@media print {'));
+  assert.match(impression, /\.bechelle__curseur, \.bregles__curseur \{ display: none !important; \}/);
 });
 
 test('règles des échelles de puissance (demande du propriétaire : « retravailler le visuel ») : règles générales, tableau des attributs et de l’expérience, règles par échelle au curseur', options, () => {

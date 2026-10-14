@@ -129,11 +129,12 @@ export function triSuivant(etat, cle) {
 /** Hauteur de la partie visible d'une vue (haut et bas à l'écran) dans une fenêtre de hauteur `h`, à `marge` des bords ; au moins `plancher`. */
 export const hauteurVisible = (haut, bas, h, marge = 12, plancher = 160) => Math.max(Math.round(Math.min(bas, h - marge) - Math.max(haut, marge)), plancher);
 
-/** La molette (`dy`, en pixels) sur une vue dont le haut est à `haut` : ce que la page défile d'abord pour la caler à `marge` du haut de l'écran
- *  (0 : la vue est calée, son cadre défile). */
-export const defilementDAbord = (haut, dy, marge = 12) => {
-  if (dy > 0 && haut > marge + 1) return Math.min(dy, haut - marge);
-  if (dy < 0 && haut < marge - 1) return Math.max(dy, haut - marge);
+/** La molette (`dy`, en pixels) sur une vue dont le haut est à `haut` : ce que la page défile d'abord pour la caler à `marge` du haut de l'écran,
+ *  sans dépasser `reste`, ce que la page peut encore défiler dans ce sens (0 : la vue est calée, ou la page est au bout : son cadre défile). */
+export const defilementDAbord = (haut, dy, reste = Infinity, marge = 12) => {
+  const r = Math.max(0, Math.floor(reste));
+  if (dy > 0 && haut > marge + 1) return Math.min(dy, haut - marge, r);
+  if (dy < 0 && haut < marge - 1) return Math.max(dy, haut - marge, -r) || 0;
   return 0;
 };
 

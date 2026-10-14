@@ -9,7 +9,7 @@
 // Rien n'est calculé ni déduit : une valeur que la base n'a pas typée reste son texte (`*_brut`, rubriques) ; les libellés des filtres sont l'écriture
 // la plus fréquente de chaque valeur dans la base (« Non-mort » réunit « Non-mort » et « Non-Mort »).
 // `chargerBestiaire` reçoit la base ouverte par lib/donnees.mjs (build) ; module sans dépendance navigateur ni Astro.
-import { echellesEcrites } from './monstre-champs.mjs';
+import { echellesEcrites, RENVOI_AUX_DEGATS_MOYENS } from './monstre-champs.mjs';
 import { normalize } from './text.mjs';
 
 /** Libellés des catégories de monstre (colonne `categorie`). */
@@ -234,6 +234,18 @@ export function chargerMonstres(db) {
     glossaire: all('SELECT id, nom, texte FROM monstre_butin_objet ORDER BY rang'),
   };
 }
+
+/** Les cartes qui renvoient au tableau de l'introduction pour leurs dégâts (lib/monstre-champs.mjs#renvoieAuxDegatsMoyens), pour le rendu « monstre-echelle »
+ *  du mode modification (serveur/edition.mjs#listes) : leurs identifiants. */
+export const renvoisAuxDegatsMoyens = (db) => [
+  ...new Set(
+    db
+      .prepare("SELECT monstre_id, texte FROM monstre_rubrique WHERE rubrique = 'degats' ORDER BY monstre_id, rang")
+      .all()
+      .filter((r) => RENVOI_AUX_DEGATS_MOYENS.test(r.texte ?? ''))
+      .map((r) => r.monstre_id),
+  ),
+];
 
 /** Tableau du butin d'une espèce : [{ rang, score, ennemi_simple, mini_boss, boss }] dans l'ordre des tranches ; une cellule vide reste null. */
 export function tableauDuButin(lignes) {

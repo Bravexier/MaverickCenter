@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { fromHtml } from 'hast-util-from-html';
 import { toHtml } from 'hast-util-to-html';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { renvoisAuxDegatsMoyens as lesRenvois } from '../src/lib/bestiaire-db.mjs';
 import { lireAttributEd } from '../src/lib/edition-modele.mjs';
 import { CONTEXTE_PASTILLE, echapperHtml, htmlDeBlocs, rendreChamp, RENDUS } from '../src/lib/edition-rendu.mjs';
 
@@ -21,6 +22,7 @@ const typesDon = db.prepare('SELECT id, nom, definition FROM type_don ORDER BY o
 // le bestiaire : le tableau de l'introduction (curseur d'échelle) et le glossaire du butin (infobulles des cases), comme serveur/edition.mjs#listes
 const echellesDePuissance = db.prepare('SELECT * FROM monstre_echelle ORDER BY ep').all();
 const objetsDuButin = db.prepare('SELECT id, nom FROM monstre_butin_objet ORDER BY rang').all();
+const renvoisAuxDegatsMoyens = lesRenvois(db);
 
 test('texte échappé, rendu inconnu = texte, champ vide', () => {
   assert.equal(echapperHtml(`<b a="1">'&'</b>`), '&lt;b a=&quot;1&quot;&gt;&#39;&amp;&#39;&lt;/b&gt;');
@@ -143,7 +145,7 @@ test('site construit : chaque champ [data-ed] des métiers, des magies, des race
       const attendu = normal(cible.children);
       // les pastilles d'état que la page montre dans le champ, comme le script les relève (src/scripts/edition/editeur.mjs#rendreElement)
       const pastilles = zones(cible).map((z) => ({ forme: texteDe(trouver(z, 'chip--etat')), avant: texteAvant(cible, z), html: toHtml(z) }));
-      const obtenu = fragment(rendreChamp(rendu, ligne[info.colonne], ligne, { competences, caracteristiques, objets, typesDon, echellesDePuissance, objetsDuButin, pastilles }));
+      const obtenu = fragment(rendreChamp(rendu, ligne[info.colonne], ligne, { competences, caracteristiques, objets, typesDon, echellesDePuissance, objetsDuButin, renvoisAuxDegatsMoyens, pastilles }));
       assert.equal(obtenu, attendu, `${p} : ${info.table} ${JSON.stringify(info.cle)} ${info.colonne} (rendu ${rendu})`);
       parRendu.set(rendu, (parRendu.get(rendu) ?? 0) + 1);
     }

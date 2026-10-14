@@ -137,10 +137,11 @@ export const phrasesDeDegats = (degatsBrut, categorie) =>
  * ou '' : un curseur sur les échelles écrites (script de la page, src/scripts/bestiaire.mjs : `data-ep` sur la carte, qui ne montre plus que cette échelle),
  * et, pour chaque échelle, les repères du tableau de l'introduction du doc (`echelles` : lignes de `monstre_echelle`), tels qu'écrits : les niveaux des
  * joueurs, l'expérience que la créature donne selon sa catégorie (« le tableau des attributs […] et de l'xp que donne les monstres selon les échelles de
- * puissance ») et les dégâts moyens de sa catégorie, auxquels les cartes qui varient renvoient (« Se fier au dégâts moyen dans le tableau de
- * l'introduction. »). Sans JavaScript : pas de curseur, toutes les échelles.
+ * puissance ») et, si la carte y renvoie (`renvoi` : lib/monstre-champs.mjs#renvoieAuxDegatsMoyens, « Se fier au dégâts moyen dans le tableau de
+ * l'introduction. »), les dégâts moyens de sa catégorie ; une carte qui écrit ses propres dégâts n'a que les niveaux et l'expérience. Sans JavaScript :
+ * pas de curseur, toutes les échelles.
  */
-export function htmlDeLEchelle(echelleBrut, categorie, echelles = []) {
+export function htmlDeLEchelle(echelleBrut, categorie, echelles = [], renvoi = false) {
   const eps = echellesEcrites(echelleBrut);
   if (eps.length < 2) return '';
   const parEp = new Map(echelles.map((x) => [x.ep, x]));
@@ -151,7 +152,7 @@ export function htmlDeLEchelle(echelleBrut, categorie, echelles = []) {
     const xp = CATEGORIES[categorie] ? x?.[`xp_${categorie}`] : null;
     if (xp != null) morceaux.push(`expérience reçue : ${xp}`);
     const libelle = `EP ${n}${morceaux.length ? ` · ${morceaux.join(' · ')}` : ''}`;
-    const degats = phrasesDeDegats(x?.degats_brut, categorie);
+    const degats = renvoi ? phrasesDeDegats(x?.degats_brut, categorie) : [];
     return `<div class="bechelle__repere" data-eps="${n}" data-libelle="${e(libelle)}"><p class="bechelle__ligne"><span class="bep">EP ${n}</span>`
       + `${morceaux.map((m) => ` <span class="bechelle__info">${e(m)}</span>`).join('')}</p>`
       + (degats.length ? `<p class="bechelle__degats"><span class="muted">Dégâts moyens (tableau de l’introduction) :</span> ${degats.map((p) => `« ${e(p)} »`).join(' ')}</p>` : '')
@@ -182,6 +183,8 @@ export const RENDUS_DU_BESTIAIRE = {
   'monstre-variable': (valeur) => (Number(valeur) === 1 ? e(PHRASE_VARIABLE) : ''),
   // une case de butin, l'objet du glossaire qu'elle cite en bouton à infobulle ; `ctx.objetsDuButin` : serveur/edition.mjs#listes
   'monstre-butin': (valeur, _ligne, ctx = {}) => htmlDuButin(valeur, ctx.objetsDuButin ?? []),
-  // le curseur d'échelle de la carte (refait quand l'échelle ou la catégorie du monstre change) ; `ctx.echellesDePuissance` : serveur/edition.mjs#listes
-  'monstre-echelle': (valeur, ligne, ctx = {}) => htmlDeLEchelle(valeur, ligne?.categorie, ctx.echellesDePuissance ?? []),
+  // le curseur d'échelle de la carte (refait quand l'échelle ou la catégorie du monstre change) ; `ctx.echellesDePuissance`, `ctx.renvoisAuxDegatsMoyens`
+  // (les cartes qui renvoient au tableau de l'introduction) : serveur/edition.mjs#listes
+  'monstre-echelle': (valeur, ligne, ctx = {}) =>
+    htmlDeLEchelle(valeur, ligne?.categorie, ctx.echellesDePuissance ?? [], (ctx.renvoisAuxDegatsMoyens ?? []).includes(ligne?.id)),
 };
