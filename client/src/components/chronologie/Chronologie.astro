@@ -10,8 +10,10 @@ import Frise from './Frise.astro';
 // (ChronologieEvenement.astro) ; tout à l'extrémité droite, deux chevrons, Haut et Bas, passent à l'événement précédent ou suivant. Sur /chronologie/
 // (`id` null), la page laisse la place au mode d'emploi de la frise. Chaque événement a sa propre adresse (/chronologie/<id>/) : un lien se partage,
 // et tout se lit sans JavaScript. Entre deux pages de la chronologie, le navigateur fait glisser la nouvelle page (transition entre documents,
-// styles/chronologie/chronologie.css) ; la frise, elle, reste en place. Petit écran : /chronologie/ est la frise, et la page d'un événement occupe
-// tout l'écran, avec un lien vers la frise ; les chevrons passent en bas à droite. Couleur de la page : celle de l'événement affiché ; sur
+// styles/chronologie/chronologie.css) ; la frise, elle, reste en place. Petit écran (demande du propriétaire : « la mini-frise, en plus du
+// tiroir ») : /chronologie/ est la frise ; sur la page d'un événement, la frise réduite à sa barre et à ses points reste collée à gauche, un appui
+// l'ouvre en grand par-dessus la page (le tiroir), et une barre en bas de l'écran porte les chevrons et, entre eux, la date et le titre de
+// l'événement (qui ouvre aussi le tiroir ; sans JavaScript, un lien vers sa ligne de /chronologie/). Couleur de la page : celle de l'événement affiché ; sur
 // /chronologie/, celle du premier (une teinte foncée qui porte un texte blanc, dans les deux thèmes : l'accent du site s'éclaircit en sombre).
 interface Props {
   /** Les événements dans l'ordre de lecture (lib/chronologie-db.mjs#chargerChronologie). */
@@ -25,15 +27,30 @@ const couleurs = couleursDesEvenements(evenements);
 const { evenement, precedent, suivant } = id ? voisins(evenements, id) : { evenement: null, precedent: null, suivant: evenements[0] ?? null };
 const href = (e: any) => url(adresseDEvenement(e.id));
 const etiquette = (e: any) => `${libelleDeDate(e)} : ${e.titre}`;
+/** La place de l'événement affiché dans la frise, pour le filet de la barre du bas (téléphone). */
+const progression = evenement ? `${((evenement.rang / evenements.length) * 100).toFixed(2)}%` : '0%';
 ---
 
 <style is:inline set:html={chronologieCss}></style>
+{/* La mini-frise et le tiroir (téléphone) ne s'affichent qu'avec JavaScript (`html.js`, posée avant la frise : pas de saut au premier affichage) ;
+     sans lui, la page d'un événement garde la barre du bas, dont le bouton du milieu mène à la frise de /chronologie/. */}
+<script is:inline>
+  document.documentElement.classList.add('js');
+</script>
 <div
   class:list={['chrono', evenement ? 'chrono--evenement' : 'chrono--accueil']}
   data-chrono
   style={(evenement ?? suivant) ? `--couleur-evenement: ${couleurs.get((evenement ?? suivant).id)}` : undefined}
 >
   <Frise evenements={evenements} couleurs={couleurs} courant={evenement?.id ?? null} />
+  {
+    evenement && (
+      <button type="button" class="frise-ouvrir" aria-controls="frise" aria-expanded="false" data-frise-ouvrir>
+        <span class="frise-ouvrir__poignee" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" /></svg></span>
+        <span class="chrono-invisible">Ouvrir la frise chronologique (événement {evenement.rang} sur {evenements.length})</span>
+      </button>
+    )
+  }
 
   {
     evenement ? (
@@ -41,6 +58,7 @@ const etiquette = (e: any) => `${libelleDeDate(e)} : ${e.titre}`;
     ) : (
       <article class="chrono-page chrono-accueil" aria-labelledby="chrono-titre">
         <h1 id="chrono-titre">Chronologie</h1>
+        <p class="chrono-accueil__court">Les {evenements.length} événements que datent le Codex et les pages de race, du plus ancien au plus récent. Touchez-en un pour lire sa page.</p>
         <p>
           Les {evenements.length} événements que datent le Codex et les pages de race, du plus ancien au plus récent. Choisissez-en un dans la frise :
           sa page s’ouvre ici, avec les passages des sources qui en parlent, leur date surlignée.
@@ -64,7 +82,7 @@ const etiquette = (e: any) => `${libelleDeDate(e)} : ${e.titre}`;
 
   {/* Chaque chevron dit l'événement visé dans l'infobulle du site (`title`), placée à sa gauche (`data-placement="cote"` : dessous, la bulle du
        chevron Haut couvrirait le chevron Bas) ; son nom, pour un lecteur d'écran : « Précédent » ou « Suivant », la bulle en description. */}
-  <nav class="chrono-chevrons" aria-label="Événement précédent ou suivant">
+  <nav class="chrono-chevrons" aria-label="Événement précédent ou suivant" style={`--progression: ${progression}`}>
     {
       precedent ? (
         <a class="chrono-chevron" href={href(precedent)} rel="prev" title={etiquette(precedent)} data-placement="cote" data-chrono-precedent>
@@ -76,6 +94,27 @@ const etiquette = (e: any) => `${libelleDeDate(e)} : ${e.titre}`;
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
           <span class="chrono-invisible">Précédent ({evenement ? 'premier événement' : 'aucun événement'})</span>
         </span>
+      )
+    }
+    {/* Téléphone : entre les chevrons, l'événement affiché ; un appui ouvre la frise (sans JavaScript : sa ligne de /chronologie/). */}
+    {
+      evenement && (
+        <a class="chrono-barre__frise" href={`${url('chronologie/')}#evenement-${evenement.id}`} aria-controls="frise" data-frise-ouvrir>
+          <svg class="chrono-barre__icone" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 2v20M13 6h7M13 12h7M13 18h5" />
+            <circle cx="8" cy="6" r="2.4" />
+            <rect x="5.9" y="9.9" width="4.2" height="4.2" transform="rotate(45 8 12)" />
+            <circle cx="8" cy="18" r="2.4" />
+          </svg>
+          <span class="chrono-barre__texte">
+            <span class="chrono-barre__date">
+              {libelleDeDate(evenement)}
+              <span class="chrono-barre__rang"> · {evenement.rang}/{evenements.length}</span>
+            </span>
+            <span class="chrono-barre__titre">{evenement.titre}</span>
+          </span>
+          <span class="chrono-invisible"> : toute la frise</span>
+        </a>
       )
     }
     {
@@ -93,6 +132,92 @@ const etiquette = (e: any) => `${libelleDeDate(e)} : ${e.titre}`;
     }
   </nav>
 </div>
+{evenement && <div class="frise-voile" data-frise-voile hidden />}
+<script is:inline>
+  // Téléphone, page d'un événement : la mini-frise (la frise réduite à sa barre et à ses points, collée à gauche) montre où l'on est, l'événement
+  // affiché au milieu de sa partie visible ; un appui sur elle (le bouton posé dessus) ou sur le milieu de la barre du bas l'ouvre en grand par-dessus
+  // la page (le tiroir : dates et titres), centrée sur l'événement ; un appui sur un événement y mène (lien ordinaire) ; la croix, le voile ou Échap
+  // la referment. Réduite, la liste est inerte (le bouton la remplace au clavier et pour un lecteur d'écran) ; ouverte, c'est le reste de la page.
+  // Retour sur grand écran (rotation d'une tablette) : le tiroir se ferme.
+  (function () {
+    var chrono = document.querySelector('.chrono--evenement');
+    var frise = document.querySelector('[data-frise]');
+    var ouvrir = document.querySelector('.frise-ouvrir');
+    var milieu = document.querySelector('.chrono-barre__frise');
+    var voile = document.querySelector('[data-frise-voile]');
+    if (!chrono || !frise || !ouvrir) return;
+    var liste = frise.querySelector('.frise__liste');
+    var actuel = frise.querySelector('[aria-current="page"]');
+    var barre = document.querySelector('.chrono-chevrons');
+    var petit = matchMedia('(max-width: 56rem)');
+    var autour = [chrono.querySelector('.chrono-page'), barre, ouvrir, document.querySelector('.site-header'), document.querySelector('.site-footer'), document.querySelector('.bandeau-test')];
+    var ouverte = false;
+    var retour = ouvrir;
+    if (milieu) {
+      milieu.setAttribute('role', 'button');
+      milieu.setAttribute('aria-expanded', 'false');
+    }
+    var poignee = ouvrir.querySelector('.frise-ouvrir__poignee');
+    // l'événement au milieu de la partie visible de la liste : sous l'en-tête du site au départ et sous la poignée de la mini-frise, au-dessus de la
+    // barre du bas
+    function centrer() {
+      if (!actuel || !liste) return;
+      var f = liste.getBoundingClientRect();
+      var haut = Math.max(f.top, 0, !ouverte && poignee ? poignee.getBoundingClientRect().bottom + 6 : 0);
+      var bas = Math.min(f.bottom, ouverte || !barre ? window.innerHeight : barre.getBoundingClientRect().top);
+      var r = actuel.getBoundingClientRect();
+      liste.scrollTop += r.top + r.height / 2 - (haut + bas) / 2;
+    }
+    function etat() {
+      var reduite = petit.matches && !ouverte;
+      frise.inert = reduite;
+      ouvrir.setAttribute('aria-expanded', String(ouverte));
+      if (milieu) milieu.setAttribute('aria-expanded', String(ouverte));
+      if (reduite) centrer();
+    }
+    function basculer(oui, depuis) {
+      if (oui === ouverte) return;
+      ouverte = oui;
+      if (oui) retour = depuis || ouvrir;
+      frise.classList.toggle('est-ouverte', oui);
+      document.documentElement.classList.toggle('frise-ouverte', oui);
+      if (voile) voile.hidden = !oui;
+      autour.forEach(function (el) { if (el) el.inert = oui; });
+      etat();
+      if (oui) {
+        centrer();
+        if (actuel) actuel.focus({ preventScroll: true });
+      } else if (petit.matches) {
+        retour.focus({ preventScroll: true });
+      }
+    }
+    ouvrir.addEventListener('click', function () { basculer(true, ouvrir); });
+    if (milieu) {
+      milieu.addEventListener('click', function (e) {
+        if (!petit.matches) return;
+        e.preventDefault();
+        basculer(true, milieu);
+      });
+    }
+    if (voile) voile.addEventListener('click', function () { basculer(false); });
+    frise.addEventListener('click', function (e) {
+      if (e.target.closest && e.target.closest('[data-frise-fermer]')) basculer(false);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && ouverte) basculer(false);
+    });
+    petit.addEventListener('change', function () {
+      if (!petit.matches) basculer(false);
+      etat();
+    });
+    // retour arrière vers une page gardée en mémoire (bfcache) : le tiroir fermé
+    window.addEventListener('pageshow', function () {
+      basculer(false);
+      etat();
+    });
+    etat();
+  })();
+</script>
 <script is:inline>
   // ← et → : événement précédent ou suivant (les chevrons), sauf pendant une saisie ou avec une touche de modification. ↑ et ↓ gardent leur rôle :
   // faire défiler la page ou la frise.
@@ -132,7 +257,7 @@ const etiquette = (e: any) => `${libelleDeDate(e)} : ${e.titre}`;
       var t = e.touches[0];
       var cible = e.target;
       if (e.touches.length !== 1 || !cible.closest || !cible.closest('[data-chrono]') || selection()) return;
-      if (cible.closest('input, textarea, select, [contenteditable], [data-frise]')) return;
+      if (cible.closest('input, textarea, select, [contenteditable], [data-frise], .frise-ouvrir')) return;
       if (window.visualViewport && visualViewport.scale > 1.01) return;
       if (t.clientX < 24 || t.clientX > window.innerWidth - 24) return;
       depart = { x: t.clientX, y: t.clientY, horizontal: null };

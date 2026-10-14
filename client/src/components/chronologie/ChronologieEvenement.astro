@@ -2,12 +2,10 @@
 import { extraitsParPage, libelleDeDate, marquerLaDate, PORTEES, surlignerLaDate, titreDeSection } from '../../lib/chronologie.mjs';
 import { rendreMarkdown } from '../../lib/guide-rendu';
 import { pageHref } from '../../lib/magies';
-import { url } from '../../lib/wiki';
 
 // La page d'un événement de la chronologie, à droite de la frise (components/chronologie/Chronologie.astro) : sa date, son titre, la portée et le lieu
 // d'un Impact du Codex, puis les extraits copiés des pages sources, regroupés par page, la date de chacun surlignée, et un lien vers la page.
-// Couleur de la page : celle de l'événement sur la frise (--couleur-evenement, posée par Chronologie.astro). Sur petit écran, la frise est cachée :
-// un lien y ramène, à la ligne de l'événement.
+// Couleur de la page : celle de l'événement sur la frise (--couleur-evenement, posée par Chronologie.astro).
 interface Props {
   evenement: any;
   /** Le nombre d'événements de la chronologie (« événement N sur M »). */
@@ -28,7 +26,6 @@ const sections = (g: any) => [...new Set(g.extraits.map((x: any) => x.section).f
 ---
 
 <article class="chrono-page" aria-labelledby="chrono-titre">
-  <a class="chrono-retour" href={`${url('chronologie/')}#evenement-${evenement.id}`}>‹ Toute la chronologie</a>
   <p class="chrono-numero">Chronologie · événement {evenement.rang} sur {total}</p>
   <p class="chrono-date">{libelleDeDate(evenement)}</p>
   <h1 id="chrono-titre">{evenement.titre}</h1>
