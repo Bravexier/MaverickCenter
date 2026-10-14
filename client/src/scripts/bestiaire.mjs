@@ -1,6 +1,10 @@
-// Script de /bestiaire/ (components/bestiaire/Bestiaire.astro) : pour chaque section `[data-bestiaire-tableau]`, la recherche, les filtres à cases
-// (plusieurs valeurs : l'une OU l'autre ; plusieurs filtres : tous), le tri par en-tête et la carte de la case choisie, à côté du tableau (sur un petit
-// écran, par-dessus la page). Une section a un tableau (les monstres) ou plusieurs, dépliables (`details[data-repli]` : les créatures invoquées, un
+// Script de /bestiaire/ (components/bestiaire/Bestiaire.astro) et de la page d'un monstre (PageMonstre.astro ; les deux par ScriptDuBestiaire.astro) :
+// pour chaque section `[data-bestiaire-tableau]`, la recherche, les filtres à cases (plusieurs valeurs : l'une OU l'autre ; plusieurs filtres : tous), le
+// tri par en-tête et la carte de la case choisie, à côté du tableau. Sur un écran où le tableau et la carte ne tiennent pas côte à côte (demande du
+// propriétaire : « Choisir une ligne fait apparaître le bloc sur toute la page. Impossible de revenir en arrière. Prévoir une page spécifique pour chaque
+// monstre ») : un monstre ouvre sa page (pages/bestiaire/monstres/…), et la ligne reste dans l'adresse du tableau pour le retour arrière ; une créature
+// invoquée (ou un monstre sans page : créé depuis la construction, ou ouvert en mode modification) passe par-dessus la page, avec son entrée dans
+// l'historique : le retour arrière la referme. Une section a un tableau (les monstres) ou plusieurs, dépliables (`details[data-repli]` : les créatures invoquées, un
 // tableau par invocation) ; une ligne (`tr[data-ligne]`) est ce que filtrent la recherche et les filtres, une case est ce qui ouvre une carte : la ligne
 // elle-même (un monstre : `data-carte` sur le `tr`) ou chacune de ses cases `[data-case]` (une combinaison de magies : ses deux créatures). L'état de
 // chaque section tient dans l'adresse, sous son préfixe (lib/bestiaire-filtres.mjs) ; le lien d'une case (#monstre-…, #invoquee-…) ou de sa carte
@@ -27,6 +31,40 @@ document.documentElement.classList.add('js');
 const reduit = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const large = () => !matchMedia('(max-width: 70rem)').matches;
 const tableaux = [];
+
+// La page d'un monstre (pages/bestiaire/monstres/…) : le lien de sa ligne, quand il ne mène pas à sa carte dans la page (un monstre créé depuis la
+// construction, rendu par le service, n'a pas de page). Sur un petit écran, hors mode modification (les saisies sont dans la carte de la page), une
+// ligne y mène.
+const pageDe = (c) => {
+  const a = c.el.querySelector('.bligne__ouvrir');
+  return a && !(a.getAttribute('href') ?? '#').startsWith('#') ? a.href : null;
+};
+const versLaPage = (c) => (!large() && !document.body.classList.contains('ed-mode') ? pageDe(c) : null);
+// la marque que le tableau laisse en ouvrant la page d'un monstre (sessionStorage) : { page, tableau (son adresse : filtres, ligne), direct }
+const RETOUR = 'bestiaire:retour';
+
+// L'échelle de puissance d'une carte qui en écrit plusieurs (lib/monstre-rendu.mjs#htmlDeLEchelle : un curseur sur les échelles écrites) : la carte ne
+// montre que les valeurs de l'échelle choisie (`data-ep` sur la carte ; styles/bestiaire/bestiaire.css : un élément `data-eps` qui ne la contient pas est
+// caché).
+const curseurDe = (carte) => carte.querySelector('input[type=range][data-echelles]');
+function poserLEchelle(carte, ep) {
+  const curseur = curseurDe(carte);
+  if (!curseur) return;
+  const echelles = JSON.parse(curseur.dataset.echelles);
+  const rang = Math.max(0, echelles.indexOf(ep));
+  curseur.value = String(rang);
+  carte.dataset.ep = String(echelles[rang]);
+  const repere = carte.querySelector(`.bechelle__repere[data-eps~="${echelles[rang]}"]`);
+  curseur.setAttribute('aria-valuetext', repere?.dataset.libelle ?? `EP ${echelles[rang]}`);
+  const sortie = carte.querySelector('.bechelle__choix');
+  if (sortie) sortie.textContent = `EP ${echelles[rang]}`;
+}
+const suivreLeCurseur = (zone) =>
+  zone?.addEventListener('input', (e) => {
+    const curseur = e.target.closest?.('input[type=range][data-echelles]');
+    if (!curseur) return;
+    poserLEchelle(curseur.closest('.bcarte'), JSON.parse(curseur.dataset.echelles)[Number(curseur.value)]);
+  });
 
 // La carte tient dans la partie visible de sa vue (le tableau et la carte côte à côte) : ni son haut ni son bas coupés, quelle que soit la position de la
 // page (demande du propriétaire : la tuile « reste toujours affichée à l'écran » et n'a plus « soit le bas, soit le haut » ; styles/bestiaire/bestiaire.css,
@@ -261,22 +299,7 @@ function brancher(section) {
     { passive: false },
   );
 
-  // L'échelle de puissance d'une carte qui en écrit plusieurs (lib/monstre-rendu.mjs#htmlDeLEchelle : un curseur sur les échelles écrites) : la carte
-  // ne montre que les valeurs de l'échelle choisie (`data-ep` sur la carte ; styles/bestiaire/bestiaire.css : un élément `data-eps` qui ne la contient
-  // pas est caché). À l'ouverture : l'échelle cochée dans le filtre EP si la carte l'écrit, sinon la première qu'elle écrit (echelleParDefaut).
-  const curseurDe = (carte) => carte.querySelector('input[type=range][data-echelles]');
-  function poserLEchelle(carte, ep) {
-    const curseur = curseurDe(carte);
-    if (!curseur) return;
-    const echelles = JSON.parse(curseur.dataset.echelles);
-    const rang = Math.max(0, echelles.indexOf(ep));
-    curseur.value = String(rang);
-    carte.dataset.ep = String(echelles[rang]);
-    const repere = carte.querySelector(`.bechelle__repere[data-eps~="${echelles[rang]}"]`);
-    curseur.setAttribute('aria-valuetext', repere?.dataset.libelle ?? `EP ${echelles[rang]}`);
-    const sortie = carte.querySelector('.bechelle__choix');
-    if (sortie) sortie.textContent = `EP ${echelles[rang]}`;
-  }
+  // À l'ouverture d'une carte : l'échelle cochée dans le filtre EP si la carte l'écrit, sinon la première qu'elle écrit (echelleParDefaut).
   function preparerLEchelle(carte) {
     const curseur = curseurDe(carte);
     if (!curseur) return delete carte.dataset.ep;
@@ -284,12 +307,7 @@ function brancher(section) {
     const actuelle = Number(carte.dataset.ep);
     poserLEchelle(carte, echelles.includes(actuelle) ? actuelle : echelleParDefaut(echelles, etat.facettes.ep));
   }
-  zone?.addEventListener('input', (e) => {
-    const curseur = e.target.closest?.('input[type=range][data-echelles]');
-    if (!curseur) return;
-    const carte = curseur.closest('.bcarte');
-    poserLEchelle(carte, JSON.parse(curseur.dataset.echelles)[Number(curseur.value)]);
-  });
+  suivreLeCurseur(zone);
 
   // cartes : un clic sur une case (ou son nom) ouvre sa carte à côté du tableau, une seule à la fois par section
   const lien = (c) => c.el.querySelector('.bligne__ouvrir');
@@ -305,8 +323,12 @@ function brancher(section) {
     zone.classList.remove('est-ouverte');
     if (focus) lien(c).focus();
   }
-  function ouvrir(c, defiler) {
+  // `suite` : 'pousser', ouverte d'un clic, la carte qui passe par-dessus la page (petit écran) a son entrée dans l'historique, à la même adresse (le
+  // retour arrière la referme sans toucher à l'ancre, que suivent les onglets) ; 'reprendre', le retour avant revient sur cette entrée
+  let poussee = null;
+  function ouvrir(c, defiler, suite = null) {
     fermer();
+    for (const x of toutesLesCases()) x.el.classList.remove('est-montree');
     // la case est dans un tableau replié : on le déplie
     const repli = c.el.closest('details[data-repli]');
     if (repli) {
@@ -323,14 +345,41 @@ function brancher(section) {
     preparerLEchelle(c.carte);
     montrer(c, defiler);
     // sur un petit écran, la carte passe par-dessus la page : le focus y va (Échap ou « Fermer » la referme)
-    if (matchMedia('(max-width: 70rem)').matches) c.carte.querySelector('.bcarte__fermer')?.focus({ preventScroll: true });
-    history.replaceState(null, '', `${location.pathname}${location.search}#${c.id}`);
+    if (!large()) c.carte.querySelector('.bcarte__fermer')?.focus({ preventScroll: true });
+    if (suite === 'pousser' && poussee && history.state?.bestiaire === poussee) {
+      // une carte qui a déjà son entrée (« Même combinaison », écran tourné) : la nouvelle la reprend, sans en ajouter
+      history.replaceState({ bestiaire: c.id }, '', location.href);
+      poussee = c.id;
+    } else if (suite === 'pousser' && !large()) {
+      history.pushState({ bestiaire: c.id }, '', location.href);
+      poussee = c.id;
+    } else if (suite === 'reprendre') poussee = c.id;
+    else history.replaceState(history.state, '', `${location.pathname}${location.search}#${c.id}`);
     document.dispatchEvent(new CustomEvent('bestiaire:carte-ouverte', { detail: { carte: c.carte } }));
   }
   function toutFermer() {
     const c = ouverte();
     fermer();
+    poussee = null;
     if (c && (location.hash === `#${c.id}` || location.hash === `#${c.carte.id}`)) history.replaceState(null, '', location.pathname + location.search);
+  }
+  // « Fermer », Échap, la case ouverte cliquée : une carte qui a son entrée dans l'historique se referme par le retour arrière (l'adresse redevient celle
+  // d'avant : filtres, onglet), les autres tout de suite
+  function fermerLaCarte() {
+    const c = ouverte();
+    if (c && poussee === c.id && history.state?.bestiaire === c.id) history.back();
+    else toutFermer();
+  }
+  // le retour arrière a quitté l'entrée de la carte ouverte : elle se referme, l'adresse reste celle d'avant
+  function quitter() {
+    if (!poussee) return;
+    poussee = null;
+    fermer();
+  }
+  // sur un petit écran, un monstre qui a sa page : sa ligne montrée dans le tableau (retour de sa page, adresse #monstre-…), sans ouvrir la carte
+  function montrerLaLigne(c) {
+    for (const x of toutesLesCases()) x.el.classList.toggle('est-montree', x === c);
+    c.el.scrollIntoView({ block: 'center', behavior: 'instant' });
   }
   section.addEventListener('click', (e) => {
     const cible = e.target;
@@ -340,17 +389,60 @@ function brancher(section) {
     const c = el && toutesLesCases().find((x) => x.el === el);
     if (!c) return;
     if (cible.closest('a') && !cible.closest('.bligne__ouvrir')) return;
+    // un clic modifié sur le nom (Ctrl/Cmd, Maj, Alt) : le navigateur ouvre la page du monstre dans un autre onglet ou une autre fenêtre
+    if (cible.closest('a') && (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey)) return;
     if (!cible.closest('a') && (getSelection()?.toString() ?? '') !== '') return;
     e.preventDefault();
-    if (c.el.classList.contains('est-ouverte')) toutFermer();
-    else ouvrir(c, false);
+    const page = versLaPage(c);
+    if (page) {
+      // la ligne reste dans l'adresse du tableau, marquée (une page gardée par le cache du navigateur revient telle quelle) : le retour arrière y
+      // ramène (montrerLaLigne) ; l'échelle cochée dans le filtre EP suit (?ep=) ; la page sait qu'on vient du tableau (« ‹ Bestiaire » : le
+      // retour arrière ; la politique « no-referrer » des serveurs vide document.referrer)
+      for (const x of toutesLesCases()) x.el.classList.toggle('est-montree', x === c);
+      history.replaceState(history.state, '', `${location.pathname}${location.search}#${c.id}`);
+      const vers = new URL(page);
+      const ep = etat.facettes.ep ?? [];
+      if (ep.length) vers.searchParams.set('ep', ep.join(','));
+      try {
+        sessionStorage.setItem(RETOUR, JSON.stringify({ page: vers.pathname, tableau: `${location.pathname}${location.search}#${c.id}`, direct: true }));
+      } catch {
+        // stockage indisponible : « ‹ Bestiaire » suivra son lien
+      }
+      location.assign(vers.href);
+      return;
+    }
+    if (c.el.classList.contains('est-ouverte')) fermerLaCarte();
+    else ouvrir(c, false, 'pousser');
   });
   zone.addEventListener('click', (e) => {
+    // un lien vers une autre case (« Même combinaison ») d'une carte qui a son entrée dans l'historique : la nouvelle carte reprend l'entrée
+    const a = e.target.closest('a[href^="#"]:not(.bcarte__fermer)');
+    if (a && poussee) {
+      let id = '';
+      try {
+        id = decodeURIComponent(a.hash.slice(1));
+      } catch {
+        // ancre illisible : le lien fait son travail
+      }
+      const autre = toutesLesCases().find((x) => x.id === id || x.carte?.id === id);
+      if (autre) {
+        e.preventDefault();
+        ouvrir(autre, true, 'pousser');
+        return;
+      }
+    }
     if (!e.target.closest('.bcarte__fermer')) return;
     e.preventDefault();
     const c = ouverte();
-    toutFermer();
+    fermerLaCarte();
     if (c) lien(c).focus();
+  });
+  // l'écran tourne ou la fenêtre rétrécit, une carte ouverte à côté du tableau passe par-dessus la page : elle prend son entrée dans l'historique
+  matchMedia('(max-width: 70rem)').addEventListener?.('change', (e) => {
+    const c = ouverte();
+    if (!e.matches || !c || poussee) return;
+    history.pushState({ bestiaire: c.id }, '', location.href);
+    poussee = c.id;
   });
   // lignes ajoutées, retirées ou réécrites par le mode modification : relues (texte de la recherche, filtres, tri), la carte ouverte le reste
   document.addEventListener('bestiaire:rafraichir', () => {
@@ -373,7 +465,9 @@ function brancher(section) {
     },
     ouvrir,
     montrer,
-    toutFermer,
+    montrerLaLigne,
+    fermerLaCarte,
+    quitter,
     appliquer,
     formulaire,
     facettes,
@@ -415,7 +509,9 @@ window.addEventListener('beforeprint', () => {
   for (const d of document.querySelectorAll('details[data-repli]')) d.open = true;
 });
 
-// adresse #monstre-… / #invoquee-… (ou #carte-…) : ouvre cette carte (l'onglet qui la contient est ouvert par components/Onglets.astro)
+// adresse #monstre-… / #invoquee-… (ou #carte-…) : ouvre cette carte (l'onglet qui la contient est ouvert par components/Onglets.astro) ; sur un petit
+// écran, un monstre qui a sa page : sa ligne seulement (on revient de sa page).
+const caseDe = (t, id) => t.lignes.flatMap((l) => l.cases).find((x) => x.id === id || x.carte?.id === id);
 function depuisAdresse() {
   let id = '';
   try {
@@ -424,18 +520,36 @@ function depuisAdresse() {
     return;
   }
   for (const t of tableaux) {
-    const c = t.lignes.flatMap((l) => l.cases).find((x) => x.id === id || x.carte?.id === id);
-    if (c) {
-      if (c.ligne.tr.hidden) {
-        // ligne cachée par les filtres : on les retire pour la montrer
-        t.formulaire.dispatchEvent(new Event('reset', { cancelable: true }));
-      }
-      t.ouvrir(c, true);
+    const c = caseDe(t, id);
+    if (!c) continue;
+    if (c.ligne.tr.hidden) {
+      // ligne cachée par les filtres : on les retire pour la montrer
+      t.formulaire.dispatchEvent(new Event('reset', { cancelable: true }));
     }
+    if (versLaPage(c)) t.montrerLaLigne(c);
+    else t.ouvrir(c, true);
   }
 }
 window.addEventListener('hashchange', depuisAdresse);
 depuisAdresse();
+// rechargement (ou page évincée de la mémoire) sur l'entrée d'une carte ouverte par-dessus la page : on la rouvre, le retour arrière la refermera ;
+// sur grand écran, ou si la case n'existe plus, l'état orphelin est effacé
+{
+  const id = history.state?.bestiaire;
+  const c = id && !large() ? tableaux.map((t) => [t, caseDe(t, id)]).find(([, x]) => x) : null;
+  if (c) c[0].ouvrir(c[1], false, 'reprendre');
+  else if (id) history.replaceState(null, '', location.href);
+}
+// le retour arrière (ou avant) sur l'entrée d'une carte ouverte par-dessus la page : elle se referme (ou se rouvre) ; une ancre qui désigne une autre
+// case est l'affaire de depuisAdresse (hashchange, qui suit)
+addEventListener('popstate', (e) => {
+  const id = e.state?.bestiaire ?? null;
+  for (const t of tableaux) {
+    const c = id ? caseDe(t, id) : null;
+    if (c) t.ouvrir(c, false, 'reprendre');
+    else t.quitter();
+  }
+});
 // au chargement, le navigateur cale lui-même l'élément de l'ancre (#carte-…) jusqu'à la fin du chargement : la vue de la carte ouverte est recalée ensuite
 addEventListener(
   'load',
@@ -458,9 +572,60 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   // Échap dans une saisie ou un dialogue (recadrage d'un portrait, formulaire du mode modification) ne ferme que lui ; sur le curseur d'échelle, il ferme la carte
-  if (!e.target.closest?.('input:not([type=range]), textarea, select, dialog')) for (const t of tableaux) t.toutFermer();
+  if (!e.target.closest?.('input:not([type=range]), textarea, select, dialog')) for (const t of tableaux) t.fermerLaCarte();
 });
 // un clic hors d'un menu de filtre le ferme
 document.addEventListener('click', (e) => {
   for (const d of document.querySelectorAll('.bfacette[open]')) if (!d.contains(e.target)) d.open = false;
 });
+
+// La page d'un monstre (components/bestiaire/PageMonstre.astro) : sa carte seule, à l'échelle cochée dans le filtre EP du tableau d'où l'on vient (?ep=,
+// qui suit aussi vers les autres cartes de l'espèce), sinon la première qu'elle écrit. Le lien « ‹ Bestiaire » : venu directement du tableau (marque
+// RETOUR, gardée dans l'état de l'entrée de la page : elle survit au rechargement), le retour arrière, qui retrouve ses filtres et sa position ; venu
+// d'une autre carte de l'espèce, le tableau avec ses filtres, à la ligne de ce monstre ; sinon le tableau.
+for (const page of document.querySelectorAll('[data-monstre-seul]')) {
+  const ep = new URLSearchParams(location.search).get('ep');
+  const cochees = (ep ?? '').split(',').filter(Boolean);
+  for (const carte of page.querySelectorAll('.bcarte')) {
+    const curseur = curseurDe(carte);
+    if (curseur) poserLEchelle(carte, echelleParDefaut(JSON.parse(curseur.dataset.echelles), cochees));
+  }
+  suivreLeCurseur(page);
+  const retour = page.querySelector('[data-retour]');
+  let marque = null;
+  try {
+    marque = JSON.parse(sessionStorage.getItem(RETOUR) ?? 'null');
+    sessionStorage.removeItem(RETOUR);
+  } catch {
+    // stockage indisponible ou marque illisible : pas de retour arrière
+  }
+  if (marque?.page === location.pathname && marque.tableau) {
+    history.replaceState({ ...(history.state ?? {}), bestiaireTableau: marque.tableau, bestiaireDirect: Boolean(marque.direct) }, '', location.href);
+  }
+  const tableau = history.state?.bestiaireTableau;
+  if (retour && tableau) {
+    // le tableau d'où l'on vient (ses filtres), à la ligne de ce monstre
+    const u = new URL(tableau, location.href);
+    u.hash = new URL(retour.href).hash;
+    retour.href = u.href;
+  }
+  // les autres cartes de l'espèce : la même échelle, et le même tableau au retour
+  for (const a of page.querySelectorAll('.bmonstre__voisines a')) {
+    const u = new URL(a.href);
+    if (ep) u.searchParams.set('ep', ep);
+    a.href = u.href;
+    a.addEventListener('click', (e) => {
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || !tableau) return;
+      try {
+        sessionStorage.setItem(RETOUR, JSON.stringify({ page: u.pathname, tableau, direct: false }));
+      } catch {
+        // stockage indisponible : « ‹ Bestiaire » mènera au tableau sans ses filtres
+      }
+    });
+  }
+  retour?.addEventListener('click', (e) => {
+    if (!history.state?.bestiaireDirect || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    history.back();
+  });
+}

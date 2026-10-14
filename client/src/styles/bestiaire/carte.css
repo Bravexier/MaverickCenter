@@ -37,7 +37,8 @@
 .bcarte__tete { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "titres portrait" "fermer portrait"; gap: 0.3rem 0.9rem; align-items: start;
   padding-bottom: 0.8rem; border-bottom: 2px solid var(--bes-line); }
 .bcarte__titres { grid-area: titres; min-width: 0; }
-.bcarte__tete h3 { margin: 0; font-size: 1.25rem; line-height: 1.2; }
+.bcarte__tete :is(h1, h3) { margin: 0; font-size: 1.25rem; line-height: 1.2; }
+.bcarte__tete h1 { font-size: 1.6rem; }
 .bcarte__espece { margin: 0.15rem 0 0.4rem; color: var(--muted); }
 .bcarte__badges { margin: 0; display: flex; flex-wrap: wrap; gap: 0.3rem; }
 .bbadge { display: inline-block; padding: 0 0.45rem; border-radius: 999px; font-size: 0.78rem; border: 1px solid var(--border); background: var(--bg); white-space: nowrap; }
@@ -56,7 +57,7 @@
 html:not(.js) .bcarte__fermer { display: none; }
 .bcarte__section { padding-top: 0.8rem; }
 .bcarte__section + .bcarte__section { margin-top: 0.8rem; border-top: 1px solid var(--border); }
-.bcarte h4 { margin: 0 0 0.35rem; font-size: 0.98rem; }
+.bcarte :is(h2, h4) { margin: 0 0 0.35rem; font-size: 0.98rem; }
 .bcarte p { margin: 0 0 0.45rem; }
 .bcarte__bonus { display: block; margin-top: 0.25rem; font-size: 0.8rem; }
 .brubriques { margin: 0; display: grid; gap: 0.5rem; }

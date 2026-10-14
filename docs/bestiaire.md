@@ -44,13 +44,40 @@ filtre = l'une OU l'autre, plusieurs filtres = tous à la fois ; chaque valeur a
 (croissant, décroissant, puis l'ordre du doc ; une valeur absente toujours à la fin). Recherche, filtres et tri sont dans l'adresse
 (`?q=golem&categorie=boss&ep=5&tri=ep&sens=desc` ; préfixe `i-` pour les créatures invoquées), pour partager une recherche.
 
-Un clic sur une ligne ouvre sa **carte** à côté du tableau (sur un écran de moins de 70rem, par-dessus la page ; Échap ou « Fermer » la referme) : en-tête (nom, espèce, catégorie, type, alignement, échelle), **portrait** (le logo en attendant une image ; voir plus
+Un clic sur une ligne ouvre sa **carte** à côté du tableau (sur un écran plus étroit, voir « Petit écran » ; Échap ou « Fermer » la referme) : en-tête (nom, espèce, catégorie, type, alignement, échelle), **portrait** (le logo en attendant une image ; voir plus
 bas), toute la carte
 rubrique par rubrique (santé, chakra et barrière en tuiles, F.P.V.S.I.A. en cases colorées, cibles des défenses en pastilles dans la couleur de la
 magie qui va avec quand l'écriture s'y prête,
 sinon le texte tel qu'écrit : `lib/monstre-rendu.mjs`), l'espèce (description, lieu de rencontre, blocs qui suivent les cartes) et le butin.
-`#monstre-<nom>`, `#carte-monstre-<nom>` ou `#invoquee-<nom>` ouvre une carte. Sans JavaScript, le nom est un lien vers la carte, qui s'affiche alors
-(`:target`) ; les filtres sont cachés.
+`#monstre-<nom>`, `#carte-monstre-<nom>` ou `#invoquee-<nom>` ouvre une carte. Sans JavaScript, le nom d'un monstre mène à sa page, celui d'une
+créature invoquée à sa carte, qui s'affiche alors (`:target`) ; les filtres sont cachés.
+
+**Petit écran** (demande du propriétaire : « Sur mobile l'apparence ne va pas. Choisir une ligne fait apparaître le bloc sur toute la page. Impossible
+de revenir en arrière. Prévoir une page spécifique pour chaque monstre dans le cas où on ne peut pas faire apparaître le tableau et la tuile en même
+temps ») : sous 70rem, le tableau et la carte ne tiennent pas côte à côte.
+
+- Chaque monstre a **sa page** : `/bestiaire/monstres/<espèce>/<carte>/` (une espèce sans carte : `/bestiaire/monstres/<espèce>/`), adresse tirée de
+  l'identifiant figé, jamais du nom (`lib/bestiaire-rendu.mjs#cheminDeMonstre`) ; pas `/bestiaire/<nom>/`, qui est l'adresse des pages du wiki des
+  créatures invoquées (12 monstres portent le nom de l'une d'elles). La page (`pages/bestiaire/monstres/[...chemin].astro`,
+  `components/bestiaire/PageMonstre.astro`) montre la carte seule (le même HTML que dans le tableau, le nom en titre, sans « Fermer »), un lien
+  « ‹ Bestiaire », les autres cartes de son espèce et les bulles du butin qu'elle cite. Le nom d'une ligne est un lien vers cette page : sur grand
+  écran, le script l'intercepte et ouvre la carte à côté, comme avant (un Ctrl/Cmd+clic ouvre la page dans un autre onglet) ; sur petit écran, il
+  mène à la page, l'échelle cochée dans le filtre EP suivant (`?ep=5`, qui suit aussi vers les autres cartes de l'espèce). La ligne reste dans
+  l'adresse du tableau (`#monstre-<nom>`), marquée : le retour arrière ramène au tableau, ses filtres gardés, la ligne marquée et à l'écran, sans
+  rouvrir la carte. « ‹ Bestiaire » fait de même quand on vient directement du tableau : les serveurs envoient `Referrer-Policy: no-referrer`, donc
+  le tableau laisse une marque (`sessionStorage`), que la page range dans l'état de son entrée d'historique (elle survit au rechargement) ; venu
+  d'une autre carte de l'espèce, le lien mène au tableau avec ses filtres, à la ligne du monstre ; ouverte autrement, au tableau. Une adresse
+  `#monstre-<nom>` ouverte sur un petit écran montre de même la ligne.
+- Une **créature invoquée** (qui a déjà sa page du wiki, sans sa carte) garde sa carte par-dessus la page, mais avec son entrée dans l'historique : le
+  retour arrière (comme « Fermer » ou Échap) la referme et laisse la page où elle était (onglet, défilement, filtres) ; le retour avant la rouvre,
+  un rechargement aussi. « Même combinaison » ouvre la voisine sur la même entrée ; une carte ouverte à côté du tableau qui passe par-dessus la page
+  (écran tourné, fenêtre rétrécie) prend la sienne.
+  Même chose pour un monstre qui n'a pas de page (créé sur le site de dev depuis la construction) ou ouvert en mode modification (ses saisies sont dans
+  la carte du tableau).
+- La page d'un monstre est statique : sur le site de dev, une carte modifiée depuis la construction y garde son état du build (pas de mode modification
+  sur cette page), une carte créée depuis n'y a pas de page, une carte supprimée garde la sienne jusqu'à la construction suivante.
+- Script : celui du bestiaire, posé par un seul composant (`ScriptDuBestiaire.astro`) sur les deux pages (deux scripts qui importeraient le même module
+  en feraient un morceau partagé, que la version portable refuse). `client/test/bestiaire-pages-html.test.mjs` contrôle les pages construites.
 
 **Défilement** (demande du propriétaire : « corriger aussi le fait de ne pas avoir de scroll bar, que ça soit pour le tableau ou la tuile. Cette dernière
 reste toujours affichée à l'écran », sans couper « soit le bas, soit le haut ») : sur grand écran, le tableau des monstres défile dans un cadre de la

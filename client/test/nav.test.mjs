@@ -47,6 +47,7 @@ test('la 2e ligne suit la rubrique de la page, même hors menu ; la première pa
   assert.equal(activeGroup('/ressources/alchimie/').key, 'ressources', 'une ressource hors menu ouvre les Ressources');
   assert.equal(activeGroup('/ressources/bouclier/').key, 'ressources');
   assert.equal(activeGroup('/bestiaire/zombi/').key, 'codex');
+  assert.equal(activeGroup('/bestiaire/monstres/loup-garou/loup-garou-superieur/').key, 'codex', 'la page d’un monstre ouvre le Codex');
   assert.equal(activeGroup('/lore/').key, 'codex');
   assert.equal(activeGroup('/chronologie/grande-croisade/').key, 'codex', 'un événement de la chronologie ouvre le Codex');
   assert.equal(activeGroup('/capacites/clerc-zelote/').key, 'regles', 'un don de classe va avec les classes');

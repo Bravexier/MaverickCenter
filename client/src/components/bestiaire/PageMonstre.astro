@@ -1,0 +1,49 @@
+---
+// La page d'un monstre (demande du propriétaire : « Sur mobile l'apparence ne va pas. Choisir une ligne fait apparaître le bloc sur toute la page.
+// Impossible de revenir en arrière. Prévoir une page spécifique pour chaque monstre dans le cas où on ne peut pas faire apparaître le tableau et la tuile
+// en même temps ») : sa carte seule (lib/bestiaire-rendu.mjs#htmlDeCarteMonstre, le même HTML que dans /bestiaire/), un lien de retour au tableau, les
+// autres cartes de son espèce et les bulles du butin qu'elle cite. Sur un écran où le tableau et la carte ne tiennent pas côte à côte, une ligne de
+// /bestiaire/ mène ici (src/scripts/bestiaire.mjs) ; le retour arrière ramène au tableau, à la ligne du monstre. Le script de la page est celui du
+// bestiaire (ScriptDuBestiaire.astro) : le curseur d'échelle de la carte, l'échelle du filtre EP du tableau (?ep=) ou la première écrite.
+// Une carte modifiée sur le site de dev depuis la construction garde ici son état du build, comme toute page statique (pas de mode modification ici).
+import BullesDuButin from './BullesDuButin.astro';
+import ScriptDuBestiaire from './ScriptDuBestiaire.astro';
+import type { chargerMonstres } from '../../lib/bestiaire-db.mjs';
+import { cheminDeMonstre, htmlDeCarteMonstre, objetsDuButinDe } from '../../lib/bestiaire-rendu.mjs';
+import { adresseDuPortrait } from '../../lib/portraits-publies.mjs';
+import { url } from '../../lib/wiki';
+import '../../styles/bestiaire/bestiaire.css';
+import '../../styles/bestiaire/carte.css';
+
+type Monstres = ReturnType<typeof chargerMonstres>;
+interface Props {
+  ligne: Monstres['lignes'][number];
+  monstres: Monstres;
+}
+const { ligne: l, monstres } = Astro.props;
+const { echelles, glossaire, elements, magiesDesCibles } = monstres;
+// les autres cartes de l'espèce (« Loup-garou », « Loup-garou supérieur »…), dans l'ordre du doc
+const voisines = monstres.lignes.filter((x) => x.espece.id === l.espece.id && x.id !== l.id);
+const lien = (id: string) => url(cheminDeMonstre(id) ?? 'bestiaire/');
+---
+
+<div class="bestiaire bmonstre" data-monstre-seul>
+  <p class="bmonstre__retour"><a href={`${url('bestiaire/')}#${l.ancre}`} data-retour>‹ Bestiaire</a></p>
+  <Fragment set:html={htmlDeCarteMonstre(l, { logo: url('logo.webp'), adresseDuPortrait: adresseDuPortrait(url), echelles, glossaire, elements, magiesDesCibles, seule: true })} />
+  {
+    voisines.length > 0 && (
+      <nav class="bmonstre__voisines" aria-label="Les autres cartes de l’espèce">
+        <span class="muted">Même espèce :</span>
+        <ul>
+          {voisines.map((v) => (
+            <li>
+              <a href={lien(v.id)}>{v.nom}</a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    )
+  }
+  <BullesDuButin objets={objetsDuButinDe(l, glossaire, elements)} />
+</div>
+<ScriptDuBestiaire />
