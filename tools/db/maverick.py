@@ -58,7 +58,9 @@ def normalize(value):
 def _vocabulaire_du_site(db):
     """Ce que le site de dev a fait du vocabulaire (historique_modification, lignes mot_cle et page_tag) : (ecritures, supprimes, employes).
     ecritures : écriture quittée (normalize de l'ancien libellé d'un mot-clé renommé) -> son id ; supprimes : id d'un mot-clé supprimé -> l'id du
-    mot-clé où ses pages sont passées (fusion : les page_tag modifiées du même lot), ou None ; employes : tous les ids qu'il a créés ou supprimés."""
+    mot-clé où ses pages sont passées (fusion : les page_tag modifiées du même lot), ou None ; employes : tous les ids qu'il a créés ou supprimés.
+    Le journal ne note d'une fusion que ce qu'elle change : quand aucune page n'est passée de l'un à l'autre (toutes portaient déjà le second, ou le
+    premier n'en avait aucune sur le site de dev), elle ne se distingue pas d'une suppression (None)."""
     ecritures, supprimes, employes = {}, {}, set()
     if not db.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'historique_modification'").fetchone():
         return ecritures, supprimes, employes
@@ -89,8 +91,9 @@ def mot_cle(db, libelle):
     """L'id du mot-clé qui s'écrit `libelle` (même clé normalize : « espace temps » = « espace/temps »), créé s'il manque (migration 0042 : vocabulaire
     `mot_cle`) ; un nouveau prend la clé pour id, suffixée -2, -3… si cet id est pris ou a déjà servi (historique du site : un id ne resert jamais).
     Le site de dev est la source du vocabulaire (historique_modification) : une écriture qu'un mot-clé a quittée (renommé) mène à lui ; celle d'un
-    mot-clé fusionné, au mot-clé qui l'a reçu ; celle d'un mot-clé supprimé ne revient pas : None (l'appelant ne pose pas le mot-clé). Un import ne
-    supprime jamais un mot-clé ; l'écriture d'un mot-clé existant ne change pas (elle se change sur /recherche/ du site de dev)."""
+    mot-clé fusionné, au mot-clé qui l'a reçu (quand une page est passée de l'un à l'autre : _vocabulaire_du_site) ; celle d'un mot-clé supprimé ne
+    revient pas : None (l'appelant ne pose pas le mot-clé). Un import ne supprime jamais un mot-clé ; l'écriture d'un mot-clé existant ne change pas
+    (elle se change sur /recherche/ du site de dev)."""
     cle = normalize(libelle)
     if not cle:
         raise ValueError(f'mot-clé sans lettre ni chiffre : {libelle!r}')

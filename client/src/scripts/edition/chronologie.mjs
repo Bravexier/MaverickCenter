@@ -290,7 +290,7 @@ async function gererLesCategories(ed) {
   const liste = dialogue.querySelector('.ed-gestion-categories');
   const erreur = dialogue.querySelector('.ed-erreur');
   const nouvelle = dialogue.querySelector('label input');
-  const lignes = []; // { categorie (null : à créer), saisie, supprimee }
+  const lignes = []; // { categorie (null : à créer), saisie, supprimee, li, nombre }
   const compte = (n) => (n ? `${n} événement${n > 1 ? 's' : ''}` : 'aucun événement');
   function ligneDe(categorie, libelle) {
     const li = document.createElement('li');
@@ -302,7 +302,7 @@ async function gererLesCategories(ed) {
     const nombre = document.createElement('span');
     nombre.className = 'ed-gestion-categorie__compte';
     nombre.textContent = categorie ? compte(categorie.evenements) : 'à créer';
-    const ligne = { categorie, saisie, supprimee: false, li };
+    const ligne = { categorie, saisie, supprimee: false, li, nombre };
     const retirer = bouton(categorie ? 'Supprimer' : 'Retirer', {
       classe: 'ed-outil ed-outil--danger',
       action: () => {
@@ -368,8 +368,12 @@ async function gererLesCategories(ed) {
         for (const l of [...lignes]) {
           if (!l.categorie) continue;
           const c = fraiches.find((x) => x.id === l.categorie.id);
-          if (c) l.categorie = c;
-          else {
+          if (c) {
+            // une ligne laissée telle quelle prend le nom relu (renommée ailleurs : le nouvel essai ne la renomme pas en sens inverse)
+            if (l.saisie.value.trim() === l.categorie.libelle) l.saisie.value = c.libelle;
+            l.categorie = c;
+            l.nombre.textContent = compte(c.evenements);
+          } else {
             l.li.remove();
             lignes.splice(lignes.indexOf(l), 1);
           }

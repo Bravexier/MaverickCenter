@@ -9,7 +9,7 @@ import { planifier } from '../../tools/flux-git/regles.mjs';
 import { bilan, comparerBases, DOMAINES, TABLES_DES_NOTES, TABLES_LUES, trierVersions, versionCourte, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
 import { TABLES } from '../src/lib/edition-modele.mjs';
 import {
-  diffMots, echapper, htmlDeLaListe, htmlDeLaNote, htmlDuTexteLibre, lancementAffiche, markdownDeLaNote, neutraliserMarqueur,
+  TITRES_DOMAINES, diffMots, echapper, htmlDeLaListe, htmlDeLaNote, htmlDuTexteLibre, lancementAffiche, markdownDeLaNote, neutraliserMarqueur,
 } from '../src/lib/notes-de-version-rendu.mjs';
 
 const magies = [
@@ -101,6 +101,13 @@ test('comparerBases : un champ par ligne, entités ajoutées et retirées, domai
   assert.equal(b.amelioration + b.affaiblissement + b.neutre, b.total);
   assert.deepEqual(b.parDomaine, { sorts: 6, races: 3, metiers: 2, guide: 1 });
   assert.deepEqual(DOMAINES.map((d) => d.id), ['sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire', 'armes', 'composants', 'chronologie', 'mots-cles']);
+});
+
+test('le rendu de la note a le titre de chaque domaine, dans l’ordre de DOMAINES (un domaine sans titre s’afficherait brut, en tête de liste)', () => {
+  assert.deepEqual(Object.entries(TITRES_DOMAINES), DOMAINES.map((d) => [d.id, d.titre]));
+  const ligne = (domaine) => ({ domaine, groupe: null, entite: 'X', champ: 'nom', partie: 'valeur', avant: 'a', apres: 'b', sens: 'neutre' });
+  const titres = [...markdownDeLaNote({ version: '0.3', texte: '' }, [ligne('chronologie'), ligne('composants'), ligne('sorts')]).matchAll(/^### (.+)$/gm)].map((m) => m[1]);
+  assert.deepEqual(titres, ['Sorts', 'Composants', 'Chronologie']);
 });
 
 test('armes (migration 0034) : une arme sous sa famille, un matériau, une amélioration d’arme ; « Oui/Non », mains et type en toutes lettres', () => {

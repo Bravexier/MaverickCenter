@@ -186,6 +186,7 @@ const ed = (e: any, colonne: string) => attributEd('evenement', { id: e.id }, co
     if (choix) {
       choix.addEventListener('change', function () {
         filtre = choix.value;
+        demande = ''; // un choix fait remplace le filtre que demandait l'adresse (il ne revient pas avec une frise refaite)
         history.replaceState(history.state, '', avecFiltre(location.href, filtre));
         filtrer(filtre);
         centrer();

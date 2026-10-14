@@ -217,6 +217,18 @@ test('?filtre= vers une catégorie créée depuis la construction : appliqué d�
   assert.deepEqual(visibles(nav), ['b', 'd'], 'd, et b (la page affichée)');
 });
 
+test('?filtre= de l’adresse remplacé par un choix (« Toutes ») : il ne revient pas avec une frise refaite par le site de dev', () => {
+  const nav = page('b', 'https://site.test/chronologie/b/?filtre=paix');
+  const choix = nav.document.querySelector('[data-frise-choix]');
+  choix.value = '';
+  choix.declencher('change');
+  assert.deepEqual(visibles(nav), ['a', 'b', 'c', 'd', 'e']);
+  nav.document.dispatchEvent({ type: 'chronologie:frise-changee' });
+  assert.equal(choix.value, '');
+  assert.deepEqual(visibles(nav), ['a', 'b', 'c', 'd', 'e']);
+  assert.equal(new URL(nav.historique.at(-1)).search, '');
+});
+
 test('/chronologie/ (aucun événement affiché) : « Suivant » et « Commencer » mènent au premier événement visible de la catégorie', () => {
   const nav = page(null, 'https://site.test/chronologie/?filtre=paix');
   assert.deepEqual(chevron(nav, 'precedent'), { grise: 'true', clavier: false });

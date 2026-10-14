@@ -1445,7 +1445,7 @@ export function recalculerLesPages(db, modifications) {
  */
 export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = {}) {
   const appliquees = [];
-  const anciens = []; // mots-clés créés pour des lots d'avant la migration 0042 (ancienneEcritureDesMotsCles)
+  const anciens = new Set(); // mots-clés créés pour des lots d'avant la migration 0042 (ancienneEcritureDesMotsCles ; refaits à chaque passe du rejeu)
   const bilan = rejouer(db, { derivee: colonneDerivee, applique: (m) => appliquees.push(m), horsControleParLot, adapter: ancienneEcritureDesMotsCles(db, anciens) });
   // un mot-clé créé pour un lot que le rejeu n'a pas gardé (en conflit) : retiré ; ceux qui restent partent avec les règles (mise à jour, rapatriement)
   const gardes = [];
@@ -1469,7 +1469,7 @@ export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = 
  * n'a pas (une spécialité créée ou renommée sur le site) — sans quoi tout le lot passait « conflit » et ses créations disparaissaient. Rend l'adaptateur
  * de edition-journal.mjs#rejouer : la modification lue sans `libelle` (le journal stocké ne change pas : un autre rejeu, celui de la mise à jour sur
  * data/rows, en a besoin), et le mot-clé manquant retrouvé par son écriture ou créé, comme tools/db/maverick.py#mot_cle (id noté, -2… s'il a déjà
- * servi) ; ses ids s'ajoutent à `crees` (ils ne sont pas notés au journal : refaits à chaque rejeu tant que le lot attend).
+ * servi) ; ses ids s'ajoutent à `crees` (un Set : ils ne sont pas notés au journal, refaits à chaque rejeu tant que le lot attend).
  */
 function ancienneEcritureDesMotsCles(db, crees) {
   return (m) => {
@@ -1486,10 +1486,14 @@ function ancienneEcritureDesMotsCles(db, crees) {
       else {
         const texte = libelle ?? apres.tag_id;
         let id = apres.tag_id;
-        for (let n = 2; lireLigne(db, 'mot_cle', { id }) || idDejaEmploye(db, ['mot_cle'], id); n += 1) id = `${apres.tag_id}-${n}`;
+        // déjà employé : par l'historique seulement — le journal en attente ne cite cet id que parce que ce mot-clé y est créé ici (un renommage, une
+        // suppression notés depuis sur le site de dev visent cette création)
+        const employe = (x) => tableExiste(db, 'historique_modification')
+          && Boolean(db.prepare("SELECT 1 FROM historique_modification WHERE table_nom = 'mot_cle' AND json_extract(cle, '$.id') = ?").get(x));
+        for (let n = 2; lireLigne(db, 'mot_cle', { id }) || employe(id); n += 1) id = `${apres.tag_id}-${n}`;
         db.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle) VALUES (?, ?, ?)').run(id, texte, normalize(texte));
         apres.tag_id = id;
-        crees.push(id);
+        crees.add(id);
       }
     }
     return { ...m, avant: avant && JSON.stringify(avant), apres: apres && JSON.stringify(apres) };

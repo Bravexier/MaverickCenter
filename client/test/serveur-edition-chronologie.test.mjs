@@ -401,6 +401,96 @@ test('rejeu : des renommages qui réemploient un nom libéré (Guerre → Guerre
   base.close();
 });
 
+/** Une base vivante neuve qui reçoit le journal de `source` TEL QU'IL EST (états compris), comme base-vivante.mjs#transferer à une livraison. */
+function rebatir(source) {
+  const neuve = vivante();
+  for (const l of source.prepare('SELECT * FROM modification_lot').all()) {
+    neuve.prepare('INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES (?, ?, ?, ?, ?)').run(l.id, l.fait_le, l.auteur_id, l.page_id, l.resume);
+  }
+  for (const m of source.prepare('SELECT * FROM modification').all()) {
+    neuve.prepare('INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat, detail, apercu) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(m.lot_id, m.rang, m.table_nom, m.cle, m.operation, m.avant, m.apres, m.etat, m.detail, m.apercu);
+  }
+  neuve.exec('PRAGMA foreign_keys = OFF');
+  neuve.exec('BEGIN');
+  const bilan = rejouerLeJournal(neuve, {});
+  neuve.exec('COMMIT');
+  neuve.exec('PRAGMA foreign_keys = ON');
+  return { base: neuve, bilan, conflits: neuve.prepare("SELECT table_nom, cle, detail FROM modification WHERE etat = 'conflit'").all().map((c) => ({ ...c })) };
+}
+const serviceDe = (base) => (operations) => {
+  const r = traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' }, corps: JSON.stringify({ page: 'chronologie/', operations }) }, { base: () => base, etat: () => ({}), edition: true });
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  return r.corps;
+};
+
+test('rejeu : une ligne créée puis supprimée (métier) citée entre-temps (lien d’une description) — sans conflit à la 1re livraison NI à la 2e', () => {
+  const base = vivante();
+  const lot = serviceDe(base);
+  let nom = 'Métier fantôme';
+  for (let i = 2; base.prepare('SELECT 1 FROM metier WHERE nom = ?').get(nom); i += 1) nom = `Métier fantôme ${i}`;
+  const metier = lot([{ op: 'creer', entite: 'metier', valeurs: { nom } }]).crees[0].id;
+  const page = base.prepare('SELECT id FROM page WHERE id = ?').get(metier)?.id ?? base.prepare("SELECT id FROM page WHERE type = 'metiers' AND titre = ?").get(nom).id;
+  const evenement = lot([{ op: 'creer', entite: 'evenement', valeurs: { epoque: 'inconnue', titre: titreLibre('Lié au métier'), description: 'Texte.', lien: page } }]).crees[0].id;
+  lot([{ op: 'supprimer', entite: 'metier', cle: { id: metier } }]);
+  assert.equal(base.prepare('SELECT page_id FROM evenement_extrait WHERE evenement_id = ?').get(evenement).page_id, null, 'la description a perdu son lien');
+  const premiere = rebatir(base);
+  assert.deepEqual(premiere.conflits, [], '1re livraison');
+  const seconde = rebatir(premiere.base);
+  assert.deepEqual(seconde.conflits, [], '2e livraison : les états « intégrés » de la 1re comptent');
+  assert.ok(seconde.base.prepare('SELECT 1 FROM evenement WHERE id = ?').get(evenement));
+  for (const b of [base, premiere.base, seconde.base]) b.close();
+});
+
+test('rejeu : une ligne créée puis supprimée, que cite une ligne existante, dont la suppression part en conflit — insérée pour de bon, aucune référence rompue', () => {
+  const base = vivante();
+  const lot = serviceDe(base);
+  // N : un mot-clé neuf ; S : un mot-clé existant posé sur des pages, fusionné dans N (ses lignes page_tag, existantes, passent à N)
+  let libre = 'Essai fantôme';
+  for (let i = 2; base.prepare('SELECT 1 FROM mot_cle WHERE libelle_cle = ?').get(normalize(libre)); i += 1) libre = `Essai fantôme ${i}`;
+  const n = lot([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: libre } }]).crees[0].id;
+  const proteges = [...MOTS_CLES_PROTEGES.keys()];
+  const source = base.prepare(`SELECT m.id FROM mot_cle m WHERE m.libelle_cle NOT IN (${proteges.map(() => '?').join(', ')})
+    AND (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) BETWEEN 1 AND 3 ORDER BY m.id LIMIT 1`).get(...proteges).id;
+  const lignes = base.prepare('SELECT page_id, ordre FROM page_tag WHERE tag_id = ?').all(source).map((l) => ({ ...l }));
+  lot([{ op: 'fusionner_mots_cles', mot_cle: source, dans: n }]);
+  // puis N est supprimé (ses lignes page_tag avec lui), dans un lot qui ne passera pas au rejeu
+  lot([{ op: 'supprimer', entite: 'mot_cle', cle: { id: n } }]);
+  const dernier = base.prepare("SELECT lot_id, max(rang) AS rang FROM modification WHERE table_nom = 'mot_cle' AND operation = 'supprimer' AND json_extract(cle, '$.id') = ?").get(n);
+  base.prepare("INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat) VALUES (?, ?, 'evenement', ?, 'modifier', ?, ?, 'en_attente')")
+    .run(dernier.lot_id, dernier.rang + 1, JSON.stringify({ id: 'aucun-evenement-de-ce-nom' }), JSON.stringify({ titre: 'x' }), JSON.stringify({ titre: 'y' }));
+  const { base: neuve, conflits } = rebatir(base);
+  assert.ok(conflits.length > 0 && conflits.every((c) => c.detail.includes(dernier.lot_id)), JSON.stringify(conflits));
+  assert.ok(neuve.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(n), 'N, dont la suppression a échoué, est là');
+  for (const l of lignes) assert.equal(neuve.prepare('SELECT tag_id FROM page_tag WHERE page_id = ? AND ordre = ?').get(l.page_id, l.ordre)?.tag_id, n, `${l.page_id} porte N`);
+  assert.deepEqual(neuve.prepare('PRAGMA foreign_key_check').all(), []);
+  neuve.close();
+  base.close();
+});
+
+test('lot d’avant la migration 0042 : le mot-clé que le rejeu crée garde son id, même renommé ensuite sur le site (pas de « -2 »)', () => {
+  const base = vivante();
+  const page = base.prepare("SELECT id FROM page WHERE type = 'lore' AND statut <> 'example' ORDER BY id LIMIT 1 OFFSET 3").get().id;
+  const ordre = base.prepare('SELECT max(ordre) AS m FROM page_tag WHERE page_id = ?').get(page).m + 1;
+  let libelle = 'Voie oubliée';
+  for (let i = 2; base.prepare('SELECT 1 FROM mot_cle WHERE libelle_cle = ?').get(normalize(libelle)); i += 1) libelle = `Voie oubliée ${i}`;
+  const id = normalize(libelle);
+  base.prepare("INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES ('2026-10-01T09:00:00.000Z-v', '2026-10-01T09:00:00Z', NULL, 'x', 'avant 0042')").run();
+  base.prepare("INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat) VALUES ('2026-10-01T09:00:00.000Z-v', 1, 'page_tag', ?, 'inserer', NULL, ?, 'en_attente')")
+    .run(JSON.stringify({ page_id: page, ordre }), JSON.stringify({ page_id: page, ordre, tag_id: id, libelle }));
+  // 1re reconstruction : le mot-clé est créé par le rejeu ; puis renommé sur le site
+  const premiere = rebatir(base);
+  assert.deepEqual(premiere.conflits, []);
+  assert.ok(premiere.base.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(id));
+  serviceDe(premiere.base)([{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { libelle: `${libelle} (renommée)` }, avant: { libelle } }]);
+  // 2e reconstruction : même id, le renommage passe
+  const seconde = rebatir(premiere.base);
+  assert.deepEqual(seconde.conflits, []);
+  assert.equal(seconde.base.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(id)?.libelle, `${libelle} (renommée)`);
+  assert.equal(seconde.base.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(`${id}-2`), undefined);
+  for (const b of [base, premiere.base, seconde.base]) b.close();
+});
+
 test('lots notés avant la migration 0042 (page_tag avec `libelle`, mot-clé neuf) : rejoués sans conflit, le mot-clé retrouvé ou créé ; un lot en conflit ne le laisse pas', () => {
   const base = vivante();
   const page = base.prepare("SELECT id FROM page WHERE type = 'lore' AND statut <> 'example' ORDER BY id LIMIT 1").get().id;
