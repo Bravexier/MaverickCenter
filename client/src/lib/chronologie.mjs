@@ -2,8 +2,9 @@
 // chronologie en une immense barre verticale en dégradé, la date à gauche de la barre et le titre à droite ; un clic ouvre la page de l'événement à
 // côté (75 % de la largeur), et deux chevrons, tout à droite, passent au précédent ou au suivant. Les événements sont les lignes de `evenement`
 // (data/schema.sql, section 5 bis), dans l'ordre de `rang`, chacun à /chronologie/<id>/ ; /chronologie/ montre la frise seule et son mode d'emploi.
-// Module pur, sans dépendance (ni node:, ni Astro) : importé par les pages, le chargeur (chronologie-db.mjs), l'outil du registre
-// (tools/chronologie/chronologie.mjs) et les tests.
+// Module pur, sans dépendance (ni node:, ni Astro ; seulement lib/text.mjs, pur) : importé par les pages, le chargeur (chronologie-db.mjs), l'outil
+// du registre (tools/chronologie/chronologie.mjs), le service, l'éditeur et les tests.
+import { normalize } from './text.mjs';
 
 /**
  * Les époques de la frise, dans l'ordre. « Au début » reprend le nom de la partie du Codex qui ouvre le document (« Au début … » : Origine du monde,
@@ -26,6 +27,38 @@ export const PORTEES = { majeur: 'Impact majeur', mineur: 'Impact mineur' };
  */
 export const SANS_CATEGORIE = 'sans-categorie';
 export const LIBELLE_SANS_CATEGORIE = 'Sans catégorie (à trier)';
+
+/**
+ * Le lot de la gestion des catégories (bouton « Catégories » du mode modification) d'après ses lignes : [{ id (null : à créer), libelle (actuel ; null :
+ * à créer), nom (saisi), supprimee }]. Dans l'ordre que le service accepte : les suppressions (leur nom se libère), puis chaque renommage quand le nom
+ * qu'il prend est libre (« A » devient « B » après que « B » est devenu autre chose), puis les créations. Lève une erreur (message à afficher) pour un
+ * nom vide, deux catégories qui s'écriraient de la même façon, ou des noms échangés en boucle (à faire en deux fois, par un nom provisoire).
+ */
+export function operationsDesCategories(lignes) {
+  const operations = [];
+  const restantes = lignes.filter((l) => !l.supprimee);
+  if (restantes.some((l) => !normalize(l.nom))) throw new Error('Un nom de catégorie contient au moins une lettre ou un chiffre.');
+  const vus = new Map();
+  for (const l of restantes) {
+    const cle = normalize(l.nom);
+    if (cle === SANS_CATEGORIE) throw new Error(`« ${l.nom.trim()} » : c’est le choix du filtre pour les événements qui n’ont aucune catégorie.`);
+    if (vus.has(cle)) throw new Error(`« ${l.nom.trim()} » et « ${vus.get(cle)} » s’écrivent de la même façon.`);
+    vus.set(cle, l.nom.trim());
+  }
+  for (const l of lignes) if (l.id && l.supprimee) operations.push({ op: 'supprimer', entite: 'categorie_chronologie', cle: { id: l.id } });
+  const tenus = new Map(restantes.filter((l) => l.id).map((l) => [normalize(l.libelle), l.id]));
+  let renommages = restantes.filter((l) => l.id && l.nom.trim() !== l.libelle);
+  while (renommages.length) {
+    const pret = renommages.find((l) => [undefined, l.id].includes(tenus.get(normalize(l.nom))));
+    if (!pret) throw new Error(`${renommages.map((l) => `« ${l.libelle} »`).join(' et ')} échangent leurs noms : enregistrez d’abord l’une sous un nom provisoire.`);
+    tenus.delete(normalize(pret.libelle));
+    tenus.set(normalize(pret.nom), pret.id);
+    operations.push({ op: 'modifier', table: 'categorie_chronologie', cle: { id: pret.id }, valeurs: { libelle: pret.nom.trim() }, avant: { libelle: pret.libelle } });
+    renommages = renommages.filter((l) => l !== pret);
+  }
+  for (const l of restantes) if (!l.id) operations.push({ op: 'creer', entite: 'categorie_chronologie', valeurs: { libelle: l.nom.trim() } });
+  return operations;
+}
 
 const rangDEpoque = (id) => EPOQUES.findIndex((e) => e.id === id);
 

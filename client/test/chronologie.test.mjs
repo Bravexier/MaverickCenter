@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   adresseDEvenement, contraste, couleursDesEvenements, dateCourte, dateDansLeTexte, erreurDeDate, extraitsParPage, libelleDeDate, marquerLaDate, ordonner,
-  surlignerLaDate, voisins,
+  operationsDesCategories, surlignerLaDate, voisins,
 } from '../src/lib/chronologie.mjs';
 import { chargerChronologie } from '../src/lib/chronologie-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
@@ -268,4 +268,21 @@ test('Au début, Date inconnue, Aujourd’hui : l’ouverture et la fin de la fr
   assert.equal(evenementsDImport[0].extraits[0].page_id, 'lore/origine-du-monde');
   assert.equal(evenementsDImport.at(-1).extraits[0].page_id, 'lore/situation-actuelle');
   assert.ok(evenementsDImport.filter((e) => e.epoque === 'inconnue').every((e) => e.extraits[0].page_id === IMPACTS), 'Date inconnue : les « ??? » de la liste des Impacts');
+});
+
+test('gestion des catégories : suppressions, puis chaque renommage quand son nom est libre, puis créations ; noms vides, doublons et échanges refusés', () => {
+  const ligne = (id, libelle, nom, supprimee = false) => ({ id, libelle, nom, supprimee });
+  const ops = (lignes) => operationsDesCategories(lignes).map((o) => (o.op === 'creer' ? `+${o.valeurs.libelle}` : o.op === 'supprimer' ? `-${o.cle.id}` : `${o.cle.id}→${o.valeurs.libelle}`));
+  // rien à faire
+  assert.deepEqual(ops([ligne('a', 'A', 'A')]), []);
+  // « B » prend le nom « C », puis « A » prend celui de « B » ; « D » supprimée, son nom repris par une création
+  assert.deepEqual(ops([ligne('a', 'A', 'B'), ligne('b', 'B', 'C'), ligne('d', 'D', 'D', true), ligne(null, null, ' D ')]), ['-d', 'b→C', 'a→B', '+D']);
+  // la casse seule change : son propre nom
+  assert.deepEqual(ops([ligne('a', 'Guerre', 'GUERRE')]), ['a→GUERRE']);
+  assert.throws(() => operationsDesCategories([ligne('a', 'A', 'B'), ligne('b', 'B', 'A')]), /échangent leurs noms/);
+  assert.throws(() => operationsDesCategories([ligne('a', 'A', 'X'), ligne(null, null, 'x')]), /de la même façon/);
+  assert.throws(() => operationsDesCategories([ligne(null, null, ' !! ')]), /lettre ou un chiffre/);
+  assert.throws(() => operationsDesCategories([ligne(null, null, 'Sans catégorie')]), /aucune catégorie/);
+  // une catégorie supprimée ne tient plus son nom
+  assert.deepEqual(ops([ligne('a', 'A', 'B'), ligne('b', 'B', 'B', true)]), ['-b', 'a→B']);
 });

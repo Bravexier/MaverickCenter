@@ -12,14 +12,13 @@
 //     déplacés par leur date, titres, catégories, choix du filtre), et l'événement affiché aussi (catégories, descriptions) ; un événement créé depuis la
 //     construction n'a pas de page : il s'affiche sur /chronologie/?evenement=<id> (la page 404 de /chronologie/<id>/ y renvoie : nouvelles.mjs).
 // Le script de la frise (Frise.astro) et celui des chevrons (Chronologie.astro) suivent par l'évènement « chronologie:frise-changee ».
-import { couleursDesEvenements, dateCourte, LIBELLE_SANS_CATEGORIE, libelleDeDate, PORTEES, SANS_CATEGORIE } from '../../lib/chronologie.mjs';
+import { couleursDesEvenements, dateCourte, LIBELLE_SANS_CATEGORIE, libelleDeDate, operationsDesCategories, PORTEES, SANS_CATEGORIE } from '../../lib/chronologie.mjs';
 import { choixDuFiltre } from '../../lib/chronologie-db.mjs';
 import { htmlDesBlocs, htmlDesCategories } from '../../lib/chronologie-rendu.mjs';
 import { attributEd, ENTITES } from '../../lib/edition-modele.mjs';
 import { echapperHtml } from '../../lib/edition-rendu.mjs';
 import { arbreDuDom, versMarkdown } from '../../lib/markdown-edition.mjs';
 import { cheminDePage } from '../../lib/metiers.mjs';
-import { normalize } from '../../lib/text.mjs';
 import { editeurEnPlace, libelleDePage, pageChoisie, pagesDuWiki } from './texte-en-place.mjs';
 
 const etat = {
@@ -346,26 +345,7 @@ async function gererLesCategories(ed) {
     erreur.hidden = true;
     try {
       ajouter();
-      const operations = [];
-      // deux catégories ne s'écrivent pas de la même façon (le service le refuse aussi) : contrôle avant l'envoi, sur ce qui restera
-      const restantes = lignes.filter((l) => !l.supprimee);
-      const vide = restantes.find((l) => !normalize(l.saisie.value));
-      if (vide) throw new Error('Un nom de catégorie contient au moins une lettre ou un chiffre.');
-      const vus = new Map();
-      for (const l of restantes) {
-        const cle = normalize(l.saisie.value);
-        if (vus.has(cle)) throw new Error(`« ${l.saisie.value.trim()} » et « ${vus.get(cle)} » s’écrivent de la même façon.`);
-        vus.set(cle, l.saisie.value.trim());
-      }
-      // dans l'ordre : suppressions (leur nom se libère), renommages, créations
-      for (const l of lignes) if (l.categorie && l.supprimee) operations.push({ op: 'supprimer', entite: 'categorie_chronologie', cle: { id: l.categorie.id } });
-      for (const l of restantes) {
-        const nom = l.saisie.value.trim();
-        if (l.categorie && nom !== l.categorie.libelle) {
-          operations.push({ op: 'modifier', table: 'categorie_chronologie', cle: { id: l.categorie.id }, valeurs: { libelle: nom }, avant: { libelle: l.categorie.libelle } });
-        }
-      }
-      for (const l of restantes) if (!l.categorie) operations.push({ op: 'creer', entite: 'categorie_chronologie', valeurs: { libelle: l.saisie.value.trim() } });
+      const operations = operationsDesCategories(lignes.map((l) => ({ id: l.categorie?.id ?? null, libelle: l.categorie?.libelle ?? null, nom: l.saisie.value, supprimee: l.supprimee })));
       if (!operations.length) {
         dialogue.close();
         return;
