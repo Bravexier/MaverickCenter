@@ -73,7 +73,10 @@ function enLigne(noeuds, o = {}) {
       case 'a':
       case 'span': {
         const cible = attribut(n, 'data-cible');
-        if (cible !== null && classes(n).includes('wikilink')) {
+        if (n.nom === 'span' && classes(n).includes('piece') && attribut(n, 'data-monnaie')) {
+          // une monnaie en icône (lib/markdown-monnaies.mjs) : son abréviation telle qu'écrite dans le Markdown
+          sortie += attribut(n, 'data-monnaie');
+        } else if (cible !== null && classes(n).includes('wikilink')) {
           const libelle = texteBrut(n).replace(/\s+/g, ' ').trim();
           sortie += libelle === cible ? `[[${cible}]]` : `[[${cible}|${libelle}]]`;
         } else if (n.nom === 'a' && attribut(n, 'href')) {
@@ -314,6 +317,14 @@ function attributsSurs(n, nom) {
     // le `title` d'un lien est dans `data-infobulle` sur la page (components/Infobulles.astro) : il redevient `title`
     const titre = attribut(n, 'title') ?? attribut(n, 'data-infobulle');
     if (titre !== null) garder('title', titre);
+    // une monnaie en icône (lib/monnaies.mjs) : sa classe, son nom et son abréviation, rien d'autre
+    const piece = classes(n).find((c) => /^piece--(rf|ro|pp)$/.test(c));
+    if (nom === 'span' && piece && /^(R[OoFf]|PP)$/.test(attribut(n, 'data-monnaie') ?? '')) {
+      garder('class', `piece ${piece}`);
+      garder('role', 'img');
+      if (attribut(n, 'aria-label')) garder('aria-label', attribut(n, 'aria-label'));
+      garder('data-monnaie', attribut(n, 'data-monnaie'));
+    }
   }
   if (nom === 'a' && ADRESSE_SURE.test(attribut(n, 'href') ?? '')) garder('href', attribut(n, 'href'));
   return a.join('');

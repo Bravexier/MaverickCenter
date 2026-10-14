@@ -98,13 +98,15 @@ test('ingrédient : type et affinité refont type, majeur et affinité (créée 
   assert.equal(enregistrer([{ op: 'modifier', table: 'ingredient_alchimie', cle: catalyseur, valeurs: { type_brut: 'Fruit (majeur)' } }]).statut, 400, 'seul un amplificateur est majeur');
 });
 
-test('monnaie : valeur modifiée, convertisseur et listes de l’onglet refaits ; l’unité vaut 1 et ne se supprime pas', () => {
-  ok(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id: 'pp' }, valeurs: { valeur_rf: 200000 } }]));
-  assert.equal(ligne("SELECT convertisseur_brut FROM monnaie WHERE id = 'pp'").convertisseur_brut, '1 PP : 200 000 RF');
-  const l = lignesDe(PAGE_DE_L_INVENTAIRE);
-  assert.ok(l.includes('- 1 PP : 2 000 RO') && l.includes('- 1 PP : 200 000 RF'));
-  assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id: 'rf' }, valeurs: { valeur_rf: 2 } }]).statut, 400);
-  assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id: 'ro' }, valeurs: { valeur_rf: 1 } }]).statut, 400);
+test('monnaie (décision R61) : sa valeur ne se modifie pas, l’abréviation du RF, du RO et de la PP non plus ; une monnaie créée a sa ligne du CONVERTISSEUR ; l’unité ne se supprime pas', () => {
+  for (const id of ['rf', 'ro', 'pp']) {
+    assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs: { valeur_rf: 7 } }]).statut, 400, `${id} : valeur`);
+    assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs: { abreviation: 'XX' } }]).statut, 400, `${id} : abréviation`);
+  }
+  const pp = ligne("SELECT nom FROM monnaie WHERE id = 'pp'").nom;
+  ok(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id: 'pp' }, valeurs: { nom: `${pp} taillée` } }]));
+  assert.ok(lignesDe(PAGE_DE_L_INVENTAIRE).includes(`- ${pp} taillée : PP`), 'la liste MONNAIE suit le nom');
+  ok(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id: 'pp' }, valeurs: { nom: pp } }]));
   assert.equal(enregistrer([{ op: 'supprimer', entite: 'monnaie', cle: { id: 'rf' } }]).statut, 409);
   const r = enregistrer([{ op: 'creer', entite: 'monnaie', valeurs: { nom: `Ricken d’argent ${process.pid}`, abreviation: `RA${process.pid}`, valeur_rf: 10 } }]);
   ok(r);
@@ -135,11 +137,13 @@ test('composant créé à la fin de son tableau (ligne de l’onglet), puis supp
   assert.equal(ligne('SELECT 1 FROM ressource WHERE id = ?', id), undefined);
   assert.ok(!lignesDe(PAGE_DE_L_INVENTAIRE).includes(`| ${nom} | 3 RO | Une corde. |`));
   assert.deepEqual({ ...ligne('SELECT nom, quantite, ressource_id FROM personnage_inventaire WHERE personnage_id = ?', fiche) }, { nom, quantite: 2, ressource_id: null });
+  // décision R60 : une note datée le dit (« objet supprimé de la base, veuillez la mettre à jour »)
+  assert.match(ligne('SELECT notes FROM personnage WHERE id = ?', fiche).notes, new RegExp(`l’objet « ${nom} » \\(inventaire\\) a été supprimé de la base ; il reste dans la fiche sous son nom : veuillez la mettre à jour\\.`));
 });
 
 test('un composant cité par d’autres règles ne se supprime pas (un matériau des armures, une gemme d’accessoire)', () => {
   const fer = ligne("SELECT id FROM ressource WHERE genre = 'materiau' AND nom_cle = 'fer'");
-  const r = enregistrer([{ op: 'supprimer', entite: 'composant', cle: fer }]);
+  const r = enregistrer([{ op: 'supprimer', entite: 'materiau', cle: { ressource_id: fer.id } }]);
   assert.equal(r.statut, 409);
   assert.match(r.corps.erreur ?? JSON.stringify(r.corps), /armure/);
   const grenat = ligne("SELECT id FROM ressource WHERE genre = 'gemme' AND nom_cle = 'grenat'");
@@ -187,7 +191,7 @@ test('ni HTML brut ni lien non sûr dans les pages qui écrivent un composant ; 
 
 test('OBJETS_AU_CATALOGUE : exactement les tables des fiches qui citent une ressource ; à la reconstruction, l’objet d’une ressource disparue reste sous son nom', () => {
   const citent = TABLES_FICHES.filter((t) => db.prepare(`PRAGMA foreign_key_list("${t}")`).all().some((f) => f.table === 'ressource')).sort();
-  assert.deepEqual(citent, [...OBJETS_AU_CATALOGUE].sort());
+  assert.deepEqual(citent, Object.keys(OBJETS_AU_CATALOGUE).sort());
   const base = vivante();
   const r = base.prepare("SELECT id, nom FROM ressource WHERE page_id = ? AND section = 'AUTRES' ORDER BY id LIMIT 1").get(PAGE_DE_L_INVENTAIRE);
   const cree = traiter({ methode: 'POST', chemin: '/api/personnages/', entetes: { 'content-type': 'application/json' },
@@ -197,10 +201,28 @@ test('OBJETS_AU_CATALOGUE : exactement les tables des fiches qui citent une ress
   base.exec('PRAGMA foreign_keys = OFF');
   base.prepare('DELETE FROM ressource WHERE id = ?').run(r.id); // les nouvelles règles ne l'ont plus
   base.prepare('ATTACH DATABASE ? AS ancienne').run(cheminBase({ sansExemples: false }));
-  retirerLesManquants(base);
+  const acc = retirerLesManquants(base);
   base.exec('DETACH DATABASE ancienne');
+  assert.deepEqual(acc.get(fiche)?.retraits, [{ nature: 'objet', id: r.id, nom: r.nom, emplacement: 'inventaire' }], 'la note de la fiche (R60)');
   assert.deepEqual({ ...base.prepare('SELECT nom, ressource_id FROM personnage_inventaire WHERE personnage_id = ?').get(fiche) }, { nom: r.nom, ressource_id: null });
   base.close();
+});
+
+test('matériau (décision R62) : type d’après l’armure (sa fiche d’armure suit), « Autres » refusé pour un matériau d’armure ; créé avec son type, puis supprimé', () => {
+  const titane = ligne("SELECT r.id, r.nom, m.type FROM ressource r JOIN materiau m ON m.ressource_id = r.id WHERE r.nom_cle = 'titane'");
+  const autre = titane.type === 'Lourd' ? 'Intermédiaire' : 'Lourd';
+  ok(enregistrer([{ op: 'modifier', table: 'materiau', cle: { ressource_id: titane.id }, valeurs: { type: autre } }]));
+  assert.equal(ligne('SELECT type FROM materiau_armure WHERE ressource_id = ?', titane.id).type, autre, 'la fiche d’armure suit');
+  assert.ok(lignesDe(PAGE_DES_ARMURES).some((l) => l.startsWith(`| ${titane.nom} |`) && l.includes(`| ${autre} |`)), 'la fiche des matières de la page des armures suit');
+  assert.equal(enregistrer([{ op: 'modifier', table: 'materiau', cle: { ressource_id: titane.id }, valeurs: { type: 'Autres' } }]).statut, 400);
+  ok(enregistrer([{ op: 'modifier', table: 'materiau', cle: { ressource_id: titane.id }, valeurs: { type: titane.type } }]));
+  const nom = nomLibre('Adamantium');
+  const r = enregistrer([{ op: 'creer', entite: 'materiau', valeurs: { nom, type: 'Autres', prix_brut: '500 RO', description: 'Essai.' } }]);
+  ok(r);
+  const id = r.corps.crees[0].id;
+  assert.deepEqual({ ...ligne('SELECT r.prix_rf, m.type FROM ressource r JOIN materiau m ON m.ressource_id = r.id WHERE r.id = ?', id) }, { prix_rf: 50000, type: 'Autres' });
+  ok(enregistrer([{ op: 'supprimer', entite: 'materiau', cle: { ressource_id: id } }]));
+  assert.equal(ligne('SELECT 1 FROM materiau WHERE ressource_id = ?', id), undefined);
 });
 
 test('prixEnRf : l’écriture des prix des composants', () => {
@@ -223,7 +245,7 @@ test('rejeu du journal (livraison) : les mêmes lignes et les mêmes corps de pa
   for (const id of [PAGE_DE_L_INVENTAIRE, PAGE_DES_ARMURES, PAGE_DES_BOUCLIERS, PAGE_DES_BATONS, PAGE_DES_ACCESSOIRES, PAGE_DES_INGREDIENTS, 'ressources/armes']) {
     assert.equal(corps(id, neuve), corps(id), id);
   }
-  for (const t of ['ressource', 'gemme', 'bois', 'ingredient_alchimie', 'affinite', 'monnaie', 'page_entite']) {
+  for (const t of ['ressource', 'materiau', 'materiau_arme', 'materiau_armure', 'gemme', 'bois', 'ingredient_alchimie', 'affinite', 'monnaie', 'page_entite']) {
     assert.deepEqual(neuve.prepare(`SELECT * FROM ${t} ORDER BY 1, 2`).all(), db.prepare(`SELECT * FROM ${t} ORDER BY 1, 2`).all(), t);
   }
   neuve.close();

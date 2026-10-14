@@ -2,6 +2,7 @@
 import accessoiresCss from '../../styles/accessoires/accessoires.css?raw';
 import { bulleDeGemme, cleDeRessource, consignesDesEtapes, type chargerAccessoires } from '../../lib/accessoires-db.mjs';
 import { cleDEffet, facesDuDe, QUALITES_DE_GEMME, styleDeNiveau } from '../../lib/accessoires-generateur.mjs';
+import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
 
 // Page /ressources/accessoires/ (demande du propriétaire, 2026-10-14) : « Pas de tableau Markdown. Au lieu de ça, un générateur d'accessoire. La page se
 // présente comme celle des armes : un bloc d'explication, plusieurs tableaux et sur le côté un encart pour décrire l'accessoire ainsi créé en fonction de
@@ -43,6 +44,8 @@ const DE_SVG =
   document.documentElement.classList.add('js');
 </script>
 <div class="acc" data-accessoires>
+  {/* les icônes des monnaies (lib/monnaies.mjs), que le script de la page reprend pour les prix qu'il écrit dans l'encart (aucun module partagé avec lui) */}
+  {Object.keys(MONNAIES_DU_JEU).map((abr) => <template data-acc-piece={abr} set:html={htmlDePiece(abr)}></template>)}
   <h1>{accessoires.page?.titre ?? 'Accessoires'} <span class="badge">Ressource</span></h1>
   {resume && <p class="acc__chapo">{resume}</p>}
   <details class="acc-regles" open>
@@ -139,7 +142,7 @@ const DE_SVG =
                           </td>
                           {l.effets.map((e) => (
                             <td class="acc-case" style={styleDeNiveau(e.niveau)} data-choix="effet" data-valeur={cleDEffet(e.id)} data-propriete="competence" data-min={e.bonus_min} data-max={e.bonus_max} data-niveau={e.niveau} data-niveau-brut={e.niveau_brut} data-libelle={l.libelle} data-sous={l.caracteristique} data-prix={e.prix_brut}>
-                              <button type="button" class="acc-choisir" aria-pressed="false" aria-label={`${l.libelle}, niveau ${e.niveau} (${e.bonus_min} % à ${e.bonus_max} %) : ${e.prix_brut ?? 'prix absent'}`}>{e.prix_brut ?? '—'}</button>
+                              <button type="button" class="acc-choisir" aria-pressed="false" aria-label={`${l.libelle}, niveau ${e.niveau} (${e.bonus_min} % à ${e.bonus_max} %) : ${e.prix_brut ?? 'prix absent'}`} set:html={e.prix_brut ? htmlAvecMonnaies(e.prix_brut) : '—'} />
                             </td>
                           ))}
                         </tr>
@@ -175,7 +178,7 @@ const DE_SVG =
                                 <>{i > 0 && <span class="acc-gemmes__plus">+</span>}{rang.map((g, j) => (<>{j > 0 && <span class="acc-gemmes__ou">ou</span>}<span class="acc-gemme" style={styleDeGemme(g)} data-bulle={bulleDeGemme(g.id)} data-gemme={cleDeRessource(g.id)}>{g.nom}</span></>))}</>
                               )) : (e.gemmes_brut ?? '')}
                             </td>
-                            <td class="acc-effet__prix">{e.prix_brut ?? ''}</td>
+                            <td class="acc-effet__prix" set:html={htmlAvecMonnaies(e.prix_brut ?? '')} />
                           </tr>
                         );
                       })}
@@ -204,7 +207,7 @@ const DE_SVG =
               <tr class="acc-ligne acc-monture" style={styleDeNiveau(m.niveau)} data-choix="monture" data-valeur={m.niveau} data-min={m.niveau} data-max={m.niveau} data-niveau={m.niveau} data-libelle={m.matiere} data-prix={m.prix_brut} data-effet={m.effet_brut}>
                 <td class="acc-jet">Niveau {m.niveau}</td>
                 <th scope="row"><button type="button" class="acc-choisir" aria-pressed="false">{m.matiere}</button></th>
-                <td>{m.prix_brut}</td>
+                <td set:html={htmlAvecMonnaies(m.prix_brut)} />
                 <td>{m.effet_brut}</td>
               </tr>
             ))}

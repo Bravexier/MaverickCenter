@@ -147,25 +147,45 @@ export function retirerDesFiches(db, { metiers = [], specialites = [], capacites
 
 /**
  * Les tables des fiches dont un objet peut citer une ressource du catalogue (« INVENTAIRE | SAC », la ceinture : `ressource_id` quand l'objet est au
- * catalogue, sinon le nom seul). Un composant supprimé des règles (page « Composants ») n'y est pas retiré : l'objet reste dans la fiche, sous son nom,
- * seul son lien au catalogue part (`ressource_id` = NULL) ; rien n'est perdu, aucune note n'est ajoutée.
+ * catalogue, sinon le nom seul), et le mot qui situe l'objet dans la note. Un composant supprimé des règles (page « Composants ») n'y est pas retiré :
+ * l'objet reste dans la fiche, sous son nom, seul son lien au catalogue part (`ressource_id` = NULL), et une ligne datée le dit dans les notes
+ * (décision R60 : « objet supprimé de la base, veuillez la mettre à jour » ; lib/fiche-format.mjs#ligneDeRetrait).
  */
-export const OBJETS_AU_CATALOGUE = Object.freeze(['personnage_inventaire', 'personnage_ceinture']);
+export const OBJETS_AU_CATALOGUE = Object.freeze({ personnage_inventaire: 'inventaire', personnage_ceinture: 'ceinture' });
 
-/** Site de dev : détache des fiches les ressources données, qui vont être supprimées des règles (à appeler AVANT leur suppression). */
-export function detacherDesFiches(db, ressources = []) {
-  for (const t of OBJETS_AU_CATALOGUE) {
-    if (!aLaTable(db, t)) continue;
-    for (const id of ressources) db.prepare(`UPDATE main."${t}" SET ressource_id = NULL WHERE ressource_id = ?`).run(id);
+/** Détache les objets trouvés par `sql` (personnage, rang, nom, id de la ressource) et range leur descripteur dans `acc`, une fois par fiche, objet et emplacement. */
+function detacher(db, table, lignes, acc) {
+  const emplacement = OBJETS_AU_CATALOGUE[table];
+  for (const l of lignes) {
+    db.prepare(`UPDATE main."${table}" SET ressource_id = NULL WHERE personnage_id = ? AND rang = ?`).run(l.personnage, l.rang);
+    let e = acc.get(l.personnage);
+    if (!e) acc.set(l.personnage, (e = { personnage: l.personnage, nom: l.fiche, nature: l.nature, retraits: [] }));
+    if (!e.retraits.some((d) => d.nature === 'objet' && d.id === l.id && d.emplacement === emplacement)) {
+      e.retraits.push({ nature: 'objet', id: l.id, nom: l.objet, emplacement });
+    }
   }
+  return acc;
 }
 
-/** Reconstruction de la base vivante : détache des fiches les ressources absentes des nouvelles règles (voir OBJETS_AU_CATALOGUE). */
-function detacherLesManquantes(db) {
-  for (const t of OBJETS_AU_CATALOGUE) {
-    if (!aLaTable(db, t)) continue;
-    db.exec(`UPDATE main."${t}" SET ressource_id = NULL
-      WHERE ressource_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM main.ressource r WHERE r.id = main."${t}".ressource_id)`);
+/** Site de dev : détache des fiches les ressources données, qui vont être supprimées des règles (à appeler AVANT leur suppression), avec une note (R60). */
+export function detacherDesFiches(db, ressources = [], acc = nouveauxRetraitsDeFiches()) {
+  for (const table of Object.keys(OBJETS_AU_CATALOGUE)) {
+    if (!aLaTable(db, table)) continue;
+    for (const id of ressources) {
+      detacher(db, table, db.prepare(`SELECT ${champsDeFiche}, x.rang, x.nom AS objet, x.ressource_id AS id FROM main."${table}" x
+        JOIN main.personnage p ON p.id = x.personnage_id WHERE x.ressource_id = ? ORDER BY p.id, x.rang`).all(id), acc);
+    }
+  }
+  return acc;
+}
+
+/** Reconstruction de la base vivante : détache des fiches les ressources absentes des nouvelles règles, avec une note (R60, OBJETS_AU_CATALOGUE). */
+function detacherLesManquantes(db, acc) {
+  for (const table of Object.keys(OBJETS_AU_CATALOGUE)) {
+    if (!aLaTable(db, table)) continue;
+    detacher(db, table, db.prepare(`SELECT ${champsDeFiche}, x.rang, x.nom AS objet, x.ressource_id AS id FROM main."${table}" x
+      JOIN main.personnage p ON p.id = x.personnage_id
+      WHERE x.ressource_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM main.ressource r WHERE r.id = x.ressource_id) ORDER BY p.id, x.rang`).all(), acc);
   }
 }
 
@@ -242,8 +262,8 @@ export function retirerLesManquants(db, acc = nouveauxRetraitsDeFiches()) {
     ORDER BY p.id, pa.rang`).all()) {
     aRetirer.push({ ...a, vise: 'arme', cle: [a.personnage, a.rang], descripteur: { nature: 'arme', id: a.id, nom: a.nom ?? null, famille: a.famille ?? null, rang: a.rang } });
   }
-  // composants : l'objet reste sous son nom, sans lien au catalogue (OBJETS_AU_CATALOGUE)
-  detacherLesManquantes(db);
+  // composants : l'objet reste sous son nom, sans lien au catalogue, avec une note (R60, OBJETS_AU_CATALOGUE)
+  detacherLesManquantes(db, acc);
   return appliquer(db, aRetirer, acc);
 }
 

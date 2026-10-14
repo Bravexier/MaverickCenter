@@ -64,7 +64,6 @@ body.ed-mode .comp-table tbody > tr.est-filtree { display: table-row; }
 .comp-nom { font-weight: 700; min-width: 9rem; }
 .comp-description { min-width: 16rem; color: color-mix(in srgb, var(--text) 85%, var(--muted)); }
 .comp-prix-case, .comp-abr { white-space: nowrap; }
-.comp-prix:is([title], [data-infobulle]) { text-decoration: underline dotted color-mix(in srgb, var(--muted) 60%, transparent); cursor: help; }
 .comp-quart { border-left: 1px solid var(--cmp-line); }
 /* matériau : sa couleur (celle de l'onglet « Armes », lib/materiaux-couleurs.mjs) en pastille devant son nom ; ses usages */
 .comp-teinte { display: inline-block; width: 0.8rem; height: 0.8rem; margin-right: 0.45rem; vertical-align: -0.05rem; border-radius: 3px;
@@ -81,3 +80,6 @@ body.ed-mode .comp-table tbody > tr.est-filtree { display: table-row; }
 .comp-table tr.ed-nouveau > :first-child { box-shadow: inset 4px 0 0 var(--cmp); }
 .comp-supprimer { margin-left: 0.4rem; }
 .comp-magie { border: 1px solid color-mix(in srgb, var(--text) 22%, transparent); }
+/* matériau : ses effets sur une arme, une ligne par effet (lib/armes-rendu.mjs, rendu « materiau-effet ») */
+.comp-effet .materiau-effet > span { display: block; }
+.comp-type { white-space: nowrap; }

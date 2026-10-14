@@ -107,19 +107,21 @@ test('armes (migration 0034) : une arme sous sa famille, un matériau, une amél
   const types = [{ id: 'epee', nom: 'Épée' }, { id: 'dague', nom: 'Dague' }];
   const arme = (valeurs = {}) => ({ id: 'ressources/armes#arme:epees:katana', famille_id: 'epees', ordre: 11, nom: 'Katana', mains: null, competence_brut: 'Arme Légère',
     type_id: 'epee', cout_brut: '15 Ro', effet: 'Dégâts taille, +3 dégâts', description: 'Une épée.', depart_possible: 0, ...valeurs });
-  const ressource = { id: 'ressources/armures#materiau:titane', nom: 'Titane' };
-  const materiau = (prix) => ({ ressource_id: ressource.id, ordre: 13, prix_brut: prix, effet_brut: "Dégâts +9 pour l'arme" });
+  const ressource = { id: 'ressources/armures#materiau:titane', genre: 'materiau', nom: 'Titane' };
+  const materiau = (effet) => ({ ressource_id: ressource.id, ordre: 13, prix_brut: '200 RO', effet_brut: effet });
   const amelioration = (cible, cout) => ({ id: `x#amelioration:${cible}:5`, cible, niveau: 5, cout_brut: cout, effet_brut: '+10 dégâts' });
   const base = (a, m, am) => ({ tables: { arme: [a], arme_famille: [famille], arme_type: types, ressource: [ressource], materiau_arme: [m], amelioration_equipement: am } });
-  const ref = base(arme(), materiau('200 RO'), [amelioration('arme', '200 RO'), amelioration('armure', '1 RO')]);
-  const dev = base(arme({ depart_possible: 1, mains: 'deux', type_id: 'dague', effet: 'Dégâts taille, +4 dégâts' }), materiau('250 RO'),
+  const ref = base(arme(), materiau("Dégâts +9 pour l'arme"), [amelioration('arme', '200 RO'), amelioration('armure', '1 RO')]);
+  const dev = base(arme({ depart_possible: 1, mains: 'deux', type_id: 'dague', effet: 'Dégâts taille, +4 dégâts' }), materiau("Dégâts +10 pour l'arme"),
     [amelioration('arme', '210 RO'), amelioration('armure', '2 RO')]);
   const lignes = comparerBases(ref, dev).filter((l) => l.domaine === 'armes');
   const champ = (c) => lignes.find((l) => l.champ === c);
   assert.deepEqual([champ('Arme de départ').avant, champ('Arme de départ').apres, champ('Arme de départ').groupe], ['Non', 'Oui', 'ÉPÉES']);
   assert.deepEqual([champ('Mains').nature, champ('Mains').apres], ['ajoute', 'deux mains']);
   assert.deepEqual([champ('Type d’arme').avant, champ('Type d’arme').apres], ['Épée', 'Dague']);
-  assert.equal(lignes.find((l) => l.table_nom === 'materiau_arme').entite, 'Titane');
+  // les effets d'un matériau sur une arme : domaine des composants (décision R62)
+  assert.ok(!lignes.some((l) => l.table_nom === 'materiau_arme'));
+  assert.equal(comparerBases(ref, dev).find((l) => l.table_nom === 'materiau_arme' && l.domaine === 'composants').entite, 'Titane');
   // seule l'amélioration d'arme est listée
   assert.deepEqual(lignes.filter((l) => l.table_nom === 'amelioration_equipement').map((l) => [l.entite, l.apres]), [['Amélioration +5', '210 RO']]);
 });
@@ -135,14 +137,14 @@ test('composants (migration 0040) : monnaie, objet de l’onglet sous son tablea
     gemme: [gemme('x#gemme:rubis', '40 RO')],
   } };
   const dev = { tables: {
-    monnaie: [{ id: 'pp', nom: 'Pierre précieuse', abreviation: 'PP', valeur_rf: 200000 }],
+    monnaie: [{ id: 'pp', nom: 'Pierre précieuse taillée', abreviation: 'PP', valeur_rf: 100000 }],
     ressource: [r('x#materiel:briquet', 'materiel', 'Briquet', { section: 'MATOS AVENTURES', prix_brut: '12 RO' }), r('x#gemme:rubis', 'gemme', 'Rubis'),
       r('x#gemme:quartz', 'gemme', 'Quartz'), r('x#potion:petite', 'potion', 'Petite fiole rouge', { prix_brut: '2 RO' })],
     gemme: [gemme('x#gemme:rubis', '45 RO'), gemme('x#gemme:quartz', '1 RO')],
   } };
   const lignes = comparerBases(ref, dev).filter((l) => l.domaine === 'composants');
   const de = (entite, champ = null) => lignes.find((l) => l.entite === entite && l.champ === champ);
-  assert.deepEqual([de('Pierre précieuse', 'Valeur en RF').avant, de('Pierre précieuse', 'Valeur en RF').apres], ['100000', '200000']);
+  assert.deepEqual([de('Pierre précieuse taillée', 'Nom').avant, de('Pierre précieuse taillée', 'Nom').apres], ['Pierre précieuse', 'Pierre précieuse taillée']);
   assert.equal(de('Briquet', 'Prix (« 2 RO », « 100 RF / 1 RO »)').groupe, 'Matos › MATOS AVENTURES');
   assert.equal(de('Rubis', 'Prix de la gemme commune (« 50 RO »)').apres, '45 RO');
   assert.equal(lignes.filter((l) => l.entite === 'Quartz').length, 1, 'la gemme créée : une ligne (sa ressource), pas une de plus pour ses prix');

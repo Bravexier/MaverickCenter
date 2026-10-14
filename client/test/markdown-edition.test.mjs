@@ -11,13 +11,14 @@ import { createMarkdownProcessor } from '@astrojs/markdown-remark';
 import { fromHtml } from 'hast-util-from-html';
 import { buildIndex, remarkWikilinks, scanContent, splitFrontmatter } from '../src/lib/wikilinks.mjs';
 import { remarkCouleursDeCase } from '../src/lib/markdown-couleurs.mjs';
+import { remarkMonnaies } from '../src/lib/markdown-monnaies.mjs';
 import { COULEURS_DE_CASE, decouperCorps, htmlSur, recomposerCorps, versMarkdown } from '../src/lib/markdown-edition.mjs';
 import { fragmentsAjoutes } from '../src/lib/markdown-sur.mjs';
 import { texteDePageModifiable } from '../src/lib/edition-modele.mjs';
 
 const dossier = fileURLToPath(new URL('../src/content/wiki/', import.meta.url));
 const index = buildIndex(scanContent(dossier));
-const processeur = await createMarkdownProcessor({ syntaxHighlight: false, remarkPlugins: [[remarkWikilinks, { index, base: '/' }], remarkCouleursDeCase] });
+const processeur = await createMarkdownProcessor({ syntaxHighlight: false, remarkPlugins: [[remarkWikilinks, { index, base: '/' }], remarkCouleursDeCase, remarkMonnaies] });
 // status « example » : pas d'avertissement pour un lien cassé (ce test ne contrôle pas les liens)
 const rendre = async (md) => (await processeur.render(md, { frontmatter: { status: 'example' } })).code;
 
@@ -155,4 +156,14 @@ test('mise en forme du navigateur : <strike>, <span style> en gras ou en italiqu
     'a ~~b~~ **c** *d*\n\ne\n');
   assert.equal(versMarkdown(enfants('<p>a<br></p><p><br></p><h2>T<br></h2><table><tr><th><br></th><th>x</th></tr><tr><td><br></td><td>y<br>z</td></tr></table>')),
     'a\n\n## T\n\n|  | x |\n| --- | --- |\n|  | y<br>z |\n');
+});
+
+test('une monnaie en icône (lib/markdown-monnaies.mjs) redevient son abréviation telle qu’écrite ; l’aperçu assaini garde l’icône', async () => {
+  const md = '| Objet | Prix |\n| --- | --- |\n| Corde | 10 Ro / 1 000 RF |';
+  const html = await rendre(md);
+  assert.match(html, /class="piece piece--ro"/);
+  assert.equal((await aller(md)).trim(), md);
+  const sur = htmlSur(enfants(html));
+  assert.match(sur, /<span[^>]* class="piece piece--rf" role="img"[^>]* data-monnaie="RF"><\/span>/);
+  assert.ok(!/<span[^>]*piece[^>]*(onerror|style)=/.test(sur));
 });

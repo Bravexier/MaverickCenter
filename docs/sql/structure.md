@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 40 : 185 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 41 : 186 tables, 2 tables de recherche plein texte (FTS5) et 35 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -18,7 +18,7 @@
 - [7. RACES, ETHNIES, ACCESSIBILITÉS (famille « races »)](#7-races-ethnies-accessibilités-famille--races) : `race`, `race_restriction_carac`, `ethnie`, `ethnie_resistance`, `race_classe`, `race_magie`, `race_onglet`, `race_don`, `race_don_tableau_colonne`, `race_don_tableau_ligne`, `race_don_tableau_cellule`, `race_magie_onglet`, `echelle_relation`, `peuple`, `relation_peuple`
 - [8. BESTIAIRE : invocations et créatures (famille « bestiaire »)](#8-bestiaire--invocations-et-créatures-famille--bestiaire) : `invocation`, `invocation_capacite_commune`, `invocation_resistance`, `invocation_bloc`, `invocation_bloc_magie`, `creature`, `creature_ressource`, `creature_caracteristique`, `creature_bonus_npm`, `creature_attaque`, `creature_attaque_type`, `creature_capacite`, `creature_capacite_sort`, `creature_capacite_resistance`, `creature_effet`
 - [8 bis. BESTIAIRE 2.0 : monstres, butin, échelles de puissance (famille « monstres »)](#8-bis-bestiaire-20--monstres-butin-échelles-de-puissance-famille--monstres) : `monstre_regle`, `monstre_echelle`, `monstre_butin_objet`, `monstre_espece`, `monstre_espece_lieu`, `monstre_espece_bloc`, `monstre_butin`, `monstre`, `monstre_rubrique`, `monstre_caracteristique`, `monstre_attaque`, `monstre_capacite`, `monstre_defense`
-- [9. ÉQUIPEMENT, RESSOURCES, CRAFT, MÉTIERS (familles « equipement », « craft », « docs_typees »)](#9-équipement-ressources-craft-métiers-familles--equipement---craft---docstypees) : `monnaie`, `constante_equipement`, `niveau_alchimie`, `affinite`, `arme_famille`, `arme_type`, `ressource`, `materiau_arme`, `materiau_armure`, `materiau_bouclier`, `gemme`, `bois`, `ingredient_alchimie`, `potion`, `potion_etat`, `kit_alchimie`, `fiole_verre`, `recette`, `recette_produit`, `recette_ingredient`, `baton_magique`, `metier`, `metier_bonus`, `metier_recette_famille`, `metier_objet_depart`, `arme`, `arme_degats`, `arme_prerequis`, `arme_elementaire`, `armure_emplacement`, `armure`, `armure_degats`, `armure_elementaire`, `armure_elementaire_effet`, `bouclier_classe`, `bouclier_poids`, `bouclier`, `amelioration_equipement`, `amelioration_total`, `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet`, `accessoire_effet_gemme`, `accessoire_effet_cible`, `accessoire_monture`, `familier`, `familier_effet`, `batiment`, `machine_guerre`, `maladie`, `maladie_methode`
+- [9. ÉQUIPEMENT, RESSOURCES, CRAFT, MÉTIERS (familles « equipement », « craft », « docs_typees »)](#9-équipement-ressources-craft-métiers-familles--equipement---craft---docstypees) : `monnaie`, `constante_equipement`, `niveau_alchimie`, `affinite`, `arme_famille`, `arme_type`, `ressource`, `materiau_arme`, `materiau_armure`, `materiau_bouclier`, `materiau`, `gemme`, `bois`, `ingredient_alchimie`, `potion`, `potion_etat`, `kit_alchimie`, `fiole_verre`, `recette`, `recette_produit`, `recette_ingredient`, `baton_magique`, `metier`, `metier_bonus`, `metier_recette_famille`, `metier_objet_depart`, `arme`, `arme_degats`, `arme_prerequis`, `arme_elementaire`, `armure_emplacement`, `armure`, `armure_degats`, `armure_elementaire`, `armure_elementaire_effet`, `bouclier_classe`, `bouclier_poids`, `bouclier`, `amelioration_equipement`, `amelioration_total`, `accessoire_emplacement`, `accessoire_propriete`, `accessoire_effet`, `accessoire_effet_gemme`, `accessoire_effet_cible`, `accessoire_monture`, `familier`, `familier_effet`, `batiment`, `machine_guerre`, `maladie`, `maladie_methode`
 - [10. TRANSVERSAL : notes de cellule et écarts entre sources](#10-transversal--notes-de-cellule-et-écarts-entre-sources) : `note_cellule`, `ecart_source`, `correction`
 - [11. TABLES DÉRIVÉES (jamais exportées dans data/rows/, recalculées par `npm run db:build`)](#11-tables-dérivées-jamais-exportées-dans-datarows-recalculées-par-npm-run-dbbuild) : `lien`, `lien_candidat`, `page_fts`, `entite_fts`
 - [12. VUES (toujours à jour : rien à recalculer)](#12-vues-toujours-à-jour--rien-à-recalculer) : `cle_page`, `lien_page`, `lien_a_creer`, `tag`, `v_magie_incompatible`, `v_sort_bonus_au_nm`, `v_race_carac_borne`, `v_race_classe_accessible`, `v_race_magie_accessible`, `v_regard_peuple`, `v_creature_magie`, `v_creature_resistance`, `v_creature_sort`, `v_creature_cout_invocation`, `v_creature_meme_bloc`, `v_arme`, `v_ingredient_possible`, `v_ressource_recette`, `v_metier_recette`, `v_potion`, `v_arme_composee`, `v_armure_piece`, `v_niveau`, `v_competence`, `v_resistance_magie_lectures`, `v_resistance_ecart`, `v_mode_hyper_lectures`, `v_classe_capacite`, `v_capacite_exclusive`, `v_capacite_partagee`
@@ -1871,6 +1871,17 @@ Matériau de bouclier : « Fiches des matières pour boucliers » (20 matières 
 | `am` | INTEGER | non |  |  |
 | `solidite` | INTEGER | oui |  |  |
 | `ordre` | INTEGER | oui |  |  |
+| `origine` | TEXT | oui | → famille.id |  |
+| `source_ref` | TEXT | oui |  |  |
+
+### `materiau`
+
+La fiche d'un matériau sur la page « Composants » (décision R62, migration 0041 : « La table des matériaux de l'onglet Composants devient désormais la seule source de vérité ») : son type, d'après l'armure (« Léger, Intermédiaire, Lourd et autres pour tout ce qui ne rentre pas dans ces catégories » ; inutile pour l'arme). Une ligne par ressource de genre 'materiau' ; le type d'un matériau d'armure est aussi materiau_armure.type, que l'édition suit.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `ressource_id` | TEXT | oui | PK, → ressource.id |  |
+| `type` | TEXT | oui |  |  |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 

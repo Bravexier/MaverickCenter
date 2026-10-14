@@ -320,10 +320,13 @@ fruits. Ainsi que tout ce qui n'est pas directement des consommables mais qui pe
 de page du wiki : elle est rendue depuis les tables (`src/pages/ressources/composants.astro`, `lib/composants-db.mjs`, `components/composants/`,
 `styles/composants/`, lignes : `lib/composants-rendu.mjs`), un tableau repliable par liste :
 
-- **Monnaie** (`monnaie`) : nom, abréviation, valeur en RF ; les conversions vers les plus petites (« 1 PP = 1 000 RO = 100 000 RF ») sont celles qui
-  tombent juste, comme le CONVERTISSEUR de l'onglet (`lib/composants-champs.mjs#conversionsDe`). Le RF est l'unité (il vaut 1 et ne se supprime pas).
-- **Matériaux** (`ressource` de genre `materiau`) : matière (dans la couleur de l'onglet « Armes »), prix, description, et ce qui les utilise (armes,
-  armures, boucliers, montures d'accessoire). Le nom est celui de toutes ces pages.
+- **Monnaie** (`monnaie`) : nom, symbole (son icône, décision R61), valeur en RF ; les conversions vers les plus petites (« 1 PP = 1 000 RO = 100 000 RF »)
+  sont celles qui tombent juste, comme le CONVERTISSEUR de l'onglet (`lib/composants-champs.mjs#conversionsDe`). Le RF est l'unité (il vaut 1 et ne se
+  supprime pas). Les valeurs ne se modifient pas, ni l'abréviation du RF, du RO et de la PP (R61).
+- **Matériaux** (`ressource` de genre `materiau` et table `materiau`) : la **seule source** des matériaux (décision R62) — matière (dans la couleur de
+  l'onglet « Armes »), type d'après l'armure (Léger, Intermédiaire, Lourd, Autres : migration `0041-materiaux-types`), prix, description, effets sur une
+  arme (`materiau_arme`), et ce qui les utilise (armes, armures, boucliers, montures d'accessoire). Les pages des armes et des armures les reprennent en
+  lecture : le nom suit partout, le type la fiche d'armure (`materiau_armure.type`, « Autres » refusé pour un matériau d'armure), le prix `materiau_arme`.
 - **Gemmes** (`gemme`) : magie, gemme, description, prix de la gemme entière (bâton magique) et d'un quart (accessoires), par qualité.
 - **Bois** (`bois`) des bâtons magiques : magie, bois, description, prix.
 - **Ingrédients d'alchimie** (`ingredient_alchimie`, doc « Alchimie » › Liste d'ingrédients) : la **table des fruits** (les ingrédients de type
@@ -339,7 +342,8 @@ description, prix d'une gemme, type et affinité d'un ingrédient, nom, abrévia
 ligne du CONVERTISSEUR, type sans « (majeur) », marque majeur, affinité — créée si elle est nouvelle). Un bouton « + Ajouter » sous chaque tableau (une
 gemme ou un bois pour une magie qui n'en a pas : « une par magie » ; un « (majeur) » seulement pour un amplificateur) ; « Supprimer » sur chaque ligne que
 rien d'autre ne cite — un composant cité par une armure, une recette, un effet d'accessoire… ne se supprime pas (le bouton grisé dit pourquoi). Un objet
-supprimé reste dans l'inventaire ou la ceinture d'une fiche de personnage, sous son nom, sans lien au catalogue (`serveur/fiches-retraits.mjs#OBJETS_AU_CATALOGUE`).
+supprimé reste dans l'inventaire ou la ceinture d'une fiche de personnage, sous son nom, sans lien au catalogue, avec une note datée qui demande de mettre
+la fiche à jour (décision R60, `serveur/fiches-retraits.mjs#OBJETS_AU_CATALOGUE`). Partout, les prix montrent leurs monnaies en icônes (R61, `lib/monnaies.mjs`).
 Le corps Markdown des pages qui écrivent ces composants suit, case par case (`lib/corps-composants.mjs`) : « Équipement inventaire » (lignes des objets,
 MONNAIE et CONVERTISSEUR), « Armures » et « Bouclier » (prix et description d'un matériau ; son nom par `lib/corps-armes.mjs#corpsAvecMateriauRenomme`,
 avec la page des armes), « Accessoires » (monture, gemmes et leurs combinaisons « A + B »), « Bâton magique » (gemmes et bois), « Liste d'ingrédients ».

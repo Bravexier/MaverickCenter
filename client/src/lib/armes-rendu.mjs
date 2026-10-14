@@ -12,6 +12,7 @@ import {
 } from './arme-champs.mjs';
 import { couleurDeCaracteristique } from './caracteristiques-postures.mjs';
 import { attributEd } from './edition-modele.mjs';
+import { htmlAvecMonnaies, htmlDePiece } from './monnaies.mjs';
 import { texteSurCouleur } from './sort-format.mjs';
 
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -100,12 +101,12 @@ export const RENDUS_DES_ARMES = {
   'arme-effets': (valeur) => htmlDesEffets(valeur),
   'arme-origine': (_valeur, ligne) =>
     ligne.provenance ? `<span class="arme-origine" title="${e(`${ligne.provenance_mot} ${ligne.provenance}`)}">${e(capitale(ligne.provenance))}</span>` : VIDE,
-  'arme-cout': (valeur) => `<span class="arme-cout"${attribut('ro', coutEnRo(valeur))}>${valeur ? e(valeur) : '—'}</span>`,
+  'arme-cout': (valeur) => `<span class="arme-cout"${attribut('ro', coutEnRo(valeur))}>${valeur ? htmlAvecMonnaies(valeur) : '—'}</span>`,
   'arme-depart': (valeur) => (Number(valeur) === 1 ? 'Oui' : 'Non'),
   // matériaux : le prix en RO seulement (« Ignore le prix en RF, il n'est plus d'actualité »), l'effet en lignes typées
   'materiau-prix': (valeur) => {
     const ro = prixEnRo(valeur);
-    return `<span class="materiau-prix"${attribut('ro', ro)} title="${e(`Prix écrit : ${valeur ?? ''}`)}">${ro === null ? e(valeur ?? '—') : `${ro} RO`}</span>`;
+    return `<span class="materiau-prix"${attribut('ro', ro)} title="${e(`Prix écrit : ${valeur ?? ''}`)}">${ro === null ? htmlAvecMonnaies(valeur ?? '—') : `${ro} ${htmlDePiece('RO')}`}</span>`;
   },
   'materiau-effet': (valeur) => {
     const m = analyserEffetDeMateriau(valeur);
@@ -118,7 +119,7 @@ export const RENDUS_DES_ARMES = {
   // améliorations : coût et effet tels qu'écrits, leurs valeurs en attributs (coût cumulé et effet du niveau : lib/arme-forge.mjs)
   'amelioration-cout': (valeur) => {
     const c = analyserCoutDAmelioration(valeur);
-    return `<span class="amelioration-cout"${attribut('ro', c.cout_ro ?? 0)}${attribut('materiaux', c.cout_materiaux ?? 0)}>${e(valeur ?? '')}</span>`;
+    return `<span class="amelioration-cout"${attribut('ro', c.cout_ro ?? 0)}${attribut('materiaux', c.cout_materiaux ?? 0)}>${htmlAvecMonnaies(valeur ?? '')}</span>`;
   },
   'amelioration-effet': (valeur) => {
     const a = analyserEffetDAmelioration(valeur);

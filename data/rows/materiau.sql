@@ -1,0 +1,23 @@
+-- data/rows/materiau.sql : export déterministe, une instruction par ligne, triée par (ressource_id). NE PAS ÉDITER À LA MAIN.
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armes#materiau:os', 'Autres', 'equipement', 'Décision R62 du propriétaire (2026-10-14) : « autres » pour ce qui ne rentre pas dans ces catégories');
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armures#materiau:acier', 'Intermédiaire', 'equipement', 'Ressources et Craft › Armures › CM1');
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armures#materiau:argent', 'Lourd', 'equipement', 'Ressources et Craft › Armures › EC1');
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armures#materiau:bois', 'Léger', 'equipement', 'Ressources et Craft › Armures › AW1');
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armures#materiau:bronze', 'Lourd', 'equipement', 'Ressources et Craft › Armures › EQ1');
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armures#materiau:cellulose', 'Léger', 'equipement', 'Ressources et Craft › Armures › BD1');
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armures#materiau:chitine', 'Léger', 'equipement', 'Ressources et Craft › Armures › BR1');
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armures#materiau:corail', 'Léger', 'equipement', 'Ressources et Craft › Armures › BK1');
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armures#materiau:corne-os', 'Intermédiaire', 'equipement', 'Ressources et Craft › Armures › DA1');
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armures#materiau:cuir', 'Léger', 'equipement', 'Ressources et Craft › Armures › AP1');
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armures#materiau:cuivre', 'Intermédiaire', 'equipement', 'Ressources et Craft › Armures › DH1');
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armures#materiau:ecailles', 'Intermédiaire', 'equipement', 'Ressources et Craft › Armures › DO1');
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armures#materiau:fer', 'Intermédiaire', 'equipement', 'Ressources et Craft › Armures › CF1');
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armures#materiau:fer-noir', 'Intermédiaire', 'equipement', 'Ressources et Craft › Armures › CT1');
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armures#materiau:fonte', 'Lourd', 'equipement', 'Ressources et Craft › Armures › EJ1');
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armures#materiau:laiton', 'Lourd', 'equipement', 'Ressources et Craft › Armures › EX1');
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armures#materiau:maverium', 'Lourd', 'equipement', 'Ressources et Craft › Armures › FS1');
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armures#materiau:mythril', 'Léger', 'equipement', 'Ressources et Craft › Armures › BY1');
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armures#materiau:or', 'Lourd', 'equipement', 'Ressources et Craft › Armures › FE1');
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armures#materiau:peau', 'Léger', 'equipement', 'Ressources et Craft › Armures › AI1');
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armures#materiau:titane', 'Lourd', 'equipement', 'Ressources et Craft › Armures › FL1');
+INSERT INTO materiau (ressource_id, type, origine, source_ref) VALUES ('ressources/armures#materiau:vif-argent', 'Intermédiaire', 'equipement', 'Ressources et Craft › Armures › DV1');

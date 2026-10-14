@@ -53,3 +53,16 @@ test('les champs du mode modification se relisent ; un composant cité ne se sup
   const gemme = c.gemmes[0];
   assert.ok(main.includes(echapper(attributEd('gemme', { ressource_id: gemme.id }, 'quart_parfaite_brut'))));
 });
+
+test('les monnaies en icônes dans les tables (décision R61) : plus d’abréviation dans une case de tableau ; le type de chaque matériau (R62)', options, () => {
+  for (const page of ['ressources/composants', 'ressources/equipement-inventaire', 'ressources/livre-parchemin', 'ressources/accessoires']) {
+    const h = readFileSync(join(dist, ...page.split('/'), 'index.html'), 'utf8');
+    const cases = [...h.matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/g)].map((m) => m[1].replace(/<[^>]+>/g, ''));
+    const restes = cases.filter((c) => /(?<![\p{L}\p{N}])(R[OoFf]|PP)(?![\p{L}\p{N}])/u.test(c));
+    assert.deepEqual(restes, [], `${page} : abréviations restées dans les cases`);
+    assert.match(h, /class="piece piece--(rf|ro|pp)" role="img"/, `${page} : les icônes`);
+  }
+  for (const m of c.materiaux) assert.ok(['Léger', 'Intermédiaire', 'Lourd', 'Autres'].includes(m.type), m.nom);
+  assert.equal(c.materiaux.find((m) => m.nom_cle === 'os')?.type, 'Autres');
+  assert.match(main, /<td class="comp-type" data-ed="[^"]*materiau[^"]*">Léger<\/td>/);
+});

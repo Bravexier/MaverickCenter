@@ -5,6 +5,7 @@ import { RENDUS } from '../../lib/edition-rendu.mjs';
 import { ancreDeMateriau, type chargerArmes, type contexteDesArmes } from '../../lib/armes-db.mjs';
 import { COMPETENCES_D_ARME, totalDesAmeliorations } from '../../lib/arme-champs.mjs';
 import { htmlDuFiltreDeCompetence } from '../../lib/armes-rendu.mjs';
+import { htmlAvecMonnaies, htmlDePiece } from '../../lib/monnaies.mjs';
 import TableauArmes from './TableauArmes.astro';
 
 // Page /ressources/armes/ (demande du propriétaire, 2026-10-13 : « refaire intégralement la présentation de l'onglet des armes », « Pas de tableau
@@ -15,7 +16,7 @@ import TableauArmes from './TableauArmes.astro';
 // matériau et une amélioration ajuste les dégâts, la durabilité, les effets et le coût de la fiche (src/scripts/armes.mjs, calcul : lib/arme-forge.mjs).
 // Sans JavaScript, tout est affiché (ni fiche ni filtre).
 // Mode modification du site de dev : pas de sélection, la fiche est cachée, tous les tableaux sont visibles et leurs champs modifiables
-// (src/scripts/edition/armes.mjs). CSS : styles/armes/armes.css (?raw, inséré ici seulement).
+// (src/scripts/edition/armes.mjs), sauf les matériaux : leur référence est la page « Composants » (décision R62), ils ne sont ici qu'en lecture. CSS : styles/armes/armes.css (?raw, inséré ici seulement).
 type Armes = ReturnType<typeof chargerArmes>;
 interface Props {
   armes: Armes;
@@ -40,6 +41,8 @@ const FILTRES = Object.keys(COMPETENCES_D_ARME).map((id) => htmlDuFiltreDeCompet
   document.documentElement.classList.add('js');
 </script>
 <div class="armes" data-armes>
+  {/* l'icône du Ricken d'or (lib/monnaies.mjs), que le script de la page reprend pour les coûts qu'il écrit (aucun module partagé avec lui) */}
+  <template data-armes-piece set:html={htmlDePiece('RO')}></template>
   <h1>{armes.page?.titre ?? 'Armes'} <span class="badge">Ressource</span></h1>
   {resume && <p class="armes__chapo">{resume}</p>}
   <details class="armes-regles">
@@ -91,12 +94,12 @@ const FILTRES = Object.keys(COMPETENCES_D_ARME).map((id) => htmlDuFiltreDeCompet
                   armes.materiaux.map((m) => (
                     <tr class="materiau" id={ancreDeMateriau(m.ligne.ressource_id)} data-materiau={m.ligne.ressource_id} data-defaut={m.defaut ? '1' : undefined}>
                       <th scope="row" class="materiau__nom" style={`--mat: ${m.couleur.fond}; --mat-texte: ${m.couleur.texte}`}>
-                        <span data-ed={attributEd('ressource', { id: m.ligne.ressource_id }, 'nom')} data-ed-cible=".materiau__choisir">
+                        <span data-ed-lecture={attributEd('ressource', { id: m.ligne.ressource_id }, 'nom')} data-ed-cible=".materiau__choisir">
                           <button type="button" class="materiau__choisir" aria-pressed="false">{m.nom}</button>
                         </span>
                       </th>
-                      <td class="materiau__prix" data-ed={edM(m.ligne.ressource_id, 'prix_brut')} data-ed-rendu="materiau-prix" set:html={RENDUS['materiau-prix'](m.ligne.prix_brut, m.ligne, contexte)} />
-                      <td class="materiau__effet" data-ed={edM(m.ligne.ressource_id, 'effet_brut')} data-ed-rendu="materiau-effet" set:html={RENDUS['materiau-effet'](m.ligne.effet_brut, m.ligne, contexte)} />
+                      <td class="materiau__prix" data-ed-lecture={attributEd('ressource', { id: m.ligne.ressource_id }, 'prix_brut')} data-ed-rendu="materiau-prix" set:html={RENDUS['materiau-prix'](m.prix, m.ligne, contexte)} />
+                      <td class="materiau__effet" data-ed-lecture={edM(m.ligne.ressource_id, 'effet_brut')} data-ed-rendu="materiau-effet" set:html={RENDUS['materiau-effet'](m.ligne.effet_brut, m.ligne, contexte)} />
                     </tr>
                   ))
                 }
@@ -127,7 +130,7 @@ const FILTRES = Object.keys(COMPETENCES_D_ARME).map((id) => htmlDuFiltreDeCompet
                 }
               </tbody>
               <tfoot>
-                <tr><th scope="row">Total</th><td colspan="2" data-armes-total>{total}</td></tr>
+                <tr><th scope="row">Total</th><td colspan="2" data-armes-total set:html={htmlAvecMonnaies(total)} /></tr>
               </tfoot>
             </table>
           </div>

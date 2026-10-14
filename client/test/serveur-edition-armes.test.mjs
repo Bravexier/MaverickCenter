@@ -84,13 +84,16 @@ test('les armes de monstres ne se modifient pas ici (décision R45)', () => {
   assert.equal(r.statut, 400, JSON.stringify(r.corps));
 });
 
-test('matériau : prix et effets refont bonus, cran, effet secondaire et prix en RF ; sa ligne du corps suit', () => {
+test('matériau : ses effets (modifiés depuis la page « Composants », R62) refont bonus, cran et effet secondaire ; son prix se donne à la ressource ; sa ligne du corps suit', () => {
   const avant = ligne("SELECT * FROM materiau_arme WHERE ressource_id LIKE '%:titane'");
   const nom = ligne('SELECT nom FROM ressource WHERE id = ?', avant.ressource_id).nom;
-  const r = enregistrer([{ op: 'modifier', table: 'materiau_arme', cle: { ressource_id: avant.ressource_id }, valeurs: { prix_brut: '250 RO', effet_brut: "Dégâts +11 pour l'arme\n+2 cran de solidité\nBrille dans le noir" } }]);
+  const r = enregistrer([{ op: 'modifier', table: 'materiau_arme', cle: { ressource_id: avant.ressource_id }, valeurs: { effet_brut: "Dégâts +11 pour l'arme\n+2 cran de solidité\nBrille dans le noir" } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  assert.equal(enregistrer([{ op: 'modifier', table: 'materiau_arme', cle: { ressource_id: avant.ressource_id }, valeurs: { prix_brut: '250 RO' } }]).statut, 400, 'le prix est celui de la ressource');
+  // le prix de la ressource (page « Composants ») est recopié dans materiau_arme
+  assert.equal(enregistrer([{ op: 'modifier', table: 'ressource', cle: { id: avant.ressource_id }, valeurs: { prix_brut: '250 RO' } }]).statut, 200);
   const apres = ligne('SELECT * FROM materiau_arme WHERE ressource_id = ?', avant.ressource_id);
-  assert.deepEqual([apres.bonus_degats, apres.cran_solidite, apres.effet_secondaire, apres.prix_rf], [11, 2, 'Brille dans le noir', 25000]);
+  assert.deepEqual([apres.bonus_degats, apres.cran_solidite, apres.effet_secondaire, apres.prix_brut, apres.prix_rf], [11, 2, 'Brille dans le noir', '250 RO', 25000]);
   assert.ok(corps().split('\n').includes(ligneDeMateriau(nom, apres)));
 });
 

@@ -122,7 +122,11 @@ test('matériaux dans leur couleur, prix en RO ; améliorations +1 à +10 avec l
   }
   assert.deepEqual(armes.materiaux.filter((m) => m.defaut).map((m) => m.nom), ['Fer']);
   assert.equal([...main.matchAll(/<tr class="amelioration" id="amelioration-(\d+)"/g)].length, armes.ameliorations.length);
-  assert.match(main, /<td colspan="2" data-armes-total>\d+ matériaux? \+ \d+ RO<\/td>/);
+  // le Ricken d'or en icône (demande du propriétaire : les monnaies en icônes, lib/monnaies.mjs)
+  assert.match(main, /<td colspan="2" data-armes-total>\d+ matériaux? \+ \d+ <span class="piece piece--ro"[^>]*><\/span><\/td>/);
+  assert.match(main, /<template data-armes-piece><span class="piece piece--ro"/, 'l’icône que reprend le script');
+  // les matériaux en lecture : leur référence est la page « Composants » (décision R62)
+  assert.ok(!/<td class="materiau__(prix|effet)" data-ed=/.test(main));
 });
 
 test('le script de la page n’importe que lib/arme-forge.mjs et lib/armes-filtres.mjs, qu’aucun autre script de page n’importe', options, () => {
