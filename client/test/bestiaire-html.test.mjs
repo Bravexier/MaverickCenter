@@ -8,8 +8,10 @@ import { fileURLToPath } from 'node:url';
 import { chargerBestiaire } from '../src/lib/bestiaire-db.mjs';
 import { cheminDeMonstre } from '../src/lib/bestiaire-rendu.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { attributEd } from '../src/lib/edition-modele.mjs';
 import { echellesEcrites, objetDuButin } from '../src/lib/monstre-champs.mjs';
-import { tuilesDeCapacites } from './aide-bestiaire.mjs';
+import { normalize } from '../src/lib/text.mjs';
+import { ecartsDeLaDescription, tuilesDeCapacites } from './aide-bestiaire.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const fichier = join(dist, 'bestiaire', 'index.html');
@@ -53,6 +55,73 @@ test('une case par monstre ou créature, chacune avec sa carte ; les identifiant
   for (const ancre of cases(main)) assert.ok(main.includes(`<a class="bligne__ouvrir" href="#carte-${ancre}" aria-controls="carte-${ancre}"`), `lien vers la carte de ${ancre}`);
   // liens internes vers une autre créature (même combinaison) : vers une ligne qui existe
   for (const [, cible] of main.matchAll(/href="#(invoquee-[^"]+)"/g)) assert.ok(connus.has(cible), cible);
+});
+
+test('la description : dans l’en-tête de sa carte, sous ses tags, repliée ; l’espèce puis la créature (décision R65) ; les créatures invoquées gardent leur en-tête', options, () => {
+  const { monstres } = chargerBestiaire(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }));
+  const bloc = panneau('monstres');
+  for (const l of monstres.lignes) {
+    const debut = bloc.indexOf(`<article class="bcarte" id="carte-${l.ancre}"`);
+    assert.ok(debut >= 0, l.id);
+    assert.deepEqual(ecartsDeLaDescription(bloc.slice(debut, bloc.indexOf('</article>', debut)), l, attributEd), [], l.id);
+  }
+  assert.doesNotMatch(panneau('invoquees'), /bcarte__description/);
+});
+
+test('groupe d’espèces (décision R64, « Ottar ») : son nom dans la colonne Espèce de ses espèces et sous leur nom, un seul filtre ; la section de l’espèce cachée si elle est vide', options, () => {
+  const { monstres } = chargerBestiaire(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }));
+  const bloc = panneau('monstres');
+  const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  const champ = (table, id, colonne) => `data-ed-lecture="${echapper(attributEd(table, { id }, colonne))}"`;
+  const options = [...bloc.matchAll(/name="espece" value="([^"]+)"/g)].map((m) => m[1]);
+  assert.ok(monstres.lignes.some((l) => l.espece.groupe), 'au moins un groupe (les Ottar)');
+  for (const l of monstres.lignes) {
+    const i = bloc.indexOf(`<tr class="bligne" id="${l.ancre}"`);
+    const ligne = bloc.slice(i, bloc.indexOf('</tr>', i));
+    const debut = bloc.indexOf(`<article class="bcarte" id="carte-${l.ancre}"`);
+    const carte = bloc.slice(debut, bloc.indexOf('</article>', debut));
+    const g = l.espece.groupe;
+    if (g) {
+      assert.ok(ligne.includes(`<td class="bligne__espece" ${champ('monstre_groupe', g.id, 'nom')}>${echapper(g.nom)}</td>`), `${l.id} : colonne Espèce`);
+      assert.ok(carte.includes(`<p class="bcarte__espece"><span ${champ('monstre_groupe', g.id, 'nom')}>${echapper(g.nom)}</span>`), `${l.id} : sous le nom`);
+      // le filtre : l'option du groupe, pas une à son nom (sauf si une espèce hors groupe porte le même)
+      assert.ok(options.includes(normalize(g.nom)), `${l.id} : l’option du groupe`);
+      const homonyme = monstres.lignes.some((x) => !x.espece.groupe && normalize(x.espece.nom) === normalize(l.espece.nom));
+      if (!homonyme && normalize(l.espece.nom) !== normalize(g.nom)) assert.ok(!options.includes(normalize(l.espece.nom)), `${l.id} : pas d’option à son nom`);
+    } else assert.ok(ligne.includes(`<td class="bligne__espece" ${champ('monstre_espece', l.espece.id, 'nom')}>`), `${l.id} : colonne Espèce`);
+    // l'en-tête : la description de l'espèce (son groupe s'il en a un), puis celle de la créature (décision R65)
+    assert.deepEqual(ecartsDeLaDescription(carte, l, attributEd), [], l.id);
+    // la section de l'espèce (lieu, complément, blocs) : cachée quand elle n'en a pas, comme la recalcule le mode modification (cadres() de
+    // src/scripts/edition/editeur.mjs, sur les seuls champs de ses paragraphes et de ses blocs)
+    const section = carte.match(/<section class="bcarte__section" aria-label="[^"]*" data-ed-cadre="p \[data-ed-sur-demande\], details \[data-ed-sur-demande\]"( hidden)?>/);
+    assert.ok(section, `${l.id} : section de l’espèce`);
+    const vide = (t) => String(t ?? '').trim() === '';
+    assert.equal(Boolean(section[1]), vide(l.espece.lieu) && vide(l.espece.complement) && !l.espece.blocs.length, `${l.id} : section cachée si vide`);
+    // les blocs (les quinze tableaux du Presque-Ottar) : sur les cartes de leur espèce seulement
+    assert.equal((carte.match(/<details class="bbloc">/g) ?? []).length, l.espece.blocs.length, `${l.id} : blocs`);
+  }
+  // la phrase sous le tableau ne compte pas les lignes sans carte parmi les espèces (un groupe en a, R64)
+  assert.doesNotMatch(bloc, /espèces sans carte/);
+});
+
+test('mode modification : les deux descriptions à la suite, chacune avec son intitulé (« Description de l’espèce », puis « de la créature »)', () => {
+  // demande du propriétaire : « il faut bien qu'on ait les deux champs description espèce et description créature à la suite l'un de l'autre » ; la saisie
+  // n'a qu'un texte indicatif, qui s'efface une fois remplie : l'intitulé est un pseudo-élément (hors du texte que lit la recherche), en mode modification
+  const css = readFileSync(new URL('../src/styles/bestiaire/carte.css', import.meta.url), 'utf8');
+  assert.match(css, /body\.ed-mode \.bcarte__description > \.bcarte__desc-espece::before \{ content: 'Description de l’espèce'; \}/);
+  assert.match(css, /body\.ed-mode \.bcarte__description > \.bcarte__desc-creature::before \{ content: 'Description de la créature'; \}/);
+  // le script d'édition ouvre la description repliée de la carte ouverte, et la replie en sortant du mode modification
+  const edition = readFileSync(new URL('../src/scripts/edition/bestiaire.mjs', import.meta.url), 'utf8');
+  assert.match(edition, /for \(const d of carte\.querySelectorAll\('details\.bcarte__description'\)\) d\.open = true;/);
+  assert.match(edition, /for \(const d of document\.querySelectorAll\('details\.bcarte__description\[open\]'\)\) d\.open = false;/);
+});
+
+test('la description repliée à chaque ouverture de la carte (hors mode modification), dépliée pour l’impression puis repliée', () => {
+  const script = readFileSync(new URL('../src/scripts/bestiaire.mjs', import.meta.url), 'utf8');
+  assert.match(script, /if \(!document\.body\.classList\.contains\('ed-mode'\)\) for \(const d of c\.carte\.querySelectorAll\('details\.bcarte__description'\)\) d\.open = false;/);
+  assert.match(script, /addEventListener\('beforeprint'[\s\S]*details\.bcarte__description:not\(\[open\]\)[\s\S]*addEventListener\('afterprint'/);
+  // sans JavaScript aussi, l'impression la montre
+  assert.match(readFileSync(new URL('../src/styles/bestiaire/carte.css', import.meta.url), 'utf8'), /@media print \{ \.bcarte__description::details-content \{ content-visibility: visible; \}/);
 });
 
 test('filtres : formulaire caché sans JavaScript, une case par valeur, le préfixe « i- » pour les créatures invoquées', options, () => {

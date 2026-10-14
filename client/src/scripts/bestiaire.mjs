@@ -340,8 +340,10 @@ function brancher(section) {
     c.carte.classList.add('est-ouverte');
     zone.classList.add('est-ouverte');
     zone.scrollTop = 0;
-    // à l'ouverture : l'échelle du filtre EP (echelleParDefaut), pas celle laissée à la fermeture précédente
+    // à l'ouverture : l'échelle du filtre EP (echelleParDefaut), pas celle laissée à la fermeture précédente ; la description repliée (demande du
+    // propriétaire : « enroulée par défaut »), sauf en mode modification, où elle reste ouverte pour être modifiée
     delete c.carte.dataset.ep;
+    if (!document.body.classList.contains('ed-mode')) for (const d of c.carte.querySelectorAll('details.bcarte__description')) d.open = false;
     preparerLEchelle(c.carte);
     montrer(c, defiler);
     // sur un petit écran, la carte passe par-dessus la page : le focus y va (Échap ou « Fermer » la referme)
@@ -504,9 +506,19 @@ for (const regles of document.querySelectorAll('[data-regles-ep]')) {
   depuisLAdresse();
   poser();
 }
-// à l'impression, les tableaux repliés se déplient (un <details> fermé n'imprime que son titre)
+// à l'impression, les tableaux repliés et la description d'une carte se déplient (un <details> fermé n'imprime que son titre) ; après, la description
+// se replie de nouveau (« enroulée par défaut »)
+const depliees = new Set();
 window.addEventListener('beforeprint', () => {
   for (const d of document.querySelectorAll('details[data-repli]')) d.open = true;
+  for (const d of document.querySelectorAll('details.bcarte__description:not([open])')) {
+    d.open = true;
+    depliees.add(d);
+  }
+});
+window.addEventListener('afterprint', () => {
+  for (const d of depliees) d.open = false;
+  depliees.clear();
 });
 
 // adresse #monstre-… / #invoquee-… (ou #carte-…) : ouvre cette carte (l'onglet qui la contient est ouvert par components/Onglets.astro) ; sur un petit

@@ -10,8 +10,10 @@ import { fileURLToPath } from 'node:url';
 import { chargerBestiaire } from '../src/lib/bestiaire-db.mjs';
 import { cheminDeMonstre, objetsDuButinDe } from '../src/lib/bestiaire-rendu.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { attributEd } from '../src/lib/edition-modele.mjs';
 import { echellesEcrites } from '../src/lib/monstre-champs.mjs';
 import { idDeBulleDuButin } from '../src/lib/monstre-rendu.mjs';
+import { ecartsDeLaDescription } from './aide-bestiaire.mjs';
 
 const db = ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' });
 const { monstres } = chargerBestiaire(db);
@@ -61,9 +63,16 @@ test('la page : la carte seule (le nom en titre, sans « Fermer »), le retour a
     // sous le titre, des sections en h2 (pas de niveau sauté)
     assert.doesNotMatch(main, /<h[3-6][ >]/, `${l.id} : sections en h2`);
     assert.doesNotMatch(main, /bcarte__fermer/, `${l.id} : pas de « Fermer »`);
+    // la description de la page (balise meta) : l'espèce, celle de son groupe s'il en a un (« Ottar », décision R64)
+    const espece = l.espece.groupe?.nom ?? l.espece.nom;
+    const meta = l.carte ? `${l.nom} (${espece}) : la carte du bestiaire.` : l.espece.groupe ? `${l.nom} (${espece}) : sans carte de combat, dans le bestiaire.` : `${l.nom} : l’espèce du bestiaire.`;
+    assert.ok(html.includes(`<meta name="description" content="${meta.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"`), `${l.id} : ${meta}`);
+    // la description dans l'en-tête, sous les tags, repliée
+    assert.deepEqual(ecartsDeLaDescription(main.slice(main.indexOf(`<article class="bcarte bcarte--seule" id="${id}"`)), l, attributEd), [], `${l.id} : description`);
     assert.match(main, new RegExp(`<a href="[^"]*/bestiaire/#${l.ancre}" data-retour>`), `${l.id} : le retour à sa ligne du tableau`);
     // les autres cartes de l'espèce, chacune vers sa page
-    const voisines = monstres.lignes.filter((x) => x.espece.id === l.espece.id && x.id !== l.id);
+    const especeDe = (x) => (x.espece.groupe ? `groupe:${x.espece.groupe.id}` : `espece:${x.espece.id}`);
+    const voisines = monstres.lignes.filter((x) => especeDe(x) === especeDe(l) && x.id !== l.id);
     for (const v of voisines) assert.match(main, new RegExp(`<a href="[^"#]*/${cheminDeMonstre(v.id)}">`), `${l.id} -> ${v.id}`);
     assert.equal(main.includes('bmonstre__voisines'), voisines.length > 0, l.id);
     // les bulles du butin : celles que cite la carte, chacune une fois, et toute case de butin y renvoie

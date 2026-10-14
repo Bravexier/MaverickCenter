@@ -47,7 +47,7 @@ const COLONNES: { cle: string; libelle: string; titre?: string; classe?: string 
     aide="Tous les mots, où qu’ils soient, carte comprise : nom, espèce, capacités, tactique, butin… Un filtre par colonne ; plusieurs valeurs d’un même filtre : l’une ou l’autre ; plusieurs filtres : tous à la fois."
   />
   <p class="btableau__aide muted">
-    {monstres.cartes} cartes de {monstres.especes} espèces, dans l’ordre du doc{lignes.length > monstres.cartes && ` ; les ${lignes.length - monstres.cartes} espèces sans carte ont une ligne à elles`}.{' '}
+    {monstres.cartes} cartes de {monstres.especes} espèces, dans l’ordre du doc{lignes.length > monstres.cartes && ` ; ${lignes.length - monstres.cartes} titres du doc sans carte de combat ont une ligne à eux`}.{' '}
     <span class="js-seul">Cliquez sur une ligne pour ouvrir sa carte ; cliquez sur un en-tête pour trier.</span>
   </p>
   <div class="bvue">

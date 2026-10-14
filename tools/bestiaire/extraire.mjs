@@ -48,6 +48,11 @@ const TITRE_ESPECE = /^([^\t*\s].*?)\s*\((EP[^)]*)\)\s*$/;
 // Un brouillon du doc, « Réanimé (EP5) (a continuer) », « Vouivre squelette (EP8) (a refaire) » : son bloc (description, cartes) n'est pas repris, mais son
 // titre borne l'espèce qui le précède (décision R58 du propriétaire : « Oui » à « Faut-il les retirer ? »)
 const TITRE_BROUILLON = /^([^\t*\s].*?)\s*\((EP[^)]*)\)\s*\([aà] (?:refaire|continuer)\)\s*$/i;
+// Un groupe d'espèces, « Ottar (explication) » : son nom et sa description (les paragraphes qui suivent, jusqu'au trait) ; ses espèces, celles qui le suivent
+// et dont le nom le contient (décision R64 du propriétaire : « regrouper tous les Ottar (et le presqu'Ottar) sous la même espèce d'Ottar, dont la
+// description était auparavant perdue dans la mauvaise fiche »). Son titre ne borne pas l'espèce qui le précède : à l'import, le texte reste aussi dans la
+// tactique de l'Os du blizzard, d'où le propriétaire l'a retiré sur le site de dev.
+const TITRE_GROUPE = /^([^\t*\s].*?)\s*\(explication\)\s*$/i;
 const LETTRE = /^[A-Z]\s*$/;
 const CARTE = /Créature échelle/;
 const DEBUT_GLOSSAIRE = /^GLOSSAIRE BUTIN\s*$/;
@@ -281,7 +286,7 @@ function espece(L, debut, fin, ordre, lettre, ids, casse) {
   let id = `monstres/${cle}`;
   for (let n = 2; ids.has(id); n++) id = `monstres/${cle}-${n}`;
   ids.add(id);
-  const e = { id, nom: compacter(nom), nom_cle: cle, ordre, lettre, ep_brut: ep, source_ref: ref(debut, fin - 1) };
+  const e = { id, nom: compacter(nom), nom_cle: cle, ordre, lettre, ep_brut: ep, source_ref: ref(debut, fin - 1), groupe_id: null };
   [e.ep_min, e.ep_max] = bornes(ep);
   // Découpage : une carte commence à son en-tête ; après la tactique d'une carte, « BUTIN » (ou « Score (3d100) ») ouvre le tableau du butin
   // et un titre en capitales (« POTENTIEL ILLIMITÉ », « SANG » : tableaux du Presque-Ottar) ouvre un bloc ; « DESCRIPTION » est une ligne de ces tableaux.
@@ -348,16 +353,28 @@ function glossaire(L, debut) {
   return sortie;
 }
 
-/** Le doc entier -> { regles, echelles, especes, glossaire } ; les brouillons (« (a refaire) », « (a continuer) ») ne sont pas repris. */
+/** Un groupe d'espèces : son titre « Nom (explication) » à la ligne `i`, sa description jusqu'au trait (ou au titre d'espèce) suivant. */
+function groupe(L, i, titres) {
+  const nom = compacter(L[i].match(TITRE_GROUPE)[1]);
+  let fin = i + 1;
+  while (fin < L.length && !SEPARATEUR.test(L[fin].trim()) && !titres.includes(fin)) fin++;
+  let der = fin - 1;
+  while (der > i && !L[der].trim()) der--;
+  return { id: `monstres/${normalize(nom)}`, nom, nom_cle: normalize(nom), description: texteDe(L.slice(i + 1, fin)) || null, source_ref: ref(i, der), ligne: i };
+}
+
+/** Le doc entier -> { regles, echelles, groupes, especes, glossaire } ; les brouillons (« (a refaire) », « (a continuer) ») ne sont pas repris. */
 export function extraireBestiaire(texte) {
   const L = lignesDuDoc(texte);
   const iGlossaire = L.findIndex((l) => DEBUT_GLOSSAIRE.test(l.trim()));
   if (iGlossaire < 0) throw new Error('« GLOSSAIRE BUTIN » introuvable');
   const titres = [];
   const brouillons = [];
+  const titresDeGroupe = [];
   for (let i = 0; i < iGlossaire; i++) {
     if (TITRE_ESPECE.test(L[i]) && !/^\[/.test(L[i])) titres.push(i);
     else if (TITRE_BROUILLON.test(L[i])) brouillons.push(i);
+    else if (TITRE_GROUPE.test(L[i])) titresDeGroupe.push(i);
   }
   // l'introduction (règles, deux tableaux, modèle de carte, liste par EP) précède le premier titre d'espèce
   const intro = introduction(L);
@@ -374,7 +391,14 @@ export function extraireBestiaire(texte) {
     while (fin - 1 > debut && (!L[fin - 1].trim() || SEPARATEUR.test(L[fin - 1].trim()) || LETTRE.test(L[fin - 1]))) fin--;
     especes.push(espece(L, debut, fin, k + 1, lettre, ids, casse));
   }
-  return { ...intro, especes, glossaire: glossaire(L, iGlossaire) };
+  // les groupes : chacun prend les espèces qui suivent son titre, tant que leur nom contient le sien (décision R64)
+  const groupes = titresDeGroupe.map((i) => groupe(L, i, titres));
+  for (const g of groupes) {
+    if (ids.has(g.id)) throw new Error(`groupe « ${g.nom} » : l'identifiant ${g.id} est celui d'une espèce`);
+    for (let k = titres.findIndex((t) => t > g.ligne); k >= 0 && k < especes.length && especes[k].nom_cle.includes(g.nom_cle); k++) especes[k].groupe_id = g.id;
+    delete g.ligne;
+  }
+  return { ...intro, groupes, especes, glossaire: glossaire(L, iGlossaire) };
 }
 
 // ---------------------------------------------------------------- SQL de la migration
@@ -388,8 +412,9 @@ export function lignesSql(b) {
   for (const r of b.regles) out.push(insert('monstre_regle', { rang: r.rang, texte: r.texte, ...O, source_ref: r.source_ref }));
   for (const e of b.echelles) out.push(insert('monstre_echelle', { ...e, ...O, source_ref: e.source_ref }));
   for (const g of b.glossaire) out.push(insert('monstre_butin_objet', { id: g.id, rang: g.rang, nom: g.nom, texte: g.texte, ...O, source_ref: g.source_ref }));
+  for (const g of b.groupes) out.push(insert('monstre_groupe', { id: g.id, nom: g.nom, nom_cle: g.nom_cle, description: g.description, ...O, source_ref: g.source_ref }));
   for (const e of b.especes) {
-    out.push(insert('monstre_espece', { id: e.id, nom: e.nom, nom_cle: e.nom_cle, ordre: e.ordre, lettre: e.lettre, ep_brut: e.ep_brut, ep_min: e.ep_min, ep_max: e.ep_max, description: e.description, lieu_brut: e.lieu_brut, complement: e.complement, ...O, source_ref: e.source_ref }));
+    out.push(insert('monstre_espece', { id: e.id, nom: e.nom, nom_cle: e.nom_cle, ordre: e.ordre, lettre: e.lettre, ep_brut: e.ep_brut, ep_min: e.ep_min, ep_max: e.ep_max, description: e.description, lieu_brut: e.lieu_brut, complement: e.complement, ...O, source_ref: e.source_ref, groupe_id: e.groupe_id }));
     for (const l of e.lieux) out.push(insert('monstre_espece_lieu', { espece_id: e.id, rang: l.rang, lieu: l.lieu, lieu_cle: l.lieu_cle, ...O, source_ref: e.source_ref }));
     for (const x of e.blocs) out.push(insert('monstre_espece_bloc', { espece_id: e.id, rang: x.rang, titre: x.titre, texte: x.texte, ...O, source_ref: x.source_ref }));
     for (const x of e.butin) out.push(insert('monstre_butin', { espece_id: e.id, rang: x.rang, categorie: x.categorie, score_min: x.score_min, score_max: x.score_max, score_brut: x.score_brut, texte: x.texte, ...O, source_ref: x.source_ref }));
@@ -413,6 +438,7 @@ export function bilan(b) {
   return {
     regles: b.regles.length,
     echelles: b.echelles.length,
+    groupes: b.groupes.map((g) => ({ id: g.id, especes: b.especes.filter((e) => e.groupe_id === g.id).length })),
     especes: b.especes.length,
     cartes: cartes.length,
     rubriques: cartes.reduce((n, c) => n + c.rubriques.length, 0),

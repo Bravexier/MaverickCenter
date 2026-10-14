@@ -40,7 +40,7 @@ export const TABLES_DES_NOTES = Object.freeze(['note_version', 'note_version_lig
 export const TABLES_LUES = [
   'sort', 'magie', 'magie_role', 'mode_hyper_effet', 'classe', 'categorie_classe', 'specialite', 'capacite', 'race', 'race_onglet', 'race_don',
   'race_don_tableau_colonne', 'race_don_tableau_cellule', 'race_magie', 'race_magie_onglet', 'peuple', 'relation_peuple', 'echelle_relation',
-  'metier', 'caracteristique', 'page', 'monstre_espece', 'monstre', 'monstre_rubrique', 'monstre_espece_bloc', 'monstre_butin',
+  'metier', 'caracteristique', 'page', 'monstre_groupe', 'monstre_espece', 'monstre', 'monstre_rubrique', 'monstre_espece_bloc', 'monstre_butin',
   'arme', 'arme_famille', 'arme_type', 'materiau_arme', 'ressource', 'amelioration_equipement', 'gemme', 'bois', 'ingredient_alchimie', 'monnaie', 'materiau',
 ];
 
@@ -157,6 +157,11 @@ const DEFINITIONS = [
     table: 'page', domaine: 'codex', cle: ['id'], colonnes: colonnesDe('page'), genre: 'Page du Codex',
     filtre: (r) => r.type === 'lore' && r.origine === 'docs' && r.statut !== 'example',
     groupe: () => null, entite: (r) => r.titre, ordre: (r) => [r.titre], resume: (n) => `${n} pages du Codex`,
+  },
+  {
+    // un groupe d'espèces (décision R64 : « Ottar ») : avant les espèces
+    table: 'monstre_groupe', domaine: 'bestiaire', cle: ['id'], colonnes: colonnesDe('monstre_groupe'), genre: 'Groupe d’espèces',
+    groupe: (r) => r.nom, entite: (r) => r.nom, ordre: () => [0, 0], resume: (n) => `${n} groupes d’espèces`,
   },
   {
     table: 'monstre_espece', domaine: 'bestiaire', cle: ['id'], colonnes: sansCadrage('monstre_espece'), genre: 'Espèce',

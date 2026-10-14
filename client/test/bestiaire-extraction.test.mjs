@@ -16,7 +16,7 @@ const texte = readFileSync(new URL('sources/raw/bestiaire-2-0.txt', racine), 'ut
 const b = extraireBestiaire(texte);
 const cartes = b.especes.flatMap((e) => e.cartes);
 const db = ouvrirBase({ sansExemples: false });
-const TABLES_MONSTRES = ['monstre_regle', 'monstre_echelle', 'monstre_butin_objet', 'monstre_espece', 'monstre_espece_lieu', 'monstre_espece_bloc', 'monstre_butin', 'monstre',
+const TABLES_MONSTRES = ['monstre_regle', 'monstre_echelle', 'monstre_butin_objet', 'monstre_groupe', 'monstre_espece', 'monstre_espece_lieu', 'monstre_espece_bloc', 'monstre_butin', 'monstre',
   'monstre_rubrique', 'monstre_caracteristique', 'monstre_attaque', 'monstre_capacite', 'monstre_defense'];
 
 test('l’extraction rejouée sur l’export du doc redonne exactement les tables des monstres de la base, telles que l’import les a laissées', () => {
@@ -56,6 +56,15 @@ test('effectifs : 4 règles, 10 échelles, 144 espèces (« Golem de corail » �
     [['“Presque-Ottar”', 15]],
     'les tableaux par magie du Presque-Ottar',
   );
+  // décision R64 : un groupe « Ottar » (titre « Ottar (explication) »), les 22 espèces qui le suivent et dont le nom contient « Ottar », pas une de plus
+  assert.deepEqual(b.groupes.map((g) => [g.id, g.nom, g.source_ref]), [['monstres/ottar', 'Ottar', 'Bestiaire 2.0 › lignes 22728-22738']]);
+  const ottar = b.especes.filter((e) => e.groupe_id === 'monstres/ottar');
+  assert.deepEqual(ottar.map((e) => e.ordre), Array.from({ length: 22 }, (_, k) => 100 + k), 'à la suite, dans l’ordre du doc');
+  assert.deepEqual([ottar[0].id, ottar[21].id], ['monstres/presque-ottar', 'monstres/ottar-tour']);
+  assert.ok(ottar.every((e) => e.nom_cle.includes('ottar')));
+  assert.equal(b.especes.find((e) => e.ordre === 122).groupe_id, null, 'l’Ours-garou, qui suit, n’en est pas');
+  assert.match(b.groupes[0].description, /^Les Ottars ont été des êtres humanoïdes /);
+  assert.match(b.groupes[0].description, /si jamais il y a doute sur le concept de l'Ottar visé\)$/);
 });
 
 test('chaque carte : une catégorie, des rubriques, un nom remis en minuscules qui garde ses lettres', () => {
@@ -80,6 +89,7 @@ test('rien n’est inventé : chaque ligne de texte gardée (rubriques, capacit�
   const verifier = (t, ou) => {
     for (const l of String(t ?? '').split('\n').filter(Boolean)) assert.ok(doc.has(l), `${ou} : « ${l} » n’est pas une ligne du doc`);
   };
+  for (const g of b.groupes) verifier(g.description, g.id);
   for (const e of b.especes) {
     verifier(e.description, e.id);
     for (const x of e.blocs) verifier(x.texte, `${e.id} bloc ${x.titre}`);

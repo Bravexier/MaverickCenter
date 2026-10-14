@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { planifier } from '../../tools/flux-git/regles.mjs';
-import { bilan, comparerBases, DOMAINES, TABLES_DES_NOTES, trierVersions, versionCourte, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
+import { bilan, comparerBases, DOMAINES, TABLES_DES_NOTES, TABLES_LUES, trierVersions, versionCourte, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
+import { TABLES } from '../src/lib/edition-modele.mjs';
 import {
   diffMots, echapper, htmlDeLaListe, htmlDeLaNote, htmlDuTexteLibre, lancementAffiche, markdownDeLaNote, neutraliserMarqueur,
 } from '../src/lib/notes-de-version-rendu.mjs';
@@ -195,6 +196,24 @@ test('Codex et bestiaire : champs modifiés, carte ajoutée ou retirée (pas ses
     'bestiaire |  | 2 espèces | (entité) | ajoute |  → 2 espèces',
     'bestiaire |  | 2 monstres | (entité) | ajoute |  → 2 monstres',
   ]);
+});
+
+test('bestiaire : un groupe d’espèces (décision R64) renommé est listé avant ses espèces ; ajouté contre une production sans la table ; toute table modifiable est lue', () => {
+  const groupe = { id: 'monstres/ottar', nom: 'Ottar', description: 'Avant.' };
+  const espece = { id: 'monstres/ottar-chariot', nom: 'Ottar Chariot', ordre: 1, ep_brut: 'EP2', description: null, lieu_brut: 'Neige', complement: null, groupe_id: 'monstres/ottar' };
+  const ref = { tables: { monstre_groupe: [groupe], monstre_espece: [espece] } };
+  const dev = structuredClone(ref);
+  Object.assign(dev.tables.monstre_groupe[0], { nom: 'Ottars', description: 'Après.' });
+  dev.tables.monstre_espece[0].lieu_brut = 'Neige, Glacier';
+  const cle = (l) => `${l.domaine} | ${l.groupe ?? ''} | ${l.entite} | ${l.champ ?? '(entité)'} | ${l.nature} | ${l.avant ?? ''} → ${l.apres ?? ''}`;
+  assert.deepEqual(comparerBases(ref, dev).map(cle), [
+    'bestiaire | Ottars | Ottars | Nom de l’espèce (le groupe) | modifie | Ottar → Ottars',
+    'bestiaire | Ottars | Ottars | Description de l’espèce | modifie | Avant. → Après.',
+    'bestiaire | Ottar Chariot | Ottar Chariot | Lieu de rencontre (lieux séparés par des virgules) | modifie | Neige → Neige, Glacier',
+  ]);
+  assert.deepEqual(comparerBases({ tables: { monstre_espece: [espece] } }, ref).map(cle), ['bestiaire | Ottar | Ottar | Groupe d’espèces | ajoute |  → Ottar']);
+  // une table modifiable sur le site de dev est lue dans chaque base (sinon ses changements manqueraient à la note)
+  assert.deepEqual(Object.keys(TABLES).filter((t) => !TABLES_LUES.includes(t)), []);
 });
 
 test('comparerBases : bases identiques → rien ; espaces et fins de ligne ne comptent pas', () => {

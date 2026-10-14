@@ -44,11 +44,22 @@ filtre = l'une OU l'autre, plusieurs filtres = tous à la fois ; chaque valeur a
 (croissant, décroissant, puis l'ordre du doc ; une valeur absente toujours à la fin). Recherche, filtres et tri sont dans l'adresse
 (`?q=golem&categorie=boss&ep=5&tri=ep&sens=desc` ; préfixe `i-` pour les créatures invoquées), pour partager une recherche.
 
-Un clic sur une ligne ouvre sa **carte** à côté du tableau (sur un écran plus étroit, voir « Petit écran » ; Échap ou « Fermer » la referme) : en-tête (nom, espèce, catégorie, type, alignement, échelle), **portrait** (le logo en attendant une image ; voir plus
+Un clic sur une ligne ouvre sa **carte** à côté du tableau (sur un écran plus étroit, voir « Petit écran » ; Échap ou « Fermer » la referme) : en-tête (nom, espèce, catégorie, type, alignement, échelle,
+puis la **description** du monstre, repliée), **portrait** (le logo en attendant une image ; voir plus
 bas), toute la carte
 rubrique par rubrique (santé, chakra et barrière en tuiles, F.P.V.S.I.A. en cases colorées, cibles des défenses en pastilles dans la couleur de la
 magie qui va avec quand l'écriture s'y prête,
-sinon le texte tel qu'écrit : `lib/monstre-rendu.mjs`), l'espèce (description, lieu de rencontre, blocs qui suivent les cartes) et le butin.
+sinon le texte tel qu'écrit : `lib/monstre-rendu.mjs`), l'espèce (lieu de rencontre, complément, blocs qui suivent les cartes ; cachée quand il n'y en
+a pas) et le butin.
+
+**Description dans l'en-tête** (demande du propriétaire : « mettre la description du monstre directement dans le bandeau du haut juste en dessous de ses
+tags avant le premier séparateur avec le reste de la fiche. Cette description est déroulable, enroulée par défaut ») : sous les tags, au-dessus du filet
+qui ferme l'en-tête, un « ▸ Description » replié (`details.bcarte__description`, `lib/bestiaire-rendu.mjs#htmlDeCarteMonstre`), qui se replie à chaque
+ouverture de la carte. Il contient la description de l'espèce, puis celle de la créature elle-même, à la ligne, si elle en a une (décision R65 : « l'espèce
+en premier, l'individu dans un second temps ») : l'espèce, c'est son groupe s'il en a un (« Ottar ») ou l'espèce du doc ; la créature, c'est l'espèce du
+doc quand elle est d'un groupe (chaque Ottar), sinon la carte (`monstre.description`, migration 0042 : le doc n'en écrit aucune, le site de dev la
+modifie ; `descriptionsDe`). Il se déplie à l'impression et en mode modification (pour être modifié) ; la recherche du tableau lit aussi son texte replié. Sur
+un téléphone, il prend toute la largeur sous le portrait. Les créatures invoquées gardent leur en-tête (leur carte sert d'infobulle : rien à déplier).
 `#monstre-<nom>`, `#carte-monstre-<nom>` ou `#invoquee-<nom>` ouvre une carte. Sans JavaScript, le nom d'un monstre mène à sa page, celui d'une
 créature invoquée à sa carte, qui s'affiche alors (`:target`) ; les filtres sont cachés.
 
@@ -176,6 +187,28 @@ doc). Demande du propriétaire : « Je ne sais pas. Signale le avec un panneau "
 `lib/monstre-rendu.mjs#htmlDAttention`, styles `.battention` (`styles/bestiaire/carte.css`). En mode modification, le trait se voit dans le texte de la
 rubrique : le couper avec ce qui le suit retire le panneau.
 
+Depuis, le propriétaire a dit où va ce texte : c'est la description de l'espèce « Ottar » (décision R64, voir « L'espèce Ottar »). Il l'a coupé de la
+tactique de l'Os du blizzard sur le site de dev (modification en attente de la prochaine mise à jour, le 2026-10-14) : la migration 0042 ne touche pas
+cette rubrique, pour que sa modification se rejoue sans conflit ; le panneau disparaîtra avec elle. Le mécanisme reste pour un nouvel export du doc.
+
+### L'espèce Ottar
+
+Décision R64 (demande du propriétaire : « Il faudrait également regrouper tous les Ottar (et le presqu'Ottar) sous la même espèce d'Ottar, dont la
+description était auparavant perdue dans la mauvaise fiche (aujourd'hui supprimée) »). Le doc écrit 22 titres « Nom (EP1 - 10) » à la suite : le
+« Presque-Ottar » puis les 21 « Ottar … » ; deux seulement ont une carte de combat (Presque-Ottar, Ottar Chariot). Un **groupe d'espèces** les réunit
+(table `monstre_groupe`, colonne `monstre_espece.groupe_id`, migration `0042-bestiaire-ottar`) : son nom (« Ottar ») et sa description viennent du titre
+« Ottar (explication) » (`TITRE_GROUPE`), ses espèces sont celles qui le suivent et dont le nom le contient. Aucun identifiant ni aucune adresse ne
+change, rien n'est déduit pour les Ottar sans carte (ils restent des espèces sans carte de combat). Sur le site :
+
+- la colonne Espèce et son filtre disent « Ottar » pour les 22 lignes (une seule option ; le compte des espèces le compte une fois) ;
+- l'en-tête d'une carte : « Ottar (EP1 - 10) » sous le nom ; sous les tags, la « Description » repliée : celle de l'espèce Ottar, puis, à la ligne, celle
+  de l'Ottar lui-même (décision R65) ;
+- plus bas, la section de l'Ottar lui-même s'il a autre chose (les quinze tableaux du Presque-Ottar) ;
+- la page d'un Ottar liste les 21 autres en « Même espèce » ;
+- en mode modification, le nom et la description du groupe se modifient (dans la carte de chacun de ses Ottar) ; une espèce créée sur le site se range
+  sous un groupe dès sa création (« + Ajouter une espèce », champ « Rangée sous l'espèce » : un nouvel Ottar), puis son appartenance ne change plus
+  (migration) ; une espèce créée au nom du groupe a un autre identifiant (`monstres/ottar-2`) et compte à part.
+
 ### Règles des échelles de puissance
 
 Repliées au-dessus du tableau (demande du propriétaire : « retravailler le visuel de l'explication et des règles des EP ») : les quatre règles
@@ -191,7 +224,10 @@ Bestiaire, ainsi que la possibilité de créer / modifier / supprimer un monstre
 
 - **Modifier** : les champs de la **carte ouverte** deviennent des saisies (`data-ed-sur-demande` : une carte à la fois, il y en a plus de 300 dans la
   page ; `src/scripts/edition/bestiaire.mjs`) : nom, catégorie, type, alignement, échelle, « varie selon l'échelle », le texte de chaque rubrique ; de
-  l'espèce : nom, échelle(s), description, lieu de rencontre, complément, texte des blocs ; le texte d'une case de butin. À l'enregistrement, la ligne du
+  l'espèce : nom, échelle(s), description, lieu de rencontre, complément, texte des blocs ; le texte d'une case de butin. Dans l'en-tête, la
+  « Description » s'ouvre avec ses deux champs à la suite, chacun avec son intitulé (demande du propriétaire : « il faut bien qu'on ait les deux champs
+  description espèce et description créature à la suite l'un de l'autre ») : « Description de l'espèce » (celle du groupe pour un Ottar) puis
+  « Description de la créature » (celle de l'Ottar lui-même, sinon de la carte, vide à l'import), décision R65. À l'enregistrement, la ligne du
   tableau et les autres cartes de l'espèce suivent.
 - **Ajouter** : « + Ajouter un monstre » (une carte dans une espèce, d'abord celle de la carte ouverte) et « + Ajouter une espèce ». Enregistrés tout de
   suite ; la carte du monstre créé s'ouvre, avec les rubriques de la plupart des cartes du doc, vides (`GABARIT_DE_CARTE` : santé, chakra et barrière sur
@@ -242,7 +278,8 @@ Le doc est la **copie du propriétaire** (« Copie de Bestiaire 2.0 », `1WWCmI4
 que chaque ligne de texte gardée est écrite dans le doc.
 
 - `monstre_regle` (4 règles générales), `monstre_echelle` (EP 1 à 10 : règles de caractéristiques, dégâts moyens, attributs et expérience) ;
-- `monstre_espece` (144 titres « Nom (EPx) »), `monstre_espece_lieu`, `monstre_espece_bloc` (les 15 tableaux par magie du Presque-Ottar),
+- `monstre_groupe` (un groupe d'espèces, « Ottar », titre « Ottar (explication) » : décision R64, migration 0042) ;
+- `monstre_espece` (144 titres « Nom (EPx) », dont les 22 du groupe Ottar), `monstre_espece_lieu`, `monstre_espece_bloc` (les 15 tableaux par magie du Presque-Ottar),
   `monstre_butin` (tableaux « Score (3d100) ») et `monstre_butin_objet` (glossaire, 102 objets : les infobulles des cases de butin) ;
 - `monstre` (311 cartes) et le détail de chaque carte : `monstre_rubrique` (tout son texte, rubrique par rubrique : rien n'est perdu),
   `monstre_caracteristique`, `monstre_attaque`, `monstre_capacite`, `monstre_defense`.
@@ -257,8 +294,8 @@ Deux brouillons du doc, « Réanimé (EP5) (a continuer) » et « Vouivre squele
 « Réanimé » était rattachée au Rat et les trois « Vouivres squelettes » à la Velue, leur texte collé dans la tactique du Rat putride et le butin de la
 Velue. Une note sous un tableau de butin (« *Parmi Rouge, Jaune, Vert foncé, Brun », Blob métallique) ne se colle plus à sa dernière case.
 
-L'index « Ennemi par EP » de l'introduction n'est pas repris : il ne liste que 120 noms et en omet 39 (les Ottar, les Élémentaires de la Foudre, de la
-Lumière…). Les « objets en rouge » du glossaire (« en attente d'être mis dans un tableau de butin ») ne se voient pas dans l'export texte.
+L'index « Ennemi par EP » de l'introduction n'est pas repris : il ne liste que 120 noms et en omet 39 : les 22 Ottar, qui n'y sont qu'une ligne,
+« Ottar (tous) » (sous « EP1-10 »), et 17 autres (les Élémentaires de la Foudre, de la Lumière…). Les « objets en rouge » du glossaire (« en attente d'être mis dans un tableau de butin ») ne se voient pas dans l'export texte.
 
 ## Questions au propriétaire
 

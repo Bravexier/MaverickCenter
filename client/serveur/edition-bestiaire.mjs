@@ -96,11 +96,14 @@ export function domainesDuBestiaire({ refus, ErreurEdition, synchroniser, proven
       const meme = db.prepare('SELECT id FROM monstre_espece WHERE nom_cle = ?').get(cle);
       if (meme) throw new ErreurEdition(409, `L’espèce « ${valeurs.nom} » existe déjà (${meme.id}).`);
       let id = `monstres/${cle}`;
-      for (let n = 2; lireLigne(db, 'monstre_espece', { id }) || idDejaEmploye(db, ['monstre_espece'], id); n += 1) id = `monstres/${cle}-${n}`;
+      // ni l'identifiant d'une espèce (même supprimée), ni celui d'un groupe (« monstres/ottar ») : comme l'extracteur
+      for (let n = 2; lireLigne(db, 'monstre_espece', { id }) || lireLigne(db, 'monstre_groupe', { id }) || idDejaEmploye(db, ['monstre_espece'], id); n += 1) id = `monstres/${cle}-${n}`;
+      const groupe = valeurs.groupe_id ? lireLigne(db, 'monstre_groupe', { id: valeurs.groupe_id }) : null;
+      if (valeurs.groupe_id && !groupe) throw new ErreurEdition(404, `Groupe d’espèces introuvable : ${valeurs.groupe_id}`);
       const espece = {
         id, nom: valeurs.nom, nom_cle: cle, ordre: ordreSuivant(db, 'monstre_espece'), lettre: cle[0].toUpperCase(), ep_brut: valeurs.ep_brut,
         ...echelles(valeurs.ep_brut, 'Échelle de l’espèce'), description: valeurs.description ?? null, lieu_brut: valeurs.lieu_brut ?? null, complement: null,
-        origine: ORIGINE, source_ref: provenance(ctx.instant),
+        origine: ORIGINE, source_ref: provenance(ctx.instant), groupe_id: groupe?.id ?? null,
       };
       w.inserer('monstre_espece', espece);
       suivreLesLieux(ctx, espece);
@@ -183,6 +186,9 @@ export function domainesDuBestiaire({ refus, ErreurEdition, synchroniser, proven
 
   return { monstre_espece: MONSTRE_ESPECE, monstre: MONSTRE, monstre_rubrique: MONSTRE_RUBRIQUE };
 }
+
+/** Les groupes d'espèces (décision R64), pour le formulaire « Nouvelle espèce » (liste `groupesDeMonstres` de GET /api/edition/listes/). */
+export const groupesDeMonstres = (db) => db.prepare('SELECT id AS valeur, nom AS libelle FROM monstre_groupe ORDER BY nom').all().map((g) => ({ valeur: g.valeur, libelle: g.libelle }));
 
 /** Les espèces, pour le formulaire « Nouveau monstre » (liste `especesDeMonstres` de GET /api/edition/listes/), dans l'ordre du doc. */
 export const especesDeMonstres = (db) =>

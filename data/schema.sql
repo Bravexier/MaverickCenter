@@ -22,7 +22,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 41;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 42;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -2025,8 +2025,21 @@ CREATE TABLE monstre_butin_objet (
   source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0)
 ) STRICT;
 
+-- GROUPE D'ESPÈCES (décision R64, migration 0042) : des espèces du doc qui n'en font qu'une pour le propriétaire (« regrouper tous les Ottar (et le
+-- presqu'Ottar) sous la même espèce d'Ottar, dont la description était auparavant perdue dans la mauvaise fiche ») ; un titre « Nom (explication) » du
+-- doc, sa description (les paragraphes qui le suivent), et les espèces qui le suivent dont le nom contient le sien (aujourd'hui : « Ottar », 22 espèces).
+-- Ni carte ni ligne à lui : le tableau écrit son nom dans la colonne Espèce de ses espèces, la carte de chacune montre sa description.
+CREATE TABLE monstre_groupe (
+  id          TEXT    NOT NULL PRIMARY KEY,                      -- « monstres/<nom_cle> »
+  nom         TEXT    NOT NULL CHECK (length(nom) > 0),          -- titre tel qu'écrit, sans « (explication) »
+  nom_cle     TEXT    NOT NULL CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),
+  description TEXT,                                              -- paragraphes qui suivent le titre, jusqu'au trait, séparés par une ligne vide
+  origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
+  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0)
+) STRICT;
+
 -- ESPÈCE : un titre « Nom (EPx) » du doc, rangé sous sa lettre ; sa description, son lieu de rencontre, puis ses cartes (de 0 à 3 : ennemi simple,
--- mini-boss, boss), les blocs qui suivent les cartes et le tableau du butin.
+-- mini-boss, boss), les blocs qui suivent les cartes et le tableau du butin ; son groupe éventuel (« Ottar »).
 CREATE TABLE monstre_espece (
   id          TEXT    NOT NULL PRIMARY KEY,
   nom         TEXT    NOT NULL CHECK (length(nom) > 0),          -- titre tel qu'écrit, sans « (EPx) »
@@ -2047,6 +2060,7 @@ CREATE TABLE monstre_espece (
   portrait_x  REAL    CHECK (portrait_x IS NULL OR portrait_x BETWEEN 0 AND 1),
   portrait_y  REAL    CHECK (portrait_y IS NULL OR portrait_y BETWEEN 0 AND 1),
   portrait_zoom REAL  CHECK (portrait_zoom IS NULL OR portrait_zoom BETWEEN 1 AND 4),
+  groupe_id   TEXT    REFERENCES monstre_groupe(id),             -- son groupe (décision R64, migration 0042) ; NULL = aucun
   CHECK (ep_min IS NULL OR ep_min <= ep_max)
 ) STRICT;
 
@@ -2126,6 +2140,9 @@ CREATE TABLE monstre (
   portrait_x      REAL    CHECK (portrait_x IS NULL OR portrait_x BETWEEN 0 AND 1),
   portrait_y      REAL    CHECK (portrait_y IS NULL OR portrait_y BETWEEN 0 AND 1),
   portrait_zoom   REAL    CHECK (portrait_zoom IS NULL OR portrait_zoom BETWEEN 1 AND 4),
+  -- la description de la créature elle-même, après celle de son espèce (décision R65, migration 0042) ; le doc n'en écrit aucune (NULL), le site de dev la
+  -- modifie. Une espèce d'un groupe (les Ottar) est elle-même la créature : sa description est celle de `monstre_espece`
+  description     TEXT,
   UNIQUE (espece_id, rang),
   CHECK (ep_min IS NULL OR ep_min <= ep_max),
   CHECK ((sante IS NULL) = (chakra IS NULL) AND (sante IS NULL) = (barriere IS NULL)),
