@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { chargerBestiaire } from '../src/lib/bestiaire-db.mjs';
+import { cheminDeMonstre } from '../src/lib/bestiaire-rendu.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { echellesEcrites, objetDuButin } from '../src/lib/monstre-champs.mjs';
 
@@ -41,10 +42,14 @@ test('une case par monstre ou créature, chacune avec sa carte ; les identifiant
   assert.equal(new Set(ids).size, ids.length, 'identifiants uniques');
   const connus = new Set(ids);
   for (const [, cible] of main.matchAll(/aria-(?:controls|labelledby|describedby)="([^"]+)"/g)) assert.ok(connus.has(cible), cible);
-  for (const ancre of [...lignes(main), ...cases(main)]) {
-    assert.ok(connus.has(`carte-${ancre}`), `carte de ${ancre}`);
-    assert.ok(main.includes(`<a class="bligne__ouvrir" href="#carte-${ancre}" aria-controls="carte-${ancre}"`), `lien vers la carte de ${ancre}`);
+  for (const ancre of [...lignes(main), ...cases(main)]) assert.ok(connus.has(`carte-${ancre}`), `carte de ${ancre}`);
+  // le nom d'un monstre mène à sa page (le script ouvre la carte à côté sur un grand écran) ; celui d'une créature invoquée, à sa carte dans la page
+  const parAncre = new Map(monstres.lignes.map((l) => [l.ancre, l]));
+  for (const ancre of lignes(main)) {
+    const lien = new RegExp(`<a class="bligne__ouvrir" href="[^"#]*/${cheminDeMonstre(parAncre.get(ancre).id)}" aria-controls="carte-${ancre}"`);
+    assert.match(main, lien, `lien vers la page de ${ancre}`);
   }
+  for (const ancre of cases(main)) assert.ok(main.includes(`<a class="bligne__ouvrir" href="#carte-${ancre}" aria-controls="carte-${ancre}"`), `lien vers la carte de ${ancre}`);
   // liens internes vers une autre créature (même combinaison) : vers une ligne qui existe
   for (const [, cible] of main.matchAll(/href="#(invoquee-[^"]+)"/g)) assert.ok(connus.has(cible), cible);
 });

@@ -5,6 +5,7 @@
 // attributs moyens et expérience reçue, règles par échelle avec un curseur). Le glossaire du butin n'est plus affiché ici : ses définitions sont les
 // infobulles des cases de butin (components/bestiaire/TableauMonstres.astro). Les onglets : components/Onglets.astro (sans JavaScript, les deux catégories se suivent). CSS : styles/bestiaire/bestiaire.css et carte.css (la carte, partagée avec les pages de magie) (?raw).
 import Onglets from '../Onglets.astro';
+import ScriptDuBestiaire from './ScriptDuBestiaire.astro';
 import TableauMonstres from './TableauMonstres.astro';
 import TableauInvocations from './TableauInvocations.astro';
 import bestiaireCss from '../../styles/bestiaire/bestiaire.css?raw';
@@ -153,6 +154,4 @@ const avecNombres = (p: string) => p.split(/([+-]?\d+(?:d\d+)?)/).map((m, k) => 
   </section>
 </div>
 
-<script>
-  import '../../scripts/bestiaire.mjs';
-</script>
+<ScriptDuBestiaire />

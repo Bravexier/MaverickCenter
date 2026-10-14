@@ -6,7 +6,7 @@
 // le réaffiche (`data-ed-rendu`, lib/monstre-rendu.mjs#RENDUS_DU_BESTIAIRE) ; ceux de la carte ont aussi `data-ed-sur-demande` : ils ne deviennent des
 // saisies qu'une fois la carte ouverte (src/scripts/edition/bestiaire.mjs : 315 cartes dans la page). Fonctions pures, tout texte échappé.
 import { attributEd } from './edition-modele.mjs';
-import { CATEGORIES, echellesEcrites, renvoieAuxDegatsMoyens, RUBRIQUES } from './monstre-champs.mjs';
+import { CATEGORIES, echellesEcrites, objetDuButin, renvoieAuxDegatsMoyens, RUBRIQUES } from './monstre-champs.mjs';
 import { htmlDeCategorie, htmlDeLEchelle, htmlDeRubrique, htmlDuButin, PHRASE_VARIABLE, RENDUS_DU_BESTIAIRE } from './monstre-rendu.mjs';
 import { cadrageDe, dimensionsDuPortrait, empreinte, styleDuCadrage } from './portrait.mjs';
 
@@ -39,14 +39,41 @@ function rubriquesEnHtml(rubriques, html) {
   return sortie.join('');
 }
 
+/**
+ * L'adresse (sans la base du site) de la page d'un monstre (demande du propriétaire : « Prévoir une page spécifique pour chaque monstre dans le cas où on
+ * ne peut pas faire apparaître le tableau et la tuile en même temps » ; pages/bestiaire/monstres/[...chemin].astro) : tirée de l'identifiant figé, jamais
+ * du nom (« monstres/loup-garou#carte:loup-garou-superieur » -> « bestiaire/monstres/loup-garou/loup-garou-superieur/ » ; une espèce sans carte,
+ * « monstres/ottar-amoureux » -> « bestiaire/monstres/ottar-amoureux/ »). Trois segments au moins : pas de conflit avec une page du wiki
+ * « bestiaire/<slug>/ » (les créatures invoquées, dont 12 portent le nom d'un monstre). null pour un identifiant d'une autre forme.
+ */
+export const cheminDeMonstre = (id) => {
+  const m = String(id ?? '').match(/^monstres\/([a-z0-9-]+)(?:#carte:([a-z0-9-]+))?$/);
+  return m ? `bestiaire/monstres/${m[1]}/${m[2] ? `${m[2]}/` : ''}` : null;
+};
+
+/** Les objets du glossaire du butin que cite une ligne (espèce), une fois chacun, dans l'ordre du glossaire : les bulles qu'écrit la page de ce monstre. */
+export function objetsDuButinDe(l, glossaire = [], elements = []) {
+  const cites = new Set();
+  // comme lib/monstre-rendu.mjs#htmlDuButin : une case cite au plus un objet
+  for (const t of l.espece.butin) {
+    for (const cat of Object.keys(CATEGORIES)) {
+      const o = t[cat] ? objetDuButin(t[cat], glossaire, elements) : null;
+      if (o) cites.add(o.objet.id);
+    }
+  }
+  return glossaire.filter((g) => cites.has(g.id));
+}
+
 /** Identifiants d'une ligne : la carte (monstre) ou, pour une espèce sans carte, l'espèce. */
 const cles = (l) => ({ monstre: { id: l.id }, espece: { id: l.espece.id } });
 
 /**
  * La ligne du tableau (`i` : sa place dans l'ordre du doc), colonnes « Espèce | Nom | Type | Catégorie | EP | Lieux » (demande du propriétaire). Le nom reste
- * l'en-tête de ligne (`th scope="row"`, le lien vers la carte) : plusieurs cartes partagent une espèce.
+ * l'en-tête de ligne (`th scope="row"`, le lien vers la carte) : plusieurs cartes partagent une espèce. `page` : l'adresse de la page du monstre (le lien y
+ * mène, le script de la page n'ouvre la carte à côté que sur un grand écran) ; sans page (un monstre créé depuis la construction, rendu par le service),
+ * le lien mène à la carte dans la page.
  */
-export function htmlDeLigneMonstre(l, i) {
+export function htmlDeLigneMonstre(l, i, { page = null } = {}) {
   const c = l.carte;
   const k = cles(l);
   const carte = `carte-${l.ancre}`;
@@ -66,7 +93,7 @@ export function htmlDeLigneMonstre(l, i) {
     `<tr class="bligne" id="${e(l.ancre)}" data-ligne data-ordre="${i}" data-carte="${e(carte)}" data-facettes="${e(JSON.stringify(l.facettes))}" data-tri="${e(JSON.stringify(l.tri))}"`
     + ` data-ed-monstre="${e(l.id)}" data-ed-espece="${e(l.espece.id)}" data-ed-nature="${c ? 'carte' : 'espece'}">`
     + `<td class="bligne__espece"${champ('monstre_espece', k.espece, 'nom')}>${e(l.espece.nom)}</td>`
-    + `<th scope="row" class="bligne__nom"><a class="bligne__ouvrir" href="#${e(carte)}" aria-controls="${e(carte)}"${nom}>${e(l.nom)}</a></th>`
+    + `<th scope="row" class="bligne__nom"><a class="bligne__ouvrir" href="${e(page ?? `#${carte}`)}" aria-controls="${e(carte)}"${nom}>${e(l.nom)}</a></th>`
     + cellules.join('')
     + `<td class="bligne__lieux"${champ('monstre_espece', k.espece, 'lieu_brut', { rendu: 'monstre-lieux' })}>${RENDUS_DU_BESTIAIRE['monstre-lieux'](l.espece.lieu)}</td>`
     + '</tr>'
@@ -104,8 +131,9 @@ export const empreinteDuPortrait = (portrait) => {
 /** La carte d'une ligne : en-tête (nom, espèce, catégorie, type, alignement, échelle), portrait (htmlDuPortrait ; `logo` : l'adresse du logo, en attendant,
  * `adresseDuPortrait` : celle d'une image), le curseur d'échelle d'une carte qui en écrit plusieurs (lib/monstre-rendu.mjs#htmlDeLEchelle ; `echelles` :
  * les lignes de `monstre_echelle`), toute la carte rubrique par rubrique, l'espèce (description, lieu de rencontre, blocs) et le butin (l'objet du
- * glossaire qu'une case cite en infobulle : `glossaire`, les lignes de `monstre_butin_objet` ; `elements`, les noms des magies, décision R57). Une espèce sans carte n'a que sa partie « espèce ». */
-export function htmlDeCarteMonstre(l, { logo, adresseDuPortrait = null, echelles = [], glossaire = [], elements = [], magiesDesCibles = {} }) {
+ * glossaire qu'une case cite en infobulle : `glossaire`, les lignes de `monstre_butin_objet` ; `elements`, les noms des magies, décision R57). Une espèce sans carte n'a que sa partie « espèce ».
+ * `seule` : la carte de la page du monstre (components/bestiaire/PageMonstre.astro), toujours affichée, sans « Fermer ». */
+export function htmlDeCarteMonstre(l, { logo, adresseDuPortrait = null, echelles = [], glossaire = [], elements = [], magiesDesCibles = {}, seule = false }) {
   const c = l.carte;
   const k = cles(l);
   const id = `carte-${l.ancre}`;
@@ -117,11 +145,13 @@ export function htmlDeCarteMonstre(l, { logo, adresseDuPortrait = null, echelles
       + `<span class="bbadge bbadge--ep">Créature échelle <span${champ('monstre', k.monstre, 'echelle_brut', s)}>${e(c.echelle)}</span></span>`
     : '<span class="bbadge">Pas encore de carte de combat dans le doc</span>';
   const tete = `<header class="bcarte__tete"><div class="bcarte__titres">`
-    + `<h3 id="${e(id)}-titre"${c ? champ('monstre', k.monstre, 'nom', s) : champ('monstre_espece', k.espece, 'nom')}>${e(l.nom)}</h3>`
+    // la page du monstre : son nom est le titre de la page
+    + `<${seule ? 'h1' : 'h3'} id="${e(id)}-titre"${c ? champ('monstre', k.monstre, 'nom', s) : champ('monstre_espece', k.espece, 'nom')}>${e(l.nom)}</${seule ? 'h1' : 'h3'}>`
     + `<p class="bcarte__espece"><span${champ('monstre_espece', k.espece, 'nom')}>${e(l.espece.nom)}</span> <span class="muted">(<span${champ('monstre_espece', k.espece, 'ep_brut', s)}>${e(l.espece.ep)}</span>)</span></p>`
     + `<p class="bcarte__badges">${badges}</p></div>`
     + htmlDuPortrait({ table: c ? 'monstre' : 'monstre_espece', cle: c ? k.monstre : k.espece, nom: l.nom, portrait: l.portrait }, { logo, adresse: adresseDuPortrait })
-    + `<a class="bcarte__fermer" href="#${e(l.ancre)}" aria-label="${e(`Fermer la carte de ${l.nom}`)}">Fermer</a></header>`;
+    + (seule ? '' : `<a class="bcarte__fermer" href="#${e(l.ancre)}" aria-label="${e(`Fermer la carte de ${l.nom}`)}">Fermer</a>`)
+    + '</header>';
   // le curseur d'échelle : refait quand l'échelle ou la catégorie du monstre change (mode modification) ; vide pour une carte d'une seule échelle
   const echelle = c ? `<div class="bcarte__echelle"${champ('monstre', k.monstre, 'echelle_brut', { rendu: 'monstre-echelle' })}>${htmlDeLEchelle(c.echelle, c.categorie, echelles, renvoieAuxDegatsMoyens(c.rubriques))}</div>` : '';
   // les échelles qu'écrit la carte : une formule « N (+k/mEP) » ou « N (+k/EP) » se calcule à chacune (décisions R55, R59)
@@ -133,8 +163,10 @@ export function htmlDeCarteMonstre(l, { logo, adresseDuPortrait = null, echelles
         + `<dd${champ('monstre_rubrique', { monstre_id: l.id, rang: r.rang }, 'texte', { rendu: 'monstre-rubrique', ...s })}>${htmlDeRubrique(r.rubrique, r.texte, { echelles: echellesDeLaCarte, magiesDesCibles })}</dd></div>`)}</dl></section>`
     : '';
   const es = l.espece;
+  // les intitulés des sections : sous le nom de la carte (h3 dans le tableau, h1 sur la page du monstre)
+  const hs = seule ? 'h2' : 'h4';
   const espece = `<section class="bcarte__section" aria-label="L’espèce">`
-    + `<h4${champ('monstre_espece', k.espece, 'nom', s)}>${e(es.nom)}</h4>`
+    + `<${hs}${champ('monstre_espece', k.espece, 'nom', s)}>${e(es.nom)}</${hs}>`
     + `<p class="texte"${cadre(!plein(es.description))}><span${champ('monstre_espece', k.espece, 'description', s)}>${e(es.description)}</span></p>`
     + `<p${cadre(!plein(es.lieu))}><strong>Lieu de rencontre :</strong> <span${champ('monstre_espece', k.espece, 'lieu_brut', s)}>${e(es.lieu)}</span></p>`
     + `<p class="texte"${cadre(!plein(es.complement))}><span${champ('monstre_espece', k.espece, 'complement', s)}>${e(es.complement)}</span></p>`
@@ -144,7 +176,7 @@ export function htmlDeCarteMonstre(l, { logo, adresseDuPortrait = null, echelles
     + '</section>';
   const sienne = (cat) => (c?.categorie === cat ? ' class="est-sienne"' : '');
   const butin = es.butin.length
-    ? `<section class="bcarte__section" aria-label="Butin"><h4>Butin <span class="muted">(score au 3d100)</span></h4><div class="bbutin__defile"><table class="bbutin">`
+    ? `<section class="bcarte__section" aria-label="Butin"><${hs}>Butin <span class="muted">(score au 3d100)</span></${hs}><div class="bbutin__defile"><table class="bbutin">`
       + `<thead><tr><th scope="col">Score</th>${Object.entries(CATEGORIES).map(([cat, libelle]) => `<th scope="col"${sienne(cat)}>${e(libelle)}</th>`).join('')}</tr></thead>`
       + `<tbody>${es.butin
         .map((t) => `<tr><th scope="row" class="nombre">${e(t.score)}</th>${Object.keys(CATEGORIES)
@@ -152,5 +184,5 @@ export function htmlDeCarteMonstre(l, { logo, adresseDuPortrait = null, echelles
           .join('')}</tr>`)
         .join('')}</tbody></table></div></section>`
     : '';
-  return `<article class="bcarte" id="${e(id)}" aria-labelledby="${e(id)}-titre" data-carte="${e(l.ancre)}">${tete}${echelle}${laCarte}${espece}${butin}</article>`;
+  return `<article class="bcarte${seule ? ' bcarte--seule' : ''}" id="${e(id)}" aria-labelledby="${e(id)}-titre" data-carte="${e(l.ancre)}">${tete}${echelle}${laCarte}${espece}${butin}</article>`;
 }

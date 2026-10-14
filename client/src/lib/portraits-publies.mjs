@@ -4,7 +4,7 @@
 // (pages/bestiaire/portraits/[empreinte].webp.ts, .jpg.ts, .png.ts) : Astro n'exempte de `trailingSlash: 'always'` qu'une route dont le nom porte
 // l'extension (sinon `npm run dev` ne sert l'image qu'avec un « / » final).
 // Côté build seulement (lit la base) : ni navigateur ni service.
-import { empreinte, estUnPortrait, extensionDuPortrait, octetsDuPortrait } from './portrait.mjs';
+import { empreinte, estUnPortrait, extensionDuPortrait, fichierDuPortrait, octetsDuPortrait } from './portrait.mjs';
 
 export const TYPES_DE_PORTRAIT = Object.freeze({ webp: 'image/webp', jpg: 'image/jpeg', png: 'image/png' });
 
@@ -19,6 +19,13 @@ export function cheminsDesPortraits(db, extension) {
   const parEmpreinte = new Map(images.map((donnees) => [empreinte(donnees), donnees]));
   return [...parEmpreinte].map(([cle, donnees]) => ({ params: { empreinte: cle }, props: { octets: octetsDuPortrait(donnees), type: TYPES_DE_PORTRAIT[extension] } }));
 }
+
+/**
+ * L'adresse d'un portrait publié, pour une page qui montre une carte (TableauMonstres.astro, PageMonstre.astro) : le fichier que publient les routes
+ * pages/bestiaire/portraits/[empreinte].<ext>.ts, nommé d'après son empreinte ; null pour une image qui n'en a pas (la carte montre le logo). `url` :
+ * lib/wiki#url (la base du site).
+ */
+export const adresseDuPortrait = (url) => (donnees) => (estUnPortrait(donnees) ? url(`bestiaire/portraits/${fichierDuPortrait(donnees)}`) : null);
 
 /** La réponse d'un fichier de portrait. */
 export const reponseDuPortrait = ({ octets, type }) => new Response(octets, { headers: { 'Content-Type': type } });
