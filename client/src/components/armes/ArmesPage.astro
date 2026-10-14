@@ -5,7 +5,7 @@ import { RENDUS } from '../../lib/edition-rendu.mjs';
 import { ancreDeMateriau, type chargerArmes, type contexteDesArmes } from '../../lib/armes-db.mjs';
 import { COMPETENCES_D_ARME, totalDesAmeliorations } from '../../lib/arme-champs.mjs';
 import { htmlDuFiltreDeCompetence } from '../../lib/armes-rendu.mjs';
-import { htmlAvecMonnaies, htmlDePiece } from '../../lib/monnaies.mjs';
+import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
 import TableauArmes from './TableauArmes.astro';
 
 // Page /ressources/armes/ (demande du propriétaire, 2026-10-13 : « refaire intégralement la présentation de l'onglet des armes », « Pas de tableau
@@ -42,9 +42,9 @@ const FILTRES = Object.keys(COMPETENCES_D_ARME).map((id) => htmlDuFiltreDeCompet
 </script>
 <div class="armes" data-armes>
   {/* l'icône du Ricken d'or (lib/monnaies.mjs), que le script de la page reprend pour les coûts qu'il écrit (aucun module partagé avec lui) */}
-  <template data-armes-piece set:html={htmlDePiece('RO')}></template>
+  {Object.keys(MONNAIES_DU_JEU).map((abr) => <template data-armes-piece={abr} set:html={htmlDePiece(abr)}></template>)}
   <h1>{armes.page?.titre ?? 'Armes'} <span class="badge">Ressource</span></h1>
-  {resume && <p class="armes__chapo">{resume}</p>}
+  {resume && <p class="armes__chapo" set:html={htmlAvecMonnaies(resume)} />}
   <details class="armes-regles">
     <summary>Règles des armes : fabrication, recharge, mordhau, cas particuliers, prix</summary>
     <div class="armes-regles__corps">

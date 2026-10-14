@@ -11,7 +11,7 @@
 // État dans l'adresse : ?arme=<ancre de la ligne>&materiau=<ancre>&amelioration=<niveau>&competence=<ids>&depart=1 (une adresse `#arme-…` ouvre aussi
 // l'arme).
 // En mode modification, pas de filtre : tout s'affiche.
-import { forgerArme, nombre } from '../lib/arme-forge.mjs';
+import { forgerArme, nombre, piecesDuMontant } from '../lib/arme-forge.mjs';
 import {
   armeVisible, basculerCompetence, ecrireCompetences, lireCompetences, lireDepart, PARAMETRE_DES_COMPETENCES, PARAMETRE_DU_DEPART,
 } from '../lib/armes-filtres.mjs';
@@ -56,16 +56,19 @@ if (racine) {
     });
 
   /** L'icône du Ricken d'or (demande du propriétaire : les monnaies en icônes ; components/armes/ArmesPage.astro la pose dans un <template>). */
-  const PIECE = racine.querySelector('[data-armes-piece]')?.innerHTML.trim() || 'RO';
+  const PIECES = Object.fromEntries([...racine.querySelectorAll('template[data-armes-piece]')].map((t) => [t.dataset.armesPiece, t.innerHTML.trim()]));
+  /** Un montant en RO, décomposé en PP / RO / RF (lib/arme-forge.mjs#piecesDuMontant), chaque monnaie en icône. */
+  const ro = (n) =>
+    `<span class="montant">${piecesDuMontant(n).map((p) => `<span class="montant__part">${nombre(p.nombre)}&#8239;${PIECES[p.abr] ?? p.abr}</span>`).join(' ')}</span>`;
 
   /** La ligne TOTAL des améliorations, refaite depuis les niveaux affichés (comme lib/arme-champs.mjs#totalDesAmeliorations). */
   function total() {
     const cellule = racine.querySelector('[data-armes-total]');
     if (!cellule) return;
     const a = ameliorations();
-    const ro = a.reduce((s, x) => s + (x.cout_ro ?? 0), 0);
+    const somme = a.reduce((s, x) => s + (x.cout_ro ?? 0), 0);
     const mat = a.reduce((s, x) => s + (x.cout_materiaux ?? 0), 0);
-    cellule.innerHTML = `${mat} matériau${mat > 1 ? 'x' : ''} + ${ro} ${PIECE}`;
+    cellule.innerHTML = `${mat} matériau${mat > 1 ? 'x' : ''} + ${ro(somme)}`;
   }
 
   /** Le texte d'infobulle d'un élément : son `title`, que components/Infobulles.astro déplace dans `data-infobulle` dès le chargement. */
@@ -114,7 +117,6 @@ if (racine) {
   }
 
   const signe = (n) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : '0');
-  const ro = (n) => `${nombre(n)} ${PIECE}`;
 
   function rendreFiche() {
     if (!arme) return;

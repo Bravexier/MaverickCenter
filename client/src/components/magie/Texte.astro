@@ -1,4 +1,5 @@
 ---
+import { htmlAvecMonnaies } from '../../lib/monnaies.mjs';
 import { morceauxAvecEtats, morceauxAvecLiens } from '../../lib/sort-format.mjs';
 import type { Magies } from '../../lib/magies';
 import EtatPastille from './EtatPastille.astro';
@@ -6,7 +7,8 @@ import EtatPastille from './EtatPastille.astro';
 // Texte d'une cellule ou d'un bloc de la base (lib/sort-format.mjs#blocsDeTexte) : intertitres, paragraphes et listes à puces, sans Markdown.
 // Une adresse web écrite dans le texte devient un lien (lib/sort-format.mjs#morceauxAvecLiens). Quand `etats` est donné (les altérations d'état
 // repérées dans le texte d'un sort, table sort_etat), chacune devient une pastille avec infobulle PLACÉE DANS LE TEXTE, sur son mot ; la liste est
-// consommée (une altération n'est placée qu'une fois, même si le texte est coupé en plusieurs appels).
+// consommée (une altération n'est placée qu'une fois, même si le texte est coupé en plusieurs appels). Les monnaies en icônes (décisions R61, R63 :
+// lib/monnaies.mjs, comme lib/edition-rendu.mjs#htmlDesBlocs).
 interface Props {
   blocs: ({ liste: false; titre?: false; texte: string } | { liste: true; items: string[] } | { titre: true; texte: string })[];
   etats?: { etatId: string; stade: number | null; forme: string; extrait: string }[];
@@ -29,7 +31,7 @@ const rendre = (texte: string) =>
         ) : p.lien ? (
           <a href={p.lien} rel="noopener noreferrer">{p.lien}</a>
         ) : (
-          p.texte
+          <Fragment set:html={htmlAvecMonnaies(p.texte ?? '')} />
         ),
       );
     return 'items' in b ? (

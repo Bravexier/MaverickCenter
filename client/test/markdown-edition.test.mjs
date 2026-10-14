@@ -158,12 +158,15 @@ test('mise en forme du navigateur : <strike>, <span style> en gras ou en italiqu
     'a\n\n## T\n\n|  | x |\n| --- | --- |\n|  | y<br>z |\n');
 });
 
-test('une monnaie en icône (lib/markdown-monnaies.mjs) redevient son abréviation telle qu’écrite ; l’aperçu assaini garde l’icône', async () => {
-  const md = '| Objet | Prix |\n| --- | --- |\n| Corde | 10 Ro / 1 000 RF |';
+test('une monnaie en icône, un montant décomposé (lib/markdown-monnaies.mjs) redeviennent tels qu’écrits ; l’aperçu assaini les garde', async () => {
+  const md = 'Une corde vaut 1245,5 RO, payable en RF.\n\n| Objet | Prix | Coût(RO) |\n| --- | --- | --- |\n| Corde | 10 Ro / 1 000 RF | 100 + 1 Matériau |';
   const html = await rendre(md);
-  assert.match(html, /class="piece piece--ro"/);
+  assert.match(html, /class="piece piece--pp"/);
+  assert.match(html, /class="montant" data-montant="1245,5 RO"/);
   assert.equal((await aller(md)).trim(), md);
   const sur = htmlSur(enfants(html));
+  assert.match(sur, /<span[^>]* class="montant" data-montant="10 Ro \/ 1 000 RF">/);
   assert.match(sur, /<span[^>]* class="piece piece--rf" role="img"[^>]* data-monnaie="RF"><\/span>/);
-  assert.ok(!/<span[^>]*piece[^>]*(onerror|style)=/.test(sur));
+  assert.ok(!/<span[^>]*(piece|montant)[^>]*(onerror|style)=/.test(sur));
+  assert.equal(versMarkdown(enfants(sur)).trim(), md, 'l’aperçu assaini se relit aussi');
 });

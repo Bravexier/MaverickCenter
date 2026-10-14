@@ -35,7 +35,7 @@ const slug = (t: string) => t.normalize('NFD').replace(/\p{Diacritic}/gu, '').to
 const QUALITES = ['Commune', 'Raffinée', 'Parfaite'];
 const tableaux: Tableau[] = [
   {
-    id: 'monnaie', titre: 'Monnaie', note: 'Chaque monnaie vaut un nombre de RF, l’unité (CONVERTISSEUR de l’onglet « Équipement inventaire »).',
+    id: 'monnaie', titre: 'Monnaie', note: 'Chaque monnaie vaut un nombre de Ricken de fer, l’unité (CONVERTISSEUR de l’onglet « Équipement inventaire »).',
     entetes: ['Nom', 'Symbole', 'Valeur', 'Conversion'], lignes: monnaies.map((m) => htmlDeLigneDeMonnaie(m, monnaies)),
     ajout: { entite: 'monnaie', libelle: 'une monnaie' },
   },

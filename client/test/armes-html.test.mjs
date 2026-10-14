@@ -123,8 +123,10 @@ test('matériaux dans leur couleur, prix en RO ; améliorations +1 à +10 avec l
   assert.deepEqual(armes.materiaux.filter((m) => m.defaut).map((m) => m.nom), ['Fer']);
   assert.equal([...main.matchAll(/<tr class="amelioration" id="amelioration-(\d+)"/g)].length, armes.ameliorations.length);
   // le Ricken d'or en icône (demande du propriétaire : les monnaies en icônes, lib/monnaies.mjs)
-  assert.match(main, /<td colspan="2" data-armes-total>\d+ matériaux? \+ \d+ <span class="piece piece--ro"[^>]*><\/span><\/td>/);
-  assert.match(main, /<template data-armes-piece><span class="piece piece--ro"/, 'l’icône que reprend le script');
+  assert.match(main, /<td colspan="2" data-armes-total>\d+ matériaux? \+ <span class="montant" data-montant="\d+ RO"[^>]*>(<span class="montant__part">\d+&#8239;<span class="piece piece--(pp|ro|rf)"[^>]*><\/span><\/span> ?)+<\/span><\/td>/);
+  for (const [abr, id] of [['PP', 'pp'], ['RO', 'ro'], ['RF', 'rf']]) {
+    assert.ok(main.includes(`<template data-armes-piece="${abr}"><span class="piece piece--${id}"`), `l’icône ${abr} que reprend le script`);
+  }
   // les matériaux en lecture : leur référence est la page « Composants » (décision R62)
   assert.ok(!/<td class="materiau__(prix|effet)" data-ed=/.test(main));
 });

@@ -2,7 +2,7 @@
 import accessoiresCss from '../../styles/accessoires/accessoires.css?raw';
 import { bulleDeGemme, cleDeRessource, consignesDesEtapes, type chargerAccessoires } from '../../lib/accessoires-db.mjs';
 import { cleDEffet, facesDuDe, QUALITES_DE_GEMME, styleDeNiveau } from '../../lib/accessoires-generateur.mjs';
-import { htmlAvecMonnaies, htmlDePiece, MONNAIES_DU_JEU } from '../../lib/monnaies.mjs';
+import { htmlAvecMonnaies } from '../../lib/monnaies.mjs';
 
 // Page /ressources/accessoires/ (demande du propriétaire, 2026-10-14) : « Pas de tableau Markdown. Au lieu de ça, un générateur d'accessoire. La page se
 // présente comme celle des armes : un bloc d'explication, plusieurs tableaux et sur le côté un encart pour décrire l'accessoire ainsi créé en fonction de
@@ -45,9 +45,8 @@ const DE_SVG =
 </script>
 <div class="acc" data-accessoires>
   {/* les icônes des monnaies (lib/monnaies.mjs), que le script de la page reprend pour les prix qu'il écrit dans l'encart (aucun module partagé avec lui) */}
-  {Object.keys(MONNAIES_DU_JEU).map((abr) => <template data-acc-piece={abr} set:html={htmlDePiece(abr)}></template>)}
   <h1>{accessoires.page?.titre ?? 'Accessoires'} <span class="badge">Ressource</span></h1>
-  {resume && <p class="acc__chapo">{resume}</p>}
+  {resume && <p class="acc__chapo" set:html={htmlAvecMonnaies(resume)} />}
   <details class="acc-regles" open>
     <summary>Règles des accessoires : prix, malédiction, montures, qualité des gemmes</summary>
     <div class="prose acc-regles__texte"><Fragment set:html={regles} /></div>
@@ -141,7 +140,7 @@ const DE_SVG =
                             ))}
                           </td>
                           {l.effets.map((e) => (
-                            <td class="acc-case" style={styleDeNiveau(e.niveau)} data-choix="effet" data-valeur={cleDEffet(e.id)} data-propriete="competence" data-min={e.bonus_min} data-max={e.bonus_max} data-niveau={e.niveau} data-niveau-brut={e.niveau_brut} data-libelle={l.libelle} data-sous={l.caracteristique} data-prix={e.prix_brut}>
+                            <td class="acc-case" style={styleDeNiveau(e.niveau)} data-choix="effet" data-valeur={cleDEffet(e.id)} data-propriete="competence" data-min={e.bonus_min} data-max={e.bonus_max} data-niveau={e.niveau} data-niveau-brut={e.niveau_brut} data-libelle={l.libelle} data-sous={l.caracteristique} data-prix={e.prix_brut} data-prix-html={e.prix_brut ? htmlAvecMonnaies(e.prix_brut) : undefined}>
                               <button type="button" class="acc-choisir" aria-pressed="false" aria-label={`${l.libelle}, niveau ${e.niveau} (${e.bonus_min} % à ${e.bonus_max} %) : ${e.prix_brut ?? 'prix absent'}`} set:html={e.prix_brut ? htmlAvecMonnaies(e.prix_brut) : '—'} />
                             </td>
                           ))}
@@ -164,7 +163,7 @@ const DE_SVG =
                       {p.effets.map((e) => {
                         const bulle = `bulle-remarque-${cleDEffet(e.id).replace(/:/g, '-')}`;
                         return (
-                          <tr class={`acc-ligne acc-effet${e.malediction ? ' acc-ligne--malediction' : ''}${e.libelle ? '' : ' acc-effet--vide'}`} style={styleDeNiveau(e.niveau)} data-choix="effet" data-valeur={cleDEffet(e.id)} data-propriete={p.id} data-min={e.jet} data-max={e.jet} data-niveau={e.niveau ?? undefined} data-niveau-brut={e.niveau_brut ?? undefined} data-libelle={e.libelle ?? ''} data-prix={e.prix_brut ?? undefined} data-malediction={e.malediction ? '1' : undefined} data-remarque={e.remarque ?? undefined}>
+                          <tr class={`acc-ligne acc-effet${e.malediction ? ' acc-ligne--malediction' : ''}${e.libelle ? '' : ' acc-effet--vide'}`} style={styleDeNiveau(e.niveau)} data-choix="effet" data-valeur={cleDEffet(e.id)} data-propriete={p.id} data-min={e.jet} data-max={e.jet} data-niveau={e.niveau ?? undefined} data-niveau-brut={e.niveau_brut ?? undefined} data-libelle={e.libelle ?? ''} data-prix={e.prix_brut ?? undefined} data-prix-html={e.prix_brut ? htmlAvecMonnaies(e.prix_brut) : undefined} data-malediction={e.malediction ? '1' : undefined} data-remarque={e.remarque ?? undefined}>
                             <td class="acc-jet">{e.jet}</td>
                             <th scope="row" class="acc-effet__libelle">
                               <button type="button" class="acc-choisir" aria-pressed="false">{e.libelle ?? <span class="vide">(ligne vide)</span>}</button>
@@ -204,7 +203,7 @@ const DE_SVG =
           </thead>
           <tbody>
             {accessoires.montures.map((m) => (
-              <tr class="acc-ligne acc-monture" style={styleDeNiveau(m.niveau)} data-choix="monture" data-valeur={m.niveau} data-min={m.niveau} data-max={m.niveau} data-niveau={m.niveau} data-libelle={m.matiere} data-prix={m.prix_brut} data-effet={m.effet_brut}>
+              <tr class="acc-ligne acc-monture" style={styleDeNiveau(m.niveau)} data-choix="monture" data-valeur={m.niveau} data-min={m.niveau} data-max={m.niveau} data-niveau={m.niveau} data-libelle={m.matiere} data-prix={m.prix_brut} data-prix-html={m.prix_brut ? htmlAvecMonnaies(m.prix_brut) : undefined} data-effet={m.effet_brut}>
                 <td class="acc-jet">Niveau {m.niveau}</td>
                 <th scope="row"><button type="button" class="acc-choisir" aria-pressed="false">{m.matiere}</button></th>
                 <td set:html={htmlAvecMonnaies(m.prix_brut)} />
@@ -225,10 +224,10 @@ const DE_SVG =
 
   <div class="acc-bulles" data-acc-qualites={JSON.stringify(QUALITES_DE_GEMME)}>
     {accessoires.gemmes.map((g) => (
-      <span class="bulle" role="tooltip" id={bulleDeGemme(g.id)} hidden style={`--mag: ${g.couleur}`} data-quarts={JSON.stringify(g.quarts)} data-nom={g.nom}
+      <span class="bulle" role="tooltip" id={bulleDeGemme(g.id)} hidden style={`--mag: ${g.couleur}`} data-quarts={JSON.stringify(Object.fromEntries(Object.entries(g.quarts).map(([q, t]) => [q, t ? htmlAvecMonnaies(t) : t])))} data-nom={g.nom}
         ><strong class="bulle__titre">{g.nom}</strong
         ><span class="bulle__sous">Magie : {g.magie.nom}</span
-        >{g.description && <span class="bulle__texte">{g.description}</span>}<span class="bulle__texte">Quart de gemme : classique {g.quarts.commune} · raffinée {g.quarts.raffinee} · parfaite {g.quarts.parfaite}</span></span
+        >{g.description && <span class="bulle__texte">{g.description}</span>}<span class="bulle__texte">Quart de gemme : classique <Fragment set:html={htmlAvecMonnaies(g.quarts.commune ?? '')} /> · raffinée <Fragment set:html={htmlAvecMonnaies(g.quarts.raffinee ?? '')} /> · parfaite <Fragment set:html={htmlAvecMonnaies(g.quarts.parfaite ?? '')} /></span></span
       >
     ))}
   </div>

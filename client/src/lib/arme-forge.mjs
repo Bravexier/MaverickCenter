@@ -13,6 +13,23 @@ export const DURABILITE_MIN = 1;
 /** Un nombre écrit à la française : « 1 220 ». */
 export const nombre = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
+/**
+ * Un montant en Ricken d'or décomposé dans les trois monnaies (demande du propriétaire : « 1245,5 » s'affiche « 1 [PP] 245 [RO] 50 [RF] ») :
+ * [{ nombre, abr }] de la plus grande à la plus petite, sans les zéros ([{ nombre: 0, abr: 'RO' }] pour 0). Même calcul que
+ * lib/monnaies.mjs#montantDecompose (que ce module ne peut pas importer : test/arme-forge.test.mjs les compare), valeurs de la table monnaie.
+ */
+export function piecesDuMontant(ro) {
+  let reste = Math.round(ro * 100);
+  if (!reste) return [{ nombre: 0, abr: 'RO' }];
+  const sortie = [];
+  for (const [abr, valeur] of [['PP', 100000], ['RO', 100], ['RF', 1]]) {
+    const n = Math.floor(reste / valeur);
+    reste -= n * valeur;
+    if (n) sortie.push({ nombre: n, abr });
+  }
+  return sortie;
+}
+
 /** « D10+29 », « D10−2 », « D8 » : le dé de l'arme et la somme de ses bonus (le nombre de dés dépend de la maîtrise du personnage). */
 export function notationDesDegats(de, bonus) {
   if (!bonus) return de;

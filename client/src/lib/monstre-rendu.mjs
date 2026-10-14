@@ -10,6 +10,7 @@
 // tout texte échappé.
 import { couleurDeCaracteristique, styleDeCouleur } from './caracteristiques-postures.mjs';
 import { couleurDeMagie, texteSurCouleur } from './sort-format.mjs';
+import { htmlAvecMonnaies } from './monnaies.mjs';
 import { normalize } from './text.mjs';
 import {
   attributs,
@@ -35,7 +36,7 @@ const e = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES[c]);
 const SIGLES = { force: ['F', 'Force'], perception: ['P', 'Perception'], volonte: ['V', 'Volonté'], social: ['S', 'Social'], intelligence: ['I', 'Intelligence'], agilite: ['A', 'Agilité'] };
 
 /** Un texte tel qu'écrit (retours à la ligne gardés par la feuille de style), ou « — » s'il est vide. */
-export const htmlDeTexte = (texte) => (String(texte ?? '').trim() ? `<span class="texte">${e(texte)}</span>` : '<span class="vide">—</span>');
+export const htmlDeTexte = (texte) => (String(texte ?? '').trim() ? `<span class="texte">${htmlAvecMonnaies(texte)}</span>` : '<span class="vide">—</span>');
 
 /** Les six caractéristiques en cases colorées (valeurs F.P.V.S.I.A. dans l'ordre ; null = inconnue). */
 export const htmlDesCaracteristiques = (valeurs) =>
@@ -208,7 +209,7 @@ export function htmlDeRubrique(rubrique, texte, options = {}) {
     const caps = capacites(texte);
     if (!caps.length) return htmlDeTexte(texte);
     // le texte d'une capacité peut être écrit par échelle (« Fondu » des Blobs métalliques : « EP1 : Acier | 6AP | … ») ; son préfixe « [EP2] » reste tel quel
-    const corps = (t) => (parEchelle(t) ? htmlDesLignes(segmentsParEchelle(t)) : `<span class="texte">${e(t)}</span>`);
+    const corps = (t) => (parEchelle(t) ? htmlDesLignes(segmentsParEchelle(t)) : `<span class="texte">${htmlAvecMonnaies(t)}</span>`);
     // une capacité « [EPN] » est gagnée à partir de l'EP N (décision R56) : elle porte les échelles N à 10, le curseur la cache en dessous
     const depuis = (c) => {
       const n = echelleDuPrefixe(c.prefixe);
