@@ -18,6 +18,9 @@ const competences = db.prepare('SELECT id, nom, caracteristique_id, ordre FROM c
 const caracteristiques = db.prepare('SELECT id, nom FROM caracteristique ORDER BY ordre').all().map((c) => ({ ...c }));
 const objets = db.prepare('SELECT id, nom, nom_cle, description FROM objet_depart').all();
 const typesDon = db.prepare('SELECT id, nom, definition FROM type_don ORDER BY ordre').all();
+// le bestiaire : le tableau de l'introduction (curseur d'échelle) et le glossaire du butin (infobulles des cases), comme serveur/edition.mjs#listes
+const echellesDePuissance = db.prepare('SELECT * FROM monstre_echelle ORDER BY ep').all();
+const objetsDuButin = db.prepare('SELECT id, nom FROM monstre_butin_objet ORDER BY rang').all();
 
 test('texte échappé, rendu inconnu = texte, champ vide', () => {
   assert.equal(echapperHtml(`<b a="1">'&'</b>`), '&lt;b a=&quot;1&quot;&gt;&#39;&amp;&#39;&lt;/b&gt;');
@@ -140,13 +143,13 @@ test('site construit : chaque champ [data-ed] des métiers, des magies, des race
       const attendu = normal(cible.children);
       // les pastilles d'état que la page montre dans le champ, comme le script les relève (src/scripts/edition/editeur.mjs#rendreElement)
       const pastilles = zones(cible).map((z) => ({ forme: texteDe(trouver(z, 'chip--etat')), avant: texteAvant(cible, z), html: toHtml(z) }));
-      const obtenu = fragment(rendreChamp(rendu, ligne[info.colonne], ligne, { competences, caracteristiques, objets, typesDon, pastilles }));
+      const obtenu = fragment(rendreChamp(rendu, ligne[info.colonne], ligne, { competences, caracteristiques, objets, typesDon, echellesDePuissance, objetsDuButin, pastilles }));
       assert.equal(obtenu, attendu, `${p} : ${info.table} ${JSON.stringify(info.cle)} ${info.colonne} (rendu ${rendu})`);
       parRendu.set(rendu, (parRendu.get(rendu) ?? 0) + 1);
     }
   }
   for (const r of ['texte', 'blocs', 'metier-bonus', 'metier-artisanat', 'metier-carac', 'metier-equipement', 'metier-avantage', 'sort-type', 'sort-cout', 'sort-portee', 'sort-zone', 'sort-dsb', 'liste', 'inventaire', 'don-type',
-    'monstre-rubrique', 'monstre-categorie', 'monstre-cellule', 'monstre-ep', 'monstre-lieux', 'monstre-variable']) {
+    'monstre-rubrique', 'monstre-categorie', 'monstre-cellule', 'monstre-ep', 'monstre-lieux', 'monstre-variable', 'monstre-butin', 'monstre-echelle']) {
     assert.ok(parRendu.get(r) > 0, `rendu ${r} vérifié au moins une fois`);
   }
 });

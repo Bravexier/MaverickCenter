@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { chargerBestiaire } from '../src/lib/bestiaire-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { echellesEcrites, objetDuButin } from '../src/lib/monstre-champs.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const fichier = join(dist, 'bestiaire', 'index.html');
@@ -168,4 +169,90 @@ test('sans JavaScript, une carte s’affiche par son lien (:target) ; le script 
 
 test('le menu Codex mène au bestiaire', options, () => {
   assert.match(html, /<a[^>]*href="\/bestiaire\/"[^>]*aria-current="page"[^>]*>Bestiaire<\/a>|<a[^>]*aria-current="page"[^>]*href="\/bestiaire\/"[^>]*>Bestiaire<\/a>/);
+});
+
+test('glossaire du butin (demande du propriétaire : « retirer le glossaire du butin ») : plus de section, ses définitions en infobulles des cases de butin', options, () => {
+  const db = ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' });
+  const glossaire = db.prepare('SELECT id, nom, texte FROM monstre_butin_objet ORDER BY rang').all();
+  assert.ok(!main.includes('glossaire-du-butin') && !main.includes('bglossaire'), 'plus de glossaire affiché');
+  // une bulle par objet, écrite une fois hors des cartes, qui ne contient que des <span>/<strong> (une bulle se place dans un <p> ou une case)
+  const bulles = main.slice(main.indexOf('<div class="bbulles-butin">'));
+  for (const g of glossaire) {
+    const m = bulles.match(new RegExp(`<span class="bulle" role="tooltip" id="bulle-butin-${g.id}" hidden>([\\s\\S]*?)</span></span>`));
+    assert.ok(m, g.id);
+    assert.doesNotMatch(m[1], /<(?!\/?(span|strong)\b)/, `${g.id} : seulement des éléments en ligne`);
+  }
+  assert.equal((main.match(/id="bulle-butin-/g) ?? []).length, glossaire.length);
+  // chaque case qui cite un objet le montre : autant de boutons que de cases citantes, carte par carte ; chacun mène à une bulle de la page
+  const ids = new Set([...main.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]));
+  const declencheurs = [...main.matchAll(/<button type="button" class="bobjet" data-bulle="([^"]+)" aria-describedby="\1">/g)].map((m) => m[1]);
+  for (const d of declencheurs) assert.ok(ids.has(d), d);
+  const { monstres } = chargerBestiaire(db);
+  const attendus = monstres.lignes.reduce(
+    (n, l) => n + l.espece.butin.flatMap((t) => [t.ennemi_simple, t.mini_boss, t.boss]).filter((t) => t && objetDuButin(t, glossaire)).length,
+    0,
+  );
+  assert.equal(declencheurs.length, attendus);
+  assert.ok(attendus > 500, `${attendus} cases de butin à infobulle`);
+});
+
+test('curseur d’échelle (demande du propriétaire) : sur chaque carte à plusieurs échelles et sur elles seules ; la carte ne montre que l’échelle choisie', options, () => {
+  const { monstres } = chargerBestiaire(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }));
+  const bloc = panneau('monstres');
+  for (const l of monstres.lignes) {
+    const debut = bloc.indexOf(`<article class="bcarte" id="carte-${l.ancre}"`);
+    const carte = bloc.slice(debut, bloc.indexOf('</article>', debut));
+    const eps = l.carte ? echellesEcrites(l.carte.echelle) : [];
+    const curseur = carte.match(/<input type="range" min="0" max="(\d+)" step="1" value="0" data-echelles="([^"]+)"/);
+    if (eps.length < 2) assert.equal(curseur, null, l.id);
+    else {
+      assert.ok(curseur, l.id);
+      assert.equal(Number(curseur[1]), eps.length - 1, l.id);
+      assert.deepEqual(JSON.parse(curseur[2].replace(/&quot;/g, '"')), eps, l.id);
+    }
+  }
+  // le choix : une valeur (data-eps) cachée quand elle n'est pas de l'échelle choisie (data-ep sur la carte), pour chaque échelle du doc ; à l'écran seulement
+  const regle = html.match(/@media screen \{\s*((?::is\(\.bcarte, \.bregles\)\[data-ep="\d+"\] \[data-eps\]:not\(\[data-eps~="\d+"\]\),?\s*)+)\{ display: none; \}/);
+  assert.ok(regle, 'une règle, à l’écran seulement');
+  const selecteurs = [...regle[1].matchAll(/:is\(\.bcarte, \.bregles\)\S+ \S+/g)].map((m) => m[0].replace(/,$/, ''));
+  assert.deepEqual(selecteurs, Array.from({ length: 10 }, (_, k) => `:is(.bcarte, .bregles)[data-ep="${k + 1}"] [data-eps]:not([data-eps~="${k + 1}"])`));
+  // sans JavaScript, pas de curseur : toutes les valeurs restent affichées
+  assert.match(html, /html\.js \.bestiaire \.bregles__curseur\.js-seul, html\.js \.bestiaire \.bechelle__curseur\.js-seul \{ display: flex; \}/);
+});
+
+test('défilement (demande du propriétaire) : une barre visible au tableau et à la carte ; la carte à la hauteur de la partie visible de sa vue', options, () => {
+  assert.match(html, /\.btableau__defile, \.bcartes \{ scrollbar-gutter: stable; \}/);
+  assert.match(html, /\.btableau__defile::-webkit-scrollbar-thumb, \.bcartes::-webkit-scrollbar-thumb \{[^}]*background: var\(--bes-line\)/);
+  assert.match(html, /@supports not selector\(::-webkit-scrollbar\) \{\s*\.btableau__defile, \.bcartes \{ scrollbar-width: thin;/);
+  assert.match(html, /max-height: var\(--bcartes-max, calc\(100dvh - 1\.5rem\)\)/);
+});
+
+test('règles des échelles de puissance (demande du propriétaire : « retravailler le visuel ») : règles générales, tableau des attributs et de l’expérience, règles par échelle au curseur', options, () => {
+  const db = ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' });
+  const regles = db.prepare('SELECT texte FROM monstre_regle ORDER BY rang').all();
+  const echelles = db.prepare('SELECT * FROM monstre_echelle ORDER BY ep').all();
+  const debut = main.indexOf('<details class="brepere" id="echelles">');
+  const bloc = main.slice(debut, main.indexOf('</details>', debut));
+  assert.ok(debut > 0 && bloc.includes('data-regles-ep'));
+  const general = bloc.slice(bloc.indexOf('<div class="bregles__general">'), bloc.indexOf('</ul>', bloc.indexOf('<div class="bregles__general">')));
+  const echappe = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  assert.deepEqual([...general.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => m[1]), regles.map((r) => echappe(r.texte)));
+  // le tableau : une ligne par échelle, les valeurs typées de monstre_echelle
+  for (const e of echelles) {
+    const l = bloc.match(new RegExp(`<tr id="ep-${e.ep}">([\\s\\S]*?)</tr>`));
+    assert.ok(l, `EP ${e.ep}`);
+    const cellules = [...l[1].matchAll(/<td[^>]*>\s*([^<]*?)\s*<\/td>/g)].map((m) => m[1]);
+    assert.deepEqual(cellules, [`${e.niveau_min}-${e.niveau_max}`, ...['attributs', 'xp'].flatMap((p) => ['ennemi_simple', 'mini_boss', 'boss'].map((k) => String(e[`${p}_${k}`] ?? '—')))], `EP ${e.ep}`);
+  }
+  // les règles par échelle : une par échelle, chaque paragraphe du tableau de l'introduction en ligne de liste, au texte identique
+  const sansBalises = (t) => t.replace(/<[^>]+>/g, '').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  for (const e of echelles) {
+    const a = bloc.indexOf(`<article class="bregle" id="regles-ep-${e.ep}" data-eps="${e.ep}"`);
+    assert.ok(a > 0, `EP ${e.ep}`);
+    const article = bloc.slice(a, bloc.indexOf('</article>', a));
+    const lis = [...article.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => sansBalises(m[1]));
+    const paragraphes = (t) => String(t ?? '').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+    assert.deepEqual(lis, [...paragraphes(e.regle_brut), ...paragraphes(e.degats_brut)], `EP ${e.ep}`);
+  }
+  assert.match(bloc, new RegExp(`<p class="bregles__curseur js-seul">\\s*<label>\\s*<span>Échelle</span>\\s*<input type="range" min="${echelles[0].ep}" max="${echelles.at(-1).ep}" step="1" value="${echelles[0].ep}" data-regles-curseur>`));
 });

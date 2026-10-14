@@ -9,6 +9,7 @@
 // Rien n'est calculé ni déduit : une valeur que la base n'a pas typée reste son texte (`*_brut`, rubriques) ; les libellés des filtres sont l'écriture
 // la plus fréquente de chaque valeur dans la base (« Non-mort » réunit « Non-mort » et « Non-Mort »).
 // `chargerBestiaire` reçoit la base ouverte par lib/donnees.mjs (build) ; module sans dépendance navigateur ni Astro.
+import { echellesEcrites } from './monstre-champs.mjs';
 import { normalize } from './text.mjs';
 
 /** Libellés des catégories de monstre (colonne `categorie`). */
@@ -96,8 +97,13 @@ function ecritures() {
 /** Le portrait d'une carte, ou d'une espèce sans carte (migration 0033) : l'image et son cadrage tels que la base les garde, ou null. */
 const portraitDe = (r) => (r.portrait ? { donnees: r.portrait, x: r.portrait_x, y: r.portrait_y, zoom: r.portrait_zoom } : null);
 
-/** Échelles couvertes par une plage (« EP1 - 10 » -> 1 à 10) ; aucune si la plage n'est pas connue. */
-const echellesDe = (min, max) => (min === null || max === null ? [] : Array.from({ length: max - min + 1 }, (_, k) => String(min + k)));
+/** Échelles du filtre EP : celles qu'écrit la carte ou l'espèce (lib/monstre-champs.mjs#echellesEcrites : « 1-10 » -> 1 à 10, « 3, 5, 7 » -> 3, 5 et 7,
+ *  ni 4 ni 6) ; une écriture sans échelle lisible : la plage de ses bornes (ep_min à ep_max), sinon aucune. */
+const echellesDe = (brut, min, max) => {
+  const ecrites = echellesEcrites(brut);
+  if (ecrites.length) return ecrites.map(String);
+  return min === null || max === null ? [] : Array.from({ length: max - min + 1 }, (_, k) => String(min + k));
+};
 
 /** Les monstres du Bestiaire 2.0 : { lignes, facettes, regles, echelles, glossaire, especes }. */
 export function chargerMonstres(db) {
@@ -141,7 +147,7 @@ export function chargerMonstres(db) {
         carte: null,
         nom: e.nom,
         portrait: portraitDe(e),
-        facettes: { espece: unique([cleEspece]), ep: echellesDe(e.ep_min, e.ep_max), lieu: unique(lieuxDe.map((l) => l.cle)) },
+        facettes: { espece: unique([cleEspece]), ep: echellesDe(e.ep_brut, e.ep_min, e.ep_max), lieu: unique(lieuxDe.map((l) => l.cle)) },
         tri: { espece: e.nom, nom: e.nom, ep: e.ep_min, lieu: texteDesLieux },
       });
       continue;
@@ -195,7 +201,7 @@ export function chargerMonstres(db) {
           espece: unique([cleEspece]),
           type: unique([ec.type.noter(c.type_brut)]),
           categorie: [c.categorie],
-          ep: echellesDe(c.ep_min, c.ep_max),
+          ep: echellesDe(c.echelle_brut, c.ep_min, c.ep_max),
           lieu: unique(lieuxDe.map((l) => l.cle)),
         },
         tri: {

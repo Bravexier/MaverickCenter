@@ -15,8 +15,9 @@ et `carte.css` — la carte d'un monstre ou d'une créature invoquée, partagée
   attendant) », puis : « Le tableau est encore trop large. J'aimerai du 50/50 avec la tuile du monstre choisi. J'aimerai les colonnes suivantes dans cet
   ordre : Espèce | NOM | Type | Catégorie | EP | Lieux ». Six colonnes, donc, dans cet ordre (le nom reste l'en-tête de la ligne, et la première colonne
   reste visible quand le tableau défile en largeur) ; tableau et carte se partagent la largeur à parts égales. La ligne et sa carte sont rendues par
-  `lib/bestiaire-rendu.mjs` (le même HTML pour la page construite et pour le mode modification). Au-dessus, repliés : les règles des échelles de
-  puissance et le glossaire du butin.
+  `lib/bestiaire-rendu.mjs` (le même HTML pour la page construite et pour le mode modification). Au-dessus, replié : les règles des échelles de
+  puissance (voir plus bas). Le glossaire du butin n'est plus affiché (demande du propriétaire : « Tu peux aussi retirer le glossaire du butin, on le
+  mettra ailleurs ») : ses définitions sont les infobulles des cases de butin des cartes.
 - **Créatures invoquées** : les 63 créatures du classeur « Invocation » (golems et poupées, non-morts, marionnettes de l'ombre), à part. Demande du
   propriétaire : « Fait 3 tableaux. Un tableau Appel aux Golem et un Animation des morts sous le même modèle, et déroulable. Il faudra mettre deux cases
   à chaque fois côte à côte pour chaque combinaison de magie (avec le mono en premier). Quant à ceux de la manipulation de l'ombre une seule ligne par
@@ -37,20 +38,64 @@ et `carte.css` — la carte d'un monstre ou d'une créature invoquée, partagée
 
 Recherche : tous les mots, sans casse ni accents, dans tout ce que la ligne et sa carte affichent. Filtres : un menu à cases par colonne affichée, rien
 d'autre (« Inutile de filtrer par les colonnes non affichées », demande du propriétaire) : espèce, type, catégorie, EP, lieux pour les monstres (le nom
-passe par la recherche), la magie seule pour les créatures invoquées (la marge de leurs tableaux ; ni tri, l'ordre du classeur compte) ; plusieurs valeurs d'un même
+passe par la recherche ; le filtre EP suit l'écriture de la carte : « 1-10 » est sous les dix échelles, « 3, 5, 7 » sous 3, 5 et 7 seulement,
+`lib/monstre-champs.mjs#echellesEcrites`), la magie seule pour les créatures invoquées (la marge de leurs tableaux ; ni tri, l'ordre du classeur compte) ; plusieurs valeurs d'un même
 filtre = l'une OU l'autre, plusieurs filtres = tous à la fois ; chaque valeur affiche combien de lignes elle garderait. Un clic sur un en-tête trie
 (croissant, décroissant, puis l'ordre du doc ; une valeur absente toujours à la fin). Recherche, filtres et tri sont dans l'adresse
 (`?q=golem&categorie=boss&ep=5&tri=ep&sens=desc` ; préfixe `i-` pour les créatures invoquées), pour partager une recherche.
 
-Un clic sur une ligne ouvre sa **carte** à côté du tableau, dans un panneau qui suit le défilement (sur un écran de moins de 70rem, par-dessus la page ;
-Échap ou « Fermer » la referme) : en-tête (nom, espèce, catégorie, type, alignement, échelle), **portrait** (le logo en attendant une image ; voir plus
+Un clic sur une ligne ouvre sa **carte** à côté du tableau (sur un écran de moins de 70rem, par-dessus la page ; Échap ou « Fermer » la referme) : en-tête (nom, espèce, catégorie, type, alignement, échelle), **portrait** (le logo en attendant une image ; voir plus
 bas), toute la carte
 rubrique par rubrique (santé, chakra et barrière en tuiles, F.P.V.S.I.A. en cases colorées, cibles des défenses en pastilles quand l'écriture s'y prête,
 sinon le texte tel qu'écrit : `lib/monstre-rendu.mjs`), l'espèce (description, lieu de rencontre, blocs qui suivent les cartes) et le butin.
 `#monstre-<nom>`, `#carte-monstre-<nom>` ou `#invoquee-<nom>` ouvre une carte. Sans JavaScript, le nom est un lien vers la carte, qui s'affiche alors
 (`:target`) ; les filtres sont cachés.
 
-« varie » : la carte donne ses valeurs par échelle de puissance (« Ses stats varient selon son échelle de puissance ») ; elles sont dans la carte.
+**Défilement** (demande du propriétaire : « corriger aussi le fait de ne pas avoir de scroll bar, que ça soit pour le tableau ou la tuile. Cette dernière
+reste toujours affichée à l'écran », sans couper « soit le bas, soit le haut ») : sur grand écran, le tableau des monstres défile dans un cadre de la
+hauteur de l'écran (en-tête collé en haut), la carte dans le sien ; chacun a une **barre de défilement toujours visible**, aux couleurs du bestiaire
+(`::-webkit-scrollbar` pour Chrome, Edge et Safari, `scrollbar-width` / `scrollbar-color` pour Firefox ; une barre en surimpression, celle de macOS ou
+d'un écran tactile, n'apparaît qu'au défilement). La carte a la hauteur de la partie visible de sa vue (`--bcartes-max`, recalculée au défilement et
+au redimensionnement : `lib/bestiaire-filtres.mjs#hauteurVisible`) : ni son haut ni son bas ne sortent de l'écran, quelle que soit la position de la
+page. Ouvrir une carte cale la vue en haut de l'écran, et la ligne choisie défile dans son cadre ; la molette sur une vue décalée fait d'abord défiler
+la page jusqu'à l'y caler (`defilementDAbord`), puis le tableau ou la carte. Les créatures invoquées (trois tableaux dépliables) défilent avec la page,
+comme avant ; leur carte a la même barre et la même hauteur.
+
+### Échelles de puissance d'une carte
+
+Demande du propriétaire : « pour les tuiles des ennemis ayant plusieurs échelles de créature puisse être sélectionné (par un slider ?) et que ses
+caractéristiques soient calculées en fonction ». Les 40 cartes qui « varient selon leur échelle de puissance » (« 1-10 », « 2-6 », « 3, 5, 7 ») écrivent
+elles-mêmes leurs valeurs échelle par échelle (« EP 1 : 20 », « EP 2 - 5 : 70 », « [EP3] Santé : 330 ») : rien n'est calculé, chaque valeur affichée
+est celle que la carte écrit pour l'échelle choisie (règle d'or). Sous la tête de la carte, un **curseur** sur les échelles qu'elle écrit (pas une
+plage qu'elle n'écrit pas : 3, 5 et 7, ni 4 ni 6) ; la carte ne montre plus que les valeurs de cette échelle (santé, chakra, barrière en tuiles,
+caractéristiques, compétences, dégâts, défense, le texte d'une capacité écrit par échelle comme le « Fondu » des blobs métalliques) ; une ligne sans
+échelle reste à toutes. À côté du curseur, les repères du tableau de l'introduction pour cette échelle : les niveaux des joueurs, l'expérience que la
+créature donne selon sa catégorie, et les phrases « Dégâts moyens » de sa catégorie, auxquelles ces cartes renvoient (« Se fier au dégâts moyen dans le
+tableau de l'introduction. »). À l'ouverture : l'échelle cochée dans le filtre EP si la carte l'écrit (la plus petite), sinon la première qu'elle écrit.
+Sans JavaScript (et à l'impression), pas de curseur : toutes les valeurs, chacune avec son étiquette « EP n ».
+
+Découpage : `lib/monstre-champs.mjs#segmentsParEchelle` (une ligne par échelle, une forme devant, la ligne à deux colonnes du doc, un titre de groupe
+comme « Neige ») ; rendu : `lib/monstre-rendu.mjs` (`data-eps` sur chaque valeur, le curseur par `htmlDeLEchelle`) ; choix : `data-ep` sur la carte et
+une règle CSS par échelle (`styles/bestiaire/bestiaire.css`). Le préfixe « [EP2] » d'une capacité (capacité gagnée à partir de cette échelle ?) reste
+affiché tel quel, sans être relié au curseur (question 6). `client/test/bestiaire-echelles.test.mjs` rejoue le découpage sur toute la base : chaque
+carte à plusieurs échelles écrit une valeur pour chacune dans chaque rubrique qui varie, aucune pour une échelle qu'elle n'écrit pas, et aucun nombre
+affiché n'est absent de la carte.
+
+### Butin
+
+Chaque case de butin qui cite un objet du glossaire du doc (`monstre_butin_objet`, 102 objets) le montre souligné ; au survol, au clavier ou d'un
+appui, sa définition s'affiche en infobulle (demande du propriétaire : « tu peux récupérer leur contenu pour faire un tooltip dans un premier temps […]
+sur le butin concerné dans la table monstres elle-même » ; `components/Infobulles.astro`, une bulle par objet écrite une fois dans la page). Une case
+cite un objet quand elle commence par son nom tel qu'il est écrit (casse et accents compris ; seule la ligature compte pour ses deux lettres :
+« Coeur polaire » cite « Cœur polaire »), suivi de rien, d'une quantité (« x 1d6 », « x1 », « (1d4) ») ou d'une amélioration (« + 1 ») ; le nom le
+plus long l'emporte (`lib/monstre-champs.mjs#objetDuButin`). Rien d'autre n'est rapproché (question 7).
+
+### Règles des échelles de puissance
+
+Repliées au-dessus du tableau (demande du propriétaire : « retravailler le visuel de l'explication et des règles des EP ») : les quatre règles
+générales en encart ; un tableau des attributs moyens et de l'expérience reçue, une colonne par catégorie (pastilles de couleur) et une ligne par échelle
+(`#ep-6`) ; puis les règles par échelle, choisies au curseur (`#regles-ep-6` ouvre les règles sur l'EP 6) : « Règle carac/comp » et « Dégâts moyens »,
+chaque paragraphe du doc en ligne de liste, au texte identique, les nombres en gras. Sans JavaScript, les dix échelles se suivent.
 
 ## Modifier le bestiaire (site de dev)
 
@@ -112,7 +157,7 @@ que chaque ligne de texte gardée est écrite dans le doc.
 
 - `monstre_regle` (4 règles générales), `monstre_echelle` (EP 1 à 10 : règles de caractéristiques, dégâts moyens, attributs et expérience) ;
 - `monstre_espece` (144 titres « Nom (EPx) »), `monstre_espece_lieu`, `monstre_espece_bloc` (les 15 tableaux par magie du Presque-Ottar),
-  `monstre_butin` (tableaux « Score (3d100) ») et `monstre_butin_objet` (glossaire, 102 objets) ;
+  `monstre_butin` (tableaux « Score (3d100) ») et `monstre_butin_objet` (glossaire, 102 objets : les infobulles des cases de butin) ;
 - `monstre` (315 cartes) et le détail de chaque carte : `monstre_rubrique` (tout son texte, rubrique par rubrique : rien n'est perdu),
   `monstre_caracteristique`, `monstre_attaque`, `monstre_capacite`, `monstre_defense`.
 
@@ -134,3 +179,15 @@ Lumière…). Les « objets en rouge » du glossaire (« en attente d'être mis 
 4. Les monstres n'ont pas de page à eux (une ligne et sa carte dans le tableau) : en faut-il une, comme les créatures invoquées ?
 5. Les **créatures invoquées** ne se modifient pas encore depuis le bestiaire (elles viennent des sorts du classeur « Invocation ») : faut-il les ouvrir
    aussi au mode modification ?
+6. **« [EP2] » devant une capacité** (« [EP2] Nom. Texte ») : la capacité est-elle gagnée à partir de cette échelle ? Le curseur ne la cache pas encore
+   aux échelles inférieures (le préfixe s'affiche tel quel).
+7. **Butin** : quelques cases ne citent un objet du glossaire qu'à une écriture près et n'ont donc pas d'infobulle : « Peau de radrak » / « Peau du
+   radrak », « Petite os » / « Petit os », « 4 os moyen » / « Os moyen », « Minitaire de Foudre » / « Minitaire », les fruits élémentaires (« Fraise de feu »,
+   « Citron de foudre »…) face au fruit seul (« Fraise », « Citron »), « Gelée argent » (absente du glossaire), « Fragment de pièce de Feu »… /
+   « Fragment de pièce élémentaire ». Faut-il les rapprocher (et lesquels), corriger le doc, ou compléter le glossaire ? Et où mettre le glossaire
+   lui-même (« on le mettra ailleurs ») ?
+8. **Défense par échelle** : des cartes écrivent « 5 armure physique (+2/3EP) » ou « N (+k/EP) » : la valeur s'affiche telle quelle, sans calcul (la
+   règle d'or). Faut-il la calculer à chaque échelle (et comment lire « +2/3EP ») ?
+9. Quelques écarts de l'extraction relevés en passant, laissés tels quels : la note « *Parmi Rouge, Jaune, Vert foncé, Brun » (l'astérisque de
+   « Gelée aléatoire* ») est collée à la dernière case boss du butin du Blob métallique ; la dernière case boss du butin de la Velue contient le début
+   de « Vouivre squelette (EP8) (a refaire) », un brouillon du doc ; « (a continuer) » est dans la tactique du Rat putride. Faut-il les retirer ?

@@ -7,7 +7,7 @@
 // saisies qu'une fois la carte ouverte (src/scripts/edition/bestiaire.mjs : 315 cartes dans la page). Fonctions pures, tout texte échappé.
 import { attributEd } from './edition-modele.mjs';
 import { CATEGORIES } from './monstre-champs.mjs';
-import { htmlDeCategorie, htmlDeRubrique, PHRASE_VARIABLE, RENDUS_DU_BESTIAIRE } from './monstre-rendu.mjs';
+import { htmlDeCategorie, htmlDeLEchelle, htmlDeRubrique, htmlDuButin, PHRASE_VARIABLE, RENDUS_DU_BESTIAIRE } from './monstre-rendu.mjs';
 import { cadrageDe, dimensionsDuPortrait, empreinte, styleDuCadrage } from './portrait.mjs';
 
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -84,9 +84,10 @@ export const empreinteDuPortrait = (portrait) => {
 };
 
 /** La carte d'une ligne : en-tête (nom, espèce, catégorie, type, alignement, échelle), portrait (htmlDuPortrait ; `logo` : l'adresse du logo, en attendant,
- * `adresseDuPortrait` : celle d'une image), toute la carte rubrique par rubrique, l'espèce (description, lieu de rencontre, blocs) et le butin. Une espèce
- * sans carte n'a que sa partie « espèce ». */
-export function htmlDeCarteMonstre(l, { logo, adresseDuPortrait = null }) {
+ * `adresseDuPortrait` : celle d'une image), le curseur d'échelle d'une carte qui en écrit plusieurs (lib/monstre-rendu.mjs#htmlDeLEchelle ; `echelles` :
+ * les lignes de `monstre_echelle`), toute la carte rubrique par rubrique, l'espèce (description, lieu de rencontre, blocs) et le butin (l'objet du
+ * glossaire qu'une case cite en infobulle : `glossaire`, les lignes de `monstre_butin_objet`). Une espèce sans carte n'a que sa partie « espèce ». */
+export function htmlDeCarteMonstre(l, { logo, adresseDuPortrait = null, echelles = [], glossaire = [] }) {
   const c = l.carte;
   const k = cles(l);
   const id = `carte-${l.ancre}`;
@@ -103,6 +104,8 @@ export function htmlDeCarteMonstre(l, { logo, adresseDuPortrait = null }) {
     + `<p class="bcarte__badges">${badges}</p></div>`
     + htmlDuPortrait({ table: c ? 'monstre' : 'monstre_espece', cle: c ? k.monstre : k.espece, nom: l.nom, portrait: l.portrait }, { logo, adresse: adresseDuPortrait })
     + `<a class="bcarte__fermer" href="#${e(l.ancre)}" aria-label="${e(`Fermer la carte de ${l.nom}`)}">Fermer</a></header>`;
+  // le curseur d'échelle : refait quand l'échelle ou la catégorie du monstre change (mode modification) ; vide pour une carte d'une seule échelle
+  const echelle = c ? `<div class="bcarte__echelle"${champ('monstre', k.monstre, 'echelle_brut', { rendu: 'monstre-echelle' })}>${htmlDeLEchelle(c.echelle, c.categorie, echelles)}</div>` : '';
   const laCarte = c
     ? `<section class="bcarte__section" aria-label="La carte">`
       + `<p class="varie-note"${cadre(!c.variable)}><span${champ('monstre', k.monstre, 'variable', { rendu: 'monstre-variable', ...s })}>${c.variable ? e(PHRASE_VARIABLE) : ''}</span></p>`
@@ -127,9 +130,9 @@ export function htmlDeCarteMonstre(l, { logo, adresseDuPortrait = null }) {
       + `<thead><tr><th scope="col">Score</th>${Object.entries(CATEGORIES).map(([cat, libelle]) => `<th scope="col"${sienne(cat)}>${e(libelle)}</th>`).join('')}</tr></thead>`
       + `<tbody>${es.butin
         .map((t) => `<tr><th scope="row" class="nombre">${e(t.score)}</th>${Object.keys(CATEGORIES)
-          .map((cat) => `<td${sienne(cat)}>${t[cat] ? `<span class="texte"${champ('monstre_butin', { espece_id: es.id, rang: t.rang, categorie: cat }, 'texte', s)}>${e(t[cat])}</span>` : VIDE}</td>`)
+          .map((cat) => `<td${sienne(cat)}>${t[cat] ? `<span class="texte"${champ('monstre_butin', { espece_id: es.id, rang: t.rang, categorie: cat }, 'texte', { rendu: 'monstre-butin', ...s })}>${htmlDuButin(t[cat], glossaire)}</span>` : VIDE}</td>`)
           .join('')}</tr>`)
         .join('')}</tbody></table></div></section>`
     : '';
-  return `<article class="bcarte" id="${e(id)}" aria-labelledby="${e(id)}-titre" data-carte="${e(l.ancre)}">${tete}${laCarte}${espece}${butin}</article>`;
+  return `<article class="bcarte" id="${e(id)}" aria-labelledby="${e(id)}-titre" data-carte="${e(l.ancre)}">${tete}${echelle}${laCarte}${espece}${butin}</article>`;
 }

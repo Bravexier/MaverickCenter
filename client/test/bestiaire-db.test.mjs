@@ -5,6 +5,7 @@ import { normalize } from '../src/lib/text.mjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { CATEGORIES, chargerBestiaire, libelleDuBloc, optionsDeFacette, tableauDuButin } from '../src/lib/bestiaire-db.mjs';
+import { echellesEcrites } from '../src/lib/monstre-champs.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
@@ -39,8 +40,11 @@ test('monstres : tri et filtres sur les colonnes du tableau seulement (espèce, 
     assert.deepEqual([l.tri.espece, l.tri.nom, l.tri.type, l.tri.categorie, l.tri.ep], [m.espece_nom, m.nom, m.type_brut, ['ennemi_simple', 'mini_boss', 'boss'].indexOf(m.categorie), m.ep_min], l.id);
     assert.deepEqual(l.facettes.categorie, [m.categorie]);
     assert.deepEqual(l.facettes.espece, [normalize(m.espece_nom)]);
-    assert.equal(l.facettes.ep.length, m.ep_max - m.ep_min + 1, l.id);
+    // le filtre EP suit l'échelle écrite : une plage « 1-10 » donne ses dix échelles, une liste « 3, 5, 7 » seulement les siennes (ni 4 ni 6)
+    assert.deepEqual(l.facettes.ep, echellesEcrites(m.echelle_brut).map(String), l.id);
+    assert.deepEqual([Number(l.facettes.ep[0]), Number(l.facettes.ep.at(-1))], [m.ep_min, m.ep_max], `${l.id} : bornes`);
   }
+  assert.ok(monstres.lignes.some((l) => l.carte && l.facettes.ep.join() === '3,5,7'), 'une carte « 3, 5, 7 »');
   // une espèce sans carte : ni type ni catégorie (triée après les autres sur ces colonnes)
   for (const l of monstres.lignes.filter((x) => !x.carte)) assert.deepEqual(Object.keys(l.facettes), ['espece', 'ep', 'lieu'], l.id);
 });

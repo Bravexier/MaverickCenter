@@ -1588,6 +1588,10 @@ export function listes(db) {
     typesDon: db.prepare('SELECT id, nom, definition FROM type_don ORDER BY ordre').all(),
     // les espèces du bestiaire (formulaire « Nouveau monstre »)
     especesDeMonstres: especesDeMonstres(db),
+    // le bestiaire : le tableau de l'introduction (curseur d'échelle d'une carte, rendu « monstre-echelle ») et le glossaire du butin (l'objet d'une case
+    // en infobulle, rendu « monstre-butin » : les définitions sont dans la page, il ne faut que l'identifiant et le nom)
+    echellesDePuissance: db.prepare('SELECT * FROM monstre_echelle ORDER BY ep').all(),
+    objetsDuButin: db.prepare('SELECT id, nom FROM monstre_butin_objet ORDER BY rang').all(),
     // la page des armes (lib/armes-rendu.mjs) : types d'armes (champ « Type », dé, règle du dé, portée), solidité de base des armes
     typesDArmes: contexteDesArmes(db).typesDArmes,
     soliditeDesArmes: contexteDesArmes(db).soliditeDesArmes,

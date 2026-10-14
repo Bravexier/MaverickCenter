@@ -1,8 +1,9 @@
 ---
 // Page /bestiaire/ (demande du propriétaire, 2026-10-11) : deux catégories en onglets, les monstres du « Bestiaire 2.0 » et, à part, les créatures invoquées
 // (« elles ne fonctionnent pas tout à fait pareillement ») ; chacune son tableau, sa recherche et ses filtres (lib/bestiaire-filtres.mjs, script
-// src/scripts/bestiaire.mjs). Au-dessus du tableau des monstres, repliés : les règles des échelles de puissance et le glossaire du butin (introduction et fin
-// du doc). Les onglets : components/Onglets.astro (sans JavaScript, les deux catégories se suivent). CSS : styles/bestiaire/bestiaire.css et carte.css (la carte, partagée avec les pages de magie) (?raw).
+// src/scripts/bestiaire.mjs). Au-dessus du tableau des monstres, replié : les règles des échelles de puissance (introduction du doc : règles générales,
+// attributs moyens et expérience reçue, règles par échelle avec un curseur). Le glossaire du butin n'est plus affiché ici : ses définitions sont les
+// infobulles des cases de butin (components/bestiaire/TableauMonstres.astro). Les onglets : components/Onglets.astro (sans JavaScript, les deux catégories se suivent). CSS : styles/bestiaire/bestiaire.css et carte.css (la carte, partagée avec les pages de magie) (?raw).
 import Onglets from '../Onglets.astro';
 import TableauMonstres from './TableauMonstres.astro';
 import TableauInvocations from './TableauInvocations.astro';
@@ -24,6 +25,12 @@ const CATEGORIES_XP = [
   ['mini_boss', 'Mini-boss'],
   ['boss', 'Boss'],
 ] as const;
+// Règles par échelle (demande du propriétaire : « retravailler le visuel de l'explication et des règles des EP ») : chaque paragraphe d'une cellule du
+// tableau de l'introduction devient une ligne de liste, au texte identique ; seuls les nombres (« 26 », « +5 », « 2d10 ») sont mis en gras.
+const paragraphesDe = (texte: string | null) => String(texte ?? '').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+const ENTITES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const echapper = (t: string) => t.replace(/[&<>"']/g, (c) => ENTITES[c]);
+const avecNombres = (p: string) => p.split(/([+-]?\d+(?:d\d+)?)/).map((m, k) => (k % 2 ? `<b>${echapper(m)}</b>` : echapper(m))).join('');
 ---
 
 <style is:inline set:html={`${bestiaireCss}\n${carteCss}`}></style>
@@ -48,71 +55,88 @@ const CATEGORIES_XP = [
     </p>
     <div class="breperes">
       <details class="brepere" id="echelles">
-        <summary>Échelles de puissance : règles de création des monstres</summary>
-        <div class="brepere__corps">
-          <p>Quelques règles qui marchent dans toutes les échelles de puissance :</p>
-          <ul>{monstres.regles.map((r) => <li>{r.texte}</li>)}</ul>
-          <div class="bbutin__defile">
-            <table class="bechelles">
+        <summary>
+          Échelles de puissance <span class="brepere__sous">règles de création des monstres · EP {monstres.echelles[0]?.ep} à {monstres.echelles.at(-1)?.ep}</span>
+        </summary>
+        <div class="brepere__corps bregles" data-regles-ep>
+          <div class="bregles__general">
+            <p class="bregles__intitule">Quelques règles qui marchent dans toutes les échelles de puissance :</p>
+            <ul>{monstres.regles.map((r) => <li>{r.texte}</li>)}</ul>
+          </div>
+
+          <h3 class="bregles__titre">Attributs moyens et expérience reçue</h3>
+          <div class="bregles__defile" tabindex="0" role="region" aria-label="Attributs moyens et expérience reçue, par échelle (défile)">
+            <table class="bregles__table">
+              <colgroup span="2" />
+              <colgroup span="3" />
+              <colgroup span="3" />
               <thead>
                 <tr>
-                  <th scope="col">EP</th>
-                  <th scope="col">Niveaux</th>
-                  <th scope="col">Règle carac/comp</th>
-                  <th scope="col">Dégâts moyens</th>
-                  <th scope="col">Attributs moyens</th>
-                  <th scope="col">Expérience reçue</th>
+                  <th scope="col" rowspan="2">EP</th>
+                  <th scope="col" rowspan="2">Niveaux</th>
+                  <th scope="colgroup" colspan="3">Attributs moyens</th>
+                  <th scope="colgroup" colspan="3" class="bregles__groupe">Expérience reçue</th>
+                </tr>
+                <tr>
+                  {[...CATEGORIES_XP, ...CATEGORIES_XP].map(([k, v], i) => (
+                    <th scope="col" class:list={['nombre', { bregles__groupe: i === 3 }]}>
+                      <span class:list={['bcat', `bcat--${k}`]}>{v}</span>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {
                   monstres.echelles.map((e) => (
-                    <tr>
-                      <th scope="row" class="nombre">EP {e.ep}</th>
+                    <tr id={`ep-${e.ep}`}>
+                      <th scope="row">
+                        <span class="bbadge bbadge--ep">EP {e.ep}</span>
+                      </th>
                       <td class="nombre">
                         {e.niveau_min}-{e.niveau_max}
                       </td>
-                      <td class="texte">{e.regle_brut}</td>
-                      <td class="texte">{e.degats_brut}</td>
-                      <td>
-                        <ul role="list" class="bechelles__cat">
-                          {CATEGORIES_XP.map(([k, v]) => (
-                            <li>
-                              {v} : <strong>{e[`attributs_${k}`] ?? '—'}</strong>
-                            </li>
-                          ))}
-                        </ul>
-                      </td>
-                      <td>
-                        <ul role="list" class="bechelles__cat">
-                          {CATEGORIES_XP.map(([k, v]) => (
-                            <li>
-                              {v} : <strong>{e[`xp_${k}`] ?? '—'}</strong>
-                            </li>
-                          ))}
-                        </ul>
-                      </td>
+                      {CATEGORIES_XP.map(([k]) => (
+                        <td class="nombre">{e[`attributs_${k}`] ?? '—'}</td>
+                      ))}
+                      {CATEGORIES_XP.map(([k], i) => (
+                        <td class:list={['nombre', { bregles__groupe: i === 0 }]}>{e[`xp_${k}`] ?? '—'}</td>
+                      ))}
                     </tr>
                   ))
                 }
               </tbody>
             </table>
           </div>
-        </div>
-      </details>
-      <details class="brepere" id="glossaire-du-butin">
-        <summary>Glossaire du butin ({monstres.glossaire.length} objets)</summary>
-        <div class="brepere__corps">
-          <dl class="bglossaire">
+
+          <h3 class="bregles__titre">Règles par échelle</h3>
+          <p class="bregles__curseur js-seul">
+            <label>
+              <span>Échelle</span>
+              <input type="range" min={monstres.echelles[0]?.ep} max={monstres.echelles.at(-1)?.ep} step="1" value={monstres.echelles[0]?.ep} data-regles-curseur />
+            </label>
+            <output class="bregles__choix" data-regles-choix>EP {monstres.echelles[0]?.ep} · niveaux {monstres.echelles[0]?.niveau_min}-{monstres.echelles[0]?.niveau_max}</output>
+          </p>
+          <div class="bregles__echelles">
             {
-              monstres.glossaire.map((g) => (
-                <div id={`butin-${g.id}`}>
-                  <dt>{g.nom}</dt>
-                  <dd>{g.texte}</dd>
-                </div>
+              monstres.echelles.map((e) => (
+                <article class="bregle" id={`regles-ep-${e.ep}`} data-eps={String(e.ep)} data-libelle={`EP ${e.ep} · niveaux ${e.niveau_min}-${e.niveau_max}`}>
+                  <h4 class="bregle__titre">
+                    <span class="bbadge bbadge--ep">EP {e.ep}</span> <span class="muted">niveaux {e.niveau_min}-{e.niveau_max}</span>
+                  </h4>
+                  <div class="bregle__cases">
+                    <section class="bregle__case">
+                      <h5>Règle carac/comp</h5>
+                      <ul>{paragraphesDe(e.regle_brut).map((p) => <li set:html={avecNombres(p)} />)}</ul>
+                    </section>
+                    <section class="bregle__case">
+                      <h5>Dégâts moyens</h5>
+                      <ul>{paragraphesDe(e.degats_brut).map((p) => <li set:html={avecNombres(p)} />)}</ul>
+                    </section>
+                  </div>
+                </article>
               ))
             }
-          </dl>
+          </div>
         </div>
       </details>
     </div>

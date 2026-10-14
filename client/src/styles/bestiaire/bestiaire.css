@@ -1,7 +1,9 @@
 /* Chargé uniquement depuis components/bestiaire/Bestiaire.astro (?raw) : la page /bestiaire/ (deux onglets, les tableaux, filtres, la carte de la case
-   choisie à côté). La page prend toute la largeur ; le tableau des monstres défile dans son cadre (en-tête et première colonne fixes) ; ceux des
-   créatures invoquées, l'un sous l'autre, avec la page (en-tête collé en haut de la fenêtre sur grand écran). La carte elle-même
-   (monstre, créature invoquée) : styles/bestiaire/carte.css, partagé avec les pages de magie (la carte d'une créature y sert d'infobulle). */
+   choisie à côté). La page prend toute la largeur ; le tableau des monstres défile dans son cadre (en-tête et première colonne fixes), à la hauteur de
+   l'écran ; ceux des créatures invoquées, l'un sous l'autre, avec la page (en-tête collé en haut de la fenêtre sur grand écran). Le tableau et la carte
+   ont chacun une barre de défilement toujours visible, et la carte tient dans la partie visible de sa vue (demande du propriétaire : « corriger le fait de
+   ne pas avoir de scroll bar, que ça soit pour le tableau ou la tuile » ; src/scripts/bestiaire.mjs). La carte elle-même (monstre, créature invoquée) :
+   styles/bestiaire/carte.css, partagé avec les pages de magie (la carte d'une créature y sert d'infobulle). */
 main:has(> .bestiaire) { max-width: 120rem; }
 .bestiaire {
   --bes: var(--accent);
@@ -33,19 +35,85 @@ html.js .bpanneau__titre { position: absolute; width: 1px; height: 1px; overflow
 .bpanneau + .bpanneau { margin-top: 2rem; }
 .bpanneau__intro { margin: 0 0 0.8rem; max-width: 60rem; }
 
-/* Repères repliés : échelles de puissance, glossaire du butin */
-.breperes { display: grid; gap: 0.5rem; margin: 0 0 1rem; }
-.brepere { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+/* Repère replié : les échelles de puissance (règles générales, attributs moyens et expérience reçue, règles par échelle) */
+.breperes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.5rem; margin: 0 0 1rem; }
+.brepere { min-width: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
 .brepere > summary { cursor: pointer; padding: 0.55rem 0.9rem; font-weight: 600; }
 .brepere[open] > summary { border-bottom: 1px solid var(--border); }
+.brepere__sous { margin-left: 0.4rem; font-weight: 400; font-size: 0.85rem; color: var(--muted); }
 .brepere__corps { padding: 0.6rem 0.9rem 0.9rem; }
-.bechelles { border-collapse: collapse; font-size: 0.86rem; min-width: 52rem; }
-.bechelles th, .bechelles td { border: 1px solid var(--border); padding: 0.35rem 0.5rem; vertical-align: top; text-align: left; }
-.bechelles thead th { background: var(--bes-soft); }
-.bechelles__cat { margin: 0; padding: 0; list-style: none; white-space: nowrap; }
-.bglossaire { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr)); gap: 0.4rem 1.2rem; margin: 0; }
-.bglossaire dt { font-weight: 700; }
-.bglossaire dd { margin: 0 0 0.3rem; font-size: 0.9rem; }
+/* Règles des échelles de puissance (demande du propriétaire : « retravailler le visuel de l'explication et des règles des EP ») : le texte des règles est
+   celui du doc, seuls leur disposition et les nombres en gras changent */
+.bregles { display: grid; gap: 0.7rem; min-width: 0; }
+.bregles__general { padding: 0.6rem 0.9rem; border-left: 4px solid var(--bes); border-radius: 12px; background: var(--bes-soft); }
+.bregles__general ul { margin: 0.3rem 0 0; padding-left: 1.1rem; }
+.bregles__general li + li { margin-top: 0.2rem; }
+.bregles__intitule { margin: 0; font-weight: 600; }
+.bregles__titre { margin: 0.4rem 0 0; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.bregles__defile { overflow-x: auto; max-width: 100%; border: 1px solid var(--border); border-radius: 10px; }
+.bregles__defile:focus-visible { outline: 2px solid var(--bes); outline-offset: 2px; }
+.bregles__table { border-collapse: collapse; font-size: 0.86rem; width: 100%; }
+.bregles__table th, .bregles__table td { padding: 0.3rem 0.55rem; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+.bregles__table thead th { background: var(--bes-soft); font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.bregles__table thead .bcat { text-transform: none; letter-spacing: 0; }
+.bregles__table td.nombre, .bregles__table th.nombre { text-align: right; }
+.bregles__table tbody tr:nth-child(even) > * { background: color-mix(in srgb, var(--bes-soft) 50%, var(--surface)); }
+.bregles__table tbody tr:target > * { background: var(--bes-soft); }
+.bregles__table .bregles__groupe { border-left: 2px solid var(--bes-line); }
+.bregles__curseur, .bechelle__curseur { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.7rem; margin: 0; }
+html.js .bestiaire .bregles__curseur.js-seul, html.js .bestiaire .bechelle__curseur.js-seul { display: flex; }
+.bregles__curseur label, .bechelle__curseur label { display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 600; }
+.bregles__curseur input[type=range], .bechelle__curseur input[type=range] { accent-color: var(--bes); width: min(18rem, 60vw); }
+.bregles__choix, .bechelle__choix { font-weight: 700; font-variant-numeric: tabular-nums; }
+.bregles__echelles { display: grid; gap: 0.6rem; }
+.bregle { padding: 0.6rem 0.8rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); scroll-margin-top: 1rem; }
+.bregle__titre { margin: 0 0 0.4rem; font-size: 1rem; }
+.bregle__cases { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 0.6rem; }
+.bregle__case { padding: 0.45rem 0.7rem; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); }
+.bregle__case h5 { margin: 0 0 0.3rem; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.bregle__case ul { margin: 0; padding-left: 1.1rem; }
+.bregle__case li + li { margin-top: 0.15rem; }
+.bregle__case b { font-variant-numeric: tabular-nums; color: color-mix(in srgb, var(--bes) 70%, var(--text)); }
+
+/* Carte d'un monstre qui écrit plusieurs échelles (lib/monstre-rendu.mjs : curseur, valeurs par échelle) : le curseur reste en haut de la carte pendant
+   la lecture ; chaque valeur porte ses échelles (data-eps) */
+.bcarte__echelle:empty { display: none; }
+.bcarte__echelle { position: sticky; top: 0; z-index: 2; margin: 0.6rem 0 0; padding: 0.5rem 0.7rem; border: 1px solid var(--bes-line); border-radius: 10px;
+  background: color-mix(in srgb, var(--bes-soft) 70%, var(--surface)); }
+.bechelle { display: grid; gap: 0.35rem; }
+.bechelle__reperes { display: grid; gap: 0.2rem; }
+.bechelle__repere p { margin: 0; }
+.bechelle__ligne { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; }
+.bechelle__info { font-size: 0.86rem; }
+.bechelle__degats { font-size: 0.82rem; }
+.bep { display: inline-block; padding: 0 0.4rem; border-radius: 999px; border: 1px dashed var(--bes-line); background: var(--bg); font-size: 0.74rem; font-weight: 700;
+  white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bep-lignes { display: grid; gap: 0.2rem; }
+.bep-ligne--vide { height: 0.15rem; }
+.bep-ligne--titre { font-weight: 700; }
+.bep-ligne .bcaracs { margin-top: 0.15rem; }
+.bstats--ep { grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); }
+.bstats__groupe, .bstats__texte { grid-column: 1 / -1; }
+.bstats__groupe { font-weight: 700; font-size: 0.85rem; margin-top: 0.15rem; }
+/* une échelle choisie (data-ep sur la carte, ou sur les règles) : seules ses valeurs restent ; sans JavaScript et à l'impression, toutes */
+@media screen {
+  :is(.bcarte, .bregles)[data-ep="1"] [data-eps]:not([data-eps~="1"]),
+  :is(.bcarte, .bregles)[data-ep="2"] [data-eps]:not([data-eps~="2"]),
+  :is(.bcarte, .bregles)[data-ep="3"] [data-eps]:not([data-eps~="3"]),
+  :is(.bcarte, .bregles)[data-ep="4"] [data-eps]:not([data-eps~="4"]),
+  :is(.bcarte, .bregles)[data-ep="5"] [data-eps]:not([data-eps~="5"]),
+  :is(.bcarte, .bregles)[data-ep="6"] [data-eps]:not([data-eps~="6"]),
+  :is(.bcarte, .bregles)[data-ep="7"] [data-eps]:not([data-eps~="7"]),
+  :is(.bcarte, .bregles)[data-ep="8"] [data-eps]:not([data-eps~="8"]),
+  :is(.bcarte, .bregles)[data-ep="9"] [data-eps]:not([data-eps~="9"]),
+  :is(.bcarte, .bregles)[data-ep="10"] [data-eps]:not([data-eps~="10"]) { display: none; }
+}
+
+/* Butin : l'objet du glossaire qu'une case cite, souligné ; sa définition en infobulle (components/Infobulles.astro ; bulles hors des cartes) */
+.bbutin .bobjet { font: inherit; color: inherit; background: none; border: 0; padding: 0; text-decoration: underline dotted var(--bes-line); text-decoration-thickness: 2px;
+  text-underline-offset: 0.18em; cursor: help; text-align: left; }
+.bbutin .bobjet:hover, .bbutin .bobjet[data-ouverte] { text-decoration-color: var(--bes); }
+.bbutin .bobjet:focus-visible { outline: 2px solid var(--bes); outline-offset: 1px; border-radius: 2px; }
 
 /* Recherche et filtres */
 .bfiltres[hidden] { display: none !important; }
@@ -91,6 +159,24 @@ html.js .bpanneau__titre { position: absolute; width: 1px; height: 1px; overflow
 .btableau__vide[hidden] { display: none; }
 .btableau__defile { overflow: auto; max-height: calc(100vh - 7rem); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
 .btableau__defile:focus-visible { outline: 2px solid var(--bes); outline-offset: 2px; }
+/* Barres de défilement toujours visibles, dans les couleurs du bestiaire (le cadre d'un tableau, la carte) : une barre stylée en ::-webkit-scrollbar
+   n'est jamais en surimpression (Chromium, Edge, Safari) ; Firefox prend les propriétés standard. Chromium (121 et plus) ignore les pseudo-éléments dès
+   que scrollbar-width ou scrollbar-color est posé : d'où le @supports. Jamais de scrollbar-color sur un ancêtre (la propriété s'hérite). */
+.btableau__defile, .bcartes { scrollbar-gutter: stable; }
+.btableau__defile::-webkit-scrollbar, .bcartes::-webkit-scrollbar { width: 12px; height: 12px; }
+.btableau__defile::-webkit-scrollbar-track, .bcartes::-webkit-scrollbar-track { background: var(--bes-soft); }
+.btableau__defile::-webkit-scrollbar-thumb, .bcartes::-webkit-scrollbar-thumb { min-height: 2.5rem; border: 3px solid var(--bes-soft); border-radius: 999px; background: var(--bes-line); }
+.btableau__defile::-webkit-scrollbar-thumb:hover, .bcartes::-webkit-scrollbar-thumb:hover { background: var(--bes); }
+.btableau__defile::-webkit-scrollbar-corner, .bcartes::-webkit-scrollbar-corner { background: transparent; }
+@supports not selector(::-webkit-scrollbar) {
+  .btableau__defile, .bcartes { scrollbar-width: thin; scrollbar-color: var(--bes-line) var(--bes-soft); }
+}
+/* monstres, grand écran : le cadre du tableau a la hauteur de l'écran, comme la carte ; à l'ouverture d'une carte, le script cale la vue en haut de
+   l'écran (scroll-margin) ; « screen » : à l'impression, le tableau s'imprime en entier (règle @media print plus bas) */
+@media screen and (min-width: 70.01rem) {
+  #monstres .bvue > .btableau__defile { max-height: calc(100vh - 1.5rem); max-height: calc(100dvh - 1.5rem); }
+}
+#monstres .bvue { scroll-margin-top: 0.75rem; }
 .btable { border-collapse: separate; border-spacing: 0; font-size: 0.86rem; width: 100%; }
 .btable thead th { position: sticky; top: 0; z-index: 3; text-align: left; font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600;
   color: var(--muted); padding: 0.5rem 0.55rem; background: color-mix(in srgb, var(--accent) 9%, var(--surface)); border-bottom: 1px solid var(--bes-line); white-space: nowrap; }
@@ -147,10 +233,11 @@ th[aria-sort="descending"] .btri::after { content: '↓'; opacity: 1; }
 .bligne--bloc > .bcase.est-hors { opacity: 0.4; }
 
 /* Le tableau à gauche, la carte à droite, moitié-moitié (demande du propriétaire : « du 50/50 avec la tuile du monstre choisi ») ; la carte est un panneau qui
-   suit le défilement ; sur un écran étroit, elle passe par-dessus la page */
+   suit le défilement, à la hauteur de la partie visible de sa vue (--bcartes-max, posée par le script : ni son haut ni son bas coupés), et défile dans
+   son cadre ; sur un écran étroit, elle passe par-dessus la page */
 .bvue { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
-.bcartes { position: sticky; top: 0.75rem; max-height: calc(100vh - 1.5rem); overflow-y: auto; overscroll-behavior: contain; background: var(--surface);
-  border: 1px solid var(--border); border-radius: 12px; }
+.bcartes { position: sticky; top: 0.75rem; max-height: calc(100vh - 1.5rem); max-height: var(--bcartes-max, calc(100dvh - 1.5rem)); overflow-y: auto;
+  overscroll-behavior: contain; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
 .bcartes__invite { margin: 0; padding: 2.5rem 1.5rem; text-align: center; color: var(--muted); }
 html.js .bcartes.est-ouverte .bcartes__invite { display: none; }
 .bcarte { display: none; }

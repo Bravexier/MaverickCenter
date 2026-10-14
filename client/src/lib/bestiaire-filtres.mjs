@@ -121,3 +121,27 @@ export function triSuivant(etat, cle) {
   if (etat.sens === 'asc') return { ...etat, sens: 'desc' };
   return { ...etat, tri: null, sens: 'asc' };
 }
+
+// ---- Défilement de la vue (le tableau et la carte, côte à côte ; demande du propriétaire : « corriger le fait de ne pas avoir de scroll bar, que ce soit
+// pour le tableau ou la tuile », qui « reste toujours affichée à l'écran ») : la carte tient dans la partie visible de sa vue, et la molette fait d'abord
+// défiler la page jusqu'à ce que la vue soit calée en haut de l'écran (ensuite, le tableau ou la carte défilent dans leur cadre).
+
+/** Hauteur de la partie visible d'une vue (haut et bas à l'écran) dans une fenêtre de hauteur `h`, à `marge` des bords ; au moins `plancher`. */
+export const hauteurVisible = (haut, bas, h, marge = 12, plancher = 160) => Math.max(Math.round(Math.min(bas, h - marge) - Math.max(haut, marge)), plancher);
+
+/** La molette (`dy`, en pixels) sur une vue dont le haut est à `haut` : ce que la page défile d'abord pour la caler à `marge` du haut de l'écran
+ *  (0 : la vue est calée, son cadre défile). */
+export const defilementDAbord = (haut, dy, marge = 12) => {
+  if (dy > 0 && haut > marge + 1) return Math.min(dy, haut - marge);
+  if (dy < 0 && haut < marge - 1) return Math.max(dy, haut - marge);
+  return 0;
+};
+
+// ---- Échelle de puissance d'une carte (curseur de la carte d'un monstre qui en a plusieurs : lib/monstre-rendu.mjs#htmlDeLEchelle)
+
+/** L'échelle montrée à l'ouverture d'une carte (`echelles` : celles qu'elle écrit) : la plus petite des échelles cochées dans le filtre EP (« 5 », texte de
+ *  l'adresse) que la carte écrit, sinon la première qu'elle écrit. */
+export function echelleParDefaut(echelles, cochees = []) {
+  const siennes = (cochees ?? []).map(Number).filter((n) => echelles.includes(n));
+  return siennes.length ? Math.min(...siennes) : echelles[0];
+}
