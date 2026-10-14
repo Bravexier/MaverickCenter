@@ -266,7 +266,8 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   pointe vers le déclencheur ; teinte = `--mag` du contexte, sinon l'accent). Bulle riche : `data-bulle="<id>"` + `<span class="bulle" role="tooltip" id="<id>" hidden>` écrit
   dans la page ; tout attribut `title` s'affiche dans la bulle partagée (`#bulle-du-titre`) au lieu de l'infobulle du navigateur, qui ne se style pas : l'attribut est
   retiré le temps de l'affichage puis remis (un appui ou une touche le rend avant les gestionnaires de la page : un script qui lit `title` le retrouve). Rien au
-  toucher pour un `title` (comme le navigateur). Ne pas ajouter d'autre script de bulles ni d'infobulle en CSS. `test/infobulles.test.mjs` (faux navigateur, puis site construit).
+  toucher pour un `title` (comme le navigateur). `data-placement="cote"` (sur une bulle riche, ou sur le déclencheur d'un `title`) place la bulle à côté de son
+  déclencheur au lieu de dessous (carte d'une créature invoquée, chevrons de la chronologie). Ne pas ajouter d'autre script de bulles ni d'infobulle en CSS. `test/infobulles.test.mjs` (faux navigateur, puis site construit).
 - `npm run autolink` (aperçu) / `-- --write` : maillage automatique des pages, voir `docs/content-guide.md`.
 - **Fiche de personnage** (`/fiche/`, `docs/character-generator.md`) : `/generateur/` n'existe plus, la page 404 y renvoie (`lib/nav.mjs#nouvelleAdresse`,
   `PAGES_RENOMMEES`). Les règles de la page viennent de la base au build (`lib/fiche-regles.mjs`), jamais écrites à la main ; chaque calcul de

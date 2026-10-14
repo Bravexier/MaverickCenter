@@ -62,13 +62,14 @@ const etiquette = (e: any) => `${libelleDeDate(e)} : ${e.titre}`;
     )
   }
 
-  {/* Pas d'attribut title (infobulle du site) : la bulle du chevron Haut couvrirait le chevron Bas. Leur nom (lecteur d'écran) dit l'événement visé. */}
+  {/* Chaque chevron dit l'événement visé dans l'infobulle du site (`title`), placée à sa gauche (`data-placement="cote"` : dessous, la bulle du
+       chevron Haut couvrirait le chevron Bas) ; son nom, pour un lecteur d'écran : « Précédent » ou « Suivant », la bulle en description. */}
   <nav class="chrono-chevrons" aria-label="Événement précédent ou suivant">
     {
       precedent ? (
-        <a class="chrono-chevron" href={href(precedent)} rel="prev" data-chrono-precedent>
+        <a class="chrono-chevron" href={href(precedent)} rel="prev" title={etiquette(precedent)} data-placement="cote" data-chrono-precedent>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
-          <span class="chrono-invisible">Précédent : {etiquette(precedent)}</span>
+          <span class="chrono-invisible">Précédent</span>
         </a>
       ) : (
         <span class="chrono-chevron" role="link" aria-disabled="true">
@@ -79,9 +80,9 @@ const etiquette = (e: any) => `${libelleDeDate(e)} : ${e.titre}`;
     }
     {
       suivant ? (
-        <a class="chrono-chevron" href={href(suivant)} rel="next" data-chrono-suivant>
+        <a class="chrono-chevron" href={href(suivant)} rel="next" title={etiquette(suivant)} data-placement="cote" data-chrono-suivant>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
-          <span class="chrono-invisible">Suivant : {etiquette(suivant)}</span>
+          <span class="chrono-invisible">Suivant</span>
         </a>
       ) : (
         <span class="chrono-chevron" role="link" aria-disabled="true">

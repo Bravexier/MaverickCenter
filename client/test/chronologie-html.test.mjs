@@ -142,7 +142,9 @@ test('la mise en page demandée, dans la feuille de la page : frise au quart gau
   assert.match(regle('.frise__barre::before'), /linear-gradient\([\s\S]*var\(--trait-avant\)[\s\S]*var\(--trait\) var\(--y\)[\s\S]*var\(--trait-apres\)/, 'le dégradé de chaque morceau de barre');
   assert.match(regle('.chrono-chevrons'), /position: fixed;[\s\S]*top: 50%;[\s\S]*right: max\(0\.75rem/, 'les chevrons, fixés tout à droite');
   assert.match(html, /\.frise__evenement:target > \.frise__lien/, 'la ligne où mène « Toute la chronologie » est marquée');
-  assert.ok(!/<a class="chrono-chevron"[^>]* title=/.test(html), 'pas d’infobulle sur les chevrons (celle du Haut couvrait le Bas)');
+  for (const [, attributs] of html.matchAll(/<a class="chrono-chevron"([^>]*)>/g)) {
+    assert.match(attributs, / title="[^"]+" data-placement="cote"/, 'l’infobulle d’un chevron dit l’événement visé, à sa gauche (dessous, celle du Haut couvrirait le Bas)');
+  }
 });
 
 test('scripts en ligne sans import (version portable) ; le menu Codex mène à la chronologie ; transition entre les pages de la chronologie', options, () => {

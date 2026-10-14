@@ -77,8 +77,17 @@ const style = (e: any, i: number) => {
       if (garde && typeof garde.haut === 'number') {
         var voulu = garde.haut + (typeof garde.bord === 'number' ? frise.getBoundingClientRect().top - garde.bord : 0);
         frise.scrollTop = voulu;
-        // vers la fin de la frise, elle ne peut pas défiler autant : la page descend du reste (la frise monte d'autant, jusqu'au haut de l'écran)
-        if (voulu - frise.scrollTop > 1) window.scrollBy(0, voulu - frise.scrollTop);
+        // Vers la fin de la frise, elle ne peut pas défiler autant : la page descend du reste (la frise monte d'autant, jusqu'au haut de l'écran).
+        // Ce qui n'est pas encore lu (la fin de la page, le pied de page) peut manquer pour descendre assez : le reste, une fois la page lue.
+        var reste = voulu - frise.scrollTop;
+        var descendre = function () {
+          if (reste <= 1) return;
+          var avant = window.scrollY;
+          window.scrollBy(0, reste);
+          reste -= window.scrollY - avant;
+        };
+        descendre();
+        if (reste > 1) document.addEventListener('DOMContentLoaded', descendre);
       }
     } catch (e) {}
     var actuel = frise.querySelector('[aria-current="page"]');
