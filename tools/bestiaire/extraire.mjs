@@ -45,6 +45,9 @@ export { SENS_DEFENSE };
 
 const SEPARATEUR = /^_{6,}\s*$/;
 const TITRE_ESPECE = /^([^\t*\s].*?)\s*\((EP[^)]*)\)\s*$/;
+// Un brouillon du doc, « Réanimé (EP5) (a continuer) », « Vouivre squelette (EP8) (a refaire) » : son bloc (description, cartes) n'est pas repris, mais son
+// titre borne l'espèce qui le précède (décision R58 du propriétaire : « Oui » à « Faut-il les retirer ? »)
+const TITRE_BROUILLON = /^([^\t*\s].*?)\s*\((EP[^)]*)\)\s*\([aà] (?:refaire|continuer)\)\s*$/i;
 const LETTRE = /^[A-Z]\s*$/;
 const CARTE = /Créature échelle/;
 const DEBUT_GLOSSAIRE = /^GLOSSAIRE BUTIN\s*$/;
@@ -55,13 +58,22 @@ const TITRE_DE_BLOC = (l) => /\p{Lu}.*\p{Lu}.*\p{Lu}/u.test(l) && !/\p{Ll}/u.tes
 
 /**
  * Corrections déjà décidées pour toute la base (une graphie corrigée l'est partout où elle est écrite : CLAUDE.md, « Orthographe ») et que le doc écrit
- * encore à l'ancienne : [motif, remplacement, origine]. Rien d'autre n'est corrigé ; sources/raw garde le texte du doc.
+ * encore à l'ancienne : [motif, remplacement, origine]. Rien d'autre n'est corrigé ; sources/raw garde le texte du doc. Les quatre dernières, du butin
+ * (décision R57 : « Corrige et rapproche les. Les fautes de frappe ça arrive. »), sont écrites une seule fois dans le doc.
  */
 export const CORRECTIONS = [
   [/le Démon d'Eau Noire/g, 'Eaunoire', 'décision R21, migration 0012-eaunoire'],
   [/\bOccultomancien/g, 'Ocultomancien', 'graphie majoritaire, migration 0006-orthographe-noms'],
   [/([Pp])urée de poix/g, '$1urée de pois', 'migration 0006-orthographe-noms'],
   [/\bect\b/g, 'etc', 'migration 0005-orthographe-base'],
+  // le glossaire écrit « Petit os » (15 fois ailleurs) ; une case du Karn « Petite os »
+  [/\bPetite os\b/g, 'Petit os', 'décision R57, migration 0039-bestiaire-reponses'],
+  // les trois cases du Radrak frénétique écrivent « Peau de radrak », le glossaire « Peau du radrak » (son identifiant reste peau-du-radrak)
+  [/\bPeau du radrak\b/g, 'Peau de radrak', 'décision R57, migration 0039-bestiaire-reponses'],
+  // la seule case qui met la quantité devant (Squelette) : « Os moyen x 4 », comme les autres
+  [/\b4 os moyen\b/g, 'Os moyen x 4', 'décision R57, migration 0039-bestiaire-reponses'],
+  // la chair du blob blanc (« blobs argents ») : « Gelée blanche » dans le glossaire et le doc « Alchimie », « Gelée argent » nulle part ailleurs
+  [/\bGelée argent\b/g, 'Gelée blanche', 'décision R57, migration 0039-bestiaire-reponses'],
 ];
 /** Une ligne du doc, blancs de mise en page (espaces, insécables) réduits et corrections déjà décidées appliquées. */
 export const compacter = (l) => CORRECTIONS.reduce((t, [motif, par]) => t.replace(motif, par), l.replace(/[ \u00a0]+/g, ' ').trim());
@@ -179,7 +191,8 @@ function butin(L, debut, fin) {
   const lignes = L.slice(debut, fin);
   let i = lignes.findIndex((l) => /^Score \(3d100\)/.test(l));
   if (i < 0) return sortie;
-  for (const c of cellules(lignes.slice(i + 1))) {
+  // une note sous le tableau (« *Parmi Rouge, Jaune, Vert foncé, Brun », hors cellule) ne se colle pas à la dernière case (décision R58)
+  for (const c of cellules(lignes.slice(i + 1).filter((l) => !/^\*\S/.test(l)))) {
     const t = c.trim();
     if (!t || /^Butin possible$/.test(t)) continue;
     const m = t.match(/^(\d+)\s*-\s*(\d+)$/);
@@ -328,18 +341,24 @@ function glossaire(L, debut) {
     if (!s || /^(Ici vous pouvez|Les objets en rouge)/.test(s)) continue;
     const m = s.match(/^([^.]{1,60})\.\s+(.*)$/);
     if (!m) throw new Error(`glossaire : ligne inattendue « ${s} » (${ref(i)})`);
-    sortie.push({ id: normalize(m[1]), rang: sortie.length + 1, nom: m[1].trim(), texte: m[2].trim(), source_ref: ref(i) });
+    // l'identifiant vient du nom tel que le doc l'écrit, avant les corrections (un nom corrigé garde son identifiant : « Peau du radrak », décision R57)
+    const brut = L[i].replace(/[ \u00a0]+/g, ' ').trim().match(/^([^.]{1,60})\./)[1];
+    sortie.push({ id: normalize(brut), rang: sortie.length + 1, nom: m[1].trim(), texte: m[2].trim(), source_ref: ref(i) });
   }
   return sortie;
 }
 
-/** Le doc entier -> { regles, echelles, especes, glossaire }. */
+/** Le doc entier -> { regles, echelles, especes, glossaire } ; les brouillons (« (a refaire) », « (a continuer) ») ne sont pas repris. */
 export function extraireBestiaire(texte) {
   const L = lignesDuDoc(texte);
   const iGlossaire = L.findIndex((l) => DEBUT_GLOSSAIRE.test(l.trim()));
   if (iGlossaire < 0) throw new Error('« GLOSSAIRE BUTIN » introuvable');
   const titres = [];
-  for (let i = 0; i < iGlossaire; i++) if (TITRE_ESPECE.test(L[i]) && !/^\[/.test(L[i])) titres.push(i);
+  const brouillons = [];
+  for (let i = 0; i < iGlossaire; i++) {
+    if (TITRE_ESPECE.test(L[i]) && !/^\[/.test(L[i])) titres.push(i);
+    else if (TITRE_BROUILLON.test(L[i])) brouillons.push(i);
+  }
   // l'introduction (règles, deux tableaux, modèle de carte, liste par EP) précède le premier titre d'espèce
   const intro = introduction(L);
   const casse = casseur(L.filter((l) => !CARTE.test(l)).join('\n'));
@@ -349,7 +368,8 @@ export function extraireBestiaire(texte) {
   for (let k = 0; k < titres.length; k++) {
     const debut = titres[k];
     for (let i = (k ? titres[k - 1] : 0); i < debut; i++) if (LETTRE.test(L[i])) lettre = L[i].trim();
-    let fin = k + 1 < titres.length ? titres[k + 1] : iGlossaire;
+    // la fin : le titre suivant, d'une espèce ou d'un brouillon (non repris)
+    let fin = Math.min(k + 1 < titres.length ? titres[k + 1] : iGlossaire, brouillons.find((b) => b > debut) ?? iGlossaire);
     // la fin d'une espèce : avant le séparateur de page et la lettre de l'espèce suivante
     while (fin - 1 > debut && (!L[fin - 1].trim() || SEPARATEUR.test(L[fin - 1].trim()) || LETTRE.test(L[fin - 1]))) fin--;
     especes.push(espece(L, debut, fin, k + 1, lettre, ids, casse));

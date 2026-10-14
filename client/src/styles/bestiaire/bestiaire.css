@@ -93,6 +93,8 @@ html.js .bestiaire .bregles__curseur.js-seul, html.js .bestiaire .bechelle__curs
 .bep-lignes { display: grid; gap: 0.2rem; }
 .bep-ligne--vide { height: 0.15rem; }
 .bep-ligne--titre { font-weight: 700; }
+/* une valeur calculée à l'échelle choisie (« 5 (+2/3EP) », décision R55) : soulignée, la formule écrite en infobulle */
+.bcalcul { font-weight: 700; text-decoration: underline dotted color-mix(in srgb, var(--bes) 60%, transparent); text-underline-offset: 0.2em; cursor: help; }
 .bep-ligne .bcaracs { margin-top: 0.15rem; }
 .bstats--ep { grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr)); }
 .bstats__groupe, .bstats__texte { grid-column: 1 / -1; }
@@ -110,6 +112,15 @@ html.js .bestiaire .bregles__curseur.js-seul, html.js .bestiaire .bechelle__curs
   :is(.bcarte, .bregles)[data-ep="9"] [data-eps]:not([data-eps~="9"]),
   :is(.bcarte, .bregles)[data-ep="10"] [data-eps]:not([data-eps~="10"]) { display: none; }
 }
+/* l'échelle choisie au curseur, la carte a l'apparence d'une carte à une seule échelle (demande du propriétaire : « l'apparence doit être la même que
+   pour les monstres mono EP ») : sans l'étiquette « EP n » de chaque ligne ni de chaque tuile, qui décalait le texte d'une échelle à l'autre */
+@media screen {
+  .bcarte[data-ep] .bep-ligne > .bep, .bcarte[data-ep] .bep-ep { display: none; }
+  /* les lignes vides qui séparaient les échelles dans le texte : sans elles, la valeur choisie reste à la même hauteur quelle que soit l'échelle */
+  .bcarte[data-ep] .bep-ligne--vide { display: none; }
+  .bcarte[data-ep] .bep-ligne .bcaracs { margin-top: 0; }
+}
+.bforme { font-weight: 600; }
 
 /* Butin : l'objet du glossaire qu'une case cite, souligné ; sa définition en infobulle (components/Infobulles.astro ; bulles hors des cartes) */
 .bbutin .bobjet { font: inherit; color: inherit; background: none; border: 0; padding: 0; text-decoration: underline dotted var(--bes-line); text-decoration-thickness: 2px;

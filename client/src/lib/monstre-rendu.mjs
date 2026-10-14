@@ -4,9 +4,29 @@
 // ou en pastilles (cibles des défenses), sinon le texte s'affiche tel qu'écrit. Une carte écrite par échelle de puissance (« EP 1 : 20 EP 6 : 140 »…) :
 // chaque valeur porte les échelles qu'elle couvre (`data-eps`) et le curseur de la carte (htmlDeLEchelle) n'en montre qu'une (demande du propriétaire :
 // « pour les tuiles des ennemis ayant plusieurs échelles, [choisir l'échelle] par un slider et que ses caractéristiques soient calculées en fonction ») ;
-// rien n'est calculé : chaque valeur est celle que la carte écrit pour l'échelle. Fonctions pures, chaîne HTML en sortie, tout texte échappé.
+// chaque valeur est celle que la carte écrit pour l'échelle. Seule exception, la formule « N (+k/mEP) » d'une défense, calculée à chaque échelle selon la
+// décision R55 (« +2 tous les 3 EP ») ; une capacité « [EPN] » n'est montrée qu'à partir de l'EP N (décision R56). Fonctions pures, chaîne HTML en sortie,
+// tout texte échappé.
 import { couleurDeCaracteristique, styleDeCouleur } from './caracteristiques-postures.mjs';
-import { attributs, capacites, caracteristiques, CATEGORIES, cibles, echellesEcrites, FPVSIA, lieux, objetDuButin, parEchelle, segmentsParEchelle, SENS_DEFENSE } from './monstre-champs.mjs';
+import { couleurDeMagie, texteSurCouleur } from './sort-format.mjs';
+import { normalize } from './text.mjs';
+import {
+  attributs,
+  capacites,
+  caracteristiques,
+  CATEGORIES,
+  cibles,
+  echelleDuPrefixe,
+  echellesEcrites,
+  FPVSIA,
+  lieux,
+  objetDuButin,
+  parEchelle,
+  RUBRIQUES,
+  segmentsParEchelle,
+  SENS_DEFENSE,
+  texteParEchelle,
+} from './monstre-champs.mjs';
 
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const e = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES[c]);
@@ -23,7 +43,9 @@ export const htmlDesCaracteristiques = (valeurs) =>
   }).join('')}</span>`;
 
 const epsDe = (s) => ` data-eps="${s.eps.join(' ')}"`;
-const etiquetteDe = (s) => `<span class="bep">${e(s.forme ? `${s.forme} ${s.etiquette}` : s.etiquette)}</span>`;
+// l'étiquette d'une ligne écrite par échelle : la forme (« (Guerrier) ») reste toujours, l'échelle (« EP 2 - 5 ») ne se voit que sans curseur (sans
+// JavaScript, à l'impression) : l'échelle choisie, la carte a l'apparence d'une carte à une seule échelle (demande du propriétaire)
+const etiquetteDe = (s) => `${s.forme ? `<span class="bforme">${e(s.forme)}</span> ` : ''}<span class="bep">${e(s.etiquette)}</span>`;
 
 /** Les lignes d'un texte écrit par échelle : une ligne d'échelle (son étiquette « EP 2 - 5 », sa valeur), un titre de groupe, une ligne simple. */
 function htmlDesLignes(segments, ligneDEchelle = (s) => `${etiquetteDe(s)} <span class="texte">${e(s.valeur)}</span>`) {
@@ -37,16 +59,22 @@ function htmlDesLignes(segments, ligneDEchelle = (s) => `${etiquetteDe(s)} <span
     .join('')}</span>`;
 }
 
-/** Santé, chakra, barrière écrites par échelle : une tuile par valeur (« EP 6 » · 140), triées par échelle dans chaque groupe (« Neige », « Âme »…). */
+/**
+ * Santé, chakra, barrière écrites par échelle : une tuile par valeur, triées par échelle dans chaque groupe (« Neige », « Âme »…), nommée comme sur une
+ * carte à une seule échelle (« Santé », le nom écrit « [EP3] Santé : 330 », ou la forme « (Guerrier) ») ; l'échelle (« · EP 6 ») ne se voit que sans
+ * curseur (demande du propriétaire : « ne doivent pas afficher l'EP, mais leur titre »).
+ */
 function htmlDesTuilesParEchelle(rubrique, segments) {
   const sortie = [];
   let serie = [];
+  // le titre du groupe en cours (« Âme » du Collecteur) : le nom d'une valeur qui n'en écrit pas, après ce titre
+  let groupe = null;
   const vider = () => {
     for (const s of [...serie].sort((a, b) => a.eps[0] - b.eps[0])) {
       // « [EP3] Santé : 330 », « [EP3] Sang : 10 » : le nom écrit passe dans l'étiquette de la tuile, la valeur reste seule
       const m = s.valeur.match(/^([\p{L}’' ]+?)\s*:\s*(.+)$/u);
-      const nom = `${s.forme ? `${s.forme} ` : ''}${s.etiquette}${m ? ` · ${m[1]}` : ''}`;
-      sortie.push(`<span class="bstat bstat--${rubrique}"${epsDe(s)}><span class="bstat__nom">${e(nom)}</span><span class="bstat__val">${e(m ? m[2] : s.valeur)}</span></span>`);
+      const nom = s.forme ?? (m ? m[1] : (groupe ?? RUBRIQUES[rubrique] ?? ''));
+      sortie.push(`<span class="bstat bstat--${rubrique}"${epsDe(s)}><span class="bstat__nom">${e(nom)}<span class="bep-ep"> · ${e(s.etiquette)}</span></span><span class="bstat__val">${e(m ? m[2] : s.valeur)}</span></span>`);
     }
     serie = [];
   };
@@ -56,8 +84,10 @@ function htmlDesTuilesParEchelle(rubrique, segments) {
       continue;
     }
     vider();
-    if (s.titre) sortie.push(`<span class="bstats__groupe">${e(s.titre)}</span>`);
-    else if (s.texte) sortie.push(`<span class="bstats__texte texte">${e(s.texte)}</span>`);
+    if (s.titre) {
+      groupe = s.titre;
+      sortie.push(`<span class="bstats__groupe">${e(s.titre)}</span>`);
+    } else if (s.texte) sortie.push(`<span class="bstats__texte texte">${e(s.texte)}</span>`);
   }
   vider();
   return `<span class="bstats bstats--ep">${sortie.join('')}</span>`;
@@ -76,9 +106,75 @@ function htmlParEchelle(rubrique, texte) {
   return htmlDesLignes(segments);
 }
 
-/** HTML d'une rubrique (`monstre_rubrique.rubrique`) d'après son texte. */
-export function htmlDeRubrique(rubrique, texte) {
+/**
+ * Une cible de vulnérabilité ou de résistance, dans la couleur de la magie qui va avec (lib/monstre-champs.mjs#magiesDesCibles : la magie elle-même, ou
+ * la magie liée de l'altération d'état ; deux magies : la seconde en bande) ; la magie liée d'une altération en infobulle ; sans magie, la pastille neutre.
+ */
+function htmlDeCible(rubrique, cible, magiesDesCibles) {
+  const noms = magiesDesCibles[normalize(cible)] ?? [];
+  if (!noms.length) return `<span class="bcible bcible--${rubrique}">${e(cible)}</span>`;
+  const [c1, c2 = c1] = noms.map(couleurDeMagie);
+  const style = `--c:${c1};--c2:${c2};--c-texte:${texteSurCouleur(c1)}`;
+  const titre = normalize(noms[0]) === normalize(cible) ? '' : ` title="${e(`Magie liée : ${noms.join(', ')}`)}"`;
+  return `<span class="bcible bcible--${rubrique} bcible--magie${noms.length > 1 ? ' bcible--deux' : ''}" style="${e(style)}"${titre}>${e(cible)}</span>`;
+}
+
+/**
+ * Une rubrique de défense écrite sur plusieurs lignes (« Guerrier : Nécromancie, Feu… », « Neige : Glace », « Absorbe(s) Dégâts/Effets = 0 » puis
+ * « Feu ») : chaque ligne qui est une liste de cibles, précédée ou non d'une forme (« Guerrier : »), en pastilles colorées ; les autres lignes telles
+ * qu'écrites. null si aucune ligne n'est une liste (« Varie selon la magie »).
+ */
+function htmlDesCiblesParLigne(rubrique, texte, magiesDesCibles) {
+  const t = String(texte ?? '');
+  if (!t.includes('\n')) return null;
+  let pastilles = 0;
+  const lignes = t.split('\n').map((l) => {
+    if (!l.trim()) return '<span class="bdef-ligne bdef-ligne--vide"></span>';
+    const m = l.match(/^([^:,=]{1,30}?)\s*:\s*(.+)$/);
+    const liste = cibles(m ? m[2] : l).filter((c) => !c.includes('='));
+    if (!liste.length) return `<span class="bdef-ligne texte">${e(l)}</span>`;
+    pastilles += 1;
+    const forme = m ? `<span class="bforme">${e(m[1])} :</span> ` : '';
+    return `<span class="bdef-ligne">${forme}<span class="bcibles">${liste.map((c) => htmlDeCible(rubrique, c, magiesDesCibles)).join('')}</span></span>`;
+  });
+  return pastilles ? `<span class="bdef-lignes">${lignes.join('')}</span>` : null;
+}
+
+/** Les échelles d'un groupe, en étiquette : « EP 4 », « EP 1 - 3 » (consécutives), « EP 3, 5 ». */
+const libelleDesEchelles = (eps) =>
+  eps.length > 1 && eps.at(-1) - eps[0] === eps.length - 1 ? `EP ${eps[0]} - ${eps.at(-1)}` : `EP ${eps.join(', ')}`;
+const EP_MAX = 10;
+
+/**
+ * Un texte à formules « N (+k/mEP) » (décision R55) lu à chaque échelle de la carte : une ligne par groupe d'échelles (lib/monstre-champs.mjs#texteParEchelle),
+ * la valeur calculée soulignée, la formule écrite en infobulle ; le curseur n'en montre qu'une, sans JavaScript toutes s'affichent.
+ */
+function htmlDesProgressions(groupes) {
+  const morceau = (m) => {
+    if (m.texte !== undefined) return e(m.texte);
+    const f = progressionDe(m.formule);
+    return `<span class="bcalcul" title="${e(`« ${m.formule.trim()} » : +${f.pas} ${f.tous === 1 ? 'à chaque EP' : `tous les ${f.tous} EP`}`)}">${m.valeur}</span>${e(m.mots)}`;
+  };
+  return `<span class="bep-lignes">${groupes
+    .map((g) => `<span class="bep-ligne" data-eps="${g.eps.join(' ')}"><span class="bep">${libelleDesEchelles(g.eps)}</span> <span class="texte">${g.morceaux.map(morceau).join('')}</span></span>`)
+    .join('')}</span>`;
+}
+const progressionDe = (formule) => {
+  const m = formule.match(/\(\s*\+\s*(\d+)\s*\/\s*(\d*)\s*EP\s*\)/);
+  return { pas: Number(m[1]), tous: m[2] ? Number(m[2]) : 1 };
+};
+
+/**
+ * HTML d'une rubrique (`monstre_rubrique.rubrique`) d'après son texte ; `echelles` : celles qu'écrit la carte (lib/monstre-champs.mjs#echellesEcrites), pour
+ * une formule « N (+k/mEP) » (décision R55 : N à la première).
+ */
+export function htmlDeRubrique(rubrique, texte, { echelles = [], magiesDesCibles = {} } = {}) {
   if (rubrique !== 'capacites' && parEchelle(texte)) return htmlParEchelle(rubrique, texte);
+  // la formule « N (+k/mEP) » : la défense seulement (décision R55)
+  if (rubrique === 'defense') {
+    const groupes = texteParEchelle(texte, echelles);
+    if (groupes.length) return htmlDesProgressions(groupes);
+  }
   if (rubrique === 'attributs') {
     const a = attributs(texte);
     if (a.sante === null) return htmlDeTexte(texte);
@@ -91,15 +187,25 @@ export function htmlDeRubrique(rubrique, texte) {
   }
   if (SENS_DEFENSE.includes(rubrique)) {
     const liste = cibles(texte);
-    return liste.length ? `<span class="bcibles">${liste.map((c) => `<span class="bcible bcible--${rubrique}">${e(c)}</span>`).join('')}</span>` : htmlDeTexte(texte);
+    if (liste.length) return `<span class="bcibles">${liste.map((c) => htmlDeCible(rubrique, c, magiesDesCibles)).join('')}</span>`;
+    return htmlDesCiblesParLigne(rubrique, texte, magiesDesCibles) ?? htmlDeTexte(texte);
   }
   if (rubrique === 'capacites') {
     const caps = capacites(texte);
     if (!caps.length) return htmlDeTexte(texte);
     // le texte d'une capacité peut être écrit par échelle (« Fondu » des Blobs métalliques : « EP1 : Acier | 6AP | … ») ; son préfixe « [EP2] » reste tel quel
     const corps = (t) => (parEchelle(t) ? htmlDesLignes(segmentsParEchelle(t)) : `<span class="texte">${e(t)}</span>`);
+    // une capacité « [EPN] » est gagnée à partir de l'EP N (décision R56) : elle porte les échelles N à 10, le curseur la cache en dessous
+    const depuis = (c) => {
+      const n = echelleDuPrefixe(c.prefixe);
+      return n === null || n > EP_MAX ? '' : ` data-eps="${Array.from({ length: EP_MAX - n + 1 }, (_, k) => n + k).join(' ')}"`;
+    };
+    const prefixe = (c) => {
+      const n = echelleDuPrefixe(c.prefixe);
+      return `<span class="prefixe"${n === null ? '' : ` title="${e(`Gagnée à partir de l’EP ${n}`)}"`}>${e(c.prefixe)}</span> `;
+    };
     return `<ul class="bcapacites">${caps
-      .map((c) => `<li>${c.prefixe ? `<span class="prefixe">${e(c.prefixe)}</span> ` : ''}${c.nom ? `<strong>${e(c.nom)}.</strong> ` : ''}${corps(c.texte)}</li>`)
+      .map((c) => `<li${depuis(c)}>${c.prefixe ? prefixe(c) : ''}${c.nom ? `<strong>${e(c.nom)}.</strong> ` : ''}${corps(c.texte)}</li>`)
       .join('')}</ul>`;
   }
   return htmlDeTexte(texte);
@@ -116,8 +222,8 @@ export const idDeBulleDuButin = (id) => `bulle-butin-${id}`;
  * Une case de butin : l'objet du glossaire qu'elle cite (lib/monstre-champs.mjs#objetDuButin) est un bouton qui montre sa définition en infobulle
  * (components/Infobulles.astro : survol, clavier, toucher), la quantité reste du texte ; une case sans objet du glossaire, son texte tel qu'écrit.
  */
-export function htmlDuButin(texte, glossaire = []) {
-  const o = objetDuButin(texte, glossaire);
+export function htmlDuButin(texte, glossaire = [], elements = []) {
+  const o = objetDuButin(texte, glossaire, elements);
   if (!o) return e(texte);
   const id = idDeBulleDuButin(o.objet.id);
   return `<button type="button" class="bobjet" data-bulle="${e(id)}" aria-describedby="${e(id)}">${e(o.ecrit)}</button>${e(o.reste)}`;
@@ -170,7 +276,9 @@ export function htmlDeLEchelle(echelleBrut, categorie, echelles = [], renvoi = f
  * Chacun reçoit la valeur de la colonne et sa ligne de la base.
  */
 export const RENDUS_DU_BESTIAIRE = {
-  'monstre-rubrique': (valeur, ligne) => htmlDeRubrique(ligne?.rubrique, valeur),
+  // `ctx.echellesDesCartes` (serveur/edition.mjs#listes) : l'échelle écrite de chaque carte, pour une formule « N (+k/mEP) » (décision R55)
+  'monstre-rubrique': (valeur, ligne, ctx = {}) =>
+    htmlDeRubrique(ligne?.rubrique, valeur, { echelles: echellesEcrites(ctx.echellesDesCartes?.[ligne?.monstre_id]), magiesDesCibles: ctx.magiesDesCibles ?? {} }),
   'monstre-categorie': (valeur, ligne) => htmlDeCategorie(valeur, ligne?.categorie_brut),
   // une cellule du tableau : la valeur, ou « — »
   'monstre-cellule': (valeur) => (String(valeur ?? '').trim() ? e(valeur) : '<span class="vide">—</span>'),
@@ -181,8 +289,9 @@ export const RENDUS_DU_BESTIAIRE = {
     return l.length ? e(l.join(', ')) : '<span class="vide">—</span>';
   },
   'monstre-variable': (valeur) => (Number(valeur) === 1 ? e(PHRASE_VARIABLE) : ''),
-  // une case de butin, l'objet du glossaire qu'elle cite en bouton à infobulle ; `ctx.objetsDuButin` : serveur/edition.mjs#listes
-  'monstre-butin': (valeur, _ligne, ctx = {}) => htmlDuButin(valeur, ctx.objetsDuButin ?? []),
+  // une case de butin, l'objet du glossaire qu'elle cite en bouton à infobulle ; `ctx.objetsDuButin`, `ctx.magies` (les éléments, décision R57) :
+  // serveur/edition.mjs#listes
+  'monstre-butin': (valeur, _ligne, ctx = {}) => htmlDuButin(valeur, ctx.objetsDuButin ?? [], (ctx.magies ?? []).map((m) => m.nom)),
   // le curseur d'échelle de la carte (refait quand l'échelle ou la catégorie du monstre change) ; `ctx.echellesDePuissance`, `ctx.renvoisAuxDegatsMoyens`
   // (les cartes qui renvoient au tableau de l'introduction) : serveur/edition.mjs#listes
   'monstre-echelle': (valeur, ligne, ctx = {}) =>

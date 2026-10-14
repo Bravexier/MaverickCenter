@@ -195,12 +195,12 @@ export const especesDeMonstres = (db) =>
  */
 export function lignesDuBestiaire(db, { connues, logo }) {
   const deja = new Set(connues);
-  const { lignes, echelles, glossaire } = chargerMonstres(db);
+  const { lignes, echelles, glossaire, elements, magiesDesCibles } = chargerMonstres(db);
   const vu = (p) => (p ? { empreinte: empreinte(p.donnees), ...cadrageDe(p) } : null);
   return {
     ordre: lignes.map((l) => l.id),
     lignes: lignes.flatMap((l, i) => (deja.has(l.id)
       ? []
-      : [{ id: l.id, ancre: l.ancre, ligne: htmlDeLigneMonstre(l, i), carte: htmlDeCarteMonstre(l, { logo, echelles, glossaire }), portrait: vu(l.portrait) }])),
+      : [{ id: l.id, ancre: l.ancre, ligne: htmlDeLigneMonstre(l, i), carte: htmlDeCarteMonstre(l, { logo, echelles, glossaire, elements, magiesDesCibles }), portrait: vu(l.portrait) }])),
   };
 }

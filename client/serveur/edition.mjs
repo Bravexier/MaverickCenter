@@ -54,7 +54,7 @@ import {
   corpsAvecMateriauRenomme, corpsDesArmesApres, ErreurCorpsArmes, PAGE_DES_ARMES, PAGES_DES_MATERIAUX, TABLES_DE_LA_PAGE_DES_ARMES,
 } from '../src/lib/corps-armes.mjs';
 import { contexteDesArmes } from '../src/lib/armes-db.mjs';
-import { renvoisAuxDegatsMoyens } from '../src/lib/bestiaire-db.mjs';
+import { echellesDesCartes, magiesDesCibles, renvoisAuxDegatsMoyens } from '../src/lib/bestiaire-db.mjs';
 import {
   libelleDeFiche, noterLesRetraits, nouveauxRetraitsDeFiches, numerosDesFichesDeJoueur, ordreDesLibelles, retirerDesFiches,
 } from './fiches-retraits.mjs';
@@ -1592,8 +1592,10 @@ export function listes(db) {
     // le bestiaire : le tableau de l'introduction (curseur d'échelle d'une carte, rendu « monstre-echelle ») et le glossaire du butin (l'objet d'une case
     // en infobulle, rendu « monstre-butin » : les définitions sont dans la page, il ne faut que l'identifiant et le nom)
     echellesDePuissance: db.prepare('SELECT * FROM monstre_echelle ORDER BY ep').all(),
-    objetsDuButin: db.prepare('SELECT id, nom FROM monstre_butin_objet ORDER BY rang').all(),
+    objetsDuButin: db.prepare('SELECT id, nom, texte FROM monstre_butin_objet ORDER BY rang').all(),
     renvoisAuxDegatsMoyens: renvoisAuxDegatsMoyens(db),
+    echellesDesCartes: echellesDesCartes(db),
+    magiesDesCibles: magiesDesCibles(db),
     // la page des armes (lib/armes-rendu.mjs) : types d'armes (champ « Type », dé, règle du dé, portée), solidité de base des armes
     typesDArmes: contexteDesArmes(db).typesDArmes,
     soliditeDesArmes: contexteDesArmes(db).soliditeDesArmes,

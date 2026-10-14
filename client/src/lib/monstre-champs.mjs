@@ -133,6 +133,51 @@ export const renvoieAuxDegatsMoyens = (rubriques) => (rubriques ?? []).some((r) 
 export const parEchelle = (texte) => segmentsParEchelle(texte).some((s) => s.eps);
 
 /**
+ * Une valeur qui progresse avec l'échelle, « N (+k/mEP) » (décision R55 du propriétaire : « +2 tous les 3 EP. 5 (+2/3EP) veut dire 7 à 4, 9 à 7 et
+ * 11 à 10 ») : N à l'EP 1, +k toutes les m échelles ; « (+k/EP) » : à chaque échelle (m = 1). Le nombre est celui qui précède la formule, des mots
+ * pouvant les séparer (« 5 armure physique (+2/3EP) », « 5 (+2/3EP) armure magique »). Une carte qui ne commence pas à l'EP 1 (le Collecteur, EP 2 à
+ * 6) garde sa formule telle qu'écrite : où est N ? (question au propriétaire, docs/bestiaire.md).
+ */
+const PROGRESSION = /(\d+)((?:[ \t]+\p{L}+)*?)[ \t]*\([ \t]*\+[ \t]*(\d+)[ \t]*\/[ \t]*(\d*)[ \t]*EP[ \t]*\)/gu;
+/** Les formules d'un texte : [{ index, longueur, base, mots, pas, tous }] (`tous` : m, 1 pour « /EP »). */
+export const progressions = (texte) =>
+  [...String(texte ?? '').matchAll(PROGRESSION)].map((m) => ({ index: m.index, longueur: m[0].length, base: Number(m[1]), mots: m[2], pas: Number(m[3]), tous: m[4] ? Number(m[4]) : 1 }));
+/** La valeur d'une formule à l'échelle `ep`, la carte commençant à l'échelle `premiere`. */
+export const valeurALEchelle = ({ base, pas, tous }, ep, premiere) => base + pas * Math.floor((ep - premiere) / tous);
+/**
+ * Un texte à formules lu à chaque échelle écrite de la carte (`echelles`, croissantes) : [{ eps, morceaux }] où les échelles consécutives qui donnent le même
+ * texte sont regroupées ; un morceau est { texte } (écrit tel quel) ou { valeur, formule } (la valeur calculée et la formule écrite). [] sans formule, sans
+ * plusieurs échelles, ou pour une carte qui ne commence pas à l'EP 1.
+ */
+export function texteParEchelle(texte, echelles = []) {
+  const t = String(texte ?? '');
+  const f = progressions(t);
+  if (!f.length || echelles.length < 2 || echelles[0] !== 1) return [];
+  const groupes = [];
+  for (const ep of echelles) {
+    const morceaux = [];
+    let i = 0;
+    for (const x of f) {
+      if (x.index > i) morceaux.push({ texte: t.slice(i, x.index) });
+      morceaux.push({ valeur: valeurALEchelle(x, ep, echelles[0]), formule: t.slice(x.index, x.index + x.longueur), mots: x.mots });
+      i = x.index + x.longueur;
+    }
+    if (i < t.length) morceaux.push({ texte: t.slice(i) });
+    const cle = JSON.stringify(morceaux.map((m) => m.texte ?? `${m.valeur}${m.mots}`));
+    const dernier = groupes.at(-1);
+    if (dernier && dernier.cle === cle && echelles[echelles.indexOf(dernier.eps.at(-1)) + 1] === ep) dernier.eps.push(ep);
+    else groupes.push({ cle, eps: [ep], morceaux });
+  }
+  return groupes.map(({ eps, morceaux }) => ({ eps, morceaux }));
+}
+
+/** Le préfixe d'une capacité « [EPN] » (décision R56 : la capacité est gagnée à partir de l'EP N) : N, ou null. */
+export const echelleDuPrefixe = (prefixe) => {
+  const m = String(prefixe ?? '').match(/\[EP\s*(\d+)\]/);
+  return m ? Number(m[1]) : null;
+};
+
+/**
  * « Pince - 2d10 + 2 dégâts d’estoc », « Bâton mal-foutue: 1d6 dégâts de frappe » -> { rang, nom, texte } ; une ligne sans « nom - texte » chiffré n'est pas
  * une attaque (« Arme de la créature : », « Se fier au dégâts moyen… », « EP 1 - 10 : Faux déformée… » d'une carte qui varie selon l'échelle).
  */
@@ -167,20 +212,58 @@ export function capacites(texte) {
  * L'objet du glossaire du butin (`monstre_butin_objet`) qu'une case de butin cite (demande du propriétaire : le contenu du glossaire « pour faire un
  * tooltip […] sur le butin concerné ») : son nom écrit tel quel (casse, accents, espaces et apostrophe compris ; seule la ligature compte pour ses deux
  * lettres : « Coeur polaire » cite « Cœur polaire ») en tête de la case, suivi de rien, d'une quantité (« x 1d6 », « x1 », « (1d4) ») ou d'une
- * amélioration (« + 1 », « +2 ») ; le nom le plus long l'emporte (« Gelée verte foncée » avant « Gelée verte »). Rien d'autre n'est rapproché
- * (« Peau de radrak » / « Peau du radrak », « Citron de foudre » / « Citron », « 4 os moyen » : à l'avis du propriétaire, docs/bestiaire.md).
- * `glossaire` : [{ id, nom }] ; -> { objet, ecrit, reste } (`ecrit` : le nom tel que la case l'écrit) ou null.
+ * amélioration (« + 1 », « +2 ») ; le nom le plus long l'emporte (« Gelée verte foncée » avant « Gelée verte »).
+ * Décision R57 (« Corrige et rapproche les. Les fautes de frappe ça arrive. ») : les fautes de frappe sont corrigées dans la base (extracteur,
+ * CORRECTIONS) et un objet se cite aussi avec son élément, une magie (`elements`) : les objets qui valent pour tous les éléments (FAMILLES_PAR_ELEMENT :
+ * « Minitaire de Foudre », « Fragment de pièce de Feu ») et un fruit avec l'élément que nomme sa définition (« Fraise : Fruit du Feu » -> « Fraise de
+ * feu »). Le doc « Alchimie » distingue pourtant « Fraise de feu » (amplificateur, « Fruit (majeur) ») de « Fraise » (catalyseur), et le butin des blobs
+ * donne les deux : l'infobulle montre l'entrée « Fraise » du glossaire, sous son nom (question au propriétaire, docs/bestiaire.md).
+ * `glossaire` : [{ id, nom, texte }] ; -> { objet, ecrit, reste } (`ecrit` : l'objet tel que la case l'écrit) ou null.
  */
 const SUFFIXE_DU_BUTIN = /^(?:| x ?\d+(?:d\d+)?| \(\d+d\d+\)| ?\+ ?\d+)$/;
 const sansLigature = (texte) => texte.replace(/œ/g, 'oe').replace(/Œ/g, 'Oe');
-export function objetDuButin(texte, glossaire = []) {
+/**
+ * Les objets du glossaire qui valent pour tous les éléments, et l'écriture que le butin leur donne devant l'élément (décision R57) : le Minitaire
+ * (« Version miniature d’un élémentaire » : « Minitaire de Foudre », « Minitaire d’Eau ») et le fragment de pièce élémentaire (« Morceau d’une pièce
+ * élémentaire brisée » : « Fragment de pièce de Feu », « Fragment de pièce de la Glace », « Fragment de pièce Espace/Temps »).
+ */
+export const FAMILLES_PAR_ELEMENT = { minitaire: 'Minitaire', 'fragment-de-piece-elementaire': 'Fragment de pièce' };
+/** L'élément qu'une définition de fruit nomme (« Fruit du Feu, ingrédient… » -> « Feu »), s'il est une magie de `elements` ; sinon null. */
+export function elementDuFruit(definition, elements = []) {
+  const m = String(definition ?? '').match(/^Fruit (?:de la |de l’|de l'|du |d’|d'|de )([^,.;]+?)\s*[,.;]/);
+  return m ? (elements.find((el) => el.toLowerCase() === m[1].toLowerCase()) ?? null) : null;
+}
+// « de », « du », « d’ », « de la », « de l’ » devant l'élément, ou rien (« Fragment de pièce Espace/Temps »)
+const LIAISONS = ['de la ', 'de l’', "de l'", 'du ', 'd’', "d'", 'de ', ''];
+/** Longueur de « <base> <liaison><élément> » en tête de `t` (l'élément en n'importe quelle casse), 0 sinon. */
+function avecElement(t, base, elements) {
+  if (!t.startsWith(`${base} `)) return 0;
+  const reste = t.slice(base.length + 1);
+  for (const l of LIAISONS) {
+    if (!reste.startsWith(l)) continue;
+    const apres = reste.slice(l.length);
+    const el = [...elements].sort((a, b) => b.length - a.length).find((x) => apres.slice(0, x.length).toLowerCase() === x.toLowerCase());
+    if (el) return base.length + 1 + l.length + el.length;
+  }
+  return 0;
+}
+export function objetDuButin(texte, glossaire = [], elements = []) {
   const t = String(texte ?? '');
-  for (const objet of [...glossaire].filter((g) => g.nom).sort((a, b) => b.nom.length - a.nom.length)) {
+  const objets = [...glossaire].filter((g) => g.nom).sort((a, b) => b.nom.length - a.nom.length);
+  for (const objet of objets) {
     const nom = sansLigature(objet.nom);
     // la longueur du nom dans la case (une ligature y vaut une ou deux lettres)
     for (let k = Math.max(1, nom.length - 3); k <= Math.min(t.length, nom.length + 3); k += 1) {
       if (sansLigature(t.slice(0, k)) === nom && SUFFIXE_DU_BUTIN.test(t.slice(k))) return { objet, ecrit: t.slice(0, k), reste: t.slice(k) };
     }
+  }
+  // avec son élément : un objet qui vaut pour tous les éléments, un fruit avec celui de sa définition
+  for (const objet of objets) {
+    const fruit = elementDuFruit(objet.texte, elements);
+    const base = FAMILLES_PAR_ELEMENT[objet.id] ?? (fruit ? objet.nom : null);
+    if (!base) continue;
+    const k = avecElement(t, base, fruit ? [fruit] : elements);
+    if (k && SUFFIXE_DU_BUTIN.test(t.slice(k))) return { objet, ecrit: t.slice(0, k), reste: t.slice(k) };
   }
   return null;
 }
@@ -191,6 +274,23 @@ export function cibles(texte) {
   const morceaux = texte.split(/\s*,\s*/).map((m) => m.trim().replace(/\.$/, '')).filter(Boolean);
   if (!morceaux.every((m) => m.length <= 30 && !/[:.;]/.test(m) && !/^(varie|variable|selon|voir|aucun|rien)/i.test(m))) return [];
   return morceaux;
+}
+
+/**
+ * La magie qui va avec chaque cible d'une vulnérabilité ou d'une résistance (demande du propriétaire : « rajouter les couleurs des vulnérabilités et
+ * résistances selon la couleur de la magie qui va avec ») : { cible normalisée : [noms de magie] }. Une magie se nomme elle-même (« Feu ») ; une
+ * altération d'état a sa magie liée (table etat_magie : « Brûlure » -> Feu, « Surcharge Magique » -> Corruption et Arcane). Écritures du bestiaire
+ * rapprochées : « Temps/Espace » (la magie liée du tableau des altérations s'écrit « Temps/ Espace ») ; « Pétrification », « Gelé », « Enragée »
+ * (l'état « Pétrifié », « Gel », « Enragé »). Rien d'autre : « Frappe », « Maladie », « Contrôle mentale »… restent sans magie.
+ * `magies` : [noms] ; `etats` : [{ nom, magie }] (une ligne par magie liée, dans l'ordre de leur rang).
+ */
+export const CIBLES_RAPPROCHEES = { 'temps-espace': 'espace-temps', petrification: 'petrifie', gele: 'gel', enragee: 'enrage' };
+export function magiesDesCibles(magies = [], etats = []) {
+  const table = {};
+  for (const m of magies) table[normalize(m)] = [m];
+  for (const e of etats) (table[normalize(e.nom)] ??= []).push(e.magie);
+  for (const [forme, nom] of Object.entries(CIBLES_RAPPROCHEES)) if (table[nom] && !table[forme]) table[forme] = table[nom];
+  return table;
 }
 
 /** « Santé : 70 Chakra : 0 Barrière : 0 » (une seule ligne) -> { sante, chakra, barriere } ; sinon des NULL (valeurs par EP, gardées en texte). */
