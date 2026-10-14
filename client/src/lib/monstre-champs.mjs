@@ -62,6 +62,77 @@ export function bornes(texte) {
 }
 
 /**
+ * Les échelles qu'écrit une carte ou une espèce (`monstre.echelle_brut`, `monstre_espece.ep_brut` : « 2 », « 1-10 », « 2-6 », « 3,5,7 », « 3, 5, 7 »,
+ * « EP1 - 10 », « EP3, 5, 7 ») : la liste croissante, sans doublon. Une plage « a-b » donne toutes ses échelles, une liste seulement celles qu'elle nomme
+ * (« 3, 5, 7 » : ni 4 ni 6) ; une écriture sans nombre, aucune. Le curseur d'échelle de la carte et le filtre EP du tableau la suivent (bornes() garde le
+ * plus petit et le plus grand nombre : `ep_min`, `ep_max`, le tri).
+ */
+export function echellesEcrites(texte) {
+  const eps = String(texte ?? '')
+    .replace(/^\s*EP\s*/i, '')
+    .split(/\s*,\s*/)
+    .flatMap((p) => {
+      const plage = p.trim().match(/^(\d+)\s*-\s*(\d+)$/);
+      if (plage) {
+        const [a, b] = [Number(plage[1]), Number(plage[2])];
+        return a <= b ? Array.from({ length: b - a + 1 }, (_, k) => a + k) : [];
+      }
+      return /^\d+$/.test(p.trim()) ? [Number(p.trim())] : [];
+    });
+  return [...new Set(eps)].sort((x, y) => x - y);
+}
+
+// Une ligne d'une rubrique écrite par échelle (carte qui « varie selon son échelle de puissance ») : « EP 2 - 5 : … », « EP3 : … », « [EP3] … »,
+// « [EP3,5,7] … », avec une forme devant (« (Guerrier) EP 1 - 10 : 10 », « (Neige) [EP3] … ») ; la ligne à deux colonnes du doc (« EP 1 : 20 EP 6 : 140 »).
+const LIGNE_PAR_ECHELLE = /^(\([^)\n]+\)\s*)?(?:\[EP\s*(\d[\d,\s-]*)\]\s*|EP\s*(\d[\d,\s-]*?)\s*:\s*)(.*)$/;
+const DEUX_COLONNES = /^EP\s*\d+\s*:\s*\d[\d ]*\s+EP\s*\d+\s*:\s*\d[\d ]*$/;
+// un titre de groupe seul sur sa ligne (« Neige », « Cristal », « Âme », « Sang ») : un mot, sa majuscule
+const TITRE_DE_GROUPE = /^\p{Lu}[\p{Ll}’']+$/u;
+
+/**
+ * Le texte d'une rubrique découpé ligne à ligne pour le curseur d'échelle de la carte (lib/monstre-rendu.mjs) : chaque ligne écrite pour une ou plusieurs
+ * échelles est un segment { eps, forme, etiquette, valeur, texte } (`etiquette` : « EP 2 - 5 » tel qu'écrit, `valeur` : la suite de la ligne) ; la ligne à
+ * deux colonnes donne deux segments ; un titre de groupe (« Neige ») donne { titre } ; une ligne vide { vide: true } ; toute autre ligne { texte } (elle
+ * reste affichée à toutes les échelles). Rien n'est calculé : chaque valeur est celle que la carte écrit pour cette échelle. Le texte des segments redonne
+ * celui de la rubrique (aux espaces de la ligne à deux colonnes près).
+ */
+export function segmentsParEchelle(texte) {
+  const sortie = [];
+  for (const ligne of String(texte ?? '').split('\n')) {
+    const l = ligne.trim();
+    if (!l) {
+      sortie.push({ vide: true });
+      continue;
+    }
+    if (DEUX_COLONNES.test(l)) {
+      for (const m of l.matchAll(/EP\s*(\d+)\s*:\s*(\d[\d ]*?)(?=\s+EP|\s*$)/g)) {
+        sortie.push({ eps: [Number(m[1])], forme: null, etiquette: `EP ${m[1]}`, valeur: m[2].trim(), texte: m[0].trim() });
+      }
+      continue;
+    }
+    const m = l.match(LIGNE_PAR_ECHELLE);
+    const eps = m ? echellesEcrites(m[2] ?? m[3]) : [];
+    if (m && eps.length) {
+      const etiquette = m[2] !== undefined ? `EP ${m[2].trim()}` : `EP ${m[3].trim()}`;
+      sortie.push({ eps, forme: m[1]?.trim() ?? null, etiquette, valeur: m[4].trim(), texte: l });
+      continue;
+    }
+    if (TITRE_DE_GROUPE.test(l)) sortie.push({ titre: l });
+    else sortie.push({ texte: l });
+  }
+  return sortie;
+}
+
+/** Le renvoi d'une carte au tableau de l'introduction (« Se fier au dégâts moyen dans le tableau de l'introduction. », rubrique « degats ») : seule une
+ *  carte qui l'écrit montre, à côté de son curseur d'échelle, les phrases « Dégâts moyens » du tableau (lib/monstre-rendu.mjs#htmlDeLEchelle). */
+export const RENVOI_AUX_DEGATS_MOYENS = /Se fier aux? dégâts? moyens? dans le tableau de l[’']introduction/i;
+/** `rubriques` : [{ rubrique, texte }] d'une carte. */
+export const renvoieAuxDegatsMoyens = (rubriques) => (rubriques ?? []).some((r) => r.rubrique === 'degats' && RENVOI_AUX_DEGATS_MOYENS.test(r.texte ?? ''));
+
+/** Une rubrique écrite par échelle : au moins une ligne de segmentsParEchelle porte des échelles. */
+export const parEchelle = (texte) => segmentsParEchelle(texte).some((s) => s.eps);
+
+/**
  * « Pince - 2d10 + 2 dégâts d’estoc », « Bâton mal-foutue: 1d6 dégâts de frappe » -> { rang, nom, texte } ; une ligne sans « nom - texte » chiffré n'est pas
  * une attaque (« Arme de la créature : », « Se fier au dégâts moyen… », « EP 1 - 10 : Faux déformée… » d'une carte qui varie selon l'échelle).
  */
@@ -90,6 +161,28 @@ export function capacites(texte) {
     else sortie.push({ rang: 1, prefixe: null, ep_min: null, nom: null, texte: p });
   }
   return sortie;
+}
+
+/**
+ * L'objet du glossaire du butin (`monstre_butin_objet`) qu'une case de butin cite (demande du propriétaire : le contenu du glossaire « pour faire un
+ * tooltip […] sur le butin concerné ») : son nom écrit tel quel (casse, accents, espaces et apostrophe compris ; seule la ligature compte pour ses deux
+ * lettres : « Coeur polaire » cite « Cœur polaire ») en tête de la case, suivi de rien, d'une quantité (« x 1d6 », « x1 », « (1d4) ») ou d'une
+ * amélioration (« + 1 », « +2 ») ; le nom le plus long l'emporte (« Gelée verte foncée » avant « Gelée verte »). Rien d'autre n'est rapproché
+ * (« Peau de radrak » / « Peau du radrak », « Citron de foudre » / « Citron », « 4 os moyen » : à l'avis du propriétaire, docs/bestiaire.md).
+ * `glossaire` : [{ id, nom }] ; -> { objet, ecrit, reste } (`ecrit` : le nom tel que la case l'écrit) ou null.
+ */
+const SUFFIXE_DU_BUTIN = /^(?:| x ?\d+(?:d\d+)?| \(\d+d\d+\)| ?\+ ?\d+)$/;
+const sansLigature = (texte) => texte.replace(/œ/g, 'oe').replace(/Œ/g, 'Oe');
+export function objetDuButin(texte, glossaire = []) {
+  const t = String(texte ?? '');
+  for (const objet of [...glossaire].filter((g) => g.nom).sort((a, b) => b.nom.length - a.nom.length)) {
+    const nom = sansLigature(objet.nom);
+    // la longueur du nom dans la case (une ligature y vaut une ou deux lettres)
+    for (let k = Math.max(1, nom.length - 3); k <= Math.min(t.length, nom.length + 3); k += 1) {
+      if (sansLigature(t.slice(0, k)) === nom && SUFFIXE_DU_BUTIN.test(t.slice(k))) return { objet, ecrit: t.slice(0, k), reste: t.slice(k) };
+    }
+  }
+  return null;
 }
 
 /** Cibles d'une rubrique de défense, quand elle est UNE liste « A, B, C » de noms courts ; sinon aucune (« Varie selon la magie », tableau…). */

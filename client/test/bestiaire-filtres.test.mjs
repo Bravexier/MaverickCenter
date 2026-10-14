@@ -1,7 +1,20 @@
 // Recherche, filtres et tri des tableaux de /bestiaire/ (lib/bestiaire-filtres.mjs, fonctions pures).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { adresseAvecEtat, basculer, casesTrouvees, effectifs, etatDepuisAdresse, filtrerEtTrier, garder, normaliser, triSuivant } from '../src/lib/bestiaire-filtres.mjs';
+import {
+  adresseAvecEtat,
+  basculer,
+  casesTrouvees,
+  defilementDAbord,
+  echelleParDefaut,
+  effectifs,
+  etatDepuisAdresse,
+  filtrerEtTrier,
+  garder,
+  hauteurVisible,
+  normaliser,
+  triSuivant,
+} from '../src/lib/bestiaire-filtres.mjs';
 
 const config = { prefixe: '', facettes: ['categorie', 'ep', 'lieu'], tris: ['nom', 'sante'] };
 const lignes = [
@@ -110,4 +123,45 @@ test('effectifs d’une ligne à cases (une combinaison et ses deux créatures) 
   assert.deepEqual(Object.fromEntries(effectifs(lignes, { q: 'golem', facettes: {} }, 'magie')), { terre: 2, feu: 1 }, 'les poupées ne sont pas trouvées');
   // une ligne sans cases (un test, une ligne de monstre déjà lue) compte pour une
   assert.deepEqual(Object.fromEntries(effectifs([{ texte: 'x', facettes: { magie: ['feu'] } }], { q: '', facettes: {} }, 'magie')), { feu: 1 });
+});
+
+test('la carte tient dans la partie visible de sa vue (demande du propriétaire : ni le haut ni le bas coupés), avec un plancher', () => {
+  // vue plus basse que l'écran (haut de page) : de son haut au bas de l'écran, moins la marge
+  assert.equal(hauteurVisible(740, 1796, 1080), 328);
+  // vue calée en haut de l'écran, qui dépasse en bas : toute la hauteur de l'écran, moins les deux marges
+  assert.equal(hauteurVisible(-125, 931, 1080), 919);
+  assert.equal(hauteurVisible(12, 2000, 900), 876);
+  // vue qui finit dans l'écran (bas de page) : jusqu'à son bas
+  assert.equal(hauteurVisible(-800, 600, 900), 588);
+  // presque hors de l'écran : jamais moins que le plancher
+  assert.equal(hauteurVisible(1000, 2000, 1080), 160);
+  assert.equal(hauteurVisible(-2000, 20, 900), 160);
+  assert.equal(hauteurVisible(100, 500, 900, 0, 50), 400, 'marge et plancher en paramètres');
+});
+
+test('molette sur une vue décalée : la page défile d’abord jusqu’à caler la vue en haut de l’écran, puis le tableau ou la carte', () => {
+  assert.equal(defilementDAbord(740, 300), 300, 'vue loin en bas : tout le pas pour la page');
+  assert.equal(defilementDAbord(40, 300), 28, 'vue presque calée : le reste jusqu’à la marge');
+  assert.equal(defilementDAbord(12, 300), 0, 'vue calée : rien pour la page');
+  assert.equal(defilementDAbord(12.5, 300), 0, 'à un pixel près');
+  assert.equal(defilementDAbord(-125, -300), -137, 'vers le haut, vue au-dessus de l’écran : jusqu’à la recaler');
+  assert.equal(defilementDAbord(-500, -100), -100);
+  assert.equal(defilementDAbord(400, -100), 0, 'vers le haut, vue sous la marge : le tableau défile');
+  assert.equal(defilementDAbord(-125, 300), 0, 'vers le bas, vue au-dessus : le tableau défile');
+  // la page au bout (une recherche qui laisse peu de lignes) : la molette revient à la carte ou au tableau, jamais bloquée
+  assert.equal(defilementDAbord(552, 200, 0), 0, 'page en bas : rien pour elle');
+  assert.equal(defilementDAbord(690, 200, 138), 138, 'ce qui reste à la page');
+  assert.equal(defilementDAbord(690, 200, 138.6), 138);
+  assert.equal(defilementDAbord(-125, -300, 40), -40, 'vers le haut : ce qui reste au-dessus');
+  assert.equal(defilementDAbord(-125, -300, 0), 0, 'page en haut');
+  assert.equal(defilementDAbord(-125, -300, -5), 0, 'reste négatif : rien');
+});
+
+test('échelle d’une carte à l’ouverture : celle cochée dans le filtre EP si la carte l’écrit (la plus petite), sinon la première qu’elle écrit', () => {
+  assert.equal(echelleParDefaut([3, 5, 7], ['5', '4']), 5);
+  assert.equal(echelleParDefaut([3, 5, 7], ['7', '3']), 3);
+  assert.equal(echelleParDefaut([1, 2, 3], ['9']), 1);
+  assert.equal(echelleParDefaut([2, 3, 4, 5, 6], []), 2);
+  assert.equal(echelleParDefaut([2, 3, 4, 5, 6], undefined), 2);
+  assert.equal(echelleParDefaut([2, 3, 4, 5, 6], null), 2);
 });

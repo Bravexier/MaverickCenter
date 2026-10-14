@@ -5,9 +5,13 @@
 // Catégorie | EP | Lieux » dans cet ordre, et « Inutile de filtrer par les colonnes non affichées » (lib/bestiaire-db.mjs : un filtre par colonne).
 // Sans JavaScript, le nom est un lien vers la carte, qui s'affiche alors (:target) sous le tableau.
 // La ligne et la carte sont celles de lib/bestiaire-rendu.mjs : le même HTML que le mode modification du site de dev (monstre créé depuis la construction).
+// Le glossaire du butin n'est plus affiché (demande du propriétaire : « Tu peux aussi retirer le glossaire du butin, on le mettra ailleurs. Mais tu peux
+// récupérer leur contenu pour faire un tooltip […] sur le butin concerné ») : une bulle par objet, écrite une fois ici, hors des cartes (la recherche ne lit
+// pas les définitions), et le nom de l'objet en bouton dans chaque case de butin qui le cite (lib/monstre-rendu.mjs#htmlDuButin, components/Infobulles.astro).
 import Filtres from './Filtres.astro';
 import type { chargerMonstres } from '../../lib/bestiaire-db.mjs';
 import { htmlDeCarteMonstre, htmlDeLigneMonstre } from '../../lib/bestiaire-rendu.mjs';
+import { idDeBulleDuButin } from '../../lib/monstre-rendu.mjs';
 import { url } from '../../lib/wiki';
 import { estUnPortrait, fichierDuPortrait } from '../../lib/portrait.mjs';
 
@@ -15,7 +19,7 @@ interface Props {
   monstres: ReturnType<typeof chargerMonstres>;
 }
 const { monstres } = Astro.props;
-const { lignes, facettes } = monstres;
+const { lignes, facettes, echelles, glossaire } = monstres;
 const logo = url('logo.webp');
 // un portrait (migration 0033) : le fichier que publient pages/bestiaire/portraits/[empreinte].<ext>.ts (lib/portraits-publies.mjs), nommé d'après son
 // empreinte ; une image qui n'en a pas (pas une image que la page écrit) : le logo
@@ -64,7 +68,17 @@ const COLONNES: { cle: string; libelle: string; titre?: string; classe?: string 
     </div>
     <aside class="bcartes" aria-label="Carte du monstre choisi" data-cartes>
       <p class="bcartes__invite js-seul">Choisissez un monstre dans le tableau pour ouvrir sa carte.</p>
-      {lignes.map((l) => <Fragment set:html={htmlDeCarteMonstre(l, { logo, adresseDuPortrait })} />)}
+      {lignes.map((l) => <Fragment set:html={htmlDeCarteMonstre(l, { logo, adresseDuPortrait, echelles, glossaire })} />)}
     </aside>
+  </div>
+  <div class="bbulles-butin">
+    {
+      glossaire.map((g) => (
+        <span class="bulle" role="tooltip" id={idDeBulleDuButin(g.id)} hidden>
+          <strong class="bulle__titre">{g.nom}</strong>
+          <span class="bulle__texte">{g.texte}</span>
+        </span>
+      ))
+    }
   </div>
 </section>

@@ -18,7 +18,8 @@ import { cheminBase } from '../src/lib/donnees.mjs';
 import { CATEGORIES_DE_MONSTRE, ENTITES, journalSansImage, TABLES } from '../src/lib/edition-modele.mjs';
 import { RENDUS, rendreChamp } from '../src/lib/edition-rendu.mjs';
 import { CATEGORIES, GABARIT_DE_CARTE, RUBRIQUES, valeursDeLaCarte } from '../src/lib/monstre-champs.mjs';
-import { htmlDeRubrique } from '../src/lib/monstre-rendu.mjs';
+import { htmlDeLEchelle, htmlDeRubrique, htmlDuButin } from '../src/lib/monstre-rendu.mjs';
+import { renvoisAuxDegatsMoyens } from '../src/lib/bestiaire-db.mjs';
 import { comparerBases } from '../src/lib/notes-de-version.mjs';
 import { empreinte, PORTRAIT_MAX, resumeDuPortrait } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -46,7 +47,7 @@ test('modèle : tables et entités du bestiaire, catégories de lib/monstre-cham
   assert.deepEqual(Object.fromEntries(CATEGORIES_DE_MONSTRE.map((c) => [c.valeur, c.libelle])), CATEGORIES);
   assert.equal(ENTITES.monstre.suppression, true);
   assert.equal(ENTITES.monstre_espece.suppression, true);
-  for (const r of ['monstre-rubrique', 'monstre-categorie', 'monstre-cellule', 'monstre-ep', 'monstre-lieux', 'monstre-variable']) assert.ok(RENDUS[r], r);
+  for (const r of ['monstre-rubrique', 'monstre-categorie', 'monstre-cellule', 'monstre-ep', 'monstre-lieux', 'monstre-variable', 'monstre-butin', 'monstre-echelle']) assert.ok(RENDUS[r], r);
   assert.equal(rendreChamp('monstre-rubrique', 'F : 1 / P : 2 / V : 3 / S : 4 / I : 5 / A : 6', { rubrique: 'caracteristiques' }), htmlDeRubrique('caracteristiques', 'F : 1 / P : 2 / V : 3 / S : 4 / I : 5 / A : 6'));
   assert.equal(rendreChamp('monstre-lieux', 'Marais, Forêt , '), 'Marais, Forêt');
   assert.equal(rendreChamp('monstre-ep', 'EP1 - 10'), '1 - 10');
@@ -168,6 +169,34 @@ test('créer une espèce, puis un monstre dedans ; supprimer le monstre, puis l�
   r = enregistrer({ op: 'creer', entite: 'monstre_espece', valeurs: { nom, ep_brut: 'EP3' } });
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   assert.equal(r.corps.crees[0].id, `monstres/${normalize(nom)}-2`);
+});
+
+test('curseur d’échelle et butin en infobulle : les listes du service (serveur/edition.mjs#listes) redonnent les rendus de la page ; une carte créée a son curseur', () => {
+  const l = JSON.parse(JSON.stringify(appel('GET', '/api/edition/listes/').corps));
+  assert.deepEqual(l.echellesDePuissance, tous('SELECT * FROM monstre_echelle ORDER BY ep'));
+  assert.deepEqual(l.objetsDuButin, tous('SELECT id, nom FROM monstre_butin_objet ORDER BY rang'));
+  assert.deepEqual(l.renvoisAuxDegatsMoyens, renvoisAuxDegatsMoyens(db));
+  const renvoi = l.renvoisAuxDegatsMoyens[0];
+  assert.equal(rendreChamp('monstre-echelle', '1-10', { id: renvoi, categorie: 'boss' }, l), htmlDeLEchelle('1-10', 'boss', l.echellesDePuissance, true));
+  const butin = un("SELECT texte FROM monstre_butin WHERE texte LIKE 'Gelée%' ORDER BY espece_id, rang LIMIT 1").texte;
+  assert.equal(rendreChamp('monstre-butin', butin, {}, l), htmlDuButin(butin, l.objetsDuButin));
+  assert.match(rendreChamp('monstre-butin', butin, {}, l), /<button type="button" class="bobjet" data-bulle="bulle-butin-/);
+  assert.equal(rendreChamp('monstre-echelle', '2-4', { categorie: 'boss' }, l), htmlDeLEchelle('2-4', 'boss', l.echellesDePuissance));
+  assert.equal(rendreChamp('monstre-echelle', '2', { categorie: 'boss' }, l), '');
+
+  const especeId = enregistrer({ op: 'creer', entite: 'monstre_espece', valeurs: { nom: nomLibre('Crabe-tonnerre'), ep_brut: 'EP2 - 4' } }).corps.crees[0].id;
+  const r = enregistrer({ op: 'creer', entite: 'monstre', valeurs: { espece_id: especeId, nom: nomLibre('Crabe-tonnerre roi'), echelle_brut: '2-4', categorie: 'mini_boss' } });
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  const id = r.corps.crees[0].id;
+  const connues = appel('POST', '/api/edition/bestiaire/', { connues: [], logo: '/logo.webp' }).corps.ordre.filter((x) => x !== id);
+  const [ligne] = appel('POST', '/api/edition/bestiaire/', { connues, logo: '/logo.webp' }).corps.lignes;
+  assert.equal(ligne.id, id);
+  assert.match(ligne.carte, /<div class="bcarte__echelle" data-ed-lecture="[^"]+" data-ed-rendu="monstre-echelle"><div class="bechelle">/);
+  assert.match(ligne.carte, /data-echelles="\[2,3,4\]"/);
+  const xp = un('SELECT xp_mini_boss AS x FROM monstre_echelle WHERE ep = 3').x;
+  assert.ok(ligne.carte.includes(`expérience reçue : ${xp}`));
+  assert.equal(enregistrer({ op: 'supprimer', entite: 'monstre', cle: { id } }).statut, 200);
+  assert.equal(enregistrer({ op: 'supprimer', entite: 'monstre_espece', cle: { id: especeId } }).statut, 200);
 });
 
 test('POST /api/edition/bestiaire/ : l’ordre des lignes, et la ligne et la carte de celles que la page n’a pas', () => {
