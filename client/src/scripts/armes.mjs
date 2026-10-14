@@ -1,22 +1,26 @@
-// Page /ressources/armes/ (components/armes/ArmesPage.astro) — demande du propriétaire : cliquer sur une arme la sélectionne et ouvre à côté sa fiche,
-// avec dessous les matériaux et les améliorations ; choisir un matériau (le fer par défaut) et une amélioration ajuste dans la fiche les dégâts, la
+// Page /ressources/armes/ (components/armes/ArmesPage.astro) — demande du propriétaire : cliquer sur une arme la sélectionne et ouvre à côté sa fiche
+// (un seul cadre, large, avec son bouton Fermer), avec dessous les matériaux et les améliorations côte à côte ; choisir un matériau (le fer par défaut)
+// et une amélioration ajuste dans la fiche les dégâts, la
 // durabilité, les effets (celui du matériau en vert) et le coût total (calcul : lib/arme-forge.mjs). Les boutons « Compétence » filtrent les tableaux
-// (« filtrer les armes par compétence arc / arbalète / légère et lourde » : lib/armes-filtres.mjs) ; une famille sans arme affichée se cache. Ces deux
-// modules sont les seuls importés ici, et aucun autre script de page ne les importe.
+// (« filtrer les armes par compétence arc / arbalète / légère et lourde » : lib/armes-filtres.mjs), le bouton « Arme de départ » n'en garde que les
+// armes de départ ; une famille sans arme affichée se cache. Ces deux modules sont les seuls importés ici, et aucun autre script de page ne les importe.
+// Une arme tient sur deux lignes du tableau (lib/armes-rendu.mjs#htmlDeLigneDArme) : la sienne (`tr.arme`) et celle de ses effets (`tr.arme-suite`).
 // Les valeurs viennent des cellules telles qu'affichées (attributs `data-…` des rendus de lib/armes-rendu.mjs), lues à chaque sélection : après un
 // enregistrement du mode modification, qui réécrit ces cellules, la fiche suit sans recharger la page (évènement « armes:rafraichir »).
 // En mode modification (body.ed-mode) : rien ne se sélectionne (src/scripts/edition/armes.mjs ferme la fiche et ouvre tous les tableaux).
-// État dans l'adresse : ?arme=<ancre de la ligne>&materiau=<ancre>&amelioration=<niveau>&competence=<ids> (une adresse `#arme-…` ouvre aussi l'arme).
+// État dans l'adresse : ?arme=<ancre de la ligne>&materiau=<ancre>&amelioration=<niveau>&competence=<ids>&depart=1 (une adresse `#arme-…` ouvre aussi
+// l'arme).
 // En mode modification, pas de filtre : tout s'affiche.
 import { forgerArme, nombre } from '../lib/arme-forge.mjs';
-import { armeVisible, basculerCompetence, ecrireCompetences, lireCompetences, PARAMETRE_DES_COMPETENCES } from '../lib/armes-filtres.mjs';
+import {
+  armeVisible, basculerCompetence, ecrireCompetences, lireCompetences, lireDepart, PARAMETRE_DES_COMPETENCES, PARAMETRE_DU_DEPART,
+} from '../lib/armes-filtres.mjs';
 
 const racine = document.querySelector('[data-armes]');
 
 if (racine) {
   const vue = racine.querySelector('.armes-vue');
   const fiche = racine.querySelector('.arme-fiche');
-  const resume = racine.querySelector('.arme-resume');
   const enEdition = () => document.body.classList.contains('ed-mode');
   const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
   const e = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ENTITES[c]);
@@ -31,7 +35,12 @@ if (racine) {
   const boutonsDuFiltre = [...racine.querySelectorAll('[data-armes-filtre] [data-competence]')];
   const connues = boutonsDuFiltre.map((b) => b.dataset.competence);
   const compte = racine.querySelector('[data-armes-compte]');
+  const boutonDepart = racine.querySelector('[data-armes-filtre-depart]');
   let choisies = [];
+  let seulementDepart = false;
+  /** La ligne des effets d'une arme (la suivante), et l'arme d'une ligne d'effets. */
+  const suiteDe = (ligne) => (ligne?.nextElementSibling?.classList.contains('arme-suite') ? ligne.nextElementSibling : null);
+  const armeDeLaSuite = (suite) => (suite?.previousElementSibling?.classList.contains('arme') ? suite.previousElementSibling : null);
   const armes = (n) => `${n} arme${n > 1 ? 's' : ''}`;
   /** Les compétences d'une ligne (lib/armes-rendu.mjs#htmlDeCompetence : data-competences="arc arme-legere"). */
   const competencesDe = (ligne) => (ligne.querySelector('.arme__competence [data-competences]')?.dataset.competences ?? '').split(' ').filter(Boolean);
@@ -63,12 +72,12 @@ if (racine) {
   function lireArme(ligne) {
     const degats = ligne.querySelector('.arme-degats')?.dataset ?? {};
     const famille = ligne.closest('.armes-famille');
+    const effets = suiteDe(ligne)?.querySelector('.arme__effets');
     return {
       nom: ligne.querySelector('.arme__choisir')?.textContent.trim() ?? '',
       mains: ligne.querySelector('.arme__mains')?.textContent.trim() ?? '',
       competence: ligne.querySelector('.arme__competence')?.innerHTML ?? '',
       type: ligne.querySelector('.arme__type')?.textContent.trim() ?? '',
-      famille: famille?.querySelector('.armes-famille__nom')?.textContent.trim() ?? '',
       note: famille?.dataset.note ?? '',
       unite: famille?.dataset.unite === '1',
       de: degats.de ?? '',
@@ -78,8 +87,8 @@ if (racine) {
       durabilite: entier(ligne.querySelector('[data-durabilite]')?.dataset.durabilite) ?? 0,
       cout: entier(ligne.querySelector('.arme-cout')?.dataset.ro),
       types: ligne.querySelector('.arme__types')?.innerHTML ?? '',
-      effets: ligne.querySelector('.arme__effets')?.innerHTML ?? '',
-      sansEffets: Boolean(ligne.querySelector('.arme__effets > .vide')),
+      effets: effets?.innerHTML ?? '',
+      sansEffets: !effets || Boolean(effets.querySelector(':scope > .vide')),
       description: infobulle(ligne.querySelector('.arme__choisir')),
       origine: ligne.querySelector('.arme__origine')?.innerHTML ?? '',
       depart: ligne.classList.contains('arme--depart'),
@@ -119,11 +128,12 @@ if (racine) {
       ...(niveau && f.bonus.amelioration ? [ligne(titreNiveau, signe(f.bonus.amelioration))] : []),
       ligne('Total', e(f.degats), 'arme-fiche__total'),
     ].join('');
+    // durabilité : les crans de l'arme, du matériau et de l'amélioration, cumulés (décision R51) ; « Solidité : X » (demande du propriétaire)
     const durabilite = [
       ligne(e(a.nom), String(f.durabilite.arme)),
       ...(m && f.durabilite.materiau ? [ligne(e(m.nom), signe(f.durabilite.materiau))] : []),
       ...(niveau && f.durabilite.amelioration ? [ligne(titreNiveau, signe(f.durabilite.amelioration))] : []),
-      ligne('Total', `${f.durabilite.total} cran${f.durabilite.total > 1 ? 's' : ''}`, 'arme-fiche__total'),
+      ligne('Total', `Solidité : ${f.durabilite.total}`, 'arme-fiche__total'),
     ].join('');
     // coût : l'arme, l'amélioration (niveaux 1 à N), et les matériaux (un pour forger l'arme, ceux des niveaux), achetés ou fournis
     const c = f.cout;
@@ -141,31 +151,36 @@ if (racine) {
       ? `<span class="arme-fiche__tuile-val">${ro(c.ro_materiaux_fournis)}</span><span class="arme-fiche__tuile-detail">+ ${c.materiaux} × ${e(m.nom)}${c.ro_total === null ? '' : ` ou ${ro(c.ro_total)}`}</span>`
       : `<span class="arme-fiche__tuile-val">${ro(c.ro_materiaux_fournis)}</span>`;
     const effetsDuMateriau = (m?.secondaires ?? []).map((s) => `<span class="arme-fiche__effet-materiau" title="Effet du matériau : ${e(m.nom)}">${e(s)} <small>(${e(m.nom)})</small></span>`).join('');
-    // le résumé (en haut du panneau, collant) : l'arme, ce dont elle est forgée, ses dégâts, sa durabilité et son coût
-    resume.innerHTML = `
+    // un seul cadre (demande du propriétaire : « fusionner en un seul les deux premiers cadres », « le bouton Fermer doit être dans le cadre ») : l'arme
+    // (type et mains, pas le tableau : « inutile de rappeler le tableau en plus du type d'arme »), ce dont elle est forgée, ses dégâts, sa durabilité et
+    // son coût, puis le détail de chaque valeur, les effets, la description
+    fiche.innerHTML = `
       <header class="arme-fiche__tete">
-        <h2 id="arme-fiche-titre">${e(a.nom)}</h2>
-        <p class="arme-fiche__sous-titre">${[a.type, a.mains, a.famille].filter(Boolean).map(e).join(' · ')}</p>
-        <p class="arme-fiche__badges">${a.competence}${a.depart ? '<span class="arme-fiche__depart" title="Arme de départ">Arme de départ</span>' : ''}</p>
+        <div class="arme-fiche__titre">
+          <h2 id="arme-fiche-titre">${e(a.nom)}</h2>
+          <p class="arme-fiche__sous-titre">${[a.type, a.mains].filter(Boolean).map(e).join(' · ')}</p>
+        </div>
+        <button type="button" class="armes-cote__fermer" data-armes-fermer>Fermer</button>
       </header>
+      <p class="arme-fiche__badges">${a.competence}${a.depart ? '<span class="arme-fiche__depart" title="Arme de départ">Arme de départ</span>' : ''}</p>
       <p class="arme-fiche__forge">Forgée en ${mat || '—'} · <span class="arme-fiche__niveau">${titreNiveau}</span></p>
       <div class="arme-fiche__tuiles">
         <div class="arme-fiche__tuile"${a.regle ? ` title="${e(a.regle)}"` : ''}><span class="arme-fiche__tuile-nom">Dégâts</span><span class="arme-fiche__tuile-val">${e(f.degats)}</span><span class="arme-fiche__tuile-detail">dés selon la maîtrise</span></div>
-        <div class="arme-fiche__tuile"><span class="arme-fiche__tuile-nom">Durabilité</span><span class="arme-fiche__tuile-val">${f.durabilite.total}</span><span class="arme-fiche__tuile-detail">cran${f.durabilite.total > 1 ? 's' : ''} de solidité</span></div>
+        <div class="arme-fiche__tuile"><span class="arme-fiche__tuile-nom">Durabilité</span><span class="arme-fiche__tuile-val">Solidité : ${f.durabilite.total}</span></div>
         <div class="arme-fiche__tuile"><span class="arme-fiche__tuile-nom">Coût</span>${tuileCout}</div>
-      </div>`;
-    // le détail de chaque valeur, les effets, la description
-    fiche.innerHTML = `
-      <section class="arme-fiche__section"><h3>Dégâts</h3><ul class="arme-fiche__lignes">${degats}</ul>
-        <p class="arme-fiche__note">Le nombre de dés dépend de la maîtrise du personnage.${a.regle ? ` ${e(a.regle)}.` : ''}</p></section>
-      <section class="arme-fiche__section"><h3>Coût</h3><ul class="arme-fiche__lignes">${cout}</ul>
-        ${a.note ? `<p class="arme-fiche__note">${e(a.note.split('\n').join(' · '))}</p>` : ''}</section>
-      <section class="arme-fiche__section"><h3>Durabilité</h3><ul class="arme-fiche__lignes">${durabilite}</ul></section>
-      <section class="arme-fiche__section"><h3>Effets</h3>
-        <p>${a.types}${a.portee ? ` · portée ${e(a.portee)}` : ''}</p>
-        <div class="arme-fiche__effets">${a.sansEffets && !effetsDuMateriau ? '<span class="vide">Aucun effet supplémentaire</span>' : `${a.sansEffets ? '' : a.effets}${effetsDuMateriau}`}</div>
-        ${a.remarque ? `<p class="arme-fiche__note">★ ${e(a.remarque)}</p>` : ''}</section>
-      ${a.description || !a.origine.includes('vide') ? `<section class="arme-fiche__section">${a.description ? `<p class="arme-fiche__description">${e(a.description)}</p>` : ''}${a.origine.includes('vide') ? '' : `<p><strong>Origine :</strong> ${a.origine}</p>`}</section>` : ''}`;
+      </div>
+      <div class="arme-fiche__sections">
+        <section class="arme-fiche__section"><h3>Dégâts</h3><ul class="arme-fiche__lignes">${degats}</ul>
+          <p class="arme-fiche__note">Le nombre de dés dépend de la maîtrise du personnage.${a.regle ? ` ${e(a.regle)}.` : ''}</p></section>
+        <section class="arme-fiche__section"><h3>Coût</h3><ul class="arme-fiche__lignes">${cout}</ul>
+          ${a.note ? `<p class="arme-fiche__note">${e(a.note.split('\n').join(' · '))}</p>` : ''}</section>
+        <section class="arme-fiche__section"><h3>Durabilité</h3><ul class="arme-fiche__lignes">${durabilite}</ul></section>
+        <section class="arme-fiche__section"><h3>Effets</h3>
+          <p>${a.types}${a.portee ? ` · portée ${e(a.portee)}` : ''}</p>
+          <div class="arme-fiche__effets">${a.sansEffets && !effetsDuMateriau ? '<span class="vide">Aucun effet supplémentaire</span>' : `${a.sansEffets ? '' : a.effets}${effetsDuMateriau}`}</div>
+          ${a.remarque ? `<p class="arme-fiche__note">★ ${e(a.remarque)}</p>` : ''}</section>
+      </div>
+      ${a.description || !a.origine.includes('vide') ? `<section class="arme-fiche__section arme-fiche__section--large">${a.description ? `<p class="arme-fiche__description">${e(a.description)}</p>` : ''}${a.origine.includes('vide') ? '' : `<p><strong>Origine :</strong> ${a.origine}</p>`}</section>` : ''}`;
     fiche.setAttribute('aria-labelledby', 'arme-fiche-titre');
   }
 
@@ -179,9 +194,10 @@ if (racine) {
 
   function adresse() {
     const p = new URLSearchParams(location.search);
-    for (const k of ['arme', 'materiau', 'amelioration', PARAMETRE_DES_COMPETENCES]) p.delete(k);
+    for (const k of ['arme', 'materiau', 'amelioration', PARAMETRE_DES_COMPETENCES, PARAMETRE_DU_DEPART]) p.delete(k);
     const competences = ecrireCompetences(choisies, connues);
     if (competences) p.set(PARAMETRE_DES_COMPETENCES, competences);
+    if (seulementDepart) p.set(PARAMETRE_DU_DEPART, '1');
     if (arme) {
       p.set('arme', arme.id);
       if (materiau && !materiau.hasAttribute('data-defaut')) p.set('materiau', materiau.id);
@@ -209,25 +225,25 @@ if (racine) {
     vue.classList.remove('est-ouverte');
     fiche.hidden = true;
     fiche.innerHTML = '';
-    resume.innerHTML = '';
     marquer();
     adresse();
     precedente?.querySelector('.arme__choisir')?.focus({ preventScroll: true });
   }
 
   /**
-   * Applique le filtre : une ligne reste si l'une de ses compétences est choisie (toutes sans choix, et toujours en mode modification) ; une famille
-   * sans ligne affichée se cache ; les comptes disent « N armes sur M ». L'arme ouverte, si elle est filtrée, se ferme.
+   * Applique le filtre : une arme reste si l'une de ses compétences est choisie (toutes sans choix) et, avec « Arme de départ », si c'en est une (tout
+   * reste en mode modification) ; une famille sans arme affichée se cache ; les comptes disent « N armes sur M ». L'arme ouverte, si elle est filtrée,
+   * se ferme. La ligne des effets d'une arme la suit (styles/armes/armes.css).
    */
   function filtrer() {
-    const actif = choisies.length > 0 && !enEdition();
+    const actif = (choisies.length > 0 || seulementDepart) && !enEdition();
     let affichees = 0;
     let toutes = 0;
     for (const famille of racine.querySelectorAll('.armes-tableaux > .armes-famille')) {
       const lignes = [...famille.querySelectorAll('tbody tr.arme')];
       let n = 0;
       for (const l of lignes) {
-        const visible = !actif || armeVisible(competencesDe(l), choisies);
+        const visible = !actif || armeVisible(competencesDe(l), choisies, { depart: l.classList.contains('arme--depart'), seulementDepart });
         l.classList.toggle('est-filtree', !visible);
         if (visible) n += 1;
       }
@@ -238,8 +254,9 @@ if (racine) {
       toutes += lignes.length;
     }
     if (compte) compte.textContent = actif ? `${armes(affichees)} sur ${toutes}` : armes(toutes);
-    filtre?.classList.toggle('est-actif', actif);
+    filtre?.classList.toggle('est-actif', actif && choisies.length > 0);
     for (const b of boutonsDuFiltre) b.setAttribute('aria-pressed', String(actif && choisies.includes(b.dataset.competence)));
+    boutonDepart?.setAttribute('aria-pressed', String(actif && seulementDepart));
     const tout = racine.querySelector('[data-armes-filtre-tout]');
     if (tout) tout.hidden = !actif;
     if (arme?.classList.contains('est-filtree')) fermer();
@@ -255,8 +272,14 @@ if (racine) {
       return;
     }
     const competence = cible.closest('[data-armes-filtre] [data-competence]');
-    if (competence || cible.closest('[data-armes-filtre-tout]')) {
-      choisies = competence ? basculerCompetence(choisies, competence.dataset.competence, connues) : [];
+    const depart = cible.closest('[data-armes-filtre-depart]');
+    if (competence || depart || cible.closest('[data-armes-filtre-tout]')) {
+      if (competence) choisies = basculerCompetence(choisies, competence.dataset.competence, connues);
+      else if (depart) seulementDepart = !seulementDepart;
+      else {
+        choisies = [];
+        seulementDepart = false;
+      }
       filtrer();
       adresse();
       return;
@@ -266,7 +289,7 @@ if (racine) {
       return;
     }
     if (enEdition() || cible.closest('a, input, textarea, select, summary')) return;
-    const ligneArme = cible.closest('.arme');
+    const ligneArme = cible.closest('.arme') ?? armeDeLaSuite(cible.closest('.arme-suite'));
     if (ligneArme) {
       if (ligneArme === arme) fermer();
       else ouvrir(ligneArme);
@@ -313,6 +336,7 @@ if (racine) {
   const n = Number(params.get('amelioration'));
   if (Number.isInteger(n) && lignesDAmelioration().some((l) => Number(l.dataset.niveau) === n)) niveau = n;
   choisies = lireCompetences(params.get(PARAMETRE_DES_COMPETENCES), connues);
+  seulementDepart = lireDepart(params.get(PARAMETRE_DU_DEPART));
   total();
   filtrer();
   const depart = parId(params.get('arme')) ?? parId(decodeURIComponent(location.hash.slice(1)));

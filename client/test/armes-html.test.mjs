@@ -10,6 +10,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { COMPETENCES_D_ARME } from '../src/lib/arme-champs.mjs';
 import { ancreDArme, ancreDeMateriau, chargerArmes } from '../src/lib/armes-db.mjs';
+import { COLONNES_D_UNE_ARME, htmlDesEffets } from '../src/lib/armes-rendu.mjs';
 import { couleurDeMateriau } from '../src/lib/materiaux-couleurs.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
@@ -40,11 +41,23 @@ test('un tableau repliable par famille, sans les armes de monstres ; une ligne p
   assert.equal(new Set(ids).size, ids.length, 'identifiants uniques');
 });
 
-test('colonnes : Nom, Compétence, Type, Dégâts, Type de dégâts, Portée, Durabilité, Effets supplémentaires, Origine ; Description, Coût, Effet et départ en mode modification', options, () => {
+test('colonnes : Nom, Compétence, Type, Dégâts, Type de dégâts, Portée, Durabilité, Origine ; Description, Coût, Effet et départ en mode modification', options, () => {
   const tete = main.slice(main.indexOf('<thead>'), main.indexOf('</thead>'));
   const colonnes = [...tete.matchAll(/<th scope="col"(?: class="ed-seul")?>([^<]+)<\/th>/g)].map((m) => m[1]);
-  assert.deepEqual(colonnes.slice(0, 9), ['Nom', 'Compétence', 'Type', 'Dégâts', 'Type de dégâts', 'Portée', 'Durabilité', 'Effets supplémentaires', 'Origine']);
+  assert.deepEqual(colonnes.slice(0, 8), ['Nom', 'Compétence', 'Type', 'Dégâts', 'Type de dégâts', 'Portée', 'Durabilité', 'Origine']);
+  assert.equal(colonnes.length - 4, COLONNES_D_UNE_ARME);
   assert.equal((tete.match(/class="ed-seul"/g) ?? []).length, 4);
+});
+
+test('effets supplémentaires sur une seconde ligne, sous l’arme (comme l’effet d’un sort choisi dans la fiche) : une par arme, effet en lecture', options, () => {
+  for (const a of armes.familles.flatMap((f) => f.armes)) {
+    const debut = main.indexOf(`id="${ancreDArme(a.id)}"`);
+    const fin = main.indexOf('</tr>', debut) + 5;
+    const suite = main.slice(fin, main.indexOf('</tr>', fin) + 5);
+    assert.ok(suite.startsWith(`<tr class="arme-suite" data-arme-suite="${echapper(a.id)}"><td class="arme-suite__marge"></td><td class="arme__effets" colspan="${COLONNES_D_UNE_ARME - 1}" data-ed-lecture="${echapper(attributEd('arme', { id: a.id }, 'effet'))}" data-ed-rendu="arme-effets">`), a.id);
+    assert.ok(suite.includes(htmlDesEffets(a.effet)), `${a.id} : ses effets supplémentaires`);
+    assert.ok(!main.slice(debut, fin).includes('class="arme__effets"'), `${a.id} : plus dans la ligne de l’arme`);
+  }
 });
 
 test('armes de départ en bleu avec l’infobulle « Arme de départ » ; description en infobulle du nom ; compétences en couleur', options, () => {
@@ -58,7 +71,7 @@ test('armes de départ en bleu avec l’infobulle « Arme de départ » ; descri
   }
 });
 
-test('filtre par compétence (demande du propriétaire) : Lourde, Légère, Arc, Arbalète, à bascule, dans la couleur de leur caractéristique (décision R48)', options, () => {
+test('filtre par compétence (Lourde, Légère, Arc, Arbalète, à bascule, dans la couleur de leur caractéristique : décision R48) et « Arme de départ »', options, () => {
   const debut = main.indexOf('<div class="armes-filtre js-seul" role="group"');
   assert.ok(debut > 0, 'le filtre');
   const filtre = main.slice(debut, main.indexOf('</div>', debut));
@@ -75,7 +88,9 @@ test('filtre par compétence (demande du propriétaire) : Lourde, Légère, Arc,
     assert.ok(m[1].split(' ').every((id) => id in COMPETENCES_D_ARME), m[1]);
   }
   assert.match(main, /<span data-armes-compte>\d+ armes<\/span>/);
-  assert.match(main, /<p class="armes-legende"><span class="armes-legende__depart" title="Arme de départ">Arme de départ<\/span><\/p>/);
+  // « Arme de départ » : un bouton du filtre (avec JavaScript), la légende sans
+  assert.match(filtre, /<button type="button" class="armes-filtre__depart" data-armes-filtre-depart aria-pressed="false" title="[^"]+">Arme de départ<\/button>/);
+  assert.match(main, /<p class="armes-legende sans-js"><span class="armes-legende__depart" title="Arme de départ">Arme de départ<\/span><\/p>/);
 });
 
 test('règles de l’onglet avec la mise en forme du classeur : définitions en italique, phrase des armes de départ en bleu, cas particuliers en gras ; le prix à part', options, () => {
@@ -92,6 +107,13 @@ test('règles de l’onglet avec la mise en forme du classeur : définitions en 
   assert.ok(!/[*_]{1,3}(Recharge|Dague|CAS)/.test(regles), 'aucune marque Markdown laissée telle quelle');
 });
 
+test('à côté des tableaux : la fiche (un seul cadre, remplie par le script), puis les matériaux et les améliorations côte à côte', options, () => {
+  const cote = main.slice(main.indexOf('<aside class="armes-cote"'), main.indexOf('</aside>'));
+  assert.match(cote, /^<aside class="armes-cote"[^>]*>\s*<section class="arme-fiche" aria-label="Fiche de l’arme" aria-live="polite" hidden><\/section>\s*<div class="armes-cote__tables">\s*<details class="armes-famille armes-materiaux"/);
+  assert.match(cote, /<\/details>\s*<details class="armes-famille armes-ameliorations"/);
+  assert.ok(!cote.includes('arme-resume') && !cote.includes('armes-cote__haut'), 'plus de second cadre');
+});
+
 test('matériaux dans leur couleur, prix en RO ; améliorations +1 à +10 avec le total ; le fer est le matériau par défaut', options, () => {
   for (const m of armes.materiaux) {
     const c = couleurDeMateriau(m.ligne.ressource_id);
@@ -104,7 +126,7 @@ test('matériaux dans leur couleur, prix en RO ; améliorations +1 à +10 avec l
 });
 
 test('le script de la page n’importe que lib/arme-forge.mjs et lib/armes-filtres.mjs, qu’aucun autre script de page n’importe', options, () => {
-  const imports = (chemin) => [...readFileSync(chemin, 'utf8').matchAll(/^import .* from '([^']+)';$/gm)].map((m) => m[1]);
+  const imports = (chemin) => [...readFileSync(chemin, 'utf8').matchAll(/^import\s[^;]*?from '([^']+)';$/gm)].map((m) => m[1]);
   assert.deepEqual(imports(new URL('../src/scripts/armes.mjs', import.meta.url)), ['../lib/arme-forge.mjs', '../lib/armes-filtres.mjs']);
   const scripts = new URL('../src/scripts/', import.meta.url);
   for (const nom of readdirSync(scripts, { recursive: true }).filter((n) => n.endsWith('.mjs') && n !== 'armes.mjs')) {
