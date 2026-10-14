@@ -343,7 +343,7 @@ ligne du CONVERTISSEUR, type sans « (majeur) », marque majeur, affinité — c
 gemme ou un bois pour une magie qui n'en a pas : « une par magie » ; un « (majeur) » seulement pour un amplificateur) ; « Supprimer » sur chaque ligne que
 rien d'autre ne cite — un composant cité par une armure, une recette, un effet d'accessoire… ne se supprime pas (le bouton grisé dit pourquoi). Un objet
 supprimé reste dans l'inventaire ou la ceinture d'une fiche de personnage, sous son nom, sans lien au catalogue, avec une note datée qui demande de mettre
-la fiche à jour (décision R60, `serveur/fiches-retraits.mjs#OBJETS_AU_CATALOGUE`). Partout, les prix montrent leurs monnaies en icônes (R61, `lib/monnaies.mjs`).
+la fiche à jour (décision R60, `serveur/fiches-retraits.mjs#OBJETS_AU_CATALOGUE`). Partout, les prix montrent leurs monnaies en icônes (R61) et un montant se décompose en PP / RO / RF (« 1245,5 RO » : 1 PP 245 RO 50 RF ; R63, `lib/monnaies.mjs`).
 Le corps Markdown des pages qui écrivent ces composants suit, case par case (`lib/corps-composants.mjs`) : « Équipement inventaire » (lignes des objets,
 MONNAIE et CONVERTISSEUR), « Armures » et « Bouclier » (prix et description d'un matériau ; son nom par `lib/corps-armes.mjs#corpsAvecMateriauRenomme`,
 avec la page des armes), « Accessoires » (monture, gemmes et leurs combinaisons « A + B »), « Bâton magique » (gemmes et bois), « Liste d'ingrédients ».

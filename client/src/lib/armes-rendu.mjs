@@ -12,7 +12,7 @@ import {
 } from './arme-champs.mjs';
 import { couleurDeCaracteristique } from './caracteristiques-postures.mjs';
 import { attributEd } from './edition-modele.mjs';
-import { htmlAvecMonnaies, htmlDePiece } from './monnaies.mjs';
+import { htmlAvecMonnaies, htmlDeMontant } from './monnaies.mjs';
 import { texteSurCouleur } from './sort-format.mjs';
 
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -106,7 +106,7 @@ export const RENDUS_DES_ARMES = {
   // matériaux : le prix en RO seulement (« Ignore le prix en RF, il n'est plus d'actualité »), l'effet en lignes typées
   'materiau-prix': (valeur) => {
     const ro = prixEnRo(valeur);
-    return `<span class="materiau-prix"${attribut('ro', ro)} title="${e(`Prix écrit : ${valeur ?? ''}`)}">${ro === null ? htmlAvecMonnaies(valeur ?? '—') : `${ro} ${htmlDePiece('RO')}`}</span>`;
+    return `<span class="materiau-prix"${attribut('ro', ro)} title="${e(`Prix écrit : ${valeur ?? ''}`)}">${ro === null ? htmlAvecMonnaies(valeur ?? '—') : htmlDeMontant(String(ro), 'RO', valeur ?? '')}</span>`;
   },
   'materiau-effet': (valeur) => {
     const m = analyserEffetDeMateriau(valeur);

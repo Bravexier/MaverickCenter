@@ -1,4 +1,5 @@
 ---
+import { htmlAvecMonnaies } from '../lib/monnaies.mjs';
 import { TYPES } from '../lib/types.mjs';
 import { entryHref, typeOf, type WikiEntry } from '../lib/wiki';
 
@@ -15,7 +16,7 @@ const { entries, showType = true } = Astro.props;
       <li>
         <a href={entryHref(entry)}>{entry.data.title}</a>
         {showType && <span class="badge">{TYPES[typeOf(entry)].singular}</span>}
-        {entry.data.summary && <div class="muted">{entry.data.summary}</div>}
+        {entry.data.summary && <div class="muted" set:html={htmlAvecMonnaies(entry.data.summary)} />}
       </li>
     ))
   }

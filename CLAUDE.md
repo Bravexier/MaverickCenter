@@ -14,7 +14,7 @@ la citer depuis une source (`sources:` dans le frontmatter) ou la laisser absent
 
 ## Décisions du propriétaire
 
-`docs/decisions-regles.md` (R1 à R62, liste complète et à jour) : les choix tranchés quand les sources se contredisent. Chaque décision y est numérotée ; le code et les tests citent ces numéros (`R41`, `R54`…). Une nouvelle décision s'y ajoute, pas ici.
+`docs/decisions-regles.md` (R1 à R63, liste complète et à jour) : les choix tranchés quand les sources se contredisent. Chaque décision y est numérotée ; le code et les tests citent ces numéros (`R41`, `R54`…). Une nouvelle décision s'y ajoute, pas ici.
 Les suivre ; ne jamais en déduire d'autres.
 
 ## Équipe d'agents (`.claude/agents/`)
@@ -288,12 +288,16 @@ Déploiement sous un sous-chemin : `SITE_BASE=/MaverickCenter/ SITE_URL=https://
   `[data-infobulle]`, et pour retirer une infobulle on écrit `el.title = ''` (un `removeAttribute('title')` ne fait plus rien). Rien au toucher pour un `title`
   (comme le navigateur). `data-placement="cote"` (sur une bulle riche, ou sur le déclencheur d'un `title`) place la bulle à côté de son déclencheur au lieu
   de dessous (carte d'une créature invoquée, chevrons de la chronologie). Ne pas ajouter d'autre script de bulles ni d'infobulle en CSS. `test/infobulles.test.mjs` (faux navigateur, puis site construit).
-- **Monnaies en icônes** (décision R61, demande du propriétaire : « partout dans toutes les tables il faudra retirer les abréviations RO ») : `lib/monnaies.mjs`
-  (`htmlAvecMonnaies`, `htmlDePiece` : PP diamant, RO pièce d'or, RF pièce de fer trouée, nom et valeur en infobulle ; dessins `styles/global/monnaies.css`), dans
-  les rendus des tables (armes, accessoires, composants, bourse de la fiche) et, pour le Markdown, par le plugin remark `lib/markdown-monnaies.mjs` (cases de
-  tableau seulement), déclaré dans `astro.config.mjs` ET `lib/guide-rendu.ts` (et le test `markdown-edition`) ; `lib/markdown-edition.mjs` relit une icône en son
-  abréviation telle qu'écrite (`data-monnaie`). Un script de page qui écrit un prix reprend l'icône d'un `<template>` de sa page (`data-armes-piece`,
-  `data-acc-piece`), jamais en important `monnaies.mjs` (un module partagé entre scripts de page). Les valeurs ne se modifient pas (`MONNAIES_DU_JEU`, comparées à la base).
+- **Monnaies en icônes** (décisions R61, R63, demandes du propriétaire : « partout dans toutes les tables il faudra retirer les abréviations RO », puis partout,
+  texte courant compris, et « 1245,5 » RO affiché « 1 [PP] 245 [RO] 50 [RF] ») : `lib/monnaies.mjs` (`htmlAvecMonnaies`, `htmlDeMontant`, `htmlDePiece` : PP diamant,
+  RO pièce d'or, RF pièce de fer trouée, nom et valeur en infobulle ; dessins `styles/global/monnaies.css`), dans les rendus des tables (armes, accessoires, composants,
+  bourse de la fiche) et, pour le Markdown, par le plugin remark `lib/markdown-monnaies.mjs` (tout le texte sauf liens et code ; dans un tableau, une colonne dont
+  l'en-tête écrit l'unité, « Coût(RO) », lit ses nombres seuls comme des montants), déclaré dans `astro.config.mjs` ET `lib/guide-rendu.ts` (et le test `markdown-edition`).
+  Un montant décomposé garde son écriture d'origine dans `data-montant`, une icône seule dans `data-monnaie` : `lib/markdown-edition.mjs` les relit tels qu'écrits.
+  « 100 RF / 1 RO » (même somme) n'en fait qu'un ; une conversion (« 1 PP = 1 000 RO ») ne se décompose pas ; un nombre sans monnaie écrite reste un nombre.
+  Un script de page n'importe jamais `monnaies.mjs` (un module partagé entre scripts de page) : la page des armes décompose par `lib/arme-forge.mjs#piecesDuMontant`
+  (même calcul, testé) avec les icônes de ses `<template data-armes-piece>`, celle des accessoires lit des prix déjà rendus (`data-prix-html`, `data-quarts`).
+  Les valeurs ne se modifient pas (`MONNAIES_DU_JEU`, comparées à la base).
 - `npm run autolink` (aperçu) / `-- --write` : maillage automatique des pages, voir `docs/content-guide.md`.
 - **Fiche de personnage** (`/fiche/`, `docs/character-generator.md`) : `/generateur/` n'existe plus, la page 404 y renvoie (`lib/nav.mjs#nouvelleAdresse`,
   `PAGES_RENOMMEES`). Les règles de la page viennent de la base au build (`lib/fiche-regles.mjs`), jamais écrites à la main ; chaque calcul de

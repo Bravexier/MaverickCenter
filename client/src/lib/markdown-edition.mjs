@@ -73,7 +73,10 @@ function enLigne(noeuds, o = {}) {
       case 'a':
       case 'span': {
         const cible = attribut(n, 'data-cible');
-        if (n.nom === 'span' && classes(n).includes('piece') && attribut(n, 'data-monnaie')) {
+        if (n.nom === 'span' && classes(n).includes('montant') && attribut(n, 'data-montant') !== null) {
+          // un montant décomposé en icônes (lib/monnaies.mjs#htmlDeMontant) : tel qu'écrit dans le Markdown
+          sortie += attribut(n, 'data-montant');
+        } else if (n.nom === 'span' && classes(n).includes('piece') && attribut(n, 'data-monnaie')) {
           // une monnaie en icône (lib/markdown-monnaies.mjs) : son abréviation telle qu'écrite dans le Markdown
           sortie += attribut(n, 'data-monnaie');
         } else if (cible !== null && classes(n).includes('wikilink')) {
@@ -318,6 +321,11 @@ function attributsSurs(n, nom) {
     const titre = attribut(n, 'title') ?? attribut(n, 'data-infobulle');
     if (titre !== null) garder('title', titre);
     // une monnaie en icône (lib/monnaies.mjs) : sa classe, son nom et son abréviation, rien d'autre
+    // un montant décomposé (lib/monnaies.mjs#htmlDeMontant) : sa classe et son écriture d'origine
+    if (nom === 'span' && classes(n).includes('montant') && attribut(n, 'data-montant') !== null) {
+      garder('class', 'montant');
+      garder('data-montant', attribut(n, 'data-montant'));
+    }
     const piece = classes(n).find((c) => /^piece--(rf|ro|pp)$/.test(c));
     if (nom === 'span' && piece && /^(R[OoFf]|PP)$/.test(attribut(n, 'data-monnaie') ?? '')) {
       garder('class', `piece ${piece}`);

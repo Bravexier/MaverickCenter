@@ -12,6 +12,7 @@ import { marquerBonus } from './sort-maitrise.mjs';
 import { RENDUS_DU_BESTIAIRE } from './monstre-rendu.mjs';
 import { RENDUS_DES_ARMES } from './armes-rendu.mjs';
 import { RENDUS_DES_COMPOSANTS } from './composants-rendu.mjs';
+import { htmlAvecMonnaies } from './monnaies.mjs';
 
 const ENTITES_HTML = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const echapperHtml = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES_HTML[c]);
@@ -19,7 +20,7 @@ export const echapperHtml = (texte) => String(texte ?? '').replace(/[&<>"']/g, (
 /** Un texte avec ses adresses web en liens (comme Texte.astro). */
 const avecLiens = (texte) =>
   morceauxAvecLiens(texte)
-    .map((m) => (m.lien ? `<a href="${echapperHtml(m.lien)}" rel="noopener noreferrer">${echapperHtml(m.lien)}</a>` : echapperHtml(m.texte)))
+    .map((m) => (m.lien ? `<a href="${echapperHtml(m.lien)}" rel="noopener noreferrer">${echapperHtml(m.lien)}</a>` : htmlAvecMonnaies(m.texte)))
     .join('');
 
 /** Longueur du texte qui précède une pastille, relevé avec elle pour la replacer au même endroit (voir placerPastilles). */

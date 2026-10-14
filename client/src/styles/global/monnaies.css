@@ -23,4 +23,6 @@
 .piece--pp {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6.5 3.5h11l4.5 5.5L12 21.5L2 9z' fill='%2366c7e8' stroke='%231f6f94' stroke-width='1.2' stroke-linejoin='round'/%3E%3Cpath d='M2 9h20M9 3.5L7.5 9L12 21.5L16.5 9L15 3.5M7.5 9L12 3.5L16.5 9' fill='none' stroke='%231f6f94' stroke-width='0.8' stroke-linejoin='round'/%3E%3Cpath d='M7.5 9L12 21.5L2 9z' fill='%23a6e3f5' opacity='0.7'/%3E%3C/svg%3E");
 }
+/* Un montant décomposé (« 1 [PP] 245 [RO] 50 [RF] ») : une monnaie ne se sépare jamais de son nombre */
+.montant__part { white-space: nowrap; }
 @media print { .piece::after { content: attr(data-monnaie); } .piece { width: auto; background: none; } }
