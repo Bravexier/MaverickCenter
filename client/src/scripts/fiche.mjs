@@ -11,7 +11,7 @@ import { modesAuNm, valeurAuNm } from '../lib/sort-maitrise.mjs';
 import { cadrageDe } from '../lib/portrait.mjs';
 import { dessinerVignette, ouvrirRecadrage, reduireImage } from './portrait.mjs';
 import {
-  ajusterValeurDuMoment, alignementDe, armesApresChoix, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
+  accessoiresDesSorts, actionsDesAccessoires, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ajusterValeurDuMoment, alignementDe, armesApresChoix, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, degatsDArme, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
   choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, deDeLaFamille, donsAChoisir, donsAcquis, donsDeRace, donsValables,
   emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable, notationDesDes,
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, maitrisesValables, niveauGlobal, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionAttendue, progressionXp,
@@ -407,7 +407,10 @@ function construireCaracteristiques() {
       poser(croix2, c.croix >= 2);
       valeur.textContent = c.base === null ? '—' : String(c.valeur);
       valeur.toggleAttribute('data-hors', c.base !== null && (c.base < c.min || c.base > c.max));
-      bonus.textContent = c.bonus ? `base ${c.base} +${c.bonus} (magie)` : `de ${c.min} à ${c.max}`;
+      // +1 de la magie innée, ± l'accessoire (décision R54 : rogné à 4 et à la borne de la race)
+      const plus = [c.bonus ? `+${c.bonus} (magie)` : null, c.accessoire ? `${signe(c.accessoire)} (accessoire)` : null].filter(Boolean);
+      bonus.textContent = plus.length ? `base ${c.base} ${plus.join(' ')}` : `de ${c.min} à ${c.max}`;
+      bonus.title = c.accessoireBrut > c.accessoire ? `Accessoire : ${signe(c.accessoireBrut)}, rogné à ${Math.min(regles.constantes['accessoire.caracteristique_max'], c.max)} (« Ne peut dépasser 4 » ni les limites de la race)` : '';
     });
     return el('div', { class: 'carac', style: `--c: ${k.couleur}; --c-texte: ${k.texte}` }, el('span', { class: 'carac__nom', title: k.nom }, k.nom), valeur, bonus, base, croix);
   }));
@@ -446,11 +449,17 @@ function construireCaracteristiques() {
           acquis.max = String(c.maxAcquis);
           poser(acquis, c.acquis);
           // le bonus du métier est de l'Acquis (décision R33) : affiché à côté, compté dans le plafond et le score, jamais saisi
-          valeurAcquis.textContent = c.metier ? `${c.acquis} +${c.metier}` : String(c.acquis);
-          valeurAcquis.toggleAttribute('data-hors', c.acquis + c.metier > c.plafondAcquis);
+          // et celui d'un accessoire « Compétence X » (décision R54), de l'Acquis lui aussi, rogné au plafond après le métier
+          const enPlus = c.metier + c.accessoire;
+          valeurAcquis.textContent = enPlus ? `${c.acquis} ${signe(enPlus)}` : String(c.acquis);
+          valeurAcquis.toggleAttribute('data-hors', c.acquis + Math.max(0, enPlus) > c.plafondAcquis);
           // le plafond prévaut sur le bonus du métier (décision R38) : au-delà, il est rogné
-          valeurAcquis.title = c.metier || c.metierBrut ? `${c.acquis} saisi(s) + ${c.metier} du métier${c.metierBrut > c.metier ? ` (${c.metierBrut}, rogné au plafond de ${c.plafondAcquis})` : ''}` : '';
-          acquis.title = `De 0 à ${c.maxAcquis} : 5 par point de caractéristique, magie innée comprise (race, classe, dons, équipement, entraînement)${c.metier ? `, moins les ${c.metier} du métier` : ''}`;
+          valeurAcquis.title = c.metier || c.metierBrut || c.accessoireBrut ? [
+            `${c.acquis} saisi(s)`,
+            c.metier || c.metierBrut ? `+ ${c.metier} du métier${c.metierBrut > c.metier ? ` (${c.metierBrut}, rogné au plafond de ${c.plafondAcquis})` : ''}` : null,
+            c.accessoireBrut ? `${signe(c.accessoire)} d’accessoire${c.accessoireBrut > c.accessoire ? ` (${c.accessoireBrut}, rogné au plafond de ${c.plafondAcquis})` : ''}` : null,
+          ].filter(Boolean).join(' ') : '';
+          acquis.title = `De 0 à ${c.maxAcquis} : 5 par point de caractéristique, magie innée comprise (race, classe, dons, équipement, entraînement)${enPlus > 0 ? `, moins les ${enPlus} du métier et des accessoires` : ''}`;
           score.textContent = c.score === null ? 'N/A' : `${c.score} %`;   // « N/A » plutôt qu'« inutilisable » (demande du propriétaire)
           score.title = c.score === null ? 'Deux croix : compétence inutilisable' : '';
         });
@@ -666,13 +675,18 @@ function construireSorts() {
           const nm = nmDuSort(fiche.sorts[l.index]);
           const auNm = (brut, champ) => (l.sort ? valeurAuNm(brut, l.sort.bonus ?? [], champ, nm.total) ?? '' : '');
           cout.textContent = auNm(l.sort?.cout, 'cout');
-          portee.textContent = auNm(l.sort?.portee, 'portee');
+          // accessoires (décision R54) : « Augmente la portée des sorts de +N » ; « Dégâts magie +N » sur un sort d'attaque
+          const acc = accessoiresDesSorts(regles, fiche);
+          portee.textContent = auNm(l.sort?.portee, 'portee') + (l.sort && acc.portee ? ` ${signe(acc.portee)}` : '');
+          portee.title = l.sort && acc.portee ? `${signe(acc.portee)} de portée (accessoires)` : '';
           zone.textContent = auNm(l.sort?.zone, 'zone');
           modes.replaceChildren(...(l.sort ? modesAuNm(l.sort.modes, l.sort.bonus ?? [], nm.total) : []).map((m) => el('span', {
             class: 'sort-mode', dataset: { mode: m.mode ?? 'autre', ...(m.atteint ? {} : { attente: '' }) },
             title: m.atteint ? null : `Pas encore : ${nm.total} NM sur ce sort`,
           }, m.texte)));
-          dsb.textContent = auNm(l.sort?.dsb, 'dsb');
+          const degatsEnPlus = l.sort?.attaque && auNm(l.sort.dsb, 'dsb') ? acc.degats : 0;
+          dsb.textContent = auNm(l.sort?.dsb, 'dsb') + (degatsEnPlus ? ` ${signe(degatsEnPlus)}` : '');
+          dsb.title = degatsEnPlus ? `${signe(degatsEnPlus)} de dégâts (accessoires : ${acc.sources.filter((x) => x.cible === 'degats_magie').map((x) => x.nom).join(', ')})` : '';
           effet.textContent = auNm(l.sort?.effets, 'effets');
           if (document.activeElement !== deNiveau) poser(deNiveau, fiche.sorts[l.index] ? nm.deNiveau : '');
           if (document.activeElement !== cadeau) poser(cadeau, fiche.sorts[l.index] ? nm.cadeau : '');
@@ -715,14 +729,17 @@ function elementDeDon({ niveau = null, nom, type = null, texte }) {
  */
 function construireDons() {
   const race = donsDeRace(regles, fiche);
-  const cleRace = JSON.stringify([fiche.race_id, fiche.ethnie_id]);
+  const actions = actionsDesAccessoires(regles, fiche);
+  const cleRace = JSON.stringify([fiche.race_id, fiche.ethnie_id, actions]);
   reconstruire($('dons-race'), cleRace, () => {
-    if (!fiche.race_id) return el('li', { class: 'fiche-aide' }, 'Choisissez une race : ses dons apparaîtront ici.');
+    if (!fiche.race_id) return [el('li', { class: 'fiche-aide' }, 'Choisissez une race : ses dons apparaîtront ici.'), actions.map((x) => elementDeDon({ nom: x.nom, type: x.type, texte: x.texte }))];
     return [
       race.base ? elementDeDon(donDeBase(race.base)) : null,   // « Méditation » ou « Repos » plutôt que « Don de base » (demande du propriétaire)
       race.dons.map((d) => elementDeDon({ nom: d.nom ?? d.etiquette, texte: d.texte })),
       race.tableau ? elementDeDon({ nom: race.tableau.titre ?? 'Selon l’ethnie', texte: race.tableau.cellules.map((c) => `${c.libelle.replace(/\n/g, ' / ')} : ${c.valeur}`).join('\n') }) : null,
       race.ethnieAChoisir ? el('li', { class: 'fiche-aide' }, 'Choisissez l’ethnie : son don apparaîtra ici.') : null,
+      // à la suite, les effets d'accessoire « (Action) » et à usage compté, sous le même format (demande du propriétaire, décision R54)
+      actions.map((x) => elementDeDon({ nom: x.nom, type: x.type, texte: x.maudit ? `${x.texte} (maudit : l’effet est le contraire)` : x.texte })),
     ];
   });
   const classes = donsAcquis(regles, fiche);
@@ -839,10 +856,11 @@ function construireAttributs() {
   const a = calcul.attributs;
   const pastilles = [
     // 1D20 + le bonus de l'Agilité + celui du métier (« +X INI », décision R33)
-    ['Initiative', a.initiative || a.initiativeMetier ? `1D20 ${a.initiativeBonus >= 0 ? '+' : '−'} ${Math.abs(a.initiativeBonus)}` : '1D20',
-      [a.initiative?.note ?? 'Selon l’Agilité', a.initiativeMetier ? `${signe(a.initiativeMetier)} du métier` : null].filter(Boolean).join(' · ')],
+    ['Initiative', a.initiative || a.initiativeMetier || a.initiativeAccessoires ? `1D20 ${a.initiativeBonus >= 0 ? '+' : '−'} ${Math.abs(a.initiativeBonus)}` : '1D20',
+      [a.initiative?.note ?? 'Selon l’Agilité', a.initiativeMetier ? `${signe(a.initiativeMetier)} du métier` : null,
+        a.initiativeAccessoires ? `${signe(a.initiativeAccessoires)} des accessoires` : null].filter(Boolean).join(' · ')],
     // vitesse et vitesse de nage de la race, de l'ethnie et du métier (décision R37)
-    ['Vitesse', a.vitesseSol ?? '—', `Vitesse sur terre (race et ethnie${a.vitesseMetier ? `, ${signe(a.vitesseMetier)} du métier` : ''})`],
+    ['Vitesse', a.vitesseSol ?? '—', `Vitesse sur terre (race et ethnie${a.vitesseMetier ? `, ${signe(a.vitesseMetier)} du métier` : ''}${a.vitesseAccessoires ? `, ${signe(a.vitesseAccessoires)} des accessoires` : ''})`],
     ['Nage', a.vitesseNage ?? '—', `Vitesse de nage (race et ethnie${a.vitesseNageMetier ? `, ${signe(a.vitesseNageMetier)} du métier` : ''})`],
   ];
   reconstruire($('attributs-pastilles'), JSON.stringify(pastilles), () => pastilles.map(([nom, valeur, titre]) => el('li', { title: titre }, el('strong', {}, `${nom} `), String(valeur))));
@@ -856,7 +874,7 @@ function construireAttributs() {
  */
 function construirePostures() {
   const hyper = modeHyperDe(regles, fiche);
-  const cleHyper = JSON.stringify(hyper && [hyper.debloque, hyper.cent.debloque, hyper.magies.map((m) => m.effet), hyper.race?.nom]);
+  const cleHyper = JSON.stringify(hyper && [hyper.debloque, hyper.cent.debloque, hyper.magies.map((m) => m.effet), hyper.race?.nom, hyper.toursAccessoires]);
   // dans l'ordre des cases de la fiche (regles.ordre_postures) ; chaque effet en vert (avantage) ou en rouge (inconvénient : `inconvenients`, par rang)
   const ordre = (p) => (regles.ordre_postures ?? []).indexOf(p.id);
   reconstruire($('postures'), 'fixe', () => [...regles.postures].sort((a, b) => ordre(a) - ordre(b)).map((p) => {
@@ -880,7 +898,9 @@ function construirePostures() {
       el('span', { class: 'posture-carte__nom' }, 'Mode Hyper', el('small', {}, ` · dès le niveau ${hyper.niveau}`)),
       el('ul', { class: 'posture-carte__effets' }, hyper.effets.map((e) => el('li', {}, e)),
         hyper.magies.map((m) => el('li', { class: 'posture-carte__magie', style: `--m: ${m.magie.couleur}` }, el('strong', {}, `${m.magie.nom} : `), m.effet)),
-        hyper.race ? el('li', { class: 'posture-carte__race' }, el('strong', {}, `${hyper.race.nom ?? 'Race'} : `), hyper.race.effet) : null)) : null,
+        hyper.race ? el('li', { class: 'posture-carte__race' }, el('strong', {}, `${hyper.race.nom ?? 'Race'} : `), hyper.race.effet) : null,
+        // accessoire « +1 tour de Mode Hyper (100% exclu) » (décision R54)
+        hyper.toursAccessoires ? el('li', {}, el('strong', {}, 'Accessoires : '), `${signe(hyper.toursAccessoires)} tour${Math.abs(hyper.toursAccessoires) > 1 ? 's' : ''} (pas le Mode Hyper 100 %)`) : null)) : null,
     hyper?.cent.debloque ? el('div', { class: 'posture-carte posture-carte--hyper posture-carte--cent' },
       el('span', { class: 'posture-carte__nom' }, 'Mode Hyper 100 %', el('small', {}, ` · dès le niveau ${hyper.cent.niveau}`)),
       el('ul', { class: 'posture-carte__effets' }, hyper.cent.effets.map((e) => el('li', {}, e)),
@@ -1178,7 +1198,22 @@ const optionsGroupees = (liste, cleGroupe, texte) => {
 };
 const ameliorations = (cible) => regles.ameliorations.filter((a) => a.cible === cible).map((a) => option(a.id, `Niveau ${a.niveau} : ${a.effet ?? ''}`.slice(0, 120)));
 const stats = (x) => [x.ap && `${x.ap} AP`, x.am && `${x.am} AM`].filter(Boolean).join(', ');
-const EMPLACEMENTS_ACCESSOIRES = [['chef', 'Chef'], ['collier', 'Collier'], ['bracelet-1', 'Bracelet 1'], ['bracelet-2', 'Bracelet 2'], ['bague-1', 'Bague 1'], ['bague-2', 'Bague 2'], ['ceinture', 'Ceinture'], ['autre', 'Autre']];
+const NOMS_DES_CIBLES = {
+  sante: 'Santé', chakra: 'Chakra', barriere: 'Barrière', initiative: 'Initiative', vitesse: 'Vitesse', barre4_max: 'Sang ou Âme max', armure_ap: 'AP de base',
+  armure_am: 'AM de base', degats_physiques: 'Dégâts des armes', degats_magie: 'Dégâts des sorts d’attaque', portee_distance: 'Portée des armes à distance',
+  portee_sorts: 'Portée des sorts', maitrise_arme: 'Point de maîtrise d’arme', mode_hyper_tours: 'Tour de Mode Hyper',
+};
+/** Ce qu'un effet d'accessoire change, en quelques mots (« Initiative +5 », « Acquis Arme lourde +7 », « Résistance Feu +1 »). */
+function texteDEffet(e) {
+  const nomDe = (liste, id) => trouver(liste, id)?.nom ?? id;
+  const quoi = e.cible === 'caracteristique' ? nomDe(regles.caracteristiques, e.cible_id)
+    : e.cible === 'competence' ? `Acquis ${nomDe(regles.competences, e.cible_id)}`
+      : e.cible === 'degats_famille' ? `Dégâts ${nomDe(regles.familles_armes, e.cible_id)}`
+        : e.cible === 'resistance' ? `Résistance ${nomDe([...regles.magies, ...(regles.etats ?? [])], e.cible_id)}`
+          : NOMS_DES_CIBLES[e.cible] ?? e.cible;
+  return `${quoi} ${signe(e.valeur)}`;
+}
+
 
 function construireEquipement() {
   reconstruire($('armes'), 'fixe', () => [1, 2].map((rang) => {
@@ -1214,6 +1249,7 @@ function construireEquipement() {
         des.title = [
           `${d.notation} : ${d.nombre} dé${d.nombre > 1 ? 's' : ''} (maîtrise) de ${d.de ?? '—'}`,
           ...d.bonus.map((b) => `+${b.valeur} ${b.nom}`),
+          ...(d.porteeEnPlus ? [`Portée ${signe(d.porteeEnPlus)} (accessoires)`] : []),
           ...(d.nonComptes.length ? ['Non comptés :', ...d.nonComptes.map((n) => `+${n.valeur} ${n.nom} (${n.raison === 'mains' ? 'arme à une main non écrite' : RAISONS[n.raison]})`)] : []),
         ].join('\n');
       }
@@ -1296,9 +1332,44 @@ function construireEquipement() {
       const valeur = el('input', { type: 'number', step: '1', 'aria-label': `${nom} : valeur tirée`, oninput: (ev) => { obtenir().valeur = ev.target.value === '' ? null : entier(ev.target.value); changer(); } });
       const texte = el('input', { 'aria-label': `${nom} : effet hors table`, oninput: (ev) => { obtenir().texte = ev.target.value || null; nettoyer(); changer(); } });
       const maudit = el('input', { type: 'checkbox', 'aria-label': `${nom} : maudit`, onchange: (ev) => { obtenir().maudit = ev.target.checked ? 1 : 0; nettoyer(); changer(); } });
+      // l'effet à choix (décision R54) : « Compétence X » → une compétence de cette caractéristique ; « +5 dégâts avec une catégorie d'arme » → une famille
+      const choixCompetence = el('select', { 'aria-label': `${nom} : compétence de l’accessoire`,
+        onchange: (ev) => { obtenir().competence_id = ev.target.value || null; changer(); } });
+      const choixFamille = el('select', { 'aria-label': `${nom} : famille d’armes de l’accessoire`,
+        onchange: (ev) => { obtenir().arme_famille_id = ev.target.value || null; changer(); } });
+      const resumeEffet = el('span', { class: 'accessoire-effet' });
       synchro(() => {
         const x = l();
         const effet = trouver(regles.accessoires, x?.accessoire_effet_id);
+        const cibles = (effet?.effets ?? []).map((c) => c.cible);
+        const caracId = effet?.effets.find((c) => c.cible === 'competence')?.cible_id ?? null;
+        choixCompetence.hidden = !caracId;
+        if (caracId) {
+          const options = regles.competences.filter((k) => k.caracteristique_id === caracId);
+          const cleOptions = `${caracId}`;
+          if (choixCompetence.dataset.options !== cleOptions) {
+            choixCompetence.replaceChildren(el('option', { value: '' }, '— compétence —'), ...options.map((k) => el('option', { value: k.id }, k.nom)));
+            choixCompetence.dataset.options = cleOptions;
+          }
+          choixCompetence.value = options.some((k) => k.id === x?.competence_id) ? x.competence_id : '';
+          choixCompetence.toggleAttribute('data-a-choisir', !choixCompetence.value);
+        }
+        choixFamille.hidden = !cibles.includes('degats_famille');
+        if (!choixFamille.hidden) {
+          if (!choixFamille.options.length) {
+            choixFamille.replaceChildren(el('option', { value: '' }, '— famille d’armes —'), ...regles.familles_armes.filter((f) => f.maitrisable !== false).map((f) => el('option', { value: f.id }, f.nom)));
+          }
+          choixFamille.value = x?.arme_famille_id ?? '';
+          choixFamille.toggleAttribute('data-a-choisir', !choixFamille.value);
+        }
+        // la tuile du choix dans le tiroir (choixEnAttente) : la liste affichée
+        for (const liste of [choixCompetence, choixFamille]) {
+          if (liste.hidden) delete liste.dataset.choixCle;
+          else liste.dataset.choixCle = cleDeChoix.accessoire(cle);
+        }
+        // ce que l'accessoire change sur la fiche (effetsDesAccessoires)
+        const effets = effetsDesAccessoires(regles, { ...fiche, accessoires: x ? [x] : [] });
+        resumeEffet.textContent = effets.filter((e) => !e.aChoisir && e.valeur !== null).map(texteDEffet).join(' · ');
         poser(nomObjet, x?.nom ?? '');
         poser(valeur, x?.valeur ?? '');
         valeur.disabled = !effet || effet.min === null;
@@ -1309,8 +1380,16 @@ function construireEquipement() {
         poser(maudit, x?.maudit);
       });
       return el('tr', {}, el('td', {}, nom), el('td', {}, nomObjet),
-        el('td', {}, selecteur(() => l()?.accessoire_effet_id, optionsGroupees(regles.accessoires, (a) => a.propriete, (a) => a.libelle + (a.min !== null ? ` (${a.min} à ${a.max})` : '')),
-          (v) => { const x = obtenir(); x.accessoire_effet_id = v; if (!v || trouver(regles.accessoires, v)?.min === null) x.valeur = null; nettoyer(); changer(); }, { etiquette: `${nom} : effet` })),
+        el('td', { class: 'accessoire-cellule' }, selecteur(() => l()?.accessoire_effet_id, optionsGroupees(regles.accessoires, (a) => a.propriete, (a) => a.libelle + (a.min !== null ? ` (${a.min} à ${a.max})` : '')),
+          (v) => {
+            const x = obtenir();
+            x.accessoire_effet_id = v;
+            if (!v || trouver(regles.accessoires, v)?.min === null) x.valeur = null;
+            x.competence_id = null;
+            x.arme_famille_id = null;
+            nettoyer();
+            changer();
+          }, { etiquette: `${nom} : effet` }), choixCompetence, choixFamille, resumeEffet),
         el('td', { class: 'nombre' }, valeur), el('td', {}, texte), el('td', {}, maudit));
     })),
   ]);

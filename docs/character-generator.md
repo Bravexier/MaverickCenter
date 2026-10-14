@@ -142,6 +142,15 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   maîtrise (`quotaDeMaitrise`, R32) ; emplacements de sorts
   (conditions × puissance magique, R16), sorts possibles, NM ; dons à choisir selon la classe, la spécialité et le niveau de classe ; dons de classe
   débloqués (`donsAcquis`) et dons de la race (`donsDeRace`) ; résistances et faiblesses (`resistancesDe`).
+- **Accessoires** (demande du propriétaire : « l'accessoire influe sur le reste de la fiche » ; décision R54) : ce que chaque effet change est dans la table
+  `accessoire_effet_cible` (migration `0037`, découpage `lib/accessoire-champs.mjs`, comme les armes) ; `effetsDesAccessoires` le lit pour les accessoires
+  portés, signé par la malédiction (effet contraire). Caractéristique : +1, sans dépasser 4 ni la borne de la race ; « Compétence X » : la valeur tirée en
+  Acquis d'une compétence de cette caractéristique choisie sous l'effet (`personnage_accessoire.competence_id`), rognée au plafond après le métier ;
+  santé, chakra, barrière, initiative, vitesse, 4ᵉ barre, AP et AM de base ; dégâts physiques de toutes les armes et dégâts de la famille choisie
+  (`arme_famille_id`), portée des armes à distance (infobulle des dégâts) ; « Dégâts magie » et portée sur les sorts (`accessoiresDesSorts` : dégâts des
+  seuls sorts d'attaque, `sort_type`) ; point de maîtrise (`quotaDeMaitrise`) ; tour de Mode Hyper ; un cran de résistance par cible (`resistancesDe`).
+  Un choix qui manque est dans le tiroir (`choixEnAttente`, nature `accessoire`). Les effets « (Action) » et à usage compté (`accessoire_effet.usage`)
+  sont rappelés à la suite des dons de race, sous le même format (`actionsDesAccessoires`). Sous chaque effet, ce qu'il change en quelques mots.
 - **Contrôle** : à chaque enregistrement, le service rend les règles de `v_personnage_controle` que la fiche enfreint, affichées en français
   (`lib/fiche-controles.mjs`) ; une fiche ne passe « validée » que sans aucune. Ce que la base ne contrôle pas encore (bonus d'équipement, nombre de
   sorts par emplacement, plafond de NPM du Potentiel Illimité) n'est montré que comme compteur.

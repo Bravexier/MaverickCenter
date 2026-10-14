@@ -184,8 +184,8 @@ export function caracteristiqueDeMagie(regles, fiche) {
 }
 
 /**
- * Les six caractéristiques : base saisie, croix, +1 de la magie innée (guide, étape 2), valeur, bornes de la race (v_race_carac_borne ; sans race,
- * celles de regle_constante).
+ * Les six caractéristiques : base saisie, croix, +1 de la magie innée (guide, étape 2), accessoire (effetsDesAccessoires : `accessoire` compté, rogné à 4 et
+ * à la borne de la race ; `accessoireBrut` avant), valeur, bornes de la race (v_race_carac_borne ; sans race, celles de regle_constante).
  */
 export function caracteristiquesDe(regles, fiche) {
   const race = trouver(regles.races, fiche.race_id);
@@ -196,7 +196,13 @@ export function caracteristiquesDe(regles, fiche) {
     const base = saisie ? entier(saisie.base) : null;
     const plus = bonus === k.id ? constante(regles, 'caracteristique.bonus_magie_innee') : 0;
     const [min, max] = race?.bornes[k.id] ?? [constante(regles, 'caracteristique.base_min'), constante(regles, 'caracteristique.base_max')];
-    return { id: k.id, nom: k.nom, lettre: k.lettre, base, croix: saisie ? entier(saisie.croix) : 0, bonus: plus, valeur: (base ?? 0) + plus, min, max };
+    // accessoire « Caractéristique » (décision R54) : +1, sans dépasser 4 (« Ne peut dépasser 4 ») ni la borne de la race (« Ne peut dépasser les
+    // limites raciales ») ; maudit, −1
+    const avant = (base ?? 0) + plus;
+    const accessoireBrut = sommeDesAccessoires(regles, fiche, 'caracteristique', k.id);
+    const plafond = Math.min(constante(regles, 'accessoire.caracteristique_max'), max);
+    const accessoire = accessoireBrut > 0 ? Math.max(0, Math.min(accessoireBrut, plafond - avant)) : accessoireBrut;
+    return { id: k.id, nom: k.nom, lettre: k.lettre, base, croix: saisie ? entier(saisie.croix) : 0, bonus: plus, accessoire, accessoireBrut, valeur: Math.max(0, avant + accessoire), min, max };
   });
 }
 
@@ -282,10 +288,13 @@ export function competencesDe(regles, fiche) {
     const plafondAcquis = (carac.base === null ? 0 : carac.valeur) * constante(regles, 'competence.acquis_max_par_point_caracteristique');
     const metierBrut = parCompetence[k.id] ?? 0;
     const metier = Math.min(metierBrut, plafondAcquis);
+    // accessoire « Compétence X » (décision R54) : la valeur tirée en Acquis de la compétence choisie, rognée au plafond après le métier ; maudit, retirée
+    const accessoireBrut = sommeDesAccessoires(regles, fiche, 'competence', k.id);
+    const accessoire = accessoireBrut > 0 ? Math.min(accessoireBrut, Math.max(0, plafondAcquis - metier)) : accessoireBrut;
     return {
-      id: k.id, nom: k.nom, caracteristique_id: k.caracteristique_id, naturel, acquis, metier, metierBrut, maxNaturel, plafondAcquis,
-      maxAcquis: Math.max(0, plafondAcquis - metier),
-      score: utilisable ? carac.valeur * constante(regles, 'competence.base_par_point_caracteristique') + naturel + acquis + metier + malus : null,
+      id: k.id, nom: k.nom, caracteristique_id: k.caracteristique_id, naturel, acquis, metier, metierBrut, accessoire, accessoireBrut, maxNaturel, plafondAcquis,
+      maxAcquis: Math.max(0, plafondAcquis - metier - Math.max(0, accessoire)),
+      score: utilisable ? carac.valeur * constante(regles, 'competence.base_par_point_caracteristique') + naturel + acquis + metier + accessoire + malus : null,
     };
   });
 }
@@ -391,16 +400,67 @@ export function classesDe(regles, fiche) {
   });
 }
 
-/** Valeur d'un accessoire de la propriété « Attributs » pour une cible (Santé, Chakra, Barrière) : signe de SON accessoire (malédiction). */
-function bonusDAccessoires(regles, fiche, cible) {
-  let total = 0;
+/**
+ * Ce que les accessoires portés changent sur la fiche (demande du propriétaire : « l'accessoire influe sur le reste de la fiche » ; table
+ * accessoire_effet_cible, décision R54) : une ligne par valeur de l'effet, signée — un accessoire maudit a l'effet contraire (page « Accessoires » :
+ * « l'effet sera le contraire de ce qui est indiqué à la base (exemple : +1 force devient -1 force) ») —, avec sa cible exacte. Un effet à choix
+ * (« Compétence X » : une compétence de cette caractéristique ; « +5 dégâts avec une catégorie d'arme » : une famille d'armes à maîtrise) prend celle de la
+ * fiche (personnage_accessoire.competence_id, .arme_famille_id) ; sans choix valable, `aChoisir` et rien ne compte. La valeur d'une compétence est celle
+ * tirée (personnage_accessoire.valeur) ; sans elle, `valeur` null et rien ne compte.
+ * [{ emplacement, nom, effet, cible, cible_id, valeur, aChoisir }]
+ */
+export function effetsDesAccessoires(regles, fiche) {
+  const rendus = [];
   for (const a of fiche.accessoires ?? []) {
     const effet = trouver(regles.accessoires, a.accessoire_effet_id);
-    if (!effet || effet.propriete !== 'attributs' || effet.cible !== cible) continue;
-    const valeur = effet.min !== null ? entier(a.valeur) : entier(effet.valeur);
-    total += a.maudit ? -valeur : valeur;
+    if (!effet) continue;
+    for (const c of effet.effets ?? []) {
+      let cibleId = c.cible_id;
+      let aChoisir = false;
+      if (c.cible === 'competence') {
+        const k = regles.competences.find((x) => x.id === a.competence_id);
+        aChoisir = !k || k.caracteristique_id !== c.cible_id;
+        cibleId = aChoisir ? null : k.id;
+      } else if (c.cible === 'degats_famille') {
+        const f = trouver(regles.familles_armes, a.arme_famille_id);
+        aChoisir = !f || f.maitrisable === false;
+        cibleId = aChoisir ? null : f.id;
+      }
+      const brute = c.valeur ?? (a.valeur === null || a.valeur === undefined || a.valeur === '' ? null : entier(a.valeur));
+      rendus.push({
+        emplacement: a.emplacement, nom: nomDAccessoire(a), effet, cible: c.cible, cible_id: cibleId, aChoisir,
+        valeur: brute === null ? null : (a.maudit ? -brute : brute),
+      });
+    }
   }
-  return total;
+  return rendus;
+}
+
+/** Somme des valeurs des accessoires pour une cible (et, s'il est donné, son identifiant) ; un effet à choix sans choix ne compte pas. */
+function sommeDesAccessoires(regles, fiche, cible, cibleId) {
+  return effetsDesAccessoires(regles, fiche)
+    .filter((e) => e.cible === cible && !e.aChoisir && e.valeur !== null && (cibleId === undefined || e.cible_id === cibleId))
+    .reduce((s, e) => s + e.valeur, 0);
+}
+
+const TYPE_D_USAGE = { action: 'action', limite: null };
+
+/** Les emplacements d'accessoire de la fiche (personnage_accessoire.emplacement ; « ACCESSOIRES » de la fiche auto V15.2.2, AA28:AY37), dans leur ordre. */
+export const EMPLACEMENTS_ACCESSOIRES = [['chef', 'Chef'], ['collier', 'Collier'], ['bracelet-1', 'Bracelet 1'], ['bracelet-2', 'Bracelet 2'], ['bague-1', 'Bague 1'], ['bague-2', 'Bague 2'], ['ceinture', 'Ceinture'], ['autre', 'Autre']];
+/** Le nom d'un accessoire porté : celui que le joueur lui donne, sinon son emplacement (« Accessoire : Collier »). */
+const nomDAccessoire = (a) => a.nom || `Accessoire : ${EMPLACEMENTS_ACCESSOIRES.find(([cle]) => cle === a.emplacement)?.[1] ?? a.emplacement}`;
+
+/**
+ * Les effets d'accessoire rappelés à la suite des dons de race, sous le même format (demande du propriétaire : « Dans le cas d'une action ajoute-le à la
+ * suite des dons raciaux » ; décision R54 : les effets « (Action) » et ceux à usage compté, accessoire_effet.usage) : { nom, type, texte, maudit }.
+ */
+export function actionsDesAccessoires(regles, fiche) {
+  return (fiche.accessoires ?? []).flatMap((a) => {
+    const effet = trouver(regles.accessoires, a.accessoire_effet_id);
+    if (!effet?.usage) return [];
+    const texte = String(effet.libelle ?? '').replace(/^\(Action\)\s*/i, '');
+    return [{ nom: nomDAccessoire(a), type: TYPE_D_USAGE[effet.usage], texte, maudit: Boolean(a.maudit) }];
+  });
 }
 
 /**
@@ -499,6 +559,8 @@ export function quotaDeMaitrise(regles, fiche) {
     if (deLaClasse) sources.push({ nom: c.classe.nom, points: deLaClasse });
     for (const d of c.dons) if (d.points_maitrise) sources.push({ nom: d.nom, points: d.points_maitrise });
   }
+  // accessoire « Un point de maîtrise d'arme » (décision R54)
+  for (const e of effetsDesAccessoires(regles, fiche)) if (e.cible === 'maitrise_arme' && e.valeur) sources.push({ nom: e.nom, points: e.valeur });
   const m = maitriseDArme(regles);
   return {
     total: sources.reduce((s, x) => s + x.points, 0),
@@ -515,7 +577,7 @@ export function quotaDeMaitrise(regles, fiche) {
  * Les crans viennent de la magie innée et de la magie acquise (les listes de leur page, magie_resistance) et de ce que les dons écrivent
  * (lib/resistance-texte.mjs ; race : don unique et don de l'ethnie, ligne de l'ethnie dans le tableau de dons ; classes : dons acquis). Une immunité
  * écrite (« Immunisé contre le poison ») met la cible en immunité quels que soient ses crans ; une résistance au choix n'est pas comptée et `auChoix`
- * nomme les dons qui en laissent une. Pas encore : les objets et l'équipement.
+ * nomme les dons qui en laissent une. Les accessoires portés aussi (« Résistance X et Y » : un cran chacune, décision R54) ; pas encore le reste de l'équipement.
  * { paliers: [{ id, libelle, effet, cibles: [{ type, id, nom, crans, immunite, origines: [{ nom, crans } | { nom, immunite }] }] }], auChoix: [nom] }
  */
 export function resistancesDe(regles, fiche) {
@@ -547,6 +609,11 @@ export function resistancesDe(regles, fiche) {
   for (const d of race.dons) lire(d.resistances, d.nom ?? ethnie);
   if (race.tableau) lire(race.tableau.resistances, race.tableau.titre ?? ethnie);
   for (const c of donsAcquis(regles, fiche)) for (const d of c.dons) lire(d.resistances, `${d.nom} (${c.classe.nom})`);
+  // accessoires « Résistance X et Y » : un cran chacune ; maudit, une vulnérabilité (décision R54)
+  for (const e of effetsDesAccessoires(regles, fiche)) {
+    if (e.cible !== 'resistance' || !e.valeur) continue;
+    compter({ type: trouver(regles.magies, e.cible_id) ? 'magie' : 'etat', id: e.cible_id, crans: e.valeur }, `${e.nom} (accessoire)`);
+  }
 
   const rang = (c) => (c.type === 'magie' ? regles.magies : regles.etats ?? []).findIndex((x) => x.id === c.id);
   const rangees = [...cibles.values()]
@@ -591,35 +658,42 @@ export function attributsDe(regles, fiche) {
   const somme = (cle) => classes.reduce((s, c) => s + c.classe[cle], 0);
   const progression = gainsDeProgression(fiche);
   const detail = {
-    sante: { classes: somme('sante'), race: race?.sante ?? 0, magies: magies.reduce((s, m) => s + m.sante, 0), ethnie: ethnie?.sante ?? 0, accessoires: bonusDAccessoires(regles, fiche, 'Santé'), niveaux: progression.sante },
-    chakra: { classes: somme('chakra'), race: race?.chakra ?? 0, magies: magies.reduce((s, m) => s + m.chakra, 0), ethnie: ethnie?.chakra ?? 0, accessoires: bonusDAccessoires(regles, fiche, 'Chakra'), niveaux: progression.chakra },
+    sante: { classes: somme('sante'), race: race?.sante ?? 0, magies: magies.reduce((s, m) => s + m.sante, 0), ethnie: ethnie?.sante ?? 0, accessoires: sommeDesAccessoires(regles, fiche, 'sante'), niveaux: progression.sante },
+    chakra: { classes: somme('chakra'), race: race?.chakra ?? 0, magies: magies.reduce((s, m) => s + m.chakra, 0), ethnie: ethnie?.chakra ?? 0, accessoires: sommeDesAccessoires(regles, fiche, 'chakra'), niveaux: progression.chakra },
   };
   const total = (d) => Object.values(d).reduce((s, v) => s + v, 0);
   const chakra = total(detail.chakra);
   detail.barriere = {
     chakra: Math.floor(chakra / constante(regles, 'barriere.diviseur_chakra')), classes: somme('barriere'), race: race?.barriere ?? 0, ethnie: ethnie?.barriere ?? 0,
-    accessoires: bonusDAccessoires(regles, fiche, 'Barrière'),
+    accessoires: sommeDesAccessoires(regles, fiche, 'barriere'),
   };
   const agilite = caracteristiquesDe(regles, fiche).find((c) => c.id === 'agilite');
   const initiative = regles.initiative.find((i) => i.agilite === agilite?.valeur) ?? null;
   const metier = bonusDuMetier(regles, fiche);
   const initiativeMetier = metier.initiative;
   const barre4 = magies.find((m) => m.barre4)?.barre4 ?? null;
+  // accessoires (décision R54) : initiative, vitesse (au sol), 4ᵉ barre (« Augmente le maximum de sang ou d'âme »), AP et AM de base
+  const acc = (cible) => sommeDesAccessoires(regles, fiche, cible);
+  const initiativeAccessoires = acc('initiative');
   return {
     sante: total(detail.sante),
     chakra,
     barriere: total(detail.barriere),
     detail,
-    vitesseSol: race ? race.vitesse_sol + (ethnie?.vitesse ?? 0) + metier.vitesse : null,
+    vitesseSol: race ? race.vitesse_sol + (ethnie?.vitesse ?? 0) + metier.vitesse + acc('vitesse') : null,
     vitesseNage: race ? race.vitesse_nage + (ethnie?.vitesse ?? 0) + metier.vitesseNage : null,
     vitesseMetier: metier.vitesse,
     vitesseNageMetier: metier.vitesseNage,
-    ap: (race?.ap ?? 0) + (ethnie?.ap ?? 0),
-    am: (race?.am ?? 0) + (ethnie?.am ?? 0) + classes.filter((c) => c.magique).length * regles.am_classe_magique,
+    vitesseAccessoires: acc('vitesse'),
+    ap: (race?.ap ?? 0) + (ethnie?.ap ?? 0) + acc('armure_ap'),
+    am: (race?.am ?? 0) + (ethnie?.am ?? 0) + classes.filter((c) => c.magique).length * regles.am_classe_magique + acc('armure_am'),
+    apAccessoires: acc('armure_ap'),
+    amAccessoires: acc('armure_am'),
     initiative,
     initiativeMetier,
-    initiativeBonus: (initiative?.bonus ?? 0) + initiativeMetier,
-    quatriemeBarre: barre4 && { ressource: barre4.ressource === 'ame' ? 'Âme' : 'Sang', max: barre4.max },
+    initiativeAccessoires,
+    initiativeBonus: (initiative?.bonus ?? 0) + initiativeMetier + initiativeAccessoires,
+    quatriemeBarre: barre4 && { ressource: barre4.ressource === 'ame' ? 'Âme' : 'Sang', max: barre4.max + acc('barre4_max') },
     corruptionMax: chakra,
   };
 }
@@ -836,7 +910,18 @@ export const cleDeChoix = {
   don: (rang, groupe) => `don:${rang}:${groupe.options[0]?.id}`,
   metierBonus: (rang) => `metier_bonus:${rang}`,
   metierObjet: (rang) => `metier_objet:${rang}`,
+  accessoire: (emplacement) => `accessoire:${emplacement}`,
 };
+
+/**
+ * Ce que les accessoires ajoutent aux sorts (décision R54) : `degats` aux sorts d'attaque (« Dégâts magie +N »), `portee` à tous (« Augmente la portée des
+ * sorts de +N »), avec le nom de chaque accessoire. { degats, portee, sources: [{ nom, cible, valeur }] }.
+ */
+export function accessoiresDesSorts(regles, fiche) {
+  const sources = effetsDesAccessoires(regles, fiche).filter((e) => (e.cible === 'degats_magie' || e.cible === 'portee_sorts') && e.valeur);
+  const somme = (cible) => sources.filter((e) => e.cible === cible).reduce((s, e) => s + e.valeur, 0);
+  return { degats: somme('degats_magie'), portee: somme('portee_sorts'), sources: sources.map((e) => ({ nom: e.nom, cible: e.cible, valeur: e.valeur })) };
+}
 
 /**
  * Les choix qui restent à faire (demande du propriétaire : les mettre en évidence, le cadre « Choix » en tiroir tant qu'il en reste) : l'ethnie d'une race
@@ -863,6 +948,12 @@ export function choixEnAttente(regles, fiche) {
   for (const b of bonusDuMetier(regles, fiche).rangs) if (b.aChoisir && !b.retenue) attente.push({ nature: 'metier_bonus', cle: cleDeChoix.metierBonus(b.rang), libelle: `Métier : ${b.texte}` });
   for (const r of objetsDuMetier(regles, fiche.metier_id)) {
     if (r.options.length > 1 && objetChoisi(fiche, r) < 0) attente.push({ nature: 'metier_objet', cle: cleDeChoix.metierObjet(r.rang), libelle: `Objet de départ : ${r.options.map((o) => o.texte).join(' ou ')}` });
+  }
+  // un accessoire « Compétence X » ou « +5 dégâts avec une catégorie d'arme » sans sa compétence ou sa famille (décision R54)
+  for (const e of effetsDesAccessoires(regles, fiche)) {
+    if (!e.aChoisir) continue;
+    const quoi = e.cible === 'competence' ? 'compétence' : 'famille d’armes';
+    attente.push({ nature: 'accessoire', cle: cleDeChoix.accessoire(e.emplacement), libelle: `Accessoire ${e.nom} : ${quoi} à choisir` });
   }
   const innee = trouver(regles.magies, fiche.magie_innee_id);
   if (innee && !innee.caracteristique_id && !fiche.caracteristique_magie_id) attente.push({ nature: 'carac_magie', cle: 'carac_magie', libelle: `+1 de la magie innée (${innee.nom})` });
@@ -965,9 +1056,18 @@ export function degatsDArme(regles, fiche, rang) {
       else if ((p.familles ?? []).includes(arme.famille_id) && p.mains && !arme.mains) nonComptes.push({ nom, valeur, raison: 'mains' });
     }
   }
+  // accessoires (décision R54) : « Dégâts physiques +N » sur toutes les armes, « +5 dégâts avec une catégorie d'arme » sur la famille choisie ; « Augmente
+  // la portée des armes à distance » : `porteeEnPlus`
+  let porteeEnPlus = 0;
+  for (const e of effetsDesAccessoires(regles, fiche)) {
+    if (e.aChoisir || !e.valeur) continue;
+    if (e.cible === 'degats_physiques' || (e.cible === 'degats_famille' && e.cible_id === arme.famille_id)) ajouter(`${e.nom} (accessoire)`, e.valeur);
+    if (e.cible === 'portee_distance' && estADistance(regles, arme)) porteeEnPlus += e.valeur;
+  }
   const notation = notationDesDes(de, nombre);
   const total = bonus.reduce((s, b) => s + b.valeur, 0);
-  return { notation, nombre, de, total, texte: total ? `${notation}+${total}` : notation, bonus, nonComptes };
+  const texte = total > 0 ? `${notation}+${total}` : total < 0 ? `${notation}${total}` : notation;
+  return { notation, nombre, de, total, texte, bonus, nonComptes, porteeEnPlus };
 }
 
 /**
@@ -985,6 +1085,8 @@ export function modeHyperDe(regles, fiche) {
     .filter((x) => x.magie && x.effet);
   return {
     debloque: niveau >= h.niveau, niveau: h.niveau, effets: h.effets, magies, race: (fiche.race_id && h.races[fiche.race_id]) || null,
+    // accessoire « +1 tour de Mode Hyper (100% exclu) » (décision R54)
+    toursAccessoires: sommeDesAccessoires(regles, fiche, 'mode_hyper_tours'),
     cent: { debloque: niveau >= h.cent.niveau, niveau: h.cent.niveau, effets: h.cent.effets, suite: h.cent.suite },
   };
 }

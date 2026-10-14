@@ -104,7 +104,7 @@ test('caractéristiques complètes : les six, au minimum de la race (1) quand el
 
 test('caractéristiques : +1 de la magie innée sur sa caractéristique (ou celle choisie pour le Potentiel Illimité), bornes de la race', () => {
   const feu = caracteristiquesDe(regles, ficheConforme());
-  assert.deepEqual(feu.find((c) => c.id === 'social'), { id: 'social', nom: 'Social', lettre: feu.find((c) => c.id === 'social').lettre, base: 2, croix: 0, bonus: 1, valeur: 3, min: 1, max: 4 });
+  assert.deepEqual(feu.find((c) => c.id === 'social'), { id: 'social', nom: 'Social', lettre: feu.find((c) => c.id === 'social').lettre, base: 2, croix: 0, bonus: 1, accessoire: 0, accessoireBrut: 0, valeur: 3, min: 1, max: 4 });
   assert.equal(feu.filter((c) => c.bonus).length, 1);
   const pi = caracteristiquesDe(regles, ficheConforme({ magie_innee_id: 'magies/potentiel-illimite', caracteristique_magie_id: 'agilite' }));
   assert.equal(pi.find((c) => c.id === 'agilite').valeur, 3);

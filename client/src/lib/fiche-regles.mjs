@@ -44,6 +44,10 @@ export function chargerReglesDeFiche(db) {
     if (!r) throw new Error(`regle_constante « ${id} » absente de la base`);
     return [id, r.valeur];
   }));
+  // « Ne peut dépasser 4 » (onglet Accessoires, « SI CARACTÉRISTIQUE ») : la caractéristique avec l'accessoire (décision R54)
+  const accessoireMax = db.prepare("SELECT valeur FROM constante_equipement WHERE id = 'accessoire.caracteristique_max'").get();
+  if (!accessoireMax) throw new Error('constante_equipement « accessoire.caracteristique_max » absente de la base');
+  constantes['accessoire.caracteristique_max'] = accessoireMax.valeur;
 
   const niveaux = lignes(db, `
     SELECT g.niveau, g.xp_min, g.points_competences, g.points_attributs, g.de_attributs_bonus, g.puissance_magique, g.puissance_magique_note,
@@ -224,11 +228,16 @@ export function chargerReglesDeFiche(db) {
   const modesDesSorts = parCle(lignes(db, 'SELECT sort_id, mode, libelle, fois FROM sort_mode ORDER BY sort_id, rang'), 'sort_id', (m) => ({ mode: m.mode, libelle: m.libelle, fois: m.fois }));
   const bonusDesSorts = parCle(lignes(db, 'SELECT sort_id, champ, nature, texte_brut, increment_brut, pas_nm, seuil_nm FROM sort_bonus_maitrise ORDER BY sort_id, champ, rang'),
     'sort_id', (b) => ({ champ: b.champ, nature: b.nature, texteBrut: b.texte_brut, incrementBrut: b.increment_brut, pasNm: b.pas_nm, seuilNm: b.seuil_nm }));
+  const ciblesDesAccessoires = parCle(lignes(db, 'SELECT effet_id, cible, cible_id, valeur, choix FROM accessoire_effet_cible ORDER BY effet_id, rang'), 'effet_id',
+    (c) => ({ cible: c.cible, cible_id: c.cible_id, valeur: c.valeur, choix: c.choix === 1 }));
+  const attaques = new Set(lignes(db, "SELECT DISTINCT sort_id FROM sort_type WHERE type = 'attaque'").map((t) => t.sort_id));
   const sorts = lignes(db, 'SELECT id, magie_id, nom, niveau, cout_brut, portee_brut, zone_brut, dsb_brut, effets, remarque FROM sort ORDER BY magie_id, niveau, ordre')
     .map((s) => ({
       id: s.id, magie_id: s.magie_id, nom: s.nom, niveau: s.niveau, cout: s.cout_brut, portee: s.portee_brut, zone: s.zone_brut, dsb: s.dsb_brut, effets: s.effets, remarque: s.remarque,
       modes: modesDesSorts.get(s.id) ?? [],
       bonus: (bonusDesSorts.get(s.id) ?? []).filter((b) => champsAuNm.has(b.champ)),
+      // un sort d'attaque (sort_type) reçoit les « Dégâts magie +N » d'un accessoire (décision R54)
+      ...(attaques.has(s.id) ? { attaque: true } : {}),
     }));
 
   // Postures (sélecteur de la page, demande du propriétaire) : les six, dans l'ordre de la page « Postures », leur couleur et leurs effets du tableau de la fiche.
@@ -299,8 +308,14 @@ export function chargerReglesDeFiche(db) {
     armures_elementaires: lignes(db, 'SELECT id, nom, categorie, ap, am FROM armure_elementaire ORDER BY ordre'),
     boucliers: lignes(db, 'SELECT id, nom, classe FROM bouclier_classe ORDER BY classe'),
     materiaux_bouclier: lignes(db, 'SELECT ressource_id, ap, am FROM materiau_bouclier ORDER BY ordre').map((m) => ({ id: m.ressource_id, nom: nomDeRessource(m.ressource_id), ap: m.ap, am: m.am })),
-    accessoires: lignes(db, 'SELECT id, propriete_id, libelle, bonus_min, bonus_max, bonus_valeur, bonus_cible, malediction FROM accessoire_effet ORDER BY propriete_id, ordre')
-      .map((a) => ({ id: a.id, propriete: a.propriete_id, libelle: a.libelle, min: a.bonus_min, max: a.bonus_max, valeur: a.bonus_valeur, cible: a.bonus_cible, malediction: a.malediction === 1 })),
+    // accessoires : l'effet, et ce qu'il change sur la fiche (accessoire_effet_cible, décision R54 : lib/fiche-moteur.mjs#effetsDesAccessoires) ; `usage` : rappelé
+    // sous les dons de race (« (Action) » ou usage compté)
+    accessoires: lignes(db, 'SELECT id, propriete_id, libelle, caracteristique_id, niveau, bonus_min, bonus_max, bonus_valeur, bonus_cible, malediction, usage FROM accessoire_effet ORDER BY propriete_id, ordre')
+      .map((a) => ({
+        id: a.id, propriete: a.propriete_id, libelle: a.libelle, caracteristique_id: a.caracteristique_id, niveau: a.niveau, min: a.bonus_min, max: a.bonus_max,
+        valeur: a.bonus_valeur, cible: a.bonus_cible, malediction: a.malediction === 1, usage: a.usage,
+        effets: (ciblesDesAccessoires.get(a.id) ?? []),
+      })),
     ressources: lignes(db, 'SELECT id, nom, genre FROM ressource ORDER BY nom COLLATE NOCASE'),
   };
 
