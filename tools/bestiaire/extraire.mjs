@@ -433,7 +433,8 @@ function groupe(L, i, titres) {
 
 /**
  * Le doc entier -> { regles, echelles, groupes, especes, glossaire, capacites } ; les brouillons (« (a refaire) », « (a continuer) ») ne sont pas repris.
- * `capacites` : les capacités communes du registre (par identifiant), chacune avec la ligne de la première carte du doc qui la place.
+ * `capacites` : les capacités communes du registre (par identifiant), chacune avec sa provenance : la première carte du doc qui écrit son texte, sinon la
+ * source que lui donne le registre, sinon la première carte qui la place.
  */
 export function extraireBestiaire(texte, registre = lireRegistre()) {
   const ecarts = ecartsDuRegistre(registre);
@@ -474,14 +475,23 @@ export function extraireBestiaire(texte, registre = lireRegistre()) {
   }
   const inemployees = [...reg.parEcriture.values()].filter((e) => !e.employee);
   if (inemployees.length) throw new Error(`registre des capacités : écritures absentes du doc : ${inemployees.map((e) => `« ${e.nom} »`).join(', ')}`);
-  // les capacités communes, chacune avec la ligne de la première carte qui la place (ou la décision qui en a écrit le texte)
+  // les capacités communes, chacune avec la ligne de la première carte du doc qui écrit son texte (au plus avec une faute, ou découpé autrement) ; sinon
+  // la source que lui donne le registre (texte du propriétaire, texte d'une créature invoquée retenu par le chef), sinon la première carte qui la place
   const premiere = new Map();
+  const ecrite = new Map();
+  const PROCHE = /^(R66 : fautes corrigées|R66 : description commune|découpage)/;
   for (const c of especes.flatMap((e) => e.cartes)) {
     const ligne = c.rubriques.find((r) => r.rubrique === 'capacites')?.source_ref ?? c.source_ref;
-    for (const p of c.capacites) if (!premiere.has(p.capacite_commune_id)) premiere.set(p.capacite_commune_id, ligne);
+    for (const x of c.capacitesEcrites) {
+      const e = reg.parEcriture.get(`${x.nom}\u0000${x.texte}`);
+      for (const p of e.placements) {
+        if (!premiere.has(p.capacite)) premiere.set(p.capacite, ligne);
+        if (!ecrite.has(p.capacite) && (!e.decision || PROCHE.test(e.decision))) ecrite.set(p.capacite, ligne);
+      }
+    }
   }
   const capacites = registre.capacites
-    .map((x) => ({ id: x.id, nom: x.nom, nom_cle: normalize(x.nom), description: x.description, liste_de_sorts: x.liste_de_sorts ? 1 : 0, source_ref: x.source ?? premiere.get(x.id) }))
+    .map((x) => ({ id: x.id, nom: x.nom, nom_cle: normalize(x.nom), description: x.description, liste_de_sorts: x.liste_de_sorts ? 1 : 0, source_ref: x.source ?? ecrite.get(x.id) ?? premiere.get(x.id) }))
     .sort((a, b) => a.id.localeCompare(b.id));
   return { ...intro, groupes, especes, glossaire: glossaire(L, iGlossaire), capacites };
 }

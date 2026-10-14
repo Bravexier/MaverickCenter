@@ -744,7 +744,8 @@ export function valeurDuChamp(champ, brute, nom = champ.libelle) {
       return champ.vide ?? null;
     }
     const n = typeof brute === 'number' ? brute : Number(String(brute).trim().replace(/^\+/, ''));
-    if (!Number.isInteger(n)) throw new ErreurValeur(`« ${nom} » : nombre entier attendu`);
+    // au-delà de 2^53 un nombre n'est plus un entier exact : SQLite le refuserait dans une colonne INTEGER (erreur 500 au lieu d'un refus)
+    if (!Number.isSafeInteger(n)) throw new ErreurValeur(`« ${nom} » : nombre entier attendu`);
     if (champ.min !== undefined && n < champ.min) throw new ErreurValeur(`« ${nom} » : au moins ${champ.min}`);
     if (champ.max !== undefined && n > champ.max) throw new ErreurValeur(`« ${nom} » : au plus ${champ.max}`);
     return n;

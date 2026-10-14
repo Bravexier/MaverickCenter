@@ -20,6 +20,7 @@ import {
   echelleDuPrefixe,
   emplacements,
   emplacementsDetailles,
+  suiteDesEmplacements,
   valeursAEnvoyer,
   echellesEcrites,
   objetDuButin,
@@ -404,7 +405,8 @@ test('décision R56 : une capacité « [EPN] » est gagnée à partir de l’EP 
   for (const p of placements) assert.equal(p.ep_min, echelleDuPrefixe(p.prefixe), `${p.monstre_id} ${p.rang}`);
   const { lignes } = chargerMonstres(db);
   const typees = db.prepare('SELECT monstre_id, count(*) AS n FROM monstre_capacite WHERE ep_min IS NOT NULL GROUP BY monstre_id').all();
-  assert.ok(typees.length > 30);
+  // à l'import du doc, 35 cartes ont une capacité « à partir de l'EP N » (lu dans l'état d'import : le site de dev peut en ajouter ou en retirer)
+  assert.equal(new Set(historique.lignesDImport('monstre_capacite').filter((p) => p.ep_min !== null).map((p) => p.monstre_id)).size, 35);
   for (const { monstre_id: id, n } of typees) {
     const l = lignes.find((x) => x.id === id);
     assert.equal((htmlDesCapacitesDeLaCarte(l).match(/<li class="bcapacite" data-eps=/g) ?? []).length, n, id);
@@ -442,6 +444,13 @@ test('capacités en tuiles (demande du propriétaire : « de la même manière q
   // ce qui part : la valeur commune revient à null, une valeur inchangée ne part pas, un emplacement disparu non plus
   assert.deepEqual(valeursAEnvoyer('Malus de {10}% et {3}.', new Map([[1, 15], [2, 3], [5, 9]]), new Map()), { 1: 15 });
   assert.deepEqual(valeursAEnvoyer('Malus de {10}% et {3}.', new Map([[1, 10], [2, 7]]), new Map([[1, 15], [2, 7]])), { 1: null });
+  // une description qui change son nombre d'emplacements : chacun se reconnaît au texte qui l'entoure (et à sa valeur commune), jamais deviné
+  const suite = (a, b) => Object.fromEntries(suiteDesEmplacements(a, b));
+  assert.deepEqual(suite('A {10} B {3} C', 'A {12} B {4} C'), { 1: 1, 2: 2 }, 'même nombre : chacun garde son numéro');
+  assert.deepEqual(suite('A {10} B {3} C {5} D', 'A {10} B C {5} D'), { 1: 1, 3: 2 }, 'celui du milieu retiré : le dernier devient le 2e');
+  assert.deepEqual(suite('A {10} B {5} D', 'A {10} B {3} C {5} D'), { 1: 1, 2: 3 }, 'un emplacement ajouté au milieu');
+  assert.deepEqual(suite('{2} puis {3}', '{3}'), { 2: 1 }, 'le premier retiré');
+  assert.deepEqual(suite('A {10} B {5} D', 'A {10} B {5} C {5} D'), { 1: 1 }, 'ambigu : aucune suite (ses valeurs propres partent)');
   assert.equal(texteDeCapacite({ description: 'Cette créature peut lancer les sorts, avec les niveaux de maîtrise maximum :', valeurs: {}, sorts: 'Éclair, Bulle d’eau.' }),
     'Cette créature peut lancer les sorts, avec les niveaux de maîtrise maximum : Éclair, Bulle d’eau.');
   // une carte sans capacité (créée sur le site de dev) : « — »

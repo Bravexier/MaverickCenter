@@ -420,6 +420,27 @@ test('capacités communes (décisions R66, R69) : modifiées pour toutes leurs c
   assert.equal(enregistrer({ op: 'valeurs_de_capacite', monstre_id: p.monstre_id, rang: p.rang, valeurs: { 2: 41 } }).statut, 200);
   assert.equal(enregistrer({ op: 'modifier', table: 'monstre_capacite_commune', cle: { id: gabarit.id }, valeurs: { description: gabarit.description } }).statut, 200);
   assert.equal(un('SELECT count(*) AS n FROM monstre_capacite_valeur WHERE monstre_id = ? AND rang = ? AND numero = 2', p.monstre_id, p.rang).n, 0);
+  // un emplacement retiré au milieu : les valeurs propres des emplacements suivants les suivent (pas de glissement d'un emplacement à l'autre)
+  const trois = nomLibre('Triple essai');
+  r = enregistrer(
+    { op: 'creer', entite: 'monstre_capacite_commune', valeurs: { nom: trois, description: 'Vise {10} cases, frappe {3} fois, dure {5} tours.' } },
+    { op: 'creer', entite: 'monstre_capacite', valeurs: { monstre_id: p.monstre_id, capacite_commune_id: '@0' } },
+  );
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  const [tId, tPlace] = [r.corps.crees[0].id, JSON.parse(r.corps.crees[1].id)];
+  assert.equal(enregistrer({ op: 'valeurs_de_capacite', ...tPlace, valeurs: { 2: 4, 3: 9 } }).statut, 200);
+  assert.equal(enregistrer({ op: 'modifier', table: 'monstre_capacite_commune', cle: { id: tId }, valeurs: { description: 'Vise {10} cases, dure {5} tours.' } }).statut, 200);
+  assert.deepEqual(tous('SELECT numero, valeur FROM monstre_capacite_valeur WHERE monstre_id = ? AND rang = ?', tPlace.monstre_id, tPlace.rang), [{ numero: 2, valeur: 9 }]);
+  assert.match(html(p.monstre_id), /Vise 10 cases, dure 9 tours\./);
+  // la modification générique d'une valeur propre : jamais la valeur commune (la carte la suit sans ligne)
+  r = enregistrer({ op: 'modifier', table: 'monstre_capacite_valeur', cle: { ...tPlace, numero: 2 }, valeurs: { valeur: 5 } });
+  assert.equal(r.statut, 400);
+  assert.match(r.corps.erreur, /valeur commune/);
+  assert.equal(enregistrer({ op: 'supprimer', entite: 'monstre_capacite', cle: tPlace }).statut, 200);
+  assert.equal(enregistrer({ op: 'supprimer', entite: 'monstre_capacite_commune', cle: { id: tId } }).statut, 200);
+  // « Lanceur de sorts », seule capacité à liste de sorts (R66), ne se supprime pas
+  const aListe = un('SELECT id FROM monstre_capacite_commune WHERE liste_de_sorts = 1 ORDER BY id LIMIT 1');
+  assert.equal(enregistrer({ op: 'supprimer', entite: 'monstre_capacite_commune', cle: { id: aListe.id } }).statut, 409);
   for (const description of ['Accolade { seule.', 'Pas {x}.', '']) {
     assert.equal(enregistrer({ op: 'modifier', table: 'monstre_capacite_commune', cle: { id: gabarit.id }, valeurs: { description } }).statut, 400, description);
   }
@@ -445,9 +466,9 @@ test('capacités communes (décisions R66, R69) : modifiées pour toutes leurs c
   assert.equal(un('SELECT ep_min FROM monstre_capacite WHERE monstre_id = ? AND rang = ?', carte.id, place.rang).ep_min, 7);
   assert.equal(enregistrer({ op: 'modifier', table: 'monstre_capacite', cle, valeurs: { prefixe: '[EP12]' } }).statut, 400);
   assert.equal(enregistrer({ op: 'modifier', table: 'monstre_capacite', cle, valeurs: { sorts: 'Boule de feu.' } }).statut, 400);
-  const lanceur = un("SELECT * FROM monstre_capacite WHERE capacite_commune_id = 'lanceur-de-sorts' ORDER BY monstre_id LIMIT 1");
+  const lanceur = un('SELECT * FROM monstre_capacite WHERE capacite_commune_id = ? ORDER BY monstre_id LIMIT 1', aListe.id);
   assert.equal(enregistrer({ op: 'modifier', table: 'monstre_capacite', cle: { monstre_id: lanceur.monstre_id, rang: lanceur.rang }, valeurs: { sorts: 'Éclair, Soin.' } }).statut, 200);
-  assert.match(html(lanceur.monstre_id), /niveaux de maîtrise maximum : Éclair, Soin\./);
+  assert.ok(html(lanceur.monstre_id).includes(' Éclair, Soin.</'), 'la liste de sorts suit la description');
   // une capacité commune encore portée ne se supprime pas (le refus nomme la carte) ; retirée de sa carte, si
   r = enregistrer({ op: 'supprimer', entite: 'monstre_capacite_commune', cle: { id } });
   assert.equal(r.statut, 409);
@@ -468,7 +489,8 @@ test('capacités communes (décisions R66, R69) : modifiées pour toutes leurs c
   // la liste du choix « Capacité » : deux capacités du même nom se distinguent par leur description
   const liste = appel('GET', '/api/edition/listes/').corps.capacitesDeMonstre;
   assert.equal(liste.length, un('SELECT count(*) AS n FROM monstre_capacite_commune').n);
-  const homonymes = liste.filter((c) => c.libelle.startsWith('Élément Feu'));
+  const memeNom = un('SELECT nom_cle FROM monstre_capacite_commune GROUP BY nom_cle HAVING count(*) > 1 ORDER BY nom_cle LIMIT 1').nom_cle;
+  const homonymes = tous('SELECT id FROM monstre_capacite_commune WHERE nom_cle = ?', memeNom).map((c) => liste.find((x) => x.valeur === c.id));
   assert.ok(homonymes.length >= 2 && homonymes.every((c) => c.libelle.includes(' — ')), JSON.stringify(homonymes));
   // le bloc rendu par le service est celui de la page construite
   const l = chargerMonstres(db).lignes.find((x) => x.id === carte.id);

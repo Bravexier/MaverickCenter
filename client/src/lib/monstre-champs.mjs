@@ -235,6 +235,41 @@ export function valeursAEnvoyer(description, choisies, propres) {
 }
 
 /**
+ * Quand une description change son nombre d'emplacements (décision R69), quel emplacement d'avant devient quel emplacement d'après : Map(numéro avant ->
+ * numéro après). Même nombre : chacun garde son numéro (le texte ou une valeur commune a changé). Sinon un emplacement se reconnaît au texte qui le
+ * précède, ou à celui qui le suit, s'il est le seul à l'avoir ; un emplacement retiré, ou qui ne se reconnaît pas, n'a pas de suite (ses valeurs propres
+ * partent plutôt que de passer à un autre emplacement).
+ */
+export function suiteDesEmplacements(avant, apres) {
+  const decoupe = (d) => {
+    const morceaux = String(d ?? '').split(/\{\d+\}/);
+    const communes = emplacements(d);
+    return communes.map((commune, i) => ({ numero: i + 1, commune, avant: morceaux.slice(0, i + 1).join('\u0000'), apres: morceaux.slice(i + 1).join('\u0000') }));
+  };
+  const a = decoupe(avant);
+  const b = decoupe(apres);
+  if (a.length === b.length) return new Map(a.map((x) => [x.numero, x.numero]));
+  // chaque couple (avant, après) qui partage le texte qui précède ou celui qui suit (chacun propre à un seul emplacement de la nouvelle description),
+  // noté : un point par texte partagé, un de plus pour la même valeur commune ; les mieux notés d'abord ; deux suites aussi bien notées : aucune
+  const seul = (cle, valeur) => b.filter((y) => y[cle] === valeur).length === 1;
+  const couples = a.flatMap((x) => b.map((y) => {
+    const textes = (x.avant === y.avant && seul('avant', y.avant) ? 1 : 0) + (x.apres === y.apres && seul('apres', y.apres) ? 1 : 0);
+    return { x: x.numero, y: y.numero, note: textes ? textes + (x.commune === y.commune ? 1 : 0) : 0 };
+  })).filter((c) => c.note > 0);
+  const suite = new Map();
+  const prises = new Set();
+  for (const note of [...new Set(couples.map((c) => c.note))].sort((p, q) => q - p)) {
+    const libres = couples.filter((c) => c.note === note && !suite.has(c.x) && !prises.has(c.y));
+    for (const c of libres) {
+      if (libres.filter((d) => d.x === c.x || d.y === c.y).length > 1) continue; // ambigu
+      suite.set(c.x, c.y);
+      prises.add(c.y);
+    }
+  }
+  return suite;
+}
+
+/**
  * La description d'une capacité commune telle qu'une carte l'affiche : chaque « {N} » remplacé par la valeur de la carte pour cet emplacement
  * (`valeurs` : numéro de l'emplacement -> valeur, monstre_capacite_valeur), sinon par sa valeur commune N.
  */

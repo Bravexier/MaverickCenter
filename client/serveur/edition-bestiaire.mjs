@@ -17,7 +17,7 @@
 // Les outils communs du service (refus, synchroniser, provenance…) sont donnés par serveur/edition.mjs (domainesDuBestiaire), sans import en retour.
 import { chargerMonstres } from '../src/lib/bestiaire-db.mjs';
 import { htmlDeCarteMonstre, htmlDeLigneMonstre, htmlDesCapacitesDeLaCarte } from '../src/lib/bestiaire-rendu.mjs';
-import { bornes, CATEGORIES, echelleDuPrefixe, emplacements, GABARIT_DE_CARTE, lieux, RUBRIQUES, valeursDeLaCarte } from '../src/lib/monstre-champs.mjs';
+import { bornes, CATEGORIES, echelleDuPrefixe, emplacements, GABARIT_DE_CARTE, lieux, RUBRIQUES, suiteDesEmplacements, valeursDeLaCarte } from '../src/lib/monstre-champs.mjs';
 import { bornerCadrage, CADRAGE_PAR_DEFAUT, cadrageDe, dimensionsDuPortrait, empreinte, ZOOM_MAX, ZOOM_MIN } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
@@ -222,7 +222,7 @@ export function domainesDuBestiaire({ refus, ErreurEdition, synchroniser, proven
     return p;
   };
   /** Les cartes qui ont une capacité commune (leurs noms), pour un refus. */
-  const cartesDe = (db, id) => db.prepare('SELECT DISTINCT m.nom FROM monstre_capacite c JOIN monstre m ON m.id = c.monstre_id WHERE c.capacite_commune_id = ? ORDER BY m.nom').all(id).map((r) => r.nom);
+  const cartesDe = (db, id) => db.prepare('SELECT m.nom FROM monstre m WHERE m.id IN (SELECT monstre_id FROM monstre_capacite WHERE capacite_commune_id = ?) ORDER BY m.nom, m.id').all(id).map((r) => r.nom);
   /** Le préfixe d'une capacité -> son échelle (décision R56) ; « [EP12] » : refus. */
   const echelleDe = (prefixe) => {
     const n = echelleDuPrefixe(prefixe);
@@ -247,15 +247,26 @@ export function domainesDuBestiaire({ refus, ErreurEdition, synchroniser, proven
       }
       return {};
     },
-    /** Une description changée : les valeurs propres des cartes suivent ses emplacements (un emplacement retiré emporte les siennes ; une valeur devenue la valeur commune ne s'écrit plus). */
+    /**
+     * Une description changée : les valeurs propres des cartes suivent leurs emplacements (lib/monstre-champs.mjs#suiteDesEmplacements : un emplacement
+     * retiré, ou qu'on ne reconnaît plus, emporte les siennes ; un emplacement qui change de numéro les garde) ; une valeur devenue la valeur commune ne
+     * s'écrit plus.
+     */
     deriver(ctx, avant, apres) {
       if (avant.description === apres.description) return;
       const communes = emplacements(apres.description);
-      const propres = ctx.db.prepare(`SELECT v.monstre_id, v.rang, v.numero, v.valeur FROM monstre_capacite_valeur v
-        JOIN monstre_capacite c ON c.monstre_id = v.monstre_id AND c.rang = v.rang WHERE c.capacite_commune_id = ?`).all(apres.id);
+      const suite = suiteDesEmplacements(avant.description, apres.description);
+      const propres = ctx.db.prepare(`SELECT v.* FROM monstre_capacite_valeur v
+        JOIN monstre_capacite c ON c.monstre_id = v.monstre_id AND c.rang = v.rang WHERE c.capacite_commune_id = ? ORDER BY v.monstre_id, v.rang, v.numero`).all(apres.id);
+      const reecrire = [];
       for (const v of propres) {
-        if (v.numero > communes.length || v.valeur === communes[v.numero - 1]) ctx.w.supprimer('monstre_capacite_valeur', { monstre_id: v.monstre_id, rang: v.rang, numero: v.numero });
+        const numero = suite.get(v.numero);
+        if (numero === v.numero && v.valeur !== communes[numero - 1]) continue;
+        ctx.w.supprimer('monstre_capacite_valeur', { monstre_id: v.monstre_id, rang: v.rang, numero: v.numero });
+        if (numero !== undefined && v.valeur !== communes[numero - 1]) reecrire.push({ ...v, numero });
       }
+      // après les retraits : un emplacement qui change de numéro peut prendre celui d'un autre
+      for (const v of reecrire) ctx.w.inserer('monstre_capacite_valeur', { ...v });
     },
     /** Une capacité commune : id tiré du nom une fois (suffixe -2… si l'id est pris ou a déjà servi), puis figé ; même nom et même description : refus. */
     creer(ctx, valeurs) {
@@ -273,10 +284,11 @@ export function domainesDuBestiaire({ refus, ErreurEdition, synchroniser, proven
       });
       return { id, resume: `Capacité de monstre créée : ${valeurs.nom}` };
     },
-    /** Seulement quand plus aucune carte ne l'a (le refus nomme les cartes). */
+    /** Seulement quand plus aucune carte ne l'a (le refus nomme les cartes) ; jamais « Lanceur de sorts », la seule à liste de sorts (R66). */
     supprimer(ctx, cle) {
       const { db, w } = ctx;
       const c = communeDe(db, cle?.id);
+      if (c.liste_de_sorts) throw new ErreurEdition(409, `« ${c.nom} » est la capacité à liste de sorts (décision R66) : elle ne se supprime pas.`);
       const cartes = cartesDe(db, c.id);
       if (cartes.length) {
         const liste = `${cartes.slice(0, 5).join(', ')}${cartes.length > 5 ? ` et ${cartes.length - 5} autre${cartes.length > 6 ? 's' : ''}` : ''}`;
@@ -333,7 +345,10 @@ export function domainesDuBestiaire({ refus, ErreurEdition, synchroniser, proven
   const MONSTRE_CAPACITE_VALEUR = {
     colonnes(ctx, ligne) {
       const p = placementDe(ctx.db, ligne);
-      if (ligne.numero > emplacements(communeDe(ctx.db, p.capacite_commune_id).description).length) throw refus(`Emplacement ${ligne.numero} : absent de la description.`);
+      const communes = emplacements(communeDe(ctx.db, p.capacite_commune_id).description);
+      if (ligne.numero > communes.length) throw refus(`Emplacement ${ligne.numero} : absent de la description.`);
+      // la valeur commune ne s'écrit pas pour une carte : sans ligne, la carte la suit (et suit ses changements) — opération valeurs_de_capacite
+      if (ligne.valeur === communes[ligne.numero - 1]) throw refus(`Emplacement ${ligne.numero} : ${ligne.valeur} est la valeur commune ; la carte la suit sans valeur propre (revenez à la valeur commune).`);
       return {};
     },
   };
@@ -363,7 +378,7 @@ export function operationsDuBestiaire({ refus, ErreurEdition, provenance }) {
       const numero = Number(cle);
       if (!Number.isInteger(numero) || numero < 1 || numero > communes.length) throw refus(`« ${commune.nom} » : pas d’emplacement ${cle} (la description en a ${communes.length}).`);
       const valeur = brute === null || brute === '' ? null : Number(brute);
-      if (valeur !== null && (!Number.isInteger(valeur) || valeur < 0)) throw refus(`« ${commune.nom} » : la valeur ${cle} doit être un entier positif ou nul.`);
+      if (valeur !== null && (!Number.isSafeInteger(valeur) || valeur < 0)) throw refus(`« ${commune.nom} » : la valeur ${cle} doit être un entier positif ou nul.`);
       const k = { monstre_id: p.monstre_id, rang: p.rang, numero };
       const enPlace = lireLigne(db, 'monstre_capacite_valeur', k);
       const propre = valeur !== null && valeur !== communes[numero - 1];
@@ -384,7 +399,7 @@ export function operationsDuBestiaire({ refus, ErreurEdition, provenance }) {
  * ce que le mode modification montre de chacune.
  */
 export function capacitesDeMonstre(db) {
-  const lignes = db.prepare(`SELECT c.id, c.nom, c.nom_cle, c.description, c.liste_de_sorts, (SELECT count(*) FROM monstre_capacite p WHERE p.capacite_commune_id = c.id) AS cartes
+  const lignes = db.prepare(`SELECT c.id, c.nom, c.nom_cle, c.description, c.liste_de_sorts, (SELECT count(DISTINCT p.monstre_id) FROM monstre_capacite p WHERE p.capacite_commune_id = c.id) AS cartes
     FROM monstre_capacite_commune c ORDER BY c.nom_cle, c.id`).all();
   const homonymes = new Map();
   for (const l of lignes) homonymes.set(l.nom_cle, (homonymes.get(l.nom_cle) ?? 0) + 1);

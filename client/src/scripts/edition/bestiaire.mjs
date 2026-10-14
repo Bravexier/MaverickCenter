@@ -293,7 +293,8 @@ function outilsDuPortrait(ed, carte) {
 // Une tuile `li.bcapacite[data-capacite][data-rang]` (lib/monstre-rendu.mjs#htmlDesCapacitesDuMonstre) = une capacité commune placée sur une carte
 // (monstre_capacite { monstre_id, rang }) ; son panneau `div.ed-capacite[data-placement]` n'existe qu'en mode modification.
 const retirees = new Map(); // placement -> { monstre_id, rang } : capacités à retirer de leur carte à l'enregistrement
-// placement -> { monstre_id, rang, commune (id), propres: Map(numéro -> valeur propre lue au service) ou null avant lecture, valeurs: Map(numéro -> valeur
+// placement -> { monstre_id, rang, commune (id), propres: Map(numéro -> valeur propre lue au service) ou null avant lecture, emplacements: leur nombre
+// dans la description lue, valeurs: Map(numéro -> valeur
 // choisie au curseur), invalides: Set(numéro : saisie qui n'est pas un entier positif ou nul) }
 const reglages = new Map();
 const cleDePlacement = (monstreId, rang) => `${monstreId}\u0000${Number(rang)}`;
@@ -313,6 +314,9 @@ function descriptionDe(ed, id) {
   if (saisie) return saisie.controle.value;
   return ed.lignes?.get(cleDeLigne('monstre_capacite_commune', { id }))?.description ?? capaciteListee(ed, id)?.description ?? '';
 }
+
+/** La description d'une capacité commune telle qu'elle est dans la base (sa ligne lue, sinon la liste du service) : les valeurs propres se lisent d'après elle. */
+const descriptionDeLaBase = (ed, id) => ed.lignes?.get(cleDeLigne('monstre_capacite_commune', { id }))?.description ?? capaciteListee(ed, id)?.description ?? '';
 
 /** La valeur d'un emplacement pour la carte : celle choisie au curseur, sinon sa valeur propre, sinon la valeur commune. */
 const valeurDe = (r, p) => r.valeurs.get(p.numero) ?? r.propres?.get(p.numero) ?? p.commune;
@@ -375,7 +379,7 @@ function saisieDEmplacement(ed, r, p, apres) {
   curseur.addEventListener('input', () => poser(Number(curseur.value), curseur));
   nombre.addEventListener('input', () => {
     const v = nombre.value.trim() === '' ? Number.NaN : Number(nombre.value);
-    if (Number.isInteger(v) && v >= 0) return poser(v, nombre);
+    if (Number.isSafeInteger(v) && v >= 0) return poser(v, nombre);
     r.invalides.add(p.numero);
     nombre.classList.add('ed-invalide');
     ed.marquerModifie();
@@ -395,6 +399,19 @@ function dessinerLesValeurs(ed, panneau) {
   const zone = panneau.querySelector('.ed-capacite__valeurs');
   if (!r?.propres || !zone) return;
   const places = placesDe(descriptionDe(ed, r.commune));
+  // une description qui change son nombre d'emplacements dans ce lot : les valeurs de la carte se règlent après l'avoir enregistrée (le service décide
+  // alors quel emplacement garde quelle valeur : lib/monstre-champs.mjs#suiteDesEmplacements)
+  if (places.length !== r.emplacements) {
+    if (zone.dataset.signature !== 'attente') {
+      zone.dataset.signature = 'attente';
+      const note = document.createElement('p');
+      note.className = 'ed-capacite__portee';
+      note.textContent = 'Le nombre de valeurs « {N} » de la description change : enregistrez-la d’abord, puis réglez les valeurs de cette carte.';
+      zone.replaceChildren(note);
+    }
+    zone.hidden = false;
+    return;
+  }
   const apercu = () => {
     const sortie = zone.querySelector('.ed-capacite__apercu');
     const valeurs = Object.fromEntries(places.map((p) => [p.numero, valeurDe(r, p)]));
@@ -446,11 +463,13 @@ function panneauDeCapacite(ed, tuile, monstreId) {
   if (!id || !Number.isInteger(rang)) return;
   const cle = { monstre_id: monstreId, rang };
   const k = cleDePlacement(monstreId, rang);
-  if (!reglages.has(k)) reglages.set(k, { monstre_id: monstreId, rang, commune: id, propres: null, valeurs: new Map(), invalides: new Set() });
+  if (!reglages.has(k)) reglages.set(k, { monstre_id: monstreId, rang, commune: id, propres: null, emplacements: 0, valeurs: new Map(), invalides: new Set() });
   const listee = capaciteListee(ed, id);
   const panneau = document.createElement('div');
   panneau.className = 'ed-capacite';
   panneau.dataset.placement = k;
+  // ses libellés ne sont pas le texte de la carte (la recherche du bestiaire les saute : src/scripts/bestiaire.mjs#texteDeCarte)
+  panneau.dataset.horsRecherche = '';
   const portee = document.createElement('p');
   portee.className = 'ed-capacite__portee';
   portee.dataset.capacite = id;
@@ -519,12 +538,16 @@ function alignerLesCommunes(ed) {
 async function chargerLesValeurs(ed, carte) {
   const panneaux = [...carte.querySelectorAll('.ed-capacite[data-placement]')];
   const attente = [...new Set(panneaux.map((p) => reglages.get(p.dataset.placement)).filter((r) => r && !r.propres))];
-  const demandes = attente.flatMap((r) => placesDe(descriptionDe(ed, r.commune)).map((p) => ({
+  const demandes = attente.flatMap((r) => placesDe(descriptionDeLaBase(ed, r.commune)).map((p) => ({
     table: 'monstre_capacite_valeur', cle: { monstre_id: r.monstre_id, rang: r.rang, numero: p.numero },
   })));
   const lues = demandes.length ? (await ed.appel('POST', 'edition/lignes/', { lignes: demandes })).lignes : [];
   if (!ed.enEdition) return;
-  for (const r of attente) r.propres = new Map();
+  for (const r of attente) {
+    r.propres = new Map();
+    // le nombre d'emplacements de la description de la base : les curseurs valent pour lui (une description en cours de saisie qui en a un autre les bloque)
+    r.emplacements = placesDe(descriptionDeLaBase(ed, r.commune)).length;
+  }
   for (const l of lues) if (l.ligne) reglages.get(cleDePlacement(l.cle.monstre_id, l.cle.rang))?.propres?.set(l.cle.numero, l.ligne.valeur);
   for (const p of panneaux) dessinerLesValeurs(ed, p);
 }
@@ -537,6 +560,7 @@ function panneauxDeLaCarte(ed, carte) {
     let ajout = dd.querySelector(':scope > .ed-ajout-capacite');
     if (!ajout) {
       ajout = boutonDOutil('+ Ajouter une capacité', 'Ajouter à cette carte une capacité commune existante ou nouvelle (enregistré tout de suite)', 'ed-ajout-capacite');
+      ajout.dataset.horsRecherche = '';
       ajout.addEventListener('click', () => formulaireCapacite(ed, id));
     }
     dd.append(ajout);
@@ -649,6 +673,8 @@ function formulaireCapacite(ed, monstreId) {
       try {
         Object.assign(ed.listes, await ed.appel('GET', 'edition/listes/'));
         for (const [dd, html] of await blocsDuService(ed, [monstreId])) fusionnerLeBloc(ed, dd, html);
+        // la recherche relit le texte des cartes (la capacité ajoutée)
+        rafraichir();
         for (const p of document.querySelectorAll('.ed-capacite__portee')) ecrireLaPortee(ed, p);
         const carte = blocsDesCapacites().get(monstreId)?.closest('.bcarte');
         if (carte) await monterCarte(ed, carte);
@@ -687,6 +713,8 @@ function operationsDeValeurs(ed) {
   const ops = [];
   for (const r of reglages.values()) {
     if (!r.propres || !r.valeurs.size) continue;
+    // une description qui change son nombre d'emplacements dans ce lot : ses curseurs sont bloqués (dessinerLesValeurs), rien ne part
+    if (placesDe(descriptionDe(ed, r.commune)).length !== r.emplacements) continue;
     const valeurs = valeursAEnvoyer(descriptionDe(ed, r.commune), r.valeurs, r.propres);
     if (Object.keys(valeurs).length) ops.push({ op: 'valeurs_de_capacite', monstre_id: r.monstre_id, rang: r.rang, valeurs });
   }
@@ -960,5 +988,7 @@ export const bestiaire = {
       el.dataset.edLecture = el.dataset.ed;
       delete el.dataset.ed;
     }
+    // panneaux retirés, retraits annulés : la recherche relit les cartes
+    rafraichir();
   },
 };

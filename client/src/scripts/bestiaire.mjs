@@ -109,8 +109,8 @@ function brancher(section) {
   const zone = section.querySelector('[data-cartes]');
   // le titre d'un tableau dépliable dit son effectif (« 15 combinaisons · 30 créatures ») ; filtré, combien en restent
   for (const n of section.querySelectorAll('[data-repli-compte]')) n.dataset.texte = n.textContent.replace(/\s+/g, ' ').trim();
-  // le texte d'une carte que cherche la recherche d'une case : sans ce qui nomme d'autres créatures (« Même combinaison », `data-hors-recherche`),
-  // sinon chercher une créature trouverait aussi sa voisine
+  // le texte d'une carte que cherche la recherche (d'une case et de sa ligne) : sans ce qui nomme d'autres créatures (« Même combinaison », `data-hors-recherche`),
+  // sinon chercher une créature trouverait aussi sa voisine, ni les panneaux du mode modification (libellés des curseurs des capacités)
   const texteDeCarte = (carte) => {
     if (!carte) return '';
     if (!carte.querySelector('[data-hors-recherche]')) return carte.textContent;
@@ -127,7 +127,7 @@ function brancher(section) {
           const carte = document.getElementById(el.dataset.carte);
           return { el, id: el.id, carte, ligne, texteNormalise: normaliser(`${el.textContent} ${texteDeCarte(carte)}`) };
         });
-        ligne.texteNormalise = normaliser(`${tr.textContent} ${ligne.cases.map((c) => c.carte?.textContent ?? '').join(' ')}`);
+        ligne.texteNormalise = normaliser(`${tr.textContent} ${ligne.cases.map((c) => texteDeCarte(c.carte)).join(' ')}`);
         return ligne;
       })
       .sort((a, b) => a.ordre - b.ordre);

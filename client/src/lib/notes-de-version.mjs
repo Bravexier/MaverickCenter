@@ -196,7 +196,8 @@ const DEFINITIONS = [
     entite: (r, x) => `${x.nom('monstre', r.monstre_id)} › ${x.nom('monstre_capacite_commune', r.capacite_commune_id)}`,
     ordre: (r, x) => [x.ordre('monstre_espece', x.ligne('monstre', r.monstre_id)?.espece_id), 1, x.ligne('monstre', r.monstre_id)?.rang ?? 0, 2, r.rang],
     resume: (n) => `${n} capacités sur les cartes`,
-    valeur: (colonne, v, x) => (colonne === 'capacite_commune_id' ? x.nom('monstre_capacite_commune', v) : v),
+    // deux capacités communes peuvent porter le même nom (R68) : leur identifiant les distingue
+    valeur: (colonne, v, x) => (colonne === 'capacite_commune_id' && v ? `${x.nom('monstre_capacite_commune', v)} (${v})` : v),
   },
   {
     table: 'monstre_capacite_valeur', domaine: 'bestiaire', cle: ['monstre_id', 'rang', 'numero'], colonnes: colonnesDe('monstre_capacite_valeur'),

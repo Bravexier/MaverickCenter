@@ -550,7 +550,8 @@
   {
    "id": "crache-spore",
    "nom": "Crache spore",
-   "description": "Crache des spores dans une zone de 2 cases autour qui force un jet de vigueur, si raté impossible de bouger ET de faire l'action en même temps pour le prochain tour."
+   "description": "Crache des spores dans une zone de 2 cases autour qui force un jet de vigueur, si raté impossible de bouger ET de faire l'action en même temps pour le prochain tour.",
+   "source": "Invocation › Animation des morts › G309:R318 (texte retenu par le chef : décision R68)"
   },
   {
    "id": "craquellement",
@@ -1085,7 +1086,8 @@
   {
    "id": "fragilite-tranchante",
    "nom": "Fragilité tranchante",
-   "description": "Chaque fois qu’il subit une attaque physique, des éclats de glace sèche sont projetés autour de lui (2d6 dégâts dans une zone de 3 cases autour de lui)."
+   "description": "Chaque fois qu’il subit une attaque physique, des éclats de glace sèche sont projetés autour de lui (2d6 dégâts dans une zone de 3 cases autour de lui).",
+   "source": "Invocation › Animation des morts › G251:R260 (texte retenu par le chef : décision R68)"
   },
   {
    "id": "frappe-confuse",
@@ -2342,7 +2344,8 @@
   {
    "id": "vraiment-sournois",
    "nom": "Vraiment sournois",
-   "description": "Quand l'adversaire n'est pas attentif au personnage, permet d'infliger un bonus de 4d4 dégâts en plus des dégâts de l'arme."
+   "description": "Quand l'adversaire n'est pas attentif au personnage, permet d'infliger un bonus de 4d4 dégâts en plus des dégâts de l'arme.",
+   "source": "Invocation › Marionette de lombre › G106:R115 (texte retenu par le chef : décision R68)"
   },
   {
    "id": "vue-ouie-claire",

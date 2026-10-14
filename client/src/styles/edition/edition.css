@@ -196,6 +196,12 @@ textarea.ed-saisie--ligne { resize: none; min-height: 0; }
 .ed-capacite .ed-outil:disabled { opacity: 0.45; cursor: default; background: var(--surface); }
 .ed-ajout-capacite { display: block; margin-top: 0.45rem; }
 body:not(.ed-mode) :is(.ed-capacite, .ed-ajout-capacite) { display: none; }
+/* en mode modification, toutes les capacités de la carte restent visibles, quelle que soit l'échelle choisie au curseur : une capacité « [EPN] » se modifie
+   ou se retire comme les autres, et une capacité ajoutée avec « [EP5] » se voit tout de suite (styles/bestiaire/bestiaire.css cache sinon ce qui n'est
+   pas de l'échelle choisie) */
+@media screen {
+  body.ed-mode .bcarte[data-ep] li.bcapacite[data-eps] { display: revert; }
+}
 @media print {
   .ed-capacite, .ed-ajout-capacite { display: none !important; }
 }
