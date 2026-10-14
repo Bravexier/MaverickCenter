@@ -1338,8 +1338,8 @@ describe('.github/workflows/mise-a-jour.yml', () => {
   });
 
   test('preparer : garde-fous, checkout de dev complet avec le jeton du workflow non gardé, npm ci, script --phase preparer, artefact', () => {
-    const prive = etape(jobPreparer, (s) => s.env?.IS_PRIVATE);
-    assert.equal(prive.env.IS_PRIVATE, '${{ github.event.repository.private }}');
+    // Dépôt public depuis le 2026-10-14 (décision du propriétaire) : plus de garde-fou du dépôt privé.
+    assert.ok(!etape(jobPreparer, (s) => s.env?.IS_PRIVATE), 'plus de garde-fou du dépôt privé');
     const checkout = etape(jobPreparer, (s) => s.uses?.startsWith('actions/checkout@'));
     assert.deepEqual(checkout.with, { ref: 'dev', 'fetch-depth': 0, token: '${{ github.token }}', 'persist-credentials': false });
     const node = etape(jobPreparer, (s) => s.uses?.startsWith('actions/setup-node@'));
@@ -1357,7 +1357,8 @@ describe('.github/workflows/mise-a-jour.yml', () => {
     assert.equal(envoi.uses, 'actions/upload-artifact@v4');
     assert.deepEqual(envoi.with, { name: NOM_ARTEFACT, path: `${script.env.ARTEFACT}/`, 'if-no-files-found': 'error', 'retention-days': 7, overwrite: true });
     const rang = (s) => jobPreparer.steps.indexOf(s);
-    assert.ok(rang(prive) < rang(checkout) && rang(script) < rang(envoi));
+    const entrees = etape(jobPreparer, (s) => s.name?.startsWith('Garde-fou — entrées'));
+    assert.ok(rang(entrees) < rang(checkout) && rang(script) < rang(envoi));
     assert.equal(jobPreparer.steps.at(-1).if, 'always()');
   });
 
@@ -1389,7 +1390,7 @@ describe('.github/workflows/mise-a-jour.yml', () => {
     const rang = (s) => jobLivrer.steps.indexOf(s);
     assert.ok(rang(checkout) < rang(reception) && rang(reception) < rang(dev) && rang(dev) < rang(master));
     assert.equal(jobLivrer.steps.at(-1).if, 'always()');
-    assert.ok(etape(jobLivrer, (s) => s.env?.IS_PRIVATE), 'garde-fou du dépôt privé dans livrer aussi');
+    assert.ok(!etape(jobLivrer, (s) => s.env?.IS_PRIVATE), 'plus de garde-fou du dépôt privé dans livrer non plus');
   });
 
   test('aucune expression dans un run: (les entrées passent par env, jamais interpolées dans le shell)', () => {
