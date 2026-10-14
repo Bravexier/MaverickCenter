@@ -9,6 +9,7 @@ import { chargerBestiaire } from '../src/lib/bestiaire-db.mjs';
 import { cheminDeMonstre } from '../src/lib/bestiaire-rendu.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { echellesEcrites, objetDuButin } from '../src/lib/monstre-champs.mjs';
+import { tuilesDeCapacites } from './aide-bestiaire.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const fichier = join(dist, 'bestiaire', 'index.html');
@@ -129,6 +130,8 @@ test('créatures invoquées : trois tableaux dépliables (demande du propriétai
       if (k.npm) assert.ok(carte.includes(`<span class="prefixe">NPM ${k.npm}</span>`), `${l.nom} : NPM de ${k.nom}`);
       if (k.etiquette) assert.ok(carte.replace(/&#39;/g, "'").includes(`<span class="prefixe">[${k.etiquette}]</span>`), `${l.nom} : [${k.etiquette}]`);
     }
+    // une tuile par capacité, puis une par capacité commune de son invocation, chacune avec son nom (comme les dons de classe ; lib/monstre-rendu.mjs#htmlDeCapacite)
+    assert.deepEqual(tuilesDeCapacites(carte.replace(/&#39;/g, "'")), [...l.capacites.map((k) => [false, k.nom]), ...l.communes.map((k) => [true, k.nom])], `${l.nom} : ses capacités en tuiles`);
   }
   // décision R53 : une créature invoquée n'a pas d'échelle de puissance ; nulle part « EP » dans l'onglet (tableaux, cartes : « Marionnette de l'ombre (NPM 3) »)
   // (le HTML brut : un attribut `title` s'affiche aussi, dans la bulle partagée de components/Infobulles.astro)

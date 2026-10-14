@@ -133,6 +133,18 @@ chauve-souris, Plume de griffon, Plume de sang, Plume tonnerre, Poudre d'os lumi
 base pour le moment ». « Gelée pêche », qu'aucune case ne cite non plus (le Blob blanc écrit « Gelée coco »), relève de la question 6 et reste aussi
 dans la base. Le glossaire n'est pas affiché ailleurs.
 
+### Capacités en tuiles
+
+Demande du propriétaire : « Les capacités devraient ressortir dans une tuile de la même manière que le font les dons de classe ». Chaque capacité d'une
+carte (monstre ou créature invoquée) est une tuile (`lib/monstre-rendu.mjs#htmlDeCapacite`, `htmlDesCapacites`) : filet de couleur à gauche, en-tête
+avec ses pastilles pleines (« [EP3] », R56 ; « NPM 2 », « [Gauche] », « commune ») et son nom en gras, sans le point qui le suit dans le doc (comme un
+don de classe), puis son texte ; une capacité écrite sans nom n'a pas d'en-tête. Une colonne : sur les pages de classe, deux dons côte à côte sont un
+choix, ce qui n'existe pas ici. Une capacité commune à toutes les créatures d'une invocation a un filet en pointillés ; dans l'infobulle d'une page de
+magie, toute la tuile (filet, nom, pastilles) prend la couleur de la magie, et ses tailles suivent celles de la carte (en `em`). La recherche lit le nom
+et le texte comme deux mots (une espace les sépare dans le HTML). En mode modification, la rubrique « Capacité(s) » reste un seul champ texte, dont
+les tuiles sont le rendu. À l'impression, une tuile ne se coupe pas (comme un don de classe) : la seule plus haute qu'une page, « Cuisson absolue »
+(Golem de pain d'or), laisse un blanc avant elle.
+
 ### Vulnérabilités et résistances
 
 Demande du propriétaire : « rajouter les couleurs des vulnérabilités et résistances selon la couleur de la magie qui va avec ». Chaque cible a la

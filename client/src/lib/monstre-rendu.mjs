@@ -216,14 +216,33 @@ export function htmlDeRubrique(rubrique, texte, options = {}) {
     };
     const prefixe = (c) => {
       const n = echelleDuPrefixe(c.prefixe);
-      return `<span class="prefixe"${n === null ? '' : ` title="${e(`Gagnée à partir de l’EP ${n}`)}"`}>${e(c.prefixe)}</span> `;
+      return { texte: c.prefixe, titre: n === null ? null : `Gagnée à partir de l’EP ${n}` };
     };
-    return `<ul class="bcapacites">${caps
-      .map((c) => `<li${depuis(c)}>${c.prefixe ? prefixe(c) : ''}${c.nom ? `<strong>${e(c.nom)}.</strong> ` : ''}${corps(c.texte)}</li>`)
-      .join('')}</ul>`;
+    return htmlDesCapacites(caps.map((c) => ({ prefixes: c.prefixe ? [prefixe(c)] : [], nom: c.nom, corps: corps(c.texte), attributs: depuis(c) })));
   }
   return htmlDeTexte(texte);
 }
+
+/**
+ * Une capacité en tuile (demande du propriétaire : « Les capacités devraient ressortir dans une tuile de la même manière que le font les dons de
+ * classe ») : l'en-tête (ses pastilles : « [EP3] », « NPM 2 », « [Gauche] », « commune », et son nom), puis son texte. Pour un monstre (htmlDeRubrique,
+ * page construite et mode modification) et une créature invoquée (components/bestiaire/CarteInvoquee.astro, carte et infobulle des pages de magie).
+ * `prefixes` : [{ texte, titre }] ; `corps` : le HTML du texte (sinon `texte`, écrit tel quel) ; `attributs` : ` data-eps="…"` (décision R56) ;
+ * `commune` : une capacité commune à toutes les créatures d'une invocation. Ni lien ni titre hN : la carte d'une créature invoquée sert d'infobulle.
+ * Le nom s'écrit sans le point qui le suit dans le doc (`capacites`, lib/monstre-champs.mjs, le retire), comme un don de classe ; pas d'en-tête vide.
+ */
+export const htmlDeCapacite = ({ prefixes = [], nom = null, texte = '', corps = null, attributs = '', commune = false }) =>
+  `<li class="bcapacite${commune ? ' bcapacite--commune' : ''}"${attributs}>`
+  + (prefixes.length || nom
+    ? '<p class="bcapacite__tete">'
+      + prefixes.map((p) => `<span class="prefixe"${p.titre ? ` title="${e(p.titre)}"` : ''}>${e(p.texte)}</span>`).join(' ')
+      + (nom ? `${prefixes.length ? ' ' : ''}<strong class="bcapacite__nom">${e(nom)}</strong>` : '')
+      // l'espace sépare le nom du texte dans textContent, que lit la recherche du bestiaire (« Haine mutuelle Cette créature… ») ; sans effet à l'écran
+      + '</p> '
+    : '')
+  + `<div class="bcapacite__texte">${corps ?? `<span class="texte">${e(texte)}</span>`}</div></li>`;
+/** Les capacités d'une carte, une tuile chacune, sur une colonne (côte à côte, deux dons de classe sont un choix : ce n'en est pas un ici). */
+export const htmlDesCapacites = (capacites) => `<ul class="bcapacites" role="list">${capacites.map(htmlDeCapacite).join('')}</ul>`;
 
 /** Pastille de la catégorie d'une carte (« Mini-boss ») ; l'écriture du doc (« Mini boss ») en infobulle. */
 export const htmlDeCategorie = (categorie, brut) =>
