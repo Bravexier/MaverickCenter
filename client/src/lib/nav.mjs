@@ -2,7 +2,7 @@
 // Ligne 1 = les rubriques (`NAV`), ligne 2 = les `items` de la rubrique sélectionnée.
 // `path` : chemin relatif du site (sans préfixe de déploiement). Sans `path`, l'entrée est affichée
 // grisée « bientôt » : la page n'existe pas encore (on n'invente pas de contenu).
-// `autres` : débuts d'adresse des pages de la rubrique qui ne sont pas dans le menu (une page de `ressources/` ouvre l'Inventaire).
+// `autres` : débuts d'adresse des pages de la rubrique qui ne sont pas dans le menu (une page de `ressources/` ouvre les Ressources).
 // Arborescence voulue par le propriétaire du projet (pas de barre de recherche dans l'en-tête : la recherche est une page, avec les mots-clés).
 // Boucliers et bâtons magiques iront dans « Objets à la ceinture » (bientôt, choix du propriétaire) ; hors menu, comme l'alchimie, leurs pages restent
 // trouvables par la recherche et les liens.
@@ -20,18 +20,8 @@ export const NAV = [
     ],
   },
   {
-    key: 'personnages',
-    label: 'Personnages',
-    items: [
-      { label: 'Fiche de personnage', path: 'fiche/' },
-      { label: 'Listes', path: 'personnages/' },
-      { label: 'Groupes' },
-      { label: 'Chroniques' },
-    ],
-  },
-  {
-    key: 'inventaire',
-    label: 'Inventaire',
+    key: 'ressources',
+    label: 'Ressources',
     autres: ['ressources/'],
     items: [
       { label: 'Armes', path: 'ressources/armes/' },
@@ -40,6 +30,16 @@ export const NAV = [
       { label: 'Objets à la ceinture' },
       { label: 'Livres & Parchemins', path: 'ressources/livre-parchemin/' },
       { label: 'Pièces élémentaires', path: 'ressources/pieces-elementaires/' },
+    ],
+  },
+  {
+    key: 'personnages',
+    label: 'Personnages',
+    items: [
+      { label: 'Fiche de personnage', path: 'fiche/' },
+      { label: 'Listes', path: 'personnages/' },
+      { label: 'Groupes' },
+      { label: 'Chroniques' },
     ],
   },
   {

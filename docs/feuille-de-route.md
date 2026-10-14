@@ -19,7 +19,7 @@ n'est encore réalisé au-delà de la première étape.
 3. **Simulation de combats** (à long terme) : jouer des combats pour juger l'équilibrage des sorts, des classes et des races.
 
 À côté de ces trois étapes, un axe **communauté de jeu** (comptes Discord, groupes, planning, bot, boîte à idées, statistiques) et l'achèvement du
-**Codex** et de l'**Inventaire** : voir « Prochaines évolutions » ci-dessous.
+**Codex** et des **Ressources** : voir « Prochaines évolutions » ci-dessous.
 
 ## Prochaines évolutions (liste du propriétaire, 2026-10-11)
 
@@ -125,12 +125,12 @@ flowchart LR
 ### E3 — Refonte de l'équipement et intégration à la fiche (jalon A)
 
 - **Déjà là** : les catalogues typés (section 9 : armes, armures, boucliers, matériaux, améliorations, pièces élémentaires, accessoires, gemmes, bâtons
-  magiques…) ; les pages de l'Inventaire, rendues depuis leur Markdown ; dans `/fiche/`, le bloc équipement (armes, armure, bouclier, accessoires,
+  magiques…) ; les pages des Ressources, rendues depuis leur Markdown ; dans `/fiche/`, le bloc équipement (armes, armure, bouclier, accessoires,
   inventaire, objets de départ du métier). Manquent ([`character-generator.md`](character-generator.md)) : les effets d'équipement dans les calculs (AP/AM
   des pièces, bonus des améliorations, résistances des objets), et « Objets à la ceinture » (boucliers, bâtons magiques) est « bientôt ».
 - **Portée** (réponse du propriétaire, 2026-10-11) : une refonte **visuelle** et de l'**intégration à la fiche**, où il y a aujourd'hui des ratés ; les
   règles de l'équipement ne changent pas.
-- **Étapes proposées** : (1) les pages de l'Inventaire refaites et rendues depuis les tables (un tableau par catalogue, comme `/metiers/`), modifiables sur
+- **Étapes proposées** : (1) les pages des Ressources refaites et rendues depuis les tables (un tableau par catalogue, comme `/metiers/`), modifiables sur
   le site de dev ; (2) « Objets à la ceinture » ; (3) dans la fiche, les ratés corrigés un par un (chacun relevé avec le propriétaire, chacun son test), le
   choix dans le catalogue et les effets codés en données, un effet à la fois, cité et testé (`lib/fiche-moteur.mjs`) : un effet non codé reste affiché en
   texte et n'est pas compté ; (4) poids, prix et bourse, si les sources les donnent.
@@ -141,7 +141,7 @@ flowchart LR
   propriété (1d100 en 8 plages, dont Malédiction de 96 à 100 : `accessoire_propriete`), effet selon la propriété (`accessoire_effet`, gemmes
   `accessoire_effet_gemme`), montures (`accessoire_monture`) ; une fiche garde un accessoire avec sa valeur tirée et sa case « Malédiction » (`personnage_accessoire`).
 - **À faire** : un module pur `lib/generateur-accessoire.mjs` qui rejoue ces tables avec un tirage à graine (le même tirage se rejoue, comme prévu pour la
-  simulation) et montre chaque jet ; une page (Inventaire › Accessoires ou Outils) ; « Ajouter à la fiche » vers `personnage_accessoire`. Une ligne vide
+  simulation) et montre chaque jet ; une page (Ressources › Accessoires ou Outils) ; « Ajouter à la fiche » vers `personnage_accessoire`. Une ligne vide
   de la source donne « ligne vide dans la source », jamais un effet inventé ; tests contre les tables.
 
 ### E5 — Chronologie (jalon B)

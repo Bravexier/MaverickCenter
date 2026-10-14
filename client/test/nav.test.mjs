@@ -10,8 +10,8 @@ test('le menu a les rubriques et les entrées voulues par le propriétaire, dans
   const plan = NAV.map((g) => `${g.label} : ${g.items.map((i) => (i.path ? i.label : `${i.label} (bientôt)`)).join(', ')}`);
   assert.deepEqual(plan, [
     'Règles : Guide, Races, Magies, Classes, Métiers',
+    'Ressources : Armes, Armures, Accessoires, Objets à la ceinture (bientôt), Livres & Parchemins, Pièces élémentaires',
     'Personnages : Fiche de personnage, Listes, Groupes (bientôt), Chroniques (bientôt)',
-    'Inventaire : Armes, Armures, Accessoires, Objets à la ceinture (bientôt), Livres & Parchemins, Pièces élémentaires',
     'Codex : Chronologie, Carte & lieux (bientôt), Mythologie, Bestiaire, Factions',
     'Outils : Statistiques (bientôt), Mise à jour, Boîte à idée (bientôt), Galeries, Recherche, Archives',
   ]);
@@ -37,15 +37,15 @@ test('la rubrique courante est repérée, avec ou sans préfixe de déploiement'
   assert.equal(groupIsCurrent(rubrique('personnages'), '/MaverickCenter/fiche/', '/MaverickCenter/'), true);
   assert.equal(groupIsCurrent(rubrique('personnages'), '/personnages/'), true);
   assert.equal(groupIsCurrent(rubrique('regles'), '/fiche/'), false, 'la fiche a quitté les Règles');
-  assert.equal(groupIsCurrent(rubrique('inventaire'), '/ressources/armures/'), true);
-  assert.equal(groupIsCurrent(rubrique('inventaire'), '/races/'), false);
+  assert.equal(groupIsCurrent(rubrique('ressources'), '/ressources/armures/'), true);
+  assert.equal(groupIsCurrent(rubrique('ressources'), '/races/'), false);
   assert.equal(groupIsCurrent(rubrique('outils'), '/archives/'), true);
   assert.equal(groupIsCurrent(rubrique('outils'), '/pages/'), true, 'index du wiki, hors menu');
 });
 
 test('la 2e ligne suit la rubrique de la page, même hors menu ; la première par défaut', () => {
-  assert.equal(activeGroup('/ressources/alchimie/').key, 'inventaire', 'une ressource hors menu ouvre l’Inventaire');
-  assert.equal(activeGroup('/ressources/bouclier/').key, 'inventaire');
+  assert.equal(activeGroup('/ressources/alchimie/').key, 'ressources', 'une ressource hors menu ouvre les Ressources');
+  assert.equal(activeGroup('/ressources/bouclier/').key, 'ressources');
   assert.equal(activeGroup('/bestiaire/zombi/').key, 'codex');
   assert.equal(activeGroup('/lore/').key, 'codex');
   assert.equal(activeGroup('/chronologie/grande-croisade/').key, 'codex', 'un événement de la chronologie ouvre le Codex');
