@@ -1,6 +1,7 @@
 ---
 import { bulleDeCreature, carteDeCreature, pageHref, sortAncre, titreDeCreature, type Magies, type SortDb } from '../../lib/magies';
 import { attributEd } from '../../lib/edition-modele.mjs';
+import { couleurDeMagie } from '../../lib/sort-format.mjs';
 import Texte from './Texte.astro';
 
 // Détails d'un sort, affichés juste sous sa ligne quand on la sélectionne : ses effets (le texte des effets secondaires, puis la remarque du classeur
@@ -8,8 +9,9 @@ import Texte from './Texte.astro';
 // dans le texte) et, quand le sort a **ses propres règles**, un bloc dédié : pour une invocation, ses règles (repliées) et les créatures invoquées ; le
 // nom d'une créature montre sa carte du bestiaire en infobulle (demande du propriétaire : « La carte sera à garder et servirait de tooltip dans leur
 // correspondance dans les tableaux des magies et leurs sorts associés » : CarteInvoquee.astro, une bulle par créature et par page, posée par
-// MagiePage.astro) ; le lien « Bestiaire » mène à sa page. De même pour la créature d'un effet de carte (« Manteau noir ») : un bouton et son lien, pas un
-// lien à bulle (au toucher, la carte couvre l'écran d'un téléphone, et un second appui sur le lien tomberait sur elle).
+// MagiePage.astro), sans lien « Bestiaire » à côté (demande du propriétaire), sur la couleur de sa magie, en dégradé quand il en a deux. De même pour la
+// créature d'un effet de carte (« Manteau noir ») : un bouton, pas un lien à bulle (au toucher, la carte couvre l'écran d'un téléphone, et un second
+// appui sur le lien tomberait sur elle).
 // `prefixe` (« feu- ») rend uniques les identifiants HTML quand une page montre plusieurs magies (TableauNpm.astro).
 interface Props {
   sort: SortDb;
@@ -27,6 +29,11 @@ const titre = `detail-${prefixe}${sort.slug}-titre`;
 const bulle = (id: string) => {
   const carte = carteDeCreature(id);
   return carte ? { 'data-bulle': bulleDeCreature(id), 'aria-describedby': bulleDeCreature(id), title: titreDeCreature(carte) } : {};
+};
+// couleur du nom d'une créature : sa magie, ou ses deux magies de gauche à droite (styles/magie/creatures.css)
+const couleurs = (magiesDeLaCreature: string[]) => {
+  const [premiere, seconde = premiere] = magiesDeLaCreature.map(couleurDeMagie);
+  return premiere ? `--creature-1: ${premiere}; --creature-2: ${seconde}` : undefined;
 };
 // champs modifiables sur le site de dev : effets, remarque et texte du sort de niveau 5 (vides : cachés en lecture, affichés en mode modification)
 const ed = (colonne: string) => attributEd('sort', { id: sort.id }, colonne);
@@ -88,8 +95,7 @@ const ed = (colonne: string) => attributEd('sort', { id: sort.id }, colonne);
                   .filter((c) => c.bloc === bloc)
                   .map((c) => (
                     <span class="creature">
-                      <button type="button" class="chip creature__bouton" {...bulle(c.id)}>{c.nom}</button>
-                      <a class="chip creature__lien" href={pageHref(c.id)} aria-label={`Page de ${c.nom} dans le bestiaire`}>Bestiaire</a>
+                      <button type="button" class="chip creature__bouton" {...bulle(c.id)} style={couleurs(c.magies)}>{c.nom}</button>
                     </span>
                   ))}
               </span>
@@ -107,8 +113,7 @@ const ed = (colonne: string) => attributEd('sort', { id: sort.id }, colonne);
         <p>
           Carte de{' '}
           <span class="creature">
-            {carteDeCreature(e.id) ? <button type="button" class="chip creature__bouton" {...bulle(e.id)}>{e.nom}</button> : e.nom}
-            <a class="chip creature__lien" href={pageHref(e.id)} aria-label={`Page de ${e.nom} dans le bestiaire`}>Bestiaire</a>
+            {carteDeCreature(e.id) ? <button type="button" class="chip creature__bouton" {...bulle(e.id)} style={couleurs(e.magies)}>{e.nom}</button> : e.nom}
           </span>
         </p>
         <Texte blocs={e.blocs} />

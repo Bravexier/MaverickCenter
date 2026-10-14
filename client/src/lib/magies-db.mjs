@@ -151,6 +151,22 @@ export function chargerMagies(db) {
     ),
     'invocation_id',
   );
+  // magies d'une créature invoquée, pour la couleur de son nom (demande du propriétaire : dégradé quand il y en a deux) : celles de la marge de son
+  // bloc dans l'ordre d'écriture (« Terre + Terre » = une seule), sinon la magie du sort qui l'invoque (marionnettes, sans magie de marge)
+  const magiesDesCreatures = regrouper(
+    all(
+      `SELECT c.id AS creature_id, m.nom FROM creature c JOIN invocation_bloc_magie bm ON bm.bloc_id = c.bloc_id JOIN magie m ON m.id = bm.magie_id
+       ORDER BY c.id, bm.rang`,
+    ),
+    'creature_id',
+  );
+  const magiesDuSortQuiInvoque = new Map(
+    all('SELECT c.id, m.nom FROM creature c JOIN invocation i ON i.id = c.invocation_id JOIN sort s ON s.id = i.sort_id JOIN magie m ON m.id = s.magie_id').map((r) => [r.id, r.nom]),
+  );
+  const magiesDeCreature = (id) => {
+    const deLaMarge = [...new Set((magiesDesCreatures.get(id) ?? []).map((r) => r.nom))];
+    return deLaMarge.length ? deLaMarge : magiesDuSortQuiInvoque.has(id) ? [magiesDuSortQuiInvoque.get(id)] : [];
+  };
   // effets d'une carte liés à un sort (« Manteau noir ») : dans l'ordre des cartes du classeur (bloc, puis carte de gauche et de droite)
   const effetsDeCarte = regrouper(
     all(
@@ -206,9 +222,9 @@ export function chargerMagies(db) {
         texte: blocsDeTexte(i.texte_general),
         remarque: blocsDeTexte(i.remarque),
         tableau: i.tableau_titre ? { titre: i.tableau_titre, lignes: magie.ameliorations } : null,
-        creatures: (creaturesDeInvocation.get(i.id) ?? []).map((c) => ({ id: c.id, nom: c.nom, bloc: libelleDuBloc(c) })),
+        creatures: (creaturesDeInvocation.get(i.id) ?? []).map((c) => ({ id: c.id, nom: c.nom, bloc: libelleDuBloc(c), magies: magiesDeCreature(c.id) })),
       })),
-      effetsDeCarte: (effetsDeCarte.get(s.id) ?? []).map((e) => ({ id: e.creature_id, nom: e.creature, libelle: e.libelle, blocs: blocsDeTexte(e.texte) })),
+      effetsDeCarte: (effetsDeCarte.get(s.id) ?? []).map((e) => ({ id: e.creature_id, nom: e.creature, magies: magiesDeCreature(e.creature_id), libelle: e.libelle, blocs: blocsDeTexte(e.texte) })),
       memeNom: (memeNom.get(s.nom_cle) ?? []).filter((o) => o.id !== s.id).map((o) => o.id),
     };
     sorts.set(s.id, modele);
