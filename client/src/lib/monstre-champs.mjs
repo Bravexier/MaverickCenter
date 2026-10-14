@@ -133,33 +133,34 @@ export const renvoieAuxDegatsMoyens = (rubriques) => (rubriques ?? []).some((r) 
 export const parEchelle = (texte) => segmentsParEchelle(texte).some((s) => s.eps);
 
 /**
- * Une valeur qui progresse avec l'échelle, « N (+k/mEP) » (décision R55 du propriétaire : « +2 tous les 3 EP. 5 (+2/3EP) veut dire 7 à 4, 9 à 7 et
- * 11 à 10 ») : N à l'EP 1, +k toutes les m échelles ; « (+k/EP) » : à chaque échelle (m = 1). Le nombre est celui qui précède la formule, des mots
- * pouvant les séparer (« 5 armure physique (+2/3EP) », « 5 (+2/3EP) armure magique »). Une carte qui ne commence pas à l'EP 1 (le Collecteur, EP 2 à
- * 6) garde sa formule telle qu'écrite : où est N ? (question au propriétaire, docs/bestiaire.md).
+ * Une valeur qui progresse avec l'échelle, « N (+k/mEP) » ou « N (+k/EP) » (m = 1) : N à l'EP 1, puis +k toutes les m échelles, sans compter l'EP 1,
+ * quelle que soit la première échelle de la carte. Décision R55 (« +2 tous les 3 EP. 5 (+2/3EP) veux dire 7 à 4, 9 à 7 et 11 à 10 ») et R59, le calcul
+ * donné par le propriétaire (« 2 + 1/EP » : 2 à l'EP 1, 3 à l'EP 2… 11 à l'EP 10 ; « on ne compte pas le EP1 dans le calcul "par EP" ») : le Collecteur
+ * (EP 2 à 6), « 2 (+1/EP) », vaut 3 à l'EP 2. Le nombre est celui qui précède la formule, des mots pouvant les séparer (« 5 armure physique (+2/3EP) »,
+ * « 5 (+2/3EP) armure magique »).
  */
-const PROGRESSION = /(\d+)((?:[ \t]+\p{L}+)*?)[ \t]*\([ \t]*\+[ \t]*(\d+)[ \t]*\/[ \t]*(\d*)[ \t]*EP[ \t]*\)/gu;
-/** Les formules d'un texte : [{ index, longueur, base, mots, pas, tous }] (`tous` : m, 1 pour « /EP »). */
+const PROGRESSION = /(\d+)((?:[ \t]+\p{L}+)*?)[ \t]*\([ \t]*\+[ \t]*(\d+)[ \t]*\/[ \t]*([1-9]\d*)?[ \t]*EP[ \t]*\)/gu;
+/** Les formules d'un texte : [{ index, longueur, base, mots, pas, tous }] (`tous` : m ≥ 1, 1 pour « /EP » ; « /0EP » n'est pas une formule). */
 export const progressions = (texte) =>
   [...String(texte ?? '').matchAll(PROGRESSION)].map((m) => ({ index: m.index, longueur: m[0].length, base: Number(m[1]), mots: m[2], pas: Number(m[3]), tous: m[4] ? Number(m[4]) : 1 }));
-/** La valeur d'une formule à l'échelle `ep`, la carte commençant à l'échelle `premiere`. */
-export const valeurALEchelle = ({ base, pas, tous }, ep, premiere) => base + pas * Math.floor((ep - premiere) / tous);
+/** La valeur d'une formule à l'échelle `ep` : N + k × ⌊(EP − 1) / m⌋ (décisions R55, R59). */
+export const valeurALEchelle = ({ base, pas, tous }, ep) => base + pas * Math.floor((ep - 1) / tous);
 /**
  * Un texte à formules lu à chaque échelle écrite de la carte (`echelles`, croissantes) : [{ eps, morceaux }] où les échelles consécutives qui donnent le même
- * texte sont regroupées ; un morceau est { texte } (écrit tel quel) ou { valeur, formule } (la valeur calculée et la formule écrite). [] sans formule, sans
- * plusieurs échelles, ou pour une carte qui ne commence pas à l'EP 1.
+ * texte sont regroupées ; un morceau est { texte } (écrit tel quel) ou { valeur, formule } (la valeur calculée et la formule écrite). [] sans formule ou sans
+ * échelle écrite (une carte d'une seule échelle a sa valeur, la formule ne dépendant que de l'EP).
  */
 export function texteParEchelle(texte, echelles = []) {
   const t = String(texte ?? '');
   const f = progressions(t);
-  if (!f.length || echelles.length < 2 || echelles[0] !== 1) return [];
+  if (!f.length || !echelles.length) return [];
   const groupes = [];
   for (const ep of echelles) {
     const morceaux = [];
     let i = 0;
     for (const x of f) {
       if (x.index > i) morceaux.push({ texte: t.slice(i, x.index) });
-      morceaux.push({ valeur: valeurALEchelle(x, ep, echelles[0]), formule: t.slice(x.index, x.index + x.longueur), mots: x.mots });
+      morceaux.push({ valeur: valeurALEchelle(x, ep), formule: t.slice(x.index, x.index + x.longueur), mots: x.mots });
       i = x.index + x.longueur;
     }
     if (i < t.length) morceaux.push({ texte: t.slice(i) });
@@ -169,6 +170,21 @@ export function texteParEchelle(texte, echelles = []) {
     else groupes.push({ cle, eps: [ep], morceaux });
   }
   return groupes.map(({ eps, morceaux }) => ({ eps, morceaux }));
+}
+
+/**
+ * Un trait « ________________ » (ligne de séparation du doc) dans le texte d'une rubrique : ce qui le suit n'a pas de place décidée. À l'import, un
+ * seul cas : « Ottar (explication) », section de lore écrite à la suite de la carte dans le Bestiaire 2.0, que l'extraction a rattachée à la tactique de
+ * l'Os du blizzard. Demande du propriétaire : « Je ne sais pas. Signale le avec un panneau "attention" » (lib/monstre-rendu.mjs#htmlDAttention).
+ * { avant, apres } coupé au premier trait, sans les lignes vides qui l'entourent ; null sans trait ou sans rien après.
+ */
+const TRAIT = /^[ \t]*_{3,}[ \t]*$/m;
+export function apresUnTrait(texte) {
+  const t = String(texte ?? '');
+  const m = TRAIT.exec(t);
+  if (!m) return null;
+  const apres = t.slice(m.index + m[0].length).replace(/^\s*\n/, '').trimEnd();
+  return apres.trim() ? { avant: t.slice(0, m.index).trimEnd(), apres } : null;
 }
 
 /** Le préfixe d'une capacité « [EPN] » (décision R56 : la capacité est gagnée à partir de l'EP N) : N, ou null. */
@@ -216,8 +232,8 @@ export function capacites(texte) {
  * Décision R57 (« Corrige et rapproche les. Les fautes de frappe ça arrive. ») : les fautes de frappe sont corrigées dans la base (extracteur,
  * CORRECTIONS) et un objet se cite aussi avec son élément, une magie (`elements`) : les objets qui valent pour tous les éléments (FAMILLES_PAR_ELEMENT :
  * « Minitaire de Foudre », « Fragment de pièce de Feu ») et un fruit avec l'élément que nomme sa définition (« Fraise : Fruit du Feu » -> « Fraise de
- * feu »). Le doc « Alchimie » distingue pourtant « Fraise de feu » (amplificateur, « Fruit (majeur) ») de « Fraise » (catalyseur), et le butin des blobs
- * donne les deux : l'infobulle montre l'entrée « Fraise » du glossaire, sous son nom (question au propriétaire, docs/bestiaire.md).
+ * feu ») : l'infobulle montre l'entrée « Fraise » du glossaire, sous son nom (« A l'instar des matériaux et des gemmes chaque fruit est de base lié à
+ * un élément. "Fraise de feu" et "fraise" reportent au même », R57).
  * `glossaire` : [{ id, nom, texte }] ; -> { objet, ecrit, reste } (`ecrit` : l'objet tel que la case l'écrit) ou null.
  */
 const SUFFIXE_DU_BUTIN = /^(?:| x ?\d+(?:d\d+)?| \(\d+d\d+\)| ?\+ ?\d+)$/;

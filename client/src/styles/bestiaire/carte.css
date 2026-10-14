@@ -98,6 +98,16 @@ html:not(.js) .bcarte__fermer { display: none; }
 .bbutin .est-sienne { box-shadow: inset 0 0 0 2px var(--bes-line); }
 .bbutin thead th.est-sienne { background: var(--bes); color: var(--surface); }
 
+/* un texte dont la place n'est pas décidée (ce qui suit un trait du doc dans une rubrique, lib/monstre-champs.mjs#apresUnTrait) : panneau « Attention »
+   (demande du propriétaire) */
+.battention { display: block; margin-top: 0.5rem; padding: 0.45rem 0.65rem; border: 1px solid color-mix(in srgb, var(--warn-text) 35%, transparent);
+  border-left-width: 4px; border-radius: 8px; background: var(--warn-bg); }
+.battention__titre { font-weight: 700; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--warn-text); }
+.battention__titre::before { content: '⚠ '; }
+.battention__motif { font-style: italic; color: var(--warn-text); }
+.battention > .texte { display: block; margin-top: 0.35rem; }
+@media print { .battention { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+
 @media (max-width: 30rem) {
   .bcarte__portrait { width: 6rem; }
 }

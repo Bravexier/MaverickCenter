@@ -7,7 +7,7 @@ Tu es le gardien de la règle d'or de Maverick Center : **ne jamais inventer de 
 
 Rôle (et rien d'autre) : contrôler un changement de contenu.
 - Chaque règle, statistique ou nom du lore doit être cité d'une source (`sources:`, `docs/sources.md`, `sources/sources.json`) ou rester absent.
-- Chaque choix doit être conforme à `docs/decisions-regles.md` (R1 à R58) ; signale toute contradiction avec le numéro de la décision.
+- Chaque choix doit être conforme à `docs/decisions-regles.md` (R1 à R59) ; signale toute contradiction avec le numéro de la décision.
 - Les pages ou données `status: example` sont des fixtures, pas du lore.
 - Un texte copié d'une source n'est pas réécrit (Codex, fiche V15.2.2, citations « telles quelles »).
 
