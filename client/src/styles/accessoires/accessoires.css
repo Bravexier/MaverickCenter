@@ -1,0 +1,150 @@
+/* Chargé uniquement depuis components/accessoires/AccessoiresPage.astro (?raw) : la page /ressources/accessoires/, générateur d'accessoire. Les tableaux
+   des étapes à gauche (à la manière de la page des armes), l'accessoire créé à droite (panneau qui suit le défilement ; sur un écran étroit, il passe
+   sous les tableaux). Les lignes d'effet, la monture et l'accessoire créé prennent la couleur de leur niveau (--niv, posé par le gabarit ou le script),
+   texte foncé sur ces fonds clairs, en thème sombre aussi ; une gemme, la couleur de sa magie (--g, --g-texte). */
+main:has(.acc) { max-width: 120rem; }
+.acc {
+  --acc: var(--accent);
+  --acc-soft: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  --acc-line: color-mix(in srgb, var(--accent) 35%, var(--border));
+  --sur-niveau: #171210;
+  --sur-niveau-doux: rgb(23 18 16 / 0.68);
+  --maudit: #8e44ad;
+  margin: 0 0 2rem;
+}
+.acc .js-seul { display: none; }
+html.js .acc .js-seul { display: revert; }
+.acc [hidden] { display: none !important; }
+.acc .vide { color: var(--muted); font-style: italic; }
+.acc__chapo { margin: -0.3rem 0 0.8rem; color: var(--muted); }
+
+/* Règles de l'onglet (texte de la page avant la création) : sur un grand écran, en deux colonnes */
+.acc-regles { margin: 0 0 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.acc-regles > summary { cursor: pointer; padding: 0.6rem 0.9rem; font-weight: 700; }
+.acc-regles__texte { max-width: none; padding: 0.2rem 1.2rem 1rem; line-height: 1.55; }
+@media (min-width: 64rem) { .acc-regles__texte { columns: 2; column-gap: 2.6rem; column-rule: 1px solid var(--border); } }
+.acc-regles__texte > * { break-inside: avoid; }
+.acc-regles__texte > :first-child { margin-top: 0; }
+.acc-regles__texte p { margin: 0 0 0.75rem; }
+.acc-regles__texte ul { margin: 0 0 0.9rem; padding-left: 1.2rem; }
+
+/* Outils : tirer tout l'accessoire, tout effacer */
+html.js .acc .acc-outils { display: flex; }
+.acc-outils { flex-wrap: wrap; align-items: center; gap: 0.5rem 0.8rem; margin: 0 0 0.9rem; }
+.acc-bouton { display: inline-flex; align-items: center; gap: 0.4rem; font: inherit; font-size: 0.88rem; padding: 0.25rem 0.85rem; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface); color: var(--text); cursor: pointer; }
+.acc-bouton:hover { border-color: var(--acc); }
+.acc-bouton--fort { font-weight: 700; border-color: var(--acc); background: var(--acc); color: var(--surface); }
+.acc-bouton--fort:hover { background: color-mix(in srgb, var(--acc) 85%, #000); }
+.acc-bouton:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.acc-aide { color: var(--muted); font-size: 0.88rem; }
+
+/* Vue : les tableaux, et à côté l'accessoire créé */
+.acc-vue { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; align-items: start; }
+html.js .acc-vue { grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem); }
+.acc-tableaux { display: grid; gap: 0.9rem; min-width: 0; }
+html.js .acc .acc-cote { display: block; position: sticky; top: 0.75rem; max-height: calc(100vh - 1.5rem); overflow-y: auto; overscroll-behavior: contain; min-width: 0; }
+.acc-etapes { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 0.9rem; align-items: start; }
+
+/* Un bloc (une étape) et une famille d'effets (repliable) */
+.acc-bloc { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; min-width: 0; }
+.acc-bloc--effets { display: grid; gap: 0.7rem; padding-bottom: 0.8rem; }
+.acc-bloc__titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.6rem; margin: 0; padding: 0.55rem 0.9rem; font-size: 1.05rem; border-bottom: 1px solid var(--acc-line); }
+.acc-bloc__etape { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.acc-bloc__de, .acc-famille__de { font-size: 0.76rem; font-weight: 700; padding: 0.05rem 0.6rem; border-radius: 999px; background: var(--acc); color: var(--surface); }
+.acc-bloc__niveaux { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-left: auto; }
+.acc-niveau-pastille { font-size: 0.72rem; font-weight: 600; padding: 0.05rem 0.5rem; border-radius: 6px; background: var(--niv); color: var(--sur-niveau); }
+.acc-bloc__note { margin: 0.5rem 0.9rem 0; font-size: 0.86rem; color: var(--muted); }
+.acc-bloc > .acc-table { margin-top: 0.4rem; }
+.acc-bloc--effets > .acc-famille { margin: 0 0.8rem; }
+.acc-famille { border: 1px solid var(--border); border-radius: 10px; min-width: 0; background: var(--surface); }
+.acc-famille__titre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.7rem; padding: 0.5rem 0.85rem; cursor: pointer; list-style: none; }
+.acc-famille__titre::-webkit-details-marker { display: none; }
+.acc-famille__titre::before { content: '▸'; color: var(--acc); transition: transform 0.15s; }
+.acc-famille[open] > .acc-famille__titre::before { transform: rotate(90deg); }
+.acc-famille[open] > .acc-famille__titre { border-bottom: 1px solid var(--acc-line); }
+.acc-famille__nom { font-weight: 700; }
+.acc-famille__nom::first-letter { text-transform: uppercase; }
+.acc-famille__compte { margin-left: auto; font-size: 0.8rem; color: var(--muted); }
+.acc-famille__note { margin: 0.45rem 0.85rem 0; font-size: 0.85rem; color: var(--muted); }
+
+/* Tableaux */
+.acc-wrap { overflow-x: auto; }
+.acc-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.acc-table thead th { text-align: left; font-size: 0.7rem; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 600; color: var(--muted);
+  padding: 0.4rem 0.65rem; background: var(--acc-soft); border-bottom: 1px solid var(--acc-line); white-space: nowrap; vertical-align: middle; }
+.acc-table tbody > tr + tr > * { border-top: 1px solid var(--border); }
+.acc-table tbody > tr > * { padding: 0.45rem 0.65rem; vertical-align: top; text-align: left; }
+.acc-jet { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--muted); width: 1%; }
+.acc-effet__niveau, .acc-effet__prix { white-space: nowrap; }
+.acc-effet__libelle { min-width: 14rem; }
+.acc-effet__sous { display: block; font-size: 0.78rem; font-weight: 400; color: var(--muted); }
+.acc-remarque { margin-left: 0.25rem; font-weight: 700; color: var(--acc); cursor: help; }
+.acc-colonne-niveau { background: var(--niv) !important; color: var(--sur-niveau) !important; text-align: center !important; }
+.acc-colonne-niveau__nom { display: block; font-size: 0.66rem; color: var(--sur-niveau-doux); }
+
+/* La case du dé (en-tête de la première colonne) : l'icône et le dernier jet */
+.acc-de-case { width: 1%; }
+html.js .acc-de-case__texte { display: none; }
+.acc-de { display: inline-flex; align-items: center; gap: 0.3rem; font: inherit; font-size: 0.82rem; font-weight: 700; letter-spacing: 0; text-transform: none; padding: 0.15rem 0.45rem;
+  border: 1px solid var(--acc-line); border-radius: 8px; background: var(--surface); color: var(--acc); cursor: pointer; }
+.acc-de:hover { background: var(--acc-soft); border-color: var(--acc); }
+.acc-de:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.acc-de:active svg { transform: rotate(25deg); }
+.acc-de__resultat { color: var(--text); font-variant-numeric: tabular-nums; }
+.acc-de__resultat:empty { display: none; }
+
+/* Lignes et cases à choisir ; couleur du niveau (lignes d'effet, cases des compétences, montures) */
+html.js .acc [data-choix] { cursor: pointer; }
+html.js .acc tr.acc-ligne:hover > *, html.js .acc .acc-case:hover { box-shadow: inset 0 0 0 999px rgb(0 0 0 / 0.05); }
+.acc-ligne[data-niveau] > *, .acc-case { background: var(--niv); color: var(--sur-niveau); }
+.acc-ligne[data-niveau] > .acc-jet, .acc-ligne[data-niveau] .acc-effet__sous { color: var(--sur-niveau-doux); }
+.acc-ligne[data-niveau] .acc-remarque { color: var(--sur-niveau); }
+.acc-case { text-align: center !important; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.acc-ligne--malediction > * { color: var(--maudit); font-weight: 700; letter-spacing: 0.04em; }
+.acc-effet--vide .acc-choisir { font-weight: 400; }
+.acc-choisir { all: unset; cursor: pointer; font-weight: 700; line-height: 1.35; }
+.acc-effet .acc-choisir { font-weight: 600; }
+.acc-choisir:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; border-radius: 4px; }
+.acc tr[data-choix].est-choisi > * { box-shadow: inset 0 3px 0 var(--acc), inset 0 -3px 0 var(--acc); }
+.acc tr[data-choix].est-choisi > :first-child { box-shadow: inset 4px 0 0 var(--acc), inset 0 3px 0 var(--acc), inset 0 -3px 0 var(--acc); }
+.acc .acc-case.est-choisi { box-shadow: inset 0 0 0 3px var(--acc); }
+.acc tr[data-choix]:not([data-niveau]).est-choisi > * { background: color-mix(in srgb, var(--acc) 14%, var(--surface)); }
+.acc [data-choix].est-choisi .acc-choisir::before { content: '✓ '; }
+
+/* Gemmes : la couleur de leur magie, l'infobulle (magie, description, prix d'un quart) au survol */
+.acc-gemmes { white-space: nowrap; }
+.acc-gemme { display: inline-block; margin: 0.05rem 0; padding: 0 0.5rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; line-height: 1.45;
+  background: var(--g); color: var(--g-texte); border: 1px solid color-mix(in srgb, var(--g) 65%, #000); cursor: help; }
+.acc-gemmes__plus, .acc-gemmes__ou { margin: 0 0.25rem; font-size: 0.78rem; }
+.acc-gemmes__ou { font-style: italic; }
+.acc-bulles { display: contents; }
+
+/* L'accessoire créé (rempli par src/scripts/accessoires.mjs) : dans la couleur du niveau de son effet */
+.acc-produit { padding: 0.9rem 1rem 1rem; background: var(--surface); border: 1px solid var(--acc-line); border-radius: 12px; font-size: 0.92rem; box-shadow: 0 6px 12px -10px rgb(0 0 0 / 0.35); }
+.acc-produit[style*="--niv"] { background: var(--niv); color: var(--sur-niveau); border-color: color-mix(in srgb, var(--niv) 60%, #000); }
+.acc-produit[style*="--niv"] :is(.acc-produit__sur, .acc-produit__sous, dt, .acc-produit__note) { color: var(--sur-niveau-doux); }
+.acc-produit.est-maudit { border: 2px dashed var(--maudit); }
+.acc-produit__vide { margin: 0; color: var(--muted); }
+.acc-produit__sur { margin: 0; font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.acc-produit__sur strong { color: var(--maudit); }
+.acc-produit__titre { margin: 0.15rem 0 0.6rem; font-size: 1.25rem; line-height: 1.25; }
+.acc-produit__liste { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.35rem 0.8rem; margin: 0; }
+.acc-produit__liste dt { font-size: 0.72rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); padding-top: 0.15rem; }
+.acc-produit__liste dd { margin: 0; }
+.acc-produit__sous { display: block; font-size: 0.8rem; color: var(--muted); }
+.acc-produit__remarque { display: block; margin-top: 0.25rem; font-size: 0.8rem; font-style: italic; }
+.acc-produit__manque { color: var(--muted); font-style: italic; }
+.acc-produit__gemmes .acc-gemme { cursor: help; }
+.acc-produit__note { margin: 0.7rem 0 0; font-size: 0.84rem; color: var(--muted); }
+.acc-produit__maudit { display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.7rem; font-size: 0.86rem; cursor: pointer; }
+
+/* Écran étroit : l'accessoire créé passe sous les tableaux, collé au bas de l'écran */
+@media (max-width: 64rem) {
+  html.js .acc-vue { grid-template-columns: minmax(0, 1fr); }
+  html.js .acc .acc-cote { position: sticky; top: auto; bottom: 0; max-height: 38vh; z-index: 5; }
+}
+
+@media print {
+  .acc-outils, .acc-de { display: none !important; }
+}
