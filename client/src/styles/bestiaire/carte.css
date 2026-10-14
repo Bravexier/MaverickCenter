@@ -15,6 +15,16 @@
 .bcible { display: inline-block; padding: 0 0.4rem; border-radius: 999px; font-size: 0.78rem; line-height: 1.5; border: 1px solid var(--border); background: var(--bg); }
 .bcible--grande_vulnerabilite, .bcible--grande_resistance, .bcible--double_resistance { font-weight: 700; border-color: var(--bes-line); }
 .bcible--reflexion { font-style: italic; }
+/* la couleur de la magie qui va avec la cible (la magie elle-même, ou la magie liée d'une altération d'état ; deux magies : moitié-moitié) */
+.bcible--magie { background: var(--c); color: var(--c-texte); border-color: color-mix(in srgb, var(--c) 55%, var(--text)); }
+/* deux magies liées (« Surcharge magique » : Arcane et Corruption) : la seconde en bande à droite, le texte sur la première */
+.bcible--deux { padding-right: 0.75rem; box-shadow: inset -0.4rem 0 0 var(--c2); }
+/* à l'impression, le fond d'une pastille de magie s'imprime (sinon son texte blanc devient illisible) */
+@media print { .bcible--magie { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+/* une défense écrite par forme ou sur plusieurs lignes (« Guerrier : … », « Absorbe(s) … ») : une ligne chacune */
+.bdef-lignes { display: grid; gap: 0.2rem; }
+.bdef-ligne { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; }
+.bdef-ligne--vide { height: 0.15rem; }
 .bcibles { display: flex; flex-wrap: wrap; gap: 0.25rem; }
 .bcat { display: inline-block; padding: 0 0.45rem; border-radius: 999px; font-size: 0.78rem; white-space: nowrap; border: 1px solid var(--border); }
 .bcat--mini_boss { border-color: var(--bes-line); background: var(--bes-soft); }
@@ -61,6 +71,16 @@ html:not(.js) .bcarte__fermer { display: none; }
 .bstat--sante { border-color: color-mix(in srgb, #c62828 45%, var(--border)); }
 .bstat--chakra { border-color: color-mix(in srgb, #1565c0 45%, var(--border)); }
 .bstat--barriere { border-color: color-mix(in srgb, #f9a825 55%, var(--border)); }
+/* santé, chakra, barrière écrites à part (cartes à plusieurs échelles) : une colonne chacune, comme la ligne de tuiles d'une carte à une seule échelle ;
+   le titre de chaque rubrique est celui de sa tuile (montré en mode modification, au-dessus de sa saisie) */
+.btrio__cases { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; align-items: start; }
+.btrio__cases > .brubrique > dt { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+/* le titre se montre en mode modification (au-dessus de la saisie) et quand la rubrique n'a plus de tuile (une seule valeur, ou vide) */
+.btrio__cases > .brubrique:has(.ed-champ) > dt,
+.btrio__cases > .brubrique:not(:has(.bstat)) > dt { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; }
+.btrio .bstats--ep { grid-template-columns: minmax(0, 1fr); }
+/* sans échelle choisie (sans JavaScript, impression) : « · EP n » à la ligne, les tuiles des trois colonnes gardent la même hauteur */
+.bcarte:not([data-ep]) .btrio .bep-ep { display: block; }
 .bcaracs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.3rem; }
 .bcarac { display: grid; justify-items: center; padding: 0.2rem 0; border-radius: 8px; background: var(--c); color: var(--c-texte); }
 .bcarac__sigle { font-size: 0.7rem; font-weight: 700; }

@@ -313,6 +313,34 @@ async function monterCarte(ed, carte) {
   }
 }
 
+/**
+ * Une défense à formule « N (+k/mEP) » se calcule avec les échelles de sa carte (décision R55, rendu « monstre-rubrique » : `ed.listes.echellesDesCartes`,
+ * lu une fois au démarrage) : une carte réécrite (échelle modifiée, carte créée, surcouche au chargement) met la liste à jour et refait ses défenses à
+ * formule, hors saisie en cours.
+ */
+const FORMULE = /\(\s*\+\s*\d+\s*\/\s*\d*\s*EP\s*\)/;
+async function refaireLaDefense(ed, id, echelle) {
+  ed.listes.echellesDesCartes = { ...(ed.listes.echellesDesCartes ?? {}), [id]: echelle };
+  const champs = [...document.querySelectorAll('[data-ed-rendu="monstre-rubrique"]')].filter((el) => {
+    const info = lireAttributEd(el.dataset.ed ?? el.dataset.edLecture);
+    return info?.table === 'monstre_rubrique' && info.cle.monstre_id === id && !ed.editeurs.has(el) && (el.querySelector('.bcalcul') || FORMULE.test(el.textContent));
+  });
+  if (!champs.length) return;
+  try {
+    const demandes = champs.map((el) => lireAttributEd(el.dataset.ed ?? el.dataset.edLecture)).map((info) => ({ table: info.table, cle: info.cle }));
+    const { lignes } = await ed.appel('POST', 'edition/lignes/', { lignes: demandes });
+    const parCle = new Map(lignes.filter((l) => l.ligne).map((l) => [cleDeLigne(l.table, l.cle), l.ligne]));
+    for (const el of champs) {
+      const info = lireAttributEd(el.dataset.ed ?? el.dataset.edLecture);
+      const ligne = parCle.get(cleDeLigne(info.table, info.cle));
+      if (ligne && !ed.editeurs.has(el)) ed.rendre(el, ligne);
+    }
+    document.dispatchEvent(new CustomEvent('bestiaire:echelle-reecrite'));
+  } catch (e) {
+    ed.annoncer(`La défense de la carte n’a pas pu être recalculée : ${e.message}`, 'erreur');
+  }
+}
+
 function boutonSupprimer(tr) {
   const cellule = tr.querySelector('.bligne__nom');
   if (!cellule || cellule.querySelector('.ed-supprimer')) return;
@@ -415,7 +443,10 @@ export const bestiaire = {
     if (ligne) {
       // le curseur d'échelle de la carte (data-ed-lecture sur echelle_brut) vient d'être réécrit, curseur remis à sa première échelle : la page recale
       // l'échelle de la carte ouverte (src/scripts/bestiaire.mjs ; enregistrement, portrait, surcouche au chargement)
-      if (table === 'monstre') document.dispatchEvent(new CustomEvent('bestiaire:echelle-reecrite'));
+      if (table === 'monstre') {
+        document.dispatchEvent(new CustomEvent('bestiaire:echelle-reecrite'));
+        refaireLaDefense(ed, cle.id, ligne.echelle_brut);
+      }
       if (!('portrait' in ligne)) return;
       for (const f of figuresDe(table, cle)) {
         afficherPortrait(ed, f, portraitVu(ligne)).catch((e) => ed.annoncer(`Le portrait n’a pas pu être affiché : ${e.message}`, 'erreur'));

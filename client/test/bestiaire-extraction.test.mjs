@@ -34,15 +34,20 @@ test('l’extraction rejouée sur l’export du doc redonne exactement les table
   }
 });
 
-test('effectifs : 4 règles, 10 échelles, 144 espèces (« Golem de corail » écrit deux fois), 315 cartes, 102 objets au glossaire', () => {
+test('effectifs : 4 règles, 10 échelles, 144 espèces (« Golem de corail » écrit deux fois), 311 cartes, 102 objets au glossaire', () => {
   assert.equal(b.regles.length, 4);
   assert.deepEqual(b.echelles.map((e) => e.ep), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   assert.deepEqual(b.echelles.map((e) => [e.niveau_min, e.niveau_max]), [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12], [13, 14], [15, 16], [17, 18], [19, 20]]);
   assert.deepEqual([b.echelles[0].attributs_ennemi_simple, b.echelles[0].attributs_mini_boss, b.echelles[0].attributs_boss, b.echelles[9].xp_boss], [35, 70, 140, 51200]);
   assert.equal(b.especes.length, 144);
   assert.deepEqual(b.especes.filter((e) => /-\d+$/.test(e.id)).map((e) => e.id), ['monstres/golem-de-corail-2']);
-  assert.equal(cartes.length, 315, 'les 316 « Créature échelle » du doc, moins le modèle de l’introduction');
+  assert.equal(cartes.length, 311, 'les 316 « Créature échelle » du doc, moins le modèle de l’introduction et les 4 cartes des brouillons (décision R58)');
   assert.equal(texte.split('Créature échelle').length - 1, 316);
+  // décision R58 : les deux brouillons du doc ne sont pas repris, ni rattachés à l'espèce qui les précède
+  for (const titre of ['Réanimé (EP5) (a continuer)', 'Vouivre squelette (EP8) (a refaire)']) assert.ok(lignesDuDoc(texte).includes(titre), titre);
+  assert.deepEqual(cartes.filter((c) => /RÉANIMÉ|VOUIVRE/.test(c.nom_brut)).map((c) => c.nom_brut), []);
+  const textes = b.especes.flatMap((e) => [e.description, e.complement, ...e.butin.map((x) => x.texte), ...e.cartes.flatMap((c) => c.rubriques.map((r) => r.texte))]);
+  assert.ok(!textes.some((t) => /\((?:a|à) (?:refaire|continuer)\)|^\*Parmi|\n\*Parmi/.test(t ?? '')), 'ni brouillon ni note du butin dans un texte gardé');
   assert.equal(b.glossaire.length, 102);
   assert.equal(new Set(b.glossaire.map((g) => g.id)).size, 102);
   assert.equal(b.especes.filter((e) => !e.cartes.length).length, 20, 'espèces décrites sans carte (la plupart des Ottar)');
@@ -62,7 +67,7 @@ test('chaque carte : une catégorie, des rubriques, un nom remis en minuscules q
     assert.equal(c.nom_brut, c.nom_brut.toUpperCase(), `${c.id} : écrit en capitales dans le doc`);
     assert.ok(c.rubriques.some((r) => r.rubrique === 'capacites'), `${c.id} : rubrique Capacité(s)`);
   }
-  assert.deepEqual(Object.fromEntries(categories), { ennemi_simple: 115, mini_boss: 91, boss: 109 });
+  assert.deepEqual(Object.fromEntries(categories), { ennemi_simple: 113, mini_boss: 90, boss: 108 });
   const nom = (brut) => cartes.find((c) => c.nom_brut === brut)?.nom;
   assert.equal(nom('AMBLYPYGE DE BRAI'), 'Amblypyge de brai');
   assert.equal(nom('GOLEM DE FER II'), 'Golem de fer II', 'chiffres romains');
@@ -86,7 +91,14 @@ test('rien n’est inventé : chaque ligne de texte gardée (rubriques, capacit�
 });
 
 test('corrections : seulement les graphies que la base a déjà corrigées partout, chacune présente dans le doc', () => {
-  assert.deepEqual(CORRECTIONS.map(([, , origine]) => origine.match(/\d{4}-[a-z-]+/)[0]), ['0012-eaunoire', '0006-orthographe-noms', '0006-orthographe-noms', '0005-orthographe-base']);
+  assert.deepEqual(CORRECTIONS.map(([, , origine]) => origine.match(/\d{4}-[a-z-]+/)[0]), [
+    '0012-eaunoire', '0006-orthographe-noms', '0006-orthographe-noms', '0005-orthographe-base',
+    ...Array(4).fill('0039-bestiaire-reponses'),
+  ]);
+  // décision R57 : les fautes du butin, à leur seule place dans le doc (une case, une ligne de trois cases, un nom du glossaire) ; le nom corrigé du
+  // glossaire garde son identifiant
+  assert.deepEqual(CORRECTIONS.slice(4).map(([motif]) => texte.match(new RegExp(motif.source, 'g')).length), [1, 1, 1, 3]);
+  assert.deepEqual(b.glossaire.filter((g) => g.id === 'peau-du-radrak').map((g) => g.nom), ['Peau de radrak']);
   for (const [motif] of CORRECTIONS) assert.match(texte, new RegExp(motif.source, motif.flags.replace('g', '')), `${motif} : écrit dans le doc`);
   assert.ok(b.especes.some((e) => /Eaunoire a sauvé les exilés/.test(e.description ?? '')), 'la déesse de la Corruption s’appelle Eaunoire (R21)');
   assert.equal(compacter('Brouillard,  ect'), 'Brouillard, etc');

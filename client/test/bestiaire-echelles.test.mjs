@@ -7,11 +7,25 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { chargerMonstres } from '../src/lib/bestiaire-db.mjs';
 import { htmlDeCarteMonstre } from '../src/lib/bestiaire-rendu.mjs';
-import { renvoisAuxDegatsMoyens } from '../src/lib/bestiaire-db.mjs';
+import { magiesDesCibles as magiesDesCiblesDe, renvoisAuxDegatsMoyens } from '../src/lib/bestiaire-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { rendreChamp } from '../src/lib/edition-rendu.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
-import { bornes, echellesEcrites, objetDuButin, parEchelle, renvoieAuxDegatsMoyens, segmentsParEchelle } from '../src/lib/monstre-champs.mjs';
+import { normalize } from '../src/lib/text.mjs';
+import {
+  bornes,
+  capacites as capacitesDe,
+  echelleDuPrefixe,
+  echellesEcrites,
+  objetDuButin,
+  parEchelle,
+  progressions,
+  renvoieAuxDegatsMoyens,
+  segmentsParEchelle,
+  SENS_DEFENSE,
+  texteParEchelle,
+  valeurALEchelle,
+} from '../src/lib/monstre-champs.mjs';
 import { htmlDeLEchelle, htmlDeRubrique, htmlDuButin, idDeBulleDuButin, phrasesDeDegats } from '../src/lib/monstre-rendu.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
@@ -19,6 +33,7 @@ const cartes = db.prepare('SELECT * FROM monstre ORDER BY espece_id, rang').all(
 const rubriques = db.prepare('SELECT * FROM monstre_rubrique ORDER BY monstre_id, rang').all();
 const glossaire = db.prepare('SELECT id, nom, texte FROM monstre_butin_objet ORDER BY rang').all();
 const echelles = db.prepare('SELECT * FROM monstre_echelle ORDER BY ep').all();
+const elements = db.prepare('SELECT nom FROM magie ORDER BY ordre').all().map((m) => m.nom);
 const historique = historiqueSite(db);
 const cartesDImport = historique.lignesDImport('monstre');
 const rubriquesDImport = historique.lignesDImport('monstre_rubrique');
@@ -117,26 +132,34 @@ test('rendu par échelle : chaque valeur porte ses échelles (data-eps), aucun n
       assert.equal((html.match(/<span class="bstat bstat--/g) ?? []).length, segments.length, `${r.monstre_id} · ${r.rubrique} : une tuile par valeur`);
     }
   }
-  // une tuile : l'échelle (et le nom écrit) en étiquette, la valeur seule
+  // une tuile nommée comme sur une carte à une seule échelle (demande du propriétaire : « ne doivent pas afficher l'EP, mais leur titre ») : le titre de la
+  // rubrique, le nom écrit (« [EP3] Sang : 10 ») ou la forme (« (Guerrier) ») ; l'échelle à part (montrée sans curseur), la valeur seule
+  const tuile = (eps, nom, ep, val) => `<span class="bstat bstat--sante" data-eps="${eps}"><span class="bstat__nom">${nom}<span class="bep-ep"> · ${ep}</span></span><span class="bstat__val">${val}</span></span>`;
   assert.equal(
-    htmlDeRubrique('sante', 'EP 6 : 140\nEP 1 : 20\n[EP3] Sang : 10'),
-    '<span class="bstats bstats--ep"><span class="bstat bstat--sante" data-eps="1"><span class="bstat__nom">EP 1</span><span class="bstat__val">20</span></span>'
-      + '<span class="bstat bstat--sante" data-eps="3"><span class="bstat__nom">EP 3 · Sang</span><span class="bstat__val">10</span></span>'
-      + '<span class="bstat bstat--sante" data-eps="6"><span class="bstat__nom">EP 6</span><span class="bstat__val">140</span></span></span>',
+    htmlDeRubrique('sante', 'EP 6 : 140\nEP 1 : 20\n[EP3] Sang : 10\n(Guerrier) EP 1 - 2 : 5'),
+    `<span class="bstats bstats--ep">${tuile('1', 'Santé', 'EP 1', 20)}${tuile('1 2', '(Guerrier)', 'EP 1 - 2', 5)}${tuile('3', 'Sang', 'EP 3', 10)}${tuile('6', 'Santé', 'EP 6', 140)}</span>`,
+  );
+  // une ligne : la forme reste, l'échelle à part
+  assert.equal(
+    htmlDeRubrique('competences', '(Guerrier) EP 8 - 10 : +10% Esquive'),
+    '<span class="bep-lignes"><span class="bep-ligne" data-eps="8 9 10"><span class="bforme">(Guerrier)</span> <span class="bep">EP 8 - 10</span> <span class="texte">+10% Esquive</span></span></span>',
   );
   // une rubrique sans échelle : comme avant
   assert.doesNotMatch(htmlDeRubrique('sante', 'Santé : 20'), /data-eps/);
 });
 
-test('butin : l’objet du glossaire écrit en tête de la case, suivi d’une quantité ou d’une amélioration ; rien d’autre n’est rapproché', () => {
+test('butin : l’objet du glossaire écrit en tête de la case, suivi d’une quantité ou d’une amélioration ; avec son élément (décision R57) ; rien d’autre', () => {
   const g = [
-    { id: 'gelee-verte', nom: 'Gelée verte' },
-    { id: 'gelee-verte-foncee', nom: 'Gelée verte foncée' },
-    { id: 'coeur-polaire', nom: 'Cœur polaire' },
-    { id: 'citron', nom: 'Citron' },
-    { id: 'os-moyen', nom: 'Os moyen' },
+    { id: 'gelee-verte', nom: 'Gelée verte', texte: 'Chair de blob vert.' },
+    { id: 'gelee-verte-foncee', nom: 'Gelée verte foncée', texte: 'Chair de blob vert foncé.' },
+    { id: 'coeur-polaire', nom: 'Cœur polaire', texte: 'Noyau cyan.' },
+    { id: 'citron', nom: 'Citron', texte: 'Fruit de la Foudre, ingrédient alchimique.' },
+    { id: 'os-moyen', nom: 'Os moyen', texte: 'Os de taille intermédiaire.' },
+    { id: 'minitaire', nom: 'Minitaire', texte: 'Version miniature d’un élémentaire.' },
+    { id: 'fragment-de-piece-elementaire', nom: 'Fragment de pièce élémentaire', texte: 'Morceau d’une pièce élémentaire brisée.' },
   ];
-  const id = (t) => objetDuButin(t, g)?.objet.id ?? null;
+  const elements = ['Feu', 'Foudre', 'Eau', 'Espace/Temps', 'Arcane'];
+  const id = (t) => objetDuButin(t, g, elements)?.objet.id ?? null;
   assert.equal(id('Gelée verte x 1d6'), 'gelee-verte');
   assert.equal(id('Gelée verte foncée x2'), 'gelee-verte-foncee', 'le nom le plus long l’emporte');
   assert.equal(id('Gelée verte'), 'gelee-verte');
@@ -144,14 +167,24 @@ test('butin : l’objet du glossaire écrit en tête de la case, suivi d’une q
   assert.equal(id('Gelée verte + 1'), 'gelee-verte');
   assert.equal(id('Gelée verte +2'), 'gelee-verte');
   assert.deepEqual(objetDuButin('Coeur polaire x 4', g), { objet: g[2], ecrit: 'Coeur polaire', reste: ' x 4' }, 'la ligature seule');
-  for (const t of ['Citron de foudre x 1d4', '4 os moyen', 'gelée verte x 1', 'Gelée vertes', 'Gelée verte pour 24h', 'Cœur', '']) assert.equal(id(t), null, t);
+  // avec son élément : le fruit avec celui de sa définition, les objets de tous les éléments avec n'importe lequel
+  assert.deepEqual(objetDuButin('Citron de foudre x 1d4', g, elements), { objet: g[3], ecrit: 'Citron de foudre', reste: ' x 1d4' });
+  assert.equal(id('Citron de feu x 1d4'), null, 'un autre élément que celui de sa définition');
+  assert.equal(id('Minitaire d’Eau'), 'minitaire');
+  assert.equal(id('Minitaire de Feu + 1'), 'minitaire');
+  assert.deepEqual(objetDuButin('Fragment de pièce de l’arcane x8', g, elements), { objet: g[6], ecrit: 'Fragment de pièce de l’arcane', reste: ' x8' });
+  assert.equal(id('Fragment de pièce Espace/Temps x 1'), 'fragment-de-piece-elementaire');
+  assert.equal(id('Fragment de pièce de Lune x 1'), null, 'pas une magie');
+  assert.equal(objetDuButin('Minitaire de Foudre', g), null, 'sans la liste des éléments');
+  for (const t of ['4 os moyen', 'gelée verte x 1', 'Gelée vertes', 'Gelée verte pour 24h', 'Cœur', 'Minitaire de Foudre géant', '']) assert.equal(id(t), null, t);
   assert.equal(objetDuButin('Gelée verte', []), null);
   // toute la base : l'objet trouvé et la suite redonnent la case
   for (const { texte: t } of db.prepare('SELECT texte FROM monstre_butin').all()) {
-    const o = objetDuButin(t, glossaire);
+    const o = objetDuButin(t, glossaire, elements);
     if (!o) continue;
     assert.equal(o.ecrit + o.reste, t);
-    assert.equal(o.ecrit.replace(/œ/g, 'oe').replace(/Œ/g, 'Oe'), o.objet.nom.replace(/œ/g, 'oe').replace(/Œ/g, 'Oe'));
+    const sans = (x) => x.replace(/œ/g, 'oe').replace(/Œ/g, 'Oe');
+    assert.ok(sans(o.ecrit) === sans(o.objet.nom) || o.ecrit.startsWith(`${o.objet.id === 'fragment-de-piece-elementaire' ? 'Fragment de pièce' : o.objet.nom} `), t);
   }
   // l'import du doc : plus de 200 cases citent un objet du glossaire
   const glossaireDImport = historique.lignesDImport('monstre_butin_objet');
@@ -222,13 +255,171 @@ test('renvoi au tableau de l’introduction : écrit dans la rubrique « dégât
 test('carte construite : le curseur (s’il y a lieu) entre la tête et la carte, une case de butin par objet cité', () => {
   const { lignes } = chargerMonstres(db);
   for (const l of lignes) {
-    const html = htmlDeCarteMonstre(l, { logo: '/logo.webp', echelles, glossaire });
+    const html = htmlDeCarteMonstre(l, { logo: '/logo.webp', echelles, glossaire, elements });
     const plusieurs = l.carte && echellesEcrites(l.carte.echelle).length >= 2;
     assert.equal(/data-echelles=/.test(html), Boolean(plusieurs), l.id);
     if (l.carte) assert.match(html, /<\/header><div class="bcarte__echelle" data-ed-lecture="[^"]+" data-ed-rendu="monstre-echelle">/, l.id);
     else assert.doesNotMatch(html, /bcarte__echelle/, l.id);
     assert.equal(/bechelle__degats/.test(html), Boolean(plusieurs && renvoieAuxDegatsMoyens(l.carte.rubriques)), `${l.id} : dégâts moyens seulement sur renvoi`);
-    const attendus = l.espece.butin.flatMap((t) => ['ennemi_simple', 'mini_boss', 'boss'].map((cat) => t[cat])).filter((t) => t && objetDuButin(t, glossaire)).length;
+    const attendus = l.espece.butin.flatMap((t) => ['ennemi_simple', 'mini_boss', 'boss'].map((cat) => t[cat])).filter((t) => t && objetDuButin(t, glossaire, elements)).length;
     assert.equal((html.match(/<button type="button" class="bobjet" /g) ?? []).length, attendus, l.id);
+  }
+});
+
+test('décision R55 : « N (+k/mEP) » vaut N à la première échelle de la carte, puis +k toutes les m échelles (« 5 (+2/3EP) » : 7 à 4, 9 à 7, 11 à 10)', () => {
+  const dix = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  const lu = (texte, eps) => texteParEchelle(texte, eps).map((g) => [g.eps, g.morceaux.map((m) => m.texte ?? `${m.valeur}${m.mots}`).join('')]);
+  // l'exemple du propriétaire
+  const [f] = progressions('5 armure physique (+2/3EP)');
+  assert.deepEqual([4, 7, 10].map((ep) => valeurALEchelle(f, ep, 1)), [7, 9, 11]);
+  assert.deepEqual([1, 2, 3].map((ep) => valeurALEchelle(f, ep, 1)), [5, 5, 5]);
+  assert.deepEqual(lu('5 armure physique (+2/3EP) / 5 (+2/3EP) armure magique (Peau)', dix), [
+    [[1, 2, 3], '5 armure physique / 5 armure magique (Peau)'],
+    [[4, 5, 6], '7 armure physique / 7 armure magique (Peau)'],
+    [[7, 8, 9], '9 armure physique / 9 armure magique (Peau)'],
+    [[10], '11 armure physique / 11 armure magique (Peau)'],
+  ]);
+  // « /EP » : à chaque échelle
+  assert.deepEqual(lu('2 (+1/EP) armure physique / 0 armure magique', [1, 2, 3]), [
+    [[1], '2 armure physique / 0 armure magique'],
+    [[2], '3 armure physique / 0 armure magique'],
+    [[3], '4 armure physique / 0 armure magique'],
+  ]);
+  // des échelles regroupées seulement si elles se suivent dans la liste écrite et donnent le même texte
+  assert.deepEqual(lu('1 (+2/3EP) armure', [1, 2, 4, 5]).map(([eps]) => eps), [[1, 2], [4, 5]]);
+  assert.deepEqual(texteParEchelle('5 armure physique / 2 armure magique', dix), [], 'sans formule');
+  assert.deepEqual(texteParEchelle('5 (+2/3EP) armure', [4]), [], 'une seule échelle : le texte tel qu’écrit');
+  // rendu : une ligne par groupe d'échelles, la valeur calculée soulignée, la formule écrite en infobulle
+  assert.equal(
+    htmlDeRubrique('defense', '5 (+2/3EP) armure', { echelles: [1, 2, 3, 4] }),
+    '<span class="bep-lignes"><span class="bep-ligne" data-eps="1 2 3"><span class="bep">EP 1 - 3</span> <span class="texte"><span class="bcalcul" title="« 5 (+2/3EP) » : +2 tous les 3 EP">5</span> armure</span></span>'
+      + '<span class="bep-ligne" data-eps="4"><span class="bep">EP 4</span> <span class="texte"><span class="bcalcul" title="« 5 (+2/3EP) » : +2 tous les 3 EP">7</span> armure</span></span></span>',
+  );
+  assert.equal(htmlDeRubrique('defense', '5 (+2/3EP) armure'), '<span class="texte">5 (+2/3EP) armure</span>', 'sans les échelles de la carte : tel qu’écrit');
+  // une carte qui ne commence pas à l'EP 1 (le Collecteur, EP 2 à 6) : où est N ? la formule reste telle qu'écrite (question au propriétaire)
+  assert.deepEqual(texteParEchelle('2 (+1/EP) armure physique', [2, 3, 4, 5, 6]), []);
+  // la défense seulement : une autre rubrique garde la formule telle qu'écrite
+  assert.doesNotMatch(htmlDeRubrique('degats', 'Griffe - 2d10 + 2 (+1/EP) dégâts', { echelles: [1, 2, 3] }), /bcalcul|data-eps/);
+  // toute la base : chaque formule d'une carte à plusieurs échelles est lue à chacune de ses échelles, une fois
+  for (const c of cartes) {
+    const eps = echellesEcrites(c.echelle_brut);
+    for (const r of rubriquesDe(c.id).filter((x) => x.rubrique === 'defense' && progressions(x.texte).length)) {
+      if (eps.length < 2 || eps[0] !== 1) continue;
+      const groupes = texteParEchelle(r.texte, eps);
+      assert.deepEqual(groupes.flatMap((g) => g.eps), eps, `${c.id} · ${r.rubrique}`);
+      const html = htmlDeRubrique(r.rubrique, r.texte, { echelles: eps });
+      assert.deepEqual([...html.matchAll(/data-eps="([\d ]+)"/g)].map((m) => m[1]), groupes.map((g) => g.eps.join(' ')), c.id);
+      // à la première échelle, la valeur écrite ; le texte hors formules, inchangé
+      assert.equal(groupes[0].morceaux.map((m) => m.texte ?? `${m.valeur}${m.mots}`).join(''), r.texte.replace(/\s*\(\s*\+\s*\d+\s*\/\s*\d*\s*EP\s*\)/g, ''), c.id);
+      assert.equal(rendreChamp('monstre-rubrique', r.texte, r, { echellesDesCartes: { [c.id]: c.echelle_brut } }), html, `${c.id} : rendu du mode modification`);
+    }
+  }
+  // l'import du doc : 16 défenses à formule sur des cartes de l'EP 1 à 10, 3 sur les Collecteurs (EP 2 à 6)
+  const aFormule = (liste) => cartesDImport.filter((c) => rubriquesDe(c.id, liste).some((x) => x.rubrique === 'defense' && progressions(x.texte).length));
+  assert.deepEqual(
+    aFormule(rubriquesDImport).map((c) => echellesEcrites(c.echelle_brut)[0]).reduce((n, ep) => ({ ...n, [ep]: (n[ep] ?? 0) + 1 }), {}),
+    { 1: 16, 2: 3 },
+  );
+});
+
+test('décision R56 : une capacité « [EPN] » est gagnée à partir de l’EP N ; le curseur la cache en dessous', () => {
+  const html = htmlDeRubrique('capacites', '[EP3] Nuage rapide. Texte.\n\n(Neige) [EP5] Neige permanente. Texte.\n\n[Gauche] Téméraire. Texte.\n\nSans préfixe. Texte.');
+  const lis = [...html.matchAll(/<li([^>]*)>/g)].map((m) => m[1]);
+  assert.deepEqual(lis, [' data-eps="3 4 5 6 7 8 9 10"', ' data-eps="5 6 7 8 9 10"', '', '']);
+  assert.match(html, /<span class="prefixe" title="Gagnée à partir de l’EP 3">\[EP3\]<\/span>/);
+  assert.match(html, /<span class="prefixe">\[Gauche\]<\/span>/);
+  assert.equal(echelleDuPrefixe('(Neige/Cristal) [EP7]'), 7);
+  assert.equal(echelleDuPrefixe('[Enflammé]'), null);
+  assert.equal(echelleDuPrefixe(null), null);
+  // toute la base : autant de capacités marquées que de capacités typées « à partir de l'EP N » (monstre_capacite.ep_min), chacune dans les échelles de sa carte
+  const typees = db.prepare('SELECT monstre_id, count(*) AS n FROM monstre_capacite WHERE ep_min IS NOT NULL GROUP BY monstre_id').all();
+  for (const { monstre_id: id, n } of typees) {
+    const c = cartes.find((x) => x.id === id);
+    const r = rubriquesDe(id).filter((x) => x.rubrique === 'capacites');
+    const marquees = r.flatMap((x) => capacitesDe(x.texte)).filter((x) => echelleDuPrefixe(x.prefixe) !== null);
+    assert.equal(marquees.length, n, id);
+    // dans les échelles de la carte, à l'import du doc (le site de dev peut changer l'échelle d'une carte)
+    const importee = cartesDImport.find((x) => x.id === id);
+    if (importee && importee.echelle_brut === c.echelle_brut) for (const x of marquees) assert.ok(x.ep_min >= c.ep_min && x.ep_min <= c.ep_max, `${id} : ${x.nom}`);
+    const html = r.map((x) => htmlDeRubrique('capacites', x.texte)).join('');
+    assert.equal((html.match(/<li data-eps=/g) ?? []).length, n, id);
+  }
+});
+
+test('santé, chakra, barrière écrites à part : un bloc « Santé, chakra, barrière », une colonne chacune, chaque rubrique gardant son champ', () => {
+  const { lignes } = chargerMonstres(db);
+  let trios = 0;
+  for (const l of lignes.filter((x) => x.carte)) {
+    const html = htmlDeCarteMonstre(l, { logo: '/logo.webp', echelles, glossaire, elements });
+    const cles = l.carte.rubriques.map((r) => r.rubrique).join(',');
+    const separees = /(^|,)sante,chakra,barriere(,|$)/.test(cles);
+    assert.equal(html.includes('btrio'), separees, l.id);
+    if (!separees) continue;
+    trios += 1;
+    assert.match(html, /<div class="brubrique brubrique--attributs btrio"><dt>Santé, chakra, barrière<\/dt><dd><dl class="btrio__cases"><div class="brubrique brubrique--sante"><dt>Santé<\/dt><dd data-ed-lecture="[^"]+" data-ed-rendu="monstre-rubrique" data-ed-sur-demande>/, l.id);
+    // aucune tuile n'est nommée par son échelle
+    assert.doesNotMatch(html, /<span class="bstat__nom">EP /, l.id);
+  }
+  // l'import du doc : les 40 cartes à plusieurs échelles écrivent santé, chakra, barrière à part
+  const trioDImport = cartesDImport.filter((c) => /(^|,)sante,chakra,barriere(,|$)/.test(rubriquesDe(c.id, rubriquesDImport).sort((a, b) => a.rang - b.rang).map((r) => r.rubrique).join(','))).length;
+  assert.equal(trioDImport, 40);
+  assert.ok(trios > 0);
+});
+
+test('vulnérabilités et résistances dans la couleur de la magie qui va avec : la magie elle-même, ou la magie liée de l’altération d’état', () => {
+  const table = magiesDesCiblesDe(db);
+  assert.deepEqual(table.feu, ['Feu']);
+  assert.deepEqual(table.brulure, ['Feu'], 'etat_magie : Brûlure -> Feu');
+  assert.deepEqual(table.petrification, ['Terre'], 'écriture du bestiaire de l’état « Pétrifié »');
+  assert.deepEqual(table['temps-espace'], ['Espace/Temps']);
+  assert.equal(table.frappe, undefined);
+  assert.equal(table.maladie, undefined);
+  // chaque état lié à une magie (table etat_magie) a sa couleur ; une magie aussi
+  for (const r of db.prepare('SELECT e.nom, m.nom AS magie FROM etat e JOIN etat_magie em ON em.etat_id = e.id JOIN magie m ON m.id = em.magie_id').all()) {
+    assert.ok(table[normalize(r.nom)].includes(r.magie), r.nom);
+  }
+  const html = htmlDeRubrique('vulnerabilite', 'Feu, Brûlure, Frappe, Surcharge magique', { magiesDesCibles: table });
+  assert.match(html, /<span class="bcible bcible--vulnerabilite bcible--magie" style="--c:#ff0000;--c2:#ff0000;--c-texte:#171210">Feu<\/span>/);
+  assert.match(html, /<span class="bcible bcible--vulnerabilite bcible--magie" style="--c:#ff0000;[^"]*" title="Magie liée : Feu">Brûlure<\/span>/);
+  assert.match(html, /<span class="bcible bcible--vulnerabilite">Frappe<\/span>/);
+  assert.match(html, /bcible--magie bcible--deux"[^>]*title="Magie liée : Arcane, Corruption">Surcharge magique</);
+  assert.doesNotMatch(htmlDeRubrique('vulnerabilite', 'Feu, Frappe'), /bcible--magie/, 'sans la table : neutre');
+  // le mode modification redonne la même pastille
+  assert.equal(rendreChamp('monstre-rubrique', 'Feu, Brûlure', { rubrique: 'resistance', monstre_id: 'x' }, { magiesDesCibles: table }), htmlDeRubrique('resistance', 'Feu, Brûlure', { magiesDesCibles: table }));
+});
+
+test('tuiles d’un groupe : une valeur sans nom écrit après un titre de groupe prend le titre (« Âme » du Collecteur), jamais celui de la rubrique', () => {
+  const html = htmlDeRubrique('barriere', 'EP 2 : 10\nEP 3 : 20\n\nÂme\nEP 2 - 6 : 10');
+  assert.match(html, /<span class="bstats__groupe">Âme<\/span><span class="bstat bstat--barriere" data-eps="2 3 4 5 6"><span class="bstat__nom">Âme<span class="bep-ep">/);
+  assert.match(html, /data-eps="2"><span class="bstat__nom">Barrière</);
+  // toute la base : sous un titre de groupe, une tuile porte le nom écrit, la forme ou le titre du groupe, jamais celui de la rubrique s'il n'est pas écrit
+  for (const r of rubriques.filter((x) => ['sante', 'chakra', 'barriere'].includes(x.rubrique) && parEchelle(x.texte))) {
+    const rendu = htmlDeRubrique(r.rubrique, r.texte);
+    let groupe = null;
+    for (const seg of segmentsParEchelle(r.texte)) {
+      if (seg.titre) groupe = seg.titre;
+      if (!seg.eps || !groupe) continue;
+      const nom = seg.forme ?? seg.valeur.match(/^([\p{L}’' ]+?)\s*:/u)?.[1] ?? groupe;
+      assert.ok(rendu.includes(`<span class="bstat__nom">${nom}<span class="bep-ep">`), `${r.monstre_id} : ${nom}`);
+    }
+  }
+});
+
+test('défense écrite par forme ou sur plusieurs lignes : chaque liste de cibles en pastilles colorées, le reste tel qu’écrit', () => {
+  const table = magiesDesCiblesDe(db);
+  const html = htmlDeRubrique('resistance', 'Guerrier : Eau, Frappe\nMage : Aucune\n\nAbsorbe(s) Dégâts/Effets = 0\nFeu', { magiesDesCibles: table });
+  assert.equal(
+    html.replace(/ style="[^"]*"/g, '').replace(/ title="[^"]*"/g, ''),
+    '<span class="bdef-lignes"><span class="bdef-ligne"><span class="bforme">Guerrier :</span> <span class="bcibles"><span class="bcible bcible--resistance bcible--magie">Eau</span>'
+      + '<span class="bcible bcible--resistance">Frappe</span></span></span><span class="bdef-ligne texte">Mage : Aucune</span><span class="bdef-ligne bdef-ligne--vide"></span>'
+      + '<span class="bdef-ligne texte">Absorbe(s) Dégâts/Effets = 0</span><span class="bdef-ligne"><span class="bcibles"><span class="bcible bcible--resistance bcible--magie">Feu</span></span></span></span>',
+  );
+  assert.equal(htmlDeRubrique('resistance', 'Varie selon la magie'), '<span class="texte">Varie selon la magie</span>');
+  assert.equal(htmlDeRubrique('resistance', 'Selon la forme\nVoir plus bas'), '<span class="texte">Selon la forme\nVoir plus bas</span>', 'aucune liste : tel qu’écrit');
+  // toute la base : le texte des pastilles et des lignes redonne celui de la rubrique
+  for (const r of rubriques.filter((x) => SENS_DEFENSE.includes(x.rubrique) && x.texte.trim())) {
+    const rendu = htmlDeRubrique(r.rubrique, r.texte, { magiesDesCibles: table });
+    const lu = rendu.replace(/<\/span><span class="bcible[^>]*>/g, ', ').replace(/<[^>]+>/g, '').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+    assert.equal(lu.replace(/[\s,.]+/g, ''), r.texte.replace(/[\s,.]+/g, ''), `${r.monstre_id} · ${r.rubrique}`);
   }
 });

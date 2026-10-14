@@ -7203,28 +7203,7 @@ INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine,
 Sournois. Quand l’adversaire n’est pas attentif à l’attaquant, permet d’infliger un bonus de 2d4 dégâts en plus des dégâts de l’arme.
 
 Attaque poison. L’arme de la créature est capable d’empoisonnement. Chaque attaque va obliger un jet de vigueur à la victime, si elle rate, elle prend “Poison 1”.', 'monstres', 'Bestiaire 2.0 › ligne 24889');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-putride', 10, 'tactique', 'TACTIQUE COMBAT', 'Le rat putride s’est imposé comme un chef de groupe de rats, ses griffes et dents sont imprégnées de poison et il est capable de l’infliger très facilement. Mais il reste fragile comme tous ses homologues rongeurs.
-________________
-
-Réanimé (EP5) (a continuer)
-Le Réanimé a la particularité d''avoir été ramené à la vie par des technomages nains. Les corps utilisés sont rarement de leur propre espèce, ils ont pour but d''extraire des ressources dans les mines les plus dangereuses. Leur utilisation dans les nations naines est réglementée mais certains nécromanciens et technomages passent entre les mailles du filet. En outre, ce sont des créatures équipées de prothèses magnétiques qui leur empêchent de perdre des membres bêtement, leur permettant de se réformer ou d''être réparés en cas d''éboulement.
-
-Lieu de rencontre : Ruines, Laboratoire, Montagne', 'monstres', 'Bestiaire 2.0 › ligne 24899');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:reanime', 1, 'attributs', NULL, 'Santé : 180 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 24915');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:reanime', 2, 'degats', 'Dégâts', 'Marteau électrique - 4d10 dégâts de frappe/foudre..', 'monstres', 'Bestiaire 2.0 › ligne 24918');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:reanime', 3, 'defense', 'Défense', '5 points d''armure / 2 résistance magique (Peau)', 'monstres', 'Bestiaire 2.0 › ligne 24922');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:reanime', 4, 'vitesse', 'Vitesse', '5 cases sol / 4 cases nage', 'monstres', 'Bestiaire 2.0 › ligne 24925');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:reanime', 5, 'caracteristiques', 'Caractéristiques (F.P.V.S.I.A.)', 'F : 6 / P : 2 / V : 9 / S : 0 / I : 0 / A : 6', 'monstres', 'Bestiaire 2.0 › ligne 24929');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:reanime', 6, 'competences', 'Compétence(s) secondaire(s)', '+10% Arme lourde', 'monstres', 'Bestiaire 2.0 › ligne 24933');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:reanime', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Feu, Terre', 'monstres', 'Bestiaire 2.0 › ligne 24937');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:reanime', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Foudre, Eau, Vent', 'monstres', 'Bestiaire 2.0 › ligne 24941');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:reanime', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Fatigue, Infirmité, Paralysie', 'monstres', 'Bestiaire 2.0 › ligne 24945');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:reanime', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est dépourvue de morale et d''émotion ce qu''il l''a rendue immunisée aux sorts mentaux ainsi qu''une immunité contre le poison et la maladie. Elle bénéficie également d''un bonus de +60 pour l''intimidation. Sa volonté est à 9 (les jets de vigueur/fermeté contre des effets de magie dont il est vulnérable divise par 2 les chances de les réussir).
-
-Nerveux. Cette créature à +4 à l’initiative.
-
-Paratonnerre. Attire les sorts de la foudre ou bien la foudre naturelle sur lui-même.', 'monstres', 'Bestiaire 2.0 › ligne 24949');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:reanime', 11, 'tactique', 'TACTIQUE COMBAT', '', 'monstres', 'Bestiaire 2.0 › ligne 24959');
+INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/rat#carte:rat-putride', 10, 'tactique', 'TACTIQUE COMBAT', 'Le rat putride s’est imposé comme un chef de groupe de rats, ses griffes et dents sont imprégnées de poison et il est capable de l’infliger très facilement. Mais il reste fragile comme tous ses homologues rongeurs.', 'monstres', 'Bestiaire 2.0 › ligne 24899');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-arcanique', 1, 'attributs', NULL, 'Santé : 200 Chakra : 80 Barrière : 80', 'monstres', 'Bestiaire 2.0 › ligne 25087');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-arcanique', 2, 'degats', 'Dégâts', 'Frappe – 2d10 +10 dégâts de frappe', 'monstres', 'Bestiaire 2.0 › ligne 25090');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/salithre#carte:salithre-arcanique', 3, 'defense', 'Défense', '12 points d''armure / 8 résistance magique (Peau)', 'monstres', 'Bestiaire 2.0 › ligne 25094');
@@ -7737,31 +7716,6 @@ Attaque poison. L’arme de la créature est capable d’empoisonnement. Chaque 
 
 Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrises maximum : Pieu d’os, Armure d’os.', 'monstres', 'Bestiaire 2.0 › ligne 26591');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/squelette-venin#carte:squelette-venin', 11, 'tactique', 'TACTIQUE COMBAT', 'Ces squelettes purulents et immondes cherchent à empoisonner le plus de victime possible, quand un ennemi est déjà empoisonné, le squelette va chercher une autre victime à empoisonné (si elle peut manoeuvrer).', 'monstres', 'Bestiaire 2.0 › ligne 26606');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:grande-vouivre-squelette', 1, 'attributs', NULL, 'Santé : 394 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 27269');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:grande-vouivre-squelette', 2, 'degats', 'Dégâts', 'Griffes – 6d10 + 20 dégâts de taille.
-Morsure – 6d10 + 20 dégâts d’estoc.
-Cri terrifiant - 6d10 dégâts sonore + 10 (“Peur 1” si jet de prouesse raté)', 'monstres', 'Bestiaire 2.0 › ligne 27272');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:grande-vouivre-squelette', 3, 'defense', 'Défense', '30 points d''armure / 0 résistance magique (Peau)', 'monstres', 'Bestiaire 2.0 › ligne 27278');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:grande-vouivre-squelette', 4, 'vitesse', 'Vitesse', '5 cases sol / 0 cases nage', 'monstres', 'Bestiaire 2.0 › ligne 27281');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:grande-vouivre-squelette', 5, 'caracteristiques', 'Caractéristiques (F.P.V.S.I.A.)', 'F : 8 / P : 5 / V : 9 / S : 1 / I : 5 / A : 8', 'monstres', 'Bestiaire 2.0 › ligne 27285');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:grande-vouivre-squelette', 6, 'competences', 'Compétence(s) secondaire(s)', '+10% Parade, +10% Esquive, +20% Observation', 'monstres', 'Bestiaire 2.0 › ligne 27289');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:grande-vouivre-squelette', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Frappe', 'monstres', 'Bestiaire 2.0 › ligne 27293');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:grande-vouivre-squelette', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Taille', 'monstres', 'Bestiaire 2.0 › ligne 27297');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:grande-vouivre-squelette', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Aveuglement, Confusion, Fatigue, Saignement, Surdité, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 27301');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:grande-vouivre-squelette', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est dépourvue de morale et d''émotion ce qu''il l''a rendue immunisée aux sorts mentaux ainsi qu''une immunité contre le poison et la maladie. Elle bénéficie également d''un bonus de +60 pour l''intimidation. Sa volonté est à 9 (les jets de vigueur/fermeté contre des effets de magie dont il est vulnérable divise par 2 les chances de les réussir).
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Résistance à la magie. Cette créature encaisse seulement la moitié des dégâts magiques.
-
-Cri mortuaire. Quand les ennemis qui encaisse le cri terrifiant tentent le jet de prouesse, ils ont un malus de 20% au jet.', 'monstres', 'Bestiaire 2.0 › ligne 27305');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:grande-vouivre-squelette', 11, 'tactique', 'TACTIQUE COMBAT', 'Ces vouivres cherchent à démoraliser l''ennemi le plus possible, ils vont chercher à ce que tous les ennemis possèdent l’état Peur.', 'monstres', 'Bestiaire 2.0 › ligne 27325');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:velue', 1, 'sante', 'Santé', 'EP 1 : 20 EP 6 : 140
 EP 2 : 40 EP 7 : 160
 EP 3 : 70 EP 8 : 180
@@ -7954,56 +7908,6 @@ Grande créature. Cette créature est bien plus grande que les autres, ainsi les
 
 [EP10] Hyper pics. Les dégâts de pics évolutifs passent à 20.', 'monstres', 'Bestiaire 2.0 › ligne 26949');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:velue-superieur', 12, 'tactique', 'TACTIQUE COMBAT', 'Elles sont plus grosses et plus dangereuses que les normales. La stratégie ne change pas vraiment.', 'monstres', 'Bestiaire 2.0 › ligne 26988');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette', 1, 'attributs', NULL, 'Santé : 197 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 27204');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette', 2, 'degats', 'Dégâts', 'Griffes – 6d10 + 10 dégâts de taille.
-Morsure – 6d10 + 10 dégâts d’estoc.
-Cri terrifiant - 6d10 dégâts sonore (“Peur 1” si jet de prouesse raté)', 'monstres', 'Bestiaire 2.0 › ligne 27207');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette', 3, 'defense', 'Défense', '25 points d''armure / 0 résistance magique (Peau)', 'monstres', 'Bestiaire 2.0 › ligne 27213');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette', 4, 'vitesse', 'Vitesse', '5 cases sol / 0 cases nage', 'monstres', 'Bestiaire 2.0 › ligne 27216');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette', 5, 'caracteristiques', 'Caractéristiques (F.P.V.S.I.A.)', 'F : 8 / P : 5 / V : 9 / S : 1 / I : 5 / A : 8', 'monstres', 'Bestiaire 2.0 › ligne 27220');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette', 6, 'competences', 'Compétence(s) secondaire(s)', '+10% Parade, +10% Esquive, +20% Observation', 'monstres', 'Bestiaire 2.0 › ligne 27224');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Frappe', 'monstres', 'Bestiaire 2.0 › ligne 27228');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Taille', 'monstres', 'Bestiaire 2.0 › ligne 27232');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Aveuglement, Confusion, Fatigue, Saignement, Surdité, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 27236');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est dépourvue de morale et d''émotion ce qu''il l''a rendue immunisée aux sorts mentaux ainsi qu''une immunité contre le poison et la maladie. Elle bénéficie également d''un bonus de +60 pour l''intimidation. Sa volonté est à 9 (les jets de vigueur/fermeté contre des effets de magie dont il est vulnérable divise par 2 les chances de les réussir).
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Résistance à la magie. Cette créature encaisse seulement la moitié des dégâts magiques.', 'monstres', 'Bestiaire 2.0 › ligne 27240');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette', 11, 'tactique', 'TACTIQUE COMBAT', 'Ces anciennes vouivres ont conservé leur puissance et restent particulièrement dangereuses même si elles ne peuvent plus faire de souffle élémentaire. Elles vont attaquer violemment le plus de cible possible.', 'monstres', 'Bestiaire 2.0 › ligne 27257');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette-ancienne', 1, 'attributs', NULL, 'Santé : 788 Chakra : 0 Barrière : 0', 'monstres', 'Bestiaire 2.0 › ligne 27337');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette-ancienne', 2, 'degats', 'Dégâts', 'Griffes – 6d10 + 30 dégâts de taille.
-Morsure – 6d10 + 30 dégâts d’estoc.
-Cri terrifiant - 6d10 dégâts sonore + 20 (“Peur 1” si jet de prouesse raté)', 'monstres', 'Bestiaire 2.0 › ligne 27340');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette-ancienne', 3, 'defense', 'Défense', '35 points d''armure / 0 résistance magique (Peau)', 'monstres', 'Bestiaire 2.0 › ligne 27346');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette-ancienne', 4, 'vitesse', 'Vitesse', '5 cases sol / 0 cases nage', 'monstres', 'Bestiaire 2.0 › ligne 27349');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette-ancienne', 5, 'caracteristiques', 'Caractéristiques (F.P.V.S.I.A.)', 'F : 8 / P : 5 / V : 9 / S : 1 / I : 5 / A : 8', 'monstres', 'Bestiaire 2.0 › ligne 27353');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette-ancienne', 6, 'competences', 'Compétence(s) secondaire(s)', '+10% Parade, +10% Esquive, +20% Observation, +10% Arme lourde', 'monstres', 'Bestiaire 2.0 › ligne 27357');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette-ancienne', 7, 'vulnerabilite', 'Vulnérabilité(s) Dégâts x2', 'Frappe', 'monstres', 'Bestiaire 2.0 › ligne 27361');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette-ancienne', 8, 'resistance', 'Résistance(s) Dégâts ÷2', 'Taille', 'monstres', 'Bestiaire 2.0 › ligne 27365');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette-ancienne', 9, 'immunite', 'Immunité(s) Dégâts/Effets = 0', 'Poison, Maladie, Enragé, Peur, Aveuglement, Confusion, Fatigue, Saignement, Surdité, Estoc', 'monstres', 'Bestiaire 2.0 › ligne 27369');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette-ancienne', 10, 'capacites', 'Capacité(s)', 'Non-Mort. Une créature non-mort est dépourvue de morale et d''émotion ce qu''il l''a rendue immunisée aux sorts mentaux ainsi qu''une immunité contre le poison et la maladie. Elle bénéficie également d''un bonus de +60 pour l''intimidation. Sa volonté est à 9 (les jets de vigueur/fermeté contre des effets de magie dont il est vulnérable divise par 2 les chances de les réussir).
-
-Grande créature. Cette créature est bien plus grande que les autres, ainsi les malus de visée des ennemis sont réduits de moitié. Chaque attaque physique prodiguée par la créature force un jet de stabilité pour ne pas être repoussé de 1d4 cases en arrière et tomber au sol.
-
-Squelettique. Rend cette créature immunisé aux attaques d’estoc
-
-Charge sans peur. Permet d''avoir un bonus de +7 au jet d''initiative.
-
-Vol. Cette créature est capable de voler et donc d’ignorer les terrains négatifs.
-
-Résistance à la magie. Cette créature encaisse seulement la moitié des dégâts magiques.
-
-Cri mortuaire. Quand les ennemis qui encaisse le cri terrifiant tentent le jet de prouesse, ils ont un malus de 20% au jet.
-
-Cri universel. Cette créature est capable d’utiliser tous les cris qui existent dans les différentes magies (utilise de la santé pour utiliser les cris magiques)', 'monstres', 'Bestiaire 2.0 › ligne 27373');
-INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/velue#carte:vouivre-squelette-ancienne', 11, 'tactique', 'TACTIQUE COMBAT', 'Attention à ces vouivre particulièrement ancienne, malgré leur absence de magie, elles sont capables de produire les cris qui existent dans les magies Vent et Ombre.', 'monstres', 'Bestiaire 2.0 › ligne 27396');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-adulte', 1, 'attributs', NULL, 'Santé : 310 Chakra : 50 Barrière : 25', 'monstres', 'Bestiaire 2.0 › ligne 27557');
 INSERT INTO monstre_rubrique (monstre_id, rang, rubrique, titre, texte, origine, source_ref) VALUES ('monstres/voromorphe#carte:voromorphe-adulte', 2, 'degats', 'Dégâts', 'Griffes – 4d10 + 8 dégâts de taille.
 Morsure – 4d10 + 8 dégâts d’estoc.

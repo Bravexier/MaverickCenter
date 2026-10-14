@@ -6,7 +6,7 @@
 // le réaffiche (`data-ed-rendu`, lib/monstre-rendu.mjs#RENDUS_DU_BESTIAIRE) ; ceux de la carte ont aussi `data-ed-sur-demande` : ils ne deviennent des
 // saisies qu'une fois la carte ouverte (src/scripts/edition/bestiaire.mjs : 315 cartes dans la page). Fonctions pures, tout texte échappé.
 import { attributEd } from './edition-modele.mjs';
-import { CATEGORIES, renvoieAuxDegatsMoyens } from './monstre-champs.mjs';
+import { CATEGORIES, echellesEcrites, renvoieAuxDegatsMoyens, RUBRIQUES } from './monstre-champs.mjs';
 import { htmlDeCategorie, htmlDeLEchelle, htmlDeRubrique, htmlDuButin, PHRASE_VARIABLE, RENDUS_DU_BESTIAIRE } from './monstre-rendu.mjs';
 import { cadrageDe, dimensionsDuPortrait, empreinte, styleDuCadrage } from './portrait.mjs';
 
@@ -20,6 +20,24 @@ const champ = (table, cle, colonne, { rendu = null, surDemande = false } = {}) =
 /** Un cadre caché quand ses champs sont vides (lib/../scripts/edition/editeur.mjs#cadres), montré en mode modification pour les remplir. */
 const cadre = (vide) => ` data-ed-cadre="[data-ed-sur-demande]"${vide ? ' hidden' : ''}`;
 const plein = (texte) => String(texte ?? '').trim() !== '';
+
+/**
+ * Les rubriques d'une carte, dans leur ordre ; santé, chakra et barrière écrites chacune à part (les cartes à plusieurs échelles) se suivent dans un bloc
+ * « Santé, chakra, barrière », une colonne chacune, comme la ligne de tuiles d'une carte à une seule échelle (demande du propriétaire : « ils doivent
+ * être en ligne », « l'apparence doit être la même que pour les monstres mono EP ») ; chaque rubrique y garde son champ (mode modification).
+ */
+const TRIO = ['sante', 'chakra', 'barriere'];
+function rubriquesEnHtml(rubriques, html) {
+  const sortie = [];
+  for (let k = 0; k < rubriques.length; k += 1) {
+    const trio = rubriques.slice(k, k + 3);
+    if (trio.length === 3 && trio.every((r, n) => r.rubrique === TRIO[n])) {
+      sortie.push(`<div class="brubrique brubrique--attributs btrio"><dt>${e(RUBRIQUES.attributs)}</dt><dd><dl class="btrio__cases">${trio.map(html).join('')}</dl></dd></div>`);
+      k += 2;
+    } else sortie.push(html(rubriques[k]));
+  }
+  return sortie.join('');
+}
 
 /** Identifiants d'une ligne : la carte (monstre) ou, pour une espèce sans carte, l'espèce. */
 const cles = (l) => ({ monstre: { id: l.id }, espece: { id: l.espece.id } });
@@ -86,8 +104,8 @@ export const empreinteDuPortrait = (portrait) => {
 /** La carte d'une ligne : en-tête (nom, espèce, catégorie, type, alignement, échelle), portrait (htmlDuPortrait ; `logo` : l'adresse du logo, en attendant,
  * `adresseDuPortrait` : celle d'une image), le curseur d'échelle d'une carte qui en écrit plusieurs (lib/monstre-rendu.mjs#htmlDeLEchelle ; `echelles` :
  * les lignes de `monstre_echelle`), toute la carte rubrique par rubrique, l'espèce (description, lieu de rencontre, blocs) et le butin (l'objet du
- * glossaire qu'une case cite en infobulle : `glossaire`, les lignes de `monstre_butin_objet`). Une espèce sans carte n'a que sa partie « espèce ». */
-export function htmlDeCarteMonstre(l, { logo, adresseDuPortrait = null, echelles = [], glossaire = [] }) {
+ * glossaire qu'une case cite en infobulle : `glossaire`, les lignes de `monstre_butin_objet` ; `elements`, les noms des magies, décision R57). Une espèce sans carte n'a que sa partie « espèce ». */
+export function htmlDeCarteMonstre(l, { logo, adresseDuPortrait = null, echelles = [], glossaire = [], elements = [], magiesDesCibles = {} }) {
   const c = l.carte;
   const k = cles(l);
   const id = `carte-${l.ancre}`;
@@ -106,13 +124,13 @@ export function htmlDeCarteMonstre(l, { logo, adresseDuPortrait = null, echelles
     + `<a class="bcarte__fermer" href="#${e(l.ancre)}" aria-label="${e(`Fermer la carte de ${l.nom}`)}">Fermer</a></header>`;
   // le curseur d'échelle : refait quand l'échelle ou la catégorie du monstre change (mode modification) ; vide pour une carte d'une seule échelle
   const echelle = c ? `<div class="bcarte__echelle"${champ('monstre', k.monstre, 'echelle_brut', { rendu: 'monstre-echelle' })}>${htmlDeLEchelle(c.echelle, c.categorie, echelles, renvoieAuxDegatsMoyens(c.rubriques))}</div>` : '';
+  // les échelles qu'écrit la carte : une formule « N (+k/mEP) » se calcule à chacune (décision R55)
+  const echellesDeLaCarte = c ? echellesEcrites(c.echelle) : [];
   const laCarte = c
     ? `<section class="bcarte__section" aria-label="La carte">`
       + `<p class="varie-note"${cadre(!c.variable)}><span${champ('monstre', k.monstre, 'variable', { rendu: 'monstre-variable', ...s })}>${c.variable ? e(PHRASE_VARIABLE) : ''}</span></p>`
-      + `<dl class="brubriques">${c.rubriques
-        .map((r) => `<div class="brubrique brubrique--${e(r.rubrique)}"><dt>${e(r.titre)}</dt>`
-          + `<dd${champ('monstre_rubrique', { monstre_id: l.id, rang: r.rang }, 'texte', { rendu: 'monstre-rubrique', ...s })}>${htmlDeRubrique(r.rubrique, r.texte)}</dd></div>`)
-        .join('')}</dl></section>`
+      + `<dl class="brubriques">${rubriquesEnHtml(c.rubriques, (r) => `<div class="brubrique brubrique--${e(r.rubrique)}"><dt>${e(r.titre)}</dt>`
+        + `<dd${champ('monstre_rubrique', { monstre_id: l.id, rang: r.rang }, 'texte', { rendu: 'monstre-rubrique', ...s })}>${htmlDeRubrique(r.rubrique, r.texte, { echelles: echellesDeLaCarte, magiesDesCibles })}</dd></div>`)}</dl></section>`
     : '';
   const es = l.espece;
   const espece = `<section class="bcarte__section" aria-label="L’espèce">`
@@ -130,7 +148,7 @@ export function htmlDeCarteMonstre(l, { logo, adresseDuPortrait = null, echelles
       + `<thead><tr><th scope="col">Score</th>${Object.entries(CATEGORIES).map(([cat, libelle]) => `<th scope="col"${sienne(cat)}>${e(libelle)}</th>`).join('')}</tr></thead>`
       + `<tbody>${es.butin
         .map((t) => `<tr><th scope="row" class="nombre">${e(t.score)}</th>${Object.keys(CATEGORIES)
-          .map((cat) => `<td${sienne(cat)}>${t[cat] ? `<span class="texte"${champ('monstre_butin', { espece_id: es.id, rang: t.rang, categorie: cat }, 'texte', { rendu: 'monstre-butin', ...s })}>${htmlDuButin(t[cat], glossaire)}</span>` : VIDE}</td>`)
+          .map((cat) => `<td${sienne(cat)}>${t[cat] ? `<span class="texte"${champ('monstre_butin', { espece_id: es.id, rang: t.rang, categorie: cat }, 'texte', { rendu: 'monstre-butin', ...s })}>${htmlDuButin(t[cat], glossaire, elements)}</span>` : VIDE}</td>`)
           .join('')}</tr>`)
         .join('')}</tbody></table></div></section>`
     : '';

@@ -189,7 +189,7 @@ test('glossaire du butin (demande du propriétaire : « retirer le glossaire du 
   for (const d of declencheurs) assert.ok(ids.has(d), d);
   const { monstres } = chargerBestiaire(db);
   const attendus = monstres.lignes.reduce(
-    (n, l) => n + l.espece.butin.flatMap((t) => [t.ennemi_simple, t.mini_boss, t.boss]).filter((t) => t && objetDuButin(t, glossaire)).length,
+    (n, l) => n + l.espece.butin.flatMap((t) => [t.ennemi_simple, t.mini_boss, t.boss]).filter((t) => t && objetDuButin(t, glossaire, monstres.elements)).length,
     0,
   );
   assert.equal(declencheurs.length, attendus);
@@ -216,6 +216,14 @@ test('curseur d’échelle (demande du propriétaire) : sur chaque carte à plus
   assert.ok(regle, 'une règle, à l’écran seulement');
   const selecteurs = [...regle[1].matchAll(/:is\(\.bcarte, \.bregles\)\S+ \S+/g)].map((m) => m[0].replace(/,$/, ''));
   assert.deepEqual(selecteurs, Array.from({ length: 10 }, (_, k) => `:is(.bcarte, .bregles)[data-ep="${k + 1}"] [data-eps]:not([data-eps~="${k + 1}"])`));
+  // l'échelle choisie, la carte a l'apparence d'une carte à une seule échelle : ni étiquette « EP n », ni ligne vide entre les échelles (demande du
+  // propriétaire : « certains champs se décalent en fonction de l'EP ») ; santé, chakra, barrière écrites à part : une ligne de trois tuiles
+  assert.match(html, /@media screen \{\s*\.bcarte\[data-ep\] \.bep-ligne > \.bep, \.bcarte\[data-ep\] \.bep-ep \{ display: none; \}[^}]*\.bcarte\[data-ep\] \.bep-ligne--vide \{ display: none; \}/);
+  assert.match(html, /\.btrio__cases \{ margin: 0; display: grid; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
+  const avecTrio = monstres.lignes.filter((l) => l.carte && /(^|,)sante,chakra,barriere(,|$)/.test(l.carte.rubriques.map((r) => r.rubrique).join(','))).length;
+  assert.equal((bloc.match(/<div class="brubrique brubrique--attributs btrio">/g) ?? []).length, avecTrio);
+  assert.ok(avecTrio > 0);
+  assert.doesNotMatch(bloc, /<span class="bstat__nom">EP /, 'aucune tuile nommée par son échelle');
   // sans JavaScript, pas de curseur : toutes les valeurs restent affichées
   assert.match(html, /html\.js \.bestiaire \.bregles__curseur\.js-seul, html\.js \.bestiaire \.bechelle__curseur\.js-seul \{ display: flex; \}/);
 });

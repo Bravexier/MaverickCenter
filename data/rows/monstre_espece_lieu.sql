@@ -208,7 +208,7 @@ INSERT INTO monstre_espece_lieu (espece_id, rang, lieu, lieu_cle, origine, sourc
 INSERT INTO monstre_espece_lieu (espece_id, rang, lieu, lieu_cle, origine, source_ref) VALUES ('monstres/potirodeur', 1, 'Champs', 'champs', 'monstres', 'Bestiaire 2.0 › lignes 24208-24351');
 INSERT INTO monstre_espece_lieu (espece_id, rang, lieu, lieu_cle, origine, source_ref) VALUES ('monstres/potironcier', 1, 'Champs', 'champs', 'monstres', 'Bestiaire 2.0 › lignes 24353-24489');
 INSERT INTO monstre_espece_lieu (espece_id, rang, lieu, lieu_cle, origine, source_ref) VALUES ('monstres/radrak-frenetique', 1, 'Ici et là', 'ici-et-la', 'monstres', 'Bestiaire 2.0 › lignes 24492-24745');
-INSERT INTO monstre_espece_lieu (espece_id, rang, lieu, lieu_cle, origine, source_ref) VALUES ('monstres/rat', 1, 'Ici et là', 'ici-et-la', 'monstres', 'Bestiaire 2.0 › lignes 24749-24959');
+INSERT INTO monstre_espece_lieu (espece_id, rang, lieu, lieu_cle, origine, source_ref) VALUES ('monstres/rat', 1, 'Ici et là', 'ici-et-la', 'monstres', 'Bestiaire 2.0 › lignes 24749-24900');
 INSERT INTO monstre_espece_lieu (espece_id, rang, lieu, lieu_cle, origine, source_ref) VALUES ('monstres/salithre', 1, 'Plage', 'plage', 'monstres', 'Bestiaire 2.0 › lignes 24970-25132');
 INSERT INTO monstre_espece_lieu (espece_id, rang, lieu, lieu_cle, origine, source_ref) VALUES ('monstres/salithre', 2, 'Eau', 'eau', 'monstres', 'Bestiaire 2.0 › lignes 24970-25132');
 INSERT INTO monstre_espece_lieu (espece_id, rang, lieu, lieu_cle, origine, source_ref) VALUES ('monstres/saurotudo', 1, 'Marais', 'marais', 'monstres', 'Bestiaire 2.0 › lignes 25288-25358');
@@ -233,7 +233,7 @@ INSERT INTO monstre_espece_lieu (espece_id, rang, lieu, lieu_cle, origine, sourc
 INSERT INTO monstre_espece_lieu (espece_id, rang, lieu, lieu_cle, origine, source_ref) VALUES ('monstres/squelette-venin', 1, 'Ruines', 'ruines', 'monstres', 'Bestiaire 2.0 › lignes 26546-26734');
 INSERT INTO monstre_espece_lieu (espece_id, rang, lieu, lieu_cle, origine, source_ref) VALUES ('monstres/squelette-venin', 2, 'Marais', 'marais', 'monstres', 'Bestiaire 2.0 › lignes 26546-26734');
 INSERT INTO monstre_espece_lieu (espece_id, rang, lieu, lieu_cle, origine, source_ref) VALUES ('monstres/squelette-venin', 3, 'Forêt', 'foret', 'monstres', 'Bestiaire 2.0 › lignes 26546-26734');
-INSERT INTO monstre_espece_lieu (espece_id, rang, lieu, lieu_cle, origine, source_ref) VALUES ('monstres/velue', 1, 'Ici et là', 'ici-et-la', 'monstres', 'Bestiaire 2.0 › lignes 26743-27477');
+INSERT INTO monstre_espece_lieu (espece_id, rang, lieu, lieu_cle, origine, source_ref) VALUES ('monstres/velue', 1, 'Ici et là', 'ici-et-la', 'monstres', 'Bestiaire 2.0 › lignes 26743-27187');
 INSERT INTO monstre_espece_lieu (espece_id, rang, lieu, lieu_cle, origine, source_ref) VALUES ('monstres/voromorphe', 1, 'Ici et là', 'ici-et-la', 'monstres', 'Bestiaire 2.0 › lignes 27483-27681');
 INSERT INTO monstre_espece_lieu (espece_id, rang, lieu, lieu_cle, origine, source_ref) VALUES ('monstres/zombi', 1, 'Ruines', 'ruines', 'monstres', 'Bestiaire 2.0 › lignes 27692-27864');
 INSERT INTO monstre_espece_lieu (espece_id, rang, lieu, lieu_cle, origine, source_ref) VALUES ('monstres/zombi', 2, 'Cimetière', 'cimetiere', 'monstres', 'Bestiaire 2.0 › lignes 27692-27864');

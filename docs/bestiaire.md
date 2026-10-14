@@ -46,7 +46,8 @@ filtre = l'une OU l'autre, plusieurs filtres = tous à la fois ; chaque valeur a
 
 Un clic sur une ligne ouvre sa **carte** à côté du tableau (sur un écran de moins de 70rem, par-dessus la page ; Échap ou « Fermer » la referme) : en-tête (nom, espèce, catégorie, type, alignement, échelle), **portrait** (le logo en attendant une image ; voir plus
 bas), toute la carte
-rubrique par rubrique (santé, chakra et barrière en tuiles, F.P.V.S.I.A. en cases colorées, cibles des défenses en pastilles quand l'écriture s'y prête,
+rubrique par rubrique (santé, chakra et barrière en tuiles, F.P.V.S.I.A. en cases colorées, cibles des défenses en pastilles dans la couleur de la
+magie qui va avec quand l'écriture s'y prête,
 sinon le texte tel qu'écrit : `lib/monstre-rendu.mjs`), l'espèce (description, lieu de rencontre, blocs qui suivent les cartes) et le butin.
 `#monstre-<nom>`, `#carte-monstre-<nom>` ou `#invoquee-<nom>` ouvre une carte. Sans JavaScript, le nom est un lien vers la carte, qui s'affiche alors
 (`:target`) ; les filtres sont cachés.
@@ -65,8 +66,12 @@ comme avant ; leur carte a la même barre et la même hauteur.
 
 Demande du propriétaire : « pour les tuiles des ennemis ayant plusieurs échelles de créature puisse être sélectionné (par un slider ?) et que ses
 caractéristiques soient calculées en fonction ». Les 40 cartes qui « varient selon leur échelle de puissance » (« 1-10 », « 2-6 », « 3, 5, 7 ») écrivent
-elles-mêmes leurs valeurs échelle par échelle (« EP 1 : 20 », « EP 2 - 5 : 70 », « [EP3] Santé : 330 ») : rien n'est calculé, chaque valeur affichée
-est celle que la carte écrit pour l'échelle choisie (règle d'or). Sous la tête de la carte, un **curseur** sur les échelles qu'elle écrit (pas une
+elles-mêmes leurs valeurs échelle par échelle (« EP 1 : 20 », « EP 2 - 5 : 70 », « [EP3] Santé : 330 ») : chaque valeur affichée est celle que la
+carte écrit pour l'échelle choisie (règle d'or). Seule exception, la **défense** écrite « 5 armure physique (+2/3EP) » ou « 2 (+1/EP) armure physique »
+(19 cartes) : décision R55 du propriétaire, « +2 tous les 3 EP. 5 (+2/3EP) veut dire 7 à 4, 9 à 7 et 11 à 10 » ; la valeur se calcule à l'échelle
+choisie (N à l'EP 1, +k toutes les m échelles, « /EP » : à chaque échelle ; une carte qui ne commence pas à l'EP 1, comme le Collecteur, garde
+sa formule telle qu'écrite : question 10), soulignée, la formule écrite en infobulle. Une
+**capacité « [EPN] »** est gagnée à partir de l'EP N (décision R56) : elle n'apparaît qu'à partir de cette échelle, son préfixe le dit en infobulle. Sous la tête de la carte, un **curseur** sur les échelles qu'elle écrit (pas une
 plage qu'elle n'écrit pas : 3, 5 et 7, ni 4 ni 6) ; la carte ne montre plus que les valeurs de cette échelle (santé, chakra, barrière en tuiles,
 caractéristiques, compétences, dégâts, défense, le texte d'une capacité écrit par échelle comme le « Fondu » des blobs métalliques) ; une ligne sans
 échelle reste à toutes. À côté du curseur, les repères du tableau de l'introduction pour cette échelle : les niveaux des joueurs, l'expérience que la
@@ -76,10 +81,10 @@ Sans JavaScript (et à l'impression), pas de curseur : toutes les valeurs, chacu
 
 Découpage : `lib/monstre-champs.mjs#segmentsParEchelle` (une ligne par échelle, une forme devant, la ligne à deux colonnes du doc, un titre de groupe
 comme « Neige ») ; rendu : `lib/monstre-rendu.mjs` (`data-eps` sur chaque valeur, le curseur par `htmlDeLEchelle`) ; choix : `data-ep` sur la carte et
-une règle CSS par échelle (`styles/bestiaire/bestiaire.css`). Le préfixe « [EP2] » d'une capacité (capacité gagnée à partir de cette échelle ?) reste
-affiché tel quel, sans être relié au curseur (question 6). `client/test/bestiaire-echelles.test.mjs` rejoue le découpage sur toute la base : chaque
-carte à plusieurs échelles écrit une valeur pour chacune dans chaque rubrique qui varie, aucune pour une échelle qu'elle n'écrit pas, et aucun nombre
-affiché n'est absent de la carte.
+une règle CSS par échelle (`styles/bestiaire/bestiaire.css`) ; défense calculée : `texteParEchelle` (une ligne par groupe d'échelles de même valeur,
+« EP 1 - 3 ») ; capacité « [EPN] » : `data-eps` de N à 10 (`echelleDuPrefixe`). `client/test/bestiaire-echelles.test.mjs` rejoue le découpage sur toute
+la base : chaque carte à plusieurs échelles écrit une valeur pour chacune dans chaque rubrique qui varie, aucune pour une échelle qu'elle n'écrit pas,
+aucun nombre affiché n'est absent de la carte, hors les défenses calculées selon R55.
 
 ### Butin
 
@@ -88,7 +93,32 @@ appui, sa définition s'affiche en infobulle (demande du propriétaire : « tu p
 sur le butin concerné dans la table monstres elle-même » ; `components/Infobulles.astro`, une bulle par objet écrite une fois dans la page). Une case
 cite un objet quand elle commence par son nom tel qu'il est écrit (casse et accents compris ; seule la ligature compte pour ses deux lettres :
 « Coeur polaire » cite « Cœur polaire »), suivi de rien, d'une quantité (« x 1d6 », « x1 », « (1d4) ») ou d'une amélioration (« + 1 ») ; le nom le
-plus long l'emporte (`lib/monstre-champs.mjs#objetDuButin`). Rien d'autre n'est rapproché (question 7).
+plus long l'emporte (`lib/monstre-champs.mjs#objetDuButin`). Décision R57 (« Corrige et rapproche les. Les fautes de frappe ça arrive. ») : quatre
+fautes corrigées dans la base et l'extracteur (« Petite os » -> « Petit os », « 4 os moyen » -> « Os moyen x 4 », « Gelée argent » -> « Gelée
+blanche », « Peau du radrak » -> « Peau de radrak » au glossaire), et un objet qui vaut pour tous les éléments se cite avec le sien (« Minitaire de
+Foudre », « Fragment de pièce de Feu », « Fragment de pièce Espace/Temps » : `FAMILLES_PAR_ELEMENT`, éléments = noms des magies), un fruit avec
+l'élément que nomme sa définition (« Fraise de feu » cite « Fraise : Fruit du Feu » ; l'infobulle montre l'entrée « Fraise », sous son nom : question 6).
+
+### Vulnérabilités et résistances
+
+Demande du propriétaire : « rajouter les couleurs des vulnérabilités et résistances selon la couleur de la magie qui va avec ». Chaque cible a la
+couleur de sa magie (`sort-format.mjs#couleurDeMagie`, celle des pastilles de magie du site) : une magie se nomme elle-même (« Feu ») ; une
+altération d'état a sa magie liée (table `etat_magie` : « Brûlure » -> Feu, « Poison » -> Nécromancie ; « Surcharge magique », liée à l'Arcane et à
+la Corruption, porte la seconde en bande), écrite en infobulle. Écritures rapprochées : « Temps/Espace » (Espace/Temps), « Pétrification »,
+« Gelé », « Enragée » (les états « Pétrifié », « Gel », « Enragé ») : `lib/monstre-champs.mjs#magiesDesCibles`. Les autres cibles (« Frappe »,
+« Estoc », « Maladie », « Contrôle mentale »…) restent neutres. Une rubrique écrite par forme ou sur plusieurs lignes (« Guerrier : Nécromancie,
+Feu… », « Neige : Glace », « Absorbe(s) Dégâts/Effets = 0 » puis « Feu ») a ses listes de cibles en pastilles, ligne par ligne ; le reste s'affiche
+tel qu'écrit.
+
+### Apparence d'une carte à plusieurs échelles
+
+Demandes du propriétaire : santé, chakra et barrière « ne doivent pas afficher l'EP, mais leur titre. De plus ils doivent être en ligne » ; « certains
+champs se décalent en fonction de l'EP » ; « l'apparence doit être la même que pour les monstres mono EP ». Les trois rubriques, écrites à part sur
+ces cartes, forment un bloc « Santé, chakra, barrière » d'une ligne de trois tuiles nommées « Santé », « Chakra », « Barrière » (le nom écrit
+« [EP3] Santé : 330 », ou la forme « (Guerrier) » d'un groupe comme « Sang ») ; chaque rubrique y garde son champ en mode modification
+(`lib/bestiaire-rendu.mjs`, `btrio`). L'étiquette « EP n » d'une ligne ou d'une tuile ne se voit plus dès que le curseur a choisi l'échelle (la forme
+« (Guerrier) » reste) : la carte a alors l'apparence d'une carte à une seule échelle ; sans JavaScript et à l'impression, toutes les échelles et leurs
+étiquettes.
 
 ### Règles des échelles de puissance
 
@@ -158,13 +188,18 @@ que chaque ligne de texte gardée est écrite dans le doc.
 - `monstre_regle` (4 règles générales), `monstre_echelle` (EP 1 à 10 : règles de caractéristiques, dégâts moyens, attributs et expérience) ;
 - `monstre_espece` (144 titres « Nom (EPx) »), `monstre_espece_lieu`, `monstre_espece_bloc` (les 15 tableaux par magie du Presque-Ottar),
   `monstre_butin` (tableaux « Score (3d100) ») et `monstre_butin_objet` (glossaire, 102 objets : les infobulles des cases de butin) ;
-- `monstre` (315 cartes) et le détail de chaque carte : `monstre_rubrique` (tout son texte, rubrique par rubrique : rien n'est perdu),
+- `monstre` (311 cartes) et le détail de chaque carte : `monstre_rubrique` (tout son texte, rubrique par rubrique : rien n'est perdu),
   `monstre_caracteristique`, `monstre_attaque`, `monstre_capacite`, `monstre_defense`.
 
 Rien n'est déduit : une valeur n'est typée que si son écriture est sans ambiguïté (sinon `NULL`, le texte de la rubrique fait foi). Deux transformations :
 le nom d'une carte, écrit en capitales, est remis en minuscules avec la casse que le doc donne à chaque mot ailleurs (`nom_brut` garde l'original) ; et
 quatre graphies que la base a déjà corrigées partout sont corrigées ici aussi (`CORRECTIONS` : « le Démon d'Eau Noire » → « Eaunoire », décision R21 ;
 « Occultomancien » → « Ocultomancien » et « purée de poix » → « purée de pois », migration 0006 ; « ect » → « etc », migration 0005).
+
+Deux brouillons du doc, « Réanimé (EP5) (a continuer) » et « Vouivre squelette (EP8) (a refaire) », ne sont pas repris (décision R58 : « Oui » à
+« Faut-il les retirer ? ») : leur titre borne l'espèce qui les précède (`TITRE_BROUILLON`) ; avant la migration `0039-bestiaire-reponses`, la carte
+« Réanimé » était rattachée au Rat et les trois « Vouivres squelettes » à la Velue, leur texte collé dans la tactique du Rat putride et le butin de la
+Velue. Une note sous un tableau de butin (« *Parmi Rouge, Jaune, Vert foncé, Brun », Blob métallique) ne se colle plus à sa dernière case.
 
 L'index « Ennemi par EP » de l'introduction n'est pas repris : il ne liste que 120 noms et en omet 39 (les Ottar, les Élémentaires de la Foudre, de la
 Lumière…). Les « objets en rouge » du glossaire (« en attente d'être mis dans un tableau de butin ») ne se voient pas dans l'export texte.
@@ -179,15 +214,19 @@ Lumière…). Les « objets en rouge » du glossaire (« en attente d'être mis 
 4. Les monstres n'ont pas de page à eux (une ligne et sa carte dans le tableau) : en faut-il une, comme les créatures invoquées ?
 5. Les **créatures invoquées** ne se modifient pas encore depuis le bestiaire (elles viennent des sorts du classeur « Invocation ») : faut-il les ouvrir
    aussi au mode modification ?
-6. **« [EP2] » devant une capacité** (« [EP2] Nom. Texte ») : la capacité est-elle gagnée à partir de cette échelle ? Le curseur ne la cache pas encore
-   aux échelles inférieures (le préfixe s'affiche tel quel).
-7. **Butin** : quelques cases ne citent un objet du glossaire qu'à une écriture près et n'ont donc pas d'infobulle : « Peau de radrak » / « Peau du
-   radrak », « Petite os » / « Petit os », « 4 os moyen » / « Os moyen », « Minitaire de Foudre » / « Minitaire », les fruits élémentaires (« Fraise de feu »,
-   « Citron de foudre »…) face au fruit seul (« Fraise », « Citron »), « Gelée argent » (absente du glossaire), « Fragment de pièce de Feu »… /
-   « Fragment de pièce élémentaire ». Faut-il les rapprocher (et lesquels), corriger le doc, ou compléter le glossaire ? Et où mettre le glossaire
-   lui-même (« on le mettra ailleurs ») ?
-8. **Défense par échelle** : des cartes écrivent « 5 armure physique (+2/3EP) » ou « N (+k/EP) » : la valeur s'affiche telle quelle, sans calcul (la
-   règle d'or). Faut-il la calculer à chaque échelle (et comment lire « +2/3EP ») ?
-9. Quelques écarts de l'extraction relevés en passant, laissés tels quels : la note « *Parmi Rouge, Jaune, Vert foncé, Brun » (l'astérisque de
-   « Gelée aléatoire* ») est collée à la dernière case boss du butin du Blob métallique ; la dernière case boss du butin de la Velue contient le début
-   de « Vouivre squelette (EP8) (a refaire) », un brouillon du doc ; « (a continuer) » est dans la tactique du Rat putride. Faut-il les retirer ?
+6. **Fruits « majeurs »** : « Fraise de feu »… cite maintenant « Fraise » (R57, comme demandé). Mais le butin des blobs donne à la fois « Fraise de
+   feu » et « Fraise » (« Prune d'eau » et « Prune »…), et le doc « Alchimie » les distingue (« Fraise de feu » : amplificateur, « Fruit (majeur) » ;
+   « Fraise » : catalyseur). Faut-il ajouter les fruits majeurs au glossaire, avec leur définition ?
+7. **Blob blanc** : sa ligne 61-100 donne « Gelée coco » (la gelée supérieure du Blob transparent ; son mini-boss est pourtant le Blob pêche), la
+   définition « Gelée pêche » dit « Chair supérieure de blob transparent », et sa description est mot pour mot celle du Blob transparent : copier-coller ?
+   Faut-il écrire « Gelée pêche » et « blob blanc », et quelle description ?
+8. **« Ottar (explication) »**, une section de lore du doc (« Les Ottars ont été des êtres humanoïdes… »), est collée dans la tactique de l'« Os du
+   blizzard » (dernière carte de l'Os du froid) : où la mettre ?
+9. **Glossaire** : 12 objets ne sont cités par aucune case (Chapeau de méduse, Cristal de brume blanche, Eau fondue du premier givre, Fungus fantôme,
+   Gelée pomme, Herbe multicolore, Miel blanc, Oeil de chauve-souris, Plume de griffon, Plume de sang, Plume tonnerre, Poudre d'os lumineuse) :
+   probablement les « objets en rouge » (« en attente d'être mis dans un tableau de butin »). Et où mettre le glossaire lui-même (« on le mettra
+   ailleurs ») ?
+10. **Défense « N (+k/EP) » d'une carte qui ne commence pas à l'EP 1** (les trois Collecteurs, EP 2 à 6 : « 2 (+1/EP) armure physique ») : N vaut-il
+    pour l'EP 1 (3 à l'EP 2) ou pour sa première échelle (2 à l'EP 2) ? En attendant, la formule s'affiche telle qu'écrite.
+11. La note « *Parmi Rouge, Jaune, Vert foncé, Brun » retirée du butin du Blob métallique (R58) expliquait l'astérisque de « Gelée aléatoire* » :
+    faut-il l'ajouter au glossaire (« Gelée aléatoire : parmi rouge, jaune, vert foncé, brun ») ?

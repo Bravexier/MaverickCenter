@@ -9,7 +9,7 @@
 // Rien n'est calculé ni déduit : une valeur que la base n'a pas typée reste son texte (`*_brut`, rubriques) ; les libellés des filtres sont l'écriture
 // la plus fréquente de chaque valeur dans la base (« Non-mort » réunit « Non-mort » et « Non-Mort »).
 // `chargerBestiaire` reçoit la base ouverte par lib/donnees.mjs (build) ; module sans dépendance navigateur ni Astro.
-import { echellesEcrites, RENVOI_AUX_DEGATS_MOYENS } from './monstre-champs.mjs';
+import { echellesEcrites, magiesDesCibles as tableDesCibles, RENVOI_AUX_DEGATS_MOYENS } from './monstre-champs.mjs';
 import { normalize } from './text.mjs';
 
 /** Libellés des catégories de monstre (colonne `categorie`). */
@@ -105,7 +105,7 @@ const echellesDe = (brut, min, max) => {
   return min === null || max === null ? [] : Array.from({ length: max - min + 1 }, (_, k) => String(min + k));
 };
 
-/** Les monstres du Bestiaire 2.0 : { lignes, facettes, regles, echelles, glossaire, especes }. */
+/** Les monstres du Bestiaire 2.0 : { lignes, facettes, regles, echelles, glossaire, elements, especes } (`elements` : les noms des magies, décision R57). */
 export function chargerMonstres(db) {
   const all = (sql) => db.prepare(sql).all();
   const especes = all('SELECT * FROM monstre_espece ORDER BY ordre');
@@ -232,6 +232,10 @@ export function chargerMonstres(db) {
     regles: all('SELECT rang, texte FROM monstre_regle ORDER BY rang'),
     echelles: all('SELECT * FROM monstre_echelle ORDER BY ep'),
     glossaire: all('SELECT id, nom, texte FROM monstre_butin_objet ORDER BY rang'),
+    // les éléments devant lesquels le butin écrit un objet du glossaire (« Fraise de feu », « Minitaire de Foudre » : lib/monstre-champs.mjs#objetDuButin)
+    elements: all('SELECT nom FROM magie ORDER BY ordre').map((m) => m.nom),
+    // la couleur des vulnérabilités et résistances : la magie qui va avec chaque cible
+    magiesDesCibles: magiesDesCibles(db),
   };
 }
 
@@ -246,6 +250,18 @@ export const renvoisAuxDegatsMoyens = (db) => [
       .map((r) => r.monstre_id),
   ),
 ];
+
+/** La magie qui va avec chaque cible des vulnérabilités et résistances (lib/monstre-champs.mjs#magiesDesCibles) : les magies, et la magie liée des
+ *  altérations d'état (etat_magie, dans l'ordre de leur rang). Page construite (chargerMonstres) et mode modification (serveur/edition.mjs#listes). */
+export const magiesDesCibles = (db) =>
+  tableDesCibles(
+    db.prepare('SELECT nom FROM magie ORDER BY ordre').all().map((m) => m.nom),
+    db.prepare('SELECT e.nom AS nom, m.nom AS magie FROM etat e JOIN etat_magie em ON em.etat_id = e.id JOIN magie m ON m.id = em.magie_id ORDER BY e.ordre, em.rang').all(),
+  );
+
+/** L'échelle écrite de chaque carte ({ id: echelle_brut }), pour le rendu « monstre-rubrique » du mode modification (une formule « N (+k/mEP) »,
+ *  décision R55 : serveur/edition.mjs#listes). */
+export const echellesDesCartes = (db) => Object.fromEntries(db.prepare('SELECT id, echelle_brut FROM monstre ORDER BY id').all().map((r) => [r.id, r.echelle_brut]));
 
 /** Tableau du butin d'une espèce : [{ rang, score, ennemi_simple, mini_boss, boss }] dans l'ordre des tranches ; une cellule vide reste null. */
 export function tableauDuButin(lignes) {

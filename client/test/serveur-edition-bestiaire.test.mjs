@@ -19,7 +19,7 @@ import { CATEGORIES_DE_MONSTRE, ENTITES, journalSansImage, TABLES } from '../src
 import { RENDUS, rendreChamp } from '../src/lib/edition-rendu.mjs';
 import { CATEGORIES, GABARIT_DE_CARTE, RUBRIQUES, valeursDeLaCarte } from '../src/lib/monstre-champs.mjs';
 import { htmlDeLEchelle, htmlDeRubrique, htmlDuButin } from '../src/lib/monstre-rendu.mjs';
-import { renvoisAuxDegatsMoyens } from '../src/lib/bestiaire-db.mjs';
+import { echellesDesCartes, magiesDesCibles, renvoisAuxDegatsMoyens } from '../src/lib/bestiaire-db.mjs';
 import { comparerBases } from '../src/lib/notes-de-version.mjs';
 import { empreinte, PORTRAIT_MAX, resumeDuPortrait } from '../src/lib/portrait.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -174,12 +174,17 @@ test('créer une espèce, puis un monstre dedans ; supprimer le monstre, puis l�
 test('curseur d’échelle et butin en infobulle : les listes du service (serveur/edition.mjs#listes) redonnent les rendus de la page ; une carte créée a son curseur', () => {
   const l = JSON.parse(JSON.stringify(appel('GET', '/api/edition/listes/').corps));
   assert.deepEqual(l.echellesDePuissance, tous('SELECT * FROM monstre_echelle ORDER BY ep'));
-  assert.deepEqual(l.objetsDuButin, tous('SELECT id, nom FROM monstre_butin_objet ORDER BY rang'));
+  assert.deepEqual(l.objetsDuButin, tous('SELECT id, nom, texte FROM monstre_butin_objet ORDER BY rang'));
+  assert.deepEqual(l.echellesDesCartes, echellesDesCartes(db));
+  assert.deepEqual(l.magiesDesCibles, magiesDesCibles(db));
+  assert.equal(rendreChamp('monstre-rubrique', 'Feu, Brûlure', { rubrique: 'vulnerabilite', monstre_id: 'x' }, l), htmlDeRubrique('vulnerabilite', 'Feu, Brûlure', { magiesDesCibles: l.magiesDesCibles }));
+  assert.match(rendreChamp('monstre-butin', 'Fraise de feu x 1d2', {}, l), /data-bulle="bulle-butin-fraise"[^>]*>Fraise de feu<\/button> x 1d2$/);
   assert.deepEqual(l.renvoisAuxDegatsMoyens, renvoisAuxDegatsMoyens(db));
   const renvoi = l.renvoisAuxDegatsMoyens[0];
   assert.equal(rendreChamp('monstre-echelle', '1-10', { id: renvoi, categorie: 'boss' }, l), htmlDeLEchelle('1-10', 'boss', l.echellesDePuissance, true));
   const butin = un("SELECT texte FROM monstre_butin WHERE texte LIKE 'Gelée%' ORDER BY espece_id, rang LIMIT 1").texte;
-  assert.equal(rendreChamp('monstre-butin', butin, {}, l), htmlDuButin(butin, l.objetsDuButin));
+  assert.equal(rendreChamp('monstre-butin', butin, {}, l), htmlDuButin(butin, l.objetsDuButin, l.magies.map((m) => m.nom)));
+  assert.match(rendreChamp('monstre-butin', 'Minitaire de Foudre', {}, l), /data-bulle="bulle-butin-minitaire"[^>]*>Minitaire de Foudre<\/button>$/);
   assert.match(rendreChamp('monstre-butin', butin, {}, l), /<button type="button" class="bobjet" data-bulle="bulle-butin-/);
   assert.equal(rendreChamp('monstre-echelle', '2-4', { categorie: 'boss' }, l), htmlDeLEchelle('2-4', 'boss', l.echellesDePuissance));
   assert.equal(rendreChamp('monstre-echelle', '2', { categorie: 'boss' }, l), '');
